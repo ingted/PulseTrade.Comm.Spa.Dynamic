@@ -2,6 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <PackageId>PulseTrade.Comm.Spa.Dynamic</PackageId>
+    <Version>0.1.0-alpha1</Version>
+    <Authors>PulseTrade Team</Authors>
+    <Description>Dynamic SDUI and Actor extension for PulseTrade.Comm.Spa</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
@@ -14,4 +19,12 @@
     <PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.4-beta7" />
   </ItemGroup>
 
-  <ItemGroup><Compile Include="Server/FCell2Interop.fs" /></ItemGroup>  <ItemGroup><Compile Include="Server/DynamicActors.fs" /><Compile Include="Server/Extension.fs" /></ItemGroup></Project>
+  <ItemGroup>
+    <Compile Include="Server/FCell2Interop.fs" />
+    <Compile Include="Server/DynamicActors.fs" />
+    <Compile Include="Server/Extension.fs" />
+    <Compile Include="Client/DynamicRenderer.fs" />
+    <Compile Include="Client/ActorDynamicTab.fs" />
+  </ItemGroup>
+
+</Project>

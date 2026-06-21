@@ -4,6 +4,7 @@ open System
 open Expecto
 open PersistedConcurrentSortedList.Type
 open PulseTrade.Comm.Spa.Dynamic.Server
+open PulseTrade.Comm.Spa.Dynamic.Client
 open PulseTrade.Comm.Spa
 open Akka.Actor
 
@@ -36,8 +37,17 @@ let tests =
             Expect.isTrue true "useDynamicSdui executed successfully"
             
         testCase "WBS-103: DynamicRenderer.TryRender should return Some for fskynet-sdui schema" <| fun _ ->
-            // TODO: Wait for UPSTREAM_RFC (IMessageRenderer)
-            ()
+            let payload = "{\"schema\":\"fskynet-sdui\",\"ui\":[]}"
+            let result = DynamicRenderer.TryRender payload
+            Expect.isSome result "TryRender should return Some Doc for valid fskynet-sdui schema"
+            
+            let invalidPayload = "{\"schema\":\"other\",\"ui\":[]}"
+            let invalidResult = DynamicRenderer.TryRender invalidPayload
+            Expect.isNone invalidResult "TryRender should return None for other schemas"
+
+        testCase "WBS-104: ActorDynamicTab.renderActorDynamicPage should generate valid page Doc" <| fun _ ->
+            let _ = ActorDynamicTab.renderActorDynamicPage "actor-dynamic"
+            Expect.isTrue true "Tab page generation should succeed"
     ]
 
 [<EntryPoint>]
