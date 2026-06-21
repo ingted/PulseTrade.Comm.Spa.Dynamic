@@ -4,7 +4,9 @@
 #r "nuget: FAkka.FCell2, 10.1.301"
 #r "nuget: Akka, 1.5.69"
 #I __SOURCE_DIRECTORY__
-#r "src/bin/Release/net10.0/PulseTrade.Comm.Spa.Dynamic.dll"
+#I "src/bin/Release/net10.0"
+#I "bin/Release/net10.0"
+#r "PulseTrade.Comm.Spa.Dynamic.dll"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 
