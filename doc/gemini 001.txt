@@ -1,0 +1,223 @@
+這是一份為 PulseTrade.Comm.Spa.Dynamic (代號 FSkynet) 量身打造的完整架構與 Semantic 設計文件。這份設計基於 Server-Driven UI (SDUI) 的核心精神，並深度結合 Akka.WebSocket 與現有的資料處理模型（參考了 e2eQuotation 與 PulseTrade.MarketData.Analytics 中的 TA 與 Grid 設計）。
+
+以下為您準備好的文件內容，您可以直接存入 C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\doc\FSkynet.md。
+
+FSkynet: PulseTrade.Comm.Spa Dynamic UI Framework
+1. 核心精神與架構思維
+PulseTrade.Comm.Spa.Dynamic (FSkynet) 是一個輕量級、基於 Server-Driven UI (SDUI) 精神的模組化框架。它的目標並非取代高度客製化的大型靜態網站，而是針對「複雜的金融小工具、資料處理型 Dashboard、CRUD 管理後台、動態表單與圖表」提供一套能由後端 F# 語法完全表達與控制的前端渲染解決方案。
+
+透過這套框架，開發者可以：
+
+在後端撰寫 UI 邏輯：藉由 F# 的強型別 Semantic 描述畫面結構。
+
+透過 WebSocket 熱更新：所有狀態變更 (Diff) 與指令皆透過 Akka.WebSocket 進行雙向綁定。
+
+Runtime 動態掛載：利用 FSI (F# Interactive) 熱部署新模組，無須重啟主服務。
+
+2. Runtime (FSI) 模組載入設計 (PulseTrade.Comm.Spa 擴展性)
+為了讓 PulseTrade.Comm.Spa 能在 Runtime (如 FSI) 中動態掛載模組，我們必須將現有寫死的 Server.app 與 ActorFabric 解耦，引入「動態註冊表 (Dynamic Registry)」模式。
+
+A. 動態 WebPart 與 WebSocket 路由註冊
+在現有 Server 中引入 ConcurrentDictionary 或 Mutable 參考，做為 WebPart 的代理 (Proxy)。
+
+F#
+// 位於 PulseTrade.Comm.Spa.Dynamic.Registry
+type ModuleId = string
+
+type DynamicRegistry() =
+    static let webParts = ConcurrentDictionary<ModuleId, WebPart>()
+    static let wsHandlers = ConcurrentDictionary<ModuleId, WebSocketHandler>()
+    
+    static member Register(id: ModuleId, part: WebPart, ws: WebSocketHandler) =
+        webParts.[id] <- part
+        wsHandlers.[id] <- ws
+        
+    static member DynamicWebPart : WebPart = 
+        fun ctx -> 
+            let parts = webParts.Values |> Seq.toList
+            choose parts ctx
+B. ActorFabric 的動態插拔
+Akka.WebSocket 的連接必須能根據 Client 請求的 ModuleId，動態路由到 FSI 剛剛載入的 Actor。
+
+F#
+// 在 ActorFabric 內建立 Supervisor
+type DynamicModuleSupervisorMessage =
+    | MountModule of ModuleId * Props
+    | UnmountModule of ModuleId
+    | RouteToModule of ModuleId * obj
+
+// FSI 腳本的部署範例 (run.fsx)
+let myGridModuleProps = Props.Create(fun () -> new DynamicGridActor())
+DynamicRegistry.ActorSupervisor <! MountModule("AnalyticsDashboard", myGridModuleProps)
+3. Akka.WebSocket 動態 MVC 框架草案
+前後端的通訊與 MVC 職責分配如下：
+
+Model (後端狀態)：完全保留在 F# 後端 Actor 中。
+
+View (前端 WebSharper)：一個「泛型渲染器 (Generic Renderer)」，它不包含業務邏輯，只負責監聽 WebSocket，將收到的 F# Semantic (JSON 格式) 轉譯為 DOM 或 Chart，並綁定事件回傳。
+
+Controller (後端 Actor)：接收前端的事件 (如 Click, Scroll, Input)，修改 Model，然後發送 UICommand (Diff) 回前端。
+
+雙向通訊 Protocol (基於 Akka.WebSocket)
+F#
+// 1. Client -> Server (前端發出的事件)
+type ClientEvent =
+    | ModuleMounted of ModuleId
+    | FormSubmitted of FormId: string * Payload: Map<string, string>
+    | GridScrolled of GridId: string * Page: int
+    | ChatSent of RoomId: string * Message: string
+    | ChartHovered of ChartId: string * Index: int * X: float
+
+// 2. Server -> Client (後端發出的 UI 更新指令)
+type UICommand =
+    | RenderLayout of LayoutDef       // 全局重繪
+    | PatchComponent of UIComponent   // 局部更新元件
+    | AppendData of TargetId: string * Rows: obj list // 增加資料 (例如 K線圖、Grid)
+    | ShowToast of level: string * message: string
+4. 資料處理與 UI Semantic 設計 (重點核心)
+為了解決「複雜的小工具資料處理型 SPA (如畫 CRUD Grid、K線圖)」，我們需要定義一套強大的 Semantic。這套 Semantic 會序列化成 JSON 交給前端 WebSharper 解析。
+
+A. 通用元件 Semantic
+F#
+type UIComponent =
+    | DataGrid of GridDef
+    | FinancialChart of ChartDef
+    | DynamicForm of FormDef
+    | ChatRoom of ChatRoomDef
+    | Container of LayoutType * UIComponent list
+B. 核心：Data Processing & Grid Semantic
+針對巨量資料處理，我們不能一次把十萬筆資料丟給前端。需要結合分頁 (Pagination) 與增量更新 (Incremental Updates)。
+
+F#
+type ColumnDef = {
+    Field: string
+    Header: string
+    Width: string
+    Format: string // e.g., "number:2", "utc-datetime", "currency"
+    Sortable: bool
+}
+
+type GridDef = {
+    Id: string
+    Columns: ColumnDef list
+    Rows: Map<string, obj> list // 資料列
+    TotalRows: int
+    CurrentPage: int
+    PageSize: int
+    HasNextPage: bool
+}
+操作情境：
+後端 Actor 從資料庫抓取前 50 筆資料，建構 GridDef 後封裝成 RenderLayout 透過 WebSocket 送出。前端 WebSharper 收到後，利用 DocSeqCached 生成表格。當使用者按下一頁時，前端送出 GridScrolled 事件給後端，後端再回傳 PatchComponent(DataGrid(...)) 更新畫面。
+
+C. 核心：K線圖與分析 (Financial Chart Semantic)
+基於 PulseTrade.MarketData.Analytics 中的 Candle 與 TaRow 模型設計。出圖的 Semantic 需要支援多種技術指標 (SMA, MACD, Volume) 疊加。
+
+F#
+type ChartSeriesType =
+    | Candlestick
+    | BarVolume of upColor: string * downColor: string
+    | LineSma of period: int * color: string
+    | HistogramMacd of fast: int * slow: int * signal: int
+
+type ChartDef = {
+    Id: string
+    Symbol: string
+    BucketSeconds: int // e.g., 5 seconds, 1 minute
+    MaxVisibleBars: int // e.g., default 56
+    Series: ChartSeriesType list
+    // 初始加載的資料，後續靠 AppendData 指令增量更新
+    InitialRows: TaCandleRowDef list 
+}
+
+// 對應前端解析的行資料結構 (參考 SpaModel.fs 的 TaCandleRow)
+type TaCandleRowDef = {
+    BucketUtc: string
+    Open: decimal
+    High: decimal
+    Low: decimal
+    Close: decimal
+    Volume: decimal
+    SmaValues: Map<int, decimal> // Period -> Value
+    Macd: decimal option
+    MacdSignal: decimal option
+    MacdHistogram: decimal option
+}
+操作情境：
+當報價流有新的 Tick 進來時，後端 Actor 處理完指標計算，不需要重繪整個圖表，而是發送：
+AppendData("MyMainChart", [ newTickData ])
+前端 WebSharper 解析到 AppendData，就利用 JS 的陣列操作與 SVG/Canvas 重繪最新的 K 線，達成與 e2eQuotation 一致的高效能表現。
+
+D. 複雜表單與聊天室 Semantic (Form & ChatRoom)
+F#
+type InputType = Text | Number | Password | Select of (string * string) list | Checkbox
+
+type FormField = {
+    Key: string
+    Label: string
+    Type: InputType
+    Required: bool
+    DefaultValue: string option
+}
+
+type FormDef = {
+    Id: string
+    Title: string
+    Fields: FormField list
+    SubmitLabel: string
+}
+
+type ChatMessage = {
+    Id: string
+    Sender: string
+    TimeUtc: string
+    Content: string
+    IsSystem: bool
+}
+
+type ChatRoomDef = {
+    Id: string
+    Topic: string
+    Messages: ChatMessage list // 初始化訊息
+    AllowInput: bool
+}
+5. 模組開發範例 (Developer Workflow)
+有了 FSkynet，開發一個「動態 K 線圖 + 即時聊天討論」的 SPA 工具，後端工程師只需在 FSI 中撰寫如下邏輯：
+
+F#
+// 1. 定義畫面 Semantic
+let myDashboard () = 
+    Container (Row, [
+        FinancialChart {
+            Id = "btc-chart"
+            Symbol = "BTCUSDT"
+            BucketSeconds = 60
+            MaxVisibleBars = 100
+            Series = [ Candlestick; BarVolume("green", "red"); LineSma(20, "blue") ]
+            InitialRows = fetchInitialOhlcv()
+        }
+        ChatRoom {
+            Id = "trader-chat"
+            Topic = "Strategy Discussion"
+            Messages = []
+            AllowInput = true
+        }
+    ])
+
+// 2. 實作 Actor (Controller)
+type DashboardActor() =
+    inherit ReceiveActor()
+    
+    do
+        // 初始渲染
+        base.Receive<ClientEvent>(fun msg ->
+            match msg with
+            | ModuleMounted _ -> 
+                Sender <! RenderLayout (myDashboard())
+            | ChatSent(id, text) ->
+                // 處理廣播邏輯...
+                Sender <! AppendData(id, [ { Sender = "User"; Content = text; ... } ])
+            | _ -> ()
+        )
+
+// 3. FSI 動態掛載
+DynamicRegistry.ActorSupervisor <! MountModule("LiveStrategy", Props.Create<DashboardActor>())

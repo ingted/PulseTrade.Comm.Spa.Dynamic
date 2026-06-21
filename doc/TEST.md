@@ -1,0 +1,34 @@
+# Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
+
+## 1. 測試專案規劃
+測試專案位於 `tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
+使用 **Expecto** 框架進行單元測試與整合測試。
+此測試計畫依據 WBS 的切分進行實作前定義。
+
+## 2. 測試案例規劃 (Test Cases)
+
+### 2.1 後端擴充點掛載測試 (Server Extension Mount Test)
+- **測試目標**：確保 `CommHub.useDynamicSdui()` 能正確將 Dynamic Extension 的環境或 Actor 載入。
+- **測試原理**：
+  1. 實例化一個模擬的 `CommHub` (利用唯讀的 PTCS 上游套件建立 Dummy Hub)。
+  2. 呼叫 `.useDynamicSdui()` 擴充方法。
+  3. **判讀標準**：驗證呼叫後不拋出例外，且回傳的 Hub 實例非空。如果系統內建 Actor 查詢機制，則檢查指定的 Actor (`ShowcaseDemoActor` 等) 是否存在。
+
+### 2.2 FCell AST Parser 轉換測試 (AST to JSON Test)
+- **測試目標**：驗證抽離出來的 `FCell2Interop.fs` 能將 F# DSL 正確序列化為 JSON Payload。
+- **測試原理**：
+  1. 建立一個包含 `GridFeatures`, `CanvasComponent` 等巢狀 `fCell2` AST。
+  2. 呼叫 `toJsonString()` 或 `toMessagePayload()` 函式。
+  3. **判讀標準**：驗證輸出的字串是合法的 JSON，且 `schema` 欄位為 `"ptc.comm.fcell2.chat.v1"` 或預期的 `fskynet-sdui` 字串，並且內容符合預先定義的 Schema 格式。
+
+### 2.3 前端 Renderer 註冊測試 (Client Renderer Hook Test)
+- **測試目標**：確保前端的 SDUI Renderer 在被觸發時，能正確識別對應的 JSON Payload。
+- **測試原理**：
+  由於 F# WebSharper 的 DOM 邏輯在 Server 端 (Node/JS) 執行單元測試較為困難，我們在此測試 `TryRender` 的預判定邏輯。
+  1. 直接實例化 `DynamicSduiRenderer` 中的 `TryRender` (去除 UI 操作部分，或模擬 DOM Node 回傳)。
+  2. 傳入包含 `"schema": "fskynet-sdui"` 的字串，驗證回傳 `Some node`。
+  3. 傳入一般字串 `"hello world"`，驗證回傳 `None`。
+  4. **判讀標準**：Renderer 必須只對特定的 SDUI Schema 起作用，不會誤攔截一般對話。
+
+## 3. 開發與測試流程 (TDD Execution)
+根據 WBS，在進入 `WBS-200` 系列的開發前，必須先完成此文件內 `2.1` 到 `2.3` 所有的 Expecto 測試撰寫 (測試案例初期應該會是 Failing 的，等待實作後轉為 Passing)。

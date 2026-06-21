@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "0GUpUcO8wuc=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Administrator\\test_gemini\\PulseTrade.Comm.Spa.Dynamic\\tests\\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Administrator\\.nuget\\packages\\expecto\\11.1.0\\expecto.11.1.0.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\fsharp.core\\10.1.301\\fsharp.core.10.1.301.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\mono.cecil\\0.11.6\\mono.cecil.0.11.6.nupkg.sha512"
+  ],
+  "logs": []
+}

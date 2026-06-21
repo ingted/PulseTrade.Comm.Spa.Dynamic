@@ -1,0 +1,204 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <RestoreSuccess Condition=" '$(RestoreSuccess)' == '' ">True</RestoreSuccess>
+    <RestoreTool Condition=" '$(RestoreTool)' == '' ">NuGet</RestoreTool>
+    <ProjectAssetsFile Condition=" '$(ProjectAssetsFile)' == '' ">$(MSBuildThisFileDirectory)project.assets.json</ProjectAssetsFile>
+    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
+    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">C:\Users\Administrator\.nuget\packages\;C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages</NuGetPackageFolders>
+    <NuGetProjectStyle Condition=" '$(NuGetProjectStyle)' == '' ">PackageReference</NuGetProjectStyle>
+    <NuGetToolVersion Condition=" '$(NuGetToolVersion)' == '' ">7.0.0</NuGetToolVersion>
+  </PropertyGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <SourceRoot Include="C:\Users\Administrator\.nuget\packages\" />
+    <SourceRoot Include="C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages\" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\00-smoke-all.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\00-smoke-all.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\00-smoke-all.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\01-basic-chat-sets-actors.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\01-basic-chat-sets-actors.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\01-basic-chat-sets-actors.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\02-fcell-chat-list-grid.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\02-fcell-chat-list-grid.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\02-fcell-chat-list-grid.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\03-sharded-append-pages.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\03-sharded-append-pages.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\03-sharded-append-pages.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\04-shared-site-singleton.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\04-shared-site-singleton.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\04-shared-site-singleton.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\05-journal-profiles.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\05-journal-profiles.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\05-journal-profiles.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\06-pcsl-writer-profile.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\06-pcsl-writer-profile.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\06-pcsl-writer-profile.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\07-tab-visibility.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\07-tab-visibility.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\07-tab-visibility.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\08-actor-argu-fcell-chat.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\08-actor-argu-fcell-chat.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\08-actor-argu-fcell-chat.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\09-persistent-journal-replay.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\09-persistent-journal-replay.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\09-persistent-journal-replay.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\10-oauth-route-preview.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\10-oauth-route-preview.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\10-oauth-route-preview.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\11-reality-key-journal-binding.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\11-reality-key-journal-binding.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\11-reality-key-journal-binding.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\DemoCommon.fsx" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\DemoCommon.fsx')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\DemoCommon.fsx</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\README.en-us.md" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\README.en-us.md')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\README.en-us.md</Link>
+    </None>
+    <None Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\README.md" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\Scripts\Demo\README.md')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>None</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>Scripts\Demo\README.md</Link>
+    </None>
+    <Content Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.css" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.css')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>build\PulseTrade.Comm.Spa.css</Link>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.head.html" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.head.html')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>build\PulseTrade.Comm.Spa.head.html</Link>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.head.js" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.head.js')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>build\PulseTrade.Comm.Spa.head.js</Link>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.js" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.js')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>build\PulseTrade.Comm.Spa.js</Link>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.min.js" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\PulseTrade.Comm.Spa.min.js')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>build\PulseTrade.Comm.Spa.min.js</Link>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\WebSharper.Core.JavaScript\Runtime.js" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\WebSharper.Core.JavaScript\Runtime.js')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>build\WebSharper.Core.JavaScript\Runtime.js</Link>
+    </Content>
+    <Content Include="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\WebSharper.Core.JavaScript\Runtime.ts" Condition="Exists('$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.4-beta7\contentFiles\any\any\build\WebSharper.Core.JavaScript\Runtime.ts')">
+      <NuGetPackageId>PulseTrade.Comm.Spa</NuGetPackageId>
+      <NuGetPackageVersion>0.2.4-beta7</NuGetPackageVersion>
+      <NuGetItemType>Content</NuGetItemType>
+      <Pack>false</Pack>
+      <Private>False</Private>
+      <Link>build\WebSharper.Core.JavaScript\Runtime.ts</Link>
+    </Content>
+  </ItemGroup>
+  <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)dotnet.reproduciblebuilds\2.0.5\buildTransitive\DotNet.ReproducibleBuilds.props" Condition="Exists('$(NuGetPackageRoot)dotnet.reproduciblebuilds\2.0.5\buildTransitive\DotNet.ReproducibleBuilds.props')" />
+  </ImportGroup>
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <PkgFSharp_Core Condition=" '$(PkgFSharp_Core)' == '' ">C:\Users\Administrator\.nuget\packages\fsharp.core\10.1.301</PkgFSharp_Core>
+    <PkgWebSharper Condition=" '$(PkgWebSharper)' == '' ">C:\Users\Administrator\.nuget\packages\websharper\10.1.5.674</PkgWebSharper>
+    <PkgWebSharper_FSharp Condition=" '$(PkgWebSharper_FSharp)' == '' ">C:\Users\Administrator\.nuget\packages\websharper.fsharp\10.1.5.674</PkgWebSharper_FSharp>
+    <PkgAkka_Analyzers Condition=" '$(PkgAkka_Analyzers)' == '' ">C:\Users\Administrator\.nuget\packages\akka.analyzers\0.3.3</PkgAkka_Analyzers>
+    <PkgPulseTrade_Comm_Spa Condition=" '$(PkgPulseTrade_Comm_Spa)' == '' ">C:\Users\Administrator\.nuget\packages\pulsetrade.comm.spa\0.2.4-beta7</PkgPulseTrade_Comm_Spa>
+  </PropertyGroup>
+</Project>
