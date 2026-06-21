@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -14,4 +14,4 @@
     <PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.4-beta7" />
   </ItemGroup>
 
-</Project>
+  <ItemGroup><Compile Include="Server/FCell2Interop.fs" /></ItemGroup>  <ItemGroup><Compile Include="Server/DynamicActors.fs" /><Compile Include="Server/Extension.fs" /></ItemGroup></Project>

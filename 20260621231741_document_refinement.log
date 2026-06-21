@@ -1,0 +1,20 @@
+# [20260621231741] Document Refinement (SA, SD, WBS)
+
+## 任務目標 (Task Objective)
+根據使用者的回饋，對於先前的 SA, SD, WBS 文件進行精煉與擴充，以符合系統設計的深度與管理要求。
+
+## 任務解構與規劃 (Task Breakdown & Planning)
+1. **更新 `SA.md`**：
+   - 增加**方法論敘述**：明確定義如何將原本在 `C:\Users\Administrator\test_gemini\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa` 實作的 `fskynet-sdui` 內容抽取並封裝為 `PTCS.Dynamic`。
+   - 增加**技術風險敘述**：探討包含依賴反轉 (Dependency Inversion)、WebSharper 跨專案動態掛載 DOM 的限制、以及 AST Parsing 潛在的相容性問題。
+2. **更新 `SD.md`**：
+   - 增加 **"Actor Dynamic"** 的詳細設計，包含在現有架構下的 Tab Page Type。
+   - 提供更具體的 Pseudo Code 或是 Code Snippet，示範 `PTCS.Dynamic` 如何註冊這類 Actor 並且將對應的 UI 元件給綁定起來。
+3. **更新 `WBS.md`**：
+   - 參考 `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\WBS.md` 的風格，將 WBS 改為表格形式 `| ID | 工項 | 狀態 | Progress | 證據 / 備註 |`。
+   - 增加與 `TEST.md` (或測試代碼) ID 的映射。
+   - 提高顆粒度，讓後續能精確追蹤。
+
+## 預估時間 (Estimated Time)
+- 本任務預估耗時：**30 分鐘**。
+- 若完成後本輪（含其他開發）累計花費低於 240 分鐘，將立即進入下一個 WBS 工項。

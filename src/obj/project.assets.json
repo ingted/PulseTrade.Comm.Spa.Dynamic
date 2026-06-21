@@ -3977,7 +3977,8 @@
         "dependencies": {
           "FAkka.FCell2": {
             "target": "Package",
-            "version": "[10.1.301, )"
+            "version": "[10.1.301, )",
+            "generatePathProperty": true
           },
           "FSharp.Core": {
             "include": "Runtime, Compile, Build, Native, Analyzers, BuildTransitive",

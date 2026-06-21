@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<doc>
+<assembly><name>PulseTrade.Comm.Spa.Dynamic</name></assembly>
+<members>
+<member name="P:PulseTrade.Comm.Spa.Dynamic.Server.ShowcaseDemoActor.ActorCtx">
+<summary>
+ 提供給 lambda 使用的 context
+</summary>
+</member>
+<member name="T:PulseTrade.Comm.Spa.Dynamic.Server.ShowcaseDemoActor">
+<summary>
+ 表示 ActorDynamic 展示頁面的狀態機或回應邏輯
+</summary>
+</member>
+<member name="M:PulseTrade.Comm.Spa.Dynamic.Server.FCell2Interop.toMessagePayload(PersistedConcurrentSortedList.Type.fCell2{System.String})">
+<summary>
+ 將一個 fCell2 根節點打包成包含 fskynet-sdui schema 的 Payload
+</summary>
+</member>
+<member name="M:PulseTrade.Comm.Spa.Dynamic.Server.FCell2Interop.toJsonString(PersistedConcurrentSortedList.Type.fCell2{System.String})">
+<summary>
+ 將 fCell2 AST 遞迴轉換為 JSON 字串
+</summary>
+</member>
+<member name="M:PulseTrade.Comm.Spa.Dynamic.Server.CommHubExtensions.CommHub.useDynamicSdui(PulseTrade.Comm.Spa.CommHub,Akka.Actor.ActorSystem)">
+<summary>
+ 將 Dynamic Sdui Actor 與路由掛載至現有的 CommHub
+</summary>
+</member>
+</members>
+</doc>

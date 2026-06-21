@@ -1,0 +1,22 @@
+# [20260621232345] WBS-202 & WBS-203: ShowcaseDemoActor 與 CommHub 掛載實作
+
+## 任務目標 (Task Objective)
+將 `Actor Dynamic` 的狀態機邏輯封裝進 `ShowcaseDemoActor` 中，並提供 `CommHub.useDynamicSdui` 擴充方法讓核心系統能載入此擴充功能。
+
+## 任務解構與規劃 (Task Breakdown & Planning)
+1. **實作 WBS-202 `ShowcaseDemoActor`**：
+   - 建立 `src/Server/DynamicActors.fs`。
+   - 實作一個基礎的 Akka `ReceiveActor`，負責回應來自前端 "actor-dynamic" tab 的初始化請求。
+   - 該 Actor 在收到請求時，應透過 `FCell2Interop` 產生包含多個 SDUI 元件 (Canvas, GridFeatures, Loader, ColorPicker 等概念元件) 的 JSON Payload 回傳給前端。
+2. **實作 WBS-203 `CommHub Extension`**：
+   - 建立 `src/Server/Extension.fs`。
+   - 在 `CommHubExtensions` 模組中，定義 `type CommHub with member this.useDynamicSdui(system: ActorSystem)`。
+   - 此方法內部應建立 `ShowcaseDemoActor`，這部分可能只是個 Dummy 掛載，主要目的是確立 Extension 掛載點 API 設計。
+3. **單元測試驗證 (WBS-101)**：
+   - 更新 `tests/Program.fs` 內的 `WBS-101` 測項，確保使用 mock 或單獨的 `ActorSystem` 可以呼叫 `useDynamicSdui` 而不會報錯。
+4. **驗證與更新 WBS**：
+   - 執行 `dotnet test`。
+   - 更新 `WBS.md`。
+
+## 預估時間 (Estimated Time)
+- 預估耗時：**40 分鐘**。

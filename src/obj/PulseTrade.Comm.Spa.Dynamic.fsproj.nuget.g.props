@@ -199,6 +199,7 @@
     <PkgWebSharper Condition=" '$(PkgWebSharper)' == '' ">C:\Users\Administrator\.nuget\packages\websharper\10.1.5.674</PkgWebSharper>
     <PkgWebSharper_FSharp Condition=" '$(PkgWebSharper_FSharp)' == '' ">C:\Users\Administrator\.nuget\packages\websharper.fsharp\10.1.5.674</PkgWebSharper_FSharp>
     <PkgAkka_Analyzers Condition=" '$(PkgAkka_Analyzers)' == '' ">C:\Users\Administrator\.nuget\packages\akka.analyzers\0.3.3</PkgAkka_Analyzers>
+    <PkgFAkka_FCell2 Condition=" '$(PkgFAkka_FCell2)' == '' ">C:\Users\Administrator\.nuget\packages\fakka.fcell2\10.1.301</PkgFAkka_FCell2>
     <PkgPulseTrade_Comm_Spa Condition=" '$(PkgPulseTrade_Comm_Spa)' == '' ">C:\Users\Administrator\.nuget\packages\pulsetrade.comm.spa\0.2.4-beta7</PkgPulseTrade_Comm_Spa>
   </PropertyGroup>
 </Project>

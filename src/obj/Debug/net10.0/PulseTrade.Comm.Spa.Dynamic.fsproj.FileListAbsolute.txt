@@ -1,0 +1,11 @@
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\obj\Debug\net10.0\PulseTrade.Comm.Spa.Dynamic.fsproj.AssemblyReference.cache
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\obj\Debug\net10.0\PulseTrade.Comm.Spa.Dynamic.AssemblyInfoInputs.cache
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\obj\Debug\net10.0\PulseTrade.Comm.Spa.Dynamic.AssemblyInfo.fs
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\obj\Debug\net10.0\PulseTrade.Comm.Spa.Dynamic.fsproj.CoreCompileInputs.cache
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Debug\net10.0\PulseTrade.Comm.Spa.Dynamic.deps.json
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Debug\net10.0\PulseTrade.Comm.Spa.Dynamic.dll
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Debug\net10.0\PulseTrade.Comm.Spa.Dynamic.xml
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\obj\Debug\net10.0\PulseTrade.Comm.Spa.Dynamic.dll
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\obj\Debug\net10.0\refint\PulseTrade.Comm.Spa.Dynamic.dll
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\obj\Debug\net10.0\PulseTrade.Comm.Spa.Dynamic.xml
+C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\obj\Debug\net10.0\ref\PulseTrade.Comm.Spa.Dynamic.dll

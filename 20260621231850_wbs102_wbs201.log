@@ -1,0 +1,20 @@
+# [20260621231850] WBS-102 & WBS-201: FCell2Interop (AST轉JSON) 測試與實作
+
+## 任務目標 (Task Objective)
+將原本 `PulseTrade.Comm.Spa` 示範腳本中撰寫的 `fCell2` AST 轉換為 `fskynet-sdui` JSON Payload 的邏輯，正式抽離到擴充套件中，並完成單元測試。
+
+## 任務解構與規劃 (Task Breakdown & Planning)
+1. **實作 WBS-201**：
+   - 建立 `src/Server/FCell2Interop.fs`。
+   - 讀取上游 (唯讀) `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\poc.withoutOauth.FCell2.Durable.fsx` 中與 `fCell2` JSON 生成相關的邏輯。
+   - 將核心邏輯（例如遞迴解析 `fCell2.T`, `fCell2.A`, `fCell2.S` 等結構並轉為 JSON 格式字串的程式碼）封裝進 `module PulseTrade.Comm.Spa.Dynamic.Server.FCell2Interop`。
+   - 確保該函式回傳的是符合 SDUI 規範的 `{"schema":"fskynet-sdui", "ui": ...}` Payload 字串。
+2. **更新 WBS-102 測試**：
+   - 將 `tests/Program.fs` 中 `WBS-102` 的測試案例由假造的字串替換為實際呼叫 `FCell2Interop.toJsonString`。
+   - 擴充測試案例，涵蓋 `GridFeatures` 與 `CanvasComponent` 的 AST 轉換。
+3. **驗證與更新 WBS**：
+   - 執行 `dotnet test` 確保通過。
+   - 更新 `WBS.md` 中對應的狀態與 Progress。
+
+## 預估時間 (Estimated Time)
+- 預估耗時：**40 分鐘**。
