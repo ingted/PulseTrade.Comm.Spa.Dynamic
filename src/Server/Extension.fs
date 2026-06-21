@@ -13,8 +13,18 @@ module CommHubExtensions =
             // 註冊 "Actor Dynamic" 展示用的後端 Actor
             let props = Props.Create(fun () -> new ShowcaseDemoActor())
             let showcaseActorRef = actorSystem.ActorOf(props, "showcase-dynamic-actor")
-            
-            // 目前 CommHub 核心設計（依據 UPSTREAM_RFC）將允許動態註冊 Actor 或 renderer
-            // 在上游未開放註冊 API 之前，此處作為 dummy 掛載點，未來會透過 this.RegisterActor() 之類的方式綁定
-            
+
+            // 註冊 browser 可見的 append page shape。
+            // 目前先不註冊 ScriptUrls；Dynamic browser bundle 必須由 WebSharper/F# 產生後再接入，禁止用手寫 JavaScript 字串補洞。
+            this.RegisterClientExtension
+                { ExtensionId = "pulse-trade-comm-spa-dynamic"
+                  DisplayName = Some "PulseTrade.Comm.Spa.Dynamic"
+                  ScriptUrls = []
+                  AppendPageShapes =
+                    [ { Shape = "actor-dynamic"
+                        Label = Some "Actor Dynamic"
+                        Badge = Some "D"
+                        ClassName = Some "actor-dynamic" } ] }
+            |> ignore
+
             this // Return self for fluent API

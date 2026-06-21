@@ -11,12 +11,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="poc.dynamic.fsx" />
+    <None Include="poc.dynamic.beta8.extension-smoke.fsx" />
     <Compile Include="Library.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FAkka.FCell2" Version="10.1.301" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.4-beta7" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.4-beta8" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,5 +28,7 @@
     <Compile Include="Client/DynamicRenderer.fs" />
     <Compile Include="Client/ActorDynamicTab.fs" />
   </ItemGroup>
+
+  <ItemGroup />
 
 </Project>

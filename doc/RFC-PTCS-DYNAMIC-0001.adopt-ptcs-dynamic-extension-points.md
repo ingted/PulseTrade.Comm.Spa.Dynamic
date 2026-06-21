@@ -66,7 +66,9 @@ hub.RegisterClientExtension(
 
 ### Browser bundle
 
-Dynamic project 需要產生 browser 可載入的 JavaScript bundle，並把內容以 embedded resource 或 package content 方式交給 `useDynamicSdui`。
+Dynamic project 需要產生 browser 可載入的 bundle，並把內容以 embedded resource 或 package content 方式交給 `useDynamicSdui`。
+
+此 bundle 必須由 WebSharper/F# client code 產生；禁止在 `.fsx`、server extension 或文件範例中以手寫 JavaScript 字串註冊 `RegisterAppendPageShape` / `RegisterRenderer`。PTCS 的 runtime script asset 只是承載機制，不是允許 Dynamic 以 raw JS snippet 實作前端邏輯的例外。
 
 最低要求：
 
@@ -94,5 +96,5 @@ Dynamic 目前 `DynamicRenderer.TryRender` 若仍回 `WebSharper.UI.Doc option`�
 ## 需要注意
 
 1. 若 Dynamic bundle 是 WebSharper 產物，需確認 package build 會產生 stable JS 檔或 embedded resource。
-2. PTCS core 不會替 Dynamic 產生 JS；Dynamic 必須自己管理 bundle source。
+2. PTCS core 不會替 Dynamic 產生 browser bundle；Dynamic 必須以 WebSharper/F# 自己管理 bundle source。
 3. 若將來 Dynamic 需要 CSS，應同樣走 runtime asset 或明確的 PTCS asset extension RFC，不要把 CSS 字串塞入 renderer。
