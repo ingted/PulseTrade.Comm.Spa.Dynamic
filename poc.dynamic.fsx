@@ -3,6 +3,7 @@
 #r "nuget: FAkka.Argu, 10.1.301"
 #r "nuget: FAkka.FCell2, 10.1.301"
 #r "nuget: Akka, 1.5.69"
+#I __SOURCE_DIRECTORY__
 #r "src/bin/Release/net10.0/PulseTrade.Comm.Spa.Dynamic.dll"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
