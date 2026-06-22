@@ -30,7 +30,7 @@ open PulseTrade.Comm.Spa.Dynamic.Server
 // - 展示 PulseTrade.Comm.Spa.Dynamic 的 ShowcaseDemoActor 與 fskynet-sdui JSON 生成。
 // - 建立 Echo actor 測試原有的 durable 功能。
 
-let defaultPcslRoot = __SOURCE_DIRECTORY__ + "/.pcsl/poc.dynamic.v12.fsx"
+let defaultPcslRoot = __SOURCE_DIRECTORY__ + "/.pcsl/poc.dynamic.v13.fsx"
 
 let defaultArgPath (path: string) =
     if String.IsNullOrWhiteSpace path then "" else path.Replace('\\', '/')

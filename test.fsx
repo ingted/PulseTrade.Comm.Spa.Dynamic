@@ -1,11 +1,26 @@
+open System
+open System.Text.Json
+open System.Text.Json.Serialization
 
-#r "src/bin/Debug/net10.0/PulseTrade.Comm.Spa.Dynamic.dll"
-open PulseTrade.Comm.Spa.Dynamic.Server
-open System.Reflection
-let assembly = typeof<ShowcaseDemoActor>.Assembly
-printfn "Assembly location: %s" assembly.Location
-let dir = System.IO.Path.GetDirectoryName(assembly.Location)
-let jsPath = System.IO.Path.Combine(dir, "wwwroot", "js", "PulseTrade.Comm.Spa.Dynamic.js")
-printfn "JS Path: %s" jsPath
-printfn "File exists: %b" (System.IO.File.Exists(jsPath))
+[<CLIMutable>]
+type CommSpaWebSocketStreamKeyDto =
+    { [<JsonPropertyName("pageId")>]
+      PageId: string
+      [<JsonPropertyName("mode")>]
+      Mode: string
+      [<JsonPropertyName("setName")>]
+      SetName: string
+      [<JsonPropertyName("keys")>]
+      Keys: string array }
 
+[<CLIMutable>]
+type CommSpaWebSocketRequest =
+    { [<JsonPropertyName("type")>]
+      Type: string
+      [<JsonPropertyName("renderMode")>]
+      RenderMode: string }
+
+let options = JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true)
+let json = """{"type":"append-page","renderMode":"actor-dynamic"}"""
+let request = JsonSerializer.Deserialize<CommSpaWebSocketRequest>(json, options)
+printfn "Type: %s, RenderMode: %s" request.Type request.RenderMode
