@@ -47,9 +47,6 @@ module ActorDynamicTab =
                 container :> WebSharper.JavaScript.Dom.Node)
 
         // 註冊 SDUI Renderer 使得在一般 Chat 也能渲染 fskynet-sdui
-        PulseTrade.Comm.Spa.Client.RegisterRenderer("actor-dynamic", renderer)
-        
-        // 註冊一個專屬的 AppendPageShape 讓下拉選單能直接出現這個獨立的 Tab Page
-        PulseTrade.Comm.Spa.Client.RegisterAppendPageShape("actor-dynamic", "Actor Dynamic", "A", "actor-dynamic-page")
+        PulseTrade.Comm.Spa.Client.RegisterRenderer("fskynet-sdui", renderer)
         
         JS.Window.Alert("PulseTrade.Comm.Spa.Dynamic Client Extension Started!")

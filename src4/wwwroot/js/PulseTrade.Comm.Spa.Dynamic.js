@@ -1,0 +1,6862 @@
+import Runtime from "./WebSharper.Core.JavaScript/Runtime.js"
+Runtime.ScriptBasePath="/Scripts/";
+import { MarkResizable, Lazy, Create as Create_1, GetOptional, SetOptional } from "./WebSharper.Core.JavaScript/Runtime.js"
+function isIDisposable(x){
+  return"Dispose"in x;
+}
+function Start(){
+  RegisterRenderer("fskynet-sdui", (text) => {
+    const o=TryRender(text);
+    if(o==null)return null;
+    else {
+      const doc_1=o.$0;
+      const container=globalThis.document.createElement("div");
+      let _1=(LoadLocalTemplates(""),Doc.Run(container, doc_1),container);
+      return Some(_1);
+    }
+  });
+  RegisterAppendPageShape("actor-dynamic", "Actor Dynamic", "A", "actor-dynamic-page");
+  globalThis.alert("PulseTrade.Comm.Spa.Dynamic Client Extension Started!");
+}
+function Main(){
+  let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
+  if(!(doc().body==null))doc().body.setAttribute("data-server-reality-id", currentServerRealityId());
+  const trimmed=TrimEnd(asText(globalThis.location.pathname), ["/"]);
+  const path=isBlank(trimmed)?"/chat":trimmed;
+  mountedPageElement=null;
+  mountedAppendPageResolved=false;
+  const cacheKey_1=appendPagesDefinitionsCacheKey();
+  mounted=false;
+  appendRegistryWsState="idle";
+  appendRegistryPageCount=0;
+  appendRegistryMaxSequence=0n;
+  const mountOnce=(pages) => {
+    if(!mounted){
+      let _1;
+      mounted=true;
+      const pages_1=arrayOrEmpty(pages);
+      const p=shell(path, pages_1);
+      const page=p[1];
+      mountedPageElement=Some(page);
+      mountedAppendPageResolved=false;
+      setMain(p[0]);
+      if(path=="/sets")_1=mountSets(page);
+      else if(path=="/actors")_1=mountActors(page);
+      else if(path=="/chat")_1=mountChat(page);
+      else {
+        const m=findAppendPage(path, pages_1);
+        if(m==null)_1=mountUnknownPage(page, path);
+        else {
+          const definition=m.$0;
+          _1=(mountedAppendPageResolved=true,mountAppendPage(page, definition));
+        }
+      }
+      globalThis.setInterval(() => refreshAppendNav(path), 5000);
+    }
+  };
+  const renderAppendRegistryHealth=() => {
+    if(!(doc().body==null))doc().body.setAttribute("data-append-registry-ws-state", appendRegistryWsState);
+    const node=doc().querySelector("[data-testid='append-registry-health']");
+    if(!(node==null)){
+      const x=setData("ws-state", appendRegistryWsState, node);
+      const x_1=setData("page-count", String(appendRegistryPageCount), x);
+      let _1=setData("max-sequence", String(appendRegistryMaxSequence), x_1);
+      setData("cache-key", cacheKey_1, _1);
+      node.setAttribute("title", "cacheKey="+String(cacheKey_1)+"\nwsState="+String(appendRegistryWsState)+"\npageCount="+String(appendRegistryPageCount)+"\nmaxSequence="+String(appendRegistryMaxSequence));
+      node.textContent="append registry ws "+String(appendRegistryWsState)+" | pages "+String(appendRegistryPageCount)+" | seq "+String(appendRegistryMaxSequence);
+    }
+    else void 0;
+  };
+  const applyDefinitionsFromReply=(data) => {
+    let _1;
+    const data_1=data==null?emptyAppendPagesReply():data;
+    appendRegistryPageCount=arrayOrEmpty(data_1.pages).length;
+    const b=data_1.maxSequence;
+    appendRegistryMaxSequence=Compare(appendRegistryMaxSequence, b)===1?appendRegistryMaxSequence:b;
+    if(mounted){
+      const nav=doc().getElementById("ptc-nav");
+      if(!(nav==null))renderNav(nav, path, arrayOrEmpty(data_1.pages));
+      if(path!="/sets"&&path!="/actors"&&path!="/chat"&&!mountedAppendPageResolved){
+        const _2=findAppendPage(path, arrayOrEmpty(data_1.pages));
+        if(mountedPageElement!=null&&mountedPageElement.$==1){
+          if(_2!=null&&_2.$==1){
+            const definition=_2.$0;
+            const page=mountedPageElement.$0;
+            _1=(clear(page),mountedAppendPageResolved=true,mountAppendPage(page, definition));
+          }
+          else _1=void 0;
+        }
+        else _1=void 0;
+      }
+      else _1=void 0;
+    }
+    else _1=mountOnce(data_1.pages);
+    renderAppendRegistryHealth();
+  };
+  const setAppendRegistryWsState=(value) => {
+    appendRegistryWsState=asText(value);
+    renderAppendRegistryHealth();
+  };
+  appendRegistrySocket=null;
+  queuedAppendRegistryFrames=[];
+  appendRegistrySubscribed=false;
+  appendRegistryTailRequested=false;
+  const handleAppendRegistryEvents=(events) => {
+    if(length(arrayOrEmpty(events))>0)readJson(cacheKey_1, (cached) => {
+      const merged=mergeAppendPageRegistryEvents(cached==null?emptyAppendPagesReply():cached.$0, events);
+      writeAppendPagesDefinitions(merged);
+      applyDefinitionsFromReply(merged);
+    });
+  };
+  function flushAppendRegistryFrames(socket){
+    if(Equals(socket.readyState, 1)){
+      const frames=queuedAppendRegistryFrames;
+      queuedAppendRegistryFrames=[];
+      iter((frame) => {
+        socket.send(frame);
+      }, frames);
+    }
+  }
+  function ensureAppendRegistrySocket(){
+    let _1, _2;
+    if(appendRegistrySocket!=null&&appendRegistrySocket.$==1){
+      const socket=appendRegistrySocket.$0;
+      _1=(Equals(socket.readyState, 1)||Equals(socket.readyState, 0))&&(_2=appendRegistrySocket.$0,true);
+    }
+    else _1=false;
+    if(_1)return _2;
+    else {
+      setAppendRegistryWsState("connecting");
+      const socket_1=new WebSocket(syncWebSocketUrl());
+      appendRegistrySocket=Some(socket_1);
+      socket_1.onopen=() => {
+        setAppendRegistryWsState("open");
+        return flushAppendRegistryFrames(socket_1);
+      };
+      socket_1.onmessage=(event) => {
+        try {
+          const response=json(String(event.data));
+          const responseType=asText(response.type).toLowerCase();
+          const responseStatus=asText(response.status).toLowerCase();
+          switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
+            case 0:
+              return setAppendRegistryWsState("subscribed");
+            case 1:
+              return handleAppendRegistryEvents([response.event]);
+            case 2:
+              return handleAppendRegistryEvents(response.events);
+            case 3:
+              return setAppendRegistryWsState("error");
+            case 4:
+              return null;
+          }
+        }
+        catch(m){
+          return setAppendRegistryWsState("parse-error");
+        }
+      };
+      socket_1.onerror=() => setAppendRegistryWsState("error");
+      socket_1.onclose=() => {
+        appendRegistrySocket=null;
+        appendRegistrySubscribed=false;
+        appendRegistryTailRequested=false;
+        return setAppendRegistryWsState("closed");
+      };
+      return socket_1;
+    }
+  }
+  function sendAppendRegistryFrame(frame){
+    while(true)
+      {
+        const socket=ensureAppendRegistrySocket();
+        return Equals(socket.readyState, 1)?socket.send(frame):void(queuedAppendRegistryFrames=queuedAppendRegistryFrames.concat([frame]));
+      }
+  }
+  function subscribeAppendPageRegistry(){
+    const streamKey=appendPageRegistryStreamKey();
+    if(!appendRegistrySubscribed){
+      appendRegistrySubscribed=true;
+      sendAppendRegistryFrame(JSON.stringify(New_1("subscribe", newRequestId("append-pages-subscribe"), streamKey)));
+    }
+    if(!appendRegistryTailRequested){
+      appendRegistryTailRequested=true;
+      sendAppendRegistryFrame(JSON.stringify(New_2("read-tail", newRequestId("append-pages-read-tail"), streamKey, defaultCacheLimit())));
+    }
+  }
+  readJson(cacheKey_1, (a) => {
+    if(a==null){ }
+    else applyDefinitionsFromReply(a.$0);
+  });
+  getJson("/pages/api/definitions", (data) => {
+    writeAppendPagesDefinitions(data);
+    applyDefinitionsFromReply(data);
+  }, () => {
+    mountOnce([]);
+    renderAppendRegistryHealth();
+  });
+  subscribeAppendPageRegistry();
+  renderAppendRegistryHealth();
+}
+function RegisterRenderer(rendererId, tryRender){
+  if(!isBlank(rendererId)&&!(tryRender==null)){
+    const normalizedId=Trim(rendererId).toLowerCase();
+    set_registeredRenderers(distinctBy((t) => t[0], registeredRenderers().concat([[normalizedId, tryRender]]).slice().reverse()).slice().reverse());
+  }
+}
+function RegisterAppendPageShape(shape, label, badge, className){
+  const registration=shapeRegistration(shape, label, badge, className);
+  if(registration.shape!="raw")set_runtimeAppendPageShapes(distinctBy((item) => normalizeShapeText(item.shape), runtimeAppendPageShapes().concat([registration])));
+}
+function doc(){
+  return _c.doc;
+}
+function currentServerRealityId(){
+  const node=doc().getElementById("ptc-comm-reality");
+  if(node==null||isBlank(node.textContent))return"legacy";
+  else try {
+    return textOr("legacy", json(node.textContent).serverRealityId);
+  }
+  catch(m){
+    return"legacy";
+  }
+}
+function isBlank(value){
+  return value==null||Trim(value)=="";
+}
+function asText(value){
+  return value==null||Equals(typeof value, "undefined")?"":value;
+}
+function appendPagesDefinitionsCacheKey(){
+  return cacheKey("append-pages-definitions", FSharpList.Empty);
+}
+function setData(name, value, node){
+  !isBlank(name)?node.setAttribute("data-"+name, asText(value)):void 0;
+  return node;
+}
+function emptyAppendPagesReply(){
+  return New("ok", 0, 0n, []);
+}
+function arrayOrEmpty(values){
+  return values==null?[]:values;
+}
+function mergeAppendPageRegistryEvents(baseline, events){
+  let pages, maxSequence;
+  const baseline_1=baseline==null?emptyAppendPagesReply():baseline;
+  pages=arrayOrEmpty(baseline_1.pages);
+  maxSequence=baseline_1.maxSequence;
+  iter((event) => {
+    if(!(event==null)&&event.sequence>0n){
+      const m=asText(event.sourceKind).toLowerCase();
+      if(m=="append-page.definition"){
+        const b=event.sequence;
+        maxSequence=Compare(maxSequence, b)===1?maxSequence:b;
+        try {
+          const o=pageDefinitionFromWire(json(event.payload));
+          if(o==null)null;
+          else {
+            const page=o.$0;
+            pages=sortAppendPages(filter((existing) =>!sameTextInvariant(existing.pageId, page.pageId), pages).concat([page]));
+          }
+        }
+        catch(m_1){
+          null;
+        }
+      }
+      else if(m=="append-page.hidden"){
+        const b_1=event.sequence;
+        maxSequence=Compare(maxSequence, b_1)===1?maxSequence:b_1;
+        try {
+          const o_1=hiddenPageFromWire(json(event.payload));
+          if(o_1==null)null;
+          else {
+            const _1=o_1.$0[0];
+            const _2=o_1.$0[1];
+            pages=sortAppendPages(filter((page_1) =>!(sameTextInvariant(page_1.pageId, _1)||sameTextInvariant(page_1.tabId, _2)||sameTextInvariant(page_1.pageId, _2)||sameTextInvariant(page_1.tabId, _1)), pages));
+          }
+        }
+        catch(m_2){
+          null;
+        }
+      }
+      else void 0;
+    }
+  }, arrayOrEmpty(events));
+  return New("ok", length(pages), maxSequence, pages);
+}
+function writeAppendPagesDefinitions(data){
+  writeSnapshotWithWatermark(appendPagesDefinitionsCacheKey(), data, data.maxSequence, length(arrayOrEmpty(data.pages)), "append-pages-definitions");
+}
+function syncWebSocketUrl(){
+  const location=globalThis.location;
+  return(location.protocol=="https:"?"wss:":"ws:")+"//"+location.host+"/sync/ws";
+}
+function appendPageRegistryStreamKey(){
+  return New_5("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
+}
+function newRequestId(prefix){
+  set_requestSeq(requestSeq()+1);
+  return prefix+"-"+String(requestSeq())+"-"+String(Math.floor(Math.random()*1000000000));
+}
+function defaultCacheLimit(){
+  return _c.defaultCacheLimit;
+}
+function getJson(url, onOk, onError){
+  (globalThis.fetch(url, {cache:"no-store"}).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank(body)?"{}":body)):onError(isBlank(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage(error)));
+}
+function findAppendPage(path, pages){
+  return tryFind((page) => isCurrentPage(path, pagePath(page))||isCurrentPage(path, "/page/"+asText(page.pageId))||isCurrentPage(path, "/"+asText(page.pageId)), arrayOrEmpty(pages));
+}
+function clear(node){
+  node.textContent="";
+}
+function mountAppendPage(page, definition){
+  let currentLineageHealth, selected, selectedKeyJson, buckets, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
+  page.className="page append-page";
+  setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId("append-page-"+asText(definition.pageId), page)));
+  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
+  const readsLegacy=sameText(definition.tabId, definition.pageId);
+  let currentLineage=New_6(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
+  const applyLineage=(lineage) => {
+    const lineage_1=lineage==null?currentLineage:lineage;
+    currentLineage=lineage_1;
+    setData("lineage-read-repair-policy", lineage_1.readRepairPolicy, setData("lineage-reads-legacy", lineage_1.readsLegacyPageStreams?"true":"false", setData("lineage-legacy-page-id-alias", lineage_1.legacyPageIdAlias, setData("lineage-kind", lineage_1.lineageKind, setData("lineage-stream-page-id", lineage_1.streamPageId, page)))));
+  };
+  applyLineage(currentLineage);
+  const defaultLineageHealth=() => New_7(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
+  currentLineageHealth=defaultLineageHealth();
+  selected="";
+  selectedKeyJson="";
+  buckets=[];
+  loadGeneration=0;
+  visibleValueLimit=defaultRenderLimit();
+  scrollValuesToBottomAfterNextRender=false;
+  const side=element("aside", "sidebar append-sidebar", null);
+  const sideHead=element("div", "panel-head", null);
+  const sideActions=element("div", "head-actions", null);
+  const addKeyButton=setTestId("append-add-key", button("", "Add"));
+  const removeKeyButton=setTestId("append-remove-key", button("", "Remove"));
+  const removePageButton=setTestId("append-remove-page", button("", "Remove page"));
+  const reload=setTestId("append-reload", button("", "Reload"));
+  const filters=element("div", "filters", null);
+  const keyFilter=setTestId("append-key-filter", input("key contains"));
+  const newKeyInput=setTestId("append-key-input", input(textOr("\"Aster\"", definition.keyPlaceholder)));
+  const status=setTestId("append-key-status", element("div", "state", "Loading"));
+  const list=setTestId("append-key-list", element("div", "list", null));
+  const work=setTestId("append-work", element("section", "append-work", null));
+  const values=setTestId("append-values", element("div", "append-values", null));
+  const form=setTestId("append-form", element("div", "append-form", null));
+  const valueInput=setTestId("append-value-input", textarea("append-value-input", textOr("JSON value", definition.valuePlaceholder)));
+  const directionInput=setTestId("append-direction", input("outbound-message"));
+  const appendButton=setTestId("append-submit", button("primary", "Append"));
+  const head_2=element("div", "work-head", null);
+  const titleBox=element("div", "", null);
+  const workState=setTestId("append-work-status", element("div", "state", "Loading"));
+  const pendingState=setTestId("append-pending-state", element("div", "state pending-state", ""));
+  const lineageHealthBox=setTestId("append-lineage-health", element("div", "meta wrap lineage-health", null));
+  const lineageDetailBox=setTestId("append-lineage-detail", element("div", "lineage-detail", null));
+  const lineageDetailPolicy=setTestId("append-lineage-detail-policy", element("span", "lineage-detail-value", ""));
+  const lineageDetailStream=setTestId("append-lineage-detail-stream", element("span", "lineage-detail-value", ""));
+  const lineageDetailLegacy=setTestId("append-lineage-detail-legacy", element("span", "lineage-detail-value", ""));
+  const lineageDetailValueCount=setTestId("append-lineage-detail-value-count", element("span", "lineage-detail-value", ""));
+  const lineageDetailValueStreams=setTestId("append-lineage-detail-value-streams", element("pre", "lineage-detail-value lineage-streams", ""));
+  const lineageDetailKeyCount=setTestId("append-lineage-detail-key-count", element("span", "lineage-detail-value", ""));
+  const lineageDetailKeyStreams=setTestId("append-lineage-detail-key-streams", element("pre", "lineage-detail-value lineage-streams", ""));
+  const keyRegistryHealthBox=setTestId("append-key-registry-health", element("div", "meta wrap key-registry-health", null));
+  const browserCacheHealthBox=setTestId("append-browser-cache-health", element("div", "meta wrap browser-cache-health", null));
+  const lineageInfo=setTestId("append-lineage-info", element("details", "lineage-info", null));
+  const lineageSummary=setTestId("append-lineage-toggle", element("summary", "lineage-summary", "Tab info"));
+  const lineageInfoContent=setTestId("append-lineage-info-content", element("div", "lineage-info-content", null));
+  const identityBox=setTestId("append-page-identity", element("div", "page-identity", null));
+  const pageIdChip=setTestId("append-page-id", element("span", "identity-chip", "page "+asText(definition.pageId)));
+  const tabIdChip=setTestId("append-tab-id", element("span", "identity-chip", "tab "+asText(definition.tabId)));
+  const sideTitle=element("div", "panel-title", null);
+  const lineageDetailRow=(label, valueNode) => {
+    const row=element("div", "lineage-detail-row", null);
+    append(row, [element("span", "lineage-detail-label", label), valueNode]);
+    return row;
+  };
+  append(lineageDetailBox, [lineageDetailRow("policy", lineageDetailPolicy), lineageDetailRow("stream", lineageDetailStream), lineageDetailRow("legacy", lineageDetailLegacy), lineageDetailRow("value count", lineageDetailValueCount), lineageDetailRow("value streams", lineageDetailValueStreams), lineageDetailRow("key count", lineageDetailKeyCount), lineageDetailRow("key streams", lineageDetailKeyStreams)]);
+  append(lineageInfoContent, [lineageHealthBox, lineageDetailBox, keyRegistryHealthBox, browserCacheHealthBox]);
+  append(lineageInfo, [lineageSummary, lineageInfoContent]);
+  newKeyInput.value=asText(definition.defaultKey);
+  directionInput.value="outbound-message";
+  directionInput.className="append-direction";
+  appendButton.textContent=actorArguButtonLabel(definition);
+  append(identityBox, [pageIdChip, tabIdChip]);
+  append(sideTitle, [element("h1", "", pageTitle(definition)), identityBox]);
+  append(sideActions, [addKeyButton, removeKeyButton, removePageButton, reload]);
+  append(sideHead, [sideTitle]);
+  append(filters, [newKeyInput, keyFilter, status]);
+  append(side, [sideHead, sideActions, filters, list]);
+  append(titleBox, [element("label", "", asText(definition.shape)+" / "+asText(definition.setName)), element("h2", "", pageTitle(definition)), element("div", "meta wrap", asText(definition.description)), lineageInfo]);
+  append(head_2, [titleBox, workState]);
+  const applyLineageHealth=(health) => {
+    const health_1=health==null?defaultLineageHealth():health;
+    currentLineageHealth=health_1;
+    const valueStreamKeys=health_1.candidateValueStreamKeys==null?"":concat_1("\n", map(asText, health_1.candidateValueStreamKeys));
+    const keyRegistryStreamKeys=health_1.candidateKeyRegistryStreamKeys==null?"":concat_1("\n", map(asText, health_1.candidateKeyRegistryStreamKeys));
+    const visibleStreamKeys=(streamKeys) => isBlank(streamKeys)?"none":streamKeys;
+    setData("lineage-health-policy", health_1.readRepairPolicy, setData("lineage-candidate-key-registry-stream-keys", keyRegistryStreamKeys, setData("lineage-candidate-value-stream-keys", valueStreamKeys, setData("lineage-candidate-key-registry-stream-count", String(health_1.candidateKeyRegistryStreamCount), setData("lineage-candidate-value-stream-count", String(health_1.candidateValueStreamCount), page)))));
+    setData("read-repair-policy", health_1.readRepairPolicy, setData("candidate-key-registry-stream-keys", keyRegistryStreamKeys, setData("candidate-value-stream-keys", valueStreamKeys, setData("candidate-key-registry-stream-count", String(health_1.candidateKeyRegistryStreamCount), setData("candidate-value-stream-count", String(health_1.candidateValueStreamCount), setData("lineage-kind", health_1.lineageKind, setData("stream-page-id", health_1.streamPageId, lineageHealthBox)))))));
+    lineageHealthBox.setAttribute("title", "value streams:\n"+valueStreamKeys+"\nkey registry streams:\n"+keyRegistryStreamKeys);
+    lineageHealthBox.textContent="lineage "+String(asText(health_1.lineageKind))+" | stream "+String(asText(health_1.streamPageId))+" | value streams "+String(health_1.candidateValueStreamCount)+" | key streams "+String(health_1.candidateKeyRegistryStreamCount)+" | "+String(asText(health_1.readRepairPolicy));
+    setData("read-repair-policy", health_1.readRepairPolicy, setData("candidate-key-registry-stream-keys", keyRegistryStreamKeys, setData("candidate-value-stream-keys", valueStreamKeys, setData("candidate-key-registry-stream-count", String(health_1.candidateKeyRegistryStreamCount), setData("candidate-value-stream-count", String(health_1.candidateValueStreamCount), setData("reads-legacy", health_1.readsLegacyPageStreams?"true":"false", setData("legacy-page-id-alias", health_1.legacyPageIdAlias, setData("lineage-kind", health_1.lineageKind, setData("stream-page-id", health_1.streamPageId, lineageDetailBox)))))))));
+    lineageDetailPolicy.textContent=asText(health_1.readRepairPolicy);
+    lineageDetailStream.textContent=asText(health_1.streamPageId);
+    lineageDetailLegacy.textContent=isBlank(health_1.legacyPageIdAlias)?"none":asText(health_1.legacyPageIdAlias);
+    lineageDetailValueCount.textContent=String(health_1.candidateValueStreamCount);
+    lineageDetailValueStreams.textContent=visibleStreamKeys(valueStreamKeys);
+    lineageDetailKeyCount.textContent=String(health_1.candidateKeyRegistryStreamCount);
+    lineageDetailKeyStreams.textContent=visibleStreamKeys(keyRegistryStreamKeys);
+  };
+  applyLineageHealth(currentLineageHealth);
+  if(isActorArguPage(definition)){
+    form.className="append-form actor-argu-form";
+    append(form, [valueInput, appendButton]);
+  }
+  else asText(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append(form, [directionInput, valueInput, appendButton])):append(form, [valueInput, appendButton]);
+  append(work, [head_2, pendingState, values, form]);
+  append(page, [side, work]);
+  const browserId=currentUserId();
+  ensureSelectedSubscription=() => { };
+  replayPendingCommands=() => { };
+  deleteAcceptedPendingAppends=() =>() => null;
+  const refreshPendingState=() => {
+    readPendingRealitySplit((_2, _3) => renderPendingInspection(pendingState, filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _2), filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _3)));
+  };
+  const isPendingForThisPage=(command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1);
+  const currentFilterText=() => isBlank(keyFilter.value)?"":Trim(keyFilter.value);
+  const requestValuesScrollToBottom=() => {
+    scrollValuesToBottomAfterNextRender=true;
+  };
+  const stateCacheKey=() => cacheKey("append-page-state", ofArray([definition.pageId, definition.tabId, currentFilterText()]));
+  const keyRegistryCacheKey=() => cacheKey("append-page-keys", ofArray([definition.pageId, definition.tabId]));
+  currentKeyMaxSequence=0n;
+  keyRegistryWsState="idle";
+  const updateBrowserCacheHealth=(renderedCount, cachedCount, minSequence, maxSequence, snapshotSeqId, backendGap) => {
+    const gapText=backendGap?"true":"false";
+    const cacheKey_1=stateCacheKey();
+    const selectedText=isBlank(selected)?"(none)":selected;
+    const n=setData("cache-key", cacheKey_1, browserCacheHealthBox);
+    let _2=setData("selected-key-id", selected, n);
+    let _3=setData("rendered-count", String(renderedCount), _2);
+    let _4=setData("cached-count", String(cachedCount), _3);
+    let _5=setData("min-sequence", String(minSequence), _4);
+    let _6=setData("max-sequence", String(maxSequence), _5);
+    let _7=setData("snapshot-seqid", String(snapshotSeqId), _6);
+    setData("backend-gap", gapText, _7);
+    browserCacheHealthBox.setAttribute("title", "cacheKey="+String(cacheKey_1)+"\nselectedKey="+String(selectedText)+"\nrendered="+String(renderedCount)+"\ncached="+String(cachedCount)+"\nrange="+String(minSequence)+".."+String(maxSequence)+"\nsnapshotSeqId="+String(snapshotSeqId)+"\nbackendGap="+String(gapText));
+    browserCacheHealthBox.textContent="browser cache "+String(cacheKey_1)+" | rendered "+String(renderedCount)+" | cached "+String(cachedCount)+" | seq "+String(minSequence)+".."+String(maxSequence)+" | snapshot "+String(snapshotSeqId)+" | gap "+String(gapText);
+  };
+  const updateKeyRegistryHealth=() => {
+    const cacheKey_1=keyRegistryCacheKey();
+    const x=setData("ws-state", keyRegistryWsState, keyRegistryHealthBox);
+    const x_1=setData("key-count", String(length(buckets)), x);
+    let _2=setData("max-sequence", String(currentKeyMaxSequence), x_1);
+    setData("cache-key", cacheKey_1, _2);
+    keyRegistryHealthBox.setAttribute("title", "cacheKey="+String(cacheKey_1)+"\nwsState="+String(keyRegistryWsState)+"\nvisibleKeyCount="+String(length(buckets))+"\nmaxSequence="+String(currentKeyMaxSequence));
+    keyRegistryHealthBox.textContent="key registry ws "+String(keyRegistryWsState)+" | visible keys "+String(length(buckets))+" | seq "+String(currentKeyMaxSequence);
+  };
+  const writeAppendPageKeyWatermark=(snapshot) => {
+    const b=snapshot.keyMaxSequence;
+    currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
+    writeWatermark(keyRegistryCacheKey(), currentKeyMaxSequence, snapshot.bucketCount, "append-page-keys");
+    updateKeyRegistryHealth();
+  };
+  const writeCurrentSnapshot=() => {
+    const snapshot=New_9("ok", definition, length(buckets), fold((_2, _3) => Compare(_2, _3)===1?_2:_3, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
+    writeSnapshotWithWatermark(stateCacheKey(), snapshot, snapshot.maxSequence, appendPageValueCount(snapshot), "append-page-state");
+    writeAppendPageKeyWatermark(snapshot);
+  };
+  const sortAppendPageBuckets=(items) => sortBy((bucket) =>[asText(bucket.setName), asText(bucket.keyId)], arrayOrEmpty(items));
+  const sequenceBounds=(items) => {
+    let oldest, newest;
+    oldest=0n;
+    newest=0n;
+    iter((value) => {
+      !(value==null)&&value.sequence>0n&&(oldest===0n||value.sequence<oldest)?oldest=value.sequence:void 0;
+      !(value==null)&&value.sequence>newest?newest=value.sequence:void 0;
+    }, arrayOrEmpty(items));
+    return[oldest, newest];
+  };
+  const mergeAppendValues=(existing, incoming) => {
+    let merged;
+    merged=[];
+    const add=(value) => {
+      if(!(value==null)&&!isBlank(value.valueId)&&!exists((row) => row.valueId==value.valueId, merged))merged=merged.concat([value]);
+    };
+    iter(add, arrayOrEmpty(incoming));
+    iter(add, arrayOrEmpty(existing));
+    return sortBy((value) => asText(value.createdAtUtc), merged);
+  };
+  function renderList(){
+    clear(list);
+    iter((bucket) => {
+      const item=button(bucket.keyId==selected?"list-card active":"list-card", null);
+      setData("max-sequence", String(bucket.maxSequence), setData("min-sequence", String(bucket.minSequence), setData("key-id", bucket.keyId, setTestId("append-key-card", item))));
+      append(item, [element("div", "strong wrap", joinValues(bucket.keys)), element("div", "muted wrap", asText(bucket.setName)), element("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText(bucket.updatedAtUtc)))]);
+      item.addEventListener("click", () => {
+        selected=bucket.keyId;
+        selectedKeyJson=keysAsJson(bucket.keys);
+        newKeyInput.value=selectedKeyJson;
+        visibleValueLimit=defaultRenderLimit();
+        renderList();
+        requestValuesScrollToBottom();
+        renderValues();
+        return ensureSelectedSubscription();
+      });
+      list.appendChild(item);
+    }, buckets);
+  }
+  function renderValues(){
+    while(true)
+      {
+        let _2, _3, _4;
+        clear(values);
+        const x=(((n) =>(n_1) => setData(n, selected, n_1))("selected-key-id"))(work);
+        ((((n) =>(n_1) => setData(n, selectedKeyJson, n_1))("selected-key-json"))(x));
+        const bucket=(((p) =>(a_3) => tryFind(p, a_3))((bucket_2) => bucket_2.keyId==selected))(buckets);
+        if(bucket!=null&&bucket.$==1){
+          const bucket_1=bucket.$0;
+          const allValues=arrayOrEmpty(bucket_1.values);
+          const visible=latestArray(visibleValueLimit, allValues);
+          const a=0;
+          const b=length(allValues)-length(visible);
+          const hiddenCached=Compare(a, b)===1?a:b;
+          const a_1=bucket_1.valueCount;
+          const b_1=length(allValues);
+          const reportedCount=Compare(a_1, b_1)===1?a_1:b_1;
+          const fromValues=(sequenceBounds(allValues))[0];
+          const oldestSequence=bucket_1.minSequence>0n?bucket_1.minSequence:fromValues;
+          const a_2=bucket_1.maxSequence;
+          const b_2=(sequenceBounds(allValues))[1];
+          const newestSequence=Compare(a_2, b_2)===1?a_2:b_2;
+          const backendGapAvailable=oldestSequence>1n&&hiddenCached===0;
+          const x_1=[asText(definition.tabId), asText(definition.shape), asText(definition.setName), concat_1("\u001f", arrayOrEmpty(bucket_1.keys))];
+          const selectedValueStreamKey=(((s) =>(s_1) => concat_1(s, s_1))("\n"))(x_1);
+          const x_2=(((n, v) =>(n_1) => setData(n, v, n_1))("lineage-candidate-value-stream-count", "1"))(page);
+          ((((n, selectedValueStreamKey_1) =>(n_1) => setData(n, selectedValueStreamKey_1, n_1))("lineage-candidate-value-stream-keys", selectedValueStreamKey))(x_2));
+          const x_3=(((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-count", "1"))(lineageHealthBox);
+          ((((n, selectedValueStreamKey_1) =>(n_1) => setData(n, selectedValueStreamKey_1, n_1))("candidate-value-stream-keys", selectedValueStreamKey))(x_3));
+          const x_4=(((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-count", "1"))(lineageDetailBox);
+          ((((n, selectedValueStreamKey_1) =>(n_1) => setData(n, selectedValueStreamKey_1, n_1))("candidate-value-stream-keys", selectedValueStreamKey))(x_4));
+          lineageDetailValueCount.textContent="1";
+          lineageDetailValueStreams.textContent=selectedValueStreamKey;
+          const x_5=(((n, v) =>(n_1) => setData(n, v, n_1))("rendered-count", String(length(visible))))(values);
+          const x_6=(((n, v) =>(n_1) => setData(n, v, n_1))("cached-count", String(length(allValues))))(x_5);
+          const x_7=(((n, v) =>(n_1) => setData(n, v, n_1))("oldest-sequence", String(oldestSequence)))(x_6);
+          const x_8=(((n, v) =>(n_1) => setData(n, v, n_1))("min-sequence", String(oldestSequence)))(x_7);
+          const x_9=(((n, v) =>(n_1) => setData(n, v, n_1))("max-sequence", String(newestSequence)))(x_8);
+          const x_10=(((n, v) =>(n_1) => setData(n, v, n_1))("snapshot-seqid", String(newestSequence)))(x_9);
+          ((((n, v) =>(n_1) => setData(n, v, n_1))("backend-gap", backendGapAvailable?"true":"false"))(x_10));
+          updateBrowserCacheHealth(length(visible), length(allValues), oldestSequence, newestSequence, newestSequence, backendGapAvailable);
+          if(length(visible)===0)_2=void values.appendChild(element("div", "empty", "No values appended yet."));
+          else {
+            if(hiddenCached>0){
+              const x_11=button("", "Load older ("+String(hiddenCached)+")");
+              const loadOlder=(((i) =>(n) => setTestId(i, n))("append-load-older"))(x_11);
+              _3=(loadOlder.addEventListener("click", ((allValues_1) =>() => {
+                const a_3=length(allValues_1);
+                const b_3=visibleValueLimit+defaultRenderLimit();
+                visibleValueLimit=Compare(a_3, b_3)===-1?a_3:b_3;
+                return renderValues();
+              })(allValues)),void values.appendChild(loadOlder));
+            }
+            else if(backendGapAvailable){
+              const x_12=button("", "Load older (backend)");
+              const loadOlder_1=(((i) =>(n) => setTestId(i, n))("append-load-older"))(x_12);
+              _3=(loadOlder_1.addEventListener("click", ((bucket_2, oldestSequence_1) =>() => readOlderFromBackend(bucket_2, oldestSequence_1))(bucket_1, oldestSequence)),void values.appendChild(loadOlder_1));
+            }
+            else _3=null;
+            _2=(((a_3) =>(a_4) => {
+              iter(a_3, a_4);
+            })((value) => {
+              values.appendChild(renderAppendValue(value));
+            }))(visible);
+          }
+          _4=length(visible)<reportedCount?setStatus(workState, "Showing "+String(length(visible))+"/"+String(reportedCount)+" value(s)"):setStatus(workState, String(reportedCount)+" value(s)");
+        }
+        else {
+          const x_13=(((n, v) =>(n_1) => setData(n, v, n_1))("rendered-count", "0"))(values);
+          const x_14=(((n, v) =>(n_1) => setData(n, v, n_1))("cached-count", "0"))(x_13);
+          const x_15=(((n, v) =>(n_1) => setData(n, v, n_1))("oldest-sequence", "0"))(x_14);
+          const x_16=(((n, v) =>(n_1) => setData(n, v, n_1))("min-sequence", "0"))(x_15);
+          const x_17=(((n, v) =>(n_1) => setData(n, v, n_1))("max-sequence", "0"))(x_16);
+          const x_18=(((n, v) =>(n_1) => setData(n, v, n_1))("snapshot-seqid", "0"))(x_17);
+          ((((n, v) =>(n_1) => setData(n, v, n_1))("backend-gap", "false"))(x_18));
+          updateBrowserCacheHealth(0, 0, 0n, 0n, 0n, false);
+          const x_19=(((n, v) =>(n_1) => setData(n, v, n_1))("lineage-candidate-value-stream-count", "0"))(page);
+          ((((n, v) =>(n_1) => setData(n, v, n_1))("lineage-candidate-value-stream-keys", ""))(x_19));
+          const x_20=(((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-count", "0"))(lineageHealthBox);
+          ((((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-keys", ""))(x_20));
+          const x_21=(((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-count", "0"))(lineageDetailBox);
+          ((((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-keys", ""))(x_21));
+          lineageDetailValueCount.textContent="0";
+          lineageDetailValueStreams.textContent="none";
+          values.appendChild(element("div", "empty", "No key selected."));
+          _4=setStatus(workState, "No key selected");
+        }
+        return scrollValuesToBottomAfterNextRender?(scrollValuesToBottomAfterNextRender=false,scrollToBottomAfterRender(values)):null;
+      }
+  }
+  function readOlderFromBackend(bucket, beforeSequence){
+    const keyJson=isBlank(selectedKeyJson)?keysAsJson(bucket.keys):selectedKeyJson;
+    const url="/pages/api/read-before?pageId="+encodeURIComponent(asText(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&beforeSequence="+String(beforeSequence)+"&count="+String(defaultRenderLimit());
+    setStatus(workState, "Loading older values before "+String(beforeSequence));
+    return getJson(url, (reply) => {
+      applyLineage(reply.lineage);
+      applyLineageHealth(reply.lineageHealth);
+      const incoming=arrayOrEmpty(reply.values);
+      if(length(incoming)===0)setStatus(workState, "No older backend values");
+      else {
+        updateSelectedBucketWithOlder(incoming);
+        setStatus(workState, "Loaded "+String(length(incoming))+" older backend value(s)");
+      }
+    }, (t) => {
+      setStatus(workState, t);
+    });
+  }
+  function updateSelectedBucketWithOlder(incoming){
+    let mergedLength;
+    mergedLength=0;
+    buckets=map((bucket) => {
+      if(bucket.keyId==selected){
+        const merged=mergeAppendValues(bucket.values, incoming);
+        const p=sequenceBounds(merged);
+        mergedLength=length(merged);
+        const a=bucket.valueCount;
+        const b_2=length(merged);
+        let _2=Compare(a, b_2)===1?a:b_2;
+        const a_1=bucket.maxSequence;
+        const b_3=p[1];
+        let _3=Compare(a_1, b_3)===1?a_1:b_3;
+        return New_10(bucket.keyId, bucket.keys, bucket.setName, _2, p[0], _3, bucket.updatedAtUtc, merged);
+      }
+      else return bucket;
+    }, buckets);
+    writeCurrentSnapshot();
+    const b=visibleValueLimit+length(arrayOrEmpty(incoming));
+    const b_1=Compare(mergedLength, b)===-1?mergedLength:b;
+    visibleValueLimit=Compare(visibleValueLimit, b_1)===1?visibleValueLimit:b_1;
+    renderList();
+    renderValues();
+  }
+  const readNewerFromBackend=(generation, bucket) => {
+    const keyJson=keysAsJson(bucket.keys);
+    return getJson("/pages/api/read-after?pageId="+encodeURIComponent(asText(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&afterSequence="+String(bucket.maxSequence)+"&count="+String(defaultCacheLimit()), (reply) => {
+      if(generation===loadGeneration){
+        applyLineage(reply.lineage);
+        applyLineageHealth(reply.lineageHealth);
+        const incoming=arrayOrEmpty(reply.values);
+        if(length(incoming)>0){
+          (deleteAcceptedPendingAppends(bucket))(incoming);
+          const keyId=reply.keyId;
+          buckets=map((bucket_1) => {
+            if(bucket_1.keyId==keyId){
+              const merged=mergeAppendValues(bucket_1.values, incoming);
+              const p=sequenceBounds(merged);
+              const minSequence=p[0];
+              const a=bucket_1.valueCount;
+              const b=length(merged);
+              let _2=Compare(a, b)===1?a:b;
+              const a_1=bucket_1.maxSequence;
+              const b_1=p[1];
+              let _3=Compare(a_1, b_1)===1?a_1:b_1;
+              return New_10(bucket_1.keyId, bucket_1.keys, bucket_1.setName, _2, minSequence>0n?minSequence:bucket_1.minSequence, _3, bucket_1.updatedAtUtc, merged);
+            }
+            else return bucket_1;
+          }, buckets);
+          writeCurrentSnapshot();
+          renderList();
+          requestValuesScrollToBottom();
+          renderValues();
+          setStatus(status, "Synced "+String(length(incoming))+" newer value(s) from backend");
+        }
+        else setStatus(status, "Cached data is current");
+      }
+    }, (error) => {
+      if(generation===loadGeneration)setStatus(status, "Cached data loaded; tail sync failed: "+error);
+    });
+  };
+  const applySnapshot=(source, data) => {
+    applyLineage(data.lineage);
+    applyLineageHealth(data.lineageHealth);
+    const b=data.keyMaxSequence;
+    currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
+    buckets=arrayOrEmpty(data.buckets);
+    visibleValueLimit=defaultRenderLimit();
+    if((isBlank(selected)||!exists((bucket) => bucket.keyId==selected, buckets))&&length(buckets)>0){
+      selected=get(buckets, 0).keyId;
+      selectedKeyJson=keysAsJson(get(buckets, 0).keys);
+      newKeyInput.value=selectedKeyJson;
+    }
+    else length(buckets)===0?(selected="",selectedKeyJson=""):void 0;
+    setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s)");
+    renderList();
+    requestValuesScrollToBottom();
+    renderValues();
+    ensureSelectedSubscription();
+    iter((bucket) => {
+      (deleteAcceptedPendingAppends(bucket))(bucket.values);
+    }, buckets);
+    refreshPendingState();
+    return sameText(source, "backend")?void setTimeout(() => {
+      replayPendingCommands();
+    }, 100):null;
+  };
+  const load=() => {
+    let url;
+    loadGeneration=loadGeneration+1;
+    const generation=loadGeneration;
+    const filterText=currentFilterText();
+    url="/pages/api/state?pageId="+encodeURIComponent(asText(definition.pageId))+"&limit="+String(defaultCacheLimit());
+    if(!isBlank(filterText))url=url+"&key="+encodeURIComponent(filterText);
+    const cacheKey_1=stateCacheKey();
+    const fetchFullState=() => {
+      getJson(url, (data) => {
+        if(generation===loadGeneration){
+          writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, appendPageValueCount(data), "append-page-state");
+          writeAppendPageKeyWatermark(data);
+          applySnapshot("backend", data);
+        }
+      }, (error) => {
+        if(generation===loadGeneration){
+          setStatus(status, error);
+          setStatus(workState, error);
+        }
+      });
+    };
+    readJson(cacheKey_1, (a) => {
+      if(a==null){
+        if(generation===loadGeneration)fetchFullState();
+      }
+      else if(a.$0,generation===loadGeneration){
+        const cached=a.$0;
+        applySnapshot("cached", cached);
+        const sequenceBuckets=filter((bucket) => bucket.maxSequence>0n, arrayOrEmpty(cached.buckets));
+        if(length(sequenceBuckets)===0)fetchFullState();
+        else {
+          iter((_2) => readNewerFromBackend(generation, _2), sequenceBuckets);
+          fetchFullState();
+        }
+      }
+    });
+  };
+  syncSocket=null;
+  queuedSyncFrames=[];
+  subscribedValueStream="";
+  keyRegistrySubscribed=false;
+  keyRegistryTailRequested=false;
+  pendingWsAppendIds=[];
+  syncRepairScheduled=false;
+  repairSyncAfterClose=() => { };
+  const setWsState=(value) => {
+    setData("ws-state", value, work);
+  };
+  const setKeyRegistryWsState=(value) => {
+    keyRegistryWsState=asText(value);
+    setData("key-registry-ws-state", value, work);
+    updateKeyRegistryHealth();
+  };
+  const selectedBucket=() => tryFind((bucket) => bucket.keyId==selected, buckets);
+  deleteAcceptedPendingAppends=(bucket) =>(acceptedValues) => {
+    const acceptedValues_1=arrayOrEmpty(acceptedValues);
+    if(length(acceptedValues_1)>0){
+      const keyJson=keysAsJson(bucket.keys);
+      const commandMatches=(command) => {
+        if(sameText(command.kind, "append-page-append-value")&&sameText(command.url, "/pages/api/append")&&isPendingForThisPage(command)&&!isBlank(command.payloadJson))try {
+          const x=json(command.payloadJson);
+          const _2=command.commandId;
+          return sameText(x.pageId, definition.pageId)&&sameText(x.keyJson, keyJson)&&exists((value) => sameText(value.valueId, _2), acceptedValues_1);
+        }
+        catch(m){
+          return false;
+        }
+        else return false;
+      };
+      return readAllPending((commands) => {
+        let remaining;
+        const accepted=filter(commandMatches, commands);
+        if(length(accepted)>0){
+          remaining=length(accepted);
+          const finishOne=() => {
+            remaining=remaining-1;
+            remaining===0?refreshPendingState():void 0;
+          };
+          iter((command) => {
+            deletePendingThen(command.commandId, finishOne);
+          }, accepted);
+        }
+      });
+    }
+    else return null;
+  };
+  const streamKeyFor=(bucket) => New_5(definition.tabId, definition.shape, definition.setName, arrayOrEmpty(bucket.keys));
+  const handleSyncEvent=(source, event) => {
+    let o, updated, _2, o_1;
+    if(!(event==null)){
+      const m=asText(event.sourceKind).toLowerCase();
+      if(m=="append-page.key"||m=="append-page.key-hidden"){
+        if(!(event==null)&&event.sequence>0n){
+          const m_1=asText(event.sourceKind).toLowerCase();
+          if(m_1=="append-page.key"){
+            if(event==null||isBlank(event.payload))o=null;
+            else try {
+              const wire=json(event.payload);
+              if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.key.v1"||!sameText(wire.pageId, definition.pageId))o=null;
+              else {
+                const keys=filter((key) =>!isBlank(key), map(asText, arrayOrEmpty(wire.keys)));
+                o=length(keys)===0?null:Some(keys);
+              }
+            }
+            catch(m_3){
+              o=null;
+            }
+            if(o==null)return null;
+            else {
+              const keys_1=o.$0;
+              const b=event.sequence;
+              currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
+              const filterText=currentFilterText();
+              if(isBlank(filterText)||exists((key) => asText(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty(keys_1))){
+                const keyId=asText(definition.setName)+"::"+concat_1(" + ", arrayOrEmpty(keys_1));
+                const m_2=tryFind((bucket_1) => sameText(bucket_1.keyId, keyId), buckets);
+                if(m_2==null)updated=New_10(keyId, keys_1, definition.setName, 0, 0n, 0n, asText(event.createdAtUtc), []);
+                else {
+                  const existing=m_2.$0;
+                  updated=New_10(existing.keyId, keys_1, definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
+                }
+                _2=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),isBlank(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(keys_1),void(newKeyInput.value=selectedKeyJson)):null);
+              }
+              else _2=null;
+              writeCurrentSnapshot();
+              renderList();
+              renderValues();
+              ensureSelectedSubscription();
+              return setStatus(status, "Synced "+String(source)+" key registry");
+            }
+          }
+          else if(m_1=="append-page.key-hidden"){
+            if(event==null||isBlank(event.payload))o_1=null;
+            else try {
+              const wire_1=json(event.payload);
+              o_1=wire_1==null||asText(wire_1.schema)!="ptc.comm.spa.append-page.key-hidden.v1"||!sameText(wire_1.pageId, definition.pageId)||isBlank(wire_1.keyId)?null:Some(Trim(wire_1.keyId));
+            }
+            catch(m_4){
+              o_1=null;
+            }
+            if(o_1==null)return null;
+            else {
+              const keyId_1=o_1.$0;
+              const b_1=event.sequence;
+              currentKeyMaxSequence=Compare(currentKeyMaxSequence, b_1)===1?currentKeyMaxSequence:b_1;
+              buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId_1), buckets));
+              if(sameText(selected, keyId_1))if(length(buckets)>0){
+                selected=get(buckets, 0).keyId;
+                selectedKeyJson=keysAsJson(get(buckets, 0).keys);
+                newKeyInput.value=selectedKeyJson;
+              }
+              else {
+                selected="";
+                selectedKeyJson="";
+              }
+              writeCurrentSnapshot();
+              renderList();
+              renderValues();
+              ensureSelectedSubscription();
+              return setStatus(status, "Synced "+String(source)+" key removal");
+            }
+          }
+          else return null;
+        }
+        else return null;
+      }
+      else if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
+        const eventKeys=arrayOrEmpty(event.streamKey.keys);
+        const o_2=tryFind((bucket_1) => {
+          const left=arrayOrEmpty(bucket_1.keys);
+          const right=arrayOrEmpty(eventKeys);
+          return length(left)===length(right)&&forall2(sameText, left, right);
+        }, buckets);
+        if(o_2==null)return null;
+        else {
+          const bucket=o_2.$0;
+          return bucket.maxSequence>0n?readNewerFromBackend(loadGeneration, bucket):load();
+        }
+      }
+      else return null;
+    }
+    else return null;
+  };
+  function flushSyncFrames(socket){
+    if(Equals(socket.readyState, 1)){
+      const frames=queuedSyncFrames;
+      queuedSyncFrames=[];
+      iter((frame) => {
+        socket.send(frame);
+      }, frames);
+    }
+  }
+  function ensureSyncSocket(){
+    let _2, _3;
+    if(syncSocket!=null&&syncSocket.$==1){
+      const socket=syncSocket.$0;
+      _2=(Equals(socket.readyState, 1)||Equals(socket.readyState, 0))&&(_3=syncSocket.$0,true);
+    }
+    else _2=false;
+    if(_2)return _3;
+    else {
+      setWsState("connecting");
+      const socket_1=new WebSocket(syncWebSocketUrl());
+      syncSocket=Some(socket_1);
+      socket_1.onopen=() => {
+        setWsState("open");
+        return flushSyncFrames(socket_1);
+      };
+      socket_1.onmessage=(event) => {
+        const text=String(event.data);
+        try {
+          const response=json(text);
+          const responseType=asText(response.type).toLowerCase();
+          const responseStatus=asText(response.status).toLowerCase();
+          const requestId=asText(response.requestId);
+          switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="append"?1:responseType=="append-page"?1:responseType=="actor-argu"?1:responseType=="stream-event"?2:responseType=="read-tail"?3:responseType=="read"?3:responseType=="tail"?3:5:responseStatus=="error"?4:5){
+            case 0:
+              return asText(response.streamKey).indexOf("append-page-key-registry")!=-1?setKeyRegistryWsState("subscribed"):setWsState("subscribed");
+            case 1:
+              if(exists((id) => id==requestId, pendingWsAppendIds)){
+                pendingWsAppendIds=filter((id) => id!=requestId, pendingWsAppendIds);
+                deletePendingThen(requestId, () => {
+                  valueInput.value="";
+                  refreshPendingState();
+                  setStatus(workState, "Appended through WebSocket");
+                });
+              }
+              return handleSyncEvent("live", response.event);
+            case 2:
+              return handleSyncEvent("live", response.event);
+            case 3:
+              return iter((_4) => handleSyncEvent("tail", _4), arrayOrEmpty(response.events));
+            case 4:
+              return exists((id) => id==requestId, pendingWsAppendIds)?setStatus(workState, pendingFailure("WebSocket append", asText(response.error))):setStatus(status, "WebSocket sync error: "+asText(response.error));
+            case 5:
+              return null;
+          }
+        }
+        catch(error){
+          return setStatus(status, "WebSocket sync parse failed: "+errorMessage(error));
+        }
+      };
+      socket_1.onerror=() => {
+        setWsState("error");
+        return setStatus(status, "WebSocket sync error; pending command remains replayable");
+      };
+      socket_1.onclose=() => {
+        syncSocket=null;
+        subscribedValueStream="";
+        keyRegistrySubscribed=false;
+        keyRegistryTailRequested=false;
+        setWsState("closed");
+        setKeyRegistryWsState("closed");
+        return!syncRepairScheduled?(syncRepairScheduled=true,void setTimeout(() => {
+          syncRepairScheduled=false;
+          repairSyncAfterClose();
+        }, 500)):null;
+      };
+      return socket_1;
+    }
+  }
+  function sendSyncFrame(frame){
+    const socket=ensureSyncSocket();
+    if(Equals(socket.readyState, 1))socket.send(frame);
+    else queuedSyncFrames=queuedSyncFrames.concat([frame]);
+  }
+  const subscribeKeyRegistry=() => {
+    const streamPageId=textOr(definition.pageId, definition.tabId);
+    const streamKey=New_5(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
+    if(!keyRegistrySubscribed){
+      keyRegistrySubscribed=true;
+      setKeyRegistryWsState("subscribing");
+      sendSyncFrame(JSON.stringify(New_1("subscribe", newRequestId("append-page-keys-subscribe"), streamKey)));
+    }
+    if(!keyRegistryTailRequested){
+      keyRegistryTailRequested=true;
+      sendSyncFrame(JSON.stringify(New_2("read-tail", newRequestId("append-page-keys-read-tail"), streamKey, defaultCacheLimit())));
+    }
+  };
+  let _1=(ensureSelectedSubscription=() => {
+    const o=selectedBucket();
+    if(o==null)void 0;
+    else {
+      const streamKey=streamKeyFor(o.$0);
+      const identity=concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
+      if(!isBlank(identity)&&identity!=subscribedValueStream){
+        subscribedValueStream=identity;
+        setWsState("subscribing");
+        sendSyncFrame(JSON.stringify(New_1("subscribe", newRequestId("subscribe"), streamKey)));
+      }
+    }
+  },repairSyncAfterClose=() => {
+    setWsState("repairing");
+    refreshPendingState();
+    subscribeKeyRegistry();
+    const m=selectedBucket();
+    if(m==null)load();
+    else {
+      const bucket=m.$0;
+      ensureSelectedSubscription();
+      if(bucket.maxSequence>0n)readNewerFromBackend(loadGeneration, bucket);
+      else load();
+    }
+  },replayingPending=false,replayPendingCommands=() => {
+    if(!replayingPending){
+      replayingPending=true;
+      readAllPending((commands) => {
+        let remaining, accepted;
+        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter(isPendingForThisPage, commands));
+        if(length(mine)===0){
+          replayingPending=false;
+          refreshPendingState();
+        }
+        else {
+          remaining=length(mine);
+          accepted=0;
+          setStatus(pendingState, "Replaying "+String(length(mine))+" pending command(s)");
+          const finishOne=() => {
+            remaining=remaining-1;
+            remaining===0?(replayingPending=false,refreshPendingState(),accepted>0?(setStatus(workState, "Replayed "+String(accepted)+" pending command(s)"),load()):void 0):void 0;
+          };
+          iter((command) => {
+            postJsonText(command.url, command.payloadJson, (body) => {
+              deletePendingThen(command.commandId, () => {
+                let _2, _3;
+                accepted=accepted+1;
+                if(sameText(command.kind, "append-page-remove-page")){
+                  try {
+                    const reply=json(isBlank(body)?"{}":body);
+                    _2=!(reply==null)?writeAppendPagesDefinitions(reply):null;
+                  }
+                  catch(m){
+                    _2=null;
+                  }
+                  _3=globalThis.location.assign("/chat");
+                }
+                else _3=void 0;
+                finishOne();
+              });
+            }, () => {
+              finishOne();
+            });
+          }, mine);
+        }
+      });
+    }
+  },addKeyButton.addEventListener("click", () => {
+    const keyJson=isBlank(newKeyInput.value)?asText(definition.defaultKey):Trim(newKeyInput.value);
+    if(isBlank(keyJson))setStatus(status, "Key JSON is required");
+    else {
+      const request=New_15(definition.pageId, keyJson);
+      const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
+      refreshPendingState();
+      setStatus(status, "Adding key; pending command saved in browser DB");
+      postAppendPageKey("/pages/api/add-key", request, (reply) => {
+        deletePendingThen(pendingId, () => {
+          !(reply.key==null)?(selected=reply.key.keyId,selectedKeyJson=keysAsJson(reply.key.keys),newKeyInput.value=selectedKeyJson):void 0;
+          setStatus(status, "Key added");
+          refreshPendingState();
+          load();
+        });
+      }, (error) => {
+        setStatus(status, pendingFailure("Add key", error));
+        refreshPendingState();
+      });
+    }
+  }),removeKeyButton.addEventListener("click", () => {
+    if(isBlank(selected))return setStatus(status, "Select a key first");
+    else {
+      const removedKeyId=selected;
+      const request=New_14(definition.pageId, removedKeyId);
+      const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request);
+      refreshPendingState();
+      setStatus(status, "Removing key; pending command saved in browser DB");
+      return postRemoveAppendPageKey("/pages/api/remove-key", request, () => {
+        deletePendingThen(pendingId, () => {
+          buckets=filter((bucket) => bucket.keyId!=removedKeyId, buckets);
+          selected="";
+          selectedKeyJson="";
+          writeCurrentSnapshot();
+          renderList();
+          renderValues();
+          setStatus(status, "Key removed");
+          refreshPendingState();
+        });
+      }, (error) => {
+        setStatus(status, pendingFailure("Remove key", error));
+        refreshPendingState();
+      });
+    }
+  }),removePageButton.addEventListener("click", () => {
+    const request=New_13(definition.pageId);
+    const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request);
+    refreshPendingState();
+    setStatus(status, "Removing page; pending command saved in browser DB");
+    postJson("/pages/api/remove-page", request, (reply) => {
+      deletePendingThen(pendingId, () => {
+        writeAppendPagesDefinitions(reply);
+        setStatus(status, "Page removed");
+        globalThis.location.assign("/chat");
+      });
+    }, (error) => {
+      setStatus(status, pendingFailure("Remove page", error));
+      refreshPendingState();
+    });
+  }),reload.addEventListener("click", load),keyFilter.addEventListener("input", load),appendButton.addEventListener("click", () => {
+    const request=New_11(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
+    if(isBlank(request.keyJson))return setStatus(workState, "Select or add a key first");
+    else if(isBlank(request.valueText))return setStatus(workState, "Value text is required");
+    else if(isActorArguPage(definition)){
+      const request_1=New_12(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
+      const m=selectedBucket();
+      if(m!=null&&m.$==1){
+        const bucket=m.$0;
+        const o=tryHead(arrayOrEmpty(bucket.keys));
+        const actorAddress=o==null?"":o.$0;
+        if(isBlank(actorAddress))return setStatus(workState, "Actor address key is required");
+        else {
+          const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_1);
+          const wsRequest=New_16("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request_1.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+          pendingWsAppendIds=pendingWsAppendIds.concat([pendingId]);
+          refreshPendingState();
+          setStatus(workState, "Sending through WebSocket; pending command saved in browser DB");
+          ensureSelectedSubscription();
+          sendSyncFrame(JSON.stringify(wsRequest));
+          return scrollToBottomAfterRender(values);
+        }
+      }
+      else return setStatus(workState, "Select or add a key first");
+    }
+    else if(sameText(definition.shape, "raw")){
+      const m_1=selectedBucket();
+      if(m_1!=null&&m_1.$==1){
+        const bucket_1=m_1.$0;
+        const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
+        const wsRequest_1=New_18("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_1]);
+        refreshPendingState();
+        setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
+        ensureSelectedSubscription();
+        sendSyncFrame(JSON.stringify(wsRequest_1));
+        return scrollToBottomAfterRender(values);
+      }
+      else return setStatus(workState, "Select or add a key first");
+    }
+    else {
+      const m_2=selectedBucket();
+      if(m_2!=null&&m_2.$==1){
+        const bucket_2=m_2.$0;
+        const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
+        const wsRequest_2=New_17("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_2]);
+        refreshPendingState();
+        setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
+        ensureSelectedSubscription();
+        sendSyncFrame(JSON.stringify(wsRequest_2));
+        return scrollToBottomAfterRender(values);
+      }
+      else return setStatus(workState, "Select or add a key first");
+    }
+  }),load(),subscribeKeyRegistry(),refreshPendingState());
+  _1;
+}
+function renderNav(nav, activePath, pages){
+  clear(nav);
+  iter((_1) => {
+    const href=_1[0];
+    const label=_1[1];
+    const x=setHref(href, element("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", label));
+    let _2=setTestId("nav-"+label.toLowerCase(), x);
+    nav.appendChild(_2);
+  }, [["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"]]);
+  iter((page) => {
+    const href=pagePath(page);
+    const x=setHref(href, element("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", null));
+    let _1=setTestId("nav-append-page-"+asText(page.pageId), x);
+    let _2=setData("page-id", page.pageId, _1);
+    const link=setData("shape", page.shape, _2);
+    const badge=element("span", "nav-type-badge "+pageTypeClass(page), pageTypeBadge(page));
+    badge.setAttribute("title", pageTypeLabel(page));
+    badge.setAttribute("aria-label", pageTypeLabel(page));
+    append(link, [badge, element("span", "nav-title", pageTitle(page))]);
+    nav.appendChild(link);
+  }, arrayOrEmpty(pages));
+}
+function shell(activePath, pages){
+  const app=element("div", "app", null);
+  const top=element("header", "topbar", null);
+  const topRow=element("div", "topbar-main", null);
+  const brandCluster=element("div", "brand-cluster", null);
+  const navShell=element("div", "nav-shell", null);
+  const navViewport=setTestId("nav-viewport", element("div", "nav-viewport", null));
+  const nav=setId("ptc-nav", element("nav", "nav", null));
+  const navBack=setTestId("nav-scroll-left", button("nav-scroll", "<"));
+  const navForward=setTestId("nav-scroll-right", button("nav-scroll", ">"));
+  const create_1=renderPageCreator(nav, activePath, pages);
+  const registryHealth=setTestId("append-registry-health", element("div", "state registry-health", "append registry ws pending"));
+  const scrollTabs=(delta) => {
+    navViewport.scrollLeft=navViewport.scrollLeft+delta;
+  };
+  navBack.setAttribute("aria-label", "Scroll tabs left");
+  navForward.setAttribute("aria-label", "Scroll tabs right");
+  navBack.addEventListener("click", () => scrollTabs(-260));
+  navForward.addEventListener("click", () => scrollTabs(260));
+  append(brandCluster, [element("div", "brand", "PTC.Comm SPA"), registryHealth]);
+  renderNav(nav, activePath, pages);
+  const logout=setHref("/chat/logout", element("a", "logout", "Logout"));
+  const page=element("main", "page", null);
+  append(navViewport, [nav]);
+  append(navShell, [navBack, navViewport, navForward]);
+  append(topRow, [brandCluster, navShell, logout]);
+  append(top, [topRow, create_1]);
+  append(app, [top, page]);
+  return[app, page];
+}
+function setMain(node){
+  const main=doc().getElementById("main");
+  if(!(main==null)){
+    clear(main);
+    main.appendChild(node);
+  }
+}
+function mountSets(page){
+  let selected, buckets, syncSocket, queuedSyncFrames, subscribedStreams, tailRequestedStreams, registryTailRequested, ensureSetsSubscriptions, loadGeneration;
+  page.className="page sets-grid";
+  selected="";
+  buckets=[];
+  const side=element("aside", "sidebar", null);
+  const sideHead=element("div", "panel-head", null);
+  const reload=button("", "Reload");
+  const filters=element("div", "filters", null);
+  const keyFilter=input("key contains");
+  const setFilter=input("set name");
+  const status=element("div", "state", "Loading sets");
+  const list=element("div", "list", null);
+  const work=element("section", "work", null);
+  append(sideHead, [element("h1", "", "Sets"), reload]);
+  append(filters, [keyFilter, setFilter, status]);
+  append(side, [sideHead, filters, list]);
+  append(page, [side, work]);
+  syncSocket=null;
+  queuedSyncFrames=[];
+  subscribedStreams=[];
+  tailRequestedStreams=[];
+  registryTailRequested=false;
+  ensureSetsSubscriptions=() => { };
+  loadGeneration=0;
+  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
+  const streamIdentity=(streamKey) => concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
+  const setValueStreamKey=(pageId, mode, setName, keys) => New_5(asText(pageId), textOr("set", mode), asText(setName), arrayOrEmpty(keys));
+  const currentFilterTexts=() =>[isBlank(keyFilter.value)?"":Trim(keyFilter.value), isBlank(setFilter.value)?"":Trim(setFilter.value)];
+  const currentCacheKey=() => {
+    const p=currentFilterTexts();
+    return cacheKey("sets-state", ofArray([p[0], p[1]]));
+  };
+  function renderList(){
+    clear(list);
+    iter((bucket) => {
+      const item=button(bucket.keyId==selected?"list-card active":"list-card", null);
+      setData("key-id", bucket.keyId, setTestId("sets-bucket", item));
+      append(item, [element("div", "strong wrap", asText(bucket.setName)), element("div", "muted wrap", joinValues(bucket.keys)), element("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText(bucket.updatedAtUtc)))]);
+      item.addEventListener("click", () => {
+        selected=bucket.keyId;
+        renderList();
+        return renderDetail();
+      });
+      list.appendChild(item);
+    }, buckets);
+  }
+  function renderDetail(){
+    clear(work);
+    const bucket=tryFind((bucket_2) => bucket_2.keyId==selected, buckets);
+    if(bucket!=null&&bucket.$==1){
+      const bucket_1=bucket.$0;
+      const detail=element("div", "detail", null);
+      const head_2=element("div", "work-head", null);
+      const title=element("div", "", null);
+      append(title, [element("label", "", "Key set"), element("h2", "", bucket_1.keyId)]);
+      append(head_2, [title, element("div", "state", String(bucket_1.valueCount)+" value(s)")]);
+      detail.appendChild(head_2);
+      const table=element("table", "data-table", null);
+      const thead=element("thead", "", null);
+      const headerRow=element("tr", "", null);
+      iter((label) => {
+        headerRow.appendChild(element("th", "", label));
+      }, ["Value", "Keys", "Created", "Body", "Tags"]);
+      thead.appendChild(headerRow);
+      const tbody=element("tbody", "", null);
+      iter((value) => {
+        const row=element("tr", "", null);
+        iter((_1) => {
+          row.appendChild(element("td", _1[1], _1[0]));
+        }, [[value.valueId, "wrap"], [joinValues(value.keys), "wrap"], [asText(value.createdAtUtc), "wrap"], [asText(value.value), "preview"], [joinValues(value.tags), "wrap"]]);
+        tbody.appendChild(row);
+      }, arrayOrEmpty(bucket_1.values));
+      append(table, [thead, tbody]);
+      append(detail, [table]);
+      work.appendChild(detail);
+    }
+    else work.appendChild(element("div", "empty", "No set selected."));
+  }
+  const applySnapshot=(source, data) => {
+    buckets=arrayOrEmpty(data.buckets);
+    (isBlank(selected)||!exists((bucket) => bucket.keyId==selected, buckets))&&length(buckets)>0?selected=get(buckets, 0).keyId:length(buckets)===0?selected="":void 0;
+    setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s)");
+    renderList();
+    renderDetail();
+    return ensureSetsSubscriptions();
+  };
+  const load=() => {
+    loadGeneration=loadGeneration+1;
+    const generation=loadGeneration;
+    tailRequestedStreams=[];
+    const parts=MarkResizable([]);
+    const p=currentFilterTexts();
+    const setText=p[1];
+    const keyText=p[0];
+    if(!isBlank(keyText))parts.push("participantId="+encodeURIComponent(keyText));
+    if(!isBlank(setText))parts.push("setName="+encodeURIComponent(setText));
+    parts.push("limit="+String(defaultRenderLimit()));
+    const cacheKey_1=currentCacheKey();
+    readJson(cacheKey_1, (a) => {
+      if(a==null){
+        if(generation===loadGeneration){
+          buckets=[];
+          selected="";
+          renderList();
+          renderDetail();
+          ensureSetsSubscriptions();
+        }
+      }
+      else if(a.$0,generation===loadGeneration)applySnapshot("cached", a.$0);
+    });
+    getJson("/sets/api/state?"+concat_1("&", ofSeq(parts)), (data) => {
+      if(generation===loadGeneration){
+        writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, setValueCount(data.buckets), "sets-state");
+        applySnapshot("backend", data);
+      }
+    }, (error) => {
+      if(generation===loadGeneration)setStatus(status, error);
+    });
+  };
+  const setWsState=(value) => {
+    setData("ws-state", value, page);
+  };
+  const setWsStreamCount=() => {
+    setData("ws-stream-count", String(length(subscribedStreams)), page);
+  };
+  function recF(recI, _1){
+    while(true)
+      switch(recI){
+        case 0:
+          const socket=ensureSyncSocket();
+          return Equals(socket.readyState, 1)?socket.send(_1):void(queuedSyncFrames=queuedSyncFrames.concat([_1]));
+        case 1:
+          const request=New_2("read-tail", newRequestId("sets-read-tail"), _1, defaultRenderLimit());
+          _1=JSON.stringify(request);
+          recI=0;
+          break;
+        case 2:
+          const identity=streamIdentity(_1);
+          if(!isBlank(identity)&&!(((p) =>(a) => exists(p, a))(((identity_1) =>(existing) => existing==identity_1)(identity)))(tailRequestedStreams)){
+            tailRequestedStreams=tailRequestedStreams.concat([identity]);
+            _1=_1;
+            recI=1;
+          }
+          else return null;
+          break;
+      }
+  }
+  function flushSyncFrames(socket){
+    if(Equals(socket.readyState, 1)){
+      const frames=queuedSyncFrames;
+      queuedSyncFrames=[];
+      iter((frame) => {
+        socket.send(frame);
+      }, frames);
+    }
+  }
+  function ensureSyncSocket(){
+    let _1, _2;
+    if(syncSocket!=null&&syncSocket.$==1){
+      const socket=syncSocket.$0;
+      _1=(Equals(socket.readyState, 1)||Equals(socket.readyState, 0))&&(_2=syncSocket.$0,true);
+    }
+    else _1=false;
+    if(_1)return _2;
+    else {
+      setWsState("connecting");
+      const socket_1=new WebSocket(syncWebSocketUrl());
+      syncSocket=Some(socket_1);
+      socket_1.onopen=() => {
+        setWsState("open");
+        return flushSyncFrames(socket_1);
+      };
+      socket_1.onmessage=(event) => handleSyncMessage(String(event.data));
+      socket_1.onerror=() => {
+        setWsState("error");
+        return setStatus(status, "WebSocket sets sync error");
+      };
+      socket_1.onclose=() => {
+        syncSocket=null;
+        subscribedStreams=[];
+        tailRequestedStreams=[];
+        registryTailRequested=false;
+        setWsStreamCount();
+        return setWsState("closed");
+      };
+      return socket_1;
+    }
+  }
+  function sendSyncFrame(frame){
+    return recF(0, frame);
+  }
+  function subscribeStream(streamKey){
+    const identity=streamIdentity(streamKey);
+    if(!isBlank(identity)&&!exists((existing) => existing==identity, subscribedStreams)){
+      subscribedStreams=subscribedStreams.concat([identity]);
+      setWsStreamCount();
+      setWsState("subscribing");
+      sendSyncFrame(JSON.stringify(New_1("subscribe", newRequestId("sets-subscribe"), streamKey)));
+    }
+  }
+  function requestReadTail(streamKey){
+    return recF(1, streamKey);
+  }
+  function requestReadTailOnce(streamKey){
+    return recF(2, streamKey);
+  }
+  function handleSyncEvent(event){
+    if(!(event==null)&&!(event.streamKey==null)){
+      let m, updated, _1;
+      const m_1=asText(event.sourceKind).toLowerCase();
+      if(m_1=="set.stream"){
+        if(event==null||isBlank(event.payload))m=null;
+        else try {
+          const wire=json(event.payload);
+          m=wire==null||asText(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
+        }
+        catch(m_3){
+          m=null;
+        }
+        if(m==null)void 0;
+        else {
+          const streamKey=m.$0;
+          subscribeStream(streamKey);
+          requestReadTailOnce(streamKey);
+        }
+      }
+      else if(m_1=="set"){
+        if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
+          const setName=asText(event.streamKey.setName);
+          const keys=arrayOrEmpty(event.streamKey.keys);
+          const p=currentFilterTexts();
+          const setText=p[1];
+          const keyText=p[0];
+          if((isBlank(setText)||sameText(setName, setText))&&(isBlank(keyText)||exists((key) => asText(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty(keys)))){
+            const value=New_20(textOr(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText(event.createdAtUtc), asText(event.payload), arrayOrEmpty(event.tags));
+            const keyId=asText(setName)+"::"+concat_1(" + ", arrayOrEmpty(keys));
+            const m_2=tryFind((bucket) => sameText(bucket.keyId, keyId), buckets);
+            if(m_2==null)updated=New_19(keyId, setName, keys, 1, event.sequence, asText(event.createdAtUtc), [value]);
+            else {
+              const existing=m_2.$0;
+              const existingValues=arrayOrEmpty(existing.values);
+              const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
+              const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
+              const mergedValues=latestArray(defaultRenderLimit(), v);
+              if(alreadyVisible)_1=existing.valueCount;
+              else {
+                const a=existing.valueCount;
+                const b=length(existingValues);
+                let _2=Compare(a, b)===1?a:b;
+                _1=_2+1;
+              }
+              const a_1=existing.maxSequence;
+              const b_1=event.sequence;
+              let _3=Compare(a_1, b_1)===1?a_1:b_1;
+              updated=New_19(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+            }
+            buckets=sortBy((bucket) =>[asText(bucket.setName), asText(bucket.keyId)], arrayOrEmpty(filter((bucket) =>!sameText(bucket.keyId, keyId), buckets).concat([updated])));
+            selected=keyId;
+            renderList();
+            renderDetail();
+            const snapshot=New_21(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
+            writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
+            ensureSetsSubscriptions();
+            setStatus(status, "Synced set event "+value.valueId);
+          }
+          else void 0;
+        }
+        else void 0;
+      }
+      else void 0;
+    }
+  }
+  function handleSyncMessage(text){
+    try {
+      const response=json(text);
+      const responseType=asText(response.type).toLowerCase();
+      const responseStatus=asText(response.status).toLowerCase();
+      switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
+        case 0:
+          setData("ws-last-stream", response.streamKey, page);
+          setWsState("subscribed");
+          break;
+        case 1:
+          handleSyncEvent(response.event);
+          break;
+        case 2:
+          iter(handleSyncEvent, arrayOrEmpty(response.events));
+          break;
+        case 3:
+          setStatus(status, "WebSocket sets sync error: "+asText(response.error));
+          break;
+        case 4:
+          null;
+          break;
+      }
+    }
+    catch(error){
+      setStatus(status, "WebSocket sets sync parse failed: "+errorMessage(error));
+    }
+  }
+  ensureSetsSubscriptions=() => {
+    const registryKey=New_5("__set-registry", "set-registry", "__sets", ["__sets"]);
+    subscribeStream(registryKey);
+    if(!registryTailRequested){
+      registryTailRequested=true;
+      requestReadTail(registryKey);
+    }
+    iter((bucket) => {
+      const streamKey=setValueStreamKey("", "set", bucket.setName, bucket.keys);
+      subscribeStream(streamKey);
+      requestReadTailOnce(streamKey);
+    }, buckets);
+  };
+  reload.addEventListener("click", load);
+  keyFilter.addEventListener("input", load);
+  setFilter.addEventListener("input", load);
+  load();
+}
+function mountActors(page){
+  let actorSnapshot, syncSocket, queuedSyncFrames, subscribedRegistry, registryTailRequested;
+  page.className="page actors-page";
+  const head_2=element("div", "work-head actors-head", null);
+  const title=element("div", "", null);
+  const actions=element("div", "head-actions", null);
+  const status=element("div", "state", "Loading actors");
+  const reload=button("", "Reload");
+  const nodes=element("div", "nodes", null);
+  append(title, [element("label", "", "Actor / Participant Management"), element("h1", "", "Actors")]);
+  append(actions, [status, reload]);
+  append(head_2, [title, actions]);
+  append(page, [head_2, nodes]);
+  const emptySnapshot=New_22(0, 0, 0n, []);
+  actorSnapshot=emptySnapshot;
+  syncSocket=null;
+  queuedSyncFrames=[];
+  subscribedRegistry=false;
+  registryTailRequested=false;
+  const cacheKey_1=cacheKey("actors-snapshot", FSharpList.Empty);
+  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
+  const actorRegistryStreamKey=() => New_5("__actor-registry", "actor-registry", "__actors", ["__actors"]);
+  const isAkkaAddress=(value) => {
+    const text=asText(value).toLowerCase();
+    return StartsWith(text, "akka://")||StartsWith(text, "akka.tcp://")||StartsWith(text, "akka.ssl.tcp://");
+  };
+  const applySnapshot=(source, data) => {
+    actorSnapshot=data==null?emptySnapshot:data;
+    clear(nodes);
+    iter((node) => {
+      const block=setData("node-id", node.nodeId, setTestId("actor-node", element("section", "node-block", null)));
+      const blockHead=element("div", "work-head", null);
+      const title_1=element("div", "", null);
+      const grid=element("div", "actor-grid", null);
+      let _1=(append(title_1, [element("label", "", "Node"), element("h2", "", asText(node.nodeId))]),append(blockHead, [title_1, element("div", "state", asText(node.status)+" / "+joinValues(node.roles))]),iter((actor) => {
+        const card=setData("actor-id", actor.actorId, setTestId("actor-card", element("div", "actor-card", null)));
+        const line=asText(actor.kind)+" / "+joinValues(actor.keys);
+        const routees=element("div", "routees", null);
+        const address=TrimEnd(Trim(asText(node.nodeAddress)), ["/"]);
+        const logicalNode=TrimEnd(Trim(asText(node.nodeId)), ["/"]);
+        const node_1=isBlank(address)?logicalNode:address;
+        const actor_1=Trim(asText(actor.actorId));
+        const fullAddress=isBlank(actor_1)?node_1:isAkkaAddress(actor_1)?actor_1:isBlank(node_1)?actor_1:StartsWith(actor_1, "/")?node_1+actor_1:isAkkaAddress(node_1)?node_1+"/user/"+TrimStart(actor_1, ["/"]):node_1+"/"+TrimStart(actor_1, ["/"]);
+        const addressRow=setData("actor-address", fullAddress, setTestId("actor-address", element("div", "meta wrap actor-address", "address "+fullAddress)));
+        let _2=(card.appendChild(cardTitle(textOr(actor.actorId, actor.displayName), actor.actorId, actor.status, line)),card.appendChild(addressRow),iter((routee) => {
+          const row=element("div", "routee", null);
+          let _3=(append(row, [statusDot(routee.status), element("span", "strong", asText(routee.routeeId)), element("span", "muted wrap", joinValues(routee.tags))]),row);
+          routees.appendChild(_3);
+        }, arrayOrEmpty(actor.routees)),card.appendChild(routees),card);
+        grid.appendChild(_2);
+      }, arrayOrEmpty(node.actors)),append(block, [blockHead, grid]),block);
+      nodes.appendChild(_1);
+    }, arrayOrEmpty(actorSnapshot.nodes));
+    return setStatus(status, "Loaded "+String(actorSnapshot.nodeCount)+" "+String(source)+" node(s), "+String(actorSnapshot.actorCount)+" actor(s)");
+  };
+  const load=() => {
+    readJson(cacheKey_1, (a) => {
+      if(a==null){ }
+      else applySnapshot("cached", a.$0);
+    });
+    getJson("/actors/api/snapshot", (data) => {
+      writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, actorValueCount(data), "actors-snapshot");
+      applySnapshot("backend", data);
+    }, (t) => {
+      setStatus(status, t);
+    });
+  };
+  const setWsState=(value) => {
+    setData("ws-state", value, page);
+  };
+  function flushSyncFrames(socket){
+    if(Equals(socket.readyState, 1)){
+      const frames=queuedSyncFrames;
+      queuedSyncFrames=[];
+      iter((frame) => {
+        socket.send(frame);
+      }, frames);
+    }
+  }
+  function ensureSyncSocket(){
+    let _1, _2;
+    if(syncSocket!=null&&syncSocket.$==1){
+      const socket=syncSocket.$0;
+      _1=(Equals(socket.readyState, 1)||Equals(socket.readyState, 0))&&(_2=syncSocket.$0,true);
+    }
+    else _1=false;
+    if(_1)return _2;
+    else {
+      setWsState("connecting");
+      const socket_1=new WebSocket(syncWebSocketUrl());
+      syncSocket=Some(socket_1);
+      socket_1.onopen=() => {
+        setWsState("open");
+        return flushSyncFrames(socket_1);
+      };
+      socket_1.onmessage=(event) => handleSyncMessage(String(event.data));
+      socket_1.onerror=() => {
+        setWsState("error");
+        return setStatus(status, "WebSocket actors sync error");
+      };
+      socket_1.onclose=() => {
+        syncSocket=null;
+        subscribedRegistry=false;
+        registryTailRequested=false;
+        return setWsState("closed");
+      };
+      return socket_1;
+    }
+  }
+  function sendSyncFrame(frame){
+    while(true)
+      {
+        const socket=ensureSyncSocket();
+        return Equals(socket.readyState, 1)?socket.send(frame):void(queuedSyncFrames=queuedSyncFrames.concat([frame]));
+      }
+  }
+  function subscribeRegistry(){
+    if(!subscribedRegistry){
+      subscribedRegistry=true;
+      setWsState("subscribing");
+      const streamKey=actorRegistryStreamKey();
+      sendSyncFrame(JSON.stringify(New_1("subscribe", newRequestId("actors-subscribe"), streamKey)));
+    }
+  }
+  function requestRegistryTail(){
+    if(!registryTailRequested){
+      registryTailRequested=true;
+      sendSyncFrame(JSON.stringify(New_2("read-tail", newRequestId("actors-read-tail"), actorRegistryStreamKey(), defaultRenderLimit())));
+    }
+  }
+  function handleSyncEvent(event){
+    if(!(event==null)&&asText(event.sourceKind).toLowerCase()=="actor.registered"){
+      let x, updatedNode;
+      if(event==null||isBlank(event.payload))x=null;
+      else try {
+        const wire=json(event.payload);
+        x=wire==null||asText(wire.schema)!="ptc.comm.spa.actor.registration.v1"?null:Some(wire);
+      }
+      catch(m_1){
+        x=null;
+      }
+      if(x==null)void 0;
+      else {
+        const _1=x.$0;
+        const nodeId=asText(_1.nodeId);
+        const nodeAddress=asText(_1.nodeAddress);
+        const actorId=asText(_1.actorId);
+        if(!isBlank(nodeId)&&!isBlank(actorId)){
+          const tags=arrayOrEmpty(_1.tags);
+          const roles=arrayOrEmpty(_1.roles);
+          const actor=New_23(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty(_1.routees));
+          const m=tryFind((node) => sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes));
+          if(m==null)updatedNode=New_24(nodeId, nodeAddress, "up", roles, [actor]);
+          else {
+            const existing=m.$0;
+            const actors=sortBy((row) => asText(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors)).concat([actor]));
+            updatedNode=New_24(existing.nodeId, isBlank(nodeAddress)?asText(existing.nodeAddress):nodeAddress, textOr("up", existing.status), length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
+          }
+          const nodes_1=sortBy((node) => asText(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
+          let _2=length(nodes_1);
+          let _3=fold((_5, _6) => _5+_6, 0, map((node) => arrayOrEmpty(node.actors).length, nodes_1));
+          const a=actorSnapshot.maxSequence;
+          const b=event.sequence;
+          let _4=Compare(a, b)===1?a:b;
+          actorSnapshot=New_22(_2, _3, _4, nodes_1);
+          writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
+          applySnapshot("synced", actorSnapshot);
+          setStatus(status, "Synced actor "+actorId);
+        }
+        else void 0;
+      }
+    }
+  }
+  function handleSyncMessage(text){
+    try {
+      const response=json(text);
+      const responseType=asText(response.type).toLowerCase();
+      const responseStatus=asText(response.status).toLowerCase();
+      switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
+        case 0:
+          setWsState("subscribed");
+          break;
+        case 1:
+          handleSyncEvent(response.event);
+          break;
+        case 2:
+          iter(handleSyncEvent, arrayOrEmpty(response.events));
+          break;
+        case 3:
+          setStatus(status, "WebSocket actors sync error: "+asText(response.error));
+          break;
+        case 4:
+          null;
+          break;
+      }
+    }
+    catch(error){
+      setStatus(status, "WebSocket actors sync parse failed: "+errorMessage(error));
+    }
+  }
+  reload.addEventListener("click", load);
+  load();
+  subscribeRegistry();
+  requestRegistryTail();
+}
+function mountChat(page){
+  let selected, cursor, polling, participants, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
+  selected="";
+  cursor="";
+  polling=false;
+  participants=[];
+  const participantId=currentUserId();
+  page.className="page chat-grid";
+  const side=element("aside", "sidebar", null);
+  const sideHead=element("div", "panel-head", null);
+  const reload=button("", "Reload");
+  const list=element("div", "list", null);
+  append(sideHead, [element("h1", "", "Chat"), reload]);
+  append(side, [sideHead, element("div", "", null), list]);
+  const work=setTestId("chat-work", element("section", "work", null));
+  const workHead=element("div", "work-head", null);
+  const titleBox=element("div", "", null);
+  const toTitle=element("h2", "", "No participant selected");
+  const state=element("div", "state", "Loading participants");
+  const pendingState=setTestId("chat-pending-state", element("div", "state pending-state", ""));
+  const thread=setTestId("thread-list", setId("thread-list", element("div", "thread-list", null)));
+  const composer=setTestId("chat-composer", element("div", "chat-composer", null));
+  const draft=setTestId("chat-draft", textarea("draft", "Type a message"));
+  const actions=element("div", "actions", null);
+  const send=setTestId("chat-send", button("primary", "Send"));
+  const participantsCacheKey=cacheKey("chat-agents", ofArray([participantId]));
+  const threadCacheKey=(peerId) => cacheKey("chat-thread", ofArray([participantId, peerId]));
+  append(titleBox, [element("label", "", "To"), toTitle]);
+  append(workHead, [titleBox, state]);
+  append(actions, [send]);
+  append(composer, [draft, actions]);
+  append(work, [workHead, pendingState, thread, composer]);
+  append(page, [side, work]);
+  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
+  const isPendingForThisChat=(command) =>!(command==null)&&sameText(command.kind, "chat-send")&&StartsWith(asText(command.target), participantId+"->");
+  replayingPending=false;
+  chatSocket=null;
+  queuedChatSyncFrames=[];
+  subscribedChatStream="";
+  pendingWsChatIds=[];
+  const setChatWsState=(value) => {
+    setData("ws-state", value, work);
+  };
+  const chatStreamKey=(peerId) => New_5("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
+  const streamIdentity=(streamKey) => concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
+  function renderParticipants(){
+    let _1;
+    clear(list);
+    iter((p_1) => {
+      const className=p_1.participantId==selected?"list-card active":"list-card";
+      const name=textOr(p_1.participantId, p_1.displayName);
+      const line=asText(p_1.kind)+" / "+joinValues(p_1.labels);
+      const item=button(className, null);
+      setData("participant-id", p_1.participantId, setTestId("chat-participant", item));
+      item.appendChild(cardTitle(name, p_1.participantId, p_1.status, line));
+      item.addEventListener("click", () => {
+        selected=p_1.participantId;
+        cursor="";
+        clear(thread);
+        renderParticipants();
+        refreshChatPendingState();
+        pollThread(true);
+        return ensureSelectedChatSubscription();
+      });
+      list.appendChild(item);
+    }, participants);
+    const current=tryFind((p_1) => p_1.participantId==selected, participants);
+    if(current==null)_1="No participant selected";
+    else {
+      const p=current.$0;
+      _1=textOr(p.participantId, p.displayName)+" ("+p.participantId+")";
+    }
+    toTitle.textContent=_1;
+  }
+  function appendMessages(messages){
+    iter((message) => {
+      if(!(message==null)&&!isBlank(message.messageId)&&doc().getElementById("thread-"+message.messageId)==null){
+        const outbound=message.fromId==participantId;
+        const wrap=setId("thread-"+message.messageId, element("div", outbound?"message outbound":"message inbound", null));
+        setData("message-id", message.messageId, setTestId("chat-message", wrap));
+        const meta=element("div", "message-meta", null);
+        const route=message.scope=="public"?outbound?"You -> Public":asText(message.fromId)+" -> Public":outbound?"You -> "+asText(message.toId):asText(message.fromId)+" -> You";
+        const idNode=setData("full-message-id", message.messageId, element("span", "message-id", compactMessageId(message.messageId)+"  "+asText(message.createdAtUtc)));
+        idNode.setAttribute("title", message.messageId+"  "+asText(message.createdAtUtc));
+        append(meta, [element("span", "", route), idNode]);
+        append(wrap, [meta, element("pre", "message-body", asText(message.body))]);
+        thread.appendChild(wrap);
+      }
+    }, arrayOrEmpty(messages));
+    scrollToBottomAfterRender(thread);
+  }
+  function loadParticipants(){
+    setStatus(state, "Loading participants");
+    readJson(participantsCacheKey, (a) => {
+      if(a!=null&&a.$==1)if(a.$0,length(participants)===0){
+        participants=arrayOrEmpty(a.$0.participants);
+        isBlank(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
+        renderParticipants();
+        setStatus(state, "Loaded "+String(length(participants))+" cached participant(s)");
+        pollThread(true);
+        ensureSelectedChatSubscription();
+        replayPendingChatCommands();
+      }
+    });
+    getJson("/chat/api/agents", (data) => {
+      participants=arrayOrEmpty(data.participants);
+      writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-agents");
+      isBlank(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
+      renderParticipants();
+      setStatus(state, "Loaded "+String(length(participants))+" participant(s)");
+      pollThread(true);
+      ensureSelectedChatSubscription();
+      replayPendingChatCommands();
+    }, (t) => {
+      setStatus(state, t);
+    });
+  }
+  function pollThread(force){
+    if(!isBlank(selected)&&!polling){
+      polling=true;
+      const cacheKey_1=threadCacheKey(selected);
+      const fetchThread=(useCursor) => {
+        let url;
+        url="/chat/api/thread?participantId="+encodeURIComponent(participantId)+"&peerId="+encodeURIComponent(selected);
+        if(useCursor&&!isBlank(cursor))url=url+"&afterMessageId="+encodeURIComponent(cursor);
+        getJson(url, (data) => {
+          const messages=force&&!useCursor?latestArray(defaultRenderLimit(), data.messages):arrayOrEmpty(data.messages);
+          appendMessages(messages);
+          if(!isBlank(data.nextAfterMessageId))cursor=data.nextAfterMessageId;
+          readJson(cacheKey_1, (cached) => {
+            let _1, _2;
+            switch(cached!=null&&cached.$==1?(cached.$0,useCursor?(_1=cached.$0,0):(cached.$0,!force?(_1=cached.$0,1):2)):2){
+              case 0:
+                _2=_1.messages;
+                break;
+              case 1:
+                _2=_1.messages;
+                break;
+              case 2:
+                _2=[];
+                break;
+            }
+            const merged=mergeThreadMessages(_2, messages);
+            const nextAfterMessageId=textOr(cursor, data.nextAfterMessageId);
+            readWatermark(cacheKey_1, (watermark) => {
+              const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
+              const b=maxMessageSequence(merged);
+              let _3=Compare(a, b)===1?a:b;
+              writeSnapshotWithWatermark(cacheKey_1, New_26(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+            });
+          });
+          setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
+          polling=false;
+        }, (error) => {
+          setStatus(state, error);
+          polling=false;
+        });
+      };
+      if(force)readJson(cacheKey_1, (a) => {
+        if(a==null)fetchThread(false);
+        else {
+          const cached=a.$0;
+          const messages=latestArray(defaultRenderLimit(), cached.messages);
+          appendMessages(messages);
+          if(!isBlank(cached.nextAfterMessageId))cursor=cached.nextAfterMessageId;
+          setStatus(state, "Loaded "+String(length(messages))+" cached message(s); syncing missing tail");
+          fetchThread(!isBlank(cursor));
+        }
+      });
+      else fetchThread(!isBlank(cursor));
+    }
+  }
+  function refreshChatPendingState(){
+    readPendingRealitySplit((_1, _2) => renderPendingInspection(pendingState, filter(isPendingForThisChat, _1), filter(isPendingForThisChat, _2)));
+  }
+  function replayPendingChatCommands(){
+    if(!replayingPending){
+      replayingPending=true;
+      readAllPending((commands) => {
+        let remaining, accepted;
+        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter(isPendingForThisChat, commands));
+        if(length(mine)===0){
+          replayingPending=false;
+          refreshChatPendingState();
+        }
+        else {
+          remaining=length(mine);
+          accepted=0;
+          setStatus(pendingState, "Replaying "+String(length(mine))+" pending command(s)");
+          const finishOne=() => {
+            remaining=remaining-1;
+            remaining===0?(replayingPending=false,refreshChatPendingState(),accepted>0?(setStatus(state, "Replayed "+String(accepted)+" pending chat command(s)"),cursor="",polling=false,pollThread(true)):void 0):void 0;
+          };
+          iter((command) => {
+            postJsonText(command.url, command.payloadJson, (responseBody) => {
+              try {
+                const reply=json(isBlank(responseBody)?"{}":responseBody);
+                if(!(reply.message==null)&&!isBlank(reply.message.messageId))deletePendingThen(command.commandId, () => {
+                  accepted=accepted+1;
+                  appendMessages([reply.message]);
+                  cacheAcceptedChatMessage(int64OrZero(reply.streamSequence), reply.message);
+                  finishOne();
+                });
+                else finishOne();
+              }
+              catch(m){
+                finishOne();
+              }
+            }, () => {
+              finishOne();
+            });
+          }, mine);
+        }
+      });
+    }
+  }
+  function cacheAcceptedChatMessage(sequence, message){
+    if(!(message==null)&&!isBlank(message.messageId)&&!isBlank(selected)){
+      const cacheKey_1=threadCacheKey(selected);
+      return readJson(cacheKey_1, (cached) => {
+        const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
+        writeSnapshotWithWatermark(cacheKey_1, New_26(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+      });
+    }
+    else return null;
+  }
+  function handleChatSyncMessage(text){
+    try {
+      let o;
+      const response=json(text);
+      const responseType=asText(response.type).toLowerCase();
+      const responseStatus=asText(response.status).toLowerCase();
+      const requestId=asText(response.requestId);
+      if(responseStatus=="ok"){
+        if(responseType=="subscribe")setChatWsState("subscribed");
+        else if(responseType=="chat-send"){
+          exists((id) => id==requestId, pendingWsChatIds)?(pendingWsChatIds=filter((id) => id!=requestId, pendingWsChatIds),deletePendingThen(requestId, () => {
+            refreshChatPendingState();
+            draft.value="";
+          })):void 0;
+          !(response.message==null)&&!isBlank(response.message.messageId)?(appendMessages([response.message]),cacheAcceptedChatMessage(response.event==null?0n:response.event.sequence, response.message),cursor=response.message.messageId):void 0;
+          setStatus(state, "Sent "+textOr("message", response.message==null?"":response.message.messageId)+" "+asText(response.deliveryHint));
+        }
+        else if(responseType=="stream-event"){
+          const event=response.event;
+          if(!isBlank(selected)&&!(event==null)&&!(event.streamKey==null)&&streamIdentity(event.streamKey)==streamIdentity(chatStreamKey(selected))){
+            const event_1=response.event;
+            if(event_1==null||isBlank(event_1.payload))o=null;
+            else try {
+              const message=json(event_1.payload);
+              o=message==null||isBlank(message.messageId)?null:Some(message);
+            }
+            catch(m){
+              o=Some(New_25(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
+            }
+            if(o==null)null;
+            else {
+              const message_1=o.$0;
+              appendMessages([message_1]);
+              cacheAcceptedChatMessage(response.event.sequence, message_1);
+              cursor=message_1.messageId;
+              setStatus(state, "Synced chat event "+message_1.messageId);
+            }
+          }
+          else null;
+        }
+        else null;
+      }
+      else responseStatus=="error"?exists((id) => id==requestId, pendingWsChatIds)?(setStatus(state, pendingFailure("WebSocket chat send", asText(response.error))),refreshChatPendingState()):setStatus(state, "WebSocket chat error: "+asText(response.error)):null;
+    }
+    catch(error){
+      setStatus(state, "WebSocket chat parse failed: "+errorMessage(error));
+    }
+  }
+  function flushChatSyncFrames(socket){
+    if(Equals(socket.readyState, 1)){
+      const frames=queuedChatSyncFrames;
+      queuedChatSyncFrames=[];
+      iter((frame) => {
+        socket.send(frame);
+      }, frames);
+    }
+  }
+  function ensureChatSyncSocket(){
+    let _1, _2;
+    if(chatSocket!=null&&chatSocket.$==1){
+      const socket=chatSocket.$0;
+      _1=(Equals(socket.readyState, 1)||Equals(socket.readyState, 0))&&(_2=chatSocket.$0,true);
+    }
+    else _1=false;
+    if(_1)return _2;
+    else {
+      setChatWsState("connecting");
+      const socket_1=new WebSocket(syncWebSocketUrl());
+      chatSocket=Some(socket_1);
+      socket_1.onopen=() => {
+        setChatWsState("open");
+        return flushChatSyncFrames(socket_1);
+      };
+      socket_1.onmessage=(event) => handleChatSyncMessage(String(event.data));
+      socket_1.onerror=() => {
+        setChatWsState("error");
+        return setStatus(state, "WebSocket chat error; pending command remains replayable");
+      };
+      socket_1.onclose=() => {
+        chatSocket=null;
+        subscribedChatStream="";
+        return setChatWsState("closed");
+      };
+      return socket_1;
+    }
+  }
+  function sendChatSyncFrame(frame){
+    while(true)
+      {
+        const socket=ensureChatSyncSocket();
+        return Equals(socket.readyState, 1)?socket.send(frame):void(queuedChatSyncFrames=queuedChatSyncFrames.concat([frame]));
+      }
+  }
+  function ensureSelectedChatSubscription(){
+    if(!isBlank(selected)){
+      const streamKey=chatStreamKey(selected);
+      const identity=streamIdentity(streamKey);
+      if(!isBlank(identity)&&identity!=subscribedChatStream){
+        subscribedChatStream=identity;
+        setChatWsState("subscribing");
+        sendChatSyncFrame(JSON.stringify(New_1("subscribe", newRequestId("chat-subscribe"), streamKey)));
+      }
+    }
+  }
+  function sendMessage(){
+    const body=Trim(draft.value);
+    if(isBlank(selected))setStatus(state, "Select a participant first");
+    else if(isBlank(body))setStatus(state, "Message is empty");
+    else {
+      const request=New_29(participantId, selected, body, ["web-chat"]);
+      const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
+      const wsRequest=New_28("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
+      refreshChatPendingState();
+      setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
+      sendChatSyncFrame(JSON.stringify(wsRequest));
+      scrollToBottomAfterRender(thread);
+    }
+  }
+  reload.addEventListener("click", loadParticipants);
+  send.addEventListener("click", sendMessage);
+  draft.addEventListener("keydown", (event) => event.key=="Enter"&&!event.shiftKey?(event.preventDefault(),sendMessage()):null);
+  globalThis.setInterval(() => pollThread(false), 2500);
+  refreshChatPendingState();
+  loadParticipants();
+}
+function mountUnknownPage(page, path){
+  page.className="page actors-page";
+  page.appendChild(element("div", "empty", "No append page is registered for "+String(path)+"."));
+}
+function refreshAppendNav(activePath){
+  const applyDefinitions=(data) => {
+    const nav=doc().getElementById("ptc-nav");
+    if(!(nav==null))renderNav(nav, activePath, arrayOrEmpty(data.pages));
+  };
+  readJson(appendPagesDefinitionsCacheKey(), (a) => {
+    if(a==null){ }
+    else applyDefinitions(a.$0);
+  });
+  getJson("/pages/api/definitions", (data) => {
+    writeAppendPagesDefinitions(data);
+    applyDefinitions(data);
+  }, () => { });
+}
+function set_registeredRenderers(_1){
+  _c.registeredRenderers=_1;
+}
+function registeredRenderers(){
+  return _c.registeredRenderers;
+}
+function shapeRegistration(shape, label, badge, className){
+  return New_3(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+}
+function set_runtimeAppendPageShapes(_1){
+  _c.runtimeAppendPageShapes=_1;
+}
+function runtimeAppendPageShapes(){
+  return _c.runtimeAppendPageShapes;
+}
+function normalizeShapeText(value){
+  const text=Trim(asText(value)).toLowerCase();
+  return text.length>0&&text.length<=64&&forall_2((ch) => ch>="a"&&ch<="z"||ch>="0"&&ch<="9"||ch==="-"||ch==="_"||ch===".", text)?text:"raw";
+}
+function textOr(fallback, value){
+  return isBlank(value)?fallback:value;
+}
+function pageDefinitionFromWire(wire){
+  if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.definition.v1"||isBlank(wire.pageId))return null;
+  else {
+    const pageId=asText(wire.pageId);
+    return Some(New_4(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText(wire.defaultKey), arrayOrEmpty(wire.tags)));
+  }
+}
+function hiddenPageFromWire(wire){
+  if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.hidden.v1"||isBlank(wire.pageId))return null;
+  else {
+    const pageId=asText(wire.pageId);
+    return Some([pageId, textOr(pageId, wire.tabId)]);
+  }
+}
+function sameTextInvariant(left, right){
+  return asText(left).toLowerCase()==asText(right).toLowerCase();
+}
+function sortAppendPages(pages){
+  return sortBy((page) =>[asText(page.title).toLowerCase(), asText(page.pageId).toLowerCase()], arrayOrEmpty(pages));
+}
+function writeSnapshotWithWatermark(cacheKey_1, value, newestSequence, cachedCount, source){
+  writeJson(cacheKey_1, value);
+  writeWatermark(cacheKey_1, newestSequence, cachedCount, source);
+}
+function set_requestSeq(_1){
+  _c.requestSeq=_1;
+}
+function requestSeq(){
+  return _c.requestSeq;
+}
+function errorMessage(error){
+  return error==null?"request failed":String(error);
+}
+function isCurrentPage(activePath, href){
+  return TrimEnd(activePath, ["/"])==TrimEnd(href, ["/"]);
+}
+function pagePath(page){
+  const pageId=asText(page.pageId);
+  const path=asText(page.path);
+  return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
+}
+function setTestId(id, node){
+  !isBlank(id)?node.setAttribute("data-testid", id):void 0;
+  return node;
+}
+function defaultRenderLimit(){
+  return _c.defaultRenderLimit;
+}
+function element(tag, className, textValue){
+  const node=doc().createElement(tag);
+  if(!isBlank(className))node.className=className;
+  if(!(textValue==null))node.textContent=textValue;
+  return node;
+}
+function button(className, text){
+  const node=element("button", className, text);
+  node.setAttribute("type", "button");
+  return node;
+}
+function input(placeholder){
+  const node=doc().createElement("input");
+  node.placeholder=placeholder;
+  return node;
+}
+function textarea(className, placeholder){
+  const node=doc().createElement("textarea");
+  node.className=className;
+  node.placeholder=placeholder;
+  return node;
+}
+function append(parent, children){
+  for(let i=0, _1=children.length-1;i<=_1;i++)parent.appendChild(get(children, i));
+  return parent;
+}
+function actorArguButtonLabel(page){
+  return isActorArguPage(page)?"Tell":"Append";
+}
+function pageTitle(page){
+  return textOr(asText(page.pageId), asText(page.title));
+}
+function isActorArguPage(page){
+  return hasTag("actor-argu", page.tags);
+}
+function currentUserId(){
+  const userNode=doc().getElementById("ptc-comm-user");
+  if(userNode==null||isBlank(userNode.textContent))return"user.web";
+  else {
+    const user=json(userNode.textContent);
+    return user==null||isBlank(user.participantId)?"user.web":user.participantId;
+  }
+}
+function renderPendingInspection(node, commands, foreignCommands){
+  let _1, shown, shown_1;
+  const commands_1=arrayOrEmpty(commands);
+  const foreignCommands_1=arrayOrEmpty(foreignCommands);
+  node.setAttribute("data-pending-count", String(length(commands_1)));
+  node.setAttribute("data-foreign-pending-count", String(length(foreignCommands_1)));
+  node.setAttribute("data-foreign-pending-realities", concat_1(",", distinct(map((command) => asText(command.serverRealityId), foreignCommands_1))));
+  node.setAttribute("data-pending-kinds", concat_1(",", map((a) => a.kind, commands_1)));
+  node.setAttribute("data-pending-targets", concat_1("\n", map((a) => a.target, commands_1)));
+  node.setAttribute("data-pending-urls", concat_1("\n", map((a) => a.url, commands_1)));
+  node.setAttribute("data-pending-statuses", concat_1(",", map((a) => a.status, commands_1)));
+  clear(node);
+  if(length(commands_1)>0){
+    node.appendChild(element("div", "strong", "Pending commands: "+String(length(commands_1))));
+    const list=setTestId("pending-command-list", element("div", "pending-inspection-list", null));
+    _1=(shown=0,iter((command) => {
+      if(shown<4){
+        shown=shown+1;
+        const row=setData("pending-status", command.status, setData("pending-url", command.url, setData("pending-target", command.target, setData("pending-kind", command.kind, setTestId("pending-command-row", element("div", "pending-command-row wrap", null))))));
+        append(row, [element("span", "strong pending-command-kind", asText(command.kind)), element("span", "muted wrap pending-command-target", asText(command.target)), element("span", "meta wrap pending-command-status", String(asText(command.method))+" "+String(asText(command.url))+" / "+String(asText(command.status)))]);
+        list.appendChild(row);
+      }
+    }, commands_1),length(commands_1)>shown?list.appendChild(element("div", "meta", "+"+String(length(commands_1)-shown)+" more pending command(s)")):void 0,node.appendChild(list));
+  }
+  else _1=void 0;
+  if(length(foreignCommands_1)>0){
+    node.appendChild(setData("foreign-pending-count", String(length(foreignCommands_1)), setTestId("foreign-pending-summary", element("div", "pending-foreign-summary meta", "Foreign pending blocked/stale: "+String(length(foreignCommands_1))))));
+    const list_1=setTestId("foreign-pending-list", element("div", "pending-foreign-list", null));
+    shown_1=0;
+    iter((command) => {
+      if(shown_1<3){
+        shown_1=shown_1+1;
+        const x=setTestId("foreign-pending-row", element("div", "pending-command-row pending-command-foreign wrap", null));
+        let _2=setData("pending-reality", asText(command.serverRealityId), x);
+        let _3=setData("pending-kind", command.kind, _2);
+        const row=setData("pending-target", command.target, _3);
+        append(row, [element("span", "strong pending-command-kind", asText(command.kind)), element("span", "muted wrap pending-command-target", asText(command.target)), element("span", "meta wrap pending-command-status", "blocked/stale / "+asText(command.serverRealityId))]);
+        list_1.appendChild(row);
+      }
+    }, foreignCommands_1);
+    if(length(foreignCommands_1)>shown_1)list_1.appendChild(element("div", "meta", "+"+String(length(foreignCommands_1)-shown_1)+" more foreign pending command(s)"));
+    node.appendChild(list_1);
+  }
+  else void 0;
+}
+function appendPageValueCount(snapshot){
+  return snapshot==null?0:fold((_1, _2) => _1+_2, 0, map((bucket) => {
+    if(bucket==null)return 0;
+    else {
+      const a=bucket.valueCount;
+      const b=length(arrayOrEmpty(bucket.values));
+      return Compare(a, b)===1?a:b;
+    }
+  }, arrayOrEmpty(snapshot.buckets)));
+}
+function joinValues(values){
+  const values_1=arrayOrEmpty(values);
+  return length(values_1)===0?"":concat_1(" / ", values_1);
+}
+function keysAsJson(keys){
+  const keys_1=arrayOrEmpty(keys);
+  return length(keys_1)===1?JSON.stringify(get(keys_1, 0)):JSON.stringify(keys_1);
+}
+function latestArray(limit, values){
+  const values_1=arrayOrEmpty(values);
+  return length(values_1)<=limit?values_1:skip(length(values_1)-limit, values_1);
+}
+function renderAppendValue(value){
+  let _1;
+  const mode=asText(value.mode);
+  const m=mode.toLowerCase();
+  const className=m=="inbound-message"?"fcell-card fcell-chat inbound":m=="outbound-message"?"fcell-card fcell-chat outbound":m=="list"?"fcell-card fcell-list":m=="grid"?"fcell-card fcell-grid":"fcell-card";
+  const card=setData("mode", mode, setTestId("append-value-card", element("div", className, null)));
+  const head_2=element("div", "fcell-head", null);
+  append(head_2, [element("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element("span", "muted wrap", asText(value.valueId)+" / "+asText(value.createdAtUtc))]);
+  card.appendChild(head_2);
+  const m_1=mode.toLowerCase();
+  switch(m_1){
+    case"outbound-message":
+    case"inbound-message":
+      _1=iter((row) => {
+        card.appendChild(renderTextBlock("fcell-message-body", row));
+      }, arrayOrEmpty(value.rows));
+      break;
+    case"list":
+      const list=element("ul", "fcell-list-items", null);
+      _1=(iter((row) => {
+        list.appendChild(element("li", "", asText(row)));
+      }, arrayOrEmpty(value.rows)),void card.appendChild(list));
+      break;
+    case"grid":
+      let _2;
+      const table=element("table", "fcell-grid-table", null);
+      const columns=arrayOrEmpty(value.columns);
+      if(length(columns)>0){
+        const thead=element("thead", "", null);
+        const header=element("tr", "", null);
+        _2=(iter((column) => {
+          header.appendChild(element("th", "wrap", asText(column)));
+        }, columns),thead.appendChild(header),void table.appendChild(thead));
+      }
+      else _2=null;
+      const tbody=element("tbody", "", null);
+      _1=(iter((cells) => {
+        const tr=element("tr", "", null);
+        iter((cell) => {
+          tr.appendChild(element("td", "wrap", asText(cell)));
+        }, arrayOrEmpty(cells));
+        tbody.appendChild(tr);
+      }, arrayOrEmpty(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
+      break;
+    default:
+      _1=void card.appendChild(renderTextBlock("fcell-source", value.rawValue));
+      break;
+  }
+  if(!isBlank(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message")card.appendChild(renderTextBlock("fcell-source", value.source));
+  return card;
+}
+function setStatus(node, text){
+  node.textContent=text;
+}
+function scrollToBottomAfterRender(node){
+  scrollToBottomNow(node);
+  setTimeout(() => {
+    scrollToBottomNow(node);
+  }, 0);
+  setTimeout(() => {
+    scrollToBottomNow(node);
+  }, 50);
+  setTimeout(() => {
+    scrollToBottomNow(node);
+  }, 150);
+  setTimeout(() => {
+    scrollToBottomNow(node);
+  }, 300);
+}
+function postJsonText(url, payloadJson, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST", 
+    headers:headers, 
+    body:textOr("{}", payloadJson)
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
+function postJson(url, body, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST", 
+    headers:headers, 
+    body:JSON.stringify(body)
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
+function pendingFailure(action, error){
+  return String(action)+" failed; pending command kept in browser DB: "+String(asText(error));
+}
+function rememberPending(kind, target, url, body){
+  const payloadJson=JSON.stringify(body);
+  const commandId=newPendingCommandId(kind, target, url, payloadJson);
+  writePending(New_8(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
+  return commandId;
+}
+function postRemoveAppendPageKey(url, body, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST", 
+    headers:headers, 
+    body:JSON.stringify(body)
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
+function postAppendPageKey(url, body, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST", 
+    headers:headers, 
+    body:JSON.stringify(body)
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
+function setHref(href, node){
+  node.setAttribute("href", href);
+  return node;
+}
+function pageTypeClass(page){
+  if(isActorArguPage(page))return asText(page.shape).toLowerCase()=="raw"?"raw":"actor-argu";
+  else {
+    const m=findAppendPageShape(page.shape);
+    if(m==null)return"raw";
+    else {
+      const shape=m.$0;
+      return textOr(normalizeShapeText(page.shape), shape.className);
+    }
+  }
+}
+function pageTypeBadge(page){
+  if(isActorArguPage(page))return asText(page.shape).toLowerCase()=="raw"?"R":"A";
+  else {
+    const m=findAppendPageShape(page.shape);
+    return m==null?"R":textOr("?", m.$0.badge);
+  }
+}
+function pageTypeLabel(page){
+  if(isActorArguPage(page))return asText(page.shape).toLowerCase()=="raw"?"Raw":"Actor Argu";
+  else {
+    const m=findAppendPageShape(page.shape);
+    if(m==null)return"Raw";
+    else {
+      const shape=m.$0;
+      return textOr(normalizeShapeText(page.shape), shape.label);
+    }
+  }
+}
+function setId(id, node){
+  node.setAttribute("id", id);
+  return node;
+}
+function renderPageCreator(nav, activePath, pages){
+  let candidatePageId, candidatesLoaded, replayingPendingPageRegistration;
+  const wrap=setTestId("page-create", element("div", "page-create", null));
+  const shape=setTestId("page-create-shape", select(appendPageShapeOptions()));
+  const pageId=setTestId("page-create-id", input("page id"));
+  const title=setTestId("page-create-title", input("title"));
+  const binding=setTestId("page-create-binding", select([]));
+  const add=setTestId("page-create-submit", button("", "Add"));
+  const status=setTestId("page-create-status", element("span", "state page-create-status", ""));
+  candidatePageId="";
+  candidatesLoaded=false;
+  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
+  const appendOption=(value, label, target) => {
+    const option=doc().createElement("option");
+    option.setAttribute("value", value);
+    option.textContent=label;
+    target.appendChild(option);
+  };
+  const resetBinding=() => {
+    clear(binding);
+    appendOption("", "Default", binding);
+    binding.value="";
+    binding.setAttribute("data-candidate-count", "0");
+    candidatesLoaded=false;
+    candidatePageId="";
+  };
+  const refresh=(pages_1) => {
+    renderNav(nav, activePath, arrayOrEmpty(pages_1));
+  };
+  const loadCandidates=(pageIdText, onDone) => {
+    if(isBlank(pageIdText)){
+      resetBinding();
+      return onDone();
+    }
+    else {
+      const normalizedInput=Trim(pageIdText);
+      return candidatesLoaded&&candidatePageId.toLowerCase()==normalizedInput.toLowerCase()?onDone():(setStatus(status, "Checking history"),getJson("/pages/api/tab-candidates?pageId="+encodeURIComponent(normalizedInput), (reply) => {
+        const candidates=arrayOrEmpty(reply.candidates);
+        clear(binding);
+        if(length(candidates)===0){
+          appendOption("", "Default", binding);
+          binding.value="";
+          setStatus(status, "Ready");
+        }
+        else {
+          iter((candidate) => {
+            appendOption("reuse:"+asText(candidate.tabId), "Reuse "+textOr(asText(candidate.pageId), asText(candidate.tabId))+" ("+(candidate.visible?"visible":"hidden")+")", binding);
+          }, candidates);
+          appendOption("new", "New history", binding);
+          binding.value="reuse:"+asText(get(candidates, 0).tabId);
+          setStatus(status, "Existing history found");
+        }
+        candidatePageId=normalizedInput;
+        candidatesLoaded=true;
+        binding.setAttribute("data-candidate-count", String(length(candidates)));
+        onDone();
+      }, (error) => {
+        resetBinding();
+        setStatus(status, error);
+        onDone();
+      }));
+    }
+  };
+  const addPageAfterCandidates=() => {
+    const pageIdText=Trim(pageId.value);
+    const titleText=Trim(title.value);
+    if(isBlank(pageIdText)&&isBlank(titleText))setStatus(status, "Page id or title is required");
+    else {
+      const bindingValue=asText(binding.value);
+      const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
+      const request=New_30(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
+      setStatus(status, "Saving");
+      postJson("/pages/api/register-page", request, (reply) => {
+        deletePendingThen(pendingId, () => {
+          writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty(reply.pages)), reply.maxSequence, reply.pages));
+          refresh(reply.pages);
+          reply.page==null?setStatus(status, "Saved"):(setStatus(status, "Saved "+pageTitle(reply.page)),globalThis.location.assign(navigationPathForCreatedPage(reply.page)));
+        });
+      }, (error) => {
+        setStatus(status, pendingFailure("Create page", error));
+      });
+    }
+  };
+  replayingPendingPageRegistration=false;
+  const addPage=() => {
+    loadCandidates(Trim(pageId.value), addPageAfterCandidates);
+  };
+  pageId.addEventListener("keydown", (event) => event.key=="Enter"?addPage():null);
+  pageId.addEventListener("input", () => {
+    const pageIdText=Trim(pageId.value);
+    return isBlank(pageIdText)?resetBinding():loadCandidates(pageIdText, () => { });
+  });
+  title.addEventListener("keydown", (event) => event.key=="Enter"?addPage():null);
+  add.addEventListener("click", addPage);
+  resetBinding();
+  refresh(pages);
+  append(wrap, [shape, pageId, title, binding, add, status]);
+  if(!replayingPendingPageRegistration){
+    replayingPendingPageRegistration=true;
+    readAllPending((commands) => {
+      let remaining, accepted;
+      const mine=filter((command) =>!(command==null)&&sameText(command.kind, "append-page-register")&&sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), commands);
+      if(length(mine)===0)replayingPendingPageRegistration=false;
+      else {
+        remaining=length(mine);
+        accepted=0;
+        setStatus(status, "Replaying "+String(length(mine))+" pending page command(s)");
+        const finishOne=() => {
+          remaining=remaining-1;
+          remaining===0?(replayingPendingPageRegistration=false,accepted>0?setStatus(status, "Replayed "+String(accepted)+" pending page command(s)"):void 0):void 0;
+        };
+        iter((command) => {
+          postJsonText(command.url, command.payloadJson, (body) => {
+            try {
+              const reply=json(isBlank(body)?"{}":body);
+              deletePendingThen(command.commandId, () => {
+                accepted=accepted+1;
+                !(reply==null)?(writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty(reply.pages)), reply.maxSequence, reply.pages)),refresh(reply.pages)):void 0;
+                finishOne();
+              });
+            }
+            catch(error){
+              setStatus(status, "Replay create page parse failed: "+errorMessage(error));
+              finishOne();
+            }
+          }, (error) => {
+            setStatus(status, pendingFailure("Replay create page", error));
+            finishOne();
+          });
+        }, mine);
+      }
+    });
+  }
+  return wrap;
+}
+function setValueCount(buckets){
+  return fold((_1, _2) => _1+_2, 0, map((bucket) => bucket==null?0:bucket.valueCount, arrayOrEmpty(buckets)));
+}
+function actorValueCount(data){
+  if(data==null)return 0;
+  else {
+    const a=data.actorCount;
+    const b=data.nodeCount;
+    return Compare(a, b)===1?a:b;
+  }
+}
+function cardTitle(title, id, status, line){
+  const wrap=doc().createDocumentFragment();
+  const row=element("div", "name-row", null);
+  append(row, [statusDot(status), element("span", "strong wrap", title)]);
+  wrap.appendChild(row);
+  if(!isBlank(id))wrap.appendChild(element("div", "muted wrap", id));
+  if(!isBlank(line))wrap.appendChild(element("div", "meta wrap", line));
+  return wrap;
+}
+function statusDot(status){
+  const node=element("span", isLive(status)?"status-dot online":"status-dot offline", null);
+  node.setAttribute("title", asText(status));
+  return node;
+}
+function compactMessageId(value){
+  const text=asText(value);
+  return text.length<=32?text:StartsWith(text.toLowerCase(), "pending-command")?"pending-command:"+String(text.length):Substring(text, 0, 24)+"..."+text.substring(text.length-6);
+}
+function mergeThreadMessages(existing, incoming){
+  const v=distinctMessages(arrayOrEmpty(existing).concat(arrayOrEmpty(incoming)));
+  return latestArray(defaultRenderLimit(), v);
+}
+function maxMessageSequence(messages){
+  return fold((_1, _2) => Compare(_1, _2)===1?_1:_2, 0n, map((message) => message==null?0n:tryParseSequence("msg-", message.messageId), arrayOrEmpty(messages)));
+}
+function int64OrZero(value){
+  const parsed=parseInt(asText(value), globalThis.$radix);
+  return isNaN(parsed)||parsed<0?0n:BigInt(parsed);
+}
+function hasTag(tag, tags){
+  return exists((value) => asText(value).toLowerCase()==tag, arrayOrEmpty(tags));
+}
+function fcellValueModeLabel(mode, tags){
+  return hasTag("actor-argu-command", tags)?"Actor Argu Outbound":hasTag("actor-argu-reply", tags)?"Actor Argu Reply":hasTag("actor-argu-error", tags)?"Actor Argu Error":fcellModeLabel(mode);
+}
+function renderTextBlock(className, text){
+  const m=tryRenderWithRegisteredRenderers(text);
+  return m==null?element("pre", className, asText(text)):m.$0;
+}
+function scrollToBottomNow(node){
+  if(!(node==null)){
+    try {
+      node.scrollTop=node.scrollHeight;
+    }
+    catch(m){
+      null;
+    }
+  }
+}
+function newPendingCommandId(kind, target, url, payloadJson){
+  set_pendingCommandSeq(pendingCommandSeq()+1);
+  return cacheKey("pending-command", ofArray([kind, target, url, payloadJson, "attempt-"+String(pendingCommandSeq()), "rand-"+String(Math.floor(Math.random()*1000000000))]));
+}
+function findAppendPageShape(shape){
+  const normalized=normalizeShapeText(shape);
+  return tryFind((candidate) => normalizeShapeText(candidate.shape)==normalized, appendPageShapeRegistry());
+}
+function select(options){
+  const node=doc().createElement("select");
+  iter((_1) => {
+    const option=doc().createElement("option");
+    option.setAttribute("value", _1[0]);
+    option.textContent=_1[1];
+    node.appendChild(option);
+  }, options);
+  return node;
+}
+function appendPageShapeOptions(){
+  return map((shape) =>[normalizeShapeText(shape.shape), textOr(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
+}
+function navigationPathForCreatedPage(page){
+  const pageId=asText(page.pageId);
+  const path=asText(page.path);
+  return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
+}
+function isLive(status){
+  const m=asText(status).toLowerCase();
+  return m=="online"||(m=="running"||(m=="up"||m=="available"));
+}
+function distinctMessages(messages){
+  let kept;
+  kept=[];
+  iter((message) => {
+    if(!(message==null)&&!isBlank(message.messageId)&&!exists((row) => row.messageId==message.messageId, kept))kept=kept.concat([message]);
+  }, arrayOrEmpty(messages));
+  return kept;
+}
+function tryParseSequence(prefix, value){
+  const text=asText(value);
+  if(isBlank(text)||!StartsWith(text, prefix))return 0n;
+  else try {
+    return BigInt(text.substring(prefix.length));
+  }
+  catch(m){
+    return 0n;
+  }
+}
+function fcellModeLabel(mode){
+  const m=asText(mode).toLowerCase();
+  return m=="inbound-message"?"FCell Chat":m=="outbound-message"?"FCell Chat":m=="list"?"FCell List":m=="table"?"FCell Grid":m=="grid"?"FCell Grid":"FCell Value";
+}
+function tryRenderWithRegisteredRenderers(text){
+  let result, index;
+  const content=asText(text);
+  if(isBlank(content))return null;
+  else {
+    result=null;
+    index=0;
+    while(result==null&&index<length(registeredRenderers()))
+      {
+        let _1;
+        try {
+          const m=(get(registeredRenderers(), index))[1](content);
+          _1=m!=null&&m.$==1?!(m.$0==null)?void(result=Some(m.$0)):null:null;
+        }
+        catch(m_1){
+          _1=null;
+        }
+        index=index+1;
+      }
+    return result;
+  }
+}
+function set_pendingCommandSeq(_1){
+  _c.pendingCommandSeq=_1;
+}
+function pendingCommandSeq(){
+  return _c.pendingCommandSeq;
+}
+function appendPageShapeRegistry(){
+  return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
+}
+function builtInAppendPageShapes(){
+  return[shapeRegistration("fcell-chat", "FCell Chat", "C", "fcell-chat"), shapeRegistration("fcell-list", "FCell List", "L", "fcell-list"), shapeRegistration("fcell-grid", "FCell Grid", "G", "fcell-grid"), shapeRegistration("actor-argu", "Actor Argu", "A", "actor-argu"), shapeRegistration("raw", "Raw", "R", "raw")];
+}
+function manifestAppendPageShapes(){
+  return filter((shape) => shape.shape!="raw", map((shape) => shape==null?shapeRegistration("raw", "Raw", "R", "raw"):shapeRegistration(shape.shape, shape.label, shape.badge, shape.className), collect((extension) => extension==null?[]:arrayOrEmpty(extension.appendPageShapes), serverClientExtensions())));
+}
+function serverClientExtensions(){
+  const node=doc().getElementById("ptc-comm-client-extensions");
+  if(node==null||isBlank(node.textContent))return[];
+  else {
+    const o=tryJson(node.textContent);
+    return o==null?[]:o.$0;
+  }
+}
+function GetFieldValues(o){
+  let r=[];
+  let k;
+  for(var k_1 in o)r.push(o[k_1]);
+  return r;
+}
+function FailWith(msg){
+  throw new Error(msg);
+}
+function KeyValue(kvp){
+  return[kvp.K, kvp.V];
+}
+function range(min, max_1){
+  const count=1+max_1-min;
+  return count<=0?[]:init_1(count, (x) => x+min);
+}
+function TryRender(content){
+  const m=tryGetSchema(content);
+  return m!=null&&m.$==1&&m.$0=="fskynet-sdui"?Some(createSduiCanvas(content)):null;
+}
+function tryGetSchema(jsonStr){
+  try {
+    const obj=globalThis.JSON.parse(jsonStr);
+    return"schema"in obj?Some(obj.schema):null;
+  }
+  catch(m){
+    return null;
+  }
+}
+function createSduiCanvas(jsonStr){
+  let _1;
+  const isExpanded=_c_1.Create_1(false);
+  if(!Equals(globalThis.document.head, null)){
+    const styleId="sdui-dynamic-styles";
+    if(Equals(globalThis.document.getElementById(styleId), null)){
+      const style=globalThis.document.createElement("style");
+      _1=(style.setAttribute("id", styleId),style.textContent="\r\n                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\r\n                    ",void globalThis.document.head.appendChild(style));
+    }
+    else _1=null;
+  }
+  else _1=null;
+  return E("div", [Attr.Create("style", "border: 1px solid #5bc0de; border-radius: 8px; padding: 15px; margin: 10px 0; background: #2b2b2b; color: #eee; font-family: sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.3);")], [E("div", [Attr.Create("style", "display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;")], [E("span", [Attr.Create("style", "font-weight: bold; font-size: 1.2rem; color: #5bc0de;")], [Doc.TextNode("FSkynet SDUI Canvas")]), E("button", [Attr.Create("style", "background: #444; color: #aaa; border: 1px solid #555; border-radius: 4px; padding: 5px 10px; cursor: pointer;"), Handler("click", () =>() => isExpanded.Set(!isExpanded.Get()))], [Doc.TextView(Map((e) => e?"Hide JSON":"View JSON", isExpanded.View))])]), Doc.EmbedView(Map((e) => e?E("pre", [Attr.Create("style", "background: #1e1e1e; padding: 10px; border-radius: 4px; overflow-x: auto; color: #aaa; font-size: 0.85rem;")], [Doc.TextNode(jsonStr)]):Doc.Empty, isExpanded.View)), E("div", [Attr.Create("style", "margin-top: 10px;")], ofSeq_1(delay(() => enumTryWith(delay(() => {
+    let r;
+    let payloadObj=JSON.parse(jsonStr);
+    let sduiNode=payloadObj.sdui;
+    if(!sduiNode)r=[];
+    let unwrapped=globalThis.unwrapFCell?globalThis.unwrapFCell(sduiNode):sduiNode;
+    r=Array.isArray(unwrapped)?unwrapped:[unwrapped];
+    let _2=map(renderNode, r);
+    let _3=ofArray(_2);
+    let _4=[Doc.Concat(_3)];
+    return[E("div", [], _4)];
+  }), () => 1, (ex) =>[E("pre", [Attr.Create("style", "color: #d9534f;")], [Doc.TextNode("Error parsing SDUI Canvas: "+ex.message)])]))))]);
+}
+function E(name, attrs, children){
+  return Doc.Element(name, attrs, children);
+}
+function renderNode(obj){
+  if(Equals(typeof obj, "undefined")||Equals(obj, null))return Doc.Empty;
+  else {
+    const t=obj.type;
+    switch(t){
+      case"Heading":
+        const textStr=obj.text||"";
+        return E("h2", [Attr.Create("style", "color: #5bc0de; margin-bottom: 15px;")], [Doc.TextNode(textStr)]);
+      case"Label":
+        const textStr_1=obj.text||"";
+        return E("span", [Attr.Create("style", "margin-right: 10px; color: #ccc;")], [Doc.TextNode(textStr_1)]);
+      case"TextInput":
+        const placeholderStr=obj.placeholder||"";
+        const idStr=obj.id||"";
+        return V("input", append_1(ofArray([Attr.Create("type", "text"), Attr.Create("placeholder", placeholderStr), Attr.Create("style", "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box; margin: 5px 0;")]), !IsNullOrEmpty(idStr)?ofArray([OnAfterRender((el) => {
+          el.setAttribute("id", idStr);
+        })]):FSharpList.Empty));
+      case"Row":
+        const childrenDocs=ofArray(map(renderNode, obj.children||[]));
+        return E("div", [Attr.Create("style", "display: flex; flex-direction: row; gap: 15px; margin-bottom: 10px; align-items: center;")], childrenDocs);
+      case"Column":
+        const childrenDocs_1=ofArray(map(renderNode, obj.children||[]));
+        return E("div", [Attr.Create("style", "display: flex; flex-direction: column; gap: 10px;")], childrenDocs_1);
+      case"Divider":
+        return V("hr", [Attr.Create("style", "border: 0; border-top: 1px solid #444; margin: 15px 0; width: 100%;")]);
+      case"SelectBox":
+      case"Dropdown":
+        const isMultiple=!(!obj.multiple);
+        const optionDocs=ofArray(map((opt) => E("option", [], [Doc.TextNode(opt)]), obj.options||[]));
+        return E("select", append_1(ofArray([Attr.Create("style", "padding: 8px; margin: 5px 0; background: #333; color: white; border: 1px solid #555; border-radius: 4px; font-size: 1rem; display: block; width: 200px;")]), isMultiple?ofArray([OnAfterRender((el) => {
+          el.setAttribute("multiple", "multiple");
+        })]):FSharpList.Empty), optionDocs);
+      case"DataGrid":
+        return E("div", [Attr.Create("style", "background: #1e1e1e; border-radius: 8px; overflow: hidden; border: 1px solid #444; margin: 20px 0;")], [Doc.TextNode("DataGrid rendered (Requires DataRef bindings)")]);
+      case"Button":
+        const btnText=obj.text||"Button";
+        return E("button", [Attr.Create("class", "btn btn-success canvas-btn"), Attr.Create("style", "margin-top: 15px; padding: 10px 20px; font-weight: bold; background: #5cb85c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;"), Handler("click", () =>() => globalThis.alert("Dispatcher: Sending command..."))], [Doc.TextNode(btnText)]);
+      case"AppLoader":
+        const textStr_2=obj.text||"Loading...";
+        return E("div", [Attr.Create("style", "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; color: #5bc0de;")], [V("div", [Attr.Create("style", "border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #5bc0de; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;")]), E("span", [Attr.Create("style", "margin-top: 10px;")], [Doc.TextNode(textStr_2)])]);
+      case"ColorPicker":
+        const defaultColor=obj.defaultColor||"#000000";
+        const idStr_1=obj.id||"";
+        return V("input", append_1(ofArray([Attr.Create("type", "color"), Attr.Create("value", defaultColor), Attr.Create("style", "padding: 0; margin: 5px 0; background: none; border: 1px solid #555; border-radius: 4px; cursor: pointer; height: 40px; width: 60px;")]), !IsNullOrEmpty(idStr_1)?ofArray([OnAfterRender((el) => {
+          el.setAttribute("id", idStr_1);
+        })]):FSharpList.Empty));
+      case"DatePicker":
+        return V("input", [Attr.Create("type", "date"), Attr.Create("style", "padding: 8px; margin: 5px 0; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: inline-block;")]);
+      case"TimePicker":
+        return V("input", [Attr.Create("type", "time"), Attr.Create("style", "padding: 8px; margin: 5px 0; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: inline-block;")]);
+      case"Pagination":
+        return E("div", [Attr.Create("style", "display: flex; gap: 5px; margin: 15px 0; justify-content: center;")], [E("button", [Attr.Create("style", "padding: 5px 10px; background: #444; color: white; border: 1px solid #555; cursor: pointer;")], [Doc.TextNode("Prev")]), E("button", [Attr.Create("style", "padding: 5px 10px; background: #444; color: white; border: 1px solid #555; cursor: pointer;")], [Doc.TextNode("Next")])]);
+      case"AutoComplete":
+        return E("div", [Attr.Create("style", "position: relative; display: inline-block; width: 100%; margin: 5px 0;")], [V("input", [Attr.Create("type", "text"), Attr.Create("placeholder", "Search..."), Attr.Create("style", "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box;")])]);
+      case"Rolling":
+        return E("div", [Attr.Create("style", "padding: 10px; background: #222; color: #5bc0de; border-radius: 4px; border: 1px solid #444; margin: 10px 0;")], [Doc.TextNode("Rolling...")]);
+      case"Tree":
+        const dataRefStr=obj.dataRef||"";
+        return E("ul", [Attr.Create("style", "list-style-type: none; padding-left: 20px; color: #ccc;")], [E("li", [Attr.Create("style", "padding: 5px 0; cursor: pointer;")], [Doc.TextNode("Tree Node bound to: "+dataRefStr)])]);
+      case"ContextMenu":
+        return V("div", [Attr.Create("style", "display: none; position: absolute; background: #333; border: 1px solid #555; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); z-index: 1000;")]);
+      default:
+        return Doc.Empty;
+    }
+  }
+}
+function V(name, attrs){
+  return Doc.Element(name, attrs, FSharpList.Empty);
+}
+function New(status, count, maxSequence, pages){
+  return{
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
+    pages:pages
+  };
+}
+function iter(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)f(arr[i]);
+}
+function distinctBy(f, a){
+  return ofSeq(distinctBy_1(f, a));
+}
+function filter(f, arr){
+  const r=[];
+  for(let i=0, _1=arr.length-1;i<=_1;i++)if(f(arr[i]))r.push(arr[i]);
+  return r;
+}
+function tryFind(f, arr){
+  let res, i;
+  res=null;
+  i=0;
+  while(i<arr.length&&res==null)
+    {
+      f(arr[i])?res=Some(arr[i]):void 0;
+      i=i+1;
+    }
+  return res;
+}
+function map(f, arr){
+  const r=new Array(arr.length);
+  for(let i=0, _1=arr.length-1;i<=_1;i++)r[i]=f(arr[i]);
+  return r;
+}
+function sortBy(f, arr){
+  return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) => Compare(_1[1], _2[1])));
+}
+function exists(f, x){
+  let e, i;
+  e=false;
+  i=0;
+  const l=length(x);
+  while(!e&&i<l)
+    if(f(x[i]))e=true;
+    else i=i+1;
+  return e;
+}
+function tryHead(arr){
+  return arr.length===0?null:Some(arr[0]);
+}
+function forall2(f, x1, x2){
+  let a, i;
+  checkLength(x1, x2);
+  a=true;
+  i=0;
+  const l=length(x1);
+  while(a&&i<l)
+    if(f(x1[i], x2[i]))i=i+1;
+    else a=false;
+  return a;
+}
+function fold(f, zero, arr){
+  let acc;
+  acc=zero;
+  for(let i=0, _1=arr.length-1;i<=_1;i++)acc=f(acc, arr[i]);
+  return acc;
+}
+function distinct(l){
+  return ofSeq(distinct_1(l));
+}
+function mapi(f, arr){
+  const y=new Array(arr.length);
+  for(let i=0, _1=arr.length-1;i<=_1;i++)y[i]=f(i, arr[i]);
+  return y;
+}
+function skip(i, ar){
+  return i<0?nonNegative():i>ar.length?insufficient():ar.slice(i);
+}
+function ofSeq(xs){
+  if(xs instanceof Array)return xs.slice();
+  else if(xs instanceof FSharpList)return ofList(xs);
+  else {
+    const q=[];
+    const o=Get(xs);
+    try {
+      while(o.MoveNext())
+        q.push(o.Current);
+      return q;
+    }
+    finally {
+      const _1=o;
+      if(typeof _1=="object"&&isIDisposable(_1))o.Dispose();
+    }
+  }
+}
+function checkLength(arr1, arr2){
+  if(arr1.length!==arr2.length)FailWith("The arrays have different lengths.");
+}
+function choose(f, arr){
+  const q=[];
+  for(let i=0, _1=arr.length-1;i<=_1;i++){
+    const m=f(arr[i]);
+    if(m==null){ }
+    else q.push(m.$0);
+  }
+  return q;
+}
+function ofList(xs){
+  let l;
+  const q=[];
+  l=xs;
+  while(!(l.$==0))
+    {
+      q.push(head(l));
+      l=tail(l);
+    }
+  return q;
+}
+function tryPick(f, arr){
+  let res, i;
+  res=null;
+  i=0;
+  while(i<arr.length&&res==null)
+    {
+      const m=f(arr[i]);
+      if(m!=null&&m.$==1)res=m;
+      i=i+1;
+    }
+  return res;
+}
+function tryFindIndex(f, arr){
+  let res, i;
+  res=null;
+  i=0;
+  while(i<arr.length&&res==null)
+    {
+      f(arr[i])?res=Some(i):void 0;
+      i=i+1;
+    }
+  return res;
+}
+function foldBack(f, arr, zero){
+  let acc;
+  acc=zero;
+  const len=arr.length;
+  for(let i=1, _1=len;i<=_1;i++)acc=f(arr[len-i], acc);
+  return acc;
+}
+function concat(xs){
+  return Array.prototype.concat.apply([], ofSeq(xs));
+}
+function collect(f, x){
+  return Array.prototype.concat.apply([], map(f, x));
+}
+function pick(f, arr){
+  const m=tryPick(f, arr);
+  return m==null?FailWith("KeyNotFoundException"):m.$0;
+}
+function create(size, value){
+  const r=new Array(size);
+  for(let i=0, _1=size-1;i<=_1;i++)r[i]=value;
+  return r;
+}
+function init(size, f){
+  if(size<0)FailWith("Negative size given.");
+  else null;
+  const r=new Array(size);
+  for(let i=0, _1=size-1;i<=_1;i++)r[i]=f(i);
+  return r;
+}
+function forall(f, x){
+  let a, i;
+  a=true;
+  i=0;
+  const l=length(x);
+  while(a&&i<l)
+    if(f(x[i]))i=i+1;
+    else a=false;
+  return a;
+}
+function readJson(key, onRead){
+  if(isBlank(key))onRead(null);
+  else withStore(snapshotStore(), "readonly", (store) => {
+    try {
+      const request=store.get(key);
+      request.onsuccess=(event) => {
+        const value=eventResult(event);
+        if(isMissing(value))return onRead(null);
+        else try {
+          const text=String(value);
+          return isBlank(text)?onRead(null):onRead(tryJson(text));
+        }
+        catch(m){
+          return onRead(null);
+        }
+      };
+      request.onerror=() => onRead(null);
+    }
+    catch(m){
+      onRead(null);
+    }
+  }, () => {
+    onRead(null);
+  });
+}
+function cacheKey(scope, parts){
+  return currentServerRealityId()+":"+scope+":"+concat_1(":", map_1((part) => encodeURIComponent(asText(part)), parts));
+}
+function withStore(storeName, mode, onStore, onUnavailable){
+  openDb((db) => {
+    try {
+      onStore(db.transaction([storeName], mode).objectStore(storeName));
+    }
+    catch(m){
+      onUnavailable();
+    }
+  }, onUnavailable);
+}
+function snapshotStore(){
+  return _c.snapshotStore;
+}
+function eventResult(event){
+  const target=event.target;
+  return isMissing(target)?null:target.result;
+}
+function isMissing(value){
+  return value==null||Equals(typeof value, "undefined");
+}
+function readPendingRealitySplit(onRead){
+  readAllPendingRaw((commands) => {
+    const reality=currentServerRealityId();
+    onRead(filter((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)==reality, commands), filter((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)!=reality, commands));
+  });
+}
+function writeWatermark(streamId, newestSequence, cachedCount, source){
+  if(!isBlank(streamId)){
+    let _1=watermarkStore();
+    const a=0n;
+    let _2=Compare(a, newestSequence)===1?a:newestSequence;
+    let _3=String(_2);
+    const a_1=0;
+    let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
+    let _5=New_27(streamId, _3, _4, asText(source), nowTicks());
+    writeJsonTo(_1, streamId, _5);
+    compactSnapshots();
+  }
+}
+function readAllPending(onRead){
+  readAllPendingRaw((commands) => {
+    const reality=currentServerRealityId();
+    onRead(filter((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)==reality, commands));
+  });
+}
+function deletePendingThen(commandId, onDeleted){
+  deleteFromThen(pendingStore(), commandId, onDeleted);
+}
+function readWatermark(key, onRead){
+  if(isBlank(key))onRead(null);
+  else withStore(watermarkStore(), "readonly", (store) => {
+    try {
+      const request=store.get(key);
+      request.onsuccess=(event) => {
+        const value=eventResult(event);
+        if(isMissing(value))return onRead(null);
+        else try {
+          const text=String(value);
+          return isBlank(text)?onRead(null):onRead(tryJson(text));
+        }
+        catch(m){
+          return onRead(null);
+        }
+      };
+      request.onerror=() => onRead(null);
+    }
+    catch(m){
+      onRead(null);
+    }
+  }, () => {
+    onRead(null);
+  });
+}
+function openDb(onReady, onUnavailable){
+  try {
+    const indexedDb=globalThis.indexedDB;
+    if(isMissing(indexedDb))onUnavailable();
+    else {
+      const a=[databaseName(), databaseVersion()];
+      const request=indexedDb.open.apply(indexedDb, a);
+      request.onupgradeneeded=(event) => {
+        const db=eventResult(event);
+        return!isMissing(db)?ensureStores(db):null;
+      };
+      request.onsuccess=(event) => {
+        const db=eventResult(event);
+        return!isMissing(db)?onReady(db):onUnavailable();
+      };
+      request.onerror=() => onUnavailable();
+    }
+  }
+  catch(m){
+    onUnavailable();
+  }
+}
+function writeJson(key, value){
+  writeJsonTo(snapshotStore(), key, value);
+}
+function readAllPendingRaw(onRead){
+  withStore(pendingStore(), "readonly", (store) => {
+    try {
+      const request=store.getAll();
+      request.onsuccess=(event) => {
+        const value=eventResult(event);
+        if(isMissing(value))return onRead([]);
+        else try {
+          return onRead(choose((text) => {
+            try {
+              return isBlank(text)?null:tryJson(text);
+            }
+            catch(m){
+              return null;
+            }
+          }, value));
+        }
+        catch(m){
+          return onRead([]);
+        }
+      };
+      request.onerror=() => onRead([]);
+    }
+    catch(m){
+      onRead([]);
+    }
+  }, () => {
+    onRead([]);
+  });
+}
+function writeJsonTo(storeName, key, value){
+  if(!isBlank(key))withStore(storeName, "readwrite", (store) => {
+    try {
+      const a=[JSON.stringify(value), key];
+      store.put.apply(store, a);
+    }
+    catch(m){
+      null;
+    }
+  }, () => { });
+}
+function watermarkStore(){
+  return _c.watermarkStore;
+}
+function nowTicks(){
+  try {
+    const this_1=Date.now();
+    let _1=BigInt(Math.trunc(this_1))*BigInt(1E4)+BigInt((this_1-Math.trunc(this_1))*1E4);
+    return String(_1);
+  }
+  catch(m){
+    return"0";
+  }
+}
+function compactSnapshots(){
+  readAllWatermarks((watermarks) => {
+    const watermarks_1=arrayOrEmpty(watermarks);
+    const overflow=length(watermarks_1)-maxSnapshotRecords();
+    if(overflow>0)iter((watermark) => {
+      deleteSnapshotAndWatermark(watermark.streamId);
+    }, sortBy(watermarkTouchedAt, filter((watermark) =>!(watermark==null)&&!isBlank(watermark.streamId)&&!protectedSnapshotKey(watermark.streamId), watermarks_1)).slice(0, overflow));
+    readAllSnapshotKeys((snapshotKeys) => {
+      iter((key) => {
+        deleteFrom(snapshotStore(), key);
+      }, filter((key) =>!isBlank(key)&&!protectedSnapshotKey(key)&&!exists((watermark) =>!(watermark==null)&&watermark.streamId==key, watermarks_1), snapshotKeys));
+    });
+  });
+}
+function deleteFromThen(storeName, key, onDeleted){
+  if(isBlank(key))onDeleted();
+  else withTransactionStore(storeName, "readwrite", (_1, _2) =>(((tx) =>(store) => {
+    let finished;
+    finished=false;
+    const finish=() => {
+      if(!finished){
+        finished=true;
+        onDeleted();
+      }
+    };
+    tx.oncomplete=() => finish();
+    tx.onabort=() => finish();
+    tx.onerror=() => finish();
+    try {
+      store["delete"](key);
+      return;
+    }
+    catch(m){
+      return finish();
+    }
+  })(_1))(_2), onDeleted);
+}
+function pendingStore(){
+  return _c.pendingStore;
+}
+function writePending(command){
+  writeJsonTo(pendingStore(), command.commandId, command);
+}
+function databaseName(){
+  return _c.databaseName;
+}
+function databaseVersion(){
+  return _c.databaseVersion;
+}
+function ensureStores(db){
+  ensureStore(snapshotStore(), db);
+  ensureStore(pendingStore(), db);
+  ensureStore(watermarkStore(), db);
+}
+function readAllWatermarks(onRead){
+  withStore(watermarkStore(), "readonly", (store) => {
+    try {
+      const request=store.getAll();
+      request.onsuccess=(event) => {
+        const value=eventResult(event);
+        if(isMissing(value))return onRead([]);
+        else try {
+          return onRead(choose((text) => {
+            try {
+              return isBlank(text)?null:tryJson(text);
+            }
+            catch(m){
+              return null;
+            }
+          }, value));
+        }
+        catch(m){
+          return onRead([]);
+        }
+      };
+      request.onerror=() => onRead([]);
+    }
+    catch(m){
+      onRead([]);
+    }
+  }, () => {
+    onRead([]);
+  });
+}
+function maxSnapshotRecords(){
+  return _c.maxSnapshotRecords;
+}
+function protectedSnapshotKey(key){
+  const key_1=asText(key);
+  return key_1=="append-pages-definitions:"||key_1.indexOf(":append-pages-definitions:")!=-1||StartsWith(key_1, "chat-agents:")||key_1.indexOf(":chat-agents:")!=-1||StartsWith(key_1, "actors-snapshot:")||key_1.indexOf(":actors-snapshot:")!=-1;
+}
+function watermarkTouchedAt(watermark){
+  let o;
+  if(watermark==null)return 0n;
+  else {
+    const m=(o=0n,[TryParse_1(asText(watermark.touchedAt), {get:() => o, set:(v) => {
+      o=v;
+    }}), o]);
+    return m[0]?m[1]:0n;
+  }
+}
+function deleteSnapshotAndWatermark(key){
+  if(!isBlank(key))withSnapshotWatermarkStores("readwrite", (_1, _2, _3) => {
+    try {
+      _2["delete"](key);
+      _3["delete"](key);
+      return;
+    }
+    catch(m){
+      return null;
+    }
+  }, () => { });
+}
+function readAllSnapshotKeys(onRead){
+  withStore(snapshotStore(), "readonly", (store) => {
+    try {
+      const request=store.getAllKeys();
+      request.onsuccess=(event) => {
+        const value=eventResult(event);
+        if(isMissing(value))return onRead([]);
+        else try {
+          return onRead(value);
+        }
+        catch(m){
+          return onRead([]);
+        }
+      };
+      request.onerror=() => onRead([]);
+    }
+    catch(m){
+      onRead([]);
+    }
+  }, () => {
+    onRead([]);
+  });
+}
+function deleteFrom(storeName, key){
+  if(!isBlank(key))withStore(storeName, "readwrite", (store) => {
+    try {
+      store["delete"](key);
+    }
+    catch(m){
+      null;
+    }
+  }, () => { });
+}
+function withTransactionStore(storeName, mode, onStore, onUnavailable){
+  openDb((db) => {
+    try {
+      const tx=db.transaction([storeName], mode);
+      onStore(tx, tx.objectStore(storeName));
+    }
+    catch(m){
+      onUnavailable();
+    }
+  }, onUnavailable);
+}
+function ensureStore(storeName, db){
+  let _1;
+  const names=db.objectStoreNames;
+  if(isMissing(names))_1=false;
+  else try {
+    _1=names.contains(storeName);
+  }
+  catch(m){
+    _1=false;
+  }
+  if(!_1)db.createObjectStore(storeName);
+}
+function withSnapshotWatermarkStores(mode, onStores, onUnavailable){
+  openDb((db) => {
+    try {
+      const a=[[snapshotStore(), watermarkStore()], mode];
+      const tx=db.transaction.apply(db, a);
+      const a_1=[snapshotStore()];
+      let _1=tx.objectStore.apply(tx, a_1);
+      const a_2=[watermarkStore()];
+      let _2=tx.objectStore.apply(tx, a_2);
+      onStores(tx, _1, _2);
+    }
+    catch(m){
+      onUnavailable();
+    }
+  }, onUnavailable);
+}
+function Equals(a, b){
+  let _1;
+  if(a===b)return true;
+  else {
+    const m=typeof a;
+    if(m=="object"){
+      if(a===null||a===void 0||b===null||b===void 0||!Equals(typeof b, "object"))return false;
+      else if("Equals"in a)return a.Equals(b);
+      else if("Equals"in b)return false;
+      else if(a instanceof Array&&b instanceof Array)return arrayEquals(a, b);
+      else if(a instanceof Date&&b instanceof Date)return dateEquals(a, b);
+      else {
+        const a_1=a;
+        const b_1=b;
+        const eqR=[true];
+        let k;
+        for(var k_2 in a_1)if(((k_3) => {
+          eqR[0]=!a_1.hasOwnProperty(k_3)||b_1.hasOwnProperty(k_3)&&Equals(a_1[k_3], b_1[k_3]);
+          return!eqR[0];
+        })(k_2))break;
+        if(eqR[0]){
+          let k_1;
+          for(var k_3 in b_1)if(((k_4) => {
+            eqR[0]=!b_1.hasOwnProperty(k_4)||a_1.hasOwnProperty(k_4);
+            return!eqR[0];
+          })(k_3))break;
+          _1=void 0;
+        }
+        else _1=null;
+        return eqR[0];
+      }
+    }
+    else return m=="function"&&("$Func"in a?a.$Func===b.$Func&&a.$Target===b.$Target:"$Invokes"in a&&"$Invokes"in b&&arrayEquals(a.$Invokes, b.$Invokes));
+  }
+}
+function Compare(a, b){
+  if(a===b)return 0;
+  else {
+    const m=typeof a;
+    switch(m=="boolean"?1:m=="number"?1:m=="bigint"?1:m=="string"?1:m=="object"?2:m=="function"?3:m=="symbol"?4:0){
+      case 0:
+        return typeof b=="undefined"?0:-1;
+      case 1:
+        return a<b?-1:1;
+      case 2:
+        let _1;
+        if(a===null)return -1;
+        else if(b===null)return 1;
+        else if("CompareTo"in a)return a.CompareTo(b);
+        else if("CompareTo0"in a)return a.CompareTo0(b);
+        else if(a instanceof Array&&b instanceof Array)return compareArrays(a, b);
+        else if(a instanceof Date&&b instanceof Date)return compareDates(a, b);
+        else {
+          const a_1=a;
+          const b_1=b;
+          const cmp=[0];
+          let k;
+          for(var k_2 in a_1)if(((k_3) =>!a_1.hasOwnProperty(k_3)?false:!b_1.hasOwnProperty(k_3)?(cmp[0]=1,true):(cmp[0]=Compare(a_1[k_3], b_1[k_3]),cmp[0]!==0))(k_2))break;
+          if(cmp[0]===0){
+            let k_1;
+            for(var k_3 in b_1)if(((k_4) =>!b_1.hasOwnProperty(k_4)?false:!a_1.hasOwnProperty(k_4)&&(cmp[0]=-1,true))(k_3))break;
+            _1=void 0;
+          }
+          else _1=null;
+          return cmp[0];
+        }
+        break;
+      case 3:
+        return FailWith("Cannot compare function values.");
+      case 4:
+        return FailWith("Cannot compare symbol values.");
+    }
+  }
+}
+function arrayEquals(a, b){
+  let eq, i;
+  if(length(a)===length(b)){
+    eq=true;
+    i=0;
+    while(eq&&i<length(a))
+      {
+        !Equals(get(a, i), get(b, i))?eq=false:void 0;
+        i=i+1;
+      }
+    return eq;
+  }
+  else return false;
+}
+function dateEquals(a, b){
+  return a.getTime()===b.getTime();
+}
+function compareArrays(a, b){
+  let cmp, i;
+  if(length(a)<length(b))return -1;
+  else if(length(a)>length(b))return 1;
+  else {
+    cmp=0;
+    i=0;
+    while(cmp===0&&i<length(a))
+      {
+        cmp=Compare(get(a, i), get(b, i));
+        i=i+1;
+      }
+    return cmp;
+  }
+}
+function compareDates(a, b){
+  return Compare(a.getTime(), b.getTime());
+}
+function Hash(o){
+  const m=typeof o;
+  return m=="function"?0:m=="boolean"?o?1:0:m=="number"?o:m=="string"?hashString(o):m=="object"?o==null?0:o instanceof Array?hashArray(o):hashObject(o):m=="bigint"?hashString(String(o)):m=="symbol"?hashString(o.description):0;
+}
+function hashString(s){
+  let hash;
+  if(s===null)return 0;
+  else {
+    hash=5381;
+    for(let i=0, _1=s.length-1;i<=_1;i++)hash=hashMix(hash, s[i].charCodeAt());
+    return hash;
+  }
+}
+function hashArray(o){
+  let h;
+  h=-34948909;
+  for(let i=0, _1=length(o)-1;i<=_1;i++)h=hashMix(h, Hash(get(o, i)));
+  return h;
+}
+function hashObject(o){
+  if("GetHashCode"in o)return o.GetHashCode();
+  else {
+    const ____=hashMix;
+    const h=[0];
+    let k;
+    for(var k_1 in o)if(((key) => {
+      h[0]=____(____(h[0], hashString(key)), Hash(o[key]));
+      return false;
+    })(k_1))break;
+    return h[0];
+  }
+}
+function hashMix(x, y){
+  return(x<<5)+x+y;
+}
+function Some(Value){
+  return{$:1, $0:Value};
+}
+function json(text){
+  return JSON.parse(asText(text));
+}
+function tryJson(text){
+  try {
+    return isBlank(text)?null:Some(json(text));
+  }
+  catch(m){
+    return null;
+  }
+}
+function New_1(type, requestId, streamKey){
+  return{
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey
+  };
+}
+function New_2(type, requestId, streamKey, count){
+  return{
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    count:count
+  };
+}
+function New_3(shape, label, badge, className){
+  return{
+    shape:shape, 
+    label:label, 
+    badge:badge, 
+    className:className
+  };
+}
+function LoadLocalTemplates(baseName){
+  !LocalTemplatesLoaded()?(set_LocalTemplatesLoaded(true),LoadNestedTemplates(globalThis.document.body, "")):void 0;
+  LoadedTemplates().set_Item(baseName, LoadedTemplateFile(""));
+}
+function LocalTemplatesLoaded(){
+  return _c_2.LocalTemplatesLoaded;
+}
+function set_LocalTemplatesLoaded(_1){
+  _c_2.LocalTemplatesLoaded=_1;
+}
+function LoadNestedTemplates(root, baseName){
+  const loadedTpls=LoadedTemplateFile(baseName);
+  const rawTpls=new Dictionary("New_5");
+  const wsTemplates=root.querySelectorAll("[ws-template]");
+  for(let i=0, _1=wsTemplates.length-1;i<=_1;i++){
+    const node=wsTemplates[i];
+    const name=node.getAttribute("ws-template").toLowerCase();
+    node.removeAttribute("ws-template");
+    rawTpls.set_Item(name, FakeRootSingle(node));
+  }
+  const wsChildrenTemplates=root.querySelectorAll("[ws-children-template]");
+  for(let i_1=0, _2=wsChildrenTemplates.length-1;i_1<=_2;i_1++){
+    const node_1=wsChildrenTemplates[i_1];
+    const name_1=node_1.getAttribute("ws-children-template").toLowerCase();
+    node_1.removeAttribute("ws-children-template");
+    rawTpls.set_Item(name_1, FakeRoot(node_1));
+  }
+  const html5TemplateBasedTemplates=root.querySelectorAll("template[id]");
+  for(let i_2=0, _3=html5TemplateBasedTemplates.length-1;i_2<=_3;i_2++){
+    const node_2=html5TemplateBasedTemplates[i_2];
+    rawTpls.set_Item(node_2.getAttribute("id").toLowerCase(), FakeRootFromHTMLTemplate(node_2));
+  }
+  const html5TemplateBasedTemplates_1=root.querySelectorAll("template[name]");
+  for(let i_3=0, _4=html5TemplateBasedTemplates_1.length-1;i_3<=_4;i_3++){
+    const node_3=html5TemplateBasedTemplates_1[i_3];
+    rawTpls.set_Item(node_3.getAttribute("name").toLowerCase(), FakeRootFromHTMLTemplate(node_3));
+  }
+  const instantiated=new HashSet("New_3");
+  function prepareTemplate(name_2){
+    if(!loadedTpls.ContainsKey(name_2)){
+      let o;
+      const m=(o=null,[rawTpls.TryGetValue(name_2, {get:() => o, set:(v) => {
+        o=v;
+      }}), o]);
+      if(m[0]){
+        instantiated.SAdd(name_2);
+        rawTpls.RemoveKey(name_2);
+        PrepareTemplateStrict(baseName, Some(name_2), m[1], Some(prepareTemplate));
+      }
+      else console.warn(instantiated.Contains(name_2)?"Encountered loop when instantiating "+name_2:"Local template does not exist: "+name_2);
+    }
+  }
+  while(rawTpls.count>0)
+    prepareTemplate(head_1(rawTpls.Keys));
+}
+function LoadedTemplates(){
+  return _c_2.LoadedTemplates;
+}
+function LoadedTemplateFile(name){
+  let o;
+  const m=(o=null,[LoadedTemplates().TryGetValue(name, {get:() => o, set:(v) => {
+    o=v;
+  }}), o]);
+  if(m[0])return m[1];
+  else {
+    const d=new Dictionary("New_5");
+    LoadedTemplates().set_Item(name, d);
+    return d;
+  }
+}
+function FakeRootSingle(el){
+  let _1;
+  el.removeAttribute("ws-template");
+  const m=el.getAttribute("ws-replace");
+  if(m==null)_1=null;
+  else {
+    el.removeAttribute("ws-replace");
+    const m_1=el.parentNode;
+    if(Equals(m_1, null))_1=null;
+    else {
+      const n=globalThis.document.createElement(el.tagName);
+      _1=(n.setAttribute("ws-replace", m),void m_1.replaceChild(n, el));
+    }
+  }
+  const fakeroot=globalThis.document.createElement("div");
+  fakeroot.appendChild(el);
+  return fakeroot;
+}
+function FakeRoot(parent){
+  const fakeroot=globalThis.document.createElement("div");
+  while(parent.hasChildNodes())
+    fakeroot.appendChild(parent.firstChild);
+  return fakeroot;
+}
+function FakeRootFromHTMLTemplate(parent){
+  const fakeroot=globalThis.document.createElement("div");
+  const content=parent.content;
+  for(let i=0, _1=content.childNodes.length-1;i<=_1;i++)fakeroot.appendChild(content.childNodes[i].cloneNode(true));
+  return fakeroot;
+}
+function PrepareTemplateStrict(baseName, name, fakeroot, prepareLocalTemplate){
+  const processedHTML5Templates=new HashSet("New_3");
+  function recF(recI, _1){
+    while(true)
+      switch(recI){
+        case 0:
+          if(_1!==null){
+            const next=_1.nextSibling;
+            if(Equals(_1.nodeType, Node.TEXT_NODE))convertTextNode(_1);
+            else Equals(_1.nodeType, Node.ELEMENT_NODE)?convertElement(_1):null;
+            _1=next;
+          }
+          else return null;
+          break;
+        case 1:
+          let _2;
+          let _3;
+          const name_2=string(_1.nodeName, Some(3), null).toLowerCase();
+          const m=name_2.indexOf(".");
+          const p=m===-1?[baseName, name_2]:[string(name_2, null, Some(m-1)), string(name_2, Some(m+1), null)];
+          const instName=p[1];
+          const instBaseName=p[0];
+          if(instBaseName!=""&&!LoadedTemplates().ContainsKey(instBaseName))return failNotLoaded(instName);
+          else {
+            if(instBaseName==""&&prepareLocalTemplate!=null)prepareLocalTemplate.$0(instName);
+            else null;
+            const d=LoadedTemplates().Item(instBaseName);
+            if(!d.ContainsKey(instName))return failNotLoaded(instName);
+            else {
+              const t=d.Item(instName);
+              const instance=t.cloneNode(true);
+              const usedHoles=new HashSet("New_3");
+              const mappings=new Dictionary("New_5");
+              const attrs=_1.attributes;
+              for(let i=0, _6=attrs.length-1;i<=_6;i++){
+                const name_3=attrs.item(i).name.toLowerCase();
+                const m_1=attrs.item(i).nodeValue;
+                let _4=m_1!=null&&m_1.length===0?name_3:m_1.toLowerCase();
+                mappings.set_Item(name_3, _4);
+                if(!usedHoles.SAdd(name_3))console.warn("Hole mapped twice", name_3);
+              }
+              for(let i_1=0, _7=_1.childNodes.length-1;i_1<=_7;i_1++){
+                const n=_1.childNodes[i_1];
+                if(Equals(n.nodeType, Node.ELEMENT_NODE))if(!usedHoles.SAdd(n.nodeName.toLowerCase()))console.warn("Hole filled twice", instName);
+              }
+              const singleTextFill=_1.childNodes.length===1&&Equals(_1.firstChild.nodeType, Node.TEXT_NODE);
+              if(singleTextFill){
+                const x=fillTextHole(instance, _1.firstChild.textContent, instName);
+                const f=((usedHoles_1) =>(i_2) => usedHoles_1.SAdd(i_2))(usedHoles);
+                let _5=((a) =>(o) => {
+                  if(o!=null)a(o.$0);
+                })((x_1) => {
+                  f(x_1);
+                });
+                _2=_5(x);
+              }
+              else _2=null;
+              removeHolesExcept(instance, usedHoles);
+              if(!singleTextFill){
+                for(let i_2=0, _8=_1.childNodes.length-1;i_2<=_8;i_2++){
+                  const n_1=_1.childNodes[i_2];
+                  if(Equals(n_1.nodeType, Node.ELEMENT_NODE))if(n_1.hasAttributes())fillInstanceAttrs(instance, n_1);
+                  else fillDocHole(instance, n_1);
+                }
+                _3=void 0;
+              }
+              else _3=null;
+              mapHoles(instance, mappings);
+              fill(instance, _1.parentNode, _1);
+              _1.parentNode.removeChild(_1);
+              return;
+            }
+          }
+          break;
+      }
+  }
+  function fillDocHole(instance, fillWith){
+    const name_2=fillWith.nodeName.toLowerCase();
+    const fillHole=(p, n) => {
+      let _1;
+      if(name_2=="title"&&fillWith.hasChildNodes()){
+        const parsed=ParseHTMLIntoFakeRoot(fillWith.textContent);
+        fillWith.removeChild(fillWith.firstChild);
+        while(parsed.hasChildNodes())
+          fillWith.appendChild(parsed.firstChild);
+        _1=void 0;
+      }
+      else _1=null;
+      convertElement(fillWith);
+      return fill(fillWith, p, n);
+    };
+    foreachNotPreserved(instance, "[ws-attr-holes]", (e) => {
+      const holeAttrs=SplitChars(e.getAttribute("ws-attr-holes"), [" "], 1);
+      for(let i=0, _2=holeAttrs.length-1;i<=_2;i++){
+        const attrName=get(holeAttrs, i);
+        let this_1=new RegExp("\\${"+name_2+"}", "ig");
+        let str=e.getAttribute(attrName);
+        let newSubStr=fillWith.textContent;
+        let _1=str.replace(this_1, newSubStr);
+        e.setAttribute(attrName, _1);
+      }
+    });
+    const m=instance.querySelector("[ws-hole="+name_2+"]");
+    if(Equals(m, null)){
+      const m_1=instance.querySelector("[ws-replace="+name_2+"]");
+      if(Equals(m_1, null)){
+        const m_2=instance.querySelector("slot[name="+name_2+"]");
+        return instance.tagName.toLowerCase()=="template"?(fillHole(m_2.parentNode, m_2),void m_2.parentNode.removeChild(m_2)):null;
+      }
+      else {
+        fillHole(m_1.parentNode, m_1);
+        m_1.parentNode.removeChild(m_1);
+        return;
+      }
+    }
+    else {
+      while(m.hasChildNodes())
+        m.removeChild(m.lastChild);
+      m.removeAttribute("ws-hole");
+      return(((a) => {
+        const _1=a;
+        return(_2) => fillHole(_1, _2);
+      })(m))(null);
+    }
+  }
+  function convertElement(el){
+    if(!el.hasAttribute("ws-preserve"))if(StartsWith(el.nodeName.toLowerCase(), "ws-"))convertInstantiation(el);
+    else {
+      convertAttrs(el);
+      convertNodeAndSiblings(el.firstChild);
+    }
+  }
+  function convertNodeAndSiblings(n){
+    return recF(0, n);
+  }
+  function convertInstantiation(el){
+    return recF(1, el);
+  }
+  function convertNestedTemplates(el){
+    while(true)
+      {
+        const m=el.querySelector("[ws-template]");
+        if(Equals(m, null)){
+          const m_1=el.querySelector("[ws-children-template]");
+          if(Equals(m_1, null)){
+            const idTemplates=el.querySelectorAll("template[id]");
+            for(let i=1, _1=idTemplates.length-1;i<=_1;i++){
+              const n=idTemplates[i];
+              if(processedHTML5Templates.Contains(n)){ }
+              else {
+                PrepareTemplateStrict(baseName, Some(n.getAttribute("id")), n, null);
+                processedHTML5Templates.SAdd(n);
+              }
+            }
+            const nameTemplates=el.querySelectorAll("template[name]");
+            for(let i_1=1, _2=nameTemplates.length-1;i_1<=_2;i_1++){
+              const n_1=nameTemplates[i_1];
+              if(processedHTML5Templates.Contains(n_1)){ }
+              else {
+                PrepareTemplateStrict(baseName, Some(n_1.getAttribute("name")), n_1, null);
+                processedHTML5Templates.SAdd(n_1);
+              }
+            }
+            return null;
+          }
+          else {
+            const name_2=m_1.getAttribute("ws-children-template");
+            m_1.removeAttribute("ws-children-template");
+            PrepareTemplateStrict(baseName, Some(name_2), m_1, null);
+            el=el;
+          }
+        }
+        else {
+          const name_3=m.getAttribute("ws-template");
+          (PrepareSingleTemplate(baseName, Some(name_3), m))(null);
+          el=el;
+        }
+      }
+  }
+  const name_1=(name==null?"":name.$0).toLowerCase();
+  LoadedTemplateFile(baseName).set_Item(name_1, fakeroot);
+  if(fakeroot.hasChildNodes()){
+    convertNestedTemplates(fakeroot);
+    convertNodeAndSiblings(fakeroot.firstChild);
+  }
+}
+function foreachNotPreserved(root, selector, f){
+  IterSelector(root, selector, (p) => {
+    if(p.closest("[ws-preserve]")==null)f(p);
+  });
+}
+function PrepareSingleTemplate(baseName, name, el){
+  const root=FakeRootSingle(el);
+  return(p) => {
+    PrepareTemplateStrict(baseName, name, root, p);
+  };
+}
+function TextHoleRE(){
+  return _c_2.TextHoleRE;
+}
+class Object_1 {
+  Equals(obj){
+    return this===obj;
+  }
+  GetHashCode(){
+    return -1;
+  }
+}
+class Doc extends Object_1 {
+  docNode;
+  updates;
+  static Run(parent, doc_1){
+    LinkElement(parent, doc_1.docNode);
+    Doc.RunInPlace(false, parent, doc_1);
+  }
+  static get Empty(){
+    return Doc.Mk(null, Const());
+  }
+  static Concat(xs){
+    return TreeReduce(Doc.Empty, Doc.Append, ofSeqNonCopying(xs));
+  }
+  static RunInPlace(childrenOnly, parent, doc_1){
+    const st=CreateRunState(parent, doc_1.docNode);
+    Sink(get_UseAnimations()||BatchUpdatesEnabled()?StartProcessor(PerformAnimatedUpdate(childrenOnly, st, doc_1.docNode)):() => {
+      PerformSyncUpdate(childrenOnly, st, doc_1.docNode);
+    }, doc_1.updates);
+  }
+  static Element(name, attr_1, children){
+    const a=Attr.Concat(attr_1);
+    const c=Doc.Concat(children);
+    return Elt.New(globalThis.document.createElement(name), a, c);
+  }
+  static TextNode(v){
+    return Doc.Mk(TextNodeDoc(globalThis.document.createTextNode(v)), Const());
+  }
+  static Mk(node, updates){
+    return new Doc(node, updates);
+  }
+  static EmbedView(view){
+    const node=CreateEmbedNode();
+    return Doc.Mk(EmbedDoc(node), Map(() => { }, Bind((doc_1) => {
+      UpdateEmbedNode(node, doc_1.docNode);
+      return doc_1.updates;
+    }, view)));
+  }
+  static Append(a, b){
+    return Doc.Mk(AppendDoc(a.docNode, b.docNode), Map2Unit(a.updates, b.updates));
+  }
+  static TextView(txt){
+    const node=CreateTextNode();
+    return Doc.Mk(TextDoc(node), Map((t) => {
+      UpdateTextNode(node, t);
+    }, txt));
+  }
+  constructor(docNode, updates){
+    super();
+    this.docNode=docNode;
+    this.updates=updates;
+  }
+}
+function NewFromSeq(fields){
+  let _1;
+  const r={};
+  const e=Get(fields);
+  try {
+    while(e.MoveNext())
+      {
+        const f=e.Current;
+        r[f[0]]=f[1];
+      }
+    _1=void 0;
+  }
+  finally {
+    const _2=e;
+    if(typeof _2=="object"&&isIDisposable(_2))e.Dispose();
+  }
+  return r;
+}
+let _c=Lazy((_i) => class $StartupCode_Client {
+  static {
+    _c=_i(this);
+  }
+  static requestSeq;
+  static pendingCommandSeq;
+  static maxSnapshotRecords;
+  static watermarkStore;
+  static pendingStore;
+  static snapshotStore;
+  static databaseVersion;
+  static databaseName;
+  static runtimeAppendPageShapes;
+  static registeredRenderers;
+  static defaultCacheLimit;
+  static defaultRenderLimit;
+  static doc;
+  static {
+    this.doc=globalThis.document;
+    this.defaultRenderLimit=200;
+    this.defaultCacheLimit=1000;
+    this.registeredRenderers=[];
+    this.runtimeAppendPageShapes=[];
+    this.databaseName="PulseTrade.Comm.Spa.BrowserDb";
+    this.databaseVersion=3;
+    this.snapshotStore="uiSnapshots";
+    this.pendingStore="pendingCommands";
+    this.watermarkStore="streamWatermarks";
+    this.maxSnapshotRecords=256;
+    this.pendingCommandSeq=0;
+    this.requestSeq=0;
+  }
+});
+function TrimEnd(s, t){
+  let i, go;
+  if(Equals(t, null)||t.length==0)return TrimEndWS(s);
+  else {
+    i=s.length-1;
+    go=true;
+    while(i>=0&&go)
+      ((() => {
+        const c=s[i];
+        return exists((y) => c===y, t)?void(i=i-1):void(go=false);
+      })());
+    return Substring(s, 0, i+1);
+  }
+}
+function concat_1(separator, strings){
+  return ofSeq(strings).join(separator);
+}
+function Trim(s){
+  return s.replace(new RegExp("^\\s+"), "").replace(new RegExp("\\s+$"), "");
+}
+function TrimEndWS(s){
+  return s.replace(new RegExp("\\s+$"), "");
+}
+function StartsWith(t, s){
+  return t.substring(0, s.length)==s;
+}
+function TrimStart(s, t){
+  let i, go;
+  if(Equals(t, null)||t.length==0)return TrimStartWS(s);
+  else {
+    i=0;
+    go=true;
+    while(i<s.length&&go)
+      ((() => {
+        const c=s[i];
+        return exists((y) => c===y, t)?void(i=i+1):void(go=false);
+      })());
+    return s.substring(i);
+  }
+}
+function Substring(s, ix, ct){
+  return s.substr(ix, ct);
+}
+function TrimStartWS(s){
+  return s.replace(new RegExp("^\\s+"), "");
+}
+function IsNullOrEmpty(x){
+  return x==null||x=="";
+}
+function SplitChars(s, sep, opts){
+  return Split(s, new RegExp("["+RegexEscape(sep.join(""))+"]"), opts);
+}
+function Split(s, pat, opts){
+  return opts===1?filter((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
+}
+function RegexEscape(s){
+  return s.replace(new RegExp("[-\\/\\\\^$*+?.()|[\\]{}]", "g"), "\\$&");
+}
+function SplitWith(str, pat){
+  return str.split(pat);
+}
+function forall_1(f, s){
+  return forall_2(f, protect(s));
+}
+function protect(s){
+  return s==null?"":s;
+}
+class FSharpList {
+  static Empty=Create_1(FSharpList, {$:0});
+  static Cons(Head, Tail){
+    return Create_1(FSharpList, {
+      $:1, 
+      $0:Head, 
+      $1:Tail
+    });
+  }
+  GetEnumerator(){
+    return new T(this, null, (e) => {
+      const m=e.s;
+      if(m.$==0)return false;
+      else {
+        const xs=m.$1;
+        e.c=m.$0;
+        e.s=xs;
+        return true;
+      }
+    }, void 0);
+  }
+  $;
+  $0;
+  $1;
+}
+function TryParse(s, r){
+  return TryParse_2(s, -2147483648, 2147483647, r);
+}
+function TryParse_1(s, r){
+  return TryParseBigInt(s, -9223372036854775808n, 9223372036854775807n, r);
+}
+function New_4(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
+  return{
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
+    tags:tags
+  };
+}
+function length(arr){
+  return arr.dims===2?arr.length*arr.length:arr.length;
+}
+function get(arr, n){
+  checkBounds(arr, n);
+  return arr[n];
+}
+function checkBounds(arr, n){
+  if(n<0||n>=arr.length)FailWith("Index was outside the bounds of the array.");
+}
+function set(arr, n, x){
+  checkBounds(arr, n);
+  arr[n]=x;
+}
+function New_5(pageId, mode, setName, keys){
+  return{
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
+    keys:keys
+  };
+}
+function New_6(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
+  return{
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy
+  };
+}
+function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
+  return{
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
+  };
+}
+function New_8(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
+  return{
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
+    status:status
+  };
+}
+function ofArray(arr){
+  let r;
+  r=FSharpList.Empty;
+  for(let i=length(arr)-1, _1=0;i>=_1;i--)r=FSharpList.Cons(get(arr, i), r);
+  return r;
+}
+function map_1(f, x){
+  let r, l, go;
+  if(x.$==0)return x;
+  else {
+    const res=Create_1(FSharpList, {$:1});
+    r=res;
+    l=x;
+    go=true;
+    while(go)
+      {
+        r.$0=f(l.$0);
+        l=l.$1;
+        if(l.$==0)go=false;
+        else {
+          const t=Create_1(FSharpList, {$:1});
+          r=(r.$1=t,t);
+        }
+      }
+    r.$1=FSharpList.Empty;
+    return res;
+  }
+}
+function ofSeq_1(s){
+  if(s instanceof FSharpList)return s;
+  else if(s instanceof Array)return ofArray(s);
+  else {
+    const e=Get(s);
+    try {
+      let go, r;
+      go=e.MoveNext();
+      if(!go)return FSharpList.Empty;
+      else {
+        const res=Create_1(FSharpList, {$:1});
+        r=res;
+        while(go)
+          {
+            r.$0=e.Current;
+            if(e.MoveNext()){
+              const t=Create_1(FSharpList, {$:1});
+              r=(r.$1=t,t);
+            }
+            else go=false;
+          }
+        r.$1=FSharpList.Empty;
+        return res;
+      }
+    }
+    finally {
+      const _1=e;
+      if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+    }
+  }
+}
+function append_1(x, y){
+  let r, l, go;
+  if(x.$==0)return y;
+  else if(y.$==0)return x;
+  else {
+    const res=Create_1(FSharpList, {$:1});
+    r=res;
+    l=x;
+    go=true;
+    while(go)
+      {
+        r.$0=l.$0;
+        l=l.$1;
+        if(l.$==0)go=false;
+        else {
+          const t=Create_1(FSharpList, {$:1});
+          r=(r.$1=t,t);
+        }
+      }
+    r.$1=y;
+    return res;
+  }
+}
+function head(l){
+  return l.$==1?l.$0:listEmpty();
+}
+function tail(l){
+  return l.$==1?l.$1:listEmpty();
+}
+function listEmpty(){
+  return FailWith("The input list was empty.");
+}
+function New_9(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
+  return{
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
+    buckets:buckets
+  };
+}
+function New_10(keyId, keys, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
+  return{
+    keyId:keyId, 
+    keys:keys, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
+    values:values
+  };
+}
+function New_11(pageId, keyJson, valueText, direction, tags){
+  return{
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    tags:tags
+  };
+}
+function New_12(pageId, keyJson, rawArgu, tags){
+  return{
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
+    tags:tags
+  };
+}
+function New_13(pageId){
+  return{pageId:pageId};
+}
+function New_14(pageId, keyId){
+  return{pageId:pageId, keyId:keyId};
+}
+function New_15(pageId, keyJson){
+  return{pageId:pageId, keyJson:keyJson};
+}
+function New_16(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
+  return{
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
+    tabId:tabId
+  };
+}
+function delay(f){
+  return{GetEnumerator:() => Get(f())};
+}
+function append_2(s1, s2){
+  return{GetEnumerator:() => {
+    const e1=Get(s1);
+    const first=[true];
+    return new T(e1, null, (x) => {
+      if(x.s.MoveNext()){
+        x.c=x.s.Current;
+        return true;
+      }
+      else {
+        const x_1=x.s;
+        if(!Equals(x_1, null))x_1.Dispose();
+        else null;
+        x.s=null;
+        return first[0]&&(first[0]=false,x.s=Get(s2),x.s.MoveNext()?(x.c=x.s.Current,true):(x.s.Dispose(),x.s=null,false));
+      }
+    }, (x) => {
+      const x_1=x.s;
+      if(!Equals(x_1, null))x_1.Dispose();
+    });
+  }};
+}
+function distinctBy_1(f, s){
+  return{GetEnumerator:() => {
+    const o=Get(s);
+    const seen=new HashSet("New_3");
+    return new T(null, null, (e) => {
+      let cur, has;
+      if(o.MoveNext()){
+        cur=o.Current;
+        has=seen.SAdd(f(cur));
+        while(!has&&o.MoveNext())
+          {
+            cur=o.Current;
+            has=seen.SAdd(f(cur));
+          }
+        return has&&(e.c=cur,true);
+      }
+      else return false;
+    }, () => {
+      o.Dispose();
+    });
+  }};
+}
+function forall_2(p, s){
+  return!exists_1((x) =>!p(x), s);
+}
+function exists_1(p, s){
+  const e=Get(s);
+  try {
+    let r;
+    r=false;
+    while(!r&&e.MoveNext())
+      r=p(e.Current);
+    return r;
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function head_1(s){
+  const e=Get(s);
+  try {
+    return e.MoveNext()?e.Current:insufficient();
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function distinct_1(s){
+  return distinctBy_1((x) => x, s);
+}
+function fold_1(f, x, s){
+  let r;
+  r=x;
+  const e=Get(s);
+  try {
+    while(e.MoveNext())
+      r=f(r, e.Current);
+    return r;
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function iter_1(p, s){
+  const e=Get(s);
+  try {
+    while(e.MoveNext())
+      p(e.Current);
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function map_2(f, s){
+  return{GetEnumerator:() => {
+    const en=Get(s);
+    return new T(null, null, (e) => en.MoveNext()&&(e.c=f(en.Current),true), () => {
+      en.Dispose();
+    });
+  }};
+}
+function collect_1(f, s){
+  return concat_2(map_2(f, s));
+}
+function max(s){
+  const e=Get(s);
+  try {
+    let m;
+    if(!e.MoveNext())seqEmpty();
+    else null;
+    m=e.Current;
+    while(e.MoveNext())
+      {
+        const x=e.Current;
+        if(Compare(x, m)===1)m=x;
+      }
+    return m;
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function concat_2(ss){
+  return{GetEnumerator:() => {
+    const outerE=Get(ss);
+    function next(st){
+      while(true)
+        {
+          const m=st.s;
+          if(Equals(m, null)){
+            if(outerE.MoveNext()){
+              st.s=Get(outerE.Current);
+              st=st;
+            }
+            else {
+              outerE.Dispose();
+              return false;
+            }
+          }
+          else if(m.MoveNext()){
+            st.c=m.Current;
+            return true;
+          }
+          else {
+            st.Dispose();
+            st.s=null;
+            st=st;
+          }
+        }
+    }
+    return new T(null, null, next, (st) => {
+      const x=st.s;
+      if(!Equals(x, null))x.Dispose();
+      const x_1=outerE;
+      if(!Equals(x_1, null))x_1.Dispose();
+    });
+  }};
+}
+function init_1(n, f){
+  return take(n, initInfinite(f));
+}
+function seqEmpty(){
+  return FailWith("The input sequence was empty.");
+}
+function take(n, s){
+  n<0?nonNegative():void 0;
+  return{GetEnumerator:() => {
+    const e=[Get(s)];
+    return new T(0, null, (o) => {
+      o.s=o.s+1;
+      if(o.s>n)return false;
+      else {
+        const en=e[0];
+        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
+      }
+    }, () => {
+      const x=e[0];
+      if(!Equals(x, null))x.Dispose();
+    });
+  }};
+}
+function initInfinite(f){
+  return{GetEnumerator:() => new T(0, null, (e) => {
+    e.c=f(e.s);
+    e.s=e.s+1;
+    return true;
+  }, void 0)};
+}
+function New_17(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
+  return{
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
+    tabId:tabId
+  };
+}
+function New_18(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
+  return{
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
+    tabId:tabId
+  };
+}
+function New_19(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
+  return{
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
+    values:values
+  };
+}
+function New_20(valueId, keys, createdAtUtc, value, tags){
+  return{
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
+    tags:tags
+  };
+}
+function New_21(maxSequence, buckets){
+  return{maxSequence:maxSequence, buckets:buckets};
+}
+function New_22(nodeCount, actorCount, maxSequence, nodes){
+  return{
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
+    nodes:nodes
+  };
+}
+function New_23(actorId, displayName, kind, keys, status, routees){
+  return{
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
+    routees:routees
+  };
+}
+function New_24(nodeId, nodeAddress, status, roles, actors){
+  return{
+    nodeId:nodeId, 
+    nodeAddress:nodeAddress, 
+    status:status, 
+    roles:roles, 
+    actors:actors
+  };
+}
+function New_25(messageId, fromId, toId, scope, body, createdAtUtc){
+  return{
+    messageId:messageId, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
+    createdAtUtc:createdAtUtc
+  };
+}
+function New_26(messages, nextAfterMessageId){
+  return{messages:messages, nextAfterMessageId:nextAfterMessageId};
+}
+function New_27(streamId, newestSequence, cachedCount, source, touchedAt){
+  return{
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
+    touchedAt:touchedAt
+  };
+}
+function New_28(type, requestId, fromId, toId, body, tags, browserId, tabId){
+  return{
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
+    tabId:tabId
+  };
+}
+function New_29(fromId, toId, body, tags){
+  return{
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags
+  };
+}
+let _c_1=Lazy((_i) => class Var_1 extends Object_1 {
+  static {
+    _c_1=_i(this);
+  }
+  static Create_1(v){
+    return new ConcreteVar(false, {s:Ready(v, [])}, v);
+  }
+  static { }
+});
+class attr extends Object_1 { }
+class Var extends Object_1 { }
+function Map(fn, a){
+  return CreateLazy(() => Map_1(fn, a()));
+}
+function CreateLazy(observe){
+  const lv={c:null, o:observe};
+  return() => {
+    let c;
+    c=lv.c;
+    if(c===null){
+      c=lv.o();
+      lv.c=c;
+      const _1=c.s;
+      if(_1!=null&&_1.$==0)lv.o=null;
+      else WhenObsoleteRun(c, () => {
+        lv.c=null;
+      });
+      return c;
+    }
+    else return c;
+  };
+}
+function Const(x){
+  const o={s:Forever(x)};
+  return() => o;
+}
+function Sink(act, a){
+  function loop(){
+    WhenRun(a(), act, () => {
+      scheduler().Fork(loop);
+    });
+  }
+  scheduler().Fork(loop);
+}
+function Bind(fn, view){
+  return Join(Map(fn, view));
+}
+function Map2Unit(a, a_1){
+  return CreateLazy(() => Map2Unit_1(a(), a_1()));
+}
+function Join(a){
+  return CreateLazy(() => Join_1(a()));
+}
+function enumTryWith(s, f, h){
+  return{GetEnumerator:() => {
+    let enum_1, orig;
+    enum_1=null;
+    orig=true;
+    return new T(null, null, (e) => {
+      try {
+        Equals(enum_1, null)?enum_1=Get(s):void 0;
+        return enum_1.MoveNext()&&(e.c=enum_1.Current,true);
+      }
+      catch(m){
+        if(orig&&f(m)===1){
+          orig=false;
+          const x=enum_1;
+          if(!Equals(x, null))x.Dispose();
+          else null;
+          enum_1=Get(h(m));
+          return enum_1.MoveNext()&&(e.c=enum_1.Current,true);
+        }
+        else throw m;
+      }
+    }, () => {
+      const x=enum_1;
+      if(!Equals(x, null))x.Dispose();
+    });
+  }};
+}
+class Exception extends Object_1 { }
+class Dictionary extends Object_1 {
+  equals;
+  hash;
+  count;
+  data;
+  set_Item(k, v){
+    this.set(k, v);
+  }
+  ContainsKey(k){
+    const d=this.data[this.hash(k)];
+    return d==null?false:exists((a) => this.equals.apply(null, [(KeyValue(a))[0], k]), d);
+  }
+  TryGetValue(k, res){
+    const d=this.data[this.hash(k)];
+    if(d==null)return false;
+    else {
+      const v=tryPick((a) => {
+        const a_1=KeyValue(a);
+        return this.equals.apply(null, [a_1[0], k])?Some(a_1[1]):null;
+      }, d);
+      return v!=null&&v.$==1&&(res.set(v.$0),true);
+    }
+  }
+  RemoveKey(k){
+    return this.remove(k);
+  }
+  get Keys(){
+    return new KeyCollection(this);
+  }
+  set(k, v){
+    const h=this.hash(k);
+    const d=this.data[h];
+    if(d==null){
+      this.count=this.count+1;
+      this.data[h]=new Array({K:k, V:v});
+    }
+    else {
+      const m=tryFindIndex((a) => this.equals.apply(null, [(KeyValue(a))[0], k]), d);
+      if(m==null){
+        this.count=this.count+1;
+        d.push({K:k, V:v});
+      }
+      else d[m.$0]={K:k, V:v};
+    }
+  }
+  remove(k){
+    const h=this.hash(k);
+    const d=this.data[h];
+    if(d==null)return false;
+    else {
+      const r=filter((a) =>!this.equals.apply(null, [(KeyValue(a))[0], k]), d);
+      return length(r)<d.length&&(this.count=this.count-1,this.data[h]=r,true);
+    }
+  }
+  Item(k){
+    return this.get(k);
+  }
+  GetEnumerator(){
+    return Get0(concat(GetFieldValues(this.data)));
+  }
+  get(k){
+    const d=this.data[this.hash(k)];
+    return d==null?notPresent():pick((a) => {
+      const a_1=KeyValue(a);
+      return this.equals.apply(null, [a_1[0], k])?Some(a_1[1]):null;
+    }, d);
+  }
+  constructor(i, _1, _2, _3){
+    if(i=="New_5"){
+      i="New_6";
+      _1=[];
+      _2=Equals;
+      _3=Hash;
+    }
+    if(i=="New_6"){
+      const init_2=_1;
+      const equals=_2;
+      const hash=_3;
+      super();
+      this.equals=equals;
+      this.hash=hash;
+      this.count=0;
+      this.data=[];
+      const e=Get(init_2);
+      try {
+        while(e.MoveNext())
+          {
+            const x=e.Current;
+            this.set(x.K, x.V);
+          }
+      }
+      finally {
+        const _4=e;
+        if(typeof _4=="object"&&isIDisposable(_4))e.Dispose();
+      }
+    }
+  }
+}
+function LinkElement(el, children){
+  InsertDoc(el, children, null);
+}
+function InsertDoc(parent, doc_1, pos){
+  while(true)
+    {
+      if(doc_1!=null&&doc_1.$==1){
+        const e=doc_1.$0;
+        return InsertNode(parent, e.El, pos);
+      }
+      else if(doc_1!=null&&doc_1.$==2){
+        const d=doc_1.$0;
+        d.Dirty=false;
+        doc_1=d.Current;
+      }
+      else if(doc_1==null)return pos;
+      else if(doc_1!=null&&doc_1.$==4){
+        const t=doc_1.$0;
+        return InsertNode(parent, t.Text, pos);
+      }
+      else if(doc_1!=null&&doc_1.$==5){
+        const t_1=doc_1.$0;
+        return InsertNode(parent, t_1, pos);
+      }
+      else if(doc_1!=null&&doc_1.$==6)return foldBack((_1, _2) =>((((parent_1) =>(el) =>(pos_1) => el==null||el.constructor===Object?InsertDoc(parent_1, el, pos_1):InsertNode(parent_1, el, pos_1))(parent))(_1))(_2), doc_1.$0.Els, pos);
+      else {
+        const b=doc_1.$1;
+        const a=doc_1.$0;
+        doc_1=a;
+        pos=InsertDoc(parent, b, pos);
+      }
+    }
+}
+function CreateRunState(parent, doc_1){
+  return New_31(get_Empty(), CreateElemNode(parent, EmptyAttr(), doc_1));
+}
+function PerformAnimatedUpdate(childrenOnly, st, doc_1){
+  return get_UseAnimations()?Delay(() => {
+    const cur=FindAll(doc_1);
+    const change=ComputeChangeAnim(st, cur);
+    const enter=ComputeEnterAnim(st, cur);
+    return Bind_1(Play(Append(change, ComputeExitAnim(st, cur))), () => Bind_1(SyncElemNodesNextFrame(childrenOnly, st), () => Bind_1(Play(enter), () => {
+      st.PreviousNodes=cur;
+      return Return(null);
+    })));
+  }):SyncElemNodesNextFrame(childrenOnly, st);
+}
+function PerformSyncUpdate(childrenOnly, st, doc_1){
+  const cur=FindAll(doc_1);
+  SyncElemNode(childrenOnly, st.Top);
+  st.PreviousNodes=cur;
+}
+function CreateEmbedNode(){
+  return{Current:null, Dirty:false};
+}
+function UpdateEmbedNode(node, upd){
+  node.Current=upd;
+  node.Dirty=true;
+}
+function InsertNode(parent, node, pos){
+  InsertAt(parent, pos, node);
+  return node;
+}
+function CreateElemNode(el, attr_1, children){
+  LinkElement(el, children);
+  const attr_2=Insert(el, attr_1);
+  return DocElemNode.New(attr_2, children, null, el, Int(), GetOptional(attr_2.OnAfterRender));
+}
+function SyncElemNodesNextFrame(childrenOnly, st){
+  if(BatchUpdatesEnabled()){
+    const c=(ok) => {
+      requestAnimationFrame(() => {
+        SyncElemNode(childrenOnly, st.Top);
+        ok();
+      });
+    };
+    return FromContinuations((_1, _2, _3) => c.apply(null, [_1, _2, _3]));
+  }
+  else {
+    SyncElemNode(childrenOnly, st.Top);
+    return Return(null);
+  }
+}
+function ComputeExitAnim(st, cur){
+  return Concat(map((n) => GetExitAnim(n.Attr), ToArray(Except(cur, Filter((n) => HasExitAnim(n.Attr), st.PreviousNodes)))));
+}
+function ComputeEnterAnim(st, cur){
+  return Concat(map((n) => GetEnterAnim(n.Attr), ToArray(Except(st.PreviousNodes, Filter((n) => HasEnterAnim(n.Attr), cur)))));
+}
+function ComputeChangeAnim(st, cur){
+  const f=(n) => HasChangeAnim(n.Attr);
+  const relevant=(a) => Filter(f, a);
+  return Concat(map((n) => GetChangeAnim(n.Attr), ToArray(Intersect(relevant(st.PreviousNodes), relevant(cur)))));
+}
+function SyncElemNode(childrenOnly, el){
+  !childrenOnly?SyncElement(el):void 0;
+  Sync(el.Children);
+  AfterRender(el);
+}
+function CreateTextNode(){
+  return{
+    Text:globalThis.document.createTextNode(""), 
+    Dirty:false, 
+    Value:""
+  };
+}
+function UpdateTextNode(n, t){
+  n.Value=t;
+  n.Dirty=true;
+}
+function SyncElement(el){
+  function hasDirtyChildren(el_1){
+    function dirty(doc_1){
+      while(true)
+        {
+          if(doc_1!=null&&doc_1.$==0){
+            const b=doc_1.$1;
+            const a=doc_1.$0;
+            if(dirty(a))return true;
+            else doc_1=b;
+          }
+          else if(doc_1!=null&&doc_1.$==2){
+            const d=doc_1.$0;
+            if(d.Dirty)return true;
+            else doc_1=d.Current;
+          }
+          else if(doc_1!=null&&doc_1.$==6){
+            const t=doc_1.$0;
+            return t.Dirty||exists(hasDirtyChildren, t.Holes);
+          }
+          else return false;
+        }
+    }
+    return dirty(el_1.Children);
+  }
+  Sync_1(el.El, el.Attr);
+  if(hasDirtyChildren(el))DoSyncElement(el);
+}
+function Sync(doc_1){
+  while(true)
+    {
+      if(doc_1!=null&&doc_1.$==1)return SyncElemNode(false, doc_1.$0);
+      else if(doc_1!=null&&doc_1.$==2){
+        const n=doc_1.$0;
+        doc_1=n.Current;
+      }
+      else if(doc_1==null)return null;
+      else if(doc_1!=null&&doc_1.$==5)return null;
+      else if(doc_1!=null&&doc_1.$==4){
+        const d=doc_1.$0;
+        return d.Dirty?(d.Text.nodeValue=d.Value,d.Dirty=false):null;
+      }
+      else if(doc_1!=null&&doc_1.$==6){
+        const t=doc_1.$0;
+        iter((h) => {
+          SyncElemNode(false, h);
+        }, t.Holes);
+        iter((t_1) => {
+          Sync_1(t_1[0], t_1[1]);
+        }, t.Attrs);
+        return AfterRender(t);
+      }
+      else {
+        const b=doc_1.$1;
+        const a=doc_1.$0;
+        Sync(a);
+        doc_1=b;
+      }
+    }
+}
+function AfterRender(el){
+  const m=GetOptional(el.Render);
+  if(m!=null&&m.$==1){
+    m.$0(el.El);
+    SetOptional(el, "Render", null);
+  }
+}
+function DoSyncElement(el){
+  const parent=el.El;
+  function ins(doc_1, pos){
+    while(true)
+      {
+        if(doc_1!=null&&doc_1.$==1)return doc_1.$0.El;
+        else if(doc_1!=null&&doc_1.$==2){
+          const d=doc_1.$0;
+          if(d.Dirty){
+            d.Dirty=false;
+            return InsertDoc(parent, d.Current, pos);
+          }
+          else doc_1=d.Current;
+        }
+        else if(doc_1==null)return pos;
+        else if(doc_1!=null&&doc_1.$==4)return doc_1.$0.Text;
+        else if(doc_1!=null&&doc_1.$==5)return doc_1.$0;
+        else if(doc_1!=null&&doc_1.$==6){
+          const t=doc_1.$0;
+          if(t.Dirty)t.Dirty=false;
+          return foldBack((_3, _4) => _3==null||_3.constructor===Object?ins(_3, _4):_3, t.Els, pos);
+        }
+        else {
+          const b=doc_1.$1;
+          const a=doc_1.$0;
+          doc_1=a;
+          pos=ins(b, pos);
+        }
+      }
+  }
+  const p=el.El;
+  Iter((e) => {
+    RemoveNode(p, e);
+  }, Except_2(DocChildren(el), Children(el.El, GetOptional(el.Delimiters))));
+  let _1=el.Children;
+  const m=GetOptional(el.Delimiters);
+  let _2=m!=null&&m.$==1?m.$0[1]:null;
+  ins(_1, _2);
+}
+function Get(x){
+  return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):x.GetEnumerator();
+}
+function ArrayEnumerator(s){
+  return new T(0, null, (e) => {
+    const i=e.s;
+    return i<length(s)&&(e.c=get(s, i),e.s=i+1,true);
+  }, void 0);
+}
+function StringEnumerator(s){
+  return new T(0, null, (e) => {
+    const i=e.s;
+    return i<s.length&&(e.c=s[i],e.s=i+1,true);
+  }, void 0);
+}
+function Get0(x){
+  return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):"GetEnumerator0"in x?x.GetEnumerator0():x.GetEnumerator();
+}
+class T extends Object_1 {
+  s;
+  c;
+  n;
+  d;
+  e;
+  MoveNext(){
+    const m=this.n(this);
+    this.e=m?1:2;
+    return m;
+  }
+  get Current(){
+    return this.e===1?this.c:this.e===0?FailWith("Enumeration has not started. Call MoveNext."):FailWith("Enumeration already finished.");
+  }
+  Dispose(){
+    if(this.d)this.d(this);
+  }
+  constructor(s, c, n, d){
+    super();
+    this.s=s;
+    this.c=c;
+    this.n=n;
+    this.d=d;
+    this.e=0;
+  }
+}
+function New_30(pageId, title, setName, shape, tabId, tabMode, path, description){
+  return{
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
+    description:description
+  };
+}
+class HashSet extends Object_1 {
+  equals;
+  hash;
+  data;
+  count;
+  SAdd(item){
+    return this.add(item);
+  }
+  Contains(item){
+    const arr=this.data[this.hash(item)];
+    return arr==null?false:this.arrContains(item, arr);
+  }
+  add(item){
+    const h=this.hash(item);
+    const arr=this.data[h];
+    return arr==null?(this.data[h]=[item],this.count=this.count+1,true):this.arrContains(item, arr)?false:(arr.push(item),this.count=this.count+1,true);
+  }
+  arrContains(item, arr){
+    let c, i;
+    c=true;
+    i=0;
+    const l=arr.length;
+    while(c&&i<l)
+      if(this.equals.apply(null, [arr[i], item]))c=false;
+      else i=i+1;
+    return!c;
+  }
+  GetEnumerator(){
+    return Get(concat_3(this.data));
+  }
+  ExceptWith(xs){
+    const e=Get(xs);
+    try {
+      while(e.MoveNext())
+        this.Remove(e.Current);
+    }
+    finally {
+      const _1=e;
+      if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+    }
+  }
+  get Count(){
+    return this.count;
+  }
+  IntersectWith(xs){
+    const other=new HashSet("New_4", xs, this.equals, this.hash);
+    const all=concat_3(this.data);
+    for(let i=0, _1=all.length-1;i<=_1;i++){
+      const item=all[i];
+      if(!other.Contains(item))this.Remove(item);
+    }
+  }
+  Remove(item){
+    const arr=this.data[this.hash(item)];
+    return arr==null?false:this.arrRemove(item, arr)&&(this.count=this.count-1,true);
+  }
+  CopyTo(arr, index){
+    const all=concat_3(this.data);
+    for(let i=0, _1=all.length-1;i<=_1;i++)set(arr, i+index, all[i]);
+  }
+  arrRemove(item, arr){
+    let c, i;
+    c=true;
+    i=0;
+    const l=arr.length;
+    while(c&&i<l)
+      if(this.equals.apply(null, [arr[i], item])){
+        arr.splice(i, 1);
+        c=false;
+      }
+      else i=i+1;
+    return!c;
+  }
+  constructor(i, _1, _2, _3){
+    if(i=="New_3"){
+      i="New_4";
+      _1=[];
+      _2=Equals;
+      _3=Hash;
+    }
+    let init_2;
+    if(i=="New_2"){
+      init_2=_1;
+      i="New_4";
+      _1=init_2;
+      _2=Equals;
+      _3=Hash;
+    }
+    if(i=="New_4"){
+      const init_3=_1;
+      const equals=_2;
+      const hash=_3;
+      super();
+      this.equals=equals;
+      this.hash=hash;
+      this.data=[];
+      this.count=0;
+      const e=Get(init_3);
+      try {
+        while(e.MoveNext())
+          this.add(e.Current);
+      }
+      finally {
+        const _4=e;
+        if(typeof _4=="object"&&isIDisposable(_4))e.Dispose();
+      }
+    }
+  }
+}
+class ConcreteVar extends Var {
+  isConst;
+  current;
+  snap;
+  view;
+  id;
+  get View(){
+    return this.view;
+  }
+  Set(v){
+    if(this.isConst)(((_1) => _1("WebSharper.UI: invalid attempt to change value of a Var after calling SetFinal"))((s) => {
+      console.log(s);
+    }));
+    else {
+      Obsolete(this.snap);
+      this.current=v;
+      this.snap={s:Ready(v, [])};
+    }
+  }
+  Get(){
+    return this.current;
+  }
+  UpdateMaybe(f){
+    const m=f(this.Get());
+    if(m!=null&&m.$==1)this.Set(m.$0);
+  }
+  constructor(isConst, initSnap, initValue){
+    super();
+    this.isConst=isConst;
+    this.current=initValue;
+    this.snap=initSnap;
+    this.view=() => this.snap;
+    this.id=Int();
+  }
+}
+function Map_1(fn, sn){
+  const m=sn.s;
+  if(m!=null&&m.$==0)return{s:Forever(fn(m.$0))};
+  else {
+    const res={s:Waiting([], [])};
+    When(sn, (a) => {
+      MarkDone(res, sn, fn(a));
+    }, res);
+    return res;
+  }
+}
+function WhenObsoleteRun(snap, obs){
+  const m=snap.s;
+  if(m==null)obs();
+  else m!=null&&m.$==2?(m.$0,m.$1.push(obs)):m!=null&&m.$==3?(m.$0,m.$1.push(obs)):m.$0;
+}
+function When(snap, avail, obs){
+  const m=snap.s;
+  if(m==null)Obsolete(obs);
+  else if(m!=null&&m.$==2){
+    const v=m.$0;
+    EnqueueSafe(m.$1, obs);
+    avail(v);
+  }
+  else if(m!=null&&m.$==3){
+    const q2=m.$1;
+    m.$0.push(avail);
+    EnqueueSafe(q2, obs);
+  }
+  else avail(m.$0);
+}
+function MarkDone(res, sn, v){
+  const _1=sn.s;
+  if(_1!=null&&_1.$==0)MarkForever(res, v);
+  else MarkReady(res, v);
+}
+function WhenRun(snap, avail, obs){
+  const m=snap.s;
+  if(m==null)obs();
+  else if(m!=null&&m.$==2){
+    const v=m.$0;
+    m.$1.push(obs);
+    avail(v);
+  }
+  else if(m!=null&&m.$==3){
+    const q2=m.$1;
+    m.$0.push(avail);
+    q2.push(obs);
+  }
+  else avail(m.$0);
+}
+function EnqueueSafe(q, x){
+  q.push(x);
+  if(q.length%20===0){
+    const qcopy=q.slice(0);
+    Clear(q);
+    for(let i=0, _1=length(qcopy)-1;i<=_1;i++){
+      const o=get(qcopy, i);
+      if(typeof o=="object")(((sn) => {
+        if(sn.s)q.push(sn);
+      })(o));
+      else(((f) => {
+        q.push(f);
+      })(o));
+    }
+  }
+  else void 0;
+}
+function MarkForever(sn, v){
+  const m=sn.s;
+  if(m!=null&&m.$==3){
+    const q=m.$0;
+    sn.s=Forever(v);
+    for(let i=0, _1=length(q)-1;i<=_1;i++)(get(q, i))(v);
+  }
+  else void 0;
+}
+function MarkReady(sn, v){
+  const m=sn.s;
+  if(m!=null&&m.$==3){
+    const q2=m.$1;
+    const q1=m.$0;
+    sn.s=Ready(v, q2);
+    for(let i=0, _1=length(q1)-1;i<=_1;i++)(get(q1, i))(v);
+  }
+  else void 0;
+}
+function Map2Unit_1(sn1, sn2){
+  const _1=sn1.s;
+  const _2=sn2.s;
+  if(_1!=null&&_1.$==0)return _2!=null&&_2.$==0?{s:Forever(null)}:sn2;
+  else if(_2!=null&&_2.$==0)return sn1;
+  else {
+    const res={s:Waiting([], [])};
+    const cont=() => {
+      const m=res.s;
+      if(!(m!=null&&m.$==0||m!=null&&m.$==2)){
+        const _3=ValueAndForever(sn1);
+        const _4=ValueAndForever(sn2);
+        if(_3!=null&&_3.$==1)if(_4!=null&&_4.$==1)if(_3.$0[1]&&_4.$0[1])MarkForever(res, null);
+        else MarkReady(res, null);
+      }
+    };
+    When(sn1, cont, res);
+    When(sn2, cont, res);
+    return res;
+  }
+}
+function Join_1(snap){
+  const res={s:Waiting([], [])};
+  When(snap, (x) => {
+    const y=x();
+    When(y, (v) => {
+      let _1;
+      const _2=y.s;
+      if(_2!=null&&_2.$==0){
+        const _3=snap.s;
+        _1=_3!=null&&_3.$==0;
+      }
+      else _1=false;
+      if(_1)MarkForever(res, v);
+      else MarkReady(res, v);
+    }, res);
+  }, res);
+  return res;
+}
+function ValueAndForever(snap){
+  const m=snap.s;
+  return m!=null&&m.$==0?Some([m.$0, true]):m!=null&&m.$==2?Some([m.$0, false]):null;
+}
+function Copy(sn){
+  const m=sn.s;
+  if(m==null)return sn;
+  else if(m!=null&&m.$==2){
+    const res={s:Ready(m.$0, [])};
+    WhenObsolete(sn, res);
+    return res;
+  }
+  else if(m!=null&&m.$==3){
+    const res_1={s:Waiting([], [])};
+    When(sn, (v) => {
+      MarkDone(res_1, sn, v);
+    }, res_1);
+    return res_1;
+  }
+  else return sn;
+}
+function WhenObsolete(snap, obs){
+  const m=snap.s;
+  if(m==null)Obsolete(obs);
+  else m!=null&&m.$==2?(m.$0,EnqueueSafe(m.$1, obs)):m!=null&&m.$==3?(m.$0,EnqueueSafe(m.$1, obs)):m.$0;
+}
+class Attr {
+  static Create(name, value){
+    return Attr.A3((el) => {
+      el.setAttribute(name, value);
+    });
+  }
+  static Concat(xs){
+    const x=ofSeqNonCopying(xs);
+    return TreeReduce(EmptyAttr(), (_1, _2) => AppendTree(_1, _2), x);
+  }
+  static A3(init_2){
+    return Create_1(Attr, {$:3, $0:init_2});
+  }
+  static A4(onAfterRender){
+    return Create_1(Attr, {$:4, $0:onAfterRender});
+  }
+  static A2(Item1, Item2){
+    return Create_1(Attr, {
+      $:2, 
+      $0:Item1, 
+      $1:Item2
+    });
+  }
+  $;
+  $0;
+  $1;
+}
+function Handler(name, callback){
+  return Attr.A3((el) => {
+    el.addEventListener(name, (d) =>(callback(el))(d), false);
+  });
+}
+function OnAfterRender(callback){
+  return Attr.A4(callback);
+}
+function ofSeqNonCopying(xs){
+  if(xs instanceof Array)return xs;
+  else if(xs instanceof FSharpList)return ofList(xs);
+  else if(xs===null)return[];
+  else {
+    const q=[];
+    const o=Get(xs);
+    try {
+      while(o.MoveNext())
+        q.push(o.Current);
+      return q;
+    }
+    finally {
+      const _1=o;
+      if(typeof _1=="object"&&isIDisposable(_1))o.Dispose();
+    }
+  }
+}
+function TreeReduce(defaultValue, reduction, array){
+  const l=length(array);
+  function loop(off){
+    return(len) => {
+      let _1;
+      switch(len<=0?0:len===1?off>=0&&off<l?1:(_1=len,2):(_1=len,2)){
+        case 0:
+          return defaultValue;
+        case 1:
+          return get(array, off);
+        case 2:
+          const l2=len/2>>0;
+          return reduction((loop(off))(l2), (loop(off+l2))(len-l2));
+      }
+    };
+  }
+  return(loop(0))(l);
+}
+function MapTreeReduce(mapping, defaultValue, reduction, array){
+  const l=length(array);
+  function loop(off){
+    return(len) => {
+      let _1;
+      switch(len<=0?0:len===1?off>=0&&off<l?1:(_1=len,2):(_1=len,2)){
+        case 0:
+          return defaultValue;
+        case 1:
+          return mapping(get(array, off));
+        case 2:
+          const l2=len/2>>0;
+          return reduction((loop(off))(l2), (loop(off+l2))(len-l2));
+      }
+    };
+  }
+  return(loop(0))(l);
+}
+let _c_2=Lazy((_i) => class $StartupCode_Templates {
+  static {
+    _c_2=_i(this);
+  }
+  static RenderedFullDocTemplate;
+  static TextHoleRE;
+  static GlobalHoles;
+  static LocalTemplatesLoaded;
+  static LoadedTemplates;
+  static {
+    this.LoadedTemplates=new Dictionary("New_5");
+    this.LocalTemplatesLoaded=false;
+    this.GlobalHoles=new Dictionary("New_5");
+    this.TextHoleRE="\\${([^}]+)}";
+    this.RenderedFullDocTemplate=null;
+  }
+});
+function TextNodeDoc(Item){
+  return{$:5, $0:Item};
+}
+function EmbedDoc(Item){
+  return{$:2, $0:Item};
+}
+function AppendDoc(Item1, Item2){
+  return{
+    $:0, 
+    $0:Item1, 
+    $1:Item2
+  };
+}
+function TextDoc(Item){
+  return{$:4, $0:Item};
+}
+function ElemDoc(Item){
+  return{$:1, $0:Item};
+}
+class View { }
+function ParseHTMLIntoFakeRoot(elem){
+  const root=globalThis.document.createElement("div");
+  if(!rhtml().test(elem)){
+    root.appendChild(globalThis.document.createTextNode(elem));
+    return root;
+  }
+  else {
+    const m=rtagName().exec(elem);
+    const tag=Equals(m, null)?"":get(m, 1).toLowerCase();
+    const w=(wrapMap())[tag];
+    const p=w?w:defaultWrap();
+    root.innerHTML=p[1]+elem.replace(rxhtmlTag(), "<$1></$2>")+p[2];
+    function unwrap(elt, a){
+      while(true)
+        {
+          if(a===0)return elt;
+          else {
+            const i=a;
+            elt=elt.lastChild;
+            a=i-1;
+          }
+        }
+    }
+    return(((a) => {
+      const _1=a;
+      return(_2) => unwrap(_1, _2);
+    })(root))(p[0]);
+  }
+}
+function rhtml(){
+  return _c_6.rhtml;
+}
+function wrapMap(){
+  return _c_6.wrapMap;
+}
+function defaultWrap(){
+  return _c_6.defaultWrap;
+}
+function rxhtmlTag(){
+  return _c_6.rxhtmlTag;
+}
+function rtagName(){
+  return _c_6.rtagName;
+}
+function IterSelector(el, selector, f){
+  const l=el.querySelectorAll(selector);
+  for(let i=0, _1=l.length-1;i<=_1;i++)f(l[i]);
+}
+function InsertAt(parent, pos, node){
+  let _1;
+  if(node.parentNode===parent){
+    const m=node.nextSibling;
+    let _2=Equals(m, null)?null:m;
+    _1=pos===_2;
+  }
+  else _1=false;
+  if(!_1)parent.insertBefore(node, pos);
+}
+function RemoveNode(parent, el){
+  if(el.parentNode===parent)parent.removeChild(el);
+}
+function get_UseAnimations(){
+  return UseAnimations();
+}
+function Play(anim){
+  return Delay(() => Bind_1(Run(() => { }, Actions(anim)), () => {
+    Finalize(anim);
+    return Return(null);
+  }));
+}
+function Append(a, a_1){
+  return Anim(Append_1(a.$0, a_1.$0));
+}
+function Run(k, anim){
+  const dur=anim.Duration;
+  if(dur===0)return Zero();
+  else {
+    const c=(ok) => {
+      function loop(start){
+        return(now) => {
+          const t=now-start;
+          anim.Compute(t);
+          k();
+          return t<=dur?void requestAnimationFrame((t_1) => {
+            (loop(start))(t_1);
+          }):ok();
+        };
+      }
+      requestAnimationFrame((t) => {
+        (loop(t))(t);
+      });
+    };
+    return FromContinuations((_1, _2, _3) => c.apply(null, [_1, _2, _3]));
+  }
+}
+function Anim(Item){
+  return{$:0, $0:Item};
+}
+function Concat(xs){
+  return Anim(Concat_1(map_2(List, xs)));
+}
+function BatchUpdatesEnabled(){
+  return _c_3.BatchUpdatesEnabled;
+}
+function StartProcessor(procAsync){
+  const st=[0];
+  function work(){
+    return Delay(() => Bind_1(procAsync, () => {
+      const m=st[0];
+      return Equals(m, 1)?(st[0]=0,Zero()):Equals(m, 2)?(st[0]=1,work()):Zero();
+    }));
+  }
+  return() => {
+    const m=st[0];
+    if(Equals(m, 0)){
+      st[0]=1;
+      Start_1(work(), null);
+    }
+    else Equals(m, 1)?st[0]=2:void 0;
+  };
+}
+function nonNegative(){
+  return FailWith("The input must be non-negative.");
+}
+function insufficient(){
+  return FailWith("The input sequence has an insufficient number of elements.");
+}
+function arrContains(item, arr){
+  let c, i;
+  c=true;
+  i=0;
+  const l=length(arr);
+  while(c&&i<l)
+    if(Equals(arr[i], item))c=false;
+    else i=i+1;
+  return!c;
+}
+function notPresent(){
+  throw new KeyNotFoundException("New");
+}
+function Int(){
+  set_counter(counter()+1);
+  return counter();
+}
+function set_counter(_1){
+  _c_5.counter=_1;
+}
+function counter(){
+  return _c_5.counter;
+}
+function Ready(Item1, Item2){
+  return{
+    $:2, 
+    $0:Item1, 
+    $1:Item2
+  };
+}
+function Forever(Item){
+  return{$:0, $0:Item};
+}
+function Waiting(Item1, Item2){
+  return{
+    $:3, 
+    $0:Item1, 
+    $1:Item2
+  };
+}
+function Insert(elem, tree){
+  const nodes=[];
+  const oar=[];
+  function loop(node){
+    while(true)
+      {
+        if(!(node===null)){
+          if(node!=null&&node.$==1)return nodes.push(node.$0);
+          else if(node!=null&&node.$==2){
+            const b=node.$1;
+            const a=node.$0;
+            loop(a);
+            node=b;
+          }
+          else return node!=null&&node.$==3?node.$0(elem):node!=null&&node.$==4?oar.push(node.$0):null;
+        }
+        else return null;
+      }
+  }
+  loop(tree);
+  const arr=nodes.slice(0);
+  let _1=New_32(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+    iter_1((f) => {
+      f(el);
+    }, oar);
+  }));
+  return _1;
+}
+function EmptyAttr(){
+  return _c_7.EmptyAttr;
+}
+function HasExitAnim(attr_1){
+  const flag=2;
+  return(attr_1.DynFlags&flag)===flag;
+}
+function GetExitAnim(dyn){
+  return GetAnim(dyn, (_1, _2) => _1.NGetExitAnim(_2));
+}
+function HasEnterAnim(attr_1){
+  const flag=1;
+  return(attr_1.DynFlags&flag)===flag;
+}
+function GetEnterAnim(dyn){
+  return GetAnim(dyn, (_1, _2) => _1.NGetEnterAnim(_2));
+}
+function HasChangeAnim(attr_1){
+  const flag=4;
+  return(attr_1.DynFlags&flag)===flag;
+}
+function GetChangeAnim(dyn){
+  return GetAnim(dyn, (_1, _2) => _1.NGetChangeAnim(_2));
+}
+function Updates(dyn){
+  return MapTreeReduce((x) => x.NChanged, Const(), Map2Unit, dyn.DynNodes);
+}
+function AppendTree(a, b){
+  if(a===null)return b;
+  else if(b===null)return a;
+  else {
+    const x=Attr.A2(a, b);
+    SetFlags(x, Flags(a)|Flags(b));
+    return x;
+  }
+}
+function Flags(a){
+  return a!==null&&a.hasOwnProperty("flags")?a.flags:0;
+}
+function GetAnim(dyn, f){
+  return Concat(map((n) => f(n, dyn.DynElem), dyn.DynNodes));
+}
+function Sync_1(elem, dyn){
+  iter((d) => {
+    d.NSync(elem);
+  }, dyn.DynNodes);
+}
+function SetFlags(a, f){
+  a.flags=f;
+}
+function Obsolete(sn){
+  let _1;
+  const m=sn.s;
+  if(m==null||(m!=null&&m.$==2?(_1=m.$1,false):m!=null&&m.$==3?(_1=m.$1,false):true))void 0;
+  else {
+    sn.s=null;
+    for(let i=0, _2=length(_1)-1;i<=_2;i++){
+      const o=get(_1, i);
+      if(typeof o=="object")(((sn_1) => {
+        Obsolete(sn_1);
+      })(o));
+      else o();
+    }
+  }
+}
+class TemplateHole extends Object_1 { }
+function convertTextNode(n){
+  let m, li;
+  m=null;
+  li=0;
+  const s=n.textContent;
+  const strRE=new RegExp(TextHoleRE(), "g");
+  while(m=strRE.exec(s),m!==null)
+    {
+      n.parentNode.insertBefore(globalThis.document.createTextNode(string(s, Some(li), Some(strRE.lastIndex-get(m, 0).length-1))), n);
+      li=strRE.lastIndex;
+      const hole=globalThis.document.createElement("span");
+      hole.setAttribute("ws-replace", get(m, 1).toLowerCase());
+      n.parentNode.insertBefore(hole, n);
+    }
+  strRE.lastIndex=0;
+  n.textContent=string(s, Some(li), null);
+}
+function failNotLoaded(name){
+  console.warn("Instantiating non-loaded template", name);
+}
+function fillTextHole(instance, fillWith, templateName){
+  const m=instance.querySelector("[ws-replace]");
+  return Equals(m, null)?(console.warn("Filling non-existent text hole", templateName),null):(m.parentNode.replaceChild(globalThis.document.createTextNode(fillWith), m),Some(m.getAttribute("ws-replace")));
+}
+function removeHolesExcept(instance, dontRemove){
+  const run=(attrName) => {
+    foreachNotPreserved(instance, "["+attrName+"]", (e) => {
+      if(!dontRemove.Contains(e.getAttribute(attrName)))e.removeAttribute(attrName);
+    });
+  };
+  run("ws-attr");
+  run("ws-onafterrender");
+  run("ws-var");
+  foreachNotPreserved(instance, "[ws-hole]", (e) => {
+    if(!dontRemove.Contains(e.getAttribute("ws-hole"))){
+      e.removeAttribute("ws-hole");
+      while(e.hasChildNodes())
+        e.removeChild(e.lastChild);
+    }
+  });
+  foreachNotPreserved(instance, "[ws-replace]", (e) => {
+    if(!dontRemove.Contains(e.getAttribute("ws-replace")))e.parentNode.removeChild(e);
+  });
+  foreachNotPreserved(instance, "[ws-on]", (e) => {
+    e.setAttribute("ws-on", concat_1(" ", filter((x) => dontRemove.Contains(get(SplitChars(x, [":"], 1), 1)), SplitChars(e.getAttribute("ws-on"), [" "], 1))));
+  });
+  foreachNotPreserved(instance, "[ws-attr-holes]", (e) => {
+    const holeAttrs=SplitChars(e.getAttribute("ws-attr-holes"), [" "], 1);
+    for(let i=0, _2=holeAttrs.length-1;i<=_2;i++){
+      const attrName=get(holeAttrs, i);
+      let this_1=new RegExp(TextHoleRE(), "g");
+      let str=e.getAttribute(attrName);
+      let replaceFn=(_3, _4) => dontRemove.Contains(_4)?_3:"";
+      let _1=str.replace(this_1, replaceFn);
+      e.setAttribute(attrName, _1);
+    }
+  });
+}
+function fillInstanceAttrs(instance, fillWith){
+  convertAttrs(fillWith);
+  const name=fillWith.nodeName.toLowerCase();
+  const m=instance.querySelector("[ws-attr="+name+"]");
+  if(Equals(m, null))console.warn("Filling non-existent attr hole", name);
+  else {
+    m.removeAttribute("ws-attr");
+    for(let i=0, _1=fillWith.attributes.length-1;i<=_1;i++){
+      const a=fillWith.attributes.item(i);
+      if(a.name=="class"&&m.hasAttribute("class"))m.setAttribute("class", m.getAttribute("class")+" "+a.nodeValue);
+      else m.setAttribute(a.name, a.nodeValue);
+    }
+  }
+}
+function mapHoles(t, mappings){
+  const run=(attrName) => {
+    foreachNotPreserved(t, "["+attrName+"]", (e) => {
+      let o;
+      const m=(o=null,[mappings.TryGetValue(e.getAttribute(attrName).toLowerCase(), {get:() => o, set:(v) => {
+        o=v;
+      }}), o]);
+      if(m[0])e.setAttribute(attrName, m[1]);
+    });
+  };
+  run("ws-hole");
+  run("ws-replace");
+  run("ws-attr");
+  run("ws-onafterrender");
+  run("ws-var");
+  foreachNotPreserved(t, "[ws-on]", (e) => {
+    e.setAttribute("ws-on", concat_1(" ", map((x) => {
+      let o;
+      const a=SplitChars(x, [":"], 1);
+      const m=(o=null,[mappings.TryGetValue(get(a, 1), {get:() => o, set:(v) => {
+        o=v;
+      }}), o]);
+      return m[0]?get(a, 0)+":"+m[1]:x;
+    }, SplitChars(e.getAttribute("ws-on"), [" "], 1))));
+  });
+  foreachNotPreserved(t, "[ws-attr-holes]", (e) => {
+    const holeAttrs=SplitChars(e.getAttribute("ws-attr-holes"), [" "], 1);
+    for(let i=0, _1=holeAttrs.length-1;i<=_1;i++)((() => {
+      const attrName=get(holeAttrs, i);
+      return e.setAttribute(attrName, fold_1((_2, _3) => {
+        const a=KeyValue(_3);
+        return _2.replace(new RegExp("\\${"+a[0]+"}", "ig"), "${"+a[1]+"}");
+      }, e.getAttribute(attrName), mappings));
+    })());
+  });
+}
+function fill(fillWith, p, n){
+  while(true)
+    {
+      if(fillWith.hasChildNodes())n=p.insertBefore(fillWith.lastChild, n);
+      else return null;
+    }
+}
+function convertAttrs(el){
+  const attrs=el.attributes;
+  const toRemove=[];
+  const events=[];
+  const holedAttrs=[];
+  for(let i=0, _2=attrs.length-1;i<=_2;i++){
+    const a=attrs.item(i);
+    if(StartsWith(a.nodeName, "ws-on")&&a.nodeName!="ws-onafterrender"&&a.nodeName!="ws-on"){
+      toRemove.push(a.nodeName);
+      events.push(string(a.nodeName, Some("ws-on".length), null)+":"+a.nodeValue.toLowerCase());
+    }
+    else if(!StartsWith(a.nodeName, "ws-")&&(new RegExp(TextHoleRE())).test(a.nodeValue)){
+      let this_1=new RegExp(TextHoleRE(), "g");
+      let str=a.nodeValue;
+      let replaceFn=(_3, _4) =>"${"+_4.toLowerCase()+"}";
+      let _1=str.replace(this_1, replaceFn);
+      a.nodeValue=_1;
+      holedAttrs.push(a.nodeName);
+    }
+    else void 0;
+  }
+  if(!(events.length==0))el.setAttribute("ws-on", concat_1(" ", events));
+  if(!(holedAttrs.length==0))el.setAttribute("ws-attr-holes", concat_1(" ", holedAttrs));
+  const lowercaseAttr=(name) => {
+    const m=el.getAttribute(name);
+    if(m==null){ }
+    else el.setAttribute(name, m.toLowerCase());
+  };
+  lowercaseAttr("ws-hole");
+  lowercaseAttr("ws-replace");
+  lowercaseAttr("ws-attr");
+  lowercaseAttr("ws-onafterrender");
+  lowercaseAttr("ws-var");
+  iter((a_1) => {
+    el.removeAttribute(a_1);
+  }, toRemove);
+}
+function string(source, start, finish){
+  if(start==null){
+    if(finish!=null&&finish.$==1){
+      const f=finish.$0;
+      return f<0?"":source.slice(0, f+1);
+    }
+    else return"";
+  }
+  else if(finish==null)return source.slice(start.$0);
+  else {
+    const f_1=finish.$0;
+    const s=start.$0;
+    return f_1<0?"":source.slice(s, f_1+1);
+  }
+}
+class KeyCollection extends Object_1 {
+  d;
+  GetEnumerator(){
+    return Get(map_2((kvp) => kvp.K, this.d));
+  }
+  constructor(d){
+    super();
+    this.d=d;
+  }
+}
+class DocElemNode {
+  Attr;
+  Children;
+  Delimiters;
+  El;
+  ElKey;
+  Render;
+  Equals(o){
+    return this.ElKey===o.ElKey;
+  }
+  GetHashCode(){
+    return this.ElKey;
+  }
+  static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
+    const _1={
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
+      ElKey:ElKey
+    };
+    let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
+    return Create_1(DocElemNode, _2);
+  }
+}
+function New_31(PreviousNodes, Top){
+  return{PreviousNodes:PreviousNodes, Top:Top};
+}
+function get_Empty(){
+  return NodeSet(new HashSet("New_3"));
+}
+function FindAll(doc_1){
+  const q=[];
+  function recF(recI, _1){
+    while(true)
+      switch(recI){
+        case 0:
+          if(_1!=null&&_1.$==0){
+            const b=_1.$1;
+            const a=_1.$0;
+            recF(0, a);
+            _1=b;
+          }
+          else if(_1!=null&&_1.$==1){
+            const el=_1.$0;
+            _1=el;
+            recI=1;
+          }
+          else if(_1!=null&&_1.$==2){
+            const em=_1.$0;
+            _1=em.Current;
+          }
+          else if(_1!=null&&_1.$==6){
+            const x=_1.$0.Holes;
+            return(((a_1) =>(a_2) => {
+              iter(a_1, a_2);
+            })(loopEN))(x);
+          }
+          else return null;
+          break;
+        case 1:
+          q.push(_1);
+          _1=_1.Children;
+          recI=0;
+          break;
+      }
+  }
+  function loop(node){
+    return recF(0, node);
+  }
+  function loopEN(el){
+    return recF(1, el);
+  }
+  loop(doc_1);
+  return NodeSet(new HashSet("New_2", q));
+}
+function NodeSet(Item){
+  return{$:0, $0:Item};
+}
+function Filter(f, a){
+  return NodeSet(Filter_1(f, a.$0));
+}
+function Except(a, a_1){
+  return NodeSet(Except_1(a.$0, a_1.$0));
+}
+function ToArray(a){
+  return ToArray_2(a.$0);
+}
+function Intersect(a, a_1){
+  return NodeSet(Intersect_1(a.$0, a_1.$0));
+}
+function Delay(mk){
+  return(c) => {
+    try {
+      (mk())(c);
+    }
+    catch(e){
+      c.k(No(e));
+    }
+  };
+}
+function Bind_1(r, f){
+  return checkCancel((c) => {
+    r(New_33((a) => {
+      if(a.$==0){
+        const x=a.$0;
+        scheduler().Fork(() => {
+          try {
+            (f(x))(c);
+          }
+          catch(e){
+            c.k(No(e));
+          }
+        });
+      }
+      else scheduler().Fork(() => {
+        c.k(a);
+      });
+    }, c.ct));
+  });
+}
+function Zero(){
+  return _c_8.Zero;
+}
+function Start_1(c, ctOpt){
+  const d=(defCTS())[0];
+  const ct=ctOpt==null?d:ctOpt.$0;
+  scheduler().Fork(() => {
+    if(!ct.c)c(New_33((a) => {
+      if(a.$==1)UncaughtAsyncError(a.$0);
+    }, ct));
+  });
+}
+function Return(x){
+  return(c) => {
+    c.k(Ok(x));
+  };
+}
+function scheduler(){
+  return _c_8.scheduler;
+}
+function checkCancel(r){
+  return(c) => {
+    if(c.ct.c)cancel(c);
+    else r(c);
+  };
+}
+function defCTS(){
+  return _c_8.defCTS;
+}
+function UncaughtAsyncError(e){
+  console.log("WebSharper: Uncaught asynchronous exception", e);
+}
+function FromContinuations(subscribe){
+  return(c) => {
+    const continued=[false];
+    const once=(cont) => {
+      if(continued[0])FailWith("A continuation provided by Async.FromContinuations was invoked multiple times");
+      else {
+        continued[0]=true;
+        scheduler().Fork(cont);
+      }
+    };
+    subscribe((a) => {
+      once(() => {
+        c.k(Ok(a));
+      });
+    }, (e) => {
+      once(() => {
+        c.k(No(e));
+      });
+    }, (e) => {
+      once(() => {
+        c.k(Cc(e));
+      });
+    });
+  };
+}
+function cancel(c){
+  c.k(Cc(new OperationCanceledException("New", c.ct)));
+}
+function UseAnimations(){
+  return _c_4.UseAnimations;
+}
+function Actions(a){
+  return ConcatActions(choose((a_1) => a_1.$==1?Some(a_1.$0):null, ToArray_1(a.$0)));
+}
+function Finalize(a){
+  iter((a_1) => {
+    if(a_1.$==0)a_1.$0();
+  }, ToArray_1(a.$0));
+}
+function ConcatActions(xs){
+  const xs_1=ofSeqNonCopying(xs);
+  const m=length(xs_1);
+  if(m===0)return Const_1();
+  else if(m===1)return get(xs_1, 0);
+  else {
+    const dur=max(map_2((anim) => anim.Duration, xs_1));
+    const xs_2=map((x) => Prolong(dur, x), xs_1);
+    return Def(dur, (t) => {
+      iter((anim) => {
+        anim.Compute(t);
+      }, xs_2);
+    });
+  }
+}
+function List(a){
+  return a.$0;
+}
+function Const_1(v){
+  return Def(0, () => v);
+}
+function Def(d, f){
+  return{Compute:f, Duration:d};
+}
+function Prolong(nextDuration, anim){
+  const comp=anim.Compute;
+  const dur=anim.Duration;
+  const last=Create(() => anim.Compute(anim.Duration));
+  return{Compute:(t) => t>=dur?last.f():comp(t), Duration:nextDuration};
+}
+let _c_3=Lazy((_i) => class Proxy {
+  static {
+    _c_3=_i(this);
+  }
+  static BatchUpdatesEnabled;
+  static {
+    this.BatchUpdatesEnabled=true;
+  }
+});
+class Elt extends Doc {
+  docNode_1;
+  updates_1;
+  elt;
+  rvUpdates;
+  static New(el, attr_1, children){
+    const node=CreateElemNode(el, attr_1, children.docNode);
+    const rvUpdates=Updates_1.Create(children.updates);
+    return new Elt(ElemDoc(node), Map2Unit(Updates(node.Attr), rvUpdates.v), el, rvUpdates);
+  }
+  constructor(docNode, updates, elt, rvUpdates){
+    super(docNode, updates);
+    this.docNode_1=docNode;
+    this.updates_1=updates;
+    this.elt=elt;
+    this.rvUpdates=rvUpdates;
+  }
+}
+function New_32(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+  const _1={
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
+    DynNodes:DynNodes
+  };
+  SetOptional(_1, "OnAfterRender", OnAfterRender_1);
+  return _1;
+}
+let _c_4=Lazy((_i) => class $StartupCode_Animation {
+  static {
+    _c_4=_i(this);
+  }
+  static UseAnimations;
+  static CubicInOut;
+  static {
+    this.CubicInOut=Easing.Custom((t) => {
+      const t2=t*t;
+      return 3*t2-2*(t2*t);
+    });
+    this.UseAnimations=true;
+  }
+});
+function Append_1(x, y){
+  return x.$==0?y:y.$==0?x:{
+    $:2, 
+    $0:x, 
+    $1:y
+  };
+}
+function ToArray_1(xs){
+  const out=[];
+  function loop(xs_1){
+    while(true)
+      {
+        if(xs_1.$==1)return out.push(xs_1.$0);
+        else if(xs_1.$==2){
+          const y=xs_1.$1;
+          const x=xs_1.$0;
+          loop(x);
+          xs_1=y;
+        }
+        else return xs_1.$==3?iter((v) => {
+          out.push(v);
+        }, xs_1.$0):null;
+      }
+  }
+  loop(xs);
+  return out.slice(0);
+}
+function Concat_1(xs){
+  const x=ofSeqNonCopying(xs);
+  return TreeReduce(Empty(), Append_1, x);
+}
+function Empty(){
+  return _c_9.Empty;
+}
+function TryParseBigInt(s, min, max_1, r){
+  let o, _1;
+  o=0n;
+  try {
+    _1=(o=BigInt(s),true);
+  }
+  catch(m_1){
+    _1=false;
+  }
+  const m=[_1, o];
+  if(m[0]){
+    const x=m[1];
+    const ok=x===x-x%1n&&x>=min&&x<=max_1;
+    if(ok)r.set(x);
+    return ok;
+  }
+  else return false;
+}
+function TryParse_2(s, min, max_1, r){
+  const x=+s;
+  const ok=x===x-x%1&&x>=min&&x<=max_1;
+  if(ok)r.set(x);
+  return ok;
+}
+let _c_5=Lazy((_i) => class $StartupCode_Abbrev {
+  static {
+    _c_5=_i(this);
+  }
+  static counter;
+  static {
+    this.counter=0;
+  }
+});
+class Updates_1 {
+  c;
+  s;
+  v;
+  static Create(v){
+    let var_1;
+    var_1=null;
+    var_1=Updates_1.New(v, null, () => {
+      let c;
+      c=var_1.s;
+      return c===null?(c=Copy(var_1.c()),var_1.s=c,WhenObsoleteRun(c, () => {
+        var_1.s=null;
+      }),c):c;
+    });
+    return var_1;
+  }
+  static New(Current, Snap, VarView){
+    return Create_1(Updates_1, {
+      c:Current, 
+      s:Snap, 
+      v:VarView
+    });
+  }
+}
+let _c_6=Lazy((_i) => class $StartupCode_DomUtility {
+  static {
+    _c_6=_i(this);
+  }
+  static defaultWrap;
+  static wrapMap;
+  static rhtml;
+  static rtagName;
+  static rxhtmlTag;
+  static {
+    this.rxhtmlTag=new RegExp("<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\\w:]+)[^>]*)\\/>", "gi");
+    this.rtagName=new RegExp("<([\\w:]+)");
+    this.rhtml=new RegExp("<|&#?\\w+;");
+    const table=[1, "<table>", "</table>"];
+    let _1=Object.fromEntries([["option", [1, "<select multiple='multiple'>", "</select>"]], ["legend", [1, "<fieldset>", "</fieldset>"]], ["area", [1, "<map>", "</map>"]], ["param", [1, "<object>", "</object>"]], ["thead", table], ["tbody", table], ["tfoot", table], ["tr", [2, "<table><tbody>", "</tbody></table>"]], ["col", [2, "<table><colgroup>", "</colgoup></table>"]], ["td", [3, "<table><tbody><tr>", "</tr></tbody></table>"]]]);
+    this.wrapMap=_1;
+    this.defaultWrap=[0, "", ""];
+  }
+});
+let _c_7=Lazy((_i) => class Client {
+  static {
+    _c_7=_i(this);
+  }
+  static FloatApplyChecked;
+  static FloatGetChecked;
+  static FloatSetChecked;
+  static FloatApplyUnchecked;
+  static FloatGetUnchecked;
+  static FloatSetUnchecked;
+  static IntApplyChecked;
+  static IntGetChecked;
+  static IntSetChecked;
+  static IntApplyUnchecked;
+  static IntGetUnchecked;
+  static IntSetUnchecked;
+  static FileApplyUnchecked;
+  static FileGetUnchecked;
+  static FileSetUnchecked;
+  static DateTimeApplyUnchecked;
+  static DateTimeGetUnchecked;
+  static DateTimeSetUnchecked;
+  static StringListApply;
+  static StringListGet;
+  static StringListSet;
+  static StringApply;
+  static StringGet;
+  static StringSet;
+  static BoolCheckedApply;
+  static EmptyAttr;
+  static {
+    this.EmptyAttr=null;
+    this.BoolCheckedApply=(var_1) =>[(el) => {
+      el.addEventListener("change", () => var_1.Get()!=el.checked?var_1.Set(el.checked):null);
+    }, (_1) =>(_2) => _2!=null&&_2.$==1?void(_1.checked=_2.$0):null, Map((V_1) => Some(V_1), var_1.View)];
+    this.StringSet=(el) =>(s_8) => {
+      el.value=s_8;
+    };
+    this.StringGet=(el) => Some(el.value);
+    const g=StringGet();
+    const s=StringSet();
+    this.StringApply=(v) => ApplyValue(g, s, v);
+    this.StringListSet=(el) =>(s_8) => {
+      const options_=el.options;
+      for(let i=0, _1=options_.length-1;i<=_1;i++)((() => {
+        const option=options_.item(i);
+        option.selected=arrContains(option.value, s_8);
+      })());
+    };
+    this.StringListGet=(el) => {
+      const selectedOptions=el.selectedOptions;
+      return Some(ofSeq(delay(() => collect_1((i) =>[selectedOptions.item(i).value], range(0, selectedOptions.length-1)))));
+    };
+    const g_1=StringListGet();
+    const s_1=StringListSet();
+    this.StringListApply=(v) => ApplyValue(g_1, s_1, v);
+    this.DateTimeSetUnchecked=(el) =>(i) => {
+      el.value=(new Date(i)).toLocaleString();
+    };
+    this.DateTimeGetUnchecked=(el) => {
+      let o, m;
+      const s_8=el.value;
+      if(isBlank_1(s_8))return Some(-8640000000000000);
+      else {
+        o=0;
+        const m_1=TryParse_3(s_8);
+        let _1=m_1!=null&&m_1.$==1&&(o=m_1.$0,true);
+        m=[_1, o];
+        return m[0]?Some(m[1]):null;
+      }
+    };
+    const g_2=DateTimeGetUnchecked();
+    const s_2=DateTimeSetUnchecked();
+    this.DateTimeApplyUnchecked=(v) => ApplyValue(g_2, s_2, v);
+    this.FileSetUnchecked=() =>() => null;
+    this.FileGetUnchecked=(el) => {
+      const files=el.files;
+      return Some(ofSeq(delay(() => map_2((i) => files.item(i), range(0, files.length-1)))));
+    };
+    const g_3=FileGetUnchecked();
+    const s_3=FileSetUnchecked();
+    this.FileApplyUnchecked=(v) => FileApplyValue(g_3, s_3, v);
+    this.IntSetUnchecked=(el) =>(i) => {
+      el.value=String(i);
+    };
+    this.IntGetUnchecked=(el) => {
+      const s_8=el.value;
+      if(isBlank_1(s_8))return Some(0);
+      else {
+        const pd=+s_8;
+        return pd!==pd>>0?null:Some(pd);
+      }
+    };
+    const g_4=IntGetUnchecked();
+    const s_4=IntSetUnchecked();
+    this.IntApplyUnchecked=(v) => ApplyValue(g_4, s_4, v);
+    this.IntSetChecked=(el) =>(i) => {
+      const i_1=i.Input;
+      return el.value!=i_1?void(el.value=i_1):null;
+    };
+    this.IntGetChecked=(el) => {
+      let _1, o;
+      const s_8=el.value;
+      if(isBlank_1(s_8))_1=(el.checkValidity?el.checkValidity():true)?CheckedInput.Blank(s_8):CheckedInput.Invalid(s_8);
+      else {
+        const m=(o=0,[TryParse(s_8, {get:() => o, set:(v) => {
+          o=v;
+        }}), o]);
+        _1=m[0]?CheckedInput.Valid(m[1], s_8):CheckedInput.Invalid(s_8);
+      }
+      return Some(_1);
+    };
+    const g_5=IntGetChecked();
+    const s_5=IntSetChecked();
+    this.IntApplyChecked=(v) => ApplyValue(g_5, s_5, v);
+    this.FloatSetUnchecked=(el) =>(i) => {
+      el.value=String(i);
+    };
+    this.FloatGetUnchecked=(el) => {
+      const s_8=el.value;
+      if(isBlank_1(s_8))return Some(0);
+      else {
+        const pd=+s_8;
+        return isNaN(pd)?null:Some(pd);
+      }
+    };
+    const g_6=FloatGetUnchecked();
+    const s_6=FloatSetUnchecked();
+    this.FloatApplyUnchecked=(v) => ApplyValue(g_6, s_6, v);
+    this.FloatSetChecked=(el) =>(i) => {
+      const i_1=i.Input;
+      return el.value!=i_1?void(el.value=i_1):null;
+    };
+    this.FloatGetChecked=(el) => {
+      let _1;
+      const s_8=el.value;
+      if(isBlank_1(s_8))_1=(el.checkValidity?el.checkValidity():true)?CheckedInput.Blank(s_8):CheckedInput.Invalid(s_8);
+      else {
+        const i=+s_8;
+        _1=isNaN(i)?CheckedInput.Invalid(s_8):CheckedInput.Valid(i, s_8);
+      }
+      return Some(_1);
+    };
+    const g_7=FloatGetChecked();
+    const s_7=FloatSetChecked();
+    this.FloatApplyChecked=(v) => ApplyValue(g_7, s_7, v);
+  }
+});
+class Scheduler extends Object_1 {
+  idle;
+  robin;
+  Fork(action){
+    this.robin.push(action);
+    this.idle?(this.idle=false,setTimeout(() => {
+      this.tick();
+    }, 0)):void 0;
+  }
+  tick(){
+    let loop;
+    const t=Date.now();
+    loop=true;
+    while(loop)
+      if(this.robin.length===0){
+        this.idle=true;
+        loop=false;
+      }
+      else {
+        (this.robin.shift())();
+        Date.now()-t>40?(setTimeout(() => {
+          this.tick();
+        }, 0),loop=false):void 0;
+      }
+  }
+  constructor(){
+    super();
+    this.idle=true;
+    this.robin=[];
+  }
+}
+class Easing extends Object_1 {
+  transformTime;
+  static Custom(f){
+    return new Easing(f);
+  }
+  constructor(transformTime){
+    super();
+    this.transformTime=transformTime;
+  }
+}
+function New_33(k, ct){
+  return{k:k, ct:ct};
+}
+function No(Item){
+  return{$:1, $0:Item};
+}
+function Ok(Item){
+  return{$:0, $0:Item};
+}
+function Cc(Item){
+  return{$:2, $0:Item};
+}
+let _c_8=Lazy((_i) => class $StartupCode_Concurrency {
+  static {
+    _c_8=_i(this);
+  }
+  static GetCT;
+  static Zero;
+  static defCTS;
+  static scheduler;
+  static noneCT;
+  static {
+    this.noneCT=New_34(false, []);
+    this.scheduler=new Scheduler();
+    this.defCTS=[new CancellationTokenSource()];
+    this.Zero=Return();
+    this.GetCT=(c) => {
+      c.k(Ok(c.ct));
+    };
+  }
+});
+function New_34(IsCancellationRequested, Registrations){
+  return{c:IsCancellationRequested, r:Registrations};
+}
+function Filter_1(ok, set_1){
+  return new HashSet("New_2", filter(ok, ToArray_2(set_1)));
+}
+function Except_1(excluded, included){
+  const set_1=new HashSet("New_2", ToArray_2(included));
+  set_1.ExceptWith(ToArray_2(excluded));
+  return set_1;
+}
+function ToArray_2(set_1){
+  const arr=create(set_1.Count, void 0);
+  set_1.CopyTo(arr, 0);
+  return arr;
+}
+function Intersect_1(a, b){
+  const set_1=new HashSet("New_2", ToArray_2(a));
+  set_1.IntersectWith(ToArray_2(b));
+  return set_1;
+}
+function concat_3(o){
+  let r=[];
+  let k;
+  for(var k_1 in o)r.push.apply(r, o[k_1]);
+  return r;
+}
+function Clear(a){
+  a.splice(0, length(a));
+}
+class KeyNotFoundException extends Error {
+  constructor(i, _1){
+    if(i=="New"){
+      i="New_1";
+      _1="The given key was not present in the dictionary.";
+    }
+    if(i=="New_1"){
+      const message=_1;
+      super(message);
+    }
+  }
+}
+function ApplyValue(get_1, set_1, var_1){
+  let expectedValue;
+  expectedValue=null;
+  return[(el) => {
+    const onChange=() => {
+      var_1.UpdateMaybe((v) => {
+        let _1;
+        expectedValue=get_1(el);
+        return expectedValue!=null&&expectedValue.$==1&&(!Equals(expectedValue.$0, v)&&(_1=[expectedValue, expectedValue.$0],true))?_1[0]:null;
+      });
+    };
+    el.addEventListener("change", onChange);
+    el.addEventListener("input", onChange);
+    el.addEventListener("keypress", onChange);
+  }, (x) => {
+    const _1=set_1(x);
+    return(_2) => _2==null?null:_1(_2.$0);
+  }, Map((v) => {
+    let _1;
+    return expectedValue!=null&&expectedValue.$==1&&(Equals(expectedValue.$0, v)&&(_1=expectedValue.$0,true))?null:Some(v);
+  }, var_1.View)];
+}
+function StringSet(){
+  return _c_7.StringSet;
+}
+function StringGet(){
+  return _c_7.StringGet;
+}
+function StringListSet(){
+  return _c_7.StringListSet;
+}
+function StringListGet(){
+  return _c_7.StringListGet;
+}
+function DateTimeSetUnchecked(){
+  return _c_7.DateTimeSetUnchecked;
+}
+function DateTimeGetUnchecked(){
+  return _c_7.DateTimeGetUnchecked;
+}
+function FileApplyValue(get_1, set_1, var_1){
+  let expectedValue;
+  expectedValue=null;
+  return[(el) => {
+    el.addEventListener("change", () => {
+      var_1.UpdateMaybe((v) => {
+        let _1;
+        expectedValue=get_1(el);
+        return expectedValue!=null&&expectedValue.$==1&&(expectedValue.$0!==v&&(_1=[expectedValue, expectedValue.$0],true))?_1[0]:null;
+      });
+    });
+  }, (x) => {
+    const _1=set_1(x);
+    return(_2) => _2==null?null:_1(_2.$0);
+  }, Map((v) => {
+    let _1;
+    return expectedValue!=null&&expectedValue.$==1&&(Equals(expectedValue.$0, v)&&(_1=expectedValue.$0,true))?null:Some(v);
+  }, var_1.View)];
+}
+function FileSetUnchecked(){
+  return _c_7.FileSetUnchecked;
+}
+function FileGetUnchecked(){
+  return _c_7.FileGetUnchecked;
+}
+function IntSetUnchecked(){
+  return _c_7.IntSetUnchecked;
+}
+function IntGetUnchecked(){
+  return _c_7.IntGetUnchecked;
+}
+function IntSetChecked(){
+  return _c_7.IntSetChecked;
+}
+function IntGetChecked(){
+  return _c_7.IntGetChecked;
+}
+function FloatSetUnchecked(){
+  return _c_7.FloatSetUnchecked;
+}
+function FloatGetUnchecked(){
+  return _c_7.FloatGetUnchecked;
+}
+function FloatSetChecked(){
+  return _c_7.FloatSetChecked;
+}
+function FloatGetChecked(){
+  return _c_7.FloatGetChecked;
+}
+function isBlank_1(s){
+  return forall_1(IsWhiteSpace, s);
+}
+class CheckedInput {
+  get Input(){
+    return this.$==1?this.$0:this.$==2?this.$0:this.$1;
+  }
+  static Blank(inputText){
+    return Create_1(CheckedInput, {$:2, $0:inputText});
+  }
+  static Invalid(inputText){
+    return Create_1(CheckedInput, {$:1, $0:inputText});
+  }
+  static Valid(value, inputText){
+    return Create_1(CheckedInput, {
+      $:0, 
+      $0:value, 
+      $1:inputText
+    });
+  }
+  $;
+  $0;
+  $1;
+}
+class CancellationTokenSource extends Object_1 {
+  init;
+  c;
+  pending;
+  r;
+  constructor(){
+    super();
+    this.c=false;
+    this.pending=null;
+    this.r=[];
+    this.init=1;
+  }
+}
+function Children(elem, delims){
+  let n;
+  if(delims!=null&&delims.$==1){
+    const rdelim=delims.$0[1];
+    const ldelim=delims.$0[0];
+    const a=[];
+    n=ldelim.nextSibling;
+    while(n!==rdelim)
+      {
+        a.push(n);
+        n=n.nextSibling;
+      }
+    return DomNodes(a);
+  }
+  else {
+    let _1=elem.childNodes.length;
+    const o=elem.childNodes;
+    let _2=init(_1, (i) => o[i]);
+    return DomNodes(_2);
+  }
+}
+function Except_2(a, a_1){
+  const excluded=a.$0;
+  return DomNodes(filter((n) => forall((k) =>!(n===k), excluded), a_1.$0));
+}
+function Iter(f, a){
+  iter(f, a.$0);
+}
+function DocChildren(node){
+  const q=[];
+  function loop(doc_1){
+    while(true)
+      {
+        if(doc_1!=null&&doc_1.$==2){
+          const d=doc_1.$0;
+          doc_1=d.Current;
+        }
+        else if(doc_1!=null&&doc_1.$==1)return q.push(doc_1.$0.El);
+        else if(doc_1==null)return null;
+        else if(doc_1!=null&&doc_1.$==5)return q.push(doc_1.$0);
+        else if(doc_1!=null&&doc_1.$==4)return q.push(doc_1.$0.Text);
+        else if(doc_1!=null&&doc_1.$==6){
+          const x=doc_1.$0.Els;
+          return(((a_1) =>(a_2) => {
+            iter(a_1, a_2);
+          })((a_1) => {
+            if(a_1==null||a_1.constructor===Object)loop(a_1);
+            else q.push(a_1);
+          }))(x);
+        }
+        else {
+          const b=doc_1.$1;
+          const a=doc_1.$0;
+          loop(a);
+          doc_1=b;
+        }
+      }
+  }
+  loop(node.Children);
+  return DomNodes(ofSeqNonCopying(q));
+}
+function DomNodes(Item){
+  return{$:0, $0:Item};
+}
+function IsWhiteSpace(c){
+  return c.match(new RegExp("\\s"))!==null;
+}
+function TryParse_3(s){
+  const d=Date.parse(s);
+  return isNaN(d)?null:Some(d);
+}
+class OperationCanceledException extends Error {
+  ct;
+  constructor(i, _1, _2, _3){
+    let ct;
+    if(i=="New"){
+      ct=_1;
+      i="New_1";
+      _1="The operation was canceled.";
+      _2=null;
+      _3=ct;
+    }
+    if(i=="New_1"){
+      const message=_1;
+      const inner=_2;
+      const ct_1=_3;
+      super(message);
+      this.inner=inner;
+      this.ct=ct_1;
+    }
+  }
+}
+function Create(f){
+  return New_35(false, f, forceLazy);
+}
+function forceLazy(){
+  const v=this.v();
+  this.c=true;
+  this.v=v;
+  this.f=cachedLazy;
+  return v;
+}
+function cachedLazy(){
+  return this.v;
+}
+let _c_9=Lazy((_i) => class $StartupCode_AppendList {
+  static {
+    _c_9=_i(this);
+  }
+  static Empty;
+  static {
+    this.Empty={$:0};
+  }
+});
+function New_35(created, evalOrVal, force){
+  return{
+    c:created, 
+    v:evalOrVal, 
+    f:force
+  };
+}
+Start();
+

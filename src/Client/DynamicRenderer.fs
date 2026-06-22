@@ -9,8 +9,10 @@ open WebSharper.UI.Client
 [<JavaScript>]
 module DynamicRenderer =
 
-    let private E name attrs (children: seq<Doc>) : Doc = Doc.Element name attrs children :> Doc
-    let private V name attrs : Doc = Doc.Element name attrs [] :> Doc
+    let E name attrs (children: seq<#Doc>) =
+        Doc.Element name attrs (children |> Seq.cast<Doc>) :> Doc
+    let V name attrs =
+        Doc.Element name attrs [] :> Doc
 
     let private tryGetSchema (jsonStr: string) =
         try
@@ -117,43 +119,65 @@ module DynamicRenderer =
                     style.SetAttribute("id", styleId)
                     style.TextContent <- """
                         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                        .sdui-json-snippet {
+                            background: #222; color: #aaa; padding: 10px; border-radius: 4px; font-size: 0.85em;
+                            cursor: pointer; margin-bottom: 12px; white-space: pre-wrap; word-break: break-all;
+                            max-height: 80px; overflow: hidden; width: 100%; box-sizing: border-box;
+                        }
+                        .sdui-json-snippet.expanded {
+                            max-height: 400px; overflow-y: auto;
+                        }
                     """
                     JS.Document.Head.AppendChild(style) |> ignore
                     
         injectStyles ()
         
-        E "div" [ attr.style "border: 1px solid #5bc0de; border-radius: 8px; padding: 15px; margin: 10px 0; background: #2b2b2b; color: #eee; font-family: sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.3);" ] [
-            E "div" [ attr.style "display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;" ] [
-                E "span" [ attr.style "font-weight: bold; font-size: 1.2rem; color: #5bc0de;" ] [ text "FSkynet SDUI Canvas" ]
-                E "button" [
-                    attr.style "background: #444; color: #aaa; border: 1px solid #555; border-radius: 4px; padding: 5px 10px; cursor: pointer;"
-                    on.click (fun _ _ -> isExpanded.Value <- not isExpanded.Value)
-                ] [ textView (isExpanded.View |> View.Map (fun e -> if e then "Hide JSON" else "View JSON")) ]
+        let jsonSnippet = 
+            let t = jsonStr
+            if t.Length > 100 then t.Substring(0, 100) + "..." else t
+            
+        let isCodeExpanded = Var.Create false
+        
+        E "div" [ attr.``class`` "sdui-summary-card"; attr.style "border: 1px solid #5bc0de; padding: 15px; border-radius: 6px; background: rgba(91, 192, 222, 0.1); margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start;" ] [
+            E "strong" [ attr.style "display: block; margin-bottom: 5px; color: #5bc0de; font-size: 1.1em;" ] [ text "📈 FSkynet 動態畫布 (Canvas)" ]
+            E "span" [ attr.``class`` "muted"; attr.style "display: block; font-size: 0.9em; margin-bottom: 12px; color: #aaa;" ] [ text "點擊展開以顯示具備排序、篩選及下單功能的互動式網格與圖表。" ]
+            
+            E "pre" [ 
+                attr.classDyn (isCodeExpanded.View |> View.Map (fun e -> if e then "sdui-json-snippet expanded" else "sdui-json-snippet"))
+                attr.title "點擊檢視完整 JSON"
+                on.click (fun _ _ -> isCodeExpanded.Value <- not isCodeExpanded.Value)
+            ] [ 
+                textView (isCodeExpanded.View |> View.Map (fun e -> if e then jsonStr else jsonSnippet))
             ]
             
-            isExpanded.View |> View.Map (fun e ->
-                if e then
-                    E "pre" [ attr.style "background: #1e1e1e; padding: 10px; border-radius: 4px; overflow-x: auto; color: #aaa; font-size: 0.85rem;" ] [ text jsonStr ]
-                else Doc.Empty
-            ) |> Doc.EmbedView
-            
-            E "div" [ attr.style "margin-top: 10px;" ] [
-                client <@ 
-                    try
-                        let payloadObj = JS.Global?JSON?parse(jsonStr)
-                        let items = JS.Inline<obj[]>("""
-                            var sduiNode = $0.sdui;
-                            if (!sduiNode) return [];
-                            var unwrapped = window.unwrapFCell ? window.unwrapFCell(sduiNode) : sduiNode;
-                            return Array.isArray(unwrapped) ? unwrapped : [unwrapped];
-                        """, payloadObj)
-                        
-                        let elements = items |> Array.map renderNode |> Array.toList
-                        E "div" [] [ Doc.Concat elements ]
-                    with ex ->
-                        E "pre" [ attr.style "color: #d9534f;" ] [ text ("Error parsing SDUI Canvas: " + ex.Message) ]
-                @>
+            E "button" [ 
+                attr.``class`` "btn btn-info"
+                attr.style "background: #5bc0de; color: #111; font-weight: bold; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 10px;"
+                on.click (fun _ _ -> isExpanded.Value <- not isExpanded.Value)
+            ] [ 
+                textView (isExpanded.View |> View.Map (fun e -> if e then "收合 Canvas" else "展開 Canvas"))
             ]
+            
+            (isExpanded.View |> View.Map (fun expanded ->
+                if expanded then
+                    E "div" [ attr.style "margin-top: 10px; width: 100%; border-top: 1px dashed #5bc0de; padding-top: 15px;" ] [
+                        try
+                            let items = JS.Inline<obj[]>("""
+                                var payloadObj = JSON.parse($0);
+                                var sduiNode = payloadObj.ui || payloadObj.sdui; // check both
+                                if (!sduiNode) return [];
+                                var unwrapped = window.unwrapFCell ? window.unwrapFCell(sduiNode) : sduiNode;
+                                return Array.isArray(unwrapped) ? unwrapped : [unwrapped];
+                            """, jsonStr)
+                            
+                            let elements = items |> Array.map renderNode |> Array.toList
+                            E "div" [] [ Doc.Concat elements ]
+                        with ex ->
+                            E "pre" [ attr.style "color: #d9534f;" ] [ text ("Error parsing SDUI Canvas: " + ex.Message) ]
+                    ]
+                else
+                    Doc.Empty
+            )) |> Doc.EmbedView
         ]
 
     let TryRender (content: string) : option<Doc> =

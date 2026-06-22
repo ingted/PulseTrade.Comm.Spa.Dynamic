@@ -14,22 +14,22 @@ type ShowcaseDemoActor() as this =
         let viewAst =
             fCell2<string>.A [|
                 fCell2<string>.T (Map [
-                    "component", fCell2.S "CanvasComponent"
-                    "id", fCell2.S "demo-canvas"
-                    "title", fCell2.S "PulseTrade Actor Dynamic Dashboard"
+                    ("type", fCell2.S "Heading");
+                    ("id", fCell2.S "demo-canvas");
+                    ("text", fCell2.S "PulseTrade Actor Dynamic Dashboard")
                 ])
                 fCell2<string>.T (Map [
-                    "component", fCell2.S "GridFeatures"
-                    "id", fCell2.S "demo-grid"
-                    "theme", fCell2.S "dark"
+                    ("type", fCell2.S "DataGrid");
+                    ("id", fCell2.S "demo-grid");
+                    ("dataRef", fCell2.S "gridData")
                 ])
                 fCell2<string>.T (Map [
-                    "component", fCell2.S "AppLoader"
-                    "status", fCell2.S "loaded"
+                    ("type", fCell2.S "AppLoader");
+                    ("text", fCell2.S "Loaded")
                 ])
                 fCell2<string>.T (Map [
-                    "component", fCell2.S "ColorPicker"
-                    "default", fCell2.S "#ff0000"
+                    ("type", fCell2.S "ColorPicker");
+                    ("defaultColor", fCell2.S "#ff0000")
                 ])
             |]
         FCell2Interop.toMessagePayload viewAst
@@ -41,6 +41,7 @@ type ShowcaseDemoActor() as this =
         )
 
         this.Receive<ActorArguTargetCommand>(fun (command: ActorArguTargetCommand) ->
+            printfn "ShowcaseDemoActor received ActorArguTargetCommand!"
             let payload = buildSduiPayload ()
             
             let reply: ActorArguTargetReply =
@@ -53,3 +54,4 @@ type ShowcaseDemoActor() as this =
 
     /// 提供給 lambda 使用的 context
     member _.ActorCtx: IActorContext = ActorBase.Context
+

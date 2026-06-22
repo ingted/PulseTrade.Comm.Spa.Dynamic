@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PTC.Comm SPA</title>
+  <link rel="stylesheet" href="/assets/ptc-comm-spa.css" />
+</head>
+<body>
+  <main id="main"></main>
+  <script id="ptc-comm-user" type="application/json">{"authenticated":false,"displayName":"Web User","login":"","participantId":"user.web"}</script>
+  <script id="ptc-comm-reality" type="application/json">{"serverRealityId":"journal=profileId=in-memory;provider=akka.persistence.journal.inmem;snapshotProvider=akka.persistence.snapshot-store.inmem;queryProvider=;durable=False;database=;autoCreate=|namespace=comm-spa-stream|persistenceIdPrefix=comm-spa-stream-|projection=default|epoch=c82ec554fc1749029784a63cfd6ee1fb|schema=streams|salt=|delivery=volatile-local","journalId":"profileId=in-memory;provider=akka.persistence.journal.inmem;snapshotProvider=akka.persistence.snapshot-store.inmem;queryProvider=;durable=False;database=;autoCreate=","persistenceNamespace":"comm-spa-stream","persistenceIdPrefix":"comm-spa-stream-","projectionId":"default","projectionEpochId":"c82ec554fc1749029784a63cfd6ee1fb","schemaName":"streams","deliveryProfileId":"volatile-local","isCrashDurable":false}</script>
+  <script id="ptc-comm-client-extensions" type="application/json">[{"extensionId":"pulse-trade-comm-spa-dynamic","displayName":"PulseTrade.Comm.Spa.Dynamic","scriptUrls":[],"appendPageShapes":[{"shape":"actor-dynamic","label":"Actor Dynamic","badge":"D","className":"actor-dynamic"}]}]</script>
+  <script type="module" src="/build/PulseTrade.Comm.Spa.js"></script>
+
+</body>
+</html>

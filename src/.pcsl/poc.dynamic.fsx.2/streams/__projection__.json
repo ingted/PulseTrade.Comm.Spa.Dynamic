@@ -1,0 +1,17 @@
+{
+  "schema": "ptc.comm.spa.pcsl.projection.v1",
+  "journalId": "",
+  "projectionConflictPolicy": "require-compatible",
+  "epochId": "c82ec554fc1749029784a63cfd6ee1fb",
+  "projectionId": "default",
+  "schemaName": "streams",
+  "recordsPerChunk": 5000,
+  "writerNodeId": "local",
+  "writerOwnerId": "local",
+  "createdAtUtc": "2026-06-22T12:03:51.5933146\u002B00:00",
+  "updatedAtUtc": "2026-06-22T13:04:42.1232138\u002B00:00",
+  "streamCount": 24,
+  "eventCount": 86,
+  "newestSequence": 14,
+  "lastEventHash": "BEE718221649F1449204146A45B93E58DCA939D6C0F30AD7E1460B1847136035"
+}

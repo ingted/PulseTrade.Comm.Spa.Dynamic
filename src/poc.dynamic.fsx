@@ -211,6 +211,25 @@ try
               Labels = Some [ "poc"; "durable"; "without-oauth" ] }
         |> fun task -> task.Result
 
+    let registerShowcaseAgent =
+        messageFabric.RegisterParticipantDurableAsync
+            { ParticipantId = "agent.showcase"
+              DisplayName = Some "Showcase Actor"
+              Kind = Some "agent"
+              Labels = Some [ "poc"; "dynamic"; "showcase" ] }
+        |> fun task -> task.Result
+
+    let showcaseDirectMessage =
+        messageFabric.SendDurableAsync
+            { FromParticipantId = "user.poc"
+              Scope = MessageFabricScope.Direct "agent.showcase"
+              Body = "hello from showcase"
+              Tags = [ "poc"; "dynamic"; "showcase" ]
+              CorrelationId = Some("poc-dynamic-showcase-" + Guid.NewGuid().ToString("N"))
+              CreatedAtUtc = None }
+        |> fun task -> task.Result
+
+    let showcaseActorAddress = fabric.NodeAddress.TrimEnd('/') + "/user/showcase-dynamic-actor"
     let registerAgent =
         messageFabric.RegisterParticipantDurableAsync
             { ParticipantId = "agent.durable-echo"
@@ -258,6 +277,7 @@ try
     printfn "Actors      %s/actors" app.Url
     printfn "ActorArgu   %s/page/%s" app.Url actorPage.PageId
     printfn "PCSL root   %s" pcslRoot
+    printfn "Showcase    %s" showcaseActorAddress
     printfn "Actor       %s" actorAddress
     printfn "Tickets     user=%s agent=%s direct=%s actor=%s"
         registerUser.Accepted.TicketId.Value
@@ -282,3 +302,5 @@ try
         Console.ReadLine() |> ignore
 finally
     (app :> IDisposable).Dispose()
+
+
