@@ -187,9 +187,10 @@ let fabric =
 
 // ---- DYNAMIC EXTENSION 掛載 ----
 let dynamicPage = PulseTrade.Comm.Spa.Domain.appendPage "actor-dynamic-demo" "Actor Dynamic Dashboard" "actor-dynamic-demo" "actor-dynamic"
+let dynamicPageWithTag = { dynamicPage with Tags = [ "dynamic"; "sdui"; "actor-argu" ] }
 
 hub.useDynamicSdui(fabric.System) |> ignore
-hub.RegisterAppendPage(dynamicPage) |> ignore
+hub.RegisterAppendPage(dynamicPageWithTag) |> ignore
 // --------------------------------
 
 let ingress = durableIngressOptions deliveryProfile |> CommSpaDurableIngress.createVolatile
@@ -203,6 +204,9 @@ let actorAddress =
 
 let actorPage =
     ActorArgu.fCellChatPage "actor-argu-durable-poc" "ActorArgu Durable POC" "actor-argu-durable-poc"
+
+let showcaseRef = fabric.System.ActorSelection("user/showcase-dynamic-actor").ResolveOne(TimeSpan.FromSeconds(5.0)).Result
+let showcaseAddress = fabric.NodeAddress.TrimEnd('/') + showcaseRef.Path.ToStringWithoutAddress()
 
 let cancellationToken = CancellationToken.None
 
