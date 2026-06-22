@@ -9,44 +9,54 @@ open WebSharper.UI.Client
 [<JavaScript>]
 module ActorDynamicTab =
     
-    /// 渲染 Actor Dynamic 專屬的 Tab 頁面內容
+    /// renderActorDynamicPage
     let renderActorDynamicPage (pageId: string) =
         div [ attr.``class`` "actor-dynamic-container"; attr.style "padding: 16px;" ] [
-            h2 [ attr.style "color: #333; margin-bottom: 16px;" ] [ text "Actor Dynamic 展示頁面" ]
+            h2 [ attr.style "color: #333; margin-bottom: 16px;" ] [ text "Actor Dynamic" ]
             
             p [ attr.style "color: #666; margin-bottom: 24px;" ] [
-                text "這是一個概念驗證用的展示頁面，展示多種 SDUI 元件的動態掛載與互動效果。"
+                text "Actor Dynamic POC"
             ]
             
             div [ attr.``class`` "sdui-canvas-area"; attr.style "display: grid; grid-template-columns: 1fr 1fr; gap: 16px;" ] [
-                // 左側: 主要展示區
                 div [ attr.style "border: 1px solid #ccc; border-radius: 8px; padding: 16px; background-color: #fff;" ] [
-                    h3 [ attr.style "margin-top: 0;" ] [ text "Canvas 預覽區" ]
+                    h3 [ attr.style "margin-top: 0;" ] [ text "Canvas" ]
                     div [ attr.id "sdui-canvas-mount"; attr.style "min-height: 300px; border: 1px dashed #aaa; display: flex; align-items: center; justify-content: center; color: #888;" ] [
-                        text "動態元件載入中... (等候 WebSocket 傳入 fskynet-sdui Payload)"
+                        text "Loading... (WebSocket fskynet-sdui Payload)"
                     ]
                 ]
                 
-                // 右側: 控制項與屬性
                 div [ attr.style "border: 1px solid #ccc; border-radius: 8px; padding: 16px; background-color: #f9f9f9;" ] [
-                    h3 [ attr.style "margin-top: 0;" ] [ text "元件屬性 (PropertyGrid)" ]
-                    p [] [ text "選擇左側的元件以檢視與修改屬性" ]
-                    // 此處可擴充 Tui-Chart 或其他常見元件控制
+                    h3 [ attr.style "margin-top: 0;" ] [ text "PropertyGrid" ]
+                    p [] [ text "Select element" ]
                 ]
             ]
         ]
 
-    /// 提供一個註冊點給宿主 PTCS (待 UPSTREAM_RFC 實裝)
-    [<SPAEntryPoint>]
-    let Start () =
+    [<JavaScriptExport>]
+    let _registerRenderer () =
         let renderer (text: string) =
-            DynamicRenderer.TryRender text
-            |> Option.map (fun doc ->
-                let container = JS.Document.CreateElement("div")
-                WebSharper.UI.Client.Doc.Run container doc
-                container :> WebSharper.JavaScript.Dom.Node)
+            try
+                JS.Global?console?log("Inside fskynet-sdui renderer wrapper! Text length:", text.Length)
+                let docOpt = DynamicRenderer.TryRender text
+                match docOpt with
+                | Some doc ->
+                    JS.Global?console?log("Got Some doc! Creating container...")
+                    let container = JS.Document.CreateElement("div")
+                    WebSharper.UI.Client.Doc.Run container doc
+                    JS.Global?console?log("Rendered doc to container!")
+                    Some (container :> WebSharper.JavaScript.Dom.Node)
+                | None ->
+                    JS.Global?console?log("Got None from TryRender")
+                    None
+            with e ->
+                JS.Global?console?error("Extension renderer threw an exception:", e)
+                None
 
-        // 註冊 SDUI Renderer 使得在一般 Chat 也能渲染 fskynet-sdui
-        PulseTrade.Comm.Spa.Client.RegisterRenderer("fskynet-sdui", renderer)
-        
-        JS.Window.Alert("PulseTrade.Comm.Spa.Dynamic Client Extension Started!")
+        JS.Inline("window.PulseTradeRegisterRenderer('fskynet-sdui', $0)", renderer)
+        JS.Global?console?log("PulseTrade.Comm.Spa.Dynamic Client Extension Started and registered fskynet-sdui!")
+
+    [<SPAEntryPoint>]
+    let Main () =
+        JS.Global?console?log("EVALUATING SPAEntryPoint Main in ActorDynamicTab!")
+        _registerRenderer ()

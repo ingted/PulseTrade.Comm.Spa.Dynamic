@@ -4,20 +4,37 @@ import { MarkResizable, Lazy, Create as Create_1, GetOptional, SetOptional } fro
 function isIDisposable(x){
   return"Dispose"in x;
 }
-function Start(){
-  RegisterRenderer("fskynet-sdui", (text) => {
-    const o=TryRender(text);
-    if(o==null)return null;
-    else {
-      const doc_1=o.$0;
-      const container=globalThis.document.createElement("div");
-      let _1=(LoadLocalTemplates(""),Doc.Run(container, doc_1),container);
-      return Some(_1);
+function _registerRenderer(){
+  globalThis.PulseTradeRegisterRenderer("fskynet-sdui", (text) => {
+    try {
+      globalThis.console.log(["Inside fskynet-sdui renderer wrapper! Text length:", text.length]);
+      const docOpt=TryRender(text);
+      if(docOpt==null){
+        globalThis.console.log("Got None from TryRender");
+        return null;
+      }
+      else {
+        const doc_1=docOpt.$0;
+        globalThis.console.log("Got Some doc! Creating container...");
+        const container=globalThis.document.createElement("div");
+        LoadLocalTemplates("");
+        Doc.Run(container, doc_1);
+        globalThis.console.log("Rendered doc to container!");
+        return Some(container);
+      }
+    }
+    catch(e){
+      globalThis.console.error(["Extension renderer threw an exception:", e]);
+      return null;
     }
   });
-  globalThis.alert("PulseTrade.Comm.Spa.Dynamic Client Extension Started!");
+  return globalThis.console.log("PulseTrade.Comm.Spa.Dynamic Client Extension Started and registered fskynet-sdui!");
 }
 function Main(){
+  globalThis.console.log("EVALUATING SPAEntryPoint Main in ActorDynamicTab!");
+  return _registerRenderer();
+}
+function Main_1(){
   let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
   if(!(doc().body==null))doc().body.setAttribute("data-server-reality-id", currentServerRealityId());
   const trimmed=TrimEnd(asText(globalThis.location.pathname), ["/"]);
@@ -195,12 +212,6 @@ function Main(){
   });
   subscribeAppendPageRegistry();
   renderAppendRegistryHealth();
-}
-function RegisterRenderer(rendererId, tryRender){
-  if(!isBlank(rendererId)&&!(tryRender==null)){
-    const normalizedId=Trim(rendererId).toLowerCase();
-    set_registeredRenderers(distinctBy((t) => t[0], registeredRenderers().concat([[normalizedId, tryRender]]).slice().reverse()).slice().reverse());
-  }
 }
 function doc(){
   return _c.doc;
@@ -2116,12 +2127,6 @@ function refreshAppendNav(activePath){
     applyDefinitions(data);
   }, () => { });
 }
-function set_registeredRenderers(_1){
-  _c.registeredRenderers=_1;
-}
-function registeredRenderers(){
-  return _c.registeredRenderers;
-}
 function textOr(fallback, value){
   return isBlank(value)?fallback:value;
 }
@@ -2610,6 +2615,14 @@ function int64OrZero(value){
   const parsed=parseInt(asText(value), globalThis.$radix);
   return isNaN(parsed)||parsed<0?0n:BigInt(parsed);
 }
+function _registerRendererGlobally(){
+  if(!globalThis.PulseTrade)globalThis.PulseTrade={};
+  if(!globalThis.PulseTrade.Renderers)globalThis.PulseTrade.Renderers=[];
+  globalThis.PulseTradeRegisterRenderer=(name, func) => {
+    console.log("PulseTradeRegisterRenderer called!", name);
+    globalThis.PulseTrade.Renderers.push([name, func]);
+  };
+}
 function hasTag(tag, tags){
   return exists((value) => asText(value).toLowerCase()==tag, arrayOrEmpty(tags));
 }
@@ -2687,25 +2700,25 @@ function fcellModeLabel(mode){
   return m=="inbound-message"?"FCell Chat":m=="outbound-message"?"FCell Chat":m=="list"?"FCell List":m=="table"?"FCell Grid":m=="grid"?"FCell Grid":"FCell Value";
 }
 function tryRenderWithRegisteredRenderers(text){
-  let result, index;
+  let r;
   const content=asText(text);
   if(isBlank(content))return null;
   else {
-    result=null;
-    index=0;
-    while(result==null&&index<length(registeredRenderers()))
-      {
-        let _1;
+    const _1=content;
+    if(globalThis.PulseTrade&&globalThis.PulseTrade.Renderers){
+      let renderers=globalThis.PulseTrade.Renderers;
+      for(let i=0;i<renderers.length;i++){
+        let r_1=renderers[i];
         try {
-          const m=(get(registeredRenderers(), index))[1](content);
-          _1=m!=null&&m.$==1?!(m.$0==null)?void(result=Some(m.$0)):null:null;
+          let nodeOpt=r_1[1](_1);
+          if(nodeOpt!=null&&nodeOpt.$==1)return nodeOpt;
         }
-        catch(m_1){
-          _1=null;
+        catch(e){
+          console.error("Renderer exception:", e);
         }
-        index=index+1;
       }
-    return result;
+    }
+    return null;
   }
 }
 function set_pendingCommandSeq(_1){
@@ -2743,19 +2756,31 @@ function GetFieldValues(o){
   for(var k_1 in o)r.push(o[k_1]);
   return r;
 }
-function FailWith(msg){
-  throw new Error(msg);
+function NewFromSeq(fields){
+  let _1;
+  const r={};
+  const e=Get(fields);
+  try {
+    while(e.MoveNext())
+      {
+        const f=e.Current;
+        r[f[0]]=f[1];
+      }
+    _1=void 0;
+  }
+  finally {
+    const _2=e;
+    if(typeof _2=="object"&&isIDisposable(_2))e.Dispose();
+  }
+  return r;
 }
-function KeyValue(kvp){
-  return[kvp.K, kvp.V];
-}
-function range(min, max_1){
-  const count=1+max_1-min;
-  return count<=0?[]:init_1(count, (x) => x+min);
-}
-function TryRender(content){
+function TryRender(rawContent){
+  globalThis.console.log(["DynamicRenderer.TryRender called with:", rawContent]);
+  const idx=rawContent.indexOf("replied msg:");
+  const content=idx>=0?Trim(rawContent.substring(idx+"replied msg:".length)):rawContent;
+  globalThis.console.log(["Content after strip:", content]);
   const m=tryGetSchema(content);
-  return m!=null&&m.$==1&&m.$0=="fskynet-sdui"?Some(createSduiCanvas(content)):null;
+  return m!=null&&m.$==1&&m.$0=="fskynet-sdui"?(globalThis.console.log("Schema is fskynet-sdui, rendering canvas!"),Some(createSduiCanvas(content))):(globalThis.console.log(["Schema not matched:", tryGetSchema(content)]),null);
 }
 function tryGetSchema(jsonStr){
   try {
@@ -2865,6 +2890,19 @@ function renderNode(obj){
 function V(name, attrs){
   return Doc.Element(name, attrs, FSharpList.Empty);
 }
+function Some(Value){
+  return{$:1, $0:Value};
+}
+function FailWith(msg){
+  throw new Error(msg);
+}
+function KeyValue(kvp){
+  return[kvp.K, kvp.V];
+}
+function range(min, max_1){
+  const count=1+max_1-min;
+  return count<=0?[]:init_1(count, (x) => x+min);
+}
 function New(status, count, maxSequence, pages){
   return{
     status:status, 
@@ -2875,9 +2913,6 @@ function New(status, count, maxSequence, pages){
 }
 function iter(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)f(arr[i]);
-}
-function distinctBy(f, a){
-  return ofSeq(distinctBy_1(f, a));
 }
 function filter(f, arr){
   const r=[];
@@ -3016,6 +3051,9 @@ function foldBack(f, arr, zero){
 }
 function concat(xs){
   return Array.prototype.concat.apply([], ofSeq(xs));
+}
+function distinctBy(f, a){
+  return ofSeq(distinctBy_1(f, a));
 }
 function collect(f, x){
   return Array.prototype.concat.apply([], map(f, x));
@@ -3555,9 +3593,6 @@ function hashObject(o){
 function hashMix(x, y){
   return(x<<5)+x+y;
 }
-function Some(Value){
-  return{$:1, $0:Value};
-}
 function json(text){
   return JSON.parse(asText(text));
 }
@@ -3944,24 +3979,6 @@ class Doc extends Object_1 {
     this.updates=updates;
   }
 }
-function NewFromSeq(fields){
-  let _1;
-  const r={};
-  const e=Get(fields);
-  try {
-    while(e.MoveNext())
-      {
-        const f=e.Current;
-        r[f[0]]=f[1];
-      }
-    _1=void 0;
-  }
-  finally {
-    const _2=e;
-    if(typeof _2=="object"&&isIDisposable(_2))e.Dispose();
-  }
-  return r;
-}
 let _c=Lazy((_i) => class $StartupCode_Client {
   static {
     _c=_i(this);
@@ -3974,6 +3991,7 @@ let _c=Lazy((_i) => class $StartupCode_Client {
   static snapshotStore;
   static databaseVersion;
   static databaseName;
+  static _initGlobally;
   static runtimeAppendPageShapes;
   static registeredRenderers;
   static defaultCacheLimit;
@@ -3985,6 +4003,7 @@ let _c=Lazy((_i) => class $StartupCode_Client {
     this.defaultCacheLimit=1000;
     this.registeredRenderers=[];
     this.runtimeAppendPageShapes=[];
+    this._initGlobally=(_registerRendererGlobally(),0);
     this.databaseName="PulseTrade.Comm.Spa.BrowserDb";
     this.databaseVersion=3;
     this.snapshotStore="uiSnapshots";
@@ -4346,6 +4365,22 @@ function append_2(s1, s2){
     });
   }};
 }
+function head_1(s){
+  const e=Get(s);
+  try {
+    return e.MoveNext()?e.Current:insufficient();
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function distinct_1(s){
+  return distinctBy_1((x) => x, s);
+}
+function forall_2(p, s){
+  return!exists_1((x) =>!p(x), s);
+}
 function distinctBy_1(f, s){
   return{GetEnumerator:() => {
     const o=Get(s);
@@ -4367,22 +4402,6 @@ function distinctBy_1(f, s){
       o.Dispose();
     });
   }};
-}
-function head_1(s){
-  const e=Get(s);
-  try {
-    return e.MoveNext()?e.Current:insufficient();
-  }
-  finally {
-    const _1=e;
-    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-  }
-}
-function distinct_1(s){
-  return distinctBy_1((x) => x, s);
-}
-function forall_2(p, s){
-  return!exists_1((x) =>!p(x), s);
 }
 function exists_1(p, s){
   const e=Get(s);
@@ -4781,15 +4800,15 @@ class Dictionary extends Object_1 {
   Item(k){
     return this.get(k);
   }
-  GetEnumerator(){
-    return Get0(concat(GetFieldValues(this.data)));
-  }
   get(k){
     const d=this.data[this.hash(k)];
     return d==null?notPresent():pick((a) => {
       const a_1=KeyValue(a);
       return this.equals.apply(null, [a_1[0], k])?Some(a_1[1]):null;
     }, d);
+  }
+  GetEnumerator(){
+    return Get0(concat(GetFieldValues(this.data)));
   }
   constructor(i, _1, _2, _3){
     if(i=="New_5"){
@@ -5102,115 +5121,6 @@ function New_30(pageId, title, setName, shape, tabId, tabMode, path, description
     description:description
   };
 }
-class HashSet extends Object_1 {
-  equals;
-  hash;
-  data;
-  count;
-  SAdd(item){
-    return this.add(item);
-  }
-  Contains(item){
-    const arr=this.data[this.hash(item)];
-    return arr==null?false:this.arrContains(item, arr);
-  }
-  add(item){
-    const h=this.hash(item);
-    const arr=this.data[h];
-    return arr==null?(this.data[h]=[item],this.count=this.count+1,true):this.arrContains(item, arr)?false:(arr.push(item),this.count=this.count+1,true);
-  }
-  arrContains(item, arr){
-    let c, i;
-    c=true;
-    i=0;
-    const l=arr.length;
-    while(c&&i<l)
-      if(this.equals.apply(null, [arr[i], item]))c=false;
-      else i=i+1;
-    return!c;
-  }
-  GetEnumerator(){
-    return Get(concat_3(this.data));
-  }
-  ExceptWith(xs){
-    const e=Get(xs);
-    try {
-      while(e.MoveNext())
-        this.Remove(e.Current);
-    }
-    finally {
-      const _1=e;
-      if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-    }
-  }
-  get Count(){
-    return this.count;
-  }
-  IntersectWith(xs){
-    const other=new HashSet("New_4", xs, this.equals, this.hash);
-    const all=concat_3(this.data);
-    for(let i=0, _1=all.length-1;i<=_1;i++){
-      const item=all[i];
-      if(!other.Contains(item))this.Remove(item);
-    }
-  }
-  Remove(item){
-    const arr=this.data[this.hash(item)];
-    return arr==null?false:this.arrRemove(item, arr)&&(this.count=this.count-1,true);
-  }
-  CopyTo(arr, index){
-    const all=concat_3(this.data);
-    for(let i=0, _1=all.length-1;i<=_1;i++)set(arr, i+index, all[i]);
-  }
-  arrRemove(item, arr){
-    let c, i;
-    c=true;
-    i=0;
-    const l=arr.length;
-    while(c&&i<l)
-      if(this.equals.apply(null, [arr[i], item])){
-        arr.splice(i, 1);
-        c=false;
-      }
-      else i=i+1;
-    return!c;
-  }
-  constructor(i, _1, _2, _3){
-    if(i=="New_3"){
-      i="New_4";
-      _1=[];
-      _2=Equals;
-      _3=Hash;
-    }
-    let init_2;
-    if(i=="New_2"){
-      init_2=_1;
-      i="New_4";
-      _1=init_2;
-      _2=Equals;
-      _3=Hash;
-    }
-    if(i=="New_4"){
-      const init_3=_1;
-      const equals=_2;
-      const hash=_3;
-      super();
-      this.equals=equals;
-      this.hash=hash;
-      this.data=[];
-      this.count=0;
-      const e=Get(init_3);
-      try {
-        while(e.MoveNext())
-          this.add(e.Current);
-      }
-      finally {
-        const _4=e;
-        if(typeof _4=="object"&&isIDisposable(_4))e.Dispose();
-      }
-    }
-  }
-}
 class ConcreteVar extends Var {
   isConst;
   current;
@@ -5510,6 +5420,115 @@ let _c_2=Lazy((_i) => class $StartupCode_Templates {
     this.RenderedFullDocTemplate=null;
   }
 });
+class HashSet extends Object_1 {
+  equals;
+  hash;
+  data;
+  count;
+  SAdd(item){
+    return this.add(item);
+  }
+  Contains(item){
+    const arr=this.data[this.hash(item)];
+    return arr==null?false:this.arrContains(item, arr);
+  }
+  add(item){
+    const h=this.hash(item);
+    const arr=this.data[h];
+    return arr==null?(this.data[h]=[item],this.count=this.count+1,true):this.arrContains(item, arr)?false:(arr.push(item),this.count=this.count+1,true);
+  }
+  arrContains(item, arr){
+    let c, i;
+    c=true;
+    i=0;
+    const l=arr.length;
+    while(c&&i<l)
+      if(this.equals.apply(null, [arr[i], item]))c=false;
+      else i=i+1;
+    return!c;
+  }
+  GetEnumerator(){
+    return Get(concat_3(this.data));
+  }
+  ExceptWith(xs){
+    const e=Get(xs);
+    try {
+      while(e.MoveNext())
+        this.Remove(e.Current);
+    }
+    finally {
+      const _1=e;
+      if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+    }
+  }
+  get Count(){
+    return this.count;
+  }
+  IntersectWith(xs){
+    const other=new HashSet("New_4", xs, this.equals, this.hash);
+    const all=concat_3(this.data);
+    for(let i=0, _1=all.length-1;i<=_1;i++){
+      const item=all[i];
+      if(!other.Contains(item))this.Remove(item);
+    }
+  }
+  Remove(item){
+    const arr=this.data[this.hash(item)];
+    return arr==null?false:this.arrRemove(item, arr)&&(this.count=this.count-1,true);
+  }
+  CopyTo(arr, index){
+    const all=concat_3(this.data);
+    for(let i=0, _1=all.length-1;i<=_1;i++)set(arr, i+index, all[i]);
+  }
+  arrRemove(item, arr){
+    let c, i;
+    c=true;
+    i=0;
+    const l=arr.length;
+    while(c&&i<l)
+      if(this.equals.apply(null, [arr[i], item])){
+        arr.splice(i, 1);
+        c=false;
+      }
+      else i=i+1;
+    return!c;
+  }
+  constructor(i, _1, _2, _3){
+    if(i=="New_3"){
+      i="New_4";
+      _1=[];
+      _2=Equals;
+      _3=Hash;
+    }
+    let init_2;
+    if(i=="New_2"){
+      init_2=_1;
+      i="New_4";
+      _1=init_2;
+      _2=Equals;
+      _3=Hash;
+    }
+    if(i=="New_4"){
+      const init_3=_1;
+      const equals=_2;
+      const hash=_3;
+      super();
+      this.equals=equals;
+      this.hash=hash;
+      this.data=[];
+      this.count=0;
+      const e=Get(init_3);
+      try {
+        while(e.MoveNext())
+          this.add(e.Current);
+      }
+      finally {
+        const _4=e;
+        if(typeof _4=="object"&&isIDisposable(_4))e.Dispose();
+      }
+    }
+  }
+}
 function TextNodeDoc(Item){
   return{$:5, $0:Item};
 }
@@ -5649,7 +5668,7 @@ function StartProcessor(procAsync){
     const m=st[0];
     if(Equals(m, 0)){
       st[0]=1;
-      Start_1(work(), null);
+      Start(work(), null);
     }
     else Equals(m, 1)?st[0]=2:void 0;
   };
@@ -5669,9 +5688,6 @@ function arrContains(item, arr){
     if(Equals(arr[i], item))c=false;
     else i=i+1;
   return!c;
-}
-function notPresent(){
-  throw new KeyNotFoundException("New");
 }
 function Int(){
   set_counter(counter()+1);
@@ -5797,6 +5813,9 @@ function Obsolete(sn){
   }
 }
 class TemplateHole extends Object_1 { }
+function notPresent(){
+  throw new KeyNotFoundException("New");
+}
 function convertTextNode(n){
   let m, li;
   m=null;
@@ -6097,7 +6116,7 @@ function Bind_1(r, f){
 function Zero(){
   return _c_8.Zero;
 }
-function Start_1(c, ctOpt){
+function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
@@ -6898,5 +6917,5 @@ function New_35(created, evalOrVal, force){
     f:force
   };
 }
-Start();
+Main();
 

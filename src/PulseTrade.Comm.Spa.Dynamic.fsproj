@@ -6,7 +6,7 @@
     <Version>0.1.0-alpha1</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Dynamic SDUI and Actor extension for PulseTrade.Comm.Spa</Description>
-    <WebSharperProject>spa</WebSharperProject>
+    <WebSharperProject>Bundle</WebSharperProject>
     <WebSharperBundleOutputDir>wwwroot\js</WebSharperBundleOutputDir>
     <WebSharperRunCompiler>true</WebSharperRunCompiler>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <PackageReference Include="FAkka.FCell2" Version="10.1.301" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.4-beta8" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.5-beta13" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
   </ItemGroup>
 

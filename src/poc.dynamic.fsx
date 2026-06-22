@@ -1,8 +1,13 @@
 #i @"nuget: C:\Program Files\dotnet\sdk\10.0.300\FSharp\library-packs"
-#r "nuget: PulseTrade.Comm.Spa, 0.2.4-beta8"
 #r "nuget: FAkka.Argu, 10.1.301"
 #r "nuget: FAkka.FCell2, 10.1.301"
 #r "nuget: Akka, 1.5.69"
+#r "nuget: Akka.Cluster, 1.5.69"
+#r "nuget: Akka.Cluster.Sharding, 1.5.69"
+#r "nuget: Akka.Persistence, 1.5.69"
+#r "nuget: Suave, 3.4.3"
+#r "nuget: PersistedConcurrentSortedList, 10.1.301"
+#r @"G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\bin\net10.0\PulseTrade.Comm.Spa.dll"
 #I __SOURCE_DIRECTORY__
 #I "bin/Release/net10.0"
 #r "PulseTrade.Comm.Spa.Dynamic.dll"
@@ -25,8 +30,7 @@ open PulseTrade.Comm.Spa.Dynamic.Server
 // - 展示 PulseTrade.Comm.Spa.Dynamic 的 ShowcaseDemoActor 與 fskynet-sdui JSON 生成。
 // - 建立 Echo actor 測試原有的 durable 功能。
 
-let defaultPcslRoot =
-    Path.Combine(__SOURCE_DIRECTORY__, ".pcsl", "poc.dynamic.fsx")
+let defaultPcslRoot = __SOURCE_DIRECTORY__ + "/.pcsl/poc.dynamic.v12.fsx"
 
 let defaultArgPath (path: string) =
     if String.IsNullOrWhiteSpace path then "" else path.Replace('\\', '/')
@@ -41,6 +45,7 @@ type CliArguments =
     | Pcsl_Root of path: string
     | Delivery_Profile of profile: string
     | Actor_Name of name: string
+    | Cluster_Port of port: int
     | No_Wait
     interface IArgParserTemplate with
         member this.Usage =
@@ -51,6 +56,7 @@ type CliArguments =
             | Pcsl_Root _ -> "Root directory for PCSL files."
             | Delivery_Profile _ -> "Durable ingress profile id."
             | Actor_Name _ -> "Echo actor name under /user."
+            | Cluster_Port _ -> "Akka.NET cluster port (default: 7705)."
             | No_Wait -> "Start and stop immediately for smoke tests."
 
 type DurableEchoActor() as this =
@@ -161,6 +167,10 @@ let actorName =
     |> Option.defaultValue "durable-echo"
     |> textOr "durable-echo"
 
+let clusterPort =
+    parsed.TryGetResult(<@ Cluster_Port @>)
+    |> Option.defaultValue 7705
+
 let noWait = parsed.Contains <@ No_Wait @>
 
 Directory.CreateDirectory pcslRoot |> ignore
@@ -171,7 +181,7 @@ let fabricOptions =
     { CommSpaActorFabricOptions.defaults with
         SystemName = "PulseTradeCommSpaDynamicPoc"
         ShardTypeName = "comm-spa-dynamic-poc"
-        ClusterPort = 0 }
+        ClusterPort = clusterPort }
 
 let options =
     ServerOptions.localRandomWithHub hub
@@ -198,7 +208,14 @@ let actorAddress =
     fabric.NodeAddress.TrimEnd('/') + actorRef.Path.ToStringWithoutAddress()
 
 let actorPage =
-    ActorArgu.fCellChatPage "actor-argu-durable-poc" "ActorArgu Durable POC" "actor-argu-durable-poc"
+    let basePage = ActorArgu.fCellChatPage "actor-argu-durable-poc" "ActorArgu Durable POC" "actor-argu-durable-poc"
+    { basePage with DefaultKey = "\"" + actorAddress + "\"" }
+
+let showcaseActorAddress = fabric.NodeAddress.TrimEnd('/') + "/user/showcase-dynamic-actor"
+
+let showcasePage =
+    let basePage = ActorArgu.fCellChatPage "actor-dynamic-showcase" "Actor Dynamic Showcase" "actor-dynamic-showcase"
+    { basePage with DefaultKey = "\"" + showcaseActorAddress + "\""; Shape = "actor-dynamic" }
 
 let cancellationToken = CancellationToken.None
 
@@ -242,11 +259,26 @@ try
         messageFabric.SendDurableAsync
             { FromParticipantId = "user.poc"
               Scope = MessageFabricScope.Direct "agent.durable-echo"
-              Body = "hello from dynamic POC"
-              Tags = [ "poc"; "durable"; "dynamic" ]
-              CorrelationId = Some("poc-dynamic-" + Guid.NewGuid().ToString("N"))
+              Body = "hello from durable echo"
+              Tags = [ "poc"; "durable"; "actor-argu" ]
+              CorrelationId = Some("poc-durable-echo-" + Guid.NewGuid().ToString("N"))
               CreatedAtUtc = None }
         |> fun task -> task.Result
+
+    let showcaseResult =
+        ActorArgu.sendDurableAsync
+            ingress
+            fabric
+            { Send =
+                { Page = showcasePage
+                  ActorAddress = showcaseActorAddress
+                  RawArgu = "--render"
+                  Tags = Some [ "poc"; "dynamic"; "showcase" ] }
+              IdempotencyKey = None
+              Source = Some "poc.dynamic.fsx"
+              DeadlineAtUtc = None }
+        |> fun asyncFunc -> asyncFunc cancellationToken
+        |> Async.RunSynchronously
 
     let actorResult =
         ActorArgu.sendDurableAsync

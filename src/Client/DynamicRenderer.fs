@@ -180,12 +180,25 @@ module DynamicRenderer =
             )) |> Doc.EmbedView
         ]
 
-    let TryRender (content: string) : option<Doc> =
+    let TryRender (rawContent: string) : option<Doc> =
+        if IsClient then JS.Global?console?log("DynamicRenderer.TryRender called with:", rawContent)
+        
+        let content =
+            let idx = rawContent.IndexOf("replied msg:")
+            if idx >= 0 then
+                let jsonPart = rawContent.Substring(idx + "replied msg:".Length).Trim()
+                jsonPart
+            else
+                rawContent
+        
+        if IsClient then JS.Global?console?log("Content after strip:", content)
         match tryGetSchema content with
         | Some "fskynet-sdui" ->
+            if IsClient then JS.Global?console?log("Schema is fskynet-sdui, rendering canvas!")
             if IsClient then
                 Some (createSduiCanvas content)
             else
                 Some Doc.Empty 
         | _ ->
+            if IsClient then JS.Global?console?log("Schema not matched:", tryGetSchema content)
             None

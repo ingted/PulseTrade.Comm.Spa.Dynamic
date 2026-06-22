@@ -43,6 +43,7 @@ type ShowcaseDemoActor() as this =
         this.Receive<ActorArguTargetCommand>(fun (command: ActorArguTargetCommand) ->
             printfn "ShowcaseDemoActor received ActorArguTargetCommand!"
             let payload = buildSduiPayload ()
+            printfn "PAYLOAD JSON: %s" payload
             
             let reply: ActorArguTargetReply =
                 { Value = fCell2.S payload

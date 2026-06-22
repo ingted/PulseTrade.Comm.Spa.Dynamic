@@ -1,5 +1,5 @@
 #i @"nuget: C:\Program Files\dotnet\sdk\10.0.300\FSharp\library-packs"
-#r "nuget: PulseTrade.Comm.Spa, 0.2.4-beta8"
+#r "nuget: PulseTrade.Comm.Spa, 0.2.5-beta9"
 #r "nuget: FAkka.Argu, 10.1.301"
 #r "nuget: FAkka.FCell2, 10.1.301"
 #r "nuget: Akka, 1.5.69"

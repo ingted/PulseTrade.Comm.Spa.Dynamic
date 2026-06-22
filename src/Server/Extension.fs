@@ -29,18 +29,24 @@ module CommHubExtensions =
                 let allJsFiles = System.IO.Directory.GetFiles(jsDir, "*.js", System.IO.SearchOption.AllDirectories)
                 for file in allJsFiles do
                     let relativePath = file.Substring(jsDir.Length).Replace("\\", "/")
-                    let relativePath = if relativePath.StartsWith("/") then relativePath else "/" + relativePath
-                    let url = "/ext/js" + relativePath
+                    let relativePath = if relativePath.StartsWith("/") then relativePath.Substring(1) else relativePath
+                    let url = "/ext/js/" + relativePath
+                    let rawContent = System.IO.File.ReadAllText(file)
+                    let content = if file.EndsWith("head.js") then rawContent.Replace("document.write(\"\")", "// no-op") else rawContent
+                    printfn "Asset %s length: %d" url content.Length
                     let asset: ClientExtensionScriptAsset = {
                         Url = url
                         ContentType = "application/javascript"
-                        Content = System.IO.File.ReadAllText(file)
+                        Content = content
                     }
                     this.RegisterClientExtensionScriptAsset asset |> ignore
                     
-                    // Only add the main entry point to ScriptUrls for the initial load
-                    if file.EndsWith("PulseTrade.Comm.Spa.Dynamic.js") && not (file.EndsWith("min.js")) && not (file.EndsWith("head.js")) then
-                        scripts <- [ url ]
+                    if file.EndsWith("PulseTrade.Comm.Spa.Dynamic.head.js") then
+                        scripts <- url :: scripts
+                    else if file.EndsWith("PulseTrade.Comm.Spa.Dynamic.js") && not (file.EndsWith("min.js")) then
+                        scripts <- scripts @ [ url ]
+
+            printfn "Scripts list count before registering: %d" scripts.Length
 
             this.RegisterClientExtension
                 { ExtensionId = "pulse-trade-comm-spa-dynamic"
@@ -51,6 +57,15 @@ module CommHubExtensions =
                         Label = Some "Actor Dynamic"
                         Badge = Some "D"
                         ClassName = Some "actor-dynamic" } ] }
+            |> ignore
+
+            this.RegisterAppendPageShapeTemplate
+                { Shape = "actor-dynamic"
+                  Description = Some "Send an Argu-style command to a dynamic actor and render the reply through extension renderers."
+                  KeyPlaceholder = Some "\"akka.tcp://PulseTradeCommSpaDynamicPoc@127.0.0.1:7705/user/showcase-dynamic-actor\""
+                  ValuePlaceholder = Some "--render --topic canvas"
+                  DefaultKey = Some "\"akka.tcp://PulseTradeCommSpaDynamicPoc@127.0.0.1:7705/user/showcase-dynamic-actor\""
+                  Tags = [ "actor-argu"; "dynamic"; "custom-shape" ] }
             |> ignore
 
             this // Return self for fluent API

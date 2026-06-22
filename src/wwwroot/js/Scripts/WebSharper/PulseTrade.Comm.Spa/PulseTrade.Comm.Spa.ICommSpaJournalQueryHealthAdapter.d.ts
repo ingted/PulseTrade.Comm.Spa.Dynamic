@@ -1,0 +1,4 @@
+export function isICommSpaJournalQueryHealthAdapter(x):x is ICommSpaJournalQueryHealthAdapter
+export default interface ICommSpaJournalQueryHealthAdapter {
+  PulseTrade_Comm_Spa_ICommSpaJournalQueryHealthAdapter$CheckJournal(a)
+}
