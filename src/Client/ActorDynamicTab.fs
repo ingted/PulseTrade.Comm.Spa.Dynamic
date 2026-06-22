@@ -37,8 +37,19 @@ module ActorDynamicTab =
         ]
 
     /// 提供一個註冊點給宿主 PTCS (待 UPSTREAM_RFC 實裝)
+    [<SPAEntryPoint>]
     let Start () =
-        // TODO: 透過 Reflection 或是全域變數尋找 PTCS 核心並呼叫註冊
-        // PulseTrade.Comm.Spa.Client.RegisterRenderer(DynamicRenderer.TryRender)
-        // PulseTrade.Comm.Spa.Client.RegisterTabPageHandler("actor-dynamic", renderActorDynamicPage)
+        let renderer (text: string) =
+            DynamicRenderer.TryRender text
+            |> Option.map (fun doc ->
+                let container = JS.Document.CreateElement("div")
+                WebSharper.UI.Client.Doc.Run container doc
+                container :> WebSharper.JavaScript.Dom.Node)
+
+        // 註冊 SDUI Renderer 使得在一般 Chat 也能渲染 fskynet-sdui
+        PulseTrade.Comm.Spa.Client.RegisterRenderer("actor-dynamic", renderer)
+        
+        // 註冊一個專屬的 AppendPageShape 讓下拉選單能直接出現這個獨立的 Tab Page
+        PulseTrade.Comm.Spa.Client.RegisterAppendPageShape("actor-dynamic", "Actor Dynamic", "A", "actor-dynamic-page")
+        
         JS.Window.Alert("PulseTrade.Comm.Spa.Dynamic Client Extension Started!")

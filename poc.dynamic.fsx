@@ -1,5 +1,5 @@
 #i @"nuget: C:\Program Files\dotnet\sdk\10.0.300\FSharp\library-packs"
-#r "nuget: PulseTrade.Comm.Spa, 0.2.4-beta7"
+#r "nuget: PulseTrade.Comm.Spa, 0.2.4-beta8"
 #r "nuget: FAkka.Argu, 10.1.301"
 #r "nuget: FAkka.FCell2, 10.1.301"
 #r "nuget: Akka, 1.5.69"
@@ -186,7 +186,10 @@ let fabric =
     |> Option.defaultWith (fun () -> failwith "Expected Server.startWithSharing to expose ActorFabric.")
 
 // ---- DYNAMIC EXTENSION 掛載 ----
+let dynamicPage = PulseTrade.Comm.Spa.Domain.appendPage "actor-dynamic-demo" "Actor Dynamic Dashboard" "actor-dynamic-demo" "actor-dynamic"
+
 hub.useDynamicSdui(fabric.System) |> ignore
+hub.RegisterAppendPage(dynamicPage) |> ignore
 // --------------------------------
 
 let ingress = durableIngressOptions deliveryProfile |> CommSpaDurableIngress.createVolatile
@@ -283,3 +286,4 @@ try
         Console.ReadLine() |> ignore
 finally
     (app :> IDisposable).Dispose()
+
