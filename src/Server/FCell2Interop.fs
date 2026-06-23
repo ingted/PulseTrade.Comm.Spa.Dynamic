@@ -37,3 +37,32 @@ module FCell2Interop =
     let toMessagePayload (cell: fCell2<string>) : string =
         let innerJson = toJsonString cell
         $"{{\"schema\":\"fskynet-sdui\",\"ui\":{innerJson}}}"
+
+    let rec private fromJsonElement (el: System.Text.Json.JsonElement) : fCell2<string> =
+        match el.ValueKind with
+        | System.Text.Json.JsonValueKind.Null -> fCell2.N()
+        | System.Text.Json.JsonValueKind.True -> fCell2.B true
+        | System.Text.Json.JsonValueKind.False -> fCell2.B false
+        | System.Text.Json.JsonValueKind.Number -> fCell2.D (el.GetDecimal())
+        | System.Text.Json.JsonValueKind.String -> fCell2.S (el.GetString())
+        | System.Text.Json.JsonValueKind.Array ->
+            let elements = 
+                el.EnumerateArray()
+                |> Seq.map fromJsonElement
+                |> Seq.toArray
+            fCell2.A elements
+        | System.Text.Json.JsonValueKind.Object ->
+            let props =
+                el.EnumerateObject()
+                |> Seq.map (fun prop -> prop.Name, fromJsonElement prop.Value)
+                |> Map.ofSeq
+            fCell2.T props
+        | _ -> fCell2.N()
+
+    /// 解析 JSON 字串並轉換為 fCell2 AST
+    let fromJsonString (json: string) : fCell2<string> =
+        try
+            use doc = System.Text.Json.JsonDocument.Parse(json)
+            fromJsonElement doc.RootElement
+        with _ ->
+            fCell2.N()

@@ -80,6 +80,38 @@ type DurableEchoActor() as this =
 
     member _.ActorCtx: IActorContext = ActorBase.Context
 
+type DynamicEchoActor() as this =
+    inherit ReceiveActor()
+
+    do
+        this.Receive<ActorArguTargetCommand>(fun (command: ActorArguTargetCommand) ->
+            let rawArgu = command.RawArgu.Trim()
+            
+            let replyValue =
+                if rawArgu.StartsWith("{") || rawArgu.StartsWith("[") then
+                    // 嘗試解析 JSON 為 fCell2，然後打包成 fskynet-sdui Payload
+                    let ast = PulseTrade.Comm.Spa.Dynamic.Server.FCell2Interop.fromJsonString rawArgu
+                    match ast with
+                    | fCell2.N _ -> fCell2.S ("Failed to parse JSON: " + rawArgu)
+                    | _ -> fCell2.S (PulseTrade.Comm.Spa.Dynamic.Server.FCell2Interop.toMessagePayload ast)
+                else
+                    let replyText =
+                        "dynamic echo raw="
+                        + command.RawArgu
+                        + "; argv="
+                        + String.concat "|" command.ParsedArgv
+                    fCell2.S replyText
+
+            let reply: ActorArguTargetReply =
+                { Value = replyValue
+                  Direction = Some "inbound-message"
+                  Tags = Some [ "poc"; "dynamic"; "echo"; "sdui" ] }
+
+            this.ActorCtx.Sender.Tell(reply, this.ActorCtx.Self))
+        |> ignore
+
+    member _.ActorCtx: IActorContext = ActorBase.Context
+
 let fsiArgs () =
     let values = fsi.CommandLineArgs
 
@@ -211,6 +243,16 @@ let actorPage =
     let basePage = ActorArgu.fCellChatPage "actor-argu-durable-poc" "ActorArgu Durable POC" "actor-argu-durable-poc"
     { basePage with DefaultKey = "\"" + actorAddress + "\"" }
 
+let dynamicEchoActorRef =
+    fabric.System.ActorOf(Props.Create(fun () -> DynamicEchoActor()), "dynamic-echo-actor")
+
+let dynamicEchoActorAddress =
+    fabric.NodeAddress.TrimEnd('/') + dynamicEchoActorRef.Path.ToStringWithoutAddress()
+
+let dynamicEchoPage =
+    let basePage = ActorArgu.fCellChatPage "actor-dynamic-echo" "Actor Dynamic Echo" "actor-dynamic-echo"
+    { basePage with DefaultKey = "\"" + dynamicEchoActorAddress + "\""; Shape = "actor-dynamic" }
+
 let showcaseActorAddress = fabric.NodeAddress.TrimEnd('/') + "/user/showcase-dynamic-actor"
 
 let showcasePage =
@@ -233,7 +275,23 @@ try
             { ParticipantId = "agent.showcase"
               DisplayName = Some "Showcase Actor"
               Kind = Some "agent"
-              Labels = Some [ "poc"; "dynamic"; "showcase" ] }
+              Labels = Some [ "poc"; "durable"; "showcase"; "agent" ] }
+        |> fun task -> task.Result
+
+    let registerDynamicEchoAgent =
+        messageFabric.RegisterParticipantDurableAsync
+            { ParticipantId = "agent.dynamic-echo"
+              DisplayName = Some "Dynamic Echo Actor"
+              Kind = Some "agent"
+              Labels = Some [ "poc"; "durable"; "echo"; "agent" ] }
+        |> fun task -> task.Result
+
+    let registerAgent =
+        messageFabric.RegisterParticipantDurableAsync
+            { ParticipantId = "agent.poc"
+              DisplayName = Some "POC Agent"
+              Kind = Some "agent"
+              Labels = Some [ "poc"; "durable"; "agent" ] }
         |> fun task -> task.Result
 
     let showcaseDirectMessage =
