@@ -2805,23 +2805,21 @@ function createSduiCanvas(jsonStr){
   else _1=null;
   const jsonSnippet=jsonStr.length>100?Substring(jsonStr, 0, 100)+"...":jsonStr;
   const isCodeExpanded=_c_1.Create_1(false);
-  return E("div", [Attr.Create("class", "sdui-summary-card"), Attr.Create("style", "border: 1px solid #5bc0de; padding: 15px; border-radius: 6px; background: rgba(91, 192, 222, 0.1); margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start;")], [E("strong", [Attr.Create("style", "display: block; margin-bottom: 5px; color: #5bc0de; font-size: 1.1em;")], [Doc.TextNode("\ud83d\udcc8 FSkynet \u52d5\u614b\u756b\u5e03 (Canvas)")]), E("span", [Attr.Create("class", "muted"), Attr.Create("style", "display: block; font-size: 0.9em; margin-bottom: 12px; color: #aaa;")], [Doc.TextNode("\u9ede\u64ca\u5c55\u958b\u4ee5\u986f\u793a\u5177\u5099\u6392\u5e8f\u3001\u7be9\u9078\u53ca\u4e0b\u55ae\u529f\u80fd\u7684\u4e92\u52d5\u5f0f\u7db2\u683c\u8207\u5716\u8868\u3002")]), E("pre", [Dynamic("class", Map((e) => e?"sdui-json-snippet expanded":"sdui-json-snippet", isCodeExpanded.View)), Attr.Create("title", "\u9ede\u64ca\u6aa2\u8996\u5b8c\u6574 JSON"), Handler("click", () =>() => isCodeExpanded.Set(!isCodeExpanded.Get()))], [Doc.TextView(Map((e) => e?jsonStr:jsonSnippet, isCodeExpanded.View))]), E("button", [Attr.Create("class", "btn btn-info"), Attr.Create("style", "background: #5bc0de; color: #111; font-weight: bold; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 10px;"), Handler("click", () =>() => isExpanded.Set(!isExpanded.Get()))], [Doc.TextView(Map((e) => e?"\u6536\u5408 Canvas":"\u5c55\u958b Canvas", isExpanded.View))]), Doc.EmbedView(Map((expanded) => expanded?E("div", [Attr.Create("style", "margin-top: 10px; width: 100%; border-top: 1px dashed #5bc0de; padding-top: 15px;")], ofSeq_1(delay(() => enumTryWith(delay(() => {
-    let r;
+  return E("div", [Attr.Create("class", "sdui-summary-card"), Attr.Create("style", "border: 1px solid #5bc0de; padding: 15px; border-radius: 6px; background: rgba(91, 192, 222, 0.1); margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start;")], [E("strong", [Attr.Create("style", "display: block; margin-bottom: 5px; color: #5bc0de; font-size: 1.1em;")], [Doc.TextNode("\ud83d\udcc8 FSkynet \u52d5\u614b\u756b\u5e03 (Canvas)")]), E("span", [Attr.Create("class", "muted"), Attr.Create("style", "display: block; font-size: 0.9em; margin-bottom: 12px; color: #aaa;")], [Doc.TextNode("\u9ede\u64ca\u5c55\u958b\u4ee5\u986f\u793a\u5177\u5099\u6392\u5e8f\u3001\u7be9\u9078\u53ca\u4e0b\u55ae\u529f\u80fd\u7684\u4e92\u52d5\u5f0f\u7db2\u683c\u8207\u5716\u8868\u3002")]), E("pre", [Dynamic("class", Map((e) => e?"sdui-json-snippet expanded":"sdui-json-snippet", isCodeExpanded.View)), Attr.Create("title", "\u9ede\u64ca\u6aa2\u8996\u5b8c\u6574 JSON"), Handler("click", () =>() => isCodeExpanded.Set(!isCodeExpanded.Get()))], [Doc.TextView(Map((e) => e?jsonStr:jsonSnippet, isCodeExpanded.View))]), E("button", [Attr.Create("class", "btn btn-info"), Attr.Create("style", "background: #5bc0de; color: #111; font-weight: bold; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 10px;"), Handler("click", () =>() => isExpanded.Set(!isExpanded.Get()))], [Doc.TextView(Map((e) => e?"\u6536\u5408 Canvas":"\u5c55\u958b Canvas", isExpanded.View))]), Doc.EmbedView(Map((expanded) => expanded?E("div", [Attr.Create("style", "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; flex-direction: column; padding: 40px; box-sizing: border-box;")], [E("div", [Attr.Create("style", "display: flex; justify-content: space-between; align-items: center; background: #1e1e1e; padding: 15px 25px; border-radius: 8px 8px 0 0; color: #fff; font-family: sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.3);")], [E("h2", [Attr.Create("style", "margin: 0; font-size: 1.5rem; font-weight: normal;")], [Doc.TextNode("FSkynet SDUI Canvas")]), E("button", [Attr.Create("class", "btn btn-danger"), Attr.Create("style", "background: #d9534f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;"), Handler("click", () =>() => isExpanded.Set(false))], [Doc.TextNode("\u95dc\u9589 Canvas")])]), E("div", [Attr.Create("style", "flex: 1; background: #2b2b2b; padding: 30px; overflow-y: auto; border-radius: 0 0 8px 8px; color: #eee; font-family: sans-serif;")], ofSeq_1(delay(() => enumTryWith(delay(() => {
+    let r, items;
     let payloadObj=JSON.parse(jsonStr);
     let sduiNode=payloadObj.ui||payloadObj.sdui;
-    if(!sduiNode)r=[];
+    if(!sduiNode)items=[];
     let unwrapped=globalThis.unwrapFCell?globalThis.unwrapFCell(sduiNode):sduiNode;
-    r=Array.isArray(unwrapped)?unwrapped:[unwrapped];
-    let _2=map(renderNode, r);
-    let _3=ofArray(_2);
-    let _4=[Doc.Concat(_3)];
-    return[E("div", [], _4)];
-  }), () => 1, (ex) =>[E("pre", [Attr.Create("style", "color: #d9534f;")], [Doc.TextNode("Error parsing SDUI Canvas: "+ex.message)])])))):Doc.Empty, isExpanded.View))]);
+    items=Array.isArray(unwrapped)?unwrapped:[unwrapped];
+    const payloadObj_1=JSON.parse(jsonStr);
+    return[E("div", [], [Doc.Concat(ofArray(map((i) => renderNode(i, payloadObj_1), items)))])];
+  }), () => 1, (ex) =>[E("pre", [Attr.Create("style", "color: #d9534f;")], [Doc.TextNode("Error parsing SDUI Canvas: "+ex.message)])]))))]):Doc.Empty, isExpanded.View))]);
 }
 function E(name, attrs, children){
   return Doc.Element(name, attrs, children);
 }
-function renderNode(obj){
+function renderNode(obj, payloadObj){
   if(Equals(typeof obj, "undefined")||Equals(obj, null))return Doc.Empty;
   else {
     const t=obj.type;
@@ -2839,10 +2837,10 @@ function renderNode(obj){
           el.setAttribute("id", idStr);
         })]):FSharpList.Empty));
       case"Row":
-        const childrenDocs=ofArray(map(renderNode, obj.children||[]));
+        const childrenDocs=ofArray(map((c) => renderNode(c, payloadObj), obj.children||[]));
         return E("div", [Attr.Create("style", "display: flex; flex-direction: row; gap: 15px; margin-bottom: 10px; align-items: center;")], childrenDocs);
       case"Column":
-        const childrenDocs_1=ofArray(map(renderNode, obj.children||[]));
+        const childrenDocs_1=ofArray(map((c) => renderNode(c, payloadObj), obj.children||[]));
         return E("div", [Attr.Create("style", "display: flex; flex-direction: column; gap: 10px;")], childrenDocs_1);
       case"Divider":
         return V("hr", [Attr.Create("style", "border: 0; border-top: 1px solid #444; margin: 15px 0; width: 100%;")]);
@@ -2854,7 +2852,24 @@ function renderNode(obj){
           el.setAttribute("multiple", "multiple");
         })]):FSharpList.Empty), optionDocs);
       case"DataGrid":
-        return E("div", [Attr.Create("style", "background: #1e1e1e; border-radius: 8px; overflow: hidden; border: 1px solid #444; margin: 20px 0;")], [Doc.TextNode("DataGrid rendered (Requires DataRef bindings)")]);
+        let r, rows;
+        const dataRefStr=obj.dataRef||"";
+        const _1=dataRefStr;
+        let unwrappedData=globalThis.unwrapFCell?globalThis.unwrapFCell(payloadObj.data):payloadObj.data;
+        let arr=unwrappedData?unwrappedData[_1]:null;
+        rows=Array.isArray(arr)?arr:[];
+        return E("div", [Attr.Create("style", "background: #1e1e1e; border-radius: 8px; overflow: hidden; border: 1px solid #444; margin: 20px 0;")], ofSeq_1(delay(() => {
+          if(length(rows)>0){
+            const keys=Object.keys(get(rows, 0));
+            const thead=E("thead", [], [E("tr", [Attr.Create("style", "background: #333; color: #aaa;")], ofArray(map((k) => E("th", [Attr.Create("style", "padding: 12px 15px; border-bottom: 1px solid #555;")], [Doc.TextNode(k)]), keys)))]);
+            const tbody=E("tbody", [], ofArray(map((rowObj) => E("tr", [Attr.Create("style", "border-bottom: 1px solid #444;")], ofArray(map((k) => {
+              const cellVal=String(rowObj[k]||"");
+              return E("td", [Attr.Create("style", "padding: 12px 15px;")], [Doc.TextNode(cellVal)]);
+            }, keys))), rows)));
+            return[E("table", [Attr.Create("style", "width: 100%; border-collapse: collapse; text-align: left;")], [thead, tbody])];
+          }
+          else return[E("div", [Attr.Create("style", "padding: 20px; color: #ccc;")], [Doc.TextNode("No data found for dataRef: "+dataRefStr)])];
+        })));
       case"Button":
         const btnText=obj.text||"Button";
         return E("button", [Attr.Create("class", "btn btn-success canvas-btn"), Attr.Create("style", "margin-top: 15px; padding: 10px 20px; font-weight: bold; background: #5cb85c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;"), Handler("click", () =>() => globalThis.alert("Dispatcher: Sending command..."))], [Doc.TextNode(btnText)]);
@@ -2876,10 +2891,20 @@ function renderNode(obj){
       case"AutoComplete":
         return E("div", [Attr.Create("style", "position: relative; display: inline-block; width: 100%; margin: 5px 0;")], [V("input", [Attr.Create("type", "text"), Attr.Create("placeholder", "Search..."), Attr.Create("style", "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box;")])]);
       case"Rolling":
-        return E("div", [Attr.Create("style", "padding: 10px; background: #222; color: #5bc0de; border-radius: 4px; border: 1px solid #444; margin: 10px 0;")], [Doc.TextNode("Rolling...")]);
+        let r_1, items;
+        const direction=obj.direction||"left";
+        const _2=obj.dataRef||"";
+        let unwrappedData_1=globalThis.unwrapFCell?globalThis.unwrapFCell(payloadObj.data):payloadObj.data;
+        let arr_1=unwrappedData_1?unwrappedData_1[_2]:null;
+        items=Array.isArray(arr_1)?arr_1.map(String):[];
+        const contentText=length(items)>0?concat_1(" | ", items):"No data for Rolling.";
+        return V("marquee", [Attr.Create("style", "padding: 10px; background: #222; color: #5bc0de; border-radius: 4px; border: 1px solid #444; margin: 10px 0;"), OnAfterRender((el) => {
+          el.setAttribute("direction", direction);
+          el.textContent=contentText;
+        })]);
       case"Tree":
-        const dataRefStr=obj.dataRef||"";
-        return E("ul", [Attr.Create("style", "list-style-type: none; padding-left: 20px; color: #ccc;")], [E("li", [Attr.Create("style", "padding: 5px 0; cursor: pointer;")], [Doc.TextNode("Tree Node bound to: "+dataRefStr)])]);
+        const dataRefStr_1=obj.dataRef||"";
+        return E("ul", [Attr.Create("style", "list-style-type: none; padding-left: 20px; color: #ccc;")], [E("li", [Attr.Create("style", "padding: 5px 0; cursor: pointer;")], [Doc.TextNode("Tree Node bound to: "+dataRefStr_1)])]);
       case"ContextMenu":
         return V("div", [Attr.Create("style", "display: none; position: absolute; background: #333; border: 1px solid #555; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); z-index: 1000;")]);
       default:

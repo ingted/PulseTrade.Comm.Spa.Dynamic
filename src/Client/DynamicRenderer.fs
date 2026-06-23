@@ -23,7 +23,7 @@ module DynamicRenderer =
                 if jsonStr.Contains("\"schema\":\"fskynet-sdui\"") then Some "fskynet-sdui" else None
         with _ -> None
 
-    let rec private renderNode (obj: obj) : Doc =
+    let rec private renderNode (obj: obj) (payloadObj: obj) : Doc =
         if JS.TypeOf obj = JS.Kind.Undefined || obj = null then Doc.Empty
         else
             let t = JS.Inline<string>("$0.type", obj)
@@ -43,11 +43,11 @@ module DynamicRenderer =
                 V "input" attrs
             | "Row" ->
                 let childrenObj = JS.Inline<obj[]>("$0.children || []", obj)
-                let childrenDocs = childrenObj |> Array.map renderNode |> Array.toList
+                let childrenDocs = childrenObj |> Array.map (fun c -> renderNode c payloadObj) |> Array.toList
                 E "div" [ attr.style "display: flex; flex-direction: row; gap: 15px; margin-bottom: 10px; align-items: center;" ] childrenDocs
             | "Column" ->
                 let childrenObj = JS.Inline<obj[]>("$0.children || []", obj)
-                let childrenDocs = childrenObj |> Array.map renderNode |> Array.toList
+                let childrenDocs = childrenObj |> Array.map (fun c -> renderNode c payloadObj) |> Array.toList
                 E "div" [ attr.style "display: flex; flex-direction: column; gap: 10px;" ] childrenDocs
             | "Divider" ->
                 V "hr" [ attr.style "border: 0; border-top: 1px solid #444; margin: 15px 0; width: 100%;" ]
@@ -60,7 +60,37 @@ module DynamicRenderer =
                     @ (if isMultiple then [ on.afterRender (fun el -> el.SetAttribute("multiple", "multiple")) ] else [])
                 E "select" attrs optionDocs
             | "DataGrid" ->
-                let gridContainer = E "div" [ attr.style "background: #1e1e1e; border-radius: 8px; overflow: hidden; border: 1px solid #444; margin: 20px 0;" ] [ text "DataGrid rendered (Requires DataRef bindings)" ]
+                let dataRefStr = JS.Inline<string>("$0.dataRef || ''", obj)
+                let rows = JS.Inline<obj[]>("""
+                    var unwrappedData = window.unwrapFCell ? window.unwrapFCell($1.data) : $1.data;
+                    var arr = unwrappedData ? unwrappedData[$0] : null;
+                    return Array.isArray(arr) ? arr : [];
+                """, dataRefStr, payloadObj)
+                
+                let gridContainer = E "div" [ attr.style "background: #1e1e1e; border-radius: 8px; overflow: hidden; border: 1px solid #444; margin: 20px 0;" ] [
+                    if rows.Length > 0 then
+                        let firstRow = rows.[0]
+                        let keys = JS.Inline<string[]>("Object.keys($0)", firstRow)
+                        
+                        let thead = E "thead" [] [
+                            E "tr" [ attr.style "background: #333; color: #aaa;" ] (
+                                keys |> Array.map (fun k -> E "th" [ attr.style "padding: 12px 15px; border-bottom: 1px solid #555;" ] [ text k ]) |> Array.toList
+                            )
+                        ]
+                        let tbody = E "tbody" [] (
+                            rows |> Array.map (fun rowObj ->
+                                E "tr" [ attr.style "border-bottom: 1px solid #444;" ] (
+                                    keys |> Array.map (fun k ->
+                                        let cellVal = JS.Inline<string>("String($0[$1] || '')", rowObj, k)
+                                        E "td" [ attr.style "padding: 12px 15px;" ] [ text cellVal ]
+                                    ) |> Array.toList
+                                )
+                            ) |> Array.toList
+                        )
+                        E "table" [ attr.style "width: 100%; border-collapse: collapse; text-align: left;" ] [ thead; tbody ]
+                    else
+                        E "div" [ attr.style "padding: 20px; color: #ccc;" ] [ text ("No data found for dataRef: " + dataRefStr) ]
+                ]
                 gridContainer
             | "Button" ->
                 let btnText = JS.Inline<string>("$0.text || 'Button'", obj)
@@ -98,9 +128,25 @@ module DynamicRenderer =
                     V "input" [ attr.``type`` "text"; attr.placeholder "Search..."; attr.style "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box;" ]
                 ]
             | "Rolling" ->
-                E "div" [ attr.style "padding: 10px; background: #222; color: #5bc0de; border-radius: 4px; border: 1px solid #444; margin: 10px 0;" ] [ text "Rolling..." ]
+                let direction = JS.Inline<string>("$0.direction || 'left'", obj)
+                let dataRefStr = JS.Inline<string>("$0.dataRef || ''", obj)
+                let items = JS.Inline<string[]>("""
+                    var unwrappedData = window.unwrapFCell ? window.unwrapFCell($1.data) : $1.data;
+                    var arr = unwrappedData ? unwrappedData[$0] : null;
+                    return Array.isArray(arr) ? arr.map(String) : [];
+                """, dataRefStr, payloadObj)
+                
+                let contentText = if items.Length > 0 then String.concat " | " items else "No data for Rolling."
+                V "marquee" [ 
+                    attr.style "padding: 10px; background: #222; color: #5bc0de; border-radius: 4px; border: 1px solid #444; margin: 10px 0;"
+                    on.afterRender (fun el -> 
+                        el.SetAttribute("direction", direction)
+                        el.TextContent <- contentText
+                    )
+                ]
             | "Tree" ->
                 let dataRefStr = JS.Inline<string>("$0.dataRef || ''", obj)
+                // A simple placeholder for tree. You can expand this to recursive tree parsing.
                 E "ul" [ attr.style "list-style-type: none; padding-left: 20px; color: #ccc;" ] [
                     E "li" [ attr.style "padding: 5px 0; cursor: pointer;" ] [ text ("Tree Node bound to: " + dataRefStr) ]
                 ]
@@ -160,20 +206,37 @@ module DynamicRenderer =
             
             (isExpanded.View |> View.Map (fun expanded ->
                 if expanded then
-                    E "div" [ attr.style "margin-top: 10px; width: 100%; border-top: 1px dashed #5bc0de; padding-top: 15px;" ] [
-                        try
-                            let items = JS.Inline<obj[]>("""
-                                var payloadObj = JSON.parse($0);
-                                var sduiNode = payloadObj.ui || payloadObj.sdui; // check both
-                                if (!sduiNode) return [];
-                                var unwrapped = window.unwrapFCell ? window.unwrapFCell(sduiNode) : sduiNode;
-                                return Array.isArray(unwrapped) ? unwrapped : [unwrapped];
-                            """, jsonStr)
-                            
-                            let elements = items |> Array.map renderNode |> Array.toList
-                            E "div" [] [ Doc.Concat elements ]
-                        with ex ->
-                            E "pre" [ attr.style "color: #d9534f;" ] [ text ("Error parsing SDUI Canvas: " + ex.Message) ]
+                    // Render Full Screen Overlay Modal
+                    let overlayStyle = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; flex-direction: column; padding: 40px; box-sizing: border-box;"
+                    let headerStyle = "display: flex; justify-content: space-between; align-items: center; background: #1e1e1e; padding: 15px 25px; border-radius: 8px 8px 0 0; color: #fff; font-family: sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.3);"
+                    let bodyStyle = "flex: 1; background: #2b2b2b; padding: 30px; overflow-y: auto; border-radius: 0 0 8px 8px; color: #eee; font-family: sans-serif;"
+                    
+                    E "div" [ attr.style overlayStyle ] [
+                        E "div" [ attr.style headerStyle ] [
+                            E "h2" [ attr.style "margin: 0; font-size: 1.5rem; font-weight: normal;" ] [ text "FSkynet SDUI Canvas" ]
+                            E "button" [
+                                attr.``class`` "btn btn-danger"
+                                attr.style "background: #d9534f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;"
+                                on.click (fun _ _ -> isExpanded.Value <- false)
+                            ] [ text "關閉 Canvas" ]
+                        ]
+                        E "div" [ attr.style bodyStyle ] [
+                            try
+                                let items = JS.Inline<obj[]>("""
+                                    var payloadObj = JSON.parse($0);
+                                    var sduiNode = payloadObj.ui || payloadObj.sdui; // check both
+                                    if (!sduiNode) return [];
+                                    var unwrapped = window.unwrapFCell ? window.unwrapFCell(sduiNode) : sduiNode;
+                                    return Array.isArray(unwrapped) ? unwrapped : [unwrapped];
+                                """, jsonStr)
+                                
+                                let payloadObj = JS.Inline<obj>("JSON.parse($0)", jsonStr)
+                                
+                                let elements = items |> Array.map (fun i -> renderNode i payloadObj) |> Array.toList
+                                E "div" [] [ Doc.Concat elements ]
+                            with ex ->
+                                E "pre" [ attr.style "color: #d9534f;" ] [ text ("Error parsing SDUI Canvas: " + ex.Message) ]
+                        ]
                     ]
                 else
                     Doc.Empty
