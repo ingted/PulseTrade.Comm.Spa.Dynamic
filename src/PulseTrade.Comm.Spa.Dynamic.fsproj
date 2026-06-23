@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>PulseTrade.Comm.Spa.Dynamic</PackageId>
-    <Version>0.1.1-alpha2</Version>
+    <Version>0.1.2-beta1</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Dynamic SDUI and Actor extension for PulseTrade.Comm.Spa</Description>
     <WebSharperProject>Bundle</WebSharperProject>
@@ -14,6 +14,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="poc.full.nuget.fsx" />
+    <None Include="PostBuildEvent.ps1" />
+    <Content Include="canvas_demo.json" />
     <None Include="poc.dynamic.fsx" />
     <None Include="poc.dynamic.beta8.extension-smoke.fsx" />
     <Compile Include="Library.fs" />
@@ -33,11 +36,21 @@
     <Compile Include="Client/ActorDynamicTab.fs" />
   </ItemGroup>
 
-  <ItemGroup />
-
   <ItemGroup>
     <Content Include="wwwroot\**\*.*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+	<PropertyGroup>
+		<PowerShellExe Condition="'$(OS)' == 'Windows_NT'">powershell</PowerShellExe>
+		<PowerShellExe Condition="'$(OS)' != 'Windows_NT'">pwsh</PowerShellExe>
+	</PropertyGroup>
+	<Target Name="PostBuildR" AfterTargets="Pack" Condition="'$(Configuration)' == 'Release'">
+		<Exec Command="$(PowerShellExe) -c &quot;write-host '====== Start Post-Build Event ======'&quot;&#xD;&#xA;$(PowerShellExe) ./PostBuildEvent.ps1 PulseTrade.Comm.Spa.Dynamic Release" />
+	</Target>
+
+	<Target Name="PostBuildD" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
+		<Exec Command="$(PowerShellExe) -c &quot;write-host '====== Start Post-Build Event ======'&quot;&#xD;&#xA;$(PowerShellExe) ./PostBuildEvent.ps1 PulseTrade.Comm.Spa.Dynamic Debug" />
+	</Target>
 </Project>
 
 

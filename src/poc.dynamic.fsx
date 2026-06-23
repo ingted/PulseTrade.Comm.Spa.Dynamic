@@ -30,7 +30,7 @@ open PulseTrade.Comm.Spa.Dynamic.Server
 // - 展示 PulseTrade.Comm.Spa.Dynamic 的 ShowcaseDemoActor 與 fskynet-sdui JSON 生成。
 // - 建立 Echo actor 測試原有的 durable 功能。
 
-let defaultPcslRoot = __SOURCE_DIRECTORY__ + "/.pcsl/poc.dynamic.v13.fsx"
+let defaultPcslRoot = __SOURCE_DIRECTORY__ + "/.pcsl/poc.dynamic.v14.fsx"
 
 let defaultArgPath (path: string) =
     if String.IsNullOrWhiteSpace path then "" else path.Replace('\\', '/')
@@ -85,15 +85,25 @@ type DynamicEchoActor() as this =
 
     do
         this.Receive<ActorArguTargetCommand>(fun (command: ActorArguTargetCommand) ->
+            printfn "DynamicEchoActor received message: %s" command.RawArgu
             let rawArgu = command.RawArgu.Trim()
             
             let replyValue =
                 if rawArgu.StartsWith("{") || rawArgu.StartsWith("[") then
                     // 嘗試解析 JSON 為 fCell2，然後打包成 fskynet-sdui Payload
-                    let ast = PulseTrade.Comm.Spa.Dynamic.Server.FCell2Interop.fromJsonString rawArgu
-                    match ast with
-                    | fCell2.N _ -> fCell2.S ("Failed to parse JSON: " + rawArgu)
-                    | _ -> fCell2.S (PulseTrade.Comm.Spa.Dynamic.Server.FCell2Interop.toMessagePayload ast)
+                    try
+                        let ast = PulseTrade.Comm.Spa.Dynamic.Server.FCell2Interop.fromJsonString rawArgu
+                        match ast with
+                        | fCell2.N _ -> 
+                            printfn "DynamicEchoActor failed to parse JSON"
+                            fCell2.S ("Failed to parse JSON: " + rawArgu)
+                        | _ -> 
+                            let payload = PulseTrade.Comm.Spa.Dynamic.Server.FCell2Interop.toMessagePayload ast
+                            printfn "DynamicEchoActor parsed JSON successfully, payload length: %d" payload.Length
+                            fCell2.S payload
+                    with ex ->
+                        printfn "DynamicEchoActor exception during parsing/payload: %A" ex
+                        fCell2.S ("Error: " + ex.Message)
                 else
                     let replyText =
                         "dynamic echo raw="
@@ -107,7 +117,9 @@ type DynamicEchoActor() as this =
                   Direction = Some "inbound-message"
                   Tags = Some [ "poc"; "dynamic"; "echo"; "sdui" ] }
 
-            this.ActorCtx.Sender.Tell(reply, this.ActorCtx.Self))
+            printfn "DynamicEchoActor sending reply..."
+            this.ActorCtx.Sender.Tell(reply, this.ActorCtx.Self)
+            printfn "DynamicEchoActor reply sent.")
         |> ignore
 
     member _.ActorCtx: IActorContext = ActorBase.Context
@@ -250,7 +262,7 @@ let dynamicEchoActorAddress =
     fabric.NodeAddress.TrimEnd('/') + dynamicEchoActorRef.Path.ToStringWithoutAddress()
 
 let dynamicEchoPage =
-    let basePage = ActorArgu.fCellChatPage "actor-dynamic-echo" "Actor Dynamic Echo" "actor-dynamic-echo"
+    let basePage = ActorArgu.fCellChatPage "actor-dynamic-echo-v2" "Actor Dynamic Echo V2" "actor-dynamic-echo-v2"
     { basePage with DefaultKey = "\"" + dynamicEchoActorAddress + "\""; Shape = "actor-dynamic" }
 
 let showcaseActorAddress = fabric.NodeAddress.TrimEnd('/') + "/user/showcase-dynamic-actor"
@@ -353,7 +365,6 @@ try
             cancellationToken
         |> Async.RunSynchronously
 
-    // 測試 DynamicEchoActor — 送一段 JSON 讓它包成 fskynet-sdui payload 回傳
     let dynamicEchoResult =
         ActorArgu.sendDurableAsync
             ingress
@@ -361,7 +372,7 @@ try
             { Send =
                 { Page = dynamicEchoPage
                   ActorAddress = dynamicEchoActorAddress
-                  RawArgu = """[{"type":"Heading","id":"echo-test","text":"Dynamic Echo Test"}]"""
+                  RawArgu = System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "canvas_demo.json"))
                   Tags = Some [ "poc"; "dynamic"; "echo"; "sdui" ] }
               IdempotencyKey = None
               Source = Some "poc.dynamic.fsx"

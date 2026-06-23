@@ -35,8 +35,12 @@ module FCell2Interop =
 
     /// 將一個 fCell2 根節點打包成包含 fskynet-sdui schema 的 Payload
     let toMessagePayload (cell: fCell2<string>) : string =
-        let innerJson = toJsonString cell
-        $"{{\"schema\":\"fskynet-sdui\",\"ui\":{innerJson}}}"
+        match cell with
+        | fCell2.T map when map.ContainsKey "schema" && map.["schema"] = fCell2.S "fskynet-sdui" ->
+            toJsonString cell
+        | _ ->
+            let innerJson = toJsonString cell
+            $"{{\"schema\":\"fskynet-sdui\",\"ui\":{innerJson}}}"
 
     let rec private fromJsonElement (el: System.Text.Json.JsonElement) : fCell2<string> =
         match el.ValueKind with

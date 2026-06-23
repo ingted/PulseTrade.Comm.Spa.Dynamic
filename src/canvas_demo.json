@@ -1,0 +1,118 @@
+{
+  "data": {
+    "marqueeData": [ "BTC/USD 68000 +1.2%", "ETH/USD 3500 +0.5%" ],
+    "orderData": [
+      {
+        "id": "row1",
+        "price": "68000",
+        "vol": "0.5"
+      },
+      {
+        "id": "row2",
+        "price": "68050",
+        "vol": "1.2"
+      }
+    ],
+    "treeData": [ "RootNode" ]
+  },
+  "schema": "fskynet-sdui",
+  "sdui": [
+    {
+      "text": "動態技術分析與交易畫布 (SDUI Demo)",
+      "type": "Heading"
+    },
+    {
+      "dataRef": "marqueeData",
+      "direction": "left",
+      "type": "Rolling"
+    },
+    { "type": "Divider" },
+    {
+      "children": [
+        {
+          "text": "排序模式:",
+          "type": "Label"
+        },
+        {
+          "id": "sort-drp",
+          "onSelect": {
+            "action": "LocalSort",
+            "column": "price",
+            "direction": "Asc",
+            "targetGridId": "order-book"
+          },
+          "options": [ "價格遞增", "價格遞減" ],
+          "type": "Dropdown"
+        },
+        {
+          "id": "multi-select",
+          "multiple": true,
+          "options": [ "A", "B" ],
+          "type": "SelectBox"
+        },
+        {
+          "defaultColor": "#5bc0de",
+          "type": "ColorPicker"
+        },
+        { "type": "DatePicker" },
+        { "type": "TimePicker" }
+      ],
+      "type": "Row"
+    },
+    {
+      "dataRef": "orderData",
+      "features": {
+        "AllowAggregation": true,
+        "AllowSorting": true,
+        "Pagination": false
+      },
+      "id": "order-book",
+      "type": "DataGrid"
+    },
+    { "type": "Pagination" },
+    {
+      "children": [
+        {
+          "text": "下單參數:",
+          "type": "Label"
+        },
+        {
+          "id": "symbol-search",
+          "type": "AutoComplete"
+        },
+        {
+          "id": "txt-amount",
+          "placeholder": "請輸入數量...",
+          "type": "TextInput"
+        },
+        {
+          "id": "btn-buy",
+          "onClick": {
+            "action": "SendCommand",
+            "command": "place_order",
+            "includeStateOf": [ "order-book.selectedRow", "txt-amount" ]
+          },
+          "text": "送出交易",
+          "type": "Button"
+        },
+        {
+          "text": "Loading Data...",
+          "type": "AppLoader"
+        },
+        {
+          "dataRef": "treeData",
+          "type": "Tree"
+        },
+        {
+          "id": "context-menu-1",
+          "menuItems": [
+            { "text": "Menu Item 1" },
+            { "text": "Menu Item 2" }
+          ],
+          "type": "ContextMenu"
+        }
+      ],
+      "type": "Column"
+    }
+  ]
+}
