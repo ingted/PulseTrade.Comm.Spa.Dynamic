@@ -8,7 +8,7 @@
 #r "nuget: Suave, 3.4.3"
 #r "nuget: PersistedConcurrentSortedList, 10.1.301"
 #r @"nuget: PulseTrade.Comm.Spa, 0.2.5-beta13"
-#r @"nuget: PulseTrade.Comm.Spa.Dynamic, 0.1.2-beta1"
+#r @"nuget: PulseTrade.Comm.Spa.Dynamic, 0.1.3-beta1"
 //#I __SOURCE_DIRECTORY__
 //#I "bin/Release/net10.0"
 //#r "PulseTrade.Comm.Spa.Dynamic.dll"

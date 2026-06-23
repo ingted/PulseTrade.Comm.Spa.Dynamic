@@ -22,8 +22,10 @@ module CommHubExtensions =
             
             // In a real nuget package, we'd ensure wwwroot is packaged.
             // For this POC in src5, it will be in bin/Debug/net10.0/wwwroot/js/
-            let jsDir = System.IO.Path.Combine(dir, "wwwroot", "js")
-            
+            let localJsDir = System.IO.Path.Combine(dir, "wwwroot", "js")
+            let nugetJsDir = System.IO.Path.Combine(dir, "..", "..", "contentFiles", "any", "net10.0", "wwwroot", "js")
+            let jsDir = if System.IO.Directory.Exists(localJsDir) then localJsDir else nugetJsDir
+
             let mutable scripts = []
             if System.IO.Directory.Exists(jsDir) then
                 let allJsFiles = System.IO.Directory.GetFiles(jsDir, "*.js", System.IO.SearchOption.AllDirectories)
