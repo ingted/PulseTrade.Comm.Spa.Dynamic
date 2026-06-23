@@ -304,8 +304,8 @@ try
               CreatedAtUtc = None }
         |> fun task -> task.Result
 
-    let showcaseActorAddress = fabric.NodeAddress.TrimEnd('/') + "/user/showcase-dynamic-actor"
-    let registerAgent =
+    // 原始 durable-echo agent 註冊
+    let registerDurableEchoAgent =
         messageFabric.RegisterParticipantDurableAsync
             { ParticipantId = "agent.durable-echo"
               DisplayName = Some "Durable Echo"
@@ -353,6 +353,22 @@ try
             cancellationToken
         |> Async.RunSynchronously
 
+    // 測試 DynamicEchoActor — 送一段 JSON 讓它包成 fskynet-sdui payload 回傳
+    let dynamicEchoResult =
+        ActorArgu.sendDurableAsync
+            ingress
+            fabric
+            { Send =
+                { Page = dynamicEchoPage
+                  ActorAddress = dynamicEchoActorAddress
+                  RawArgu = """[{"type":"Heading","id":"echo-test","text":"Dynamic Echo Test"}]"""
+                  Tags = Some [ "poc"; "dynamic"; "echo"; "sdui" ] }
+              IdempotencyKey = None
+              Source = Some "poc.dynamic.fsx"
+              DeadlineAtUtc = None }
+            cancellationToken
+        |> Async.RunSynchronously
+
     // 測試 ShowcaseDemoActor 回應
     let showcaseRef = fabric.System.ActorSelection("user/showcase-dynamic-actor")
     let showcaseResponse = showcaseRef.Ask<string>("init", TimeSpan.FromSeconds(5.0)) |> Async.AwaitTask |> Async.RunSynchronously
@@ -361,13 +377,16 @@ try
     use client = new HttpClient()
     let healthText = client.GetStringAsync(app.Url + "/healthz").Result
 
+
     printfn "PTC.Comm.Spa + Dynamic Extension POC is running."
     printfn "Chat        %s/chat" app.Url
     printfn "Sets        %s/sets" app.Url
     printfn "Actors      %s/actors" app.Url
     printfn "ActorArgu   %s/page/%s" app.Url actorPage.PageId
+    printfn "DynEcho     %s/page/%s" app.Url dynamicEchoPage.PageId
     printfn "PCSL root   %s" pcslRoot
     printfn "Showcase    %s" showcaseActorAddress
+    printfn "DynEcho     %s" dynamicEchoActorAddress
     printfn "Actor       %s" actorAddress
     printfn "Tickets     user=%s agent=%s direct=%s actor=%s"
         registerUser.Accepted.TicketId.Value
@@ -392,5 +411,4 @@ try
         Console.ReadLine() |> ignore
 finally
     (app :> IDisposable).Dispose()
-
 

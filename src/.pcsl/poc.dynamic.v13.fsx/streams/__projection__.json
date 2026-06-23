@@ -9,9 +9,9 @@
   "writerNodeId": "local",
   "writerOwnerId": "local",
   "createdAtUtc": "2026-06-22T23:46:49.5131158\u002B00:00",
-  "updatedAtUtc": "2026-06-22T23:47:31.9865847\u002B00:00",
-  "streamCount": 14,
-  "eventCount": 28,
-  "newestSequence": 5,
-  "lastEventHash": "797D5C58A2C0EFE7CDB26D776449E0B4F8C380D6BBFB59509A95095ADC7B3AA5"
+  "updatedAtUtc": "2026-06-23T00:51:49.2802925\u002B00:00",
+  "streamCount": 18,
+  "eventCount": 59,
+  "newestSequence": 8,
+  "lastEventHash": "40C5D12C1ABBBDEE824D7179BA96E71079203ED501E98A6F64EE5110AB29417C"
 }
