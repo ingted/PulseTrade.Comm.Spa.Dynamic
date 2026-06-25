@@ -80,7 +80,7 @@ Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests` 內 `DYN-T-403`。
 
 ### DYN-T-404 / DYN-T-405 PTCS seam browser gates
 
-PTCS `WBS-051B/C` seam 已有 first implementation；browser/runtime gate 目前由 PTCS repo 的 F# Playwright verifier 執行。2026-06-26 regression expansion 已通過 append renderer throw fallback、built-in add-key fallback、built-in `fcell-chat` textarea regression 與 desktop/mobile geometry。
+PTCS `WBS-051B/C` seam 已有 first implementation；browser/runtime gate 目前由 PTCS repo 的 F# Playwright verifier 執行。2026-06-26 regression expansion 已通過 append renderer throw fallback、invalid blank renderer submit isolation、duplicate target key idempotency、built-in add-key fallback、built-in `fcell-chat` textarea regression 與 desktop/mobile geometry。
 
 預計 verifier：
 
@@ -93,8 +93,10 @@ dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.dyna
 
 - Dynamic append input renderer replaces textarea only for matching `actor-dynamic` key；
 - renderer missing/throw fallback textarea；
+- blank renderer submission shows controlled validation and does not reach RN DurableProxy；
 - Add Key dialog returns `actorAddress :: duTypeName :: unionCaseNames`；
 - reload/readback keeps the same key list；
+- duplicate Dynamic target key submit keeps one projected key/card；
 - desktop/mobile geometry has no overlap or hidden submit button；
 - built-in PTCS append pages and existing `fskynet-sdui` message rendering do not regress；
 - built-in `fcell-chat` textarea page can still append and read back from its stream when no Dynamic renderer owns the page。

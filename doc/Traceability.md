@@ -36,6 +36,6 @@
 | `DYN-T-401` | `DYN-WBS-401` | Document chain review / sensitive scan / encoding scan。 |
 | `DYN-T-402` | `DYN-WBS-402` | `tests/PulseTrade.Comm.Spa.Dynamic.Tests` metadata/schema tests。 |
 | `DYN-T-403` | `DYN-WBS-403` | `tests/PulseTrade.Comm.Spa.Dynamic.Tests` SubmitArguForm codec tests。 |
-| `DYN-T-404` | `DYN-WBS-404` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` append input renderer browser path、renderer fallback、built-in textarea regression 與 geometry gate。 |
-| `DYN-T-405` | `DYN-WBS-405` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` add-key/readback path 與 built-in add-key fallback gate。 |
+| `DYN-T-404` | `DYN-WBS-404` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` append input renderer browser path、renderer fallback、invalid blank submit isolation、built-in textarea regression 與 geometry gate。 |
+| `DYN-T-405` | `DYN-WBS-405` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` add-key/readback path、built-in add-key fallback 與 duplicate target key idempotency gate。 |
 | `DYN-T-406` | `DYN-WBS-406` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` first Dynamic form -> RN DurableProxy E2E；production split-service proof still open。 |
