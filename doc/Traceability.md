@@ -38,4 +38,4 @@
 | `DYN-T-403` | `DYN-WBS-403` | `tests/PulseTrade.Comm.Spa.Dynamic.Tests` SubmitArguForm codec tests。 |
 | `DYN-T-404` | `DYN-WBS-404` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` append input renderer browser path、renderer fallback、invalid blank submit isolation、built-in textarea regression 與 geometry gate。 |
 | `DYN-T-405` | `DYN-WBS-405` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` add-key/readback path、built-in add-key fallback 與 duplicate target key idempotency gate。 |
-| `DYN-T-406` | `DYN-WBS-406` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` first Dynamic form -> RN DurableProxy E2E；production split-service proof still open。 |
+| `DYN-T-406` | `DYN-WBS-406` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` covers `--pcsl-root` run-scoped fresh root, `actor-dynamic` Playwright page creation, Dynamic add-key target, common Argu controls, raw Argu send, RN DurableProxy fCell2 forwarding, legacy echo reply, and PTCS full target-key readback；production split-service proof still external/open。 |

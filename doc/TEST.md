@@ -103,7 +103,7 @@ dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.dyna
 
 ### DYN-T-406 / PTC3-T-067 Cross-project RN proxy E2E
 
-Browser/runtime verifier 已通過 variable-length Dynamic key tail、canonical PTCS key readback、form input、RN DurableProxy 與 legacy echo reply；production-strength gate 仍需等待：
+Browser/runtime verifier 已通過 user-facing UI E2E contract：`--pcsl-root` + run-scoped fresh PCSL root、PTCS + Dynamic extension、DurableProxy actor、legacy echo actor、Playwright 建立 `actor-dynamic` page、Dynamic add-key target、variable-length Dynamic key tail、canonical PTCS key readback、text/number/enum/tuple/bool/list form input、raw Argu preview/send、RN DurableProxy fCell2 string forwarding、legacy echo reply 與 `ActorArguTargetReply` full target-key readback。Production-strength gate 仍需等待：
 
 - PTCS `WBS-051D/E`；
 - PTC RN `PTC3-063` / `PTC3-066` controller-region restart redelivery and provider completion gaps；
@@ -116,6 +116,7 @@ Dynamic form submit
   -> PTCS append / actor-argu path
   -> ActorArguTargetCommand.RawArgu
   -> RN DurableProxy
+  -> fCell2 string
   -> legacy actor/service reply
   -> ActorArguTargetReply
   -> PTCS fresh history/result readback
