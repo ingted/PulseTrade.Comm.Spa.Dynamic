@@ -94,8 +94,8 @@ dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.dyna
 - Dynamic append input renderer replaces textarea only for matching `actor-dynamic` key；
 - renderer missing/throw fallback textarea；
 - blank renderer submission shows controlled validation and does not reach RN DurableProxy；
-- Add Key dialog returns `actorAddress :: duTypeName :: unionCaseNames`；
-- reload/readback keeps the same key list；
+- Add Key dialog returns `actorAddress :: duTypeName :: unionCaseNames` with no delimiter-joined union-case segment；
+- reload/readback returns PTCS canonical sorted key list while preserving union cases as separate key segments；
 - duplicate Dynamic target key submit keeps one projected key/card；
 - desktop/mobile geometry has no overlap or hidden submit button；
 - built-in PTCS append pages and existing `fskynet-sdui` message rendering do not regress；
@@ -103,7 +103,7 @@ dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.dyna
 
 ### DYN-T-406 / PTC3-T-067 Cross-project RN proxy E2E
 
-First runtime verifier 已通過；production-strength gate 仍需等待：
+Browser/runtime verifier 已通過 variable-length Dynamic key tail、canonical PTCS key readback、form input、RN DurableProxy 與 legacy echo reply；production-strength gate 仍需等待：
 
 - PTCS `WBS-051D/E`；
 - PTC RN `PTC3-063` / `PTC3-066` controller-region restart redelivery and provider completion gaps；

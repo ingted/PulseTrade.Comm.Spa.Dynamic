@@ -13,100 +13,100 @@ function Register(){
     const sampleTypeName="PulseTrade.Comm.Spa.Dynamic.SampleArgu";
     const schemas=globalThis.PulseTradeDynamicArguSchemas||{};
     schemas[sampleTypeName]={
-      schema:"fskynet-sdui",
-      formMode:"argu-form",
-      duTypeName:sampleTypeName,
+      schema:"fskynet-sdui", 
+      formMode:"argu-form", 
+      duTypeName:sampleTypeName, 
       unionCases:[{
-        name:"Say",
-        label:"Say",
-        arguName:"--say",
+        name:"Say", 
+        label:"Say", 
+        arguName:"--say", 
         fields:[{
-          name:"text",
-          label:"Text",
-          kind:"text",
-          arguName:"--say",
-          options:[],
+          name:"text", 
+          label:"Text", 
+          kind:"text", 
+          arguName:"--say", 
+          options:[], 
           items:[]
         }]
       }, {
-        name:"SetCount",
-        label:"Set Count",
-        arguName:"--set-count",
+        name:"SetCount", 
+        label:"Set Count", 
+        arguName:"--set-count", 
         fields:[{
-          name:"count",
-          label:"Count",
-          kind:"number",
-          arguName:"--set-count",
-          options:[],
+          name:"count", 
+          label:"Count", 
+          kind:"number", 
+          arguName:"--set-count", 
+          options:[], 
           items:[]
         }]
       }, {
-        name:"Mode",
-        label:"Mode",
-        arguName:"--mode",
+        name:"Mode", 
+        label:"Mode", 
+        arguName:"--mode", 
         fields:[{
-          name:"mode",
-          label:"Mode",
-          kind:"enum",
-          arguName:"--mode",
-          options:["Fast", "Safe", "Audit"],
+          name:"mode", 
+          label:"Mode", 
+          kind:"enum", 
+          arguName:"--mode", 
+          options:["Fast", "Safe", "Audit"], 
           items:[]
         }]
       }, {
-        name:"At",
-        label:"Tuple At",
-        arguName:"--at",
+        name:"At", 
+        label:"Tuple At", 
+        arguName:"--at", 
         fields:[{
-          name:"at",
-          label:"At",
-          kind:"tuple",
-          arguName:"--at",
-          options:[],
+          name:"at", 
+          label:"At", 
+          kind:"tuple", 
+          arguName:"--at", 
+          options:[], 
           items:[{
-            name:"symbol",
-            label:"1. symbol",
-            kind:"text",
-            arguName:"",
-            options:[],
+            name:"symbol", 
+            label:"1. symbol", 
+            kind:"text", 
+            arguName:"", 
+            options:[], 
             items:[]
           }, {
-            name:"quantity",
-            label:"2. quantity",
-            kind:"number",
-            arguName:"",
-            options:[],
+            name:"quantity", 
+            label:"2. quantity", 
+            kind:"number", 
+            arguName:"", 
+            options:[], 
             items:[]
           }]
         }]
       }, {
-        name:"Tag",
-        label:"Tag List",
-        arguName:"--tag",
+        name:"Tag", 
+        label:"Tag List", 
+        arguName:"--tag", 
         fields:[{
-          name:"tag",
-          label:"Tags",
-          kind:"list",
-          arguName:"--tag",
-          options:[],
+          name:"tag", 
+          label:"Tags", 
+          kind:"list", 
+          arguName:"--tag", 
+          options:[], 
           items:[{
-            name:"tagItem",
-            label:"Tag",
-            kind:"text",
-            arguName:"",
-            options:[],
+            name:"tagItem", 
+            label:"Tag", 
+            kind:"text", 
+            arguName:"", 
+            options:[], 
             items:[]
           }]
         }]
       }, {
-        name:"Verbose",
-        label:"Verbose",
-        arguName:"--verbose",
+        name:"Verbose", 
+        label:"Verbose", 
+        arguName:"--verbose", 
         fields:[{
-          name:"verbose",
-          label:"Verbose",
-          kind:"bool",
-          arguName:"--verbose",
-          options:[],
+          name:"verbose", 
+          label:"Verbose", 
+          kind:"bool", 
+          arguName:"--verbose", 
+          options:[], 
           items:[]
         }]
       }]
@@ -269,7 +269,7 @@ function Register(){
       submit.textContent="Add target";
       submit.addEventListener("click", () => {
         const selectedCases=Array.from(cases.querySelectorAll("input:checked")).map((item) => item.value);
-        ctx.submitKey({keys:[actor.value, "1:duType:"+typeName.value, "2:unionCases:"+selectedCases.join("|")]});
+        ctx.submitKey({keys:[actor.value, "1:duType:"+typeName.value].concat(selectedCases)});
       });
       root.appendChild(actor);
       root.appendChild(typeName);
@@ -319,8 +319,8 @@ function Register(){
         const raw=buildRawArgu(currentUnionCase(), root);
         rawPreview.textContent=raw;
         ctx.submit({
-          rawArgu:raw,
-          duTypeName:typeName,
+          rawArgu:raw, 
+          duTypeName:typeName, 
           unionCaseName:currentUnionCase().name
         });
       });
@@ -2692,8 +2692,8 @@ function postJsonText(url, payloadJson, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:textOr("{}", payloadJson)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -2701,8 +2701,8 @@ function postJson(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -2719,8 +2719,8 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -2728,8 +2728,8 @@ function postAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -3261,9 +3261,9 @@ function range(min, max_1){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status,
-    count:count,
-    maxSequence:maxSequence,
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
     pages:pages
   };
 }
@@ -3962,16 +3962,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type,
-    requestId:requestId,
+    type:type, 
+    requestId:requestId, 
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
     count:count
   };
 }
@@ -4441,8 +4441,8 @@ class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_1(FSharpList, {
-      $:1,
-      $0:Head,
+      $:1, 
+      $0:Head, 
       $1:Tail
     });
   }
@@ -4470,16 +4470,16 @@ function TryParse_1(s, r){
 }
 function New_3(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId,
-    tabId:tabId,
-    path:path,
-    title:title,
-    setName:setName,
-    shape:shape,
-    description:description,
-    keyPlaceholder:keyPlaceholder,
-    valuePlaceholder:valuePlaceholder,
-    defaultKey:defaultKey,
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
     tags:tags
   };
 }
@@ -4499,43 +4499,43 @@ function set(arr, n, x){
 }
 function New_4(pageId, mode, setName, keys){
   return{
-    pageId:pageId,
-    mode:mode,
-    setName:setName,
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
     keys:keys
   };
 }
 function New_5(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_6(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
-    readRepairPolicy:readRepairPolicy,
-    candidateValueStreamKeys:candidateValueStreamKeys,
-    candidateValueStreamCount:candidateValueStreamCount,
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_7(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId,
-    serverRealityId:serverRealityId,
-    kind:kind,
-    target:target,
-    url:url,
-    method:method,
-    payloadJson:payloadJson,
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
     status:status
   };
 }
@@ -4632,42 +4632,42 @@ function listEmpty(){
 }
 function New_8(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status,
-    page:page,
-    bucketCount:bucketCount,
-    maxSequence:maxSequence,
-    keyMaxSequence:keyMaxSequence,
-    lineage:lineage,
-    lineageHealth:lineageHealth,
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
     buckets:buckets
   };
 }
 function New_9(keyId, keys, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    keys:keys,
-    setName:setName,
-    valueCount:valueCount,
-    minSequence:minSequence,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    keys:keys, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_10(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
     tags:tags
   };
 }
 function New_11(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    rawArgu:rawArgu,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
     tags:tags
   };
 }
@@ -4682,17 +4682,17 @@ function New_14(pageId, keyJson){
 }
 function New_15(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    actorAddress:actorAddress,
-    rawArgu:rawArgu,
-    renderMode:renderMode,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
@@ -4896,53 +4896,53 @@ function initInfinite(f){
 }
 function New_16(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_17(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
-    payload:payload,
-    sourceKind:sourceKind,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_18(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    setName:setName,
-    keys:keys,
-    valueCount:valueCount,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_19(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId,
-    keys:keys,
-    createdAtUtc:createdAtUtc,
-    value:value,
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
     tags:tags
   };
 }
@@ -4951,38 +4951,38 @@ function New_20(maxSequence, buckets){
 }
 function New_21(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount,
-    actorCount:actorCount,
-    maxSequence:maxSequence,
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
     nodes:nodes
   };
 }
 function New_22(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId,
-    displayName:displayName,
-    kind:kind,
-    keys:keys,
-    status:status,
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
     routees:routees
   };
 }
 function New_23(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId,
-    nodeAddress:nodeAddress,
-    status:status,
-    roles:roles,
+    nodeId:nodeId, 
+    nodeAddress:nodeAddress, 
+    status:status, 
+    roles:roles, 
     actors:actors
   };
 }
 function New_24(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId,
-    fromId:fromId,
-    toId:toId,
-    scope:scope,
-    body:body,
+    messageId:messageId, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
     createdAtUtc:createdAtUtc
   };
 }
@@ -4991,30 +4991,30 @@ function New_25(messages, nextAfterMessageId){
 }
 function New_26(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId,
-    newestSequence:newestSequence,
-    cachedCount:cachedCount,
-    source:source,
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
     touchedAt:touchedAt
   };
 }
 function New_27(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    fromId:fromId,
-    toId:toId,
-    body:body,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_28(fromId, toId, body, tags){
   return{
-    fromId:fromId,
-    toId:toId,
-    body:body,
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
     tags:tags
   };
 }
@@ -5298,8 +5298,8 @@ function SyncElemNode(childrenOnly, el){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""),
-    Dirty:false,
+    Text:globalThis.document.createTextNode(""), 
+    Dirty:false, 
     Value:""
   };
 }
@@ -5415,9 +5415,9 @@ function DoSyncElement(el){
 }
 function New_29(shape, label, badge, className){
   return{
-    shape:shape,
-    label:label,
-    badge:badge,
+    shape:shape, 
+    label:label, 
+    badge:badge, 
     className:className
   };
 }
@@ -5467,13 +5467,13 @@ class T extends Object_1 {
 }
 function New_30(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    shape:shape,
-    tabId:tabId,
-    tabMode:tabMode,
-    path:path,
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
     description:description
   };
 }
@@ -5685,8 +5685,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_1(Attr, {
-      $:2,
-      $0:Item1,
+      $:2, 
+      $0:Item1, 
       $1:Item2
     });
   }
@@ -5890,8 +5890,8 @@ function TextNodeDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0,
-    $0:Item1,
+    $:0, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -6057,8 +6057,8 @@ function counter(){
 }
 function Ready(Item1, Item2){
   return{
-    $:2,
-    $0:Item1,
+    $:2, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -6067,8 +6067,8 @@ function Forever(Item){
 }
 function Waiting(Item1, Item2){
   return{
-    $:3,
-    $0:Item1,
+    $:3, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -6364,9 +6364,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1,
-      Children:Children_1,
-      El:El,
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -6633,8 +6633,8 @@ class DynamicAttrNode extends Object_1 {
 }
 function New_32(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem,
-    DynFlags:DynFlags,
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -6656,8 +6656,8 @@ let _c_4=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2,
-    $0:x,
+    $:2, 
+    $0:x, 
     $1:y
   };
 }
@@ -6739,8 +6739,8 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_1(Updates_1, {
-      c:Current,
-      s:Snap,
+      c:Current, 
+      s:Snap, 
       v:VarView
     });
   }
@@ -7130,8 +7130,8 @@ class CheckedInput {
   }
   static Valid(value, inputText){
     return Create_1(CheckedInput, {
-      $:0,
-      $0:value,
+      $:0, 
+      $0:value, 
       $1:inputText
     });
   }
@@ -7268,8 +7268,8 @@ let _c_9=Lazy((_i) => class $StartupCode_AppendList {
 });
 function New_35(created, evalOrVal, force){
   return{
-    c:created,
-    v:evalOrVal,
+    c:created, 
+    v:evalOrVal, 
     f:force
   };
 }

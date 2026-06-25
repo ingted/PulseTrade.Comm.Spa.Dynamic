@@ -235,9 +235,8 @@ module ArguFormRenderer =
       ctx.submitKey({
         keys: [
           actor.value,
-          "1:duType:" + typeName.value,
-          "2:unionCases:" + selectedCases.join("|")
-        ]
+          "1:duType:" + typeName.value
+        ].concat(selectedCases)
       });
     });
 
