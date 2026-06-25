@@ -35,3 +35,20 @@
 ### 4.2 Client-Side Extension Module (WebSharper)
 - **SDUI Renderer**：處理 JSON Payload 渲染為 Canvas/Grid 等。
 - **Dynamic Tab Page**：實作 `Actor Dynamic` 對應的頁面掛載。
+
+## 5. RFC-PTCS-DYNAMIC-0002 Argu Form Boundary
+
+Dynamic Argu Form 是 Dynamic package 的 server-driven input extension。責任分工如下：
+
+| Boundary | Owner | Responsibility |
+| --- | --- | --- |
+| Argu metadata / DU reflection | PTCS.Dynamic | 從 allowlisted DU type / union case metadata 產生 form schema。 |
+| SDUI form rendering | PTCS.Dynamic | 使用 `DynamicRenderer` 渲染 `schema = "fskynet-sdui"` / `formMode = "argu-form"`。 |
+| SubmitArguForm | PTCS.Dynamic | 收集 input state，輸出 complete raw Argu args string。 |
+| Append input renderer seam | PTCS core | `RFC-PTC-SPA-0007` 提供 mount point、fallback、submit callback。 |
+| Add-key dialog seam | PTCS core | `RFC-PTC-SPA-0007` 提供 guided key builder mount point 與 key validation/readback。 |
+| Durable proxy / ShardingDelivery | PTC RN | `RFC-PTC-0016` 讓 RN DurableProxy 消費 `ActorArguTargetCommand.RawArgu` 並處理 legacy actor delivery/reply。 |
+
+Dynamic key model 使用 `actorAddress :: duTypeName :: unionCaseNames`。`unionCaseNames` 是一組 canonicalized string list tail；Dynamic 擁有 ordering 與 metadata resolution，PTCS core 只維持 append key registry semantics。
+
+Dynamic 不應把 PTCS seam、RN DurableProxy 與 FSkynet renderer 混在同一 module。PTCS.Dynamic 的第一波實作應可在 PTCS seam 尚未發版時以 local shim 測 schema generator 與 renderer codec；真正 browser E2E 則需等 PTCS WBS-051B/C 可用。

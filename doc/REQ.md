@@ -19,3 +19,23 @@
 1. `PulseTrade.Comm.Spa.Dynamic` 原始碼 (`src` 資料夾，包含前端 WebSharper 擴充與後端 Actor)。
 2. `PulseTrade.Comm.Spa.Dynamic.Tests` 測試原始碼 (`tests` 資料夾，包含 Expecto 測試)。
 3. 說明文件 (`REQ`, `SA`, `SD`, `WBS`, `TEST`, `UPSTREAM_RFC`)。
+
+## 5. RFC-PTCS-DYNAMIC-0002 Dynamic Argu Form 需求
+
+來源草稿：
+
+- `doc/REQ_Dynamic_Argu_Form.md`
+- `doc/RFC_Dynamic_Argu_Form.md`
+
+正式 RFC：
+
+- `doc/RFC-PTCS-DYNAMIC-0002.dynamic-argu-form-runtime.md`
+
+新增需求：
+
+1. Dynamic package 必須提供 Argu-style DU form metadata / schema provider，將 allowlisted DU type + union case metadata 轉成 `schema = "fskynet-sdui"` 的 form JSON。
+2. Dynamic browser renderer 必須支援 `formMode = "argu-form"`，可渲染文字、數值、布林、enum/dropdown、日期、時間、顏色等 input 控制。
+3. Dynamic `SubmitArguForm` action 必須收集 `arguParam` input state，組成完整 raw Argu args string，並交給 PTCS core append input renderer callback。
+4. Dynamic add-key UI 必須產生 canonical variable-length key：`actorAddress :: duTypeName :: unionCaseNames`；`unionCaseNames` 是 `string list` tail，不是 delimiter-joined string。
+5. Dynamic 不直接寫 PTCS PCSL / Journal / MessageFabric / ActorFabric，也不 reference PTC RN package；RN durable proxy integration 只透過 actor address 與 `ActorArguTargetCommand.RawArgu` boundary。
+6. Dynamic verifier 必須覆蓋 schema generation、SubmitArguForm codec、renderer fallback、add-key readback，以及與 PTCS/PTC RN 的跨專案 E2E gate。

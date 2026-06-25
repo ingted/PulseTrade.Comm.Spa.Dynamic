@@ -83,5 +83,74 @@ module CommHubExtensions =
 
 ## 3. 類別庫封裝與相依 (NuGet Packaging)
 - Target Framework: `net10.0`
-- 透過 `<PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.4-beta7" />` 將基礎庫引入。
+- 目前 `src/PulseTrade.Comm.Spa.Dynamic.fsproj` 透過 `<PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.5-beta13" />` 將基礎庫引入；正式 Dynamic Argu Form integration 需升級到含 `RFC-PTC-SPA-0007` seam 的 PTCS package 或改用本機 project reference gate。
 - 透過 WebSharper 將 `Client/*.fs` 翻譯為前端 JS，並保證 `ActorDynamicTab.Start()` 能在 PTCS 核心啟動時正確呼叫。
+
+## 4. RFC-PTCS-DYNAMIC-0002 Dynamic Argu Form Design
+
+Formal RFC: `doc/RFC-PTCS-DYNAMIC-0002.dynamic-argu-form-runtime.md`
+
+### 4.1 Server metadata and schema generator
+
+新增 server-side metadata layer：
+
+```fsharp
+type ArguFormFieldKind =
+    | Text
+    | Integer
+    | Decimal
+    | Boolean
+    | Enum of string list
+    | Date
+    | Time
+    | Color
+
+type ArguFormFieldMetadata =
+    { FieldName: string
+      ArguParam: string
+      Kind: ArguFormFieldKind
+      Required: bool
+      DefaultValue: string option
+      Placeholder: string option }
+
+type ArguUnionCaseMetadata =
+    { DuTypeName: string
+      UnionCaseName: string
+      DisplayName: string option
+      Fields: ArguFormFieldMetadata list }
+```
+
+`ArguFormSchemaGenerator.generateSduiJson` 將 `ArguUnionCaseMetadata` 轉為：
+
+```text
+{ schema = "fskynet-sdui"; formMode = "argu-form"; sdui = [...] }
+```
+
+Reflection 只能作為 allowlisted metadata registry 的 producer；browser-supplied type name 不可直接 unrestricted resolve。
+
+### 4.2 Browser SubmitArguForm
+
+`DynamicRenderer` 需為 `formMode = "argu-form"` 建立 scoped form state。Button action `SubmitArguForm` 的流程：
+
+```text
+includeStateOf ids
+  -> collect field value + arguParam
+  -> ArguFormCommandLine.encode
+  -> submitFn rawArgu
+```
+
+`ArguFormCommandLine.encode` 必須集中測試 whitespace / quote escaping；輸出字串只作 PTCS ActorArgu payload，不作 shell command。
+
+### 4.3 PTCS seam integration
+
+當 PTCS `RFC-PTC-SPA-0007` seam 可用後，Dynamic browser bundle registers：
+
+- append input renderer：依 page shape + selected key 判斷 `actor-dynamic` / Dynamic Argu key；
+- add-key dialog renderer：回傳 `actorAddress :: duTypeName :: unionCaseNames`；
+- message renderer：保留既有 `fskynet-sdui` rendering。
+
+若 seam 尚未存在或 renderer 失敗，Dynamic 必須讓 PTCS fallback 到既有 textarea/raw key path。
+
+### 4.4 RN proxy integration
+
+Dynamic 不 reference RN package。若 key 的 actor address 指向 RN DurableProxy，PTCS core 仍只送出 `ActorArguTargetCommand.RawArgu`；RN side 由 `CommandToCell` / `InvokeLegacy` / `LegacyReplyToCell` 處理 legacy actor adaptation、delivery、confirm 與 result completion。

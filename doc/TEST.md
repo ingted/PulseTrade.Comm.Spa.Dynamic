@@ -32,3 +32,90 @@
 
 ## 3. 開發與測試流程 (TDD Execution)
 根據 WBS，在進入 `WBS-200` 系列的開發前，必須先完成此文件內 `2.1` 到 `2.3` 所有的 Expecto 測試撰寫 (測試案例初期應該會是 Failing 的，等待實作後轉為 Passing)。
+
+## 4. RFC-PTCS-DYNAMIC-0002 Dynamic Argu Form Gates
+
+### DYN-T-401 Formal RFC flow
+
+驗證文件：
+
+- `doc/RFC-PTCS-DYNAMIC-0002.dynamic-argu-form-runtime.md`
+- `doc/REQ.md`
+- `doc/SA.md`
+- `doc/SD.md`
+- `doc/WBS.md`
+- `doc/TEST.md`
+- `doc/Traceability.md`
+- `doc/DevLog.md`
+
+判讀標準：
+
+- 來源草稿 `REQ_Dynamic_Argu_Form.md` / `RFC_Dynamic_Argu_Form.md` 保留且被 formal RFC 引用；
+- formal RFC 明確區分 PTCS.Dynamic、PTCS core、PTC RN / RN.Host 責任；
+- WBS 有跨專案相依順序。
+
+### DYN-T-402 Metadata / schema generator
+
+預計 verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests` 或 F# script `Scripts/verify.dynamicArguFormSchema.fsx`。
+
+覆蓋：
+
+- allowlisted metadata 轉成 `schema = "fskynet-sdui"`、`formMode = "argu-form"`；
+- int/decimal/string/bool/enum/date/time/color field kind mapping；
+- invalid DU type / unknown union case controlled failure；
+- browser-supplied arbitrary type name 不會 unrestricted reflection；
+- generated input ids / `arguParam` stable。
+
+### DYN-T-403 SubmitArguForm codec
+
+預計 verifier：`Scripts/verify.dynamicArguFormSubmit.fsx` 或 Expecto tests。
+
+覆蓋：
+
+- scoped form state collection；
+- whitespace / quote escaping；
+- empty optional field omission and required field validation；
+- output is raw Argu args string only，不執行 shell command；
+- invalid schema / missing `arguParam` controlled failure。
+
+### DYN-T-404 / DYN-T-405 PTCS seam browser gates
+
+需等待 PTCS `WBS-051B/C` implementation package or project reference。
+
+預計 verifier：
+
+```powershell
+dotnet fsi --exec .\Scripts\verify.dynamicArguFormPtcsSeam.fsx
+dotnet fsi --exec .\Scripts\verify.dynamicArguFormBrowser.playwright.fsx
+```
+
+覆蓋：
+
+- Dynamic append input renderer replaces textarea only for matching `actor-dynamic` key；
+- renderer missing/throw fallback textarea；
+- Add Key dialog returns `actorAddress :: duTypeName :: unionCaseNames`；
+- reload/readback keeps the same key list；
+- desktop/mobile geometry has no overlap or hidden submit button；
+- built-in PTCS append pages and existing `fskynet-sdui` message rendering do not regress。
+
+### DYN-T-406 / PTC3-T-067 Cross-project RN proxy E2E
+
+需等待：
+
+- PTCS `WBS-051D/E`；
+- PTC RN `PTC3-063` / `PTC3-066` controller-region restart redelivery and provider completion gaps；
+- PTC RN Host `PTC3-065` service-window operational policy for the selected deployment proof。
+
+預計資料流：
+
+```text
+Dynamic form submit
+  -> PTCS append / actor-argu path
+  -> ActorArguTargetCommand.RawArgu
+  -> RN DurableProxy
+  -> legacy actor/service reply
+  -> ActorArguTargetReply
+  -> PTCS fresh history/result readback
+```
+
+此 gate 不得以 fake/mock/internal-only proof 當 final acceptance。

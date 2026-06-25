@@ -18,3 +18,17 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 | WBS-205 | 實作 Actor Dynamic Tab Page | Done | 100 | TEST-104 | 根據 SD 設計，實作前端的 Tab 頁面容器與對應的 SDUI 展示元件掛載。 |
 | WBS-301 | 測試覆蓋率與 TDD 驗收 | Done | 100 | ALL | 確保 Expecto 中所有 WBS-100 系列測項由 Failing 轉為 Passing。 |
 | WBS-302 | NuGet Pack 與發佈設定 | Done | 100 | - | 準備 `.nuspec` 或 MSBuild pack 參數，輸出 `0.1.0-alpha1`。 |
+| DYN-WBS-401 | Dynamic Argu Form formal RFC flow | Review | 100 | DYN-T-401 | 新增 `RFC-PTCS-DYNAMIC-0002.dynamic-argu-form-runtime.md`，並同步 REQ/SA/SD/WBS/TEST/Traceability/DevLog；來源草稿保留為 `REQ_Dynamic_Argu_Form.md` / `RFC_Dynamic_Argu_Form.md`。 |
+| DYN-WBS-402 | Argu metadata registry / schema generator | Planned | 0 | DYN-T-402 | 新增 allowlisted DU/union-case metadata registry 與 `ArguFormSchemaGenerator.generateSduiJson`；需驗證 safe field mapping、invalid type/case controlled failure、`schema=fskynet-sdui` / `formMode=argu-form`。可與 PTCS seam 並行。 |
+| DYN-WBS-403 | SubmitArguForm state and command-line codec | Planned | 0 | DYN-T-403 | `DynamicRenderer` 支援 scoped form state；`SubmitArguForm` 收集 `arguParam` 欄位並經集中 codec 輸出 complete raw Argu args string；需測 whitespace/quote escaping 與 empty/invalid field。 |
+| DYN-WBS-404 | Append input renderer integration | Planned | 0 | DYN-T-404 | 等 PTCS `WBS-051B` seam 可用後，Dynamic 註冊 append input renderer，selected Dynamic key 時取代 textarea；renderer missing/throw 時 fallback。 |
+| DYN-WBS-405 | Add-key dialog renderer integration | Planned | 0 | DYN-T-405 | 等 PTCS `WBS-051C` seam 可用後，Dynamic 註冊 add-key renderer，回傳 `actorAddress :: duTypeName :: unionCaseNames`；reload/readback key list 必須一致。 |
+| DYN-WBS-406 | Cross-project RN proxy E2E | Planned | 0 | DYN-T-406 / PTC3-T-067 | 等 PTCS `WBS-051D/E` 與 PTC RN `PTC3-063/066/065` production gates 足夠後，驗證 Dynamic form -> raw Argu args -> `ActorArguTargetCommand.RawArgu` -> RN DurableProxy -> legacy reply -> PTCS fresh history/result readback。 |
+
+## Dynamic Argu Form 相依順序
+
+1. `DYN-WBS-401` 先完成文件與責任邊界。
+2. PTCS `WBS-051B/C` 先提供 append input renderer / add-key dialog renderer seam；Dynamic `DYN-WBS-402/403` 可並行開發 local schema/renderer/codec。
+3. `DYN-WBS-404/405` 需要 PTCS seam package 或本機 project reference。
+4. PTCS `WBS-051D` 驗證 browser form、fallback、geometry、built-in regression。
+5. PTC RN `PTC3-063/066/065` 完成 controller-region restart redelivery、provider-bound completion與 service-window proof 後，再做 `DYN-WBS-406` / `PTC3-067` production E2E。
