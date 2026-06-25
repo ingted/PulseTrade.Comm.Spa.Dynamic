@@ -24,15 +24,17 @@
 
   <ItemGroup>
     <PackageReference Include="FAkka.FCell2" Version="10.1.301" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.5-beta13" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta14]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Server/ArguForm.fs" />
     <Compile Include="Server/FCell2Interop.fs" />
     <Compile Include="Server/DynamicActors.fs" />
     <Compile Include="Server/Extension.fs" />
     <Compile Include="Client/DynamicRenderer.fs" />
+    <Compile Include="Client/ArguFormRenderer.fs" />
     <Compile Include="Client/ActorDynamicTab.fs" />
   </ItemGroup>
 

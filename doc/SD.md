@@ -83,7 +83,7 @@ module CommHubExtensions =
 
 ## 3. 類別庫封裝與相依 (NuGet Packaging)
 - Target Framework: `net10.0`
-- 目前 `src/PulseTrade.Comm.Spa.Dynamic.fsproj` 透過 `<PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.5-beta13" />` 將基礎庫引入；正式 Dynamic Argu Form integration 需升級到含 `RFC-PTC-SPA-0007` seam 的 PTCS package 或改用本機 project reference gate。
+- 目前 `src/PulseTrade.Comm.Spa.Dynamic.fsproj` 透過 `<PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta14]" />` 將基礎庫引入；本輪 first runtime E2E 直接使用本機 PTCS repo 的 `RFC-PTC-SPA-0007` seam，後續 package 化時需發布含 append input / add-key registry 的 PTCS package 或改用明確 project reference gate。
 - 透過 WebSharper 將 `Client/*.fs` 翻譯為前端 JS，並保證 `ActorDynamicTab.Start()` 能在 PTCS 核心啟動時正確呼叫。
 
 ## 4. RFC-PTCS-DYNAMIC-0002 Dynamic Argu Form Design

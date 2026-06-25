@@ -48,6 +48,55 @@ let tests =
         testCase "WBS-104: ActorDynamicTab.renderActorDynamicPage should generate valid page Doc" <| fun _ ->
             let _ = ActorDynamicTab.renderActorDynamicPage "actor-dynamic"
             Expect.isTrue true "Tab page generation should succeed"
+
+        testCase "DYN-T-402: Argu form schema should expose fskynet-sdui argu-form metadata" <| fun _ ->
+            let schema = ArguFormSchema.sample ()
+            let json = ArguFormSchema.generateSduiJson schema
+
+            Expect.equal schema.Schema "fskynet-sdui" "schema marker should match Dynamic SDUI payload contract"
+            Expect.equal schema.FormMode "argu-form" "formMode should identify Argu form payloads"
+            Expect.equal schema.DuTypeName ArguFormSchema.sampleDuTypeName "sample schema should use stable DU type name"
+            Expect.isTrue (json.Contains("\"formMode\":\"argu-form\"")) "JSON should expose formMode"
+            Expect.isSome (ArguFormSchema.tryFindUnionCase "Say" schema) "Say union case should be registered"
+            Expect.isSome (ArguFormSchema.tryFindUnionCase "At" schema) "Tuple union case should be registered"
+            Expect.isSome (ArguFormSchema.tryFindUnionCase "Tag" schema) "List union case should be registered"
+
+        testCase "DYN-T-403: SubmitArguForm codec should build quoted raw Argu string for common patterns" <| fun _ ->
+            let schema = ArguFormSchema.sample ()
+            let submit unionCase fields =
+                { DuTypeName = schema.DuTypeName
+                  UnionCaseName = unionCase
+                  Fields =
+                    fields
+                    |> Array.map (fun (name, values) ->
+                        { Name = name
+                          Values = values }) }
+
+            let say =
+                submit "Say" [| "text", [| "hello world" |] |]
+                |> SubmitArguFormCodec.buildRawArgu schema
+
+            let mode =
+                submit "Mode" [| "mode", [| "Safe" |] |]
+                |> SubmitArguFormCodec.buildRawArgu schema
+
+            let tuple =
+                submit "At" [| "at", [| "TTC"; "7" |] |]
+                |> SubmitArguFormCodec.buildRawArgu schema
+
+            let tags =
+                submit "Tag" [| "tag", [| "aoe"; "marvel now" |] |]
+                |> SubmitArguFormCodec.buildRawArgu schema
+
+            let verbose =
+                submit "Verbose" [| "verbose", [| "true" |] |]
+                |> SubmitArguFormCodec.buildRawArgu schema
+
+            Expect.equal say "--say \"hello world\"" "text value with whitespace should be quoted"
+            Expect.equal mode "--mode Safe" "enum value should map to select value"
+            Expect.equal tuple "--at TTC 7" "tuple should preserve ordered values"
+            Expect.equal tags "--tag aoe --tag \"marvel now\"" "list should repeat the same Argu parameter"
+            Expect.equal verbose "--verbose" "bool flag true should emit flag only"
     ]
 
 [<EntryPoint>]

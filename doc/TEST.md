@@ -56,7 +56,7 @@
 
 ### DYN-T-402 Metadata / schema generator
 
-預計 verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests` 或 F# script `Scripts/verify.dynamicArguFormSchema.fsx`。
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests` 內 `DYN-T-402`。
 
 覆蓋：
 
@@ -68,7 +68,7 @@
 
 ### DYN-T-403 SubmitArguForm codec
 
-預計 verifier：`Scripts/verify.dynamicArguFormSubmit.fsx` 或 Expecto tests。
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests` 內 `DYN-T-403`。
 
 覆蓋：
 
@@ -80,13 +80,13 @@
 
 ### DYN-T-404 / DYN-T-405 PTCS seam browser gates
 
-需等待 PTCS `WBS-051B/C` implementation package or project reference。
+PTCS `WBS-051B/C` seam 已有 first implementation；browser/runtime gate 目前由 PTCS repo 的 F# Playwright verifier 執行。
 
 預計 verifier：
 
 ```powershell
-dotnet fsi --exec .\Scripts\verify.dynamicArguFormPtcsSeam.fsx
-dotnet fsi --exec .\Scripts\verify.dynamicArguFormBrowser.playwright.fsx
+dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-build -- --summary
+dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.dynamicArguFormDurableProxy.playwright.fsx
 ```
 
 覆蓋：
@@ -100,7 +100,7 @@ dotnet fsi --exec .\Scripts\verify.dynamicArguFormBrowser.playwright.fsx
 
 ### DYN-T-406 / PTC3-T-067 Cross-project RN proxy E2E
 
-需等待：
+First runtime verifier 已通過；production-strength gate 仍需等待：
 
 - PTCS `WBS-051D/E`；
 - PTC RN `PTC3-063` / `PTC3-066` controller-region restart redelivery and provider completion gaps；

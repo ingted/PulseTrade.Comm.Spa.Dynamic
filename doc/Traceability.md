@@ -34,8 +34,8 @@
 | Test ID | WBS | Expected verifier |
 | --- | --- | --- |
 | `DYN-T-401` | `DYN-WBS-401` | Document chain review / sensitive scan / encoding scan。 |
-| `DYN-T-402` | `DYN-WBS-402` | `verify.dynamicArguFormSchema.fsx` or Expecto metadata/schema tests。 |
-| `DYN-T-403` | `DYN-WBS-403` | `verify.dynamicArguFormSubmit.fsx` or Expecto SubmitArguForm codec tests。 |
-| `DYN-T-404` | `DYN-WBS-404` | PTCS seam integration verifier after `WBS-051B`。 |
-| `DYN-T-405` | `DYN-WBS-405` | Add-key dialog browser/readback verifier after `WBS-051C`。 |
-| `DYN-T-406` | `DYN-WBS-406` | Cross-project `PTC3-T-067` Dynamic form -> RN DurableProxy E2E。 |
+| `DYN-T-402` | `DYN-WBS-402` | `tests/PulseTrade.Comm.Spa.Dynamic.Tests` metadata/schema tests。 |
+| `DYN-T-403` | `DYN-WBS-403` | `tests/PulseTrade.Comm.Spa.Dynamic.Tests` SubmitArguForm codec tests。 |
+| `DYN-T-404` | `DYN-WBS-404` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` append input renderer browser path。 |
+| `DYN-T-405` | `DYN-WBS-405` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` add-key/readback path。 |
+| `DYN-T-406` | `DYN-WBS-406` | PTCS `Scripts/verify.dynamicArguFormDurableProxy.playwright.fsx` first Dynamic form -> RN DurableProxy E2E；production split-service proof still open。 |

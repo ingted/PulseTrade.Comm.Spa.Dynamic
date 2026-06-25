@@ -4,6 +4,336 @@ import { MarkResizable, Lazy, Create as Create_1, GetOptional, SetOptional } fro
 function isIDisposable(x){
   return"Dispose"in x;
 }
+function Register(){
+  ((() => {
+    if(!globalThis.PulseTradeRegisterAppendInputRenderer||!globalThis.PulseTradeRegisterAddKeyRenderer){
+      console.warn("PulseTrade Argu form renderer skipped: PTCS registry is unavailable.");
+      return;
+    }
+    const sampleTypeName="PulseTrade.Comm.Spa.Dynamic.SampleArgu";
+    const schemas=globalThis.PulseTradeDynamicArguSchemas||{};
+    schemas[sampleTypeName]={
+      schema:"fskynet-sdui",
+      formMode:"argu-form",
+      duTypeName:sampleTypeName,
+      unionCases:[{
+        name:"Say",
+        label:"Say",
+        arguName:"--say",
+        fields:[{
+          name:"text",
+          label:"Text",
+          kind:"text",
+          arguName:"--say",
+          options:[],
+          items:[]
+        }]
+      }, {
+        name:"SetCount",
+        label:"Set Count",
+        arguName:"--set-count",
+        fields:[{
+          name:"count",
+          label:"Count",
+          kind:"number",
+          arguName:"--set-count",
+          options:[],
+          items:[]
+        }]
+      }, {
+        name:"Mode",
+        label:"Mode",
+        arguName:"--mode",
+        fields:[{
+          name:"mode",
+          label:"Mode",
+          kind:"enum",
+          arguName:"--mode",
+          options:["Fast", "Safe", "Audit"],
+          items:[]
+        }]
+      }, {
+        name:"At",
+        label:"Tuple At",
+        arguName:"--at",
+        fields:[{
+          name:"at",
+          label:"At",
+          kind:"tuple",
+          arguName:"--at",
+          options:[],
+          items:[{
+            name:"symbol",
+            label:"1. symbol",
+            kind:"text",
+            arguName:"",
+            options:[],
+            items:[]
+          }, {
+            name:"quantity",
+            label:"2. quantity",
+            kind:"number",
+            arguName:"",
+            options:[],
+            items:[]
+          }]
+        }]
+      }, {
+        name:"Tag",
+        label:"Tag List",
+        arguName:"--tag",
+        fields:[{
+          name:"tag",
+          label:"Tags",
+          kind:"list",
+          arguName:"--tag",
+          options:[],
+          items:[{
+            name:"tagItem",
+            label:"Tag",
+            kind:"text",
+            arguName:"",
+            options:[],
+            items:[]
+          }]
+        }]
+      }, {
+        name:"Verbose",
+        label:"Verbose",
+        arguName:"--verbose",
+        fields:[{
+          name:"verbose",
+          label:"Verbose",
+          kind:"bool",
+          arguName:"--verbose",
+          options:[],
+          items:[]
+        }]
+      }]
+    };
+    globalThis.PulseTradeDynamicArguSchemas=schemas;
+    function el(tag, className, testId){
+      let node=document.createElement(tag);
+      if(className)node.className=className;
+      if(testId)node.setAttribute("data-testid", testId);
+      return node;
+    }
+    function labelText(text){
+      let node=el("label", "dynamic-argu-label", null);
+      node.textContent=text||"";
+      return node;
+    }
+    function quoteArg(value){
+      let text=value==null?"":String(value);
+      if(text.length===0)return"\"\"";
+      if((new RegExp("\\s|\"")).test(text))return"\""+text.replace(new RegExp("\\\\", "g"), "\\\\").replace(new RegExp("\"", "g"), "\\\"")+"\"";
+      return text;
+    }
+    function appendField(parts, field, values){
+      values=(values||[]).map((value_1) => value_1==null?"":String(value_1).trim()).filter((value_1) => value_1.length>0);
+      if(field.kind==="bool"){
+        let value=values.length>0?values[0].toLowerCase():"";
+        if(value==="true"||value==="1"||value==="yes")parts.push(field.arguName);
+        return;
+      }
+      if(field.kind==="list"){
+        values.forEach((value_1) => {
+          parts.push(field.arguName);
+          parts.push(quoteArg(value_1));
+        });
+        return;
+      }
+      if(field.kind==="tuple"){
+        if(values.length>0){
+          parts.push(field.arguName);
+          values.forEach((value_1) => {
+            parts.push(quoteArg(value_1));
+          });
+        }
+        return;
+      }
+      if(values.length>0){
+        parts.push(field.arguName);
+        parts.push(quoteArg(values[0]));
+      }
+    }
+    function selectedValues(field, row){
+      if(field.kind==="tuple")return Array.from(row.querySelectorAll("[data-dynamic-argu-tuple-item]")).map((input_2) => input_2.value);
+      if(field.kind==="list")return Array.from(row.querySelectorAll("[data-dynamic-argu-list-item]")).map((input_2) => input_2.value);
+      if(field.kind==="bool"){
+        let check=row.querySelector("[data-dynamic-argu-input]");
+        return[check&&check.checked?"true":"false"];
+      }
+      let input_1=row.querySelector("[data-dynamic-argu-input]");
+      return[input_1?input_1.value:""];
+    }
+    function buildRawArgu(unionCase, form){
+      let parts=[];
+      unionCase.fields.forEach((field) => {
+        const row=form.querySelector("[data-dynamic-argu-field=\""+field.name+"\"]");
+        appendField(parts, field, row?selectedValues(field, row):[]);
+      });
+      return parts.join(" ");
+    }
+    function renderScalar(_1, inputType, testId){
+      let input_1=el("input", "dynamic-argu-input", testId);
+      input_1.type=inputType;
+      input_1.setAttribute("data-dynamic-argu-input", "true");
+      return input_1;
+    }
+    function renderField(field){
+      let row=el("div", "dynamic-argu-field", "dynamic-argu-field-"+field.name);
+      row.setAttribute("data-dynamic-argu-field", field.name);
+      row.setAttribute("data-dynamic-argu-kind", field.kind);
+      row.appendChild(labelText(field.label||field.name));
+      if(field.kind==="number")row.appendChild(renderScalar(field, "number", "dynamic-argu-number-"+field.name));
+      else if(field.kind==="enum"){
+        let select_1=el("select", "dynamic-argu-select", "dynamic-argu-enum-"+field.name);
+        select_1.setAttribute("data-dynamic-argu-input", "true");
+        (field.options||[]).forEach((optionValue) => {
+          const option=document.createElement("option");
+          option.value=optionValue;
+          option.textContent=optionValue;
+          select_1.appendChild(option);
+        });
+        row.appendChild(select_1);
+      }
+      else if(field.kind==="tuple"){
+        let tuple=el("div", "dynamic-argu-tuple", "dynamic-argu-tuple-"+field.name);
+        (field.items||[]).forEach((item, index) => {
+          const itemRow=el("div", "dynamic-argu-tuple-item", "dynamic-argu-tuple-item-"+field.name+"-"+(index+1));
+          itemRow.appendChild(labelText(index+1+". "+(item.label||item.name)));
+          const input_1=renderScalar(item, item.kind==="number"?"number":"text", null);
+          input_1.setAttribute("data-dynamic-argu-tuple-item", String(index+1));
+          itemRow.appendChild(input_1);
+          tuple.appendChild(itemRow);
+        });
+        row.appendChild(tuple);
+      }
+      else if(field.kind==="list"){
+        let list=el("div", "dynamic-argu-list", "dynamic-argu-list-"+field.name);
+        let add=el("button", "dynamic-argu-add-list-item", "dynamic-argu-list-add-"+field.name);
+        add.type="button";
+        add.textContent="Add";
+        let addInput=() => {
+          const input_1=renderScalar(field, "text", "dynamic-argu-list-item-"+field.name);
+          input_1.setAttribute("data-dynamic-argu-list-item", "true");
+          list.insertBefore(input_1, add);
+        };
+        add.addEventListener("click", addInput);
+        list.appendChild(add);
+        row.appendChild(list);
+        addInput();
+      }
+      else if(field.kind==="bool")row.appendChild(renderScalar(field, "checkbox", "dynamic-argu-bool-"+field.name));
+      else row.appendChild(renderScalar(field, "text", "dynamic-argu-text-"+field.name));
+      return row;
+    }
+    function unionCaseNamesFromContext(ctx, schema){
+      let allowed=Array.isArray(ctx.unionCaseNames)?ctx.unionCaseNames:[];
+      if(allowed.length===0)return schema.unionCases.map((item) => item.name);
+      return allowed.map(String);
+    }
+    globalThis.PulseTradeRegisterAddKeyRenderer("dynamic-argu-add-key", 100, (ctx) => {
+      const shape=String(ctx.shape||"").toLowerCase();
+      if(shape!=="actor-dynamic"&&shape!=="actor-argu")return null;
+      const root=el("div", "dynamic-argu-add-key", "dynamic-argu-add-key");
+      const actor=el("input", "dynamic-argu-actor-address", "dynamic-argu-key-actor");
+      actor.placeholder="actor address";
+      const typeName=el("select", "dynamic-argu-du-type", "dynamic-argu-key-du-type");
+      Object.keys(schemas).forEach((schemaKey) => {
+        const option=document.createElement("option");
+        option.value=schemaKey;
+        option.textContent=schemaKey;
+        typeName.appendChild(option);
+      });
+      const cases=el("div", "dynamic-argu-union-case-list", "dynamic-argu-key-union-cases");
+      function renderCases(){
+        cases.textContent="";
+        let schema=schemas[typeName.value];
+        (schema?schema.unionCases:[]).forEach((unionCase) => {
+          const wrap=el("label", "dynamic-argu-union-case-check", "dynamic-argu-key-union-case-"+unionCase.name);
+          const check=document.createElement("input");
+          check.type="checkbox";
+          check.value=unionCase.name;
+          check.checked=true;
+          wrap.appendChild(check);
+          wrap.appendChild(document.createTextNode(unionCase.name));
+          cases.appendChild(wrap);
+        });
+      }
+      typeName.addEventListener("change", renderCases);
+      renderCases();
+      const submit=el("button", "dynamic-argu-key-submit", "dynamic-argu-key-submit");
+      submit.type="button";
+      submit.textContent="Add target";
+      submit.addEventListener("click", () => {
+        const selectedCases=Array.from(cases.querySelectorAll("input:checked")).map((item) => item.value);
+        ctx.submitKey({keys:[actor.value, "1:duType:"+typeName.value, "2:unionCases:"+selectedCases.join("|")]});
+      });
+      root.appendChild(actor);
+      root.appendChild(typeName);
+      root.appendChild(cases);
+      root.appendChild(submit);
+      return root;
+    });
+    globalThis.PulseTradeRegisterAppendInputRenderer("dynamic-argu-append-input", 100, (ctx) => {
+      const typeName=String(ctx.duTypeName||"");
+      const schema=schemas[typeName];
+      if(!schema)return null;
+      const allowedNames=unionCaseNamesFromContext(ctx, schema);
+      const unionCases=schema.unionCases.filter((item) => allowedNames.indexOf(item.name)>=0);
+      if(unionCases.length===0)return null;
+      const root=el("div", "dynamic-argu-form", "dynamic-argu-form");
+      root.setAttribute("data-dynamic-argu-du-type", typeName);
+      root.setAttribute("data-dynamic-argu-union-cases", allowedNames.join(","));
+      const selector=el("select", "dynamic-argu-union-case", "dynamic-argu-union-case");
+      unionCases.forEach((unionCase) => {
+        const option=document.createElement("option");
+        option.value=unionCase.name;
+        option.textContent=unionCase.name;
+        selector.appendChild(option);
+      });
+      const fields=el("div", "dynamic-argu-fields", "dynamic-argu-fields");
+      const rawPreview=el("pre", "dynamic-argu-raw-preview", "dynamic-argu-raw-preview");
+      const send=el("button", "dynamic-argu-send", "dynamic-argu-send");
+      send.type="button";
+      send.textContent="Send";
+      function currentUnionCase(){
+        return(unionCases.filter((item) => item.name===selector.value))[0]||unionCases[0];
+      }
+      const refreshPreview=() => {
+        rawPreview.textContent=buildRawArgu(currentUnionCase(), root);
+      };
+      const refreshFields=() => {
+        fields.textContent="";
+        currentUnionCase().fields.forEach((field) => {
+          fields.appendChild(renderField(field));
+        });
+        refreshPreview();
+      };
+      root.addEventListener("input", refreshPreview);
+      root.addEventListener("change", refreshPreview);
+      selector.addEventListener("change", refreshFields);
+      send.addEventListener("click", () => {
+        const raw=buildRawArgu(currentUnionCase(), root);
+        rawPreview.textContent=raw;
+        ctx.submit({
+          rawArgu:raw,
+          duTypeName:typeName,
+          unionCaseName:currentUnionCase().name
+        });
+      });
+      root.appendChild(labelText("Union case"));
+      root.appendChild(selector);
+      root.appendChild(fields);
+      root.appendChild(rawPreview);
+      root.appendChild(send);
+      refreshFields();
+      return root;
+    });
+  })());
+}
 function _registerRenderer(){
   globalThis.PulseTradeRegisterRenderer("fskynet-sdui", (text) => {
     try {
@@ -32,7 +362,8 @@ function _registerRenderer(){
 }
 function Main(){
   globalThis.console.log("EVALUATING SPAEntryPoint Main in ActorDynamicTab!");
-  return _registerRenderer();
+  _registerRenderer();
+  return Register();
 }
 function Main_1(){
   let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
@@ -2361,8 +2692,8 @@ function postJsonText(url, payloadJson, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:textOr("{}", payloadJson)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -2370,8 +2701,8 @@ function postJson(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -2388,8 +2719,8 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -2397,8 +2728,8 @@ function postAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -2930,9 +3261,9 @@ function range(min, max_1){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
@@ -3631,16 +3962,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
   };
 }
@@ -4110,8 +4441,8 @@ class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_1(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -4139,16 +4470,16 @@ function TryParse_1(s, r){
 }
 function New_3(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
@@ -4168,43 +4499,43 @@ function set(arr, n, x){
 }
 function New_4(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
 function New_5(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_6(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_7(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -4301,42 +4632,42 @@ function listEmpty(){
 }
 function New_8(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
 function New_9(keyId, keys, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_10(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
 function New_11(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
@@ -4351,17 +4682,17 @@ function New_14(pageId, keyJson){
 }
 function New_15(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
@@ -4565,53 +4896,53 @@ function initInfinite(f){
 }
 function New_16(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_17(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_18(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_19(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
     tags:tags
   };
 }
@@ -4620,38 +4951,38 @@ function New_20(maxSequence, buckets){
 }
 function New_21(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
 function New_22(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
 function New_23(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId, 
-    nodeAddress:nodeAddress, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId,
+    nodeAddress:nodeAddress,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
 function New_24(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
@@ -4660,30 +4991,30 @@ function New_25(messages, nextAfterMessageId){
 }
 function New_26(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
 function New_27(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_28(fromId, toId, body, tags){
   return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    fromId:fromId,
+    toId:toId,
+    body:body,
     tags:tags
   };
 }
@@ -4967,8 +5298,8 @@ function SyncElemNode(childrenOnly, el){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""), 
-    Dirty:false, 
+    Text:globalThis.document.createTextNode(""),
+    Dirty:false,
     Value:""
   };
 }
@@ -5084,9 +5415,9 @@ function DoSyncElement(el){
 }
 function New_29(shape, label, badge, className){
   return{
-    shape:shape, 
-    label:label, 
-    badge:badge, 
+    shape:shape,
+    label:label,
+    badge:badge,
     className:className
   };
 }
@@ -5136,13 +5467,13 @@ class T extends Object_1 {
 }
 function New_30(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -5354,8 +5685,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_1(Attr, {
-      $:2, 
-      $0:Item1, 
+      $:2,
+      $0:Item1,
       $1:Item2
     });
   }
@@ -5559,8 +5890,8 @@ function TextNodeDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0, 
-    $0:Item1, 
+    $:0,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -5726,8 +6057,8 @@ function counter(){
 }
 function Ready(Item1, Item2){
   return{
-    $:2, 
-    $0:Item1, 
+    $:2,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -5736,8 +6067,8 @@ function Forever(Item){
 }
 function Waiting(Item1, Item2){
   return{
-    $:3, 
-    $0:Item1, 
+    $:3,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -6033,9 +6364,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1, 
-      Children:Children_1, 
-      El:El, 
+      Attr:Attr_1,
+      Children:Children_1,
+      El:El,
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -6302,8 +6633,8 @@ class DynamicAttrNode extends Object_1 {
 }
 function New_32(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem, 
-    DynFlags:DynFlags, 
+    DynElem:DynElem,
+    DynFlags:DynFlags,
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -6325,8 +6656,8 @@ let _c_4=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2, 
-    $0:x, 
+    $:2,
+    $0:x,
     $1:y
   };
 }
@@ -6408,8 +6739,8 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_1(Updates_1, {
-      c:Current, 
-      s:Snap, 
+      c:Current,
+      s:Snap,
       v:VarView
     });
   }
@@ -6799,8 +7130,8 @@ class CheckedInput {
   }
   static Valid(value, inputText){
     return Create_1(CheckedInput, {
-      $:0, 
-      $0:value, 
+      $:0,
+      $0:value,
       $1:inputText
     });
   }
@@ -6937,8 +7268,8 @@ let _c_9=Lazy((_i) => class $StartupCode_AppendList {
 });
 function New_35(created, evalOrVal, force){
   return{
-    c:created, 
-    v:evalOrVal, 
+    c:created,
+    v:evalOrVal,
     f:force
   };
 }
