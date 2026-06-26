@@ -44,6 +44,7 @@ type SduiFormNode =
       Kind: string
       Binding: string
       ArguName: string
+      DefaultValues: string array
       Children: SduiFormNode array
       Options: SduiFormOption array
       Items: SduiFormNode array }
@@ -88,7 +89,45 @@ type DynamicArguMetadata =
 
 type DynamicTarget =
     | DirectDslTarget of actorAddress: string * formDslId: string
-    | ArguTemplateTarget of actorAddress: string * duTypeName: string * unionCaseNames: string list
+    | ArguTemplateTarget of actorAddress: string * templateKey: string * canonicalArgString: string
+    | LegacyArguCaseTarget of actorAddress: string * duTypeName: string * unionCaseNames: string list
+
+type DynamicArguAliasBinding =
+    { CaseAliases: Map<string, string>
+      FieldAliases: Map<string * string, string>
+      OptionAliases: Map<string * string, string> }
+
+type DynamicArguTemplateRegistration =
+    { TemplateKey: string
+      DuTypeName: string
+      TemplateType: Type
+      Aliases: DynamicArguAliasBinding
+      DefaultArgString: string option }
+
+[<CLIMutable>]
+type ParsedArguValue =
+    { FieldName: string
+      Values: string array }
+
+[<CLIMutable>]
+type ParsedArguCase =
+    { CaseName: string
+      ArguName: string
+      Values: ParsedArguValue array }
+
+[<CLIMutable>]
+type ParsedArguSubcommand =
+    { CaseName: string
+      CommandToken: string
+      Cases: ParsedArguCase array }
+
+[<CLIMutable>]
+type ParsedArguTarget =
+    { ActorAddress: string
+      TemplateKey: string
+      CanonicalArgString: string
+      RootCases: ParsedArguCase array
+      TailSubcommands: ParsedArguSubcommand array }
 
 [<CLIMutable>]
 type SubmitArguFieldValue =
@@ -184,16 +223,20 @@ module ArguFormSchema =
     let fieldLabel (property: PropertyInfo) =
         let name = property.Name
 
-        if String.IsNullOrWhiteSpace name || name.StartsWith("Item", StringComparison.Ordinal) then
+        if String.IsNullOrWhiteSpace name then
             property.PropertyType.Name
+        elif name.StartsWith("Item", StringComparison.Ordinal) then
+            "Value " + name.Substring("Item".Length)
         else
             name.Replace('_', ' ')
 
     let fieldName (property: PropertyInfo) =
         let name = property.Name
 
-        if String.IsNullOrWhiteSpace name || name.StartsWith("Item", StringComparison.Ordinal) then
+        if String.IsNullOrWhiteSpace name then
             "value"
+        elif name.StartsWith("Item", StringComparison.Ordinal) then
+            "value" + name.Substring("Item".Length)
         else
             name
 
@@ -310,6 +353,7 @@ module SduiFormDocument =
           Kind = ""
           Binding = ""
           ArguName = ""
+          DefaultValues = [||]
           Children = [||]
           Options = [||]
           Items = [||] }
@@ -353,7 +397,11 @@ module SduiFormDocument =
                 Label = "Send" }
 
         { nodeDefaults "Section" ("case-" + ArguFormSchema.kebabName unionCase.Name) with
-            Title = unionCase.Name
+            Title =
+                if String.IsNullOrWhiteSpace unionCase.Label then
+                    unionCase.Name
+                else
+                    unionCase.Label
             Children = Array.append fieldNodes [| sendButton |] }
 
     let bindingFromField unionCase (field: ArguFormField) =
@@ -427,6 +475,400 @@ module DynamicArguMetadata =
         JsonSerializer.Serialize(metadata, ArguFormSchema.jsonOptions)
 
 [<RequireQualifiedAccess>]
+module DynamicArguAliasBinding =
+    let empty =
+        { CaseAliases = Map.empty
+          FieldAliases = Map.empty
+          OptionAliases = Map.empty }
+
+    let caseLabel caseName aliases =
+        aliases.CaseAliases
+        |> Map.tryFind caseName
+        |> Option.defaultValue caseName
+
+    let fieldLabel caseName fieldName fallback aliases =
+        aliases.FieldAliases
+        |> Map.tryFind (caseName, fieldName)
+        |> Option.defaultValue fallback
+
+    let optionLabel caseName optionValue aliases =
+        aliases.OptionAliases
+        |> Map.tryFind (caseName, optionValue)
+        |> Option.defaultValue optionValue
+
+[<RequireQualifiedAccess>]
+module DynamicFormDsl =
+    let rec applyAliasesToField caseName aliases (field: ArguFormField) =
+        { field with
+            Label = DynamicArguAliasBinding.fieldLabel caseName field.Name field.Label aliases
+            Items = field.Items |> Array.map (applyAliasesToField caseName aliases) }
+
+    let applyAliasesToUnionCase aliases (unionCase: ArguFormUnionCase) =
+        { unionCase with
+            Label = DynamicArguAliasBinding.caseLabel unionCase.Name aliases
+            Fields = unionCase.Fields |> Array.map (applyAliasesToField unionCase.Name aliases) }
+
+    let applyAliasesToSchema aliases (schema: ArguFormSchema) =
+        { schema with
+            UnionCases = schema.UnionCases |> Array.map (applyAliasesToUnionCase aliases) }
+
+    let caseNameFromBinding (binding: string) =
+        if String.IsNullOrWhiteSpace binding then
+            ""
+        else
+            let index = binding.IndexOf(".", StringComparison.Ordinal)
+
+            if index <= 0 then
+                ""
+            else
+                binding.Substring(0, index)
+
+    let rec applyOptionAliasesToNode aliases (node: SduiFormNode) =
+        let caseName = caseNameFromBinding node.Binding
+
+        { node with
+            Options =
+                node.Options
+                |> Array.map (fun option ->
+                    { option with
+                        Label = DynamicArguAliasBinding.optionLabel caseName option.Value aliases })
+            Children = node.Children |> Array.map (applyOptionAliasesToNode aliases)
+            Items = node.Items |> Array.map (applyOptionAliasesToNode aliases) }
+
+    let applyOptionAliasesToDocument aliases (document: SduiFormDocument) =
+        { document with
+            Nodes = document.Nodes |> Array.map (applyOptionAliasesToNode aliases) }
+
+    let defaultsFromParsedTarget (target: ParsedArguTarget) =
+        target.RootCases
+        |> Array.collect (fun parsedCase ->
+            parsedCase.Values
+            |> Array.map (fun parsedValue -> $"{parsedCase.CaseName}.{parsedValue.FieldName}", parsedValue.Values))
+        |> Map.ofArray
+
+    let rec applyDefaultsToNode defaults (node: SduiFormNode) =
+        let defaultValues =
+            if String.IsNullOrWhiteSpace node.Binding then
+                node.DefaultValues
+            else
+                defaults
+                |> Map.tryFind node.Binding
+                |> Option.defaultValue node.DefaultValues
+
+        { node with
+            DefaultValues = defaultValues
+            Children = node.Children |> Array.map (applyDefaultsToNode defaults)
+            Items = node.Items |> Array.map (applyDefaultsToNode defaults) }
+
+    let applyParsedDefaultsToDocument parsedTarget (document: SduiFormDocument) =
+        let defaults = defaultsFromParsedTarget parsedTarget
+
+        { document with
+            Nodes = document.Nodes |> Array.map (applyDefaultsToNode defaults) }
+
+    let filterSchemaByParsedRootCases (parsedTarget: ParsedArguTarget) (schema: ArguFormSchema) =
+        let unionCasesByName =
+            schema.UnionCases
+            |> Array.map (fun unionCase -> unionCase.Name, unionCase)
+            |> Map.ofArray
+
+        { schema with
+            UnionCases =
+                parsedTarget.RootCases
+                |> Array.choose (fun parsedCase -> unionCasesByName |> Map.tryFind parsedCase.CaseName) }
+
+    let fromArguFormSchemaWithAliases documentId aliases schema =
+        schema
+        |> applyAliasesToSchema aliases
+        |> SduiFormDocument.fromArguFormSchema documentId
+        |> applyOptionAliasesToDocument aliases
+
+    let fromParsedArguTarget documentId aliases schema parsedTarget =
+        schema
+        |> filterSchemaByParsedRootCases parsedTarget
+        |> fromArguFormSchemaWithAliases documentId aliases
+        |> applyParsedDefaultsToDocument parsedTarget
+
+[<RequireQualifiedAccess>]
+module DynamicArguTemplateRegistration =
+    let create (templateKey: string) (templateType: Type) (aliases: DynamicArguAliasBinding) (defaultArgString: string option) =
+        if String.IsNullOrWhiteSpace templateKey then
+            invalidArg "templateKey" "Template key is required."
+
+        if isNull templateType || not (typeof<IArgParserTemplate>.IsAssignableFrom templateType) then
+            invalidArg "templateType" "Template type must implement Argu.IArgParserTemplate."
+
+        { TemplateKey = templateKey.Trim()
+          DuTypeName = templateType.FullName
+          TemplateType = templateType
+          Aliases = aliases
+          DefaultArgString = defaultArgString }
+
+    let fromTemplateType (templateType: Type) aliases defaultArgString =
+        create templateType.FullName templateType aliases defaultArgString
+
+    let fromTemplate<'Template when 'Template :> IArgParserTemplate> aliases defaultArgString =
+        fromTemplateType typeof<'Template> aliases defaultArgString
+
+[<RequireQualifiedAccess>]
+module DynamicCommandLine =
+    let split (text: string) =
+        let text = if isNull text then "" else text
+        let tokens = ResizeArray<string>()
+        let buffer = System.Text.StringBuilder()
+        let mutable inQuote = false
+        let mutable escaped = false
+
+        let flush () =
+            if buffer.Length > 0 then
+                tokens.Add(buffer.ToString())
+                buffer.Clear() |> ignore
+
+        for ch in text do
+            if escaped then
+                buffer.Append(ch) |> ignore
+                escaped <- false
+            elif ch = '\\' && inQuote then
+                escaped <- true
+            elif ch = '"' then
+                inQuote <- not inQuote
+            elif Char.IsWhiteSpace ch && not inQuote then
+                flush ()
+            else
+                buffer.Append(ch) |> ignore
+
+        if escaped then
+            buffer.Append('\\') |> ignore
+
+        if inQuote then
+            invalidArg "text" "Unclosed quote in canonical Argu string."
+
+        flush ()
+        tokens.ToArray()
+
+    let quote value =
+        let text = if isNull value then "" else string value
+
+        if text = "" then
+            "\"\""
+        elif text |> Seq.exists Char.IsWhiteSpace || text.Contains("\"", StringComparison.Ordinal) then
+            "\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""
+        else
+            text
+
+    let join tokens =
+        tokens
+        |> Seq.map quote
+        |> String.concat " "
+
+[<RequireQualifiedAccess>]
+module DynamicArgStringTarget =
+    let normalizeKeyParts keys =
+        keys
+        |> Seq.choose (fun key ->
+            if String.IsNullOrWhiteSpace key then
+                None
+            else
+                Some(key.Trim()))
+        |> Seq.toList
+
+    let validateByParser (registration: DynamicArguTemplateRegistration) (argv: string array) =
+        let parser = ArguFormSchema.createParserFromTemplateType registration.TemplateType
+
+        try
+            parser.Accept {
+                new IArgumentParserVisitor<obj list> with
+                    member _.Visit<'Template when 'Template :> IArgParserTemplate>(typedParser: ArgumentParser<'Template>) =
+                        let results =
+                            typedParser.ParseCommandLine(
+                                inputs = argv,
+                                ignoreMissing = true,
+                                ignoreUnrecognized = false,
+                                raiseOnUsage = true)
+
+                        results.GetAllResults() |> List.map box
+            }
+            |> Ok
+        with ex ->
+            Error ex.Message
+
+    let commandNames (caseInfo: ArgumentCaseInfo) =
+        caseInfo.CommandLineNames.Value |> List.toArray
+
+    let canonicalName (caseInfo: ArgumentCaseInfo) =
+        caseInfo.UnionCaseInfo.Name
+
+    let caseByCommandName commandName (cases: ArgumentCaseInfo array) =
+        cases
+        |> Array.tryFind (fun caseInfo ->
+            commandNames caseInfo
+            |> Array.exists (fun name -> String.Equals(name, commandName, StringComparison.OrdinalIgnoreCase)))
+
+    let readCaseValues startIndex stopTokens argv =
+        let values = ResizeArray<string>()
+        let mutable index = startIndex
+
+        while index < Array.length argv && not (Set.contains argv[index] stopTokens) do
+            values.Add(argv[index])
+            index <- index + 1
+
+        values.ToArray(), index
+
+    let parsedValuesFromTokens (caseInfo: ArgumentCaseInfo) values =
+        let fields = caseInfo.UnionCaseInfo.GetFields()
+
+        match fields with
+        | [||] -> [||]
+        | [| field |] ->
+            [| { FieldName = ArguFormSchema.fieldName field
+                 Values = values } |]
+        | many ->
+            many
+            |> Array.mapi (fun index field ->
+                { FieldName = ArguFormSchema.fieldName field
+                  Values =
+                    if index < Array.length values then
+                        [| values[index] |]
+                    else
+                        [||] })
+
+    let parsedCaseFromTokens (caseInfo: ArgumentCaseInfo) values =
+        { CaseName = canonicalName caseInfo
+          ArguName = commandNames caseInfo |> Array.tryHead |> Option.defaultValue caseInfo.Name.Value
+          Values =
+            match values with
+            | [||] when caseInfo.UnionCaseInfo.GetFields().Length = 0 -> [||]
+            | _ -> parsedValuesFromTokens caseInfo values }
+
+    let scanCases (cases: ArgumentCaseInfo array) argv =
+        let commandTokenSet =
+            cases
+            |> Array.collect commandNames
+            |> Set.ofArray
+
+        let stopTokens = commandTokenSet
+
+        let parsed = ResizeArray<ParsedArguCase>()
+        let mutable index = 0
+
+        while index < Array.length argv do
+            let token = argv[index]
+
+            match caseByCommandName token cases with
+            | None ->
+                index <- index + 1
+            | Some caseInfo ->
+                let values, nextIndex = readCaseValues (index + 1) stopTokens argv
+                parsed.Add(parsedCaseFromTokens caseInfo values)
+                index <- nextIndex
+
+        parsed.ToArray()
+
+    let subcommandTemplateType (caseInfo: ArgumentCaseInfo) =
+        match caseInfo.UnionCaseInfo.GetFields() with
+        | [| field |]
+            when field.PropertyType.IsGenericType
+                 && field.PropertyType.GetGenericTypeDefinition() = typedefof<ParseResults<_>> ->
+            Some(field.PropertyType.GetGenericArguments()[0])
+        | _ -> None
+
+    let scan (registration: DynamicArguTemplateRegistration) actorAddress canonicalArgString =
+        let argv = DynamicCommandLine.split canonicalArgString
+        let parser = ArguFormSchema.createParserFromTemplateType registration.TemplateType
+        let caseInfos = parser.GetArgumentCases() |> Seq.toArray
+        let rootCases = caseInfos |> Array.filter (fun caseInfo -> caseInfo.ArgumentType <> ArgumentType.SubCommand)
+        let subcommands = caseInfos |> Array.filter (fun caseInfo -> caseInfo.ArgumentType = ArgumentType.SubCommand)
+        let mutable subcommandStart = Array.length argv
+        let mutable subcommandInfo: ArgumentCaseInfo option = None
+
+        argv
+        |> Array.iteri (fun index token ->
+            if subcommandStart = Array.length argv then
+                match caseByCommandName token subcommands with
+                | Some caseInfo ->
+                    subcommandStart <- index
+                    subcommandInfo <- Some caseInfo
+                | None -> ())
+
+        let rootArgv = argv |> Array.take subcommandStart
+        let rootParsed = scanCases rootCases rootArgv
+
+        let tailSubcommands =
+            match subcommandInfo with
+            | None -> [||]
+            | Some subcommand ->
+                let nestedArgv = argv |> Array.skip (subcommandStart + 1)
+                let nestedCases =
+                    match subcommandTemplateType subcommand with
+                    | None -> [||]
+                    | Some nestedType ->
+                        let nestedParser = ArguFormSchema.createParserFromTemplateType nestedType
+                        nestedParser.GetArgumentCases()
+                        |> Seq.filter (fun caseInfo -> caseInfo.ArgumentType <> ArgumentType.SubCommand)
+                        |> Seq.toArray
+                        |> fun cases -> scanCases cases nestedArgv
+
+                [| { CaseName = canonicalName subcommand
+                     CommandToken = commandNames subcommand |> Array.tryHead |> Option.defaultValue (ArguFormSchema.kebabName subcommand.Name.Value)
+                     Cases = nestedCases } |]
+
+        { ActorAddress = actorAddress
+          TemplateKey = registration.TemplateKey
+          CanonicalArgString = canonicalArgString
+          RootCases = rootParsed
+          TailSubcommands = tailSubcommands }
+
+    let buildFormDocument documentId (registration: DynamicArguTemplateRegistration) parsedTarget =
+        let schema = ArguFormSchema.fromArgParserTemplateType registration.TemplateType
+
+        DynamicFormDsl.fromParsedArguTarget documentId registration.Aliases schema parsedTarget
+
+    let tryResolve (registrations: DynamicArguTemplateRegistration seq) keys =
+        let registrations = registrations |> Seq.toArray
+
+        match normalizeKeyParts keys with
+        | actorAddress :: templateKey :: canonicalArgString :: [] ->
+            match registrations |> Array.tryFind (fun item -> String.Equals(item.TemplateKey, templateKey, StringComparison.OrdinalIgnoreCase) || String.Equals(item.DuTypeName, templateKey, StringComparison.OrdinalIgnoreCase)) with
+            | None -> Error $"Unknown Dynamic Argu template: {templateKey}."
+            | Some registration ->
+                let argv =
+                    try
+                        DynamicCommandLine.split canonicalArgString |> Ok
+                    with ex ->
+                        Error ex.Message
+
+                match argv with
+                | Error error -> Error error
+                | Ok argv ->
+                    match validateByParser registration argv with
+                    | Error error -> Error $"Argu parse failed for {registration.TemplateKey}: {error}"
+                    | Ok _ -> Ok(ArguTemplateTarget(actorAddress, registration.TemplateKey, canonicalArgString))
+        | actorAddress :: templateKey :: [] ->
+            Error $"Dynamic Argu target {templateKey} requires a canonical arg string."
+        | _ -> Error "Dynamic Argu target key must be [ actorAddress; duTypeOrTemplateKey; canonicalArgString ]."
+
+    let buildRawArgu (target: ParsedArguTarget) =
+        let parts = ResizeArray<string>()
+
+        let appendCase (parsed: ParsedArguCase) =
+            parts.Add(parsed.ArguName)
+
+            parsed.Values
+            |> Array.collect _.Values
+            |> Array.iter parts.Add
+
+        target.RootCases |> Array.iter appendCase
+
+        target.TailSubcommands
+        |> Array.iter (fun subcommand ->
+            parts.Add(subcommand.CommandToken)
+            subcommand.Cases |> Array.iter appendCase)
+
+        parts
+        |> Seq.map DynamicCommandLine.quote
+        |> String.concat " "
+
+[<RequireQualifiedAccess>]
 module DynamicTargetKey =
     let normalizeKeyParts keys =
         keys
@@ -471,7 +913,7 @@ module DynamicTargetKey =
                         Error $"DU target {schema.DuTypeName} requires at least one union case."
                     else
                         validateUnionCases tail schema
-                        |> Result.map (fun unionCases -> ArguTemplateTarget(actorAddress, schema.DuTypeName, unionCases))
+                        |> Result.map (fun unionCases -> LegacyArguCaseTarget(actorAddress, schema.DuTypeName, unionCases))
                 | None -> Error $"Unknown Dynamic target discriminator: {discriminator}."
         | _ -> Error "Dynamic target key must contain at least actor address and document/type discriminator."
 

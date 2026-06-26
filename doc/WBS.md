@@ -31,9 +31,9 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 | DYN-WBS-505 | FormInput renderer v2 | Review | 78 | DYN-T-504 / DYN-T-506 | Renderer 已改以 Dynamic metadata 的 Form DSL document/schema registry 決定 form input；PFCF fixture 覆蓋 text/number/enum/tuple/bool/list raw arg codec。Remaining：改為 backend-resolved FormInput DSL、query/stream option source、validation state 與全部視覺 E2E。 |
 | DYN-WBS-506 | PTCS.Host demo DU and E2E gates | Planned | 0 | DYN-T-505 / DYN-T-506 | PTCS.Host 使用 `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\doc\example DU.txt` 建 host-local demo subset，驗證 actor key bound to direct DSL target 與 actor key bound to DU/template + canonical arg string。Host wiring 延後到 package/API 文件對齊後。 |
 | DYN-WBS-507 | Arg-string target RFC realignment | Done | 100 | DYN-T-507 | 2026-06-26 本輪修訂 RFC-PTCS-DYNAMIC-0003 與 stock docs：DU/template target key 改為 `[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]`；沒有 `hub.useDynamicSdui(...)` 時 PTCS core 只取 actor address。 |
-| DYN-WBS-508 | Backend target arg-string parser / Form DSL resolver | Planned | 0 | DYN-T-508 | 實作 PTCS.Dynamic backend module：依 registered `IArgParserTemplate` parser parse canonical arg string，產生 parsed target model 與 FormInput DSL；parse failure controlled error。 |
-| DYN-WBS-509 | Alias binding registry | Planned | 0 | DYN-T-509 | 實作 template-level case/field/option alias binding；中文 label 只進 DSL display，不進 raw Argu command。 |
-| DYN-WBS-510 | ParseResults / subcommand command builder | Planned | 0 | DYN-T-510 | 支援 `ParseResults<PFCF_AKKA_CMD_DATA_RANGE>` tail subcommand group；驗證 `datarange` token 在 root args 後、subcommand args 前。 |
+| DYN-WBS-508 | Backend target arg-string parser / Form DSL resolver | Done | 100 | DYN-T-507 / DYN-T-509 | `DynamicArgStringTarget` 已支援 `[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]` parser-backed target、controlled parse failure、parsed root cases、root-section order 與 FormInput DSL `DefaultValues` projection；Expecto 13/13 passed。 |
+| DYN-WBS-509 | Alias binding registry | Done | 100 | DYN-T-508 | `DynamicArguAliasBinding` / `DynamicFormDsl.fromArguFormSchemaWithAliases` 已支援 case/field/option alias；中文 label 只進 DSL display，canonical option value 與 raw Argu command 不變。 |
+| DYN-WBS-510 | ParseResults / subcommand command builder | Done | 100 | DYN-T-510 | `DynamicArgStringTarget.scan` / `buildRawArgu` 已支援 `ParseResults<PFCF_AKKA_CMD_DATA_RANGE>` tail subcommand group；驗證 `datarange` token 在 root args 後、subcommand args 前，raw command exact match。 |
 | DYN-WBS-511 | Arg-string backend DSL Playwright E2E | Planned | 0 | DYN-T-511 | Playwright gate：add target key -> backend parse canonical arg string -> receive/render FormInput DSL with aliases/defaults -> submit -> raw Argu string equals expected PFCF data-range command。 |
 
 ## Dynamic Argu Form 相依順序
@@ -42,7 +42,7 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 2. `DYN-WBS-501` 先完成 RFC-0003 DSL-first 文件 review。
 3. PTCS `WBS-053A..F` 提供 unified target extension contract；Dynamic `DYN-WBS-502/503` 可並行開發 pure package tests。
 4. `DYN-WBS-507` 已修正 RFC-0003 target design。
-5. `DYN-WBS-508/509/510` 先完成 package/backend parser、alias、subcommand raw builder。
+5. `DYN-WBS-508/509/510` 已完成 package/backend parser、alias、subcommand raw builder。
 6. `DYN-WBS-505/511` 再把 renderer 改成吃 backend-resolved FormInput DSL，並以 Playwright 驗證 arg-string path。
 7. `DYN-WBS-506` 與 PTCS.Host demo 串接 `example DU.txt`，先完成 direct DSL target 與 DU/template arg-string target E2E。
 8. PTC RN `PTC3-063/066/065` 完成 controller-region restart redelivery、provider-bound completion 與 service-window proof 後，再把 `DYN-WBS-506/511` / `PTC3-067` 從 browser/runtime E2E 推進到 production split-service E2E。

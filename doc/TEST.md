@@ -262,9 +262,12 @@ Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 覆蓋：
 
 - canonical arg string is parsed by the registered `IArgParserTemplate`；
-- parsed root cases determine rendered sections；
-- field default values come from parse result / token scan；
-- unsupported fields/subcommands produce controlled unsupported diagnostics。
+- parsed root cases determine rendered FormInput section order；
+- field default values are projected into `SduiFormNode.DefaultValues` from parse result / token scan；
+- list and named tuple defaults are projected without changing canonical raw Argu tokens；
+- unsupported template key、missing arg string、parser failure produce controlled errors via DYN-T-507。
+
+Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 13/13。Warnings were existing WebSharper `WS9002` and NuGet `NU5123` long path warnings。
 
 ### DYN-T-510 ParseResults / subcommand raw command builder
 
@@ -282,6 +285,8 @@ Required expected command：
 - root args precede `datarange`；
 - `datarange` precedes `--referencedatemode` / `--between` / `--calibrate2curdayiflargerthancurday`；
 - command rebuild is deterministic and matches expected raw string exactly。
+
+Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 13/13。
 
 ### DYN-T-511 Browser E2E for backend-resolved FormInput DSL
 

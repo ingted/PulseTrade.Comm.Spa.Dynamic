@@ -44,6 +44,7 @@ type PFCF_AKKA_CMD_DATA_RANGE =
     | Between of decimal * decimal
     | After of decimal
     | NoFilter
+    | Calibrate2CurDayIfLargerThanCurDay
     interface IArgParserTemplate with
         member _.Usage = ""
 
@@ -102,6 +103,12 @@ type PFCF_AKKA_CMD_BANK_EDX =
 type PFCF_GTC_CONF =
     | FillDTFormatYYYYMMDD
     | ShowOrderSN
+    | OrderByTXDT
+    | OrderBySQDT
+    | FillSquareCombine
+    | CathayBKTaifexFill
+    | CathayBKTaifexOI
+    | OIInf
     | TAIFEX
     | ASIA
     | EURUS
@@ -113,7 +120,7 @@ type PFCF_AKKA_CMD =
     | Entrust of id: string * accountingDay: decimal
     | Transglobe of brokerBranch: string * id: string * accountingDay: decimal
     | PFCFGTC of PFCFGTC list
-    | PFCFEDX
+    | PFCFEDX of mode: string
     | PFCFGTCCONF of PFCF_GTC_CONF list
     | BBA of 期貨商: string * 分公司: string * 母帳帳號: string
     | Entie of mode: int
@@ -149,6 +156,8 @@ type PFCF_AKKA_CMD =
 
 let testArguDuTypeName = typeof<TestArgu>.FullName
 let pfcfDuTypeName = typeof<PFCF_AKKA_CMD>.FullName
+let pfcfDataRangeExpectedRaw =
+    "--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX FillSquareCombine OrderByTXDT CathayBKTaifexFill --to 90000 --parentchilds 2 5 --bba F008 000 9910357 --decimalquote 6 0 --round 6 4 2 datarange --referencedatemode ModeAccountingDate --between 20251104 20251104 --calibrate2curdayiflargerthancurday"
 
 let findCase caseName (schema: ArguFormSchema) =
     ArguFormSchema.tryFindUnionCase caseName schema
@@ -317,7 +326,7 @@ let tests =
             | other -> failwithf "direct target should resolve. got=%A" other
 
             match DynamicTargetKey.tryResolve metadata [ actorAddress; pfcfDuTypeName; "SimpleAction"; "BBA"; "GenByColMeta" ] with
-            | Ok(ArguTemplateTarget(actor, duTypeName, unionCases)) ->
+            | Ok(LegacyArguCaseTarget(actor, duTypeName, unionCases)) ->
                 Expect.equal actor actorAddress "DU target should preserve actor address"
                 Expect.equal duTypeName pfcfDuTypeName "DU target should resolve type name"
                 Expect.sequenceEqual unionCases [ "SimpleAction"; "BBA"; "GenByColMeta" ] "DU target should preserve union case tail order"
@@ -326,6 +335,63 @@ let tests =
             Expect.isError (DynamicTargetKey.tryResolve metadata [ actorAddress; "missing.dsl" ]) "unknown direct/form discriminator should fail"
             Expect.isError (DynamicTargetKey.tryResolve metadata [ actorAddress; pfcfDuTypeName; "MissingCase" ]) "unknown union case should fail"
             Expect.isError (DynamicTargetKey.tryResolve metadata [ actorAddress; document.DocumentId; "SimpleAction" ]) "direct DSL target should reject union-case tail"
+
+        testCase "DYN-T-507: Dynamic arg-string target resolver should require actor template and canonical arg string" <| fun _ ->
+            let actorAddress = "akka.tcp://PulseTradeCommSpaDynamic@127.0.0.1:8039/user/pfcf"
+            let canonicalArgString = "--simpleaction rebuild"
+            let registration =
+                DynamicArguTemplateRegistration.fromTemplate<PFCF_AKKA_CMD>
+                    DynamicArguAliasBinding.empty
+                    (Some canonicalArgString)
+
+            match DynamicArgStringTarget.tryResolve [ registration ] [ actorAddress; pfcfDuTypeName; canonicalArgString ] with
+            | Ok(ArguTemplateTarget(actor, templateKey, argString)) ->
+                Expect.equal actor actorAddress "arg-string target should preserve actor address"
+                Expect.equal templateKey pfcfDuTypeName "arg-string target should resolve registered template"
+                Expect.equal argString canonicalArgString "arg-string target should preserve canonical arg string"
+            | other -> failwithf "arg-string target should resolve. got=%A" other
+
+            Expect.isError (DynamicArgStringTarget.tryResolve [ registration ] [ actorAddress; pfcfDuTypeName ]) "missing canonical arg string should fail"
+            Expect.isError (DynamicArgStringTarget.tryResolve [ registration ] [ actorAddress; "missing.template"; canonicalArgString ]) "unknown template key should fail"
+            Expect.isError (DynamicArgStringTarget.tryResolve [ registration ] [ actorAddress; pfcfDuTypeName; "--missing value" ]) "parser failure should fail"
+
+        testCase "DYN-T-508: Alias binding should affect FormInput DSL labels without changing canonical option values" <| fun _ ->
+            let schema = ArguFormSchema.fromArgParserTemplate<PFCF_AKKA_CMD>()
+            let aliases =
+                { CaseAliases = Map [ "BBA", "買報帳號" ]
+                  FieldAliases = Map [ ("BBA", "期貨商"), "期貨商代號"; ("BBA", "分公司"), "分公司代號" ]
+                  OptionAliases = Map [ ("GenByColMeta", "fsrecord"), "FS 記錄" ] }
+
+            let document = DynamicFormDsl.fromArguFormSchemaWithAliases "ptcs.host.tests.pfcf.form" aliases schema
+            let bbaSection =
+                document.Nodes
+                |> Array.find (fun node -> node.Id = "case-bba")
+
+            Expect.equal bbaSection.Title "買報帳號" "case alias should be used as section title"
+
+            let bbaFieldLabels =
+                bbaSection.Children
+                |> Array.filter (fun node -> node.Type = "Tuple")
+                |> Array.collect _.Items
+                |> Array.map _.Label
+
+            Expect.isTrue
+                (Array.contains "期貨商代號" bbaFieldLabels && Array.contains "分公司代號" bbaFieldLabels)
+                "field aliases should be used as input labels"
+
+            let genByColMeta =
+                document.Nodes
+                |> Array.find (fun node -> node.Id = "case-genbycolmeta")
+
+            let genTypeSelect =
+                genByColMeta.Children
+                |> Array.filter (fun node -> node.Type = "Tuple")
+                |> Array.collect _.Items
+                |> Array.find (fun node -> node.Kind = "Select")
+
+            let fsrecordOption = genTypeSelect.Options |> Array.find (fun option -> option.Value = "fsrecord")
+            Expect.equal fsrecordOption.Label "FS 記錄" "option alias should affect label"
+            Expect.equal fsrecordOption.Value "fsrecord" "option alias must not change canonical value"
 
         testCase "DYN-T-502: PFCF_AKKA_CMD raw Argu strings should match server and frontend codec expectations" <| fun _ ->
             let schema = ArguFormSchema.fromArgParserTemplate<PFCF_AKKA_CMD>()
@@ -384,6 +450,85 @@ let tests =
                 "TableName"
                 [| onlyFieldName "TableName" schema, [| "Orders"; "Positions Today" |] |]
                 "--tablename Orders --tablename \"Positions Today\""
+
+        testCase "DYN-T-509: Parser-backed target scan should expose root cases and DataRange defaults" <| fun _ ->
+            let registration =
+                DynamicArguTemplateRegistration.fromTemplate<PFCF_AKKA_CMD>
+                    DynamicArguAliasBinding.empty
+                    (Some pfcfDataRangeExpectedRaw)
+
+            let parsed =
+                DynamicArgStringTarget.scan registration "akka://pfcf" pfcfDataRangeExpectedRaw
+
+            let rootCaseNames = parsed.RootCases |> Array.map _.CaseName
+            Expect.sequenceEqual
+                rootCaseNames
+                [| "PFCFEDX"; "PFCFGTCCONF"; "TO"; "ParentChilds"; "BBA"; "DecimalQuote"; "Round" |]
+                "root cases should preserve canonical arg string order"
+
+            let pfcfedx = parsed.RootCases |> Array.find (fun item -> item.CaseName = "PFCFEDX")
+            Expect.sequenceEqual (pfcfedx.Values |> Array.collect _.Values) [| "trivial" |] "PFCFEDX default should come from arg string"
+
+            let dataRange = parsed.TailSubcommands |> Array.exactlyOne
+            Expect.equal dataRange.CaseName "DataRange" "tail subcommand should be DataRange"
+            Expect.equal dataRange.CommandToken "datarange" "tail subcommand token should be datarange"
+
+            let nestedCaseNames = dataRange.Cases |> Array.map _.CaseName
+            Expect.sequenceEqual
+                nestedCaseNames
+                [| "ReferenceDateMode"; "Between"; "Calibrate2CurDayIfLargerThanCurDay" |]
+                "nested DataRange cases should preserve subcommand arg order"
+
+            let document = DynamicArgStringTarget.buildFormDocument "ptcs.host.tests.pfcf.data-range" registration parsed
+            Expect.sequenceEqual
+                (document.Nodes |> Array.map _.Id)
+                [| "case-pfcfedx"; "case-pfcfgtcconf"; "case-to"; "case-parentchilds"; "case-bba"; "case-decimalquote"; "case-round" |]
+                "Form DSL sections should follow parsed root case order"
+
+            let rec flattenNode (node: SduiFormNode) =
+                seq {
+                    yield node
+                    for child in node.Children do
+                        yield! flattenNode child
+                    for item in node.Items do
+                        yield! flattenNode item
+                }
+
+            let defaultValues binding =
+                document.Nodes
+                |> Seq.collect flattenNode
+                |> Seq.find (fun node -> node.Binding = binding)
+                |> _.DefaultValues
+
+            Expect.sequenceEqual (defaultValues "PFCFEDX.mode") [| "trivial" |] "PFCFEDX default should be projected into Form DSL"
+            Expect.sequenceEqual
+                (defaultValues "PFCFGTCCONF.value")
+                [| "OIInf"; "TAIFEX"; "FillSquareCombine"; "OrderByTXDT"; "CathayBKTaifexFill" |]
+                "list defaults should be projected into Form DSL"
+            Expect.sequenceEqual (defaultValues "BBA.期貨商") [| "F008" |] "tuple default item 1 should be projected into Form DSL"
+            Expect.sequenceEqual (defaultValues "BBA.分公司") [| "000" |] "tuple default item 2 should be projected into Form DSL"
+            Expect.sequenceEqual (defaultValues "BBA.母帳帳號") [| "9910357" |] "tuple default item 3 should be projected into Form DSL"
+
+        testCase "DYN-T-510: ParseResults DataRange raw command builder should keep datarange tail ordering" <| fun _ ->
+            let registration =
+                DynamicArguTemplateRegistration.fromTemplate<PFCF_AKKA_CMD>
+                    DynamicArguAliasBinding.empty
+                    (Some pfcfDataRangeExpectedRaw)
+
+            let argv = DynamicCommandLine.split pfcfDataRangeExpectedRaw
+            Expect.isOk (DynamicArgStringTarget.validateByParser registration argv) "Argu parser should accept PFCF data-range command"
+
+            let parsed = DynamicArgStringTarget.scan registration "akka://pfcf" pfcfDataRangeExpectedRaw
+            let rebuilt = DynamicArgStringTarget.buildRawArgu parsed
+
+            Expect.equal rebuilt pfcfDataRangeExpectedRaw "rebuilt raw command should match exact expected datarange command"
+
+            let datarangeIndex = rebuilt.IndexOf(" datarange ", StringComparison.Ordinal)
+            let roundIndex = rebuilt.IndexOf("--round 6 4 2", StringComparison.Ordinal)
+            let referenceDateIndex = rebuilt.IndexOf("--referencedatemode", StringComparison.Ordinal)
+
+            Expect.isGreaterThan datarangeIndex roundIndex "datarange should come after root --round"
+            Expect.isGreaterThan referenceDateIndex datarangeIndex "subcommand args should come after datarange"
     ]
 
 [<EntryPoint>]
