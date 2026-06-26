@@ -14,7 +14,8 @@
 Argu / DU 不是 renderer 的直接輸入。它是 adapter input：
 
 ```text
-IArgParserTemplate / DU metadata
+IArgParserTemplate / DU metadata + canonical Argu arg string
+  -> PTCS.Dynamic backend parser / adapter
   -> ArguToFormDsl adapter
   -> SduiDocument(surface = FormInput)
   -> Dynamic FormInput renderer
@@ -45,10 +46,16 @@ Direct DSL target：
 DU / Argu target：
 
 ```json
-["/user/durable-proxy", "PulseTrade.Comm.Spa.Host.DynamicArguDemo.PFCF_AKKA_CMD", "SimpleAction", "PFCFGTC", "DataRange"]
+[
+  "/user/durable-proxy",
+  "PulseTrade.Comm.Spa.Host.DynamicArguDemo.PFCF_AKKA_CMD",
+  "--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX FillSquareCombine OrderByTXDT CathayBKTaifexFill --to 90000 --parentchilds 2 5 --bba F008 000 9910357 --decimalquote 6 0 --round 6 4 2 datarange --referencedatemode ModeAccountingDate --between 20251104 20251104 --calibrate2curdayiflargerthancurday"
+]
 ```
 
-`unionCaseNames` 是 key list tail，不是 delimiter-joined string，也不使用 `1:duType:` / `2:unionCases:` prefix。Dynamic renderer 先查 direct DSL registry，再查 DU adapter registry；兩者都不存在時顯示 controlled error，不假裝 fallback 成可用 textarea。
+第三段是該 DU/template 的 canonical Argu arg string。它是資料，不是 shell command。PTCS.Dynamic 後端以 registered parser 驗證與解析，再根據 parse result 與原 token order 產生 FormInput DSL。舊版 `unionCaseNames` key list tail、`1:duType:`、`2:unionCases:` 都只是歷史相容資訊，不是新 canonical。
+
+若 host 沒有呼叫 `hub.useDynamicSdui(...)`，PTCS core 不處理第二/第三段，只取第一段 actor address 走 built-in actor-argu/raw textarea path。若 Dynamic extension 存在，Dynamic 先查 direct DSL registry，再查 DU/template registry；兩者都不存在或 arg string parse 失敗時顯示 controlled error，不假裝 fallback 成可用 textarea。
 
 ## 1. 核心概念與結構
 
@@ -166,19 +173,63 @@ Direct DSL target 指向已註冊 document：
 ["/user/durable-proxy", "ptcs.host.demo.pfcf.form"]
 ```
 
-DU target 指向 registered adapter：
+DU target 指向 registered adapter，並提供 canonical default/template command：
 
 ```json
 [
   "/user/durable-proxy",
   "PulseTrade.Comm.Spa.Host.DynamicArguDemo.PFCF_AKKA_CMD",
-  "SimpleAction",
-  "PFCFGTC",
-  "DataRange"
+  "--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX FillSquareCombine OrderByTXDT CathayBKTaifexFill --to 90000 --parentchilds 2 5 --bba F008 000 9910357 --decimalquote 6 0 --round 6 4 2 datarange --referencedatemode ModeAccountingDate --between 20251104 20251104 --calibrate2curdayiflargerthancurday"
 ]
 ```
 
-DU target 解析成功後，adapter 產生一份 `surface = "FormInput"` 的 `SduiDocument`。Renderer 不知道也不需要知道原始 DU type 如何反射。
+DU target 解析成功後，PTCS.Dynamic backend 使用 registered `IArgParserTemplate` parser parse 第三段 arg string，adapter 產生一份 `surface = "FormInput"` 的 `SduiDocument`。Renderer 不知道也不需要知道原始 DU type 如何反射。
+
+### 1.4 Alias binding
+
+Argu DU union case / field / option 通常是英文 canonical name，但 FormInput 需要中文或 domain display label。Alias 是 display metadata，不可改變 submit semantics。
+
+```json
+{
+  "templateKey": "PulseTrade.Comm.Spa.Host.DynamicArguDemo.PFCF_AKKA_CMD",
+  "caseAliases": {
+    "PFCFEDX": "電子檔",
+    "PFCFGTCCONF": "交易設定",
+    "DataRange": "日期區間"
+  },
+  "fieldAliases": {
+    "BBA.期貨商": "期貨商",
+    "BBA.分公司": "分公司",
+    "BBA.母帳帳號": "母帳帳號"
+  },
+  "optionAliases": {
+    "ReferenceDateMode.ModeAccountingDate": "過帳日",
+    "ReferenceDateMode.ModeTradingDate": "交易日"
+  }
+}
+```
+
+Alias precedence：
+
+1. Host / template registration alias map。
+2. Attribute / resource metadata if supported later。
+3. Canonical case / field / option name。
+
+Target key 不攜帶 alias pair；target key 只描述 actor、template 與 canonical default command。
+
+### 1.5 Subcommand ordering
+
+`ParseResults<'T>` / Argu `ArgumentType.SubCommand` 必須以 tail subcommand group 進入 FormInput DSL。Raw command rebuild 時：
+
+- root-level args 先輸出；
+- subcommand token 例如 `datarange` 放在 root args 後；
+- subcommand args 例如 `--referencedatemode ... --between ...` 放在 subcommand token 後。
+
+Example expected output：
+
+```text
+--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX FillSquareCombine OrderByTXDT CathayBKTaifexFill --to 90000 --parentchilds 2 5 --bba F008 000 9910357 --decimalquote 6 0 --round 6 4 2 datarange --referencedatemode ModeAccountingDate --between 20251104 20251104 --calibrate2curdayiflargerthancurday
+```
 
 ---
 

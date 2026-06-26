@@ -94,8 +94,8 @@ dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.dyna
 - Dynamic append input renderer replaces textarea only for matching `actor-dynamic` key；
 - renderer missing/throw fallback textarea；
 - blank renderer submission shows controlled validation and does not reach RN DurableProxy；
-- Add Key dialog returns `actorAddress :: duTypeName :: unionCaseNames` with no delimiter-joined union-case segment；
-- reload/readback returns the PTCS ordered append-page key list while preserving actor address、DU type and union cases as separate key segments；
+- Add Key dialog first-slice proof returned `actorAddress :: duTypeName :: unionCaseNames` with no delimiter-joined union-case segment；RFC-0003 revised canonical path is now `actorAddress :: duTypeOrTemplateKey :: canonicalArgString`；
+- reload/readback returns the PTCS ordered append-page key list while preserving actor address、template key and canonical arg string as separate key segments；
 - duplicate Dynamic target key submit keeps one projected key/card；
 - desktop/mobile geometry has no overlap or hidden submit button；
 - built-in PTCS append pages and existing `fskynet-sdui` message rendering do not regress；
@@ -165,7 +165,7 @@ Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dyn
 - PFCF_AKKA_CMD covered cases：`SimpleAction`、`Entrust`、`PFCFGTC`、`BBA`、`Cooperative`、`ParentChilds`、`FractionalQuote`、`GenByColMeta`、`TableName`；
 - expected raw arg strings include `--simpleaction "rebuild all"`、`--pfcfgtc gf --pfcfgtc goi`、`--bba F001 B001 M123`、`--genbycolmeta true false dbo fsrecord`、`--tablename Orders --tablename "Positions Today"`。
 
-### DYN-T-503 Dynamic target resolver
+### DYN-T-503 Dynamic target resolver first-slice regression
 
 Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 
@@ -184,6 +184,8 @@ Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dyn
 - `DynamicTargetKey.tryResolve` resolves `[ actorAddress; formDslId ]` to `DirectDslTarget`；
 - `DynamicTargetKey.tryResolve` resolves `[ actorAddress; duTypeName; SimpleAction; BBA; GenByColMeta ]` to `ArguTemplateTarget` and preserves union-case tail order；
 - unknown discriminator、unknown union case、direct DSL target with union-case tail all fail with controlled errors。
+
+此 test 是 first-slice regression。RFC-PTCS-DYNAMIC-0003 的新 canonical DU/template target 已改為 `[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]`，由 DYN-T-507..511 接手。
 
 ### DYN-T-504 Backend-linked option provider
 
@@ -211,20 +213,90 @@ actor key [ actorAddress; formDslId ]
   -> PTCS history readback
 ```
 
-### DYN-T-506 Actor key bound to DU type + cases list
+### DYN-T-506 Actor key bound to DU/template + canonical arg string
 
 Verifier：F# Playwright script in PTCS repo with PTCS.Host demo DU。
 
 Required path：
 
 ```text
-actor key [ actorAddress; duTypeName; unionCase1; unionCase2; ... ]
+actor key [ actorAddress; duTypeOrTemplateKey; canonicalArgString ]
+  -> PTCS.Dynamic backend parses canonicalArgString with registered Argu parser
   -> Argu-to-FormDsl adapter
-  -> all requested union cases visible simultaneously
-  -> per-case raw Argu submit
+  -> parsed root cases and supported subcommands visible simultaneously
+  -> composite raw Argu submit
   -> RN DurableProxy / legacy echo
   -> ActorArguTargetReply
   -> PTCS full target-key history readback
 ```
 
 PTCS.Host demo source is `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\doc\example DU.txt` decoded as Big5/cp950。Missing external types/enums must be stubbed or excluded with controlled unsupported-case diagnostics in PTCS.Host, not in PTCS.Dynamic package。
+
+### DYN-T-507 Arg-string target resolver
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests` plus backend resolver verifier。
+
+覆蓋：
+
+- `[ actorAddress; formDslId ]` remains direct DSL target；
+- `[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]` resolves to parser-backed Dynamic target；
+- no `hub.useDynamicSdui(...)` / no Dynamic resolver means PTCS core can still use only `actorAddress` as built-in actor key；
+- unknown template key、missing canonical arg string、parse failure all return controlled error。
+
+### DYN-T-508 Alias binding
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
+
+覆蓋：
+
+- case alias appears in `SduiDocument` section title；
+- field alias appears in input label；
+- option alias appears in select display label；
+- raw Argu command still uses canonical Argu names and values；
+- alias metadata does not come from browser target key。
+
+### DYN-T-509 Parser-backed Form DSL defaults
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
+
+覆蓋：
+
+- canonical arg string is parsed by the registered `IArgParserTemplate`；
+- parsed root cases determine rendered sections；
+- field default values come from parse result / token scan；
+- unsupported fields/subcommands produce controlled unsupported diagnostics。
+
+### DYN-T-510 ParseResults / subcommand raw command builder
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
+
+Required expected command：
+
+```text
+--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX FillSquareCombine OrderByTXDT CathayBKTaifexFill --to 90000 --parentchilds 2 5 --bba F008 000 9910357 --decimalquote 6 0 --round 6 4 2 datarange --referencedatemode ModeAccountingDate --between 20251104 20251104 --calibrate2curdayiflargerthancurday
+```
+
+覆蓋：
+
+- `ParseResults<PFCF_AKKA_CMD_DATA_RANGE>` is discovered as tail subcommand；
+- root args precede `datarange`；
+- `datarange` precedes `--referencedatemode` / `--between` / `--calibrate2curdayiflargerthancurday`；
+- command rebuild is deterministic and matches expected raw string exactly。
+
+### DYN-T-511 Browser E2E for backend-resolved FormInput DSL
+
+Verifier：F# Playwright script in PTCS repo after PTCS.Host references updated package。
+
+Required path：
+
+```text
+create actor-dynamic page
+  -> add target key [ actorAddress; duTypeOrTemplateKey; canonicalArgString ]
+  -> Dynamic backend resolves FormInput DSL
+  -> browser renders alias labels and parsed default values
+  -> submit form
+  -> ActorArguTargetCommand.RawArgu equals DYN-T-510 expected command
+  -> RN DurableProxy / echo path returns ActorArguTargetReply
+```
+
+UI gate must inspect visible labels/controls and final submitted raw string. It must not pass by only testing server codec.

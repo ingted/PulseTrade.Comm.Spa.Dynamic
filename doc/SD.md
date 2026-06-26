@@ -146,7 +146,7 @@ includeStateOf ids
 當 PTCS `RFC-PTC-SPA-0007` seam 可用後，Dynamic browser bundle registers：
 
 - append input renderer：依 page shape + selected key 判斷 `actor-dynamic` / Dynamic Argu key；
-- add-key dialog renderer：回傳 `actorAddress :: duTypeName :: unionCaseNames`；
+- add-key dialog renderer：新 canonical 回傳 `actorAddress :: duTypeOrTemplateKey :: canonicalArgString`；舊 `actorAddress :: duTypeName :: unionCaseNames` 只作 migration / historical reference；
 - message renderer：保留既有 `fskynet-sdui` rendering。
 
 若 seam 尚未存在或 renderer 失敗，Dynamic 必須讓 PTCS fallback 到既有 textarea/raw key path。
@@ -196,7 +196,7 @@ Implementation may refine union names, but the separation is mandatory：rendere
 ```fsharp
 type DynamicTarget =
     | DirectDslTarget of actorAddress: string * formDslId: string
-    | ArguTemplateTarget of actorAddress: string * duTypeName: string * unionCaseNames: string list
+    | ArguTemplateTarget of actorAddress: string * templateKey: string * canonicalArgString: string
 
 module DynamicTargetKey =
     val tryParse : string list -> Result<DynamicTarget, string>
@@ -206,24 +206,52 @@ Parse rules：
 
 1. key list length must be at least 2；
 2. first item is actor address；
-3. second item is looked up in Form DSL registry first；
-4. if not found, second item is looked up in Argu adapter registry；
-5. remaining tail belongs to the matched resolver；
-6. unknown second item returns controlled error。
+3. `[ actor; formDslId ]` resolves only when second item matches Form DSL registry；
+4. `[ actor; templateKey; canonicalArgString ]` resolves only when second item matches Argu adapter registry；
+5. canonical arg string is parsed server-side with the registered Argu parser before DSL generation；
+6. unknown second item or parse failure returns controlled error。
 
 ### 5.3 Argu-to-FormDsl adapter
 
 ```fsharp
 type ArguTemplateRegistration =
     { DuTypeName: string
+      TemplateKey: string
       TemplateType: Type
-      AllowedUnionCases: string list option }
+      Aliases: DynamicArguAliasBinding
+      DefaultArgString: string option }
+
+type DynamicArguAliasBinding =
+    { CaseAliases: Map<string, string>
+      FieldAliases: Map<string * string, string>
+      OptionAliases: Map<string * string, string> }
+
+type ParsedArguValue =
+    { FieldName: string
+      Values: string list }
+
+type ParsedArguCase =
+    { CaseName: string
+      Values: ParsedArguValue list }
+
+type ParsedArguSubcommand =
+    { CommandToken: string
+      TemplateType: Type
+      Cases: ParsedArguCase list }
+
+type ParsedArguTarget =
+    { ActorAddress: string
+      TemplateKey: string
+      CanonicalArgString: string
+      RootCases: ParsedArguCase list
+      TailSubcommands: ParsedArguSubcommand list }
 
 module ArguToFormDsl =
-    val generate : ArguTemplateRegistration -> requestedCases: string list -> SduiDocument
+    val parseTarget : ArguTemplateRegistration -> canonicalArgString: string -> Result<ParsedArguTarget, string>
+    val generate : ArguTemplateRegistration -> ParsedArguTarget -> SduiDocument
 ```
 
-Each requested union case becomes a visible form section with its own inputs and submit button。The adapter maps:
+Each parsed root case and supported subcommand becomes a visible form section. The adapter maps:
 
 - string -> text input；
 - numeric -> number input；
@@ -231,7 +259,31 @@ Each requested union case becomes a visible form section with its own inputs and
 - enum / zero-field DU enum -> select；
 - tuple -> ordered input group；
 - list -> repeatable input group；
-- nested `ParseResults<'T>` -> nested section when supported, otherwise controlled unsupported-field error。
+- nested `ParseResults<'T>` / Argu `ArgumentType.SubCommand` -> tail subcommand section when supported, otherwise controlled unsupported-field error。
+
+Alias mapping is applied during DSL generation only:
+
+```text
+canonical case/field/option name
+  -> alias lookup from DynamicArguAliasBinding
+  -> label/title in SduiDocument
+```
+
+Submit/raw command building always uses canonical Argu names. Alias text must not enter `ActorArguTargetCommand.RawArgu`.
+
+Composite raw command builder rules:
+
+```text
+root cases in token/configured order
+  -> tail subcommand token, e.g. datarange
+  -> subcommand args
+```
+
+Expected PFCF data-range example:
+
+```text
+--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX FillSquareCombine OrderByTXDT CathayBKTaifexFill --to 90000 --parentchilds 2 5 --bba F008 000 9910357 --decimalquote 6 0 --round 6 4 2 datarange --referencedatemode ModeAccountingDate --between 20251104 20251104 --calibrate2curdayiflargerthancurday
+```
 
 ### 5.4 Backend-linked options
 
