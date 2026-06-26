@@ -130,6 +130,19 @@ type ParsedArguTarget =
       TailSubcommands: ParsedArguSubcommand array }
 
 [<CLIMutable>]
+type DynamicArguResolveTargetRequest =
+    { Keys: string array }
+
+[<CLIMutable>]
+type DynamicArguResolveTargetReply =
+    { Ok: bool
+      Error: string
+      ActorAddress: string
+      TemplateKey: string
+      CanonicalArgString: string
+      Document: SduiFormDocument }
+
+[<CLIMutable>]
 type SubmitArguFieldValue =
     { Name: string
       Values: string array }
@@ -610,6 +623,19 @@ module DynamicArguTemplateRegistration =
     let fromTemplate<'Template when 'Template :> IArgParserTemplate> aliases defaultArgString =
         fromTemplateType typeof<'Template> aliases defaultArgString
 
+    let schema (registration: DynamicArguTemplateRegistration) =
+        registration.TemplateType
+        |> ArguFormSchema.fromArgParserTemplateType
+        |> DynamicFormDsl.applyAliasesToSchema registration.Aliases
+
+    let metadata registrations =
+        let schemas =
+            registrations
+            |> Seq.map schema
+            |> Seq.toArray
+
+        DynamicArguMetadata.create schemas [||]
+
 [<RequireQualifiedAccess>]
 module DynamicCommandLine =
     let split (text: string) =
@@ -867,6 +893,62 @@ module DynamicArgStringTarget =
         parts
         |> Seq.map DynamicCommandLine.quote
         |> String.concat " "
+
+[<RequireQualifiedAccess>]
+module DynamicArguResolveEndpoint =
+    let path = "/client-extensions/dynamic/argu/resolve-target"
+
+    let ok actorAddress templateKey canonicalArgString document =
+        { Ok = true
+          Error = ""
+          ActorAddress = actorAddress
+          TemplateKey = templateKey
+          CanonicalArgString = canonicalArgString
+          Document = document }
+
+    let error message =
+        { Ok = false
+          Error = if String.IsNullOrWhiteSpace message then "Dynamic Argu target resolution failed." else message
+          ActorAddress = ""
+          TemplateKey = ""
+          CanonicalArgString = ""
+          Document = Unchecked.defaultof<SduiFormDocument> }
+
+    let findRegistration (templateKey: string) (registrations: DynamicArguTemplateRegistration seq) =
+        registrations
+        |> Seq.tryFind (fun item ->
+            String.Equals(item.TemplateKey, templateKey, StringComparison.OrdinalIgnoreCase)
+            || String.Equals(item.DuTypeName, templateKey, StringComparison.OrdinalIgnoreCase))
+
+    let resolve (registrations: DynamicArguTemplateRegistration seq) keys =
+        let registrations = registrations |> Seq.toArray
+
+        match DynamicArgStringTarget.tryResolve registrations keys with
+        | Error message -> Error message
+        | Ok(DirectDslTarget _) -> Error "Direct DSL target does not require Dynamic Argu backend resolution."
+        | Ok(LegacyArguCaseTarget _) -> Error "Legacy Dynamic Argu target key is not supported by the backend resolver."
+        | Ok(ArguTemplateTarget(actorAddress, templateKey, canonicalArgString)) ->
+            match findRegistration templateKey registrations with
+            | None -> Error $"Unknown Dynamic Argu template: {templateKey}."
+            | Some registration ->
+                let parsed = DynamicArgStringTarget.scan registration actorAddress canonicalArgString
+                let document = DynamicArgStringTarget.buildFormDocument templateKey registration parsed
+                Ok(ok actorAddress registration.TemplateKey canonicalArgString document)
+
+    let handle (registrations: DynamicArguTemplateRegistration seq) (body: string) =
+        try
+            let request: DynamicArguResolveTargetRequest =
+                JsonSerializer.Deserialize<DynamicArguResolveTargetRequest>(body, ArguFormSchema.jsonOptions)
+
+            if isNull (box request) then
+                error "Invalid Dynamic Argu resolve request."
+            else
+                match resolve registrations request.Keys with
+                | Ok reply -> reply
+                | Error message -> error message
+        with ex ->
+            error ex.Message
+        |> fun reply -> JsonSerializer.Serialize(reply, ArguFormSchema.jsonOptions)
 
 [<RequireQualifiedAccess>]
 module DynamicTargetKey =

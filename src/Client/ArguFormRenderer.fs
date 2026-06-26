@@ -29,12 +29,32 @@ type ArguFormSchemaDto =
       unionCases: ArguFormUnionCaseDto[] }
 
 [<JavaScript>]
+type SduiFormOptionDto =
+    { value: string
+      label: string }
+
+[<JavaScript>]
+type SduiFormNodeDto =
+    { ``type``: string
+      id: string
+      title: string
+      label: string
+      kind: string
+      binding: string
+      arguName: string
+      defaultValues: string[]
+      children: SduiFormNodeDto[]
+      options: SduiFormOptionDto[]
+      items: SduiFormNodeDto[] }
+
+[<JavaScript>]
 type SduiFormDocumentDto =
     { schema: string
       version: string
       documentId: string
       surface: string
       duTypeName: string
+      nodes: SduiFormNodeDto[]
       arguFormSchema: ArguFormSchemaDto }
 
 [<JavaScript>]
@@ -76,6 +96,19 @@ type AppendSubmitPayloadDto =
     { rawArgu: string
       duTypeName: string
       unionCaseName: string }
+
+[<JavaScript>]
+type ResolveTargetRequestDto =
+    { keys: string[] }
+
+[<JavaScript>]
+type ResolveTargetReplyDto =
+    { ok: bool
+      error: string
+      actorAddress: string
+      templateKey: string
+      canonicalArgString: string
+      document: SduiFormDocumentDto }
 
 [<JavaScript>]
 module ClientRawArguCodec =
@@ -188,6 +221,9 @@ module ArguFormRenderer =
     let elementValue (node: #Element) =
         (node |> As<HTMLInputElement>).Value
 
+    let setElementValue (node: #Element) value =
+        JS.Inline("$0.value = $1", node, value)
+
     let queryInputs (root: #Element) selector =
         let nodes = root.QuerySelectorAll(selector)
 
@@ -211,6 +247,34 @@ module ArguFormRenderer =
             Some(decodeJson<'T> text)
         with _ ->
             None
+
+    let errorMessage (error: obj) =
+        if isNull error then
+            "unknown error"
+        else
+            string error
+
+    let postJson<'TRequest, 'TReply> url (body: 'TRequest) (onOk: 'TReply -> unit) onError =
+        let headers = Headers()
+        headers.Set("Content-Type", "application/json")
+
+        let options = RequestOptions()
+        options.Method <- "POST"
+        options.Headers <- headers
+        options.Body <- JSON.Stringify(body)
+
+        let promise =
+            JS.Window.Fetch(url, options)
+                .Then<unit>(System.Func<Response, Promise<unit>>(fun response ->
+                    response.Text()
+                        .Then<unit>(System.Func<string, unit>(fun responseBody ->
+                            if response.Ok then
+                                let text = if isBlank responseBody then "{}" else responseBody
+                                onOk (decodeJson<'TReply> text)
+                            else
+                                onError (if isBlank responseBody then $"POST {url} {response.Status}" else responseBody)))))
+
+        promise.Catch<unit>(System.Func<obj, unit>(fun error -> onError (errorMessage error))) |> ignore
 
     let keyPartsFromJson text =
         match tryDecodeJson<string[]> text with
@@ -335,65 +399,72 @@ module ArguFormRenderer =
 
                         typeSelect :> Node
 
-                let cases = element "div" "dynamic-argu-union-case-list" null |> setTestId "dynamic-argu-key-union-cases"
+                let targetConfig = element "div" "dynamic-argu-target-config" null |> setTestId "dynamic-argu-key-target-config"
+                let argInput = doc.CreateElement("textarea") :?> HTMLTextAreaElement
+                argInput.ClassName <- "dynamic-argu-canonical-arg-string"
+                argInput.SetAttribute("rows", "3")
+                argInput.SetAttribute("placeholder", "--say \"hello\"")
+                setTestId "dynamic-argu-key-canonical-arg-string" argInput |> ignore
 
-                let renderCases () =
-                    cases.TextContent <- ""
+                let defaultArgString =
+                    if defaultKeyParts.Length > 2 then
+                        defaultKeyParts[2]
+                    else
+                        ""
+
+                argInput.Value <- defaultArgString
+
+                let renderTargetConfig () =
+                    targetConfig.TextContent <- ""
                     let typeName = selectedTypeName
 
                     match tryFindDocument typeName with
-                    | Some document ->
-                        let node =
-                            element "div" "dynamic-argu-union-case-check" "Direct DSL document target; no union case selection required."
-
-                        cases.AppendChild node |> ignore
+                    | Some _ ->
+                        targetConfig.AppendChild(element "div" "dynamic-argu-target-note" "Direct DSL document target; no canonical Argu string required.") |> ignore
                     | None ->
-                    match tryFindSchema typeName with
-                    | None -> cases.AppendChild(errorNode ("Dynamic Argu schema not found for DU type: " + typeName)) |> ignore
-                    | Some schema ->
-                        schema.unionCases
-                        |> arrayOrEmpty
-                        |> Array.iter (fun unionCase ->
-                            let wrap = element "label" "dynamic-argu-union-case-check" null |> setTestId ("dynamic-argu-key-union-case-" + asText unionCase.name)
-                            let check = input "checkbox" "" ""
-                            check.Value <- asText unionCase.name
-                            check.Checked <- true
-                            wrap.AppendChild check |> ignore
-                            wrap.AppendChild(doc.CreateTextNode(asText unionCase.name)) |> ignore
-                            cases.AppendChild wrap |> ignore)
+                        match tryFindSchema typeName with
+                        | None -> targetConfig.AppendChild(errorNode ("Dynamic Argu schema not found for DU type: " + typeName)) |> ignore
+                        | Some _ ->
+                            let label = element "label" "dynamic-argu-label" "Canonical Argu string"
+                            label.SetAttribute("for", "dynamic-argu-key-canonical-arg-string")
+                            targetConfig.AppendChild label |> ignore
+                            targetConfig.AppendChild argInput |> ignore
 
                 match typeNode with
                 | :? HTMLSelectElement as typeSelect ->
                     typeSelect.AddEventListener("change", fun () ->
                         selectedTypeName <- elementValue typeSelect
-                        renderCases ())
+                        renderTargetConfig ())
                 | _ -> ()
 
-                renderCases ()
+                renderTargetConfig ()
 
                 let submit = button "dynamic-argu-key-submit" "dynamic-argu-key-submit" "Add target"
                 submit.AddEventListener(
                     "click",
                     fun () ->
-                        let selectedCases =
+                        let keyTail =
                             match tryFindDocument selectedTypeName with
                             | Some _ -> [||]
                             | None ->
-                                queryInputs cases "input"
-                                |> Seq.filter _.Checked
-                                |> Seq.map _.Value
-                                |> Seq.filter (not << isBlank)
-                                |> Seq.toArray
+                                let canonicalArgString = argInput.Value.Trim()
 
-                        let payload: KeySubmitPayloadDto =
-                            { keys =
-                                [| yield actorAddress
-                                   yield selectedTypeName
-                                   yield! selectedCases |] }
+                                if isBlank canonicalArgString then
+                                    argInput.Focus()
+                                    [||]
+                                else
+                                    [| canonicalArgString |]
 
-                        context.submitKey(box payload))
+                        if Option.isSome (tryFindDocument selectedTypeName) || keyTail.Length > 0 then
+                            let payload: KeySubmitPayloadDto =
+                                { keys =
+                                    [| yield actorAddress
+                                       yield selectedTypeName
+                                       yield! keyTail |] }
 
-                append root [| actor :> Node; typeNode; cases :> Node; submit :> Node |] |> ignore
+                            context.submitKey(box payload))
+
+                append root [| actor :> Node; typeNode; targetConfig :> Node; submit :> Node |] |> ignore
                 Some(root :> Node)
 
     let unionCaseNamesFromContext (ctx: AppendInputContextDto) (schema: ArguFormSchemaDto) =
@@ -404,21 +475,60 @@ module ArguFormRenderer =
         else
             allowed
 
-    let renderField (refresh: unit -> unit) (field: ArguFormFieldDto) =
+    let rec flattenNodeDefaults (node: SduiFormNodeDto) =
+        seq {
+            if not (isNull (box node)) then
+                yield node
+
+                for child in arrayOrEmpty node.children do
+                    yield! flattenNodeDefaults child
+
+                for item in arrayOrEmpty node.items do
+                    yield! flattenNodeDefaults item
+        }
+
+    let defaultsFromDocument (document: SduiFormDocumentDto option) =
+        match document with
+        | None -> Map.empty
+        | Some document when isNull (box document) -> Map.empty
+        | Some document ->
+            document.nodes
+            |> arrayOrEmpty
+            |> Seq.collect flattenNodeDefaults
+            |> Seq.choose (fun node ->
+                let binding = asText node.binding
+                let values = arrayOrEmpty node.defaultValues |> Array.map asText
+
+                if isBlank binding || values.Length = 0 then
+                    None
+                else
+                    Some(binding, values))
+            |> Map.ofSeq
+
+    let defaultValuesFor defaultMap caseName fieldName =
+        let binding = asText caseName + "." + asText fieldName
+
+        defaultMap
+        |> Map.tryFind binding
+        |> Option.defaultValue [||]
+
+    let renderField (refresh: unit -> unit) defaultMap caseName (field: ArguFormFieldDto) =
         let row = element "div" "dynamic-argu-field" null |> setTestId ("dynamic-argu-field-" + asText field.name)
         row.SetAttribute("data-dynamic-argu-field", asText field.name)
         row.SetAttribute("data-dynamic-argu-kind", asText field.kind)
         row.AppendChild(label (if isBlank field.label then field.name else field.label)) |> ignore
+        let fieldDefaults = defaultValuesFor defaultMap caseName field.name
 
         let mutable getter = fun () -> [||]
         let wireInputEvents (node: #Element) =
             node.AddEventListener("input", fun () -> refresh ())
             node.AddEventListener("change", fun () -> refresh ())
 
-        let renderScalarInput testId itemKind options =
+        let renderScalarInput testId itemKind options defaults =
             match asText itemKind with
             | "number" ->
                 let node = input "number" "dynamic-argu-input" testId
+                node.Value <- defaults |> Array.tryHead |> Option.defaultValue ""
                 node.SetAttribute("data-dynamic-argu-input", "true")
                 wireInputEvents node
                 node :> Element, fun () -> [| elementValue node |]
@@ -436,15 +546,19 @@ module ArguFormRenderer =
                     option.TextContent <- asText value
                     node.AppendChild option |> ignore)
 
+                setElementValue node (defaults |> Array.tryHead |> Option.defaultValue (elementValue node))
                 wireInputEvents node
                 node :> Element, fun () -> [| elementValue node |]
             | "bool" | "bool-value" ->
                 let node = input "checkbox" "dynamic-argu-input" testId
+                let value = defaults |> Array.tryHead |> Option.defaultValue ""
+                node.Checked <- value.ToLower() = "true" || value = "1" || value.ToLower() = "yes"
                 node.SetAttribute("data-dynamic-argu-input", "true")
                 wireInputEvents node
                 node :> Element, fun () -> [| if node.Checked then "true" else "false" |]
             | _ ->
                 let node = input "text" "dynamic-argu-input" testId
+                node.Value <- defaults |> Array.tryHead |> Option.defaultValue ""
                 node.SetAttribute("data-dynamic-argu-input", "true")
                 wireInputEvents node
                 node :> Element, fun () -> [| node.Value |]
@@ -452,6 +566,7 @@ module ArguFormRenderer =
         match asText field.kind with
         | "number" ->
             let node = input "number" "dynamic-argu-input" ("dynamic-argu-number-" + asText field.name)
+            node.Value <- fieldDefaults |> Array.tryHead |> Option.defaultValue ""
             node.SetAttribute("data-dynamic-argu-input", "true")
             wireInputEvents node
             row.AppendChild node |> ignore
@@ -470,6 +585,7 @@ module ArguFormRenderer =
                 option.TextContent <- asText value
                 node.AppendChild option |> ignore)
 
+            setElementValue node (fieldDefaults |> Array.tryHead |> Option.defaultValue (elementValue node))
             wireInputEvents node
             row.AppendChild node |> ignore
             getter <- fun () -> [| elementValue node |]
@@ -482,7 +598,7 @@ module ArguFormRenderer =
             |> Array.iteri (fun index item ->
                 let itemRow = element "div" "dynamic-argu-tuple-item" null |> setTestId $"dynamic-argu-tuple-item-{asText field.name}-{index + 1}"
                 itemRow.AppendChild(label $"{index + 1}. {if isBlank item.label then item.name else item.label}") |> ignore
-                let node, valueGetter = renderScalarInput "" item.kind item.options
+                let node, valueGetter = renderScalarInput "" item.kind item.options (defaultValuesFor defaultMap caseName item.name)
                 node.SetAttribute("data-dynamic-argu-tuple-item", string (index + 1))
                 itemGetters.Add valueGetter
                 itemRow.AppendChild node |> ignore
@@ -495,7 +611,7 @@ module ArguFormRenderer =
             let itemGetters = ResizeArray<unit -> string[]>()
             let add = button "dynamic-argu-add-list-item" ("dynamic-argu-list-add-" + asText field.name) "Add"
 
-            let addInput () =
+            let addInput defaults =
                 let item =
                     field.items
                     |> arrayOrEmpty
@@ -508,27 +624,35 @@ module ArguFormRenderer =
                           options = [||]
                           items = [||] }
 
-                let node, getter = renderScalarInput ("dynamic-argu-list-item-" + asText field.name) item.kind item.options
+                let node, getter = renderScalarInput ("dynamic-argu-list-item-" + asText field.name) item.kind item.options defaults
                 node.SetAttribute("data-dynamic-argu-list-item", "true")
                 itemGetters.Add getter
                 list.InsertBefore(node, add) |> ignore
 
             add.AddEventListener("click", fun () ->
-                addInput ()
+                addInput [||]
                 refresh ())
 
             list.AppendChild add |> ignore
-            addInput ()
+
+            if fieldDefaults.Length = 0 then
+                addInput [||]
+            else
+                fieldDefaults |> Array.iter (fun value -> addInput [| value |])
+
             row.AppendChild list |> ignore
             getter <- fun () -> itemGetters |> Seq.collect (fun getter -> getter ()) |> Seq.toArray
         | "bool" | "bool-value" ->
             let node = input "checkbox" "dynamic-argu-input" ("dynamic-argu-bool-" + asText field.name)
+            let value = fieldDefaults |> Array.tryHead |> Option.defaultValue ""
+            node.Checked <- value.ToLower() = "true" || value = "1" || value.ToLower() = "yes"
             node.SetAttribute("data-dynamic-argu-input", "true")
             wireInputEvents node
             row.AppendChild node |> ignore
             getter <- fun () -> [| if node.Checked then "true" else "false" |]
         | _ ->
             let node = input "text" "dynamic-argu-input" ("dynamic-argu-text-" + asText field.name)
+            node.Value <- fieldDefaults |> Array.tryHead |> Option.defaultValue ""
             node.SetAttribute("data-dynamic-argu-input", "true")
             wireInputEvents node
             row.AppendChild node |> ignore
@@ -541,80 +665,110 @@ module ArguFormRenderer =
         |> Array.map (fun (field, getter) -> field, getter ())
         |> ClientRawArguCodec.buildRawArguFromValues
 
+    let renderSchemaIntoRoot (root: Element) (context: AppendInputContextDto) typeName document (schema: ArguFormSchemaDto) =
+        root.TextContent <- ""
+        let defaultMap = defaultsFromDocument document
+
+        let allowed =
+            match document with
+            | Some _ -> schema.unionCases |> arrayOrEmpty |> Array.map _.name
+            | None -> unionCaseNamesFromContext context schema
+
+        let unionCases =
+            schema.unionCases
+            |> arrayOrEmpty
+            |> Array.filter (fun item -> allowed |> Array.exists (fun name -> name = asText item.name))
+
+        root.SetAttribute("data-dynamic-argu-du-type", typeName)
+        root.SetAttribute("data-dynamic-form-document-id", match document with | Some document -> asText document.documentId | None -> "")
+        root.SetAttribute("data-dynamic-argu-union-cases", String.concat "," allowed)
+
+        if unionCases.Length = 0 then
+            root.AppendChild(errorNode ("Dynamic Argu schema has no requested union cases for DU type: " + typeName)) |> ignore
+        else
+            unionCases
+            |> Array.iter (fun unionCase ->
+                let caseName = asText unionCase.name
+                let caseRow =
+                    element "section" "dynamic-argu-case-row" null
+                    |> setTestId ("dynamic-argu-case-" + caseName)
+
+                caseRow.SetAttribute("data-dynamic-argu-case", caseName)
+
+                let headingText = if isBlank unionCase.label then caseName else asText unionCase.label
+                let heading = element "div" "dynamic-argu-case-title" headingText |> setTestId ("dynamic-argu-case-title-" + caseName)
+                let fields = element "div" "dynamic-argu-fields" null |> setTestId ("dynamic-argu-fields-" + caseName)
+                let rawPreview = element "pre" "dynamic-argu-raw-preview" "" |> setTestId ("dynamic-argu-raw-preview-" + caseName)
+                let send = button "dynamic-argu-send" ("dynamic-argu-send-" + caseName) "Send"
+                let mutable fieldGetters: (ArguFormFieldDto * (unit -> string[]))[] = [||]
+
+                let refreshPreview () =
+                    rawPreview.TextContent <- buildRawArgu unionCase fieldGetters
+
+                fieldGetters <-
+                    unionCase.fields
+                    |> arrayOrEmpty
+                    |> Array.map (fun field ->
+                        let row, getter = renderField refreshPreview defaultMap caseName field
+                        fields.AppendChild row |> ignore
+                        field, getter)
+
+                send.AddEventListener(
+                    "click",
+                    fun () ->
+                        let raw = buildRawArgu unionCase fieldGetters
+                        rawPreview.TextContent <- raw
+                        let payload: AppendSubmitPayloadDto =
+                            { rawArgu = raw
+                              duTypeName = typeName
+                              unionCaseName = caseName }
+
+                        context.submit(box payload))
+
+                append caseRow [| heading :> Node; fields :> Node; rawPreview :> Node; send :> Node |] |> ignore
+                root.AppendChild caseRow |> ignore
+                refreshPreview ())
+
     let renderAppendInput (ctx: obj) =
         let context = ctx |> As<AppendInputContextDto>
         let typeName = asText context.duTypeName
+        let keyParts = arrayOrEmpty context.keyParts |> Array.map asText
+        let isBackendTarget = keyParts.Length = 3 && not (isBlank keyParts[2])
 
         if isBlank typeName then
             None
         else
-            let document = tryFindDocument typeName
+            let root = element "div" "dynamic-argu-form" "Loading Dynamic Argu form..." |> setTestId "dynamic-argu-form"
 
-            let schema =
-                match document with
-                | Some document when not (isNull (box document.arguFormSchema)) -> Some document.arguFormSchema
-                | _ -> tryFindSchema typeName
+            if isBackendTarget then
+                let request: ResolveTargetRequestDto = { keys = keyParts }
 
-            match schema with
-            | None -> Some(errorNode ("Dynamic Form document or Argu schema not found for target: " + typeName) :> Node)
-            | Some schema ->
-                let allowed = unionCaseNamesFromContext context schema
+                postJson<ResolveTargetRequestDto, ResolveTargetReplyDto>
+                    "/client-extensions/dynamic/argu/resolve-target"
+                    request
+                    (fun reply ->
+                        if reply.ok && not (isNull (box reply.document)) && not (isNull (box reply.document.arguFormSchema)) then
+                            renderSchemaIntoRoot root context (asText reply.templateKey) (Some reply.document) reply.document.arguFormSchema
+                        else
+                            root.TextContent <- ""
+                            root.AppendChild(errorNode (if isBlank reply.error then "Dynamic Argu target resolution failed." else reply.error)) |> ignore)
+                    (fun error ->
+                        root.TextContent <- ""
+                        root.AppendChild(errorNode error) |> ignore)
 
-                let unionCases =
-                    schema.unionCases
-                    |> arrayOrEmpty
-                    |> Array.filter (fun item -> allowed |> Array.exists (fun name -> name = asText item.name))
+                Some(root :> Node)
+            else
+                let document = tryFindDocument typeName
 
-                if unionCases.Length = 0 then
-                    Some(errorNode ("Dynamic Argu schema has no requested union cases for DU type: " + typeName) :> Node)
-                else
-                    let root = element "div" "dynamic-argu-form" null |> setTestId "dynamic-argu-form"
-                    root.SetAttribute("data-dynamic-argu-du-type", typeName)
-                    root.SetAttribute("data-dynamic-form-document-id", match document with | Some document -> asText document.documentId | None -> "")
-                    root.SetAttribute("data-dynamic-argu-union-cases", String.concat "," allowed)
+                let schema =
+                    match document with
+                    | Some document when not (isNull (box document.arguFormSchema)) -> Some document.arguFormSchema
+                    | _ -> tryFindSchema typeName
 
-                    unionCases
-                    |> Array.iter (fun unionCase ->
-                        let caseName = asText unionCase.name
-                        let caseRow =
-                            element "section" "dynamic-argu-case-row" null
-                            |> setTestId ("dynamic-argu-case-" + caseName)
-
-                        caseRow.SetAttribute("data-dynamic-argu-case", caseName)
-
-                        let heading = element "div" "dynamic-argu-case-title" caseName |> setTestId ("dynamic-argu-case-title-" + caseName)
-                        let fields = element "div" "dynamic-argu-fields" null |> setTestId ("dynamic-argu-fields-" + caseName)
-                        let rawPreview = element "pre" "dynamic-argu-raw-preview" "" |> setTestId ("dynamic-argu-raw-preview-" + caseName)
-                        let send = button "dynamic-argu-send" ("dynamic-argu-send-" + caseName) "Send"
-                        let mutable fieldGetters: (ArguFormFieldDto * (unit -> string[]))[] = [||]
-
-                        let refreshPreview () =
-                            rawPreview.TextContent <- buildRawArgu unionCase fieldGetters
-
-                        fieldGetters <-
-                            unionCase.fields
-                            |> arrayOrEmpty
-                            |> Array.map (fun field ->
-                                let row, getter = renderField refreshPreview field
-                                fields.AppendChild row |> ignore
-                                field, getter)
-
-                        send.AddEventListener(
-                            "click",
-                            fun () ->
-                                let raw = buildRawArgu unionCase fieldGetters
-                                rawPreview.TextContent <- raw
-                                let payload: AppendSubmitPayloadDto =
-                                    { rawArgu = raw
-                                      duTypeName = typeName
-                                      unionCaseName = caseName }
-
-                                context.submit(box payload))
-
-                        append caseRow [| heading :> Node; fields :> Node; rawPreview :> Node; send :> Node |] |> ignore
-                        root.AppendChild caseRow |> ignore
-                        refreshPreview ())
-
+                match schema with
+                | None -> Some(errorNode ("Dynamic Form document or Argu schema not found for target: " + typeName) :> Node)
+                | Some schema ->
+                    renderSchemaIntoRoot root context typeName document schema
                     Some(root :> Node)
 
     let registerRenderer name priority renderer =

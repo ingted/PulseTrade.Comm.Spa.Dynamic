@@ -1,6 +1,7 @@
 module PulseTrade.Comm.Spa.Dynamic.Tests.Program
 
 open System
+open System.Text.Json
 open Expecto
 open Argu
 open PersistedConcurrentSortedList.Type
@@ -529,6 +530,44 @@ let tests =
 
             Expect.isGreaterThan datarangeIndex roundIndex "datarange should come after root --round"
             Expect.isGreaterThan referenceDateIndex datarangeIndex "subcommand args should come after datarange"
+
+        testCase "DYN-T-511: Resolve endpoint should return backend FormInput DSL for canonical arg-string target" <| fun _ ->
+            let registration =
+                DynamicArguTemplateRegistration.fromTemplate<PFCF_AKKA_CMD>
+                    DynamicArguAliasBinding.empty
+                    (Some pfcfDataRangeExpectedRaw)
+
+            let request: DynamicArguResolveTargetRequest =
+                { Keys = [| "akka://pfcf"; pfcfDuTypeName; pfcfDataRangeExpectedRaw |] }
+
+            let requestJson = JsonSerializer.Serialize(request, ArguFormSchema.jsonOptions)
+            let replyJson = DynamicArguResolveEndpoint.handle [ registration ] requestJson
+            let reply = JsonSerializer.Deserialize<DynamicArguResolveTargetReply>(replyJson, ArguFormSchema.jsonOptions)
+
+            Expect.isTrue reply.Ok reply.Error
+            Expect.equal reply.TemplateKey pfcfDuTypeName "endpoint should resolve template key"
+            Expect.equal reply.Document.DocumentId pfcfDuTypeName "endpoint document id should be template key"
+            Expect.sequenceEqual
+                (reply.Document.ArguFormSchema.UnionCases |> Array.map _.Name)
+                [| "PFCFEDX"; "PFCFGTCCONF"; "TO"; "ParentChilds"; "BBA"; "DecimalQuote"; "Round" |]
+                "endpoint document should contain parsed root cases in order"
+
+            let rec flattenNode (node: SduiFormNode) =
+                seq {
+                    yield node
+                    for child in node.Children do
+                        yield! flattenNode child
+                    for item in node.Items do
+                        yield! flattenNode item
+                }
+
+            let pfcfedxDefault =
+                reply.Document.Nodes
+                |> Seq.collect flattenNode
+                |> Seq.find (fun node -> node.Binding = "PFCFEDX.mode")
+                |> _.DefaultValues
+
+            Expect.sequenceEqual pfcfedxDefault [| "trivial" |] "endpoint document should include FormInput defaults"
     ]
 
 [<EntryPoint>]

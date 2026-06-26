@@ -267,7 +267,7 @@ Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 - list and named tuple defaults are projected without changing canonical raw Argu tokens；
 - unsupported template key、missing arg string、parser failure produce controlled errors via DYN-T-507。
 
-Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 13/13。Warnings were existing WebSharper `WS9002` and NuGet `NU5123` long path warnings。
+Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 14/14。Warnings were existing WebSharper `WS9002` and NuGet `NU5123` long path warnings。
 
 ### DYN-T-510 ParseResults / subcommand raw command builder
 
@@ -286,9 +286,24 @@ Required expected command：
 - `datarange` precedes `--referencedatemode` / `--between` / `--calibrate2curdayiflargerthancurday`；
 - command rebuild is deterministic and matches expected raw string exactly。
 
-Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 13/13。
+Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 14/14。
 
-### DYN-T-511 Browser E2E for backend-resolved FormInput DSL
+### DYN-T-511 Backend resolver endpoint package gate
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
+
+覆蓋：
+
+- `DynamicArguResolveEndpoint.handle` accepts JSON `{ keys = [ actorAddress; duTypeOrTemplateKey; canonicalArgString ] }`；
+- backend uses registered `DynamicArguTemplateRegistration`, not browser reflection, to parse the canonical arg string；
+- response includes actor address、template key、canonical arg string and a FormInput DSL document；
+- returned document contains alias/default projection for the PFCF data-range command；
+- controlled failure is returned as JSON `Ok=false` instead of silent fallback；
+- WebSharper client append renderer compiles with the backend-resolved fetch path.
+
+Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 14/14。
+
+### DYN-T-512 Browser E2E for backend-resolved FormInput DSL
 
 Verifier：F# Playwright script in PTCS repo after PTCS.Host references updated package。
 

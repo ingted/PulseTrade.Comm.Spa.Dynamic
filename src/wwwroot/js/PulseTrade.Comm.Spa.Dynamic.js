@@ -40,7 +40,8 @@ function renderAddKey(ctx){
   if(shape!="actor-dynamic"&&shape!="actor-argu")return null;
   else {
     const keys=sort(distinct(concat([documentKeys(), schemaKeys()])));
-    const o=tryHead(keyPartsFromJson(ctx.defaultKey));
+    const defaultKeyParts=keyPartsFromJson(ctx.defaultKey);
+    const o=tryHead(defaultKeyParts);
     const actorAddress=o==null?"":o.$0;
     if(length(keys)===0)return Some(errorNode("No Dynamic Argu schemas are registered."));
     else if(isBlank(actorAddress))return Some(errorNode("Dynamic Argu default key must include actor address as the first JSON list item."));
@@ -58,41 +59,44 @@ function renderAddKey(ctx){
           typeSelect.appendChild(option);
         }, keys),typeSelect);
       }
-      const cases=setTestId("dynamic-argu-key-union-cases", element("div", "dynamic-argu-union-case-list", null));
-      const renderCases=() => {
-        cases.textContent="";
-        const m=tryFindDocument(selectedTypeName);
-        if(m==null){
-          const m_1=tryFindSchema(selectedTypeName);
-          if(m_1!=null&&m_1.$==1)iter((unionCase) => {
-            const x=element("label", "dynamic-argu-union-case-check", null);
-            const wrap=setTestId("dynamic-argu-key-union-case-"+asText(unionCase.name), x);
-            const check=input("checkbox", "", "");
-            check.value=asText(unionCase.name);
-            check.checked=true;
-            wrap.appendChild(check);
-            wrap.appendChild(doc().createTextNode(asText(unionCase.name)));
-            cases.appendChild(wrap);
-          }, arrayOrEmpty(m_1.$0.unionCases));
-          else cases.appendChild(errorNode("Dynamic Argu schema not found for DU type: "+selectedTypeName));
+      const targetConfig=setTestId("dynamic-argu-key-target-config", element("div", "dynamic-argu-target-config", null));
+      const argInput=doc().createElement("textarea");
+      argInput.className="dynamic-argu-canonical-arg-string";
+      argInput.setAttribute("rows", "3");
+      argInput.setAttribute("placeholder", "--say \"hello\"");
+      setTestId("dynamic-argu-key-canonical-arg-string", argInput);
+      argInput.value=length(defaultKeyParts)>2?get(defaultKeyParts, 2):"";
+      const renderTargetConfig=() => {
+        targetConfig.textContent="";
+        if(tryFindDocument(selectedTypeName)==null){
+          const _1=tryFindSchema(selectedTypeName);
+          if(_1!=null&&_1.$==1){
+            const label_1=element("label", "dynamic-argu-label", "Canonical Argu string");
+            label_1.setAttribute("for", "dynamic-argu-key-canonical-arg-string");
+            targetConfig.appendChild(label_1);
+            targetConfig.appendChild(argInput);
+          }
+          else targetConfig.appendChild(errorNode("Dynamic Argu schema not found for DU type: "+selectedTypeName));
         }
-        else {
-          m.$0;
-          cases.appendChild(element("div", "dynamic-argu-union-case-check", "Direct DSL document target; no union case selection required."));
-        }
+        else targetConfig.appendChild(element("div", "dynamic-argu-target-note", "Direct DSL document target; no canonical Argu string required."));
       };
       if(typeNode instanceof HTMLSelectElement)typeNode.addEventListener("change", () => {
         selectedTypeName=elementValue(typeNode);
-        return renderCases();
+        return renderTargetConfig();
       });
       else null;
-      renderCases();
+      renderTargetConfig();
       const submit=button("dynamic-argu-key-submit", "dynamic-argu-key-submit", "Add target");
       submit.addEventListener("click", () => {
-        const selectedCases=tryFindDocument(selectedTypeName)==null?ofSeq(filter_1((x) =>!isBlank(x), map_1((a) => a.value, filter_1((a) => a.checked, queryInputs(cases, "input"))))):[];
-        return ctx.submitKey(New_3(ofSeq(delay(() => append_2([actorAddress], delay(() => append_2([selectedTypeName], delay(() => selectedCases))))))));
+        let keyTail;
+        if(tryFindDocument(selectedTypeName)==null){
+          const canonicalArgString=Trim(argInput.value);
+          keyTail=isBlank(canonicalArgString)?(argInput.focus(),[]):[canonicalArgString];
+        }
+        else keyTail=[];
+        return tryFindDocument(selectedTypeName)!=null||length(keyTail)>0?ctx.submitKey(New_3(ofSeq(delay(() => append_2([actorAddress], delay(() => append_2([selectedTypeName], delay(() => keyTail)))))))):null;
       });
-      append(root, [actor, typeNode, cases, submit]);
+      append(root, [actor, typeNode, targetConfig, submit]);
       return Some(root);
     }
   }
@@ -103,51 +107,29 @@ function registerAppendInputRenderer(name, priority, renderer){
 function renderAppendInput(ctx){
   let _1;
   const typeName=asText(ctx.duTypeName);
+  const keyParts=map(asText, arrayOrEmpty(ctx.keyParts));
+  const isBackendTarget=length(keyParts)===3&&!isBlank(get(keyParts, 2));
   if(isBlank(typeName))return null;
   else {
-    const document=tryFindDocument(typeName);
-    const schema=document!=null&&document.$==1&&(!(document.$0.arguFormSchema==null)&&(_1=document.$0,true))?Some(_1.arguFormSchema):tryFindSchema(typeName);
-    if(schema!=null&&schema.$==1){
-      const schema_1=schema.$0;
-      const allowed=unionCaseNamesFromContext(ctx, schema_1);
-      const unionCases=filter((item) => exists((name) => name==asText(item.name), allowed), arrayOrEmpty(schema_1.unionCases));
-      if(length(unionCases)===0)return Some(errorNode("Dynamic Argu schema has no requested union cases for DU type: "+typeName));
-      else {
-        const root=setTestId("dynamic-argu-form", element("div", "dynamic-argu-form", null));
-        root.setAttribute("data-dynamic-argu-du-type", typeName);
-        root.setAttribute("data-dynamic-form-document-id", document==null?"":asText(document.$0.documentId));
-        root.setAttribute("data-dynamic-argu-union-cases", concat_2(",", allowed));
-        iter((unionCase) => {
-          let fieldGetters;
-          const caseName=asText(unionCase.name);
-          const caseRow=setTestId("dynamic-argu-case-"+caseName, element("section", "dynamic-argu-case-row", null));
-          caseRow.setAttribute("data-dynamic-argu-case", caseName);
-          const heading=setTestId("dynamic-argu-case-title-"+caseName, element("div", "dynamic-argu-case-title", caseName));
-          const fields=setTestId("dynamic-argu-fields-"+caseName, element("div", "dynamic-argu-fields", null));
-          const rawPreview=setTestId("dynamic-argu-raw-preview-"+caseName, element("pre", "dynamic-argu-raw-preview", ""));
-          const send=button("dynamic-argu-send", "dynamic-argu-send-"+caseName, "Send");
-          fieldGetters=[];
-          const refreshPreview=() => {
-            rawPreview.textContent=buildRawArgu(unionCase, fieldGetters);
-          };
-          fieldGetters=map((field) => {
-            const p=renderField(refreshPreview, field);
-            fields.appendChild(p[0]);
-            return[field, p[1]];
-          }, arrayOrEmpty(unionCase.fields));
-          send.addEventListener("click", () => {
-            const raw=buildRawArgu(unionCase, fieldGetters);
-            rawPreview.textContent=raw;
-            return ctx.submit(New_4(raw, typeName, caseName));
-          });
-          append(caseRow, [heading, fields, rawPreview, send]);
-          root.appendChild(caseRow);
-          refreshPreview();
-        }, unionCases);
-        return Some(root);
-      }
+    const root=setTestId("dynamic-argu-form", element("div", "dynamic-argu-form", "Loading Dynamic Argu form..."));
+    if(isBackendTarget){
+      postJson("/client-extensions/dynamic/argu/resolve-target", New_4(keyParts), (reply) => {
+        if(reply.ok&&!(reply.document==null)&&!(reply.document.arguFormSchema==null))renderSchemaIntoRoot(root, ctx, asText(reply.templateKey), Some(reply.document), reply.document.arguFormSchema);
+        else {
+          root.textContent="";
+          root.appendChild(errorNode(isBlank(reply.error)?"Dynamic Argu target resolution failed.":reply.error));
+        }
+      }, (error) => {
+        root.textContent="";
+        root.appendChild(errorNode(error));
+      });
+      return Some(root);
     }
-    else return Some(errorNode("Dynamic Form document or Argu schema not found for target: "+typeName));
+    else {
+      const document=tryFindDocument(typeName);
+      const schema=document!=null&&document.$==1&&(!(document.$0.arguFormSchema==null)&&(_1=document.$0,true))?Some(_1.arguFormSchema):tryFindSchema(typeName);
+      return schema!=null&&schema.$==1?(renderSchemaIntoRoot(root, ctx, typeName, document, schema.$0),Some(root)):Some(errorNode("Dynamic Form document or Argu schema not found for target: "+typeName));
+    }
   }
 }
 function doc(){
@@ -179,6 +161,15 @@ function upsertDocument(document){
 function asText(value){
   return value==null||Equals(typeof value, "undefined")?"":value;
 }
+function keyPartsFromJson(text){
+  let _1;
+  const m=tryDecodeJson(text);
+  if(m==null){
+    const m_1=tryDecodeJson(text);
+    return m_1!=null&&m_1.$==1&&(!isBlank(m_1.$0)&&(_1=m_1.$0,true))?[_1]:[];
+  }
+  else return map(asText, arrayOrEmpty(m.$0));
+}
 function errorNode(message){
   const root=setTestId("dynamic-argu-error", element("div", "dynamic-argu-error", message));
   root.setAttribute("role", "alert");
@@ -194,18 +185,11 @@ function setTestId(id, node){
   !isBlank(id)?node.setAttribute("data-testid", id):void 0;
   return node;
 }
-function tryFindDocument(documentId){
-  return tryFind((document) => asText(document.documentId)==asText(documentId), documents());
-}
 function tryFindSchema(duTypeName){
   return tryFind((schema) => asText(schema.duTypeName)==asText(duTypeName), schemas());
 }
-function input(inputType, className, testId){
-  const node=doc().createElement("input");
-  node.setAttribute("type", inputType);
-  node.className=className;
-  setTestId(testId, node);
-  return node;
+function tryFindDocument(documentId){
+  return tryFind((document) => asText(document.documentId)==asText(documentId), documents());
 }
 function elementValue(node){
   return node.value;
@@ -216,24 +200,11 @@ function button(className, testId, label_1){
   setTestId(testId, node);
   return node;
 }
-function queryInputs(root, selector){
-  const nodes=root.querySelectorAll(selector);
-  return ofSeq(delay(() => map_1((index) => nodes[index], range(0, toInt(nodes.length)-1))));
-}
 function append(parent, children){
   iter((child) => {
     parent.appendChild(child);
   }, children);
   return parent;
-}
-function keyPartsFromJson(text){
-  let _1;
-  const m=tryDecodeJson(text);
-  if(m==null){
-    const m_1=tryDecodeJson(text);
-    return m_1!=null&&m_1.$==1&&(!isBlank(m_1.$0)&&(_1=m_1.$0,true))?[_1]:[];
-  }
-  else return map(asText, arrayOrEmpty(m.$0));
 }
 function schemaKeys(){
   return sort(filter((x) =>!isBlank(x), map((a) => a.duTypeName, schemas())));
@@ -241,120 +212,51 @@ function schemaKeys(){
 function documentKeys(){
   return sort(filter((x) =>!isBlank(x), map((a) => a.documentId, documents())));
 }
-function unionCaseNamesFromContext(ctx, schema){
-  const allowed=filter((x) =>!isBlank(x), map(asText, arrayOrEmpty(ctx.unionCaseNames)));
-  return length(allowed)===0?map((a) => a.name, arrayOrEmpty(schema.unionCases)):allowed;
+function postJson(url, body, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST",
+    headers:headers,
+    body:JSON.stringify(body)
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
-function buildRawArgu(_1, fieldGetters){
-  return buildRawArguFromValues(map((_2) =>[_2[0], _2[1]()], fieldGetters));
-}
-function renderField(refresh, field){
-  let getter, _1;
-  const x=element("div", "dynamic-argu-field", null);
-  const row=setTestId("dynamic-argu-field-"+asText(field.name), x);
-  row.setAttribute("data-dynamic-argu-field", asText(field.name));
-  row.setAttribute("data-dynamic-argu-kind", asText(field.kind));
-  row.appendChild(label(isBlank(field.label)?field.name:field.label));
-  getter=() =>[];
-  const wireInputEvents=(node_4) => {
-    node_4.addEventListener("input", refresh);
-    node_4.addEventListener("change", refresh);
-  };
-  const renderScalarInput=(testId, itemKind, options) => {
-    const m_1=asText(itemKind);
-    switch(m_1){
-      case"number":
-        const node_4=input("number", "dynamic-argu-input", testId);
-        node_4.setAttribute("data-dynamic-argu-input", "true");
-        wireInputEvents(node_4);
-        return[node_4, () =>[elementValue(node_4)]];
-      case"enum":
-        const node_5=doc().createElement("select");
-        node_5.className="dynamic-argu-select";
-        setTestId(testId, node_5);
-        node_5.setAttribute("data-dynamic-argu-input", "true");
-        iter((value) => {
-          const option=doc().createElement("option");
-          option.setAttribute("value", asText(value));
-          option.textContent=asText(value);
-          node_5.appendChild(option);
-        }, arrayOrEmpty(options));
-        wireInputEvents(node_5);
-        return[node_5, () =>[elementValue(node_5)]];
-      case"bool-value":
-      case"bool":
-        const node_6=input("checkbox", "dynamic-argu-input", testId);
-        node_6.setAttribute("data-dynamic-argu-input", "true");
-        wireInputEvents(node_6);
-        return[node_6, () => ofSeq(delay(() => node_6.checked?["true"]:["false"]))];
-      default:
-        const node_7=input("text", "dynamic-argu-input", testId);
-        node_7.setAttribute("data-dynamic-argu-input", "true");
-        wireInputEvents(node_7);
-        return[node_7, () =>[node_7.value]];
-    }
-  };
-  const m=asText(field.kind);
-  switch(m){
-    case"number":
-      const node=input("number", "dynamic-argu-input", "dynamic-argu-number-"+asText(field.name));
-      _1=(node.setAttribute("data-dynamic-argu-input", "true"),wireInputEvents(node),row.appendChild(node),void(getter=() =>[elementValue(node)]));
-      break;
-    case"enum":
-      const node_1=doc().createElement("select");
-      _1=(node_1.className="dynamic-argu-select",setTestId("dynamic-argu-enum-"+asText(field.name), node_1),node_1.setAttribute("data-dynamic-argu-input", "true"),iter((value) => {
-        const option=doc().createElement("option");
-        option.setAttribute("value", asText(value));
-        option.textContent=asText(value);
-        node_1.appendChild(option);
-      }, arrayOrEmpty(field.options)),wireInputEvents(node_1),row.appendChild(node_1),void(getter=() =>[elementValue(node_1)]));
-      break;
-    case"tuple":
-      const x_1=element("div", "dynamic-argu-tuple", null);
-      const tuple=setTestId("dynamic-argu-tuple-"+asText(field.name), x_1);
-      const itemGetters=MarkResizable([]);
-      _1=(iteri((_2, _3) => {
-        const x_3=element("div", "dynamic-argu-tuple-item", null);
-        const itemRow=setTestId("dynamic-argu-tuple-item-"+String(asText(field.name))+"-"+String(_2+1), x_3);
-        itemRow.appendChild(label(String(_2+1)+". "+String(isBlank(_3.label)?_3.name:_3.label)));
-        const p=renderScalarInput("", _3.kind, _3.options);
-        const node_4=p[0];
-        node_4.setAttribute("data-dynamic-argu-tuple-item", String(_2+1));
-        itemGetters.push(p[1]);
-        itemRow.appendChild(node_4);
-        tuple.appendChild(itemRow);
-      }, arrayOrEmpty(field.items)),row.appendChild(tuple),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters))));
-      break;
-    case"list":
-      const x_2=element("div", "dynamic-argu-list", null);
-      const list=setTestId("dynamic-argu-list-"+asText(field.name), x_2);
-      const itemGetters_1=MarkResizable([]);
-      const add=button("dynamic-argu-add-list-item", "dynamic-argu-list-add-"+asText(field.name), "Add");
-      const addInput=() => {
-        const o=tryHead(arrayOrEmpty(field.items));
-        const item=o==null?New_31(field.name+"Item", field.label, "text", "", [], []):o.$0;
-        const p=renderScalarInput("dynamic-argu-list-item-"+asText(field.name), item.kind, item.options);
-        const node_4=p[0];
-        node_4.setAttribute("data-dynamic-argu-list-item", "true");
-        itemGetters_1.push(p[1]);
-        list.insertBefore(node_4, add);
-      };
-      _1=(add.addEventListener("click", () => {
-        addInput();
-        return refresh();
-      }),list.appendChild(add),addInput(),row.appendChild(list),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters_1))));
-      break;
-    case"bool-value":
-    case"bool":
-      const node_2=input("checkbox", "dynamic-argu-input", "dynamic-argu-bool-"+asText(field.name));
-      _1=(node_2.setAttribute("data-dynamic-argu-input", "true"),wireInputEvents(node_2),row.appendChild(node_2),void(getter=() => ofSeq(delay(() => node_2.checked?["true"]:["false"]))));
-      break;
-    default:
-      const node_3=input("text", "dynamic-argu-input", "dynamic-argu-text-"+asText(field.name));
-      _1=(node_3.setAttribute("data-dynamic-argu-input", "true"),wireInputEvents(node_3),row.appendChild(node_3),void(getter=() =>[node_3.value]));
-      break;
-  }
-  return[row, getter];
+function renderSchemaIntoRoot(root, context, typeName, document, schema){
+  root.textContent="";
+  const defaultMap=defaultsFromDocument(document);
+  const allowed=document==null?unionCaseNamesFromContext(context, schema):map((a) => a.name, arrayOrEmpty(schema.unionCases));
+  const unionCases=filter((item) => exists((name) => name==asText(item.name), allowed), arrayOrEmpty(schema.unionCases));
+  root.setAttribute("data-dynamic-argu-du-type", typeName);
+  root.setAttribute("data-dynamic-form-document-id", document==null?"":asText(document.$0.documentId));
+  root.setAttribute("data-dynamic-argu-union-cases", concat_2(",", allowed));
+  if(length(unionCases)===0)root.appendChild(errorNode("Dynamic Argu schema has no requested union cases for DU type: "+typeName));
+  else iter((unionCase) => {
+    let fieldGetters;
+    const caseName=asText(unionCase.name);
+    const caseRow=setTestId("dynamic-argu-case-"+caseName, element("section", "dynamic-argu-case-row", null));
+    caseRow.setAttribute("data-dynamic-argu-case", caseName);
+    const heading=setTestId("dynamic-argu-case-title-"+caseName, element("div", "dynamic-argu-case-title", isBlank(unionCase.label)?caseName:asText(unionCase.label)));
+    const fields=setTestId("dynamic-argu-fields-"+caseName, element("div", "dynamic-argu-fields", null));
+    const rawPreview=setTestId("dynamic-argu-raw-preview-"+caseName, element("pre", "dynamic-argu-raw-preview", ""));
+    const send=button("dynamic-argu-send", "dynamic-argu-send-"+caseName, "Send");
+    fieldGetters=[];
+    const refreshPreview=() => {
+      rawPreview.textContent=buildRawArgu(unionCase, fieldGetters);
+    };
+    fieldGetters=map((field) => {
+      const p=renderField(refreshPreview, defaultMap, caseName, field);
+      fields.appendChild(p[0]);
+      return[field, p[1]];
+    }, arrayOrEmpty(unionCase.fields));
+    send.addEventListener("click", () => {
+      const raw=buildRawArgu(unionCase, fieldGetters);
+      rawPreview.textContent=raw;
+      return context.submit(New_31(raw, typeName, caseName));
+    });
+    append(caseRow, [heading, fields, rawPreview, send]);
+    root.appendChild(caseRow);
+    refreshPreview();
+  }, unionCases);
 }
 function decodeJson(text){
   return JSON.parse(asText(text));
@@ -371,8 +273,190 @@ function set_documents(_1){
 function documents(){
   return _c_1.documents;
 }
+function errorMessage(error){
+  return error==null?"unknown error":String(error);
+}
+function unionCaseNamesFromContext(ctx, schema){
+  const allowed=filter((x) =>!isBlank(x), map(asText, arrayOrEmpty(ctx.unionCaseNames)));
+  return length(allowed)===0?map((a) => a.name, arrayOrEmpty(schema.unionCases)):allowed;
+}
+function buildRawArgu(_1, fieldGetters){
+  return buildRawArguFromValues(map((_2) =>[_2[0], _2[1]()], fieldGetters));
+}
+function renderField(refresh, defaultMap, caseName, field){
+  let getter, _1;
+  const x=element("div", "dynamic-argu-field", null);
+  const row=setTestId("dynamic-argu-field-"+asText(field.name), x);
+  row.setAttribute("data-dynamic-argu-field", asText(field.name));
+  row.setAttribute("data-dynamic-argu-kind", asText(field.kind));
+  row.appendChild(label(isBlank(field.label)?field.name:field.label));
+  const fieldDefaults=defaultValuesFor(defaultMap, caseName, field.name);
+  getter=() =>[];
+  const wireInputEvents=(node_4) => {
+    node_4.addEventListener("input", refresh);
+    node_4.addEventListener("change", refresh);
+  };
+  const renderScalarInput=(testId, itemKind, options, defaults) => {
+    const m_1=asText(itemKind);
+    switch(m_1){
+      case"number":
+        const node_4=input("number", "dynamic-argu-input", testId);
+        const o_3=tryHead(defaults);
+        let _5=o_3==null?"":o_3.$0;
+        node_4.value=_5;
+        node_4.setAttribute("data-dynamic-argu-input", "true");
+        wireInputEvents(node_4);
+        return[node_4, () =>[elementValue(node_4)]];
+      case"enum":
+        const node_5=doc().createElement("select");
+        node_5.className="dynamic-argu-select";
+        setTestId(testId, node_5);
+        node_5.setAttribute("data-dynamic-argu-input", "true");
+        iter((value_2) => {
+          const option=doc().createElement("option");
+          option.setAttribute("value", asText(value_2));
+          option.textContent=asText(value_2);
+          node_5.appendChild(option);
+        }, arrayOrEmpty(options));
+        const x_4=tryHead(defaults);
+        const v_1=elementValue(node_5);
+        let _6=x_4==null?v_1:x_4.$0;
+        setElementValue(node_5, _6);
+        wireInputEvents(node_5);
+        return[node_5, () =>[elementValue(node_5)]];
+      case"bool-value":
+      case"bool":
+        const node_6=input("checkbox", "dynamic-argu-input", testId);
+        const o_4=tryHead(defaults);
+        const value_1=o_4==null?"":o_4.$0;
+        node_6.checked=value_1.toLowerCase()=="true"||value_1=="1"||value_1.toLowerCase()=="yes";
+        node_6.setAttribute("data-dynamic-argu-input", "true");
+        wireInputEvents(node_6);
+        return[node_6, () => ofSeq(delay(() => node_6.checked?["true"]:["false"]))];
+      default:
+        const node_7=input("text", "dynamic-argu-input", testId);
+        const o_5=tryHead(defaults);
+        let _7=o_5==null?"":o_5.$0;
+        node_7.value=_7;
+        node_7.setAttribute("data-dynamic-argu-input", "true");
+        wireInputEvents(node_7);
+        return[node_7, () =>[node_7.value]];
+    }
+  };
+  const m=asText(field.kind);
+  switch(m){
+    case"number":
+      const node=input("number", "dynamic-argu-input", "dynamic-argu-number-"+asText(field.name));
+      const o=tryHead(fieldDefaults);
+      let _2=o==null?"":o.$0;
+      node.value=_2;
+      node.setAttribute("data-dynamic-argu-input", "true");
+      wireInputEvents(node);
+      row.appendChild(node);
+      _1=void(getter=() =>[elementValue(node)]);
+      break;
+    case"enum":
+      const node_1=doc().createElement("select");
+      node_1.className="dynamic-argu-select";
+      setTestId("dynamic-argu-enum-"+asText(field.name), node_1);
+      node_1.setAttribute("data-dynamic-argu-input", "true");
+      iter((value_1) => {
+        const option=doc().createElement("option");
+        option.setAttribute("value", asText(value_1));
+        option.textContent=asText(value_1);
+        node_1.appendChild(option);
+      }, arrayOrEmpty(field.options));
+      const x_1=tryHead(fieldDefaults);
+      const v=elementValue(node_1);
+      let _3=x_1==null?v:x_1.$0;
+      setElementValue(node_1, _3);
+      wireInputEvents(node_1);
+      row.appendChild(node_1);
+      _1=void(getter=() =>[elementValue(node_1)]);
+      break;
+    case"tuple":
+      const x_2=element("div", "dynamic-argu-tuple", null);
+      const tuple=setTestId("dynamic-argu-tuple-"+asText(field.name), x_2);
+      const itemGetters=MarkResizable([]);
+      _1=(iteri((_5, _6) => {
+        const x_4=element("div", "dynamic-argu-tuple-item", null);
+        const itemRow=setTestId("dynamic-argu-tuple-item-"+String(asText(field.name))+"-"+String(_5+1), x_4);
+        itemRow.appendChild(label(String(_5+1)+". "+String(isBlank(_6.label)?_6.name:_6.label)));
+        const p=renderScalarInput("", _6.kind, _6.options, defaultValuesFor(defaultMap, caseName, _6.name));
+        const node_4=p[0];
+        node_4.setAttribute("data-dynamic-argu-tuple-item", String(_5+1));
+        itemGetters.push(p[1]);
+        itemRow.appendChild(node_4);
+        tuple.appendChild(itemRow);
+      }, arrayOrEmpty(field.items)),row.appendChild(tuple),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters))));
+      break;
+    case"list":
+      const x_3=element("div", "dynamic-argu-list", null);
+      const list=setTestId("dynamic-argu-list-"+asText(field.name), x_3);
+      const itemGetters_1=MarkResizable([]);
+      const add=button("dynamic-argu-add-list-item", "dynamic-argu-list-add-"+asText(field.name), "Add");
+      const addInput=(defaults) => {
+        const o_3=tryHead(arrayOrEmpty(field.items));
+        const item=o_3==null?New_34(field.name+"Item", field.label, "text", "", [], []):o_3.$0;
+        const p=renderScalarInput("dynamic-argu-list-item-"+asText(field.name), item.kind, item.options, defaults);
+        const node_4=p[0];
+        node_4.setAttribute("data-dynamic-argu-list-item", "true");
+        itemGetters_1.push(p[1]);
+        list.insertBefore(node_4, add);
+      };
+      _1=(add.addEventListener("click", () => {
+        addInput([]);
+        return refresh();
+      }),list.appendChild(add),length(fieldDefaults)===0?addInput([]):iter((value_1) => {
+        addInput([value_1]);
+      }, fieldDefaults),row.appendChild(list),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters_1))));
+      break;
+    case"bool-value":
+    case"bool":
+      const node_2=input("checkbox", "dynamic-argu-input", "dynamic-argu-bool-"+asText(field.name));
+      const o_1=tryHead(fieldDefaults);
+      const value=o_1==null?"":o_1.$0;
+      _1=(node_2.checked=value.toLowerCase()=="true"||value=="1"||value.toLowerCase()=="yes",node_2.setAttribute("data-dynamic-argu-input", "true"),wireInputEvents(node_2),row.appendChild(node_2),void(getter=() => ofSeq(delay(() => node_2.checked?["true"]:["false"]))));
+      break;
+    default:
+      const node_3=input("text", "dynamic-argu-input", "dynamic-argu-text-"+asText(field.name));
+      const o_2=tryHead(fieldDefaults);
+      let _4=o_2==null?"":o_2.$0;
+      node_3.value=_4;
+      node_3.setAttribute("data-dynamic-argu-input", "true");
+      wireInputEvents(node_3);
+      row.appendChild(node_3);
+      _1=void(getter=() =>[node_3.value]);
+      break;
+  }
+  return[row, getter];
+}
+function defaultsFromDocument(document){
+  return document!=null&&document.$==1?document.$0==null?(document.$0,new FSharpMap("New", [])):OfArray(ofSeq(choose_1((node) => {
+    const binding=asText(node.binding);
+    const values=map(asText, arrayOrEmpty(node.defaultValues));
+    return isBlank(binding)||length(values)===0?null:Some([binding, values]);
+  }, collect_1(flattenNodeDefaults, arrayOrEmpty(document.$0.nodes))))):new FSharpMap("New", []);
+}
 function label(text){
   return element("label", "dynamic-argu-label", text);
+}
+function defaultValuesFor(defaultMap, caseName, fieldName){
+  const o=defaultMap.TryFind(asText(caseName)+"."+asText(fieldName));
+  return o==null?[]:o.$0;
+}
+function input(inputType, className, testId){
+  const node=doc().createElement("input");
+  node.setAttribute("type", inputType);
+  node.className=className;
+  setTestId(testId, node);
+  return node;
+}
+function setElementValue(node, value){
+  return node.value=value;
+}
+function flattenNodeDefaults(node){
+  return delay(() =>!(node==null)?append_2([node], delay(() => append_2(collect_1(flattenNodeDefaults, arrayOrEmpty(node.children)), delay(() => collect_1(flattenNodeDefaults, arrayOrEmpty(node.items)))))):[]);
 }
 function _registerRenderer(){
   globalThis.PulseTradeRegisterRenderer("fskynet-sdui", (text) => {
@@ -678,7 +762,7 @@ function defaultCacheLimit(){
   return _c.defaultCacheLimit;
 }
 function getJson(url, onOk, onError){
-  (globalThis.fetch(url, {cache:"no-store"}).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank_1(body)?"{}":body)):onError(isBlank_1(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, {cache:"no-store"}).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank_1(body)?"{}":body)):onError(isBlank_1(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage_1(error)));
 }
 function findAppendPage(path, pages){
   return tryFind((page) => isCurrentPage(path, pagePath(page))||isCurrentPage(path, "/page/"+asText_1(page.pageId))||isCurrentPage(path, "/"+asText_1(page.pageId)), arrayOrEmpty_1(pages));
@@ -1342,7 +1426,7 @@ function mountAppendPage(page, definition){
           }
         }
         catch(error){
-          return setStatus(status, "WebSocket sync parse failed: "+errorMessage(error));
+          return setStatus(status, "WebSocket sync parse failed: "+errorMessage_1(error));
         }
       };
       socket_1.onerror=() => {
@@ -1631,7 +1715,7 @@ function mountAppendPage(page, definition){
     const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request);
     refreshPendingState();
     setStatus(status, "Removing page; pending command saved in browser DB");
-    return postJson("/pages/api/remove-page", request, (reply) => {
+    return postJson_1("/pages/api/remove-page", request, (reply) => {
       deletePendingThen(pendingId, () => {
         writeAppendPagesDefinitions(reply);
         setStatus(status, "Page removed");
@@ -2002,7 +2086,7 @@ function mountSets(page){
       }
     }
     catch(error){
-      setStatus(status, "WebSocket sets sync parse failed: "+errorMessage(error));
+      setStatus(status, "WebSocket sets sync parse failed: "+errorMessage_1(error));
     }
   }
   ensureSetsSubscriptions=() => {
@@ -2220,7 +2304,7 @@ function mountActors(page){
       }
     }
     catch(error){
-      setStatus(status, "WebSocket actors sync parse failed: "+errorMessage(error));
+      setStatus(status, "WebSocket actors sync parse failed: "+errorMessage_1(error));
     }
   }
   reload.addEventListener("click", load);
@@ -2499,7 +2583,7 @@ function mountChat(page){
       else responseStatus=="error"?exists((id) => id==requestId, pendingWsChatIds)?(setStatus(state, pendingFailure("WebSocket chat send", asText_1(response.error))),refreshChatPendingState()):setStatus(state, "WebSocket chat error: "+asText_1(response.error)):null;
     }
     catch(error){
-      setStatus(state, "WebSocket chat parse failed: "+errorMessage(error));
+      setStatus(state, "WebSocket chat parse failed: "+errorMessage_1(error));
     }
   }
   function flushChatSyncFrames(socket){
@@ -2631,7 +2715,7 @@ function set_requestSeq(_1){
 function requestSeq(){
   return _c.requestSeq;
 }
-function errorMessage(error){
+function errorMessage_1(error){
   return error==null?"request failed":String(error);
 }
 function isCurrentPage(activePath, href){
@@ -2848,7 +2932,7 @@ function postAppendPageKey(url, body, onOk, onError){
     method:"POST",
     headers:headers,
     body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
 function pendingFailure(action, error){
   return String(action)+" failed; pending command kept in browser DB: "+String(asText_1(error));
@@ -3012,16 +3096,16 @@ function postJsonText(url, payloadJson, onOk, onError){
     method:"POST",
     headers:headers,
     body:textOr("{}", payloadJson)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
-function postJson(url, body, onOk, onError){
+function postJson_1(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
     method:"POST",
     headers:headers,
     body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
 function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
@@ -3030,7 +3114,7 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
     method:"POST",
     headers:headers,
     body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
 function setHref(href, node){
   node.setAttribute("href", href);
@@ -3142,7 +3226,7 @@ function renderPageCreator(nav, activePath, pages){
       const request=New_33(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
-      postJson("/pages/api/register-page", request, (reply) => {
+      postJson_1("/pages/api/register-page", request, (reply) => {
         deletePendingThen(pendingId, () => {
           writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty_1(reply.pages)), reply.maxSequence, reply.pages));
           refresh(reply.pages);
@@ -3192,7 +3276,7 @@ function renderPageCreator(nav, activePath, pages){
               });
             }
             catch(error){
-              setStatus(status, "Replay create page parse failed: "+errorMessage(error));
+              setStatus(status, "Replay create page parse failed: "+errorMessage_1(error));
               finishOne();
             }
           }, (error) => {
@@ -3591,22 +3675,15 @@ function V(name, attrs){
 function Some(Value){
   return{$:1, $0:Value};
 }
-function range(min, max_1){
-  const count=1+max_1-min;
-  return count<=0?[]:init_1(count, (x) => x+min);
-}
-function toInt(x){
-  const u=toUInt(x);
-  return u>2147483647?u-4294967296:u;
-}
 function FailWith(msg){
   throw new Error(msg);
 }
-function toUInt(x){
-  return(x<0?Math.ceil(x):Math.floor(x))>>>0;
-}
 function KeyValue(kvp){
   return[kvp.K, kvp.V];
+}
+function range(min, max_1){
+  const count=1+max_1-min;
+  return count<=0?[]:init_1(count, (x) => x+min);
 }
 function New(status, count, maxSequence, pages){
   return{
@@ -3631,24 +3708,14 @@ function sort(arr){
 function tryHead(arr){
   return arr.length===0?null:Some(arr[0]);
 }
-function filter(f, arr){
-  const r=[];
-  for(let i=0, _1=arr.length-1;i<=_1;i++)if(f(arr[i]))r.push(arr[i]);
-  return r;
-}
-function exists(f, x){
-  let e, i;
-  e=false;
-  i=0;
-  const l=length(x);
-  while(!e&&i<l)
-    if(f(x[i]))e=true;
-    else i=i+1;
-  return e;
-}
 function map(f, arr){
   const r=new Array(arr.length);
   for(let i=0, _1=arr.length-1;i<=_1;i++)r[i]=f(arr[i]);
+  return r;
+}
+function filter(f, arr){
+  const r=[];
+  for(let i=0, _1=arr.length-1;i<=_1;i++)if(f(arr[i]))r.push(arr[i]);
   return r;
 }
 function tryFind(f, arr){
@@ -3664,6 +3731,16 @@ function tryFind(f, arr){
 }
 function sortBy(f, arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) => Compare(_1[1], _2[1])));
+}
+function exists(f, x){
+  let e, i;
+  e=false;
+  i=0;
+  const l=length(x);
+  while(!e&&i<l)
+    if(f(x[i]))e=true;
+    else i=i+1;
+  return e;
 }
 function forall2(f, x1, x2){
   let a, i;
@@ -3704,9 +3781,6 @@ function mapi(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)y[i]=f(i, arr[i]);
   return y;
 }
-function iteri(f, arr){
-  for(let i=0, _1=arr.length-1;i<=_1;i++)f(i, arr[i]);
-}
 function skip(i, ar){
   return i<0?nonNegative():i>ar.length?insufficient():ar.slice(i);
 }
@@ -3723,6 +3797,9 @@ function ofList(xs){
       l=tail(l);
     }
   return q;
+}
+function iteri(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)f(i, arr[i]);
 }
 function choose(f, arr){
   const q=[];
@@ -3768,6 +3845,9 @@ function distinctBy(f, a){
 }
 function collect(f, x){
   return Array.prototype.concat.apply([], map(f, x));
+}
+function sortInPlace(arr){
+  mapInPlace((t) => t[0], mapiInPlace((_1, _2) =>[_2, _1], arr).sort(Compare));
 }
 function pick(f, arr){
   const m=tryPick(f, arr);
@@ -4372,38 +4452,8 @@ function append_2(s1, s2){
     });
   }};
 }
-function filter_1(f, s){
-  return{GetEnumerator:() => {
-    const o=Get(s);
-    return new T(null, null, (e) => {
-      let loop, c, res;
-      loop=o.MoveNext();
-      c=void 0;
-      res=false;
-      while(loop)
-        {
-          c=o.Current;
-          f(c)?(e.c=c,res=true,loop=false):!o.MoveNext()?loop=false:void 0;
-        }
-      return res;
-    }, () => {
-      o.Dispose();
-    });
-  }};
-}
-function map_1(f, s){
-  return{GetEnumerator:() => {
-    const en=Get(s);
-    return new T(null, null, (e) => en.MoveNext()&&(e.c=f(en.Current),true), () => {
-      en.Dispose();
-    });
-  }};
-}
 function distinct_1(s){
   return distinctBy_1((x) => x, s);
-}
-function collect_1(f, s){
-  return concat_1(map_1(f, s));
 }
 function distinctBy_1(f, s){
   return{GetEnumerator:() => {
@@ -4427,8 +4477,27 @@ function distinctBy_1(f, s){
     });
   }};
 }
-function init_1(n, f){
-  return take(n, initInfinite(f));
+function collect_1(f, s){
+  return concat_1(map_1(f, s));
+}
+function choose_1(f, s){
+  return collect_1((x) => {
+    const m=f(x);
+    return m==null?FSharpList.Empty:ofArray([m.$0]);
+  }, s);
+}
+function head(s){
+  const e=Get(s);
+  try {
+    return e.MoveNext()?e.Current:insufficient();
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function forall_1(p, s){
+  return!exists_1((x) =>!p(x), s);
 }
 function concat_1(ss){
   return{GetEnumerator:() => {
@@ -4466,42 +4535,13 @@ function concat_1(ss){
     });
   }};
 }
-function head(s){
-  const e=Get(s);
-  try {
-    return e.MoveNext()?e.Current:insufficient();
-  }
-  finally {
-    const _1=e;
-    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-  }
-}
-function forall_1(p, s){
-  return!exists_1((x) =>!p(x), s);
-}
-function take(n, s){
-  n<0?nonNegative():void 0;
+function map_1(f, s){
   return{GetEnumerator:() => {
-    const e=[Get(s)];
-    return new T(0, null, (o) => {
-      o.s=o.s+1;
-      if(o.s>n)return false;
-      else {
-        const en=e[0];
-        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
-      }
-    }, () => {
-      const x=e[0];
-      if(!Equals(x, null))x.Dispose();
+    const en=Get(s);
+    return new T(null, null, (e) => en.MoveNext()&&(e.c=f(en.Current),true), () => {
+      en.Dispose();
     });
   }};
-}
-function initInfinite(f){
-  return{GetEnumerator:() => new T(0, null, (e) => {
-    e.c=f(e.s);
-    e.s=e.s+1;
-    return true;
-  }, void 0)};
 }
 function exists_1(p, s){
   const e=Get(s);
@@ -4531,6 +4571,9 @@ function fold_1(f, x, s){
     if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
   }
 }
+function rev(s){
+  return delay(() => ofSeq(s).slice().reverse());
+}
 function iter_1(p, s){
   const e=Get(s);
   try {
@@ -4541,6 +4584,33 @@ function iter_1(p, s){
     const _1=e;
     if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
   }
+}
+function compareWith(f, s1, s2){
+  const e1=Get(s1);
+  try {
+    const e2=Get(s2);
+    try {
+      let r, loop;
+      r=0;
+      loop=true;
+      while(loop&&r===0)
+        if(e1.MoveNext())r=e2.MoveNext()?f(e1.Current, e2.Current):1;
+        else if(e2.MoveNext())r=-1;
+        else loop=false;
+      return r;
+    }
+    finally {
+      const _1=e2;
+      if(typeof _1=="object"&&isIDisposable(_1))e2.Dispose();
+    }
+  }
+  finally {
+    const _2=e1;
+    if(typeof _2=="object"&&isIDisposable(_2))e1.Dispose();
+  }
+}
+function forall2_1(p, s1, s2){
+  return!exists2((_1, _2) =>!p(_1, _2), s1, s2);
 }
 function max(s){
   const e=Get(s);
@@ -4561,103 +4631,72 @@ function max(s){
     if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
   }
 }
+function exists2(p, s1, s2){
+  const e1=Get(s1);
+  try {
+    const e2=Get(s2);
+    try {
+      let r;
+      r=false;
+      while(!r&&e1.MoveNext()&&e2.MoveNext())
+        r=p(e1.Current, e2.Current);
+      return r;
+    }
+    finally {
+      const _1=e2;
+      if(typeof _1=="object"&&isIDisposable(_1))e2.Dispose();
+    }
+  }
+  finally {
+    const _2=e1;
+    if(typeof _2=="object"&&isIDisposable(_2))e1.Dispose();
+  }
+}
+function init_1(n, f){
+  return take(n, initInfinite(f));
+}
 function seqEmpty(){
   return FailWith("The input sequence was empty.");
 }
-function concat_2(separator, strings){
-  return ofSeq(strings).join(separator);
+function take(n, s){
+  n<0?nonNegative():void 0;
+  return{GetEnumerator:() => {
+    const e=[Get(s)];
+    return new T(0, null, (o) => {
+      o.s=o.s+1;
+      if(o.s>n)return false;
+      else {
+        const en=e[0];
+        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
+      }
+    }, () => {
+      const x=e[0];
+      if(!Equals(x, null))x.Dispose();
+    });
+  }};
 }
-function TrimEnd(s, t){
-  let i, go;
-  if(Equals(t, null)||t.length==0)return TrimEndWS(s);
-  else {
-    i=s.length-1;
-    go=true;
-    while(i>=0&&go)
-      ((() => {
-        const c=s[i];
-        return exists((y) => c===y, t)?void(i=i-1):void(go=false);
-      })());
-    return Substring(s, 0, i+1);
-  }
+function initInfinite(f){
+  return{GetEnumerator:() => new T(0, null, (e) => {
+    e.c=f(e.s);
+    e.s=e.s+1;
+    return true;
+  }, void 0)};
 }
-function Trim(s){
-  return s.replace(new RegExp("^\\s+"), "").replace(new RegExp("\\s+$"), "");
-}
-function TrimEndWS(s){
-  return s.replace(new RegExp("\\s+$"), "");
-}
-function StartsWith(t, s){
-  return t.substring(0, s.length)==s;
-}
-function TrimStart(s, t){
-  let i, go;
-  if(Equals(t, null)||t.length==0)return TrimStartWS(s);
-  else {
-    i=0;
-    go=true;
-    while(i<s.length&&go)
-      ((() => {
-        const c=s[i];
-        return exists((y) => c===y, t)?void(i=i+1):void(go=false);
-      })());
-    return s.substring(i);
-  }
-}
-function IsNullOrWhiteSpace(x){
-  return x==null||(new RegExp("^\\s*$")).test(x);
-}
-function Substring(s, ix, ct){
-  return s.substr(ix, ct);
-}
-function TrimStartWS(s){
-  return s.replace(new RegExp("^\\s+"), "");
-}
-function Join(sep, values){
-  return values.join(sep);
-}
-function IsNullOrEmpty(x){
-  return x==null||x=="";
-}
-function SplitChars(s, sep, opts){
-  return Split(s, new RegExp("["+RegexEscape(sep.join(""))+"]"), opts);
-}
-function Replace(subject, search, replace){
-  function replaceLoop(subj){
-    const index=subj.indexOf(search);
-    if(index!==-1){
-      const replaced=ReplaceOnce(subj, search, replace);
-      const nextStartIndex=index+replace.length;
-      return Substring(replaced, 0, index+replace.length)+replaceLoop(replaced.substring(nextStartIndex));
+function unfold(f, s){
+  return{GetEnumerator:() => new T(s, null, (e) => {
+    const m=f(e.s);
+    if(m==null)return false;
+    else {
+      const t=m.$0[0];
+      const s_1=m.$0[1];
+      e.c=t;
+      e.s=s_1;
+      return true;
     }
-    else return subj;
-  }
-  return replaceLoop(subject);
+  }, void 0)};
 }
-function Split(s, pat, opts){
-  return opts===1?filter((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
-}
-function RegexEscape(s){
-  return s.replace(new RegExp("[-\\/\\\\^$*+?.()|[\\]{}]", "g"), "\\$&");
-}
-function ReplaceOnce(string_1, search, replace){
-  return string_1.replace(search, replace);
-}
-function SplitWith(str, pat){
-  return str.split(pat);
-}
-function forall_2(f, s){
-  return forall_1(f, protect(s));
-}
-function protect(s){
-  return s==null?"":s;
-}
-function New_4(rawArgu, duTypeName, unionCaseName){
-  return{
-    rawArgu:rawArgu,
-    duTypeName:duTypeName,
-    unionCaseName:unionCaseName
-  };
+function New_4(keys){
+  return{keys:keys};
 }
 function LoadLocalTemplates(baseName){
   !LocalTemplatesLoaded()?(set_LocalTemplatesLoaded(true),LoadNestedTemplates(globalThis.document.body, "")):void 0;
@@ -5054,6 +5093,94 @@ let _c=Lazy((_i) => class $StartupCode_Client {
     this.requestSeq=0;
   }
 });
+function TrimEnd(s, t){
+  let i, go;
+  if(Equals(t, null)||t.length==0)return TrimEndWS(s);
+  else {
+    i=s.length-1;
+    go=true;
+    while(i>=0&&go)
+      ((() => {
+        const c=s[i];
+        return exists((y) => c===y, t)?void(i=i-1):void(go=false);
+      })());
+    return Substring(s, 0, i+1);
+  }
+}
+function concat_2(separator, strings){
+  return ofSeq(strings).join(separator);
+}
+function Trim(s){
+  return s.replace(new RegExp("^\\s+"), "").replace(new RegExp("\\s+$"), "");
+}
+function TrimEndWS(s){
+  return s.replace(new RegExp("\\s+$"), "");
+}
+function StartsWith(t, s){
+  return t.substring(0, s.length)==s;
+}
+function TrimStart(s, t){
+  let i, go;
+  if(Equals(t, null)||t.length==0)return TrimStartWS(s);
+  else {
+    i=0;
+    go=true;
+    while(i<s.length&&go)
+      ((() => {
+        const c=s[i];
+        return exists((y) => c===y, t)?void(i=i+1):void(go=false);
+      })());
+    return s.substring(i);
+  }
+}
+function IsNullOrWhiteSpace(x){
+  return x==null||(new RegExp("^\\s*$")).test(x);
+}
+function Substring(s, ix, ct){
+  return s.substr(ix, ct);
+}
+function TrimStartWS(s){
+  return s.replace(new RegExp("^\\s+"), "");
+}
+function IsNullOrEmpty(x){
+  return x==null||x=="";
+}
+function Join(sep, values){
+  return values.join(sep);
+}
+function SplitChars(s, sep, opts){
+  return Split(s, new RegExp("["+RegexEscape(sep.join(""))+"]"), opts);
+}
+function Split(s, pat, opts){
+  return opts===1?filter((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
+}
+function RegexEscape(s){
+  return s.replace(new RegExp("[-\\/\\\\^$*+?.()|[\\]{}]", "g"), "\\$&");
+}
+function Replace(subject, search, replace){
+  function replaceLoop(subj){
+    const index=subj.indexOf(search);
+    if(index!==-1){
+      const replaced=ReplaceOnce(subj, search, replace);
+      const nextStartIndex=index+replace.length;
+      return Substring(replaced, 0, index+replace.length)+replaceLoop(replaced.substring(nextStartIndex));
+    }
+    else return subj;
+  }
+  return replaceLoop(subject);
+}
+function SplitWith(str, pat){
+  return str.split(pat);
+}
+function ReplaceOnce(string_1, search, replace){
+  return string_1.replace(search, replace);
+}
+function forall_2(f, s){
+  return forall_1(f, protect(s));
+}
+function protect(s){
+  return s==null?"":s;
+}
 class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
@@ -5436,16 +5563,6 @@ let _c_1=Lazy((_i) => class $StartupCode_ArguFormRenderer {
     this.documents=[];
   }
 });
-function New_31(name, label_1, kind, arguName, options, items){
-  return{
-    name:name,
-    label:label_1,
-    kind:kind,
-    arguName:arguName,
-    options:options,
-    items:items
-  };
-}
 function Get(x){
   return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):x.GetEnumerator();
 }
@@ -5490,58 +5607,12 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function buildRawArguFromValues(fields){
-  const parts=MarkResizable([]);
-  iter((_1) => appendFieldParts(parts, _1[0], _1[1]), arrayOrEmpty_2(fields));
-  return Join(" ", ofSeq(parts));
-}
-function arrayOrEmpty_2(values){
-  return values==null?[]:values;
-}
-function appendFieldParts(parts, field, values){
-  const values_1=filter((value_3) => value_3.length>0, map((a) => Trim(a), map(asText_2, arrayOrEmpty_2(values))));
-  const m=asText_2(field.kind);
-  if(m=="bool"){
-    const o=tryHead(values_1);
-    const o_1=o==null?null:Some(o.$0.toLowerCase());
-    if(o_1==null)void 0;
-    else {
-      const value=o_1.$0;
-      if(value=="true"||value=="1"||value=="yes")parts.push(asText_2(field.arguName));
-    }
-  }
-  else if(m=="bool-value"){
-    const o_2=tryHead(values_1);
-    if(o_2==null)void 0;
-    else {
-      const value_1=o_2.$0;
-      parts.push(asText_2(field.arguName));
-      parts.push(quoteArg(value_1));
-    }
-  }
-  else if(m=="list")iter((value_3) => {
-    parts.push(asText_2(field.arguName));
-    parts.push(quoteArg(value_3));
-  }, values_1);
-  else if(m=="tuple")length(values_1)>0?(parts.push(asText_2(field.arguName)),iter((x) => {
-    parts.push(quoteArg(x));
-  }, values_1)):void 0;
-  else {
-    const o_3=tryHead(values_1);
-    if(o_3==null)void 0;
-    else {
-      const value_2=o_3.$0;
-      parts.push(asText_2(field.arguName));
-      parts.push(quoteArg(value_2));
-    }
-  }
-}
-function asText_2(value){
-  return value==null?"":value;
-}
-function quoteArg(value){
-  const text=asText_2(value);
-  return text.length===0?"\"\"":exists_1(IsWhiteSpace, text)||text.indexOf("\"")!=-1?"\""+Replace(Replace(text, "\\", "\\\\"), "\"", "\\\"")+"\"":text;
+function New_31(rawArgu, duTypeName, unionCaseName){
+  return{
+    rawArgu:rawArgu,
+    duTypeName:duTypeName,
+    unionCaseName:unionCaseName
+  };
 }
 let _c_2=Lazy((_i) => class Var_1 extends Object_1 {
   static {
@@ -5756,7 +5827,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_34(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_35(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -5957,6 +6028,72 @@ function New_33(pageId, title, setName, shape, tabId, tabMode, path, description
     path:path,
     description:description
   };
+}
+function New_34(name, label_1, kind, arguName, options, items){
+  return{
+    name:name,
+    label:label_1,
+    kind:kind,
+    arguName:arguName,
+    options:options,
+    items:items
+  };
+}
+function buildRawArguFromValues(fields){
+  const parts=MarkResizable([]);
+  iter((_1) => appendFieldParts(parts, _1[0], _1[1]), arrayOrEmpty_2(fields));
+  return Join(" ", ofSeq(parts));
+}
+function arrayOrEmpty_2(values){
+  return values==null?[]:values;
+}
+function appendFieldParts(parts, field, values){
+  const values_1=filter((value_3) => value_3.length>0, map((a) => Trim(a), map(asText_2, arrayOrEmpty_2(values))));
+  const m=asText_2(field.kind);
+  if(m=="bool"){
+    const o=tryHead(values_1);
+    const o_1=o==null?null:Some(o.$0.toLowerCase());
+    if(o_1==null)void 0;
+    else {
+      const value=o_1.$0;
+      if(value=="true"||value=="1"||value=="yes")parts.push(asText_2(field.arguName));
+    }
+  }
+  else if(m=="bool-value"){
+    const o_2=tryHead(values_1);
+    if(o_2==null)void 0;
+    else {
+      const value_1=o_2.$0;
+      parts.push(asText_2(field.arguName));
+      parts.push(quoteArg(value_1));
+    }
+  }
+  else if(m=="list")iter((value_3) => {
+    parts.push(asText_2(field.arguName));
+    parts.push(quoteArg(value_3));
+  }, values_1);
+  else if(m=="tuple")length(values_1)>0?(parts.push(asText_2(field.arguName)),iter((x) => {
+    parts.push(quoteArg(x));
+  }, values_1)):void 0;
+  else {
+    const o_3=tryHead(values_1);
+    if(o_3==null)void 0;
+    else {
+      const value_2=o_3.$0;
+      parts.push(asText_2(field.arguName));
+      parts.push(quoteArg(value_2));
+    }
+  }
+}
+function asText_2(value){
+  return value==null?"":value;
+}
+function quoteArg(value){
+  const text=asText_2(value);
+  return text.length===0?"\"\"":exists_1(IsWhiteSpace, text)||text.indexOf("\"")!=-1?"\""+Replace(Replace(text, "\\", "\\\\"), "\"", "\\\"")+"\"":text;
+}
+function OfArray(a){
+  return new FSharpMap("New_1", OfSeq(map_1((_1) => Pair.New(_1[0], _1[1]), a)));
 }
 class ConcreteVar extends Var {
   isConst;
@@ -6516,6 +6653,13 @@ function nonNegative(){
 function insufficient(){
   return FailWith("The input sequence has an insufficient number of elements.");
 }
+function mapiInPlace(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
+  return arr;
+}
+function mapInPlace(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
+}
 function arrContains(item, arr){
   let c, i;
   c=true;
@@ -6525,6 +6669,42 @@ function arrContains(item, arr){
     if(Equals(arr[i], item))c=false;
     else i=i+1;
   return!c;
+}
+class FSharpMap extends Object_1 {
+  tree;
+  TryFind(k){
+    const o=TryFind(Pair.New(k, void 0), this.tree);
+    return o==null?null:Some(o.$0.Value);
+  }
+  Equals(other){
+    return this.Count===other.Count&&forall2_1(Equals, this, other);
+  }
+  get Count(){
+    const tree=this.tree;
+    return tree==null?0:tree.Count;
+  }
+  GetEnumerator(){
+    return Get(map_1((kv) =>({K:kv.Key, V:kv.Value}), Enumerate(false, this.tree)));
+  }
+  GetHashCode(){
+    return Hash(ofSeq(this));
+  }
+  CompareTo0(other){
+    return compareWith((_1, _2) => Compare(_1, _2), this, other);
+  }
+  constructor(i, _1){
+    let s;
+    if(i=="New"){
+      s=_1;
+      i="New_1";
+      _1=fromSeq(s);
+    }
+    if(i=="New_1"){
+      const tree=_1;
+      super();
+      this.tree=tree;
+    }
+  }
 }
 function Int(){
   set_counter(counter()+1);
@@ -6577,7 +6757,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_35(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_36(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -6854,7 +7034,7 @@ class DocElemNode {
     return Create_1(DocElemNode, _2);
   }
 }
-function New_34(PreviousNodes, Top){
+function New_35(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -6932,7 +7112,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_36((a) => {
+    r(New_38((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -6957,7 +7137,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_36((a) => {
+    if(!ct.c)c(New_38((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -7060,8 +7240,90 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function IsWhiteSpace(c){
-  return c.match(new RegExp("\\s"))!==null;
+function fromSeq(s){
+  const a=ofSeq(map_1((_1) => Pair.New(_1[0], _1[1]), distinctBy_1((t) => t[0], rev(s))));
+  sortInPlace(a);
+  return Build(a, 0, a.length-1);
+}
+class Pair {
+  Key;
+  Value;
+  Equals(other){
+    return Equals(this.Key, other.Key);
+  }
+  GetHashCode(){
+    return Hash(this.Key);
+  }
+  CompareTo0(other){
+    return Compare(this.Key, other.Key);
+  }
+  static New(Key, Value){
+    return Create_1(Pair, {Key:Key, Value:Value});
+  }
+}
+function OfSeq(data){
+  const a=ofSeq(distinct_1(data));
+  sortInPlace(a);
+  return Build(a, 0, a.length-1);
+}
+function TryFind(v, t){
+  const x=(Lookup(v, t))[0];
+  return x==null?null:Some(x.Node);
+}
+function Lookup(k, t){
+  let spine, t_1, loop;
+  spine=[];
+  t_1=t;
+  loop=true;
+  while(loop)
+    if(t_1==null)loop=false;
+    else {
+      const m=Compare(k, t_1.Node);
+      if(m===0)loop=false;
+      else m===1?(spine.unshift([true, t_1.Node, t_1.Left]),t_1=t_1.Right):(spine.unshift([false, t_1.Node, t_1.Right]),t_1=t_1.Left);
+    }
+  return[t_1, spine];
+}
+function Build(data, min, max_1){
+  if(max_1-min+1<=0)return null;
+  else {
+    const center=(min+max_1)/2>>0;
+    return Branch(get(data, center), Build(data, min, center-1), Build(data, center+1, max_1));
+  }
+}
+function Branch(node, left, right){
+  const a=left==null?0:left.Height;
+  const b=right==null?0:right.Height;
+  let _1=Compare(a, b)===1?a:b;
+  let _2=1+_1;
+  return New_37(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+}
+function Enumerate(flip, t){
+  function gen(t_1, spine){
+    let t_2;
+    while(true)
+      {
+        if(t_1==null){
+          if(spine.$==1){
+            const t_3=spine.$0[0];
+            const spine_1=spine.$1;
+            return Some([t_3, [spine.$0[1], spine_1]]);
+          }
+          else return null;
+        }
+        else if(flip){
+          t_2=t_1;
+          t_1=t_2.Right;
+          spine=FSharpList.Cons([t_2.Node, t_2.Left], spine);
+        }
+        else {
+          t_2=t_1;
+          t_1=t_2.Left;
+          spine=FSharpList.Cons([t_2.Node, t_2.Right], spine);
+        }
+      }
+  }
+  return unfold((_1) => gen(_1[0], _1[1]), [t, FSharpList.Empty]);
 }
 class Elt extends Doc {
   docNode_1;
@@ -7115,7 +7377,7 @@ class DynamicAttrNode extends Object_1 {
     }, view);
   }
 }
-function New_35(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_36(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
     DynElem:DynElem,
     DynFlags:DynFlags,
@@ -7195,6 +7457,18 @@ function TryParse_2(s, min, max_1, r){
   const ok=x===x-x%1&&x>=min&&x<=max_1;
   if(ok)r.set(x);
   return ok;
+}
+function IsWhiteSpace(c){
+  return c.match(new RegExp("\\s"))!==null;
+}
+function New_37(Node_1, Left, Right, Height, Count){
+  return{
+    Node:Node_1,
+    Left:Left,
+    Right:Right,
+    Height:Height,
+    Count:Count
+  };
 }
 let _c_6=Lazy((_i) => class $StartupCode_Abbrev {
   static {
@@ -7437,7 +7711,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_36(k, ct){
+function New_38(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -7459,7 +7733,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_37(false, []);
+    this.noneCT=New_39(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -7468,7 +7742,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_37(IsCancellationRequested, Registrations){
+function New_39(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -7726,7 +8000,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create(f){
-  return New_38(false, f, forceLazy);
+  return New_40(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -7747,7 +8021,7 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_38(created, evalOrVal, force){
+function New_40(created, evalOrVal, force){
   return{
     c:created,
     v:evalOrVal,

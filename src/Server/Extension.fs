@@ -7,15 +7,40 @@ open PulseTrade.Comm.Spa
 [<AutoOpen>]
 module CommHubExtensions =
 
+    let mergeMetadata left right =
+        { DynamicArguSchemas =
+            Array.append left.DynamicArguSchemas right.DynamicArguSchemas
+            |> Array.distinctBy _.DuTypeName
+          DynamicFormDocuments =
+            Array.append left.DynamicFormDocuments right.DynamicFormDocuments
+            |> Array.distinctBy _.DocumentId }
+
     type CommHub with
         /// 將 Dynamic Sdui Actor、路由與 FormInput metadata 掛載至現有的 CommHub。
         /// Host 應在自己的 assembly 宣告 IArgParserTemplate DU，轉成 SduiFormDocument 後傳入；package 本身不內建 host-specific demo DU。
-        member this.useDynamicSdui(actorSystem: ActorSystem, metadata: DynamicArguMetadata) =
+        member this.useDynamicSdui(actorSystem: ActorSystem, metadata: DynamicArguMetadata, registrations: DynamicArguTemplateRegistration seq) =
             let metadata =
                 if isNull (box metadata) then
                     DynamicArguMetadata.empty
                 else
                     metadata
+
+            let registrations =
+                if isNull (box registrations) then
+                    [||]
+                else
+                    registrations |> Seq.toArray
+
+            let metadata =
+                registrations
+                |> DynamicArguTemplateRegistration.metadata
+                |> mergeMetadata metadata
+
+            if registrations.Length > 0 then
+                this.RegisterClientExtensionJsonPostHandler(
+                    DynamicArguResolveEndpoint.path,
+                    DynamicArguResolveEndpoint.handle registrations)
+                |> ignore
 
             // 註冊 "Actor Dynamic" 展示用的後端 Actor
             let props = Props.Create(fun () -> new ShowcaseDemoActor())
@@ -77,6 +102,11 @@ module CommHubExtensions =
             |> ignore
 
             this // Return self for fluent API
+
+        /// 將 Dynamic Sdui Actor、路由與 FormInput metadata 掛載至現有的 CommHub。
+        /// Host 應在自己的 assembly 宣告 IArgParserTemplate DU，轉成 SduiFormDocument 後傳入；package 本身不內建 host-specific demo DU。
+        member this.useDynamicSdui(actorSystem: ActorSystem, metadata: DynamicArguMetadata) =
+            this.useDynamicSdui(actorSystem, metadata, Seq.empty)
 
         /// 將 Dynamic Sdui Actor 與路由掛載至現有的 CommHub
         member this.useDynamicSdui(actorSystem: ActorSystem) =

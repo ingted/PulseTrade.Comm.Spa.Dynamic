@@ -53,4 +53,5 @@
 | `DYN-T-508` | `DYN-WBS-509` | Alias binding verifies case/field/option aliases enter DSL labels but not raw command semantics。 |
 | `DYN-T-509` | `DYN-WBS-508` | Parser-backed Form DSL defaults verify rendered section order and `SduiFormNode.DefaultValues` come from registered Argu parse result and token scan。 |
 | `DYN-T-510` | `DYN-WBS-510` | Subcommand raw builder verifies `ParseResults<PFCF_AKKA_CMD_DATA_RANGE>` rebuilds exact PFCF command with `datarange` tail ordering。 |
-| `DYN-T-511` | `DYN-WBS-511` | Browser E2E verifies add target key -> backend resolved FormInput DSL -> alias/default rendering -> submit exact raw command -> RN/echo reply。 |
+| `DYN-T-511` | `DYN-WBS-511` | Package Expecto verifies `DynamicArguResolveEndpoint` accepts `[actorAddress; duTypeOrTemplateKey; canonicalArgString]`, resolves through registered Argu parser, and returns backend FormInput DSL with alias/default projection；client append renderer compiles against this backend-resolved fetch path。 |
+| `DYN-T-512` | `DYN-WBS-512` | Browser E2E verifies add target key -> backend resolved FormInput DSL -> alias/default rendering -> submit exact raw command -> RN/echo reply。 |
