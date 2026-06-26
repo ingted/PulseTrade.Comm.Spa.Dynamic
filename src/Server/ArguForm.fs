@@ -608,10 +608,82 @@ module DynamicFormDsl =
                 |> Map.tryFind node.Binding
                 |> Option.defaultValue node.DefaultValues
 
+        let options =
+            if String.Equals(node.Kind, "Select", StringComparison.OrdinalIgnoreCase) then
+                let existing =
+                    node.Options
+                    |> Array.map _.Value
+                    |> Set.ofArray
+
+                let defaultOptions =
+                    defaultValues
+                    |> Array.filter (String.IsNullOrWhiteSpace >> not)
+                    |> Array.distinct
+                    |> Array.filter (fun value -> existing |> Set.contains value |> not)
+                    |> Array.map (fun value -> { Value = value; Label = value })
+
+                Array.append node.Options defaultOptions
+            else
+                node.Options
+
         { node with
             DefaultValues = defaultValues
+            Options = options
             Children = node.Children |> Array.map (applyDefaultsToNode defaults)
             Items = node.Items |> Array.map (applyDefaultsToNode defaults) }
+
+    let addDefaultOptionValues existingOptions defaultValues =
+        let existing =
+            existingOptions
+            |> Array.map id
+            |> Set.ofArray
+
+        let appended =
+            defaultValues
+            |> Array.filter (String.IsNullOrWhiteSpace >> not)
+            |> Array.distinct
+            |> Array.filter (fun value -> existing |> Set.contains value |> not)
+
+        Array.append existingOptions appended
+
+    let rec addDefaultOptionsToField defaults caseName inheritedDefaults (field: ArguFormField) =
+        let binding = $"{caseName}.{field.Name}"
+
+        let directDefaults =
+            defaults
+            |> Map.tryFind binding
+            |> Option.defaultValue [||]
+
+        let fieldDefaults =
+            if directDefaults.Length > 0 then directDefaults else inheritedDefaults
+
+        let options =
+            if String.Equals(field.Kind, "enum", StringComparison.OrdinalIgnoreCase) then
+                addDefaultOptionValues field.Options fieldDefaults
+            else
+                field.Options
+
+        let items =
+            match field.Kind with
+            | kind when String.Equals(kind, "list", StringComparison.OrdinalIgnoreCase) ->
+                field.Items
+                |> Array.mapi (fun index item ->
+                    let itemInheritedDefaults = if index = 0 then directDefaults else [||]
+                    addDefaultOptionsToField defaults caseName itemInheritedDefaults item)
+            | _ ->
+                field.Items |> Array.map (addDefaultOptionsToField defaults caseName [||])
+
+        { field with
+            Options = options
+            Items = items }
+
+    let addDefaultOptionsToSchema defaults schema =
+        { schema with
+            UnionCases =
+                schema.UnionCases
+                |> Array.map (fun unionCase ->
+                    { unionCase with
+                        Fields = unionCase.Fields |> Array.map (addDefaultOptionsToField defaults unionCase.Name [||]) }) }
 
     let applyParsedDefaultsToDocument parsedTarget (document: SduiFormDocument) =
         let defaults = defaultsFromParsedTargetForSchema document.ArguFormSchema parsedTarget
@@ -638,6 +710,7 @@ module DynamicFormDsl =
 
     let fromParsedArguTargetSchema documentId aliases schema parsedTarget =
         let defaults = defaultsFromParsedTargetForSchema schema parsedTarget
+        let schema = addDefaultOptionsToSchema defaults schema
 
         schema
         |> fromArguFormSchemaWithAliases documentId aliases

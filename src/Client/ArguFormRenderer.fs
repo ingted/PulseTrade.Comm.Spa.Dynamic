@@ -844,17 +844,17 @@ module ArguFormRenderer =
     let registerRenderer name priority renderer =
         let register = JS.Global?PulseTradeRegisterRenderer
         if JS.TypeOf register = JS.Kind.Function then
-            JS.Global?PulseTradeRegisterRenderer(name, priority, renderer)
+            JS.Inline("window.PulseTradeRegisterRenderer($0, $1, $2)", name, priority, renderer)
 
     let registerAppendInputRenderer name priority renderer =
         let register = JS.Global?PulseTradeRegisterAppendInputRenderer
         if JS.TypeOf register = JS.Kind.Function then
-            JS.Global?PulseTradeRegisterAppendInputRenderer(name, priority, renderer)
+            JS.Inline("window.PulseTradeRegisterAppendInputRenderer($0, $1, $2)", name, priority, renderer)
 
     let registerAddKeyRenderer name priority renderer =
         let register = JS.Global?PulseTradeRegisterAddKeyRenderer
         if JS.TypeOf register = JS.Kind.Function then
-            JS.Global?PulseTradeRegisterAddKeyRenderer(name, priority, renderer)
+            JS.Inline("window.PulseTradeRegisterAddKeyRenderer($0, $1, $2)", name, priority, renderer)
 
     [<JavaScriptExport>]
     let Register () =

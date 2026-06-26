@@ -598,6 +598,30 @@ let tests =
                 [| "20251104" |]
                 "endpoint document should preserve tail tuple item default 2"
 
+            let rec flattenField (field: ArguFormField) =
+                seq {
+                    yield field
+
+                    for item in field.Items do
+                        yield! flattenField item
+                }
+
+            let schemaOptions unionCaseName fieldName =
+                reply.Document.ArguFormSchema.UnionCases
+                |> Seq.find (fun unionCase -> unionCase.Name = unionCaseName)
+                |> fun unionCase -> unionCase.Fields |> Seq.collect flattenField
+                |> Seq.find (fun field -> field.Name = fieldName)
+                |> _.Options
+
+            Expect.contains
+                (schemaOptions "PFCFGTCCONF" "valueItem")
+                "OIInf"
+                "endpoint schema should append canonical list enum defaults so frontend select can preserve raw casing"
+            Expect.contains
+                (schemaOptions "DataRange" "ReferenceDateMode.value")
+                "ModeAccountingDate"
+                "endpoint schema should append canonical tail enum defaults so frontend select can preserve raw casing"
+
             let rec fieldValues unionCaseName (field: ArguFormField) =
                 let collectByPrefix () =
                     let prefix =

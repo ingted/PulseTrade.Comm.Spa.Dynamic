@@ -32,7 +32,7 @@ function loadSchemasFromManifest(){
   else void 0;
 }
 function registerAddKeyRenderer(name, priority, renderer){
-  if(Equals(typeof globalThis.PulseTradeRegisterAddKeyRenderer, "function"))globalThis.PulseTradeRegisterAddKeyRenderer([name, priority, renderer]);
+  if(Equals(typeof globalThis.PulseTradeRegisterAddKeyRenderer, "function"))globalThis.PulseTradeRegisterAddKeyRenderer(name, priority, renderer);
 }
 function renderAddKey(ctx){
   let selectedTypeName, typeNode;
@@ -102,7 +102,7 @@ function renderAddKey(ctx){
   }
 }
 function registerAppendInputRenderer(name, priority, renderer){
-  if(Equals(typeof globalThis.PulseTradeRegisterAppendInputRenderer, "function"))globalThis.PulseTradeRegisterAppendInputRenderer([name, priority, renderer]);
+  if(Equals(typeof globalThis.PulseTradeRegisterAppendInputRenderer, "function"))globalThis.PulseTradeRegisterAppendInputRenderer(name, priority, renderer);
 }
 function renderAppendInput(ctx){
   let _1;
