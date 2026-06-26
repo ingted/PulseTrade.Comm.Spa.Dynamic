@@ -74,7 +74,8 @@ type ClientExtensionRegistrationDto =
 type AddKeyContextDto =
     { shape: string
       defaultKey: string
-      submitKey: obj -> unit }
+      submitKey: obj -> unit
+      setKeyJson: obj -> unit }
 
 [<JavaScript>]
 type AppendInputContextDto =
@@ -367,19 +368,29 @@ module ArguFormRenderer =
                 |> Array.distinct
                 |> Array.sort
             let defaultKeyParts = keyPartsFromJson context.defaultKey
-            let actorAddress =
+            let defaultActorAddress =
                 defaultKeyParts
                 |> Array.tryHead
                 |> Option.defaultValue ""
+            let defaultTypeName =
+                if keys.Length = 0 then
+                    ""
+                elif defaultKeyParts.Length > 1 && keys |> Array.exists (fun key -> key = defaultKeyParts[1]) then
+                    defaultKeyParts[1]
+                else
+                    keys[0]
 
             if keys.Length = 0 then
                 Some(errorNode "No Dynamic Argu schemas are registered." :> Node)
-            elif isBlank actorAddress then
-                Some(errorNode "Dynamic Argu default key must include actor address as the first JSON list item." :> Node)
             else
                 let root = element "div" "dynamic-argu-add-key" null |> setTestId "dynamic-argu-add-key"
-                let actor = element "code" "dynamic-argu-actor-address" actorAddress |> setTestId "dynamic-argu-key-actor"
-                let mutable selectedTypeName = keys[0]
+                let actorLabel = element "label" "dynamic-argu-label" "Actor address"
+                actorLabel.SetAttribute("for", "dynamic-argu-key-actor")
+                let actor = input "text" "dynamic-argu-actor-address" "dynamic-argu-key-actor"
+                actor.SetAttribute("id", "dynamic-argu-key-actor")
+                actor.SetAttribute("placeholder", "/user/durable-proxy")
+                actor.Value <- defaultActorAddress
+                let mutable selectedTypeName = defaultTypeName
                 let typeNode =
                     if keys.Length = 1 then
                         let node = element "code" "dynamic-argu-du-type" selectedTypeName |> setTestId "dynamic-argu-key-du-type"
@@ -396,6 +407,7 @@ module ArguFormRenderer =
                             option.TextContent <- key
                             typeSelect.AppendChild option |> ignore)
 
+                        setElementValue typeSelect selectedTypeName
                         typeSelect :> Node
 
                 let targetConfig = element "div" "dynamic-argu-target-config" null |> setTestId "dynamic-argu-key-target-config"
@@ -442,6 +454,7 @@ module ArguFormRenderer =
                 submit.AddEventListener(
                     "click",
                     fun () ->
+                        let actorAddress = actor.Value.Trim()
                         let keyTail =
                             match tryFindDocument selectedTypeName with
                             | Some _ -> [||]
@@ -454,7 +467,9 @@ module ArguFormRenderer =
                                 else
                                     [| canonicalArgString |]
 
-                        if Option.isSome (tryFindDocument selectedTypeName) || keyTail.Length > 0 then
+                        if isBlank actorAddress then
+                            actor.Focus()
+                        elif Option.isSome (tryFindDocument selectedTypeName) || keyTail.Length > 0 then
                             let payload: KeySubmitPayloadDto =
                                 { keys =
                                     [| yield actorAddress
@@ -463,7 +478,7 @@ module ArguFormRenderer =
 
                             context.submitKey(box payload))
 
-                append root [| actor :> Node; typeNode; targetConfig :> Node; submit :> Node |] |> ignore
+                append root [| actorLabel :> Node; actor :> Node; typeNode; targetConfig :> Node; submit :> Node |] |> ignore
                 Some(root :> Node)
 
     let unionCaseNamesFromContext (ctx: AppendInputContextDto) (schema: ArguFormSchemaDto) =
