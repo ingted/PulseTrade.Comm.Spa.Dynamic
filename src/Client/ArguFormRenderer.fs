@@ -222,7 +222,7 @@ module ArguFormRenderer =
         (node |> As<HTMLInputElement>).Value
 
     let setElementValue (node: #Element) value =
-        JS.Inline("$0.value = $1", node, value)
+        (node |> As<HTMLInputElement>).Value <- value
 
     let queryInputs (root: #Element) selector =
         let nodes = root.QuerySelectorAll(selector)
@@ -390,25 +390,20 @@ module ArguFormRenderer =
                 actor.SetAttribute("id", "dynamic-argu-key-actor")
                 actor.SetAttribute("placeholder", "/user/durable-proxy")
                 actor.Value <- defaultActorAddress
-                let mutable selectedTypeName = defaultTypeName
-                let typeNode =
-                    if keys.Length = 1 then
-                        let node = element "code" "dynamic-argu-du-type" selectedTypeName |> setTestId "dynamic-argu-key-du-type"
-                        node :> Node
-                    else
-                        let typeSelect = doc.CreateElement("select") :?> HTMLSelectElement
-                        typeSelect.ClassName <- "dynamic-argu-du-type"
-                        setTestId "dynamic-argu-key-du-type" typeSelect |> ignore
+                let typeListId = "dynamic-argu-key-du-type-list"
+                let typeInput = input "text" "dynamic-argu-du-type" "dynamic-argu-key-du-type"
+                typeInput.SetAttribute("list", typeListId)
+                typeInput.SetAttribute("placeholder", "DU type or template key")
+                typeInput.Value <- defaultTypeName
+                let typeCandidates = doc.CreateElement("datalist")
+                typeCandidates.SetAttribute("id", typeListId)
 
-                        keys
-                        |> Array.iter (fun key ->
-                            let option = doc.CreateElement("option")
-                            option.SetAttribute("value", key)
-                            option.TextContent <- key
-                            typeSelect.AppendChild option |> ignore)
-
-                        setElementValue typeSelect selectedTypeName
-                        typeSelect :> Node
+                keys
+                |> Array.iter (fun key ->
+                    let option = doc.CreateElement("option")
+                    option.SetAttribute("value", key)
+                    option.TextContent <- key
+                    typeCandidates.AppendChild option |> ignore)
 
                 let targetConfig = element "div" "dynamic-argu-target-config" null |> setTestId "dynamic-argu-key-target-config"
                 let argInput = doc.CreateElement("textarea") :?> HTMLTextAreaElement
@@ -427,7 +422,7 @@ module ArguFormRenderer =
 
                 let renderTargetConfig () =
                     targetConfig.TextContent <- ""
-                    let typeName = selectedTypeName
+                    let typeName = typeInput.Value.Trim()
 
                     match tryFindDocument typeName with
                     | Some _ ->
@@ -441,12 +436,8 @@ module ArguFormRenderer =
                             targetConfig.AppendChild label |> ignore
                             targetConfig.AppendChild argInput |> ignore
 
-                match typeNode with
-                | :? HTMLSelectElement as typeSelect ->
-                    typeSelect.AddEventListener("change", fun () ->
-                        selectedTypeName <- elementValue typeSelect
-                        renderTargetConfig ())
-                | _ -> ()
+                typeInput.AddEventListener("input", fun () -> renderTargetConfig ())
+                typeInput.AddEventListener("change", fun () -> renderTargetConfig ())
 
                 renderTargetConfig ()
 
@@ -455,6 +446,7 @@ module ArguFormRenderer =
                     "click",
                     fun () ->
                         let actorAddress = actor.Value.Trim()
+                        let selectedTypeName = typeInput.Value.Trim()
                         let keyTail =
                             match tryFindDocument selectedTypeName with
                             | Some _ -> [||]
@@ -478,7 +470,7 @@ module ArguFormRenderer =
 
                             context.submitKey(box payload))
 
-                append root [| actorLabel :> Node; actor :> Node; typeNode; targetConfig :> Node; submit :> Node |] |> ignore
+                append root [| actorLabel :> Node; actor :> Node; typeInput :> Node; typeCandidates :> Node; targetConfig :> Node; submit :> Node |] |> ignore
                 Some(root :> Node)
 
     let unionCaseNamesFromContext (ctx: AppendInputContextDto) (schema: ArguFormSchemaDto) =

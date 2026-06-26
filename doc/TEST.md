@@ -303,7 +303,7 @@ Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 - controlled failure is returned as JSON `Ok=false` instead of silent fallback；
 - WebSharper client append renderer compiles with the backend-resolved fetch path and document-backed full-form Send path.
 
-Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -p:WebSharperRunCompiler=false -- --summary --no-spinner` passed 14/14 for beta6。The beta6 package gate additionally verifies exact canonical enum defaults are present in FormInput select options, including `PFCFGTCCONF.valueItem = OIInf` and `DataRange.ReferenceDateMode.value = ModeAccountingDate`。
+Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -p:WebSharperRunCompiler=false -- --summary --no-spinner` passed 15/15 for beta8。The package gate verifies exact canonical enum defaults are present in FormInput select options, including `PFCFGTCCONF.valueItem = OIInf` and `DataRange.ReferenceDateMode.value = ModeAccountingDate`；it also verifies a partial canonical arg string `--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX` renders only `PFCFEDX` and `PFCFGTCCONF` instead of the full DU schema。
 
 ### DYN-T-512 Browser E2E for backend-resolved FormInput DSL
 
@@ -323,10 +323,10 @@ create actor-dynamic page
 
 UI gate must inspect visible labels/controls and final submitted raw string. It must not pass by only testing server codec.
 
-Latest evidence：2026-06-26 `dotnet fsi --exec G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-dynamic-argu-live.fsx` passed with:
+Latest evidence：2026-06-26 `dotnet fsi --exec G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-dynamic-argu-live.fsx -- --port 0 --extension-dir C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Release\net10.0` passed with:
 
 ```text
-ptcsHostDynamicArguLive.ok url=http://127.0.0.1:10850 page=http://127.0.0.1:10850/page/dyn-argu-live81 template=PulseTrade.Comm.Spa.Host.Program+DynamicArguDemo+PFCF_AKKA_CMD submit=echo-verified serviceLog=G:\log\20260626\verify-ptcs-host-dynamic-argu-live.service.log
+ptcsHostDynamicArguLive.ok url=http://127.0.0.1:13471 page=http://127.0.0.1:13471/page/dyn-argu-live81 template=PulseTrade.Comm.Spa.Host.Program+DynamicArguDemo+PFCF_AKKA_CMD submit=echo-verified pcslRoot=G:\PulseTrade.fs.Comm.Log\verification\ptcsHostDynamicArguLive\pcsl runPcslRoot=G:\PulseTrade.fs.Comm.Log\verification\ptcsHostDynamicArguLive\pcsl\run-614be4276c3949b58f95489c770cae8e serviceLog=G:\PulseTrade.fs.Comm.Log\verification\ptcsHostDynamicArguLive\verify-ptcs-host-dynamic-argu-live.service.log
 ```
 
-The gate used PTCS.Host loopback, loaded the Dynamic extension DLL, rendered all parsed PFCF data-range sections, submitted the expected full raw Argu string, and verified DurableProxy echo readback. Remaining gates are manual add-target-key dialog coverage and public deployed 81/443 service verification.
+The gate used PTCS.Host loopback, loaded the Dynamic extension DLL, rendered all parsed PFCF data-range sections, submitted the expected full raw Argu string, and verified DurableProxy echo readback. It also covers the user-facing add-target path: editable DU/template key text input, no-target cleanup after removing the last key, generic `actor-argu` add-target UI after removing the demo page, partial raw command rendering only `PFCFEDX/PFCFGTCCONF`, and canonical input preservation so it cannot regress to `"s"`. Public 81 is deployed with beta8 assets, but post-login browser visual confirmation remains a human OAuth-session gate.

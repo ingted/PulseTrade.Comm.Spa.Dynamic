@@ -95,3 +95,32 @@ UI verifier 應用 F# + Playwright native API 驅動：
 6. 確認 Dynamic add-target UI 出現。
 7. 以 actor address、DU/template key、canonical arg string 新增 target。
 8. 確認 FormInput 重新出現並能走 submit path。
+
+## 2026-06-26：Arg-string target 必須真的 parse
+
+現象：
+
+- 使用者在 add-target UI 輸入 partial canonical arg string，例如 `--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX`。
+- FormInput 仍渲染完整 PFCF 表單，像是 `TO`、`BBA`、`DataRange` 等未出現在 raw command 的 union cases 也全部出現。
+- DU/template key 欄位在只有一個 template 時被 render 成不可編輯的文字，無法改成其他 type string。
+- 移除 page 後重新新增 target 時，Canonical Argu string 可能被污染成單字 `"s"`，導致 resolver 和 FormInput 都錯。
+
+正確語意：
+
+1. `[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]` 的第三段不是展示用範本字串，而是 Dynamic backend 的 parser input。
+2. Dynamic backend 必須用該 template 的 registered Argu parser parse `canonicalArgString`。
+3. Form DSL 只應包含 parse result 中出現的 root cases / subcommand cases。
+4. 對 `--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX`，FormInput 只應渲染 `PFCFEDX.mode` 與 appendable `PFCFGTCCONF.value`。
+5. 未出現在 parse result 的 cases，例如 `TO`、`BBA`、`DataRange`，不得出現在這個 partial target 的 FormInput。
+
+修正原則：
+
+- backend：`DynamicArgStringTarget.scan` / `DynamicFormDsl.filterSchemaByParsedRootCases` 是 canonical path；client 不能自行用 full schema 假裝已解析。
+- add-key UI：DU/template key 一律是可編輯 text input + datalist。即使 registry 只有一個 template，也不能 render 成 `<code>` 或不可變 text。
+- canonical raw input：移除 key、移除 page、重新新增 page 後，都必須保留使用者輸入的完整字串；不能被 keypress / state replay 污染成 `"s"` 或其他單字。
+- verifier：要同時測 full command 和 partial command。partial command 必須 assert rendered case list 精準等於 parsed cases，並確認未解析 cases count 為 0。
+
+本輪 evidence：
+
+- `DYN-T-512` package gate 新增 partial raw resolver case；`PulseTrade.Comm.Spa.Dynamic.Tests` 15/15 passed。
+- `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-dynamic-argu-live.fsx` 新增 Playwright gate：full PFCF data-range command、partial command、editable DU/template key、remove target -> no-target -> add partial target、remove page -> create generic `actor-argu` page -> add partial target，以及 submit 前 canonical input value 必須等於 typed raw string。

@@ -159,6 +159,8 @@ let testArguDuTypeName = typeof<TestArgu>.FullName
 let pfcfDuTypeName = typeof<PFCF_AKKA_CMD>.FullName
 let pfcfDataRangeExpectedRaw =
     "--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX FillSquareCombine OrderByTXDT CathayBKTaifexFill --to 90000 --parentchilds 2 5 --bba F008 000 9910357 --decimalquote 6 0 --round 6 4 2 datarange --referencedatemode ModeAccountingDate --between 20251104 20251104 --calibrate2curdayiflargerthancurday"
+let pfcfPartialExpectedRaw =
+    "--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX"
 
 let findCase caseName (schema: ArguFormSchema) =
     ArguFormSchema.tryFindUnionCase caseName schema
@@ -669,6 +671,55 @@ let tests =
                 |> String.concat " "
 
             Expect.equal rebuilt pfcfDataRangeExpectedRaw "frontend-style full-form raw Argu should preserve datarange tail ordering"
+
+        testCase "DYN-T-512: Resolve endpoint should render only parsed partial arg-string cases" <| fun _ ->
+            let registration =
+                DynamicArguTemplateRegistration.fromTemplate<PFCF_AKKA_CMD>
+                    DynamicArguAliasBinding.empty
+                    (Some pfcfDataRangeExpectedRaw)
+
+            let request: DynamicArguResolveTargetRequest =
+                { Keys = [| "akka://pfcf"; pfcfDuTypeName; pfcfPartialExpectedRaw |] }
+
+            let requestJson = JsonSerializer.Serialize(request, ArguFormSchema.jsonOptions)
+            let replyJson = DynamicArguResolveEndpoint.handle [ registration ] requestJson
+            let reply = JsonSerializer.Deserialize<DynamicArguResolveTargetReply>(replyJson, ArguFormSchema.jsonOptions)
+
+            Expect.isTrue reply.Ok reply.Error
+            Expect.equal reply.CanonicalArgString pfcfPartialExpectedRaw "endpoint should preserve partial canonical arg string"
+            Expect.sequenceEqual
+                (reply.Document.ArguFormSchema.UnionCases |> Array.map _.Name)
+                [| "PFCFEDX"; "PFCFGTCCONF" |]
+                "partial arg string should not render unparsed union cases"
+            Expect.sequenceEqual
+                (reply.Document.Nodes |> Array.map _.Id)
+                [| "case-pfcfedx"; "case-pfcfgtcconf" |]
+                "partial Form DSL nodes should follow parsed case order only"
+
+            let rec flattenNode (node: SduiFormNode) =
+                seq {
+                    yield node
+                    for child in node.Children do
+                        yield! flattenNode child
+                    for item in node.Items do
+                        yield! flattenNode item
+                }
+
+            let defaultsByBinding =
+                reply.Document.Nodes
+                |> Seq.collect flattenNode
+                |> Seq.filter (fun node -> not (String.IsNullOrWhiteSpace node.Binding))
+                |> Seq.map (fun node -> node.Binding, node.DefaultValues)
+                |> Map.ofSeq
+
+            Expect.sequenceEqual
+                (defaultsByBinding |> Map.find "PFCFEDX.mode")
+                [| "trivial" |]
+                "partial form should keep PFCFEDX string default"
+            Expect.sequenceEqual
+                (defaultsByBinding |> Map.find "PFCFGTCCONF.value")
+                [| "OIInf"; "TAIFEX" |]
+                "partial form should keep PFCFGTCCONF list defaults only"
     ]
 
 [<EntryPoint>]
