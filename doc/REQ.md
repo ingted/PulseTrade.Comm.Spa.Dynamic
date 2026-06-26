@@ -39,3 +39,22 @@
 4. Dynamic add-key UI 必須產生 canonical variable-length key：`actorAddress :: duTypeName :: unionCaseNames`；`unionCaseNames` 是 `string list` tail，不是 delimiter-joined string。
 5. Dynamic 不直接寫 PTCS PCSL / Journal / MessageFabric / ActorFabric，也不 reference PTC RN package；RN durable proxy integration 只透過 actor address 與 `ActorArguTargetCommand.RawArgu` boundary。
 6. Dynamic verifier 必須覆蓋 schema generation、SubmitArguForm codec、renderer fallback、add-key readback，以及與 PTCS/PTC RN 的跨專案 E2E gate。
+
+## 6. RFC-PTCS-DYNAMIC-0003 Unified SDUI / Form DSL 需求
+
+正式 RFC：
+
+- `doc/RFC-PTCS-DYNAMIC-0003.unified-sdui-form-dsl-roadmap.md`
+
+新增 / 修正需求：
+
+1. PTCS.Dynamic 必須是通用 NuGet package；不得把 PTCS.Host demo DU、業務專屬 `SampleArgu` 或 deployment wiring 放進 package API。
+2. Canvas DSL 與 Form Input DSL 必須共用同一套 `fskynet-sdui` document/node/action/binding 模型，由 `surface` 或等價 metadata 決定 renderer behavior。
+3. Argu / DU 支援必須實作為 adapter：`IArgParserTemplate` / DU metadata -> Form DSL document；renderer 只吃 DSL，不直接吃 Argu reflection。
+4. Form Input renderer 必須能同屏呈現 target 允許的所有 union cases；不得以 primary union case dropdown 作為唯一輸入入口。
+5. Form Input DSL 必須支援 backend-linked options，例如 select A 改變後，select B 可透過 registered provider 取得 options；不得允許 arbitrary URL / script。
+6. Target binding 必須支援兩種 canonical key：
+   - direct DSL target：`[ actorAddress; formDslId ]`。
+   - DU target：`[ actorAddress; duTypeName; unionCase1; unionCase2; ... ]`。
+7. Unknown DSL id / DU type / union case 必須由 Dynamic renderer 顯示 controlled error；extension 缺席或 renderer mount failure 才回到 PTCS built-in fallback。
+8. PTCS.Host demo 需使用 `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\doc\example DU.txt` 作為來源，建立 host-local 可編譯 demo subset；缺少 type / enum 由 PTCS.Host 補 stub，不回寫到 PTCS.Dynamic package。

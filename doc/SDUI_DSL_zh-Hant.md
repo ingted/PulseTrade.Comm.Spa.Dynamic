@@ -2,6 +2,54 @@
 
 本文檔詳細說明了 `PulseTrade.Comm.Spa` 中 Server-Driven UI (SDUI) 所使用的 JSON DSL 結構、元件型別，以及前後端的通訊與互動機制。
 
+## 0. 2026-06-26 DSL vNext：Canvas 與 Form Input 共用模型
+
+`RFC-PTCS-DYNAMIC-0003.unified-sdui-form-dsl-roadmap.md` 起，`fskynet-sdui` 的 canonical artifact 是通用 `SduiDocument`，不是 Canvas-only JSON，也不是 Argu-only form schema。
+
+同一份 DSL 應可由不同 renderer 解讀：
+
+- `Canvas` surface：展開在畫布上，以展示、查閱、局部 UI 操作為主，例如 toggle、mode switch、local sort、open panel。
+- `FormInput` surface：展開在 append input area，以輸入、validation、backend-linked options、submit 為主。
+
+Argu / DU 不是 renderer 的直接輸入。它是 adapter input：
+
+```text
+IArgParserTemplate / DU metadata
+  -> ArguToFormDsl adapter
+  -> SduiDocument(surface = FormInput)
+  -> Dynamic FormInput renderer
+```
+
+Canvas DSL 與 Form Input DSL 共用：
+
+- document id / schema / version；
+- `data` / `dataRef`；
+- node tree；
+- input binding；
+- local / remote action；
+- declared option provider；
+- render hints。
+
+Form Input 額外要求 stateful submit contract；Canvas 額外要求 bounded interactive view lifecycle。兩者不應各自發明不相容 JSON shape。
+
+### Target key convention
+
+Dynamic target key 是 PTCS `AppendPageKey.Keys : string list` 的使用規範。第一個 item 一律是 actor address。
+
+Direct DSL target：
+
+```json
+["/user/durable-proxy", "ptcs.host.demo.pfcf.form"]
+```
+
+DU / Argu target：
+
+```json
+["/user/durable-proxy", "PulseTrade.Comm.Spa.Host.DynamicArguDemo.PFCF_AKKA_CMD", "SimpleAction", "PFCFGTC", "DataRange"]
+```
+
+`unionCaseNames` 是 key list tail，不是 delimiter-joined string，也不使用 `1:duType:` / `2:unionCases:` prefix。Dynamic renderer 先查 direct DSL registry，再查 DU adapter registry；兩者都不存在時顯示 controlled error，不假裝 fallback 成可用 textarea。
+
 ## 1. 核心概念與結構
 
 `fskynet-sdui` 是一種宣告式的 JSON DSL，其結構借鏡了 Python Dash 的理念。後端 Actor 在回傳結果時，會帶有一組 Payload，其基本結構如下：
@@ -19,7 +67,118 @@
 
 - **`schema`**：必須固定為 `"fskynet-sdui"`，前端依據此標記決定將 Payload 交由 SDUI 渲染引擎處理。
 - **`data`**：存放由後端 fCell 轉換而來的原始資料，以 key-value 形式儲存，供 SDUI 元件綁定 (透過 `dataRef`)。
-- **`sdui`**：一個包含元件陣列的 JSON 字串 (或直接為 JSON 陣列)，描述了整個動態畫布 (Canvas) 的佈局與互動。
+- **`sdui`**：legacy compatibility 欄位。一個包含元件陣列的 JSON 字串 (或直接為 JSON 陣列)，描述了動態畫布 (Canvas) 的佈局與互動。
+
+### 1.1 vNext document format
+
+新文件應優先使用 `document` shape。`sdui` raw array/string 保留為舊 payload 相容層。
+
+```json
+{
+  "schema": "fskynet-sdui",
+  "version": "0.3",
+  "documentId": "ptcs.host.demo.pfcf.form",
+  "surface": "FormInput",
+  "data": {
+    "marketOptions": [
+      { "value": "Domestic", "label": "Domestic" },
+      { "value": "Foreign", "label": "Foreign" }
+    ]
+  },
+  "nodes": [
+    {
+      "type": "Section",
+      "id": "case-simple-action",
+      "title": "SimpleAction",
+      "children": [
+        {
+          "type": "Input",
+          "id": "simple-action-name",
+          "label": "action_name",
+          "kind": "Text",
+          "binding": "SimpleAction.action_name"
+        },
+        {
+          "type": "Button",
+          "id": "send-simple-action",
+          "label": "Send",
+          "actionId": "submit-simple-action"
+        }
+      ]
+    }
+  ],
+  "actions": {
+    "submit-simple-action": {
+      "type": "SubmitForm",
+      "targetBindingId": "ptcs.actor-argu.raw",
+      "includeStateOf": ["SimpleAction.action_name"],
+      "adapter": {
+        "type": "ArguRaw",
+        "duTypeName": "PulseTrade.Comm.Spa.Host.DynamicArguDemo.PFCF_AKKA_CMD",
+        "unionCaseName": "SimpleAction"
+      }
+    }
+  },
+  "bindings": [
+    {
+      "id": "SimpleAction.action_name",
+      "path": "$.SimpleAction.action_name",
+      "required": true
+    }
+  ]
+}
+```
+
+欄位語意：
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `schema` | yes | 固定 `"fskynet-sdui"`。 |
+| `version` | yes | DSL schema version；breaking change 需升版。 |
+| `documentId` | yes | 可被 target key `[ actorAddress; formDslId ]` 指涉的 registry id。 |
+| `surface` | yes | `"Canvas"` 或 `"FormInput"`。 |
+| `data` | no | 靜態資料、初始 options 或 readonly render data。 |
+| `nodes` | yes | UI node tree。 |
+| `actions` | no | 以 `actionId` 索引的 declarative actions。 |
+| `bindings` | no | input / selection / local state binding metadata。 |
+
+### 1.2 Surface semantics
+
+`surface = "Canvas"`：
+
+- 預設 readonly；
+- 可使用 local actions，例如 toggle、mode switch、local sort、open panel；
+- 若需要 remote action，必須透過 registered action provider 或 PTCS command path，不可由 DSL 指定 arbitrary URL。
+
+`surface = "FormInput"`：
+
+- 預設 stateful；
+- input / select / list / tuple controls 必須有 binding；
+- submit action 必須回到 PTCS append / actor-argu callback；
+- backend-linked options 必須透過 registered provider；
+- 同一個 DU target 的 requested union cases 必須以多個 `Section` 同屏呈現，不以 primary dropdown 隱藏其他 case。
+
+### 1.3 Direct DSL target and DU target
+
+Direct DSL target 指向已註冊 document：
+
+```json
+["/user/durable-proxy", "ptcs.host.demo.pfcf.form"]
+```
+
+DU target 指向 registered adapter：
+
+```json
+[
+  "/user/durable-proxy",
+  "PulseTrade.Comm.Spa.Host.DynamicArguDemo.PFCF_AKKA_CMD",
+  "SimpleAction",
+  "PFCFGTC",
+  "DataRange"
+]
+```
+
+DU target 解析成功後，adapter 產生一份 `surface = "FormInput"` 的 `SduiDocument`。Renderer 不知道也不需要知道原始 DU type 如何反射。
 
 ---
 
@@ -50,6 +209,30 @@ SDUI 將業務邏輯保留在後端，前端的互動行為透過宣告式的 `A
   - `action`: `"OpenCanvas"`
   - `moduleId`: 目標模組 ID。
   - `targetId`: 目標頁面或資源 ID。
+
+### C. Form Action (表單動作)
+
+Form Input surface 使用的 action 必須可被 PTCS append / actor-argu callback 收斂。
+
+- **`SubmitForm`**：
+  - `type`: `"SubmitForm"`
+  - `targetBindingId`: submit 的 logical target，例如 `"ptcs.actor-argu.raw"`。
+  - `includeStateOf`: 要收集的 binding id 清單。
+  - `adapter`: optional adapter metadata；例如 `{ "type": "ArguRaw", "duTypeName": "...", "unionCaseName": "..." }`。
+  - 結果：產生 `AppendInputSubmission.ValueText`，由 PTCS core 走既有 append / actor-argu path。
+
+- **`QueryOptions`**：
+  - `type`: `"QueryOptions"`
+  - `providerId`: host / extension 已註冊 provider id。
+  - `dependsOn`: 依賴的 binding id 清單。
+  - `outputBinding`: 寫回的 option binding id。
+  - 限制：不可帶 arbitrary URL、headers、tokens 或 script。
+
+- **`ValidateForm`**：
+  - `type`: `"ValidateForm"`
+  - `includeStateOf`: 需驗證的 binding id 清單。
+  - `rules`: declarative local validation rules。
+  - 若需 remote validation，必須透過 registered provider。
 
 ---
 
@@ -151,6 +334,65 @@ SDUI 將業務邏輯保留在後端，前端的互動行為透過宣告式的 `A
     - `dataRef`: 樹狀資料源 key。
     - `onNodeClick`: 點擊節點時觸發的 `Action`。
 
+### Form Input Components
+
+Form Input components 使用相同 node tree，只是 renderer 將其放在 append input area。
+
+1. **Section**
+   - `type`: `"Section"`
+   - `id`: section id。
+   - `title`: 顯示標題，Argu adapter 會用 union case name。
+   - `children`: inputs/buttons。
+
+2. **Input**
+   - `type`: `"Input"`
+   - `id`: input id。
+   - `label`: 顯示 label。
+   - `kind`: `"Text"`、`"Number"`、`"Bool"`、`"Date"`、`"Time"`、`"Color"`。
+   - `binding`: state binding id。
+
+3. **Select**
+   - `type`: `"Select"`
+   - `id`: select id。
+   - `label`: 顯示 label。
+   - `options`: `StaticOptions`、`QueryOptions` 或 `StreamOptions`。
+   - `binding`: state binding id。
+
+4. **Tuple**
+   - `type`: `"Tuple"`
+   - `id`: tuple group id。
+   - `items`: ordered child inputs。
+   - renderer 必須以順序編號呈現，例如 `1.`、`2.`。
+
+5. **ListInput**
+   - `type`: `"ListInput"`
+   - `id`: list group id。
+   - `item`: item input node。
+   - renderer 必須提供 add item control，並維持 bounded layout。
+
+6. **Submit Button**
+   - `type`: `"Button"`
+   - `actionId`: 指向 `SubmitForm`。
+   - 每個 union case section 應有自己的 submit button，避免使用者切換 case 才能送出。
+
+### Option Source
+
+```json
+{
+  "type": "Select",
+  "id": "bank-edx-market",
+  "label": "Bank market",
+  "binding": "BankEdx.market",
+  "options": {
+    "type": "QueryOptions",
+    "providerId": "ptcs.host.demo.bank-edx-market",
+    "dependsOn": ["BankEdx.output"]
+  }
+}
+```
+
+`QueryOptions` 只描述 provider id 與 dependency；provider 執行由 PTCS/host registered callback 負責。
+
 ---
 
 ## 4. WebSharper 實作守則
@@ -158,3 +400,6 @@ SDUI 將業務邏輯保留在後端，前端的互動行為透過宣告式的 `A
 - **純 Native WebSharper**：上述所有元件的渲染與生命週期管理，均使用 F# 搭配 WebSharper 實作，不依賴任何第三方 JavaScript 函式庫或 raw JS snippet。
 - **型別安全解析**：SDUI JSON 在 WebSharper 端將使用嚴格定義的 Record/Union 型別進行反序列化 (Deserialization)。
 - **技術分析考量**：在實作技術分析圖表 (`RealtimeChart`) 等與資料運算相關的功能時，必須參考既有的 `PulseTrade.MarketData.Analytics.fs` 架構以維持體系一致性。
+- **Renderer / Adapter 分離**：Renderer 只吃 `SduiDocument`；Argu / DU reflection、`IArgParserTemplate` 與 union case 選擇都在 adapter / registry 層完成。
+- **Controlled error**：schema、document id、provider id、DU type、union case 或 binding 無法解析時，renderer 顯示 controlled error；不得 silent fallback 成看似可用的 textarea。
+- **No arbitrary execution**：DSL 不可含 JavaScript、shell command、absolute URL、secret-bearing headers 或任意 code block。

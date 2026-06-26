@@ -95,7 +95,7 @@ dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.dyna
 - renderer missing/throw fallback textarea；
 - blank renderer submission shows controlled validation and does not reach RN DurableProxy；
 - Add Key dialog returns `actorAddress :: duTypeName :: unionCaseNames` with no delimiter-joined union-case segment；
-- reload/readback returns PTCS canonical sorted key list while preserving union cases as separate key segments；
+- reload/readback returns the PTCS ordered append-page key list while preserving actor address、DU type and union cases as separate key segments；
 - duplicate Dynamic target key submit keeps one projected key/card；
 - desktop/mobile geometry has no overlap or hidden submit button；
 - built-in PTCS append pages and existing `fskynet-sdui` message rendering do not regress；
@@ -123,3 +123,108 @@ Dynamic form submit
 ```
 
 此 gate 不得以 fake/mock/internal-only proof 當 final acceptance。
+
+## 5. RFC-PTCS-DYNAMIC-0003 Unified SDUI / Form DSL Gates
+
+### DYN-T-501 DSL document model
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
+
+Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj --no-restore`，Expecto 9/9 pass。
+
+覆蓋：
+
+- `SduiDocument` 可表達 Canvas 與 FormInput surface；
+- shared node/action/binding JSON codec round-trip；
+- Canvas-only node 與 FormInput node 不需要不同 schema root；
+- invalid schema/version/duplicate id controlled failure。
+
+目前已落地的 package coverage：
+
+- `SduiFormDocument.fromArguFormSchema` 產生 `schema=fskynet-sdui`、`surface=FormInput`、stable `documentId`；
+- PFCF_AKKA_CMD fixture 反射 `SimpleAction`、`BBA`、`GenByColMeta`；
+- `GenByColMeta` tuple item kinds 驗證為 `bool-value`, `bool-value`, `text`, `enum`。
+
+### DYN-T-502 Argu-to-FormDsl adapter
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
+
+Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj --no-restore`，Expecto 9/9 pass。
+
+覆蓋：
+
+- host-registered `IArgParserTemplate` 轉成 Form DSL document；
+- 每個 requested union case 轉成 visible section；
+- string/number/bool/enum/tuple/list/nested ParseResults supported or controlled unsupported；
+- no `SampleArgu` or PTCS.Host-specific DU in package source；
+- unknown DU type / union case 不做 unrestricted browser reflection。
+
+目前已落地的 package coverage：
+
+- server `SubmitArguFormCodec.buildRawArgu` 與 frontend `ClientRawArguCodec.buildRawArguFromValues` 產生一致 raw arg string；
+- PFCF_AKKA_CMD covered cases：`SimpleAction`、`Entrust`、`PFCFGTC`、`BBA`、`Cooperative`、`ParentChilds`、`FractionalQuote`、`GenByColMeta`、`TableName`；
+- expected raw arg strings include `--simpleaction "rebuild all"`、`--pfcfgtc gf --pfcfgtc goi`、`--bba F001 B001 M123`、`--genbycolmeta true false dbo fsrecord`、`--tablename Orders --tablename "Positions Today"`。
+
+### DYN-T-503 Dynamic target resolver
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
+
+Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj --no-restore`，Expecto 9/9 pass。
+
+覆蓋：
+
+- `[ actorAddress; formDslId ]` resolves as direct DSL target；
+- `[ actorAddress; duTypeName; case1; case2 ]` resolves as Argu adapter target；
+- first item is always actor address；
+- no canonical `1:duType:` / `2:unionCases:` prefix；
+- unknown second segment returns renderer validation error。
+
+目前已落地的 package coverage：
+
+- `DynamicTargetKey.tryResolve` resolves `[ actorAddress; formDslId ]` to `DirectDslTarget`；
+- `DynamicTargetKey.tryResolve` resolves `[ actorAddress; duTypeName; SimpleAction; BBA; GenByColMeta ]` to `ArguTemplateTarget` and preserves union-case tail order；
+- unknown discriminator、unknown union case、direct DSL target with union-case tail all fail with controlled errors。
+
+### DYN-T-504 Backend-linked option provider
+
+Verifier：focused F# test plus browser E2E after PTCS `WBS-053E`。
+
+覆蓋：
+
+- `QueryOptions(providerId, dependsOn)` updates dependent select options；
+- unregistered provider rejected；
+- arbitrary URL/header/script is not accepted；
+- provider diagnostics do not include secrets。
+
+### DYN-T-505 Actor key bound to direct DSL target
+
+Verifier：F# Playwright script in PTCS repo after PTCS `WBS-053` seam and Dynamic v2 renderer are ready。
+
+Required path：
+
+```text
+actor key [ actorAddress; formDslId ]
+  -> Dynamic resolves direct Form DSL
+  -> FormInput renderer submits ValueText
+  -> PTCS existing append / actor-argu path
+  -> target actor / proxy receives command
+  -> PTCS history readback
+```
+
+### DYN-T-506 Actor key bound to DU type + cases list
+
+Verifier：F# Playwright script in PTCS repo with PTCS.Host demo DU。
+
+Required path：
+
+```text
+actor key [ actorAddress; duTypeName; unionCase1; unionCase2; ... ]
+  -> Argu-to-FormDsl adapter
+  -> all requested union cases visible simultaneously
+  -> per-case raw Argu submit
+  -> RN DurableProxy / legacy echo
+  -> ActorArguTargetReply
+  -> PTCS full target-key history readback
+```
+
+PTCS.Host demo source is `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\doc\example DU.txt` decoded as Big5/cp950。Missing external types/enums must be stubbed or excluded with controlled unsupported-case diagnostics in PTCS.Host, not in PTCS.Dynamic package。

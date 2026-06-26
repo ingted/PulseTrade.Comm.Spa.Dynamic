@@ -52,3 +52,26 @@ Dynamic Argu Form 是 Dynamic package 的 server-driven input extension。責任
 Dynamic key model 使用 `actorAddress :: duTypeName :: unionCaseNames`。`unionCaseNames` 是一組 canonicalized string list tail；Dynamic 擁有 ordering 與 metadata resolution，PTCS core 只維持 append key registry semantics。
 
 Dynamic 不應把 PTCS seam、RN DurableProxy 與 FSkynet renderer 混在同一 module。PTCS.Dynamic 的第一波實作應可在 PTCS seam 尚未發版時以 local shim 測 schema generator 與 renderer codec；真正 browser E2E 則需等 PTCS WBS-051B/C 可用。
+
+## 6. RFC-PTCS-DYNAMIC-0003 Unified SDUI / Form DSL Boundary
+
+`RFC-PTCS-DYNAMIC-0003.unified-sdui-form-dsl-roadmap.md` 將 Dynamic Argu Form 從 Argu-first 修正為 DSL-first。
+
+架構分層：
+
+| Layer | Owner | Responsibility |
+| --- | --- | --- |
+| SDUI document model | PTCS.Dynamic | `SduiDocument`、node tree、bindings、actions、Canvas/Form render surfaces。 |
+| Canvas renderer | PTCS.Dynamic | 將同一份 DSL render 成展開畫布，主要用於 readonly / local manipulation。 |
+| FormInput renderer | PTCS.Dynamic | 將同一份 DSL render 成 append input UI，管理 state、validation、submit、option query。 |
+| Argu adapter | PTCS.Dynamic | 從 host-registered `IArgParserTemplate` / DU metadata 產生 Form DSL document。 |
+| Extension seam | PTCS core | 提供 selected key context、renderer mount point、submit callback、safe fallback、registered-provider query shell。 |
+| Demo DU / live deployment | PTCS.Host | 載入 extension DLL、註冊 demo DU / DSL target、部署 81/443。 |
+
+重要修正：
+
+- Renderer 不直接了解 DU union case；它只 render DSL。
+- Adapter 可以了解 Argu / DU，但不擁有 PTCS command path。
+- PTCS core 不判斷 DSL id 或 DU type 是否有效。
+- Unknown target 是 Dynamic renderer validation error；extension absent 才是 PTCS fallback。
+- Add target key UI 由 Dynamic renderer 完整擁有時，PTCS built-in raw JSON key input / key filter 不應同屏顯示。

@@ -5,334 +5,374 @@ function isIDisposable(x){
   return"Dispose"in x;
 }
 function Register(){
-  ((() => {
-    if(!globalThis.PulseTradeRegisterAppendInputRenderer||!globalThis.PulseTradeRegisterAddKeyRenderer){
-      console.warn("PulseTrade Argu form renderer skipped: PTCS registry is unavailable.");
-      return;
-    }
-    const sampleTypeName="PulseTrade.Comm.Spa.Dynamic.SampleArgu";
-    const schemas=globalThis.PulseTradeDynamicArguSchemas||{};
-    schemas[sampleTypeName]={
-      schema:"fskynet-sdui", 
-      formMode:"argu-form", 
-      duTypeName:sampleTypeName, 
-      unionCases:[{
-        name:"Say", 
-        label:"Say", 
-        arguName:"--say", 
-        fields:[{
-          name:"text", 
-          label:"Text", 
-          kind:"text", 
-          arguName:"--say", 
-          options:[], 
-          items:[]
-        }]
-      }, {
-        name:"SetCount", 
-        label:"Set Count", 
-        arguName:"--set-count", 
-        fields:[{
-          name:"count", 
-          label:"Count", 
-          kind:"number", 
-          arguName:"--set-count", 
-          options:[], 
-          items:[]
-        }]
-      }, {
-        name:"Mode", 
-        label:"Mode", 
-        arguName:"--mode", 
-        fields:[{
-          name:"mode", 
-          label:"Mode", 
-          kind:"enum", 
-          arguName:"--mode", 
-          options:["Fast", "Safe", "Audit"], 
-          items:[]
-        }]
-      }, {
-        name:"At", 
-        label:"Tuple At", 
-        arguName:"--at", 
-        fields:[{
-          name:"at", 
-          label:"At", 
-          kind:"tuple", 
-          arguName:"--at", 
-          options:[], 
-          items:[{
-            name:"symbol", 
-            label:"1. symbol", 
-            kind:"text", 
-            arguName:"", 
-            options:[], 
-            items:[]
-          }, {
-            name:"quantity", 
-            label:"2. quantity", 
-            kind:"number", 
-            arguName:"", 
-            options:[], 
-            items:[]
-          }]
-        }]
-      }, {
-        name:"Tag", 
-        label:"Tag List", 
-        arguName:"--tag", 
-        fields:[{
-          name:"tag", 
-          label:"Tags", 
-          kind:"list", 
-          arguName:"--tag", 
-          options:[], 
-          items:[{
-            name:"tagItem", 
-            label:"Tag", 
-            kind:"text", 
-            arguName:"", 
-            options:[], 
-            items:[]
-          }]
-        }]
-      }, {
-        name:"Verbose", 
-        label:"Verbose", 
-        arguName:"--verbose", 
-        fields:[{
-          name:"verbose", 
-          label:"Verbose", 
-          kind:"bool", 
-          arguName:"--verbose", 
-          options:[], 
-          items:[]
-        }]
-      }]
-    };
-    globalThis.PulseTradeDynamicArguSchemas=schemas;
-    function el(tag, className, testId){
-      let node=document.createElement(tag);
-      if(className)node.className=className;
-      if(testId)node.setAttribute("data-testid", testId);
-      return node;
-    }
-    function labelText(text){
-      let node=el("label", "dynamic-argu-label", null);
-      node.textContent=text||"";
-      return node;
-    }
-    function quoteArg(value){
-      let text=value==null?"":String(value);
-      if(text.length===0)return"\"\"";
-      if((new RegExp("\\s|\"")).test(text))return"\""+text.replace(new RegExp("\\\\", "g"), "\\\\").replace(new RegExp("\"", "g"), "\\\"")+"\"";
-      return text;
-    }
-    function appendField(parts, field, values){
-      values=(values||[]).map((value_1) => value_1==null?"":String(value_1).trim()).filter((value_1) => value_1.length>0);
-      if(field.kind==="bool"){
-        let value=values.length>0?values[0].toLowerCase():"";
-        if(value==="true"||value==="1"||value==="yes")parts.push(field.arguName);
-        return;
-      }
-      if(field.kind==="list"){
-        values.forEach((value_1) => {
-          parts.push(field.arguName);
-          parts.push(quoteArg(value_1));
-        });
-        return;
-      }
-      if(field.kind==="tuple"){
-        if(values.length>0){
-          parts.push(field.arguName);
-          values.forEach((value_1) => {
-            parts.push(quoteArg(value_1));
-          });
+  loadSchemasFromManifest();
+  registerAddKeyRenderer("dynamic-argu-add-key", 100, renderAddKey);
+  registerAppendInputRenderer("dynamic-argu-append-input", 100, renderAppendInput);
+}
+function loadSchemasFromManifest(){
+  const node=doc().getElementById("ptc-comm-client-extensions");
+  if(!(node==null)&&!isBlank(node.textContent)){
+    const m=tryDecodeJson(node.textContent);
+    if(m!=null&&m.$==1)iter((extension) => {
+      if(!(extension==null)&&!isBlank(extension.metadataJson)){
+        const m_1=tryDecodeJson(extension.metadataJson);
+        if(m_1==null)void 0;
+        else {
+          const metadata=m_1.$0;
+          iter((s) => {
+            upsertSchema(s);
+          }, arrayOrEmpty(metadata.dynamicArguSchemas));
+          iter((d) => {
+            upsertDocument(d);
+          }, arrayOrEmpty(metadata.dynamicFormDocuments));
         }
-        return;
       }
-      if(values.length>0){
-        parts.push(field.arguName);
-        parts.push(quoteArg(values[0]));
+    }, arrayOrEmpty(m.$0));
+  }
+  else void 0;
+}
+function registerAddKeyRenderer(name, priority, renderer){
+  if(Equals(typeof globalThis.PulseTradeRegisterAddKeyRenderer, "function"))globalThis.PulseTradeRegisterAddKeyRenderer([name, priority, renderer]);
+}
+function renderAddKey(ctx){
+  let selectedTypeName, typeNode;
+  const shape=asText(ctx.shape).toLowerCase();
+  if(shape!="actor-dynamic"&&shape!="actor-argu")return null;
+  else {
+    const keys=sort(distinct(concat([documentKeys(), schemaKeys()])));
+    const o=tryHead(keyPartsFromJson(ctx.defaultKey));
+    const actorAddress=o==null?"":o.$0;
+    if(length(keys)===0)return Some(errorNode("No Dynamic Argu schemas are registered."));
+    else if(isBlank(actorAddress))return Some(errorNode("Dynamic Argu default key must include actor address as the first JSON list item."));
+    else {
+      const root=setTestId("dynamic-argu-add-key", element("div", "dynamic-argu-add-key", null));
+      const actor=setTestId("dynamic-argu-key-actor", element("code", "dynamic-argu-actor-address", actorAddress));
+      selectedTypeName=get(keys, 0);
+      if(length(keys)===1)typeNode=setTestId("dynamic-argu-key-du-type", element("code", "dynamic-argu-du-type", selectedTypeName));
+      else {
+        const typeSelect=doc().createElement("select");
+        typeNode=(typeSelect.className="dynamic-argu-du-type",setTestId("dynamic-argu-key-du-type", typeSelect),iter((key) => {
+          const option=doc().createElement("option");
+          option.setAttribute("value", key);
+          option.textContent=key;
+          typeSelect.appendChild(option);
+        }, keys),typeSelect);
       }
-    }
-    function selectedValues(field, row){
-      if(field.kind==="tuple")return Array.from(row.querySelectorAll("[data-dynamic-argu-tuple-item]")).map((input_2) => input_2.value);
-      if(field.kind==="list")return Array.from(row.querySelectorAll("[data-dynamic-argu-list-item]")).map((input_2) => input_2.value);
-      if(field.kind==="bool"){
-        let check=row.querySelector("[data-dynamic-argu-input]");
-        return[check&&check.checked?"true":"false"];
-      }
-      let input_1=row.querySelector("[data-dynamic-argu-input]");
-      return[input_1?input_1.value:""];
-    }
-    function buildRawArgu(unionCase, form){
-      let parts=[];
-      unionCase.fields.forEach((field) => {
-        const row=form.querySelector("[data-dynamic-argu-field=\""+field.name+"\"]");
-        appendField(parts, field, row?selectedValues(field, row):[]);
-      });
-      return parts.join(" ");
-    }
-    function renderScalar(_1, inputType, testId){
-      let input_1=el("input", "dynamic-argu-input", testId);
-      input_1.type=inputType;
-      input_1.setAttribute("data-dynamic-argu-input", "true");
-      return input_1;
-    }
-    function renderField(field){
-      let row=el("div", "dynamic-argu-field", "dynamic-argu-field-"+field.name);
-      row.setAttribute("data-dynamic-argu-field", field.name);
-      row.setAttribute("data-dynamic-argu-kind", field.kind);
-      row.appendChild(labelText(field.label||field.name));
-      if(field.kind==="number")row.appendChild(renderScalar(field, "number", "dynamic-argu-number-"+field.name));
-      else if(field.kind==="enum"){
-        let select_1=el("select", "dynamic-argu-select", "dynamic-argu-enum-"+field.name);
-        select_1.setAttribute("data-dynamic-argu-input", "true");
-        (field.options||[]).forEach((optionValue) => {
-          const option=document.createElement("option");
-          option.value=optionValue;
-          option.textContent=optionValue;
-          select_1.appendChild(option);
-        });
-        row.appendChild(select_1);
-      }
-      else if(field.kind==="tuple"){
-        let tuple=el("div", "dynamic-argu-tuple", "dynamic-argu-tuple-"+field.name);
-        (field.items||[]).forEach((item, index) => {
-          const itemRow=el("div", "dynamic-argu-tuple-item", "dynamic-argu-tuple-item-"+field.name+"-"+(index+1));
-          itemRow.appendChild(labelText(index+1+". "+(item.label||item.name)));
-          const input_1=renderScalar(item, item.kind==="number"?"number":"text", null);
-          input_1.setAttribute("data-dynamic-argu-tuple-item", String(index+1));
-          itemRow.appendChild(input_1);
-          tuple.appendChild(itemRow);
-        });
-        row.appendChild(tuple);
-      }
-      else if(field.kind==="list"){
-        let list=el("div", "dynamic-argu-list", "dynamic-argu-list-"+field.name);
-        let add=el("button", "dynamic-argu-add-list-item", "dynamic-argu-list-add-"+field.name);
-        add.type="button";
-        add.textContent="Add";
-        let addInput=() => {
-          const input_1=renderScalar(field, "text", "dynamic-argu-list-item-"+field.name);
-          input_1.setAttribute("data-dynamic-argu-list-item", "true");
-          list.insertBefore(input_1, add);
-        };
-        add.addEventListener("click", addInput);
-        list.appendChild(add);
-        row.appendChild(list);
-        addInput();
-      }
-      else if(field.kind==="bool")row.appendChild(renderScalar(field, "checkbox", "dynamic-argu-bool-"+field.name));
-      else row.appendChild(renderScalar(field, "text", "dynamic-argu-text-"+field.name));
-      return row;
-    }
-    function unionCaseNamesFromContext(ctx, schema){
-      let allowed=Array.isArray(ctx.unionCaseNames)?ctx.unionCaseNames:[];
-      if(allowed.length===0)return schema.unionCases.map((item) => item.name);
-      return allowed.map(String);
-    }
-    globalThis.PulseTradeRegisterAddKeyRenderer("dynamic-argu-add-key", 100, (ctx) => {
-      const shape=String(ctx.shape||"").toLowerCase();
-      if(shape!=="actor-dynamic"&&shape!=="actor-argu")return null;
-      const root=el("div", "dynamic-argu-add-key", "dynamic-argu-add-key");
-      const actor=el("input", "dynamic-argu-actor-address", "dynamic-argu-key-actor");
-      actor.placeholder="actor address";
-      const typeName=el("select", "dynamic-argu-du-type", "dynamic-argu-key-du-type");
-      Object.keys(schemas).forEach((schemaKey) => {
-        const option=document.createElement("option");
-        option.value=schemaKey;
-        option.textContent=schemaKey;
-        typeName.appendChild(option);
-      });
-      const cases=el("div", "dynamic-argu-union-case-list", "dynamic-argu-key-union-cases");
-      function renderCases(){
+      const cases=setTestId("dynamic-argu-key-union-cases", element("div", "dynamic-argu-union-case-list", null));
+      const renderCases=() => {
         cases.textContent="";
-        let schema=schemas[typeName.value];
-        (schema?schema.unionCases:[]).forEach((unionCase) => {
-          const wrap=el("label", "dynamic-argu-union-case-check", "dynamic-argu-key-union-case-"+unionCase.name);
-          const check=document.createElement("input");
-          check.type="checkbox";
-          check.value=unionCase.name;
-          check.checked=true;
-          wrap.appendChild(check);
-          wrap.appendChild(document.createTextNode(unionCase.name));
-          cases.appendChild(wrap);
-        });
-      }
-      typeName.addEventListener("change", renderCases);
+        const m=tryFindDocument(selectedTypeName);
+        if(m==null){
+          const m_1=tryFindSchema(selectedTypeName);
+          if(m_1!=null&&m_1.$==1)iter((unionCase) => {
+            const x=element("label", "dynamic-argu-union-case-check", null);
+            const wrap=setTestId("dynamic-argu-key-union-case-"+asText(unionCase.name), x);
+            const check=input("checkbox", "", "");
+            check.value=asText(unionCase.name);
+            check.checked=true;
+            wrap.appendChild(check);
+            wrap.appendChild(doc().createTextNode(asText(unionCase.name)));
+            cases.appendChild(wrap);
+          }, arrayOrEmpty(m_1.$0.unionCases));
+          else cases.appendChild(errorNode("Dynamic Argu schema not found for DU type: "+selectedTypeName));
+        }
+        else {
+          m.$0;
+          cases.appendChild(element("div", "dynamic-argu-union-case-check", "Direct DSL document target; no union case selection required."));
+        }
+      };
+      if(typeNode instanceof HTMLSelectElement)typeNode.addEventListener("change", () => {
+        selectedTypeName=elementValue(typeNode);
+        return renderCases();
+      });
+      else null;
       renderCases();
-      const submit=el("button", "dynamic-argu-key-submit", "dynamic-argu-key-submit");
-      submit.type="button";
-      submit.textContent="Add target";
+      const submit=button("dynamic-argu-key-submit", "dynamic-argu-key-submit", "Add target");
       submit.addEventListener("click", () => {
-        const selectedCases=Array.from(cases.querySelectorAll("input:checked")).map((item) => item.value);
-        ctx.submitKey({keys:[actor.value, "1:duType:"+typeName.value].concat(selectedCases)});
+        const selectedCases=tryFindDocument(selectedTypeName)==null?ofSeq(filter_1((x) =>!isBlank(x), map_1((a) => a.value, filter_1((a) => a.checked, queryInputs(cases, "input"))))):[];
+        return ctx.submitKey(New_3(ofSeq(delay(() => append_2([actorAddress], delay(() => append_2([selectedTypeName], delay(() => selectedCases))))))));
       });
-      root.appendChild(actor);
-      root.appendChild(typeName);
-      root.appendChild(cases);
-      root.appendChild(submit);
-      return root;
-    });
-    globalThis.PulseTradeRegisterAppendInputRenderer("dynamic-argu-append-input", 100, (ctx) => {
-      const typeName=String(ctx.duTypeName||"");
-      const schema=schemas[typeName];
-      if(!schema)return null;
-      const allowedNames=unionCaseNamesFromContext(ctx, schema);
-      const unionCases=schema.unionCases.filter((item) => allowedNames.indexOf(item.name)>=0);
-      if(unionCases.length===0)return null;
-      const root=el("div", "dynamic-argu-form", "dynamic-argu-form");
-      root.setAttribute("data-dynamic-argu-du-type", typeName);
-      root.setAttribute("data-dynamic-argu-union-cases", allowedNames.join(","));
-      const selector=el("select", "dynamic-argu-union-case", "dynamic-argu-union-case");
-      unionCases.forEach((unionCase) => {
-        const option=document.createElement("option");
-        option.value=unionCase.name;
-        option.textContent=unionCase.name;
-        selector.appendChild(option);
-      });
-      const fields=el("div", "dynamic-argu-fields", "dynamic-argu-fields");
-      const rawPreview=el("pre", "dynamic-argu-raw-preview", "dynamic-argu-raw-preview");
-      const send=el("button", "dynamic-argu-send", "dynamic-argu-send");
-      send.type="button";
-      send.textContent="Send";
-      function currentUnionCase(){
-        return(unionCases.filter((item) => item.name===selector.value))[0]||unionCases[0];
+      append(root, [actor, typeNode, cases, submit]);
+      return Some(root);
+    }
+  }
+}
+function registerAppendInputRenderer(name, priority, renderer){
+  if(Equals(typeof globalThis.PulseTradeRegisterAppendInputRenderer, "function"))globalThis.PulseTradeRegisterAppendInputRenderer([name, priority, renderer]);
+}
+function renderAppendInput(ctx){
+  let _1;
+  const typeName=asText(ctx.duTypeName);
+  if(isBlank(typeName))return null;
+  else {
+    const document=tryFindDocument(typeName);
+    const schema=document!=null&&document.$==1&&(!(document.$0.arguFormSchema==null)&&(_1=document.$0,true))?Some(_1.arguFormSchema):tryFindSchema(typeName);
+    if(schema!=null&&schema.$==1){
+      const schema_1=schema.$0;
+      const allowed=unionCaseNamesFromContext(ctx, schema_1);
+      const unionCases=filter((item) => exists((name) => name==asText(item.name), allowed), arrayOrEmpty(schema_1.unionCases));
+      if(length(unionCases)===0)return Some(errorNode("Dynamic Argu schema has no requested union cases for DU type: "+typeName));
+      else {
+        const root=setTestId("dynamic-argu-form", element("div", "dynamic-argu-form", null));
+        root.setAttribute("data-dynamic-argu-du-type", typeName);
+        root.setAttribute("data-dynamic-form-document-id", document==null?"":asText(document.$0.documentId));
+        root.setAttribute("data-dynamic-argu-union-cases", concat_2(",", allowed));
+        iter((unionCase) => {
+          let fieldGetters;
+          const caseName=asText(unionCase.name);
+          const caseRow=setTestId("dynamic-argu-case-"+caseName, element("section", "dynamic-argu-case-row", null));
+          caseRow.setAttribute("data-dynamic-argu-case", caseName);
+          const heading=setTestId("dynamic-argu-case-title-"+caseName, element("div", "dynamic-argu-case-title", caseName));
+          const fields=setTestId("dynamic-argu-fields-"+caseName, element("div", "dynamic-argu-fields", null));
+          const rawPreview=setTestId("dynamic-argu-raw-preview-"+caseName, element("pre", "dynamic-argu-raw-preview", ""));
+          const send=button("dynamic-argu-send", "dynamic-argu-send-"+caseName, "Send");
+          fieldGetters=[];
+          const refreshPreview=() => {
+            rawPreview.textContent=buildRawArgu(unionCase, fieldGetters);
+          };
+          fieldGetters=map((field) => {
+            const p=renderField(refreshPreview, field);
+            fields.appendChild(p[0]);
+            return[field, p[1]];
+          }, arrayOrEmpty(unionCase.fields));
+          send.addEventListener("click", () => {
+            const raw=buildRawArgu(unionCase, fieldGetters);
+            rawPreview.textContent=raw;
+            return ctx.submit(New_4(raw, typeName, caseName));
+          });
+          append(caseRow, [heading, fields, rawPreview, send]);
+          root.appendChild(caseRow);
+          refreshPreview();
+        }, unionCases);
+        return Some(root);
       }
-      const refreshPreview=() => {
-        rawPreview.textContent=buildRawArgu(currentUnionCase(), root);
+    }
+    else return Some(errorNode("Dynamic Form document or Argu schema not found for target: "+typeName));
+  }
+}
+function doc(){
+  return _c_1.doc;
+}
+function isBlank(value){
+  return IsNullOrWhiteSpace(asText(value));
+}
+function tryDecodeJson(text){
+  try {
+    return Some(decodeJson(text));
+  }
+  catch(m){
+    return null;
+  }
+}
+function arrayOrEmpty(values){
+  return values==null||Equals(typeof values, "undefined")?[]:values;
+}
+function upsertSchema(schema){
+  if(!(schema==null)&&!isBlank(schema.duTypeName))set_schemas(filter((existing) => asText(existing.duTypeName)!=asText(schema.duTypeName), schemas()).concat([schema]));
+}
+function upsertDocument(document){
+  if(!(document==null)&&!isBlank(document.documentId)){
+    set_documents(filter((existing) => asText(existing.documentId)!=asText(document.documentId), documents()).concat([document]));
+    !(document.arguFormSchema==null)?upsertSchema(document.arguFormSchema):void 0;
+  }
+}
+function asText(value){
+  return value==null||Equals(typeof value, "undefined")?"":value;
+}
+function errorNode(message){
+  const root=setTestId("dynamic-argu-error", element("div", "dynamic-argu-error", message));
+  root.setAttribute("role", "alert");
+  return root;
+}
+function element(tag, className, textValue){
+  const node=doc().createElement(tag);
+  if(!isBlank(className))node.className=className;
+  if(!(textValue==null))node.textContent=textValue;
+  return node;
+}
+function setTestId(id, node){
+  !isBlank(id)?node.setAttribute("data-testid", id):void 0;
+  return node;
+}
+function tryFindDocument(documentId){
+  return tryFind((document) => asText(document.documentId)==asText(documentId), documents());
+}
+function tryFindSchema(duTypeName){
+  return tryFind((schema) => asText(schema.duTypeName)==asText(duTypeName), schemas());
+}
+function input(inputType, className, testId){
+  const node=doc().createElement("input");
+  node.setAttribute("type", inputType);
+  node.className=className;
+  setTestId(testId, node);
+  return node;
+}
+function elementValue(node){
+  return node.value;
+}
+function button(className, testId, label_1){
+  const node=element("button", className, label_1);
+  node.setAttribute("type", "button");
+  setTestId(testId, node);
+  return node;
+}
+function queryInputs(root, selector){
+  const nodes=root.querySelectorAll(selector);
+  return ofSeq(delay(() => map_1((index) => nodes[index], range(0, toInt(nodes.length)-1))));
+}
+function append(parent, children){
+  iter((child) => {
+    parent.appendChild(child);
+  }, children);
+  return parent;
+}
+function keyPartsFromJson(text){
+  let _1;
+  const m=tryDecodeJson(text);
+  if(m==null){
+    const m_1=tryDecodeJson(text);
+    return m_1!=null&&m_1.$==1&&(!isBlank(m_1.$0)&&(_1=m_1.$0,true))?[_1]:[];
+  }
+  else return map(asText, arrayOrEmpty(m.$0));
+}
+function schemaKeys(){
+  return sort(filter((x) =>!isBlank(x), map((a) => a.duTypeName, schemas())));
+}
+function documentKeys(){
+  return sort(filter((x) =>!isBlank(x), map((a) => a.documentId, documents())));
+}
+function unionCaseNamesFromContext(ctx, schema){
+  const allowed=filter((x) =>!isBlank(x), map(asText, arrayOrEmpty(ctx.unionCaseNames)));
+  return length(allowed)===0?map((a) => a.name, arrayOrEmpty(schema.unionCases)):allowed;
+}
+function buildRawArgu(_1, fieldGetters){
+  return buildRawArguFromValues(map((_2) =>[_2[0], _2[1]()], fieldGetters));
+}
+function renderField(refresh, field){
+  let getter, _1;
+  const x=element("div", "dynamic-argu-field", null);
+  const row=setTestId("dynamic-argu-field-"+asText(field.name), x);
+  row.setAttribute("data-dynamic-argu-field", asText(field.name));
+  row.setAttribute("data-dynamic-argu-kind", asText(field.kind));
+  row.appendChild(label(isBlank(field.label)?field.name:field.label));
+  getter=() =>[];
+  const wireInputEvents=(node_4) => {
+    node_4.addEventListener("input", refresh);
+    node_4.addEventListener("change", refresh);
+  };
+  const renderScalarInput=(testId, itemKind, options) => {
+    const m_1=asText(itemKind);
+    switch(m_1){
+      case"number":
+        const node_4=input("number", "dynamic-argu-input", testId);
+        node_4.setAttribute("data-dynamic-argu-input", "true");
+        wireInputEvents(node_4);
+        return[node_4, () =>[elementValue(node_4)]];
+      case"enum":
+        const node_5=doc().createElement("select");
+        node_5.className="dynamic-argu-select";
+        setTestId(testId, node_5);
+        node_5.setAttribute("data-dynamic-argu-input", "true");
+        iter((value) => {
+          const option=doc().createElement("option");
+          option.setAttribute("value", asText(value));
+          option.textContent=asText(value);
+          node_5.appendChild(option);
+        }, arrayOrEmpty(options));
+        wireInputEvents(node_5);
+        return[node_5, () =>[elementValue(node_5)]];
+      case"bool-value":
+      case"bool":
+        const node_6=input("checkbox", "dynamic-argu-input", testId);
+        node_6.setAttribute("data-dynamic-argu-input", "true");
+        wireInputEvents(node_6);
+        return[node_6, () => ofSeq(delay(() => node_6.checked?["true"]:["false"]))];
+      default:
+        const node_7=input("text", "dynamic-argu-input", testId);
+        node_7.setAttribute("data-dynamic-argu-input", "true");
+        wireInputEvents(node_7);
+        return[node_7, () =>[node_7.value]];
+    }
+  };
+  const m=asText(field.kind);
+  switch(m){
+    case"number":
+      const node=input("number", "dynamic-argu-input", "dynamic-argu-number-"+asText(field.name));
+      _1=(node.setAttribute("data-dynamic-argu-input", "true"),wireInputEvents(node),row.appendChild(node),void(getter=() =>[elementValue(node)]));
+      break;
+    case"enum":
+      const node_1=doc().createElement("select");
+      _1=(node_1.className="dynamic-argu-select",setTestId("dynamic-argu-enum-"+asText(field.name), node_1),node_1.setAttribute("data-dynamic-argu-input", "true"),iter((value) => {
+        const option=doc().createElement("option");
+        option.setAttribute("value", asText(value));
+        option.textContent=asText(value);
+        node_1.appendChild(option);
+      }, arrayOrEmpty(field.options)),wireInputEvents(node_1),row.appendChild(node_1),void(getter=() =>[elementValue(node_1)]));
+      break;
+    case"tuple":
+      const x_1=element("div", "dynamic-argu-tuple", null);
+      const tuple=setTestId("dynamic-argu-tuple-"+asText(field.name), x_1);
+      const itemGetters=MarkResizable([]);
+      _1=(iteri((_2, _3) => {
+        const x_3=element("div", "dynamic-argu-tuple-item", null);
+        const itemRow=setTestId("dynamic-argu-tuple-item-"+String(asText(field.name))+"-"+String(_2+1), x_3);
+        itemRow.appendChild(label(String(_2+1)+". "+String(isBlank(_3.label)?_3.name:_3.label)));
+        const p=renderScalarInput("", _3.kind, _3.options);
+        const node_4=p[0];
+        node_4.setAttribute("data-dynamic-argu-tuple-item", String(_2+1));
+        itemGetters.push(p[1]);
+        itemRow.appendChild(node_4);
+        tuple.appendChild(itemRow);
+      }, arrayOrEmpty(field.items)),row.appendChild(tuple),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters))));
+      break;
+    case"list":
+      const x_2=element("div", "dynamic-argu-list", null);
+      const list=setTestId("dynamic-argu-list-"+asText(field.name), x_2);
+      const itemGetters_1=MarkResizable([]);
+      const add=button("dynamic-argu-add-list-item", "dynamic-argu-list-add-"+asText(field.name), "Add");
+      const addInput=() => {
+        const o=tryHead(arrayOrEmpty(field.items));
+        const item=o==null?New_31(field.name+"Item", field.label, "text", "", [], []):o.$0;
+        const p=renderScalarInput("dynamic-argu-list-item-"+asText(field.name), item.kind, item.options);
+        const node_4=p[0];
+        node_4.setAttribute("data-dynamic-argu-list-item", "true");
+        itemGetters_1.push(p[1]);
+        list.insertBefore(node_4, add);
       };
-      const refreshFields=() => {
-        fields.textContent="";
-        currentUnionCase().fields.forEach((field) => {
-          fields.appendChild(renderField(field));
-        });
-        refreshPreview();
-      };
-      root.addEventListener("input", refreshPreview);
-      root.addEventListener("change", refreshPreview);
-      selector.addEventListener("change", refreshFields);
-      send.addEventListener("click", () => {
-        const raw=buildRawArgu(currentUnionCase(), root);
-        rawPreview.textContent=raw;
-        ctx.submit({
-          rawArgu:raw, 
-          duTypeName:typeName, 
-          unionCaseName:currentUnionCase().name
-        });
-      });
-      root.appendChild(labelText("Union case"));
-      root.appendChild(selector);
-      root.appendChild(fields);
-      root.appendChild(rawPreview);
-      root.appendChild(send);
-      refreshFields();
-      return root;
-    });
-  })());
+      _1=(add.addEventListener("click", () => {
+        addInput();
+        return refresh();
+      }),list.appendChild(add),addInput(),row.appendChild(list),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters_1))));
+      break;
+    case"bool-value":
+    case"bool":
+      const node_2=input("checkbox", "dynamic-argu-input", "dynamic-argu-bool-"+asText(field.name));
+      _1=(node_2.setAttribute("data-dynamic-argu-input", "true"),wireInputEvents(node_2),row.appendChild(node_2),void(getter=() => ofSeq(delay(() => node_2.checked?["true"]:["false"]))));
+      break;
+    default:
+      const node_3=input("text", "dynamic-argu-input", "dynamic-argu-text-"+asText(field.name));
+      _1=(node_3.setAttribute("data-dynamic-argu-input", "true"),wireInputEvents(node_3),row.appendChild(node_3),void(getter=() =>[node_3.value]));
+      break;
+  }
+  return[row, getter];
+}
+function decodeJson(text){
+  return JSON.parse(asText(text));
+}
+function set_schemas(_1){
+  _c_1.schemas=_1;
+}
+function schemas(){
+  return _c_1.schemas;
+}
+function set_documents(_1){
+  _c_1.documents=_1;
+}
+function documents(){
+  return _c_1.documents;
+}
+function label(text){
+  return element("label", "dynamic-argu-label", text);
 }
 function _registerRenderer(){
   globalThis.PulseTradeRegisterRenderer("fskynet-sdui", (text) => {
@@ -344,11 +384,11 @@ function _registerRenderer(){
         return null;
       }
       else {
-        const doc_1=docOpt.$0;
+        const doc_2=docOpt.$0;
         globalThis.console.log("Got Some doc! Creating container...");
         const container=globalThis.document.createElement("div");
         LoadLocalTemplates("");
-        Doc.Run(container, doc_1);
+        Doc.Run(container, doc_2);
         globalThis.console.log("Rendered doc to container!");
         return Some(container);
       }
@@ -363,13 +403,13 @@ function _registerRenderer(){
 function Main(){
   globalThis.console.log("EVALUATING SPAEntryPoint Main in ActorDynamicTab!");
   _registerRenderer();
-  return Register();
+  Register();
 }
 function Main_1(){
   let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
-  if(!(doc().body==null))doc().body.setAttribute("data-server-reality-id", currentServerRealityId());
-  const trimmed=TrimEnd(asText(globalThis.location.pathname), ["/"]);
-  const path=isBlank(trimmed)?"/chat":trimmed;
+  if(!(doc_1().body==null))doc_1().body.setAttribute("data-server-reality-id", currentServerRealityId());
+  const trimmed=TrimEnd(asText_1(globalThis.location.pathname), ["/"]);
+  const path=isBlank_1(trimmed)?"/chat":trimmed;
   mountedPageElement=null;
   mountedAppendPageResolved=false;
   const cacheKey_1=appendPagesDefinitionsCacheKey();
@@ -381,7 +421,7 @@ function Main_1(){
     if(!mounted){
       let _1;
       mounted=true;
-      const pages_1=arrayOrEmpty(pages);
+      const pages_1=arrayOrEmpty_1(pages);
       const p=shell(path, pages_1);
       const page=p[1];
       mountedPageElement=Some(page);
@@ -402,8 +442,8 @@ function Main_1(){
     }
   };
   const renderAppendRegistryHealth=() => {
-    if(!(doc().body==null))doc().body.setAttribute("data-append-registry-ws-state", appendRegistryWsState);
-    const node=doc().querySelector("[data-testid='append-registry-health']");
+    if(!(doc_1().body==null))doc_1().body.setAttribute("data-append-registry-ws-state", appendRegistryWsState);
+    const node=doc_1().querySelector("[data-testid='append-registry-health']");
     if(!(node==null)){
       const x=setData("ws-state", appendRegistryWsState, node);
       const x_1=setData("page-count", String(appendRegistryPageCount), x);
@@ -417,14 +457,14 @@ function Main_1(){
   const applyDefinitionsFromReply=(data) => {
     let _1;
     const data_1=data==null?emptyAppendPagesReply():data;
-    appendRegistryPageCount=arrayOrEmpty(data_1.pages).length;
+    appendRegistryPageCount=arrayOrEmpty_1(data_1.pages).length;
     const b=data_1.maxSequence;
     appendRegistryMaxSequence=Compare(appendRegistryMaxSequence, b)===1?appendRegistryMaxSequence:b;
     if(mounted){
-      const nav=doc().getElementById("ptc-nav");
-      if(!(nav==null))renderNav(nav, path, arrayOrEmpty(data_1.pages));
+      const nav=doc_1().getElementById("ptc-nav");
+      if(!(nav==null))renderNav(nav, path, arrayOrEmpty_1(data_1.pages));
       if(path!="/sets"&&path!="/actors"&&path!="/chat"&&!mountedAppendPageResolved){
-        const _2=findAppendPage(path, arrayOrEmpty(data_1.pages));
+        const _2=findAppendPage(path, arrayOrEmpty_1(data_1.pages));
         if(mountedPageElement!=null&&mountedPageElement.$==1){
           if(_2!=null&&_2.$==1){
             const definition=_2.$0;
@@ -441,7 +481,7 @@ function Main_1(){
     renderAppendRegistryHealth();
   };
   const setAppendRegistryWsState=(value) => {
-    appendRegistryWsState=asText(value);
+    appendRegistryWsState=asText_1(value);
     renderAppendRegistryHealth();
   };
   appendRegistrySocket=null;
@@ -449,7 +489,7 @@ function Main_1(){
   appendRegistrySubscribed=false;
   appendRegistryTailRequested=false;
   const handleAppendRegistryEvents=(events) => {
-    if(length(arrayOrEmpty(events))>0)readJson(cacheKey_1, (cached) => {
+    if(length(arrayOrEmpty_1(events))>0)readJson(cacheKey_1, (cached) => {
       const merged=mergeAppendPageRegistryEvents(cached==null?emptyAppendPagesReply():cached.$0, events);
       writeAppendPagesDefinitions(merged);
       applyDefinitionsFromReply(merged);
@@ -483,8 +523,8 @@ function Main_1(){
       socket_1.onmessage=(event) => {
         try {
           const response=json(String(event.data));
-          const responseType=asText(response.type).toLowerCase();
-          const responseStatus=asText(response.status).toLowerCase();
+          const responseType=asText_1(response.type).toLowerCase();
+          const responseStatus=asText_1(response.status).toLowerCase();
           switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
             case 0:
               return setAppendRegistryWsState("subscribed");
@@ -544,12 +584,12 @@ function Main_1(){
   subscribeAppendPageRegistry();
   renderAppendRegistryHealth();
 }
-function doc(){
+function doc_1(){
   return _c.doc;
 }
 function currentServerRealityId(){
-  const node=doc().getElementById("ptc-comm-reality");
-  if(node==null||isBlank(node.textContent))return"legacy";
+  const node=doc_1().getElementById("ptc-comm-reality");
+  if(node==null||isBlank_1(node.textContent))return"legacy";
   else try {
     return textOr("legacy", json(node.textContent).serverRealityId);
   }
@@ -557,33 +597,33 @@ function currentServerRealityId(){
     return"legacy";
   }
 }
-function isBlank(value){
+function isBlank_1(value){
   return value==null||Trim(value)=="";
 }
-function asText(value){
+function asText_1(value){
   return value==null||Equals(typeof value, "undefined")?"":value;
 }
 function appendPagesDefinitionsCacheKey(){
   return cacheKey("append-pages-definitions", FSharpList.Empty);
 }
 function setData(name, value, node){
-  !isBlank(name)?node.setAttribute("data-"+name, asText(value)):void 0;
+  !isBlank_1(name)?node.setAttribute("data-"+name, asText_1(value)):void 0;
   return node;
 }
 function emptyAppendPagesReply(){
   return New("ok", 0, 0n, []);
 }
-function arrayOrEmpty(values){
+function arrayOrEmpty_1(values){
   return values==null?[]:values;
 }
 function mergeAppendPageRegistryEvents(baseline, events){
   let pages, maxSequence;
   const baseline_1=baseline==null?emptyAppendPagesReply():baseline;
-  pages=arrayOrEmpty(baseline_1.pages);
+  pages=arrayOrEmpty_1(baseline_1.pages);
   maxSequence=baseline_1.maxSequence;
   iter((event) => {
     if(!(event==null)&&event.sequence>0n){
-      const m=asText(event.sourceKind).toLowerCase();
+      const m=asText_1(event.sourceKind).toLowerCase();
       if(m=="append-page.definition"){
         const b=event.sequence;
         maxSequence=Compare(maxSequence, b)===1?maxSequence:b;
@@ -617,18 +657,18 @@ function mergeAppendPageRegistryEvents(baseline, events){
       }
       else void 0;
     }
-  }, arrayOrEmpty(events));
+  }, arrayOrEmpty_1(events));
   return New("ok", length(pages), maxSequence, pages);
 }
 function writeAppendPagesDefinitions(data){
-  writeSnapshotWithWatermark(appendPagesDefinitionsCacheKey(), data, data.maxSequence, length(arrayOrEmpty(data.pages)), "append-pages-definitions");
+  writeSnapshotWithWatermark(appendPagesDefinitionsCacheKey(), data, data.maxSequence, length(arrayOrEmpty_1(data.pages)), "append-pages-definitions");
 }
 function syncWebSocketUrl(){
   const location=globalThis.location;
   return(location.protocol=="https:"?"wss:":"ws:")+"//"+location.host+"/sync/ws";
 }
 function appendPageRegistryStreamKey(){
-  return New_4("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
+  return New_6("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
 }
 function newRequestId(prefix){
   set_requestSeq(requestSeq()+1);
@@ -638,28 +678,28 @@ function defaultCacheLimit(){
   return _c.defaultCacheLimit;
 }
 function getJson(url, onOk, onError){
-  (globalThis.fetch(url, {cache:"no-store"}).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank(body)?"{}":body)):onError(isBlank(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, {cache:"no-store"}).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank_1(body)?"{}":body)):onError(isBlank_1(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage(error)));
 }
 function findAppendPage(path, pages){
-  return tryFind((page) => isCurrentPage(path, pagePath(page))||isCurrentPage(path, "/page/"+asText(page.pageId))||isCurrentPage(path, "/"+asText(page.pageId)), arrayOrEmpty(pages));
+  return tryFind((page) => isCurrentPage(path, pagePath(page))||isCurrentPage(path, "/page/"+asText_1(page.pageId))||isCurrentPage(path, "/"+asText_1(page.pageId)), arrayOrEmpty_1(pages));
 }
 function clear(node){
   node.textContent="";
 }
 function mountAppendPage(page, definition){
-  let currentLineageHealth, selected, selectedKeyJson, buckets, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
+  let currentLineageHealth, selected, selectedKeyJson, buckets, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
   page.className="page append-page";
-  setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId("append-page-"+asText(definition.pageId), page)));
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
+  setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId_1("append-page-"+asText_1(definition.pageId), page)));
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
   const readsLegacy=sameText(definition.tabId, definition.pageId);
-  let currentLineage=New_5(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
+  let currentLineage=New_7(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
   const applyLineage=(lineage) => {
     const lineage_1=lineage==null?currentLineage:lineage;
     currentLineage=lineage_1;
     setData("lineage-read-repair-policy", lineage_1.readRepairPolicy, setData("lineage-reads-legacy", lineage_1.readsLegacyPageStreams?"true":"false", setData("lineage-legacy-page-id-alias", lineage_1.legacyPageIdAlias, setData("lineage-kind", lineage_1.lineageKind, setData("lineage-stream-page-id", lineage_1.streamPageId, page)))));
   };
   applyLineage(currentLineage);
-  const defaultLineageHealth=() => New_6(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
+  const defaultLineageHealth=() => New_8(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
   currentLineageHealth=defaultLineageHealth();
   selected="";
   selectedKeyJson="";
@@ -667,80 +707,81 @@ function mountAppendPage(page, definition){
   loadGeneration=0;
   visibleValueLimit=defaultRenderLimit();
   scrollValuesToBottomAfterNextRender=false;
-  const side=element("aside", "sidebar append-sidebar", null);
-  const sideHead=element("div", "panel-head", null);
-  const sideActions=element("div", "head-actions", null);
-  const addKeyButton=setTestId("append-add-key", button("", "Add"));
-  const removeKeyButton=setTestId("append-remove-key", button("", "Remove"));
-  const removePageButton=setTestId("append-remove-page", button("", "Remove page"));
-  const reload=setTestId("append-reload", button("", "Reload"));
-  const filters=element("div", "filters", null);
-  const keyFilter=setTestId("append-key-filter", input("key contains"));
-  const newKeyInput=setTestId("append-key-input", input(textOr("\"Aster\"", definition.keyPlaceholder)));
-  const status=setTestId("append-key-status", element("div", "state", "Loading"));
-  const list=setTestId("append-key-list", element("div", "list", null));
-  const work=setTestId("append-work", element("section", "append-work", null));
-  const values=setTestId("append-values", element("div", "append-values", null));
-  const form=setTestId("append-form", element("div", "append-form", null));
-  const valueInput=setTestId("append-value-input", textarea("append-value-input", textOr("JSON value", definition.valuePlaceholder)));
-  const directionInput=setTestId("append-direction", input("outbound-message"));
-  const appendButton=setTestId("append-submit", button("primary", "Append"));
-  const head_2=element("div", "work-head", null);
-  const titleBox=element("div", "", null);
-  const workState=setTestId("append-work-status", element("div", "state", "Loading"));
-  const pendingState=setTestId("append-pending-state", element("div", "state pending-state", ""));
-  const lineageHealthBox=setTestId("append-lineage-health", element("div", "meta wrap lineage-health", null));
-  const lineageDetailBox=setTestId("append-lineage-detail", element("div", "lineage-detail", null));
-  const lineageDetailPolicy=setTestId("append-lineage-detail-policy", element("span", "lineage-detail-value", ""));
-  const lineageDetailStream=setTestId("append-lineage-detail-stream", element("span", "lineage-detail-value", ""));
-  const lineageDetailLegacy=setTestId("append-lineage-detail-legacy", element("span", "lineage-detail-value", ""));
-  const lineageDetailValueCount=setTestId("append-lineage-detail-value-count", element("span", "lineage-detail-value", ""));
-  const lineageDetailValueStreams=setTestId("append-lineage-detail-value-streams", element("pre", "lineage-detail-value lineage-streams", ""));
-  const lineageDetailKeyCount=setTestId("append-lineage-detail-key-count", element("span", "lineage-detail-value", ""));
-  const lineageDetailKeyStreams=setTestId("append-lineage-detail-key-streams", element("pre", "lineage-detail-value lineage-streams", ""));
-  const keyRegistryHealthBox=setTestId("append-key-registry-health", element("div", "meta wrap key-registry-health", null));
-  const browserCacheHealthBox=setTestId("append-browser-cache-health", element("div", "meta wrap browser-cache-health", null));
-  const lineageInfo=setTestId("append-lineage-info", element("details", "lineage-info", null));
-  const lineageSummary=setTestId("append-lineage-toggle", element("summary", "lineage-summary", "Tab info"));
-  const lineageInfoContent=setTestId("append-lineage-info-content", element("div", "lineage-info-content", null));
-  const identityBox=setTestId("append-page-identity", element("div", "page-identity", null));
-  const pageIdChip=setTestId("append-page-id", element("span", "identity-chip", "page "+asText(definition.pageId)));
-  const tabIdChip=setTestId("append-tab-id", element("span", "identity-chip", "tab "+asText(definition.tabId)));
-  const sideTitle=element("div", "panel-title", null);
-  const lineageDetailRow=(label, valueNode) => {
-    const row=element("div", "lineage-detail-row", null);
-    append(row, [element("span", "lineage-detail-label", label), valueNode]);
+  const side=element_1("aside", "sidebar append-sidebar", null);
+  const sideHead=element_1("div", "panel-head", null);
+  const sideActions=element_1("div", "head-actions", null);
+  const addKeyButton=setTestId_1("append-add-key", button_1("", "Add"));
+  const removeKeyButton=setTestId_1("append-remove-key", button_1("", "Remove"));
+  const removePageButton=setTestId_1("append-remove-page", button_1("", "Remove page"));
+  const reload=setTestId_1("append-reload", button_1("", "Reload"));
+  const filters=element_1("div", "filters", null);
+  const keyFilter=setTestId_1("append-key-filter", input_1("key contains"));
+  const newKeyInput=setTestId_1("append-key-input", input_1(textOr("\"Aster\"", definition.keyPlaceholder)));
+  const addKeyRendererHost=setData("renderer-state", "not-rendered", setTestId_1("append-add-key-renderer-host", element_1("div", "append-add-key-renderer-host", null)));
+  const status=setTestId_1("append-key-status", element_1("div", "state", "Loading"));
+  const list=setTestId_1("append-key-list", element_1("div", "list", null));
+  const work=setTestId_1("append-work", element_1("section", "append-work", null));
+  const values=setTestId_1("append-values", element_1("div", "append-values", null));
+  const form=setTestId_1("append-form", element_1("div", "append-form", null));
+  const valueInput=setTestId_1("append-value-input", textarea("append-value-input", textOr("JSON value", definition.valuePlaceholder)));
+  const directionInput=setTestId_1("append-direction", input_1("outbound-message"));
+  const appendButton=setTestId_1("append-submit", button_1("primary", "Append"));
+  const head_2=element_1("div", "work-head", null);
+  const titleBox=element_1("div", "", null);
+  const workState=setTestId_1("append-work-status", element_1("div", "state", "Loading"));
+  const pendingState=setTestId_1("append-pending-state", element_1("div", "state pending-state", ""));
+  const lineageHealthBox=setTestId_1("append-lineage-health", element_1("div", "meta wrap lineage-health", null));
+  const lineageDetailBox=setTestId_1("append-lineage-detail", element_1("div", "lineage-detail", null));
+  const lineageDetailPolicy=setTestId_1("append-lineage-detail-policy", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailStream=setTestId_1("append-lineage-detail-stream", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailLegacy=setTestId_1("append-lineage-detail-legacy", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailValueCount=setTestId_1("append-lineage-detail-value-count", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailValueStreams=setTestId_1("append-lineage-detail-value-streams", element_1("pre", "lineage-detail-value lineage-streams", ""));
+  const lineageDetailKeyCount=setTestId_1("append-lineage-detail-key-count", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailKeyStreams=setTestId_1("append-lineage-detail-key-streams", element_1("pre", "lineage-detail-value lineage-streams", ""));
+  const keyRegistryHealthBox=setTestId_1("append-key-registry-health", element_1("div", "meta wrap key-registry-health", null));
+  const browserCacheHealthBox=setTestId_1("append-browser-cache-health", element_1("div", "meta wrap browser-cache-health", null));
+  const lineageInfo=setTestId_1("append-lineage-info", element_1("details", "lineage-info", null));
+  const lineageSummary=setTestId_1("append-lineage-toggle", element_1("summary", "lineage-summary", "Tab info"));
+  const lineageInfoContent=setTestId_1("append-lineage-info-content", element_1("div", "lineage-info-content", null));
+  const identityBox=setTestId_1("append-page-identity", element_1("div", "page-identity", null));
+  const pageIdChip=setTestId_1("append-page-id", element_1("span", "identity-chip", "page "+asText_1(definition.pageId)));
+  const tabIdChip=setTestId_1("append-tab-id", element_1("span", "identity-chip", "tab "+asText_1(definition.tabId)));
+  const sideTitle=element_1("div", "panel-title", null);
+  const lineageDetailRow=(label_1, valueNode) => {
+    const row=element_1("div", "lineage-detail-row", null);
+    append_1(row, [element_1("span", "lineage-detail-label", label_1), valueNode]);
     return row;
   };
-  append(lineageDetailBox, [lineageDetailRow("policy", lineageDetailPolicy), lineageDetailRow("stream", lineageDetailStream), lineageDetailRow("legacy", lineageDetailLegacy), lineageDetailRow("value count", lineageDetailValueCount), lineageDetailRow("value streams", lineageDetailValueStreams), lineageDetailRow("key count", lineageDetailKeyCount), lineageDetailRow("key streams", lineageDetailKeyStreams)]);
-  append(lineageInfoContent, [lineageHealthBox, lineageDetailBox, keyRegistryHealthBox, browserCacheHealthBox]);
-  append(lineageInfo, [lineageSummary, lineageInfoContent]);
-  newKeyInput.value=asText(definition.defaultKey);
+  append_1(lineageDetailBox, [lineageDetailRow("policy", lineageDetailPolicy), lineageDetailRow("stream", lineageDetailStream), lineageDetailRow("legacy", lineageDetailLegacy), lineageDetailRow("value count", lineageDetailValueCount), lineageDetailRow("value streams", lineageDetailValueStreams), lineageDetailRow("key count", lineageDetailKeyCount), lineageDetailRow("key streams", lineageDetailKeyStreams)]);
+  append_1(lineageInfoContent, [lineageHealthBox, lineageDetailBox, keyRegistryHealthBox, browserCacheHealthBox]);
+  append_1(lineageInfo, [lineageSummary, lineageInfoContent]);
+  newKeyInput.value=asText_1(definition.defaultKey);
   directionInput.value="outbound-message";
   directionInput.className="append-direction";
   appendButton.textContent=actorArguButtonLabel(definition);
-  append(identityBox, [pageIdChip, tabIdChip]);
-  append(sideTitle, [element("h1", "", pageTitle(definition)), identityBox]);
-  append(sideActions, [addKeyButton, removeKeyButton, removePageButton, reload]);
-  append(sideHead, [sideTitle]);
-  append(filters, [newKeyInput, keyFilter, status]);
-  append(side, [sideHead, sideActions, filters, list]);
-  append(titleBox, [element("label", "", asText(definition.shape)+" / "+asText(definition.setName)), element("h2", "", pageTitle(definition)), element("div", "meta wrap", asText(definition.description)), lineageInfo]);
-  append(head_2, [titleBox, workState]);
+  append_1(identityBox, [pageIdChip, tabIdChip]);
+  append_1(sideTitle, [element_1("h1", "", pageTitle(definition)), identityBox]);
+  append_1(sideActions, [addKeyButton, removeKeyButton, removePageButton, reload]);
+  append_1(sideHead, [sideTitle]);
+  append_1(filters, [newKeyInput, addKeyRendererHost, keyFilter, status]);
+  append_1(side, [sideHead, sideActions, filters, list]);
+  append_1(titleBox, [element_1("label", "", asText_1(definition.shape)+" / "+asText_1(definition.setName)), element_1("h2", "", pageTitle(definition)), element_1("div", "meta wrap", asText_1(definition.description)), lineageInfo]);
+  append_1(head_2, [titleBox, workState]);
   const applyLineageHealth=(health) => {
     const health_1=health==null?defaultLineageHealth():health;
     currentLineageHealth=health_1;
-    const valueStreamKeys=health_1.candidateValueStreamKeys==null?"":concat_1("\n", map(asText, health_1.candidateValueStreamKeys));
-    const keyRegistryStreamKeys=health_1.candidateKeyRegistryStreamKeys==null?"":concat_1("\n", map(asText, health_1.candidateKeyRegistryStreamKeys));
-    const visibleStreamKeys=(streamKeys) => isBlank(streamKeys)?"none":streamKeys;
+    const valueStreamKeys=health_1.candidateValueStreamKeys==null?"":concat_2("\n", map(asText_1, health_1.candidateValueStreamKeys));
+    const keyRegistryStreamKeys=health_1.candidateKeyRegistryStreamKeys==null?"":concat_2("\n", map(asText_1, health_1.candidateKeyRegistryStreamKeys));
+    const visibleStreamKeys=(streamKeys) => isBlank_1(streamKeys)?"none":streamKeys;
     setData("lineage-health-policy", health_1.readRepairPolicy, setData("lineage-candidate-key-registry-stream-keys", keyRegistryStreamKeys, setData("lineage-candidate-value-stream-keys", valueStreamKeys, setData("lineage-candidate-key-registry-stream-count", String(health_1.candidateKeyRegistryStreamCount), setData("lineage-candidate-value-stream-count", String(health_1.candidateValueStreamCount), page)))));
     setData("read-repair-policy", health_1.readRepairPolicy, setData("candidate-key-registry-stream-keys", keyRegistryStreamKeys, setData("candidate-value-stream-keys", valueStreamKeys, setData("candidate-key-registry-stream-count", String(health_1.candidateKeyRegistryStreamCount), setData("candidate-value-stream-count", String(health_1.candidateValueStreamCount), setData("lineage-kind", health_1.lineageKind, setData("stream-page-id", health_1.streamPageId, lineageHealthBox)))))));
     lineageHealthBox.setAttribute("title", "value streams:\n"+valueStreamKeys+"\nkey registry streams:\n"+keyRegistryStreamKeys);
-    lineageHealthBox.textContent="lineage "+String(asText(health_1.lineageKind))+" | stream "+String(asText(health_1.streamPageId))+" | value streams "+String(health_1.candidateValueStreamCount)+" | key streams "+String(health_1.candidateKeyRegistryStreamCount)+" | "+String(asText(health_1.readRepairPolicy));
+    lineageHealthBox.textContent="lineage "+String(asText_1(health_1.lineageKind))+" | stream "+String(asText_1(health_1.streamPageId))+" | value streams "+String(health_1.candidateValueStreamCount)+" | key streams "+String(health_1.candidateKeyRegistryStreamCount)+" | "+String(asText_1(health_1.readRepairPolicy));
     setData("read-repair-policy", health_1.readRepairPolicy, setData("candidate-key-registry-stream-keys", keyRegistryStreamKeys, setData("candidate-value-stream-keys", valueStreamKeys, setData("candidate-key-registry-stream-count", String(health_1.candidateKeyRegistryStreamCount), setData("candidate-value-stream-count", String(health_1.candidateValueStreamCount), setData("reads-legacy", health_1.readsLegacyPageStreams?"true":"false", setData("legacy-page-id-alias", health_1.legacyPageIdAlias, setData("lineage-kind", health_1.lineageKind, setData("stream-page-id", health_1.streamPageId, lineageDetailBox)))))))));
-    lineageDetailPolicy.textContent=asText(health_1.readRepairPolicy);
-    lineageDetailStream.textContent=asText(health_1.streamPageId);
-    lineageDetailLegacy.textContent=isBlank(health_1.legacyPageIdAlias)?"none":asText(health_1.legacyPageIdAlias);
+    lineageDetailPolicy.textContent=asText_1(health_1.readRepairPolicy);
+    lineageDetailStream.textContent=asText_1(health_1.streamPageId);
+    lineageDetailLegacy.textContent=isBlank_1(health_1.legacyPageIdAlias)?"none":asText_1(health_1.legacyPageIdAlias);
     lineageDetailValueCount.textContent=String(health_1.candidateValueStreamCount);
     lineageDetailValueStreams.textContent=visibleStreamKeys(valueStreamKeys);
     lineageDetailKeyCount.textContent=String(health_1.candidateKeyRegistryStreamCount);
@@ -749,20 +790,22 @@ function mountAppendPage(page, definition){
   applyLineageHealth(currentLineageHealth);
   if(isActorArguPage(definition)){
     form.className="append-form actor-argu-form";
-    append(form, [valueInput, appendButton]);
+    append_1(form, [valueInput, appendButton]);
   }
-  else asText(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append(form, [directionInput, valueInput, appendButton])):append(form, [valueInput, appendButton]);
-  append(work, [head_2, pendingState, values, form]);
-  append(page, [side, work]);
+  else asText_1(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append_1(form, [directionInput, valueInput, appendButton])):append_1(form, [valueInput, appendButton]);
+  append_1(work, [head_2, pendingState, values, form]);
+  append_1(page, [side, work]);
   const browserId=currentUserId();
   ensureSelectedSubscription=() => { };
   replayPendingCommands=() => { };
   deleteAcceptedPendingAppends=() =>() => null;
+  rerenderAppendForm=() => { };
+  rerenderAddKeyBuilder=() => { };
   const refreshPendingState=() => {
-    readPendingRealitySplit((_2, _3) => renderPendingInspection(pendingState, filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _2), filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _3)));
+    readPendingRealitySplit((_3, _4) => renderPendingInspection(pendingState, filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_1(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_1(definition.pageId)+"\"")!=-1), _3), filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_1(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_1(definition.pageId)+"\"")!=-1), _4)));
   };
-  const isPendingForThisPage=(command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1);
-  const currentFilterText=() => isBlank(keyFilter.value)?"":Trim(keyFilter.value);
+  const isPendingForThisPage=(command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_1(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_1(definition.pageId)+"\"")!=-1);
+  const currentFilterText=() => isBlank_1(keyFilter.value)?"":Trim(keyFilter.value);
   const requestValuesScrollToBottom=() => {
     scrollValuesToBottomAfterNextRender=true;
   };
@@ -773,15 +816,15 @@ function mountAppendPage(page, definition){
   const updateBrowserCacheHealth=(renderedCount, cachedCount, minSequence, maxSequence, snapshotSeqId, backendGap) => {
     const gapText=backendGap?"true":"false";
     const cacheKey_1=stateCacheKey();
-    const selectedText=isBlank(selected)?"(none)":selected;
+    const selectedText=isBlank_1(selected)?"(none)":selected;
     const n=setData("cache-key", cacheKey_1, browserCacheHealthBox);
-    let _2=setData("selected-key-id", selected, n);
-    let _3=setData("rendered-count", String(renderedCount), _2);
-    let _4=setData("cached-count", String(cachedCount), _3);
-    let _5=setData("min-sequence", String(minSequence), _4);
-    let _6=setData("max-sequence", String(maxSequence), _5);
-    let _7=setData("snapshot-seqid", String(snapshotSeqId), _6);
-    setData("backend-gap", gapText, _7);
+    let _3=setData("selected-key-id", selected, n);
+    let _4=setData("rendered-count", String(renderedCount), _3);
+    let _5=setData("cached-count", String(cachedCount), _4);
+    let _6=setData("min-sequence", String(minSequence), _5);
+    let _7=setData("max-sequence", String(maxSequence), _6);
+    let _8=setData("snapshot-seqid", String(snapshotSeqId), _7);
+    setData("backend-gap", gapText, _8);
     browserCacheHealthBox.setAttribute("title", "cacheKey="+String(cacheKey_1)+"\nselectedKey="+String(selectedText)+"\nrendered="+String(renderedCount)+"\ncached="+String(cachedCount)+"\nrange="+String(minSequence)+".."+String(maxSequence)+"\nsnapshotSeqId="+String(snapshotSeqId)+"\nbackendGap="+String(gapText));
     browserCacheHealthBox.textContent="browser cache "+String(cacheKey_1)+" | rendered "+String(renderedCount)+" | cached "+String(cachedCount)+" | seq "+String(minSequence)+".."+String(maxSequence)+" | snapshot "+String(snapshotSeqId)+" | gap "+String(gapText);
   };
@@ -789,8 +832,8 @@ function mountAppendPage(page, definition){
     const cacheKey_1=keyRegistryCacheKey();
     const x=setData("ws-state", keyRegistryWsState, keyRegistryHealthBox);
     const x_1=setData("key-count", String(length(buckets)), x);
-    let _2=setData("max-sequence", String(currentKeyMaxSequence), x_1);
-    setData("cache-key", cacheKey_1, _2);
+    let _3=setData("max-sequence", String(currentKeyMaxSequence), x_1);
+    setData("cache-key", cacheKey_1, _3);
     keyRegistryHealthBox.setAttribute("title", "cacheKey="+String(cacheKey_1)+"\nwsState="+String(keyRegistryWsState)+"\nvisibleKeyCount="+String(length(buckets))+"\nmaxSequence="+String(currentKeyMaxSequence));
     keyRegistryHealthBox.textContent="key registry ws "+String(keyRegistryWsState)+" | visible keys "+String(length(buckets))+" | seq "+String(currentKeyMaxSequence);
   };
@@ -801,11 +844,12 @@ function mountAppendPage(page, definition){
     updateKeyRegistryHealth();
   };
   const writeCurrentSnapshot=() => {
-    const snapshot=New_8("ok", definition, length(buckets), fold((_2, _3) => Compare(_2, _3)===1?_2:_3, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
+    const snapshot=New_10("ok", definition, length(buckets), fold((_3, _4) => Compare(_3, _4)===1?_3:_4, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
     writeSnapshotWithWatermark(stateCacheKey(), snapshot, snapshot.maxSequence, appendPageValueCount(snapshot), "append-page-state");
     writeAppendPageKeyWatermark(snapshot);
   };
-  const sortAppendPageBuckets=(items) => sortBy((bucket) =>[asText(bucket.setName), asText(bucket.keyId)], arrayOrEmpty(items));
+  const appendPageKeyId=(keys) => asText_1(definition.setName)+"::"+concat_2(" + ", arrayOrEmpty_1(keys));
+  const sortAppendPageBuckets=(items) => sortBy((bucket) =>[asText_1(bucket.setName), asText_1(bucket.keyId)], arrayOrEmpty_1(items));
   const sequenceBounds=(items) => {
     let oldest, newest;
     oldest=0n;
@@ -813,25 +857,25 @@ function mountAppendPage(page, definition){
     iter((value) => {
       !(value==null)&&value.sequence>0n&&(oldest===0n||value.sequence<oldest)?oldest=value.sequence:void 0;
       !(value==null)&&value.sequence>newest?newest=value.sequence:void 0;
-    }, arrayOrEmpty(items));
+    }, arrayOrEmpty_1(items));
     return[oldest, newest];
   };
   const mergeAppendValues=(existing, incoming) => {
     let merged;
     merged=[];
     const add=(value) => {
-      if(!(value==null)&&!isBlank(value.valueId)&&!exists((row) => row.valueId==value.valueId, merged))merged=merged.concat([value]);
+      if(!(value==null)&&!isBlank_1(value.valueId)&&!exists((row) => row.valueId==value.valueId, merged))merged=merged.concat([value]);
     };
-    iter(add, arrayOrEmpty(incoming));
-    iter(add, arrayOrEmpty(existing));
-    return sortBy((value) => asText(value.createdAtUtc), merged);
+    iter(add, arrayOrEmpty_1(incoming));
+    iter(add, arrayOrEmpty_1(existing));
+    return sortBy((value) => asText_1(value.createdAtUtc), merged);
   };
   function renderList(){
     clear(list);
     iter((bucket) => {
-      const item=button(bucket.keyId==selected?"list-card active":"list-card", null);
-      setData("max-sequence", String(bucket.maxSequence), setData("min-sequence", String(bucket.minSequence), setData("key-id", bucket.keyId, setTestId("append-key-card", item))));
-      append(item, [element("div", "strong wrap", joinValues(bucket.keys)), element("div", "muted wrap", asText(bucket.setName)), element("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText(bucket.updatedAtUtc)))]);
+      const item=button_1(bucket.keyId==selected?"list-card active":"list-card", null);
+      setData("max-sequence", String(bucket.maxSequence), setData("min-sequence", String(bucket.minSequence), setData("key-id", bucket.keyId, setTestId_1("append-key-card", item))));
+      append_1(item, [element_1("div", "strong wrap", joinValues(bucket.keys)), element_1("div", "muted wrap", asText_1(bucket.setName)), element_1("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText_1(bucket.updatedAtUtc)))]);
       item.addEventListener("click", () => {
         selected=bucket.keyId;
         selectedKeyJson=keysAsJson(bucket.keys);
@@ -840,6 +884,7 @@ function mountAppendPage(page, definition){
         renderList();
         requestValuesScrollToBottom();
         renderValues();
+        rerenderAppendForm();
         return ensureSelectedSubscription();
       });
       list.appendChild(item);
@@ -848,14 +893,14 @@ function mountAppendPage(page, definition){
   function renderValues(){
     while(true)
       {
-        let _2, _3, _4;
+        let _3, _4, _5;
         clear(values);
         const x=(((n) =>(n_1) => setData(n, selected, n_1))("selected-key-id"))(work);
         ((((n) =>(n_1) => setData(n, selectedKeyJson, n_1))("selected-key-json"))(x));
         const bucket=(((p) =>(a_3) => tryFind(p, a_3))((bucket_2) => bucket_2.keyId==selected))(buckets);
         if(bucket!=null&&bucket.$==1){
           const bucket_1=bucket.$0;
-          const allValues=arrayOrEmpty(bucket_1.values);
+          const allValues=arrayOrEmpty_1(bucket_1.values);
           const visible=latestArray(visibleValueLimit, allValues);
           const a=0;
           const b=length(allValues)-length(visible);
@@ -869,8 +914,8 @@ function mountAppendPage(page, definition){
           const b_2=(sequenceBounds(allValues))[1];
           const newestSequence=Compare(a_2, b_2)===1?a_2:b_2;
           const backendGapAvailable=oldestSequence>1n&&hiddenCached===0;
-          const x_1=[asText(definition.tabId), asText(definition.shape), asText(definition.setName), concat_1("\u001f", arrayOrEmpty(bucket_1.keys))];
-          const selectedValueStreamKey=(((s) =>(s_1) => concat_1(s, s_1))("\n"))(x_1);
+          const x_1=[asText_1(definition.tabId), asText_1(definition.shape), asText_1(definition.setName), concat_2("\u001f", arrayOrEmpty_1(bucket_1.keys))];
+          const selectedValueStreamKey=(((s) =>(s_1) => concat_2(s, s_1))("\n"))(x_1);
           const x_2=(((n, v) =>(n_1) => setData(n, v, n_1))("lineage-candidate-value-stream-count", "1"))(page);
           ((((n, selectedValueStreamKey_1) =>(n_1) => setData(n, selectedValueStreamKey_1, n_1))("lineage-candidate-value-stream-keys", selectedValueStreamKey))(x_2));
           const x_3=(((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-count", "1"))(lineageHealthBox);
@@ -887,12 +932,12 @@ function mountAppendPage(page, definition){
           const x_10=(((n, v) =>(n_1) => setData(n, v, n_1))("snapshot-seqid", String(newestSequence)))(x_9);
           ((((n, v) =>(n_1) => setData(n, v, n_1))("backend-gap", backendGapAvailable?"true":"false"))(x_10));
           updateBrowserCacheHealth(length(visible), length(allValues), oldestSequence, newestSequence, newestSequence, backendGapAvailable);
-          if(length(visible)===0)_2=void values.appendChild(element("div", "empty", "No values appended yet."));
+          if(length(visible)===0)_3=void values.appendChild(element_1("div", "empty", "No values appended yet."));
           else {
             if(hiddenCached>0){
-              const x_11=button("", "Load older ("+String(hiddenCached)+")");
-              const loadOlder=(((i) =>(n) => setTestId(i, n))("append-load-older"))(x_11);
-              _3=(loadOlder.addEventListener("click", ((allValues_1) =>() => {
+              const x_11=button_1("", "Load older ("+String(hiddenCached)+")");
+              const loadOlder=(((i) =>(n) => setTestId_1(i, n))("append-load-older"))(x_11);
+              _4=(loadOlder.addEventListener("click", ((allValues_1) =>() => {
                 const a_3=length(allValues_1);
                 const b_3=visibleValueLimit+defaultRenderLimit();
                 visibleValueLimit=Compare(a_3, b_3)===-1?a_3:b_3;
@@ -900,18 +945,18 @@ function mountAppendPage(page, definition){
               })(allValues)),void values.appendChild(loadOlder));
             }
             else if(backendGapAvailable){
-              const x_12=button("", "Load older (backend)");
-              const loadOlder_1=(((i) =>(n) => setTestId(i, n))("append-load-older"))(x_12);
-              _3=(loadOlder_1.addEventListener("click", ((bucket_2, oldestSequence_1) =>() => readOlderFromBackend(bucket_2, oldestSequence_1))(bucket_1, oldestSequence)),void values.appendChild(loadOlder_1));
+              const x_12=button_1("", "Load older (backend)");
+              const loadOlder_1=(((i) =>(n) => setTestId_1(i, n))("append-load-older"))(x_12);
+              _4=(loadOlder_1.addEventListener("click", ((bucket_2, oldestSequence_1) =>() => readOlderFromBackend(bucket_2, oldestSequence_1))(bucket_1, oldestSequence)),void values.appendChild(loadOlder_1));
             }
-            else _3=null;
-            _2=(((a_3) =>(a_4) => {
+            else _4=null;
+            _3=(((a_3) =>(a_4) => {
               iter(a_3, a_4);
             })((value) => {
               values.appendChild(renderAppendValue(value));
             }))(visible);
           }
-          _4=length(visible)<reportedCount?setStatus(workState, "Showing "+String(length(visible))+"/"+String(reportedCount)+" value(s)"):setStatus(workState, String(reportedCount)+" value(s)");
+          _5=length(visible)<reportedCount?setStatus(workState, "Showing "+String(length(visible))+"/"+String(reportedCount)+" value(s)"):setStatus(workState, String(reportedCount)+" value(s)");
         }
         else {
           const x_13=(((n, v) =>(n_1) => setData(n, v, n_1))("rendered-count", "0"))(values);
@@ -930,20 +975,24 @@ function mountAppendPage(page, definition){
           ((((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-keys", ""))(x_21));
           lineageDetailValueCount.textContent="0";
           lineageDetailValueStreams.textContent="none";
-          values.appendChild(element("div", "empty", "No key selected."));
-          _4=setStatus(workState, "No key selected");
+          values.appendChild(element_1("div", "empty", "No key selected."));
+          _5=setStatus(workState, "No key selected");
         }
-        return scrollValuesToBottomAfterNextRender?(scrollValuesToBottomAfterNextRender=false,scrollToBottomAfterRender(values)):null;
+        if(scrollValuesToBottomAfterNextRender){
+          scrollValuesToBottomAfterNextRender=false;
+          scrollToBottomAfterRender(values);
+        }
+        return rerenderAppendForm();
       }
   }
   function readOlderFromBackend(bucket, beforeSequence){
-    const keyJson=isBlank(selectedKeyJson)?keysAsJson(bucket.keys):selectedKeyJson;
-    const url="/pages/api/read-before?pageId="+encodeURIComponent(asText(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&beforeSequence="+String(beforeSequence)+"&count="+String(defaultRenderLimit());
+    const keyJson=isBlank_1(selectedKeyJson)?keysAsJson(bucket.keys):selectedKeyJson;
+    const url="/pages/api/read-before?pageId="+encodeURIComponent(asText_1(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&beforeSequence="+String(beforeSequence)+"&count="+String(defaultRenderLimit());
     setStatus(workState, "Loading older values before "+String(beforeSequence));
     return getJson(url, (reply) => {
       applyLineage(reply.lineage);
       applyLineageHealth(reply.lineageHealth);
-      const incoming=arrayOrEmpty(reply.values);
+      const incoming=arrayOrEmpty_1(reply.values);
       if(length(incoming)===0)setStatus(workState, "No older backend values");
       else {
         updateSelectedBucketWithOlder(incoming);
@@ -963,16 +1012,16 @@ function mountAppendPage(page, definition){
         mergedLength=length(merged);
         const a=bucket.valueCount;
         const b_2=length(merged);
-        let _2=Compare(a, b_2)===1?a:b_2;
+        let _3=Compare(a, b_2)===1?a:b_2;
         const a_1=bucket.maxSequence;
         const b_3=p[1];
-        let _3=Compare(a_1, b_3)===1?a_1:b_3;
-        return New_9(bucket.keyId, bucket.keys, bucket.setName, _2, p[0], _3, bucket.updatedAtUtc, merged);
+        let _4=Compare(a_1, b_3)===1?a_1:b_3;
+        return New_11(bucket.keyId, bucket.keys, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
       }
       else return bucket;
     }, buckets);
     writeCurrentSnapshot();
-    const b=visibleValueLimit+length(arrayOrEmpty(incoming));
+    const b=visibleValueLimit+length(arrayOrEmpty_1(incoming));
     const b_1=Compare(mergedLength, b)===-1?mergedLength:b;
     visibleValueLimit=Compare(visibleValueLimit, b_1)===1?visibleValueLimit:b_1;
     renderList();
@@ -980,11 +1029,11 @@ function mountAppendPage(page, definition){
   }
   const readNewerFromBackend=(generation, bucket) => {
     const keyJson=keysAsJson(bucket.keys);
-    return getJson("/pages/api/read-after?pageId="+encodeURIComponent(asText(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&afterSequence="+String(bucket.maxSequence)+"&count="+String(defaultCacheLimit()), (reply) => {
+    return getJson("/pages/api/read-after?pageId="+encodeURIComponent(asText_1(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&afterSequence="+String(bucket.maxSequence)+"&count="+String(defaultCacheLimit()), (reply) => {
       if(generation===loadGeneration){
         applyLineage(reply.lineage);
         applyLineageHealth(reply.lineageHealth);
-        const incoming=arrayOrEmpty(reply.values);
+        const incoming=arrayOrEmpty_1(reply.values);
         if(length(incoming)>0){
           (deleteAcceptedPendingAppends(bucket))(incoming);
           const keyId=reply.keyId;
@@ -995,11 +1044,11 @@ function mountAppendPage(page, definition){
               const minSequence=p[0];
               const a=bucket_1.valueCount;
               const b=length(merged);
-              let _2=Compare(a, b)===1?a:b;
+              let _3=Compare(a, b)===1?a:b;
               const a_1=bucket_1.maxSequence;
               const b_1=p[1];
-              let _3=Compare(a_1, b_1)===1?a_1:b_1;
-              return New_9(bucket_1.keyId, bucket_1.keys, bucket_1.setName, _2, minSequence>0n?minSequence:bucket_1.minSequence, _3, bucket_1.updatedAtUtc, merged);
+              let _4=Compare(a_1, b_1)===1?a_1:b_1;
+              return New_11(bucket_1.keyId, bucket_1.keys, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
             }
             else return bucket_1;
           }, buckets);
@@ -1020,9 +1069,9 @@ function mountAppendPage(page, definition){
     applyLineageHealth(data.lineageHealth);
     const b=data.keyMaxSequence;
     currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
-    buckets=arrayOrEmpty(data.buckets);
+    buckets=arrayOrEmpty_1(data.buckets);
     visibleValueLimit=defaultRenderLimit();
-    if((isBlank(selected)||!exists((bucket) => bucket.keyId==selected, buckets))&&length(buckets)>0){
+    if((isBlank_1(selected)||!exists((bucket) => bucket.keyId==selected, buckets))&&length(buckets)>0){
       selected=get(buckets, 0).keyId;
       selectedKeyJson=keysAsJson(get(buckets, 0).keys);
       newKeyInput.value=selectedKeyJson;
@@ -1046,8 +1095,8 @@ function mountAppendPage(page, definition){
     loadGeneration=loadGeneration+1;
     const generation=loadGeneration;
     const filterText=currentFilterText();
-    url="/pages/api/state?pageId="+encodeURIComponent(asText(definition.pageId))+"&limit="+String(defaultCacheLimit());
-    if(!isBlank(filterText))url=url+"&key="+encodeURIComponent(filterText);
+    url="/pages/api/state?pageId="+encodeURIComponent(asText_1(definition.pageId))+"&limit="+String(defaultCacheLimit());
+    if(!isBlank_1(filterText))url=url+"&key="+encodeURIComponent(filterText);
     const cacheKey_1=stateCacheKey();
     const fetchFullState=() => {
       getJson(url, (data) => {
@@ -1070,10 +1119,10 @@ function mountAppendPage(page, definition){
       else if(a.$0,generation===loadGeneration){
         const cached=a.$0;
         applySnapshot("cached", cached);
-        const sequenceBuckets=filter((bucket) => bucket.maxSequence>0n, arrayOrEmpty(cached.buckets));
+        const sequenceBuckets=filter((bucket) => bucket.maxSequence>0n, arrayOrEmpty_1(cached.buckets));
         if(length(sequenceBuckets)===0)fetchFullState();
         else {
-          iter((_2) => readNewerFromBackend(generation, _2), sequenceBuckets);
+          iter((_3) => readNewerFromBackend(generation, _3), sequenceBuckets);
           fetchFullState();
         }
       }
@@ -1091,20 +1140,32 @@ function mountAppendPage(page, definition){
     setData("ws-state", value, work);
   };
   const setKeyRegistryWsState=(value) => {
-    keyRegistryWsState=asText(value);
+    keyRegistryWsState=asText_1(value);
     setData("key-registry-ws-state", value, work);
     updateKeyRegistryHealth();
   };
-  const selectedBucket=() => tryFind((bucket) => bucket.keyId==selected, buckets);
+  const effectiveSelectedKeyJson=() => isBlank_1(selectedKeyJson)?asText_1(definition.defaultKey):selectedKeyJson;
+  const effectiveSelectedKeys=() => {
+    const m=tryFind((bucket) => bucket.keyId==selected, buckets);
+    return m==null?keysFromJson(effectiveSelectedKeyJson()):arrayOrEmpty_1(m.$0.keys);
+  };
+  const selectedBucket=() => {
+    const m=tryFind((bucket) => bucket.keyId==selected, buckets);
+    if(m==null){
+      const keys=effectiveSelectedKeys();
+      return length(keys)===0?null:Some(New_11(appendPageKeyId(keys), keys, definition.setName, 0, 0n, 0n, "", []));
+    }
+    else return Some(m.$0);
+  };
   deleteAcceptedPendingAppends=(bucket) =>(acceptedValues) => {
-    const acceptedValues_1=arrayOrEmpty(acceptedValues);
+    const acceptedValues_1=arrayOrEmpty_1(acceptedValues);
     if(length(acceptedValues_1)>0){
       const keyJson=keysAsJson(bucket.keys);
       const commandMatches=(command) => {
-        if(sameText(command.kind, "append-page-append-value")&&sameText(command.url, "/pages/api/append")&&isPendingForThisPage(command)&&!isBlank(command.payloadJson))try {
+        if(sameText(command.kind, "append-page-append-value")&&sameText(command.url, "/pages/api/append")&&isPendingForThisPage(command)&&!isBlank_1(command.payloadJson))try {
           const x=json(command.payloadJson);
-          const _2=command.commandId;
-          return sameText(x.pageId, definition.pageId)&&sameText(x.keyJson, keyJson)&&exists((value) => sameText(value.valueId, _2), acceptedValues_1);
+          const _3=command.commandId;
+          return sameText(x.pageId, definition.pageId)&&sameText(x.keyJson, keyJson)&&exists((value) => sameText(value.valueId, _3), acceptedValues_1);
         }
         catch(m){
           return false;
@@ -1128,21 +1189,21 @@ function mountAppendPage(page, definition){
     }
     else return null;
   };
-  const streamKeyFor=(bucket) => New_4(definition.tabId, definition.shape, definition.setName, arrayOrEmpty(bucket.keys));
+  const streamKeyFor=(bucket) => New_6(definition.tabId, definition.shape, definition.setName, arrayOrEmpty_1(bucket.keys));
   const handleSyncEvent=(source, event) => {
-    let o, updated, _2, o_1;
+    let o, updated, _3, o_1;
     if(!(event==null)){
-      const m=asText(event.sourceKind).toLowerCase();
+      const m=asText_1(event.sourceKind).toLowerCase();
       if(m=="append-page.key"||m=="append-page.key-hidden"){
         if(!(event==null)&&event.sequence>0n){
-          const m_1=asText(event.sourceKind).toLowerCase();
+          const m_1=asText_1(event.sourceKind).toLowerCase();
           if(m_1=="append-page.key"){
-            if(event==null||isBlank(event.payload))o=null;
+            if(event==null||isBlank_1(event.payload))o=null;
             else try {
               const wire=json(event.payload);
-              if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.key.v1"||!sameText(wire.pageId, definition.pageId))o=null;
+              if(wire==null||asText_1(wire.schema)!="ptc.comm.spa.append-page.key.v1"||!sameText(wire.pageId, definition.pageId))o=null;
               else {
-                const keys=filter((key) =>!isBlank(key), map(asText, arrayOrEmpty(wire.keys)));
+                const keys=filter((key) =>!isBlank_1(key), map(asText_1, arrayOrEmpty_1(wire.keys)));
                 o=length(keys)===0?null:Some(keys);
               }
             }
@@ -1155,17 +1216,17 @@ function mountAppendPage(page, definition){
               const b=event.sequence;
               currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
               const filterText=currentFilterText();
-              if(isBlank(filterText)||exists((key) => asText(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty(keys_1))){
-                const keyId=asText(definition.setName)+"::"+concat_1(" + ", arrayOrEmpty(keys_1));
+              if(isBlank_1(filterText)||exists((key) => asText_1(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty_1(keys_1))){
+                const keyId=appendPageKeyId(keys_1);
                 const m_2=tryFind((bucket_1) => sameText(bucket_1.keyId, keyId), buckets);
-                if(m_2==null)updated=New_9(keyId, keys_1, definition.setName, 0, 0n, 0n, asText(event.createdAtUtc), []);
+                if(m_2==null)updated=New_11(keyId, keys_1, definition.setName, 0, 0n, 0n, asText_1(event.createdAtUtc), []);
                 else {
                   const existing=m_2.$0;
-                  updated=New_9(existing.keyId, keys_1, definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
+                  updated=New_11(existing.keyId, keys_1, definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
                 }
-                _2=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),isBlank(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(keys_1),void(newKeyInput.value=selectedKeyJson)):null);
+                _3=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),isBlank_1(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(keys_1),void(newKeyInput.value=selectedKeyJson)):null);
               }
-              else _2=null;
+              else _3=null;
               writeCurrentSnapshot();
               renderList();
               renderValues();
@@ -1174,10 +1235,10 @@ function mountAppendPage(page, definition){
             }
           }
           else if(m_1=="append-page.key-hidden"){
-            if(event==null||isBlank(event.payload))o_1=null;
+            if(event==null||isBlank_1(event.payload))o_1=null;
             else try {
               const wire_1=json(event.payload);
-              o_1=wire_1==null||asText(wire_1.schema)!="ptc.comm.spa.append-page.key-hidden.v1"||!sameText(wire_1.pageId, definition.pageId)||isBlank(wire_1.keyId)?null:Some(Trim(wire_1.keyId));
+              o_1=wire_1==null||asText_1(wire_1.schema)!="ptc.comm.spa.append-page.key-hidden.v1"||!sameText(wire_1.pageId, definition.pageId)||isBlank_1(wire_1.keyId)?null:Some(Trim(wire_1.keyId));
             }
             catch(m_4){
               o_1=null;
@@ -1209,10 +1270,10 @@ function mountAppendPage(page, definition){
         else return null;
       }
       else if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
-        const eventKeys=arrayOrEmpty(event.streamKey.keys);
+        const eventKeys=arrayOrEmpty_1(event.streamKey.keys);
         const o_2=tryFind((bucket_1) => {
-          const left=arrayOrEmpty(bucket_1.keys);
-          const right=arrayOrEmpty(eventKeys);
+          const left=arrayOrEmpty_1(bucket_1.keys);
+          const right=arrayOrEmpty_1(eventKeys);
           return length(left)===length(right)&&forall2(sameText, left, right);
         }, buckets);
         if(o_2==null)return null;
@@ -1235,13 +1296,13 @@ function mountAppendPage(page, definition){
     }
   }
   function ensureSyncSocket(){
-    let _2, _3;
+    let _3, _4;
     if(syncSocket!=null&&syncSocket.$==1){
       const socket=syncSocket.$0;
-      _2=(Equals(socket.readyState, 1)||Equals(socket.readyState, 0))&&(_3=syncSocket.$0,true);
+      _3=(Equals(socket.readyState, 1)||Equals(socket.readyState, 0))&&(_4=syncSocket.$0,true);
     }
-    else _2=false;
-    if(_2)return _3;
+    else _3=false;
+    if(_3)return _4;
     else {
       setWsState("connecting");
       const socket_1=new WebSocket(syncWebSocketUrl());
@@ -1254,12 +1315,12 @@ function mountAppendPage(page, definition){
         const text=String(event.data);
         try {
           const response=json(text);
-          const responseType=asText(response.type).toLowerCase();
-          const responseStatus=asText(response.status).toLowerCase();
-          const requestId=asText(response.requestId);
+          const responseType=asText_1(response.type).toLowerCase();
+          const responseStatus=asText_1(response.status).toLowerCase();
+          const requestId=asText_1(response.requestId);
           switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="append"?1:responseType=="append-page"?1:responseType=="actor-argu"?1:responseType=="stream-event"?2:responseType=="read-tail"?3:responseType=="read"?3:responseType=="tail"?3:5:responseStatus=="error"?4:5){
             case 0:
-              return asText(response.streamKey).indexOf("append-page-key-registry")!=-1?setKeyRegistryWsState("subscribed"):setWsState("subscribed");
+              return asText_1(response.streamKey).indexOf("append-page-key-registry")!=-1?setKeyRegistryWsState("subscribed"):setWsState("subscribed");
             case 1:
               if(exists((id) => id==requestId, pendingWsAppendIds)){
                 pendingWsAppendIds=filter((id) => id!=requestId, pendingWsAppendIds);
@@ -1273,9 +1334,9 @@ function mountAppendPage(page, definition){
             case 2:
               return handleSyncEvent("live", response.event);
             case 3:
-              return iter((_4) => handleSyncEvent("tail", _4), arrayOrEmpty(response.events));
+              return iter((_5) => handleSyncEvent("tail", _5), arrayOrEmpty_1(response.events));
             case 4:
-              return exists((id) => id==requestId, pendingWsAppendIds)?setStatus(workState, pendingFailure("WebSocket append", asText(response.error))):setStatus(status, "WebSocket sync error: "+asText(response.error));
+              return exists((id) => id==requestId, pendingWsAppendIds)?setStatus(workState, pendingFailure("WebSocket append", asText_1(response.error))):setStatus(status, "WebSocket sync error: "+asText_1(response.error));
             case 5:
               return null;
           }
@@ -1310,7 +1371,7 @@ function mountAppendPage(page, definition){
   }
   const subscribeKeyRegistry=() => {
     const streamPageId=textOr(definition.pageId, definition.tabId);
-    const streamKey=New_4(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
+    const streamKey=New_6(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
     if(!keyRegistrySubscribed){
       keyRegistrySubscribed=true;
       setKeyRegistryWsState("subscribing");
@@ -1321,19 +1382,20 @@ function mountAppendPage(page, definition){
       sendSyncFrame(JSON.stringify(New_2("read-tail", newRequestId("append-page-keys-read-tail"), streamKey, defaultCacheLimit())));
     }
   };
-  let _1=(ensureSelectedSubscription=() => {
+  ensureSelectedSubscription=() => {
     const o=selectedBucket();
     if(o==null)void 0;
     else {
       const streamKey=streamKeyFor(o.$0);
-      const identity=concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
-      if(!isBlank(identity)&&identity!=subscribedValueStream){
+      const identity=concat_2("\n", [asText_1(streamKey.pageId), asText_1(streamKey.mode), asText_1(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
+      if(!isBlank_1(identity)&&identity!=subscribedValueStream){
         subscribedValueStream=identity;
         setWsState("subscribing");
         sendSyncFrame(JSON.stringify(New_1("subscribe", newRequestId("subscribe"), streamKey)));
       }
     }
-  },repairSyncAfterClose=() => {
+  };
+  repairSyncAfterClose=() => {
     setWsState("repairing");
     refreshPendingState();
     subscribeKeyRegistry();
@@ -1345,12 +1407,164 @@ function mountAppendPage(page, definition){
       if(bucket.maxSequence>0n)readNewerFromBackend(loadGeneration, bucket);
       else load();
     }
-  },replayingPending=false,replayPendingCommands=() => {
+  };
+  const addKeyWithKeyJson=(keyJson) => {
+    if(isBlank_1(keyJson))setStatus(status, "Key JSON is required");
+    else {
+      const request=New_13(definition.pageId, keyJson);
+      const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
+      refreshPendingState();
+      setStatus(status, "Adding key; pending command saved in browser DB");
+      postAppendPageKey("/pages/api/add-key", request, (reply) => {
+        deletePendingThen(pendingId, () => {
+          !(reply.key==null)?(selected=reply.key.keyId,selectedKeyJson=keysAsJson(reply.key.keys),newKeyInput.value=selectedKeyJson):void 0;
+          setStatus(status, "Key added");
+          rerenderAddKeyBuilder();
+          rerenderAppendForm();
+          refreshPendingState();
+          load();
+        });
+      }, (error) => {
+        setStatus(status, pendingFailure("Add key", error));
+        refreshPendingState();
+      });
+    }
+  };
+  const appendValue=() => {
+    const request=New_12(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
+    if(isBlank_1(request.keyJson))setStatus(workState, "Select or add a key first");
+    else if(isBlank_1(request.valueText))setStatus(workState, "Value text is required");
+    else if(isActorArguPage(definition)){
+      const request_1=New_14(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
+      const m=selectedBucket();
+      if(m!=null&&m.$==1){
+        const bucket=m.$0;
+        const o=tryHead(arrayOrEmpty_1(bucket.keys));
+        const actorAddress=o==null?"":o.$0;
+        if(isBlank_1(actorAddress))setStatus(workState, "Actor address key is required");
+        else {
+          const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_1);
+          const wsRequest=New_17("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request_1.tags), delay(() => append_2(["page:"+asText_1(definition.pageId)], delay(() => append_2(["tab:"+asText_1(definition.tabId)], delay(() =>["shape:"+asText_1(definition.shape)])))))))))), browserId, definition.tabId);
+          pendingWsAppendIds=pendingWsAppendIds.concat([pendingId]);
+          refreshPendingState();
+          setStatus(workState, "Sending through WebSocket; pending command saved in browser DB");
+          ensureSelectedSubscription();
+          sendSyncFrame(JSON.stringify(wsRequest));
+          scrollToBottomAfterRender(values);
+        }
+      }
+      else setStatus(workState, "Select or add a key first");
+    }
+    else if(sameText(definition.shape, "raw")){
+      const m_1=selectedBucket();
+      if(m_1!=null&&m_1.$==1){
+        const bucket_1=m_1.$0;
+        const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
+        const wsRequest_1=New_19("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_1(definition.pageId)], delay(() => append_2(["tab:"+asText_1(definition.tabId)], delay(() =>["shape:"+asText_1(definition.shape)])))))))))), browserId, definition.tabId);
+        pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_1]);
+        refreshPendingState();
+        setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
+        ensureSelectedSubscription();
+        sendSyncFrame(JSON.stringify(wsRequest_1));
+        scrollToBottomAfterRender(values);
+      }
+      else setStatus(workState, "Select or add a key first");
+    }
+    else {
+      const m_2=selectedBucket();
+      if(m_2!=null&&m_2.$==1){
+        const bucket_2=m_2.$0;
+        const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
+        const wsRequest_2=New_18("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_1(definition.pageId)], delay(() => append_2(["tab:"+asText_1(definition.tabId)], delay(() =>["shape:"+asText_1(definition.shape)])))))))))), browserId, definition.tabId);
+        pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_2]);
+        refreshPendingState();
+        setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
+        ensureSelectedSubscription();
+        sendSyncFrame(JSON.stringify(wsRequest_2));
+        scrollToBottomAfterRender(values);
+      }
+      else setStatus(workState, "Select or add a key first");
+    }
+  };
+  let _1=(rerenderAddKeyBuilder=() => {
+    clear(addKeyRendererHost);
+    setData("shape", definition.shape, setData("renderer-state", "fallback", addKeyRendererHost));
+    const m=tryRenderAddKeyWithRegisteredRenderers(definition.pageId, definition.shape, definition.title, definition.setName, definition.keyPlaceholder, definition.defaultKey, (payload) => {
+      const keyJson=rendererSubmittedKeyJson(payload);
+      if(isBlank_1(keyJson))setStatus(status, "Renderer key is required");
+      else {
+        newKeyInput.value=keyJson;
+        setData("last-key-json", keyJson, addKeyRendererHost);
+        addKeyWithKeyJson(keyJson);
+      }
+    }, (payload) => {
+      const keyJson=rendererSubmittedKeyJson(payload);
+      if(!isBlank_1(keyJson)){
+        newKeyInput.value=keyJson;
+        setData("last-key-json", keyJson, addKeyRendererHost);
+      }
+    });
+    if(m==null){
+      setHidden(false, newKeyInput);
+      setHidden(false, addKeyButton);
+      setHidden(false, keyFilter);
+      addKeyRendererHost.textContent="";
+    }
+    else {
+      const node=m.$0;
+      setData("renderer-state", "custom", addKeyRendererHost);
+      setHidden(true, newKeyInput);
+      setHidden(true, addKeyButton);
+      setHidden(true, keyFilter);
+      addKeyRendererHost.appendChild(node);
+    }
+  },rerenderAppendForm=() => {
+    let effectiveKeyId;
+    clear(form);
+    const effectiveKeyJson=effectiveSelectedKeyJson();
+    if(!isBlank_1(selected))effectiveKeyId=selected;
+    else {
+      const keys=effectiveSelectedKeys();
+      effectiveKeyId=length(keys)===0?"":appendPageKeyId(keys);
+    }
+    const selectedKeys=effectiveSelectedKeys();
+    const x=setData("selected-key-json", effectiveKeyJson, setData("selected-key-id", effectiveKeyId, setData("shape", definition.shape, setData("renderer-state", "fallback", form))));
+    setData("selected-key-source", isBlank_1(selectedKeyJson)?"defaultKey":"selected", x);
+    const customNode=isBlank_1(effectiveKeyJson)?null:tryRenderAppendInputWithRegisteredRenderers(definition.pageId, definition.shape, definition.title, definition.setName, effectiveKeyId, effectiveKeyJson, selectedKeys, valueInput.placeholder, valueInput.value, (payload) => {
+      const submitted=rendererSubmittedText(payload);
+      if(isBlank_1(submitted))setStatus(workState, "Renderer value text is required");
+      else {
+        const keyJson=effectiveSelectedKeyJson();
+        const keys_1=effectiveSelectedKeys();
+        if(isBlank_1(selectedKeyJson)&&!isBlank_1(keyJson)){
+          selectedKeyJson=keyJson;
+          newKeyInput.value=keyJson;
+        }
+        if(isBlank_1(selected)&&length(keys_1)>0)selected=appendPageKeyId(keys_1);
+        valueInput.value=submitted;
+        setData("last-raw-argu", submitted, form);
+        appendValue();
+      }
+    }, (payload) => {
+      const submitted=rendererSubmittedText(payload);
+      if(!isBlank_1(submitted)){
+        valueInput.value=submitted;
+        setData("last-raw-argu", submitted, form);
+      }
+    });
+    if(customNode==null)isActorArguPage(definition)?(form.className="append-form actor-argu-form",append_1(form, [valueInput, appendButton])):asText_1(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append_1(form, [directionInput, valueInput, appendButton])):(form.className="append-form",append_1(form, [valueInput, appendButton]));
+    else {
+      const node=customNode.$0;
+      form.className="append-form custom-append-input-form";
+      setData("renderer-state", "custom", form);
+      form.appendChild(node);
+    }
+  },rerenderAddKeyBuilder(),rerenderAppendForm(),replayingPending=false,replayPendingCommands=() => {
     if(!replayingPending){
       replayingPending=true;
       readAllPending((commands) => {
         let remaining, accepted;
-        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter(isPendingForThisPage, commands));
+        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank_1(command.url)&&!isBlank_1(command.payloadJson), filter(isPendingForThisPage, commands));
         if(length(mine)===0){
           replayingPending=false;
           refreshPendingState();
@@ -1366,19 +1580,19 @@ function mountAppendPage(page, definition){
           iter((command) => {
             postJsonText(command.url, command.payloadJson, (body) => {
               deletePendingThen(command.commandId, () => {
-                let _2, _3;
+                let _3, _4;
                 accepted=accepted+1;
                 if(sameText(command.kind, "append-page-remove-page")){
                   try {
-                    const reply=json(isBlank(body)?"{}":body);
-                    _2=!(reply==null)?writeAppendPagesDefinitions(reply):null;
+                    const reply=json(isBlank_1(body)?"{}":body);
+                    _3=!(reply==null)?writeAppendPagesDefinitions(reply):null;
                   }
                   catch(m){
-                    _2=null;
+                    _3=null;
                   }
-                  _3=globalThis.location.assign("/chat");
+                  _4=globalThis.location.assign("/chat");
                 }
-                else _3=void 0;
+                else _4=void 0;
                 finishOne();
               });
             }, () => {
@@ -1388,35 +1602,15 @@ function mountAppendPage(page, definition){
         }
       });
     }
-  },addKeyButton.addEventListener("click", () => {
-    const keyJson=isBlank(newKeyInput.value)?asText(definition.defaultKey):Trim(newKeyInput.value);
-    if(isBlank(keyJson))setStatus(status, "Key JSON is required");
-    else {
-      const request=New_14(definition.pageId, keyJson);
-      const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
-      refreshPendingState();
-      setStatus(status, "Adding key; pending command saved in browser DB");
-      postAppendPageKey("/pages/api/add-key", request, (reply) => {
-        deletePendingThen(pendingId, () => {
-          !(reply.key==null)?(selected=reply.key.keyId,selectedKeyJson=keysAsJson(reply.key.keys),newKeyInput.value=selectedKeyJson):void 0;
-          setStatus(status, "Key added");
-          refreshPendingState();
-          load();
-        });
-      }, (error) => {
-        setStatus(status, pendingFailure("Add key", error));
-        refreshPendingState();
-      });
-    }
-  }),removeKeyButton.addEventListener("click", () => {
-    if(isBlank(selected))return setStatus(status, "Select a key first");
+  },addKeyButton.addEventListener("click", () => addKeyWithKeyJson(isBlank_1(newKeyInput.value)?asText_1(definition.defaultKey):Trim(newKeyInput.value))),removeKeyButton.addEventListener("click", () => {
+    if(isBlank_1(selected))setStatus(status, "Select a key first");
     else {
       const removedKeyId=selected;
-      const request=New_13(definition.pageId, removedKeyId);
+      const request=New_16(definition.pageId, removedKeyId);
       const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request);
       refreshPendingState();
       setStatus(status, "Removing key; pending command saved in browser DB");
-      return postRemoveAppendPageKey("/pages/api/remove-key", request, () => {
+      postRemoveAppendPageKey("/pages/api/remove-key", request, () => {
         deletePendingThen(pendingId, () => {
           buckets=filter((bucket) => bucket.keyId!=removedKeyId, buckets);
           selected="";
@@ -1433,11 +1627,11 @@ function mountAppendPage(page, definition){
       });
     }
   }),removePageButton.addEventListener("click", () => {
-    const request=New_12(definition.pageId);
+    const request=New_15(definition.pageId);
     const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request);
     refreshPendingState();
     setStatus(status, "Removing page; pending command saved in browser DB");
-    postJson("/pages/api/remove-page", request, (reply) => {
+    return postJson("/pages/api/remove-page", request, (reply) => {
       deletePendingThen(pendingId, () => {
         writeAppendPagesDefinitions(reply);
         setStatus(status, "Page removed");
@@ -1447,98 +1641,44 @@ function mountAppendPage(page, definition){
       setStatus(status, pendingFailure("Remove page", error));
       refreshPendingState();
     });
-  }),reload.addEventListener("click", load),keyFilter.addEventListener("input", load),appendButton.addEventListener("click", () => {
-    const request=New_10(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
-    if(isBlank(request.keyJson))return setStatus(workState, "Select or add a key first");
-    else if(isBlank(request.valueText))return setStatus(workState, "Value text is required");
-    else if(isActorArguPage(definition)){
-      const request_1=New_11(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
-      const m=selectedBucket();
-      if(m!=null&&m.$==1){
-        const bucket=m.$0;
-        const o=tryHead(arrayOrEmpty(bucket.keys));
-        const actorAddress=o==null?"":o.$0;
-        if(isBlank(actorAddress))return setStatus(workState, "Actor address key is required");
-        else {
-          const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_1);
-          const wsRequest=New_15("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request_1.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
-          pendingWsAppendIds=pendingWsAppendIds.concat([pendingId]);
-          refreshPendingState();
-          setStatus(workState, "Sending through WebSocket; pending command saved in browser DB");
-          ensureSelectedSubscription();
-          sendSyncFrame(JSON.stringify(wsRequest));
-          return scrollToBottomAfterRender(values);
-        }
-      }
-      else return setStatus(workState, "Select or add a key first");
-    }
-    else if(sameText(definition.shape, "raw")){
-      const m_1=selectedBucket();
-      if(m_1!=null&&m_1.$==1){
-        const bucket_1=m_1.$0;
-        const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_1=New_17("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
-        pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_1]);
-        refreshPendingState();
-        setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
-        ensureSelectedSubscription();
-        sendSyncFrame(JSON.stringify(wsRequest_1));
-        return scrollToBottomAfterRender(values);
-      }
-      else return setStatus(workState, "Select or add a key first");
-    }
-    else {
-      const m_2=selectedBucket();
-      if(m_2!=null&&m_2.$==1){
-        const bucket_2=m_2.$0;
-        const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_2=New_16("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
-        pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_2]);
-        refreshPendingState();
-        setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
-        ensureSelectedSubscription();
-        sendSyncFrame(JSON.stringify(wsRequest_2));
-        return scrollToBottomAfterRender(values);
-      }
-      else return setStatus(workState, "Select or add a key first");
-    }
-  }),load(),subscribeKeyRegistry(),refreshPendingState());
-  _1;
+  }),reload.addEventListener("click", load),keyFilter.addEventListener("input", load),appendButton.addEventListener("click", appendValue),load(),subscribeKeyRegistry(),refreshPendingState());
+  let _2=_1;
+  _2;
 }
 function renderNav(nav, activePath, pages){
   clear(nav);
   iter((_1) => {
     const href=_1[0];
-    const label=_1[1];
-    const x=setHref(href, element("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", label));
-    let _2=setTestId("nav-"+label.toLowerCase(), x);
+    const label_1=_1[1];
+    const x=setHref(href, element_1("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", label_1));
+    let _2=setTestId_1("nav-"+label_1.toLowerCase(), x);
     nav.appendChild(_2);
   }, [["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"]]);
   iter((page) => {
     const href=pagePath(page);
-    const x=setHref(href, element("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", null));
-    let _1=setTestId("nav-append-page-"+asText(page.pageId), x);
+    const x=setHref(href, element_1("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", null));
+    let _1=setTestId_1("nav-append-page-"+asText_1(page.pageId), x);
     let _2=setData("page-id", page.pageId, _1);
     const link=setData("shape", page.shape, _2);
-    const badge=element("span", "nav-type-badge "+pageTypeClass(page), pageTypeBadge(page));
+    const badge=element_1("span", "nav-type-badge "+pageTypeClass(page), pageTypeBadge(page));
     badge.setAttribute("title", pageTypeLabel(page));
     badge.setAttribute("aria-label", pageTypeLabel(page));
-    append(link, [badge, element("span", "nav-title", pageTitle(page))]);
+    append_1(link, [badge, element_1("span", "nav-title", pageTitle(page))]);
     nav.appendChild(link);
-  }, arrayOrEmpty(pages));
+  }, arrayOrEmpty_1(pages));
 }
 function shell(activePath, pages){
-  const app=element("div", "app", null);
-  const top=element("header", "topbar", null);
-  const topRow=element("div", "topbar-main", null);
-  const brandCluster=element("div", "brand-cluster", null);
-  const navShell=element("div", "nav-shell", null);
-  const navViewport=setTestId("nav-viewport", element("div", "nav-viewport", null));
-  const nav=setId("ptc-nav", element("nav", "nav", null));
-  const navBack=setTestId("nav-scroll-left", button("nav-scroll", "<"));
-  const navForward=setTestId("nav-scroll-right", button("nav-scroll", ">"));
+  const app=element_1("div", "app", null);
+  const top=element_1("header", "topbar", null);
+  const topRow=element_1("div", "topbar-main", null);
+  const brandCluster=element_1("div", "brand-cluster", null);
+  const navShell=element_1("div", "nav-shell", null);
+  const navViewport=setTestId_1("nav-viewport", element_1("div", "nav-viewport", null));
+  const nav=setId("ptc-nav", element_1("nav", "nav", null));
+  const navBack=setTestId_1("nav-scroll-left", button_1("nav-scroll", "<"));
+  const navForward=setTestId_1("nav-scroll-right", button_1("nav-scroll", ">"));
   const create_1=renderPageCreator(nav, activePath, pages);
-  const registryHealth=setTestId("append-registry-health", element("div", "state registry-health", "append registry ws pending"));
+  const registryHealth=setTestId_1("append-registry-health", element_1("div", "state registry-health", "append registry ws pending"));
   const scrollTabs=(delta) => {
     navViewport.scrollLeft=navViewport.scrollLeft+delta;
   };
@@ -1546,19 +1686,19 @@ function shell(activePath, pages){
   navForward.setAttribute("aria-label", "Scroll tabs right");
   navBack.addEventListener("click", () => scrollTabs(-260));
   navForward.addEventListener("click", () => scrollTabs(260));
-  append(brandCluster, [element("div", "brand", "PTC.Comm SPA"), registryHealth]);
+  append_1(brandCluster, [element_1("div", "brand", "PTC.Comm SPA"), registryHealth]);
   renderNav(nav, activePath, pages);
-  const logout=setHref("/chat/logout", element("a", "logout", "Logout"));
-  const page=element("main", "page", null);
-  append(navViewport, [nav]);
-  append(navShell, [navBack, navViewport, navForward]);
-  append(topRow, [brandCluster, navShell, logout]);
-  append(top, [topRow, create_1]);
-  append(app, [top, page]);
+  const logout=setHref("/chat/logout", element_1("a", "logout", "Logout"));
+  const page=element_1("main", "page", null);
+  append_1(navViewport, [nav]);
+  append_1(navShell, [navBack, navViewport, navForward]);
+  append_1(topRow, [brandCluster, navShell, logout]);
+  append_1(top, [topRow, create_1]);
+  append_1(app, [top, page]);
   return[app, page];
 }
 function setMain(node){
-  const main=doc().getElementById("main");
+  const main=doc_1().getElementById("main");
   if(!(main==null)){
     clear(main);
     main.appendChild(node);
@@ -1569,19 +1709,19 @@ function mountSets(page){
   page.className="page sets-grid";
   selected="";
   buckets=[];
-  const side=element("aside", "sidebar", null);
-  const sideHead=element("div", "panel-head", null);
-  const reload=button("", "Reload");
-  const filters=element("div", "filters", null);
-  const keyFilter=input("key contains");
-  const setFilter=input("set name");
-  const status=element("div", "state", "Loading sets");
-  const list=element("div", "list", null);
-  const work=element("section", "work", null);
-  append(sideHead, [element("h1", "", "Sets"), reload]);
-  append(filters, [keyFilter, setFilter, status]);
-  append(side, [sideHead, filters, list]);
-  append(page, [side, work]);
+  const side=element_1("aside", "sidebar", null);
+  const sideHead=element_1("div", "panel-head", null);
+  const reload=button_1("", "Reload");
+  const filters=element_1("div", "filters", null);
+  const keyFilter=input_1("key contains");
+  const setFilter=input_1("set name");
+  const status=element_1("div", "state", "Loading sets");
+  const list=element_1("div", "list", null);
+  const work=element_1("section", "work", null);
+  append_1(sideHead, [element_1("h1", "", "Sets"), reload]);
+  append_1(filters, [keyFilter, setFilter, status]);
+  append_1(side, [sideHead, filters, list]);
+  append_1(page, [side, work]);
   syncSocket=null;
   queuedSyncFrames=[];
   subscribedStreams=[];
@@ -1589,10 +1729,10 @@ function mountSets(page){
   registryTailRequested=false;
   ensureSetsSubscriptions=() => { };
   loadGeneration=0;
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
-  const streamIdentity=(streamKey) => concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
-  const setValueStreamKey=(pageId, mode, setName, keys) => New_4(asText(pageId), textOr("set", mode), asText(setName), arrayOrEmpty(keys));
-  const currentFilterTexts=() =>[isBlank(keyFilter.value)?"":Trim(keyFilter.value), isBlank(setFilter.value)?"":Trim(setFilter.value)];
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
+  const streamIdentity=(streamKey) => concat_2("\n", [asText_1(streamKey.pageId), asText_1(streamKey.mode), asText_1(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
+  const setValueStreamKey=(pageId, mode, setName, keys) => New_6(asText_1(pageId), textOr("set", mode), asText_1(setName), arrayOrEmpty_1(keys));
+  const currentFilterTexts=() =>[isBlank_1(keyFilter.value)?"":Trim(keyFilter.value), isBlank_1(setFilter.value)?"":Trim(setFilter.value)];
   const currentCacheKey=() => {
     const p=currentFilterTexts();
     return cacheKey("sets-state", ofArray([p[0], p[1]]));
@@ -1600,9 +1740,9 @@ function mountSets(page){
   function renderList(){
     clear(list);
     iter((bucket) => {
-      const item=button(bucket.keyId==selected?"list-card active":"list-card", null);
-      setData("key-id", bucket.keyId, setTestId("sets-bucket", item));
-      append(item, [element("div", "strong wrap", asText(bucket.setName)), element("div", "muted wrap", joinValues(bucket.keys)), element("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText(bucket.updatedAtUtc)))]);
+      const item=button_1(bucket.keyId==selected?"list-card active":"list-card", null);
+      setData("key-id", bucket.keyId, setTestId_1("sets-bucket", item));
+      append_1(item, [element_1("div", "strong wrap", asText_1(bucket.setName)), element_1("div", "muted wrap", joinValues(bucket.keys)), element_1("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText_1(bucket.updatedAtUtc)))]);
       item.addEventListener("click", () => {
         selected=bucket.keyId;
         renderList();
@@ -1616,36 +1756,36 @@ function mountSets(page){
     const bucket=tryFind((bucket_2) => bucket_2.keyId==selected, buckets);
     if(bucket!=null&&bucket.$==1){
       const bucket_1=bucket.$0;
-      const detail=element("div", "detail", null);
-      const head_2=element("div", "work-head", null);
-      const title=element("div", "", null);
-      append(title, [element("label", "", "Key set"), element("h2", "", bucket_1.keyId)]);
-      append(head_2, [title, element("div", "state", String(bucket_1.valueCount)+" value(s)")]);
+      const detail=element_1("div", "detail", null);
+      const head_2=element_1("div", "work-head", null);
+      const title=element_1("div", "", null);
+      append_1(title, [element_1("label", "", "Key set"), element_1("h2", "", bucket_1.keyId)]);
+      append_1(head_2, [title, element_1("div", "state", String(bucket_1.valueCount)+" value(s)")]);
       detail.appendChild(head_2);
-      const table=element("table", "data-table", null);
-      const thead=element("thead", "", null);
-      const headerRow=element("tr", "", null);
-      iter((label) => {
-        headerRow.appendChild(element("th", "", label));
+      const table=element_1("table", "data-table", null);
+      const thead=element_1("thead", "", null);
+      const headerRow=element_1("tr", "", null);
+      iter((label_1) => {
+        headerRow.appendChild(element_1("th", "", label_1));
       }, ["Value", "Keys", "Created", "Body", "Tags"]);
       thead.appendChild(headerRow);
-      const tbody=element("tbody", "", null);
+      const tbody=element_1("tbody", "", null);
       iter((value) => {
-        const row=element("tr", "", null);
+        const row=element_1("tr", "", null);
         iter((_1) => {
-          row.appendChild(element("td", _1[1], _1[0]));
-        }, [[value.valueId, "wrap"], [joinValues(value.keys), "wrap"], [asText(value.createdAtUtc), "wrap"], [asText(value.value), "preview"], [joinValues(value.tags), "wrap"]]);
+          row.appendChild(element_1("td", _1[1], _1[0]));
+        }, [[value.valueId, "wrap"], [joinValues(value.keys), "wrap"], [asText_1(value.createdAtUtc), "wrap"], [asText_1(value.value), "preview"], [joinValues(value.tags), "wrap"]]);
         tbody.appendChild(row);
-      }, arrayOrEmpty(bucket_1.values));
-      append(table, [thead, tbody]);
-      append(detail, [table]);
+      }, arrayOrEmpty_1(bucket_1.values));
+      append_1(table, [thead, tbody]);
+      append_1(detail, [table]);
       work.appendChild(detail);
     }
-    else work.appendChild(element("div", "empty", "No set selected."));
+    else work.appendChild(element_1("div", "empty", "No set selected."));
   }
   const applySnapshot=(source, data) => {
-    buckets=arrayOrEmpty(data.buckets);
-    (isBlank(selected)||!exists((bucket) => bucket.keyId==selected, buckets))&&length(buckets)>0?selected=get(buckets, 0).keyId:length(buckets)===0?selected="":void 0;
+    buckets=arrayOrEmpty_1(data.buckets);
+    (isBlank_1(selected)||!exists((bucket) => bucket.keyId==selected, buckets))&&length(buckets)>0?selected=get(buckets, 0).keyId:length(buckets)===0?selected="":void 0;
     setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s)");
     renderList();
     renderDetail();
@@ -1659,8 +1799,8 @@ function mountSets(page){
     const p=currentFilterTexts();
     const setText=p[1];
     const keyText=p[0];
-    if(!isBlank(keyText))parts.push("participantId="+encodeURIComponent(keyText));
-    if(!isBlank(setText))parts.push("setName="+encodeURIComponent(setText));
+    if(!isBlank_1(keyText))parts.push("participantId="+encodeURIComponent(keyText));
+    if(!isBlank_1(setText))parts.push("setName="+encodeURIComponent(setText));
     parts.push("limit="+String(defaultRenderLimit()));
     const cacheKey_1=currentCacheKey();
     readJson(cacheKey_1, (a) => {
@@ -1675,7 +1815,7 @@ function mountSets(page){
       }
       else if(a.$0,generation===loadGeneration)applySnapshot("cached", a.$0);
     });
-    getJson("/sets/api/state?"+concat_1("&", ofSeq(parts)), (data) => {
+    getJson("/sets/api/state?"+concat_2("&", ofSeq(parts)), (data) => {
       if(generation===loadGeneration){
         writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, setValueCount(data.buckets), "sets-state");
         applySnapshot("backend", data);
@@ -1703,7 +1843,7 @@ function mountSets(page){
           break;
         case 2:
           const identity=streamIdentity(_1);
-          if(!isBlank(identity)&&!(((p) =>(a) => exists(p, a))(((identity_1) =>(existing) => existing==identity_1)(identity)))(tailRequestedStreams)){
+          if(!isBlank_1(identity)&&!(((p) =>(a) => exists(p, a))(((identity_1) =>(existing) => existing==identity_1)(identity)))(tailRequestedStreams)){
             tailRequestedStreams=tailRequestedStreams.concat([identity]);
             _1=_1;
             recI=1;
@@ -1758,7 +1898,7 @@ function mountSets(page){
   }
   function subscribeStream(streamKey){
     const identity=streamIdentity(streamKey);
-    if(!isBlank(identity)&&!exists((existing) => existing==identity, subscribedStreams)){
+    if(!isBlank_1(identity)&&!exists((existing) => existing==identity, subscribedStreams)){
       subscribedStreams=subscribedStreams.concat([identity]);
       setWsStreamCount();
       setWsState("subscribing");
@@ -1774,12 +1914,12 @@ function mountSets(page){
   function handleSyncEvent(event){
     if(!(event==null)&&!(event.streamKey==null)){
       let m, updated, _1;
-      const m_1=asText(event.sourceKind).toLowerCase();
+      const m_1=asText_1(event.sourceKind).toLowerCase();
       if(m_1=="set.stream"){
-        if(event==null||isBlank(event.payload))m=null;
+        if(event==null||isBlank_1(event.payload))m=null;
         else try {
           const wire=json(event.payload);
-          m=wire==null||asText(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
+          m=wire==null||asText_1(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
         }
         catch(m_3){
           m=null;
@@ -1793,19 +1933,19 @@ function mountSets(page){
       }
       else if(m_1=="set"){
         if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
-          const setName=asText(event.streamKey.setName);
-          const keys=arrayOrEmpty(event.streamKey.keys);
+          const setName=asText_1(event.streamKey.setName);
+          const keys=arrayOrEmpty_1(event.streamKey.keys);
           const p=currentFilterTexts();
           const setText=p[1];
           const keyText=p[0];
-          if((isBlank(setText)||sameText(setName, setText))&&(isBlank(keyText)||exists((key) => asText(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty(keys)))){
-            const value=New_19(textOr(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText(event.createdAtUtc), asText(event.payload), arrayOrEmpty(event.tags));
-            const keyId=asText(setName)+"::"+concat_1(" + ", arrayOrEmpty(keys));
+          if((isBlank_1(setText)||sameText(setName, setText))&&(isBlank_1(keyText)||exists((key) => asText_1(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty_1(keys)))){
+            const value=New_21(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_1(event.createdAtUtc), asText_1(event.payload), arrayOrEmpty_1(event.tags));
+            const keyId=asText_1(setName)+"::"+concat_2(" + ", arrayOrEmpty_1(keys));
             const m_2=tryFind((bucket) => sameText(bucket.keyId, keyId), buckets);
-            if(m_2==null)updated=New_18(keyId, setName, keys, 1, event.sequence, asText(event.createdAtUtc), [value]);
+            if(m_2==null)updated=New_20(keyId, setName, keys, 1, event.sequence, asText_1(event.createdAtUtc), [value]);
             else {
               const existing=m_2.$0;
-              const existingValues=arrayOrEmpty(existing.values);
+              const existingValues=arrayOrEmpty_1(existing.values);
               const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
               const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
               const mergedValues=latestArray(defaultRenderLimit(), v);
@@ -1819,13 +1959,13 @@ function mountSets(page){
               const a_1=existing.maxSequence;
               const b_1=event.sequence;
               let _3=Compare(a_1, b_1)===1?a_1:b_1;
-              updated=New_18(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+              updated=New_20(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
             }
-            buckets=sortBy((bucket) =>[asText(bucket.setName), asText(bucket.keyId)], arrayOrEmpty(filter((bucket) =>!sameText(bucket.keyId, keyId), buckets).concat([updated])));
+            buckets=sortBy((bucket) =>[asText_1(bucket.setName), asText_1(bucket.keyId)], arrayOrEmpty_1(filter((bucket) =>!sameText(bucket.keyId, keyId), buckets).concat([updated])));
             selected=keyId;
             renderList();
             renderDetail();
-            const snapshot=New_20(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
+            const snapshot=New_22(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
             writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
             ensureSetsSubscriptions();
             setStatus(status, "Synced set event "+value.valueId);
@@ -1840,8 +1980,8 @@ function mountSets(page){
   function handleSyncMessage(text){
     try {
       const response=json(text);
-      const responseType=asText(response.type).toLowerCase();
-      const responseStatus=asText(response.status).toLowerCase();
+      const responseType=asText_1(response.type).toLowerCase();
+      const responseStatus=asText_1(response.status).toLowerCase();
       switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
         case 0:
           setData("ws-last-stream", response.streamKey, page);
@@ -1851,10 +1991,10 @@ function mountSets(page){
           handleSyncEvent(response.event);
           break;
         case 2:
-          iter(handleSyncEvent, arrayOrEmpty(response.events));
+          iter(handleSyncEvent, arrayOrEmpty_1(response.events));
           break;
         case 3:
-          setStatus(status, "WebSocket sets sync error: "+asText(response.error));
+          setStatus(status, "WebSocket sets sync error: "+asText_1(response.error));
           break;
         case 4:
           null;
@@ -1866,7 +2006,7 @@ function mountSets(page){
     }
   }
   ensureSetsSubscriptions=() => {
-    const registryKey=New_4("__set-registry", "set-registry", "__sets", ["__sets"]);
+    const registryKey=New_6("__set-registry", "set-registry", "__sets", ["__sets"]);
     subscribeStream(registryKey);
     if(!registryTailRequested){
       registryTailRequested=true;
@@ -1886,56 +2026,56 @@ function mountSets(page){
 function mountActors(page){
   let actorSnapshot, syncSocket, queuedSyncFrames, subscribedRegistry, registryTailRequested;
   page.className="page actors-page";
-  const head_2=element("div", "work-head actors-head", null);
-  const title=element("div", "", null);
-  const actions=element("div", "head-actions", null);
-  const status=element("div", "state", "Loading actors");
-  const reload=button("", "Reload");
-  const nodes=element("div", "nodes", null);
-  append(title, [element("label", "", "Actor / Participant Management"), element("h1", "", "Actors")]);
-  append(actions, [status, reload]);
-  append(head_2, [title, actions]);
-  append(page, [head_2, nodes]);
-  const emptySnapshot=New_21(0, 0, 0n, []);
+  const head_2=element_1("div", "work-head actors-head", null);
+  const title=element_1("div", "", null);
+  const actions=element_1("div", "head-actions", null);
+  const status=element_1("div", "state", "Loading actors");
+  const reload=button_1("", "Reload");
+  const nodes=element_1("div", "nodes", null);
+  append_1(title, [element_1("label", "", "Actor / Participant Management"), element_1("h1", "", "Actors")]);
+  append_1(actions, [status, reload]);
+  append_1(head_2, [title, actions]);
+  append_1(page, [head_2, nodes]);
+  const emptySnapshot=New_23(0, 0, 0n, []);
   actorSnapshot=emptySnapshot;
   syncSocket=null;
   queuedSyncFrames=[];
   subscribedRegistry=false;
   registryTailRequested=false;
   const cacheKey_1=cacheKey("actors-snapshot", FSharpList.Empty);
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
-  const actorRegistryStreamKey=() => New_4("__actor-registry", "actor-registry", "__actors", ["__actors"]);
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
+  const actorRegistryStreamKey=() => New_6("__actor-registry", "actor-registry", "__actors", ["__actors"]);
   const isAkkaAddress=(value) => {
-    const text=asText(value).toLowerCase();
+    const text=asText_1(value).toLowerCase();
     return StartsWith(text, "akka://")||StartsWith(text, "akka.tcp://")||StartsWith(text, "akka.ssl.tcp://");
   };
   const applySnapshot=(source, data) => {
     actorSnapshot=data==null?emptySnapshot:data;
     clear(nodes);
     iter((node) => {
-      const block=setData("node-id", node.nodeId, setTestId("actor-node", element("section", "node-block", null)));
-      const blockHead=element("div", "work-head", null);
-      const title_1=element("div", "", null);
-      const grid=element("div", "actor-grid", null);
-      let _1=(append(title_1, [element("label", "", "Node"), element("h2", "", asText(node.nodeId))]),append(blockHead, [title_1, element("div", "state", asText(node.status)+" / "+joinValues(node.roles))]),iter((actor) => {
-        const card=setData("actor-id", actor.actorId, setTestId("actor-card", element("div", "actor-card", null)));
-        const line=asText(actor.kind)+" / "+joinValues(actor.keys);
-        const routees=element("div", "routees", null);
-        const address=TrimEnd(Trim(asText(node.nodeAddress)), ["/"]);
-        const logicalNode=TrimEnd(Trim(asText(node.nodeId)), ["/"]);
-        const node_1=isBlank(address)?logicalNode:address;
-        const actor_1=Trim(asText(actor.actorId));
-        const fullAddress=isBlank(actor_1)?node_1:isAkkaAddress(actor_1)?actor_1:isBlank(node_1)?actor_1:StartsWith(actor_1, "/")?node_1+actor_1:isAkkaAddress(node_1)?node_1+"/user/"+TrimStart(actor_1, ["/"]):node_1+"/"+TrimStart(actor_1, ["/"]);
-        const addressRow=setData("actor-address", fullAddress, setTestId("actor-address", element("div", "meta wrap actor-address", "address "+fullAddress)));
+      const block=setData("node-id", node.nodeId, setTestId_1("actor-node", element_1("section", "node-block", null)));
+      const blockHead=element_1("div", "work-head", null);
+      const title_1=element_1("div", "", null);
+      const grid=element_1("div", "actor-grid", null);
+      let _1=(append_1(title_1, [element_1("label", "", "Node"), element_1("h2", "", asText_1(node.nodeId))]),append_1(blockHead, [title_1, element_1("div", "state", asText_1(node.status)+" / "+joinValues(node.roles))]),iter((actor) => {
+        const card=setData("actor-id", actor.actorId, setTestId_1("actor-card", element_1("div", "actor-card", null)));
+        const line=asText_1(actor.kind)+" / "+joinValues(actor.keys);
+        const routees=element_1("div", "routees", null);
+        const address=TrimEnd(Trim(asText_1(node.nodeAddress)), ["/"]);
+        const logicalNode=TrimEnd(Trim(asText_1(node.nodeId)), ["/"]);
+        const node_1=isBlank_1(address)?logicalNode:address;
+        const actor_1=Trim(asText_1(actor.actorId));
+        const fullAddress=isBlank_1(actor_1)?node_1:isAkkaAddress(actor_1)?actor_1:isBlank_1(node_1)?actor_1:StartsWith(actor_1, "/")?node_1+actor_1:isAkkaAddress(node_1)?node_1+"/user/"+TrimStart(actor_1, ["/"]):node_1+"/"+TrimStart(actor_1, ["/"]);
+        const addressRow=setData("actor-address", fullAddress, setTestId_1("actor-address", element_1("div", "meta wrap actor-address", "address "+fullAddress)));
         let _2=(card.appendChild(cardTitle(textOr(actor.actorId, actor.displayName), actor.actorId, actor.status, line)),card.appendChild(addressRow),iter((routee) => {
-          const row=element("div", "routee", null);
-          let _3=(append(row, [statusDot(routee.status), element("span", "strong", asText(routee.routeeId)), element("span", "muted wrap", joinValues(routee.tags))]),row);
+          const row=element_1("div", "routee", null);
+          let _3=(append_1(row, [statusDot(routee.status), element_1("span", "strong", asText_1(routee.routeeId)), element_1("span", "muted wrap", joinValues(routee.tags))]),row);
           routees.appendChild(_3);
-        }, arrayOrEmpty(actor.routees)),card.appendChild(routees),card);
+        }, arrayOrEmpty_1(actor.routees)),card.appendChild(routees),card);
         grid.appendChild(_2);
-      }, arrayOrEmpty(node.actors)),append(block, [blockHead, grid]),block);
+      }, arrayOrEmpty_1(node.actors)),append_1(block, [blockHead, grid]),block);
       nodes.appendChild(_1);
-    }, arrayOrEmpty(actorSnapshot.nodes));
+    }, arrayOrEmpty_1(actorSnapshot.nodes));
     return setStatus(status, "Loaded "+String(actorSnapshot.nodeCount)+" "+String(source)+" node(s), "+String(actorSnapshot.actorCount)+" actor(s)");
   };
   const load=() => {
@@ -2014,12 +2154,12 @@ function mountActors(page){
     }
   }
   function handleSyncEvent(event){
-    if(!(event==null)&&asText(event.sourceKind).toLowerCase()=="actor.registered"){
+    if(!(event==null)&&asText_1(event.sourceKind).toLowerCase()=="actor.registered"){
       let x, updatedNode;
-      if(event==null||isBlank(event.payload))x=null;
+      if(event==null||isBlank_1(event.payload))x=null;
       else try {
         const wire=json(event.payload);
-        x=wire==null||asText(wire.schema)!="ptc.comm.spa.actor.registration.v1"?null:Some(wire);
+        x=wire==null||asText_1(wire.schema)!="ptc.comm.spa.actor.registration.v1"?null:Some(wire);
       }
       catch(m_1){
         x=null;
@@ -2027,27 +2167,27 @@ function mountActors(page){
       if(x==null)void 0;
       else {
         const _1=x.$0;
-        const nodeId=asText(_1.nodeId);
-        const nodeAddress=asText(_1.nodeAddress);
-        const actorId=asText(_1.actorId);
-        if(!isBlank(nodeId)&&!isBlank(actorId)){
-          const tags=arrayOrEmpty(_1.tags);
-          const roles=arrayOrEmpty(_1.roles);
-          const actor=New_22(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty(_1.routees));
-          const m=tryFind((node) => sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes));
-          if(m==null)updatedNode=New_23(nodeId, nodeAddress, "up", roles, [actor]);
+        const nodeId=asText_1(_1.nodeId);
+        const nodeAddress=asText_1(_1.nodeAddress);
+        const actorId=asText_1(_1.actorId);
+        if(!isBlank_1(nodeId)&&!isBlank_1(actorId)){
+          const tags=arrayOrEmpty_1(_1.tags);
+          const roles=arrayOrEmpty_1(_1.roles);
+          const actor=New_24(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
+          const m=tryFind((node) => sameText(node.nodeId, nodeId), arrayOrEmpty_1(actorSnapshot.nodes));
+          if(m==null)updatedNode=New_25(nodeId, nodeAddress, "up", roles, [actor]);
           else {
             const existing=m.$0;
-            const actors=sortBy((row) => asText(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors)).concat([actor]));
-            updatedNode=New_23(existing.nodeId, isBlank(nodeAddress)?asText(existing.nodeAddress):nodeAddress, textOr("up", existing.status), length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
+            const actors=sortBy((row) => asText_1(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty_1(existing.actors)).concat([actor]));
+            updatedNode=New_25(existing.nodeId, isBlank_1(nodeAddress)?asText_1(existing.nodeAddress):nodeAddress, textOr("up", existing.status), length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
           }
-          const nodes_1=sortBy((node) => asText(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
+          const nodes_1=sortBy((node) => asText_1(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty_1(actorSnapshot.nodes)).concat([updatedNode]));
           let _2=length(nodes_1);
-          let _3=fold((_5, _6) => _5+_6, 0, map((node) => arrayOrEmpty(node.actors).length, nodes_1));
+          let _3=fold((_5, _6) => _5+_6, 0, map((node) => arrayOrEmpty_1(node.actors).length, nodes_1));
           const a=actorSnapshot.maxSequence;
           const b=event.sequence;
           let _4=Compare(a, b)===1?a:b;
-          actorSnapshot=New_21(_2, _3, _4, nodes_1);
+          actorSnapshot=New_23(_2, _3, _4, nodes_1);
           writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
           applySnapshot("synced", actorSnapshot);
           setStatus(status, "Synced actor "+actorId);
@@ -2059,8 +2199,8 @@ function mountActors(page){
   function handleSyncMessage(text){
     try {
       const response=json(text);
-      const responseType=asText(response.type).toLowerCase();
-      const responseStatus=asText(response.status).toLowerCase();
+      const responseType=asText_1(response.type).toLowerCase();
+      const responseStatus=asText_1(response.status).toLowerCase();
       switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
         case 0:
           setWsState("subscribed");
@@ -2069,10 +2209,10 @@ function mountActors(page){
           handleSyncEvent(response.event);
           break;
         case 2:
-          iter(handleSyncEvent, arrayOrEmpty(response.events));
+          iter(handleSyncEvent, arrayOrEmpty_1(response.events));
           break;
         case 3:
-          setStatus(status, "WebSocket actors sync error: "+asText(response.error));
+          setStatus(status, "WebSocket actors sync error: "+asText_1(response.error));
           break;
         case 4:
           null;
@@ -2096,33 +2236,33 @@ function mountChat(page){
   participants=[];
   const participantId=currentUserId();
   page.className="page chat-grid";
-  const side=element("aside", "sidebar", null);
-  const sideHead=element("div", "panel-head", null);
-  const reload=button("", "Reload");
-  const list=element("div", "list", null);
-  append(sideHead, [element("h1", "", "Chat"), reload]);
-  append(side, [sideHead, element("div", "", null), list]);
-  const work=setTestId("chat-work", element("section", "work", null));
-  const workHead=element("div", "work-head", null);
-  const titleBox=element("div", "", null);
-  const toTitle=element("h2", "", "No participant selected");
-  const state=element("div", "state", "Loading participants");
-  const pendingState=setTestId("chat-pending-state", element("div", "state pending-state", ""));
-  const thread=setTestId("thread-list", setId("thread-list", element("div", "thread-list", null)));
-  const composer=setTestId("chat-composer", element("div", "chat-composer", null));
-  const draft=setTestId("chat-draft", textarea("draft", "Type a message"));
-  const actions=element("div", "actions", null);
-  const send=setTestId("chat-send", button("primary", "Send"));
+  const side=element_1("aside", "sidebar", null);
+  const sideHead=element_1("div", "panel-head", null);
+  const reload=button_1("", "Reload");
+  const list=element_1("div", "list", null);
+  append_1(sideHead, [element_1("h1", "", "Chat"), reload]);
+  append_1(side, [sideHead, element_1("div", "", null), list]);
+  const work=setTestId_1("chat-work", element_1("section", "work", null));
+  const workHead=element_1("div", "work-head", null);
+  const titleBox=element_1("div", "", null);
+  const toTitle=element_1("h2", "", "No participant selected");
+  const state=element_1("div", "state", "Loading participants");
+  const pendingState=setTestId_1("chat-pending-state", element_1("div", "state pending-state", ""));
+  const thread=setTestId_1("thread-list", setId("thread-list", element_1("div", "thread-list", null)));
+  const composer=setTestId_1("chat-composer", element_1("div", "chat-composer", null));
+  const draft=setTestId_1("chat-draft", textarea("draft", "Type a message"));
+  const actions=element_1("div", "actions", null);
+  const send=setTestId_1("chat-send", button_1("primary", "Send"));
   const participantsCacheKey=cacheKey("chat-agents", ofArray([participantId]));
   const threadCacheKey=(peerId) => cacheKey("chat-thread", ofArray([participantId, peerId]));
-  append(titleBox, [element("label", "", "To"), toTitle]);
-  append(workHead, [titleBox, state]);
-  append(actions, [send]);
-  append(composer, [draft, actions]);
-  append(work, [workHead, pendingState, thread, composer]);
-  append(page, [side, work]);
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
-  const isPendingForThisChat=(command) =>!(command==null)&&sameText(command.kind, "chat-send")&&StartsWith(asText(command.target), participantId+"->");
+  append_1(titleBox, [element_1("label", "", "To"), toTitle]);
+  append_1(workHead, [titleBox, state]);
+  append_1(actions, [send]);
+  append_1(composer, [draft, actions]);
+  append_1(work, [workHead, pendingState, thread, composer]);
+  append_1(page, [side, work]);
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
+  const isPendingForThisChat=(command) =>!(command==null)&&sameText(command.kind, "chat-send")&&StartsWith(asText_1(command.target), participantId+"->");
   replayingPending=false;
   chatSocket=null;
   queuedChatSyncFrames=[];
@@ -2131,17 +2271,17 @@ function mountChat(page){
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
   };
-  const chatStreamKey=(peerId) => New_4("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
-  const streamIdentity=(streamKey) => concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
+  const chatStreamKey=(peerId) => New_6("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
+  const streamIdentity=(streamKey) => concat_2("\n", [asText_1(streamKey.pageId), asText_1(streamKey.mode), asText_1(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
   function renderParticipants(){
     let _1;
     clear(list);
     iter((p_1) => {
       const className=p_1.participantId==selected?"list-card active":"list-card";
       const name=textOr(p_1.participantId, p_1.displayName);
-      const line=asText(p_1.kind)+" / "+joinValues(p_1.labels);
-      const item=button(className, null);
-      setData("participant-id", p_1.participantId, setTestId("chat-participant", item));
+      const line=asText_1(p_1.kind)+" / "+joinValues(p_1.labels);
+      const item=button_1(className, null);
+      setData("participant-id", p_1.participantId, setTestId_1("chat-participant", item));
       item.appendChild(cardTitle(name, p_1.participantId, p_1.status, line));
       item.addEventListener("click", () => {
         selected=p_1.participantId;
@@ -2164,27 +2304,27 @@ function mountChat(page){
   }
   function appendMessages(messages){
     iter((message) => {
-      if(!(message==null)&&!isBlank(message.messageId)&&doc().getElementById("thread-"+message.messageId)==null){
+      if(!(message==null)&&!isBlank_1(message.messageId)&&doc_1().getElementById("thread-"+message.messageId)==null){
         const outbound=message.fromId==participantId;
-        const wrap=setId("thread-"+message.messageId, element("div", outbound?"message outbound":"message inbound", null));
-        setData("message-id", message.messageId, setTestId("chat-message", wrap));
-        const meta=element("div", "message-meta", null);
-        const route=message.scope=="public"?outbound?"You -> Public":asText(message.fromId)+" -> Public":outbound?"You -> "+asText(message.toId):asText(message.fromId)+" -> You";
-        const idNode=setData("full-message-id", message.messageId, element("span", "message-id", compactMessageId(message.messageId)+"  "+asText(message.createdAtUtc)));
-        idNode.setAttribute("title", message.messageId+"  "+asText(message.createdAtUtc));
-        append(meta, [element("span", "", route), idNode]);
-        append(wrap, [meta, element("pre", "message-body", asText(message.body))]);
+        const wrap=setId("thread-"+message.messageId, element_1("div", outbound?"message outbound":"message inbound", null));
+        setData("message-id", message.messageId, setTestId_1("chat-message", wrap));
+        const meta=element_1("div", "message-meta", null);
+        const route=message.scope=="public"?outbound?"You -> Public":asText_1(message.fromId)+" -> Public":outbound?"You -> "+asText_1(message.toId):asText_1(message.fromId)+" -> You";
+        const idNode=setData("full-message-id", message.messageId, element_1("span", "message-id", compactMessageId(message.messageId)+"  "+asText_1(message.createdAtUtc)));
+        idNode.setAttribute("title", message.messageId+"  "+asText_1(message.createdAtUtc));
+        append_1(meta, [element_1("span", "", route), idNode]);
+        append_1(wrap, [meta, element_1("pre", "message-body", asText_1(message.body))]);
         thread.appendChild(wrap);
       }
-    }, arrayOrEmpty(messages));
+    }, arrayOrEmpty_1(messages));
     scrollToBottomAfterRender(thread);
   }
   function loadParticipants(){
     setStatus(state, "Loading participants");
     readJson(participantsCacheKey, (a) => {
       if(a!=null&&a.$==1)if(a.$0,length(participants)===0){
-        participants=arrayOrEmpty(a.$0.participants);
-        isBlank(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
+        participants=arrayOrEmpty_1(a.$0.participants);
+        isBlank_1(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
         renderParticipants();
         setStatus(state, "Loaded "+String(length(participants))+" cached participant(s)");
         pollThread(true);
@@ -2193,9 +2333,9 @@ function mountChat(page){
       }
     });
     getJson("/chat/api/agents", (data) => {
-      participants=arrayOrEmpty(data.participants);
+      participants=arrayOrEmpty_1(data.participants);
       writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-agents");
-      isBlank(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
+      isBlank_1(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
       renderParticipants();
       setStatus(state, "Loaded "+String(length(participants))+" participant(s)");
       pollThread(true);
@@ -2206,17 +2346,17 @@ function mountChat(page){
     });
   }
   function pollThread(force){
-    if(!isBlank(selected)&&!polling){
+    if(!isBlank_1(selected)&&!polling){
       polling=true;
       const cacheKey_1=threadCacheKey(selected);
       const fetchThread=(useCursor) => {
         let url;
         url="/chat/api/thread?participantId="+encodeURIComponent(participantId)+"&peerId="+encodeURIComponent(selected);
-        if(useCursor&&!isBlank(cursor))url=url+"&afterMessageId="+encodeURIComponent(cursor);
+        if(useCursor&&!isBlank_1(cursor))url=url+"&afterMessageId="+encodeURIComponent(cursor);
         getJson(url, (data) => {
-          const messages=force&&!useCursor?latestArray(defaultRenderLimit(), data.messages):arrayOrEmpty(data.messages);
+          const messages=force&&!useCursor?latestArray(defaultRenderLimit(), data.messages):arrayOrEmpty_1(data.messages);
           appendMessages(messages);
-          if(!isBlank(data.nextAfterMessageId))cursor=data.nextAfterMessageId;
+          if(!isBlank_1(data.nextAfterMessageId))cursor=data.nextAfterMessageId;
           readJson(cacheKey_1, (cached) => {
             let _1, _2;
             switch(cached!=null&&cached.$==1?(cached.$0,useCursor?(_1=cached.$0,0):(cached.$0,!force?(_1=cached.$0,1):2)):2){
@@ -2236,7 +2376,7 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_25(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_27(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -2252,12 +2392,12 @@ function mountChat(page){
           const cached=a.$0;
           const messages=latestArray(defaultRenderLimit(), cached.messages);
           appendMessages(messages);
-          if(!isBlank(cached.nextAfterMessageId))cursor=cached.nextAfterMessageId;
+          if(!isBlank_1(cached.nextAfterMessageId))cursor=cached.nextAfterMessageId;
           setStatus(state, "Loaded "+String(length(messages))+" cached message(s); syncing missing tail");
-          fetchThread(!isBlank(cursor));
+          fetchThread(!isBlank_1(cursor));
         }
       });
-      else fetchThread(!isBlank(cursor));
+      else fetchThread(!isBlank_1(cursor));
     }
   }
   function refreshChatPendingState(){
@@ -2268,7 +2408,7 @@ function mountChat(page){
       replayingPending=true;
       readAllPending((commands) => {
         let remaining, accepted;
-        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter(isPendingForThisChat, commands));
+        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank_1(command.url)&&!isBlank_1(command.payloadJson), filter(isPendingForThisChat, commands));
         if(length(mine)===0){
           replayingPending=false;
           refreshChatPendingState();
@@ -2284,8 +2424,8 @@ function mountChat(page){
           iter((command) => {
             postJsonText(command.url, command.payloadJson, (responseBody) => {
               try {
-                const reply=json(isBlank(responseBody)?"{}":responseBody);
-                if(!(reply.message==null)&&!isBlank(reply.message.messageId))deletePendingThen(command.commandId, () => {
+                const reply=json(isBlank_1(responseBody)?"{}":responseBody);
+                if(!(reply.message==null)&&!isBlank_1(reply.message.messageId))deletePendingThen(command.commandId, () => {
                   accepted=accepted+1;
                   appendMessages([reply.message]);
                   cacheAcceptedChatMessage(int64OrZero(reply.streamSequence), reply.message);
@@ -2305,11 +2445,11 @@ function mountChat(page){
     }
   }
   function cacheAcceptedChatMessage(sequence, message){
-    if(!(message==null)&&!isBlank(message.messageId)&&!isBlank(selected)){
+    if(!(message==null)&&!isBlank_1(message.messageId)&&!isBlank_1(selected)){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_25(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_27(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -2318,9 +2458,9 @@ function mountChat(page){
     try {
       let o;
       const response=json(text);
-      const responseType=asText(response.type).toLowerCase();
-      const responseStatus=asText(response.status).toLowerCase();
-      const requestId=asText(response.requestId);
+      const responseType=asText_1(response.type).toLowerCase();
+      const responseStatus=asText_1(response.status).toLowerCase();
+      const requestId=asText_1(response.requestId);
       if(responseStatus=="ok"){
         if(responseType=="subscribe")setChatWsState("subscribed");
         else if(responseType=="chat-send"){
@@ -2328,20 +2468,20 @@ function mountChat(page){
             refreshChatPendingState();
             draft.value="";
           })):void 0;
-          !(response.message==null)&&!isBlank(response.message.messageId)?(appendMessages([response.message]),cacheAcceptedChatMessage(response.event==null?0n:response.event.sequence, response.message),cursor=response.message.messageId):void 0;
-          setStatus(state, "Sent "+textOr("message", response.message==null?"":response.message.messageId)+" "+asText(response.deliveryHint));
+          !(response.message==null)&&!isBlank_1(response.message.messageId)?(appendMessages([response.message]),cacheAcceptedChatMessage(response.event==null?0n:response.event.sequence, response.message),cursor=response.message.messageId):void 0;
+          setStatus(state, "Sent "+textOr("message", response.message==null?"":response.message.messageId)+" "+asText_1(response.deliveryHint));
         }
         else if(responseType=="stream-event"){
           const event=response.event;
-          if(!isBlank(selected)&&!(event==null)&&!(event.streamKey==null)&&streamIdentity(event.streamKey)==streamIdentity(chatStreamKey(selected))){
+          if(!isBlank_1(selected)&&!(event==null)&&!(event.streamKey==null)&&streamIdentity(event.streamKey)==streamIdentity(chatStreamKey(selected))){
             const event_1=response.event;
-            if(event_1==null||isBlank(event_1.payload))o=null;
+            if(event_1==null||isBlank_1(event_1.payload))o=null;
             else try {
               const message=json(event_1.payload);
-              o=message==null||isBlank(message.messageId)?null:Some(message);
+              o=message==null||isBlank_1(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_24(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
+              o=Some(New_26(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_1(event_1.payload), asText_1(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -2356,7 +2496,7 @@ function mountChat(page){
         }
         else null;
       }
-      else responseStatus=="error"?exists((id) => id==requestId, pendingWsChatIds)?(setStatus(state, pendingFailure("WebSocket chat send", asText(response.error))),refreshChatPendingState()):setStatus(state, "WebSocket chat error: "+asText(response.error)):null;
+      else responseStatus=="error"?exists((id) => id==requestId, pendingWsChatIds)?(setStatus(state, pendingFailure("WebSocket chat send", asText_1(response.error))),refreshChatPendingState()):setStatus(state, "WebSocket chat error: "+asText_1(response.error)):null;
     }
     catch(error){
       setStatus(state, "WebSocket chat parse failed: "+errorMessage(error));
@@ -2408,10 +2548,10 @@ function mountChat(page){
       }
   }
   function ensureSelectedChatSubscription(){
-    if(!isBlank(selected)){
+    if(!isBlank_1(selected)){
       const streamKey=chatStreamKey(selected);
       const identity=streamIdentity(streamKey);
-      if(!isBlank(identity)&&identity!=subscribedChatStream){
+      if(!isBlank_1(identity)&&identity!=subscribedChatStream){
         subscribedChatStream=identity;
         setChatWsState("subscribing");
         sendChatSyncFrame(JSON.stringify(New_1("subscribe", newRequestId("chat-subscribe"), streamKey)));
@@ -2420,12 +2560,12 @@ function mountChat(page){
   }
   function sendMessage(){
     const body=Trim(draft.value);
-    if(isBlank(selected))setStatus(state, "Select a participant first");
-    else if(isBlank(body))setStatus(state, "Message is empty");
+    if(isBlank_1(selected))setStatus(state, "Select a participant first");
+    else if(isBlank_1(body))setStatus(state, "Message is empty");
     else {
-      const request=New_28(participantId, selected, body, ["web-chat"]);
+      const request=New_30(participantId, selected, body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_27("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_29("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -2442,12 +2582,12 @@ function mountChat(page){
 }
 function mountUnknownPage(page, path){
   page.className="page actors-page";
-  page.appendChild(element("div", "empty", "No append page is registered for "+String(path)+"."));
+  page.appendChild(element_1("div", "empty", "No append page is registered for "+String(path)+"."));
 }
 function refreshAppendNav(activePath){
   const applyDefinitions=(data) => {
-    const nav=doc().getElementById("ptc-nav");
-    if(!(nav==null))renderNav(nav, activePath, arrayOrEmpty(data.pages));
+    const nav=doc_1().getElementById("ptc-nav");
+    if(!(nav==null))renderNav(nav, activePath, arrayOrEmpty_1(data.pages));
   };
   readJson(appendPagesDefinitionsCacheKey(), (a) => {
     if(a==null){ }
@@ -2459,27 +2599,27 @@ function refreshAppendNav(activePath){
   }, () => { });
 }
 function textOr(fallback, value){
-  return isBlank(value)?fallback:value;
+  return isBlank_1(value)?fallback:value;
 }
 function pageDefinitionFromWire(wire){
-  if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.definition.v1"||isBlank(wire.pageId))return null;
+  if(wire==null||asText_1(wire.schema)!="ptc.comm.spa.append-page.definition.v1"||isBlank_1(wire.pageId))return null;
   else {
-    const pageId=asText(wire.pageId);
-    return Some(New_3(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText(wire.defaultKey), arrayOrEmpty(wire.tags)));
+    const pageId=asText_1(wire.pageId);
+    return Some(New_5(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText_1(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText_1(wire.defaultKey), arrayOrEmpty_1(wire.tags)));
   }
 }
 function hiddenPageFromWire(wire){
-  if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.hidden.v1"||isBlank(wire.pageId))return null;
+  if(wire==null||asText_1(wire.schema)!="ptc.comm.spa.append-page.hidden.v1"||isBlank_1(wire.pageId))return null;
   else {
-    const pageId=asText(wire.pageId);
+    const pageId=asText_1(wire.pageId);
     return Some([pageId, textOr(pageId, wire.tabId)]);
   }
 }
 function sameTextInvariant(left, right){
-  return asText(left).toLowerCase()==asText(right).toLowerCase();
+  return asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
 }
 function sortAppendPages(pages){
-  return sortBy((page) =>[asText(page.title).toLowerCase(), asText(page.pageId).toLowerCase()], arrayOrEmpty(pages));
+  return sortBy((page) =>[asText_1(page.title).toLowerCase(), asText_1(page.pageId).toLowerCase()], arrayOrEmpty_1(pages));
 }
 function writeSnapshotWithWatermark(cacheKey_1, value, newestSequence, cachedCount, source){
   writeJson(cacheKey_1, value);
@@ -2498,40 +2638,40 @@ function isCurrentPage(activePath, href){
   return TrimEnd(activePath, ["/"])==TrimEnd(href, ["/"]);
 }
 function pagePath(page){
-  const pageId=asText(page.pageId);
-  const path=asText(page.path);
+  const pageId=asText_1(page.pageId);
+  const path=asText_1(page.path);
   return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
 }
-function setTestId(id, node){
-  !isBlank(id)?node.setAttribute("data-testid", id):void 0;
+function setTestId_1(id, node){
+  !isBlank_1(id)?node.setAttribute("data-testid", id):void 0;
   return node;
 }
 function defaultRenderLimit(){
   return _c.defaultRenderLimit;
 }
-function element(tag, className, textValue){
-  const node=doc().createElement(tag);
-  if(!isBlank(className))node.className=className;
+function element_1(tag, className, textValue){
+  const node=doc_1().createElement(tag);
+  if(!isBlank_1(className))node.className=className;
   if(!(textValue==null))node.textContent=textValue;
   return node;
 }
-function button(className, text){
-  const node=element("button", className, text);
+function button_1(className, text){
+  const node=element_1("button", className, text);
   node.setAttribute("type", "button");
   return node;
 }
-function input(placeholder){
-  const node=doc().createElement("input");
+function input_1(placeholder){
+  const node=doc_1().createElement("input");
   node.placeholder=placeholder;
   return node;
 }
 function textarea(className, placeholder){
-  const node=doc().createElement("textarea");
+  const node=doc_1().createElement("textarea");
   node.className=className;
   node.placeholder=placeholder;
   return node;
 }
-function append(parent, children){
+function append_1(parent, children){
   for(let i=0, _1=children.length-1;i<=_1;i++)parent.appendChild(get(children, i));
   return parent;
 }
@@ -2539,60 +2679,60 @@ function actorArguButtonLabel(page){
   return isActorArguPage(page)?"Tell":"Append";
 }
 function pageTitle(page){
-  return textOr(asText(page.pageId), asText(page.title));
+  return textOr(asText_1(page.pageId), asText_1(page.title));
 }
 function isActorArguPage(page){
   return hasTag("actor-argu", page.tags);
 }
 function currentUserId(){
-  const userNode=doc().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank(userNode.textContent))return"user.web";
+  const userNode=doc_1().getElementById("ptc-comm-user");
+  if(userNode==null||isBlank_1(userNode.textContent))return"user.web";
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank(user.participantId)?"user.web":user.participantId;
+    return user==null||isBlank_1(user.participantId)?"user.web":user.participantId;
   }
 }
 function renderPendingInspection(node, commands, foreignCommands){
   let _1, shown, shown_1;
-  const commands_1=arrayOrEmpty(commands);
-  const foreignCommands_1=arrayOrEmpty(foreignCommands);
+  const commands_1=arrayOrEmpty_1(commands);
+  const foreignCommands_1=arrayOrEmpty_1(foreignCommands);
   node.setAttribute("data-pending-count", String(length(commands_1)));
   node.setAttribute("data-foreign-pending-count", String(length(foreignCommands_1)));
-  node.setAttribute("data-foreign-pending-realities", concat_1(",", distinct(map((command) => asText(command.serverRealityId), foreignCommands_1))));
-  node.setAttribute("data-pending-kinds", concat_1(",", map((a) => a.kind, commands_1)));
-  node.setAttribute("data-pending-targets", concat_1("\n", map((a) => a.target, commands_1)));
-  node.setAttribute("data-pending-urls", concat_1("\n", map((a) => a.url, commands_1)));
-  node.setAttribute("data-pending-statuses", concat_1(",", map((a) => a.status, commands_1)));
+  node.setAttribute("data-foreign-pending-realities", concat_2(",", distinct(map((command) => asText_1(command.serverRealityId), foreignCommands_1))));
+  node.setAttribute("data-pending-kinds", concat_2(",", map((a) => a.kind, commands_1)));
+  node.setAttribute("data-pending-targets", concat_2("\n", map((a) => a.target, commands_1)));
+  node.setAttribute("data-pending-urls", concat_2("\n", map((a) => a.url, commands_1)));
+  node.setAttribute("data-pending-statuses", concat_2(",", map((a) => a.status, commands_1)));
   clear(node);
   if(length(commands_1)>0){
-    node.appendChild(element("div", "strong", "Pending commands: "+String(length(commands_1))));
-    const list=setTestId("pending-command-list", element("div", "pending-inspection-list", null));
+    node.appendChild(element_1("div", "strong", "Pending commands: "+String(length(commands_1))));
+    const list=setTestId_1("pending-command-list", element_1("div", "pending-inspection-list", null));
     _1=(shown=0,iter((command) => {
       if(shown<4){
         shown=shown+1;
-        const row=setData("pending-status", command.status, setData("pending-url", command.url, setData("pending-target", command.target, setData("pending-kind", command.kind, setTestId("pending-command-row", element("div", "pending-command-row wrap", null))))));
-        append(row, [element("span", "strong pending-command-kind", asText(command.kind)), element("span", "muted wrap pending-command-target", asText(command.target)), element("span", "meta wrap pending-command-status", String(asText(command.method))+" "+String(asText(command.url))+" / "+String(asText(command.status)))]);
+        const row=setData("pending-status", command.status, setData("pending-url", command.url, setData("pending-target", command.target, setData("pending-kind", command.kind, setTestId_1("pending-command-row", element_1("div", "pending-command-row wrap", null))))));
+        append_1(row, [element_1("span", "strong pending-command-kind", asText_1(command.kind)), element_1("span", "muted wrap pending-command-target", asText_1(command.target)), element_1("span", "meta wrap pending-command-status", String(asText_1(command.method))+" "+String(asText_1(command.url))+" / "+String(asText_1(command.status)))]);
         list.appendChild(row);
       }
-    }, commands_1),length(commands_1)>shown?list.appendChild(element("div", "meta", "+"+String(length(commands_1)-shown)+" more pending command(s)")):void 0,node.appendChild(list));
+    }, commands_1),length(commands_1)>shown?list.appendChild(element_1("div", "meta", "+"+String(length(commands_1)-shown)+" more pending command(s)")):void 0,node.appendChild(list));
   }
   else _1=void 0;
   if(length(foreignCommands_1)>0){
-    node.appendChild(setData("foreign-pending-count", String(length(foreignCommands_1)), setTestId("foreign-pending-summary", element("div", "pending-foreign-summary meta", "Foreign pending blocked/stale: "+String(length(foreignCommands_1))))));
-    const list_1=setTestId("foreign-pending-list", element("div", "pending-foreign-list", null));
+    node.appendChild(setData("foreign-pending-count", String(length(foreignCommands_1)), setTestId_1("foreign-pending-summary", element_1("div", "pending-foreign-summary meta", "Foreign pending blocked/stale: "+String(length(foreignCommands_1))))));
+    const list_1=setTestId_1("foreign-pending-list", element_1("div", "pending-foreign-list", null));
     shown_1=0;
     iter((command) => {
       if(shown_1<3){
         shown_1=shown_1+1;
-        const x=setTestId("foreign-pending-row", element("div", "pending-command-row pending-command-foreign wrap", null));
-        let _2=setData("pending-reality", asText(command.serverRealityId), x);
+        const x=setTestId_1("foreign-pending-row", element_1("div", "pending-command-row pending-command-foreign wrap", null));
+        let _2=setData("pending-reality", asText_1(command.serverRealityId), x);
         let _3=setData("pending-kind", command.kind, _2);
         const row=setData("pending-target", command.target, _3);
-        append(row, [element("span", "strong pending-command-kind", asText(command.kind)), element("span", "muted wrap pending-command-target", asText(command.target)), element("span", "meta wrap pending-command-status", "blocked/stale / "+asText(command.serverRealityId))]);
+        append_1(row, [element_1("span", "strong pending-command-kind", asText_1(command.kind)), element_1("span", "muted wrap pending-command-target", asText_1(command.target)), element_1("span", "meta wrap pending-command-status", "blocked/stale / "+asText_1(command.serverRealityId))]);
         list_1.appendChild(row);
       }
     }, foreignCommands_1);
-    if(length(foreignCommands_1)>shown_1)list_1.appendChild(element("div", "meta", "+"+String(length(foreignCommands_1)-shown_1)+" more foreign pending command(s)"));
+    if(length(foreignCommands_1)>shown_1)list_1.appendChild(element_1("div", "meta", "+"+String(length(foreignCommands_1)-shown_1)+" more foreign pending command(s)"));
     node.appendChild(list_1);
   }
   else void 0;
@@ -2602,31 +2742,31 @@ function appendPageValueCount(snapshot){
     if(bucket==null)return 0;
     else {
       const a=bucket.valueCount;
-      const b=length(arrayOrEmpty(bucket.values));
+      const b=length(arrayOrEmpty_1(bucket.values));
       return Compare(a, b)===1?a:b;
     }
-  }, arrayOrEmpty(snapshot.buckets)));
+  }, arrayOrEmpty_1(snapshot.buckets)));
 }
 function joinValues(values){
-  const values_1=arrayOrEmpty(values);
-  return length(values_1)===0?"":concat_1(" / ", values_1);
+  const values_1=arrayOrEmpty_1(values);
+  return length(values_1)===0?"":concat_2(" / ", values_1);
 }
 function keysAsJson(keys){
-  const keys_1=arrayOrEmpty(keys);
+  const keys_1=arrayOrEmpty_1(keys);
   return length(keys_1)===1?JSON.stringify(get(keys_1, 0)):JSON.stringify(keys_1);
 }
 function latestArray(limit, values){
-  const values_1=arrayOrEmpty(values);
+  const values_1=arrayOrEmpty_1(values);
   return length(values_1)<=limit?values_1:skip(length(values_1)-limit, values_1);
 }
 function renderAppendValue(value){
   let _1;
-  const mode=asText(value.mode);
+  const mode=asText_1(value.mode);
   const m=mode.toLowerCase();
   const className=m=="inbound-message"?"fcell-card fcell-chat inbound":m=="outbound-message"?"fcell-card fcell-chat outbound":m=="list"?"fcell-card fcell-list":m=="grid"?"fcell-card fcell-grid":"fcell-card";
-  const card=setData("mode", mode, setTestId("append-value-card", element("div", className, null)));
-  const head_2=element("div", "fcell-head", null);
-  append(head_2, [element("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element("span", "muted wrap", asText(value.valueId)+" / "+asText(value.createdAtUtc))]);
+  const card=setData("mode", mode, setTestId_1("append-value-card", element_1("div", className, null)));
+  const head_2=element_1("div", "fcell-head", null);
+  append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_1(value.valueId)+" / "+asText_1(value.createdAtUtc))]);
   card.appendChild(head_2);
   const m_1=mode.toLowerCase();
   switch(m_1){
@@ -2634,40 +2774,40 @@ function renderAppendValue(value){
     case"inbound-message":
       _1=iter((row) => {
         card.appendChild(renderTextBlock("fcell-message-body", row));
-      }, arrayOrEmpty(value.rows));
+      }, arrayOrEmpty_1(value.rows));
       break;
     case"list":
-      const list=element("ul", "fcell-list-items", null);
+      const list=element_1("ul", "fcell-list-items", null);
       _1=(iter((row) => {
-        list.appendChild(element("li", "", asText(row)));
-      }, arrayOrEmpty(value.rows)),void card.appendChild(list));
+        list.appendChild(element_1("li", "", asText_1(row)));
+      }, arrayOrEmpty_1(value.rows)),void card.appendChild(list));
       break;
     case"grid":
       let _2;
-      const table=element("table", "fcell-grid-table", null);
-      const columns=arrayOrEmpty(value.columns);
+      const table=element_1("table", "fcell-grid-table", null);
+      const columns=arrayOrEmpty_1(value.columns);
       if(length(columns)>0){
-        const thead=element("thead", "", null);
-        const header=element("tr", "", null);
+        const thead=element_1("thead", "", null);
+        const header=element_1("tr", "", null);
         _2=(iter((column) => {
-          header.appendChild(element("th", "wrap", asText(column)));
+          header.appendChild(element_1("th", "wrap", asText_1(column)));
         }, columns),thead.appendChild(header),void table.appendChild(thead));
       }
       else _2=null;
-      const tbody=element("tbody", "", null);
+      const tbody=element_1("tbody", "", null);
       _1=(iter((cells) => {
-        const tr=element("tr", "", null);
+        const tr=element_1("tr", "", null);
         iter((cell) => {
-          tr.appendChild(element("td", "wrap", asText(cell)));
-        }, arrayOrEmpty(cells));
+          tr.appendChild(element_1("td", "wrap", asText_1(cell)));
+        }, arrayOrEmpty_1(cells));
         tbody.appendChild(tr);
-      }, arrayOrEmpty(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
+      }, arrayOrEmpty_1(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
       break;
     default:
       _1=void card.appendChild(renderTextBlock("fcell-source", value.rawValue));
       break;
   }
-  if(!isBlank(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message")card.appendChild(renderTextBlock("fcell-source", value.source));
+  if(!isBlank_1(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message")card.appendChild(renderTextBlock("fcell-source", value.source));
   return card;
 }
 function setStatus(node, text){
@@ -2688,57 +2828,216 @@ function scrollToBottomAfterRender(node){
     scrollToBottomNow(node);
   }, 300);
 }
-function postJsonText(url, payloadJson, onOk, onError){
-  const headers=new Headers();
-  headers.set("Content-Type", "application/json");
-  (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
-    body:textOr("{}", payloadJson)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
-}
-function postJson(url, body, onOk, onError){
-  const headers=new Headers();
-  headers.set("Content-Type", "application/json");
-  (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
-    body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
-}
-function pendingFailure(action, error){
-  return String(action)+" failed; pending command kept in browser DB: "+String(asText(error));
-}
-function rememberPending(kind, target, url, body){
-  const payloadJson=JSON.stringify(body);
-  const commandId=newPendingCommandId(kind, target, url, payloadJson);
-  writePending(New_7(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
-  return commandId;
-}
-function postRemoveAppendPageKey(url, body, onOk, onError){
-  const headers=new Headers();
-  headers.set("Content-Type", "application/json");
-  (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
-    body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+function keysFromJson(keyJson){
+  let r;
+  const _1=keyJson;
+  if(typeof _1!=="string"||_1.trim().length===0)return[];
+  try {
+    let parsed=JSON.parse(_1);
+    let keys=Array.isArray(parsed)?parsed:parsed==null?[]:[parsed];
+    return keys.map((value) => value==null?"":String(value).trim()).filter((value) => value.length>0);
+  }
+  catch(_ignoreKeyJsonParse){
+    return[];
+  }
 }
 function postAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
+function pendingFailure(action, error){
+  return String(action)+" failed; pending command kept in browser DB: "+String(asText_1(error));
+}
+function rememberPending(kind, target, url, body){
+  const payloadJson=JSON.stringify(body);
+  const commandId=newPendingCommandId(kind, target, url, payloadJson);
+  writePending(New_9(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
+  return commandId;
+}
+function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, keyPlaceholder, defaultKey, submitKey, setKeyJson){
+  let r;
+  const _1=pageId;
+  const _2=shape;
+  const _3=title;
+  const _4=setName;
+  const _5=keyPlaceholder;
+  const _6=defaultKey;
+  const _7=submitKey;
+  const _8=setKeyJson;
+  if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
+  let renderers=globalThis.PulseTrade.AddKeyRenderers;
+  let context={
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    keyPlaceholder:String(_5||""),
+    defaultKey:String(_6||""),
+    submitKey:(payload) => {
+      _7(payload);
+    },
+    setKeyJson:(payload) => {
+      _8(payload);
+    }
+  };
+  for(let i=0;i<renderers.length;i++){
+    let r_1=renderers[i];
+    try {
+      let value=(r_1.render||r_1[1])(context);
+      let nodeOpt=((value_1) => {
+        if(value_1==null)return null;
+        if(value_1.$===1)return value_1;
+        if(value_1.nodeType)return{$:1, $0:value_1};
+        if(value_1.element&&value_1.element.nodeType)return{$:1, $0:value_1.element};
+        if(value_1.node&&value_1.node.nodeType)return{$:1, $0:value_1.node};
+        return null;
+      })(value);
+      if(nodeOpt!=null)return nodeOpt;
+    }
+    catch(e){
+      console.error("Add-key renderer exception:", e);
+    }
+  }
+  return null;
+}
+function setHidden(hidden, node){
+  hidden?node.setAttribute("hidden", "hidden"):node.removeAttribute("hidden");
+  return node;
+}
+function rendererSubmittedKeyJson(payload){
+  let r;
+  if(payload==null)return"";
+  if(typeof payload==="string")return payload;
+  if(typeof payload.keyJson==="string")return payload.keyJson;
+  let keys=[];
+  if(Array.isArray(payload))keys=payload;
+  else if(payload&&Array.isArray(payload.keys))keys=payload.keys;
+  else if(payload&&typeof payload.actorAddress==="string"){
+    keys=[payload.actorAddress];
+    if(typeof payload.duTypeName==="string"&&payload.duTypeName.trim().length>0)keys.push(payload.duTypeName);
+    if(Array.isArray(payload.unionCaseNames))keys=keys.concat(payload.unionCaseNames);
+  }
+  keys=keys.map((value) => value==null?"":String(value).trim()).filter((value) => value.length>0);
+  if(keys.length===0)return"";
+  return JSON.stringify(keys.length===1?keys[0]:keys);
+}
+function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setName, selectedKeyId, selectedKeyJson, selectedKeys, valuePlaceholder, valueText, submit, setValue){
+  let r;
+  const _1=pageId;
+  const _2=shape;
+  const _3=title;
+  const _4=setName;
+  const _5=selectedKeyId;
+  const _6=selectedKeyJson;
+  const _7=selectedKeys;
+  const _8=valuePlaceholder;
+  const _9=valueText;
+  const _10=submit;
+  const _11=setValue;
+  if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AppendInputRenderers))return null;
+  let renderers=globalThis.PulseTrade.AppendInputRenderers;
+  let keyParts=Array.isArray(_7)?_7.slice().map(String):[];
+  if(keyParts.length===0&&typeof _6==="string"&&_6.trim().length>0)try {
+    let parsedKeyJson=JSON.parse(_6);
+    if(Array.isArray(parsedKeyJson))keyParts=parsedKeyJson.slice().map(String);
+    else if(parsedKeyJson!=null)keyParts=[String(parsedKeyJson)];
+  }
+  catch(_ignoreKeyJsonParse){
+    keyParts=[];
+  }
+  let duTypeName=keyParts.length>1?String(keyParts[1]||""):"";
+  if(duTypeName.indexOf("1:duType:")===0)duTypeName=duTypeName.substring("1:duType:".length);
+  let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
+  unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
+  let context={
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    selectedKeyId:String(_5||""),
+    selectedKeyJson:String(_6||""),
+    selectedKeys:keyParts.slice(),
+    keyParts:keyParts.slice(),
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    valuePlaceholder:String(_8||""),
+    valueText:String(_9||""),
+    submit:(payload) => {
+      _10(payload);
+    },
+    setValue:(payload) => {
+      _11(payload);
+    }
+  };
+  for(let i=0;i<renderers.length;i++){
+    let r_1=renderers[i];
+    try {
+      let value=(r_1.render||r_1[1])(context);
+      let nodeOpt=((value_1) => {
+        if(value_1==null)return null;
+        if(value_1.$===1)return value_1;
+        if(value_1.nodeType)return{$:1, $0:value_1};
+        if(value_1.element&&value_1.element.nodeType)return{$:1, $0:value_1.element};
+        if(value_1.node&&value_1.node.nodeType)return{$:1, $0:value_1.node};
+        return null;
+      })(value);
+      if(nodeOpt!=null)return nodeOpt;
+    }
+    catch(e){
+      console.error("Append input renderer exception:", e);
+    }
+  }
+  return null;
+}
+function rendererSubmittedText(payload){
+  let r;
+  if(payload==null)return"";
+  if(typeof payload==="string")return payload;
+  if(typeof payload.rawArgu==="string")return payload.rawArgu;
+  if(typeof payload.valueText==="string")return payload.valueText;
+  if(typeof payload.argu==="string")return payload.argu;
+  if(typeof payload.commandLine==="string")return payload.commandLine;
+  return String(payload);
+}
+function postJsonText(url, payloadJson, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST",
+    headers:headers,
+    body:textOr("{}", payloadJson)
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
+function postJson(url, body, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST",
+    headers:headers,
+    body:JSON.stringify(body)
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
+function postRemoveAppendPageKey(url, body, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST",
+    headers:headers,
+    body:JSON.stringify(body)
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
 function setHref(href, node){
   node.setAttribute("href", href);
   return node;
 }
 function pageTypeClass(page){
-  if(isActorArguPage(page))return asText(page.shape).toLowerCase()=="raw"?"raw":"actor-argu";
+  if(isActorArguPage(page))return asText_1(page.shape).toLowerCase()=="raw"?"raw":"actor-argu";
   else {
     const m=findAppendPageShape(page.shape);
     if(m==null)return"raw";
@@ -2749,14 +3048,14 @@ function pageTypeClass(page){
   }
 }
 function pageTypeBadge(page){
-  if(isActorArguPage(page))return asText(page.shape).toLowerCase()=="raw"?"R":"A";
+  if(isActorArguPage(page))return asText_1(page.shape).toLowerCase()=="raw"?"R":"A";
   else {
     const m=findAppendPageShape(page.shape);
     return m==null?"R":textOr("?", m.$0.badge);
   }
 }
 function pageTypeLabel(page){
-  if(isActorArguPage(page))return asText(page.shape).toLowerCase()=="raw"?"Raw":"Actor Argu";
+  if(isActorArguPage(page))return asText_1(page.shape).toLowerCase()=="raw"?"Raw":"Actor Argu";
   else {
     const m=findAppendPageShape(page.shape);
     if(m==null)return"Raw";
@@ -2772,20 +3071,20 @@ function setId(id, node){
 }
 function renderPageCreator(nav, activePath, pages){
   let candidatePageId, candidatesLoaded, replayingPendingPageRegistration;
-  const wrap=setTestId("page-create", element("div", "page-create", null));
-  const shape=setTestId("page-create-shape", select(appendPageShapeOptions()));
-  const pageId=setTestId("page-create-id", input("page id"));
-  const title=setTestId("page-create-title", input("title"));
-  const binding=setTestId("page-create-binding", select([]));
-  const add=setTestId("page-create-submit", button("", "Add"));
-  const status=setTestId("page-create-status", element("span", "state page-create-status", ""));
+  const wrap=setTestId_1("page-create", element_1("div", "page-create", null));
+  const shape=setTestId_1("page-create-shape", select(appendPageShapeOptions()));
+  const pageId=setTestId_1("page-create-id", input_1("page id"));
+  const title=setTestId_1("page-create-title", input_1("title"));
+  const binding=setTestId_1("page-create-binding", select([]));
+  const add=setTestId_1("page-create-submit", button_1("", "Add"));
+  const status=setTestId_1("page-create-status", element_1("span", "state page-create-status", ""));
   candidatePageId="";
   candidatesLoaded=false;
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
-  const appendOption=(value, label, target) => {
-    const option=doc().createElement("option");
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
+  const appendOption=(value, label_1, target) => {
+    const option=doc_1().createElement("option");
     option.setAttribute("value", value);
-    option.textContent=label;
+    option.textContent=label_1;
     target.appendChild(option);
   };
   const resetBinding=() => {
@@ -2797,17 +3096,17 @@ function renderPageCreator(nav, activePath, pages){
     candidatePageId="";
   };
   const refresh=(pages_1) => {
-    renderNav(nav, activePath, arrayOrEmpty(pages_1));
+    renderNav(nav, activePath, arrayOrEmpty_1(pages_1));
   };
   const loadCandidates=(pageIdText, onDone) => {
-    if(isBlank(pageIdText)){
+    if(isBlank_1(pageIdText)){
       resetBinding();
       return onDone();
     }
     else {
       const normalizedInput=Trim(pageIdText);
       return candidatesLoaded&&candidatePageId.toLowerCase()==normalizedInput.toLowerCase()?onDone():(setStatus(status, "Checking history"),getJson("/pages/api/tab-candidates?pageId="+encodeURIComponent(normalizedInput), (reply) => {
-        const candidates=arrayOrEmpty(reply.candidates);
+        const candidates=arrayOrEmpty_1(reply.candidates);
         clear(binding);
         if(length(candidates)===0){
           appendOption("", "Default", binding);
@@ -2816,10 +3115,10 @@ function renderPageCreator(nav, activePath, pages){
         }
         else {
           iter((candidate) => {
-            appendOption("reuse:"+asText(candidate.tabId), "Reuse "+textOr(asText(candidate.pageId), asText(candidate.tabId))+" ("+(candidate.visible?"visible":"hidden")+")", binding);
+            appendOption("reuse:"+asText_1(candidate.tabId), "Reuse "+textOr(asText_1(candidate.pageId), asText_1(candidate.tabId))+" ("+(candidate.visible?"visible":"hidden")+")", binding);
           }, candidates);
           appendOption("new", "New history", binding);
-          binding.value="reuse:"+asText(get(candidates, 0).tabId);
+          binding.value="reuse:"+asText_1(get(candidates, 0).tabId);
           setStatus(status, "Existing history found");
         }
         candidatePageId=normalizedInput;
@@ -2836,16 +3135,16 @@ function renderPageCreator(nav, activePath, pages){
   const addPageAfterCandidates=() => {
     const pageIdText=Trim(pageId.value);
     const titleText=Trim(title.value);
-    if(isBlank(pageIdText)&&isBlank(titleText))setStatus(status, "Page id or title is required");
+    if(isBlank_1(pageIdText)&&isBlank_1(titleText))setStatus(status, "Page id or title is required");
     else {
-      const bindingValue=asText(binding.value);
+      const bindingValue=asText_1(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_30(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_33(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson("/pages/api/register-page", request, (reply) => {
         deletePendingThen(pendingId, () => {
-          writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty(reply.pages)), reply.maxSequence, reply.pages));
+          writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty_1(reply.pages)), reply.maxSequence, reply.pages));
           refresh(reply.pages);
           reply.page==null?setStatus(status, "Saved"):(setStatus(status, "Saved "+pageTitle(reply.page)),globalThis.location.assign(navigationPathForCreatedPage(reply.page)));
         });
@@ -2861,18 +3160,18 @@ function renderPageCreator(nav, activePath, pages){
   pageId.addEventListener("keydown", (event) => event.key=="Enter"?addPage():null);
   pageId.addEventListener("input", () => {
     const pageIdText=Trim(pageId.value);
-    return isBlank(pageIdText)?resetBinding():loadCandidates(pageIdText, () => { });
+    return isBlank_1(pageIdText)?resetBinding():loadCandidates(pageIdText, () => { });
   });
   title.addEventListener("keydown", (event) => event.key=="Enter"?addPage():null);
   add.addEventListener("click", addPage);
   resetBinding();
   refresh(pages);
-  append(wrap, [shape, pageId, title, binding, add, status]);
+  append_1(wrap, [shape, pageId, title, binding, add, status]);
   if(!replayingPendingPageRegistration){
     replayingPendingPageRegistration=true;
     readAllPending((commands) => {
       let remaining, accepted;
-      const mine=filter((command) =>!(command==null)&&sameText(command.kind, "append-page-register")&&sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), commands);
+      const mine=filter((command) =>!(command==null)&&sameText(command.kind, "append-page-register")&&sameText(command.method, "POST")&&!isBlank_1(command.url)&&!isBlank_1(command.payloadJson), commands);
       if(length(mine)===0)replayingPendingPageRegistration=false;
       else {
         remaining=length(mine);
@@ -2885,10 +3184,10 @@ function renderPageCreator(nav, activePath, pages){
         iter((command) => {
           postJsonText(command.url, command.payloadJson, (body) => {
             try {
-              const reply=json(isBlank(body)?"{}":body);
+              const reply=json(isBlank_1(body)?"{}":body);
               deletePendingThen(command.commandId, () => {
                 accepted=accepted+1;
-                !(reply==null)?(writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty(reply.pages)), reply.maxSequence, reply.pages)),refresh(reply.pages)):void 0;
+                !(reply==null)?(writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty_1(reply.pages)), reply.maxSequence, reply.pages)),refresh(reply.pages)):void 0;
                 finishOne();
               });
             }
@@ -2907,7 +3206,7 @@ function renderPageCreator(nav, activePath, pages){
   return wrap;
 }
 function setValueCount(buckets){
-  return fold((_1, _2) => _1+_2, 0, map((bucket) => bucket==null?0:bucket.valueCount, arrayOrEmpty(buckets)));
+  return fold((_1, _2) => _1+_2, 0, map((bucket) => bucket==null?0:bucket.valueCount, arrayOrEmpty_1(buckets)));
 }
 function actorValueCount(data){
   if(data==null)return 0;
@@ -2918,51 +3217,72 @@ function actorValueCount(data){
   }
 }
 function cardTitle(title, id, status, line){
-  const wrap=doc().createDocumentFragment();
-  const row=element("div", "name-row", null);
-  append(row, [statusDot(status), element("span", "strong wrap", title)]);
+  const wrap=doc_1().createDocumentFragment();
+  const row=element_1("div", "name-row", null);
+  append_1(row, [statusDot(status), element_1("span", "strong wrap", title)]);
   wrap.appendChild(row);
-  if(!isBlank(id))wrap.appendChild(element("div", "muted wrap", id));
-  if(!isBlank(line))wrap.appendChild(element("div", "meta wrap", line));
+  if(!isBlank_1(id))wrap.appendChild(element_1("div", "muted wrap", id));
+  if(!isBlank_1(line))wrap.appendChild(element_1("div", "meta wrap", line));
   return wrap;
 }
 function statusDot(status){
-  const node=element("span", isLive(status)?"status-dot online":"status-dot offline", null);
-  node.setAttribute("title", asText(status));
+  const node=element_1("span", isLive(status)?"status-dot online":"status-dot offline", null);
+  node.setAttribute("title", asText_1(status));
   return node;
 }
 function compactMessageId(value){
-  const text=asText(value);
+  const text=asText_1(value);
   return text.length<=32?text:StartsWith(text.toLowerCase(), "pending-command")?"pending-command:"+String(text.length):Substring(text, 0, 24)+"..."+text.substring(text.length-6);
 }
 function mergeThreadMessages(existing, incoming){
-  const v=distinctMessages(arrayOrEmpty(existing).concat(arrayOrEmpty(incoming)));
+  const v=distinctMessages(arrayOrEmpty_1(existing).concat(arrayOrEmpty_1(incoming)));
   return latestArray(defaultRenderLimit(), v);
 }
 function maxMessageSequence(messages){
-  return fold((_1, _2) => Compare(_1, _2)===1?_1:_2, 0n, map((message) => message==null?0n:tryParseSequence("msg-", message.messageId), arrayOrEmpty(messages)));
+  return fold((_1, _2) => Compare(_1, _2)===1?_1:_2, 0n, map((message) => message==null?0n:tryParseSequence("msg-", message.messageId), arrayOrEmpty_1(messages)));
 }
 function int64OrZero(value){
-  const parsed=parseInt(asText(value), globalThis.$radix);
+  const parsed=parseInt(asText_1(value), globalThis.$radix);
   return isNaN(parsed)||parsed<0?0n:BigInt(parsed);
 }
-function _registerRendererGlobally(){
+function initializeClientExtensionGlobals(){
   if(!globalThis.PulseTrade)globalThis.PulseTrade={};
-  if(!globalThis.PulseTrade.Renderers)globalThis.PulseTrade.Renderers=[];
-  globalThis.PulseTradeRegisterRenderer=(name, func) => {
-    console.log("PulseTradeRegisterRenderer called!", name);
-    globalThis.PulseTrade.Renderers.push([name, func]);
+  if(!globalThis.PulseTrade.MessageRenderers)globalThis.PulseTrade.MessageRenderers=[];
+  if(!globalThis.PulseTrade.AppendInputRenderers)globalThis.PulseTrade.AppendInputRenderers=[];
+  if(!globalThis.PulseTrade.AddKeyRenderers)globalThis.PulseTrade.AddKeyRenderers=[];
+  if(!globalThis.PulseTrade.Renderers)globalThis.PulseTrade.Renderers=globalThis.PulseTrade.MessageRenderers;
+  let register=(collection, name, priority, func) => {
+    if(typeof priority==="function"){
+      func=priority;
+      priority=0;
+    }
+    if(typeof func!=="function")return;
+    collection.push({
+      name:String(name||"unnamed"),
+      priority:Number(priority||0),
+      render:func
+    });
+    collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
+  };
+  globalThis.PulseTradeRegisterRenderer=(name, priority, func) => {
+    register(globalThis.PulseTrade.MessageRenderers, name, priority, func);
+  };
+  globalThis.PulseTradeRegisterAppendInputRenderer=(name, priority, func) => {
+    register(globalThis.PulseTrade.AppendInputRenderers, name, priority, func);
+  };
+  globalThis.PulseTradeRegisterAddKeyRenderer=(name, priority, func) => {
+    register(globalThis.PulseTrade.AddKeyRenderers, name, priority, func);
   };
 }
 function hasTag(tag, tags){
-  return exists((value) => asText(value).toLowerCase()==tag, arrayOrEmpty(tags));
+  return exists((value) => asText_1(value).toLowerCase()==tag, arrayOrEmpty_1(tags));
 }
 function fcellValueModeLabel(mode, tags){
   return hasTag("actor-argu-command", tags)?"Actor Argu Outbound":hasTag("actor-argu-reply", tags)?"Actor Argu Reply":hasTag("actor-argu-error", tags)?"Actor Argu Error":fcellModeLabel(mode);
 }
 function renderTextBlock(className, text){
   const m=tryRenderWithRegisteredRenderers(text);
-  return m==null?element("pre", className, asText(text)):m.$0;
+  return m==null?element_1("pre", className, asText_1(text)):m.$0;
 }
 function scrollToBottomNow(node){
   if(!(node==null)){
@@ -2983,13 +3303,13 @@ function findAppendPageShape(shape){
   return tryFind((candidate) => normalizeShapeText(candidate.shape)==normalized, appendPageShapeRegistry());
 }
 function normalizeShapeText(value){
-  const text=Trim(asText(value)).toLowerCase();
-  return text.length>0&&text.length<=64&&forall_2((ch) => ch>="a"&&ch<="z"||ch>="0"&&ch<="9"||ch==="-"||ch==="_"||ch===".", text)?text:"raw";
+  const text=Trim(asText_1(value)).toLowerCase();
+  return text.length>0&&text.length<=64&&forall_1((ch) => ch>="a"&&ch<="z"||ch>="0"&&ch<="9"||ch==="-"||ch==="_"||ch===".", text)?text:"raw";
 }
 function select(options){
-  const node=doc().createElement("select");
+  const node=doc_1().createElement("select");
   iter((_1) => {
-    const option=doc().createElement("option");
+    const option=doc_1().createElement("option");
     option.setAttribute("value", _1[0]);
     option.textContent=_1[1];
     node.appendChild(option);
@@ -3000,25 +3320,25 @@ function appendPageShapeOptions(){
   return map((shape) =>[normalizeShapeText(shape.shape), textOr(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
 }
 function navigationPathForCreatedPage(page){
-  const pageId=asText(page.pageId);
-  const path=asText(page.path);
+  const pageId=asText_1(page.pageId);
+  const path=asText_1(page.path);
   return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
 }
 function isLive(status){
-  const m=asText(status).toLowerCase();
+  const m=asText_1(status).toLowerCase();
   return m=="online"||(m=="running"||(m=="up"||m=="available"));
 }
 function distinctMessages(messages){
   let kept;
   kept=[];
   iter((message) => {
-    if(!(message==null)&&!isBlank(message.messageId)&&!exists((row) => row.messageId==message.messageId, kept))kept=kept.concat([message]);
-  }, arrayOrEmpty(messages));
+    if(!(message==null)&&!isBlank_1(message.messageId)&&!exists((row) => row.messageId==message.messageId, kept))kept=kept.concat([message]);
+  }, arrayOrEmpty_1(messages));
   return kept;
 }
 function tryParseSequence(prefix, value){
-  const text=asText(value);
-  if(isBlank(text)||!StartsWith(text, prefix))return 0n;
+  const text=asText_1(value);
+  if(isBlank_1(text)||!StartsWith(text, prefix))return 0n;
   else try {
     return BigInt(text.substring(prefix.length));
   }
@@ -3027,29 +3347,48 @@ function tryParseSequence(prefix, value){
   }
 }
 function fcellModeLabel(mode){
-  const m=asText(mode).toLowerCase();
+  const m=asText_1(mode).toLowerCase();
   return m=="inbound-message"?"FCell Chat":m=="outbound-message"?"FCell Chat":m=="list"?"FCell List":m=="table"?"FCell Grid":m=="grid"?"FCell Grid":"FCell Value";
 }
 function tryRenderWithRegisteredRenderers(text){
   let r;
-  const content=asText(text);
-  if(isBlank(content))return null;
+  const content=asText_1(text);
+  if(isBlank_1(content))return null;
   else {
-    const _1=content;
-    if(globalThis.PulseTrade&&globalThis.PulseTrade.Renderers){
-      let renderers=globalThis.PulseTrade.Renderers;
-      for(let i=0;i<renderers.length;i++){
-        let r_1=renderers[i];
-        try {
-          let nodeOpt=r_1[1](_1);
-          if(nodeOpt!=null&&nodeOpt.$==1)return nodeOpt;
-        }
-        catch(e){
-          console.error("Renderer exception:", e);
+    const local=tryPick((_2) => {
+      try {
+        return _2[1](content);
+      }
+      catch(m){
+        return null;
+      }
+    }, registeredRenderers());
+    if(local==null){
+      const _1=content;
+      if(globalThis.PulseTrade&&globalThis.PulseTrade.MessageRenderers){
+        let renderers=globalThis.PulseTrade.MessageRenderers;
+        for(let i=0;i<renderers.length;i++){
+          let r_1=renderers[i];
+          try {
+            let value=(r_1.render||r_1[1])(_1);
+            let nodeOpt=((value_1) => {
+              if(value_1==null)return null;
+              if(value_1.$===1)return value_1;
+              if(value_1.nodeType)return{$:1, $0:value_1};
+              if(value_1.element&&value_1.element.nodeType)return{$:1, $0:value_1.element};
+              if(value_1.node&&value_1.node.nodeType)return{$:1, $0:value_1.node};
+              return null;
+            })(value);
+            if(nodeOpt!=null)return nodeOpt;
+          }
+          catch(e){
+            console.error("Renderer exception:", e);
+          }
         }
       }
+      return null;
     }
-    return null;
+    else return Some(local.$0);
   }
 }
 function set_pendingCommandSeq(_1){
@@ -3061,21 +3400,24 @@ function pendingCommandSeq(){
 function appendPageShapeRegistry(){
   return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
 }
+function registeredRenderers(){
+  return _c.registeredRenderers;
+}
 function builtInAppendPageShapes(){
   return[shapeRegistration("fcell-chat", "FCell Chat", "C", "fcell-chat"), shapeRegistration("fcell-list", "FCell List", "L", "fcell-list"), shapeRegistration("fcell-grid", "FCell Grid", "G", "fcell-grid"), shapeRegistration("actor-argu", "Actor Argu", "A", "actor-argu"), shapeRegistration("raw", "Raw", "R", "raw")];
 }
 function manifestAppendPageShapes(){
-  return filter((shape) => shape.shape!="raw", map((shape) => shape==null?shapeRegistration("raw", "Raw", "R", "raw"):shapeRegistration(shape.shape, shape.label, shape.badge, shape.className), collect((extension) => extension==null?[]:arrayOrEmpty(extension.appendPageShapes), serverClientExtensions())));
+  return filter((shape) => shape.shape!="raw", map((shape) => shape==null?shapeRegistration("raw", "Raw", "R", "raw"):shapeRegistration(shape.shape, shape.label, shape.badge, shape.className), collect((extension) => extension==null?[]:arrayOrEmpty_1(extension.appendPageShapes), serverClientExtensions())));
 }
 function runtimeAppendPageShapes(){
   return _c.runtimeAppendPageShapes;
 }
-function shapeRegistration(shape, label, badge, className){
-  return New_29(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+function shapeRegistration(shape, label_1, badge, className){
+  return New_32(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
-  const node=doc().getElementById("ptc-comm-client-extensions");
-  if(node==null||isBlank(node.textContent))return[];
+  const node=doc_1().getElementById("ptc-comm-client-extensions");
+  if(node==null||isBlank_1(node.textContent))return[];
   else {
     const o=tryJson(node.textContent);
     return o==null?[]:o.$0;
@@ -3124,7 +3466,7 @@ function tryGetSchema(jsonStr){
 }
 function createSduiCanvas(jsonStr){
   let _1;
-  const isExpanded=_c_1.Create_1(false);
+  const isExpanded=_c_2.Create_1(false);
   if(!Equals(globalThis.document.head, null)){
     const styleId="sdui-dynamic-styles";
     if(Equals(globalThis.document.getElementById(styleId), null)){
@@ -3135,7 +3477,7 @@ function createSduiCanvas(jsonStr){
   }
   else _1=null;
   const jsonSnippet=jsonStr.length>100?Substring(jsonStr, 0, 100)+"...":jsonStr;
-  const isCodeExpanded=_c_1.Create_1(false);
+  const isCodeExpanded=_c_2.Create_1(false);
   return E("div", [Attr.Create("class", "sdui-summary-card"), Attr.Create("style", "border: 1px solid #5bc0de; padding: 15px; border-radius: 6px; background: rgba(91, 192, 222, 0.1); margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start;")], [E("strong", [Attr.Create("style", "display: block; margin-bottom: 5px; color: #5bc0de; font-size: 1.1em;")], [Doc.TextNode("\ud83d\udcc8 FSkynet \u52d5\u614b\u756b\u5e03 (Canvas)")]), E("span", [Attr.Create("class", "muted"), Attr.Create("style", "display: block; font-size: 0.9em; margin-bottom: 12px; color: #aaa;")], [Doc.TextNode("\u9ede\u64ca\u5c55\u958b\u4ee5\u986f\u793a\u5177\u5099\u6392\u5e8f\u3001\u7be9\u9078\u53ca\u4e0b\u55ae\u529f\u80fd\u7684\u4e92\u52d5\u5f0f\u7db2\u683c\u8207\u5716\u8868\u3002")]), E("pre", [Dynamic("class", Map((e) => e?"sdui-json-snippet expanded":"sdui-json-snippet", isCodeExpanded.View)), Attr.Create("title", "\u9ede\u64ca\u6aa2\u8996\u5b8c\u6574 JSON"), Handler("click", () =>() => isCodeExpanded.Set(!isCodeExpanded.Get()))], [Doc.TextView(Map((e) => e?jsonStr:jsonSnippet, isCodeExpanded.View))]), E("button", [Attr.Create("class", "btn btn-info"), Attr.Create("style", "background: #5bc0de; color: #111; font-weight: bold; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 10px;"), Handler("click", () =>() => isExpanded.Set(!isExpanded.Get()))], [Doc.TextView(Map((e) => e?"\u6536\u5408 Canvas":"\u5c55\u958b Canvas", isExpanded.View))]), Doc.EmbedView(Map((expanded) => expanded?E("div", [Attr.Create("style", "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; flex-direction: column; padding: 40px; box-sizing: border-box;")], [E("div", [Attr.Create("style", "display: flex; justify-content: space-between; align-items: center; background: #1e1e1e; padding: 15px 25px; border-radius: 8px 8px 0 0; color: #fff; font-family: sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.3);")], [E("h2", [Attr.Create("style", "margin: 0; font-size: 1.5rem; font-weight: normal;")], [Doc.TextNode("FSkynet SDUI Canvas")]), E("button", [Attr.Create("class", "btn btn-danger"), Attr.Create("style", "background: #d9534f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;"), Handler("click", () =>() => isExpanded.Set(false))], [Doc.TextNode("\u95dc\u9589 Canvas")])]), E("div", [Attr.Create("style", "flex: 1; background: #2b2b2b; padding: 30px; overflow-y: auto; border-radius: 0 0 8px 8px; color: #eee; font-family: sans-serif;")], ofSeq_1(delay(() => enumTryWith(delay(() => {
     let r, items;
     let payloadObj=JSON.parse(jsonStr);
@@ -3164,7 +3506,7 @@ function renderNode(obj, payloadObj){
       case"TextInput":
         const placeholderStr=obj.placeholder||"";
         const idStr=obj.id||"";
-        return V("input", append_1(ofArray([Attr.Create("type", "text"), Attr.Create("placeholder", placeholderStr), Attr.Create("style", "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box; margin: 5px 0;")]), !IsNullOrEmpty(idStr)?ofArray([OnAfterRender((el) => {
+        return V("input", append_3(ofArray([Attr.Create("type", "text"), Attr.Create("placeholder", placeholderStr), Attr.Create("style", "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box; margin: 5px 0;")]), !IsNullOrEmpty(idStr)?ofArray([OnAfterRender((el) => {
           el.setAttribute("id", idStr);
         })]):FSharpList.Empty));
       case"Row":
@@ -3179,7 +3521,7 @@ function renderNode(obj, payloadObj){
       case"Dropdown":
         const isMultiple=!(!obj.multiple);
         const optionDocs=ofArray(map((opt) => E("option", [], [Doc.TextNode(opt)]), obj.options||[]));
-        return E("select", append_1(ofArray([Attr.Create("style", "padding: 8px; margin: 5px 0; background: #333; color: white; border: 1px solid #555; border-radius: 4px; font-size: 1rem; display: block; width: 200px;")]), isMultiple?ofArray([OnAfterRender((el) => {
+        return E("select", append_3(ofArray([Attr.Create("style", "padding: 8px; margin: 5px 0; background: #333; color: white; border: 1px solid #555; border-radius: 4px; font-size: 1rem; display: block; width: 200px;")]), isMultiple?ofArray([OnAfterRender((el) => {
           el.setAttribute("multiple", "multiple");
         })]):FSharpList.Empty), optionDocs);
       case"DataGrid":
@@ -3210,7 +3552,7 @@ function renderNode(obj, payloadObj){
       case"ColorPicker":
         const defaultColor=obj.defaultColor||"#000000";
         const idStr_1=obj.id||"";
-        return V("input", append_1(ofArray([Attr.Create("type", "color"), Attr.Create("value", defaultColor), Attr.Create("style", "padding: 0; margin: 5px 0; background: none; border: 1px solid #555; border-radius: 4px; cursor: pointer; height: 40px; width: 60px;")]), !IsNullOrEmpty(idStr_1)?ofArray([OnAfterRender((el) => {
+        return V("input", append_3(ofArray([Attr.Create("type", "color"), Attr.Create("value", defaultColor), Attr.Create("style", "padding: 0; margin: 5px 0; background: none; border: 1px solid #555; border-radius: 4px; cursor: pointer; height: 40px; width: 60px;")]), !IsNullOrEmpty(idStr_1)?ofArray([OnAfterRender((el) => {
           el.setAttribute("id", idStr_1);
         })]):FSharpList.Empty));
       case"DatePicker":
@@ -3228,7 +3570,7 @@ function renderNode(obj, payloadObj){
         let unwrappedData_1=globalThis.unwrapFCell?globalThis.unwrapFCell(payloadObj.data):payloadObj.data;
         let arr_1=unwrappedData_1?unwrappedData_1[_2]:null;
         items=Array.isArray(arr_1)?arr_1.map(String):[];
-        const contentText=length(items)>0?concat_1(" | ", items):"No data for Rolling.";
+        const contentText=length(items)>0?concat_2(" | ", items):"No data for Rolling.";
         return V("marquee", [Attr.Create("style", "padding: 10px; background: #222; color: #5bc0de; border-radius: 4px; border: 1px solid #444; margin: 10px 0;"), OnAfterRender((el) => {
           el.setAttribute("direction", direction);
           el.textContent=contentText;
@@ -3249,30 +3591,64 @@ function V(name, attrs){
 function Some(Value){
   return{$:1, $0:Value};
 }
-function FailWith(msg){
-  throw new Error(msg);
-}
-function KeyValue(kvp){
-  return[kvp.K, kvp.V];
-}
 function range(min, max_1){
   const count=1+max_1-min;
   return count<=0?[]:init_1(count, (x) => x+min);
 }
+function toInt(x){
+  const u=toUInt(x);
+  return u>2147483647?u-4294967296:u;
+}
+function FailWith(msg){
+  throw new Error(msg);
+}
+function toUInt(x){
+  return(x<0?Math.ceil(x):Math.floor(x))>>>0;
+}
+function KeyValue(kvp){
+  return[kvp.K, kvp.V];
+}
 function New(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
 function iter(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)f(arr[i]);
 }
+function concat(xs){
+  return Array.prototype.concat.apply([], ofSeq(xs));
+}
+function distinct(l){
+  return ofSeq(distinct_1(l));
+}
+function sort(arr){
+  return map((t) => t[0], mapi((_1, _2) =>[_2, _1], arr).sort(Compare));
+}
+function tryHead(arr){
+  return arr.length===0?null:Some(arr[0]);
+}
 function filter(f, arr){
   const r=[];
   for(let i=0, _1=arr.length-1;i<=_1;i++)if(f(arr[i]))r.push(arr[i]);
+  return r;
+}
+function exists(f, x){
+  let e, i;
+  e=false;
+  i=0;
+  const l=length(x);
+  while(!e&&i<l)
+    if(f(x[i]))e=true;
+    else i=i+1;
+  return e;
+}
+function map(f, arr){
+  const r=new Array(arr.length);
+  for(let i=0, _1=arr.length-1;i<=_1;i++)r[i]=f(arr[i]);
   return r;
 }
 function tryFind(f, arr){
@@ -3286,26 +3662,8 @@ function tryFind(f, arr){
     }
   return res;
 }
-function map(f, arr){
-  const r=new Array(arr.length);
-  for(let i=0, _1=arr.length-1;i<=_1;i++)r[i]=f(arr[i]);
-  return r;
-}
 function sortBy(f, arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) => Compare(_1[1], _2[1])));
-}
-function exists(f, x){
-  let e, i;
-  e=false;
-  i=0;
-  const l=length(x);
-  while(!e&&i<l)
-    if(f(x[i]))e=true;
-    else i=i+1;
-  return e;
-}
-function tryHead(arr){
-  return arr.length===0?null:Some(arr[0]);
 }
 function forall2(f, x1, x2){
   let a, i;
@@ -3324,17 +3682,6 @@ function fold(f, zero, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)acc=f(acc, arr[i]);
   return acc;
 }
-function distinct(l){
-  return ofSeq(distinct_1(l));
-}
-function mapi(f, arr){
-  const y=new Array(arr.length);
-  for(let i=0, _1=arr.length-1;i<=_1;i++)y[i]=f(i, arr[i]);
-  return y;
-}
-function skip(i, ar){
-  return i<0?nonNegative():i>ar.length?insufficient():ar.slice(i);
-}
 function ofSeq(xs){
   if(xs instanceof Array)return xs.slice();
   else if(xs instanceof FSharpList)return ofList(xs);
@@ -3352,8 +3699,30 @@ function ofSeq(xs){
     }
   }
 }
+function mapi(f, arr){
+  const y=new Array(arr.length);
+  for(let i=0, _1=arr.length-1;i<=_1;i++)y[i]=f(i, arr[i]);
+  return y;
+}
+function iteri(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)f(i, arr[i]);
+}
+function skip(i, ar){
+  return i<0?nonNegative():i>ar.length?insufficient():ar.slice(i);
+}
 function checkLength(arr1, arr2){
   if(arr1.length!==arr2.length)FailWith("The arrays have different lengths.");
+}
+function ofList(xs){
+  let l;
+  const q=[];
+  l=xs;
+  while(!(l.$==0))
+    {
+      q.push(head_1(l));
+      l=tail(l);
+    }
+  return q;
 }
 function choose(f, arr){
   const q=[];
@@ -3362,17 +3731,6 @@ function choose(f, arr){
     if(m==null){ }
     else q.push(m.$0);
   }
-  return q;
-}
-function ofList(xs){
-  let l;
-  const q=[];
-  l=xs;
-  while(!(l.$==0))
-    {
-      q.push(head(l));
-      l=tail(l);
-    }
   return q;
 }
 function tryPick(f, arr){
@@ -3404,9 +3762,6 @@ function foldBack(f, arr, zero){
   const len=arr.length;
   for(let i=1, _1=len;i<=_1;i++)acc=f(arr[len-i], acc);
   return acc;
-}
-function concat(xs){
-  return Array.prototype.concat.apply([], ofSeq(xs));
 }
 function distinctBy(f, a){
   return ofSeq(distinctBy_1(f, a));
@@ -3441,7 +3796,7 @@ function forall(f, x){
   return a;
 }
 function readJson(key, onRead){
-  if(isBlank(key))onRead(null);
+  if(isBlank_1(key))onRead(null);
   else withStore(snapshotStore(), "readonly", (store) => {
     try {
       const request=store.get(key);
@@ -3450,7 +3805,7 @@ function readJson(key, onRead){
         if(isMissing(value))return onRead(null);
         else try {
           const text=String(value);
-          return isBlank(text)?onRead(null):onRead(tryJson(text));
+          return isBlank_1(text)?onRead(null):onRead(tryJson(text));
         }
         catch(m){
           return onRead(null);
@@ -3466,7 +3821,7 @@ function readJson(key, onRead){
   });
 }
 function cacheKey(scope, parts){
-  return currentServerRealityId()+":"+scope+":"+concat_1(":", map_1((part) => encodeURIComponent(asText(part)), parts));
+  return currentServerRealityId()+":"+scope+":"+concat_2(":", map_2((part) => encodeURIComponent(asText_1(part)), parts));
 }
 function withStore(storeName, mode, onStore, onUnavailable){
   openDb((db) => {
@@ -3495,14 +3850,14 @@ function readPendingRealitySplit(onRead){
   });
 }
 function writeWatermark(streamId, newestSequence, cachedCount, source){
-  if(!isBlank(streamId)){
+  if(!isBlank_1(streamId)){
     let _1=watermarkStore();
     const a=0n;
     let _2=Compare(a, newestSequence)===1?a:newestSequence;
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_26(streamId, _3, _4, asText(source), nowTicks());
+    let _5=New_28(streamId, _3, _4, asText_1(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -3517,7 +3872,7 @@ function deletePendingThen(commandId, onDeleted){
   deleteFromThen(pendingStore(), commandId, onDeleted);
 }
 function readWatermark(key, onRead){
-  if(isBlank(key))onRead(null);
+  if(isBlank_1(key))onRead(null);
   else withStore(watermarkStore(), "readonly", (store) => {
     try {
       const request=store.get(key);
@@ -3526,7 +3881,7 @@ function readWatermark(key, onRead){
         if(isMissing(value))return onRead(null);
         else try {
           const text=String(value);
-          return isBlank(text)?onRead(null):onRead(tryJson(text));
+          return isBlank_1(text)?onRead(null):onRead(tryJson(text));
         }
         catch(m){
           return onRead(null);
@@ -3576,7 +3931,7 @@ function readAllPendingRaw(onRead){
         else try {
           return onRead(choose((text) => {
             try {
-              return isBlank(text)?null:tryJson(text);
+              return isBlank_1(text)?null:tryJson(text);
             }
             catch(m){
               return null;
@@ -3597,7 +3952,7 @@ function readAllPendingRaw(onRead){
   });
 }
 function writeJsonTo(storeName, key, value){
-  if(!isBlank(key))withStore(storeName, "readwrite", (store) => {
+  if(!isBlank_1(key))withStore(storeName, "readwrite", (store) => {
     try {
       const a=[JSON.stringify(value), key];
       store.put.apply(store, a);
@@ -3622,20 +3977,20 @@ function nowTicks(){
 }
 function compactSnapshots(){
   readAllWatermarks((watermarks) => {
-    const watermarks_1=arrayOrEmpty(watermarks);
+    const watermarks_1=arrayOrEmpty_1(watermarks);
     const overflow=length(watermarks_1)-maxSnapshotRecords();
     if(overflow>0)iter((watermark) => {
       deleteSnapshotAndWatermark(watermark.streamId);
-    }, sortBy(watermarkTouchedAt, filter((watermark) =>!(watermark==null)&&!isBlank(watermark.streamId)&&!protectedSnapshotKey(watermark.streamId), watermarks_1)).slice(0, overflow));
+    }, sortBy(watermarkTouchedAt, filter((watermark) =>!(watermark==null)&&!isBlank_1(watermark.streamId)&&!protectedSnapshotKey(watermark.streamId), watermarks_1)).slice(0, overflow));
     readAllSnapshotKeys((snapshotKeys) => {
       iter((key) => {
         deleteFrom(snapshotStore(), key);
-      }, filter((key) =>!isBlank(key)&&!protectedSnapshotKey(key)&&!exists((watermark) =>!(watermark==null)&&watermark.streamId==key, watermarks_1), snapshotKeys));
+      }, filter((key) =>!isBlank_1(key)&&!protectedSnapshotKey(key)&&!exists((watermark) =>!(watermark==null)&&watermark.streamId==key, watermarks_1), snapshotKeys));
     });
   });
 }
 function deleteFromThen(storeName, key, onDeleted){
-  if(isBlank(key))onDeleted();
+  if(isBlank_1(key))onDeleted();
   else withTransactionStore(storeName, "readwrite", (_1, _2) =>(((tx) =>(store) => {
     let finished;
     finished=false;
@@ -3684,7 +4039,7 @@ function readAllWatermarks(onRead){
         else try {
           return onRead(choose((text) => {
             try {
-              return isBlank(text)?null:tryJson(text);
+              return isBlank_1(text)?null:tryJson(text);
             }
             catch(m){
               return null;
@@ -3708,21 +4063,21 @@ function maxSnapshotRecords(){
   return _c.maxSnapshotRecords;
 }
 function protectedSnapshotKey(key){
-  const key_1=asText(key);
+  const key_1=asText_1(key);
   return key_1=="append-pages-definitions:"||key_1.indexOf(":append-pages-definitions:")!=-1||StartsWith(key_1, "chat-agents:")||key_1.indexOf(":chat-agents:")!=-1||StartsWith(key_1, "actors-snapshot:")||key_1.indexOf(":actors-snapshot:")!=-1;
 }
 function watermarkTouchedAt(watermark){
   let o;
   if(watermark==null)return 0n;
   else {
-    const m=(o=0n,[TryParse_1(asText(watermark.touchedAt), {get:() => o, set:(v) => {
+    const m=(o=0n,[TryParse_1(asText_1(watermark.touchedAt), {get:() => o, set:(v) => {
       o=v;
     }}), o]);
     return m[0]?m[1]:0n;
   }
 }
 function deleteSnapshotAndWatermark(key){
-  if(!isBlank(key))withSnapshotWatermarkStores("readwrite", (_1, _2, _3) => {
+  if(!isBlank_1(key))withSnapshotWatermarkStores("readwrite", (_1, _2, _3) => {
     try {
       _2["delete"](key);
       _3["delete"](key);
@@ -3757,7 +4112,7 @@ function readAllSnapshotKeys(onRead){
   });
 }
 function deleteFrom(storeName, key){
-  if(!isBlank(key))withStore(storeName, "readwrite", (store) => {
+  if(!isBlank_1(key))withStore(storeName, "readwrite", (store) => {
     try {
       store["delete"](key);
     }
@@ -3950,11 +4305,11 @@ function hashMix(x, y){
   return(x<<5)+x+y;
 }
 function json(text){
-  return JSON.parse(asText(text));
+  return JSON.parse(asText_1(text));
 }
 function tryJson(text){
   try {
-    return isBlank(text)?null:Some(json(text));
+    return isBlank_1(text)?null:Some(json(text));
   }
   catch(m){
     return null;
@@ -3962,17 +4317,346 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
+  };
+}
+function get(arr, n){
+  checkBounds(arr, n);
+  return arr[n];
+}
+function length(arr){
+  return arr.dims===2?arr.length*arr.length:arr.length;
+}
+function checkBounds(arr, n){
+  if(n<0||n>=arr.length)FailWith("Index was outside the bounds of the array.");
+}
+function set(arr, n, x){
+  checkBounds(arr, n);
+  arr[n]=x;
+}
+function New_3(keys){
+  return{keys:keys};
+}
+function delay(f){
+  return{GetEnumerator:() => Get(f())};
+}
+function append_2(s1, s2){
+  return{GetEnumerator:() => {
+    const e1=Get(s1);
+    const first=[true];
+    return new T(e1, null, (x) => {
+      if(x.s.MoveNext()){
+        x.c=x.s.Current;
+        return true;
+      }
+      else {
+        const x_1=x.s;
+        if(!Equals(x_1, null))x_1.Dispose();
+        else null;
+        x.s=null;
+        return first[0]&&(first[0]=false,x.s=Get(s2),x.s.MoveNext()?(x.c=x.s.Current,true):(x.s.Dispose(),x.s=null,false));
+      }
+    }, (x) => {
+      const x_1=x.s;
+      if(!Equals(x_1, null))x_1.Dispose();
+    });
+  }};
+}
+function filter_1(f, s){
+  return{GetEnumerator:() => {
+    const o=Get(s);
+    return new T(null, null, (e) => {
+      let loop, c, res;
+      loop=o.MoveNext();
+      c=void 0;
+      res=false;
+      while(loop)
+        {
+          c=o.Current;
+          f(c)?(e.c=c,res=true,loop=false):!o.MoveNext()?loop=false:void 0;
+        }
+      return res;
+    }, () => {
+      o.Dispose();
+    });
+  }};
+}
+function map_1(f, s){
+  return{GetEnumerator:() => {
+    const en=Get(s);
+    return new T(null, null, (e) => en.MoveNext()&&(e.c=f(en.Current),true), () => {
+      en.Dispose();
+    });
+  }};
+}
+function distinct_1(s){
+  return distinctBy_1((x) => x, s);
+}
+function collect_1(f, s){
+  return concat_1(map_1(f, s));
+}
+function distinctBy_1(f, s){
+  return{GetEnumerator:() => {
+    const o=Get(s);
+    const seen=new HashSet("New_3");
+    return new T(null, null, (e) => {
+      let cur, has;
+      if(o.MoveNext()){
+        cur=o.Current;
+        has=seen.SAdd(f(cur));
+        while(!has&&o.MoveNext())
+          {
+            cur=o.Current;
+            has=seen.SAdd(f(cur));
+          }
+        return has&&(e.c=cur,true);
+      }
+      else return false;
+    }, () => {
+      o.Dispose();
+    });
+  }};
+}
+function init_1(n, f){
+  return take(n, initInfinite(f));
+}
+function concat_1(ss){
+  return{GetEnumerator:() => {
+    const outerE=Get(ss);
+    function next(st){
+      while(true)
+        {
+          const m=st.s;
+          if(Equals(m, null)){
+            if(outerE.MoveNext()){
+              st.s=Get(outerE.Current);
+              st=st;
+            }
+            else {
+              outerE.Dispose();
+              return false;
+            }
+          }
+          else if(m.MoveNext()){
+            st.c=m.Current;
+            return true;
+          }
+          else {
+            st.Dispose();
+            st.s=null;
+            st=st;
+          }
+        }
+    }
+    return new T(null, null, next, (st) => {
+      const x=st.s;
+      if(!Equals(x, null))x.Dispose();
+      const x_1=outerE;
+      if(!Equals(x_1, null))x_1.Dispose();
+    });
+  }};
+}
+function head(s){
+  const e=Get(s);
+  try {
+    return e.MoveNext()?e.Current:insufficient();
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function forall_1(p, s){
+  return!exists_1((x) =>!p(x), s);
+}
+function take(n, s){
+  n<0?nonNegative():void 0;
+  return{GetEnumerator:() => {
+    const e=[Get(s)];
+    return new T(0, null, (o) => {
+      o.s=o.s+1;
+      if(o.s>n)return false;
+      else {
+        const en=e[0];
+        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
+      }
+    }, () => {
+      const x=e[0];
+      if(!Equals(x, null))x.Dispose();
+    });
+  }};
+}
+function initInfinite(f){
+  return{GetEnumerator:() => new T(0, null, (e) => {
+    e.c=f(e.s);
+    e.s=e.s+1;
+    return true;
+  }, void 0)};
+}
+function exists_1(p, s){
+  const e=Get(s);
+  try {
+    let r;
+    r=false;
+    while(!r&&e.MoveNext())
+      r=p(e.Current);
+    return r;
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function fold_1(f, x, s){
+  let r;
+  r=x;
+  const e=Get(s);
+  try {
+    while(e.MoveNext())
+      r=f(r, e.Current);
+    return r;
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function iter_1(p, s){
+  const e=Get(s);
+  try {
+    while(e.MoveNext())
+      p(e.Current);
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function max(s){
+  const e=Get(s);
+  try {
+    let m;
+    if(!e.MoveNext())seqEmpty();
+    else null;
+    m=e.Current;
+    while(e.MoveNext())
+      {
+        const x=e.Current;
+        if(Compare(x, m)===1)m=x;
+      }
+    return m;
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function seqEmpty(){
+  return FailWith("The input sequence was empty.");
+}
+function concat_2(separator, strings){
+  return ofSeq(strings).join(separator);
+}
+function TrimEnd(s, t){
+  let i, go;
+  if(Equals(t, null)||t.length==0)return TrimEndWS(s);
+  else {
+    i=s.length-1;
+    go=true;
+    while(i>=0&&go)
+      ((() => {
+        const c=s[i];
+        return exists((y) => c===y, t)?void(i=i-1):void(go=false);
+      })());
+    return Substring(s, 0, i+1);
+  }
+}
+function Trim(s){
+  return s.replace(new RegExp("^\\s+"), "").replace(new RegExp("\\s+$"), "");
+}
+function TrimEndWS(s){
+  return s.replace(new RegExp("\\s+$"), "");
+}
+function StartsWith(t, s){
+  return t.substring(0, s.length)==s;
+}
+function TrimStart(s, t){
+  let i, go;
+  if(Equals(t, null)||t.length==0)return TrimStartWS(s);
+  else {
+    i=0;
+    go=true;
+    while(i<s.length&&go)
+      ((() => {
+        const c=s[i];
+        return exists((y) => c===y, t)?void(i=i+1):void(go=false);
+      })());
+    return s.substring(i);
+  }
+}
+function IsNullOrWhiteSpace(x){
+  return x==null||(new RegExp("^\\s*$")).test(x);
+}
+function Substring(s, ix, ct){
+  return s.substr(ix, ct);
+}
+function TrimStartWS(s){
+  return s.replace(new RegExp("^\\s+"), "");
+}
+function Join(sep, values){
+  return values.join(sep);
+}
+function IsNullOrEmpty(x){
+  return x==null||x=="";
+}
+function SplitChars(s, sep, opts){
+  return Split(s, new RegExp("["+RegexEscape(sep.join(""))+"]"), opts);
+}
+function Replace(subject, search, replace){
+  function replaceLoop(subj){
+    const index=subj.indexOf(search);
+    if(index!==-1){
+      const replaced=ReplaceOnce(subj, search, replace);
+      const nextStartIndex=index+replace.length;
+      return Substring(replaced, 0, index+replace.length)+replaceLoop(replaced.substring(nextStartIndex));
+    }
+    else return subj;
+  }
+  return replaceLoop(subject);
+}
+function Split(s, pat, opts){
+  return opts===1?filter((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
+}
+function RegexEscape(s){
+  return s.replace(new RegExp("[-\\/\\\\^$*+?.()|[\\]{}]", "g"), "\\$&");
+}
+function ReplaceOnce(string_1, search, replace){
+  return string_1.replace(search, replace);
+}
+function SplitWith(str, pat){
+  return str.split(pat);
+}
+function forall_2(f, s){
+  return forall_1(f, protect(s));
+}
+function protect(s){
+  return s==null?"":s;
+}
+function New_4(rawArgu, duTypeName, unionCaseName){
+  return{
+    rawArgu:rawArgu,
+    duTypeName:duTypeName,
+    unionCaseName:unionCaseName
   };
 }
 function LoadLocalTemplates(baseName){
@@ -3980,10 +4664,10 @@ function LoadLocalTemplates(baseName){
   LoadedTemplates().set_Item(baseName, LoadedTemplateFile(""));
 }
 function LocalTemplatesLoaded(){
-  return _c_2.LocalTemplatesLoaded;
+  return _c_3.LocalTemplatesLoaded;
 }
 function set_LocalTemplatesLoaded(_1){
-  _c_2.LocalTemplatesLoaded=_1;
+  _c_3.LocalTemplatesLoaded=_1;
 }
 function LoadNestedTemplates(root, baseName){
   const loadedTpls=LoadedTemplateFile(baseName);
@@ -4028,10 +4712,10 @@ function LoadNestedTemplates(root, baseName){
     }
   }
   while(rawTpls.count>0)
-    prepareTemplate(head_1(rawTpls.Keys));
+    prepareTemplate(head(rawTpls.Keys));
 }
 function LoadedTemplates(){
-  return _c_2.LoadedTemplates;
+  return _c_3.LoadedTemplates;
 }
 function LoadedTemplateFile(name){
   let o;
@@ -4273,7 +4957,7 @@ function PrepareSingleTemplate(baseName, name, el){
   };
 }
 function TextHoleRE(){
-  return _c_2.TextHoleRE;
+  return _c_3.TextHoleRE;
 }
 class Object_1 {
   Equals(obj){
@@ -4286,9 +4970,9 @@ class Object_1 {
 class Doc extends Object_1 {
   docNode;
   updates;
-  static Run(parent, doc_1){
-    LinkElement(parent, doc_1.docNode);
-    Doc.RunInPlace(false, parent, doc_1);
+  static Run(parent, doc_2){
+    LinkElement(parent, doc_2.docNode);
+    Doc.RunInPlace(false, parent, doc_2);
   }
   static Concat(xs){
     return TreeReduce(Doc.Empty, Doc.Append, ofSeqNonCopying(xs));
@@ -4296,11 +4980,11 @@ class Doc extends Object_1 {
   static get Empty(){
     return Doc.Mk(null, Const());
   }
-  static RunInPlace(childrenOnly, parent, doc_1){
-    const st=CreateRunState(parent, doc_1.docNode);
-    Sink(get_UseAnimations()||BatchUpdatesEnabled()?StartProcessor(PerformAnimatedUpdate(childrenOnly, st, doc_1.docNode)):() => {
-      PerformSyncUpdate(childrenOnly, st, doc_1.docNode);
-    }, doc_1.updates);
+  static RunInPlace(childrenOnly, parent, doc_2){
+    const st=CreateRunState(parent, doc_2.docNode);
+    Sink(get_UseAnimations()||BatchUpdatesEnabled()?StartProcessor(PerformAnimatedUpdate(childrenOnly, st, doc_2.docNode)):() => {
+      PerformSyncUpdate(childrenOnly, st, doc_2.docNode);
+    }, doc_2.updates);
   }
   static Element(name, attr_1, children){
     const a=Attr.Concat(attr_1);
@@ -4318,9 +5002,9 @@ class Doc extends Object_1 {
   }
   static EmbedView(view){
     const node=CreateEmbedNode();
-    return Doc.Mk(EmbedDoc(node), Map(() => { }, Bind((doc_1) => {
-      UpdateEmbedNode(node, doc_1.docNode);
-      return doc_1.updates;
+    return Doc.Mk(EmbedDoc(node), Map(() => { }, Bind((doc_2) => {
+      UpdateEmbedNode(node, doc_2.docNode);
+      return doc_2.updates;
     }, view)));
   }
   static TextView(txt){
@@ -4347,7 +5031,7 @@ let _c=Lazy((_i) => class $StartupCode_Client {
   static snapshotStore;
   static databaseVersion;
   static databaseName;
-  static _initGlobally;
+  static initializeClientExtensionGlobalsOnce;
   static runtimeAppendPageShapes;
   static registeredRenderers;
   static defaultCacheLimit;
@@ -4359,7 +5043,7 @@ let _c=Lazy((_i) => class $StartupCode_Client {
     this.defaultCacheLimit=1000;
     this.registeredRenderers=[];
     this.runtimeAppendPageShapes=[];
-    this._initGlobally=(_registerRendererGlobally(),0);
+    this.initializeClientExtensionGlobalsOnce=(initializeClientExtensionGlobals(),0);
     this.databaseName="PulseTrade.Comm.Spa.BrowserDb";
     this.databaseVersion=3;
     this.snapshotStore="uiSnapshots";
@@ -4370,79 +5054,12 @@ let _c=Lazy((_i) => class $StartupCode_Client {
     this.requestSeq=0;
   }
 });
-function TrimEnd(s, t){
-  let i, go;
-  if(Equals(t, null)||t.length==0)return TrimEndWS(s);
-  else {
-    i=s.length-1;
-    go=true;
-    while(i>=0&&go)
-      ((() => {
-        const c=s[i];
-        return exists((y) => c===y, t)?void(i=i-1):void(go=false);
-      })());
-    return Substring(s, 0, i+1);
-  }
-}
-function concat_1(separator, strings){
-  return ofSeq(strings).join(separator);
-}
-function Trim(s){
-  return s.replace(new RegExp("^\\s+"), "").replace(new RegExp("\\s+$"), "");
-}
-function TrimEndWS(s){
-  return s.replace(new RegExp("\\s+$"), "");
-}
-function StartsWith(t, s){
-  return t.substring(0, s.length)==s;
-}
-function TrimStart(s, t){
-  let i, go;
-  if(Equals(t, null)||t.length==0)return TrimStartWS(s);
-  else {
-    i=0;
-    go=true;
-    while(i<s.length&&go)
-      ((() => {
-        const c=s[i];
-        return exists((y) => c===y, t)?void(i=i+1):void(go=false);
-      })());
-    return s.substring(i);
-  }
-}
-function Substring(s, ix, ct){
-  return s.substr(ix, ct);
-}
-function TrimStartWS(s){
-  return s.replace(new RegExp("^\\s+"), "");
-}
-function IsNullOrEmpty(x){
-  return x==null||x=="";
-}
-function SplitChars(s, sep, opts){
-  return Split(s, new RegExp("["+RegexEscape(sep.join(""))+"]"), opts);
-}
-function Split(s, pat, opts){
-  return opts===1?filter((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
-}
-function RegexEscape(s){
-  return s.replace(new RegExp("[-\\/\\\\^$*+?.()|[\\]{}]", "g"), "\\$&");
-}
-function SplitWith(str, pat){
-  return str.split(pat);
-}
-function forall_1(f, s){
-  return forall_2(f, protect(s));
-}
-function protect(s){
-  return s==null?"":s;
-}
 class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_1(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -4468,74 +5085,60 @@ function TryParse(s, r){
 function TryParse_1(s, r){
   return TryParseBigInt(s, -9223372036854775808n, 9223372036854775807n, r);
 }
-function New_3(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
+function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
-function length(arr){
-  return arr.dims===2?arr.length*arr.length:arr.length;
-}
-function get(arr, n){
-  checkBounds(arr, n);
-  return arr[n];
-}
-function checkBounds(arr, n){
-  if(n<0||n>=arr.length)FailWith("Index was outside the bounds of the array.");
-}
-function set(arr, n, x){
-  checkBounds(arr, n);
-  arr[n]=x;
-}
-function New_4(pageId, mode, setName, keys){
+function New_6(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
-function New_5(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
+function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
-function New_6(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
+function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
-function New_7(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
+function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -4545,7 +5148,7 @@ function ofArray(arr){
   for(let i=length(arr)-1, _1=0;i>=_1;i--)r=FSharpList.Cons(get(arr, i), r);
   return r;
 }
-function map_1(f, x){
+function map_2(f, x){
   let r, l, go;
   if(x.$==0)return x;
   else {
@@ -4598,7 +5201,7 @@ function ofSeq_1(s){
     }
   }
 }
-function append_1(x, y){
+function append_3(x, y){
   let r, l, go;
   if(x.$==0)return y;
   else if(y.$==0)return x;
@@ -4621,7 +5224,7 @@ function append_1(x, y){
     return res;
   }
 }
-function head(l){
+function head_1(l){
   return l.$==1?l.$0:listEmpty();
 }
 function tail(l){
@@ -4630,397 +5233,319 @@ function tail(l){
 function listEmpty(){
   return FailWith("The input list was empty.");
 }
-function New_8(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
+function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
-function New_9(keyId, keys, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
+function New_11(keyId, keys, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
-function New_10(pageId, keyJson, valueText, direction, tags){
+function New_12(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
-function New_11(pageId, keyJson, rawArgu, tags){
-  return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
-    tags:tags
-  };
-}
-function New_12(pageId){
-  return{pageId:pageId};
-}
-function New_13(pageId, keyId){
-  return{pageId:pageId, keyId:keyId};
-}
-function New_14(pageId, keyJson){
+function New_13(pageId, keyJson){
   return{pageId:pageId, keyJson:keyJson};
 }
-function New_15(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
+function New_14(pageId, keyJson, rawArgu, tags){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
-    tabId:tabId
-  };
-}
-function delay(f){
-  return{GetEnumerator:() => Get(f())};
-}
-function append_2(s1, s2){
-  return{GetEnumerator:() => {
-    const e1=Get(s1);
-    const first=[true];
-    return new T(e1, null, (x) => {
-      if(x.s.MoveNext()){
-        x.c=x.s.Current;
-        return true;
-      }
-      else {
-        const x_1=x.s;
-        if(!Equals(x_1, null))x_1.Dispose();
-        else null;
-        x.s=null;
-        return first[0]&&(first[0]=false,x.s=Get(s2),x.s.MoveNext()?(x.c=x.s.Current,true):(x.s.Dispose(),x.s=null,false));
-      }
-    }, (x) => {
-      const x_1=x.s;
-      if(!Equals(x_1, null))x_1.Dispose();
-    });
-  }};
-}
-function head_1(s){
-  const e=Get(s);
-  try {
-    return e.MoveNext()?e.Current:insufficient();
-  }
-  finally {
-    const _1=e;
-    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-  }
-}
-function distinct_1(s){
-  return distinctBy_1((x) => x, s);
-}
-function forall_2(p, s){
-  return!exists_1((x) =>!p(x), s);
-}
-function distinctBy_1(f, s){
-  return{GetEnumerator:() => {
-    const o=Get(s);
-    const seen=new HashSet("New_3");
-    return new T(null, null, (e) => {
-      let cur, has;
-      if(o.MoveNext()){
-        cur=o.Current;
-        has=seen.SAdd(f(cur));
-        while(!has&&o.MoveNext())
-          {
-            cur=o.Current;
-            has=seen.SAdd(f(cur));
-          }
-        return has&&(e.c=cur,true);
-      }
-      else return false;
-    }, () => {
-      o.Dispose();
-    });
-  }};
-}
-function exists_1(p, s){
-  const e=Get(s);
-  try {
-    let r;
-    r=false;
-    while(!r&&e.MoveNext())
-      r=p(e.Current);
-    return r;
-  }
-  finally {
-    const _1=e;
-    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-  }
-}
-function fold_1(f, x, s){
-  let r;
-  r=x;
-  const e=Get(s);
-  try {
-    while(e.MoveNext())
-      r=f(r, e.Current);
-    return r;
-  }
-  finally {
-    const _1=e;
-    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-  }
-}
-function iter_1(p, s){
-  const e=Get(s);
-  try {
-    while(e.MoveNext())
-      p(e.Current);
-  }
-  finally {
-    const _1=e;
-    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-  }
-}
-function map_2(f, s){
-  return{GetEnumerator:() => {
-    const en=Get(s);
-    return new T(null, null, (e) => en.MoveNext()&&(e.c=f(en.Current),true), () => {
-      en.Dispose();
-    });
-  }};
-}
-function collect_1(f, s){
-  return concat_2(map_2(f, s));
-}
-function max(s){
-  const e=Get(s);
-  try {
-    let m;
-    if(!e.MoveNext())seqEmpty();
-    else null;
-    m=e.Current;
-    while(e.MoveNext())
-      {
-        const x=e.Current;
-        if(Compare(x, m)===1)m=x;
-      }
-    return m;
-  }
-  finally {
-    const _1=e;
-    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-  }
-}
-function concat_2(ss){
-  return{GetEnumerator:() => {
-    const outerE=Get(ss);
-    function next(st){
-      while(true)
-        {
-          const m=st.s;
-          if(Equals(m, null)){
-            if(outerE.MoveNext()){
-              st.s=Get(outerE.Current);
-              st=st;
-            }
-            else {
-              outerE.Dispose();
-              return false;
-            }
-          }
-          else if(m.MoveNext()){
-            st.c=m.Current;
-            return true;
-          }
-          else {
-            st.Dispose();
-            st.s=null;
-            st=st;
-          }
-        }
-    }
-    return new T(null, null, next, (st) => {
-      const x=st.s;
-      if(!Equals(x, null))x.Dispose();
-      const x_1=outerE;
-      if(!Equals(x_1, null))x_1.Dispose();
-    });
-  }};
-}
-function init_1(n, f){
-  return take(n, initInfinite(f));
-}
-function seqEmpty(){
-  return FailWith("The input sequence was empty.");
-}
-function take(n, s){
-  n<0?nonNegative():void 0;
-  return{GetEnumerator:() => {
-    const e=[Get(s)];
-    return new T(0, null, (o) => {
-      o.s=o.s+1;
-      if(o.s>n)return false;
-      else {
-        const en=e[0];
-        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
-      }
-    }, () => {
-      const x=e[0];
-      if(!Equals(x, null))x.Dispose();
-    });
-  }};
-}
-function initInfinite(f){
-  return{GetEnumerator:() => new T(0, null, (e) => {
-    e.c=f(e.s);
-    e.s=e.s+1;
-    return true;
-  }, void 0)};
-}
-function New_16(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
-  return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
-    tabId:tabId
-  };
-}
-function New_17(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
-  return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
-    tabId:tabId
-  };
-}
-function New_18(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
-  return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
-    values:values
-  };
-}
-function New_19(valueId, keys, createdAtUtc, value, tags){
-  return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
-function New_20(maxSequence, buckets){
+function New_15(pageId){
+  return{pageId:pageId};
+}
+function New_16(pageId, keyId){
+  return{pageId:pageId, keyId:keyId};
+}
+function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
+  return{
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
+    tabId:tabId
+  };
+}
+function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
+  return{
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
+    tabId:tabId
+  };
+}
+function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
+  return{
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
+    tabId:tabId
+  };
+}
+function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
+  return{
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
+    values:values
+  };
+}
+function New_21(valueId, keys, createdAtUtc, value, tags){
+  return{
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
+    tags:tags
+  };
+}
+function New_22(maxSequence, buckets){
   return{maxSequence:maxSequence, buckets:buckets};
 }
-function New_21(nodeCount, actorCount, maxSequence, nodes){
+function New_23(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
-function New_22(actorId, displayName, kind, keys, status, routees){
+function New_24(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
-function New_23(nodeId, nodeAddress, status, roles, actors){
+function New_25(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId, 
-    nodeAddress:nodeAddress, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId,
+    nodeAddress:nodeAddress,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
-function New_24(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_26(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
-function New_25(messages, nextAfterMessageId){
+function New_27(messages, nextAfterMessageId){
   return{messages:messages, nextAfterMessageId:nextAfterMessageId};
 }
-function New_26(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_28(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
-function New_27(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_29(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
-function New_28(fromId, toId, body, tags){
+function New_30(fromId, toId, body, tags){
   return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    fromId:fromId,
+    toId:toId,
+    body:body,
     tags:tags
   };
 }
-let _c_1=Lazy((_i) => class Var_1 extends Object_1 {
+let _c_1=Lazy((_i) => class $StartupCode_ArguFormRenderer {
   static {
     _c_1=_i(this);
+  }
+  static documents;
+  static schemas;
+  static doc;
+  static {
+    this.doc=globalThis.document;
+    this.schemas=[];
+    this.documents=[];
+  }
+});
+function New_31(name, label_1, kind, arguName, options, items){
+  return{
+    name:name,
+    label:label_1,
+    kind:kind,
+    arguName:arguName,
+    options:options,
+    items:items
+  };
+}
+function Get(x){
+  return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):x.GetEnumerator();
+}
+function ArrayEnumerator(s){
+  return new T(0, null, (e) => {
+    const i=e.s;
+    return i<length(s)&&(e.c=get(s, i),e.s=i+1,true);
+  }, void 0);
+}
+function StringEnumerator(s){
+  return new T(0, null, (e) => {
+    const i=e.s;
+    return i<s.length&&(e.c=s[i],e.s=i+1,true);
+  }, void 0);
+}
+function Get0(x){
+  return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):"GetEnumerator0"in x?x.GetEnumerator0():x.GetEnumerator();
+}
+class T extends Object_1 {
+  s;
+  c;
+  n;
+  d;
+  e;
+  MoveNext(){
+    const m=this.n(this);
+    this.e=m?1:2;
+    return m;
+  }
+  get Current(){
+    return this.e===1?this.c:this.e===0?FailWith("Enumeration has not started. Call MoveNext."):FailWith("Enumeration already finished.");
+  }
+  Dispose(){
+    if(this.d)this.d(this);
+  }
+  constructor(s, c, n, d){
+    super();
+    this.s=s;
+    this.c=c;
+    this.n=n;
+    this.d=d;
+    this.e=0;
+  }
+}
+function buildRawArguFromValues(fields){
+  const parts=MarkResizable([]);
+  iter((_1) => appendFieldParts(parts, _1[0], _1[1]), arrayOrEmpty_2(fields));
+  return Join(" ", ofSeq(parts));
+}
+function arrayOrEmpty_2(values){
+  return values==null?[]:values;
+}
+function appendFieldParts(parts, field, values){
+  const values_1=filter((value_3) => value_3.length>0, map((a) => Trim(a), map(asText_2, arrayOrEmpty_2(values))));
+  const m=asText_2(field.kind);
+  if(m=="bool"){
+    const o=tryHead(values_1);
+    const o_1=o==null?null:Some(o.$0.toLowerCase());
+    if(o_1==null)void 0;
+    else {
+      const value=o_1.$0;
+      if(value=="true"||value=="1"||value=="yes")parts.push(asText_2(field.arguName));
+    }
+  }
+  else if(m=="bool-value"){
+    const o_2=tryHead(values_1);
+    if(o_2==null)void 0;
+    else {
+      const value_1=o_2.$0;
+      parts.push(asText_2(field.arguName));
+      parts.push(quoteArg(value_1));
+    }
+  }
+  else if(m=="list")iter((value_3) => {
+    parts.push(asText_2(field.arguName));
+    parts.push(quoteArg(value_3));
+  }, values_1);
+  else if(m=="tuple")length(values_1)>0?(parts.push(asText_2(field.arguName)),iter((x) => {
+    parts.push(quoteArg(x));
+  }, values_1)):void 0;
+  else {
+    const o_3=tryHead(values_1);
+    if(o_3==null)void 0;
+    else {
+      const value_2=o_3.$0;
+      parts.push(asText_2(field.arguName));
+      parts.push(quoteArg(value_2));
+    }
+  }
+}
+function asText_2(value){
+  return value==null?"":value;
+}
+function quoteArg(value){
+  const text=asText_2(value);
+  return text.length===0?"\"\"":exists_1(IsWhiteSpace, text)||text.indexOf("\"")!=-1?"\""+Replace(Replace(text, "\\", "\\\\"), "\"", "\\\"")+"\"":text;
+}
+let _c_2=Lazy((_i) => class Var_1 extends Object_1 {
+  static {
+    _c_2=_i(this);
   }
   static Create_1(v){
     return new ConcreteVar(false, {s:Ready(v, [])}, v);
@@ -5066,10 +5591,10 @@ function Map2Unit(a, a_1){
   return CreateLazy(() => Map2Unit_1(a(), a_1()));
 }
 function Bind(fn, view){
-  return Join(Map(fn, view));
+  return Join_1(Map(fn, view));
 }
-function Join(a){
-  return CreateLazy(() => Join_1(a()));
+function Join_1(a){
+  return CreateLazy(() => Join_2(a()));
 }
 function enumTryWith(s, f, h){
   return{GetEnumerator:() => {
@@ -5156,15 +5681,15 @@ class Dictionary extends Object_1 {
   Item(k){
     return this.get(k);
   }
+  GetEnumerator(){
+    return Get0(concat(GetFieldValues(this.data)));
+  }
   get(k){
     const d=this.data[this.hash(k)];
     return d==null?notPresent():pick((a) => {
       const a_1=KeyValue(a);
       return this.equals.apply(null, [a_1[0], k])?Some(a_1[1]):null;
     }, d);
-  }
-  GetEnumerator(){
-    return Get0(concat(GetFieldValues(this.data)));
   }
   constructor(i, _1, _2, _3){
     if(i=="New_5"){
@@ -5200,42 +5725,42 @@ class Dictionary extends Object_1 {
 function LinkElement(el, children){
   InsertDoc(el, children, null);
 }
-function InsertDoc(parent, doc_1, pos){
+function InsertDoc(parent, doc_2, pos){
   while(true)
     {
-      if(doc_1!=null&&doc_1.$==1){
-        const e=doc_1.$0;
+      if(doc_2!=null&&doc_2.$==1){
+        const e=doc_2.$0;
         return InsertNode(parent, e.El, pos);
       }
-      else if(doc_1!=null&&doc_1.$==2){
-        const d=doc_1.$0;
+      else if(doc_2!=null&&doc_2.$==2){
+        const d=doc_2.$0;
         d.Dirty=false;
-        doc_1=d.Current;
+        doc_2=d.Current;
       }
-      else if(doc_1==null)return pos;
-      else if(doc_1!=null&&doc_1.$==4){
-        const t=doc_1.$0;
+      else if(doc_2==null)return pos;
+      else if(doc_2!=null&&doc_2.$==4){
+        const t=doc_2.$0;
         return InsertNode(parent, t.Text, pos);
       }
-      else if(doc_1!=null&&doc_1.$==5){
-        const t_1=doc_1.$0;
+      else if(doc_2!=null&&doc_2.$==5){
+        const t_1=doc_2.$0;
         return InsertNode(parent, t_1, pos);
       }
-      else if(doc_1!=null&&doc_1.$==6)return foldBack((_1, _2) =>((((parent_1) =>(el) =>(pos_1) => el==null||el.constructor===Object?InsertDoc(parent_1, el, pos_1):InsertNode(parent_1, el, pos_1))(parent))(_1))(_2), doc_1.$0.Els, pos);
+      else if(doc_2!=null&&doc_2.$==6)return foldBack((_1, _2) =>((((parent_1) =>(el) =>(pos_1) => el==null||el.constructor===Object?InsertDoc(parent_1, el, pos_1):InsertNode(parent_1, el, pos_1))(parent))(_1))(_2), doc_2.$0.Els, pos);
       else {
-        const b=doc_1.$1;
-        const a=doc_1.$0;
-        doc_1=a;
+        const b=doc_2.$1;
+        const a=doc_2.$0;
+        doc_2=a;
         pos=InsertDoc(parent, b, pos);
       }
     }
 }
-function CreateRunState(parent, doc_1){
-  return New_31(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_1));
+function CreateRunState(parent, doc_2){
+  return New_34(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
-function PerformAnimatedUpdate(childrenOnly, st, doc_1){
+function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
-    const cur=FindAll(doc_1);
+    const cur=FindAll(doc_2);
     const change=ComputeChangeAnim(st, cur);
     const enter=ComputeEnterAnim(st, cur);
     return Bind_1(Play(Append(change, ComputeExitAnim(st, cur))), () => Bind_1(SyncElemNodesNextFrame(childrenOnly, st), () => Bind_1(Play(enter), () => {
@@ -5244,8 +5769,8 @@ function PerformAnimatedUpdate(childrenOnly, st, doc_1){
     })));
   }):SyncElemNodesNextFrame(childrenOnly, st);
 }
-function PerformSyncUpdate(childrenOnly, st, doc_1){
-  const cur=FindAll(doc_1);
+function PerformSyncUpdate(childrenOnly, st, doc_2){
+  const cur=FindAll(doc_2);
   SyncElemNode(childrenOnly, st.Top);
   st.PreviousNodes=cur;
 }
@@ -5298,8 +5823,8 @@ function SyncElemNode(childrenOnly, el){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""), 
-    Dirty:false, 
+    Text:globalThis.document.createTextNode(""),
+    Dirty:false,
     Value:""
   };
 }
@@ -5309,22 +5834,22 @@ function UpdateTextNode(n, t){
 }
 function SyncElement(el){
   function hasDirtyChildren(el_1){
-    function dirty(doc_1){
+    function dirty(doc_2){
       while(true)
         {
-          if(doc_1!=null&&doc_1.$==0){
-            const b=doc_1.$1;
-            const a=doc_1.$0;
+          if(doc_2!=null&&doc_2.$==0){
+            const b=doc_2.$1;
+            const a=doc_2.$0;
             if(dirty(a))return true;
-            else doc_1=b;
+            else doc_2=b;
           }
-          else if(doc_1!=null&&doc_1.$==2){
-            const d=doc_1.$0;
+          else if(doc_2!=null&&doc_2.$==2){
+            const d=doc_2.$0;
             if(d.Dirty)return true;
-            else doc_1=d.Current;
+            else doc_2=d.Current;
           }
-          else if(doc_1!=null&&doc_1.$==6){
-            const t=doc_1.$0;
+          else if(doc_2!=null&&doc_2.$==6){
+            const t=doc_2.$0;
             return t.Dirty||exists(hasDirtyChildren, t.Holes);
           }
           else return false;
@@ -5335,22 +5860,22 @@ function SyncElement(el){
   Sync_1(el.El, el.Attr);
   if(hasDirtyChildren(el))DoSyncElement(el);
 }
-function Sync(doc_1){
+function Sync(doc_2){
   while(true)
     {
-      if(doc_1!=null&&doc_1.$==1)return SyncElemNode(false, doc_1.$0);
-      else if(doc_1!=null&&doc_1.$==2){
-        const n=doc_1.$0;
-        doc_1=n.Current;
+      if(doc_2!=null&&doc_2.$==1)return SyncElemNode(false, doc_2.$0);
+      else if(doc_2!=null&&doc_2.$==2){
+        const n=doc_2.$0;
+        doc_2=n.Current;
       }
-      else if(doc_1==null)return null;
-      else if(doc_1!=null&&doc_1.$==5)return null;
-      else if(doc_1!=null&&doc_1.$==4){
-        const d=doc_1.$0;
+      else if(doc_2==null)return null;
+      else if(doc_2!=null&&doc_2.$==5)return null;
+      else if(doc_2!=null&&doc_2.$==4){
+        const d=doc_2.$0;
         return d.Dirty?(d.Text.nodeValue=d.Value,d.Dirty=false):null;
       }
-      else if(doc_1!=null&&doc_1.$==6){
-        const t=doc_1.$0;
+      else if(doc_2!=null&&doc_2.$==6){
+        const t=doc_2.$0;
         iter((h) => {
           SyncElemNode(false, h);
         }, t.Holes);
@@ -5360,10 +5885,10 @@ function Sync(doc_1){
         return AfterRender(t);
       }
       else {
-        const b=doc_1.$1;
-        const a=doc_1.$0;
+        const b=doc_2.$1;
+        const a=doc_2.$0;
         Sync(a);
-        doc_1=b;
+        doc_2=b;
       }
     }
 }
@@ -5376,30 +5901,30 @@ function AfterRender(el){
 }
 function DoSyncElement(el){
   const parent=el.El;
-  function ins(doc_1, pos){
+  function ins(doc_2, pos){
     while(true)
       {
-        if(doc_1!=null&&doc_1.$==1)return doc_1.$0.El;
-        else if(doc_1!=null&&doc_1.$==2){
-          const d=doc_1.$0;
+        if(doc_2!=null&&doc_2.$==1)return doc_2.$0.El;
+        else if(doc_2!=null&&doc_2.$==2){
+          const d=doc_2.$0;
           if(d.Dirty){
             d.Dirty=false;
             return InsertDoc(parent, d.Current, pos);
           }
-          else doc_1=d.Current;
+          else doc_2=d.Current;
         }
-        else if(doc_1==null)return pos;
-        else if(doc_1!=null&&doc_1.$==4)return doc_1.$0.Text;
-        else if(doc_1!=null&&doc_1.$==5)return doc_1.$0;
-        else if(doc_1!=null&&doc_1.$==6){
-          const t=doc_1.$0;
+        else if(doc_2==null)return pos;
+        else if(doc_2!=null&&doc_2.$==4)return doc_2.$0.Text;
+        else if(doc_2!=null&&doc_2.$==5)return doc_2.$0;
+        else if(doc_2!=null&&doc_2.$==6){
+          const t=doc_2.$0;
           if(t.Dirty)t.Dirty=false;
           return foldBack((_3, _4) => _3==null||_3.constructor===Object?ins(_3, _4):_3, t.Els, pos);
         }
         else {
-          const b=doc_1.$1;
-          const a=doc_1.$0;
-          doc_1=a;
+          const b=doc_2.$1;
+          const a=doc_2.$0;
+          doc_2=a;
           pos=ins(b, pos);
         }
       }
@@ -5413,67 +5938,23 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_29(shape, label, badge, className){
+function New_32(shape, label_1, badge, className){
   return{
-    shape:shape, 
-    label:label, 
-    badge:badge, 
+    shape:shape,
+    label:label_1,
+    badge:badge,
     className:className
   };
 }
-function Get(x){
-  return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):x.GetEnumerator();
-}
-function ArrayEnumerator(s){
-  return new T(0, null, (e) => {
-    const i=e.s;
-    return i<length(s)&&(e.c=get(s, i),e.s=i+1,true);
-  }, void 0);
-}
-function StringEnumerator(s){
-  return new T(0, null, (e) => {
-    const i=e.s;
-    return i<s.length&&(e.c=s[i],e.s=i+1,true);
-  }, void 0);
-}
-function Get0(x){
-  return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):"GetEnumerator0"in x?x.GetEnumerator0():x.GetEnumerator();
-}
-class T extends Object_1 {
-  s;
-  c;
-  n;
-  d;
-  e;
-  MoveNext(){
-    const m=this.n(this);
-    this.e=m?1:2;
-    return m;
-  }
-  get Current(){
-    return this.e===1?this.c:this.e===0?FailWith("Enumeration has not started. Call MoveNext."):FailWith("Enumeration already finished.");
-  }
-  Dispose(){
-    if(this.d)this.d(this);
-  }
-  constructor(s, c, n, d){
-    super();
-    this.s=s;
-    this.c=c;
-    this.n=n;
-    this.d=d;
-    this.e=0;
-  }
-}
-function New_30(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_33(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -5624,7 +6105,7 @@ function ValueAndForever(snap){
   const m=snap.s;
   return m!=null&&m.$==0?Some([m.$0, true]):m!=null&&m.$==2?Some([m.$0, false]):null;
 }
-function Join_1(snap){
+function Join_2(snap){
   const res={s:Waiting([], [])};
   When(snap, (x) => {
     const y=x();
@@ -5685,8 +6166,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_1(Attr, {
-      $:2, 
-      $0:Item1, 
+      $:2,
+      $0:Item1,
       $1:Item2
     });
   }
@@ -5759,9 +6240,9 @@ function MapTreeReduce(mapping, defaultValue, reduction, array){
   }
   return(loop(0))(l);
 }
-let _c_2=Lazy((_i) => class $StartupCode_Templates {
+let _c_3=Lazy((_i) => class $StartupCode_Templates {
   static {
-    _c_2=_i(this);
+    _c_3=_i(this);
   }
   static RenderedFullDocTemplate;
   static TextHoleRE;
@@ -5890,8 +6371,8 @@ function TextNodeDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0, 
-    $0:Item1, 
+    $:0,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -5935,19 +6416,19 @@ function ParseHTMLIntoFakeRoot(elem){
   }
 }
 function rhtml(){
-  return _c_6.rhtml;
+  return _c_7.rhtml;
 }
 function wrapMap(){
-  return _c_6.wrapMap;
+  return _c_7.wrapMap;
 }
 function defaultWrap(){
-  return _c_6.defaultWrap;
+  return _c_7.defaultWrap;
 }
 function rxhtmlTag(){
-  return _c_6.rxhtmlTag;
+  return _c_7.rxhtmlTag;
 }
 function rtagName(){
-  return _c_6.rtagName;
+  return _c_7.rtagName;
 }
 function IterSelector(el, selector, f){
   const l=el.querySelectorAll(selector);
@@ -6004,13 +6485,13 @@ function Anim(Item){
   return{$:0, $0:Item};
 }
 function Concat(xs){
-  return Anim(Concat_1(map_2(List, xs)));
+  return Anim(Concat_1(map_1(List, xs)));
 }
 function get_Empty(){
   return Anim(Empty());
 }
 function BatchUpdatesEnabled(){
-  return _c_3.BatchUpdatesEnabled;
+  return _c_4.BatchUpdatesEnabled;
 }
 function StartProcessor(procAsync){
   const st=[0];
@@ -6050,15 +6531,15 @@ function Int(){
   return counter();
 }
 function set_counter(_1){
-  _c_5.counter=_1;
+  _c_6.counter=_1;
 }
 function counter(){
-  return _c_5.counter;
+  return _c_6.counter;
 }
 function Ready(Item1, Item2){
   return{
-    $:2, 
-    $0:Item1, 
+    $:2,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -6067,8 +6548,8 @@ function Forever(Item){
 }
 function Waiting(Item1, Item2){
   return{
-    $:3, 
-    $0:Item1, 
+    $:3,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -6096,7 +6577,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_32(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_35(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -6104,7 +6585,7 @@ function Insert(elem, tree){
   return _1;
 }
 function EmptyAttr(){
-  return _c_7.EmptyAttr;
+  return _c_8.EmptyAttr;
 }
 function HasExitAnim(attr_1){
   const flag=2;
@@ -6216,7 +6697,7 @@ function removeHolesExcept(instance, dontRemove){
     if(!dontRemove.Contains(e.getAttribute("ws-replace")))e.parentNode.removeChild(e);
   });
   foreachNotPreserved(instance, "[ws-on]", (e) => {
-    e.setAttribute("ws-on", concat_1(" ", filter((x) => dontRemove.Contains(get(SplitChars(x, [":"], 1), 1)), SplitChars(e.getAttribute("ws-on"), [" "], 1))));
+    e.setAttribute("ws-on", concat_2(" ", filter((x) => dontRemove.Contains(get(SplitChars(x, [":"], 1), 1)), SplitChars(e.getAttribute("ws-on"), [" "], 1))));
   });
   foreachNotPreserved(instance, "[ws-attr-holes]", (e) => {
     const holeAttrs=SplitChars(e.getAttribute("ws-attr-holes"), [" "], 1);
@@ -6260,7 +6741,7 @@ function mapHoles(t, mappings){
   run("ws-onafterrender");
   run("ws-var");
   foreachNotPreserved(t, "[ws-on]", (e) => {
-    e.setAttribute("ws-on", concat_1(" ", map((x) => {
+    e.setAttribute("ws-on", concat_2(" ", map((x) => {
       let o;
       const a=SplitChars(x, [":"], 1);
       const m=(o=null,[mappings.TryGetValue(get(a, 1), {get:() => o, set:(v) => {
@@ -6308,8 +6789,8 @@ function convertAttrs(el){
     }
     else void 0;
   }
-  if(!(events.length==0))el.setAttribute("ws-on", concat_1(" ", events));
-  if(!(holedAttrs.length==0))el.setAttribute("ws-attr-holes", concat_1(" ", holedAttrs));
+  if(!(events.length==0))el.setAttribute("ws-on", concat_2(" ", events));
+  if(!(holedAttrs.length==0))el.setAttribute("ws-attr-holes", concat_2(" ", holedAttrs));
   const lowercaseAttr=(name) => {
     const m=el.getAttribute(name);
     if(m==null){ }
@@ -6342,7 +6823,7 @@ function string(source, start, finish){
 class KeyCollection extends Object_1 {
   d;
   GetEnumerator(){
-    return Get(map_2((kvp) => kvp.K, this.d));
+    return Get(map_1((kvp) => kvp.K, this.d));
   }
   constructor(d){
     super();
@@ -6364,22 +6845,22 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1, 
-      Children:Children_1, 
-      El:El, 
+      Attr:Attr_1,
+      Children:Children_1,
+      El:El,
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
     return Create_1(DocElemNode, _2);
   }
 }
-function New_31(PreviousNodes, Top){
+function New_34(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
   return NodeSet(new HashSet("New_3"));
 }
-function FindAll(doc_1){
+function FindAll(doc_2){
   const q=[];
   function recF(recI, _1){
     while(true)
@@ -6421,7 +6902,7 @@ function FindAll(doc_1){
   function loopEN(el){
     return recF(1, el);
   }
-  loop(doc_1);
+  loop(doc_2);
   return NodeSet(new HashSet("New_2", q));
 }
 function NodeSet(Item){
@@ -6451,7 +6932,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_33((a) => {
+    r(New_36((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -6470,13 +6951,13 @@ function Bind_1(r, f){
   });
 }
 function Zero(){
-  return _c_8.Zero;
+  return _c_9.Zero;
 }
 function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_33((a) => {
+    if(!ct.c)c(New_36((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -6487,7 +6968,7 @@ function Return(x){
   };
 }
 function scheduler(){
-  return _c_8.scheduler;
+  return _c_9.scheduler;
 }
 function checkCancel(r){
   return(c) => {
@@ -6496,7 +6977,7 @@ function checkCancel(r){
   };
 }
 function defCTS(){
-  return _c_8.defCTS;
+  return _c_9.defCTS;
 }
 function UncaughtAsyncError(e){
   console.log("WebSharper: Uncaught asynchronous exception", e);
@@ -6530,7 +7011,7 @@ function cancel(c){
   c.k(Cc(new OperationCanceledException("New", c.ct)));
 }
 function UseAnimations(){
-  return _c_4.UseAnimations;
+  return _c_5.UseAnimations;
 }
 function Actions(a){
   return ConcatActions(choose((a_1) => a_1.$==1?Some(a_1.$0):null, ToArray_1(a.$0)));
@@ -6546,7 +7027,7 @@ function ConcatActions(xs){
   if(m===0)return Const_1();
   else if(m===1)return get(xs_1, 0);
   else {
-    const dur=max(map_2((anim) => anim.Duration, xs_1));
+    const dur=max(map_1((anim) => anim.Duration, xs_1));
     const xs_2=map((x) => Prolong(dur, x), xs_1);
     return Def(dur, (t) => {
       iter((anim) => {
@@ -6570,15 +7051,18 @@ function Prolong(nextDuration, anim){
   const last=Create(() => anim.Compute(anim.Duration));
   return{Compute:(t) => t>=dur?last.f():comp(t), Duration:nextDuration};
 }
-let _c_3=Lazy((_i) => class Proxy {
+let _c_4=Lazy((_i) => class Proxy {
   static {
-    _c_3=_i(this);
+    _c_4=_i(this);
   }
   static BatchUpdatesEnabled;
   static {
     this.BatchUpdatesEnabled=true;
   }
 });
+function IsWhiteSpace(c){
+  return c.match(new RegExp("\\s"))!==null;
+}
 class Elt extends Doc {
   docNode_1;
   updates_1;
@@ -6631,18 +7115,18 @@ class DynamicAttrNode extends Object_1 {
     }, view);
   }
 }
-function New_32(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_35(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem, 
-    DynFlags:DynFlags, 
+    DynElem:DynElem,
+    DynFlags:DynFlags,
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
   return _1;
 }
-let _c_4=Lazy((_i) => class $StartupCode_Animation {
+let _c_5=Lazy((_i) => class $StartupCode_Animation {
   static {
-    _c_4=_i(this);
+    _c_5=_i(this);
   }
   static UseAnimations;
   static CubicInOut;
@@ -6656,8 +7140,8 @@ let _c_4=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2, 
-    $0:x, 
+    $:2,
+    $0:x,
     $1:y
   };
 }
@@ -6686,7 +7170,7 @@ function Concat_1(xs){
   return TreeReduce(Empty(), Append_1, x);
 }
 function Empty(){
-  return _c_9.Empty;
+  return _c_10.Empty;
 }
 function TryParseBigInt(s, min, max_1, r){
   let o, _1;
@@ -6712,9 +7196,9 @@ function TryParse_2(s, min, max_1, r){
   if(ok)r.set(x);
   return ok;
 }
-let _c_5=Lazy((_i) => class $StartupCode_Abbrev {
+let _c_6=Lazy((_i) => class $StartupCode_Abbrev {
   static {
-    _c_5=_i(this);
+    _c_6=_i(this);
   }
   static counter;
   static {
@@ -6739,15 +7223,15 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_1(Updates_1, {
-      c:Current, 
-      s:Snap, 
+      c:Current,
+      s:Snap,
       v:VarView
     });
   }
 }
-let _c_6=Lazy((_i) => class $StartupCode_DomUtility {
+let _c_7=Lazy((_i) => class $StartupCode_DomUtility {
   static {
-    _c_6=_i(this);
+    _c_7=_i(this);
   }
   static defaultWrap;
   static wrapMap;
@@ -6764,9 +7248,9 @@ let _c_6=Lazy((_i) => class $StartupCode_DomUtility {
     this.defaultWrap=[0, "", ""];
   }
 });
-let _c_7=Lazy((_i) => class Client {
+let _c_8=Lazy((_i) => class Client {
   static {
-    _c_7=_i(this);
+    _c_8=_i(this);
   }
   static FloatApplyChecked;
   static FloatGetChecked;
@@ -6826,7 +7310,7 @@ let _c_7=Lazy((_i) => class Client {
     this.DateTimeGetUnchecked=(el) => {
       let o, m;
       const s_8=el.value;
-      if(isBlank_1(s_8))return Some(-8640000000000000);
+      if(isBlank_2(s_8))return Some(-8640000000000000);
       else {
         o=0;
         const m_1=TryParse_3(s_8);
@@ -6841,7 +7325,7 @@ let _c_7=Lazy((_i) => class Client {
     this.FileSetUnchecked=() =>() => null;
     this.FileGetUnchecked=(el) => {
       const files=el.files;
-      return Some(ofSeq(delay(() => map_2((i) => files.item(i), range(0, files.length-1)))));
+      return Some(ofSeq(delay(() => map_1((i) => files.item(i), range(0, files.length-1)))));
     };
     const g_3=FileGetUnchecked();
     const s_3=FileSetUnchecked();
@@ -6851,7 +7335,7 @@ let _c_7=Lazy((_i) => class Client {
     };
     this.IntGetUnchecked=(el) => {
       const s_8=el.value;
-      if(isBlank_1(s_8))return Some(0);
+      if(isBlank_2(s_8))return Some(0);
       else {
         const pd=+s_8;
         return pd!==pd>>0?null:Some(pd);
@@ -6867,7 +7351,7 @@ let _c_7=Lazy((_i) => class Client {
     this.IntGetChecked=(el) => {
       let _1, o;
       const s_8=el.value;
-      if(isBlank_1(s_8))_1=(el.checkValidity?el.checkValidity():true)?CheckedInput.Blank(s_8):CheckedInput.Invalid(s_8);
+      if(isBlank_2(s_8))_1=(el.checkValidity?el.checkValidity():true)?CheckedInput.Blank(s_8):CheckedInput.Invalid(s_8);
       else {
         const m=(o=0,[TryParse(s_8, {get:() => o, set:(v) => {
           o=v;
@@ -6884,7 +7368,7 @@ let _c_7=Lazy((_i) => class Client {
     };
     this.FloatGetUnchecked=(el) => {
       const s_8=el.value;
-      if(isBlank_1(s_8))return Some(0);
+      if(isBlank_2(s_8))return Some(0);
       else {
         const pd=+s_8;
         return isNaN(pd)?null:Some(pd);
@@ -6900,7 +7384,7 @@ let _c_7=Lazy((_i) => class Client {
     this.FloatGetChecked=(el) => {
       let _1;
       const s_8=el.value;
-      if(isBlank_1(s_8))_1=(el.checkValidity?el.checkValidity():true)?CheckedInput.Blank(s_8):CheckedInput.Invalid(s_8);
+      if(isBlank_2(s_8))_1=(el.checkValidity?el.checkValidity():true)?CheckedInput.Blank(s_8):CheckedInput.Invalid(s_8);
       else {
         const i=+s_8;
         _1=isNaN(i)?CheckedInput.Invalid(s_8):CheckedInput.Valid(i, s_8);
@@ -6953,7 +7437,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_33(k, ct){
+function New_36(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -6965,9 +7449,9 @@ function Ok(Item){
 function Cc(Item){
   return{$:2, $0:Item};
 }
-let _c_8=Lazy((_i) => class $StartupCode_Concurrency {
+let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static {
-    _c_8=_i(this);
+    _c_9=_i(this);
   }
   static GetCT;
   static Zero;
@@ -6975,7 +7459,7 @@ let _c_8=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_34(false, []);
+    this.noneCT=New_37(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -6984,7 +7468,7 @@ let _c_8=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_34(IsCancellationRequested, Registrations){
+function New_37(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -7049,22 +7533,22 @@ function ApplyValue(get_1, set_1, var_1){
   }, var_1.View)];
 }
 function StringSet(){
-  return _c_7.StringSet;
+  return _c_8.StringSet;
 }
 function StringGet(){
-  return _c_7.StringGet;
+  return _c_8.StringGet;
 }
 function StringListSet(){
-  return _c_7.StringListSet;
+  return _c_8.StringListSet;
 }
 function StringListGet(){
-  return _c_7.StringListGet;
+  return _c_8.StringListGet;
 }
 function DateTimeSetUnchecked(){
-  return _c_7.DateTimeSetUnchecked;
+  return _c_8.DateTimeSetUnchecked;
 }
 function DateTimeGetUnchecked(){
-  return _c_7.DateTimeGetUnchecked;
+  return _c_8.DateTimeGetUnchecked;
 }
 function FileApplyValue(get_1, set_1, var_1){
   let expectedValue;
@@ -7086,37 +7570,37 @@ function FileApplyValue(get_1, set_1, var_1){
   }, var_1.View)];
 }
 function FileSetUnchecked(){
-  return _c_7.FileSetUnchecked;
+  return _c_8.FileSetUnchecked;
 }
 function FileGetUnchecked(){
-  return _c_7.FileGetUnchecked;
+  return _c_8.FileGetUnchecked;
 }
 function IntSetUnchecked(){
-  return _c_7.IntSetUnchecked;
+  return _c_8.IntSetUnchecked;
 }
 function IntGetUnchecked(){
-  return _c_7.IntGetUnchecked;
+  return _c_8.IntGetUnchecked;
 }
 function IntSetChecked(){
-  return _c_7.IntSetChecked;
+  return _c_8.IntSetChecked;
 }
 function IntGetChecked(){
-  return _c_7.IntGetChecked;
+  return _c_8.IntGetChecked;
 }
 function FloatSetUnchecked(){
-  return _c_7.FloatSetUnchecked;
+  return _c_8.FloatSetUnchecked;
 }
 function FloatGetUnchecked(){
-  return _c_7.FloatGetUnchecked;
+  return _c_8.FloatGetUnchecked;
 }
 function FloatSetChecked(){
-  return _c_7.FloatSetChecked;
+  return _c_8.FloatSetChecked;
 }
 function FloatGetChecked(){
-  return _c_7.FloatGetChecked;
+  return _c_8.FloatGetChecked;
 }
-function isBlank_1(s){
-  return forall_1(IsWhiteSpace, s);
+function isBlank_2(s){
+  return forall_2(IsWhiteSpace, s);
 }
 class CheckedInput {
   get Input(){
@@ -7130,8 +7614,8 @@ class CheckedInput {
   }
   static Valid(value, inputText){
     return Create_1(CheckedInput, {
-      $:0, 
-      $0:value, 
+      $:0,
+      $0:value,
       $1:inputText
     });
   }
@@ -7182,19 +7666,19 @@ function Iter(f, a){
 }
 function DocChildren(node){
   const q=[];
-  function loop(doc_1){
+  function loop(doc_2){
     while(true)
       {
-        if(doc_1!=null&&doc_1.$==2){
-          const d=doc_1.$0;
-          doc_1=d.Current;
+        if(doc_2!=null&&doc_2.$==2){
+          const d=doc_2.$0;
+          doc_2=d.Current;
         }
-        else if(doc_1!=null&&doc_1.$==1)return q.push(doc_1.$0.El);
-        else if(doc_1==null)return null;
-        else if(doc_1!=null&&doc_1.$==5)return q.push(doc_1.$0);
-        else if(doc_1!=null&&doc_1.$==4)return q.push(doc_1.$0.Text);
-        else if(doc_1!=null&&doc_1.$==6){
-          const x=doc_1.$0.Els;
+        else if(doc_2!=null&&doc_2.$==1)return q.push(doc_2.$0.El);
+        else if(doc_2==null)return null;
+        else if(doc_2!=null&&doc_2.$==5)return q.push(doc_2.$0);
+        else if(doc_2!=null&&doc_2.$==4)return q.push(doc_2.$0.Text);
+        else if(doc_2!=null&&doc_2.$==6){
+          const x=doc_2.$0.Els;
           return(((a_1) =>(a_2) => {
             iter(a_1, a_2);
           })((a_1) => {
@@ -7203,10 +7687,10 @@ function DocChildren(node){
           }))(x);
         }
         else {
-          const b=doc_1.$1;
-          const a=doc_1.$0;
+          const b=doc_2.$1;
+          const a=doc_2.$0;
           loop(a);
-          doc_1=b;
+          doc_2=b;
         }
       }
   }
@@ -7215,9 +7699,6 @@ function DocChildren(node){
 }
 function DomNodes(Item){
   return{$:0, $0:Item};
-}
-function IsWhiteSpace(c){
-  return c.match(new RegExp("\\s"))!==null;
 }
 function TryParse_3(s){
   const d=Date.parse(s);
@@ -7245,7 +7726,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create(f){
-  return New_35(false, f, forceLazy);
+  return New_38(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -7257,19 +7738,19 @@ function forceLazy(){
 function cachedLazy(){
   return this.v;
 }
-let _c_9=Lazy((_i) => class $StartupCode_AppendList {
+let _c_10=Lazy((_i) => class $StartupCode_AppendList {
   static {
-    _c_9=_i(this);
+    _c_10=_i(this);
   }
   static Empty;
   static {
     this.Empty={$:0};
   }
 });
-function New_35(created, evalOrVal, force){
+function New_38(created, evalOrVal, force){
   return{
-    c:created, 
-    v:evalOrVal, 
+    c:created,
+    v:evalOrVal,
     f:force
   };
 }

@@ -1,0 +1,289 @@
+
+type GenEnum =
+| CreateTable
+| FSRecord
+
+type ReferenceDateMode =
+| ModeAccountingDate
+| ModeTradingDate
+
+
+///PFCF_AKKA_Terry 用在 akka cluster 資訊查詢
+type PFCF_AKKA_Terry =
+| List
+    interface IArgParserTemplate with
+        member cmd.Usage =
+            match cmd with
+            | _ -> ""
+
+///PFCF_AKKA_WenZone 用在 domain 參數 資訊查詢
+type PFCF_AKKA_WenZone =
+| Days
+    interface IArgParserTemplate with
+        member cmd.Usage =
+            match cmd with
+            | _ -> ""
+
+
+///PFCF_AKKA_CMD_DATA_RANGE 只用在已過帳資料查詢
+type PFCF_AKKA_CMD_DATA_RANGE =
+| ReferenceDateMode of ReferenceDateMode
+| Between of decimal * decimal
+| After of decimal
+| AfterT of decimal
+| Before of decimal
+| BeforeT of decimal
+| LeftCurReferenceDate of decimal
+| LeftTCurReferenceDate of decimal
+| AfterCurReferenceDate
+| AfterTCurReferenceDate
+| BeforeCurReferenceDate
+| BeforeTCurReferenceDate
+| NoFilter
+///20250924: 目前判斷是因為修錯誤，沒正確修正 root cause 造成的 workaround 遺跡，也許應該要拿掉
+///這個是 for 未平倉使用，如果查詢日期在當交易日之後，自動修正為當交易日，還要觀察
+///理論上原始的 bug 已經修正 ([BUG] 非開盤時間查不到未平倉資料)
+| Calibrate2CurDayIfLargerThanCurDay
+    interface IArgParserTemplate with
+        member cmd.Usage =
+            match cmd with
+            | _ -> ""
+    static member val MAD = ReferenceDateMode ModeAccountingDate with get //, set
+    static member val MTD = ReferenceDateMode ModeTradingDate with get //, set
+
+//General Margin
+type PFCF_AKKA_CMD_GM =
+| RiskScore of decimal
+| Branch of string
+| IfRealTime of bool
+    interface IArgParserTemplate with
+        member cmd.Usage =
+            match cmd with
+            | _ -> ""
+
+
+type ClosingNoMode =
+| ParentChildShared
+| ParentChildSeparated
+
+type PFCFGTC =
+///成交明細
+| GF
+///平倉明細
+| GC
+///未平倉明細
+| GOD
+///未平倉部位
+| GOI
+///保證金
+| GMA
+///結算明細
+| GS
+///履約放棄明細
+| GE
+type CooperativeType =
+///商品基本資料
+| CONTRACTS
+///成交資料
+| TRADING
+///平倉資料
+| COVER
+///每日保證金資料
+| MARGIN
+///未沖銷資料
+| OI
+///委託資料
+| ORDERS
+
+type BankEdxMarket =
+/// 只查國內 TAIFEX 資料
+| Domestic
+/// 只查國外 ASIA / EURUS 資料
+| Foreign
+/// 同一輸出同時查國內 TAIFEX 與國外 ASIA / EURUS 資料
+| Mixed
+
+type CathayEdxOutput =
+/// 國泰世華成交明細電子檔；legacy 名稱 NonTaifex，但新版 handler 同時支援國內 T 與國外 F，由 BankEdxMarket 決定 scope
+| CathayBKNonTaifexFill
+/// 國泰世華未平倉明細電子檔；legacy 名稱 NonTaifex，但新版 handler 同時支援國內 T 與國外 F，由 BankEdxMarket 決定 scope
+| CathayBKNonTaifexOI
+
+type SCSBEdxOutput =
+/// 上海商銀盤後成交明細電子檔
+| SCSBAfterHoursFill
+/// 上海商銀成交匯總電子檔
+| SCSBTradeSummary
+/// 上海商銀盤中委託電子檔
+| SCSBIntradayOrder
+/// 上海商銀盤中成交電子檔
+| SCSBIntradayFill
+/// 上海商銀未平倉彙總電子檔，F-source 版本
+| SCSBOpenPositionSummaryF
+/// 上海商銀未平倉彙總電子檔，T-source 版本
+| SCSBOpenPositionSummaryT
+/// 上海商銀盤中未平倉電子檔
+| SCSBIntradayOI
+/// 上海商銀盤中未平倉 by fill 電子檔
+| SCSBIntradayOIByFill
+/// 上海商銀風險因子部位明細電子檔
+| SCSBRiskFactor
+/// 上海商銀保證金 / 權益資料電子檔
+| SCSBMargin
+
+type BankEdxOutput =
+| Cathay of CathayEdxOutput
+| SCSB of SCSBEdxOutput
+
+type PFCF_AKKA_CMD_BANK_EDX_CATHAY =
+/// 國泰世華成交明細電子檔；搭配 TW/NonTW 或 PFCFGTCCONF TAIFEX/ASIA/EURUS 決定國內/國外 scope
+| NonTaifexFill
+/// 國泰世華未平倉明細電子檔；搭配 TW/NonTW 或 PFCFGTCCONF TAIFEX/ASIA/EURUS 決定國內/國外 scope
+| NonTaifexOI
+    interface IArgParserTemplate with
+        member cmd.Usage =
+            match cmd with
+            | _ -> ""
+
+type PFCF_AKKA_CMD_BANK_EDX_SCSB =
+/// 上海商銀盤後成交明細電子檔
+| AfterHoursFill
+/// 上海商銀成交匯總電子檔
+| TradeSummary
+/// 上海商銀盤中委託電子檔
+| IntradayOrder
+/// 上海商銀盤中成交電子檔
+| IntradayFill
+/// 上海商銀未平倉彙總電子檔，F-source 版本
+| OpenPositionSummaryF
+/// 上海商銀未平倉彙總電子檔，T-source 版本
+| OpenPositionSummaryT
+/// 上海商銀盤中未平倉電子檔
+| IntradayOI
+/// 上海商銀盤中未平倉 by fill 電子檔
+| IntradayOIByFill
+/// 上海商銀風險因子部位明細電子檔
+| RiskFactor
+/// 上海商銀保證金 / 權益資料電子檔
+| Margin
+    interface IArgParserTemplate with
+        member cmd.Usage =
+            match cmd with
+            | _ -> ""
+
+type PFCF_AKKA_CMD_BANK_EDX =
+/// 國泰世華成交明細電子檔；搭配 TW/NonTW 或 PFCFGTCCONF TAIFEX/ASIA/EURUS 決定國內/國外 scope
+| CathayBKNonTaifexFill
+/// 國泰世華未平倉明細電子檔；搭配 TW/NonTW 或 PFCFGTCCONF TAIFEX/ASIA/EURUS 決定國內/國外 scope
+| CathayBKNonTaifexOI
+/// 上海商銀盤後成交明細電子檔
+| SCSBAfterHoursFill
+/// 上海商銀成交匯總電子檔
+| SCSBTradeSummary
+/// 上海商銀盤中委託電子檔
+| SCSBIntradayOrder
+/// 上海商銀盤中成交電子檔
+| SCSBIntradayFill
+/// 上海商銀未平倉彙總電子檔，F-source 版本
+| SCSBOpenPositionSummaryF
+/// 上海商銀未平倉彙總電子檔，T-source 版本
+| SCSBOpenPositionSummaryT
+/// 上海商銀盤中未平倉電子檔
+| SCSBIntradayOI
+/// 上海商銀盤中未平倉 by fill 電子檔
+| SCSBIntradayOIByFill
+/// 上海商銀風險因子部位明細電子檔
+| SCSBRiskFactor
+/// 上海商銀保證金 / 權益資料電子檔
+| SCSBMargin
+    interface IArgParserTemplate with
+        member cmd.Usage =
+            match cmd with
+            | _ -> ""
+
+type PFCF_GTC_CONF =
+| FillDTFormatYYYYMMDD
+| ShowOrderSN
+| ShowTXSN
+| OrderByTXDT
+| OrderBySQDT
+| OrderByOIDT
+| GroupDownToDayInsteadOfContractBase //20250820: 僅針對未平倉日內資料，目前不支援區間查詢
+| FloorAvgPrice
+| CathayBKTaifexFill //20260203: 準備deprecate 純國內 handler
+| CathayBKTaifexOI  //20260203: 準備deprecate 純國內 handler
+| CathayBKNonTaifexFill
+| CathayBKNonTaifexOI
+| SCSBIntradayOI
+| SCSBRiskFactor
+| SCSBIntradayOIByFill
+| SCSBIntradayOrder
+| SCSBIntradayFill
+| SCSBAfterHoursFill
+| SCSBTradeSummary
+| SCSBOpenPositionSummaryF
+| SCSBOpenPositionSummaryT
+| SCSBMargin
+| OIInf
+| TAIFEX
+| ASIA
+| EURUS
+| Empty
+| FillSquareCombine //加入後沖銷
+//[TODO] 20250924: 目前通用買報選擇權未平倉的支出存入是 SHOW 浮動損益，這邊需要加入選項支援動態調整show市值(國內買報現有邏輯)
+| OP_OI_ShowMarketValue
+| Default
+| FeeIncludeTax
+| ItsGTC1
+| ItsGTC2
+| ItsGTC4
+| ItsGTC5
+| ItsGTC8
+| SubAccountIncluded
+
+
+//[<CliPrefix(CliPrefix.None)>]
+type PFCF_AKKA_CMD =
+| SimpleAction of action_name : string
+| Entrust of id:string * accountingDay: decimal
+| Transglobe of brokerBranch:string * id:string * accountingDay: decimal
+| PFCFGTC of PFCFGTC list
+| PFCFEDX
+| PFCFGTCCONF of PFCF_GTC_CONF list
+| BBA of 期貨商:string * 分公司:string * 母帳帳號:string
+| Entie of mode:int
+| TSIT
+| USITC
+| PGIM
+| RID of string
+| Cooperative of CooperativeType
+| BankEdx of PFCF_AKKA_CMD_BANK_EDX list
+| MLI of brokerBranch:string * id:string
+| ParentChild of int
+| ParentChilds of int list
+| FractionalQuote of if全轉分數報價orOnlyFor原分數報價:bool * 自訂分母值: float
+| DecimalQuote of 小數位數:int * ``0四捨五入1無條件捨去2無條件進位3無條件截斷``:int
+| Round of 非分數報價小數位數:int * 分數報價分數部分小數位數:int * 收支欄位小數位數:int
+| TW
+| NonTW
+| Futures
+| Options
+| TO of float
+| Debug of string
+| ClosingNoMode of ClosingNoMode
+| [<CliPrefix(CliPrefix.None)>] DataRange of ParseResults<PFCF_AKKA_CMD_DATA_RANGE>
+| [<CliPrefix(CliPrefix.None)>] GM of ParseResults<PFCF_AKKA_CMD_GM>
+| [<CliPrefix(CliPrefix.None)>] Terry of ParseResults<PFCF_AKKA_Terry>
+| [<CliPrefix(CliPrefix.None)>] WZ of ParseResults<PFCF_AKKA_WenZone>
+#if NET9_0_OR_GREATER
+#else
+| RT of DataTypeT.RTTables list
+#endif
+| GenByColMeta of ifTw:bool * ifOrig:bool * schemaName : string * genType: GenEnum
+| GenFromDWQuery of sql0F1T2F:int * sqlB64:string * schName: string * tblName: string * genType: GenEnum * ifOrig: bool * ifSchemaOnly : bool
+| TableName of string list
+| OutCreateTable of string
+    interface IArgParserTemplate with
+        member cmd.Usage =
+            match cmd with
+            | _ -> ""

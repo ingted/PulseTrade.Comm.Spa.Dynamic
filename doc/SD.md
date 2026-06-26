@@ -83,7 +83,7 @@ module CommHubExtensions =
 
 ## 3. 類別庫封裝與相依 (NuGet Packaging)
 - Target Framework: `net10.0`
-- 目前 `src/PulseTrade.Comm.Spa.Dynamic.fsproj` 透過 `<PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta14]" />` 將基礎庫引入；本輪 first runtime E2E 直接使用本機 PTCS repo 的 `RFC-PTC-SPA-0007` seam，後續 package 化時需發布含 append input / add-key registry 的 PTCS package 或改用明確 project reference gate。
+- 目前 `src/PulseTrade.Comm.Spa.Dynamic.fsproj` 以 local `ProjectReference` 參考 `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\PulseTrade.Comm.Spa.fsproj`；NuGet pack 時會產生對 `PulseTrade.Comm.Spa` package version `0.2.5-beta15` 的 dependency。本輪 package 化先使用自己編譯的 PTCS，再一起 push PTCS / PTCS.Dynamic。
 - 透過 WebSharper 將 `Client/*.fs` 翻譯為前端 JS，並保證 `ActorDynamicTab.Start()` 能在 PTCS 核心啟動時正確呼叫。
 
 ## 4. RFC-PTCS-DYNAMIC-0002 Dynamic Argu Form Design
@@ -154,3 +154,95 @@ includeStateOf ids
 ### 4.4 RN proxy integration
 
 Dynamic 不 reference RN package。若 key 的 actor address 指向 RN DurableProxy，PTCS core 仍只送出 `ActorArguTargetCommand.RawArgu`；RN side 由 `CommandToCell` / `InvokeLegacy` / `LegacyReplyToCell` 處理 legacy actor adaptation、delivery、confirm 與 result completion。
+
+## 5. RFC-PTCS-DYNAMIC-0003 Unified SDUI / Form DSL Design
+
+Formal RFC: `doc/RFC-PTCS-DYNAMIC-0003.unified-sdui-form-dsl-roadmap.md`
+
+### 5.1 Canonical DSL types
+
+```fsharp
+type SduiRenderSurface =
+    | Canvas
+    | FormInput
+
+type SduiOptionSource =
+    | StaticOptions of string list
+    | QueryOptions of providerId: string * dependsOn: string list
+    | StreamOptions of streamId: string * dependsOn: string list
+
+type SduiNode =
+    | Stack of id: string * children: SduiNode list
+    | Section of id: string * title: string option * children: SduiNode list
+    | TextBlock of id: string * text: string
+    | Input of id: string * label: string * kind: string * binding: string
+    | Select of id: string * label: string * options: SduiOptionSource * binding: string
+    | Button of id: string * label: string * actionId: string
+
+type SduiDocument =
+    { Schema: string
+      Version: string
+      DocumentId: string
+      Surface: SduiRenderSurface
+      Nodes: SduiNode list
+      Actions: Map<string, string>
+      Bindings: Map<string, string> }
+```
+
+Implementation may refine union names, but the separation is mandatory：renderer consumes `SduiDocument`; adapter consumes Argu / DU metadata。
+
+### 5.2 Target resolver
+
+```fsharp
+type DynamicTarget =
+    | DirectDslTarget of actorAddress: string * formDslId: string
+    | ArguTemplateTarget of actorAddress: string * duTypeName: string * unionCaseNames: string list
+
+module DynamicTargetKey =
+    val tryParse : string list -> Result<DynamicTarget, string>
+```
+
+Parse rules：
+
+1. key list length must be at least 2；
+2. first item is actor address；
+3. second item is looked up in Form DSL registry first；
+4. if not found, second item is looked up in Argu adapter registry；
+5. remaining tail belongs to the matched resolver；
+6. unknown second item returns controlled error。
+
+### 5.3 Argu-to-FormDsl adapter
+
+```fsharp
+type ArguTemplateRegistration =
+    { DuTypeName: string
+      TemplateType: Type
+      AllowedUnionCases: string list option }
+
+module ArguToFormDsl =
+    val generate : ArguTemplateRegistration -> requestedCases: string list -> SduiDocument
+```
+
+Each requested union case becomes a visible form section with its own inputs and submit button。The adapter maps:
+
+- string -> text input；
+- numeric -> number input；
+- bool flag -> checkbox；
+- enum / zero-field DU enum -> select；
+- tuple -> ordered input group；
+- list -> repeatable input group；
+- nested `ParseResults<'T>` -> nested section when supported, otherwise controlled unsupported-field error。
+
+### 5.4 Backend-linked options
+
+`QueryOptions(providerId, dependsOn)` is a declared provider lookup。Renderer may call the PTCS core safe extension query callback only for registered providers。The DSL must not contain arbitrary URL, headers, tokens, script text or executable code。
+
+### 5.5 PTCS.Host demo integration
+
+PTCS.Host registers:
+
+1. a direct form DSL target derived from `example DU.txt`；
+2. an Argu adapter target for a host-local `PFCF_AKKA_CMD` demo subset；
+3. a durable proxy/echo actor target for E2E。
+
+`example DU.txt` is cp950 encoded and contains Chinese identifiers/comments。The host demo should either preserve valid identifiers or map them to stable ASCII labels while keeping display labels in metadata。Missing external types such as `DataTypeT.RTTables` must be represented by host-local stubs or excluded from the first demo subset with a documented controlled unsupported-case message。
