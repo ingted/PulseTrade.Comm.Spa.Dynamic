@@ -224,39 +224,76 @@ function postJson(url, body, onOk, onError){
 function renderSchemaIntoRoot(root, context, typeName, document, schema){
   root.textContent="";
   const defaultMap=defaultsFromDocument(document);
+  const isDocumentBacked=document!=null;
   const allowed=document==null?unionCaseNamesFromContext(context, schema):map((a) => a.name, arrayOrEmpty(schema.unionCases));
   const unionCases=filter((item) => exists((name) => name==asText(item.name), allowed), arrayOrEmpty(schema.unionCases));
   root.setAttribute("data-dynamic-argu-du-type", typeName);
   root.setAttribute("data-dynamic-form-document-id", document==null?"":asText(document.$0.documentId));
   root.setAttribute("data-dynamic-argu-union-cases", concat_2(",", allowed));
   if(length(unionCases)===0)root.appendChild(errorNode("Dynamic Argu schema has no requested union cases for DU type: "+typeName));
-  else iter((unionCase) => {
-    let fieldGetters;
-    const caseName=asText(unionCase.name);
-    const caseRow=setTestId("dynamic-argu-case-"+caseName, element("section", "dynamic-argu-case-row", null));
-    caseRow.setAttribute("data-dynamic-argu-case", caseName);
-    const heading=setTestId("dynamic-argu-case-title-"+caseName, element("div", "dynamic-argu-case-title", isBlank(unionCase.label)?caseName:asText(unionCase.label)));
-    const fields=setTestId("dynamic-argu-fields-"+caseName, element("div", "dynamic-argu-fields", null));
-    const rawPreview=setTestId("dynamic-argu-raw-preview-"+caseName, element("pre", "dynamic-argu-raw-preview", ""));
-    const send=button("dynamic-argu-send", "dynamic-argu-send-"+caseName, "Send");
-    fieldGetters=[];
-    const refreshPreview=() => {
-      rawPreview.textContent=buildRawArgu(unionCase, fieldGetters);
+  else {
+    const fullPreviewOpt=isDocumentBacked?Some(setTestId("dynamic-argu-raw-preview-full", element("pre", "dynamic-argu-raw-preview full", ""))):null;
+    const fullSendOpt=isDocumentBacked?Some(button("dynamic-argu-send full", "dynamic-argu-send-full", "Send")):null;
+    const fullRaw=() => {
+      const parts=MarkResizable([]);
+      const previews=root.querySelectorAll(".dynamic-argu-case-row .dynamic-argu-raw-preview");
+      for(let index=0, _1=previews.length-1;index<=_1;index++){
+        const text=Trim(asText(previews[index].textContent));
+        if(!isBlank(text))parts.push(text);
+      }
+      return Join(" ", parts.slice());
     };
-    fieldGetters=map((field) => {
-      const p=renderField(refreshPreview, defaultMap, caseName, field);
-      fields.appendChild(p[0]);
-      return[field, p[1]];
-    }, arrayOrEmpty(unionCase.fields));
-    send.addEventListener("click", () => {
-      const raw=buildRawArgu(unionCase, fieldGetters);
-      rawPreview.textContent=raw;
-      return context.submit(New_31(raw, typeName, caseName));
-    });
-    append(caseRow, [heading, fields, rawPreview, send]);
-    root.appendChild(caseRow);
-    refreshPreview();
-  }, unionCases);
+    const refreshFullPreview=() => {
+      if(fullPreviewOpt!=null&&fullPreviewOpt.$==1)fullPreviewOpt.$0.textContent=fullRaw();
+    };
+    iter((unionCase) => {
+      let fieldGetters;
+      const caseName=asText(unionCase.name);
+      const caseRow=setTestId("dynamic-argu-case-"+caseName, element("section", "dynamic-argu-case-row", null));
+      caseRow.setAttribute("data-dynamic-argu-case", caseName);
+      const heading=setTestId("dynamic-argu-case-title-"+caseName, element("div", "dynamic-argu-case-title", isBlank(unionCase.label)?caseName:asText(unionCase.label)));
+      const fields=setTestId("dynamic-argu-fields-"+caseName, element("div", "dynamic-argu-fields", null));
+      const rawPreview=setTestId("dynamic-argu-raw-preview-"+caseName, element("pre", "dynamic-argu-raw-preview", ""));
+      const send=button("dynamic-argu-send", "dynamic-argu-send-"+caseName, "Send");
+      fieldGetters=[];
+      const caseRaw=() => buildRawArgu(unionCase, fieldGetters);
+      const refreshPreview=() => {
+        rawPreview.textContent=caseRaw();
+        refreshFullPreview();
+      };
+      fieldGetters=map((field) => {
+        const p=renderField(refreshPreview, defaultMap, caseName, field);
+        fields.appendChild(p[0]);
+        return[field, p[1]];
+      }, arrayOrEmpty(unionCase.fields));
+      send.addEventListener("click", () => {
+        const raw=caseRaw();
+        rawPreview.textContent=raw;
+        return context.submit(New_31(raw, typeName, caseName));
+      });
+      append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
+      root.appendChild(caseRow);
+      refreshPreview();
+    }, unionCases);
+    if(isDocumentBacked){
+      if(fullPreviewOpt!=null&&fullPreviewOpt.$==1){
+        if(fullSendOpt!=null&&fullSendOpt.$==1){
+          const fullPreview=fullPreviewOpt.$0;
+          const fullSend=fullSendOpt.$0;
+          fullSend.addEventListener("click", () => {
+            const raw=fullRaw();
+            fullPreview.textContent=raw;
+            return context.submit(New_31(raw, typeName, "__document"));
+          });
+          append(root, [fullPreview, fullSend]);
+          refreshFullPreview();
+        }
+        else void 0;
+      }
+      else void 0;
+    }
+    else void 0;
+  }
 }
 function decodeJson(text){
   return JSON.parse(asText(text));
@@ -280,8 +317,11 @@ function unionCaseNamesFromContext(ctx, schema){
   const allowed=filter((x) =>!isBlank(x), map(asText, arrayOrEmpty(ctx.unionCaseNames)));
   return length(allowed)===0?map((a) => a.name, arrayOrEmpty(schema.unionCases)):allowed;
 }
-function buildRawArgu(_1, fieldGetters){
-  return buildRawArguFromValues(map((_2) =>[_2[0], _2[1]()], fieldGetters));
+function buildRawArgu(unionCase, fieldGetters){
+  const raw=buildRawArguFromValues(map((_1) =>[_1[0], _1[1]()], fieldGetters));
+  const prefix=Trim(asText(unionCase.arguName));
+  const isOptionPrefix=prefix.length>=2&&Substring(prefix, 0, 2)=="--";
+  return isBlank(prefix)||isOptionPrefix?raw:isBlank(raw)?prefix:prefix+" "+raw;
 }
 function renderField(refresh, defaultMap, caseName, field){
   let getter, _1;
@@ -5136,6 +5176,9 @@ function TrimStart(s, t){
 function IsNullOrWhiteSpace(x){
   return x==null||(new RegExp("^\\s*$")).test(x);
 }
+function Join(sep, values){
+  return values.join(sep);
+}
 function Substring(s, ix, ct){
   return s.substr(ix, ct);
 }
@@ -5144,9 +5187,6 @@ function TrimStartWS(s){
 }
 function IsNullOrEmpty(x){
   return x==null||x=="";
-}
-function Join(sep, values){
-  return values.join(sep);
 }
 function SplitChars(s, sep, opts){
   return Split(s, new RegExp("["+RegexEscape(sep.join(""))+"]"), opts);
@@ -6068,10 +6108,9 @@ function appendFieldParts(parts, field, values){
       parts.push(quoteArg(value_1));
     }
   }
-  else if(m=="list")iter((value_3) => {
-    parts.push(asText_2(field.arguName));
-    parts.push(quoteArg(value_3));
-  }, values_1);
+  else if(m=="list")length(values_1)>0?(parts.push(asText_2(field.arguName)),iter((x) => {
+    parts.push(quoteArg(x));
+  }, values_1)):void 0;
   else if(m=="tuple")length(values_1)>0?(parts.push(asText_2(field.arguName)),iter((x) => {
     parts.push(quoteArg(x));
   }, values_1)):void 0;

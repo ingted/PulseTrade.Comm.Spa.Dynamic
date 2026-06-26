@@ -151,10 +151,9 @@ module ClientRawArguCodec =
                 parts.Add(asText field.arguName)
                 parts.Add(quoteArg value))
         | "list" ->
-            values
-            |> Array.iter (fun value ->
+            if values.Length > 0 then
                 parts.Add(asText field.arguName)
-                parts.Add(quoteArg value))
+                values |> Array.iter (quoteArg >> parts.Add)
         | "tuple" ->
             if values.Length > 0 then
                 parts.Add(asText field.arguName)
@@ -660,14 +659,26 @@ module ArguFormRenderer =
 
         row, getter
 
-    let buildRawArgu unionCase (fieldGetters: (ArguFormFieldDto * (unit -> string[]))[]) =
-        fieldGetters
-        |> Array.map (fun (field, getter) -> field, getter ())
-        |> ClientRawArguCodec.buildRawArguFromValues
+    let buildRawArgu (unionCase: ArguFormUnionCaseDto) (fieldGetters: (ArguFormFieldDto * (unit -> string[]))[]) =
+        let raw =
+            fieldGetters
+            |> Array.map (fun (field, getter) -> field, getter ())
+            |> ClientRawArguCodec.buildRawArguFromValues
+
+        let prefix = (asText unionCase.arguName).Trim()
+        let isOptionPrefix = prefix.Length >= 2 && prefix.Substring(0, 2) = "--"
+
+        if isBlank prefix || isOptionPrefix then
+            raw
+        elif isBlank raw then
+            prefix
+        else
+            prefix + " " + raw
 
     let renderSchemaIntoRoot (root: Element) (context: AppendInputContextDto) typeName document (schema: ArguFormSchemaDto) =
         root.TextContent <- ""
         let defaultMap = defaultsFromDocument document
+        let isDocumentBacked = Option.isSome document
 
         let allowed =
             match document with
@@ -686,6 +697,36 @@ module ArguFormRenderer =
         if unionCases.Length = 0 then
             root.AppendChild(errorNode ("Dynamic Argu schema has no requested union cases for DU type: " + typeName)) |> ignore
         else
+            let fullPreviewOpt =
+                if isDocumentBacked then
+                    Some(element "pre" "dynamic-argu-raw-preview full" "" |> setTestId "dynamic-argu-raw-preview-full")
+                else
+                    None
+
+            let fullSendOpt =
+                if isDocumentBacked then
+                    Some(button "dynamic-argu-send full" "dynamic-argu-send-full" "Send")
+                else
+                    None
+
+            let fullRaw () =
+                let parts = ResizeArray<string>()
+                let previews = root.QuerySelectorAll(".dynamic-argu-case-row .dynamic-argu-raw-preview")
+
+                for index in 0 .. previews.Length - 1 do
+                    let preview = previews.Item(index)
+                    let text = (asText preview.TextContent).Trim()
+
+                    if not (isBlank text) then
+                        parts.Add text
+
+                String.Join(" ", parts.ToArray())
+
+            let refreshFullPreview () =
+                match fullPreviewOpt with
+                | None -> ()
+                | Some fullPreview -> fullPreview.TextContent <- fullRaw ()
+
             unionCases
             |> Array.iter (fun unionCase ->
                 let caseName = asText unionCase.name
@@ -702,8 +743,12 @@ module ArguFormRenderer =
                 let send = button "dynamic-argu-send" ("dynamic-argu-send-" + caseName) "Send"
                 let mutable fieldGetters: (ArguFormFieldDto * (unit -> string[]))[] = [||]
 
+                let caseRaw () =
+                    buildRawArgu unionCase fieldGetters
+
                 let refreshPreview () =
-                    rawPreview.TextContent <- buildRawArgu unionCase fieldGetters
+                    rawPreview.TextContent <- caseRaw ()
+                    refreshFullPreview()
 
                 fieldGetters <-
                     unionCase.fields
@@ -716,7 +761,7 @@ module ArguFormRenderer =
                 send.AddEventListener(
                     "click",
                     fun () ->
-                        let raw = buildRawArgu unionCase fieldGetters
+                        let raw = caseRaw ()
                         rawPreview.TextContent <- raw
                         let payload: AppendSubmitPayloadDto =
                             { rawArgu = raw
@@ -725,9 +770,34 @@ module ArguFormRenderer =
 
                         context.submit(box payload))
 
-                append caseRow [| heading :> Node; fields :> Node; rawPreview :> Node; send :> Node |] |> ignore
+                let children =
+                    if isDocumentBacked then
+                        [| heading :> Node; fields :> Node; rawPreview :> Node |]
+                    else
+                        [| heading :> Node; fields :> Node; rawPreview :> Node; send :> Node |]
+
+                append caseRow children |> ignore
                 root.AppendChild caseRow |> ignore
                 refreshPreview ())
+
+            if isDocumentBacked then
+                match fullPreviewOpt, fullSendOpt with
+                | Some fullPreview, Some fullSend ->
+                    fullSend.AddEventListener(
+                        "click",
+                        fun () ->
+                            let raw = fullRaw ()
+                            fullPreview.TextContent <- raw
+                            let payload: AppendSubmitPayloadDto =
+                                { rawArgu = raw
+                                  duTypeName = typeName
+                                  unionCaseName = "__document" }
+
+                            context.submit(box payload))
+
+                    append root [| fullPreview :> Node; fullSend :> Node |] |> ignore
+                    refreshFullPreview()
+                | _ -> ()
 
     let renderAppendInput (ctx: obj) =
         let context = ctx |> As<AppendInputContextDto>

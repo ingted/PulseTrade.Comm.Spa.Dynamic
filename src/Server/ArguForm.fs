@@ -552,12 +552,52 @@ module DynamicFormDsl =
         { document with
             Nodes = document.Nodes |> Array.map (applyOptionAliasesToNode aliases) }
 
-    let defaultsFromParsedTarget (target: ParsedArguTarget) =
-        target.RootCases
-        |> Array.collect (fun parsedCase ->
+    let defaultEntriesForParsedCase caseBindingPrefix fieldNameTransform (fields: ArguFormField array) (parsedCase: ParsedArguCase) =
+        let valueEntries =
             parsedCase.Values
-            |> Array.map (fun parsedValue -> $"{parsedCase.CaseName}.{parsedValue.FieldName}", parsedValue.Values))
-        |> Map.ofArray
+            |> Array.map (fun parsedValue ->
+                $"{caseBindingPrefix}.{fieldNameTransform parsedValue.FieldName}", parsedValue.Values)
+
+        if valueEntries.Length > 0 then
+            valueEntries
+        else
+            fields
+            |> Array.tryFind (fun field -> field.Kind = "bool")
+            |> Option.map (fun field -> [| $"{caseBindingPrefix}.{field.Name}", [| "true" |] |])
+            |> Option.defaultValue [||]
+
+    let defaultsFromParsedTargetForSchema (schema: ArguFormSchema) (target: ParsedArguTarget) =
+        let rootEntries =
+            target.RootCases
+            |> Array.collect (fun parsedCase ->
+                schema.UnionCases
+                |> Array.tryFind (fun unionCase -> String.Equals(unionCase.Name, parsedCase.CaseName, StringComparison.Ordinal))
+                |> Option.map (fun unionCase ->
+                    defaultEntriesForParsedCase parsedCase.CaseName id unionCase.Fields parsedCase)
+                |> Option.defaultValue [||])
+
+        let tailEntries =
+            target.TailSubcommands
+            |> Array.collect (fun subcommand ->
+                schema.UnionCases
+                |> Array.tryFind (fun unionCase -> String.Equals(unionCase.Name, subcommand.CaseName, StringComparison.Ordinal))
+                |> Option.map (fun unionCase ->
+                    subcommand.Cases
+                    |> Array.collect (fun parsedCase ->
+                        let fieldPrefix = parsedCase.CaseName + "."
+
+                        let fields =
+                            unionCase.Fields
+                            |> Array.filter (fun field -> field.Name.StartsWith(fieldPrefix, StringComparison.Ordinal))
+
+                        defaultEntriesForParsedCase
+                            subcommand.CaseName
+                            (fun fieldName -> parsedCase.CaseName + "." + fieldName)
+                            fields
+                            parsedCase))
+                |> Option.defaultValue [||])
+
+        Array.append rootEntries tailEntries |> Map.ofArray
 
     let rec applyDefaultsToNode defaults (node: SduiFormNode) =
         let defaultValues =
@@ -574,7 +614,7 @@ module DynamicFormDsl =
             Items = node.Items |> Array.map (applyDefaultsToNode defaults) }
 
     let applyParsedDefaultsToDocument parsedTarget (document: SduiFormDocument) =
-        let defaults = defaultsFromParsedTarget parsedTarget
+        let defaults = defaultsFromParsedTargetForSchema document.ArguFormSchema parsedTarget
 
         { document with
             Nodes = document.Nodes |> Array.map (applyDefaultsToNode defaults) }
@@ -596,11 +636,19 @@ module DynamicFormDsl =
         |> SduiFormDocument.fromArguFormSchema documentId
         |> applyOptionAliasesToDocument aliases
 
+    let fromParsedArguTargetSchema documentId aliases schema parsedTarget =
+        let defaults = defaultsFromParsedTargetForSchema schema parsedTarget
+
+        schema
+        |> fromArguFormSchemaWithAliases documentId aliases
+        |> fun document ->
+            { document with
+                Nodes = document.Nodes |> Array.map (applyDefaultsToNode defaults) }
+
     let fromParsedArguTarget documentId aliases schema parsedTarget =
         schema
         |> filterSchemaByParsedRootCases parsedTarget
-        |> fromArguFormSchemaWithAliases documentId aliases
-        |> applyParsedDefaultsToDocument parsedTarget
+        |> fun filteredSchema -> fromParsedArguTargetSchema documentId aliases filteredSchema parsedTarget
 
 [<RequireQualifiedAccess>]
 module DynamicArguTemplateRegistration =
@@ -844,10 +892,70 @@ module DynamicArgStringTarget =
           RootCases = rootParsed
           TailSubcommands = tailSubcommands }
 
-    let buildFormDocument documentId (registration: DynamicArguTemplateRegistration) parsedTarget =
-        let schema = ArguFormSchema.fromArgParserTemplateType registration.TemplateType
+    let caseByCanonicalName caseName (cases: ArgumentCaseInfo array) =
+        cases
+        |> Array.tryFind (fun caseInfo -> String.Equals(canonicalName caseInfo, caseName, StringComparison.Ordinal))
 
-        DynamicFormDsl.fromParsedArguTarget documentId registration.Aliases schema parsedTarget
+    let unionCaseByName caseName (schema: ArguFormSchema) =
+        schema.UnionCases
+        |> Array.tryFind (fun unionCase -> String.Equals(unionCase.Name, caseName, StringComparison.Ordinal))
+
+    let prefixSubcommandField (nestedCase: ArguFormUnionCase) (field: ArguFormField) =
+        let rec prefixItem (item: ArguFormField) =
+            { item with
+                Name = nestedCase.Name + "." + item.Name
+                Items = item.Items |> Array.map prefixItem }
+
+        { field with
+            Name = nestedCase.Name + "." + field.Name
+            Label =
+                if String.IsNullOrWhiteSpace nestedCase.Label then
+                    field.Label
+                elif String.IsNullOrWhiteSpace field.Label then
+                    nestedCase.Label
+                else
+                    nestedCase.Label + " " + field.Label
+            Items = field.Items |> Array.map prefixItem }
+
+    let tailSubcommandUnionCase (registration: DynamicArguTemplateRegistration) (subcommand: ParsedArguSubcommand) =
+        let parser = ArguFormSchema.createParserFromTemplateType registration.TemplateType
+        let caseInfos = parser.GetArgumentCases() |> Seq.toArray
+
+        match caseByCanonicalName subcommand.CaseName caseInfos |> Option.bind subcommandTemplateType with
+        | None -> None
+        | Some nestedType ->
+            let nestedSchema = ArguFormSchema.fromArgParserTemplateType nestedType
+            let fields =
+                subcommand.Cases
+                |> Array.choose (fun parsedCase -> unionCaseByName parsedCase.CaseName nestedSchema)
+                |> Array.collect (fun nestedCase ->
+                    nestedCase.Fields
+                    |> Array.map (prefixSubcommandField nestedCase))
+
+            if fields.Length = 0 then
+                None
+            else
+                Some
+                    { Name = subcommand.CaseName
+                      Label = subcommand.CaseName
+                      ArguName = subcommand.CommandToken
+                      Fields = fields }
+
+    let schemaForParsedTarget (registration: DynamicArguTemplateRegistration) parsedTarget =
+        let schema = ArguFormSchema.fromArgParserTemplateType registration.TemplateType
+        let rootSchema = DynamicFormDsl.filterSchemaByParsedRootCases parsedTarget schema
+
+        let tailUnionCases =
+            parsedTarget.TailSubcommands
+            |> Array.choose (tailSubcommandUnionCase registration)
+
+        { rootSchema with
+            UnionCases = Array.append rootSchema.UnionCases tailUnionCases }
+
+    let buildFormDocument documentId (registration: DynamicArguTemplateRegistration) parsedTarget =
+        let schema = schemaForParsedTarget registration parsedTarget
+
+        DynamicFormDsl.fromParsedArguTargetSchema documentId registration.Aliases schema parsedTarget
 
     let tryResolve (registrations: DynamicArguTemplateRegistration seq) keys =
         let registrations = registrations |> Seq.toArray
@@ -1027,10 +1135,9 @@ module SubmitArguFormCodec =
                 if value = "true" || value = "1" || value = "yes" then
                     parts.Add(field.ArguName))
         | "list" ->
-            values
-            |> Array.iter (fun value ->
+            if values.Length > 0 then
                 parts.Add(field.ArguName)
-                parts.Add(quote value))
+                values |> Array.iter (quote >> parts.Add)
         | "tuple" ->
             if values.Length > 0 then
                 parts.Add(field.ArguName)
@@ -1057,4 +1164,12 @@ module SubmitArguFormCodec =
             let values = fieldValues field.Name submission
             appendField parts field values)
 
-        String.Join(" ", parts)
+        let raw = String.Join(" ", parts)
+        let prefix = if isNull unionCase.ArguName then "" else unionCase.ArguName.Trim()
+
+        if String.IsNullOrWhiteSpace prefix || prefix.StartsWith("--", StringComparison.Ordinal) then
+            raw
+        elif String.IsNullOrWhiteSpace raw then
+            prefix
+        else
+            prefix + " " + raw

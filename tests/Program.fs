@@ -292,7 +292,7 @@ let tests =
             Expect.equal say "--say \"hello world\"" "text value with whitespace should be quoted"
             Expect.equal mode "--mode safe" "enum value should map to Argu select value"
             Expect.equal tuple "--at TTC 7" "tuple should preserve ordered values"
-            Expect.equal tags "--tag aoe --tag \"marvel now\"" "list should repeat the same Argu parameter"
+            Expect.equal tags "--tag aoe \"marvel now\"" "list should emit canonical inline Argu values"
             Expect.equal verbose "--verbose" "bool flag true should emit flag only"
 
         testCase "DYN-T-501: Argu adapter should generate FormInput DSL document for PFCF_AKKA_CMD fixture" <| fun _ ->
@@ -420,7 +420,7 @@ let tests =
             assertRaw
                 "PFCFGTC"
                 [| onlyFieldName "PFCFGTC" schema, [| "gf"; "goi" |] |]
-                "--pfcfgtc gf --pfcfgtc goi"
+                "--pfcfgtc gf goi"
 
             assertRaw
                 "BBA"
@@ -435,7 +435,7 @@ let tests =
             assertRaw
                 "ParentChilds"
                 [| onlyFieldName "ParentChilds" schema, [| "7"; "9" |] |]
-                "--parentchilds 7 --parentchilds 9"
+                "--parentchilds 7 9"
 
             assertRaw
                 "FractionalQuote"
@@ -450,7 +450,7 @@ let tests =
             assertRaw
                 "TableName"
                 [| onlyFieldName "TableName" schema, [| "Orders"; "Positions Today" |] |]
-                "--tablename Orders --tablename \"Positions Today\""
+                "--tablename Orders \"Positions Today\""
 
         testCase "DYN-T-509: Parser-backed target scan should expose root cases and DataRange defaults" <| fun _ ->
             let registration =
@@ -483,8 +483,8 @@ let tests =
             let document = DynamicArgStringTarget.buildFormDocument "ptcs.host.tests.pfcf.data-range" registration parsed
             Expect.sequenceEqual
                 (document.Nodes |> Array.map _.Id)
-                [| "case-pfcfedx"; "case-pfcfgtcconf"; "case-to"; "case-parentchilds"; "case-bba"; "case-decimalquote"; "case-round" |]
-                "Form DSL sections should follow parsed root case order"
+                [| "case-pfcfedx"; "case-pfcfgtcconf"; "case-to"; "case-parentchilds"; "case-bba"; "case-decimalquote"; "case-round"; "case-datarange" |]
+                "Form DSL sections should follow parsed root case order and include tail subcommand"
 
             let rec flattenNode (node: SduiFormNode) =
                 seq {
@@ -549,8 +549,8 @@ let tests =
             Expect.equal reply.Document.DocumentId pfcfDuTypeName "endpoint document id should be template key"
             Expect.sequenceEqual
                 (reply.Document.ArguFormSchema.UnionCases |> Array.map _.Name)
-                [| "PFCFEDX"; "PFCFGTCCONF"; "TO"; "ParentChilds"; "BBA"; "DecimalQuote"; "Round" |]
-                "endpoint document should contain parsed root cases in order"
+                [| "PFCFEDX"; "PFCFGTCCONF"; "TO"; "ParentChilds"; "BBA"; "DecimalQuote"; "Round"; "DataRange" |]
+                "endpoint document should contain parsed root cases and tail subcommand in order"
 
             let rec flattenNode (node: SduiFormNode) =
                 seq {
@@ -568,6 +568,83 @@ let tests =
                 |> _.DefaultValues
 
             Expect.sequenceEqual pfcfedxDefault [| "trivial" |] "endpoint document should include FormInput defaults"
+
+            let defaultEntriesInOrder =
+                reply.Document.Nodes
+                |> Seq.collect flattenNode
+                |> Seq.filter (fun node -> not (String.IsNullOrWhiteSpace node.Binding))
+                |> Seq.map (fun node -> node.Binding, node.DefaultValues)
+                |> Seq.toArray
+
+            let defaultsByBinding = defaultEntriesInOrder |> Map.ofArray
+            Expect.sequenceEqual
+                (defaultsByBinding |> Map.find "BBA.期貨商")
+                [| "F008" |]
+                "endpoint document should preserve root tuple item default 1"
+            Expect.sequenceEqual
+                (defaultsByBinding |> Map.find "BBA.分公司")
+                [| "000" |]
+                "endpoint document should preserve root tuple item default 2"
+            Expect.sequenceEqual
+                (defaultsByBinding |> Map.find "BBA.母帳帳號")
+                [| "9910357" |]
+                "endpoint document should preserve root tuple item default 3"
+            Expect.sequenceEqual
+                (defaultsByBinding |> Map.find "DataRange.Between.value1")
+                [| "20251104" |]
+                "endpoint document should preserve tail tuple item default 1"
+            Expect.sequenceEqual
+                (defaultsByBinding |> Map.find "DataRange.Between.value2")
+                [| "20251104" |]
+                "endpoint document should preserve tail tuple item default 2"
+
+            let rec fieldValues unionCaseName (field: ArguFormField) =
+                let collectByPrefix () =
+                    let prefix =
+                        let fieldName = field.Name
+                        let dotIndex = fieldName.LastIndexOf(".", StringComparison.Ordinal)
+
+                        if dotIndex > 0 then
+                            $"{unionCaseName}.{fieldName.Substring(0, dotIndex + 1)}"
+                        else
+                            $"{unionCaseName}."
+
+                    defaultEntriesInOrder
+                    |> Array.choose (fun (binding, values) ->
+                        if values.Length > 0 && binding.StartsWith(prefix, StringComparison.Ordinal) then
+                            Some values
+                        else
+                            None)
+                    |> Seq.concat
+                    |> Seq.toArray
+
+                match defaultsByBinding |> Map.tryFind $"{unionCaseName}.{field.Name}" with
+                | Some values when values.Length > 0 -> values
+                | _ ->
+                    let itemValues = field.Items |> Array.collect (fieldValues unionCaseName)
+
+                    if itemValues.Length > 0 then
+                        itemValues
+                    else
+                        collectByPrefix ()
+
+            let rawForUnionCase (unionCase: ArguFormUnionCase) =
+                { DuTypeName = reply.Document.ArguFormSchema.DuTypeName
+                  UnionCaseName = unionCase.Name
+                  Fields =
+                    unionCase.Fields
+                    |> Array.map (fun field ->
+                        { Name = field.Name
+                          Values = fieldValues unionCase.Name field }) }
+                |> SubmitArguFormCodec.buildRawArgu reply.Document.ArguFormSchema
+
+            let rebuilt =
+                reply.Document.ArguFormSchema.UnionCases
+                |> Array.map rawForUnionCase
+                |> Array.filter (not << String.IsNullOrWhiteSpace)
+                |> String.concat " "
+
+            Expect.equal rebuilt pfcfDataRangeExpectedRaw "frontend-style full-form raw Argu should preserve datarange tail ordering"
     ]
 
 [<EntryPoint>]

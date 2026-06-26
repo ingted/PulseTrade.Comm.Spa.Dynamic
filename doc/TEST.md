@@ -298,10 +298,12 @@ Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 - backend uses registered `DynamicArguTemplateRegistration`, not browser reflection, to parse the canonical arg string；
 - response includes actor address、template key、canonical arg string and a FormInput DSL document；
 - returned document contains alias/default projection for the PFCF data-range command；
+- returned document contains all parsed root sections plus the `DataRange` tail subcommand section；
+- full-form raw reconstruction preserves list-inline tokens、root tuple defaults、tail tuple defaults and exact `datarange` tail ordering；
 - controlled failure is returned as JSON `Ok=false` instead of silent fallback；
-- WebSharper client append renderer compiles with the backend-resolved fetch path.
+- WebSharper client append renderer compiles with the backend-resolved fetch path and document-backed full-form Send path.
 
-Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 14/14。
+Latest evidence：2026-06-26 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 14/14 for beta5。
 
 ### DYN-T-512 Browser E2E for backend-resolved FormInput DSL
 
