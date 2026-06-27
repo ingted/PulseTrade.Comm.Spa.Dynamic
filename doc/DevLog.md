@@ -275,3 +275,18 @@ Implementation status:
 ## 2026-06-27 18:47 +08:00 - Correction: PulseTrade.Comm.Spa.Dynamic 0.1.3-beta14 NuGet indexing complete
 
 - Follow-up NuGet flat-container lookup lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta14`.
+
+## 2026-06-27 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta15 Add-Target Alias UX
+
+- Background: PTCS beta24 adds display-only append target alias metadata. Dynamic add-key renderer needed to collect that alias without changing the canonical target tuple `[actorAddress; duTypeOrTemplateKey; canonicalArgString]`.
+- Change: `Client/ArguFormRenderer.fs` add-key payload is now `{ keys; displayName }`.
+- Change: add-key UI renders actor address, DU/template key, target alias, canonical Argu string, and Clean/OK actions. `Bind target` text is retired; PTCS core owns panel open/collapse and target-list alias display.
+- Package version bumped from `0.1.3-beta14` to `0.1.3-beta15`.
+- Verification: Release build passed with existing WS9002 / NU5123 / missing-readme warnings and generated `src\bin\Release\PulseTrade.Comm.Spa.Dynamic.0.1.3-beta15.nupkg`. Cross-repo PTC browser/bundle/live-host gates were updated for beta15 and await NuGet flat-container indexing.
+- NuGet push returned `Created` / `Your package was pushed` for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta15`; flat-container lookup at 2026-06-27 19:55 +08:00 was still propagation-pending.
+
+## 2026-06-27 20:05 +08:00 - Correction: PulseTrade.Comm.Spa.Dynamic 0.1.3-beta15 NuGet indexing and deployment complete
+
+- Follow-up NuGet flat-container lookup lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta15`.
+- Package tests passed `15/15`; cross-repo PTC gates passed: `verify-ptcs-dynamic-nuget-bundle.fsx`, `run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait`, and `verify-ptcs-host-dynamic-argu-live.fsx`.
+- PTC redeployed public 81 to `live81-ptcs-beta24-dynamic-beta15-alias-202606272001`; release-local Dynamic JS contains alias/OK markers and no `Bind target`.

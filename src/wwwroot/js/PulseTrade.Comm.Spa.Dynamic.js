@@ -52,9 +52,17 @@ function renderAddKey(ctx){
       actor.setAttribute("id", "dynamic-argu-key-actor");
       actor.setAttribute("placeholder", "/user/durable-proxy");
       actor.value=defaultActorAddress;
+      const typeLabel=element("label", "dynamic-argu-label", "DU type or template key");
+      typeLabel.setAttribute("for", "dynamic-argu-key-du-type");
       const typeInput=input("text", "dynamic-argu-du-type", "dynamic-argu-key-du-type");
+      typeInput.setAttribute("id", "dynamic-argu-key-du-type");
       typeInput.setAttribute("placeholder", "Full DU type name or template key");
       typeInput.value=defaultTypeName;
+      const aliasLabel=element("label", "dynamic-argu-label", "Target alias");
+      aliasLabel.setAttribute("for", "dynamic-argu-key-alias");
+      const aliasInput=input("text", "dynamic-argu-key-alias", "dynamic-argu-key-alias");
+      aliasInput.setAttribute("id", "dynamic-argu-key-alias");
+      aliasInput.setAttribute("placeholder", "Display name (optional)");
       const targetConfig=setTestId("dynamic-argu-key-target-config", element("div", "dynamic-argu-target-config", null));
       const argInput=doc().createElement("textarea");
       argInput.className="dynamic-argu-canonical-arg-string";
@@ -81,19 +89,31 @@ function renderAddKey(ctx){
       typeInput.addEventListener("input", renderTargetConfig);
       typeInput.addEventListener("change", renderTargetConfig);
       renderTargetConfig();
-      const submit=button("dynamic-argu-key-submit", "dynamic-argu-key-submit", "Bind target");
+      const actions=setTestId("dynamic-argu-key-actions", element("div", "dynamic-argu-key-actions", null));
+      const clean=button("dynamic-argu-key-clean", "dynamic-argu-key-clean", "Clean");
+      const submit=button("dynamic-argu-key-ok primary", "dynamic-argu-key-submit", "OK");
+      clean.addEventListener("click", () => {
+        actor.value="";
+        typeInput.value="";
+        aliasInput.value="";
+        argInput.value="";
+        renderTargetConfig();
+        return actor.focus();
+      });
       submit.addEventListener("click", () => {
         let keyTail;
         const actorAddress=Trim(actor.value);
         const selectedTypeName=Trim(typeInput.value);
+        const displayName=Trim(aliasInput.value);
         if(tryFindDocument(selectedTypeName)==null){
           const canonicalArgString=Trim(argInput.value);
           keyTail=isBlank(canonicalArgString)?(argInput.focus(),[]):[canonicalArgString];
         }
         else keyTail=[];
-        return isBlank(actorAddress)?actor.focus():tryFindDocument(selectedTypeName)!=null||length(keyTail)>0?ctx.submitKey(New_3(ofSeq(delay(() => append_2([actorAddress], delay(() => append_2([selectedTypeName], delay(() => keyTail)))))))):null;
+        return isBlank(actorAddress)?actor.focus():isBlank(selectedTypeName)?typeInput.focus():tryFindDocument(selectedTypeName)!=null||length(keyTail)>0?ctx.submitKey(New_3(ofSeq(delay(() => append_2([actorAddress], delay(() => append_2([selectedTypeName], delay(() => keyTail)))))), displayName)):null;
       });
-      append(root, [actorLabel, actor, typeInput, targetConfig, submit]);
+      append(actions, [clean, submit]);
+      append(root, [actorLabel, actor, typeLabel, typeInput, aliasLabel, aliasInput, targetConfig, actions]);
       return Some(root);
     }
   }
@@ -227,8 +247,8 @@ function postJson(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -841,7 +861,7 @@ function clear(node){
   node.textContent="";
 }
 function mountAppendPage(page, definition){
-  let currentLineageHealth, selected, selectedKeyJson, buckets, locallyHiddenKeyIds, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
+  let currentLineageHealth, selected, selectedKeyJson, buckets, locallyHiddenKeyIds, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, addKeyEditorOpen, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
   page.className="page append-page";
   setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId_1("append-page-"+asText_1(definition.pageId), page)));
   const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
@@ -862,6 +882,7 @@ function mountAppendPage(page, definition){
   loadGeneration=0;
   visibleValueLimit=defaultRenderLimit();
   scrollValuesToBottomAfterNextRender=false;
+  addKeyEditorOpen=false;
   const isLocallyHiddenKeyId=(keyId) =>!isBlank_1(keyId)&&exists((hidden) => sameText(hidden, keyId), locallyHiddenKeyIds);
   const rememberLocallyHiddenKeyId=(keyId) => {
     if(!isBlank_1(keyId)&&!isLocallyHiddenKeyId(keyId))locallyHiddenKeyIds=locallyHiddenKeyIds.concat([keyId]);
@@ -869,7 +890,7 @@ function mountAppendPage(page, definition){
   const side=element_1("aside", "sidebar append-sidebar", null);
   const sideHead=element_1("div", "panel-head", null);
   const sideActions=element_1("div", "head-actions", null);
-  const addKeyButton=setTestId_1("append-add-key", button_1("", "Add"));
+  const addKeyButton=setTestId_1("append-add-key", button_1("", "Add target key"));
   const removeKeyButton=setTestId_1("append-remove-key", button_1("", "Remove"));
   const removePageButton=setTestId_1("append-remove-page", button_1("", "Remove page"));
   const reload=setTestId_1("append-reload", button_1("", "Reload"));
@@ -879,6 +900,12 @@ function mountAppendPage(page, definition){
   const filters=element_1("div", "filters", null);
   const keyFilter=setTestId_1("append-key-filter", input_1("key contains"));
   const newKeyInput=setTestId_1("append-key-input", input_1(textOr("\"Aster\"", definition.keyPlaceholder)));
+  const newKeyAliasInput=setTestId_1("append-key-alias-input", input_1("target alias (optional)"));
+  const addKeyPanel=setTestId_1("append-add-key-panel", element_1("div", "append-add-key-panel", null));
+  const fallbackAddKeyPanel=setTestId_1("append-add-key-fallback", element_1("div", "append-add-key-fallback", null));
+  const fallbackAddKeyActions=setTestId_1("append-add-key-actions", element_1("div", "append-add-key-actions", null));
+  const cleanKeyButton=setTestId_1("append-key-clean", button_1("", "Clean"));
+  const okKeyButton=setTestId_1("append-key-ok", button_1("primary", "OK"));
   const addKeyRendererHost=setData("renderer-state", "not-rendered", setTestId_1("append-add-key-renderer-host", element_1("div", "append-add-key-renderer-host", null)));
   const status=setTestId_1("append-key-status", element_1("div", "state", "Loading"));
   const list=setTestId_1("append-key-list", element_1("div", "list", null));
@@ -928,7 +955,10 @@ function mountAppendPage(page, definition){
   append_1(actionPool, [actionSummary, actionMenu]);
   append_1(sideActions, [actionPool]);
   append_1(sideHead, [sideTitle]);
-  append_1(filters, [newKeyInput, addKeyRendererHost, keyFilter, status]);
+  append_1(fallbackAddKeyActions, [cleanKeyButton, okKeyButton]);
+  append_1(fallbackAddKeyPanel, [newKeyInput, newKeyAliasInput, fallbackAddKeyActions]);
+  append_1(addKeyPanel, [fallbackAddKeyPanel, addKeyRendererHost]);
+  append_1(filters, [addKeyPanel, keyFilter, status]);
   append_1(side, [sideHead, sideActions, filters, list]);
   append_1(titleBox, [setTestId_1("append-page-type-label", element_1("label", "", pageTypeLabel(definition)+" / "+asText_1(definition.setName))), element_1("h2", "", pageTitle(definition)), element_1("div", "meta wrap", asText_1(definition.description)), lineageInfo]);
   append_1(head_2, [titleBox, workState]);
@@ -1041,8 +1071,18 @@ function mountAppendPage(page, definition){
     clear(list);
     iter((bucket) => {
       const item=button_1(bucket.keyId==selected?"list-card active":"list-card", null);
-      setData("max-sequence", String(bucket.maxSequence), setData("min-sequence", String(bucket.minSequence), setData("key-id", bucket.keyId, setTestId_1("append-key-card", item))));
-      append_1(item, [element_1("div", "strong wrap", joinValues(bucket.keys)), element_1("div", "muted wrap", asText_1(bucket.setName)), element_1("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText_1(bucket.updatedAtUtc)))]);
+      const x=setData("key-id", bucket.keyId, setTestId_1("append-key-card", item));
+      const x_1=setData("key-display-name", asText_1(bucket.displayName), x);
+      let _3=setData("key-json", keysAsJson(bucket.keys), x_1);
+      let _4=setData("min-sequence", String(bucket.minSequence), _3);
+      setData("max-sequence", String(bucket.maxSequence), _4);
+      item.setAttribute("title", joinValues(bucket.keys));
+      let _5=item;
+      const displayName=Trim(asText_1(bucket.displayName));
+      let _6=isBlank_1(displayName)?joinValues(bucket.keys):displayName;
+      let _7=element_1("div", "strong wrap", _6);
+      let _8=[_7, element_1("div", "muted wrap", asText_1(bucket.setName)), element_1("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText_1(bucket.updatedAtUtc)))];
+      append_1(_5, _8);
       item.addEventListener("click", () => {
         selected=bucket.keyId;
         selectedKeyJson=keysAsJson(bucket.keys);
@@ -1183,7 +1223,7 @@ function mountAppendPage(page, definition){
         const a_1=bucket.maxSequence;
         const b_3=p[1];
         let _4=Compare(a_1, b_3)===1?a_1:b_3;
-        return New_11(bucket.keyId, bucket.keys, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
+        return New_11(bucket.keyId, bucket.keys, bucket.displayName, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
       }
       else return bucket;
     }, buckets);
@@ -1215,7 +1255,7 @@ function mountAppendPage(page, definition){
               const a_1=bucket_1.maxSequence;
               const b_1=p[1];
               let _4=Compare(a_1, b_1)===1?a_1:b_1;
-              return New_11(bucket_1.keyId, bucket_1.keys, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
+              return New_11(bucket_1.keyId, bucket_1.keys, bucket_1.displayName, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
             }
             else return bucket_1;
           }, buckets);
@@ -1333,12 +1373,12 @@ function mountAppendPage(page, definition){
     const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
     if(m==null){
       const keys=effectiveSelectedKeys();
-      return length(keys)===0?null:Some(New_11(appendPageKeyId(keys), keys, definition.setName, 0, 0n, 0n, "", []));
+      return length(keys)===0?null:Some(New_11(appendPageKeyId(keys), keys, "", definition.setName, 0, 0n, 0n, "", []));
     }
     else {
       const bucket=m.$0;
       const keys_1=effectiveSelectedKeys();
-      return Some(New_11(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
+      return Some(New_11(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.displayName, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
     }
   };
   deleteAcceptedPendingAppends=(bucket) =>(acceptedValues) => {
@@ -1388,7 +1428,7 @@ function mountAppendPage(page, definition){
               if(wire==null||asText_1(wire.schema)!="ptc.comm.spa.append-page.key.v1"||!sameText(wire.pageId, definition.pageId))o=null;
               else {
                 const keys=filter((key) =>!isBlank_1(key), map(asText_1, arrayOrEmpty_1(wire.keys)));
-                o=length(keys)===0?null:Some(keys);
+                o=length(keys)===0?null:Some([keys, Trim(asText_1(wire.displayName))]);
               }
             }
             catch(m_3){
@@ -1396,19 +1436,20 @@ function mountAppendPage(page, definition){
             }
             if(o==null)return null;
             else {
-              const keys_1=o.$0;
+              const _4=o.$0[0];
+              const _5=o.$0[1];
               const b=event.sequence;
               currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
-              const keyId=appendPageKeyId(keys_1);
+              const keyId=appendPageKeyId(_4);
               const filterText=currentFilterText();
-              if((isBlank_1(filterText)||exists((key) => asText_1(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty_1(keys_1)))&&!isLocallyHiddenKeyId(keyId)){
+              if((isBlank_1(filterText)||exists((key) => asText_1(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty_1(_4)))&&!isLocallyHiddenKeyId(keyId)){
                 const m_2=tryFind((bucket_1) => sameText(bucket_1.keyId, keyId), buckets);
-                if(m_2==null)updated=New_11(keyId, keys_1, definition.setName, 0, 0n, 0n, asText_1(event.createdAtUtc), []);
+                if(m_2==null)updated=New_11(keyId, _4, _5, definition.setName, 0, 0n, 0n, asText_1(event.createdAtUtc), []);
                 else {
                   const existing=m_2.$0;
-                  updated=New_11(existing.keyId, keys_1, definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
+                  updated=New_11(existing.keyId, _4, textOr(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
                 }
-                _3=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),isBlank_1(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(keys_1),void(newKeyInput.value=selectedKeyJson)):null);
+                _3=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),isBlank_1(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(_4),void(newKeyInput.value=selectedKeyJson)):null);
               }
               else _3=null;
               writeCurrentSnapshot();
@@ -1540,13 +1581,13 @@ function mountAppendPage(page, definition){
                         const a_1=bucket_1.maxSequence;
                         const b_1=p_1[1];
                         let _7=Compare(a_1, b_1)===1?a_1:b_1;
-                        return New_11(bucket_1.keyId, keys, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
+                        return New_11(bucket_1.keyId, keys, bucket_1.displayName, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
                       }
                       else return bucket_1;
                     }, buckets);
                     if(!matched){
                       const p=sequenceBounds(incoming);
-                      const bucket=New_11(keyId, keys, definition.setName, length(incoming), p[0], p[1], asText_1(value.createdAtUtc), incoming);
+                      const bucket=New_11(keyId, keys, "", definition.setName, length(incoming), p[0], p[1], asText_1(value.createdAtUtc), incoming);
                       _5=void(buckets=sortAppendPageBuckets(buckets.concat([bucket])));
                     }
                     else _5=null;
@@ -1640,14 +1681,14 @@ function mountAppendPage(page, definition){
       else load();
     }
   };
-  const addKeyWithKeyJson=(keyJson) => {
-    if(isBlank_1(keyJson))setStatus(status, "Key JSON is required");
+  const addKeyWithKeyJson=(keyJson, displayName) => {
+    if(isBlank_1(keyJson))return setStatus(status, "Key JSON is required");
     else {
-      const request=New_13(definition.pageId, keyJson);
+      const request=New_13(definition.pageId, keyJson, Trim(asText_1(displayName)));
       const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
       refreshPendingState();
       setStatus(status, "Adding key; pending command saved in browser DB");
-      postAppendPageKey("/pages/api/add-key", request, (reply) => {
+      return postAppendPageKey("/pages/api/add-key", request, (reply) => {
         deletePendingThen(pendingId, () => {
           let _3;
           if(!(reply.key==null)){
@@ -1658,6 +1699,8 @@ function mountAppendPage(page, definition){
             _3=newKeyInput.value=selectedKeyJson;
           }
           else _3=void 0;
+          newKeyAliasInput.value="";
+          addKeyEditorOpen=false;
           setStatus(status, "Key added");
           rerenderAddKeyBuilder();
           rerenderAppendForm();
@@ -1730,35 +1773,40 @@ function mountAppendPage(page, definition){
     const rendererShape=isActorArguPage(definition)?"actor-argu":definition.shape;
     clear(addKeyRendererHost);
     setData("shape", rendererShape, setData("renderer-state", "fallback", addKeyRendererHost));
-    const m=tryRenderAddKeyWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, definition.keyPlaceholder, definition.defaultKey, (payload) => {
-      const keyJson=rendererSubmittedKeyJson(payload);
-      if(isBlank_1(keyJson))setStatus(status, "Renderer key is required");
+    setHidden(!addKeyEditorOpen, addKeyPanel);
+    setHidden(true, fallbackAddKeyPanel);
+    setHidden(true, addKeyRendererHost);
+    if(addKeyEditorOpen){
+      const m=tryRenderAddKeyWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, definition.keyPlaceholder, definition.defaultKey, (payload) => {
+        const keyJson=rendererSubmittedKeyJson(payload);
+        const displayName=rendererSubmittedDisplayName(payload);
+        if(isBlank_1(keyJson))setStatus(status, "Renderer key is required");
+        else {
+          newKeyInput.value=keyJson;
+          setData("last-key-json", keyJson, addKeyRendererHost);
+          addKeyWithKeyJson(keyJson, displayName);
+        }
+      }, (payload) => {
+        const keyJson=rendererSubmittedKeyJson(payload);
+        const displayName=rendererSubmittedDisplayName(payload);
+        if(!isBlank_1(keyJson)){
+          newKeyInput.value=keyJson;
+          setData("last-key-json", keyJson, addKeyRendererHost);
+        }
+        if(!isBlank_1(displayName))newKeyAliasInput.value=displayName;
+      });
+      if(m==null){
+        setHidden(false, fallbackAddKeyPanel);
+        addKeyRendererHost.textContent="";
+      }
       else {
-        newKeyInput.value=keyJson;
-        setData("last-key-json", keyJson, addKeyRendererHost);
-        addKeyWithKeyJson(keyJson);
+        const node=m.$0;
+        setData("renderer-state", "custom", addKeyRendererHost);
+        setHidden(false, addKeyRendererHost);
+        addKeyRendererHost.appendChild(node);
       }
-    }, (payload) => {
-      const keyJson=rendererSubmittedKeyJson(payload);
-      if(!isBlank_1(keyJson)){
-        newKeyInput.value=keyJson;
-        setData("last-key-json", keyJson, addKeyRendererHost);
-      }
-    });
-    if(m==null){
-      setHidden(false, newKeyInput);
-      setHidden(false, addKeyButton);
-      setHidden(false, keyFilter);
-      addKeyRendererHost.textContent="";
     }
-    else {
-      const node=m.$0;
-      setData("renderer-state", "custom", addKeyRendererHost);
-      setHidden(true, newKeyInput);
-      setHidden(true, addKeyButton);
-      setHidden(true, keyFilter);
-      addKeyRendererHost.appendChild(node);
-    }
+    else setData("renderer-state", "closed", addKeyRendererHost);
   },rerenderAppendForm=() => {
     let effectiveKeyId;
     const rendererShape=isActorArguPage(definition)?"actor-argu":definition.shape;
@@ -1852,7 +1900,14 @@ function mountAppendPage(page, definition){
         }
       });
     }
-  },addKeyButton.addEventListener("click", () => addKeyWithKeyJson(isBlank_1(newKeyInput.value)?asText_1(definition.defaultKey):Trim(newKeyInput.value))),removeKeyButton.addEventListener("click", () => {
+  },addKeyButton.addEventListener("click", () => {
+    addKeyEditorOpen=!addKeyEditorOpen;
+    actionPool.removeAttribute("open");
+    return rerenderAddKeyBuilder();
+  }),cleanKeyButton.addEventListener("click", () => {
+    newKeyInput.value="";
+    newKeyAliasInput.value="";
+  }),okKeyButton.addEventListener("click", () => addKeyWithKeyJson(isBlank_1(newKeyInput.value)?asText_1(definition.defaultKey):Trim(newKeyInput.value), newKeyAliasInput.value)),removeKeyButton.addEventListener("click", () => {
     if(isBlank_1(selected))setStatus(status, "Select a key first");
     else {
       const removedKeyId=selected;
@@ -3036,13 +3091,13 @@ function appendPageValueCount(snapshot){
     }
   }, arrayOrEmpty_1(snapshot.buckets)));
 }
-function joinValues(values){
-  const values_1=arrayOrEmpty_1(values);
-  return length(values_1)===0?"":concat_2(" / ", values_1);
-}
 function keysAsJson(keys){
   const keys_1=arrayOrEmpty_1(keys);
   return length(keys_1)===1?JSON.stringify(get(keys_1, 0)):JSON.stringify(keys_1);
+}
+function joinValues(values){
+  const values_1=arrayOrEmpty_1(values);
+  return length(values_1)===0?"":concat_2(" / ", values_1);
 }
 function latestArray(limit, values){
   const values_1=arrayOrEmpty_1(values);
@@ -3134,8 +3189,8 @@ function postAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
@@ -3147,6 +3202,10 @@ function rememberPending(kind, target, url, body){
   const commandId=newPendingCommandId(kind, target, url, payloadJson);
   writePending(New_9(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
   return commandId;
+}
+function setHidden(hidden, node){
+  hidden?node.setAttribute("hidden", "hidden"):node.removeAttribute("hidden");
+  return node;
 }
 function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, keyPlaceholder, defaultKey, submitKey, setKeyJson){
   let r;
@@ -3161,15 +3220,15 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    keyPlaceholder:String(_5||""), 
-    defaultKey:String(_6||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    keyPlaceholder:String(_5||""),
+    defaultKey:String(_6||""),
     submitKey:(payload) => {
       _7(payload);
-    }, 
+    },
     setKeyJson:(payload) => {
       _8(payload);
     }
@@ -3194,10 +3253,6 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   }
   return null;
 }
-function setHidden(hidden, node){
-  hidden?node.setAttribute("hidden", "hidden"):node.removeAttribute("hidden");
-  return node;
-}
 function rendererSubmittedKeyJson(payload){
   let r;
   if(payload==null)return"";
@@ -3214,6 +3269,17 @@ function rendererSubmittedKeyJson(payload){
   keys=keys.map((value) => value==null?"":String(value).trim()).filter((value) => value.length>0);
   if(keys.length===0)return"";
   return JSON.stringify(keys.length===1?keys[0]:keys);
+}
+function rendererSubmittedDisplayName(payload){
+  let r;
+  if(payload==null||typeof payload==="string")return"";
+  let value="";
+  if(typeof payload.displayName==="string")value=payload.displayName;
+  else if(typeof payload.keyAlias==="string")value=payload.keyAlias;
+  else if(typeof payload.alias==="string")value=payload.alias;
+  else if(typeof payload.targetAlias==="string")value=payload.targetAlias;
+  value=String(value||"").trim();
+  return value;
 }
 function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setName, selectedKeyId, selectedKeyJson, selectedKeys, valuePlaceholder, valueText, submit, setValue){
   let r;
@@ -3244,22 +3310,22 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    selectedKeyId:String(_5||""), 
-    selectedKeyJson:String(_6||""), 
-    selectedKeys:keyParts.slice(), 
-    keyParts:keyParts.slice(), 
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    valuePlaceholder:String(_8||""), 
-    valueText:String(_9||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    selectedKeyId:String(_5||""),
+    selectedKeyJson:String(_6||""),
+    selectedKeys:keyParts.slice(),
+    keyParts:keyParts.slice(),
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    valuePlaceholder:String(_8||""),
+    valueText:String(_9||""),
     submit:(payload) => {
       _10(payload);
-    }, 
+    },
     setValue:(payload) => {
       _11(payload);
     }
@@ -3298,8 +3364,8 @@ function postJsonText(url, payloadJson, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:textOr("{}", payloadJson)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
@@ -3307,8 +3373,8 @@ function postJson_1(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
@@ -3316,8 +3382,8 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
@@ -3558,8 +3624,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"), 
-      priority:Number(priority||0), 
+      name:String(name||"unnamed"),
+      priority:Number(priority||0),
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -3910,9 +3976,9 @@ function toUInt(x){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
@@ -4620,16 +4686,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
   };
 }
@@ -4647,8 +4713,8 @@ function set(arr, n, x){
   checkBounds(arr, n);
   arr[n]=x;
 }
-function New_3(keys){
-  return{keys:keys};
+function New_3(keys, displayName){
+  return{keys:keys, displayName:displayName};
 }
 function delay(f){
   return{GetEnumerator:() => Get(f())};
@@ -5408,8 +5474,8 @@ class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_1(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -5437,58 +5503,58 @@ function TryParse_1(s, r){
 }
 function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
 function New_6(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
 function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -5585,45 +5651,50 @@ function listEmpty(){
 }
 function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
-function New_11(keyId, keys, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
+function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    displayName:displayName,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_12(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
-function New_13(pageId, keyJson){
-  return{pageId:pageId, keyJson:keyJson};
+function New_13(pageId, keyJson, displayName){
+  return{
+    pageId:pageId,
+    keyJson:keyJson,
+    displayName:displayName
+  };
 }
 function New_14(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
@@ -5635,69 +5706,69 @@ function New_16(pageId, keyId){
 }
 function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_21(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
     tags:tags
   };
 }
@@ -5706,38 +5777,38 @@ function New_22(maxSequence, buckets){
 }
 function New_23(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
 function New_24(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
 function New_25(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId, 
-    nodeAddress:nodeAddress, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId,
+    nodeAddress:nodeAddress,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
 function New_26(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
@@ -5746,30 +5817,30 @@ function New_27(messages, nextAfterMessageId){
 }
 function New_28(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
 function New_29(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_30(fromId, toId, body, tags){
   return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    fromId:fromId,
+    toId:toId,
+    body:body,
     tags:tags
   };
 }
@@ -5832,8 +5903,8 @@ class T extends Object_1 {
 }
 function New_31(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
-    rawArgu:rawArgu, 
-    duTypeName:duTypeName, 
+    rawArgu:rawArgu,
+    duTypeName:duTypeName,
     unionCaseName:unionCaseName,
     keyJson:keyJson
   };
@@ -6118,8 +6189,8 @@ function SyncElemNode(childrenOnly, el){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""), 
-    Dirty:false, 
+    Text:globalThis.document.createTextNode(""),
+    Dirty:false,
     Value:""
   };
 }
@@ -6235,21 +6306,21 @@ function DoSyncElement(el){
 }
 function New_32(shape, label_1, badge, className){
   return{
-    shape:shape, 
-    label:label_1, 
-    badge:badge, 
+    shape:shape,
+    label:label_1,
+    badge:badge,
     className:className
   };
 }
 function New_33(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -6516,8 +6587,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_1(Attr, {
-      $:2, 
-      $0:Item1, 
+      $:2,
+      $0:Item1,
       $1:Item2
     });
   }
@@ -6721,8 +6792,8 @@ function TextNodeDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0, 
-    $0:Item1, 
+    $:0,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -6931,8 +7002,8 @@ function counter(){
 }
 function Ready(Item1, Item2){
   return{
-    $:2, 
-    $0:Item1, 
+    $:2,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -6941,8 +7012,8 @@ function Forever(Item){
 }
 function Waiting(Item1, Item2){
   return{
-    $:3, 
-    $0:Item1, 
+    $:3,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -7238,9 +7309,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1, 
-      Children:Children_1, 
-      El:El, 
+      Attr:Attr_1,
+      Children:Children_1,
+      El:El,
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -7592,8 +7663,8 @@ class DynamicAttrNode extends Object_1 {
 }
 function New_35(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem, 
-    DynFlags:DynFlags, 
+    DynElem:DynElem,
+    DynFlags:DynFlags,
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -7615,8 +7686,8 @@ let _c_5=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2, 
-    $0:x, 
+    $:2,
+    $0:x,
     $1:y
   };
 }
@@ -7676,10 +7747,10 @@ function IsWhiteSpace(c){
 }
 function New_36(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1, 
-    Left:Left, 
-    Right:Right, 
-    Height:Height, 
+    Node:Node_1,
+    Left:Left,
+    Right:Right,
+    Height:Height,
     Count:Count
   };
 }
@@ -7710,8 +7781,8 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_1(Updates_1, {
-      c:Current, 
-      s:Snap, 
+      c:Current,
+      s:Snap,
       v:VarView
     });
   }
@@ -8101,8 +8172,8 @@ class CheckedInput {
   }
   static Valid(value, inputText){
     return Create_1(CheckedInput, {
-      $:0, 
-      $0:value, 
+      $:0,
+      $0:value,
       $1:inputText
     });
   }
@@ -8236,8 +8307,8 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
 });
 function New_39(created, evalOrVal, force){
   return{
-    c:created, 
-    v:evalOrVal, 
+    c:created,
+    v:evalOrVal,
     f:force
   };
 }

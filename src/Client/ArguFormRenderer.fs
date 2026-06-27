@@ -90,7 +90,8 @@ type AppendInputContextDto =
 
 [<JavaScript>]
 type KeySubmitPayloadDto =
-    { keys: string[] }
+    { keys: string[]
+      displayName: string }
 
 [<JavaScript>]
 type AppendSubmitPayloadDto =
@@ -417,9 +418,17 @@ module ArguFormRenderer =
                 actor.SetAttribute("id", "dynamic-argu-key-actor")
                 actor.SetAttribute("placeholder", "/user/durable-proxy")
                 actor.Value <- defaultActorAddress
+                let typeLabel = element "label" "dynamic-argu-label" "DU type or template key"
+                typeLabel.SetAttribute("for", "dynamic-argu-key-du-type")
                 let typeInput = input "text" "dynamic-argu-du-type" "dynamic-argu-key-du-type"
+                typeInput.SetAttribute("id", "dynamic-argu-key-du-type")
                 typeInput.SetAttribute("placeholder", "Full DU type name or template key")
                 typeInput.Value <- defaultTypeName
+                let aliasLabel = element "label" "dynamic-argu-label" "Target alias"
+                aliasLabel.SetAttribute("for", "dynamic-argu-key-alias")
+                let aliasInput = input "text" "dynamic-argu-key-alias" "dynamic-argu-key-alias"
+                aliasInput.SetAttribute("id", "dynamic-argu-key-alias")
+                aliasInput.SetAttribute("placeholder", "Display name (optional)")
 
                 let targetConfig = element "div" "dynamic-argu-target-config" null |> setTestId "dynamic-argu-key-target-config"
                 let argInput = doc.CreateElement("textarea") :?> HTMLTextAreaElement
@@ -460,12 +469,24 @@ module ArguFormRenderer =
 
                 renderTargetConfig ()
 
-                let submit = button "dynamic-argu-key-submit" "dynamic-argu-key-submit" "Bind target"
+                let actions = element "div" "dynamic-argu-key-actions" null |> setTestId "dynamic-argu-key-actions"
+                let clean = button "dynamic-argu-key-clean" "dynamic-argu-key-clean" "Clean"
+                let submit = button "dynamic-argu-key-ok primary" "dynamic-argu-key-submit" "OK"
+                clean.AddEventListener(
+                    "click",
+                    fun () ->
+                        actor.Value <- ""
+                        typeInput.Value <- ""
+                        aliasInput.Value <- ""
+                        argInput.Value <- ""
+                        renderTargetConfig ()
+                        actor.Focus())
                 submit.AddEventListener(
                     "click",
                     fun () ->
                         let actorAddress = actor.Value.Trim()
                         let selectedTypeName = typeInput.Value.Trim()
+                        let displayName = aliasInput.Value.Trim()
                         let keyTail =
                             match tryFindDocument selectedTypeName with
                             | Some _ -> [||]
@@ -480,16 +501,31 @@ module ArguFormRenderer =
 
                         if isBlank actorAddress then
                             actor.Focus()
+                        elif isBlank selectedTypeName then
+                            typeInput.Focus()
                         elif Option.isSome (tryFindDocument selectedTypeName) || keyTail.Length > 0 then
                             let payload: KeySubmitPayloadDto =
                                 { keys =
                                     [| yield actorAddress
                                        yield selectedTypeName
-                                       yield! keyTail |] }
+                                       yield! keyTail |]
+                                  displayName = displayName }
 
                             context.submitKey(box payload))
 
-                append root [| actorLabel :> Node; actor :> Node; typeInput :> Node; targetConfig :> Node; submit :> Node |] |> ignore
+                append actions [| clean :> Node; submit :> Node |] |> ignore
+
+                append
+                    root
+                    [| actorLabel :> Node
+                       actor :> Node
+                       typeLabel :> Node
+                       typeInput :> Node
+                       aliasLabel :> Node
+                       aliasInput :> Node
+                       targetConfig :> Node
+                       actions :> Node |]
+                |> ignore
                 Some(root :> Node)
 
     let unionCaseNamesFromContext (ctx: AppendInputContextDto) (schema: ArguFormSchemaDto) =
