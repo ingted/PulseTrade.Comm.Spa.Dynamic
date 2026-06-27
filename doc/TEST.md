@@ -342,8 +342,8 @@ dotnet fsi --exec G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\run-ptcs-dynamic
 
 Coverage:
 
-- direct `#r` load of `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta12` with `PulseTrade.Comm.Spa 0.2.5-beta20`;
+- direct `#r` load of `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta13` with `PulseTrade.Comm.Spa 0.2.5-beta21`;
 - local nupkg contains `lib/net10.0` DLL and bundled WebSharper JS/min/head assets;
 - JS marker contract includes `Bind target`, `Add value`, Remove-left list row classes, and no retired `dynamic-argu-key-du-type-list`;
-- live host starts an in-process PTCS + Dynamic server, prints Base/Chat/ActorArgu/Dynamic JS URLs, actor address, template key, web/cluster port, default key/argu, and verifies health/probe under `--no-wait`。
-- NuGet push accepted `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta12`; follow-up flat-container lookup lists beta12, so public restore availability is confirmed at feed index level.
+- live host starts an in-process PTCS + Dynamic server, prints Base/Chat/ActorArgu/Dynamic JS URLs, actor address, template key, web/cluster port, default key/argu, and under `--no-wait` verifies health、HTTP actor-argu send、WebSocket `actor-argu` send、state readback echo reply before calling `stopNuGetLiveHost()`。
+- NuGet push accepted `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta13`; follow-up flat-container lookup lists beta13, so public restore availability is confirmed at feed index level.
