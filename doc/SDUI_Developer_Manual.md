@@ -124,3 +124,45 @@ UI verifier 應用 F# + Playwright native API 驅動：
 
 - `DYN-T-512` package gate 新增 partial raw resolver case；`PulseTrade.Comm.Spa.Dynamic.Tests` 15/15 passed。
 - `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-dynamic-argu-live.fsx` 新增 Playwright gate：full PFCF data-range command、partial command、editable DU/template key、remove target -> no-target -> add partial target、remove page -> create generic `actor-argu` page -> add partial target，以及 submit 前 canonical input value 必須等於 typed raw string。
+
+## 2026-06-27：Argu list 欄位不是 dropdown
+
+現象：
+
+- `PFCFGTCCONF` / `PFCFGTC` 這類 union case 在 Argu type 上是 `'T list`。
+- 早期 renderer 因為 list item type 有 enum/options metadata，把每個 list item render 成 dropdown。
+- 這會把 parser-projected default values 誤解成固定選項，使用者無法自由輸入其他值，也無法只把 default 當初始值再增刪項目。
+
+正確語意：
+
+1. Argu `'T list` 是 repeatable value group。
+2. Backend parser 投影出來的 values 只是初始值，不是 UI lock-in。
+3. Browser FormInput 應 render 為多列 textbox。
+4. Add 只新增一列空 textbox。
+5. 每一列都要有 Remove，移除後 rebuilt raw Argu 不可包含該值。
+6. 如果 list item type 同時有 enum/options metadata，該 metadata 只能輔助未來 autocomplete / validation；在目前 FormInput UX 中不得轉成 select。
+7. Backend DSL 也必須反映這個規則：list item node/schema 應是 `Text` / `text` 且 options 為空。不能把 `valueItem kind=Select` 留在 list node 裡，否則未來 renderer 會再次誤判成 dropdown。
+
+Current regression gate：
+
+- `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-dynamic-argu-live.fsx` 確認 `PFCFGTCCONF` list 容器沒有 `select`。
+- 同一 gate 確認預設兩列是 `OIInf`、`TAIFEX` text input；Add 產生空 input；填入 `ManualEntry` 後 preview 追加該 token；Remove 後 preview 移除該 token。
+- `DYN-T-511` package gate 與 live 81 resolver check 確認 `PFCFGTCCONF.valueItem kind=text/options=0`，list node default values 仍保留 `OIInf,TAIFEX`。
+
+## 2026-06-27：DU/template key 是自由 full type name input
+
+現象：
+
+- Dynamic add-target UI 曾用 registry keys 產生 datalist/select-like 行為。
+- 在只有一個 host demo template 時，developer 會感覺 type string 被固定，無法自行輸入 full type name 或未來 template key。
+
+正確語意：
+
+1. Target key 第二段是 `duTypeOrTemplateKey`，對 developer 而言必須是自由字串欄位。
+2. Host 可以提供 placeholder/default，但不能用 select/datalist 鎖住候選。
+3. Resolver 失敗時由 backend 回 controlled error；frontend 不應偷偷 fallback 成 textarea 或把錯誤 key 改成 registry default。
+
+Current regression gate：
+
+- `verify-ptcs-host-dynamic-argu-live.fsx` 使用 Playwright native locator 驗證 `data-testid="dynamic-argu-key-du-type"` 是 input，且頁面不存在 `dynamic-argu-key-du-type-list` datalist 或 select。
+- Gate 以手動填入的 DU/template key 新增 target，確保 add-target path 不依賴 Host demo registry auto-select。

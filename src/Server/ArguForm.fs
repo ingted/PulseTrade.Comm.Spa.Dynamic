@@ -271,8 +271,8 @@ module ArguFormSchema =
 
     let singleField arguName (property: PropertyInfo) (argumentType: ArgumentType) =
         match argumentType, listElementType property.PropertyType with
-        | ArgumentType.List, Some elementType ->
-            let item = scalarField (fieldName property + "Item") (fieldLabel property) "" elementType
+        | ArgumentType.List, Some _elementType ->
+            let item = ArguFormField.text (fieldName property + "Item") (fieldLabel property) ""
             ArguFormField.list (fieldName property) (fieldLabel property) arguName item
         | _, _ ->
             scalarField (fieldName property) (fieldLabel property) arguName property.PropertyType

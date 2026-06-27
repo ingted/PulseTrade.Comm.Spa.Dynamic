@@ -373,12 +373,10 @@ module ArguFormRenderer =
                 |> Array.tryHead
                 |> Option.defaultValue ""
             let defaultTypeName =
-                if keys.Length = 0 then
-                    ""
-                elif defaultKeyParts.Length > 1 && keys |> Array.exists (fun key -> key = defaultKeyParts[1]) then
+                if defaultKeyParts.Length > 1 then
                     defaultKeyParts[1]
                 else
-                    keys[0]
+                    ""
 
             if keys.Length = 0 then
                 Some(errorNode "No Dynamic Argu schemas are registered." :> Node)
@@ -390,20 +388,9 @@ module ArguFormRenderer =
                 actor.SetAttribute("id", "dynamic-argu-key-actor")
                 actor.SetAttribute("placeholder", "/user/durable-proxy")
                 actor.Value <- defaultActorAddress
-                let typeListId = "dynamic-argu-key-du-type-list"
                 let typeInput = input "text" "dynamic-argu-du-type" "dynamic-argu-key-du-type"
-                typeInput.SetAttribute("list", typeListId)
-                typeInput.SetAttribute("placeholder", "DU type or template key")
+                typeInput.SetAttribute("placeholder", "Full DU type name or template key")
                 typeInput.Value <- defaultTypeName
-                let typeCandidates = doc.CreateElement("datalist")
-                typeCandidates.SetAttribute("id", typeListId)
-
-                keys
-                |> Array.iter (fun key ->
-                    let option = doc.CreateElement("option")
-                    option.SetAttribute("value", key)
-                    option.TextContent <- key
-                    typeCandidates.AppendChild option |> ignore)
 
                 let targetConfig = element "div" "dynamic-argu-target-config" null |> setTestId "dynamic-argu-key-target-config"
                 let argInput = doc.CreateElement("textarea") :?> HTMLTextAreaElement
@@ -424,17 +411,20 @@ module ArguFormRenderer =
                     targetConfig.TextContent <- ""
                     let typeName = typeInput.Value.Trim()
 
-                    match tryFindDocument typeName with
-                    | Some _ ->
-                        targetConfig.AppendChild(element "div" "dynamic-argu-target-note" "Direct DSL document target; no canonical Argu string required.") |> ignore
-                    | None ->
-                        match tryFindSchema typeName with
-                        | None -> targetConfig.AppendChild(errorNode ("Dynamic Argu schema not found for DU type: " + typeName)) |> ignore
+                    if isBlank typeName then
+                        targetConfig.AppendChild(element "div" "dynamic-argu-target-note" "Enter a full DU type name or registered template key.") |> ignore
+                    else
+                        match tryFindDocument typeName with
                         | Some _ ->
-                            let label = element "label" "dynamic-argu-label" "Canonical Argu string"
-                            label.SetAttribute("for", "dynamic-argu-key-canonical-arg-string")
-                            targetConfig.AppendChild label |> ignore
-                            targetConfig.AppendChild argInput |> ignore
+                            targetConfig.AppendChild(element "div" "dynamic-argu-target-note" "Direct DSL document target; no canonical Argu string required.") |> ignore
+                        | None ->
+                            match tryFindSchema typeName with
+                            | None -> targetConfig.AppendChild(errorNode ("Dynamic Argu schema not found for DU type: " + typeName)) |> ignore
+                            | Some _ ->
+                                let label = element "label" "dynamic-argu-label" "Canonical Argu string"
+                                label.SetAttribute("for", "dynamic-argu-key-canonical-arg-string")
+                                targetConfig.AppendChild label |> ignore
+                                targetConfig.AppendChild argInput |> ignore
 
                 typeInput.AddEventListener("input", fun () -> renderTargetConfig ())
                 typeInput.AddEventListener("change", fun () -> renderTargetConfig ())
@@ -470,7 +460,7 @@ module ArguFormRenderer =
 
                             context.submitKey(box payload))
 
-                append root [| actorLabel :> Node; actor :> Node; typeInput :> Node; typeCandidates :> Node; targetConfig :> Node; submit :> Node |] |> ignore
+                append root [| actorLabel :> Node; actor :> Node; typeInput :> Node; targetConfig :> Node; submit :> Node |] |> ignore
                 Some(root :> Node)
 
     let unionCaseNamesFromContext (ctx: AppendInputContextDto) (schema: ArguFormSchemaDto) =
@@ -613,27 +603,23 @@ module ArguFormRenderer =
             row.AppendChild tuple |> ignore
             getter <- fun () -> itemGetters |> Seq.collect (fun getter -> getter ()) |> Seq.toArray
         | "list" ->
-            let list = element "div" "dynamic-argu-list" null |> setTestId ("dynamic-argu-list-" + asText field.name)
-            let itemGetters = ResizeArray<unit -> string[]>()
-            let add = button "dynamic-argu-add-list-item" ("dynamic-argu-list-add-" + asText field.name) "Add"
+            let listTestKey = asText caseName + "-" + asText field.name
+            let list = element "div" "dynamic-argu-list" null |> setTestId ("dynamic-argu-list-" + listTestKey)
+            let add = button "dynamic-argu-add-list-item" ("dynamic-argu-list-add-" + listTestKey) "Add"
 
             let addInput defaults =
-                let item =
-                    field.items
-                    |> arrayOrEmpty
-                    |> Array.tryHead
-                    |> Option.defaultValue
-                        { name = field.name + "Item"
-                          label = field.label
-                          kind = "text"
-                          arguName = ""
-                          options = [||]
-                          items = [||] }
-
-                let node, getter = renderScalarInput ("dynamic-argu-list-item-" + asText field.name) item.kind item.options defaults
+                let itemRow = element "div" "dynamic-argu-list-item-row" null |> setTestId ("dynamic-argu-list-row-" + listTestKey)
+                let node = input "text" "dynamic-argu-input dynamic-argu-list-item-input" ("dynamic-argu-list-item-" + listTestKey)
+                node.Value <- defaults |> Array.tryHead |> Option.defaultValue ""
+                node.SetAttribute("data-dynamic-argu-input", "true")
                 node.SetAttribute("data-dynamic-argu-list-item", "true")
-                itemGetters.Add getter
-                list.InsertBefore(node, add) |> ignore
+                wireInputEvents node
+                let remove = button "dynamic-argu-remove-list-item" ("dynamic-argu-list-remove-" + listTestKey) "Remove"
+                remove.AddEventListener("click", fun () ->
+                    list.RemoveChild(itemRow) |> ignore
+                    refresh ())
+                append itemRow [| node :> Node; remove :> Node |] |> ignore
+                list.InsertBefore(itemRow, add) |> ignore
 
             add.AddEventListener("click", fun () ->
                 addInput [||]
@@ -647,7 +633,10 @@ module ArguFormRenderer =
                 fieldDefaults |> Array.iter (fun value -> addInput [| value |])
 
             row.AppendChild list |> ignore
-            getter <- fun () -> itemGetters |> Seq.collect (fun getter -> getter ()) |> Seq.toArray
+            getter <-
+                fun () ->
+                    queryInputs list "input[data-dynamic-argu-list-item='true']"
+                    |> Array.map elementValue
         | "bool" | "bool-value" ->
             let node = input "checkbox" "dynamic-argu-input" ("dynamic-argu-bool-" + asText field.name)
             let value = fieldDefaults |> Array.tryHead |> Option.defaultValue ""

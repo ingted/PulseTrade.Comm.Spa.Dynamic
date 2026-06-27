@@ -608,19 +608,17 @@ let tests =
                         yield! flattenField item
                 }
 
-            let schemaOptions unionCaseName fieldName =
+            let schemaField unionCaseName fieldName =
                 reply.Document.ArguFormSchema.UnionCases
                 |> Seq.find (fun unionCase -> unionCase.Name = unionCaseName)
                 |> fun unionCase -> unionCase.Fields |> Seq.collect flattenField
                 |> Seq.find (fun field -> field.Name = fieldName)
-                |> _.Options
 
+            let pfcfgtcconfItem = schemaField "PFCFGTCCONF" "valueItem"
+            Expect.equal pfcfgtcconfItem.Kind "text" "Argu list item schema should render as text, not dropdown/select"
+            Expect.isEmpty pfcfgtcconfItem.Options "Argu list item schema should not carry enum options that imply dropdown lock-in"
             Expect.contains
-                (schemaOptions "PFCFGTCCONF" "valueItem")
-                "OIInf"
-                "endpoint schema should append canonical list enum defaults so frontend select can preserve raw casing"
-            Expect.contains
-                (schemaOptions "DataRange" "ReferenceDateMode.value")
+                (schemaField "DataRange" "ReferenceDateMode.value").Options
                 "ModeAccountingDate"
                 "endpoint schema should append canonical tail enum defaults so frontend select can preserve raw casing"
 

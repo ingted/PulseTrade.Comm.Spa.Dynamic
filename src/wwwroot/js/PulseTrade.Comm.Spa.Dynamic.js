@@ -42,7 +42,7 @@ function renderAddKey(ctx){
     const defaultKeyParts=keyPartsFromJson(ctx.defaultKey);
     const o=tryHead(defaultKeyParts);
     const defaultActorAddress=o==null?"":o.$0;
-    const defaultTypeName=length(keys)===0?"":length(defaultKeyParts)>1&&exists((key) => key==get(defaultKeyParts, 1), keys)?get(defaultKeyParts, 1):get(keys, 0);
+    const defaultTypeName=length(defaultKeyParts)>1?get(defaultKeyParts, 1):"";
     if(length(keys)===0)return Some(errorNode("No Dynamic Argu schemas are registered."));
     else {
       const root=setTestId("dynamic-argu-add-key", element("div", "dynamic-argu-add-key", null));
@@ -52,19 +52,9 @@ function renderAddKey(ctx){
       actor.setAttribute("id", "dynamic-argu-key-actor");
       actor.setAttribute("placeholder", "/user/durable-proxy");
       actor.value=defaultActorAddress;
-      const typeListId="dynamic-argu-key-du-type-list";
       const typeInput=input("text", "dynamic-argu-du-type", "dynamic-argu-key-du-type");
-      typeInput.setAttribute("list", typeListId);
-      typeInput.setAttribute("placeholder", "DU type or template key");
+      typeInput.setAttribute("placeholder", "Full DU type name or template key");
       typeInput.value=defaultTypeName;
-      const typeCandidates=doc().createElement("datalist");
-      typeCandidates.setAttribute("id", typeListId);
-      iter((key) => {
-        const option=doc().createElement("option");
-        option.setAttribute("value", key);
-        option.textContent=key;
-        typeCandidates.appendChild(option);
-      }, keys);
       const targetConfig=setTestId("dynamic-argu-key-target-config", element("div", "dynamic-argu-target-config", null));
       const argInput=doc().createElement("textarea");
       argInput.className="dynamic-argu-canonical-arg-string";
@@ -75,7 +65,8 @@ function renderAddKey(ctx){
       const renderTargetConfig=() => {
         targetConfig.textContent="";
         const typeName=Trim(typeInput.value);
-        if(tryFindDocument(typeName)==null){
+        if(isBlank(typeName))targetConfig.appendChild(element("div", "dynamic-argu-target-note", "Enter a full DU type name or registered template key."));
+        else if(tryFindDocument(typeName)==null){
           const _1=tryFindSchema(typeName);
           if(_1!=null&&_1.$==1){
             const label_1=element("label", "dynamic-argu-label", "Canonical Argu string");
@@ -102,7 +93,7 @@ function renderAddKey(ctx){
         else keyTail=[];
         return isBlank(actorAddress)?actor.focus():tryFindDocument(selectedTypeName)!=null||length(keyTail)>0?ctx.submitKey(New_3(ofSeq(delay(() => append_2([actorAddress], delay(() => append_2([selectedTypeName], delay(() => keyTail)))))))):null;
       });
-      append(root, [actorLabel, actor, typeInput, typeCandidates, targetConfig, submit]);
+      append(root, [actorLabel, actor, typeInput, targetConfig, submit]);
       return Some(root);
     }
   }
@@ -346,53 +337,6 @@ function renderField(refresh, defaultMap, caseName, field){
     node_4.addEventListener("input", refresh);
     node_4.addEventListener("change", refresh);
   };
-  const renderScalarInput=(testId, itemKind, options, defaults) => {
-    const m_1=asText(itemKind);
-    switch(m_1){
-      case"number":
-        const node_4=input("number", "dynamic-argu-input", testId);
-        const o_3=tryHead(defaults);
-        let _5=o_3==null?"":o_3.$0;
-        node_4.value=_5;
-        node_4.setAttribute("data-dynamic-argu-input", "true");
-        wireInputEvents(node_4);
-        return[node_4, () =>[elementValue(node_4)]];
-      case"enum":
-        const node_5=doc().createElement("select");
-        node_5.className="dynamic-argu-select";
-        setTestId(testId, node_5);
-        node_5.setAttribute("data-dynamic-argu-input", "true");
-        iter((value_2) => {
-          const option=doc().createElement("option");
-          option.setAttribute("value", asText(value_2));
-          option.textContent=asText(value_2);
-          node_5.appendChild(option);
-        }, arrayOrEmpty(options));
-        const x_4=tryHead(defaults);
-        const v_1=elementValue(node_5);
-        let _6=x_4==null?v_1:x_4.$0;
-        setElementValue(node_5, _6);
-        wireInputEvents(node_5);
-        return[node_5, () =>[elementValue(node_5)]];
-      case"bool-value":
-      case"bool":
-        const node_6=input("checkbox", "dynamic-argu-input", testId);
-        const o_4=tryHead(defaults);
-        const value_1=o_4==null?"":o_4.$0;
-        node_6.checked=value_1.toLowerCase()=="true"||value_1=="1"||value_1.toLowerCase()=="yes";
-        node_6.setAttribute("data-dynamic-argu-input", "true");
-        wireInputEvents(node_6);
-        return[node_6, () => ofSeq(delay(() => node_6.checked?["true"]:["false"]))];
-      default:
-        const node_7=input("text", "dynamic-argu-input", testId);
-        const o_5=tryHead(defaults);
-        let _7=o_5==null?"":o_5.$0;
-        node_7.value=_7;
-        node_7.setAttribute("data-dynamic-argu-input", "true");
-        wireInputEvents(node_7);
-        return[node_7, () =>[node_7.value]];
-    }
-  };
   const m=asText(field.kind);
   switch(m){
     case"number":
@@ -429,37 +373,92 @@ function renderField(refresh, defaultMap, caseName, field){
       const tuple=setTestId("dynamic-argu-tuple-"+asText(field.name), x_2);
       const itemGetters=MarkResizable([]);
       _1=(iteri((_5, _6) => {
-        const x_4=element("div", "dynamic-argu-tuple-item", null);
-        const itemRow=setTestId("dynamic-argu-tuple-item-"+String(asText(field.name))+"-"+String(_5+1), x_4);
+        let p;
+        const x_3=element("div", "dynamic-argu-tuple-item", null);
+        const itemRow=setTestId("dynamic-argu-tuple-item-"+String(asText(field.name))+"-"+String(_5+1), x_3);
         itemRow.appendChild(label(String(_5+1)+". "+String(isBlank(_6.label)?_6.name:_6.label)));
-        const p=renderScalarInput("", _6.kind, _6.options, defaultValuesFor(defaultMap, caseName, _6.name));
-        const node_4=p[0];
-        node_4.setAttribute("data-dynamic-argu-tuple-item", String(_5+1));
+        const testId="";
+        const defaults=defaultValuesFor(defaultMap, caseName, _6.name);
+        const m_1=asText(_6.kind);
+        switch(m_1){
+          case"number":
+            const node_4=input("number", "dynamic-argu-input", testId);
+            const o_3=tryHead(defaults);
+            let _7=o_3==null?"":o_3.$0;
+            node_4.value=_7;
+            node_4.setAttribute("data-dynamic-argu-input", "true");
+            wireInputEvents(node_4);
+            p=[node_4, () =>[elementValue(node_4)]];
+            break;
+          case"enum":
+            const node_5=doc().createElement("select");
+            node_5.className="dynamic-argu-select";
+            setTestId(testId, node_5);
+            node_5.setAttribute("data-dynamic-argu-input", "true");
+            iter((value_2) => {
+              const option=doc().createElement("option");
+              option.setAttribute("value", asText(value_2));
+              option.textContent=asText(value_2);
+              node_5.appendChild(option);
+            }, arrayOrEmpty(_6.options));
+            const x_4=tryHead(defaults);
+            const v_1=elementValue(node_5);
+            let _8=x_4==null?v_1:x_4.$0;
+            setElementValue(node_5, _8);
+            wireInputEvents(node_5);
+            p=[node_5, () =>[elementValue(node_5)]];
+            break;
+          case"bool-value":
+          case"bool":
+            const node_6=input("checkbox", "dynamic-argu-input", testId);
+            const o_4=tryHead(defaults);
+            const value_1=o_4==null?"":o_4.$0;
+            p=(node_6.checked=value_1.toLowerCase()=="true"||value_1=="1"||value_1.toLowerCase()=="yes",node_6.setAttribute("data-dynamic-argu-input", "true"),wireInputEvents(node_6),[node_6, () => ofSeq(delay(() => node_6.checked?["true"]:["false"]))]);
+            break;
+          default:
+            const node_7=input("text", "dynamic-argu-input", testId);
+            const o_5=tryHead(defaults);
+            let _9=o_5==null?"":o_5.$0;
+            node_7.value=_9;
+            node_7.setAttribute("data-dynamic-argu-input", "true");
+            wireInputEvents(node_7);
+            p=[node_7, () =>[node_7.value]];
+            break;
+        }
+        const node_8=p[0];
+        node_8.setAttribute("data-dynamic-argu-tuple-item", String(_5+1));
         itemGetters.push(p[1]);
-        itemRow.appendChild(node_4);
+        itemRow.appendChild(node_8);
         tuple.appendChild(itemRow);
       }, arrayOrEmpty(field.items)),row.appendChild(tuple),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters))));
       break;
     case"list":
-      const x_3=element("div", "dynamic-argu-list", null);
-      const list=setTestId("dynamic-argu-list-"+asText(field.name), x_3);
-      const itemGetters_1=MarkResizable([]);
-      const add=button("dynamic-argu-add-list-item", "dynamic-argu-list-add-"+asText(field.name), "Add");
+      const listTestKey=asText(caseName)+"-"+asText(field.name);
+      const list=setTestId("dynamic-argu-list-"+listTestKey, element("div", "dynamic-argu-list", null));
+      const add=button("dynamic-argu-add-list-item", "dynamic-argu-list-add-"+listTestKey, "Add");
       const addInput=(defaults) => {
-        const o_3=tryHead(arrayOrEmpty(field.items));
-        const item=o_3==null?New_34(field.name+"Item", field.label, "text", "", [], []):o_3.$0;
-        const p=renderScalarInput("dynamic-argu-list-item-"+asText(field.name), item.kind, item.options, defaults);
-        const node_4=p[0];
+        const itemRow=setTestId("dynamic-argu-list-row-"+listTestKey, element("div", "dynamic-argu-list-item-row", null));
+        const node_4=input("text", "dynamic-argu-input dynamic-argu-list-item-input", "dynamic-argu-list-item-"+listTestKey);
+        const o_3=tryHead(defaults);
+        let _5=o_3==null?"":o_3.$0;
+        node_4.value=_5;
+        node_4.setAttribute("data-dynamic-argu-input", "true");
         node_4.setAttribute("data-dynamic-argu-list-item", "true");
-        itemGetters_1.push(p[1]);
-        list.insertBefore(node_4, add);
+        wireInputEvents(node_4);
+        const remove=button("dynamic-argu-remove-list-item", "dynamic-argu-list-remove-"+listTestKey, "Remove");
+        remove.addEventListener("click", () => {
+          list.removeChild(itemRow);
+          return refresh();
+        });
+        append(itemRow, [node_4, remove]);
+        list.insertBefore(itemRow, add);
       };
       _1=(add.addEventListener("click", () => {
         addInput([]);
         return refresh();
       }),list.appendChild(add),length(fieldDefaults)===0?addInput([]):iter((value_1) => {
         addInput([value_1]);
-      }, fieldDefaults),row.appendChild(list),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters_1))));
+      }, fieldDefaults),row.appendChild(list),void(getter=() => map(elementValue, queryInputs(list, "input[data-dynamic-argu-list-item='true']"))));
       break;
     case"bool-value":
     case"bool":
@@ -500,6 +499,10 @@ function elementValue(node){
 }
 function setElementValue(node, value){
   node.value=value;
+}
+function queryInputs(root, selector){
+  const nodes=root.querySelectorAll(selector);
+  return ofSeq(delay(() => map_1((index) => nodes[index], range(0, toInt(nodes.length)-1))));
 }
 function flattenNodeDefaults(node){
   return delay(() =>!(node==null)?append_2([node], delay(() => append_2(collect_1(flattenNodeDefaults, arrayOrEmpty(node.children)), delay(() => collect_1(flattenNodeDefaults, arrayOrEmpty(node.items)))))):[]);
@@ -3745,12 +3748,19 @@ function Some(Value){
 function FailWith(msg){
   throw new Error(msg);
 }
-function KeyValue(kvp){
-  return[kvp.K, kvp.V];
-}
 function range(min, max_1){
   const count=1+max_1-min;
   return count<=0?[]:init_1(count, (x) => x+min);
+}
+function toInt(x){
+  const u=toUInt(x);
+  return u>2147483647?u-4294967296:u;
+}
+function KeyValue(kvp){
+  return[kvp.K, kvp.V];
+}
+function toUInt(x){
+  return(x<0?Math.ceil(x):Math.floor(x))>>>0;
 }
 function New(status, count, maxSequence, pages){
   return{
@@ -3763,6 +3773,9 @@ function New(status, count, maxSequence, pages){
 function iter(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)f(arr[i]);
 }
+function tryHead(arr){
+  return arr.length===0?null:Some(arr[0]);
+}
 function concat(xs){
   return Array.prototype.concat.apply([], ofSeq(xs));
 }
@@ -3771,19 +3784,6 @@ function distinct(l){
 }
 function sort(arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, _1], arr).sort(Compare));
-}
-function exists(f, x){
-  let e, i;
-  e=false;
-  i=0;
-  const l=length(x);
-  while(!e&&i<l)
-    if(f(x[i]))e=true;
-    else i=i+1;
-  return e;
-}
-function tryHead(arr){
-  return arr.length===0?null:Some(arr[0]);
 }
 function map(f, arr){
   const r=new Array(arr.length);
@@ -3805,6 +3805,16 @@ function tryFind(f, arr){
       i=i+1;
     }
   return res;
+}
+function exists(f, x){
+  let e, i;
+  e=false;
+  i=0;
+  const l=length(x);
+  while(!e&&i<l)
+    if(f(x[i]))e=true;
+    else i=i+1;
+  return e;
 }
 function sortBy(f, arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) => Compare(_1[1], _2[1])));
@@ -4624,6 +4634,9 @@ function exists_1(p, s){
     if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
   }
 }
+function init_1(n, f){
+  return take(n, initInfinite(f));
+}
 function fold_1(f, x, s){
   let r;
   r=x;
@@ -4637,6 +4650,30 @@ function fold_1(f, x, s){
     const _1=e;
     if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
   }
+}
+function take(n, s){
+  n<0?nonNegative():void 0;
+  return{GetEnumerator:() => {
+    const e=[Get(s)];
+    return new T(0, null, (o) => {
+      o.s=o.s+1;
+      if(o.s>n)return false;
+      else {
+        const en=e[0];
+        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
+      }
+    }, () => {
+      const x=e[0];
+      if(!Equals(x, null))x.Dispose();
+    });
+  }};
+}
+function initInfinite(f){
+  return{GetEnumerator:() => new T(0, null, (e) => {
+    e.c=f(e.s);
+    e.s=e.s+1;
+    return true;
+  }, void 0)};
 }
 function rev(s){
   return delay(() => ofSeq(s).slice().reverse());
@@ -4719,35 +4756,8 @@ function exists2(p, s1, s2){
     if(typeof _2=="object"&&isIDisposable(_2))e1.Dispose();
   }
 }
-function init_1(n, f){
-  return take(n, initInfinite(f));
-}
 function seqEmpty(){
   return FailWith("The input sequence was empty.");
-}
-function take(n, s){
-  n<0?nonNegative():void 0;
-  return{GetEnumerator:() => {
-    const e=[Get(s)];
-    return new T(0, null, (o) => {
-      o.s=o.s+1;
-      if(o.s>n)return false;
-      else {
-        const en=e[0];
-        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
-      }
-    }, () => {
-      const x=e[0];
-      if(!Equals(x, null))x.Dispose();
-    });
-  }};
-}
-function initInfinite(f){
-  return{GetEnumerator:() => new T(0, null, (e) => {
-    e.c=f(e.s);
-    e.s=e.s+1;
-    return true;
-  }, void 0)};
 }
 function unfold(f, s){
   return{GetEnumerator:() => new T(s, null, (e) => {
@@ -5894,7 +5904,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_35(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_34(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -6094,16 +6104,6 @@ function New_33(pageId, title, setName, shape, tabId, tabMode, path, description
     tabMode:tabMode, 
     path:path, 
     description:description
-  };
-}
-function New_34(name, label_1, kind, arguName, options, items){
-  return{
-    name:name, 
-    label:label_1, 
-    kind:kind, 
-    arguName:arguName, 
-    options:options, 
-    items:items
   };
 }
 function buildRawArguFromValues(fields){
@@ -6823,7 +6823,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_36(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_35(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -7100,7 +7100,7 @@ class DocElemNode {
     return Create_1(DocElemNode, _2);
   }
 }
-function New_35(PreviousNodes, Top){
+function New_34(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -7178,7 +7178,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_38((a) => {
+    r(New_37((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -7203,7 +7203,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_38((a) => {
+    if(!ct.c)c(New_37((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -7362,7 +7362,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_37(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_36(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -7443,7 +7443,7 @@ class DynamicAttrNode extends Object_1 {
     }, view);
   }
 }
-function New_36(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_35(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
     DynElem:DynElem, 
     DynFlags:DynFlags, 
@@ -7527,7 +7527,7 @@ function TryParse_2(s, min, max_1, r){
 function IsWhiteSpace(c){
   return c.match(new RegExp("\\s"))!==null;
 }
-function New_37(Node_1, Left, Right, Height, Count){
+function New_36(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1, 
     Left:Left, 
@@ -7777,7 +7777,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_38(k, ct){
+function New_37(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -7799,7 +7799,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_39(false, []);
+    this.noneCT=New_38(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -7808,7 +7808,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_39(IsCancellationRequested, Registrations){
+function New_38(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -8066,7 +8066,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create(f){
-  return New_40(false, f, forceLazy);
+  return New_39(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -8087,7 +8087,7 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_40(created, evalOrVal, force){
+function New_39(created, evalOrVal, force){
   return{
     c:created, 
     v:evalOrVal, 
