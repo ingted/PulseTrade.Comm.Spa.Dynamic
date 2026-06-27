@@ -96,7 +96,8 @@ type KeySubmitPayloadDto =
 type AppendSubmitPayloadDto =
     { rawArgu: string
       duTypeName: string
-      unionCaseName: string }
+      unionCaseName: string
+      keyJson: string }
 
 [<JavaScript>]
 type ResolveTargetRequestDto =
@@ -330,6 +331,34 @@ module ArguFormRenderer =
     let tryFindDocument documentId =
         documents
         |> Array.tryFind (fun document -> asText document.documentId = asText documentId)
+
+    let isActorAddress value =
+        let text = asText value |> _.Trim()
+        let lower = text.ToLower()
+        text.StartsWith("/")
+        || lower.StartsWith("akka.")
+        || lower.StartsWith("akka://")
+
+    let isRegisteredArguSchema value =
+        tryFindSchema value |> Option.isSome
+
+    let normalizeDynamicTargetKeyParts (keyParts: string[]) =
+        let keyParts = arrayOrEmpty keyParts |> Array.map asText
+
+        if keyParts.Length = 3 then
+            let first = keyParts[0]
+            let second = keyParts[1]
+            let third = keyParts[2]
+
+            if (not (isActorAddress first)) && isActorAddress second && isRegisteredArguSchema third then
+                [| second; third; first |]
+            else
+                keyParts
+        else
+            keyParts
+
+    let keyJsonForSubmit (keyParts: string[]) =
+        JSON.Stringify(keyParts)
 
     let quoteArg value =
         ClientRawArguCodec.quoteArg value
@@ -762,7 +791,8 @@ module ArguFormRenderer =
                         let payload: AppendSubmitPayloadDto =
                             { rawArgu = raw
                               duTypeName = typeName
-                              unionCaseName = caseName }
+                              unionCaseName = caseName
+                              keyJson = keyJsonForSubmit (normalizeDynamicTargetKeyParts context.keyParts) }
 
                         context.submit(box payload))
 
@@ -787,7 +817,8 @@ module ArguFormRenderer =
                             let payload: AppendSubmitPayloadDto =
                                 { rawArgu = raw
                                   duTypeName = typeName
-                                  unionCaseName = "__document" }
+                                  unionCaseName = "__document"
+                                  keyJson = keyJsonForSubmit (normalizeDynamicTargetKeyParts context.keyParts) }
 
                             context.submit(box payload))
 
@@ -797,8 +828,12 @@ module ArguFormRenderer =
 
     let renderAppendInput (ctx: obj) =
         let context = ctx |> As<AppendInputContextDto>
-        let typeName = asText context.duTypeName
-        let keyParts = arrayOrEmpty context.keyParts |> Array.map asText
+        let keyParts = context.keyParts |> normalizeDynamicTargetKeyParts
+        let typeName =
+            if keyParts.Length > 1 then
+                asText keyParts[1]
+            else
+                asText context.duTypeName
         let isBackendTarget = keyParts.Length = 3 && not (isBlank keyParts[2])
 
         if isBlank typeName then

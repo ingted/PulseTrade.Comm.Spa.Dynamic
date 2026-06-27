@@ -262,3 +262,12 @@ Implementation status:
 ## 2026-06-27 - Correction: PulseTrade.Comm.Spa.Dynamic 0.1.3-beta13 NuGet propagation complete
 
 - NuGet flat-container now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta13`.
+
+## 2026-06-27 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta14 Ordered Target-Key Submit Compatibility
+
+- Background: PTCS Actor Dynamic target keys are positional `[actor; template; raw]`, but legacy live PCSL could expose sorted triples from older PTCS stream canonicalization. When Dynamic read those triples, it could treat the actor address as the template key and report `Unknown Dynamic Argu template`.
+- Change: `Client/ArguFormRenderer.fs` now includes `keyJson` in append submit payloads and normalizes legacy sorted triples where the first segment is not an actor, the second segment is an actor, and the third segment is a registered Argu schema/template. The repaired order is `[actor; template; raw]`.
+- Boundary: PTCS beta23 owns append-page stream key ordering, snapshot overlay, browser keyId canonical identity, and Host stale demo target cleanup. Dynamic beta14 only repairs renderer payloads and does not add Host-specific sample DU code.
+- Package version bumped from `0.1.3-beta13` to `0.1.3-beta14`.
+- NuGet push returned `Created` / `Your package was pushed` for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta14`; immediate v3 flat-container/registration lookup at 2026-06-27 18:37 +08:00 was still propagation-pending and did not list beta14 yet.
+- Verification: Release build passed with existing WS9002 / NU5123 / missing-readme warnings and generated `src\bin\Release\PulseTrade.Comm.Spa.Dynamic.0.1.3-beta14.nupkg`; cross-repo PTC `verify-ptcs-host-dynamic-argu-live.fsx` passed with legacy sorted key injection, echo, and canvas; `verify-ptcs-dynamic-nuget-bundle.fsx` and `run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait` passed for PTCS beta23 + Dynamic beta14.

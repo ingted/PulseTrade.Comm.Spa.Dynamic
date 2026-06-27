@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>PulseTrade.Comm.Spa.Dynamic</PackageId>
-    <Version>0.1.3-beta13</Version>
+    <Version>0.1.3-beta14</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Dynamic SDUI and Actor extension for PulseTrade.Comm.Spa</Description>
     <WebSharperProject>Bundle</WebSharperProject>
@@ -40,6 +40,16 @@
     <Compile Include="Client/DynamicRenderer.fs" />
     <Compile Include="Client/ArguFormRenderer.fs" />
     <Compile Include="Client/ActorDynamicTab.fs" />
+	  <None Include="G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\run-ptcs-host-dynamic-argu-test-host.fsx">
+		  <Link>run-ptcs-host-dynamic-argu-test-host.fsx</Link>
+	  </None>
+	  <None Include="G:\PulseTrade.fs\Libs/PulseTrade.Comm/scripts/run-ptcs-dynamic-nuget-live-host.fsx">
+		  <Link>run-ptcs-dynamic-nuget-live-host.fsx</Link>
+	  </None>
+	  <None Include="G:\PulseTrade.fs\Libs/PulseTrade.Comm/scripts/verify-ptcs-dynamic-nuget-bundle.fsx">
+		  <Link>verify-ptcs-dynamic-nuget-bundle.fsx</Link>
+	  </None>
+
   </ItemGroup>
 
   <ItemGroup>

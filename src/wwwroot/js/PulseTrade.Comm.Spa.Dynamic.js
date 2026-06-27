@@ -103,8 +103,8 @@ function registerAppendInputRenderer(name, priority, renderer){
 }
 function renderAppendInput(ctx){
   let _1;
-  const typeName=asText(ctx.duTypeName);
-  const keyParts=map(asText, arrayOrEmpty(ctx.keyParts));
+  const keyParts=normalizeDynamicTargetKeyParts(ctx.keyParts);
+  const typeName=length(keyParts)>1?asText(get(keyParts, 1)):asText(ctx.duTypeName);
   const isBackendTarget=length(keyParts)===3&&!isBlank(get(keyParts, 2));
   if(isBlank(typeName))return null;
   else {
@@ -213,6 +213,16 @@ function schemaKeys(){
 function documentKeys(){
   return sort(filter((x) =>!isBlank(x), map((a) => a.documentId, documents())));
 }
+function normalizeDynamicTargetKeyParts(keyParts){
+  const keyParts_1=map(asText, arrayOrEmpty(keyParts));
+  if(length(keyParts_1)===3){
+    const first=get(keyParts_1, 0);
+    const second=get(keyParts_1, 1);
+    const third=get(keyParts_1, 2);
+    return!isActorAddress(first)&&isActorAddress(second)&&isRegisteredArguSchema(third)?[second, third, first]:keyParts_1;
+  }
+  else return keyParts_1;
+}
 function postJson(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
@@ -270,7 +280,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
       send.addEventListener("click", () => {
         const raw=caseRaw();
         rawPreview.textContent=raw;
-        return context.submit(New_31(raw, typeName, caseName));
+        return context.submit(New_31(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
       });
       append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
       root.appendChild(caseRow);
@@ -284,7 +294,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
           fullSend.addEventListener("click", () => {
             const raw=fullRaw();
             fullPreview.textContent=raw;
-            return context.submit(New_31(raw, typeName, "__document"));
+            return context.submit(New_31(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
           append(root, [fullPreview, fullSend]);
           refreshFullPreview();
@@ -310,6 +320,14 @@ function set_documents(_1){
 }
 function documents(){
   return _c_1.documents;
+}
+function isActorAddress(value){
+  const text=Trim(asText(value));
+  const lower=text.toLowerCase();
+  return StartsWith(text, "/")||StartsWith(lower, "akka.")||StartsWith(lower, "akka://");
+}
+function isRegisteredArguSchema(value){
+  return tryFindSchema(value)!=null;
 }
 function errorMessage(error){
   return error==null?"unknown error":String(error);
@@ -479,6 +497,9 @@ function renderField(refresh, defaultMap, caseName, field){
       break;
   }
   return[row, getter];
+}
+function keyJsonForSubmit(keyParts){
+  return JSON.stringify(keyParts);
 }
 function defaultsFromDocument(document){
   return document!=null&&document.$==1?document.$0==null?(document.$0,new FSharpMap("New", [])):OfArray(ofSeq(choose_1((node) => {
@@ -991,7 +1012,10 @@ function mountAppendPage(page, definition){
     writeSnapshotWithWatermark(stateCacheKey(), snapshot, snapshot.maxSequence, appendPageValueCount(snapshot), "append-page-state");
     writeAppendPageKeyWatermark(snapshot);
   };
-  const appendPageKeyId=(keys) => asText_1(definition.setName)+"::"+concat_2(" + ", arrayOrEmpty_1(keys));
+  const appendPageKeyId=(keys) => asText_1(definition.setName)+"::"+concat_2(" + ", sortBy((key) => key.toLowerCase(), distinctBy((key) => key.toLowerCase(), choose((key) => {
+    const text=Trim(asText_1(key));
+    return isBlank_1(text)?null:Some(text);
+  }, arrayOrEmpty_1(keys)))));
   const sortAppendPageBuckets=(items) => sortBy((bucket) =>[asText_1(bucket.setName), asText_1(bucket.keyId)], arrayOrEmpty_1(items));
   const sequenceBounds=(items) => {
     let oldest, newest;
@@ -1288,20 +1312,34 @@ function mountAppendPage(page, definition){
     updateKeyRegistryHealth();
   };
   const effectiveSelectedKeys=() => {
-    const m=tryFind((bucket) => bucket.keyId==selected, buckets);
-    return m==null?keysFromJson(selectedKeyJson):arrayOrEmpty_1(m.$0.keys);
+    const selectedJsonKeys=keysFromJson(selectedKeyJson);
+    const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
+    if(m==null)return keysFromJson(selectedKeyJson);
+    else {
+      const bucket=m.$0;
+      return length(selectedJsonKeys)>0&&sameText(appendPageKeyId(selectedJsonKeys), bucket.keyId)?(m.$0,selectedJsonKeys):arrayOrEmpty_1(m.$0.keys);
+    }
   };
   const effectiveSelectedKeyJson=() => {
-    const m=tryFind((bucket) => bucket.keyId==selected, buckets);
-    return m==null?selectedKeyJson:keysAsJson(m.$0.keys);
+    const selectedJsonKeys=keysFromJson(selectedKeyJson);
+    const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
+    if(m==null)return selectedKeyJson;
+    else {
+      const bucket=m.$0;
+      return length(selectedJsonKeys)>0&&sameText(appendPageKeyId(selectedJsonKeys), bucket.keyId)?(m.$0,selectedKeyJson):keysAsJson(m.$0.keys);
+    }
   };
   const selectedBucket=() => {
-    const m=tryFind((bucket) => bucket.keyId==selected, buckets);
+    const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
     if(m==null){
       const keys=effectiveSelectedKeys();
       return length(keys)===0?null:Some(New_11(appendPageKeyId(keys), keys, definition.setName, 0, 0n, 0n, "", []));
     }
-    else return Some(m.$0);
+    else {
+      const bucket=m.$0;
+      const keys_1=effectiveSelectedKeys();
+      return Some(New_11(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
+    }
   };
   deleteAcceptedPendingAppends=(bucket) =>(acceptedValues) => {
     const acceptedValues_1=arrayOrEmpty_1(acceptedValues);
@@ -1477,6 +1515,53 @@ function mountAppendPage(page, definition){
                   setStatus(workState, "Appended through WebSocket");
                 });
               }
+              if(sameText(responseType, "actor-argu"))(((event_1, value) => {
+                let keys, matched, _5;
+                if(!(value==null)&&!isBlank_1(value.valueId)){
+                  const eventKeys=event_1==null||event_1.streamKey==null?[]:arrayOrEmpty_1(event_1.streamKey.keys);
+                  if(length(eventKeys)>0)keys=eventKeys;
+                  else {
+                    const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
+                    keys=m==null?keysFromJson(selectedKeyJson):arrayOrEmpty_1(m.$0.keys);
+                  }
+                  if(length(keys)>0){
+                    const keyId=appendPageKeyId(keys);
+                    const incoming=[value];
+                    matched=false;
+                    buckets=map((bucket_1) => {
+                      if(sameText(bucket_1.keyId, keyId)){
+                        matched=true;
+                        const merged=mergeAppendValues(bucket_1.values, incoming);
+                        const p_1=sequenceBounds(merged);
+                        const minSequence=p_1[0];
+                        const a=bucket_1.valueCount;
+                        const b=length(merged);
+                        let _6=Compare(a, b)===1?a:b;
+                        const a_1=bucket_1.maxSequence;
+                        const b_1=p_1[1];
+                        let _7=Compare(a_1, b_1)===1?a_1:b_1;
+                        return New_11(bucket_1.keyId, keys, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
+                      }
+                      else return bucket_1;
+                    }, buckets);
+                    if(!matched){
+                      const p=sequenceBounds(incoming);
+                      const bucket=New_11(keyId, keys, definition.setName, length(incoming), p[0], p[1], asText_1(value.createdAtUtc), incoming);
+                      _5=void(buckets=sortAppendPageBuckets(buckets.concat([bucket])));
+                    }
+                    else _5=null;
+                    selected=keyId;
+                    selectedKeyJson=keysAsJson(keys);
+                    newKeyInput.value=selectedKeyJson;
+                    writeCurrentSnapshot();
+                    renderList();
+                    requestValuesScrollToBottom();
+                    return renderValues();
+                  }
+                  else return null;
+                }
+                else return null;
+              })(response.event, response.value));
               return handleSyncEvent("live", response.event);
             case 2:
               return handleSyncEvent("live", response.event);
@@ -1689,9 +1774,16 @@ function mountAppendPage(page, definition){
     const x=setData("selected-key-json", effectiveKeyJson, setData("selected-key-id", effectiveKeyId, setData("shape", rendererShape, setData("renderer-state", "fallback", form))));
     setData("selected-key-source", isBlank_1(effectiveKeyJson)?"none":"selected", x);
     const customNode=isBlank_1(effectiveKeyJson)?null:tryRenderAppendInputWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, effectiveKeyId, effectiveKeyJson, selectedKeys, valueInput.placeholder, valueInput.value, (payload) => {
+      let _3;
       const submitted=rendererSubmittedText(payload);
+      const submittedKeyJson=rendererSubmittedKeyJson(payload);
       if(isBlank_1(submitted))setStatus(workState, "Renderer value text is required");
       else {
+        if(!isBlank_1(submittedKeyJson)){
+          const submittedKeys=keysFromJson(submittedKeyJson);
+          _3=length(submittedKeys)>0?(selectedKeyJson=submittedKeyJson,selected=appendPageKeyId(submittedKeys),newKeyInput.value=submittedKeyJson):void 0;
+        }
+        else _3=void 0;
         const keyJson=effectiveSelectedKeyJson();
         const keys_1=effectiveSelectedKeys();
         if(isBlank_1(selectedKeyJson)&&!isBlank_1(keyJson)){
@@ -3839,11 +3931,6 @@ function distinct(l){
 function sort(arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, _1], arr).sort(Compare));
 }
-function map(f, arr){
-  const r=new Array(arr.length);
-  for(let i=0, _1=arr.length-1;i<=_1;i++)r[i]=f(arr[i]);
-  return r;
-}
 function filter(f, arr){
   const r=[];
   for(let i=0, _1=arr.length-1;i<=_1;i++)if(f(arr[i]))r.push(arr[i]);
@@ -3870,6 +3957,11 @@ function exists(f, x){
     else i=i+1;
   return e;
 }
+function map(f, arr){
+  const r=new Array(arr.length);
+  for(let i=0, _1=arr.length-1;i<=_1;i++)r[i]=f(arr[i]);
+  return r;
+}
 function sortBy(f, arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) => Compare(_1[1], _2[1])));
 }
@@ -3883,6 +3975,18 @@ function forall2(f, x1, x2){
     if(f(x1[i], x2[i]))i=i+1;
     else a=false;
   return a;
+}
+function choose(f, arr){
+  const q=[];
+  for(let i=0, _1=arr.length-1;i<=_1;i++){
+    const m=f(arr[i]);
+    if(m==null){ }
+    else q.push(m.$0);
+  }
+  return q;
+}
+function distinctBy(f, a){
+  return ofSeq(distinctBy_1(f, a));
 }
 function fold(f, zero, arr){
   let acc;
@@ -3932,15 +4036,6 @@ function ofList(xs){
 function iteri(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)f(i, arr[i]);
 }
-function choose(f, arr){
-  const q=[];
-  for(let i=0, _1=arr.length-1;i<=_1;i++){
-    const m=f(arr[i]);
-    if(m==null){ }
-    else q.push(m.$0);
-  }
-  return q;
-}
 function tryPick(f, arr){
   let res, i;
   res=null;
@@ -3970,9 +4065,6 @@ function foldBack(f, arr, zero){
   const len=arr.length;
   for(let i=1, _1=len;i<=_1;i++)acc=f(arr[len-i], acc);
   return acc;
-}
-function distinctBy(f, a){
-  return ofSeq(distinctBy_1(f, a));
 }
 function collect(f, x){
   return Array.prototype.concat.apply([], map(f, x));
@@ -5738,11 +5830,12 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_31(rawArgu, duTypeName, unionCaseName){
+function New_31(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
     rawArgu:rawArgu, 
     duTypeName:duTypeName, 
-    unionCaseName:unionCaseName
+    unionCaseName:unionCaseName,
+    keyJson:keyJson
   };
 }
 let _c_2=Lazy((_i) => class Var_1 extends Object_1 {
