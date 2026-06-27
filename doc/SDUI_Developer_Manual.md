@@ -149,6 +149,36 @@ Current regression gate：
 - 同一 gate 確認預設兩列是 `OIInf`、`TAIFEX` text input；Add 產生空 input；填入 `ManualEntry` 後 preview 追加該 token；Remove 後 preview 移除該 token。
 - `DYN-T-511` package gate 與 live 81 resolver check 確認 `PFCFGTCCONF.valueItem kind=text/options=0`，list node default values 仍保留 `OIInf,TAIFEX`。
 
+## 2026-06-27：Compact shell actions 與 Dynamic target binding 邊界
+
+本輪 UI redesign 將 append-page 操作分成兩層：
+
+1. PTCS core owns page lifecycle shell：
+   - tab pill 上的 close `x`；
+   - topbar 的 compact `+ Page`；
+   - sidebar 的 `Actions` details pool，收納 Add / Remove / Reload / Remove page 這類 page/target shell action。
+2. PTCS.Dynamic owns Dynamic target binding and FormInput：
+   - add-target submit label 使用 `Bind target`；
+   - actor address、DU/template key、canonical Argu string 是 Dynamic target builder 的輸入；
+   - FormInput 裡的 repeatable list 使用 `Add value` 與 Remove-left textbox rows。
+
+沒有 `hub.useDynamicSdui(...)` 時：
+
+- PTCS core 仍應顯示自己的 page add/remove/reload 與 fallback raw target UI；
+- Dynamic FormInput / `Bind target` renderer 不應出現；
+- `AppendPageDefinition.DefaultKey` 仍只可作 add-target seed，不可在 no-target 狀態 fallback 成 live selection。
+
+有 `hub.useDynamicSdui(...)` 時：
+
+- PTCS core 只提供 extension registry、safe JSON resolver route、page shell 與 command path；
+- Dynamic renderer 透過 backend resolver 將 `[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]` 轉成 FormInput DSL；
+- target submit 由 Dynamic renderer 產出 key list 後交回 PTCS core append-page key registry。
+
+Current regression gate：
+
+- `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-dynamic-argu-live.fsx` 以 F# Playwright native locator API 驗證 PTCS action pool/tab close/`+ Page`、Dynamic `Bind target`、Remove-left list rows 與 exact PFCF echo。
+- `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait` 直接 `#r` PTCS beta19 / Dynamic beta11，啟動 live host 並印出 URL、actor address、template key、probe status，供人工測試前快速確認 NuGet bundle 真能啟動。
+
 ## 2026-06-27：DU/template key 是自由 full type name input
 
 現象：

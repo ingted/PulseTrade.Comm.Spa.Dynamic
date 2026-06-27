@@ -81,7 +81,7 @@ function renderAddKey(ctx){
       typeInput.addEventListener("input", renderTargetConfig);
       typeInput.addEventListener("change", renderTargetConfig);
       renderTargetConfig();
-      const submit=button("dynamic-argu-key-submit", "dynamic-argu-key-submit", "Add target");
+      const submit=button("dynamic-argu-key-submit", "dynamic-argu-key-submit", "Bind target");
       submit.addEventListener("click", () => {
         let keyTail;
         const actorAddress=Trim(actor.value);
@@ -435,7 +435,7 @@ function renderField(refresh, defaultMap, caseName, field){
     case"list":
       const listTestKey=asText(caseName)+"-"+asText(field.name);
       const list=setTestId("dynamic-argu-list-"+listTestKey, element("div", "dynamic-argu-list", null));
-      const add=button("dynamic-argu-add-list-item", "dynamic-argu-list-add-"+listTestKey, "Add");
+      const add=button("dynamic-argu-add-list-item", "dynamic-argu-list-add-"+listTestKey, "Add value");
       const addInput=(defaults) => {
         const itemRow=setTestId("dynamic-argu-list-row-"+listTestKey, element("div", "dynamic-argu-list-item-row", null));
         const node_4=input("text", "dynamic-argu-input dynamic-argu-list-item-input", "dynamic-argu-list-item-"+listTestKey);
@@ -450,7 +450,7 @@ function renderField(refresh, defaultMap, caseName, field){
           list.removeChild(itemRow);
           return refresh();
         });
-        append(itemRow, [node_4, remove]);
+        append(itemRow, [remove, node_4]);
         list.insertBefore(itemRow, add);
       };
       _1=(add.addEventListener("click", () => {
@@ -852,6 +852,9 @@ function mountAppendPage(page, definition){
   const removeKeyButton=setTestId_1("append-remove-key", button_1("", "Remove"));
   const removePageButton=setTestId_1("append-remove-page", button_1("", "Remove page"));
   const reload=setTestId_1("append-reload", button_1("", "Reload"));
+  const actionPool=setTestId_1("append-page-actions", element_1("details", "append-page-actions", null));
+  const actionSummary=setTestId_1("append-page-actions-summary", element_1("summary", "append-page-actions-summary", "Actions"));
+  const actionMenu=setTestId_1("append-page-actions-menu", element_1("div", "append-page-actions-menu", null));
   const filters=element_1("div", "filters", null);
   const keyFilter=setTestId_1("append-key-filter", input_1("key contains"));
   const newKeyInput=setTestId_1("append-key-input", input_1(textOr("\"Aster\"", definition.keyPlaceholder)));
@@ -900,7 +903,9 @@ function mountAppendPage(page, definition){
   appendButton.textContent=actorArguButtonLabel(definition);
   append_1(identityBox, [pageIdChip, tabIdChip]);
   append_1(sideTitle, [element_1("h1", "", pageTitle(definition)), identityBox]);
-  append_1(sideActions, [addKeyButton, removeKeyButton, removePageButton, reload]);
+  append_1(actionMenu, [addKeyButton, removeKeyButton, reload, removePageButton]);
+  append_1(actionPool, [actionSummary, actionMenu]);
+  append_1(sideActions, [actionPool]);
   append_1(sideHead, [sideTitle]);
   append_1(filters, [newKeyInput, addKeyRendererHost, keyFilter, status]);
   append_1(side, [sideHead, sideActions, filters, list]);
@@ -1817,7 +1822,24 @@ function renderNav(nav, activePath, pages){
     const badge=element_1("span", "nav-type-badge "+pageTypeClass(page), pageTypeBadge(page));
     badge.setAttribute("title", pageTypeLabel(page));
     badge.setAttribute("aria-label", pageTypeLabel(page));
-    append_1(link, [badge, element_1("span", "nav-title", pageTitle(page))]);
+    const x_1=button_1("nav-close", "x");
+    const closeButton=setTestId_1("nav-close-append-page-"+asText_1(page.pageId), x_1);
+    closeButton.setAttribute("aria-label", "Remove page "+pageTitle(page));
+    closeButton.setAttribute("title", "Remove page");
+    closeButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeButton.setAttribute("disabled", "disabled");
+      return postJson_1("/pages/api/remove-page", New_15(page.pageId), (reply) => {
+        writeAppendPagesDefinitions(reply);
+        isCurrentPage(activePath, href)?globalThis.location.assign("/chat"):renderNav(nav, activePath, reply.pages);
+      }, (error) => {
+        closeButton.removeAttribute("disabled");
+        closeButton.textContent="!";
+        closeButton.setAttribute("title", "Remove page failed: "+error);
+      });
+    });
+    append_1(link, [badge, element_1("span", "nav-title", pageTitle(page)), closeButton]);
     nav.appendChild(link);
   }, arrayOrEmpty_1(pages));
 }
@@ -3230,7 +3252,7 @@ function renderPageCreator(nav, activePath, pages){
   const pageId=setTestId_1("page-create-id", input_1("page id"));
   const title=setTestId_1("page-create-title", input_1("title"));
   const binding=setTestId_1("page-create-binding", select([]));
-  const add=setTestId_1("page-create-submit", button_1("", "Add"));
+  const add=setTestId_1("page-create-submit", button_1("", "+ Page"));
   const status=setTestId_1("page-create-status", element_1("span", "state page-create-status", ""));
   candidatePageId="";
   candidatesLoaded=false;

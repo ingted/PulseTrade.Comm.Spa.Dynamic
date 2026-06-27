@@ -431,7 +431,7 @@ module ArguFormRenderer =
 
                 renderTargetConfig ()
 
-                let submit = button "dynamic-argu-key-submit" "dynamic-argu-key-submit" "Add target"
+                let submit = button "dynamic-argu-key-submit" "dynamic-argu-key-submit" "Bind target"
                 submit.AddEventListener(
                     "click",
                     fun () ->
@@ -605,7 +605,7 @@ module ArguFormRenderer =
         | "list" ->
             let listTestKey = asText caseName + "-" + asText field.name
             let list = element "div" "dynamic-argu-list" null |> setTestId ("dynamic-argu-list-" + listTestKey)
-            let add = button "dynamic-argu-add-list-item" ("dynamic-argu-list-add-" + listTestKey) "Add"
+            let add = button "dynamic-argu-add-list-item" ("dynamic-argu-list-add-" + listTestKey) "Add value"
 
             let addInput defaults =
                 let itemRow = element "div" "dynamic-argu-list-item-row" null |> setTestId ("dynamic-argu-list-row-" + listTestKey)
@@ -618,7 +618,7 @@ module ArguFormRenderer =
                 remove.AddEventListener("click", fun () ->
                     list.RemoveChild(itemRow) |> ignore
                     refresh ())
-                append itemRow [| node :> Node; remove :> Node |] |> ignore
+                append itemRow [| remove :> Node; node :> Node |] |> ignore
                 list.InsertBefore(itemRow, add) |> ignore
 
             add.AddEventListener("click", fun () ->

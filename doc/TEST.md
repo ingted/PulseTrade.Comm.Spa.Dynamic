@@ -130,7 +130,7 @@ Dynamic form submit
 
 Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 
-Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj --no-restore`，Expecto 9/9 pass。
+Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner`，Expecto 15/15 pass。
 
 覆蓋：
 
@@ -149,7 +149,7 @@ Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dyn
 
 Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 
-Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj --no-restore`，Expecto 9/9 pass。
+Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner`，Expecto 15/15 pass。
 
 覆蓋：
 
@@ -169,7 +169,7 @@ Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dyn
 
 Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 
-Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj --no-restore`，Expecto 9/9 pass。
+Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner`，Expecto 15/15 pass。
 
 覆蓋：
 
@@ -303,7 +303,7 @@ Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 - controlled failure is returned as JSON `Ok=false` instead of silent fallback；
 - WebSharper client append renderer compiles with the backend-resolved fetch path and document-backed full-form Send path.
 
-Latest evidence：2026-06-27 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -p:WebSharperRunCompiler=false -- --summary --no-spinner` passed 15/15 for beta10。The package gate verifies exact canonical enum defaults are present in FormInput values, including `DataRange.ReferenceDateMode.value = ModeAccountingDate`；it also verifies a partial canonical arg string `--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX` renders only `PFCFEDX` and `PFCFGTCCONF` instead of the full DU schema。List-valued Argu fields keep parser-projected defaults on the list node, but list item schema is `text` with no enum options so FormInput presents editable repeatable textboxes, not fixed dropdowns。
+Latest evidence：2026-06-27 `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release --no-restore -- --summary --no-spinner` passed 15/15 for beta11。The package gate verifies exact canonical enum defaults are present in FormInput values, including `DataRange.ReferenceDateMode.value = ModeAccountingDate`；it also verifies a partial canonical arg string `--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX` renders only `PFCFEDX` and `PFCFGTCCONF` instead of the full DU schema。List-valued Argu fields keep parser-projected defaults on the list node, but list item schema is `text` with no enum options so FormInput presents editable repeatable textboxes, not fixed dropdowns。
 
 ### DYN-T-512 Browser E2E for backend-resolved FormInput DSL
 
@@ -329,4 +329,21 @@ Latest evidence：2026-06-27 `dotnet fsi --exec G:\PulseTrade.fs\Libs\PulseTrade
 ptcsHostDynamicArguLive.ok url=http://127.0.0.1:9711 page=http://127.0.0.1:9711/page/dyn-argu-live81 template=PulseTrade.Comm.Spa.Host.Program+DynamicArguDemo+PFCF_AKKA_CMD submit=echo-verified pcslRoot=G:\PulseTrade.fs.Comm.Log\verification\ptcsHostDynamicArguLive\pcsl runPcslRoot=G:\PulseTrade.fs.Comm.Log\verification\ptcsHostDynamicArguLive\pcsl\run-6e598757065b483fa25b17b4805bfe85 serviceLog=G:\PulseTrade.fs.Comm.Log\verification\ptcsHostDynamicArguLive\verify-ptcs-host-dynamic-argu-live.service.log
 ```
 
-The gate used PTCS.Host loopback, loaded the Dynamic extension DLL, rendered all parsed PFCF data-range sections, submitted the expected full raw Argu string, and verified DurableProxy echo readback. It also covers the user-facing add-target path: editable DU/template key text input with no datalist/select lock-in, no-target cleanup after removing the last key, generic `actor-argu` add-target UI after removing the demo page, partial raw command rendering only `PFCFEDX/PFCFGTCCONF`, list-valued `PFCFGTCCONF` as editable textbox rows with Add/Remove, and canonical input preservation so it cannot regress to `"s"`. Public 81 deployment is tracked by PTC verification after beta10 packaging.
+The gate used PTCS.Host loopback, loaded the Dynamic extension DLL, rendered all parsed PFCF data-range sections, submitted the expected full raw Argu string, and verified DurableProxy echo readback. It also covers the user-facing add-target path: editable DU/template key text input with no datalist/select lock-in, no-target cleanup after removing the last key, generic `actor-argu` add-target UI after removing the demo page, partial raw command rendering only `PFCFEDX/PFCFGTCCONF`, list-valued `PFCFGTCCONF` as editable textbox rows with Add value/Remove-left, Dynamic `Bind target` label, and canonical input preservation so it cannot regress to `"s"`. PTCS core action pool/tab close/`+ Page` is covered by the same cross-repo verifier against PTCS beta19. Public 81 deployment is tracked by PTC verification after beta11 packaging.
+
+### DYN-T-513 NuGet bundle/live host gate
+
+PTC-side package verifiers:
+
+```powershell
+dotnet fsi --exec G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-dynamic-nuget-bundle.fsx
+dotnet fsi --exec G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait
+```
+
+Coverage:
+
+- direct `#r` load of `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta11` with `PulseTrade.Comm.Spa 0.2.5-beta19`;
+- local nupkg contains `lib/net10.0` DLL and bundled WebSharper JS/min/head assets;
+- JS marker contract includes `Bind target`, `Add value`, Remove-left list row classes, and no retired `dynamic-argu-key-du-type-list`;
+- live host starts an in-process PTCS + Dynamic server, prints Base/Chat/ActorArgu/Dynamic JS URLs, actor address, template key, default key/argu, and verifies health/probe under `--no-wait`。
+- NuGet flat-container now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta11`, so the direct `#r` consumer gate is no longer limited to local package cache evidence.
