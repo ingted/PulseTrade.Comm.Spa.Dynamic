@@ -75,6 +75,7 @@ type AddKeyContextDto =
     { shape: string
       defaultKey: string
       submitKey: obj -> unit
+      cancelKey: unit -> unit
       setKeyJson: obj -> unit }
 
 [<JavaScript>]
@@ -471,6 +472,7 @@ module ArguFormRenderer =
 
                 let actions = element "div" "dynamic-argu-key-actions" null |> setTestId "dynamic-argu-key-actions"
                 let clean = button "dynamic-argu-key-clean" "dynamic-argu-key-clean" "Clean"
+                let cancel = button "dynamic-argu-key-cancel" "dynamic-argu-key-cancel" "Cancel"
                 let submit = button "dynamic-argu-key-ok primary" "dynamic-argu-key-submit" "OK"
                 clean.AddEventListener(
                     "click",
@@ -481,6 +483,7 @@ module ArguFormRenderer =
                         argInput.Value <- ""
                         renderTargetConfig ()
                         actor.Focus())
+                cancel.AddEventListener("click", fun () -> context.cancelKey())
                 submit.AddEventListener(
                     "click",
                     fun () ->
@@ -513,7 +516,7 @@ module ArguFormRenderer =
 
                             context.submitKey(box payload))
 
-                append actions [| clean :> Node; submit :> Node |] |> ignore
+                append actions [| clean :> Node; cancel :> Node; submit :> Node |] |> ignore
 
                 append
                     root

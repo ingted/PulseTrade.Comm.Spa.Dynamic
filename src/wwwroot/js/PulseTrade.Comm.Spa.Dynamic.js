@@ -91,6 +91,7 @@ function renderAddKey(ctx){
       renderTargetConfig();
       const actions=setTestId("dynamic-argu-key-actions", element("div", "dynamic-argu-key-actions", null));
       const clean=button("dynamic-argu-key-clean", "dynamic-argu-key-clean", "Clean");
+      const cancel_1=button("dynamic-argu-key-cancel", "dynamic-argu-key-cancel", "Cancel");
       const submit=button("dynamic-argu-key-ok primary", "dynamic-argu-key-submit", "OK");
       clean.addEventListener("click", () => {
         actor.value="";
@@ -100,6 +101,7 @@ function renderAddKey(ctx){
         renderTargetConfig();
         return actor.focus();
       });
+      cancel_1.addEventListener("click", ctx.cancelKey);
       submit.addEventListener("click", () => {
         let keyTail;
         const actorAddress=Trim(actor.value);
@@ -112,7 +114,7 @@ function renderAddKey(ctx){
         else keyTail=[];
         return isBlank(actorAddress)?actor.focus():isBlank(selectedTypeName)?typeInput.focus():tryFindDocument(selectedTypeName)!=null||length(keyTail)>0?ctx.submitKey(New_3(ofSeq(delay(() => append_2([actorAddress], delay(() => append_2([selectedTypeName], delay(() => keyTail)))))), displayName)):null;
       });
-      append(actions, [clean, submit]);
+      append(actions, [clean, cancel_1, submit]);
       append(root, [actorLabel, actor, typeLabel, typeInput, aliasLabel, aliasInput, targetConfig, actions]);
       return Some(root);
     }
@@ -905,6 +907,7 @@ function mountAppendPage(page, definition){
   const fallbackAddKeyPanel=setTestId_1("append-add-key-fallback", element_1("div", "append-add-key-fallback", null));
   const fallbackAddKeyActions=setTestId_1("append-add-key-actions", element_1("div", "append-add-key-actions", null));
   const cleanKeyButton=setTestId_1("append-key-clean", button_1("", "Clean"));
+  const cancelKeyButton=setTestId_1("append-key-cancel", button_1("", "Cancel"));
   const okKeyButton=setTestId_1("append-key-ok", button_1("primary", "OK"));
   const addKeyRendererHost=setData("renderer-state", "not-rendered", setTestId_1("append-add-key-renderer-host", element_1("div", "append-add-key-renderer-host", null)));
   const status=setTestId_1("append-key-status", element_1("div", "state", "Loading"));
@@ -955,7 +958,7 @@ function mountAppendPage(page, definition){
   append_1(actionPool, [actionSummary, actionMenu]);
   append_1(sideActions, [actionPool]);
   append_1(sideHead, [sideTitle]);
-  append_1(fallbackAddKeyActions, [cleanKeyButton, okKeyButton]);
+  append_1(fallbackAddKeyActions, [cleanKeyButton, cancelKeyButton, okKeyButton]);
   append_1(fallbackAddKeyPanel, [newKeyInput, newKeyAliasInput, fallbackAddKeyActions]);
   append_1(addKeyPanel, [fallbackAddKeyPanel, addKeyRendererHost]);
   append_1(filters, [addKeyPanel, keyFilter, status]);
@@ -1681,6 +1684,13 @@ function mountAppendPage(page, definition){
       else load();
     }
   };
+  const closeAddKeyEditor=() => {
+    addKeyEditorOpen=false;
+  };
+  const cancelAddKeyEditor=() => {
+    closeAddKeyEditor();
+    rerenderAddKeyBuilder();
+  };
   const addKeyWithKeyJson=(keyJson, displayName) => {
     if(isBlank_1(keyJson))return setStatus(status, "Key JSON is required");
     else {
@@ -1700,7 +1710,7 @@ function mountAppendPage(page, definition){
           }
           else _3=void 0;
           newKeyAliasInput.value="";
-          addKeyEditorOpen=false;
+          closeAddKeyEditor();
           setStatus(status, "Key added");
           rerenderAddKeyBuilder();
           rerenderAppendForm();
@@ -1786,7 +1796,7 @@ function mountAppendPage(page, definition){
           setData("last-key-json", keyJson, addKeyRendererHost);
           addKeyWithKeyJson(keyJson, displayName);
         }
-      }, (payload) => {
+      }, cancelAddKeyEditor, (payload) => {
         const keyJson=rendererSubmittedKeyJson(payload);
         const displayName=rendererSubmittedDisplayName(payload);
         if(!isBlank_1(keyJson)){
@@ -1907,7 +1917,7 @@ function mountAppendPage(page, definition){
   }),cleanKeyButton.addEventListener("click", () => {
     newKeyInput.value="";
     newKeyAliasInput.value="";
-  }),okKeyButton.addEventListener("click", () => addKeyWithKeyJson(isBlank_1(newKeyInput.value)?asText_1(definition.defaultKey):Trim(newKeyInput.value), newKeyAliasInput.value)),removeKeyButton.addEventListener("click", () => {
+  }),cancelKeyButton.addEventListener("click", cancelAddKeyEditor),okKeyButton.addEventListener("click", () => addKeyWithKeyJson(isBlank_1(newKeyInput.value)?asText_1(definition.defaultKey):Trim(newKeyInput.value), newKeyAliasInput.value)),removeKeyButton.addEventListener("click", () => {
     if(isBlank_1(selected))setStatus(status, "Select a key first");
     else {
       const removedKeyId=selected;
@@ -3207,7 +3217,7 @@ function setHidden(hidden, node){
   hidden?node.setAttribute("hidden", "hidden"):node.removeAttribute("hidden");
   return node;
 }
-function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, keyPlaceholder, defaultKey, submitKey, setKeyJson){
+function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, keyPlaceholder, defaultKey, submitKey, cancelKey, setKeyJson){
   let r;
   const _1=pageId;
   const _2=shape;
@@ -3216,7 +3226,8 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   const _5=keyPlaceholder;
   const _6=defaultKey;
   const _7=submitKey;
-  const _8=setKeyJson;
+  const _8=cancelKey;
+  const _9=setKeyJson;
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
@@ -3229,8 +3240,11 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
     submitKey:(payload) => {
       _7(payload);
     },
+    cancelKey:() => {
+      _8();
+    },
     setKeyJson:(payload) => {
-      _8(payload);
+      _9(payload);
     }
   };
   for(let i=0;i<renderers.length;i++){

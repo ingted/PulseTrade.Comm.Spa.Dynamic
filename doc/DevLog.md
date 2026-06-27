@@ -290,3 +290,13 @@ Implementation status:
 - Follow-up NuGet flat-container lookup lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta15`.
 - Package tests passed `15/15`; cross-repo PTC gates passed: `verify-ptcs-dynamic-nuget-bundle.fsx`, `run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait`, and `verify-ptcs-host-dynamic-argu-live.fsx`.
 - PTC redeployed public 81 to `live81-ptcs-beta24-dynamic-beta15-alias-202606272001`; release-local Dynamic JS contains alias/OK markers and no `Bind target`.
+
+## 2026-06-27 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta16 Add-Target Cancel Action
+
+- Background: Add target key UX needed a non-destructive Cancel action distinct from Clean and OK.
+- Change: `AddKeyContextDto` now consumes PTCS core `cancelKey`; Dynamic add-key renderer renders `Clean / Cancel / OK`.
+- Behavior: Cancel calls `context.cancelKey()` and only collapses the PTCS Add target panel. It does not submit a target, clear existing targets, or alter `[actorAddress; duTypeOrTemplateKey; canonicalArgString]`.
+- Package version bumped from `0.1.3-beta15` to `0.1.3-beta16`.
+- Verification: Release build passed after stopping stale `wsfscservice.exe`; existing warnings remain WS9002 / NU5123 / missing-readme. Package tests passed `15/15`; cross-repo PTC browser/bundle/live-host gates passed for beta25/beta16 and now assert Cancel label plus Cancel-time panel collapse.
+- NuGet push returned `Created` / `Your package was pushed` for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta16`; flat-container lookup at 2026-06-27 21:15 +08:00 was still propagation-pending.
+- PTC redeployed public 81 to `live81-ptcs-beta25-dynamic-beta16-cancel-202606272112`; release-local Dynamic JS contains Cancel/OK markers and no `Bind target`.
