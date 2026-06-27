@@ -184,6 +184,24 @@ Current regression gate：
 現象：
 
 - Dynamic add-target UI 曾用 registry keys 產生 datalist/select-like 行為。
+
+## 2026-06-27：Logical page type display 與 hub registry/page/target 邊界
+
+`hub.useDynamicSdui(actorSystem, metadata, templateRegistrations)` 是 hub-level extension registry，不是 tab page instance binding。
+
+- `DynamicArguMetadata` / `templateRegistrations` 是全域 catalog，提供所有 tab page 可用的 DSL document、DU/template key 與 backend resolver registration。
+- 單一 tab page 是否使用 Dynamic FormInput 由 page shape/tag 決定，例如 `actor-dynamic` 或帶 `actor-argu` tag 的 page。
+- 單一 target 的實際 schema binding 由 target key 決定：`[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]`。
+- 沒有 selected target 時，PTCS core 應傳 `selected-key-source=none`，Dynamic renderer 不應用 `DefaultKey` 假裝使用者選到 target。
+
+這表示多個 tab page 共用同一份 registry 不會混亂；真正決定 FormInput 的是每個 target key 第二段 template/DU key 與第三段 canonical arg string。
+
+本輪發現的錯誤 page type 顯示不是 PTCS.Dynamic renderer 根因。PTCS core 使用 physical append-page shape 作 user-facing label，導致 ActorArgu/Dynamic page 顯示 `fcell-chat`。修正屬 PTCS core：
+
+- `actor-dynamic` 顯示 `Actor Dynamic` / `ad`；
+- generic `actor-argu` 顯示 `Actor Argu` / `aa`；
+- physical `fcell-chat` 只代表 storage/render fallback，不應作為 ActorArgu/Dynamic page 的 operator-facing type；
+- `verify-ptcs-host-dynamic-argu-live.fsx` 會在 default page、remove/re-add `actor-argu`、remove/re-add `actor-dynamic` 三條路徑驗證 label/badge 與 Canonical Argu string。
 - 在只有一個 host demo template 時，developer 會感覺 type string 被固定，無法自行輸入 full type name 或未來 template key。
 
 正確語意：

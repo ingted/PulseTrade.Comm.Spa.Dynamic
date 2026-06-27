@@ -909,7 +909,7 @@ function mountAppendPage(page, definition){
   append_1(sideHead, [sideTitle]);
   append_1(filters, [newKeyInput, addKeyRendererHost, keyFilter, status]);
   append_1(side, [sideHead, sideActions, filters, list]);
-  append_1(titleBox, [element_1("label", "", asText_1(definition.shape)+" / "+asText_1(definition.setName)), element_1("h2", "", pageTitle(definition)), element_1("div", "meta wrap", asText_1(definition.description)), lineageInfo]);
+  append_1(titleBox, [setTestId_1("append-page-type-label", element_1("label", "", pageTypeLabel(definition)+" / "+asText_1(definition.setName))), element_1("h2", "", pageTitle(definition)), element_1("div", "meta wrap", asText_1(definition.description)), lineageInfo]);
   append_1(head_2, [titleBox, workState]);
   const applyLineageHealth=(health) => {
     const health_1=health==null?defaultLineageHealth():health;
@@ -1819,11 +1819,12 @@ function renderNav(nav, activePath, pages){
     let _1=setTestId_1("nav-append-page-"+asText_1(page.pageId), x);
     let _2=setData("page-id", page.pageId, _1);
     const link=setData("shape", page.shape, _2);
-    const badge=element_1("span", "nav-type-badge "+pageTypeClass(page), pageTypeBadge(page));
+    const x_1=element_1("span", "nav-type-badge "+pageTypeClass(page), pageTypeBadge(page));
+    const badge=setTestId_1("nav-type-badge-append-page-"+asText_1(page.pageId), x_1);
     badge.setAttribute("title", pageTypeLabel(page));
     badge.setAttribute("aria-label", pageTypeLabel(page));
-    const x_1=button_1("nav-close", "x");
-    const closeButton=setTestId_1("nav-close-append-page-"+asText_1(page.pageId), x_1);
+    const x_2=button_1("nav-close", "x");
+    const closeButton=setTestId_1("nav-close-append-page-"+asText_1(page.pageId), x_2);
     closeButton.setAttribute("aria-label", "Remove page "+pageTitle(page));
     closeButton.setAttribute("title", "Remove page");
     closeButton.addEventListener("click", (event) => {
@@ -2857,6 +2858,26 @@ function actorArguButtonLabel(page){
 function pageTitle(page){
   return textOr(asText_1(page.pageId), asText_1(page.title));
 }
+function pageTypeLabel(page){
+  const shapeText=asText_1(page.shape).toLowerCase();
+  if(isActorArguPage(page)){
+    if(shapeText=="fcell-chat")return"Actor Argu";
+    else if(shapeText=="actor-argu")return"Actor Argu";
+    else if(shapeText=="raw")return"Raw Actor Argu";
+    else {
+      const m=findAppendPageShape(page.shape);
+      return m==null?"Actor Argu":textOr("Actor Argu", m.$0.label);
+    }
+  }
+  else {
+    const m_1=findAppendPageShape(page.shape);
+    if(m_1==null)return"Raw";
+    else {
+      const shape=m_1.$0;
+      return textOr(normalizeShapeText(page.shape), shape.label);
+    }
+  }
+}
 function isActorArguPage(page){
   return hasTag("actor-argu", page.tags);
 }
@@ -3213,32 +3234,43 @@ function setHref(href, node){
   return node;
 }
 function pageTypeClass(page){
-  if(isActorArguPage(page))return asText_1(page.shape).toLowerCase()=="raw"?"raw":"actor-argu";
-  else {
-    const m=findAppendPageShape(page.shape);
-    if(m==null)return"raw";
+  const shapeText=asText_1(page.shape).toLowerCase();
+  if(isActorArguPage(page)){
+    if(shapeText=="fcell-chat")return"actor-argu";
+    else if(shapeText=="actor-argu")return"actor-argu";
+    else if(shapeText=="raw")return"raw actor-argu";
     else {
-      const shape=m.$0;
-      return textOr(normalizeShapeText(page.shape), shape.className);
+      const m=findAppendPageShape(page.shape);
+      if(m==null)return"actor-argu";
+      else {
+        const shape=m.$0;
+        return textOr(normalizeShapeText(page.shape), shape.className);
+      }
+    }
+  }
+  else {
+    const m_1=findAppendPageShape(page.shape);
+    if(m_1==null)return"raw";
+    else {
+      const shape_1=m_1.$0;
+      return textOr(normalizeShapeText(page.shape), shape_1.className);
     }
   }
 }
 function pageTypeBadge(page){
-  if(isActorArguPage(page))return asText_1(page.shape).toLowerCase()=="raw"?"R":"A";
-  else {
-    const m=findAppendPageShape(page.shape);
-    return m==null?"R":textOr("?", m.$0.badge);
-  }
-}
-function pageTypeLabel(page){
-  if(isActorArguPage(page))return asText_1(page.shape).toLowerCase()=="raw"?"Raw":"Actor Argu";
-  else {
-    const m=findAppendPageShape(page.shape);
-    if(m==null)return"Raw";
+  const shapeText=asText_1(page.shape).toLowerCase();
+  if(isActorArguPage(page)){
+    if(shapeText=="fcell-chat")return"aa";
+    else if(shapeText=="actor-argu")return"aa";
+    else if(shapeText=="raw")return"ra";
     else {
-      const shape=m.$0;
-      return textOr(normalizeShapeText(page.shape), shape.label);
+      const m=findAppendPageShape(page.shape);
+      return m==null?"aa":textOr("aa", m.$0.badge);
     }
+  }
+  else {
+    const m_1=findAppendPageShape(page.shape);
+    return m_1==null?"R":textOr("?", m_1.$0.badge);
   }
 }
 function setId(id, node){
@@ -3450,6 +3482,14 @@ function initializeClientExtensionGlobals(){
     register(globalThis.PulseTrade.AddKeyRenderers, name, priority, func);
   };
 }
+function findAppendPageShape(shape){
+  const normalized=normalizeShapeText(shape);
+  return tryFind((candidate) => normalizeShapeText(candidate.shape)==normalized, appendPageShapeRegistry());
+}
+function normalizeShapeText(value){
+  const text=Trim(asText_1(value)).toLowerCase();
+  return text.length>0&&text.length<=64&&forall_1((ch) => ch>="a"&&ch<="z"||ch>="0"&&ch<="9"||ch==="-"||ch==="_"||ch===".", text)?text:"raw";
+}
 function hasTag(tag, tags){
   return exists((value) => asText_1(value).toLowerCase()==tag, arrayOrEmpty_1(tags));
 }
@@ -3473,14 +3513,6 @@ function scrollToBottomNow(node){
 function newPendingCommandId(kind, target, url, payloadJson){
   set_pendingCommandSeq(pendingCommandSeq()+1);
   return cacheKey("pending-command", ofArray([kind, target, url, payloadJson, "attempt-"+String(pendingCommandSeq()), "rand-"+String(Math.floor(Math.random()*1000000000))]));
-}
-function findAppendPageShape(shape){
-  const normalized=normalizeShapeText(shape);
-  return tryFind((candidate) => normalizeShapeText(candidate.shape)==normalized, appendPageShapeRegistry());
-}
-function normalizeShapeText(value){
-  const text=Trim(asText_1(value)).toLowerCase();
-  return text.length>0&&text.length<=64&&forall_1((ch) => ch>="a"&&ch<="z"||ch>="0"&&ch<="9"||ch==="-"||ch==="_"||ch===".", text)?text:"raw";
 }
 function select(options){
   const node=doc_1().createElement("select");
@@ -3521,6 +3553,9 @@ function tryParseSequence(prefix, value){
   catch(m){
     return 0n;
   }
+}
+function appendPageShapeRegistry(){
+  return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
 }
 function fcellModeLabel(mode){
   const m=asText_1(mode).toLowerCase();
@@ -3573,20 +3608,17 @@ function set_pendingCommandSeq(_1){
 function pendingCommandSeq(){
   return _c.pendingCommandSeq;
 }
-function appendPageShapeRegistry(){
-  return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
-}
-function registeredRenderers(){
-  return _c.registeredRenderers;
-}
 function builtInAppendPageShapes(){
-  return[shapeRegistration("fcell-chat", "FCell Chat", "C", "fcell-chat"), shapeRegistration("fcell-list", "FCell List", "L", "fcell-list"), shapeRegistration("fcell-grid", "FCell Grid", "G", "fcell-grid"), shapeRegistration("actor-argu", "Actor Argu", "A", "actor-argu"), shapeRegistration("raw", "Raw", "R", "raw")];
+  return[shapeRegistration("fcell-chat", "FCell Chat", "C", "fcell-chat"), shapeRegistration("fcell-list", "FCell List", "L", "fcell-list"), shapeRegistration("fcell-grid", "FCell Grid", "G", "fcell-grid"), shapeRegistration("actor-argu", "Actor Argu", "aa", "actor-argu"), shapeRegistration("raw", "Raw", "R", "raw")];
 }
 function manifestAppendPageShapes(){
   return filter((shape) => shape.shape!="raw", map((shape) => shape==null?shapeRegistration("raw", "Raw", "R", "raw"):shapeRegistration(shape.shape, shape.label, shape.badge, shape.className), collect((extension) => extension==null?[]:arrayOrEmpty_1(extension.appendPageShapes), serverClientExtensions())));
 }
 function runtimeAppendPageShapes(){
   return _c.runtimeAppendPageShapes;
+}
+function registeredRenderers(){
+  return _c.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
   return New_32(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));

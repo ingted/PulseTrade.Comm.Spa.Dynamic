@@ -88,7 +88,7 @@ module CommHubExtensions =
                   AppendPageShapes =
                     [ { Shape = "actor-dynamic"
                         Label = Some "Actor Dynamic"
-                        Badge = Some "D"
+                        Badge = Some "ad"
                         ClassName = Some "actor-dynamic" } ] }
             |> ignore
 
