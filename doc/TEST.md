@@ -145,6 +145,23 @@ Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dyn
 - PFCF_AKKA_CMD fixture 反射 `SimpleAction`、`BBA`、`GenByColMeta`；
 - `GenByColMeta` tuple item kinds 驗證為 `bool-value`, `bool-value`, `text`, `enum`。
 
+### DYN-T-517 Canvas Tree renderer for ActorTreeDocument
+
+Verifier：package focused test plus PTCS browser E2E after PTCS `WBS-054` exists。
+
+Required package coverage：
+
+- `SduiDocument Surface=Canvas` can contain a `Tree` node with `dataRef`, node/parent/label/status field names, `connector=orthogonal`, and `toggle=boxed-plus-minus`；
+- DSL decode rejects arbitrary script/action payloads and unknown connector/toggle values with controlled errors；
+- node data can represent `id`, `parentId`, `label`, `kind`, `status`, `fullPath`, and optional columns without requiring Dynamic to know Actor Registry storage；
+- renderer keeps straight connector geometry and boxed plus/minus toggles, with bounded layout and no text overlap。
+
+Required PTCS integration coverage：
+
+- PTCS Actors tab can convert `ActorTreeDocument` to Dynamic Canvas `Tree` when extension is loaded；
+- the same `ActorTreeDocument` renders as PTCS fallback table with `parentId` when Dynamic is absent or renderer fails；
+- Dynamic does not own PCSL projection, IndexedDB cache, registry truth source, or report write path。
+
 ### DYN-T-502 Argu-to-FormDsl adapter
 
 Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests`。

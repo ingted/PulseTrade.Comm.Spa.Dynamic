@@ -60,3 +60,4 @@
 8. PTCS.Host demo 需使用 `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\doc\example DU.txt` 作為來源，建立 host-local 可編譯 demo subset；缺少 type / enum 由 PTCS.Host 補 stub，不回寫到 PTCS.Dynamic package。
 9. FormInput DSL 必須支援 alias binding：union case / field / option 可由 host/template registration 提供中文 display label，但 submit/raw command 必須使用 canonical Argu names。
 10. `ParseResults<'T>` / subcommand 必須支援 tail-subcommand ordering：root args 在前，subcommand token 例如 `datarange` 在 root args 後，subcommand args 在 token 後。
+11. Canvas DSL 必須支援通用 `Tree` node，至少能渲染 PTCS Actors tab 的 `ActorTreeDocument`：`id`、`parentId`、`label`、`kind`、`status`、`fullPath`、直角線與帶框 `+` / `-` toggle。Dynamic 只負責 renderer，不擁有 Actor Registry truth source、PCSL projection、IndexedDB cache 或 state report write path。

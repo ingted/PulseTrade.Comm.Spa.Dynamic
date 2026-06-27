@@ -300,3 +300,10 @@ Implementation status:
 - Verification: Release build passed after stopping stale `wsfscservice.exe`; existing warnings remain WS9002 / NU5123 / missing-readme. Package tests passed `15/15`; cross-repo PTC browser/bundle/live-host gates passed for beta25/beta16 and now assert Cancel label plus Cancel-time panel collapse.
 - NuGet push returned `Created` / `Your package was pushed` for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta16`; flat-container lookup at 2026-06-27 21:15 +08:00 was still propagation-pending.
 - PTC redeployed public 81 to `live81-ptcs-beta25-dynamic-beta16-cancel-202606272112`; release-local Dynamic JS contains Cancel/OK markers and no `Bind target`.
+
+## 2026-06-28 - DYN-WBS-517 Canvas Tree renderer planning
+
+- Updated RFC-PTCS-DYNAMIC-0003, REQ, SA, SD, SDUI DSL manual, WBS, TEST, and Traceability for the ActorTree follow-up.
+- Dynamic now reserves a Canvas `Tree` node for PTCS Actors tab: `id/parentId/label/status` field mapping, orthogonal connectors, boxed plus/minus toggles, and optional columns.
+- Boundary clarified: Dynamic renders `ActorTreeDocument` but does not own Actor Registry truth source, PTCS PCSL projection, browser IndexedDB cache, fallback table, or state report writing.
+- Added planned `DYN-WBS-517` / `DYN-T-517`; no package source implementation was changed in this slice.

@@ -99,10 +99,13 @@ type SduiNode =
     | Section of id: string * title: string option * children: SduiNode list
     | TextBlock of id: string * text: string
     | DataGrid of id: string * dataRef: string
+    | Tree of id: string * dataRef: string * nodeIdField: string * parentIdField: string * labelField: string * statusField: string
     | Input of id: string * label: string * kind: SduiInputKind * binding: string
     | Select of id: string * label: string * options: SduiOptionSource * binding: string
     | Button of id: string * label: string * actionId: string
 ```
+
+Canvas `Tree` is a first-class shared node. It is required by PTC Actor Registry / PTCS Actors tab integration: PTCS produces `ActorTreeDocument`, while Dynamic renders it through Canvas `Tree` with orthogonal connectors and boxed `+` / `-` toggles. Dynamic must not own Actor Registry truth source, PCSL projection, IndexedDB cache, or report generation; PTCS core remains responsible for fallback table rendering when Dynamic is absent.
 
 ### D3. Backend-linked inputs use declared option sources
 

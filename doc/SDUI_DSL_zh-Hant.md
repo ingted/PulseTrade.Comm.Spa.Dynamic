@@ -382,8 +382,35 @@ Form Input surface 使用的 action 必須可被 PTCS append / actor-argu callba
 15. **Tree (樹狀視圖)**
     - `type`: `"Tree"`
     - `id`: 元件唯一識別碼。
-    - `dataRef`: 樹狀資料源 key。
+    - `dataRef`: 樹狀資料源 key；資料源應是 node/edge document，而不是 renderer 自己猜 parent。
+    - `rootNodeIds`: optional root node id list；缺省時由 renderer 找 `parentId = null` 的 nodes。
+    - `nodeIdField`: optional，預設 `"id"`。
+    - `parentIdField`: optional，預設 `"parentId"`。
+    - `labelField`: optional，預設 `"label"`。
+    - `statusField`: optional，預設 `"status"`。
+    - `connector`: `"orthogonal"`；第一版只接受直角線，不使用自由曲線。
+    - `toggle`: `"boxed-plus-minus"`；可展開節點使用帶框 `+` / `-`。
+    - `columns`: optional fallback/display fields，例如 `["kind","status","fullPath"]`。
     - `onNodeClick`: 點擊節點時觸發的 `Action`。
+
+    ActorTree 類 document 的建議資料：
+
+    ```json
+    {
+      "tree": {
+        "nodes": [
+          { "id": "n:/user", "parentId": "n:", "label": "user", "kind": "VirtualPath", "status": "Container", "fullPath": "/user" },
+          { "id": "n:/user/a", "parentId": "n:/user", "label": "a", "kind": "VirtualPath", "status": "Container", "fullPath": "/user/a" },
+          { "id": "n:/user/a/b", "parentId": "n:/user/a", "label": "b", "kind": "Actor", "status": "Active", "fullPath": "/user/a/b" }
+        ],
+        "edges": [
+          { "parentId": "n:/user", "childId": "n:/user/a", "kind": "contains" }
+        ]
+      }
+    }
+    ```
+
+    PTCS Actors tab 的 `ActorTreeDocument` 是 upstream domain DSL；Dynamic 只負責把它轉成 Canvas `Tree`。Dynamic 不 owns actor registry truth source、PCSL projection、IndexedDB cache 或 report write path。若 Dynamic extension 不存在，PTCS core 必須 fallback 到含 `parentId` 的 table。
 
 ### Form Input Components
 

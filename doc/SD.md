@@ -171,6 +171,23 @@ type SduiOptionSource =
     | QueryOptions of providerId: string * dependsOn: string list
     | StreamOptions of streamId: string * dependsOn: string list
 
+type SduiTreeConnector =
+    | Orthogonal
+
+type SduiTreeToggle =
+    | BoxedPlusMinus
+
+type SduiTreeBinding =
+    { DataRef: string
+      RootNodeIds: string list
+      NodeIdField: string
+      ParentIdField: string
+      LabelField: string
+      StatusField: string
+      Columns: string list
+      Connector: SduiTreeConnector
+      Toggle: SduiTreeToggle }
+
 type SduiNode =
     | Stack of id: string * children: SduiNode list
     | Section of id: string * title: string option * children: SduiNode list
@@ -178,6 +195,7 @@ type SduiNode =
     | Input of id: string * label: string * kind: string * binding: string
     | Select of id: string * label: string * options: SduiOptionSource * binding: string
     | Button of id: string * label: string * actionId: string
+    | Tree of id: string * binding: SduiTreeBinding * onNodeClickActionId: string option
 
 type SduiDocument =
     { Schema: string
@@ -190,6 +208,8 @@ type SduiDocument =
 ```
 
 Implementation may refine union names, but the separation is mandatory：renderer consumes `SduiDocument`; adapter consumes Argu / DU metadata。
+
+Canvas `Tree` is the required renderer target for PTC ActorTree integration. The upstream `ActorTreeDocument` is produced by PTCS/PTC Actor Registry projection and then converted into `SduiDocument Surface=Canvas` with one `Tree` node. Dynamic does not persist actor registry data, does not rebuild PCSL projection, and does not write actor state reports. If Dynamic is missing or the Tree renderer fails, PTCS core must keep using its fallback table with `parentId`。
 
 ### 5.2 Target resolver
 

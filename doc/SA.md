@@ -63,6 +63,7 @@ Dynamic 不應把 PTCS seam、RN DurableProxy 與 FSkynet renderer 混在同一 
 | --- | --- | --- |
 | SDUI document model | PTCS.Dynamic | `SduiDocument`、node tree、bindings、actions、Canvas/Form render surfaces。 |
 | Canvas renderer | PTCS.Dynamic | 將同一份 DSL render 成展開畫布，主要用於 readonly / local manipulation。 |
+| Canvas Tree renderer | PTCS.Dynamic | 渲染 `Tree` node，支援 `id/parentId/label/status` 欄位、直角線、帶框 `+` / `-` toggle；不得 owns Actor Registry projection/storage。 |
 | FormInput renderer | PTCS.Dynamic | 將同一份 DSL render 成 append input UI，管理 state、validation、submit、option query。 |
 | Argu parser-backed adapter | PTCS.Dynamic | 從 host-registered `IArgParserTemplate` / DU metadata + canonical arg string 產生 Form DSL document。 |
 | Alias binding | PTCS.Dynamic / PTCS.Host | PTCS.Host 註冊中文 case/field/option aliases；PTCS.Dynamic 將 alias 寫進 DSL label，但 canonical submit/raw command 不變。 |
@@ -76,6 +77,7 @@ Dynamic 不應把 PTCS seam、RN DurableProxy 與 FSkynet renderer 混在同一 
 - PTCS core 不判斷 DSL id、DU type、template key 或 arg string 是否有效；沒有 `hub.useDynamicSdui(...)` 時只取 `keys[0]` actor address 走 built-in path。
 - Unknown target、DU/template parse failure、unsupported subcommand 是 Dynamic validation error；extension absent 才是 PTCS fallback。
 - Add target key UI 由 Dynamic renderer 完整擁有時，PTCS built-in raw JSON key input / key filter 不應同屏顯示。
+- ActorTree integration 的 truth source 在 PTC Actor Registry / PTCS projection。Dynamic 僅把 PTCS 提供的 `ActorTreeDocument` 轉成 Canvas `Tree` 顯示；fallback table、IndexedDB cache 與 report endpoint 仍由 PTCS core owns。
 
 Dynamic key model vNext：
 
