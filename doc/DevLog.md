@@ -271,3 +271,7 @@ Implementation status:
 - Package version bumped from `0.1.3-beta13` to `0.1.3-beta14`.
 - NuGet push returned `Created` / `Your package was pushed` for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta14`; immediate v3 flat-container/registration lookup at 2026-06-27 18:37 +08:00 was still propagation-pending and did not list beta14 yet.
 - Verification: Release build passed with existing WS9002 / NU5123 / missing-readme warnings and generated `src\bin\Release\PulseTrade.Comm.Spa.Dynamic.0.1.3-beta14.nupkg`; cross-repo PTC `verify-ptcs-host-dynamic-argu-live.fsx` passed with legacy sorted key injection, echo, and canvas; `verify-ptcs-dynamic-nuget-bundle.fsx` and `run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait` passed for PTCS beta23 + Dynamic beta14.
+
+## 2026-06-27 18:47 +08:00 - Correction: PulseTrade.Comm.Spa.Dynamic 0.1.3-beta14 NuGet indexing complete
+
+- Follow-up NuGet flat-container lookup lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta14`.
