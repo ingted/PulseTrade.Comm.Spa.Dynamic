@@ -66,10 +66,11 @@ module ActorDynamicTab =
     let nodeFullPath (node: obj) =
         try JS.Inline<string>("$0.fullPath || ''", node) with _ -> ""
 
-    let nodeAddress (node: obj) =
-        let address =
-            try JS.Inline<string>("$0.address || ''", node) with _ -> ""
+    let nodeRawAddress (node: obj) =
+        try JS.Inline<string>("$0.address || ''", node) with _ -> ""
 
+    let nodeAddress (node: obj) =
+        let address = nodeRawAddress node
         if isBlank address then nodeFullPath node else address
 
     let nodeKind (node: obj) =
@@ -158,6 +159,96 @@ module ActorDynamicTab =
             text (if isBlank status then "unknown" else status)
         ]
 
+    let renderStatusDot status =
+        let normalized = lower status
+        let color, halo =
+            if normalized.IndexOf("active") >= 0 || normalized.IndexOf("running") >= 0 then "#16a34a", "#dcfce7"
+            elif normalized.IndexOf("passivated") >= 0 then "#d97706", "#fef3c7"
+            elif normalized.IndexOf("stale") >= 0 || normalized.IndexOf("changed") >= 0 then "#d97706", "#fef3c7"
+            elif normalized.IndexOf("terminated") >= 0 || normalized.IndexOf("dead") >= 0 then "#dc2626", "#fee2e2"
+            else "#64748b", "#e2e8f0"
+
+        span [
+            attr.style ("width:8px; height:8px; border-radius:999px; background:" + color + "; box-shadow:0 0 0 2px " + halo + "; display:inline-block;")
+            on.afterRender (fun node ->
+                node.SetAttribute("data-testid", "dynamic-actor-tree-status-dot")
+                node.SetAttribute("data-status", if isBlank status then "unknown" else status))
+        ] []
+
+    let renderSmallPill value =
+        span [
+            attr.style "white-space:nowrap; border:1px solid #d4ddec; border-radius:999px; background:#fff; color:#44546d; padding:1px 7px; font-size:11px; line-height:1.45;"
+        ] [
+            text (if isBlank value then "unknown" else value)
+        ]
+
+    let withAncestors (allNodes: obj[]) (seedNodes: obj[]) =
+        let mutable result: obj list = []
+
+        let contains id (items: obj list) =
+            items |> List.exists (fun item -> nodeId item = id)
+
+        let add node =
+            let id = nodeId node
+            if not (isBlank id) && not (contains id result) then
+                result <- result @ [ node ]
+
+        let tryFindNode id =
+            allNodes |> Array.tryFind (fun node -> nodeId node = id)
+
+        let rec addAncestors node =
+            let parentId = nodeParentId node
+            if not (isBlank parentId) then
+                match tryFindNode parentId with
+                | Some parent ->
+                    addAncestors parent
+                    add parent
+                | None -> ()
+
+        for node in seedNodes do
+            addAncestors node
+            add node
+
+        result |> List.toArray
+
+    let createNodeGroups (nodes: obj[]) =
+        let groupKey node =
+            actorSystemAddress (nodeRawAddress node)
+
+        let concreteNodes =
+            nodes
+            |> Array.filter (fun node -> groupKey node <> "unknown")
+
+        let knownGroups =
+            concreteNodes
+            |> Array.groupBy groupKey
+            |> Array.map (fun (key, groupNodes) ->
+                let augmentedNodes = withAncestors nodes groupNodes
+                let rank, label = classifyNodeBlock key augmentedNodes
+                rank, key, label, augmentedNodes)
+
+        let isKnownNode node =
+            let id = nodeId node
+            knownGroups
+            |> Array.exists (fun (_, _, _, groupNodes) ->
+                groupNodes |> Array.exists (fun known -> nodeId known = id))
+
+        let unknownSeeds =
+            nodes
+            |> Array.filter (fun node -> not (isKnownNode node) && groupKey node = "unknown")
+
+        let unknownGroups =
+            if unknownSeeds.Length = 0 then
+                [||]
+            else
+                let key = "unknown"
+                let augmentedNodes = withAncestors nodes unknownSeeds
+                let rank, label = classifyNodeBlock key augmentedNodes
+                [| rank, key, label, augmentedNodes |]
+
+        Array.append knownGroups unknownGroups
+        |> Array.sortBy (fun (rank, key, _, _) -> rank, key)
+
     let renderTree (groupNodes: obj[]) =
         let collapsedIds = Var.Create [||]
 
@@ -190,7 +281,8 @@ module ActorDynamicTab =
         let rec renderNode collapsed depth (node: obj) =
             let id = nodeId node
             let children = childrenOf id
-            let margin = string (depth * 22)
+            let depthValue = min 12 (max 0 depth)
+            let margin = string (depthValue * 18)
             let address = nodeAddress node
             let fullPath = nodeFullPath node
             let displayAddress = if isBlank address then fullPath else address
@@ -198,9 +290,24 @@ module ActorDynamicTab =
 
             let row =
                 div [
-                    attr.style ("display:grid; grid-template-columns:auto minmax(720px,1fr); align-items:start; column-gap:8px; margin-left:" + margin + "px; min-height:28px;")
-                    on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-row"))
+                    attr.``class`` "dynamic-actor-tree-row"
+                    attr.style ("position:relative; display:grid; grid-template-columns:20px 10px max-content max-content max-content; gap:8px; align-items:center; width:max-content; min-width:100%; padding:4px 10px 4px 6px; border-radius:5px; font-size:12px; line-height:1.35; margin-left:" + margin + "px;")
+                    on.afterRender (fun node ->
+                        node.SetAttribute("data-testid", "dynamic-actor-tree-row")
+                        node.SetAttribute("data-node-id", id)
+                        node.SetAttribute("data-parent-id", nodeParentId node)
+                        node.SetAttribute("data-depth", string depthValue))
                 ] [
+                    if depthValue > 0 then
+                        span [
+                            attr.``class`` "dynamic-actor-tree-connector-h"
+                            attr.style "position:absolute; left:-12px; top:50%; width:12px; border-top:1px solid #aeb8c8;"
+                            on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-connector"))
+                        ] []
+                        span [
+                            attr.``class`` "dynamic-actor-tree-connector-v"
+                            attr.style "position:absolute; left:-12px; top:-5px; height:calc(100% + 5px); border-left:1px solid #aeb8c8;"
+                        ] []
                     if children.Length > 0 then
                         button [
                             attr.``type`` "button"
@@ -218,20 +325,16 @@ module ActorDynamicTab =
                             attr.style "display:inline-flex; width:18px; height:18px; margin-top:3px;"
                             on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-toggle-placeholder"))
                         ] []
-                    div [
-                        attr.style "border-left:2px solid #c9d6e6; padding-left:10px; padding-bottom:6px;"
+                    renderStatusDot (nodeStatus node)
+                    span [
+                        attr.``class`` "dynamic-actor-tree-label"
+                        attr.title displayAddress
+                        attr.style "white-space:nowrap; color:#172033; font-weight:600; overflow:visible; text-overflow:clip; font-family:Consolas, 'Cascadia Mono', monospace;"
                     ] [
-                        div [ attr.style "display:flex; align-items:center; gap:8px; flex-wrap:wrap;" ] [
-                            span [ attr.style "font-weight:650; color:#1f3148;" ] [ text (nodeLabel node) ]
-                            renderStatusChip (nodeStatus node)
-                            span [ attr.style "font-size:11px; color:#667891;" ] [ text (nodeKind node) ]
-                        ]
-                        div [
-                            attr.style "font-family:Consolas, 'Cascadia Mono', monospace; font-size:12px; color:#22344d; white-space:nowrap;"
-                        ] [
-                            text displayAddress
-                        ]
+                        text displayAddress
                     ]
+                    renderSmallPill (nodeKind node)
+                    renderStatusChip (nodeStatus node)
                 ]
 
             let childDocs =
@@ -250,7 +353,7 @@ module ActorDynamicTab =
             |> List.collect (renderNode collapsed 0)
 
         div [
-            attr.style "border:1px solid #d8e2ef; background:#fbfdff; border-radius:6px; padding:10px; overflow-x:auto;"
+            attr.style "border:1px solid #d8e2ef; background:#f8fafc; border-radius:6px; padding:8px 10px; overflow-x:scroll; overflow-y:auto; scrollbar-gutter:stable; max-height:430px;"
             on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-viewport"))
         ] [
             collapsedIds.View
@@ -313,7 +416,12 @@ module ActorDynamicTab =
                     ]
                 ]
                 div [ attr.style "font-size:12px; color:#53677f; white-space:nowrap;" ] [
-                    text (string groupNodes.Length + " actor node(s)")
+                    let concreteCount =
+                        groupNodes
+                        |> Array.filter (fun node -> not (isBlank (nodeRawAddress node)))
+                        |> Array.length
+
+                    text (string concreteCount + " actor node(s)")
                 ]
             ]
             div [ attr.style "display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:#53677f;" ] [
@@ -328,13 +436,7 @@ module ActorDynamicTab =
         let nodes: obj[] = actorNodes rawContent
         let projectionId = projectionText rawContent "projectionId" "ptcs-actors"
         let projectionVersion = projectionText rawContent "projectionVersion" "0"
-        let groups =
-            nodes
-            |> Array.groupBy (fun node -> actorSystemAddress (nodeAddress node))
-            |> Array.map (fun (key, groupNodes) ->
-                let rank, label = classifyNodeBlock key groupNodes
-                rank, key, label, groupNodes)
-            |> Array.sortBy (fun (rank, key, _, _) -> rank, key)
+        let groups = createNodeGroups nodes
 
         let activeCount =
             nodes

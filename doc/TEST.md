@@ -165,25 +165,26 @@ Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier �
 
 - PTCS source host + Dynamic source Release bundle passes a Playwright MCP gate on `/actors`;
 - Dynamic page renderer is registered and the same renderer path is also protected through the transitional `MessageRenderers` fallback;
-- Dynamic page host is present, fallback tree/table rows are absent, blocks are ordered PTCS Host -> GW Host -> RN Host -> Unknown, and full `akka.tcp://...` addresses are visible;
-- boxed tree toggle is functional: click changes `- / aria-expanded=true` to `+ / aria-expanded=false` and row count `17 -> 16`; second click restores `17`;
+- Dynamic page host is present, fallback tree/table rows are absent, blocks are ordered PTCS Host -> GW Host -> RN Host, and full `akka.tcp://...` addresses are visible;
+- `0.1.3-beta24` restores hierarchy presentation inside each host block: virtual `/user` and `/system` ancestors remain visible, status dots and connector lines are present, and virtual ancestors do not create a synthetic Unknown block;
+- boxed tree toggle is functional: click changes `- / aria-expanded=true` to `+ / aria-expanded=false` and re-expand restores the child rows;
 - evidence is `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-check.json`;
 - screenshot evidence is `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-fixed.png`.
-- reusable F# Playwright verifier `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsPageDynamic.playwright.fsx` now repeats the accepted path with locator-only assertions for Dynamic ownership, fallback absence, full addresses, report controls, and visible row collapse/expand `17 -> 16 -> 17`; screenshot evidence is `G:\PulseTrade.fs\log\20260628\20260628230455.actors-page-dynamic-fsharp-verifier.png`.
+- reusable F# Playwright verifier `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsPageDynamic.playwright.fsx` now repeats the accepted path with locator-only assertions for Dynamic ownership, fallback absence, full addresses, report controls, status dots, connectors, depth rows, no synthetic Unknown block, and visible row collapse/expand; beta24 screenshot evidence is `G:\PulseTrade.fs\log\20260628\20260628233906.actors-page-dynamic-beta24-hierarchy.png`.
 
 ### DYN-T-529..532 Remaining ActorsPage gates
 
 尚未完成：
 
 - strict ActorsPage DSL parser / codec；
-- tree/grid/cards/actions polish beyond the current grouped/toggle slice；
+- tree/grid/cards/actions polish beyond the current grouped/toggle/hierarchy-restored slice；
 - Dynamic absent and unsupported renderer fallback failure-injection paths beyond the no-Dynamic fallback verifier。
 
 目前已落地的 package coverage：
 
-- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta23` rollout completed the package/public 81 gate with PTCS `0.2.5-beta39` and public release `live81-ptcs-beta39-dynamic-beta23-actorspage-toggle-202606282235`；
-- cross-repo PTC package verifier checks ActorsPage/toggle bundle markers；
-- public 81 Playwright MCP proof is `G:\PulseTrade.fs\log\20260628\20260628223500.actors-public81-beta39-toggle-collapse.png`；
+- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta24` rollout completed the package/public 81 hierarchy restore gate with PTCS `0.2.5-beta39` and public release `live81-ptcs-beta39-dynamic-beta24-hierarchy-restore-202606282340`；
+- cross-repo PTC package verifier checks ActorsPage/toggle/status-dot/connector bundle markers；
+- public 81 Playwright MCP proof is `G:\PulseTrade.fs\log\20260628\20260628234106.actors-public81-beta24-hierarchy.png`；snapshot is `G:\PulseTrade.fs\log\20260628\20260628234106.actors-public81-beta24-hierarchy-snapshot.md`；
 - `SduiFormDocument.fromArguFormSchema` 產生 `schema=fskynet-sdui`、`surface=FormInput`、stable `documentId`；
 - PFCF_AKKA_CMD fixture 反射 `SimpleAction`、`BBA`、`GenByColMeta`；
 - `GenByColMeta` tuple item kinds 驗證為 `bool-value`, `bool-value`, `text`, `enum`。

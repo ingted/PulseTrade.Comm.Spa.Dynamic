@@ -642,12 +642,7 @@ function createActorsPageDocument(rawContent){
   const nodes=actorNodes(rawContent);
   const projectionId=projectionText(rawContent, "projectionId", "ptcs-actors");
   const projectionVersion=projectionText(rawContent, "projectionVersion", "0");
-  const groups=sortBy((_1) =>[_1[0], _1[1]], map((_1) => {
-    const key=_1[0];
-    const groupNodes=_1[1];
-    const p=classifyNodeBlock(key, groupNodes);
-    return[p[0], key, p[1], groupNodes];
-  }, groupBy((node) => actorSystemAddress(nodeAddress(node)), nodes)));
+  const groups=createNodeGroups(nodes);
   const activeCount=filter((node) => {
     const status=lower(nodeStatus(node));
     return status.indexOf("active")>=0||status.indexOf("running")>=0;
@@ -704,28 +699,28 @@ function actorNodes(rawContent){
     return[];
   }
 }
-function actorSystemAddress(address){
-  if(isBlank_1(address))return"unknown";
+function createNodeGroups(nodes){
+  let _1;
+  const groupKey=(node) => actorSystemAddress(nodeRawAddress(node));
+  const knownGroups=map((_3) => {
+    const key_1=_3[0];
+    const augmentedNodes_1=withAncestors(nodes, _3[1]);
+    const p_1=classifyNodeBlock(key_1, augmentedNodes_1);
+    return[p_1[0], key_1, p_1[1], augmentedNodes_1];
+  }, groupBy(groupKey, filter((node) => groupKey(node)!="unknown", nodes)));
+  const unknownSeeds=filter((node) => {
+    const id=nodeId(node);
+    return!exists((_3) => exists((known) => nodeId(known)==id, _3[3]), knownGroups)&&groupKey(node)=="unknown";
+  }, nodes);
+  if(length(unknownSeeds)===0)_1=[];
   else {
-    const userIndex=address.indexOf("/user");
-    const systemIndex=address.indexOf("/system");
-    const cutIndex=userIndex>0&&systemIndex>0?userIndex<systemIndex?userIndex:systemIndex:userIndex>0?userIndex:systemIndex>0?systemIndex:-1;
-    return address.indexOf("://")>=0&&cutIndex>0?Substring(address, 0, cutIndex):address.indexOf("://")>=0?address:"unknown";
+    const key="unknown";
+    const augmentedNodes=withAncestors(nodes, unknownSeeds);
+    const p=classifyNodeBlock(key, augmentedNodes);
+    _1=[[p[0], key, p[1], augmentedNodes]];
   }
-}
-function nodeAddress(node){
-  let address;
-  try {
-    address=node.address||"";
-  }
-  catch(m){
-    address="";
-  }
-  return isBlank_1(address)?nodeFullPath(node):address;
-}
-function classifyNodeBlock(key, nodes){
-  const sample=key+" "+concat_2(" ", map((node) => nodeLabel(node)+" "+nodeKind(node)+" "+nodeAddress(node), nodes));
-  return key=="unknown"||isBlank_1(key)?[3, "Unknown"]:hasToken("ptcshost", key)||hasToken("ptcs-host", key)||hasToken("ptcs", key)||hasToken("commspa", key)?[0, "PTCS Host"]:hasToken("gwhost", key)||hasToken("gw-host", key)||hasToken("gateway", key)?[1, "GW Host"]:hasToken("rnhost", key)||hasToken("rn-host", key)||hasToken("resourcenode", key)||hasToken("resource-node", key)?[2, "RN Host"]:hasToken("ptcs", sample)||hasToken("spa", sample)||hasToken("commspa", sample)?[0, "PTCS Host"]:hasToken("gw", sample)||hasToken("gateway", sample)?[1, "GW Host"]:hasToken("rn", sample)||hasToken("resource", sample)?[2, "RN Host"]:[3, "Unknown"];
+  let _2=knownGroups.concat(_1);
+  return sortBy((_3) =>[_3[0], _3[1]], _2);
 }
 function renderCountCard(title, value){
   return Doc.Element("div", [Attr.Create("style", "border:1px solid #d9e3f0; border-radius:6px; background:#fff; padding:10px 12px;")], [Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#667891;")], [Doc.TextNode(title)]), Doc.Element("div", [Attr.Create("style", "margin-top:4px; font-size:18px; font-weight:700;")], [Doc.TextNode(value)])]);
@@ -734,7 +729,7 @@ function renderNodeBlock(key, roleLabel, groupNodes){
   const statuses=concat_2(", ", distinctValues(map(nodeStatus, groupNodes)));
   return Doc.Element("section", [Attr.Create("style", "display:flex; flex-direction:column; gap:10px; border:1px solid #cfdcec; background:#fff; border-radius:7px; padding:12px;"), OnAfterRender((node) => {
     node.setAttribute("data-testid", "dynamic-actor-node-block");
-  })], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;")], [Doc.Element("div", [Attr.Create("style", "min-width:0;")], [Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#667891;")], [Doc.TextNode(roleLabel)]), Doc.Element("h3", [Attr.Create("style", "margin:2px 0 0 0; font-size:15px; font-weight:700; color:#16263c; font-family:Consolas, 'Cascadia Mono', monospace; white-space:nowrap; overflow-x:auto;")], [Doc.TextNode(key)])]), Doc.Element("div", [Attr.Create("style", "font-size:12px; color:#53677f; white-space:nowrap;")], [Doc.TextNode(String(length(groupNodes))+" actor node(s)")])]), Doc.Element("div", [Attr.Create("style", "display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:#53677f;")], [Doc.Element("span", [Attr.Create("style", "font-weight:650;")], [Doc.TextNode("Status")]), Doc.Element("span", [], [Doc.TextNode(isBlank_1(statuses)?"unknown":statuses)])]), renderTree(groupNodes), renderGrid(groupNodes)]);
+  })], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;")], [Doc.Element("div", [Attr.Create("style", "min-width:0;")], [Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#667891;")], [Doc.TextNode(roleLabel)]), Doc.Element("h3", [Attr.Create("style", "margin:2px 0 0 0; font-size:15px; font-weight:700; color:#16263c; font-family:Consolas, 'Cascadia Mono', monospace; white-space:nowrap; overflow-x:auto;")], [Doc.TextNode(key)])]), Doc.Element("div", [Attr.Create("style", "font-size:12px; color:#53677f; white-space:nowrap;")], ofSeq_1(delay(() =>[Doc.TextNode(String(filter((node) =>!isBlank_1(nodeRawAddress(node)), groupNodes).length)+" actor node(s)")])))]), Doc.Element("div", [Attr.Create("style", "display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:#53677f;")], [Doc.Element("span", [Attr.Create("style", "font-weight:650;")], [Doc.TextNode("Status")]), Doc.Element("span", [], [Doc.TextNode(isBlank_1(statuses)?"unknown":statuses)])]), renderTree(groupNodes), renderGrid(groupNodes)]);
 }
 function lower(value){
   return value==null?"":value.toLowerCase();
@@ -757,12 +752,135 @@ function projectionText(rawContent, fieldName, fallback){
     return fallback;
   }
 }
+function actorSystemAddress(address){
+  if(isBlank_1(address))return"unknown";
+  else {
+    const userIndex=address.indexOf("/user");
+    const systemIndex=address.indexOf("/system");
+    const cutIndex=userIndex>0&&systemIndex>0?userIndex<systemIndex?userIndex:systemIndex:userIndex>0?userIndex:systemIndex>0?systemIndex:-1;
+    return address.indexOf("://")>=0&&cutIndex>0?Substring(address, 0, cutIndex):address.indexOf("://")>=0?address:"unknown";
+  }
+}
+function nodeRawAddress(node){
+  try {
+    return node.address||"";
+  }
+  catch(m){
+    return"";
+  }
+}
+function withAncestors(allNodes, seedNodes){
+  let result;
+  result=FSharpList.Empty;
+  const add=(node_1) => {
+    const id=nodeId(node_1);
+    if(!isBlank_1(id)&&!exists_2((item) => nodeId(item)==id, result))result=append_3(result, ofArray([node_1]));
+  };
+  function addAncestors(node_1){
+    const parentId=nodeParentId(node_1);
+    if(!isBlank_1(parentId)){
+      const m=tryFind((node_2) => nodeId(node_2)==parentId, allNodes);
+      if(m==null){ }
+      else {
+        const parent=m.$0;
+        addAncestors(parent);
+        add(parent);
+      }
+    }
+  }
+  for(let i=0, _1=seedNodes.length-1;i<=_1;i++){
+    const node=get(seedNodes, i);
+    addAncestors(node);
+    add(node);
+  }
+  return ofList(result);
+}
+function classifyNodeBlock(key, nodes){
+  const sample=key+" "+concat_2(" ", map((node) => nodeLabel(node)+" "+nodeKind(node)+" "+nodeAddress(node), nodes));
+  return key=="unknown"||isBlank_1(key)?[3, "Unknown"]:hasToken("ptcshost", key)||hasToken("ptcs-host", key)||hasToken("ptcs", key)||hasToken("commspa", key)?[0, "PTCS Host"]:hasToken("gwhost", key)||hasToken("gw-host", key)||hasToken("gateway", key)?[1, "GW Host"]:hasToken("rnhost", key)||hasToken("rn-host", key)||hasToken("resourcenode", key)||hasToken("resource-node", key)?[2, "RN Host"]:hasToken("ptcs", sample)||hasToken("spa", sample)||hasToken("commspa", sample)?[0, "PTCS Host"]:hasToken("gw", sample)||hasToken("gateway", sample)?[1, "GW Host"]:hasToken("rn", sample)||hasToken("resource", sample)?[2, "RN Host"]:[3, "Unknown"];
+}
+function nodeId(node){
+  try {
+    return node.id||"";
+  }
+  catch(m){
+    return"";
+  }
+}
+function distinctValues(values){
+  let known;
+  known=FSharpList.Empty;
+  for(let i=0, _1=values.length-1;i<=_1;i++)((() => {
+    const value=get(values, i);
+    const normalized=value==null?"":Trim(value);
+    return normalized!=""&&!exists_2((current) => current==normalized, known)?void(known=append_3(known, ofArray([normalized]))):null;
+  })());
+  return ofList(known);
+}
 function isBlank_1(value){
   return value==null||Trim(value)=="";
 }
-function nodeFullPath(node){
+function renderTree(groupNodes){
+  const collapsedIds=_c_2.Create_1([]);
+  const containsId=(id, ids) => exists((current) => current==id, ids);
+  const roots=sortBy(nodeLabel, filter((node) => {
+    const parentId=nodeParentId(node);
+    return isBlank_1(parentId)||!exists((node_1) => nodeId(node_1)==parentId, groupNodes);
+  }, groupNodes));
+  function renderNode_1(collapsed){
+    return(depth) =>(node) => {
+      let _1;
+      const id=nodeId(node);
+      const children=sortBy(nodeLabel, filter((node_1) => nodeParentId(node_1)==id, groupNodes));
+      const a=12;
+      const a_1=0;
+      const b=Compare(a_1, depth)===1?a_1:depth;
+      const depthValue=Compare(a, b)===-1?a:b;
+      const address=nodeAddress(node);
+      const fullPath=nodeFullPath(node);
+      const displayAddress=isBlank_1(address)?fullPath:address;
+      const isCollapsed=containsId(id, collapsed);
+      let _2=Doc.Element("div", [Attr.Create("class", "dynamic-actor-tree-row"), Attr.Create("style", "position:relative; display:grid; grid-template-columns:20px 10px max-content max-content max-content; gap:8px; align-items:center; width:max-content; min-width:100%; padding:4px 10px 4px 6px; border-radius:5px; font-size:12px; line-height:1.35; margin-left:"+String(depthValue*18)+"px;"), OnAfterRender((node_1) => {
+        node_1.setAttribute("data-testid", "dynamic-actor-tree-row");
+        node_1.setAttribute("data-node-id", id);
+        node_1.setAttribute("data-parent-id", nodeParentId(node_1));
+        node_1.setAttribute("data-depth", String(depthValue));
+      })], ofSeq_1(delay(() => append_2(depthValue>0?append_2([Doc.Element("span", [Attr.Create("class", "dynamic-actor-tree-connector-h"), Attr.Create("style", "position:absolute; left:-12px; top:50%; width:12px; border-top:1px solid #aeb8c8;"), OnAfterRender((node_1) => {
+        node_1.setAttribute("data-testid", "dynamic-actor-tree-connector");
+      })], [])], delay(() =>[Doc.Element("span", [Attr.Create("class", "dynamic-actor-tree-connector-v"), Attr.Create("style", "position:absolute; left:-12px; top:-5px; height:calc(100% + 5px); border-left:1px solid #aeb8c8;")], [])])):[], delay(() => append_2(length(children)>0?[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("title", isCollapsed?"Expand actor node":"Collapse actor node"), Attr.Create("style", "display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid #7d92ad; background:#fff; color:#21354f; font-size:12px; line-height:16px; padding:0; margin-top:3px; cursor:pointer; font-family:Consolas, 'Cascadia Mono', monospace;"), Handler("click", () =>() => {
+        const current=collapsedIds.Get();
+        return collapsedIds.Set(containsId(id, current)?filter((value) => value!=id, current):current.concat([id]));
+      }), OnAfterRender((node_1) => {
+        node_1.setAttribute("data-testid", "dynamic-actor-tree-toggle");
+        node_1.setAttribute("aria-expanded", isCollapsed?"false":"true");
+      })], [Doc.TextNode(isCollapsed?"+":"-")])]:[Doc.Element("span", [Attr.Create("style", "display:inline-flex; width:18px; height:18px; margin-top:3px;"), OnAfterRender((node_1) => {
+        node_1.setAttribute("data-testid", "dynamic-actor-tree-toggle-placeholder");
+      })], [])], delay(() => append_2([renderStatusDot(nodeStatus(node))], delay(() => append_2([Doc.Element("span", [Attr.Create("class", "dynamic-actor-tree-label"), Attr.Create("title", displayAddress), Attr.Create("style", "white-space:nowrap; color:#172033; font-weight:600; overflow:visible; text-overflow:clip; font-family:Consolas, 'Cascadia Mono', monospace;")], [Doc.TextNode(displayAddress)])], delay(() => append_2([renderSmallPill(nodeKind(node))], delay(() =>[renderStatusChip(nodeStatus(node))])))))))))))));
+      if(isCollapsed||depth>=24)_1=FSharpList.Empty;
+      else {
+        const x=ofArray(children);
+        _1=collect_2((renderNode_1(collapsed))(depth+1), x);
+      }
+      return FSharpList.Cons(_2, _1);
+    };
+  }
+  return Doc.Element("div", [Attr.Create("style", "border:1px solid #d8e2ef; background:#f8fafc; border-radius:6px; padding:8px 10px; overflow-x:scroll; overflow-y:auto; scrollbar-gutter:stable; max-height:430px;"), OnAfterRender((node) => {
+    node.setAttribute("data-testid", "dynamic-actor-tree-viewport");
+  })], [Doc.EmbedView(Map((collapsed) => {
+    const x=ofArray(roots);
+    const rows=collect_2((renderNode_1(collapsed))(0), x);
+    return rows.$==0?Doc.Element("div", [Attr.Create("style", "color:#667891; font-size:12px;")], [Doc.TextNode("No actor tree rows.")]):Doc.Concat(rows);
+  }, collapsedIds.View))]);
+}
+function renderGrid(groupNodes){
+  const headerCell=(label_1) => E("th", [Attr.Create("style", "text-align:left; padding:8px 10px; border-bottom:1px solid #d7e2ef; color:#53677f; font-size:11px; white-space:nowrap;")], [Doc.TextNode(label_1)]);
+  return Doc.Element("div", [Attr.Create("style", "overflow-x:auto; border:1px solid #d8e2ef; border-radius:6px; background:#fff;"), OnAfterRender((node) => {
+    node.setAttribute("data-testid", "dynamic-actor-grid");
+  })], [E("table", [Attr.Create("style", "border-collapse:collapse; min-width:980px; width:100%;")], [E("thead", [], [E("tr", [], [headerCell("Kind"), headerCell("Status"), headerCell("Address"), headerCell("Full path")])]), E("tbody", [], ofArray(map((node) => E("tr", [], [E("td", [Attr.Create("style", "padding:8px 10px; border-bottom:1px solid #edf2f8; white-space:nowrap;")], [Doc.TextNode(nodeKind(node))]), E("td", [Attr.Create("style", "padding:8px 10px; border-bottom:1px solid #edf2f8; white-space:nowrap;")], [renderStatusChip(nodeStatus(node))]), E("td", [Attr.Create("style", "padding:8px 10px; border-bottom:1px solid #edf2f8; font-family:Consolas, 'Cascadia Mono', monospace; font-size:12px; white-space:nowrap;")], [Doc.TextNode(nodeAddress(node))]), E("td", [Attr.Create("style", "padding:8px 10px; border-bottom:1px solid #edf2f8; font-family:Consolas, 'Cascadia Mono', monospace; font-size:12px; white-space:nowrap;")], [Doc.TextNode(nodeFullPath(node))])]), groupNodes)))])]);
+}
+function nodeParentId(node){
   try {
-    return node.fullPath||"";
+    return node.parentId||"";
   }
   catch(m){
     return"";
@@ -786,84 +904,32 @@ function nodeKind(node){
     return"";
   }
 }
+function nodeAddress(node){
+  const address=nodeRawAddress(node);
+  return isBlank_1(address)?nodeFullPath(node):address;
+}
 function hasToken(token, value){
   return lower(value).indexOf(token)>=0;
 }
-function distinctValues(values){
-  let known;
-  known=FSharpList.Empty;
-  for(let i=0, _1=values.length-1;i<=_1;i++)((() => {
-    const value=get(values, i);
-    const normalized=value==null?"":Trim(value);
-    return normalized!=""&&!exists_2((current) => current==normalized, known)?void(known=append_3(known, ofArray([normalized]))):null;
-  })());
-  return ofList(known);
+function renderStatusDot(status){
+  const normalized=lower(status);
+  const p=normalized.indexOf("active")>=0||normalized.indexOf("running")>=0?["#16a34a", "#dcfce7"]:normalized.indexOf("passivated")>=0?["#d97706", "#fef3c7"]:normalized.indexOf("stale")>=0||normalized.indexOf("changed")>=0?["#d97706", "#fef3c7"]:normalized.indexOf("terminated")>=0||normalized.indexOf("dead")>=0?["#dc2626", "#fee2e2"]:["#64748b", "#e2e8f0"];
+  return Doc.Element("span", [Attr.Create("style", "width:8px; height:8px; border-radius:999px; background:"+p[0]+"; box-shadow:0 0 0 2px "+p[1]+"; display:inline-block;"), OnAfterRender((node) => {
+    node.setAttribute("data-testid", "dynamic-actor-tree-status-dot");
+    node.setAttribute("data-status", isBlank_1(status)?"unknown":status);
+  })], []);
 }
-function renderTree(groupNodes){
-  const collapsedIds=_c_2.Create_1([]);
-  const containsId=(id, ids) => exists((current) => current==id, ids);
-  const roots=sortBy(nodeLabel, filter((node) => {
-    const parentId=nodeParentId(node);
-    return isBlank_1(parentId)||!exists((node_1) => nodeId(node_1)==parentId, groupNodes);
-  }, groupNodes));
-  function renderNode_1(collapsed){
-    return(depth) =>(node) => {
-      let _1;
-      const id=nodeId(node);
-      const children=sortBy(nodeLabel, filter((node_1) => nodeParentId(node_1)==id, groupNodes));
-      const address=nodeAddress(node);
-      const fullPath=nodeFullPath(node);
-      const displayAddress=isBlank_1(address)?fullPath:address;
-      const isCollapsed=containsId(id, collapsed);
-      let _2=Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:auto minmax(720px,1fr); align-items:start; column-gap:8px; margin-left:"+String(depth*22)+"px; min-height:28px;"), OnAfterRender((node_1) => {
-        node_1.setAttribute("data-testid", "dynamic-actor-tree-row");
-      })], ofSeq_1(delay(() => append_2(length(children)>0?[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("title", isCollapsed?"Expand actor node":"Collapse actor node"), Attr.Create("style", "display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid #7d92ad; background:#fff; color:#21354f; font-size:12px; line-height:16px; padding:0; margin-top:3px; cursor:pointer; font-family:Consolas, 'Cascadia Mono', monospace;"), Handler("click", () =>() => {
-        const current=collapsedIds.Get();
-        return collapsedIds.Set(containsId(id, current)?filter((value) => value!=id, current):current.concat([id]));
-      }), OnAfterRender((node_1) => {
-        node_1.setAttribute("data-testid", "dynamic-actor-tree-toggle");
-        node_1.setAttribute("aria-expanded", isCollapsed?"false":"true");
-      })], [Doc.TextNode(isCollapsed?"+":"-")])]:[Doc.Element("span", [Attr.Create("style", "display:inline-flex; width:18px; height:18px; margin-top:3px;"), OnAfterRender((node_1) => {
-        node_1.setAttribute("data-testid", "dynamic-actor-tree-toggle-placeholder");
-      })], [])], delay(() =>[Doc.Element("div", [Attr.Create("style", "border-left:2px solid #c9d6e6; padding-left:10px; padding-bottom:6px;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:8px; flex-wrap:wrap;")], [Doc.Element("span", [Attr.Create("style", "font-weight:650; color:#1f3148;")], [Doc.TextNode(nodeLabel(node))]), renderStatusChip(nodeStatus(node)), Doc.Element("span", [Attr.Create("style", "font-size:11px; color:#667891;")], [Doc.TextNode(nodeKind(node))])]), Doc.Element("div", [Attr.Create("style", "font-family:Consolas, 'Cascadia Mono', monospace; font-size:12px; color:#22344d; white-space:nowrap;")], [Doc.TextNode(displayAddress)])])])))));
-      if(isCollapsed||depth>=24)_1=FSharpList.Empty;
-      else {
-        const x=ofArray(children);
-        _1=collect_2((renderNode_1(collapsed))(depth+1), x);
-      }
-      return FSharpList.Cons(_2, _1);
-    };
-  }
-  return Doc.Element("div", [Attr.Create("style", "border:1px solid #d8e2ef; background:#fbfdff; border-radius:6px; padding:10px; overflow-x:auto;"), OnAfterRender((node) => {
-    node.setAttribute("data-testid", "dynamic-actor-tree-viewport");
-  })], [Doc.EmbedView(Map((collapsed) => {
-    const x=ofArray(roots);
-    const rows=collect_2((renderNode_1(collapsed))(0), x);
-    return rows.$==0?Doc.Element("div", [Attr.Create("style", "color:#667891; font-size:12px;")], [Doc.TextNode("No actor tree rows.")]):Doc.Concat(rows);
-  }, collapsedIds.View))]);
-}
-function renderGrid(groupNodes){
-  const headerCell=(label_1) => E("th", [Attr.Create("style", "text-align:left; padding:8px 10px; border-bottom:1px solid #d7e2ef; color:#53677f; font-size:11px; white-space:nowrap;")], [Doc.TextNode(label_1)]);
-  return Doc.Element("div", [Attr.Create("style", "overflow-x:auto; border:1px solid #d8e2ef; border-radius:6px; background:#fff;"), OnAfterRender((node) => {
-    node.setAttribute("data-testid", "dynamic-actor-grid");
-  })], [E("table", [Attr.Create("style", "border-collapse:collapse; min-width:980px; width:100%;")], [E("thead", [], [E("tr", [], [headerCell("Kind"), headerCell("Status"), headerCell("Address"), headerCell("Full path")])]), E("tbody", [], ofArray(map((node) => E("tr", [], [E("td", [Attr.Create("style", "padding:8px 10px; border-bottom:1px solid #edf2f8; white-space:nowrap;")], [Doc.TextNode(nodeKind(node))]), E("td", [Attr.Create("style", "padding:8px 10px; border-bottom:1px solid #edf2f8; white-space:nowrap;")], [renderStatusChip(nodeStatus(node))]), E("td", [Attr.Create("style", "padding:8px 10px; border-bottom:1px solid #edf2f8; font-family:Consolas, 'Cascadia Mono', monospace; font-size:12px; white-space:nowrap;")], [Doc.TextNode(nodeAddress(node))]), E("td", [Attr.Create("style", "padding:8px 10px; border-bottom:1px solid #edf2f8; font-family:Consolas, 'Cascadia Mono', monospace; font-size:12px; white-space:nowrap;")], [Doc.TextNode(nodeFullPath(node))])]), groupNodes)))])]);
-}
-function nodeId(node){
-  try {
-    return node.id||"";
-  }
-  catch(m){
-    return"";
-  }
+function renderSmallPill(value){
+  return Doc.Element("span", [Attr.Create("style", "white-space:nowrap; border:1px solid #d4ddec; border-radius:999px; background:#fff; color:#44546d; padding:1px 7px; font-size:11px; line-height:1.45;")], [Doc.TextNode(isBlank_1(value)?"unknown":value)]);
 }
 function renderStatusChip(status){
   const normalized=lower(status);
   const color=normalized.indexOf("active")>=0||normalized.indexOf("running")>=0?"#0b6b3a":normalized.indexOf("stale")>=0||normalized.indexOf("changed")>=0?"#8a5a00":normalized.indexOf("terminated")>=0||normalized.indexOf("dead")>=0?"#8b1e2d":"#46566b";
   return Doc.Element("span", [Attr.Create("style", "display:inline-block; border:1px solid "+color+"; color:"+color+"; border-radius:999px; padding:2px 7px; font-size:11px; line-height:16px; white-space:nowrap;")], [Doc.TextNode(isBlank_1(status)?"unknown":status)]);
 }
-function nodeParentId(node){
+function nodeFullPath(node){
   try {
-    return node.parentId||"";
+    return node.fullPath||"";
   }
   catch(m){
     return"";
@@ -4492,9 +4558,6 @@ function map(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)r[i]=f(arr[i]);
   return r;
 }
-function sortBy(f, arr){
-  return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) => Compare(_1[1], _2[1])));
-}
 function filter(f, arr){
   const r=[];
   for(let i=0, _1=arr.length-1;i<=_1;i++)if(f(arr[i]))r.push(arr[i]);
@@ -4520,6 +4583,9 @@ function exists(f, x){
     if(f(x[i]))e=true;
     else i=i+1;
   return e;
+}
+function sortBy(f, arr){
+  return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) => Compare(_1[1], _2[1])));
 }
 function forall2(f, x1, x2){
   let a, i;
@@ -4625,12 +4691,12 @@ function foldBack(f, arr, zero){
   for(let i=1, _1=len;i<=_1;i++)acc=f(arr[len-i], acc);
   return acc;
 }
+function collect(f, x){
+  return Array.prototype.concat.apply([], map(f, x));
+}
 function pick(f, arr){
   const m=tryPick(f, arr);
   return m==null?FailWith("KeyNotFoundException"):m.$0;
-}
-function collect(f, x){
-  return Array.prototype.concat.apply([], map(f, x));
 }
 function create(size, value){
   const r=new Array(size);
@@ -6526,44 +6592,6 @@ function New_31(rawArgu, duTypeName, unionCaseName, keyJson){
     keyJson:keyJson
   };
 }
-function groupBy(f, a){
-  const d=new Dictionary("New_5");
-  const keys=[];
-  for(let i=0, _1=length(a)-1;i<=_1;i++){
-    const c=a[i];
-    const k=f(c);
-    if(d.ContainsKey(k))d.Item(k).push(c);
-    else {
-      keys.push(k);
-      d.DAdd(k, [c]);
-    }
-  }
-  mapInPlace((k_1) =>[k_1, d.Item(k_1)], keys);
-  return keys;
-}
-function mapInPlace(f, arr){
-  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
-}
-function nonNegative(){
-  return FailWith("The input must be non-negative.");
-}
-function insufficient(){
-  return FailWith("The input sequence has an insufficient number of elements.");
-}
-function mapiInPlace(f, arr){
-  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
-  return arr;
-}
-function arrContains(item, arr){
-  let c, i;
-  c=true;
-  i=0;
-  const l=length(arr);
-  while(c&&i<l)
-    if(Equals(arr[i], item))c=false;
-    else i=i+1;
-  return!c;
-}
 class Attr {
   static Create(name, value){
     return Attr.A3((el) => {
@@ -6751,12 +6779,6 @@ class Dictionary extends Object_1 {
     const d=this.data[this.hash(k)];
     return d==null?false:exists((a) => this.equals.apply(null, [(KeyValue(a))[0], k]), d);
   }
-  Item(k){
-    return this.get(k);
-  }
-  DAdd(k, v){
-    this.add(k, v);
-  }
   TryGetValue(k, res){
     const d=this.data[this.hash(k)];
     if(d==null)return false;
@@ -6790,6 +6812,24 @@ class Dictionary extends Object_1 {
       else d[m.$0]={K:k, V:v};
     }
   }
+  Item(k){
+    return this.get(k);
+  }
+  DAdd(k, v){
+    this.add(k, v);
+  }
+  remove(k){
+    const h=this.hash(k);
+    const d=this.data[h];
+    if(d==null)return false;
+    else {
+      const r=filter((a) =>!this.equals.apply(null, [(KeyValue(a))[0], k]), d);
+      return length(r)<d.length&&(this.count=this.count-1,this.data[h]=r,true);
+    }
+  }
+  GetEnumerator(){
+    return Get0(concat(GetFieldValues(this.data)));
+  }
   get(k){
     const d=this.data[this.hash(k)];
     return d==null?notPresent():pick((a) => {
@@ -6809,18 +6849,6 @@ class Dictionary extends Object_1 {
       this.count=this.count+1;
       d.push({K:k, V:v});
     }
-  }
-  remove(k){
-    const h=this.hash(k);
-    const d=this.data[h];
-    if(d==null)return false;
-    else {
-      const r=filter((a) =>!this.equals.apply(null, [(KeyValue(a))[0], k]), d);
-      return length(r)<d.length&&(this.count=this.count-1,this.data[h]=r,true);
-    }
-  }
-  GetEnumerator(){
-    return Get0(concat(GetFieldValues(this.data)));
   }
   constructor(i, _1, _2, _3){
     if(i=="New_5"){
@@ -7210,6 +7238,44 @@ function Enumerate(flip, t){
       }
   }
   return unfold((_1) => gen(_1[0], _1[1]), [t, FSharpList.Empty]);
+}
+function groupBy(f, a){
+  const d=new Dictionary("New_5");
+  const keys=[];
+  for(let i=0, _1=length(a)-1;i<=_1;i++){
+    const c=a[i];
+    const k=f(c);
+    if(d.ContainsKey(k))d.Item(k).push(c);
+    else {
+      keys.push(k);
+      d.DAdd(k, [c]);
+    }
+  }
+  mapInPlace((k_1) =>[k_1, d.Item(k_1)], keys);
+  return keys;
+}
+function nonNegative(){
+  return FailWith("The input must be non-negative.");
+}
+function insufficient(){
+  return FailWith("The input sequence has an insufficient number of elements.");
+}
+function mapInPlace(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
+}
+function mapiInPlace(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
+  return arr;
+}
+function arrContains(item, arr){
+  let c, i;
+  c=true;
+  i=0;
+  const l=length(arr);
+  while(c&&i<l)
+    if(Equals(arr[i], item))c=false;
+    else i=i+1;
+  return!c;
 }
 function buildRawArguFromValues(fields){
   const parts=MarkResizable([]);
@@ -8298,26 +8364,6 @@ function TryParse_2(s, min, max_1, r){
 function IsWhiteSpace(c){
   return c.match(new RegExp("\\s"))!==null;
 }
-class KeyNotFoundException extends Error {
-  constructor(i, _1){
-    if(i=="New"){
-      i="New_1";
-      _1="The given key was not present in the dictionary.";
-    }
-    if(i=="New_1"){
-      const message=_1;
-      super(message);
-    }
-  }
-}
-class ArgumentException extends Error {
-  constructor(i, _1){
-    if(i=="New_2"){
-      const message=_1;
-      super(message);
-    }
-  }
-}
 class Updates_1 {
   c;
   s;
@@ -8610,6 +8656,26 @@ function Intersect_1(a, b){
   const set_1=new HashSet("New_2", ToArray_2(a));
   set_1.IntersectWith(ToArray_2(b));
   return set_1;
+}
+class KeyNotFoundException extends Error {
+  constructor(i, _1){
+    if(i=="New"){
+      i="New_1";
+      _1="The given key was not present in the dictionary.";
+    }
+    if(i=="New_1"){
+      const message=_1;
+      super(message);
+    }
+  }
+}
+class ArgumentException extends Error {
+  constructor(i, _1){
+    if(i=="New_2"){
+      const message=_1;
+      super(message);
+    }
+  }
 }
 function Clear(a){
   a.splice(0, length(a));

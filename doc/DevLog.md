@@ -375,3 +375,11 @@ Implementation status:
 - The gate starts PTCS with the Dynamic source Release bundle and verifies Dynamic owns `/actors`, fallback rows are absent, PTCS/GW/RN/Unknown blocks are ordered, full `akka.tcp://...` addresses are visible, report/reload controls exist, and boxed toggle collapse/expand changes visible rows `17 -> 16 -> 17`.
 - Evidence screenshot is `G:\PulseTrade.fs\log\20260628\20260628230455.actors-page-dynamic-fsharp-verifier.png`.
 - `DYN-WBS-519` moves to 92. Remaining work is strict schema parser, production report actions, restart/failover visual states, and Dynamic absent/unsupported renderer failure-injection.
+
+## 2026-06-28 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta24 ActorsPage hierarchy restore
+
+- Restored the ActorsPage hierarchy visual model inside Dynamic node blocks. Concrete actor addresses are grouped by their real actor-system address, then virtual ancestors such as `/user` and `/system` are reattached inside the owning PTCS/GW/RN block instead of forming a synthetic Unknown block.
+- Tree rows now expose status-dot and connector markers for reusable verification, keep full `akka.tcp://...` labels visible, and preserve boxed `+` / `-` toggles with collapse/expand behavior.
+- Package version advanced from `0.1.3-beta23` to `0.1.3-beta24`. Release build passed after stopping stale `wsfscservice.exe`; package tests passed; NuGet push returned `Your package was pushed`. Immediate flat-container lookup was still propagation-pending for beta24.
+- Cross-repo verification passed: `verify.actorsPageDynamic.playwright.fsx`, `verify-ptcs-dynamic-nuget-bundle.fsx`, and `run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait`. Evidence: `G:\PulseTrade.fs\log\20260628\20260628233906.actors-page-dynamic-beta24-hierarchy.png`.
+- Public 81 redeployed to `live81-ptcs-beta39-dynamic-beta24-hierarchy-restore-202606282340`; Playwright MCP evidence is `G:\PulseTrade.fs\log\20260628\20260628234106.actors-public81-beta24-hierarchy.png` and `G:\PulseTrade.fs\log\20260628\20260628234106.actors-public81-beta24-hierarchy-snapshot.md`.
