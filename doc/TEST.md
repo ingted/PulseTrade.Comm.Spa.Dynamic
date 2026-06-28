@@ -175,12 +175,14 @@ Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier �
 尚未完成：
 
 - strict ActorsPage DSL parser / codec；
-- polished tree/grid/cards/actions rendering；
-- reusable F# Playwright verifier for Dynamic accepted, Dynamic absent, and unsupported renderer fallback paths；
-- NuGet/package/public 81 rollout gates。
+- tree/grid/cards/actions polish beyond the current grouped/toggle slice；
+- reusable F# Playwright verifier for Dynamic accepted, Dynamic absent, and unsupported renderer fallback paths。
 
 目前已落地的 package coverage：
 
+- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta23` rollout completed the package/public 81 gate with PTCS `0.2.5-beta39` and public release `live81-ptcs-beta39-dynamic-beta23-actorspage-toggle-202606282235`；
+- cross-repo PTC package verifier checks ActorsPage/toggle bundle markers；
+- public 81 Playwright MCP proof is `G:\PulseTrade.fs\log\20260628\20260628223500.actors-public81-beta39-toggle-collapse.png`；
 - `SduiFormDocument.fromArguFormSchema` 產生 `schema=fskynet-sdui`、`surface=FormInput`、stable `documentId`；
 - PFCF_AKKA_CMD fixture 反射 `SimpleAction`、`BBA`、`GenByColMeta`；
 - `GenByColMeta` tuple item kinds 驗證為 `bool-value`, `bool-value`, `text`, `enum`。

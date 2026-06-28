@@ -355,3 +355,11 @@ Implementation status:
 - Updated `Client/ActorDynamicTab.fs` so ActorsPage groups transported actor addresses by actor-system host/port and sorts blocks as PTCS Host -> GW Host -> RN Host -> Unknown. Local virtual parent paths now stay in the Unknown block instead of being misclassified by child path tokens.
 - Added boxed stateful tree toggles in the Dynamic ActorsPage renderer. Buttons expose `data-testid="dynamic-actor-tree-toggle"`, update `aria-expanded`, switch `-`/`+`, and remove/restore child rows from the rendered tree.
 - Verification: Dynamic package tests passed 18/18; short-path WebSharper bundle build passed after stopping stale `wsfscservice.exe`. PTCS source-host Playwright MCP gate passed at `http://127.0.0.1:3721/actors`: fallback rows `0`, four blocks in PTCS/GW/RN/Unknown order, full actor addresses visible, and toggle row count changed `17 -> 16 -> 17`. Evidence: `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-check.json`; screenshot: `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-fixed.png`.
+
+## 2026-06-28 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta23 ActorsPage rollout
+
+- Package version advanced to `0.1.3-beta23` for the ActorsPage grouping/toggle renderer.
+- Short-path Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta23.nupkg`; warnings remain the known WS9002 / NU5123 / missing-readme package warnings.
+- Cross-repo PTC package bundle verifier passed with PTCS `0.2.5-beta39` and Dynamic `0.1.3-beta23`, including new ActorsPage/toggle markers.
+- Public 81 deployment `live81-ptcs-beta39-dynamic-beta23-actorspage-toggle-202606282235` now renders `Actors / Dynamic`; Playwright MCP screenshot `G:\PulseTrade.fs\log\20260628\20260628223500.actors-public81-beta39-toggle-collapse.png` shows the boxed `+` collapsed state.
+- NuGet push returned `Created` / `Your package was pushed`; immediate flat-container lookup was propagation-pending.
