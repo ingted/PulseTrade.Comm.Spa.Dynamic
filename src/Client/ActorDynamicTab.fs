@@ -1,10 +1,28 @@
 namespace PulseTrade.Comm.Spa.Dynamic.Client
 
+open System
 open WebSharper
 open WebSharper.JavaScript
+open WebSharper.JavaScript.Dom
 open WebSharper.UI
 open WebSharper.UI.Html
 open WebSharper.UI.Client
+
+[<JavaScript>]
+type ActorsReportRequestDto =
+    { outputDirectory: string }
+
+[<JavaScript>]
+type ActorsReportReplyDto =
+    { status: string
+      outputDirectory: string
+      fileName: string
+      filePath: string
+      projectionId: string
+      projectionVersion: int
+      nodeCount: int
+      edgeCount: int
+      sourceEventCount: int }
 
 [<JavaScript>]
 module ActorDynamicTab =
@@ -20,6 +38,61 @@ module ActorDynamicTab =
 
     let isBlank (value: string) =
         value = null || value.Trim() = ""
+
+    let asText (value: string) =
+        if isNull value || JS.TypeOf(box value) = JS.Kind.Undefined then "" else value
+
+    let decodeJson<'T> text =
+        JSON.Parse(asText text) |> As<'T>
+
+    let errorMessage (error: obj) =
+        if isNull error then
+            "unknown error"
+        else
+            string error
+
+    let postJson<'TRequest, 'TReply> url (body: 'TRequest) (onOk: 'TReply -> unit) onError =
+        let headers = Headers()
+        headers.Set("Content-Type", "application/json")
+
+        let options = RequestOptions()
+        options.Method <- "POST"
+        options.Headers <- headers
+        options.Body <- JSON.Stringify(body)
+
+        let promise =
+            JS.Window.Fetch(url, options)
+                .Then<unit>(Func<Response, Promise<unit>>(fun response ->
+                    response.Text()
+                        .Then<unit>(Func<string, unit>(fun responseBody ->
+                            if response.Ok then
+                                let text = if isBlank responseBody then "{}" else responseBody
+                                onOk (decodeJson<'TReply> text)
+                            else
+                                onError (if isBlank responseBody then $"POST {url} {response.Status}" else responseBody)))))
+
+        promise.Catch<unit>(Func<obj, unit>(fun error -> onError (errorMessage error))) |> ignore
+
+    let generateActorReport (outputDirectory: string) (status: Var<string>) =
+        let trimmed = asText outputDirectory |> _.Trim()
+
+        if isBlank trimmed then
+            status.Value <- "Report output directory is required."
+        else
+            status.Value <- "Generating actor state report..."
+
+            postJson<ActorsReportRequestDto, ActorsReportReplyDto>
+                "/actors/api/report"
+                { outputDirectory = trimmed }
+                (fun reply ->
+                    let path =
+                        if isBlank reply.filePath then
+                            reply.fileName
+                        else
+                            reply.filePath
+
+                    status.Value <- "Report written: " + path)
+                (fun message -> status.Value <- "Report failed: " + asText message)
 
     let actorNodes (rawContent: string) =
         try
@@ -182,6 +255,108 @@ module ActorDynamicTab =
             text (if isBlank value then "unknown" else value)
         ]
 
+    let makeActorTreeNode id parentId label fullPath address kind status =
+        JS.Inline<obj>(
+            "({ id: $0, parentId: $1, label: $2, fullPath: $3, address: $4, kind: $5, status: $6 })",
+            id,
+            parentId,
+            label,
+            fullPath,
+            address,
+            kind,
+            status)
+
+    let actorTreePath (address: string) =
+        let value = asText address
+        let userIndex = value.IndexOf("/user")
+        let systemIndex = value.IndexOf("/system")
+        let cutIndex =
+            if userIndex >= 0 && systemIndex >= 0 then
+                if userIndex < systemIndex then userIndex else systemIndex
+            elif userIndex >= 0 then
+                userIndex
+            elif systemIndex >= 0 then
+                systemIndex
+            else
+                -1
+
+        if cutIndex < 0 then "" else value.Substring(cutIndex)
+
+    let pathSegments (path: string) =
+        if isBlank path then
+            [||]
+        else
+            path.Split([| '/' |], StringSplitOptions.RemoveEmptyEntries)
+
+    let joinPath (segments: string[]) count =
+        if count <= 0 then
+            ""
+        else
+            "/" + String.Join("/", segments |> Array.take count)
+
+    let normalizeGroupTreeNodes (groupKey: string) (groupNodes: obj[]) =
+        let mutable result: obj list = []
+
+        let contains id =
+            result |> List.exists (fun node -> nodeId node = id)
+
+        let add node =
+            let id = nodeId node
+            if not (isBlank id) && not (contains id) then
+                result <- result @ [ node ]
+
+        for node in groupNodes do
+            let sourcePath =
+                let rawAddress = nodeRawAddress node
+                if isBlank rawAddress then nodeFullPath node else rawAddress
+
+            let treePath = actorTreePath sourcePath
+            let segments = pathSegments treePath
+
+            if segments.Length <= 1 then
+                add node
+            else
+                for index in 1 .. segments.Length - 1 do
+                    let path = joinPath segments index
+                    let id = groupKey + path
+                    let parentId =
+                        if index = 1 then
+                            ""
+                        else
+                            groupKey + joinPath segments (index - 1)
+
+                    let label =
+                        if index = 1 then
+                            path
+                        else
+                            segments[index - 1]
+
+                    let virtualPath = groupKey + path
+
+                    makeActorTreeNode id parentId label virtualPath "" "virtual-path" "active"
+                    |> add
+
+                let parentId = groupKey + joinPath segments (segments.Length - 1)
+                let id =
+                    let existingId = nodeId node
+                    if isBlank existingId then groupKey + treePath else existingId
+
+                let label =
+                    let existingLabel = nodeLabel node
+                    if isBlank existingLabel then nodeAddress node else existingLabel
+
+                makeActorTreeNode
+                    id
+                    parentId
+                    label
+                    (nodeFullPath node)
+                    (nodeRawAddress node)
+                    (nodeKind node)
+                    (nodeStatus node)
+                |> add
+
+        result |> List.toArray
+
     let withAncestors (allNodes: obj[]) (seedNodes: obj[]) =
         let mutable result: obj list = []
 
@@ -223,7 +398,7 @@ module ActorDynamicTab =
             concreteNodes
             |> Array.groupBy groupKey
             |> Array.map (fun (key, groupNodes) ->
-                let augmentedNodes = withAncestors nodes groupNodes
+                let augmentedNodes = normalizeGroupTreeNodes key groupNodes
                 let rank, label = classifyNodeBlock key augmentedNodes
                 rank, key, label, augmentedNodes)
 
@@ -233,9 +408,13 @@ module ActorDynamicTab =
             |> Array.exists (fun (_, _, _, groupNodes) ->
                 groupNodes |> Array.exists (fun known -> nodeId known = id))
 
+        let isServerVirtualPath node =
+            nodeKind node = "virtual-path"
+            || (isBlank (nodeRawAddress node) && not (isBlank (actorTreePath (nodeFullPath node))))
+
         let unknownSeeds =
             nodes
-            |> Array.filter (fun node -> not (isKnownNode node) && groupKey node = "unknown")
+            |> Array.filter (fun node -> not (isKnownNode node) && not (isServerVirtualPath node) && groupKey node = "unknown")
 
         let unknownGroups =
             if unknownSeeds.Length = 0 then
@@ -285,7 +464,15 @@ module ActorDynamicTab =
             let margin = string (depthValue * 18)
             let address = nodeAddress node
             let fullPath = nodeFullPath node
-            let displayAddress = if isBlank address then fullPath else address
+            let kind = nodeKind node
+            let parentId = nodeParentId node
+            let displayAddress =
+                if kind = "virtual-path" then
+                    nodeLabel node
+                elif isBlank address then
+                    fullPath
+                else
+                    address
             let isCollapsed = containsId id collapsed
 
             let row =
@@ -295,8 +482,10 @@ module ActorDynamicTab =
                     on.afterRender (fun node ->
                         node.SetAttribute("data-testid", "dynamic-actor-tree-row")
                         node.SetAttribute("data-node-id", id)
-                        node.SetAttribute("data-parent-id", nodeParentId node)
-                        node.SetAttribute("data-depth", string depthValue))
+                        node.SetAttribute("data-parent-id", parentId)
+                        node.SetAttribute("data-depth", string depthValue)
+                        node.SetAttribute("data-node-kind", kind)
+                        node.SetAttribute("data-display-address", displayAddress))
                 ] [
                     if depthValue > 0 then
                         span [
@@ -328,12 +517,12 @@ module ActorDynamicTab =
                     renderStatusDot (nodeStatus node)
                     span [
                         attr.``class`` "dynamic-actor-tree-label"
-                        attr.title displayAddress
+                        attr.title (if isBlank fullPath then displayAddress else fullPath)
                         attr.style "white-space:nowrap; color:#172033; font-weight:600; overflow:visible; text-overflow:clip; font-family:Consolas, 'Cascadia Mono', monospace;"
                     ] [
                         text displayAddress
                     ]
-                    renderSmallPill (nodeKind node)
+                    renderSmallPill kind
                     renderStatusChip (nodeStatus node)
                 ]
 
@@ -437,6 +626,8 @@ module ActorDynamicTab =
         let projectionId = projectionText rawContent "projectionId" "ptcs-actors"
         let projectionVersion = projectionText rawContent "projectionVersion" "0"
         let groups = createNodeGroups nodes
+        let reportOutputDirectory = Var.Create ""
+        let reportStatus = Var.Create ""
 
         let activeCount =
             nodes
@@ -459,7 +650,27 @@ module ActorDynamicTab =
                         text ("projection " + projectionId + " / v" + projectionVersion)
                     ]
                 ]
-                div [ attr.style "display:flex; gap:6px; flex-wrap:wrap;" ] [
+                div [ attr.style "display:grid; grid-template-columns:minmax(260px,460px) auto auto auto; gap:6px; align-items:start;" ] [
+                    div [ attr.style "display:flex; flex-direction:column; gap:4px; min-width:260px;" ] [
+                        V "input" [
+                            attr.``type`` "text"
+                            attr.placeholder "Server-local report output directory"
+                            attr.style "border:1px solid #b8c7dc; border-radius:5px; padding:5px 8px; font-size:12px; min-width:260px; width:100%; box-sizing:border-box;"
+                            on.afterRender (fun node ->
+                                node.SetAttribute("data-testid", "dynamic-actors-report-output-directory")
+                                let input = node |> As<HTMLInputElement>
+                                input.AddEventListener("input", fun () -> reportOutputDirectory.Value <- input.Value)
+                                input.AddEventListener("change", fun () -> reportOutputDirectory.Value <- input.Value))
+                        ]
+                        div [
+                            attr.style "min-height:16px; color:#50627a; font-size:11px; line-height:1.35; overflow-wrap:anywhere;"
+                            on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actors-report-status"))
+                        ] [
+                            reportStatus.View
+                            |> View.Map text
+                            |> Doc.EmbedView
+                        ]
+                    ]
                     button [
                         attr.``type`` "button"
                         attr.style "border:1px solid #b8c7dc; background:#fff; color:#22344d; border-radius:5px; padding:5px 9px; font-size:12px; cursor:pointer;"
@@ -470,15 +681,15 @@ module ActorDynamicTab =
                     ]
                     button [
                         attr.``type`` "button"
-                        attr.style "border:1px solid #cfd8e6; background:#f4f7fb; color:#738299; border-radius:5px; padding:5px 9px; font-size:12px;"
-                        on.afterRender (fun node ->
-                            node.SetAttribute("data-testid", "dynamic-actors-generate-report")
-                            node.SetAttribute("disabled", "disabled"))
+                        attr.style "border:1px solid #2563eb; background:#2563eb; color:#fff; border-radius:5px; padding:5px 9px; font-size:12px; cursor:pointer;"
+                        on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actors-generate-report"))
+                        on.click (fun _ _ -> generateActorReport reportOutputDirectory.Value reportStatus)
                     ] [
                         text "Generate report"
                     ]
                     button [
                         attr.``type`` "button"
+                        attr.title "Report scheduling is tracked separately from one-shot generation."
                         attr.style "border:1px solid #cfd8e6; background:#f4f7fb; color:#738299; border-radius:5px; padding:5px 9px; font-size:12px;"
                         on.afterRender (fun node ->
                             node.SetAttribute("data-testid", "dynamic-actors-schedule-report")

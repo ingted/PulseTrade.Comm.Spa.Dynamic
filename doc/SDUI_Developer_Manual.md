@@ -205,6 +205,8 @@ PTCS `/actors` 的 final seam 不是 generic Canvas message renderer，而是 pa
 - 若 served `PulseTrade.Comm.Spa.Dynamic.js` 沒有 `createActorsPageDocument`、`dynamic-actor-node-block` 或 `dynamic-actor-tree-toggle` marker，先停止 stale `wsfscservice.exe`，再走 `DYN-VFY-001` 短路徑 build；不要把 stale bundle 當 renderer 行為判斷。
 - ActorsPage source-host fixture 必須投影 distinct `nodeId` / `role`。若 PTCS/GW/RN sample events 共用同一 `nodeId`，PTCS `ActorsSnapshot` 會把所有 actor 合併成單一 node，最後一筆事件的 node address 會覆蓋前面資料，導致 Dynamic 端無法驗證不同 port 的分區。
 - Tree toggle 必須是 stateful renderer，不是文字裝飾。驗證至少要檢查 `data-testid="dynamic-actor-tree-toggle"`、`aria-expanded`、`+/-` 文字與 row count 前後變化。
+- Dynamic accepted page ownership 需要 PTCS core 配合。2026-06-29 beta40 修正前，即使 Dynamic renderer 回 `Some node`，core snapshot repair 仍可能把 `data-testid="actor-node"` / `actor-card` fallback cards append 到 Dynamic page 底下。這不是 PTCS.Dynamic 單獨可修的 renderer bug；PTCS core 必須在 accepted Dynamic page 時停止更新 fallback `nodes` container。verifier 需同時檢查 `dynamic-actors-page` 存在、fallback rows 為 0、core cards 為 0。
+- ActorsPage row metadata 是後續 UI/測試穩定性的契約：virtual parents 使用 `data-node-kind="virtual-path"`，row 需提供 `data-display-address` 與 `data-parent-id`。不要用畫面文字截斷或 CSS hierarchy 當唯一判斷來源。
 
 驗證順序：
 

@@ -395,3 +395,12 @@ Implementation status:
 - PTCS verifier `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsActorTree.playwright.fsx -- --with-unsupported-client-extension` now injects a client extension manifest with a missing script URL, proving PTCS falls back to its built-in ActorTree/table when no usable `ActorsPage` renderer exists.
 - Playwright MCP visual evidence: `G:\PulseTrade.fs\log\20260629\20260629001159.actors-unsupported-fallback-playwright-mcp.png`.
 - `DYN-WBS-519` moves to 96. Remaining: strict schema parser, production report actions, and restart/failover visual states.
+
+## 2026-06-29 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta27 ActorsPage accepted ownership gate
+
+- Dynamic advanced to `0.1.3-beta27` for the ActorsPage hierarchy/metadata slice paired with PTCS `0.2.5-beta40`.
+- `src\Client\ActorDynamicTab.fs` now keeps virtual path rows inside their concrete actor-system group, exposes stable row metadata (`data-node-kind`, `data-display-address`, `data-parent-id`), and keeps report controls in the page-level renderer.
+- PTCS beta40 fixes the core-side accepted ownership issue: after Dynamic accepts `/actors`, PTCS no longer appends fallback `actor-node` / `actor-card` DOM below the Dynamic page. This is verified from the PTCS F# Playwright gate rather than Dynamic package tests alone.
+- Verification passed: Dynamic package tests 18/18, Dynamic Release/WebSharper build, PTC `verify-ptcs-dynamic-nuget-bundle.fsx`, PTC `run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait`, PTCS `verify.actorsPageDynamic.playwright.fsx`, and public 81 Playwright MCP proof.
+- Evidence: `G:\PulseTrade.fs\log\20260629\20260629011000.actorspage-beta40-dyn27-mcp.png`, `G:\PulseTrade.fs\log\20260629\20260629011000.actorspage-beta40-dyn27-mcp-after-collapse.png`, `G:\PulseTrade.fs\log\20260629\20260629011000.actors-public81-beta40-dyn27.png`, and `G:\PulseTrade.fs\log\20260629\20260629011000.actors-public81-beta40-dyn27-snapshot.md`.
+- `DYN-WBS-519` moves to 98. Remaining: strict schema parser, production report schedule, and restart/failover visual states.
