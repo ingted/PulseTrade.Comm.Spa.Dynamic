@@ -70,4 +70,4 @@
 | `DYN-T-525` | `DYN-WBS-518` | Canvas renderer only claims payloads with `schema=fskynet-sdui`。 |
 | `DYN-T-526` | `DYN-WBS-519` | Package Expecto verifies ActorsPage classifier accepts `ActorTopologyPage` payload；full WebSharper build is covered by DYN-VFY-001。 |
 | `DYN-T-527` | `DYN-WBS-519` | Package Expecto verifies normal Canvas payload is not claimed by ActorsPage classifier。 |
-| `DYN-T-528..532` | `DYN-WBS-519` | Planned: strict parser, host/port grouping, role ordering, full address tree/grid/cards/actions, and PTCS `/actors` Playwright gate。 |
+| `DYN-T-528..532` | `DYN-WBS-519` | Implemented: host/port grouping, role ordering, full address tree/grid/cards/actions, PTCS `/actors` Playwright accepted path, unsupported fallback path, and browser-local report schedule start/stop. Remaining: strict parser, persisted/server-side report schedule, restart/cache sync, cross-service GW/RN registry feed, and failover visual states。 |

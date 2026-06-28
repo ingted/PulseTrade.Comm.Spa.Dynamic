@@ -172,20 +172,21 @@ Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier �
 - evidence is `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-check.json`;
 - screenshot evidence is `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-fixed.png`.
 - reusable F# Playwright verifier `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsPageDynamic.playwright.fsx` now repeats the accepted path with locator-only assertions for Dynamic ownership, fallback absence, core-card absence, full addresses, report controls, status dots, connectors, depth rows, no synthetic Unknown block, and visible row collapse/expand; beta40/Dynamic beta27 screenshot evidence is `G:\PulseTrade.fs\log\20260629\20260629011000.actorspage-beta40-dyn27-mcp.png`.
+- `0.1.3-beta29` adds browser-local report schedule start/stop verification to the same F# Playwright verifier; package bundle verification now rejects the beta28 stale schedule-disabled marker.
 
 ### DYN-T-529..532 Remaining ActorsPage gates
 
 尚未完成：
 
 - strict ActorsPage DSL parser / codec；
-- report schedule / restart / failover visual-state gates beyond the current grouped/toggle/hierarchy-restored slice；
+- server-side persisted report schedule / restart / failover visual-state gates beyond the current grouped/toggle/hierarchy/schedule-browser slice；
 - Dynamic absent / unsupported renderer fallback is covered by PTCS `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsActorTree.playwright.fsx -- --with-unsupported-client-extension`; Playwright MCP evidence: `G:\PulseTrade.fs\log\20260629\20260629001159.actors-unsupported-fallback-playwright-mcp.png`。
 
 目前已落地的 package coverage：
 
-- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta27` rollout completed the package/public 81 hierarchy ownership gate with PTCS `0.2.5-beta40` and public release `live81-ptcs-beta40-dynamic-beta27-actorspage-202606290118`；
-- cross-repo PTC package verifier checks ActorsPage/toggle/status-dot/connector bundle markers；
-- public 81 Playwright MCP proof is `G:\PulseTrade.fs\log\20260629\20260629011000.actors-public81-beta40-dyn27.png`；snapshot is `G:\PulseTrade.fs\log\20260629\20260629011000.actors-public81-beta40-dyn27-snapshot.md`；
+- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta29` rollout completed the package/public 81 hierarchy ownership plus browser-local report schedule gate with PTCS `0.2.5-beta40` and public release `live81-ptcs-beta40-dynamic-beta29-report-schedule-202606290205`；
+- cross-repo PTC package verifier checks ActorsPage/toggle/status-dot/connector/report/schedule bundle markers and rejects the stale beta28 schedule-disabled text；
+- public 81 Playwright MCP proof is `G:\PulseTrade.fs\log\20260629\actors-public81-beta40-dyn29.png`；snapshot is `G:\PulseTrade.fs\log\20260629\actors-public81-beta40-dyn29-snapshot.md`；deep hierarchy snapshot is `G:\PulseTrade.fs\log\20260629\actors-public81-beta40-dyn29-deep-snapshot.md`；
 - `SduiFormDocument.fromArguFormSchema` 產生 `schema=fskynet-sdui`、`surface=FormInput`、stable `documentId`；
 - PFCF_AKKA_CMD fixture 反射 `SimpleAction`、`BBA`、`GenByColMeta`；
 - `GenByColMeta` tuple item kinds 驗證為 `bool-value`, `bool-value`, `text`, `enum`。

@@ -628,6 +628,33 @@ module ActorDynamicTab =
         let groups = createNodeGroups nodes
         let reportOutputDirectory = Var.Create ""
         let reportStatus = Var.Create ""
+        let reportScheduleRunning = Var.Create false
+        let mutable reportScheduleHandle: obj option = None
+
+        let stopReportSchedule () =
+            match reportScheduleHandle with
+            | Some handle ->
+                JS.Window.ClearInterval(handle)
+                reportScheduleHandle <- None
+            | None -> ()
+
+            reportScheduleRunning.Value <- false
+
+        let startReportSchedule () =
+            let outputDirectory = reportOutputDirectory.Value
+
+            if isBlank outputDirectory then
+                reportStatus.Value <- "Report output directory is required."
+            else
+                stopReportSchedule ()
+                reportScheduleRunning.Value <- true
+                reportStatus.Value <- "Report schedule started; generating first report..."
+                generateActorReport outputDirectory reportStatus
+                reportScheduleHandle <-
+                    JS.Window.SetInterval(
+                        (fun () -> generateActorReport reportOutputDirectory.Value reportStatus),
+                        60000)
+                    |> Some
 
         let activeCount =
             nodes
@@ -689,13 +716,19 @@ module ActorDynamicTab =
                     ]
                     button [
                         attr.``type`` "button"
-                        attr.title "Report scheduling is tracked separately from one-shot generation."
-                        attr.style "border:1px solid #cfd8e6; background:#f4f7fb; color:#738299; border-radius:5px; padding:5px 9px; font-size:12px;"
-                        on.afterRender (fun node ->
-                            node.SetAttribute("data-testid", "dynamic-actors-schedule-report")
-                            node.SetAttribute("disabled", "disabled"))
+                        attr.title "Run the same report endpoint immediately and then every 60 seconds while this browser page is open."
+                        attr.style "border:1px solid #0f766e; background:#f7fffd; color:#0f4f49; border-radius:5px; padding:5px 9px; font-size:12px; cursor:pointer;"
+                        on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actors-schedule-report"))
+                        on.click (fun _ _ ->
+                            if reportScheduleRunning.Value then
+                                stopReportSchedule ()
+                                reportStatus.Value <- "Report schedule stopped."
+                            else
+                                startReportSchedule ())
                     ] [
-                        text "Schedule"
+                        reportScheduleRunning.View
+                        |> View.Map (fun running -> text (if running then "Stop schedule" else "Schedule"))
+                        |> Doc.EmbedView
                     ]
                 ]
             ]

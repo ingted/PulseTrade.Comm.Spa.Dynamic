@@ -404,3 +404,15 @@ Implementation status:
 - Verification passed: Dynamic package tests 18/18, Dynamic Release/WebSharper build, PTC `verify-ptcs-dynamic-nuget-bundle.fsx`, PTC `run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait`, PTCS `verify.actorsPageDynamic.playwright.fsx`, and public 81 Playwright MCP proof.
 - Evidence: `G:\PulseTrade.fs\log\20260629\20260629011000.actorspage-beta40-dyn27-mcp.png`, `G:\PulseTrade.fs\log\20260629\20260629011000.actorspage-beta40-dyn27-mcp-after-collapse.png`, `G:\PulseTrade.fs\log\20260629\20260629011000.actors-public81-beta40-dyn27.png`, and `G:\PulseTrade.fs\log\20260629\20260629011000.actors-public81-beta40-dyn27-snapshot.md`.
 - `DYN-WBS-519` moves to 98. Remaining: strict schema parser, production report schedule, and restart/failover visual states.
+
+## 2026-06-29 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta29 ActorsPage report schedule
+
+- Dynamic advanced to `0.1.3-beta29` for the browser-local Actors report schedule start/stop control. The pushed `0.1.3-beta28` package is superseded because its source Release nupkg contained stale JS where the schedule button remained disabled.
+- `src\Client\ActorDynamicTab.fs` now toggles the report schedule button between `Schedule` and `Stop schedule`, calls the existing report endpoint immediately, and repeats every 60 seconds while the browser page remains open. This is not a server daemon or production persisted schedule.
+- Verification passed: Dynamic package tests 18/18, short-path Release WebSharper bundle/pack, nupkg JS marker check, PTCS `verify.actorsPageDynamic.playwright.fsx -- --dynamic-bin-dir C:\ptcsdyn-release-beta29b\bin`, PTC `verify-ptcs-dynamic-nuget-bundle.fsx`, PTC `run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait`, public 81 deployment alignment, and Playwright MCP public `/actors` start/stop proof.
+- Public 81 release is `live81-ptcs-beta40-dynamic-beta29-report-schedule-202606290205`. Evidence: `G:\PulseTrade.fs\log\20260629\actors-public81-beta40-dyn29.png`, `G:\PulseTrade.fs\log\20260629\actors-public81-beta40-dyn29-deep-snapshot.md`, `G:\PulseTrade.fs\log\20260629\actors-public81-beta40-dyn29-schedule-started.md`, and generated report `G:\PulseTrade.fs\log\20260629\actors-report-public81-beta29\20260628180415.md`.
+- Remaining `DYN-WBS-519`: strict ActorsPage schema parser, server-side persisted report scheduling, IndexedDB restart/cache sync, cross-service GW/RN registry feed, and failover/passivation visual states.
+
+## 2026-06-29 - Correction: PulseTrade.Comm.Spa.Dynamic 0.1.3-beta29 NuGet indexing complete
+
+- Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta29`. Remaining `DYN-WBS-519` work is implementation/runtime scope, not public package propagation.
