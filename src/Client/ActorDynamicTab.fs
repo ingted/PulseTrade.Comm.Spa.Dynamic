@@ -178,6 +178,32 @@ module ActorDynamicTab =
     let hasToken (token: string) (value: string) =
         (lower value).IndexOf(token) >= 0
 
+    let statusLooksOffline status =
+        hasToken "offline" status
+        || hasToken "unreachable" status
+        || hasToken "stale" status
+        || hasToken "terminated" status
+        || hasToken "stopped" status
+        || hasToken "dead" status
+        || hasToken "failed" status
+
+    let displayStatus status =
+        if statusLooksOffline status then "OFFLINE"
+        elif isBlank status then "unknown"
+        else status
+
+    let groupOfflineRank (nodes: obj[]) =
+        let mutable hasConcrete = false
+        let mutable hasOnline = false
+
+        for node in nodes do
+            if not (isBlank (nodeRawAddress node)) && nodeKind node <> "virtual-path" then
+                hasConcrete <- true
+                if not (statusLooksOffline (nodeStatus node)) then
+                    hasOnline <- true
+
+        if hasConcrete && not hasOnline then 1 else 0
+
     let classifyNodeBlock (key: string) (nodes: obj[]) =
         let sample =
             nodes
@@ -223,13 +249,13 @@ module ActorDynamicTab =
         let color =
             if normalized.IndexOf("active") >= 0 || normalized.IndexOf("running") >= 0 then "#0b6b3a"
             elif normalized.IndexOf("stale") >= 0 || normalized.IndexOf("changed") >= 0 then "#8a5a00"
-            elif normalized.IndexOf("terminated") >= 0 || normalized.IndexOf("dead") >= 0 then "#8b1e2d"
+            elif statusLooksOffline status || normalized.IndexOf("terminated") >= 0 || normalized.IndexOf("dead") >= 0 then "#8b1e2d"
             else "#46566b"
 
         span [
             attr.style ("display:inline-block; border:1px solid " + color + "; color:" + color + "; border-radius:999px; padding:2px 7px; font-size:11px; line-height:16px; white-space:nowrap;")
         ] [
-            text (if isBlank status then "unknown" else status)
+            text (displayStatus status)
         ]
 
     let renderStatusDot status =
@@ -238,7 +264,7 @@ module ActorDynamicTab =
             if normalized.IndexOf("active") >= 0 || normalized.IndexOf("running") >= 0 then "#16a34a", "#dcfce7"
             elif normalized.IndexOf("passivated") >= 0 then "#d97706", "#fef3c7"
             elif normalized.IndexOf("stale") >= 0 || normalized.IndexOf("changed") >= 0 then "#d97706", "#fef3c7"
-            elif normalized.IndexOf("terminated") >= 0 || normalized.IndexOf("dead") >= 0 then "#dc2626", "#fee2e2"
+            elif statusLooksOffline status || normalized.IndexOf("terminated") >= 0 || normalized.IndexOf("dead") >= 0 then "#dc2626", "#fee2e2"
             else "#64748b", "#e2e8f0"
 
         span [
@@ -426,7 +452,8 @@ module ActorDynamicTab =
                 [| rank, key, label, augmentedNodes |]
 
         Array.append knownGroups unknownGroups
-        |> Array.sortBy (fun (rank, key, _, _) -> rank, key)
+        |> Array.sortBy (fun (rank, key, _, groupNodes) ->
+            string (groupOfflineRank groupNodes) + ":" + string rank + ":" + key)
 
     let renderTree (groupNodes: obj[]) =
         let collapsedIds = Var.Create [||]
@@ -589,11 +616,15 @@ module ActorDynamicTab =
             groupNodes
             |> Array.map nodeStatus
             |> distinctValues
+            |> Array.map displayStatus
+            |> distinctValues
             |> String.concat ", "
 
         section [
             attr.style "display:flex; flex-direction:column; gap:10px; border:1px solid #cfdcec; background:#fff; border-radius:7px; padding:12px;"
-            on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-node-block"))
+            on.afterRender (fun node ->
+                node.SetAttribute("data-testid", "dynamic-actor-node-block")
+                node.SetAttribute("data-offline-rank", string (groupOfflineRank groupNodes)))
         ] [
             div [ attr.style "display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;" ] [
                 div [ attr.style "min-width:0;" ] [
@@ -661,6 +692,11 @@ module ActorDynamicTab =
             |> Array.filter (fun node ->
                 let status = lower (nodeStatus node)
                 status.IndexOf("active") >= 0 || status.IndexOf("running") >= 0)
+            |> Array.length
+
+        let offlineCount =
+            nodes
+            |> Array.filter (fun node -> statusLooksOffline (nodeStatus node))
             |> Array.length
 
         div [
@@ -739,6 +775,7 @@ module ActorDynamicTab =
                 renderCountCard "Node groups" (string groups.Length)
                 renderCountCard "Actor tree rows" (string nodes.Length)
                 renderCountCard "Active" (string activeCount)
+                renderCountCard "Offline" (string offlineCount)
             ]
             if nodes.Length = 0 then
                 div [

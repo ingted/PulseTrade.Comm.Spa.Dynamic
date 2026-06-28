@@ -185,8 +185,9 @@ Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier �
 目前已落地的 package coverage：
 
 - `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta29` rollout completed the package/public 81 hierarchy ownership plus browser-local report schedule gate with PTCS `0.2.5-beta40` and public release `live81-ptcs-beta40-dynamic-beta29-report-schedule-202606290205`；
+- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta30` rollout completed the offline cleanup/display slice with PTCS `0.2.5-beta41` and public release `live81-ptcs-beta41-dynamic-beta30-offline-poc2-202606290748`; `poc.full.nuget.2.fsx -- --no-wait` verifies the beta41/beta30 NuGet POC path with Actor Argu Add target key and no `+ Page` Actor Dynamic page creation.
 - cross-repo PTC package verifier checks ActorsPage/toggle/status-dot/connector/report/schedule bundle markers and rejects the stale beta28 schedule-disabled text；
-- public 81 Playwright MCP proof is `G:\PulseTrade.fs\log\20260629\actors-public81-beta40-dyn29.png`；snapshot is `G:\PulseTrade.fs\log\20260629\actors-public81-beta40-dyn29-snapshot.md`；deep hierarchy snapshot is `G:\PulseTrade.fs\log\20260629\actors-public81-beta40-dyn29-deep-snapshot.md`；
+- latest public 81 Playwright MCP proof is `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30.png`；snapshot is `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30-snapshot.md`；DOM summary is `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30-dom.json`；
 - `SduiFormDocument.fromArguFormSchema` 產生 `schema=fskynet-sdui`、`surface=FormInput`、stable `documentId`；
 - PFCF_AKKA_CMD fixture 反射 `SimpleAction`、`BBA`、`GenByColMeta`；
 - `GenByColMeta` tuple item kinds 驗證為 `bool-value`, `bool-value`, `text`, `enum`。
