@@ -80,13 +80,23 @@ module ActorDynamicTab =
 
     let actorSystemAddress (address: string) =
         if isBlank address then
-            "local"
+            "unknown"
         else
             let userIndex = address.IndexOf("/user")
-            if userIndex > 0 then
-                address.Substring(0, userIndex)
-            else
+            let systemIndex = address.IndexOf("/system")
+            let cutIndex =
+                if userIndex > 0 && systemIndex > 0 then
+                    if userIndex < systemIndex then userIndex else systemIndex
+                elif userIndex > 0 then userIndex
+                elif systemIndex > 0 then systemIndex
+                else -1
+
+            if address.IndexOf("://") >= 0 && cutIndex > 0 then
+                address.Substring(0, cutIndex)
+            elif address.IndexOf("://") >= 0 then
                 address
+            else
+                "unknown"
 
     let lower (value: string) =
         if value = null then "" else value.ToLower()
@@ -101,12 +111,20 @@ module ActorDynamicTab =
             |> String.concat " "
             |> fun text -> key + " " + text
 
-        if hasToken "gw" sample || hasToken "gateway" sample then
+        if key = "unknown" || isBlank key then
+            3, "Unknown"
+        elif hasToken "ptcshost" key || hasToken "ptcs-host" key || hasToken "ptcs" key || hasToken "commspa" key then
+            0, "PTCS Host"
+        elif hasToken "gwhost" key || hasToken "gw-host" key || hasToken "gateway" key then
             1, "GW Host"
-        elif hasToken "rn" sample || hasToken "resource" sample then
+        elif hasToken "rnhost" key || hasToken "rn-host" key || hasToken "resourcenode" key || hasToken "resource-node" key then
             2, "RN Host"
         elif hasToken "ptcs" sample || hasToken "spa" sample || hasToken "commspa" sample then
             0, "PTCS Host"
+        elif hasToken "gw" sample || hasToken "gateway" sample then
+            1, "GW Host"
+        elif hasToken "rn" sample || hasToken "resource" sample then
+            2, "RN Host"
         else
             3, "Unknown"
 
@@ -141,6 +159,19 @@ module ActorDynamicTab =
         ]
 
     let renderTree (groupNodes: obj[]) =
+        let collapsedIds = Var.Create [||]
+
+        let containsId id (ids: string[]) =
+            ids |> Array.exists (fun current -> current = id)
+
+        let toggleId id =
+            let current = collapsedIds.Value
+            collapsedIds.Value <-
+                if containsId id current then
+                    current |> Array.filter (fun value -> value <> id)
+                else
+                    Array.append current [| id |]
+
         let nodeExists id =
             groupNodes |> Array.exists (fun node -> nodeId node = id)
 
@@ -156,24 +187,37 @@ module ActorDynamicTab =
                 isBlank parentId || not (nodeExists parentId))
             |> Array.sortBy nodeLabel
 
-        let rec renderNode depth (node: obj) =
+        let rec renderNode collapsed depth (node: obj) =
             let id = nodeId node
             let children = childrenOf id
             let margin = string (depth * 22)
             let address = nodeAddress node
             let fullPath = nodeFullPath node
             let displayAddress = if isBlank address then fullPath else address
+            let isCollapsed = containsId id collapsed
 
             let row =
                 div [
                     attr.style ("display:grid; grid-template-columns:auto minmax(720px,1fr); align-items:start; column-gap:8px; margin-left:" + margin + "px; min-height:28px;")
                     on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-row"))
                 ] [
-                    span [
-                        attr.style "display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid #9db0c7; background:#fff; color:#33465f; font-size:11px; line-height:18px; margin-top:3px;"
-                    ] [
-                        text (if children.Length > 0 then "-" else "")
-                    ]
+                    if children.Length > 0 then
+                        button [
+                            attr.``type`` "button"
+                            attr.title (if isCollapsed then "Expand actor node" else "Collapse actor node")
+                            attr.style "display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid #7d92ad; background:#fff; color:#21354f; font-size:12px; line-height:16px; padding:0; margin-top:3px; cursor:pointer; font-family:Consolas, 'Cascadia Mono', monospace;"
+                            on.click (fun _ _ -> toggleId id)
+                            on.afterRender (fun node ->
+                                node.SetAttribute("data-testid", "dynamic-actor-tree-toggle")
+                                node.SetAttribute("aria-expanded", if isCollapsed then "false" else "true"))
+                        ] [
+                            text (if isCollapsed then "+" else "-")
+                        ]
+                    else
+                        span [
+                            attr.style "display:inline-flex; width:18px; height:18px; margin-top:3px;"
+                            on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-toggle-placeholder"))
+                        ] []
                     div [
                         attr.style "border-left:2px solid #c9d6e6; padding-left:10px; padding-bottom:6px;"
                     ] [
@@ -191,28 +235,32 @@ module ActorDynamicTab =
                 ]
 
             let childDocs =
-                if depth >= 24 then
+                if isCollapsed || depth >= 24 then
                     []
                 else
                     children
                     |> Array.toList
-                    |> List.collect (renderNode (depth + 1))
+                    |> List.collect (renderNode collapsed (depth + 1))
 
             row :: childDocs
 
-        let treeRows =
+        let treeRows collapsed =
             roots
             |> Array.toList
-            |> List.collect (renderNode 0)
+            |> List.collect (renderNode collapsed 0)
 
         div [
             attr.style "border:1px solid #d8e2ef; background:#fbfdff; border-radius:6px; padding:10px; overflow-x:auto;"
             on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-viewport"))
         ] [
-            if treeRows.IsEmpty then
-                div [ attr.style "color:#667891; font-size:12px;" ] [ text "No actor tree rows." ]
-            else
-                Doc.Concat treeRows
+            collapsedIds.View
+            |> View.Map (fun collapsed ->
+                let rows = treeRows collapsed
+                if rows.IsEmpty then
+                    div [ attr.style "color:#667891; font-size:12px;" ] [ text "No actor tree rows." ]
+                else
+                    Doc.Concat rows)
+            |> Doc.EmbedView
         ]
 
     let renderGrid (groupNodes: obj[]) =

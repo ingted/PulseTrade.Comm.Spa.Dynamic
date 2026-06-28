@@ -253,6 +253,24 @@ let tests =
             let result = ActorDynamicTab.IsActorsPagePayload payload
             Expect.isFalse result "ActorsPage renderer must not claim generic Canvas message payloads"
 
+        testCase "DYN-T-528: ActorsPage node grouping should use actor-system host port" <| fun _ ->
+            let gwSystem =
+                ActorDynamicTab.actorSystemAddress "akka.tcp://GwHost@127.0.0.1:8082/system/sharding/gw-tool-dispatch"
+
+            let gwUser =
+                ActorDynamicTab.actorSystemAddress "akka.tcp://GwHost@127.0.0.1:8082/user/gw/mcp/comm-message-send"
+
+            let rnSystem =
+                ActorDynamicTab.actorSystemAddress "akka.tcp://RnHost@127.0.0.1:8799/system/sharding/resource-node-durable-proxy"
+
+            let localVirtual =
+                ActorDynamicTab.actorSystemAddress "/user/ptcs/message"
+
+            Expect.equal gwSystem "akka.tcp://GwHost@127.0.0.1:8082" "sharding /system actor should group by actor system transport address"
+            Expect.equal gwUser "akka.tcp://GwHost@127.0.0.1:8082" "user actor on the same process should share the same node block"
+            Expect.equal rnSystem "akka.tcp://RnHost@127.0.0.1:8799" "RN sharding region should group by RN host port"
+            Expect.equal localVirtual "unknown" "virtual local paths without transport identity should not create their own host block"
+
         testCase "WBS-104: ActorDynamicTab.renderActorDynamicPage should generate valid page Doc" <| fun _ ->
             let _ = ActorDynamicTab.renderActorDynamicPage "actor-dynamic"
             Expect.isTrue true "Tab page generation should succeed"

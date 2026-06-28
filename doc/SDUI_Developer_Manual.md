@@ -201,8 +201,10 @@ PTCS `/actors` 的 final seam 不是 generic Canvas message renderer，而是 pa
 - PTCS server extension bootstrap 與 SPA client bootstrap 都需要建立 `PulseTrade.PageRenderers` / `PulseTradeRegisterPageRenderer`。Dynamic script 可能早於 SPA bundle 載入，只在 client bootstrap 建 registry 會讓 first registration miss 掉。
 - WebSharper dynamic call `JS.Window?PulseTradeRegisterPageRenderer("name", 100, renderer)` 會產生不符合預期的 array argument call。這個 interop 點目前必須使用既有 inline bridge 呼叫 `window.PulseTradeRegisterPageRenderer('ptcs-actors-page', 100, renderer)`。
 - PTCS `/actors` 目前會先查 `PageRenderers`，再以 `MessageRenderers` 作 transitional compatibility fallback。Dynamic generic `fskynet-sdui` renderer 必須先判斷 `ActorTopologyPage` 並回 ActorsPage DOM，否則會被普通 Canvas summary renderer claim。
-- `C:\ptcsdyn-build\bin` 可能保留舊 bundle。Source-host verifier 應優先 `#I` Dynamic source Release output，例如 `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Release\net10.0`，再 fallback 到短路徑 build output。
-- 若 served `PulseTrade.Comm.Spa.Dynamic.js` 沒有 `createActorsPageDocument` 或 `dynamic-actor-node-block` marker，先清掉 Dynamic `src\bin` / `src\obj` 後重跑 Release build；不要把 stale bundle 當 renderer 行為判斷。
+- `C:\ptcsdyn-build\bin` 可能保留舊 bundle。Source-host verifier 應優先 `#I` Dynamic source Release output，例如 `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Release\net10.0`；若使用短路徑 build 生成 bundle，需同步 DLL/JS 回 source Release output，確保 FSI `#r` 載入同一版。
+- 若 served `PulseTrade.Comm.Spa.Dynamic.js` 沒有 `createActorsPageDocument`、`dynamic-actor-node-block` 或 `dynamic-actor-tree-toggle` marker，先停止 stale `wsfscservice.exe`，再走 `DYN-VFY-001` 短路徑 build；不要把 stale bundle 當 renderer 行為判斷。
+- ActorsPage source-host fixture 必須投影 distinct `nodeId` / `role`。若 PTCS/GW/RN sample events 共用同一 `nodeId`，PTCS `ActorsSnapshot` 會把所有 actor 合併成單一 node，最後一筆事件的 node address 會覆蓋前面資料，導致 Dynamic 端無法驗證不同 port 的分區。
+- Tree toggle 必須是 stateful renderer，不是文字裝飾。驗證至少要檢查 `data-testid="dynamic-actor-tree-toggle"`、`aria-expanded`、`+/-` 文字與 row count 前後變化。
 
 驗證順序：
 

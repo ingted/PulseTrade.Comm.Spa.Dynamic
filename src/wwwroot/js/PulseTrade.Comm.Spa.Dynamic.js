@@ -705,10 +705,12 @@ function actorNodes(rawContent){
   }
 }
 function actorSystemAddress(address){
-  if(isBlank_1(address))return"local";
+  if(isBlank_1(address))return"unknown";
   else {
     const userIndex=address.indexOf("/user");
-    return userIndex>0?Substring(address, 0, userIndex):address;
+    const systemIndex=address.indexOf("/system");
+    const cutIndex=userIndex>0&&systemIndex>0?userIndex<systemIndex?userIndex:systemIndex:userIndex>0?userIndex:systemIndex>0?systemIndex:-1;
+    return address.indexOf("://")>=0&&cutIndex>0?Substring(address, 0, cutIndex):address.indexOf("://")>=0?address:"unknown";
   }
 }
 function nodeAddress(node){
@@ -723,7 +725,7 @@ function nodeAddress(node){
 }
 function classifyNodeBlock(key, nodes){
   const sample=key+" "+concat_2(" ", map((node) => nodeLabel(node)+" "+nodeKind(node)+" "+nodeAddress(node), nodes));
-  return hasToken("gw", sample)||hasToken("gateway", sample)?[1, "GW Host"]:hasToken("rn", sample)||hasToken("resource", sample)?[2, "RN Host"]:hasToken("ptcs", sample)||hasToken("spa", sample)||hasToken("commspa", sample)?[0, "PTCS Host"]:[3, "Unknown"];
+  return key=="unknown"||isBlank_1(key)?[3, "Unknown"]:hasToken("ptcshost", key)||hasToken("ptcs-host", key)||hasToken("ptcs", key)||hasToken("commspa", key)?[0, "PTCS Host"]:hasToken("gwhost", key)||hasToken("gw-host", key)||hasToken("gateway", key)?[1, "GW Host"]:hasToken("rnhost", key)||hasToken("rn-host", key)||hasToken("resourcenode", key)||hasToken("resource-node", key)?[2, "RN Host"]:hasToken("ptcs", sample)||hasToken("spa", sample)||hasToken("commspa", sample)?[0, "PTCS Host"]:hasToken("gw", sample)||hasToken("gateway", sample)?[1, "GW Host"]:hasToken("rn", sample)||hasToken("resource", sample)?[2, "RN Host"]:[3, "Unknown"];
 }
 function renderCountCard(title, value){
   return Doc.Element("div", [Attr.Create("style", "border:1px solid #d9e3f0; border-radius:6px; background:#fff; padding:10px 12px;")], [Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#667891;")], [Doc.TextNode(title)]), Doc.Element("div", [Attr.Create("style", "margin-top:4px; font-size:18px; font-weight:700;")], [Doc.TextNode(value)])]);
@@ -798,33 +800,47 @@ function distinctValues(values){
   return ofList(known);
 }
 function renderTree(groupNodes){
-  function renderNode_1(depth){
-    return(node) => {
+  const collapsedIds=_c_2.Create_1([]);
+  const containsId=(id, ids) => exists((current) => current==id, ids);
+  const roots=sortBy(nodeLabel, filter((node) => {
+    const parentId=nodeParentId(node);
+    return isBlank_1(parentId)||!exists((node_1) => nodeId(node_1)==parentId, groupNodes);
+  }, groupNodes));
+  function renderNode_1(collapsed){
+    return(depth) =>(node) => {
       let _1;
-      const parentId=nodeId(node);
-      const children=sortBy(nodeLabel, filter((node_1) => nodeParentId(node_1)==parentId, groupNodes));
+      const id=nodeId(node);
+      const children=sortBy(nodeLabel, filter((node_1) => nodeParentId(node_1)==id, groupNodes));
       const address=nodeAddress(node);
       const fullPath=nodeFullPath(node);
       const displayAddress=isBlank_1(address)?fullPath:address;
+      const isCollapsed=containsId(id, collapsed);
       let _2=Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:auto minmax(720px,1fr); align-items:start; column-gap:8px; margin-left:"+String(depth*22)+"px; min-height:28px;"), OnAfterRender((node_1) => {
         node_1.setAttribute("data-testid", "dynamic-actor-tree-row");
-      })], [Doc.Element("span", [Attr.Create("style", "display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid #9db0c7; background:#fff; color:#33465f; font-size:11px; line-height:18px; margin-top:3px;")], [Doc.TextNode(length(children)>0?"-":"")]), Doc.Element("div", [Attr.Create("style", "border-left:2px solid #c9d6e6; padding-left:10px; padding-bottom:6px;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:8px; flex-wrap:wrap;")], [Doc.Element("span", [Attr.Create("style", "font-weight:650; color:#1f3148;")], [Doc.TextNode(nodeLabel(node))]), renderStatusChip(nodeStatus(node)), Doc.Element("span", [Attr.Create("style", "font-size:11px; color:#667891;")], [Doc.TextNode(nodeKind(node))])]), Doc.Element("div", [Attr.Create("style", "font-family:Consolas, 'Cascadia Mono', monospace; font-size:12px; color:#22344d; white-space:nowrap;")], [Doc.TextNode(displayAddress)])])]);
-      if(depth>=24)_1=FSharpList.Empty;
+      })], ofSeq_1(delay(() => append_2(length(children)>0?[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("title", isCollapsed?"Expand actor node":"Collapse actor node"), Attr.Create("style", "display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid #7d92ad; background:#fff; color:#21354f; font-size:12px; line-height:16px; padding:0; margin-top:3px; cursor:pointer; font-family:Consolas, 'Cascadia Mono', monospace;"), Handler("click", () =>() => {
+        const current=collapsedIds.Get();
+        return collapsedIds.Set(containsId(id, current)?filter((value) => value!=id, current):current.concat([id]));
+      }), OnAfterRender((node_1) => {
+        node_1.setAttribute("data-testid", "dynamic-actor-tree-toggle");
+        node_1.setAttribute("aria-expanded", isCollapsed?"false":"true");
+      })], [Doc.TextNode(isCollapsed?"+":"-")])]:[Doc.Element("span", [Attr.Create("style", "display:inline-flex; width:18px; height:18px; margin-top:3px;"), OnAfterRender((node_1) => {
+        node_1.setAttribute("data-testid", "dynamic-actor-tree-toggle-placeholder");
+      })], [])], delay(() =>[Doc.Element("div", [Attr.Create("style", "border-left:2px solid #c9d6e6; padding-left:10px; padding-bottom:6px;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:8px; flex-wrap:wrap;")], [Doc.Element("span", [Attr.Create("style", "font-weight:650; color:#1f3148;")], [Doc.TextNode(nodeLabel(node))]), renderStatusChip(nodeStatus(node)), Doc.Element("span", [Attr.Create("style", "font-size:11px; color:#667891;")], [Doc.TextNode(nodeKind(node))])]), Doc.Element("div", [Attr.Create("style", "font-family:Consolas, 'Cascadia Mono', monospace; font-size:12px; color:#22344d; white-space:nowrap;")], [Doc.TextNode(displayAddress)])])])))));
+      if(isCollapsed||depth>=24)_1=FSharpList.Empty;
       else {
-        const x_1=ofArray(children);
-        _1=collect_2(renderNode_1(depth+1), x_1);
+        const x=ofArray(children);
+        _1=collect_2((renderNode_1(collapsed))(depth+1), x);
       }
       return FSharpList.Cons(_2, _1);
     };
   }
-  const x=ofArray(sortBy(nodeLabel, filter((node) => {
-    const parentId=nodeParentId(node);
-    return isBlank_1(parentId)||!exists((node_1) => nodeId(node_1)==parentId, groupNodes);
-  }, groupNodes)));
-  const treeRows=collect_2(renderNode_1(0), x);
   return Doc.Element("div", [Attr.Create("style", "border:1px solid #d8e2ef; background:#fbfdff; border-radius:6px; padding:10px; overflow-x:auto;"), OnAfterRender((node) => {
     node.setAttribute("data-testid", "dynamic-actor-tree-viewport");
-  })], ofSeq_1(delay(() => treeRows.$==0?[Doc.Element("div", [Attr.Create("style", "color:#667891; font-size:12px;")], [Doc.TextNode("No actor tree rows.")])]:[Doc.Concat(treeRows)])));
+  })], [Doc.EmbedView(Map((collapsed) => {
+    const x=ofArray(roots);
+    const rows=collect_2((renderNode_1(collapsed))(0), x);
+    return rows.$==0?Doc.Element("div", [Attr.Create("style", "color:#667891; font-size:12px;")], [Doc.TextNode("No actor tree rows.")]):Doc.Concat(rows);
+  }, collapsedIds.View))]);
 }
 function renderGrid(groupNodes){
   const headerCell=(label_1) => E("th", [Attr.Create("style", "text-align:left; padding:8px 10px; border-bottom:1px solid #d7e2ef; color:#53677f; font-size:11px; white-space:nowrap;")], [Doc.TextNode(label_1)]);
@@ -8843,4 +8859,3 @@ function New_39(created, evalOrVal, force){
   };
 }
 Main();
-

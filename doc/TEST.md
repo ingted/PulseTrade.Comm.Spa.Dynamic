@@ -159,20 +159,22 @@ Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests` 內 `DYN-T-527`。
 
 Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier 回 false。Generic Canvas renderer 仍由 `DynamicRenderer.TryRender` 處理一般 `schema=fskynet-sdui` message reply。
 
-### DYN-T-528..532 Remaining ActorsPage gates
+### DYN-T-528 ActorsPage node grouping and tree toggle gate
 
 2026-06-28 current source-host evidence:
 
 - PTCS source host + Dynamic source Release bundle passes a Playwright MCP gate on `/actors`;
 - Dynamic page renderer is registered and the same renderer path is also protected through the transitional `MessageRenderers` fallback;
-- Dynamic page host is present, fallback tree/table rows are absent, Dynamic rows and node blocks render, and full `akka.tcp://...` addresses are visible;
-- screenshot evidence is `G:\PulseTrade.fs\log\20260628\20260628195755.actors-page-dynamic-3716.png`.
+- Dynamic page host is present, fallback tree/table rows are absent, blocks are ordered PTCS Host -> GW Host -> RN Host -> Unknown, and full `akka.tcp://...` addresses are visible;
+- boxed tree toggle is functional: click changes `- / aria-expanded=true` to `+ / aria-expanded=false` and row count `17 -> 16`; second click restores `17`;
+- evidence is `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-check.json`;
+- screenshot evidence is `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-fixed.png`.
+
+### DYN-T-529..532 Remaining ActorsPage gates
 
 尚未完成：
 
 - strict ActorsPage DSL parser / codec；
-- host:port node grouping；
-- PTCS Host -> GW Host -> RN Host -> Unknown role ordering；
 - polished tree/grid/cards/actions rendering；
 - reusable F# Playwright verifier for Dynamic accepted, Dynamic absent, and unsupported renderer fallback paths；
 - NuGet/package/public 81 rollout gates。

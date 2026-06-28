@@ -427,16 +427,17 @@ PTCS /actors
 
 - action shell for reload / report / schedule report, with report actions still disabled until PTCS report wiring is ready;
 - count cards for renderer identity, node groups, actor tree rows, and active rows;
-- node blocks derived from the `actorTreeNodes` data;
-- hierarchy rows with full labels and active/degraded status;
+- node blocks derived from actor-system host/port in `actorTreeNodes` address data;
+- role ordering: PTCS Host -> GW Host -> RN Host -> Unknown;
+- hierarchy rows with full labels, active/degraded status, and boxed `+` / `-` toggles;
 - grid rows with full actor addresses and path/status metadata.
 
-The first Playwright gate intentionally accepts this as a seam proof, not as final IA. Current node block grouping is still too literal and must be replaced by clean `actorSystem@host:port` grouping plus PTCS Host -> GW Host -> RN Host -> Unknown role ordering.
+The Playwright gate now verifies page ownership, clean host/port grouping, role ordering, and real collapse/expand behavior. Tree toggles are backed by WebSharper `Var` state: collapse removes child rows from the rendered tree and updates `aria-expanded`.
 
 ### Next design gates
 
 1. Replace token classifier with strict DSL codec once WebSharper-safe parsing is available.
-2. Add `nodeGroups` codec and render PTCS/GW/RN/Unknown blocks.
-3. Add actor hierarchy tree with right-angle connector lines and boxed `+` / `-`.
+2. Replace the current renderer-side inferred node grouping with explicit `nodeGroups` codec once PTCS emits it.
+3. Polish actor hierarchy tree connector geometry and card/action layout.
 4. Add grid/cards/actions from the same ActorsPage DSL document.
 5. Replace the current source-host Playwright proof with reusable F# verifier coverage through PTCS `/actors`, including Dynamic accepted, Dynamic absent, and unsupported renderer fallback paths.
