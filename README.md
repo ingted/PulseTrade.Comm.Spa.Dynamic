@@ -38,6 +38,10 @@ This is not the generic Canvas message renderer. When PTCS provides an `ActorsPa
 
 If Dynamic does not support `ActorsPage`, it must return not-supported and let PTCS use its fallback tree/grid/table. It must not display a Canvas summary card, raw JSON preview, or `Expand Canvas` button as a substitute for ActorsPage support.
 
+First implementation slice keeps the renderer inside `Client/ActorDynamicTab.fs` instead of a new client compile unit. In this checkout, WebSharper `10.1.5.674` crashes `wsfsc.exe` when a new `[<JavaScript>]` client file is added, and also crashes on `String.Contains`; the current classifier uses a single `IndexOf("ActorTopologyPage")` gate. This is sufficient for PTCS page renderer dispatch because PTCS only sends ActorsPage documents to page renderers.
+
+The current renderer already builds a page-level Actors UI with action shell, count cards, node blocks, hierarchy rows, and grid rows. A PTCS source-host Playwright MCP gate verified that Dynamic owns the `/actors` DOM when loaded: fallback rows are `0`, Dynamic rows are present, and full `akka.tcp://...` addresses are visible. Full strict schema parsing, clean grouping by actor system host:port, PTCS/GW/RN role ordering, production report actions, restart/failover visual states, NuGet rollout, and public 81 deployment proof remain tracked by `DYN-WBS-519`.
+
 ## Verification
 
 `PulseTrade.Comm.Spa.Dynamic` is developed under a long Windows path. WebSharper `wsfsc.exe` can crash without diagnostics when both intermediate and output paths stay under this repo path. Use the short-path build command recorded in `doc/Verification.md` for package verification:

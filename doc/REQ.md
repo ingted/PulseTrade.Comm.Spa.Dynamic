@@ -79,3 +79,11 @@
 4. Add-key renderer 必須依 PTCS core mode-aware shape discriminator claim renderer：`actor-dynamic-target`、`actor-dynamic-proxy`、`actor-argu-target`。
 5. `Actor Dynamic` 沒輸入 DU/template 時不得強迫 FormInput；應保留任意字串/direct actor route。
 6. Proxy key first slice 只建立 UI/key contract；真正 PTCS proxy -> RN Host delivery 屬 PTC RN/RN.Host topology，不可在 Dynamic package 寫死 demo echo logic。
+## 2026-06-28 RFC-PTCS-DYNAMIC-0005 ActorsPage Renderer
+
+1. Dynamic 必須支援 page-level `ActorsPage` renderer，與 generic Canvas message renderer 分離。
+2. Renderer claim 條件以 PTCS 提供的 `ActorTopologyPage` document 為準；first slice 使用 `ActorTopologyPage` token gate，後續需收斂成嚴格 `schema/surface/documentType` parser。
+3. 一旦 Dynamic claim ActorsPage document，必須 render 整個 `/actors` page host；不得只呈現 Canvas summary card、raw JSON preview 或 `Expand Canvas` button。
+4. Dynamic 不擁有 Actor Registry truth source、PCSL projection、IndexedDB cache、report endpoint 或 fallback tree/table。
+5. 完整版 renderer 必須支援 host/port node grouping、PTCS/GW/RN/Unknown role ordering、完整 actor address、tree/grid/cards/actions 與 report controls。
+6. WebSharper client code 仍以 F# / WebSharper 撰寫；目前已確認 `String.Contains` 與新增 client `[<JavaScript>]` compile unit 在此專案會造成 `wsfsc.exe` crash，後續實作需遵守 `doc/SDUI_Developer_Manual.md` 的限制。

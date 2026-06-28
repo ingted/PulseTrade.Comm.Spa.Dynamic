@@ -481,3 +481,33 @@ Form Input components 使用相同 node tree，只是 renderer 將其放在 appe
 - **Renderer / Adapter 分離**：Renderer 只吃 `SduiDocument`；Argu / DU reflection、`IArgParserTemplate` 與 union case 選擇都在 adapter / registry 層完成。
 - **Controlled error**：schema、document id、provider id、DU type、union case 或 binding 無法解析時，renderer 顯示 controlled error；不得 silent fallback 成看似可用的 textarea。
 - **No arbitrary execution**：DSL 不可含 JavaScript、shell command、absolute URL、secret-bearing headers 或任意 code block。
+## 2026-06-28 ActorsPage Surface
+
+`ActorsPage` 是 PTCS `/actors` 的 page-level surface，不是一般 message Canvas。
+
+Minimum document discriminator:
+
+```json
+{
+  "schema": "fskynet-sdui",
+  "surface": "ActorsPage",
+  "documentType": "ActorTopologyPage"
+}
+```
+
+Target renderer behavior:
+
+- Dynamic renderer claim 後 owns 整個 `/actors` page host。
+- PTCS fallback tree/table 不與 Dynamic-rendered page 同時 mount。
+- generic `surface=Canvas` renderer 不得用 summary card / raw JSON preview 充當 ActorsPage support。
+
+Planned vocabulary:
+
+- `nodeGroups`: 依 `actorSystem@host:port` 分組；
+- `role`: `ptcs-host` / `gw-host` / `rn-host` / `unknown`；
+- `tree`: actor hierarchy，直角 connector lines 與 boxed `+` / `-`；
+- `grid`: full address detail rows；
+- `cards`: registry/node summary；
+- `actions`: reload、generate-report、schedule-report。
+
+First implementation slice only proves page-level renderer dispatch and summary host. Full vocabulary rendering remains `DYN-WBS-519`.

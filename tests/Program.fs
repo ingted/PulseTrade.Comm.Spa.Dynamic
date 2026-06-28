@@ -242,6 +242,17 @@ let tests =
             let invalidResult = DynamicRenderer.TryRender invalidPayload
             Expect.isNone invalidResult "TryRender should return None for other schemas"
 
+        testCase "DYN-T-526: ActorsPage renderer should claim ActorTopologyPage documents" <| fun _ ->
+            let payload = "{\"schema\":\"fskynet-sdui\",\"surface\":\"ActorsPage\",\"documentType\":\"ActorTopologyPage\",\"projectionId\":\"ptcs-actors\",\"projectionVersion\":1,\"data\":{\"actorTreeNodes\":[]}}"
+            let pageResult = ActorDynamicTab.IsActorsPagePayload payload
+
+            Expect.isTrue pageResult "Dedicated ActorsPage renderer should claim ActorTopologyPage documents"
+
+        testCase "DYN-T-527: ActorsPage renderer should ignore normal Canvas messages" <| fun _ ->
+            let payload = "{\"schema\":\"fskynet-sdui\",\"surface\":\"Canvas\",\"ui\":[]}"
+            let result = ActorDynamicTab.IsActorsPagePayload payload
+            Expect.isFalse result "ActorsPage renderer must not claim generic Canvas message payloads"
+
         testCase "WBS-104: ActorDynamicTab.renderActorDynamicPage should generate valid page Doc" <| fun _ ->
             let _ = ActorDynamicTab.renderActorDynamicPage "actor-dynamic"
             Expect.isTrue true "Tab page generation should succeed"

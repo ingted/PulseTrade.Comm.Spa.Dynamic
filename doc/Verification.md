@@ -12,7 +12,9 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 | Gate | 類型 | 命令 / 腳本 | 用途與摘要 | Revision |
 |---|---|---|---|---|
-| DYN-VFY-001 | Package build / WebSharper bundle | `dotnet build .\src\PulseTrade.Comm.Spa.Dynamic.fsproj -c Debug -p:BaseIntermediateOutputPath=C:\ptcsdyn-build\obj\ -p:OutputPath=C:\ptcsdyn-build\bin\` | 以短 intermediate/output path 建置 Dynamic package 與 WebSharper bundle。長 repo path 下 `wsfsc.exe` 可能直接 crash 且只回 `MSB6006`，因此 package verification 使用短 path。 | 本輪新增：2026-06-28 actor-dynamic-action-modes |
+| DYN-VFY-001 | Package build / WebSharper bundle | `dotnet build .\src\PulseTrade.Comm.Spa.Dynamic.fsproj -c Debug -p:BaseIntermediateOutputPath=C:\ptcsdyn-build\obj\ -p:OutputPath=C:\ptcsdyn-build\bin\` | 以短 intermediate/output path 建置 Dynamic package 與 WebSharper bundle。長 repo path 下 `wsfsc.exe` 可能直接 crash 且只回 `MSB6006`，因此 package verification 使用短 path。本輪 RFC-0005 也確認新增 client `[<JavaScript>]` compile unit、`String.Contains`、多段 `IndexOf` predicate 都可能觸發 crash；first slice 使用既有 `ActorDynamicTab.fs` 與單一 `IndexOf("ActorTopologyPage")`。 | 本輪修訂：2026-06-28 actors-page-renderer |
+| DYN-VFY-004 | Package tests | `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release -p:WebSharperRunCompiler=false -p:GeneratePackageOnBuild=false -- --summary --no-spinner` | 在 DYN-VFY-001 full WebSharper build 通過後，關閉 WebSharper compiler 跑 Expecto package tests，避免 test build 重跑 long/default path `wsfsc.exe`。本輪覆蓋 DYN-T-526/DYN-T-527，總計 17/17 pass。 | 本輪新增：2026-06-28 actors-page-renderer-tests |
+| PTCS-VFY-ActorsPageDynamic | Cross-repo source host / Playwright MCP | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\run.actorsPageDynamic.localHost.fsx` with `--dynamic-bin-dir C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Release\net10.0` | 啟動 PTCS source host 載入 Dynamic source Release bundle，使用 Playwright MCP 驗證 `/actors` 由 Dynamic page renderer 接管：page renderer registered, fallback rows `0`, Dynamic rows `17`, node blocks `14`, full actor addresses visible。Evidence screenshot: `G:\PulseTrade.fs\log\20260628\20260628195755.actors-page-dynamic-3716.png`。 | 本輪新增：2026-06-28 actors-page-dynamic-source-host |
 | PTC-VFY-007 | Cross-repo package bundle | `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-dynamic-nuget-bundle.fsx` | 驗證 PTCS / Dynamic NuGet package、bundle assets、Dynamic JS markers 與 exact package version。 | Cross-repo |
 | PTC-VFY-008 | Cross-repo live host | `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\run-ptcs-dynamic-nuget-live-host.fsx` | 啟動 PTCS + Dynamic in-process live host，供 browser/manual/Playwright 驗證 Actor Dynamic / Actor Argu flows。 | Cross-repo |
 
@@ -25,3 +27,9 @@ error MSB6006: "wsfsc.exe" exited with code -532462766.
 ```
 
 同一份 source 以短 path 設定 `BaseIntermediateOutputPath` 與 `OutputPath` 可通過，因此這不是 F# 語法錯誤。後續 package build、NuGet local verification 與 CI wrapper 應使用 DYN-VFY-001 的短 path 命令，或提供等價的短 build root。
+
+RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
+
+- 新增 `Client/ActorsPageRenderer.fs` 這類 `[<JavaScript>]` compile unit，即使內容 no-op，也可能讓 `wsfsc.exe` crash；本輪改放在既有 `Client/ActorDynamicTab.fs`。
+- `String.Contains` 在 `[<JavaScript>]` code 會 crash；使用單一 `IndexOf` 可通過。
+- 多個 `IndexOf` chained predicate 仍會 crash；first slice 暫以 `ActorTopologyPage` 單 token gate。

@@ -331,4 +331,21 @@ Implementation status:
 - Added `doc/RFC-PTCS-DYNAMIC-0005.actors-page-renderer.md` to mirror PTCS `RFC-PTC-SPA-0010` from the Dynamic implementation side.
 - Decision under review: `/actors` must not use the generic Canvas summary/preview renderer as final UI. Dynamic support means a dedicated `ActorsPage` renderer that owns the whole page: node blocks, actor hierarchy tree, grid, cards, reload/report controls, and status UI.
 - Updated README with the ActorsPage renderer boundary and updated WBS: `DYN-WBS-517` is superseded by page-level `DYN-WBS-519`.
+
+## 2026-06-28 - RFC-PTCS-DYNAMIC-0005 ActorsPage first implementation slice
+
+- Implemented first-slice ActorsPage renderer registration in `src/Client/ActorDynamicTab.fs`; it registers a page-level renderer and returns a whole-page Dynamic host for `ActorTopologyPage` payloads.
+- Kept generic Canvas message renderer unchanged. ActorsPage is not rendered through the `FSkynet 動態畫布 (Canvas)` summary card path.
+- Added package tests `DYN-T-526` and `DYN-T-527`; Dynamic tests passed 17/17 with `WebSharperRunCompiler=false` after a separate full WebSharper short-path build passed.
+- Documented WebSharper limitations found during implementation: a new `[<JavaScript>]` client compile unit and `String.Contains` both crash `wsfsc.exe`; current first slice stays in `ActorDynamicTab.fs` and uses one `IndexOf("ActorTopologyPage")` classifier.
+- Updated `REQ.md`, `SA.md`, `SD.md`, `SDUI_DSL_zh-Hant.md`, `SDUI_Developer_Manual.md`, `WBS.md`, `TEST.md`, `Verification.md`, `Traceability.md`, and `README.md`.
+- Remaining `DYN-WBS-519`: strict parser, node grouping by host:port, role ordering, full tree/grid/cards/actions, PTCS `/actors` Playwright gate, and NuGet rollout.
 - No package source or version was changed in this planning slice.
+
+## 2026-06-28 - RFC-PTCS-DYNAMIC-0005 ActorsPage source-host verification gate
+
+- Extended `src/Client/ActorDynamicTab.fs` so `createActorsPageDocument` renders a page-level Actors UI with action shell, count cards, node blocks, hierarchy rows, and grid rows. This remains a first gate, not the final PTCS/GW/RN grouped IA.
+- Dynamic now registers the ActorsPage renderer through the page renderer bridge and also routes `ActorTopologyPage` through the existing `fskynet-sdui` message renderer as a compatibility fallback for PTCS source-host dispatch.
+- PTCS source-host Playwright MCP gate passed against `http://127.0.0.1:3716/actors`: page renderer registered, Dynamic page host present, fallback rows `0`, Dynamic rows `17`, node blocks `14`, and full actor addresses visible. Evidence: `G:\PulseTrade.fs\log\20260628\20260628195755.actors-page-dynamic-3716.png`.
+- Documented operational lessons: initialize page renderer registry in both PTCS bootstrap locations, avoid WebSharper dynamic call array-argument emission for `PulseTradeRegisterPageRenderer`, prefer Dynamic source Release `#I` before stale `C:\ptcsdyn-build\bin`, and clean WebSharper output when bundle markers are stale.
+- Remaining `DYN-WBS-519`: strict parser, clean host:port grouping, PTCS/GW/RN role ordering, report actions, restart/failover visual states, reusable F# Playwright verifier, NuGet rollout, and public 81 deployment proof.

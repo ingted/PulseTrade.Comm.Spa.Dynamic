@@ -139,6 +139,44 @@ Current package verifier：`dotnet run --project .\tests\PulseTrade.Comm.Spa.Dyn
 - Canvas-only node 與 FormInput node 不需要不同 schema root；
 - invalid schema/version/duplicate id controlled failure。
 
+## 6. RFC-PTCS-DYNAMIC-0005 ActorsPage Renderer Gates
+
+### DYN-T-526 ActorsPage renderer registration/classifier
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests` 內 `DYN-T-526`。
+
+Current first-slice 判讀：
+
+- payload 含 `ActorTopologyPage` 時，`ActorDynamicTab.IsActorsPagePayload` 回 true；
+- Dynamic entrypoint 會呼叫 page renderer registration；
+- full WebSharper bundle build 必須用 `DYN-VFY-001` short path 先過。
+
+限制：目前 classifier 使用單一 `IndexOf("ActorTopologyPage")`，因 `String.Contains` 與多段 predicate 會讓 WebSharper 10.1.5.674 `wsfsc.exe` crash。嚴格 `schema/surface/documentType` parser 是 DYN-T-528 之後的 gate。
+
+### DYN-T-527 Generic Canvas isolation
+
+Verifier：`tests/PulseTrade.Comm.Spa.Dynamic.Tests` 內 `DYN-T-527`。
+
+Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier 回 false。Generic Canvas renderer 仍由 `DynamicRenderer.TryRender` 處理一般 `schema=fskynet-sdui` message reply。
+
+### DYN-T-528..532 Remaining ActorsPage gates
+
+2026-06-28 current source-host evidence:
+
+- PTCS source host + Dynamic source Release bundle passes a Playwright MCP gate on `/actors`;
+- Dynamic page renderer is registered and the same renderer path is also protected through the transitional `MessageRenderers` fallback;
+- Dynamic page host is present, fallback tree/table rows are absent, Dynamic rows and node blocks render, and full `akka.tcp://...` addresses are visible;
+- screenshot evidence is `G:\PulseTrade.fs\log\20260628\20260628195755.actors-page-dynamic-3716.png`.
+
+尚未完成：
+
+- strict ActorsPage DSL parser / codec；
+- host:port node grouping；
+- PTCS Host -> GW Host -> RN Host -> Unknown role ordering；
+- polished tree/grid/cards/actions rendering；
+- reusable F# Playwright verifier for Dynamic accepted, Dynamic absent, and unsupported renderer fallback paths；
+- NuGet/package/public 81 rollout gates。
+
 目前已落地的 package coverage：
 
 - `SduiFormDocument.fromArguFormSchema` 產生 `schema=fskynet-sdui`、`surface=FormInput`、stable `documentId`；

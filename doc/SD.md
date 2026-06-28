@@ -386,3 +386,57 @@ match tryGetSchema payload with
 ```
 
 The renderer must not treat page type, key shape, or actor address as proof of canvas content.
+## 2026-06-28 ActorsPage Renderer Design
+
+### Module placement
+
+Current first slice extends `Client/ActorDynamicTab.fs`:
+
+```fsharp
+let IsActorsPagePayload (rawContent: string) =
+    rawContent.IndexOf("ActorTopologyPage") >= 0
+
+let registerActorsPageRenderer () =
+    // register string -> Dom.Node option through PulseTradeRegisterPageRenderer
+```
+
+Do not move this first slice to a new `[<JavaScript>]` client file until WebSharper compiler behavior is fixed or re-verified. Clean short-path builds showed:
+
+- new client compile unit, even no-op, can crash `wsfsc.exe`;
+- `String.Contains` in `[<JavaScript>]` code can crash `wsfsc.exe`;
+- a single `IndexOf` predicate compiles.
+
+### Runtime flow
+
+```text
+ActorDynamicTab.Main()
+  -> _registerRenderer()              // generic Canvas message renderer
+  -> registerActorsPageRenderer()     // page-level ActorsPage renderer
+  -> ArguFormRenderer.Register()
+
+PTCS /actors
+  -> builds ActorsPage / ActorTopologyPage DSL
+  -> calls registered page renderers
+  -> Dynamic returns Some Dom.Node for ActorTopologyPage
+  -> PTCS mounts only Dynamic page host
+```
+
+### First-slice output
+
+`createActorsPageDocument` renders a page-level Dynamic Actors UI, not the generic `FSkynet 動態畫布 (Canvas)` summary card. The current output includes:
+
+- action shell for reload / report / schedule report, with report actions still disabled until PTCS report wiring is ready;
+- count cards for renderer identity, node groups, actor tree rows, and active rows;
+- node blocks derived from the `actorTreeNodes` data;
+- hierarchy rows with full labels and active/degraded status;
+- grid rows with full actor addresses and path/status metadata.
+
+The first Playwright gate intentionally accepts this as a seam proof, not as final IA. Current node block grouping is still too literal and must be replaced by clean `actorSystem@host:port` grouping plus PTCS Host -> GW Host -> RN Host -> Unknown role ordering.
+
+### Next design gates
+
+1. Replace token classifier with strict DSL codec once WebSharper-safe parsing is available.
+2. Add `nodeGroups` codec and render PTCS/GW/RN/Unknown blocks.
+3. Add actor hierarchy tree with right-angle connector lines and boxed `+` / `-`.
+4. Add grid/cards/actions from the same ActorsPage DSL document.
+5. Replace the current source-host Playwright proof with reusable F# verifier coverage through PTCS `/actors`, including Dynamic accepted, Dynamic absent, and unsupported renderer fallback paths.

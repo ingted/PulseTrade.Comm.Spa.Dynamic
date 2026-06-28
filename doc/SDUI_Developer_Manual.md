@@ -179,6 +179,37 @@ Current regression gate：
 - `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-dynamic-argu-live.fsx` 以 F# Playwright native locator API 驗證 PTCS action pool/tab close/`+ Page`、Dynamic `Bind target`、Remove-left list rows 與 exact PFCF echo。
 - `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait` 直接 `#r` PTCS beta19 / Dynamic beta11，啟動 live host 並印出 URL、actor address、template key、probe status，供人工測試前快速確認 NuGet bundle 真能啟動。
 
+## 2026-06-28：ActorsPage renderer 與 WebSharper 限制
+
+PTCS `/actors` 的 final seam 不是 generic Canvas message renderer，而是 page-level `ActorsPage` renderer：
+
+- PTCS core 產生 `schema=fskynet-sdui` / `surface=ActorsPage` / `documentType=ActorTopologyPage` payload。
+- Dynamic extension 透過 `PulseTradeRegisterPageRenderer` 註冊 `string -> Dom.Node option` renderer。
+- renderer 回 `Some node` 時，PTCS 只 mount Dynamic page host；fallback tree/table 不同時出現。
+- renderer 缺席、回 `None` 或 throw 時，PTCS 使用 core fallback tree/table。
+
+本輪實作限制：
+
+1. 不要新增 `Client/ActorsPageRenderer.fs` 這類新的 `[<JavaScript>]` compile unit。此 repo + WebSharper 10.1.5.674 下，即使 no-op compile unit 也會讓 `wsfsc.exe` crash。
+2. 不要在 `[<JavaScript>]` client code 使用 `String.Contains`。已確認單一 `Contains` 會 crash。
+3. 不要使用多段 `IndexOf` chained predicate。已確認多 token predicate 會 crash。
+4. first slice 將 renderer 放在既有 `Client/ActorDynamicTab.fs`，classifier 使用單一 `rawContent.IndexOf("ActorTopologyPage") >= 0`。
+5. strict `schema/surface/documentType` parser、clean node grouping、role ordering、report actions、restart/failover status 都列入 `DYN-WBS-519` 後續 gate；不能把 first-slice UI 誤當 final renderer。
+
+後續實作補充：
+
+- PTCS server extension bootstrap 與 SPA client bootstrap 都需要建立 `PulseTrade.PageRenderers` / `PulseTradeRegisterPageRenderer`。Dynamic script 可能早於 SPA bundle 載入，只在 client bootstrap 建 registry 會讓 first registration miss 掉。
+- WebSharper dynamic call `JS.Window?PulseTradeRegisterPageRenderer("name", 100, renderer)` 會產生不符合預期的 array argument call。這個 interop 點目前必須使用既有 inline bridge 呼叫 `window.PulseTradeRegisterPageRenderer('ptcs-actors-page', 100, renderer)`。
+- PTCS `/actors` 目前會先查 `PageRenderers`，再以 `MessageRenderers` 作 transitional compatibility fallback。Dynamic generic `fskynet-sdui` renderer 必須先判斷 `ActorTopologyPage` 並回 ActorsPage DOM，否則會被普通 Canvas summary renderer claim。
+- `C:\ptcsdyn-build\bin` 可能保留舊 bundle。Source-host verifier 應優先 `#I` Dynamic source Release output，例如 `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Release\net10.0`，再 fallback 到短路徑 build output。
+- 若 served `PulseTrade.Comm.Spa.Dynamic.js` 沒有 `createActorsPageDocument` 或 `dynamic-actor-node-block` marker，先清掉 Dynamic `src\bin` / `src\obj` 後重跑 Release build；不要把 stale bundle 當 renderer 行為判斷。
+
+驗證順序：
+
+1. 先跑 DYN-VFY-001 short-path full WebSharper build。
+2. 再跑 DYN-VFY-004 tests，並加 `-p:WebSharperRunCompiler=false`，避免 test build 重跑 long/default path compiler。
+3. UI milestone 需由 PTCS/PTC cross-repo Playwright verifier 或 Playwright MCP 驗證 `/actors` 實頁：Dynamic accepted 時 fallback DOM 不 mount，Dynamic absent 時 fallback tree/table 可用。
+
 ## 2026-06-27：DU/template key 是自由 full type name input
 
 現象：

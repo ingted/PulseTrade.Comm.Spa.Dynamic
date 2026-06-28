@@ -15,6 +15,7 @@
 9. `doc/RFC-PTCS-DYNAMIC-0003.unified-sdui-form-dsl-roadmap.md`：Unified SDUI / Form DSL roadmap and product boundary correction。
 10. `doc/DevLog.md`：append-only milestone log。
 11. `doc/RFC-PTCS-DYNAMIC-0004.actor-dynamic-action-modes.md`：Actor Dynamic / Actor Argu action mode split。
+12. `doc/RFC-PTCS-DYNAMIC-0005.actors-page-renderer.md`：ActorsPage page-level renderer contract。
 
 ## RFC Map
 
@@ -24,6 +25,7 @@
 | `RFC-PTCS-DYNAMIC-0002` | Draft / Review | Dynamic-owned Argu metadata, SDUI form renderer, SubmitArguForm, add-key renderer, and cross-project PTCS/PTC RN integration schedule。 |
 | `RFC-PTCS-DYNAMIC-0003` | Draft / Review | Correct product direction to common SDUI DSL and arg-string-driven backend FormInput resolution: Canvas/FormInput share document model; Argu/DU is parser-backed adapter; PTCS.Host owns demo DU。 |
 | `RFC-PTCS-DYNAMIC-0004` | Accepted / In development | Actor Dynamic direct actor key / DU target / proxy key mode split; Actor Argu FormInput-only; canvas renderer remains payload-based。 |
+| `RFC-PTCS-DYNAMIC-0005` | Proposed / first implementation slice | ActorsPage page-level renderer for PTCS `/actors`; separate from generic Canvas message renderer。 |
 
 ## Cross-Project References
 
@@ -32,6 +34,7 @@
 | PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0007.dynamic-argu-form-extensions.md` | PTCS core seam for append input renderer and add-key dialog renderer。 |
 | PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0008.unified-sdui-target-extension-contract.md` | PTCS companion contract for direct DSL target and Dynamic-owned target key binding. PTCS stores ordered key list; PTCS.Dynamic interprets `[actor; template; canonicalArgString]` when extension is present。 |
 | PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0009.actor-dynamic-action-modes-and-full-address-tree.md` | PTCS core action shell contract for Add actor key / Add target key / Add proxy key and full actor address tree display。 |
+| PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0010.actors-page-dynamic-dsl-rendering.md` | PTCS companion contract for `/actors` page-level ActorsPage rendering and fallback mutual exclusion。 |
 | PTC RN | `G:\PulseTrade.fs\Libs\PulseTrade.Comm\doc\RFC-PTC-0016.resource-node-sharded-function-proxy.md` | RN DurableProxy consumes `ActorArguTargetCommand.RawArgu` and adapts to legacy actor/service。 |
 | PTC WBS | `G:\PulseTrade.fs\Libs\PulseTrade.Comm\doc\WBS.md` rows `PTC3-063`..`PTC3-067` | RN/RN.Host production gates and final Dynamic -> RN E2E。 |
 | PTCS.Host demo DU | `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\doc\example DU.txt` | Big5/cp950 source material for host-local `PFCF_AKKA_CMD` demo subset；not package API。 |
@@ -65,3 +68,6 @@
 | `DYN-T-523` | `DYN-WBS-518` | Actor Dynamic proxy key builder stores `[proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind]`。 |
 | `DYN-T-524` | `DYN-WBS-518` | Actor Argu exposes no proxy key and no canvas behavior。 |
 | `DYN-T-525` | `DYN-WBS-518` | Canvas renderer only claims payloads with `schema=fskynet-sdui`。 |
+| `DYN-T-526` | `DYN-WBS-519` | Package Expecto verifies ActorsPage classifier accepts `ActorTopologyPage` payload；full WebSharper build is covered by DYN-VFY-001。 |
+| `DYN-T-527` | `DYN-WBS-519` | Package Expecto verifies normal Canvas payload is not claimed by ActorsPage classifier。 |
+| `DYN-T-528..532` | `DYN-WBS-519` | Planned: strict parser, host/port grouping, role ordering, full address tree/grid/cards/actions, and PTCS `/actors` Playwright gate。 |

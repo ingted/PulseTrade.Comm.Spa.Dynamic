@@ -113,3 +113,18 @@ Proxy key analysis:
 - Third segment is `rnActorAddress`, which identifies the RN Host target actor/sharding entity/logical durable endpoint.
 - Fourth segment is `targetKind` (`raw`, `canvas-json`, `argu`, etc.). Payload is not part of the key; it is the append input value delivered to the proxy actor.
 - Dynamic package does not guarantee the proxy actor exists or is split-service; verification must expose whether the live host is still using PTCS Host same-process demo actors.
+## 2026-06-28 ActorsPage Renderer System Analysis
+
+ActorsPage renderer 是 PTCS `/actors` 的 page-level presentation extension，不是 Actor Dynamic message reply canvas。系統邊界如下：
+
+- PTCS owns：Actor Registry projection、`ActorTreeDocument`、`/actors/api/tree`、`/actors/api/report`、fallback tree/table、browser page renderer registry。
+- PTCS.Dynamic owns：browser-side `ActorsPage` renderer registration and presentation。
+- Dynamic 不直接 reference PTCS Host runtime state，不 query ActorSystem，不寫 PCSL，不產生 report markdown。
+
+First slice 的實作落在既有 `Client/ActorDynamicTab.fs`，不是新 client module。原因是本 repo + WebSharper 10.1.5.674 對新增 `[<JavaScript>]` compile unit 會在 `wsfsc.exe` 階段無診斷 crash；同時 `String.Contains` 也會 crash。這是 implementation constraint，不是產品設計。後續若升級 WebSharper 或調整 bundle project，可再拆成 `ActorsPageRenderer.fs`。
+
+風險與補償：
+
+- classifier 目前用 `IndexOf("ActorTopologyPage")`，不是 final strict JSON parser；PTCS page renderer registry 只會傳 ActorsPage payload，因此 first slice 可接受。後續 DYN-WBS-519 必須補 strict parser/codec test。
+- first slice renderer 只接管 whole page host 並顯示 summary；尚未完成 node grouping/tree/grid/actions。
+- 若 renderer throw 或回 `None`，PTCS fallback 仍是權威 UI。
