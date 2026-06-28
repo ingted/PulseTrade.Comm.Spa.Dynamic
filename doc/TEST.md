@@ -178,7 +178,7 @@ Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier �
 
 - strict ActorsPage DSL parser / codec；
 - tree/grid/cards/actions polish beyond the current grouped/toggle/hierarchy-restored slice；
-- Dynamic absent and unsupported renderer fallback failure-injection paths beyond the no-Dynamic fallback verifier。
+- Dynamic absent / unsupported renderer fallback is covered by PTCS `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsActorTree.playwright.fsx -- --with-unsupported-client-extension`; Playwright MCP evidence: `G:\PulseTrade.fs\log\20260629\20260629001159.actors-unsupported-fallback-playwright-mcp.png`。
 
 目前已落地的 package coverage：
 

@@ -388,3 +388,10 @@ Implementation status:
 
 - Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta24`.
 - `DYN-WBS-519` moves to 95. Remaining work is strict schema parser, production report actions, restart/failover visual states, and Dynamic absent/unsupported renderer failure-injection.
+
+## 2026-06-29 - DYN-WBS-519 unsupported ActorsPage fallback gate
+
+- No Dynamic package source changed in this slice.
+- PTCS verifier `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsActorTree.playwright.fsx -- --with-unsupported-client-extension` now injects a client extension manifest with a missing script URL, proving PTCS falls back to its built-in ActorTree/table when no usable `ActorsPage` renderer exists.
+- Playwright MCP visual evidence: `G:\PulseTrade.fs\log\20260629\20260629001159.actors-unsupported-fallback-playwright-mcp.png`.
+- `DYN-WBS-519` moves to 96. Remaining: strict schema parser, production report actions, and restart/failover visual states.
