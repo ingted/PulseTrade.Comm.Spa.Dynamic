@@ -368,3 +368,10 @@ Implementation status:
 
 - Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta23`.
 - `DYN-WBS-519` moves to 90; remaining work is strict schema parser, production report actions, restart/failover visual states, and reusable F# Playwright verifier.
+
+## 2026-06-28 - ActorsPage reusable F# verifier handoff
+
+- PTCS added `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsPageDynamic.playwright.fsx` as the reusable F# Playwright accepted-path gate for the Dynamic ActorsPage renderer.
+- The gate starts PTCS with the Dynamic source Release bundle and verifies Dynamic owns `/actors`, fallback rows are absent, PTCS/GW/RN/Unknown blocks are ordered, full `akka.tcp://...` addresses are visible, report/reload controls exist, and boxed toggle collapse/expand changes visible rows `17 -> 16 -> 17`.
+- Evidence screenshot is `G:\PulseTrade.fs\log\20260628\20260628230455.actors-page-dynamic-fsharp-verifier.png`.
+- `DYN-WBS-519` moves to 92. Remaining work is strict schema parser, production report actions, restart/failover visual states, and Dynamic absent/unsupported renderer failure-injection.

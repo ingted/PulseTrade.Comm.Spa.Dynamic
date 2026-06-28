@@ -169,6 +169,7 @@ Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier �
 - boxed tree toggle is functional: click changes `- / aria-expanded=true` to `+ / aria-expanded=false` and row count `17 -> 16`; second click restores `17`;
 - evidence is `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-check.json`;
 - screenshot evidence is `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-fixed.png`.
+- reusable F# Playwright verifier `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsPageDynamic.playwright.fsx` now repeats the accepted path with locator-only assertions for Dynamic ownership, fallback absence, full addresses, report controls, and visible row collapse/expand `17 -> 16 -> 17`; screenshot evidence is `G:\PulseTrade.fs\log\20260628\20260628230455.actors-page-dynamic-fsharp-verifier.png`.
 
 ### DYN-T-529..532 Remaining ActorsPage gates
 
@@ -176,7 +177,7 @@ Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier �
 
 - strict ActorsPage DSL parser / codec；
 - tree/grid/cards/actions polish beyond the current grouped/toggle slice；
-- reusable F# Playwright verifier for Dynamic accepted, Dynamic absent, and unsupported renderer fallback paths。
+- Dynamic absent and unsupported renderer fallback failure-injection paths beyond the no-Dynamic fallback verifier。
 
 目前已落地的 package coverage：
 
