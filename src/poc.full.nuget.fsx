@@ -7,8 +7,8 @@
 #r "nuget: Akka.Persistence, 1.5.69"
 #r "nuget: Suave, 3.4.3"
 #r "nuget: PersistedConcurrentSortedList, 10.1.301"
-#r @"nuget: PulseTrade.Comm.Spa, 0.2.5-beta13"
-#r @"nuget: PulseTrade.Comm.Spa.Dynamic, 0.1.3-beta1"
+#r @"nuget: PulseTrade.Comm.Spa, 0.2.5-beta40"
+#r @"nuget: PulseTrade.Comm.Spa.Dynamic, 0.1.3-beta29"
 //#I __SOURCE_DIRECTORY__
 //#I "bin/Release/net10.0"
 //#r "PulseTrade.Comm.Spa.Dynamic.dll"
@@ -31,13 +31,13 @@ open PulseTrade.Comm.Spa.Dynamic.Server
 // - 展示 PulseTrade.Comm.Spa.Dynamic 的 ShowcaseDemoActor 與 fskynet-sdui JSON 生成。
 // - 建立 Echo actor 測試原有的 durable 功能。
 
-let defaultPcslRoot = __SOURCE_DIRECTORY__ + "/.pcsl/poc.dynamic.v16.fsx"
+let defaultPcslRoot = __SOURCE_DIRECTORY__ + "/.pcsl/poc.dynamic.v17.fsx"
 
 let defaultArgPath (path: string) =
     if String.IsNullOrWhiteSpace path then "" else path.Replace('\\', '/')
 
 let defaultArgumentsText =
-    $"""--host 127.0.0.1 --port 0 --site-sharing isolated --pcsl-root "{defaultArgPath defaultPcslRoot}" --delivery-profile poc-durable --actor-name durable-echo"""
+    $"""--host 127.0.0.1 --port 0 --site-sharing isolated --pcsl-root "{defaultArgPath defaultPcslRoot}" --delivery-profile poc-durable --actor-name durable-echo --cluster-port 0"""
 
 type CliArguments =
     | Host of host: string
@@ -48,6 +48,7 @@ type CliArguments =
     | Actor_Name of name: string
     | Cluster_Port of port: int
     | No_Wait
+    | Verbose_Startup
     interface IArgParserTemplate with
         member this.Usage =
             match this with
@@ -59,6 +60,7 @@ type CliArguments =
             | Actor_Name _ -> "Echo actor name under /user."
             | Cluster_Port _ -> "Akka.NET cluster port (default: 7705)."
             | No_Wait -> "Start and stop immediately for smoke tests."
+            | Verbose_Startup -> "Print PTCS/WebSharper startup asset listing."
 
 type DurableEchoActor() as this =
     inherit ReceiveActor()
@@ -138,11 +140,24 @@ let fsiArgs () =
 let defaultArgs () =
     PL.parseLine [| ' ' |] (Some '"') None true defaultArgumentsText
 
-let parseArguments () =
-    let parser = ArgumentParser.Create<CliArguments>(programName = "poc.dynamic.fsx")
+let freeTcpPort () =
+    use listener = new TcpListener(IPAddress.Loopback, 0)
+    listener.Start()
+    let endpoint = listener.LocalEndpoint :?> IPEndPoint
+    endpoint.Port
+
+let parser = ArgumentParser.Create<CliArguments>(programName = "poc.full.nuget.fsx")
+
+let defaultParsed =
+    parser.ParseCommandLine(defaultArgs ())
+
+let overrideParsed =
     let args = fsiArgs ()
-    let effectiveArgs = if args.Length = 0 then defaultArgs () else args
-    parser.ParseCommandLine effectiveArgs
+
+    if args.Length = 0 then
+        None
+    else
+        Some(parser.ParseCommandLine(args))
 
 let textOr fallback (value: string) =
     if String.IsNullOrWhiteSpace value then fallback else value.Trim()
@@ -182,41 +197,73 @@ let require condition message =
     if not condition then
         failwithf "poc.dynamic failed: %s" message
 
-let parsed = parseArguments ()
-
 let host =
-    parsed.TryGetResult(<@ Host @>)
-    |> Option.defaultValue "127.0.0.1"
+    let defaultValue = defaultParsed.GetResult(Host, "127.0.0.1")
+    overrideParsed
+    |> Option.map (fun parsed -> parsed.GetResult(Host, defaultValue))
+    |> Option.defaultValue defaultValue
 
 let port =
-    parsed.TryGetResult(<@ Port @>)
-    |> Option.defaultValue 0
+    let defaultValue = defaultParsed.GetResult(Port, 0)
+    overrideParsed
+    |> Option.map (fun parsed -> parsed.GetResult(Port, defaultValue))
+    |> Option.defaultValue defaultValue
 
 let pcslRoot =
-    parsed.TryGetResult(<@ Pcsl_Root @>)
-    |> Option.defaultValue defaultPcslRoot
+    let defaultValue = defaultParsed.GetResult(Pcsl_Root, defaultPcslRoot)
+    overrideParsed
+    |> Option.map (fun parsed -> parsed.GetResult(Pcsl_Root, defaultValue))
+    |> Option.defaultValue defaultValue
     |> fullPath
 
 let siteSharing =
-    parsed.TryGetResult(<@ Site_Sharing @>)
-    |> Option.defaultValue "isolated"
+    let defaultValue = defaultParsed.GetResult(Site_Sharing, "isolated")
+    overrideParsed
+    |> Option.map (fun parsed -> parsed.GetResult(Site_Sharing, defaultValue))
+    |> Option.defaultValue defaultValue
     |> siteSharingOf
 
 let deliveryProfile =
-    parsed.TryGetResult(<@ Delivery_Profile @>)
-    |> Option.defaultValue "poc-durable"
+    let defaultValue = defaultParsed.GetResult(Delivery_Profile, "poc-durable")
+    overrideParsed
+    |> Option.map (fun parsed -> parsed.GetResult(Delivery_Profile, defaultValue))
+    |> Option.defaultValue defaultValue
     |> textOr "poc-durable"
 
 let actorName =
-    parsed.TryGetResult(<@ Actor_Name @>)
-    |> Option.defaultValue "durable-echo"
+    let defaultValue = defaultParsed.GetResult(Actor_Name, "durable-echo")
+    overrideParsed
+    |> Option.map (fun parsed -> parsed.GetResult(Actor_Name, defaultValue))
+    |> Option.defaultValue defaultValue
     |> textOr "durable-echo"
 
 let clusterPort =
-    parsed.TryGetResult(<@ Cluster_Port @>)
-    |> Option.defaultValue 7705
+    let defaultValue = defaultParsed.GetResult(Cluster_Port, 7705)
+    overrideParsed
+    |> Option.map (fun parsed -> parsed.GetResult(Cluster_Port, defaultValue))
+    |> Option.defaultValue defaultValue
+    |> fun port -> if port <= 0 then freeTcpPort () else port
 
-let noWait = parsed.Contains <@ No_Wait @>
+let noWait =
+    defaultParsed.Contains No_Wait
+    || (overrideParsed |> Option.exists (fun parsed -> parsed.Contains No_Wait))
+
+let verboseStartup =
+    defaultParsed.Contains Verbose_Startup
+    || (overrideParsed |> Option.exists (fun parsed -> parsed.Contains Verbose_Startup))
+
+let withStartupOutput f =
+    if verboseStartup then
+        f ()
+    else
+        let originalOut = Console.Out
+        use sink = new StringWriter()
+
+        try
+            Console.SetOut(sink)
+            f ()
+        finally
+            Console.SetOut(originalOut)
 
 Directory.CreateDirectory pcslRoot |> ignore
 
@@ -233,14 +280,23 @@ let options =
     |> ServerOptions.withWebBinding (webBinding host port)
     |> Server.withActorFabricOptions fabricOptions
 
-let app = Server.startWithSharing siteSharing options
+let app =
+    withStartupOutput (fun () -> Server.startWithSharing siteSharing options)
+
+let mutable pocFullNugetStopped = false
+
+let stopPocFullNuget () =
+    if not pocFullNugetStopped then
+        pocFullNugetStopped <- true
+        (app :> IDisposable).Dispose()
+        printfn "poc.full.nuget stopped."
 
 let fabric =
     app.ActorFabric
     |> Option.defaultWith (fun () -> failwith "Expected Server.startWithSharing to expose ActorFabric.")
 
 // ---- DYNAMIC EXTENSION 掛載 ----
-hub.useDynamicSdui(fabric.System) |> ignore
+withStartupOutput (fun () -> hub.useDynamicSdui(fabric.System)) |> ignore
 // --------------------------------
 
 let ingress = durableIngressOptions deliveryProfile |> CommSpaDurableIngress.createVolatile
@@ -343,6 +399,7 @@ try
             { Send =
                 { Page = showcasePage
                   ActorAddress = showcaseActorAddress
+                  HistoryKeys = None
                   RawArgu = "--render"
                   Tags = Some [ "poc"; "dynamic"; "showcase" ] }
               IdempotencyKey = None
@@ -358,6 +415,7 @@ try
             { Send =
                 { Page = actorPage
                   ActorAddress = actorAddress
+                  HistoryKeys = None
                   RawArgu = "--echo \"hello dynamic\""
                   Tags = Some [ "poc"; "durable"; "actor-argu" ] }
               IdempotencyKey = None
@@ -373,6 +431,7 @@ try
             { Send =
                 { Page = dynamicEchoPage
                   ActorAddress = dynamicEchoActorAddress
+                  HistoryKeys = None
                   RawArgu = System.IO.File.ReadAllText(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "canvas_demo.json"))
                   Tags = Some [ "poc"; "dynamic"; "echo"; "sdui" ] }
               IdempotencyKey = None
@@ -418,9 +477,11 @@ try
 
     if noWait then
         printfn "No-wait smoke completed; stopping server."
+        stopPocFullNuget ()
     else
-        printfn "Press Enter to stop."
-        Console.ReadLine() |> ignore
-finally
-    (app :> IDisposable).Dispose()
+        printfn "Host remains running in this FSI session."
+        printfn "Run stopPocFullNuget() to stop."
+with ex ->
+    stopPocFullNuget ()
+    reraise()
 

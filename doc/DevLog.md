@@ -416,3 +416,9 @@ Implementation status:
 ## 2026-06-29 - Correction: PulseTrade.Comm.Spa.Dynamic 0.1.3-beta29 NuGet indexing complete
 
 - Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta29`. Remaining `DYN-WBS-519` work is implementation/runtime scope, not public package propagation.
+
+## 2026-06-29 - poc.full.nuget.fsx beta40/beta29 execution repair
+
+- Updated `src\poc.full.nuget.fsx` so the full NuGet POC runs against PTCS `0.2.5-beta40` and Dynamic `0.1.3-beta29`.
+- Fixes: add the new `ActorArguSendArgs.HistoryKeys` field, parse `defaultArgumentsText` first and apply CLI args as overrides, use `--cluster-port 0` with a random free Akka port by default, suppress Dynamic extension asset-list noise unless `--verbose-startup` is supplied, replace `Console.ReadLine()` with `stopPocFullNuget()` for manual FSI mode, and ignore generated `src/.pcsl/` demo runtime data.
+- Verification passed: `dotnet fsi --exec .\src\poc.full.nuget.fsx -- --no-wait`. The run printed Chat/Sets/Actors/ActorArgu/DynEcho URLs, PCSL root, full `akka.tcp://...` addresses, message tickets, ingress health `pending=0 deadLetters=0`, Dynamic Canvas JSON parse success, Showcase JSON reply, and stopped the server automatically.
