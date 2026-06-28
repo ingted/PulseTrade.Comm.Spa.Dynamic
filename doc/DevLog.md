@@ -363,3 +363,8 @@ Implementation status:
 - Cross-repo PTC package bundle verifier passed with PTCS `0.2.5-beta39` and Dynamic `0.1.3-beta23`, including new ActorsPage/toggle markers.
 - Public 81 deployment `live81-ptcs-beta39-dynamic-beta23-actorspage-toggle-202606282235` now renders `Actors / Dynamic`; Playwright MCP screenshot `G:\PulseTrade.fs\log\20260628\20260628223500.actors-public81-beta39-toggle-collapse.png` shows the boxed `+` collapsed state.
 - NuGet push returned `Created` / `Your package was pushed`; immediate flat-container lookup was propagation-pending.
+
+## 2026-06-28 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta23 indexing confirmation
+
+- Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta23`.
+- `DYN-WBS-519` moves to 90; remaining work is strict schema parser, production report actions, restart/failover visual states, and reusable F# Playwright verifier.
