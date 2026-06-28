@@ -214,3 +214,26 @@ Current regression gate：
 
 - `verify-ptcs-host-dynamic-argu-live.fsx` 使用 Playwright native locator 驗證 `data-testid="dynamic-argu-key-du-type"` 是 input，且頁面不存在 `dynamic-argu-key-du-type-list` datalist 或 select。
 - Gate 以手動填入的 DU/template key 新增 target，確保 add-target path 不依賴 Host demo registry auto-select。
+
+## 2026-06-28：Actor Dynamic / Actor Argu action modes
+
+使用者確認最新切分：
+
+- `Actor Argu` 固定 FormInput / Argu command，不支援 canvas，不支援 Add proxy key。
+- `Actor Dynamic` 支援 direct actor key、DU/FormInput target key、live proxy key；reply 是 `schema=fskynet-sdui` JSON DSL 才畫 canvas。
+
+PTCS core action shell 會傳 mode-aware shape：
+
+```text
+actor-argu-target
+actor-dynamic-target
+actor-dynamic-proxy
+```
+
+Dynamic renderer 規則：
+
+- `actor-argu-target`：必須輸入 actor address、DU/template key、canonical arg string。
+- `actor-dynamic-target`：有 DU/template + canonical arg string 時使用 FormInput；無 DU 時應交回 PTCS fallback direct actor-key path。
+- `actor-dynamic-proxy`：輸入 PTCS Host proxy actor address 與 RN actor address，產生 `[proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind]`；實際 payload 由 append input value 承載。
+- 單段 Dynamic key `[actorAddress]` 的 append input 應由 PTCS fallback textarea 處理，讓使用者可直接輸入 canvas JSON DSL。
+- Dynamic message renderer 只能依 payload schema 判斷 canvas，不可依 page type 或 key shape 強制 canvas。

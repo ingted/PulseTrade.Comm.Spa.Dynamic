@@ -2,6 +2,44 @@
 
 This project is a dynamic SDUI (Server-Driven UI) and Actor extension for `PulseTrade.Comm.Spa`, built with WebSharper.
 
+## Actor Dynamic / Actor Argu modes
+
+`PulseTrade.Comm.Spa.Dynamic` owns Dynamic rendering and Dynamic target binding; `PulseTrade.Comm.Spa` owns the append page shell, key registry, pending replay, and actor-argu command path.
+
+Current mode split:
+
+| PTCS page | Dynamic support |
+| --- | --- |
+| Actor Argu | FormInput only. No canvas rendering and no Add proxy key. |
+| Actor Dynamic | Direct actor key, DU/FormInput target key, and Dynamic proxy key. Canvas is used only when the actor reply payload is `schema=fskynet-sdui` JSON DSL. |
+
+Key shapes:
+
+```text
+Direct actor key:
+[ actorAddress ]
+
+DU/FormInput target:
+[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]
+
+Dynamic proxy key:
+[ proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind ]
+```
+
+When an Actor Dynamic selected key is only `[ actorAddress ]`, the extension intentionally returns no FormInput renderer. PTCS fallback input accepts arbitrary text or JSON DSL. If the actor replies with Canvas JSON DSL, the Dynamic message renderer draws the canvas; otherwise PTCS normal message rendering is used.
+
+The proxy key UI only builds the binding. The selected key still routes the command to `proxyActorAddress` because it remains the first key segment. The actual PTCS durable proxy actor and RN Host target are deployment/runtime concerns owned outside this package.
+
+## Verification
+
+`PulseTrade.Comm.Spa.Dynamic` is developed under a long Windows path. WebSharper `wsfsc.exe` can crash without diagnostics when both intermediate and output paths stay under this repo path. Use the short-path build command recorded in `doc/Verification.md` for package verification:
+
+```powershell
+dotnet build .\src\PulseTrade.Comm.Spa.Dynamic.fsproj -c Debug `
+  -p:BaseIntermediateOutputPath=C:\ptcsdyn-build\obj\ `
+  -p:OutputPath=C:\ptcsdyn-build\bin\
+```
+
 ## WebSharper Bundle Project & NuGet Packaging Quirks
 
 When developing a WebSharper `Bundle` project (or `spa` project) that is intended to be distributed as a NuGet package, there is an important behavior to note regarding how static assets (`wwwroot`) are packaged and consumed.

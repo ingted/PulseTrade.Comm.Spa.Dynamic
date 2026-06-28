@@ -389,8 +389,108 @@ module ArguFormRenderer =
         let context = ctx |> As<AddKeyContextDto>
         let shape = asText context.shape |> _.ToLower()
 
-        if shape <> "actor-dynamic" && shape <> "actor-argu" then
+        let supportsTarget =
+            shape = "actor-dynamic-target"
+            || shape = "actor-argu-target"
+            || shape = "actor-argu"
+
+        let supportsProxy =
+            shape = "actor-dynamic-proxy"
+
+        if not supportsTarget && not supportsProxy then
             None
+        elif supportsProxy then
+            let defaultKeyParts = keyPartsFromJson context.defaultKey
+            let defaultProxyAddress =
+                defaultKeyParts
+                |> Array.tryHead
+                |> Option.defaultValue ""
+            let defaultRnAddress =
+                if defaultKeyParts.Length > 2 && defaultKeyParts[1] = "proxy-v1" then
+                    defaultKeyParts[2]
+                else
+                    ""
+            let defaultTargetKind =
+                if defaultKeyParts.Length > 3 && defaultKeyParts[1] = "proxy-v1" then
+                    defaultKeyParts[3]
+                else
+                    "raw"
+
+            let root = element "div" "dynamic-argu-add-key dynamic-argu-proxy-key" null |> setTestId "dynamic-argu-proxy-key"
+            let proxyLabel = element "label" "dynamic-argu-label" "Proxy actor address"
+            proxyLabel.SetAttribute("for", "dynamic-argu-proxy-actor")
+            let proxyActor = input "text" "dynamic-argu-actor-address" "dynamic-argu-proxy-actor"
+            proxyActor.SetAttribute("id", "dynamic-argu-proxy-actor")
+            proxyActor.SetAttribute("placeholder", "akka.tcp://PtcsHost@127.0.0.1:9779/user/durable-proxy")
+            proxyActor.Value <- defaultProxyAddress
+
+            let rnLabel = element "label" "dynamic-argu-label" "RN actor address"
+            rnLabel.SetAttribute("for", "dynamic-argu-rn-actor")
+            let rnActor = input "text" "dynamic-argu-actor-address" "dynamic-argu-rn-actor"
+            rnActor.SetAttribute("id", "dynamic-argu-rn-actor")
+            rnActor.SetAttribute("placeholder", "akka.tcp://ResourceNode@127.0.0.1:9791/user/echo")
+            rnActor.Value <- defaultRnAddress
+
+            let kindLabel = element "label" "dynamic-argu-label" "Target kind"
+            kindLabel.SetAttribute("for", "dynamic-argu-proxy-kind")
+            let targetKind = input "text" "dynamic-argu-proxy-kind" "dynamic-argu-proxy-kind"
+            targetKind.SetAttribute("id", "dynamic-argu-proxy-kind")
+            targetKind.SetAttribute("placeholder", "raw | canvas-json | argu")
+            targetKind.Value <- if isBlank defaultTargetKind then "raw" else defaultTargetKind
+
+            let aliasLabel = element "label" "dynamic-argu-label" "Target alias"
+            aliasLabel.SetAttribute("for", "dynamic-argu-proxy-alias")
+            let aliasInput = input "text" "dynamic-argu-key-alias" "dynamic-argu-proxy-alias"
+            aliasInput.SetAttribute("id", "dynamic-argu-proxy-alias")
+            aliasInput.SetAttribute("placeholder", "Display name (optional)")
+
+            let actions = element "div" "dynamic-argu-key-actions" null |> setTestId "dynamic-argu-proxy-key-actions"
+            let clean = button "dynamic-argu-key-clean" "dynamic-argu-proxy-key-clean" "Clean"
+            let cancel = button "dynamic-argu-key-cancel" "dynamic-argu-proxy-key-cancel" "Cancel"
+            let submit = button "dynamic-argu-key-ok primary" "dynamic-argu-proxy-key-submit" "OK"
+            clean.AddEventListener(
+                "click",
+                fun () ->
+                    proxyActor.Value <- ""
+                    rnActor.Value <- ""
+                    targetKind.Value <- "raw"
+                    aliasInput.Value <- ""
+                    proxyActor.Focus())
+            cancel.AddEventListener("click", fun () -> context.cancelKey())
+            submit.AddEventListener(
+                "click",
+                fun () ->
+                    let proxyAddress = proxyActor.Value.Trim()
+                    let rnAddress = rnActor.Value.Trim()
+                    let kind = targetKind.Value.Trim()
+
+                    if isBlank proxyAddress then
+                        proxyActor.Focus()
+                    elif isBlank rnAddress then
+                        rnActor.Focus()
+                    else
+                        let kindValue = if isBlank kind then "raw" else kind
+                        let payload: KeySubmitPayloadDto =
+                            { keys = [| proxyAddress; "proxy-v1"; rnAddress; kindValue |]
+                              displayName = aliasInput.Value.Trim() }
+
+                        context.submitKey(box payload))
+
+            append actions [| clean :> Node; cancel :> Node; submit :> Node |] |> ignore
+            append
+                root
+                [| proxyLabel :> Node
+                   proxyActor :> Node
+                   rnLabel :> Node
+                   rnActor :> Node
+                   kindLabel :> Node
+                   targetKind :> Node
+                   aliasLabel :> Node
+                   aliasInput :> Node
+                   actions :> Node |]
+            |> ignore
+
+            Some(root :> Node)
         else
             let formDocuments = documentKeys ()
             let arguSchemas = schemaKeys ()
@@ -875,7 +975,7 @@ module ArguFormRenderer =
                 asText context.duTypeName
         let isBackendTarget = keyParts.Length = 3 && not (isBlank keyParts[2])
 
-        if isBlank typeName then
+        if isBlank typeName || typeName = "proxy-v1" then
             None
         else
             let root = element "div" "dynamic-argu-form" "Loading Dynamic Argu form..." |> setTestId "dynamic-argu-form"

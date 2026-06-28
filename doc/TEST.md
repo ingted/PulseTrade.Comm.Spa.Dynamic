@@ -364,3 +364,70 @@ Coverage:
 - JS marker contract includes `Bind target`, `Add value`, Remove-left list row classes, and no retired `dynamic-argu-key-du-type-list`;
 - live host starts an in-process PTCS + Dynamic server, prints Base/Chat/ActorArgu/Dynamic JS URLs, actor address, template key, web/cluster port, default key/argu, and under `--no-wait` verifies health、HTTP actor-argu send、WebSocket `actor-argu` send、state readback echo reply before calling `stopNuGetLiveHost()`。
 - NuGet push accepted `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta13`; follow-up flat-container lookup lists beta13, so public restore availability is confirmed at feed index level.
+
+### DYN-T-520 Actor Dynamic / Actor Argu action mode dispatch
+
+Verifier：package tests plus cross-repo PTC Playwright live-host gate.
+
+Coverage:
+
+- Dynamic add-key renderer claims `actor-dynamic-target`, `actor-dynamic-proxy`, and `actor-argu-target`.
+- `Actor Argu` target mode requires actor address + DU/template + canonical arg string.
+- `Actor Dynamic` target mode can build DU/FormInput target when DU/template is present.
+- `Actor Dynamic` direct actor key is not forced into FormInput when DU/template is blank.
+
+### DYN-T-521 Actor Dynamic direct actor-key canvas route
+
+Verifier：cross-repo PTC Playwright gate.
+
+Required path:
+
+```text
+Actor Dynamic page
+  -> Add actor key [ actorAddress ]
+  -> submit JSON DSL from canvas_demo.json
+  -> actor echoes/replies same DSL
+  -> Dynamic message renderer renders canvas
+```
+
+Non-canvas reply must render through PTCS normal message path.
+
+### DYN-T-522 Actor Dynamic DU/FormInput target
+
+Verifier：existing backend-resolved FormInput gate plus mode-aware action entry.
+
+Coverage:
+
+- `Add target key` uses `actor-dynamic-target`.
+- key remains `[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]`.
+- FormInput renderer resolves through backend parser and submit still produces exact raw Argu.
+
+### DYN-T-523 Actor Dynamic proxy key builder
+
+Verifier：package test and cross-repo PTC browser gate.
+
+Coverage:
+
+- `Add proxy key` visible only for Actor Dynamic.
+- renderer accepts proxy actor address and RN actor address.
+- submitted key is `[ proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind ]`.
+- first segment is proxy actor address so PTCS actor-argu route can still send to proxy.
+
+### DYN-T-524 Actor Argu no canvas / no proxy
+
+Verifier：cross-repo PTC Playwright gate.
+
+Coverage:
+
+- Actor Argu action pool does not show Add proxy key.
+- Actor Argu FormInput route works.
+- non-canvas Actor Argu reply does not get converted to canvas.
+
+### DYN-T-525 Canvas payload-only render rule
+
+Verifier：package test or browser gate.
+
+Coverage:
+
+- `DynamicRenderer.TryRender` returns `Some` only for payload with `schema = "fskynet-sdui"`.
+- page type / key shape alone cannot force canvas rendering.

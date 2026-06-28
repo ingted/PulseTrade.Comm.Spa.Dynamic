@@ -318,3 +318,71 @@ PTCS.Host registers:
 3. a durable proxy/echo actor target for E2E。
 
 `example DU.txt` is cp950 encoded and contains Chinese identifiers/comments。The host demo should either preserve valid identifiers or map them to stable ASCII labels while keeping display labels in metadata。Missing external types such as `DataTypeT.RTTables` must be represented by host-local stubs or excluded from the first demo subset with a documented controlled unsupported-case message。
+
+## 6. Actor Dynamic action mode design
+
+`RFC-PTCS-DYNAMIC-0004` keeps Dynamic renderer logic mode-aware without requiring PTCS core to parse Dynamic target semantics.
+
+### 6.1 Add-key renderer mode dispatch
+
+```fsharp
+let renderAddKey (ctx: obj) =
+    let context = ctx |> As<AddKeyContextDto>
+    match asText context.shape with
+    | "actor-argu-target" -> renderArguTargetKey context
+    | "actor-dynamic-target" -> renderDynamicTargetKey context
+    | "actor-dynamic-proxy" -> renderDynamicProxyKey context
+    | _ -> None
+```
+
+`renderArguTargetKey` requires all three parts:
+
+```text
+actorAddress
+duTypeOrTemplateKey
+canonicalArgString
+```
+
+`renderDynamicTargetKey` uses the same UI when DU/template is present. Direct actor key without DU/template is intentionally handled by PTCS core Add actor key fallback.
+
+`renderDynamicProxyKey` requires:
+
+```text
+proxyActorAddress
+rnActorAddress
+targetKind
+displayName optional
+```
+
+Submit payload:
+
+```fsharp
+{ keys = [| proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind |]
+  displayName = displayName }
+```
+
+### 6.2 Append input renderer mode dispatch
+
+```fsharp
+let renderAppendInput (ctx: obj) =
+    let context = ctx |> As<AppendInputContextDto>
+    let keys = normalizeDynamicTargetKeyParts context.keyParts
+    match asText context.shape, keys |> Array.toList with
+    | "actor-argu", _ :: template :: raw :: _ -> renderResolvedFormInput context template raw
+    | "actor-dynamic", _ :: "proxy-v1" :: _rnTarget :: _targetKind :: _ -> None
+    | "actor-dynamic", _ :: template :: raw :: _ -> renderResolvedFormInput context template raw
+    | "actor-dynamic", [ _actor ] -> None
+    | _ -> None
+```
+
+Returning `None` for single-key Actor Dynamic is intentional: PTCS fallback textarea becomes arbitrary string / JSON DSL input, and message rendering later decides whether reply is canvas.
+
+### 6.3 Canvas message renderer
+
+```fsharp
+match tryGetSchema payload with
+| Some "fskynet-sdui" -> Some(createSduiCanvas payload)
+| _ -> None
+```
+
+The renderer must not treat page type, key shape, or actor address as proof of canvas content.

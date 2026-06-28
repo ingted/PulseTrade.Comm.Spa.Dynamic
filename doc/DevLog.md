@@ -307,3 +307,21 @@ Implementation status:
 - Dynamic now reserves a Canvas `Tree` node for PTCS Actors tab: `id/parentId/label/status` field mapping, orthogonal connectors, boxed plus/minus toggles, and optional columns.
 - Boundary clarified: Dynamic renders `ActorTreeDocument` but does not own Actor Registry truth source, PTCS PCSL projection, browser IndexedDB cache, fallback table, or state report writing.
 - Added planned `DYN-WBS-517` / `DYN-T-517`; no package source implementation was changed in this slice.
+
+## 2026-06-28 - RFC-PTCS-DYNAMIC-0004 Actor Dynamic action modes
+
+- Background: PTCS action shell now needs explicit Actor Dynamic / Actor Argu mode separation. Actor Argu is FormInput-only; Actor Dynamic must support direct actor key, DU target key, and proxy key.
+- Change: added `doc/RFC-PTCS-DYNAMIC-0004.actor-dynamic-action-modes.md` and synchronized REQ/SA/SD/WBS/README/SDUI developer manual.
+- Planned implementation: mode-aware add-key renderer shapes `actor-dynamic-target`, `actor-dynamic-proxy`, and `actor-argu-target`; Dynamic message renderer remains payload-based canvas-only.
+## 2026-06-28 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta22 Actor Dynamic action modes
+
+- RFC-PTCS-DYNAMIC-0004 accepted and implemented the clarified mode split: Actor Argu remains FormInput-only and never exposes proxy/canvas behavior; Actor Dynamic supports direct actor key, DU/FormInput target key, and Dynamic proxy key.
+- Add-key renderer now claims `actor-dynamic-target`, `actor-dynamic-proxy`, and `actor-argu-target`. Direct Actor Dynamic actor key intentionally falls back to PTCS arbitrary textarea input so JSON DSL can round-trip to the canvas renderer.
+- Proxy key builder stores `[proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind]`; payload is not part of the key and is carried by append input value.
+- Dynamic message renderer remains payload-based: it renders canvas only for `schema=fskynet-sdui` JSON DSL and returns `None` for ordinary replies.
+- Package version advanced to `0.1.3-beta22`; Release build passed with existing WS9002 / NU5123 / missing-readme warnings; package tests passed 15/15; PTC bundle and live Playwright verifiers passed against PTCS `0.2.5-beta37`. NuGet push returned `Created` / `Your package was pushed`; immediate flat-container lookup was propagation-pending.
+
+## 2026-06-28 - Correction: PulseTrade.Comm.Spa.Dynamic 0.1.3-beta22 NuGet indexing complete
+
+- Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta22`.
+- Dynamic WBS current row `DYN-WBS-518` was updated so beta22 indexing is no longer an open gap.

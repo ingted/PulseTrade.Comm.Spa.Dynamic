@@ -14,6 +14,7 @@
 8. `doc/RFC-PTCS-DYNAMIC-0002.dynamic-argu-form-runtime.md`：Dynamic Argu Form formal RFC。
 9. `doc/RFC-PTCS-DYNAMIC-0003.unified-sdui-form-dsl-roadmap.md`：Unified SDUI / Form DSL roadmap and product boundary correction。
 10. `doc/DevLog.md`：append-only milestone log。
+11. `doc/RFC-PTCS-DYNAMIC-0004.actor-dynamic-action-modes.md`：Actor Dynamic / Actor Argu action mode split。
 
 ## RFC Map
 
@@ -22,6 +23,7 @@
 | `RFC-PTCS-DYNAMIC-0001` | Proposed / first implementation exists | Adopt PTCS `RFC-PTC-SPA-0006` dynamic extension points: manifest, script asset, custom shape, message renderer。 |
 | `RFC-PTCS-DYNAMIC-0002` | Draft / Review | Dynamic-owned Argu metadata, SDUI form renderer, SubmitArguForm, add-key renderer, and cross-project PTCS/PTC RN integration schedule。 |
 | `RFC-PTCS-DYNAMIC-0003` | Draft / Review | Correct product direction to common SDUI DSL and arg-string-driven backend FormInput resolution: Canvas/FormInput share document model; Argu/DU is parser-backed adapter; PTCS.Host owns demo DU。 |
+| `RFC-PTCS-DYNAMIC-0004` | Accepted / In development | Actor Dynamic direct actor key / DU target / proxy key mode split; Actor Argu FormInput-only; canvas renderer remains payload-based。 |
 
 ## Cross-Project References
 
@@ -29,6 +31,7 @@
 | --- | --- | --- |
 | PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0007.dynamic-argu-form-extensions.md` | PTCS core seam for append input renderer and add-key dialog renderer。 |
 | PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0008.unified-sdui-target-extension-contract.md` | PTCS companion contract for direct DSL target and Dynamic-owned target key binding. PTCS stores ordered key list; PTCS.Dynamic interprets `[actor; template; canonicalArgString]` when extension is present。 |
+| PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0009.actor-dynamic-action-modes-and-full-address-tree.md` | PTCS core action shell contract for Add actor key / Add target key / Add proxy key and full actor address tree display。 |
 | PTC RN | `G:\PulseTrade.fs\Libs\PulseTrade.Comm\doc\RFC-PTC-0016.resource-node-sharded-function-proxy.md` | RN DurableProxy consumes `ActorArguTargetCommand.RawArgu` and adapts to legacy actor/service。 |
 | PTC WBS | `G:\PulseTrade.fs\Libs\PulseTrade.Comm\doc\WBS.md` rows `PTC3-063`..`PTC3-067` | RN/RN.Host production gates and final Dynamic -> RN E2E。 |
 | PTCS.Host demo DU | `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\doc\example DU.txt` | Big5/cp950 source material for host-local `PFCF_AKKA_CMD` demo subset；not package API。 |
@@ -56,3 +59,9 @@
 | `DYN-T-511` | `DYN-WBS-511` | Package Expecto verifies `DynamicArguResolveEndpoint` accepts `[actorAddress; duTypeOrTemplateKey; canonicalArgString]`, resolves through registered Argu parser, returns backend FormInput DSL with alias/default projection, includes the `DataRange` tail section, preserves exact canonical enum default option values, and reconstructs the full PFCF raw command exactly through the document-backed full-form path。 |
 | `DYN-T-512` | `DYN-WBS-512` | Browser E2E verifier `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-dynamic-argu-live.fsx` starts PTCS.Host loopback, loads the Dynamic extension DLL, resolves `[actorAddress; duTypeOrTemplateKey; canonicalArgString]` through backend FormInput DSL, verifies visible alias/default rendering, submits the exact raw PFCF data-range command, and checks DurableProxy echo readback。Manual add-target-key dialog and public deployed 81/443 gates remain separate verification items。 |
 | `DYN-T-517` | `DYN-WBS-517` / PTCS `WBS-054` | Canvas `Tree` renderer for PTC ActorTreeDocument: package test covers DSL decode/controlled failures, and PTCS browser E2E must prove Dynamic Canvas Tree and no-Dynamic fallback table consume the same `ActorTreeDocument` projection。 |
+| `DYN-T-520` | `DYN-WBS-518` | Mode dispatch for `actor-dynamic-target`, `actor-dynamic-proxy`, and `actor-argu-target`。 |
+| `DYN-T-521` | `DYN-WBS-518` | Actor Dynamic direct actor key can send/echo `canvas_demo.json` and render canvas; non-canvas reply falls back to normal。 |
+| `DYN-T-522` | `DYN-WBS-518` | Actor Dynamic DU/FormInput target still resolves `[actor; template; canonicalArgString]` through backend parser。 |
+| `DYN-T-523` | `DYN-WBS-518` | Actor Dynamic proxy key builder stores `[proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind]`。 |
+| `DYN-T-524` | `DYN-WBS-518` | Actor Argu exposes no proxy key and no canvas behavior。 |
+| `DYN-T-525` | `DYN-WBS-518` | Canvas renderer only claims payloads with `schema=fskynet-sdui`。 |

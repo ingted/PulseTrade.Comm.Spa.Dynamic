@@ -87,3 +87,29 @@ Dynamic key model vNext：
 ```
 
 上一版 `[ actorAddress; duTypeName; unionCase1; unionCase2; ... ]` 是 first-slice historical contract，不再是新 UX 的 canonical target key。Canonical arg string 由 backend 以 Argu parser 驗證，並以原 token order 輔助 DSL default value 與 raw command rebuild。`ParseResults<'T>` subcommand 以 tail group 表示，例如 `datarange` 必須在 root args 後、subcommand args 前。
+
+## 7. RFC-PTCS-DYNAMIC-0004 Actor Dynamic action modes
+
+Dynamic package owns the semantics behind PTCS core add-key action modes.
+
+Mode matrix:
+
+| PTCS shape discriminator | Dynamic behavior |
+| --- | --- |
+| `actor-argu-target` | Claim renderer; require actor address, DU/template key, canonical arg string; produce FormInput target key. |
+| `actor-dynamic-target` | Claim renderer; if DU/template + canonical arg string are supplied, produce FormInput target key; if DU is blank, leave direct actor-key behavior to PTCS core. |
+| `actor-dynamic-proxy` | Claim renderer; require proxy actor address and RN actor address; produce proxy-v1 key. |
+| plain `actor-argu` / `actor-dynamic` | Legacy compatibility only; new PTCS UI should pass explicit mode discriminator. |
+
+Actor Dynamic has two render layers:
+
+1. append input layer: FormInput only when selected key carries DU/template or proxy metadata; single actor key uses PTCS fallback arbitrary text input.
+2. message render layer: Canvas only when reply payload is `fskynet-sdui` JSON DSL; otherwise Dynamic returns `None` and lets PTCS render text/fCell history.
+
+Proxy key analysis:
+
+- First segment must remain `proxyActorAddress`, because PTCS core actor-argu route currently sends to the first key segment.
+- Second segment `"proxy-v1"` is the Dynamic/proxy discriminator.
+- Third segment is `rnActorAddress`, which identifies the RN Host target actor/sharding entity/logical durable endpoint.
+- Fourth segment is `targetKind` (`raw`, `canvas-json`, `argu`, etc.). Payload is not part of the key; it is the append input value delivered to the proxy actor.
+- Dynamic package does not guarantee the proxy actor exists or is split-service; verification must expose whether the live host is still using PTCS Host same-process demo actors.
