@@ -325,3 +325,10 @@ Implementation status:
 
 - Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta22`.
 - Dynamic WBS current row `DYN-WBS-518` was updated so beta22 indexing is no longer an open gap.
+
+## 2026-06-28 - RFC-PTCS-DYNAMIC-0005 ActorsPage renderer
+
+- Added `doc/RFC-PTCS-DYNAMIC-0005.actors-page-renderer.md` to mirror PTCS `RFC-PTC-SPA-0010` from the Dynamic implementation side.
+- Decision under review: `/actors` must not use the generic Canvas summary/preview renderer as final UI. Dynamic support means a dedicated `ActorsPage` renderer that owns the whole page: node blocks, actor hierarchy tree, grid, cards, reload/report controls, and status UI.
+- Updated README with the ActorsPage renderer boundary and updated WBS: `DYN-WBS-517` is superseded by page-level `DYN-WBS-519`.
+- No package source or version was changed in this planning slice.

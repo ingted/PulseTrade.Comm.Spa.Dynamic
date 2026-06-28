@@ -30,6 +30,14 @@ When an Actor Dynamic selected key is only `[ actorAddress ]`, the extension int
 
 The proxy key UI only builds the binding. The selected key still routes the command to `proxyActorAddress` because it remains the first key segment. The actual PTCS durable proxy actor and RN Host target are deployment/runtime concerns owned outside this package.
 
+## ActorsPage Renderer
+
+`RFC-PTCS-DYNAMIC-0005.actors-page-renderer.md` defines the Dynamic-side contract for PTCS `/actors`.
+
+This is not the generic Canvas message renderer. When PTCS provides an `ActorsPage` / `ActorTopologyPage` DSL document and the extension supports that renderer, Dynamic must render the whole Actors page: node blocks, actor hierarchy tree, grid, cards, reload/report controls, and status UI. The page must group actors by `actorSystem@host:port` and order node blocks as PTCS Host, GW Host, RN Host, then Unknown.
+
+If Dynamic does not support `ActorsPage`, it must return not-supported and let PTCS use its fallback tree/grid/table. It must not display a Canvas summary card, raw JSON preview, or `Expand Canvas` button as a substitute for ActorsPage support.
+
 ## Verification
 
 `PulseTrade.Comm.Spa.Dynamic` is developed under a long Windows path. WebSharper `wsfsc.exe` can crash without diagnostics when both intermediate and output paths stay under this repo path. Use the short-path build command recorded in `doc/Verification.md` for package verification:
