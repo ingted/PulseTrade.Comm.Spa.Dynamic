@@ -500,3 +500,11 @@ Implementation status:
   - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_pingpong_001" --cluster-port 9797 --no-wait`
   - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_pingpong_001" --cluster-port 9797 --clear-pcsl-before-start --no-wait`
 - The first FSI gate reported `visibleNodes=1 visibleActors=2 includeOfflineNodes=1 includeOfflineActors=2 hubActors=2` and printed both the echo actor address and the PingPong actor address. The clear-PCSL gate reported `journal warm-up streams=7 pages=1 actors=2`.
+
+## 2026-06-29 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta33 ActorsPage DSL console logging
+
+- Added ActorsPage browser console diagnostics in `Client\ActorDynamicTab.fs`. Every Dynamic ActorsPage render emits a collapsed console group titled `[PTCS.Dynamic ActorTree DSL] RENDER ...`; clicking the Dynamic Reload button emits `[PTCS.Dynamic ActorTree DSL] RELOAD ...` before the browser reloads.
+- Each console group logs `phase`, full raw ActorTopologyPage DSL string, parsed `dsl` object, and `nodes` array so the browser can distinguish stale backend payload from stale frontend rendering.
+- Advanced package version to `0.1.3-beta33`; updated `src\poc.full.nuget.2.fsx`, `src\poc.full.nuget.journal.fsx`, and cross-repo PTC NuGet verifier/live-host scripts to consume beta33.
+- Verification passed: package tests 18/18, short-path Release build/pack at `C:\ptcsdyn-release-beta33\bin`, nupkg marker check for `[PTCS.Dynamic ActorTree DSL]`, PTC bundle verifier, PTC NuGet live-host verifier, journal POC no-wait/clear-PCSL gates, and Playwright MCP console proof on `http://127.0.0.1:14933/actors` showing both `RENDER` and `RELOAD` console groups.
+- NuGet push for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta33` returned `Created`; immediate flat-container lookup was propagation-pending.

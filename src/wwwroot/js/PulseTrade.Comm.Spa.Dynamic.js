@@ -659,6 +659,7 @@ function createActorsPageDocument(rawContent){
   const offlineCount=filter((node) => statusLooksOffline(nodeStatus(node)), nodes).length;
   return Doc.Element("div", [Attr.Create("class", "ptcs-dynamic-actors-page"), OnAfterRender((node) => {
     node.setAttribute("data-testid", "dynamic-actors-page");
+    logActorsTreeDsl("RENDER", rawContent);
   }), Attr.Create("style", "display:flex; flex-direction:column; gap:12px; color:#142033; min-width:0;")], ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("style", "display:flex; justify-content:space-between; gap:12px; align-items:flex-start; border-bottom:1px solid #d8e1ee; padding-bottom:10px; flex-wrap:wrap;")], [Doc.Element("div", [], [Doc.Element("h2", [Attr.Create("style", "margin:0; font-size:18px; font-weight:700;")], [Doc.TextNode("Actors / Dynamic")]), Doc.Element("div", [Attr.Create("style", "color:#50627a; font-size:12px;")], [Doc.TextNode("projection "+projectionId+" / v"+projectionVersion)])]), Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:minmax(260px,460px) auto auto auto; gap:6px; align-items:start;")], [Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; gap:4px; min-width:260px;")], [V("input", [Attr.Create("type", "text"), Attr.Create("placeholder", "Server-local report output directory"), Attr.Create("style", "border:1px solid #b8c7dc; border-radius:5px; padding:5px 8px; font-size:12px; min-width:260px; width:100%; box-sizing:border-box;"), OnAfterRender((node) => {
     node.setAttribute("data-testid", "dynamic-actors-report-output-directory");
     const input_2=node;
@@ -668,7 +669,10 @@ function createActorsPageDocument(rawContent){
     node.setAttribute("data-testid", "dynamic-actors-report-status");
   })], [Doc.EmbedView(Map(Doc.TextNode, reportStatus.View))])]), Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("style", "border:1px solid #b8c7dc; background:#fff; color:#22344d; border-radius:5px; padding:5px 9px; font-size:12px; cursor:pointer;"), OnAfterRender((node) => {
     node.setAttribute("data-testid", "dynamic-actors-reload");
-  }), Handler("click", () =>() => globalThis.location.reload())], [Doc.TextNode("Reload")]), Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("style", "border:1px solid #2563eb; background:#2563eb; color:#fff; border-radius:5px; padding:5px 9px; font-size:12px; cursor:pointer;"), OnAfterRender((node) => {
+  }), Handler("click", () =>() => {
+    logActorsTreeDsl("RELOAD", rawContent);
+    return globalThis.location.reload();
+  })], [Doc.TextNode("Reload")]), Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("style", "border:1px solid #2563eb; background:#2563eb; color:#fff; border-radius:5px; padding:5px 9px; font-size:12px; cursor:pointer;"), OnAfterRender((node) => {
     node.setAttribute("data-testid", "dynamic-actors-generate-report");
   }), Handler("click", () =>() => generateActorReport(reportOutputDirectory.Get(), reportStatus))], [Doc.TextNode("Generate report")]), Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("title", "Run the same report endpoint immediately and then every 60 seconds while this browser page is open."), Attr.Create("style", "border:1px solid #0f766e; background:#f7fffd; color:#0f4f49; border-radius:5px; padding:5px 9px; font-size:12px; cursor:pointer;"), OnAfterRender((node) => {
     node.setAttribute("data-testid", "dynamic-actors-schedule-report");
@@ -745,6 +749,25 @@ function createNodeGroups(nodes){
   }
   let _2=knownGroups.concat(_1);
   return sortBy((_3) => String(groupOfflineRank(_3[3]))+":"+String(_3[0])+":"+_3[1], _2);
+}
+function logActorsTreeDsl(phase, rawContent){
+  try {
+    const nodes=actorNodes(rawContent);
+    const projectionId=projectionText(rawContent, "projectionId", "ptcs-actors");
+    const projectionVersion=projectionText(rawContent, "projectionVersion", "0");
+    const payload=globalThis.JSON.parse(rawContent);
+    const title="[PTCS.Dynamic ActorTree DSL] "+phase+" projection="+projectionId+" version="+projectionVersion+" nodes="+String(length(nodes));
+    globalThis.console.groupCollapsed(title);
+    globalThis.console.log(["phase", phase]);
+    globalThis.console.log(["raw", rawContent]);
+    globalThis.console.log(["dsl", payload]);
+    globalThis.console.log(["nodes", nodes]);
+    return globalThis.console.groupEnd();
+  }
+  catch(e){
+    globalThis.console.log(["[PTCS.Dynamic ActorTree DSL] "+phase+" raw", rawContent]);
+    return globalThis.console.error(["[PTCS.Dynamic ActorTree DSL] log failed", e]);
+  }
 }
 function V(name, attrs){
   return Doc.Element(name, attrs, FSharpList.Empty);

@@ -25,7 +25,7 @@
 #r "nuget: PersistedConcurrentSortedList, 10.1.301"
 #r "nuget: PulseTrade.Comm.Actor.Registry, [0.1.0-alpha4]"
 #r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta43]"
-#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta32]"
+#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta33]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 

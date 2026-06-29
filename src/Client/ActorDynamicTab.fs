@@ -124,6 +124,32 @@ module ActorDynamicTab =
         with _ ->
             fallback
 
+    let logActorsTreeDsl phase (rawContent: string) =
+        try
+            let nodes = actorNodes rawContent
+            let projectionId = projectionText rawContent "projectionId" "ptcs-actors"
+            let projectionVersion = projectionText rawContent "projectionVersion" "0"
+            let payload = JS.Global?JSON?parse(rawContent)
+            let title =
+                "[PTCS.Dynamic ActorTree DSL] "
+                + phase
+                + " projection="
+                + projectionId
+                + " version="
+                + projectionVersion
+                + " nodes="
+                + string nodes.Length
+
+            JS.Global?console?groupCollapsed(title)
+            JS.Global?console?log("phase", phase)
+            JS.Global?console?log("raw", rawContent)
+            JS.Global?console?log("dsl", payload)
+            JS.Global?console?log("nodes", nodes)
+            JS.Global?console?groupEnd()
+        with e ->
+            JS.Global?console?log("[PTCS.Dynamic ActorTree DSL] " + phase + " raw", rawContent)
+            JS.Global?console?error("[PTCS.Dynamic ActorTree DSL] log failed", e)
+
     let nodeId (node: obj) =
         try JS.Inline<string>("$0.id || ''", node) with _ -> ""
 
@@ -701,7 +727,9 @@ module ActorDynamicTab =
 
         div [
             attr.``class`` "ptcs-dynamic-actors-page"
-            on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actors-page"))
+            on.afterRender (fun node ->
+                node.SetAttribute("data-testid", "dynamic-actors-page")
+                logActorsTreeDsl "RENDER" rawContent)
             attr.style "display:flex; flex-direction:column; gap:12px; color:#142033; min-width:0;"
         ] [
             div [
@@ -738,7 +766,9 @@ module ActorDynamicTab =
                         attr.``type`` "button"
                         attr.style "border:1px solid #b8c7dc; background:#fff; color:#22344d; border-radius:5px; padding:5px 9px; font-size:12px; cursor:pointer;"
                         on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actors-reload"))
-                        on.click (fun _ _ -> JS.Window.Location.Reload())
+                        on.click (fun _ _ ->
+                            logActorsTreeDsl "RELOAD" rawContent
+                            JS.Window.Location.Reload())
                     ] [
                         text "Reload"
                     ]
