@@ -470,3 +470,13 @@ Implementation status:
 ## 2026-06-29 - Correction: Dynamic beta32 POC2 gate complete
 
 - `src\poc.full.nuget.2.fsx -- --no-wait` passed against Dynamic `0.1.3-beta32`; it started the in-process PTCS/Dynamic NuGet host, reported `Actors data nodes=1 actors=1`, and stopped cleanly.
+
+## 2026-06-29 - poc.full.nuget.journal SQL journal projection rebuild POC
+
+- Added `src\poc.full.nuget.journal.fsx` as a package-only PTCS/Dynamic POC for durable Akka journal replay. It uses `PulseTrade.Comm.Spa [0.2.5-beta43]` and `PulseTrade.Comm.Spa.Dynamic [0.1.3-beta32]` from NuGet/library-packs.
+- The script treats PCSL as projection/cache and SQL Server Akka.Persistence journal as canonical truth. It derives the default SQL DB name from the selected `pcslRoot`, configures `CommSpaActorFabricOptions.withJournal`, and wraps the UI hub in `PcslActorProxyCommSpaPersistenceBackend(remoteWire=true)` so HTTP/UI append-page writes go through journaled sharding instead of direct PCSL append.
+- Startup warm-up forces replay of append-page registry/key/value streams plus actor/participant/generic-set registries. A stable default cluster port `9787` and stable template key `poc-full-nuget-journal-argu` keep durable ActorArgu target keys usable across process restarts.
+- Verification passed:
+  - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --no-wait`
+  - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --clear-pcsl-before-start --no-wait`
+- The second run cleared `G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournal\pcsl_journal_001`, reused SQL DB `PTCSDynJ_7168b47cef9f5493`, reported `journal warm-up streams=7 pages=1 actors=1`, and kept the same `akka.tcp://PtcsDynamicPocJournal83446001@127.0.0.1:9787/user/nuget-journal-echo` target address.

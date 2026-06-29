@@ -14,6 +14,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="poc.full.nuget.2.fsx" />
+    <None Include="poc.full.nuget.journal.fsx" />
     <None Include="poc.full.nuget.fsx" />
     <None Include="PostBuildEvent.ps1" />
     <Content Include="canvas_demo.json" />

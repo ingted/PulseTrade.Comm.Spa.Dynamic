@@ -12,8 +12,8 @@
 // 3. Select all and run. Call stopPocFullNuget2Host() to stop.
 //
 
-#i @"nuget: G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\bin"
-#i @"nuget: C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Release"
+//#i @"nuget: G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\bin"
+//#i @"nuget: C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Release"
 #i @"nuget: C:\Program Files\dotnet\sdk\10.0.301\FSharp\library-packs"
 #r "nuget: FAkka.Argu, 10.1.301"
 #r "nuget: FAkka.FCell2, 10.1.301"
