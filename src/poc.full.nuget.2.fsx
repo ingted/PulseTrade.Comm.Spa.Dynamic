@@ -21,8 +21,8 @@
 #r "nuget: Akka.Cluster, 1.5.69"
 #r "nuget: Akka.Cluster.Sharding, 1.5.69"
 #r "nuget: PersistedConcurrentSortedList, 10.1.301"
-#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta41]"
-#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta30]"
+#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta43]"
+#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta31]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 
@@ -407,6 +407,15 @@ try
     require
         (String.Equals(deliveryStatusText, "completed", StringComparison.OrdinalIgnoreCase))
         ("server probe delivery should complete: " + deliveryStatusText)
+
+    let targetKeyAfterProbe: AppendPageKey =
+        hub.ListAppendPageKeys(actorPage.PageId).Keys
+        |> List.tryFind (fun key -> key.Keys = targetKeys)
+        |> Option.defaultWith (fun () -> failwith "POC2 target key should remain registered after server probe.")
+
+    require
+        (String.Equals(targetKeyAfterProbe.DisplayName, "POC2 FormInput target", StringComparison.Ordinal))
+        ("POC2 target key alias should survive server probe; got: " + targetKeyAfterProbe.DisplayName)
 
     printfn "PTCS Dynamic POC Full NuGet 2 started."
     printfn "Base URL      %s" app.Url

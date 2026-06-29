@@ -437,3 +437,10 @@ Implementation status:
 - Fixed `src\poc.full.nuget.2.fsx` so its local echo actor is projected into PTCS actor registry with `hub.RegisterActor` after creation. The previous script created a valid actor and ActorArgu send path, but `/actors` stayed empty because no actor lifecycle data was present in the hub snapshot.
 - `--no-wait` now fetches `/actors/api/snapshot` and requires non-zero node/actor counts plus the `nuget2-echo` actor path and node address.
 - Verification passed: `dotnet fsi --exec .\src\poc.full.nuget.2.fsx -- --no-wait` printed `Actors data   nodes=1 actors=1`; Playwright MCP on local POC2 `/actors` captured `G:\PulseTrade.fs\log\20260629\poc2-actors-page-fixed-deep-snapshot.md` and `G:\PulseTrade.fs\log\20260629\poc2-actors-page-fixed-deep.png` showing `akka.tcp://PtcsDynamicPocFullNuget2@127.0.0.1:9582/user/nuget2-echo`.
+
+## 2026-06-29 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta31 alias and WebSocket cleanup
+
+- Advanced Dynamic to `0.1.3-beta31` so its package dependency closure uses PTCS `0.2.5-beta43` and `FAkka.WebSocket 1.569.101.301-win6`.
+- Updated `src\poc.full.nuget.2.fsx` to reference beta43/beta31 and assert the `POC2 FormInput target` alias remains after the server-side ActorArgu send/probe path.
+- Verification passed: short-path Release build/pack at `C:\ptcsdyn-release-beta31\bin`, nupkg dependency inspection for FAkka.WebSocket win6, PTC bundle verifier, PTC NuGet live-host verifier, and `dotnet fsi --exec .\src\poc.full.nuget.2.fsx -- --no-wait`.
+- The POC2 run completed without `WebSocket disconnected` / `ConnectionAborted` console noise, relying on FAkka.WebSocket win6 rather than a PTCS Host workaround.
