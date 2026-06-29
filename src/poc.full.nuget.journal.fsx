@@ -8,7 +8,8 @@
 // 1. Ensure PulseTrade.Comm.Spa / PulseTrade.Comm.Spa.Dynamic nupkgs are built
 //    and available in the #i package roots below.
 // 2. Edit defaultArgumentsText only if you want a fixed port or PCSL root.
-// 3. Select all and run. Call stopPocFullNugetJournalHost() to stop.
+// 3. Select all and run. Call stopPingPongActor() to observe /actors reload,
+//    then call stopPocFullNugetJournalHost() to stop the host.
 //
 
 #i @"nuget: C:\Program Files\dotnet\sdk\10.0.301\FSharp\library-packs"
@@ -150,6 +151,32 @@ type PocFullNugetJournalEchoActor() as this =
                   Tags = Some [ "poc-full-nuget-journal"; "echo" ] }
 
             this.ActorCtx.Sender.Tell(reply, this.ActorCtx.Self))
+        |> ignore
+
+    member _.ActorCtx: IActorContext = ActorBase.Context
+
+type PocFullNugetJournalPingPongMessage =
+    | Ping of text: string
+    | Stop
+
+type PocFullNugetJournalPingPongActor() as this =
+    inherit ReceiveActor()
+
+    do
+        this.Receive<string>(fun text ->
+            let reply =
+                if String.Equals(text, "ping", StringComparison.OrdinalIgnoreCase) then
+                    "pong"
+                else
+                    "pong:" + text
+
+            this.ActorCtx.Sender.Tell(reply, this.ActorCtx.Self))
+        |> ignore
+
+        this.Receive<PocFullNugetJournalPingPongMessage>(fun message ->
+            match message with
+            | Ping text -> this.ActorCtx.Sender.Tell("pong:" + text, this.ActorCtx.Self)
+            | Stop -> this.ActorCtx.Stop(this.ActorCtx.Self))
         |> ignore
 
     member _.ActorCtx: IActorContext = ActorBase.Context
@@ -482,6 +509,33 @@ let actorAddress =
 
 tryForceReplay "actor-registry-after-register" CommSpaActorRegistry.registryStreamKey |> ignore
 
+let pingPongActorName =
+    actorName + "-pingpong"
+
+let pingPongRegistrySettings =
+    ActorRegistrySettings.create (hub.ActorRegistrySink())
+    |> ActorRegistrySettings.withRegistryId "ptcs-dynamic-poc-full-nuget-journal-pingpong"
+    |> ActorRegistrySettings.withNodeId (Some "ptcs.dynamic.poc-full-nuget-journal")
+    |> ActorRegistrySettings.withRole (Some "ptcs-dynamic-journal")
+    |> ActorRegistrySettings.withTags [ "ptcs-dynamic"; "poc-full-nuget-journal"; "pingpong"; "actor-registry-reload" ]
+    |> ActorRegistrySettings.withMetadata (
+        Map.ofList
+            [ "ptcs.dynamic.poc", "poc.full.nuget.journal.fsx"
+              "ptcs.dynamic.actor.kind", "pingpong"
+              "ptcs.dynamic.journal.db", journalBootstrap.DatabaseName
+              "ptcs.dynamic.pcsl.root", pcslRoot ])
+
+let pingPongRef =
+    match fabric.System.ActorOfRegistered(pingPongRegistrySettings, Props.Create(fun () -> PocFullNugetJournalPingPongActor()), pingPongActorName) with
+    | Ok registered -> registered.Actor
+    | Error error ->
+        invalidOp $"ActorRegistry ActorOfRegistered failed actor={pingPongActorName} kind={error.Kind} message={error.Message}"
+
+let pingPongActorAddress =
+    fabric.NodeAddress.TrimEnd('/') + pingPongRef.Path.ToStringWithoutAddress()
+
+tryForceReplay "actor-registry-after-pingpong-register" CommSpaActorRegistry.registryStreamKey |> ignore
+
 let targetKeys =
     [ actorAddress; templateKey; defaultCanonicalArgString ]
 
@@ -514,6 +568,7 @@ let defaultTargetVisible () =
         |> List.exists (fun key -> key.Keys = targetKeys)
 
 let mutable pocFullNugetJournalStopped = false
+let mutable pingPongActorStopped = false
 
 let require condition message =
     if not condition then
@@ -535,6 +590,19 @@ let readActorsSnapshotCounts (jsonText: string) =
     let actorCount = intProperty "actorCount" "ActorCount"
 
     nodeCount, actorCount
+
+let stopPingPongActor () =
+    if pingPongActorStopped then
+        printfn "PingPong actor already stopped: %s" pingPongActorAddress
+    else
+        pingPongActorStopped <- true
+        pingPongRef.Tell(PocFullNugetJournalPingPongMessage.Stop)
+        Thread.Sleep 750
+        tryForceReplay "actor-registry-after-pingpong-stop" CommSpaActorRegistry.registryStreamKey |> ignore
+        let hubActorCount = (hub.ActorsSnapshot()).ActorCount
+        printfn "PingPong actor stop requested: %s" pingPongActorAddress
+        printfn "Reload actors page after stop: %s/actors" app.Url
+        printfn "Current hub actor projection count: %d" hubActorCount
 
 let stopPocFullNugetJournalHost () =
     if pocFullNugetJournalStopped then
@@ -619,9 +687,11 @@ try
     printfn "Persistence   namespace=%s prefix=%s" persistenceNamespace.PersistenceNamespace persistenceNamespace.PersistenceIdPrefix
     printfn "Projection    backend=pcsl-actor-proxy clearBeforeStart=%b seededDefaultPage=%b" clearPcslBeforeStart seededDefaultPage
     printfn "Actor address %s" actorAddress
+    printfn "PingPong actor %s" pingPongActorAddress
     printfn "Template key  %s" templateKey
     printfn "Target key    %s" (JsonSerializer.Serialize(targetKeys |> List.toArray))
     printfn "Default arg   %s" defaultCanonicalArgString
+    printfn "Stop pingpong with stopPingPongActor()"
     printfn "Stop with     stopPocFullNugetJournalHost()"
 
     if noWait then

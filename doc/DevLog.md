@@ -489,3 +489,14 @@ Implementation status:
   - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_actor_registry_001" --cluster-port 9797 --no-wait`
   - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_actor_registry_001" --cluster-port 9797 --clear-pcsl-before-start --no-wait`
 - The clear/restart run reused SQL DB `PTCSDynJ_132444f8634d536e`, reported `journal warm-up streams=7 pages=1 actors=1`, and `/actors` diagnostics reported `visibleNodes=1 visibleActors=1 includeOfflineNodes=1 includeOfflineActors=1 hubActors=1`.
+
+## 2026-06-29 - poc.full.nuget.journal PingPong ActorRegistry reload probe
+
+- Added `PocFullNugetJournalPingPongActor` and `PocFullNugetJournalPingPongMessage` to `src\poc.full.nuget.journal.fsx`.
+- The PingPong actor is spawned with `fabric.System.ActorOfRegistered(...)` using its own `ActorRegistrySettings` and tags `ptcs-dynamic`, `poc-full-nuget-journal`, `pingpong`, `actor-registry-reload`; the script still does not call `CommHub.RegisterActor`.
+- FSI/manual mode now prints the PingPong `akka.tcp://.../user/...-pingpong` address plus `stopPingPongActor()`. This lets a browser session reload `/actors`, observe the PingPong actor, call `stopPingPongActor()` in FSI, then reload again to verify ActorRegistry termination projection behavior.
+- Verification passed:
+  - `dotnet build .\src\PulseTrade.Comm.Spa.Dynamic.fsproj -c Release -p:BaseIntermediateOutputPath=C:\ptcsdyn-journal-pingpong\obj\ -p:OutputPath=C:\ptcsdyn-journal-pingpong\bin\`
+  - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_pingpong_001" --cluster-port 9797 --no-wait`
+  - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_pingpong_001" --cluster-port 9797 --clear-pcsl-before-start --no-wait`
+- The first FSI gate reported `visibleNodes=1 visibleActors=2 includeOfflineNodes=1 includeOfflineActors=2 hubActors=2` and printed both the echo actor address and the PingPong actor address. The clear-PCSL gate reported `journal warm-up streams=7 pages=1 actors=2`.
