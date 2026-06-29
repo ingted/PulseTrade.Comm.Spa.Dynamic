@@ -451,3 +451,22 @@ Implementation status:
 - Changed `src\PulseTrade.Comm.Spa.Dynamic.fsproj` from ProjectReference to `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\PulseTrade.Comm.Spa.fsproj` into exact `PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta43]"`.
 - Verification passed: `rg ProjectReference src\PulseTrade.Comm.Spa.Dynamic.fsproj` has no hit; Release build passed with existing WebSharper/NU5123/missing-readme warnings after stopping a stale `wsfscservice.exe`; generated `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta31.nupkg` nuspec contains `PulseTrade.Comm.Spa [0.2.5-beta43]`.
 - Rebuilt beta31 nupkg was copied to `C:\Program Files\dotnet\sdk\10.0.301\FSharp\library-packs`; no `nuget.config` was created.
+
+## 2026-06-29 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta32 package-only release
+
+- Advanced `src\PulseTrade.Comm.Spa.Dynamic.fsproj` to `0.1.3-beta32` after removing the PTCS source `ProjectReference`; the package now consumes `PulseTrade.Comm.Spa [0.2.5-beta43]` through an exact NuGet `PackageReference`.
+- Updated `src\poc.full.nuget.2.fsx` to reference Dynamic beta32 and kept PTCS at beta43.
+- Verification passed: package tests 18/18, short-path Release build/pack at `C:\ptcsdyn-release-beta32\bin`, and cross-repo `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-dynamic-nuget-bundle.fsx`.
+- NuGet push for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta32` returned `Created`; flat-container indexing was still pending immediately after push.
+
+## 2026-06-29 - Correction: Dynamic beta32 NuGet indexing complete
+
+- Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta32`.
+
+## 2026-06-29 - Correction: Dynamic beta32 live-host gate complete
+
+- Cross-repo `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\run-ptcs-dynamic-nuget-live-host.fsx -- --no-wait` passed against PTCS `0.2.5-beta43` and Dynamic `0.1.3-beta32`; HTTP/WebSocket/state probes completed and the ActorArgu ticket returned `Completed`.
+
+## 2026-06-29 - Correction: Dynamic beta32 POC2 gate complete
+
+- `src\poc.full.nuget.2.fsx -- --no-wait` passed against Dynamic `0.1.3-beta32`; it started the in-process PTCS/Dynamic NuGet host, reported `Actors data nodes=1 actors=1`, and stopped cleanly.

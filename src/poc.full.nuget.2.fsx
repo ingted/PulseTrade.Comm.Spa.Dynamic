@@ -22,7 +22,7 @@
 #r "nuget: Akka.Cluster.Sharding, 1.5.69"
 #r "nuget: PersistedConcurrentSortedList, 10.1.301"
 #r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta43]"
-#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta31]"
+#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta32]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 
