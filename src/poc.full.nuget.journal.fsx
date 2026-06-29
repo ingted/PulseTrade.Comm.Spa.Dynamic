@@ -22,6 +22,7 @@
 #r "nuget: Microsoft.Data.SqlClient, 7.0.1"
 #r "nuget: System.Data.SqlClient, 4.9.1"
 #r "nuget: PersistedConcurrentSortedList, 10.1.301"
+#r "nuget: PulseTrade.Comm.Actor.Registry, [0.1.0-alpha4]"
 #r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta43]"
 #r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta32]"
 
@@ -39,6 +40,7 @@ open System.Threading
 open Akka.Actor
 open Argu
 open PersistedConcurrentSortedList.Type
+open PulseTrade.Comm.Actor.Registry
 open PulseTrade.Comm.Spa
 open PulseTrade.Comm.Spa.Dynamic.Server
 
@@ -457,26 +459,26 @@ withStartupOutput (fun () ->
 let ingress =
     durableIngressOptions deliveryProfile |> CommSpaDurableIngress.createVolatile
 
+let actorRegistrySettings =
+    ActorRegistrySettings.create (hub.ActorRegistrySink())
+    |> ActorRegistrySettings.withRegistryId "ptcs-dynamic-poc-full-nuget-journal"
+    |> ActorRegistrySettings.withNodeId (Some "ptcs.dynamic.poc-full-nuget-journal")
+    |> ActorRegistrySettings.withRole (Some "ptcs-dynamic-journal")
+    |> ActorRegistrySettings.withTags [ "ptcs-dynamic"; "poc-full-nuget-journal"; "echo"; "actor-argu" ]
+    |> ActorRegistrySettings.withMetadata (
+        Map.ofList
+            [ "ptcs.dynamic.poc", "poc.full.nuget.journal.fsx"
+              "ptcs.dynamic.journal.db", journalBootstrap.DatabaseName
+              "ptcs.dynamic.pcsl.root", pcslRoot ])
+
 let echoRef =
-    fabric.System.ActorOf(Props.Create(fun () -> PocFullNugetJournalEchoActor()), actorName)
+    match fabric.System.ActorOfRegistered(actorRegistrySettings, Props.Create(fun () -> PocFullNugetJournalEchoActor()), actorName) with
+    | Ok registered -> registered.Actor
+    | Error error ->
+        invalidOp $"ActorRegistry ActorOfRegistered failed actor={actorName} kind={error.Kind} message={error.Message}"
 
 let actorAddress =
     fabric.NodeAddress.TrimEnd('/') + echoRef.Path.ToStringWithoutAddress()
-
-let actorPath =
-    echoRef.Path.ToStringWithoutAddress()
-
-hub.RegisterActor
-    { NodeId = "ptcs.dynamic.poc-full-nuget-journal"
-      NodeAddress = Some fabric.NodeAddress
-      ActorId = actorPath
-      DisplayName = Some actorName
-      Kind = Some "actor"
-      Status = Some "active"
-      Roles = Some [ "ptcs"; "dynamic"; "poc"; "journal" ]
-      Routees = None
-      Tags = Some [ "ptcs-dynamic"; "poc-full-nuget-journal"; "echo"; "actor-argu" ] }
-|> ignore
 
 tryForceReplay "actor-registry-after-register" CommSpaActorRegistry.registryStreamKey |> ignore
 

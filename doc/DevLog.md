@@ -480,3 +480,12 @@ Implementation status:
   - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --no-wait`
   - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --clear-pcsl-before-start --no-wait`
 - The second run cleared `G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournal\pcsl_journal_001`, reused SQL DB `PTCSDynJ_7168b47cef9f5493`, reported `journal warm-up streams=7 pages=1 actors=1`, and kept the same `akka.tcp://PtcsDynamicPocJournal83446001@127.0.0.1:9787/user/nuget-journal-echo` target address.
+
+## 2026-06-29 - poc.full.nuget.journal ActorRegistry spawn correction
+
+- Replaced the journal POC's direct `CommHub.RegisterActor` shortcut with `PulseTrade.Comm.Actor.Registry.ActorOfRegistered`.
+- The script now explicitly references `PulseTrade.Comm.Actor.Registry [0.1.0-alpha4]`, builds `ActorRegistrySettings.create (hub.ActorRegistrySink())`, and spawns the echo actor through `fabric.System.ActorOfRegistered(...)`. Actor display in `/actors` therefore comes from the same lifecycle registry path used by PTCS Host, including tags/metadata and termination watcher support.
+- Verification passed with a separate root/port because default `9787` was already owned by a Visual Studio FSI session:
+  - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_actor_registry_001" --cluster-port 9797 --no-wait`
+  - `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_actor_registry_001" --cluster-port 9797 --clear-pcsl-before-start --no-wait`
+- The clear/restart run reused SQL DB `PTCSDynJ_132444f8634d536e`, reported `journal warm-up streams=7 pages=1 actors=1`, and `/actors` diagnostics reported `visibleNodes=1 visibleActors=1 includeOfflineNodes=1 includeOfflineActors=1 hubActors=1`.
