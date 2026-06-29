@@ -295,6 +295,21 @@ let echoRef =
 let actorAddress =
     fabric.NodeAddress.TrimEnd('/') + echoRef.Path.ToStringWithoutAddress()
 
+let actorPath =
+    echoRef.Path.ToStringWithoutAddress()
+
+hub.RegisterActor
+    { NodeId = "ptcs.dynamic.poc-full-nuget-2"
+      NodeAddress = Some fabric.NodeAddress
+      ActorId = actorPath
+      DisplayName = Some actorName
+      Kind = Some "actor"
+      Status = Some "active"
+      Roles = Some [ "ptcs"; "dynamic"; "poc" ]
+      Routees = None
+      Tags = Some [ "ptcs-dynamic"; "poc-full-nuget-2"; "echo"; "actor-argu" ] }
+|> ignore
+
 let templateKey =
     typeof<PocFullNuget2Argu>.FullName
 
@@ -313,6 +328,32 @@ let actorPage =
 
 let mutable pocFullNuget2Stopped = false
 
+let require condition message =
+    if not condition then
+        failwith message
+
+let requireActorsSnapshotNonEmpty (jsonText: string) =
+    use doc = JsonDocument.Parse(jsonText)
+    let root = doc.RootElement
+
+    let intProperty (name: string) (alternateName: string) =
+        let mutable value = Unchecked.defaultof<JsonElement>
+
+        if root.TryGetProperty(name, &value) || root.TryGetProperty(alternateName, &value) then
+            value.GetInt32()
+        else
+            failwith $"actors snapshot missing property {name}/{alternateName}: {jsonText}"
+
+    let nodeCount = intProperty "nodeCount" "NodeCount"
+    let actorCount = intProperty "actorCount" "ActorCount"
+
+    require (nodeCount > 0) $"actors snapshot should have nodes, got {nodeCount}."
+    require (actorCount > 0) $"actors snapshot should have actors, got {actorCount}."
+    require (jsonText.Contains(actorPath)) $"actors snapshot should contain actor path {actorPath}."
+    require (jsonText.Contains(fabric.NodeAddress)) $"actors snapshot should contain node address {fabric.NodeAddress}."
+
+    nodeCount, actorCount
+
 let stopPocFullNuget2Host () =
     if pocFullNuget2Stopped then
         printfn "poc.full.nuget.2 host already stopped."
@@ -321,10 +362,6 @@ let stopPocFullNuget2Host () =
         (app :> IDisposable).Dispose()
         fabric.System.WhenTerminated.Wait(TimeSpan.FromSeconds 10.0) |> ignore
         printfn "poc.full.nuget.2 host stopped."
-
-let require condition message =
-    if not condition then
-        failwith message
 
 try
     hub.RegisterAppendPage actorPage |> ignore
@@ -350,6 +387,7 @@ try
     let healthText = client.GetStringAsync(app.Url + "/healthz").GetAwaiter().GetResult()
     let chatHtml = client.GetStringAsync(app.Url + "/chat").GetAwaiter().GetResult()
     let actorsHtml = client.GetStringAsync(app.Url + "/actors").GetAwaiter().GetResult()
+    let actorsSnapshotJson = client.GetStringAsync(app.Url + "/actors/api/snapshot").GetAwaiter().GetResult()
     let dynamicJs = client.GetStringAsync(app.Url + "/ext/js/PulseTrade.Comm.Spa.Dynamic.js").GetAwaiter().GetResult()
     let actorDynamicCreateShapeVisible =
         hub.ListClientExtensions()
@@ -361,6 +399,7 @@ try
     require (not actorDynamicCreateShapeVisible) "poc2 must not expose +page Actor Dynamic shape in the extension manifest."
     require (not (chatHtml.Contains("option value=\"actor-dynamic\""))) "poc2 must not expose +page Actor Dynamic shape."
     require (actorsHtml.Length > 0) "actors page should be served."
+    let actorsNodeCount, actorsActorCount = requireActorsSnapshotNonEmpty actorsSnapshotJson
     require (dynamicJs.Contains("dynamic-actors-page")) "Dynamic bundle should include ActorsPage renderer."
     require (dynamicJs.Contains("dynamic-argu-add-key")) "Dynamic bundle should include Add target key renderer."
     require (serverProbe.ActorArgu.IsSome) "server probe should append an ActorArgu reply."
@@ -373,6 +412,7 @@ try
     printfn "Base URL      %s" app.Url
     printfn "Chat URL      %s/chat" app.Url
     printfn "Actors URL    %s/actors" app.Url
+    printfn "Actors data   nodes=%d actors=%d" actorsNodeCount actorsActorCount
     printfn "ActorArgu URL %s/page/%s" app.Url actorPage.PageId
     printfn "Dynamic JS    %s/ext/js/PulseTrade.Comm.Spa.Dynamic.js" app.Url
     printfn "PCSL root     %s" pcslRoot

@@ -431,3 +431,9 @@ Implementation status:
 - Verification passed: short-path Release build/pack at `C:\ptcsdyn-release-beta30d\bin`, package tests 18/18 with `WebSharperRunCompiler=false`, PTC bundle verifier for beta41/beta30, PTCS `verify.actorsPageDynamic.playwright.fsx -- --dynamic-bin-dir C:\ptcsdyn-release-beta30d\bin`, and `dotnet fsi --exec .\src\poc.full.nuget.2.fsx -- --no-wait`.
 - Public 81 release `live81-ptcs-beta41-dynamic-beta30-offline-poc2-202606290748` shows one active backend node after reload instead of stale multi-node service-run blocks. Evidence: `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30.png`, `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30-snapshot.md`, and `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30-dom.json`.
 - NuGet push returned `Created` / `Your package was pushed` for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta30`; immediate flat-container lookup was still propagation-pending.
+
+## 2026-06-29 - poc.full.nuget.2 ActorsPage registry projection fix
+
+- Fixed `src\poc.full.nuget.2.fsx` so its local echo actor is projected into PTCS actor registry with `hub.RegisterActor` after creation. The previous script created a valid actor and ActorArgu send path, but `/actors` stayed empty because no actor lifecycle data was present in the hub snapshot.
+- `--no-wait` now fetches `/actors/api/snapshot` and requires non-zero node/actor counts plus the `nuget2-echo` actor path and node address.
+- Verification passed: `dotnet fsi --exec .\src\poc.full.nuget.2.fsx -- --no-wait` printed `Actors data   nodes=1 actors=1`; Playwright MCP on local POC2 `/actors` captured `G:\PulseTrade.fs\log\20260629\poc2-actors-page-fixed-deep-snapshot.md` and `G:\PulseTrade.fs\log\20260629\poc2-actors-page-fixed-deep.png` showing `akka.tcp://PtcsDynamicPocFullNuget2@127.0.0.1:9582/user/nuget2-echo`.
