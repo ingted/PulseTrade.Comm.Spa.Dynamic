@@ -444,3 +444,10 @@ Implementation status:
 - Updated `src\poc.full.nuget.2.fsx` to reference beta43/beta31 and assert the `POC2 FormInput target` alias remains after the server-side ActorArgu send/probe path.
 - Verification passed: short-path Release build/pack at `C:\ptcsdyn-release-beta31\bin`, nupkg dependency inspection for FAkka.WebSocket win6, PTC bundle verifier, PTC NuGet live-host verifier, and `dotnet fsi --exec .\src\poc.full.nuget.2.fsx -- --no-wait`.
 - The POC2 run completed without `WebSocket disconnected` / `ConnectionAborted` console noise, relying on FAkka.WebSocket win6 rather than a PTCS Host workaround.
+
+## 2026-06-29 - ProjectReference removed from package project
+
+- User direction: PTCS.Dynamic package project should consume PTCS as a NuGet package because referenced packages are local-deployed for development; future work should not reintroduce ProjectReference.
+- Changed `src\PulseTrade.Comm.Spa.Dynamic.fsproj` from ProjectReference to `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\PulseTrade.Comm.Spa.fsproj` into exact `PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta43]"`.
+- Verification passed: `rg ProjectReference src\PulseTrade.Comm.Spa.Dynamic.fsproj` has no hit; Release build passed with existing WebSharper/NU5123/missing-readme warnings after stopping a stale `wsfscservice.exe`; generated `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta31.nupkg` nuspec contains `PulseTrade.Comm.Spa [0.2.5-beta43]`.
+- Rebuilt beta31 nupkg was copied to `C:\Program Files\dotnet\sdk\10.0.301\FSharp\library-packs`; no `nuget.config` was created.

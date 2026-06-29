@@ -36,3 +36,12 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - 新增 `Client/ActorsPageRenderer.fs` 這類 `[<JavaScript>]` compile unit，即使內容 no-op，也可能讓 `wsfsc.exe` crash；本輪改放在既有 `Client/ActorDynamicTab.fs`。
 - `String.Contains` 在 `[<JavaScript>]` code 會 crash；使用單一 `IndexOf` 可通過。
 - 多個 `IndexOf` chained predicate 仍會 crash；first slice 暫以 `ActorTopologyPage` 單 token gate。
+
+## PackageReference-only PTCS Boundary
+
+2026-06-29 起，`src\PulseTrade.Comm.Spa.Dynamic.fsproj` 不再以 ProjectReference 消費 PTCS source，改用 exact `PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta43]"`。驗證重點：
+
+- `rg ProjectReference src\PulseTrade.Comm.Spa.Dynamic.fsproj` 應無命中。
+- Release build 需通過；若出現 `MSB6006 wsfsc.exe -532462766` 且存在舊 `wsfscservice.exe`，先停用 stale WebSharper compiler service 再重試。
+- 新 nupkg nuspec 必須包含 `PulseTrade.Comm.Spa [0.2.5-beta43]` dependency。
+- 完成後複製 nupkg 到目前 SDK `FSharp\library-packs`，供 `poc.full.nuget*.fsx` 與 PTC bundle verifier 使用。

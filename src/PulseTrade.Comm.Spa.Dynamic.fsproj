@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\PulseTrade.Comm.Spa.fsproj" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta43]" />
   </ItemGroup>
 
   <ItemGroup>
