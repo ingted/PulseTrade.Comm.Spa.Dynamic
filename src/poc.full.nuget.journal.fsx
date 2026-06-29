@@ -23,13 +23,14 @@
 #r "nuget: Microsoft.Data.SqlClient, 7.0.1"
 #r "nuget: System.Data.SqlClient, 4.9.1"
 #r "nuget: PersistedConcurrentSortedList, 10.1.301"
-#r "nuget: PulseTrade.Comm.Actor.Registry, [0.1.0-alpha4]"
-#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta43]"
-#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta33]"
+#r "nuget: PulseTrade.Comm.Actor.Registry, [0.1.0-alpha5]"
+#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta48]"
+#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta38]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 
 open System
+open System.Collections.Concurrent
 open System.IO
 open System.Net
 open System.Net.Http
@@ -79,7 +80,7 @@ let freePort () =
 let defaultArgumentsText =
     let webPort = freePort ()
     printfn "allocated web port: %d, default cluster port: %d" webPort defaultClusterPort
-    $"""--host 127.0.0.1 --port {webPort} --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-live --actor-name nuget-journal-echo --cluster-port {defaultClusterPort}"""
+    $"""--host 127.0.0.1 --port {webPort} --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-live --actor-name nuget-journal-echo --cluster-port {defaultClusterPort} --sql-connection-string "Data Source=.;Initial Catalog=master;Integrated Security=True;Persist Security Info=False;Pooling=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Application Name=PTCSDynamicJournal;Command Timeout=0" """
 
 type CliArgs =
     | Host of string
@@ -483,11 +484,27 @@ withStartupOutput (fun () ->
         hub.RegisterClientExtension({ extension with AppendPageShapes = [] })
         |> ignore))
 
+let actorRegistryEvents = ConcurrentQueue<ActorRegistryLifecycleEvent>()
+
+let actorRegistrySink : ActorRegistryEventSink =
+    let hubSink = hub.ActorRegistrySink()
+
+    fun event ->
+        task {
+            actorRegistryEvents.Enqueue event
+
+            try
+                do! hubSink event
+            with ex ->
+                printfn "ActorRegistry sink failed: event=%A status=%A path=%s error=%s" event.EventKind event.Status event.FullPath ex.Message
+                return raise ex
+        }
+
 let ingress =
     durableIngressOptions deliveryProfile |> CommSpaDurableIngress.createVolatile
 
 let actorRegistrySettings =
-    ActorRegistrySettings.create (hub.ActorRegistrySink())
+    ActorRegistrySettings.create actorRegistrySink
     |> ActorRegistrySettings.withRegistryId "ptcs-dynamic-poc-full-nuget-journal"
     |> ActorRegistrySettings.withNodeId (Some "ptcs.dynamic.poc-full-nuget-journal")
     |> ActorRegistrySettings.withRole (Some "ptcs-dynamic-journal")
@@ -513,7 +530,7 @@ let pingPongActorName =
     actorName + "-pingpong"
 
 let pingPongRegistrySettings =
-    ActorRegistrySettings.create (hub.ActorRegistrySink())
+    ActorRegistrySettings.create actorRegistrySink
     |> ActorRegistrySettings.withRegistryId "ptcs-dynamic-poc-full-nuget-journal-pingpong"
     |> ActorRegistrySettings.withNodeId (Some "ptcs.dynamic.poc-full-nuget-journal")
     |> ActorRegistrySettings.withRole (Some "ptcs-dynamic-journal")
@@ -525,11 +542,17 @@ let pingPongRegistrySettings =
               "ptcs.dynamic.journal.db", journalBootstrap.DatabaseName
               "ptcs.dynamic.pcsl.root", pcslRoot ])
 
-let pingPongRef =
+let pingPongRegistered =
     match fabric.System.ActorOfRegistered(pingPongRegistrySettings, Props.Create(fun () -> PocFullNugetJournalPingPongActor()), pingPongActorName) with
-    | Ok registered -> registered.Actor
+    | Ok registered ->
+        if registered.Watcher.IsNone then
+            invalidOp $"ActorRegistry watcher was not created for actor={pingPongActorName}; stop/reload lifecycle cannot be verified."
+
+        registered
     | Error error ->
         invalidOp $"ActorRegistry ActorOfRegistered failed actor={pingPongActorName} kind={error.Kind} message={error.Message}"
+
+let pingPongRef = pingPongRegistered.Actor
 
 let pingPongActorAddress =
     fabric.NodeAddress.TrimEnd('/') + pingPongRef.Path.ToStringWithoutAddress()
@@ -591,16 +614,40 @@ let readActorsSnapshotCounts (jsonText: string) =
 
     nodeCount, actorCount
 
+let tryFindHubActorStatus (actorName: string) =
+    hub.ActorsSnapshot().Nodes
+    |> List.collect _.Actors
+    |> List.tryFind (fun actor -> actor.ActorId.Contains(actorName, StringComparison.Ordinal))
+    |> Option.map _.Status
+
+let waitForHubActorStatus (actorName: string) (expectedStatus: string) timeout =
+    let deadline = DateTimeOffset.UtcNow.Add(timeout)
+    let mutable observed = tryFindHubActorStatus actorName
+
+    while observed <> Some expectedStatus && DateTimeOffset.UtcNow < deadline do
+        Thread.Sleep 100
+        observed <- tryFindHubActorStatus actorName
+
+    observed
+
+let registryEventSummary (actorName: string) =
+    actorRegistryEvents
+    |> Seq.filter (fun event -> event.FullPath.Contains(actorName, StringComparison.Ordinal))
+    |> Seq.map (fun event -> $"{event.EventKind}/{event.Status}@{event.StatusVersion}")
+    |> String.concat ", "
+
 let stopPingPongActor () =
     if pingPongActorStopped then
         printfn "PingPong actor already stopped: %s" pingPongActorAddress
     else
         pingPongActorStopped <- true
-        pingPongRef.Tell(PocFullNugetJournalPingPongMessage.Stop)
-        Thread.Sleep 750
+        fabric.System.Stop(pingPongRef)
+        let observedStatus = waitForHubActorStatus pingPongActorName "terminated" (TimeSpan.FromSeconds 5.0)
         tryForceReplay "actor-registry-after-pingpong-stop" CommSpaActorRegistry.registryStreamKey |> ignore
         let hubActorCount = (hub.ActorsSnapshot()).ActorCount
         printfn "PingPong actor stop requested: %s" pingPongActorAddress
+        printfn "PingPong actor projected status: %A" observedStatus
+        printfn "PingPong registry events: %s" (registryEventSummary pingPongActorName)
         printfn "Reload actors page after stop: %s/actors" app.Url
         printfn "Current hub actor projection count: %d" hubActorCount
 
@@ -661,6 +708,10 @@ try
     let actorsNodeCount, actorsActorCount = readActorsSnapshotCounts actorsSnapshotJson
     let actorsNodeCountWithOffline, actorsActorCountWithOffline = readActorsSnapshotCounts actorsSnapshotWithOfflineJson
     let hubActorCount = (hub.ActorsSnapshot()).ActorCount
+    let mutable afterStopActorsNodeCount = -1
+    let mutable afterStopActorsActorCount = -1
+    let mutable afterStopIncludeOfflineActorCount = -1
+
     require (hubActorCount > 0) $"hub actor projection should have actors, got {hubActorCount}."
     require (dynamicJs.Contains("dynamic-actors-page")) "Dynamic bundle should include ActorsPage renderer."
     require (dynamicJs.Contains("dynamic-argu-add-key")) "Dynamic bundle should include Add target key renderer."
@@ -675,11 +726,42 @@ try
     | None ->
         printfn "Default target probe skipped because the journal projection currently has no visible default target."
 
+    if noWait then
+        stopPingPongActor ()
+        Thread.Sleep 250
+        let afterStopActorsSnapshotJson = client.GetStringAsync(app.Url + "/actors/api/snapshot").GetAwaiter().GetResult()
+        let afterStopActorsSnapshotWithOfflineJson = client.GetStringAsync(app.Url + "/actors/api/snapshot?includeOffline=1").GetAwaiter().GetResult()
+        let afterStopActorsTreeJson = client.GetStringAsync(app.Url + "/actors/api/tree").GetAwaiter().GetResult()
+        let afterStopNodeCount, afterStopActorCount = readActorsSnapshotCounts afterStopActorsSnapshotJson
+        let _, afterStopOfflineActorCount = readActorsSnapshotCounts afterStopActorsSnapshotWithOfflineJson
+
+        afterStopActorsNodeCount <- afterStopNodeCount
+        afterStopActorsActorCount <- afterStopActorCount
+        afterStopIncludeOfflineActorCount <- afterStopOfflineActorCount
+
+        require
+            (not (afterStopActorsSnapshotJson.Contains(pingPongActorName, StringComparison.Ordinal)))
+            $"active actors snapshot should not include stopped PingPong actor {pingPongActorName}."
+
+        require
+            (not (afterStopActorsTreeJson.Contains(pingPongActorName, StringComparison.Ordinal)))
+            $"active ActorTopology tree should not include stopped PingPong actor {pingPongActorName}."
+
+        require
+            (afterStopActorsSnapshotWithOfflineJson.Contains(pingPongActorName, StringComparison.Ordinal))
+            $"includeOffline actors snapshot should retain stopped PingPong actor {pingPongActorName} for diagnostics."
+
+        require
+            (afterStopActorsSnapshotWithOfflineJson.Contains("terminated", StringComparison.OrdinalIgnoreCase))
+            "includeOffline actors snapshot should expose the stopped actor terminated status."
+
     printfn "PTCS Dynamic POC Full NuGet Journal started."
     printfn "Base URL      %s" app.Url
     printfn "Chat URL      %s/chat" app.Url
     printfn "Actors URL    %s/actors" app.Url
     printfn "Actors data   visibleNodes=%d visibleActors=%d includeOfflineNodes=%d includeOfflineActors=%d hubActors=%d" actorsNodeCount actorsActorCount actorsNodeCountWithOffline actorsActorCountWithOffline hubActorCount
+    if noWait then
+        printfn "After stop    visibleNodes=%d visibleActors=%d includeOfflineActors=%d pingPongFiltered=true" afterStopActorsNodeCount afterStopActorsActorCount afterStopIncludeOfflineActorCount
     printfn "ActorArgu URL %s/page/%s" app.Url actorPage.PageId
     printfn "Dynamic JS    %s/ext/js/PulseTrade.Comm.Spa.Dynamic.js" app.Url
     printfn "PCSL root     %s" pcslRoot

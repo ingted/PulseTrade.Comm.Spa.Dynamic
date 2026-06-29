@@ -508,3 +508,10 @@ Implementation status:
 - Advanced package version to `0.1.3-beta33`; updated `src\poc.full.nuget.2.fsx`, `src\poc.full.nuget.journal.fsx`, and cross-repo PTC NuGet verifier/live-host scripts to consume beta33.
 - Verification passed: package tests 18/18, short-path Release build/pack at `C:\ptcsdyn-release-beta33\bin`, nupkg marker check for `[PTCS.Dynamic ActorTree DSL]`, PTC bundle verifier, PTC NuGet live-host verifier, journal POC no-wait/clear-PCSL gates, and Playwright MCP console proof on `http://127.0.0.1:14933/actors` showing both `RENDER` and `RELOAD` console groups.
 - NuGet push for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta33` returned `Created`; immediate flat-container lookup was propagation-pending.
+
+## 2026-06-29 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta38 PingPong ActorTree cleanup
+
+- Advanced Dynamic to `0.1.3-beta38`, paired with PTCS `0.2.5-beta48`.
+- Updated `src\poc.full.nuget.2.fsx` and `src\poc.full.nuget.journal.fsx` to reference beta48/beta38.
+- `src\poc.full.nuget.journal.fsx -- --no-wait` now verifies the PingPong stop/reload path through ActorRegistry and PTCS ActorTree DSL: projected status becomes `terminated`, registry events are `Registered/Active@1, Unregistered/Terminated@2`, active DSL filters PingPong, and `includeOffline` retains stopped diagnostics.
+- Verification passed: short-path Release build at `C:\ptcsdyn-release-beta38\bin`, package tests `18/18`, PTC bundle verifier beta48/beta38, and NuGet push for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta38`.

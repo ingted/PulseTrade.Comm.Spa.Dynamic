@@ -10,9 +10,17 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 ## Gate 清單
 
+### 2026-06-29 Current Package Override
+
+- Current package pair: `PulseTrade.Comm.Spa 0.2.5-beta48` + `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta38`.
+- `DYN-VFY-001` short-path build currently uses `C:\ptcsdyn-release-beta38\bin`.
+- `DYN-VFY-004` package tests passed `18/18` against beta38.
+- `DYN-VFY-007` current command: `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_pingpong_fix_beta48" --cluster-port 9799 --no-wait`. It verifies `PingPong actor projected status: Some "terminated"` and `pingPongFiltered=true`.
+- PTC cross-repo `PTC-VFY-007` resolves beta48/beta38 from NuGet/library-packs; public 81 deployment is `live81-ptcs-beta48-dynamic-beta38-pingpong-registry-20260629161443`.
+
 | Gate | 類型 | 命令 / 腳本 | 用途與摘要 | Revision |
 |---|---|---|---|---|
-| DYN-VFY-001 | Package build / WebSharper bundle | `dotnet build .\src\PulseTrade.Comm.Spa.Dynamic.fsproj -c Release -p:BaseIntermediateOutputPath=C:\ptcsdyn-release-beta33\obj\ -p:OutputPath=C:\ptcsdyn-release-beta33\bin\` | 以短 intermediate/output path 建置 Dynamic package 與 WebSharper bundle。長 repo path 下 `wsfsc.exe` 可能直接 crash 且只回 `MSB6006`，因此 package verification 使用短 path。本輪 RFC-0005 也確認新增 client `[<JavaScript>]` compile unit、`String.Contains`、多段 `IndexOf` predicate 都可能觸發 crash；first slice 使用既有 `ActorDynamicTab.fs` 與單一 `IndexOf("ActorTopologyPage")`。2026-06-29 beta33 gate 直接檢查 nupkg dependency closure 指向 `PulseTrade.Comm.Spa [0.2.5-beta43]` / `FAkka.WebSocket [1.569.101.301-win6]`，並新增 ActorsPage console logging marker `[PTCS.Dynamic ActorTree DSL]`。 | 本輪修訂：2026-06-29 actors-dsl-console-beta33 |
+| DYN-VFY-001 | Package build / WebSharper bundle | `dotnet build .\src\PulseTrade.Comm.Spa.Dynamic.fsproj -c Release -p:BaseIntermediateOutputPath=C:\ptcsdyn-release-beta38\obj\ -p:OutputPath=C:\ptcsdyn-release-beta38\bin\` | 以短 intermediate/output path 建置 Dynamic package 與 WebSharper bundle。長 repo path 下 `wsfsc.exe` 可能直接 crash 且只回 `MSB6006`，因此 package verification 使用短 path。本輪 RFC-0005 也確認新增 client `[<JavaScript>]` compile unit、`String.Contains`、多段 `IndexOf` predicate 都可能觸發 crash；first slice 使用既有 `ActorDynamicTab.fs` 與單一 `IndexOf("ActorTopologyPage")`。2026-06-29 beta38 gate 直接檢查 nupkg dependency closure 指向 `PulseTrade.Comm.Spa [0.2.5-beta48]`，並保留 ActorsPage console logging marker `[PTCS.Dynamic ActorTree DSL]`。 | 本輪修訂：2026-06-29 beta38-pingpong-stop |
 | DYN-VFY-004 | Package tests | `dotnet run --project .\tests\PulseTrade.Comm.Spa.Dynamic.Tests.fsproj -c Release -p:WebSharperRunCompiler=false -p:GeneratePackageOnBuild=false -- --summary --no-spinner` | 在 DYN-VFY-001 full WebSharper build 通過後，關閉 WebSharper compiler 跑 Expecto package tests，避免 test build 重跑 long/default path `wsfsc.exe`。本輪覆蓋 DYN-T-526/DYN-T-527/DYN-T-528，總計 18/18 pass。2026-06-29 beta30 仍以同 gate 驗證 package semantics。 | 本輪修訂：2026-06-29 actors-page-beta30-offline-cleanup |
 | PTCS-VFY-ActorsPageDynamic | Cross-repo source host / Playwright MCP | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\run.actorsPageDynamic.localHost.fsx` with `--dynamic-bin-dir C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\bin\Release\net10.0` | 啟動 PTCS source host 載入 Dynamic source Release bundle，使用 Playwright MCP 驗證 `/actors` 由 Dynamic page renderer 接管：page renderer registered, fallback rows `0`, blocks ordered PTCS Host -> GW Host -> RN Host -> Unknown, full actor addresses visible, boxed `+` / `-` toggles functional。Evidence: `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-check.json`; screenshot: `G:\PulseTrade.fs\log\20260628\20260628220000.actors-page-toggle-fixed.png`。 | 本輪修訂：2026-06-28 actors-page-grouping-toggle |
 | PTCS-VFY-ActorsPageDynamic-FSharp | Cross-repo reusable F# Playwright verifier | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.actorsPageDynamic.playwright.fsx -- --dynamic-bin-dir C:\ptcsdyn-release-beta30d\bin` | 啟動 PTCS + Dynamic source/short-path Release bundle，使用 F# Playwright locator API 驗證 Dynamic page-level `/actors` renderer accepted path：fallback DOM absent、core `actor-node` / `actor-card` absent、PTCS/GW/RN blocks、full `akka.tcp://...` addresses、`/user` 與 `/system` virtual ancestors、reload/report controls、report generate、browser-local schedule start/stop、status dots、connector lines、depth rows、boxed toggle `aria-expanded`/text 與 visible row collapse/expand，並使用 deterministic loopback probe listeners 避免 online fixtures 被 offline filter 誤清除。Evidence: `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30.png`。 | 本輪修訂：2026-06-29 actors-page-beta30-offline-cleanup |
@@ -40,9 +48,9 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 
 ## PackageReference-only PTCS Boundary
 
-2026-06-29 起，`src\PulseTrade.Comm.Spa.Dynamic.fsproj` 不再以 ProjectReference 消費 PTCS source，改用 exact `PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta43]"`。驗證重點：
+2026-06-29 起，`src\PulseTrade.Comm.Spa.Dynamic.fsproj` 不再以 ProjectReference 消費 PTCS source，改用 exact `PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta48]"`。驗證重點：
 
 - `rg ProjectReference src\PulseTrade.Comm.Spa.Dynamic.fsproj` 應無命中。
 - Release build 需通過；若出現 `MSB6006 wsfsc.exe -532462766` 且存在舊 `wsfscservice.exe`，先停用 stale WebSharper compiler service 再重試。
-- 新 nupkg nuspec 必須包含 `PulseTrade.Comm.Spa [0.2.5-beta43]` dependency。
+- 新 nupkg nuspec 必須包含 `PulseTrade.Comm.Spa [0.2.5-beta48]` dependency。
 - 完成後複製 nupkg 到目前 SDK `FSharp\library-packs`，供 `poc.full.nuget*.fsx` 與 PTC bundle verifier 使用。
