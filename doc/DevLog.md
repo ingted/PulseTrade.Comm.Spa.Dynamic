@@ -564,3 +564,10 @@ Implementation status:
 - Purpose: keep Dynamic on the current PTCS package after PTCS beta54 added server-only JSONL ACL audit sink/readback.
 - Verification passed: after stopping stale `wsfscservice.exe`, Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta44.nupkg`, Dynamic tests passed `18/18`, and ACL no-wait script passed on local ports `18081/18082` with cluster port `18787`.
 - The no-wait script reported `After stop visibleActors=1 pingPongFiltered=true` and `Echo reuse reuseAfterStop=true`, preserving the actors page stop/recreate regression proof on the beta54/beta44 package pair.
+
+## 2026-07-01 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta45 PTCS beta55 alignment
+
+- Advanced Dynamic package version to `0.1.3-beta45` and pinned `PulseTrade.Comm.Spa [0.2.5-beta55]` by exact PackageReference.
+- Updated `src\poc.full.nuget.journal.ACL.fsx` to load PTCS beta55 and Dynamic beta45 from NuGet/local library-packs.
+- Purpose: keep Dynamic on the current PTCS package after PTCS beta55 added WebSocket ACL principal revalidation for long-lived sessions.
+- Verification passed: after stopping stale `wsfscservice.exe`, Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta45.nupkg`, Dynamic tests passed `18/18`, and ACL no-wait script passed on local ports `18081/18082` with cluster port `18787`.
