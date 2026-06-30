@@ -527,3 +527,14 @@ Implementation status:
 - Corrected the previous wording: a live fixed-name Echo actor cannot be duplicate-spawned, but after stop and actor path release the same actor name must be reusable.
 - Tightened `src\poc.full.nuget.journal.fsx` lifecycle helpers: Echo status/event matching now uses exact actor-name suffix matching so `nuget-journal-echo-pingpong` does not pollute `nuget-journal-echo` diagnostics.
 - `--no-wait` now calls `recreateEchoActor()` after the PingPong stop gate. The recreate path uses strict `ActorOfRegistered` after stop/wait, so duplicate actor name would fail the verifier instead of being silently reused.
+## 2026-06-30 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta41 ACL/Login demo package slice
+
+- Advanced Dynamic package version to `0.1.3-beta41` and pinned `PulseTrade.Comm.Spa [0.2.5-beta51]` by exact PackageReference.
+- Added `src\poc.full.nuget.journal.ACL.fsx`, a NuGet-only dual-auth PTCS demo: 81-style GitHub OAuth host, 82-style PTCS.Login local username/password host, shared SQL journal + PCSL projection, DamnWZ/AssTerry actor-argu pages, Echo/PingPong target keys, and ActorRegistry `ActorOfRegistered` actors.
+- Verification passed: Dynamic tests `18/18`, ACL demo no-wait gate on 18081/18082, and Playwright MCP checks for login visual, admin `+ Page`, Terry黑粉 no `+ Page` / no Add target, FormInput visible, and no `ptcs.extension.post` alert.
+- Full Dynamic WebSharper compile currently crashes `wsfsc.exe` against PTCS beta51 with `MSB6006 ... -532462766`; beta41 package was produced with `WebSharperRunCompiler=false` and existing verified `src/wwwroot/js` contentFiles. This is tracked as follow-up compiler/metadata work, not as an ACL/Login runtime failure.
+
+## 2026-06-30 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta41 NuGet push
+
+- `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta41.nupkg` was pushed to nuget.org with the existing local API key path. The key value was not logged.
+- NuGet push returned `Created` / `Your package was pushed`; immediate v3 flat-container lookup was still propagation-pending.

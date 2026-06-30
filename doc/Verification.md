@@ -10,13 +10,13 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 ## Gate 清單
 
-### 2026-06-29 Current Package Override
+### 2026-06-30 Current Package Override
 
-- Current package pair: `PulseTrade.Comm.Spa 0.2.5-beta48` + `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta38`.
-- `DYN-VFY-001` short-path build currently uses `C:\ptcsdyn-release-beta38\bin`.
-- `DYN-VFY-004` package tests passed `18/18` against beta38.
-- `DYN-VFY-007` current command: `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_echo_reuse_after_stop_20260630" --cluster-port 9808 --no-wait`. It verifies `PingPong actor projected status: Some "terminated"`, `pingPongFiltered=true`, `ensureEchoActorRegistered()` reuses an already-live `nuget-journal-echo`, and `recreateEchoActor()` stops then reuses the same fixed actor name without duplicate spawn failure.
-- PTC cross-repo `PTC-VFY-007` resolves beta48/beta38 from NuGet/library-packs; public 81 deployment is `live81-ptcs-beta48-dynamic-beta38-pingpong-registry-20260629161443`.
+- Current package pair: `PulseTrade.Comm.Spa 0.2.5-beta51` + `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta41`.
+- `DYN-VFY-001` short-path build currently uses `C:\ptcsdyn-release-beta41-no-ws\bin` because full `wsfsc.exe` compile crashes against PTCS beta51; see WebSharper note below.
+- `DYN-VFY-004` package tests passed `18/18` against beta41.
+- `DYN-VFY-008` current command: `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL.fsx -- --host 127.0.0.1 --github-port 18081 --local-port 18082 --github-public-base-url http://127.0.0.1:18081 --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournalAcl/pcsl_verify_final_001" --delivery-profile verify-acl-final --actor-name verify-acl-final-echo --cluster-port 19789 --no-wait`. It verifies PTCS.ACL/PTCS.Login dual-auth runtime, Dynamic bundle load, durable ActorArgu echo, PingPong stop filtering, and fixed actor name reuse.
+- Playwright MCP evidence: `G:\PulseTrade.fs\log\20260630\ptcs-login-acl.png`, `G:\PulseTrade.fs\log\20260630\ptcs-acl-terry-assterry-final.png`.
 
 | Gate | 類型 | 命令 / 腳本 | 用途與摘要 | Revision |
 |---|---|---|---|---|
@@ -29,6 +29,7 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 | DYN-VFY-005 | Full NuGet POC script | `dotnet fsi --exec .\src\poc.full.nuget.fsx -- --no-wait` | 直接 `#r` PTCS `0.2.5-beta40` 與 Dynamic `0.1.3-beta29`，啟動 PTCS + Dynamic extension full POC，建立 Durable Echo / Dynamic Echo / Showcase actors，送 ActorArgu durable command 與 Canvas JSON DSL，列印 Chat/Sets/Actors/ActorArgu/Dynamic page URL、PCSL root、完整 `akka.tcp://...` actor address、tickets 與 ingress health，最後自動停止。2026-06-29 修訂：補 `ActorArguSendArgs.HistoryKeys`、保留 `defaultArgumentsText` 並讓外部 argv 只覆蓋指定值、`--cluster-port 0` 自動挑可用 Akka port、人工 FSI 模式改用 `stopPocFullNuget()` 而非 `Console.ReadLine()`。 | 本輪修訂：2026-06-29 poc-full-nuget |
 | DYN-VFY-006 | Full NuGet POC 2 script | `dotnet fsi --exec .\src\poc.full.nuget.2.fsx -- --no-wait` | 新增、但不取代 `poc.full.nuget.fsx`。直接 `#r` PTCS `0.2.5-beta43` 與 Dynamic `0.1.3-beta33`，啟動 PTCS + Dynamic extension POC，註冊 host-local Argu DU/template 與 Actor Argu default target key，並覆寫 Dynamic extension manifest 使 `+ Page` 不提供 Actor Dynamic tab page type。POC2 會把真實 echo actor 以 `hub.RegisterActor` 投影到 PTCS actor registry；`--no-wait` 驗證 health、Actors/ActorArgu/Dynamic JS 可達、`/actors/api/snapshot` 有非零 node/actor 且含 `nuget2-echo` actor address、ActorArgu durable send completed、bundle 含 Actors/Form markers、chat HTML 不含 `option value="actor-dynamic"`，並確認 target-key alias 在 server-side send/probe 後仍保留。 | 本輪修訂：2026-06-29 poc-full-nuget-2-beta33 |
 | DYN-VFY-007 | Full NuGet journal POC script | `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_echo_reuse_after_stop_20260630" --cluster-port 9808 --no-wait` | 直接 `#r` PTCS `0.2.5-beta48` 與 Dynamic `0.1.3-beta38`，用 SQL Server Akka.Persistence journal 作 canonical event source，PCSL root 只作 projection/cache。腳本以 `pcslRoot` hash 派生 SQL DB 名、固定 default cluster port `9787` 與 stable template key `poc-full-nuget-journal-argu`，並把 UI hub backend 包成 `PcslActorProxyCommSpaPersistenceBackend(remoteWire=true)`，避免 `/pages/api/*` direct append 繞過 journal。Echo actor 與 reload-test PingPong actor 都以 `PulseTrade.Comm.Actor.Registry.ActorOfRegistered` 建立，sink 指向 `hub.ActorRegistrySink()`，不再直接呼叫 `CommHub.RegisterActor`。人工 FSI 模式會列印 `ensureEchoActorRegistered()`、`stopEchoActor()`、`recreateEchoActor()` 與 `stopPingPongActor()`；live fixed-name Echo actor 不可 duplicate-spawn，但 `recreateEchoActor()` 會先 stop、等待 path release，再以同名 strict `ActorOfRegistered` 重建，證明 stopped/terminated 後固定 actor name 可重用。可先 reload `/actors` 看到 PingPong，再呼叫 `stopPingPongActor()` 後 reload 觀察 actor lifecycle 更新。Dynamic beta33+ 在 ActorsPage RENDER 與 RELOAD 都會於 browser console 輸出 `[PTCS.Dynamic ActorTree DSL]` group，包含 raw DSL、parsed DSL object 與 nodes array。 | 本輪修訂：2026-06-30 echo-reuse-after-stop |
+| DYN-VFY-008 | ACL/Login dual-auth journal POC script | `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL.fsx -- --host 127.0.0.1 --github-port 18081 --local-port 18082 --github-public-base-url http://127.0.0.1:18081 --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournalAcl/pcsl_verify_final_001" --delivery-profile verify-acl-final --actor-name verify-acl-final-echo --cluster-port 19789 --no-wait` | 直接 `#r` PTCS `0.2.5-beta51`、Dynamic `0.1.3-beta41`、ACL/Login Core packages。預設 production-facing mode 是 81 GitHub OAuth + 82 local PTCS.Login；automation 可覆蓋為 18081/18082。腳本使用 SQL journal + PCSL projection、ActorRegistry `ActorOfRegistered` Echo/PingPong actors、DamnWZ/AssTerry actor-argu pages、Echo/PingPong target keys，並驗證 local login、ACL snapshot、Dynamic bundle、durable ActorArgu probe、PingPong stop filtering與 fixed actor reuse。Playwright MCP 覆蓋 login visual 與 admin/Terry UI gating。 | 本輪新增：2026-06-30 acl-login-dual-auth |
 
 ## WebSharper 長路徑注意事項
 
@@ -40,6 +41,8 @@ error MSB6006: "wsfsc.exe" exited with code -532462766.
 
 同一份 source 以短 path 設定 `BaseIntermediateOutputPath` 與 `OutputPath` 可通過，因此這不是 F# 語法錯誤。後續 package build、NuGet local verification 與 CI wrapper 應使用 DYN-VFY-001 的短 path 命令，或提供等價的短 build root。
 
+2026-06-30 beta41 補充：Dynamic type build with `-p:WebSharperRunCompiler=false` 可通過並產生 nupkg；完整 WebSharper compile 在引用 PTCS `0.2.5-beta51` 時仍以 `MSB6006 wsfsc.exe -532462766` crash。因本輪 Dynamic source 未改前端 bundle，`0.1.3-beta41` 使用既有 verified `src/wwwroot/js` contentFiles 打包，作為 ACL/Login runtime unblock。後續應針對 PTCS beta51 WebSharper metadata / Dynamic compiler crash 建獨立 DEBUG/RFC。
+
 RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 
 - 新增 `Client/ActorsPageRenderer.fs` 這類 `[<JavaScript>]` compile unit，即使內容 no-op，也可能讓 `wsfsc.exe` crash；本輪改放在既有 `Client/ActorDynamicTab.fs`。
@@ -48,9 +51,9 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 
 ## PackageReference-only PTCS Boundary
 
-2026-06-29 起，`src\PulseTrade.Comm.Spa.Dynamic.fsproj` 不再以 ProjectReference 消費 PTCS source，改用 exact `PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta48]"`。驗證重點：
+2026-06-29 起，`src\PulseTrade.Comm.Spa.Dynamic.fsproj` 不再以 ProjectReference 消費 PTCS source，改用 exact `PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta51]"`。驗證重點：
 
 - `rg ProjectReference src\PulseTrade.Comm.Spa.Dynamic.fsproj` 應無命中。
 - Release build 需通過；若出現 `MSB6006 wsfsc.exe -532462766` 且存在舊 `wsfscservice.exe`，先停用 stale WebSharper compiler service 再重試。
-- 新 nupkg nuspec 必須包含 `PulseTrade.Comm.Spa [0.2.5-beta48]` dependency。
+- 新 nupkg nuspec 必須包含 `PulseTrade.Comm.Spa [0.2.5-beta51]` dependency。
 - 完成後複製 nupkg 到目前 SDK `FSharp\library-packs`，供 `poc.full.nuget*.fsx` 與 PTC bundle verifier 使用。

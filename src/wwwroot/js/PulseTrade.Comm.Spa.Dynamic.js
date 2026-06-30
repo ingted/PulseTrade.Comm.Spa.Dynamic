@@ -347,15 +347,15 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
         rawPreview.textContent=caseRaw();
         refreshFullPreview();
       };
-      fieldGetters=map((field) => {
-        const p=renderField(refreshPreview, defaultMap, caseName, field);
+      fieldGetters=map((field_1) => {
+        const p=renderField(refreshPreview, defaultMap, caseName, field_1);
         fields.appendChild(p[0]);
-        return[field, p[1]];
+        return[field_1, p[1]];
       }, arrayOrEmpty(unionCase.fields));
       send.addEventListener("click", () => {
         const raw=caseRaw();
         rawPreview.textContent=raw;
-        return context.submit(New_31(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+        return context.submit(New_33(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
       });
       append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
       root.appendChild(caseRow);
@@ -369,7 +369,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
           fullSend.addEventListener("click", () => {
             const raw=fullRaw();
             fullPreview.textContent=raw;
-            return context.submit(New_31(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+            return context.submit(New_33(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
           append(root, [fullPreview, fullSend]);
           refreshFullPreview();
@@ -417,23 +417,23 @@ function buildRawArgu(unionCase, fieldGetters){
   const isOptionPrefix=prefix.length>=2&&Substring(prefix, 0, 2)=="--";
   return isBlank(prefix)||isOptionPrefix?raw:isBlank(raw)?prefix:prefix+" "+raw;
 }
-function renderField(refresh, defaultMap, caseName, field){
+function renderField(refresh, defaultMap, caseName, field_1){
   let getter, _1;
   const x=element("div", "dynamic-argu-field", null);
-  const row=setTestId("dynamic-argu-field-"+asText(field.name), x);
-  row.setAttribute("data-dynamic-argu-field", asText(field.name));
-  row.setAttribute("data-dynamic-argu-kind", asText(field.kind));
-  row.appendChild(label(isBlank(field.label)?field.name:field.label));
-  const fieldDefaults=defaultValuesFor(defaultMap, caseName, field.name);
+  const row=setTestId("dynamic-argu-field-"+asText(field_1.name), x);
+  row.setAttribute("data-dynamic-argu-field", asText(field_1.name));
+  row.setAttribute("data-dynamic-argu-kind", asText(field_1.kind));
+  row.appendChild(label(isBlank(field_1.label)?field_1.name:field_1.label));
+  const fieldDefaults=defaultValuesFor(defaultMap, caseName, field_1.name);
   getter=() =>[];
   const wireInputEvents=(node_4) => {
     node_4.addEventListener("input", refresh);
     node_4.addEventListener("change", refresh);
   };
-  const m=asText(field.kind);
+  const m=asText(field_1.kind);
   switch(m){
     case"number":
-      const node=input("number", "dynamic-argu-input", "dynamic-argu-number-"+asText(field.name));
+      const node=input("number", "dynamic-argu-input", "dynamic-argu-number-"+asText(field_1.name));
       const o=tryHead(fieldDefaults);
       let _2=o==null?"":o.$0;
       node.value=_2;
@@ -445,14 +445,14 @@ function renderField(refresh, defaultMap, caseName, field){
     case"enum":
       const node_1=doc().createElement("select");
       node_1.className="dynamic-argu-select";
-      setTestId("dynamic-argu-enum-"+asText(field.name), node_1);
+      setTestId("dynamic-argu-enum-"+asText(field_1.name), node_1);
       node_1.setAttribute("data-dynamic-argu-input", "true");
       iter((value_1) => {
         const option=doc().createElement("option");
         option.setAttribute("value", asText(value_1));
         option.textContent=asText(value_1);
         node_1.appendChild(option);
-      }, arrayOrEmpty(field.options));
+      }, arrayOrEmpty(field_1.options));
       const x_1=tryHead(fieldDefaults);
       const v=elementValue(node_1);
       let _3=x_1==null?v:x_1.$0;
@@ -463,12 +463,12 @@ function renderField(refresh, defaultMap, caseName, field){
       break;
     case"tuple":
       const x_2=element("div", "dynamic-argu-tuple", null);
-      const tuple=setTestId("dynamic-argu-tuple-"+asText(field.name), x_2);
+      const tuple=setTestId("dynamic-argu-tuple-"+asText(field_1.name), x_2);
       const itemGetters=MarkResizable([]);
       _1=(iteri((_5, _6) => {
         let p;
         const x_3=element("div", "dynamic-argu-tuple-item", null);
-        const itemRow=setTestId("dynamic-argu-tuple-item-"+String(asText(field.name))+"-"+String(_5+1), x_3);
+        const itemRow=setTestId("dynamic-argu-tuple-item-"+String(asText(field_1.name))+"-"+String(_5+1), x_3);
         itemRow.appendChild(label(String(_5+1)+". "+String(isBlank(_6.label)?_6.name:_6.label)));
         const testId="";
         const defaults=defaultValuesFor(defaultMap, caseName, _6.name);
@@ -523,10 +523,10 @@ function renderField(refresh, defaultMap, caseName, field){
         itemGetters.push(p[1]);
         itemRow.appendChild(node_8);
         tuple.appendChild(itemRow);
-      }, arrayOrEmpty(field.items)),row.appendChild(tuple),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters))));
+      }, arrayOrEmpty(field_1.items)),row.appendChild(tuple),void(getter=() => ofSeq(collect_1((getter_1) => getter_1(), itemGetters))));
       break;
     case"list":
-      const listTestKey=asText(caseName)+"-"+asText(field.name);
+      const listTestKey=asText(caseName)+"-"+asText(field_1.name);
       const list=setTestId("dynamic-argu-list-"+listTestKey, element("div", "dynamic-argu-list", null));
       const add=button("dynamic-argu-add-list-item", "dynamic-argu-list-add-"+listTestKey, "Add value");
       const addInput=(defaults) => {
@@ -555,13 +555,13 @@ function renderField(refresh, defaultMap, caseName, field){
       break;
     case"bool-value":
     case"bool":
-      const node_2=input("checkbox", "dynamic-argu-input", "dynamic-argu-bool-"+asText(field.name));
+      const node_2=input("checkbox", "dynamic-argu-input", "dynamic-argu-bool-"+asText(field_1.name));
       const o_1=tryHead(fieldDefaults);
       const value=o_1==null?"":o_1.$0;
       _1=(node_2.checked=value.toLowerCase()=="true"||value=="1"||value.toLowerCase()=="yes",node_2.setAttribute("data-dynamic-argu-input", "true"),wireInputEvents(node_2),row.appendChild(node_2),void(getter=() => ofSeq(delay(() => node_2.checked?["true"]:["false"]))));
       break;
     default:
-      const node_3=input("text", "dynamic-argu-input", "dynamic-argu-text-"+asText(field.name));
+      const node_3=input("text", "dynamic-argu-input", "dynamic-argu-text-"+asText(field_1.name));
       const o_2=tryHead(fieldDefaults);
       let _4=o_2==null?"":o_2.$0;
       node_3.value=_4;
@@ -777,7 +777,7 @@ function generateActorReport(outputDirectory, status){
   if(isBlank_1(trimmed))status.Set("Report output directory is required.");
   else {
     status.Set("Generating actor state report...");
-    postJson_1("/actors/api/report", New_32(trimmed), (reply) => {
+    postJson_1("/actors/api/report", New_34(trimmed), (reply) => {
       status.Set("Report written: "+(isBlank_1(reply.filePath)?reply.fileName:reply.filePath));
     }, (message) => {
       status.Set("Report failed: "+asText_1(message));
@@ -1098,185 +1098,271 @@ function E(name, attrs, children){
 }
 function Main_1(){
   let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
-  if(!(doc_1().body==null))doc_1().body.setAttribute("data-server-reality-id", currentServerRealityId());
-  const trimmed=TrimEnd(asText_2(globalThis.location.pathname), ["/"]);
-  const path=isBlank_2(trimmed)?"/chat":trimmed;
-  mountedPageElement=null;
-  mountedAppendPageResolved=false;
-  const cacheKey_1=appendPagesDefinitionsCacheKey();
-  mounted=false;
-  appendRegistryWsState="idle";
-  appendRegistryPageCount=0;
-  appendRegistryMaxSequence=0n;
-  const mountOnce=(pages) => {
-    if(!mounted){
-      let _1;
-      mounted=true;
-      const pages_1=arrayOrEmpty_1(pages);
-      const p=shell(path, pages_1);
-      const page=p[1];
-      mountedPageElement=Some(page);
-      mountedAppendPageResolved=false;
-      setMain(p[0]);
-      if(path=="/sets")_1=mountSets(page);
-      else if(path=="/actors")_1=mountActors(page);
-      else if(path=="/chat")_1=mountChat(page);
-      else {
-        const m=findAppendPage(path, pages_1);
-        if(m==null)_1=mountUnknownPage(page, path);
+  const loginRoot=doc_1().getElementById("ptcs-login-root");
+  if(!(loginRoot==null))mountLogin(loginRoot);
+  else {
+    if(!(doc_1().body==null))doc_1().body.setAttribute("data-server-reality-id", currentServerRealityId());
+    const trimmed=TrimEnd(asText_2(globalThis.location.pathname), ["/"]);
+    const path=isBlank_2(trimmed)?"/chat":trimmed;
+    mountedPageElement=null;
+    mountedAppendPageResolved=false;
+    const cacheKey_1=appendPagesDefinitionsCacheKey();
+    mounted=false;
+    appendRegistryWsState="idle";
+    appendRegistryPageCount=0;
+    appendRegistryMaxSequence=0n;
+    const mountOnce=(pages) => {
+      if(!mounted){
+        let _1;
+        mounted=true;
+        const pages_1=arrayOrEmpty_1(pages);
+        const p=shell(path, pages_1);
+        const page=p[1];
+        mountedPageElement=Some(page);
+        mountedAppendPageResolved=false;
+        setMain(p[0]);
+        if(path=="/sets")_1=mountSets(page);
+        else if(path=="/actors")_1=mountActors(page);
+        else if(path=="/chat")_1=mountChat(page);
         else {
-          const definition=m.$0;
-          _1=(mountedAppendPageResolved=true,mountAppendPage(page, definition));
+          const m=findAppendPage(path, pages_1);
+          if(m==null)_1=mountUnknownPage(page, path);
+          else {
+            const definition=m.$0;
+            _1=(mountedAppendPageResolved=true,mountAppendPage(page, definition));
+          }
         }
+        globalThis.setInterval(() => refreshAppendNav(path), 5000);
       }
-      globalThis.setInterval(() => refreshAppendNav(path), 5000);
-    }
-  };
-  const renderAppendRegistryHealth=() => {
-    if(!(doc_1().body==null))doc_1().body.setAttribute("data-append-registry-ws-state", appendRegistryWsState);
-    const node=doc_1().querySelector("[data-testid='append-registry-health']");
-    if(!(node==null)){
-      const x=setData("ws-state", appendRegistryWsState, node);
-      const x_1=setData("page-count", String(appendRegistryPageCount), x);
-      let _1=setData("max-sequence", String(appendRegistryMaxSequence), x_1);
-      setData("cache-key", cacheKey_1, _1);
-      node.setAttribute("title", "cacheKey="+String(cacheKey_1)+"\nwsState="+String(appendRegistryWsState)+"\npageCount="+String(appendRegistryPageCount)+"\nmaxSequence="+String(appendRegistryMaxSequence));
-      node.textContent="append registry ws "+String(appendRegistryWsState)+" | pages "+String(appendRegistryPageCount)+" | seq "+String(appendRegistryMaxSequence);
-    }
-    else void 0;
-  };
-  const applyDefinitionsFromReply=(data) => {
-    let _1;
-    const data_1=data==null?emptyAppendPagesReply():data;
-    appendRegistryPageCount=arrayOrEmpty_1(data_1.pages).length;
-    const b=data_1.maxSequence;
-    appendRegistryMaxSequence=Compare(appendRegistryMaxSequence, b)===1?appendRegistryMaxSequence:b;
-    if(mounted){
-      const nav=doc_1().getElementById("ptc-nav");
-      if(!(nav==null))renderNav(nav, path, arrayOrEmpty_1(data_1.pages));
-      if(path!="/sets"&&path!="/actors"&&path!="/chat"&&!mountedAppendPageResolved){
-        const _2=findAppendPage(path, arrayOrEmpty_1(data_1.pages));
-        if(mountedPageElement!=null&&mountedPageElement.$==1){
-          if(_2!=null&&_2.$==1){
-            const definition=_2.$0;
-            const page=mountedPageElement.$0;
-            _1=(clear(page),mountedAppendPageResolved=true,mountAppendPage(page, definition));
+    };
+    const renderAppendRegistryHealth=() => {
+      if(!(doc_1().body==null))doc_1().body.setAttribute("data-append-registry-ws-state", appendRegistryWsState);
+      const node=doc_1().querySelector("[data-testid='append-registry-health']");
+      if(!(node==null)){
+        const x=setData("ws-state", appendRegistryWsState, node);
+        const x_1=setData("page-count", String(appendRegistryPageCount), x);
+        let _1=setData("max-sequence", String(appendRegistryMaxSequence), x_1);
+        setData("cache-key", cacheKey_1, _1);
+        node.setAttribute("title", "cacheKey="+String(cacheKey_1)+"\nwsState="+String(appendRegistryWsState)+"\npageCount="+String(appendRegistryPageCount)+"\nmaxSequence="+String(appendRegistryMaxSequence));
+        node.textContent="append registry ws "+String(appendRegistryWsState)+" | pages "+String(appendRegistryPageCount)+" | seq "+String(appendRegistryMaxSequence);
+      }
+      else void 0;
+    };
+    const applyDefinitionsFromReply=(data) => {
+      let _1;
+      const data_1=data==null?emptyAppendPagesReply():data;
+      appendRegistryPageCount=arrayOrEmpty_1(data_1.pages).length;
+      const b=data_1.maxSequence;
+      appendRegistryMaxSequence=Compare(appendRegistryMaxSequence, b)===1?appendRegistryMaxSequence:b;
+      if(mounted){
+        const nav=doc_1().getElementById("ptc-nav");
+        if(!(nav==null))renderNav(nav, path, arrayOrEmpty_1(data_1.pages));
+        if(path!="/sets"&&path!="/actors"&&path!="/chat"&&!mountedAppendPageResolved){
+          const _2=findAppendPage(path, arrayOrEmpty_1(data_1.pages));
+          if(mountedPageElement!=null&&mountedPageElement.$==1){
+            if(_2!=null&&_2.$==1){
+              const definition=_2.$0;
+              const page=mountedPageElement.$0;
+              _1=(clear(page),mountedAppendPageResolved=true,mountAppendPage(page, definition));
+            }
+            else _1=void 0;
           }
           else _1=void 0;
         }
         else _1=void 0;
       }
-      else _1=void 0;
-    }
-    else _1=mountOnce(data_1.pages);
-    renderAppendRegistryHealth();
-  };
-  const setAppendRegistryWsState=(value) => {
-    appendRegistryWsState=asText_2(value);
-    renderAppendRegistryHealth();
-  };
-  appendRegistrySocket=null;
-  queuedAppendRegistryFrames=[];
-  appendRegistrySubscribed=false;
-  appendRegistryTailRequested=false;
-  const handleAppendRegistryEvents=(events) => {
-    if(length(arrayOrEmpty_1(events))>0)readJson(cacheKey_1, (cached) => {
-      const merged=mergeAppendPageRegistryEvents(cached==null?emptyAppendPagesReply():cached.$0, events);
-      writeAppendPagesDefinitions(merged);
-      applyDefinitionsFromReply(merged);
-    });
-  };
-  function flushAppendRegistryFrames(socket){
-    if(Equals(socket.readyState, 1)){
-      const frames=queuedAppendRegistryFrames;
-      queuedAppendRegistryFrames=[];
-      iter((frame) => {
-        socket.send(frame);
-      }, frames);
-    }
-  }
-  function ensureAppendRegistrySocket(){
-    let _1, _2;
-    if(appendRegistrySocket!=null&&appendRegistrySocket.$==1){
-      const socket=appendRegistrySocket.$0;
-      _1=(Equals(socket.readyState, 1)||Equals(socket.readyState, 0))&&(_2=appendRegistrySocket.$0,true);
-    }
-    else _1=false;
-    if(_1)return _2;
-    else {
-      setAppendRegistryWsState("connecting");
-      const socket_1=new WebSocket(syncWebSocketUrl());
-      appendRegistrySocket=Some(socket_1);
-      socket_1.onopen=() => {
-        setAppendRegistryWsState("open");
-        return flushAppendRegistryFrames(socket_1);
-      };
-      socket_1.onmessage=(event) => {
-        try {
-          const response=json(String(event.data));
-          const responseType=asText_2(response.type).toLowerCase();
-          const responseStatus=asText_2(response.status).toLowerCase();
-          switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
-            case 0:
-              return setAppendRegistryWsState("subscribed");
-            case 1:
-              return handleAppendRegistryEvents([response.event]);
-            case 2:
-              return handleAppendRegistryEvents(response.events);
-            case 3:
-              return setAppendRegistryWsState("error");
-            case 4:
-              return null;
-          }
-        }
-        catch(m){
-          return setAppendRegistryWsState("parse-error");
-        }
-      };
-      socket_1.onerror=() => setAppendRegistryWsState("error");
-      socket_1.onclose=() => {
-        appendRegistrySocket=null;
-        appendRegistrySubscribed=false;
-        appendRegistryTailRequested=false;
-        return setAppendRegistryWsState("closed");
-      };
-      return socket_1;
-    }
-  }
-  function sendAppendRegistryFrame(frame){
-    while(true)
-      {
-        const socket=ensureAppendRegistrySocket();
-        return Equals(socket.readyState, 1)?socket.send(frame):void(queuedAppendRegistryFrames=queuedAppendRegistryFrames.concat([frame]));
+      else _1=mountOnce(data_1.pages);
+      renderAppendRegistryHealth();
+    };
+    const setAppendRegistryWsState=(value) => {
+      appendRegistryWsState=asText_2(value);
+      renderAppendRegistryHealth();
+    };
+    appendRegistrySocket=null;
+    queuedAppendRegistryFrames=[];
+    appendRegistrySubscribed=false;
+    appendRegistryTailRequested=false;
+    const handleAppendRegistryEvents=(events) => {
+      if(length(arrayOrEmpty_1(events))>0)readJson(cacheKey_1, (cached) => {
+        const merged=mergeAppendPageRegistryEvents(cached==null?emptyAppendPagesReply():cached.$0, events);
+        writeAppendPagesDefinitions(merged);
+        applyDefinitionsFromReply(merged);
+      });
+    };
+    function flushAppendRegistryFrames(socket){
+      if(Equals(socket.readyState, 1)){
+        const frames=queuedAppendRegistryFrames;
+        queuedAppendRegistryFrames=[];
+        iter((frame) => {
+          socket.send(frame);
+        }, frames);
       }
-  }
-  function subscribeAppendPageRegistry(){
-    const streamKey=appendPageRegistryStreamKey();
-    if(!appendRegistrySubscribed){
-      appendRegistrySubscribed=true;
-      sendAppendRegistryFrame(JSON.stringify(New_1("subscribe", newRequestId("append-pages-subscribe"), streamKey)));
     }
-    if(!appendRegistryTailRequested){
-      appendRegistryTailRequested=true;
-      sendAppendRegistryFrame(JSON.stringify(New_2("read-tail", newRequestId("append-pages-read-tail"), streamKey, defaultCacheLimit())));
+    function ensureAppendRegistrySocket(){
+      let _1, _2;
+      if(appendRegistrySocket!=null&&appendRegistrySocket.$==1){
+        const socket=appendRegistrySocket.$0;
+        _1=(Equals(socket.readyState, 1)||Equals(socket.readyState, 0))&&(_2=appendRegistrySocket.$0,true);
+      }
+      else _1=false;
+      if(_1)return _2;
+      else {
+        setAppendRegistryWsState("connecting");
+        const socket_1=new WebSocket(syncWebSocketUrl());
+        appendRegistrySocket=Some(socket_1);
+        socket_1.onopen=() => {
+          setAppendRegistryWsState("open");
+          return flushAppendRegistryFrames(socket_1);
+        };
+        socket_1.onmessage=(event) => {
+          try {
+            const response=json(String(event.data));
+            const responseType=asText_2(response.type).toLowerCase();
+            const responseStatus=asText_2(response.status).toLowerCase();
+            switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
+              case 0:
+                return setAppendRegistryWsState("subscribed");
+              case 1:
+                return handleAppendRegistryEvents([response.event]);
+              case 2:
+                return handleAppendRegistryEvents(response.events);
+              case 3:
+                return setAppendRegistryWsState("error");
+              case 4:
+                return null;
+            }
+          }
+          catch(m){
+            return setAppendRegistryWsState("parse-error");
+          }
+        };
+        socket_1.onerror=() => setAppendRegistryWsState("error");
+        socket_1.onclose=() => {
+          appendRegistrySocket=null;
+          appendRegistrySubscribed=false;
+          appendRegistryTailRequested=false;
+          return setAppendRegistryWsState("closed");
+        };
+        return socket_1;
+      }
     }
+    function sendAppendRegistryFrame(frame){
+      while(true)
+        {
+          const socket=ensureAppendRegistrySocket();
+          return Equals(socket.readyState, 1)?socket.send(frame):void(queuedAppendRegistryFrames=queuedAppendRegistryFrames.concat([frame]));
+        }
+    }
+    function subscribeAppendPageRegistry(){
+      const streamKey=appendPageRegistryStreamKey();
+      if(!appendRegistrySubscribed){
+        appendRegistrySubscribed=true;
+        sendAppendRegistryFrame(JSON.stringify(New_1("subscribe", newRequestId("append-pages-subscribe"), streamKey)));
+      }
+      if(!appendRegistryTailRequested){
+        appendRegistryTailRequested=true;
+        sendAppendRegistryFrame(JSON.stringify(New_2("read-tail", newRequestId("append-pages-read-tail"), streamKey, defaultCacheLimit())));
+      }
+    }
+    const startAfterAclSnapshot=() => {
+      readJson(cacheKey_1, (a) => {
+        if(a==null){ }
+        else applyDefinitionsFromReply(a.$0);
+      });
+      getJson("/pages/api/definitions", (data) => {
+        writeAppendPagesDefinitions(data);
+        applyDefinitionsFromReply(data);
+      }, () => {
+        mountOnce([]);
+        renderAppendRegistryHealth();
+      });
+      subscribeAppendPageRegistry();
+      renderAppendRegistryHealth();
+    };
+    getJson("/acl/api/snapshot", (snapshot) => {
+      set_currentAclSnapshot(Some(snapshot));
+      startAfterAclSnapshot();
+    }, () => {
+      startAfterAclSnapshot();
+    });
   }
-  readJson(cacheKey_1, (a) => {
-    if(a==null){ }
-    else applyDefinitionsFromReply(a.$0);
-  });
-  getJson("/pages/api/definitions", (data) => {
-    writeAppendPagesDefinitions(data);
-    applyDefinitionsFromReply(data);
-  }, () => {
-    mountOnce([]);
-    renderAppendRegistryHealth();
-  });
-  subscribeAppendPageRegistry();
-  renderAppendRegistryHealth();
 }
 function doc_1(){
   return _c_1.doc;
+}
+function mountLogin(root){
+  const config=loginConfig();
+  const frame=element_1("section", "login-frame", null);
+  frame.setAttribute("aria-label", "PTCS Login");
+  const systemPanel=element_1("aside", "system-panel", null);
+  const brand=element_1("div", "", null);
+  append_1(brand, [element_1("div", "brand-mark", "PT"), element_1("p", "brand-title", "PulseTrade Comm Spa"), element_1("p", "brand-subtitle", "\u672c\u9801\u793a\u610f PTCS.Login provider \u7684\u81ea\u6709\u767b\u5165\u5165\u53e3\u3002\u767b\u5165\u6210\u529f\u5f8c\u7531 server \u8a2d\u5b9a HttpOnly session cookie\uff0c\u518d\u56de\u5230\u53d7\u4fdd\u8b77\u7684 PTCS \u9801\u9762\u3002")]);
+  const routes=element_1("ul", "route-list", null);
+  routes.setAttribute("aria-label", "Login context");
+  append_1(routes, [routeItem("P", "Protected route", textOr("/actors", config.protectedRoute)), routeItem("S", "Session cookie", textOr("ptc_login_session", config.sessionCookieName)), routeItem("A", "ACL mode", textOr("enabled or authenticated-only", config.aclLabel))]);
+  append_1(systemPanel, [brand, routes]);
+  const formPanel=element_1("section", "form-panel", null);
+  const card=element_1("div", "form-card", null);
+  const statusRow=element_1("div", "status-row", null);
+  const providerPill=element_1("span", "pill", null);
+  const bypassPill=element_1("span", "pill", null);
+  append_1(providerPill, [element_1("span", "dot", ""), doc_1().createTextNode(textOr("PTCS.Login", config.providerLabel))]);
+  append_1(bypassPill, [element_1("span", "dot warn", ""), doc_1().createTextNode("OAuth bypass")]);
+  append_1(statusRow, [providerPill, bypassPill]);
+  const errorBox=setTestId_1("ptcs-login-error", element_1("p", "error-box", "\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002"));
+  errorBox.setAttribute("role", "alert");
+  const userName=setTestId_1("ptcs-login-username", setId("username", input_1("admin")));
+  userName.setAttribute("name", "username");
+  userName.setAttribute("type", "text");
+  userName.setAttribute("autocomplete", "username");
+  const password=setTestId_1("ptcs-login-password", setId("password", input_1("\u8f38\u5165\u5bc6\u78bc")));
+  password.setAttribute("name", "password");
+  password.setAttribute("type", "password");
+  password.setAttribute("autocomplete", "current-password");
+  const keepSession=doc_1().createElement("input");
+  keepSession.setAttribute("name", "keepSession");
+  keepSession.setAttribute("type", "checkbox");
+  keepSession.setAttribute("value", "true");
+  const inlineRow=element_1("div", "inline-row", null);
+  const checkboxLabel=element_1("label", "checkbox-row", null);
+  append_1(checkboxLabel, [keepSession, doc_1().createTextNode("\u4fdd\u6301\u6b64\u700f\u89bd\u5668\u767b\u5165")]);
+  append_1(inlineRow, [checkboxLabel, setHref("/login/help", element_1("a", "link", "\u9700\u8981\u5354\u52a9?"))]);
+  const form=element_1("form", "", null);
+  form.setAttribute("method", "post");
+  form.setAttribute("action", config.submitPath);
+  const submit=setTestId_1("ptcs-login-submit", button_1("", "\u767b\u5165\u4e26\u8fd4\u56de PTCS"));
+  const setError=(text) => {
+    errorBox.textContent=textOr("\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002", text);
+    errorBox.className="error-box visible";
+  };
+  const submitLogin=() => {
+    const request=New_6(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    if(isBlank_2(request.userName)||isBlank_2(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
+    else {
+      errorBox.className="error-box";
+      submit.setAttribute("disabled", "disabled");
+      submit.textContent="\u767b\u5165\u4e2d";
+      postJson_2(config.submitPath, request, (reply) => {
+        const target=textOr(config.returnUrl, reply.returnUrl);
+        globalThis.location.assign(target);
+      }, (error) => {
+        submit.removeAttribute("disabled");
+        submit.textContent="\u767b\u5165\u4e26\u8fd4\u56de PTCS";
+        setError(isBlank_2(error)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error);
+      });
+    }
+  };
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    return submitLogin();
+  });
+  submit.addEventListener("click", submitLogin);
+  append_1(form, [field("\u5e33\u865f", "username", userName), field("\u5bc6\u78bc", "password", password), inlineRow, submit]);
+  append_1(card, [statusRow, element_1("h1", "", textOr("\u767b\u5165 PTCS", config.title)), element_1("p", "lead", textOr("\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", config.lead)), errorBox, form, element_1("p", "footer-note", "Browser flow \u61c9\u53ea\u56de HttpOnly cookie\uff1bheadless/API/WS \u624d\u4f7f\u7528 bearer token\u3002\u63d0\u4ea4\u7aef\u9ede\u793a\u610f\u70ba /login/api/submit\u3002")]);
+  append_1(formPanel, [card]);
+  append_1(frame, [systemPanel, formPanel]);
+  clear(root);
+  root.appendChild(frame);
 }
 function currentServerRealityId(){
   const node=doc_1().getElementById("ptc-comm-reality");
@@ -1359,7 +1445,7 @@ function syncWebSocketUrl(){
   return(location.protocol=="https:"?"wss:":"ws:")+"//"+location.host+"/sync/ws";
 }
 function appendPageRegistryStreamKey(){
-  return New_6("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
+  return New_8("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
 }
 function newRequestId(prefix){
   set_requestSeq(requestSeq()+1);
@@ -1370,6 +1456,9 @@ function defaultCacheLimit(){
 }
 function getJson(url, onOk, onError){
   (globalThis.fetch(url, {cache:"no-store"}).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank_2(body)?"{}":body)):onError(isBlank_2(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage_2(error)));
+}
+function set_currentAclSnapshot(_1){
+  _c_1.currentAclSnapshot=_1;
 }
 function findAppendPage(path, pages){
   return tryFind((page) => isCurrentPage(path, pagePath(page))||isCurrentPage(path, "/page/"+asText_2(page.pageId))||isCurrentPage(path, "/"+asText_2(page.pageId)), arrayOrEmpty_1(pages));
@@ -1383,14 +1472,14 @@ function mountAppendPage(page, definition){
   setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId_1("append-page-"+asText_2(definition.pageId), page)));
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
   const readsLegacy=sameText(definition.tabId, definition.pageId);
-  let currentLineage=New_7(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
+  let currentLineage=New_9(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
   const applyLineage=(lineage) => {
     const lineage_1=lineage==null?currentLineage:lineage;
     currentLineage=lineage_1;
     setData("lineage-read-repair-policy", lineage_1.readRepairPolicy, setData("lineage-reads-legacy", lineage_1.readsLegacyPageStreams?"true":"false", setData("lineage-legacy-page-id-alias", lineage_1.legacyPageIdAlias, setData("lineage-kind", lineage_1.lineageKind, setData("lineage-stream-page-id", lineage_1.streamPageId, page)))));
   };
   applyLineage(currentLineage);
-  const defaultLineageHealth=() => New_8(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
+  const defaultLineageHealth=() => New_10(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
   currentLineageHealth=defaultLineageHealth();
   selected="";
   selectedKeyJson="";
@@ -1437,6 +1526,16 @@ function mountAppendPage(page, definition){
   const valueInput=setTestId_1("append-value-input", textarea("append-value-input", textOr("JSON value", definition.valuePlaceholder)));
   const directionInput=setTestId_1("append-direction", input_1("outbound-message"));
   const appendButton=setTestId_1("append-submit", button_1("primary", "Append"));
+  const canAddKey=pageAclAllows(definition.pageId, "ptcs.target-key.add");
+  const canRemoveKey=pageAclAllows(definition.pageId, "ptcs.target-key.remove");
+  const canRemovePage=pageAclAllows(definition.pageId, "ptcs.page.remove");
+  const canAppendValue=isActorArguPage(definition)?pageAclAllows(definition.pageId, "ptcs.actor-argu.send"):pageAclAllows(definition.pageId, "ptcs.append.write");
+  setHidden(!canAddKey, addActorKeyButton);
+  setHidden(!canAddKey, addKeyButton);
+  setHidden(!canAddKey, addProxyKeyButton);
+  setHidden(!canRemoveKey, removeKeyButton);
+  setHidden(!canRemovePage, removePageButton);
+  setHidden(!canAppendValue, appendButton);
   const head_2=element_1("div", "work-head", null);
   const titleBox=element_1("div", "", null);
   const workState=setTestId_1("append-work-status", element_1("div", "state", "Loading"));
@@ -1560,7 +1659,7 @@ function mountAppendPage(page, definition){
     updateKeyRegistryHealth();
   };
   const writeCurrentSnapshot=() => {
-    const snapshot=New_10("ok", definition, length(buckets), fold((_3, _4) => Compare(_3, _4)===1?_3:_4, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
+    const snapshot=New_12("ok", definition, length(buckets), fold((_3, _4) => Compare(_3, _4)===1?_3:_4, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
     writeSnapshotWithWatermark(stateCacheKey(), snapshot, snapshot.maxSequence, appendPageValueCount(snapshot), "append-page-state");
     writeAppendPageKeyWatermark(snapshot);
   };
@@ -1749,7 +1848,7 @@ function mountAppendPage(page, definition){
         const a_1=bucket.maxSequence;
         const b_3=p[1];
         let _4=Compare(a_1, b_3)===1?a_1:b_3;
-        return New_11(bucket.keyId, bucket.keys, bucket.displayName, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
+        return New_13(bucket.keyId, bucket.keys, bucket.displayName, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
       }
       else return bucket;
     }, buckets);
@@ -1781,7 +1880,7 @@ function mountAppendPage(page, definition){
               const a_1=bucket_1.maxSequence;
               const b_1=p[1];
               let _4=Compare(a_1, b_1)===1?a_1:b_1;
-              return New_11(bucket_1.keyId, bucket_1.keys, bucket_1.displayName, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
+              return New_13(bucket_1.keyId, bucket_1.keys, bucket_1.displayName, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
             }
             else return bucket_1;
           }, buckets);
@@ -1906,12 +2005,12 @@ function mountAppendPage(page, definition){
     const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
     if(m==null){
       const keys=effectiveSelectedKeys();
-      return length(keys)===0?null:Some(New_11(appendPageKeyId(keys), keys, "", definition.setName, 0, 0n, 0n, "", []));
+      return length(keys)===0?null:Some(New_13(appendPageKeyId(keys), keys, "", definition.setName, 0, 0n, 0n, "", []));
     }
     else {
       const bucket=m.$0;
       const keys_1=effectiveSelectedKeys();
-      return Some(New_11(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.displayName, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
+      return Some(New_13(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.displayName, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
     }
   };
   deleteAcceptedPendingAppends=(bucket) =>(acceptedValues) => {
@@ -1946,7 +2045,7 @@ function mountAppendPage(page, definition){
     }
     else return null;
   };
-  const streamKeyFor=(bucket) => New_6(definition.tabId, definition.shape, definition.setName, arrayOrEmpty_1(bucket.keys));
+  const streamKeyFor=(bucket) => New_8(definition.tabId, definition.shape, definition.setName, arrayOrEmpty_1(bucket.keys));
   const handleSyncEvent=(source, event) => {
     let o, updated, _3, o_1;
     if(!(event==null)){
@@ -1977,10 +2076,10 @@ function mountAppendPage(page, definition){
               const filterText=currentFilterText();
               if((isBlank_2(filterText)||exists((key) => asText_2(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty_1(_4)))&&!isLocallyHiddenKeyId(keyId)){
                 const m_2=tryFind((bucket_1) => sameText(bucket_1.keyId, keyId), buckets);
-                if(m_2==null)updated=New_11(keyId, _4, _5, definition.setName, 0, 0n, 0n, asText_2(event.createdAtUtc), []);
+                if(m_2==null)updated=New_13(keyId, _4, _5, definition.setName, 0, 0n, 0n, asText_2(event.createdAtUtc), []);
                 else {
                   const existing=m_2.$0;
-                  updated=New_11(existing.keyId, _4, textOr(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
+                  updated=New_13(existing.keyId, _4, textOr(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
                 }
                 _3=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),sameText(pendingSelectKeyId, keyId)?selectBucketKeys(_4)?void(pendingSelectKeyId=""):null:isBlank_2(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(_4),void(newKeyInput.value=selectedKeyJson)):null);
               }
@@ -2114,13 +2213,13 @@ function mountAppendPage(page, definition){
                         const a_1=bucket_1.maxSequence;
                         const b_1=p_1[1];
                         let _7=Compare(a_1, b_1)===1?a_1:b_1;
-                        return New_11(bucket_1.keyId, keys, bucket_1.displayName, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
+                        return New_13(bucket_1.keyId, keys, bucket_1.displayName, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
                       }
                       else return bucket_1;
                     }, buckets);
                     if(!matched){
                       const p=sequenceBounds(incoming);
-                      const bucket=New_11(keyId, keys, "", definition.setName, length(incoming), p[0], p[1], asText_2(value.createdAtUtc), incoming);
+                      const bucket=New_13(keyId, keys, "", definition.setName, length(incoming), p[0], p[1], asText_2(value.createdAtUtc), incoming);
                       _5=void(buckets=sortAppendPageBuckets(buckets.concat([bucket])));
                     }
                     else _5=null;
@@ -2177,7 +2276,7 @@ function mountAppendPage(page, definition){
   }
   const subscribeKeyRegistry=() => {
     const streamPageId=textOr(definition.pageId, definition.tabId);
-    const streamKey=New_6(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
+    const streamKey=New_8(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
     if(!keyRegistrySubscribed){
       keyRegistrySubscribed=true;
       setKeyRegistryWsState("subscribing");
@@ -2227,7 +2326,7 @@ function mountAppendPage(page, definition){
       const submittedKeys=keysFromJson(keyJson);
       if(length(submittedKeys)>0)pendingSelectKeyId=appendPageKeyId(submittedKeys);
       else null;
-      const request=New_13(definition.pageId, keyJson, Trim(asText_2(displayName)));
+      const request=New_15(definition.pageId, keyJson, Trim(asText_2(displayName)));
       const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
       refreshPendingState();
       setStatus(status, "Adding key; pending command saved in browser DB");
@@ -2256,11 +2355,11 @@ function mountAppendPage(page, definition){
     }
   };
   const appendValue=() => {
-    const request=New_12(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
+    const request=New_14(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
     if(isBlank_2(request.keyJson))setStatus(workState, "Select or add a key first");
     else if(isBlank_2(request.valueText))setStatus(workState, "Value text is required");
     else if(isActorArguPage(definition)){
-      const request_1=New_14(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
+      const request_1=New_16(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
       const m=selectedBucket();
       if(m!=null&&m.$==1){
         const bucket=m.$0;
@@ -2269,7 +2368,7 @@ function mountAppendPage(page, definition){
         if(isBlank_2(actorAddress))setStatus(workState, "Actor address key is required");
         else {
           const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_1);
-          const wsRequest=New_17("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request_1.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
+          const wsRequest=New_19("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request_1.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
           pendingWsAppendIds=pendingWsAppendIds.concat([pendingId]);
           refreshPendingState();
           setStatus(workState, "Sending through WebSocket; pending command saved in browser DB");
@@ -2285,7 +2384,7 @@ function mountAppendPage(page, definition){
       if(m_1!=null&&m_1.$==1){
         const bucket_1=m_1.$0;
         const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_1=New_19("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_1=New_21("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_1]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -2300,7 +2399,7 @@ function mountAppendPage(page, definition){
       if(m_2!=null&&m_2.$==1){
         const bucket_2=m_2.$0;
         const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_2=New_18("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_2=New_20("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_2]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -2471,7 +2570,7 @@ function mountAppendPage(page, definition){
     if(isBlank_2(selected))setStatus(status, "Select a key first");
     else {
       const removedKeyId=selected;
-      const request=New_16(definition.pageId, removedKeyId);
+      const request=New_18(definition.pageId, removedKeyId);
       const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request);
       refreshPendingState();
       setStatus(status, "Removing key; pending command saved in browser DB");
@@ -2493,7 +2592,7 @@ function mountAppendPage(page, definition){
       });
     }
   }),removePageButton.addEventListener("click", () => {
-    const request=New_15(definition.pageId);
+    const request=New_17(definition.pageId);
     const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request);
     refreshPendingState();
     setStatus(status, "Removing page; pending command saved in browser DB");
@@ -2538,7 +2637,7 @@ function renderNav(nav, activePath, pages){
       event.preventDefault();
       event.stopPropagation();
       closeButton.setAttribute("disabled", "disabled");
-      return postJson_2("/pages/api/remove-page", New_15(page.pageId), (reply) => {
+      return postJson_2("/pages/api/remove-page", New_17(page.pageId), (reply) => {
         writeAppendPagesDefinitions(reply);
         isCurrentPage(activePath, href)?globalThis.location.assign("/chat"):renderNav(nav, activePath, reply.pages);
       }, (error) => {
@@ -2572,7 +2671,8 @@ function shell(activePath, pages){
   navForward.addEventListener("click", () => scrollTabs(260));
   append_1(brandCluster, [element_1("div", "brand", "PTC.Comm SPA"), registryHealth]);
   renderNav(nav, activePath, pages);
-  const logout=setHref("/chat/logout", element_1("a", "logout", "Logout"));
+  const x=element_1("a", "logout", "Logout");
+  const logout=setHref(currentLogoutPath(), x);
   const page=element_1("main", "page", null);
   append_1(navViewport, [nav]);
   append_1(navShell, [navBack, navViewport, navForward]);
@@ -2615,7 +2715,7 @@ function mountSets(page){
   loadGeneration=0;
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
   const streamIdentity=(streamKey) => concat_2("\n", [asText_2(streamKey.pageId), asText_2(streamKey.mode), asText_2(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
-  const setValueStreamKey=(pageId, mode, setName, keys) => New_6(asText_2(pageId), textOr("set", mode), asText_2(setName), arrayOrEmpty_1(keys));
+  const setValueStreamKey=(pageId, mode, setName, keys) => New_8(asText_2(pageId), textOr("set", mode), asText_2(setName), arrayOrEmpty_1(keys));
   const currentFilterTexts=() =>[isBlank_2(keyFilter.value)?"":Trim(keyFilter.value), isBlank_2(setFilter.value)?"":Trim(setFilter.value)];
   const currentCacheKey=() => {
     const p=currentFilterTexts();
@@ -2823,10 +2923,10 @@ function mountSets(page){
           const setText=p[1];
           const keyText=p[0];
           if((isBlank_2(setText)||sameText(setName, setText))&&(isBlank_2(keyText)||exists((key) => asText_2(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty_1(keys)))){
-            const value=New_21(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
+            const value=New_23(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
             const keyId=asText_2(setName)+"::"+concat_2(" + ", arrayOrEmpty_1(keys));
             const m_2=tryFind((bucket) => sameText(bucket.keyId, keyId), buckets);
-            if(m_2==null)updated=New_20(keyId, setName, keys, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
+            if(m_2==null)updated=New_22(keyId, setName, keys, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
             else {
               const existing=m_2.$0;
               const existingValues=arrayOrEmpty_1(existing.values);
@@ -2843,13 +2943,13 @@ function mountSets(page){
               const a_1=existing.maxSequence;
               const b_1=event.sequence;
               let _3=Compare(a_1, b_1)===1?a_1:b_1;
-              updated=New_20(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+              updated=New_22(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
             }
             buckets=sortBy((bucket) =>[asText_2(bucket.setName), asText_2(bucket.keyId)], arrayOrEmpty_1(filter((bucket) =>!sameText(bucket.keyId, keyId), buckets).concat([updated])));
             selected=keyId;
             renderList();
             renderDetail();
-            const snapshot=New_22(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
+            const snapshot=New_24(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
             writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
             ensureSetsSubscriptions();
             setStatus(status, "Synced set event "+value.valueId);
@@ -2890,7 +2990,7 @@ function mountSets(page){
     }
   }
   ensureSetsSubscriptions=() => {
-    const registryKey=New_6("__set-registry", "set-registry", "__sets", ["__sets"]);
+    const registryKey=New_8("__set-registry", "set-registry", "__sets", ["__sets"]);
     subscribeStream(registryKey);
     if(!registryTailRequested){
       registryTailRequested=true;
@@ -2921,7 +3021,7 @@ function mountActors(page){
   append_1(actions, [status, reload]);
   append_1(head_2, [title, actions]);
   append_1(page, [head_2, treePanel, nodes]);
-  const emptySnapshot=New_23(0, 0, 0n, []);
+  const emptySnapshot=New_25(0, 0, 0n, []);
   actorSnapshot=emptySnapshot;
   syncSocket=null;
   queuedSyncFrames=[];
@@ -2931,7 +3031,7 @@ function mountActors(page){
   const collapsedTreeNodes=new HashSet("New_3");
   const cacheKey_1=cacheKey("actors-snapshot", FSharpList.Empty);
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
-  const actorRegistryStreamKey=() => New_6("__actor-registry", "actor-registry", "__actors", ["__actors"]);
+  const actorRegistryStreamKey=() => New_8("__actor-registry", "actor-registry", "__actors", ["__actors"]);
   const isAkkaAddress=(value) => {
     const text=asText_2(value).toLowerCase();
     return StartsWith(text, "akka://")||StartsWith(text, "akka.tcp://")||StartsWith(text, "akka.ssl.tcp://");
@@ -3167,13 +3267,13 @@ function mountActors(page){
         if(!isBlank_2(nodeId_1)&&!isBlank_2(actorId)){
           const tags=arrayOrEmpty_1(_1.tags);
           const roles=arrayOrEmpty_1(_1.roles);
-          const actor=New_24(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
+          const actor=New_26(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
           const m=tryFind((node) => sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes));
-          if(m==null)updatedNode=New_25(nodeId_1, nodeAddress_1, "up", roles, [actor]);
+          if(m==null)updatedNode=New_27(nodeId_1, nodeAddress_1, "up", roles, [actor]);
           else {
             const existing=m.$0;
             const actors=sortBy((row) => asText_2(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty_1(existing.actors)).concat([actor]));
-            updatedNode=New_25(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, textOr("up", existing.status), length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
+            updatedNode=New_27(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, textOr("up", existing.status), length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
           }
           const nodes_1=sortBy((node) => asText_2(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes)).concat([updatedNode]));
           let _2=length(nodes_1);
@@ -3181,7 +3281,7 @@ function mountActors(page){
           const a=actorSnapshot.maxSequence;
           const b=event.sequence;
           let _4=Compare(a, b)===1?a:b;
-          actorSnapshot=New_23(_2, _3, _4, nodes_1);
+          actorSnapshot=New_25(_2, _3, _4, nodes_1);
           writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
           applySnapshot("synced", actorSnapshot);
           setStatus(status, "Synced actor "+actorId);
@@ -3264,7 +3364,7 @@ function mountChat(page){
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
   };
-  const chatStreamKey=(peerId) => New_6("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
+  const chatStreamKey=(peerId) => New_8("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
   const streamIdentity=(streamKey) => concat_2("\n", [asText_2(streamKey.pageId), asText_2(streamKey.mode), asText_2(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
   function renderParticipants(){
     let _1;
@@ -3369,7 +3469,7 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_27(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_29(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -3442,7 +3542,7 @@ function mountChat(page){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_27(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_29(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -3474,7 +3574,7 @@ function mountChat(page){
               o=message==null||isBlank_2(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_26(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
+              o=Some(New_28(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -3556,9 +3656,9 @@ function mountChat(page){
     if(isBlank_2(selected))setStatus(state, "Select a participant first");
     else if(isBlank_2(body))setStatus(state, "Message is empty");
     else {
-      const request=New_30(participantId, selected, body, ["web-chat"]);
+      const request=New_32(participantId, selected, body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_29("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_31("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -3591,14 +3691,73 @@ function refreshAppendNav(activePath){
     applyDefinitions(data);
   }, () => { });
 }
+function loginConfig(){
+  const node=doc_1().getElementById("ptcs-login-config");
+  return node==null||isBlank_2(node.textContent)?New_5("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+}
+function element_1(tag, className, textValue){
+  const node=doc_1().createElement(tag);
+  if(!isBlank_2(className))node.className=className;
+  if(!(textValue==null))node.textContent=textValue;
+  return node;
+}
+function append_1(parent, children){
+  for(let i=0, _1=children.length-1;i<=_1;i++)parent.appendChild(get(children, i));
+  return parent;
+}
+function routeItem(icon, name, value){
+  const item=element_1("li", "route-item", null);
+  const content=element_1("div", "", null);
+  append_1(content, [element_1("p", "route-name", name), element_1("p", "route-value", value)]);
+  append_1(item, [element_1("span", "route-icon", icon), content]);
+  return item;
+}
 function textOr(fallback, value){
   return isBlank_2(value)?fallback:value;
+}
+function setTestId_1(id, node){
+  !isBlank_2(id)?node.setAttribute("data-testid", id):void 0;
+  return node;
+}
+function input_1(placeholder){
+  const node=doc_1().createElement("input");
+  node.placeholder=placeholder;
+  return node;
+}
+function setId(id, node){
+  node.setAttribute("id", id);
+  return node;
+}
+function button_1(className, text){
+  const node=element_1("button", className, text);
+  node.setAttribute("type", "button");
+  return node;
+}
+function postJson_2(url, body, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST", 
+    headers:headers, 
+    body:JSON.stringify(body)
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
+}
+function field(labelText, inputId, control){
+  const wrap=element_1("div", "field", null);
+  const label_1=element_1("label", "", labelText);
+  label_1.setAttribute("for", inputId);
+  append_1(wrap, [label_1, control]);
+  return wrap;
+}
+function setHref(href, node){
+  node.setAttribute("href", href);
+  return node;
 }
 function pageDefinitionFromWire(wire){
   if(wire==null||asText_2(wire.schema)!="ptc.comm.spa.append-page.definition.v1"||isBlank_2(wire.pageId))return null;
   else {
     const pageId=asText_2(wire.pageId);
-    return Some(New_5(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText_2(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText_2(wire.defaultKey), arrayOrEmpty_1(wire.tags)));
+    return Some(New_7(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText_2(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText_2(wire.defaultKey), arrayOrEmpty_1(wire.tags)));
   }
 }
 function hiddenPageFromWire(wire){
@@ -3635,28 +3794,8 @@ function pagePath(page){
   const path=asText_2(page.path);
   return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
 }
-function setTestId_1(id, node){
-  !isBlank_2(id)?node.setAttribute("data-testid", id):void 0;
-  return node;
-}
 function defaultRenderLimit(){
   return _c_1.defaultRenderLimit;
-}
-function element_1(tag, className, textValue){
-  const node=doc_1().createElement(tag);
-  if(!isBlank_2(className))node.className=className;
-  if(!(textValue==null))node.textContent=textValue;
-  return node;
-}
-function button_1(className, text){
-  const node=element_1("button", className, text);
-  node.setAttribute("type", "button");
-  return node;
-}
-function input_1(placeholder){
-  const node=doc_1().createElement("input");
-  node.placeholder=placeholder;
-  return node;
 }
 function textarea(className, placeholder){
   const node=doc_1().createElement("textarea");
@@ -3664,9 +3803,12 @@ function textarea(className, placeholder){
   node.placeholder=placeholder;
   return node;
 }
-function append_1(parent, children){
-  for(let i=0, _1=children.length-1;i<=_1;i++)parent.appendChild(get(children, i));
-  return parent;
+function pageAclAllows(pageId, action){
+  return aclAllows(action, "ptcs.page", pageId);
+}
+function setHidden(hidden, node){
+  hidden?node.setAttribute("hidden", "hidden"):node.removeAttribute("hidden");
+  return node;
 }
 function actorArguButtonLabel(page){
   return isActorArguPage(page)?"Tell":"Append";
@@ -3698,12 +3840,7 @@ function isActorArguPage(page){
   return hasTag("actor-argu", page.tags);
 }
 function currentUserId(){
-  const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_2(userNode.textContent))return"user.web";
-  else {
-    const user=json(userNode.textContent);
-    return user==null||isBlank_2(user.participantId)?"user.web":user.participantId;
-  }
+  return currentBrowserUser().participantId;
 }
 function renderPendingInspection(node, commands, foreignCommands){
   let _1, shown, shown_1;
@@ -3869,15 +4006,11 @@ function pendingFailure(action, error){
 function rememberPending(kind, target, url, body){
   const payloadJson=JSON.stringify(body);
   const commandId=newPendingCommandId(kind, target, url, payloadJson);
-  writePending(New_9(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
+  writePending(New_11(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
   return commandId;
 }
 function isActorDynamicPage(page){
   return sameTextInvariant(page.shape, "actor-dynamic");
-}
-function setHidden(hidden, node){
-  hidden?node.setAttribute("hidden", "hidden"):node.removeAttribute("hidden");
-  return node;
 }
 function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, keyPlaceholder, defaultKey, submitKey, cancelKey, setKeyJson){
   let r;
@@ -4045,15 +4178,6 @@ function postJsonText(url, payloadJson, onOk, onError){
     body:textOr("{}", payloadJson)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
 }
-function postJson_2(url, body, onOk, onError){
-  const headers=new Headers();
-  headers.set("Content-Type", "application/json");
-  (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
-    body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
-}
 function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
@@ -4062,10 +4186,6 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
     headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
-}
-function setHref(href, node){
-  node.setAttribute("href", href);
-  return node;
 }
 function pageTypeClass(page){
   const shapeText=asText_2(page.shape).toLowerCase();
@@ -4107,9 +4227,9 @@ function pageTypeBadge(page){
     return m_1==null?"R":textOr("?", m_1.$0.badge);
   }
 }
-function setId(id, node){
-  node.setAttribute("id", id);
-  return node;
+function currentLogoutPath(){
+  const path=currentBrowserUser().logoutPath;
+  return isBlank_2(path)?"/chat/logout":path;
 }
 function renderPageCreator(nav, activePath, pages){
   let candidatePageId, candidatesLoaded, replayingPendingPageRegistration;
@@ -4181,7 +4301,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_2(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_34(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_37(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_2("/pages/api/register-page", request, (reply) => {
@@ -4209,6 +4329,7 @@ function renderPageCreator(nav, activePath, pages){
   resetBinding();
   refresh(pages);
   append_1(wrap, [shape, pageId, title, binding, add, status]);
+  setHidden(!systemAclAllows("*", "ptcs.page.create"), wrap);
   if(!replayingPendingPageRegistration){
     replayingPendingPageRegistration=true;
     readAllPending((commands) => {
@@ -4355,6 +4476,23 @@ function initializeClientExtensionGlobals(){
     register(globalThis.PulseTrade.AddKeyRenderers, name, priority, func);
   };
 }
+function aclAllows(action, resourceKind, resourceId){
+  const _1=currentAclSnapshot();
+  if(_1!=null&&_1.$==1){
+    if(!currentAclSnapshot().$0.enabled){
+      currentAclSnapshot().$0;
+      return true;
+    }
+    else {
+      const snapshot=currentAclSnapshot().$0;
+      const o=tryFind((resource) => aclSameText(resource.resourceKind, resourceKind)&&aclSameText(resource.resourceId, resourceId), arrayOrEmpty_1(snapshot.resources));
+      const o_1=o==null?null:aclCapabilityAllowed(action, o.$0.capabilities);
+      const o_2=o_1==null?aclCapabilityAllowed(action, snapshot.globalCapabilities):(o_1.$0,o_1);
+      return o_2==null?false:o_2.$0;
+    }
+  }
+  else return true;
+}
 function findAppendPageShape(shape){
   const normalized=normalizeShapeText(shape);
   return tryFind((candidate) => normalizeShapeText(candidate.shape)==normalized, appendPageShapeRegistry());
@@ -4365,6 +4503,14 @@ function normalizeShapeText(value){
 }
 function hasTag(tag, tags){
   return exists((value) => asText_2(value).toLowerCase()==tag, arrayOrEmpty_1(tags));
+}
+function currentBrowserUser(){
+  const userNode=doc_1().getElementById("ptc-comm-user");
+  if(userNode==null||isBlank_2(userNode.textContent))return New_36("user.web", "Web User", "", false, "anonymous", "/chat/logout");
+  else {
+    const user=json(userNode.textContent);
+    return user==null||isBlank_2(user.participantId)?New_36("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
+  }
 }
 function fcellValueModeLabel(mode, tags){
   return hasTag("actor-argu-command", tags)?"Actor Argu Outbound":hasTag("actor-argu-reply", tags)?"Actor Argu Reply":hasTag("actor-argu-error", tags)?"Actor Argu Error":fcellModeLabel(mode);
@@ -4400,6 +4546,9 @@ function select(options){
 function appendPageShapeOptions(){
   return map((shape) =>[normalizeShapeText(shape.shape), textOr(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
 }
+function systemAclAllows(resourceId, action){
+  return aclAllows(action, "ptcs.system", resourceId);
+}
 function navigationPathForCreatedPage(page){
   const pageId=asText_2(page.pageId);
   const path=asText_2(page.path);
@@ -4426,6 +4575,16 @@ function tryParseSequence(prefix, value){
   catch(m){
     return 0n;
   }
+}
+function currentAclSnapshot(){
+  return _c_1.currentAclSnapshot;
+}
+function aclCapabilityAllowed(action, capabilities){
+  const o=tryFind((item) => aclSameText(item.action, action), arrayOrEmpty_1(capabilities));
+  return o==null?null:Some(o.$0.allowed);
+}
+function aclSameText(left, right){
+  return asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
 }
 function appendPageShapeRegistry(){
   return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
@@ -4494,7 +4653,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
-  return New_33(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_35(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -4944,7 +5103,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_28(streamId, _3, _4, asText_2(source), nowTicks());
+    let _5=New_30(streamId, _3, _4, asText_2(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -6131,6 +6290,7 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
   static databaseVersion;
   static databaseName;
   static initializeClientExtensionGlobalsOnce;
+  static currentAclSnapshot;
   static runtimeAppendPageShapes;
   static registeredRenderers;
   static defaultCacheLimit;
@@ -6142,6 +6302,7 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
     this.defaultCacheLimit=1000;
     this.registeredRenderers=[];
     this.runtimeAppendPageShapes=[];
+    this.currentAclSnapshot=null;
     this.initializeClientExtensionGlobalsOnce=(initializeClientExtensionGlobals(),0);
     this.databaseName="PulseTrade.Comm.Spa.BrowserDb";
     this.databaseVersion=3;
@@ -6153,6 +6314,28 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
     this.requestSeq=0;
   }
 });
+function New_5(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+  return{
+    submitPath:submitPath, 
+    sessionPath:sessionPath, 
+    logoutPath:logoutPath, 
+    returnUrl:returnUrl, 
+    protectedRoute:protectedRoute, 
+    sessionCookieName:sessionCookieName, 
+    title:title, 
+    lead:lead, 
+    providerLabel:providerLabel, 
+    aclLabel:aclLabel
+  };
+}
+function New_6(userName, password, returnUrl, keepSession){
+  return{
+    userName:userName, 
+    password:password, 
+    returnUrl:returnUrl, 
+    keepSession:keepSession
+  };
+}
 function TrimEnd(s, t){
   let i, go;
   if(Equals(t, null)||t.length==0)return TrimEndWS(s);
@@ -6272,7 +6455,7 @@ function TryParse(s, r){
 function TryParse_1(s, r){
   return TryParseBigInt(s, -9223372036854775808n, 9223372036854775807n, r);
 }
-function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
+function New_7(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
     pageId:pageId, 
     tabId:tabId, 
@@ -6287,7 +6470,7 @@ function New_5(pageId, tabId, path, title, setName, shape, description, keyPlace
     tags:tags
   };
 }
-function New_6(pageId, mode, setName, keys){
+function New_8(pageId, mode, setName, keys){
   return{
     pageId:pageId, 
     mode:mode, 
@@ -6295,7 +6478,7 @@ function New_6(pageId, mode, setName, keys){
     keys:keys
   };
 }
-function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
+function New_9(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
     streamPageId:streamPageId, 
     lineageKind:lineageKind, 
@@ -6304,7 +6487,7 @@ function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStre
     readRepairPolicy:readRepairPolicy
   };
 }
-function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
+function New_10(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
     streamPageId:streamPageId, 
     lineageKind:lineageKind, 
@@ -6317,7 +6500,7 @@ function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStre
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
-function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
+function New_11(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
     commandId:commandId, 
     serverRealityId:serverRealityId, 
@@ -6434,7 +6617,7 @@ function tail(l){
 function listEmpty(){
   return FailWith("The input list was empty.");
 }
-function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
+function New_12(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
     status:status, 
     page:page, 
@@ -6446,7 +6629,7 @@ function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage,
     buckets:buckets
   };
 }
-function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
+function New_13(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
     keyId:keyId, 
     keys:keys, 
@@ -6459,7 +6642,7 @@ function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxS
     values:values
   };
 }
-function New_12(pageId, keyJson, valueText, direction, tags){
+function New_14(pageId, keyJson, valueText, direction, tags){
   return{
     pageId:pageId, 
     keyJson:keyJson, 
@@ -6468,14 +6651,14 @@ function New_12(pageId, keyJson, valueText, direction, tags){
     tags:tags
   };
 }
-function New_13(pageId, keyJson, displayName){
+function New_15(pageId, keyJson, displayName){
   return{
     pageId:pageId, 
     keyJson:keyJson, 
     displayName:displayName
   };
 }
-function New_14(pageId, keyJson, rawArgu, tags){
+function New_16(pageId, keyJson, rawArgu, tags){
   return{
     pageId:pageId, 
     keyJson:keyJson, 
@@ -6483,13 +6666,13 @@ function New_14(pageId, keyJson, rawArgu, tags){
     tags:tags
   };
 }
-function New_15(pageId){
+function New_17(pageId){
   return{pageId:pageId};
 }
-function New_16(pageId, keyId){
+function New_18(pageId, keyId){
   return{pageId:pageId, keyId:keyId};
 }
-function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
+function New_19(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -6505,7 +6688,7 @@ function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress
     tabId:tabId
   };
 }
-function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
+function New_20(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -6523,7 +6706,7 @@ function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, val
     tabId:tabId
   };
 }
-function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
+function New_21(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -6537,7 +6720,7 @@ function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, ide
     tabId:tabId
   };
 }
-function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
+function New_22(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
     keyId:keyId, 
     setName:setName, 
@@ -6548,7 +6731,7 @@ function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, val
     values:values
   };
 }
-function New_21(valueId, keys, createdAtUtc, value, tags){
+function New_23(valueId, keys, createdAtUtc, value, tags){
   return{
     valueId:valueId, 
     keys:keys, 
@@ -6557,10 +6740,10 @@ function New_21(valueId, keys, createdAtUtc, value, tags){
     tags:tags
   };
 }
-function New_22(maxSequence, buckets){
+function New_24(maxSequence, buckets){
   return{maxSequence:maxSequence, buckets:buckets};
 }
-function New_23(nodeCount, actorCount, maxSequence, nodes){
+function New_25(nodeCount, actorCount, maxSequence, nodes){
   return{
     nodeCount:nodeCount, 
     actorCount:actorCount, 
@@ -6680,7 +6863,7 @@ class HashSet extends Object_1 {
 function OfArray(a){
   return new FSharpMap("New_1", OfSeq(map_1((_1) => Pair.New(_1[0], _1[1]), a)));
 }
-function New_24(actorId, displayName, kind, keys, status, routees){
+function New_26(actorId, displayName, kind, keys, status, routees){
   return{
     actorId:actorId, 
     displayName:displayName, 
@@ -6690,7 +6873,7 @@ function New_24(actorId, displayName, kind, keys, status, routees){
     routees:routees
   };
 }
-function New_25(nodeId_1, nodeAddress_1, status, roles, actors){
+function New_27(nodeId_1, nodeAddress_1, status, roles, actors){
   return{
     nodeId:nodeId_1, 
     nodeAddress:nodeAddress_1, 
@@ -6699,7 +6882,7 @@ function New_25(nodeId_1, nodeAddress_1, status, roles, actors){
     actors:actors
   };
 }
-function New_26(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_28(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
     messageId:messageId, 
     fromId:fromId, 
@@ -6709,10 +6892,10 @@ function New_26(messageId, fromId, toId, scope, body, createdAtUtc){
     createdAtUtc:createdAtUtc
   };
 }
-function New_27(messages, nextAfterMessageId){
+function New_29(messages, nextAfterMessageId){
   return{messages:messages, nextAfterMessageId:nextAfterMessageId};
 }
-function New_28(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_30(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
     streamId:streamId, 
     newestSequence:newestSequence, 
@@ -6721,7 +6904,7 @@ function New_28(streamId, newestSequence, cachedCount, source, touchedAt){
     touchedAt:touchedAt
   };
 }
-function New_29(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_31(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -6733,7 +6916,7 @@ function New_29(type, requestId, fromId, toId, body, tags, browserId, tabId){
     tabId:tabId
   };
 }
-function New_30(fromId, toId, body, tags){
+function New_32(fromId, toId, body, tags){
   return{
     fromId:fromId, 
     toId:toId, 
@@ -6798,7 +6981,7 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_31(rawArgu, duTypeName, unionCaseName, keyJson){
+function New_33(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
     rawArgu:rawArgu, 
     duTypeName:duTypeName, 
@@ -7034,7 +7217,7 @@ function Handler(name, callback){
 function Dynamic(name, view){
   return Dynamic_1(view, (el) =>(v) => el.setAttribute(name, v));
 }
-function New_32(outputDirectory){
+function New_34(outputDirectory){
   return{outputDirectory:outputDirectory};
 }
 function ofSeqNonCopying(xs){
@@ -7274,7 +7457,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_35(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_38(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -7449,7 +7632,7 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_33(shape, label_1, badge, className){
+function New_35(shape, label_1, badge, className){
   return{
     shape:shape, 
     label:label_1, 
@@ -7457,7 +7640,17 @@ function New_33(shape, label_1, badge, className){
     className:className
   };
 }
-function New_34(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_36(participantId, displayName, login, authenticated, provider, logoutPath){
+  return{
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
+    logoutPath:logoutPath
+  };
+}
+function New_37(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
     pageId:pageId, 
     title:title, 
@@ -7562,7 +7755,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_36(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_39(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -7637,16 +7830,16 @@ function buildRawArguFromValues(fields){
 function arrayOrEmpty_2(values){
   return values==null?[]:values;
 }
-function appendFieldParts(parts, field, values){
+function appendFieldParts(parts, field_1, values){
   const values_1=filter((value_3) => value_3.length>0, map((a) => Trim(a), map(asText_3, arrayOrEmpty_2(values))));
-  const m=asText_3(field.kind);
+  const m=asText_3(field_1.kind);
   if(m=="bool"){
     const o=tryHead(values_1);
     const o_1=o==null?null:Some(o.$0.toLowerCase());
     if(o_1==null)void 0;
     else {
       const value=o_1.$0;
-      if(value=="true"||value=="1"||value=="yes")parts.push(asText_3(field.arguName));
+      if(value=="true"||value=="1"||value=="yes")parts.push(asText_3(field_1.arguName));
     }
   }
   else if(m=="bool-value"){
@@ -7654,14 +7847,14 @@ function appendFieldParts(parts, field, values){
     if(o_2==null)void 0;
     else {
       const value_1=o_2.$0;
-      parts.push(asText_3(field.arguName));
+      parts.push(asText_3(field_1.arguName));
       parts.push(quoteArg(value_1));
     }
   }
-  else if(m=="list")length(values_1)>0?(parts.push(asText_3(field.arguName)),iter((x) => {
+  else if(m=="list")length(values_1)>0?(parts.push(asText_3(field_1.arguName)),iter((x) => {
     parts.push(quoteArg(x));
   }, values_1)):void 0;
-  else if(m=="tuple")length(values_1)>0?(parts.push(asText_3(field.arguName)),iter((x) => {
+  else if(m=="tuple")length(values_1)>0?(parts.push(asText_3(field_1.arguName)),iter((x) => {
     parts.push(quoteArg(x));
   }, values_1)):void 0;
   else {
@@ -7669,7 +7862,7 @@ function appendFieldParts(parts, field, values){
     if(o_3==null)void 0;
     else {
       const value_2=o_3.$0;
-      parts.push(asText_3(field.arguName));
+      parts.push(asText_3(field_1.arguName));
       parts.push(quoteArg(value_2));
     }
   }
@@ -7747,7 +7940,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_37(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_40(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -8185,7 +8378,7 @@ class KeyCollection extends Object_1 {
     this.d=d;
   }
 }
-function New_35(PreviousNodes, Top){
+function New_38(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -8263,7 +8456,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_38((a) => {
+    r(New_41((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -8288,7 +8481,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_38((a) => {
+    if(!ct.c)c(New_41((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -8391,7 +8584,7 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_36(Node_1, Left, Right, Height, Count){
+function New_39(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1, 
     Left:Left, 
@@ -8438,7 +8631,7 @@ class Updates_1 {
     });
   }
 }
-function New_37(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_40(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
     DynElem:DynElem, 
     DynFlags:DynFlags, 
@@ -8773,7 +8966,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_38(k, ct){
+function New_41(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -8795,7 +8988,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_39(false, []);
+    this.noneCT=New_42(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -8804,7 +8997,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_39(IsCancellationRequested, Registrations){
+function New_42(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -9061,7 +9254,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create(f){
-  return New_40(false, f, forceLazy);
+  return New_43(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -9082,7 +9275,7 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_40(created, evalOrVal, force){
+function New_43(created, evalOrVal, force){
   return{
     c:created, 
     v:evalOrVal, 
