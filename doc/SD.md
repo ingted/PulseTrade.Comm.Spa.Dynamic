@@ -83,7 +83,7 @@ module CommHubExtensions =
 
 ## 3. 類別庫封裝與相依 (NuGet Packaging)
 - Target Framework: `net10.0`
-- 目前 `src/PulseTrade.Comm.Spa.Dynamic.fsproj` 以 local `ProjectReference` 參考 `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\PulseTrade.Comm.Spa.fsproj`；NuGet pack 時會產生對 `PulseTrade.Comm.Spa` package version `0.2.5-beta15` 的 dependency。本輪 package 化先使用自己編譯的 PTCS，再一起 push PTCS / PTCS.Dynamic。
+- 目前 `src/PulseTrade.Comm.Spa.Dynamic.fsproj` 以 exact `PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta54]"` 消費 PTCS，不再使用 local `ProjectReference`。本輪 package 化先使用自己編譯並 local deploy 到 SDK `FSharp\library-packs` 的 PTCS / PTCS.Dynamic；NuGet.org push 需等 operator-provided key/path，禁止在 repo/log 中寫入 secret。
 - 透過 WebSharper 將 `Client/*.fs` 翻譯為前端 JS，並保證 `ActorDynamicTab.Start()` 能在 PTCS 核心啟動時正確呼叫。
 
 ## 4. RFC-PTCS-DYNAMIC-0002 Dynamic Argu Form Design
