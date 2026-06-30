@@ -602,3 +602,12 @@ Implementation status:
 - Purpose: keep Dynamic on the current PTCS package after PTCS beta63 fixed browser protected API fetch credentials for public OAuth deployments.
 - Verification passed: Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta53.nupkg`, Dynamic tests passed `18/18`, PTC bundle verifier loaded beta63/beta53, PTC NuGet live-host no-wait gate completed, and PTCS ACL/Login browser verifier passed with exact beta63/beta53 packages.
 - Public 81 PTC deployment `live81-ptcs-beta63-dynamic-beta53-fetch-credentials-202607010522` loaded this Dynamic bundle; Playwright MCP verified `/actors` no longer logs `/pages/api/definitions` 401 and `/page/assterry` renders FormInput/send/reply with `replied msg: echo:...`. Evidence is retained at `G:\PulseTrade.fs\log\20260630\ptcs-81-actors-beta63-console.txt` and `G:\PulseTrade.fs\log\20260630\ptcs-81-assterry-beta63-after.md`.
+
+## 2026-07-01 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta54 PTCS beta64 alignment
+
+- Advanced Dynamic package version to `0.1.3-beta54` and pinned `PulseTrade.Comm.Spa [0.2.5-beta64]` by exact PackageReference.
+- Updated `src\poc.full.nuget.journal.ACL.fsx` to load PTCS beta64 and Dynamic beta54 from NuGet/local library-packs.
+- Purpose: keep Dynamic on the current PTCS package after PTCS beta64 added SQL Server ACL audit sink API/tests.
+- Verification passed: Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta54.nupkg`, Dynamic tests passed `18/18`, PTC bundle verifier loaded beta64/beta54, PTC NuGet live-host no-wait gate completed, and PTCS ACL/Login browser verifier passed with exact beta64/beta54 packages.
+- NuGet.org push returned `Created` and the nupkg was copied to SDK `10.0.301` `FSharp\library-packs`.
+- Public 81 PTC deployment `live81-ptcs-beta64-dynamic-beta54-sql-audit-202607010610` loaded this Dynamic bundle; Playwright MCP verified `/actors` and `/page/assterry` FormInput/send/reply with `replied msg: echo:...`. Evidence is retained at `G:\PulseTrade.fs\log\20260630\ptcs-81-actors-beta64-console.txt` and `G:\PulseTrade.fs\log\20260630\ptcs-81-assterry-beta64-after.md`.
