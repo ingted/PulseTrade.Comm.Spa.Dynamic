@@ -611,3 +611,12 @@ Implementation status:
 - Verification passed: Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta54.nupkg`, Dynamic tests passed `18/18`, PTC bundle verifier loaded beta64/beta54, PTC NuGet live-host no-wait gate completed, and PTCS ACL/Login browser verifier passed with exact beta64/beta54 packages.
 - NuGet.org push returned `Created` and the nupkg was copied to SDK `10.0.301` `FSharp\library-packs`.
 - Public 81 PTC deployment `live81-ptcs-beta64-dynamic-beta54-sql-audit-202607010610` loaded this Dynamic bundle; Playwright MCP verified `/actors` and `/page/assterry` FormInput/send/reply with `replied msg: echo:...`. Evidence is retained at `G:\PulseTrade.fs\log\20260630\ptcs-81-actors-beta64-console.txt` and `G:\PulseTrade.fs\log\20260630\ptcs-81-assterry-beta64-after.md`.
+
+## 2026-07-01 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta55 PTCS beta65 alignment
+
+- Advanced Dynamic package version to `0.1.3-beta55` and pinned `PulseTrade.Comm.Spa [0.2.5-beta65]` by exact PackageReference.
+- Updated `src\poc.full.nuget.journal.ACL.fsx` to load PTCS beta65 and Dynamic beta55 from NuGet/local library-packs.
+- Purpose: keep Dynamic aligned after PTCS beta65 added ACL policy runtime hot-reload APIs (`currentSnapshot/currentRevision/reloadSnapshot`).
+- Fixed `src\PostBuildEvent.ps1` to select the exact fsproj package version instead of sorting only by numeric core; this prevents stale `0.1.3-beta48` nupkg selection when newer beta packages exist.
+- Verification passed: Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta55.nupkg`, NuGet.org push returned `Created`, the nupkg was copied to SDK `10.0.301` `FSharp\library-packs`, Dynamic tests passed `18/18`, and PTC bundle verifier loaded exact beta65/beta55 assembly/package paths.
+- Public 81 deployment `live81-ptcs-beta65-dynamic-beta55-acl-hot-reload-202607010725` loaded this Dynamic bundle; Playwright MCP verified `/actors` Dynamic renderer registration and `/page/assterry` FormInput send/reply with Echo target `values=1 seq=2`. Evidence is retained at `G:\PulseTrade.fs\log\20260701\ptcs81-beta65-actors-console.txt` and `G:\PulseTrade.fs\log\20260701\ptcs81-beta65-assterry-after.md`.

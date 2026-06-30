@@ -32,27 +32,81 @@ function Get-LibPacksContent {
     Write-Host "lib-packs.txt not found in any parent directory." -ForegroundColor Red
     return $null
 }
+function Get-ProjectPackageVersion {
+    param([string]$assembly)
+
+    $projectPath = Join-Path (Get-Location).Path "$assembly.fsproj"
+    if (-not (Test-Path -LiteralPath $projectPath)) {
+        return $null
+    }
+
+    $projectXml = [xml](Get-Content -LiteralPath $projectPath -Raw -Encoding UTF8)
+    $versionNode = $projectXml.Project.PropertyGroup |
+        ForEach-Object { $_.Version } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -First 1
+
+    if ([string]::IsNullOrWhiteSpace($versionNode)) {
+        return $null
+    }
+
+    return [string]$versionNode
+}
+function Get-DefaultLibraryPacksPath {
+    $sdkRoot = Join-Path ${env:ProgramW6432} "dotnet\sdk"
+    if (-not (Test-Path -LiteralPath $sdkRoot)) {
+        return $null
+    }
+
+    $sdk = Get-ChildItem -LiteralPath $sdkRoot -Directory |
+        Sort-Object -Property { [version](($_.Name -replace '-.*$', '')) } -Descending |
+        Select-Object -First 1
+
+    if ($null -eq $sdk) {
+        return $null
+    }
+
+    return Join-Path $sdk.FullName "FSharp\library-packs"
+}
 Write-Host ("[PostBuild] " + $assembly + ": Running in " + $PSVersionTable.OS)
-$binPath = Join-Path (Get-Location).Path "bin/Release"
-if (-not (Test-Path $binPath)) { $binPath = Join-Path (Get-Location).Path "bin" }
-if (Test-Path $binPath) {
-    Set-Location $binPath
-    $packages = Get-ChildItem "$($assembly)*.nupkg" | Sort-Object -Property { Get-VersionFromFileName $_.Name } -Descending
+$packageVersion = Get-ProjectPackageVersion $assembly
+$searchRoots = @(
+    (Join-Path (Get-Location).Path "bin"),
+    (Join-Path (Get-Location).Path "bin/Release")
+) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -Unique
+
+if ($searchRoots.Count -gt 0) {
+    if ([string]::IsNullOrWhiteSpace($packageVersion)) {
+        $packages = $searchRoots | ForEach-Object { Get-ChildItem -LiteralPath $_ -Filter "$($assembly)*.nupkg" }
+    } else {
+        $expectedPackageName = "$assembly.$packageVersion.nupkg"
+        $packages = $searchRoots | ForEach-Object { Get-ChildItem -LiteralPath $_ -Filter $expectedPackageName }
+    }
+
+    $packages = $packages | Sort-Object -Property LastWriteTimeUtc -Descending
     if ($packages.Count -eq 0) {
-        Write-Host "No .nupkg found for $assembly" -ForegroundColor Yellow
+        Write-Host "No .nupkg found for $assembly version $packageVersion" -ForegroundColor Yellow
         return
     }
     $pkg = $packages[0]
-    copy   $pkg.FullName $(Get-LibPacksContent) -force
+    $libraryPacksPath = Get-LibPacksContent
+    if ([string]::IsNullOrWhiteSpace($libraryPacksPath)) {
+        $libraryPacksPath = Get-DefaultLibraryPacksPath
+    }
+
+    if ([string]::IsNullOrWhiteSpace($libraryPacksPath)) {
+        Write-Host "Library packs path not found. Skipping local package copy." -ForegroundColor Yellow
+    } else {
+        copy $pkg.FullName $libraryPacksPath -force
+    }
+
     $apiKey = Get-NuGetApiKey
     if ($null -eq $apiKey) {
         Write-Host "CRITICAL: NuGet API Key file NOT found!" -ForegroundColor Red
         return
     }
     Write-Host "Pushing: $($pkg.Name) to nuget.org..."
-    $pushCmd = "dotnet nuget push `"$($pkg.Name)`" --api-key $apiKey --source https://api.nuget.org/v3/index.json --skip-duplicate"
-    Invoke-Expression $pushCmd
-    Set-Location ..
+    dotnet nuget push $pkg.FullName --api-key $apiKey --source https://api.nuget.org/v3/index.json --skip-duplicate
 } else {
     Write-Host "Bin directory not found. Skipping push." -ForegroundColor Gray
 }
