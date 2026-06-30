@@ -542,3 +542,10 @@ Implementation status:
 ## 2026-06-30 - Correction: PulseTrade.Comm.Spa.Dynamic 0.1.3-beta41 NuGet indexing complete
 
 - Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta41`.
+
+## 2026-07-01 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta42 PTCS beta52 alignment
+
+- Advanced Dynamic package version to `0.1.3-beta42` and pinned `PulseTrade.Comm.Spa [0.2.5-beta52]` by exact PackageReference.
+- Restored normal Release WebSharper build/pack path. Initial `MSB6006 wsfsc.exe -532462766` was diagnosed as `UnauthorizedAccessException` deleting generated `src\websharper.log`; stopping stale `wsfscservice.exe` and removing the generated log fixed the build.
+- Verification passed: Dynamic Release build/pack, Dynamic tests `18/18`, and `src\poc.full.nuget.journal.ACL.fsx -- --no-wait --local-port 18082 --github-port 18081 --cluster-port 18787 --pcsl-root .\.pcsl\verify.acl.beta42`.
+- `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta42.nupkg` was copied to SDK `10.0.301` `FSharp\library-packs`; NuGet.org push returned `401` because the current shell has no NuGet API key configured.
