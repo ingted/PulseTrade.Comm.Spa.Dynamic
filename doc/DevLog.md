@@ -578,3 +578,11 @@ Implementation status:
 - Updated `src\poc.full.nuget.journal.ACL.fsx` to load PTCS beta56 and Dynamic beta46 from NuGet/local library-packs.
 - Purpose: keep Dynamic on the current PTCS package after PTCS beta56 added WebSocket ACL proxy cleanup.
 - Verification passed: Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta46.nupkg`, Dynamic tests passed `18/18`, and ACL no-wait script passed on local ports `18081/18082` with cluster port `18787`.
+
+## 2026-07-01 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta47 PTCS beta57 alignment
+
+- Advanced Dynamic package version to `0.1.3-beta47` and pinned `PulseTrade.Comm.Spa [0.2.5-beta57]` by exact PackageReference.
+- Updated `src\poc.full.nuget.journal.ACL.fsx` to load PTCS beta57 and Dynamic beta47 from NuGet/local library-packs.
+- Purpose: keep Dynamic on the current PTCS package after PTCS beta57 added HTTP ACL matrix coverage and canonical ACL resource mapping for normalized page ids such as `assterry` -> `AssTerry`.
+- Verification passed: Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta47.nupkg`, Dynamic tests passed `18/18`, and ACL no-wait script passed on local ports `18081/18082` with cluster port `18787`.
+- The no-wait script reported `After stop visibleActors=1 pingPongFiltered=true` and `Echo reuse reuseAfterStop=true`, preserving the actors page stop/recreate regression proof on the beta57/beta47 package pair.
