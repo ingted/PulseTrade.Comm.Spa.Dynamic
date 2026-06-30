@@ -521,3 +521,9 @@ Implementation status:
 - Clarified `src\poc.full.nuget.journal.fsx` manual FSI lifecycle: the bootstrap section already creates the fixed-name Echo actor `nuget-journal-echo` through `fabric.System.ActorOfRegistered(...)`, so rerunning the same call in the same ActorSystem correctly fails with Akka `InvalidActorNameException`.
 - Added `ensureEchoActorRegistered()`, `stopEchoActor()`, and `recreateEchoActor()` helpers. `ensureEchoActorRegistered()` resolves and reuses the live `/user/nuget-journal-echo` actor instead of attempting a duplicate spawn; `recreateEchoActor()` stops the live actor, waits for the path to release, then registers a fresh actor with the same stable path.
 - Verification passed: `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_echo_respawn_20260630" --cluster-port 9807 --no-wait` printed `Echo actor is already live`, projected PingPong as `terminated`, and reported `After stop visibleNodes=1 visibleActors=1 includeOfflineActors=2 pingPongFiltered=true`.
+
+## 2026-06-30 - Correction: Echo fixed-name reuse after stop is verified
+
+- Corrected the previous wording: a live fixed-name Echo actor cannot be duplicate-spawned, but after stop and actor path release the same actor name must be reusable.
+- Tightened `src\poc.full.nuget.journal.fsx` lifecycle helpers: Echo status/event matching now uses exact actor-name suffix matching so `nuget-journal-echo-pingpong` does not pollute `nuget-journal-echo` diagnostics.
+- `--no-wait` now calls `recreateEchoActor()` after the PingPong stop gate. The recreate path uses strict `ActorOfRegistered` after stop/wait, so duplicate actor name would fail the verifier instead of being silently reused.

@@ -13,8 +13,8 @@
 //      ensureEchoActorRegistered()
 //      stopEchoActor()
 //      recreateEchoActor()
-//    Do not rerun ActorOfRegistered with the same actorName in the same
-//    ActorSystem; Akka actor names are unique under /user.
+//    Do not rerun ActorOfRegistered with the same actorName while that actor
+//    is still live. After stop + path release, the same name is reusable.
 //    Call stopPocFullNugetJournalHost() to stop the host.
 //
 
@@ -544,20 +544,29 @@ let isActorNameNotUnique (error: ActorRegistryActorOfError) =
     error.Kind = ActorRegistryActorOfErrorKind.ActorSpawnFailed
     && error.Message.IndexOf("not unique", StringComparison.OrdinalIgnoreCase) >= 0
 
-let spawnEchoActorRegistered () =
-    match fabric.System.ActorOfRegistered(actorRegistrySettings, Props.Create(fun () -> PocFullNugetJournalEchoActor()), actorName) with
+let actorOfRegisteredEcho () =
+    fabric.System.ActorOfRegistered(actorRegistrySettings, Props.Create(fun () -> PocFullNugetJournalEchoActor()), actorName)
+
+let spawnEchoActorRegisteredStrict () =
+    match actorOfRegisteredEcho () with
+    | Ok registered -> registered.Actor
+    | Error error ->
+        invalidOp $"ActorRegistry ActorOfRegistered failed actor={actorName} kind={error.Kind} message={error.Message}"
+
+let spawnEchoActorRegisteredOrReuseLive () =
+    match actorOfRegisteredEcho () with
     | Ok registered -> registered.Actor
     | Error error when isActorNameNotUnique error ->
         match tryResolveUserActor actorName with
         | Some existing ->
-            printfn "Echo actor already exists; reusing %s. Use recreateEchoActor() if you need a fresh actor." (existing.Path.ToStringWithoutAddress())
+            printfn "Echo actor already exists; reusing %s. Use recreateEchoActor() to stop, wait, and reuse the same actor name." (existing.Path.ToStringWithoutAddress())
             existing
         | None ->
             invalidOp $"ActorRegistry ActorOfRegistered found duplicate name but could not resolve existing actor={actorName} message={error.Message}"
     | Error error ->
         invalidOp $"ActorRegistry ActorOfRegistered failed actor={actorName} kind={error.Kind} message={error.Message}"
 
-let mutable echoRef = spawnEchoActorRegistered ()
+let mutable echoRef = spawnEchoActorRegisteredOrReuseLive ()
 let mutable echoActorStopped = false
 
 let actorAddress =
@@ -653,10 +662,13 @@ let readActorsSnapshotCounts (jsonText: string) =
 
     nodeCount, actorCount
 
+let actorPathHasExactName (actorName: string) (pathText: string) =
+    pathText.EndsWith("/" + actorName, StringComparison.Ordinal)
+
 let tryFindHubActorStatus (actorName: string) =
     hub.ActorsSnapshot().Nodes
     |> List.collect _.Actors
-    |> List.tryFind (fun actor -> actor.ActorId.Contains(actorName, StringComparison.Ordinal))
+    |> List.tryFind (fun actor -> actorPathHasExactName actorName actor.ActorId)
     |> Option.map _.Status
 
 let waitForHubActorStatus (actorName: string) (expectedStatus: string) timeout =
@@ -671,7 +683,7 @@ let waitForHubActorStatus (actorName: string) (expectedStatus: string) timeout =
 
 let registryEventSummary (actorName: string) =
     actorRegistryEvents
-    |> Seq.filter (fun event -> event.FullPath.Contains(actorName, StringComparison.Ordinal))
+    |> Seq.filter (fun event -> actorPathHasExactName actorName event.FullPath)
     |> Seq.map (fun event -> $"{event.EventKind}/{event.Status}@{event.StatusVersion}")
     |> String.concat ", "
 
@@ -683,7 +695,7 @@ let ensureEchoActorRegistered () =
         printfn "Echo actor is already live: %s" (fabric.NodeAddress.TrimEnd('/') + existing.Path.ToStringWithoutAddress())
         existing
     | None ->
-        let spawned = spawnEchoActorRegistered ()
+        let spawned = spawnEchoActorRegisteredStrict ()
         echoRef <- spawned
         echoActorStopped <- false
         tryForceReplay "actor-registry-after-echo-ensure" CommSpaActorRegistry.registryStreamKey |> ignore
@@ -714,12 +726,28 @@ let recreateEchoActor () =
     if not (waitUntilUserActorGone actorName (TimeSpan.FromSeconds 10.0)) then
         invalidOp $"Echo actor path did not release before recreate: {userActorPath actorName}"
 
-    let spawned = spawnEchoActorRegistered ()
+    let spawned = spawnEchoActorRegisteredStrict ()
     echoRef <- spawned
     echoActorStopped <- false
     tryForceReplay "actor-registry-after-echo-recreate" CommSpaActorRegistry.registryStreamKey |> ignore
     printfn "Echo actor recreated: %s" (fabric.NodeAddress.TrimEnd('/') + spawned.Path.ToStringWithoutAddress())
     spawned
+
+let verifyEchoActorReuseAfterStop () =
+    let beforePath = echoRef.Path.ToStringWithoutAddress()
+    let recreated = recreateEchoActor ()
+    let afterPath = recreated.Path.ToStringWithoutAddress()
+
+    require
+        (String.Equals(beforePath, afterPath, StringComparison.Ordinal))
+        $"Echo actor should reuse the same path after stop/recreate. before={beforePath} after={afterPath}"
+
+    require
+        ((tryResolveUserActor actorName).IsSome)
+        $"Echo actor should resolve after recreate: {userActorPath actorName}"
+
+    printfn "Echo actor reuse-after-stop verified: %s" (fabric.NodeAddress.TrimEnd('/') + afterPath)
+    true
 
 let stopPingPongActor () =
     if pingPongActorStopped then
@@ -797,6 +825,7 @@ try
     let mutable afterStopActorsNodeCount = -1
     let mutable afterStopActorsActorCount = -1
     let mutable afterStopIncludeOfflineActorCount = -1
+    let mutable echoReuseAfterStopVerified = false
 
     require
         (String.Equals(ensuredEcho.Path.ToStringWithoutAddress(), echoRef.Path.ToStringWithoutAddress(), StringComparison.Ordinal))
@@ -845,6 +874,8 @@ try
             (afterStopActorsSnapshotWithOfflineJson.Contains("terminated", StringComparison.OrdinalIgnoreCase))
             "includeOffline actors snapshot should expose the stopped actor terminated status."
 
+        echoReuseAfterStopVerified <- verifyEchoActorReuseAfterStop ()
+
     printfn "PTCS Dynamic POC Full NuGet Journal started."
     printfn "Base URL      %s" app.Url
     printfn "Chat URL      %s/chat" app.Url
@@ -852,6 +883,7 @@ try
     printfn "Actors data   visibleNodes=%d visibleActors=%d includeOfflineNodes=%d includeOfflineActors=%d hubActors=%d" actorsNodeCount actorsActorCount actorsNodeCountWithOffline actorsActorCountWithOffline hubActorCount
     if noWait then
         printfn "After stop    visibleNodes=%d visibleActors=%d includeOfflineActors=%d pingPongFiltered=true" afterStopActorsNodeCount afterStopActorsActorCount afterStopIncludeOfflineActorCount
+        printfn "Echo reuse    reuseAfterStop=%b" echoReuseAfterStopVerified
     printfn "ActorArgu URL %s/page/%s" app.Url actorPage.PageId
     printfn "Dynamic JS    %s/ext/js/PulseTrade.Comm.Spa.Dynamic.js" app.Url
     printfn "PCSL root     %s" pcslRoot
