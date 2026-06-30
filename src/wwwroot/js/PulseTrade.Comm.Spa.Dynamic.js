@@ -1455,7 +1455,9 @@ function defaultCacheLimit(){
   return _c_1.defaultCacheLimit;
 }
 function getJson(url, onOk, onError){
-  (globalThis.fetch(url, {cache:"no-store"}).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank_2(body)?"{}":body)):onError(isBlank_2(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage_2(error)));
+  const options=requestOptions();
+  options.cache="no-store";
+  (globalThis.fetch(url, options).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank_2(body)?"{}":body)):onError(isBlank_2(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage_2(error)));
 }
 function set_currentAclSnapshot(_1){
   _c_1.currentAclSnapshot=_1;
@@ -3736,11 +3738,11 @@ function button_1(className, text){
 function postJson_2(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
-  (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
-    body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
+  const options=requestOptions();
+  options.method="POST";
+  options.headers=headers;
+  options.body=JSON.stringify(body);
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
 }
 function field(labelText, inputId, control){
   const wrap=element_1("div", "field", null);
@@ -3782,6 +3784,9 @@ function set_requestSeq(_1){
 }
 function requestSeq(){
   return _c_1.requestSeq;
+}
+function requestOptions(){
+  return{credentials:"same-origin"};
 }
 function errorMessage_2(error){
   return error==null?"request failed":String(error);
@@ -3994,11 +3999,11 @@ function keysFromJson(keyJson){
 function postAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
-  (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
-    body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
+  const options=requestOptions();
+  options.method="POST";
+  options.headers=headers;
+  options.body=JSON.stringify(body);
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
 }
 function pendingFailure(action, error){
   return String(action)+" failed; pending command kept in browser DB: "+String(asText_2(error));
@@ -4172,20 +4177,20 @@ function rendererSubmittedText(payload){
 function postJsonText(url, payloadJson, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
-  (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
-    body:textOr("{}", payloadJson)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
+  const options=requestOptions();
+  options.method="POST";
+  options.headers=headers;
+  options.body=textOr("{}", payloadJson);
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
 }
 function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
-  (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
-    body:JSON.stringify(body)
-  }).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
+  const options=requestOptions();
+  options.method="POST";
+  options.headers=headers;
+  options.body=JSON.stringify(body);
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
 }
 function pageTypeClass(page){
   const shapeText=asText_2(page.shape).toLowerCase();

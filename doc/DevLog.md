@@ -594,3 +594,11 @@ Implementation status:
 - Purpose: keep Dynamic on the current PTCS package after PTCS beta58 added TLS-offload same-origin ACL gate coverage for public 81 deployments.
 - Verification passed: Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta48.nupkg`, Dynamic tests passed `18/18`, PTC bundle verifier loaded beta58/beta48, and ACL no-wait script passed on local ports `18081/18082` with cluster port `18787`.
 - Public 81 PTC deployment `live81-ptcs-beta58-dynamic-beta48-acl-demo-stale-cleanup-202607010337` loaded this Dynamic bundle; Playwright MCP verified `/page/assterry` renders FormInput and Send appends an echo reply. Evidence is retained under `G:\PulseTrade.fs\log\20260630\public81-assterry-beta58-stale-cleanup-after-send-*`.
+
+## 2026-07-01 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta53 PTCS beta63 alignment
+
+- Advanced Dynamic package version to `0.1.3-beta53` and pinned `PulseTrade.Comm.Spa [0.2.5-beta63]` by exact PackageReference.
+- Updated `src\poc.full.nuget.journal.ACL.fsx` to load PTCS beta63 and Dynamic beta53 from NuGet/local library-packs.
+- Purpose: keep Dynamic on the current PTCS package after PTCS beta63 fixed browser protected API fetch credentials for public OAuth deployments.
+- Verification passed: Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta53.nupkg`, Dynamic tests passed `18/18`, PTC bundle verifier loaded beta63/beta53, PTC NuGet live-host no-wait gate completed, and PTCS ACL/Login browser verifier passed with exact beta63/beta53 packages.
+- Public 81 PTC deployment `live81-ptcs-beta63-dynamic-beta53-fetch-credentials-202607010522` loaded this Dynamic bundle; Playwright MCP verified `/actors` no longer logs `/pages/api/definitions` 401 and `/page/assterry` renders FormInput/send/reply with `replied msg: echo:...`. Evidence is retained at `G:\PulseTrade.fs\log\20260630\ptcs-81-actors-beta63-console.txt` and `G:\PulseTrade.fs\log\20260630\ptcs-81-assterry-beta63-after.md`.
