@@ -515,3 +515,9 @@ Implementation status:
 - Updated `src\poc.full.nuget.2.fsx` and `src\poc.full.nuget.journal.fsx` to reference beta48/beta38.
 - `src\poc.full.nuget.journal.fsx -- --no-wait` now verifies the PingPong stop/reload path through ActorRegistry and PTCS ActorTree DSL: projected status becomes `terminated`, registry events are `Registered/Active@1, Unregistered/Terminated@2`, active DSL filters PingPong, and `includeOffline` retains stopped diagnostics.
 - Verification passed: short-path Release build at `C:\ptcsdyn-release-beta38\bin`, package tests `18/18`, PTC bundle verifier beta48/beta38, and NuGet push for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta38`.
+
+## 2026-06-30 - poc.full.nuget.journal Echo actor fixed-name lifecycle helper
+
+- Clarified `src\poc.full.nuget.journal.fsx` manual FSI lifecycle: the bootstrap section already creates the fixed-name Echo actor `nuget-journal-echo` through `fabric.System.ActorOfRegistered(...)`, so rerunning the same call in the same ActorSystem correctly fails with Akka `InvalidActorNameException`.
+- Added `ensureEchoActorRegistered()`, `stopEchoActor()`, and `recreateEchoActor()` helpers. `ensureEchoActorRegistered()` resolves and reuses the live `/user/nuget-journal-echo` actor instead of attempting a duplicate spawn; `recreateEchoActor()` stops the live actor, waits for the path to release, then registers a fresh actor with the same stable path.
+- Verification passed: `dotnet fsi --exec .\src\poc.full.nuget.journal.fsx -- --pcsl-root "G:/PulseTrade.fs.Comm.Log/manual/ptcsDynamicNugetJournal/pcsl_echo_respawn_20260630" --cluster-port 9807 --no-wait` printed `Echo actor is already live`, projected PingPong as `terminated`, and reported `After stop visibleNodes=1 visibleActors=1 includeOfflineActors=2 pingPongFiltered=true`.

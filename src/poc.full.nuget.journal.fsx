@@ -8,8 +8,14 @@
 // 1. Ensure PulseTrade.Comm.Spa / PulseTrade.Comm.Spa.Dynamic nupkgs are built
 //    and available in the #i package roots below.
 // 2. Edit defaultArgumentsText only if you want a fixed port or PCSL root.
-// 3. Select all and run. Call stopPingPongActor() to observe /actors reload,
-//    then call stopPocFullNugetJournalHost() to stop the host.
+// 3. Select all and run. Call stopPingPongActor() to observe /actors reload.
+//    Echo actor helpers:
+//      ensureEchoActorRegistered()
+//      stopEchoActor()
+//      recreateEchoActor()
+//    Do not rerun ActorOfRegistered with the same actorName in the same
+//    ActorSystem; Akka actor names are unique under /user.
+//    Call stopPocFullNugetJournalHost() to stop the host.
 //
 
 #i @"nuget: C:\Program Files\dotnet\sdk\10.0.301\FSharp\library-packs"
@@ -515,11 +521,44 @@ let actorRegistrySettings =
               "ptcs.dynamic.journal.db", journalBootstrap.DatabaseName
               "ptcs.dynamic.pcsl.root", pcslRoot ])
 
-let echoRef =
+let userActorPath actorName =
+    "/user/" + actorName
+
+let tryResolveUserActor actorName =
+    try
+        Some(fabric.System.ActorSelection(userActorPath actorName).ResolveOne(TimeSpan.FromMilliseconds 750.0).GetAwaiter().GetResult())
+    with _ ->
+        None
+
+let waitUntilUserActorGone actorName timeout =
+    let deadline = DateTimeOffset.UtcNow.Add(timeout)
+    let mutable resolved = tryResolveUserActor actorName
+
+    while resolved.IsSome && DateTimeOffset.UtcNow < deadline do
+        Thread.Sleep 100
+        resolved <- tryResolveUserActor actorName
+
+    resolved.IsNone
+
+let isActorNameNotUnique (error: ActorRegistryActorOfError) =
+    error.Kind = ActorRegistryActorOfErrorKind.ActorSpawnFailed
+    && error.Message.IndexOf("not unique", StringComparison.OrdinalIgnoreCase) >= 0
+
+let spawnEchoActorRegistered () =
     match fabric.System.ActorOfRegistered(actorRegistrySettings, Props.Create(fun () -> PocFullNugetJournalEchoActor()), actorName) with
     | Ok registered -> registered.Actor
+    | Error error when isActorNameNotUnique error ->
+        match tryResolveUserActor actorName with
+        | Some existing ->
+            printfn "Echo actor already exists; reusing %s. Use recreateEchoActor() if you need a fresh actor." (existing.Path.ToStringWithoutAddress())
+            existing
+        | None ->
+            invalidOp $"ActorRegistry ActorOfRegistered found duplicate name but could not resolve existing actor={actorName} message={error.Message}"
     | Error error ->
         invalidOp $"ActorRegistry ActorOfRegistered failed actor={actorName} kind={error.Kind} message={error.Message}"
+
+let mutable echoRef = spawnEchoActorRegistered ()
+let mutable echoActorStopped = false
 
 let actorAddress =
     fabric.NodeAddress.TrimEnd('/') + echoRef.Path.ToStringWithoutAddress()
@@ -636,6 +675,52 @@ let registryEventSummary (actorName: string) =
     |> Seq.map (fun event -> $"{event.EventKind}/{event.Status}@{event.StatusVersion}")
     |> String.concat ", "
 
+let ensureEchoActorRegistered () =
+    match tryResolveUserActor actorName with
+    | Some existing ->
+        echoRef <- existing
+        echoActorStopped <- false
+        printfn "Echo actor is already live: %s" (fabric.NodeAddress.TrimEnd('/') + existing.Path.ToStringWithoutAddress())
+        existing
+    | None ->
+        let spawned = spawnEchoActorRegistered ()
+        echoRef <- spawned
+        echoActorStopped <- false
+        tryForceReplay "actor-registry-after-echo-ensure" CommSpaActorRegistry.registryStreamKey |> ignore
+        printfn "Echo actor registered: %s" (fabric.NodeAddress.TrimEnd('/') + spawned.Path.ToStringWithoutAddress())
+        spawned
+
+let stopEchoActor () =
+    match tryResolveUserActor actorName with
+    | None ->
+        echoActorStopped <- true
+        printfn "Echo actor already stopped: %s" actorAddress
+    | Some live ->
+        echoActorStopped <- true
+        fabric.System.Stop(live)
+        let pathReleased = waitUntilUserActorGone actorName (TimeSpan.FromSeconds 10.0)
+        let observedStatus = waitForHubActorStatus actorName "terminated" (TimeSpan.FromSeconds 5.0)
+        tryForceReplay "actor-registry-after-echo-stop" CommSpaActorRegistry.registryStreamKey |> ignore
+        printfn "Echo actor stop requested: %s" (fabric.NodeAddress.TrimEnd('/') + live.Path.ToStringWithoutAddress())
+        printfn "Echo actor path released: %b" pathReleased
+        printfn "Echo actor projected status: %A" observedStatus
+        printfn "Echo registry events: %s" (registryEventSummary actorName)
+
+let recreateEchoActor () =
+    match tryResolveUserActor actorName with
+    | Some _ -> stopEchoActor ()
+    | None -> ()
+
+    if not (waitUntilUserActorGone actorName (TimeSpan.FromSeconds 10.0)) then
+        invalidOp $"Echo actor path did not release before recreate: {userActorPath actorName}"
+
+    let spawned = spawnEchoActorRegistered ()
+    echoRef <- spawned
+    echoActorStopped <- false
+    tryForceReplay "actor-registry-after-echo-recreate" CommSpaActorRegistry.registryStreamKey |> ignore
+    printfn "Echo actor recreated: %s" (fabric.NodeAddress.TrimEnd('/') + spawned.Path.ToStringWithoutAddress())
+    spawned
+
 let stopPingPongActor () =
     if pingPongActorStopped then
         printfn "PingPong actor already stopped: %s" pingPongActorAddress
@@ -662,6 +747,7 @@ let stopPocFullNugetJournalHost () =
         printfn "poc.full.nuget.journal host stopped."
 
 try
+    let ensuredEcho = ensureEchoActorRegistered ()
     let targetVisible = defaultTargetVisible ()
 
     let serverProbe =
@@ -711,6 +797,10 @@ try
     let mutable afterStopActorsNodeCount = -1
     let mutable afterStopActorsActorCount = -1
     let mutable afterStopIncludeOfflineActorCount = -1
+
+    require
+        (String.Equals(ensuredEcho.Path.ToStringWithoutAddress(), echoRef.Path.ToStringWithoutAddress(), StringComparison.Ordinal))
+        "ensureEchoActorRegistered should reuse the existing echo actor instead of trying to spawn a duplicate actor name."
 
     require (hubActorCount > 0) $"hub actor projection should have actors, got {hubActorCount}."
     require (dynamicJs.Contains("dynamic-actors-page")) "Dynamic bundle should include ActorsPage renderer."
@@ -773,6 +863,7 @@ try
     printfn "Template key  %s" templateKey
     printfn "Target key    %s" (JsonSerializer.Serialize(targetKeys |> List.toArray))
     printfn "Default arg   %s" defaultCanonicalArgString
+    printfn "Echo helpers  ensureEchoActorRegistered(); stopEchoActor(); recreateEchoActor()"
     printfn "Stop pingpong with stopPingPongActor()"
     printfn "Stop with     stopPocFullNugetJournalHost()"
 
