@@ -538,3 +538,7 @@ Implementation status:
 
 - `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta41.nupkg` was pushed to nuget.org with the existing local API key path. The key value was not logged.
 - NuGet push returned `Created` / `Your package was pushed`; immediate v3 flat-container lookup was still propagation-pending.
+
+## 2026-06-30 - Correction: PulseTrade.Comm.Spa.Dynamic 0.1.3-beta41 NuGet indexing complete
+
+- Follow-up NuGet flat-container lookup now lists `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta41`.
