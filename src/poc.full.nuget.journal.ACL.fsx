@@ -37,7 +37,7 @@
 #r "nuget: PersistedConcurrentSortedList, 10.1.301"
 #r "nuget: PulseTrade.Comm.Actor.Registry, [0.1.0-alpha5]"
 #r "nuget: PulseTrade.Comm.ACL.Core, [0.1.0-alpha2]"
-#r "nuget: PulseTrade.Comm.ACL.SqlServer, [0.1.0-alpha1]"
+#r "nuget: PulseTrade.Comm.ACL.SqlServer, [0.1.0-alpha2]"
 #r "nuget: PulseTrade.Comm.Login.Core, [0.1.0-alpha5]"
 #r "nuget: PulseTrade.Comm.Login.SqlServer, [0.1.0-alpha3]"
 #r "nuget: PulseTrade.Comm.Security, [0.1.0-alpha1]"
@@ -633,9 +633,63 @@ let aclSqlConfig connectionString =
     |> AclSqlServerProviderConfig.withEnsureSchema true
 
 let adminLoginName = "admin"
+let wzLoginName = "wz"
 let terryLoginName = "terry"
+let disabledLoginName = "disabled-terry"
 let adminPassword = if productionSql then "admin" else "demo:admin"
+let wzPassword = if productionSql then "wz" else "demo:wz"
 let terryPassword = if productionSql then "terry" else "demo:terry"
+let disabledPassword = if productionSql then "disabled-terry" else "demo:disabled-terry"
+let sysAdminLoginName = if productionSql then wzLoginName else adminLoginName
+let sysAdminPassword = if productionSql then wzPassword else adminPassword
+
+let pocAclPolicy revision deploymentProfile browserAuthProvider users =
+    { AclPolicyConfig.empty with
+        Revision = revision
+        DeploymentProfile = deploymentProfile
+        BrowserAuthProvider = browserAuthProvider
+        Groups = [ "sys-admin"; "Terry黑粉" ]
+        Roles = [ "admin"; "user" ]
+        Users = users
+        Resources =
+            [ { Kind = "ptcs.page"
+                Id = "DamnWZ"
+                OwnerGroup = Some "sys-admin"
+                Tags = []
+                Attributes = Map.empty }
+              { Kind = "ptcs.page"
+                Id = "AssTerry"
+                OwnerGroup = Some "Terry黑粉"
+                Tags = []
+                Attributes = Map.empty } ]
+        Rules =
+            [ { RuleId = "sys-admin-all"
+                Effect = "allow"
+                Subjects = []
+                Groups = [ "sys-admin" ]
+                Roles = []
+                Actions = [ "ptcs.*" ]
+                Resources = [ "*" ]
+                ResourceOwnerGroups = [] }
+              { RuleId = "terry-hater-ass-terry-use"
+                Effect = "allow"
+                Subjects = []
+                Groups = [ "Terry黑粉" ]
+                Roles = []
+                Actions =
+                    [ PtcsAcl.actionPageRead
+                      PtcsAcl.actionTargetRemove
+                      PtcsAcl.actionActorArguSend ]
+                Resources = [ "ptcs.page:AssTerry" ]
+                ResourceOwnerGroups = [] }
+              { RuleId = "terry-hater-no-add"
+                Effect = "deny"
+                Subjects = []
+                Groups = [ "Terry黑粉" ]
+                Roles = []
+                Actions = [ PtcsAcl.actionTargetAdd ]
+                Resources = [ "ptcs.page:AssTerry" ]
+                ResourceOwnerGroups = [] } ] }
 
 let seedProductionSqlSecurity connectionString =
     let loginConfig = loginSqlConfig connectionString
@@ -649,11 +703,19 @@ let seedProductionSqlSecurity connectionString =
     let loginUser = schema + "." + quoteIdentifier "LoginUser"
     let loginUserGroup = schema + "." + quoteIdentifier "LoginUserGroup"
     let loginUserRole = schema + "." + quoteIdentifier "LoginUserRole"
-    let aclPolicy = schema + "." + quoteIdentifier sqlAclTable
+    let pocUserIds =
+        [ "user.admin"; "user.wz"; "user.terry-hater"; "user.disabled-terry" ]
+
+    let quotedUserIds =
+        pocUserIds
+        |> List.map (fun value -> "N'" + value.Replace("'", "''") + "'")
+        |> String.concat ", "
 
     executeSqlNonQuery
         connectionString
-        $"DELETE FROM {loginUserGroup}; DELETE FROM {loginUserRole}; DELETE FROM {loginUser}; DELETE FROM {aclPolicy};"
+        $"DELETE FROM {loginUserGroup} WHERE UserId IN ({quotedUserIds});
+DELETE FROM {loginUserRole} WHERE UserId IN ({quotedUserIds});
+DELETE FROM {loginUser} WHERE UserId IN ({quotedUserIds});"
 
     let adminSeed: LoginSqlServer.SqlServerLoginCredentialSeed =
         { UserId = "user.admin"
@@ -677,14 +739,50 @@ let seedProductionSqlSecurity connectionString =
           Roles = [ "user" ]
           Iterations = Some 210000 }
 
+    let wzSeed: LoginSqlServer.SqlServerLoginCredentialSeed =
+        { UserId = "user.wz"
+          LoginName = wzLoginName
+          DisplayName = Some "DamnWZ"
+          Provider = "ptcs-login"
+          Enabled = true
+          PasswordSecret = wzPassword
+          Groups = [ "sys-admin" ]
+          Roles = [ "admin" ]
+          Iterations = Some 210000 }
+
+    let disabledSeed: LoginSqlServer.SqlServerLoginCredentialSeed =
+        { UserId = "user.disabled-terry"
+          LoginName = disabledLoginName
+          DisplayName = Some "Disabled Terry"
+          Provider = "ptcs-login"
+          Enabled = false
+          PasswordSecret = disabledPassword
+          Groups = [ "Terry黑粉" ]
+          Roles = [ "user" ]
+          Iterations = Some 210000 }
+
     LoginSqlServer.upsertCredentialUserAsync loginConfig adminSeed |> Async.RunSynchronously
+    LoginSqlServer.upsertCredentialUserAsync loginConfig wzSeed |> Async.RunSynchronously
     LoginSqlServer.upsertCredentialUserAsync loginConfig terrySeed |> Async.RunSynchronously
+    LoginSqlServer.upsertCredentialUserAsync loginConfig disabledSeed |> Async.RunSynchronously
 
     let policy =
-        { AclPolicyConfig.demo() with
-            Revision = "poc-full-nuget-journal-acl-sql-" + DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss")
-            DeploymentProfile = Public
-            BrowserAuthProvider = Some "ptcs-login" }
+        pocAclPolicy
+            ("poc-full-nuget-journal-acl-sql-" + DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss"))
+            Public
+            (Some "ptcs-login")
+            [ { UserId = adminSeed.UserId
+                Groups = adminSeed.Groups
+                Roles = adminSeed.Roles }
+              { UserId = wzSeed.UserId
+                Groups = wzSeed.Groups
+                Roles = wzSeed.Roles }
+              { UserId = terrySeed.UserId
+                Groups = terrySeed.Groups
+                Roles = terrySeed.Roles }
+              { UserId = disabledSeed.UserId
+                Groups = disabledSeed.Groups
+                Roles = disabledSeed.Roles } ]
 
     ensureAndSavePolicyConfigAsync aclConfig true policy |> Async.RunSynchronously
 
@@ -1019,11 +1117,11 @@ let localClientBaseUrl =
 let githubClientBaseUrl =
     urlForLocalClient githubApp.Url
 
-let loginLocalClientAsAdmin (client: HttpClient) =
+let loginLocalClient (client: HttpClient) loginName password label =
     let body =
         JsonSerializer.Serialize(
-            {| userName = adminLoginName
-               password = adminPassword
+            {| userName = loginName
+               password = password
                returnUrl = "/actors"
                keepSession = true |})
 
@@ -1036,7 +1134,7 @@ let loginLocalClientAsAdmin (client: HttpClient) =
     let responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
 
     if not response.IsSuccessStatusCode then
-        invalidOp $"Local PTCS.Login admin login failed: status={int response.StatusCode} body={responseBody}"
+        invalidOp $"Local PTCS.Login {label} login failed: status={int response.StatusCode} body={responseBody}"
 
     let mutable cookieValues = Seq.empty<string>
 
@@ -1055,6 +1153,86 @@ let loginLocalClientAsAdmin (client: HttpClient) =
     client.DefaultRequestHeaders.Remove("Cookie") |> ignore
     client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", sessionCookie) |> ignore
     responseBody
+
+let tryLoginLocalClient loginName password =
+    use client = new HttpClient()
+    let body =
+        JsonSerializer.Serialize(
+            {| userName = loginName
+               password = password
+               returnUrl = "/actors"
+               keepSession = true |})
+
+    use request = new HttpRequestMessage(HttpMethod.Post, localClientBaseUrl + "/login/api/submit")
+    request.Headers.TryAddWithoutValidation("Origin", localClientBaseUrl) |> ignore
+    request.Headers.Referrer <- Uri(localClientBaseUrl + "/login?returnUrl=/actors")
+    request.Content <- new StringContent(body, Encoding.UTF8, "application/json")
+
+    use response = client.SendAsync(request).GetAwaiter().GetResult()
+    let responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+    int response.StatusCode, responseBody
+
+let postJson (client: HttpClient) path jsonText =
+    use request = new HttpRequestMessage(HttpMethod.Post, localClientBaseUrl + path)
+    request.Headers.TryAddWithoutValidation("Origin", localClientBaseUrl) |> ignore
+    request.Headers.Referrer <- Uri(localClientBaseUrl + "/actors")
+    request.Content <- new StringContent(jsonText, Encoding.UTF8, "application/json")
+    use response = client.SendAsync(request).GetAwaiter().GetResult()
+    int response.StatusCode, response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+
+let jsonArrayText values =
+    JsonSerializer.Serialize(values |> List.toArray)
+
+let addKeyJson pageId keys displayName =
+    JsonSerializer.Serialize(
+        {| pageId = pageId
+           keyJson = jsonArrayText keys
+           displayName = displayName |})
+
+let removeKeyJson pageId keyId =
+    JsonSerializer.Serialize(
+        {| pageId = pageId
+           keyId = keyId |})
+
+let actorArguJson pageId keys rawArgu =
+    JsonSerializer.Serialize(
+        {| pageId = pageId
+           keyJson = jsonArrayText keys
+           rawArgu = rawArgu
+           tags = [| "poc-full-nuget-journal-acl"; "acl-http-proof" |] |})
+
+let statusIs expected (label: string) (statusCode: int, body: string) =
+    require (statusCode = expected) $"{label} expected HTTP {expected}, got {statusCode}; body={body}"
+
+let aclCapabilityAllowed (snapshotJson: string) resourceId action =
+    use doc = JsonDocument.Parse(snapshotJson)
+    let root = doc.RootElement
+    let resources = root.GetProperty("resources").EnumerateArray()
+
+    let resource =
+        resources
+        |> Seq.tryFind (fun value ->
+            String.Equals(value.GetProperty("resourceKind").GetString(), "ptcs.page", StringComparison.Ordinal)
+            && String.Equals(value.GetProperty("resourceId").GetString(), resourceId, StringComparison.Ordinal))
+        |> Option.defaultWith (fun () -> invalidOp $"ACL snapshot missing page resource {resourceId}: {snapshotJson}")
+
+    let capability =
+        resource.GetProperty("capabilities").EnumerateArray()
+        |> Seq.tryFind (fun value -> String.Equals(value.GetProperty("action").GetString(), action, StringComparison.Ordinal))
+        |> Option.defaultWith (fun () -> invalidOp $"ACL snapshot missing capability {action} for {resourceId}: {snapshotJson}")
+
+    capability.GetProperty("allowed").GetBoolean()
+
+let aclGlobalCapabilityAllowed (snapshotJson: string) action =
+    use doc = JsonDocument.Parse(snapshotJson)
+    let root = doc.RootElement
+
+    let capability =
+        root.GetProperty("globalCapabilities").EnumerateArray()
+        |> Seq.tryFind (fun value -> String.Equals(value.GetProperty("action").GetString(), action, StringComparison.Ordinal))
+        |> Option.defaultWith (fun () -> invalidOp $"ACL snapshot missing global capability {action}: {snapshotJson}")
+
+    capability.GetProperty("allowed").GetBoolean()
 
 let actorPathHasExactName (actorName: string) (pathText: string) =
     pathText.EndsWith("/" + actorName, StringComparison.Ordinal)
@@ -1194,7 +1372,7 @@ try
             None
 
     use client = new HttpClient()
-    let localLoginReply = loginLocalClientAsAdmin client
+    let localLoginReply = loginLocalClient client sysAdminLoginName sysAdminPassword "sys-admin"
     let healthText = client.GetStringAsync(localClientBaseUrl + "/healthz").GetAwaiter().GetResult()
     let githubHealthText = client.GetStringAsync(githubClientBaseUrl + "/healthz").GetAwaiter().GetResult()
     let journalHealthText = client.GetStringAsync(localClientBaseUrl + "/healthz.journal").GetAwaiter().GetResult()
@@ -1205,6 +1383,18 @@ try
     let actorsSnapshotWithOfflineJson = client.GetStringAsync(localClientBaseUrl + "/actors/api/snapshot?includeOffline=1").GetAwaiter().GetResult()
     let aclSnapshotJson = client.GetStringAsync(localClientBaseUrl + "/acl/api/snapshot").GetAwaiter().GetResult()
     let dynamicJs = client.GetStringAsync(localClientBaseUrl + "/ext/js/PulseTrade.Comm.Spa.Dynamic.js").GetAwaiter().GetResult()
+
+    use terryClient = new HttpClient()
+    let terryLoginReply = loginLocalClient terryClient terryLoginName terryPassword "Terry黑粉"
+    let terryAclSnapshotJson = terryClient.GetStringAsync(localClientBaseUrl + "/acl/api/snapshot").GetAwaiter().GetResult()
+
+    if productionSql then
+        tryLoginLocalClient sysAdminLoginName ("wrong-" + sysAdminPassword)
+        |> statusIs 401 "wrong password login"
+
+        tryLoginLocalClient disabledLoginName disabledPassword
+        |> statusIs 401 "disabled user login"
+
     let actorDynamicCreateShapeVisible =
         hub.ListClientExtensions()
         |> List.collect _.AppendPageShapes
@@ -1212,8 +1402,16 @@ try
 
     require (healthText.Contains("PulseTrade.Comm.Spa")) "healthz should identify PTCS."
     require (githubHealthText.Contains("PulseTrade.Comm.Spa")) "GitHub OAuth host healthz should identify PTCS."
-    require (localLoginReply.Contains("user.admin", StringComparison.OrdinalIgnoreCase)) "local PTCS.Login admin login should identify user.admin."
+    require (localLoginReply.Contains("user.", StringComparison.OrdinalIgnoreCase)) "local PTCS.Login sys-admin login should identify a user id."
+    require (terryLoginReply.Contains("user.terry-hater", StringComparison.OrdinalIgnoreCase)) "local PTCS.Login Terry login should identify user.terry-hater."
     require (aclSnapshotJson.Contains("ptcs.page.create", StringComparison.Ordinal)) "ACL snapshot should expose PTCS capability keys."
+    require (aclGlobalCapabilityAllowed aclSnapshotJson PtcsAcl.actionPageCreate) "WZ/sys-admin ACL snapshot should allow page create."
+    require (aclCapabilityAllowed aclSnapshotJson "DamnWZ" PtcsAcl.actionTargetAdd) "WZ/sys-admin should be able to add target on DamnWZ."
+    require (not (aclGlobalCapabilityAllowed terryAclSnapshotJson PtcsAcl.actionPageCreate)) "Terry黑粉 ACL snapshot should deny page create."
+    require (aclCapabilityAllowed terryAclSnapshotJson "AssTerry" PtcsAcl.actionTargetRemove) "Terry黑粉 should be able to remove target on AssTerry."
+    require (aclCapabilityAllowed terryAclSnapshotJson "AssTerry" PtcsAcl.actionActorArguSend) "Terry黑粉 should be able to send ActorArgu on AssTerry."
+    require (not (aclCapabilityAllowed terryAclSnapshotJson "AssTerry" PtcsAcl.actionTargetAdd)) "Terry黑粉 should not be able to add target on AssTerry."
+    require (not (aclCapabilityAllowed terryAclSnapshotJson "DamnWZ" PtcsAcl.actionActorArguSend)) "Terry黑粉 should not be able to send ActorArgu on DamnWZ."
     require (journalHealthText.Contains("sql-server")) "journal health should use sql-server profile."
     require (healthText.Contains("pcsl-actor-proxy")) "healthz hub persistence should expose pcsl-actor-proxy."
     require (chatHtml.Length > 0) "chat page should be served by PTCS."
@@ -1227,6 +1425,7 @@ try
     let mutable afterStopActorsActorCount = -1
     let mutable afterStopIncludeOfflineActorCount = -1
     let mutable echoReuseAfterStopVerified = false
+    let mutable aclHttpDifferenceVerified = false
 
     require
         (String.Equals(ensuredEcho.Path.ToStringWithoutAddress(), echoRef.Path.ToStringWithoutAddress(), StringComparison.Ordinal))
@@ -1247,6 +1446,30 @@ try
         printfn "Default target probe skipped because the journal projection currently has no visible default target."
 
     if noWait then
+        let tempTargetKeys =
+            [ pingPongActorAddress; templateKey; "--say \"wz temp\" --set-count 1 --mode fast --tag acl-temp" ]
+
+        postJson client "/pages/api/add-key" (addKeyJson assTerryPage.PageId tempTargetKeys "WZ temp target")
+        |> statusIs 200 "WZ/sys-admin add temp target on AssTerry"
+
+        postJson terryClient "/pages/api/add-key" (addKeyJson assTerryPage.PageId [ actorAddress; templateKey; "--say \"denied\"" ] "Terry forbidden target")
+        |> statusIs 403 "Terry add target denied on AssTerry"
+
+        postJson terryClient "/pages/api/actor-argu/send" (actorArguJson assTerryPage.PageId echoTargetKeys "--say \"terry allowed\" --set-count 1 --mode fast")
+        |> statusIs 200 "Terry ActorArgu send allowed on AssTerry"
+
+        postJson terryClient "/pages/api/actor-argu/send" (actorArguJson damnWzPage.PageId echoTargetKeys "--say \"terry denied\" --set-count 1 --mode fast")
+        |> statusIs 403 "Terry ActorArgu send denied on DamnWZ"
+
+        let tempKey =
+            hub.ListAppendPageKeys(assTerryPage.PageId).Keys
+            |> List.tryFind (fun key -> key.Keys = tempTargetKeys)
+            |> Option.defaultWith (fun () -> invalidOp "WZ temp target key was not projected for Terry remove proof.")
+
+        postJson terryClient "/pages/api/remove-key" (removeKeyJson assTerryPage.PageId tempKey.KeyId)
+        |> statusIs 200 "Terry remove target allowed on AssTerry"
+
+        aclHttpDifferenceVerified <- true
         stopPingPongActor ()
         Thread.Sleep 250
         let afterStopActorsSnapshotJson = client.GetStringAsync(localClientBaseUrl + "/actors/api/snapshot").GetAwaiter().GetResult()
@@ -1285,7 +1508,8 @@ try
     printfn "Local actors URL   %s/actors" localClientBaseUrl
     printfn "Mode              %s" (if productionSql then "production-sql" else "demo")
     printfn "Ports             github=%d local=%d cluster=%d dynamic=%b" githubPort localPort clusterPort ifDynaPort
-    printfn "Local users       admin=%s / terry=%s; passwords are %s." adminLoginName terryLoginName (if productionSql then "SQL-seeded for this POC" else "demo-only and defined by LoginConfig.demo()")
+    printfn "Local users       WZ/sys-admin=%s / Terry黑粉=%s / legacy-admin=%s; passwords are %s." sysAdminLoginName terryLoginName adminLoginName (if productionSql then "SQL-seeded for this POC" else "demo-only and defined by LoginConfig.demo()")
+    printfn "ACL proof         wzGlobalCreate=%b terryAddAssTerry=%b terryRemoveAssTerry=%b terrySendAssTerry=%b terrySendDamnWZ=%b httpDifference=%b" (aclGlobalCapabilityAllowed aclSnapshotJson PtcsAcl.actionPageCreate) (aclCapabilityAllowed terryAclSnapshotJson "AssTerry" PtcsAcl.actionTargetAdd) (aclCapabilityAllowed terryAclSnapshotJson "AssTerry" PtcsAcl.actionTargetRemove) (aclCapabilityAllowed terryAclSnapshotJson "AssTerry" PtcsAcl.actionActorArguSend) (aclCapabilityAllowed terryAclSnapshotJson "DamnWZ" PtcsAcl.actionActorArguSend) aclHttpDifferenceVerified
     printfn "Actors data   visibleNodes=%d visibleActors=%d includeOfflineNodes=%d includeOfflineActors=%d hubActors=%d" actorsNodeCount actorsActorCount actorsNodeCountWithOffline actorsActorCountWithOffline hubActorCount
     if noWait then
         printfn "After stop    visibleNodes=%d visibleActors=%d includeOfflineActors=%d pingPongFiltered=true" afterStopActorsNodeCount afterStopActorsActorCount afterStopIncludeOfflineActorCount

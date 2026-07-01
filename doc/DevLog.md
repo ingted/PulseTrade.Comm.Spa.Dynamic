@@ -650,3 +650,10 @@ Implementation status:
 - SQL credential/session/ACL policy/audit providers use encrypted SQL connection file `D:\ingted.com\ptcs-sql-connection.enc.txt` and private key path `D:\ingted.com\myKey.private.txt`; no plaintext SQL password is written to Dynamic repo docs/logs.
 - Verification passed through PTC deployment alignment and loopback 81/82/8798 health; 82 SQL `admin` login returns an HttpOnly `ptc_login_session` cookie and `/acl/api/snapshot` returns HTTP 200.
 - Dynamic WBS/Verification now distinguish POC production-sql proof from the formal service proof. Remaining Dynamic-adjacent gaps are strict ActorsPage schema parser, server-side report schedule, IndexedDB restart/cache sync, cross-service GW/RN registry feed, and failover visual states.
+
+## 2026-07-01 - poc.full.nuget.journal.ACL.fsx WZ/Terry SQL ACL proof
+
+- Updated `src\poc.full.nuget.journal.ACL.fsx` to consume `PulseTrade.Comm.ACL.SqlServer [0.1.0-alpha2]`.
+- Production-sql seeding is now bounded to the script-owned users `wz`, `terry`, `disabled-terry`, and legacy `admin`; it no longer clears unrelated credential rows.
+- Verification passed: `dotnet fsi --exec C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\poc.full.nuget.journal.ACL.fsx -- --if-dyna-port --production-sql --sql-connection-string-encrypted-file D:\ingted.com\ptcs-sql-connection.enc.txt --sql-private-key-path D:\ingted.com\myKey.private.txt --sql-security-schema ptcs_security --sql-acl-table AclPolicySnapshotPoc --no-wait --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl\pcsl_wz_terry_20260701_01`.
+- Stdout proof: WZ/sys-admin full rights, Terry黑粉 add-target denied but remove/send allowed on AssTerry, send denied on DamnWZ, disabled-terry login rejected, HTTP difference proof passed, PingPong stopped actor filtered from active actors, and fixed-name Echo actor stop/recreate works.
