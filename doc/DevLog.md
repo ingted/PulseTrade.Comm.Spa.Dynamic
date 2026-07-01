@@ -620,3 +620,10 @@ Implementation status:
 - Fixed `src\PostBuildEvent.ps1` to select the exact fsproj package version instead of sorting only by numeric core; this prevents stale `0.1.3-beta48` nupkg selection when newer beta packages exist.
 - Verification passed: Release build/pack produced `PulseTrade.Comm.Spa.Dynamic.0.1.3-beta55.nupkg`, NuGet.org push returned `Created`, the nupkg was copied to SDK `10.0.301` `FSharp\library-packs`, Dynamic tests passed `18/18`, and PTC bundle verifier loaded exact beta65/beta55 assembly/package paths.
 - Public 81 deployment `live81-ptcs-beta65-dynamic-beta55-acl-hot-reload-202607010725` loaded this Dynamic bundle; Playwright MCP verified `/actors` Dynamic renderer registration and `/page/assterry` FormInput send/reply with Echo target `values=1 seq=2`. Evidence is retained at `G:\PulseTrade.fs\log\20260701\ptcs81-beta65-actors-console.txt` and `G:\PulseTrade.fs\log\20260701\ptcs81-beta65-assterry-after.md`.
+
+## 2026-07-01 - PulseTrade.Comm.Spa.Dynamic 0.1.3-beta56 PTCS beta66 alignment
+
+- Advanced Dynamic package version to `0.1.3-beta56` and pinned `PulseTrade.Comm.Spa [0.2.5-beta66]` by exact PackageReference.
+- Updated `src\poc.full.nuget.journal.ACL.fsx` to load PTCS beta66 and Dynamic beta56 from NuGet/local library-packs.
+- Purpose: keep Dynamic aligned after PTCS beta66 added protected `POST /acl/api/reload` and `PtcsAclPolicyConfigDto` for JSON-friendly ACL policy reload.
+- Verification target: Release build/pack, Dynamic tests `18/18`, NuGet push, SDK library-packs copy, and PTC bundle verifier using exact beta66/beta56 assembly/package paths.
