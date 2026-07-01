@@ -627,3 +627,9 @@ Implementation status:
 - Updated `src\poc.full.nuget.journal.ACL.fsx` to load PTCS beta66 and Dynamic beta56 from NuGet/local library-packs.
 - Purpose: keep Dynamic aligned after PTCS beta66 added protected `POST /acl/api/reload` and `PtcsAclPolicyConfigDto` for JSON-friendly ACL policy reload.
 - Verification target: Release build/pack, Dynamic tests `18/18`, NuGet push, SDK library-packs copy, and PTC bundle verifier using exact beta66/beta56 assembly/package paths.
+
+## 2026-07-01 - poc.full.nuget.journal.ACL.fsx quiet dual-host startup fix
+
+- Fixed quiet startup suppression in `src\poc.full.nuget.journal.ACL.fsx`: replaced disposable `StringWriter` output capture with `TextWriter.Null`. Suave can retain `Console.Out` after `startWithSharing` returns; if that writer is disposed, the background listener can fail with `ObjectDisposedException` and the GitHub-OAuth side becomes unreachable.
+- Verification passed: `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL.fsx -- --no-wait --local-port 18102 --github-port 18101 --cluster-port 18801 --pcsl-root .\.pcsl\verify.acl.beta56.dual-host.quiet`.
+- The same script still prints the GitHub OAuth URL, local PTCS.Login URL, PingPong stop filtering result, and fixed-name Echo actor reuse result before cleanly stopping both listeners.

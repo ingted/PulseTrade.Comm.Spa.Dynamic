@@ -355,10 +355,12 @@ let withStartupOutput f =
         f ()
     else
         let originalOut = Console.Out
-        use sink = new StringWriter()
 
         try
-            Console.SetOut(sink)
+            // Suave can retain the writer after startWithSharing returns.
+            // Do not use a disposable StringWriter here; background listener
+            // output after disposal can terminate the listener.
+            Console.SetOut(TextWriter.Null)
             f ()
         finally
             Console.SetOut(originalOut)
