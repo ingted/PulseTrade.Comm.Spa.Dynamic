@@ -37,7 +37,10 @@
 #r "nuget: PersistedConcurrentSortedList, 10.1.301"
 #r "nuget: PulseTrade.Comm.Actor.Registry, [0.1.0-alpha5]"
 #r "nuget: PulseTrade.Comm.ACL.Core, [0.1.0-alpha2]"
+#r "nuget: PulseTrade.Comm.ACL.SqlServer, [0.1.0-alpha1]"
 #r "nuget: PulseTrade.Comm.Login.Core, [0.1.0-alpha5]"
+#r "nuget: PulseTrade.Comm.Login.SqlServer, [0.1.0-alpha3]"
+#r "nuget: PulseTrade.Comm.Security, [0.1.0-alpha1]"
 #r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta66]"
 #r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta56]"
 
@@ -55,10 +58,13 @@ open System.Text.Json
 open System.Threading
 open Akka.Actor
 open Argu
+open Microsoft.Data.SqlClient
 open PersistedConcurrentSortedList.Type
 open PulseTrade.Comm.ACL.Core
+open PulseTrade.Comm.ACL.SqlServer.AclSqlServer
 open PulseTrade.Comm.Actor.Registry
 open PulseTrade.Comm.Login.Core
+open PulseTrade.Comm.Login.SqlServer
 open PulseTrade.Comm.Spa
 open PulseTrade.Comm.Spa.Dynamic.Server
 
@@ -100,7 +106,7 @@ let freePort () =
 
 let defaultArgumentsText =
     printfn "default ports: github-oauth=81, local-login=82, cluster=%d" defaultClusterPort
-    $"""--host 0.0.0.0 --github-port 81 --local-port 82 --github-public-base-url "https://my-ai.co.in:81" --github-oauth-client-id-path "{pathArg defaultGitHubOAuthClientIdPath}" --github-oauth-client-secret-path "{pathArg defaultGitHubOAuthClientSecretPath}" --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --sql-connection-string "Data Source=.;Initial Catalog=master;Integrated Security=True;Persist Security Info=False;Pooling=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Application Name=PTCSDynamicJournalAcl" """
+    $"""--host 0.0.0.0 --github-port 81 --local-port 82 --github-public-base-url "https://my-ai.co.in:81" --github-oauth-client-id-path "{pathArg defaultGitHubOAuthClientIdPath}" --github-oauth-client-secret-path "{pathArg defaultGitHubOAuthClientSecretPath}" --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --demo """
 
 type CliArgs =
     | Host of string
@@ -111,8 +117,16 @@ type CliArgs =
     | Github_Oauth_Client_Secret_Path of string
     | Site_Sharing of string
     | Pcsl_Root of string
+    | Demo
+    | Production_Sql
+    | If_Dyna_Port
     | Sql_Db of string
     | Sql_Connection_String of string
+    | Sql_Connection_String_Encrypted_File of string
+    | Sql_Private_Key_Path of string
+    | Sql_Key_Size of int
+    | Sql_Security_Schema of string
+    | Sql_Acl_Table of string
     | Delivery_Profile of string
     | Actor_Name of string
     | Cluster_Port of int
@@ -131,8 +145,16 @@ type CliArgs =
             | Github_Oauth_Client_Secret_Path _ -> "Local file path containing GitHub OAuth client secret. The value is not printed."
             | Site_Sharing _ -> "Site sharing mode: isolated or shared."
             | Pcsl_Root _ -> "PCSL projection root for this live host."
+            | Demo -> "Use demo ACL/Login providers. This is the default when no production SQL args are supplied."
+            | Production_Sql -> "Use SQL-backed credential/session/ACL policy providers. Requires encrypted SQL connection-string file and private key path."
+            | If_Dyna_Port -> "Use random free ports for GitHub, local login, and cluster. Useful when 81/82 are occupied."
             | Sql_Db _ -> "SQL Server database used by the durable journal. Defaults to a hash of --pcsl-root."
-            | Sql_Connection_String _ -> "SQL Server connection string. The value is never printed."
+            | Sql_Connection_String _ -> "Legacy plaintext SQL Server connection string for local demo only. The value is never printed."
+            | Sql_Connection_String_Encrypted_File _ -> "Encrypted SQL Server connection-string file for production-sql proof. The plaintext value is never printed."
+            | Sql_Private_Key_Path _ -> "RSA private key path used to decrypt --sql-connection-string-encrypted-file."
+            | Sql_Key_Size _ -> "RSA key size used by the decryptor. Default: 2048."
+            | Sql_Security_Schema _ -> "SQL schema for credential/session/ACL policy proof tables. Default: ptcs_poc_acl."
+            | Sql_Acl_Table _ -> "ACL policy snapshot table for production-sql proof. Default: AclPolicySnapshot."
             | Delivery_Profile _ -> "Durable ingress profile id."
             | Actor_Name _ -> "Echo actor name under /user."
             | Cluster_Port _ -> "Local Akka cluster port."
@@ -285,17 +307,41 @@ let host =
     let defaultValue = defaultParsed.GetResult(Host, "127.0.0.1")
     overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Host, defaultValue)) |> Option.defaultValue defaultValue
 
+let ifDynaPort =
+    defaultParsed.Contains If_Dyna_Port
+    || (overrideParsed |> Option.exists (fun parsed -> parsed.Contains If_Dyna_Port))
+
+let hasEncryptedSqlArgs (parsed: ParseResults<CliArgs>) =
+    parsed.TryGetResult <@ Sql_Connection_String_Encrypted_File @> |> Option.exists (String.IsNullOrWhiteSpace >> not)
+    && parsed.TryGetResult <@ Sql_Private_Key_Path @> |> Option.exists (String.IsNullOrWhiteSpace >> not)
+
+let productionSql =
+    (overrideParsed |> Option.exists (fun parsed -> parsed.Contains Production_Sql || hasEncryptedSqlArgs parsed))
+    || (defaultParsed.Contains Production_Sql || hasEncryptedSqlArgs defaultParsed)
+
+let demoMode = not productionSql
+
 let githubPort =
-    let defaultValue = defaultParsed.GetResult(Github_Port, 81)
-    overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Github_Port, defaultValue)) |> Option.defaultValue defaultValue
+    if ifDynaPort then
+        freePort ()
+    else
+        let defaultValue = defaultParsed.GetResult(Github_Port, 81)
+        overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Github_Port, defaultValue)) |> Option.defaultValue defaultValue
 
 let localPort =
-    let defaultValue = defaultParsed.GetResult(Local_Port, 82)
-    overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Local_Port, defaultValue)) |> Option.defaultValue defaultValue
+    if ifDynaPort then
+        freePort ()
+    else
+        let defaultValue = defaultParsed.GetResult(Local_Port, 82)
+        overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Local_Port, defaultValue)) |> Option.defaultValue defaultValue
 
 let githubPublicBaseUrl =
     let defaultValue = defaultParsed.GetResult(Github_Public_Base_Url, "https://my-ai.co.in:81")
-    overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Github_Public_Base_Url, defaultValue)) |> Option.defaultValue defaultValue |> textOr "https://my-ai.co.in:81"
+
+    if ifDynaPort then
+        $"http://127.0.0.1:{githubPort}"
+    else
+        overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Github_Public_Base_Url, defaultValue)) |> Option.defaultValue defaultValue |> textOr "https://my-ai.co.in:81"
 
 let githubOAuthClientIdPath =
     let defaultValue = defaultParsed.GetResult(Github_Oauth_Client_Id_Path, defaultGitHubOAuthClientIdPath)
@@ -331,8 +377,19 @@ let actorName =
     overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Actor_Name, defaultValue)) |> Option.defaultValue defaultValue |> textOr "nuget-journal-echo"
 
 let clusterPort =
-    let defaultValue = defaultParsed.GetResult(Cluster_Port, 7788)
-    overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Cluster_Port, defaultValue)) |> Option.defaultValue defaultValue
+    if ifDynaPort then
+        freePort ()
+    else
+        let defaultValue = defaultParsed.GetResult(Cluster_Port, 7788)
+        overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Cluster_Port, defaultValue)) |> Option.defaultValue defaultValue
+
+let sqlSecuritySchema =
+    let defaultValue = defaultParsed.GetResult(Sql_Security_Schema, "ptcs_poc_acl")
+    overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Sql_Security_Schema, defaultValue)) |> Option.defaultValue defaultValue |> textOr "ptcs_poc_acl"
+
+let sqlAclTable =
+    let defaultValue = defaultParsed.GetResult(Sql_Acl_Table, "AclPolicySnapshot")
+    overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Sql_Acl_Table, defaultValue)) |> Option.defaultValue defaultValue |> textOr "AclPolicySnapshot"
 
 let noWait =
     defaultParsed.Contains No_Wait
@@ -401,10 +458,40 @@ if clearPcslBeforeStart then
 
 Directory.CreateDirectory pcslRoot |> ignore
 
+let encryptedSqlConnectionString () =
+    let parsed =
+        overrideParsed
+        |> Option.defaultValue defaultParsed
+
+    let encryptedFile =
+        parsed.TryGetResult <@ Sql_Connection_String_Encrypted_File @>
+        |> Option.map (fullPath "")
+        |> Option.defaultWith (fun () -> invalidOp "production-sql requires --sql-connection-string-encrypted-file.")
+
+    let privateKeyPath =
+        parsed.TryGetResult <@ Sql_Private_Key_Path @>
+        |> Option.map (fullPath "")
+        |> Option.defaultWith (fun () -> invalidOp "production-sql requires --sql-private-key-path.")
+
+    let keySize = parsed.GetResult(Sql_Key_Size, 2048)
+    PulseTrade.Comm.Security.readEncryptedTextFile keySize privateKeyPath encryptedFile None
+
+let legacyPlaintextSqlConnectionString () =
+    overrideParsed
+    |> Option.bind (fun parsed -> parsed.TryGetResult <@ Sql_Connection_String @>)
+    |> Option.map (fun value -> value.Trim())
+    |> Option.filter (String.IsNullOrWhiteSpace >> not)
+
+let productionSqlConnectionString =
+    if productionSql then
+        Some(encryptedSqlConnectionString ())
+    else
+        legacyPlaintextSqlConnectionString ()
+
 let journal =
-    match overrideParsed |> Option.bind (fun parsed -> parsed.TryGetResult <@ Sql_Connection_String @>) with
-    | Some connectionString when not (String.IsNullOrWhiteSpace connectionString) ->
-        Journal.sqlServer(connectionString.Trim(), autoCreateDatabase = true)
+    match productionSqlConnectionString with
+    | Some connectionString ->
+        Journal.sqlServer(connectionString, autoCreateDatabase = true)
     | _ ->
         Journal.sqlServerLocal(dbName = sqlDb, autoCreateDatabase = true)
 
@@ -521,15 +608,137 @@ let warmUpProjectionFromJournal () =
 
 warmUpProjectionFromJournal ()
 
+let quoteIdentifier (value: string) =
+    "[" + value.Replace("]", "]]") + "]"
+
+let executeSqlNonQuery (connectionString: string) (commandText: string) =
+    use connection = new SqlConnection(connectionString)
+    connection.Open()
+    use command = connection.CreateCommand()
+    command.CommandText <- commandText
+    command.CommandTimeout <- 30
+    command.ExecuteNonQuery() |> ignore
+
+let loginSqlConfig connectionString =
+    LoginSqlServer.LoginSqlServerProviderConfig.create connectionString
+    |> LoginSqlServer.LoginSqlServerProviderConfig.withSchema sqlSecuritySchema
+    |> LoginSqlServer.LoginSqlServerProviderConfig.withEnsureDatabase true
+    |> LoginSqlServer.LoginSqlServerProviderConfig.withEnsureSchema true
+
+let aclSqlConfig connectionString =
+    AclSqlServerProviderConfig.create connectionString
+    |> AclSqlServerProviderConfig.withSchema sqlSecuritySchema
+    |> AclSqlServerProviderConfig.withTableName sqlAclTable
+    |> AclSqlServerProviderConfig.withEnsureDatabase true
+    |> AclSqlServerProviderConfig.withEnsureSchema true
+
+let adminLoginName = "admin"
+let terryLoginName = "terry"
+let adminPassword = if productionSql then "admin" else "demo:admin"
+let terryPassword = if productionSql then "terry" else "demo:terry"
+
+let seedProductionSqlSecurity connectionString =
+    let loginConfig = loginSqlConfig connectionString
+    let aclConfig = aclSqlConfig connectionString
+
+    LoginSqlServer.ensureStoreAsync loginConfig |> Async.RunSynchronously
+    LoginSqlServer.ensureCredentialStoreAsync loginConfig |> Async.RunSynchronously
+    ensureStoreAsync aclConfig |> Async.RunSynchronously
+
+    let schema = quoteIdentifier sqlSecuritySchema
+    let loginUser = schema + "." + quoteIdentifier "LoginUser"
+    let loginUserGroup = schema + "." + quoteIdentifier "LoginUserGroup"
+    let loginUserRole = schema + "." + quoteIdentifier "LoginUserRole"
+    let aclPolicy = schema + "." + quoteIdentifier sqlAclTable
+
+    executeSqlNonQuery
+        connectionString
+        $"DELETE FROM {loginUserGroup}; DELETE FROM {loginUserRole}; DELETE FROM {loginUser}; DELETE FROM {aclPolicy};"
+
+    let adminSeed: LoginSqlServer.SqlServerLoginCredentialSeed =
+        { UserId = "user.admin"
+          LoginName = adminLoginName
+          DisplayName = Some "Admin"
+          Provider = "ptcs-login"
+          Enabled = true
+          PasswordSecret = adminPassword
+          Groups = [ "sys-admin" ]
+          Roles = [ "admin" ]
+          Iterations = Some 210000 }
+
+    let terrySeed: LoginSqlServer.SqlServerLoginCredentialSeed =
+        { UserId = "user.terry-hater"
+          LoginName = terryLoginName
+          DisplayName = Some "Terry黑粉"
+          Provider = "ptcs-login"
+          Enabled = true
+          PasswordSecret = terryPassword
+          Groups = [ "Terry黑粉" ]
+          Roles = [ "user" ]
+          Iterations = Some 210000 }
+
+    LoginSqlServer.upsertCredentialUserAsync loginConfig adminSeed |> Async.RunSynchronously
+    LoginSqlServer.upsertCredentialUserAsync loginConfig terrySeed |> Async.RunSynchronously
+
+    let policy =
+        { AclPolicyConfig.demo() with
+            Revision = "poc-full-nuget-journal-acl-sql-" + DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss")
+            DeploymentProfile = Public
+            BrowserAuthProvider = Some "ptcs-login" }
+
+    ensureAndSavePolicyConfigAsync aclConfig true policy |> Async.RunSynchronously
+
+    loginConfig, aclConfig
+
+let seededSqlConfigs =
+    match productionSqlConnectionString with
+    | Some connectionString when productionSql -> Some(seedProductionSqlSecurity connectionString)
+    | _ -> None
+
 let aclOptions =
-    match PtcsAcl.create (AclPolicyConfig.demo()) with
-    | Ok value -> value
-    | Error error -> invalidOp $"PTCS ACL demo policy decode failed: {error.Message}"
+    match seededSqlConfigs with
+    | Some(_, aclConfig) ->
+        match ensureAndLoadActivePolicySnapshotAsync aclConfig |> Async.RunSynchronously with
+        | Ok snapshot ->
+            { Snapshot = snapshot
+              AuditSink = None }
+        | Error error -> invalidOp $"PTCS ACL SQL policy load failed: {error.Message}"
+    | None ->
+        match PtcsAcl.create (AclPolicyConfig.demo()) with
+        | Ok value -> value
+        | Error error -> invalidOp $"PTCS ACL demo policy decode failed: {error.Message}"
 
 let loginOptions =
-    match PtcsLogin.demoLocalDev () with
-    | Ok value -> value
-    | Error error -> invalidOp $"PTCS.Login demo config decode failed: {error.Message}"
+    match seededSqlConfigs with
+    | Some(loginConfig, _) ->
+        let sessionStore = LoginSqlServer.createSessionStore loginConfig
+        let baseConfig = LoginConfig.demo()
+
+        let productionConfig =
+            { baseConfig with
+                DeploymentProfile = Public
+                Users = []
+                DurableSessionStore = true
+                Token =
+                    { baseConfig.Token with
+                        Issuer = "ptcs-login"
+                        Audience = "ptcs"
+                        HostId = "poc-full-nuget-journal-acl" } }
+
+        let dependencies =
+            let baseDependencies = PtcsLogin.localDevDependenciesWithSessionStore sessionStore
+
+            { baseDependencies with
+                CredentialVerifier = fun _ -> LoginSqlServer.createCredentialVerifier loginConfig
+                SessionStore = sessionStore }
+
+        match PtcsLogin.coreFromConfigWithDependencies dependencies productionConfig with
+        | Ok core -> PtcsLogin.fromLoginCore core
+        | Error error -> invalidOp $"PTCS.Login production SQL config decode failed: {error.Message}"
+    | None ->
+        match PtcsLogin.demoLocalDev () with
+        | Ok value -> value
+        | Error error -> invalidOp $"PTCS.Login demo config decode failed: {error.Message}"
 
 let readRequiredSecret path label =
     if not (File.Exists path) then
@@ -813,8 +1022,8 @@ let githubClientBaseUrl =
 let loginLocalClientAsAdmin (client: HttpClient) =
     let body =
         JsonSerializer.Serialize(
-            {| userName = "admin"
-               password = "demo:admin"
+            {| userName = adminLoginName
+               password = adminPassword
                returnUrl = "/actors"
                keepSession = true |})
 
@@ -1074,7 +1283,9 @@ try
     printfn "Local login URL    %s/login?returnUrl=/actors" localClientBaseUrl
     printfn "Local chat URL     %s/chat" localClientBaseUrl
     printfn "Local actors URL   %s/actors" localClientBaseUrl
-    printfn "Local demo users   admin=admin / terry=terry; passwords are demo-only and defined by LoginConfig.demo()."
+    printfn "Mode              %s" (if productionSql then "production-sql" else "demo")
+    printfn "Ports             github=%d local=%d cluster=%d dynamic=%b" githubPort localPort clusterPort ifDynaPort
+    printfn "Local users       admin=%s / terry=%s; passwords are %s." adminLoginName terryLoginName (if productionSql then "SQL-seeded for this POC" else "demo-only and defined by LoginConfig.demo()")
     printfn "Actors data   visibleNodes=%d visibleActors=%d includeOfflineNodes=%d includeOfflineActors=%d hubActors=%d" actorsNodeCount actorsActorCount actorsNodeCountWithOffline actorsActorCountWithOffline hubActorCount
     if noWait then
         printfn "After stop    visibleNodes=%d visibleActors=%d includeOfflineActors=%d pingPongFiltered=true" afterStopActorsNodeCount afterStopActorsActorCount afterStopIncludeOfflineActorCount

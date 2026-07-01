@@ -633,3 +633,20 @@ Implementation status:
 - Fixed quiet startup suppression in `src\poc.full.nuget.journal.ACL.fsx`: replaced disposable `StringWriter` output capture with `TextWriter.Null`. Suave can retain `Console.Out` after `startWithSharing` returns; if that writer is disposed, the background listener can fail with `ObjectDisposedException` and the GitHub-OAuth side becomes unreachable.
 - Verification passed: `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL.fsx -- --no-wait --local-port 18102 --github-port 18101 --cluster-port 18801 --pcsl-root .\.pcsl\verify.acl.beta56.dual-host.quiet`.
 - The same script still prints the GitHub OAuth URL, local PTCS.Login URL, PingPong stop filtering result, and fixed-name Echo actor reuse result before cleanly stopping both listeners.
+
+## 2026-07-01 - poc.full.nuget.journal.ACL.fsx dynamic-port and production SQL proof
+
+- Extended `src\poc.full.nuget.journal.ACL.fsx` with `--if-dyna-port` so GitHub, local-login, and cluster ports can be selected from free loopback ports when fixed 81/82 are occupied.
+- Added production-sql mode using `PulseTrade.Comm.Security`, `PulseTrade.Comm.Login.SqlServer`, and `PulseTrade.Comm.ACL.SqlServer` packages. The script reads an encrypted SQL connection-string file plus private key path, seeds SQL credential/session/ACL policy tables, and authenticates the local PTCS.Login side through `SqlServerLoginCredentialVerifier` instead of demo credentials.
+- Verification passed:
+  - Demo dynamic-port no-wait: `dotnet fsi --exec C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\poc.full.nuget.journal.ACL.fsx -- --if-dyna-port --no-wait --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl\pcsl_verify_20260701_01`.
+  - Production-sql dynamic-port no-wait: `dotnet fsi --exec C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\poc.full.nuget.journal.ACL.fsx -- --if-dyna-port --production-sql --sql-connection-string-encrypted-file G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl\ptcs-local-integrated-20260701.enc.txt --sql-private-key-path D:\ingted.com\myKey.private.txt --sql-security-schema ptcs_poc_acl --sql-acl-table AclPolicySnapshot --no-wait --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl\pcsl_verify_20260701_sql_01`.
+- The retained encrypted SQL file contains only encrypted text; plaintext SQL connection values were not written to repo files or verifier output.
+
+## 2026-07-01 - Formal PTCS service production SQL proof with Dynamic beta56
+
+- PTC formal Windows service release `live81-82-ptcs-beta66-dynamic-beta56-production-sql-private-lan-202607011125` is deployed with `PulseTrade.Comm.Spa 0.2.5-beta66` and `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta56`.
+- The service loads Dynamic from the release extension directory and uses 81 GitHub OAuth plus loopback 82 SQL-backed PTCS.Login in the same process.
+- SQL credential/session/ACL policy/audit providers use encrypted SQL connection file `D:\ingted.com\ptcs-sql-connection.enc.txt` and private key path `D:\ingted.com\myKey.private.txt`; no plaintext SQL password is written to Dynamic repo docs/logs.
+- Verification passed through PTC deployment alignment and loopback 81/82/8798 health; 82 SQL `admin` login returns an HttpOnly `ptc_login_session` cookie and `/acl/api/snapshot` returns HTTP 200.
+- Dynamic WBS/Verification now distinguish POC production-sql proof from the formal service proof. Remaining Dynamic-adjacent gaps are strict ActorsPage schema parser, server-side report schedule, IndexedDB restart/cache sync, cross-service GW/RN registry feed, and failover visual states.
