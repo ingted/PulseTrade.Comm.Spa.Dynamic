@@ -713,3 +713,9 @@ Implementation status:
 - The open Login package now owns `PtcsLoginOptions`, `PtcsLogin.provider`, `/login` route composition, `/login/api/submit`, `/login/api/session`, `/login/logout`, `/chat/login`, `/chat/logout`, HttpOnly SameSite cookie handling, and session-to-principal resolution. `PtcsLoginExtension.usePtcsLogin` installs that provider through PTCS `Server.withBrowserAuth` instead of calling PTCS core `Server.withPtcsLogin`.
 - Verification passed: Spa.Login Release build/pack, ACL2 dynamic-port no-wait gate using `pcsl_login_open_provider_alpha12_20260702_01`, and the PTCS browser Playwright gate with PTCS beta70 / Dynamic beta60 / Spa.ACL alpha10 / Spa.Login alpha12 exact packages.
 - NuGet push for `PulseTrade.Comm.Spa.Login 0.1.0-alpha12` returned `Created`; immediate flat-container lookup returned 404, so public indexing is propagation-pending.
+
+## 2026-07-02 - ACL2 formal service deploy gate
+
+- PTC `PulseTrade.Comm.Spa.Host` now consumes Dynamic beta60, Spa.ACL alpha10, and Spa.Login alpha12 exact NuGet packages in the formal Windows service release.
+- Formal service release `live81-82-ptcs-beta70-dynamic-beta60-open-acl-login-assetfix-202607021416` passed public 81 OAuth redirect, loopback 82 SQL local login, HttpOnly session cookie, `/acl/api/snapshot`, and direct Spa.ACL/Spa.Login script marker fetches.
+- This closes the public 81/82 redeploy gate for `DYN-WBS-521` / `DYN-VFY-009`; remaining work is transitional PTCS core fallback cleanup after downstream consumers are stable.

@@ -485,7 +485,7 @@ Coverage:
 
 ### DYN-VFY-009 ACL2 final open-extension boundary POC
 
-狀態：Partial pass；production SQL / disabled-user / browser Playwright / alpha12 open-provider gates 已通過，public deploy / fallback cleanup 仍未完成。
+狀態：Partial pass；production SQL / disabled-user / browser Playwright / alpha12 open-provider / formal public 81 + loopback 82 deploy gates 已通過，fallback cleanup 仍未完成。
 
 Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 
@@ -513,6 +513,14 @@ Browser Playwright command passed on 2026-07-02：
 dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.aclLoginBrowser.playwright.fsx -- --port 0
 ```
 
+Formal service deploy proof passed on 2026-07-02：
+
+```text
+release=live81-82-ptcs-beta70-dynamic-beta60-open-acl-login-assetfix-202607021416
+service=PulseTradeCommSpaHumanUi
+evidence=G:\PulseTrade.fs\log\20260702\20260702133940.ptcs-acl-login-extension-route-spi.op_log
+```
+
 Passed assertions：
 
 - `--if-dyna-port --no-wait` 可使用 free ports 啟動 dual listener。
@@ -522,8 +530,8 @@ Passed assertions：
 - production-SQL mode 使用 encrypted SQL file/key args，不輸出 plaintext secret。
 - wrong-password login 與 disabled-terry login 都回 401。
 - browser Playwright verifies admin/Terry local-login cookies through the open Login provider, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, client-extension manifest/script asset loading, active Login extension renderer, and active ACL snapshot observer/capability provider with exact PTCS beta70 / Dynamic beta60 / Spa.ACL alpha10 / Spa.Login alpha12 packages.
+- formal service verifies public 81 OAuth redirect, loopback 82 SQL local login, HttpOnly session cookie, `/acl/api/snapshot`, and direct Spa.ACL/Spa.Login script marker fetches from the extracted package set.
 
 Remaining assertions：
 
-- public 81/82 redeploy uses extracted packages。
-- public 81/82 redeploy uses the extracted package set, and transitional fallback cleanup removes dead PTCS core Login code after downstream consumers migrate。
+- transitional fallback cleanup removes dead PTCS core Login/ACL browser behavior after downstream consumers migrate。
