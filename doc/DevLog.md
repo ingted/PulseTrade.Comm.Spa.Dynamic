@@ -727,3 +727,11 @@ Implementation status:
 - Change: ACL2 now preflights fixed GitHub/local-login/Akka ports before fabric startup, fails fast with a clear `--if-dyna-port` hint when occupied, and prints ACL/Login provider plus listener startup stage logs after journal warm-up.
 - Verification passed: `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\debug_hang_dyn_afterfix_20260702_02`.
 - Verification safety check: with formal service occupying 81/82, `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\debug_hang_fixed_afterfix_20260702_02` exits before startup with `ACL2 startup preflight failed: GitHub OAuth HTTP listener port 0.0.0.0:81 is unavailable...`, which is the expected fixed-port protection.
+
+## 2026-07-02 - ACL2 NoLogin GitHub-only variant
+
+- Added/fixed `src\full.nuget.journal.ACL2.NoLogin.fsx` as a GitHub OAuth only variant of ACL2.
+- `PulseTrade.Comm.Spa.Login`, Login Core, and Login SQL package references remain commented out. The script no longer builds `PtcsLogin` options, no longer starts a local PTCS.Login listener, and no longer calls `/login/api/submit`.
+- The NoLogin ACL policy uses `BrowserAuthProvider=github-oauth` and binds `github:ingted` to `sys-admin`, so public ACL evaluation has a real browser auth provider without reintroducing username/password login.
+- No-wait verification intentionally avoids protected `/acl/api` / `/pages/api` HTTP matrix checks because there is no local session cookie provider. It still verifies health, journal/persistence health, ACL/Dynamic static assets, internal ActorFabric durable probe, PingPong stop request, and fixed-name Echo reuse.
+- Verification passed: `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoLogin.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\nologin_20260702_02`.
