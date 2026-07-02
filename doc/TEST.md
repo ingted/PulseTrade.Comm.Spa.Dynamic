@@ -485,7 +485,7 @@ Coverage:
 
 ### DYN-VFY-009 ACL2 final open-extension boundary POC
 
-狀態：Partial pass；production SQL / disabled-user / browser Playwright gates 已通過，deploy/client-extraction 仍未完成。
+狀態：Partial pass；production SQL / disabled-user / browser Playwright / alpha8 client-hook gates 已通過，deploy/full client-extraction 仍未完成。
 
 Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 
@@ -495,13 +495,13 @@ Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 - closed `PulseTrade.Comm.ACL.Core` / `PulseTrade.Comm.Login.Core` 只能以 exact binary NuGet dependency 進入。
 - 不允許 ProjectReference 到 closed Core source。
 
-First-slice command passed on 2026-07-02：
+Latest client-hook demo command passed on 2026-07-02：
 
 ```powershell
-dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo
+dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_client_hook_alpha8_20260702_01
 ```
 
-Production SQL command passed on 2026-07-02：
+Production SQL command passed on 2026-07-02 and remains the encrypted SQL proof：
 
 ```powershell
 dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --production-sql --sql-connection-string-encrypted-file D:\ingted.com\ptcs-sql-connection.enc.txt --sql-private-key-path D:\ingted.com\myKey.private.txt --sql-security-schema ptcs_security --sql-acl-table AclPolicySnapshotPoc --no-wait --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_wz_terry_20260702_01
@@ -521,10 +521,9 @@ Passed assertions：
 - actor echo、PingPong stop/re-register、actor reuse after stop 通過。
 - production-SQL mode 使用 encrypted SQL file/key args，不輸出 plaintext secret。
 - wrong-password login 與 disabled-terry login 都回 401。
-- browser Playwright verifies admin/Terry local-login cookies, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, and client-extension manifest/script asset loading with exact PTCS beta66 / Dynamic beta56 / Spa.ACL alpha3 / Spa.Login alpha3 packages.
+- browser Playwright verifies admin/Terry local-login cookies, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, client-extension manifest/script asset loading, active Login extension renderer, and active ACL snapshot observer with exact PTCS beta68 / Dynamic beta58 / Spa.ACL alpha8 / Spa.Login alpha8 packages.
 
 Remaining assertions：
 
-- reusable static scan verifies no ProjectReference to closed Core source。
 - public 81/82 redeploy uses extracted packages。
-- full browser/client bundle extraction moves out of PTCS core。
+- full browser/client bundle extraction moves remaining ACL/Login route/client behavior out of PTCS core。

@@ -5,16 +5,189 @@ function isIDisposable(x){
   return"Dispose"in x;
 }
 function Main(){
-  return globalThis.console.log("PulseTrade.Comm.Spa.Login bundle loaded");
+  registerLoginRenderer();
+  return globalThis.console.log("PulseTrade.Comm.Spa.Login bundle loaded and registered login renderer");
+}
+function registerLoginRenderer(){
+  if("PulseTradeRegisterLoginRenderer"in globalThis)globalThis.PulseTradeRegisterLoginRenderer("ptcs-login-page", 100, mountLogin);
+}
+function mountLogin(root, configJson){
+  const config=configFromJson(configJson);
+  root.setAttribute("data-ptcs-login-renderer", extensionId());
+  if(!(doc().body==null))doc().body.setAttribute("data-ptcs-login-renderer", extensionId());
+  else null;
+  const frame=element("section", "login-frame", null);
+  frame.setAttribute("aria-label", "PTCS Login");
+  const systemPanel=element("aside", "system-panel", null);
+  const brand=element("div", "", null);
+  append(brand, [element("div", "brand-mark", "PT"), element("p", "brand-title", "PulseTrade Comm Spa"), element("p", "brand-subtitle", "\u672c\u9801\u7531 PulseTrade.Comm.Spa.Login extension bundle \u5448\u73fe\u3002\u767b\u5165\u6210\u529f\u5f8c\u7531 server \u8a2d\u5b9a HttpOnly session cookie\uff0c\u518d\u56de\u5230\u53d7\u4fdd\u8b77\u7684 PTCS \u9801\u9762\u3002")]);
+  const routes=element("ul", "route-list", null);
+  routes.setAttribute("aria-label", "Login context");
+  append(routes, [routeItem("P", "Protected route", textOr("/actors", config.protectedRoute)), routeItem("S", "Session cookie", textOr("ptc_login_session", config.sessionCookieName)), routeItem("A", "ACL mode", textOr("enabled or authenticated-only", config.aclLabel))]);
+  append(systemPanel, [brand, routes]);
+  const formPanel=element("section", "form-panel", null);
+  const card=element("div", "form-card", null);
+  const statusRow=element("div", "status-row", null);
+  const providerPill=element("span", "pill", null);
+  const bypassPill=element("span", "pill", null);
+  append(providerPill, [element("span", "dot", ""), doc().createTextNode(textOr("PTCS.Login", config.providerLabel))]);
+  append(bypassPill, [element("span", "dot warn", ""), doc().createTextNode("OAuth bypass")]);
+  append(statusRow, [providerPill, bypassPill]);
+  const errorBox=setTestId("ptcs-login-error", element("p", "error-box", "\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002"));
+  errorBox.setAttribute("role", "alert");
+  const userName=setTestId("ptcs-login-username", setId("username", input("admin")));
+  userName.setAttribute("name", "username");
+  userName.setAttribute("type", "text");
+  userName.setAttribute("autocomplete", "username");
+  const password=setTestId("ptcs-login-password", setId("password", input("\u8f38\u5165\u5bc6\u78bc")));
+  password.setAttribute("name", "password");
+  password.setAttribute("type", "password");
+  password.setAttribute("autocomplete", "current-password");
+  const keepSession=doc().createElement("input");
+  keepSession.setAttribute("name", "keepSession");
+  keepSession.setAttribute("type", "checkbox");
+  keepSession.setAttribute("value", "true");
+  const inlineRow=element("div", "inline-row", null);
+  const checkboxLabel=element("label", "checkbox-row", null);
+  append(checkboxLabel, [keepSession, doc().createTextNode("\u4fdd\u6301\u6b64\u700f\u89bd\u5668\u767b\u5165")]);
+  append(inlineRow, [checkboxLabel, setHref("/login/help", element("a", "link", "\u9700\u8981\u5354\u52a9?"))]);
+  const form=element("form", "", null);
+  form.setAttribute("method", "post");
+  form.setAttribute("action", config.submitPath);
+  const submit=setTestId("ptcs-login-submit", button("primary", "\u767b\u5165\u4e26\u8fd4\u56de PTCS"));
+  const setError=(text) => {
+    errorBox.textContent=textOr("\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002", text);
+    errorBox.className="error-box visible";
+  };
+  const submitLogin=() => {
+    const request=New_30(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    if(isBlank(request.userName)||isBlank(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
+    else {
+      errorBox.className="error-box";
+      submit.setAttribute("disabled", "disabled");
+      submit.textContent="\u767b\u5165\u4e2d";
+      postJson(config.submitPath, JSON.stringify(request), (responseBody) => {
+        const target=textOr(config.returnUrl, decodeJson(responseBody).returnUrl);
+        globalThis.location.assign(target);
+      }, (error) => {
+        submit.removeAttribute("disabled");
+        submit.textContent="\u767b\u5165\u4e26\u8fd4\u56de PTCS";
+        setError(isBlank(error)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error);
+      });
+    }
+  };
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    return submitLogin();
+  });
+  submit.addEventListener("click", submitLogin);
+  append(form, [field("\u5e33\u865f", "username", userName), field("\u5bc6\u78bc", "password", password), inlineRow, submit]);
+  append(card, [statusRow, element("h1", "", textOr("\u767b\u5165 PTCS", config.title)), element("p", "lead", textOr("\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", config.lead)), errorBox, form, element("p", "footer-note", "Browser flow \u61c9\u53ea\u56de HttpOnly cookie\uff1bheadless/API/WS \u624d\u4f7f\u7528 bearer token\u3002\u63d0\u4ea4\u7aef\u9ede\u793a\u610f\u70ba /login/api/submit\u3002")]);
+  append(formPanel, [card]);
+  append(frame, [systemPanel, formPanel]);
+  clear(root);
+  root.appendChild(frame);
+  return true;
+}
+function configFromJson(configJson){
+  return isBlank(configJson)?defaultConfig():decodeJson(configJson);
+}
+function extensionId(){
+  return _c_1.extensionId;
+}
+function doc(){
+  return globalThis.document;
+}
+function element(name, className, text){
+  const node=doc().createElement(name);
+  if(!isBlank(className))node.className=className;
+  if(!(text==null))node.textContent=text;
+  return node;
+}
+function append(parent, children){
+  iter((child) => {
+    parent.appendChild(child);
+  }, children);
+  return parent;
+}
+function routeItem(icon, name, value){
+  const item=element("li", "route-item", null);
+  const content=element("div", "", null);
+  append(content, [element("p", "route-name", name), element("p", "route-value", value)]);
+  append(item, [element("span", "route-icon", icon), content]);
+  return item;
+}
+function textOr(fallback, value){
+  const text=asText(value);
+  return isBlank(text)?fallback:text;
+}
+function setTestId(value, node){
+  node.setAttribute("data-testid", value);
+  return node;
+}
+function input(placeholder){
+  const node=doc().createElement("input");
+  node.setAttribute("placeholder", placeholder);
+  return node;
+}
+function setId(value, node){
+  node.id=value;
+  return node;
+}
+function button(className, text){
+  const node=doc().createElement("button");
+  if(!isBlank(className))node.className=className;
+  node.textContent=text;
+  node.setAttribute("type", "button");
+  return node;
+}
+function isBlank(value){
+  return value==null||Trim(value)=="";
+}
+function postJson(url, payloadJson, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  (globalThis.fetch(url, {
+    method:"POST",
+    headers:headers,
+    body:payloadJson
+  }).then((response) => response.text().then((responseBody) => response.ok?onOk(isBlank(responseBody)?"{}":responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
+function decodeJson(text){
+  return JSON.parse(asText(text));
+}
+function field(labelText, inputId, control){
+  const wrap=element("div", "field", null);
+  const label=element("label", "", labelText);
+  label.setAttribute("for", inputId);
+  append(wrap, [label, control]);
+  return wrap;
+}
+function clear(node){
+  while(!(node.firstChild==null))
+    node.removeChild(node.firstChild);
+}
+function setHref(value, node){
+  node.setAttribute("href", value);
+  return node;
+}
+function defaultConfig(){
+  return New_29("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode");
+}
+function asText(value){
+  return value==null||Equals(typeof value, "undefined")?"":value;
+}
+function errorMessage(error){
+  return error==null?"unknown error":String(error);
 }
 function Main_1(){
   let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
-  const loginRoot=doc().getElementById("ptcs-login-root");
-  if(!(loginRoot==null))mountLogin(loginRoot);
+  const loginRoot=doc_1().getElementById("ptcs-login-root");
+  if(!(loginRoot==null))mountLogin_1(loginRoot);
   else {
-    if(!(doc().body==null))doc().body.setAttribute("data-server-reality-id", currentServerRealityId());
-    const trimmed=TrimEnd(asText(globalThis.location.pathname), ["/"]);
-    const path=isBlank(trimmed)?"/chat":trimmed;
+    if(!(doc_1().body==null))doc_1().body.setAttribute("data-server-reality-id", currentServerRealityId());
+    const trimmed=TrimEnd(asText_1(globalThis.location.pathname), ["/"]);
+    const path=isBlank_1(trimmed)?"/chat":trimmed;
     mountedPageElement=null;
     mountedAppendPageResolved=false;
     const cacheKey_1=appendPagesDefinitionsCacheKey();
@@ -47,8 +220,8 @@ function Main_1(){
       }
     };
     const renderAppendRegistryHealth=() => {
-      if(!(doc().body==null))doc().body.setAttribute("data-append-registry-ws-state", appendRegistryWsState);
-      const node=doc().querySelector("[data-testid='append-registry-health']");
+      if(!(doc_1().body==null))doc_1().body.setAttribute("data-append-registry-ws-state", appendRegistryWsState);
+      const node=doc_1().querySelector("[data-testid='append-registry-health']");
       if(!(node==null)){
         const x=setData("ws-state", appendRegistryWsState, node);
         const x_1=setData("page-count", String(appendRegistryPageCount), x);
@@ -66,7 +239,7 @@ function Main_1(){
       const b=data_1.maxSequence;
       appendRegistryMaxSequence=Compare(appendRegistryMaxSequence, b)===1?appendRegistryMaxSequence:b;
       if(mounted){
-        const nav=doc().getElementById("ptc-nav");
+        const nav=doc_1().getElementById("ptc-nav");
         if(!(nav==null))renderNav(nav, path, arrayOrEmpty(data_1.pages));
         if(path!="/sets"&&path!="/actors"&&path!="/chat"&&!mountedAppendPageResolved){
           const _2=findAppendPage(path, arrayOrEmpty(data_1.pages));
@@ -74,7 +247,7 @@ function Main_1(){
             if(_2!=null&&_2.$==1){
               const definition=_2.$0;
               const page=mountedPageElement.$0;
-              _1=(clear(page),mountedAppendPageResolved=true,mountAppendPage(page, definition));
+              _1=(clear_1(page),mountedAppendPageResolved=true,mountAppendPage(page, definition));
             }
             else _1=void 0;
           }
@@ -86,7 +259,7 @@ function Main_1(){
       renderAppendRegistryHealth();
     };
     const setAppendRegistryWsState=(value) => {
-      appendRegistryWsState=asText(value);
+      appendRegistryWsState=asText_1(value);
       renderAppendRegistryHealth();
     };
     appendRegistrySocket=null;
@@ -128,8 +301,8 @@ function Main_1(){
         socket_1.onmessage=(event) => {
           try {
             const response=json(String(event.data));
-            const responseType=asText(response.type).toLowerCase();
-            const responseStatus=asText(response.status).toLowerCase();
+            const responseType=asText_1(response.type).toLowerCase();
+            const responseStatus=asText_1(response.status).toLowerCase();
             switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
               case 0:
                 return setAppendRegistryWsState("subscribed");
@@ -192,110 +365,40 @@ function Main_1(){
     };
     getJson("/acl/api/snapshot", (snapshot) => {
       set_currentAclSnapshot(Some(snapshot));
+      notifyAclSnapshotObservers(JSON.stringify(snapshot));
       startAfterAclSnapshot();
     }, () => {
       startAfterAclSnapshot();
     });
   }
 }
-function doc(){
+function doc_1(){
   return _c.doc;
 }
-function mountLogin(root){
-  const config=loginConfig();
-  const frame=element("section", "login-frame", null);
-  frame.setAttribute("aria-label", "PTCS Login");
-  const systemPanel=element("aside", "system-panel", null);
-  const brand=element("div", "", null);
-  append(brand, [element("div", "brand-mark", "PT"), element("p", "brand-title", "PulseTrade Comm Spa"), element("p", "brand-subtitle", "\u672c\u9801\u793a\u610f PTCS.Login provider \u7684\u81ea\u6709\u767b\u5165\u5165\u53e3\u3002\u767b\u5165\u6210\u529f\u5f8c\u7531 server \u8a2d\u5b9a HttpOnly session cookie\uff0c\u518d\u56de\u5230\u53d7\u4fdd\u8b77\u7684 PTCS \u9801\u9762\u3002")]);
-  const routes=element("ul", "route-list", null);
-  routes.setAttribute("aria-label", "Login context");
-  append(routes, [routeItem("P", "Protected route", textOr("/actors", config.protectedRoute)), routeItem("S", "Session cookie", textOr("ptc_login_session", config.sessionCookieName)), routeItem("A", "ACL mode", textOr("enabled or authenticated-only", config.aclLabel))]);
-  append(systemPanel, [brand, routes]);
-  const formPanel=element("section", "form-panel", null);
-  const card=element("div", "form-card", null);
-  const statusRow=element("div", "status-row", null);
-  const providerPill=element("span", "pill", null);
-  const bypassPill=element("span", "pill", null);
-  append(providerPill, [element("span", "dot", ""), doc().createTextNode(textOr("PTCS.Login", config.providerLabel))]);
-  append(bypassPill, [element("span", "dot warn", ""), doc().createTextNode("OAuth bypass")]);
-  append(statusRow, [providerPill, bypassPill]);
-  const errorBox=setTestId("ptcs-login-error", element("p", "error-box", "\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002"));
-  errorBox.setAttribute("role", "alert");
-  const userName=setTestId("ptcs-login-username", setId("username", input("admin")));
-  userName.setAttribute("name", "username");
-  userName.setAttribute("type", "text");
-  userName.setAttribute("autocomplete", "username");
-  const password=setTestId("ptcs-login-password", setId("password", input("\u8f38\u5165\u5bc6\u78bc")));
-  password.setAttribute("name", "password");
-  password.setAttribute("type", "password");
-  password.setAttribute("autocomplete", "current-password");
-  const keepSession=doc().createElement("input");
-  keepSession.setAttribute("name", "keepSession");
-  keepSession.setAttribute("type", "checkbox");
-  keepSession.setAttribute("value", "true");
-  const inlineRow=element("div", "inline-row", null);
-  const checkboxLabel=element("label", "checkbox-row", null);
-  append(checkboxLabel, [keepSession, doc().createTextNode("\u4fdd\u6301\u6b64\u700f\u89bd\u5668\u767b\u5165")]);
-  append(inlineRow, [checkboxLabel, setHref("/login/help", element("a", "link", "\u9700\u8981\u5354\u52a9?"))]);
-  const form=element("form", "", null);
-  form.setAttribute("method", "post");
-  form.setAttribute("action", config.submitPath);
-  const submit=setTestId("ptcs-login-submit", button("", "\u767b\u5165\u4e26\u8fd4\u56de PTCS"));
-  const setError=(text) => {
-    errorBox.textContent=textOr("\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002", text);
-    errorBox.className="error-box visible";
-  };
-  const submitLogin=() => {
-    const request=New_4(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
-    if(isBlank(request.userName)||isBlank(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
-    else {
-      errorBox.className="error-box";
-      submit.setAttribute("disabled", "disabled");
-      submit.textContent="\u767b\u5165\u4e2d";
-      postJson(config.submitPath, request, (reply) => {
-        const target=textOr(config.returnUrl, reply.returnUrl);
-        globalThis.location.assign(target);
-      }, (error) => {
-        submit.removeAttribute("disabled");
-        submit.textContent="\u767b\u5165\u4e26\u8fd4\u56de PTCS";
-        setError(isBlank(error)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error);
-      });
-    }
-  };
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    return submitLogin();
-  });
-  submit.addEventListener("click", submitLogin);
-  append(form, [field("\u5e33\u865f", "username", userName), field("\u5bc6\u78bc", "password", password), inlineRow, submit]);
-  append(card, [statusRow, element("h1", "", textOr("\u767b\u5165 PTCS", config.title)), element("p", "lead", textOr("\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", config.lead)), errorBox, form, element("p", "footer-note", "Browser flow \u61c9\u53ea\u56de HttpOnly cookie\uff1bheadless/API/WS \u624d\u4f7f\u7528 bearer token\u3002\u63d0\u4ea4\u7aef\u9ede\u793a\u610f\u70ba /login/api/submit\u3002")]);
-  append(formPanel, [card]);
-  append(frame, [systemPanel, formPanel]);
-  clear(root);
-  root.appendChild(frame);
+function mountLogin_1(root){
+  if(!tryMountLoginWithRegisteredRenderers(root, JSON.stringify(loginConfig())))mountLoginFallback(root);
 }
 function currentServerRealityId(){
-  const node=doc().getElementById("ptc-comm-reality");
-  if(node==null||isBlank(node.textContent))return"legacy";
+  const node=doc_1().getElementById("ptc-comm-reality");
+  if(node==null||isBlank_1(node.textContent))return"legacy";
   else try {
-    return textOr("legacy", json(node.textContent).serverRealityId);
+    return textOr_1("legacy", json(node.textContent).serverRealityId);
   }
   catch(m){
     return"legacy";
   }
 }
-function isBlank(value){
+function isBlank_1(value){
   return value==null||Trim(value)=="";
 }
-function asText(value){
+function asText_1(value){
   return value==null||Equals(typeof value, "undefined")?"":value;
 }
 function appendPagesDefinitionsCacheKey(){
   return cacheKey("append-pages-definitions", FSharpList.Empty);
 }
 function setData(name, value, node){
-  !isBlank(name)?node.setAttribute("data-"+name, asText(value)):void 0;
+  !isBlank_1(name)?node.setAttribute("data-"+name, asText_1(value)):void 0;
   return node;
 }
 function emptyAppendPagesReply(){
@@ -311,7 +414,7 @@ function mergeAppendPageRegistryEvents(baseline, events){
   maxSequence=baseline_1.maxSequence;
   iter((event) => {
     if(!(event==null)&&event.sequence>0n){
-      const m=asText(event.sourceKind).toLowerCase();
+      const m=asText_1(event.sourceKind).toLowerCase();
       if(m=="append-page.definition"){
         const b=event.sequence;
         maxSequence=Compare(maxSequence, b)===1?maxSequence:b;
@@ -356,7 +459,7 @@ function syncWebSocketUrl(){
   return(location.protocol=="https:"?"wss:":"ws:")+"//"+location.host+"/sync/ws";
 }
 function appendPageRegistryStreamKey(){
-  return New_6("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
+  return New_4("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
 }
 function newRequestId(prefix){
   set_requestSeq(requestSeq()+1);
@@ -368,31 +471,46 @@ function defaultCacheLimit(){
 function getJson(url, onOk, onError){
   const options=requestOptions();
   options.cache="no-store";
-  (globalThis.fetch(url, options).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank(body)?"{}":body)):onError(isBlank(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank_1(body)?"{}":body)):onError(isBlank_1(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage_1(error)));
 }
 function set_currentAclSnapshot(_1){
   _c.currentAclSnapshot=_1;
 }
-function findAppendPage(path, pages){
-  return tryFind((page) => isCurrentPage(path, pagePath(page))||isCurrentPage(path, "/page/"+asText(page.pageId))||isCurrentPage(path, "/"+asText(page.pageId)), arrayOrEmpty(pages));
+function notifyAclSnapshotObservers(snapshotJson){
+  let r;
+  const _1=snapshotJson;
+  if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AclSnapshotObservers))void 0;
+  let observers=globalThis.PulseTrade.AclSnapshotObservers;
+  for(let i=0;i<observers.length;i++){
+    let r_1=observers[i];
+    try {
+      (r_1.render||r_1[1])(_1);
+    }
+    catch(e){
+      console.error("ACL snapshot observer exception:", e);
+    }
+  }
 }
-function clear(node){
+function findAppendPage(path, pages){
+  return tryFind((page) => isCurrentPage(path, pagePath(page))||isCurrentPage(path, "/page/"+asText_1(page.pageId))||isCurrentPage(path, "/"+asText_1(page.pageId)), arrayOrEmpty(pages));
+}
+function clear_1(node){
   node.textContent="";
 }
 function mountAppendPage(page, definition){
   let currentLineageHealth, selected, selectedKeyJson, buckets, locallyHiddenKeyIds, pendingSelectKeyId, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, addKeyEditorOpen, addKeyMode, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
   page.className="page append-page";
-  setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId("append-page-"+asText(definition.pageId), page)));
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
+  setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId_1("append-page-"+asText_1(definition.pageId), page)));
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
   const readsLegacy=sameText(definition.tabId, definition.pageId);
-  let currentLineage=New_7(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
+  let currentLineage=New_5(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
   const applyLineage=(lineage) => {
     const lineage_1=lineage==null?currentLineage:lineage;
     currentLineage=lineage_1;
     setData("lineage-read-repair-policy", lineage_1.readRepairPolicy, setData("lineage-reads-legacy", lineage_1.readsLegacyPageStreams?"true":"false", setData("lineage-legacy-page-id-alias", lineage_1.legacyPageIdAlias, setData("lineage-kind", lineage_1.lineageKind, setData("lineage-stream-page-id", lineage_1.streamPageId, page)))));
   };
   applyLineage(currentLineage);
-  const defaultLineageHealth=() => New_8(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
+  const defaultLineageHealth=() => New_6(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
   currentLineageHealth=defaultLineageHealth();
   selected="";
   selectedKeyJson="";
@@ -404,41 +522,41 @@ function mountAppendPage(page, definition){
   scrollValuesToBottomAfterNextRender=false;
   addKeyEditorOpen=false;
   addKeyMode="target";
-  const isLocallyHiddenKeyId=(keyId) =>!isBlank(keyId)&&exists((hidden) => sameText(hidden, keyId), locallyHiddenKeyIds);
+  const isLocallyHiddenKeyId=(keyId) =>!isBlank_1(keyId)&&exists((hidden) => sameText(hidden, keyId), locallyHiddenKeyIds);
   const rememberLocallyHiddenKeyId=(keyId) => {
-    if(!isBlank(keyId)&&!isLocallyHiddenKeyId(keyId))locallyHiddenKeyIds=locallyHiddenKeyIds.concat([keyId]);
+    if(!isBlank_1(keyId)&&!isLocallyHiddenKeyId(keyId))locallyHiddenKeyIds=locallyHiddenKeyIds.concat([keyId]);
   };
-  const side=element("aside", "sidebar append-sidebar", null);
-  const sideHead=element("div", "panel-head", null);
-  const sideActions=element("div", "head-actions", null);
-  const addActorKeyButton=setTestId("append-add-actor-key", button("", "Add actor key"));
-  const addKeyButton=setTestId("append-add-key", button("", "Add target key"));
-  const addProxyKeyButton=setTestId("append-add-proxy-key", button("", "Add proxy key"));
-  const removeKeyButton=setTestId("append-remove-key", button("", "Remove"));
-  const removePageButton=setTestId("append-remove-page", button("", "Remove page"));
-  const reload=setTestId("append-reload", button("", "Reload"));
-  const actionPool=setTestId("append-page-actions", element("details", "append-page-actions", null));
-  const actionSummary=setTestId("append-page-actions-summary", element("summary", "append-page-actions-summary", "Actions"));
-  const actionMenu=setTestId("append-page-actions-menu", element("div", "append-page-actions-menu", null));
-  const filters=element("div", "filters", null);
-  const keyFilter=setTestId("append-key-filter", input("key contains"));
-  const newKeyInput=setTestId("append-key-input", input(textOr("\"Aster\"", definition.keyPlaceholder)));
-  const newKeyAliasInput=setTestId("append-key-alias-input", input("target alias (optional)"));
-  const addKeyPanel=setTestId("append-add-key-panel", element("div", "append-add-key-panel", null));
-  const fallbackAddKeyPanel=setTestId("append-add-key-fallback", element("div", "append-add-key-fallback", null));
-  const fallbackAddKeyActions=setTestId("append-add-key-actions", element("div", "append-add-key-actions", null));
-  const cleanKeyButton=setTestId("append-key-clean", button("", "Clean"));
-  const cancelKeyButton=setTestId("append-key-cancel", button("", "Cancel"));
-  const okKeyButton=setTestId("append-key-ok", button("primary", "OK"));
-  const addKeyRendererHost=setData("renderer-state", "not-rendered", setTestId("append-add-key-renderer-host", element("div", "append-add-key-renderer-host", null)));
-  const status=setTestId("append-key-status", element("div", "state", "Loading"));
-  const list=setTestId("append-key-list", element("div", "list", null));
-  const work=setTestId("append-work", element("section", "append-work", null));
-  const values=setTestId("append-values", element("div", "append-values", null));
-  const form=setTestId("append-form", element("div", "append-form", null));
-  const valueInput=setTestId("append-value-input", textarea("append-value-input", textOr("JSON value", definition.valuePlaceholder)));
-  const directionInput=setTestId("append-direction", input("outbound-message"));
-  const appendButton=setTestId("append-submit", button("primary", "Append"));
+  const side=element_1("aside", "sidebar append-sidebar", null);
+  const sideHead=element_1("div", "panel-head", null);
+  const sideActions=element_1("div", "head-actions", null);
+  const addActorKeyButton=setTestId_1("append-add-actor-key", button_1("", "Add actor key"));
+  const addKeyButton=setTestId_1("append-add-key", button_1("", "Add target key"));
+  const addProxyKeyButton=setTestId_1("append-add-proxy-key", button_1("", "Add proxy key"));
+  const removeKeyButton=setTestId_1("append-remove-key", button_1("", "Remove"));
+  const removePageButton=setTestId_1("append-remove-page", button_1("", "Remove page"));
+  const reload=setTestId_1("append-reload", button_1("", "Reload"));
+  const actionPool=setTestId_1("append-page-actions", element_1("details", "append-page-actions", null));
+  const actionSummary=setTestId_1("append-page-actions-summary", element_1("summary", "append-page-actions-summary", "Actions"));
+  const actionMenu=setTestId_1("append-page-actions-menu", element_1("div", "append-page-actions-menu", null));
+  const filters=element_1("div", "filters", null);
+  const keyFilter=setTestId_1("append-key-filter", input_1("key contains"));
+  const newKeyInput=setTestId_1("append-key-input", input_1(textOr_1("\"Aster\"", definition.keyPlaceholder)));
+  const newKeyAliasInput=setTestId_1("append-key-alias-input", input_1("target alias (optional)"));
+  const addKeyPanel=setTestId_1("append-add-key-panel", element_1("div", "append-add-key-panel", null));
+  const fallbackAddKeyPanel=setTestId_1("append-add-key-fallback", element_1("div", "append-add-key-fallback", null));
+  const fallbackAddKeyActions=setTestId_1("append-add-key-actions", element_1("div", "append-add-key-actions", null));
+  const cleanKeyButton=setTestId_1("append-key-clean", button_1("", "Clean"));
+  const cancelKeyButton=setTestId_1("append-key-cancel", button_1("", "Cancel"));
+  const okKeyButton=setTestId_1("append-key-ok", button_1("primary", "OK"));
+  const addKeyRendererHost=setData("renderer-state", "not-rendered", setTestId_1("append-add-key-renderer-host", element_1("div", "append-add-key-renderer-host", null)));
+  const status=setTestId_1("append-key-status", element_1("div", "state", "Loading"));
+  const list=setTestId_1("append-key-list", element_1("div", "list", null));
+  const work=setTestId_1("append-work", element_1("section", "append-work", null));
+  const values=setTestId_1("append-values", element_1("div", "append-values", null));
+  const form=setTestId_1("append-form", element_1("div", "append-form", null));
+  const valueInput=setTestId_1("append-value-input", textarea("append-value-input", textOr_1("JSON value", definition.valuePlaceholder)));
+  const directionInput=setTestId_1("append-direction", input_1("outbound-message"));
+  const appendButton=setTestId_1("append-submit", button_1("primary", "Append"));
   const canAddKey=pageAclAllows(definition.pageId, "ptcs.target-key.add");
   const canRemoveKey=pageAclAllows(definition.pageId, "ptcs.target-key.remove");
   const canRemovePage=pageAclAllows(definition.pageId, "ptcs.page.remove");
@@ -449,67 +567,67 @@ function mountAppendPage(page, definition){
   setHidden(!canRemoveKey, removeKeyButton);
   setHidden(!canRemovePage, removePageButton);
   setHidden(!canAppendValue, appendButton);
-  const head_1=element("div", "work-head", null);
-  const titleBox=element("div", "", null);
-  const workState=setTestId("append-work-status", element("div", "state", "Loading"));
-  const pendingState=setTestId("append-pending-state", element("div", "state pending-state", ""));
-  const lineageHealthBox=setTestId("append-lineage-health", element("div", "meta wrap lineage-health", null));
-  const lineageDetailBox=setTestId("append-lineage-detail", element("div", "lineage-detail", null));
-  const lineageDetailPolicy=setTestId("append-lineage-detail-policy", element("span", "lineage-detail-value", ""));
-  const lineageDetailStream=setTestId("append-lineage-detail-stream", element("span", "lineage-detail-value", ""));
-  const lineageDetailLegacy=setTestId("append-lineage-detail-legacy", element("span", "lineage-detail-value", ""));
-  const lineageDetailValueCount=setTestId("append-lineage-detail-value-count", element("span", "lineage-detail-value", ""));
-  const lineageDetailValueStreams=setTestId("append-lineage-detail-value-streams", element("pre", "lineage-detail-value lineage-streams", ""));
-  const lineageDetailKeyCount=setTestId("append-lineage-detail-key-count", element("span", "lineage-detail-value", ""));
-  const lineageDetailKeyStreams=setTestId("append-lineage-detail-key-streams", element("pre", "lineage-detail-value lineage-streams", ""));
-  const keyRegistryHealthBox=setTestId("append-key-registry-health", element("div", "meta wrap key-registry-health", null));
-  const browserCacheHealthBox=setTestId("append-browser-cache-health", element("div", "meta wrap browser-cache-health", null));
-  const lineageInfo=setTestId("append-lineage-info", element("details", "lineage-info", null));
-  const lineageSummary=setTestId("append-lineage-toggle", element("summary", "lineage-summary", "Tab info"));
-  const lineageInfoContent=setTestId("append-lineage-info-content", element("div", "lineage-info-content", null));
-  const identityBox=setTestId("append-page-identity", element("div", "page-identity", null));
-  const pageIdChip=setTestId("append-page-id", element("span", "identity-chip", "page "+asText(definition.pageId)));
-  const tabIdChip=setTestId("append-tab-id", element("span", "identity-chip", "tab "+asText(definition.tabId)));
-  const sideTitle=element("div", "panel-title", null);
+  const head_1=element_1("div", "work-head", null);
+  const titleBox=element_1("div", "", null);
+  const workState=setTestId_1("append-work-status", element_1("div", "state", "Loading"));
+  const pendingState=setTestId_1("append-pending-state", element_1("div", "state pending-state", ""));
+  const lineageHealthBox=setTestId_1("append-lineage-health", element_1("div", "meta wrap lineage-health", null));
+  const lineageDetailBox=setTestId_1("append-lineage-detail", element_1("div", "lineage-detail", null));
+  const lineageDetailPolicy=setTestId_1("append-lineage-detail-policy", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailStream=setTestId_1("append-lineage-detail-stream", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailLegacy=setTestId_1("append-lineage-detail-legacy", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailValueCount=setTestId_1("append-lineage-detail-value-count", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailValueStreams=setTestId_1("append-lineage-detail-value-streams", element_1("pre", "lineage-detail-value lineage-streams", ""));
+  const lineageDetailKeyCount=setTestId_1("append-lineage-detail-key-count", element_1("span", "lineage-detail-value", ""));
+  const lineageDetailKeyStreams=setTestId_1("append-lineage-detail-key-streams", element_1("pre", "lineage-detail-value lineage-streams", ""));
+  const keyRegistryHealthBox=setTestId_1("append-key-registry-health", element_1("div", "meta wrap key-registry-health", null));
+  const browserCacheHealthBox=setTestId_1("append-browser-cache-health", element_1("div", "meta wrap browser-cache-health", null));
+  const lineageInfo=setTestId_1("append-lineage-info", element_1("details", "lineage-info", null));
+  const lineageSummary=setTestId_1("append-lineage-toggle", element_1("summary", "lineage-summary", "Tab info"));
+  const lineageInfoContent=setTestId_1("append-lineage-info-content", element_1("div", "lineage-info-content", null));
+  const identityBox=setTestId_1("append-page-identity", element_1("div", "page-identity", null));
+  const pageIdChip=setTestId_1("append-page-id", element_1("span", "identity-chip", "page "+asText_1(definition.pageId)));
+  const tabIdChip=setTestId_1("append-tab-id", element_1("span", "identity-chip", "tab "+asText_1(definition.tabId)));
+  const sideTitle=element_1("div", "panel-title", null);
   const lineageDetailRow=(label, valueNode) => {
-    const row=element("div", "lineage-detail-row", null);
-    append(row, [element("span", "lineage-detail-label", label), valueNode]);
+    const row=element_1("div", "lineage-detail-row", null);
+    append_1(row, [element_1("span", "lineage-detail-label", label), valueNode]);
     return row;
   };
-  append(lineageDetailBox, [lineageDetailRow("policy", lineageDetailPolicy), lineageDetailRow("stream", lineageDetailStream), lineageDetailRow("legacy", lineageDetailLegacy), lineageDetailRow("value count", lineageDetailValueCount), lineageDetailRow("value streams", lineageDetailValueStreams), lineageDetailRow("key count", lineageDetailKeyCount), lineageDetailRow("key streams", lineageDetailKeyStreams)]);
-  append(lineageInfoContent, [lineageHealthBox, lineageDetailBox, keyRegistryHealthBox, browserCacheHealthBox]);
-  append(lineageInfo, [lineageSummary, lineageInfoContent]);
-  newKeyInput.value=asText(definition.defaultKey);
+  append_1(lineageDetailBox, [lineageDetailRow("policy", lineageDetailPolicy), lineageDetailRow("stream", lineageDetailStream), lineageDetailRow("legacy", lineageDetailLegacy), lineageDetailRow("value count", lineageDetailValueCount), lineageDetailRow("value streams", lineageDetailValueStreams), lineageDetailRow("key count", lineageDetailKeyCount), lineageDetailRow("key streams", lineageDetailKeyStreams)]);
+  append_1(lineageInfoContent, [lineageHealthBox, lineageDetailBox, keyRegistryHealthBox, browserCacheHealthBox]);
+  append_1(lineageInfo, [lineageSummary, lineageInfoContent]);
+  newKeyInput.value=asText_1(definition.defaultKey);
   directionInput.value="outbound-message";
   directionInput.className="append-direction";
   appendButton.textContent=actorArguButtonLabel(definition);
-  append(identityBox, [pageIdChip, tabIdChip]);
-  append(sideTitle, [element("h1", "", pageTitle(definition)), identityBox]);
-  append(actionMenu, isActorDynamicPage(definition)?[addActorKeyButton, addKeyButton, addProxyKeyButton, removeKeyButton, reload, removePageButton]:isActorArguPage(definition)?[addKeyButton, removeKeyButton, reload, removePageButton]:(addKeyButton.textContent="Add key",[addKeyButton, removeKeyButton, reload, removePageButton]));
-  append(actionPool, [actionSummary, actionMenu]);
-  append(sideActions, [actionPool]);
-  append(sideHead, [sideTitle]);
-  append(fallbackAddKeyActions, [cleanKeyButton, cancelKeyButton, okKeyButton]);
-  append(fallbackAddKeyPanel, [newKeyInput, newKeyAliasInput, fallbackAddKeyActions]);
-  append(addKeyPanel, [fallbackAddKeyPanel, addKeyRendererHost]);
-  append(filters, [addKeyPanel, keyFilter, status]);
-  append(side, [sideHead, sideActions, filters, list]);
-  append(titleBox, [setTestId("append-page-type-label", element("label", "", pageTypeLabel(definition)+" / "+asText(definition.setName))), element("h2", "", pageTitle(definition)), element("div", "meta wrap", asText(definition.description)), lineageInfo]);
-  append(head_1, [titleBox, workState]);
+  append_1(identityBox, [pageIdChip, tabIdChip]);
+  append_1(sideTitle, [element_1("h1", "", pageTitle(definition)), identityBox]);
+  append_1(actionMenu, isActorDynamicPage(definition)?[addActorKeyButton, addKeyButton, addProxyKeyButton, removeKeyButton, reload, removePageButton]:isActorArguPage(definition)?[addKeyButton, removeKeyButton, reload, removePageButton]:(addKeyButton.textContent="Add key",[addKeyButton, removeKeyButton, reload, removePageButton]));
+  append_1(actionPool, [actionSummary, actionMenu]);
+  append_1(sideActions, [actionPool]);
+  append_1(sideHead, [sideTitle]);
+  append_1(fallbackAddKeyActions, [cleanKeyButton, cancelKeyButton, okKeyButton]);
+  append_1(fallbackAddKeyPanel, [newKeyInput, newKeyAliasInput, fallbackAddKeyActions]);
+  append_1(addKeyPanel, [fallbackAddKeyPanel, addKeyRendererHost]);
+  append_1(filters, [addKeyPanel, keyFilter, status]);
+  append_1(side, [sideHead, sideActions, filters, list]);
+  append_1(titleBox, [setTestId_1("append-page-type-label", element_1("label", "", pageTypeLabel(definition)+" / "+asText_1(definition.setName))), element_1("h2", "", pageTitle(definition)), element_1("div", "meta wrap", asText_1(definition.description)), lineageInfo]);
+  append_1(head_1, [titleBox, workState]);
   const applyLineageHealth=(health) => {
     const health_1=health==null?defaultLineageHealth():health;
     currentLineageHealth=health_1;
-    const valueStreamKeys=health_1.candidateValueStreamKeys==null?"":concat_1("\n", map(asText, health_1.candidateValueStreamKeys));
-    const keyRegistryStreamKeys=health_1.candidateKeyRegistryStreamKeys==null?"":concat_1("\n", map(asText, health_1.candidateKeyRegistryStreamKeys));
-    const visibleStreamKeys=(streamKeys) => isBlank(streamKeys)?"none":streamKeys;
+    const valueStreamKeys=health_1.candidateValueStreamKeys==null?"":concat_1("\n", map(asText_1, health_1.candidateValueStreamKeys));
+    const keyRegistryStreamKeys=health_1.candidateKeyRegistryStreamKeys==null?"":concat_1("\n", map(asText_1, health_1.candidateKeyRegistryStreamKeys));
+    const visibleStreamKeys=(streamKeys) => isBlank_1(streamKeys)?"none":streamKeys;
     setData("lineage-health-policy", health_1.readRepairPolicy, setData("lineage-candidate-key-registry-stream-keys", keyRegistryStreamKeys, setData("lineage-candidate-value-stream-keys", valueStreamKeys, setData("lineage-candidate-key-registry-stream-count", String(health_1.candidateKeyRegistryStreamCount), setData("lineage-candidate-value-stream-count", String(health_1.candidateValueStreamCount), page)))));
     setData("read-repair-policy", health_1.readRepairPolicy, setData("candidate-key-registry-stream-keys", keyRegistryStreamKeys, setData("candidate-value-stream-keys", valueStreamKeys, setData("candidate-key-registry-stream-count", String(health_1.candidateKeyRegistryStreamCount), setData("candidate-value-stream-count", String(health_1.candidateValueStreamCount), setData("lineage-kind", health_1.lineageKind, setData("stream-page-id", health_1.streamPageId, lineageHealthBox)))))));
     lineageHealthBox.setAttribute("title", "value streams:\n"+valueStreamKeys+"\nkey registry streams:\n"+keyRegistryStreamKeys);
-    lineageHealthBox.textContent="lineage "+String(asText(health_1.lineageKind))+" | stream "+String(asText(health_1.streamPageId))+" | value streams "+String(health_1.candidateValueStreamCount)+" | key streams "+String(health_1.candidateKeyRegistryStreamCount)+" | "+String(asText(health_1.readRepairPolicy));
+    lineageHealthBox.textContent="lineage "+String(asText_1(health_1.lineageKind))+" | stream "+String(asText_1(health_1.streamPageId))+" | value streams "+String(health_1.candidateValueStreamCount)+" | key streams "+String(health_1.candidateKeyRegistryStreamCount)+" | "+String(asText_1(health_1.readRepairPolicy));
     setData("read-repair-policy", health_1.readRepairPolicy, setData("candidate-key-registry-stream-keys", keyRegistryStreamKeys, setData("candidate-value-stream-keys", valueStreamKeys, setData("candidate-key-registry-stream-count", String(health_1.candidateKeyRegistryStreamCount), setData("candidate-value-stream-count", String(health_1.candidateValueStreamCount), setData("reads-legacy", health_1.readsLegacyPageStreams?"true":"false", setData("legacy-page-id-alias", health_1.legacyPageIdAlias, setData("lineage-kind", health_1.lineageKind, setData("stream-page-id", health_1.streamPageId, lineageDetailBox)))))))));
-    lineageDetailPolicy.textContent=asText(health_1.readRepairPolicy);
-    lineageDetailStream.textContent=asText(health_1.streamPageId);
-    lineageDetailLegacy.textContent=isBlank(health_1.legacyPageIdAlias)?"none":asText(health_1.legacyPageIdAlias);
+    lineageDetailPolicy.textContent=asText_1(health_1.readRepairPolicy);
+    lineageDetailStream.textContent=asText_1(health_1.streamPageId);
+    lineageDetailLegacy.textContent=isBlank_1(health_1.legacyPageIdAlias)?"none":asText_1(health_1.legacyPageIdAlias);
     lineageDetailValueCount.textContent=String(health_1.candidateValueStreamCount);
     lineageDetailValueStreams.textContent=visibleStreamKeys(valueStreamKeys);
     lineageDetailKeyCount.textContent=String(health_1.candidateKeyRegistryStreamCount);
@@ -518,11 +636,11 @@ function mountAppendPage(page, definition){
   applyLineageHealth(currentLineageHealth);
   if(isActorArguPage(definition)){
     form.className="append-form actor-argu-form";
-    append(form, [valueInput, appendButton]);
+    append_1(form, [valueInput, appendButton]);
   }
-  else asText(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append(form, [directionInput, valueInput, appendButton])):append(form, [valueInput, appendButton]);
-  append(work, [head_1, pendingState, values, form]);
-  append(page, [side, work]);
+  else asText_1(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append_1(form, [directionInput, valueInput, appendButton])):append_1(form, [valueInput, appendButton]);
+  append_1(work, [head_1, pendingState, values, form]);
+  append_1(page, [side, work]);
   const browserId=currentUserId();
   ensureSelectedSubscription=() => { };
   replayPendingCommands=() => { };
@@ -530,10 +648,10 @@ function mountAppendPage(page, definition){
   rerenderAppendForm=() => { };
   rerenderAddKeyBuilder=() => { };
   const refreshPendingState=() => {
-    readPendingRealitySplit((_3, _4) => renderPendingInspection(pendingState, filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _3), filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _4)));
+    readPendingRealitySplit((_3, _4) => renderPendingInspection(pendingState, filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_1(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_1(definition.pageId)+"\"")!=-1), _3), filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_1(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_1(definition.pageId)+"\"")!=-1), _4)));
   };
-  const isPendingForThisPage=(command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1);
-  const currentFilterText=() => isBlank(keyFilter.value)?"":Trim(keyFilter.value);
+  const isPendingForThisPage=(command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_1(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_1(definition.pageId)+"\"")!=-1);
+  const currentFilterText=() => isBlank_1(keyFilter.value)?"":Trim(keyFilter.value);
   const requestValuesScrollToBottom=() => {
     scrollValuesToBottomAfterNextRender=true;
   };
@@ -544,7 +662,7 @@ function mountAppendPage(page, definition){
   const updateBrowserCacheHealth=(renderedCount, cachedCount, minSequence, maxSequence, snapshotSeqId, backendGap) => {
     const gapText=backendGap?"true":"false";
     const cacheKey_1=stateCacheKey();
-    const selectedText=isBlank(selected)?"(none)":selected;
+    const selectedText=isBlank_1(selected)?"(none)":selected;
     const n=setData("cache-key", cacheKey_1, browserCacheHealthBox);
     let _3=setData("selected-key-id", selected, n);
     let _4=setData("rendered-count", String(renderedCount), _3);
@@ -572,19 +690,19 @@ function mountAppendPage(page, definition){
     updateKeyRegistryHealth();
   };
   const writeCurrentSnapshot=() => {
-    const snapshot=New_10("ok", definition, length(buckets), fold((_3, _4) => Compare(_3, _4)===1?_3:_4, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
+    const snapshot=New_8("ok", definition, length(buckets), fold((_3, _4) => Compare(_3, _4)===1?_3:_4, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
     writeSnapshotWithWatermark(stateCacheKey(), snapshot, snapshot.maxSequence, appendPageValueCount(snapshot), "append-page-state");
     writeAppendPageKeyWatermark(snapshot);
   };
-  const appendPageKeyId=(keys) => asText(definition.setName)+"::"+concat_1(" + ", sortBy((key) => key.toLowerCase(), distinctBy((key) => key.toLowerCase(), choose((key) => {
-    const text=Trim(asText(key));
-    return isBlank(text)?null:Some(text);
+  const appendPageKeyId=(keys) => asText_1(definition.setName)+"::"+concat_1(" + ", sortBy((key) => key.toLowerCase(), distinctBy((key) => key.toLowerCase(), choose((key) => {
+    const text=Trim(asText_1(key));
+    return isBlank_1(text)?null:Some(text);
   }, arrayOrEmpty(keys)))));
   const selectBucketKeys=(keys) => {
     const keys_1=arrayOrEmpty(keys);
     return length(keys_1)>0&&(selected=appendPageKeyId(keys_1),selectedKeyJson=keysAsJson(keys_1),newKeyInput.value=selectedKeyJson,true);
   };
-  const sortAppendPageBuckets=(items) => sortBy((bucket) =>[asText(bucket.setName), asText(bucket.keyId)], arrayOrEmpty(items));
+  const sortAppendPageBuckets=(items) => sortBy((bucket) =>[asText_1(bucket.setName), asText_1(bucket.keyId)], arrayOrEmpty(items));
   const sequenceBounds=(items) => {
     let oldest, newest;
     oldest=0n;
@@ -599,28 +717,28 @@ function mountAppendPage(page, definition){
     let merged;
     merged=[];
     const add=(value) => {
-      if(!(value==null)&&!isBlank(value.valueId)&&!exists((row) => row.valueId==value.valueId, merged))merged=merged.concat([value]);
+      if(!(value==null)&&!isBlank_1(value.valueId)&&!exists((row) => row.valueId==value.valueId, merged))merged=merged.concat([value]);
     };
     iter(add, arrayOrEmpty(incoming));
     iter(add, arrayOrEmpty(existing));
-    return sortBy((value) => asText(value.createdAtUtc), merged);
+    return sortBy((value) => asText_1(value.createdAtUtc), merged);
   };
   function renderList(){
-    clear(list);
+    clear_1(list);
     iter((bucket) => {
-      const item=button(bucket.keyId==selected?"list-card active":"list-card", null);
-      const x=setData("key-id", bucket.keyId, setTestId("append-key-card", item));
-      const x_1=setData("key-display-name", asText(bucket.displayName), x);
+      const item=button_1(bucket.keyId==selected?"list-card active":"list-card", null);
+      const x=setData("key-id", bucket.keyId, setTestId_1("append-key-card", item));
+      const x_1=setData("key-display-name", asText_1(bucket.displayName), x);
       let _3=setData("key-json", keysAsJson(bucket.keys), x_1);
       let _4=setData("min-sequence", String(bucket.minSequence), _3);
       setData("max-sequence", String(bucket.maxSequence), _4);
       item.setAttribute("title", joinValues(bucket.keys));
       let _5=item;
-      const displayName=Trim(asText(bucket.displayName));
-      let _6=isBlank(displayName)?joinValues(bucket.keys):displayName;
-      let _7=element("div", "strong wrap", _6);
-      let _8=[_7, element("div", "muted wrap", asText(bucket.setName)), element("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText(bucket.updatedAtUtc)))];
-      append(_5, _8);
+      const displayName=Trim(asText_1(bucket.displayName));
+      let _6=isBlank_1(displayName)?joinValues(bucket.keys):displayName;
+      let _7=element_1("div", "strong wrap", _6);
+      let _8=[_7, element_1("div", "muted wrap", asText_1(bucket.setName)), element_1("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText_1(bucket.updatedAtUtc)))];
+      append_1(_5, _8);
       item.addEventListener("click", () => {
         selected=bucket.keyId;
         selectedKeyJson=keysAsJson(bucket.keys);
@@ -639,7 +757,7 @@ function mountAppendPage(page, definition){
     while(true)
       {
         let _3, _4, _5;
-        clear(values);
+        clear_1(values);
         const x=(((n) =>(n_1) => setData(n, selected, n_1))("selected-key-id"))(work);
         ((((n) =>(n_1) => setData(n, selectedKeyJson, n_1))("selected-key-json"))(x));
         const bucket=(((p) =>(a_3) => tryFind(p, a_3))((bucket_2) => bucket_2.keyId==selected))(buckets);
@@ -659,7 +777,7 @@ function mountAppendPage(page, definition){
           const b_2=(sequenceBounds(allValues))[1];
           const newestSequence=Compare(a_2, b_2)===1?a_2:b_2;
           const backendGapAvailable=oldestSequence>1n&&hiddenCached===0;
-          const x_1=[asText(definition.tabId), asText(definition.shape), asText(definition.setName), concat_1("\u001f", arrayOrEmpty(bucket_1.keys))];
+          const x_1=[asText_1(definition.tabId), asText_1(definition.shape), asText_1(definition.setName), concat_1("\u001f", arrayOrEmpty(bucket_1.keys))];
           const selectedValueStreamKey=(((s) =>(s_1) => concat_1(s, s_1))("\n"))(x_1);
           const x_2=(((n, v) =>(n_1) => setData(n, v, n_1))("lineage-candidate-value-stream-count", "1"))(page);
           ((((n, selectedValueStreamKey_1) =>(n_1) => setData(n, selectedValueStreamKey_1, n_1))("lineage-candidate-value-stream-keys", selectedValueStreamKey))(x_2));
@@ -677,11 +795,11 @@ function mountAppendPage(page, definition){
           const x_10=(((n, v) =>(n_1) => setData(n, v, n_1))("snapshot-seqid", String(newestSequence)))(x_9);
           ((((n, v) =>(n_1) => setData(n, v, n_1))("backend-gap", backendGapAvailable?"true":"false"))(x_10));
           updateBrowserCacheHealth(length(visible), length(allValues), oldestSequence, newestSequence, newestSequence, backendGapAvailable);
-          if(length(visible)===0)_3=void values.appendChild(element("div", "empty", "No values appended yet."));
+          if(length(visible)===0)_3=void values.appendChild(element_1("div", "empty", "No values appended yet."));
           else {
             if(hiddenCached>0){
-              const x_11=button("", "Load older ("+String(hiddenCached)+")");
-              const loadOlder=(((i) =>(n) => setTestId(i, n))("append-load-older"))(x_11);
+              const x_11=button_1("", "Load older ("+String(hiddenCached)+")");
+              const loadOlder=(((i) =>(n) => setTestId_1(i, n))("append-load-older"))(x_11);
               _4=(loadOlder.addEventListener("click", ((allValues_1) =>() => {
                 const a_3=length(allValues_1);
                 const b_3=visibleValueLimit+defaultRenderLimit();
@@ -690,8 +808,8 @@ function mountAppendPage(page, definition){
               })(allValues)),void values.appendChild(loadOlder));
             }
             else if(backendGapAvailable){
-              const x_12=button("", "Load older (backend)");
-              const loadOlder_1=(((i) =>(n) => setTestId(i, n))("append-load-older"))(x_12);
+              const x_12=button_1("", "Load older (backend)");
+              const loadOlder_1=(((i) =>(n) => setTestId_1(i, n))("append-load-older"))(x_12);
               _4=(loadOlder_1.addEventListener("click", ((bucket_2, oldestSequence_1) =>() => readOlderFromBackend(bucket_2, oldestSequence_1))(bucket_1, oldestSequence)),void values.appendChild(loadOlder_1));
             }
             else _4=null;
@@ -720,7 +838,7 @@ function mountAppendPage(page, definition){
           ((((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-keys", ""))(x_21));
           lineageDetailValueCount.textContent="0";
           lineageDetailValueStreams.textContent="none";
-          values.appendChild(element("div", "empty", "No key selected."));
+          values.appendChild(element_1("div", "empty", "No key selected."));
           _5=setStatus(workState, "No key selected");
         }
         if(scrollValuesToBottomAfterNextRender){
@@ -731,8 +849,8 @@ function mountAppendPage(page, definition){
       }
   }
   function readOlderFromBackend(bucket, beforeSequence){
-    const keyJson=isBlank(selectedKeyJson)?keysAsJson(bucket.keys):selectedKeyJson;
-    const url="/pages/api/read-before?pageId="+encodeURIComponent(asText(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&beforeSequence="+String(beforeSequence)+"&count="+String(defaultRenderLimit());
+    const keyJson=isBlank_1(selectedKeyJson)?keysAsJson(bucket.keys):selectedKeyJson;
+    const url="/pages/api/read-before?pageId="+encodeURIComponent(asText_1(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&beforeSequence="+String(beforeSequence)+"&count="+String(defaultRenderLimit());
     setStatus(workState, "Loading older values before "+String(beforeSequence));
     return getJson(url, (reply) => {
       applyLineage(reply.lineage);
@@ -761,7 +879,7 @@ function mountAppendPage(page, definition){
         const a_1=bucket.maxSequence;
         const b_3=p[1];
         let _4=Compare(a_1, b_3)===1?a_1:b_3;
-        return New_11(bucket.keyId, bucket.keys, bucket.displayName, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
+        return New_9(bucket.keyId, bucket.keys, bucket.displayName, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
       }
       else return bucket;
     }, buckets);
@@ -774,7 +892,7 @@ function mountAppendPage(page, definition){
   }
   const readNewerFromBackend=(generation, bucket) => {
     const keyJson=keysAsJson(bucket.keys);
-    return getJson("/pages/api/read-after?pageId="+encodeURIComponent(asText(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&afterSequence="+String(bucket.maxSequence)+"&count="+String(defaultCacheLimit()), (reply) => {
+    return getJson("/pages/api/read-after?pageId="+encodeURIComponent(asText_1(definition.pageId))+"&keyJson="+encodeURIComponent(keyJson)+"&afterSequence="+String(bucket.maxSequence)+"&count="+String(defaultCacheLimit()), (reply) => {
       if(generation===loadGeneration){
         applyLineage(reply.lineage);
         applyLineageHealth(reply.lineageHealth);
@@ -793,7 +911,7 @@ function mountAppendPage(page, definition){
               const a_1=bucket_1.maxSequence;
               const b_1=p[1];
               let _4=Compare(a_1, b_1)===1?a_1:b_1;
-              return New_11(bucket_1.keyId, bucket_1.keys, bucket_1.displayName, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
+              return New_9(bucket_1.keyId, bucket_1.keys, bucket_1.displayName, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
             }
             else return bucket_1;
           }, buckets);
@@ -817,7 +935,7 @@ function mountAppendPage(page, definition){
     currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
     buckets=filter((bucket_1) =>!isLocallyHiddenKeyId(bucket_1.keyId), arrayOrEmpty(data.buckets));
     visibleValueLimit=defaultRenderLimit();
-    if(isBlank(pendingSelectKeyId))_3=false;
+    if(isBlank_1(pendingSelectKeyId))_3=false;
     else {
       const m=tryFind((bucket_1) => sameText(bucket_1.keyId, pendingSelectKeyId), buckets);
       if(m==null)_3=false;
@@ -828,7 +946,7 @@ function mountAppendPage(page, definition){
       }
     }
     if(_3)null;
-    else(isBlank(selected)||!exists((bucket_1) => bucket_1.keyId==selected, buckets))&&length(buckets)>0?(selected=get(buckets, 0).keyId,selectedKeyJson=keysAsJson(get(buckets, 0).keys),void(newKeyInput.value=selectedKeyJson)):length(buckets)===0?(selected="",void(selectedKeyJson="")):null;
+    else(isBlank_1(selected)||!exists((bucket_1) => bucket_1.keyId==selected, buckets))&&length(buckets)>0?(selected=get(buckets, 0).keyId,selectedKeyJson=keysAsJson(get(buckets, 0).keys),void(newKeyInput.value=selectedKeyJson)):length(buckets)===0?(selected="",void(selectedKeyJson="")):null;
     setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s)");
     renderList();
     requestValuesScrollToBottom();
@@ -847,8 +965,8 @@ function mountAppendPage(page, definition){
     loadGeneration=loadGeneration+1;
     const generation=loadGeneration;
     const filterText=currentFilterText();
-    url="/pages/api/state?pageId="+encodeURIComponent(asText(definition.pageId))+"&limit="+String(defaultCacheLimit());
-    if(!isBlank(filterText))url=url+"&key="+encodeURIComponent(filterText);
+    url="/pages/api/state?pageId="+encodeURIComponent(asText_1(definition.pageId))+"&limit="+String(defaultCacheLimit());
+    if(!isBlank_1(filterText))url=url+"&key="+encodeURIComponent(filterText);
     const cacheKey_1=stateCacheKey();
     const fetchFullState=() => {
       getJson(url, (data) => {
@@ -892,7 +1010,7 @@ function mountAppendPage(page, definition){
     setData("ws-state", value, work);
   };
   const setKeyRegistryWsState=(value) => {
-    keyRegistryWsState=asText(value);
+    keyRegistryWsState=asText_1(value);
     setData("key-registry-ws-state", value, work);
     updateKeyRegistryHealth();
   };
@@ -918,12 +1036,12 @@ function mountAppendPage(page, definition){
     const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
     if(m==null){
       const keys=effectiveSelectedKeys();
-      return length(keys)===0?null:Some(New_11(appendPageKeyId(keys), keys, "", definition.setName, 0, 0n, 0n, "", []));
+      return length(keys)===0?null:Some(New_9(appendPageKeyId(keys), keys, "", definition.setName, 0, 0n, 0n, "", []));
     }
     else {
       const bucket=m.$0;
       const keys_1=effectiveSelectedKeys();
-      return Some(New_11(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.displayName, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
+      return Some(New_9(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.displayName, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
     }
   };
   deleteAcceptedPendingAppends=(bucket) =>(acceptedValues) => {
@@ -931,7 +1049,7 @@ function mountAppendPage(page, definition){
     if(length(acceptedValues_1)>0){
       const keyJson=keysAsJson(bucket.keys);
       const commandMatches=(command) => {
-        if(sameText(command.kind, "append-page-append-value")&&sameText(command.url, "/pages/api/append")&&isPendingForThisPage(command)&&!isBlank(command.payloadJson))try {
+        if(sameText(command.kind, "append-page-append-value")&&sameText(command.url, "/pages/api/append")&&isPendingForThisPage(command)&&!isBlank_1(command.payloadJson))try {
           const x=json(command.payloadJson);
           const _3=command.commandId;
           return sameText(x.pageId, definition.pageId)&&sameText(x.keyJson, keyJson)&&exists((value) => sameText(value.valueId, _3), acceptedValues_1);
@@ -958,22 +1076,22 @@ function mountAppendPage(page, definition){
     }
     else return null;
   };
-  const streamKeyFor=(bucket) => New_6(definition.tabId, definition.shape, definition.setName, arrayOrEmpty(bucket.keys));
+  const streamKeyFor=(bucket) => New_4(definition.tabId, definition.shape, definition.setName, arrayOrEmpty(bucket.keys));
   const handleSyncEvent=(source, event) => {
     let o, updated, _3, o_1;
     if(!(event==null)){
-      const m=asText(event.sourceKind).toLowerCase();
+      const m=asText_1(event.sourceKind).toLowerCase();
       if(m=="append-page.key"||m=="append-page.key-hidden"){
         if(!(event==null)&&event.sequence>0n){
-          const m_1=asText(event.sourceKind).toLowerCase();
+          const m_1=asText_1(event.sourceKind).toLowerCase();
           if(m_1=="append-page.key"){
-            if(event==null||isBlank(event.payload))o=null;
+            if(event==null||isBlank_1(event.payload))o=null;
             else try {
               const wire=json(event.payload);
-              if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.key.v1"||!sameText(wire.pageId, definition.pageId))o=null;
+              if(wire==null||asText_1(wire.schema)!="ptc.comm.spa.append-page.key.v1"||!sameText(wire.pageId, definition.pageId))o=null;
               else {
-                const keys=filter((key) =>!isBlank(key), map(asText, arrayOrEmpty(wire.keys)));
-                o=length(keys)===0?null:Some([keys, Trim(asText(wire.displayName))]);
+                const keys=filter((key) =>!isBlank_1(key), map(asText_1, arrayOrEmpty(wire.keys)));
+                o=length(keys)===0?null:Some([keys, Trim(asText_1(wire.displayName))]);
               }
             }
             catch(m_3){
@@ -987,14 +1105,14 @@ function mountAppendPage(page, definition){
               currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
               const keyId=appendPageKeyId(_4);
               const filterText=currentFilterText();
-              if((isBlank(filterText)||exists((key) => asText(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty(_4)))&&!isLocallyHiddenKeyId(keyId)){
+              if((isBlank_1(filterText)||exists((key) => asText_1(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty(_4)))&&!isLocallyHiddenKeyId(keyId)){
                 const m_2=tryFind((bucket_1) => sameText(bucket_1.keyId, keyId), buckets);
-                if(m_2==null)updated=New_11(keyId, _4, _5, definition.setName, 0, 0n, 0n, asText(event.createdAtUtc), []);
+                if(m_2==null)updated=New_9(keyId, _4, _5, definition.setName, 0, 0n, 0n, asText_1(event.createdAtUtc), []);
                 else {
                   const existing=m_2.$0;
-                  updated=New_11(existing.keyId, _4, textOr(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
+                  updated=New_9(existing.keyId, _4, textOr_1(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr_1(existing.updatedAtUtc, event.createdAtUtc), existing.values);
                 }
-                _3=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),sameText(pendingSelectKeyId, keyId)?selectBucketKeys(_4)?void(pendingSelectKeyId=""):null:isBlank(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(_4),void(newKeyInput.value=selectedKeyJson)):null);
+                _3=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),sameText(pendingSelectKeyId, keyId)?selectBucketKeys(_4)?void(pendingSelectKeyId=""):null:isBlank_1(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(_4),void(newKeyInput.value=selectedKeyJson)):null);
               }
               else _3=null;
               writeCurrentSnapshot();
@@ -1005,10 +1123,10 @@ function mountAppendPage(page, definition){
             }
           }
           else if(m_1=="append-page.key-hidden"){
-            if(event==null||isBlank(event.payload))o_1=null;
+            if(event==null||isBlank_1(event.payload))o_1=null;
             else try {
               const wire_1=json(event.payload);
-              o_1=wire_1==null||asText(wire_1.schema)!="ptc.comm.spa.append-page.key-hidden.v1"||!sameText(wire_1.pageId, definition.pageId)||isBlank(wire_1.keyId)?null:Some(Trim(wire_1.keyId));
+              o_1=wire_1==null||asText_1(wire_1.schema)!="ptc.comm.spa.append-page.key-hidden.v1"||!sameText(wire_1.pageId, definition.pageId)||isBlank_1(wire_1.keyId)?null:Some(Trim(wire_1.keyId));
             }
             catch(m_4){
               o_1=null;
@@ -1086,12 +1204,12 @@ function mountAppendPage(page, definition){
         const text=String(event.data);
         try {
           const response=json(text);
-          const responseType=asText(response.type).toLowerCase();
-          const responseStatus=asText(response.status).toLowerCase();
-          const requestId=asText(response.requestId);
+          const responseType=asText_1(response.type).toLowerCase();
+          const responseStatus=asText_1(response.status).toLowerCase();
+          const requestId=asText_1(response.requestId);
           switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="append"?1:responseType=="append-page"?1:responseType=="actor-argu"?1:responseType=="stream-event"?2:responseType=="read-tail"?3:responseType=="read"?3:responseType=="tail"?3:5:responseStatus=="error"?4:5){
             case 0:
-              return asText(response.streamKey).indexOf("append-page-key-registry")!=-1?setKeyRegistryWsState("subscribed"):setWsState("subscribed");
+              return asText_1(response.streamKey).indexOf("append-page-key-registry")!=-1?setKeyRegistryWsState("subscribed"):setWsState("subscribed");
             case 1:
               if(exists((id) => id==requestId, pendingWsAppendIds)){
                 pendingWsAppendIds=filter((id) => id!=requestId, pendingWsAppendIds);
@@ -1103,7 +1221,7 @@ function mountAppendPage(page, definition){
               }
               if(sameText(responseType, "actor-argu"))(((event_1, value) => {
                 let keys, matched, _5;
-                if(!(value==null)&&!isBlank(value.valueId)){
+                if(!(value==null)&&!isBlank_1(value.valueId)){
                   const eventKeys=event_1==null||event_1.streamKey==null?[]:arrayOrEmpty(event_1.streamKey.keys);
                   if(length(eventKeys)>0)keys=eventKeys;
                   else {
@@ -1126,13 +1244,13 @@ function mountAppendPage(page, definition){
                         const a_1=bucket_1.maxSequence;
                         const b_1=p_1[1];
                         let _7=Compare(a_1, b_1)===1?a_1:b_1;
-                        return New_11(bucket_1.keyId, keys, bucket_1.displayName, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
+                        return New_9(bucket_1.keyId, keys, bucket_1.displayName, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr_1(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
                       }
                       else return bucket_1;
                     }, buckets);
                     if(!matched){
                       const p=sequenceBounds(incoming);
-                      const bucket=New_11(keyId, keys, "", definition.setName, length(incoming), p[0], p[1], asText(value.createdAtUtc), incoming);
+                      const bucket=New_9(keyId, keys, "", definition.setName, length(incoming), p[0], p[1], asText_1(value.createdAtUtc), incoming);
                       _5=void(buckets=sortAppendPageBuckets(buckets.concat([bucket])));
                     }
                     else _5=null;
@@ -1154,13 +1272,13 @@ function mountAppendPage(page, definition){
             case 3:
               return iter((_5) => handleSyncEvent("tail", _5), arrayOrEmpty(response.events));
             case 4:
-              return exists((id) => id==requestId, pendingWsAppendIds)?setStatus(workState, pendingFailure("WebSocket append", asText(response.error))):setStatus(status, "WebSocket sync error: "+asText(response.error));
+              return exists((id) => id==requestId, pendingWsAppendIds)?setStatus(workState, pendingFailure("WebSocket append", asText_1(response.error))):setStatus(status, "WebSocket sync error: "+asText_1(response.error));
             case 5:
               return null;
           }
         }
         catch(error){
-          return setStatus(status, "WebSocket sync parse failed: "+errorMessage(error));
+          return setStatus(status, "WebSocket sync parse failed: "+errorMessage_1(error));
         }
       };
       socket_1.onerror=() => {
@@ -1188,8 +1306,8 @@ function mountAppendPage(page, definition){
     else queuedSyncFrames=queuedSyncFrames.concat([frame]);
   }
   const subscribeKeyRegistry=() => {
-    const streamPageId=textOr(definition.pageId, definition.tabId);
-    const streamKey=New_6(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
+    const streamPageId=textOr_1(definition.pageId, definition.tabId);
+    const streamKey=New_4(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
     if(!keyRegistrySubscribed){
       keyRegistrySubscribed=true;
       setKeyRegistryWsState("subscribing");
@@ -1205,8 +1323,8 @@ function mountAppendPage(page, definition){
     if(o==null)void 0;
     else {
       const streamKey=streamKeyFor(o.$0);
-      const identity=concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
-      if(!isBlank(identity)&&identity!=subscribedValueStream){
+      const identity=concat_1("\n", [asText_1(streamKey.pageId), asText_1(streamKey.mode), asText_1(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
+      if(!isBlank_1(identity)&&identity!=subscribedValueStream){
         subscribedValueStream=identity;
         setWsState("subscribing");
         sendSyncFrame(JSON.stringify(New_1("subscribe", newRequestId("subscribe"), streamKey)));
@@ -1234,12 +1352,12 @@ function mountAppendPage(page, definition){
     rerenderAddKeyBuilder();
   };
   const addKeyWithKeyJson=(keyJson, displayName) => {
-    if(isBlank(keyJson))return setStatus(status, "Key JSON is required");
+    if(isBlank_1(keyJson))return setStatus(status, "Key JSON is required");
     else {
       const submittedKeys=keysFromJson(keyJson);
       if(length(submittedKeys)>0)pendingSelectKeyId=appendPageKeyId(submittedKeys);
       else null;
-      const request=New_13(definition.pageId, keyJson, Trim(asText(displayName)));
+      const request=New_11(definition.pageId, keyJson, Trim(asText_1(displayName)));
       const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
       refreshPendingState();
       setStatus(status, "Adding key; pending command saved in browser DB");
@@ -1248,7 +1366,7 @@ function mountAppendPage(page, definition){
           let _3;
           if(!(reply.key==null)){
             const keyId=reply.key.keyId;
-            if(!isBlank(keyId))locallyHiddenKeyIds=filter((hidden) =>!sameText(hidden, keyId), locallyHiddenKeyIds);
+            if(!isBlank_1(keyId))locallyHiddenKeyIds=filter((hidden) =>!sameText(hidden, keyId), locallyHiddenKeyIds);
             pendingSelectKeyId=reply.key.keyId;
             _3=selectBucketKeys(reply.key.keys);
           }
@@ -1268,20 +1386,20 @@ function mountAppendPage(page, definition){
     }
   };
   const appendValue=() => {
-    const request=New_12(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
-    if(isBlank(request.keyJson))setStatus(workState, "Select or add a key first");
-    else if(isBlank(request.valueText))setStatus(workState, "Value text is required");
+    const request=New_10(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
+    if(isBlank_1(request.keyJson))setStatus(workState, "Select or add a key first");
+    else if(isBlank_1(request.valueText))setStatus(workState, "Value text is required");
     else if(isActorArguPage(definition)){
-      const request_1=New_14(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
+      const request_1=New_12(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
       const m=selectedBucket();
       if(m!=null&&m.$==1){
         const bucket=m.$0;
         const o=tryHead(arrayOrEmpty(bucket.keys));
         const actorAddress=o==null?"":o.$0;
-        if(isBlank(actorAddress))setStatus(workState, "Actor address key is required");
+        if(isBlank_1(actorAddress))setStatus(workState, "Actor address key is required");
         else {
           const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_1);
-          const wsRequest=New_17("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request_1.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+          const wsRequest=New_15("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request_1.tags), delay(() => append_2(["page:"+asText_1(definition.pageId)], delay(() => append_2(["tab:"+asText_1(definition.tabId)], delay(() =>["shape:"+asText_1(definition.shape)])))))))))), browserId, definition.tabId);
           pendingWsAppendIds=pendingWsAppendIds.concat([pendingId]);
           refreshPendingState();
           setStatus(workState, "Sending through WebSocket; pending command saved in browser DB");
@@ -1297,7 +1415,7 @@ function mountAppendPage(page, definition){
       if(m_1!=null&&m_1.$==1){
         const bucket_1=m_1.$0;
         const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_1=New_19("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_1=New_17("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText_1(definition.pageId)], delay(() => append_2(["tab:"+asText_1(definition.tabId)], delay(() =>["shape:"+asText_1(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_1]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -1312,7 +1430,7 @@ function mountAppendPage(page, definition){
       if(m_2!=null&&m_2.$==1){
         const bucket_2=m_2.$0;
         const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_2=New_18("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_2=New_16("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText_1(definition.pageId)], delay(() => append_2(["tab:"+asText_1(definition.tabId)], delay(() =>["shape:"+asText_1(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_2]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -1325,22 +1443,22 @@ function mountAppendPage(page, definition){
   };
   rerenderAddKeyBuilder=() => {
     const baseRendererShape=isActorDynamicPage(definition)?"actor-dynamic":isActorArguPage(definition)?"actor-argu":definition.shape;
-    const _3=asText(addKeyMode).toLowerCase();
+    const _3=asText_1(addKeyMode).toLowerCase();
     const rendererShape=_3=="target"?baseRendererShape=="actor-dynamic"?"actor-dynamic-target":baseRendererShape=="actor-argu"?"actor-argu-target":baseRendererShape:_3=="proxy"?baseRendererShape=="actor-dynamic"?"actor-dynamic-proxy":baseRendererShape:baseRendererShape;
     const forceFallback=sameText(addKeyMode, "actor");
-    clear(addKeyRendererHost);
+    clear_1(addKeyRendererHost);
     const n=setData("shape", rendererShape, setData("renderer-state", "fallback", addKeyRendererHost));
     setData("mode", addKeyMode, n);
     setHidden(!addKeyEditorOpen, addKeyPanel);
     setHidden(true, fallbackAddKeyPanel);
     setHidden(true, addKeyRendererHost);
     if(sameText(addKeyMode, "actor"))newKeyInput.setAttribute("placeholder", "\"akka.tcp://system@127.0.0.1:9779/user/actor\"");
-    else newKeyInput.setAttribute("placeholder", textOr("\"Aster\"", definition.keyPlaceholder));
+    else newKeyInput.setAttribute("placeholder", textOr_1("\"Aster\"", definition.keyPlaceholder));
     if(addKeyEditorOpen&&!forceFallback){
       const m=tryRenderAddKeyWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, definition.keyPlaceholder, definition.defaultKey, (payload) => {
         const keyJson=rendererSubmittedKeyJson(payload);
         const displayName=rendererSubmittedDisplayName(payload);
-        if(isBlank(keyJson))setStatus(status, "Renderer key is required");
+        if(isBlank_1(keyJson))setStatus(status, "Renderer key is required");
         else {
           newKeyInput.value=keyJson;
           setData("last-key-json", keyJson, addKeyRendererHost);
@@ -1349,11 +1467,11 @@ function mountAppendPage(page, definition){
       }, cancelAddKeyEditor, (payload) => {
         const keyJson=rendererSubmittedKeyJson(payload);
         const displayName=rendererSubmittedDisplayName(payload);
-        if(!isBlank(keyJson)){
+        if(!isBlank_1(keyJson)){
           newKeyInput.value=keyJson;
           setData("last-key-json", keyJson, addKeyRendererHost);
         }
-        if(!isBlank(displayName))newKeyAliasInput.value=displayName;
+        if(!isBlank_1(displayName))newKeyAliasInput.value=displayName;
       });
       if(m==null){
         setHidden(false, fallbackAddKeyPanel);
@@ -1371,7 +1489,7 @@ function mountAppendPage(page, definition){
   rerenderAppendForm=() => {
     let effectiveKeyId;
     const rendererShape=isActorArguPage(definition)?"actor-argu":definition.shape;
-    clear(form);
+    clear_1(form);
     const effectiveKeyJson=effectiveSelectedKeyJson();
     const m=tryFind((bucket) => bucket.keyId==selected, buckets);
     if(m==null){
@@ -1381,37 +1499,37 @@ function mountAppendPage(page, definition){
     else effectiveKeyId=m.$0.keyId;
     const selectedKeys=effectiveSelectedKeys();
     const x=setData("selected-key-json", effectiveKeyJson, setData("selected-key-id", effectiveKeyId, setData("shape", rendererShape, setData("renderer-state", "fallback", form))));
-    setData("selected-key-source", isBlank(effectiveKeyJson)?"none":"selected", x);
-    const customNode=isBlank(effectiveKeyJson)?null:tryRenderAppendInputWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, effectiveKeyId, effectiveKeyJson, selectedKeys, valueInput.placeholder, valueInput.value, (payload) => {
+    setData("selected-key-source", isBlank_1(effectiveKeyJson)?"none":"selected", x);
+    const customNode=isBlank_1(effectiveKeyJson)?null:tryRenderAppendInputWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, effectiveKeyId, effectiveKeyJson, selectedKeys, valueInput.placeholder, valueInput.value, (payload) => {
       let _3;
       const submitted=rendererSubmittedText(payload);
       const submittedKeyJson=rendererSubmittedKeyJson(payload);
-      if(isBlank(submitted))setStatus(workState, "Renderer value text is required");
+      if(isBlank_1(submitted))setStatus(workState, "Renderer value text is required");
       else {
-        if(!isBlank(submittedKeyJson)){
+        if(!isBlank_1(submittedKeyJson)){
           const submittedKeys=keysFromJson(submittedKeyJson);
           _3=length(submittedKeys)>0?(selectedKeyJson=submittedKeyJson,selected=appendPageKeyId(submittedKeys),newKeyInput.value=submittedKeyJson):void 0;
         }
         else _3=void 0;
         const keyJson=effectiveSelectedKeyJson();
         const keys_1=effectiveSelectedKeys();
-        if(isBlank(selectedKeyJson)&&!isBlank(keyJson)){
+        if(isBlank_1(selectedKeyJson)&&!isBlank_1(keyJson)){
           selectedKeyJson=keyJson;
           newKeyInput.value=keyJson;
         }
-        if(isBlank(selected)&&length(keys_1)>0)selected=appendPageKeyId(keys_1);
+        if(isBlank_1(selected)&&length(keys_1)>0)selected=appendPageKeyId(keys_1);
         valueInput.value=submitted;
         setData("last-raw-argu", submitted, form);
         appendValue();
       }
     }, (payload) => {
       const submitted=rendererSubmittedText(payload);
-      if(!isBlank(submitted)){
+      if(!isBlank_1(submitted)){
         valueInput.value=submitted;
         setData("last-raw-argu", submitted, form);
       }
     });
-    if(customNode==null)isActorArguPage(definition)?(form.className="append-form actor-argu-form",append(form, [valueInput, appendButton])):asText(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append(form, [directionInput, valueInput, appendButton])):(form.className="append-form",append(form, [valueInput, appendButton]));
+    if(customNode==null)isActorArguPage(definition)?(form.className="append-form actor-argu-form",append_1(form, [valueInput, appendButton])):asText_1(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append_1(form, [directionInput, valueInput, appendButton])):(form.className="append-form",append_1(form, [valueInput, appendButton]));
     else {
       const node=customNode.$0;
       form.className="append-form custom-append-input-form";
@@ -1427,7 +1545,7 @@ function mountAppendPage(page, definition){
       replayingPending=true;
       readAllPending((commands) => {
         let remaining, accepted;
-        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter(isPendingForThisPage, commands));
+        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank_1(command.url)&&!isBlank_1(command.payloadJson), filter(isPendingForThisPage, commands));
         if(length(mine)===0){
           replayingPending=false;
           refreshPendingState();
@@ -1447,7 +1565,7 @@ function mountAppendPage(page, definition){
                 accepted=accepted+1;
                 if(sameText(command.kind, "append-page-remove-page")){
                   try {
-                    const reply=json(isBlank(body)?"{}":body);
+                    const reply=json(isBlank_1(body)?"{}":body);
                     _3=!(reply==null)?writeAppendPagesDefinitions(reply):null;
                   }
                   catch(m){
@@ -1467,7 +1585,7 @@ function mountAppendPage(page, definition){
     }
   };
   const openAddKeyEditor=(mode) => {
-    const normalizedMode=asText(mode).toLowerCase();
+    const normalizedMode=asText_1(mode).toLowerCase();
     if(addKeyEditorOpen&&sameText(addKeyMode, normalizedMode))addKeyEditorOpen=false;
     else {
       addKeyMode=normalizedMode;
@@ -1479,11 +1597,11 @@ function mountAppendPage(page, definition){
   let _1=(addActorKeyButton.addEventListener("click", () => openAddKeyEditor("actor")),addKeyButton.addEventListener("click", () => openAddKeyEditor("target")),addProxyKeyButton.addEventListener("click", () => openAddKeyEditor("proxy")),cleanKeyButton.addEventListener("click", () => {
     newKeyInput.value="";
     newKeyAliasInput.value="";
-  }),cancelKeyButton.addEventListener("click", cancelAddKeyEditor),okKeyButton.addEventListener("click", () => addKeyWithKeyJson(isBlank(newKeyInput.value)?asText(definition.defaultKey):Trim(newKeyInput.value), newKeyAliasInput.value)),removeKeyButton.addEventListener("click", () => {
-    if(isBlank(selected))setStatus(status, "Select a key first");
+  }),cancelKeyButton.addEventListener("click", cancelAddKeyEditor),okKeyButton.addEventListener("click", () => addKeyWithKeyJson(isBlank_1(newKeyInput.value)?asText_1(definition.defaultKey):Trim(newKeyInput.value), newKeyAliasInput.value)),removeKeyButton.addEventListener("click", () => {
+    if(isBlank_1(selected))setStatus(status, "Select a key first");
     else {
       const removedKeyId=selected;
-      const request=New_16(definition.pageId, removedKeyId);
+      const request=New_14(definition.pageId, removedKeyId);
       const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request);
       refreshPendingState();
       setStatus(status, "Removing key; pending command saved in browser DB");
@@ -1505,11 +1623,11 @@ function mountAppendPage(page, definition){
       });
     }
   }),removePageButton.addEventListener("click", () => {
-    const request=New_15(definition.pageId);
+    const request=New_13(definition.pageId);
     const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request);
     refreshPendingState();
     setStatus(status, "Removing page; pending command saved in browser DB");
-    return postJson("/pages/api/remove-page", request, (reply) => {
+    return postJson_1("/pages/api/remove-page", request, (reply) => {
       deletePendingThen(pendingId, () => {
         writeAppendPagesDefinitions(reply);
         setStatus(status, "Page removed");
@@ -1524,33 +1642,33 @@ function mountAppendPage(page, definition){
   _2;
 }
 function renderNav(nav, activePath, pages){
-  clear(nav);
+  clear_1(nav);
   iter((_1) => {
     const href=_1[0];
     const label=_1[1];
-    const x=setHref(href, element("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", label));
-    let _2=setTestId("nav-"+label.toLowerCase(), x);
+    const x=setHref_1(href, element_1("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", label));
+    let _2=setTestId_1("nav-"+label.toLowerCase(), x);
     nav.appendChild(_2);
   }, [["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"]]);
   iter((page) => {
     const href=pagePath(page);
-    const x=setHref(href, element("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", null));
-    let _1=setTestId("nav-append-page-"+asText(page.pageId), x);
+    const x=setHref_1(href, element_1("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", null));
+    let _1=setTestId_1("nav-append-page-"+asText_1(page.pageId), x);
     let _2=setData("page-id", page.pageId, _1);
     const link=setData("shape", page.shape, _2);
-    const x_1=element("span", "nav-type-badge "+pageTypeClass(page), pageTypeBadge(page));
-    const badge=setTestId("nav-type-badge-append-page-"+asText(page.pageId), x_1);
+    const x_1=element_1("span", "nav-type-badge "+pageTypeClass(page), pageTypeBadge(page));
+    const badge=setTestId_1("nav-type-badge-append-page-"+asText_1(page.pageId), x_1);
     badge.setAttribute("title", pageTypeLabel(page));
     badge.setAttribute("aria-label", pageTypeLabel(page));
-    const x_2=button("nav-close", "x");
-    const closeButton=setTestId("nav-close-append-page-"+asText(page.pageId), x_2);
+    const x_2=button_1("nav-close", "x");
+    const closeButton=setTestId_1("nav-close-append-page-"+asText_1(page.pageId), x_2);
     closeButton.setAttribute("aria-label", "Remove page "+pageTitle(page));
     closeButton.setAttribute("title", "Remove page");
     closeButton.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       closeButton.setAttribute("disabled", "disabled");
-      return postJson("/pages/api/remove-page", New_15(page.pageId), (reply) => {
+      return postJson_1("/pages/api/remove-page", New_13(page.pageId), (reply) => {
         writeAppendPagesDefinitions(reply);
         isCurrentPage(activePath, href)?globalThis.location.assign("/chat"):renderNav(nav, activePath, reply.pages);
       }, (error) => {
@@ -1559,22 +1677,22 @@ function renderNav(nav, activePath, pages){
         closeButton.setAttribute("title", "Remove page failed: "+error);
       });
     });
-    append(link, [badge, element("span", "nav-title", pageTitle(page)), closeButton]);
+    append_1(link, [badge, element_1("span", "nav-title", pageTitle(page)), closeButton]);
     nav.appendChild(link);
   }, arrayOrEmpty(pages));
 }
 function shell(activePath, pages){
-  const app=element("div", "app", null);
-  const top=element("header", "topbar", null);
-  const topRow=element("div", "topbar-main", null);
-  const brandCluster=element("div", "brand-cluster", null);
-  const navShell=element("div", "nav-shell", null);
-  const navViewport=setTestId("nav-viewport", element("div", "nav-viewport", null));
-  const nav=setId("ptc-nav", element("nav", "nav", null));
-  const navBack=setTestId("nav-scroll-left", button("nav-scroll", "<"));
-  const navForward=setTestId("nav-scroll-right", button("nav-scroll", ">"));
+  const app=element_1("div", "app", null);
+  const top=element_1("header", "topbar", null);
+  const topRow=element_1("div", "topbar-main", null);
+  const brandCluster=element_1("div", "brand-cluster", null);
+  const navShell=element_1("div", "nav-shell", null);
+  const navViewport=setTestId_1("nav-viewport", element_1("div", "nav-viewport", null));
+  const nav=setId_1("ptc-nav", element_1("nav", "nav", null));
+  const navBack=setTestId_1("nav-scroll-left", button_1("nav-scroll", "<"));
+  const navForward=setTestId_1("nav-scroll-right", button_1("nav-scroll", ">"));
   const create=renderPageCreator(nav, activePath, pages);
-  const registryHealth=setTestId("append-registry-health", element("div", "state registry-health", "append registry ws pending"));
+  const registryHealth=setTestId_1("append-registry-health", element_1("div", "state registry-health", "append registry ws pending"));
   const scrollTabs=(delta) => {
     navViewport.scrollLeft=navViewport.scrollLeft+delta;
   };
@@ -1582,22 +1700,22 @@ function shell(activePath, pages){
   navForward.setAttribute("aria-label", "Scroll tabs right");
   navBack.addEventListener("click", () => scrollTabs(-260));
   navForward.addEventListener("click", () => scrollTabs(260));
-  append(brandCluster, [element("div", "brand", "PTC.Comm SPA"), registryHealth]);
+  append_1(brandCluster, [element_1("div", "brand", "PTC.Comm SPA"), registryHealth]);
   renderNav(nav, activePath, pages);
-  const x=element("a", "logout", "Logout");
-  const logout=setHref(currentLogoutPath(), x);
-  const page=element("main", "page", null);
-  append(navViewport, [nav]);
-  append(navShell, [navBack, navViewport, navForward]);
-  append(topRow, [brandCluster, navShell, logout]);
-  append(top, [topRow, create]);
-  append(app, [top, page]);
+  const x=element_1("a", "logout", "Logout");
+  const logout=setHref_1(currentLogoutPath(), x);
+  const page=element_1("main", "page", null);
+  append_1(navViewport, [nav]);
+  append_1(navShell, [navBack, navViewport, navForward]);
+  append_1(topRow, [brandCluster, navShell, logout]);
+  append_1(top, [topRow, create]);
+  append_1(app, [top, page]);
   return[app, page];
 }
 function setMain(node){
-  const main=doc().getElementById("main");
+  const main=doc_1().getElementById("main");
   if(!(main==null)){
-    clear(main);
+    clear_1(main);
     main.appendChild(node);
   }
 }
@@ -1606,19 +1724,19 @@ function mountSets(page){
   page.className="page sets-grid";
   selected="";
   buckets=[];
-  const side=element("aside", "sidebar", null);
-  const sideHead=element("div", "panel-head", null);
-  const reload=button("", "Reload");
-  const filters=element("div", "filters", null);
-  const keyFilter=input("key contains");
-  const setFilter=input("set name");
-  const status=element("div", "state", "Loading sets");
-  const list=element("div", "list", null);
-  const work=element("section", "work", null);
-  append(sideHead, [element("h1", "", "Sets"), reload]);
-  append(filters, [keyFilter, setFilter, status]);
-  append(side, [sideHead, filters, list]);
-  append(page, [side, work]);
+  const side=element_1("aside", "sidebar", null);
+  const sideHead=element_1("div", "panel-head", null);
+  const reload=button_1("", "Reload");
+  const filters=element_1("div", "filters", null);
+  const keyFilter=input_1("key contains");
+  const setFilter=input_1("set name");
+  const status=element_1("div", "state", "Loading sets");
+  const list=element_1("div", "list", null);
+  const work=element_1("section", "work", null);
+  append_1(sideHead, [element_1("h1", "", "Sets"), reload]);
+  append_1(filters, [keyFilter, setFilter, status]);
+  append_1(side, [sideHead, filters, list]);
+  append_1(page, [side, work]);
   syncSocket=null;
   queuedSyncFrames=[];
   subscribedStreams=[];
@@ -1626,20 +1744,20 @@ function mountSets(page){
   registryTailRequested=false;
   ensureSetsSubscriptions=() => { };
   loadGeneration=0;
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
-  const streamIdentity=(streamKey) => concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
-  const setValueStreamKey=(pageId, mode, setName, keys) => New_6(asText(pageId), textOr("set", mode), asText(setName), arrayOrEmpty(keys));
-  const currentFilterTexts=() =>[isBlank(keyFilter.value)?"":Trim(keyFilter.value), isBlank(setFilter.value)?"":Trim(setFilter.value)];
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
+  const streamIdentity=(streamKey) => concat_1("\n", [asText_1(streamKey.pageId), asText_1(streamKey.mode), asText_1(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
+  const setValueStreamKey=(pageId, mode, setName, keys) => New_4(asText_1(pageId), textOr_1("set", mode), asText_1(setName), arrayOrEmpty(keys));
+  const currentFilterTexts=() =>[isBlank_1(keyFilter.value)?"":Trim(keyFilter.value), isBlank_1(setFilter.value)?"":Trim(setFilter.value)];
   const currentCacheKey=() => {
     const p=currentFilterTexts();
     return cacheKey("sets-state", ofArray([p[0], p[1]]));
   };
   function renderList(){
-    clear(list);
+    clear_1(list);
     iter((bucket) => {
-      const item=button(bucket.keyId==selected?"list-card active":"list-card", null);
-      setData("key-id", bucket.keyId, setTestId("sets-bucket", item));
-      append(item, [element("div", "strong wrap", asText(bucket.setName)), element("div", "muted wrap", joinValues(bucket.keys)), element("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText(bucket.updatedAtUtc)))]);
+      const item=button_1(bucket.keyId==selected?"list-card active":"list-card", null);
+      setData("key-id", bucket.keyId, setTestId_1("sets-bucket", item));
+      append_1(item, [element_1("div", "strong wrap", asText_1(bucket.setName)), element_1("div", "muted wrap", joinValues(bucket.keys)), element_1("div", "meta", "values="+String(bucket.valueCount)+" seq="+String(bucket.maxSequence)+" updated="+String(asText_1(bucket.updatedAtUtc)))]);
       item.addEventListener("click", () => {
         selected=bucket.keyId;
         renderList();
@@ -1649,40 +1767,40 @@ function mountSets(page){
     }, buckets);
   }
   function renderDetail(){
-    clear(work);
+    clear_1(work);
     const bucket=tryFind((bucket_2) => bucket_2.keyId==selected, buckets);
     if(bucket!=null&&bucket.$==1){
       const bucket_1=bucket.$0;
-      const detail=element("div", "detail", null);
-      const head_1=element("div", "work-head", null);
-      const title=element("div", "", null);
-      append(title, [element("label", "", "Key set"), element("h2", "", bucket_1.keyId)]);
-      append(head_1, [title, element("div", "state", String(bucket_1.valueCount)+" value(s)")]);
+      const detail=element_1("div", "detail", null);
+      const head_1=element_1("div", "work-head", null);
+      const title=element_1("div", "", null);
+      append_1(title, [element_1("label", "", "Key set"), element_1("h2", "", bucket_1.keyId)]);
+      append_1(head_1, [title, element_1("div", "state", String(bucket_1.valueCount)+" value(s)")]);
       detail.appendChild(head_1);
-      const table=element("table", "data-table", null);
-      const thead=element("thead", "", null);
-      const headerRow=element("tr", "", null);
+      const table=element_1("table", "data-table", null);
+      const thead=element_1("thead", "", null);
+      const headerRow=element_1("tr", "", null);
       iter((label) => {
-        headerRow.appendChild(element("th", "", label));
+        headerRow.appendChild(element_1("th", "", label));
       }, ["Value", "Keys", "Created", "Body", "Tags"]);
       thead.appendChild(headerRow);
-      const tbody=element("tbody", "", null);
+      const tbody=element_1("tbody", "", null);
       iter((value) => {
-        const row=element("tr", "", null);
+        const row=element_1("tr", "", null);
         iter((_1) => {
-          row.appendChild(element("td", _1[1], _1[0]));
-        }, [[value.valueId, "wrap"], [joinValues(value.keys), "wrap"], [asText(value.createdAtUtc), "wrap"], [asText(value.value), "preview"], [joinValues(value.tags), "wrap"]]);
+          row.appendChild(element_1("td", _1[1], _1[0]));
+        }, [[value.valueId, "wrap"], [joinValues(value.keys), "wrap"], [asText_1(value.createdAtUtc), "wrap"], [asText_1(value.value), "preview"], [joinValues(value.tags), "wrap"]]);
         tbody.appendChild(row);
       }, arrayOrEmpty(bucket_1.values));
-      append(table, [thead, tbody]);
-      append(detail, [table]);
+      append_1(table, [thead, tbody]);
+      append_1(detail, [table]);
       work.appendChild(detail);
     }
-    else work.appendChild(element("div", "empty", "No set selected."));
+    else work.appendChild(element_1("div", "empty", "No set selected."));
   }
   const applySnapshot=(source, data) => {
     buckets=arrayOrEmpty(data.buckets);
-    (isBlank(selected)||!exists((bucket) => bucket.keyId==selected, buckets))&&length(buckets)>0?selected=get(buckets, 0).keyId:length(buckets)===0?selected="":void 0;
+    (isBlank_1(selected)||!exists((bucket) => bucket.keyId==selected, buckets))&&length(buckets)>0?selected=get(buckets, 0).keyId:length(buckets)===0?selected="":void 0;
     setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s)");
     renderList();
     renderDetail();
@@ -1696,8 +1814,8 @@ function mountSets(page){
     const p=currentFilterTexts();
     const setText=p[1];
     const keyText=p[0];
-    if(!isBlank(keyText))parts.push("participantId="+encodeURIComponent(keyText));
-    if(!isBlank(setText))parts.push("setName="+encodeURIComponent(setText));
+    if(!isBlank_1(keyText))parts.push("participantId="+encodeURIComponent(keyText));
+    if(!isBlank_1(setText))parts.push("setName="+encodeURIComponent(setText));
     parts.push("limit="+String(defaultRenderLimit()));
     const cacheKey_1=currentCacheKey();
     readJson(cacheKey_1, (a) => {
@@ -1740,7 +1858,7 @@ function mountSets(page){
           break;
         case 2:
           const identity=streamIdentity(_1);
-          if(!isBlank(identity)&&!(((p) =>(a) => exists(p, a))(((identity_1) =>(existing) => existing==identity_1)(identity)))(tailRequestedStreams)){
+          if(!isBlank_1(identity)&&!(((p) =>(a) => exists(p, a))(((identity_1) =>(existing) => existing==identity_1)(identity)))(tailRequestedStreams)){
             tailRequestedStreams=tailRequestedStreams.concat([identity]);
             _1=_1;
             recI=1;
@@ -1795,7 +1913,7 @@ function mountSets(page){
   }
   function subscribeStream(streamKey){
     const identity=streamIdentity(streamKey);
-    if(!isBlank(identity)&&!exists((existing) => existing==identity, subscribedStreams)){
+    if(!isBlank_1(identity)&&!exists((existing) => existing==identity, subscribedStreams)){
       subscribedStreams=subscribedStreams.concat([identity]);
       setWsStreamCount();
       setWsState("subscribing");
@@ -1811,12 +1929,12 @@ function mountSets(page){
   function handleSyncEvent(event){
     if(!(event==null)&&!(event.streamKey==null)){
       let m, updated, _1;
-      const m_1=asText(event.sourceKind).toLowerCase();
+      const m_1=asText_1(event.sourceKind).toLowerCase();
       if(m_1=="set.stream"){
-        if(event==null||isBlank(event.payload))m=null;
+        if(event==null||isBlank_1(event.payload))m=null;
         else try {
           const wire=json(event.payload);
-          m=wire==null||asText(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
+          m=wire==null||asText_1(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
         }
         catch(m_3){
           m=null;
@@ -1830,16 +1948,16 @@ function mountSets(page){
       }
       else if(m_1=="set"){
         if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
-          const setName=asText(event.streamKey.setName);
+          const setName=asText_1(event.streamKey.setName);
           const keys=arrayOrEmpty(event.streamKey.keys);
           const p=currentFilterTexts();
           const setText=p[1];
           const keyText=p[0];
-          if((isBlank(setText)||sameText(setName, setText))&&(isBlank(keyText)||exists((key) => asText(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty(keys)))){
-            const value=New_21(textOr(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText(event.createdAtUtc), asText(event.payload), arrayOrEmpty(event.tags));
-            const keyId=asText(setName)+"::"+concat_1(" + ", arrayOrEmpty(keys));
+          if((isBlank_1(setText)||sameText(setName, setText))&&(isBlank_1(keyText)||exists((key) => asText_1(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty(keys)))){
+            const value=New_19(textOr_1(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText_1(event.createdAtUtc), asText_1(event.payload), arrayOrEmpty(event.tags));
+            const keyId=asText_1(setName)+"::"+concat_1(" + ", arrayOrEmpty(keys));
             const m_2=tryFind((bucket) => sameText(bucket.keyId, keyId), buckets);
-            if(m_2==null)updated=New_20(keyId, setName, keys, 1, event.sequence, asText(event.createdAtUtc), [value]);
+            if(m_2==null)updated=New_18(keyId, setName, keys, 1, event.sequence, asText_1(event.createdAtUtc), [value]);
             else {
               const existing=m_2.$0;
               const existingValues=arrayOrEmpty(existing.values);
@@ -1856,13 +1974,13 @@ function mountSets(page){
               const a_1=existing.maxSequence;
               const b_1=event.sequence;
               let _3=Compare(a_1, b_1)===1?a_1:b_1;
-              updated=New_20(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+              updated=New_18(existing.keyId, existing.setName, existing.keys, _1, _3, textOr_1(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
             }
-            buckets=sortBy((bucket) =>[asText(bucket.setName), asText(bucket.keyId)], arrayOrEmpty(filter((bucket) =>!sameText(bucket.keyId, keyId), buckets).concat([updated])));
+            buckets=sortBy((bucket) =>[asText_1(bucket.setName), asText_1(bucket.keyId)], arrayOrEmpty(filter((bucket) =>!sameText(bucket.keyId, keyId), buckets).concat([updated])));
             selected=keyId;
             renderList();
             renderDetail();
-            const snapshot=New_22(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
+            const snapshot=New_20(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
             writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
             ensureSetsSubscriptions();
             setStatus(status, "Synced set event "+value.valueId);
@@ -1877,8 +1995,8 @@ function mountSets(page){
   function handleSyncMessage(text){
     try {
       const response=json(text);
-      const responseType=asText(response.type).toLowerCase();
-      const responseStatus=asText(response.status).toLowerCase();
+      const responseType=asText_1(response.type).toLowerCase();
+      const responseStatus=asText_1(response.status).toLowerCase();
       switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
         case 0:
           setData("ws-last-stream", response.streamKey, page);
@@ -1891,7 +2009,7 @@ function mountSets(page){
           iter(handleSyncEvent, arrayOrEmpty(response.events));
           break;
         case 3:
-          setStatus(status, "WebSocket sets sync error: "+asText(response.error));
+          setStatus(status, "WebSocket sets sync error: "+asText_1(response.error));
           break;
         case 4:
           null;
@@ -1899,11 +2017,11 @@ function mountSets(page){
       }
     }
     catch(error){
-      setStatus(status, "WebSocket sets sync parse failed: "+errorMessage(error));
+      setStatus(status, "WebSocket sets sync parse failed: "+errorMessage_1(error));
     }
   }
   ensureSetsSubscriptions=() => {
-    const registryKey=New_6("__set-registry", "set-registry", "__sets", ["__sets"]);
+    const registryKey=New_4("__set-registry", "set-registry", "__sets", ["__sets"]);
     subscribeStream(registryKey);
     if(!registryTailRequested){
       registryTailRequested=true;
@@ -1923,18 +2041,18 @@ function mountSets(page){
 function mountActors(page){
   let actorSnapshot, syncSocket, queuedSyncFrames, subscribedRegistry, registryTailRequested, dynamicActorsPageAccepted;
   page.className="page actors-page";
-  const head_1=element("div", "work-head actors-head", null);
-  const title=element("div", "", null);
-  const actions=element("div", "head-actions", null);
-  const status=element("div", "state", "Loading actors");
-  const reload=button("", "Reload");
-  const nodes=element("div", "nodes", null);
-  const treePanel=setTestId("actor-tree-panel", element("section", "actor-tree-panel", null));
-  append(title, [element("label", "", "Actor / Participant Management"), element("h1", "", "Actors")]);
-  append(actions, [status, reload]);
-  append(head_1, [title, actions]);
-  append(page, [head_1, treePanel, nodes]);
-  const emptySnapshot=New_23(0, 0, 0n, []);
+  const head_1=element_1("div", "work-head actors-head", null);
+  const title=element_1("div", "", null);
+  const actions=element_1("div", "head-actions", null);
+  const status=element_1("div", "state", "Loading actors");
+  const reload=button_1("", "Reload");
+  const nodes=element_1("div", "nodes", null);
+  const treePanel=setTestId_1("actor-tree-panel", element_1("section", "actor-tree-panel", null));
+  append_1(title, [element_1("label", "", "Actor / Participant Management"), element_1("h1", "", "Actors")]);
+  append_1(actions, [status, reload]);
+  append_1(head_1, [title, actions]);
+  append_1(page, [head_1, treePanel, nodes]);
+  const emptySnapshot=New_21(0, 0, 0n, []);
   actorSnapshot=emptySnapshot;
   syncSocket=null;
   queuedSyncFrames=[];
@@ -1943,49 +2061,49 @@ function mountActors(page){
   dynamicActorsPageAccepted=false;
   const collapsedTreeNodes=new HashSet("New_3");
   const cacheKey_1=cacheKey("actors-snapshot", FSharpList.Empty);
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
-  const actorRegistryStreamKey=() => New_6("__actor-registry", "actor-registry", "__actors", ["__actors"]);
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
+  const actorRegistryStreamKey=() => New_4("__actor-registry", "actor-registry", "__actors", ["__actors"]);
   const isAkkaAddress=(value) => {
-    const text=asText(value).toLowerCase();
+    const text=asText_1(value).toLowerCase();
     return StartsWith(text, "akka://")||StartsWith(text, "akka.tcp://")||StartsWith(text, "akka.ssl.tcp://");
   };
   function renderActorTree(source, tree){
-    clear(treePanel);
+    clear_1(treePanel);
     const safeNodes=arrayOrEmpty(tree.nodes);
-    const title_1=element("div", "actor-tree-title", null);
-    const content=setTestId("actor-tree-content", element("div", "actor-tree-content", null));
-    const treeViewport=setTestId("actor-tree-viewport", element("div", "actor-tree-viewport", null));
-    const treeBody=setTestId("actor-tree-body", element("div", "actor-tree-body", null));
-    const tableViewport=setTestId("actor-tree-table-viewport", element("div", "actor-tree-table-viewport", null));
-    const table=setTestId("actor-tree-table", element("table", "actor-tree-table", null));
-    const thead=element("thead", "", null);
-    const tbody=element("tbody", "", null);
-    append(title_1, [element("label", "", "ActorTree"), element("h2", "", String(asText(tree.projectionId))+" / v"+String(tree.projectionVersion)), element("div", "state", String(source)+"; "+String(length(safeNodes))+" node(s); "+String(arrayOrEmpty(tree.edges).length)+" edge(s)")]);
+    const title_1=element_1("div", "actor-tree-title", null);
+    const content=setTestId_1("actor-tree-content", element_1("div", "actor-tree-content", null));
+    const treeViewport=setTestId_1("actor-tree-viewport", element_1("div", "actor-tree-viewport", null));
+    const treeBody=setTestId_1("actor-tree-body", element_1("div", "actor-tree-body", null));
+    const tableViewport=setTestId_1("actor-tree-table-viewport", element_1("div", "actor-tree-table-viewport", null));
+    const table=setTestId_1("actor-tree-table", element_1("table", "actor-tree-table", null));
+    const thead=element_1("thead", "", null);
+    const tbody=element_1("tbody", "", null);
+    append_1(title_1, [element_1("label", "", "ActorTree"), element_1("h2", "", String(asText_1(tree.projectionId))+" / v"+String(tree.projectionVersion)), element_1("div", "state", String(source)+"; "+String(length(safeNodes))+" node(s); "+String(arrayOrEmpty(tree.edges).length)+" edge(s)")]);
     const safeNodes_1=arrayOrEmpty(tree.nodes);
-    const jsonString=(value) =>"\""+Replace(Replace(Replace(Replace(Replace(asText(value), "\\", "\\\\"), "\"", "\\\""), "\r", "\\r"), "\n", "\\n"), "\u0009", "\\t")+"\"";
+    const jsonString=(value) =>"\""+Replace(Replace(Replace(Replace(Replace(asText_1(value), "\\", "\\\\"), "\"", "\\\""), "\r", "\\r"), "\n", "\\n"), "\u0009", "\\t")+"\"";
     const jsonArray=(values) =>"["+concat_1(",", map(jsonString, arrayOrEmpty(values)))+"]";
     const nodesJson=concat_1(",", map((node) => {
       const tags=jsonArray(arrayOrEmpty(node.tags));
       return"{\"id\":"+jsonString(node.id)+","+"\"parentId\":"+jsonString(node.parentId)+","+"\"label\":"+jsonString(node.label)+","+"\"fullPath\":"+jsonString(node.fullPath)+","+"\"kind\":"+jsonString(node.kind)+","+"\"status\":"+jsonString(node.status)+","+"\"address\":"+jsonString(node.address)+","+"\"tags\":"+tags+"}";
     }, safeNodes_1));
-    const rootIdsJson=jsonArray(map(asText, arrayOrEmpty(tree.rootNodeIds)));
-    let _1="{\"schema\":\"fskynet-sdui\",\"version\":\"1\",\"documentId\":"+jsonString("ptcs.actors."+textOr("actor-tree", tree.projectionId))+","+"\"surface\":\"ActorsPage\","+"\"documentType\":\"ActorTopologyPage\","+"\"projectionId\":"+jsonString(tree.projectionId)+","+"\"projectionVersion\":"+String(tree.projectionVersion)+","+"\"ui\":[{\"type\":\"ActorsPage\",\"id\":\"ptcs-actors-page\",\"dataRef\":\"actorTreeNodes\",\"rootNodeIds\":"+rootIdsJson+",\"nodeIdField\":\"id\",\"parentIdField\":\"parentId\",\"labelField\":\"label\",\"statusField\":\"status\",\"columns\":[\"kind\",\"status\",\"address\",\"fullPath\"],\"groupBy\":\"actorSystemHostPort\",\"roleOrder\":[\"ptcs-host\",\"gw-host\",\"rn-host\",\"unknown\"]}],"+"\"actions\":[{\"kind\":\"reload\"},{\"kind\":\"generate-report\"},{\"kind\":\"schedule-report\"}],"+"\"data\":{\"actorTreeNodes\":["+nodesJson+"]}"+"}";
+    const rootIdsJson=jsonArray(map(asText_1, arrayOrEmpty(tree.rootNodeIds)));
+    let _1="{\"schema\":\"fskynet-sdui\",\"version\":\"1\",\"documentId\":"+jsonString("ptcs.actors."+textOr_1("actor-tree", tree.projectionId))+","+"\"surface\":\"ActorsPage\","+"\"documentType\":\"ActorTopologyPage\","+"\"projectionId\":"+jsonString(tree.projectionId)+","+"\"projectionVersion\":"+String(tree.projectionVersion)+","+"\"ui\":[{\"type\":\"ActorsPage\",\"id\":\"ptcs-actors-page\",\"dataRef\":\"actorTreeNodes\",\"rootNodeIds\":"+rootIdsJson+",\"nodeIdField\":\"id\",\"parentIdField\":\"parentId\",\"labelField\":\"label\",\"statusField\":\"status\",\"columns\":[\"kind\",\"status\",\"address\",\"fullPath\"],\"groupBy\":\"actorSystemHostPort\",\"roleOrder\":[\"ptcs-host\",\"gw-host\",\"rn-host\",\"unknown\"]}],"+"\"actions\":[{\"kind\":\"reload\"},{\"kind\":\"generate-report\"},{\"kind\":\"schedule-report\"}],"+"\"data\":{\"actorTreeNodes\":["+nodesJson+"]}"+"}";
     const m=tryRenderWithRegisteredPageRenderers(_1);
     if(m==null){
       dynamicActorsPageAccepted=false;
       nodes.removeAttribute("style");
       setData("renderer", "fallback", treePanel);
-      const childMap=OfArray(groupBy((node) => asText(node.parentId), safeNodes));
-      const nodeMap=OfArray(map((node) =>[asText(node.id), node], safeNodes));
+      const childMap=OfArray(groupBy((node) => asText_1(node.parentId), safeNodes));
+      const nodeMap=OfArray(map((node) =>[asText_1(node.id), node], safeNodes));
       function renderNode(depth, node){
         let toggle;
-        const id=asText(node.id);
+        const id=asText_1(node.id);
         const o=childMap.TryFind(id);
         let _6=o==null?[]:o.$0;
-        const children=sortBy((node_1) => asText(node_1.label), _6);
+        const children=sortBy((node_1) => asText_1(node_1.label), _6);
         const hasChildren=length(children)>0;
-        const row=setData("node-id", id, setTestId("actor-tree-row", element("div", "actor-tree-row", null)));
-        setData("parent-id", asText(node.parentId), row);
+        const row=setData("node-id", id, setTestId_1("actor-tree-row", element_1("div", "actor-tree-row", null)));
+        setData("parent-id", asText_1(node.parentId), row);
         const a=12;
         const a_1=0;
         const b=Compare(a_1, depth)===1?a_1:depth;
@@ -1994,29 +2112,29 @@ function mountActors(page){
         setData("depth", _8, row);
         const toggleText=!hasChildren?"":collapsedTreeNodes.Contains(id)?"+":"-";
         if(hasChildren){
-          const value=setTestId("actor-tree-toggle", button("actor-tree-toggle", toggleText));
+          const value=setTestId_1("actor-tree-toggle", button_1("actor-tree-toggle", toggleText));
           toggle=(value.setAttribute("aria-expanded", collapsedTreeNodes.Contains(id)?"false":"true"),value.setAttribute("title", collapsedTreeNodes.Contains(id)?"Expand":"Collapse"),value);
         }
-        else toggle=element("span", "actor-tree-toggle actor-tree-toggle-placeholder", "");
+        else toggle=element_1("span", "actor-tree-toggle actor-tree-toggle-placeholder", "");
         if(hasChildren)toggle.addEventListener("click", () => {
           collapsedTreeNodes.Contains(id)?collapsedTreeNodes.Remove(id):collapsedTreeNodes.SAdd(id);
           return renderActorTree("toggle", tree);
         });
         else null;
-        const labelText=asText(node.label);
-        const kindText=asText(node.kind);
-        const statusText=asText(node.status);
-        const fullPathText=asText(node.fullPath);
-        const addressText=asText(node.address);
-        const displayText=!isBlank(addressText)?addressText:!isBlank(fullPathText)?fullPathText:!isBlank(labelText)?labelText:id;
-        const label=element("span", "actor-tree-label", displayText);
-        const statusDot_1=setData("status", statusText, element("span", "actor-tree-status-dot", ""));
-        const kindPill=element("span", "actor-tree-kind-pill", kindText);
-        const statusPill=setData("status", statusText, element("span", "actor-tree-status-pill", statusText));
+        const labelText=asText_1(node.label);
+        const kindText=asText_1(node.kind);
+        const statusText=asText_1(node.status);
+        const fullPathText=asText_1(node.fullPath);
+        const addressText=asText_1(node.address);
+        const displayText=!isBlank_1(addressText)?addressText:!isBlank_1(fullPathText)?fullPathText:!isBlank_1(labelText)?labelText:id;
+        const label=element_1("span", "actor-tree-label", displayText);
+        const statusDot_1=setData("status", statusText, element_1("span", "actor-tree-status-dot", ""));
+        const kindPill=element_1("span", "actor-tree-kind-pill", kindText);
+        const statusPill=setData("status", statusText, element_1("span", "actor-tree-status-pill", statusText));
         label.setAttribute("title", displayText);
         kindPill.setAttribute("title", "kind: "+kindText);
         statusPill.setAttribute("title", "status: "+statusText);
-        append(row, [toggle, statusDot_1, label, kindPill, statusPill]);
+        append_1(row, [toggle, statusDot_1, label, kindPill, statusPill]);
         treeBody.appendChild(row);
         if(!collapsedTreeNodes.Contains(id)){
           const _9=depth+1;
@@ -2025,29 +2143,29 @@ function mountActors(page){
         else return null;
       }
       const roots=arrayOrEmpty(tree.rootNodeIds);
-      let _2=length(roots)===0?map((a) => a.id, filter((node) => isBlank(node.parentId), safeNodes)):roots;
-      let _3=choose((id) => nodeMap.TryFind(asText(id)), _2);
-      let _4=sortBy((node) => asText(node.label), _3);
+      let _2=length(roots)===0?map((a) => a.id, filter((node) => isBlank_1(node.parentId), safeNodes)):roots;
+      let _3=choose((id) => nodeMap.TryFind(asText_1(id)), _2);
+      let _4=sortBy((node) => asText_1(node.label), _3);
       iter((_6) => renderNode(0, _6), _4);
-      const headerRow=element("tr", "", null);
+      const headerRow=element_1("tr", "", null);
       let _5=(iter((text) => {
-        headerRow.appendChild(element("th", "", text));
+        headerRow.appendChild(element_1("th", "", text));
       }, ["parentId", "id", "kind", "status", "address", "fullPath"]),thead.appendChild(headerRow),iter((node) => {
-        const x=setTestId("actor-tree-table-row", element("tr", "", null));
-        const row=setData("node-id", asText(node.id), x);
+        const x=setTestId_1("actor-tree-table-row", element_1("tr", "", null));
+        const row=setData("node-id", asText_1(node.id), x);
         iter((text) => {
-          row.appendChild(element("td", "", text));
-        }, [asText(node.parentId), asText(node.id), asText(node.kind), asText(node.status), asText(node.address), asText(node.fullPath)]);
+          row.appendChild(element_1("td", "", text));
+        }, [asText_1(node.parentId), asText_1(node.id), asText_1(node.kind), asText_1(node.status), asText_1(node.address), asText_1(node.fullPath)]);
         tbody.appendChild(row);
-      }, sortBy((node) => asText(node.fullPath), safeNodes)),table.appendChild(thead),table.appendChild(tbody),treeViewport.appendChild(treeBody),tableViewport.appendChild(table),append(content, [treeViewport, tableViewport]),void append(treePanel, [title_1, content]));
+      }, sortBy((node) => asText_1(node.fullPath), safeNodes)),table.appendChild(thead),table.appendChild(tbody),treeViewport.appendChild(treeBody),tableViewport.appendChild(table),append_1(content, [treeViewport, tableViewport]),void append_1(treePanel, [title_1, content]));
       return _5;
     }
     else {
       const dynamicNode=m.$0;
       dynamicActorsPageAccepted=true;
-      clear(nodes);
+      clear_1(nodes);
       nodes.setAttribute("style", "display:none;");
-      const host=setTestId("actor-tree-dynamic-page", element("div", "actor-tree-dynamic-page", null));
+      const host=setTestId_1("actor-tree-dynamic-page", element_1("div", "actor-tree-dynamic-page", null));
       setData("renderer", "dynamic-actors-page", treePanel);
       host.appendChild(dynamicNode);
       treePanel.appendChild(host);
@@ -2056,29 +2174,29 @@ function mountActors(page){
   }
   const applySnapshot=(source, data) => {
     actorSnapshot=data==null?emptySnapshot:data;
-    clear(nodes);
+    clear_1(nodes);
     dynamicActorsPageAccepted?nodes.setAttribute("style", "display:none;"):(nodes.removeAttribute("style"),iter((node) => {
-      const block=setData("node-id", node.nodeId, setTestId("actor-node", element("section", "node-block", null)));
-      const blockHead=element("div", "work-head", null);
-      const title_1=element("div", "", null);
-      const grid=element("div", "actor-grid", null);
-      let _1=(append(title_1, [element("label", "", "Node"), element("h2", "", asText(node.nodeId))]),append(blockHead, [title_1, element("div", "state", asText(node.status)+" / "+joinValues(node.roles))]),iter((actor) => {
-        const card=setData("actor-id", actor.actorId, setTestId("actor-card", element("div", "actor-card", null)));
-        const line=asText(actor.kind)+" / "+joinValues(actor.keys);
-        const routees=element("div", "routees", null);
-        const address=TrimEnd(Trim(asText(node.nodeAddress)), ["/"]);
-        const logicalNode=TrimEnd(Trim(asText(node.nodeId)), ["/"]);
-        const node_1=isBlank(address)?logicalNode:address;
-        const actor_1=Trim(asText(actor.actorId));
-        const fullAddress=isBlank(actor_1)?node_1:isAkkaAddress(actor_1)?actor_1:isBlank(node_1)?actor_1:StartsWith(actor_1, "/")?node_1+actor_1:isAkkaAddress(node_1)?node_1+"/user/"+TrimStart(actor_1, ["/"]):node_1+"/"+TrimStart(actor_1, ["/"]);
-        const addressRow=setData("actor-address", fullAddress, setTestId("actor-address", element("div", "meta wrap actor-address", "address "+fullAddress)));
-        let _2=(card.appendChild(cardTitle(textOr(actor.actorId, actor.displayName), actor.actorId, actor.status, line)),card.appendChild(addressRow),iter((routee) => {
-          const row=element("div", "routee", null);
-          let _3=(append(row, [statusDot(routee.status), element("span", "strong", asText(routee.routeeId)), element("span", "muted wrap", joinValues(routee.tags))]),row);
+      const block=setData("node-id", node.nodeId, setTestId_1("actor-node", element_1("section", "node-block", null)));
+      const blockHead=element_1("div", "work-head", null);
+      const title_1=element_1("div", "", null);
+      const grid=element_1("div", "actor-grid", null);
+      let _1=(append_1(title_1, [element_1("label", "", "Node"), element_1("h2", "", asText_1(node.nodeId))]),append_1(blockHead, [title_1, element_1("div", "state", asText_1(node.status)+" / "+joinValues(node.roles))]),iter((actor) => {
+        const card=setData("actor-id", actor.actorId, setTestId_1("actor-card", element_1("div", "actor-card", null)));
+        const line=asText_1(actor.kind)+" / "+joinValues(actor.keys);
+        const routees=element_1("div", "routees", null);
+        const address=TrimEnd(Trim(asText_1(node.nodeAddress)), ["/"]);
+        const logicalNode=TrimEnd(Trim(asText_1(node.nodeId)), ["/"]);
+        const node_1=isBlank_1(address)?logicalNode:address;
+        const actor_1=Trim(asText_1(actor.actorId));
+        const fullAddress=isBlank_1(actor_1)?node_1:isAkkaAddress(actor_1)?actor_1:isBlank_1(node_1)?actor_1:StartsWith(actor_1, "/")?node_1+actor_1:isAkkaAddress(node_1)?node_1+"/user/"+TrimStart(actor_1, ["/"]):node_1+"/"+TrimStart(actor_1, ["/"]);
+        const addressRow=setData("actor-address", fullAddress, setTestId_1("actor-address", element_1("div", "meta wrap actor-address", "address "+fullAddress)));
+        let _2=(card.appendChild(cardTitle(textOr_1(actor.actorId, actor.displayName), actor.actorId, actor.status, line)),card.appendChild(addressRow),iter((routee) => {
+          const row=element_1("div", "routee", null);
+          let _3=(append_1(row, [statusDot(routee.status), element_1("span", "strong", asText_1(routee.routeeId)), element_1("span", "muted wrap", joinValues(routee.tags))]),row);
           routees.appendChild(_3);
         }, arrayOrEmpty(actor.routees)),card.appendChild(routees),card);
         grid.appendChild(_2);
-      }, arrayOrEmpty(node.actors)),append(block, [blockHead, grid]),block);
+      }, arrayOrEmpty(node.actors)),append_1(block, [blockHead, grid]),block);
       nodes.appendChild(_1);
     }, arrayOrEmpty(actorSnapshot.nodes)));
     return setStatus(status, "Loaded "+String(actorSnapshot.nodeCount)+" "+String(source)+" node(s), "+String(actorSnapshot.actorCount)+" actor(s)");
@@ -2093,8 +2211,8 @@ function mountActors(page){
     getJson("/actors/api/tree", (data) => {
       renderActorTree("backend", data);
     }, (error) => {
-      clear(treePanel);
-      treePanel.appendChild(element("div", "empty", "ActorTree unavailable: "+error));
+      clear_1(treePanel);
+      treePanel.appendChild(element_1("div", "empty", "ActorTree unavailable: "+error));
     });
   };
   const setWsState=(value) => {
@@ -2161,12 +2279,12 @@ function mountActors(page){
     }
   }
   function handleSyncEvent(event){
-    if(!(event==null)&&asText(event.sourceKind).toLowerCase()=="actor.registered"){
+    if(!(event==null)&&asText_1(event.sourceKind).toLowerCase()=="actor.registered"){
       let x, updatedNode;
-      if(event==null||isBlank(event.payload))x=null;
+      if(event==null||isBlank_1(event.payload))x=null;
       else try {
         const wire=json(event.payload);
-        x=wire==null||asText(wire.schema)!="ptc.comm.spa.actor.registration.v1"?null:Some(wire);
+        x=wire==null||asText_1(wire.schema)!="ptc.comm.spa.actor.registration.v1"?null:Some(wire);
       }
       catch(m_1){
         x=null;
@@ -2174,27 +2292,27 @@ function mountActors(page){
       if(x==null)void 0;
       else {
         const _1=x.$0;
-        const nodeId=asText(_1.nodeId);
-        const nodeAddress=asText(_1.nodeAddress);
-        const actorId=asText(_1.actorId);
-        if(!isBlank(nodeId)&&!isBlank(actorId)){
+        const nodeId=asText_1(_1.nodeId);
+        const nodeAddress=asText_1(_1.nodeAddress);
+        const actorId=asText_1(_1.actorId);
+        if(!isBlank_1(nodeId)&&!isBlank_1(actorId)){
           const tags=arrayOrEmpty(_1.tags);
           const roles=arrayOrEmpty(_1.roles);
-          const actor=New_24(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty(_1.routees));
+          const actor=New_22(actorId, textOr_1(actorId, _1.displayName), textOr_1("actor", _1.kind), [nodeId, actorId].concat(tags), textOr_1("running", _1.status), arrayOrEmpty(_1.routees));
           const m=tryFind((node) => sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes));
-          if(m==null)updatedNode=New_25(nodeId, nodeAddress, "up", roles, [actor]);
+          if(m==null)updatedNode=New_23(nodeId, nodeAddress, "up", roles, [actor]);
           else {
             const existing=m.$0;
-            const actors=sortBy((row) => asText(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors)).concat([actor]));
-            updatedNode=New_25(existing.nodeId, isBlank(nodeAddress)?asText(existing.nodeAddress):nodeAddress, textOr("up", existing.status), length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
+            const actors=sortBy((row) => asText_1(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors)).concat([actor]));
+            updatedNode=New_23(existing.nodeId, isBlank_1(nodeAddress)?asText_1(existing.nodeAddress):nodeAddress, textOr_1("up", existing.status), length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
           }
-          const nodes_1=sortBy((node) => asText(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
+          const nodes_1=sortBy((node) => asText_1(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
           let _2=length(nodes_1);
           let _3=fold((_5, _6) => _5+_6, 0, map((node) => arrayOrEmpty(node.actors).length, nodes_1));
           const a=actorSnapshot.maxSequence;
           const b=event.sequence;
           let _4=Compare(a, b)===1?a:b;
-          actorSnapshot=New_23(_2, _3, _4, nodes_1);
+          actorSnapshot=New_21(_2, _3, _4, nodes_1);
           writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
           applySnapshot("synced", actorSnapshot);
           setStatus(status, "Synced actor "+actorId);
@@ -2206,8 +2324,8 @@ function mountActors(page){
   function handleSyncMessage(text){
     try {
       const response=json(text);
-      const responseType=asText(response.type).toLowerCase();
-      const responseStatus=asText(response.status).toLowerCase();
+      const responseType=asText_1(response.type).toLowerCase();
+      const responseStatus=asText_1(response.status).toLowerCase();
       switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
         case 0:
           setWsState("subscribed");
@@ -2219,7 +2337,7 @@ function mountActors(page){
           iter(handleSyncEvent, arrayOrEmpty(response.events));
           break;
         case 3:
-          setStatus(status, "WebSocket actors sync error: "+asText(response.error));
+          setStatus(status, "WebSocket actors sync error: "+asText_1(response.error));
           break;
         case 4:
           null;
@@ -2227,7 +2345,7 @@ function mountActors(page){
       }
     }
     catch(error){
-      setStatus(status, "WebSocket actors sync parse failed: "+errorMessage(error));
+      setStatus(status, "WebSocket actors sync parse failed: "+errorMessage_1(error));
     }
   }
   reload.addEventListener("click", load);
@@ -2242,33 +2360,33 @@ function mountChat(page){
   participants=[];
   const participantId=currentUserId();
   page.className="page chat-grid";
-  const side=element("aside", "sidebar", null);
-  const sideHead=element("div", "panel-head", null);
-  const reload=button("", "Reload");
-  const list=element("div", "list", null);
-  append(sideHead, [element("h1", "", "Chat"), reload]);
-  append(side, [sideHead, element("div", "", null), list]);
-  const work=setTestId("chat-work", element("section", "work", null));
-  const workHead=element("div", "work-head", null);
-  const titleBox=element("div", "", null);
-  const toTitle=element("h2", "", "No participant selected");
-  const state=element("div", "state", "Loading participants");
-  const pendingState=setTestId("chat-pending-state", element("div", "state pending-state", ""));
-  const thread=setTestId("thread-list", setId("thread-list", element("div", "thread-list", null)));
-  const composer=setTestId("chat-composer", element("div", "chat-composer", null));
-  const draft=setTestId("chat-draft", textarea("draft", "Type a message"));
-  const actions=element("div", "actions", null);
-  const send=setTestId("chat-send", button("primary", "Send"));
+  const side=element_1("aside", "sidebar", null);
+  const sideHead=element_1("div", "panel-head", null);
+  const reload=button_1("", "Reload");
+  const list=element_1("div", "list", null);
+  append_1(sideHead, [element_1("h1", "", "Chat"), reload]);
+  append_1(side, [sideHead, element_1("div", "", null), list]);
+  const work=setTestId_1("chat-work", element_1("section", "work", null));
+  const workHead=element_1("div", "work-head", null);
+  const titleBox=element_1("div", "", null);
+  const toTitle=element_1("h2", "", "No participant selected");
+  const state=element_1("div", "state", "Loading participants");
+  const pendingState=setTestId_1("chat-pending-state", element_1("div", "state pending-state", ""));
+  const thread=setTestId_1("thread-list", setId_1("thread-list", element_1("div", "thread-list", null)));
+  const composer=setTestId_1("chat-composer", element_1("div", "chat-composer", null));
+  const draft=setTestId_1("chat-draft", textarea("draft", "Type a message"));
+  const actions=element_1("div", "actions", null);
+  const send=setTestId_1("chat-send", button_1("primary", "Send"));
   const participantsCacheKey=cacheKey("chat-agents", ofArray([participantId]));
   const threadCacheKey=(peerId) => cacheKey("chat-thread", ofArray([participantId, peerId]));
-  append(titleBox, [element("label", "", "To"), toTitle]);
-  append(workHead, [titleBox, state]);
-  append(actions, [send]);
-  append(composer, [draft, actions]);
-  append(work, [workHead, pendingState, thread, composer]);
-  append(page, [side, work]);
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
-  const isPendingForThisChat=(command) =>!(command==null)&&sameText(command.kind, "chat-send")&&StartsWith(asText(command.target), participantId+"->");
+  append_1(titleBox, [element_1("label", "", "To"), toTitle]);
+  append_1(workHead, [titleBox, state]);
+  append_1(actions, [send]);
+  append_1(composer, [draft, actions]);
+  append_1(work, [workHead, pendingState, thread, composer]);
+  append_1(page, [side, work]);
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
+  const isPendingForThisChat=(command) =>!(command==null)&&sameText(command.kind, "chat-send")&&StartsWith(asText_1(command.target), participantId+"->");
   replayingPending=false;
   chatSocket=null;
   queuedChatSyncFrames=[];
@@ -2277,22 +2395,22 @@ function mountChat(page){
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
   };
-  const chatStreamKey=(peerId) => New_6("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
-  const streamIdentity=(streamKey) => concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
+  const chatStreamKey=(peerId) => New_4("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
+  const streamIdentity=(streamKey) => concat_1("\n", [asText_1(streamKey.pageId), asText_1(streamKey.mode), asText_1(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
   function renderParticipants(){
     let _1;
-    clear(list);
+    clear_1(list);
     iter((p_1) => {
       const className=p_1.participantId==selected?"list-card active":"list-card";
-      const name=textOr(p_1.participantId, p_1.displayName);
-      const line=asText(p_1.kind)+" / "+joinValues(p_1.labels);
-      const item=button(className, null);
-      setData("participant-id", p_1.participantId, setTestId("chat-participant", item));
+      const name=textOr_1(p_1.participantId, p_1.displayName);
+      const line=asText_1(p_1.kind)+" / "+joinValues(p_1.labels);
+      const item=button_1(className, null);
+      setData("participant-id", p_1.participantId, setTestId_1("chat-participant", item));
       item.appendChild(cardTitle(name, p_1.participantId, p_1.status, line));
       item.addEventListener("click", () => {
         selected=p_1.participantId;
         cursor="";
-        clear(thread);
+        clear_1(thread);
         renderParticipants();
         refreshChatPendingState();
         pollThread(true);
@@ -2304,22 +2422,22 @@ function mountChat(page){
     if(current==null)_1="No participant selected";
     else {
       const p=current.$0;
-      _1=textOr(p.participantId, p.displayName)+" ("+p.participantId+")";
+      _1=textOr_1(p.participantId, p.displayName)+" ("+p.participantId+")";
     }
     toTitle.textContent=_1;
   }
   function appendMessages(messages){
     iter((message) => {
-      if(!(message==null)&&!isBlank(message.messageId)&&doc().getElementById("thread-"+message.messageId)==null){
+      if(!(message==null)&&!isBlank_1(message.messageId)&&doc_1().getElementById("thread-"+message.messageId)==null){
         const outbound=message.fromId==participantId;
-        const wrap=setId("thread-"+message.messageId, element("div", outbound?"message outbound":"message inbound", null));
-        setData("message-id", message.messageId, setTestId("chat-message", wrap));
-        const meta=element("div", "message-meta", null);
-        const route=message.scope=="public"?outbound?"You -> Public":asText(message.fromId)+" -> Public":outbound?"You -> "+asText(message.toId):asText(message.fromId)+" -> You";
-        const idNode=setData("full-message-id", message.messageId, element("span", "message-id", compactMessageId(message.messageId)+"  "+asText(message.createdAtUtc)));
-        idNode.setAttribute("title", message.messageId+"  "+asText(message.createdAtUtc));
-        append(meta, [element("span", "", route), idNode]);
-        append(wrap, [meta, element("pre", "message-body", asText(message.body))]);
+        const wrap=setId_1("thread-"+message.messageId, element_1("div", outbound?"message outbound":"message inbound", null));
+        setData("message-id", message.messageId, setTestId_1("chat-message", wrap));
+        const meta=element_1("div", "message-meta", null);
+        const route=message.scope=="public"?outbound?"You -> Public":asText_1(message.fromId)+" -> Public":outbound?"You -> "+asText_1(message.toId):asText_1(message.fromId)+" -> You";
+        const idNode=setData("full-message-id", message.messageId, element_1("span", "message-id", compactMessageId(message.messageId)+"  "+asText_1(message.createdAtUtc)));
+        idNode.setAttribute("title", message.messageId+"  "+asText_1(message.createdAtUtc));
+        append_1(meta, [element_1("span", "", route), idNode]);
+        append_1(wrap, [meta, element_1("pre", "message-body", asText_1(message.body))]);
         thread.appendChild(wrap);
       }
     }, arrayOrEmpty(messages));
@@ -2330,7 +2448,7 @@ function mountChat(page){
     readJson(participantsCacheKey, (a) => {
       if(a!=null&&a.$==1)if(a.$0,length(participants)===0){
         participants=arrayOrEmpty(a.$0.participants);
-        isBlank(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
+        isBlank_1(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
         renderParticipants();
         setStatus(state, "Loaded "+String(length(participants))+" cached participant(s)");
         pollThread(true);
@@ -2341,7 +2459,7 @@ function mountChat(page){
     getJson("/chat/api/agents", (data) => {
       participants=arrayOrEmpty(data.participants);
       writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-agents");
-      isBlank(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
+      isBlank_1(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
       renderParticipants();
       setStatus(state, "Loaded "+String(length(participants))+" participant(s)");
       pollThread(true);
@@ -2352,17 +2470,17 @@ function mountChat(page){
     });
   }
   function pollThread(force){
-    if(!isBlank(selected)&&!polling){
+    if(!isBlank_1(selected)&&!polling){
       polling=true;
       const cacheKey_1=threadCacheKey(selected);
       const fetchThread=(useCursor) => {
         let url;
         url="/chat/api/thread?participantId="+encodeURIComponent(participantId)+"&peerId="+encodeURIComponent(selected);
-        if(useCursor&&!isBlank(cursor))url=url+"&afterMessageId="+encodeURIComponent(cursor);
+        if(useCursor&&!isBlank_1(cursor))url=url+"&afterMessageId="+encodeURIComponent(cursor);
         getJson(url, (data) => {
           const messages=force&&!useCursor?latestArray(defaultRenderLimit(), data.messages):arrayOrEmpty(data.messages);
           appendMessages(messages);
-          if(!isBlank(data.nextAfterMessageId))cursor=data.nextAfterMessageId;
+          if(!isBlank_1(data.nextAfterMessageId))cursor=data.nextAfterMessageId;
           readJson(cacheKey_1, (cached) => {
             let _1, _2;
             switch(cached!=null&&cached.$==1?(cached.$0,useCursor?(_1=cached.$0,0):(cached.$0,!force?(_1=cached.$0,1):2)):2){
@@ -2377,12 +2495,12 @@ function mountChat(page){
                 break;
             }
             const merged=mergeThreadMessages(_2, messages);
-            const nextAfterMessageId=textOr(cursor, data.nextAfterMessageId);
+            const nextAfterMessageId=textOr_1(cursor, data.nextAfterMessageId);
             readWatermark(cacheKey_1, (watermark) => {
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_27(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_25(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -2398,12 +2516,12 @@ function mountChat(page){
           const cached=a.$0;
           const messages=latestArray(defaultRenderLimit(), cached.messages);
           appendMessages(messages);
-          if(!isBlank(cached.nextAfterMessageId))cursor=cached.nextAfterMessageId;
+          if(!isBlank_1(cached.nextAfterMessageId))cursor=cached.nextAfterMessageId;
           setStatus(state, "Loaded "+String(length(messages))+" cached message(s); syncing missing tail");
-          fetchThread(!isBlank(cursor));
+          fetchThread(!isBlank_1(cursor));
         }
       });
-      else fetchThread(!isBlank(cursor));
+      else fetchThread(!isBlank_1(cursor));
     }
   }
   function refreshChatPendingState(){
@@ -2414,7 +2532,7 @@ function mountChat(page){
       replayingPending=true;
       readAllPending((commands) => {
         let remaining, accepted;
-        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter(isPendingForThisChat, commands));
+        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank_1(command.url)&&!isBlank_1(command.payloadJson), filter(isPendingForThisChat, commands));
         if(length(mine)===0){
           replayingPending=false;
           refreshChatPendingState();
@@ -2430,8 +2548,8 @@ function mountChat(page){
           iter((command) => {
             postJsonText(command.url, command.payloadJson, (responseBody) => {
               try {
-                const reply=json(isBlank(responseBody)?"{}":responseBody);
-                if(!(reply.message==null)&&!isBlank(reply.message.messageId))deletePendingThen(command.commandId, () => {
+                const reply=json(isBlank_1(responseBody)?"{}":responseBody);
+                if(!(reply.message==null)&&!isBlank_1(reply.message.messageId))deletePendingThen(command.commandId, () => {
                   accepted=accepted+1;
                   appendMessages([reply.message]);
                   cacheAcceptedChatMessage(int64OrZero(reply.streamSequence), reply.message);
@@ -2451,11 +2569,11 @@ function mountChat(page){
     }
   }
   function cacheAcceptedChatMessage(sequence, message){
-    if(!(message==null)&&!isBlank(message.messageId)&&!isBlank(selected)){
+    if(!(message==null)&&!isBlank_1(message.messageId)&&!isBlank_1(selected)){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_27(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_25(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -2464,9 +2582,9 @@ function mountChat(page){
     try {
       let o;
       const response=json(text);
-      const responseType=asText(response.type).toLowerCase();
-      const responseStatus=asText(response.status).toLowerCase();
-      const requestId=asText(response.requestId);
+      const responseType=asText_1(response.type).toLowerCase();
+      const responseStatus=asText_1(response.status).toLowerCase();
+      const requestId=asText_1(response.requestId);
       if(responseStatus=="ok"){
         if(responseType=="subscribe")setChatWsState("subscribed");
         else if(responseType=="chat-send"){
@@ -2474,20 +2592,20 @@ function mountChat(page){
             refreshChatPendingState();
             draft.value="";
           })):void 0;
-          !(response.message==null)&&!isBlank(response.message.messageId)?(appendMessages([response.message]),cacheAcceptedChatMessage(response.event==null?0n:response.event.sequence, response.message),cursor=response.message.messageId):void 0;
-          setStatus(state, "Sent "+textOr("message", response.message==null?"":response.message.messageId)+" "+asText(response.deliveryHint));
+          !(response.message==null)&&!isBlank_1(response.message.messageId)?(appendMessages([response.message]),cacheAcceptedChatMessage(response.event==null?0n:response.event.sequence, response.message),cursor=response.message.messageId):void 0;
+          setStatus(state, "Sent "+textOr_1("message", response.message==null?"":response.message.messageId)+" "+asText_1(response.deliveryHint));
         }
         else if(responseType=="stream-event"){
           const event=response.event;
-          if(!isBlank(selected)&&!(event==null)&&!(event.streamKey==null)&&streamIdentity(event.streamKey)==streamIdentity(chatStreamKey(selected))){
+          if(!isBlank_1(selected)&&!(event==null)&&!(event.streamKey==null)&&streamIdentity(event.streamKey)==streamIdentity(chatStreamKey(selected))){
             const event_1=response.event;
-            if(event_1==null||isBlank(event_1.payload))o=null;
+            if(event_1==null||isBlank_1(event_1.payload))o=null;
             else try {
               const message=json(event_1.payload);
-              o=message==null||isBlank(message.messageId)?null:Some(message);
+              o=message==null||isBlank_1(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_26(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
+              o=Some(New_24(textOr_1(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_1(event_1.payload), asText_1(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -2502,10 +2620,10 @@ function mountChat(page){
         }
         else null;
       }
-      else responseStatus=="error"?exists((id) => id==requestId, pendingWsChatIds)?(setStatus(state, pendingFailure("WebSocket chat send", asText(response.error))),refreshChatPendingState()):setStatus(state, "WebSocket chat error: "+asText(response.error)):null;
+      else responseStatus=="error"?exists((id) => id==requestId, pendingWsChatIds)?(setStatus(state, pendingFailure("WebSocket chat send", asText_1(response.error))),refreshChatPendingState()):setStatus(state, "WebSocket chat error: "+asText_1(response.error)):null;
     }
     catch(error){
-      setStatus(state, "WebSocket chat parse failed: "+errorMessage(error));
+      setStatus(state, "WebSocket chat parse failed: "+errorMessage_1(error));
     }
   }
   function flushChatSyncFrames(socket){
@@ -2554,10 +2672,10 @@ function mountChat(page){
       }
   }
   function ensureSelectedChatSubscription(){
-    if(!isBlank(selected)){
+    if(!isBlank_1(selected)){
       const streamKey=chatStreamKey(selected);
       const identity=streamIdentity(streamKey);
-      if(!isBlank(identity)&&identity!=subscribedChatStream){
+      if(!isBlank_1(identity)&&identity!=subscribedChatStream){
         subscribedChatStream=identity;
         setChatWsState("subscribing");
         sendChatSyncFrame(JSON.stringify(New_1("subscribe", newRequestId("chat-subscribe"), streamKey)));
@@ -2566,12 +2684,12 @@ function mountChat(page){
   }
   function sendMessage(){
     const body=Trim(draft.value);
-    if(isBlank(selected))setStatus(state, "Select a participant first");
-    else if(isBlank(body))setStatus(state, "Message is empty");
+    if(isBlank_1(selected))setStatus(state, "Select a participant first");
+    else if(isBlank_1(body))setStatus(state, "Message is empty");
     else {
-      const request=New_30(participantId, selected, body, ["web-chat"]);
+      const request=New_28(participantId, selected, body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_29("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_27("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -2588,11 +2706,11 @@ function mountChat(page){
 }
 function mountUnknownPage(page, path){
   page.className="page actors-page";
-  page.appendChild(element("div", "empty", "No append page is registered for "+String(path)+"."));
+  page.appendChild(element_1("div", "empty", "No append page is registered for "+String(path)+"."));
 }
 function refreshAppendNav(activePath){
   const applyDefinitions=(data) => {
-    const nav=doc().getElementById("ptc-nav");
+    const nav=doc_1().getElementById("ptc-nav");
     if(!(nav==null))renderNav(nav, activePath, arrayOrEmpty(data.pages));
   };
   readJson(appendPagesDefinitionsCacheKey(), (a) => {
@@ -2604,87 +2722,124 @@ function refreshAppendNav(activePath){
     applyDefinitions(data);
   }, () => { });
 }
+function tryMountLoginWithRegisteredRenderers(root, configJson){
+  let r;
+  const _1=root;
+  const _2=configJson;
+  if(!(globalThis.PulseTrade&&globalThis.PulseTrade.LoginRenderers))return false;
+  let renderers=globalThis.PulseTrade.LoginRenderers;
+  for(let i=0;i<renderers.length;i++){
+    let r_1=renderers[i];
+    try {
+      let value=(r_1.render||r_1[1])(_1, _2);
+      if(value===true)return true;
+    }
+    catch(e){
+      console.error("Login renderer exception:", e);
+    }
+  }
+  return false;
+}
+function mountLoginFallback(root){
+  const config=loginConfig();
+  const frame=element_1("section", "login-frame", null);
+  frame.setAttribute("aria-label", "PTCS Login");
+  const systemPanel=element_1("aside", "system-panel", null);
+  const brand=element_1("div", "", null);
+  append_1(brand, [element_1("div", "brand-mark", "PT"), element_1("p", "brand-title", "PulseTrade Comm Spa"), element_1("p", "brand-subtitle", "\u672c\u9801\u793a\u610f PTCS.Login provider \u7684\u81ea\u6709\u767b\u5165\u5165\u53e3\u3002\u767b\u5165\u6210\u529f\u5f8c\u7531 server \u8a2d\u5b9a HttpOnly session cookie\uff0c\u518d\u56de\u5230\u53d7\u4fdd\u8b77\u7684 PTCS \u9801\u9762\u3002")]);
+  const routes=element_1("ul", "route-list", null);
+  routes.setAttribute("aria-label", "Login context");
+  append_1(routes, [routeItem_1("P", "Protected route", textOr_1("/actors", config.protectedRoute)), routeItem_1("S", "Session cookie", textOr_1("ptc_login_session", config.sessionCookieName)), routeItem_1("A", "ACL mode", textOr_1("enabled or authenticated-only", config.aclLabel))]);
+  append_1(systemPanel, [brand, routes]);
+  const formPanel=element_1("section", "form-panel", null);
+  const card=element_1("div", "form-card", null);
+  const statusRow=element_1("div", "status-row", null);
+  const providerPill=element_1("span", "pill", null);
+  const bypassPill=element_1("span", "pill", null);
+  append_1(providerPill, [element_1("span", "dot", ""), doc_1().createTextNode(textOr_1("PTCS.Login", config.providerLabel))]);
+  append_1(bypassPill, [element_1("span", "dot warn", ""), doc_1().createTextNode("OAuth bypass")]);
+  append_1(statusRow, [providerPill, bypassPill]);
+  const errorBox=setTestId_1("ptcs-login-error", element_1("p", "error-box", "\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002"));
+  errorBox.setAttribute("role", "alert");
+  const userName=setTestId_1("ptcs-login-username", setId_1("username", input_1("admin")));
+  userName.setAttribute("name", "username");
+  userName.setAttribute("type", "text");
+  userName.setAttribute("autocomplete", "username");
+  const password=setTestId_1("ptcs-login-password", setId_1("password", input_1("\u8f38\u5165\u5bc6\u78bc")));
+  password.setAttribute("name", "password");
+  password.setAttribute("type", "password");
+  password.setAttribute("autocomplete", "current-password");
+  const keepSession=doc_1().createElement("input");
+  keepSession.setAttribute("name", "keepSession");
+  keepSession.setAttribute("type", "checkbox");
+  keepSession.setAttribute("value", "true");
+  const inlineRow=element_1("div", "inline-row", null);
+  const checkboxLabel=element_1("label", "checkbox-row", null);
+  append_1(checkboxLabel, [keepSession, doc_1().createTextNode("\u4fdd\u6301\u6b64\u700f\u89bd\u5668\u767b\u5165")]);
+  append_1(inlineRow, [checkboxLabel, setHref_1("/login/help", element_1("a", "link", "\u9700\u8981\u5354\u52a9?"))]);
+  const form=element_1("form", "", null);
+  form.setAttribute("method", "post");
+  form.setAttribute("action", config.submitPath);
+  const submit=setTestId_1("ptcs-login-submit", button_1("", "\u767b\u5165\u4e26\u8fd4\u56de PTCS"));
+  const setError=(text) => {
+    errorBox.textContent=textOr_1("\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002", text);
+    errorBox.className="error-box visible";
+  };
+  const submitLogin=() => {
+    const request=New_33(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    if(isBlank_1(request.userName)||isBlank_1(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
+    else {
+      errorBox.className="error-box";
+      submit.setAttribute("disabled", "disabled");
+      submit.textContent="\u767b\u5165\u4e2d";
+      postJson_1(config.submitPath, request, (reply) => {
+        const target=textOr_1(config.returnUrl, reply.returnUrl);
+        globalThis.location.assign(target);
+      }, (error) => {
+        submit.removeAttribute("disabled");
+        submit.textContent="\u767b\u5165\u4e26\u8fd4\u56de PTCS";
+        setError(isBlank_1(error)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error);
+      });
+    }
+  };
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    return submitLogin();
+  });
+  submit.addEventListener("click", submitLogin);
+  append_1(form, [field_1("\u5e33\u865f", "username", userName), field_1("\u5bc6\u78bc", "password", password), inlineRow, submit]);
+  append_1(card, [statusRow, element_1("h1", "", textOr_1("\u767b\u5165 PTCS", config.title)), element_1("p", "lead", textOr_1("\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", config.lead)), errorBox, form, element_1("p", "footer-note", "Browser flow \u61c9\u53ea\u56de HttpOnly cookie\uff1bheadless/API/WS \u624d\u4f7f\u7528 bearer token\u3002\u63d0\u4ea4\u7aef\u9ede\u793a\u610f\u70ba /login/api/submit\u3002")]);
+  append_1(formPanel, [card]);
+  append_1(frame, [systemPanel, formPanel]);
+  clear_1(root);
+  root.appendChild(frame);
+}
 function loginConfig(){
-  const node=doc().getElementById("ptcs-login-config");
-  return node==null||isBlank(node.textContent)?New_3("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  const node=doc_1().getElementById("ptcs-login-config");
+  return node==null||isBlank_1(node.textContent)?New_32("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
-function element(tag, className, textValue){
-  const node=doc().createElement(tag);
-  if(!isBlank(className))node.className=className;
-  if(!(textValue==null))node.textContent=textValue;
-  return node;
-}
-function append(parent, children){
-  for(let i=0, _1=children.length-1;i<=_1;i++)parent.appendChild(get(children, i));
-  return parent;
-}
-function routeItem(icon, name, value){
-  const item=element("li", "route-item", null);
-  const content=element("div", "", null);
-  append(content, [element("p", "route-name", name), element("p", "route-value", value)]);
-  append(item, [element("span", "route-icon", icon), content]);
-  return item;
-}
-function textOr(fallback, value){
-  return isBlank(value)?fallback:value;
-}
-function setTestId(id, node){
-  !isBlank(id)?node.setAttribute("data-testid", id):void 0;
-  return node;
-}
-function input(placeholder){
-  const node=doc().createElement("input");
-  node.placeholder=placeholder;
-  return node;
-}
-function setId(id, node){
-  node.setAttribute("id", id);
-  return node;
-}
-function button(className, text){
-  const node=element("button", className, text);
-  node.setAttribute("type", "button");
-  return node;
-}
-function postJson(url, body, onOk, onError){
-  const headers=new Headers();
-  headers.set("Content-Type", "application/json");
-  const options=requestOptions();
-  options.method="POST";
-  options.headers=headers;
-  options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
-}
-function field(labelText, inputId, control){
-  const wrap=element("div", "field", null);
-  const label=element("label", "", labelText);
-  label.setAttribute("for", inputId);
-  append(wrap, [label, control]);
-  return wrap;
-}
-function setHref(href, node){
-  node.setAttribute("href", href);
-  return node;
+function textOr_1(fallback, value){
+  return isBlank_1(value)?fallback:value;
 }
 function pageDefinitionFromWire(wire){
-  if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.definition.v1"||isBlank(wire.pageId))return null;
+  if(wire==null||asText_1(wire.schema)!="ptc.comm.spa.append-page.definition.v1"||isBlank_1(wire.pageId))return null;
   else {
-    const pageId=asText(wire.pageId);
-    return Some(New_5(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText(wire.defaultKey), arrayOrEmpty(wire.tags)));
+    const pageId=asText_1(wire.pageId);
+    return Some(New_3(pageId, textOr_1(pageId, wire.tabId), textOr_1("/page/"+pageId, wire.path), textOr_1(pageId, wire.title), textOr_1(pageId, wire.setName), textOr_1("raw", wire.shape), asText_1(wire.description), textOr_1("\"Aster\"", wire.keyPlaceholder), textOr_1("JSON value", wire.valuePlaceholder), asText_1(wire.defaultKey), arrayOrEmpty(wire.tags)));
   }
 }
 function hiddenPageFromWire(wire){
-  if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.hidden.v1"||isBlank(wire.pageId))return null;
+  if(wire==null||asText_1(wire.schema)!="ptc.comm.spa.append-page.hidden.v1"||isBlank_1(wire.pageId))return null;
   else {
-    const pageId=asText(wire.pageId);
-    return Some([pageId, textOr(pageId, wire.tabId)]);
+    const pageId=asText_1(wire.pageId);
+    return Some([pageId, textOr_1(pageId, wire.tabId)]);
   }
 }
 function sameTextInvariant(left, right){
-  return asText(left).toLowerCase()==asText(right).toLowerCase();
+  return asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
 }
 function sortAppendPages(pages){
-  return sortBy((page) =>[asText(page.title).toLowerCase(), asText(page.pageId).toLowerCase()], arrayOrEmpty(pages));
+  return sortBy((page) =>[asText_1(page.title).toLowerCase(), asText_1(page.pageId).toLowerCase()], arrayOrEmpty(pages));
 }
 function writeSnapshotWithWatermark(cacheKey_1, value, newestSequence, cachedCount, source){
   writeJson(cacheKey_1, value);
@@ -2699,22 +2854,42 @@ function requestSeq(){
 function requestOptions(){
   return{credentials:"same-origin"};
 }
-function errorMessage(error){
+function errorMessage_1(error){
   return error==null?"request failed":String(error);
 }
 function isCurrentPage(activePath, href){
   return TrimEnd(activePath, ["/"])==TrimEnd(href, ["/"]);
 }
 function pagePath(page){
-  const pageId=asText(page.pageId);
-  const path=asText(page.path);
+  const pageId=asText_1(page.pageId);
+  const path=asText_1(page.path);
   return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
+}
+function setTestId_1(id, node){
+  !isBlank_1(id)?node.setAttribute("data-testid", id):void 0;
+  return node;
 }
 function defaultRenderLimit(){
   return _c.defaultRenderLimit;
 }
+function element_1(tag, className, textValue){
+  const node=doc_1().createElement(tag);
+  if(!isBlank_1(className))node.className=className;
+  if(!(textValue==null))node.textContent=textValue;
+  return node;
+}
+function button_1(className, text){
+  const node=element_1("button", className, text);
+  node.setAttribute("type", "button");
+  return node;
+}
+function input_1(placeholder){
+  const node=doc_1().createElement("input");
+  node.placeholder=placeholder;
+  return node;
+}
 function textarea(className, placeholder){
-  const node=doc().createElement("textarea");
+  const node=doc_1().createElement("textarea");
   node.className=className;
   node.placeholder=placeholder;
   return node;
@@ -2726,21 +2901,25 @@ function setHidden(hidden, node){
   hidden?node.setAttribute("hidden", "hidden"):node.removeAttribute("hidden");
   return node;
 }
+function append_1(parent, children){
+  for(let i=0, _1=children.length-1;i<=_1;i++)parent.appendChild(get(children, i));
+  return parent;
+}
 function actorArguButtonLabel(page){
   return isActorArguPage(page)?"Tell":"Append";
 }
 function pageTitle(page){
-  return textOr(asText(page.pageId), asText(page.title));
+  return textOr_1(asText_1(page.pageId), asText_1(page.title));
 }
 function pageTypeLabel(page){
-  const shapeText=asText(page.shape).toLowerCase();
+  const shapeText=asText_1(page.shape).toLowerCase();
   if(isActorArguPage(page)){
     if(shapeText=="fcell-chat")return"Actor Argu";
     else if(shapeText=="actor-argu")return"Actor Argu";
     else if(shapeText=="raw")return"Raw Actor Argu";
     else {
       const m=findAppendPageShape(page.shape);
-      return m==null?"Actor Argu":textOr("Actor Argu", m.$0.label);
+      return m==null?"Actor Argu":textOr_1("Actor Argu", m.$0.label);
     }
   }
   else {
@@ -2748,7 +2927,7 @@ function pageTypeLabel(page){
     if(m_1==null)return"Raw";
     else {
       const shape=m_1.$0;
-      return textOr(normalizeShapeText(page.shape), shape.label);
+      return textOr_1(normalizeShapeText(page.shape), shape.label);
     }
   }
 }
@@ -2764,41 +2943,41 @@ function renderPendingInspection(node, commands, foreignCommands){
   const foreignCommands_1=arrayOrEmpty(foreignCommands);
   node.setAttribute("data-pending-count", String(length(commands_1)));
   node.setAttribute("data-foreign-pending-count", String(length(foreignCommands_1)));
-  node.setAttribute("data-foreign-pending-realities", concat_1(",", distinct(map((command) => asText(command.serverRealityId), foreignCommands_1))));
+  node.setAttribute("data-foreign-pending-realities", concat_1(",", distinct(map((command) => asText_1(command.serverRealityId), foreignCommands_1))));
   node.setAttribute("data-pending-kinds", concat_1(",", map((a) => a.kind, commands_1)));
   node.setAttribute("data-pending-targets", concat_1("\n", map((a) => a.target, commands_1)));
   node.setAttribute("data-pending-urls", concat_1("\n", map((a) => a.url, commands_1)));
   node.setAttribute("data-pending-statuses", concat_1(",", map((a) => a.status, commands_1)));
-  clear(node);
+  clear_1(node);
   if(length(commands_1)>0){
-    node.appendChild(element("div", "strong", "Pending commands: "+String(length(commands_1))));
-    const list=setTestId("pending-command-list", element("div", "pending-inspection-list", null));
+    node.appendChild(element_1("div", "strong", "Pending commands: "+String(length(commands_1))));
+    const list=setTestId_1("pending-command-list", element_1("div", "pending-inspection-list", null));
     _1=(shown=0,iter((command) => {
       if(shown<4){
         shown=shown+1;
-        const row=setData("pending-status", command.status, setData("pending-url", command.url, setData("pending-target", command.target, setData("pending-kind", command.kind, setTestId("pending-command-row", element("div", "pending-command-row wrap", null))))));
-        append(row, [element("span", "strong pending-command-kind", asText(command.kind)), element("span", "muted wrap pending-command-target", asText(command.target)), element("span", "meta wrap pending-command-status", String(asText(command.method))+" "+String(asText(command.url))+" / "+String(asText(command.status)))]);
+        const row=setData("pending-status", command.status, setData("pending-url", command.url, setData("pending-target", command.target, setData("pending-kind", command.kind, setTestId_1("pending-command-row", element_1("div", "pending-command-row wrap", null))))));
+        append_1(row, [element_1("span", "strong pending-command-kind", asText_1(command.kind)), element_1("span", "muted wrap pending-command-target", asText_1(command.target)), element_1("span", "meta wrap pending-command-status", String(asText_1(command.method))+" "+String(asText_1(command.url))+" / "+String(asText_1(command.status)))]);
         list.appendChild(row);
       }
-    }, commands_1),length(commands_1)>shown?list.appendChild(element("div", "meta", "+"+String(length(commands_1)-shown)+" more pending command(s)")):void 0,node.appendChild(list));
+    }, commands_1),length(commands_1)>shown?list.appendChild(element_1("div", "meta", "+"+String(length(commands_1)-shown)+" more pending command(s)")):void 0,node.appendChild(list));
   }
   else _1=void 0;
   if(length(foreignCommands_1)>0){
-    node.appendChild(setData("foreign-pending-count", String(length(foreignCommands_1)), setTestId("foreign-pending-summary", element("div", "pending-foreign-summary meta", "Foreign pending blocked/stale: "+String(length(foreignCommands_1))))));
-    const list_1=setTestId("foreign-pending-list", element("div", "pending-foreign-list", null));
+    node.appendChild(setData("foreign-pending-count", String(length(foreignCommands_1)), setTestId_1("foreign-pending-summary", element_1("div", "pending-foreign-summary meta", "Foreign pending blocked/stale: "+String(length(foreignCommands_1))))));
+    const list_1=setTestId_1("foreign-pending-list", element_1("div", "pending-foreign-list", null));
     shown_1=0;
     iter((command) => {
       if(shown_1<3){
         shown_1=shown_1+1;
-        const x=setTestId("foreign-pending-row", element("div", "pending-command-row pending-command-foreign wrap", null));
-        let _2=setData("pending-reality", asText(command.serverRealityId), x);
+        const x=setTestId_1("foreign-pending-row", element_1("div", "pending-command-row pending-command-foreign wrap", null));
+        let _2=setData("pending-reality", asText_1(command.serverRealityId), x);
         let _3=setData("pending-kind", command.kind, _2);
         const row=setData("pending-target", command.target, _3);
-        append(row, [element("span", "strong pending-command-kind", asText(command.kind)), element("span", "muted wrap pending-command-target", asText(command.target)), element("span", "meta wrap pending-command-status", "blocked/stale / "+asText(command.serverRealityId))]);
+        append_1(row, [element_1("span", "strong pending-command-kind", asText_1(command.kind)), element_1("span", "muted wrap pending-command-target", asText_1(command.target)), element_1("span", "meta wrap pending-command-status", "blocked/stale / "+asText_1(command.serverRealityId))]);
         list_1.appendChild(row);
       }
     }, foreignCommands_1);
-    if(length(foreignCommands_1)>shown_1)list_1.appendChild(element("div", "meta", "+"+String(length(foreignCommands_1)-shown_1)+" more foreign pending command(s)"));
+    if(length(foreignCommands_1)>shown_1)list_1.appendChild(element_1("div", "meta", "+"+String(length(foreignCommands_1)-shown_1)+" more foreign pending command(s)"));
     node.appendChild(list_1);
   }
   else void 0;
@@ -2827,12 +3006,12 @@ function latestArray(limit, values){
 }
 function renderAppendValue(value){
   let _1;
-  const mode=asText(value.mode);
+  const mode=asText_1(value.mode);
   const m=mode.toLowerCase();
   const className=m=="inbound-message"?"fcell-card fcell-chat inbound":m=="outbound-message"?"fcell-card fcell-chat outbound":m=="list"?"fcell-card fcell-list":m=="grid"?"fcell-card fcell-grid":"fcell-card";
-  const card=setData("mode", mode, setTestId("append-value-card", element("div", className, null)));
-  const head_1=element("div", "fcell-head", null);
-  append(head_1, [element("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element("span", "muted wrap", asText(value.valueId)+" / "+asText(value.createdAtUtc))]);
+  const card=setData("mode", mode, setTestId_1("append-value-card", element_1("div", className, null)));
+  const head_1=element_1("div", "fcell-head", null);
+  append_1(head_1, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_1(value.valueId)+" / "+asText_1(value.createdAtUtc))]);
   card.appendChild(head_1);
   const m_1=mode.toLowerCase();
   switch(m_1){
@@ -2843,28 +3022,28 @@ function renderAppendValue(value){
       }, arrayOrEmpty(value.rows));
       break;
     case"list":
-      const list=element("ul", "fcell-list-items", null);
+      const list=element_1("ul", "fcell-list-items", null);
       _1=(iter((row) => {
-        list.appendChild(element("li", "", asText(row)));
+        list.appendChild(element_1("li", "", asText_1(row)));
       }, arrayOrEmpty(value.rows)),void card.appendChild(list));
       break;
     case"grid":
       let _2;
-      const table=element("table", "fcell-grid-table", null);
+      const table=element_1("table", "fcell-grid-table", null);
       const columns=arrayOrEmpty(value.columns);
       if(length(columns)>0){
-        const thead=element("thead", "", null);
-        const header=element("tr", "", null);
+        const thead=element_1("thead", "", null);
+        const header=element_1("tr", "", null);
         _2=(iter((column) => {
-          header.appendChild(element("th", "wrap", asText(column)));
+          header.appendChild(element_1("th", "wrap", asText_1(column)));
         }, columns),thead.appendChild(header),void table.appendChild(thead));
       }
       else _2=null;
-      const tbody=element("tbody", "", null);
+      const tbody=element_1("tbody", "", null);
       _1=(iter((cells) => {
-        const tr=element("tr", "", null);
+        const tr=element_1("tr", "", null);
         iter((cell) => {
-          tr.appendChild(element("td", "wrap", asText(cell)));
+          tr.appendChild(element_1("td", "wrap", asText_1(cell)));
         }, arrayOrEmpty(cells));
         tbody.appendChild(tr);
       }, arrayOrEmpty(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
@@ -2873,7 +3052,7 @@ function renderAppendValue(value){
       _1=void card.appendChild(renderTextBlock("fcell-source", value.rawValue));
       break;
   }
-  if(!isBlank(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message")card.appendChild(renderTextBlock("fcell-source", value.source));
+  if(!isBlank_1(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message")card.appendChild(renderTextBlock("fcell-source", value.source));
   return card;
 }
 function setStatus(node, text){
@@ -2914,15 +3093,15 @@ function postAppendPageKey(url, body, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
 function pendingFailure(action, error){
-  return String(action)+" failed; pending command kept in browser DB: "+String(asText(error));
+  return String(action)+" failed; pending command kept in browser DB: "+String(asText_1(error));
 }
 function rememberPending(kind, target, url, body){
   const payloadJson=JSON.stringify(body);
   const commandId=newPendingCommandId(kind, target, url, payloadJson);
-  writePending(New_9(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
+  writePending(New_7(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
   return commandId;
 }
 function isActorDynamicPage(page){
@@ -2942,18 +3121,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    keyPlaceholder:String(_5||""), 
-    defaultKey:String(_6||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    keyPlaceholder:String(_5||""),
+    defaultKey:String(_6||""),
     submitKey:(payload) => {
       _7(payload);
-    }, 
+    },
     cancelKey:() => {
       _8();
-    }, 
+    },
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -3035,22 +3214,22 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    selectedKeyId:String(_5||""), 
-    selectedKeyJson:String(_6||""), 
-    selectedKeys:keyParts.slice(), 
-    keyParts:keyParts.slice(), 
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    valuePlaceholder:String(_8||""), 
-    valueText:String(_9||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    selectedKeyId:String(_5||""),
+    selectedKeyJson:String(_6||""),
+    selectedKeys:keyParts.slice(),
+    keyParts:keyParts.slice(),
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    valuePlaceholder:String(_8||""),
+    valueText:String(_9||""),
     submit:(payload) => {
       _10(payload);
-    }, 
+    },
     setValue:(payload) => {
       _11(payload);
     }
@@ -3091,8 +3270,17 @@ function postJsonText(url, payloadJson, onOk, onError){
   const options=requestOptions();
   options.method="POST";
   options.headers=headers;
-  options.body=textOr("{}", payloadJson);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  options.body=textOr_1("{}", payloadJson);
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
+}
+function postJson_1(url, body, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  const options=requestOptions();
+  options.method="POST";
+  options.headers=headers;
+  options.body=JSON.stringify(body);
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
 function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
@@ -3101,10 +3289,14 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
+}
+function setHref_1(href, node){
+  node.setAttribute("href", href);
+  return node;
 }
 function pageTypeClass(page){
-  const shapeText=asText(page.shape).toLowerCase();
+  const shapeText=asText_1(page.shape).toLowerCase();
   if(isActorArguPage(page)){
     if(shapeText=="fcell-chat")return"actor-argu";
     else if(shapeText=="actor-argu")return"actor-argu";
@@ -3114,7 +3306,7 @@ function pageTypeClass(page){
       if(m==null)return"actor-argu";
       else {
         const shape=m.$0;
-        return textOr(normalizeShapeText(page.shape), shape.className);
+        return textOr_1(normalizeShapeText(page.shape), shape.className);
       }
     }
   }
@@ -3123,50 +3315,54 @@ function pageTypeClass(page){
     if(m_1==null)return"raw";
     else {
       const shape_1=m_1.$0;
-      return textOr(normalizeShapeText(page.shape), shape_1.className);
+      return textOr_1(normalizeShapeText(page.shape), shape_1.className);
     }
   }
 }
 function pageTypeBadge(page){
-  const shapeText=asText(page.shape).toLowerCase();
+  const shapeText=asText_1(page.shape).toLowerCase();
   if(isActorArguPage(page)){
     if(shapeText=="fcell-chat")return"aa";
     else if(shapeText=="actor-argu")return"aa";
     else if(shapeText=="raw")return"ra";
     else {
       const m=findAppendPageShape(page.shape);
-      return m==null?"aa":textOr("aa", m.$0.badge);
+      return m==null?"aa":textOr_1("aa", m.$0.badge);
     }
   }
   else {
     const m_1=findAppendPageShape(page.shape);
-    return m_1==null?"R":textOr("?", m_1.$0.badge);
+    return m_1==null?"R":textOr_1("?", m_1.$0.badge);
   }
+}
+function setId_1(id, node){
+  node.setAttribute("id", id);
+  return node;
 }
 function currentLogoutPath(){
   const path=currentBrowserUser().logoutPath;
-  return isBlank(path)?"/chat/logout":path;
+  return isBlank_1(path)?"/chat/logout":path;
 }
 function renderPageCreator(nav, activePath, pages){
   let candidatePageId, candidatesLoaded, replayingPendingPageRegistration;
-  const wrap=setTestId("page-create", element("div", "page-create", null));
-  const shape=setTestId("page-create-shape", select(appendPageShapeOptions()));
-  const pageId=setTestId("page-create-id", input("page id"));
-  const title=setTestId("page-create-title", input("title"));
-  const binding=setTestId("page-create-binding", select([]));
-  const add=setTestId("page-create-submit", button("", "+ Page"));
-  const status=setTestId("page-create-status", element("span", "state page-create-status", ""));
+  const wrap=setTestId_1("page-create", element_1("div", "page-create", null));
+  const shape=setTestId_1("page-create-shape", select(appendPageShapeOptions()));
+  const pageId=setTestId_1("page-create-id", input_1("page id"));
+  const title=setTestId_1("page-create-title", input_1("title"));
+  const binding=setTestId_1("page-create-binding", select([]));
+  const add=setTestId_1("page-create-submit", button_1("", "+ Page"));
+  const status=setTestId_1("page-create-status", element_1("span", "state page-create-status", ""));
   candidatePageId="";
   candidatesLoaded=false;
-  const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
+  const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
   const appendOption=(value, label, target) => {
-    const option=doc().createElement("option");
+    const option=doc_1().createElement("option");
     option.setAttribute("value", value);
     option.textContent=label;
     target.appendChild(option);
   };
   const resetBinding=() => {
-    clear(binding);
+    clear_1(binding);
     appendOption("", "Default", binding);
     binding.value="";
     binding.setAttribute("data-candidate-count", "0");
@@ -3177,7 +3373,7 @@ function renderPageCreator(nav, activePath, pages){
     renderNav(nav, activePath, arrayOrEmpty(pages_1));
   };
   const loadCandidates=(pageIdText, onDone) => {
-    if(isBlank(pageIdText)){
+    if(isBlank_1(pageIdText)){
       resetBinding();
       return onDone();
     }
@@ -3185,7 +3381,7 @@ function renderPageCreator(nav, activePath, pages){
       const normalizedInput=Trim(pageIdText);
       return candidatesLoaded&&candidatePageId.toLowerCase()==normalizedInput.toLowerCase()?onDone():(setStatus(status, "Checking history"),getJson("/pages/api/tab-candidates?pageId="+encodeURIComponent(normalizedInput), (reply) => {
         const candidates=arrayOrEmpty(reply.candidates);
-        clear(binding);
+        clear_1(binding);
         if(length(candidates)===0){
           appendOption("", "Default", binding);
           binding.value="";
@@ -3193,10 +3389,10 @@ function renderPageCreator(nav, activePath, pages){
         }
         else {
           iter((candidate) => {
-            appendOption("reuse:"+asText(candidate.tabId), "Reuse "+textOr(asText(candidate.pageId), asText(candidate.tabId))+" ("+(candidate.visible?"visible":"hidden")+")", binding);
+            appendOption("reuse:"+asText_1(candidate.tabId), "Reuse "+textOr_1(asText_1(candidate.pageId), asText_1(candidate.tabId))+" ("+(candidate.visible?"visible":"hidden")+")", binding);
           }, candidates);
           appendOption("new", "New history", binding);
-          binding.value="reuse:"+asText(get(candidates, 0).tabId);
+          binding.value="reuse:"+asText_1(get(candidates, 0).tabId);
           setStatus(status, "Existing history found");
         }
         candidatePageId=normalizedInput;
@@ -3213,14 +3409,14 @@ function renderPageCreator(nav, activePath, pages){
   const addPageAfterCandidates=() => {
     const pageIdText=Trim(pageId.value);
     const titleText=Trim(title.value);
-    if(isBlank(pageIdText)&&isBlank(titleText))setStatus(status, "Page id or title is required");
+    if(isBlank_1(pageIdText)&&isBlank_1(titleText))setStatus(status, "Page id or title is required");
     else {
-      const bindingValue=asText(binding.value);
+      const bindingValue=asText_1(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_33(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
-      const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
+      const request=New_35(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const pendingId=rememberPending("append-page-register", textOr_1(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
-      postJson("/pages/api/register-page", request, (reply) => {
+      postJson_1("/pages/api/register-page", request, (reply) => {
         deletePendingThen(pendingId, () => {
           writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty(reply.pages)), reply.maxSequence, reply.pages));
           refresh(reply.pages);
@@ -3238,19 +3434,19 @@ function renderPageCreator(nav, activePath, pages){
   pageId.addEventListener("keydown", (event) => event.key=="Enter"?addPage():null);
   pageId.addEventListener("input", () => {
     const pageIdText=Trim(pageId.value);
-    return isBlank(pageIdText)?resetBinding():loadCandidates(pageIdText, () => { });
+    return isBlank_1(pageIdText)?resetBinding():loadCandidates(pageIdText, () => { });
   });
   title.addEventListener("keydown", (event) => event.key=="Enter"?addPage():null);
   add.addEventListener("click", addPage);
   resetBinding();
   refresh(pages);
-  append(wrap, [shape, pageId, title, binding, add, status]);
+  append_1(wrap, [shape, pageId, title, binding, add, status]);
   setHidden(!systemAclAllows("*", "ptcs.page.create"), wrap);
   if(!replayingPendingPageRegistration){
     replayingPendingPageRegistration=true;
     readAllPending((commands) => {
       let remaining, accepted;
-      const mine=filter((command) =>!(command==null)&&sameText(command.kind, "append-page-register")&&sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), commands);
+      const mine=filter((command) =>!(command==null)&&sameText(command.kind, "append-page-register")&&sameText(command.method, "POST")&&!isBlank_1(command.url)&&!isBlank_1(command.payloadJson), commands);
       if(length(mine)===0)replayingPendingPageRegistration=false;
       else {
         remaining=length(mine);
@@ -3263,7 +3459,7 @@ function renderPageCreator(nav, activePath, pages){
         iter((command) => {
           postJsonText(command.url, command.payloadJson, (body) => {
             try {
-              const reply=json(isBlank(body)?"{}":body);
+              const reply=json(isBlank_1(body)?"{}":body);
               deletePendingThen(command.commandId, () => {
                 accepted=accepted+1;
                 !(reply==null)?(writeAppendPagesDefinitions(New(reply.status, length(arrayOrEmpty(reply.pages)), reply.maxSequence, reply.pages)),refresh(reply.pages)):void 0;
@@ -3271,7 +3467,7 @@ function renderPageCreator(nav, activePath, pages){
               });
             }
             catch(error){
-              setStatus(status, "Replay create page parse failed: "+errorMessage(error));
+              setStatus(status, "Replay create page parse failed: "+errorMessage_1(error));
               finishOne();
             }
           }, (error) => {
@@ -3289,8 +3485,8 @@ function setValueCount(buckets){
 }
 function tryRenderWithRegisteredPageRenderers(text){
   let r;
-  const content=asText(text);
-  if(isBlank(content))return null;
+  const content=asText_1(text);
+  if(isBlank_1(content))return null;
   else {
     const _1=content;
     if(globalThis.PulseTrade){
@@ -3331,21 +3527,21 @@ function actorValueCount(data){
   }
 }
 function cardTitle(title, id, status, line){
-  const wrap=doc().createDocumentFragment();
-  const row=element("div", "name-row", null);
-  append(row, [statusDot(status), element("span", "strong wrap", title)]);
+  const wrap=doc_1().createDocumentFragment();
+  const row=element_1("div", "name-row", null);
+  append_1(row, [statusDot(status), element_1("span", "strong wrap", title)]);
   wrap.appendChild(row);
-  if(!isBlank(id))wrap.appendChild(element("div", "muted wrap", id));
-  if(!isBlank(line))wrap.appendChild(element("div", "meta wrap", line));
+  if(!isBlank_1(id))wrap.appendChild(element_1("div", "muted wrap", id));
+  if(!isBlank_1(line))wrap.appendChild(element_1("div", "meta wrap", line));
   return wrap;
 }
 function statusDot(status){
-  const node=element("span", isLive(status)?"status-dot online":"status-dot offline", null);
-  node.setAttribute("title", asText(status));
+  const node=element_1("span", isLive(status)?"status-dot online":"status-dot offline", null);
+  node.setAttribute("title", asText_1(status));
   return node;
 }
 function compactMessageId(value){
-  const text=asText(value);
+  const text=asText_1(value);
   return text.length<=32?text:StartsWith(text.toLowerCase(), "pending-command")?"pending-command:"+String(text.length):Substring(text, 0, 24)+"..."+text.substring(text.length-6);
 }
 function mergeThreadMessages(existing, incoming){
@@ -3356,7 +3552,7 @@ function maxMessageSequence(messages){
   return fold((_1, _2) => Compare(_1, _2)===1?_1:_2, 0n, map((message) => message==null?0n:tryParseSequence("msg-", message.messageId), arrayOrEmpty(messages)));
 }
 function int64OrZero(value){
-  const parsed=parseInt(asText(value), globalThis.$radix);
+  const parsed=parseInt(asText_1(value), globalThis.$radix);
   return isNaN(parsed)||parsed<0?0n:BigInt(parsed);
 }
 function initializeClientExtensionGlobals(){
@@ -3365,6 +3561,8 @@ function initializeClientExtensionGlobals(){
   if(!globalThis.PulseTrade.PageRenderers)globalThis.PulseTrade.PageRenderers=[];
   if(!globalThis.PulseTrade.AppendInputRenderers)globalThis.PulseTrade.AppendInputRenderers=[];
   if(!globalThis.PulseTrade.AddKeyRenderers)globalThis.PulseTrade.AddKeyRenderers=[];
+  if(!globalThis.PulseTrade.LoginRenderers)globalThis.PulseTrade.LoginRenderers=[];
+  if(!globalThis.PulseTrade.AclSnapshotObservers)globalThis.PulseTrade.AclSnapshotObservers=[];
   if(!globalThis.PulseTrade.Renderers)globalThis.PulseTrade.Renderers=globalThis.PulseTrade.MessageRenderers;
   let register=(collection, name, priority, func) => {
     if(typeof priority==="function"){
@@ -3373,8 +3571,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"), 
-      priority:Number(priority||0), 
+      name:String(name||"unnamed"),
+      priority:Number(priority||0),
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -3391,6 +3589,26 @@ function initializeClientExtensionGlobals(){
   globalThis.PulseTradeRegisterAddKeyRenderer=(name, priority, func) => {
     register(globalThis.PulseTrade.AddKeyRenderers, name, priority, func);
   };
+  globalThis.PulseTradeRegisterLoginRenderer=(name, priority, func) => {
+    register(globalThis.PulseTrade.LoginRenderers, name, priority, func);
+  };
+  globalThis.PulseTradeRegisterAclSnapshotObserver=(name, priority, func) => {
+    register(globalThis.PulseTrade.AclSnapshotObservers, name, priority, func);
+  };
+}
+function routeItem_1(icon, name, value){
+  const item=element_1("li", "route-item", null);
+  const content=element_1("div", "", null);
+  append_1(content, [element_1("p", "route-name", name), element_1("p", "route-value", value)]);
+  append_1(item, [element_1("span", "route-icon", icon), content]);
+  return item;
+}
+function field_1(labelText, inputId, control){
+  const wrap=element_1("div", "field", null);
+  const label=element_1("label", "", labelText);
+  label.setAttribute("for", inputId);
+  append_1(wrap, [label, control]);
+  return wrap;
 }
 function aclAllows(action, resourceKind, resourceId){
   const _1=currentAclSnapshot();
@@ -3414,18 +3632,18 @@ function findAppendPageShape(shape){
   return tryFind((candidate) => normalizeShapeText(candidate.shape)==normalized, appendPageShapeRegistry());
 }
 function normalizeShapeText(value){
-  const text=Trim(asText(value)).toLowerCase();
+  const text=Trim(asText_1(value)).toLowerCase();
   return text.length>0&&text.length<=64&&forall((ch) => ch>="a"&&ch<="z"||ch>="0"&&ch<="9"||ch==="-"||ch==="_"||ch===".", text)?text:"raw";
 }
 function hasTag(tag, tags){
-  return exists((value) => asText(value).toLowerCase()==tag, arrayOrEmpty(tags));
+  return exists((value) => asText_1(value).toLowerCase()==tag, arrayOrEmpty(tags));
 }
 function currentBrowserUser(){
-  const userNode=doc().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank(userNode.textContent))return New_32("user.web", "Web User", "", false, "anonymous", "/chat/logout");
+  const userNode=doc_1().getElementById("ptc-comm-user");
+  if(userNode==null||isBlank_1(userNode.textContent))return New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout");
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank(user.participantId)?New_32("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
+    return user==null||isBlank_1(user.participantId)?New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
   }
 }
 function fcellValueModeLabel(mode, tags){
@@ -3433,7 +3651,7 @@ function fcellValueModeLabel(mode, tags){
 }
 function renderTextBlock(className, text){
   const m=tryRenderWithRegisteredRenderers(text);
-  return m==null?element("pre", className, asText(text)):m.$0;
+  return m==null?element_1("pre", className, asText_1(text)):m.$0;
 }
 function scrollToBottomNow(node){
   if(!(node==null)){
@@ -3450,9 +3668,9 @@ function newPendingCommandId(kind, target, url, payloadJson){
   return cacheKey("pending-command", ofArray([kind, target, url, payloadJson, "attempt-"+String(pendingCommandSeq()), "rand-"+String(Math.floor(Math.random()*1000000000))]));
 }
 function select(options){
-  const node=doc().createElement("select");
+  const node=doc_1().createElement("select");
   iter((_1) => {
-    const option=doc().createElement("option");
+    const option=doc_1().createElement("option");
     option.setAttribute("value", _1[0]);
     option.textContent=_1[1];
     node.appendChild(option);
@@ -3460,31 +3678,31 @@ function select(options){
   return node;
 }
 function appendPageShapeOptions(){
-  return map((shape) =>[normalizeShapeText(shape.shape), textOr(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
+  return map((shape) =>[normalizeShapeText(shape.shape), textOr_1(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
 }
 function systemAclAllows(resourceId, action){
   return aclAllows(action, "ptcs.system", resourceId);
 }
 function navigationPathForCreatedPage(page){
-  const pageId=asText(page.pageId);
-  const path=asText(page.path);
+  const pageId=asText_1(page.pageId);
+  const path=asText_1(page.path);
   return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
 }
 function isLive(status){
-  const m=asText(status).toLowerCase();
+  const m=asText_1(status).toLowerCase();
   return m=="online"||(m=="running"||(m=="up"||m=="available"));
 }
 function distinctMessages(messages){
   let kept;
   kept=[];
   iter((message) => {
-    if(!(message==null)&&!isBlank(message.messageId)&&!exists((row) => row.messageId==message.messageId, kept))kept=kept.concat([message]);
+    if(!(message==null)&&!isBlank_1(message.messageId)&&!exists((row) => row.messageId==message.messageId, kept))kept=kept.concat([message]);
   }, arrayOrEmpty(messages));
   return kept;
 }
 function tryParseSequence(prefix, value){
-  const text=asText(value);
-  if(isBlank(text)||!StartsWith(text, prefix))return 0n;
+  const text=asText_1(value);
+  if(isBlank_1(text)||!StartsWith(text, prefix))return 0n;
   else try {
     return BigInt(text.substring(prefix.length));
   }
@@ -3500,19 +3718,19 @@ function aclCapabilityAllowed(action, capabilities){
   return o==null?null:Some(o.$0.allowed);
 }
 function aclSameText(left, right){
-  return asText(left).toLowerCase()==asText(right).toLowerCase();
+  return asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
 }
 function appendPageShapeRegistry(){
   return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
 }
 function fcellModeLabel(mode){
-  const m=asText(mode).toLowerCase();
+  const m=asText_1(mode).toLowerCase();
   return m=="inbound-message"?"FCell Chat":m=="outbound-message"?"FCell Chat":m=="list"?"FCell List":m=="table"?"FCell Grid":m=="grid"?"FCell Grid":"FCell Value";
 }
 function tryRenderWithRegisteredRenderers(text){
   let r;
-  const content=asText(text);
-  if(isBlank(content))return null;
+  const content=asText_1(text);
+  if(isBlank_1(content))return null;
   else {
     const local=tryPick((_2) => {
       try {
@@ -3569,11 +3787,11 @@ function registeredRenderers(){
   return _c.registeredRenderers;
 }
 function shapeRegistration(shape, label, badge, className){
-  return New_31(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_31(normalizeShapeText(shape), textOr_1(normalizeShapeText(shape), label), textOr_1("?", badge), textOr_1(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
-  const node=doc().getElementById("ptc-comm-client-extensions");
-  if(node==null||isBlank(node.textContent))return[];
+  const node=doc_1().getElementById("ptc-comm-client-extensions");
+  if(node==null||isBlank_1(node.textContent))return[];
   else {
     const o=tryJson(node.textContent);
     return o==null?[]:o.$0;
@@ -3611,9 +3829,9 @@ function KeyValue(kvp){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
@@ -3765,7 +3983,7 @@ function tryFindIndex(f, arr){
   return res;
 }
 function readJson(key, onRead){
-  if(isBlank(key))onRead(null);
+  if(isBlank_1(key))onRead(null);
   else withStore(snapshotStore(), "readonly", (store) => {
     try {
       const request=store.get(key);
@@ -3774,7 +3992,7 @@ function readJson(key, onRead){
         if(isMissing(value))return onRead(null);
         else try {
           const text=String(value);
-          return isBlank(text)?onRead(null):onRead(tryJson(text));
+          return isBlank_1(text)?onRead(null):onRead(tryJson(text));
         }
         catch(m){
           return onRead(null);
@@ -3790,7 +4008,7 @@ function readJson(key, onRead){
   });
 }
 function cacheKey(scope, parts){
-  return currentServerRealityId()+":"+scope+":"+concat_1(":", map_1((part) => encodeURIComponent(asText(part)), parts));
+  return currentServerRealityId()+":"+scope+":"+concat_1(":", map_1((part) => encodeURIComponent(asText_1(part)), parts));
 }
 function withStore(storeName, mode, onStore, onUnavailable){
   openDb((db) => {
@@ -3815,18 +4033,18 @@ function isMissing(value){
 function readPendingRealitySplit(onRead){
   readAllPendingRaw((commands) => {
     const reality=currentServerRealityId();
-    onRead(filter((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)==reality, commands), filter((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)!=reality, commands));
+    onRead(filter((command) =>!(command==null)&&textOr_1("legacy", command.serverRealityId)==reality, commands), filter((command) =>!(command==null)&&textOr_1("legacy", command.serverRealityId)!=reality, commands));
   });
 }
 function writeWatermark(streamId, newestSequence, cachedCount, source){
-  if(!isBlank(streamId)){
+  if(!isBlank_1(streamId)){
     let _1=watermarkStore();
     const a=0n;
     let _2=Compare(a, newestSequence)===1?a:newestSequence;
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_28(streamId, _3, _4, asText(source), nowTicks());
+    let _5=New_26(streamId, _3, _4, asText_1(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -3834,14 +4052,14 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
 function readAllPending(onRead){
   readAllPendingRaw((commands) => {
     const reality=currentServerRealityId();
-    onRead(filter((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)==reality, commands));
+    onRead(filter((command) =>!(command==null)&&textOr_1("legacy", command.serverRealityId)==reality, commands));
   });
 }
 function deletePendingThen(commandId, onDeleted){
   deleteFromThen(pendingStore(), commandId, onDeleted);
 }
 function readWatermark(key, onRead){
-  if(isBlank(key))onRead(null);
+  if(isBlank_1(key))onRead(null);
   else withStore(watermarkStore(), "readonly", (store) => {
     try {
       const request=store.get(key);
@@ -3850,7 +4068,7 @@ function readWatermark(key, onRead){
         if(isMissing(value))return onRead(null);
         else try {
           const text=String(value);
-          return isBlank(text)?onRead(null):onRead(tryJson(text));
+          return isBlank_1(text)?onRead(null):onRead(tryJson(text));
         }
         catch(m){
           return onRead(null);
@@ -3900,7 +4118,7 @@ function readAllPendingRaw(onRead){
         else try {
           return onRead(choose((text) => {
             try {
-              return isBlank(text)?null:tryJson(text);
+              return isBlank_1(text)?null:tryJson(text);
             }
             catch(m){
               return null;
@@ -3921,7 +4139,7 @@ function readAllPendingRaw(onRead){
   });
 }
 function writeJsonTo(storeName, key, value){
-  if(!isBlank(key))withStore(storeName, "readwrite", (store) => {
+  if(!isBlank_1(key))withStore(storeName, "readwrite", (store) => {
     try {
       const a=[JSON.stringify(value), key];
       store.put.apply(store, a);
@@ -3950,16 +4168,16 @@ function compactSnapshots(){
     const overflow=length(watermarks_1)-maxSnapshotRecords();
     if(overflow>0)iter((watermark) => {
       deleteSnapshotAndWatermark(watermark.streamId);
-    }, sortBy(watermarkTouchedAt, filter((watermark) =>!(watermark==null)&&!isBlank(watermark.streamId)&&!protectedSnapshotKey(watermark.streamId), watermarks_1)).slice(0, overflow));
+    }, sortBy(watermarkTouchedAt, filter((watermark) =>!(watermark==null)&&!isBlank_1(watermark.streamId)&&!protectedSnapshotKey(watermark.streamId), watermarks_1)).slice(0, overflow));
     readAllSnapshotKeys((snapshotKeys) => {
       iter((key) => {
         deleteFrom(snapshotStore(), key);
-      }, filter((key) =>!isBlank(key)&&!protectedSnapshotKey(key)&&!exists((watermark) =>!(watermark==null)&&watermark.streamId==key, watermarks_1), snapshotKeys));
+      }, filter((key) =>!isBlank_1(key)&&!protectedSnapshotKey(key)&&!exists((watermark) =>!(watermark==null)&&watermark.streamId==key, watermarks_1), snapshotKeys));
     });
   });
 }
 function deleteFromThen(storeName, key, onDeleted){
-  if(isBlank(key))onDeleted();
+  if(isBlank_1(key))onDeleted();
   else withTransactionStore(storeName, "readwrite", (_1, _2) =>(((tx) =>(store) => {
     let finished;
     finished=false;
@@ -4008,7 +4226,7 @@ function readAllWatermarks(onRead){
         else try {
           return onRead(choose((text) => {
             try {
-              return isBlank(text)?null:tryJson(text);
+              return isBlank_1(text)?null:tryJson(text);
             }
             catch(m){
               return null;
@@ -4032,21 +4250,21 @@ function maxSnapshotRecords(){
   return _c.maxSnapshotRecords;
 }
 function protectedSnapshotKey(key){
-  const key_1=asText(key);
+  const key_1=asText_1(key);
   return key_1=="append-pages-definitions:"||key_1.indexOf(":append-pages-definitions:")!=-1||StartsWith(key_1, "chat-agents:")||key_1.indexOf(":chat-agents:")!=-1||StartsWith(key_1, "actors-snapshot:")||key_1.indexOf(":actors-snapshot:")!=-1;
 }
 function watermarkTouchedAt(watermark){
   let o;
   if(watermark==null)return 0n;
   else {
-    const m=(o=0n,[TryParse(asText(watermark.touchedAt), {get:() => o, set:(v) => {
+    const m=(o=0n,[TryParse(asText_1(watermark.touchedAt), {get:() => o, set:(v) => {
       o=v;
     }}), o]);
     return m[0]?m[1]:0n;
   }
 }
 function deleteSnapshotAndWatermark(key){
-  if(!isBlank(key))withSnapshotWatermarkStores("readwrite", (_1, _2, _3) => {
+  if(!isBlank_1(key))withSnapshotWatermarkStores("readwrite", (_1, _2, _3) => {
     try {
       _2["delete"](key);
       _3["delete"](key);
@@ -4081,7 +4299,7 @@ function readAllSnapshotKeys(onRead){
   });
 }
 function deleteFrom(storeName, key){
-  if(!isBlank(key))withStore(storeName, "readwrite", (store) => {
+  if(!isBlank_1(key))withStore(storeName, "readwrite", (store) => {
     try {
       store["delete"](key);
     }
@@ -4277,11 +4495,11 @@ function Some(Value){
   return{$:1, $0:Value};
 }
 function json(text){
-  return JSON.parse(asText(text));
+  return JSON.parse(asText_1(text));
 }
 function tryJson(text){
   try {
-    return isBlank(text)?null:Some(json(text));
+    return isBlank_1(text)?null:Some(json(text));
   }
   catch(m){
     return null;
@@ -4289,16 +4507,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
   };
 }
@@ -4339,38 +4557,6 @@ let _c=Lazy((_i) => class $StartupCode_Client {
     this.requestSeq=0;
   }
 });
-function New_3(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
-  return{
-    submitPath:submitPath, 
-    sessionPath:sessionPath, 
-    logoutPath:logoutPath, 
-    returnUrl:returnUrl, 
-    protectedRoute:protectedRoute, 
-    sessionCookieName:sessionCookieName, 
-    title:title, 
-    lead:lead, 
-    providerLabel:providerLabel, 
-    aclLabel:aclLabel
-  };
-}
-function length(arr){
-  return arr.dims===2?arr.length*arr.length:arr.length;
-}
-function get(arr, n){
-  checkBounds(arr, n);
-  return arr[n];
-}
-function checkBounds(arr, n){
-  if(n<0||n>=arr.length)FailWith("Index was outside the bounds of the array.");
-}
-function New_4(userName, password, returnUrl, keepSession){
-  return{
-    userName:userName, 
-    password:password, 
-    returnUrl:returnUrl, 
-    keepSession:keepSession
-  };
-}
 function TrimEnd(s, t){
   let i, go;
   if(Equals(t, null)||t.length==0)return TrimEndWS(s);
@@ -4388,11 +4574,11 @@ function TrimEnd(s, t){
 function concat_1(separator, strings){
   return ofSeq(strings).join(separator);
 }
-function Trim(s){
-  return s.replace(new RegExp("^\\s+"), "").replace(new RegExp("\\s+$"), "");
-}
 function TrimEndWS(s){
   return s.replace(new RegExp("\\s+$"), "");
+}
+function Trim(s){
+  return s.replace(new RegExp("^\\s+"), "").replace(new RegExp("\\s+$"), "");
 }
 function StartsWith(t, s){
   return t.substring(0, s.length)==s;
@@ -4436,8 +4622,8 @@ class FSharpList {
   static Empty=Create(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -4468,60 +4654,70 @@ class Object_1 {
 function TryParse(s, r){
   return TryParseBigInt(s, -9223372036854775808n, 9223372036854775807n, r);
 }
-function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
+function New_3(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
-function New_6(pageId, mode, setName, keys){
+function length(arr){
+  return arr.dims===2?arr.length*arr.length:arr.length;
+}
+function get(arr, n){
+  checkBounds(arr, n);
+  return arr[n];
+}
+function checkBounds(arr, n){
+  if(n<0||n>=arr.length)FailWith("Index was outside the bounds of the array.");
+}
+function New_4(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
-function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
+function New_5(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
-function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
+function New_6(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
-function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
+function New_7(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -4562,81 +4758,81 @@ function tail(l){
 function listEmpty(){
   return FailWith("The input list was empty.");
 }
-function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
+function New_8(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
-function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
+function New_9(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    displayName:displayName, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    displayName:displayName,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
-function New_12(pageId, keyJson, valueText, direction, tags){
+function New_10(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
-function New_13(pageId, keyJson, displayName){
+function New_11(pageId, keyJson, displayName){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
+    pageId:pageId,
+    keyJson:keyJson,
     displayName:displayName
   };
 }
-function New_14(pageId, keyJson, rawArgu, tags){
+function New_12(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
-function New_15(pageId){
+function New_13(pageId){
   return{pageId:pageId};
 }
-function New_16(pageId, keyId){
+function New_14(pageId, keyId){
   return{pageId:pageId, keyId:keyId};
 }
-function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
+function New_15(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function delay(f){
   return{GetEnumerator:() => Get(f())};
 }
-function append_1(s1, s2){
+function append_2(s1, s2){
   return{GetEnumerator:() => {
     const e1=Get(s1);
     const first=[true];
@@ -4769,66 +4965,66 @@ function unfold(f, s){
     }
   }, void 0)};
 }
-function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
+function New_16(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
-function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
+function New_17(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
-function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
+function New_18(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
-function New_21(valueId, keys, createdAtUtc, value, tags){
+function New_19(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
     tags:tags
   };
 }
-function New_22(maxSequence, buckets){
+function New_20(maxSequence, buckets){
   return{maxSequence:maxSequence, buckets:buckets};
 }
-function New_23(nodeCount, actorCount, maxSequence, nodes){
+function New_21(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
@@ -4910,82 +5106,126 @@ class HashSet extends Object_1 {
 function OfArray(a){
   return new FSharpMap("New_1", OfSeq(map_2((_1) => Pair.New(_1[0], _1[1]), a)));
 }
-function New_24(actorId, displayName, kind, keys, status, routees){
+function New_22(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
-function New_25(nodeId, nodeAddress, status, roles, actors){
+function New_23(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId, 
-    nodeAddress:nodeAddress, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId,
+    nodeAddress:nodeAddress,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
-function New_26(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_24(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
-function New_27(messages, nextAfterMessageId){
+function New_25(messages, nextAfterMessageId){
   return{messages:messages, nextAfterMessageId:nextAfterMessageId};
 }
-function New_28(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_26(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
-function New_29(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_27(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
-function New_30(fromId, toId, body, tags){
+function New_28(fromId, toId, body, tags){
   return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    fromId:fromId,
+    toId:toId,
+    body:body,
     tags:tags
+  };
+}
+function New_29(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+  return{
+    submitPath:submitPath,
+    sessionPath:sessionPath,
+    logoutPath:logoutPath,
+    returnUrl:returnUrl,
+    protectedRoute:protectedRoute,
+    sessionCookieName:sessionCookieName,
+    title:title,
+    lead:lead,
+    providerLabel:providerLabel,
+    aclLabel:aclLabel
+  };
+}
+function New_30(userName, password, returnUrl, keepSession){
+  return{
+    userName:userName,
+    password:password,
+    returnUrl:returnUrl,
+    keepSession:keepSession
   };
 }
 function New_31(shape, label, badge, className){
   return{
-    shape:shape, 
-    label:label, 
-    badge:badge, 
+    shape:shape,
+    label:label,
+    badge:badge,
     className:className
   };
 }
-function New_32(participantId, displayName, login, authenticated, provider, logoutPath){
+function New_32(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    participantId:participantId, 
-    displayName:displayName, 
-    login:login, 
-    authenticated:authenticated, 
-    provider:provider, 
+    submitPath:submitPath,
+    sessionPath:sessionPath,
+    logoutPath:logoutPath,
+    returnUrl:returnUrl,
+    protectedRoute:protectedRoute,
+    sessionCookieName:sessionCookieName,
+    title:title,
+    lead:lead,
+    providerLabel:providerLabel,
+    aclLabel:aclLabel
+  };
+}
+function New_33(userName, password, returnUrl, keepSession){
+  return{
+    userName:userName,
+    password:password,
+    returnUrl:returnUrl,
+    keepSession:keepSession
+  };
+}
+function New_34(participantId, displayName, login, authenticated, provider, logoutPath){
+  return{
+    participantId:participantId,
+    displayName:displayName,
+    login:login,
+    authenticated:authenticated,
+    provider:provider,
     logoutPath:logoutPath
   };
 }
@@ -5033,15 +5273,15 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_33(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_35(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -5132,7 +5372,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_34(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_36(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -5189,6 +5429,15 @@ function mapiInPlace(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
   return arr;
 }
+let _c_1=Lazy((_i) => class $StartupCode_Library {
+  static {
+    _c_1=_i(this);
+  }
+  static extensionId;
+  static {
+    this.extensionId="pulse-trade-comm-spa-login";
+  }
+});
 class Exception extends Object_1 { }
 class Dictionary extends Object_1 {
   equals;
@@ -5275,12 +5524,12 @@ class Dictionary extends Object_1 {
     }
   }
 }
-function New_34(Node_1, Left, Right, Height, Count){
+function New_36(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1, 
-    Left:Left, 
-    Right:Right, 
-    Height:Height, 
+    Node:Node_1,
+    Left:Left,
+    Right:Right,
+    Height:Height,
     Count:Count
   };
 }

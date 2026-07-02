@@ -26,12 +26,17 @@ let options =
 - registers `PtcsAclOptions` into the PTCS server runtime by calling the PTCS SPI;
 - registers extension id `pulse-trade-comm-spa-acl`, script url
   `/client-extensions/acl/PulseTrade.Comm.Spa.ACL.js`, and the package `contentFiles`
-  script asset in the PTCS client-extension manifest.
+  script asset in the PTCS client-extension manifest;
+- registers the WebSharper runtime asset required by the package bundle at
+  `/client-extensions/acl/WebSharper.Core.JavaScript/Runtime.js`;
+- registers a browser ACL snapshot observer through
+  `PulseTradeRegisterAclSnapshotObserver`.
 
 This is not yet the final extraction of every ACL-owned browser behavior from PTCS
 core. The current package proves the open NuGet boundary, manifest/script ownership,
-and ACL2 browser/runtime gate. Remaining work is moving the ACL client logic that
-still lives in PTCS core into this package.
+runtime asset ownership, ACL snapshot observer hook, and ACL2 browser/runtime gate.
+Remaining work is moving the ACL client gating logic that still lives in PTCS core
+into this package.
 
 `PulseTrade.Comm.Spa.ACL` must reference `PulseTrade.Comm.ACL.Core` as an exact
 binary NuGet package. It must not require Core source access.

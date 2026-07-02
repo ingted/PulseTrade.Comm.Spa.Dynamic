@@ -5,7 +5,23 @@ function isIDisposable(x){
   return"Dispose"in x;
 }
 function Main(){
-  return globalThis.console.log("PulseTrade.Comm.Spa.ACL bundle loaded");
+  registerAclSnapshotObserver();
+  return globalThis.console.log("PulseTrade.Comm.Spa.ACL bundle loaded and registered ACL snapshot observer");
+}
+function registerAclSnapshotObserver(){
+  if("PulseTradeRegisterAclSnapshotObserver"in globalThis)globalThis.PulseTradeRegisterAclSnapshotObserver("ptcs-acl-snapshot-observer", 100, observeAclSnapshot);
+}
+function observeAclSnapshot(snapshotJson){
+  const length_1=snapshotJson==null?0:snapshotJson.length;
+  if(!(globalThis.document.body==null)){
+    globalThis.document.body.setAttribute("data-ptcs-acl-snapshot-observed", "true");
+    globalThis.document.body.setAttribute("data-ptcs-acl-snapshot-observer", extensionId());
+    globalThis.document.body.setAttribute("data-ptcs-acl-snapshot-length", String(length_1));
+  }
+  return true;
+}
+function extensionId(){
+  return _c_1.extensionId;
 }
 function Main_1(){
   let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
@@ -192,6 +208,7 @@ function Main_1(){
     };
     getJson("/acl/api/snapshot", (snapshot) => {
       set_currentAclSnapshot(Some(snapshot));
+      notifyAclSnapshotObservers(JSON.stringify(snapshot));
       startAfterAclSnapshot();
     }, () => {
       startAfterAclSnapshot();
@@ -202,78 +219,7 @@ function doc(){
   return _c.doc;
 }
 function mountLogin(root){
-  const config=loginConfig();
-  const frame=element("section", "login-frame", null);
-  frame.setAttribute("aria-label", "PTCS Login");
-  const systemPanel=element("aside", "system-panel", null);
-  const brand=element("div", "", null);
-  append(brand, [element("div", "brand-mark", "PT"), element("p", "brand-title", "PulseTrade Comm Spa"), element("p", "brand-subtitle", "\u672c\u9801\u793a\u610f PTCS.Login provider \u7684\u81ea\u6709\u767b\u5165\u5165\u53e3\u3002\u767b\u5165\u6210\u529f\u5f8c\u7531 server \u8a2d\u5b9a HttpOnly session cookie\uff0c\u518d\u56de\u5230\u53d7\u4fdd\u8b77\u7684 PTCS \u9801\u9762\u3002")]);
-  const routes=element("ul", "route-list", null);
-  routes.setAttribute("aria-label", "Login context");
-  append(routes, [routeItem("P", "Protected route", textOr("/actors", config.protectedRoute)), routeItem("S", "Session cookie", textOr("ptc_login_session", config.sessionCookieName)), routeItem("A", "ACL mode", textOr("enabled or authenticated-only", config.aclLabel))]);
-  append(systemPanel, [brand, routes]);
-  const formPanel=element("section", "form-panel", null);
-  const card=element("div", "form-card", null);
-  const statusRow=element("div", "status-row", null);
-  const providerPill=element("span", "pill", null);
-  const bypassPill=element("span", "pill", null);
-  append(providerPill, [element("span", "dot", ""), doc().createTextNode(textOr("PTCS.Login", config.providerLabel))]);
-  append(bypassPill, [element("span", "dot warn", ""), doc().createTextNode("OAuth bypass")]);
-  append(statusRow, [providerPill, bypassPill]);
-  const errorBox=setTestId("ptcs-login-error", element("p", "error-box", "\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002"));
-  errorBox.setAttribute("role", "alert");
-  const userName=setTestId("ptcs-login-username", setId("username", input("admin")));
-  userName.setAttribute("name", "username");
-  userName.setAttribute("type", "text");
-  userName.setAttribute("autocomplete", "username");
-  const password=setTestId("ptcs-login-password", setId("password", input("\u8f38\u5165\u5bc6\u78bc")));
-  password.setAttribute("name", "password");
-  password.setAttribute("type", "password");
-  password.setAttribute("autocomplete", "current-password");
-  const keepSession=doc().createElement("input");
-  keepSession.setAttribute("name", "keepSession");
-  keepSession.setAttribute("type", "checkbox");
-  keepSession.setAttribute("value", "true");
-  const inlineRow=element("div", "inline-row", null);
-  const checkboxLabel=element("label", "checkbox-row", null);
-  append(checkboxLabel, [keepSession, doc().createTextNode("\u4fdd\u6301\u6b64\u700f\u89bd\u5668\u767b\u5165")]);
-  append(inlineRow, [checkboxLabel, setHref("/login/help", element("a", "link", "\u9700\u8981\u5354\u52a9?"))]);
-  const form=element("form", "", null);
-  form.setAttribute("method", "post");
-  form.setAttribute("action", config.submitPath);
-  const submit=setTestId("ptcs-login-submit", button("", "\u767b\u5165\u4e26\u8fd4\u56de PTCS"));
-  const setError=(text) => {
-    errorBox.textContent=textOr("\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002", text);
-    errorBox.className="error-box visible";
-  };
-  const submitLogin=() => {
-    const request=New_4(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
-    if(isBlank(request.userName)||isBlank(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
-    else {
-      errorBox.className="error-box";
-      submit.setAttribute("disabled", "disabled");
-      submit.textContent="\u767b\u5165\u4e2d";
-      postJson(config.submitPath, request, (reply) => {
-        const target=textOr(config.returnUrl, reply.returnUrl);
-        globalThis.location.assign(target);
-      }, (error) => {
-        submit.removeAttribute("disabled");
-        submit.textContent="\u767b\u5165\u4e26\u8fd4\u56de PTCS";
-        setError(isBlank(error)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error);
-      });
-    }
-  };
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    return submitLogin();
-  });
-  submit.addEventListener("click", submitLogin);
-  append(form, [field("\u5e33\u865f", "username", userName), field("\u5bc6\u78bc", "password", password), inlineRow, submit]);
-  append(card, [statusRow, element("h1", "", textOr("\u767b\u5165 PTCS", config.title)), element("p", "lead", textOr("\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", config.lead)), errorBox, form, element("p", "footer-note", "Browser flow \u61c9\u53ea\u56de HttpOnly cookie\uff1bheadless/API/WS \u624d\u4f7f\u7528 bearer token\u3002\u63d0\u4ea4\u7aef\u9ede\u793a\u610f\u70ba /login/api/submit\u3002")]);
-  append(formPanel, [card]);
-  append(frame, [systemPanel, formPanel]);
-  clear(root);
-  root.appendChild(frame);
+  if(!tryMountLoginWithRegisteredRenderers(root, JSON.stringify(loginConfig())))mountLoginFallback(root);
 }
 function currentServerRealityId(){
   const node=doc().getElementById("ptc-comm-reality");
@@ -356,7 +302,7 @@ function syncWebSocketUrl(){
   return(location.protocol=="https:"?"wss:":"ws:")+"//"+location.host+"/sync/ws";
 }
 function appendPageRegistryStreamKey(){
-  return New_6("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
+  return New_4("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
 }
 function newRequestId(prefix){
   set_requestSeq(requestSeq()+1);
@@ -373,6 +319,21 @@ function getJson(url, onOk, onError){
 function set_currentAclSnapshot(_1){
   _c.currentAclSnapshot=_1;
 }
+function notifyAclSnapshotObservers(snapshotJson){
+  let r;
+  const _1=snapshotJson;
+  if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AclSnapshotObservers))void 0;
+  let observers=globalThis.PulseTrade.AclSnapshotObservers;
+  for(let i=0;i<observers.length;i++){
+    let r_1=observers[i];
+    try {
+      (r_1.render||r_1[1])(_1);
+    }
+    catch(e){
+      console.error("ACL snapshot observer exception:", e);
+    }
+  }
+}
 function findAppendPage(path, pages){
   return tryFind((page) => isCurrentPage(path, pagePath(page))||isCurrentPage(path, "/page/"+asText(page.pageId))||isCurrentPage(path, "/"+asText(page.pageId)), arrayOrEmpty(pages));
 }
@@ -385,14 +346,14 @@ function mountAppendPage(page, definition){
   setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId("append-page-"+asText(definition.pageId), page)));
   const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
   const readsLegacy=sameText(definition.tabId, definition.pageId);
-  let currentLineage=New_7(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
+  let currentLineage=New_5(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
   const applyLineage=(lineage) => {
     const lineage_1=lineage==null?currentLineage:lineage;
     currentLineage=lineage_1;
     setData("lineage-read-repair-policy", lineage_1.readRepairPolicy, setData("lineage-reads-legacy", lineage_1.readsLegacyPageStreams?"true":"false", setData("lineage-legacy-page-id-alias", lineage_1.legacyPageIdAlias, setData("lineage-kind", lineage_1.lineageKind, setData("lineage-stream-page-id", lineage_1.streamPageId, page)))));
   };
   applyLineage(currentLineage);
-  const defaultLineageHealth=() => New_8(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
+  const defaultLineageHealth=() => New_6(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
   currentLineageHealth=defaultLineageHealth();
   selected="";
   selectedKeyJson="";
@@ -572,7 +533,7 @@ function mountAppendPage(page, definition){
     updateKeyRegistryHealth();
   };
   const writeCurrentSnapshot=() => {
-    const snapshot=New_10("ok", definition, length(buckets), fold((_3, _4) => Compare(_3, _4)===1?_3:_4, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
+    const snapshot=New_8("ok", definition, length(buckets), fold((_3, _4) => Compare(_3, _4)===1?_3:_4, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
     writeSnapshotWithWatermark(stateCacheKey(), snapshot, snapshot.maxSequence, appendPageValueCount(snapshot), "append-page-state");
     writeAppendPageKeyWatermark(snapshot);
   };
@@ -761,7 +722,7 @@ function mountAppendPage(page, definition){
         const a_1=bucket.maxSequence;
         const b_3=p[1];
         let _4=Compare(a_1, b_3)===1?a_1:b_3;
-        return New_11(bucket.keyId, bucket.keys, bucket.displayName, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
+        return New_9(bucket.keyId, bucket.keys, bucket.displayName, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
       }
       else return bucket;
     }, buckets);
@@ -793,7 +754,7 @@ function mountAppendPage(page, definition){
               const a_1=bucket_1.maxSequence;
               const b_1=p[1];
               let _4=Compare(a_1, b_1)===1?a_1:b_1;
-              return New_11(bucket_1.keyId, bucket_1.keys, bucket_1.displayName, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
+              return New_9(bucket_1.keyId, bucket_1.keys, bucket_1.displayName, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
             }
             else return bucket_1;
           }, buckets);
@@ -918,12 +879,12 @@ function mountAppendPage(page, definition){
     const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
     if(m==null){
       const keys=effectiveSelectedKeys();
-      return length(keys)===0?null:Some(New_11(appendPageKeyId(keys), keys, "", definition.setName, 0, 0n, 0n, "", []));
+      return length(keys)===0?null:Some(New_9(appendPageKeyId(keys), keys, "", definition.setName, 0, 0n, 0n, "", []));
     }
     else {
       const bucket=m.$0;
       const keys_1=effectiveSelectedKeys();
-      return Some(New_11(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.displayName, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
+      return Some(New_9(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.displayName, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
     }
   };
   deleteAcceptedPendingAppends=(bucket) =>(acceptedValues) => {
@@ -958,7 +919,7 @@ function mountAppendPage(page, definition){
     }
     else return null;
   };
-  const streamKeyFor=(bucket) => New_6(definition.tabId, definition.shape, definition.setName, arrayOrEmpty(bucket.keys));
+  const streamKeyFor=(bucket) => New_4(definition.tabId, definition.shape, definition.setName, arrayOrEmpty(bucket.keys));
   const handleSyncEvent=(source, event) => {
     let o, updated, _3, o_1;
     if(!(event==null)){
@@ -989,10 +950,10 @@ function mountAppendPage(page, definition){
               const filterText=currentFilterText();
               if((isBlank(filterText)||exists((key) => asText(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty(_4)))&&!isLocallyHiddenKeyId(keyId)){
                 const m_2=tryFind((bucket_1) => sameText(bucket_1.keyId, keyId), buckets);
-                if(m_2==null)updated=New_11(keyId, _4, _5, definition.setName, 0, 0n, 0n, asText(event.createdAtUtc), []);
+                if(m_2==null)updated=New_9(keyId, _4, _5, definition.setName, 0, 0n, 0n, asText(event.createdAtUtc), []);
                 else {
                   const existing=m_2.$0;
-                  updated=New_11(existing.keyId, _4, textOr(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
+                  updated=New_9(existing.keyId, _4, textOr(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
                 }
                 _3=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),sameText(pendingSelectKeyId, keyId)?selectBucketKeys(_4)?void(pendingSelectKeyId=""):null:isBlank(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(_4),void(newKeyInput.value=selectedKeyJson)):null);
               }
@@ -1126,13 +1087,13 @@ function mountAppendPage(page, definition){
                         const a_1=bucket_1.maxSequence;
                         const b_1=p_1[1];
                         let _7=Compare(a_1, b_1)===1?a_1:b_1;
-                        return New_11(bucket_1.keyId, keys, bucket_1.displayName, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
+                        return New_9(bucket_1.keyId, keys, bucket_1.displayName, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
                       }
                       else return bucket_1;
                     }, buckets);
                     if(!matched){
                       const p=sequenceBounds(incoming);
-                      const bucket=New_11(keyId, keys, "", definition.setName, length(incoming), p[0], p[1], asText(value.createdAtUtc), incoming);
+                      const bucket=New_9(keyId, keys, "", definition.setName, length(incoming), p[0], p[1], asText(value.createdAtUtc), incoming);
                       _5=void(buckets=sortAppendPageBuckets(buckets.concat([bucket])));
                     }
                     else _5=null;
@@ -1189,7 +1150,7 @@ function mountAppendPage(page, definition){
   }
   const subscribeKeyRegistry=() => {
     const streamPageId=textOr(definition.pageId, definition.tabId);
-    const streamKey=New_6(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
+    const streamKey=New_4(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
     if(!keyRegistrySubscribed){
       keyRegistrySubscribed=true;
       setKeyRegistryWsState("subscribing");
@@ -1239,7 +1200,7 @@ function mountAppendPage(page, definition){
       const submittedKeys=keysFromJson(keyJson);
       if(length(submittedKeys)>0)pendingSelectKeyId=appendPageKeyId(submittedKeys);
       else null;
-      const request=New_13(definition.pageId, keyJson, Trim(asText(displayName)));
+      const request=New_11(definition.pageId, keyJson, Trim(asText(displayName)));
       const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
       refreshPendingState();
       setStatus(status, "Adding key; pending command saved in browser DB");
@@ -1268,11 +1229,11 @@ function mountAppendPage(page, definition){
     }
   };
   const appendValue=() => {
-    const request=New_12(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
+    const request=New_10(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
     if(isBlank(request.keyJson))setStatus(workState, "Select or add a key first");
     else if(isBlank(request.valueText))setStatus(workState, "Value text is required");
     else if(isActorArguPage(definition)){
-      const request_1=New_14(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
+      const request_1=New_12(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
       const m=selectedBucket();
       if(m!=null&&m.$==1){
         const bucket=m.$0;
@@ -1281,7 +1242,7 @@ function mountAppendPage(page, definition){
         if(isBlank(actorAddress))setStatus(workState, "Actor address key is required");
         else {
           const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_1);
-          const wsRequest=New_17("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request_1.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+          const wsRequest=New_15("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request_1.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
           pendingWsAppendIds=pendingWsAppendIds.concat([pendingId]);
           refreshPendingState();
           setStatus(workState, "Sending through WebSocket; pending command saved in browser DB");
@@ -1297,7 +1258,7 @@ function mountAppendPage(page, definition){
       if(m_1!=null&&m_1.$==1){
         const bucket_1=m_1.$0;
         const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_1=New_19("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_1=New_17("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_1]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -1312,7 +1273,7 @@ function mountAppendPage(page, definition){
       if(m_2!=null&&m_2.$==1){
         const bucket_2=m_2.$0;
         const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_2=New_18("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_2=New_16("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_2]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -1483,7 +1444,7 @@ function mountAppendPage(page, definition){
     if(isBlank(selected))setStatus(status, "Select a key first");
     else {
       const removedKeyId=selected;
-      const request=New_16(definition.pageId, removedKeyId);
+      const request=New_14(definition.pageId, removedKeyId);
       const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request);
       refreshPendingState();
       setStatus(status, "Removing key; pending command saved in browser DB");
@@ -1505,7 +1466,7 @@ function mountAppendPage(page, definition){
       });
     }
   }),removePageButton.addEventListener("click", () => {
-    const request=New_15(definition.pageId);
+    const request=New_13(definition.pageId);
     const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request);
     refreshPendingState();
     setStatus(status, "Removing page; pending command saved in browser DB");
@@ -1550,7 +1511,7 @@ function renderNav(nav, activePath, pages){
       event.preventDefault();
       event.stopPropagation();
       closeButton.setAttribute("disabled", "disabled");
-      return postJson("/pages/api/remove-page", New_15(page.pageId), (reply) => {
+      return postJson("/pages/api/remove-page", New_13(page.pageId), (reply) => {
         writeAppendPagesDefinitions(reply);
         isCurrentPage(activePath, href)?globalThis.location.assign("/chat"):renderNav(nav, activePath, reply.pages);
       }, (error) => {
@@ -1628,7 +1589,7 @@ function mountSets(page){
   loadGeneration=0;
   const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
   const streamIdentity=(streamKey) => concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
-  const setValueStreamKey=(pageId, mode, setName, keys) => New_6(asText(pageId), textOr("set", mode), asText(setName), arrayOrEmpty(keys));
+  const setValueStreamKey=(pageId, mode, setName, keys) => New_4(asText(pageId), textOr("set", mode), asText(setName), arrayOrEmpty(keys));
   const currentFilterTexts=() =>[isBlank(keyFilter.value)?"":Trim(keyFilter.value), isBlank(setFilter.value)?"":Trim(setFilter.value)];
   const currentCacheKey=() => {
     const p=currentFilterTexts();
@@ -1836,10 +1797,10 @@ function mountSets(page){
           const setText=p[1];
           const keyText=p[0];
           if((isBlank(setText)||sameText(setName, setText))&&(isBlank(keyText)||exists((key) => asText(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty(keys)))){
-            const value=New_21(textOr(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText(event.createdAtUtc), asText(event.payload), arrayOrEmpty(event.tags));
+            const value=New_19(textOr(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText(event.createdAtUtc), asText(event.payload), arrayOrEmpty(event.tags));
             const keyId=asText(setName)+"::"+concat_1(" + ", arrayOrEmpty(keys));
             const m_2=tryFind((bucket) => sameText(bucket.keyId, keyId), buckets);
-            if(m_2==null)updated=New_20(keyId, setName, keys, 1, event.sequence, asText(event.createdAtUtc), [value]);
+            if(m_2==null)updated=New_18(keyId, setName, keys, 1, event.sequence, asText(event.createdAtUtc), [value]);
             else {
               const existing=m_2.$0;
               const existingValues=arrayOrEmpty(existing.values);
@@ -1856,13 +1817,13 @@ function mountSets(page){
               const a_1=existing.maxSequence;
               const b_1=event.sequence;
               let _3=Compare(a_1, b_1)===1?a_1:b_1;
-              updated=New_20(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+              updated=New_18(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
             }
             buckets=sortBy((bucket) =>[asText(bucket.setName), asText(bucket.keyId)], arrayOrEmpty(filter((bucket) =>!sameText(bucket.keyId, keyId), buckets).concat([updated])));
             selected=keyId;
             renderList();
             renderDetail();
-            const snapshot=New_22(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
+            const snapshot=New_20(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
             writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
             ensureSetsSubscriptions();
             setStatus(status, "Synced set event "+value.valueId);
@@ -1903,7 +1864,7 @@ function mountSets(page){
     }
   }
   ensureSetsSubscriptions=() => {
-    const registryKey=New_6("__set-registry", "set-registry", "__sets", ["__sets"]);
+    const registryKey=New_4("__set-registry", "set-registry", "__sets", ["__sets"]);
     subscribeStream(registryKey);
     if(!registryTailRequested){
       registryTailRequested=true;
@@ -1934,7 +1895,7 @@ function mountActors(page){
   append(actions, [status, reload]);
   append(head_1, [title, actions]);
   append(page, [head_1, treePanel, nodes]);
-  const emptySnapshot=New_23(0, 0, 0n, []);
+  const emptySnapshot=New_21(0, 0, 0n, []);
   actorSnapshot=emptySnapshot;
   syncSocket=null;
   queuedSyncFrames=[];
@@ -1944,7 +1905,7 @@ function mountActors(page){
   const collapsedTreeNodes=new HashSet("New_3");
   const cacheKey_1=cacheKey("actors-snapshot", FSharpList.Empty);
   const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
-  const actorRegistryStreamKey=() => New_6("__actor-registry", "actor-registry", "__actors", ["__actors"]);
+  const actorRegistryStreamKey=() => New_4("__actor-registry", "actor-registry", "__actors", ["__actors"]);
   const isAkkaAddress=(value) => {
     const text=asText(value).toLowerCase();
     return StartsWith(text, "akka://")||StartsWith(text, "akka.tcp://")||StartsWith(text, "akka.ssl.tcp://");
@@ -2180,13 +2141,13 @@ function mountActors(page){
         if(!isBlank(nodeId)&&!isBlank(actorId)){
           const tags=arrayOrEmpty(_1.tags);
           const roles=arrayOrEmpty(_1.roles);
-          const actor=New_24(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty(_1.routees));
+          const actor=New_22(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty(_1.routees));
           const m=tryFind((node) => sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes));
-          if(m==null)updatedNode=New_25(nodeId, nodeAddress, "up", roles, [actor]);
+          if(m==null)updatedNode=New_23(nodeId, nodeAddress, "up", roles, [actor]);
           else {
             const existing=m.$0;
             const actors=sortBy((row) => asText(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors)).concat([actor]));
-            updatedNode=New_25(existing.nodeId, isBlank(nodeAddress)?asText(existing.nodeAddress):nodeAddress, textOr("up", existing.status), length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
+            updatedNode=New_23(existing.nodeId, isBlank(nodeAddress)?asText(existing.nodeAddress):nodeAddress, textOr("up", existing.status), length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
           }
           const nodes_1=sortBy((node) => asText(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
           let _2=length(nodes_1);
@@ -2194,7 +2155,7 @@ function mountActors(page){
           const a=actorSnapshot.maxSequence;
           const b=event.sequence;
           let _4=Compare(a, b)===1?a:b;
-          actorSnapshot=New_23(_2, _3, _4, nodes_1);
+          actorSnapshot=New_21(_2, _3, _4, nodes_1);
           writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
           applySnapshot("synced", actorSnapshot);
           setStatus(status, "Synced actor "+actorId);
@@ -2277,7 +2238,7 @@ function mountChat(page){
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
   };
-  const chatStreamKey=(peerId) => New_6("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
+  const chatStreamKey=(peerId) => New_4("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
   const streamIdentity=(streamKey) => concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
   function renderParticipants(){
     let _1;
@@ -2382,7 +2343,7 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_27(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_25(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -2455,7 +2416,7 @@ function mountChat(page){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_27(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_25(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -2487,7 +2448,7 @@ function mountChat(page){
               o=message==null||isBlank(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_26(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
+              o=Some(New_24(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -2569,9 +2530,9 @@ function mountChat(page){
     if(isBlank(selected))setStatus(state, "Select a participant first");
     else if(isBlank(body))setStatus(state, "Message is empty");
     else {
-      const request=New_30(participantId, selected, body, ["web-chat"]);
+      const request=New_28(participantId, selected, body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_29("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_27("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -2604,73 +2565,110 @@ function refreshAppendNav(activePath){
     applyDefinitions(data);
   }, () => { });
 }
+function tryMountLoginWithRegisteredRenderers(root, configJson){
+  let r;
+  const _1=root;
+  const _2=configJson;
+  if(!(globalThis.PulseTrade&&globalThis.PulseTrade.LoginRenderers))return false;
+  let renderers=globalThis.PulseTrade.LoginRenderers;
+  for(let i=0;i<renderers.length;i++){
+    let r_1=renderers[i];
+    try {
+      let value=(r_1.render||r_1[1])(_1, _2);
+      if(value===true)return true;
+    }
+    catch(e){
+      console.error("Login renderer exception:", e);
+    }
+  }
+  return false;
+}
+function mountLoginFallback(root){
+  const config=loginConfig();
+  const frame=element("section", "login-frame", null);
+  frame.setAttribute("aria-label", "PTCS Login");
+  const systemPanel=element("aside", "system-panel", null);
+  const brand=element("div", "", null);
+  append(brand, [element("div", "brand-mark", "PT"), element("p", "brand-title", "PulseTrade Comm Spa"), element("p", "brand-subtitle", "\u672c\u9801\u793a\u610f PTCS.Login provider \u7684\u81ea\u6709\u767b\u5165\u5165\u53e3\u3002\u767b\u5165\u6210\u529f\u5f8c\u7531 server \u8a2d\u5b9a HttpOnly session cookie\uff0c\u518d\u56de\u5230\u53d7\u4fdd\u8b77\u7684 PTCS \u9801\u9762\u3002")]);
+  const routes=element("ul", "route-list", null);
+  routes.setAttribute("aria-label", "Login context");
+  append(routes, [routeItem("P", "Protected route", textOr("/actors", config.protectedRoute)), routeItem("S", "Session cookie", textOr("ptc_login_session", config.sessionCookieName)), routeItem("A", "ACL mode", textOr("enabled or authenticated-only", config.aclLabel))]);
+  append(systemPanel, [brand, routes]);
+  const formPanel=element("section", "form-panel", null);
+  const card=element("div", "form-card", null);
+  const statusRow=element("div", "status-row", null);
+  const providerPill=element("span", "pill", null);
+  const bypassPill=element("span", "pill", null);
+  append(providerPill, [element("span", "dot", ""), doc().createTextNode(textOr("PTCS.Login", config.providerLabel))]);
+  append(bypassPill, [element("span", "dot warn", ""), doc().createTextNode("OAuth bypass")]);
+  append(statusRow, [providerPill, bypassPill]);
+  const errorBox=setTestId("ptcs-login-error", element("p", "error-box", "\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002"));
+  errorBox.setAttribute("role", "alert");
+  const userName=setTestId("ptcs-login-username", setId("username", input("admin")));
+  userName.setAttribute("name", "username");
+  userName.setAttribute("type", "text");
+  userName.setAttribute("autocomplete", "username");
+  const password=setTestId("ptcs-login-password", setId("password", input("\u8f38\u5165\u5bc6\u78bc")));
+  password.setAttribute("name", "password");
+  password.setAttribute("type", "password");
+  password.setAttribute("autocomplete", "current-password");
+  const keepSession=doc().createElement("input");
+  keepSession.setAttribute("name", "keepSession");
+  keepSession.setAttribute("type", "checkbox");
+  keepSession.setAttribute("value", "true");
+  const inlineRow=element("div", "inline-row", null);
+  const checkboxLabel=element("label", "checkbox-row", null);
+  append(checkboxLabel, [keepSession, doc().createTextNode("\u4fdd\u6301\u6b64\u700f\u89bd\u5668\u767b\u5165")]);
+  append(inlineRow, [checkboxLabel, setHref("/login/help", element("a", "link", "\u9700\u8981\u5354\u52a9?"))]);
+  const form=element("form", "", null);
+  form.setAttribute("method", "post");
+  form.setAttribute("action", config.submitPath);
+  const submit=setTestId("ptcs-login-submit", button("", "\u767b\u5165\u4e26\u8fd4\u56de PTCS"));
+  const setError=(text) => {
+    errorBox.textContent=textOr("\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002", text);
+    errorBox.className="error-box visible";
+  };
+  const submitLogin=() => {
+    const request=New_31(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    if(isBlank(request.userName)||isBlank(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
+    else {
+      errorBox.className="error-box";
+      submit.setAttribute("disabled", "disabled");
+      submit.textContent="\u767b\u5165\u4e2d";
+      postJson(config.submitPath, request, (reply) => {
+        const target=textOr(config.returnUrl, reply.returnUrl);
+        globalThis.location.assign(target);
+      }, (error) => {
+        submit.removeAttribute("disabled");
+        submit.textContent="\u767b\u5165\u4e26\u8fd4\u56de PTCS";
+        setError(isBlank(error)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error);
+      });
+    }
+  };
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    return submitLogin();
+  });
+  submit.addEventListener("click", submitLogin);
+  append(form, [field("\u5e33\u865f", "username", userName), field("\u5bc6\u78bc", "password", password), inlineRow, submit]);
+  append(card, [statusRow, element("h1", "", textOr("\u767b\u5165 PTCS", config.title)), element("p", "lead", textOr("\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", config.lead)), errorBox, form, element("p", "footer-note", "Browser flow \u61c9\u53ea\u56de HttpOnly cookie\uff1bheadless/API/WS \u624d\u4f7f\u7528 bearer token\u3002\u63d0\u4ea4\u7aef\u9ede\u793a\u610f\u70ba /login/api/submit\u3002")]);
+  append(formPanel, [card]);
+  append(frame, [systemPanel, formPanel]);
+  clear(root);
+  root.appendChild(frame);
+}
 function loginConfig(){
   const node=doc().getElementById("ptcs-login-config");
-  return node==null||isBlank(node.textContent)?New_3("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
-}
-function element(tag, className, textValue){
-  const node=doc().createElement(tag);
-  if(!isBlank(className))node.className=className;
-  if(!(textValue==null))node.textContent=textValue;
-  return node;
-}
-function append(parent, children){
-  for(let i=0, _1=children.length-1;i<=_1;i++)parent.appendChild(get(children, i));
-  return parent;
-}
-function routeItem(icon, name, value){
-  const item=element("li", "route-item", null);
-  const content=element("div", "", null);
-  append(content, [element("p", "route-name", name), element("p", "route-value", value)]);
-  append(item, [element("span", "route-icon", icon), content]);
-  return item;
+  return node==null||isBlank(node.textContent)?New_30("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank(value)?fallback:value;
-}
-function setTestId(id, node){
-  !isBlank(id)?node.setAttribute("data-testid", id):void 0;
-  return node;
-}
-function input(placeholder){
-  const node=doc().createElement("input");
-  node.placeholder=placeholder;
-  return node;
-}
-function setId(id, node){
-  node.setAttribute("id", id);
-  return node;
-}
-function button(className, text){
-  const node=element("button", className, text);
-  node.setAttribute("type", "button");
-  return node;
-}
-function postJson(url, body, onOk, onError){
-  const headers=new Headers();
-  headers.set("Content-Type", "application/json");
-  const options=requestOptions();
-  options.method="POST";
-  options.headers=headers;
-  options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
-}
-function field(labelText, inputId, control){
-  const wrap=element("div", "field", null);
-  const label=element("label", "", labelText);
-  label.setAttribute("for", inputId);
-  append(wrap, [label, control]);
-  return wrap;
-}
-function setHref(href, node){
-  node.setAttribute("href", href);
-  return node;
 }
 function pageDefinitionFromWire(wire){
   if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.definition.v1"||isBlank(wire.pageId))return null;
   else {
     const pageId=asText(wire.pageId);
-    return Some(New_5(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText(wire.defaultKey), arrayOrEmpty(wire.tags)));
+    return Some(New_3(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText(wire.defaultKey), arrayOrEmpty(wire.tags)));
   }
 }
 function hiddenPageFromWire(wire){
@@ -2710,8 +2708,28 @@ function pagePath(page){
   const path=asText(page.path);
   return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
 }
+function setTestId(id, node){
+  !isBlank(id)?node.setAttribute("data-testid", id):void 0;
+  return node;
+}
 function defaultRenderLimit(){
   return _c.defaultRenderLimit;
+}
+function element(tag, className, textValue){
+  const node=doc().createElement(tag);
+  if(!isBlank(className))node.className=className;
+  if(!(textValue==null))node.textContent=textValue;
+  return node;
+}
+function button(className, text){
+  const node=element("button", className, text);
+  node.setAttribute("type", "button");
+  return node;
+}
+function input(placeholder){
+  const node=doc().createElement("input");
+  node.placeholder=placeholder;
+  return node;
 }
 function textarea(className, placeholder){
   const node=doc().createElement("textarea");
@@ -2725,6 +2743,10 @@ function pageAclAllows(pageId, action){
 function setHidden(hidden, node){
   hidden?node.setAttribute("hidden", "hidden"):node.removeAttribute("hidden");
   return node;
+}
+function append(parent, children){
+  for(let i=0, _1=children.length-1;i<=_1;i++)parent.appendChild(get(children, i));
+  return parent;
 }
 function actorArguButtonLabel(page){
   return isActorArguPage(page)?"Tell":"Append";
@@ -2922,7 +2944,7 @@ function pendingFailure(action, error){
 function rememberPending(kind, target, url, body){
   const payloadJson=JSON.stringify(body);
   const commandId=newPendingCommandId(kind, target, url, payloadJson);
-  writePending(New_9(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
+  writePending(New_7(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
   return commandId;
 }
 function isActorDynamicPage(page){
@@ -2942,18 +2964,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    keyPlaceholder:String(_5||""), 
-    defaultKey:String(_6||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    keyPlaceholder:String(_5||""),
+    defaultKey:String(_6||""),
     submitKey:(payload) => {
       _7(payload);
-    }, 
+    },
     cancelKey:() => {
       _8();
-    }, 
+    },
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -3035,22 +3057,22 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    selectedKeyId:String(_5||""), 
-    selectedKeyJson:String(_6||""), 
-    selectedKeys:keyParts.slice(), 
-    keyParts:keyParts.slice(), 
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    valuePlaceholder:String(_8||""), 
-    valueText:String(_9||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    selectedKeyId:String(_5||""),
+    selectedKeyJson:String(_6||""),
+    selectedKeys:keyParts.slice(),
+    keyParts:keyParts.slice(),
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    valuePlaceholder:String(_8||""),
+    valueText:String(_9||""),
     submit:(payload) => {
       _10(payload);
-    }, 
+    },
     setValue:(payload) => {
       _11(payload);
     }
@@ -3094,6 +3116,15 @@ function postJsonText(url, payloadJson, onOk, onError){
   options.body=textOr("{}", payloadJson);
   (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
+function postJson(url, body, onOk, onError){
+  const headers=new Headers();
+  headers.set("Content-Type", "application/json");
+  const options=requestOptions();
+  options.method="POST";
+  options.headers=headers;
+  options.body=JSON.stringify(body);
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
 function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
@@ -3102,6 +3133,10 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   options.headers=headers;
   options.body=JSON.stringify(body);
   (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+}
+function setHref(href, node){
+  node.setAttribute("href", href);
+  return node;
 }
 function pageTypeClass(page){
   const shapeText=asText(page.shape).toLowerCase();
@@ -3142,6 +3177,10 @@ function pageTypeBadge(page){
     const m_1=findAppendPageShape(page.shape);
     return m_1==null?"R":textOr("?", m_1.$0.badge);
   }
+}
+function setId(id, node){
+  node.setAttribute("id", id);
+  return node;
 }
 function currentLogoutPath(){
   const path=currentBrowserUser().logoutPath;
@@ -3365,6 +3404,8 @@ function initializeClientExtensionGlobals(){
   if(!globalThis.PulseTrade.PageRenderers)globalThis.PulseTrade.PageRenderers=[];
   if(!globalThis.PulseTrade.AppendInputRenderers)globalThis.PulseTrade.AppendInputRenderers=[];
   if(!globalThis.PulseTrade.AddKeyRenderers)globalThis.PulseTrade.AddKeyRenderers=[];
+  if(!globalThis.PulseTrade.LoginRenderers)globalThis.PulseTrade.LoginRenderers=[];
+  if(!globalThis.PulseTrade.AclSnapshotObservers)globalThis.PulseTrade.AclSnapshotObservers=[];
   if(!globalThis.PulseTrade.Renderers)globalThis.PulseTrade.Renderers=globalThis.PulseTrade.MessageRenderers;
   let register=(collection, name, priority, func) => {
     if(typeof priority==="function"){
@@ -3373,8 +3414,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"), 
-      priority:Number(priority||0), 
+      name:String(name||"unnamed"),
+      priority:Number(priority||0),
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -3391,6 +3432,26 @@ function initializeClientExtensionGlobals(){
   globalThis.PulseTradeRegisterAddKeyRenderer=(name, priority, func) => {
     register(globalThis.PulseTrade.AddKeyRenderers, name, priority, func);
   };
+  globalThis.PulseTradeRegisterLoginRenderer=(name, priority, func) => {
+    register(globalThis.PulseTrade.LoginRenderers, name, priority, func);
+  };
+  globalThis.PulseTradeRegisterAclSnapshotObserver=(name, priority, func) => {
+    register(globalThis.PulseTrade.AclSnapshotObservers, name, priority, func);
+  };
+}
+function routeItem(icon, name, value){
+  const item=element("li", "route-item", null);
+  const content=element("div", "", null);
+  append(content, [element("p", "route-name", name), element("p", "route-value", value)]);
+  append(item, [element("span", "route-icon", icon), content]);
+  return item;
+}
+function field(labelText, inputId, control){
+  const wrap=element("div", "field", null);
+  const label=element("label", "", labelText);
+  label.setAttribute("for", inputId);
+  append(wrap, [label, control]);
+  return wrap;
 }
 function aclAllows(action, resourceKind, resourceId){
   const _1=currentAclSnapshot();
@@ -3569,7 +3630,7 @@ function registeredRenderers(){
   return _c.registeredRenderers;
 }
 function shapeRegistration(shape, label, badge, className){
-  return New_31(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_29(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc().getElementById("ptc-comm-client-extensions");
@@ -3611,9 +3672,9 @@ function KeyValue(kvp){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
@@ -3826,7 +3887,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_28(streamId, _3, _4, asText(source), nowTicks());
+    let _5=New_26(streamId, _3, _4, asText(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -4289,16 +4350,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
   };
 }
@@ -4339,38 +4400,6 @@ let _c=Lazy((_i) => class $StartupCode_Client {
     this.requestSeq=0;
   }
 });
-function New_3(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
-  return{
-    submitPath:submitPath, 
-    sessionPath:sessionPath, 
-    logoutPath:logoutPath, 
-    returnUrl:returnUrl, 
-    protectedRoute:protectedRoute, 
-    sessionCookieName:sessionCookieName, 
-    title:title, 
-    lead:lead, 
-    providerLabel:providerLabel, 
-    aclLabel:aclLabel
-  };
-}
-function length(arr){
-  return arr.dims===2?arr.length*arr.length:arr.length;
-}
-function get(arr, n){
-  checkBounds(arr, n);
-  return arr[n];
-}
-function checkBounds(arr, n){
-  if(n<0||n>=arr.length)FailWith("Index was outside the bounds of the array.");
-}
-function New_4(userName, password, returnUrl, keepSession){
-  return{
-    userName:userName, 
-    password:password, 
-    returnUrl:returnUrl, 
-    keepSession:keepSession
-  };
-}
 function TrimEnd(s, t){
   let i, go;
   if(Equals(t, null)||t.length==0)return TrimEndWS(s);
@@ -4388,11 +4417,11 @@ function TrimEnd(s, t){
 function concat_1(separator, strings){
   return ofSeq(strings).join(separator);
 }
-function Trim(s){
-  return s.replace(new RegExp("^\\s+"), "").replace(new RegExp("\\s+$"), "");
-}
 function TrimEndWS(s){
   return s.replace(new RegExp("\\s+$"), "");
+}
+function Trim(s){
+  return s.replace(new RegExp("^\\s+"), "").replace(new RegExp("\\s+$"), "");
 }
 function StartsWith(t, s){
   return t.substring(0, s.length)==s;
@@ -4436,8 +4465,8 @@ class FSharpList {
   static Empty=Create(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -4468,60 +4497,70 @@ class Object_1 {
 function TryParse(s, r){
   return TryParseBigInt(s, -9223372036854775808n, 9223372036854775807n, r);
 }
-function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
+function New_3(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
-function New_6(pageId, mode, setName, keys){
+function length(arr){
+  return arr.dims===2?arr.length*arr.length:arr.length;
+}
+function get(arr, n){
+  checkBounds(arr, n);
+  return arr[n];
+}
+function checkBounds(arr, n){
+  if(n<0||n>=arr.length)FailWith("Index was outside the bounds of the array.");
+}
+function New_4(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
-function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
+function New_5(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
-function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
+function New_6(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
-function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
+function New_7(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -4562,74 +4601,74 @@ function tail(l){
 function listEmpty(){
   return FailWith("The input list was empty.");
 }
-function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
+function New_8(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
-function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
+function New_9(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    displayName:displayName, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    displayName:displayName,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
-function New_12(pageId, keyJson, valueText, direction, tags){
+function New_10(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
-function New_13(pageId, keyJson, displayName){
+function New_11(pageId, keyJson, displayName){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
+    pageId:pageId,
+    keyJson:keyJson,
     displayName:displayName
   };
 }
-function New_14(pageId, keyJson, rawArgu, tags){
+function New_12(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
-function New_15(pageId){
+function New_13(pageId){
   return{pageId:pageId};
 }
-function New_16(pageId, keyId){
+function New_14(pageId, keyId){
   return{pageId:pageId, keyId:keyId};
 }
-function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
+function New_15(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
@@ -4769,66 +4808,66 @@ function unfold(f, s){
     }
   }, void 0)};
 }
-function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
+function New_16(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
-function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
+function New_17(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
-function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
+function New_18(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
-function New_21(valueId, keys, createdAtUtc, value, tags){
+function New_19(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
     tags:tags
   };
 }
-function New_22(maxSequence, buckets){
+function New_20(maxSequence, buckets){
   return{maxSequence:maxSequence, buckets:buckets};
 }
-function New_23(nodeCount, actorCount, maxSequence, nodes){
+function New_21(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
@@ -4910,82 +4949,104 @@ class HashSet extends Object_1 {
 function OfArray(a){
   return new FSharpMap("New_1", OfSeq(map_2((_1) => Pair.New(_1[0], _1[1]), a)));
 }
-function New_24(actorId, displayName, kind, keys, status, routees){
+function New_22(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
-function New_25(nodeId, nodeAddress, status, roles, actors){
+function New_23(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId, 
-    nodeAddress:nodeAddress, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId,
+    nodeAddress:nodeAddress,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
-function New_26(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_24(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
-function New_27(messages, nextAfterMessageId){
+function New_25(messages, nextAfterMessageId){
   return{messages:messages, nextAfterMessageId:nextAfterMessageId};
 }
-function New_28(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_26(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
-function New_29(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_27(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
-function New_30(fromId, toId, body, tags){
+function New_28(fromId, toId, body, tags){
   return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    fromId:fromId,
+    toId:toId,
+    body:body,
     tags:tags
   };
 }
-function New_31(shape, label, badge, className){
+function New_29(shape, label, badge, className){
   return{
-    shape:shape, 
-    label:label, 
-    badge:badge, 
+    shape:shape,
+    label:label,
+    badge:badge,
     className:className
+  };
+}
+function New_30(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+  return{
+    submitPath:submitPath,
+    sessionPath:sessionPath,
+    logoutPath:logoutPath,
+    returnUrl:returnUrl,
+    protectedRoute:protectedRoute,
+    sessionCookieName:sessionCookieName,
+    title:title,
+    lead:lead,
+    providerLabel:providerLabel,
+    aclLabel:aclLabel
+  };
+}
+function New_31(userName, password, returnUrl, keepSession){
+  return{
+    userName:userName,
+    password:password,
+    returnUrl:returnUrl,
+    keepSession:keepSession
   };
 }
 function New_32(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
-    participantId:participantId, 
-    displayName:displayName, 
-    login:login, 
-    authenticated:authenticated, 
-    provider:provider, 
+    participantId:participantId,
+    displayName:displayName,
+    login:login,
+    authenticated:authenticated,
+    provider:provider,
     logoutPath:logoutPath
   };
 }
@@ -5035,13 +5096,13 @@ class T extends Object_1 {
 }
 function New_33(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -5189,6 +5250,15 @@ function mapiInPlace(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
   return arr;
 }
+let _c_1=Lazy((_i) => class $StartupCode_Library {
+  static {
+    _c_1=_i(this);
+  }
+  static extensionId;
+  static {
+    this.extensionId="pulse-trade-comm-spa-acl";
+  }
+});
 class Exception extends Object_1 { }
 class Dictionary extends Object_1 {
   equals;
@@ -5277,10 +5347,10 @@ class Dictionary extends Object_1 {
 }
 function New_34(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1, 
-    Left:Left, 
-    Right:Right, 
-    Height:Height, 
+    Node:Node_1,
+    Left:Left,
+    Right:Right,
+    Height:Height,
     Count:Count
   };
 }

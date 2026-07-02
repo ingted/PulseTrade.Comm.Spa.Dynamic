@@ -692,3 +692,11 @@ Implementation status:
 - `src\poc.full.nuget.journal.ACL2.fsx` now references Spa.ACL/Login alpha3 and asserts the authenticated page contains both extension ids/script URLs, while direct fetches of `/client-extensions/acl/PulseTrade.Comm.Spa.ACL.js` and `/client-extensions/login/PulseTrade.Comm.Spa.Login.js` return the expected package markers.
 - Verification passed: Release build/pack for both alpha3 packages, NuGet push without missing-license warning, nupkg copy to SDK `10.0.301` `FSharp\library-packs`, ACL2 demo no-wait, ACL2 production-SQL no-wait with encrypted SQL file/key, and PTCS browser Playwright with client-extension manifest/script assertions.
 - Remaining `DYN-WBS-521` gates: public 81/82 redeploy on extracted packages and moving the actual ACL/Login client/page behavior out of PTCS core into the open packages.
+
+## 2026-07-02 - ACL/Login alpha8 client hook slice
+
+- Advanced open packages to `PulseTrade.Comm.Spa.ACL 0.1.0-alpha8` and `PulseTrade.Comm.Spa.Login 0.1.0-alpha8`, consuming PTCS beta68.
+- Both packages now register their WebSharper runtime dependency assets under their `/client-extensions/.../WebSharper.Core.JavaScript/Runtime.js` URL prefixes. This fixes ES module import resolution for package bundles loaded from PTCS pages.
+- `PulseTrade.Comm.Spa.Login` now owns the browser login renderer hook through `PulseTradeRegisterLoginRenderer`; `PulseTrade.Comm.Spa.ACL` owns the ACL snapshot observer hook through `PulseTradeRegisterAclSnapshotObserver`.
+- Verification passed: Release rebuild/pack for both alpha8 packages, nupkg copy to SDK `10.0.301` `FSharp\library-packs`, `src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_client_hook_alpha8_20260702_01`, and PTCS browser Playwright with active renderer/observer assertions.
+- NuGet push returned `Created` for Dynamic beta58, Spa.ACL alpha8, and Spa.Login alpha8. Immediate public index lookup was delayed; local nupkg nuspec inspection confirmed exact dependencies.

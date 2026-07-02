@@ -26,12 +26,17 @@ let options =
 - registers `PtcsLoginOptions` into the PTCS server runtime by calling the PTCS SPI;
 - registers extension id `pulse-trade-comm-spa-login`, script url
   `/client-extensions/login/PulseTrade.Comm.Spa.Login.js`, and the package
-  `contentFiles` script asset in the PTCS client-extension manifest.
+  `contentFiles` script asset in the PTCS client-extension manifest;
+- registers the WebSharper runtime asset required by the package bundle at
+  `/client-extensions/login/WebSharper.Core.JavaScript/Runtime.js`;
+- registers a login page renderer through `PulseTradeRegisterLoginRenderer`.
 
 This is not yet the final extraction of every Login-owned browser page/client
 behavior from PTCS core. The current package proves the open NuGet boundary,
-manifest/script ownership, and ACL2 browser/runtime gate. Remaining work is moving
-the login page/client logic that still lives in PTCS core into this package.
+manifest/script ownership, runtime asset ownership, Login renderer hook, and ACL2
+browser/runtime gate. PTCS core still keeps a fallback renderer and the route/SPI
+surface; remaining work is moving route contribution and residual Login-owned client
+logic into this package.
 
 `PulseTrade.Comm.Spa.Login` must reference `PulseTrade.Comm.Login.Core` as an exact
 binary NuGet package. It must not require Core source access.
