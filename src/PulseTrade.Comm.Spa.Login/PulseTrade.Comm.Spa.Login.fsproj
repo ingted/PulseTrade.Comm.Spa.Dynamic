@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>PulseTrade.Comm.Spa.Login</PackageId>
+    <Version>0.1.0-alpha1</Version>
+    <Authors>PulseTrade Team</Authors>
+    <Description>Open PTCS Login extension facade for PulseTrade.Comm.Spa.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <WebSharperProject>Bundle</WebSharperProject>
+    <WebSharperBundleOutputDir>wwwroot\js</WebSharperBundleOutputDir>
+    <WebSharperRunCompiler>true</WebSharperRunCompiler>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <Compile Include="Library.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta66]" />
+    <PackageReference Include="PulseTrade.Comm.Login.Core" Version="[0.1.0-alpha5]" />
+    <PackageReference Include="PulseTrade.Comm.ACL.Core" Version="[0.1.0-alpha2]" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="wwwroot\**\*.*" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="contentFiles\any\net10.0\wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

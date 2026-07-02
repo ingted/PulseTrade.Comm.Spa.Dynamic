@@ -485,7 +485,7 @@ Coverage:
 
 ### DYN-VFY-009 ACL2 final open-extension boundary POC
 
-狀態：Planned。
+狀態：Partial pass。
 
 Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 
@@ -495,11 +495,24 @@ Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 - closed `PulseTrade.Comm.ACL.Core` / `PulseTrade.Comm.Login.Core` 只能以 exact binary NuGet dependency 進入。
 - 不允許 ProjectReference 到 closed Core source。
 
-Required assertions：
+First-slice command passed on 2026-07-02：
+
+```powershell
+dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo
+```
+
+Passed assertions：
 
 - `--if-dyna-port --no-wait` 可使用 free ports 啟動 dual listener。
 - admin/WZ 擁有 full rights。
 - Terry黑粉可使用 AssTerry allowed actions，但 add-target / DamnWZ send 等 restricted actions 被拒。
+- actor echo、PingPong stop/re-register、actor reuse after stop 通過。
+
+Remaining assertions：
+
+- reusable static scan verifies no ProjectReference to closed Core source。
 - disabled user / invalid credential 被拒。
 - optional production SQL mode 使用 encrypted SQL file/key args，不輸出 plaintext secret。
-- actor echo、PingPong stop/re-register、Dynamic FormInput send/reply 全部通過。
+- browser Playwright verifies Dynamic FormInput send/reply。
+- public 81/82 redeploy uses extracted packages。
+- full browser/client bundle extraction moves out of PTCS core。

@@ -663,3 +663,10 @@ Implementation status:
 - Synced with PTCS `RFC-PTC-SPA-0013.acl-login-open-extension-boundary.md`.
 - Added planned `DYN-WBS-521` / `DYN-VFY-009` for `src\poc.full.nuget.journal.ACL2.fsx`.
 - `ACL.fsx` remains the beta66 transitional runtime behavior proof. `ACL2.fsx` will prove final open-extension boundary with `PulseTrade.Comm.Spa.ACL` and `PulseTrade.Comm.Spa.Login`, while closed ACL/Login Core packages remain exact binary NuGet dependencies.
+
+## 2026-07-02 - ACL2 open-extension first slice
+
+- Added open package projects `src\PulseTrade.Comm.Spa.ACL` and `src\PulseTrade.Comm.Spa.Login`, both versioned `0.1.0-alpha1`.
+- Added `src\poc.full.nuget.journal.ACL2.fsx`; it references PTCS beta66, Dynamic beta56, Spa.ACL alpha1, and Spa.Login alpha1.
+- Verification passed: Release build/pack for both alpha1 packages, nupkg copy to SDK `10.0.301` `FSharp\library-packs`, and `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo`.
+- Remaining `DYN-WBS-521` gates: production SQL mode, explicit disabled-user ACL2 assertion, browser Playwright, public 81/82 redeploy, and full browser/client bundle extraction from PTCS core.
