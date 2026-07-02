@@ -349,7 +349,7 @@ module PtcsLoginExtension =
         options.Hub.RegisterClientExtension(
             { ExtensionId = extensionId
               DisplayName = Some "PTCS.Login"
-              MetadataJson = Some """{"kind":"ptcs-login","package":"PulseTrade.Comm.Spa.Login","version":"0.1.0-alpha8"}"""
+              MetadataJson = Some """{"kind":"ptcs-login","package":"PulseTrade.Comm.Spa.Login","version":"0.1.0-alpha10"}"""
               ScriptUrls = [ scriptUrl ]
               AppendPageShapes = [] })
         |> ignore

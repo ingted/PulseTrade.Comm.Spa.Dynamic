@@ -700,3 +700,9 @@ Implementation status:
 - `PulseTrade.Comm.Spa.Login` now owns the browser login renderer hook through `PulseTradeRegisterLoginRenderer`; `PulseTrade.Comm.Spa.ACL` owns the ACL snapshot observer hook through `PulseTradeRegisterAclSnapshotObserver`.
 - Verification passed: Release rebuild/pack for both alpha8 packages, nupkg copy to SDK `10.0.301` `FSharp\library-packs`, `src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_client_hook_alpha8_20260702_01`, and PTCS browser Playwright with active renderer/observer assertions.
 - NuGet push returned `Created` for Dynamic beta58, Spa.ACL alpha8, and Spa.Login alpha8. Immediate public index lookup was delayed; local nupkg nuspec inspection confirmed exact dependencies.
+
+## 2026-07-02 - ACL/Login alpha10 provider-dispatch gate
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic` to `0.1.3-beta60`, `PulseTrade.Comm.Spa.ACL` to `0.1.0-alpha10`, and `PulseTrade.Comm.Spa.Login` to `0.1.0-alpha10`, all consuming `PulseTrade.Comm.Spa [0.2.5-beta70]` as exact NuGet packages.
+- `PulseTrade.Comm.Spa.ACL` now documents and packages both ACL snapshot observer and ACL capability provider hooks; alpha10 is paired with PTCS beta70 because beta70 fixes the generated provider dispatch bridge.
+- Verification passed: Release build/pack for Dynamic beta60 and Spa.ACL/Login alpha10, ACL2 dynamic-port no-wait gate using `pcsl_provider_iife_alpha10_20260702_01`, and the PTCS browser Playwright gate with exact beta70/beta60/alpha10 packages.

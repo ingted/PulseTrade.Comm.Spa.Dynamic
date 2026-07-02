@@ -1280,8 +1280,9 @@ function Main_1(){
       renderAppendRegistryHealth();
     };
     getJson("/acl/api/snapshot", (snapshot) => {
+      set_currentAclSnapshotJson(JSON.stringify(snapshot));
       set_currentAclSnapshot(Some(snapshot));
-      notifyAclSnapshotObservers(JSON.stringify(snapshot));
+      notifyAclSnapshotObservers(currentAclSnapshotJson());
       startAfterAclSnapshot();
     }, () => {
       startAfterAclSnapshot();
@@ -1389,6 +1390,9 @@ function getJson(url, onOk, onError){
   options.cache="no-store";
   (globalThis.fetch(url, options).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank_2(body)?"{}":body)):onError(isBlank_2(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage_2(error)));
 }
+function set_currentAclSnapshotJson(_1){
+  _c_1.currentAclSnapshotJson=_1;
+}
 function set_currentAclSnapshot(_1){
   _c_1.currentAclSnapshot=_1;
 }
@@ -1406,6 +1410,9 @@ function notifyAclSnapshotObservers(snapshotJson){
       console.error("ACL snapshot observer exception:", e);
     }
   }
+}
+function currentAclSnapshotJson(){
+  return _c_1.currentAclSnapshotJson;
 }
 function findAppendPage(path, pages){
   return tryFind((page) => isCurrentPage(path, pagePath(page))||isCurrentPage(path, "/page/"+asText_2(page.pageId))||isCurrentPage(path, "/"+asText_2(page.pageId)), arrayOrEmpty_1(pages));
@@ -4479,6 +4486,7 @@ function initializeClientExtensionGlobals(){
   if(!globalThis.PulseTrade.AddKeyRenderers)globalThis.PulseTrade.AddKeyRenderers=[];
   if(!globalThis.PulseTrade.LoginRenderers)globalThis.PulseTrade.LoginRenderers=[];
   if(!globalThis.PulseTrade.AclSnapshotObservers)globalThis.PulseTrade.AclSnapshotObservers=[];
+  if(!globalThis.PulseTrade.AclCapabilityProviders)globalThis.PulseTrade.AclCapabilityProviders=[];
   if(!globalThis.PulseTrade.Renderers)globalThis.PulseTrade.Renderers=globalThis.PulseTrade.MessageRenderers;
   let register=(collection, name, priority, func) => {
     if(typeof priority==="function"){
@@ -4511,6 +4519,9 @@ function initializeClientExtensionGlobals(){
   globalThis.PulseTradeRegisterAclSnapshotObserver=(name, priority, func) => {
     register(globalThis.PulseTrade.AclSnapshotObservers, name, priority, func);
   };
+  globalThis.PulseTradeRegisterAclCapabilityProvider=(name, priority, func) => {
+    register(globalThis.PulseTrade.AclCapabilityProviders, name, priority, func);
+  };
 }
 function routeItem(icon, name, value){
   const item=element_1("li", "route-item", null);
@@ -4527,21 +4538,8 @@ function field(labelText, inputId, control){
   return wrap;
 }
 function aclAllows(action, resourceKind, resourceId){
-  const _1=currentAclSnapshot();
-  if(_1!=null&&_1.$==1){
-    if(!currentAclSnapshot().$0.enabled){
-      currentAclSnapshot().$0;
-      return true;
-    }
-    else {
-      const snapshot=currentAclSnapshot().$0;
-      const o=tryFind((resource) => aclSameText(resource.resourceKind, resourceKind)&&aclSameText(resource.resourceId, resourceId), arrayOrEmpty_1(snapshot.resources));
-      const o_1=o==null?null:aclCapabilityAllowed(action, o.$0.capabilities);
-      const o_2=o_1==null?aclCapabilityAllowed(action, snapshot.globalCapabilities):(o_1.$0,o_1);
-      return o_2==null?false:o_2.$0;
-    }
-  }
-  else return true;
+  const m=tryAclCapabilityProvider(action, resourceKind, resourceId);
+  return m==null?aclAllowsFallback(action, resourceKind, resourceId):m.$0;
 }
 function findAppendPageShape(shape){
   const normalized=normalizeShapeText(shape);
@@ -4626,15 +4624,44 @@ function tryParseSequence(prefix, value){
     return 0n;
   }
 }
-function currentAclSnapshot(){
-  return _c_1.currentAclSnapshot;
+function tryAclCapabilityProvider(action, resourceKind, resourceId){
+  const normalized=Trim(asText_2(((action_1, resourceKind_1, resourceId_1, snapshotJson) => {
+    if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AclCapabilityProviders))return"unknown";
+    const providers=globalThis.PulseTrade.AclCapabilityProviders;
+    for(let i=0;i<providers.length;i++){
+      const provider=providers[i];
+      try {
+        const value=(provider.render||provider[1])(action_1, resourceKind_1, resourceId_1, snapshotJson||"");
+        if(value===true)return"allow";
+        if(value===false)return"deny";
+        const text=String(value||"").toLowerCase();
+        if(text==="allow"||text==="allowed"||text==="true")return"allow";
+        if(text==="deny"||text==="denied"||text==="false")return"deny";
+      }
+      catch(e){
+        console.error("ACL capability provider exception:", e);
+      }
+    }
+    return"unknown";
+  })(action, resourceKind, resourceId, currentAclSnapshotJson()))).toLowerCase();
+  return normalized=="allow"?Some(true):normalized=="deny"?Some(false):null;
 }
-function aclCapabilityAllowed(action, capabilities){
-  const o=tryFind((item) => aclSameText(item.action, action), arrayOrEmpty_1(capabilities));
-  return o==null?null:Some(o.$0.allowed);
-}
-function aclSameText(left, right){
-  return asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
+function aclAllowsFallback(action, resourceKind, resourceId){
+  const _1=currentAclSnapshot();
+  if(_1!=null&&_1.$==1){
+    if(!currentAclSnapshot().$0.enabled){
+      currentAclSnapshot().$0;
+      return true;
+    }
+    else {
+      const snapshot=currentAclSnapshot().$0;
+      const o=tryFind((resource) => aclSameText(resource.resourceKind, resourceKind)&&aclSameText(resource.resourceId, resourceId), arrayOrEmpty_1(snapshot.resources));
+      const o_1=o==null?null:aclCapabilityAllowed(action, o.$0.capabilities);
+      const o_2=o_1==null?aclCapabilityAllowed(action, snapshot.globalCapabilities):(o_1.$0,o_1);
+      return o_2==null?false:o_2.$0;
+    }
+  }
+  else return true;
 }
 function appendPageShapeRegistry(){
   return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
@@ -4689,6 +4716,16 @@ function set_pendingCommandSeq(_1){
 }
 function pendingCommandSeq(){
   return _c_1.pendingCommandSeq;
+}
+function currentAclSnapshot(){
+  return _c_1.currentAclSnapshot;
+}
+function aclCapabilityAllowed(action, capabilities){
+  const o=tryFind((item) => aclSameText(item.action, action), arrayOrEmpty_1(capabilities));
+  return o==null?null:Some(o.$0.allowed);
+}
+function aclSameText(left, right){
+  return asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
 }
 function builtInAppendPageShapes(){
   return[shapeRegistration("fcell-chat", "FCell Chat", "C", "fcell-chat"), shapeRegistration("fcell-list", "FCell List", "L", "fcell-list"), shapeRegistration("fcell-grid", "FCell Grid", "G", "fcell-grid"), shapeRegistration("actor-argu", "Actor Argu", "aa", "actor-argu"), shapeRegistration("raw", "Raw", "R", "raw")];
@@ -6340,6 +6377,7 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
   static databaseVersion;
   static databaseName;
   static initializeClientExtensionGlobalsOnce;
+  static currentAclSnapshotJson;
   static currentAclSnapshot;
   static runtimeAppendPageShapes;
   static registeredRenderers;
@@ -6353,6 +6391,7 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
     this.registeredRenderers=[];
     this.runtimeAppendPageShapes=[];
     this.currentAclSnapshot=null;
+    this.currentAclSnapshotJson="";
     this.initializeClientExtensionGlobalsOnce=(initializeClientExtensionGlobals(),0);
     this.databaseName="PulseTrade.Comm.Spa.BrowserDb";
     this.databaseVersion=3;

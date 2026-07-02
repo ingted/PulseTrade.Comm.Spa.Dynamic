@@ -30,13 +30,17 @@ let options =
 - registers the WebSharper runtime asset required by the package bundle at
   `/client-extensions/acl/WebSharper.Core.JavaScript/Runtime.js`;
 - registers a browser ACL snapshot observer through
-  `PulseTradeRegisterAclSnapshotObserver`.
+  `PulseTradeRegisterAclSnapshotObserver`;
+- registers a browser ACL capability provider through
+  `PulseTradeRegisterAclCapabilityProvider`, so PTCS core can delegate browser
+  action visibility decisions to this open extension before falling back to its
+  closed in-core evaluator.
 
 This is not yet the final extraction of every ACL-owned browser behavior from PTCS
 core. The current package proves the open NuGet boundary, manifest/script ownership,
-runtime asset ownership, ACL snapshot observer hook, and ACL2 browser/runtime gate.
-Remaining work is moving the ACL client gating logic that still lives in PTCS core
-into this package.
+runtime asset ownership, ACL snapshot observer hook, ACL capability provider hook,
+and ACL2 browser/runtime gate. Remaining work is moving any residual ACL-owned
+client behavior that still lives in PTCS core into this package.
 
 `PulseTrade.Comm.Spa.ACL` must reference `PulseTrade.Comm.ACL.Core` as an exact
 binary NuGet package. It must not require Core source access.

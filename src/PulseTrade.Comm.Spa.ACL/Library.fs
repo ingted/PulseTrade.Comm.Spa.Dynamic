@@ -13,10 +13,62 @@ open WebSharper.JavaScript.Dom
 [<JavaScript>]
 module ClientBundle =
     let extensionId = "pulse-trade-comm-spa-acl"
+    let mutable latestSnapshotJson = ""
+
+    let asText value =
+        if isNull value then "" else string value
+
+    let isBlank value =
+        String.IsNullOrWhiteSpace(asText value)
+
+    let sameText left right =
+        (asText left).Trim().ToLower() = (asText right).Trim().ToLower()
+
+    let arrayOrEmpty values =
+        if isNull (box values) then [||] else values
+
+    let decodeSnapshot snapshotJson =
+        let source =
+            if isBlank snapshotJson then latestSnapshotJson else snapshotJson
+
+        if isBlank source then
+            None
+        else
+            try
+                Some(JSON.Parse(source) |> As<BrowserAclSnapshotDto>)
+            with _ ->
+                None
+
+    let capabilityAllowed action (capabilities: BrowserAclCapabilityDto[]) =
+        arrayOrEmpty capabilities
+        |> Array.tryFind (fun item -> sameText item.action action)
+        |> Option.map _.allowed
+
+    let evaluateCapability (snapshot: BrowserAclSnapshotDto) action resourceKind resourceId =
+        if isNull (box snapshot) || not snapshot.enabled then
+            Some true
+        else
+            let resourceDecision =
+                arrayOrEmpty snapshot.resources
+                |> Array.tryFind (fun resource ->
+                    sameText resource.resourceKind resourceKind
+                    && sameText resource.resourceId resourceId)
+                |> Option.bind (fun resource -> capabilityAllowed action resource.capabilities)
+
+            resourceDecision
+            |> Option.orElseWith (fun () -> capabilityAllowed action snapshot.globalCapabilities)
+
+    let capabilityDecision snapshotJson action resourceKind resourceId =
+        match decodeSnapshot snapshotJson |> Option.bind (fun snapshot -> evaluateCapability snapshot action resourceKind resourceId) with
+        | Some true -> "allow"
+        | Some false -> "deny"
+        | None -> "unknown"
 
     let observeAclSnapshot (snapshotJson: string) =
         let length =
             if isNull snapshotJson then 0 else snapshotJson.Length
+
+        latestSnapshotJson <- if isNull snapshotJson then "" else snapshotJson
 
         if not (isNull (box JS.Document.Body)) then
             JS.Document.Body.SetAttribute("data-ptcs-acl-snapshot-observed", "true")
@@ -30,10 +82,28 @@ module ClientBundle =
             let observer = Func<string, bool>(fun snapshotJson -> observeAclSnapshot snapshotJson)
             JS.Inline("window.PulseTradeRegisterAclSnapshotObserver('ptcs-acl-snapshot-observer', 100, $0)", observer)
 
+    let registerAclCapabilityProvider () =
+        if JS.In "PulseTradeRegisterAclCapabilityProvider" JS.Window then
+            let provider =
+                Func<string, string, string, string, string>(fun action resourceKind resourceId snapshotJson ->
+                    let decision = capabilityDecision snapshotJson action resourceKind resourceId
+
+                    if not (isNull (box JS.Document.Body)) then
+                        JS.Document.Body.SetAttribute("data-ptcs-acl-capability-provider", extensionId)
+                        JS.Document.Body.SetAttribute("data-ptcs-acl-capability-action", asText action)
+                        JS.Document.Body.SetAttribute("data-ptcs-acl-capability-resource-kind", asText resourceKind)
+                        JS.Document.Body.SetAttribute("data-ptcs-acl-capability-resource-id", asText resourceId)
+                        JS.Document.Body.SetAttribute("data-ptcs-acl-capability-decision", decision)
+
+                    decision)
+
+            JS.Inline("window.PulseTradeRegisterAclCapabilityProvider('ptcs-acl-capability-provider', 100, $0)", provider)
+
     [<SPAEntryPoint>]
     let Main () =
         registerAclSnapshotObserver ()
-        JS.Global?console?log("PulseTrade.Comm.Spa.ACL bundle loaded and registered ACL snapshot observer")
+        registerAclCapabilityProvider ()
+        JS.Global?console?log("PulseTrade.Comm.Spa.ACL bundle loaded and registered ACL snapshot observer/provider")
 
 [<RequireQualifiedAccess>]
 module PtcsAclExtension =
@@ -86,7 +156,7 @@ module PtcsAclExtension =
         options.Hub.RegisterClientExtension(
             { ExtensionId = extensionId
               DisplayName = Some "PTCS.ACL"
-              MetadataJson = Some """{"kind":"ptcs-acl","package":"PulseTrade.Comm.Spa.ACL","version":"0.1.0-alpha8"}"""
+              MetadataJson = Some """{"kind":"ptcs-acl","package":"PulseTrade.Comm.Spa.ACL","version":"0.1.0-alpha10","clientCapabilityProvider":true}"""
               ScriptUrls = [ scriptUrl ]
               AppendPageShapes = [] })
         |> ignore

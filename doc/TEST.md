@@ -188,7 +188,7 @@ Canvas message payload 不含 `ActorTopologyPage` 時，ActorsPage classifier �
 - `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta30` rollout completed the offline cleanup/display slice with PTCS `0.2.5-beta41` and public release `live81-ptcs-beta41-dynamic-beta30-offline-poc2-202606290748`; `poc.full.nuget.2.fsx -- --no-wait` verifies the beta41/beta30 NuGet POC path with Actor Argu Add target key, no `+ Page` Actor Dynamic page creation, and non-empty `/actors/api/snapshot` from the POC2 `nuget2-echo` actor registry projection. Playwright evidence for local POC2 `/actors` is `G:\PulseTrade.fs\log\20260629\poc2-actors-page-fixed-deep-snapshot.md` and `G:\PulseTrade.fs\log\20260629\poc2-actors-page-fixed-deep.png`.
 - `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta33` pairs with PTCS `0.2.5-beta43` and `FAkka.WebSocket 1.569.101.301-win6`. `poc.full.nuget.2.fsx -- --no-wait` now additionally asserts the `POC2 FormInput target` alias survives the server-side ActorArgu send/probe path, covering the regression where a later blank key intent replay overwrote alias display with the long target key. The same run completed without `WebSocket disconnected` / `ConnectionAborted` console noise; beta33 also adds ActorsPage browser console groups `[PTCS.Dynamic ActorTree DSL] RENDER/RELOAD` for raw/parsed tree DSL inspection.
 - `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta38` pairs with PTCS `0.2.5-beta48`. `poc.full.nuget.journal.fsx -- --no-wait` verifies the ActorRegistry PingPong stop/reload path: the stopped actor is projected as `terminated`, default active ActorTree DSL filters it (`pingPongFiltered=true`), and `includeOffline` keeps it only for diagnostics.
-- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta48` pairs with PTCS `0.2.5-beta58`. `poc.full.nuget.journal.ACL.fsx -- --no-wait --local-port 18082 --github-port 18081 --cluster-port 18787 --pcsl-root .\.pcsl\verify.acl.beta48` verifies the ACL/Login dual-auth path on non-conflict ports: 81-style GitHub OAuth host, 82-style PTCS.Login host, DamnWZ/AssTerry pages, Echo/PingPong target keys, local login, ACL snapshot, Dynamic bundle, durable ActorArgu echo, PingPong stop filtering, fixed actor name reuse, PTCS beta53 Login session-store package compatibility, PTCS beta54 ACL audit compatibility, PTCS beta55 WebSocket principal revalidation compatibility, PTCS beta56 WebSocket proxy cleanup compatibility, PTCS beta57 HTTP ACL canonical resource compatibility, and PTCS beta58 TLS-offload same-origin compatibility. Public 81 health/alignment and `/page/assterry` FormInput send/reply proof is `live81-ptcs-beta58-dynamic-beta48-acl-demo-stale-cleanup-202607010337`; Playwright MCP evidence is `G:\PulseTrade.fs\log\20260630\public81-assterry-beta58-stale-cleanup-after-send-snapshot.md`, `.png`, and `.txt`.
+- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta48` pairs with PTCS `0.2.5-beta60`. `poc.full.nuget.journal.ACL.fsx -- --no-wait --local-port 18082 --github-port 18081 --cluster-port 18787 --pcsl-root .\.pcsl\verify.acl.beta48` verifies the ACL/Login dual-auth path on non-conflict ports: 81-style GitHub OAuth host, 82-style PTCS.Login host, DamnWZ/AssTerry pages, Echo/PingPong target keys, local login, ACL snapshot, Dynamic bundle, durable ActorArgu echo, PingPong stop filtering, fixed actor name reuse, PTCS beta53 Login session-store package compatibility, PTCS beta54 ACL audit compatibility, PTCS beta55 WebSocket principal revalidation compatibility, PTCS beta56 WebSocket proxy cleanup compatibility, PTCS beta57 HTTP ACL canonical resource compatibility, and PTCS beta60 TLS-offload same-origin compatibility. Public 81 health/alignment and `/page/assterry` FormInput send/reply proof is `live81-ptcs-beta60-dynamic-beta48-acl-demo-stale-cleanup-202607010337`; Playwright MCP evidence is `G:\PulseTrade.fs\log\20260630\public81-assterry-beta60-stale-cleanup-after-send-snapshot.md`, `.png`, and `.txt`.
 - `poc.full.nuget.journal.fsx` manual FSI mode must use `ensureEchoActorRegistered()`, `stopEchoActor()`, or `recreateEchoActor()` for the stable `nuget-journal-echo` actor. Re-running `ActorOfRegistered(..., actorName)` while the actor is live is expected to fail because Akka actor names are unique under `/user`; after stop and path release, `recreateEchoActor()` verifies the same fixed actor name can be reused.
 - cross-repo PTC package verifier checks ActorsPage/toggle/status-dot/connector/report/schedule bundle markers and rejects the stale beta28 schedule-disabled text；
 - latest public 81 Playwright MCP proof is `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30.png`；snapshot is `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30-snapshot.md`；DOM summary is `G:\PulseTrade.fs\log\20260629\public81-actors-beta41-dyn30-dom.json`；
@@ -485,7 +485,7 @@ Coverage:
 
 ### DYN-VFY-009 ACL2 final open-extension boundary POC
 
-狀態：Partial pass；production SQL / disabled-user / browser Playwright / alpha8 client-hook gates 已通過，deploy/full client-extraction 仍未完成。
+狀態：Partial pass；production SQL / disabled-user / browser Playwright / alpha10 provider-dispatch gates 已通過，deploy/full client-extraction 仍未完成。
 
 Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 
@@ -495,10 +495,10 @@ Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 - closed `PulseTrade.Comm.ACL.Core` / `PulseTrade.Comm.Login.Core` 只能以 exact binary NuGet dependency 進入。
 - 不允許 ProjectReference 到 closed Core source。
 
-Latest client-hook demo command passed on 2026-07-02：
+Latest provider-dispatch demo command passed on 2026-07-02：
 
 ```powershell
-dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_client_hook_alpha8_20260702_01
+dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_provider_iife_alpha10_20260702_01
 ```
 
 Production SQL command passed on 2026-07-02 and remains the encrypted SQL proof：
@@ -521,7 +521,7 @@ Passed assertions：
 - actor echo、PingPong stop/re-register、actor reuse after stop 通過。
 - production-SQL mode 使用 encrypted SQL file/key args，不輸出 plaintext secret。
 - wrong-password login 與 disabled-terry login 都回 401。
-- browser Playwright verifies admin/Terry local-login cookies, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, client-extension manifest/script asset loading, active Login extension renderer, and active ACL snapshot observer with exact PTCS beta68 / Dynamic beta58 / Spa.ACL alpha8 / Spa.Login alpha8 packages.
+- browser Playwright verifies admin/Terry local-login cookies, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, client-extension manifest/script asset loading, active Login extension renderer, and active ACL snapshot observer with exact PTCS beta70 / Dynamic beta60 / Spa.ACL alpha10 / Spa.Login alpha10 packages.
 
 Remaining assertions：
 
