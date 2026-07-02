@@ -43,8 +43,8 @@
 #r "nuget: PulseTrade.Comm.Security, [0.1.0-alpha1]"
 #r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta66]"
 #r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta56]"
-#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha1]"
-#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha1]"
+#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha3]"
+#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha3]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 
@@ -1387,6 +1387,8 @@ try
     let actorsSnapshotJson = client.GetStringAsync(localClientBaseUrl + "/actors/api/snapshot").GetAwaiter().GetResult()
     let actorsSnapshotWithOfflineJson = client.GetStringAsync(localClientBaseUrl + "/actors/api/snapshot?includeOffline=1").GetAwaiter().GetResult()
     let aclSnapshotJson = client.GetStringAsync(localClientBaseUrl + "/acl/api/snapshot").GetAwaiter().GetResult()
+    let aclExtensionJs = client.GetStringAsync(localClientBaseUrl + PtcsAclExtension.scriptUrl).GetAwaiter().GetResult()
+    let loginExtensionJs = client.GetStringAsync(localClientBaseUrl + PtcsLoginExtension.scriptUrl).GetAwaiter().GetResult()
     let dynamicJs = client.GetStringAsync(localClientBaseUrl + "/ext/js/PulseTrade.Comm.Spa.Dynamic.js").GetAwaiter().GetResult()
 
     use terryClient = new HttpClient()
@@ -1420,6 +1422,12 @@ try
     require (journalHealthText.Contains("sql-server")) "journal health should use sql-server profile."
     require (healthText.Contains("pcsl-actor-proxy")) "healthz hub persistence should expose pcsl-actor-proxy."
     require (chatHtml.Length > 0) "chat page should be served by PTCS."
+    require (chatHtml.Contains(PtcsAclExtension.extensionId, StringComparison.Ordinal)) "chat page should include PTCS.ACL extension manifest."
+    require (chatHtml.Contains(PtcsLoginExtension.extensionId, StringComparison.Ordinal)) "chat page should include PTCS.Login extension manifest."
+    require (chatHtml.Contains(PtcsAclExtension.scriptUrl, StringComparison.Ordinal)) "chat page should load PTCS.ACL extension script URL."
+    require (chatHtml.Contains(PtcsLoginExtension.scriptUrl, StringComparison.Ordinal)) "chat page should load PTCS.Login extension script URL."
+    require (aclExtensionJs.Contains("PulseTrade.Comm.Spa.ACL", StringComparison.Ordinal)) "PTCS.ACL extension script asset should be served by the PTCS host."
+    require (loginExtensionJs.Contains("PulseTrade.Comm.Spa.Login", StringComparison.Ordinal)) "PTCS.Login extension script asset should be served by the PTCS host."
     require (not actorDynamicCreateShapeVisible) "journal POC must not expose +page Actor Dynamic shape in the extension manifest."
     require (not (chatHtml.Contains("option value=\"actor-dynamic\""))) "journal POC must not expose +page Actor Dynamic shape."
     require (actorsHtml.Length > 0) "actors page should be served."

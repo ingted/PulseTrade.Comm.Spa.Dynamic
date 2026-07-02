@@ -521,7 +521,7 @@ Passed assertions：
 - actor echo、PingPong stop/re-register、actor reuse after stop 通過。
 - production-SQL mode 使用 encrypted SQL file/key args，不輸出 plaintext secret。
 - wrong-password login 與 disabled-terry login 都回 401。
-- browser Playwright verifies admin/Terry local-login cookies, ACL capability UI, Dynamic FormInput send/reply, and live ActorFabric echo with exact PTCS beta66 / Dynamic beta56 / Spa.ACL alpha1 / Spa.Login alpha1 packages.
+- browser Playwright verifies admin/Terry local-login cookies, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, and client-extension manifest/script asset loading with exact PTCS beta66 / Dynamic beta56 / Spa.ACL alpha3 / Spa.Login alpha3 packages.
 
 Remaining assertions：
 

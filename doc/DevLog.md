@@ -684,3 +684,11 @@ Implementation status:
 - Command: `dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.aclLoginBrowser.playwright.fsx -- --port 0`.
 - Coverage: admin/Terry local-login cookie flow, ACL capability UI differences, Dynamic FormInput visible/sendable state, and live ActorFabric echo replies.
 - Remaining `DYN-WBS-521` gates: public 81/82 redeploy on extracted packages and full browser/client bundle extraction from PTCS core.
+
+## 2026-07-02 - ACL/Login extension asset slice
+
+- Advanced `PulseTrade.Comm.Spa.ACL` and `PulseTrade.Comm.Spa.Login` to `0.1.0-alpha3`.
+- `PtcsAclExtension.useAcl` and `PtcsLoginExtension.usePtcsLogin` now register PTCS client-extension manifests and package `contentFiles` script assets in addition to calling the closed PTCS runtime SPI.
+- `src\poc.full.nuget.journal.ACL2.fsx` now references Spa.ACL/Login alpha3 and asserts the authenticated page contains both extension ids/script URLs, while direct fetches of `/client-extensions/acl/PulseTrade.Comm.Spa.ACL.js` and `/client-extensions/login/PulseTrade.Comm.Spa.Login.js` return the expected package markers.
+- Verification passed: Release build/pack for both alpha3 packages, NuGet push without missing-license warning, nupkg copy to SDK `10.0.301` `FSharp\library-packs`, ACL2 demo no-wait, ACL2 production-SQL no-wait with encrypted SQL file/key, and PTCS browser Playwright with client-extension manifest/script assertions.
+- Remaining `DYN-WBS-521` gates: public 81/82 redeploy on extracted packages and moving the actual ACL/Login client/page behavior out of PTCS core into the open packages.

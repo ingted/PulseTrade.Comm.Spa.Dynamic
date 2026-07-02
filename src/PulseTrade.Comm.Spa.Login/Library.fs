@@ -1,5 +1,9 @@
 namespace PulseTrade.Comm.Spa.Login
 
+open System
+open System.IO
+open System.Reflection
+open System.Text
 open PulseTrade.Comm.Login.Core
 open PulseTrade.Comm.Spa
 open WebSharper
@@ -16,9 +20,49 @@ module ClientBundle =
 [<RequireQualifiedAccess>]
 module PtcsLoginExtension =
     let extensionId = ClientBundle.extensionId
+    let scriptUrl = "/client-extensions/login/PulseTrade.Comm.Spa.Login.js"
+    let scriptFileName = "PulseTrade.Comm.Spa.Login.js"
+
+    let readScriptFile () =
+        let assembly = Assembly.GetExecutingAssembly()
+        let assemblyDir = assembly.Location |> Path.GetDirectoryName
+
+        let candidates =
+            [ Path.Combine(assemblyDir, "wwwroot", "js", scriptFileName)
+              Path.GetFullPath(Path.Combine(assemblyDir, "..", "..", "contentFiles", "any", "net10.0", "wwwroot", "js", scriptFileName)) ]
+
+        candidates
+        |> List.tryFind File.Exists
+        |> function
+            | Some path -> File.ReadAllText(path, Encoding.UTF8)
+            | None ->
+                let locations = String.Join("; ", candidates)
+                invalidOp $"PTCS.Login script asset not found. Tried: {locations}"
+
+    let scriptContent () =
+        readScriptFile ()
+
+    let registerClientBundle (options: ServerOptions) =
+        options.Hub.RegisterClientExtensionScriptAsset(
+            { Url = scriptUrl
+              ContentType = "text/javascript"
+              Content = scriptContent () })
+        |> ignore
+
+        options.Hub.RegisterClientExtension(
+            { ExtensionId = extensionId
+              DisplayName = Some "PTCS.Login"
+              MetadataJson = Some """{"kind":"ptcs-login","package":"PulseTrade.Comm.Spa.Login","version":"0.1.0-alpha3"}"""
+              ScriptUrls = [ scriptUrl ]
+              AppendPageShapes = [] })
+        |> ignore
+
+        options
 
     let usePtcsLogin (login: PtcsLoginOptions) (options: ServerOptions) =
-        Server.withPtcsLogin login options
+        options
+        |> registerClientBundle
+        |> Server.withPtcsLogin login
 
     let provider login =
         PtcsLogin.provider login
