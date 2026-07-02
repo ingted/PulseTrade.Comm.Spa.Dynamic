@@ -670,3 +670,10 @@ Implementation status:
 - Added `src\poc.full.nuget.journal.ACL2.fsx`; it references PTCS beta66, Dynamic beta56, Spa.ACL alpha1, and Spa.Login alpha1.
 - Verification passed: Release build/pack for both alpha1 packages, nupkg copy to SDK `10.0.301` `FSharp\library-packs`, and `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo`.
 - Remaining `DYN-WBS-521` gates: production SQL mode, explicit disabled-user ACL2 assertion, browser Playwright, public 81/82 redeploy, and full browser/client bundle extraction from PTCS core.
+
+## 2026-07-02 - ACL2 production SQL no-wait gate
+
+- `src\poc.full.nuget.journal.ACL2.fsx` production-SQL no-wait gate passed with encrypted SQL file/key args, schema `ptcs_security`, table `AclPolicySnapshotPoc`, and PCSL root `G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_wz_terry_20260702_01`.
+- Evidence: `Mode production-sql`, WZ/sys-admin full rights, Terry黑粉 add-target denied but AssTerry remove/send allowed, DamnWZ send denied, wrong-password login 401, disabled-terry login 401, PingPong stop filtering, and Echo fixed-name actor reuse.
+- Demo no-wait regression also passed with PCSL root `G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_demo_20260702_01`.
+- Remaining `DYN-WBS-521` gates: browser Playwright, public 81/82 redeploy, and full browser/client bundle extraction from PTCS core.
