@@ -657,3 +657,9 @@ Implementation status:
 - Production-sql seeding is now bounded to the script-owned users `wz`, `terry`, `disabled-terry`, and legacy `admin`; it no longer clears unrelated credential rows.
 - Verification passed: `dotnet fsi --exec C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\src\poc.full.nuget.journal.ACL.fsx -- --if-dyna-port --production-sql --sql-connection-string-encrypted-file D:\ingted.com\ptcs-sql-connection.enc.txt --sql-private-key-path D:\ingted.com\myKey.private.txt --sql-security-schema ptcs_security --sql-acl-table AclPolicySnapshotPoc --no-wait --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl\pcsl_wz_terry_20260701_01`.
 - Stdout proof: WZ/sys-admin full rights, Terry黑粉 add-target denied but remove/send allowed on AssTerry, send denied on DamnWZ, disabled-terry login rejected, HTTP difference proof passed, PingPong stopped actor filtered from active actors, and fixed-name Echo actor stop/recreate works.
+
+## 2026-07-02 - ACL2 final boundary planning
+
+- Synced with PTCS `RFC-PTC-SPA-0013.acl-login-open-extension-boundary.md`.
+- Added planned `DYN-WBS-521` / `DYN-VFY-009` for `src\poc.full.nuget.journal.ACL2.fsx`.
+- `ACL.fsx` remains the beta66 transitional runtime behavior proof. `ACL2.fsx` will prove final open-extension boundary with `PulseTrade.Comm.Spa.ACL` and `PulseTrade.Comm.Spa.Login`, while closed ACL/Login Core packages remain exact binary NuGet dependencies.

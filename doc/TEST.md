@@ -482,3 +482,24 @@ Coverage:
 
 - `DynamicRenderer.TryRender` returns `Some` only for payload with `schema = "fskynet-sdui"`.
 - page type / key shape alone cannot force canvas rendering.
+
+### DYN-VFY-009 ACL2 final open-extension boundary POC
+
+狀態：Planned。
+
+Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
+
+目的：
+
+- 驗證 `RFC-PTC-SPA-0013` final boundary：PTCS + Dynamic + `PulseTrade.Comm.Spa.ACL` + `PulseTrade.Comm.Spa.Login`。
+- closed `PulseTrade.Comm.ACL.Core` / `PulseTrade.Comm.Login.Core` 只能以 exact binary NuGet dependency 進入。
+- 不允許 ProjectReference 到 closed Core source。
+
+Required assertions：
+
+- `--if-dyna-port --no-wait` 可使用 free ports 啟動 dual listener。
+- admin/WZ 擁有 full rights。
+- Terry黑粉可使用 AssTerry allowed actions，但 add-target / DamnWZ send 等 restricted actions 被拒。
+- disabled user / invalid credential 被拒。
+- optional production SQL mode 使用 encrypted SQL file/key args，不輸出 plaintext secret。
+- actor echo、PingPong stop/re-register、Dynamic FormInput send/reply 全部通過。

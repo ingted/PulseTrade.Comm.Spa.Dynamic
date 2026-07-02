@@ -35,6 +35,7 @@
 | PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0008.unified-sdui-target-extension-contract.md` | PTCS companion contract for direct DSL target and Dynamic-owned target key binding. PTCS stores ordered key list; PTCS.Dynamic interprets `[actor; template; canonicalArgString]` when extension is present。 |
 | PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0009.actor-dynamic-action-modes-and-full-address-tree.md` | PTCS core action shell contract for Add actor key / Add target key / Add proxy key and full actor address tree display。 |
 | PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0010.actors-page-dynamic-dsl-rendering.md` | PTCS companion contract for `/actors` page-level ActorsPage rendering and fallback mutual exclusion。 |
+| PTCS | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC-PTC-SPA-0013.acl-login-open-extension-boundary.md` | PTCS companion contract for final ACL/Login open extension boundary and `poc.full.nuget.journal.ACL2.fsx` gate。 |
 | PTC RN | `G:\PulseTrade.fs\Libs\PulseTrade.Comm\doc\RFC-PTC-0016.resource-node-sharded-function-proxy.md` | RN DurableProxy consumes `ActorArguTargetCommand.RawArgu` and adapts to legacy actor/service。 |
 | PTC WBS | `G:\PulseTrade.fs\Libs\PulseTrade.Comm\doc\WBS.md` rows `PTC3-063`..`PTC3-067` | RN/RN.Host production gates and final Dynamic -> RN E2E。 |
 | PTCS.Host demo DU | `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\doc\example DU.txt` | Big5/cp950 source material for host-local `PFCF_AKKA_CMD` demo subset；not package API。 |
@@ -71,3 +72,4 @@
 | `DYN-T-526` | `DYN-WBS-519` | Package Expecto verifies ActorsPage classifier accepts `ActorTopologyPage` payload；full WebSharper build is covered by DYN-VFY-001。 |
 | `DYN-T-527` | `DYN-WBS-519` | Package Expecto verifies normal Canvas payload is not claimed by ActorsPage classifier。 |
 | `DYN-T-528..532` | `DYN-WBS-519` | Implemented: host/port grouping, role ordering, full address tree/grid/cards/actions, PTCS `/actors` Playwright accepted path, unsupported fallback path, and browser-local report schedule start/stop. Remaining: strict parser, persisted/server-side report schedule, restart/cache sync, cross-service GW/RN registry feed, and failover visual states。 |
+| `DYN-VFY-009` | `DYN-WBS-521` | Planned `src\poc.full.nuget.journal.ACL2.fsx` gate for PTCS + Dynamic + `PulseTrade.Comm.Spa.ACL` + `PulseTrade.Comm.Spa.Login` final open-extension boundary。 |
