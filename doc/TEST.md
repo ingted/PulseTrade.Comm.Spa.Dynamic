@@ -485,7 +485,7 @@ Coverage:
 
 ### DYN-VFY-009 ACL2 final open-extension boundary POC
 
-狀態：Partial pass；production SQL / disabled-user / browser Playwright / alpha10 provider-dispatch gates 已通過，deploy/full client-extraction 仍未完成。
+狀態：Partial pass；production SQL / disabled-user / browser Playwright / alpha12 open-provider gates 已通過，public deploy / fallback cleanup 仍未完成。
 
 Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 
@@ -495,10 +495,10 @@ Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 - closed `PulseTrade.Comm.ACL.Core` / `PulseTrade.Comm.Login.Core` 只能以 exact binary NuGet dependency 進入。
 - 不允許 ProjectReference 到 closed Core source。
 
-Latest provider-dispatch demo command passed on 2026-07-02：
+Latest open-provider demo command passed on 2026-07-02：
 
 ```powershell
-dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_provider_iife_alpha10_20260702_01
+dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_login_open_provider_alpha12_20260702_01
 ```
 
 Production SQL command passed on 2026-07-02 and remains the encrypted SQL proof：
@@ -521,9 +521,9 @@ Passed assertions：
 - actor echo、PingPong stop/re-register、actor reuse after stop 通過。
 - production-SQL mode 使用 encrypted SQL file/key args，不輸出 plaintext secret。
 - wrong-password login 與 disabled-terry login 都回 401。
-- browser Playwright verifies admin/Terry local-login cookies, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, client-extension manifest/script asset loading, active Login extension renderer, and active ACL snapshot observer with exact PTCS beta70 / Dynamic beta60 / Spa.ACL alpha10 / Spa.Login alpha10 packages.
+- browser Playwright verifies admin/Terry local-login cookies through the open Login provider, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, client-extension manifest/script asset loading, active Login extension renderer, and active ACL snapshot observer/capability provider with exact PTCS beta70 / Dynamic beta60 / Spa.ACL alpha10 / Spa.Login alpha12 packages.
 
 Remaining assertions：
 
 - public 81/82 redeploy uses extracted packages。
-- full browser/client bundle extraction moves remaining ACL/Login route/client behavior out of PTCS core。
+- public 81/82 redeploy uses the extracted package set, and transitional fallback cleanup removes dead PTCS core Login code after downstream consumers migrate。

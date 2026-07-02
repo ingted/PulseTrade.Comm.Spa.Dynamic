@@ -44,7 +44,7 @@
 #r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta70]"
 #r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta60]"
 #r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha10]"
-#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha10]"
+#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha12]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 

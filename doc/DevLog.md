@@ -706,3 +706,10 @@ Implementation status:
 - Advanced `PulseTrade.Comm.Spa.Dynamic` to `0.1.3-beta60`, `PulseTrade.Comm.Spa.ACL` to `0.1.0-alpha10`, and `PulseTrade.Comm.Spa.Login` to `0.1.0-alpha10`, all consuming `PulseTrade.Comm.Spa [0.2.5-beta70]` as exact NuGet packages.
 - `PulseTrade.Comm.Spa.ACL` now documents and packages both ACL snapshot observer and ACL capability provider hooks; alpha10 is paired with PTCS beta70 because beta70 fixes the generated provider dispatch bridge.
 - Verification passed: Release build/pack for Dynamic beta60 and Spa.ACL/Login alpha10, ACL2 dynamic-port no-wait gate using `pcsl_provider_iife_alpha10_20260702_01`, and the PTCS browser Playwright gate with exact beta70/beta60/alpha10 packages.
+
+## 2026-07-02 - PTCS.Login alpha12 open provider slice
+
+- Advanced `PulseTrade.Comm.Spa.Login` to `0.1.0-alpha12`. Alpha12 supersedes alpha11 so the package README and source/package content stay aligned.
+- The open Login package now owns `PtcsLoginOptions`, `PtcsLogin.provider`, `/login` route composition, `/login/api/submit`, `/login/api/session`, `/login/logout`, `/chat/login`, `/chat/logout`, HttpOnly SameSite cookie handling, and session-to-principal resolution. `PtcsLoginExtension.usePtcsLogin` installs that provider through PTCS `Server.withBrowserAuth` instead of calling PTCS core `Server.withPtcsLogin`.
+- Verification passed: Spa.Login Release build/pack, ACL2 dynamic-port no-wait gate using `pcsl_login_open_provider_alpha12_20260702_01`, and the PTCS browser Playwright gate with PTCS beta70 / Dynamic beta60 / Spa.ACL alpha10 / Spa.Login alpha12 exact packages.
+- NuGet push for `PulseTrade.Comm.Spa.Login 0.1.0-alpha12` returned `Created`; immediate flat-container lookup returned 404, so public indexing is propagation-pending.
