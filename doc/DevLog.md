@@ -677,3 +677,10 @@ Implementation status:
 - Evidence: `Mode production-sql`, WZ/sys-admin full rights, Terry黑粉 add-target denied but AssTerry remove/send allowed, DamnWZ send denied, wrong-password login 401, disabled-terry login 401, PingPong stop filtering, and Echo fixed-name actor reuse.
 - Demo no-wait regression also passed with PCSL root `G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_demo_20260702_01`.
 - Remaining `DYN-WBS-521` gates: browser Playwright, public 81/82 redeploy, and full browser/client bundle extraction from PTCS core.
+
+## 2026-07-02 - ACL2 browser Playwright gate
+
+- Cross-repo PTCS browser verifier passed against exact `PulseTrade.Comm.Spa 0.2.5-beta66`, `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta56`, `PulseTrade.Comm.Spa.ACL 0.1.0-alpha1`, and `PulseTrade.Comm.Spa.Login 0.1.0-alpha1`.
+- Command: `dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.aclLoginBrowser.playwright.fsx -- --port 0`.
+- Coverage: admin/Terry local-login cookie flow, ACL capability UI differences, Dynamic FormInput visible/sendable state, and live ActorFabric echo replies.
+- Remaining `DYN-WBS-521` gates: public 81/82 redeploy on extracted packages and full browser/client bundle extraction from PTCS core.

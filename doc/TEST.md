@@ -485,7 +485,7 @@ Coverage:
 
 ### DYN-VFY-009 ACL2 final open-extension boundary POC
 
-狀態：Partial pass；production SQL / disabled-user gate 已通過，browser/deploy/client-extraction 仍未完成。
+狀態：Partial pass；production SQL / disabled-user / browser Playwright gates 已通過，deploy/client-extraction 仍未完成。
 
 Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 
@@ -507,6 +507,12 @@ Production SQL command passed on 2026-07-02：
 dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --production-sql --sql-connection-string-encrypted-file D:\ingted.com\ptcs-sql-connection.enc.txt --sql-private-key-path D:\ingted.com\myKey.private.txt --sql-security-schema ptcs_security --sql-acl-table AclPolicySnapshotPoc --no-wait --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\pcsl_wz_terry_20260702_01
 ```
 
+Browser Playwright command passed on 2026-07-02：
+
+```powershell
+dotnet fsi --exec G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Scripts\verify.aclLoginBrowser.playwright.fsx -- --port 0
+```
+
 Passed assertions：
 
 - `--if-dyna-port --no-wait` 可使用 free ports 啟動 dual listener。
@@ -515,10 +521,10 @@ Passed assertions：
 - actor echo、PingPong stop/re-register、actor reuse after stop 通過。
 - production-SQL mode 使用 encrypted SQL file/key args，不輸出 plaintext secret。
 - wrong-password login 與 disabled-terry login 都回 401。
+- browser Playwright verifies admin/Terry local-login cookies, ACL capability UI, Dynamic FormInput send/reply, and live ActorFabric echo with exact PTCS beta66 / Dynamic beta56 / Spa.ACL alpha1 / Spa.Login alpha1 packages.
 
 Remaining assertions：
 
 - reusable static scan verifies no ProjectReference to closed Core source。
-- browser Playwright verifies Dynamic FormInput send/reply。
 - public 81/82 redeploy uses extracted packages。
 - full browser/client bundle extraction moves out of PTCS core。
