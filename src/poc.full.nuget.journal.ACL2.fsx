@@ -50,6 +50,7 @@
 
 open System
 open System.Collections.Concurrent
+open System.Diagnostics
 open System.IO
 open System.Net
 open System.Net.Http
@@ -295,6 +296,48 @@ let webBinding host port =
     else
         WebBinding.fixedHostPort host port
 
+let bindAddressForHost host =
+    let value = textOr "127.0.0.1" host
+    let lower = value.ToLowerInvariant()
+
+    match lower with
+    | "0.0.0.0"
+    | "*"
+    | "+" -> IPAddress.Any
+    | "::" -> IPAddress.IPv6Any
+    | "localhost" -> IPAddress.Loopback
+    | _ ->
+        let mutable parsed = Unchecked.defaultof<IPAddress>
+
+        if IPAddress.TryParse(value, &parsed) then
+            parsed
+        else
+            IPAddress.Any
+
+let tryBindTcpPort host port =
+    if port <= 0 then
+        Ok()
+    else
+        let address = bindAddressForHost host
+        let listener = new TcpListener(address, port)
+
+        try
+            try
+                listener.ExclusiveAddressUse <- true
+                listener.Start()
+                Ok()
+            with ex ->
+                Error ex.Message
+        finally
+            listener.Stop()
+
+let requireTcpPortFree label argName host port =
+    match tryBindTcpPort host port with
+    | Ok() -> ()
+    | Error message ->
+        invalidOp
+            $"ACL2 startup preflight failed: {label} port {host}:{port} is unavailable or already in use. Stop the existing service, change {argName}, or run with --if-dyna-port. Socket error: {message}"
+
 let durableIngressOptions profileId =
     let profileId = textOr "nuget-journal-live" profileId
 
@@ -457,6 +500,20 @@ let templateRegistration =
         typeof<PocFullNugetJournalArgu>
         DynamicArguAliasBinding.empty
         (Some defaultCanonicalArgString)
+
+if not ifDynaPort then
+    requireTcpPortFree "GitHub OAuth HTTP listener" "--github-port" host githubPort
+    requireTcpPortFree "local PTCS.Login HTTP listener" "--local-port" host localPort
+    requireTcpPortFree "Akka cluster remoting" "--cluster-port" "127.0.0.1" clusterPort
+
+printfn
+    "startup preflight ok: github=%s:%d local=%s:%d cluster=127.0.0.1:%d dynamic=%b"
+    host
+    githubPort
+    host
+    localPort
+    clusterPort
+    ifDynaPort
 
 if clearPcslBeforeStart then
     ensureSafeClearPcslRoot pcslRoot
@@ -793,6 +850,8 @@ DELETE FROM {loginUser} WHERE UserId IN ({quotedUserIds});"
 
     loginConfig, aclConfig
 
+printfn "initializing ACL/Login providers mode=%s" (if productionSql then "production-sql" else "demo")
+
 let seededSqlConfigs =
     match productionSqlConnectionString with
     | Some connectionString when productionSql -> Some(seedProductionSqlSecurity connectionString)
@@ -843,6 +902,8 @@ let loginOptions =
         | Ok value -> value
         | Error error -> invalidOp $"PTCS.Login demo config decode failed: {error.Message}"
 
+printfn "ACL/Login providers ready mode=%s" (if productionSql then "production-sql" else "demo")
+
 let readRequiredSecret path label =
     if not (File.Exists path) then
         invalidOp $"Missing {label} file for GitHub OAuth: {path}"
@@ -871,11 +932,37 @@ let localLoginOptions =
     |> PtcsLoginExtension.usePtcsLogin loginOptions
     |> PtcsAclExtension.useAcl aclOptions
 
+let startPtcsHost label url f =
+    let sw = Stopwatch.StartNew()
+    printfn "starting %s listener: %s" label url
+    let app = withStartupOutput f
+    sw.Stop()
+    printfn "started %s listener in %.1f ms: %s" label sw.Elapsed.TotalMilliseconds url
+    app
+
+let clientBaseUrlForHostPort host port =
+    let clientHost =
+        let value = textOr "127.0.0.1" host
+
+        if String.Equals(value, "0.0.0.0", StringComparison.OrdinalIgnoreCase)
+           || String.Equals(value, "::", StringComparison.OrdinalIgnoreCase) then
+            "127.0.0.1"
+        else
+            value
+
+    $"http://{clientHost}:{port}"
+
+let githubClientBaseUrl =
+    clientBaseUrlForHostPort host githubPort
+
+let localClientBaseUrl =
+    clientBaseUrlForHostPort host localPort
+
 let githubApp =
-    withStartupOutput (fun () -> Server.startWithSharing siteSharing githubOptions)
+    startPtcsHost "GitHub OAuth" (sprintf "%s/actors" githubClientBaseUrl) (fun () -> Server.startWithSharing siteSharing githubOptions)
 
 let localApp =
-    withStartupOutput (fun () -> Server.startWithSharing siteSharing localLoginOptions)
+    startPtcsHost "local PTCS.Login" (sprintf "%s/login?returnUrl=/actors" localClientBaseUrl) (fun () -> Server.startWithSharing siteSharing localLoginOptions)
 
 withStartupOutput (fun () ->
     hub.useDynamicSdui(fabric.System, DynamicArguMetadata.empty, [ templateRegistration ])
@@ -1104,23 +1191,6 @@ let readActorsSnapshotCounts (jsonText: string) =
     let actorCount = intProperty "actorCount" "ActorCount"
 
     nodeCount, actorCount
-
-let urlForLocalClient (url: string) =
-    let uri = Uri(url)
-    let host =
-        if String.Equals(uri.Host, "0.0.0.0", StringComparison.OrdinalIgnoreCase)
-           || String.Equals(uri.Host, "::", StringComparison.OrdinalIgnoreCase) then
-            "127.0.0.1"
-        else
-            uri.Host
-
-    UriBuilder(uri.Scheme, host, uri.Port).Uri.ToString().TrimEnd('/')
-
-let localClientBaseUrl =
-    urlForLocalClient localApp.Url
-
-let githubClientBaseUrl =
-    urlForLocalClient githubApp.Url
 
 let loginLocalClient (client: HttpClient) loginName password label =
     let body =

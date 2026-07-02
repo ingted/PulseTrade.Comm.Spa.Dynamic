@@ -719,3 +719,11 @@ Implementation status:
 - PTC `PulseTrade.Comm.Spa.Host` now consumes Dynamic beta60, Spa.ACL alpha10, and Spa.Login alpha12 exact NuGet packages in the formal Windows service release.
 - Formal service release `live81-82-ptcs-beta70-dynamic-beta60-open-acl-login-assetfix-202607021416` passed public 81 OAuth redirect, loopback 82 SQL local login, HttpOnly session cookie, `/acl/api/snapshot`, and direct Spa.ACL/Spa.Login script marker fetches.
 - This closes the public 81/82 redeploy gate for `DYN-WBS-521` / `DYN-VFY-009`; remaining work is transitional PTCS core fallback cleanup after downstream consumers are stable.
+
+## 2026-07-02 - ACL2 startup preflight fix
+
+- User report: direct `src\poc.full.nuget.journal.ACL2.fsx` execution appeared to hang after `journal warm-up streams=15 pages=2 actors=2`.
+- Root cause: the line means journal projection warm-up already completed; the next startup stages were mostly quiet, and fixed 81/82/9787 ports can be occupied by the formal PTCS service or a live FSI session.
+- Change: ACL2 now preflights fixed GitHub/local-login/Akka ports before fabric startup, fails fast with a clear `--if-dyna-port` hint when occupied, and prints ACL/Login provider plus listener startup stage logs after journal warm-up.
+- Verification passed: `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\debug_hang_dyn_afterfix_20260702_02`.
+- Verification safety check: with formal service occupying 81/82, `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL2.fsx -- --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\debug_hang_fixed_afterfix_20260702_02` exits before startup with `ACL2 startup preflight failed: GitHub OAuth HTTP listener port 0.0.0.0:81 is unavailable...`, which is the expected fixed-port protection.
