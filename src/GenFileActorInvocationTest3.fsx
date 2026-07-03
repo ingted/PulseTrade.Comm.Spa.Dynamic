@@ -49,7 +49,7 @@
 #r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha11]"
 #r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha13]"
 
-#load @"E:\akka.net\src\ParseLine.fsx"
+#load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 
 open System
 open System.Collections.Concurrent
@@ -114,7 +114,7 @@ let defaultArgumentsText =
     *)
     printfn "default ports: local-login=82, cluster=%d" defaultClusterPort
     //$"""--host 0.0.0.0 --github-port 81 --local-port 82 --github-public-base-url "https://my-ai.co.in:81" --github-oauth-client-id-path "{pathArg defaultGitHubOAuthClientIdPath}" --github-oauth-client-secret-path "{pathArg defaultGitHubOAuthClientSecretPath}" --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --demo """
-    $"""--sql-connection-string-encrypted-file SQLConn.trusted.enc.txt --sql-private-key-path myKey.private.txt --host 0.0.0.0 --local-port 82 --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --startup-probe --demo """
+    $"""--sql-connection-string-encrypted-file "D:/ingted.com/ptcs-sql-connection.enc.txt" --sql-private-key-path "D:/ingted.com/myKey.private.txt" --host 10.28.112.109 --local-port 82 --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --startup-probe --demo """
 
 
 type CliArgs =
@@ -548,7 +548,7 @@ let siteSharingOf value =
     | other -> invalidArg "site-sharing" $"Unsupported site-sharing: {other}."
 
 let webBinding host port =
-    let host = textOr "10.36.205.150" host
+    let host = textOr "10.28.112.109" host
 
     if port <= 0 then
         WebBinding.randomHost host
@@ -556,7 +556,7 @@ let webBinding host port =
         WebBinding.fixedHostPort host port
 
 let bindAddressForHost host =
-    let value = textOr "10.36.205.150" host
+    let value = textOr "10.28.112.109" host
     let lower = value.ToLowerInvariant()
 
     match lower with
@@ -611,7 +611,7 @@ let durableIngressOptions profileId =
                 DeadLetterStreamKey = "ptcs.dynamic.poc-full-nuget-journal.dead-letter" } }
 
 let host =
-    let defaultValue = defaultParsed.GetResult(Host, "10.36.205.150")
+    let defaultValue = defaultParsed.GetResult(Host, "10.28.112.109")
     overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Host, defaultValue)) |> Option.defaultValue defaultValue
 
 let ifDynaPort =
@@ -686,11 +686,11 @@ let nativeActorAddressOverride =
     |> Option.filter (String.IsNullOrWhiteSpace >> not)
 
 let clusterHost =
-    let defaultValue = defaultParsed.GetResult(Cluster_Host, "10.36.205.150")
+    let defaultValue = defaultParsed.GetResult(Cluster_Host, "10.28.112.109")
     overrideParsed
     |> Option.map (fun parsed -> parsed.GetResult(Cluster_Host, defaultValue))
     |> Option.defaultValue defaultValue
-    |> textOr "10.36.205.150"
+    |> textOr "10.28.112.109"
 
 let clusterPort =
     if ifDynaPort then
@@ -834,21 +834,26 @@ if clearPcslBeforeStart then
 Directory.CreateDirectory pcslRoot |> ignore
 
 let encryptedSqlConnectionString () =
-    let parsed =
+    let tryGetMerged selector =
         overrideParsed
-        |> Option.defaultValue defaultParsed
+        |> Option.bind selector
+        |> Option.orElseWith (fun () -> selector defaultParsed)
 
     let encryptedFile =
-        parsed.TryGetResult <@ Sql_Connection_String_Encrypted_File @>
-        |> Option.map (fullPath @"E:\akka.net\src")
+        tryGetMerged (fun parsed -> parsed.TryGetResult <@ Sql_Connection_String_Encrypted_File @>)
+        |> Option.map (fullPath @"D:\ingted.com")
         |> Option.defaultWith (fun () -> invalidOp "production-sql requires --sql-connection-string-encrypted-file.")
 
     let privateKeyPath =
-        parsed.TryGetResult <@ Sql_Private_Key_Path @>
-        |> Option.map (fullPath @"E:\akka.net\src")
+        tryGetMerged (fun parsed -> parsed.TryGetResult <@ Sql_Private_Key_Path @>)
+        |> Option.map (fullPath @"D:\ingted.com")
         |> Option.defaultWith (fun () -> invalidOp "production-sql requires --sql-private-key-path.")
 
-    let keySize = parsed.GetResult(Sql_Key_Size, 2048)
+    let keySize =
+        overrideParsed
+        |> Option.map (fun parsed -> parsed.GetResult(Sql_Key_Size, defaultParsed.GetResult(Sql_Key_Size, 2048)))
+        |> Option.defaultValue (defaultParsed.GetResult(Sql_Key_Size, 2048))
+
     PulseTrade.Comm.Security.readEncryptedTextFile keySize privateKeyPath encryptedFile None
 
 let legacyPlaintextSqlConnectionString () =
@@ -1204,7 +1209,7 @@ DELETE FROM {loginUser} WHERE UserId IN ({quotedUserIds});"
     let policy =
         pocAclPolicy
             ("poc-full-nuget-journal-acl-sql-" + DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss"))
-            Public
+            PrivateLan
             (Some "ptcs-login")
             [ { UserId = adminSeed.UserId
                 Groups = adminSeed.Groups
@@ -1273,7 +1278,7 @@ let loginOptions =
 
         let productionConfig =
             { baseConfig with
-                DeploymentProfile = Public
+                DeploymentProfile = PrivateLan
                 Users = []
                 DurableSessionStore = true
                 Token =
@@ -1316,11 +1321,11 @@ let startPtcsHost label url f =
 
 let clientBaseUrlForHostPort host port =
     let clientHost =
-        let value = textOr "10.36.205.150" host
+        let value = textOr "10.28.112.109" host
 
         if String.Equals(value, "0.0.0.0", StringComparison.OrdinalIgnoreCase)
            || String.Equals(value, "::", StringComparison.OrdinalIgnoreCase) then
-            "10.36.205.150"
+            "10.28.112.109"
         else
             value
 
