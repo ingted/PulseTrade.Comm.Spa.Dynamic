@@ -27,7 +27,7 @@
 
 #i @"nuget: C:\Program Files\dotnet\sdk\10.0.301\FSharp\library-packs"
 #r "nuget: FAkka.Argu, 10.1.301"
-#r "nuget: FAkka.FCell2, 10.1.301"
+#r "nuget: FAkka.FCell2, 10.1.301.3"
 #r "nuget: Akka, 1.5.69"
 #r "nuget: Akka.Cluster, 1.5.69"
 #r "nuget: Akka.Cluster.Sharding, 1.5.69"
@@ -35,17 +35,17 @@
 #r "nuget: Akka.Persistence.Sql, 1.5.67"
 #r "nuget: Microsoft.Data.SqlClient, 7.0.1"
 #r "nuget: System.Data.SqlClient, 4.9.1"
-#r "nuget: PersistedConcurrentSortedList, 10.1.301"
+#r "nuget: PersistedConcurrentSortedList, 10.1.301.3"
 #r "nuget: PulseTrade.Comm.Actor.Registry, [0.1.0-alpha5]"
 #r "nuget: PulseTrade.Comm.ACL.Core, [0.1.0-alpha2]"
 #r "nuget: PulseTrade.Comm.ACL.SqlServer, [0.1.0-alpha2]"
 //#r "nuget: PulseTrade.Comm.Login.Core, [0.1.0-alpha5]"
 //#r "nuget: PulseTrade.Comm.Login.SqlServer, [0.1.0-alpha3]"
 #r "nuget: PulseTrade.Comm.Security, [0.1.0-alpha1]"
-#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta70]"
-#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta60]"
-#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha10]"
-//#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha12]"
+#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta71]"
+#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta61]"
+#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha11]"
+//#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha13]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 
@@ -82,10 +82,10 @@ let defaultPcslRoot =
 
 let defaultClusterPort = 9787
 let defaultGitHubOAuthClientIdPath =
-    @"G:\GITHUB\ChatTest\GitHubOAuthClientId.txt"
+    @""
 
 let defaultGitHubOAuthClientSecretPath =
-    @"G:\GITHUB\ChatTest\GitHubOAuthClientSecret.txt"
+    @""
 
 let pathArg (path: string) =
     (if isNull path then "" else path).Replace("\\", "/")

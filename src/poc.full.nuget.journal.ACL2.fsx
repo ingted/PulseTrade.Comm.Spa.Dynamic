@@ -41,10 +41,10 @@
 #r "nuget: PulseTrade.Comm.Login.Core, [0.1.0-alpha5]"
 #r "nuget: PulseTrade.Comm.Login.SqlServer, [0.1.0-alpha3]"
 #r "nuget: PulseTrade.Comm.Security, [0.1.0-alpha1]"
-#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta70]"
-#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta60]"
-#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha10]"
-#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha12]"
+#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta71]"
+#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta61]"
+#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha11]"
+#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha13]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 

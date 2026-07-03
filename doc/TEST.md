@@ -485,7 +485,7 @@ Coverage:
 
 ### DYN-VFY-009 ACL2 final open-extension boundary POC
 
-狀態：Partial pass；production SQL / disabled-user / browser Playwright / alpha12 open-provider / formal public 81 + loopback 82 deploy gates 已通過，fallback cleanup 仍未完成。
+狀態：Partial pass；production SQL / disabled-user / browser Playwright / alpha12 open-provider / formal public 81 + loopback 82 deploy gates 已通過。2026-07-03 package-startup gate 已推進到 PTCS beta71 / Dynamic beta61 / Spa.ACL alpha11 / Spa.Login alpha13，並通過 NoGithubOAuth dynamic-port no-wait；fallback cleanup 與 beta71 browser/service rerun 仍未完成。
 
 Verifier：`src\poc.full.nuget.journal.ACL2.fsx`。
 
@@ -529,7 +529,7 @@ Passed assertions：
 - actor echo、PingPong stop/re-register、actor reuse after stop 通過。
 - production-SQL mode 使用 encrypted SQL file/key args，不輸出 plaintext secret。
 - wrong-password login 與 disabled-terry login 都回 401。
-- browser Playwright verifies admin/Terry local-login cookies through the open Login provider, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, client-extension manifest/script asset loading, active Login extension renderer, and active ACL snapshot observer/capability provider with exact PTCS beta70 / Dynamic beta60 / Spa.ACL alpha10 / Spa.Login alpha12 packages.
+- browser Playwright verifies admin/Terry local-login cookies through the open Login provider, ACL capability UI, Dynamic FormInput send/reply, live ActorFabric echo, client-extension manifest/script asset loading, active Login extension renderer, and active ACL snapshot observer/capability provider with exact PTCS beta70 / Dynamic beta60 / Spa.ACL alpha10 / Spa.Login alpha12 packages. The latest startup/package gate uses PTCS beta71 / Dynamic beta61 / Spa.ACL alpha11 / Spa.Login alpha13; browser rerun on that set remains pending.
 - formal service verifies public 81 OAuth redirect, loopback 82 SQL local login, HttpOnly session cookie, `/acl/api/snapshot`, and direct Spa.ACL/Spa.Login script marker fetches from the extracted package set.
 
 Remaining assertions：

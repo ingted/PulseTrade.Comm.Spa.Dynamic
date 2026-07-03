@@ -156,7 +156,7 @@ module PtcsAclExtension =
         options.Hub.RegisterClientExtension(
             { ExtensionId = extensionId
               DisplayName = Some "PTCS.ACL"
-              MetadataJson = Some """{"kind":"ptcs-acl","package":"PulseTrade.Comm.Spa.ACL","version":"0.1.0-alpha10","clientCapabilityProvider":true}"""
+              MetadataJson = Some """{"kind":"ptcs-acl","package":"PulseTrade.Comm.Spa.ACL","version":"0.1.0-alpha11","clientCapabilityProvider":true}"""
               ScriptUrls = [ scriptUrl ]
               AppendPageShapes = [] })
         |> ignore

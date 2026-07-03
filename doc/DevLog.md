@@ -754,3 +754,10 @@ Implementation status:
 - User report from another machine: production-SQL NoGithubOAuth startup reached PTCS.Login listener 82, then the inherited startup `ActorArgu.sendDurableAsync` server probe attempted to persist a page/value event and timed out in `Akka.Persistence.Sql`.
 - Change: NoGithubOAuth live-host mode now skips that startup server probe unless `--no-wait` explicitly requests the full verifier proof.
 - Verification passed: `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoGithubOAuth.fsx -- --if-dyna-port --no-wait --demo --pcsl-root C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\.pcsl\verify.nogithub.local-login.skipprobe.20260703_1158 --delivery-profile nogithub-local-skipprobe-20260703 --actor-name nogithub-local-skipprobe-echo`.
+
+## 2026-07-03 - FAkka.WebSocket stack-safe package alignment
+
+- Advanced Dynamic to `0.1.3-beta61`, Spa.ACL to `0.1.0-alpha11`, and Spa.Login to `0.1.0-alpha13`, all consuming exact `PulseTrade.Comm.Spa [0.2.5-beta71]`.
+- PTCS beta71 consumes `FAkka.WebSocket [1.569.101.301-win12]`, which replaces the net10 recursive Suave WebSocket read loop with an iterative loop to prevent stack overflow on long-lived/busy sessions.
+- Updated ACL2 scripts (`poc.full.nuget.journal.ACL2.fsx`, `full.nuget.journal.ACL2.NoGithubOAuth.fsx`, `full.nuget.journal.ACL2.NoLogin.fsx`) to the beta71/beta61/alpha11/alpha13 package set.
+- NuGet push returned `Created` for Dynamic beta61, Spa.ACL alpha11, and Spa.Login alpha13. Verification passed: PTC `verify-ptcs-dynamic-nuget-bundle.fsx` and `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoGithubOAuth.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\verification\ptcsDynamicNoGithubOAuth\pcsl_win12_20260703_01 --delivery-profile nogithub-win12 --actor-name nogithub-win12-echo`.
