@@ -1,9 +1,11 @@
 //
 // Start a PTCS + PTCS.Dynamic host from NuGet packages with a durable Akka
 // Persistence journal plus PTCS.ACL/PTCS.Login open extension integration.
-// This variant routes ActorArgu FormInput sends through a proxy actor before
-// invoking a native actor that only accepts string messages and replies
-// fCell2<string>.
+// This variant routes ActorArgu FormInput sends through one proxy actor per
+// target key before invoking a native actor that only accepts string messages
+// and replies fCell2<string>. PTCS still routes by key[0]; the proxy target
+// key stores proxy address first while each proxy actor constructor binds the
+// native actor address.
 //
 // No GitHub OAuth listener is mounted. Port 82 uses the PTCS.Login
 // username/password provider and owns the hub, journal, actor registry,
@@ -23,7 +25,7 @@
 //      stopEchoActor()
 //      recreateEchoActor()
 //    These helper names are kept compatible with the base script, but they now
-//    manage the ActorArgu proxy actor. The native string actor is spawned
+//    manage the first ActorArgu proxy actor. The native string actor is spawned
 //    separately under actorName + "-native-string" unless --native-actor-address
 //    points the proxy at an external Akka actor.
 //    Call stopPocFullNugetJournalAclHosts() to stop the web host.
@@ -1168,16 +1170,18 @@ let actorRegistrySink : ActorRegistryEventSink =
 let ingress =
     durableIngressOptions deliveryProfile |> CommSpaDurableIngress.createVolatile
 
-let actorRegistrySettings =
+let proxyActorRegistrySettings proxyKind nativeAddress =
     ActorRegistrySettings.create actorRegistrySink
-    |> ActorRegistrySettings.withRegistryId "ptcs-dynamic-poc-full-nuget-journal-byproxy"
+    |> ActorRegistrySettings.withRegistryId ("ptcs-dynamic-poc-full-nuget-journal-byproxy-" + proxyKind)
     |> ActorRegistrySettings.withNodeId (Some "ptcs.dynamic.poc-full-nuget-journal")
     |> ActorRegistrySettings.withRole (Some "ptcs-dynamic-journal")
-    |> ActorRegistrySettings.withTags [ "ptcs-dynamic"; "poc-full-nuget-journal"; "by-proxy"; "actor-argu" ]
+    |> ActorRegistrySettings.withTags [ "ptcs-dynamic"; "poc-full-nuget-journal"; "by-proxy"; "actor-argu"; proxyKind ]
     |> ActorRegistrySettings.withMetadata (
         Map.ofList
             [ "ptcs.dynamic.poc", "full.nuget.journal.ACL2.NoGithubOAuth.ByProxy.fsx"
               "ptcs.dynamic.actor.kind", "actor-argu-string-proxy"
+              "ptcs.dynamic.proxy.kind", proxyKind
+              "ptcs.dynamic.proxy.nativeActorAddress", nativeAddress
               "ptcs.dynamic.journal.db", journalBootstrap.DatabaseName
               "ptcs.dynamic.pcsl.root", pcslRoot ])
 
@@ -1260,36 +1264,51 @@ match localNativeStringRef with
 | Some _ -> tryForceReplay "actor-registry-after-native-string-register" CommSpaActorRegistry.registryStreamKey |> ignore
 | None -> ()
 
-let actorOfRegisteredEcho () =
+let actorOfRegisteredProxy proxyName proxyKind nativeAddress =
     fabric.System.ActorOfRegistered(
-        actorRegistrySettings,
-        Props.Create(fun () -> PocFullNugetJournalActorArguStringProxyActor(fabric.System, nativeStringActorAddress, TimeSpan.FromSeconds 15.0)),
-        actorName)
+        proxyActorRegistrySettings proxyKind nativeAddress,
+        Props.Create(fun () -> PocFullNugetJournalActorArguStringProxyActor(fabric.System, nativeAddress, TimeSpan.FromSeconds 15.0)),
+        proxyName)
 
-let spawnEchoActorRegisteredStrict () =
-    match actorOfRegisteredEcho () with
+let spawnProxyActorRegisteredStrict proxyName proxyKind nativeAddress =
+    match actorOfRegisteredProxy proxyName proxyKind nativeAddress with
     | Ok registered -> registered.Actor
     | Error error ->
-        invalidOp $"ActorRegistry ActorOfRegistered failed actor={actorName} kind={error.Kind} message={error.Message}"
+        invalidOp $"ActorRegistry ActorOfRegistered failed actor={proxyName} kind={error.Kind} message={error.Message}"
 
-let spawnEchoActorRegisteredOrReuseLive () =
-    match actorOfRegisteredEcho () with
+let spawnProxyActorRegisteredOrReuseLive proxyName proxyKind nativeAddress =
+    match actorOfRegisteredProxy proxyName proxyKind nativeAddress with
     | Ok registered -> registered.Actor
     | Error error when isActorNameNotUnique error ->
-        match tryResolveUserActor actorName with
+        match tryResolveUserActor proxyName with
         | Some existing ->
-            printfn "Proxy actor already exists; reusing %s. Use recreateEchoActor() to stop, wait, and reuse the same actor name." (existing.Path.ToStringWithoutAddress())
+            printfn "Proxy actor already exists; reusing %s. Use recreateEchoActor() to stop, wait, and reuse the first proxy actor name." (existing.Path.ToStringWithoutAddress())
             existing
         | None ->
-            invalidOp $"ActorRegistry ActorOfRegistered found duplicate name but could not resolve existing actor={actorName} message={error.Message}"
+            invalidOp $"ActorRegistry ActorOfRegistered found duplicate name but could not resolve existing actor={proxyName} message={error.Message}"
     | Error error ->
-        invalidOp $"ActorRegistry ActorOfRegistered failed actor={actorName} kind={error.Kind} message={error.Message}"
+        invalidOp $"ActorRegistry ActorOfRegistered failed actor={proxyName} kind={error.Kind} message={error.Message}"
+
+let spawnEchoActorRegisteredStrict () =
+    spawnProxyActorRegisteredStrict actorName "echo-target" nativeStringActorAddress
+
+let spawnEchoActorRegisteredOrReuseLive () =
+    spawnProxyActorRegisteredOrReuseLive actorName "echo-target" nativeStringActorAddress
 
 let mutable echoRef = spawnEchoActorRegisteredOrReuseLive ()
 let mutable echoActorStopped = false
 
 let actorAddress =
     fabric.NodeAddress.TrimEnd('/') + echoRef.Path.ToStringWithoutAddress()
+
+let pfcfProtoTypingProxyActorName =
+    actorName + "-pfcf-proxy"
+
+let pfcfProtoTypingProxyRef =
+    spawnProxyActorRegisteredOrReuseLive pfcfProtoTypingProxyActorName "pfcf-prototype-target" nativeStringActorAddress
+
+let pfcfProxyActorAddress =
+    fabric.NodeAddress.TrimEnd('/') + pfcfProtoTypingProxyRef.Path.ToStringWithoutAddress()
 
 tryForceReplay "actor-registry-after-register" CommSpaActorRegistry.registryStreamKey |> ignore
 
@@ -1333,7 +1352,7 @@ let pingPongTargetKeys =
     [ pingPongActorAddress; templateKey; "--say \"ping\" --set-count 2 --mode fast --tag acl pingpong" ]
 
 let pfcfProtoTypingTargetKeys =
-    [ actorAddress; pfcfProtoTypingTemplateKey; pfcfProtoTypingCanonicalArgString ]
+    [ pfcfProxyActorAddress; pfcfProtoTypingTemplateKey; pfcfProtoTypingCanonicalArgString ]
 
 let actorArguPage pageId title description =
     let basePage = ActorArgu.fCellChatPage pageId title pageId
@@ -1422,7 +1441,7 @@ let verifyPfcfProtoTypingTemplate () =
     | Error error -> failwith $"PFCF prototype canonical arg string should parse: {error}"
 
     let parsedTarget =
-        DynamicArgStringTarget.scan pfcfProtoTypingTemplateRegistration actorAddress pfcfProtoTypingCanonicalArgString
+        DynamicArgStringTarget.scan pfcfProtoTypingTemplateRegistration pfcfProxyActorAddress pfcfProtoTypingCanonicalArgString
 
     let rebuiltRawArgu =
         DynamicArgStringTarget.buildRawArgu parsedTarget
@@ -1432,7 +1451,7 @@ let verifyPfcfProtoTypingTemplate () =
         $"PFCF prototype raw command rebuild mismatch. expected={pfcfProtoTypingCanonicalArgString}; actual={rebuiltRawArgu}"
 
     let request: DynamicArguResolveTargetRequest =
-        { Keys = [| actorAddress; pfcfProtoTypingTemplateKey; pfcfProtoTypingCanonicalArgString |] }
+        { Keys = [| pfcfProxyActorAddress; pfcfProtoTypingTemplateKey; pfcfProtoTypingCanonicalArgString |] }
 
     let requestJson =
         JsonSerializer.Serialize(request, ArguFormSchema.jsonOptions)
@@ -1812,6 +1831,14 @@ try
     require (not (chatHtml.Contains("option value=\"actor-dynamic\""))) "journal POC must not expose +page Actor Dynamic shape."
     require (actorsHtml.Length > 0) "actors page should be served."
     require (actorsSnapshotJson.Contains(actorName, StringComparison.Ordinal)) "actors snapshot should include the ActorArgu proxy actor."
+    require (actorsSnapshotJson.Contains(pfcfProtoTypingProxyActorName, StringComparison.Ordinal)) "actors snapshot should include the PFCF ActorArgu proxy actor."
+    require
+        (not (String.Equals(actorAddress, pfcfProxyActorAddress, StringComparison.Ordinal)))
+        "echo target and PFCF target should use different per-target proxy actors."
+    require
+        (String.Equals(echoTargetKeys.Head, actorAddress, StringComparison.Ordinal)
+         && String.Equals(pfcfProtoTypingTargetKeys.Head, pfcfProxyActorAddress, StringComparison.Ordinal))
+        "target key[0] should remain the PTCS route actor and should point to the per-target proxy actor."
     if localNativeStringRef.IsSome then
         require (actorsSnapshotJson.Contains(nativeStringActorName, StringComparison.Ordinal)) "actors snapshot should include the local native string actor behind the proxy."
     let actorsNodeCount, actorsActorCount = readActorsSnapshotCounts actorsSnapshotJson
@@ -1921,8 +1948,9 @@ try
     printfn "SQL journal   db=%s created=%b existed=%b" journalBootstrap.DatabaseName journalBootstrap.Created journalBootstrap.AlreadyExisted
     printfn "Persistence   namespace=%s prefix=%s" persistenceNamespace.PersistenceNamespace persistenceNamespace.PersistenceIdPrefix
     printfn "Projection    backend=pcsl-actor-proxy clearBeforeStart=%b seededDefaultPage=%b" clearPcslBeforeStart seededDefaultPage
-    printfn "Proxy actor   %s" actorAddress
-    printfn "Native actor  %s (%s)" nativeStringActorAddress (if localNativeStringRef.IsSome then "local-demo" else "external")
+    printfn "Echo proxy actor %s -> %s" actorAddress nativeStringActorAddress
+    printfn "PFCF proxy actor %s -> %s" pfcfProxyActorAddress nativeStringActorAddress
+    printfn "Native actor     %s (%s)" nativeStringActorAddress (if localNativeStringRef.IsSome then "local-demo" else "external")
     printfn "PingPong actor %s" pingPongActorAddress
     printfn "Template key  %s" templateKey
     printfn "PFCF template key %s" pfcfProtoTypingTemplateKey
