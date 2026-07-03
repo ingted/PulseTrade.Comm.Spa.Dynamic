@@ -114,7 +114,7 @@ let defaultArgumentsText =
     *)
     printfn "default ports: local-login=82, cluster=%d" defaultClusterPort
     //$"""--host 0.0.0.0 --github-port 81 --local-port 82 --github-public-base-url "https://my-ai.co.in:81" --github-oauth-client-id-path "{pathArg defaultGitHubOAuthClientIdPath}" --github-oauth-client-secret-path "{pathArg defaultGitHubOAuthClientSecretPath}" --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --demo """
-    $"""--sql-connection-string-encrypted-file SQLConn.trusted.enc.txt --sql-private-key-path myKey.private.txt --host 0.0.0.0 --local-port 82 --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --demo """
+    $"""--sql-connection-string-encrypted-file SQLConn.trusted.enc.txt --sql-private-key-path myKey.private.txt --host 0.0.0.0 --local-port 82 --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --startup-probe --demo """
 
 
 type CliArgs =
@@ -352,11 +352,22 @@ type PFCF_AKKA_CMD_FOR_ProtoTyping =
     interface IArgParserTemplate with
         member _.Usage = ""
 
+let debugConsoleLock = obj()
+
+let debugPrint label message =
+    lock debugConsoleLock (fun () ->
+        printfn "[%s][%s][tid=%d] %s" (DateTimeOffset.Now.ToString("o")) label Thread.CurrentThread.ManagedThreadId message
+        Console.Out.Flush())
+
 type PocFullNugetJournalEchoActor() as this =
     inherit ReceiveActor()
 
     do
         this.Receive<ActorArguTargetCommand>(fun (command: ActorArguTargetCommand) ->
+            debugPrint
+                "echo-actor"
+                $"self={this.ActorCtx.Self.Path}; sender={this.ActorCtx.Sender.Path}; commandId={command.CommandId}; raw={command.RawArgu}"
+
             let replyText =
                 "poc.full.nuget.journal echo raw="
                 + command.RawArgu
@@ -382,6 +393,8 @@ type PocFullNugetJournalPingPongActor() as this =
 
     do
         this.Receive<string>(fun text ->
+            debugPrint "pingpong-string" $"self={this.ActorCtx.Self.Path}; sender={this.ActorCtx.Sender.Path}; text={text}"
+
             let reply =
                 if String.Equals(text, "ping", StringComparison.OrdinalIgnoreCase) then
                     "pong"
@@ -398,6 +411,10 @@ type PocFullNugetJournalPingPongActor() as this =
         |> ignore
 
         this.Receive<ActorArguTargetCommand>(fun (command: ActorArguTargetCommand) ->
+            debugPrint
+                "pingpong-actor-argu"
+                $"self={this.ActorCtx.Self.Path}; sender={this.ActorCtx.Sender.Path}; commandId={command.CommandId}; raw={command.RawArgu}"
+
             let reply: ActorArguTargetReply =
                 { Value = fCell2.S("poc.full.nuget.journal.acl pingpong raw=" + command.RawArgu)
                   Direction = Some "inbound-message"
@@ -413,10 +430,15 @@ type PocFullNugetJournalNativeStringActor() as this =
 
     do
         this.Receive<string>(fun rawArgu ->
+            debugPrint
+                "native-string-actor"
+                $"RECEIVED self={this.ActorCtx.Self.Path}; sender={this.ActorCtx.Sender.Path}; raw={if isNull rawArgu then "<null>" else rawArgu}"
+
             let replyText =
                 "native-string-actor fcell2 reply raw="
                 + (if isNull rawArgu then "" else rawArgu)
 
+            debugPrint "native-string-actor" $"REPLY self={this.ActorCtx.Self.Path}; reply={replyText}"
             this.ActorCtx.Sender.Tell(fCell2<string>.S replyText, this.ActorCtx.Self))
         |> ignore
 
@@ -431,6 +453,10 @@ type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, nati
             let selfRef = this.ActorCtx.Self
             let rawArgu = if isNull command.RawArgu then "" else command.RawArgu
 
+            debugPrint
+                "actor-argu-proxy"
+                $"RECEIVED self={selfRef.Path}; sender={replyTo.Path}; commandId={command.CommandId}; command.ActorAddress={command.ActorAddress}; nativeActorAddress={nativeActorAddress}; raw={rawArgu}"
+
             async {
                 let! nativeResult =
                     async {
@@ -438,12 +464,15 @@ type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, nati
                             let nativeSelection =
                                 actorSystem.ActorSelection(nativeActorAddress)
 
+                            debugPrint "actor-argu-proxy" $"ASK native={nativeActorAddress}; timeout={askTimeout}; raw={rawArgu}"
                             let! nativeReply =
                                 nativeSelection.Ask<fCell2<string>>(rawArgu, askTimeout)
                                 |> Async.AwaitTask
 
+                            debugPrint "actor-argu-proxy" $"NATIVE-REPLY native={nativeActorAddress}; reply={nativeReply}"
                             return Ok nativeReply
                         with ex ->
+                            debugPrint "actor-argu-proxy" $"NATIVE-ERROR native={nativeActorAddress}; error={ex.GetType().FullName}: {ex.Message}"
                             return Error ex
                     }
 
@@ -458,6 +487,7 @@ type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, nati
                           Direction = Some "durable-proxy-error"
                           Tags = Some [ "poc-full-nuget-journal"; "by-proxy"; "error" ] }
 
+                debugPrint "actor-argu-proxy" $"REPLY-TO-PTCS self={selfRef.Path}; replyTo={replyTo.Path}; reply={reply.Value}"
                 replyTo.Tell(reply, selfRef)
             }
             |> Async.StartImmediate)
