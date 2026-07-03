@@ -190,6 +190,166 @@ type PocFullNugetJournalArgu =
             | Tag _ -> "Repeatable list input sample."
             | Verbose -> "Boolean flag sample."
 
+type GenEnum_FOR_ProtoTyping =
+    | CreateTable
+    | FSRecord
+
+type ReferenceDateMode_FOR_ProtoTyping =
+    | ModeAccountingDate
+    | ModeTradingDate
+
+type PFCF_AKKA_Terry_FOR_ProtoTyping =
+    | List
+    interface IArgParserTemplate with
+        member _.Usage = ""
+
+type PFCF_AKKA_WenZone_FOR_ProtoTyping =
+    | Days
+    interface IArgParserTemplate with
+        member _.Usage = ""
+
+type PFCF_AKKA_CMD_DATA_RANGE_FOR_ProtoTyping =
+    | ReferenceDateMode of ReferenceDateMode_FOR_ProtoTyping
+    | Between of decimal * decimal
+    | After of decimal
+    | AfterT of decimal
+    | Before of decimal
+    | BeforeT of decimal
+    | LeftCurReferenceDate of decimal
+    | LeftTCurReferenceDate of decimal
+    | AfterCurReferenceDate
+    | AfterTCurReferenceDate
+    | BeforeCurReferenceDate
+    | BeforeTCurReferenceDate
+    | NoFilter
+    | Calibrate2CurDayIfLargerThanCurDay
+    interface IArgParserTemplate with
+        member _.Usage = ""
+    static member val MAD = ReferenceDateMode ModeAccountingDate with get
+    static member val MTD = ReferenceDateMode ModeTradingDate with get
+
+type PFCF_AKKA_CMD_GM_FOR_ProtoTyping =
+    | RiskScore of decimal
+    | Branch of string
+    | IfRealTime of bool
+    interface IArgParserTemplate with
+        member _.Usage = ""
+
+type ClosingNoMode_FOR_ProtoTyping =
+    | ParentChildShared
+    | ParentChildSeparated
+
+type PFCFGTC_FOR_ProtoTyping =
+    | GF
+    | GC
+    | GOD
+    | GOI
+    | GMA
+    | GS
+    | GE
+
+type CooperativeType_FOR_ProtoTyping =
+    | CONTRACTS
+    | TRADING
+    | COVER
+    | MARGIN
+    | OI
+    | ORDERS
+
+type PFCF_GTC_CONF_FOR_ProtoTyping =
+    | FillDTFormatYYYYMMDD
+    | ShowOrderSN
+    | ShowTXSN
+    | OrderByTXDT
+    | OrderBySQDT
+    | OrderByOIDT
+    | GroupDownToDayInsteadOfContractBase
+    | FloorAvgPrice
+    | CathayBKTaifexFill
+    | CathayBKTaifexOI
+    | CathayBKNonTaifexFill
+    | CathayBKNonTaifexOI
+    | SCSBIntradayOI
+    | SCSBRiskFactor
+    | SCSBIntradayOIByFill
+    | SCSBIntradayOrder
+    | SCSBIntradayFill
+    | SCSBAfterHoursFill
+    | SCSBTradeSummary
+    | SCSBOpenPositionSummaryF
+    | SCSBOpenPositionSummaryT
+    | SCSBMargin
+    | OIInf
+    | TAIFEX
+    | ASIA
+    | EURUS
+    | Empty
+    | FillSquareCombine
+    | OP_OI_ShowMarketValue
+    | Default
+    | FeeIncludeTax
+    | ItsGTC1
+    | ItsGTC2
+    | ItsGTC4
+    | ItsGTC5
+    | ItsGTC8
+    | SubAccountIncluded
+
+type PFCF_AKKA_CMD_FOR_ProtoTyping =
+    | SimpleAction of action_name: string
+    | Entrust of id: string * accountingDay: decimal
+    | Transglobe of brokerBranch: string * id: string * accountingDay: decimal
+    | PFCFGTC of PFCFGTC_FOR_ProtoTyping list
+    | PFCFEDX of mode: string
+    | PFCFGTCCONF of PFCF_GTC_CONF_FOR_ProtoTyping list
+    | BBA of 期貨商: string * 分公司: string * 母帳帳號: string
+    | Entie of mode: int
+    | TSIT
+    | USITC
+    | PGIM
+    | FRANKLIN
+    | CathayBank
+    | RID of string
+    | Cooperative of CooperativeType_FOR_ProtoTyping
+    | MLI of brokerBranch: string * id: string
+    | ParentChild of int
+    | ParentChilds of int list
+    | FractionalQuote of if全轉分數報價orOnlyFor原分數報價: bool * 自訂分母值: float
+    | DecimalQuote of 小數位數: int * ``0四捨五入1無條件捨去2無條件進位3無條件截斷``: int
+    | Round of 非分數報價小數位數: int * 分數報價分數部分小數位數: int * 收支欄位小數位數: int
+    | TW
+    | NonTW
+    | Futures
+    | Options
+    | TO of float
+    | Debug of string
+    | ClosingNoMode of ClosingNoMode_FOR_ProtoTyping
+    | [<CliPrefix(CliPrefix.None)>] DataRange of ParseResults<PFCF_AKKA_CMD_DATA_RANGE_FOR_ProtoTyping>
+    | [<CliPrefix(CliPrefix.None)>] GM of ParseResults<PFCF_AKKA_CMD_GM_FOR_ProtoTyping>
+    | [<CliPrefix(CliPrefix.None)>] Terry of ParseResults<PFCF_AKKA_Terry_FOR_ProtoTyping>
+    | [<CliPrefix(CliPrefix.None)>] WZ of ParseResults<PFCF_AKKA_WenZone_FOR_ProtoTyping>
+    | GenByColMeta of ifTw: bool * ifOrig: bool * schemaName: string * genType: GenEnum_FOR_ProtoTyping
+    | GenFromDWQuery of sql0F1T2F: int * sqlB64: string * schName: string * tblName: string * genType: GenEnum_FOR_ProtoTyping * ifOrig: bool * ifSchemaOnly: bool
+    | TableName of string list
+    | OutCreateTable of string
+    | OutCsv of localDirectory: string * fileName: string * csvOnly: bool
+    | CsvOnly
+    | CsvEncoding of encodingName: string
+    | CsvDelimiter of delimiter: string
+    | CsvHeader of includeHeader: bool
+    | OutExcel of localDirectory: string * fileName: string * excelOnly: bool
+    | ExcelOnly
+    | ExcelSheetName of sheetName: string
+    | ExcelHeader of includeHeader: bool
+    | FtpHost of host: string
+    | FtpPort of port: int
+    | FtpProfile of profileName: string
+    | FtpRemoteDirectory of remoteDirectory: string
+    | FtpCredentialSource of sourceName: string
+    | FtpRetryCount of retryCount: int
+    interface IArgParserTemplate with
+        member _.Usage = ""
+
 type PocFullNugetJournalEchoActor() as this =
     inherit ReceiveActor()
 
@@ -486,12 +646,24 @@ let defaultCanonicalArgString =
 
 let templateKey = "poc-full-nuget-journal-argu"
 
+let pfcfProtoTypingCanonicalArgString =
+    "--pfcfedx trivial --pfcfgtcconf OIInf TAIFEX FillSquareCombine OrderByTXDT CathayBKTaifexFill --to 90000 --parentchilds 2 5 --bba F008 000 9910357 --decimalquote 6 0 --round 6 4 2 datarange --referencedatemode ModeAccountingDate --between 20251104 20251104 --calibrate2curdayiflargerthancurday"
+
+let pfcfProtoTypingTemplateKey = "pfcf-akka-cmd-prototyping"
+
 let templateRegistration =
     DynamicArguTemplateRegistration.create
         templateKey
         typeof<PocFullNugetJournalArgu>
         DynamicArguAliasBinding.empty
         (Some defaultCanonicalArgString)
+
+let pfcfProtoTypingTemplateRegistration =
+    DynamicArguTemplateRegistration.create
+        pfcfProtoTypingTemplateKey
+        typeof<PFCF_AKKA_CMD_FOR_ProtoTyping>
+        DynamicArguAliasBinding.empty
+        (Some pfcfProtoTypingCanonicalArgString)
 
 if not ifDynaPort then
     requireTcpPortFree "GitHub OAuth HTTP listener" "--github-port" host githubPort
@@ -824,7 +996,7 @@ let githubApp =
     startPtcsHost "GitHub OAuth" (sprintf "%s/actors" githubClientBaseUrl) (fun () -> Server.startWithSharing siteSharing githubOptions)
 
 withStartupOutput (fun () ->
-    hub.useDynamicSdui(fabric.System, DynamicArguMetadata.empty, [ templateRegistration ])
+    hub.useDynamicSdui(fabric.System, DynamicArguMetadata.empty, [ templateRegistration; pfcfProtoTypingTemplateRegistration ])
     |> ignore
 
     hub.ListClientExtensions()
@@ -956,6 +1128,9 @@ let echoTargetKeys =
 let pingPongTargetKeys =
     [ pingPongActorAddress; templateKey; "--say \"ping\" --set-count 2 --mode fast --tag acl pingpong" ]
 
+let pfcfProtoTypingTargetKeys =
+    [ actorAddress; pfcfProtoTypingTemplateKey; pfcfProtoTypingCanonicalArgString ]
+
 let actorArguPage pageId title description =
     let basePage = ActorArgu.fCellChatPage pageId title pageId
 
@@ -984,7 +1159,8 @@ let actorPages =
 
 let targetBindings =
     [ echoTargetKeys, "Echo target"
-      pingPongTargetKeys, "PingPong target" ]
+      pingPongTargetKeys, "PingPong target"
+      pfcfProtoTypingTargetKeys, "PFCF prototype target" ]
 
 let registerDemoPageIfMissing (page: AppendPageDefinition) =
     let existingPage = hub.TryFindAppendPage page.PageId
@@ -1033,6 +1209,80 @@ let mutable pingPongActorStopped = false
 let require condition message =
     if not condition then
         failwith message
+
+let verifyPfcfProtoTypingTemplate () =
+    let argv = DynamicCommandLine.split pfcfProtoTypingCanonicalArgString
+
+    match DynamicArgStringTarget.validateByParser pfcfProtoTypingTemplateRegistration argv with
+    | Ok _ -> ()
+    | Error error -> failwith $"PFCF prototype canonical arg string should parse: {error}"
+
+    let parsedTarget =
+        DynamicArgStringTarget.scan pfcfProtoTypingTemplateRegistration actorAddress pfcfProtoTypingCanonicalArgString
+
+    let rebuiltRawArgu =
+        DynamicArgStringTarget.buildRawArgu parsedTarget
+
+    require
+        (String.Equals(rebuiltRawArgu, pfcfProtoTypingCanonicalArgString, StringComparison.Ordinal))
+        $"PFCF prototype raw command rebuild mismatch. expected={pfcfProtoTypingCanonicalArgString}; actual={rebuiltRawArgu}"
+
+    let request: DynamicArguResolveTargetRequest =
+        { Keys = [| actorAddress; pfcfProtoTypingTemplateKey; pfcfProtoTypingCanonicalArgString |] }
+
+    let requestJson =
+        JsonSerializer.Serialize(request, ArguFormSchema.jsonOptions)
+
+    let replyJson =
+        DynamicArguResolveEndpoint.handle [ pfcfProtoTypingTemplateRegistration ] requestJson
+
+    let reply =
+        JsonSerializer.Deserialize<DynamicArguResolveTargetReply>(replyJson, ArguFormSchema.jsonOptions)
+
+    require reply.Ok $"PFCF prototype Dynamic resolve should succeed: {reply.Error}"
+
+    let actualCases =
+        reply.Document.ArguFormSchema.UnionCases
+        |> Array.map _.Name
+
+    let expectedCases =
+        [| "PFCFEDX"; "PFCFGTCCONF"; "TO"; "ParentChilds"; "BBA"; "DecimalQuote"; "Round"; "DataRange" |]
+
+    let expectedCasesText =
+        String.concat "," expectedCases
+
+    let actualCasesText =
+        String.concat "," actualCases
+
+    require
+        (actualCases = expectedCases)
+        $"PFCF prototype projected cases mismatch. expected={expectedCasesText}; actual={actualCasesText}"
+
+    let rec flattenNode (node: SduiFormNode) =
+        seq {
+            yield node
+
+            for child in node.Children do
+                yield! flattenNode child
+
+            for item in node.Items do
+                yield! flattenNode item
+        }
+
+    let defaultValues binding =
+        reply.Document.Nodes
+        |> Seq.collect flattenNode
+        |> Seq.tryFind (fun node -> String.Equals(node.Binding, binding, StringComparison.Ordinal))
+        |> Option.map _.DefaultValues
+        |> Option.defaultValue [||]
+
+    require
+        (defaultValues "PFCFEDX.mode" = [| "trivial" |])
+        "PFCF prototype should project PFCFEDX.mode default from canonical arg string."
+
+    require
+        (defaultValues "PFCFGTCCONF.value" = [| "OIInf"; "TAIFEX"; "FillSquareCombine"; "OrderByTXDT"; "CathayBKTaifexFill" |])
+        "PFCF prototype should project PFCFGTCCONF list defaults from canonical arg string."
 
 let readActorsSnapshotCounts (jsonText: string) =
     use doc = JsonDocument.Parse(jsonText)
@@ -1286,6 +1536,7 @@ try
     require (hubActorCount > 0) $"hub actor projection should have actors, got {hubActorCount}."
     require (dynamicJs.Contains("dynamic-actors-page")) "Dynamic bundle should include ActorsPage renderer."
     require (dynamicJs.Contains("dynamic-argu-add-key")) "Dynamic bundle should include Add target key renderer."
+    verifyPfcfProtoTypingTemplate ()
 
     match serverProbe with
     | Some probe ->
@@ -1331,9 +1582,13 @@ try
     printfn "Actor address %s" actorAddress
     printfn "PingPong actor %s" pingPongActorAddress
     printfn "Template key  %s" templateKey
+    printfn "PFCF template key %s" pfcfProtoTypingTemplateKey
+    printfn "PFCF type name    %s" typeof<PFCF_AKKA_CMD_FOR_ProtoTyping>.FullName
     printfn "Echo target key     %s" (JsonSerializer.Serialize(echoTargetKeys |> List.toArray))
     printfn "PingPong target key %s" (JsonSerializer.Serialize(pingPongTargetKeys |> List.toArray))
+    printfn "PFCF target key     %s" (JsonSerializer.Serialize(pfcfProtoTypingTargetKeys |> List.toArray))
     printfn "Default arg   %s" defaultCanonicalArgString
+    printfn "PFCF arg      %s" pfcfProtoTypingCanonicalArgString
     printfn "Echo helpers  ensureEchoActorRegistered(); stopEchoActor(); recreateEchoActor()"
     printfn "Stop pingpong with stopPingPongActor()"
     printfn "Stop with     stopPocFullNugetJournalAclHosts()"

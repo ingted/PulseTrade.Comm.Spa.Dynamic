@@ -735,3 +735,10 @@ Implementation status:
 - The NoLogin ACL policy uses `BrowserAuthProvider=github-oauth` and binds `github:ingted` to `sys-admin`, so public ACL evaluation has a real browser auth provider without reintroducing username/password login.
 - No-wait verification intentionally avoids protected `/acl/api` / `/pages/api` HTTP matrix checks because there is no local session cookie provider. It still verifies health, journal/persistence health, ACL/Dynamic static assets, internal ActorFabric durable probe, PingPong stop request, and fixed-name Echo reuse.
 - Verification passed: `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoLogin.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\manual\ptcsDynamicNugetJournalAcl2\nologin_20260702_02`.
+
+## 2026-07-03 - ACL2 NoLogin PFCF prototype Argu template
+
+- Extended `src\full.nuget.journal.ACL2.NoLogin.fsx` with `PFCF_AKKA_CMD_FOR_ProtoTyping` and related nested DU types from the PFCF prototyping shape.
+- Registered the Dynamic Argu template key `pfcf-akka-cmd-prototyping` and seeded a default target key for the GitHub-only NoLogin script.
+- The prototype intentionally models `PFCFEDX` as `mode:string` so current prototyping input `--pfcfedx trivial` is parsed and rendered as a FormInput text field; `ParseResults<PFCF_AKKA_CMD_DATA_RANGE_FOR_ProtoTyping>` is preserved for `datarange` tail ordering.
+- Verification passed: `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoLogin.fsx -- --if-dyna-port --no-wait --demo --pcsl-root C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\.pcsl\verify.pfcf.nologin.20260703_0913 --delivery-profile nologin-pfcf-20260703 --actor-name nologin-pfcf-echo`.

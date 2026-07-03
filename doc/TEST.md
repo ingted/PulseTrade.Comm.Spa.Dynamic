@@ -535,3 +535,30 @@ Passed assertions：
 Remaining assertions：
 
 - transitional fallback cleanup removes dead PTCS core Login/ACL browser behavior after downstream consumers migrate。
+
+### DYN-VFY-009B ACL2 NoLogin PFCF prototype target
+
+狀態：Pass。
+
+Verifier：`src\full.nuget.journal.ACL2.NoLogin.fsx`。
+
+目的：
+
+- 讓 GitHub-only NoLogin script 能在不引用正式 PFCF package 的情況下，提供可被 PTCS.Dynamic FormInput 解析的 `PFCF_AKKA_CMD_FOR_ProtoTyping`。
+- 驗證 target key `[ actorAddress; "pfcf-akka-cmd-prototyping"; canonicalArgString ]` 可被 backend Dynamic resolver 解析。
+- 保留 `ParseResults<PFCF_AKKA_CMD_DATA_RANGE_FOR_ProtoTyping>` 的 `datarange` tail ordering。
+
+Command passed on 2026-07-03：
+
+```powershell
+dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoLogin.fsx -- --if-dyna-port --no-wait --demo --pcsl-root C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\.pcsl\verify.pfcf.nologin.20260703_0913 --delivery-profile nologin-pfcf-20260703 --actor-name nologin-pfcf-echo
+```
+
+Passed assertions：
+
+- `pfcf-akka-cmd-prototyping` template registration is active.
+- canonical arg string parses and rebuilds exactly.
+- backend Dynamic resolve returns parsed cases only: `PFCFEDX`, `PFCFGTCCONF`, `TO`, `ParentChilds`, `BBA`, `DecimalQuote`, `Round`, `DataRange`.
+- `PFCFEDX.mode` default is `trivial`.
+- `PFCFGTCCONF` list defaults are `OIInf`, `TAIFEX`, `FillSquareCombine`, `OrderByTXDT`, `CathayBKTaifexFill`.
+- NoLogin remains GitHub OAuth only; PTCS.Login package and local username/password login stay disabled.
