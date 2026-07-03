@@ -562,3 +562,31 @@ Passed assertions：
 - `PFCFEDX.mode` default is `trivial`.
 - `PFCFGTCCONF` list defaults are `OIInf`, `TAIFEX`, `FillSquareCombine`, `OrderByTXDT`, `CathayBKTaifexFill`.
 - NoLogin remains GitHub OAuth only; PTCS.Login package and local username/password login stay disabled.
+
+### DYN-VFY-009C ACL2 NoGithubOAuth local-login variant
+
+狀態：Pass。
+
+Verifier：`src\full.nuget.journal.ACL2.NoGithubOAuth.fsx`。
+
+目的：
+
+- 以 `src\full.nuget.journal.ACL2.NoLogin.fsx` 的 Dynamic/PFCF prototype path 為基礎，但移除 GitHub OAuth listener。
+- 驗證同一套 ACL2 local-login / ACL policy / PTCS.Login extension path 可獨立在 82 port 使用。
+- 確認腳本不讀 GitHub OAuth client id/secret，也不啟動 GitHub OAuth host。
+
+Command passed on 2026-07-03：
+
+```powershell
+dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoGithubOAuth.fsx -- --if-dyna-port --no-wait --demo --pcsl-root C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\.pcsl\verify.nogithub.local-login.20260703_1027 --delivery-profile nogithub-local-20260703 --actor-name nogithub-local-echo
+```
+
+Passed assertions：
+
+- `--if-dyna-port --no-wait` 可使用 free local-login port 啟動 single listener。
+- fixed-port mode 預設只使用 82 local-login listener；無 GitHub OAuth listener。
+- local sys-admin / Terry login 皆可建立 session cookie。
+- ACL matrix 保持 WZ/sys-admin full rights 與 Terry黑粉 restricted rights。
+- protected HTTP differences、PTCS.Login / PTCS.ACL extension script assets、Dynamic bundle markers 皆通過。
+- PFCF prototype target key `pfcf-akka-cmd-prototyping` 保持可解析。
+- PingPong stop filtering 與 Echo fixed-name reuse 通過。

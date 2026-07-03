@@ -742,3 +742,9 @@ Implementation status:
 - Registered the Dynamic Argu template key `pfcf-akka-cmd-prototyping` and seeded a default target key for the GitHub-only NoLogin script.
 - The prototype intentionally models `PFCFEDX` as `mode:string` so current prototyping input `--pfcfedx trivial` is parsed and rendered as a FormInput text field; `ParseResults<PFCF_AKKA_CMD_DATA_RANGE_FOR_ProtoTyping>` is preserved for `datarange` tail ordering.
 - Verification passed: `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoLogin.fsx -- --if-dyna-port --no-wait --demo --pcsl-root C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\.pcsl\verify.pfcf.nologin.20260703_0913 --delivery-profile nologin-pfcf-20260703 --actor-name nologin-pfcf-echo`.
+
+## 2026-07-03 - ACL2 NoGithubOAuth local-login variant
+
+- Added `src\full.nuget.journal.ACL2.NoGithubOAuth.fsx` as the local-login-only ACL2 script variant.
+- The script starts only the PTCS.Login host, defaults fixed mode to port 82, keeps PTCS.ACL/PTCS.Login/Dynamic/PFCF prototype active, and removes the GitHub OAuth listener/client-id/secret path.
+- Verification passed: `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoGithubOAuth.fsx -- --if-dyna-port --no-wait --demo --pcsl-root C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\.pcsl\verify.nogithub.local-login.20260703_1027 --delivery-profile nogithub-local-20260703 --actor-name nogithub-local-echo`.
