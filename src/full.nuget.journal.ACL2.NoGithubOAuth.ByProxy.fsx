@@ -24,7 +24,8 @@
 //      recreateEchoActor()
 //    These helper names are kept compatible with the base script, but they now
 //    manage the ActorArgu proxy actor. The native string actor is spawned
-//    separately under actorName + "-native-string".
+//    separately under actorName + "-native-string" unless --native-actor-address
+//    points the proxy at an external Akka actor.
 //    Call stopPocFullNugetJournalAclHosts() to stop the web host.
 //
 
@@ -128,6 +129,7 @@ type CliArgs =
     | Sql_Acl_Table of string
     | Delivery_Profile of string
     | Actor_Name of string
+    | Native_Actor_Address of string
     | Cluster_Port of int
     | Clear_Pcsl_Before_Start
     | No_Wait
@@ -152,6 +154,7 @@ type CliArgs =
             | Sql_Acl_Table _ -> "ACL policy snapshot table for production-sql proof. Default: AclPolicySnapshot."
             | Delivery_Profile _ -> "Durable ingress profile id."
             | Actor_Name _ -> "Proxy actor name under /user."
+            | Native_Actor_Address _ -> "Optional native actor address. When absent, the script spawns a local string -> fCell2<string> demo actor."
             | Cluster_Port _ -> "Local Akka cluster port."
             | Clear_Pcsl_Before_Start -> "Clear the PCSL projection root before startup. This does not delete the SQL journal."
             | No_Wait -> "Start, verify /healthz and /chat markers, then stop."
@@ -410,7 +413,7 @@ type PocFullNugetJournalNativeStringActor() as this =
 
     member _.ActorCtx: IActorContext = ActorBase.Context
 
-type PocFullNugetJournalActorArguStringProxyActor(nativeActor: IActorRef, askTimeout: TimeSpan) as this =
+type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, nativeActorAddress: string, askTimeout: TimeSpan) as this =
     inherit ReceiveActor()
 
     do
@@ -423,8 +426,11 @@ type PocFullNugetJournalActorArguStringProxyActor(nativeActor: IActorRef, askTim
                 let! nativeResult =
                     async {
                         try
+                            let nativeSelection =
+                                actorSystem.ActorSelection(nativeActorAddress)
+
                             let! nativeReply =
-                                nativeActor.Ask<fCell2<string>>(rawArgu, askTimeout)
+                                nativeSelection.Ask<fCell2<string>>(rawArgu, askTimeout)
                                 |> Async.AwaitTask
 
                             return Ok nativeReply
@@ -603,6 +609,13 @@ let deliveryProfile =
 let actorName =
     let defaultValue = defaultParsed.GetResult(Actor_Name, "nuget-journal-acl-byproxy")
     overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Actor_Name, defaultValue)) |> Option.defaultValue defaultValue |> textOr "nuget-journal-acl-byproxy"
+
+let nativeActorAddressOverride =
+    overrideParsed
+    |> Option.bind (fun parsed -> parsed.TryGetResult <@ Native_Actor_Address @>)
+    |> Option.orElseWith (fun () -> defaultParsed.TryGetResult <@ Native_Actor_Address @>)
+    |> Option.map (fun value -> if isNull value then "" else value.Trim())
+    |> Option.filter (String.IsNullOrWhiteSpace >> not)
 
 let clusterPort =
     if ifDynaPort then
@@ -1229,18 +1242,28 @@ let spawnNativeStringActorRegisteredOrReuseLive () =
     | Error error ->
         invalidOp $"ActorRegistry ActorOfRegistered failed actor={nativeStringActorName} kind={error.Kind} message={error.Message}"
 
-let nativeStringRef =
-    spawnNativeStringActorRegisteredOrReuseLive ()
+let localNativeStringRef =
+    match nativeActorAddressOverride with
+    | Some externalAddress ->
+        printfn "Using external native string actor address: %s" externalAddress
+        None
+    | None ->
+        Some(spawnNativeStringActorRegisteredOrReuseLive ())
 
 let nativeStringActorAddress =
-    fabric.NodeAddress.TrimEnd('/') + nativeStringRef.Path.ToStringWithoutAddress()
+    match nativeActorAddressOverride, localNativeStringRef with
+    | Some externalAddress, _ -> externalAddress
+    | None, Some actorRef -> fabric.NodeAddress.TrimEnd('/') + actorRef.Path.ToStringWithoutAddress()
+    | None, None -> invalidOp "Local native string actor was not spawned."
 
-tryForceReplay "actor-registry-after-native-string-register" CommSpaActorRegistry.registryStreamKey |> ignore
+match localNativeStringRef with
+| Some _ -> tryForceReplay "actor-registry-after-native-string-register" CommSpaActorRegistry.registryStreamKey |> ignore
+| None -> ()
 
 let actorOfRegisteredEcho () =
     fabric.System.ActorOfRegistered(
         actorRegistrySettings,
-        Props.Create(fun () -> PocFullNugetJournalActorArguStringProxyActor(nativeStringRef, TimeSpan.FromSeconds 15.0)),
+        Props.Create(fun () -> PocFullNugetJournalActorArguStringProxyActor(fabric.System, nativeStringActorAddress, TimeSpan.FromSeconds 15.0)),
         actorName)
 
 let spawnEchoActorRegisteredStrict () =
@@ -1789,7 +1812,8 @@ try
     require (not (chatHtml.Contains("option value=\"actor-dynamic\""))) "journal POC must not expose +page Actor Dynamic shape."
     require (actorsHtml.Length > 0) "actors page should be served."
     require (actorsSnapshotJson.Contains(actorName, StringComparison.Ordinal)) "actors snapshot should include the ActorArgu proxy actor."
-    require (actorsSnapshotJson.Contains(nativeStringActorName, StringComparison.Ordinal)) "actors snapshot should include the native string actor behind the proxy."
+    if localNativeStringRef.IsSome then
+        require (actorsSnapshotJson.Contains(nativeStringActorName, StringComparison.Ordinal)) "actors snapshot should include the local native string actor behind the proxy."
     let actorsNodeCount, actorsActorCount = readActorsSnapshotCounts actorsSnapshotJson
     let actorsNodeCountWithOffline, actorsActorCountWithOffline = readActorsSnapshotCounts actorsSnapshotWithOfflineJson
     let hubActorCount = (hub.ActorsSnapshot()).ActorCount
@@ -1898,7 +1922,7 @@ try
     printfn "Persistence   namespace=%s prefix=%s" persistenceNamespace.PersistenceNamespace persistenceNamespace.PersistenceIdPrefix
     printfn "Projection    backend=pcsl-actor-proxy clearBeforeStart=%b seededDefaultPage=%b" clearPcslBeforeStart seededDefaultPage
     printfn "Proxy actor   %s" actorAddress
-    printfn "Native actor  %s" nativeStringActorAddress
+    printfn "Native actor  %s (%s)" nativeStringActorAddress (if localNativeStringRef.IsSome then "local-demo" else "external")
     printfn "PingPong actor %s" pingPongActorAddress
     printfn "Template key  %s" templateKey
     printfn "PFCF template key %s" pfcfProtoTypingTemplateKey
