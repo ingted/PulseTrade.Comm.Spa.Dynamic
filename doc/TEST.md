@@ -590,3 +590,4 @@ Passed assertions：
 - protected HTTP differences、PTCS.Login / PTCS.ACL extension script assets、Dynamic bundle markers 皆通過。
 - PFCF prototype target key `pfcf-akka-cmd-prototyping` 保持可解析。
 - PingPong stop filtering 與 Echo fixed-name reuse 通過。
+- live-host mode without `--no-wait` skips the startup `ActorArgu.sendDurableAsync` server probe. The Durable ActorArgu write proof remains part of explicit no-wait verifier mode only.

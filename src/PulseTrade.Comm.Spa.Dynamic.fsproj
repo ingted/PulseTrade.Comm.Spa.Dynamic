@@ -14,6 +14,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="full.nuget.journal.ACL2.NoGithubOAuth.fsx" />
+    <None Include="full.nuget.journal.ACL2.NoLogin.fsx" />
     <None Include="poc.full.nuget.journal.ACL.fsx" />
     <None Include="poc.full.nuget.journal.ACL2.fsx" />
     <None Include="poc.full.nuget.2.fsx" />

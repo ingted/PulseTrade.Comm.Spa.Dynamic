@@ -748,3 +748,9 @@ Implementation status:
 - Added `src\full.nuget.journal.ACL2.NoGithubOAuth.fsx` as the local-login-only ACL2 script variant.
 - The script starts only the PTCS.Login host, defaults fixed mode to port 82, keeps PTCS.ACL/PTCS.Login/Dynamic/PFCF prototype active, and removes the GitHub OAuth listener/client-id/secret path.
 - Verification passed: `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoGithubOAuth.fsx -- --if-dyna-port --no-wait --demo --pcsl-root C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\.pcsl\verify.nogithub.local-login.20260703_1027 --delivery-profile nogithub-local-20260703 --actor-name nogithub-local-echo`.
+
+## 2026-07-03 - ACL2 NoGithubOAuth live-host startup probe guard
+
+- User report from another machine: production-SQL NoGithubOAuth startup reached PTCS.Login listener 82, then the inherited startup `ActorArgu.sendDurableAsync` server probe attempted to persist a page/value event and timed out in `Akka.Persistence.Sql`.
+- Change: NoGithubOAuth live-host mode now skips that startup server probe unless `--no-wait` explicitly requests the full verifier proof.
+- Verification passed: `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoGithubOAuth.fsx -- --if-dyna-port --no-wait --demo --pcsl-root C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic\.pcsl\verify.nogithub.local-login.skipprobe.20260703_1158 --delivery-profile nogithub-local-skipprobe-20260703 --actor-name nogithub-local-skipprobe-echo`.

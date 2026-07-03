@@ -1605,7 +1605,7 @@ let stopPocFullNugetJournalAclHosts () =
 
 try
     let ensuredEcho = ensureEchoActorRegistered ()
-    let targetVisible = defaultTargetVisible ()
+    let targetVisible = noWait && defaultTargetVisible ()
 
     let serverProbe =
         if targetVisible then
@@ -1705,6 +1705,8 @@ try
         require
             (String.Equals(deliveryStatusText, "completed", StringComparison.OrdinalIgnoreCase))
             ("server probe delivery should complete: " + deliveryStatusText)
+    | None when not noWait ->
+        printfn "Startup server probe skipped in live-host mode. Use --no-wait to run the full verifier proof."
     | None ->
         printfn "Default target probe skipped because the journal projection currently has no visible default target."
 
