@@ -269,6 +269,6 @@ Dynamic renderer 規則：
 
 - `actor-argu-target`：必須輸入 actor address、DU/template key、canonical arg string。
 - `actor-dynamic-target`：有 DU/template + canonical arg string 時使用 FormInput；無 DU 時應交回 PTCS fallback direct actor-key path。
-- `actor-dynamic-proxy`：輸入 PTCS Host proxy actor address 與 RN actor address，產生 `[proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind]`；實際 payload 由 append input value 承載。
+- `actor-dynamic-proxy`：輸入 PTCS Host proxy actor address 與 RN actor address，產生 `[proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind]`；實際 payload 由 append input value 承載。PTCS core 只會把第一段 `proxyActorAddress` 放進 `ActorArguTargetCommand.ActorAddress`，不會把 `rnActorAddress` 自動帶給 proxy。Current no-core-change rule 是 one target key -> one proxy actor/spec；`rnActorAddress` 只作 binding/diagnostic，真正 native/RN target 必須由 proxy actor/spec 建構時固定。
 - 單段 Dynamic key `[actorAddress]` 的 append input 應由 PTCS fallback textarea 處理，讓使用者可直接輸入 canvas JSON DSL。
 - Dynamic message renderer 只能依 payload schema 判斷 canvas，不可依 page type 或 key shape 強制 canvas。

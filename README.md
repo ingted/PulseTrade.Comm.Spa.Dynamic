@@ -28,7 +28,7 @@ Dynamic proxy key:
 
 When an Actor Dynamic selected key is only `[ actorAddress ]`, the extension intentionally returns no FormInput renderer. PTCS fallback input accepts arbitrary text or JSON DSL. If the actor replies with Canvas JSON DSL, the Dynamic message renderer draws the canvas; otherwise PTCS normal message rendering is used.
 
-The proxy key UI only builds the binding. The selected key still routes the command to `proxyActorAddress` because it remains the first key segment. The actual PTCS durable proxy actor and RN Host target are deployment/runtime concerns owned outside this package.
+The proxy key UI only builds the binding. The selected key still routes the command to `proxyActorAddress` because it remains the first key segment. PTCS core sends `ActorArguTargetCommand.ActorAddress = proxyActorAddress` and `RawArgu = <input text>`; it does not include the remaining selected-key segments in the command envelope. Therefore `rnActorAddress` is binding/diagnostic data for the Dynamic/RN deployment path, not a PTCS core route selector. Current no-core-change deployments use one target key -> one proxy actor/spec. A future shared-proxy design needs a PTCS route-envelope/resolver RFC before it can choose many native targets at send time.
 
 ## ActorsPage Renderer
 

@@ -761,3 +761,9 @@ Implementation status:
 - PTCS beta71 consumes `FAkka.WebSocket [1.569.101.301-win12]`, which replaces the net10 recursive Suave WebSocket read loop with an iterative loop to prevent stack overflow on long-lived/busy sessions.
 - Updated ACL2 scripts (`poc.full.nuget.journal.ACL2.fsx`, `full.nuget.journal.ACL2.NoGithubOAuth.fsx`, `full.nuget.journal.ACL2.NoLogin.fsx`) to the beta71/beta61/alpha11/alpha13 package set.
 - NuGet push returned `Created` for Dynamic beta61, Spa.ACL alpha11, and Spa.Login alpha13. Verification passed: PTC `verify-ptcs-dynamic-nuget-bundle.fsx` and `dotnet fsi --exec .\src\full.nuget.journal.ACL2.NoGithubOAuth.fsx -- --if-dyna-port --no-wait --demo --pcsl-root G:\PulseTrade.fs.Comm.Log\verification\ptcsDynamicNoGithubOAuth\pcsl_win12_20260703_01 --delivery-profile nogithub-win12 --actor-name nogithub-win12-echo`.
+
+## 2026-07-04 - Dynamic proxy-key route binding note
+
+- Updated README and `doc\SDUI_Developer_Manual.md` to clarify that Actor Dynamic proxy keys currently route through the first key segment only: the proxy actor address.
+- `rnActorAddress` in `[proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind]` is retained as binding/diagnostic metadata. The live native/RN target must be captured by the proxy actor/spec when that proxy is created.
+- A single shared proxy that chooses different native/RN targets per send is a future PTCS route-envelope/resolver change, not current Dynamic behavior.
