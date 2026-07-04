@@ -1,0 +1,17 @@
+{
+  "schema": "ptc.comm.spa.pcsl.projection.v1",
+  "journalId": "profileId=sql-server;provider=akka.persistence.journal.sql;snapshotProvider=akka.persistence.snapshot-store.sql;queryProvider=akka.persistence.query.journal.sql;durable=True;database=PTCSDynJ_6cd5d44cf7d82f5c;autoCreate=True",
+  "projectionConflictPolicy": "require-compatible",
+  "epochId": "bef7592d313a4e089ca82a04aa7af9de",
+  "projectionId": "default",
+  "schemaName": "streams",
+  "recordsPerChunk": 5000,
+  "writerNodeId": "local",
+  "writerOwnerId": "local",
+  "createdAtUtc": "2026-06-30T18:31:13.2034145\u002B00:00",
+  "updatedAtUtc": "2026-06-30T18:31:16.3752649\u002B00:00",
+  "streamCount": 8,
+  "eventCount": 22,
+  "newestSequence": 5,
+  "lastEventHash": "2DD215B9339FCDA60739705E5B6523F3C91F97C53F2BEC82FF035E795B265334"
+}

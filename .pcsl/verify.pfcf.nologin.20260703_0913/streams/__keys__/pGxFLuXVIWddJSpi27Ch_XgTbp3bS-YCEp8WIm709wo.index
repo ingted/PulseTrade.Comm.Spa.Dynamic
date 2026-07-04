@@ -1,0 +1,1 @@
+{"FsPickler":"4.0.0","type":"System.String","value":"page=assterry|mode=actor-argu|set=AssTerry|keys=akka.tcp://PtcsDynamicPocJournal91d90750@127.0.0.1:3685/user/nologin-pfcf-echo\u001fpoc-full-nuget-journal-argu\u001f--say \"hello from journal poc\" --set-count 3 --mode safe --at TTC 7 --tag aoe \"marvel now\" --verbose|block=000000000000"}
