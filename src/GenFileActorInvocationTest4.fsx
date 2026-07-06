@@ -52,7 +52,7 @@
 #r "nuget: PulseTrade.Comm.Login.SqlServer, [0.1.0-alpha3]"
 #r "nuget: PulseTrade.Comm.Security, [0.1.0-alpha1]"
 #r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta73]"
-#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta63]"
+#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta64]"
 #r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha13]"
 #r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha15]"
 

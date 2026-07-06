@@ -775,3 +775,11 @@ Implementation status:
 - `src\GenFileActorInvocationTest4.fsx` now proves the flow with two Akka.Remote nodes in one script: PTCS/proxy fabric node plus a separate native PingPong node. The proxy asks the native actor with raw Argu text and normalizes `fCell2<string>` / string / Newtonsoft `JObject` replies back to `ActorArguTargetReply`.
 - Verification passed with `--if-dyna-port --no-wait --native-node-host 127.0.0.1 --startup-probe`; evidence is recorded in `G:\PulseTrade.fs\log\20260706\20260706134000.ptcs-proxy-orchestration-rfc-dev.op_log`.
 - NuGet publish note: beta63/alpha13/alpha15 nupkgs were built, copied to SDK `10.0.301` `FSharp\library-packs`, and pushed to nuget.org. The first direct manual push without `--api-key` returned `401 Unauthorized`; rerun used the existing PostBuildEvent key-path workflow and NuGet returned `Created` / `Your package was pushed`.
+
+## 2026-07-06 - ActorArgu proxy target browser proof
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic` to `0.1.3-beta64` to fix the Add proxy key renderer for registered template keys.
+- The Add proxy key panel no longer pre-fills the native actor address from the currently selected proxy key, and template keys now show the Canonical Argu string input instead of a schema-not-found error. Backend resolver validation remains authoritative.
+- Playwright MCP proof passed against `GenFileActorInvocationTest4.fsx` live host: local login on `127.0.0.1:18729`, PTCS/proxy node on `127.0.0.1:18730`, native PingPong node on `127.0.0.1:18731`.
+- Browser evidence: Add proxy key UI showed Native actor address, DU type/template key, Target alias, Canonical Argu string, Clean/Cancel/OK; PingPong target send rendered `Actor Argu Reply` with `poc.full.nuget.journal.acl pingpong fcell2 raw=...`.
+- NuGet push for Dynamic beta64 returned `Created`, and the nupkg was copied to SDK `10.0.301` `FSharp\library-packs` for immediate FSI restore.

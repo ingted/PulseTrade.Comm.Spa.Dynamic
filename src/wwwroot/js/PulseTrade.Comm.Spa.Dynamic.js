@@ -35,6 +35,7 @@ function registerAddKeyRenderer(name, priority, renderer){
   if(Equals(typeof globalThis.PulseTradeRegisterAddKeyRenderer, "function"))globalThis.PulseTradeRegisterAddKeyRenderer(name, priority, renderer);
 }
 function renderAddKey(ctx){
+  let defaultActorAddress;
   const shape=asText(ctx.shape).toLowerCase();
   const supportsProxy=shape=="actor-dynamic-proxy";
   if(!(shape=="actor-dynamic-target"||shape=="actor-argu-target"||shape=="actor-argu"||shape=="actor-argu-proxy")&&!supportsProxy)return null;
@@ -93,8 +94,11 @@ function renderAddKey(ctx){
   else {
     const keys=sort(distinct(concat([documentKeys(), schemaKeys()])));
     const defaultKeyParts_1=keyPartsFromJson(ctx.defaultKey);
-    const o_1=tryHead(defaultKeyParts_1);
-    const defaultActorAddress=o_1==null?"":o_1.$0;
+    if(shape=="actor-argu-proxy")defaultActorAddress="";
+    else {
+      const o_1=tryHead(defaultKeyParts_1);
+      defaultActorAddress=o_1==null?"":o_1.$0;
+    }
     const defaultTypeName=length(defaultKeyParts_1)>1?get(defaultKeyParts_1, 1):"";
     if(length(keys)===0)return Some(errorNode("No Dynamic Argu schemas are registered."));
     else {
@@ -128,14 +132,11 @@ function renderAddKey(ctx){
         const typeName=Trim(typeInput.value);
         if(isBlank(typeName))targetConfig.appendChild(element("div", "dynamic-argu-target-note", "Enter a full DU type name or registered template key."));
         else if(tryFindDocument(typeName)==null){
-          const _1=tryFindSchema(typeName);
-          if(_1!=null&&_1.$==1){
-            const label_1=element("label", "dynamic-argu-label", "Canonical Argu string");
-            label_1.setAttribute("for", "dynamic-argu-key-canonical-arg-string");
-            targetConfig.appendChild(label_1);
-            targetConfig.appendChild(argInput);
-          }
-          else targetConfig.appendChild(errorNode("Dynamic Argu schema not found for DU type: "+typeName));
+          const label_1=element("label", "dynamic-argu-label", "Canonical Argu string");
+          label_1.setAttribute("for", "dynamic-argu-key-canonical-arg-string");
+          targetConfig.appendChild(label_1);
+          targetConfig.appendChild(argInput);
+          if(tryFindSchema(typeName)==null)targetConfig.appendChild(element("div", "dynamic-argu-target-note", "Template keys are validated by the backend resolver."));
         }
         else targetConfig.appendChild(element("div", "dynamic-argu-target-note", "Direct DSL document target; no canonical Argu string required."));
       };
@@ -6723,7 +6724,7 @@ function New_13(pageId, keyJson, keyMode, displayName){
   return{
     pageId:pageId, 
     keyJson:keyJson, 
-    keyMode:keyMode,
+    keyMode:keyMode, 
     displayName:displayName
   };
 }

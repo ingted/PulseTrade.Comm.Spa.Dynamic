@@ -501,9 +501,12 @@ module ArguFormRenderer =
                 |> Array.sort
             let defaultKeyParts = keyPartsFromJson context.defaultKey
             let defaultActorAddress =
-                defaultKeyParts
-                |> Array.tryHead
-                |> Option.defaultValue ""
+                if shape = "actor-argu-proxy" then
+                    ""
+                else
+                    defaultKeyParts
+                    |> Array.tryHead
+                    |> Option.defaultValue ""
             let defaultTypeName =
                 if defaultKeyParts.Length > 1 then
                     defaultKeyParts[1]
@@ -569,13 +572,13 @@ module ArguFormRenderer =
                         | Some _ ->
                             targetConfig.AppendChild(element "div" "dynamic-argu-target-note" "Direct DSL document target; no canonical Argu string required.") |> ignore
                         | None ->
-                            match tryFindSchema typeName with
-                            | None -> targetConfig.AppendChild(errorNode ("Dynamic Argu schema not found for DU type: " + typeName)) |> ignore
-                            | Some _ ->
-                                let label = element "label" "dynamic-argu-label" "Canonical Argu string"
-                                label.SetAttribute("for", "dynamic-argu-key-canonical-arg-string")
-                                targetConfig.AppendChild label |> ignore
-                                targetConfig.AppendChild argInput |> ignore
+                            let label = element "label" "dynamic-argu-label" "Canonical Argu string"
+                            label.SetAttribute("for", "dynamic-argu-key-canonical-arg-string")
+                            targetConfig.AppendChild label |> ignore
+                            targetConfig.AppendChild argInput |> ignore
+
+                            if Option.isNone (tryFindSchema typeName) then
+                                targetConfig.AppendChild(element "div" "dynamic-argu-target-note" "Template keys are validated by the backend resolver.") |> ignore
 
                 typeInput.AddEventListener("input", fun () -> renderTargetConfig ())
                 typeInput.AddEventListener("change", fun () -> renderTargetConfig ())
