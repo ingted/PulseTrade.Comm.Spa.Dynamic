@@ -21,7 +21,12 @@
 //      recreateEchoActor()
 //    Cross-machine native actor calls require:
 //      --cluster-host <this-machine-reachable-ip-or-dns>
-//      --native-actor-address "akka.tcp://RemoteSystem@remote-ip:port/user/native"
+//    The built-in PingPong proof starts a second Akka.Remote node with:
+//      --native-node-host <this-machine-reachable-ip-or-dns>
+//      --native-node-port <port-or-0>
+//    Add proxy key stores a per-target proxy key. PTCS command hooks create
+//    the proxy actor at add-key time and rewrite [native; template; raw] to
+//    [proxy; template; raw] before persistence.
 //    Live-host mode does not send automatically unless --startup-probe is set.
 //    After startup, call sendEchoProbe(), sendRawEchoProbe "...", or sendPfcfProbe().
 //    Call stopPocFullNugetJournalAclHosts() to stop the web host.
@@ -31,11 +36,13 @@
 #r "nuget: FAkka.Argu, 10.1.301"
 #r "nuget: FAkka.FCell2, 10.1.301.3"
 #r "nuget: Akka, 1.5.69"
+#r "nuget: Akka.Remote, 1.5.69"
 #r "nuget: Akka.Cluster, 1.5.69"
 #r "nuget: Akka.Cluster.Sharding, 1.5.69"
 #r "nuget: Akka.Persistence, 1.5.69"
 #r "nuget: Akka.Persistence.Sql, 1.5.67"
 #r "nuget: Microsoft.Data.SqlClient, 7.0.1"
+#r "nuget: Newtonsoft.Json, 13.0.4"
 #r "nuget: System.Data.SqlClient, 4.9.1"
 #r "nuget: PersistedConcurrentSortedList, 10.1.301.3"
 #r "nuget: PulseTrade.Comm.Actor.Registry, [0.1.0-alpha5]"
@@ -44,10 +51,10 @@
 #r "nuget: PulseTrade.Comm.Login.Core, [0.1.0-alpha5]"
 #r "nuget: PulseTrade.Comm.Login.SqlServer, [0.1.0-alpha3]"
 #r "nuget: PulseTrade.Comm.Security, [0.1.0-alpha1]"
-#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta71]"
-#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta61]"
-#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha11]"
-#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha13]"
+#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta73]"
+#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta63]"
+#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha13]"
+#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha15]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 
@@ -64,8 +71,10 @@ open System.Text.Json
 open System.Text.RegularExpressions
 open System.Threading
 open Akka.Actor
+open Akka.Configuration
 open Argu
 open Microsoft.Data.SqlClient
+open Newtonsoft.Json.Linq
 open PersistedConcurrentSortedList.Type
 open PulseTrade.Comm.ACL.Core
 open PulseTrade.Comm.ACL.SqlServer.AclSqlServer
@@ -137,6 +146,8 @@ type CliArgs =
     | Native_Actor_Address of string
     | Cluster_Host of string
     | Cluster_Port of int
+    | Native_Node_Host of string
+    | Native_Node_Port of int
     | Startup_Probe
     | Clear_Pcsl_Before_Start
     | No_Wait
@@ -161,9 +172,11 @@ type CliArgs =
             | Sql_Acl_Table _ -> "ACL policy snapshot table for production-sql proof. Default: AclPolicySnapshot."
             | Delivery_Profile _ -> "Durable ingress profile id."
             | Actor_Name _ -> "Proxy actor name under /user."
-            | Native_Actor_Address _ -> "Optional native actor address. When absent, the script spawns a local string -> fCell2<string> demo actor."
+            | Native_Actor_Address _ -> "Optional native actor address behind the local generic proxy. When absent, the script spawns a local string -> fCell2<string> demo actor."
             | Cluster_Host _ -> "Akka.Remote hostname advertised by this script. For cross-machine native actors, set this to this machine's reachable IP/DNS, not 127.0.0.1."
             | Cluster_Port _ -> "Local Akka cluster port."
+            | Native_Node_Host _ -> "Akka.Remote hostname advertised by the built-in native PingPong node. Defaults to --cluster-host."
+            | Native_Node_Port _ -> "Akka.Remote port for the built-in native PingPong node. Use 0 or omit for a random free port."
             | Startup_Probe -> "In live-host mode, send one startup ActorArgu probe to the proxy/native actor after the host starts. --no-wait always runs the verifier probe."
             | Clear_Pcsl_Before_Start -> "Clear the PCSL projection root before startup. This does not delete the SQL journal."
             | No_Wait -> "Start, verify /healthz and /chat markers, then stop."
@@ -447,10 +460,42 @@ type PocFullNugetJournalNativeStringActor() as this =
 
     member _.ActorCtx: IActorContext = ActorBase.Context
 
+type PocFullNugetJournalActorArguStringProxyControl =
+    | GetNativeActorAddress
+
+let nativeReplyToCell (reply: obj) =
+    match reply with
+    | null -> Error "native actor returned null"
+    | :? fCell2<string> as cell -> Ok cell
+    | :? string as text -> Ok(fCell2<string>.S text)
+    | :? JObject as json ->
+        let caseToken = json.["Case"]
+        let fieldsToken = json.["Fields"]
+
+        if isNull caseToken || isNull fieldsToken then
+            Error("native actor returned JObject without Case/Fields: " + json.ToString(Newtonsoft.Json.Formatting.None))
+        else
+            let caseName = caseToken.ToObject<string>()
+
+            match caseName, fieldsToken with
+            | "S", (:? JArray as fields) when fields.Count >= 1 ->
+                Ok(fCell2<string>.S(fields.[0].ToObject<string>()))
+            | _ ->
+                Error(
+                    "native actor returned unsupported fCell2 JObject shape: "
+                    + json.ToString(Newtonsoft.Json.Formatting.None))
+    | other ->
+        Error($"native actor returned unsupported type {other.GetType().FullName}: {other}")
+
 type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, nativeActorAddress: string, askTimeout: TimeSpan) as this =
     inherit ReceiveActor()
 
     do
+        this.Receive<PocFullNugetJournalActorArguStringProxyControl>(fun message ->
+            match message with
+            | GetNativeActorAddress -> this.ActorCtx.Sender.Tell(nativeActorAddress, this.ActorCtx.Self))
+        |> ignore
+
         this.Receive<ActorArguTargetCommand>(fun (command: ActorArguTargetCommand) ->
             let replyTo = this.ActorCtx.Sender
             let selfRef = this.ActorCtx.Self
@@ -469,11 +514,17 @@ type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, nati
 
                             debugPrint "actor-argu-proxy" $"ASK native={nativeActorAddress}; timeout={askTimeout}; raw={rawArgu}"
                             let! nativeReply =
-                                nativeSelection.Ask<fCell2<string>>(rawArgu, askTimeout)
+                                nativeSelection.Ask<obj>(rawArgu, askTimeout)
                                 |> Async.AwaitTask
 
-                            debugPrint "actor-argu-proxy" $"NATIVE-REPLY native={nativeActorAddress}; reply={nativeReply}"
-                            return Ok nativeReply
+                            match nativeReplyToCell nativeReply with
+                            | Ok cell ->
+                                debugPrint "actor-argu-proxy" $"NATIVE-REPLY native={nativeActorAddress}; type={nativeReply.GetType().FullName}; reply={cell}"
+                                return Ok cell
+                            | Error message ->
+                                let ex = InvalidOperationException message
+                                debugPrint "actor-argu-proxy" $"NATIVE-ERROR native={nativeActorAddress}; error={message}"
+                                return Error(ex :> exn)
                         with ex ->
                             debugPrint "actor-argu-proxy" $"NATIVE-ERROR native={nativeActorAddress}; error={ex.GetType().FullName}: {ex.Message}"
                             return Error ex
@@ -699,6 +750,21 @@ let clusterPort =
         let defaultValue = defaultParsed.GetResult(Cluster_Port, 7788)
         overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Cluster_Port, defaultValue)) |> Option.defaultValue defaultValue
 
+let nativeNodeHost =
+    let defaultValue = defaultParsed.GetResult(Native_Node_Host, clusterHost)
+    overrideParsed
+    |> Option.map (fun parsed -> parsed.GetResult(Native_Node_Host, defaultValue))
+    |> Option.defaultValue defaultValue
+    |> textOr clusterHost
+
+let nativeNodePort =
+    let requested =
+        overrideParsed
+        |> Option.map (fun parsed -> parsed.GetResult(Native_Node_Port, defaultParsed.GetResult(Native_Node_Port, 0)))
+        |> Option.defaultValue (defaultParsed.GetResult(Native_Node_Port, 0))
+
+    if requested <= 0 then freePort () else requested
+
 let sqlSecuritySchema =
     let defaultValue = defaultParsed.GetResult(Sql_Security_Schema, "ptcs_poc_acl")
     overrideParsed |> Option.map (fun parsed -> parsed.GetResult(Sql_Security_Schema, defaultValue)) |> Option.defaultValue defaultValue |> textOr "ptcs_poc_acl"
@@ -782,14 +848,17 @@ let tryActorAddressHost (address: string) =
     else
         None
 
-match nativeActorAddressOverride with
-| Some nativeAddress ->
-    match tryActorAddressHost nativeAddress with
-    | Some nativeHost when not (isLoopbackHost nativeHost) && isLoopbackHost clusterHost ->
-        invalidOp
-            $"External native actor address host={nativeHost} requires --cluster-host <this-machine-reachable-ip-or-dns>. Current --cluster-host is {clusterHost}; remote replies cannot reach 127.0.0.1."
-    | _ -> ()
-| None -> ()
+let validateExternalNativeActorAddress label nativeActorAddress =
+    match nativeActorAddress with
+    | Some nativeAddress ->
+        match tryActorAddressHost nativeAddress with
+        | Some nativeHost when not (isLoopbackHost nativeHost) && isLoopbackHost clusterHost ->
+            invalidOp
+                $"{label} host={nativeHost} requires --cluster-host <this-machine-reachable-ip-or-dns>. Current --cluster-host is {clusterHost}; remote replies cannot reach 127.0.0.1."
+        | _ -> ()
+    | None -> ()
+
+validateExternalNativeActorAddress "--native-actor-address" nativeActorAddressOverride
 
 let defaultCanonicalArgString =
     "--say \"hello from journal poc\" --set-count 3 --mode safe --at TTC 7 --tag aoe \"marvel now\" --verbose"
@@ -819,12 +888,20 @@ if not ifDynaPort then
     requireTcpPortFree "local PTCS.Login HTTP listener" "--local-port" host localPort
     requireTcpPortFree "Akka cluster remoting" "--cluster-port" clusterHost clusterPort
 
+if String.Equals(normalizeHostText clusterHost, normalizeHostText nativeNodeHost, StringComparison.OrdinalIgnoreCase)
+   && clusterPort = nativeNodePort then
+    invalidOp "The native PingPong Akka node must not reuse the PTCS fabric node address. Change --native-node-port or use --if-dyna-port."
+
+requireTcpPortFree "native PingPong Akka.Remote listener" "--native-node-port" nativeNodeHost nativeNodePort
+
 printfn
-    "startup preflight ok: local=%s:%d cluster=%s:%d dynamic=%b startupProbe=%b"
+    "startup preflight ok: local=%s:%d cluster=%s:%d native-pingpong=%s:%d dynamic=%b startupProbe=%b"
     host
     localPort
     clusterHost
     clusterPort
+    nativeNodeHost
+    nativeNodePort
     ifDynaPort
     startupProbe
 
@@ -916,6 +993,14 @@ let persistenceNamespace =
 let journalQueryAdapter =
     Journal.sqlServerQueryHealthAdapter(commandTimeoutSeconds = 5, persistenceIdPrefix = persistenceNamespace.PersistenceIdPrefix)
 
+let mutable actorArguProxyAddKeyBinder =
+    fun (context: CommSpaAddKeyCommandContext) -> async { return CommSpaCommandHooks.addKeyIdentity context }
+
+let commandHooks =
+    CommSpaCommandHooks.noop
+    |> CommSpaCommandHooks.withHookId "genfile4-actor-argu-proxy"
+    |> CommSpaCommandHooks.withBeforeAddKey (fun context -> actorArguProxyAddKeyBinder context)
+
 let pcslOptions =
     { PcslCommSpaPersistenceOptions.defaults with
         BasePath = pcslRoot
@@ -934,9 +1019,52 @@ let fabricOptions =
     |> CommSpaActorFabricOptions.withJournal journal
     |> CommSpaActorFabricOptions.withJournalQueryAdapter journalQueryAdapter
     |> CommSpaActorFabricOptions.withPersistenceNamespace persistenceNamespace
+    |> CommSpaActorFabricOptions.withCommandHooks commandHooks
 
 let fabric =
     CommSpaActorFabric.startWithOptions fabricOptions projectionHub.PersistenceBackend
+
+let hoconQuote (value: string) =
+    JsonSerializer.Serialize(if isNull value then "" else value)
+
+let nativePingPongSystemName =
+    "PFCFNative" + persistenceHash.Substring(0, 8)
+
+let nativePingPongNodeAddress =
+    $"akka.tcp://{nativePingPongSystemName}@{nativeNodeHost}:{nativeNodePort}"
+
+let nativePingPongConfigText =
+    $"""
+akka {{
+  loglevel = "WARNING"
+  stdout-loglevel = "WARNING"
+  actor {{
+    provider = remote
+    serializers {{
+      comm-spa-json = "Akka.Serialization.NewtonSoftJsonSerializer, Akka"
+    }}
+    serialization-bindings {{
+      "PersistedConcurrentSortedList.Type.fCell2`1, FAkka.FCell2" = comm-spa-json
+    }}
+    serialization-settings {{
+      comm-spa-json {{
+        encode-type-names = on
+        preserve-object-references = on
+      }}
+    }}
+  }}
+  remote.dot-netty.tcp.hostname = {hoconQuote nativeNodeHost}
+  remote.dot-netty.tcp.port = {nativeNodePort}
+}}
+"""
+
+let nativePingPongConfig =
+    ConfigurationFactory.ParseString(nativePingPongConfigText).WithFallback(ConfigurationFactory.Default())
+
+let nativePingPongSystem =
+    ActorSystem.Create(nativePingPongSystemName, nativePingPongConfig)
+
+printfn "Native PingPong node started: %s" nativePingPongNodeAddress
 
 let writerProfile =
     PcslWriter.forwardToWriter(
@@ -1472,18 +1600,76 @@ let spawnProxyActorRegisteredStrict proxyName proxyKind nativeAddress =
     | Error error ->
         invalidOp $"ActorRegistry ActorOfRegistered failed actor={proxyName} kind={error.Kind} message={error.Message}"
 
+let tryAskProxyNativeActorAddress (actorRef: IActorRef) =
+    try
+        actorRef
+            .Ask<string>(GetNativeActorAddress, TimeSpan.FromMilliseconds 750.0)
+            .GetAwaiter()
+            .GetResult()
+        |> Some
+    with _ ->
+        None
+
 let spawnProxyActorRegisteredOrReuseLive proxyName proxyKind nativeAddress =
     match actorOfRegisteredProxy proxyName proxyKind nativeAddress with
     | Ok registered -> registered.Actor
     | Error error when isActorNameNotUnique error ->
         match tryResolveUserActor proxyName with
         | Some existing ->
-            printfn "Proxy actor already exists; reusing %s. Use recreateEchoActor() to stop, wait, and reuse the first proxy actor name." (existing.Path.ToStringWithoutAddress())
-            existing
+            match tryAskProxyNativeActorAddress existing with
+            | Some currentNativeAddress when String.Equals(currentNativeAddress, nativeAddress, StringComparison.Ordinal) ->
+                printfn "Proxy actor already exists with matching native route; reusing %s -> %s." (existing.Path.ToStringWithoutAddress()) currentNativeAddress
+                existing
+            | Some currentNativeAddress ->
+                printfn "Proxy actor already exists with stale native route; recreating %s current=%s expected=%s." proxyName currentNativeAddress nativeAddress
+                fabric.System.Stop(existing)
+                waitUntilUserActorGone proxyName (TimeSpan.FromSeconds 5.0) |> ignore
+
+                match actorOfRegisteredProxy proxyName proxyKind nativeAddress with
+                | Ok registered -> registered.Actor
+                | Error recreateError ->
+                    invalidOp $"ActorRegistry ActorOfRegistered failed after stale proxy recreate actor={proxyName} kind={recreateError.Kind} message={recreateError.Message}"
+            | None ->
+                invalidOp $"Proxy actor {proxyName} already exists but did not answer GetNativeActorAddress; stop the old FSI host or use a different --actor-name."
         | None ->
             invalidOp $"ActorRegistry ActorOfRegistered found duplicate name but could not resolve existing actor={proxyName} message={error.Message}"
     | Error error ->
         invalidOp $"ActorRegistry ActorOfRegistered failed actor={proxyName} kind={error.Kind} message={error.Message}"
+
+let isActorArguProxyAddKey (context: CommSpaAddKeyCommandContext) =
+    context.Page.Tags
+    |> List.exists (fun tag -> String.Equals(tag, "actor-argu", StringComparison.OrdinalIgnoreCase))
+    && String.Equals(textOr "" context.Mode, "proxy", StringComparison.OrdinalIgnoreCase)
+
+let proxyNameForNativeTarget nativeAddress templateKey rawArgu =
+    let fingerprint = stableHash (nativeAddress + "|" + templateKey + "|" + rawArgu)
+    actorName + "-ui-proxy-" + fingerprint.Substring(0, 12)
+
+let bindActorArguProxyTarget (context: CommSpaAddKeyCommandContext) =
+    async {
+        if not (isActorArguProxyAddKey context) then
+            return CommSpaCommandHooks.addKeyIdentity context
+        else
+            match context.Keys with
+            | nativeActorAddress :: templateKey :: rawArguTail ->
+                let rawArgu = rawArguTail |> String.concat "\u001f"
+                let proxyName = proxyNameForNativeTarget nativeActorAddress templateKey rawArgu
+                let proxyKind = "ui-actor-argu-target-" + (stableHash (templateKey + "|" + nativeActorAddress)).Substring(0, 10)
+                let proxyRef = spawnProxyActorRegisteredOrReuseLive proxyName proxyKind nativeActorAddress
+                let proxyActorAddress = fabric.NodeAddress.TrimEnd('/') + proxyRef.Path.ToStringWithoutAddress()
+
+                debugPrint
+                    "actor-argu-proxy-bind"
+                    $"mode={context.Mode}; native={nativeActorAddress}; proxy={proxyActorAddress}; template={templateKey}; display={context.DisplayName}"
+
+                return
+                    { Keys = proxyActorAddress :: templateKey :: rawArguTail
+                      DisplayName = context.DisplayName }
+            | _ ->
+                return invalidArg "keys" "Actor Argu proxy target requires [nativeActorAddress; templateKey; canonicalArgString]."
+    }
+
+actorArguProxyAddKeyBinder <- bindActorArguProxyTarget
 
 let spawnEchoActorRegisteredStrict () =
     spawnProxyActorRegisteredStrict actorName "echo-target" nativeStringActorAddress
@@ -1514,18 +1700,19 @@ let pingPongActorName =
 let pingPongRegistrySettings =
     ActorRegistrySettings.create actorRegistrySink
     |> ActorRegistrySettings.withRegistryId "ptcs-dynamic-poc-full-nuget-journal-pingpong"
-    |> ActorRegistrySettings.withNodeId (Some "ptcs.dynamic.poc-full-nuget-journal")
-    |> ActorRegistrySettings.withRole (Some "ptcs-dynamic-journal")
+    |> ActorRegistrySettings.withNodeId (Some "ptcs.dynamic.poc-full-nuget-journal.native-pingpong")
+    |> ActorRegistrySettings.withRole (Some "ptcs-dynamic-native-pingpong")
     |> ActorRegistrySettings.withTags [ "ptcs-dynamic"; "poc-full-nuget-journal"; "pingpong"; "actor-registry-reload" ]
     |> ActorRegistrySettings.withMetadata (
         Map.ofList
             [ "ptcs.dynamic.poc", "full.nuget.journal.ACL2.NoGithubOAuth.ByProxy.fsx"
               "ptcs.dynamic.actor.kind", "pingpong"
+              "ptcs.dynamic.actor.node", nativePingPongNodeAddress
               "ptcs.dynamic.journal.db", journalBootstrap.DatabaseName
               "ptcs.dynamic.pcsl.root", pcslRoot ])
 
 let pingPongRegistered =
-    match fabric.System.ActorOfRegistered(pingPongRegistrySettings, Props.Create(fun () -> PocFullNugetJournalPingPongActor()), pingPongActorName) with
+    match nativePingPongSystem.ActorOfRegistered(pingPongRegistrySettings, Props.Create(fun () -> PocFullNugetJournalPingPongActor()), pingPongActorName) with
     | Ok registered ->
         if registered.Watcher.IsNone then
             invalidOp $"ActorRegistry watcher was not created for actor={pingPongActorName}; stop/reload lifecycle cannot be verified."
@@ -1537,7 +1724,10 @@ let pingPongRegistered =
 let pingPongRef = pingPongRegistered.Actor
 
 let pingPongActorAddress =
-    fabric.NodeAddress.TrimEnd('/') + pingPongRef.Path.ToStringWithoutAddress()
+    nativePingPongNodeAddress.TrimEnd('/') + pingPongRef.Path.ToStringWithoutAddress()
+
+if pingPongActorAddress.StartsWith(fabric.NodeAddress.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) then
+    invalidOp $"PingPong native actor must be on a different node than PTCS fabric. fabric={fabric.NodeAddress}; pingpong={pingPongActorAddress}"
 
 let pingPongProxyActorName =
     actorName + "-pingpong-proxy"
@@ -1832,11 +2022,15 @@ let postJson (client: HttpClient) path jsonText =
 let jsonArrayText values =
     JsonSerializer.Serialize(values |> List.toArray)
 
-let addKeyJson pageId keys displayName =
+let addKeyJsonWithMode pageId keys displayName keyMode =
     JsonSerializer.Serialize(
         {| pageId = pageId
            keyJson = jsonArrayText keys
+           keyMode = keyMode
            displayName = displayName |})
+
+let addKeyJson pageId keys displayName =
+    addKeyJsonWithMode pageId keys displayName "target"
 
 let removeKeyJson pageId keyId =
     JsonSerializer.Serialize(
@@ -1978,7 +2172,7 @@ let stopPingPongActor () =
         printfn "PingPong actor already stopped: %s" pingPongActorAddress
     else
         pingPongActorStopped <- true
-        fabric.System.Stop(pingPongRef)
+        nativePingPongSystem.Stop(pingPongRef)
         let observedStatus = waitForHubActorStatus pingPongActorName "terminated" (TimeSpan.FromSeconds 5.0)
         tryForceReplay "actor-registry-after-pingpong-stop" CommSpaActorRegistry.registryStreamKey |> ignore
         let hubActorCount = (hub.ActorsSnapshot()).ActorCount
@@ -1996,6 +2190,7 @@ let stopPocFullNugetJournalAclHosts () =
         (localApp :> IDisposable).Dispose()
         fabric.Stop()
         fabric.System.WhenTerminated.Wait(TimeSpan.FromSeconds 10.0) |> ignore
+        nativePingPongSystem.Terminate().Wait(TimeSpan.FromSeconds 10.0) |> ignore
         printfn "full.nuget.journal.ACL2.NoGithubOAuth.ByProxy host stopped."
 
 let sendActorArguProbe label page routeActor keys rawArgu =
@@ -2010,7 +2205,7 @@ let sendActorArguProbe label page routeActor keys rawArgu =
                   RawArgu = rawArgu
                   Tags = Some [ "poc-full-nuget-journal-acl"; "manual-probe"; label ] }
               IdempotencyKey = None
-              Source = Some("GenFileActorInvocationTest2.fsx:" + label)
+              Source = Some("GenFileActorInvocationTest4.fsx:" + label)
               DeadlineAtUtc = None }
             CancellationToken.None
         |> Async.RunSynchronously
@@ -2168,6 +2363,35 @@ try
         postJson client "/pages/api/add-key" (addKeyJson assTerryPage.PageId tempTargetKeys "WZ temp target")
         |> statusIs 200 "WZ/sys-admin add temp target on AssTerry"
 
+        let tempProxyNativeKeys =
+            [ pingPongActorAddress; templateKey; "--say \"wz temp proxy\" --set-count 1 --mode fast --tag acl-temp-proxy" ]
+
+        postJson client "/pages/api/add-key" (addKeyJsonWithMode assTerryPage.PageId tempProxyNativeKeys "WZ temp proxy target" "proxy")
+        |> statusIs 200 "WZ/sys-admin add temp proxy target on AssTerry"
+
+        let tempProxyKey =
+            hub.ListAppendPageKeys(assTerryPage.PageId).Keys
+            |> List.tryFind (fun key -> key.DisplayName = "WZ temp proxy target")
+            |> Option.defaultWith (fun () -> invalidOp "WZ temp proxy target key was not projected.")
+
+        require
+            (not (String.Equals(tempProxyKey.Keys.Head, pingPongActorAddress, StringComparison.Ordinal)))
+            "proxy add-key hook should not persist the native PingPong address as key[0]."
+        require
+            (tempProxyKey.Keys.Head.Contains("-ui-proxy-", StringComparison.Ordinal))
+            ("proxy add-key hook should persist a generated UI proxy actor address, got " + tempProxyKey.Keys.Head)
+
+        let tempProxySend =
+            postJson
+                client
+                "/pages/api/actor-argu/send"
+                (actorArguJson assTerryPage.PageId tempProxyKey.Keys "--say \"wz temp proxy\" --set-count 1 --mode fast --tag acl-temp-proxy")
+
+        tempProxySend |> statusIs 200 "WZ/sys-admin ActorArgu send through hook-created temp proxy target"
+        require
+            ((snd tempProxySend).Contains("poc.full.nuget.journal.acl pingpong fcell2 raw=", StringComparison.Ordinal))
+            ("hook-created temp proxy target should reply with native PingPong fCell2 marker; body=" + snd tempProxySend)
+
         postJson terryClient "/pages/api/add-key" (addKeyJson assTerryPage.PageId [ actorAddress; templateKey; "--say \"denied\"" ] "Terry forbidden target")
         |> statusIs 403 "Terry add target denied on AssTerry"
 
@@ -2228,7 +2452,7 @@ try
     printfn "Local chat URL     %s/chat" localClientBaseUrl
     printfn "Local actors URL   %s/actors" localClientBaseUrl
     printfn "Mode              %s" (if productionSql then "production-sql" else "demo")
-    printfn "Ports             local=%d cluster=%s:%d dynamic=%b startupProbe=%b" localPort clusterHost clusterPort ifDynaPort startupProbe
+    printfn "Ports             local=%d cluster=%s:%d native-pingpong=%s:%d dynamic=%b startupProbe=%b" localPort clusterHost clusterPort nativeNodeHost nativeNodePort ifDynaPort startupProbe
     printfn "Local users       WZ/sys-admin=%s / Terry黑粉=%s / legacy-admin=%s; passwords are %s." sysAdminLoginName terryLoginName adminLoginName (if productionSql then "SQL-seeded for this POC" else "demo-only and defined by LoginConfig.demo()")
     printfn "ACL proof         wzGlobalCreate=%b terryAddAssTerry=%b terryRemoveAssTerry=%b terrySendAssTerry=%b terrySendDamnWZ=%b httpDifference=%b" (aclGlobalCapabilityAllowed aclSnapshotJson PtcsAcl.actionPageCreate) (aclCapabilityAllowed terryAclSnapshotJson "AssTerry" PtcsAcl.actionTargetAdd) (aclCapabilityAllowed terryAclSnapshotJson "AssTerry" PtcsAcl.actionTargetRemove) (aclCapabilityAllowed terryAclSnapshotJson "AssTerry" PtcsAcl.actionActorArguSend) (aclCapabilityAllowed terryAclSnapshotJson "DamnWZ" PtcsAcl.actionActorArguSend) aclHttpDifferenceVerified
     printfn "Actors data   visibleNodes=%d visibleActors=%d includeOfflineNodes=%d includeOfflineActors=%d hubActors=%d" actorsNodeCount actorsActorCount actorsNodeCountWithOffline actorsActorCountWithOffline hubActorCount
@@ -2243,6 +2467,7 @@ try
     printfn "Projection    backend=pcsl-actor-proxy clearBeforeStart=%b seededDefaultPage=%b" clearPcslBeforeStart seededDefaultPage
     printfn "Echo proxy actor %s -> %s" actorAddress nativeStringActorAddress
     printfn "PFCF proxy actor %s -> %s" pfcfProxyActorAddress nativeStringActorAddress
+    printfn "PingPong native node %s" nativePingPongNodeAddress
     printfn "PingPong proxy actor %s -> %s" pingPongProxyActorAddress pingPongActorAddress
     printfn "Native actor     %s (%s)" nativeStringActorAddress (if localNativeStringRef.IsSome then "local-demo" else "external")
     printfn "PingPong actor %s" pingPongActorAddress

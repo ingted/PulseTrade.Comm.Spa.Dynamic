@@ -70,13 +70,13 @@
 
 新增 / 修正需求：
 
-1. `Actor Argu` 固定為 FormInput / Argu command route；不支援 canvas renderer，也不支援 Add proxy key。
+1. `Actor Argu` 固定為 FormInput / Argu command route；不支援 canvas renderer，但支援 Add proxy key。Actor Argu proxy key 的 native actor address 由 renderer 收集，實際 proxy actor 建立與 key rewrite 由 PTCS Host/script 的 command hook 負責。
 2. `Actor Dynamic` 必須支援三種 key binding：
    - direct actor key：`[ actorAddress ]`，append input 是任意字串或 JSON DSL；
    - DU/FormInput target key：`[ actorAddress; duTypeOrTemplateKey; canonicalArgString ]`；
    - proxy key：`[ proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind ]`，第一段仍是 PTCS actor-argu route 的 proxy actor address；payload 由 append input value 承載，不放進 key。
 3. Canvas renderer 只依 reply payload 判斷，payload 是 `schema=fskynet-sdui` JSON DSL 時 render canvas；非 canvas payload 回 `None`，由 PTCS normal renderer 呈現。
-4. Add-key renderer 必須依 PTCS core mode-aware shape discriminator claim renderer：`actor-dynamic-target`、`actor-dynamic-proxy`、`actor-argu-target`。
+4. Add-key renderer 必須依 PTCS core mode-aware shape discriminator claim renderer：`actor-dynamic-target`、`actor-dynamic-proxy`、`actor-argu-target`、`actor-argu-proxy`。
 5. `Actor Dynamic` 沒輸入 DU/template 時不得強迫 FormInput；應保留任意字串/direct actor route。
 6. Proxy key first slice 只建立 UI/key contract；真正 PTCS proxy -> RN Host delivery 屬 PTC RN/RN.Host topology，不可在 Dynamic package 寫死 demo echo logic。
 ## 2026-06-28 RFC-PTCS-DYNAMIC-0005 ActorsPage Renderer

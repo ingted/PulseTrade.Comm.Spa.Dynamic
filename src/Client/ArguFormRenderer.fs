@@ -393,6 +393,7 @@ module ArguFormRenderer =
             shape = "actor-dynamic-target"
             || shape = "actor-argu-target"
             || shape = "actor-argu"
+            || shape = "actor-argu-proxy"
 
         let supportsProxy =
             shape = "actor-dynamic-proxy"
@@ -513,11 +514,22 @@ module ArguFormRenderer =
                 Some(errorNode "No Dynamic Argu schemas are registered." :> Node)
             else
                 let root = element "div" "dynamic-argu-add-key" null |> setTestId "dynamic-argu-add-key"
-                let actorLabel = element "label" "dynamic-argu-label" "Actor address"
+                let actorLabelText =
+                    if shape = "actor-argu-proxy" then
+                        "Native actor address"
+                    else
+                        "Actor address"
+
+                let actorLabel = element "label" "dynamic-argu-label" actorLabelText
                 actorLabel.SetAttribute("for", "dynamic-argu-key-actor")
                 let actor = input "text" "dynamic-argu-actor-address" "dynamic-argu-key-actor"
                 actor.SetAttribute("id", "dynamic-argu-key-actor")
-                actor.SetAttribute("placeholder", "/user/durable-proxy")
+                actor.SetAttribute(
+                    "placeholder",
+                    if shape = "actor-argu-proxy" then
+                        "akka.tcp://NativeSystem@127.0.0.1:9453/user/pingpong"
+                    else
+                        "/user/durable-proxy")
                 actor.Value <- defaultActorAddress
                 let typeLabel = element "label" "dynamic-argu-label" "DU type or template key"
                 typeLabel.SetAttribute("for", "dynamic-argu-key-du-type")

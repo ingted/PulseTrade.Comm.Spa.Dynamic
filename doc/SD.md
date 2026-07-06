@@ -330,6 +330,7 @@ let renderAddKey (ctx: obj) =
     let context = ctx |> As<AddKeyContextDto>
     match asText context.shape with
     | "actor-argu-target" -> renderArguTargetKey context
+    | "actor-argu-proxy" -> renderArguTargetKey context
     | "actor-dynamic-target" -> renderDynamicTargetKey context
     | "actor-dynamic-proxy" -> renderDynamicProxyKey context
     | _ -> None
@@ -338,10 +339,12 @@ let renderAddKey (ctx: obj) =
 `renderArguTargetKey` requires all three parts:
 
 ```text
-actorAddress
+actorAddress or nativeActorAddress
 duTypeOrTemplateKey
 canonicalArgString
 ```
+
+For `actor-argu-proxy`, the first input is displayed as native actor address. PTCS receives `keyMode=proxy`; a host/script command hook creates the proxy and persists the rewritten proxy address.
 
 `renderDynamicTargetKey` uses the same UI when DU/template is present. Direct actor key without DU/template is intentionally handled by PTCS core Add actor key fallback.
 

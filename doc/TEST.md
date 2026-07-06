@@ -464,13 +464,14 @@ Coverage:
 - submitted key is `[ proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind ]`.
 - first segment is proxy actor address so PTCS actor-argu route can still send to proxy.
 
-### DYN-T-524 Actor Argu no canvas / no proxy
+### DYN-T-524 Actor Argu no canvas / proxy target support
 
 Verifier：cross-repo PTC Playwright gate.
 
 Coverage:
 
-- Actor Argu action pool does not show Add proxy key.
+- Actor Argu action pool can show Add proxy key when PTCS exposes `actor-argu-proxy`.
+- Dynamic renderer submits native actor address + DU/template + canonical arg string; PTCS hook owns proxy creation and persisted-key rewrite.
 - Actor Argu FormInput route works.
 - non-canvas Actor Argu reply does not get converted to canvas.
 

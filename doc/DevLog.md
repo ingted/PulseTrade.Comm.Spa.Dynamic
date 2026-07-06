@@ -767,3 +767,11 @@ Implementation status:
 - Updated README and `doc\SDUI_Developer_Manual.md` to clarify that Actor Dynamic proxy keys currently route through the first key segment only: the proxy actor address.
 - `rnActorAddress` in `[proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind]` is retained as binding/diagnostic metadata. The live native/RN target must be captured by the proxy actor/spec when that proxy is created.
 - A single shared proxy that chooses different native/RN targets per send is a future PTCS route-envelope/resolver change, not current Dynamic behavior.
+
+## 2026-07-06 - ActorArgu proxy target proof
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic` to `0.1.3-beta63`, `PulseTrade.Comm.Spa.ACL` to `0.1.0-alpha13`, and `PulseTrade.Comm.Spa.Login` to `0.1.0-alpha15`, all consuming `PulseTrade.Comm.Spa [0.2.5-beta73]`.
+- Dynamic FormInput now supports the `actor-argu-proxy` add-key renderer shape. The UI asks for native actor address + DU/template + canonical Argu string; PTCS command hooks own proxy creation and persisted target-key rewrite.
+- `src\GenFileActorInvocationTest4.fsx` now proves the flow with two Akka.Remote nodes in one script: PTCS/proxy fabric node plus a separate native PingPong node. The proxy asks the native actor with raw Argu text and normalizes `fCell2<string>` / string / Newtonsoft `JObject` replies back to `ActorArguTargetReply`.
+- Verification passed with `--if-dyna-port --no-wait --native-node-host 127.0.0.1 --startup-probe`; evidence is recorded in `G:\PulseTrade.fs\log\20260706\20260706134000.ptcs-proxy-orchestration-rfc-dev.op_log`.
+- NuGet publish note: beta63/alpha13/alpha15 nupkgs were built and copied to SDK `10.0.301` `FSharp\library-packs`; direct manual public NuGet push was blocked by `401 Unauthorized` because no API key was available to the command.

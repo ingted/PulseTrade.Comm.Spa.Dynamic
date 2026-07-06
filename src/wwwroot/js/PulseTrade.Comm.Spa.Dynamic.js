@@ -37,7 +37,7 @@ function registerAddKeyRenderer(name, priority, renderer){
 function renderAddKey(ctx){
   const shape=asText(ctx.shape).toLowerCase();
   const supportsProxy=shape=="actor-dynamic-proxy";
-  if(!(shape=="actor-dynamic-target"||shape=="actor-argu-target"||shape=="actor-argu")&&!supportsProxy)return null;
+  if(!(shape=="actor-dynamic-target"||shape=="actor-argu-target"||shape=="actor-argu"||shape=="actor-argu-proxy")&&!supportsProxy)return null;
   else if(supportsProxy){
     const defaultKeyParts=keyPartsFromJson(ctx.defaultKey);
     const o=tryHead(defaultKeyParts);
@@ -99,11 +99,11 @@ function renderAddKey(ctx){
     if(length(keys)===0)return Some(errorNode("No Dynamic Argu schemas are registered."));
     else {
       const root_1=setTestId("dynamic-argu-add-key", element("div", "dynamic-argu-add-key", null));
-      const actorLabel=element("label", "dynamic-argu-label", "Actor address");
+      const actorLabel=element("label", "dynamic-argu-label", shape=="actor-argu-proxy"?"Native actor address":"Actor address");
       actorLabel.setAttribute("for", "dynamic-argu-key-actor");
       const actor=input("text", "dynamic-argu-actor-address", "dynamic-argu-key-actor");
       actor.setAttribute("id", "dynamic-argu-key-actor");
-      actor.setAttribute("placeholder", "/user/durable-proxy");
+      actor.setAttribute("placeholder", shape=="actor-argu-proxy"?"akka.tcp://NativeSystem@127.0.0.1:9453/user/pingpong":"/user/durable-proxy");
       actor.value=defaultActorAddress;
       const typeLabel=element("label", "dynamic-argu-label", "DU type or template key");
       typeLabel.setAttribute("for", "dynamic-argu-key-du-type");
@@ -1526,7 +1526,7 @@ function mountAppendPage(page, definition){
   appendButton.textContent=actorArguButtonLabel(definition);
   append_1(identityBox, [pageIdChip, tabIdChip]);
   append_1(sideTitle, [element_1("h1", "", pageTitle(definition)), identityBox]);
-  append_1(actionMenu, isActorDynamicPage(definition)?[addActorKeyButton, addKeyButton, addProxyKeyButton, removeKeyButton, reload, removePageButton]:isActorArguPage(definition)?[addKeyButton, removeKeyButton, reload, removePageButton]:(addKeyButton.textContent="Add key",[addKeyButton, removeKeyButton, reload, removePageButton]));
+  append_1(actionMenu, isActorDynamicPage(definition)?[addActorKeyButton, addKeyButton, addProxyKeyButton, removeKeyButton, reload, removePageButton]:isActorArguPage(definition)?[addKeyButton, addProxyKeyButton, removeKeyButton, reload, removePageButton]:(addKeyButton.textContent="Add key",[addKeyButton, removeKeyButton, reload, removePageButton]));
   append_1(actionPool, [actionSummary, actionMenu]);
   append_1(sideActions, [actionPool]);
   append_1(sideHead, [sideTitle]);
@@ -2280,7 +2280,8 @@ function mountAppendPage(page, definition){
       const submittedKeys=keysFromJson(keyJson);
       if(length(submittedKeys)>0)pendingSelectKeyId=appendPageKeyId(submittedKeys);
       else null;
-      const request=New_13(definition.pageId, keyJson, Trim(asText_2(displayName)));
+      const displayName_1=Trim(asText_2(displayName));
+      const request=New_13(definition.pageId, keyJson, addKeyMode, displayName_1);
       const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
       refreshPendingState();
       setStatus(status, "Adding key; pending command saved in browser DB");
@@ -2367,7 +2368,7 @@ function mountAppendPage(page, definition){
   rerenderAddKeyBuilder=() => {
     const baseRendererShape=isActorDynamicPage(definition)?"actor-dynamic":isActorArguPage(definition)?"actor-argu":definition.shape;
     const _3=asText_2(addKeyMode).toLowerCase();
-    const rendererShape=_3=="target"?baseRendererShape=="actor-dynamic"?"actor-dynamic-target":baseRendererShape=="actor-argu"?"actor-argu-target":baseRendererShape:_3=="proxy"?baseRendererShape=="actor-dynamic"?"actor-dynamic-proxy":baseRendererShape:baseRendererShape;
+    const rendererShape=_3=="target"?baseRendererShape=="actor-dynamic"?"actor-dynamic-target":baseRendererShape=="actor-argu"?"actor-argu-target":baseRendererShape:_3=="proxy"?baseRendererShape=="actor-dynamic"?"actor-dynamic-proxy":baseRendererShape=="actor-argu"?"actor-argu-proxy":baseRendererShape:baseRendererShape;
     const forceFallback=sameText(addKeyMode, "actor");
     clear(addKeyRendererHost);
     const n=setData("shape", rendererShape, setData("renderer-state", "fallback", addKeyRendererHost));
@@ -6718,10 +6719,11 @@ function New_12(pageId, keyJson, valueText, direction, tags){
     tags:tags
   };
 }
-function New_13(pageId, keyJson, displayName){
+function New_13(pageId, keyJson, keyMode, displayName){
   return{
     pageId:pageId, 
     keyJson:keyJson, 
+    keyMode:keyMode,
     displayName:displayName
   };
 }

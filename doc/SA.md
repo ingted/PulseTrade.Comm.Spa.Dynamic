@@ -97,6 +97,7 @@ Mode matrix:
 | PTCS shape discriminator | Dynamic behavior |
 | --- | --- |
 | `actor-argu-target` | Claim renderer; require actor address, DU/template key, canonical arg string; produce FormInput target key. |
+| `actor-argu-proxy` | Claim renderer; require native actor address, DU/template key, canonical arg string; PTCS Host/script command hook creates the proxy actor and rewrites the accepted key. |
 | `actor-dynamic-target` | Claim renderer; if DU/template + canonical arg string are supplied, produce FormInput target key; if DU is blank, leave direct actor-key behavior to PTCS core. |
 | `actor-dynamic-proxy` | Claim renderer; require proxy actor address and RN actor address; produce proxy-v1 key. |
 | plain `actor-argu` / `actor-dynamic` | Legacy compatibility only; new PTCS UI should pass explicit mode discriminator. |
@@ -113,6 +114,8 @@ Proxy key analysis:
 - Third segment is `rnActorAddress`, which identifies the RN Host target actor/sharding entity/logical durable endpoint.
 - Fourth segment is `targetKind` (`raw`, `canvas-json`, `argu`, etc.). Payload is not part of the key; it is the append input value delivered to the proxy actor.
 - Dynamic package does not guarantee the proxy actor exists or is split-service; verification must expose whether the live host is still using PTCS Host same-process demo actors.
+
+Actor Argu proxy target is different from Actor Dynamic proxy key. For Actor Argu, Dynamic sends the same target tuple shape as a DU target, but the browser request carries PTCS `keyMode=proxy`; PTCS Host/script hooks decide whether to spawn/reuse a proxy and persist `[proxyActorAddress; template; raw]`.
 ## 2026-06-28 ActorsPage Renderer System Analysis
 
 ActorsPage renderer 是 PTCS `/actors` 的 page-level presentation extension，不是 Actor Dynamic message reply canvas。系統邊界如下：
