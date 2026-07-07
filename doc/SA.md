@@ -96,8 +96,8 @@ Mode matrix:
 
 | PTCS shape discriminator | Dynamic behavior |
 | --- | --- |
-| `actor-argu-target` | Claim renderer; require actor address, DU/template key, canonical arg string; produce FormInput target key. |
-| `actor-argu-proxy` | Claim renderer; require native actor address, DU/template key, canonical arg string; PTCS Host/script command hook creates the proxy actor and rewrites the accepted key. |
+| `actor-argu-target` | Claim renderer; require proxy actor address, target actor address, DU/template key, canonical arg string; produce explicit `[proxy; "target-v1"; target; template; raw]` FormInput target key. |
+| `actor-argu-proxy` | Deprecated beta64 workaround; do not claim as a new user-facing renderer. |
 | `actor-dynamic-target` | Claim renderer; if DU/template + canonical arg string are supplied, produce FormInput target key; if DU is blank, leave direct actor-key behavior to PTCS core. |
 | `actor-dynamic-proxy` | Claim renderer; require proxy actor address and RN actor address; produce proxy-v1 key. |
 | plain `actor-argu` / `actor-dynamic` | Legacy compatibility only; new PTCS UI should pass explicit mode discriminator. |
@@ -115,7 +115,7 @@ Proxy key analysis:
 - Fourth segment is `targetKind` (`raw`, `canvas-json`, `argu`, etc.). Payload is not part of the key; it is the append input value delivered to the proxy actor.
 - Dynamic package does not guarantee the proxy actor exists or is split-service; verification must expose whether the live host is still using PTCS Host same-process demo actors.
 
-Actor Argu proxy target is different from Actor Dynamic proxy key. For Actor Argu, Dynamic sends the same target tuple shape as a DU target, but the browser request carries PTCS `keyMode=proxy`; PTCS Host/script hooks decide whether to spawn/reuse a proxy and persist `[proxyActorAddress; template; raw]`.
+Actor Argu proxy target is different from Actor Dynamic proxy key. For Actor Argu, Dynamic sends the explicit target tuple `[proxyActorAddress; "target-v1"; targetActorAddress; template; raw]`; PTCS core routes to the first segment and projects the third segment into `ActorArguTargetCommand.TargetActorAddress`. Dynamic does not spawn/reuse proxy actors and does not rely on PTCS Host/script hooks to rewrite persisted keys.
 ## 2026-06-28 ActorsPage Renderer System Analysis
 
 ActorsPage renderer 是 PTCS `/actors` 的 page-level presentation extension，不是 Actor Dynamic message reply canvas。系統邊界如下：

@@ -470,10 +470,25 @@ Verifier：cross-repo PTC Playwright gate.
 
 Coverage:
 
-- Actor Argu action pool can show Add proxy key when PTCS exposes `actor-argu-proxy`.
-- Dynamic renderer submits native actor address + DU/template + canonical arg string; PTCS hook owns proxy creation and persisted-key rewrite.
+- Superseded beta64 path: Actor Argu action pool must not show user-facing Add proxy key.
+- Dynamic renderer submits explicit `[proxyActorAddress; "target-v1"; targetActorAddress; duTypeOrTemplateKey; canonicalArgString]`.
+- PTCS core routes to proxy first segment and projects target actor address into `ActorArguTargetCommand.TargetActorAddress`.
 - Actor Argu FormInput route works.
 - non-canvas Actor Argu reply does not get converted to canvas.
+
+### DYN-T-526 Explicit ActorArgu target key
+
+Verifier：`GenFileActorInvocationTest4.fsx -- --if-dyna-port --no-wait` plus Playwright MCP visual gate.
+
+Coverage:
+
+- Add Target Key exposes Proxy actor address and Target actor address fields.
+- Persisted selected key starts with proxy actor address and contains `"target-v1"` marker plus target actor address.
+- Backend resolver accepts explicit target keys by resolving against target/template/raw.
+- Proxy actor receives `TargetActorAddress=Some targetActorAddress` and asks native actor on another Akka.Remote node.
+- Actor Argu reply remains normal fCell chat; Canvas renderer is not invoked.
+- Pass 2026-07-07: no-wait proof confirmed PTCS/proxy node `PFCF@127.0.0.1:7038`, native PingPong node `PFCFNative757c0c47@127.0.0.1:7039`, persisted key `[proxy; "target-v1"; target; template; raw]`, and `TargetActorAddress=Some target`.
+- Pass 2026-07-07: Playwright MCP visual gate against `http://127.0.0.1:18182/page/damnwz` confirmed Actor Argu hides Add proxy key, Add Target Key shows both proxy and target address fields plus template/alias/canonical arg, and a manual `UI explicit PingPong` key sends through proxy to native PingPong. Evidence: `G:\PulseTrade.fs\log\20260707\ptcs-explicit-target-damnwz-before-actions.md`, `G:\PulseTrade.fs\log\20260707\ptcs-explicit-target-damnwz-after-send.md`.
 
 ### DYN-T-525 Canvas payload-only render rule
 

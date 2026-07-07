@@ -344,10 +344,21 @@ module ArguFormRenderer =
     let isRegisteredArguSchema value =
         tryFindSchema value |> Option.isSome
 
+    let explicitTargetMarker = "target-v1"
+
+    let isExplicitTargetMarker value =
+        asText value |> _.Trim().ToLower() = explicitTargetMarker
+
+    let isExplicitTargetKey (keyParts: string[]) =
+        let keyParts = arrayOrEmpty keyParts |> Array.map asText
+        keyParts.Length >= 4 && isExplicitTargetMarker keyParts[1]
+
     let normalizeDynamicTargetKeyParts (keyParts: string[]) =
         let keyParts = arrayOrEmpty keyParts |> Array.map asText
 
-        if keyParts.Length = 3 then
+        if isExplicitTargetKey keyParts then
+            keyParts
+        elif keyParts.Length = 3 then
             let first = keyParts[0]
             let second = keyParts[1]
             let third = keyParts[2]
@@ -356,6 +367,39 @@ module ArguFormRenderer =
                 [| second; third; first |]
             else
                 keyParts
+        else
+            keyParts
+
+    let dynamicTypeNameFromKeyParts (keyParts: string[]) =
+        let keyParts = normalizeDynamicTargetKeyParts keyParts
+
+        if isExplicitTargetKey keyParts && keyParts.Length > 3 then
+            asText keyParts[3]
+        elif keyParts.Length > 1 then
+            asText keyParts[1]
+        else
+            ""
+
+    let dynamicCanonicalArgFromKeyParts (keyParts: string[]) =
+        let keyParts = normalizeDynamicTargetKeyParts keyParts
+
+        if isExplicitTargetKey keyParts && keyParts.Length > 4 then
+            asText keyParts[4]
+        elif keyParts.Length > 2 then
+            asText keyParts[2]
+        else
+            ""
+
+    let resolveKeyPartsFromSelectedKey (keyParts: string[]) =
+        let keyParts = normalizeDynamicTargetKeyParts keyParts
+
+        if isExplicitTargetKey keyParts then
+            let targetAddress = if keyParts.Length > 2 then asText keyParts[2] else ""
+            let typeName = if keyParts.Length > 3 then asText keyParts[3] else ""
+            let canonicalArg = if keyParts.Length > 4 then asText keyParts[4] else ""
+
+            [| targetAddress; typeName; canonicalArg |]
+            |> Array.filter (not << isBlank)
         else
             keyParts
 
@@ -393,7 +437,6 @@ module ArguFormRenderer =
             shape = "actor-dynamic-target"
             || shape = "actor-argu-target"
             || shape = "actor-argu"
-            || shape = "actor-argu-proxy"
 
         let supportsProxy =
             shape = "actor-dynamic-proxy"
@@ -500,40 +543,35 @@ module ArguFormRenderer =
                 |> Array.distinct
                 |> Array.sort
             let defaultKeyParts = keyPartsFromJson context.defaultKey
-            let defaultActorAddress =
-                if shape = "actor-argu-proxy" then
-                    ""
+            let defaultProxyAddress =
+                defaultKeyParts
+                |> Array.tryHead
+                |> Option.defaultValue ""
+            let defaultTargetAddress =
+                if isExplicitTargetKey defaultKeyParts && defaultKeyParts.Length > 2 then
+                    defaultKeyParts[2]
                 else
-                    defaultKeyParts
-                    |> Array.tryHead
-                    |> Option.defaultValue ""
+                    ""
             let defaultTypeName =
-                if defaultKeyParts.Length > 1 then
-                    defaultKeyParts[1]
-                else
-                    ""
+                dynamicTypeNameFromKeyParts defaultKeyParts
 
             if keys.Length = 0 then
                 Some(errorNode "No Dynamic Argu schemas are registered." :> Node)
             else
                 let root = element "div" "dynamic-argu-add-key" null |> setTestId "dynamic-argu-add-key"
-                let actorLabelText =
-                    if shape = "actor-argu-proxy" then
-                        "Native actor address"
-                    else
-                        "Actor address"
+                let proxyLabel = element "label" "dynamic-argu-label" "Proxy actor address"
+                proxyLabel.SetAttribute("for", "dynamic-argu-key-proxy-actor")
+                let proxyActor = input "text" "dynamic-argu-actor-address" "dynamic-argu-key-proxy-actor"
+                proxyActor.SetAttribute("id", "dynamic-argu-key-proxy-actor")
+                proxyActor.SetAttribute("placeholder", "akka.tcp://PtcsHost@127.0.0.1:9779/user/actor-argu-proxy")
+                proxyActor.Value <- defaultProxyAddress
 
-                let actorLabel = element "label" "dynamic-argu-label" actorLabelText
-                actorLabel.SetAttribute("for", "dynamic-argu-key-actor")
-                let actor = input "text" "dynamic-argu-actor-address" "dynamic-argu-key-actor"
-                actor.SetAttribute("id", "dynamic-argu-key-actor")
-                actor.SetAttribute(
-                    "placeholder",
-                    if shape = "actor-argu-proxy" then
-                        "akka.tcp://NativeSystem@127.0.0.1:9453/user/pingpong"
-                    else
-                        "/user/durable-proxy")
-                actor.Value <- defaultActorAddress
+                let targetLabel = element "label" "dynamic-argu-label" "Target actor address"
+                targetLabel.SetAttribute("for", "dynamic-argu-key-target-actor")
+                let targetActor = input "text" "dynamic-argu-actor-address" "dynamic-argu-key-target-actor"
+                targetActor.SetAttribute("id", "dynamic-argu-key-target-actor")
+                targetActor.SetAttribute("placeholder", "akka.tcp://NativeSystem@127.0.0.1:9453/user/pingpong")
+                targetActor.Value <- defaultTargetAddress
                 let typeLabel = element "label" "dynamic-argu-label" "DU type or template key"
                 typeLabel.SetAttribute("for", "dynamic-argu-key-du-type")
                 let typeInput = input "text" "dynamic-argu-du-type" "dynamic-argu-key-du-type"
@@ -554,10 +592,7 @@ module ArguFormRenderer =
                 setTestId "dynamic-argu-key-canonical-arg-string" argInput |> ignore
 
                 let defaultArgString =
-                    if defaultKeyParts.Length > 2 then
-                        defaultKeyParts[2]
-                    else
-                        ""
+                    dynamicCanonicalArgFromKeyParts defaultKeyParts
 
                 argInput.Value <- defaultArgString
 
@@ -592,17 +627,19 @@ module ArguFormRenderer =
                 clean.AddEventListener(
                     "click",
                     fun () ->
-                        actor.Value <- ""
+                        proxyActor.Value <- ""
+                        targetActor.Value <- ""
                         typeInput.Value <- ""
                         aliasInput.Value <- ""
                         argInput.Value <- ""
                         renderTargetConfig ()
-                        actor.Focus())
+                        proxyActor.Focus())
                 cancel.AddEventListener("click", fun () -> context.cancelKey())
                 submit.AddEventListener(
                     "click",
                     fun () ->
-                        let actorAddress = actor.Value.Trim()
+                        let proxyAddress = proxyActor.Value.Trim()
+                        let targetAddress = targetActor.Value.Trim()
                         let selectedTypeName = typeInput.Value.Trim()
                         let displayName = aliasInput.Value.Trim()
                         let keyTail =
@@ -617,14 +654,18 @@ module ArguFormRenderer =
                                 else
                                     [| canonicalArgString |]
 
-                        if isBlank actorAddress then
-                            actor.Focus()
+                        if isBlank proxyAddress then
+                            proxyActor.Focus()
+                        elif isBlank targetAddress then
+                            targetActor.Focus()
                         elif isBlank selectedTypeName then
                             typeInput.Focus()
                         elif Option.isSome (tryFindDocument selectedTypeName) || keyTail.Length > 0 then
                             let payload: KeySubmitPayloadDto =
                                 { keys =
-                                    [| yield actorAddress
+                                    [| yield proxyAddress
+                                       yield explicitTargetMarker
+                                       yield targetAddress
                                        yield selectedTypeName
                                        yield! keyTail |]
                                   displayName = displayName }
@@ -635,8 +676,10 @@ module ArguFormRenderer =
 
                 append
                     root
-                    [| actorLabel :> Node
-                       actor :> Node
+                    [| proxyLabel :> Node
+                       proxyActor :> Node
+                       targetLabel :> Node
+                       targetActor :> Node
                        typeLabel :> Node
                        typeInput :> Node
                        aliasLabel :> Node
@@ -984,11 +1027,16 @@ module ArguFormRenderer =
         let context = ctx |> As<AppendInputContextDto>
         let keyParts = context.keyParts |> normalizeDynamicTargetKeyParts
         let typeName =
-            if keyParts.Length > 1 then
-                asText keyParts[1]
-            else
+            let fromKey = dynamicTypeNameFromKeyParts keyParts
+
+            if isBlank fromKey then
                 asText context.duTypeName
-        let isBackendTarget = keyParts.Length = 3 && not (isBlank keyParts[2])
+            else
+                fromKey
+
+        let resolveKeyParts = resolveKeyPartsFromSelectedKey keyParts
+        let isBackendTarget =
+            resolveKeyParts.Length = 3 && not (isBlank resolveKeyParts[2])
 
         if isBlank typeName || typeName = "proxy-v1" then
             None
@@ -996,7 +1044,7 @@ module ArguFormRenderer =
             let root = element "div" "dynamic-argu-form" "Loading Dynamic Argu form..." |> setTestId "dynamic-argu-form"
 
             if isBackendTarget then
-                let request: ResolveTargetRequestDto = { keys = keyParts }
+                let request: ResolveTargetRequestDto = { keys = resolveKeyParts }
 
                 postJson<ResolveTargetRequestDto, ResolveTargetReplyDto>
                     "/client-extensions/dynamic/argu/resolve-target"

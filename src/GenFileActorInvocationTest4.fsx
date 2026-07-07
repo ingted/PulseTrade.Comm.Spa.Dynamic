@@ -24,9 +24,9 @@
 //    The built-in PingPong proof starts a second Akka.Remote node with:
 //      --native-node-host <this-machine-reachable-ip-or-dns>
 //      --native-node-port <port-or-0>
-//    Add proxy key stores a per-target proxy key. PTCS command hooks create
-//    the proxy actor at add-key time and rewrite [native; template; raw] to
-//    [proxy; template; raw] before persistence.
+//    Add Target Key stores [proxy; "target-v1"; native; template; raw].
+//    PTCS sends to the proxy actor and includes native as
+//    ActorArguTargetCommand.TargetActorAddress; no add-key hook rewrites the key.
 //    Live-host mode does not send automatically unless --startup-probe is set.
 //    After startup, call sendEchoProbe(), sendRawEchoProbe "...", or sendPfcfProbe().
 //    Call stopPocFullNugetJournalAclHosts() to stop the web host.
@@ -51,10 +51,10 @@
 #r "nuget: PulseTrade.Comm.Login.Core, [0.1.0-alpha5]"
 #r "nuget: PulseTrade.Comm.Login.SqlServer, [0.1.0-alpha3]"
 #r "nuget: PulseTrade.Comm.Security, [0.1.0-alpha1]"
-#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta73]"
-#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta64]"
-#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha13]"
-#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha15]"
+#r "nuget: PulseTrade.Comm.Spa, [0.2.5-beta74]"
+#r "nuget: PulseTrade.Comm.Spa.Dynamic, [0.1.3-beta65]"
+#r "nuget: PulseTrade.Comm.Spa.ACL, [0.1.0-alpha14]"
+#r "nuget: PulseTrade.Comm.Spa.Login, [0.1.0-alpha16]"
 
 #load @"C:\Users\Administrator\.codex\lib\ParseLine.fsx"
 
@@ -487,23 +487,28 @@ let nativeReplyToCell (reply: obj) =
     | other ->
         Error($"native actor returned unsupported type {other.GetType().FullName}: {other}")
 
-type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, nativeActorAddress: string, askTimeout: TimeSpan) as this =
+type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, defaultNativeActorAddress: string, askTimeout: TimeSpan) as this =
     inherit ReceiveActor()
 
     do
         this.Receive<PocFullNugetJournalActorArguStringProxyControl>(fun message ->
             match message with
-            | GetNativeActorAddress -> this.ActorCtx.Sender.Tell(nativeActorAddress, this.ActorCtx.Self))
+            | GetNativeActorAddress -> this.ActorCtx.Sender.Tell(defaultNativeActorAddress, this.ActorCtx.Self))
         |> ignore
 
         this.Receive<ActorArguTargetCommand>(fun (command: ActorArguTargetCommand) ->
             let replyTo = this.ActorCtx.Sender
             let selfRef = this.ActorCtx.Self
             let rawArgu = if isNull command.RawArgu then "" else command.RawArgu
+            let nativeActorAddress =
+                command.TargetActorAddress
+                |> Option.map (fun value -> if isNull value then "" else value.Trim())
+                |> Option.filter (fun value -> not (String.IsNullOrWhiteSpace value))
+                |> Option.defaultValue defaultNativeActorAddress
 
             debugPrint
                 "actor-argu-proxy"
-                $"RECEIVED self={selfRef.Path}; sender={replyTo.Path}; commandId={command.CommandId}; command.ActorAddress={command.ActorAddress}; nativeActorAddress={nativeActorAddress}; raw={rawArgu}"
+                $"RECEIVED self={selfRef.Path}; sender={replyTo.Path}; commandId={command.CommandId}; command.ActorAddress={command.ActorAddress}; command.TargetActorAddress={command.TargetActorAddress}; nativeActorAddress={nativeActorAddress}; raw={rawArgu}"
 
             async {
                 let! nativeResult =
@@ -993,13 +998,9 @@ let persistenceNamespace =
 let journalQueryAdapter =
     Journal.sqlServerQueryHealthAdapter(commandTimeoutSeconds = 5, persistenceIdPrefix = persistenceNamespace.PersistenceIdPrefix)
 
-let mutable actorArguProxyAddKeyBinder =
-    fun (context: CommSpaAddKeyCommandContext) -> async { return CommSpaCommandHooks.addKeyIdentity context }
-
 let commandHooks =
     CommSpaCommandHooks.noop
-    |> CommSpaCommandHooks.withHookId "genfile4-actor-argu-proxy"
-    |> CommSpaCommandHooks.withBeforeAddKey (fun context -> actorArguProxyAddKeyBinder context)
+    |> CommSpaCommandHooks.withHookId "genfile4-explicit-actor-argu-target"
 
 let pcslOptions =
     { PcslCommSpaPersistenceOptions.defaults with
@@ -1636,41 +1637,6 @@ let spawnProxyActorRegisteredOrReuseLive proxyName proxyKind nativeAddress =
     | Error error ->
         invalidOp $"ActorRegistry ActorOfRegistered failed actor={proxyName} kind={error.Kind} message={error.Message}"
 
-let isActorArguProxyAddKey (context: CommSpaAddKeyCommandContext) =
-    context.Page.Tags
-    |> List.exists (fun tag -> String.Equals(tag, "actor-argu", StringComparison.OrdinalIgnoreCase))
-    && String.Equals(textOr "" context.Mode, "proxy", StringComparison.OrdinalIgnoreCase)
-
-let proxyNameForNativeTarget nativeAddress templateKey rawArgu =
-    let fingerprint = stableHash (nativeAddress + "|" + templateKey + "|" + rawArgu)
-    actorName + "-ui-proxy-" + fingerprint.Substring(0, 12)
-
-let bindActorArguProxyTarget (context: CommSpaAddKeyCommandContext) =
-    async {
-        if not (isActorArguProxyAddKey context) then
-            return CommSpaCommandHooks.addKeyIdentity context
-        else
-            match context.Keys with
-            | nativeActorAddress :: templateKey :: rawArguTail ->
-                let rawArgu = rawArguTail |> String.concat "\u001f"
-                let proxyName = proxyNameForNativeTarget nativeActorAddress templateKey rawArgu
-                let proxyKind = "ui-actor-argu-target-" + (stableHash (templateKey + "|" + nativeActorAddress)).Substring(0, 10)
-                let proxyRef = spawnProxyActorRegisteredOrReuseLive proxyName proxyKind nativeActorAddress
-                let proxyActorAddress = fabric.NodeAddress.TrimEnd('/') + proxyRef.Path.ToStringWithoutAddress()
-
-                debugPrint
-                    "actor-argu-proxy-bind"
-                    $"mode={context.Mode}; native={nativeActorAddress}; proxy={proxyActorAddress}; template={templateKey}; display={context.DisplayName}"
-
-                return
-                    { Keys = proxyActorAddress :: templateKey :: rawArguTail
-                      DisplayName = context.DisplayName }
-            | _ ->
-                return invalidArg "keys" "Actor Argu proxy target requires [nativeActorAddress; templateKey; canonicalArgString]."
-    }
-
-actorArguProxyAddKeyBinder <- bindActorArguProxyTarget
-
 let spawnEchoActorRegisteredStrict () =
     spawnProxyActorRegisteredStrict actorName "echo-target" nativeStringActorAddress
 
@@ -1742,13 +1708,13 @@ tryForceReplay "actor-registry-after-pingpong-register" CommSpaActorRegistry.reg
 tryForceReplay "actor-registry-after-pingpong-proxy-register" CommSpaActorRegistry.registryStreamKey |> ignore
 
 let echoTargetKeys =
-    [ actorAddress; templateKey; defaultCanonicalArgString ]
+    [ actorAddress; "target-v1"; nativeStringActorAddress; templateKey; defaultCanonicalArgString ]
 
 let pingPongTargetKeys =
-    [ pingPongProxyActorAddress; templateKey; "--say \"ping\" --set-count 2 --mode fast --tag acl pingpong" ]
+    [ pingPongProxyActorAddress; "target-v1"; pingPongActorAddress; templateKey; "--say \"ping\" --set-count 2 --mode fast --tag acl pingpong" ]
 
 let pfcfProtoTypingTargetKeys =
-    [ pfcfProxyActorAddress; pfcfProtoTypingTemplateKey; pfcfProtoTypingCanonicalArgString ]
+    [ pfcfProxyActorAddress; "target-v1"; nativeStringActorAddress; pfcfProtoTypingTemplateKey; pfcfProtoTypingCanonicalArgString ]
 
 let actorArguPage pageId title description =
     let basePage = ActorArgu.fCellChatPage pageId title pageId
@@ -1756,7 +1722,7 @@ let actorArguPage pageId title description =
     { basePage with
         Shape = "actor-argu"
         Description = description
-        KeyPlaceholder = "[\"actor-address\", \"template-key\", \"--say \\\"hello\\\"\"]"
+        KeyPlaceholder = "[\"proxy-actor-address\", \"target-v1\", \"target-actor-address\", \"template-key\", \"--say \\\"hello\\\"\"]"
         DefaultKey = JsonSerializer.Serialize(echoTargetKeys |> List.toArray)
         ValuePlaceholder = defaultCanonicalArgString
         Tags = [ "actor-argu"; "dynamic"; "nuget"; "journal"; "acl" ] }
@@ -1847,7 +1813,7 @@ let verifyPfcfProtoTypingTemplate () =
         $"PFCF prototype raw command rebuild mismatch. expected={pfcfProtoTypingCanonicalArgString}; actual={rebuiltRawArgu}"
 
     let request: DynamicArguResolveTargetRequest =
-        { Keys = [| pfcfProxyActorAddress; pfcfProtoTypingTemplateKey; pfcfProtoTypingCanonicalArgString |] }
+        { Keys = pfcfProtoTypingTargetKeys |> List.toArray }
 
     let requestJson =
         JsonSerializer.Serialize(request, ArguFormSchema.jsonOptions)
@@ -2358,41 +2324,41 @@ try
 
     if noWait then
         let tempTargetKeys =
-            [ pingPongProxyActorAddress; templateKey; "--say \"wz temp\" --set-count 1 --mode fast --tag acl-temp" ]
+            [ pingPongProxyActorAddress; "target-v1"; pingPongActorAddress; templateKey; "--say \"wz temp\" --set-count 1 --mode fast --tag acl-temp" ]
 
         postJson client "/pages/api/add-key" (addKeyJson assTerryPage.PageId tempTargetKeys "WZ temp target")
         |> statusIs 200 "WZ/sys-admin add temp target on AssTerry"
 
-        let tempProxyNativeKeys =
-            [ pingPongActorAddress; templateKey; "--say \"wz temp proxy\" --set-count 1 --mode fast --tag acl-temp-proxy" ]
+        let tempExplicitProxyKeys =
+            [ pingPongProxyActorAddress; "target-v1"; pingPongActorAddress; templateKey; "--say \"wz temp explicit proxy\" --set-count 1 --mode fast --tag acl-temp-proxy" ]
 
-        postJson client "/pages/api/add-key" (addKeyJsonWithMode assTerryPage.PageId tempProxyNativeKeys "WZ temp proxy target" "proxy")
-        |> statusIs 200 "WZ/sys-admin add temp proxy target on AssTerry"
+        postJson client "/pages/api/add-key" (addKeyJson assTerryPage.PageId tempExplicitProxyKeys "WZ temp explicit proxy target")
+        |> statusIs 200 "WZ/sys-admin add explicit proxy target on AssTerry"
 
-        let tempProxyKey =
+        let tempExplicitProxyKey =
             hub.ListAppendPageKeys(assTerryPage.PageId).Keys
-            |> List.tryFind (fun key -> key.DisplayName = "WZ temp proxy target")
-            |> Option.defaultWith (fun () -> invalidOp "WZ temp proxy target key was not projected.")
+            |> List.tryFind (fun key -> key.DisplayName = "WZ temp explicit proxy target")
+            |> Option.defaultWith (fun () -> invalidOp "WZ temp explicit proxy target key was not projected.")
 
         require
-            (not (String.Equals(tempProxyKey.Keys.Head, pingPongActorAddress, StringComparison.Ordinal)))
-            "proxy add-key hook should not persist the native PingPong address as key[0]."
+            (String.Equals(tempExplicitProxyKey.Keys.Head, pingPongProxyActorAddress, StringComparison.Ordinal))
+            "explicit target key should persist the user-provided proxy actor as key[0]."
         require
-            (tempProxyKey.Keys.Head.Contains("-ui-proxy-", StringComparison.Ordinal))
-            ("proxy add-key hook should persist a generated UI proxy actor address, got " + tempProxyKey.Keys.Head)
+            (tempExplicitProxyKey.Keys.Length >= 3 && String.Equals(tempExplicitProxyKey.Keys[2], pingPongActorAddress, StringComparison.Ordinal))
+            "explicit target key should persist the native PingPong actor as key[2]."
 
-        let tempProxySend =
+        let tempExplicitProxySend =
             postJson
                 client
                 "/pages/api/actor-argu/send"
-                (actorArguJson assTerryPage.PageId tempProxyKey.Keys "--say \"wz temp proxy\" --set-count 1 --mode fast --tag acl-temp-proxy")
+                (actorArguJson assTerryPage.PageId tempExplicitProxyKey.Keys "--say \"wz temp explicit proxy\" --set-count 1 --mode fast --tag acl-temp-proxy")
 
-        tempProxySend |> statusIs 200 "WZ/sys-admin ActorArgu send through hook-created temp proxy target"
+        tempExplicitProxySend |> statusIs 200 "WZ/sys-admin ActorArgu send through explicit temp proxy target"
         require
-            ((snd tempProxySend).Contains("poc.full.nuget.journal.acl pingpong fcell2 raw=", StringComparison.Ordinal))
-            ("hook-created temp proxy target should reply with native PingPong fCell2 marker; body=" + snd tempProxySend)
+            ((snd tempExplicitProxySend).Contains("poc.full.nuget.journal.acl pingpong fcell2 raw=", StringComparison.Ordinal))
+            ("explicit temp proxy target should reply with native PingPong fCell2 marker; body=" + snd tempExplicitProxySend)
 
-        postJson terryClient "/pages/api/add-key" (addKeyJson assTerryPage.PageId [ actorAddress; templateKey; "--say \"denied\"" ] "Terry forbidden target")
+        postJson terryClient "/pages/api/add-key" (addKeyJson assTerryPage.PageId [ actorAddress; "target-v1"; nativeStringActorAddress; templateKey; "--say \"denied\"" ] "Terry forbidden target")
         |> statusIs 403 "Terry add target denied on AssTerry"
 
         postJson terryClient "/pages/api/actor-argu/send" (actorArguJson assTerryPage.PageId echoTargetKeys "--say \"terry allowed\" --set-count 1 --mode fast")

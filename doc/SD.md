@@ -330,21 +330,28 @@ let renderAddKey (ctx: obj) =
     let context = ctx |> As<AddKeyContextDto>
     match asText context.shape with
     | "actor-argu-target" -> renderArguTargetKey context
-    | "actor-argu-proxy" -> renderArguTargetKey context
     | "actor-dynamic-target" -> renderDynamicTargetKey context
     | "actor-dynamic-proxy" -> renderDynamicProxyKey context
     | _ -> None
 ```
 
-`renderArguTargetKey` requires all three parts:
+`renderArguTargetKey` requires explicit proxy and native target parts:
 
 ```text
-actorAddress or nativeActorAddress
+proxyActorAddress
+targetActorAddress
 duTypeOrTemplateKey
 canonicalArgString
 ```
 
-For `actor-argu-proxy`, the first input is displayed as native actor address. PTCS receives `keyMode=proxy`; a host/script command hook creates the proxy and persists the rewritten proxy address.
+Submit payload:
+
+```fsharp
+{ keys = [| proxyActorAddress; "target-v1"; targetActorAddress; duTypeOrTemplateKey; canonicalArgString |]
+  displayName = displayName }
+```
+
+The first key segment remains the PTCS route actor. PTCS `ActorArguTargetCommand.TargetActorAddress` carries the native target actor address. Dynamic must not rely on `BeforeAddKey` / Host script hooks to create a per-target proxy and rewrite the persisted key.
 
 `renderDynamicTargetKey` uses the same UI when DU/template is present. Direct actor key without DU/template is intentionally handled by PTCS core Add actor key fallback.
 
@@ -371,6 +378,7 @@ let renderAppendInput (ctx: obj) =
     let context = ctx |> As<AppendInputContextDto>
     let keys = normalizeDynamicTargetKeyParts context.keyParts
     match asText context.shape, keys |> Array.toList with
+    | "actor-argu", proxy :: "target-v1" :: target :: template :: raw :: _ -> renderResolvedFormInput context template raw
     | "actor-argu", _ :: template :: raw :: _ -> renderResolvedFormInput context template raw
     | "actor-dynamic", _ :: "proxy-v1" :: _rnTarget :: _targetKind :: _ -> None
     | "actor-dynamic", _ :: template :: raw :: _ -> renderResolvedFormInput context template raw

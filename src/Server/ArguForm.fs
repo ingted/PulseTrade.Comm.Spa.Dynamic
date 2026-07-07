@@ -810,7 +810,24 @@ module DynamicCommandLine =
 
 [<RequireQualifiedAccess>]
 module DynamicArgStringTarget =
+    let explicitTargetMarker = "target-v1"
+
     let normalizeKeyParts keys =
+        let normalized =
+            keys
+            |> Seq.choose (fun key ->
+                if String.IsNullOrWhiteSpace key then
+                    None
+                else
+                    Some(key.Trim()))
+            |> Seq.toList
+
+        match normalized with
+        | _proxyActorAddress :: marker :: targetActorAddress :: tail when String.Equals(marker, explicitTargetMarker, StringComparison.OrdinalIgnoreCase) ->
+            targetActorAddress :: tail
+        | _ -> normalized
+
+    let rawKeyParts keys =
         keys
         |> Seq.choose (fun key ->
             if String.IsNullOrWhiteSpace key then
@@ -1052,7 +1069,7 @@ module DynamicArgStringTarget =
                     | Ok _ -> Ok(ArguTemplateTarget(actorAddress, registration.TemplateKey, canonicalArgString))
         | actorAddress :: templateKey :: [] ->
             Error $"Dynamic Argu target {templateKey} requires a canonical arg string."
-        | _ -> Error "Dynamic Argu target key must be [ actorAddress; duTypeOrTemplateKey; canonicalArgString ]."
+        | _ -> Error "Dynamic Argu target key must be [ actorAddress; duTypeOrTemplateKey; canonicalArgString ] or [ proxyActorAddress; target-v1; targetActorAddress; duTypeOrTemplateKey; canonicalArgString ]."
 
     let buildRawArgu (target: ParsedArguTarget) =
         let parts = ResizeArray<string>()
@@ -1133,7 +1150,24 @@ module DynamicArguResolveEndpoint =
 
 [<RequireQualifiedAccess>]
 module DynamicTargetKey =
+    let explicitTargetMarker = "target-v1"
+
     let normalizeKeyParts keys =
+        let normalized =
+            keys
+            |> Seq.choose (fun key ->
+                if String.IsNullOrWhiteSpace key then
+                    None
+                else
+                    Some(key.Trim()))
+            |> Seq.toList
+
+        match normalized with
+        | _proxyActorAddress :: marker :: targetActorAddress :: tail when String.Equals(marker, explicitTargetMarker, StringComparison.OrdinalIgnoreCase) ->
+            targetActorAddress :: tail
+        | _ -> normalized
+
+    let rawKeyParts keys =
         keys
         |> Seq.choose (fun key ->
             if String.IsNullOrWhiteSpace key then

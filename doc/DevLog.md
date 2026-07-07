@@ -783,3 +783,17 @@ Implementation status:
 - Playwright MCP proof passed against `GenFileActorInvocationTest4.fsx` live host: local login on `127.0.0.1:18729`, PTCS/proxy node on `127.0.0.1:18730`, native PingPong node on `127.0.0.1:18731`.
 - Browser evidence: Add proxy key UI showed Native actor address, DU type/template key, Target alias, Canonical Argu string, Clean/Cancel/OK; PingPong target send rendered `Actor Argu Reply` with `poc.full.nuget.journal.acl pingpong fcell2 raw=...`.
 - NuGet push for Dynamic beta64 returned `Created`, and the nupkg was copied to SDK `10.0.301` `FSharp\library-packs` for immediate FSI restore.
+
+## 2026-07-07 Explicit ActorArgu target key recovery
+
+- Added `doc/RFC-PTCS-DYNAMIC-0006.explicit-actor-argu-target-key.md` as the Dynamic companion to PTCS `RFC-PTC-SPA-0015`.
+- Superseded the beta64 `actor-argu-proxy` / hidden `BeforeAddKey` persisted-key rewrite path. New ActorArgu Add Target Key schema is `[proxyActorAddress; "target-v1"; targetActorAddress; duTypeOrTemplateKey; canonicalArgString]`.
+- Advanced Dynamic to `0.1.3-beta65`, paired with PTCS `0.2.5-beta74`, Spa.ACL `0.1.0-alpha14`, and Spa.Login `0.1.0-alpha16`.
+- `GenFileActorInvocationTest4.fsx -- --if-dyna-port --no-wait` passed with separate PTCS/proxy and native PingPong Akka.Remote nodes; proxy received `ActorArguTargetCommand.TargetActorAddress=Some(...)` and returned the native `fCell2<string>` reply through ActorArgu history.
+
+## 2026-07-07 - Dynamic 0.1.3-beta65 explicit ActorArgu target key proof
+
+- Completed `DYN-WBS-523` / `RFC-PTCS-DYNAMIC-0006`: Actor Argu Add Target Key now exposes Proxy actor address and Target actor address instead of the invalidated user-facing Add proxy key + hidden rewrite path.
+- Playwright MCP local proof passed on `http://127.0.0.1:18182/page/damnwz`; evidence is `G:\PulseTrade.fs\log\20260707\ptcs-explicit-target-damnwz-before-actions.md` and `G:\PulseTrade.fs\log\20260707\ptcs-explicit-target-damnwz-after-send.md`.
+- Formal `PulseTradeCommSpaHumanUi` service was redeployed to `live81-82-ptcs-beta74-dynamic-beta65-explicit-target-202607071430`; deployment alignment, 82 local-login, and GW/PTCS/RN three-host E2E passed.
+- NuGet push for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta65` returned `Created`; immediate flat-container lookup was propagation-pending.

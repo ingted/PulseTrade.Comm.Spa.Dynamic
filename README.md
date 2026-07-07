@@ -10,7 +10,7 @@ Current mode split:
 
 | PTCS page | Dynamic support |
 | --- | --- |
-| Actor Argu | FormInput only. No canvas rendering and no Add proxy key. |
+| Actor Argu | FormInput only. No canvas rendering. `Add Target Key` explicitly collects proxy actor + target actor. |
 | Actor Dynamic | Direct actor key, DU/FormInput target key, and Dynamic proxy key. Canvas is used only when the actor reply payload is `schema=fskynet-sdui` JSON DSL. |
 
 Key shapes:
@@ -22,13 +22,16 @@ Direct actor key:
 DU/FormInput target:
 [ actorAddress; duTypeOrTemplateKey; canonicalArgString ]
 
+Explicit ActorArgu target through proxy:
+[ proxyActorAddress; "target-v1"; targetActorAddress; duTypeOrTemplateKey; canonicalArgString ]
+
 Dynamic proxy key:
 [ proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind ]
 ```
 
 When an Actor Dynamic selected key is only `[ actorAddress ]`, the extension intentionally returns no FormInput renderer. PTCS fallback input accepts arbitrary text or JSON DSL. If the actor replies with Canvas JSON DSL, the Dynamic message renderer draws the canvas; otherwise PTCS normal message rendering is used.
 
-The proxy key UI only builds the binding. The selected key still routes the command to `proxyActorAddress` because it remains the first key segment. PTCS core sends `ActorArguTargetCommand.ActorAddress = proxyActorAddress` and `RawArgu = <input text>`; it does not include the remaining selected-key segments in the command envelope. Therefore `rnActorAddress` is binding/diagnostic data for the Dynamic/RN deployment path, not a PTCS core route selector. Current no-core-change deployments use one target key -> one proxy actor/spec. A future shared-proxy design needs a PTCS route-envelope/resolver RFC before it can choose many native targets at send time.
+For ActorArgu `Add Target Key`, the selected key routes the command to `proxyActorAddress` because it remains the first key segment. PTCS core sends `ActorArguTargetCommand.ActorAddress = proxyActorAddress`, `TargetActorAddress = Some targetActorAddress`, and `RawArgu = <input text>`. The proxy actor owns native invocation and durability. Dynamic must not hide this route by creating or rewriting proxy actors in an add-key hook.
 
 ## ActorsPage Renderer
 
@@ -40,7 +43,7 @@ If Dynamic does not support `ActorsPage`, it must return not-supported and let P
 
 First implementation slice keeps the renderer inside `Client/ActorDynamicTab.fs` instead of a new client compile unit. In this checkout, WebSharper `10.1.5.674` crashes `wsfsc.exe` when a new `[<JavaScript>]` client file is added, and also crashes on `String.Contains`; the current classifier uses a single `IndexOf("ActorTopologyPage")` gate. This is sufficient for PTCS page renderer dispatch because PTCS only sends ActorsPage documents to page renderers.
 
-Current package slice: `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta56`, paired with `PulseTrade.Comm.Spa 0.2.5-beta66`. `src\poc.full.nuget.journal.ACL.fsx -- --no-wait` verifies the ACL/Login dual-auth path: 81-style GitHub OAuth host, 82-style PTCS.Login local host, DamnWZ/AssTerry pages, Echo/PingPong target keys, ACL snapshot, Dynamic bundle, durable ActorArgu echo, PingPong stop filtering, fixed actor name reuse after stop, PTCS WebSocket ACL gate availability, PTCS.Login beta53 session-store injection package compatibility, PTCS beta54 JSONL ACL audit sink compatibility, PTCS beta55 WebSocket principal revalidation compatibility, PTCS beta56 WebSocket proxy cleanup compatibility, PTCS beta57 HTTP ACL canonical resource compatibility, PTCS beta58 TLS-offload same-origin compatibility, PTCS beta63 protected API fetch credentials, PTCS beta64 SQL audit sink compatibility, PTCS beta65 ACL policy hot-reload compatibility, and PTCS beta66 protected ACL policy reload endpoint compatibility. Playwright MCP verified public 81 `/actors`, admin/Terry ACL FormInput behavior, and `/page/assterry` WebSocket send/reply through deployed release `live81-ptcs-beta66-dynamic-beta56-acl-reload-202607010805`.
+Current package slice: `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta65`, paired with `PulseTrade.Comm.Spa 0.2.5-beta74`. The current Actor Argu Add Target Key schema is `[proxyActorAddress; "target-v1"; targetActorAddress; duTypeOrTemplateKey; canonicalArgString]`; the invalidated beta64 `actor-argu-proxy` hidden rewrite path is historical only. `GenFileActorInvocationTest4.fsx -- --if-dyna-port --no-wait` verifies proxy-first routing plus native PingPong on a separate Akka.Remote node. Playwright MCP verified the explicit Add Target Key UI on `http://127.0.0.1:18182/page/damnwz`, and formal `PulseTradeCommSpaHumanUi` service release `live81-82-ptcs-beta74-dynamic-beta65-explicit-target-202607071430` passed deployment alignment, 82 local-login, and GW/PTCS/RN three-host E2E.
 
 `poc.full.nuget.journal.ACL.fsx` quiet startup mode must not capture `Console.Out` with a disposable `StringWriter`: Suave can retain the writer after `startWithSharing` returns, and later listener output can crash with `ObjectDisposedException`. The script now uses `TextWriter.Null` while suppressed. Latest quiet no-wait proof: `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL.fsx -- --no-wait --local-port 18102 --github-port 18101 --cluster-port 18801 --pcsl-root .\.pcsl\verify.acl.beta56.dual-host.quiet`.
 

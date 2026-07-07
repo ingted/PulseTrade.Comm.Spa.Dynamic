@@ -473,7 +473,7 @@ function mountAppendPage(page, definition){
   const canAppendValue=isActorArguPage(definition)?pageAclAllows(definition.pageId, "ptcs.actor-argu.send"):pageAclAllows(definition.pageId, "ptcs.append.write");
   setHidden(!canAddKey, addActorKeyButton);
   setHidden(!canAddKey, addKeyButton);
-  setHidden(!canAddKey, addProxyKeyButton);
+  setHidden(true, addProxyKeyButton);
   setHidden(!canRemoveKey, removeKeyButton);
   setHidden(!canRemovePage, removePageButton);
   setHidden(!canAppendValue, appendButton);
@@ -513,7 +513,7 @@ function mountAppendPage(page, definition){
   appendButton.textContent=actorArguButtonLabel(definition);
   append(identityBox, [pageIdChip, tabIdChip]);
   append(sideTitle, [element("h1", "", pageTitle(definition)), identityBox]);
-  append(actionMenu, isActorDynamicPage(definition)?[addActorKeyButton, addKeyButton, addProxyKeyButton, removeKeyButton, reload, removePageButton]:isActorArguPage(definition)?[addKeyButton, addProxyKeyButton, removeKeyButton, reload, removePageButton]:(addKeyButton.textContent="Add key",[addKeyButton, removeKeyButton, reload, removePageButton]));
+  append(actionMenu, isActorDynamicPage(definition)?[addActorKeyButton, addKeyButton, removeKeyButton, reload, removePageButton]:isActorArguPage(definition)?[addActorKeyButton, addKeyButton, removeKeyButton, reload, removePageButton]:(addKeyButton.textContent="Add key",[addKeyButton, removeKeyButton, reload, removePageButton]));
   append(actionPool, [actionSummary, actionMenu]);
   append(sideActions, [actionPool]);
   append(sideHead, [sideTitle]);
@@ -1354,8 +1354,7 @@ function mountAppendPage(page, definition){
   };
   rerenderAddKeyBuilder=() => {
     const baseRendererShape=isActorDynamicPage(definition)?"actor-dynamic":isActorArguPage(definition)?"actor-argu":definition.shape;
-    const _3=asText_1(addKeyMode).toLowerCase();
-    const rendererShape=_3=="target"?baseRendererShape=="actor-dynamic"?"actor-dynamic-target":baseRendererShape=="actor-argu"?"actor-argu-target":baseRendererShape:_3=="proxy"?baseRendererShape=="actor-dynamic"?"actor-dynamic-proxy":baseRendererShape=="actor-argu"?"actor-argu-proxy":baseRendererShape:baseRendererShape;
+    const rendererShape=asText_1(addKeyMode).toLowerCase()=="target"?baseRendererShape=="actor-dynamic"?"actor-dynamic-target":baseRendererShape=="actor-argu"?"actor-argu-target":baseRendererShape:baseRendererShape;
     const forceFallback=sameText_1(addKeyMode, "actor");
     clear(addKeyRendererHost);
     const n=setData("shape", rendererShape, setData("renderer-state", "fallback", addKeyRendererHost));
