@@ -64,6 +64,7 @@ open System.Diagnostics
 open System.IO
 open System.Net
 open System.Net.Http
+open System.Net.NetworkInformation
 open System.Net.Sockets
 open System.Security.Cryptography
 open System.Text
@@ -123,7 +124,7 @@ let defaultArgumentsText =
     *)
     printfn "default ports: local-login=82, cluster=%d" defaultClusterPort
     //$"""--host 0.0.0.0 --github-port 81 --local-port 82 --github-public-base-url "https://my-ai.co.in:81" --github-oauth-client-id-path "{pathArg defaultGitHubOAuthClientIdPath}" --github-oauth-client-secret-path "{pathArg defaultGitHubOAuthClientSecretPath}" --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --demo """
-    $"""--sql-connection-string-encrypted-file "D:/ingted.com/ptcs-sql-connection.enc.txt" --sql-private-key-path "D:/ingted.com/myKey.private.txt" --host 10.28.112.109 --local-port 82 --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-port {defaultClusterPort} --startup-probe --demo """
+    $"""--sql-connection-string-encrypted-file "D:/ingted.com/ptcs-sql-connection.enc.txt" --sql-private-key-path "D:/ingted.com/myKey.private.txt" --host 10.28.112.109 --local-port 82 --site-sharing isolated --pcsl-root "{pathArg defaultPcslRoot}" --delivery-profile nuget-journal-acl-live --actor-name nuget-journal-acl-echo --cluster-host 10.28.112.109 --cluster-port {defaultClusterPort} --native-node-host 10.28.112.93 --native-node-port 0 --startup-probe --demo """
 
 
 type CliArgs =
@@ -411,7 +412,15 @@ let pingPongReplyText text =
 
 let pingPongReplyCell text =
     let raw = if isNull text then "" else text
-    fCell2<string>.S("poc.full.nuget.journal.acl pingpong fcell2 raw=" + raw + "; reply=" + pingPongReplyText raw)
+
+    fCell2<string>.T (
+        Map [
+            "schema", fCell2<string>.S "ptcs.dynamic.poc.pingpong.reply.v1"
+            "kind", fCell2<string>.S "pingpong"
+            "raw", fCell2<string>.S raw
+            "reply", fCell2<string>.S(pingPongReplyText raw)
+            "marker", fCell2<string>.S "native-pingpong-fcell2-t"
+        ])
 
 type PocFullNugetJournalPingPongActor() as this =
     inherit ReceiveActor()
@@ -463,31 +472,97 @@ type PocFullNugetJournalNativeStringActor() as this =
 type PocFullNugetJournalActorArguStringProxyControl =
     | GetNativeActorAddress
 
+let rec jTokenToFCell2 (token: JToken) =
+    match token with
+    | null -> fCell2<string>.N()
+    | :? JObject as json ->
+        let caseToken = json.["Case"]
+        let fieldsToken = json.["Fields"]
+
+        if not (isNull caseToken) && not (isNull fieldsToken) then
+            let caseName = caseToken.ToObject<string>()
+
+            match caseName, fieldsToken with
+            | "S", (:? JArray as fields) when fields.Count >= 1 ->
+                fCell2<string>.S(fields.[0].ToObject<string>())
+            | "T", (:? JArray as fields) when fields.Count >= 1 ->
+                jTokenToFCell2 fields.[0]
+            | "A", (:? JArray as fields) when fields.Count >= 1 ->
+                match fields.[0] with
+                | :? JArray as values ->
+                    values |> Seq.cast<JToken> |> Seq.map jTokenToFCell2 |> Seq.toArray |> fCell2<string>.A
+                | other -> fCell2<string>.A [| jTokenToFCell2 other |]
+            | "N", _ -> fCell2<string>.N()
+            | _ -> fCell2<string>.S(json.ToString(Newtonsoft.Json.Formatting.None))
+        else
+            json.Properties()
+            |> Seq.filter (fun property -> not (property.Name.StartsWith("$", StringComparison.Ordinal)))
+            |> Seq.map (fun property -> property.Name, jTokenToFCell2 property.Value)
+            |> Map.ofSeq
+            |> fCell2<string>.T
+    | :? JArray as values ->
+        values |> Seq.cast<JToken> |> Seq.map jTokenToFCell2 |> Seq.toArray |> fCell2<string>.A
+    | :? JValue as value ->
+        if isNull value.Value then
+            fCell2<string>.N()
+        else
+            fCell2<string>.S(string value.Value)
+    | other -> fCell2<string>.S(other.ToString(Newtonsoft.Json.Formatting.None))
+
 let nativeReplyToCell (reply: obj) =
     match reply with
     | null -> Error "native actor returned null"
     | :? fCell2<string> as cell -> Ok cell
     | :? string as text -> Ok(fCell2<string>.S text)
     | :? JObject as json ->
-        let caseToken = json.["Case"]
-        let fieldsToken = json.["Fields"]
-
-        if isNull caseToken || isNull fieldsToken then
-            Error("native actor returned JObject without Case/Fields: " + json.ToString(Newtonsoft.Json.Formatting.None))
-        else
-            let caseName = caseToken.ToObject<string>()
-
-            match caseName, fieldsToken with
-            | "S", (:? JArray as fields) when fields.Count >= 1 ->
-                Ok(fCell2<string>.S(fields.[0].ToObject<string>()))
-            | _ ->
-                Error(
-                    "native actor returned unsupported fCell2 JObject shape: "
-                    + json.ToString(Newtonsoft.Json.Formatting.None))
+        try
+            Ok(jTokenToFCell2 json)
+        with ex ->
+            Error("native actor returned JObject but fCell2 conversion failed: " + ex.Message)
     | other ->
         Error($"native actor returned unsupported type {other.GetType().FullName}: {other}")
 
-type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, defaultNativeActorAddress: string, askTimeout: TimeSpan) as this =
+let cellStringField fieldName (fields: Map<string, fCell2<string>>) =
+    fields
+    |> Map.tryFind fieldName
+    |> Option.map (function
+        | fCell2.S text -> if isNull text then "" else text
+        | cell -> cell.toJsonString())
+    |> Option.defaultValue ""
+
+let actorArguReplyCellHandler (cell: fCell2<string>) =
+    match cell with
+    | fCell2.T fields ->
+        let schema = cellStringField "schema" fields
+
+        if String.Equals(schema, "ptcs.dynamic.poc.pingpong.reply.v1", StringComparison.Ordinal) then
+            let raw = cellStringField "raw" fields
+            let reply = cellStringField "reply" fields
+            let marker = cellStringField "marker" fields
+
+            fCell2<string>.S(
+                "poc.full.nuget.journal.acl pingpong fCell2.T->S raw="
+                + raw
+                + "; reply="
+                + reply
+                + "; marker="
+                + marker)
+        else
+            fCell2<string>.S("actor-argu proxy converted fCell2.T reply=" + cell.toJsonString())
+    | other -> other
+
+let containsFCellTToSMarker (text: string) =
+    let value = if isNull text then "" else text
+
+    value.Contains("fCell2.T->S", StringComparison.Ordinal)
+    || value.Contains("fCell2.T-\\u003ES", StringComparison.Ordinal)
+    || value.Contains("fCell2.T-\\\\u003ES", StringComparison.Ordinal)
+
+type PocFullNugetJournalActorArguStringProxyActor(
+    actorSystem: ActorSystem,
+    defaultNativeActorAddress: string,
+    askTimeout: TimeSpan,
+    replyCellHandler: fCell2<string> -> fCell2<string>) as this =
     inherit ReceiveActor()
 
     do
@@ -524,8 +599,10 @@ type PocFullNugetJournalActorArguStringProxyActor(actorSystem: ActorSystem, defa
 
                             match nativeReplyToCell nativeReply with
                             | Ok cell ->
+                                let handledCell = replyCellHandler cell
                                 debugPrint "actor-argu-proxy" $"NATIVE-REPLY native={nativeActorAddress}; type={nativeReply.GetType().FullName}; reply={cell}"
-                                return Ok cell
+                                debugPrint "actor-argu-proxy" $"HANDLED-REPLY native={nativeActorAddress}; reply={handledCell}"
+                                return Ok handledCell
                             | Error message ->
                                 let ex = InvalidOperationException message
                                 debugPrint "actor-argu-proxy" $"NATIVE-ERROR native={nativeActorAddress}; error={message}"
@@ -844,6 +921,37 @@ let isLoopbackHost value =
     || host = "::1"
     || host.StartsWith("127.")
 
+let localIPv4AddressSet () =
+    NetworkInterface.GetAllNetworkInterfaces()
+    |> Array.collect (fun ni ->
+        ni.GetIPProperties().UnicastAddresses
+        |> Seq.filter (fun address -> address.Address.AddressFamily = AddressFamily.InterNetwork)
+        |> Seq.map (fun address -> address.Address.ToString())
+        |> Seq.toArray)
+    |> Set.ofArray
+
+let requireLocalIPv4Address argName host =
+    let normalized = normalizeHostText host
+
+    if not (String.IsNullOrWhiteSpace normalized)
+       && not (isLoopbackHost normalized)
+       && normalized <> "0.0.0.0"
+       && normalized <> "*"
+       && normalized <> "+" then
+        let mutable parsed = Unchecked.defaultof<IPAddress>
+
+        if IPAddress.TryParse(normalized, &parsed) && parsed.AddressFamily = AddressFamily.InterNetwork then
+            let localAddresses = localIPv4AddressSet ()
+
+            if not (localAddresses.Contains normalized) then
+                let localAddressText =
+                    localAddresses |> Set.toList |> String.concat ", "
+
+                invalidOp
+                    $"{argName}={host} is not assigned to this machine. Local IPv4 addresses: {localAddressText}"
+        else
+            ()
+
 let tryActorAddressHost (address: string) =
     let text = if isNull address then "" else address.Trim()
     let m = Regex.Match(text, @"@(?<host>\[[^\]]+\]|[^:/]+)(?::\d+)?/")
@@ -896,6 +1004,14 @@ if not ifDynaPort then
 if String.Equals(normalizeHostText clusterHost, normalizeHostText nativeNodeHost, StringComparison.OrdinalIgnoreCase)
    && clusterPort = nativeNodePort then
     invalidOp "The native PingPong Akka node must not reuse the PTCS fabric node address. Change --native-node-port or use --if-dyna-port."
+
+if noWait then
+    if String.Equals(normalizeHostText clusterHost, normalizeHostText nativeNodeHost, StringComparison.OrdinalIgnoreCase) then
+        invalidOp
+            $"No-wait dual-IP proof requires --cluster-host and --native-node-host to be different LAN IPs. Current cluster={clusterHost}; native={nativeNodeHost}."
+
+    requireLocalIPv4Address "--cluster-host" clusterHost
+    requireLocalIPv4Address "--native-node-host" nativeNodeHost
 
 requireTcpPortFree "native PingPong Akka.Remote listener" "--native-node-port" nativeNodeHost nativeNodePort
 
@@ -1592,7 +1708,7 @@ match localNativeStringRef with
 let actorOfRegisteredProxy proxyName proxyKind nativeAddress =
     fabric.System.ActorOfRegistered(
         proxyActorRegistrySettings proxyKind nativeAddress,
-        Props.Create(fun () -> PocFullNugetJournalActorArguStringProxyActor(fabric.System, nativeAddress, TimeSpan.FromSeconds 15.0)),
+        Props.Create(fun () -> PocFullNugetJournalActorArguStringProxyActor(fabric.System, nativeAddress, TimeSpan.FromSeconds 15.0, actorArguReplyCellHandler)),
         proxyName)
 
 let spawnProxyActorRegisteredStrict proxyName proxyKind nativeAddress =
@@ -2355,8 +2471,9 @@ try
 
         tempExplicitProxySend |> statusIs 200 "WZ/sys-admin ActorArgu send through explicit temp proxy target"
         require
-            ((snd tempExplicitProxySend).Contains("poc.full.nuget.journal.acl pingpong fcell2 raw=", StringComparison.Ordinal))
-            ("explicit temp proxy target should reply with native PingPong fCell2 marker; body=" + snd tempExplicitProxySend)
+            (containsFCellTToSMarker (snd tempExplicitProxySend)
+             && (snd tempExplicitProxySend).Contains("native-pingpong-fcell2-t", StringComparison.Ordinal))
+            ("explicit temp proxy target should reply with script-converted native PingPong fCell2.T->S marker; body=" + snd tempExplicitProxySend)
 
         postJson terryClient "/pages/api/add-key" (addKeyJson assTerryPage.PageId [ actorAddress; "target-v1"; nativeStringActorAddress; templateKey; "--say \"denied\"" ] "Terry forbidden target")
         |> statusIs 403 "Terry add target denied on AssTerry"
@@ -2368,8 +2485,9 @@ try
         require pingPongProbe.ActorArgu.IsSome "PingPong proxy probe should append an ActorArgu reply."
         let pingPongPayload = pingPongProbe.ActorArgu.Value.Event.Payload
         require
-            (pingPongPayload.Contains("poc.full.nuget.journal.acl pingpong fcell2 raw=", StringComparison.Ordinal))
-            ("PingPong proxy probe should be replied by the native PingPong actor as fCell2<string>; payload=" + pingPongPayload)
+            (containsFCellTToSMarker pingPongPayload
+             && pingPongPayload.Contains("native-pingpong-fcell2-t", StringComparison.Ordinal))
+            ("PingPong proxy probe should be replied by native fCell2.T and converted by script handler to fCell2.S; payload=" + pingPongPayload)
 
         postJson terryClient "/pages/api/actor-argu/send" (actorArguJson damnWzPage.PageId echoTargetKeys "--say \"terry denied\" --set-count 1 --mode fast")
         |> statusIs 403 "Terry ActorArgu send denied on DamnWZ"

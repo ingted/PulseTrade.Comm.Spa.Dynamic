@@ -797,3 +797,11 @@ Implementation status:
 - Playwright MCP local proof passed on `http://127.0.0.1:18182/page/damnwz`; evidence is `G:\PulseTrade.fs\log\20260707\ptcs-explicit-target-damnwz-before-actions.md` and `G:\PulseTrade.fs\log\20260707\ptcs-explicit-target-damnwz-after-send.md`.
 - Formal `PulseTradeCommSpaHumanUi` service was redeployed to `live81-82-ptcs-beta74-dynamic-beta65-explicit-target-202607071430`; deployment alignment, 82 local-login, and GW/PTCS/RN three-host E2E passed.
 - NuGet push for `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta65` returned `Created`; immediate flat-container lookup was propagation-pending.
+
+## 2026-07-07 - GenFileActorInvocationTest4 dual-IP fCell2.T reply proof
+
+- Corrected `src\GenFileActorInvocationTest4.fsx` so the default proof uses PTCS/proxy on `10.28.112.109` and native PingPong on `10.28.112.93`.
+- Native PingPong now returns `fCell2.T` with schema `ptcs.dynamic.poc.pingpong.reply.v1`; the script-level proxy handler converts `fCell2.T -> fCell2.S` before returning `ActorArguTargetReply`.
+- Added no-wait fail-fast checks for distinct local IPv4 hosts, recursive `JObject -> fCell2<string>` fallback for remote Akka serialization, and assertions for `fCell2.T->S` / `native-pingpong-fcell2-t`.
+- Verification passed: `dotnet fsi .\src\GenFileActorInvocationTest4.fsx -- --if-dyna-port --no-wait --host 10.28.112.109 --cluster-host 10.28.112.109 --native-node-host 10.28.112.93 --native-node-port 0 --pcsl-root "G:\PulseTrade.fs.Comm.Log\verification\genfile4DualIpFCellT\run-202607071504" --delivery-profile genfile4-dual-ip-fcellt --actor-name genfile4-dual-ip-fcellt`.
+- Evidence log: `G:\PulseTrade.fs\log\20260707\20260707144649.dynamic-genfile4-dual-ip-fcellt.op_log`.

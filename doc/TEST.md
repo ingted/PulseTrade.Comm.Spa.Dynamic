@@ -487,7 +487,7 @@ Coverage:
 - Backend resolver accepts explicit target keys by resolving against target/template/raw.
 - Proxy actor receives `TargetActorAddress=Some targetActorAddress` and asks native actor on another Akka.Remote node.
 - Actor Argu reply remains normal fCell chat; Canvas renderer is not invoked.
-- Pass 2026-07-07: no-wait proof confirmed PTCS/proxy node `PFCF@127.0.0.1:7038`, native PingPong node `PFCFNative757c0c47@127.0.0.1:7039`, persisted key `[proxy; "target-v1"; target; template; raw]`, and `TargetActorAddress=Some target`.
+- Pass 2026-07-07: no-wait proof confirmed PTCS/proxy node `PFCF@10.28.112.109:10450`, native PingPong node `PFCFNativee9c6a148@10.28.112.93:10451`, persisted key `[proxy; "target-v1"; target; template; raw]`, `TargetActorAddress=Some target`, native `string -> fCell2.T`, and script handler `fCell2.T -> fCell2.S` before ActorArgu reply render.
 - Pass 2026-07-07: Playwright MCP visual gate against `http://127.0.0.1:18182/page/damnwz` confirmed Actor Argu hides Add proxy key, Add Target Key shows both proxy and target address fields plus template/alias/canonical arg, and a manual `UI explicit PingPong` key sends through proxy to native PingPong. Evidence: `G:\PulseTrade.fs\log\20260707\ptcs-explicit-target-damnwz-before-actions.md`, `G:\PulseTrade.fs\log\20260707\ptcs-explicit-target-damnwz-after-send.md`.
 
 ### DYN-T-525 Canvas payload-only render rule
