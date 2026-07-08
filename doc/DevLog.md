@@ -805,3 +805,11 @@ Implementation status:
 - Added no-wait fail-fast checks for distinct local IPv4 hosts, recursive `JObject -> fCell2<string>` fallback for remote Akka serialization, and assertions for `fCell2.T->S` / `native-pingpong-fcell2-t`.
 - Verification passed: `dotnet fsi .\src\GenFileActorInvocationTest4.fsx -- --if-dyna-port --no-wait --host 10.28.112.109 --cluster-host 10.28.112.109 --native-node-host 10.28.112.93 --native-node-port 0 --pcsl-root "G:\PulseTrade.fs.Comm.Log\verification\genfile4DualIpFCellT\run-202607071504" --delivery-profile genfile4-dual-ip-fcellt --actor-name genfile4-dual-ip-fcellt`.
 - Evidence log: `G:\PulseTrade.fs\log\20260707\20260707144649.dynamic-genfile4-dual-ip-fcellt.op_log`.
+
+## 2026-07-08 - Dynamic 0.1.3-beta66 live showcase address repair
+
+- Fixed Actor Dynamic showcase template registration so `/user/showcase-dynamic-actor` is derived from the current host `ActorSystem` address instead of the stale `PulseTradeCommSpaDynamicPoc` POC address.
+- Added narrow best-effort read-repair for stale showcase keys on actor-dynamic pages; the repair is scoped to keys ending in `/user/showcase-dynamic-actor` and must not block extension loading.
+- Advanced package version to `0.1.3-beta66`.
+- Verification passed: Release build completed with existing WebSharper/NU5123 warnings, Expecto passed 18/18, NuGet push returned `Created`, and formal 82 local-login browser proof on `/page/actor-dynamic-dd` rendered `Live Showcase`, `FSkynet 動態畫布 (Canvas)`, and `PulseTrade Actor Dynamic Dashboard` without `Timeout after`.
+- Evidence: `G:\PulseTrade.fs\log\20260708\20260708133604.ptcs82-dynamic-timeout.00001.00001.log` and `G:\PulseTrade.fs\log\20260708\20260708133604.ptcs82-dynamic-timeout.op_log`.

@@ -45,6 +45,68 @@ module CommHubExtensions =
             // 註冊 "Actor Dynamic" 展示用的後端 Actor
             let props = Props.Create(fun () -> new ShowcaseDemoActor())
             let showcaseActorRef = actorSystem.ActorOf(props, "showcase-dynamic-actor")
+            let showcaseActorAddress =
+                try
+                    let extended = actorSystem :?> ExtendedActorSystem
+                    showcaseActorRef.Path.ToStringWithAddress(extended.Provider.DefaultAddress)
+                with _ ->
+                    showcaseActorRef.Path.ToString()
+
+            let showcaseActorAddressJson = System.Text.Json.JsonSerializer.Serialize(showcaseActorAddress)
+
+            let repairStaleShowcaseKeys () =
+                let isStaleShowcaseKey (key: AppendPageKey) =
+                    if isNull (box key) || isNull (box key.Keys) then
+                        None
+                    else
+                        match key.Keys with
+                        | actorAddress :: rest
+                            when not (isNull actorAddress)
+                                 && actorAddress.IndexOf("/user/showcase-dynamic-actor", StringComparison.Ordinal) >= 0
+                                 && not (String.Equals(actorAddress, showcaseActorAddress, StringComparison.Ordinal)) ->
+                            Some rest
+                        | _ ->
+                            None
+
+                let pageKeys (pageId: string) =
+                    let reply = this.ListAppendPageKeys(pageId)
+
+                    if isNull (box reply) || isNull (box reply.Keys) then
+                        []
+                    else
+                        reply.Keys
+
+                let isActorDynamicPage (page: AppendPageDefinition) =
+                    not (isNull (box page))
+                    && not (String.IsNullOrWhiteSpace page.PageId)
+                    && not (isNull page.Shape)
+                    && String.Equals(page.Shape, "actor-dynamic", StringComparison.OrdinalIgnoreCase)
+
+                try
+                    let pages =
+                        let reply = this.ListAppendPages()
+
+                        if isNull (box reply) || isNull (box reply.Pages) then
+                            []
+                        else
+                            reply.Pages
+
+                    pages
+                    |> List.filter isActorDynamicPage
+                    |> List.iter (fun page ->
+                        let staleKeys =
+                            pageKeys page.PageId
+                            |> List.choose (fun key ->
+                                isStaleShowcaseKey key
+                                |> Option.map (fun rest -> key, rest))
+
+                        staleKeys
+                        |> List.filter (fun (key, _) -> not (isNull (box key)) && not (String.IsNullOrWhiteSpace key.KeyId))
+                        |> List.iter (fun (key, rest) ->
+                            this.RemoveAppendPageKey(page.PageId, key.KeyId) |> ignore
+                            this.RegisterAppendPageKeyWithDisplayName(page.PageId, showcaseActorAddress :: rest, key.DisplayName) |> ignore))
+                with _ ->
+                    ()
 
             // 註冊 browser 可見的 append page shape。
             // Dynamic browser bundle 必須由 WebSharper/F# 產生後再接入，禁止用手寫 JavaScript 字串補洞。
@@ -95,11 +157,13 @@ module CommHubExtensions =
             this.RegisterAppendPageShapeTemplate
                 { Shape = "actor-dynamic"
                   Description = Some "Send an Argu-style command to a dynamic actor and render the reply through extension renderers."
-                  KeyPlaceholder = Some "\"akka.tcp://PulseTradeCommSpaDynamicPoc@127.0.0.1:7705/user/showcase-dynamic-actor\""
+                  KeyPlaceholder = Some showcaseActorAddressJson
                   ValuePlaceholder = Some "--render --topic canvas"
-                  DefaultKey = Some "\"akka.tcp://PulseTradeCommSpaDynamicPoc@127.0.0.1:7705/user/showcase-dynamic-actor\""
+                  DefaultKey = Some showcaseActorAddressJson
                   Tags = [ "actor-argu"; "dynamic"; "custom-shape" ] }
             |> ignore
+
+            repairStaleShowcaseKeys ()
 
             this // Return self for fluent API
 
