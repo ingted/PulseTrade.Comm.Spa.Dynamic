@@ -42,15 +42,23 @@ module CommHubExtensions =
                     DynamicArguResolveEndpoint.handle registrations)
                 |> ignore
 
-            // 註冊 "Actor Dynamic" 展示用的後端 Actor
-            let props = Props.Create(fun () -> new ShowcaseDemoActor())
-            let showcaseActorRef = actorSystem.ActorOf(props, "showcase-dynamic-actor")
-            let showcaseActorAddress =
+            let actorAddress (actorRef: IActorRef) =
                 try
                     let extended = actorSystem :?> ExtendedActorSystem
-                    showcaseActorRef.Path.ToStringWithAddress(extended.Provider.DefaultAddress)
+                    actorRef.Path.ToStringWithAddress(extended.Provider.DefaultAddress)
                 with _ ->
-                    showcaseActorRef.Path.ToString()
+                    actorRef.Path.ToString()
+
+            // 註冊 "Actor Dynamic" 展示用的後端 Actors。
+            let showcaseActorRef = actorSystem.ActorOf(Props.Create(fun () -> new ShowcaseDemoActor()), "showcase-dynamic-actor")
+            let sduiEchoActorRef = actorSystem.ActorOf(Props.Create(fun () -> new SduiEchoActor()), "sdui-echo-actor")
+            let showcase2ActorRef = actorSystem.ActorOf(Props.Create(fun () -> new ShowcaseDemoActor2()), "showcase-dynamic-actor2")
+
+            let showcaseActorAddress = actorAddress showcaseActorRef
+            let sduiEchoActorAddress = actorAddress sduiEchoActorRef
+            let showcase2ActorAddress = actorAddress showcase2ActorRef
+
+            printfn "PulseTrade.Comm.Spa.Dynamic actors: showcase=%s sduiEcho=%s showcase2=%s" showcaseActorAddress sduiEchoActorAddress showcase2ActorAddress
 
             let showcaseActorAddressJson = System.Text.Json.JsonSerializer.Serialize(showcaseActorAddress)
 

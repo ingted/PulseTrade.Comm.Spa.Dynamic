@@ -813,3 +813,11 @@ Implementation status:
 - Advanced package version to `0.1.3-beta66`.
 - Verification passed: Release build completed with existing WebSharper/NU5123 warnings, Expecto passed 18/18, NuGet push returned `Created`, and formal 82 local-login browser proof on `/page/actor-dynamic-dd` rendered `Live Showcase`, `FSkynet 動態畫布 (Canvas)`, and `PulseTrade Actor Dynamic Dashboard` without `Timeout after`.
 - Evidence: `G:\PulseTrade.fs\log\20260708\20260708133604.ptcs82-dynamic-timeout.00001.00001.log` and `G:\PulseTrade.fs\log\20260708\20260708133604.ptcs82-dynamic-timeout.op_log`.
+
+## 2026-07-08 - Dynamic 0.1.3-beta67 direct SDUI echo and showcase2 actors
+
+- Added `SduiEchoActor` at `/user/sdui-echo-actor`; Actor Dynamic Add actor key can send a raw `schema=fskynet-sdui` JSON DSL and receive the same payload back as `ActorArguTargetReply`.
+- Added `ShowcaseDemoActor2` at `/user/showcase-dynamic-actor2`; it returns a richer `fskynet-sdui` payload with `data`, `sdui`, Rolling, Row, DataGrid, controls, AppLoader, Tree, and ContextMenu nodes.
+- `CommHub.useDynamicSdui(...)` now spawns `showcase-dynamic-actor`, `sdui-echo-actor`, and `showcase-dynamic-actor2`, and prints their full Akka addresses for host/operator diagnostics.
+- Advanced package version to `0.1.3-beta67`.
+- Evidence: `G:\PulseTrade.fs\log\20260708\20260708141805.ptcs-dynamic-sdui-echo-showcase2.00001.00001.log`.
