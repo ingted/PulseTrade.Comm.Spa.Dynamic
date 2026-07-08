@@ -1023,6 +1023,33 @@ module ArguFormRenderer =
                     refreshFullPreview()
                 | _ -> ()
 
+    let renderFallbackSchemaWithWarning (root: Element) (context: AppendInputContextDto) typeName message =
+        let document = tryFindDocument typeName
+
+        let schema =
+            match document with
+            | Some document when not (isNull (box document.arguFormSchema)) -> Some document.arguFormSchema
+            | _ -> tryFindSchema typeName
+
+        match schema with
+        | Some schema ->
+            renderSchemaIntoRoot root context typeName document schema
+            let warningText =
+                if isBlank message then
+                    "Dynamic Argu target resolution failed; FormInput is kept with template defaults."
+                else
+                    "Dynamic Argu target resolution failed; FormInput is kept with template defaults. " + message
+
+            let warning = errorNode warningText
+
+            if isNull root.FirstChild then
+                root.AppendChild warning |> ignore
+            else
+                root.InsertBefore(warning, root.FirstChild) |> ignore
+        | None ->
+            root.TextContent <- ""
+            root.AppendChild(errorNode (if isBlank message then "Dynamic Argu target resolution failed." else message)) |> ignore
+
     let renderAppendInput (ctx: obj) =
         let context = ctx |> As<AppendInputContextDto>
         let keyParts = context.keyParts |> normalizeDynamicTargetKeyParts
@@ -1053,11 +1080,9 @@ module ArguFormRenderer =
                         if reply.ok && not (isNull (box reply.document)) && not (isNull (box reply.document.arguFormSchema)) then
                             renderSchemaIntoRoot root context (asText reply.templateKey) (Some reply.document) reply.document.arguFormSchema
                         else
-                            root.TextContent <- ""
-                            root.AppendChild(errorNode (if isBlank reply.error then "Dynamic Argu target resolution failed." else reply.error)) |> ignore)
+                            renderFallbackSchemaWithWarning root context typeName (if isBlank reply.error then "Dynamic Argu target resolution failed." else reply.error))
                     (fun error ->
-                        root.TextContent <- ""
-                        root.AppendChild(errorNode error) |> ignore)
+                        renderFallbackSchemaWithWarning root context typeName error)
 
                 Some(root :> Node)
             else

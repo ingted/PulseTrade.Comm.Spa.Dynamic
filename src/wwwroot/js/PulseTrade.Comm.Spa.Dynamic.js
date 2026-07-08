@@ -195,13 +195,9 @@ function renderAppendInput(ctx){
     if(isBackendTarget){
       postJson("/client-extensions/dynamic/argu/resolve-target", New_4(resolveKeyParts), (reply) => {
         if(reply.ok&&!(reply.document==null)&&!(reply.document.arguFormSchema==null))renderSchemaIntoRoot(root, ctx, asText(reply.templateKey), Some(reply.document), reply.document.arguFormSchema);
-        else {
-          root.textContent="";
-          root.appendChild(errorNode(isBlank(reply.error)?"Dynamic Argu target resolution failed.":reply.error));
-        }
+        else renderFallbackSchemaWithWarning(root, ctx, typeName, isBlank(reply.error)?"Dynamic Argu target resolution failed.":reply.error);
       }, (error) => {
-        root.textContent="";
-        root.appendChild(errorNode(error));
+        renderFallbackSchemaWithWarning(root, ctx, typeName, error);
       });
       return Some(root);
     }
@@ -407,6 +403,21 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
       else void 0;
     }
     else void 0;
+  }
+}
+function renderFallbackSchemaWithWarning(root, context, typeName, message){
+  let _1;
+  const document=tryFindDocument(typeName);
+  const schema=document!=null&&document.$==1&&(!(document.$0.arguFormSchema==null)&&(_1=document.$0,true))?Some(_1.arguFormSchema):tryFindSchema(typeName);
+  if(schema==null){
+    root.textContent="";
+    root.appendChild(errorNode(isBlank(message)?"Dynamic Argu target resolution failed.":message));
+  }
+  else {
+    renderSchemaIntoRoot(root, context, typeName, document, schema.$0);
+    const warning=errorNode(isBlank(message)?"Dynamic Argu target resolution failed; FormInput is kept with template defaults.":"Dynamic Argu target resolution failed; FormInput is kept with template defaults. "+message);
+    if(root.firstChild==null)root.appendChild(warning);
+    else root.insertBefore(warning, root.firstChild);
   }
 }
 function decodeJson(text){

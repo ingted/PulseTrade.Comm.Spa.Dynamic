@@ -40,6 +40,7 @@
 #r "nuget: Akka.Cluster, 1.5.69"
 #r "nuget: Akka.Cluster.Sharding, 1.5.69"
 #r "nuget: Akka.Persistence, 1.5.69"
+#r "nuget: Akka.Serialization.Hyperion, 1.5.69"
 #r "nuget: Akka.Persistence.Sql, 1.5.67"
 #r "nuget: Microsoft.Data.SqlClient, 7.0.1"
 #r "nuget: Newtonsoft.Json, 13.0.4"
@@ -1127,6 +1128,24 @@ let pcslOptions =
 let projectionHub =
     CommHub.createEmptyWithPcslOptions pcslOptions
 
+let hoconQuote (value: string) =
+    JsonSerializer.Serialize(if isNull value then "" else value)
+
+let hyperionSerializerTypeName =
+    typeof<Akka.Serialization.HyperionSerializer>.AssemblyQualifiedName
+
+let hyperionSerializerConfigText =
+    $"""
+akka.actor {{
+  serializers {{
+    hyperion = {hoconQuote hyperionSerializerTypeName}
+  }}
+  serialization-identifiers {{
+    {hoconQuote hyperionSerializerTypeName} = -5
+  }}
+}}
+"""
+
 let fabricOptions =
     { CommSpaActorFabricOptions.defaults with
         SystemName = "PFCF" //+ persistenceHash.Substring(0, 8)
@@ -1138,11 +1157,42 @@ let fabricOptions =
     |> CommSpaActorFabricOptions.withPersistenceNamespace persistenceNamespace
     |> CommSpaActorFabricOptions.withCommandHooks commandHooks
 
-let fabric =
-    CommSpaActorFabric.startWithOptions fabricOptions projectionHub.PersistenceBackend
+let fabricActorSystemConfigText =
+    $"""
+akka {{
+  loglevel = "WARNING"
+  stdout-loglevel = "WARNING"
+  actor.provider = cluster
+  remote.dot-netty.tcp.hostname = {hoconQuote fabricOptions.ClusterHost}
+  remote.dot-netty.tcp.port = {fabricOptions.ClusterPort}
+  cluster.seed-nodes = []
+  cluster.roles = []
+  cluster.failure-detector.acceptable-heartbeat-pause = 30s
+}}
 
-let hoconQuote (value: string) =
-    JsonSerializer.Serialize(if isNull value then "" else value)
+{hyperionSerializerConfigText}
+"""
+
+let fabricActorSystemConfig =
+    ConfigurationFactory
+        .ParseString(fabricActorSystemConfigText)
+        .WithFallback(CommSpaActorFabric.requiredConfig fabricOptions CommSpaActorFabricConfigPurpose.RegionHost)
+
+let fabricActorSystem =
+    ActorSystem.Create(fabricOptions.SystemName, fabricActorSystemConfig)
+
+let fabric =
+    try
+        let attachmentOptions =
+            { CommSpaActorFabricAttachmentOptions.regionHost with
+                Ownership = CommSpaActorFabricOwnership.OwnsActorSystem
+                JoinClusterIfNeeded = true
+                WaitForSelfUp = true }
+
+        CommSpaActorFabric.attachToSystem fabricOptions attachmentOptions fabricActorSystem (Some projectionHub.PersistenceBackend)
+    with _ ->
+        fabricActorSystem.Terminate().Wait(TimeSpan.FromSeconds 10.0) |> ignore
+        reraise()
 
 let nativePingPongSystemName =
     "PFCFNative" + persistenceHash.Substring(0, 8)
