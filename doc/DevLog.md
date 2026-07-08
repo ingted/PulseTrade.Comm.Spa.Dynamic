@@ -821,3 +821,11 @@ Implementation status:
 - `CommHub.useDynamicSdui(...)` now spawns `showcase-dynamic-actor`, `sdui-echo-actor`, and `showcase-dynamic-actor2`, and prints their full Akka addresses for host/operator diagnostics.
 - Advanced package version to `0.1.3-beta67`.
 - Evidence: `G:\PulseTrade.fs\log\20260708\20260708141805.ptcs-dynamic-sdui-echo-showcase2.00001.00001.log`.
+
+## 2026-07-08 - Dynamic 0.1.3-beta68 actors page projection for showcase actors
+
+- Root cause: beta67 started real Akka actors for `/user/sdui-echo-actor` and `/user/showcase-dynamic-actor2`, but actors page reads PTCS actor registry projection, not raw `/user` children from Akka. The actors were callable but invisible on `/actors`.
+- `CommHub.useDynamicSdui(...)` now projects the three long-lived Dynamic showcase actors through command-first `CommHub.RegisterActor` after spawning the real actors: `/user/showcase-dynamic-actor`, `/user/sdui-echo-actor`, and `/user/showcase-dynamic-actor2`.
+- The projection includes current PTCS ActorSystem node address, `ptcs-dynamic-extension` role, and tags for `showcase`, `echo`, `showcase2`, `canvas`, and `complex-sdui`.
+- Advanced package version to `0.1.3-beta68`.
+- Evidence: `G:\PulseTrade.fs\log\20260708\20260708153544.ptcs-dynamic-showcase2-actor-registry.00001.00001.log`.

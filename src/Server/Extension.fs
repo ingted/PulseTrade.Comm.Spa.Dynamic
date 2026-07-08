@@ -60,6 +60,37 @@ module CommHubExtensions =
 
             printfn "PulseTrade.Comm.Spa.Dynamic actors: showcase=%s sduiEcho=%s showcase2=%s" showcaseActorAddress sduiEchoActorAddress showcase2ActorAddress
 
+            let nodeAddress =
+                try
+                    let extended = actorSystem :?> ExtendedActorSystem
+                    Some(extended.Provider.DefaultAddress.ToString())
+                with _ ->
+                    None
+
+            let registerDynamicActor actorName displayName kind tags =
+                try
+                    let argsType = typeof<CommHub>.Assembly.GetType("PulseTrade.Comm.Spa.RegisterActorArgs", true)
+                    let values =
+                        [| box actorSystem.Name
+                           box nodeAddress
+                           box ("/user/" + actorName)
+                           box (Some displayName)
+                           box (Some kind)
+                           box (Some "active")
+                           box (Some [ "ptcs-dynamic-extension" ])
+                           box None
+                           box (Some ([ "ptcs-dynamic"; "actor-dynamic"; actorName ] @ tags)) |]
+
+                    let args = Microsoft.FSharp.Reflection.FSharpValue.MakeRecord(argsType, values)
+                    let methodInfo = typeof<CommHub>.GetMethod("RegisterActor", [| argsType |])
+                    methodInfo.Invoke(this, [| args |]) |> ignore
+                with ex ->
+                    printfn "PulseTrade.Comm.Spa.Dynamic actor projection skipped actor=%s error=%s" actorName ex.Message
+
+            registerDynamicActor "showcase-dynamic-actor" "Actor Dynamic Showcase" "actor" [ "showcase"; "canvas" ]
+            registerDynamicActor "sdui-echo-actor" "SDUI Echo Actor" "actor" [ "echo"; "canvas" ]
+            registerDynamicActor "showcase-dynamic-actor2" "Actor Dynamic Showcase2" "actor" [ "showcase2"; "canvas"; "complex-sdui" ]
+
             let showcaseActorAddressJson = System.Text.Json.JsonSerializer.Serialize(showcaseActorAddress)
 
             let repairStaleShowcaseKeys () =
