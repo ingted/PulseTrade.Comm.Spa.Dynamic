@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>PulseTrade.Comm.Spa.Dynamic</PackageId>
-    <Version>0.1.3-beta68</Version>
+    <Version>0.1.3-beta69</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Dynamic SDUI and Actor extension for PulseTrade.Comm.Spa</Description>
     <WebSharperProject>Bundle</WebSharperProject>
@@ -37,7 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta74]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta77]" />
   </ItemGroup>
 
   <ItemGroup>

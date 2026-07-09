@@ -1,12 +1,30 @@
 namespace PulseTrade.Comm.Spa.Dynamic.Server
 
 open System
+open System.Text.Json
 open Akka.Actor
 open PersistedConcurrentSortedList.Type
 open FAkka.FCell2
 open PulseTrade.Comm.Spa
 
 module ActorDynamicPayload =
+    let isFskynetSduiPayload (text: string) =
+        if String.IsNullOrWhiteSpace text then
+            false
+        else
+            try
+                use document = JsonDocument.Parse(text)
+
+                if document.RootElement.ValueKind <> JsonValueKind.Object then
+                    false
+                else
+                    let mutable schema = Unchecked.defaultof<JsonElement>
+
+                    document.RootElement.TryGetProperty("schema", &schema)
+                    && schema.ValueKind = JsonValueKind.String
+                    && String.Equals(schema.GetString(), "fskynet-sdui", StringComparison.OrdinalIgnoreCase)
+            with _ ->
+                false
 
     let simpleShowcase () =
         let viewAst =
@@ -52,9 +70,11 @@ type ShowcaseDemoActor() as this =
         )
 
         this.Receive<ActorArguTargetCommand>(fun (command: ActorArguTargetCommand) ->
-            printfn "ShowcaseDemoActor received ActorArguTargetCommand!"
-            let payload = ActorDynamicPayload.simpleShowcase ()
-            printfn "PAYLOAD JSON: %s" payload
+            let payload =
+                if ActorDynamicPayload.isFskynetSduiPayload command.RawArgu then
+                    command.RawArgu
+                else
+                    ActorDynamicPayload.simpleShowcase ()
             
             let reply: ActorArguTargetReply =
                 ActorDynamicPayload.reply
