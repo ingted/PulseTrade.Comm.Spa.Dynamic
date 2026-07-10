@@ -620,3 +620,9 @@ Passed assertions：
 - Renderer returns no Canvas for outbound-only `argu msg:` history, while direct SDUI JSON and `replied msg:` SDUI remain renderable.
 - Release package tests pass `19/19`.
 - Playwright MCP split-node E2E sends the notes/00508 JSON through PTCS WebSocket to RN.Host `fCell2<string>` echo and observes `RN JSON ECHO E2E PASS 20260710` inside Canvas with zero console errors.
+
+## DYN-T-535 PTCS beta80 exact dependency alignment
+
+- Dynamic package version is `0.1.3-beta73` and its nuspec dependency is exact `PulseTrade.Comm.Spa [0.2.5-beta80]`.
+- Release build/package tests and PTC bundle verifier must retain beta72 bundle discovery, outbound-only `argu msg:` Canvas suppression, direct/inbound SDUI rendering, and current target schema.
+- This is dependency-only alignment; it does not claim PTC ActorArgu production provider or service deployment completion.

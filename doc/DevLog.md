@@ -854,3 +854,8 @@ Implementation status:
 
 - `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta72` NuGet push returned `Created`。Downstream PTC verifier loaded the exact beta72 cache assembly and validated the generated bundle/classifier markers together with PTCS beta79。
 - Product/source commit `57e21f2 Fix Dynamic NuGet bundle discovery` was pushed to `origin/20260710_027.ptcs_dynamic_beta79_alignment`。The isolated `.pcsl/dynamic-beta72-build-202607102220` build copy remains untracked generated evidence and is not part of the package source commit。
+
+## 2026-07-11 - Dynamic beta73 PTCS beta80 dependency alignment
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta72 -> 0.1.3-beta73` and exact dependency `PulseTrade.Comm.Spa [0.2.5-beta79] -> [0.2.5-beta80]` for the durable agent-task submission policy seam.
+- This is a dependency-only release. Target schemas, Dynamic renderers, bundle discovery and Canvas classification remain unchanged from beta72; PTC Host production adapter remains separately tracked by PTC3-068F.
