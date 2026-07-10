@@ -849,3 +849,8 @@ Implementation status:
 - The Dynamic renderer now ignores outbound-only `argu msg:` history when deciding whether to open Canvas. Direct SDUI JSON and inbound `replied msg:` payloads remain supported.
 - An isolated source copy was used because the generated `src\websharper.log` in this checkout was inaccessible to WebSharper cleanup. Release build/pack passed with existing warnings, Dynamic tests passed `19/19`, and the generated bundle was copied back to the tracked `src\wwwroot\js` output.
 - PTC split-node Playwright MCP E2E rendered the RN-echoed notes/00508 payload in Canvas with zero browser console errors. Added `DYN-WBS-525` / `DYN-T-534`.
+
+## 2026-07-10 - Dynamic beta72 release closeout
+
+- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta72` NuGet push returned `Created`。Downstream PTC verifier loaded the exact beta72 cache assembly and validated the generated bundle/classifier markers together with PTCS beta79。
+- Product/source commit `57e21f2 Fix Dynamic NuGet bundle discovery` was pushed to `origin/20260710_027.ptcs_dynamic_beta79_alignment`。The isolated `.pcsl/dynamic-beta72-build-202607102220` build copy remains untracked generated evidence and is not part of the package source commit。

@@ -1,0 +1,15 @@
+# Dynamic beta72 release closeout plan
+
+- 背景：beta72 product commit已push，NuGet push已Created，但release evidence尚未commit且latest pre-work log不符合root check最低欄位。
+- 目標：補齊beta72 release closeout追溯並保持產品source不變。
+- 假設：Dynamic tests 19/19、PTC-VFY-007與notes/00508 Canvas E2E evidence仍有效。
+- 計畫步驟：追加DevLog/op_log release evidence；sensitive/encoding scan；執行check；commit/push。
+- 預計修改/讀取範圍：`doc/DevLog.md`與`log/20260710`；`.pcsl` generated copy不進Git。
+- 驗收方式：check無blocking FAIL；changed log High=0；branch push成功。
+- 風險：不得把isolated `.pcsl` build copy提交，亦不得變更已發布beta72內容。
+- 執行命令/參數：PTC `misc/check.fsx`指向Dynamic REQ/SA/SD/WBS/Test/DevLog與本repo log；sensitive scanner只掃changed log。
+- 根因判讀：缺口是release evidence commit，不是bundle/runtime功能缺陷。
+- 結果：beta72 push Created；exact cache/bundle verifier與Canvas E2E已通過。
+- 下一步：commit/push closeout evidence；不再修改beta72 package。
+- 關聯文件/工單/PR：DYN-WBS-525、DYN-T-534、PTC3-068、RFC-PTC-RN-0001。
+- prompt/上下文摘要：使用者要求完整Actor Argu RFC流程並實作notes/00508 demo；Dynamic負責NuGet bundle discovery與Canvas reply renderer。

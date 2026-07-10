@@ -7,3 +7,4 @@
 - The source checkout's generated `src\websharper.log` is inaccessible to WebSharper cleanup. An isolated source copy under `.pcsl\dynamic-beta72-build-202607102220` was used for build/pack; no product source workaround was added.
 - Verification：Release build/pack passed with existing WebSharper/NuGet warnings；Dynamic Expecto suite passed `19/19`, including `DYN-T-534`.
 - Browser E2E：PTCS WebSocket direct Add Actor Key sent notes/00508 SDUI JSON to separate RN.Host `fCell2<string>` echo；reply rendered Canvas heading `RN JSON ECHO E2E PASS 20260710`；console errors `0`。Evidence：`G:\PulseTrade.worktrees\20260710-rn-dual-route\ptc\log\20260710\ptc3-068-rn-json-sdui-e2e.png`。
+- Release closeout：Dynamic `0.1.3-beta72` NuGet push returned `Created`；product commit `57e21f2` pushed to `origin/20260710_027.ptcs_dynamic_beta79_alignment`；PTC-VFY-007 loaded exact beta72 and passed bundle/classifier markers。
