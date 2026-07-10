@@ -7,3 +7,4 @@
 - Dynamic專用 check session無 blocking finding；只剩日期 log-dir命名與 pre-commit dirty WARN。
 - Sensitive scan：8 files，High=0、Medium=0；Info均為歷史 DevLog package文字。
 - Encoding gate：10 files strict UTF-8、NUL/U+FFFD errors=0；`git diff --check`無 whitespace error。
+- Product/docs/evidence commit `95563b1 Document Dynamic actor contract boundaries` 已 push到 `origin/20260710_024.ptcs_dynamic_contracts`。
