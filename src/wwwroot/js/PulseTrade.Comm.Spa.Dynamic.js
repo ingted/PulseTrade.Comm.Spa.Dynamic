@@ -2705,7 +2705,8 @@ function mountSets(page){
   const actionMenu=setTestId_1("sets-action-menu", element_1("div", "append-page-actions-menu", null));
   const reloadAction=setTestId_1("sets-action-reload", button_1("", "Reload"));
   const cleanNoShowAction=setTestId_1("sets-action-clean-noshow", button_1("", "CleanAllNoShow Actors"));
-  const cleanParticipantsAction=setTestId_1("sets-action-clean-participants", button_1("", "Clean Inactive Participant Collections"));
+  const cleanParticipantsAction=setTestId_1("sets-action-clean-participants", button_1("", "Clean Inactive Inboxes"));
+  cleanParticipantsAction.setAttribute("title", "Tombstone fully acknowledged inbox/ack collections for inactive participants.");
   const filters=element_1("div", "filters", null);
   const keyFilter=input_1("key contains");
   const setFilter=input_1("set name");
@@ -4948,11 +4949,15 @@ function Some(Value){
 }
 function TryRender(rawContent){
   globalThis.console.log(["DynamicRenderer.TryRender called with:", rawContent]);
-  const idx=rawContent.indexOf("replied msg:");
-  const content=idx>=0?Trim(rawContent.substring(idx+"replied msg:".length)):rawContent;
+  const replyIndex=rawContent.indexOf("replied msg:");
+  const outboundOnly=replyIndex<0&&rawContent.indexOf("argu msg:")>=0;
+  const content=replyIndex>=0?Trim(rawContent.substring(replyIndex+"replied msg:".length)):rawContent;
   globalThis.console.log(["Content after strip:", content]);
-  const m=tryGetSchema(content);
-  return m!=null&&m.$==1&&m.$0=="fskynet-sdui"?(globalThis.console.log("Schema is fskynet-sdui, rendering canvas!"),Some(createSduiCanvas(content))):(globalThis.console.log(["Schema not matched:", tryGetSchema(content)]),null);
+  if(outboundOnly)return null;
+  else {
+    const m=tryGetSchema(content);
+    return m!=null&&m.$==1&&m.$0=="fskynet-sdui"?(globalThis.console.log("Schema is fskynet-sdui, rendering canvas!"),Some(createSduiCanvas(content))):(globalThis.console.log(["Schema not matched:", tryGetSchema(content)]),null);
+  }
 }
 function tryGetSchema(jsonStr){
   try {

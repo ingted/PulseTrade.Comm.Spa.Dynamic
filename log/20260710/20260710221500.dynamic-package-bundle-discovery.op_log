@@ -1,0 +1,9 @@
+# Operation evidence
+
+- 2026-07-10 22:15 +08:00：補建 pre-work log。先前 beta71 alignment 已完成 build/test，但本 repo pre-work log 遺漏；本次 bundle 修正開始前已停止擴張並補記。
+- Playwright evidence：`rn-json-sdui-live` 顯示 Outbound/Reply JSON 完整一致，但無 Canvas；新頁面 console 無 Dynamic entry point 訊息。
+- Package evidence：`PulseTrade.Comm.Spa.Dynamic.0.1.3-beta71.nupkg` 內 bundle 位於 `content/wwwroot/js`；server extension metadata 為 `scriptUrls=[]`。
+- Root cause fixed：server bundle discovery now probes local `wwwroot/js`, NuGet `content/wwwroot/js`, then `contentFiles/any/net10.0/wwwroot/js`；renderer no longer treats outbound-only `argu msg:` as an inbound Canvas reply.
+- The source checkout's generated `src\websharper.log` is inaccessible to WebSharper cleanup. An isolated source copy under `.pcsl\dynamic-beta72-build-202607102220` was used for build/pack; no product source workaround was added.
+- Verification：Release build/pack passed with existing WebSharper/NuGet warnings；Dynamic Expecto suite passed `19/19`, including `DYN-T-534`.
+- Browser E2E：PTCS WebSocket direct Add Actor Key sent notes/00508 SDUI JSON to separate RN.Host `fCell2<string>` echo；reply rendered Canvas heading `RN JSON ECHO E2E PASS 20260710`；console errors `0`。Evidence：`G:\PulseTrade.worktrees\20260710-rn-dual-route\ptc\log\20260710\ptc3-068-rn-json-sdui-e2e.png`。

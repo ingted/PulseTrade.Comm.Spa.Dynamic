@@ -242,6 +242,13 @@ let tests =
             let invalidResult = DynamicRenderer.TryRender invalidPayload
             Expect.isNone invalidResult "TryRender should return None for other schemas"
 
+        testCase "DYN-T-534: Canvas renderer should render reply but ignore outbound" <| fun _ ->
+            let payload = "{\"schema\":\"fskynet-sdui\",\"ui\":[]}"
+            let outbound = "argu msg: " + payload
+            let reply = "argu msg: " + payload + Environment.NewLine + "replied msg: " + payload
+            Expect.isNone (DynamicRenderer.TryRender outbound) "Actor Argu outbound must stay textual."
+            Expect.isSome (DynamicRenderer.TryRender reply) "Actor Argu reply must render Canvas."
+
         testCase "DYN-T-526: ActorsPage renderer should claim ActorTopologyPage documents" <| fun _ ->
             let payload = "{\"schema\":\"fskynet-sdui\",\"surface\":\"ActorsPage\",\"documentType\":\"ActorTopologyPage\",\"projectionId\":\"ptcs-actors\",\"projectionVersion\":1,\"data\":{\"actorTreeNodes\":[]}}"
             let pageResult = ActorDynamicTab.IsActorsPagePayload payload

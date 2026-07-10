@@ -835,3 +835,17 @@ Implementation status:
 - Advanced `PulseTrade.Comm.Spa.Dynamic` to `0.1.3-beta70` with exact `PulseTrade.Comm.Spa [0.2.5-beta78]` consumption.
 - Clarified the public demo actor contracts: `ShowcaseDemoActor2` always returns the built-in complex showcase and intentionally ignores caller marquee data; `SduiEchoActor` echoes a caller-provided SDUI DSL; `ShowcaseDemoActor` echoes valid SDUI and otherwise returns the simple showcase.
 - Release build passed with existing WebSharper WS9002 and NuGet long-path/readme warnings. NuGet push returned Created.
+
+## 2026-07-10 - Dynamic beta71 PTCS beta79 provider alignment
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic` from `0.1.3-beta70` to `0.1.3-beta71` and exact-pinned `PulseTrade.Comm.Spa [0.2.5-beta79]`.
+- No renderer behavior changed. The release aligns Dynamic with PTCS's shared Actor Argu dispatch-provider seam so the PTC notes/00508 demo can use Add Actor Key against a native RN.Host `fCell2<string>` actor.
+- Added `DYN-WBS-524` / `DYN-T-533`; Release build and package tests `18/18` passed. Cross-repo browser result is recorded by PTC after execution.
+
+## 2026-07-10 - Dynamic beta72 NuGet bundle discovery and Canvas reply gate
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic` to `0.1.3-beta72`, still exact-pinned to PTCS `0.2.5-beta79`.
+- Fixed extension script discovery for packages whose WebSharper assets are under `content/wwwroot/js`; local `wwwroot/js` and `contentFiles/any/net10.0/wwwroot/js` remain supported fallbacks.
+- The Dynamic renderer now ignores outbound-only `argu msg:` history when deciding whether to open Canvas. Direct SDUI JSON and inbound `replied msg:` payloads remain supported.
+- An isolated source copy was used because the generated `src\websharper.log` in this checkout was inaccessible to WebSharper cleanup. Release build/pack passed with existing warnings, Dynamic tests passed `19/19`, and the generated bundle was copied back to the tracked `src\wwwroot\js` output.
+- PTC split-node Playwright MCP E2E rendered the RN-echoed notes/00508 payload in Canvas with zero browser console errors. Added `DYN-WBS-525` / `DYN-T-534`.
