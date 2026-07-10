@@ -859,3 +859,8 @@ Implementation status:
 
 - Advanced `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta72 -> 0.1.3-beta73` and exact dependency `PulseTrade.Comm.Spa [0.2.5-beta79] -> [0.2.5-beta80]` for the durable agent-task submission policy seam.
 - This is a dependency-only release. Target schemas, Dynamic renderers, bundle discovery and Canvas classification remain unchanged from beta72; PTC Host production adapter remains separately tracked by PTC3-068F.
+
+## 2026-07-11 - Dynamic beta73 NuGet push accepted
+
+- Repacked `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta73` from source commit `98864663c588682e42186bc00f294102ff5fab28`; nuspec dependency is exact `PulseTrade.Comm.Spa [0.2.5-beta80]`.
+- Existing `PostBuildEvent.ps1` push returned `Created` / `Your package was pushed`. The flat-container did not list beta73 within the first three minutes, so propagation remains pending and the package was not pushed again.

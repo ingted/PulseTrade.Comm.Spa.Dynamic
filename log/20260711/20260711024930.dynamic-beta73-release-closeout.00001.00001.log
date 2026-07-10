@@ -1,0 +1,49 @@
+# 背景
+
+Dynamic beta73 source commit 已推送，release artifact 已以該 commit 重新 pack；需要記錄 NuGet push 與 propagation 狀態。
+
+# 目標
+
+- 核對 nupkg version、repository commit 與 PTCS exact dependency。
+- 使用既有 `PostBuildEvent.ps1` 單次 push。
+- 更新 append-only DevLog，提交 release evidence。
+
+# 假設
+
+- NuGet push 回 `Created` 代表 package 已接受；flat-container propagation 可延遲，不重複 push。
+- 既有 `.pcsl/dynamic-beta72-build-202607102220/` 仍是未追蹤 generated evidence，不納入提交。
+
+# 計畫步驟
+
+1. 記錄 artifact metadata 與 push 結果。
+2. 記錄 propagation check。
+3. 敏感掃描、repo check、commit/push closeout。
+
+# 執行命令/參數
+
+- `dotnet clean/build/pack`，指定 HEAD 為 `RepositoryCommit`。
+- `PostBuildEvent.ps1 PulseTrade.Comm.Spa.Dynamic`。
+- NuGet flat-container selector 僅查 beta73 是否存在。
+
+# 根因判讀
+
+第一次增量 pack 沿用前一 commit metadata；clean/build/pack 後 artifact 已改為當前 source commit。NuGet 接受 package 後，flat-container 尚在 propagation window。
+
+# 關聯文件/工單/PR
+
+- `doc/DevLog.md`
+- `DYN-WBS-526` / `DYN-T-535`
+- source commit `98864663c588682e42186bc00f294102ff5fab28`
+
+# 驗收與風險
+
+- nupkg metadata 必須為 beta73、repository commit `9886466...`、PTCS `[0.2.5-beta80]`。
+- changed files/logs High finding 必須為 0；不提交 `.pcsl`。
+
+# 下一步
+
+提交並推送 release closeout；後續由 PTC3-068F3 package cascade 消費 beta73，NuGet propagation 另行 selector 確認。
+
+# Prompt/上下文摘要
+
+續航推進 production ActorArgu adapter；Dynamic 只做 PTCS beta80 exact dependency alignment，不擴張 UI/runtime scope。
