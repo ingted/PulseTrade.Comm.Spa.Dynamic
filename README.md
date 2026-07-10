@@ -43,7 +43,7 @@ If Dynamic does not support `ActorsPage`, it must return not-supported and let P
 
 First implementation slice keeps the renderer inside `Client/ActorDynamicTab.fs` instead of a new client compile unit. In this checkout, WebSharper `10.1.5.674` crashes `wsfsc.exe` when a new `[<JavaScript>]` client file is added, and also crashes on `String.Contains`; the current classifier uses a single `IndexOf("ActorTopologyPage")` gate. This is sufficient for PTCS page renderer dispatch because PTCS only sends ActorsPage documents to page renderers.
 
-Current package slice: `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta65`, paired with `PulseTrade.Comm.Spa 0.2.5-beta74`. The current Actor Argu Add Target Key schema is `[proxyActorAddress; "target-v1"; targetActorAddress; duTypeOrTemplateKey; canonicalArgString]`; the invalidated beta64 `actor-argu-proxy` hidden rewrite path is historical only. `GenFileActorInvocationTest4.fsx -- --if-dyna-port --no-wait` verifies proxy-first routing with the PTCS/proxy node on `10.28.112.109`, native PingPong on `10.28.112.93`, native `string -> fCell2.T`, and a script-level `fCell2.T -> fCell2.S` reply handler before ActorArgu reply rendering. Playwright MCP verified the explicit Add Target Key UI on `http://127.0.0.1:18182/page/damnwz`, and formal `PulseTradeCommSpaHumanUi` service release `live81-82-ptcs-beta74-dynamic-beta65-explicit-target-202607071430` passed deployment alignment, 82 local-login, and GW/PTCS/RN three-host E2E.
+Current package slice: `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta70`, paired with `PulseTrade.Comm.Spa 0.2.5-beta78`. The current Actor Argu Add Target Key schema is `[proxyActorAddress; "target-v1"; targetActorAddress; duTypeOrTemplateKey; canonicalArgString]`; the invalidated beta64 `actor-argu-proxy` hidden rewrite path is historical only. `GenFileActorInvocationTest4.fsx -- --if-dyna-port --no-wait` verifies proxy-first routing with the PTCS/proxy node on `10.28.112.109`, native PingPong on `10.28.112.93`, native `string -> fCell2.T`, and a script-level `fCell2.T -> fCell2.S` reply handler before ActorArgu reply rendering. Beta70 keeps the Dynamic renderer contract unchanged while consuming the beta78 participant-presence/cleanup core.
 
 `poc.full.nuget.journal.ACL.fsx` quiet startup mode must not capture `Console.Out` with a disposable `StringWriter`: Suave can retain the writer after `startWithSharing` returns, and later listener output can crash with `ObjectDisposedException`. The script now uses `TextWriter.Null` while suppressed. Latest quiet no-wait proof: `dotnet fsi --exec .\src\poc.full.nuget.journal.ACL.fsx -- --no-wait --local-port 18102 --github-port 18101 --cluster-port 18801 --pcsl-root .\.pcsl\verify.acl.beta56.dual-host.quiet`.
 
@@ -79,6 +79,14 @@ Instead, they are packed into the `contentFiles` directory, specifically:
 `contentFiles/any/<tfm>/wwwroot/js/`
 
 If your server-side F# code (e.g., an extension registration mechanism using `typeof<SomeActor>.Assembly.Location`) attempts to locate these static assets at runtime by looking relative to the DLL's path, it will fail when the library is consumed via a NuGet reference (like `#r "nuget: MyPackage"` or `<PackageReference>`). The DLL will be running from `~/.nuget/packages/.../lib/<tfm>/`, where no `wwwroot` folder exists.
+
+## Dynamic demo actor contracts
+
+- showcase-dynamic-actor：收到合法 fskynet-sdui payload時回顯該 payload；其他輸入回 simple showcase。
+- sdui-echo-actor：回顯 ActorArguTargetCommand.RawArgu，供任意 Canvas DSL round-trip。
+- showcase-dynamic-actor2：固定回 built-in complex showcase2；輸入 payload不會改變 marqueeData，這是 fixed showcase by design。
+
+以上 actor都使用 ActorArguTargetCommand -> ActorArguTargetReply contract。string-only/fCell2-only legacy actor需透過 explicit Add Target Key指定 proxy與 native target，不可直接當作 Add actor key target。
 
 ### The Solution
 To successfully resolve these static assets when running from a NuGet cache, you must instruct your server code to traverse up the directory structure and look inside the `contentFiles` folder.

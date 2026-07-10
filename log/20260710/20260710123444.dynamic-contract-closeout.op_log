@@ -1,0 +1,9 @@
+# PTCS.Dynamic contract closeout operation evidence
+
+- Dynamic beta70已對齊 PTCS beta78並完成 build/pack/push。
+- README與 SDUI Developer Manual已明列 showcase2固定回 built-in complex showcase，sdui echo才回 caller DSL。
+- 第一次 check誤用 PTCS session id，造成跨 repo log/DevLog snapshot collision；本輪以 Dynamic專用 session重跑。
+- 待補最終 check、scanner、encoding與 commit/push結果。
+- Dynamic專用 check session無 blocking finding；只剩日期 log-dir命名與 pre-commit dirty WARN。
+- Sensitive scan：8 files，High=0、Medium=0；Info均為歷史 DevLog package文字。
+- Encoding gate：10 files strict UTF-8、NUL/U+FFFD errors=0；`git diff --check`無 whitespace error。

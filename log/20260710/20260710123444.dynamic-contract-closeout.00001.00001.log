@@ -1,0 +1,55 @@
+# PTCS.Dynamic contract closeout plan
+
+## 背景
+
+Dynamic actor contract文件、beta70 build/pack/push已完成；本段處理 target repo closeout。
+
+## 目標
+
+完成 Dynamic exact package alignment與 traceability提交。
+
+## 假設
+
+showcase2固定輸出、sdui echo caller輸入是既定 contract；不需修改 renderer。
+
+## 計畫步驟
+
+1. 以獨立 check session執行 Dynamic authoritative docs gate。
+2. 執行敏感與 encoding掃描。
+3. 精準 commit/push。
+
+## 預計修改/讀取範圍
+
+README、DevLog、SDUI developer manual、fsproj、generated bundle與本輪 log。
+
+## 執行命令/參數
+
+PTCS `AsterHarness/check.fsx` 搭配 Dynamic專用 session id與 Dynamic docs path。
+
+## 驗收方式
+
+check無 blocking finding；scanner無 High；strict UTF-8通過；commit/push成功。
+
+## 風險
+
+舊 check使用與 PTCS相同 session id，產生跨 repo snapshot collision；新 session隔離即可。
+
+## 結果
+
+待對應 op_log記錄。
+
+## 根因判讀
+
+第一次 Dynamic check的 log delete與 DevLog shrink是 checker session snapshot跨 repo污染，不是檔案被刪或 append-only破壞。
+
+## 下一步
+
+建立 op_log並重跑獨立 gate。
+
+## 關聯文件/工單/PR
+
+PTCS WBS-064、PTCS-T-064C..D、`doc/SDUI_Developer_Manual.md`。
+
+## prompt/上下文摘要
+
+使用者要求釐清 showcase2自訂 marquee未呈現是否為 design。

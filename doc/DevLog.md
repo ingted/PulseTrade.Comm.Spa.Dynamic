@@ -829,3 +829,9 @@ Implementation status:
 - The projection includes current PTCS ActorSystem node address, `ptcs-dynamic-extension` role, and tags for `showcase`, `echo`, `showcase2`, `canvas`, and `complex-sdui`.
 - Advanced package version to `0.1.3-beta68`.
 - Evidence: `G:\PulseTrade.fs\log\20260708\20260708153544.ptcs-dynamic-showcase2-actor-registry.00001.00001.log`.
+
+## 2026-07-10 - Dynamic 0.1.3-beta70 beta78 alignment
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic` to `0.1.3-beta70` with exact `PulseTrade.Comm.Spa [0.2.5-beta78]` consumption.
+- Clarified the public demo actor contracts: `ShowcaseDemoActor2` always returns the built-in complex showcase and intentionally ignores caller marquee data; `SduiEchoActor` echoes a caller-provided SDUI DSL; `ShowcaseDemoActor` echoes valid SDUI and otherwise returns the simple showcase.
+- Release build passed with existing WebSharper WS9002 and NuGet long-path/readme warnings. NuGet push returned Created.
