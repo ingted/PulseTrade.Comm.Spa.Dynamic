@@ -871,3 +871,10 @@ Implementation status:
 - Extended `SDUI_DSL_zh-Hant.md` with `sdui-runtime.v1` envelope/patch/node/reset/poll semantics. Existing static `fskynet-sdui` remains compatible; the prior `RealtimeChart` document term was not an implemented renderer.
 - New TA runtime code must be pure WebSharper F# and use typed codecs; it cannot extend the current `JS.Inline` dynamic-object pattern or depend on Plotly JavaScript.
 - PTCS core still needs a companion authenticated WebSocket mount/unmount/target-submit/transient-frame seam. Until accepted, HTTP polling or history-appending updates are not valid E2E acceptance.
+
+## 2026-07-11 - Realtime TA Canvas RFC split into reusable packages
+
+- Revised `RFC-PTCS-DYNAMIC-0007` and completed `doc/TAResearch/REQ.md`, `SA.md`, `SD.md`, `Test.md` and `WBS.md`.
+- The accepted review proposal now separates transport-neutral `PulseTrade.Comm.Spa.Dynamic.Contracts`, pure WebSharper `PulseTrade.Comm.Spa.Dynamic.Renderer`, and the current PTCS-specific Dynamic facade. Existing `CommHub.useDynamicSdui` remains a compatibility entry.
+- E2EQ is planned to consume Contracts + Renderer through an E2EQ adapter and parity migration; it does not import PTCS.Host, fCell2, ACL or MessageFabric dependencies.
+- This batch changed documents only. Package split, renderer implementation, PTCS transient seam, E2EQ migration, NuGet release and browser tests remain planned.

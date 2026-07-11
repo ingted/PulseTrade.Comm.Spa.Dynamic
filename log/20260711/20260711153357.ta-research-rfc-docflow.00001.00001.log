@@ -1,0 +1,15 @@
+# PTCS.Dynamic TA research RFC document flow
+
+- 背景：使用者要求Dynamic TA Canvas抽出可供E2EQ重用的通用Contracts/Renderer，PTCS-specific adapter獨立。
+- 目標：修訂REQ/RFC/SA並新增SD/Test/WBS，定義package boundaries、runtime frames、E2EQ migration與驗收。
+- 假設：本輪文件設計，不修改source/package/version；既有`src/verify_ui.fsx`保持不動。
+- 計畫步驟：更新requirements/decision -> package/dataflow SD -> Test/WBS -> parent traceability -> closeout。
+- 預計範圍：`doc/TAResearch/*`、`doc/RFC/RFC-PTCS-DYNAMIC-0007*`、`doc/{WBS,TEST,DevLog,Verification}.md`。
+- 驗收：E2EQ不依賴PTCS/fCell2即可使用renderer；PTCS仍由adapter暴露`useDynamicSdui`；pure WebSharper TA path；parity/reverse adoption tests與WBS可追蹤。
+- 風險：breaking current facade、duplicate websocket lifecycle、直接複製E2EQ inline JavaScript、renderer與TA calculation責任混淆。
+- Prompt摘要：依拆分方案讓PTCS與E2EQ共用Dynamic renderer，完成文件鏈後closeout。
+- 執行命令/參數：只讀canonical Dynamic/E2EQ API與現有文件。
+- 根因判讀：current `CommHub.useDynamicSdui`與PTCS package coupling阻礙E2EQ直接重用。
+- 下一步：文件review accepted後才進package split DEV。
+- 關聯文件/工單/PR：RFC-PTCS-DYNAMIC-0007、PTMD RFC-MD-0006、PTCS.Host RFC-PTC-PTCSH-0001。
+- 結果：待完成。

@@ -1,187 +1,173 @@
-# SA-PTCS-DYNAMIC-TA-0001 Realtime TA Canvas Runtime
+# SA-PTCS-DYNAMIC-TA-0001 Transport-Neutral Realtime TA Canvas Runtime
 
-Status: Proposed / Review required
+Status: Draft complete / Review required
 Date: 2026-07-11
 REQ: `doc/TAResearch/REQ.md`
 RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
+SD: `doc/TAResearch/SD.md`
+Test: `doc/TAResearch/Test.md`
+WBS: `doc/TAResearch/WBS.md`
 DSL: `doc/SDUI_DSL_zh-Hant.md`
 
-## 1. 系統目的
+## 1. Analysis conclusion
 
-`PulseTrade.Comm.Spa.Dynamic` 應把 provider 回傳的 typed SDUI document/render frames 呈現為可互動 Canvas。它不擁有 market-data provider、SQL query、broker session或PTCS authentication；它只擁有 contract、browser state reducer、renderer與lifecycle。
+TA Canvas需求不是多加一個chart node，而是把「單次payload renderer」提升為「可mount、可reduce bounded frames、可dispose的runtime」。為讓E2EQ最終使用同一套畫面，核心runtime不得依賴PTCS session、fCell2或MessageFabric；這些只屬於PTCS adapter。
 
-本需求不是在現有static Canvas多加一種chart node。TA研究畫面需要把三種生命週期分開：
-
-1. document：固定layout、row identity、initial query/view defaults；
-2. data：history snapshot與後續incremental patches；
-3. view：zoom、pan、crosshair、toggle等browser-local state。
-
-## 2. 現況盤點
-
-PTCS core evidence inspected read-only at repo root `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa`, branch `20260707_022.win.PTC_rw.Beta_Agy`, commit `114324be526db2caaccef7ac611301277b92f71d`。該checkout有既有dirty files，本輪未修改；下表的PTCS `Client.fs`判讀適用於此current source snapshot。
-
-| 現況 | 證據位置 | 影響 |
-| --- | --- | --- |
-| Canvas以單一reply建立summary/overlay，沒有stable runtime instance | `src/Client/DynamicRenderer.fs` | 每次完整reply會重建畫面並失去view state。 |
-| DSL文件列出`RealtimeChart`，renderer沒有對應case | `doc/SDUI_DSL_zh-Hant.md`、`src/Client/DynamicRenderer.fs` | 文件名詞不是已交付能力。 |
-| Button與Tree仍含placeholder行為 | `src/Client/DynamicRenderer.fs` | 不能作為TA toolbar/tree的正式互動基礎。 |
-| 目前renderer大量以`JS.Inline`讀dynamic object或註冊global callback | `src/Client/DynamicRenderer.fs`、`src/Client/ArguFormRenderer.fs` | 新runtime不能延續此模式；需typed codec與WebSharper API。 |
-| Argu Form已有submit callback概念 | `src/Client/ArguFormRenderer.fs` | 可借用command callback精神，但不可每5秒append durable form/history event。 |
-| PTCS目前Canvas seam本質為`string -> Node option` | `G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\Client.fs` renderer registry | 沒有mount/unmount、authenticated duplex channel、transient frame或dispose contract。 |
-
-## 3. 關鍵差異
-
-單一`RealtimeChart` node無法解決以下問題：
-
-- layout與data revision無法分辨；
-- 5秒更新會累積message card、journal與IndexedDB row；
-- duplicate、gap、out-of-order frame無法deterministic處理；
-- close page後timer/socket subscription無法由renderer registry回收；
-- zoom/pan/toggle與server query state會互相覆蓋；
-- provider error可能把已成功建立的Canvas整個替換成錯誤文字。
-
-因此系統邊界必須從「render one payload」提升為「mount one runtime document and reduce bounded frames」。
-
-## 4. 目標架構
+合理拆分為：
 
 ```text
-PTCS.Host TA actor
-  -> Dynamic.Contracts document/snapshot/patch JSON
-  -> PTCS authenticated WebSocket extension channel
-  -> Dynamic typed codec
-  -> CanvasRuntimeRegistry
-  -> SduiRuntimeReducer
-  -> TaCanvasRenderer (pure WebSharper)
-
-browser action
-  -> PTCS target command callback
-  -> PTCS.Host TA actor
-  -> snapshot/patch/error
+Dynamic.Contracts   = transport-neutral protocol
+Dynamic.Renderer    = pure WebSharper state + view runtime
+Dynamic facade      = PTCS-specific adapter + compatibility bundle
+E2EQ adapter        = E2EQ-specific transport + page integration
 ```
 
-### 4.1 Package boundary
+## 2. Current reality
 
-| Package/module | Responsibility | Forbidden dependency |
-| --- | --- | --- |
-| `PulseTrade.Comm.Spa.Dynamic.Contracts` | DTO、DU、strict codec、limits、revision rules | WebSharper browser runtime、PTMD、SQL |
-| `SduiRuntimeReducer` | pure state transition與resync decision | DOM、network |
-| `CanvasRuntimeRegistry` | instance/mount/dispose/in-flight lifecycle | provider-specific logic |
-| `TaViewport` | zoom/pan/crosshair/toggle state | server query execution |
-| `TaCanvasRenderer` | SVG/layout/controls/status | raw JavaScript、SQL |
-| `TaCanvasTransport` | 經PTCS提供的authenticated channel送poll/action並收frame | 自建OAuth、arbitrary HTTP |
+Canonical source locations：
 
-`PTCS.Host`只reference輕量Contracts package；Dynamic不reference PTMD。所有release-facing reference使用exact NuGet version，不以ProjectReference串接三套系統。
+- Dynamic：`C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`
+- PTCS core：`G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa`
+- E2EQ：`G:\PulseTrade.fs\Sinopac\demo\e2eQuotation`
 
-### 4.2 Runtime state
-
-```text
-CanvasRuntimeState =
-  DocumentIdentity
-  DocumentRevision
-  DataRevision
-  LastTransportSequence
-  InitialQuery
-  CurrentQuery
-  InitialView
-  CurrentView
-  Rows
-  SeriesByDataRef
-  BackendStatus
-  PollState
-```
-
-Reducer只接受base revision正確且sequence連續的frame。duplicate為no-op；gap、unknown instance、base mismatch產生`RequestResync` effect，不直接猜測合併。
-
-### 4.3 Data與view ownership
-
-| State | Owner | Network |
-| --- | --- | --- |
-| Candles/indicator series、quality、watermark | server frame | snapshot/patch |
-| source/symbol/scale/range/indicator parameters | server-validated query | user action/poll |
-| zoom/pan/crosshair/legend toggle/row visibility | browser | none |
-| document layout與initial defaults | document | explicit replace/reset only |
-
-## 5. PTCS upstream seam
-
-Dynamic不能可靠地從現有renderer callback自行取得PTCS session socket，也不能自行開一條無ACL context的WebSocket。PTCS companion RFC至少需提供：
-
-```text
-RealtimeCanvasMountContext
-  PageId / KeyId / Caller / Capabilities
-  SubmitTargetCommand
-  OpenTransientChannel
-  OnFrame
-  OnDispose
-```
-
-同一authenticated WebSocket可multiplex durable user actions與transient poll frames，但兩者projection policy不同：
-
-- Add Row、remote parameter change、Reset Canvas：可audit，不必成為chat message；
-- poll/heartbeat/patch：transient，不append journal/PCSL message history；
-- query response與ACL decision仍由server authoritative。
-
-PTCS companion seam尚未accepted前，Dynamic可完成Contracts/reducer/renderer pure tests，但不得以HTTP polling、global socket或history append聲稱E2E完成。
-
-## 6. Bounded resource policy
-
-初始建議值，進SD/Test時可在不放寬安全上限的前提下調整：
-
-| Limit | Proposed default |
-| --- | ---: |
-| TA rows per canvas | 8 |
-| Initial bars per row | 5000 |
-| Browser retained bars per row | 2000 |
-| Patch items per frame | 500 |
-| Poll interval | 5 seconds minimum/default |
-| Concurrent poll per canvas | 1 |
-
-server可回更嚴格限制。超限必須保留已成功Canvas並呈現controlled error/status，不清空FormInput或整個runtime。
-
-## 7. Interaction分析
-
-- zoom/pan以shared time range驅動所有rows，避免price與indicator時間軸錯位；
-- legend toggle與row visibility只改local state；
-- Add Row或scale/range change送typed target action，等待server snapshot/patch；
-- `ResetView`恢復initial viewport/toggle，不query server；
-- `ResetCanvas`恢復initial query/rows/view並要求fresh snapshot；
-- hidden tab、collapsed Canvas、socket unavailable、unmounted都停止poll；
-- reopen後以last known revision要求delta，server不能補齊時回snapshot。
-
-## 8. Failure model
-
-| Failure | Required behavior |
+| Reality | Impact |
 | --- | --- |
-| invalid document/schema/node | controlled error，拒絕mount |
-| indicator/provider query error | 保留last good Canvas，status標示error/stale |
-| sequence gap/revision mismatch | pause patch apply，request resync |
-| duplicate frame | no-op，保留state |
-| socket disconnect | pause poll，顯示disconnected；重連後resync |
-| unknown Canvas instance | fail closed，不建立implicit instance |
-| unsupported TA kind | controlled error，不畫空白row |
+| Canvas renderer以單一reply建立畫面，沒有stable runtime instance | 完整reply會重建view state。 |
+| Current extension API在PTCS `CommHub`上註冊 | E2EQ直接reference會帶入不必要的PTCS/fCell2 boundary。 |
+| Argu Form已有submit callback概念 | 可抽象成generic action callback，但不能把poll當form/history submit。 |
+| Current renderer仍有dynamic/inline JS legacy code | 新TA runtime必須另走typed codec + pure WebSharper；不可延續。 |
+| E2EQ已有TA viewport、crosshair、navigator、IndexedDB與provider query | 可作interaction/reference，不可複製成第二套shared runtime。 |
+| E2EQ沒有以fCell2作其UI transport contract | 證明shared renderer不能要求fCell2；fCell2只由PTCS adapter處理。 |
 
-## 9. e2eQuotation可重用知識
+## 3. Why one package is insufficient
 
-Reference source: PTC worktree `G:\PulseTrade.worktrees\20260710-rn-dual-route\ptc`, branch `20260710_025.rn_durableproxy_dual_route`, base commit `bf821a1e67286960bc2702292067b0992e187e18`, path `Sinopac\demo\e2eQuotation`。此專用app的行為與測試適合作為TA Canvas分析來源，但不是Dynamic runtime dependency。
+若保留單一PTCS-specific Dynamic package：
 
-| Existing slice | Reuse in Dynamic | Do not copy |
+1. E2EQ會被迫reference PTCS core與host integration。
+2. renderer tests需要啟動不必要的session/actor/WebSocket runtime。
+3. fCell2與ACL會滲入純UI protocol，其他host無法重用。
+4. E2EQ與PTCS很可能各寫一套TA chart，interaction與bug fix逐漸漂移。
+
+拆分後，Contracts/Renderer提供單一真實實作，adapter只負責transport與host policy。
+
+## 4. Target component analysis
+
+| Component | Owns | Does not own |
 | --- | --- | --- |
-| `SpaModel.fs`的bounded TA model與projection | row/series DTO與pure reducer測試精神 | e2e專用page state與source assumptions |
-| `Client.fs`的shared viewport、crosshair、hover KV、visible-bar bound | Canvas local view state與interaction acceptance | inline/raw JavaScript helper |
-| Historical TA IndexedDB/read-through/prefetch tests | bounded cache、inactive surface不投影、in-flight guard | 與e2e page key綁死的cache schema |
-| `Server.fs`的historical viewport、coverage與provider strategy | snapshot/coverage/status語義 | Dynamic直接呼叫provider或backfill |
-| `subscribePush`/PubSub delta | 驗證push可行與socket lifecycle edge cases | 本需求的預設transport；TA Canvas仍採5秒client-pull |
-| Playwright crosshair/scroll/cache-hit cases | 新TA Canvas E2E基線 | fake-only smoke作production acceptance |
+| `Dynamic.Contracts` | DU/DTO、strict codec、schema version、limits、revision validation | DOM、network、PTMD math |
+| `SduiRuntimeReducer` | pure transition、effects、last-good-state、resync decision | timers/socket |
+| `CanvasRuntimeRegistry` | mount/instance/in-flight/dispose | caller auth/domain query |
+| `Dynamic.Renderer` | WebSharper nodes、TA charts、view state、interaction | provider/SQL/fCell2 |
+| `DynamicHostCallbacks` | submit/channel/visibility/scheduler/diagnostics interface | concrete PTCS/E2EQ implementation |
+| PTCS adapter | fCell2、caller/ACL、target command、transient projection | TA renderer logic |
+| E2EQ adapter | E2EQ command/reply/page/visibility mapping | PTCS semantics |
 
-Dynamic需重用其state separation與人類操作驗收，不把e2eQuotation變成package dependency，也不複製`Server.fs`內的fallback JavaScript UI。
+## 5. State model
 
-## 10. 測試分析
+```fsharp
+type CanvasRuntimeState =
+    { Identity: DocumentIdentity
+      DocumentRevision: int64
+      DataRevision: int64
+      LastTransportSequence: int64
+      InitialQuery: TaQueryState
+      CurrentQuery: TaQueryState
+      InitialView: TaViewState
+      CurrentView: TaViewState
+      Rows: TaRowSpec list
+      SeriesByDataRef: Map<string, TaSeries>
+      Status: TaDataStatus
+      Poll: PollState }
+```
 
-1. Contracts：strict decode/encode、unknown field/operation policy、bounds。
-2. Reducer：document -> snapshot -> patch、duplicate、gap、out-of-order、reset、resync。
-3. Component：每種TA kind、shared viewport、toggle、resize、last-good-state error。
-4. Lifecycle：mount/hidden/collapse/unmount/reconnect，確認timer與subscription釋放。
-5. E2E：以PTMD deterministic fixture加live-tail adapter，Playwright操作zoom/pan/add-row/reset並確認20次poll不增加history row。
+Ownership：
 
-## 11. 結論
+| State | Authoritative owner | Network behavior |
+| --- | --- | --- |
+| document/layout/defaults | server document | explicit document/replace only |
+| OHLCV/indicator/status | server snapshot/patch | snapshot/delta |
+| instrument/interval/range/parameters | server-validated query | typed user action |
+| zoom/pan/crosshair/toggle/row visibility | browser | none |
 
-採用immutable document + typed bounded runtime frames。歷史snapshot是主要研究資料；5秒poll只更新tail，不能主導layout。此方案需要PTCS core提供authenticated transient WebSocket lifecycle seam，並由PTCS.Host/ PTMD分別負責domain query與storage，才能維持Dynamic作為通用NuGet extension的邊界。
+last-good canvas不可因query/parse/provider error消失；error只更新status/diagnostic，除非document本身從未成功mount。
+
+## 6. Protocol analysis
+
+Frame identity需分離：
+
+```text
+documentId          stable document identity
+canvasInstanceId    mounted runtime instance
+documentRevision    layout/default changes
+dataRevision        data snapshot/patch changes
+transportSequence   duplicate/gap/out-of-order detection
+```
+
+Reducer規則：
+
+- same sequence/revision duplicate：no-op。
+- next sequence + matching base：apply。
+- gap/base mismatch/unknown instance：不apply，effect=`RequestResync`。
+- error/heartbeat：不重建document。
+- snapshot可在resync後replace bounded data，但保留合法local view或依explicit reset policy還原。
+
+## 7. TA rendering analysis
+
+TA rows共用time axis與viewport；price、volume、indicator採獨立y-scale。初始kinds：Candlestick、Volume、SMA、DMI、ADX、MACD、Heikin-Ashi。Renderer只畫server提供的series；PTMD Analytics負責domain calculation，避免同一指標在E2EQ/PTCS/browser有三套定義。
+
+Browser working set必須bounded。移除舊點以typed `remove-series-before`進行；zoom/pan在loaded range內不送request，只有越界或明確query action才由adapter送server。
+
+## 8. Transport and host analysis
+
+`DynamicHostCallbacks`是effect boundary：
+
+- submit typed action；
+- open/close transient frame channel；
+- report visibility/expanded state；
+- schedule/cancel poll；
+- report diagnostics。
+
+PTCS path使用authenticated same-session channel，host決定user action是否audit、poll/heartbeat不進journal/history。E2EQ path使用既有backend/WebSocket/HTTP orchestration，但必須映射成相同frames；Renderer不辨識transport type。
+
+## 9. E2EQ migration feasibility
+
+可行，且應分段：
+
+| Stage | Change | Gate |
+| --- | --- | --- |
+| 1 | Contracts/Renderer以deterministic TA fixtures完成 | reducer/component tests |
+| 2 | E2EQ adapter parallel mount，不替換現有TA | equivalent state + geometry |
+| 3 | Playwright比較Historical/RT TA interaction | viewport/crosshair/navigator/resize parity |
+| 4 | shared renderer成為E2EQ TA canonical path | full AgentE2E matrix |
+| 5 | 移除舊duplicated render code | no regression/no duplicate renderer |
+
+E2EQ仍擁有其provider/backfill/page orchestration；只把render/reducer交給Dynamic.Renderer。這回饋了既有E2EQ成果，也避免讓Dynamic知道Sinopac-specific runtime。
+
+## 10. PTMD alignment
+
+Dynamic只吃generic runtime frames。PTMD.TAResearch response中的OHLCV、coverage、watermark、freshness經PTCS.Host或E2EQ adapter映射成dataRefs/status；Dynamic不reference `ITaResearchQueryProvider`。source停止時adapter仍可傳Stale status與last snapshot，Renderer保留畫面。
+
+## 11. Resource and security analysis
+
+| Concern | Design |
+| --- | --- |
+| frame/script injection | typed codec + operation/node allowlist；無script/URL/DOM selector |
+| memory growth | row/bar/frame hard limits + remove-before + dispose |
+| poll storm | visible/expanded/ready + one-in-flight + min 5 sec + backoff |
+| stale confusion | persistent freshness/watermark/lag status |
+| unauthorized action | adapter/server authoritative；Renderer capability只影響呈現，不取代ACL |
+| secret leakage | shared protocol無credential；diagnostic不得含token/connection string |
+
+## 12. Risks
+
+| Risk | Mitigation |
+| --- | --- |
+| package split破壞現有facade | compatibility tests鎖`CommHub.useDynamicSdui`與static Canvas |
+| adapter行為不一致 | same-frame/same-action cross-host contract fixtures |
+| renderer migration失去E2EQ細節 | parallel path + Playwright geometry/interaction parity gate |
+| PTCS transient seam延遲 | Renderer可先完成；PTCS E2E明確blocked，不以HTTP/history workaround替代 |
+| WebSharper API不足 | 先記錄interop RFC，不偷渡inline JS |
+
+## 13. SA conclusion
+
+E2EQ使用PTCS.Dynamic能力是可行的，但共享點必須是transport-neutral Contracts + Renderer，而不是PTCS-specific facade。現有`PulseTrade.Comm.Spa.Dynamic`保留對PTCS的相容入口；E2EQ用自己的adapter安裝同一renderer。如此才能讓TA Canvas成為通用NuGet能力，同時保留PTCS的ACL/fCell2/durability與E2EQ的既有transport邊界。

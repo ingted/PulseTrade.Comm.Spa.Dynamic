@@ -626,3 +626,7 @@ Passed assertions：
 - Dynamic package version is `0.1.3-beta73` and its nuspec dependency is exact `PulseTrade.Comm.Spa [0.2.5-beta80]`.
 - Release build/package tests and PTC bundle verifier must retain beta72 bundle discovery, outbound-only `argu msg:` Canvas suppression, direct/inbound SDUI rendering, and current target schema.
 - This is dependency-only alignment; it does not claim PTC ActorArgu production provider or service deployment completion.
+
+## 2026-07-11 DYN-TA-T-001..020 Transport-Neutral TA Canvas Test Plan
+
+Canonical matrix：`doc/TAResearch/Test.md`。目前只有test design，尚未執行。矩陣涵蓋typed codec/reducer、pure WebSharper source gate、TA interaction、bounded lifecycle、PTCS transient path、E2EQ adapter parity、Playwright geometry與long-running resource bounds；不得以fake component fixture取代兩條真host E2E。

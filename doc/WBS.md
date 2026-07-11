@@ -77,3 +77,13 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 | DYN-WBS-524 | PTCS beta79 dispatch-provider alignment | Done | 100 | DYN-T-533 / PTC3-T-068J | Dynamic `0.1.3-beta71` exact-pins PTCS `0.2.5-beta79`. Renderer behavior and explicit target schema are unchanged; direct Add Actor Key can consume the fabric-wide platform provider installed by Host composition. |
 | DYN-WBS-525 | NuGet bundle discovery and inbound Canvas classification | Done | 100 | DYN-T-534 / PTC3-T-068J | Dynamic `0.1.3-beta72` probes local `wwwroot/js`, NuGet `content/wwwroot/js`, then `contentFiles/any/net10.0/wwwroot/js`. Outbound-only `argu msg:` history no longer opens an empty/stale Canvas; direct JSON and inbound reply DSL remain renderable. Package tests `19/19` and the split-node RN JSON WebSocket/Canvas E2E passed. |
 | DYN-WBS-526 | PTCS beta80 durable submission policy alignment | Done | 100 | DYN-T-535 / PTC3-T-068F3 | Dynamic `0.1.3-beta73` exact-pins PTCS `0.2.5-beta80`; no renderer/schema/runtime behavior changes. This removes the beta79 exact-range conflict for the PTC Spa.Host production-adapter package cascade while retaining beta72 bundle/Canvas fixes. |
+
+## 2026-07-11 Transport-Neutral Realtime TA Canvas
+
+Canonical detail：`doc/TAResearch/WBS.md`
+RFC：`doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
+
+| ID | 工項 | 狀態 | Progress | Test ID | 證據 / 備註 |
+| --- | --- | --- | ---: | --- | --- |
+| DYN-TA-000 | Contracts + Renderer + host adapters文件鏈 | Review | 100 | document/check gate | 無runtime或package完成宣告 |
+| DYN-TA-001..008 | contracts、reducer、TA renderer、PTCS/E2EQ adapters、E2E與release | Planned | 0 | DYN-TA-T-001..020 | 詳細相依順序與gates見canonical detail |

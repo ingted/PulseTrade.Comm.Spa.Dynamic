@@ -1,0 +1,8 @@
+# Operation evidence
+
+- 2026-07-11 15:34 +08:00：建立Dynamic repo pre-work evidence；原unknown `src/verify_ui.fsx`保持不動。
+- 2026-07-11：修訂`RFC-PTCS-DYNAMIC-0007`與REQ/SA，新增SD/Test/WBS；設計拆為transport-neutral Contracts、pure WebSharper Renderer與PTCS facade，E2EQ由自身adapter重用同一renderer。
+- 2026-07-11：同步上層WBS/Test與append-only DevLog；未修改unknown `src/verify_ui.fsx`，未進package split/NuGet/runtime/UI測試。
+- 2026-07-11：strict UTF-8/no-BOM/no-NUL/no-U+FFFD、trailing whitespace、document-chain path與`git diff --check`通過；敏感掃描files=11 high=0。
+- 2026-07-11：`check.fsx`初次為PASS=32/WARN=2/FAIL=0；補WBS Test ID後，沿用同一session重跑觸發`latest_log_not_advanced`/`latest_op_log_not_advanced`流程FAIL，但traceability已由missing=1修成missing=0。已記錄此stateful checker行為，改用new final session作正式結果。
+- 2026-07-11：new final session PASS=33/WARN=1/FAIL=0；RFC/WBS/Test traceability missing=0，唯一WARN為pre-commit dirty狀態。
