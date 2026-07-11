@@ -607,3 +607,22 @@ Passed assertions：
 - PFCF prototype target key `pfcf-akka-cmd-prototyping` 保持可解析。
 - PingPong stop filtering 與 Echo fixed-name reuse 通過。
 - live-host mode without `--no-wait` skips the startup `ActorArgu.sendDurableAsync` server probe. The Durable ActorArgu write proof remains part of explicit no-wait verifier mode only.
+
+## DYN-T-533 PTCS beta79 platform provider compatibility
+
+- Dynamic package dependency is exact `PulseTrade.Comm.Spa [0.2.5-beta79]`.
+- Existing package tests remain `18/18` green without changing renderer semantics.
+- Cross-repo notes/00508 E2E uses Add Actor Key with an RN.Host native `fCell2<string>` actor; the valid SDUI JSON reply is rendered as Canvas.
+
+## DYN-T-534 NuGet bundle discovery and inbound Canvas classification
+
+- Server extension resolves client bundles from local `wwwroot/js`, NuGet `content/wwwroot/js`, and `contentFiles/any/net10.0/wwwroot/js` in that order.
+- Renderer returns no Canvas for outbound-only `argu msg:` history, while direct SDUI JSON and `replied msg:` SDUI remain renderable.
+- Release package tests pass `19/19`.
+- Playwright MCP split-node E2E sends the notes/00508 JSON through PTCS WebSocket to RN.Host `fCell2<string>` echo and observes `RN JSON ECHO E2E PASS 20260710` inside Canvas with zero console errors.
+
+## DYN-T-535 PTCS beta80 exact dependency alignment
+
+- Dynamic package version is `0.1.3-beta73` and its nuspec dependency is exact `PulseTrade.Comm.Spa [0.2.5-beta80]`.
+- Release build/package tests and PTC bundle verifier must retain beta72 bundle discovery, outbound-only `argu msg:` Canvas suppression, direct/inbound SDUI rendering, and current target schema.
+- This is dependency-only alignment; it does not claim PTC ActorArgu production provider or service deployment completion.

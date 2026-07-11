@@ -1,0 +1,10 @@
+# Operation evidence
+
+- 2026-07-11 02:36 +08:00：主Dynamic checkout有既有dirty，未修改；改用clean alignment worktree。初始HEAD `7d8a39f`，只有既有untracked `.pcsl/dynamic-beta72-build-202607102220/`。
+- 已將Dynamic版本升至beta73、PTCS exact dependency升至beta80；README/WBS/Test/DevLog明確標記dependency-only，未改renderer/runtime code。
+- Release build 通過，0 error；保留既有 WebSharper/NuGet package warning，未新增編譯錯誤。
+- Tests project build 通過；完整測試 19/19 pass。
+- tracked diff 僅包含 `README.md`、`doc/DevLog.md`、`doc/TEST.md`、`doc/WBS.md` 與 `src/PulseTrade.Comm.Spa.Dynamic.fsproj`；既有 `.pcsl/dynamic-beta72-build-202607102220/` 不納入提交。
+- Changed-file sensitive scan：High=0、Medium=0；Info 皆為既有 NuGet/security 關鍵字上下文。
+- Repo check 以本輪日期 log 目錄執行；pre-work log 欄位已補齊。曾改用 root `log/` 重跑造成 check state 的相對路徑誤判，未刪除任何 log；後續固定回到 `log/20260711` scope。
+- 最終 pre-commit check：PASS=29、WARN=2、FAIL=0；WARN 僅為日期子目錄名稱與尚未提交的預期 dirty。

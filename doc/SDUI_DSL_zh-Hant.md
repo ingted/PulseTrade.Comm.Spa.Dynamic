@@ -511,3 +511,91 @@ Planned vocabulary:
 - `actions`: reload、generate-report、schedule-report。
 
 First implementation slice only proves page-level renderer dispatch and summary host. Full vocabulary rendering remains `DYN-WBS-519`.
+
+## 2026-07-11 Realtime TA Canvas Runtime Protocol
+
+本節定義`protocol = "sdui-runtime.v1"`的runtime語義。它擴充既有static `fskynet-sdui` Canvas，但不改變沒有`protocol`欄位的v1 payload。
+
+### 1. 核心不變量
+
+1. `document`定義layout與initial defaults；一般data update不得替換layout。
+2. `documentRevision`只在explicit document replace時改變；`dataRevision`隨snapshot/patch前進。
+3. `transportSequence`用於duplicate/gap/out-of-order偵測，不等同domain data revision。
+4. Canvas instance以`documentId + canvasInstanceId`識別，不允許unknown frame implicit建立instance。
+5. runtime frame必須bounded、typed且可strict decode；不得攜帶script、DOM selector、JSON pointer、URL、header或SQL。
+
+### 2. Envelope kinds
+
+| kind | Purpose |
+| --- | --- |
+| `document` | 建立immutable layout、initial query/view defaults與first data revision。 |
+| `snapshot` | 以authoritative bounded data重建既有instance。 |
+| `patch` | 對指定base revision套用bounded incremental operations。 |
+| `error` | 保留last good Canvas並更新controlled status。 |
+| `heartbeat` | 更新channel/watermark/lag，不改series。 |
+
+共同identity欄位：
+
+```json
+{
+  "schema": "fskynet-sdui",
+  "protocol": "sdui-runtime.v1",
+  "kind": "patch",
+  "documentId": "ta-research-workspace",
+  "canvasInstanceId": "ta:session:1",
+  "documentRevision": 1,
+  "baseDataRevision": 7,
+  "dataRevision": 8,
+  "transportSequence": 19
+}
+```
+
+### 3. Typed patch allowlist
+
+- `replace-data-ref`: 以bounded authoritative value替換一個declared data reference。
+- `upsert-series-points`: 以declared key field新增或替換series points。
+- `remove-series-before`: 移除watermark之前的舊points以維持working-set上限。
+- `set-status`: 更新watermark、lag、partial/sealed、quality、stale或error。
+- `set-options`: 更新server-validated row/query options；不得改arbitrary node property。
+
+unknown operation、base revision mismatch或sequence gap不得best-effort套用；renderer需暫停該frame並要求snapshot resync。
+
+### 4. TA node vocabulary
+
+```text
+TaWorkspace
+  TaToolbar
+  TaChartStack
+    TaChartRow[]
+  TaLegend
+  TaCrosshairGrid
+  TaDataStatus
+```
+
+- `TaWorkspace`: `id`、`rowsRef`、`runtimeRef`、initial query/view refs。
+- `TaToolbar`: Reset View、Reset Canvas、Add Row、poll/channel status。
+- `TaChartRow`: `rowId`、`scale`、`kind`、`range`、`dataRef`、`axis`、`height`、`visible`。
+- `TaLegend`: series visibility與current/crosshair values。
+- `TaCrosshairGrid`: shared time cursor，不擁有provider query。
+- `TaDataStatus`: backend、watermark、lag、partial/sealed、quality、stale/error。
+
+初始`kind` allowlist：`Candlestick`、`Volume`、`Sma`、`Dmi`、`Adx`、`Macd`、`HeikinAshi`。未知kind顯示controlled error，不建立空白row。
+
+### 5. Interaction與reset
+
+- zoom、pan、crosshair、legend toggle、row visibility與local mode switch只改browser view state。
+- source/symbol/scale/range/indicator parameter/Add Row屬remote query action，需透過PTCS registered target command callback。
+- `ResetView`只恢復initial viewport/toggle，不送provider request。
+- `ResetCanvas`恢復initial query、rows與view，並送fresh snapshot request。
+- chart interaction語義可接近Plotly，但implementation必須是純WebSharper F#；不得嵌Plotly、`JS.Inline`或手寫JavaScript。
+
+### 6. Poll與lifecycle
+
+1. 預設與最小poll interval為5秒。
+2. Canvas必須mounted、expanded、document visible且socket ready才poll。
+3. 同一instance最多一個in-flight poll；timeout採bounded backoff。
+4. poll/heartbeat/patch走PTCS authenticated transient WebSocket channel，不append一般message history或IndexedDB message row。
+5. close/unmount/socket close需取消timer、in-flight request與subscription。
+6. reconnect以last revision要求delta；server無法連續補齊時回snapshot。
+
+完整需求與系統分析見`doc/TAResearch/REQ.md`、`doc/TAResearch/SA.md`及`doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`。

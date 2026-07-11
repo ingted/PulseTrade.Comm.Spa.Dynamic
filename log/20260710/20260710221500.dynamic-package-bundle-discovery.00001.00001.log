@@ -1,0 +1,11 @@
+# PTCS.Dynamic package bundle discovery
+
+- 起始時間：2026-07-10 22:15 +08:00
+- 背景：PTCS/RN JSON round-trip 已成功，但 Playwright 顯示 Actor Dynamic reply 未渲染 Canvas；HTML extension metadata 的 `scriptUrls` 為空。
+- 目標：讓 NuGet package 內 WebSharper generated bundle 可由 Dynamic extension 載入，完成 `notes/00508.txt` 的 UI JSON -> RN fCell2 echo -> Canvas demo。
+- 假設：NuGet 把 bundle 放在 `content/wwwroot/js`，現有 loader 僅查 `contentFiles/any/net10.0/wwwroot/js`。
+- 計畫：修正 package asset discovery；升版；build/test/pack；由 PTCS Host 重跑 Playwright E2E。
+- 範圍：`src/Server/Extension.fs`、package version、README/WBS/TEST/DevLog 與 generated bundle。
+- 驗收：extension `scriptUrls` 非空；console 無 extension load error；reply JSON marker 可在 Canvas 顯示。
+- 風險：只允許載入 package 自帶 generated JS，不手寫 JavaScript；不可誤掃其他目錄。
+- 流程偏差：本 worktree 先前已完成 beta71 package alignment，當時未建立本 repo pre-work log；本檔在進入 bundle root-cause 修正前補建，偏差將記錄於 op_log。

@@ -69,3 +69,11 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 8. PTC RN `PTC3-063/066/065` 完成 controller-region restart redelivery、provider-bound completion 與 service-window proof 後，再把 `DYN-WBS-506/511` / `PTC3-067` 從 browser/runtime E2E 推進到 production split-service E2E。
 9. `DYN-WBS-518` 先修復 Actor Dynamic/Actor Argu action mode 邊界。
 10. `DYN-WBS-519` 取代 `DYN-WBS-517` 作為 Actors tab 後續主線：改做 page-level `ActorsPage` renderer，而不是 generic Canvas Tree preview；proxy key 的 production RN Host split-service E2E 仍依 PTC RN/RN.Host WBS 完成度推進。
+
+## 2026-07-10 PTCS beta79 alignment
+
+| ID | 工項 | 狀態 | Progress | Test ID | 證據 / 備註 |
+|---|---|---:|---:|---|---|
+| DYN-WBS-524 | PTCS beta79 dispatch-provider alignment | Done | 100 | DYN-T-533 / PTC3-T-068J | Dynamic `0.1.3-beta71` exact-pins PTCS `0.2.5-beta79`. Renderer behavior and explicit target schema are unchanged; direct Add Actor Key can consume the fabric-wide platform provider installed by Host composition. |
+| DYN-WBS-525 | NuGet bundle discovery and inbound Canvas classification | Done | 100 | DYN-T-534 / PTC3-T-068J | Dynamic `0.1.3-beta72` probes local `wwwroot/js`, NuGet `content/wwwroot/js`, then `contentFiles/any/net10.0/wwwroot/js`. Outbound-only `argu msg:` history no longer opens an empty/stale Canvas; direct JSON and inbound reply DSL remain renderable. Package tests `19/19` and the split-node RN JSON WebSocket/Canvas E2E passed. |
+| DYN-WBS-526 | PTCS beta80 durable submission policy alignment | Done | 100 | DYN-T-535 / PTC3-T-068F3 | Dynamic `0.1.3-beta73` exact-pins PTCS `0.2.5-beta80`; no renderer/schema/runtime behavior changes. This removes the beta79 exact-range conflict for the PTC Spa.Host production-adapter package cascade while retaining beta72 bundle/Canvas fixes. |

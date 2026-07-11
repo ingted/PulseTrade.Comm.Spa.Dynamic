@@ -2694,7 +2694,7 @@ function setMain(node){
   }
 }
 function mountSets(page){
-  let selected, buckets, syncSocket, queuedSyncFrames, subscribedStreams, tailRequestedStreams, registryTailRequested, ensureSetsSubscriptions, loadGeneration;
+  let selected, buckets, syncSocket, queuedSyncFrames, subscribedStreams, tailRequestedStreams, registryTailRequested, ensureSetsSubscriptions, loadGeneration, hiddenSetStreams;
   page.className="page sets-grid";
   selected="";
   buckets=[];
@@ -2705,13 +2705,15 @@ function mountSets(page){
   const actionMenu=setTestId_1("sets-action-menu", element_1("div", "append-page-actions-menu", null));
   const reloadAction=setTestId_1("sets-action-reload", button_1("", "Reload"));
   const cleanNoShowAction=setTestId_1("sets-action-clean-noshow", button_1("", "CleanAllNoShow Actors"));
+  const cleanParticipantsAction=setTestId_1("sets-action-clean-participants", button_1("", "Clean Inactive Inboxes"));
+  cleanParticipantsAction.setAttribute("title", "Tombstone fully acknowledged inbox/ack collections for inactive participants.");
   const filters=element_1("div", "filters", null);
   const keyFilter=input_1("key contains");
   const setFilter=input_1("set name");
   const status=element_1("div", "state", "Loading sets");
   const list=element_1("div", "list", null);
   const work=element_1("section", "work", null);
-  append_1(actionMenu, [reloadAction, cleanNoShowAction]);
+  append_1(actionMenu, [reloadAction, cleanNoShowAction, cleanParticipantsAction]);
   append_1(actionPool, [actionSummary, actionMenu]);
   append_1(sideHead, [element_1("h1", "", "Sets"), actionPool]);
   append_1(filters, [keyFilter, setFilter, status]);
@@ -2724,10 +2726,22 @@ function mountSets(page){
   registryTailRequested=false;
   ensureSetsSubscriptions=() => { };
   loadGeneration=0;
+  hiddenSetStreams=[];
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
   const streamIdentity=(streamKey) => concat_2("\n", [asText_2(streamKey.pageId), asText_2(streamKey.mode), asText_2(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
   const setValueStreamKey=(pageId, mode, setName, keys) => New_6(asText_2(pageId), textOr("set", mode), asText_2(setName), arrayOrEmpty_1(keys));
   const setKeyId=(setName, keys) => asText_2(setName)+"::"+concat_2(" + ", arrayOrEmpty_1(keys));
+  const forgetHidden=(keyId) => {
+    hiddenSetStreams=filter((_1) =>!sameText(_1[0], keyId), hiddenSetStreams);
+  };
+  const eventIsVisibleAfterTombstone=(keyId, createdAtUtc) => {
+    const m=tryPick((_1) => sameText(_1[0], keyId)?Some(_1[1]):null, hiddenSetStreams);
+    if(m!=null&&m.$==1){
+      const hiddenAtUtc=m.$0;
+      return Compare(asText_2(createdAtUtc), hiddenAtUtc)>0;
+    }
+    else return true;
+  };
   const currentFilterTexts=() =>[isBlank_2(keyFilter.value)?"":Trim(keyFilter.value), isBlank_2(setFilter.value)?"":Trim(setFilter.value)];
   const currentCacheKey=() => {
     const p=currentFilterTexts();
@@ -2953,8 +2967,9 @@ function mountSets(page){
           const streamKey=m_1.$0;
           const setName=asText_2(streamKey.setName);
           const keys=arrayOrEmpty_1(streamKey.keys);
-          if(filtersAccept(setName, keys)){
-            const keyId=setKeyId(setName, keys);
+          const keyId=setKeyId(setName, keys);
+          if(filtersAccept(setName, keys)&&eventIsVisibleAfterTombstone(keyId, event.createdAtUtc)){
+            forgetHidden(keyId);
             if(!exists((bucket) => sameText(bucket.keyId, keyId), buckets)){
               buckets=sortSetBuckets(buckets.concat([New_20(keyId, setName, keys, 0, event.sequence, asText_2(event.createdAtUtc), [])]));
               isBlank_2(selected)?selected=keyId:void 0;
@@ -2978,6 +2993,7 @@ function mountSets(page){
         else {
           const streamKey_1=m_2.$0;
           const keyId_1=setKeyId(asText_2(streamKey_1.setName), arrayOrEmpty_1(streamKey_1.keys));
+          hiddenSetStreams=filter((_5) =>!sameText(_5[0], keyId_1), hiddenSetStreams).concat([[keyId_1, asText_2(event.createdAtUtc)]]);
           buckets=filter((bucket) =>!sameText(bucket.keyId, keyId_1), buckets);
           if(sameText(selected, keyId_1)){
             const o=tryHead(buckets);
@@ -2992,39 +3008,44 @@ function mountSets(page){
         }
       }
       else if(m=="set"){
-        if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
-          const setName_1=asText_2(event.streamKey.setName);
-          const keys_1=arrayOrEmpty_1(event.streamKey.keys);
-          if(filtersAccept(setName_1, keys_1)){
-            const value=New_22(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
-            const keyId_2=setKeyId(setName_1, keys_1);
-            const m_3=tryFind((bucket) => sameText(bucket.keyId, keyId_2), buckets);
-            if(m_3==null)updated=New_20(keyId_2, setName_1, keys_1, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
-            else {
-              const existing=m_3.$0;
-              const existingValues=arrayOrEmpty_1(existing.values);
-              const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
-              const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
-              const mergedValues=latestArray(defaultRenderLimit(), v);
-              if(alreadyVisible)_2=existing.valueCount;
+        const keyId_2=setKeyId(asText_2(event.streamKey.setName), arrayOrEmpty_1(event.streamKey.keys));
+        if(eventIsVisibleAfterTombstone(keyId_2, event.createdAtUtc)){
+          forgetHidden(keyId_2);
+          if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
+            const setName_1=asText_2(event.streamKey.setName);
+            const keys_1=arrayOrEmpty_1(event.streamKey.keys);
+            if(filtersAccept(setName_1, keys_1)){
+              const value=New_22(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
+              const keyId_3=setKeyId(setName_1, keys_1);
+              const m_3=tryFind((bucket) => sameText(bucket.keyId, keyId_3), buckets);
+              if(m_3==null)updated=New_20(keyId_3, setName_1, keys_1, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
               else {
-                const a=existing.valueCount;
-                const b=length(existingValues);
-                let _3=Compare(a, b)===1?a:b;
-                _2=_3+1;
+                const existing=m_3.$0;
+                const existingValues=arrayOrEmpty_1(existing.values);
+                const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
+                const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
+                const mergedValues=latestArray(defaultRenderLimit(), v);
+                if(alreadyVisible)_2=existing.valueCount;
+                else {
+                  const a=existing.valueCount;
+                  const b=length(existingValues);
+                  let _3=Compare(a, b)===1?a:b;
+                  _2=_3+1;
+                }
+                const a_1=existing.maxSequence;
+                const b_1=event.sequence;
+                let _4=Compare(a_1, b_1)===1?a_1:b_1;
+                updated=New_20(existing.keyId, existing.setName, existing.keys, _2, _4, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
               }
-              const a_1=existing.maxSequence;
-              const b_1=event.sequence;
-              let _4=Compare(a_1, b_1)===1?a_1:b_1;
-              updated=New_20(existing.keyId, existing.setName, existing.keys, _2, _4, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+              buckets=sortSetBuckets(filter((bucket) =>!sameText(bucket.keyId, keyId_3), buckets).concat([updated]));
+              selected=keyId_3;
+              renderList();
+              renderDetail();
+              writeSetsCache();
+              ensureSetsSubscriptions();
+              setStatus(status, "Synced set event "+value.valueId);
             }
-            buckets=sortSetBuckets(filter((bucket) =>!sameText(bucket.keyId, keyId_2), buckets).concat([updated]));
-            selected=keyId_2;
-            renderList();
-            renderDetail();
-            writeSetsCache();
-            ensureSetsSubscriptions();
-            setStatus(status, "Synced set event "+value.valueId);
+            else void 0;
           }
           else void 0;
         }
@@ -3078,15 +3099,32 @@ function mountSets(page){
     closeActionPool();
     setStatus(status, "Cleaning no-show actor set streams");
     return postJson_2("/sets/api/clean-no-show-actors", New_23("browser-action"), (reply) => {
-      deleteSnapshot(currentCacheKey());
-      subscribedStreams=[];
-      tailRequestedStreams=[];
-      registryTailRequested=false;
-      setData("ws-stream-count", String(length(subscribedStreams)), page);
-      setStatus(status, "Cleaned "+String(reply.hiddenCount)+" no-show actor stream(s)");
-      load();
+      deleteSnapshotsByPrefix(cacheKey("sets-state", FSharpList.Empty), () => {
+        subscribedStreams=[];
+        tailRequestedStreams=[];
+        registryTailRequested=false;
+        setData("ws-stream-count", String(length(subscribedStreams)), page);
+        setStatus(status, "Cleaned "+String(reply.hiddenCount)+" no-show actor stream(s)");
+        load();
+      });
     }, (error) => {
       setStatus(status, "CleanAllNoShow Actors failed: "+error);
+    });
+  });
+  cleanParticipantsAction.addEventListener("click", () => {
+    closeActionPool();
+    setStatus(status, "Cleaning inactive participant collections");
+    postJson_2("/sets/api/clean-inactive-participant-collections", New_23("browser-action"), (reply) => {
+      deleteSnapshotsByPrefix(cacheKey("sets-state", FSharpList.Empty), () => {
+        subscribedStreams=[];
+        tailRequestedStreams=[];
+        registryTailRequested=false;
+        setData("ws-stream-count", String(length(subscribedStreams)), page);
+        setStatus(status, "Cleaned "+String(reply.cleanedParticipantCount)+" inactive participant(s); hidden "+String(reply.hiddenCount)+" stream(s)");
+        load();
+      });
+    }, (error) => {
+      setStatus(status, "Clean Inactive Participant Collections failed: "+error);
     });
   });
   keyFilter.addEventListener("input", load);
@@ -4911,11 +4949,15 @@ function Some(Value){
 }
 function TryRender(rawContent){
   globalThis.console.log(["DynamicRenderer.TryRender called with:", rawContent]);
-  const idx=rawContent.indexOf("replied msg:");
-  const content=idx>=0?Trim(rawContent.substring(idx+"replied msg:".length)):rawContent;
+  const replyIndex=rawContent.indexOf("replied msg:");
+  const outboundOnly=replyIndex<0&&rawContent.indexOf("argu msg:")>=0;
+  const content=replyIndex>=0?Trim(rawContent.substring(replyIndex+"replied msg:".length)):rawContent;
   globalThis.console.log(["Content after strip:", content]);
-  const m=tryGetSchema(content);
-  return m!=null&&m.$==1&&m.$0=="fskynet-sdui"?(globalThis.console.log("Schema is fskynet-sdui, rendering canvas!"),Some(createSduiCanvas(content))):(globalThis.console.log(["Schema not matched:", tryGetSchema(content)]),null);
+  if(outboundOnly)return null;
+  else {
+    const m=tryGetSchema(content);
+    return m!=null&&m.$==1&&m.$0=="fskynet-sdui"?(globalThis.console.log("Schema is fskynet-sdui, rendering canvas!"),Some(createSduiCanvas(content))):(globalThis.console.log(["Schema not matched:", tryGetSchema(content)]),null);
+  }
 }
 function tryGetSchema(jsonStr){
   try {
@@ -4933,7 +4975,7 @@ function createSduiCanvas(jsonStr){
     const styleId="sdui-dynamic-styles";
     if(Equals(globalThis.document.getElementById(styleId), null)){
       const style=globalThis.document.createElement("style");
-      _1=(style.setAttribute("id", styleId),style.textContent="\r\n                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\r\n                        .sdui-json-snippet {\r\n                            background: #222; color: #aaa; padding: 10px; border-radius: 4px; font-size: 0.85em;\r\n                            cursor: pointer; margin-bottom: 12px; white-space: pre-wrap; word-break: break-all;\r\n                            max-height: 80px; overflow: hidden; width: 100%; box-sizing: border-box;\r\n                        }\r\n                        .sdui-json-snippet.expanded {\n                            max-height: 400px; overflow-y: auto;\n                        }\n                    ",void globalThis.document.head.appendChild(style));
+      _1=(style.setAttribute("id", styleId),style.textContent="\r\n                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }\r\n                        .sdui-json-snippet {\r\n                            background: #222; color: #aaa; padding: 10px; border-radius: 4px; font-size: 0.85em;\r\n                            cursor: pointer; margin-bottom: 12px; white-space: pre-wrap; word-break: break-all;\r\n                            max-height: 80px; overflow: hidden; width: 100%; box-sizing: border-box;\r\n                        }\r\n                        .sdui-json-snippet.expanded {\r\n                            max-height: 400px; overflow-y: auto;\r\n                        }\r\n                    ",void globalThis.document.head.appendChild(style));
     }
     else _1=null;
   }
@@ -5153,6 +5195,18 @@ function fold(f, zero, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)acc=f(acc, arr[i]);
   return acc;
 }
+function tryPick(f, arr){
+  let res, i;
+  res=null;
+  i=0;
+  while(i<arr.length&&res==null)
+    {
+      const m=f(arr[i]);
+      if(m!=null&&m.$==1)res=m;
+      i=i+1;
+    }
+  return res;
+}
 function ofSeq(xs){
   if(xs instanceof Array)return xs.slice();
   else if(xs instanceof FSharpList)return ofList(xs);
@@ -5200,18 +5254,6 @@ function sortInPlace(arr){
 }
 function take(n, ar){
   return n<0?nonNegative():n>ar.length?insufficient():ar.slice(0, n);
-}
-function tryPick(f, arr){
-  let res, i;
-  res=null;
-  i=0;
-  while(i<arr.length&&res==null)
-    {
-      const m=f(arr[i]);
-      if(m!=null&&m.$==1)res=m;
-      i=i+1;
-    }
-  return res;
 }
 function tryFindIndex(f, arr){
   let res, i;
@@ -5336,8 +5378,34 @@ function readAllPending(onRead){
 function deletePendingThen(commandId, onDeleted){
   deleteFromThen(pendingStore(), commandId, onDeleted);
 }
-function deleteSnapshot(key){
-  deleteSnapshotAndWatermark(key);
+function deleteSnapshotsByPrefix(prefix, onDeleted){
+  if(isBlank_2(prefix))onDeleted();
+  else readAllSnapshotKeys((keys) => {
+    const matching=filter((key) =>!isBlank_2(key)&&StartsWith(key, prefix), keys);
+    if(length(matching)===0)onDeleted();
+    else withSnapshotWatermarkStores("readwrite", (_1, _2, _3) =>((((tx) =>(snapshots) =>(watermarks) => {
+      let finished;
+      finished=false;
+      const finish=() => {
+        if(!finished){
+          finished=true;
+          onDeleted();
+        }
+      };
+      tx.oncomplete=() => finish();
+      tx.onabort=() => finish();
+      tx.onerror=() => finish();
+      try {
+        return iter((key) => {
+          snapshots["delete"](key);
+          watermarks["delete"](key);
+        }, matching);
+      }
+      catch(m){
+        return finish();
+      }
+    })(_1))(_2))(_3), onDeleted);
+  });
 }
 function readWatermark(key, onRead){
   if(isBlank_2(key))onRead(null);
@@ -5486,17 +5554,44 @@ function pendingStore(){
 function writePending(command){
   writeJsonTo(pendingStore(), command.commandId, command);
 }
-function deleteSnapshotAndWatermark(key){
-  if(!isBlank_2(key))withSnapshotWatermarkStores("readwrite", (_1, _2, _3) => {
+function readAllSnapshotKeys(onRead){
+  withStore(snapshotStore(), "readonly", (store) => {
     try {
-      _2["delete"](key);
-      _3["delete"](key);
-      return;
+      const request=store.getAllKeys();
+      request.onsuccess=(event) => {
+        const value=eventResult(event);
+        if(isMissing(value))return onRead([]);
+        else try {
+          return onRead(value);
+        }
+        catch(m){
+          return onRead([]);
+        }
+      };
+      request.onerror=() => onRead([]);
     }
     catch(m){
-      return null;
+      onRead([]);
     }
-  }, () => { });
+  }, () => {
+    onRead([]);
+  });
+}
+function withSnapshotWatermarkStores(mode, onStores, onUnavailable){
+  openDb((db) => {
+    try {
+      const a=[[snapshotStore(), watermarkStore()], mode];
+      const tx=db.transaction.apply(db, a);
+      const a_1=[snapshotStore()];
+      let _1=tx.objectStore.apply(tx, a_1);
+      const a_2=[watermarkStore()];
+      let _2=tx.objectStore.apply(tx, a_2);
+      onStores(tx, _1, _2);
+    }
+    catch(m){
+      onUnavailable();
+    }
+  }, onUnavailable);
 }
 function databaseName(){
   return _c_1.databaseName;
@@ -5556,28 +5651,17 @@ function watermarkTouchedAt(watermark){
     return m[0]?m[1]:0n;
   }
 }
-function readAllSnapshotKeys(onRead){
-  withStore(snapshotStore(), "readonly", (store) => {
+function deleteSnapshotAndWatermark(key){
+  if(!isBlank_2(key))withSnapshotWatermarkStores("readwrite", (_1, _2, _3) => {
     try {
-      const request=store.getAllKeys();
-      request.onsuccess=(event) => {
-        const value=eventResult(event);
-        if(isMissing(value))return onRead([]);
-        else try {
-          return onRead(value);
-        }
-        catch(m){
-          return onRead([]);
-        }
-      };
-      request.onerror=() => onRead([]);
+      _2["delete"](key);
+      _3["delete"](key);
+      return;
     }
     catch(m){
-      onRead([]);
+      return null;
     }
-  }, () => {
-    onRead([]);
-  });
+  }, () => { });
 }
 function deleteFrom(storeName, key){
   if(!isBlank_2(key))withStore(storeName, "readwrite", (store) => {
@@ -5594,22 +5678,6 @@ function withTransactionStore(storeName, mode, onStore, onUnavailable){
     try {
       const tx=db.transaction([storeName], mode);
       onStore(tx, tx.objectStore(storeName));
-    }
-    catch(m){
-      onUnavailable();
-    }
-  }, onUnavailable);
-}
-function withSnapshotWatermarkStores(mode, onStores, onUnavailable){
-  openDb((db) => {
-    try {
-      const a=[[snapshotStore(), watermarkStore()], mode];
-      const tx=db.transaction.apply(db, a);
-      const a_1=[snapshotStore()];
-      let _1=tx.objectStore.apply(tx, a_1);
-      const a_2=[watermarkStore()];
-      let _2=tx.objectStore.apply(tx, a_2);
-      onStores(tx, _1, _2);
     }
     catch(m){
       onUnavailable();

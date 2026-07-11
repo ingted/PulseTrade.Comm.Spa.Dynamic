@@ -829,3 +829,45 @@ Implementation status:
 - The projection includes current PTCS ActorSystem node address, `ptcs-dynamic-extension` role, and tags for `showcase`, `echo`, `showcase2`, `canvas`, and `complex-sdui`.
 - Advanced package version to `0.1.3-beta68`.
 - Evidence: `G:\PulseTrade.fs\log\20260708\20260708153544.ptcs-dynamic-showcase2-actor-registry.00001.00001.log`.
+
+## 2026-07-10 - Dynamic 0.1.3-beta70 beta78 alignment
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic` to `0.1.3-beta70` with exact `PulseTrade.Comm.Spa [0.2.5-beta78]` consumption.
+- Clarified the public demo actor contracts: `ShowcaseDemoActor2` always returns the built-in complex showcase and intentionally ignores caller marquee data; `SduiEchoActor` echoes a caller-provided SDUI DSL; `ShowcaseDemoActor` echoes valid SDUI and otherwise returns the simple showcase.
+- Release build passed with existing WebSharper WS9002 and NuGet long-path/readme warnings. NuGet push returned Created.
+
+## 2026-07-10 - Dynamic beta71 PTCS beta79 provider alignment
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic` from `0.1.3-beta70` to `0.1.3-beta71` and exact-pinned `PulseTrade.Comm.Spa [0.2.5-beta79]`.
+- No renderer behavior changed. The release aligns Dynamic with PTCS's shared Actor Argu dispatch-provider seam so the PTC notes/00508 demo can use Add Actor Key against a native RN.Host `fCell2<string>` actor.
+- Added `DYN-WBS-524` / `DYN-T-533`; Release build and package tests `18/18` passed. Cross-repo browser result is recorded by PTC after execution.
+
+## 2026-07-10 - Dynamic beta72 NuGet bundle discovery and Canvas reply gate
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic` to `0.1.3-beta72`, still exact-pinned to PTCS `0.2.5-beta79`.
+- Fixed extension script discovery for packages whose WebSharper assets are under `content/wwwroot/js`; local `wwwroot/js` and `contentFiles/any/net10.0/wwwroot/js` remain supported fallbacks.
+- The Dynamic renderer now ignores outbound-only `argu msg:` history when deciding whether to open Canvas. Direct SDUI JSON and inbound `replied msg:` payloads remain supported.
+- An isolated source copy was used because the generated `src\websharper.log` in this checkout was inaccessible to WebSharper cleanup. Release build/pack passed with existing warnings, Dynamic tests passed `19/19`, and the generated bundle was copied back to the tracked `src\wwwroot\js` output.
+- PTC split-node Playwright MCP E2E rendered the RN-echoed notes/00508 payload in Canvas with zero browser console errors. Added `DYN-WBS-525` / `DYN-T-534`.
+
+## 2026-07-10 - Dynamic beta72 release closeout
+
+- `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta72` NuGet push returned `Created`。Downstream PTC verifier loaded the exact beta72 cache assembly and validated the generated bundle/classifier markers together with PTCS beta79。
+- Product/source commit `57e21f2 Fix Dynamic NuGet bundle discovery` was pushed to `origin/20260710_027.ptcs_dynamic_beta79_alignment`。The isolated `.pcsl/dynamic-beta72-build-202607102220` build copy remains untracked generated evidence and is not part of the package source commit。
+
+## 2026-07-11 - Dynamic beta73 PTCS beta80 dependency alignment
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta72 -> 0.1.3-beta73` and exact dependency `PulseTrade.Comm.Spa [0.2.5-beta79] -> [0.2.5-beta80]` for the durable agent-task submission policy seam.
+- This is a dependency-only release. Target schemas, Dynamic renderers, bundle discovery and Canvas classification remain unchanged from beta72; PTC Host production adapter remains separately tracked by PTC3-068F.
+
+## 2026-07-11 - Dynamic beta73 NuGet push accepted
+
+- Repacked `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta73` from source commit `98864663c588682e42186bc00f294102ff5fab28`; nuspec dependency is exact `PulseTrade.Comm.Spa [0.2.5-beta80]`.
+- Existing `PostBuildEvent.ps1` push returned `Created` / `Your package was pushed`. The flat-container did not list beta73 within the first three minutes, so propagation remains pending and the package was not pushed again.
+
+## 2026-07-11 - Proposed realtime TA Canvas runtime
+
+- Added `doc/TAResearch/REQ.md`, `doc/TAResearch/SA.md` and `RFC-PTCS-DYNAMIC-0007` for immutable SDUI documents plus bounded typed snapshot/patch frames, TA row vocabulary, local viewport state, resync and five-second client-pull lifecycle.
+- Extended `SDUI_DSL_zh-Hant.md` with `sdui-runtime.v1` envelope/patch/node/reset/poll semantics. Existing static `fskynet-sdui` remains compatible; the prior `RealtimeChart` document term was not an implemented renderer.
+- New TA runtime code must be pure WebSharper F# and use typed codecs; it cannot extend the current `JS.Inline` dynamic-object pattern or depend on Plotly JavaScript.
+- PTCS core still needs a companion authenticated WebSocket mount/unmount/target-submit/transient-frame seam. Until accepted, HTTP polling or history-appending updates are not valid E2E acceptance.

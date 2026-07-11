@@ -272,3 +272,11 @@ Dynamic renderer 規則：
 - `actor-dynamic-proxy`：輸入 PTCS Host proxy actor address 與 RN actor address，產生 `[proxyActorAddress; "proxy-v1"; rnActorAddress; targetKind]`；實際 payload 由 append input value 承載。PTCS core 只會把第一段 `proxyActorAddress` 放進 `ActorArguTargetCommand.ActorAddress`，不會把 `rnActorAddress` 自動帶給 proxy。Current no-core-change rule 是 one target key -> one proxy actor/spec；`rnActorAddress` 只作 binding/diagnostic，真正 native/RN target 必須由 proxy actor/spec 建構時固定。
 - 單段 Dynamic key `[actorAddress]` 的 append input 應由 PTCS fallback textarea 處理，讓使用者可直接輸入 canvas JSON DSL。
 - Dynamic message renderer 只能依 payload schema 判斷 canvas，不可依 page type 或 key shape 強制 canvas。
+
+## 2026-07-10：Showcase 與 Echo actor差異
+
+- showcase-dynamic-actor收到合法 fskynet-sdui JSON時可 echo；非 DSL輸入回 simple showcase。
+- sdui-echo-actor永遠以輸入 RawArgu作 reply payload，適合驗證自訂 Heading、marqueeData、DataGrid等 Canvas DSL。
+- showcase-dynamic-actor2固定回 package內建 complexShowcase，不讀取 caller自訂 marqueeData。自訂 OMG marker沒有出現在跑馬燈是 by design，不是 Canvas renderer遺失。
+- Add actor key是 direct ActorArgu command actor路徑；target必須吃 ActorArguTargetCommand並回 ActorArguTargetReply。
+- legacy string/fCell2 actor使用 Add Target Key，proxy address放第一段、native target由 target-v1欄位傳入。

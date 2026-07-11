@@ -1,0 +1,6 @@
+# PTCS.Dynamic contract alignment operation evidence
+
+- 流程偏差：target repo log/op_log於 closeout audit晚補；原始 pre-work plan在主 repo於實作前存在。
+- README與 `doc/SDUI_Developer_Manual.md` 已明確區分 fixed `ShowcaseDemoActor2`、echo `SduiEchoActor`與 conditional `ShowcaseDemoActor`。
+- Package進版 `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta70`，exact reference `PulseTrade.Comm.Spa [0.2.5-beta78]`。
+- Release build passed with existing WS9002/NU5123/readme warnings；NuGet push returned Created。

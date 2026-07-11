@@ -1,0 +1,49 @@
+# PTCS.Dynamic contract alignment plan
+
+## 流程偏差
+
+本檔於 closeout audit才補建。主 repo pre-work log已在實作前建立，但未同步建立 Dynamic target repo log。
+
+## 原始目標
+
+1. 確認 showcase2固定輸出與 SDUI echo caller輸出的契約。
+2. 補 README/Developer Manual，避免把 fixed showcase當成 echo actor。
+3. 將 Dynamic exact PTCS reference升到 beta78並進版 beta70。
+
+## 影響與修正
+
+流程偏差只影響 target-repo log建立時間；source/docs/build/package evidence完整。後續跨 repo任務必須先建立各 target repo log。
+
+## 背景
+
+本輪對齊 PTCS Dynamic actor 的 echo/showcase contract，避免將固定 showcase actor誤判為 caller DSL echo。
+
+## 計畫步驟
+
+1. 核對 Dynamic actor source與 renderer contract。
+2. 更新 README/SDUI developer manual。
+3. 對齊 PTCS beta78 dependency，build/pack/push beta70。
+
+## 執行命令/參數
+
+Release build、pack與 NuGet push；完整命令與輸出摘要見同名 op_log。
+
+## 結果
+
+Dynamic beta70 已 build、pack、push；文件明列 showcase2固定回 built-in DSL，sdui echo才回 caller DSL。
+
+## 根因判讀
+
+showcase2的固定 complex showcase是測試 fixture contract，不是 SDUI renderer遺失 caller marquee。
+
+## 下一步
+
+後續 authenticated visual contract sequence由 PTCS-T-064D追蹤。
+
+## 關聯文件/工單/PR
+
+`README.md`、`doc/SDUI_Developer_Manual.md`、PTCS WBS-064 / PTCS-T-064C..D。
+
+## prompt/上下文摘要
+
+使用者要求確認 showcase2收到自訂 marquee DSL但畫面未出現 OMG是否為 design。

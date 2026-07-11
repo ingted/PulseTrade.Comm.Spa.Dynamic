@@ -1,0 +1,50 @@
+# 背景
+
+PTCS beta80新增durable submission policy。PTCS.Dynamic beta72 exact依賴beta79；PTC Spa.Host若直接升beta80會產生exact dependency conflict，因此需機械式dependency alignment release。
+
+# 目標
+
+- Dynamic `0.1.3-beta72 -> beta73`。
+- PTCS exact reference `[0.2.5-beta79] -> [0.2.5-beta80]`。
+- 不改Dynamic runtime/UI行為。
+
+# 假設
+
+- Authoritative clean worktree為`G:\PulseTrade.worktrees\20260710-ptcs-cleanup\dynamic` branch `20260710_027.ptcs_dynamic_beta79_alignment`。
+- 既有untracked `.pcsl/dynamic-beta72-build-*`是保留的generated evidence，不修改/刪除/提交。
+
+# 計畫步驟
+
+1. 修改fsproj exact version與README/DevLog/Verification。
+2. Release build/package bundle verifier。
+3. commit/push後重新pack/push beta73，驗證NuGet dependencies。
+
+# 預計範圍 / 驗收 / 風險
+
+- 修改`src/PulseTrade.Comm.Spa.Dynamic.fsproj`及current docs；新增本輪log/op_log。
+- 驗收：build、bundle verifier、nupkg nuspec PTCS beta80、sensitive scan/check、commit/push。
+- 風險：不得碰主checkout既有dirty；不得把untracked `.pcsl`加入commit。
+
+# 執行命令/參數
+
+- `dotnet build` / `dotnet run` 以 Release、`--no-restore`、`GeneratePackageOnBuild=false` 驗證專案與 19 項完整測試。
+- `misc/checkSensitiveText.fsx` 僅掃本輪 changed files；`misc/check.fsx` 指向本 worktree 的 SA/SD/WBS/Test/DevLog。
+
+# 根因判讀
+
+PTCS.Dynamic 使用 PTCS exact package range；PTCS beta80 已發布候選 artifact 後，Dynamic 若仍鎖 beta79，Spa.Host 無法形成單一且可還原的 package graph。因此本輪只做 dependency alignment，不改 Dynamic renderer/runtime behavior。
+
+# 關聯文件/工單/PR
+
+- `doc/WBS.md`：`DYN-WBS-526`
+- `doc/TEST.md`：`DYN-T-535`
+- PTCS beta80 commit：`f834fb97cd4142025f4c6ac4025e8d5824e4136f`
+- PTC task：`PTC3-068F3`
+
+# 結果 / 根因 / 下一步 / 關聯 / Prompt摘要
+
+- 結果：待執行。
+- 根因：NuGet exact range要求Dynamic與Host使用同一PTCS版本。
+- 下一步：修改version/reference並跑build。
+- 關聯：PTCS beta80 `f834fb9`、PTC3-068F3 package cascade。
+- Prompt摘要：續航推進production ActorArgu adapter相依圖。

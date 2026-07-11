@@ -154,8 +154,13 @@ module CommHubExtensions =
             let dir = System.IO.Path.GetDirectoryName(dllPath)
 
             let localJsDir = System.IO.Path.Combine(dir, "wwwroot", "js")
+            let nugetContentJsDir = System.IO.Path.Combine(dir, "..", "..", "content", "wwwroot", "js")
             let nugetJsDir = System.IO.Path.Combine(dir, "..", "..", "contentFiles", "any", "net10.0", "wwwroot", "js")
-            let jsDir = if System.IO.Directory.Exists(localJsDir) then localJsDir else nugetJsDir
+            let jsDir =
+                [ localJsDir; nugetContentJsDir; nugetJsDir ]
+                |> List.map System.IO.Path.GetFullPath
+                |> List.tryFind System.IO.Directory.Exists
+                |> Option.defaultValue (System.IO.Path.GetFullPath localJsDir)
 
             let mutable scripts = []
             if System.IO.Directory.Exists(jsDir) then
@@ -179,7 +184,7 @@ module CommHubExtensions =
                     else if file.EndsWith("PulseTrade.Comm.Spa.Dynamic.js") && not (file.EndsWith("min.js")) then
                         scripts <- scripts @ [ url ]
 
-            printfn "Scripts list count before registering: %d" scripts.Length
+            printfn "Dynamic client bundle directory=%s scripts=%d" jsDir scripts.Length
 
             this.RegisterClientExtension
                 { ExtensionId = "pulse-trade-comm-spa-dynamic"
