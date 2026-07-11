@@ -293,6 +293,34 @@ let tests =
             Expect.isFalse (SduiPayloadClassifier.isActorsPagePayload wrongSurface) "Wrong surface must fail closed."
             Expect.isFalse (SduiPayloadClassifier.isActorsPagePayload malformed) "Malformed JSON must fail closed."
 
+        testCase "DYN-TA-T-016: canonical payload classifier preserves static Canvas and FormInput" <| fun _ ->
+            let legacyCanvas = "{\"schema\":\"fskynet-sdui\",\"ui\":[]}"
+            let canvas = "{\"schema\":\"fskynet-sdui\",\"surface\":\"Canvas\",\"ui\":[]}"
+            let form = "{\"schema\":\"fskynet-sdui\",\"surface\":\"FormInput\",\"nodes\":[]}"
+            let legacyForm = "{\"schema\":\"fskynet-sdui\",\"formMode\":\"argu-form\"}"
+
+            Expect.equal (SduiPayloadClassifier.classify legacyCanvas) SduiPayloadKind.StaticCanvas "legacy Canvas remains compatible"
+            Expect.equal (SduiPayloadClassifier.classify canvas) SduiPayloadKind.StaticCanvas "explicit Canvas"
+            Expect.equal (SduiPayloadClassifier.classify form) SduiPayloadKind.FormInput "explicit FormInput"
+            Expect.equal (SduiPayloadClassifier.classify legacyForm) SduiPayloadKind.FormInput "legacy Argu form"
+
+        testCase "DYN-TA-T-017: canonical payload classifier separates absence from present-invalid" <| fun _ ->
+            let runtime = "{\"schema\":\"fskynet-sdui\",\"protocol\":\"sdui-runtime.v1\"}"
+            let unsupportedProtocol = "{\"schema\":\"fskynet-sdui\",\"protocol\":\"sdui-runtime.v2\"}"
+            let invalidActorsPage = "{\"schema\":\"fskynet-sdui\",\"surface\":\"ActorsPage\",\"documentType\":\"Other\"}"
+            let unrelated = "{\"schema\":\"other\",\"surface\":\"Canvas\"}"
+
+            Expect.equal (SduiPayloadClassifier.classify runtime) SduiPayloadKind.Runtime "runtime protocol is explicit"
+            Expect.equal
+                (SduiPayloadClassifier.classify unsupportedProtocol)
+                (SduiPayloadKind.InvalidSdui "unsupported-protocol")
+                "present unsupported runtime fails closed"
+            Expect.equal
+                (SduiPayloadClassifier.classify invalidActorsPage)
+                (SduiPayloadKind.InvalidSdui "invalid-actors-page-document-type")
+                "present invalid ActorsPage fails closed"
+            Expect.equal (SduiPayloadClassifier.classify unrelated) SduiPayloadKind.NonSdui "extension absence/unrelated schema remains unclaimed"
+
         testCase "DYN-T-528: ActorsPage node grouping should use actor-system host port" <| fun _ ->
             let gwSystem =
                 ActorDynamicTab.actorSystemAddress "akka.tcp://GwHost@127.0.0.1:8082/system/sharding/gw-tool-dispatch"

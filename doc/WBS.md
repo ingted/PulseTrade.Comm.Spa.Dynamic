@@ -77,6 +77,7 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 | DYN-WBS-524 | PTCS beta79 dispatch-provider alignment | Done | 100 | DYN-T-533 / PTC3-T-068J | Dynamic `0.1.3-beta71` exact-pins PTCS `0.2.5-beta79`. Renderer behavior and explicit target schema are unchanged; direct Add Actor Key can consume the fabric-wide platform provider installed by Host composition. |
 | DYN-WBS-525 | NuGet bundle discovery and inbound Canvas classification | Done | 100 | DYN-T-534 / PTC3-T-068J | Dynamic `0.1.3-beta72` probes local `wwwroot/js`, NuGet `content/wwwroot/js`, then `contentFiles/any/net10.0/wwwroot/js`. Outbound-only `argu msg:` history no longer opens an empty/stale Canvas; direct JSON and inbound reply DSL remain renderable. Package tests `19/19` and the split-node RN JSON WebSocket/Canvas E2E passed. |
 | DYN-WBS-526 | PTCS beta80 durable submission policy alignment | Done | 100 | DYN-T-535 / PTC3-T-068F3 | Dynamic `0.1.3-beta73` exact-pins PTCS `0.2.5-beta80`; no renderer/schema/runtime behavior changes. This removes the beta79 exact-range conflict for the PTC Spa.Host production-adapter package cascade while retaining beta72 bundle/Canvas fixes. |
+| DYN-WBS-527 | Canonical static payload classification | Done | 100 | DYN-TA-T-016/017 | Dynamic `0.1.3-beta74` adds strict `NonSdui/StaticCanvas/FormInput/ActorsPage/Runtime/InvalidSdui` classification；23/23 package tests pass。Browser absent/present-invalid visual gate remains DYN-TA-007。 |
 
 ## 2026-07-11 Transport-Neutral Realtime TA Canvas
 
@@ -87,6 +88,6 @@ RFC：`doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
 | --- | --- | --- | ---: | --- | --- |
 | DYN-TA-000 | Contracts + Renderer + host adapters文件鏈 | Done | 100 | document/check gate | RFC accepted；runtime尚未開始 |
 | DYN-TA-00A | Legacy SDUI readiness closure | Done | 100 | DYN-TA-T-000A | direct Canvas、strict discriminator、invalid FormInput保留與native fCell2 actor gates通過 |
-| DYN-TA-001..008 | contracts、reducer、TA renderer、PTCS/E2EQ adapters、E2E與release | Active | 59 | DYN-TA-T-001..020 | Contracts/reducer完成；Renderer 94%、PTCS adapter 94%、PTCS真host E2E 45%；E2EQ adapter/parity仍為下一主線，詳見canonical detail。 |
+| DYN-TA-001..008 | contracts、reducer、TA renderer、PTCS/E2EQ adapters、E2E與release | Active | 70 | DYN-TA-T-001..020 | Contracts/reducer完成；Renderer/PTCS adapter 94%、E2EQ adapter 55%、cross-host 45%、static compatibility 40%、release closure 35%；詳見canonical detail。 |
 
 Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target FormInput真host Playwright已重跑；`DYN-WBS-519`移除`IndexOf("ActorTopologyPage")` classifier並通過4 blocks/26 rows ActorsPage gate。Public OAuth、production RN/cross-service registry與report persistence等原remaining不在本slice宣稱完成。

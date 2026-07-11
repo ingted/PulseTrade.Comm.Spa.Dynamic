@@ -1,0 +1,16 @@
+# DYN-TA-007 operation evidence
+
+## 2026-07-12 04:56 +08:00
+
+- Pre-work plan established before source edits。
+
+## 2026-07-12 04:57-05:01 +08:00
+
+- Added canonical static/runtime payload classifier and two package regression cases。Initial compile required explicit string annotations for .NET 10 `JsonElement.TryGetProperty` overload resolution。
+- Full Dynamic WebSharper build/pack occurred through the test dependency and Expecto passed 23/23。This slice is non-UI；browser absent/present-invalid visual gate remains open。
+
+## 2026-07-12 05:01-05:05 +08:00
+
+- Advanced package beta73 -> beta74。First direct full build encountered the known stale `wsfscservice 10.1.5` lock；stopping only that compiler PID and removing generated `src/websharper.log` allowed full WebSharper build/pack to pass with existing WS9002/NU5123 warnings。
+- Copied beta74 nupkg to SDK library-packs。PTC revision-10 bundle verifier loaded exact PTCS beta80 / Dynamic beta74 from NuGet cache and passed asset plus `StaticCanvas/NonSdui/InvalidSdui` classifier assertions。
+- Added package README metadata and rebuilt beta74；the prior missing-readme warning is closed。Revision-10 bundle verifier now requires `README.md` inside the nupkg and passes。

@@ -18,8 +18,8 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-004 | 5 | PTCS compatibility adapter | isolated server adapter, authenticated callbacks, transient mapping, browser adapter | DYN-TA-001..003 + PTCS seam | T-007,T-010,T-013,T-016,T-017 | 94% | Active | [@DYN-TA-004](WBS.DYN-TA-004.md) |
 | DYN-TA-005 | 6 | E2EQ adapter / parallel path | frame/action mapper and feature-gated shared renderer | DYN-TA-001..003 | T-013,T-014,T-019 | 55% | Active | [@DYN-TA-005](WBS.DYN-TA-005.md) |
 | DYN-TA-006 | 7 | Cross-host E2E and bounded soak | PTCS/E2EQ Playwright matrix, 20-poll/resource evidence | DYN-TA-004/005 | T-010,T-014,T-019,T-020 | 45% | Active | [@DYN-TA-004](WBS.DYN-TA-004.md) |
-| DYN-TA-007 | 8 | Static compatibility and DSL sync | static Canvas/FormInput regression and canonical DSL | DYN-TA-001..004 | T-001,T-016,T-017 | 20% | Active | [@DYN-TA-004](WBS.DYN-TA-004.md) |
-| DYN-TA-008 | 9 | Package/release closure | exact refs, NuGet, downstream bump, docs/runbook | DYN-TA-001..007 | T-001..T-020 | 20% | Active | [@DYN-TA-004](WBS.DYN-TA-004.md) |
+| DYN-TA-007 | 8 | Static compatibility and DSL sync | static Canvas/FormInput regression and canonical DSL | DYN-TA-001..004 | T-001,T-016,T-017 | 40% | Active | [@DYN-TA-007](WBS.DYN-TA-007.md) |
+| DYN-TA-008 | 9 | Package/release closure | exact refs, NuGet, downstream bump, docs/runbook | DYN-TA-001..007 | T-001..T-020 | 35% | Active | [@DYN-TA-008](WBS.DYN-TA-008.md) |
 
 ## 2. Legacy prerequisite policy
 

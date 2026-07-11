@@ -951,3 +951,10 @@ Implementation status:
 - Added packable root packages `PulseTrade.MarketData.E2EQuotation.Dynamic.Adapter 0.1.0-alpha1` and `PulseTrade.MarketData.E2EQuotation.Dynamic.Browser 0.1.0-alpha2` with exact Dynamic Contracts/Renderer dependencies；browser alpha2 aligns the action allowlist and rejects null/non-finite wire values。
 - E2EQ exact-package tests pass 187/187 for bounded snapshots, canonical document/action mapping, local-view preservation, server/browser `dataRef`/action parity, fractional revision and non-finite point fail-closed。
 - DYN-TA-T-013 contract parity is complete；DYN-TA-005 advances to 55%。Browser parity and AgentE2E remain blocked because a clean legacy E2EQ main WebSharper merge exits `-532462766`；an incremental stale bundle is explicitly rejected as evidence。
+
+## 2026-07-12 - Dynamic beta74 canonical static payload classifier
+
+- Added typed `SduiPayloadKind` classification for absent/unrelated、static Canvas、FormInput、ActorsPage、runtime v1 and present-invalid SDUI reason codes；ActorsPage strict gate now delegates this canonical classifier。
+- Package tests pass 23/23。DYN-TA-007 advances from 20% to 40%；browser absent/present-invalid visual proof remains open and is not inferred from the non-UI tests。
+- Advanced `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta73 -> 0.1.3-beta74` with exact PTCS dependency `[0.2.5-beta80]` unchanged；local pack/library-packs alignment is required before root script consumers run。
+- beta74 full WebSharper build/pack then passed，the repo README is now packaged as NuGet readme，nupkg was copied to SDK 10.0.301 library-packs，and root PTC revision-10 bundle verifier loaded exact beta74 from NuGet cache and passed README/classifier/assets。No public push or formal service deployment is claimed；DYN-TA-008 advances to 35%。

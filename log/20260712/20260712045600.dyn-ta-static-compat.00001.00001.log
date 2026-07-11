@@ -1,0 +1,29 @@
+# DYN-TA-007 static compatibility and DSL sync
+
+起始時間：2026-07-12 04:56 +08:00
+
+## 背景
+
+- `DYN-TA-007`是目前Dynamic TA task WBS最低進度20%的可執行工項。
+- T-016仍缺facade/static Canvas/FormInput regression，T-017仍缺extension absent與present-invalid browser visual gate。
+- 本切片不依賴blocked legacy E2EQ main bundle，也不以source marker取代UI驗證。
+
+## 目標
+
+1. 盤點current Dynamic facade、static Canvas/FormInput與host fallback/present-invalid路徑。
+2. 補canonical DSL/codec或facade缺口及focused tests。
+3. 建立F# Playwright real host verifier，操作absence、valid static Canvas/FormInput與present-invalid情境。
+4. 更新WBS/Test/Verification/SD/DevLog，build/test/browser gate後commit/push。
+
+## 計畫步驟
+
+1. 以`rg`定位`useDynamicSdui`、renderer registry、fallback與invalid schema處理。
+2. 先跑現有Dynamic baseline tests/build，再做最小source與test修改。
+3. 啟動真PTCS/Dynamic test host，執行desktop/mobile或必要viewport Playwright操作與console/geometry檢查。
+4. 敏感掃描、encoding、check、commit/push；保留使用者與generated差異。
+
+## 風險與驗收
+
+- Extension absent必須走PTCS core fallback；present-invalid必須顯示controlled error，不可靜默fallback或破壞FormInput。
+- Static payload不得被TA runtime誤分類；既有Canvas/FormInput與ActorsPage行為不退化。
+- 禁止手寫JavaScript/inline JS；browser verifier使用F# Playwright。

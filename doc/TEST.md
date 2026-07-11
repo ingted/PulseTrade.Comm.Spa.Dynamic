@@ -627,6 +627,12 @@ Passed assertions：
 - Release build/package tests and PTC bundle verifier must retain beta72 bundle discovery, outbound-only `argu msg:` Canvas suppression, direct/inbound SDUI rendering, and current target schema.
 - This is dependency-only alignment; it does not claim PTC ActorArgu production provider or service deployment completion.
 
+## DYN-TA-T-016/017 canonical static payload classification
+
+- Dynamic beta74 classifies valid legacy/explicit Canvas、FormInput、ActorsPage and `sdui-runtime.v1` without token-search heuristics。
+- Unrelated/missing schema is `NonSdui` so a host without Dynamic ownership may keep its fallback；present SDUI with unsupported protocol/surface or invalid ActorsPage document type returns an explicit `InvalidSdui reasonCode`。
+- Package tests pass `23/23`。This is a non-UI contract gate；browser absent/present-invalid rendering remains open and must not be inferred from these tests。
+
 ## 2026-07-11 DYN-TA-T-001..020 Transport-Neutral TA Canvas Test Plan
 
 Canonical matrix：`doc/TAResearch/Test.md`。`DYN-TA-T-000A..020`已accepted並進入執行；Contracts/reducer/source、renderer shared cursor/local interaction與desktop/mobile geometry已有Pass，PTCS transient真host、E2EQ parity與bounded soak仍依matrix追蹤。不得以fake component fixture取代兩條真host E2E。

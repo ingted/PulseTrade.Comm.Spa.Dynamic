@@ -8,32 +8,78 @@ type SduiPayloadDiscriminator =
       surface: string
       documentType: string }
 
+type SduiPayloadKind =
+    | NonSdui
+    | StaticCanvas
+    | FormInput
+    | ActorsPage
+    | Runtime
+    | InvalidSdui of reasonCode: string
+
 [<RequireQualifiedAccess>]
 module SduiPayloadClassifier =
     let expectedSchema = "fskynet-sdui"
     let actorsPageSurface = "ActorsPage"
     let actorTopologyDocumentType = "ActorTopologyPage"
 
-    let isActorsPagePayload (rawContent: string) =
+    let tryStringProperty (name: string) (root: JsonElement) =
+        let mutable value = Unchecked.defaultof<JsonElement>
+
+        if root.TryGetProperty(name, &value) && value.ValueKind = JsonValueKind.String then
+            Some(value.GetString())
+        else
+            None
+
+    let hasArrayProperty (name: string) (root: JsonElement) =
+        let mutable value = Unchecked.defaultof<JsonElement>
+        root.TryGetProperty(name, &value) && value.ValueKind = JsonValueKind.Array
+
+    let classify (rawContent: string) =
         if String.IsNullOrWhiteSpace rawContent then
-            false
+            SduiPayloadKind.NonSdui
         else
             try
                 use document = JsonDocument.Parse(rawContent)
                 let root = document.RootElement
-                let mutable schema = Unchecked.defaultof<JsonElement>
-                let mutable surface = Unchecked.defaultof<JsonElement>
-                let mutable documentType = Unchecked.defaultof<JsonElement>
 
-                root.ValueKind = JsonValueKind.Object
-                && root.TryGetProperty("schema", &schema)
-                && schema.ValueKind = JsonValueKind.String
-                && String.Equals(schema.GetString(), expectedSchema, StringComparison.Ordinal)
-                && root.TryGetProperty("surface", &surface)
-                && surface.ValueKind = JsonValueKind.String
-                && String.Equals(surface.GetString(), actorsPageSurface, StringComparison.Ordinal)
-                && root.TryGetProperty("documentType", &documentType)
-                && documentType.ValueKind = JsonValueKind.String
-                && String.Equals(documentType.GetString(), actorTopologyDocumentType, StringComparison.Ordinal)
+                if root.ValueKind <> JsonValueKind.Object then
+                    SduiPayloadKind.NonSdui
+                else
+                    match tryStringProperty "schema" root with
+                    | Some schema when String.Equals(schema, expectedSchema, StringComparison.Ordinal) ->
+                        match tryStringProperty "protocol" root with
+                        | Some protocol when String.Equals(protocol, "sdui-runtime.v1", StringComparison.Ordinal) ->
+                            SduiPayloadKind.Runtime
+                        | Some _ ->
+                            SduiPayloadKind.InvalidSdui "unsupported-protocol"
+                        | None ->
+                            match tryStringProperty "surface" root with
+                            | Some surface when String.Equals(surface, "Canvas", StringComparison.Ordinal) ->
+                                SduiPayloadKind.StaticCanvas
+                            | Some surface when String.Equals(surface, "FormInput", StringComparison.Ordinal) ->
+                                SduiPayloadKind.FormInput
+                            | Some surface when String.Equals(surface, actorsPageSurface, StringComparison.Ordinal) ->
+                                match tryStringProperty "documentType" root with
+                                | Some documentType when String.Equals(documentType, actorTopologyDocumentType, StringComparison.Ordinal) ->
+                                    SduiPayloadKind.ActorsPage
+                                | _ ->
+                                    SduiPayloadKind.InvalidSdui "invalid-actors-page-document-type"
+                            | Some _ ->
+                                SduiPayloadKind.InvalidSdui "unsupported-surface"
+                            | None when hasArrayProperty "ui" root ->
+                                SduiPayloadKind.StaticCanvas
+                            | None ->
+                                match tryStringProperty "formMode" root with
+                                | Some formMode when String.Equals(formMode, "argu-form", StringComparison.Ordinal) ->
+                                    SduiPayloadKind.FormInput
+                                | _ ->
+                                    SduiPayloadKind.InvalidSdui "missing-surface"
+                    | Some _ ->
+                        SduiPayloadKind.NonSdui
+                    | None ->
+                        SduiPayloadKind.NonSdui
             with
-            | :? JsonException -> false
+            | :? JsonException -> SduiPayloadKind.NonSdui
+
+    let isActorsPagePayload (rawContent: string) =
+        classify rawContent = SduiPayloadKind.ActorsPage
