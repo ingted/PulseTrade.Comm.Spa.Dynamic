@@ -306,3 +306,22 @@ PTCS ClientExtensionTransientCommandContext
 Package：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha2`，exact PTCS beta82 + Contracts alpha4。state key固定為`sessionId + extensionId + channelId`；disconnect移除。Client提供的user/session欄位不參與identity，authoritative identity只來自PTCS context。
 
 Browser alpha2不交付。下一版wire不得直接把recursive generic `SduiValue` graph交給WebSharper compiler，改用bounded TA-specific rows/points/status DTO；server端再與canonical `SduiValue`互轉。browser adapter需獨立package、pure WebSharper、same-origin PTCS channel、無URL/header/credential參數，並以Playwright驗證last-good/in-flight/reconnect/history invariants。
+
+## 2026-07-12 E2EQuotation adapter isolation
+
+E2EQ integration採兩個可獨立pack的package，避免把legacy `Client.fs` graph併入Dynamic contracts/renderer：
+
+```text
+E2EQ provider/status/action
+  -> PulseTrade.MarketData.E2EQuotation.Dynamic.Adapter
+  -> canonical RuntimeDocument/RuntimeFrame/SduiAction
+
+E2EQ browser flat DTO
+  -> PulseTrade.MarketData.E2EQuotation.Dynamic.Browser
+  -> validated RuntimeState
+  -> PulseTrade.Comm.Spa.Dynamic.Renderer
+```
+
+server adapter負責bounded 2000-point snapshot、七列document與remote action mapping；browser adapter只接受flat bounded DTO、finite integral revision/sequence，並直接委派shared Renderer。兩者不得依賴PTCS host、SQL或fCell2。
+
+E2EQ main host的feature-gated mount仍是獨立交付條件。Clean WebSharper compiler目前在legacy 512 KB client graph merge階段以`-532462766`終止；任何先前incremental build若引用舊bundle，不可作T-014/T-019證據。後續需提供isolated clean bundle/route，再執行PTCS/E2EQ Playwright geometry與AgentE2E parity。

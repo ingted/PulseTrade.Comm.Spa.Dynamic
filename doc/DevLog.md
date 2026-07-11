@@ -945,3 +945,9 @@ Implementation status:
 - Exact-package tests pass: server adapter 5/5, Renderer 11/11, client 5/5。F# Playwright passes desktop/mobile three-row 500-bar rendering, 20 polls, suspend/resume/dispose, compact cursor geometry, mobile SMA scroll, PCSL event count 0 and zero console/page errors。
 - The close gate found upgraded-stream corruption in FAkka.WebSocket/Suave: a valid Close frame was followed by `HTTP/1.1 404` after the continuation returned。FAkka.WebSocket win16 now waits for client TCP shutdown after replying Close；PTCS beta85 consumes win16 and the gate passes。
 - DYN-TA-003/004 advance to 94%、DYN-TA-006 to 45%、aggregate to 59%。Host-restart last-good resync、present-invalid visual behavior、E2EQ adapter/parity and release push remain open。
+
+## 2026-07-12 - E2EQuotation Dynamic TA adapter isolation
+
+- Added packable root packages `PulseTrade.MarketData.E2EQuotation.Dynamic.Adapter 0.1.0-alpha1` and `PulseTrade.MarketData.E2EQuotation.Dynamic.Browser 0.1.0-alpha2` with exact Dynamic Contracts/Renderer dependencies；browser alpha2 aligns the action allowlist and rejects null/non-finite wire values。
+- E2EQ exact-package tests pass 187/187 for bounded snapshots, canonical document/action mapping, local-view preservation, server/browser `dataRef`/action parity, fractional revision and non-finite point fail-closed。
+- DYN-TA-T-013 contract parity is complete；DYN-TA-005 advances to 55%。Browser parity and AgentE2E remain blocked because a clean legacy E2EQ main WebSharper merge exits `-532462766`；an incremental stale bundle is explicitly rejected as evidence。

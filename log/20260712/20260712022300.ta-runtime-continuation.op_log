@@ -27,3 +27,7 @@
 - Local exact packages built/copied to SDK library-packs without public push：Dynamic.Ptcs alpha6-win1、Renderer alpha5、Ptcs.Client alpha7-win4、FAkka.WebSocket win16、PTCS beta85。
 - Tests：Dynamic.Ptcs 5/5、Renderer 11/11、Ptcs.Client 5/5；true PTCS desktop/mobile Playwright PASS, 500 bars, 20 polls, suspend/resume/dispose, mobile SMA scroll, PCSL events 0, console/page errors 0。
 - Human screenshot review fixed full transport timestamp and mobile OHLC clipping；final screenshots remain ignored under `artifacts/ptcs-ta-live-playwright/`。
+
+2026-07-12 04:25-04:51 +08:00
+- DYN-TA-005新增root E2EQ canonical Adapter alpha1與bounded Browser alpha2 exact packages；browser alpha2對齊action vocabulary並拒絕null/non-finite wire。
+- E2EQ exact-package tests 187/187 pass，main app F# compile pass。Legacy main WebSharper clean bundle仍因`wsfsc -532462766` blocked，未宣稱browser/AgentE2E parity；root blocker為`BLK-20260712-001`。
