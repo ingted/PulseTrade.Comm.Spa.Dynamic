@@ -15,7 +15,7 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-001 | 2 | Contracts package | runtime/frame/action types, codec, validation, limits | DYN-TA-00A + PTMD contracts vocabulary | T-001,T-002,T-011,T-015,T-018 | 100% | Done | [@DYN-TA-001](WBS.DYN-TA-001.md) |
 | DYN-TA-002 | 3 | Pure reducer/runtime registry | ordering, effects, mount/dispose, poll state | DYN-TA-001 | T-003,T-004,T-008,T-009 | 100% | Done | [@DYN-TA-001](WBS.DYN-TA-001.md) |
 | DYN-TA-003 | 4 | WebSharper TA renderer | rows, viewport, controls, status, bounded state | DYN-TA-001/002 | T-005..T-007,T-011,T-012,T-015 | 72% | Active | [@DYN-TA-003](WBS.DYN-TA-003.md) |
-| DYN-TA-004 | 5 | PTCS compatibility adapter | facade delegation, authenticated callbacks, transient mapping | DYN-TA-001..003 + PTCS seam | T-007,T-010,T-013,T-016,T-017 | 0% | Planned | [@DYN-TA-004](WBS.DYN-TA-004.md) |
+| DYN-TA-004 | 5 | PTCS compatibility adapter | isolated server adapter, authenticated callbacks, transient mapping, browser adapter | DYN-TA-001..003 + PTCS seam | T-007,T-010,T-013,T-016,T-017 | 38% | Active | [@DYN-TA-004](WBS.DYN-TA-004.md) |
 | DYN-TA-005 | 6 | E2EQ adapter / parallel path | frame/action mapper and feature-gated shared renderer | DYN-TA-001..003 | T-013,T-014,T-019 | 0% | Planned | [@DYN-TA-004](WBS.DYN-TA-004.md) |
 | DYN-TA-006 | 7 | Cross-host E2E and bounded soak | PTCS/E2EQ Playwright matrix, 20-poll/resource evidence | DYN-TA-004/005 | T-010,T-014,T-019,T-020 | 0% | Planned | [@DYN-TA-004](WBS.DYN-TA-004.md) |
 | DYN-TA-007 | 8 | Static compatibility and DSL sync | static Canvas/FormInput regression and canonical DSL | DYN-TA-001..004 | T-001,T-016,T-017 | 0% | Planned | [@DYN-TA-004](WBS.DYN-TA-004.md) |

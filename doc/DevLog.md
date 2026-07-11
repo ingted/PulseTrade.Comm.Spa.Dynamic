@@ -905,3 +905,9 @@ Implementation status:
 - 新增packable `PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha1`，pure WebSharper F#實作七種TA row、bounded chart stack、compact responsive query/Add Row UI、local pan/zoom/toggle/reset-view與typed remote action callback；無JavaScript escape hatch或PTCS/fCell2/PTMD/SQL dependency。
 - exact-package Renderer tests 7/7、Contracts alpha4 tests 7/7；browser demo改用exact Renderer NuGet。F# Playwright在1440x900與390x844完成操作/geometry/console gate，desktop primary chart位於y=228且寬1416；截圖為ignored `artifacts/ta-renderer-playwright/*.png`。
 - `DYN-TA-003`目前72%；crosshair/cursor values、研究級indicator detail、完整freshness/error/in-flight visual states仍未完成，不宣稱Renderer final。
+
+## 2026-07-11 - Dynamic.Ptcs transient server adapter alpha2
+
+- Added packable `PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha2` with exact PTCS beta82 and Contracts alpha4 dependencies. The adapter decodes typed client frames, passes server-derived session context to a host backend, validates returned runtime frames and applies the canonical reducer per session/extension/channel.
+- Exact-package tests passed 3/3: recursive SDUI wire roundtrip, document/snapshot reducer state, same-channel cross-session isolation, invalid payload fail-closed and disconnect cleanup.
+- Browser adapter is not claimed complete. WebSharper 10.1.5 terminates without diagnostics when the recursive generic browser wire or PTCS beta81/82 metadata enters the legacy Bundle merge. Legacy Dynamic remains on PTCS beta80; the next adapter slice uses a bounded non-recursive TA browser wire and requires Playwright acceptance.

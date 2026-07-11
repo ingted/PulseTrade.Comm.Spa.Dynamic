@@ -288,3 +288,21 @@ Diagnostic只含document/instance/revision/sequence/reason code/limit name，不
 ## 14. Verification design
 
 完整矩陣見`doc/TAResearch/Test.md`。UI每個milestone都需Playwright操作PTCS與E2EQ兩條host path；不能只做DOM static assertion或build。
+
+## 2026-07-11 PTCS transient server adapter alpha2
+
+```text
+PTCS ClientExtensionTransientCommandContext
+  -> TaTransientClientFrameWire decode
+  -> RuntimeClientFrame
+  -> host TaResearchTransientBackend.HandleAsync
+  -> RuntimeFrame validation
+  -> canonical RuntimeReducer.reduce
+  -> session/channel RuntimeState
+  -> TaTransientStateWire JSON
+  -> PTCS opaque transient response
+```
+
+Package：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha2`，exact PTCS beta82 + Contracts alpha4。state key固定為`sessionId + extensionId + channelId`；disconnect移除。Client提供的user/session欄位不參與identity，authoritative identity只來自PTCS context。
+
+Browser alpha2不交付。下一版wire不得直接把recursive generic `SduiValue` graph交給WebSharper compiler，改用bounded TA-specific rows/points/status DTO；server端再與canonical `SduiValue`互轉。browser adapter需獨立package、pure WebSharper、same-origin PTCS channel、無URL/header/credential參數，並以Playwright驗證last-good/in-flight/reconnect/history invariants。

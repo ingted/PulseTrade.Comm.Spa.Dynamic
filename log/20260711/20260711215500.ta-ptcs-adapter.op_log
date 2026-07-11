@@ -1,0 +1,13 @@
+Background: DYN-TA-004 PTCS compatibility adapter over RFC-PTC-SPA-0018 transient server seam.
+
+Operations and evidence:
+- PTCS beta81 core browser broker caused downstream Dynamic WebSharper Bundle dependency merge to terminate wsfsc.exe without diagnostics. PTCS beta82 isolated that browser surface while retaining the server seam; PTCS build, 35/35 tests and real WebSocket no-history gate passed.
+- A recursive generic SduiValue browser wire in a new WebSharper Library reproduced the same compiler termination. Raw JavaScript and HTTP polling were rejected.
+- Added independent PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha2 server adapter with exact PTCS beta82 and Contracts alpha4 references.
+- Exact-package adapter tests passed 3/3: nested wire roundtrip, canonical reducer, session isolation, invalid payload and disconnect cleanup.
+- Legacy Dynamic source/bundle files were restored after the exploratory build; existing user-dirty tests/Program.fs and tests project were not changed or staged by this slice.
+
+Remaining:
+- bounded non-recursive TA-specific browser wire and isolated pure WebSharper adapter;
+- real PTCS browser/Playwright 500-bar, 20-poll, reconnect, last-good and history/IndexedDB gates;
+- E2EQ adapter/parity; PTCS.Host integration remains last.

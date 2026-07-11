@@ -171,3 +171,7 @@ Dynamic只吃generic runtime frames。PTMD.TAResearch response中的OHLCV、cove
 ## 13. SA conclusion
 
 E2EQ使用PTCS.Dynamic能力是可行的，但共享點必須是transport-neutral Contracts + Renderer，而不是PTCS-specific facade。現有`PulseTrade.Comm.Spa.Dynamic`保留對PTCS的相容入口；E2EQ用自己的adapter安裝同一renderer。如此才能讓TA Canvas成為通用NuGet能力，同時保留PTCS的ACL/fCell2/durability與E2EQ的既有transport邊界。
+
+### 2026-07-11 PTCS adapter package boundary correction
+
+PTCS-specific transient integration落在獨立`PulseTrade.Comm.Spa.Dynamic.Ptcs`，不直接塞入legacy Dynamic Bundle。理由是WebSharper 10.1.5會在recursive generic `SduiValue` browser wire或PTCS beta81/82新增metadata進入Bundle dependency merge時無診斷崩潰。Alpha2先交付server adapter；browser adapter必須使用bounded non-recursive TA-specific wire並在獨立WebSharper package驗證。Legacy facade暫留PTCS beta80，Host可直接reference新adapter，不以raw JavaScript或HTTP polling繞過。

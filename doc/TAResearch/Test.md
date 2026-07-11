@@ -28,14 +28,14 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-007 | REQ-007 | Browser | instrument/interval/range/Add Row each send one typed action with coherent disabled/in-flight state | DYN-TA-003/004 | Partial：query/Add Row/Reset Canvas各送typed action，Add Row cancel/submit收合；disabled/in-flight與host ack待adapter。 |
 | DYN-TA-T-008 | REQ-008/009/010 | Lifecycle | only visible/expanded/ready polls；one in-flight；timeout/backoff/reconnect/resync | DYN-TA-002/004 | Pass at pure lifecycle：visible/expanded/connected gate、one-in-flight/coalesce、timeout/backoff/resync states；host timer/channel E2E留DYN-TA-004/006。 |
 | DYN-TA-T-009 | REQ-009 | Lifecycle | hidden/collapse/unmount/disconnect cancels timer/channel/subscription | DYN-TA-002 | Pass at registry contract：suspend/dispose terminal、registry remove、CancelPoll；browser resource observation留DYN-TA-006。 |
-| DYN-TA-T-010 | REQ-011/012 | PTCS E2E | 500+ bars + 20 polls update revision only；message/PCSL/IndexedDB history count stable | DYN-TA-004/006 | Ready |
+| DYN-TA-T-010 | REQ-011/012 | PTCS E2E | 500+ bars + 20 polls update revision only；message/PCSL/IndexedDB history count stable | DYN-TA-004/006 | Partial：PTCS beta82 real transient no-history gate pass；Dynamic browser 500 bars/20 polls待adapter |
 | DYN-TA-T-011 | REQ-013 | Bounds | every hard limit preserves last-good Canvas and reports reason | DYN-TA-001..003 | Partial：Contracts/reducer hard limits與last-good pass；Renderer bounded window pass，invalid frame visual preservation仍待。 |
 | DYN-TA-T-012 | REQ-016 | Browser | Live/Delayed/Stale/Backfill/Unavailable and watermark/lag/quality visible | DYN-TA-003 | Partial：Live status compact呈現；其餘freshness/quality fixture與visual gate待補。 |
-| DYN-TA-T-013 | REQ-017 | Contract parity | PTCS/E2EQ adapters produce identical final reducer state | DYN-TA-004/005 | Ready |
+| DYN-TA-T-013 | REQ-017 | Contract parity | PTCS/E2EQ adapters produce identical final reducer state | DYN-TA-004/005 | Partial：Dynamic.Ptcs alpha2 server adapter使用canonical reducer且session isolation 3/3 pass；E2EQ adapter待補 |
 | DYN-TA-T-014 | REQ-017 | Browser parity | two hosts have equivalent chart/rows/toolbar geometry and actions | DYN-TA-005/006 | Ready |
 | DYN-TA-T-015 | REQ-015 | Source gate | new runtime has no JavaScript/inline/global callback workaround | DYN-TA-001..003 | Pass：Contracts與Renderer source gate無`JS.Inline`、script、eval或global callback workaround。 |
 | DYN-TA-T-016 | REQ-018 | Regression | static Canvas/FormInput/Argu/ActorsPage and facade remain compatible | DYN-TA-00A/004/007 | Partial：Contracts加入後legacy Dynamic Release WebSharper build與Expecto 21/21通過；facade delegation/absence-invalid behavior仍待DYN-TA-004/007。 |
-| DYN-TA-T-017 | REQ-014 | Extension behavior | absent uses host fallback；present-invalid shows controlled error | DYN-TA-00A/004 | Ready |
+| DYN-TA-T-017 | REQ-014 | Extension behavior | absent uses host fallback；present-invalid shows controlled error | DYN-TA-00A/004 | Partial：server invalid payload fail closed；browser absent/present-invalid visual gate待補 |
 | DYN-TA-T-018 | REQ-008 | Dependency | Contracts/Renderer graphs exclude forbidden dependencies | DYN-TA-001 | Pass：Contracts無WebSharper/PTCS/fCell2/PTMD/SQL；Renderer僅增加WebSharper並排除PTCS/fCell2/PTMD/SQL。 |
 | DYN-TA-T-019 | REQ-017 | E2EQ AgentE2E | Historical/RT source/symbol/range/hover/tag/viewport/navigator regression | DYN-TA-005 | Ready |
 | DYN-TA-T-020 | REQ-013/016 | Soak | bounded polling does not grow timers/channels/DOM series/history | DYN-TA-006 | Ready |

@@ -1,0 +1,11 @@
+# TA PTCS compatibility adapter
+
+- 背景：Contracts/Reducer已完成，Renderer alpha1 milestone已push；task WBS最低進度是DYN-TA-004。
+- 目標：在Dynamic facade加入transport-neutral runtime與PTCS既有authenticated extension/WebSocket seam之間的typed adapter，不改PTCS.Host。
+- 計畫步驟：盤點PTCS seam與Dynamic facade註冊點；定義mapping/callback lifecycle；先寫deterministic adapter tests，再實作；若PTCS seam缺失則只修改PTCS core並留Host最後。
+- 執行命令/參數：targeted rg/read、Release build、Expecto、必要F# Playwright live adapter驗證。
+- 結果：待同名op_log。
+- 根因判讀：不得以new HttpClient、global socket、raw URL或history-appending poll取代PTCS extension seam。
+- 下一步：完成adapter後依WBS進DYN-TA-005 E2EQ adapter；PTCS.Host仍最後。
+- 關聯文件/工單/PR：`doc/TAResearch/WBS.md`、`WBS.DYN-TA-004.md`、`SD.md`、`Test.md`。
+- prompt/上下文摘要：使用者要求依續航順序完成Dynamic，再最後變更PTCS.Host；UI milestone需Playwright。
