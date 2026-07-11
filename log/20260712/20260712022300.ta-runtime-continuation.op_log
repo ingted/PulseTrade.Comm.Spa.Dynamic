@@ -20,3 +20,10 @@
 - Implemented DYN-TA-004 bounded status and lifecycle slice。Dynamic.Ptcs alpha4 server build/pack and tests `4/4` passed；Ptcs.Client alpha5 canonical F# build、full WebSharper shadow compile/pack and tests `4/4` passed。
 - Browser wire now carries watermark/quality/lag/reason。Lifecycle enforces one in-flight command、poll timeout/retry、active suspension、bounded reconnect、full snapshot resync and terminal dispose；existing mount API remains compatible。
 - No public NuGet push。Copied exact alpha4/alpha5 nupkgs to SDK library-packs。True PTCS browser host gate remains pending；WBS progress is 74%, not complete。
+
+2026-07-12 03:03-03:56 +08:00
+- Added true PTCS live demo and F# Playwright verifier。Fixed missing packaged PTCS core/runtime asset hosting、browser `int64` BigInt JSON boundary、invalid allowed-action name、close-response-aware client dispose and mobile extension scrolling。
+- Root-caused `Invalid frame header` with raw TCP evidence：server returned valid `88 02 03 E8` then HTTP 404。FAkka.WebSocket win16 waits for client disconnect after Close reply；PTCS beta85 exact package gate passes。
+- Local exact packages built/copied to SDK library-packs without public push：Dynamic.Ptcs alpha6-win1、Renderer alpha5、Ptcs.Client alpha7-win4、FAkka.WebSocket win16、PTCS beta85。
+- Tests：Dynamic.Ptcs 5/5、Renderer 11/11、Ptcs.Client 5/5；true PTCS desktop/mobile Playwright PASS, 500 bars, 20 polls, suspend/resume/dispose, mobile SMA scroll, PCSL events 0, console/page errors 0。
+- Human screenshot review fixed full transport timestamp and mobile OHLC clipping；final screenshots remain ignored under `artifacts/ptcs-ta-live-playwright/`。

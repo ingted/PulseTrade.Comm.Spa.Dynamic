@@ -937,3 +937,11 @@ Implementation status:
 - Bounded `ta-browser.v1` now preserves watermark、quality、lag seconds and reason code。Server/client exact-package tests both pass `4/4`。
 - Added a pure typed `TaClientLifecycle` and WebSharper interpreter for mounted handshake、one-in-flight action/poll、timeout retry、active suspension、bounded reconnect、full snapshot resync and terminal dispose。`mountByIdWithOptions` returns a handle with runtime state、SetActive and Dispose；existing `mountById` remains compatible。
 - Canonical F# build and disposable-shadow full WebSharper compile/pack passed with no raw JavaScript or HTTP polling。True PTCS shell mount、host restart reconnect、500 bars/20 polls and browser resource/history evidence remain open, so DYN-TA-004 advances only to 74%。
+
+## 2026-07-12 - true PTCS transient TA browser gate
+
+- Added `PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo` using real `CommHub + CommSpaActorFabric + Server.start`, same-origin `/sync/ws`, registered extension assets and no HTTP polling/fake host path。
+- Advanced packages to Dynamic.Ptcs `0.1.0-alpha6-win1`, Renderer `0.1.0-alpha5` and Ptcs.Client `0.1.0-alpha7-win4`。Browser revision JSON uses JS-safe numbers and server-side finite integer validation；dispose waits for the extension close response before closing its dedicated socket。
+- Exact-package tests pass: server adapter 5/5, Renderer 11/11, client 5/5。F# Playwright passes desktop/mobile three-row 500-bar rendering, 20 polls, suspend/resume/dispose, compact cursor geometry, mobile SMA scroll, PCSL event count 0 and zero console/page errors。
+- The close gate found upgraded-stream corruption in FAkka.WebSocket/Suave: a valid Close frame was followed by `HTTP/1.1 404` after the continuation returned。FAkka.WebSocket win16 now waits for client TCP shutdown after replying Close；PTCS beta85 consumes win16 and the gate passes。
+- DYN-TA-003/004 advance to 94%、DYN-TA-006 to 45%、aggregate to 59%。Host-restart last-good resync、present-invalid visual behavior、E2EQ adapter/parity and release push remain open。

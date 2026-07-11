@@ -89,6 +89,12 @@ let tests =
               Expect.equal actual.instrument "TXF" "instrument should be retained."
               Expect.equal actual.intervalMinutes 5 "interval should be retained.")
 
+          testCase "poll revision maps to a JSON-safe browser number" (fun _ ->
+              let actual =
+                  SduiAction.PollDelta(CanvasInstanceId "canvas", 9L)
+                  |> TaResearchClientWire.actionToWire
+              Expect.equal actual.afterDataRevision 9.0 "browser command revisions must not become JavaScript BigInt values.")
+
           testCase "lifecycle enforces one in-flight poll and retry without losing revision" (fun _ ->
               let canvas = CanvasInstanceId "canvas"
               let options =

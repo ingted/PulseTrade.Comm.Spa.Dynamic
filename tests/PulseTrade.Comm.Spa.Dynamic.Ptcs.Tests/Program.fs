@@ -121,8 +121,8 @@ let browserPayload kind actionKind =
       fromUtc = ""
       toUtcExclusive = ""
       includePartial = false
-      afterDataRevision = 0L
-      dataRevision = 0L
+      afterDataRevision = 0.0
+      dataRevision = 0.0
       reasonCode = "" }
     |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
 
@@ -231,7 +231,18 @@ let tests =
               Expect.equal queriedState.quality "complete" "quality should survive the bounded browser wire."
               Expect.equal queriedState.reasonCode "historical-query" "freshness reason should survive the bounded browser wire."
               Expect.equal queriedState.series.Length 1 "browser wire should expose one bounded series per row."
-              Expect.isEmpty queriedState.series[0].points "the empty backend series should remain empty." }) ]
+              Expect.isEmpty queriedState.series[0].points "the empty backend series should remain empty." })
+
+          testCaseAsync "browser revision rejects fractional JS numbers" (async {
+              let handler = TaResearchTransientServer.createHandler backend
+              let invalidBase =
+                  browserPayload "action" "poll-delta"
+                  |> fun text -> JsonSerializer.Deserialize<TaBrowserClientFrameWire>(text, TaResearchTransientServer.jsonOptions)
+              let invalid =
+                  { invalidBase with afterDataRevision = 1.5 }
+                  |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
+              let! result = handler (browserContext "browser-invalid" "action" "browser-invalid-revision" invalid)
+              Expect.isError result "fractional browser revisions must fail closed before entering the runtime reducer." }) ]
 
 [<EntryPoint>]
 let main argv =

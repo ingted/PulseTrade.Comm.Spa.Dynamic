@@ -1,6 +1,6 @@
 # @DYN-TA-004 Host adapters, parity and release
 
-Status: Active / 74%
+Status: Active / 94%
 
 ## Deliverables
 
@@ -34,6 +34,15 @@ Status: Active / 74%
 - `mountByIdWithOptions`回傳`TaResearchTransientClientHandle`，提供runtime state、`SetActive`與`Dispose`；既有`mountById`保留並使用defaults。
 - canonical F# build與一次full WebSharper compile均通過；lifecycle tests驗證第二個poll不送、retry保留last-good revision、inactive取消timer、resync送full snapshot、disposed不再reconnect。
 - 尚未完成：client bundle掛入真PTCS shell、WebSocket斷線/host restart browser證據、500 bars/20 polls、history/DOM/timer bounded observation及desktop/mobile真host Playwright。
+
+## 2026-07-12 true PTCS live browser slice
+
+- 新增真`CommHub + CommSpaActorFabric + Server.start` host與same-origin extension bundle，不以fake host或HTTP polling代替；PTCS core/runtime與extension asset均由exact packages載入。
+- browser wire revision改為JS-safe number，server邊界只接受finite、非負整數後轉回`int64`；fractional revision fail closed。`Dynamic.Ptcs 0.1.0-alpha6-win1` tests 5/5，`Ptcs.Client 0.1.0-alpha7-win4` tests 5/5。
+- `Renderer 0.1.0-alpha5`提供500-bar bounded chart、shared cursor、compact timestamp、mobile-safe OHLC wrap、SMA可捲達；model/source tests 11/11。
+- `scripts/verify-ptcs-ta-live-playwright.fsx`在desktop/mobile驗證三列、500 bars、20 polls、suspend/resume/dispose、cursor geometry、mobile SMA scroll、PCSL event count 0、console/page error 0。
+- close gate發現並修復FAkka.WebSocket/Suave upgraded stream污染：Close response後等待client TCP shutdown，避免續寫`HTTP/1.1 404`；live host使用PTCS beta85 / FAkka.WebSocket win16。
+- 尚未完成：host restart中保留last-good並自動resync、present-invalid visual gate、E2EQ adapter與cross-host parity；因此DYN-TA-004維持94%，不宣稱完成。
 
 ## Acceptance
 

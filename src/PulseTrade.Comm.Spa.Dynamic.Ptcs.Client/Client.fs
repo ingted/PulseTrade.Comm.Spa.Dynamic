@@ -81,8 +81,8 @@ type TaBrowserClientFrameWire =
       fromUtc: string
       toUtcExclusive: string
       includePartial: bool
-      afterDataRevision: int64
-      dataRevision: int64
+      afterDataRevision: float
+      dataRevision: float
       reasonCode: string }
 
 [<JavaScript; CLIMutable>]
@@ -370,8 +370,8 @@ module TaResearchClientWire =
           fromUtc = ""
           toUtcExclusive = ""
           includePartial = false
-          afterDataRevision = 0L
-          dataRevision = 0L
+          afterDataRevision = 0.0
+          dataRevision = 0.0
           reasonCode = "" }
 
     let optionText value = value |> Option.defaultValue ""
@@ -401,7 +401,7 @@ module TaResearchClientWire =
                 toUtcExclusive = optionText query.ToUtcExclusive
                 includePartial = optionBool query.IncludePartial }
         | SduiAction.PollDelta(canvas, revision) ->
-            { emptyFrame "action" "poll-delta" (canvasText canvas) with afterDataRevision = revision }
+            { emptyFrame "action" "poll-delta" (canvasText canvas) with afterDataRevision = float revision }
         | SduiAction.RequestFullSnapshot(canvas, reason) ->
             { emptyFrame "action" "full-snapshot" (canvasText canvas) with reasonCode = reason }
 
@@ -473,6 +473,16 @@ module TaResearchTransientClient =
             reconnectTimer |> Option.iter JS.ClearTimeout
             reconnectTimer <- None
 
+        let closeSocket () =
+            cancelTimeoutTimer ()
+
+            socket
+            |> Option.iter (fun value ->
+                if value.ReadyState = WebSocketReadyState.Open || value.ReadyState = WebSocketReadyState.Connecting then
+                    value.Close())
+
+            socket <- None
+
         let rec apply event =
             let next, effects = TaClientLifecycle.transition lifecycleOptions event lifecycle
             lifecycle <- next
@@ -534,7 +544,9 @@ module TaResearchTransientClient =
                         try
                             let response = JSON.Parse(string event.Data) |> As<ExtensionTransientResponseWire>
 
-                            if response.``type`` = "extension-transient" && response.status = "ok" then
+                            if response.``type`` = "extension-transient" && response.operation = "close" then
+                                closeSocket ()
+                            elif response.``type`` = "extension-transient" && response.status = "ok" then
                                 let wire = JSON.Parse(response.payload) |> As<TaBrowserStateWire>
 
                                 match TaResearchClientWire.stateFromWire wire with
@@ -591,12 +603,10 @@ module TaResearchTransientClient =
             fun () ->
                 apply TaClientLifecycleEvent.Dispose |> ignore
 
-                socket
-                |> Option.iter (fun value ->
-                    if value.ReadyState = WebSocketReadyState.Open || value.ReadyState = WebSocketReadyState.Connecting then
-                        value.Close())
-
-                socket <- None }
+                match socket with
+                | Some value when value.ReadyState = WebSocketReadyState.Open ->
+                    timeoutTimer <- Some(JS.SetTimeout closeSocket 1000)
+                | _ -> closeSocket () }
 
     let mountById rootId extensionId channelId canvasId =
         mountByIdWithOptions rootId extensionId channelId canvasId TaClientLifecycle.defaults

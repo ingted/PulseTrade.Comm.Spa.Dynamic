@@ -163,11 +163,18 @@ module TaWorkspaceRenderer =
             let bounded = max 0 (min index (max 0 (pointCount - 1)))
             if pointCount <= 1 then width / 2.0 else width * float bounded / float (pointCount - 1))
 
+    let compactTimestamp (value: string) =
+        if String.IsNullOrWhiteSpace value then ""
+        elif value.Length >= 16 && value[4] = '-' && value[7] = '-' && (value[10] = 'T' || value[10] = ' ') then
+            value.Substring(5, 5) + " " + value.Substring(11, 5)
+        else
+            value
+
     let timeAxis testId (timestamps: string array) =
         RendererModel.timeLabels timestamps
         |> Array.mapi (fun position (_, label) ->
             let alignment = if position = 0 then "left" elif position = 2 then "right" else "center"
-            span [ attr.style ("min-width:0; text-align:" + alignment + "; color:#708198; font-size:10px; line-height:16px;") ] [ text label ] :> Doc)
+            span [ attr.style ("min-width:0; text-align:" + alignment + "; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;") ] [ text (compactTimestamp label) ] :> Doc)
         |> fun labels -> div [ Attr.Create "data-testid" testId; attr.style "display:grid; grid-template-columns:1fr 1fr 1fr; min-width:0; height:16px; padding:0 1px;" ] labels
 
     let candleSvg testId (points: TaCandlePoint array) cursorIndex =
@@ -458,14 +465,14 @@ module TaWorkspaceRenderer =
                                 match cursor with
                                 | None -> div [ attr.style "font-size:11px; color:#718197;" ] [ text "No cursor data." ]
                                 | Some value ->
-                                    div [ Attr.Create "data-testid" "ta-cursor-values"; attr.style "display:flex; align-items:center; gap:8px; min-width:0; overflow-x:auto; white-space:nowrap; font-family:Consolas, monospace; font-size:11px; color:#263b55;" ] [
-                                        yield strong [] [ text value.Timestamp ]
+                                    div [ Attr.Create "data-testid" "ta-cursor-values"; attr.style "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;" ] [
+                                        yield strong [ attr.style "white-space:nowrap;" ] [ text (compactTimestamp value.Timestamp) ]
                                         for item in value.Values do
-                                            yield span [ Attr.Create "data-cursor-row" item.Label ] [ text (item.Label + " " + item.Value) ]
+                                            yield span [ Attr.Create "data-cursor-row" item.Label; attr.style "min-width:0;" ] [ text (item.Label + " " + item.Value) ]
                                     ]
 
                             div [ Attr.Create "data-testid" "ta-chart-stack"; attr.style "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;" ] [
-                                yield div [ Attr.Create "data-testid" "ta-cursor-panel"; attr.style "display:grid; grid-template-columns:minmax(150px,260px) minmax(0,1fr); gap:8px; align-items:center; min-height:42px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;" ] [
+                                yield div [ Attr.Create "data-testid" "ta-cursor-panel"; attr.style "display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:50px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;" ] [
                                     yield element "input" [
                                         Attr.Create "data-testid" "ta-cursor-slider"
                                         attr.``type`` "range"

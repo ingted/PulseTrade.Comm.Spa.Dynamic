@@ -120,6 +120,10 @@ let tests =
         testCase "time labels expose first middle and last visible bar" <| fun _ ->
             Expect.equal (RendererModel.timeLabels [| "B1"; "B2"; "B3"; "B4"; "B5" |]) [| 0, "B1"; 2, "B3"; 4, "B5" |] "Shared time labels should be stable."
 
+        testCase "browser timestamp labels remain compact" <| fun _ ->
+            Expect.equal (TaWorkspaceRenderer.compactTimestamp "2026-07-01T03:55:00.0000000+00:00") "07-01 03:55" "TA labels should not expose the full transport timestamp."
+            Expect.equal (TaWorkspaceRenderer.compactTimestamp "B1") "B1" "Non-ISO labels should remain unchanged."
+
         testCase "renderer package remains host neutral" <| fun _ ->
             let assembly = typeof<TaRendererOptions>.Assembly
             let dependencies = assembly.GetReferencedAssemblies() |> Array.map _.Name |> Set.ofArray

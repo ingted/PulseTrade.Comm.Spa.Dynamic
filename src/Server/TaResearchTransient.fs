@@ -159,8 +159,8 @@ type TaBrowserClientFrameWire =
       fromUtc: string
       toUtcExclusive: string
       includePartial: bool
-      afterDataRevision: int64
-      dataRevision: int64
+      afterDataRevision: float
+      dataRevision: float
       reasonCode: string }
 
 [<RequireQualifiedAccess>]
@@ -398,6 +398,12 @@ module TaResearchTransientWire =
 
 [<RequireQualifiedAccess>]
 module TaResearchBrowserWire =
+    let revisionFromBrowser fieldName value =
+        if Double.IsNaN value || Double.IsInfinity value || value < 0.0 || Math.Truncate value <> value || value > float Int64.MaxValue then
+            Error($"Invalid JS-safe {fieldName} revision.")
+        else
+            Ok(int64 value)
+
     let text value = if isNull value then "" else value
 
     let tryNumber = function
@@ -511,7 +517,9 @@ module TaResearchBrowserWire =
             match text wire.kind, text wire.actionKind with
             | "mounted", _ -> Ok(RuntimeClientFrame.Mounted canvas)
             | "unmounted", _ -> Ok(RuntimeClientFrame.Unmounted canvas)
-            | "poll-completed", _ -> Ok(RuntimeClientFrame.PollCompleted(canvas, wire.dataRevision))
+            | "poll-completed", _ ->
+                revisionFromBrowser "data" wire.dataRevision
+                |> Result.map (fun revision -> RuntimeClientFrame.PollCompleted(canvas, revision))
             | "action", "reset-view" -> Ok(RuntimeClientFrame.Action(SduiAction.ResetView canvas))
             | "action", "reset-canvas" -> Ok(RuntimeClientFrame.Action(SduiAction.ResetCanvas canvas))
             | "action", "add-row" ->
@@ -537,7 +545,9 @@ module TaResearchBrowserWire =
                               FromUtc = optionalText wire.fromUtc
                               ToUtcExclusive = optionalText wire.toUtcExclusive
                               IncludePartial = Some wire.includePartial })))
-            | "action", "poll-delta" -> Ok(RuntimeClientFrame.Action(SduiAction.PollDelta(canvas, wire.afterDataRevision)))
+            | "action", "poll-delta" ->
+                revisionFromBrowser "after-data" wire.afterDataRevision
+                |> Result.map (fun revision -> RuntimeClientFrame.Action(SduiAction.PollDelta(canvas, revision)))
             | "action", "full-snapshot" -> Ok(RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot(canvas, text wire.reasonCode)))
             | _ -> Error "Unsupported TA browser client frame."
 
