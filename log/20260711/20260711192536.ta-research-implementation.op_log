@@ -1,0 +1,6 @@
+# Operation evidence
+
+- 2026-07-11 19:25 +08:00：建立Dynamic repo pre-work evidence；尚未修改source/package，unknown `src/verify_ui.fsx`保持不動。
+- 2026-07-11：canonical branch為`20260711_027.win.TACanvas`且worktree clean；前輪unknown `src/verify_ui.fsx`不在此branch。
+- 2026-07-11：接受Dynamic TA RFC，新增legacy readiness、priority、Playwright/geometry gates與4份`@detail`文件；尚未修改source/package。
+- 2026-07-11：文件gate PASS=32/WARN=2/FAIL=0；WARN為pre-work log欄位提示與pre-commit dirty，已補log欄位。strict UTF-8、diff check、敏感掃描High=0；RFC尾端review文字已與Accepted狀態對齊。

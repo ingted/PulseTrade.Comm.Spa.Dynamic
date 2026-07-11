@@ -1,0 +1,34 @@
+# Pre-work plan
+
+開始時間：2026-07-11 19:25:36 +08:00
+
+## 背景與目標
+
+使用者已接受TA Canvas方向。先完成Dynamic Test/WBS/detail與既有重要未完成WBS closure，再依PTMD contracts實作transport-neutral Contracts/Renderer/E2EQ adapter；PTCS facade/Host integration排在後段。
+
+## 計畫步驟
+
+1. 保留既有unknown `src/verify_ui.fsx`不動，盤點current WBS與source/package boundaries。
+2. 接受RFC並拆`DYN-TA-001..008` detail，補Playwright操作與視野gates。
+3. 先完成阻礙新renderer/runtime的legacy Dynamic WBS。
+4. 實作Contracts -> reducer -> renderer -> E2EQ adapter -> PTCS adapter，逐milestone做F# tests與Playwright。
+5. 更新Verification/DevLog/WBS/Test，敏感掃描、check、commit/push。
+
+## 驗收與風險
+
+- pure WebSharper，禁止新JavaScript/inline JavaScript。
+- exact package references；不得以ProjectReference或fake-only E2E替代。
+- UI需操作合理、主要TA視野完整、bounded、可恢復且console無error。
+- 風險為PTCS transient seam尚未實作、E2EQ parity與既有renderer legacy code。
+
+## Prompt 摘要
+
+先文件與既有重要WBS，然後PTMD/Dynamic開發，PTCS.Host最後；UI要有Playwright test cases與實際操作驗證。
+
+## Check fields
+
+- 執行命令/參數：以Dynamic task-scoped `check.fsx`、git diff/encoding/sensitive scan與後續F# Playwright verifier驗證。
+- 結果：Dynamic RFC accepted，Test/WBS/detail完成；source/package尚未修改。
+- 根因判讀：common DSL/direct Canvas/strict schema仍有legacy gap，若不先關閉會讓TA runtime建立在string token與雙renderer上。
+- 下一步：執行`DYN-TA-00A`，再做Contracts/reducer。
+- 關聯文件/工單/PR：`RFC-PTCS-DYNAMIC-0007`、`doc/TAResearch/WBS.md`、`@DYN-TA-00A`。

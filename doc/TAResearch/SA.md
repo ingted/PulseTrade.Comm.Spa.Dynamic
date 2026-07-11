@@ -1,6 +1,6 @@
 # SA-PTCS-DYNAMIC-TA-0001 Transport-Neutral Realtime TA Canvas Runtime
 
-Status: Draft complete / Review required
+Status: Accepted / Ready for DEV
 Date: 2026-07-11
 REQ: `doc/TAResearch/REQ.md`
 RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`

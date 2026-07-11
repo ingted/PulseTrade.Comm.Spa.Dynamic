@@ -1,6 +1,6 @@
 # RFC-PTCS-DYNAMIC-0007 Transport-Neutral Realtime TA Canvas Runtime
 
-Status: Proposed / Full document chain ready for review
+Status: Accepted / DEV authorized
 Date: 2026-07-11
 REQ: `doc/TAResearch/REQ.md`
 SA: `doc/TAResearch/SA.md`
@@ -176,4 +176,4 @@ E2EQ保留既有provider/backend/page transport，只把reply/delta映射為Runt
 
 ## 後續流程
 
-本RFC文件鏈已到`REQ -> SA -> SD -> Test -> WBS`，等待review。未accepted前不授權package split、NuGet push、E2EQ renderer replacement或PTCS core modification。
+本RFC已accepted並授權依`DYN-TA-00A -> 001..008`順序開發。package split、NuGet push、E2EQ renderer replacement與PTCS core修改仍需各自通過Test/WBS detail gate。

@@ -878,3 +878,9 @@ Implementation status:
 - The accepted review proposal now separates transport-neutral `PulseTrade.Comm.Spa.Dynamic.Contracts`, pure WebSharper `PulseTrade.Comm.Spa.Dynamic.Renderer`, and the current PTCS-specific Dynamic facade. Existing `CommHub.useDynamicSdui` remains a compatibility entry.
 - E2EQ is planned to consume Contracts + Renderer through an E2EQ adapter and parity migration; it does not import PTCS.Host, fCell2, ACL or MessageFabric dependencies.
 - This batch changed documents only. Package split, renderer implementation, PTCS transient seam, E2EQ migration, NuGet release and browser tests remain planned.
+
+## 2026-07-11 - Realtime TA Canvas RFC accepted for DEV
+
+- Accepted `RFC-PTCS-DYNAMIC-0007` and rebuilt TA Test/WBS tracking with legacy readiness `DYN-TA-00A`, explicit priorities and `@DYN-TA-*` detail files.
+- `DYN-TA-00A` closes common DSL/direct static Canvas/strict schema/invalid-node prerequisites before new Contracts/Renderer code. Public OAuth and production RN service evidence remain in their owning WBS.
+- Playwright acceptance now specifies first-viewport chart dominance, compact query/Add Row workflows, local interaction with zero network effects, stale/error/resync recovery, desktop/mobile geometry and PTCS/E2EQ parity.

@@ -1,6 +1,6 @@
 # REQ-PTCS-DYNAMIC-TA-0001 Realtime TA Canvas Runtime
 
-Status: Draft complete / Review required
+Status: Accepted / Ready for DEV
 Date: 2026-07-11
 Owner: `PulseTrade.Comm.Spa.Dynamic*` packages
 RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`

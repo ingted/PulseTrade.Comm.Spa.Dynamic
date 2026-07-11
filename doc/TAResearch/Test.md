@@ -1,6 +1,6 @@
 # TEST-PTCS-DYNAMIC-TA-0001 Transport-Neutral Realtime TA Canvas Runtime
 
-Status: Test design complete / Implementation not started
+Status: Accepted / Ready for implementation
 Date: 2026-07-11
 REQ: `doc/TAResearch/REQ.md`
 SD: `doc/TAResearch/SD.md`
@@ -8,56 +8,63 @@ WBS: `doc/TAResearch/WBS.md`
 
 ## 1. Test policy
 
-- Contracts/reducer使用deterministic F# tests；UI milestone必須用Playwright實際操作。
-- PTCS/E2EQ adapter parity需使用同一frame/action fixture，不接受兩套近似fixture。
-- fake/internal renderer fixture只驗證pure component，不可取代真PTCS channel與真E2EQ adapter E2E。
-- browser evidence需檢查geometry、visible values、interaction、network count、history/IndexedDB row count與console errors。
+- Contracts/reducer使用deterministic F# tests；所有UI milestone使用F# Playwright或Playwright MCP實際操作。
+- PTCS/E2EQ adapter parity使用同一frame/action fixture。
+- fake/internal fixture只驗pure component，不取代真host E2E。
+- browser evidence檢查geometry、visible values、network count、history/IndexedDB count、focus、scroll與console errors。
+- 新runtime source禁止`JS.Inline`、手寫JS與string-built script。
 
 ## 2. Matrix
 
 | Test ID | Requirement | Level | Scenario / Expected | WBS | Status |
 | --- | --- | --- | --- | --- | --- |
-| DYN-TA-T-001 | REQ-001/002/018 | Contract | document/snapshot/patch/error/heartbeat strict roundtrip；static payload不誤進runtime | DYN-TA-001 | Designed |
-| DYN-TA-T-002 | REQ-003/014/015 | Negative | unknown op/node/script/URL/DOM selector/oversized frame fail visibly，不執行 | DYN-TA-001 | Designed |
-| DYN-TA-T-003 | REQ-010 | Reducer | duplicate no-op；gap/out-of-order/base mismatch要求resync且不改last-good data | DYN-TA-002 | Designed |
-| DYN-TA-T-004 | REQ-006 | Reducer | ResetView只改local view；ResetCanvas送一次snapshot action並還原initial state | DYN-TA-002 | Designed |
-| DYN-TA-T-005 | REQ-004/005 | Component | 所有TA row kinds、shared x-axis、separate y-scale、unknown kind controlled error | DYN-TA-003 | Designed |
-| DYN-TA-T-006 | REQ-005 | Browser | zoom/pan/crosshair/toggle/row visibility不送network；值與可視K棒對齊 | DYN-TA-003 | Designed |
-| DYN-TA-T-007 | REQ-007 | Browser | instrument/interval/range/Add Row各送恰好一次typed action，disabled/in-flight state合理 | DYN-TA-003/004 | Designed |
-| DYN-TA-T-008 | REQ-008/009/010 | Lifecycle | visible/expanded/ready才poll；one-in-flight；timeout/backoff/reconnect/resync | DYN-TA-002/004 | Designed |
-| DYN-TA-T-009 | REQ-009 | Lifecycle | hidden/collapse/unmount/disconnect取消timer/channel/subscription，disposed不再callback | DYN-TA-002 | Designed |
-| DYN-TA-T-010 | REQ-011/012 | PTCS E2E | 500+ bars + 20 polls只更新revision，chat history/PCSL/IndexedDB message count不增加 | DYN-TA-004/006 | Designed |
-| DYN-TA-T-011 | REQ-013 | Bounds | rows/bars/operations/items/bytes超限保留last-good Canvas並顯示limit reason | DYN-TA-001..003 | Designed |
-| DYN-TA-T-012 | REQ-016 | Browser | Live -> Delayed -> Stale、Backfill、Unavailable與watermark/lag/quality正確呈現 | DYN-TA-003 | Designed |
-| DYN-TA-T-013 | REQ-017 | Contract parity | PTCS與E2EQ adapter餵同frames，reducer final state完全相同 | DYN-TA-004/005 | Designed |
-| DYN-TA-T-014 | REQ-017 | Browser parity | 兩host path主要chart/rows/toolbar geometry與interaction result等價 | DYN-TA-005/006 | Designed |
-| DYN-TA-T-015 | REQ-015 | Static/source gate | 新runtime source無`JS.Inline`、手寫JS、string-built script/global callback | DYN-TA-001..003 | Designed |
-| DYN-TA-T-016 | REQ-018 | Regression | existing static Canvas/FormInput/Argu/actors page與`CommHub.useDynamicSdui`相容 | DYN-TA-004/007 | Designed |
-| DYN-TA-T-017 | REQ-014 | Extension behavior | absent走host fallback；present+invalid顯示controlled error，不silent fallback | DYN-TA-004 | Designed |
-| DYN-TA-T-018 | REQ-008 | Dependency | Contracts無WebSharper/PTCS/fCell2/PTMD；Renderer無PTCS/fCell2/PTMD/SQL | DYN-TA-001 | Designed |
-| DYN-TA-T-019 | REQ-017 | E2EQ AgentE2E | Historical/RT TA source/symbol/range、hover、tag/viewport/navigator regression通過 | DYN-TA-005 | Designed |
-| DYN-TA-T-020 | REQ-013/016 | Soak | bounded working set長時間poll，不成長timer/channel/DOM series/history rows | DYN-TA-006 | Designed |
+| DYN-TA-T-000A | Legacy readiness | Regression/Playwright | direct static DSL target renders exact reply；invalid schema preserves surface；strict page schema avoids token classification；FormInput remains intact | DYN-TA-00A | Ready |
+| DYN-TA-T-001 | REQ-001/002/018 | Contract | all frame kinds strict roundtrip；static payload not misclassified | DYN-TA-001 | Ready |
+| DYN-TA-T-002 | REQ-003/014/015 | Negative | unknown op/node/script/URL/selector/oversize fail visibly and do not execute | DYN-TA-00A/001 | Ready |
+| DYN-TA-T-003 | REQ-010 | Reducer | duplicate no-op；gap/out-of-order/base mismatch requests resync and keeps last-good data | DYN-TA-002 | Ready |
+| DYN-TA-T-004 | REQ-006 | Reducer | ResetView local-only；ResetCanvas sends one snapshot action and restores defaults | DYN-TA-002 | Ready |
+| DYN-TA-T-005 | REQ-004/005 | Component | all TA row kinds, shared x-axis, separate y-scale, unknown-kind error | DYN-TA-003 | Ready |
+| DYN-TA-T-006 | REQ-005 | Browser | zoom/pan/crosshair/toggle/visibility send no network；cursor values match visible bars | DYN-TA-003 | Ready |
+| DYN-TA-T-007 | REQ-007 | Browser | instrument/interval/range/Add Row each send one typed action with coherent disabled/in-flight state | DYN-TA-003/004 | Ready |
+| DYN-TA-T-008 | REQ-008/009/010 | Lifecycle | only visible/expanded/ready polls；one in-flight；timeout/backoff/reconnect/resync | DYN-TA-002/004 | Ready |
+| DYN-TA-T-009 | REQ-009 | Lifecycle | hidden/collapse/unmount/disconnect cancels timer/channel/subscription | DYN-TA-002 | Ready |
+| DYN-TA-T-010 | REQ-011/012 | PTCS E2E | 500+ bars + 20 polls update revision only；message/PCSL/IndexedDB history count stable | DYN-TA-004/006 | Ready |
+| DYN-TA-T-011 | REQ-013 | Bounds | every hard limit preserves last-good Canvas and reports reason | DYN-TA-001..003 | Ready |
+| DYN-TA-T-012 | REQ-016 | Browser | Live/Delayed/Stale/Backfill/Unavailable and watermark/lag/quality visible | DYN-TA-003 | Ready |
+| DYN-TA-T-013 | REQ-017 | Contract parity | PTCS/E2EQ adapters produce identical final reducer state | DYN-TA-004/005 | Ready |
+| DYN-TA-T-014 | REQ-017 | Browser parity | two hosts have equivalent chart/rows/toolbar geometry and actions | DYN-TA-005/006 | Ready |
+| DYN-TA-T-015 | REQ-015 | Source gate | new runtime has no JavaScript/inline/global callback workaround | DYN-TA-001..003 | Ready |
+| DYN-TA-T-016 | REQ-018 | Regression | static Canvas/FormInput/Argu/ActorsPage and facade remain compatible | DYN-TA-00A/004/007 | Ready |
+| DYN-TA-T-017 | REQ-014 | Extension behavior | absent uses host fallback；present-invalid shows controlled error | DYN-TA-00A/004 | Ready |
+| DYN-TA-T-018 | REQ-008 | Dependency | Contracts/Renderer graphs exclude forbidden dependencies | DYN-TA-001 | Ready |
+| DYN-TA-T-019 | REQ-017 | E2EQ AgentE2E | Historical/RT source/symbol/range/hover/tag/viewport/navigator regression | DYN-TA-005 | Ready |
+| DYN-TA-T-020 | REQ-013/016 | Soak | bounded polling does not grow timers/channels/DOM series/history | DYN-TA-006 | Ready |
 
-## 3. Playwright flows
+## 3. Playwright operation and viewport gates
 
-### PTCS-hosted
+### 3.1 First viewport
 
-1. 登入並開TA Canvas target。
-2. initial history後操作zoom/pan/crosshair/toggle/Add Row/change range/reset。
-3. 記錄before/after message row、IndexedDB message row、runtime revision與network action count。
-4. 模擬stale、gap、disconnect/reconnect與close/reopen。
+1. Open TA surface; title/status/query toolbar and most of chart must be visible without vertical hunting。
+2. Toolbar order：instrument -> interval -> range -> Load/Apply；row actions are secondary and do not occupy multiple empty bands。
+3. Chart owns primary width；status is compact；row controls do not cover data or right-side detail panel。
+4. At desktop and mobile widths, controls wrap/stack without overlap, clipping or dynamic size shift。
 
-### E2EQ-hosted
+### 3.2 Research workflow
 
-1. 開Historical/Realtime TA shared renderer feature path。
-2. 操作source/symbol/range、navigator、hover、toggle、resize。
-3. 對照existing E2EQ AgentE2E domain invariants與geometry。
-4. 同frame fixture與PTCS path比較state/visible rows/series bounds。
+1. Load initial Candlestick + Volume and verify ascending time axis/data status。
+2. Add SMA/MACD row through a compact editor; confirm/cancel/validation are explicit and editor collapses after success/cancel。
+3. Zoom/pan/crosshair/toggle; verify network action count remains zero and focus/viewport persists after patch。
+4. Change instrument/interval/range; one remote action, visible in-flight state, authoritative snapshot, old Canvas remains until success。
+5. Trigger stale/error/gap/resync; status is visible but Canvas/FormInput remains usable。
+6. Reset View and Reset Canvas have visibly different results and request counts。
 
-## 4. Evidence/verification
+### 3.3 Cross-host and resource
 
-新增verifier前先更新repo的Verification文件，F# verifier負責codec/reducer/adapter parity；Playwright MCP負責UI操作與截圖/geometry。所有deterministic output以selector/summary保存，不dump完整frame/history。
+1. Run same frame fixture through E2EQ and PTCS hosts。
+2. Compare row count, series bounds, viewport, toolbar labels and major `getBoundingClientRect` relationships。
+3. Run 20 polls, hide/show, collapse/expand, disconnect/reconnect, close/reopen；assert one timer/channel maximum and stable history counts。
+4. Capture screenshots before/after significant interactions and inspect console/page errors。
 
-## 5. Release gate
+## 4. Release gate
 
-`DYN-TA-001..008`完成、T-001..020通過、PTCS companion seam與E2EQ parity均有真路徑證據後，才可宣稱runtime完成。只有pure renderer或fake fixture通過不構成交付。
+`DYN-TA-001..008`完成、T-001..020 Pass、PTCS transient seam與E2EQ parity都有真路徑證據後才可標記Implemented。`T-000A`只關閉legacy readiness。
