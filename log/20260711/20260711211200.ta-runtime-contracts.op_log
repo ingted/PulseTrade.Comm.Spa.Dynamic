@@ -1,0 +1,8 @@
+# Dynamic TA runtime contracts operations
+
+- 新增`PulseTrade.Comm.Spa.Dynamic.Contracts`與獨立Contracts.Tests，避免pure regression啟動WebSharper compiler。
+- 初次Contracts build有Json converter namespace與record inference錯誤；補`System.Text.Json.Serialization`與明確type annotations後0 warning。
+- alpha1/alpha2 package checkpoints後補unknown target/retained-limit與multi-canvas registry；final alpha3 pack成功並複製至local library-packs。
+- Exact-package tests 7/7：frame codec、unsafe/unknown/limits、last-good resync、reset semantics、poll lifecycle/registry dispose、dependency/source gate。
+- aggregate Dynamic test build曾因stale `wsfsc.exe -532462766`失敗；pure tests已拆project。facade full WebSharper regression留後續Renderer gate，不誤判為contracts failure。
+- 精確停止PID 1912 `wsfscservice`後，既有facade Release WebSharper build成功（既有WS9002/NU5123 warnings），legacy Expecto 21/21通過；generated bundle只有whitespace noise並已精確還原。

@@ -1,0 +1,15 @@
+# Dynamic TA runtime contracts implementation plan
+
+- 背景：PTMD contracts/materializer/SQL query surface已穩定；Dynamic legacy readiness已100%。
+- 目標：完成DYN-TA-001/002 transport-neutral contracts與pure reducer/lifecycle。
+- 假設：本切片不動UI；Renderer/Playwright是下一milestone，不能以pure tests代替。
+- 計畫步驟：types/codec/validation -> reducer/registry/poll -> tests/package -> WBS/Test/DevLog/KM。
+- 預計修改/讀取範圍：新Contracts project/tests與`doc/TAResearch`；不改PTCS Host。
+- 執行命令/參數：Release build、Expecto、pack/nuspec dependency、forbidden source scan。
+- 結果：Contracts alpha3、pure reducer/registry/lifecycle與tests完成；Renderer/UI留下一milestone。
+- 根因判讀：現有Dynamic facade把PTCS transport與renderer綁在同package，E2EQ無法低依賴重用。
+- 下一步：定義strict protocol與last-good-state reducer。
+- 關聯文件/工單/PR：`DYN-TA-001/002`、`DYN-TA-T-001..004/008/009/011/015/018`。
+- 驗收方式：frame roundtrip、unknown/oversize fail closed、duplicate/gap/base mismatch、reset semantics、poll dispose、dependency graph。
+- 風險：recursive SDUI value codec不可dynamic invoke；未知case必須controlled error。
+- prompt/上下文摘要：Dynamic UI milestone需F# Playwright與人類操作/geometry review；PTCS.Host最後。

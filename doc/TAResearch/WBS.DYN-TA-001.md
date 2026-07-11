@@ -1,6 +1,6 @@
 # @DYN-TA-001 Contracts and reducer
 
-Status: Planned
+Status: Done
 
 ## Deliverables
 
@@ -12,3 +12,10 @@ Status: Planned
 ## Acceptance
 
 `DYN-TA-T-001..004/008/009/011/015/018` pass; no PTCS/fCell2/PTMD/SQL dependency leak。
+
+## Implemented
+
+- `PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha3` packable package。
+- strict runtime/frame/action/TA row vocabulary、FSharp.SystemTextJson codec、protocol/payload/limit/script/URL/selector validation。
+- pure last-good reducer、typed resync/action effects、multi-canvas registry、one-in-flight poll lifecycle與terminal dispose。
+- SDK README、exact-package tests 7/7、assembly/source forbidden dependency gate。

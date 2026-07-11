@@ -1,0 +1,165 @@
+namespace PulseTrade.Comm.Spa.Dynamic.Contracts
+
+open System
+
+[<Struct>]
+type CanvasInstanceId = CanvasInstanceId of string
+
+[<Struct>]
+type DocumentId = DocumentId of string
+
+[<RequireQualifiedAccess>]
+type SduiValue =
+    | Null
+    | Bool of bool
+    | Number of decimal
+    | Text of string
+    | Array of SduiValue array
+    | Object of Map<string, SduiValue>
+
+[<RequireQualifiedAccess>]
+type TaFreshness =
+    | Live
+    | Delayed of lag: TimeSpan
+    | Stale of lag: TimeSpan * reasonCode: string
+    | Backfill of reasonCode: string
+    | Unavailable of reasonCode: string
+
+[<RequireQualifiedAccess>]
+type TaRowKind =
+    | Candlestick
+    | Volume
+    | Sma
+    | Dmi
+    | Adx
+    | Macd
+    | HeikinAshi
+
+type TaRowSpec =
+    { RowId: string
+      Kind: TaRowKind
+      DataRef: string
+      HeightWeight: decimal
+      Visible: bool
+      Options: Map<string, SduiValue> }
+
+type TaWorkspaceDocument =
+    { WorkspaceId: string
+      Title: string
+      RowsRef: string
+      StatusRef: string
+      SharedTimeAxis: bool
+      Rows: TaRowSpec array
+      AllowedActions: string array
+      DefaultView: Map<string, SduiValue> }
+
+type RuntimeSnapshot =
+    { Data: Map<string, SduiValue>
+      Freshness: TaFreshness }
+
+[<RequireQualifiedAccess>]
+type PatchOperation =
+    | ReplaceDataRef of dataRef: string * value: SduiValue
+    | UpsertSeriesPoints of dataRef: string * keyField: string * items: Map<string, SduiValue> array
+    | RemoveSeriesBefore of dataRef: string * keyField: string * key: SduiValue
+    | SetStatus of dataRef: string * value: Map<string, SduiValue>
+    | SetOptions of targetId: string * value: Map<string, SduiValue>
+
+type RuntimePatch =
+    { Operations: PatchOperation array }
+
+type RuntimeError =
+    { ReasonCode: string
+      Message: string
+      Recoverable: bool }
+
+type RuntimeHeartbeat =
+    { ObservedAtUtc: DateTimeOffset }
+
+[<RequireQualifiedAccess>]
+type RuntimePayload =
+    | Document of TaWorkspaceDocument
+    | Snapshot of RuntimeSnapshot
+    | Patch of RuntimePatch
+    | Error of RuntimeError
+    | Heartbeat of RuntimeHeartbeat
+
+[<RequireQualifiedAccess>]
+type RuntimeFrameKind =
+    | Document
+    | Snapshot
+    | Patch
+    | Error
+    | Heartbeat
+
+type RuntimeFrame =
+    { Protocol: string
+      Kind: RuntimeFrameKind
+      DocumentId: DocumentId
+      CanvasInstanceId: CanvasInstanceId
+      DocumentRevision: int64
+      BaseDataRevision: int64 option
+      DataRevision: int64
+      TransportSequence: int64
+      Payload: RuntimePayload }
+
+type TaQueryChange =
+    { SourceId: string option
+      Instrument: string option
+      IntervalMinutes: int option
+      FromUtc: DateTimeOffset option
+      ToUtcExclusive: DateTimeOffset option
+      IncludePartial: bool option }
+
+[<RequireQualifiedAccess>]
+type SduiAction =
+    | ResetView of CanvasInstanceId
+    | ResetCanvas of CanvasInstanceId
+    | AddTaRow of CanvasInstanceId * TaRowSpec
+    | RemoveTaRow of CanvasInstanceId * rowId: string
+    | ChangeTaQuery of CanvasInstanceId * TaQueryChange
+    | PollDelta of CanvasInstanceId * afterDataRevision: int64
+    | RequestFullSnapshot of CanvasInstanceId * reasonCode: string
+
+[<RequireQualifiedAccess>]
+type RuntimeClientFrame =
+    | Action of SduiAction
+    | Mounted of CanvasInstanceId
+    | Unmounted of CanvasInstanceId
+    | PollCompleted of CanvasInstanceId * dataRevision: int64
+
+type DynamicDiagnostic =
+    { CanvasInstanceId: CanvasInstanceId option
+      DocumentRevision: int64 option
+      DataRevision: int64 option
+      TransportSequence: int64 option
+      ReasonCode: string
+      LimitName: string option }
+
+type DynamicValidationError =
+    { Code: string
+      Field: string
+      Message: string }
+
+type DynamicRuntimeLimits =
+    { MaxRowsPerCanvas: int
+      MaxInitialBarsPerSeries: int
+      MaxRetainedBarsPerSeries: int
+      MaxPatchOperations: int
+      MaxPatchItems: int
+      MaxFrameBytes: int
+      MinimumPollInterval: TimeSpan }
+
+[<RequireQualifiedAccess>]
+module DynamicRuntimeDefaults =
+    [<Literal>]
+    let protocol = "sdui-runtime.v1"
+
+    let limits =
+        { MaxRowsPerCanvas = 8
+          MaxInitialBarsPerSeries = 5000
+          MaxRetainedBarsPerSeries = 2000
+          MaxPatchOperations = 32
+          MaxPatchItems = 500
+          MaxFrameBytes = 2 * 1024 * 1024
+          MinimumPollInterval = TimeSpan.FromSeconds 5.0 }

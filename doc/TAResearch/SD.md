@@ -15,10 +15,9 @@ PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj
   RuntimeTypes.fs
   RuntimeCodec.fs
   RuntimeValidation.fs
+  RuntimeReducer.fs
 
 PulseTrade.Comm.Spa.Dynamic.Renderer.fsproj
-  RuntimeReducer.fs
-  RuntimeRegistry.fs
   TaViewport.fs
   TaCanvasRenderer.fs
   DynamicSduiRenderer.fs
@@ -29,7 +28,7 @@ PulseTrade.Comm.Spa.Dynamic.fsproj
   Extension.fs compatibility facade
 ```
 
-Contracts不得referenceWebSharper/PTCS/fCell2/PTMD。Renderer不得referencePTCS/fCell2/PTMD/SQL。facade以exact NuGet package reference消費Contracts/Renderer，禁止ProjectReference作release-facing integration。
+Contracts同時擁有transport vocabulary與pure reducer/registry/poll state machine，讓PTCS與E2EQ可得到完全相同的state transition而不載入WebSharper。Contracts不得referenceWebSharper/PTCS/fCell2/PTMD。Renderer不得referencePTCS/fCell2/PTMD/SQL。facade以exact NuGet package reference消費Contracts/Renderer，禁止ProjectReference作release-facing integration。
 
 ## 2. Runtime types
 

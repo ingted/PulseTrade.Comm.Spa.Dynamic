@@ -891,3 +891,10 @@ Implementation status:
 - 修復invalid canonical Argu string使FormInput消失；錯誤可見且保留template-default controls。
 - Showcase/SduiEcho actors補native `fCell2<string>` request/reply，direct actor key Canvas與explicit proxy target兩條路徑均由既有F# Playwright verifier通過。
 - Dynamic Expecto 21/21、WebSharper Release build通過；`DYN-TA-00A`完成。
+
+## 2026-07-11 - Dynamic TA runtime contracts and reducer
+
+- 新增packable `PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha3`，包含transport-neutral frame/action/TA vocabulary、strict codec/limits、pure last-good reducer、runtime registry與poll/dispose lifecycle；無WebSharper/PTCS/fCell2/PTMD/SQL dependency。
+- Exact-package Contracts tests 7/7通過，涵蓋五種frame roundtrip、unknown/unsafe/oversize fail-closed、duplicate/gap/base/target resync、ResetView/ResetCanvas、one-in-flight poll、registry dispose與hard limits。
+- nupkg已複製至SDK 10.0.301 library-packs；未使用ProjectReference consumer。Renderer/UI尚未開始，本切片不宣稱Playwright或visual gate完成。
+- 精確停止stale `wsfscservice`後，既有Dynamic facade正常Release WebSharper build成功，legacy Expecto 21/21通過；build generated bundle whitespace未納入本切片。
