@@ -922,3 +922,11 @@ Implementation status:
 ### Correction - alpha2 / bounded adapter paragraph boundary
 
 - The two bullets immediately above this correction that mention `3/3` and “Browser adapter is not claimed complete” are the remaining alpha2 status notes. The later authoritative state is alpha3 server tests `4/4` plus Ptcs.Client alpha2 tests `2/2`; real-host Playwright is still open.
+
+## 2026-07-12 - Dynamic TA Renderer shared cursor and status milestone
+
+- Advanced Renderer to `0.1.0-alpha3` and Ptcs.Client to `0.1.0-alpha4` with exact Renderer `[0.1.0-alpha3]`; local nupkgs were copied to SDK `10.0.301` library-packs, without ProjectReference or public NuGet push。
+- Renderer now provides seven-row shared crosshair/cursor values, readable HTML time axes, freshness/watermark/quality/recoverable error presentation, remote in-flight disablement and stale last-good preservation。Exact-package tests pass Renderer `10/10` and Ptcs.Client `2/2`。
+- F# Playwright passed desktop 1440x900 and mobile 390x844 operation/geometry/console gates. Human screenshot review found SVG text compression on mobile; the final alpha3 moves time labels outside scaled SVG so B1/B25/B48 remain readable。
+- Canonical Renderer project WebSharper compilation was blocked by an access-denied generated `websharper.log` handle. A disposable non-git shadow copy of the same canonical dirty tree was used only for full WebSharper compile/pack; canonical F# compile and all package-consumer tests ran in place. This is environment evidence, not a retained worktree or source of truth。
+- `DYN-TA-003` advances to 88%。Research-grade DMI/MACD multi-line details, patch focus/viewport evidence and the full Delayed/Backfill/Unavailable browser matrix remain open；real PTCS polling/reconnect/resync remains under DYN-TA-004/006。

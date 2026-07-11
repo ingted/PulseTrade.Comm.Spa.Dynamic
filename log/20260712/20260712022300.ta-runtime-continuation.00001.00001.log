@@ -1,0 +1,24 @@
+# Dynamic TA runtime continuation
+
+- 開始時間：2026-07-12 02:23 +08:00
+- 背景：PTMD contracts/projection/query/correction/reconcile已達可供Dynamic consumer使用的current package boundary；使用者要求持續推進DYN-TA-001..008。
+- 目標：優先完成DYN-TA-003 renderer缺口，再完成DYN-TA-004 PTCS transient browser/poll seam；之後依相依順序推DYN-TA-005..008。
+- 假設：既有Contracts alpha4/reducer為canonical；不得用raw JavaScript、HTTP polling或fixture-only evidence取代真host/Playwright。
+- 計畫步驟：
+  1. 盤點Renderer/Ptcs/Ptcs.Client package surface與target tests。
+  2. 補research-grade TA row/crosshair/status/in-flight/last-good renderer state與model tests。
+  3. 接PTCS transient poll/reconnect/resync，建立真host Playwright milestone。
+  4. 更新TAResearch WBS/Test/README/DevLog/Verification，build/test/check，commit/push後繼續。
+- 預計讀寫：`src/PulseTrade.Comm.Spa.Dynamic.*`、`tests*`、`doc/TAResearch/*`、`doc/DevLog.md`、本輪log/op_log。
+- 驗收：exact-package build/tests；UI每milestone以F# Playwright操作desktop/mobile、geometry、console、network effect count。
+- 風險：WebSharper compiler service stale process；PTCS beta82 transient seam尚未由real host掛載；existing tests files顯示line-ending-only dirty，內容hash等於HEAD，不改寫。
+- 關聯：`doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`、`doc/TAResearch/WBS.md`、`doc/TAResearch/Test.md`。
+
+## 追蹤欄位補充
+
+- prompt/上下文摘要：使用者要求依續航規則推進DYN-TA-001..008，不因單一milestone停止；UI必須以F# Playwright操作及人類視角檢視。
+- 執行命令/參數：Renderer/Ptcs.Client exact-package Release build/test/pack；BrowserDemo `127.0.0.1:18882`；`scripts/verify-ta-renderer-playwright.fsx`預設desktop 1440x900與mobile 390x844。
+- 結果：Renderer 10/10、Ptcs.Client 2/2、BrowserDemo build、F# Playwright均通過；本milestone將DYN-TA-003推進至88%。
+- 根因判讀：mobile time label不可讀源自SVG `preserveAspectRatio=none`同時壓縮文字；改由SVG外HTML grid呈現。canonical full WebSharper build另受generated `websharper.log` access-denied環境鎖影響，非程式語法失敗。
+- 下一步：先完成DYN-TA-004真PTCS poll/reconnect/resync，再依WBS相依推DYN-TA-005/006/007/008。
+- 關聯文件/工單/PR：`doc/TAResearch/WBS.DYN-TA-003.md`、`doc/TAResearch/Test.md`、`doc/Verification.md`；目前尚未建立PR。

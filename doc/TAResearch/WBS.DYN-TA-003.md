@@ -1,6 +1,6 @@
 # @DYN-TA-003 WebSharper TA renderer
 
-Status: Active / 72%
+Status: Active / 88%
 
 ## Deliverables
 
@@ -28,3 +28,18 @@ Primary chart dominates first viewport; controls are compact and predictable; Ad
 - shared crosshair、cursor values、時間軸label與研究級indicator legends/多線DMI/MACD細節。
 - in-flight/disabled/error/stale/backfill/last-good visual states與frame patch後viewport/focus不變browser證據。
 - host transient channel/poll scheduler不屬Renderer alpha1，追蹤於DYN-TA-004/006。
+
+## 2026-07-12 alpha3 milestone
+
+已完成：
+
+- `PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha3`新增shared cursor slider、七列同步crosshair、可讀的HTML first/middle/last time axis與同一visible index的OHLC/indicator cursor values。
+- freshness/status projection保留Live/Delayed/Stale/Backfill/Unavailable typed state、watermark、quality與recoverable last-good error；PollInFlight/PausedForResync期間remote query與Add Row submit disabled，local view操作不受影響。
+- F# Playwright在desktop/mobile操作cursor、in-flight、stale與Ready recovery；stale時price body count保持不變，證明last-good Canvas未被錯誤狀態清掉。mobile截圖人工檢視後把受SVG非等比縮放影響的文字軸移到HTML grid，B1/B25/B48均清楚可讀。
+- exact-package renderer tests 10/10、Ptcs.Client tests 2/2、BrowserDemo build及Playwright皆通過；ignored evidence為`artifacts/ta-renderer-playwright/desktop.png`與`mobile.png`。
+
+尚未完成：
+
+- DMI/MACD研究級多線、legends與indicator-specific cursor detail。
+- authoritative patch後focus/viewport保持、Delayed/Backfill/Unavailable各狀態的browser visual matrix。
+- 真PTCS transient poll/reconnect/resync仍由DYN-TA-004/006追蹤。

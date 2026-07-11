@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.0-alpha1]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.0-alpha3]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
     <PackageReference Include="WebSharper.UI" Version="10.1.4.674" />
   </ItemGroup>

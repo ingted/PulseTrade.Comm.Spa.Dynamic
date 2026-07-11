@@ -51,7 +51,14 @@ module Client =
             "series.adx", SduiValue.Array(line 22.0 8.0 7.0)
             "series.macd", SduiValue.Array(line 0.0 18.0 5.5)
             "series.heikin", SduiValue.Array heikin
-            "ta.status", SduiValue.Object(Map [ "freshness", SduiValue.Text "live"; "label", SduiValue.Text "LIVE / revision 42" ])
+            "ta.status",
+            SduiValue.Object(
+                Map [
+                    "freshness", SduiValue.Text "live"
+                    "label", SduiValue.Text "LIVE / revision 42"
+                    "watermarkUtc", SduiValue.Text "2026-07-11T09:30:00Z"
+                    "quality", SduiValue.Text "complete"
+                ])
         ]
 
     let row rowId kind dataRef weight =
@@ -102,6 +109,17 @@ module Client =
         | SduiAction.PollDelta _ -> "PollDelta"
         | SduiAction.RequestFullSnapshot _ -> "RequestFullSnapshot"
 
+    let statusData freshness label lag reason quality =
+        SduiValue.Object(
+            Map [
+                "freshness", SduiValue.Text freshness
+                "label", SduiValue.Text label
+                "lagSeconds", SduiValue.Number lag
+                "reasonCode", SduiValue.Text reason
+                "watermarkUtc", SduiValue.Text "2026-07-11T09:30:00Z"
+                "quality", SduiValue.Text quality
+            ])
+
     [<SPAEntryPoint>]
     let Main () =
         let runtimeState = Var.Create(sampleState ())
@@ -116,8 +134,28 @@ module Client =
                         return Ok()
                     } }
 
+        let setLive () =
+            runtimeState.Value <-
+                { runtimeState.Value with
+                    Data = runtimeState.Value.Data |> Map.add "ta.status" (statusData "live" "LIVE / revision 42" 0.0 "within-live-threshold" "complete")
+                    Poll = RuntimePollState.Ready
+                    LastError = None }
+
+        let setInFlight () =
+            runtimeState.Value <- { runtimeState.Value with Poll = RuntimePollState.PollInFlight }
+
+        let setStale () =
+            runtimeState.Value <-
+                { runtimeState.Value with
+                    Data = runtimeState.Value.Data |> Map.add "ta.status" (statusData "stale" "STALE / 45s" 45.0 "source-stopped" "gap suspected")
+                    Poll = RuntimePollState.Backoff(DateTimeOffset.UtcNow.AddSeconds 5.0)
+                    LastError = Some { ReasonCode = "delta-timeout"; Message = "retaining last good canvas"; Recoverable = true } }
+
         div [ attr.style "max-width:1460px; margin:0 auto; min-width:0;" ] [
             div [ Attr.Create "data-testid" "ta-demo-callback-state"; attr.style "height:24px; display:flex; align-items:center; justify-content:flex-end; padding:0 12px; background:#182a42; color:#d9e5f3; font-size:11px;" ] [
+                button [ Attr.Create "data-testid" "ta-demo-live"; on.click (fun _ _ -> setLive ()) ] [ text "Live" ]
+                button [ Attr.Create "data-testid" "ta-demo-inflight"; on.click (fun _ _ -> setInFlight ()) ] [ text "In-flight" ]
+                button [ Attr.Create "data-testid" "ta-demo-stale"; on.click (fun _ _ -> setStale ()) ] [ text "Stale" ]
                 text "callback actions "
                 textView (actionCount.View |> View.Map string)
                 text " / last "

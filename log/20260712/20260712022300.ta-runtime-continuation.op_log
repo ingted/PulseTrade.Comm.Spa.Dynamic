@@ -1,0 +1,17 @@
+2026-07-12 02:23 +08:00
+- Entered Dynamic repo on branch `20260711_027.win.TACanvas`.
+- `tests/Program.fs` and tests fsproj report dirty from line-ending stat only; content hashes equal HEAD. No user content change was reverted or staged.
+
+2026-07-12 02:29-02:46 +08:00
+- Implemented Renderer shared cursor snapshot, seven-row synchronized crosshair, readable HTML time axis, typed freshness/status detail, remote in-flight disablement and stale last-good-state preservation。
+- First compiler pass found record-field inference and WebSharper unsupported-method issues; fixed with explicit TA point array annotations and WebSharper-compatible string operations。Canonical F# build passed。
+- Canonical Renderer `websharper.log` became access-denied after WebSharper generation. Stopping the known BrowserDemo and VS child MSBuild workers did not release it；no source/service/solution content was changed。Full WebSharper compile/pack therefore ran once in disposable non-git shadow copies made from the canonical dirty tree；these are verification-only and not authoritative worktrees。
+- Published no public NuGet。Copied local exact packages Renderer `0.1.0-alpha3` and Ptcs.Client `0.1.0-alpha4` to SDK 10.0.301 library-packs；consumer tests restored those exact versions。
+- Renderer Expecto `10/10` and Ptcs.Client `2/2` passed。BrowserDemo full WebSharper build passed with the existing WS9002 Bundle-name warning only。
+- F# Playwright desktop/mobile passed cursor B48->B1, seven crosshair alignment, B1/B25/B48 labels, local zero-callback, typed remote action, PollInFlight disabled submit, stale watermark/quality/error with unchanged candle body count, Ready recovery, geometry and zero console/page errors。
+- Human review of `artifacts/ta-renderer-playwright/mobile.png` found initial SVG text horizontal compression；time labels were moved to HTML grid and the complete test/build/Playwright gate reran successfully。
+- Updated WBS/Test/Verification/README/DevLog；DYN-TA-003 is 88%, aggregate DYN-TA-001..008 is 43%。DYN-TA-004 remains 58% pending real PTCS poll/reconnect/resync。
+
+2026-07-12 02:47 +08:00
+- Sensitive scan：High=0；strict UTF-8/NUL/U+FFFD check passed；`git diff --check` passed。
+- First `check.fsx` with dated log directory：PASS=28 WARN=3 FAIL=0。After appending required trace fields to pre-work log, rerunning with parent `log` changed the check baseline scope and produced false readonly-delete findings for relative paths plus expected op-log timestamp ordering。No log file was deleted or rewritten；the authoritative rerun uses the original dated log scope after this append。

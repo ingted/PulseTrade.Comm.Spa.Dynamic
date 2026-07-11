@@ -1,5 +1,6 @@
 namespace PulseTrade.Comm.Spa.Dynamic.Renderer
 
+open System
 open PulseTrade.Comm.Spa.Dynamic.Contracts
 open WebSharper
 
@@ -18,6 +19,22 @@ type TaLinePoint =
 type TaVisibleWindow =
     { StartIndex: int
       Count: int }
+
+type TaCursorValue =
+    { Label: string
+      Value: string }
+
+type TaCursorSnapshot =
+    { VisibleIndex: int
+      Timestamp: string
+      Values: TaCursorValue array }
+
+type TaStatusPresentation =
+    { Freshness: TaFreshness
+      Label: string
+      Watermark: string option
+      Quality: string option
+      Error: string option }
 
 [<JavaScript; RequireQualifiedAccess>]
 module RendererModel =
@@ -41,6 +58,9 @@ module RendererModel =
 
     let objectNumber name value =
         objectField name value |> Option.bind tryNumber
+
+    let fixedNumber (value: float) =
+        string value
 
     let parseCandle value =
         value
@@ -111,3 +131,83 @@ module RendererModel =
     let normalize low high top height value =
         if low = high then top + height / 2.0
         else top + height - ((value - low) / (high - low)) * height
+
+    let timeLabels (timestamps: string array) =
+        if timestamps.Length = 0 then [||]
+        elif timestamps.Length = 1 then [| 0, timestamps[0] |]
+        else
+            [| 0; timestamps.Length / 2; timestamps.Length - 1 |]
+            |> Array.distinct
+            |> Array.map (fun index -> index, timestamps[index])
+
+    let cursorSnapshot (document: TaWorkspaceDocument) data window cursorIndex =
+        let visibleRows = document.Rows |> Array.filter _.Visible
+        let referenceLength =
+            visibleRows
+            |> Array.tryHead
+            |> Option.map (fun row -> seriesValues row.DataRef data |> Array.length)
+            |> Option.defaultValue 0
+        let effectiveWindow = clampWindow 1 Int32.MaxValue referenceLength window
+
+        if effectiveWindow.Count = 0 then None
+        else
+            let index = max 0 (min cursorIndex (effectiveWindow.Count - 1))
+            let values =
+                visibleRows
+                |> Array.choose (fun row ->
+                    match row.Kind with
+                    | TaRowKind.Candlestick
+                    | TaRowKind.HeikinAshi
+                    | TaRowKind.Volume ->
+                        candleSeries row.DataRef data
+                        |> selectWindow effectiveWindow
+                        |> Array.tryItem index
+                        |> Option.map (fun point ->
+                            let value =
+                                if row.Kind = TaRowKind.Volume then fixedNumber point.Volume
+                                else
+                                    "O " + fixedNumber point.Open
+                                    + " H " + fixedNumber point.High
+                                    + " L " + fixedNumber point.Low
+                                    + " C " + fixedNumber point.Close
+
+                            point.Timestamp, { Label = row.RowId; Value = value })
+                    | _ ->
+                        lineSeries row.DataRef data
+                        |> selectWindow effectiveWindow
+                        |> Array.tryItem index
+                        |> Option.map (fun point -> point.Timestamp, { Label = row.RowId; Value = fixedNumber point.Value }))
+
+            values
+            |> Array.tryHead
+            |> Option.map (fun (timestamp, _) ->
+                { VisibleIndex = index
+                  Timestamp = timestamp
+                  Values = values |> Array.map snd })
+
+    let freshnessFromStatus status =
+        let kind = objectText "freshness" status |> Option.defaultValue "unavailable" |> fun value -> value.ToLower()
+        let lag = objectNumber "lagSeconds" status |> Option.defaultValue 0.0 |> TimeSpan.FromSeconds
+        let reason = objectText "reasonCode" status |> Option.defaultValue kind
+
+        match kind with
+        | "live" -> TaFreshness.Live
+        | "delayed" -> TaFreshness.Delayed lag
+        | "stale" -> TaFreshness.Stale(lag, reason)
+        | "backfill" -> TaFreshness.Backfill reason
+        | _ -> TaFreshness.Unavailable reason
+
+    let statusPresentation statusRef (state: RuntimeState) =
+        let status =
+            state.Data
+            |> Map.tryFind statusRef
+            |> Option.bind tryObject
+            |> Option.defaultValue Map.empty
+        let freshness = freshnessFromStatus status
+        let label = objectText "label" status |> Option.defaultValue (string freshness)
+
+        { Freshness = freshness
+          Label = label
+          Watermark = objectText "watermarkUtc" status
+          Quality = objectText "quality" status
+          Error = state.LastError |> Option.map (fun error -> error.ReasonCode + ": " + error.Message) }

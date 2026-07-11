@@ -91,6 +91,42 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-freshness']")) "LIVE"
     require ((page.Locator("[data-testid='ta-chart-stack'] section").CountAsync() |> awaitTask) = 7) "all seven configured TA rows must render"
     require ((page.Locator("[data-testid='ta-candle-price'] rect").CountAsync() |> awaitTask) >= 24) "candlestick chart must contain visible bodies"
+    requireText (page.Locator("[data-testid='ta-status-detail']")) "watermark 2026-07-11T09:30:00Z"
+    requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"
+
+    let cursorValues = page.Locator("[data-testid='ta-cursor-values']")
+    requireText cursorValues "B48"
+    require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 7) "every visible row must share one crosshair"
+    let timeLabels = page.Locator("[data-testid='ta-time-axis-price'] span")
+    require ((timeLabels.CountAsync() |> awaitTask) = 3) "price chart must expose first, middle, and last time labels"
+    requireText (timeLabels.Nth(0)) "B1"
+    requireText (timeLabels.Nth(1)) "B25"
+    requireText (timeLabels.Nth(2)) "B48"
+    page.Locator("[data-testid='ta-cursor-slider']").FillAsync("0") |> awaitUnit
+    waitForText cursorValues "B1"
+    let crosshairPositions =
+        page.Locator("[data-testid$='-crosshair']").AllAsync()
+        |> awaitTask
+        |> Seq.map (fun locator -> locator.GetAttributeAsync("x1") |> awaitTask |> Option.ofObj |> Option.defaultValue "missing")
+        |> Seq.distinct
+        |> Seq.toArray
+    require (crosshairPositions = [| "0" |]) ("shared cursor crosshair positions diverged: " + String.concat "," crosshairPositions)
+
+    let chartBodiesBeforeStatusChange = page.Locator("[data-testid='ta-candle-price'] rect").CountAsync() |> awaitTask
+    page.Locator("[data-testid='ta-demo-inflight']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-poll-state']")) "UPDATING"
+    require (page.Locator("[data-testid='ta-apply-query']").IsDisabledAsync() |> awaitTask) "remote query must be disabled while a poll is in flight"
+    page.Locator("[data-testid='ta-add-row-toggle']").ClickAsync() |> awaitUnit
+    require (page.Locator("[data-testid='ta-add-row-submit']").IsDisabledAsync() |> awaitTask) "remote Add Row submit must be disabled while a poll is in flight"
+    page.Locator("[data-testid='ta-add-row-cancel']").ClickAsync() |> awaitUnit
+    page.Locator("[data-testid='ta-demo-stale']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-freshness']")) "STALE"
+    requireText (page.Locator("[data-testid='ta-status-detail']")) "quality gap suspected"
+    requireText (page.Locator("[data-testid='ta-last-good-error']")) "retaining last good canvas"
+    require ((page.Locator("[data-testid='ta-candle-price'] rect").CountAsync() |> awaitTask) = chartBodiesBeforeStatusChange) "stale transport status must retain the last-good canvas"
+    page.Locator("[data-testid='ta-demo-live']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-poll-state']")) "READY"
+    require (not (page.Locator("[data-testid='ta-apply-query']").IsDisabledAsync() |> awaitTask)) "remote query must recover after the runtime returns to ready"
 
     let titleBox = page.Locator("[data-testid='ta-workspace-title']").BoundingBoxAsync() |> awaitTask
     let priceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
@@ -151,6 +187,7 @@ let verifyMobile (browser: IBrowser) =
     page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 5000.0f)) |> awaitUnit
     requireBoxInside viewportWidth "workspace" (page.Locator("[data-testid='ta-workspace']").BoundingBoxAsync() |> awaitTask)
     requireBoxInside viewportWidth "query toolbar" (page.Locator("[data-testid='ta-query-toolbar']").BoundingBoxAsync() |> awaitTask)
+    requireBoxInside viewportWidth "cursor panel" (page.Locator("[data-testid='ta-cursor-panel']").BoundingBoxAsync() |> awaitTask)
     requireBoxInside viewportWidth "price chart" (page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask)
     require ((page.Locator("[data-testid='ta-query-toolbar'] input").CountAsync() |> awaitTask) = 3) "mobile query form must retain all text inputs"
     require (page.Locator("[data-testid='ta-apply-query']").IsVisibleAsync() |> awaitTask) "mobile Load / Apply must remain visible"

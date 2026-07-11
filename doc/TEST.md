@@ -629,4 +629,4 @@ Passed assertions：
 
 ## 2026-07-11 DYN-TA-T-001..020 Transport-Neutral TA Canvas Test Plan
 
-Canonical matrix：`doc/TAResearch/Test.md`。`DYN-TA-T-000A..020`已accepted並Ready，尚未執行。`T-000A`先關閉direct DSL/strict schema/invalid-node legacy gates；其餘涵蓋typed codec/reducer、pure WebSharper source gate、TA interaction、bounded lifecycle、PTCS transient path、E2EQ adapter parity、Playwright geometry與resource bounds；不得以fake component fixture取代兩條真host E2E。
+Canonical matrix：`doc/TAResearch/Test.md`。`DYN-TA-T-000A..020`已accepted並進入執行；Contracts/reducer/source、renderer shared cursor/local interaction與desktop/mobile geometry已有Pass，PTCS transient真host、E2EQ parity與bounded soak仍依matrix追蹤。不得以fake component fixture取代兩條真host E2E。

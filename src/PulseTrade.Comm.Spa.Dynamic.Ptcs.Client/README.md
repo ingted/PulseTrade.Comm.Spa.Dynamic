@@ -20,3 +20,5 @@ TaResearchTransientClient.mountById
 ```
 
 The PTCS host must register the same `extensionId` with `PulseTrade.Comm.Spa.Dynamic.Ptcs.TaResearchTransientServer.register`.
+
+Current exact package is `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha4`, consuming Renderer `[0.1.0-alpha3]`。

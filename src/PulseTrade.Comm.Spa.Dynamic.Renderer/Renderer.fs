@@ -25,6 +25,7 @@ type TaRendererUiState =
     { Window: TaVisibleWindow
       HiddenRows: Set<string>
       AddRowOpen: bool
+      CursorIndex: int option
       Feedback: string }
 
 [<JavaScript>]
@@ -72,6 +73,23 @@ module TaWorkspaceRenderer =
         | TaFreshness.Stale _
         | TaFreshness.Unavailable _ -> "stale"
 
+    let pollText = function
+        | RuntimePollState.Unmounted -> "UNMOUNTED"
+        | RuntimePollState.MountedIdle -> "MOUNTED"
+        | RuntimePollState.Ready -> "READY"
+        | RuntimePollState.PollInFlight -> "UPDATING"
+        | RuntimePollState.Suspended -> "SUSPENDED"
+        | RuntimePollState.PausedForResync -> "RESYNC"
+        | RuntimePollState.Backoff _ -> "BACKOFF"
+        | RuntimePollState.Disposed -> "DISPOSED"
+
+    let remoteDisabled = function
+        | RuntimePollState.PollInFlight
+        | RuntimePollState.PausedForResync
+        | RuntimePollState.Unmounted
+        | RuntimePollState.Disposed -> true
+        | _ -> false
+
     let submit (callbacks: TaRendererCallbacks) (uiState: Var<TaRendererUiState>) action successText =
         async {
             let! result = callbacks.SubmitAction action
@@ -116,13 +134,17 @@ module TaWorkspaceRenderer =
             on.click (fun _ _ -> onClick ())
         ] [ text label ]
 
-    let primaryButton (testId: string) (label: string) (onClick: unit -> unit) =
+    let primaryButtonState (testId: string) (label: string) disabled (onClick: unit -> unit) =
         button [
             attr.``type`` "button"
             Attr.Create "data-testid" testId
-            attr.style "height:30px; border:1px solid #0f766e; border-radius:4px; background:#0f766e; color:#fff; padding:3px 11px; font-size:12px; cursor:pointer; white-space:nowrap;"
-            on.click (fun _ _ -> onClick ())
+            if disabled then attr.disabled "disabled"
+            attr.style (if disabled then "height:30px; border:1px solid #9aa8b8; border-radius:4px; background:#d8e0e8; color:#667587; padding:3px 11px; font-size:12px; cursor:not-allowed; white-space:nowrap;" else "height:30px; border:1px solid #0f766e; border-radius:4px; background:#0f766e; color:#fff; padding:3px 11px; font-size:12px; cursor:pointer; white-space:nowrap;")
+            on.click (fun _ _ -> if not disabled then onClick ())
         ] [ text label ]
+
+    let primaryButton testId label onClick =
+        primaryButtonState testId label false onClick
 
     let chartFrame titleText testId height children =
         section [
@@ -135,7 +157,20 @@ module TaWorkspaceRenderer =
             element "div" [ attr.style "min-width:0; overflow:hidden;" ] children
         ]
 
-    let candleSvg testId points =
+    let cursorPosition width pointCount cursorIndex =
+        cursorIndex
+        |> Option.map (fun index ->
+            let bounded = max 0 (min index (max 0 (pointCount - 1)))
+            if pointCount <= 1 then width / 2.0 else width * float bounded / float (pointCount - 1))
+
+    let timeAxis testId (timestamps: string array) =
+        RendererModel.timeLabels timestamps
+        |> Array.mapi (fun position (_, label) ->
+            let alignment = if position = 0 then "left" elif position = 2 then "right" else "center"
+            span [ attr.style ("min-width:0; text-align:" + alignment + "; color:#708198; font-size:10px; line-height:16px;") ] [ text label ] :> Doc)
+        |> fun labels -> div [ Attr.Create "data-testid" testId; attr.style "display:grid; grid-template-columns:1fr 1fr 1fr; min-width:0; height:16px; padding:0 1px;" ] labels
+
+    let candleSvg testId (points: TaCandlePoint array) cursorIndex =
         let width = 1000.0
         let height = 250.0
         let top = 12.0
@@ -171,9 +206,15 @@ module TaWorkspaceRenderer =
                 let bodyHeight = max 1.2 (abs (closeY - openY))
                 yield svgElement "line" [ svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" (fixedText highY); svgAttr "y2" (fixedText lowY); svgAttr "stroke" color; svgAttr "stroke-width" "1.4" ] []
                 yield svgElement "rect" [ svgAttr "x" (fixedText (x - bodyWidth / 2.0)); svgAttr "y" (fixedText bodyY); svgAttr "width" (fixedText bodyWidth); svgAttr "height" (fixedText bodyHeight); svgAttr "fill" color; svgAttr "rx" "0.6" ] []
+
+            match cursorPosition width points.Length cursorIndex with
+            | Some x ->
+                yield svgElement "line" [ Attr.Create "data-testid" (testId + "-crosshair"); svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" "0"; svgAttr "y2" "226"; svgAttr "stroke" "#1f4f73"; svgAttr "stroke-width" "1"; svgAttr "stroke-dasharray" "3 3" ] []
+            | None -> ()
+
         ]
 
-    let lineSvg testId color points =
+    let lineSvg testId color (points: TaLinePoint array) cursorIndex =
         let width = 1000.0
         let height = 112.0
         let top = 10.0
@@ -193,11 +234,14 @@ module TaWorkspaceRenderer =
             Attr.Create "data-testid" testId
             attr.style "display:block; width:100%; height:112px; background:#fbfcfe;"
         ] [
-            svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" "51"; svgAttr "y2" "51"; svgAttr "stroke" "#e7ecf3"; svgAttr "stroke-width" "1" ] []
-            svgElement "path" [ svgAttr "d" path; svgAttr "fill" "none"; svgAttr "stroke" color; svgAttr "stroke-width" "2"; svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
+            yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" "51"; svgAttr "y2" "51"; svgAttr "stroke" "#e7ecf3"; svgAttr "stroke-width" "1" ] []
+            yield svgElement "path" [ svgAttr "d" path; svgAttr "fill" "none"; svgAttr "stroke" color; svgAttr "stroke-width" "2"; svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
+            match cursorPosition width points.Length cursorIndex with
+            | Some x -> yield svgElement "line" [ Attr.Create "data-testid" (testId + "-crosshair"); svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" "0"; svgAttr "y2" "92"; svgAttr "stroke" "#1f4f73"; svgAttr "stroke-width" "1"; svgAttr "stroke-dasharray" "3 3" ] []
+            | None -> ()
         ]
 
-    let volumeSvg points =
+    let volumeSvg (points: TaCandlePoint array) cursorIndex =
         let width = 1000.0
         let height = 100.0
         let maximum = points |> Array.map _.Volume |> Array.fold max 1.0
@@ -214,6 +258,10 @@ module TaWorkspaceRenderer =
                 let barHeight = max 1.0 (point.Volume / maximum * 86.0)
                 let color = if point.Close >= point.Open then "#6bb5a9" else "#d4868d"
                 yield svgElement "rect" [ svgAttr "x" (fixedText (slot * float index + slot * 0.18)); svgAttr "y" (fixedText (94.0 - barHeight)); svgAttr "width" (fixedText (max 1.0 (slot * 0.64))); svgAttr "height" (fixedText barHeight); svgAttr "fill" color ] []
+
+            match cursorPosition width points.Length cursorIndex with
+            | Some x -> yield svgElement "line" [ Attr.Create "data-testid" "ta-volume-crosshair"; svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" "0"; svgAttr "y2" "100"; svgAttr "stroke" "#1f4f73"; svgAttr "stroke-width" "1"; svgAttr "stroke-dasharray" "3 3" ] []
+            | None -> ()
         ]
 
     let renderRow (options: TaRendererOptions) (state: RuntimeState) (ui: TaRendererUiState) (row: TaRowSpec) =
@@ -224,10 +272,10 @@ module TaWorkspaceRenderer =
         | TaRowKind.Candlestick
         | TaRowKind.HeikinAshi ->
             let points = RendererModel.candleSeries row.DataRef state.Data |> RendererModel.selectWindow window
-            chartFrame (rowKindText row.Kind) ("ta-row-" + row.RowId) 278 [ candleSvg ("ta-candle-" + row.RowId) points ]
+            chartFrame (rowKindText row.Kind) ("ta-row-" + row.RowId) 278 [ candleSvg ("ta-candle-" + row.RowId) points ui.CursorIndex; timeAxis ("ta-time-axis-" + row.RowId) (points |> Array.map _.Timestamp) ]
         | TaRowKind.Volume ->
             let points = RendererModel.candleSeries row.DataRef state.Data |> RendererModel.selectWindow window
-            chartFrame "Volume" ("ta-row-" + row.RowId) 128 [ volumeSvg points ]
+            chartFrame "Volume" ("ta-row-" + row.RowId) 128 [ volumeSvg points ui.CursorIndex; timeAxis ("ta-time-axis-" + row.RowId) (points |> Array.map _.Timestamp) ]
         | _ ->
             let points = RendererModel.lineSeries row.DataRef state.Data |> RendererModel.selectWindow window
             let color =
@@ -238,7 +286,7 @@ module TaWorkspaceRenderer =
                 | TaRowKind.Macd -> "#0f766e"
                 | _ -> "#40536d"
 
-            chartFrame (rowKindText row.Kind) ("ta-row-" + row.RowId) 140 [ lineSvg ("ta-line-" + row.RowId) color points ]
+            chartFrame (rowKindText row.Kind) ("ta-row-" + row.RowId) 140 [ lineSvg ("ta-line-" + row.RowId) color points ui.CursorIndex; timeAxis ("ta-time-axis-" + row.RowId) (points |> Array.map _.Timestamp) ]
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
         let canvasId = runtimeState.Value.Identity.CanvasInstanceId
@@ -253,6 +301,7 @@ module TaWorkspaceRenderer =
                 { Window = { StartIndex = 0; Count = options.DefaultVisibleBars }
                   HiddenRows = Set.empty
                   AddRowOpen = false
+                  CursorIndex = Some(options.DefaultVisibleBars - 1)
                   Feedback = "" }
 
         let updateWindow transform =
@@ -308,6 +357,9 @@ module TaWorkspaceRenderer =
                 | None ->
                     div [ Attr.Create "data-testid" "ta-workspace-empty"; attr.style "padding:18px; color:#5d6d83;" ] [ text "TA workspace document is not available." ] :> Doc
                 | Some document ->
+                    let status = RendererModel.statusPresentation document.StatusRef state
+                    let commandsDisabled = remoteDisabled state.Poll
+
                     div [ attr.style "display:flex; flex-direction:column; min-width:0;" ] [
                         header [ attr.style "display:flex; flex-direction:column; gap:7px; padding:10px 12px 8px; background:#fff; border-bottom:1px solid #dbe3ee;" ] [
                             div [ attr.style "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;" ] [
@@ -315,16 +367,32 @@ module TaWorkspaceRenderer =
                                     h2 [ Attr.Create "data-testid" "ta-workspace-title"; attr.style "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;" ] [ text document.Title ]
                                     div [ attr.style "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" ] [ text ("canvas " + canvasIdText canvasId + " / revision " + string state.DataRevision) ]
                                 ]
-                                div [ Attr.Create "data-testid" "ta-freshness"; Attr.Create "data-freshness" (freshnessClass (state.Data |> Map.tryFind document.StatusRef |> Option.bind (function SduiValue.Object status -> status |> Map.tryFind "freshness" |> Option.bind RendererModel.tryText | _ -> None) |> Option.map (fun value -> if value = "live" then TaFreshness.Live else TaFreshness.Backfill value) |> Option.defaultValue (TaFreshness.Unavailable "awaiting-status"))); attr.style "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;" ] [
-                                    text (match state.Data |> Map.tryFind document.StatusRef with | Some(SduiValue.Object status) -> status |> Map.tryFind "label" |> Option.bind RendererModel.tryText |> Option.defaultValue "STATUS" | _ -> "STATUS")
+                                div [ attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;" ] [
+                                    div [ Attr.Create "data-testid" "ta-freshness"; Attr.Create "data-freshness" (freshnessClass status.Freshness); attr.style "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;" ] [
+                                        text status.Label
+                                    ]
+                                    div [ Attr.Create "data-testid" "ta-poll-state"; Attr.Create "data-poll-state" (pollText state.Poll); attr.style "border:1px solid #c3cfdd; border-radius:4px; padding:3px 7px; font-size:10px; color:#53667d; background:#fff;" ] [
+                                        text (pollText state.Poll)
+                                    ]
                                 ]
+                            ]
+                            div [ Attr.Create "data-testid" "ta-status-detail"; attr.style "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;" ] [
+                                match status.Watermark with
+                                | Some value -> yield span [] [ text ("watermark " + value) ]
+                                | None -> ()
+                                match status.Quality with
+                                | Some value -> yield span [] [ text ("quality " + value) ]
+                                | None -> ()
+                                match status.Error with
+                                | Some value -> yield span [ Attr.Create "data-testid" "ta-last-good-error"; attr.style "color:#a33b43; font-weight:600;" ] [ text value ]
+                                | None -> ()
                             ]
                             div [ Attr.Create "data-testid" "ta-query-toolbar"; attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;" ] [
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Instrument"; inputText "ta-instrument" "Instrument" instrument.Value (fun value -> instrument.Value <- value) ]
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Interval"; selectInput "ta-interval" interval.Value [ "1", "1m"; "5", "5m"; "30", "30m"; "60", "60m"; "930", "Session" ] (fun value -> interval.Value <- value) ]
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "From"; inputText "ta-from" "YYYY-MM-DD" fromDate.Value (fun value -> fromDate.Value <- value) ]
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDate.Value (fun value -> toDate.Value <- value) ]
-                                primaryButton "ta-apply-query" "Load / Apply" applyQuery
+                                primaryButtonState "ta-apply-query" "Load / Apply" commandsDisabled applyQuery
                             ]
                             div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [
                                 compactButton "ta-pan-left" "←" "Pan earlier" (fun () -> updateWindow (fun window -> { window with StartIndex = max 0 (window.StartIndex - max 1 (window.Count / 4)) }))
@@ -363,7 +431,7 @@ module TaWorkspaceRenderer =
                                         label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text "Row kind"; selectInput "ta-add-row-kind" addKind.Value [ "Sma", "SMA"; "Volume", "Volume"; "Dmi", "DMI"; "Adx", "ADX"; "Macd", "MACD"; "HeikinAshi", "Heikin-Ashi" ] (fun value -> addKind.Value <- value) ]
                                         label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text "Data ref"; inputText "ta-add-row-data-ref" "series.sma" addDataRef.Value (fun value -> addDataRef.Value <- value) ]
                                         compactButton "ta-add-row-cancel" "Cancel" "Close without submitting" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = false })
-                                        primaryButton "ta-add-row-submit" "Add" addRow
+                                        primaryButtonState "ta-add-row-submit" "Add" commandsDisabled addRow
                                     ] :> Doc)
                             |> Doc.EmbedView
                             uiState.View
@@ -378,7 +446,42 @@ module TaWorkspaceRenderer =
                                 document.Rows
                                 |> Array.filter (fun row -> row.Visible && not (Set.contains row.RowId ui.HiddenRows))
 
+                            let referenceLength =
+                                visibleRows
+                                |> Array.tryHead
+                                |> Option.map (fun row -> RendererModel.seriesValues row.DataRef state.Data |> Array.length)
+                                |> Option.defaultValue 0
+                            let visibleWindow = RendererModel.clampWindow options.MinimumVisibleBars options.MaximumVisibleBars referenceLength ui.Window
+                            let cursorIndex = ui.CursorIndex |> Option.defaultValue (max 0 (visibleWindow.Count - 1)) |> max 0 |> min (max 0 (visibleWindow.Count - 1))
+                            let cursor = RendererModel.cursorSnapshot document state.Data visibleWindow cursorIndex
+                            let cursorValues =
+                                match cursor with
+                                | None -> div [ attr.style "font-size:11px; color:#718197;" ] [ text "No cursor data." ]
+                                | Some value ->
+                                    div [ Attr.Create "data-testid" "ta-cursor-values"; attr.style "display:flex; align-items:center; gap:8px; min-width:0; overflow-x:auto; white-space:nowrap; font-family:Consolas, monospace; font-size:11px; color:#263b55;" ] [
+                                        yield strong [] [ text value.Timestamp ]
+                                        for item in value.Values do
+                                            yield span [ Attr.Create "data-cursor-row" item.Label ] [ text (item.Label + " " + item.Value) ]
+                                    ]
+
                             div [ Attr.Create "data-testid" "ta-chart-stack"; attr.style "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;" ] [
+                                yield div [ Attr.Create "data-testid" "ta-cursor-panel"; attr.style "display:grid; grid-template-columns:minmax(150px,260px) minmax(0,1fr); gap:8px; align-items:center; min-height:42px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;" ] [
+                                    yield element "input" [
+                                        Attr.Create "data-testid" "ta-cursor-slider"
+                                        attr.``type`` "range"
+                                        Attr.Create "min" "0"
+                                        Attr.Create "max" (string (max 0 (visibleWindow.Count - 1)))
+                                        attr.value (string cursorIndex)
+                                        attr.style "width:100%; min-width:0; accent-color:#1f6f78;"
+                                        on.afterRender (fun node ->
+                                            let input = node |> As<HTMLInputElement>
+                                            input.AddEventListener("input", fun () ->
+                                                match Int32.TryParse input.Value with
+                                                | true, value -> uiState.Value <- { uiState.Value with CursorIndex = Some value }
+                                                | _ -> ()))
+                                    ] []
+                                    yield cursorValues
+                                ]
                                 if visibleRows.Length = 0 then
                                     yield div [ attr.style "padding:18px; color:#667891;" ] [ text "No visible TA rows." ]
                                 else
