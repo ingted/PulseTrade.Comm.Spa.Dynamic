@@ -6,3 +6,4 @@
 - 2026-07-11：strict UTF-8/no-BOM/no-NUL/no-U+FFFD、trailing whitespace、document-chain path與`git diff --check`通過；敏感掃描files=11 high=0。
 - 2026-07-11：`check.fsx`初次為PASS=32/WARN=2/FAIL=0；補WBS Test ID後，沿用同一session重跑觸發`latest_log_not_advanced`/`latest_op_log_not_advanced`流程FAIL，但traceability已由missing=1修成missing=0。已記錄此stateful checker行為，改用new final session作正式結果。
 - 2026-07-11：new final session PASS=33/WARN=1/FAIL=0；RFC/WBS/Test traceability missing=0，唯一WARN為pre-commit dirty狀態。
+- 2026-07-11 closeout：commit `b6446d3`（`Document transport-neutral TA canvas runtime`）已push至`20260704_021.win.PTC_rw.Beta`；commit後只剩既有untracked `src/verify_ui.fsx`。本行由後續trace-only commit收錄。
