@@ -1,0 +1,11 @@
+# PTCS.Dynamic canonical worktree integration
+
+- 背景：使用者要求將既有 worktree 成果整併回 canonical repo，避免 root 文件與實作持續過期。
+- 目標：保留 canonical dirty tracked changes，整併 `20260710_027.ptcs_dynamic_beta79_alignment`，驗證 build/test 與 authoritative 文件鏈。
+- 假設：目標 branch 是 canonical HEAD 的直系後代；canonical dirty tracked changes 先建立 baseline，不修改或刪除未知 untracked 檔案。
+- 計畫步驟：盤點 topology/dirty -> baseline commit -> merge simulation/merge -> conflict resolution -> build/test/check -> commit/push。
+- 預計範圍：本 repo tracked dirty files、目標 branch 7 commits、`doc/`、`src/`、`tests/`、本輪 log/op_log。
+- 驗收：無 unmerged path；Dynamic Release build/test 通過；canonical branch push；`src/verify_ui.fsx` 與 worktree `.pcsl` 不被改動。
+- 風險：generated JS bundle conflict、package version alignment、append-only DevLog integration。
+- Prompt 摘要：使用者已切 root integration branch並授權開始整併，要求優先修復 worktree 未先詢問與 canonical 文件過期問題。
+- 結果：待完成。

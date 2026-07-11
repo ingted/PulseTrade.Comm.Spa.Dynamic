@@ -379,7 +379,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
       send.addEventListener("click", () => {
         const raw=caseRaw();
         rawPreview.textContent=raw;
-        return context.submit(New_31(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+        return context.submit(New_32(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
       });
       append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
       root.appendChild(caseRow);
@@ -393,7 +393,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
           fullSend.addEventListener("click", () => {
             const raw=fullRaw();
             fullPreview.textContent=raw;
-            return context.submit(New_31(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+            return context.submit(New_32(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
           append(root, [fullPreview, fullSend]);
           refreshFullPreview();
@@ -819,7 +819,7 @@ function generateActorReport(outputDirectory, status){
   if(isBlank_1(trimmed))status.Set("Report output directory is required.");
   else {
     status.Set("Generating actor state report...");
-    postJson_1("/actors/api/report", New_32(trimmed), (reply) => {
+    postJson_1("/actors/api/report", New_33(trimmed), (reply) => {
       status.Set("Report written: "+(isBlank_1(reply.filePath)?reply.fileName:reply.filePath));
     }, (message) => {
       status.Set("Report failed: "+asText_1(message));
@@ -1997,6 +1997,23 @@ function mountAppendPage(page, definition){
       return length(selectedJsonKeys)>0&&sameText(appendPageKeyId(selectedJsonKeys), bucket.keyId)?(m.$0,selectedKeyJson):keysAsJson(m.$0.keys);
     }
   };
+  const effectiveSelectedKeyId=() => {
+    const m=tryFind((bucket) => bucket.keyId==selected, buckets);
+    if(m==null){
+      const keys=keysFromJson(selectedKeyJson);
+      return length(keys)===0?"":appendPageKeyId(keys);
+    }
+    else return m.$0.keyId;
+  };
+  const applyEffectiveKeySelection=() => {
+    const keyJson=effectiveSelectedKeyJson();
+    const keys=effectiveSelectedKeys();
+    if(isBlank_2(selectedKeyJson)&&!isBlank_2(keyJson)){
+      selectedKeyJson=keyJson;
+      newKeyInput.value=keyJson;
+    }
+    if(isBlank_2(selected)&&length(keys)>0)selected=appendPageKeyId(keys);
+  };
   const selectedBucket=() => {
     const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
     if(m==null){
@@ -2237,7 +2254,10 @@ function mountAppendPage(page, definition){
             case 3:
               return iter((_5) => handleSyncEvent("tail", _5), arrayOrEmpty_1(response.events));
             case 4:
-              return exists((id) => id==requestId, pendingWsAppendIds)?setStatus(workState, pendingFailure("WebSocket append", asText_2(response.error))):setStatus(status, "WebSocket sync error: "+asText_2(response.error));
+              return exists((id) => id==requestId, pendingWsAppendIds)?(pendingWsAppendIds=filter((id) => id!=requestId, pendingWsAppendIds),deletePendingThen(requestId, () => {
+                refreshPendingState();
+                setStatus(workState, pendingFailure("WebSocket command", asText_2(response.error)));
+              })):setStatus(status, "WebSocket sync error: "+asText_2(response.error));
             case 5:
               return null;
           }
@@ -2452,16 +2472,10 @@ function mountAppendPage(page, definition){
     else addKeyEditorOpen?(setHidden(false, fallbackAddKeyPanel),addKeyRendererHost.textContent=""):setData("renderer-state", "closed", addKeyRendererHost);
   };
   rerenderAppendForm=() => {
-    let effectiveKeyId;
     const rendererShape=isActorArguPage(definition)?"actor-argu":definition.shape;
     clear(form);
     const effectiveKeyJson=effectiveSelectedKeyJson();
-    const m=tryFind((bucket) => bucket.keyId==selected, buckets);
-    if(m==null){
-      const keys=keysFromJson(selectedKeyJson);
-      effectiveKeyId=length(keys)===0?"":appendPageKeyId(keys);
-    }
-    else effectiveKeyId=m.$0.keyId;
+    const effectiveKeyId=effectiveSelectedKeyId();
     const selectedKeys=effectiveSelectedKeys();
     const x=setData("selected-key-json", effectiveKeyJson, setData("selected-key-id", effectiveKeyId, setData("shape", rendererShape, setData("renderer-state", "fallback", form))));
     setData("selected-key-source", isBlank_2(effectiveKeyJson)?"none":"selected", x);
@@ -2476,13 +2490,7 @@ function mountAppendPage(page, definition){
           _3=length(submittedKeys)>0?(selectedKeyJson=submittedKeyJson,selected=appendPageKeyId(submittedKeys),newKeyInput.value=submittedKeyJson):void 0;
         }
         else _3=void 0;
-        const keyJson=effectiveSelectedKeyJson();
-        const keys_1=effectiveSelectedKeys();
-        if(isBlank_2(selectedKeyJson)&&!isBlank_2(keyJson)){
-          selectedKeyJson=keyJson;
-          newKeyInput.value=keyJson;
-        }
-        if(isBlank_2(selected)&&length(keys_1)>0)selected=appendPageKeyId(keys_1);
+        applyEffectiveKeySelection();
         valueInput.value=submitted;
         setData("last-raw-argu", submitted, form);
         appendValue();
@@ -2563,9 +2571,10 @@ function mountAppendPage(page, definition){
     newKeyInput.value="";
     newKeyAliasInput.value="";
   }),cancelKeyButton.addEventListener("click", cancelAddKeyEditor),okKeyButton.addEventListener("click", () => addKeyWithKeyJson(isBlank_2(newKeyInput.value)?asText_2(definition.defaultKey):Trim(newKeyInput.value), newKeyAliasInput.value)),removeKeyButton.addEventListener("click", () => {
-    if(isBlank_2(selected))setStatus(status, "Select a key first");
+    applyEffectiveKeySelection();
+    const removedKeyId=effectiveSelectedKeyId();
+    if(isBlank_2(removedKeyId))setStatus(status, "Select a key first");
     else {
-      const removedKeyId=selected;
       const request=New_16(definition.pageId, removedKeyId);
       const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request);
       refreshPendingState();
@@ -2573,7 +2582,7 @@ function mountAppendPage(page, definition){
       postRemoveAppendPageKey("/pages/api/remove-key", request, () => {
         deletePendingThen(pendingId, () => {
           rememberLocallyHiddenKeyId(removedKeyId);
-          buckets=filter((bucket) => bucket.keyId!=removedKeyId, buckets);
+          buckets=filter((bucket) =>!sameText(bucket.keyId, removedKeyId), buckets);
           selected="";
           selectedKeyJson="";
           writeCurrentSnapshot();
@@ -2691,14 +2700,20 @@ function mountSets(page){
   buckets=[];
   const side=element_1("aside", "sidebar", null);
   const sideHead=element_1("div", "panel-head", null);
-  const reload=button_1("", "Reload");
+  const actionPool=setTestId_1("sets-action-pool", element_1("details", "append-page-actions", null));
+  const actionSummary=setTestId_1("sets-action-summary", element_1("summary", "append-page-actions-summary", "Actions"));
+  const actionMenu=setTestId_1("sets-action-menu", element_1("div", "append-page-actions-menu", null));
+  const reloadAction=setTestId_1("sets-action-reload", button_1("", "Reload"));
+  const cleanNoShowAction=setTestId_1("sets-action-clean-noshow", button_1("", "CleanAllNoShow Actors"));
   const filters=element_1("div", "filters", null);
   const keyFilter=input_1("key contains");
   const setFilter=input_1("set name");
   const status=element_1("div", "state", "Loading sets");
   const list=element_1("div", "list", null);
   const work=element_1("section", "work", null);
-  append_1(sideHead, [element_1("h1", "", "Sets"), reload]);
+  append_1(actionMenu, [reloadAction, cleanNoShowAction]);
+  append_1(actionPool, [actionSummary, actionMenu]);
+  append_1(sideHead, [element_1("h1", "", "Sets"), actionPool]);
   append_1(filters, [keyFilter, setFilter, status]);
   append_1(side, [sideHead, filters, list]);
   append_1(page, [side, work]);
@@ -2712,10 +2727,22 @@ function mountSets(page){
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
   const streamIdentity=(streamKey) => concat_2("\n", [asText_2(streamKey.pageId), asText_2(streamKey.mode), asText_2(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
   const setValueStreamKey=(pageId, mode, setName, keys) => New_6(asText_2(pageId), textOr("set", mode), asText_2(setName), arrayOrEmpty_1(keys));
+  const setKeyId=(setName, keys) => asText_2(setName)+"::"+concat_2(" + ", arrayOrEmpty_1(keys));
   const currentFilterTexts=() =>[isBlank_2(keyFilter.value)?"":Trim(keyFilter.value), isBlank_2(setFilter.value)?"":Trim(setFilter.value)];
   const currentCacheKey=() => {
     const p=currentFilterTexts();
     return cacheKey("sets-state", ofArray([p[0], p[1]]));
+  };
+  const filtersAccept=(setName, keys) => {
+    const p=currentFilterTexts();
+    const setText=p[1];
+    const keyText=p[0];
+    return(isBlank_2(setText)||sameText(setName, setText))&&(isBlank_2(keyText)||exists((key) => asText_2(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty_1(keys)));
+  };
+  const sortSetBuckets=(rows) => sortBy((bucket) =>[asText_2(bucket.setName), asText_2(bucket.keyId)], arrayOrEmpty_1(rows));
+  const writeSetsCache=() => {
+    const snapshot=New_21(fold((_1, _2) => Compare(_1, _2)===1?_1:_2, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
+    writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
   };
   function renderList(){
     clear(list);
@@ -2726,7 +2753,8 @@ function mountSets(page){
       item.addEventListener("click", () => {
         selected=bucket.keyId;
         renderList();
-        return renderDetail();
+        renderDetail();
+        return ensureSetsSubscriptions();
       });
       list.appendChild(item);
     }, buckets);
@@ -2803,6 +2831,19 @@ function mountSets(page){
     }, (error) => {
       if(generation===loadGeneration)setStatus(status, error);
     });
+  };
+  const closeActionPool=() => {
+    actionPool.removeAttribute("open");
+  };
+  const tryReadSetRegistry=(event) => {
+    if(event==null||isBlank_2(event.payload))return null;
+    else try {
+      const wire=json(event.payload);
+      return wire==null||asText_2(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
+    }
+    catch(m){
+      return null;
+    }
   };
   const setWsState=(value) => {
     setData("ws-state", value, page);
@@ -2891,62 +2932,97 @@ function mountSets(page){
   function requestReadTailOnce(streamKey){
     return recF(2, streamKey);
   }
+  function ensureSelectedBucketSubscription(){
+    const m=tryFind((bucket_1) => sameText(bucket_1.keyId, selected), buckets);
+    if(m==null)void 0;
+    else {
+      const bucket=m.$0;
+      const streamKey=setValueStreamKey("", "set", bucket.setName, bucket.keys);
+      subscribeStream(streamKey);
+      requestReadTailOnce(streamKey);
+    }
+  }
   function handleSyncEvent(event){
     if(!(event==null)&&!(event.streamKey==null)){
-      let m, updated, _1;
-      const m_1=asText_2(event.sourceKind).toLowerCase();
-      if(m_1=="set.stream"){
-        if(event==null||isBlank_2(event.payload))m=null;
-        else try {
-          const wire=json(event.payload);
-          m=wire==null||asText_2(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
-        }
-        catch(m_3){
-          m=null;
-        }
-        if(m==null)void 0;
+      let _1, updated, _2;
+      const m=asText_2(event.sourceKind).toLowerCase();
+      if(m=="set.stream"){
+        const m_1=tryReadSetRegistry(event);
+        if(m_1==null)void 0;
         else {
-          const streamKey=m.$0;
-          subscribeStream(streamKey);
-          requestReadTailOnce(streamKey);
+          const streamKey=m_1.$0;
+          const setName=asText_2(streamKey.setName);
+          const keys=arrayOrEmpty_1(streamKey.keys);
+          if(filtersAccept(setName, keys)){
+            const keyId=setKeyId(setName, keys);
+            if(!exists((bucket) => sameText(bucket.keyId, keyId), buckets)){
+              buckets=sortSetBuckets(buckets.concat([New_20(keyId, setName, keys, 0, event.sequence, asText_2(event.createdAtUtc), [])]));
+              isBlank_2(selected)?selected=keyId:void 0;
+              renderList();
+              renderDetail();
+              writeSetsCache();
+            }
+            if(sameText(keyId, selected)){
+              const selectedStreamKey=setValueStreamKey("", "set", setName, keys);
+              subscribeStream(selectedStreamKey);
+              requestReadTailOnce(selectedStreamKey);
+            }
+            else void 0;
+          }
+          else void 0;
         }
       }
-      else if(m_1=="set"){
+      else if(m=="set.stream.hidden"){
+        const m_2=tryReadSetRegistry(event);
+        if(m_2==null)void 0;
+        else {
+          const streamKey_1=m_2.$0;
+          const keyId_1=setKeyId(asText_2(streamKey_1.setName), arrayOrEmpty_1(streamKey_1.keys));
+          buckets=filter((bucket) =>!sameText(bucket.keyId, keyId_1), buckets);
+          if(sameText(selected, keyId_1)){
+            const o=tryHead(buckets);
+            const o_1=o==null?null:Some(o.$0.keyId);
+            _1=selected=o_1==null?"":o_1.$0;
+          }
+          else _1=void 0;
+          renderList();
+          renderDetail();
+          writeSetsCache();
+          setStatus(status, "Hidden set stream "+keyId_1);
+        }
+      }
+      else if(m=="set"){
         if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
-          const setName=asText_2(event.streamKey.setName);
-          const keys=arrayOrEmpty_1(event.streamKey.keys);
-          const p=currentFilterTexts();
-          const setText=p[1];
-          const keyText=p[0];
-          if((isBlank_2(setText)||sameText(setName, setText))&&(isBlank_2(keyText)||exists((key) => asText_2(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty_1(keys)))){
-            const value=New_21(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
-            const keyId=asText_2(setName)+"::"+concat_2(" + ", arrayOrEmpty_1(keys));
-            const m_2=tryFind((bucket) => sameText(bucket.keyId, keyId), buckets);
-            if(m_2==null)updated=New_20(keyId, setName, keys, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
+          const setName_1=asText_2(event.streamKey.setName);
+          const keys_1=arrayOrEmpty_1(event.streamKey.keys);
+          if(filtersAccept(setName_1, keys_1)){
+            const value=New_22(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
+            const keyId_2=setKeyId(setName_1, keys_1);
+            const m_3=tryFind((bucket) => sameText(bucket.keyId, keyId_2), buckets);
+            if(m_3==null)updated=New_20(keyId_2, setName_1, keys_1, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
             else {
-              const existing=m_2.$0;
+              const existing=m_3.$0;
               const existingValues=arrayOrEmpty_1(existing.values);
               const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
               const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
               const mergedValues=latestArray(defaultRenderLimit(), v);
-              if(alreadyVisible)_1=existing.valueCount;
+              if(alreadyVisible)_2=existing.valueCount;
               else {
                 const a=existing.valueCount;
                 const b=length(existingValues);
-                let _2=Compare(a, b)===1?a:b;
-                _1=_2+1;
+                let _3=Compare(a, b)===1?a:b;
+                _2=_3+1;
               }
               const a_1=existing.maxSequence;
               const b_1=event.sequence;
-              let _3=Compare(a_1, b_1)===1?a_1:b_1;
-              updated=New_20(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+              let _4=Compare(a_1, b_1)===1?a_1:b_1;
+              updated=New_20(existing.keyId, existing.setName, existing.keys, _2, _4, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
             }
-            buckets=sortBy((bucket) =>[asText_2(bucket.setName), asText_2(bucket.keyId)], arrayOrEmpty_1(filter((bucket) =>!sameText(bucket.keyId, keyId), buckets).concat([updated])));
-            selected=keyId;
+            buckets=sortSetBuckets(filter((bucket) =>!sameText(bucket.keyId, keyId_2), buckets).concat([updated]));
+            selected=keyId_2;
             renderList();
             renderDetail();
-            const snapshot=New_22(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
-            writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
+            writeSetsCache();
             ensureSetsSubscriptions();
             setStatus(status, "Synced set event "+value.valueId);
           }
@@ -2992,13 +3068,27 @@ function mountSets(page){
       registryTailRequested=true;
       requestReadTail(registryKey);
     }
-    iter((bucket) => {
-      const streamKey=setValueStreamKey("", "set", bucket.setName, bucket.keys);
-      subscribeStream(streamKey);
-      requestReadTailOnce(streamKey);
-    }, buckets);
+    ensureSelectedBucketSubscription();
   };
-  reload.addEventListener("click", load);
+  reloadAction.addEventListener("click", () => {
+    closeActionPool();
+    return load();
+  });
+  cleanNoShowAction.addEventListener("click", () => {
+    closeActionPool();
+    setStatus(status, "Cleaning no-show actor set streams");
+    return postJson_2("/sets/api/clean-no-show-actors", New_23("browser-action"), (reply) => {
+      deleteSnapshot(currentCacheKey());
+      subscribedStreams=[];
+      tailRequestedStreams=[];
+      registryTailRequested=false;
+      setData("ws-stream-count", String(length(subscribedStreams)), page);
+      setStatus(status, "Cleaned "+String(reply.hiddenCount)+" no-show actor stream(s)");
+      load();
+    }, (error) => {
+      setStatus(status, "CleanAllNoShow Actors failed: "+error);
+    });
+  });
   keyFilter.addEventListener("input", load);
   setFilter.addEventListener("input", load);
   load();
@@ -3017,7 +3107,7 @@ function mountActors(page){
   append_1(actions, [status, reload]);
   append_1(head_2, [title, actions]);
   append_1(page, [head_2, treePanel, nodes]);
-  const emptySnapshot=New_23(0, 0, 0n, []);
+  const emptySnapshot=New_24(0, 0, 0n, []);
   actorSnapshot=emptySnapshot;
   syncSocket=null;
   queuedSyncFrames=[];
@@ -3263,13 +3353,13 @@ function mountActors(page){
         if(!isBlank_2(nodeId_1)&&!isBlank_2(actorId)){
           const tags=arrayOrEmpty_1(_1.tags);
           const roles=arrayOrEmpty_1(_1.roles);
-          const actor=New_24(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
+          const actor=New_25(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
           const m=tryFind((node) => sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes));
-          if(m==null)updatedNode=New_25(nodeId_1, nodeAddress_1, "up", roles, [actor]);
+          if(m==null)updatedNode=New_26(nodeId_1, nodeAddress_1, "up", roles, [actor]);
           else {
             const existing=m.$0;
             const actors=sortBy((row) => asText_2(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty_1(existing.actors)).concat([actor]));
-            updatedNode=New_25(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, textOr("up", existing.status), length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
+            updatedNode=New_26(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, textOr("up", existing.status), length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
           }
           const nodes_1=sortBy((node) => asText_2(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes)).concat([updatedNode]));
           let _2=length(nodes_1);
@@ -3277,7 +3367,7 @@ function mountActors(page){
           const a=actorSnapshot.maxSequence;
           const b=event.sequence;
           let _4=Compare(a, b)===1?a:b;
-          actorSnapshot=New_23(_2, _3, _4, nodes_1);
+          actorSnapshot=New_24(_2, _3, _4, nodes_1);
           writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
           applySnapshot("synced", actorSnapshot);
           setStatus(status, "Synced actor "+actorId);
@@ -3465,7 +3555,7 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_27(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_28(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -3538,7 +3628,7 @@ function mountChat(page){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_27(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_28(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -3570,7 +3660,7 @@ function mountChat(page){
               o=message==null||isBlank_2(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_26(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
+              o=Some(New_27(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -3652,9 +3742,9 @@ function mountChat(page){
     if(isBlank_2(selected))setStatus(state, "Select a participant first");
     else if(isBlank_2(body))setStatus(state, "Message is empty");
     else {
-      const request=New_30(participantId, selected, body, ["web-chat"]);
+      const request=New_31(participantId, selected, body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_29("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_30("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -3751,7 +3841,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_35(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_36(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_2(request.userName)||isBlank_2(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -3781,7 +3871,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_2(node.textContent)?New_34("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_2(node.textContent)?New_35("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_2(value)?fallback:value;
@@ -4378,7 +4468,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_2(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_37(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_38(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_2("/pages/api/register-page", request, (reply) => {
@@ -4596,10 +4686,10 @@ function hasTag(tag, tags){
 }
 function currentBrowserUser(){
   const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_2(userNode.textContent))return New_36("user.web", "Web User", "", false, "anonymous", "/chat/logout");
+  if(userNode==null||isBlank_2(userNode.textContent))return New_37("user.web", "Web User", "", false, "anonymous", "/chat/logout");
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank_2(user.participantId)?New_36("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
+    return user==null||isBlank_2(user.participantId)?New_37("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
   }
 }
 function fcellValueModeLabel(mode, tags){
@@ -4782,7 +4872,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
-  return New_33(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_34(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -5232,7 +5322,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_28(streamId, _3, _4, asText_2(source), nowTicks());
+    let _5=New_29(streamId, _3, _4, asText_2(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -5245,6 +5335,9 @@ function readAllPending(onRead){
 }
 function deletePendingThen(commandId, onDeleted){
   deleteFromThen(pendingStore(), commandId, onDeleted);
+}
+function deleteSnapshot(key){
+  deleteSnapshotAndWatermark(key);
 }
 function readWatermark(key, onRead){
   if(isBlank_2(key))onRead(null);
@@ -5393,6 +5486,18 @@ function pendingStore(){
 function writePending(command){
   writeJsonTo(pendingStore(), command.commandId, command);
 }
+function deleteSnapshotAndWatermark(key){
+  if(!isBlank_2(key))withSnapshotWatermarkStores("readwrite", (_1, _2, _3) => {
+    try {
+      _2["delete"](key);
+      _3["delete"](key);
+      return;
+    }
+    catch(m){
+      return null;
+    }
+  }, () => { });
+}
 function databaseName(){
   return _c_1.databaseName;
 }
@@ -5451,18 +5556,6 @@ function watermarkTouchedAt(watermark){
     return m[0]?m[1]:0n;
   }
 }
-function deleteSnapshotAndWatermark(key){
-  if(!isBlank_2(key))withSnapshotWatermarkStores("readwrite", (_1, _2, _3) => {
-    try {
-      _2["delete"](key);
-      _3["delete"](key);
-      return;
-    }
-    catch(m){
-      return null;
-    }
-  }, () => { });
-}
 function readAllSnapshotKeys(onRead){
   withStore(snapshotStore(), "readonly", (store) => {
     try {
@@ -5507,18 +5600,6 @@ function withTransactionStore(storeName, mode, onStore, onUnavailable){
     }
   }, onUnavailable);
 }
-function ensureStore(storeName, db){
-  let _1;
-  const names=db.objectStoreNames;
-  if(isMissing(names))_1=false;
-  else try {
-    _1=names.contains(storeName);
-  }
-  catch(m){
-    _1=false;
-  }
-  if(!_1)db.createObjectStore(storeName);
-}
 function withSnapshotWatermarkStores(mode, onStores, onUnavailable){
   openDb((db) => {
     try {
@@ -5534,6 +5615,18 @@ function withSnapshotWatermarkStores(mode, onStores, onUnavailable){
       onUnavailable();
     }
   }, onUnavailable);
+}
+function ensureStore(storeName, db){
+  let _1;
+  const names=db.objectStoreNames;
+  if(isMissing(names))_1=false;
+  else try {
+    _1=names.contains(storeName);
+  }
+  catch(m){
+    _1=false;
+  }
+  if(!_1)db.createObjectStore(storeName);
 }
 function Equals(a, b){
   let _1;
@@ -6841,7 +6934,10 @@ function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, val
     values:values
   };
 }
-function New_21(valueId, keys, createdAtUtc, value, tags){
+function New_21(maxSequence, buckets){
+  return{maxSequence:maxSequence, buckets:buckets};
+}
+function New_22(valueId, keys, createdAtUtc, value, tags){
   return{
     valueId:valueId, 
     keys:keys, 
@@ -6850,10 +6946,10 @@ function New_21(valueId, keys, createdAtUtc, value, tags){
     tags:tags
   };
 }
-function New_22(maxSequence, buckets){
-  return{maxSequence:maxSequence, buckets:buckets};
+function New_23(reason){
+  return{reason:reason};
 }
-function New_23(nodeCount, actorCount, maxSequence, nodes){
+function New_24(nodeCount, actorCount, maxSequence, nodes){
   return{
     nodeCount:nodeCount, 
     actorCount:actorCount, 
@@ -6973,7 +7069,7 @@ class HashSet extends Object_1 {
 function OfArray(a){
   return new FSharpMap("New_1", OfSeq(map_1((_1) => Pair.New(_1[0], _1[1]), a)));
 }
-function New_24(actorId, displayName, kind, keys, status, routees){
+function New_25(actorId, displayName, kind, keys, status, routees){
   return{
     actorId:actorId, 
     displayName:displayName, 
@@ -6983,7 +7079,7 @@ function New_24(actorId, displayName, kind, keys, status, routees){
     routees:routees
   };
 }
-function New_25(nodeId_1, nodeAddress_1, status, roles, actors){
+function New_26(nodeId_1, nodeAddress_1, status, roles, actors){
   return{
     nodeId:nodeId_1, 
     nodeAddress:nodeAddress_1, 
@@ -6992,7 +7088,7 @@ function New_25(nodeId_1, nodeAddress_1, status, roles, actors){
     actors:actors
   };
 }
-function New_26(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_27(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
     messageId:messageId, 
     fromId:fromId, 
@@ -7002,10 +7098,10 @@ function New_26(messageId, fromId, toId, scope, body, createdAtUtc){
     createdAtUtc:createdAtUtc
   };
 }
-function New_27(messages, nextAfterMessageId){
+function New_28(messages, nextAfterMessageId){
   return{messages:messages, nextAfterMessageId:nextAfterMessageId};
 }
-function New_28(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_29(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
     streamId:streamId, 
     newestSequence:newestSequence, 
@@ -7014,7 +7110,7 @@ function New_28(streamId, newestSequence, cachedCount, source, touchedAt){
     touchedAt:touchedAt
   };
 }
-function New_29(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_30(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -7026,7 +7122,7 @@ function New_29(type, requestId, fromId, toId, body, tags, browserId, tabId){
     tabId:tabId
   };
 }
-function New_30(fromId, toId, body, tags){
+function New_31(fromId, toId, body, tags){
   return{
     fromId:fromId, 
     toId:toId, 
@@ -7093,7 +7189,7 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_31(rawArgu, duTypeName, unionCaseName, keyJson){
+function New_32(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
     rawArgu:rawArgu, 
     duTypeName:duTypeName, 
@@ -7329,7 +7425,7 @@ function Handler(name, callback){
 function Dynamic(name, view){
   return Dynamic_1(view, (el) =>(v) => el.setAttribute(name, v));
 }
-function New_32(outputDirectory){
+function New_33(outputDirectory){
   return{outputDirectory:outputDirectory};
 }
 function ofSeqNonCopying(xs){
@@ -7569,7 +7665,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_38(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_39(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -7744,7 +7840,7 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_33(shape, label_1, badge, className){
+function New_34(shape, label_1, badge, className){
   return{
     shape:shape, 
     label:label_1, 
@@ -7752,7 +7848,7 @@ function New_33(shape, label_1, badge, className){
     className:className
   };
 }
-function New_34(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_35(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
     submitPath:submitPath, 
     sessionPath:sessionPath, 
@@ -7766,7 +7862,7 @@ function New_34(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, 
     aclLabel:aclLabel
   };
 }
-function New_35(userName, password, returnUrl, keepSession){
+function New_36(userName, password, returnUrl, keepSession){
   return{
     userName:userName, 
     password:password, 
@@ -7774,7 +7870,7 @@ function New_35(userName, password, returnUrl, keepSession){
     keepSession:keepSession
   };
 }
-function New_36(participantId, displayName, login, authenticated, provider, logoutPath){
+function New_37(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
     participantId:participantId, 
     displayName:displayName, 
@@ -7784,7 +7880,7 @@ function New_36(participantId, displayName, login, authenticated, provider, logo
     logoutPath:logoutPath
   };
 }
-function New_37(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_38(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
     pageId:pageId, 
     title:title, 
@@ -7889,7 +7985,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_39(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_40(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -8074,7 +8170,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_40(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_41(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -8512,7 +8608,7 @@ class KeyCollection extends Object_1 {
     this.d=d;
   }
 }
-function New_38(PreviousNodes, Top){
+function New_39(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -8590,7 +8686,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_41((a) => {
+    r(New_42((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -8615,7 +8711,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_41((a) => {
+    if(!ct.c)c(New_42((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -8718,7 +8814,7 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_39(Node_1, Left, Right, Height, Count){
+function New_40(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1, 
     Left:Left, 
@@ -8765,7 +8861,7 @@ class Updates_1 {
     });
   }
 }
-function New_40(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_41(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
     DynElem:DynElem, 
     DynFlags:DynFlags, 
@@ -9100,7 +9196,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_41(k, ct){
+function New_42(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -9122,7 +9218,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_42(false, []);
+    this.noneCT=New_43(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -9131,7 +9227,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_42(IsCancellationRequested, Registrations){
+function New_43(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -9388,7 +9484,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create(f){
-  return New_43(false, f, forceLazy);
+  return New_44(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -9409,7 +9505,7 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_43(created, evalOrVal, force){
+function New_44(created, evalOrVal, force){
   return{
     c:created, 
     v:evalOrVal, 

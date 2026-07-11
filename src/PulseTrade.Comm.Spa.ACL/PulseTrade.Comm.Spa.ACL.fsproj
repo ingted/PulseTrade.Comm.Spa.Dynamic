@@ -22,7 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta74]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta75]" />
     <PackageReference Include="PulseTrade.Comm.ACL.Core" Version="[0.1.0-alpha2]" />
   </ItemGroup>
 
