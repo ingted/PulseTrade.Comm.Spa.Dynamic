@@ -1,0 +1,11 @@
+# PTCS.Dynamic TA Canvas RFC operation evidence
+
+- 2026-07-11 10:16 +08:00：建立 pre-work trace；保留既有 `.pcsl/dynamic-beta72-build-202607102220/` 不動。
+- 2026-07-11 10:20 +08:00：以metadata-first review產生Dynamic insight；`.pcsl`、bin/obj與generated bundles不作source review輸入。
+- 2026-07-11 10:37 +08:00：確認現有Canvas是單次reply renderer；DSL中的`RealtimeChart`沒有正式renderer，現有registry缺mount/unmount、revision、patch與authenticated transient channel contract。
+- 2026-07-11 10:56 +08:00：新增Proposed REQ/RFC/SA，修訂`SDUI_DSL_zh-Hant.md`加入`sdui-runtime.v1` document/snapshot/patch/error/heartbeat、TA nodes、view/query separation、reset、5秒poll與resync語義。
+- 2026-07-11 11:03 +08:00：DevLog已append；PTCS core authenticated WebSocket companion seam明列為DEV前置條件，未以HTTP/history append/JavaScript workaround代替。
+- 2026-07-11 11:08 +08:00：新舊修改文件strict UTF-8/no-BOM、NUL與U+FFFD檢查通過；既有untracked `.pcsl/dynamic-beta72-build-202607102220/`保持不動。
+- 2026-07-11 11:14 +08:00：首次check為PASS=29/WARN=2/FAIL=0；依workspace新RFC規則將本次RFC由舊專案慣例`doc/`移至`doc/RFC/`並更新所有回鏈，既有RFC不作考古式搬移。
+- 2026-07-11 11:12 +08:00：changed docs/log/review insight敏感掃描`high=0 medium=0`；informational hits為DSL security規則與既有release DevLog。
+- 2026-07-11 11:15 +08:00：搬移後check為PASS=29/WARN=2/FAIL=0，RFC audit辨識1份且無missing/thin ID；WARN僅為日期log子目錄與expected git dirty。`git diff --cached --check`通過，既有`.pcsl/dynamic-beta72-build-202607102220/`未stage。

@@ -864,3 +864,10 @@ Implementation status:
 
 - Repacked `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta73` from source commit `98864663c588682e42186bc00f294102ff5fab28`; nuspec dependency is exact `PulseTrade.Comm.Spa [0.2.5-beta80]`.
 - Existing `PostBuildEvent.ps1` push returned `Created` / `Your package was pushed`. The flat-container did not list beta73 within the first three minutes, so propagation remains pending and the package was not pushed again.
+
+## 2026-07-11 - Proposed realtime TA Canvas runtime
+
+- Added `doc/TAResearch/REQ.md`, `doc/TAResearch/SA.md` and `RFC-PTCS-DYNAMIC-0007` for immutable SDUI documents plus bounded typed snapshot/patch frames, TA row vocabulary, local viewport state, resync and five-second client-pull lifecycle.
+- Extended `SDUI_DSL_zh-Hant.md` with `sdui-runtime.v1` envelope/patch/node/reset/poll semantics. Existing static `fskynet-sdui` remains compatible; the prior `RealtimeChart` document term was not an implemented renderer.
+- New TA runtime code must be pure WebSharper F# and use typed codecs; it cannot extend the current `JS.Inline` dynamic-object pattern or depend on Plotly JavaScript.
+- PTCS core still needs a companion authenticated WebSocket mount/unmount/target-submit/transient-frame seam. Until accepted, HTTP polling or history-appending updates are not valid E2E acceptance.

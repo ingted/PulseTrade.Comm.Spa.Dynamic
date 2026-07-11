@@ -1,0 +1,15 @@
+# PTCS.Dynamic TA Canvas RFC analysis
+
+- 背景：Dynamic SDUI需新增可互動、可reset、可參數切換且可5秒pull更新的TA Canvas語義。
+- 目標：基於既有Canvas/FormInput DSL與renderer，建立PTCS.Dynamic專屬REQ、RFC、SA。
+- 假設：Dynamic只擁有provider-neutral DSL/state/update/render contracts，不直接參考PTMD或broker package。
+- 計畫步驟：metadata-first inventory；讀既有REQ/RFC/SA/DSL與renderer seam；定義initial canvas + incremental patch/pull contract；撰寫文件；驗證與closeout。
+- 預計修改/讀取範圍：`doc/`、`src/`中與SDUI DSL/Canvas renderer/extension registration相關的必要檔案。
+- 驗收方式：REQ/RFC/SA涵蓋reset、zoom/pan、toggle/mode/parameter、historical load、5秒pull、update sequence/idempotency/backpressure與fallback；不含provider implementation。
+- 風險：不可讓reply後DSL完全固定等同於不可更新；需區分layout schema、data snapshot與incremental patch，避免每5秒全量rerender。
+- Prompt/上下文摘要：使用者要求PTCS.Dynamic支援研究型realtime TA Canvas，歷史為主、即時5秒pull即可。
+- 執行命令/參數：使用metadata insight、`rg`與精準snippet review。
+- 結果：待執行。
+- 根因判讀：待分析。
+- 下一步：讀README/既有文件並產生review insight。
+- 關聯文件/工單/PR：待建立RFC ID後回鏈。
