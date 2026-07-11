@@ -909,5 +909,16 @@ Implementation status:
 ## 2026-07-11 - Dynamic.Ptcs transient server adapter alpha2
 
 - Added packable `PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha2` with exact PTCS beta82 and Contracts alpha4 dependencies. The adapter decodes typed client frames, passes server-derived session context to a host backend, validates returned runtime frames and applies the canonical reducer per session/extension/channel.
+
+## 2026-07-11 - bounded PTCS TA browser adapters
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic.Ptcs` to `0.1.0-alpha3` with explicit `ta-browser.v1` bounded wire while retaining legacy recursive-wire compatibility; exact-package tests pass 4/4.
+- Added `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha2`, a pure WebSharper same-origin `/sync/ws` adapter that projects bounded TA state into the shared Renderer and emits typed actions. Exact-package model tests pass 2/2.
+- WebSharper 10.1.5.674 initially crashed without diagnostics because a stale `wsfscservice` had remained alive since 22:33. After stopping the helper, the canonical descriptive project `src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` builds normally; no short-path workaround or disabled compiler is retained. Build then `pack --no-build` is the verified sequence.
+- Real PTCS host mount, ack/in-flight UI, polling/reconnect/resync and desktop/mobile Playwright remain open under `DYN-TA-004/006`; PTCS.Host was not changed in this slice.
 - Exact-package tests passed 3/3: recursive SDUI wire roundtrip, document/snapshot reducer state, same-channel cross-session isolation, invalid payload fail-closed and disconnect cleanup.
 - Browser adapter is not claimed complete. WebSharper 10.1.5 terminates without diagnostics when the recursive generic browser wire or PTCS beta81/82 metadata enters the legacy Bundle merge. Legacy Dynamic remains on PTCS beta80; the next adapter slice uses a bounded non-recursive TA browser wire and requires Playwright acceptance.
+
+### Correction - alpha2 / bounded adapter paragraph boundary
+
+- The two bullets immediately above this correction that mention `3/3` and “Browser adapter is not claimed complete” are the remaining alpha2 status notes. The later authoritative state is alpha3 server tests `4/4` plus Ptcs.Client alpha2 tests `2/2`; real-host Playwright is still open.

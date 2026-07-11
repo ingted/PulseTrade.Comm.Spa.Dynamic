@@ -97,6 +97,40 @@ let context sessionId operation requestId clientFrame =
 let decodeState (text: string) =
     JsonSerializer.Deserialize<TaTransientStateWire>(text, TaResearchTransientServer.jsonOptions)
 
+let browserPayload kind actionKind =
+    { wireVersion = "ta-browser.v1"
+      kind = kind
+      actionKind = actionKind
+      canvasInstanceId = "canvas-main"
+      rowId = ""
+      rowKind = ""
+      dataRef = ""
+      heightWeight = 0.0
+      visible = false
+      sourceId = ""
+      instrument = ""
+      intervalMinutes = 0
+      fromUtc = ""
+      toUtcExclusive = ""
+      includePartial = false
+      afterDataRevision = 0L
+      dataRevision = 0L
+      reasonCode = "" }
+    |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
+
+let browserContext sessionId operation requestId payloadText =
+    { Session = session sessionId
+      ExtensionId = "ta-research"
+      ChannelId = "browser-main"
+      Operation = operation
+      RequestId = requestId
+      Payload = payloadText
+      BrowserId = Some "browser"
+      TabId = Some "tab" }
+
+let decodeBrowserState (text: string) =
+    JsonSerializer.Deserialize<TaBrowserStateWire>(text, TaResearchTransientServer.jsonOptions)
+
 let requireOk = function
     | Ok value -> value
     | Error error -> failtest error
@@ -154,7 +188,39 @@ let tests =
                   { context "cleanup" "disconnect" "disconnect" (RuntimeClientFrame.Unmounted canvasId) with Payload = "" }
 
               let! disconnected = handler disconnect
-              Expect.equal disconnected (Ok "{}") "disconnect should remove channel reducer state without invoking backend." }) ]
+              Expect.equal disconnected (Ok "{}") "disconnect should remove channel reducer state without invoking backend." })
+
+          testCaseAsync "bounded browser wire uses the same reducer without recursive SDUI values" (async {
+              let handler = TaResearchTransientServer.createHandler backend
+              let! opened =
+                  handler (browserContext "browser-a" "open" "browser-open" (browserPayload "mounted" ""))
+
+              let openedState = opened |> requireOk |> decodeBrowserState
+              Expect.equal openedState.wireVersion "ta-browser.v1" "browser response must retain the bounded wire version."
+              Expect.equal openedState.title "TA Research" "document metadata should be projected for the browser."
+              Expect.equal openedState.rows.Length 1 "document rows should be projected without recursive values."
+              Expect.equal openedState.rows[0].kind "candlestick" "row kind should use the canonical text representation."
+
+              let queryBase =
+                  browserPayload "action" "change-query"
+                  |> fun text -> JsonSerializer.Deserialize<TaBrowserClientFrameWire>(text, TaResearchTransientServer.jsonOptions)
+
+              let query =
+                  { queryBase with
+                      sourceId = "sql"
+                      instrument = "TXF"
+                      intervalMinutes = 5
+                      fromUtc = "2026-07-01T00:00:00+08:00"
+                      toUtcExclusive = "2026-07-12T00:00:00+08:00"
+                      includePartial = true }
+                  |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
+
+              let! queried = handler (browserContext "browser-a" "action" "browser-query" query)
+              let queriedState = queried |> requireOk |> decodeBrowserState
+              Expect.equal queriedState.dataRevision 1L "browser query must advance the canonical reducer revision."
+              Expect.equal queriedState.statusLabel "BACKFILL" "browser status should come from the canonical snapshot."
+              Expect.equal queriedState.series.Length 1 "browser wire should expose one bounded series per row."
+              Expect.isEmpty queriedState.series[0].points "the empty backend series should remain empty." }) ]
 
 [<EntryPoint>]
 let main argv =

@@ -86,6 +86,79 @@ type TaTransientClientFrameWire =
       dataRevision: int64
       reasonCode: string }
 
+[<CLIMutable>]
+type TaBrowserPointWire =
+    { time: string
+      openValue: float
+      highValue: float
+      lowValue: float
+      closeValue: float
+      volumeValue: float
+      lineValue: float
+      hasOpen: bool
+      hasHigh: bool
+      hasLow: bool
+      hasClose: bool
+      hasVolume: bool
+      hasLineValue: bool }
+
+[<CLIMutable>]
+type TaBrowserSeriesWire =
+    { dataRef: string
+      points: TaBrowserPointWire array }
+
+[<CLIMutable>]
+type TaBrowserRowWire =
+    { rowId: string
+      kind: string
+      dataRef: string
+      heightWeight: float
+      visible: bool }
+
+[<CLIMutable>]
+type TaBrowserStateWire =
+    { wireVersion: string
+      documentId: string
+      canvasInstanceId: string
+      workspaceId: string
+      title: string
+      rowsRef: string
+      statusRef: string
+      sharedTimeAxis: bool
+      rows: TaBrowserRowWire array
+      allowedActions: string array
+      series: TaBrowserSeriesWire array
+      statusLabel: string
+      freshness: string
+      documentRevision: int64
+      dataRevision: int64
+      transportSequence: int64
+      pollKind: string
+      errorCode: string
+      errorMessage: string
+      errorRecoverable: bool }
+
+[<CLIMutable>]
+type TaBrowserClientFrameWire =
+    { wireVersion: string
+      kind: string
+      actionKind: string
+      canvasInstanceId: string
+      rowId: string
+      rowKind: string
+      dataRef: string
+      heightWeight: float
+      visible: bool
+      sourceId: string
+      instrument: string
+      intervalMinutes: int
+      fromUtc: string
+      toUtcExclusive: string
+      includePartial: bool
+      afterDataRevision: int64
+      dataRevision: int64
+      reasonCode: string }
+
 [<RequireQualifiedAccess>]
 module TaResearchTransientWire =
     let text value = if isNull value then "" else value
@@ -319,6 +392,143 @@ module TaResearchTransientWire =
         | "action", "full-snapshot" -> Ok(RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot(canvas, text wire.reasonCode)))
         | _ -> Error "Unsupported TA transient client frame."
 
+[<RequireQualifiedAccess>]
+module TaResearchBrowserWire =
+    let text value = if isNull value then "" else value
+
+    let tryNumber = function
+        | SduiValue.Number value -> Some value
+        | _ -> None
+
+    let tryText = function
+        | SduiValue.Text value -> Some(text value)
+        | _ -> None
+
+    let valueOrZero field values =
+        values |> Map.tryFind field |> Option.bind tryNumber |> Option.defaultValue 0.0
+
+    let has field values = Map.containsKey field values
+
+    let pointFromValue = function
+        | SduiValue.Object values ->
+            Some
+                { time = values |> Map.tryFind "time" |> Option.bind tryText |> Option.defaultValue ""
+                  openValue = valueOrZero "open" values
+                  highValue = valueOrZero "high" values
+                  lowValue = valueOrZero "low" values
+                  closeValue = valueOrZero "close" values
+                  volumeValue = valueOrZero "volume" values
+                  lineValue = valueOrZero "value" values
+                  hasOpen = has "open" values
+                  hasHigh = has "high" values
+                  hasLow = has "low" values
+                  hasClose = has "close" values
+                  hasVolume = has "volume" values
+                  hasLineValue = has "value" values }
+        | _ -> None
+
+    let seriesFromState (state: RuntimeState) dataRef =
+        let points =
+            match Map.tryFind dataRef state.Data with
+            | Some(SduiValue.Array values) -> values |> Array.choose pointFromValue
+            | _ -> [||]
+
+        { dataRef = dataRef; points = points }
+
+    let stateToWire (state: RuntimeState) =
+        let document = state.Document
+        let rows =
+            document
+            |> Option.map (fun value ->
+                value.Rows
+                |> Array.map (fun row ->
+                    { rowId = row.RowId
+                      kind = TaResearchTransientWire.rowKindText row.Kind
+                      dataRef = row.DataRef
+                      heightWeight = row.HeightWeight
+                      visible = row.Visible }))
+            |> Option.defaultValue [||]
+
+        let series = rows |> Array.map (fun row -> seriesFromState state row.dataRef)
+        let statusRef = document |> Option.map _.StatusRef |> Option.defaultValue "status"
+        let statusValues =
+            match Map.tryFind statusRef state.Data with
+            | Some(SduiValue.Object values) -> values
+            | _ -> Map.empty
+
+        let statusLabel = statusValues |> Map.tryFind "label" |> Option.bind tryText |> Option.defaultValue ""
+        let freshness = statusValues |> Map.tryFind "freshness" |> Option.bind tryText |> Option.defaultValue ""
+        let pollKind, _ = TaResearchTransientWire.pollToWire state.Poll
+        let (DocumentId documentId) = state.Identity.DocumentId
+        let (CanvasInstanceId canvasId) = state.Identity.CanvasInstanceId
+        let errorCode, errorMessage, errorRecoverable =
+            match state.LastError with
+            | Some error -> error.ReasonCode, error.Message, error.Recoverable
+            | None -> "", "", false
+
+        { wireVersion = "ta-browser.v1"
+          documentId = documentId
+          canvasInstanceId = canvasId
+          workspaceId = document |> Option.map _.WorkspaceId |> Option.defaultValue ""
+          title = document |> Option.map _.Title |> Option.defaultValue ""
+          rowsRef = document |> Option.map _.RowsRef |> Option.defaultValue "rows"
+          statusRef = statusRef
+          sharedTimeAxis = document |> Option.map _.SharedTimeAxis |> Option.defaultValue true
+          rows = rows
+          allowedActions = document |> Option.map _.AllowedActions |> Option.defaultValue [||]
+          series = series
+          statusLabel = statusLabel
+          freshness = freshness
+          documentRevision = state.DocumentRevision
+          dataRevision = state.DataRevision
+          transportSequence = state.LastTransportSequence
+          pollKind = pollKind
+          errorCode = errorCode
+          errorMessage = errorMessage
+          errorRecoverable = errorRecoverable }
+
+    let optionalText value =
+        if String.IsNullOrWhiteSpace value then None else Some(value.Trim())
+
+    let clientFrameFromWire (wire: TaBrowserClientFrameWire) =
+        if isNull (box wire) || not (String.Equals(wire.wireVersion, "ta-browser.v1", StringComparison.Ordinal)) then
+            Error "Unsupported TA browser wire version."
+        else
+            let canvas = CanvasInstanceId(text wire.canvasInstanceId)
+
+            match text wire.kind, text wire.actionKind with
+            | "mounted", _ -> Ok(RuntimeClientFrame.Mounted canvas)
+            | "unmounted", _ -> Ok(RuntimeClientFrame.Unmounted canvas)
+            | "poll-completed", _ -> Ok(RuntimeClientFrame.PollCompleted(canvas, wire.dataRevision))
+            | "action", "reset-view" -> Ok(RuntimeClientFrame.Action(SduiAction.ResetView canvas))
+            | "action", "reset-canvas" -> Ok(RuntimeClientFrame.Action(SduiAction.ResetCanvas canvas))
+            | "action", "add-row" ->
+                Ok(
+                    RuntimeClientFrame.Action(
+                        SduiAction.AddTaRow(
+                            canvas,
+                            { RowId = text wire.rowId
+                              Kind = TaResearchTransientWire.rowKind wire.rowKind
+                              DataRef = text wire.dataRef
+                              HeightWeight = wire.heightWeight
+                              Visible = wire.visible
+                              Options = Map.empty })))
+            | "action", "remove-row" -> Ok(RuntimeClientFrame.Action(SduiAction.RemoveTaRow(canvas, text wire.rowId)))
+            | "action", "change-query" ->
+                Ok(
+                    RuntimeClientFrame.Action(
+                        SduiAction.ChangeTaQuery(
+                            canvas,
+                            { SourceId = optionalText wire.sourceId
+                              Instrument = optionalText wire.instrument
+                              IntervalMinutes = if wire.intervalMinutes > 0 then Some wire.intervalMinutes else None
+                              FromUtc = optionalText wire.fromUtc
+                              ToUtcExclusive = optionalText wire.toUtcExclusive
+                              IncludePartial = Some wire.includePartial })))
+            | "action", "poll-delta" -> Ok(RuntimeClientFrame.Action(SduiAction.PollDelta(canvas, wire.afterDataRevision)))
+            | "action", "full-snapshot" -> Ok(RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot(canvas, text wire.reasonCode)))
+            | _ -> Error "Unsupported TA browser client frame."
+
 type TaResearchTransientBackend =
     { HandleAsync: ClientExtensionTransientCommandContext -> RuntimeClientFrame -> Async<Result<RuntimeFrame, string>> }
 
@@ -342,12 +552,23 @@ module TaResearchTransientServer =
                     return Ok "{}"
                 else
                     try
-                        let wire = JsonSerializer.Deserialize<TaTransientClientFrameWire>(context.Payload, jsonOptions)
+                        let browserWire = JsonSerializer.Deserialize<TaBrowserClientFrameWire>(context.Payload, jsonOptions)
+                        let isBrowserWire =
+                            not (isNull (box browserWire))
+                            && String.Equals(browserWire.wireVersion, "ta-browser.v1", StringComparison.Ordinal)
 
-                        if isNull (box wire) then
-                            return Error "TA transient client frame decoded to null."
-                        else
-                            match TaResearchTransientWire.clientFrameFromWire wire with
+                        let decoded =
+                            if isBrowserWire then
+                                TaResearchBrowserWire.clientFrameFromWire browserWire
+                            else
+                                let wire = JsonSerializer.Deserialize<TaTransientClientFrameWire>(context.Payload, jsonOptions)
+
+                                if isNull (box wire) then
+                                    Error "TA transient client frame decoded to null."
+                                else
+                                    TaResearchTransientWire.clientFrameFromWire wire
+
+                        match decoded with
                             | Error error -> return Error error
                             | Ok clientFrame ->
                                 let! result = backend.HandleAsync context clientFrame
@@ -373,11 +594,17 @@ module TaResearchTransientServer =
                                         if context.Operation = "close" then
                                             lock gate (fun () -> states.Remove key |> ignore)
 
-                                        return
-                                            next
-                                            |> TaResearchTransientWire.stateToWire
-                                            |> fun value -> JsonSerializer.Serialize(value, jsonOptions)
-                                            |> Ok
+                                        let payload =
+                                            if isBrowserWire then
+                                                next
+                                                |> TaResearchBrowserWire.stateToWire
+                                                |> fun value -> JsonSerializer.Serialize(value, jsonOptions)
+                                            else
+                                                next
+                                                |> TaResearchTransientWire.stateToWire
+                                                |> fun value -> JsonSerializer.Serialize(value, jsonOptions)
+
+                                        return Ok payload
                     with ex ->
                         return Error(ex.GetBaseException().Message)
             }

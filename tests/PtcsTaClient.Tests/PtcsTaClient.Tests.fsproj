@@ -4,13 +4,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="Program.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Expecto" Version="11.1.0" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs" Version="[0.1.0-alpha3]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs.Client" Version="[0.1.0-alpha2]" />
   </ItemGroup>
 </Project>

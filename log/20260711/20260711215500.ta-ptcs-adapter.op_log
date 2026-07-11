@@ -11,3 +11,10 @@ Remaining:
 - bounded non-recursive TA-specific browser wire and isolated pure WebSharper adapter;
 - real PTCS browser/Playwright 500-bar, 20-poll, reconnect, last-good and history/IndexedDB gates;
 - E2EQ adapter/parity; PTCS.Host integration remains last.
+2026-07-11 22:56-23:14 +08:00 continuation
+- Advanced Dynamic.Ptcs to alpha3 with explicit `ta-browser.v1` bounded command/state wire and legacy-wire compatibility; exact-package tests pass 4/4.
+- Added pure WebSharper same-origin client adapter package alpha1. Initial isolation appeared path-related, but a clean rerun identified stale `wsfscservice` (started 22:33) as the actual cause. After stopping it, canonical `src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` builds; the temporary short-project experiment was removed.
+- Verified client build, `pack --no-build`, SDK library-packs copy, and exact-package projection/action tests 2/2. No visible host was composed, so Playwright remains explicitly pending rather than inferred from component tests.
+2026-07-11 23:12-23:16 +08:00 correction and final package proof
+- A later repeated build failed while `wsfscservice` from 22:33 was still alive. Stopping that helper made the full canonical project path build deterministically; the temporary short-path hypothesis/workaround was removed.
+- Canonical `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha2` build + `pack --no-build` succeeded, nupkg was copied to SDK library-packs, and a forced exact-package restore passed 2/2.
