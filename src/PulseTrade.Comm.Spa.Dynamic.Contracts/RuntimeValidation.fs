@@ -42,7 +42,7 @@ module RuntimeValidation =
         [ yield! identifier $"rows[{index}].rowId" row.RowId
           yield! identifier $"rows[{index}].dataRef" row.DataRef
 
-          if row.HeightWeight <= 0M || row.HeightWeight > 20M then
+          if row.HeightWeight <= 0.0 || row.HeightWeight > 20.0 then
               yield error "invalid-height-weight" $"rows[{index}].heightWeight" "HeightWeight must be greater than 0 and at most 20."
 
           for KeyValue(key, value) in row.Options do

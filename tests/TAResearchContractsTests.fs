@@ -12,7 +12,7 @@ let row =
     { RowId = "price"
       Kind = TaRowKind.Candlestick
       DataRef = "series.price"
-      HeightWeight = 3M
+      HeightWeight = 3.0
       Visible = true
       Options = Map.empty }
 
@@ -24,7 +24,7 @@ let document =
       SharedTimeAxis = true
       Rows = [| row |]
       AllowedActions = [| "reset-view"; "reset-canvas"; "add-row"; "change-query" |]
-      DefaultView = Map [ "zoom", SduiValue.Number 1M ] }
+      DefaultView = Map [ "zoom", SduiValue.Number 1.0 ] }
 
 let frame kind sequence baseRevision dataRevision payload =
     { Protocol = DynamicRuntimeDefaults.protocol
@@ -99,7 +99,7 @@ let tests =
 
         testCase "DYN-TA-T-004 ResetView is local and ResetCanvas submits once" <| fun _ ->
             let state0, _ = RuntimeReducer.reduce (RuntimeReducer.initial identity) documentFrame
-            let changed = { state0 with View = { Values = Map [ "zoom", SduiValue.Number 9M ] } }
+            let changed = { state0 with View = { Values = Map [ "zoom", SduiValue.Number 9.0 ] } }
             let resetView, viewEffect = RuntimeReducer.resetView changed
             Expect.equal resetView.View.Values document.DefaultView "ResetView restores document defaults."
             Expect.equal viewEffect RuntimeEffect.NoEffect "ResetView must not send network effect."
@@ -131,7 +131,7 @@ let tests =
         testCase "DYN-TA-T-011 hard row and patch item limits fail" <| fun _ ->
             let tooManyRows = { document with Rows = Array.init 9 (fun index -> { row with RowId = $"r{index}"; DataRef = $"d{index}" }) }
             let tooManyItems =
-                Array.init 501 (fun index -> Map [ "x", SduiValue.Number(decimal index) ])
+                Array.init 501 (fun index -> Map [ "x", SduiValue.Number(float index) ])
                 |> fun items -> { Operations = [| PatchOperation.UpsertSeriesPoints("series.price", "x", items) |] }
 
             Expect.isError (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document tooManyRows }) "Rows hard limit must fail."

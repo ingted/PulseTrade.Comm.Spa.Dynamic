@@ -898,3 +898,10 @@ Implementation status:
 - Exact-package Contracts tests 7/7通過，涵蓋五種frame roundtrip、unknown/unsafe/oversize fail-closed、duplicate/gap/base/target resync、ResetView/ResetCanvas、one-in-flight poll、registry dispose與hard limits。
 - nupkg已複製至SDK 10.0.301 library-packs；未使用ProjectReference consumer。Renderer/UI尚未開始，本切片不宣稱Playwright或visual gate完成。
 - 精確停止stale `wsfscservice`後，既有Dynamic facade正常Release WebSharper build成功，legacy Expecto 21/21通過；build generated bundle whitespace未納入本切片。
+
+## 2026-07-11 - Dynamic TA Renderer alpha1 milestone
+
+- Contracts升至`0.1.0-alpha4`：browser-facing numeric由`decimal`改為JSON number/`float`，query range改canonical ISO-8601 string；host/server仍負責domain time validation。此變更移除WebSharper不支援decimal construction的根因。
+- 新增packable `PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha1`，pure WebSharper F#實作七種TA row、bounded chart stack、compact responsive query/Add Row UI、local pan/zoom/toggle/reset-view與typed remote action callback；無JavaScript escape hatch或PTCS/fCell2/PTMD/SQL dependency。
+- exact-package Renderer tests 7/7、Contracts alpha4 tests 7/7；browser demo改用exact Renderer NuGet。F# Playwright在1440x900與390x844完成操作/geometry/console gate，desktop primary chart位於y=228且寬1416；截圖為ignored `artifacts/ta-renderer-playwright/*.png`。
+- `DYN-TA-003`目前72%；crosshair/cursor values、研究級indicator detail、完整freshness/error/in-flight visual states仍未完成，不宣稱Renderer final。

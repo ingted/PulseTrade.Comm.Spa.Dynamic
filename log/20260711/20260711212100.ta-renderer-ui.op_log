@@ -1,0 +1,11 @@
+# TA Renderer UI operation evidence
+
+- Contracts browser boundary probe exposed unsupported `decimal` construction and `DateTimeOffset.TryParse` in WebSharper client compilation.
+- Corrected transport shape in `PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha4`: numeric values/height weights use JSON number/`float`; query ranges use canonical ISO-8601 strings and remain server-validated.
+- Added `PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha1`; Release WebSharper build and pack passed. Packages were copied to SDK 10.0.301 library-packs; no public NuGet push was attempted because no API key is available.
+- Added exact-package browser demo and exact-package model tests. Renderer tests passed 7/7; Contracts alpha4 tests passed 7/7.
+- F# Playwright verifier operated the live bundle at `http://127.0.0.1:18882/` in 1440x900 and 390x844 viewports. It verified seven row kinds, nonblank candle geometry, local zero-callback pan/zoom/toggle/reset-view, typed Change Query/Add Row/Reset Canvas callbacks, editor collapse, viewport containment, and zero console/page errors.
+- Desktop geometry: title `(12,34,183,22)`; primary price chart `(12,228,1416,250)`. Ignored screenshots: `artifacts/ta-renderer-playwright/desktop.png`, `mobile.png`.
+- Visual review found the chart-first composition coherent on desktop/mobile. Remaining DYN-TA-003 work is crosshair/cursor/time labels, research-grade indicator detail, and full freshness/error/in-flight visual states; WBS set to 72%, not complete.
+- Browser plugin bootstrap was unavailable because the nested Node browser tool did not receive required sandbox metadata; used the repository-standard F# `Microsoft.Playwright` verifier against the same live bundle.
+- Process deviation: the first check did not recognize the English pre-work field labels. A checker-field mapping was appended to the same current-session log, which made that stateful check classify the log as modified. No historical log content was deleted or rewritten; this op_log records the correction, and the commit gate uses a fresh check session after this later op_log evidence.

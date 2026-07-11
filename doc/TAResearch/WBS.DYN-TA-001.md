@@ -15,7 +15,7 @@ Status: Done
 
 ## Implemented
 
-- `PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha3` packable package。
+- `PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha4` packable package；browser-facing numeric使用`float`，query range使用canonical ISO-8601 string，由host/server重新驗證並轉domain time。
 - strict runtime/frame/action/TA row vocabulary、FSharp.SystemTextJson codec、protocol/payload/limit/script/URL/selector validation。
 - pure last-good reducer、typed resync/action effects、multi-canvas registry、one-in-flight poll lifecycle與terminal dispose。
 - SDK README、exact-package tests 7/7、assembly/source forbidden dependency gate。

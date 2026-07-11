@@ -1,0 +1,31 @@
+# TA Renderer UI milestone
+
+- Start: 2026-07-11 21:21 +08:00
+- Background: DYN-TA-001/002 transport contracts, codec, validation, reducer are complete and pushed as `f4145c9`.
+- Goal: Implement the first production-shaped, pure WebSharper F# TA canvas renderer slice and verify its operation and viewport behavior with Playwright.
+- Assumptions:
+  - `PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha3` remains transport-neutral.
+  - Renderer does not reference PTCS, fCell2, PTMD, SQL, or JavaScript source.
+  - Remote actions are emitted as typed callbacks; local zoom/pan/toggle/reset-view do not issue remote requests.
+- Planned steps:
+  1. Verify WebSharper client compiler compatibility with the Contracts package.
+  2. Add Renderer package and a real browser demo host.
+  3. Implement chart-first layout, compact query toolbar, row controls, freshness/status, local viewport operations, and typed remote action callbacks.
+  4. Add focused F# tests and F# Playwright verifier covering desktop/mobile geometry and representative operations.
+  5. Update TAResearch WBS/Test/Verification/DevLog and package README.
+- Read/modify scope: `src/PulseTrade.Comm.Spa.Dynamic.Renderer`, corresponding tests/verifier, and `doc/TAResearch` current-state documents.
+- Acceptance: Release builds pass; focused tests pass; browser verifier confirms nonblank chart, no incoherent overlap, usable desktop/mobile controls, local-only view operations, and typed remote action emission.
+- Risks: WebSharper metadata compatibility of the transport-neutral contracts assembly; stale `wsfscservice`; generated bundle churn.
+- Prompt summary: Continue according to WBS order, implement PTMD/Dynamic before PTCS.Host, and require thoughtful Playwright UI verification.
+
+## Checker field mapping / Correction
+
+- 背景：DYN-TA-001/002已完成，依task-scoped WBS接續DYN-TA-003。
+- 目標：完成可pack、pure WebSharper F#的TA Renderer milestone與真browser驗證。
+- 計畫步驟：先驗證Contracts編譯邊界，再實作Renderer/browser demo/unit tests/F# Playwright，最後同步WBS/Test/Verification/DevLog。
+- 執行命令/參數：Release build/pack、exact-package Expecto、`scripts/verify-ta-renderer-playwright.fsx` desktop/mobile。
+- 結果：記錄於同名`.op_log`；本pre-work log不以事後結果取代原計畫。
+- 根因判讀：若WebSharper無法消費transport types，修正shared wire shape，不以JavaScript workaround繞過。
+- 下一步：DYN-TA-003 milestone後依WBS最低進度接續DYN-TA-004。
+- 關聯文件/工單/PR：`doc/TAResearch/WBS.md`、`WBS.DYN-TA-003.md`、`Test.md`。
+- prompt/上下文摘要：使用者要求遵循續航、先PTMD/Dynamic、PTCS.Host最後，UI必須有Playwright操作與視野驗收。

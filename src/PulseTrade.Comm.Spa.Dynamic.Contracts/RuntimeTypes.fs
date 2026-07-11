@@ -12,7 +12,7 @@ type DocumentId = DocumentId of string
 type SduiValue =
     | Null
     | Bool of bool
-    | Number of decimal
+    | Number of float
     | Text of string
     | Array of SduiValue array
     | Object of Map<string, SduiValue>
@@ -39,7 +39,7 @@ type TaRowSpec =
     { RowId: string
       Kind: TaRowKind
       DataRef: string
-      HeightWeight: decimal
+      HeightWeight: float
       Visible: bool
       Options: Map<string, SduiValue> }
 
@@ -107,8 +107,8 @@ type TaQueryChange =
     { SourceId: string option
       Instrument: string option
       IntervalMinutes: int option
-      FromUtc: DateTimeOffset option
-      ToUtcExclusive: DateTimeOffset option
+      FromUtc: string option
+      ToUtcExclusive: string option
       IncludePartial: bool option }
 
 [<RequireQualifiedAccess>]

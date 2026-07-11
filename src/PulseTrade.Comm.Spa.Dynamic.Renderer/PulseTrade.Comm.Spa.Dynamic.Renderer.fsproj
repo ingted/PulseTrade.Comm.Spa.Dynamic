@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateProgramFile>false</GenerateProgramFile>
+    <IsPackable>true</IsPackable>
+    <PackageId>PulseTrade.Comm.Spa.Dynamic.Renderer</PackageId>
+    <Version>0.1.0-alpha1</Version>
+    <Authors>PulseTrade Team</Authors>
+    <Description>Pure WebSharper renderer for transport-neutral PulseTrade Dynamic SDUI runtime documents.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>preview</LangVersion>
+    <WebSharperProject>Library</WebSharperProject>
+    <WebSharperRunCompiler>true</WebSharperRunCompiler>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="RendererModel.fs" />
+    <Compile Include="Renderer.fs" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha4]" />
+    <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
+    <PackageReference Include="WebSharper.UI" Version="10.1.4.674" />
+  </ItemGroup>
+</Project>

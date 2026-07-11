@@ -56,7 +56,7 @@ type TaRowSpec =
     { RowId: string
       Kind: TaRowKind
       DataRef: string
-      HeightWeight: decimal
+      HeightWeight: float
       Visible: bool
       Options: Map<string, SduiValue> }
 
@@ -216,8 +216,8 @@ type TaQueryChange =
     { SourceId: string option
       Instrument: string option
       IntervalMinutes: int option
-      FromUtc: DateTimeOffset option
-      ToUtcExclusive: DateTimeOffset option
+      FromUtc: string option
+      ToUtcExclusive: string option
       IncludePartial: bool option }
 
 type SduiAction =
@@ -229,6 +229,8 @@ type SduiAction =
     | PollDelta of CanvasInstanceId * afterDataRevision: int64
     | RequestFullSnapshot of CanvasInstanceId * reasonCode: string
 ```
+
+`TaQueryChange.FromUtc/ToUtcExclusive`是browser-safe canonical ISO-8601 string，不是已驗證domain time。Renderer不自行解析成`DateTimeOffset`；PTCS/E2EQ adapter與server必須驗證格式、UTC/offset、range順序與最大範圍後才建立provider query。
 
 `ResetView`由reducer本地處理，不呼叫host；其他remote cases經callback。server仍需驗證interval/range/row kind/ACL，client allowlist不等於authorization。
 

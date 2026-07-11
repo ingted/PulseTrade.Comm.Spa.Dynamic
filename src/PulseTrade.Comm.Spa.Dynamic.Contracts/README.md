@@ -12,6 +12,8 @@ remote action/poll/resync -> typed SduiAction -> host adapter
 
 `Error`與invalid/gapped frame保留last-good document/data/view；duplicate frame no-op；sequence gap、identity mismatch或patch base mismatch只產生typed resync effect。
 
+Browser-facing numeric使用JSON number/`float`，query range使用canonical ISO-8601 string。host/server必須重新驗證range並轉成domain `DateTimeOffset`；Contracts不把browser parser當authorization或domain validation。
+
 ## Security boundary
 
 - protocol/case/row/action allowlist。
