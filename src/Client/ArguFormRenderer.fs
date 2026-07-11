@@ -1025,6 +1025,11 @@ module ArguFormRenderer =
 
     let renderFallbackSchemaWithWarning (root: Element) (context: AppendInputContextDto) typeName message =
         let document = tryFindDocument typeName
+        let fallbackContext =
+            if isExplicitTargetKey context.keyParts then
+                { context with unionCaseNames = [||] }
+            else
+                context
 
         let schema =
             match document with
@@ -1033,7 +1038,7 @@ module ArguFormRenderer =
 
         match schema with
         | Some schema ->
-            renderSchemaIntoRoot root context typeName document schema
+            renderSchemaIntoRoot root fallbackContext typeName document schema
             let warningText =
                 if isBlank message then
                     "Dynamic Argu target resolution failed; FormInput is kept with template defaults."

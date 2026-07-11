@@ -193,7 +193,7 @@ function renderAppendInput(ctx){
   else {
     const root=setTestId("dynamic-argu-form", element("div", "dynamic-argu-form", "Loading Dynamic Argu form..."));
     if(isBackendTarget){
-      postJson("/client-extensions/dynamic/argu/resolve-target", New_4(resolveKeyParts), (reply) => {
+      postJson("/client-extensions/dynamic/argu/resolve-target", New_5(resolveKeyParts), (reply) => {
         if(reply.ok&&!(reply.document==null)&&!(reply.document.arguFormSchema==null))renderSchemaIntoRoot(root, ctx, asText(reply.templateKey), Some(reply.document), reply.document.arguFormSchema);
         else renderFallbackSchemaWithWarning(root, ctx, typeName, isBlank(reply.error)?"Dynamic Argu target resolution failed.":reply.error);
       }, (error) => {
@@ -379,7 +379,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
       send.addEventListener("click", () => {
         const raw=caseRaw();
         rawPreview.textContent=raw;
-        return context.submit(New_32(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+        return context.submit(New_33(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
       });
       append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
       root.appendChild(caseRow);
@@ -393,7 +393,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
           fullSend.addEventListener("click", () => {
             const raw=fullRaw();
             fullPreview.textContent=raw;
-            return context.submit(New_32(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+            return context.submit(New_33(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
           append(root, [fullPreview, fullSend]);
           refreshFullPreview();
@@ -408,13 +408,14 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
 function renderFallbackSchemaWithWarning(root, context, typeName, message){
   let _1;
   const document=tryFindDocument(typeName);
+  const fallbackContext=isExplicitTargetKey(context.keyParts)?New_4(context.shape, context.selectedKeyJson, context.selectedKeys, context.keyParts, context.actorAddress, context.duTypeName, [], context.submit):context;
   const schema=document!=null&&document.$==1&&(!(document.$0.arguFormSchema==null)&&(_1=document.$0,true))?Some(_1.arguFormSchema):tryFindSchema(typeName);
   if(schema==null){
     root.textContent="";
     root.appendChild(errorNode(isBlank(message)?"Dynamic Argu target resolution failed.":message));
   }
   else {
-    renderSchemaIntoRoot(root, context, typeName, document, schema.$0);
+    renderSchemaIntoRoot(root, fallbackContext, typeName, document, schema.$0);
     const warning=errorNode(isBlank(message)?"Dynamic Argu target resolution failed; FormInput is kept with template defaults.":"Dynamic Argu target resolution failed; FormInput is kept with template defaults. "+message);
     if(root.firstChild==null)root.appendChild(warning);
     else root.insertBefore(warning, root.firstChild);
@@ -649,7 +650,7 @@ function _registerRenderer(){
   globalThis.PulseTradeRegisterRenderer("fskynet-sdui", (text) => {
     try {
       globalThis.console.log(["Inside fskynet-sdui renderer wrapper! Text length:", text.length]);
-      const docOpt=IsActorsPagePayload(text)?Some(createActorsPageDocument(text)):TryRender(text);
+      const docOpt=isActorsPagePayload(text)?Some(createActorsPageDocument(text)):TryRender(text);
       if(docOpt==null){
         globalThis.console.log("Got None from TryRender");
         return null;
@@ -677,8 +678,14 @@ function Main(){
   registerActorsPageRenderer();
   Register();
 }
-function IsActorsPagePayload(rawContent){
-  return rawContent.indexOf("ActorTopologyPage")>=0;
+function isActorsPagePayload(rawContent){
+  try {
+    const discriminator=decodeJson_1(rawContent);
+    return discriminator.schema=="fskynet-sdui"&&discriminator.surface=="ActorsPage"&&discriminator.documentType=="ActorTopologyPage";
+  }
+  catch(m){
+    return false;
+  }
 }
 function createActorsPageDocument(rawContent){
   let reportScheduleHandle;
@@ -734,7 +741,7 @@ function createActorsPageDocument(rawContent){
 function registerActorsPageRenderer(){
   const renderer=(rawContent) => {
     try {
-      if(IsActorsPagePayload(rawContent)){
+      if(isActorsPagePayload(rawContent)){
         const container=globalThis.document.createElement("div");
         const doc_2=createActorsPageDocument(rawContent);
         LoadLocalTemplates("");
@@ -755,6 +762,9 @@ function registerActorsPageRenderer(){
     }, 200):void 0;
   }
   ensure(20);
+}
+function decodeJson_1(text){
+  return JSON.parse(asText_1(text));
 }
 function actorNodes(rawContent){
   try {
@@ -819,7 +829,7 @@ function generateActorReport(outputDirectory, status){
   if(isBlank_1(trimmed))status.Set("Report output directory is required.");
   else {
     status.Set("Generating actor state report...");
-    postJson_1("/actors/api/report", New_33(trimmed), (reply) => {
+    postJson_1("/actors/api/report", New_34(trimmed), (reply) => {
       status.Set("Report written: "+(isBlank_1(reply.filePath)?reply.fileName:reply.filePath));
     }, (message) => {
       status.Set("Report failed: "+asText_1(message));
@@ -862,6 +872,9 @@ function projectionText(rawContent, fieldName, fallback){
   catch(m){
     return fallback;
   }
+}
+function asText_1(value){
+  return value==null||Equals(typeof value, "undefined")?"":value;
 }
 function actorSystemAddress(address){
   if(isBlank_1(address))return"unknown";
@@ -983,9 +996,6 @@ function nodeId(node){
   catch(m){
     return"";
   }
-}
-function asText_1(value){
-  return value==null||Equals(typeof value, "undefined")?"":value;
 }
 function postJson_1(url, body, onOk, onError){
   const headers=new Headers();
@@ -1115,9 +1125,6 @@ function nodeParentId(node){
 }
 function errorMessage_1(error){
   return error==null?"unknown error":String(error);
-}
-function decodeJson_1(text){
-  return JSON.parse(asText_1(text));
 }
 function renderStatusDot(status){
   const normalized=lower(status);
@@ -1418,7 +1425,7 @@ function syncWebSocketUrl(){
   return(location.protocol=="https:"?"wss:":"ws:")+"//"+location.host+"/sync/ws";
 }
 function appendPageRegistryStreamKey(){
-  return New_6("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
+  return New_7("__append-page-registry", "append-page-registry", "__append-pages", ["__append-pages"]);
 }
 function newRequestId(prefix){
   set_requestSeq(requestSeq()+1);
@@ -1468,14 +1475,14 @@ function mountAppendPage(page, definition){
   setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId_1("append-page-"+asText_2(definition.pageId), page)));
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
   const readsLegacy=sameText(definition.tabId, definition.pageId);
-  let currentLineage=New_7(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
+  let currentLineage=New_8(definition.tabId, readsLegacy?"default":"fresh", readsLegacy?definition.pageId:"", readsLegacy, readsLegacy?"read-current-tab-and-legacy-page-streams":"read-current-tab-stream-only");
   const applyLineage=(lineage) => {
     const lineage_1=lineage==null?currentLineage:lineage;
     currentLineage=lineage_1;
     setData("lineage-read-repair-policy", lineage_1.readRepairPolicy, setData("lineage-reads-legacy", lineage_1.readsLegacyPageStreams?"true":"false", setData("lineage-legacy-page-id-alias", lineage_1.legacyPageIdAlias, setData("lineage-kind", lineage_1.lineageKind, setData("lineage-stream-page-id", lineage_1.streamPageId, page)))));
   };
   applyLineage(currentLineage);
-  const defaultLineageHealth=() => New_8(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
+  const defaultLineageHealth=() => New_9(currentLineage.streamPageId, currentLineage.lineageKind, currentLineage.legacyPageIdAlias, currentLineage.readsLegacyPageStreams, currentLineage.readRepairPolicy, [], 0, [], 0);
   currentLineageHealth=defaultLineageHealth();
   selected="";
   selectedKeyJson="";
@@ -1655,7 +1662,7 @@ function mountAppendPage(page, definition){
     updateKeyRegistryHealth();
   };
   const writeCurrentSnapshot=() => {
-    const snapshot=New_10("ok", definition, length(buckets), fold((_3, _4) => Compare(_3, _4)===1?_3:_4, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
+    const snapshot=New_11("ok", definition, length(buckets), fold((_3, _4) => Compare(_3, _4)===1?_3:_4, 0n, map((bucket) => bucket.maxSequence, buckets)), currentKeyMaxSequence, currentLineage, currentLineageHealth, buckets);
     writeSnapshotWithWatermark(stateCacheKey(), snapshot, snapshot.maxSequence, appendPageValueCount(snapshot), "append-page-state");
     writeAppendPageKeyWatermark(snapshot);
   };
@@ -1844,7 +1851,7 @@ function mountAppendPage(page, definition){
         const a_1=bucket.maxSequence;
         const b_3=p[1];
         let _4=Compare(a_1, b_3)===1?a_1:b_3;
-        return New_11(bucket.keyId, bucket.keys, bucket.displayName, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
+        return New_12(bucket.keyId, bucket.keys, bucket.displayName, bucket.setName, _3, p[0], _4, bucket.updatedAtUtc, merged);
       }
       else return bucket;
     }, buckets);
@@ -1876,7 +1883,7 @@ function mountAppendPage(page, definition){
               const a_1=bucket_1.maxSequence;
               const b_1=p[1];
               let _4=Compare(a_1, b_1)===1?a_1:b_1;
-              return New_11(bucket_1.keyId, bucket_1.keys, bucket_1.displayName, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
+              return New_12(bucket_1.keyId, bucket_1.keys, bucket_1.displayName, bucket_1.setName, _3, minSequence>0n?minSequence:bucket_1.minSequence, _4, bucket_1.updatedAtUtc, merged);
             }
             else return bucket_1;
           }, buckets);
@@ -2018,12 +2025,12 @@ function mountAppendPage(page, definition){
     const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
     if(m==null){
       const keys=effectiveSelectedKeys();
-      return length(keys)===0?null:Some(New_11(appendPageKeyId(keys), keys, "", definition.setName, 0, 0n, 0n, "", []));
+      return length(keys)===0?null:Some(New_12(appendPageKeyId(keys), keys, "", definition.setName, 0, 0n, 0n, "", []));
     }
     else {
       const bucket=m.$0;
       const keys_1=effectiveSelectedKeys();
-      return Some(New_11(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.displayName, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
+      return Some(New_12(bucket.keyId, length(keys_1)>0?keys_1:bucket.keys, bucket.displayName, bucket.setName, bucket.valueCount, bucket.minSequence, bucket.maxSequence, bucket.updatedAtUtc, bucket.values));
     }
   };
   deleteAcceptedPendingAppends=(bucket) =>(acceptedValues) => {
@@ -2058,7 +2065,7 @@ function mountAppendPage(page, definition){
     }
     else return null;
   };
-  const streamKeyFor=(bucket) => New_6(definition.tabId, definition.shape, definition.setName, arrayOrEmpty_1(bucket.keys));
+  const streamKeyFor=(bucket) => New_7(definition.tabId, definition.shape, definition.setName, arrayOrEmpty_1(bucket.keys));
   const handleSyncEvent=(source, event) => {
     let o, updated, _3, o_1;
     if(!(event==null)){
@@ -2089,10 +2096,10 @@ function mountAppendPage(page, definition){
               const filterText=currentFilterText();
               if((isBlank_2(filterText)||exists((key) => asText_2(key).toLowerCase().indexOf(filterText.toLowerCase())!=-1, arrayOrEmpty_1(_4)))&&!isLocallyHiddenKeyId(keyId)){
                 const m_2=tryFind((bucket_1) => sameText(bucket_1.keyId, keyId), buckets);
-                if(m_2==null)updated=New_11(keyId, _4, _5, definition.setName, 0, 0n, 0n, asText_2(event.createdAtUtc), []);
+                if(m_2==null)updated=New_12(keyId, _4, _5, definition.setName, 0, 0n, 0n, asText_2(event.createdAtUtc), []);
                 else {
                   const existing=m_2.$0;
-                  updated=New_11(existing.keyId, _4, textOr(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
+                  updated=New_12(existing.keyId, _4, textOr(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
                 }
                 _3=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),sameText(pendingSelectKeyId, keyId)?selectBucketKeys(_4)?void(pendingSelectKeyId=""):null:isBlank_2(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(_4),void(newKeyInput.value=selectedKeyJson)):null);
               }
@@ -2226,13 +2233,13 @@ function mountAppendPage(page, definition){
                         const a_1=bucket_1.maxSequence;
                         const b_1=p_1[1];
                         let _7=Compare(a_1, b_1)===1?a_1:b_1;
-                        return New_11(bucket_1.keyId, keys, bucket_1.displayName, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
+                        return New_12(bucket_1.keyId, keys, bucket_1.displayName, bucket_1.setName, _6, minSequence>0n?minSequence:bucket_1.minSequence, _7, textOr(bucket_1.updatedAtUtc, value.createdAtUtc), merged);
                       }
                       else return bucket_1;
                     }, buckets);
                     if(!matched){
                       const p=sequenceBounds(incoming);
-                      const bucket=New_11(keyId, keys, "", definition.setName, length(incoming), p[0], p[1], asText_2(value.createdAtUtc), incoming);
+                      const bucket=New_12(keyId, keys, "", definition.setName, length(incoming), p[0], p[1], asText_2(value.createdAtUtc), incoming);
                       _5=void(buckets=sortAppendPageBuckets(buckets.concat([bucket])));
                     }
                     else _5=null;
@@ -2292,7 +2299,7 @@ function mountAppendPage(page, definition){
   }
   const subscribeKeyRegistry=() => {
     const streamPageId=textOr(definition.pageId, definition.tabId);
-    const streamKey=New_6(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
+    const streamKey=New_7(streamPageId, "append-page-key-registry", definition.setName, ["__append-page-keys", streamPageId]);
     if(!keyRegistrySubscribed){
       keyRegistrySubscribed=true;
       setKeyRegistryWsState("subscribing");
@@ -2343,7 +2350,7 @@ function mountAppendPage(page, definition){
       if(length(submittedKeys)>0)pendingSelectKeyId=appendPageKeyId(submittedKeys);
       else null;
       const displayName_1=Trim(asText_2(displayName));
-      const request=New_13(definition.pageId, keyJson, addKeyMode, displayName_1);
+      const request=New_14(definition.pageId, keyJson, addKeyMode, displayName_1);
       const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
       refreshPendingState();
       setStatus(status, "Adding key; pending command saved in browser DB");
@@ -2372,11 +2379,11 @@ function mountAppendPage(page, definition){
     }
   };
   const appendValue=() => {
-    const request=New_12(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
+    const request=New_13(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
     if(isBlank_2(request.keyJson))setStatus(workState, "Select or add a key first");
     else if(isBlank_2(request.valueText))setStatus(workState, "Value text is required");
     else if(isActorArguPage(definition)){
-      const request_1=New_14(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
+      const request_1=New_15(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
       const m=selectedBucket();
       if(m!=null&&m.$==1){
         const bucket=m.$0;
@@ -2385,7 +2392,7 @@ function mountAppendPage(page, definition){
         if(isBlank_2(actorAddress))setStatus(workState, "Actor address key is required");
         else {
           const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_1);
-          const wsRequest=New_17("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request_1.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
+          const wsRequest=New_18("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request_1.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
           pendingWsAppendIds=pendingWsAppendIds.concat([pendingId]);
           refreshPendingState();
           setStatus(workState, "Sending through WebSocket; pending command saved in browser DB");
@@ -2401,7 +2408,7 @@ function mountAppendPage(page, definition){
       if(m_1!=null&&m_1.$==1){
         const bucket_1=m_1.$0;
         const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_1=New_19("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_1=New_20("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_1]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -2416,7 +2423,7 @@ function mountAppendPage(page, definition){
       if(m_2!=null&&m_2.$==1){
         const bucket_2=m_2.$0;
         const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_2=New_18("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_2=New_19("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty_1(definition.tags), delay(() => append_2(arrayOrEmpty_1(request.tags), delay(() => append_2(["page:"+asText_2(definition.pageId)], delay(() => append_2(["tab:"+asText_2(definition.tabId)], delay(() =>["shape:"+asText_2(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_2]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -2575,7 +2582,7 @@ function mountAppendPage(page, definition){
     const removedKeyId=effectiveSelectedKeyId();
     if(isBlank_2(removedKeyId))setStatus(status, "Select a key first");
     else {
-      const request=New_16(definition.pageId, removedKeyId);
+      const request=New_17(definition.pageId, removedKeyId);
       const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request);
       refreshPendingState();
       setStatus(status, "Removing key; pending command saved in browser DB");
@@ -2597,7 +2604,7 @@ function mountAppendPage(page, definition){
       });
     }
   }),removePageButton.addEventListener("click", () => {
-    const request=New_15(definition.pageId);
+    const request=New_16(definition.pageId);
     const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request);
     refreshPendingState();
     setStatus(status, "Removing page; pending command saved in browser DB");
@@ -2642,7 +2649,7 @@ function renderNav(nav, activePath, pages){
       event.preventDefault();
       event.stopPropagation();
       closeButton.setAttribute("disabled", "disabled");
-      return postJson_2("/pages/api/remove-page", New_15(page.pageId), (reply) => {
+      return postJson_2("/pages/api/remove-page", New_16(page.pageId), (reply) => {
         writeAppendPagesDefinitions(reply);
         isCurrentPage(activePath, href)?globalThis.location.assign("/chat"):renderNav(nav, activePath, reply.pages);
       }, (error) => {
@@ -2729,7 +2736,7 @@ function mountSets(page){
   hiddenSetStreams=[];
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
   const streamIdentity=(streamKey) => concat_2("\n", [asText_2(streamKey.pageId), asText_2(streamKey.mode), asText_2(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
-  const setValueStreamKey=(pageId, mode, setName, keys) => New_6(asText_2(pageId), textOr("set", mode), asText_2(setName), arrayOrEmpty_1(keys));
+  const setValueStreamKey=(pageId, mode, setName, keys) => New_7(asText_2(pageId), textOr("set", mode), asText_2(setName), arrayOrEmpty_1(keys));
   const setKeyId=(setName, keys) => asText_2(setName)+"::"+concat_2(" + ", arrayOrEmpty_1(keys));
   const forgetHidden=(keyId) => {
     hiddenSetStreams=filter((_1) =>!sameText(_1[0], keyId), hiddenSetStreams);
@@ -2755,7 +2762,7 @@ function mountSets(page){
   };
   const sortSetBuckets=(rows) => sortBy((bucket) =>[asText_2(bucket.setName), asText_2(bucket.keyId)], arrayOrEmpty_1(rows));
   const writeSetsCache=() => {
-    const snapshot=New_21(fold((_1, _2) => Compare(_1, _2)===1?_1:_2, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
+    const snapshot=New_22(fold((_1, _2) => Compare(_1, _2)===1?_1:_2, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
     writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
   };
   function renderList(){
@@ -2971,7 +2978,7 @@ function mountSets(page){
           if(filtersAccept(setName, keys)&&eventIsVisibleAfterTombstone(keyId, event.createdAtUtc)){
             forgetHidden(keyId);
             if(!exists((bucket) => sameText(bucket.keyId, keyId), buckets)){
-              buckets=sortSetBuckets(buckets.concat([New_20(keyId, setName, keys, 0, event.sequence, asText_2(event.createdAtUtc), [])]));
+              buckets=sortSetBuckets(buckets.concat([New_21(keyId, setName, keys, 0, event.sequence, asText_2(event.createdAtUtc), [])]));
               isBlank_2(selected)?selected=keyId:void 0;
               renderList();
               renderDetail();
@@ -3015,10 +3022,10 @@ function mountSets(page){
             const setName_1=asText_2(event.streamKey.setName);
             const keys_1=arrayOrEmpty_1(event.streamKey.keys);
             if(filtersAccept(setName_1, keys_1)){
-              const value=New_22(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
+              const value=New_23(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
               const keyId_3=setKeyId(setName_1, keys_1);
               const m_3=tryFind((bucket) => sameText(bucket.keyId, keyId_3), buckets);
-              if(m_3==null)updated=New_20(keyId_3, setName_1, keys_1, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
+              if(m_3==null)updated=New_21(keyId_3, setName_1, keys_1, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
               else {
                 const existing=m_3.$0;
                 const existingValues=arrayOrEmpty_1(existing.values);
@@ -3035,7 +3042,7 @@ function mountSets(page){
                 const a_1=existing.maxSequence;
                 const b_1=event.sequence;
                 let _4=Compare(a_1, b_1)===1?a_1:b_1;
-                updated=New_20(existing.keyId, existing.setName, existing.keys, _2, _4, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+                updated=New_21(existing.keyId, existing.setName, existing.keys, _2, _4, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
               }
               buckets=sortSetBuckets(filter((bucket) =>!sameText(bucket.keyId, keyId_3), buckets).concat([updated]));
               selected=keyId_3;
@@ -3083,7 +3090,7 @@ function mountSets(page){
     }
   }
   ensureSetsSubscriptions=() => {
-    const registryKey=New_6("__set-registry", "set-registry", "__sets", ["__sets"]);
+    const registryKey=New_7("__set-registry", "set-registry", "__sets", ["__sets"]);
     subscribeStream(registryKey);
     if(!registryTailRequested){
       registryTailRequested=true;
@@ -3098,7 +3105,7 @@ function mountSets(page){
   cleanNoShowAction.addEventListener("click", () => {
     closeActionPool();
     setStatus(status, "Cleaning no-show actor set streams");
-    return postJson_2("/sets/api/clean-no-show-actors", New_23("browser-action"), (reply) => {
+    return postJson_2("/sets/api/clean-no-show-actors", New_24("browser-action"), (reply) => {
       deleteSnapshotsByPrefix(cacheKey("sets-state", FSharpList.Empty), () => {
         subscribedStreams=[];
         tailRequestedStreams=[];
@@ -3114,7 +3121,7 @@ function mountSets(page){
   cleanParticipantsAction.addEventListener("click", () => {
     closeActionPool();
     setStatus(status, "Cleaning inactive participant collections");
-    postJson_2("/sets/api/clean-inactive-participant-collections", New_23("browser-action"), (reply) => {
+    postJson_2("/sets/api/clean-inactive-participant-collections", New_24("browser-action"), (reply) => {
       deleteSnapshotsByPrefix(cacheKey("sets-state", FSharpList.Empty), () => {
         subscribedStreams=[];
         tailRequestedStreams=[];
@@ -3145,7 +3152,7 @@ function mountActors(page){
   append_1(actions, [status, reload]);
   append_1(head_2, [title, actions]);
   append_1(page, [head_2, treePanel, nodes]);
-  const emptySnapshot=New_24(0, 0, 0n, []);
+  const emptySnapshot=New_25(0, 0, 0n, []);
   actorSnapshot=emptySnapshot;
   syncSocket=null;
   queuedSyncFrames=[];
@@ -3155,7 +3162,7 @@ function mountActors(page){
   const collapsedTreeNodes=new HashSet("New_3");
   const cacheKey_1=cacheKey("actors-snapshot", FSharpList.Empty);
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
-  const actorRegistryStreamKey=() => New_6("__actor-registry", "actor-registry", "__actors", ["__actors"]);
+  const actorRegistryStreamKey=() => New_7("__actor-registry", "actor-registry", "__actors", ["__actors"]);
   const isAkkaAddress=(value) => {
     const text=asText_2(value).toLowerCase();
     return StartsWith(text, "akka://")||StartsWith(text, "akka.tcp://")||StartsWith(text, "akka.ssl.tcp://");
@@ -3391,13 +3398,13 @@ function mountActors(page){
         if(!isBlank_2(nodeId_1)&&!isBlank_2(actorId)){
           const tags=arrayOrEmpty_1(_1.tags);
           const roles=arrayOrEmpty_1(_1.roles);
-          const actor=New_25(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
+          const actor=New_26(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
           const m=tryFind((node) => sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes));
-          if(m==null)updatedNode=New_26(nodeId_1, nodeAddress_1, "up", roles, [actor]);
+          if(m==null)updatedNode=New_27(nodeId_1, nodeAddress_1, "up", roles, [actor]);
           else {
             const existing=m.$0;
             const actors=sortBy((row) => asText_2(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty_1(existing.actors)).concat([actor]));
-            updatedNode=New_26(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, textOr("up", existing.status), length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
+            updatedNode=New_27(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, textOr("up", existing.status), length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
           }
           const nodes_1=sortBy((node) => asText_2(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes)).concat([updatedNode]));
           let _2=length(nodes_1);
@@ -3405,7 +3412,7 @@ function mountActors(page){
           const a=actorSnapshot.maxSequence;
           const b=event.sequence;
           let _4=Compare(a, b)===1?a:b;
-          actorSnapshot=New_24(_2, _3, _4, nodes_1);
+          actorSnapshot=New_25(_2, _3, _4, nodes_1);
           writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
           applySnapshot("synced", actorSnapshot);
           setStatus(status, "Synced actor "+actorId);
@@ -3488,7 +3495,7 @@ function mountChat(page){
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
   };
-  const chatStreamKey=(peerId) => New_6("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
+  const chatStreamKey=(peerId) => New_7("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
   const streamIdentity=(streamKey) => concat_2("\n", [asText_2(streamKey.pageId), asText_2(streamKey.mode), asText_2(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
   function renderParticipants(){
     let _1;
@@ -3593,7 +3600,7 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_28(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_29(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -3666,7 +3673,7 @@ function mountChat(page){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_28(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_29(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -3698,7 +3705,7 @@ function mountChat(page){
               o=message==null||isBlank_2(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_27(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
+              o=Some(New_28(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -3780,9 +3787,9 @@ function mountChat(page){
     if(isBlank_2(selected))setStatus(state, "Select a participant first");
     else if(isBlank_2(body))setStatus(state, "Message is empty");
     else {
-      const request=New_31(participantId, selected, body, ["web-chat"]);
+      const request=New_32(participantId, selected, body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_30("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_31("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -3879,7 +3886,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_36(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_37(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_2(request.userName)||isBlank_2(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -3909,7 +3916,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_2(node.textContent)?New_35("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_2(node.textContent)?New_36("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_2(value)?fallback:value;
@@ -3918,7 +3925,7 @@ function pageDefinitionFromWire(wire){
   if(wire==null||asText_2(wire.schema)!="ptc.comm.spa.append-page.definition.v1"||isBlank_2(wire.pageId))return null;
   else {
     const pageId=asText_2(wire.pageId);
-    return Some(New_5(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText_2(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText_2(wire.defaultKey), arrayOrEmpty_1(wire.tags)));
+    return Some(New_6(pageId, textOr(pageId, wire.tabId), textOr("/page/"+pageId, wire.path), textOr(pageId, wire.title), textOr(pageId, wire.setName), textOr("raw", wire.shape), asText_2(wire.description), textOr("\"Aster\"", wire.keyPlaceholder), textOr("JSON value", wire.valuePlaceholder), asText_2(wire.defaultKey), arrayOrEmpty_1(wire.tags)));
   }
 }
 function hiddenPageFromWire(wire){
@@ -4194,7 +4201,7 @@ function pendingFailure(action, error){
 function rememberPending(kind, target, url, body){
   const payloadJson=JSON.stringify(body);
   const commandId=newPendingCommandId(kind, target, url, payloadJson);
-  writePending(New_9(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
+  writePending(New_10(commandId, currentServerRealityId(), kind, target, url, "POST", payloadJson, "pending"));
   return commandId;
 }
 function isActorDynamicPage(page){
@@ -4506,7 +4513,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_2(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_38(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_39(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_2("/pages/api/register-page", request, (reply) => {
@@ -4724,10 +4731,10 @@ function hasTag(tag, tags){
 }
 function currentBrowserUser(){
   const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_2(userNode.textContent))return New_37("user.web", "Web User", "", false, "anonymous", "/chat/logout");
+  if(userNode==null||isBlank_2(userNode.textContent))return New_38("user.web", "Web User", "", false, "anonymous", "/chat/logout");
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank_2(user.participantId)?New_37("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
+    return user==null||isBlank_2(user.participantId)?New_38("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
   }
 }
 function fcellValueModeLabel(mode, tags){
@@ -4910,7 +4917,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
-  return New_34(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_35(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -5364,7 +5371,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_29(streamId, _3, _4, asText_2(source), nowTicks());
+    let _5=New_30(streamId, _3, _4, asText_2(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -6151,7 +6158,19 @@ function unfold(f, s){
     }
   }, void 0)};
 }
-function New_4(keys){
+function New_4(shape, selectedKeyJson, selectedKeys, keyParts, actorAddress, duTypeName, unionCaseNames, submit){
+  return{
+    shape:shape,
+    selectedKeyJson:selectedKeyJson,
+    selectedKeys:selectedKeys,
+    keyParts:keyParts,
+    actorAddress:actorAddress,
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    submit:submit
+  };
+}
+function New_5(keys){
   return{keys:keys};
 }
 class Object_1 {
@@ -6725,7 +6744,7 @@ function TryParse(s, r){
 function TryParse_1(s, r){
   return TryParseBigInt(s, -9223372036854775808n, 9223372036854775807n, r);
 }
-function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
+function New_6(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
     pageId:pageId, 
     tabId:tabId, 
@@ -6740,7 +6759,7 @@ function New_5(pageId, tabId, path, title, setName, shape, description, keyPlace
     tags:tags
   };
 }
-function New_6(pageId, mode, setName, keys){
+function New_7(pageId, mode, setName, keys){
   return{
     pageId:pageId, 
     mode:mode, 
@@ -6748,7 +6767,7 @@ function New_6(pageId, mode, setName, keys){
     keys:keys
   };
 }
-function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
+function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
     streamPageId:streamPageId, 
     lineageKind:lineageKind, 
@@ -6757,7 +6776,7 @@ function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStre
     readRepairPolicy:readRepairPolicy
   };
 }
-function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
+function New_9(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
     streamPageId:streamPageId, 
     lineageKind:lineageKind, 
@@ -6770,7 +6789,7 @@ function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStre
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
-function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
+function New_10(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
     commandId:commandId, 
     serverRealityId:serverRealityId, 
@@ -6887,7 +6906,7 @@ function tail(l){
 function listEmpty(){
   return FailWith("The input list was empty.");
 }
-function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
+function New_11(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
     status:status, 
     page:page, 
@@ -6899,7 +6918,7 @@ function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage,
     buckets:buckets
   };
 }
-function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
+function New_12(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
     keyId:keyId, 
     keys:keys, 
@@ -6912,7 +6931,7 @@ function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxS
     values:values
   };
 }
-function New_12(pageId, keyJson, valueText, direction, tags){
+function New_13(pageId, keyJson, valueText, direction, tags){
   return{
     pageId:pageId, 
     keyJson:keyJson, 
@@ -6921,7 +6940,7 @@ function New_12(pageId, keyJson, valueText, direction, tags){
     tags:tags
   };
 }
-function New_13(pageId, keyJson, keyMode, displayName){
+function New_14(pageId, keyJson, keyMode, displayName){
   return{
     pageId:pageId, 
     keyJson:keyJson, 
@@ -6929,7 +6948,7 @@ function New_13(pageId, keyJson, keyMode, displayName){
     displayName:displayName
   };
 }
-function New_14(pageId, keyJson, rawArgu, tags){
+function New_15(pageId, keyJson, rawArgu, tags){
   return{
     pageId:pageId, 
     keyJson:keyJson, 
@@ -6937,13 +6956,13 @@ function New_14(pageId, keyJson, rawArgu, tags){
     tags:tags
   };
 }
-function New_15(pageId){
+function New_16(pageId){
   return{pageId:pageId};
 }
-function New_16(pageId, keyId){
+function New_17(pageId, keyId){
   return{pageId:pageId, keyId:keyId};
 }
-function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
+function New_18(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -6959,7 +6978,7 @@ function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress
     tabId:tabId
   };
 }
-function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
+function New_19(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -6977,7 +6996,7 @@ function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, val
     tabId:tabId
   };
 }
-function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
+function New_20(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -6991,7 +7010,7 @@ function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, ide
     tabId:tabId
   };
 }
-function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
+function New_21(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
     keyId:keyId, 
     setName:setName, 
@@ -7002,10 +7021,10 @@ function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, val
     values:values
   };
 }
-function New_21(maxSequence, buckets){
+function New_22(maxSequence, buckets){
   return{maxSequence:maxSequence, buckets:buckets};
 }
-function New_22(valueId, keys, createdAtUtc, value, tags){
+function New_23(valueId, keys, createdAtUtc, value, tags){
   return{
     valueId:valueId, 
     keys:keys, 
@@ -7014,10 +7033,10 @@ function New_22(valueId, keys, createdAtUtc, value, tags){
     tags:tags
   };
 }
-function New_23(reason){
+function New_24(reason){
   return{reason:reason};
 }
-function New_24(nodeCount, actorCount, maxSequence, nodes){
+function New_25(nodeCount, actorCount, maxSequence, nodes){
   return{
     nodeCount:nodeCount, 
     actorCount:actorCount, 
@@ -7137,7 +7156,7 @@ class HashSet extends Object_1 {
 function OfArray(a){
   return new FSharpMap("New_1", OfSeq(map_1((_1) => Pair.New(_1[0], _1[1]), a)));
 }
-function New_25(actorId, displayName, kind, keys, status, routees){
+function New_26(actorId, displayName, kind, keys, status, routees){
   return{
     actorId:actorId, 
     displayName:displayName, 
@@ -7147,7 +7166,7 @@ function New_25(actorId, displayName, kind, keys, status, routees){
     routees:routees
   };
 }
-function New_26(nodeId_1, nodeAddress_1, status, roles, actors){
+function New_27(nodeId_1, nodeAddress_1, status, roles, actors){
   return{
     nodeId:nodeId_1, 
     nodeAddress:nodeAddress_1, 
@@ -7156,7 +7175,7 @@ function New_26(nodeId_1, nodeAddress_1, status, roles, actors){
     actors:actors
   };
 }
-function New_27(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_28(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
     messageId:messageId, 
     fromId:fromId, 
@@ -7166,10 +7185,10 @@ function New_27(messageId, fromId, toId, scope, body, createdAtUtc){
     createdAtUtc:createdAtUtc
   };
 }
-function New_28(messages, nextAfterMessageId){
+function New_29(messages, nextAfterMessageId){
   return{messages:messages, nextAfterMessageId:nextAfterMessageId};
 }
-function New_29(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_30(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
     streamId:streamId, 
     newestSequence:newestSequence, 
@@ -7178,7 +7197,7 @@ function New_29(streamId, newestSequence, cachedCount, source, touchedAt){
     touchedAt:touchedAt
   };
 }
-function New_30(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_31(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -7190,7 +7209,7 @@ function New_30(type, requestId, fromId, toId, body, tags, browserId, tabId){
     tabId:tabId
   };
 }
-function New_31(fromId, toId, body, tags){
+function New_32(fromId, toId, body, tags){
   return{
     fromId:fromId, 
     toId:toId, 
@@ -7257,7 +7276,7 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_32(rawArgu, duTypeName, unionCaseName, keyJson){
+function New_33(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
     rawArgu:rawArgu, 
     duTypeName:duTypeName, 
@@ -7493,7 +7512,7 @@ function Handler(name, callback){
 function Dynamic(name, view){
   return Dynamic_1(view, (el) =>(v) => el.setAttribute(name, v));
 }
-function New_33(outputDirectory){
+function New_34(outputDirectory){
   return{outputDirectory:outputDirectory};
 }
 function ofSeqNonCopying(xs){
@@ -7733,7 +7752,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_39(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_40(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -7908,7 +7927,7 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_34(shape, label_1, badge, className){
+function New_35(shape, label_1, badge, className){
   return{
     shape:shape, 
     label:label_1, 
@@ -7916,7 +7935,7 @@ function New_34(shape, label_1, badge, className){
     className:className
   };
 }
-function New_35(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_36(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
     submitPath:submitPath, 
     sessionPath:sessionPath, 
@@ -7930,7 +7949,7 @@ function New_35(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, 
     aclLabel:aclLabel
   };
 }
-function New_36(userName, password, returnUrl, keepSession){
+function New_37(userName, password, returnUrl, keepSession){
   return{
     userName:userName, 
     password:password, 
@@ -7938,7 +7957,7 @@ function New_36(userName, password, returnUrl, keepSession){
     keepSession:keepSession
   };
 }
-function New_37(participantId, displayName, login, authenticated, provider, logoutPath){
+function New_38(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
     participantId:participantId, 
     displayName:displayName, 
@@ -7948,7 +7967,7 @@ function New_37(participantId, displayName, login, authenticated, provider, logo
     logoutPath:logoutPath
   };
 }
-function New_38(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_39(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
     pageId:pageId, 
     title:title, 
@@ -8053,7 +8072,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_40(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_41(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -8238,7 +8257,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_41(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_42(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -8676,7 +8695,7 @@ class KeyCollection extends Object_1 {
     this.d=d;
   }
 }
-function New_39(PreviousNodes, Top){
+function New_40(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -8754,7 +8773,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_42((a) => {
+    r(New_43((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -8779,7 +8798,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_42((a) => {
+    if(!ct.c)c(New_43((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -8882,7 +8901,7 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_40(Node_1, Left, Right, Height, Count){
+function New_41(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1, 
     Left:Left, 
@@ -8929,7 +8948,7 @@ class Updates_1 {
     });
   }
 }
-function New_41(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_42(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
     DynElem:DynElem, 
     DynFlags:DynFlags, 
@@ -9264,7 +9283,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_42(k, ct){
+function New_43(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -9286,7 +9305,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_43(false, []);
+    this.noneCT=New_44(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -9295,7 +9314,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_43(IsCancellationRequested, Registrations){
+function New_44(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -9552,7 +9571,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create(f){
-  return New_44(false, f, forceLazy);
+  return New_45(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -9573,7 +9592,7 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_44(created, evalOrVal, force){
+function New_45(created, evalOrVal, force){
   return{
     c:created, 
     v:evalOrVal, 

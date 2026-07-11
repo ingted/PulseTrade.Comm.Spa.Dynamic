@@ -25,10 +25,13 @@ type ActorsReportReplyDto =
       sourceEventCount: int }
 
 [<JavaScript>]
-module ActorDynamicTab =
+type ActorsPageDiscriminatorDto =
+    { schema: string
+      surface: string
+      documentType: string }
 
-    let IsActorsPagePayload (rawContent: string) =
-        rawContent.IndexOf("ActorTopologyPage") >= 0
+[<JavaScript>]
+module ActorDynamicTab =
 
     let E name attrs (children: seq<#Doc>) =
         Doc.Element name attrs (children |> Seq.cast<Doc>) :> Doc
@@ -44,6 +47,16 @@ module ActorDynamicTab =
 
     let decodeJson<'T> text =
         JSON.Parse(asText text) |> As<'T>
+
+    let isActorsPagePayload (rawContent: string) =
+        try
+            let discriminator = decodeJson<ActorsPageDiscriminatorDto> rawContent
+
+            discriminator.schema = "fskynet-sdui"
+            && discriminator.surface = "ActorsPage"
+            && discriminator.documentType = "ActorTopologyPage"
+        with _ ->
+            false
 
     let errorMessage (error: obj) =
         if isNull error then
@@ -828,7 +841,7 @@ module ActorDynamicTab =
     let registerActorsPageRenderer () =
         let renderer (rawContent: string) =
             try
-                if IsActorsPagePayload rawContent then
+                if isActorsPagePayload rawContent then
                     let container = JS.Document.CreateElement("div")
                     Doc.Run container (createActorsPageDocument rawContent)
                     Some (container :> WebSharper.JavaScript.Dom.Node)
@@ -884,7 +897,7 @@ module ActorDynamicTab =
             try
                 JS.Global?console?log("Inside fskynet-sdui renderer wrapper! Text length:", text.Length)
                 let docOpt =
-                    if IsActorsPagePayload text then
+                    if isActorsPagePayload text then
                         Some (createActorsPageDocument text)
                     else
                         DynamicRenderer.TryRender text

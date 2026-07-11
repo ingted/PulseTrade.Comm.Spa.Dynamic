@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="Server/ArguForm.fs" />
     <Compile Include="Server/FCell2Interop.fs" />
+    <Compile Include="Server/SduiPayload.fs" />
     <Compile Include="Server/DynamicActors.fs" />
     <Compile Include="Server/Extension.fs" />
     <Compile Include="Client/DynamicRenderer.fs" />

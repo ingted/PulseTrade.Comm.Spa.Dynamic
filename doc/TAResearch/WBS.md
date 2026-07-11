@@ -11,7 +11,7 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | WBS ID | Priority | Work item | Deliverable | Depends on | Tests | Progress | Status | Detail |
 | --- | ---: | --- | --- | --- | --- | ---: | --- | --- |
 | DYN-TA-000 | 0 | Accepted document chain | canonical docs and traceability | none | document/check | 100% | Done | this file |
-| DYN-TA-00A | 1 | Legacy SDUI readiness closure | common DSL/direct Canvas/strict schema/invalid-node gates before new runtime | DYN-TA-000 | T-000A,T-002,T-016,T-017 | 0% | In Progress | [@DYN-TA-00A](WBS.DYN-TA-00A.md) |
+| DYN-TA-00A | 1 | Legacy SDUI readiness closure | common DSL/direct Canvas/strict schema/invalid-node gates before new runtime | DYN-TA-000 | T-000A | 100% | Done | [@DYN-TA-00A](WBS.DYN-TA-00A.md) |
 | DYN-TA-001 | 2 | Contracts package | runtime/frame/action types, codec, validation, limits | DYN-TA-00A + PTMD contracts vocabulary | T-001,T-002,T-011,T-015,T-018 | 0% | Planned | [@DYN-TA-001](WBS.DYN-TA-001.md) |
 | DYN-TA-002 | 3 | Pure reducer/runtime registry | ordering, effects, mount/dispose, poll state | DYN-TA-001 | T-003,T-004,T-008,T-009 | 0% | Planned | [@DYN-TA-001](WBS.DYN-TA-001.md) |
 | DYN-TA-003 | 4 | WebSharper TA renderer | rows, viewport, controls, status, bounded state | DYN-TA-001/002 | T-005..T-007,T-011,T-012,T-015 | 0% | Planned | [@DYN-TA-003](WBS.DYN-TA-003.md) |

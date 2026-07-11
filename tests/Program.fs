@@ -249,16 +249,49 @@ let tests =
             Expect.isNone (DynamicRenderer.TryRender outbound) "Actor Argu outbound must stay textual."
             Expect.isSome (DynamicRenderer.TryRender reply) "Actor Argu reply must render Canvas."
 
+        testCaseAsync "DYN-T-534A: native SDUI actors should accept and reply fCell2 strings" <| async {
+            use system = ActorSystem.Create("DynamicNativeFCell2Test")
+            try
+                let echo = system.ActorOf(Props.Create(fun () -> PulseTrade.Comm.Spa.Dynamic.Server.SduiEchoActor()), "sdui-echo")
+                let showcase = system.ActorOf(Props.Create(fun () -> PulseTrade.Comm.Spa.Dynamic.Server.ShowcaseDemoActor()), "showcase")
+                let payload = "{\"schema\":\"fskynet-sdui\",\"ui\":[{\"type\":\"Heading\",\"text\":\"exact\"}]}"
+                let timeout = TimeSpan.FromSeconds 3.0
+                let echoInput: fCell2<string> = fCell2.S payload
+                let showcaseInput: fCell2<string> = fCell2.S "render-default"
+
+                let! echoReply = echo.Ask<fCell2<string>>(echoInput, timeout) |> Async.AwaitTask
+                let! showcaseReply = showcase.Ask<fCell2<string>>(showcaseInput, timeout) |> Async.AwaitTask
+
+                Expect.equal echoReply (fCell2.S payload) "SDUI echo should preserve the exact native fCell2 payload."
+
+                match showcaseReply with
+                | fCell2.S text -> Expect.isTrue (text.Contains("PulseTrade Actor Dynamic Dashboard", StringComparison.Ordinal)) "Showcase should return its default Canvas DSL."
+                | other -> failwithf "Showcase should return fCell2.S. actual=%A" other
+            finally
+                system.Terminate().Wait()
+        }
+
         testCase "DYN-T-526: ActorsPage renderer should claim ActorTopologyPage documents" <| fun _ ->
             let payload = "{\"schema\":\"fskynet-sdui\",\"surface\":\"ActorsPage\",\"documentType\":\"ActorTopologyPage\",\"projectionId\":\"ptcs-actors\",\"projectionVersion\":1,\"data\":{\"actorTreeNodes\":[]}}"
-            let pageResult = ActorDynamicTab.IsActorsPagePayload payload
+            let pageResult = SduiPayloadClassifier.isActorsPagePayload payload
 
             Expect.isTrue pageResult "Dedicated ActorsPage renderer should claim ActorTopologyPage documents"
 
         testCase "DYN-T-527: ActorsPage renderer should ignore normal Canvas messages" <| fun _ ->
             let payload = "{\"schema\":\"fskynet-sdui\",\"surface\":\"Canvas\",\"ui\":[]}"
-            let result = ActorDynamicTab.IsActorsPagePayload payload
+            let result = SduiPayloadClassifier.isActorsPagePayload payload
             Expect.isFalse result "ActorsPage renderer must not claim generic Canvas message payloads"
+
+        testCase "DYN-T-527A: ActorsPage classifier should fail closed for token text and malformed discriminators" <| fun _ ->
+            let tokenOnly = "{\"schema\":\"fskynet-sdui\",\"surface\":\"Canvas\",\"text\":\"ActorTopologyPage\"}"
+            let wrongSchema = "{\"schema\":\"other\",\"surface\":\"ActorsPage\",\"documentType\":\"ActorTopologyPage\"}"
+            let wrongSurface = "{\"schema\":\"fskynet-sdui\",\"surface\":\"Canvas\",\"documentType\":\"ActorTopologyPage\"}"
+            let malformed = "{\"schema\":\"fskynet-sdui\","
+
+            Expect.isFalse (SduiPayloadClassifier.isActorsPagePayload tokenOnly) "A token in arbitrary text must not claim ActorsPage."
+            Expect.isFalse (SduiPayloadClassifier.isActorsPagePayload wrongSchema) "Wrong schema must fail closed."
+            Expect.isFalse (SduiPayloadClassifier.isActorsPagePayload wrongSurface) "Wrong surface must fail closed."
+            Expect.isFalse (SduiPayloadClassifier.isActorsPagePayload malformed) "Malformed JSON must fail closed."
 
         testCase "DYN-T-528: ActorsPage node grouping should use actor-system host port" <| fun _ ->
             let gwSystem =

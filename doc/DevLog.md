@@ -884,3 +884,10 @@ Implementation status:
 - Accepted `RFC-PTCS-DYNAMIC-0007` and rebuilt TA Test/WBS tracking with legacy readiness `DYN-TA-00A`, explicit priorities and `@DYN-TA-*` detail files.
 - `DYN-TA-00A` closes common DSL/direct static Canvas/strict schema/invalid-node prerequisites before new Contracts/Renderer code. Public OAuth and production RN service evidence remain in their owning WBS.
 - Playwright acceptance now specifies first-viewport chart dominance, compact query/Add Row workflows, local interaction with zero network effects, stale/error/resync recovery, desktop/mobile geometry and PTCS/E2EQ parity.
+
+## 2026-07-11 - Dynamic TAResearch legacy readiness closure
+
+- ActorsPage classifier由token `IndexOf`改為strict JSON discriminator，package negative tests與真host ActorsPage Playwright通過。
+- 修復invalid canonical Argu string使FormInput消失；錯誤可見且保留template-default controls。
+- Showcase/SduiEcho actors補native `fCell2<string>` request/reply，direct actor key Canvas與explicit proxy target兩條路徑均由既有F# Playwright verifier通過。
+- Dynamic Expecto 21/21、WebSharper Release build通過；`DYN-TA-00A`完成。

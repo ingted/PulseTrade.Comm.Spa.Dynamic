@@ -85,6 +85,15 @@ type ShowcaseDemoActor() as this =
             this.ActorCtx.Sender.Tell(reply, this.ActorCtx.Self)
         )
 
+        this.Receive<fCell2<string>>(fun cell ->
+            let payload =
+                match cell with
+                | fCell2.S text when ActorDynamicPayload.isFskynetSduiPayload text -> text
+                | _ -> ActorDynamicPayload.simpleShowcase ()
+
+            let reply: fCell2<string> = fCell2.S payload
+            this.ActorCtx.Sender.Tell(reply, this.ActorCtx.Self))
+
     /// 提供給 lambda 使用的 context
     member _.ActorCtx: IActorContext = ActorBase.Context
 
@@ -105,6 +114,9 @@ type SduiEchoActor() as this =
         this.Receive<string>(fun (text: string) ->
             this.ActorCtx.Sender.Tell(text, this.ActorCtx.Self))
 
+        this.Receive<fCell2<string>>(fun cell ->
+            this.ActorCtx.Sender.Tell(cell, this.ActorCtx.Self))
+
     member _.ActorCtx: IActorContext = ActorBase.Context
 
 /// 較完整的 Actor Dynamic showcase，固定回傳包含 data/sdui 的 Canvas DSL。
@@ -124,5 +136,9 @@ type ShowcaseDemoActor2() as this =
         this.Receive<string>(fun (msg: string) ->
             if msg = "init" then
                 this.ActorCtx.Sender.Tell(ActorDynamicPayload.complexShowcase (), this.ActorCtx.Self))
+
+        this.Receive<fCell2<string>>(fun _ ->
+            let reply: fCell2<string> = fCell2.S (ActorDynamicPayload.complexShowcase ())
+            this.ActorCtx.Sender.Tell(reply, this.ActorCtx.Self))
 
     member _.ActorCtx: IActorContext = ActorBase.Context
