@@ -55,7 +55,15 @@ let backend =
                         let snapshot =
                             { Data =
                                 Map.ofList
-                                    [ "status", SduiValue.Object(Map.ofList [ "label", SduiValue.Text "BACKFILL" ])
+                                    [ "status",
+                                      SduiValue.Object(
+                                          Map.ofList
+                                              [ "label", SduiValue.Text "BACKFILL"
+                                                "freshness", SduiValue.Text "backfill"
+                                                "watermarkUtc", SduiValue.Text "2026-07-11T09:00:00Z"
+                                                "quality", SduiValue.Text "complete"
+                                                "lagSeconds", SduiValue.Number 0.0
+                                                "reasonCode", SduiValue.Text "historical-query" ])
                                       "series.price", SduiValue.Array [||] ]
                               Freshness = TaFreshness.Backfill "query" }
 
@@ -219,6 +227,9 @@ let tests =
               let queriedState = queried |> requireOk |> decodeBrowserState
               Expect.equal queriedState.dataRevision 1L "browser query must advance the canonical reducer revision."
               Expect.equal queriedState.statusLabel "BACKFILL" "browser status should come from the canonical snapshot."
+              Expect.equal queriedState.watermarkUtc "2026-07-11T09:00:00Z" "watermark should survive the bounded browser wire."
+              Expect.equal queriedState.quality "complete" "quality should survive the bounded browser wire."
+              Expect.equal queriedState.reasonCode "historical-query" "freshness reason should survive the bounded browser wire."
               Expect.equal queriedState.series.Length 1 "browser wire should expose one bounded series per row."
               Expect.isEmpty queriedState.series[0].points "the empty backend series should remain empty." }) ]
 

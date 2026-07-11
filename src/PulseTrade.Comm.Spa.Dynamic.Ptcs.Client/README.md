@@ -19,6 +19,24 @@ TaResearchTransientClient.mountById
     "canvas-main"
 ```
 
+需要由host page控制active/dispose時使用：
+
+```fsharp
+let handle =
+    TaResearchTransientClient.mountByIdWithOptions
+        "app"
+        "ta-research"
+        "workspace-main"
+        "canvas-main"
+        TaClientLifecycle.defaults
+
+handle.SetActive false
+handle.SetActive true
+handle.Dispose()
+```
+
+client lifecycle保證one-in-flight action/poll、timeout/backoff、bounded reconnect、full snapshot resync與terminal dispose。它只使用same-origin WebSocket；不做HTTP polling。
+
 The PTCS host must register the same `extensionId` with `PulseTrade.Comm.Spa.Dynamic.Ptcs.TaResearchTransientServer.register`.
 
-Current exact package is `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha4`, consuming Renderer `[0.1.0-alpha3]`。
+Current exact package is `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha5`, consuming Renderer `[0.1.0-alpha3]`。

@@ -930,3 +930,10 @@ Implementation status:
 - F# Playwright passed desktop 1440x900 and mobile 390x844 operation/geometry/console gates. Human screenshot review found SVG text compression on mobile; the final alpha3 moves time labels outside scaled SVG so B1/B25/B48 remain readable。
 - Canonical Renderer project WebSharper compilation was blocked by an access-denied generated `websharper.log` handle. A disposable non-git shadow copy of the same canonical dirty tree was used only for full WebSharper compile/pack; canonical F# compile and all package-consumer tests ran in place. This is environment evidence, not a retained worktree or source of truth。
 - `DYN-TA-003` advances to 88%。Research-grade DMI/MACD multi-line details, patch focus/viewport evidence and the full Delayed/Backfill/Unavailable browser matrix remain open；real PTCS polling/reconnect/resync remains under DYN-TA-004/006。
+
+## 2026-07-12 - PTCS TA transient lifecycle alpha4/alpha5
+
+- Advanced Dynamic.Ptcs to `0.1.0-alpha4` and Ptcs.Client to `0.1.0-alpha5`；exact local packages were copied to SDK 10.0.301 library-packs without public NuGet push。
+- Bounded `ta-browser.v1` now preserves watermark、quality、lag seconds and reason code。Server/client exact-package tests both pass `4/4`。
+- Added a pure typed `TaClientLifecycle` and WebSharper interpreter for mounted handshake、one-in-flight action/poll、timeout retry、active suspension、bounded reconnect、full snapshot resync and terminal dispose。`mountByIdWithOptions` returns a handle with runtime state、SetActive and Dispose；existing `mountById` remains compatible。
+- Canonical F# build and disposable-shadow full WebSharper compile/pack passed with no raw JavaScript or HTTP polling。True PTCS shell mount、host restart reconnect、500 bars/20 polls and browser resource/history evidence remain open, so DYN-TA-004 advances only to 74%。

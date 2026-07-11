@@ -1,6 +1,6 @@
 # @DYN-TA-004 Host adapters, parity and release
 
-Status: Active / 58%
+Status: Active / 74%
 
 ## Deliverables
 
@@ -25,6 +25,15 @@ Status: Active / 58%
 - client exact-package model tests 2/2通過：candlestick/status/poll projection與typed query action mapping。
 - WebSharper 10.1.5.674的stale `wsfscservice`會讓後續`wsfsc.exe`以`-532462766`無診斷退出；停止22:33起持續存活的helper後，canonical `src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`正常build。pack使用已驗證的build後`dotnet pack --no-build`，不縮短project path或關閉compiler。
 - 未完成：真PTCS host bundle掛載、server ack/in-flight UI、poll timer/reconnect/resync、500 bars/20 polls、desktop/mobile Playwright。以上仍阻擋DYN-TA-004完成，不可用model tests替代。
+
+## 2026-07-12 lifecycle and bounded status slice
+
+- `PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha4`與`Ptcs.Client 0.1.0-alpha5`使用exact package refs；未public push，local nupkg已放SDK 10.0.301 library-packs。
+- bounded browser state wire補齊`watermarkUtc/quality/lagSeconds/reasonCode`，server/client exact-package tests各`4/4`通過；renderer不再只能看到label/freshness。
+- `TaClientLifecycle`以pure typed transition實作connected/mounted、one-in-flight action/poll、timeout/backoff、active suspension、bounded reconnect、full-snapshot resync與terminal dispose；actual WebSharper client interpreter使用typed`WebSocket`與`JS.SetTimeout/ClearTimeout`，無raw JavaScript或HTTP polling。
+- `mountByIdWithOptions`回傳`TaResearchTransientClientHandle`，提供runtime state、`SetActive`與`Dispose`；既有`mountById`保留並使用defaults。
+- canonical F# build與一次full WebSharper compile均通過；lifecycle tests驗證第二個poll不送、retry保留last-good revision、inactive取消timer、resync送full snapshot、disposed不再reconnect。
+- 尚未完成：client bundle掛入真PTCS shell、WebSocket斷線/host restart browser證據、500 bars/20 polls、history/DOM/timer bounded observation及desktop/mobile真host Playwright。
 
 ## Acceptance
 

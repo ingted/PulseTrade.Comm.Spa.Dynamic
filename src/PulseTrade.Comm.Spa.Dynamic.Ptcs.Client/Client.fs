@@ -52,6 +52,10 @@ type TaBrowserStateWire =
       series: TaBrowserSeriesWire array
       statusLabel: string
       freshness: string
+      watermarkUtc: string
+      quality: string
+      lagSeconds: float
+      reasonCode: string
       documentRevision: int64
       dataRevision: int64
       transportSequence: int64
@@ -101,6 +105,150 @@ type ExtensionTransientResponseWire =
       channelSequence: int64
       payload: string
       error: string }
+
+[<JavaScript>]
+type TaClientLifecycleOptions =
+    { PollIntervalMs: int
+      RequestTimeoutMs: int
+      PollRetryMs: int
+      ReconnectBaseMs: int
+      ReconnectMaximumMs: int }
+
+[<JavaScript>]
+type TaClientLifecycleState =
+    { CanvasInstanceId: CanvasInstanceId
+      Poll: RuntimePollState
+      Connected: bool
+      Active: bool
+      InFlight: bool
+      DataRevision: int64
+      ReconnectAttempt: int
+      Disposed: bool }
+
+[<JavaScript; RequireQualifiedAccess>]
+type TaClientLifecycleEvent =
+    | Connected
+    | StateAccepted of dataRevision: int64
+    | StartAction of SduiAction
+    | PollDue of nowUtc: DateTimeOffset
+    | RequestTimedOut of nowUtc: DateTimeOffset
+    | Disconnected
+    | ActiveChanged of bool
+    | ResyncRequired of reasonCode: string
+    | Dispose
+
+[<JavaScript; RequireQualifiedAccess>]
+type TaClientLifecycleEffect =
+    | SendMounted
+    | SendUnmounted
+    | SendAction of SduiAction
+    | SchedulePoll of delayMs: int
+    | ScheduleTimeout of delayMs: int
+    | ScheduleReconnect of delayMs: int
+    | CancelPoll
+    | CancelTimeout
+    | CancelReconnect
+
+[<JavaScript; RequireQualifiedAccess>]
+module TaClientLifecycle =
+    let defaults =
+        { PollIntervalMs = 5000
+          RequestTimeoutMs = 10000
+          PollRetryMs = 2000
+          ReconnectBaseMs = 1000
+          ReconnectMaximumMs = 30000 }
+
+    let initial canvasInstanceId =
+        { CanvasInstanceId = canvasInstanceId
+          Poll = RuntimePollState.Unmounted
+          Connected = false
+          Active = true
+          InFlight = false
+          DataRevision = 0L
+          ReconnectAttempt = 0
+          Disposed = false }
+
+    let reconnectDelay options attempt =
+        let rec expand current remaining =
+            if remaining <= 1 then current
+            else expand (min options.ReconnectMaximumMs (current * 2)) (remaining - 1)
+
+        expand options.ReconnectBaseMs (max 1 attempt)
+
+    let transition options event state =
+        if state.Disposed && event <> TaClientLifecycleEvent.Dispose then
+            state, [||]
+        else
+            match event with
+            | TaClientLifecycleEvent.Connected ->
+                { state with
+                    Poll = RuntimePollState.MountedIdle
+                    Connected = true
+                    InFlight = true
+                    ReconnectAttempt = 0 },
+                [| TaClientLifecycleEffect.CancelReconnect
+                   TaClientLifecycleEffect.SendMounted
+                   TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
+            | TaClientLifecycleEvent.StateAccepted revision ->
+                let nextPoll = if state.Active then RuntimePollState.Ready else RuntimePollState.Suspended
+                let schedule = if state.Active then [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |] else [||]
+
+                { state with Poll = nextPoll; InFlight = false; DataRevision = revision },
+                Array.append [| TaClientLifecycleEffect.CancelTimeout |] schedule
+            | TaClientLifecycleEvent.StartAction action when state.Connected && state.Active && not state.InFlight ->
+                { state with Poll = RuntimePollState.PollInFlight; InFlight = true },
+                [| TaClientLifecycleEffect.CancelPoll
+                   TaClientLifecycleEffect.SendAction action
+                   TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
+            | TaClientLifecycleEvent.PollDue _ when state.Connected && state.Active && not state.InFlight ->
+                { state with Poll = RuntimePollState.PollInFlight; InFlight = true },
+                [| TaClientLifecycleEffect.SendAction(SduiAction.PollDelta(state.CanvasInstanceId, state.DataRevision))
+                   TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
+            | TaClientLifecycleEvent.RequestTimedOut nowUtc when state.InFlight ->
+                let nextPoll = RuntimePollState.Backoff(nowUtc.AddMilliseconds(float options.PollRetryMs))
+                let retry =
+                    if state.Connected && state.Active then [| TaClientLifecycleEffect.SchedulePoll options.PollRetryMs |]
+                    else [||]
+
+                { state with Poll = nextPoll; InFlight = false },
+                Array.append [| TaClientLifecycleEffect.CancelTimeout |] retry
+            | TaClientLifecycleEvent.Disconnected ->
+                let attempt = state.ReconnectAttempt + 1
+                { state with
+                    Poll = RuntimePollState.Suspended
+                    Connected = false
+                    InFlight = false
+                    ReconnectAttempt = attempt },
+                [| TaClientLifecycleEffect.CancelPoll
+                   TaClientLifecycleEffect.CancelTimeout
+                   TaClientLifecycleEffect.ScheduleReconnect(reconnectDelay options attempt) |]
+            | TaClientLifecycleEvent.ActiveChanged active ->
+                let ready = active && state.Connected
+                let effects =
+                    if ready then [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |]
+                    else [| TaClientLifecycleEffect.CancelPoll; TaClientLifecycleEffect.CancelTimeout |]
+
+                { state with
+                    Active = active
+                    Poll = if ready then RuntimePollState.Ready else RuntimePollState.Suspended
+                    InFlight = if ready then state.InFlight else false },
+                effects
+            | TaClientLifecycleEvent.ResyncRequired reason when state.Connected && state.Active && not state.InFlight ->
+                { state with Poll = RuntimePollState.PausedForResync; InFlight = true },
+                [| TaClientLifecycleEffect.CancelPoll
+                   TaClientLifecycleEffect.SendAction(SduiAction.RequestFullSnapshot(state.CanvasInstanceId, reason))
+                   TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
+            | TaClientLifecycleEvent.Dispose ->
+                { state with
+                    Poll = RuntimePollState.Disposed
+                    Connected = false
+                    InFlight = false
+                    Disposed = true },
+                [| TaClientLifecycleEffect.CancelPoll
+                   TaClientLifecycleEffect.CancelTimeout
+                   TaClientLifecycleEffect.CancelReconnect
+                   if state.Connected then TaClientLifecycleEffect.SendUnmounted |]
+            | _ -> state, [||]
 
 [<JavaScript; RequireQualifiedAccess>]
 module TaResearchClientWire =
@@ -169,7 +317,11 @@ module TaResearchClientWire =
             let status =
                 SduiValue.Object(
                     Map [ "label", SduiValue.Text(text wire.statusLabel)
-                          "freshness", SduiValue.Text(text wire.freshness) ])
+                          "freshness", SduiValue.Text(text wire.freshness)
+                          "watermarkUtc", SduiValue.Text(text wire.watermarkUtc)
+                          "quality", SduiValue.Text(text wire.quality)
+                          "lagSeconds", SduiValue.Number wire.lagSeconds
+                          "reasonCode", SduiValue.Text(text wire.reasonCode) ])
 
             let data = Map.add (text wire.statusRef) status seriesData
             let lastError =
@@ -253,13 +405,19 @@ module TaResearchClientWire =
         | SduiAction.RequestFullSnapshot(canvas, reason) ->
             { emptyFrame "action" "full-snapshot" (canvasText canvas) with reasonCode = reason }
 
+[<JavaScript>]
+type TaResearchTransientClientHandle =
+    { RuntimeState: Var<RuntimeState>
+      SetActive: bool -> unit
+      Dispose: unit -> unit }
+
 [<JavaScript; RequireQualifiedAccess>]
 module TaResearchTransientClient =
     let syncWebSocketUrl () =
         let protocol = if JS.Window.Location.Protocol = "https:" then "wss://" else "ws://"
         protocol + JS.Window.Location.Host + "/sync/ws"
 
-    let mountById rootId extensionId channelId canvasId =
+    let mountByIdWithOptions rootId extensionId channelId canvasId lifecycleOptions =
         let identity =
             { DocumentId = DocumentId("pending-" + channelId)
               CanvasInstanceId = CanvasInstanceId canvasId }
@@ -277,7 +435,10 @@ module TaResearchTransientClient =
                   LastError = None }
         let mutable socket: WebSocket option = None
         let mutable requestSequence = 0
-        let queued = ResizeArray<string>()
+        let mutable lifecycle = TaClientLifecycle.initial identity.CanvasInstanceId
+        let mutable pollTimer: JS.Handle option = None
+        let mutable timeoutTimer: JS.Handle option = None
+        let mutable reconnectTimer: JS.Handle option = None
 
         let nextRequestId () =
             requestSequence <- requestSequence + 1
@@ -295,52 +456,147 @@ module TaResearchTransientClient =
             let text = JSON.Stringify request
 
             match socket with
-            | Some value when value.ReadyState = WebSocketReadyState.Open -> value.Send text
-            | _ -> queued.Add text
+            | Some value when value.ReadyState = WebSocketReadyState.Open ->
+                value.Send text
+                true
+            | _ -> false
+
+        let cancelPollTimer () =
+            pollTimer |> Option.iter JS.ClearTimeout
+            pollTimer <- None
+
+        let cancelTimeoutTimer () =
+            timeoutTimer |> Option.iter JS.ClearTimeout
+            timeoutTimer <- None
+
+        let cancelReconnectTimer () =
+            reconnectTimer |> Option.iter JS.ClearTimeout
+            reconnectTimer <- None
+
+        let rec apply event =
+            let next, effects = TaClientLifecycle.transition lifecycleOptions event lifecycle
+            lifecycle <- next
+            runtimeState.Value <- { runtimeState.Value with Poll = next.Poll }
+            interpret effects
+            effects
+
+        and interpret effects =
+            for effect in effects do
+                match effect with
+                | TaClientLifecycleEffect.SendMounted ->
+                    if not (sendPayload "open" (TaResearchClientWire.emptyFrame "mounted" "" canvasId)) then
+                        apply TaClientLifecycleEvent.Disconnected |> ignore
+                | TaClientLifecycleEffect.SendUnmounted ->
+                    sendPayload "close" (TaResearchClientWire.emptyFrame "unmounted" "" canvasId) |> ignore
+                | TaClientLifecycleEffect.SendAction action ->
+                    if not (sendPayload "action" (TaResearchClientWire.actionToWire action)) then
+                        apply TaClientLifecycleEvent.Disconnected |> ignore
+                | TaClientLifecycleEffect.SchedulePoll delayMs ->
+                    cancelPollTimer ()
+                    pollTimer <-
+                        Some(
+                            JS.SetTimeout
+                                (fun () ->
+                                    pollTimer <- None
+                                    apply (TaClientLifecycleEvent.PollDue DateTimeOffset.UtcNow) |> ignore)
+                                delayMs)
+                | TaClientLifecycleEffect.ScheduleTimeout delayMs ->
+                    cancelTimeoutTimer ()
+                    timeoutTimer <-
+                        Some(
+                            JS.SetTimeout
+                                (fun () ->
+                                    timeoutTimer <- None
+                                    apply (TaClientLifecycleEvent.RequestTimedOut DateTimeOffset.UtcNow) |> ignore)
+                                delayMs)
+                | TaClientLifecycleEffect.ScheduleReconnect delayMs ->
+                    cancelReconnectTimer ()
+                    reconnectTimer <-
+                        Some(
+                            JS.SetTimeout
+                                (fun () ->
+                                    reconnectTimer <- None
+                                    connect ())
+                                delayMs)
+                | TaClientLifecycleEffect.CancelPoll -> cancelPollTimer ()
+                | TaClientLifecycleEffect.CancelTimeout -> cancelTimeoutTimer ()
+                | TaClientLifecycleEffect.CancelReconnect -> cancelReconnectTimer ()
+
+        and connect () =
+            if not lifecycle.Disposed then
+                let value = new WebSocket(syncWebSocketUrl ())
+                socket <- Some value
+
+                value.OnOpen <- fun () -> apply TaClientLifecycleEvent.Connected |> ignore
+
+                value.OnMessage <-
+                    fun event ->
+                        try
+                            let response = JSON.Parse(string event.Data) |> As<ExtensionTransientResponseWire>
+
+                            if response.``type`` = "extension-transient" && response.status = "ok" then
+                                let wire = JSON.Parse(response.payload) |> As<TaBrowserStateWire>
+
+                                match TaResearchClientWire.stateFromWire wire with
+                                | Result.Ok state ->
+                                    runtimeState.Value <- state
+                                    apply (TaClientLifecycleEvent.StateAccepted state.DataRevision) |> ignore
+                                | Result.Error _ ->
+                                    apply (TaClientLifecycleEvent.ResyncRequired "invalid-browser-state") |> ignore
+                            elif response.``type`` = "extension-transient" then
+                                runtimeState.Value <-
+                                    { runtimeState.Value with
+                                        LastError =
+                                            Some
+                                                { ReasonCode = "transient-command-failed"
+                                                  Message = TaResearchClientWire.text response.error
+                                                  Recoverable = true } }
+                                apply (TaClientLifecycleEvent.RequestTimedOut DateTimeOffset.UtcNow) |> ignore
+                        with _ ->
+                            apply (TaClientLifecycleEvent.ResyncRequired "invalid-transient-response") |> ignore
+
+                value.OnClose <-
+                    fun () ->
+                        socket <- None
+                        apply TaClientLifecycleEvent.Disconnected |> ignore
+
+                value.OnError <- fun () -> ()
 
         let callbacks =
             { SubmitAction =
                 fun action ->
                     async {
-                        match socket with
-                        | Some value when value.ReadyState = WebSocketReadyState.Open ->
-                            sendPayload "action" (TaResearchClientWire.actionToWire action)
+                        let effects = apply (TaClientLifecycleEvent.StartAction action)
+                        let accepted =
+                            effects
+                            |> Array.exists (function TaClientLifecycleEffect.SendAction _ -> true | _ -> false)
+
+                        if accepted then
                             return Result.Ok()
-                        | _ ->
+                        else
                             return
                                 Result.Error
-                                    { Code = "transient-channel-not-open"
-                                      Message = "TA transient channel is not open." }
+                                    { Code = if lifecycle.Connected then "transient-command-busy" else "transient-channel-not-open"
+                                      Message = if lifecycle.Connected then "A TA transient command is already in flight." else "TA transient channel is not open." }
                     } }
 
         TaWorkspaceRenderer.render TaWorkspaceRenderer.defaultOptions callbacks runtimeState
         |> Doc.RunById rootId
 
-        let value = new WebSocket(syncWebSocketUrl ())
-        socket <- Some value
+        connect ()
 
-        value.OnOpen <-
+        { RuntimeState = runtimeState
+          SetActive = fun active -> apply (TaClientLifecycleEvent.ActiveChanged active) |> ignore
+          Dispose =
             fun () ->
-                sendPayload "open" (TaResearchClientWire.emptyFrame "mounted" "" canvasId)
+                apply TaClientLifecycleEvent.Dispose |> ignore
 
-                while queued.Count > 0 do
-                    let frame = queued[0]
-                    queued.RemoveAt 0
-                    value.Send frame
+                socket
+                |> Option.iter (fun value ->
+                    if value.ReadyState = WebSocketReadyState.Open || value.ReadyState = WebSocketReadyState.Connecting then
+                        value.Close())
 
-        value.OnMessage <-
-            fun event ->
-                try
-                    let response = JSON.Parse(string event.Data) |> As<ExtensionTransientResponseWire>
+                socket <- None }
 
-                    if response.``type`` = "extension-transient" && response.status = "ok" then
-                        let wire = JSON.Parse(response.payload) |> As<TaBrowserStateWire>
-
-                        match TaResearchClientWire.stateFromWire wire with
-                        | Result.Ok state -> runtimeState.Value <- state
-                        | Result.Error _ -> ()
-                with _ ->
-                    ()
-
-        value.OnClose <- fun () -> socket <- None
-        value.OnError <- fun () -> ()
+    let mountById rootId extensionId channelId canvasId =
+        mountByIdWithOptions rootId extensionId channelId canvasId TaClientLifecycle.defaults

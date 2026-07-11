@@ -15,3 +15,8 @@
 2026-07-12 02:47 +08:00
 - Sensitive scan：High=0；strict UTF-8/NUL/U+FFFD check passed；`git diff --check` passed。
 - First `check.fsx` with dated log directory：PASS=28 WARN=3 FAIL=0。After appending required trace fields to pre-work log, rerunning with parent `log` changed the check baseline scope and produced false readonly-delete findings for relative paths plus expected op-log timestamp ordering。No log file was deleted or rewritten；the authoritative rerun uses the original dated log scope after this append。
+
+2026-07-12 02:50-03:02 +08:00
+- Implemented DYN-TA-004 bounded status and lifecycle slice。Dynamic.Ptcs alpha4 server build/pack and tests `4/4` passed；Ptcs.Client alpha5 canonical F# build、full WebSharper shadow compile/pack and tests `4/4` passed。
+- Browser wire now carries watermark/quality/lag/reason。Lifecycle enforces one in-flight command、poll timeout/retry、active suspension、bounded reconnect、full snapshot resync and terminal dispose；existing mount API remains compatible。
+- No public NuGet push。Copied exact alpha4/alpha5 nupkgs to SDK library-packs。True PTCS browser host gate remains pending；WBS progress is 74%, not complete。

@@ -130,6 +130,10 @@ type TaBrowserStateWire =
       series: TaBrowserSeriesWire array
       statusLabel: string
       freshness: string
+      watermarkUtc: string
+      quality: string
+      lagSeconds: float
+      reasonCode: string
       documentRevision: int64
       dataRevision: int64
       transportSequence: int64
@@ -458,6 +462,10 @@ module TaResearchBrowserWire =
 
         let statusLabel = statusValues |> Map.tryFind "label" |> Option.bind tryText |> Option.defaultValue ""
         let freshness = statusValues |> Map.tryFind "freshness" |> Option.bind tryText |> Option.defaultValue ""
+        let watermarkUtc = statusValues |> Map.tryFind "watermarkUtc" |> Option.bind tryText |> Option.defaultValue ""
+        let quality = statusValues |> Map.tryFind "quality" |> Option.bind tryText |> Option.defaultValue ""
+        let lagSeconds = statusValues |> Map.tryFind "lagSeconds" |> Option.bind tryNumber |> Option.defaultValue 0.0
+        let reasonCode = statusValues |> Map.tryFind "reasonCode" |> Option.bind tryText |> Option.defaultValue ""
         let pollKind, _ = TaResearchTransientWire.pollToWire state.Poll
         let (DocumentId documentId) = state.Identity.DocumentId
         let (CanvasInstanceId canvasId) = state.Identity.CanvasInstanceId
@@ -479,6 +487,10 @@ module TaResearchBrowserWire =
           series = series
           statusLabel = statusLabel
           freshness = freshness
+          watermarkUtc = watermarkUtc
+          quality = quality
+          lagSeconds = lagSeconds
+          reasonCode = reasonCode
           documentRevision = state.DocumentRevision
           dataRevision = state.DataRevision
           transportSequence = state.LastTransportSequence
