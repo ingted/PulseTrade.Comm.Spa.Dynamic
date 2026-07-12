@@ -1,0 +1,5 @@
+# PTCS.Dynamic beta86 package alignment operation evidence
+
+- Preexisting state: `src/wwwroot/js/PulseTrade.Comm.Spa.Dynamic.js` and `tests/PulseTrade.Comm.Spa.Dynamic.Tests.fsproj` report worktree-only metadata/line-ending modification; LiveDemo `wwwroot` is untracked. They are not owned by this slice and will not be staged or rewritten.
+- Release builds passed for Dynamic beta75 and Dynamic.Ptcs alpha6-win2. Dynamic tests passed 23/23; preexisting generated-file content hashes remained unchanged.
+- Both packages were copied to configured library-packs and NuGet push returned Created. No secret value was printed.

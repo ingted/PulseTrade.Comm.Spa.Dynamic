@@ -630,6 +630,12 @@ Passed assertions：
 ## DYN-TA-T-016/017 canonical static payload classification
 
 - Dynamic beta74 classifies valid legacy/explicit Canvas、FormInput、ActorsPage and `sdui-runtime.v1` without token-search heuristics。
+
+### DYN-T-536 PTCS beta86 package alignment
+
+- Dynamic `0.1.3-beta75` and Dynamic.Ptcs `0.1.0-alpha6-win2` must restore exact `PulseTrade.Comm.Spa [0.2.5-beta86]` without NU1608.
+- Existing Dynamic package tests must remain green; this dependency-only alignment must not change SDUI classification, renderer behavior, or transient wire contracts.
+- Result: Pass on 2026-07-12. Dynamic package tests passed 23/23 with `WebSharperRunCompiler=false`; preexisting generated bundle/test-project files retained identical SHA-256 content. Both packages restored exact PTCS beta86 and NuGet push returned Created.
 - Unrelated/missing schema is `NonSdui` so a host without Dynamic ownership may keep its fallback；present SDUI with unsupported protocol/surface or invalid ActorsPage document type returns an explicit `InvalidSdui reasonCode`。
 - Package tests pass `23/23`。This is a non-UI contract gate；browser absent/present-invalid rendering remains open and must not be inferred from these tests。
 

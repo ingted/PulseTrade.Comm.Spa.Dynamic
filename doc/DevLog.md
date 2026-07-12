@@ -958,3 +958,9 @@ Implementation status:
 - Package tests pass 23/23。DYN-TA-007 advances from 20% to 40%；browser absent/present-invalid visual proof remains open and is not inferred from the non-UI tests。
 - Advanced `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta73 -> 0.1.3-beta74` with exact PTCS dependency `[0.2.5-beta80]` unchanged；local pack/library-packs alignment is required before root script consumers run。
 - beta74 full WebSharper build/pack then passed，the repo README is now packaged as NuGet readme，nupkg was copied to SDK 10.0.301 library-packs，and root PTC revision-10 bundle verifier loaded exact beta74 from NuGet cache and passed README/classifier/assets。No public push or formal service deployment is claimed；DYN-TA-008 advances to 35%。
+## 2026-07-12 - PTCS beta86 package alignment
+
+- Advanced `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta74 -> 0.1.3-beta75` and `PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha6-win1 -> 0.1.0-alpha6-win2`; both exact-pin `PulseTrade.Comm.Spa [0.2.5-beta86]`.
+- This is dependency-only alignment for the ActorArgu terminal-observer package chain. SDUI classification, renderer behavior and transient wire contracts are unchanged.
+- Release builds passed and Dynamic tests passed 23/23 with the established checked-in-bundle recipe. Preexisting generated JS/test-project content hashes were unchanged and those files were not staged by this slice.
+- NuGet push returned Created for both packages.
