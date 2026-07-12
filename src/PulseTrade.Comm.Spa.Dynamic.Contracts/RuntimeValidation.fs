@@ -39,8 +39,21 @@ module RuntimeValidation =
         | _ -> []
 
     let rowErrors index (row: TaRowSpec) =
+        let traces = TaRowSpec.effectiveTraces row
         [ yield! identifier $"rows[{index}].rowId" row.RowId
           yield! identifier $"rows[{index}].dataRef" row.DataRef
+
+          for traceIndex, trace in traces |> Array.indexed do
+              yield! identifier $"rows[{index}].traces[{traceIndex}].traceId" trace.TraceId
+              yield! identifier $"rows[{index}].traces[{traceIndex}].dataRef" trace.DataRef
+              if trace.Width <= 0.0 || trace.Width > 12.0 then
+                  yield error "invalid-trace-width" $"rows[{index}].traces[{traceIndex}].width" "Trace width must be greater than 0 and at most 12."
+              for KeyValue(key, value) in trace.Options do
+                  yield! unsafeValue $"rows[{index}].traces[{traceIndex}].options.{key}" value
+
+          let duplicateTraceIds = traces |> Array.countBy _.TraceId |> Array.exists (fun (_, count) -> count > 1)
+          if duplicateTraceIds then
+              yield error "duplicate-trace-id" $"rows[{index}].traces" "Trace ids must be unique within a row."
 
           if row.HeightWeight <= 0.0 || row.HeightWeight > 20.0 then
               yield error "invalid-height-weight" $"rows[{index}].heightWeight" "HeightWeight must be greater than 0 and at most 20."
@@ -57,6 +70,21 @@ module RuntimeValidation =
 
           if document.Rows.Length > limits.MaxRowsPerCanvas then
               yield error "limit-rows" "document.rows" $"Rows exceed hard limit {limits.MaxRowsPerCanvas}."
+
+          if document.Rows |> Array.exists (fun row -> TaRowSpec.effectiveTraces row |> Array.length > limits.MaxTracesPerRow) then
+              yield error "limit-traces-per-row" "document.rows" $"A row exceeds trace hard limit {limits.MaxTracesPerRow}."
+
+          let totalTraceCount = document.Rows |> Array.sumBy (TaRowSpec.effectiveTraces >> Array.length)
+          if totalTraceCount > limits.MaxTotalTraces then
+              yield error "limit-total-traces" "document.rows" $"Canvas traces exceed hard limit {limits.MaxTotalTraces}."
+
+          let duplicateDataRefs =
+              document.Rows
+              |> Array.collect TaRowSpec.effectiveTraces
+              |> Array.countBy _.DataRef
+              |> Array.exists (fun (_, count) -> count > 1)
+          if duplicateDataRefs then
+              yield error "duplicate-trace-data-ref" "document.rows" "Trace dataRefs must be unique within a Canvas."
 
           yield! document.Rows |> Array.toList |> List.mapi rowErrors |> List.concat
 

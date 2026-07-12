@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Renderer</PackageId>
-    <Version>0.1.0-alpha9</Version>
+    <Version>0.1.0-alpha11</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Pure WebSharper renderer for transport-neutral PulseTrade Dynamic SDUI runtime documents.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha4]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha5]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.6.676" />
     <PackageReference Include="WebSharper.UI" Version="10.1.5.676" />
   </ItemGroup>

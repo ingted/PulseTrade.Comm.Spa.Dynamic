@@ -177,3 +177,13 @@ E2EQ保留既有provider/backend/page transport，只把reply/delta映射為Runt
 ## 後續流程
 
 本RFC已accepted並授權依`DYN-TA-00A -> 001..008`順序開發。package split、NuGet push、E2EQ renderer replacement與PTCS core修改仍需各自通過Test/WBS detail gate。
+
+## 2026-07-12 Accepted Amendment：Composite Row / Multi-Trace / Browser Delta v2
+
+1. `TaRowSpec`保留legacy `Kind/DataRef`並新增typed `Traces: TaTraceSpec array`；空集合以legacy欄位導出單一effective trace。
+2. trace kind為`Candlestick | Volume | Line | Histogram`，每個trace有stable id、dataRef、label、color、width、visibility與typed options。row決定共同座標/高度，trace決定series presentation。
+3. 同row可包含K棒與多條SMA、`+DI/-DI/ADX`，或MACD DIF/signal/histogram；Renderer不得依Host-specific indicator名稱硬編layout。
+4. browser wire升為`ta-browser.v2`。document/initial/gap送full；document revision穩定時，只送changed keyed points、rolling remove-before與status delta。client需在既有state上deterministic merge，base/revision不符要求full snapshot。
+5. 四列2000-bar驗收配置：K+SMA 13/21/34/89/144/233；+DI7/-DI7/ADX7/ADX21；MACD 34/89/144；MACD 13/21/7。
+6. 初始2000 bars可為bounded full snapshot；後續5秒poll不得反覆重送全部2000 bars x traces。provider-side latest delta是後續最佳化，browser wire delta是本amendment的必要gate。
+7. E2EQ沿用同Contracts/Renderer；feature-gated adapter不得另建一套composite chart model。

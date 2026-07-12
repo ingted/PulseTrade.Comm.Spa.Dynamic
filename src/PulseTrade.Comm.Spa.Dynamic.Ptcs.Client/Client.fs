@@ -27,7 +27,20 @@ type TaBrowserPointWire =
 [<JavaScript; CLIMutable>]
 type TaBrowserSeriesWire =
     { dataRef: string
+      mode: string
+      removeBeforeTime: string
+      hasRemoveBeforeTime: bool
       points: TaBrowserPointWire array }
+
+[<JavaScript; CLIMutable>]
+type TaBrowserTraceWire =
+    { traceId: string
+      kind: string
+      dataRef: string
+      label: string
+      color: string
+      width: float
+      visible: bool }
 
 [<JavaScript; CLIMutable>]
 type TaBrowserRowWire =
@@ -35,11 +48,14 @@ type TaBrowserRowWire =
       kind: string
       dataRef: string
       heightWeight: float
-      visible: bool }
+      visible: bool
+      traces: TaBrowserTraceWire array }
 
 [<JavaScript; CLIMutable>]
 type TaBrowserStateWire =
     { wireVersion: string
+      updateKind: string
+      baseDataRevision: int64
       documentId: string
       canvasInstanceId: string
       workspaceId: string
@@ -279,6 +295,13 @@ module TaResearchClientWire =
         | TaRowKind.Macd -> "macd"
         | TaRowKind.HeikinAshi -> "heikin-ashi"
 
+    let traceKind value =
+        match text value with
+        | "volume" -> TaTraceKind.Volume
+        | "line" -> TaTraceKind.Line
+        | "histogram" -> TaTraceKind.Histogram
+        | _ -> TaTraceKind.Candlestick
+
     let pollState value =
         match text value with
         | "mounted-idle" -> RuntimePollState.MountedIdle
@@ -302,7 +325,7 @@ module TaResearchClientWire =
         |> SduiValue.Object
 
     let stateFromWire (wire: TaBrowserStateWire) =
-        if isNull (box wire) || wire.wireVersion <> "ta-browser.v1" then
+        if isNull (box wire) || (wire.wireVersion <> "ta-browser.v1" && wire.wireVersion <> "ta-browser.v2") then
             Result.Error "Unsupported TA browser state wire."
         else
             let rows =
@@ -315,6 +338,19 @@ module TaResearchClientWire =
                           DataRef = text row.dataRef
                           HeightWeight = row.heightWeight
                           Visible = row.visible
+                          Traces =
+                            if isNull row.traces then [||]
+                            else
+                                row.traces
+                                |> Array.map (fun trace ->
+                                    { TraceId = text trace.traceId
+                                      Kind = traceKind trace.kind
+                                      DataRef = text trace.dataRef
+                                      Label = text trace.label
+                                      Color = text trace.color
+                                      Width = trace.width
+                                      Visible = trace.visible
+                                      Options = Map.empty })
                           Options = Map.empty })
 
             let seriesData =
@@ -381,6 +417,65 @@ module TaResearchClientWire =
                   View = { Values = Map.empty }
                   Poll = pollState wire.pollKind
                   LastError = lastError }
+
+    let pointTime value =
+        match value with
+        | SduiValue.Object values ->
+            match Map.tryFind "t" values with
+            | Some(SduiValue.Text value) -> text value
+            | _ -> ""
+        | _ -> ""
+
+    let mergeSeries (current: RuntimeState) (wire: TaBrowserSeriesWire) =
+        let dataRef = text wire.dataRef
+        let currentPoints =
+            match Map.tryFind dataRef current.Data with
+            | Some(SduiValue.Array points) -> points
+            | _ -> [||]
+        let retained =
+            if wire.hasRemoveBeforeTime && not (String.IsNullOrWhiteSpace wire.removeBeforeTime) then
+                currentPoints |> Array.filter (fun point -> String.Compare(pointTime point, wire.removeBeforeTime) >= 0)
+            else currentPoints
+        let incoming = if isNull wire.points then [||] else wire.points |> Array.map pointValue
+        let merged =
+            Array.append retained incoming
+            |> Array.filter (pointTime >> String.IsNullOrWhiteSpace >> not)
+            |> Array.map (fun point -> pointTime point, point)
+            |> Map.ofArray
+            |> Map.toArray
+            |> Array.map snd
+
+        dataRef, SduiValue.Array merged
+
+    let applyWire (current: RuntimeState) (wire: TaBrowserStateWire) =
+        stateFromWire wire
+        |> Result.bind (fun decoded ->
+            if wire.wireVersion = "ta-browser.v1" || text wire.updateKind = "full" then
+                Result.Ok decoded
+            elif text wire.updateKind <> "delta" then
+                Result.Error "Unsupported TA browser update kind."
+            elif wire.baseDataRevision <> current.DataRevision then
+                Result.Error "TA browser delta base revision does not match current state."
+            elif decoded.Identity <> current.Identity || decoded.DocumentRevision <> current.DocumentRevision then
+                Result.Error "TA browser delta document identity or revision changed."
+            else
+                let mergedSeries =
+                    if isNull wire.series then current.Data
+                    else
+                        wire.series
+                        |> Array.fold (fun data series ->
+                            let dataRef, value = mergeSeries { current with Data = data } series
+                            Map.add dataRef value data) current.Data
+                let statusRef = decoded.Document |> Option.map _.StatusRef |> Option.defaultValue "status"
+                let mergedData =
+                    match Map.tryFind statusRef decoded.Data with
+                    | Some status -> Map.add statusRef status mergedSeries
+                    | None -> mergedSeries
+
+                Result.Ok
+                    { decoded with
+                        Data = mergedData
+                        View = current.View })
 
     let emptyFrame kind actionKind canvasId =
         { wireVersion = "ta-browser.v1"
@@ -577,7 +672,7 @@ module TaResearchTransientClient =
                             elif response.``type`` = "extension-transient" && response.status = "ok" then
                                 let wire = JSON.Parse(response.payload) |> As<TaBrowserStateWire>
 
-                                match TaResearchClientWire.stateFromWire wire with
+                                match TaResearchClientWire.applyWire runtimeState.Value wire with
                                 | Result.Ok state ->
                                     runtimeState.Value <- state
                                     apply (TaClientLifecycleEvent.StateAccepted state.DataRevision) |> ignore

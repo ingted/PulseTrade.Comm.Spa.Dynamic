@@ -58,6 +58,9 @@ Dynamic不得reference PTMD、broker SDK、SQL client或PTCS.Host executable。
 | DYN-TA-REQ-016 | Canvas顯示backend、coverage、watermark、lag、partial/sealed、quality與`Live/Delayed/Stale/Backfill/Unavailable`。 |
 | DYN-TA-REQ-017 | PTCS adapter與E2EQ adapter對同一RuntimeFrame sequence必須得到等價renderer state/geometry；不得維護兩套TA renderer。 |
 | DYN-TA-REQ-018 | 現有static Canvas payload保持相容；runtime v1只有在明確protocol時啟用。 |
+| DYN-TA-REQ-019 | 一個TA row必須支援ordered multi-trace；legacy single `Kind/DataRef`自動導出一個trace，同row的K棒/線/柱共享viewport與time axis。 |
+| DYN-TA-REQ-020 | browser wire在initial/document change/gap使用bounded full state；穩定document的poll只傳changed keyed points、remove-before與status delta，client deterministic merge且base mismatch要求resync。 |
+
 
 ## 5. User scenarios
 

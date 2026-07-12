@@ -175,3 +175,9 @@ E2EQ使用PTCS.Dynamic能力是可行的，但共享點必須是transport-neutra
 ### 2026-07-11 PTCS adapter package boundary correction
 
 PTCS-specific transient integration落在獨立`PulseTrade.Comm.Spa.Dynamic.Ptcs`，不直接塞入legacy Dynamic Bundle。理由是WebSharper 10.1.5會在recursive generic `SduiValue` browser wire或PTCS beta81/82新增metadata進入Bundle dependency merge時無診斷崩潰。Alpha2先交付server adapter；browser adapter必須使用bounded non-recursive TA-specific wire並在獨立WebSharper package驗證。Legacy facade暫留PTCS beta80，Host可直接reference新adapter，不以raw JavaScript或HTTP polling繞過。
+
+## 14. Composite row 與 delta wire 系統分析
+
+單一`row.Kind + row.DataRef`把layout、indicator語意與presentation綁成同一層，無法表達K棒疊多條SMA、DMI/ADX共列或MACD三component。修正採additive兩層模型：row擁有viewport/time axis/height；ordered traces擁有dataRef、presentation、label/style。legacy row由contract helper投影成單trace，讓既有E2EQ/PTCS fixture可漸進更新。
+
+browser delta責任在PTCS adapter邊界，而非Renderer。server reducer已有authoritative previous/next state，能以`dataRef + t`比較changed points並產生upsert/remove-before；client以同一keyed merge規則更新bounded state。Renderer只觀察新的RuntimeState，不理解transport delta。provider仍可能先回authoritative latest window，這是SQL/query效率議題，不得與browser wire bandwidth混為一談。

@@ -35,13 +35,59 @@ type TaRowKind =
     | Macd
     | HeikinAshi
 
+[<RequireQualifiedAccess>]
+type TaTraceKind =
+    | Candlestick
+    | Volume
+    | Line
+    | Histogram
+
+type TaTraceSpec =
+    { TraceId: string
+      Kind: TaTraceKind
+      DataRef: string
+      Label: string
+      Color: string
+      Width: float
+      Visible: bool
+      Options: Map<string, SduiValue> }
+
 type TaRowSpec =
     { RowId: string
       Kind: TaRowKind
       DataRef: string
       HeightWeight: float
       Visible: bool
-      Options: Map<string, SduiValue> }
+      Options: Map<string, SduiValue>
+      Traces: TaTraceSpec array }
+
+[<RequireQualifiedAccess>]
+module TaRowSpec =
+    let legacyTraceKind = function
+        | TaRowKind.Candlestick
+        | TaRowKind.HeikinAshi -> TaTraceKind.Candlestick
+        | TaRowKind.Volume -> TaTraceKind.Volume
+        | _ -> TaTraceKind.Line
+
+    let effectiveTraces (row: TaRowSpec) =
+        if not (isNull row.Traces) && row.Traces.Length > 0 then
+            row.Traces
+        else
+            [| { TraceId = row.RowId
+                 Kind = legacyTraceKind row.Kind
+                 DataRef = row.DataRef
+                 Label = row.RowId
+                 Color = ""
+                 Width = 2.0
+                 Visible = true
+                 Options = Map.empty } |]
+
+    let dataRefs row =
+        effectiveTraces row
+        |> Array.map _.DataRef
+        |> Array.append [| row.DataRef |]
+        |> Array.filter (String.IsNullOrWhiteSpace >> not)
+        |> Array.distinct
 
 type TaWorkspaceDocument =
     { WorkspaceId: string
@@ -143,6 +189,8 @@ type DynamicValidationError =
 
 type DynamicRuntimeLimits =
     { MaxRowsPerCanvas: int
+      MaxTracesPerRow: int
+      MaxTotalTraces: int
       MaxInitialBarsPerSeries: int
       MaxRetainedBarsPerSeries: int
       MaxPatchOperations: int
@@ -157,9 +205,11 @@ module DynamicRuntimeDefaults =
 
     let limits =
         { MaxRowsPerCanvas = 8
+          MaxTracesPerRow = 32
+          MaxTotalTraces = 64
           MaxInitialBarsPerSeries = 5000
           MaxRetainedBarsPerSeries = 2000
           MaxPatchOperations = 32
           MaxPatchItems = 500
-          MaxFrameBytes = 2 * 1024 * 1024
+          MaxFrameBytes = 16 * 1024 * 1024
           MinimumPollInterval = TimeSpan.FromSeconds 5.0 }

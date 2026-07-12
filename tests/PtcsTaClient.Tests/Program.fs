@@ -19,7 +19,9 @@ let point =
       hasLineValue = false }
 
 let wire =
-    { wireVersion = "ta-browser.v1"
+    { wireVersion = "ta-browser.v2"
+      updateKind = "full"
+      baseDataRevision = 0L
       documentId = "document"
       canvasInstanceId = "canvas"
       workspaceId = "workspace"
@@ -32,7 +34,15 @@ let wire =
              kind = "candlestick"
              dataRef = "series.price"
              heightWeight = 2.0
-             visible = true } |]
+             visible = true
+             traces =
+                [| { traceId = "kbar"
+                     kind = "candlestick"
+                     dataRef = "series.price"
+                     label = "K Bar"
+                     color = "#0f766e"
+                     width = 2.0
+                     visible = true } |] } |]
       allowedActions = [| "change-query" |]
       querySourceId = "binance"
       queryInstrument = "BTCUSDT"
@@ -40,7 +50,12 @@ let wire =
       queryFromUtc = ""
       queryToUtcExclusive = ""
       queryIncludePartial = true
-      series = [| { dataRef = "series.price"; points = [| point |] } |]
+      series =
+        [| { dataRef = "series.price"
+             mode = "replace"
+             removeBeforeTime = ""
+             hasRemoveBeforeTime = false
+             points = [| point |] } |]
       statusLabel = "LIVE"
       freshness = "live"
       watermarkUtc = "2026-07-11T09:00:00Z"
@@ -67,6 +82,7 @@ let tests =
               Expect.equal state.DataRevision 9L "data revision should be retained."
               Expect.equal state.Poll RuntimePollState.Ready "poll state should be retained."
               Expect.equal state.Document.Value.Rows[0].Kind TaRowKind.Candlestick "row kind should be projected."
+              Expect.equal state.Document.Value.Rows[0].Traces.Length 1 "composite trace metadata should be projected."
               Expect.equal state.Document.Value.DefaultView["query.instrument"] (SduiValue.Text "BTCUSDT") "server query identity should reach the renderer document."
               Expect.equal state.Document.Value.DefaultView["query.intervalMinutes"] (SduiValue.Number 1.0) "server interval should reach the renderer document."
 
@@ -90,6 +106,7 @@ let tests =
                         DataRef = "series.sma"
                         HeightWeight = 1.0
                         Visible = true
+                        Traces = [||]
                         Options = Map.empty })
 
               let encoded = TaResearchClientWire.actionToWire action
@@ -116,6 +133,45 @@ let tests =
                   SduiAction.PollDelta(CanvasInstanceId "canvas", 9L)
                   |> TaResearchClientWire.actionToWire
               Expect.equal actual.afterDataRevision 9.0 "browser command revisions must not become JavaScript BigInt values.")
+
+          testCase "delta wire upserts points, trims rolling prefixes and rejects revision gaps" (fun _ ->
+              let initial = TaResearchClientWire.stateFromWire wire |> Result.defaultWith failtest
+              let nextPoint = { point with time = "2026-07-11T09:01:00+08:00"; closeValue = 104.0 }
+              let delta =
+                  { wire with
+                      updateKind = "delta"
+                      baseDataRevision = 9L
+                      dataRevision = 10L
+                      transportSequence = 13L
+                      series =
+                        [| { dataRef = "series.price"
+                             mode = "upsert"
+                             removeBeforeTime = ""
+                             hasRemoveBeforeTime = false
+                             points = [| nextPoint |] } |] }
+              let merged = TaResearchClientWire.applyWire initial delta |> Result.defaultWith failtest
+              match merged.Data["series.price"] with
+              | SduiValue.Array points -> Expect.equal points.Length 2 "delta append retains the prior point."
+              | value -> failtestf "Unexpected merged series: %A" value
+
+              let trimmedWire =
+                  { delta with
+                      baseDataRevision = 10L
+                      dataRevision = 11L
+                      transportSequence = 14L
+                      series =
+                        [| { dataRef = "series.price"
+                             mode = "upsert"
+                             removeBeforeTime = nextPoint.time
+                             hasRemoveBeforeTime = true
+                             points = [||] } |] }
+              let trimmed = TaResearchClientWire.applyWire merged trimmedWire |> Result.defaultWith failtest
+              match trimmed.Data["series.price"] with
+              | SduiValue.Array points -> Expect.equal points.Length 1 "rolling-window trim removes only the stale prefix."
+              | value -> failtestf "Unexpected trimmed series: %A" value
+
+              let mismatched = { delta with baseDataRevision = 8L }
+              Expect.isError (TaResearchClientWire.applyWire initial mismatched) "revision gaps must request resync rather than corrupt client state.")
 
           testCase "lifecycle enforces one in-flight poll and retry without losing revision" (fun _ ->
               let canvas = CanvasInstanceId "canvas"

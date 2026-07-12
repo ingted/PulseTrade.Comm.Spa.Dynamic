@@ -14,6 +14,7 @@ let row =
       DataRef = "series.price"
       HeightWeight = 2.0
       Visible = true
+      Traces = [||]
       Options = Map.empty }
 
 let document =
@@ -162,6 +163,95 @@ let tests =
               let actual = value |> TaResearchTransientWire.valueToWire |> TaResearchTransientWire.valueFromWire
               Expect.equal actual value "recursive SDUI value wire should round-trip." )
 
+          testCase "browser point wire accepts canonical compact keys and legacy aliases" (fun _ ->
+              let compactCandle =
+                  SduiValue.Object(
+                      Map [
+                          "t", SduiValue.Text "2026-07-12T00:00:00Z"
+                          "o", SduiValue.Number 100.0
+                          "h", SduiValue.Number 102.0
+                          "l", SduiValue.Number 99.0
+                          "c", SduiValue.Number 101.0
+                          "v", SduiValue.Number 12.5
+                      ])
+                  |> TaResearchBrowserWire.pointFromValue
+                  |> Option.defaultWith (fun () -> failtest "compact candle point was rejected")
+
+              Expect.isTrue compactCandle.hasOpen "compact o must set hasOpen."
+              Expect.isTrue compactCandle.hasHigh "compact h must set hasHigh."
+              Expect.isTrue compactCandle.hasLow "compact l must set hasLow."
+              Expect.isTrue compactCandle.hasClose "compact c must set hasClose."
+              Expect.isTrue compactCandle.hasVolume "compact v must set hasVolume."
+              Expect.equal compactCandle.time "2026-07-12T00:00:00Z" "compact t must preserve timestamp."
+              Expect.equal compactCandle.closeValue 101.0 "compact c must preserve close."
+
+              let compactLine =
+                  SduiValue.Object(Map [ "t", SduiValue.Text "2026-07-12T00:01:00Z"; "v", SduiValue.Number 7.25 ])
+                  |> TaResearchBrowserWire.pointFromValue
+                  |> Option.defaultWith (fun () -> failtest "compact line point was rejected")
+
+              Expect.isTrue compactLine.hasLineValue "compact line v must set hasLineValue."
+              Expect.equal compactLine.lineValue 7.25 "compact line v must preserve value."
+
+              let legacy =
+                  SduiValue.Object(
+                      Map [
+                          "time", SduiValue.Text "2026-07-12T00:02:00Z"
+                          "open", SduiValue.Number 1.0
+                          "high", SduiValue.Number 2.0
+                          "low", SduiValue.Number 0.5
+                          "close", SduiValue.Number 1.5
+                          "volume", SduiValue.Number 3.0
+                      ])
+                  |> TaResearchBrowserWire.pointFromValue
+                  |> Option.defaultWith (fun () -> failtest "legacy candle point was rejected")
+
+              Expect.isTrue legacy.hasOpen "legacy open alias remains supported."
+              Expect.equal legacy.volumeValue 3.0 "legacy volume alias remains supported." )
+
+          testCase "browser delta wire sends only changed points and rolling-prefix tombstone" (fun _ ->
+              let pointValue timestamp closeValue =
+                  SduiValue.Object(
+                      Map [ "t", SduiValue.Text timestamp
+                            "o", SduiValue.Number closeValue
+                            "h", SduiValue.Number closeValue
+                            "l", SduiValue.Number closeValue
+                            "c", SduiValue.Number closeValue
+                            "v", SduiValue.Number 1.0 ])
+              let state revision points =
+                  { Identity = { DocumentId = documentId; CanvasInstanceId = canvasId }
+                    Document = Some document
+                    Data = Map [ "series.price", SduiValue.Array points ]
+                    DocumentRevision = 1L
+                    DataRevision = revision
+                    LastTransportSequence = revision
+                    View = { Values = Map.empty }
+                    Poll = RuntimePollState.Ready
+                    LastError = None }
+              let previous =
+                  state 10L [| pointValue "2026-07-12T00:00:00Z" 100.0; pointValue "2026-07-12T00:01:00Z" 101.0 |]
+              let next =
+                  state 11L [| pointValue "2026-07-12T00:01:00Z" 101.0; pointValue "2026-07-12T00:02:00Z" 102.0 |]
+              let wire = TaResearchBrowserWire.stateToWireAgainst (Some previous) next
+
+              Expect.equal wire.updateKind "delta" "stable document revisions emit a delta."
+              Expect.equal wire.baseDataRevision 10L "delta records its exact base revision."
+              Expect.equal wire.series.Length 1 "one trace produces one bounded series delta."
+              Expect.equal wire.series[0].mode "upsert" "series delta uses timestamp-keyed upsert semantics."
+              Expect.equal wire.series[0].points.Length 1 "only the newly appended point crosses the wire."
+              Expect.isTrue wire.series[0].hasRemoveBeforeTime "rolling removal is explicit."
+              Expect.equal wire.series[0].removeBeforeTime "2026-07-12T00:01:00Z" "the retained-window boundary is stable."
+
+              let large =
+                  Array.init 250 (fun index ->
+                      pointValue (sprintf "2026-07-12T%02d:%02d:00Z" (index / 60) (index % 60)) (100.0 + float index))
+                  |> state 12L
+                  |> TaResearchBrowserWire.stateToWire
+              Expect.equal
+                  large.series[0].points.Length
+                  TaResearchBrowserWire.MaxBootstrapPointsPerSeries
+                  "bootstrap wire must bound each series while server RuntimeState retains the full history." )
+
           testCaseAsync "server adapter applies canonical reducer and keeps sessions isolated" (async {
               let handler = TaResearchTransientServer.createHandler backend
               let mounted = RuntimeClientFrame.Mounted canvasId
@@ -210,7 +300,8 @@ let tests =
                   handler (browserContext "browser-a" "open" "browser-open" (browserPayload "mounted" ""))
 
               let openedState = opened |> requireOk |> decodeBrowserState
-              Expect.equal openedState.wireVersion "ta-browser.v1" "browser response must retain the bounded wire version."
+              Expect.equal openedState.wireVersion "ta-browser.v2" "browser response must use the bounded delta-capable wire version."
+              Expect.equal openedState.updateKind "full" "first browser response must be authoritative."
               Expect.equal openedState.title "TA Research" "document metadata should be projected for the browser."
               Expect.equal openedState.rows.Length 1 "document rows should be projected without recursive values."
               Expect.equal openedState.rows[0].kind "candlestick" "row kind should use the canonical text representation."
@@ -234,6 +325,8 @@ let tests =
 
               let! queried = handler (browserContext "browser-a" "action" "browser-query" query)
               let queriedState = queried |> requireOk |> decodeBrowserState
+              Expect.equal queriedState.updateKind "delta" "stable document revisions use a delta response."
+              Expect.equal queriedState.baseDataRevision 0L "delta response identifies the accepted client base revision."
               Expect.equal queriedState.dataRevision 1L "browser query must advance the canonical reducer revision."
               Expect.equal queriedState.statusLabel "BACKFILL" "browser status should come from the canonical snapshot."
               Expect.equal queriedState.watermarkUtc "2026-07-11T09:00:00Z" "watermark should survive the bounded browser wire."

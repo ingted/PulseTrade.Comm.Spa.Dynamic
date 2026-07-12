@@ -331,3 +331,19 @@ E2EQ main host的feature-gated mount仍是獨立交付條件。Clean WebSharper 
 `TaWorkspaceDocument.DefaultView`同時承載local view default與server-authoritative query metadata。TA adapter使用以下bounded keys：`query.sourceId`、`query.instrument`、`query.intervalMinutes`、`query.fromUtc`、`query.toUtcExclusive`、`query.includePartial`。`ta-browser.v1`以flat fields傳遞這些值，Ptcs.Client重建DefaultView後交給Renderer。
 
 Renderer只在新的`DocumentRevision`同步query draft；Snapshot/Patch/Heartbeat不得重設使用者正在編輯的欄位。metadata缺失時欄位保持空白，禁止使用demo symbol/interval/date。Add Row `rowKind`一律使用lowercase canonical text，server parser仍case-insensitive以相容舊client。
+
+## 2026-07-12 Composite trace 與 browser wire v2
+
+```fsharp
+type TaTraceKind = Candlestick | Volume | Line | Histogram
+type TaTraceSpec =
+    { TraceId: string; Kind: TaTraceKind; DataRef: string; Label: string
+      Color: string; Width: float; Visible: bool; Options: Map<string,SduiValue> }
+type TaRowSpec =
+    { RowId: string; Kind: TaRowKind; DataRef: string; HeightWeight: float
+      Visible: bool; Options: Map<string,SduiValue>; Traces: TaTraceSpec array }
+```
+
+`TaRowSpec.effectiveTraces`在`Traces`空時由legacy欄位導出一個trace。validation將row primary ref與所有trace refs加入document registry，限制trace id/dataRef uniqueness、每row trace count與style bounds。
+
+`ta-browser.v2` series wire包含`mode=replace|upsert`、changed points與optional `removeBeforeTime`。server在document revision改變、初始、gap/resync時送replace；穩定document比較previous/next keyed state後只送upsert/remove-before/status。client先驗base revision，再merge、sort、套用2000-point retention；不符即`RequestFullSnapshot`。

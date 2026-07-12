@@ -59,7 +59,8 @@ module RuntimeReducer =
         | Some document ->
             [ yield document.RowsRef
               yield document.StatusRef
-              yield! document.Rows |> Array.map _.DataRef ]
+              for row in document.Rows do
+                  yield! TaRowSpec.dataRefs row ]
             |> Set.ofList
 
     let knownTargetIds state =

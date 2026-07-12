@@ -986,3 +986,10 @@ Implementation status:
 - The formal beta87 Host process was replaced and the same Dynamic TA FormInput/Canvas flow recovered without a sequence-gap resync。A second browser context still bootstrapped from channel sequence 1。
 - Cross-repo `PTC-VFY-027` revision 5 reads IndexedDB through Playwright CDP only；20 transient polls left all PTCS browser object-store counts unchanged。Evidence：`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-restart-indexeddb-202607122114`。
 - A side-by-side beta87 rolling candidate passed Dynamic error/recovery、Add/Remove、Reset and poll rendering while canonical service health remained continuous。External reverse-proxy cutover and E2EQ browser parity remain outside this evidence。
+
+## 2026-07-13 - Composite rows and browser delta wire v2
+
+- Added additive `TaTraceSpec` contracts and composite Candlestick/Line/Histogram rendering while retaining legacy `Traces=[||]` behavior. Renderer `0.1.0-alpha11` restores legacy row-kind titles and renders the Host four-row 17-trace layout.
+- Dynamic.Ptcs `0.1.0-alpha6-win10` emits `ta-browser.v2` full/delta state, exact base revision, changed-point upserts and rolling prefix tombstones. Each browser bootstrap series is bounded to the latest 200 points while canonical RuntimeState remains complete.
+- Ptcs.Client `0.1.0-alpha7-win12` validates the delta base, merges by timestamp and requests resync on mismatch. Dynamic.Ptcs and Ptcs.Client focused tests pass 7/7 each.
+- Formal PTCS Host Playwright gate passed four rows, 17 series, desktop/mobile, error recovery, typed actions and fresh reconnect at `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-composite-win10-final-202607130030`.

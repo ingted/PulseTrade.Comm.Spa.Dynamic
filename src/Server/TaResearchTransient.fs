@@ -20,13 +20,25 @@ and [<CLIMutable>] TaTransientValueWire =
       fields: TaTransientFieldWire array }
 
 [<CLIMutable>]
+type TaTransientTraceWire =
+    { traceId: string
+      kind: string
+      dataRef: string
+      label: string
+      color: string
+      width: float
+      visible: bool
+      options: TaTransientFieldWire array }
+
+[<CLIMutable>]
 type TaTransientRowWire =
     { rowId: string
       kind: string
       dataRef: string
       heightWeight: float
       visible: bool
-      options: TaTransientFieldWire array }
+      options: TaTransientFieldWire array
+      traces: TaTransientTraceWire array }
 
 [<CLIMutable>]
 type TaTransientDocumentWire =
@@ -105,7 +117,20 @@ type TaBrowserPointWire =
 [<CLIMutable>]
 type TaBrowserSeriesWire =
     { dataRef: string
+      mode: string
+      removeBeforeTime: string
+      hasRemoveBeforeTime: bool
       points: TaBrowserPointWire array }
+
+[<CLIMutable>]
+type TaBrowserTraceWire =
+    { traceId: string
+      kind: string
+      dataRef: string
+      label: string
+      color: string
+      width: float
+      visible: bool }
 
 [<CLIMutable>]
 type TaBrowserRowWire =
@@ -113,11 +138,14 @@ type TaBrowserRowWire =
       kind: string
       dataRef: string
       heightWeight: float
-      visible: bool }
+      visible: bool
+      traces: TaBrowserTraceWire array }
 
 [<CLIMutable>]
 type TaBrowserStateWire =
     { wireVersion: string
+      updateKind: string
+      baseDataRevision: int64
       documentId: string
       canvasInstanceId: string
       workspaceId: string
@@ -232,13 +260,49 @@ module TaResearchTransientWire =
         | "heikin-ashi" -> TaRowKind.HeikinAshi
         | _ -> TaRowKind.Candlestick
 
+    let traceKindText = function
+        | TaTraceKind.Candlestick -> "candlestick"
+        | TaTraceKind.Volume -> "volume"
+        | TaTraceKind.Line -> "line"
+        | TaTraceKind.Histogram -> "histogram"
+
+    let traceKind value =
+        match text value |> fun item -> item.Trim().ToLowerInvariant() with
+        | "volume" -> TaTraceKind.Volume
+        | "line" -> TaTraceKind.Line
+        | "histogram" -> TaTraceKind.Histogram
+        | _ -> TaTraceKind.Candlestick
+
+    let traceToWire (trace: TaTraceSpec) : TaTransientTraceWire =
+        { traceId = trace.TraceId
+          kind = traceKindText trace.Kind
+          dataRef = trace.DataRef
+          label = trace.Label
+          color = trace.Color
+          width = trace.Width
+          visible = trace.Visible
+          options = mapToWire trace.Options }
+
+    let traceFromWire (wire: TaTransientTraceWire) : TaTraceSpec =
+        { TraceId = text wire.traceId
+          Kind = traceKind wire.kind
+          DataRef = text wire.dataRef
+          Label = text wire.label
+          Color = text wire.color
+          Width = wire.width
+          Visible = wire.visible
+          Options = mapFromWire wire.options }
+
     let rowToWire (row: TaRowSpec) : TaTransientRowWire =
         { rowId = row.RowId
           kind = rowKindText row.Kind
           dataRef = row.DataRef
           heightWeight = row.HeightWeight
           visible = row.Visible
-          options = mapToWire row.Options }
+          options = mapToWire row.Options
+          traces =
+            if isNull row.Traces then [||]
+            else row.Traces |> Array.map traceToWire }
 
     let rowFromWire (wire: TaTransientRowWire) : TaRowSpec =
         { RowId = text wire.rowId
@@ -246,7 +310,10 @@ module TaResearchTransientWire =
           DataRef = text wire.dataRef
           HeightWeight = wire.heightWeight
           Visible = wire.visible
-          Options = mapFromWire wire.options }
+          Options = mapFromWire wire.options
+          Traces =
+            if isNull wire.traces then [||]
+            else wire.traces |> Array.map traceFromWire }
 
     let documentToWire (document: TaWorkspaceDocument) : TaTransientDocumentWire =
         { workspaceId = document.WorkspaceId
@@ -331,7 +398,7 @@ module TaResearchTransientWire =
           LastError = error }
 
     let emptyRow () =
-        { rowId = ""; kind = ""; dataRef = ""; heightWeight = 0.0; visible = false; options = [||] }
+        { rowId = ""; kind = ""; dataRef = ""; heightWeight = 0.0; visible = false; options = [||]; traces = [||] }
 
     let emptyQuery () =
         { sourceId = ""; instrument = ""; intervalMinutes = 0; fromUtc = ""; toUtcExclusive = ""; includePartial = false
@@ -404,6 +471,9 @@ module TaResearchTransientWire =
 
 [<RequireQualifiedAccess>]
 module TaResearchBrowserWire =
+    [<Literal>]
+    let MaxBootstrapPointsPerSeries = 200
+
     let revisionFromBrowser fieldName value =
         if Double.IsNaN value || Double.IsInfinity value || value < 0.0 || Math.Truncate value <> value || value > float Int64.MaxValue then
             Error($"Invalid JS-safe {fieldName} revision.")
@@ -429,33 +499,88 @@ module TaResearchBrowserWire =
 
     let has field values = Map.containsKey field values
 
+    let valueOrZeroAny fields values =
+        fields
+        |> List.tryPick (fun field -> values |> Map.tryFind field |> Option.bind tryNumber)
+        |> Option.defaultValue 0.0
+
+    let textAny fields values =
+        fields
+        |> List.tryPick (fun field -> values |> Map.tryFind field |> Option.bind tryText)
+        |> Option.defaultValue ""
+
+    let hasAny fields values =
+        fields |> List.exists (fun field -> has field values)
+
     let pointFromValue = function
         | SduiValue.Object values ->
             Some
-                { time = values |> Map.tryFind "time" |> Option.bind tryText |> Option.defaultValue ""
-                  openValue = valueOrZero "open" values
-                  highValue = valueOrZero "high" values
-                  lowValue = valueOrZero "low" values
-                  closeValue = valueOrZero "close" values
-                  volumeValue = valueOrZero "volume" values
-                  lineValue = valueOrZero "value" values
-                  hasOpen = has "open" values
-                  hasHigh = has "high" values
-                  hasLow = has "low" values
-                  hasClose = has "close" values
-                  hasVolume = has "volume" values
-                  hasLineValue = has "value" values }
+                { time = textAny [ "t"; "time" ] values
+                  openValue = valueOrZeroAny [ "o"; "open" ] values
+                  highValue = valueOrZeroAny [ "h"; "high" ] values
+                  lowValue = valueOrZeroAny [ "l"; "low" ] values
+                  closeValue = valueOrZeroAny [ "c"; "close" ] values
+                  volumeValue = valueOrZeroAny [ "v"; "volume" ] values
+                  lineValue = valueOrZeroAny [ "v"; "value" ] values
+                  hasOpen = hasAny [ "o"; "open" ] values
+                  hasHigh = hasAny [ "h"; "high" ] values
+                  hasLow = hasAny [ "l"; "low" ] values
+                  hasClose = hasAny [ "c"; "close" ] values
+                  hasVolume = hasAny [ "v"; "volume" ] values
+                  hasLineValue = hasAny [ "v"; "value" ] values }
         | _ -> None
 
-    let seriesFromState (state: RuntimeState) dataRef =
+    let seriesPoints (state: RuntimeState) dataRef =
         let points =
             match Map.tryFind dataRef state.Data with
             | Some(SduiValue.Array values) -> values |> Array.choose pointFromValue
             | _ -> [||]
 
-        { dataRef = dataRef; points = points }
+        points
 
-    let stateToWire (state: RuntimeState) =
+    let boundedTail maximum (values: 'T array) =
+        if values.Length <= maximum then values
+        else values |> Array.skip (values.Length - maximum)
+
+    let fullSeriesFromState (state: RuntimeState) dataRef =
+        { dataRef = dataRef
+          mode = "replace"
+          removeBeforeTime = ""
+          hasRemoveBeforeTime = false
+          points = seriesPoints state dataRef |> boundedTail MaxBootstrapPointsPerSeries }
+
+    let deltaSeriesFromState (previous: RuntimeState) (next: RuntimeState) dataRef =
+        let previousPoints = seriesPoints previous dataRef
+        let nextPoints = seriesPoints next dataRef
+        let previousByTime = previousPoints |> Array.map (fun point -> point.time, point) |> Map.ofArray
+        let changed =
+            nextPoints
+            |> Array.filter (fun point ->
+                match Map.tryFind point.time previousByTime with
+                | Some previousPoint -> previousPoint <> point
+                | None -> true)
+            |> boundedTail MaxBootstrapPointsPerSeries
+        let removeBeforeTime = if nextPoints.Length = 0 then "" else nextPoints[0].time
+        let hasRemovedPrefix =
+            not (String.IsNullOrWhiteSpace removeBeforeTime)
+            && previousPoints |> Array.exists (fun point -> String.CompareOrdinal(point.time, removeBeforeTime) < 0)
+
+        { dataRef = dataRef
+          mode = "upsert"
+          removeBeforeTime = removeBeforeTime
+          hasRemoveBeforeTime = hasRemovedPrefix
+          points = changed }
+
+    let browserTrace (trace: TaTraceSpec) =
+        { traceId = trace.TraceId
+          kind = TaResearchTransientWire.traceKindText trace.Kind
+          dataRef = trace.DataRef
+          label = trace.Label
+          color = trace.Color
+          width = trace.Width
+          visible = trace.Visible }
+
+    let stateToWireAgainst (previous: RuntimeState option) (state: RuntimeState) =
         let document = state.Document
         let rows =
             document
@@ -466,10 +591,26 @@ module TaResearchBrowserWire =
                       kind = TaResearchTransientWire.rowKindText row.Kind
                       dataRef = row.DataRef
                       heightWeight = row.HeightWeight
-                      visible = row.Visible }))
+                      visible = row.Visible
+                      traces = if isNull row.Traces then [||] else row.Traces |> Array.map browserTrace }))
             |> Option.defaultValue [||]
 
-        let series = rows |> Array.map (fun row -> seriesFromState state row.dataRef)
+        let dataRefs =
+            rows
+            |> Array.collect (fun row ->
+                if isNull row.traces || row.traces.Length = 0 then [| row.dataRef |]
+                else row.traces |> Array.map _.dataRef)
+            |> Array.filter (String.IsNullOrWhiteSpace >> not)
+            |> Array.distinct
+        let sendFull =
+            match previous with
+            | None -> true
+            | Some value -> value.Identity <> state.Identity || value.DocumentRevision <> state.DocumentRevision
+        let series =
+            if sendFull then dataRefs |> Array.map (fullSeriesFromState state)
+            else
+                let value = previous |> Option.get
+                dataRefs |> Array.map (deltaSeriesFromState value state)
         let defaultView = document |> Option.map _.DefaultView |> Option.defaultValue Map.empty
         let queryText key = defaultView |> Map.tryFind key |> Option.bind tryText |> Option.defaultValue ""
         let queryInterval =
@@ -503,7 +644,9 @@ module TaResearchBrowserWire =
             | Some error -> error.ReasonCode, error.Message, error.Recoverable
             | None -> "", "", false
 
-        { wireVersion = "ta-browser.v1"
+        { wireVersion = "ta-browser.v2"
+          updateKind = if sendFull then "full" else "delta"
+          baseDataRevision = previous |> Option.map _.DataRevision |> Option.defaultValue 0L
           documentId = documentId
           canvasInstanceId = canvasId
           workspaceId = document |> Option.map _.WorkspaceId |> Option.defaultValue ""
@@ -534,6 +677,8 @@ module TaResearchBrowserWire =
           errorMessage = errorMessage
           errorRecoverable = errorRecoverable }
 
+    let stateToWire (state: RuntimeState) = stateToWireAgainst None state
+
     let optionalText value =
         if String.IsNullOrWhiteSpace value then None else Some(value.Trim())
 
@@ -556,12 +701,13 @@ module TaResearchBrowserWire =
                     RuntimeClientFrame.Action(
                         SduiAction.AddTaRow(
                             canvas,
-                            { RowId = text wire.rowId
-                              Kind = TaResearchTransientWire.rowKind wire.rowKind
-                              DataRef = text wire.dataRef
-                              HeightWeight = wire.heightWeight
-                              Visible = wire.visible
-                              Options = Map.empty })))
+                             { RowId = text wire.rowId
+                               Kind = TaResearchTransientWire.rowKind wire.rowKind
+                               DataRef = text wire.dataRef
+                               HeightWeight = wire.heightWeight
+                               Visible = wire.visible
+                               Traces = [||]
+                               Options = Map.empty })))
             | "action", "remove-row" -> Ok(RuntimeClientFrame.Action(SduiAction.RemoveTaRow(canvas, text wire.rowId)))
             | "action", "change-query" ->
                 Ok(
@@ -647,8 +793,7 @@ module TaResearchTransientServer =
 
                                         let payload =
                                             if isBrowserWire then
-                                                next
-                                                |> TaResearchBrowserWire.stateToWire
+                                                TaResearchBrowserWire.stateToWireAgainst (Some current) next
                                                 |> fun value -> JsonSerializer.Serialize(value, jsonOptions)
                                             else
                                                 next

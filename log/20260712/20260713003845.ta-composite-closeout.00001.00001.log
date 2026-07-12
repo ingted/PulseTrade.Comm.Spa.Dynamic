@@ -1,0 +1,15 @@
+# Dynamic TA composite closeout
+
+- 背景：composite row、v2 delta wire與正式 Host E2E 已完成；本檔只涵蓋剩餘 closeout，aggregate 起點不重置。
+- 目標：完成 Dynamic authoritative check、精準 stage/commit/push。
+- 假設：generated JS/wwwroot 不進 Git。
+- 計畫步驟：check -> staged-list audit -> commit/push -> root service audit。
+- 預計修改/讀取範圍：Dynamic TA docs/contracts/renderer/PTCS server/client/tests/log。
+- 執行命令/參數：root `check.fsx` 指向 Dynamic authoritative 文件；git status/diff。
+- 驗收方式：tests/evidence 已綠、check 無本輪 blocking FAIL、push 成功。
+- 風險：既有 generated output 與 package cascade。
+- 結果：待 closeout op_log。
+- 根因判讀：主線實作完成，僅剩交付稽核。
+- 下一步：commit/push 後暫停。
+- 關聯文件/工單/PR：`doc/TAResearch/WBS.md`、`doc/TAResearch/Test.md`、`doc/Verification.md`。
+- Prompt/上下文摘要：使用者要求 PTCS Host chat-session reply 支援四列 TA layout 後立刻 closeout 並暫停。

@@ -1,0 +1,6 @@
+# Dynamic TA composite row / delta wire
+
+- 背景：runtime v1只有row-kind + single dataRef，無法表達同row多trace；deployed poll可繪圖但會投影完整bounded series。
+- 目標：additive multi-trace document contract、renderer與真正delta browser wire，維持legacy single-series相容。
+- 驗收：contract/reducer/renderer/PTCS adapter tests、2000-bar四列Playwright、fresh reconnect。
+- 風險：exact NuGet cascade、legacy E2EQ adapter、initial snapshot size與WebSharper DOM bound。

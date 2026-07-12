@@ -271,29 +271,138 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
+    let compositeSvg rowId (traces: TaTraceSpec array) data window cursorIndex =
+        let width = 1000.0
+        let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
+        let height = if hasCandles then 250.0 else 112.0
+        let top = 10.0
+        let plotHeight = if hasCandles then 214.0 else 82.0
+        let palette = [| "#2764b0"; "#9b5b24"; "#6a4ca3"; "#0f766e"; "#b45309"; "#be185d"; "#475569"; "#0891b2" |]
+        let color index (trace: TaTraceSpec) =
+            if String.IsNullOrWhiteSpace trace.Color then palette[index % palette.Length] else trace.Color
+
+        let candleSeries =
+            traces
+            |> Array.tryFind (fun trace -> trace.Kind = TaTraceKind.Candlestick)
+            |> Option.map (fun trace -> RendererModel.candleSeries trace.DataRef data |> RendererModel.selectWindow window)
+            |> Option.defaultValue [||]
+
+        let referenceTimestamps =
+            if candleSeries.Length > 0 then candleSeries |> Array.map _.Timestamp
+            else
+                traces
+                |> Array.tryPick (fun trace ->
+                    match trace.Kind with
+                    | TaTraceKind.Volume ->
+                        let points = RendererModel.candleSeries trace.DataRef data |> RendererModel.selectWindow window
+                        if points.Length = 0 then None else Some(points |> Array.map _.Timestamp)
+                    | TaTraceKind.Line
+                    | TaTraceKind.Histogram ->
+                        let points = RendererModel.lineSeries trace.DataRef data |> RendererModel.selectWindow window
+                        if points.Length = 0 then None else Some(points |> Array.map _.Timestamp)
+                    | _ -> None)
+                |> Option.defaultValue [||]
+
+        let timestampIndex timestamp = referenceTimestamps |> Array.tryFindIndex ((=) timestamp)
+        let xAt index =
+            if referenceTimestamps.Length <= 1 then width / 2.0
+            else width * float index / float (referenceTimestamps.Length - 1)
+
+        let linePoints =
+            traces
+            |> Array.mapi (fun index trace ->
+                let points =
+                    (match trace.Kind with
+                     | TaTraceKind.Volume ->
+                         RendererModel.candleSeries trace.DataRef data
+                         |> Array.map (fun point -> { Timestamp = point.Timestamp; Value = point.Volume })
+                     | TaTraceKind.Line
+                     | TaTraceKind.Histogram -> RendererModel.lineSeries trace.DataRef data
+                     | _ -> [||])
+                    |> Array.filter (fun point -> timestampIndex point.Timestamp |> Option.isSome)
+                index, trace, points)
+
+        let scaleValues =
+            [| yield! candleSeries |> Array.collect (fun point -> [| point.Low; point.High |])
+               yield! linePoints |> Array.collect (fun (_, trace, points) ->
+                   let values = points |> Array.map _.Value
+                   if trace.Kind = TaTraceKind.Histogram then Array.append [| 0.0 |] values else values) |]
+        let low, high = RendererModel.paddedRange 0.0 1.0 scaleValues
+        let slot = if referenceTimestamps.Length = 0 then width else width / float referenceTimestamps.Length
+        let bodyWidth = max 2.0 (slot * 0.56)
+        let svgTestId = if hasCandles then "ta-candle-" + rowId else "ta-composite-" + rowId
+
+        svgElement "svg" [
+            svgAttr "viewBox" (if hasCandles then "0 0 1000 250" else "0 0 1000 112")
+            svgAttr "preserveAspectRatio" "none"
+            svgAttr "role" "img"
+            svgAttr "aria-label" ("Composite TA row " + rowId)
+            Attr.Create "data-testid" svgTestId
+            attr.style ("display:block; width:100%; height:" + fixedText height + "px; background:#fbfcfe;")
+        ] [
+            for gridIndex in 0 .. 4 do
+                let y = top + plotHeight * float gridIndex / 4.0
+                yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" (fixedText y); svgAttr "y2" (fixedText y); svgAttr "stroke" "#e7ecf3"; svgAttr "stroke-width" "1" ] []
+
+            for index in 0 .. candleSeries.Length - 1 do
+                let point = candleSeries[index]
+                let x = slot * (float index + 0.5)
+                let openY = RendererModel.normalize low high top plotHeight point.Open
+                let closeY = RendererModel.normalize low high top plotHeight point.Close
+                let highY = RendererModel.normalize low high top plotHeight point.High
+                let lowY = RendererModel.normalize low high top plotHeight point.Low
+                let candleColor = if point.Close >= point.Open then "#0f8a78" else "#c2414b"
+                let bodyY = min openY closeY
+                let bodyHeight = max 1.2 (abs (closeY - openY))
+                yield svgElement "line" [ svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" (fixedText highY); svgAttr "y2" (fixedText lowY); svgAttr "stroke" candleColor; svgAttr "stroke-width" "1.4" ] []
+                yield svgElement "rect" [ svgAttr "x" (fixedText (x - bodyWidth / 2.0)); svgAttr "y" (fixedText bodyY); svgAttr "width" (fixedText bodyWidth); svgAttr "height" (fixedText bodyHeight); svgAttr "fill" candleColor; svgAttr "rx" "0.6" ] []
+
+            for traceIndex, trace, points in linePoints do
+                let traceColor = color traceIndex trace
+                match trace.Kind with
+                | TaTraceKind.Histogram
+                | TaTraceKind.Volume ->
+                    let zeroY = RendererModel.normalize low high top plotHeight 0.0
+                    for point in points do
+                        match timestampIndex point.Timestamp with
+                        | Some index ->
+                            let x = slot * (float index + 0.18)
+                            let valueY = RendererModel.normalize low high top plotHeight point.Value
+                            let y = min zeroY valueY
+                            let barHeight = max 1.0 (abs (zeroY - valueY))
+                            yield svgElement "rect" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); svgAttr "x" (fixedText x); svgAttr "y" (fixedText y); svgAttr "width" (fixedText (max 1.0 (slot * 0.64))); svgAttr "height" (fixedText barHeight); svgAttr "fill" traceColor; svgAttr "fill-opacity" "0.62" ] []
+                        | None -> ()
+                | TaTraceKind.Line ->
+                    let path =
+                        points
+                        |> Array.choose (fun point ->
+                            timestampIndex point.Timestamp
+                            |> Option.map (fun index -> xAt index, RendererModel.normalize low high top plotHeight point.Value))
+                        |> Array.mapi (fun index (x, y) -> (if index = 0 then "M" else "L") + " " + fixedText x + " " + fixedText y)
+                        |> String.concat " "
+                    yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); svgAttr "d" path; svgAttr "fill" "none"; svgAttr "stroke" traceColor; svgAttr "stroke-width" (fixedText trace.Width); svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
+                | _ -> ()
+
+            match cursorPosition width referenceTimestamps.Length cursorIndex with
+            | Some x -> yield svgElement "line" [ Attr.Create "data-testid" (svgTestId + "-crosshair"); svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" "0"; svgAttr "y2" (fixedText plotHeight); svgAttr "stroke" "#1f4f73"; svgAttr "stroke-width" "1"; svgAttr "stroke-dasharray" "3 3" ] []
+            | None -> ()
+        ], referenceTimestamps
+
     let renderRow (options: TaRendererOptions) (state: RuntimeState) (ui: TaRendererUiState) (row: TaRowSpec) =
-        let referenceLength = RendererModel.seriesValues row.DataRef state.Data |> Array.length
+        let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
+        let referenceLength = RendererModel.rowReferenceLength row state.Data
         let window = RendererModel.clampWindow options.MinimumVisibleBars options.MaximumVisibleBars referenceLength ui.Window
-
-        match row.Kind with
-        | TaRowKind.Candlestick
-        | TaRowKind.HeikinAshi ->
-            let points = RendererModel.candleSeries row.DataRef state.Data |> RendererModel.selectWindow window
-            chartFrame (rowKindText row.Kind) ("ta-row-" + row.RowId) 278 [ candleSvg ("ta-candle-" + row.RowId) points ui.CursorIndex; timeAxis ("ta-time-axis-" + row.RowId) (points |> Array.map _.Timestamp) ]
-        | TaRowKind.Volume ->
-            let points = RendererModel.candleSeries row.DataRef state.Data |> RendererModel.selectWindow window
-            chartFrame "Volume" ("ta-row-" + row.RowId) 128 [ volumeSvg points ui.CursorIndex; timeAxis ("ta-time-axis-" + row.RowId) (points |> Array.map _.Timestamp) ]
-        | _ ->
-            let points = RendererModel.lineSeries row.DataRef state.Data |> RendererModel.selectWindow window
-            let color =
-                match row.Kind with
-                | TaRowKind.Sma -> "#2764b0"
-                | TaRowKind.Dmi -> "#9b5b24"
-                | TaRowKind.Adx -> "#6a4ca3"
-                | TaRowKind.Macd -> "#0f766e"
-                | _ -> "#40536d"
-
-            chartFrame (rowKindText row.Kind) ("ta-row-" + row.RowId) 140 [ lineSvg ("ta-line-" + row.RowId) color points ui.CursorIndex; timeAxis ("ta-time-axis-" + row.RowId) (points |> Array.map _.Timestamp) ]
+        let chart, timestamps = compositeSvg row.RowId traces state.Data window ui.CursorIndex
+        let title =
+            if isNull row.Traces || row.Traces.Length = 0 then
+                rowKindText row.Kind
+            else
+                traces
+                |> Array.map (fun trace -> if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label)
+                |> String.concat " / "
+                |> fun value -> if String.IsNullOrWhiteSpace value then rowKindText row.Kind else value
+        let height = if traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick) then 278 else 140
+        chartFrame title ("ta-row-" + row.RowId) height [ chart; timeAxis ("ta-time-axis-" + row.RowId) timestamps ]
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
         let canvasId = runtimeState.Value.Identity.CanvasInstanceId
@@ -349,7 +458,8 @@ module TaWorkspaceRenderer =
                   DataRef = addDataRef.Value
                   HeightWeight = 1.0
                   Visible = true
-                  Options = Map.empty }
+                  Options = Map.empty
+                  Traces = [||] }
 
             submit callbacks uiState (SduiAction.AddTaRow(canvasId, spec)) "Row request submitted."
             uiState.Value <- { uiState.Value with AddRowOpen = false }

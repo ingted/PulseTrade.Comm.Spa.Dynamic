@@ -142,6 +142,33 @@ module RendererModel =
     let lineSeries dataRef data =
         seriesValues dataRef data |> Array.choose parseLine
 
+    let effectiveTraces (row: TaRowSpec) =
+        if not (isNull row.Traces) && row.Traces.Length > 0 then
+            row.Traces
+        else
+            let kind =
+                match row.Kind with
+                | TaRowKind.Candlestick
+                | TaRowKind.HeikinAshi -> TaTraceKind.Candlestick
+                | TaRowKind.Volume -> TaTraceKind.Volume
+                | _ -> TaTraceKind.Line
+
+            [| { TraceId = row.RowId
+                 Kind = kind
+                 DataRef = row.DataRef
+                 Label = row.RowId
+                 Color = ""
+                 Width = 2.0
+                 Visible = true
+                 Options = Map.empty } |]
+
+    let rowReferenceLength (row: TaRowSpec) data =
+        effectiveTraces row
+        |> Array.filter _.Visible
+        |> Array.map (fun trace -> seriesValues trace.DataRef data |> Array.length)
+        |> Array.tryHead
+        |> Option.defaultValue 0
+
     let clampWindow minimumCount maximumCount total requested =
         if total <= 0 then
             { StartIndex = 0; Count = 0 }
@@ -184,7 +211,7 @@ module RendererModel =
         let referenceLength =
             visibleRows
             |> Array.tryHead
-            |> Option.map (fun row -> seriesValues row.DataRef data |> Array.length)
+            |> Option.map (fun row -> rowReferenceLength row data)
             |> Option.defaultValue 0
         let effectiveWindow = clampWindow 1 Int32.MaxValue referenceLength window
 
@@ -193,29 +220,32 @@ module RendererModel =
             let index = max 0 (min cursorIndex (effectiveWindow.Count - 1))
             let values =
                 visibleRows
-                |> Array.choose (fun row ->
-                    match row.Kind with
-                    | TaRowKind.Candlestick
-                    | TaRowKind.HeikinAshi
-                    | TaRowKind.Volume ->
-                        candleSeries row.DataRef data
-                        |> selectWindow effectiveWindow
-                        |> Array.tryItem index
-                        |> Option.map (fun point ->
-                            let value =
-                                if row.Kind = TaRowKind.Volume then fixedNumber point.Volume
-                                else
-                                    "O " + fixedNumber point.Open
-                                    + " H " + fixedNumber point.High
-                                    + " L " + fixedNumber point.Low
-                                    + " C " + fixedNumber point.Close
-
-                            point.Timestamp, { Label = row.RowId; Value = value })
-                    | _ ->
-                        lineSeries row.DataRef data
-                        |> selectWindow effectiveWindow
-                        |> Array.tryItem index
-                        |> Option.map (fun point -> point.Timestamp, { Label = row.RowId; Value = fixedNumber point.Value }))
+                |> Array.collect (fun row ->
+                    effectiveTraces row
+                    |> Array.filter _.Visible
+                    |> Array.choose (fun trace ->
+                        let label = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
+                        match trace.Kind with
+                        | TaTraceKind.Candlestick
+                        | TaTraceKind.Volume ->
+                            candleSeries trace.DataRef data
+                            |> selectWindow effectiveWindow
+                            |> Array.tryItem index
+                            |> Option.map (fun point ->
+                                let value =
+                                    if trace.Kind = TaTraceKind.Volume then fixedNumber point.Volume
+                                    else
+                                        "O " + fixedNumber point.Open
+                                        + " H " + fixedNumber point.High
+                                        + " L " + fixedNumber point.Low
+                                        + " C " + fixedNumber point.Close
+                                point.Timestamp, { Label = label; Value = value })
+                        | TaTraceKind.Line
+                        | TaTraceKind.Histogram ->
+                            lineSeries trace.DataRef data
+                            |> selectWindow effectiveWindow
+                            |> Array.tryItem index
+                            |> Option.map (fun point -> point.Timestamp, { Label = label; Value = fixedNumber point.Value })))
 
             values
             |> Array.tryHead

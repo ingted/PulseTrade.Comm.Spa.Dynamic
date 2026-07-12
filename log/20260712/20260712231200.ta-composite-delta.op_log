@@ -1,0 +1,10 @@
+# Operation evidence
+
+- Dynamic project lock acquired before source changes。
+
+## 2026-07-13 00:33 +08:00 - Composite/delta implementation evidence
+
+- Contracts alpha5 supplies additive trace contracts；Renderer alpha11 renders composite rows and preserves empty legacy trace semantics。
+- Dynamic.Ptcs alpha6-win10 emits v2 full/delta wire and caps bootstrap series to latest 200 points；Ptcs.Client alpha7-win12 merges timestamp upserts/remove-before and rejects base gaps。
+- Dynamic.Ptcs tests 7/7；Ptcs.Client tests 7/7；full WebSharper packages were built from source-only mirrors because canonical generated `websharper.log` ACL remains blocked。
+- Formal Host Playwright verified 17 production SQL series and stable empty deltas；artifact `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-composite-win10-final-202607130030`。

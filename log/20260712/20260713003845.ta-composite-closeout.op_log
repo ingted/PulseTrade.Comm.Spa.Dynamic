@@ -1,0 +1,4 @@
+# Operation evidence
+
+- 2026-07-13 00:38 +08:00：開始 closeout；不重置 aggregate 起點。
+- 2026-07-13 00:45 +08:00：staged 27個source/docs/tests檔；generated JS與LiveDemo wwwroot明確排除。Dynamic.Ptcs與Ptcs.Client focused tests各7/7已通過，正式Host Playwright artifact為`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-composite-win10-final-202607130030`。

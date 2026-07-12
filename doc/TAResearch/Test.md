@@ -39,6 +39,9 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-018 | REQ-008 | Dependency | Contracts/Renderer graphs exclude forbidden dependencies | DYN-TA-001 | Pass：Contracts無WebSharper/PTCS/fCell2/PTMD/SQL；Renderer僅增加WebSharper並排除PTCS/fCell2/PTMD/SQL。 |
 | DYN-TA-T-019 | REQ-017 | E2EQ AgentE2E | Historical/RT source/symbol/range/hover/tag/viewport/navigator regression | DYN-TA-005 | Blocked：real Binance collector與seeded E2EQ host可啟動，但目前只會送出stale legacy bundle；需先完成isolated clean bundle/route，才可執行AgentE2E。 |
 | DYN-TA-T-020 | REQ-013/016 | Soak | bounded polling does not grow timers/channels/DOM series/history | DYN-TA-006 | Partial：20-poll、one-in-flight、500-bar bounded DOM、PCSL history 0、IndexedDB counts stable、dispose close與正式Host process restart後reconnect pass；長時resource/channel observation與E2EQ cross-host gate仍待。 |
+| DYN-TA-T-021 | REQ-019 | Contract/Browser | legacy row導出單trace；四列ordered traces共享row viewport，K+6 SMA、DMI/ADX、兩組MACD可辨識且large history只render bounded visible DOM | DYN-TA-009 | Passed：正式Playwright四列/17 series、desktop/mobile/reconnect |
+| DYN-TA-T-022 | REQ-020 | Wire/E2E | initial/reconnect bounded full；stable poll只送changed keyed points/remove-before/status，client merge等價full reducer state，base mismatch resync | DYN-TA-010 | Passed：server 7/7、client 7/7、deployed delta 978→979→empty |
+
 
 ## 3. Playwright operation and viewport gates
 

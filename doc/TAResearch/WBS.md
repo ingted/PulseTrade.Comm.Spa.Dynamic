@@ -20,6 +20,9 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-006 | 7 | Cross-host E2E and bounded soak | PTCS/E2EQ Playwright matrix, 20-poll/resource evidence | DYN-TA-004/005 | T-010,T-014,T-019,T-020 | 86% | Active | [@DYN-TA-004](WBS.DYN-TA-004.md) |
 | DYN-TA-007 | 8 | Static compatibility and DSL sync | static Canvas/FormInput regression and canonical DSL | DYN-TA-001..004 | T-001,T-016,T-017 | 40% | Active | [@DYN-TA-007](WBS.DYN-TA-007.md) |
 | DYN-TA-008 | 9 | Package/release closure | exact refs, NuGet, downstream bump, docs/runbook | DYN-TA-001..007 | T-001..T-020 | 88% | Active | [@DYN-TA-008](WBS.DYN-TA-008.md) |
+| DYN-TA-009 | 1 | Composite row / multi-trace DSL | additive trace contracts、renderer、legacy projection、四列geometry | DYN-TA-001..004 | T-021 | 100% | Completed | [@DYN-TA-009](WBS.DYN-TA-009.md) |
+| DYN-TA-010 | 2 | Browser delta wire v2 | keyed upsert/remove-before/status delta、client merge/resync | DYN-TA-009 | T-022 | 100% | Completed | [@DYN-TA-010](WBS.DYN-TA-010.md) |
+
 
 ## 2. Legacy prerequisite policy
 
