@@ -127,6 +127,12 @@ type TaBrowserStateWire =
       sharedTimeAxis: bool
       rows: TaBrowserRowWire array
       allowedActions: string array
+      querySourceId: string
+      queryInstrument: string
+      queryIntervalMinutes: int
+      queryFromUtc: string
+      queryToUtcExclusive: string
+      queryIncludePartial: bool
       series: TaBrowserSeriesWire array
       statusLabel: string
       freshness: string
@@ -217,7 +223,7 @@ module TaResearchTransientWire =
         | TaRowKind.HeikinAshi -> "heikin-ashi"
 
     let rowKind value =
-        match text value with
+        match text value |> fun item -> item.Trim().ToLowerInvariant() with
         | "volume" -> TaRowKind.Volume
         | "sma" -> TaRowKind.Sma
         | "dmi" -> TaRowKind.Dmi
@@ -414,6 +420,10 @@ module TaResearchBrowserWire =
         | SduiValue.Text value -> Some(text value)
         | _ -> None
 
+    let tryBool = function
+        | SduiValue.Bool value -> Some value
+        | _ -> None
+
     let valueOrZero field values =
         values |> Map.tryFind field |> Option.bind tryNumber |> Option.defaultValue 0.0
 
@@ -460,6 +470,19 @@ module TaResearchBrowserWire =
             |> Option.defaultValue [||]
 
         let series = rows |> Array.map (fun row -> seriesFromState state row.dataRef)
+        let defaultView = document |> Option.map _.DefaultView |> Option.defaultValue Map.empty
+        let queryText key = defaultView |> Map.tryFind key |> Option.bind tryText |> Option.defaultValue ""
+        let queryInterval =
+            defaultView
+            |> Map.tryFind "query.intervalMinutes"
+            |> Option.bind tryNumber
+            |> Option.map int
+            |> Option.defaultValue 0
+        let queryIncludePartial =
+            defaultView
+            |> Map.tryFind "query.includePartial"
+            |> Option.bind tryBool
+            |> Option.defaultValue true
         let statusRef = document |> Option.map _.StatusRef |> Option.defaultValue "status"
         let statusValues =
             match Map.tryFind statusRef state.Data with
@@ -490,6 +513,12 @@ module TaResearchBrowserWire =
           sharedTimeAxis = document |> Option.map _.SharedTimeAxis |> Option.defaultValue true
           rows = rows
           allowedActions = document |> Option.map _.AllowedActions |> Option.defaultValue [||]
+          querySourceId = queryText "query.sourceId"
+          queryInstrument = queryText "query.instrument"
+          queryIntervalMinutes = queryInterval
+          queryFromUtc = queryText "query.fromUtc"
+          queryToUtcExclusive = queryText "query.toUtcExclusive"
+          queryIncludePartial = queryIncludePartial
           series = series
           statusLabel = statusLabel
           freshness = freshness

@@ -24,7 +24,13 @@ let document =
       SharedTimeAxis = true
       Rows = [| row |]
       AllowedActions = [| "change-query"; "poll-delta" |]
-      DefaultView = Map.empty }
+      DefaultView =
+        Map [
+            "query.sourceId", SduiValue.Text "binance"
+            "query.instrument", SduiValue.Text "BTCUSDT"
+            "query.intervalMinutes", SduiValue.Number 1.0
+            "query.includePartial", SduiValue.Bool true
+        ] }
 
 let frame sequence dataRevision payload =
     { Protocol = DynamicRuntimeDefaults.protocol
@@ -208,6 +214,9 @@ let tests =
               Expect.equal openedState.title "TA Research" "document metadata should be projected for the browser."
               Expect.equal openedState.rows.Length 1 "document rows should be projected without recursive values."
               Expect.equal openedState.rows[0].kind "candlestick" "row kind should use the canonical text representation."
+              Expect.equal openedState.querySourceId "binance" "browser wire must carry the source query identity."
+              Expect.equal openedState.queryInstrument "BTCUSDT" "browser wire must carry the instrument query identity."
+              Expect.equal openedState.queryIntervalMinutes 1 "browser wire must carry the interval query identity."
 
               let queryBase =
                   browserPayload "action" "change-query"

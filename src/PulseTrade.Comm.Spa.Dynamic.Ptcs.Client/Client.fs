@@ -49,6 +49,12 @@ type TaBrowserStateWire =
       sharedTimeAxis: bool
       rows: TaBrowserRowWire array
       allowedActions: string array
+      querySourceId: string
+      queryInstrument: string
+      queryIntervalMinutes: int
+      queryFromUtc: string
+      queryToUtcExclusive: string
+      queryIncludePartial: bool
       series: TaBrowserSeriesWire array
       statusLabel: string
       freshness: string
@@ -264,6 +270,15 @@ module TaResearchClientWire =
         | "heikin-ashi" -> TaRowKind.HeikinAshi
         | _ -> TaRowKind.Candlestick
 
+    let rowKindText = function
+        | TaRowKind.Candlestick -> "candlestick"
+        | TaRowKind.Volume -> "volume"
+        | TaRowKind.Sma -> "sma"
+        | TaRowKind.Dmi -> "dmi"
+        | TaRowKind.Adx -> "adx"
+        | TaRowKind.Macd -> "macd"
+        | TaRowKind.HeikinAshi -> "heikin-ashi"
+
     let pollState value =
         match text value with
         | "mounted-idle" -> RuntimePollState.MountedIdle
@@ -324,6 +339,19 @@ module TaResearchClientWire =
                           "reasonCode", SduiValue.Text(text wire.reasonCode) ])
 
             let data = Map.add (text wire.statusRef) status seriesData
+            let defaultView =
+                [ if not (String.IsNullOrWhiteSpace wire.querySourceId) then
+                      "query.sourceId", SduiValue.Text(text wire.querySourceId)
+                  if not (String.IsNullOrWhiteSpace wire.queryInstrument) then
+                      "query.instrument", SduiValue.Text(text wire.queryInstrument)
+                  if wire.queryIntervalMinutes > 0 then
+                      "query.intervalMinutes", SduiValue.Number(float wire.queryIntervalMinutes)
+                  if not (String.IsNullOrWhiteSpace wire.queryFromUtc) then
+                      "query.fromUtc", SduiValue.Text(text wire.queryFromUtc)
+                  if not (String.IsNullOrWhiteSpace wire.queryToUtcExclusive) then
+                      "query.toUtcExclusive", SduiValue.Text(text wire.queryToUtcExclusive)
+                  "query.includePartial", SduiValue.Bool wire.queryIncludePartial ]
+                |> Map.ofList
             let lastError =
                 if String.IsNullOrWhiteSpace wire.errorCode && String.IsNullOrWhiteSpace wire.errorMessage then None
                 else
@@ -345,7 +373,7 @@ module TaResearchClientWire =
                           SharedTimeAxis = wire.sharedTimeAxis
                           Rows = rows
                           AllowedActions = if isNull wire.allowedActions then [||] else wire.allowedActions
-                          DefaultView = Map.empty }
+                          DefaultView = defaultView }
                   Data = data
                   DocumentRevision = wire.documentRevision
                   DataRevision = wire.dataRevision
@@ -386,7 +414,7 @@ module TaResearchClientWire =
         | SduiAction.AddTaRow(canvas, row) ->
             { emptyFrame "action" "add-row" (canvasText canvas) with
                 rowId = row.RowId
-                rowKind = string row.Kind
+                rowKind = rowKindText row.Kind
                 dataRef = row.DataRef
                 heightWeight = row.HeightWeight
                 visible = row.Visible }

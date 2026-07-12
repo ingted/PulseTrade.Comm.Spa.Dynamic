@@ -89,6 +89,6 @@ RFC：`doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
 | --- | --- | --- | ---: | --- | --- |
 | DYN-TA-000 | Contracts + Renderer + host adapters文件鏈 | Done | 100 | document/check gate | RFC accepted；runtime尚未開始 |
 | DYN-TA-00A | Legacy SDUI readiness closure | Done | 100 | DYN-TA-T-000A | direct Canvas、strict discriminator、invalid FormInput保留與native fCell2 actor gates通過 |
-| DYN-TA-001..008 | contracts、reducer、TA renderer、PTCS/E2EQ adapters、E2E與release | Active | 70 | DYN-TA-T-001..020 | Contracts/reducer完成；Renderer/PTCS adapter 94%、E2EQ adapter 55%、cross-host 45%、static compatibility 40%、release closure 35%；詳見canonical detail。 |
+| DYN-TA-001..008 | contracts、reducer、TA renderer、PTCS/E2EQ adapters、E2E與release | Active | 82 | DYN-TA-T-001..020 | Contracts/reducer完成；Renderer/PTCS adapter 99%、E2EQ adapter 55%、cross-host 86%、static compatibility 40%、release closure 88%；PTCS.Host正式restart、20-poll/IndexedDB bounded與mobile gate通過，詳見canonical detail。 |
 
 Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target FormInput真host Playwright已重跑；`DYN-WBS-519`移除`IndexOf("ActorTopologyPage")` classifier並通過4 blocks/26 rows ActorsPage gate。Public OAuth、production RN/cross-service registry與report persistence等原remaining不在本slice宣稱完成。

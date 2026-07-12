@@ -34,6 +34,12 @@ let wire =
              heightWeight = 2.0
              visible = true } |]
       allowedActions = [| "change-query" |]
+      querySourceId = "binance"
+      queryInstrument = "BTCUSDT"
+      queryIntervalMinutes = 1
+      queryFromUtc = ""
+      queryToUtcExclusive = ""
+      queryIncludePartial = true
       series = [| { dataRef = "series.price"; points = [| point |] } |]
       statusLabel = "LIVE"
       freshness = "live"
@@ -61,6 +67,8 @@ let tests =
               Expect.equal state.DataRevision 9L "data revision should be retained."
               Expect.equal state.Poll RuntimePollState.Ready "poll state should be retained."
               Expect.equal state.Document.Value.Rows[0].Kind TaRowKind.Candlestick "row kind should be projected."
+              Expect.equal state.Document.Value.DefaultView["query.instrument"] (SduiValue.Text "BTCUSDT") "server query identity should reach the renderer document."
+              Expect.equal state.Document.Value.DefaultView["query.intervalMinutes"] (SduiValue.Number 1.0) "server interval should reach the renderer document."
 
               match state.Data["status"] with
               | SduiValue.Object status ->
@@ -72,6 +80,20 @@ let tests =
               | SduiValue.Array [| SduiValue.Object values |] ->
                   Expect.equal values["c"] (SduiValue.Number 103.0) "candle close should use renderer field vocabulary."
               | other -> failtestf "Unexpected projected series: %A" other)
+
+          testCase "add-row action emits canonical lowercase row kind" (fun _ ->
+              let action =
+                  SduiAction.AddTaRow(
+                      CanvasInstanceId "canvas",
+                      { RowId = "row-sma"
+                        Kind = TaRowKind.Sma
+                        DataRef = "series.sma"
+                        HeightWeight = 1.0
+                        Visible = true
+                        Options = Map.empty })
+
+              let encoded = TaResearchClientWire.actionToWire action
+              Expect.equal encoded.rowKind "sma" "Browser wire must not leak F# union-case casing.")
 
           testCase "typed query action maps to bounded browser command" (fun _ ->
               let action =

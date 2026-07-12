@@ -36,6 +36,14 @@ type TaStatusPresentation =
       Quality: string option
       Error: string option }
 
+type TaQueryDraft =
+    { SourceId: string
+      Instrument: string
+      IntervalMinutes: string
+      FromUtc: string
+      ToUtcExclusive: string
+      IncludePartial: bool }
+
 [<JavaScript; RequireQualifiedAccess>]
 module RendererModel =
     let tryObject = function
@@ -50,6 +58,10 @@ module RendererModel =
         | SduiValue.Number value -> Some value
         | _ -> None
 
+    let tryBool = function
+        | SduiValue.Bool value -> Some value
+        | _ -> None
+
     let objectField name value =
         value |> Map.tryFind name
 
@@ -58,6 +70,33 @@ module RendererModel =
 
     let objectNumber name value =
         objectField name value |> Option.bind tryNumber
+
+    let queryDraft (values: Map<string, SduiValue>) =
+        let textValue name =
+            values
+            |> Map.tryFind name
+            |> Option.bind tryText
+            |> Option.defaultValue ""
+
+        let interval =
+            values
+            |> Map.tryFind "query.intervalMinutes"
+            |> Option.bind tryNumber
+            |> Option.map (int >> string)
+            |> Option.defaultValue ""
+
+        let includePartial =
+            values
+            |> Map.tryFind "query.includePartial"
+            |> Option.bind tryBool
+            |> Option.defaultValue true
+
+        { SourceId = textValue "query.sourceId"
+          Instrument = textValue "query.instrument"
+          IntervalMinutes = interval
+          FromUtc = textValue "query.fromUtc"
+          ToUtcExclusive = textValue "query.toUtcExclusive"
+          IncludePartial = includePartial }
 
     let fixedNumber (value: float) =
         string value

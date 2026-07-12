@@ -38,6 +38,29 @@ let tests =
             Expect.equal actual.Count 48 "requested count remains when bounded"
             Expect.equal actual.StartIndex 48 "start clamps so the window ends at the series tail"
 
+        testCase "query draft is initialized from server document metadata without demo literals" <| fun _ ->
+            let actual =
+                RendererModel.queryDraft
+                    (Map [
+                        "query.sourceId", SduiValue.Text "binance"
+                        "query.instrument", SduiValue.Text "BTCUSDT"
+                        "query.intervalMinutes", SduiValue.Number 1.0
+                        "query.fromUtc", SduiValue.Text "2026-07-01"
+                        "query.toUtcExclusive", SduiValue.Text "2026-07-12"
+                        "query.includePartial", SduiValue.Bool false
+                    ])
+
+            Expect.equal actual.SourceId "binance" "Source identity should remain available to the renderer."
+            Expect.equal actual.Instrument "BTCUSDT" "Instrument must come from the RuntimeDocument."
+            Expect.equal actual.IntervalMinutes "1" "Interval must come from the RuntimeDocument."
+            Expect.equal actual.FromUtc "2026-07-01" "From boundary must remain server authoritative."
+            Expect.equal actual.ToUtcExclusive "2026-07-12" "Exclusive boundary must remain server authoritative."
+            Expect.isFalse actual.IncludePartial "Partial-bar policy must survive the SDUI document."
+
+            let empty = RendererModel.queryDraft Map.empty
+            Expect.equal empty.Instrument "" "Missing metadata must not fall back to a demo instrument."
+            Expect.equal empty.IntervalMinutes "" "Missing metadata must not fall back to a demo interval."
+
         testCase "visible window handles short series" <| fun _ ->
             let actual =
                 RendererModel.clampWindow 12 160 5 { StartIndex = 20; Count = 48 }

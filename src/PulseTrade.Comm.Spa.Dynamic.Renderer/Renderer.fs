@@ -297,10 +297,11 @@ module TaWorkspaceRenderer =
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
         let canvasId = runtimeState.Value.Identity.CanvasInstanceId
-        let instrument = Var.Create "TXF"
-        let interval = Var.Create "5"
-        let fromDate = Var.Create "2026-07-01"
-        let toDate = Var.Create "2026-07-11"
+        let instrument = Var.Create ""
+        let interval = Var.Create ""
+        let fromDate = Var.Create ""
+        let toDate = Var.Create ""
+        let mutable synchronizedDocumentRevision = -1L
         let addKind = Var.Create "Sma"
         let addDataRef = Var.Create "series.sma"
         let uiState =
@@ -364,6 +365,14 @@ module TaWorkspaceRenderer =
                 | None ->
                     div [ Attr.Create "data-testid" "ta-workspace-empty"; attr.style "padding:18px; color:#5d6d83;" ] [ text "TA workspace document is not available." ] :> Doc
                 | Some document ->
+                    if state.DocumentRevision <> synchronizedDocumentRevision then
+                        let query = RendererModel.queryDraft document.DefaultView
+                        instrument.Value <- query.Instrument
+                        interval.Value <- query.IntervalMinutes
+                        fromDate.Value <- query.FromUtc
+                        toDate.Value <- query.ToUtcExclusive
+                        synchronizedDocumentRevision <- state.DocumentRevision
+
                     let status = RendererModel.statusPresentation document.StatusRef state
                     let commandsDisabled = remoteDisabled state.Poll
 
@@ -416,18 +425,31 @@ module TaWorkspaceRenderer =
                                 div [ Attr.Create "data-testid" "ta-row-toggles"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [
                                     for row in document.Rows do
                                         let hidden = Set.contains row.RowId ui.HiddenRows
-                                        yield button [
-                                            attr.``type`` "button"
-                                            Attr.Create "data-testid" ("ta-toggle-row-" + row.RowId)
-                                            Attr.Create "aria-pressed" (if hidden then "false" else "true")
-                                            attr.style (if hidden then "height:26px; border:1px solid #c8d2df; border-radius:4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;" else "height:26px; border:1px solid #7da39d; border-radius:4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;")
-                                            on.click (fun _ _ ->
-                                                let nextHidden =
-                                                    if hidden then Set.remove row.RowId uiState.Value.HiddenRows
-                                                    else Set.add row.RowId uiState.Value.HiddenRows
+                                        yield
+                                            div [ attr.style "display:inline-flex; align-items:stretch; height:26px;" ] [
+                                                button [
+                                                    attr.``type`` "button"
+                                                    Attr.Create "data-testid" ("ta-toggle-row-" + row.RowId)
+                                                    Attr.Create "aria-pressed" (if hidden then "false" else "true")
+                                                    attr.style (if hidden then "height:26px; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;" else "height:26px; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;")
+                                                    on.click (fun _ _ ->
+                                                        let nextHidden =
+                                                            if hidden then Set.remove row.RowId uiState.Value.HiddenRows
+                                                            else Set.add row.RowId uiState.Value.HiddenRows
 
-                                                uiState.Value <- { uiState.Value with HiddenRows = nextHidden })
-                                        ] [ text (rowKindText row.Kind) ]
+                                                        uiState.Value <- { uiState.Value with HiddenRows = nextHidden })
+                                                ] [ text (rowKindText row.Kind) ]
+                                                button [
+                                                    attr.``type`` "button"
+                                                    Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
+                                                    attr.title ("Remove " + rowKindText row.Kind + " row")
+                                                    if commandsDisabled then attr.disabled "disabled"
+                                                    attr.style (if commandsDisabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;" else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;")
+                                                    on.click (fun _ _ ->
+                                                        if not commandsDisabled then
+                                                            submit callbacks uiState (SduiAction.RemoveTaRow(canvasId, row.RowId)) (rowKindText row.Kind + " row removal requested."))
+                                                ] [ text "×" ]
+                                            ]
                                 ] :> Doc)
                             |> Doc.EmbedView
                             uiState.View

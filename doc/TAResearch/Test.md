@@ -25,12 +25,12 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-004 | REQ-006 | Reducer | ResetView local-only；ResetCanvas sends one snapshot action and restores defaults | DYN-TA-002 | Pass：ResetView回default view且NoEffect；ResetCanvas只產生一個typed SubmitAction。 |
 | DYN-TA-T-005 | REQ-004/005 | Component | all TA row kinds, shared x-axis, separate y-scale, unknown-kind error | DYN-TA-003 | Partial：alpha5 render七種row、shared window/x-axis/crosshair、compact timestamp與separate y-scale；exact model tests 11/11。研究級DMI/MACD多線與legend仍待。 |
 | DYN-TA-T-006 | REQ-005 | Browser | zoom/pan/crosshair/toggle/visibility send no network；cursor values match visible bars | DYN-TA-003 | Pass：F# Playwright證明pan/zoom/reset-view/row toggle callback count保持0，slider由B48移到B1時七列crosshair同為x=0，cursor OHLC/indicator values對齊visible index；desktop/mobile geometry與console gate通過。 |
-| DYN-TA-T-007 | REQ-007 | Browser | instrument/interval/range/Add Row each send one typed action with coherent disabled/in-flight state | DYN-TA-003/004 | Pass：query/Add Row/Reset Canvas送typed action；renderer與真PTCS browser gate證明in-flight禁用、server ack、suspend/resume與bounded transient frame。 |
-| DYN-TA-T-008 | REQ-008/009/010 | Lifecycle | only visible/expanded/ready polls；one in-flight；timeout/backoff/reconnect/resync | DYN-TA-002/004 | Partial：pure lifecycle與full WebSharper interpreter完成，涵蓋active/connected gate、one-in-flight、timeout/backoff、bounded reconnect與full-snapshot resync；真host timer/channel E2E留DYN-TA-004/006。 |
+| DYN-TA-T-007 | REQ-007 | Browser | instrument/interval/range/Add/Remove Row each send one typed action with coherent disabled/in-flight state | DYN-TA-003/004 | Pass：query、Add/Remove Row、Reset Canvas送typed action；renderer與真PTCS deployed browser gate證明in-flight禁用、server ack與連續document/transport revision。 |
+| DYN-TA-T-008 | REQ-008/009/010 | Lifecycle | only visible/expanded/ready polls；one in-flight；timeout/backoff/reconnect/resync | DYN-TA-002/004 | Pass for PTCS path：pure lifecycle與WebSharper interpreter涵蓋active/connected gate、one-in-flight、timeout/backoff、bounded reconnect/full snapshot；same Host第二browser context重新bootstrap並READY。Process restart仍列cross-host T-020。 |
 | DYN-TA-T-009 | REQ-009 | Lifecycle | hidden/collapse/unmount/disconnect cancels timer/channel/subscription | DYN-TA-002 | Partial：registry與Ptcs.Client handle均有suspend/dispose terminal、CancelPoll/Timeout/Reconnect；browser hide/show/disconnect resource observation留DYN-TA-006。 |
-| DYN-TA-T-010 | REQ-011/012 | PTCS E2E | 500+ bars + 20 polls update revision only；message/PCSL/IndexedDB history count stable | DYN-TA-004/006 | Pass：PTCS beta85真host由same-origin WebSocket送500 bars並完成desktop/mobile各20 polls；PCSL event count前後均0，dispose後console/page error 0。 |
+| DYN-TA-T-010 | REQ-011/012 | PTCS E2E | 500+ bars + 20 polls update revision only；message/PCSL/IndexedDB history count stable | DYN-TA-004/006 | Pass：PTCS beta85 isolated真host送500 bars並完成desktop/mobile各20 polls、PCSL event count前後0；正式beta87 service另以Playwright CDP證明20 polls前後IndexedDB `pendingCommands/streamWatermarks/uiSnapshots` counts完全不變。 |
 | DYN-TA-T-011 | REQ-013 | Bounds | every hard limit preserves last-good Canvas and reports reason | DYN-TA-001..003 | Partial：Contracts/reducer hard limits、Renderer bounded window與stale/error last-good Canvas body-count preservation pass；invalid frame真host visual preservation仍待。 |
-| DYN-TA-T-012 | REQ-016 | Browser | Live/Delayed/Stale/Backfill/Unavailable and watermark/lag/quality visible | DYN-TA-003 | Partial：typed model覆蓋五種freshness；Playwright覆蓋Live/Stale、watermark、quality、recoverable error與Ready recovery。Delayed/Backfill/Unavailable browser matrix仍待。 |
+| DYN-TA-T-012 | REQ-016 | Browser | Live/Delayed/Stale/Backfill/Unavailable and watermark/lag/quality visible | DYN-TA-003 | Partial：typed model覆蓋五種freshness；Playwright覆蓋Live/Stale/Unavailable、watermark、quality、recoverable error與Ready recovery。Delayed/Backfill browser matrix仍待。 |
 | DYN-TA-T-013 | REQ-017 | Contract parity | PTCS/E2EQ adapters produce identical final reducer state | DYN-TA-004/005 | Pass：PTCS transient adapter與E2EQ server/browser adapters均使用canonical Dynamic TA document/state/action vocabulary；E2EQ exact-package test涵蓋server/browser `dataRef`/action parity、bounded snapshot、local view preservation、fractional revision與non-finite point fail-closed，E2EQ suite 187/187 pass。 |
 | DYN-TA-T-014 | REQ-017 | Browser parity | two hosts have equivalent chart/rows/toolbar geometry and actions | DYN-TA-005/006 | Blocked：adapter packages已完成；legacy E2EQ main client clean WebSharper merge以`wsfsc.exe -532462766`終止，stale bundle不得作browser evidence。見`G:\PulseTrade.fs\Blocker.md` `BLK-20260712-001`。 |
 | DYN-TA-T-015 | REQ-015 | Source gate | new runtime has no JavaScript/inline/global callback workaround | DYN-TA-001..003 | Pass：Contracts與Renderer source gate無`JS.Inline`、script、eval或global callback workaround。 |
@@ -38,7 +38,7 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-017 | REQ-014 | Extension behavior | absent uses host fallback；present-invalid shows controlled error | DYN-TA-00A/004/007 | Partial：unrelated/missing schema分類為`NonSdui`；present unsupported protocol/surface/document type分類為typed `InvalidSdui reasonCode`。Browser absent/present-invalid visual gate待補。 |
 | DYN-TA-T-018 | REQ-008 | Dependency | Contracts/Renderer graphs exclude forbidden dependencies | DYN-TA-001 | Pass：Contracts無WebSharper/PTCS/fCell2/PTMD/SQL；Renderer僅增加WebSharper並排除PTCS/fCell2/PTMD/SQL。 |
 | DYN-TA-T-019 | REQ-017 | E2EQ AgentE2E | Historical/RT source/symbol/range/hover/tag/viewport/navigator regression | DYN-TA-005 | Blocked：real Binance collector與seeded E2EQ host可啟動，但目前只會送出stale legacy bundle；需先完成isolated clean bundle/route，才可執行AgentE2E。 |
-| DYN-TA-T-020 | REQ-013/016 | Soak | bounded polling does not grow timers/channels/DOM series/history | DYN-TA-006 | Partial：20-poll、one-in-flight、500-bar bounded DOM、PCSL history 0與dispose close pass；長時resource/channel observation留待cross-host gate。 |
+| DYN-TA-T-020 | REQ-013/016 | Soak | bounded polling does not grow timers/channels/DOM series/history | DYN-TA-006 | Partial：20-poll、one-in-flight、500-bar bounded DOM、PCSL history 0、IndexedDB counts stable、dispose close與正式Host process restart後reconnect pass；長時resource/channel observation與E2EQ cross-host gate仍待。 |
 
 ## 3. Playwright operation and viewport gates
 
@@ -68,3 +68,14 @@ WBS: `doc/TAResearch/WBS.md`
 ## 4. Release gate
 
 `DYN-TA-001..008`完成、T-001..020 Pass、PTCS transient seam與E2EQ parity都有真路徑證據後才可標記Implemented。`T-000A`只關閉legacy readiness。
+
+## 5. 2026-07-12 PTCS production integration evidence
+
+- Renderer model：12/12 Pass；涵蓋query metadata與missing-metadata不使用demo default。
+- Dynamic.Ptcs server：5/5 Pass；bounded browser wire保留query identity/range。
+- Ptcs.Client：6/6 Pass；Add Row輸出canonical lowercase `sma`。
+- PTCS.Host focused：24/24 Pass。
+- `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-d095bba2885846d0aa88a755f3a2d92c`：真SQL、FormInput、BTCUSDT/1m readback、Add SMA Row、Apply、20 polls、desktop/mobile geometry；PCSL metric polling前後相同，console/page error為0。
+- `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-channel-rebase-20260712204956`：正式82 local-login、controlled error/recovery、Add/Remove、Apply、Reset、poll、desktop/mobile與第二browser context bootstrap；production projection empty時明確UNAVAILABLE。
+- `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-restart-indexeddb-202607122114`：正式service process replacement後20 polls；Playwright CDP直讀IndexedDB三個object store，前後counts相同且無JavaScript/EvaluateAsync。
+- 尚未覆蓋：Host process restart中的last-good/resync、E2EQ host parity、present-invalid static visual gate。

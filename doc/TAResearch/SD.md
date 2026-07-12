@@ -325,3 +325,9 @@ E2EQ browser flat DTO
 server adapter負責bounded 2000-point snapshot、七列document與remote action mapping；browser adapter只接受flat bounded DTO、finite integral revision/sequence，並直接委派shared Renderer。兩者不得依賴PTCS host、SQL或fCell2。
 
 E2EQ main host的feature-gated mount仍是獨立交付條件。Clean WebSharper compiler目前在legacy 512 KB client graph merge階段以`-532462766`終止；任何先前incremental build若引用舊bundle，不可作T-014/T-019證據。後續需提供isolated clean bundle/route，再執行PTCS/E2EQ Playwright geometry與AgentE2E parity。
+
+## 2026-07-12 Query metadata and canonical action wire
+
+`TaWorkspaceDocument.DefaultView`同時承載local view default與server-authoritative query metadata。TA adapter使用以下bounded keys：`query.sourceId`、`query.instrument`、`query.intervalMinutes`、`query.fromUtc`、`query.toUtcExclusive`、`query.includePartial`。`ta-browser.v1`以flat fields傳遞這些值，Ptcs.Client重建DefaultView後交給Renderer。
+
+Renderer只在新的`DocumentRevision`同步query draft；Snapshot/Patch/Heartbeat不得重設使用者正在編輯的欄位。metadata缺失時欄位保持空白，禁止使用demo symbol/interval/date。Add Row `rowKind`一律使用lowercase canonical text，server parser仍case-insensitive以相容舊client。

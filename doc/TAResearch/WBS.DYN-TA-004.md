@@ -1,6 +1,6 @@
 # @DYN-TA-004 Host adapters, parity and release
 
-Status: Active / 94%
+Status: Active / 99%
 
 ## Deliverables
 
@@ -47,3 +47,19 @@ Status: Active / 94%
 ## Acceptance
 
 `DYN-TA-T-007/010/013/014/016/017/019/020` pass on real host paths；fixture-only evidence is insufficient。
+
+## 2026-07-12 PTCS.Host production query/action integration
+
+- `Renderer 0.1.0-alpha8`移除TXF/5m/固定日期demo literals；query draft由RuntimeDocument `query.*` metadata初始化，poll不覆寫使用者輸入。
+- `Dynamic.Ptcs 0.1.0-alpha6-win5`與`Ptcs.Client 0.1.0-alpha7-win9`在bounded `ta-browser.v1`加入query identity/range，並將Add Row kind正規化為lowercase wire vocabulary。
+- PTCS.Host真SQL F# Playwright完成FormInput、BTCUSDT/1m query readback、Add SMA Row、Apply、20 polls、desktop/mobile geometry；poll前後PCSL metric相同，console/page error為0。
+- package tests：Renderer 12/12、Ptcs server 5/5、Ptcs client 6/6。Remaining：host restart中last-good/resync、E2EQ cross-host parity。
+
+## 2026-07-12 typed Remove/Reset/error/reconnect closure
+
+- Renderer `0.1.0-alpha9` adds a compact row toggle + remove control；remote in-flight disables removal consistently。Add/Remove Row、Change Query and Reset Canvas remain typed `SduiAction` only。
+- Ptcs.Client `0.1.0-alpha7-win10` and Host client `0.1.0-alpha8` were published with exact dependency readback from NuGet public registration。
+- PTC-VFY-027 now triggers a real one-sided-date error，proves last-good Canvas/FormInput retention and successful recovery，then executes Add/Remove、Apply、Reset、poll。
+- A second fresh browser context against the same Host proves channel-scoped sequence bootstrap and reconstructs the document instead of entering `paused-for-resync`。Latest deployed artifact：`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-channel-rebase-20260712204956`。
+- Formal Host process restart後相同browser gate通過；Playwright CDP證明20 polls不增加IndexedDB counts。Latest artifact：`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-restart-indexeddb-202607122114`。
+- Remaining for this combined detail：E2EQ parallel-path parity與長時cross-host resource observation；PTCS adapter/browser path itself is functionally closed。

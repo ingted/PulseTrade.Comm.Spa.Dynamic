@@ -964,3 +964,25 @@ Implementation status:
 - This is dependency-only alignment for the ActorArgu terminal-observer package chain. SDUI classification, renderer behavior and transient wire contracts are unchanged.
 - Release builds passed and Dynamic tests passed 23/23 with the established checked-in-bundle recipe. Preexisting generated JS/test-project content hashes were unchanged and those files were not staged by this slice.
 - NuGet push returned Created for both packages.
+
+## 2026-07-12 - PTCS TA query metadata and action wire closure
+
+- Removed renderer demo query literals。`TaWorkspaceDocument.DefaultView` now drives BTCUSDT/interval/range query draft through the bounded `ta-browser.v1` wire；poll frames do not overwrite an in-progress draft。
+- Canonicalized Add Row kind to lowercase browser wire text and made the server parser case-insensitive，preventing `Sma` from silently becoming Candlestick。
+- Released and pushed Renderer `0.1.0-alpha7`、Dynamic.Ptcs `0.1.0-alpha6-win4`、Ptcs.Client `0.1.0-alpha7-win8`；downstream Host client `0.1.0-alpha6` exact-pins win8。All four pushes returned `Created`；public NuGet indexing remained pending at immediate readback。
+- Tests passed：Renderer 12/12、Dynamic.Ptcs 5/5、Ptcs.Client 6/6、PTCS.Host focused 24/24。PTCS.Host real-SQL F# Playwright passed FormInput、query readback、Add SMA Row、Apply、20 polls、desktop/mobile geometry and stable PCSL metric at `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-d095bba2885846d0aa88a755f3a2d92c`。
+- DYN-TA-003/004 advance to 98%、DYN-TA-006 to 65%、DYN-TA-008 to 70%。Remaining gates are restart/resync、E2EQ parity、static invalid visual proof and formal service alignment。
+- Final docs-aligned package repack/push advanced the current versions to Renderer `0.1.0-alpha8`、Dynamic.Ptcs `0.1.0-alpha6-win5`、Ptcs.Client `0.1.0-alpha7-win9` and Host client `0.1.0-alpha7`；all four pushes returned `Created`。
+
+## 2026-07-12 - TA controlled recovery, row removal and reconnect gate
+
+- Renderer `0.1.0-alpha9` adds compact typed TA row removal controls without JavaScript. The control is disabled with remote actions and dispatches `SduiAction.RemoveTaRow`; Renderer tests pass 12/12.
+- Ptcs.Client `0.1.0-alpha7-win10` preserves FormInput and the last-good canvas on controlled query failure, then clears the error after a valid action. A second fresh browser context now proves reconnect/open produces a complete FormInput/Canvas state rather than a sequence-gap resync loop; client tests pass 6/6.
+- Dynamic.Ptcs `0.1.0-alpha6-win6`, Renderer alpha9, Ptcs.Client win10 and Host client alpha8 were packed/pushed with exact dependency metadata. The deployed F# Playwright gate passed From-only error, recovery, Add/Remove SMA, Apply, Reset, desktop/mobile geometry and fresh-context reconnect at `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-channel-rebase-20260712204956`.
+- Canonical WebSharper project directories still contain generated `websharper.log` files whose ACL/owner blocks replacement. Source-only clean build mirrors prove the package graph and deployed behavior, but canonical generated-log ownership remains an explicit tooling blocker rather than a resolved condition.
+
+## 2026-07-12 - Deployed restart and browser history bound
+
+- The formal beta87 Host process was replaced and the same Dynamic TA FormInput/Canvas flow recovered without a sequence-gap resync。A second browser context still bootstrapped from channel sequence 1。
+- Cross-repo `PTC-VFY-027` revision 5 reads IndexedDB through Playwright CDP only；20 transient polls left all PTCS browser object-store counts unchanged。Evidence：`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-restart-indexeddb-202607122114`。
+- A side-by-side beta87 rolling candidate passed Dynamic error/recovery、Add/Remove、Reset and poll rendering while canonical service health remained continuous。External reverse-proxy cutover and E2EQ browser parity remain outside this evidence。
