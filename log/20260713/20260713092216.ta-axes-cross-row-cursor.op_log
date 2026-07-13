@@ -5,3 +5,6 @@
 - Playwright review artifact verification passed desktop inline, fullscreen and 390x844 mobile geometry；cursor moved across three bars with synchronized row values and the page reported zero console warnings/errors。
 - Production note: the mock's CSS hover zones are presentation-only；typed WebSharper implementation must use the renderer time scale for continuous pointer hit-test。
 - Harness correction：第一次check指出pre-work log缺少執行命令/參數，因此在本輪尚未commit前補上該最低欄位；這使同一session baseline正確標示log已變動。後續以新的final-gate session建立修正後baseline，且本op_log已在log之後前進。
+- Sensitive scan：5 files，High=0，Medium=0。final `check.fsx`：PASS=20、WARN=2、FAIL=0；WARN為repo既有dirty與RFC尚處Proposed而未走完stock chain。
+- Commit/push：`d8094b8 Specify TA axes and cross-row cursor contract`已推送至`20260711_027.win.TACanvas`。
+- workspace lock release回報not-found/already-expired，未留下active lease。
