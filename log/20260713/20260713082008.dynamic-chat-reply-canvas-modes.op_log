@@ -5,3 +5,4 @@
 - Cross-repo references use absolute paths because PTCS and Dynamic are separate repositories. No source/package version changed.
 - Sensitive scan：targeted docs/log high=0、medium=0；strict UTF-8/NUL/U+FFFD check passed。
 - Dynamic authoritative check：PASS=19、WARN=3、FAIL=0；WARN為commit前dirty、RFC尚未進WBS/Test與log欄位（已補）。
+- Commit/push：`d024db5 Define Dynamic reply canvas presentation` 已推至 `origin/20260711_027.win.TACanvas`。
