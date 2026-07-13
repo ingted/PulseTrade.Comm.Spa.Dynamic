@@ -14,63 +14,86 @@ module DynamicRenderer =
     let V name attrs =
         Doc.Element name attrs [] :> Doc
 
-    let private tryGetSchema (jsonStr: string) =
+    let tryGet<'T> name (value: obj) =
+        try
+            if isNull value || not (JS.HasOwnProperty value name) then None
+            else Some(JS.Get<'T> name value)
+        with _ -> None
+
+    let getText name fallback value =
+        tryGet<string> name value
+        |> Option.filter (System.String.IsNullOrWhiteSpace >> not)
+        |> Option.defaultValue fallback
+
+    let getArray<'T> name value =
+        tryGet<'T array> name value |> Option.defaultValue [||]
+
+    let unwrapFCell value =
+        try
+            if JS.In "unwrapFCell" JS.Window then
+                let unwrap = JS.Get<obj -> obj> "unwrapFCell" JS.Window
+                unwrap value
+            else
+                value
+        with _ -> value
+
+    let tryGetSchema (jsonStr: string) =
         try
             if IsClient then
-                let obj = JS.Global?JSON?parse(jsonStr)
-                if JS.In "schema" obj then Some (obj?schema : string) else None
+                let value = JSON.Parse jsonStr
+                tryGet<string> "schema" value
             else
                 if jsonStr.Contains("\"schema\":\"fskynet-sdui\"") then Some "fskynet-sdui" else None
         with _ -> None
 
-    let rec private renderNode (obj: obj) (payloadObj: obj) : Doc =
+    let rec renderNode (obj: obj) (payloadObj: obj) : Doc =
         if JS.TypeOf obj = JS.Kind.Undefined || obj = null then Doc.Empty
         else
-            let t = JS.Inline<string>("$0.type", obj)
+            let t = getText "type" "" obj
             match t with
             | "Heading" ->
-                let textStr = JS.Inline<string>("$0.text || ''", obj)
+                let textStr = getText "text" "" obj
                 E "h2" [ attr.style "color: #5bc0de; margin-bottom: 15px;" ] [ text textStr ]
             | "Label" ->
-                let textStr = JS.Inline<string>("$0.text || ''", obj)
+                let textStr = getText "text" "" obj
                 E "span" [ attr.style "margin-right: 10px; color: #ccc;" ] [ text textStr ]
             | "TextInput" ->
-                let placeholderStr = JS.Inline<string>("$0.placeholder || ''", obj)
-                let idStr = JS.Inline<string>("$0.id || ''", obj)
+                let placeholderStr = getText "placeholder" "" obj
+                let idStr = getText "id" "" obj
                 let attrs = 
                     [ attr.``type`` "text"; attr.placeholder placeholderStr; attr.style "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box; margin: 5px 0;" ]
                     @ (if not (System.String.IsNullOrEmpty idStr) then [ on.afterRender (fun el -> el.SetAttribute("id", idStr)) ] else [])
                 V "input" attrs
             | "Row" ->
-                let childrenObj = JS.Inline<obj[]>("$0.children || []", obj)
+                let childrenObj = getArray<obj> "children" obj
                 let childrenDocs = childrenObj |> Array.map (fun c -> renderNode c payloadObj) |> Array.toList
                 E "div" [ attr.style "display: flex; flex-direction: row; gap: 15px; margin-bottom: 10px; align-items: center;" ] childrenDocs
             | "Column" ->
-                let childrenObj = JS.Inline<obj[]>("$0.children || []", obj)
+                let childrenObj = getArray<obj> "children" obj
                 let childrenDocs = childrenObj |> Array.map (fun c -> renderNode c payloadObj) |> Array.toList
                 E "div" [ attr.style "display: flex; flex-direction: column; gap: 10px;" ] childrenDocs
             | "Divider" ->
                 V "hr" [ attr.style "border: 0; border-top: 1px solid #444; margin: 15px 0; width: 100%;" ]
             | "Dropdown" | "SelectBox" ->
-                let isMultiple = JS.Inline<bool>("!!$0.multiple", obj)
-                let optionsArr = JS.Inline<string[]>("$0.options || []", obj)
+                let isMultiple = tryGet<bool> "multiple" obj |> Option.defaultValue false
+                let optionsArr = getArray<string> "options" obj
                 let optionDocs = optionsArr |> Array.map (fun opt -> E "option" [] [ text opt ]) |> Array.toList
                 let attrs = 
                     [ attr.style "padding: 8px; margin: 5px 0; background: #333; color: white; border: 1px solid #555; border-radius: 4px; font-size: 1rem; display: block; width: 200px;" ]
                     @ (if isMultiple then [ on.afterRender (fun el -> el.SetAttribute("multiple", "multiple")) ] else [])
                 E "select" attrs optionDocs
             | "DataGrid" ->
-                let dataRefStr = JS.Inline<string>("$0.dataRef || ''", obj)
-                let rows = JS.Inline<obj[]>("""
-                    var unwrappedData = window.unwrapFCell ? window.unwrapFCell($1.data) : $1.data;
-                    var arr = unwrappedData ? unwrappedData[$0] : null;
-                    return Array.isArray(arr) ? arr : [];
-                """, dataRefStr, payloadObj)
+                let dataRefStr = getText "dataRef" "" obj
+                let rows =
+                    tryGet<obj> "data" payloadObj
+                    |> Option.map unwrapFCell
+                    |> Option.bind (tryGet<obj array> dataRefStr)
+                    |> Option.defaultValue [||]
                 
                 let gridContainer = E "div" [ attr.style "background: #1e1e1e; border-radius: 8px; overflow: hidden; border: 1px solid #444; margin: 20px 0;" ] [
                     if rows.Length > 0 then
                         let firstRow = rows.[0]
-                        let keys = JS.Inline<string[]>("Object.keys($0)", firstRow)
+                        let keys = JS.GetFieldNames firstRow
                         
                         let thead = E "thead" [] [
                             E "tr" [ attr.style "background: #333; color: #aaa;" ] (
@@ -81,7 +104,10 @@ module DynamicRenderer =
                             rows |> Array.map (fun rowObj ->
                                 E "tr" [ attr.style "border-bottom: 1px solid #444;" ] (
                                     keys |> Array.map (fun k ->
-                                        let cellVal = JS.Inline<string>("String($0[$1] || '')", rowObj, k)
+                                        let cellVal =
+                                            tryGet<obj> k rowObj
+                                            |> Option.map string
+                                            |> Option.defaultValue ""
                                         E "td" [ attr.style "padding: 12px 15px;" ] [ text cellVal ]
                                     ) |> Array.toList
                                 )
@@ -93,21 +119,21 @@ module DynamicRenderer =
                 ]
                 gridContainer
             | "Button" ->
-                let btnText = JS.Inline<string>("$0.text || 'Button'", obj)
+                let btnText = getText "text" "Button" obj
                 E "button" [
                     attr.``class`` "btn btn-success canvas-btn"
                     attr.style "margin-top: 15px; padding: 10px 20px; font-weight: bold; background: #5cb85c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;"
                     on.click (fun _ _ -> JS.Window.Alert("Dispatcher: Sending command..."))
                 ] [ text btnText ]
             | "AppLoader" ->
-                let textStr = JS.Inline<string>("$0.text || 'Loading...'", obj)
+                let textStr = getText "text" "Loading..." obj
                 E "div" [ attr.style "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; color: #5bc0de;" ] [
                     V "div" [ attr.style "border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #5bc0de; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;" ]
                     E "span" [ attr.style "margin-top: 10px;" ] [ text textStr ]
                 ]
             | "ColorPicker" ->
-                let defaultColor = JS.Inline<string>("$0.defaultColor || '#000000'", obj)
-                let idStr = JS.Inline<string>("$0.id || ''", obj)
+                let defaultColor = getText "defaultColor" "#000000" obj
+                let idStr = getText "id" "" obj
                 let attrs =
                     [ attr.``type`` "color"; attr.value defaultColor; attr.style "padding: 0; margin: 5px 0; background: none; border: 1px solid #555; border-radius: 4px; cursor: pointer; height: 40px; width: 60px;" ]
                     @ (if not (System.String.IsNullOrEmpty idStr) then [ on.afterRender (fun el -> el.SetAttribute("id", idStr)) ] else [])
@@ -128,13 +154,14 @@ module DynamicRenderer =
                     V "input" [ attr.``type`` "text"; attr.placeholder "Search..."; attr.style "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box;" ]
                 ]
             | "Rolling" ->
-                let direction = JS.Inline<string>("$0.direction || 'left'", obj)
-                let dataRefStr = JS.Inline<string>("$0.dataRef || ''", obj)
-                let items = JS.Inline<string[]>("""
-                    var unwrappedData = window.unwrapFCell ? window.unwrapFCell($1.data) : $1.data;
-                    var arr = unwrappedData ? unwrappedData[$0] : null;
-                    return Array.isArray(arr) ? arr.map(String) : [];
-                """, dataRefStr, payloadObj)
+                let direction = getText "direction" "left" obj
+                let dataRefStr = getText "dataRef" "" obj
+                let items =
+                    tryGet<obj> "data" payloadObj
+                    |> Option.map unwrapFCell
+                    |> Option.bind (tryGet<obj array> dataRefStr)
+                    |> Option.defaultValue [||]
+                    |> Array.map string
                 
                 let contentText = if items.Length > 0 then String.concat " | " items else "No data for Rolling."
                 V "marquee" [ 
@@ -145,7 +172,7 @@ module DynamicRenderer =
                     )
                 ]
             | "Tree" ->
-                let dataRefStr = JS.Inline<string>("$0.dataRef || ''", obj)
+                let dataRefStr = getText "dataRef" "" obj
                 // A simple placeholder for tree. You can expand this to recursive tree parsing.
                 E "ul" [ attr.style "list-style-type: none; padding-left: 20px; color: #ccc;" ] [
                     E "li" [ attr.style "padding: 5px 0; cursor: pointer;" ] [ text ("Tree Node bound to: " + dataRefStr) ]
@@ -153,6 +180,29 @@ module DynamicRenderer =
             | "ContextMenu" ->
                 V "div" [ attr.style "display: none; position: absolute; background: #333; border: 1px solid #555; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); z-index: 1000;" ]
             | _ -> Doc.Empty
+
+    let createSduiCanvasBody (jsonStr: string) =
+        try
+            let payloadObj = JSON.Parse jsonStr
+            let sduiNode =
+                tryGet<obj> "ui" payloadObj
+                |> Option.orElseWith (fun () -> tryGet<obj> "sdui" payloadObj)
+
+            match sduiNode with
+            | None ->
+                E "div" [ attr.``class`` "sdui-canvas-error" ] [ text "SDUI Canvas has no ui or sdui document." ]
+            | Some rawNode ->
+                let unwrapped = unwrapFCell rawNode
+                let items =
+                    if JS.Global?Array?isArray(unwrapped) then As<obj array> unwrapped else [| unwrapped |]
+
+                items
+                |> Array.map (fun item -> renderNode item payloadObj)
+                |> Array.toList
+                |> Doc.Concat
+                |> fun content -> E "div" [ attr.``class`` "sdui-canvas-content" ] [ content ]
+        with error ->
+            E "pre" [ attr.``class`` "sdui-canvas-error" ] [ text ("Error parsing SDUI Canvas: " + error.Message) ]
 
     let createSduiCanvas (jsonStr: string) =
         let isExpanded = Var.Create false
@@ -221,21 +271,7 @@ module DynamicRenderer =
                             ] [ text "關閉 Canvas" ]
                         ]
                         E "div" [ attr.style bodyStyle ] [
-                            try
-                                let items = JS.Inline<obj[]>("""
-                                    var payloadObj = JSON.parse($0);
-                                    var sduiNode = payloadObj.ui || payloadObj.sdui; // check both
-                                    if (!sduiNode) return [];
-                                    var unwrapped = window.unwrapFCell ? window.unwrapFCell(sduiNode) : sduiNode;
-                                    return Array.isArray(unwrapped) ? unwrapped : [unwrapped];
-                                """, jsonStr)
-                                
-                                let payloadObj = JS.Inline<obj>("JSON.parse($0)", jsonStr)
-                                
-                                let elements = items |> Array.map (fun i -> renderNode i payloadObj) |> Array.toList
-                                E "div" [] [ Doc.Concat elements ]
-                            with ex ->
-                                E "pre" [ attr.style "color: #d9534f;" ] [ text ("Error parsing SDUI Canvas: " + ex.Message) ]
+                            createSduiCanvasBody jsonStr
                         ]
                     ]
                 else

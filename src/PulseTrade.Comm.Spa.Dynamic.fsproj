@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>PulseTrade.Comm.Spa.Dynamic</PackageId>
-    <Version>0.1.3-beta78</Version>
+    <Version>0.1.3-beta79</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Dynamic SDUI and Actor extension for PulseTrade.Comm.Spa</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -39,7 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta89]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta90]" />
   </ItemGroup>
 
   <ItemGroup>
@@ -49,6 +49,7 @@
     <Compile Include="Server/DynamicActors.fs" />
     <Compile Include="Server/Extension.fs" />
     <Compile Include="Client/DynamicRenderer.fs" />
+    <Compile Include="Client/ReplyPresentation.fs" />
     <Compile Include="Client/ArguFormRenderer.fs" />
     <Compile Include="Client/ActorDynamicTab.fs" />
 	  <None Include="G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\run-ptcs-host-dynamic-argu-test-host.fsx">

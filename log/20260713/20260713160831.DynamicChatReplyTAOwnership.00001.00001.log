@@ -1,0 +1,38 @@
+# 背景
+
+Dynamic TA workspace目前可能由 page identity直接掛載；產品規格要求 TA Research DSL與一般 Canvas DSL都應由個別 chat reply payload驅動。
+
+# 目標
+
+- 讓 Dynamic renderer提供可由 reply identity驅動的摘要、inline與fullscreen presentation，不在零 reply page自行出現。
+- 保留 realtime workspace state與四列 TA renderer能力。
+
+# 假設
+
+- Dynamic core renderer可重用；需要調整的是 Ptcs integration ownership與 per-reply state，而不是重寫 chart。
+
+# 計畫步驟
+
+1. 定位 Ptcs client mount入口與 reply payload contract。
+2. 補 per-reply classification/state tests。
+3. 修改、build/test/pack/push。
+4. 由正式 82 Playwright完成跨package E2E。
+
+# 預計修改/讀取範圍
+
+- `src/PulseTrade.Comm.Spa.Dynamic.Ptcs*`
+- `src/PulseTrade.Comm.Spa.Dynamic.Renderer*`
+- `doc/RFC/`、REQ/SA/SD/WBS/TEST/Verification/DevLog。
+
+# 驗收方式
+
+- 零 reply不產生 TA workspace；每筆 TA reply有獨立 summary/expand/fullscreen state。
+- text與一般 SDUI reply不受影響。
+
+# 風險
+
+- realtime subscription lifecycle必須隨 reply mount/unmount釋放，避免 page navigation漏訂閱。
+
+# Prompt / 上下文摘要
+
+使用者要求正式 Host依 mock回到 chat-session-first，TA Research只由 reply出現並可 inline與near-fullscreen展開。

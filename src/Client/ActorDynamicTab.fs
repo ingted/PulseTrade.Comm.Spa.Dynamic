@@ -922,6 +922,7 @@ module ActorDynamicTab =
     [<SPAEntryPoint>]
     let Main () =
         JS.Global?console?log("EVALUATING SPAEntryPoint Main in ActorDynamicTab!")
+        ReplyPresentation.register ()
         _registerRenderer ()
         registerActorsPageRenderer ()
         ArguFormRenderer.Register()

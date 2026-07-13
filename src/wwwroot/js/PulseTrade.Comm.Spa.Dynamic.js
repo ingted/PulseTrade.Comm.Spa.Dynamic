@@ -674,6 +674,7 @@ function _registerRenderer(){
 }
 function Main(){
   globalThis.console.log("EVALUATING SPAEntryPoint Main in ActorDynamicTab!");
+  register();
   _registerRenderer();
   registerActorsPageRenderer();
   Register();
@@ -1729,6 +1730,7 @@ function mountAppendPage(page, definition){
     while(true)
       {
         let _3, _4, _5;
+        disposeReplyPresentationsForPage(asText_2(definition.pageId), asText_2(definition.tabId));
         clear(values);
         const x=(((n) =>(n_1) => setData(n, selected, n_1))("selected-key-id"))(work);
         ((((n) =>(n_1) => setData(n, selectedKeyJson, n_1))("selected-key-json"))(x));
@@ -1788,7 +1790,7 @@ function mountAppendPage(page, definition){
             _3=(((a_3) =>(a_4) => {
               iter(a_3, a_4);
             })((value) => {
-              values.appendChild(renderAppendValue(value));
+              values.appendChild(renderAppendValue(definition, value));
             }))(visible);
           }
           _5=length(visible)<reportedCount?setStatus(workState, "Showing "+String(length(visible))+"/"+String(reportedCount)+" value(s)"):setStatus(workState, String(reportedCount)+" value(s)");
@@ -3837,6 +3839,10 @@ function refreshAppendNav(activePath){
     applyDefinitions(data);
   }, () => { });
 }
+function RegisterReplyPresentation(rendererId, tryResolve_1){
+  const rendererId_1=textOr("unnamed", rendererId);
+  set_registeredReplyPresentationResolvers(distinctBy((t) => t[0], registeredReplyPresentationResolvers().concat([[rendererId_1, tryResolve_1]]).slice().reverse()).slice().reverse());
+}
 function tryMountLoginWithRegisteredRenderers(root, configJson){
   let r;
   const _1=root;
@@ -3901,7 +3907,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_37(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_39(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_2(request.userName)||isBlank_2(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -3931,7 +3937,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_2(node.textContent)?New_36("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_2(node.textContent)?New_38("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_2(value)?fallback:value;
@@ -4115,12 +4121,18 @@ function joinValues(values){
   const values_1=arrayOrEmpty_1(values);
   return length(values_1)===0?"":concat_2(" / ", values_1);
 }
+function disposeReplyPresentationsForPage(pageId, tabId){
+  const prefix=concat_2("\u001f", [pageId, tabId])+"\u001f";
+  iter((i) => {
+    disposeReplyPresentation(i);
+  }, filter((identity) => StartsWith(identity, prefix), map((t) => t[0], replyPresentationDisposers())));
+}
 function latestArray(limit, values){
   const values_1=arrayOrEmpty_1(values);
   return length(values_1)<=limit?values_1:skip(length(values_1)-limit, values_1);
 }
-function renderAppendValue(value){
-  let _1;
+function renderAppendValue(definition, value){
+  let mounted, savedScrollTop, presentationRendered, _1, _2;
   const mode=asText_2(value.mode);
   const m=mode.toLowerCase();
   const className=m=="inbound-message"?"fcell-card fcell-chat inbound":m=="outbound-message"?"fcell-card fcell-chat outbound":m=="list"?"fcell-card fcell-list":m=="grid"?"fcell-card fcell-grid":"fcell-card";
@@ -4128,46 +4140,126 @@ function renderAppendValue(value){
   const head_2=element_1("div", "fcell-head", null);
   append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_2(value.valueId)+" / "+asText_2(value.createdAtUtc))]);
   card.appendChild(head_2);
-  const m_1=mode.toLowerCase();
-  switch(m_1){
-    case"outbound-message":
-    case"inbound-message":
-      _1=iter((row) => {
-        card.appendChild(renderTextBlock("fcell-message-body", row));
-      }, arrayOrEmpty_1(value.rows));
-      break;
-    case"list":
-      const list=element_1("ul", "fcell-list-items", null);
-      _1=(iter((row) => {
-        list.appendChild(element_1("li", "", asText_2(row)));
-      }, arrayOrEmpty_1(value.rows)),void card.appendChild(list));
-      break;
-    case"grid":
-      let _2;
-      const table=element_1("table", "fcell-grid-table", null);
-      const columns=arrayOrEmpty_1(value.columns);
-      if(length(columns)>0){
-        const thead=element_1("thead", "", null);
-        const header=element_1("tr", "", null);
-        _2=(iter((column) => {
-          header.appendChild(element_1("th", "wrap", asText_2(column)));
-        }, columns),thead.appendChild(header),void table.appendChild(thead));
+  const presentationContext=New_35(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
+  const m_1=tryResolveReplyPresentation(presentationContext);
+  if(m_1!=null&&m_1.$==1){
+    const presentation=m_1.$0;
+    const identity=replyPresentationIdentity(presentationContext);
+    const x=setData("reply-id", identity, setTestId_1("reply-presentation", element_1("section", "reply-presentation", null)));
+    const shell_1=setData("presentation-kind", asText_2(presentation.Kind), x);
+    const summary=setTestId_1("reply-presentation-summary", element_1("div", "reply-presentation-summary", null));
+    summary.setAttribute("role", "button");
+    summary.setAttribute("tabindex", "0");
+    summary.appendChild(presentation.RenderSummary());
+    const controls=element_1("div", "reply-presentation-actions", null);
+    const toggle=setTestId_1("reply-presentation-toggle", button_1("reply-presentation-toggle", "Expand"));
+    const fullscreen=setTestId_1("reply-presentation-fullscreen-toggle", button_1("reply-presentation-fullscreen-toggle", "\u26f6"));
+    fullscreen.setAttribute("title", "Open near-fullscreen canvas");
+    fullscreen.setAttribute("aria-label", "Open near-fullscreen canvas");
+    const inlineHost=setTestId_1("reply-presentation-inline", element_1("div", "reply-presentation-inline", null));
+    controls.appendChild(toggle);
+    controls.appendChild(fullscreen);
+    shell_1.appendChild(summary);
+    shell_1.appendChild(controls);
+    shell_1.appendChild(inlineHost);
+    card.appendChild(shell_1);
+    mounted=false;
+    savedScrollTop=0;
+    const mountInline=() => {
+      if(!mounted){
+        clear(inlineHost);
+        try {
+          registerReplyPresentationDisposer(identity, (presentation.Mount("inline"))(inlineHost));
+          mounted=true;
+          setData("mount-state", "mounted", shell_1);
+        }
+        catch(error){
+          inlineHost.appendChild(element_1("div", "reply-presentation-error", textOr("Reply presentation failed.", errorMessage_2(error))));
+          setData("mount-state", "error", shell_1);
+        }
       }
-      else _2=null;
-      const tbody=element_1("tbody", "", null);
-      _1=(iter((cells) => {
-        const tr=element_1("tr", "", null);
-        iter((cell) => {
-          tr.appendChild(element_1("td", "wrap", asText_2(cell)));
-        }, arrayOrEmpty_1(cells));
-        tbody.appendChild(tr);
-      }, arrayOrEmpty_1(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
-      break;
-    default:
-      _1=void card.appendChild(renderTextBlock("fcell-source", value.rawValue));
-      break;
+    };
+    function applyPresentationMode(nextMode){
+      const m_3=asText_2(nextMode).toLowerCase();
+      const normalized=m_3=="inline"?"inline":m_3=="fullscreen"?"fullscreen":"collapsed";
+      setReplyPresentationMode(identity, normalized);
+      setData("presentation-mode", normalized, shell_1);
+      if(normalized=="collapsed"){
+        disposeReplyPresentation(identity);
+        mounted=false;
+        clear(inlineHost);
+        setData("mount-state", "unmounted", shell_1);
+        inlineHost.setAttribute("hidden", "hidden");
+        fullscreen.setAttribute("hidden", "hidden");
+        shell_1.className="reply-presentation";
+        summary.setAttribute("aria-expanded", "false");
+        toggle.textContent="Expand";
+        fullscreen.textContent="\u26f6";
+      }
+      else normalized=="fullscreen"?(mountInline(),inlineHost.removeAttribute("hidden"),fullscreen.removeAttribute("hidden"),shell_1.className="reply-presentation fullscreen",summary.setAttribute("aria-expanded", "true"),toggle.textContent="Collapse",fullscreen.textContent="×",fullscreen.setAttribute("title", "Return to inline canvas"),fullscreen.setAttribute("aria-label", "Return to inline canvas")):(mountInline(),inlineHost.removeAttribute("hidden"),fullscreen.removeAttribute("hidden"),shell_1.className="reply-presentation",summary.setAttribute("aria-expanded", "true"),toggle.textContent="Collapse",fullscreen.textContent="\u26f6",fullscreen.setAttribute("title", "Open near-fullscreen canvas"),fullscreen.setAttribute("aria-label", "Open near-fullscreen canvas"));
+    }
+    const toggleInline=() => {
+      if(replyPresentationMode(identity)=="collapsed")applyPresentationMode("inline");
+      else applyPresentationMode("collapsed");
+    };
+    presentationRendered=(summary.addEventListener("click", toggleInline),toggle.addEventListener("click", toggleInline),fullscreen.addEventListener("click", () => {
+      if(replyPresentationMode(identity)=="fullscreen"){
+        applyPresentationMode("inline");
+        const m_3=card.parentElement;
+        return Equals(m_3, null)?null:void(m_3.scrollTop=savedScrollTop);
+      }
+      else {
+        const m_4=card.parentElement;
+        if(Equals(m_4, null))savedScrollTop=0;
+        else savedScrollTop=m_4.scrollTop;
+        return applyPresentationMode("fullscreen");
+      }
+    }),applyPresentationMode(replyPresentationMode(identity)),true);
   }
-  if(!isBlank_2(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message")card.appendChild(renderTextBlock("fcell-source", value.source));
+  else presentationRendered=false;
+  if(!presentationRendered){
+    const m_2=mode.toLowerCase();
+    switch(m_2){
+      case"outbound-message":
+      case"inbound-message":
+        _1=iter((row) => {
+          card.appendChild(renderTextBlock("fcell-message-body", row));
+        }, arrayOrEmpty_1(value.rows));
+        break;
+      case"list":
+        const list=element_1("ul", "fcell-list-items", null);
+        _1=(iter((row) => {
+          list.appendChild(element_1("li", "", asText_2(row)));
+        }, arrayOrEmpty_1(value.rows)),void card.appendChild(list));
+        break;
+      case"grid":
+        let _3;
+        const table=element_1("table", "fcell-grid-table", null);
+        const columns=arrayOrEmpty_1(value.columns);
+        if(length(columns)>0){
+          const thead=element_1("thead", "", null);
+          const header=element_1("tr", "", null);
+          _3=(iter((column) => {
+            header.appendChild(element_1("th", "wrap", asText_2(column)));
+          }, columns),thead.appendChild(header),void table.appendChild(thead));
+        }
+        else _3=null;
+        const tbody=element_1("tbody", "", null);
+        _1=(iter((cells) => {
+          const tr=element_1("tr", "", null);
+          iter((cell) => {
+            tr.appendChild(element_1("td", "wrap", asText_2(cell)));
+          }, arrayOrEmpty_1(cells));
+          tbody.appendChild(tr);
+        }, arrayOrEmpty_1(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
+        break;
+      default:
+        _1=void card.appendChild(renderTextBlock("fcell-source", value.rawValue));
+        break;
+    }
+    _2=!isBlank_2(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message"?void card.appendChild(renderTextBlock("fcell-source", value.source)):null;
+  }
+  else _2=null;
   return card;
 }
 function setStatus(node, text){
@@ -4561,7 +4653,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_2(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_39(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_41(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_2("/pages/api/register-page", request, (reply) => {
@@ -4703,6 +4795,12 @@ function int64OrZero(value){
   const parsed=parseInt(asText_2(value), globalThis.$radix);
   return isNaN(parsed)||parsed<0?0n:BigInt(parsed);
 }
+function set_registeredReplyPresentationResolvers(_1){
+  _c_1.registeredReplyPresentationResolvers=_1;
+}
+function registeredReplyPresentationResolvers(){
+  return _c_1.registeredReplyPresentationResolvers;
+}
 function initializeClientExtensionGlobals(){
   if(!globalThis.PulseTrade)globalThis.PulseTrade={};
   if(!globalThis.PulseTrade.MessageRenderers)globalThis.PulseTrade.MessageRenderers=[];
@@ -4713,7 +4811,7 @@ function initializeClientExtensionGlobals(){
   if(!globalThis.PulseTrade.AclSnapshotObservers)globalThis.PulseTrade.AclSnapshotObservers=[];
   if(!globalThis.PulseTrade.AclCapabilityProviders)globalThis.PulseTrade.AclCapabilityProviders=[];
   if(!globalThis.PulseTrade.Renderers)globalThis.PulseTrade.Renderers=globalThis.PulseTrade.MessageRenderers;
-  let register=(collection, name, priority, func) => {
+  let register_1=(collection, name, priority, func) => {
     if(typeof priority==="function"){
       func=priority;
       priority=0;
@@ -4727,25 +4825,25 @@ function initializeClientExtensionGlobals(){
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
   };
   globalThis.PulseTradeRegisterRenderer=(name, priority, func) => {
-    register(globalThis.PulseTrade.MessageRenderers, name, priority, func);
+    register_1(globalThis.PulseTrade.MessageRenderers, name, priority, func);
   };
   globalThis.PulseTradeRegisterPageRenderer=(name, priority, func) => {
-    register(globalThis.PulseTrade.PageRenderers, name, priority, func);
+    register_1(globalThis.PulseTrade.PageRenderers, name, priority, func);
   };
   globalThis.PulseTradeRegisterAppendInputRenderer=(name, priority, func) => {
-    register(globalThis.PulseTrade.AppendInputRenderers, name, priority, func);
+    register_1(globalThis.PulseTrade.AppendInputRenderers, name, priority, func);
   };
   globalThis.PulseTradeRegisterAddKeyRenderer=(name, priority, func) => {
-    register(globalThis.PulseTrade.AddKeyRenderers, name, priority, func);
+    register_1(globalThis.PulseTrade.AddKeyRenderers, name, priority, func);
   };
   globalThis.PulseTradeRegisterLoginRenderer=(name, priority, func) => {
-    register(globalThis.PulseTrade.LoginRenderers, name, priority, func);
+    register_1(globalThis.PulseTrade.LoginRenderers, name, priority, func);
   };
   globalThis.PulseTradeRegisterAclSnapshotObserver=(name, priority, func) => {
-    register(globalThis.PulseTrade.AclSnapshotObservers, name, priority, func);
+    register_1(globalThis.PulseTrade.AclSnapshotObservers, name, priority, func);
   };
   globalThis.PulseTradeRegisterAclCapabilityProvider=(name, priority, func) => {
-    register(globalThis.PulseTrade.AclCapabilityProviders, name, priority, func);
+    register_1(globalThis.PulseTrade.AclCapabilityProviders, name, priority, func);
   };
 }
 function routeItem(icon, name, value){
@@ -4779,11 +4877,26 @@ function hasTag(tag, tags){
 }
 function currentBrowserUser(){
   const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_2(userNode.textContent))return New_38("user.web", "Web User", "", false, "anonymous", "/chat/logout");
+  if(userNode==null||isBlank_2(userNode.textContent))return New_40("user.web", "Web User", "", false, "anonymous", "/chat/logout");
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank_2(user.participantId)?New_38("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
+    return user==null||isBlank_2(user.participantId)?New_40("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
   }
+}
+function replyPresentationDisposers(){
+  return _c_1.replyPresentationDisposers;
+}
+function disposeReplyPresentation(identity){
+  let _1;
+  const o=tryPick((_2) => _2[0]==identity?Some(_2[1]):null, replyPresentationDisposers());
+  if(o==null)_1=void 0;
+  else try {
+    _1=o.$0();
+  }
+  catch(m){
+    _1=null;
+  }
+  set_replyPresentationDisposers(filter((_2) => _2[0]!=identity, replyPresentationDisposers()));
 }
 function fcellValueModeLabel(mode, tags){
   return hasTag("actor-argu-command", tags)?"Actor Argu Outbound":hasTag("actor-argu-reply", tags)?"Actor Argu Reply":hasTag("actor-argu-error", tags)?"Actor Argu Error":fcellModeLabel(mode);
@@ -4791,6 +4904,30 @@ function fcellValueModeLabel(mode, tags){
 function renderTextBlock(className, text){
   const m=tryRenderWithRegisteredRenderers(text);
   return m==null?element_1("pre", className, asText_2(text)):m.$0;
+}
+function tryResolveReplyPresentation(context){
+  return tryPick((_1) => {
+    try {
+      return _1[1](context);
+    }
+    catch(m){
+      return null;
+    }
+  }, registeredReplyPresentationResolvers());
+}
+function replyPresentationIdentity(context){
+  return concat_2("\u001f", [context.PageId, context.TabId, context.ValueId]);
+}
+function registerReplyPresentationDisposer(identity, dispose){
+  disposeReplyPresentation(identity);
+  set_replyPresentationDisposers(replyPresentationDisposers().concat([[identity, dispose]]));
+}
+function setReplyPresentationMode(identity, mode){
+  set_replyPresentationModes(filter((_1) => _1[0]!=identity, replyPresentationModes()).concat([[identity, mode]]));
+}
+function replyPresentationMode(identity){
+  const o=tryPick((_1) => _1[0]==identity?Some(_1[1]):null, replyPresentationModes());
+  return o==null?"collapsed":o.$0;
 }
 function scrollToBottomNow(node){
   if(!(node==null)){
@@ -4881,6 +5018,9 @@ function aclAllowsFallback(action, resourceKind, resourceId){
 function appendPageShapeRegistry(){
   return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
 }
+function set_replyPresentationDisposers(_1){
+  _c_1.replyPresentationDisposers=_1;
+}
 function fcellModeLabel(mode){
   const m=asText_2(mode).toLowerCase();
   return m=="inbound-message"?"FCell Chat":m=="outbound-message"?"FCell Chat":m=="list"?"FCell List":m=="table"?"FCell Grid":m=="grid"?"FCell Grid":"FCell Value";
@@ -4926,6 +5066,12 @@ function tryRenderWithRegisteredRenderers(text){
     else return Some(local.$0);
   }
 }
+function set_replyPresentationModes(_1){
+  _c_1.replyPresentationModes=_1;
+}
+function replyPresentationModes(){
+  return _c_1.replyPresentationModes;
+}
 function set_pendingCommandSeq(_1){
   _c_1.pendingCommandSeq=_1;
 }
@@ -4955,7 +5101,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
-  return New_35(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_37(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -4964,6 +5110,12 @@ function serverClientExtensions(){
     const o=tryJson(node.textContent);
     return o==null?[]:o.$0;
   }
+}
+function GetFieldNames(o){
+  let r=[];
+  let k;
+  for(var k_1 in o)r.push(k_1);
+  return r;
 }
 function GetFieldValues(o){
   let r=[];
@@ -5006,8 +5158,7 @@ function TryRender(rawContent){
 }
 function tryGetSchema(jsonStr){
   try {
-    const obj=globalThis.JSON.parse(jsonStr);
-    return"schema"in obj?Some(obj.schema):null;
+    return tryGet("schema", JSON.parse(jsonStr));
   }
   catch(m){
     return null;
@@ -5027,65 +5178,90 @@ function createSduiCanvas(jsonStr){
   else _1=null;
   const jsonSnippet=jsonStr.length>100?Substring(jsonStr, 0, 100)+"...":jsonStr;
   const isCodeExpanded=_c.Create_1(false);
-  return E_1("div", [Attr.Create("class", "sdui-summary-card"), Attr.Create("style", "border: 1px solid #5bc0de; padding: 15px; border-radius: 6px; background: rgba(91, 192, 222, 0.1); margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start;")], [E_1("strong", [Attr.Create("style", "display: block; margin-bottom: 5px; color: #5bc0de; font-size: 1.1em;")], [Doc.TextNode("\ud83d\udcc8 FSkynet \u52d5\u614b\u756b\u5e03 (Canvas)")]), E_1("span", [Attr.Create("class", "muted"), Attr.Create("style", "display: block; font-size: 0.9em; margin-bottom: 12px; color: #aaa;")], [Doc.TextNode("\u9ede\u64ca\u5c55\u958b\u4ee5\u986f\u793a\u5177\u5099\u6392\u5e8f\u3001\u7be9\u9078\u53ca\u4e0b\u55ae\u529f\u80fd\u7684\u4e92\u52d5\u5f0f\u7db2\u683c\u8207\u5716\u8868\u3002")]), E_1("pre", [Dynamic("class", Map((e) => e?"sdui-json-snippet expanded":"sdui-json-snippet", isCodeExpanded.View)), Attr.Create("title", "\u9ede\u64ca\u6aa2\u8996\u5b8c\u6574 JSON"), Handler("click", () =>() => isCodeExpanded.Set(!isCodeExpanded.Get()))], [Doc.TextView(Map((e) => e?jsonStr:jsonSnippet, isCodeExpanded.View))]), E_1("button", [Attr.Create("class", "btn btn-info"), Attr.Create("style", "background: #5bc0de; color: #111; font-weight: bold; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 10px;"), Handler("click", () =>() => isExpanded.Set(!isExpanded.Get()))], [Doc.TextView(Map((e) => e?"\u6536\u5408 Canvas":"\u5c55\u958b Canvas", isExpanded.View))]), Doc.EmbedView(Map((expanded) => expanded?E_1("div", [Attr.Create("style", "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; flex-direction: column; padding: 40px; box-sizing: border-box;")], [E_1("div", [Attr.Create("style", "display: flex; justify-content: space-between; align-items: center; background: #1e1e1e; padding: 15px 25px; border-radius: 8px 8px 0 0; color: #fff; font-family: sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.3);")], [E_1("h2", [Attr.Create("style", "margin: 0; font-size: 1.5rem; font-weight: normal;")], [Doc.TextNode("FSkynet SDUI Canvas")]), E_1("button", [Attr.Create("class", "btn btn-danger"), Attr.Create("style", "background: #d9534f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;"), Handler("click", () =>() => isExpanded.Set(false))], [Doc.TextNode("\u95dc\u9589 Canvas")])]), E_1("div", [Attr.Create("style", "flex: 1; background: #2b2b2b; padding: 30px; overflow-y: auto; border-radius: 0 0 8px 8px; color: #eee; font-family: sans-serif;")], ofSeq_1(delay(() => enumTryWith(delay(() => {
-    let r, items;
-    let payloadObj=JSON.parse(jsonStr);
-    let sduiNode=payloadObj.ui||payloadObj.sdui;
-    if(!sduiNode)items=[];
-    let unwrapped=globalThis.unwrapFCell?globalThis.unwrapFCell(sduiNode):sduiNode;
-    items=Array.isArray(unwrapped)?unwrapped:[unwrapped];
-    const payloadObj_1=JSON.parse(jsonStr);
-    return[E_1("div", [], [Doc.Concat(ofArray(map((i) => renderNode(i, payloadObj_1), items)))])];
-  }), () => 1, (ex) =>[E_1("pre", [Attr.Create("style", "color: #d9534f;")], [Doc.TextNode("Error parsing SDUI Canvas: "+ex.message)])]))))]):Doc.Empty, isExpanded.View))]);
+  return E_1("div", [Attr.Create("class", "sdui-summary-card"), Attr.Create("style", "border: 1px solid #5bc0de; padding: 15px; border-radius: 6px; background: rgba(91, 192, 222, 0.1); margin-top: 10px; display: flex; flex-direction: column; align-items: flex-start;")], [E_1("strong", [Attr.Create("style", "display: block; margin-bottom: 5px; color: #5bc0de; font-size: 1.1em;")], [Doc.TextNode("\ud83d\udcc8 FSkynet \u52d5\u614b\u756b\u5e03 (Canvas)")]), E_1("span", [Attr.Create("class", "muted"), Attr.Create("style", "display: block; font-size: 0.9em; margin-bottom: 12px; color: #aaa;")], [Doc.TextNode("\u9ede\u64ca\u5c55\u958b\u4ee5\u986f\u793a\u5177\u5099\u6392\u5e8f\u3001\u7be9\u9078\u53ca\u4e0b\u55ae\u529f\u80fd\u7684\u4e92\u52d5\u5f0f\u7db2\u683c\u8207\u5716\u8868\u3002")]), E_1("pre", [Dynamic("class", Map((e) => e?"sdui-json-snippet expanded":"sdui-json-snippet", isCodeExpanded.View)), Attr.Create("title", "\u9ede\u64ca\u6aa2\u8996\u5b8c\u6574 JSON"), Handler("click", () =>() => isCodeExpanded.Set(!isCodeExpanded.Get()))], [Doc.TextView(Map((e) => e?jsonStr:jsonSnippet, isCodeExpanded.View))]), E_1("button", [Attr.Create("class", "btn btn-info"), Attr.Create("style", "background: #5bc0de; color: #111; font-weight: bold; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 10px;"), Handler("click", () =>() => isExpanded.Set(!isExpanded.Get()))], [Doc.TextView(Map((e) => e?"\u6536\u5408 Canvas":"\u5c55\u958b Canvas", isExpanded.View))]), Doc.EmbedView(Map((expanded) => expanded?E_1("div", [Attr.Create("style", "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; flex-direction: column; padding: 40px; box-sizing: border-box;")], [E_1("div", [Attr.Create("style", "display: flex; justify-content: space-between; align-items: center; background: #1e1e1e; padding: 15px 25px; border-radius: 8px 8px 0 0; color: #fff; font-family: sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.3);")], [E_1("h2", [Attr.Create("style", "margin: 0; font-size: 1.5rem; font-weight: normal;")], [Doc.TextNode("FSkynet SDUI Canvas")]), E_1("button", [Attr.Create("class", "btn btn-danger"), Attr.Create("style", "background: #d9534f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;"), Handler("click", () =>() => isExpanded.Set(false))], [Doc.TextNode("\u95dc\u9589 Canvas")])]), E_1("div", [Attr.Create("style", "flex: 1; background: #2b2b2b; padding: 30px; overflow-y: auto; border-radius: 0 0 8px 8px; color: #eee; font-family: sans-serif;")], [createSduiCanvasBody(jsonStr)])]):Doc.Empty, isExpanded.View))]);
+}
+function tryGet(name, value){
+  try {
+    return value==null||!value.hasOwnProperty(name)?null:Some(value[name]);
+  }
+  catch(m){
+    return null;
+  }
 }
 function E_1(name, attrs, children){
   return Doc.Element(name, attrs, children);
 }
+function createSduiCanvasBody(jsonStr){
+  try {
+    const payloadObj=JSON.parse(jsonStr);
+    const o=tryGet("ui", payloadObj);
+    const sduiNode=o==null?tryGet("sdui", payloadObj):(o.$0,o);
+    if(sduiNode!=null&&sduiNode.$==1){
+      const unwrapped=unwrapFCell(sduiNode.$0);
+      const content=Doc.Concat(ofArray(map((item) => renderNode(item, payloadObj), globalThis.Array.isArray(unwrapped)?unwrapped:[unwrapped])));
+      return E_1("div", [Attr.Create("class", "sdui-canvas-content")], [content]);
+    }
+    else return E_1("div", [Attr.Create("class", "sdui-canvas-error")], [Doc.TextNode("SDUI Canvas has no ui or sdui document.")]);
+  }
+  catch(error){
+    return E_1("pre", [Attr.Create("class", "sdui-canvas-error")], [Doc.TextNode("Error parsing SDUI Canvas: "+error.message)]);
+  }
+}
+function unwrapFCell(value){
+  try {
+    return"unwrapFCell"in globalThis?globalThis.unwrapFCell(value):value;
+  }
+  catch(m){
+    return value;
+  }
+}
 function renderNode(obj, payloadObj){
   if(Equals(typeof obj, "undefined")||Equals(obj, null))return Doc.Empty;
   else {
-    const t=obj.type;
+    const t=getText("type", "", obj);
     switch(t){
       case"Heading":
-        const textStr=obj.text||"";
+        const textStr=getText("text", "", obj);
         return E_1("h2", [Attr.Create("style", "color: #5bc0de; margin-bottom: 15px;")], [Doc.TextNode(textStr)]);
       case"Label":
-        const textStr_1=obj.text||"";
+        const textStr_1=getText("text", "", obj);
         return E_1("span", [Attr.Create("style", "margin-right: 10px; color: #ccc;")], [Doc.TextNode(textStr_1)]);
       case"TextInput":
-        const placeholderStr=obj.placeholder||"";
-        const idStr=obj.id||"";
+        const placeholderStr=getText("placeholder", "", obj);
+        const idStr=getText("id", "", obj);
         return V_1("input", append_3(ofArray([Attr.Create("type", "text"), Attr.Create("placeholder", placeholderStr), Attr.Create("style", "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box; margin: 5px 0;")]), !IsNullOrEmpty(idStr)?ofArray([OnAfterRender((el) => {
           el.setAttribute("id", idStr);
         })]):FSharpList.Empty));
       case"Row":
-        const childrenDocs=ofArray(map((c) => renderNode(c, payloadObj), obj.children||[]));
+        const childrenDocs=ofArray(map((c) => renderNode(c, payloadObj), getArray("children", obj)));
         return E_1("div", [Attr.Create("style", "display: flex; flex-direction: row; gap: 15px; margin-bottom: 10px; align-items: center;")], childrenDocs);
       case"Column":
-        const childrenDocs_1=ofArray(map((c) => renderNode(c, payloadObj), obj.children||[]));
+        const childrenDocs_1=ofArray(map((c) => renderNode(c, payloadObj), getArray("children", obj)));
         return E_1("div", [Attr.Create("style", "display: flex; flex-direction: column; gap: 10px;")], childrenDocs_1);
       case"Divider":
         return V_1("hr", [Attr.Create("style", "border: 0; border-top: 1px solid #444; margin: 15px 0; width: 100%;")]);
       case"SelectBox":
       case"Dropdown":
-        const isMultiple=!(!obj.multiple);
-        const optionDocs=ofArray(map((opt) => E_1("option", [], [Doc.TextNode(opt)]), obj.options||[]));
+        const o=tryGet("multiple", obj);
+        const isMultiple=o==null?false:o.$0;
+        const optionDocs=ofArray(map((opt) => E_1("option", [], [Doc.TextNode(opt)]), getArray("options", obj)));
         return E_1("select", append_3(ofArray([Attr.Create("style", "padding: 8px; margin: 5px 0; background: #333; color: white; border: 1px solid #555; border-radius: 4px; font-size: 1rem; display: block; width: 200px;")]), isMultiple?ofArray([OnAfterRender((el) => {
           el.setAttribute("multiple", "multiple");
         })]):FSharpList.Empty), optionDocs);
       case"DataGrid":
-        let r, rows;
-        const dataRefStr=obj.dataRef||"";
-        const _1=dataRefStr;
-        let unwrappedData=globalThis.unwrapFCell?globalThis.unwrapFCell(payloadObj.data):payloadObj.data;
-        let arr=unwrappedData?unwrappedData[_1]:null;
-        rows=Array.isArray(arr)?arr:[];
+        const dataRefStr=getText("dataRef", "", obj);
+        const o_1=tryGet("data", payloadObj);
+        const o_2=o_1==null?null:Some(unwrapFCell(o_1.$0));
+        const o_3=o_2==null?null:tryGet(dataRefStr, o_2.$0);
+        const rows=o_3==null?[]:o_3.$0;
         return E_1("div", [Attr.Create("style", "background: #1e1e1e; border-radius: 8px; overflow: hidden; border: 1px solid #444; margin: 20px 0;")], ofSeq_1(delay(() => {
           if(length(rows)>0){
-            const keys=Object.keys(get(rows, 0));
+            const keys=GetFieldNames(get(rows, 0));
             const thead=E_1("thead", [], [E_1("tr", [Attr.Create("style", "background: #333; color: #aaa;")], ofArray(map((k) => E_1("th", [Attr.Create("style", "padding: 12px 15px; border-bottom: 1px solid #555;")], [Doc.TextNode(k)]), keys)))]);
             const tbody=E_1("tbody", [], ofArray(map((rowObj) => E_1("tr", [Attr.Create("style", "border-bottom: 1px solid #444;")], ofArray(map((k) => {
-              const cellVal=String(rowObj[k]||"");
+              const o_7=tryGet(k, rowObj);
+              const o_8=o_7==null?null:Some(String(o_7.$0));
+              const cellVal=o_8==null?"":o_8.$0;
               return E_1("td", [Attr.Create("style", "padding: 12px 15px;")], [Doc.TextNode(cellVal)]);
             }, keys))), rows)));
             return[E_1("table", [Attr.Create("style", "width: 100%; border-collapse: collapse; text-align: left;")], [thead, tbody])];
@@ -5093,14 +5269,14 @@ function renderNode(obj, payloadObj){
           else return[E_1("div", [Attr.Create("style", "padding: 20px; color: #ccc;")], [Doc.TextNode("No data found for dataRef: "+dataRefStr)])];
         })));
       case"Button":
-        const btnText=obj.text||"Button";
+        const btnText=getText("text", "Button", obj);
         return E_1("button", [Attr.Create("class", "btn btn-success canvas-btn"), Attr.Create("style", "margin-top: 15px; padding: 10px 20px; font-weight: bold; background: #5cb85c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;"), Handler("click", () =>() => globalThis.alert("Dispatcher: Sending command..."))], [Doc.TextNode(btnText)]);
       case"AppLoader":
-        const textStr_2=obj.text||"Loading...";
+        const textStr_2=getText("text", "Loading...", obj);
         return E_1("div", [Attr.Create("style", "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; color: #5bc0de;")], [V_1("div", [Attr.Create("style", "border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #5bc0de; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;")]), E_1("span", [Attr.Create("style", "margin-top: 10px;")], [Doc.TextNode(textStr_2)])]);
       case"ColorPicker":
-        const defaultColor=obj.defaultColor||"#000000";
-        const idStr_1=obj.id||"";
+        const defaultColor=getText("defaultColor", "#000000", obj);
+        const idStr_1=getText("id", "", obj);
         return V_1("input", append_3(ofArray([Attr.Create("type", "color"), Attr.Create("value", defaultColor), Attr.Create("style", "padding: 0; margin: 5px 0; background: none; border: 1px solid #555; border-radius: 4px; cursor: pointer; height: 40px; width: 60px;")]), !IsNullOrEmpty(idStr_1)?ofArray([OnAfterRender((el) => {
           el.setAttribute("id", idStr_1);
         })]):FSharpList.Empty));
@@ -5113,20 +5289,21 @@ function renderNode(obj, payloadObj){
       case"AutoComplete":
         return E_1("div", [Attr.Create("style", "position: relative; display: inline-block; width: 100%; margin: 5px 0;")], [V_1("input", [Attr.Create("type", "text"), Attr.Create("placeholder", "Search..."), Attr.Create("style", "padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; display: block; width: 100%; box-sizing: border-box;")])]);
       case"Rolling":
-        let r_1, items;
-        const direction=obj.direction||"left";
-        const _2=obj.dataRef||"";
-        let unwrappedData_1=globalThis.unwrapFCell?globalThis.unwrapFCell(payloadObj.data):payloadObj.data;
-        let arr_1=unwrappedData_1?unwrappedData_1[_2]:null;
-        items=Array.isArray(arr_1)?arr_1.map(String):[];
+        const direction=getText("direction", "left", obj);
+        const dataRefStr_1=getText("dataRef", "", obj);
+        const o_4=tryGet("data", payloadObj);
+        const o_5=o_4==null?null:Some(unwrapFCell(o_4.$0));
+        const o_6=o_5==null?null:tryGet(dataRefStr_1, o_5.$0);
+        let _1=o_6==null?[]:o_6.$0;
+        const items=map(String, _1);
         const contentText=length(items)>0?concat_2(" | ", items):"No data for Rolling.";
         return V_1("marquee", [Attr.Create("style", "padding: 10px; background: #222; color: #5bc0de; border-radius: 4px; border: 1px solid #444; margin: 10px 0;"), OnAfterRender((el) => {
           el.setAttribute("direction", direction);
           el.textContent=contentText;
         })]);
       case"Tree":
-        const dataRefStr_1=obj.dataRef||"";
-        return E_1("ul", [Attr.Create("style", "list-style-type: none; padding-left: 20px; color: #ccc;")], [E_1("li", [Attr.Create("style", "padding: 5px 0; cursor: pointer;")], [Doc.TextNode("Tree Node bound to: "+dataRefStr_1)])]);
+        const dataRefStr_2=getText("dataRef", "", obj);
+        return E_1("ul", [Attr.Create("style", "list-style-type: none; padding-left: 20px; color: #ccc;")], [E_1("li", [Attr.Create("style", "padding: 5px 0; cursor: pointer;")], [Doc.TextNode("Tree Node bound to: "+dataRefStr_2)])]);
       case"ContextMenu":
         return V_1("div", [Attr.Create("style", "display: none; position: absolute; background: #333; border: 1px solid #555; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); z-index: 1000;")]);
       default:
@@ -5134,8 +5311,86 @@ function renderNode(obj, payloadObj){
     }
   }
 }
+function getText(name, fallback, value){
+  const o=filter_1((x) =>!IsNullOrWhiteSpace(x), tryGet(name, value));
+  return o==null?fallback:o.$0;
+}
 function V_1(name, attrs){
   return Doc.Element(name, attrs, FSharpList.Empty);
+}
+function getArray(name, value){
+  const o=tryGet(name, value);
+  return o==null?[]:o.$0;
+}
+function register(){
+  RegisterReplyPresentation("dynamic-static-sdui-v2", tryResolve);
+}
+function tryResolve(context){
+  const m=tryStaticCanvasPayload(context.Payload);
+  if(m!=null&&m.$==1){
+    const payload=m.$0[1];
+    const content=m.$0[0];
+    const p=staticCanvasSummary(payload);
+    const title=p[0];
+    const elementCount=p[1];
+    return Some(New_36("static-sdui", () => renderSummary(title, elementCount), () =>(host) => {
+      clearHost(host);
+      const doc_2=createSduiCanvasBody(content);
+      LoadLocalTemplates("");
+      Doc.Run(host, doc_2);
+      return() => {
+        clearHost(host);
+      };
+    }));
+  }
+  else return null;
+}
+function tryStaticCanvasPayload(rawContent){
+  const content=extractReplyPayload(rawContent);
+  try {
+    const payload=JSON.parse(content);
+    const o=tryGet("schema", payload);
+    const schema=o==null?"":o.$0;
+    const o_1=tryGet("protocol", payload);
+    const protocol=o_1==null?"":o_1.$0;
+    return schema=="fskynet-sdui"&&protocol!="sdui-runtime.v1"&&(tryGet("ui", payload)!=null||tryGet("sdui", payload)!=null)?Some([content, payload]):null;
+  }
+  catch(m){
+    return null;
+  }
+}
+function staticCanvasSummary(payload){
+  let o;
+  const o_1=tryGet("ui", payload);
+  const o_2=o_1==null?tryGet("sdui", payload):(o_1.$0,o_1);
+  const o_3=o_2==null?null:Some(unwrapFCell(o_2.$0));
+  if(o_3==null)o=null;
+  else {
+    const value=o_3.$0;
+    let _1=globalThis.Array.isArray(value)?value:[value];
+    o=Some(_1);
+  }
+  const nodes=o==null?[]:o.$0;
+  const o_4=tryPick((node) => getText("type", "", node)=="Heading"?tryGet("text", node):null, nodes);
+  let _2=o_4==null?"SDUI Canvas":o_4.$0;
+  return[_2, length(nodes)];
+}
+function renderSummary(title, elementCount){
+  const root=globalThis.document.createElement("div");
+  const doc_2=Doc.Element("div", [Attr.Create("style", "min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 12px; align-items:center;")], [Doc.Element("strong", [Attr.Create("style", "min-width:0; color:#163f9f; overflow-wrap:anywhere;")], [Doc.TextNode(title)]), Doc.Element("span", [Attr.Create("style", "color:#596579; font-size:12px; white-space:nowrap;")], [Doc.TextNode(String(elementCount)+" element(s)")]), Doc.Element("span", [Attr.Create("style", "grid-column:1/-1; color:#4f5b6e; font-size:12px;")], [Doc.TextNode("Static SDUI reply; expand inline or open near-fullscreen.")])]);
+  LoadLocalTemplates("");
+  Doc.Run(root, doc_2);
+  return root;
+}
+function clearHost(host){
+  while(!(host.firstChild==null))
+    host.removeChild(host.firstChild);
+}
+function extractReplyPayload(rawContent){
+  const value=rawContent==null?"":Trim(rawContent);
+  const marker="replied msg:";
+  const index=value.indexOf(marker);
+  return index>=0?Trim(value.substring(index+marker.length)):value;
 }
 function FailWith(msg){
   throw new Error(msg);
@@ -5928,6 +6183,10 @@ function set(arr, n, x){
 function New_3(keys, displayName){
   return{keys:keys, displayName:displayName};
 }
+function filter_1(f, o){
+  let _1;
+  return o!=null&&o.$==1&&(f(o.$0)&&(_1=o.$0,true))?o:null;
+}
 function delay(f){
   return{GetEnumerator:() => Get(f())};
 }
@@ -6641,6 +6900,9 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
   static currentAclSnapshotJson;
   static currentAclSnapshot;
   static runtimeAppendPageShapes;
+  static replyPresentationDisposers;
+  static replyPresentationModes;
+  static registeredReplyPresentationResolvers;
   static registeredRenderers;
   static defaultCacheLimit;
   static defaultRenderLimit;
@@ -6650,6 +6912,9 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
     this.defaultRenderLimit=200;
     this.defaultCacheLimit=1000;
     this.registeredRenderers=[];
+    this.registeredReplyPresentationResolvers=[];
+    this.replyPresentationModes=[];
+    this.replyPresentationDisposers=[];
     this.runtimeAppendPageShapes=[];
     this.currentAclSnapshot=null;
     this.currentAclSnapshotJson="";
@@ -6732,11 +6997,11 @@ function ReplaceOnce(string_1, search, replace){
 function TrimStartWS(s){
   return s.replace(new RegExp("^\\s+"), "");
 }
-function IsNullOrEmpty(x){
-  return x==null||x=="";
-}
 function SplitChars(s, sep, opts){
   return Split(s, new RegExp("["+RegexEscape(sep.join(""))+"]"), opts);
+}
+function IsNullOrEmpty(x){
+  return x==null||x=="";
 }
 function Split(s, pat, opts){
   return opts===1?filter((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
@@ -7609,34 +7874,6 @@ function MapTreeReduce(mapping, defaultValue, reduction, array){
   }
   return(loop(0))(l);
 }
-function enumTryWith(s, f, h){
-  return{GetEnumerator:() => {
-    let enum_1, orig;
-    enum_1=null;
-    orig=true;
-    return new T(null, null, (e) => {
-      try {
-        Equals(enum_1, null)?enum_1=Get(s):void 0;
-        return enum_1.MoveNext()&&(e.c=enum_1.Current,true);
-      }
-      catch(m){
-        if(orig&&f(m)===1){
-          orig=false;
-          const x=enum_1;
-          if(!Equals(x, null))x.Dispose();
-          else null;
-          enum_1=Get(h(m));
-          return enum_1.MoveNext()&&(e.c=enum_1.Current,true);
-        }
-        else throw m;
-      }
-    }, () => {
-      const x=enum_1;
-      if(!Equals(x, null))x.Dispose();
-    });
-  }};
-}
-class Exception extends Object_1 { }
 class Dictionary extends Object_1 {
   equals;
   hash;
@@ -7792,7 +8029,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_40(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_42(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -7967,7 +8204,25 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_35(shape, label_1, badge, className){
+function New_35(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+  return{
+    PageId:PageId,
+    TabId:TabId,
+    ValueId:ValueId,
+    CreatedAtUtc:CreatedAtUtc,
+    Direction:Direction,
+    Tags:Tags,
+    Payload:Payload
+  };
+}
+function New_36(Kind, RenderSummary, Mount){
+  return{
+    Kind:Kind,
+    RenderSummary:RenderSummary,
+    Mount:Mount
+  };
+}
+function New_37(shape, label_1, badge, className){
   return{
     shape:shape, 
     label:label_1, 
@@ -7975,7 +8230,7 @@ function New_35(shape, label_1, badge, className){
     className:className
   };
 }
-function New_36(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_38(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
     submitPath:submitPath, 
     sessionPath:sessionPath, 
@@ -7989,7 +8244,7 @@ function New_36(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, 
     aclLabel:aclLabel
   };
 }
-function New_37(userName, password, returnUrl, keepSession){
+function New_39(userName, password, returnUrl, keepSession){
   return{
     userName:userName, 
     password:password, 
@@ -7997,7 +8252,7 @@ function New_37(userName, password, returnUrl, keepSession){
     keepSession:keepSession
   };
 }
-function New_38(participantId, displayName, login, authenticated, provider, logoutPath){
+function New_40(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
     participantId:participantId, 
     displayName:displayName, 
@@ -8007,7 +8262,7 @@ function New_38(participantId, displayName, login, authenticated, provider, logo
     logoutPath:logoutPath
   };
 }
-function New_39(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_41(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
     pageId:pageId, 
     title:title, 
@@ -8112,7 +8367,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_41(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_43(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -8297,7 +8552,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_42(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_44(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -8435,6 +8690,7 @@ function Obsolete(sn){
   }
 }
 class View { }
+class Exception extends Object_1 { }
 let _c_3=Lazy((_i) => class $StartupCode_Templates {
   static {
     _c_3=_i(this);
@@ -8735,7 +8991,7 @@ class KeyCollection extends Object_1 {
     this.d=d;
   }
 }
-function New_40(PreviousNodes, Top){
+function New_42(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -8813,7 +9069,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_43((a) => {
+    r(New_45((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -8838,7 +9094,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_43((a) => {
+    if(!ct.c)c(New_45((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -8941,7 +9197,7 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_41(Node_1, Left, Right, Height, Count){
+function New_43(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1, 
     Left:Left, 
@@ -8988,7 +9244,7 @@ class Updates_1 {
     });
   }
 }
-function New_42(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_44(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
     DynElem:DynElem, 
     DynFlags:DynFlags, 
@@ -9323,7 +9579,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_43(k, ct){
+function New_45(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -9345,7 +9601,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_44(false, []);
+    this.noneCT=New_46(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -9354,7 +9610,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_44(IsCancellationRequested, Registrations){
+function New_46(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -9611,7 +9867,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create(f){
-  return New_45(false, f, forceLazy);
+  return New_47(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -9632,7 +9888,7 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_45(created, evalOrVal, force){
+function New_47(created, evalOrVal, force){
   return{
     c:created, 
     v:evalOrVal, 
