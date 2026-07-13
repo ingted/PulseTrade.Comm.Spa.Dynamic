@@ -473,7 +473,17 @@ module TaWorkspaceRenderer =
             |> View.Map (fun state ->
                 match state.Document with
                 | None ->
-                    div [ Attr.Create "data-testid" "ta-workspace-empty"; attr.style "padding:18px; color:#5d6d83;" ] [ text "TA workspace document is not available." ] :> Doc
+                    let pending = RendererModel.workspaceBootstrapPresentation state
+                    let color = if pending.IsError then "#9a2f2f" else "#5d6d83"
+
+                    div [
+                        Attr.Create "data-testid" "ta-workspace-bootstrap"
+                        Attr.Create "data-state" pending.State
+                        attr.style ("display:flex; flex-direction:column; gap:4px; padding:18px; color:" + color + ";")
+                    ] [
+                        strong [] [ text pending.Title ]
+                        span [ attr.style "font-size:12px;" ] [ text pending.Detail ]
+                    ] :> Doc
                 | Some document ->
                     if state.DocumentRevision <> synchronizedDocumentRevision then
                         let query = RendererModel.queryDraft document.DefaultView

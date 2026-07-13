@@ -642,3 +642,9 @@ Passed assertions：
 ## 2026-07-11 DYN-TA-T-001..020 Transport-Neutral TA Canvas Test Plan
 
 Canonical matrix：`doc/TAResearch/Test.md`。`DYN-TA-T-000A..020`已accepted並進入執行；Contracts/reducer/source、renderer shared cursor/local interaction與desktop/mobile geometry已有Pass，PTCS transient真host、E2EQ parity與bounded soak仍依matrix追蹤。不得以fake component fixture取代兩條真host E2E。
+
+## 2026-07-13 DYN-TA-T-021 Bootstrap presentation
+
+- `Document=None`且沒有terminal error時不得顯示`TA workspace document is not available`；依channel狀態顯示Preparing、Connecting、Loading、Retrying或Resyncing。
+- 只有nonrecoverable `LastError`可呈現terminal unavailable；last-good document與FormInput不得因transient bootstrap/error消失。
+- Renderer exact-package tests通過13/13；Dynamic.Ptcs與Ptcs.Client各7/7，root Dynamic package tests 23/23。formal 82 beta89不再於正常bootstrap顯示terminal unavailable，但page-level auto-mount仍由PTCS RFC-0020下一slice修正。

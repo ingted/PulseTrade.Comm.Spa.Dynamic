@@ -9,6 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Expecto" Version="11.1.0" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs.Client" Version="[0.1.0-alpha7-win12]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs.Client" Version="[0.1.0-alpha7-win13]" />
   </ItemGroup>
 </Project>

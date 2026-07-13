@@ -2630,7 +2630,7 @@ function renderNav(nav, activePath, pages){
     const x=setHref(href, element_1("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", label_1));
     let _2=setTestId_1("nav-"+label_1.toLowerCase(), x);
     nav.appendChild(_2);
-  }, [["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"]]);
+  }, staticNavigationDestinations());
   iter((page) => {
     const href=pagePath(page);
     const x=setHref(href, element_1("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", null));
@@ -2661,6 +2661,8 @@ function renderNav(nav, activePath, pages){
     append_1(link, [badge, element_1("span", "nav-title", pageTitle(page)), closeButton]);
     nav.appendChild(link);
   }, arrayOrEmpty_1(pages));
+  const jump=doc_1().getElementById("ptc-tab-jump");
+  if(!(jump==null))renderTabJumpOptions(jump, activePath, staticNavigationDestinations().concat(map((page) =>[pagePath(page), pageTitle(page)], arrayOrEmpty_1(pages))));
 }
 function shell(activePath, pages){
   const app=element_1("div", "app", null);
@@ -2668,6 +2670,9 @@ function shell(activePath, pages){
   const topRow=element_1("div", "topbar-main", null);
   const brandCluster=element_1("div", "brand-cluster", null);
   const navShell=element_1("div", "nav-shell", null);
+  const navJump=setTestId_1("nav-jump-control", element_1("div", "nav-jump", null));
+  const navJumpSelect=setTestId_1("nav-jump-select", setId("ptc-tab-jump", select([])));
+  const navJumpGo=setTestId_1("nav-jump-go", button_1("nav-jump-go", "Go"));
   const navViewport=setTestId_1("nav-viewport", element_1("div", "nav-viewport", null));
   const nav=setId("ptc-nav", element_1("nav", "nav", null));
   const navBack=setTestId_1("nav-scroll-left", button_1("nav-scroll", "<"));
@@ -2679,17 +2684,27 @@ function shell(activePath, pages){
   };
   navBack.setAttribute("aria-label", "Scroll tabs left");
   navForward.setAttribute("aria-label", "Scroll tabs right");
+  navJumpSelect.setAttribute("aria-label", "Jump to tab");
+  navJumpGo.setAttribute("aria-label", "Go to selected tab");
   navBack.addEventListener("click", () => scrollTabs(-260));
   navForward.addEventListener("click", () => scrollTabs(260));
+  const activateSelectedTab=() => {
+    const href=asText_2(navJumpSelect.value);
+    if(!isBlank_2(href))globalThis.location.assign(href);
+  };
+  navJumpGo.addEventListener("click", activateSelectedTab);
+  navJumpSelect.addEventListener("keydown", (event) => event.key=="Enter"?(event.preventDefault(),activateSelectedTab()):null);
   append_1(brandCluster, [element_1("div", "brand", "PTC.Comm SPA"), registryHealth]);
   renderNav(nav, activePath, pages);
+  renderTabJumpOptions(navJumpSelect, activePath, staticNavigationDestinations().concat(map((page_1) =>[pagePath(page_1), pageTitle(page_1)], arrayOrEmpty_1(pages))));
   const x=element_1("a", "logout", "Logout");
   const logout=setHref(currentLogoutPath(), x);
   const page=element_1("main", "page", null);
   append_1(navViewport, [nav]);
-  append_1(navShell, [navBack, navViewport, navForward]);
-  append_1(topRow, [brandCluster, navShell, logout]);
-  append_1(top, [topRow, create_1]);
+  append_1(navJump, [navJumpSelect, navJumpGo]);
+  append_1(navShell, [navJump, navViewport, navBack, navForward]);
+  append_1(topRow, [brandCluster, logout]);
+  append_1(top, [topRow, create_1, navShell]);
   append_1(app, [top, page]);
   return[app, page];
 }
@@ -4391,6 +4406,9 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   options.body=JSON.stringify(body);
   (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
 }
+function staticNavigationDestinations(){
+  return _c_1.staticNavigationDestinations;
+}
 function setHref(href, node){
   node.setAttribute("href", href);
   return node;
@@ -4435,6 +4453,36 @@ function pageTypeBadge(page){
     return m_1==null?"R":textOr("?", m_1.$0.badge);
   }
 }
+function renderTabJumpOptions(jump, activePath, destinations){
+  let selectedPath;
+  const draftPath=asText_2(jump.value);
+  if(exists((_1) => sameTextInvariant(_1[0], draftPath), destinations))selectedPath=draftPath;
+  else {
+    const o=tryFind((_1) => isCurrentPage(activePath, _1[0]), destinations);
+    const o_1=o==null?null:Some(o.$0[0]);
+    selectedPath=o_1==null?"/chat":o_1.$0;
+  }
+  clear(jump);
+  iter((_1) => {
+    const href=_1[0];
+    const option=doc_1().createElement("option");
+    option.setAttribute("value", href);
+    option.textContent=_1[1];
+    if(sameTextInvariant(selectedPath, href))option.setAttribute("selected", "selected");
+    jump.appendChild(option);
+  }, destinations);
+  if(jump.childElementCount>0)jump.value=selectedPath;
+}
+function select(options){
+  const node=doc_1().createElement("select");
+  iter((_1) => {
+    const option=doc_1().createElement("option");
+    option.setAttribute("value", _1[0]);
+    option.textContent=_1[1];
+    node.appendChild(option);
+  }, options);
+  return node;
+}
 function setId(id, node){
   node.setAttribute("id", id);
   return node;
@@ -4463,7 +4511,7 @@ function renderPageCreator(nav, activePath, pages){
   };
   const resetBinding=() => {
     clear(binding);
-    appendOption("", "Default", binding);
+    appendOption("", "Use page id history", binding);
     binding.value="";
     binding.setAttribute("data-candidate-count", "0");
     candidatesLoaded=false;
@@ -4483,7 +4531,7 @@ function renderPageCreator(nav, activePath, pages){
         const candidates=arrayOrEmpty_1(reply.candidates);
         clear(binding);
         if(length(candidates)===0){
-          appendOption("", "Default", binding);
+          appendOption("", "Use page id history", binding);
           binding.value="";
           setStatus(status, "Ready");
         }
@@ -4757,16 +4805,6 @@ function scrollToBottomNow(node){
 function newPendingCommandId(kind, target, url, payloadJson){
   set_pendingCommandSeq(pendingCommandSeq()+1);
   return cacheKey("pending-command", ofArray([kind, target, url, payloadJson, "attempt-"+String(pendingCommandSeq()), "rand-"+String(Math.floor(Math.random()*1000000000))]));
-}
-function select(options){
-  const node=doc_1().createElement("select");
-  iter((_1) => {
-    const option=doc_1().createElement("option");
-    option.setAttribute("value", _1[0]);
-    option.textContent=_1[1];
-    node.appendChild(option);
-  }, options);
-  return node;
 }
 function appendPageShapeOptions(){
   return map((shape) =>[normalizeShapeText(shape.shape), textOr(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
@@ -6160,13 +6198,13 @@ function unfold(f, s){
 }
 function New_4(shape, selectedKeyJson, selectedKeys, keyParts, actorAddress, duTypeName, unionCaseNames, submit){
   return{
-    shape:shape,
-    selectedKeyJson:selectedKeyJson,
-    selectedKeys:selectedKeys,
-    keyParts:keyParts,
-    actorAddress:actorAddress,
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
+    shape:shape, 
+    selectedKeyJson:selectedKeyJson, 
+    selectedKeys:selectedKeys, 
+    keyParts:keyParts, 
+    actorAddress:actorAddress, 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
     submit:submit
   };
 }
@@ -6590,6 +6628,7 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
   static {
     _c_1=_i(this);
   }
+  static staticNavigationDestinations;
   static requestSeq;
   static pendingCommandSeq;
   static maxSnapshotRecords;
@@ -6623,6 +6662,7 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
     this.maxSnapshotRecords=256;
     this.pendingCommandSeq=0;
     this.requestSeq=0;
+    this.staticNavigationDestinations=[["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"]];
   }
 });
 function TrimEnd(s, t){

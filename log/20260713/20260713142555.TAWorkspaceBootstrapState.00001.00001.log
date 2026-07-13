@@ -1,0 +1,49 @@
+# 背景
+
+正式 PTCS.Host 82 的 TA Research client 在 transient document 尚未送達時，把 `RuntimeState.Document=None` 顯示成 terminal error `TA workspace document is not available.`。Playwright 證實 channel 完成 bootstrap 後四列 workspace 可正常呈現且 console 0 error。
+
+# 目標
+
+1. 區分 TA workspace bootstrap/polling 與真正 unavailable/error 狀態。
+2. 補 reducer/renderer focused regression。
+3. 發布 exact Dynamic renderer/client packages，供正式 PTCS.Host 消費。
+
+# 假設
+
+- `Document=None` 是 mount/open/bootstrap 的正常中間狀態，不應以 error copy 呈現。
+- terminal failure 應由 `LastError` / lifecycle state 明確呈現，而非僅靠 Document option。
+
+# 計畫步驟
+
+1. baseline build/test並讀 RuntimePollState contract。
+2. 修 renderer empty-state presentation與測試。
+3. build/pack/push，更新 package graph與 docs。
+4. 由 PTCS.Host formal 82 Playwright 驗證。
+
+# 預計修改/讀取範圍
+
+- `src/PulseTrade.Comm.Spa.Dynamic.Renderer/`
+- `src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client/`
+- 對應 tests/doc/WBS/Test/Verification/DevLog。
+
+# 驗收方式
+
+- initial `Document=None` 顯示 loading/connecting，不顯示 unavailable。
+- document frame到達後四列 workspace出現；terminal transient error顯示可診斷訊息。
+- exact NuGet consumer與正式 82通過。
+
+# 風險
+
+- generated WebSharper JS 已有 dirty；需確認 source build後只保留可追溯生成差異。
+
+# Prompt / 上下文摘要
+
+使用者要求修復正式 82 TA workspace unavailable，並使 Host 跟上目前 mock/page shell。
+
+# Closeout 索引（追加）
+
+- 執行命令/參數：Renderer/Ptcs/Ptcs.Client tests、root package tests、Release build、pack/push；完整摘要見同名 `.op_log`。
+- 結果：bootstrap typed presentation 與 beta78/win12 package cascade通過。
+- 根因判讀：正常 transient `Document=None` 不得被呈現為 terminal unavailable；zero-reply mount 另屬 reply ownership。
+- 下一步：完成本批 commit/push 後，讓 TA renderer 綁定個別 chat reply lifecycle。
+- 關聯文件/工單/PR：`doc/WBS.md`、`doc/TEST.md`、`doc/Verification.md`。

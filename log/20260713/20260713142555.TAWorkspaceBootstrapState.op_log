@@ -1,0 +1,35 @@
+# Operation evidence
+
+- 2026-07-13 14:40 +08:00：Renderer新增typed bootstrap presentation；正常`Document=None`映射preparing/connecting/loading/retrying/resyncing，nonrecoverable LastError才terminal unavailable。Renderer 13/13，Ptcs/Ptcs.Client各7/7，root package tests 23/23。
+- 2026-07-13 14:48 +08:00：canonical Ptcs.Client WebSharper build受既有不可寫`websharper.log`阻擋；保留blocker並由非Git staging build驗package，未宣稱ACL修復。
+- 2026-07-13 15:33 +08:00：PTCS beta89 correction cascade發布Dynamic.Ptcs `0.1.0-alpha6-win12`與Dynamic `0.1.3-beta78`；兩者flat-container indexing=True。formal 81/82 release消費exact versions。
+- 2026-07-13 15:49 +08:00：WBS/Test/Verification/DevLog同步；明確記錄page-level TA workspace在零reply時自行mount仍不符合RFC-PTC-SPA-0020 / RFC-PTCS-DYNAMIC-0008，下一slice處理。
+
+- 2026-07-13 14:32 +08:00：取得 Dynamic project lock；Playwright 已證明 document bootstrap 後四列 workspace正常，開始修正 pending-state語意。
+- 2026-07-13 14:36 +08:00：baseline WebSharper build的 CLR crash根因為 project-local `websharper.log` 權限。停止 stale `wsfscservice 10.1.6.676` 後 Renderer build成功；Ptcs.Client既有 log ACL仍不可寫，後續使用不改 Git topology的隔離 build staging產生 package/bundle。
+
+## 執行命令/參數
+
+- 執行 Renderer/Ptcs/Ptcs.Client focused tests、root package tests、Release build、pack/push 與正式 Host exact-package integration gate。
+
+## 結果
+
+- bootstrap presentation 不再把可恢復的 `Document=None` 顯示成 terminal unavailable；Renderer 13/13、Ptcs/Ptcs.Client 7/7、root package 23/23 通過。
+- Dynamic beta78 與 Dynamic.Ptcs win12 已發布並由正式 Host 消費。
+
+## 根因判讀
+
+- transient TA workspace 在初始連線、retry、resync 階段本來就允許 `Document=None`；只有不可恢復錯誤才應顯示 unavailable。
+- page-level zero-reply mount 是 PTCS/Dynamic presentation ownership 的下一個獨立缺口。
+
+## 下一步
+
+- 依 accepted RFC 把 TA renderer 綁到個別 chat reply lifecycle，不再由 page target identity 直接掛載。
+
+## 關聯文件/工單/PR
+
+- `doc/WBS.md` 的 `DYN-WBS-529`
+- `doc/TEST.md` 的 `DYN-TA-T-021`
+- PTCS `doc/RFC/RFC-PTC-SPA-0020.chat-reply-canvas-presentation.md`
+
+- 2026-07-13 16:04 +08:00：closeout `check.fsx` 初輪只有本輪追加 pre-work 索引晚於 op_log 的 ordering FAIL、既有 diagnostic log 命名與 RFC coverage WARN；本段追加後重跑 final gate。

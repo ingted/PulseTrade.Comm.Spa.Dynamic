@@ -18,6 +18,31 @@ let candle timestamp openValue high low close volume =
 
 let tests =
     testList "TA renderer model" [
+        testCase "workspace bootstrap distinguishes lifecycle progress from terminal failure" <| fun _ ->
+            let identity = { DocumentId = DocumentId "pending"; CanvasInstanceId = CanvasInstanceId "canvas" }
+            let initial = RuntimeReducer.initial identity
+            let preparing = RendererModel.workspaceBootstrapPresentation initial
+            Expect.equal preparing.State "preparing" "an unmounted channel is a normal bootstrap state"
+            Expect.isFalse preparing.IsError "bootstrap must not be presented as a terminal error"
+
+            let connecting = RendererModel.workspaceBootstrapPresentation { initial with Poll = RuntimePollState.MountedIdle }
+            Expect.equal connecting.State "connecting" "a mounted channel waits for its first document"
+            Expect.stringContains connecting.Detail "initial workspace document" "the user should see the actual wait condition"
+
+            let recovering =
+                RendererModel.workspaceBootstrapPresentation
+                    { initial with
+                        Poll = RuntimePollState.Backoff(DateTimeOffset.Parse("2026-07-13T07:00:00Z"))
+                        LastError = Some { ReasonCode = "transient-timeout"; Message = "retrying"; Recoverable = true } }
+            Expect.equal recovering.State "recovering" "recoverable errors keep the workspace lifecycle alive"
+            Expect.isFalse recovering.IsError "recoverable transport failures are not terminal"
+
+            let unavailable =
+                RendererModel.workspaceBootstrapPresentation
+                    { initial with LastError = Some { ReasonCode = "invalid-document"; Message = "rejected"; Recoverable = false } }
+            Expect.equal unavailable.State "unavailable" "non-recoverable errors are explicit"
+            Expect.isTrue unavailable.IsError "only terminal errors use error presentation"
+
         testCase "typed candle series rejects malformed items" <| fun _ ->
             let data =
                 Map [
@@ -86,6 +111,7 @@ let tests =
                   DataRef = dataRef
                   HeightWeight = 1.0
                   Visible = true
+                  Traces = [||]
                   Options = Map.empty }
 
             let document =

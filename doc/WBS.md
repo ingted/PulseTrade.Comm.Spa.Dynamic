@@ -79,6 +79,7 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 | DYN-WBS-526 | PTCS beta80 durable submission policy alignment | Done | 100 | DYN-T-535 / PTC3-T-068F3 | Dynamic `0.1.3-beta73` exact-pins PTCS `0.2.5-beta80`; no renderer/schema/runtime behavior changes. This removes the beta79 exact-range conflict for the PTC Spa.Host production-adapter package cascade while retaining beta72 bundle/Canvas fixes. |
 | DYN-WBS-527 | Canonical static payload classification | Done | 100 | DYN-TA-T-016/017 | Dynamic `0.1.3-beta74` adds strict `NonSdui/StaticCanvas/FormInput/ActorsPage/Runtime/InvalidSdui` classification；23/23 package tests pass。Browser absent/present-invalid visual gate remains DYN-TA-007。 |
 | DYN-WBS-528 | PTCS beta86 terminal-observer package alignment | Done | 100 | DYN-T-536 / PTCS-T-067D | Dynamic `0.1.3-beta75`與Dynamic.Ptcs `0.1.0-alpha6-win2` exact-pin PTCS `0.2.5-beta86`；23/23 tests通過，兩個package push回Created；不改renderer/wire contract。 |
+| DYN-WBS-529 | TA workspace bootstrap presentation / PTCS beta89 alignment | Done | 100 | DYN-TA-T-021 / PTCS-T-068E | Renderer `0.1.0-alpha12`把正常`Document=None` bootstrap狀態呈現為preparing/connecting/loading/retrying/resyncing，只在nonrecoverable error顯示terminal unavailable；Renderer 13/13、Ptcs/Ptcs.Client 7/7、root 23/23通過。Dynamic.Ptcs `0.1.0-alpha6-win12`與Dynamic `0.1.3-beta78` exact-pinPTCS beta89並已發布。此工項不允許page-level workspace脫離chat reply自行mount。 |
 
 ## 2026-07-11 Transport-Neutral Realtime TA Canvas
 

@@ -44,8 +44,61 @@ type TaQueryDraft =
       ToUtcExclusive: string
       IncludePartial: bool }
 
+type TaWorkspaceBootstrapPresentation =
+    { State: string
+      Title: string
+      Detail: string
+      IsError: bool }
+
 [<JavaScript; RequireQualifiedAccess>]
 module RendererModel =
+    let workspaceBootstrapPresentation (state: RuntimeState) =
+        match state.LastError with
+        | Some error when not error.Recoverable ->
+            { State = "unavailable"
+              Title = "TA workspace unavailable"
+              Detail = error.ReasonCode + ": " + error.Message
+              IsError = true }
+        | Some error ->
+            { State = "recovering"
+              Title = "Restoring TA workspace"
+              Detail = error.ReasonCode + ": " + error.Message
+              IsError = false }
+        | None ->
+            match state.Poll with
+            | RuntimePollState.Unmounted ->
+                { State = "preparing"
+                  Title = "Preparing TA workspace"
+                  Detail = "Waiting for the workspace channel to mount."
+                  IsError = false }
+            | RuntimePollState.MountedIdle ->
+                { State = "connecting"
+                  Title = "Connecting TA workspace"
+                  Detail = "Waiting for the initial workspace document."
+                  IsError = false }
+            | RuntimePollState.Backoff _ ->
+                { State = "retrying"
+                  Title = "Restoring TA workspace"
+                  Detail = "A reconnect attempt is scheduled."
+                  IsError = false }
+            | RuntimePollState.PausedForResync ->
+                { State = "resyncing"
+                  Title = "Resynchronizing TA workspace"
+                  Detail = "Requesting a full workspace document."
+                  IsError = false }
+            | RuntimePollState.Disposed ->
+                { State = "closed"
+                  Title = "TA workspace closed"
+                  Detail = "Open the page again to reconnect."
+                  IsError = false }
+            | RuntimePollState.Ready
+            | RuntimePollState.PollInFlight
+            | RuntimePollState.Suspended ->
+                { State = "loading"
+                  Title = "Loading TA workspace"
+                  Detail = "Waiting for the workspace document."
+                  IsError = false }
+
     let tryObject = function
         | SduiValue.Object value -> Some value
         | _ -> None

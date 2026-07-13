@@ -1007,3 +1007,10 @@ Implementation status:
 - The PTCS review mock demonstrates the corrected interaction in inline, fullscreen and mobile layouts. Playwright verified four Y axes, one shared X axis, cursor movement across three bars, synchronized price/DMI/MACD values and zero current-page console warnings/errors.
 - The mock uses CSS hover zones only to review presentation. Production Dynamic must resolve pointer coordinates through the real time scale and must not implement discrete mock zones or handwritten JavaScript.
 - This remains design/review evidence; no Dynamic package version or production renderer status changed in this slice.
+
+## 2026-07-13 - Bootstrap state and PTCS beta89 package alignment
+
+- Renderer `0.1.0-alpha12` no longer treats every `Document=None` as terminal unavailable. Normal channel bootstrap now reports preparing/connecting/loading/retrying/resyncing；only nonrecoverable error is terminal.
+- Renderer tests pass 13/13；Dynamic.Ptcs and Ptcs.Client pass 7/7 each，and root Dynamic tests pass 23/23. Existing generated-log ACL remains a tooling constraint；staging build evidence does not claim that ACL issue is fixed.
+- Published Dynamic.Ptcs `0.1.0-alpha6-win12` and Dynamic `0.1.3-beta78`, both exact-pinning `PulseTrade.Comm.Spa 0.2.5-beta89` where applicable. Formal 81/82 service now consumes those versions.
+- The currently observed page-level TA mount with zero chat replies is not accepted behavior；it remains the next RFC-0020 / RFC-PTCS-DYNAMIC-0008 implementation slice.

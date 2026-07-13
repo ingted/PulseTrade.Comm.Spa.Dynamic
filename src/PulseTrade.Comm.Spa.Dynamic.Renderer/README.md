@@ -28,4 +28,4 @@ TaWorkspaceRenderer.render
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha9`。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha12`。`Document=None` 依 runtime poll/error 狀態呈現 preparing、connecting、recovering、closed 或 unavailable；正常 bootstrap 不再被誤標成 terminal error。
