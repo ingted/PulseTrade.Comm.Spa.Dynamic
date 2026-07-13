@@ -1,0 +1,15 @@
+# Dynamic reply summary / inline / fullscreen RFC/REQ
+
+- 背景：TA renderer 已能畫四列 layout，但目前直接 render 取代 chat message timeline；一般 SDUI 與 TA SDUI 需要共存於同一 reply stream。
+- 目標：定義 Dynamic extension 對 reply classification、TA summary、inline expansion、fullscreen transition 與 per-reply state 的責任。
+- 假設：PTCS core保有chat shell/scroll/message identity；Dynamic不直接取代整個page。
+- 計畫步驟：檢視 current Dynamic RFC/REQ/renderer contract -> 建立 RFC -> 同步 REQ -> 回鏈 PTCS RFC。
+- 預計修改/讀取範圍：`doc/RFC/`、`doc/TAResearch/REQ.md`與必要 current renderer seam；本輪不實作。
+- 執行命令/參數：targeted `rg`、current docs snippets、git diff/check。
+- 驗收方式：TA reply預設摘要、inline/fullscreen二階展開、一般SDUI/文字fallback、每reply獨立狀態皆可追溯。
+- 風險：舊fullscreen contract、large canvas height、nested scroll與replay identity。
+- Prompt/上下文摘要：使用者要求保留既有fullscreen，同時新增chat-session內展開且不影響其他reply。
+- 結果：預計交付Dynamic Proposed RFC與Draft REQ，不進入實作。
+- 根因判讀：TA runtime被固定page mount，而static SDUI走message renderer，兩條presentation lifecycle未統一。
+- 下一步：完成文件稽核、commit/push後等待review，再進SA/SD/WBS/Test。
+- 關聯文件/工單/PR：`doc/RFC/RFC-PTCS-DYNAMIC-0008.chat-reply-canvas-presentation.md`、`doc/TAResearch/REQ.ChatReplyCanvasPresentation.md`。

@@ -993,3 +993,10 @@ Implementation status:
 - Dynamic.Ptcs `0.1.0-alpha6-win10` emits `ta-browser.v2` full/delta state, exact base revision, changed-point upserts and rolling prefix tombstones. Each browser bootstrap series is bounded to the latest 200 points while canonical RuntimeState remains complete.
 - Ptcs.Client `0.1.0-alpha7-win12` validates the delta base, merges by timestamp and requests resync on mismatch. Dynamic.Ptcs and Ptcs.Client focused tests pass 7/7 each.
 - Formal PTCS Host Playwright gate passed four rows, 17 series, desktop/mobile, error recovery, typed actions and fresh reconnect at `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-composite-win10-final-202607130030`.
+
+## 2026-07-13 - Proposed reply summary / inline / fullscreen adapter
+
+- Added proposed `RFC-PTCS-DYNAMIC-0008` and draft `REQ-PTCS-DYNAMIC-TA-0002` to move TA runtime presentation from a page-level mount back into per-reply PTCS message cards.
+- The proposal defines strict plain/static/runtime classification, domain-aware TA summaries, lazy inline mount, existing fullscreen preservation, per-reply state isolation and one logical transient channel across inline/fullscreen modes.
+- Collapsed replies do not mount chart DOM or poll. Inline Canvas delegates vertical scrolling to the PTCS chat timeline; snapshot/delta remains transient and does not create new reply/history rows.
+- This entry records design only. RFC status remains Proposed pending review; no implementation or package version change is claimed.

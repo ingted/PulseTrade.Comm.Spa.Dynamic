@@ -1,0 +1,7 @@
+# Operation evidence
+
+- Reviewed current `DynamicRenderer.fs`, TA runtime RFC/REQ and PTCS message renderer seam.
+- Created `doc/RFC/RFC-PTCS-DYNAMIC-0008.chat-reply-canvas-presentation.md` and `doc/TAResearch/REQ.ChatReplyCanvasPresentation.md` with strict classification、TA summary、lazy inline、fullscreen reuse、scroll ownership and cleanup requirements.
+- Cross-repo references use absolute paths because PTCS and Dynamic are separate repositories. No source/package version changed.
+- Sensitive scan：targeted docs/log high=0、medium=0；strict UTF-8/NUL/U+FFFD check passed。
+- Dynamic authoritative check：PASS=19、WARN=3、FAIL=0；WARN為commit前dirty、RFC尚未進WBS/Test與log欄位（已補）。
