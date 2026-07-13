@@ -14,7 +14,8 @@ let row =
       DataRef = "series.price"
       HeightWeight = 3.0
       Visible = true
-      Options = Map.empty }
+      Options = Map.empty
+      Traces = [||] }
 
 let document =
     { WorkspaceId = "ta-main"

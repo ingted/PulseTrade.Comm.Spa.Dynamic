@@ -3,3 +3,13 @@
 - 2026-07-13 16:08 +08:00：開始檢查 Dynamic Ptcs integration與per-reply TA presentation ownership。
 - 2026-07-13 16:25 +08:00：完成 static SDUI 與 TA RuntimeFrame reply presentation adapter；TA canvas 改為 reply-owned lazy mount，不再由 Host client建立 page-level workspace。Dynamic `0.1.3-beta79`、Ptcs.Client `0.1.0-alpha8-win14`、Ptcs `0.1.0-alpha7-win13` Release build/pack通過。
 - 2026-07-13 17:08 +08:00：formal 82 Playwright揭露 repeated DU case defaults被最後一筆覆蓋；建立 `log/20260713/20260713171000_issue_dynamic_repeated_defaults.hypothesis.md`，將在本 milestone baseline後進行 root-cause修正。
+
+## 2026-07-14 closure evidence
+
+- RuntimeFrame decoder完成direct、JSON-string、canonical fCell2 envelope、fCell2.A與Case/Fields bounded classification；TA collapsed只輸出summary，不曝露raw point arrays。
+- ReplyPresentation改用`mountOnElementWithOptions`直接mount detached reply element；避免id lookup時DOM尚未attached造成無圖。Transient close/resync增加`DisposePending/CloseTransport`，不再因`ActiveChanged false`丟失in-flight full snapshot。
+- Dynamic `0.1.3-beta85`、Dynamic.Ptcs `0.1.0-alpha7-win19`、Ptcs.Client `0.1.0-alpha8-win22`；Contracts/root/Ptcs/Renderer/PtcsTaClient suites全通過。Canonical Ptcs.Client generated `websharper.log` ACL無法讀寫，使用相同source hash的shadow build產出win22；這是build tooling evidence，不是product workaround。
+- Formal 82 F# Playwright artifact `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\beta96-acl-readback-20260714025738`通過summary、inline/fullscreen/collapse、200 loaded points、48 visible K bars、20 polls、reconnect與Plain/Form boundary。
+- DYN-TA-011A..E完成；F只剩public NuGet push 401 credential blocker。未推進E2EQ。
+- Dynamic check：PASS=27、WARN=4、FAIL=0；既有invalid diagnostic log、dirty與cross-repo RFC trace warning為非blocking，latest-plan缺欄位已追加correction。
+- Final check：PASS=28、WARN=3、FAIL=0；staged diff/strict UTF-8通過，未stageLiveDemo generated `wwwroot`。

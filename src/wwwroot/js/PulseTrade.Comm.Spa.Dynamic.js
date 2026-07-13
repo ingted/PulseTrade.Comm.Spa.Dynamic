@@ -326,14 +326,14 @@ function postJson(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
 function renderSchemaIntoRoot(root, context, typeName, document, schema){
   root.textContent="";
-  const defaultMap=defaultsFromDocument(document);
+  const readDefaults=defaultValuesReader(defaultsFromDocument(document));
   const isDocumentBacked=document!=null;
   const allowed=document==null?unionCaseNamesFromContext(context, schema):map((a) => a.name, arrayOrEmpty(schema.unionCases));
   const unionCases=filter((item) => exists((name) => name==asText(item.name), allowed), arrayOrEmpty(schema.unionCases));
@@ -342,6 +342,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
   root.setAttribute("data-dynamic-argu-union-cases", concat_2(",", allowed));
   if(length(unionCases)===0)root.appendChild(errorNode("Dynamic Argu schema has no requested union cases for DU type: "+typeName));
   else {
+    if(!isDocumentBacked)root.appendChild(renderComposerModeControl(context));
     const fullPreviewOpt=isDocumentBacked?Some(setTestId("dynamic-argu-raw-preview-full", element("pre", "dynamic-argu-raw-preview full", ""))):null;
     const fullSendOpt=isDocumentBacked?Some(button("dynamic-argu-send full", "dynamic-argu-send-full", "Send")):null;
     const fullRaw=() => {
@@ -372,7 +373,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
         refreshFullPreview();
       };
       fieldGetters=map((field_1) => {
-        const p=renderField(refreshPreview, defaultMap, caseName, field_1);
+        const p=renderField(refreshPreview, (_1, _2) =>(readDefaults(_1))(_2), caseName, field_1);
         fields.appendChild(p[0]);
         return[field_1, p[1]];
       }, arrayOrEmpty(unionCase.fields));
@@ -395,7 +396,9 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
             fullPreview.textContent=raw;
             return context.submit(New_33(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
-          append(root, [fullPreview, fullSend]);
+          const actions=setTestId("dynamic-argu-composer-actions", element("div", "dynamic-argu-composer-actions", null));
+          append(actions, [renderComposerModeControl(context), fullSend]);
+          append(root, [fullPreview, actions]);
           refreshFullPreview();
         }
         else void 0;
@@ -408,7 +411,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
 function renderFallbackSchemaWithWarning(root, context, typeName, message){
   let _1;
   const document=tryFindDocument(typeName);
-  const fallbackContext=isExplicitTargetKey(context.keyParts)?New_4(context.shape, context.selectedKeyJson, context.selectedKeys, context.keyParts, context.actorAddress, context.duTypeName, [], context.submit):context;
+  const fallbackContext=isExplicitTargetKey(context.keyParts)?New_4(context.shape, context.selectedKeyJson, context.selectedKeys, context.keyParts, context.actorAddress, context.duTypeName, [], context.submit, context.composerMode, context.setComposerMode):context;
   const schema=document!=null&&document.$==1&&(!(document.$0.arguFormSchema==null)&&(_1=document.$0,true))?Some(_1.arguFormSchema):tryFindSchema(typeName);
   if(schema==null){
     root.textContent="";
@@ -454,20 +457,32 @@ function unionCaseNamesFromContext(ctx, schema){
   const allowed=filter((x) =>!isBlank(x), map(asText, arrayOrEmpty(ctx.unionCaseNames)));
   return length(allowed)===0?map((a) => a.name, arrayOrEmpty(schema.unionCases)):allowed;
 }
+function renderComposerModeControl(context){
+  const group_1=setTestId("append-composer-mode", element("div", "append-composer-mode", null));
+  group_1.setAttribute("data-mode", "form");
+  const plain=button("append-composer-mode-button", "append-composer-mode-plain", "Plain");
+  const formButton=button("append-composer-mode-button", "append-composer-mode-form", "Form");
+  plain.setAttribute("aria-pressed", "false");
+  formButton.setAttribute("aria-pressed", "true");
+  plain.addEventListener("click", () => context.setComposerMode("plain"));
+  formButton.addEventListener("click", () => context.setComposerMode("form"));
+  append(group_1, [plain, formButton]);
+  return group_1;
+}
 function buildRawArgu(unionCase, fieldGetters){
   const raw=buildRawArguFromValues(map((_1) =>[_1[0], _1[1]()], fieldGetters));
   const prefix=Trim(asText(unionCase.arguName));
   const isOptionPrefix=prefix.length>=2&&Substring(prefix, 0, 2)=="--";
   return isBlank(prefix)||isOptionPrefix?raw:isBlank(raw)?prefix:prefix+" "+raw;
 }
-function renderField(refresh, defaultMap, caseName, field_1){
+function renderField(refresh, readDefaults, caseName, field_1){
   let getter, _1;
   const x=element("div", "dynamic-argu-field", null);
   const row=setTestId("dynamic-argu-field-"+asText(field_1.name), x);
   row.setAttribute("data-dynamic-argu-field", asText(field_1.name));
   row.setAttribute("data-dynamic-argu-kind", asText(field_1.kind));
   row.appendChild(label(isBlank(field_1.label)?field_1.name:field_1.label));
-  const fieldDefaults=defaultValuesFor(defaultMap, caseName, field_1.name);
+  const fieldDefaults=readDefaults(caseName, field_1.name);
   getter=() =>[];
   const wireInputEvents=(node_4) => {
     node_4.addEventListener("input", refresh);
@@ -514,7 +529,7 @@ function renderField(refresh, defaultMap, caseName, field_1){
         const itemRow=setTestId("dynamic-argu-tuple-item-"+String(asText(field_1.name))+"-"+String(_5+1), x_3);
         itemRow.appendChild(label(String(_5+1)+". "+String(isBlank(_6.label)?_6.name:_6.label)));
         const testId="";
-        const defaults=defaultValuesFor(defaultMap, caseName, _6.name);
+        const defaults=readDefaults(caseName, _6.name);
         const m_1=asText(_6.kind);
         switch(m_1){
           case"number":
@@ -619,8 +634,11 @@ function renderField(refresh, defaultMap, caseName, field_1){
 function keyJsonForSubmit(keyParts){
   return JSON.stringify(keyParts);
 }
+function defaultValuesReader(defaultMap){
+  return reader(defaultMap);
+}
 function defaultsFromDocument(document){
-  return document!=null&&document.$==1?document.$0==null?(document.$0,new FSharpMap("New", [])):OfArray(ofSeq(choose_1((node) => {
+  return document!=null&&document.$==1?document.$0==null?(document.$0,new FSharpMap("New", [])):group(ofSeq(choose_1((node) => {
     const binding=asText(node.binding);
     const values=map(asText, arrayOrEmpty(node.defaultValues));
     return isBlank(binding)||length(values)===0?null:Some([binding, values]);
@@ -628,10 +646,6 @@ function defaultsFromDocument(document){
 }
 function label(text){
   return element("label", "dynamic-argu-label", text);
-}
-function defaultValuesFor(defaultMap, caseName, fieldName){
-  const o=defaultMap.TryFind(asText(caseName)+"."+asText(fieldName));
-  return o==null?[]:o.$0;
 }
 function elementValue(node){
   return node.value;
@@ -1002,8 +1016,8 @@ function postJson_1(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson_1(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
@@ -1093,12 +1107,12 @@ function joinPath(segments, count){
 }
 function makeActorTreeNode(id, parentId, label_1, fullPath, address, kind, status){
   return{
-    id:id, 
-    parentId:parentId, 
-    label:label_1, 
-    fullPath:fullPath, 
-    address:address, 
-    kind:kind, 
+    id:id,
+    parentId:parentId,
+    label:label_1,
+    fullPath:fullPath,
+    address:address,
+    kind:kind,
     status:status
   };
 }
@@ -1147,7 +1161,7 @@ function E(name, attrs, children){
   return Doc.Element(name, attrs, children);
 }
 function Main_1(){
-  let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
+  let mountedPageElement, mountedAppendPageResolved, mountedAppendPageDefinitionFingerprint, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
   const loginRoot=doc_1().getElementById("ptcs-login-root");
   if(!(loginRoot==null))mountLogin(loginRoot);
   else {
@@ -1156,6 +1170,7 @@ function Main_1(){
     const path=isBlank_2(trimmed)?"/chat":trimmed;
     mountedPageElement=null;
     mountedAppendPageResolved=false;
+    mountedAppendPageDefinitionFingerprint=null;
     const cacheKey_1=appendPagesDefinitionsCacheKey();
     mounted=false;
     appendRegistryWsState="idle";
@@ -1170,6 +1185,7 @@ function Main_1(){
         const page=p[1];
         mountedPageElement=Some(page);
         mountedAppendPageResolved=false;
+        mountedAppendPageDefinitionFingerprint=null;
         setMain(p[0]);
         if(path=="/sets")_1=mountSets(page);
         else if(path=="/actors")_1=mountActors(page);
@@ -1179,7 +1195,7 @@ function Main_1(){
           if(m==null)_1=mountUnknownPage(page, path);
           else {
             const definition=m.$0;
-            _1=(mountedAppendPageResolved=true,mountAppendPage(page, definition));
+            _1=(mountedAppendPageResolved=true,mountedAppendPageDefinitionFingerprint=Some(appendPageDefinitionFingerprint(definition)),mountAppendPage(page, definition));
           }
         }
         globalThis.setInterval(() => refreshAppendNav(path), 5000);
@@ -1207,15 +1223,23 @@ function Main_1(){
       if(mounted){
         const nav=doc_1().getElementById("ptc-nav");
         if(!(nav==null))renderNav(nav, path, arrayOrEmpty_1(data_1.pages));
-        if(path!="/sets"&&path!="/actors"&&path!="/chat"&&!mountedAppendPageResolved){
+        if(path!="/sets"&&path!="/actors"&&path!="/chat"){
           const _2=findAppendPage(path, arrayOrEmpty_1(data_1.pages));
           if(mountedPageElement!=null&&mountedPageElement.$==1){
-            if(_2!=null&&_2.$==1){
-              const definition=_2.$0;
-              const page=mountedPageElement.$0;
-              _1=(clear(page),mountedAppendPageResolved=true,mountAppendPage(page, definition));
+            if(_2==null){
+              mountedPageElement.$0;
+              if(mountedAppendPageResolved){
+                const page=mountedPageElement.$0;
+                _1=(clear(page),mountedAppendPageResolved=false,mountedAppendPageDefinitionFingerprint=null,mountUnknownPage(page, path));
+              }
+              else _1=void 0;
             }
-            else _1=void 0;
+            else {
+              const definition=_2.$0;
+              const page_1=mountedPageElement.$0;
+              const nextFingerprint=appendPageDefinitionFingerprint(definition);
+              _1=!mountedAppendPageResolved||!Equals(mountedAppendPageDefinitionFingerprint, Some(nextFingerprint))?(clear(page_1),mountedAppendPageResolved=true,mountedAppendPageDefinitionFingerprint=Some(nextFingerprint),mountAppendPage(page_1, definition)):void 0;
+            }
           }
           else _1=void 0;
         }
@@ -1470,8 +1494,15 @@ function findAppendPage(path, pages){
 function clear(node){
   node.textContent="";
 }
+function mountUnknownPage(page, path){
+  page.className="page actors-page";
+  page.appendChild(element_1("div", "empty", "No append page is registered for "+String(path)+"."));
+}
+function appendPageDefinitionFingerprint(page){
+  return concat_2("\u001e", map(asText_2, [page.pageId, page.tabId, page.path, page.title, page.setName, page.shape, page.description, page.keyPlaceholder, page.valuePlaceholder, page.defaultKey, concat_2("\u001f", arrayOrEmpty_1(page.tags))]));
+}
 function mountAppendPage(page, definition){
-  let currentLineageHealth, selected, selectedKeyJson, buckets, locallyHiddenKeyIds, pendingSelectKeyId, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, addKeyEditorOpen, addKeyMode, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
+  let currentLineageHealth, selected, selectedKeyJson, buckets, locallyHiddenKeyIds, pendingSelectKeyId, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, addKeyEditorOpen, addKeyMode, composerMode, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, renderedValueCardKeys, renderedValueCardValueIds, renderedValueCardElements, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
   page.className="page append-page";
   setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId_1("append-page-"+asText_2(definition.pageId), page)));
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
@@ -1495,6 +1526,7 @@ function mountAppendPage(page, definition){
   scrollValuesToBottomAfterNextRender=false;
   addKeyEditorOpen=false;
   addKeyMode="target";
+  composerMode="plain";
   const isLocallyHiddenKeyId=(keyId) =>!isBlank_2(keyId)&&exists((hidden) => sameText(hidden, keyId), locallyHiddenKeyIds);
   const rememberLocallyHiddenKeyId=(keyId) => {
     if(!isBlank_2(keyId)&&!isLocallyHiddenKeyId(keyId))locallyHiddenKeyIds=locallyHiddenKeyIds.concat([keyId]);
@@ -1620,6 +1652,9 @@ function mountAppendPage(page, definition){
   deleteAcceptedPendingAppends=() =>() => null;
   rerenderAppendForm=() => { };
   rerenderAddKeyBuilder=() => { };
+  renderedValueCardKeys=[];
+  renderedValueCardValueIds=[];
+  renderedValueCardElements=[];
   const refreshPendingState=() => {
     readPendingRealitySplit((_3, _4) => renderPendingInspection(pendingState, filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_2(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_2(definition.pageId)+"\"")!=-1), _3), filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_2(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_2(definition.pageId)+"\"")!=-1), _4)));
   };
@@ -1696,6 +1731,17 @@ function mountAppendPage(page, definition){
     iter(add, arrayOrEmpty_1(existing));
     return sortBy((value) => asText_2(value.createdAtUtc), merged);
   };
+  const replyCardKey=(value) => concat_2("\u001f", [selected, asText_2(value.valueId), String(value.sequence)]);
+  const disposeReplyCardsExcept=(retainedKeys) => {
+    const retainedIndexes=map((t) => t[0], filter((_3) => {
+      const key=_3[1];
+      return exists((y) => key==y, retainedKeys);
+    }, mapi((_3, _4) =>[_3, _4], renderedValueCardKeys)));
+    iteri((_3, _4) =>!exists((y) => _4==y, retainedKeys)?disposeReplyPresentation(concat_2("\u001f", [asText_2(definition.pageId), asText_2(definition.tabId), get(renderedValueCardValueIds, _3)])):null, renderedValueCardKeys);
+    renderedValueCardKeys=map((index) => get(renderedValueCardKeys, index), retainedIndexes);
+    renderedValueCardValueIds=map((index) => get(renderedValueCardValueIds, index), retainedIndexes);
+    renderedValueCardElements=map((index) => get(renderedValueCardElements, index), retainedIndexes);
+  };
   function renderList(){
     clear(list);
     iter((bucket) => {
@@ -1730,8 +1776,6 @@ function mountAppendPage(page, definition){
     while(true)
       {
         let _3, _4, _5;
-        disposeReplyPresentationsForPage(asText_2(definition.pageId), asText_2(definition.tabId));
-        clear(values);
         const x=(((n) =>(n_1) => setData(n, selected, n_1))("selected-key-id"))(work);
         ((((n) =>(n_1) => setData(n, selectedKeyJson, n_1))("selected-key-json"))(x));
         const bucket=(((p) =>(a_3) => tryFind(p, a_3))((bucket_2) => bucket_2.keyId==selected))(buckets);
@@ -1739,6 +1783,8 @@ function mountAppendPage(page, definition){
           const bucket_1=bucket.$0;
           const allValues=arrayOrEmpty_1(bucket_1.values);
           const visible=latestArray(visibleValueLimit, allValues);
+          disposeReplyCardsExcept(map(replyCardKey, visible));
+          clear(values);
           const a=0;
           const b=length(allValues)-length(visible);
           const hiddenCached=Compare(a, b)===1?a:b;
@@ -1790,12 +1836,26 @@ function mountAppendPage(page, definition){
             _3=(((a_3) =>(a_4) => {
               iter(a_3, a_4);
             })((value) => {
-              values.appendChild(renderAppendValue(definition, value));
+              let _6;
+              const key=replyCardKey(value);
+              const m=tryFindIndex((y) => key==y, renderedValueCardKeys);
+              if(m==null){
+                const card=renderAppendValue(definition, value);
+                _6=(renderedValueCardKeys=renderedValueCardKeys.concat([key]),renderedValueCardValueIds=renderedValueCardValueIds.concat([asText_2(value.valueId)]),renderedValueCardElements=renderedValueCardElements.concat([card]),card);
+              }
+              else {
+                const index=m.$0;
+                _6=get(renderedValueCardElements, index);
+              }
+              let _7=_6;
+              values.appendChild(_7);
             }))(visible);
           }
           _5=length(visible)<reportedCount?setStatus(workState, "Showing "+String(length(visible))+"/"+String(reportedCount)+" value(s)"):setStatus(workState, String(reportedCount)+" value(s)");
         }
         else {
+          disposeReplyCardsExcept([]);
+          clear(values);
           const x_13=(((n, v) =>(n_1) => setData(n, v, n_1))("rendered-count", "0"))(values);
           const x_14=(((n, v) =>(n_1) => setData(n, v, n_1))("cached-count", "0"))(x_13);
           const x_15=(((n, v) =>(n_1) => setData(n, v, n_1))("oldest-sequence", "0"))(x_14);
@@ -2487,8 +2547,30 @@ function mountAppendPage(page, definition){
     const effectiveKeyId=effectiveSelectedKeyId();
     const selectedKeys=effectiveSelectedKeys();
     const x=setData("selected-key-json", effectiveKeyJson, setData("selected-key-id", effectiveKeyId, setData("shape", rendererShape, setData("renderer-state", "fallback", form))));
-    setData("selected-key-source", isBlank_2(effectiveKeyJson)?"none":"selected", x);
-    const customNode=isBlank_2(effectiveKeyJson)?null:tryRenderAppendInputWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, effectiveKeyId, effectiveKeyJson, selectedKeys, valueInput.placeholder, valueInput.value, (payload) => {
+    const n=setData("selected-key-source", isBlank_2(effectiveKeyJson)?"none":"selected", x);
+    setData("composer-mode", composerMode, n);
+    const setComposerMode=(nextMode) => {
+      const normalized=sameText(asText_2(nextMode), "form")?"form":"plain";
+      if(!sameText(composerMode, normalized)){
+        composerMode=normalized;
+        rerenderAppendForm();
+      }
+    };
+    const renderPlainComposer=() => {
+      form.className="append-form actor-argu-form plain-composer";
+      appendButton.textContent="Send";
+      const actions=setTestId_1("append-composer-actions", element_1("div", "append-composer-actions", null));
+      let _3=actions;
+      const n_1=setTestId_1("append-composer-mode", element_1("div", "append-composer-mode", null));
+      const group_1=setData("mode", composerMode, n_1);
+      const plain=setTestId_1("append-composer-mode-plain", button_1("append-composer-mode-button", "Plain"));
+      const formButton=setTestId_1("append-composer-mode-form", button_1("append-composer-mode-button", "Form"));
+      let _4=(plain.setAttribute("aria-pressed", sameText(composerMode, "plain")?"true":"false"),formButton.setAttribute("aria-pressed", sameText(composerMode, "form")?"true":"false"),plain.addEventListener("click", () => setComposerMode("plain")),formButton.addEventListener("click", () => setComposerMode("form")),append_1(group_1, [plain, formButton]),group_1);
+      let _5=[_4, appendButton];
+      append_1(_3, _5);
+      append_1(form, [valueInput, actions]);
+    };
+    const customNode=!sameText(composerMode, "form")||isBlank_2(effectiveKeyJson)?null:tryRenderAppendInputWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, effectiveKeyId, effectiveKeyJson, selectedKeys, valueInput.placeholder, valueInput.value, (payload) => {
       let _3;
       const submitted=rendererSubmittedText(payload);
       const submittedKeyJson=rendererSubmittedKeyJson(payload);
@@ -2510,14 +2592,22 @@ function mountAppendPage(page, definition){
         valueInput.value=submitted;
         setData("last-raw-argu", submitted, form);
       }
+    }, composerMode, (value) => {
+      setComposerMode(String(value));
     });
-    if(customNode==null)isActorArguPage(definition)?(form.className="append-form actor-argu-form",append_1(form, [valueInput, appendButton])):asText_2(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append_1(form, [directionInput, valueInput, appendButton])):(form.className="append-form",append_1(form, [valueInput, appendButton]));
-    else {
-      const node=customNode.$0;
-      form.className="append-form custom-append-input-form";
-      setData("renderer-state", "custom", form);
-      form.appendChild(node);
+    if(composerMode=="form"){
+      if(customNode==null){
+        setData("renderer-state", "form-unavailable", form);
+        renderPlainComposer();
+      }
+      else {
+        const node=customNode.$0;
+        form.className="append-form custom-append-input-form";
+        setData("renderer-state", "custom", form);
+        form.appendChild(node);
+      }
     }
+    else isActorArguPage(definition)||isActorDynamicPage(definition)?renderPlainComposer():asText_2(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append_1(form, [directionInput, valueInput, appendButton])):(form.className="append-form",append_1(form, [valueInput, appendButton]));
   };
   rerenderAddKeyBuilder();
   rerenderAppendForm();
@@ -3821,10 +3911,6 @@ function mountChat(page){
   refreshChatPendingState();
   loadParticipants();
 }
-function mountUnknownPage(page, path){
-  page.className="page actors-page";
-  page.appendChild(element_1("div", "empty", "No append page is registered for "+String(path)+"."));
-}
 function refreshAppendNav(activePath){
   const applyDefinitions=(data) => {
     const nav=doc_1().getElementById("ptc-nav");
@@ -3842,6 +3928,9 @@ function refreshAppendNav(activePath){
 function RegisterReplyPresentation(rendererId, tryResolve_1){
   const rendererId_1=textOr("unnamed", rendererId);
   set_registeredReplyPresentationResolvers(distinctBy((t) => t[0], registeredReplyPresentationResolvers().concat([[rendererId_1, tryResolve_1]]).slice().reverse()).slice().reverse());
+  const _1=rendererId_1;
+  const _2=tryResolve_1;
+  if(globalThis.PulseTradeRegisterReplyPresentation)globalThis.PulseTradeRegisterReplyPresentation(_1, 0, _2);
 }
 function tryMountLoginWithRegisteredRenderers(root, configJson){
   let r;
@@ -3986,18 +4075,18 @@ function pagePath(page){
   const path=asText_2(page.path);
   return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
 }
+function element_1(tag, className, textValue){
+  const node=doc_1().createElement(tag);
+  if(!isBlank_2(className))node.className=className;
+  if(!(textValue==null))node.textContent=textValue;
+  return node;
+}
 function setTestId_1(id, node){
   !isBlank_2(id)?node.setAttribute("data-testid", id):void 0;
   return node;
 }
 function defaultRenderLimit(){
   return _c_1.defaultRenderLimit;
-}
-function element_1(tag, className, textValue){
-  const node=doc_1().createElement(tag);
-  if(!isBlank_2(className))node.className=className;
-  if(!(textValue==null))node.textContent=textValue;
-  return node;
 }
 function button_1(className, text){
   const node=element_1("button", className, text);
@@ -4117,150 +4206,25 @@ function keysAsJson(keys){
   const keys_1=arrayOrEmpty_1(keys);
   return length(keys_1)===1?JSON.stringify(get(keys_1, 0)):JSON.stringify(keys_1);
 }
+function disposeReplyPresentation(identity){
+  let _1;
+  const o=tryPick((_2) => _2[0]==identity?Some(_2[1]):null, replyPresentationDisposers());
+  if(o==null)_1=void 0;
+  else try {
+    _1=o.$0();
+  }
+  catch(m){
+    _1=null;
+  }
+  set_replyPresentationDisposers(filter((_2) => _2[0]!=identity, replyPresentationDisposers()));
+}
 function joinValues(values){
   const values_1=arrayOrEmpty_1(values);
   return length(values_1)===0?"":concat_2(" / ", values_1);
 }
-function disposeReplyPresentationsForPage(pageId, tabId){
-  const prefix=concat_2("\u001f", [pageId, tabId])+"\u001f";
-  iter((i) => {
-    disposeReplyPresentation(i);
-  }, filter((identity) => StartsWith(identity, prefix), map((t) => t[0], replyPresentationDisposers())));
-}
 function latestArray(limit, values){
   const values_1=arrayOrEmpty_1(values);
   return length(values_1)<=limit?values_1:skip(length(values_1)-limit, values_1);
-}
-function renderAppendValue(definition, value){
-  let mounted, savedScrollTop, presentationRendered, _1, _2;
-  const mode=asText_2(value.mode);
-  const m=mode.toLowerCase();
-  const className=m=="inbound-message"?"fcell-card fcell-chat inbound":m=="outbound-message"?"fcell-card fcell-chat outbound":m=="list"?"fcell-card fcell-list":m=="grid"?"fcell-card fcell-grid":"fcell-card";
-  const card=setData("mode", mode, setTestId_1("append-value-card", element_1("div", className, null)));
-  const head_2=element_1("div", "fcell-head", null);
-  append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_2(value.valueId)+" / "+asText_2(value.createdAtUtc))]);
-  card.appendChild(head_2);
-  const presentationContext=New_35(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
-  const m_1=tryResolveReplyPresentation(presentationContext);
-  if(m_1!=null&&m_1.$==1){
-    const presentation=m_1.$0;
-    const identity=replyPresentationIdentity(presentationContext);
-    const x=setData("reply-id", identity, setTestId_1("reply-presentation", element_1("section", "reply-presentation", null)));
-    const shell_1=setData("presentation-kind", asText_2(presentation.Kind), x);
-    const summary=setTestId_1("reply-presentation-summary", element_1("div", "reply-presentation-summary", null));
-    summary.setAttribute("role", "button");
-    summary.setAttribute("tabindex", "0");
-    summary.appendChild(presentation.RenderSummary());
-    const controls=element_1("div", "reply-presentation-actions", null);
-    const toggle=setTestId_1("reply-presentation-toggle", button_1("reply-presentation-toggle", "Expand"));
-    const fullscreen=setTestId_1("reply-presentation-fullscreen-toggle", button_1("reply-presentation-fullscreen-toggle", "\u26f6"));
-    fullscreen.setAttribute("title", "Open near-fullscreen canvas");
-    fullscreen.setAttribute("aria-label", "Open near-fullscreen canvas");
-    const inlineHost=setTestId_1("reply-presentation-inline", element_1("div", "reply-presentation-inline", null));
-    controls.appendChild(toggle);
-    controls.appendChild(fullscreen);
-    shell_1.appendChild(summary);
-    shell_1.appendChild(controls);
-    shell_1.appendChild(inlineHost);
-    card.appendChild(shell_1);
-    mounted=false;
-    savedScrollTop=0;
-    const mountInline=() => {
-      if(!mounted){
-        clear(inlineHost);
-        try {
-          registerReplyPresentationDisposer(identity, (presentation.Mount("inline"))(inlineHost));
-          mounted=true;
-          setData("mount-state", "mounted", shell_1);
-        }
-        catch(error){
-          inlineHost.appendChild(element_1("div", "reply-presentation-error", textOr("Reply presentation failed.", errorMessage_2(error))));
-          setData("mount-state", "error", shell_1);
-        }
-      }
-    };
-    function applyPresentationMode(nextMode){
-      const m_3=asText_2(nextMode).toLowerCase();
-      const normalized=m_3=="inline"?"inline":m_3=="fullscreen"?"fullscreen":"collapsed";
-      setReplyPresentationMode(identity, normalized);
-      setData("presentation-mode", normalized, shell_1);
-      if(normalized=="collapsed"){
-        disposeReplyPresentation(identity);
-        mounted=false;
-        clear(inlineHost);
-        setData("mount-state", "unmounted", shell_1);
-        inlineHost.setAttribute("hidden", "hidden");
-        fullscreen.setAttribute("hidden", "hidden");
-        shell_1.className="reply-presentation";
-        summary.setAttribute("aria-expanded", "false");
-        toggle.textContent="Expand";
-        fullscreen.textContent="\u26f6";
-      }
-      else normalized=="fullscreen"?(mountInline(),inlineHost.removeAttribute("hidden"),fullscreen.removeAttribute("hidden"),shell_1.className="reply-presentation fullscreen",summary.setAttribute("aria-expanded", "true"),toggle.textContent="Collapse",fullscreen.textContent="×",fullscreen.setAttribute("title", "Return to inline canvas"),fullscreen.setAttribute("aria-label", "Return to inline canvas")):(mountInline(),inlineHost.removeAttribute("hidden"),fullscreen.removeAttribute("hidden"),shell_1.className="reply-presentation",summary.setAttribute("aria-expanded", "true"),toggle.textContent="Collapse",fullscreen.textContent="\u26f6",fullscreen.setAttribute("title", "Open near-fullscreen canvas"),fullscreen.setAttribute("aria-label", "Open near-fullscreen canvas"));
-    }
-    const toggleInline=() => {
-      if(replyPresentationMode(identity)=="collapsed")applyPresentationMode("inline");
-      else applyPresentationMode("collapsed");
-    };
-    presentationRendered=(summary.addEventListener("click", toggleInline),toggle.addEventListener("click", toggleInline),fullscreen.addEventListener("click", () => {
-      if(replyPresentationMode(identity)=="fullscreen"){
-        applyPresentationMode("inline");
-        const m_3=card.parentElement;
-        return Equals(m_3, null)?null:void(m_3.scrollTop=savedScrollTop);
-      }
-      else {
-        const m_4=card.parentElement;
-        if(Equals(m_4, null))savedScrollTop=0;
-        else savedScrollTop=m_4.scrollTop;
-        return applyPresentationMode("fullscreen");
-      }
-    }),applyPresentationMode(replyPresentationMode(identity)),true);
-  }
-  else presentationRendered=false;
-  if(!presentationRendered){
-    const m_2=mode.toLowerCase();
-    switch(m_2){
-      case"outbound-message":
-      case"inbound-message":
-        _1=iter((row) => {
-          card.appendChild(renderTextBlock("fcell-message-body", row));
-        }, arrayOrEmpty_1(value.rows));
-        break;
-      case"list":
-        const list=element_1("ul", "fcell-list-items", null);
-        _1=(iter((row) => {
-          list.appendChild(element_1("li", "", asText_2(row)));
-        }, arrayOrEmpty_1(value.rows)),void card.appendChild(list));
-        break;
-      case"grid":
-        let _3;
-        const table=element_1("table", "fcell-grid-table", null);
-        const columns=arrayOrEmpty_1(value.columns);
-        if(length(columns)>0){
-          const thead=element_1("thead", "", null);
-          const header=element_1("tr", "", null);
-          _3=(iter((column) => {
-            header.appendChild(element_1("th", "wrap", asText_2(column)));
-          }, columns),thead.appendChild(header),void table.appendChild(thead));
-        }
-        else _3=null;
-        const tbody=element_1("tbody", "", null);
-        _1=(iter((cells) => {
-          const tr=element_1("tr", "", null);
-          iter((cell) => {
-            tr.appendChild(element_1("td", "wrap", asText_2(cell)));
-          }, arrayOrEmpty_1(cells));
-          tbody.appendChild(tr);
-        }, arrayOrEmpty_1(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
-        break;
-      default:
-        _1=void card.appendChild(renderTextBlock("fcell-source", value.rawValue));
-        break;
-    }
-    _2=!isBlank_2(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message"?void card.appendChild(renderTextBlock("fcell-source", value.source)):null;
-  }
-  else _2=null;
-  return card;
 }
 function setStatus(node, text){
   node.textContent=text;
@@ -4328,18 +4292,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    keyPlaceholder:String(_5||""), 
-    defaultKey:String(_6||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    keyPlaceholder:String(_5||""),
+    defaultKey:String(_6||""),
     submitKey:(payload) => {
       _7(payload);
-    }, 
+    },
     cancelKey:() => {
       _8();
-    }, 
+    },
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -4392,7 +4356,7 @@ function rendererSubmittedDisplayName(payload){
   value=String(value||"").trim();
   return value;
 }
-function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setName, selectedKeyId, selectedKeyJson, selectedKeys, valuePlaceholder, valueText, submit, setValue){
+function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setName, selectedKeyId, selectedKeyJson, selectedKeys, valuePlaceholder, valueText, submit, setValue, composerMode, setComposerMode){
   let r;
   const _1=pageId;
   const _2=shape;
@@ -4405,6 +4369,8 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   const _9=valueText;
   const _10=submit;
   const _11=setValue;
+  const _12=composerMode;
+  const _13=setComposerMode;
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AppendInputRenderers))return null;
   let renderers=globalThis.PulseTrade.AppendInputRenderers;
   let keyParts=Array.isArray(_7)?_7.slice().map(String):[];
@@ -4421,24 +4387,28 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    selectedKeyId:String(_5||""), 
-    selectedKeyJson:String(_6||""), 
-    selectedKeys:keyParts.slice(), 
-    keyParts:keyParts.slice(), 
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    valuePlaceholder:String(_8||""), 
-    valueText:String(_9||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    selectedKeyId:String(_5||""),
+    selectedKeyJson:String(_6||""),
+    selectedKeys:keyParts.slice(),
+    keyParts:keyParts.slice(),
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    valuePlaceholder:String(_8||""),
+    valueText:String(_9||""),
     submit:(payload) => {
       _10(payload);
-    }, 
+    },
     setValue:(payload) => {
       _11(payload);
+    },
+    composerMode:String(_12||"plain"),
+    setComposerMode:(mode) => {
+      _13(mode);
     }
   };
   for(let i=0;i<renderers.length;i++){
@@ -4497,6 +4467,149 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   options.headers=headers;
   options.body=JSON.stringify(body);
   (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_2(responseBody)?"{}":responseBody)):onError(isBlank_2(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_2(error)));
+}
+function renderAppendValue(definition, value){
+  let mounted, savedScrollTop, modeBeforeFullscreen, focusBeforeFullscreen, presentationRendered, _1, _2;
+  const mode=asText_2(value.mode);
+  const m=mode.toLowerCase();
+  const className=m=="inbound-message"?"fcell-card fcell-chat inbound":m=="outbound-message"?"fcell-card fcell-chat outbound":m=="list"?"fcell-card fcell-list":m=="grid"?"fcell-card fcell-grid":"fcell-card";
+  const card=setData("mode", mode, setTestId_1("append-value-card", element_1("div", className, null)));
+  const head_2=element_1("div", "fcell-head", null);
+  append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_2(value.valueId)+" / "+asText_2(value.createdAtUtc))]);
+  card.appendChild(head_2);
+  const presentationContext=New_35(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
+  const m_1=tryResolveReplyPresentation(presentationContext);
+  if(m_1!=null&&m_1.$==1){
+    const presentation=m_1.$0;
+    const identity=replyPresentationIdentity(presentationContext);
+    const x=setData("reply-id", identity, setTestId_1("reply-presentation", element_1("section", "reply-presentation", null)));
+    const shell_1=setData("presentation-kind", asText_2(presentation.Kind), x);
+    const summary=setTestId_1("reply-presentation-summary", element_1("div", "reply-presentation-summary", null));
+    summary.setAttribute("role", "button");
+    summary.setAttribute("tabindex", "0");
+    summary.appendChild(presentation.RenderSummary());
+    const controls=element_1("div", "reply-presentation-actions", null);
+    const toggle=setTestId_1("reply-presentation-toggle", button_1("reply-presentation-toggle", "+"));
+    toggle.setAttribute("title", "Expand in chat session");
+    toggle.setAttribute("aria-label", "Expand reply in chat session");
+    const fullscreen=setTestId_1("reply-presentation-fullscreen-toggle", button_1("reply-presentation-fullscreen-toggle", "\u5c55\u958b"));
+    fullscreen.setAttribute("title", "Open near-fullscreen canvas");
+    fullscreen.setAttribute("aria-label", "Open reply as near-fullscreen canvas");
+    const inlineHost=setTestId_1("reply-presentation-inline", element_1("div", "reply-presentation-inline", null));
+    controls.appendChild(toggle);
+    controls.appendChild(fullscreen);
+    shell_1.appendChild(summary);
+    shell_1.appendChild(controls);
+    shell_1.appendChild(inlineHost);
+    card.appendChild(shell_1);
+    mounted=false;
+    savedScrollTop=0;
+    modeBeforeFullscreen="collapsed";
+    focusBeforeFullscreen=null;
+    const mountInline=() => {
+      if(!mounted){
+        clear(inlineHost);
+        try {
+          registerReplyPresentationDisposer(identity, (presentation.Mount("inline"))(inlineHost));
+          mounted=true;
+          setData("mount-state", "mounted", shell_1);
+        }
+        catch(error){
+          inlineHost.appendChild(element_1("div", "reply-presentation-error", textOr("Reply presentation failed.", errorMessage_2(error))));
+          setData("mount-state", "error", shell_1);
+        }
+      }
+    };
+    function applyPresentationMode(nextMode){
+      const m_3=asText_2(nextMode).toLowerCase();
+      const normalized=m_3=="inline"?"inline":m_3=="fullscreen"?"fullscreen":"collapsed";
+      setReplyPresentationMode(identity, normalized);
+      setData("presentation-mode", normalized, shell_1);
+      if(normalized=="collapsed"){
+        disposeReplyPresentation(identity);
+        mounted=false;
+        clear(inlineHost);
+        setData("mount-state", "unmounted", shell_1);
+        inlineHost.setAttribute("hidden", "hidden");
+        fullscreen.removeAttribute("hidden");
+        shell_1.className="reply-presentation";
+        summary.setAttribute("aria-expanded", "false");
+        toggle.textContent="+";
+        toggle.setAttribute("title", "Expand in chat session");
+        toggle.setAttribute("aria-label", "Expand reply in chat session");
+        fullscreen.textContent="\u5c55\u958b";
+        fullscreen.setAttribute("title", "Open near-fullscreen canvas");
+        fullscreen.setAttribute("aria-label", "Open reply as near-fullscreen canvas");
+      }
+      else normalized=="fullscreen"?(mountInline(),inlineHost.removeAttribute("hidden"),fullscreen.removeAttribute("hidden"),shell_1.className="reply-presentation fullscreen",summary.setAttribute("aria-expanded", "true"),toggle.textContent="\u2212",toggle.setAttribute("title", "Collapse reply"),toggle.setAttribute("aria-label", "Collapse reply"),fullscreen.textContent="\u8fd4\u56de",fullscreen.setAttribute("title", "Return to inline canvas"),fullscreen.setAttribute("aria-label", "Return to inline canvas")):(mountInline(),inlineHost.removeAttribute("hidden"),fullscreen.removeAttribute("hidden"),shell_1.className="reply-presentation",summary.setAttribute("aria-expanded", "true"),toggle.textContent="\u2212",toggle.setAttribute("title", "Collapse reply"),toggle.setAttribute("aria-label", "Collapse reply"),fullscreen.textContent="\u5c55\u958b",fullscreen.setAttribute("title", "Open near-fullscreen canvas"),fullscreen.setAttribute("aria-label", "Open reply as near-fullscreen canvas"));
+    }
+    const toggleInline=() => {
+      if(replyPresentationMode(identity)=="collapsed")applyPresentationMode("inline");
+      else applyPresentationMode("collapsed");
+    };
+    presentationRendered=(summary.addEventListener("click", toggleInline),toggle.addEventListener("click", toggleInline),fullscreen.addEventListener("click", () => {
+      if(replyPresentationMode(identity)=="fullscreen"){
+        applyPresentationMode(modeBeforeFullscreen);
+        const m_3=card.parentElement;
+        if(Equals(m_3, null))null;
+        else m_3.scrollTop=savedScrollTop;
+        return!(focusBeforeFullscreen==null)?focusBeforeFullscreen.focus():null;
+      }
+      else {
+        modeBeforeFullscreen=replyPresentationMode(identity);
+        focusBeforeFullscreen=globalThis.document.activeElement;
+        const m_4=card.parentElement;
+        if(Equals(m_4, null))savedScrollTop=0;
+        else savedScrollTop=m_4.scrollTop;
+        return applyPresentationMode("fullscreen");
+      }
+    }),applyPresentationMode(replyPresentationMode(identity)),true);
+  }
+  else presentationRendered=false;
+  if(!presentationRendered){
+    const m_2=mode.toLowerCase();
+    switch(m_2){
+      case"outbound-message":
+      case"inbound-message":
+        _1=iter((row) => {
+          card.appendChild(renderTextBlock("fcell-message-body", row));
+        }, arrayOrEmpty_1(value.rows));
+        break;
+      case"list":
+        const list=element_1("ul", "fcell-list-items", null);
+        _1=(iter((row) => {
+          list.appendChild(element_1("li", "", asText_2(row)));
+        }, arrayOrEmpty_1(value.rows)),void card.appendChild(list));
+        break;
+      case"grid":
+        let _3;
+        const table=element_1("table", "fcell-grid-table", null);
+        const columns=arrayOrEmpty_1(value.columns);
+        if(length(columns)>0){
+          const thead=element_1("thead", "", null);
+          const header=element_1("tr", "", null);
+          _3=(iter((column) => {
+            header.appendChild(element_1("th", "wrap", asText_2(column)));
+          }, columns),thead.appendChild(header),void table.appendChild(thead));
+        }
+        else _3=null;
+        const tbody=element_1("tbody", "", null);
+        _1=(iter((cells) => {
+          const tr=element_1("tr", "", null);
+          iter((cell) => {
+            tr.appendChild(element_1("td", "wrap", asText_2(cell)));
+          }, arrayOrEmpty_1(cells));
+          tbody.appendChild(tr);
+        }, arrayOrEmpty_1(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
+        break;
+      default:
+        _1=void card.appendChild(renderTextBlock("fcell-source", value.rawValue));
+        break;
+    }
+    _2=!isBlank_2(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message"?void card.appendChild(renderTextBlock("fcell-source", value.source)):null;
+  }
+  else _2=null;
+  return card;
 }
 function staticNavigationDestinations(){
   return _c_1.staticNavigationDestinations;
@@ -4810,6 +4923,7 @@ function initializeClientExtensionGlobals(){
   if(!globalThis.PulseTrade.LoginRenderers)globalThis.PulseTrade.LoginRenderers=[];
   if(!globalThis.PulseTrade.AclSnapshotObservers)globalThis.PulseTrade.AclSnapshotObservers=[];
   if(!globalThis.PulseTrade.AclCapabilityProviders)globalThis.PulseTrade.AclCapabilityProviders=[];
+  if(!globalThis.PulseTrade.ReplyPresentationResolvers)globalThis.PulseTrade.ReplyPresentationResolvers=[];
   if(!globalThis.PulseTrade.Renderers)globalThis.PulseTrade.Renderers=globalThis.PulseTrade.MessageRenderers;
   let register_1=(collection, name, priority, func) => {
     if(typeof priority==="function"){
@@ -4818,8 +4932,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"), 
-      priority:Number(priority||0), 
+      name:String(name||"unnamed"),
+      priority:Number(priority||0),
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -4844,6 +4958,9 @@ function initializeClientExtensionGlobals(){
   };
   globalThis.PulseTradeRegisterAclCapabilityProvider=(name, priority, func) => {
     register_1(globalThis.PulseTrade.AclCapabilityProviders, name, priority, func);
+  };
+  globalThis.PulseTradeRegisterReplyPresentation=(name, priority, func) => {
+    register_1(globalThis.PulseTrade.ReplyPresentationResolvers, name, priority, func);
   };
 }
 function routeItem(icon, name, value){
@@ -4886,48 +5003,8 @@ function currentBrowserUser(){
 function replyPresentationDisposers(){
   return _c_1.replyPresentationDisposers;
 }
-function disposeReplyPresentation(identity){
-  let _1;
-  const o=tryPick((_2) => _2[0]==identity?Some(_2[1]):null, replyPresentationDisposers());
-  if(o==null)_1=void 0;
-  else try {
-    _1=o.$0();
-  }
-  catch(m){
-    _1=null;
-  }
-  set_replyPresentationDisposers(filter((_2) => _2[0]!=identity, replyPresentationDisposers()));
-}
-function fcellValueModeLabel(mode, tags){
-  return hasTag("actor-argu-command", tags)?"Actor Argu Outbound":hasTag("actor-argu-reply", tags)?"Actor Argu Reply":hasTag("actor-argu-error", tags)?"Actor Argu Error":fcellModeLabel(mode);
-}
-function renderTextBlock(className, text){
-  const m=tryRenderWithRegisteredRenderers(text);
-  return m==null?element_1("pre", className, asText_2(text)):m.$0;
-}
-function tryResolveReplyPresentation(context){
-  return tryPick((_1) => {
-    try {
-      return _1[1](context);
-    }
-    catch(m){
-      return null;
-    }
-  }, registeredReplyPresentationResolvers());
-}
-function replyPresentationIdentity(context){
-  return concat_2("\u001f", [context.PageId, context.TabId, context.ValueId]);
-}
-function registerReplyPresentationDisposer(identity, dispose){
-  disposeReplyPresentation(identity);
-  set_replyPresentationDisposers(replyPresentationDisposers().concat([[identity, dispose]]));
-}
-function setReplyPresentationMode(identity, mode){
-  set_replyPresentationModes(filter((_1) => _1[0]!=identity, replyPresentationModes()).concat([[identity, mode]]));
-}
-function replyPresentationMode(identity){
-  const o=tryPick((_1) => _1[0]==identity?Some(_1[1]):null, replyPresentationModes());
-  return o==null?"collapsed":o.$0;
+function set_replyPresentationDisposers(_1){
+  _c_1.replyPresentationDisposers=_1;
 }
 function scrollToBottomNow(node){
   if(!(node==null)){
@@ -4942,6 +5019,54 @@ function scrollToBottomNow(node){
 function newPendingCommandId(kind, target, url, payloadJson){
   set_pendingCommandSeq(pendingCommandSeq()+1);
   return cacheKey("pending-command", ofArray([kind, target, url, payloadJson, "attempt-"+String(pendingCommandSeq()), "rand-"+String(Math.floor(Math.random()*1000000000))]));
+}
+function fcellValueModeLabel(mode, tags){
+  return hasTag("actor-argu-command", tags)?"Actor Argu Outbound":hasTag("actor-argu-reply", tags)?"Actor Argu Reply":hasTag("actor-argu-error", tags)?"Actor Argu Error":fcellModeLabel(mode);
+}
+function renderTextBlock(className, text){
+  const m=tryRenderWithRegisteredRenderers(text);
+  return m==null?element_1("pre", className, asText_2(text)):m.$0;
+}
+function tryResolveReplyPresentation(context){
+  const o=((context_1) => {
+    let found=null;
+    if(globalThis.PulseTrade&&globalThis.PulseTrade.ReplyPresentationResolvers){
+      const resolvers=globalThis.PulseTrade.ReplyPresentationResolvers;
+      for(let i=0;i<resolvers.length&&found==null;i++){
+        const resolver=resolvers[i];
+        try {
+          const value=(resolver.render||resolver[1])(context_1);
+          if(value!=null)found=value;
+        }
+        catch(e){
+          console.error("Reply presentation resolver exception:", e);
+        }
+      }
+    }
+    return found;
+  })(context);
+  return o==null?tryPick((_1) => {
+    try {
+      return _1[1](context);
+    }
+    catch(m){
+      return null;
+    }
+  }, registeredReplyPresentationResolvers()):(o.$0,o);
+}
+function replyPresentationIdentity(context){
+  return concat_2("\u001f", [context.PageId, context.TabId, context.ValueId]);
+}
+function registerReplyPresentationDisposer(identity, dispose){
+  disposeReplyPresentation(identity);
+  set_replyPresentationDisposers(replyPresentationDisposers().concat([[identity, dispose]]));
+}
+function setReplyPresentationMode(identity, mode){
+  set_replyPresentationModes(filter((_1) => _1[0]!=identity, replyPresentationModes()).concat([[identity, mode]]));
+}
+function replyPresentationMode(identity){
+  const o=tryPick((_1) => _1[0]==identity?Some(_1[1]):null, replyPresentationModes());
+  return o==null?"collapsed":o.$0;
 }
 function appendPageShapeOptions(){
   return map((shape) =>[normalizeShapeText(shape.shape), textOr(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
@@ -5018,8 +5143,11 @@ function aclAllowsFallback(action, resourceKind, resourceId){
 function appendPageShapeRegistry(){
   return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
 }
-function set_replyPresentationDisposers(_1){
-  _c_1.replyPresentationDisposers=_1;
+function set_pendingCommandSeq(_1){
+  _c_1.pendingCommandSeq=_1;
+}
+function pendingCommandSeq(){
+  return _c_1.pendingCommandSeq;
 }
 function fcellModeLabel(mode){
   const m=asText_2(mode).toLowerCase();
@@ -5071,12 +5199,6 @@ function set_replyPresentationModes(_1){
 }
 function replyPresentationModes(){
   return _c_1.replyPresentationModes;
-}
-function set_pendingCommandSeq(_1){
-  _c_1.pendingCommandSeq=_1;
-}
-function pendingCommandSeq(){
-  return _c_1.pendingCommandSeq;
 }
 function currentAclSnapshot(){
   return _c_1.currentAclSnapshot;
@@ -5323,7 +5445,7 @@ function getArray(name, value){
   return o==null?[]:o.$0;
 }
 function register(){
-  RegisterReplyPresentation("dynamic-static-sdui-v2", tryResolve);
+  return RegisterReplyPresentation("dynamic-static-sdui-v2", tryResolve);
 }
 function tryResolve(context){
   const m=tryStaticCanvasPayload(context.Payload);
@@ -5411,9 +5533,9 @@ function toUInt(x){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
@@ -5466,6 +5588,14 @@ function exists(f, x){
 function sortBy(f, arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) => Compare(_1[1], _2[1])));
 }
+function mapi(f, arr){
+  const y=new Array(arr.length);
+  for(let i=0, _1=arr.length-1;i<=_1;i++)y[i]=f(i, arr[i]);
+  return y;
+}
+function iteri(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)f(i, arr[i]);
+}
 function forall2(f, x1, x2){
   let a, i;
   checkLength(x1, x2);
@@ -5476,6 +5606,17 @@ function forall2(f, x1, x2){
     if(f(x1[i], x2[i]))i=i+1;
     else a=false;
   return a;
+}
+function tryFindIndex(f, arr){
+  let res, i;
+  res=null;
+  i=0;
+  while(i<arr.length&&res==null)
+    {
+      f(arr[i])?res=Some(i):void 0;
+      i=i+1;
+    }
+  return res;
 }
 function choose(f, arr){
   const q=[];
@@ -5524,11 +5665,6 @@ function ofSeq(xs){
     }
   }
 }
-function mapi(f, arr){
-  const y=new Array(arr.length);
-  for(let i=0, _1=arr.length-1;i<=_1;i++)y[i]=f(i, arr[i]);
-  return y;
-}
 function skip(i, ar){
   return i<0?nonNegative():i>ar.length?insufficient():ar.slice(i);
 }
@@ -5546,25 +5682,11 @@ function ofList(xs){
     }
   return q;
 }
-function iteri(f, arr){
-  for(let i=0, _1=arr.length-1;i<=_1;i++)f(i, arr[i]);
-}
 function sortInPlace(arr){
   mapInPlace((t) => t[0], mapiInPlace((_1, _2) =>[_2, _1], arr).sort(Compare));
 }
 function take(n, ar){
   return n<0?nonNegative():n>ar.length?insufficient():ar.slice(0, n);
-}
-function tryFindIndex(f, arr){
-  let res, i;
-  res=null;
-  i=0;
-  while(i<arr.length&&res==null)
-    {
-      f(arr[i])?res=Some(i):void 0;
-      i=i+1;
-    }
-  return res;
 }
 function foldBack(f, arr, zero){
   let acc;
@@ -6153,16 +6275,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
   };
 }
@@ -6455,16 +6577,18 @@ function unfold(f, s){
     }
   }, void 0)};
 }
-function New_4(shape, selectedKeyJson, selectedKeys, keyParts, actorAddress, duTypeName, unionCaseNames, submit){
+function New_4(shape, selectedKeyJson, selectedKeys, keyParts, actorAddress, duTypeName, unionCaseNames, submit, composerMode, setComposerMode){
   return{
-    shape:shape, 
-    selectedKeyJson:selectedKeyJson, 
-    selectedKeys:selectedKeys, 
-    keyParts:keyParts, 
-    actorAddress:actorAddress, 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    submit:submit
+    shape:shape,
+    selectedKeyJson:selectedKeyJson,
+    selectedKeys:selectedKeys,
+    keyParts:keyParts,
+    actorAddress:actorAddress,
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    submit:submit,
+    composerMode:composerMode,
+    setComposerMode:setComposerMode
   };
 }
 function New_5(keys){
@@ -7022,8 +7146,8 @@ class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_1(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -7051,58 +7175,58 @@ function TryParse_1(s, r){
 }
 function New_6(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
 function New_7(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_9(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_10(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -7213,51 +7337,51 @@ function listEmpty(){
 }
 function New_11(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
 function New_12(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    displayName:displayName, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    displayName:displayName,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_13(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
 function New_14(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    keyMode:keyMode, 
+    pageId:pageId,
+    keyJson:keyJson,
+    keyMode:keyMode,
     displayName:displayName
   };
 }
 function New_15(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
@@ -7269,60 +7393,60 @@ function New_17(pageId, keyId){
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_19(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_20(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_21(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
@@ -7331,10 +7455,10 @@ function New_22(maxSequence, buckets){
 }
 function New_23(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
     tags:tags
   };
 }
@@ -7343,9 +7467,9 @@ function New_24(reason){
 }
 function New_25(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
@@ -7463,30 +7587,30 @@ function OfArray(a){
 }
 function New_26(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
 function New_27(nodeId_1, nodeAddress_1, status, roles, actors){
   return{
-    nodeId:nodeId_1, 
-    nodeAddress:nodeAddress_1, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId_1,
+    nodeAddress:nodeAddress_1,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
 function New_28(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
@@ -7495,30 +7619,30 @@ function New_29(messages, nextAfterMessageId){
 }
 function New_30(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
 function New_31(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_32(fromId, toId, body, tags){
   return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    fromId:fromId,
+    toId:toId,
+    body:body,
     tags:tags
   };
 }
@@ -7583,9 +7707,9 @@ class T extends Object_1 {
 }
 function New_33(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
-    rawArgu:rawArgu, 
-    duTypeName:duTypeName, 
-    unionCaseName:unionCaseName, 
+    rawArgu:rawArgu,
+    duTypeName:duTypeName,
+    unionCaseName:unionCaseName,
     keyJson:keyJson
   };
 }
@@ -7797,8 +7921,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_1(Attr, {
-      $:2, 
-      $0:Item1, 
+      $:2,
+      $0:Item1,
       $1:Item2
     });
   }
@@ -8089,8 +8213,8 @@ function SyncElemNode(childrenOnly, el){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""), 
-    Dirty:false, 
+    Text:globalThis.document.createTextNode(""),
+    Dirty:false,
     Value:""
   };
 }
@@ -8224,53 +8348,53 @@ function New_36(Kind, RenderSummary, Mount){
 }
 function New_37(shape, label_1, badge, className){
   return{
-    shape:shape, 
-    label:label_1, 
-    badge:badge, 
+    shape:shape,
+    label:label_1,
+    badge:badge,
     className:className
   };
 }
 function New_38(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath, 
-    sessionPath:sessionPath, 
-    logoutPath:logoutPath, 
-    returnUrl:returnUrl, 
-    protectedRoute:protectedRoute, 
-    sessionCookieName:sessionCookieName, 
-    title:title, 
-    lead:lead, 
-    providerLabel:providerLabel, 
+    submitPath:submitPath,
+    sessionPath:sessionPath,
+    logoutPath:logoutPath,
+    returnUrl:returnUrl,
+    protectedRoute:protectedRoute,
+    sessionCookieName:sessionCookieName,
+    title:title,
+    lead:lead,
+    providerLabel:providerLabel,
     aclLabel:aclLabel
   };
 }
 function New_39(userName, password, returnUrl, keepSession){
   return{
-    userName:userName, 
-    password:password, 
-    returnUrl:returnUrl, 
+    userName:userName,
+    password:password,
+    returnUrl:returnUrl,
     keepSession:keepSession
   };
 }
 function New_40(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
-    participantId:participantId, 
-    displayName:displayName, 
-    login:login, 
-    authenticated:authenticated, 
-    provider:provider, 
+    participantId:participantId,
+    displayName:displayName,
+    login:login,
+    authenticated:authenticated,
+    provider:provider,
     logoutPath:logoutPath
   };
 }
 function New_41(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -8288,6 +8412,9 @@ class FSharpMap extends Object_1 {
   }
   Equals(other){
     return this.Count===other.Count&&forall2_1(Equals, this, other);
+  }
+  Add_1(k, v){
+    return new FSharpMap("New_1", Add(Pair.New(k, v), this.tree));
   }
   get Count(){
     const tree=this.tree;
@@ -8369,6 +8496,14 @@ function Branch(node, left, right){
   let _2=1+_1;
   return New_43(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
+function Add(x, t){
+  return Put((_1, _2) => _2, x, t);
+}
+function Put(combine, k, t){
+  const p=Lookup(k, t);
+  const t_1=p[0];
+  return t_1==null?Rebuild(p[1], Branch(k, null, null)):Rebuild(p[1], Branch(combine(t_1.Node, k), t_1.Left, t_1.Right));
+}
 function Enumerate(flip, t){
   function gen(t_1, spine){
     let t_2;
@@ -8395,6 +8530,39 @@ function Enumerate(flip, t){
       }
   }
   return unfold((_1) => gen(_1[0], _1[1]), [t, FSharpList.Empty]);
+}
+function Rebuild(spine, t){
+  let t_1;
+  const h=(x_2) => x_2==null?0:x_2.Height;
+  t_1=t;
+  for(let i=0, _1=length(spine)-1;i<=_1;i++){
+    const m=get(spine, i);
+    if(m[0]){
+      const x=m[1];
+      const l=m[2];
+      if(h(t_1)>h(l)+1){
+        if(h(t_1.Left)===h(t_1.Right)+1){
+          const m_1=t_1.Left;
+          t_1=Branch(m_1.Node, Branch(x, l, m_1.Left), Branch(t_1.Node, m_1.Right, t_1.Right));
+        }
+        else t_1=Branch(t_1.Node, Branch(x, l, t_1.Left), t_1.Right);
+      }
+      else t_1=Branch(x, l, t_1);
+    }
+    else {
+      const x_1=m[1];
+      const r=m[2];
+      if(h(t_1)>h(r)+1){
+        if(h(t_1.Right)===h(t_1.Left)+1){
+          const m_2=t_1.Right;
+          t_1=Branch(m_2.Node, Branch(t_1.Node, t_1.Left, m_2.Left), Branch(x_1, m_2.Right, r));
+        }
+        else t_1=Branch(t_1.Node, t_1.Left, Branch(x_1, t_1.Right, r));
+      }
+      else t_1=Branch(x_1, t_1, r);
+    }
+  }
+  return t_1;
 }
 function groupBy(f, a){
   const d=new Dictionary("New_5");
@@ -8486,6 +8654,24 @@ function quoteArg(value){
   const text=asText_3(value);
   return text.length===0?"\"\"":exists_1(IsWhiteSpace, text)||text.indexOf("\"")!=-1?"\""+Replace(Replace(text, "\\", "\\\\"), "\"", "\\\"")+"\"":text;
 }
+function reader(defaultMap){
+  let offsets;
+  offsets=new FSharpMap("New", []);
+  return(caseName) =>(fieldName) => {
+    const binding=caseName+"."+fieldName;
+    const m=defaultMap.TryFind(binding);
+    if(m!=null&&m.$==1){
+      const occurrences=m.$0;
+      const o=offsets.TryFind(binding);
+      const offset=o==null?0:o.$0;
+      return offset>=length(occurrences)?[]:(offsets=offsets.Add_1(binding, offset+1),get(occurrences, offset));
+    }
+    else return[];
+  };
+}
+function group(entries){
+  return OfArray(map((_1) =>[_1[0], map((t) => t[1], _1[1])], groupBy((t) => t[0], entries)));
+}
 function Int(){
   set_counter(counter()+1);
   return counter();
@@ -8498,8 +8684,8 @@ function counter(){
 }
 function Ready(Item1, Item2){
   return{
-    $:2, 
-    $0:Item1, 
+    $:2,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -8508,8 +8694,8 @@ function Forever(Item){
 }
 function Waiting(Item1, Item2){
   return{
-    $:3, 
-    $0:Item1, 
+    $:3,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -8663,8 +8849,8 @@ function EmbedDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0, 
-    $0:Item1, 
+    $:0,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -8804,9 +8990,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1, 
-      Children:Children_1, 
-      El:El, 
+      Attr:Attr_1,
+      Children:Children_1,
+      El:El,
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -9199,10 +9385,10 @@ let _c_4=Lazy((_i) => class Proxy {
 });
 function New_43(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1, 
-    Left:Left, 
-    Right:Right, 
-    Height:Height, 
+    Node:Node_1,
+    Left:Left,
+    Right:Right,
+    Height:Height,
     Count:Count
   };
 }
@@ -9238,16 +9424,16 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_1(Updates_1, {
-      c:Current, 
-      s:Snap, 
+      c:Current,
+      s:Snap,
       v:VarView
     });
   }
 }
 function New_44(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem, 
-    DynFlags:DynFlags, 
+    DynElem:DynElem,
+    DynFlags:DynFlags,
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -9303,8 +9489,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2, 
-    $0:x, 
+    $:2,
+    $0:x,
     $1:y
   };
 }
@@ -9755,8 +9941,8 @@ class CheckedInput {
   }
   static Valid(value, inputText){
     return Create_1(CheckedInput, {
-      $:0, 
-      $0:value, 
+      $:0,
+      $0:value,
       $1:inputText
     });
   }
@@ -9890,8 +10076,8 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
 });
 function New_47(created, evalOrVal, force){
   return{
-    c:created, 
-    v:evalOrVal, 
+    c:created,
+    v:evalOrVal,
     f:force
   };
 }

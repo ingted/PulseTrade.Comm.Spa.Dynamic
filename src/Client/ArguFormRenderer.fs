@@ -87,7 +87,9 @@ type AppendInputContextDto =
       actorAddress: string
       duTypeName: string
       unionCaseNames: string[]
-      submit: obj -> unit }
+      submit: obj -> unit
+      composerMode: string
+      setComposerMode: obj -> unit }
 
 [<JavaScript>]
 type KeySubmitPayloadDto =
@@ -177,6 +179,31 @@ module ClientRawArguCodec =
         |> Array.iter (fun (field, values) -> appendFieldParts parts field values)
 
         String.Join(" ", parts)
+
+[<JavaScript>]
+module ArguFormDefaultOccurrences =
+    let group (entries: (string * string[])[]) : Map<string, string[][]> =
+        entries
+        |> Array.groupBy fst
+        |> Array.map (fun (binding, occurrences) -> binding, occurrences |> Array.map snd)
+        |> Map.ofArray
+
+    let reader (defaultMap: Map<string, string[][]>) : string -> string -> string[] =
+        let mutable offsets = Map.empty<string, int>
+
+        fun caseName fieldName ->
+            let binding = caseName + "." + fieldName
+
+            match defaultMap |> Map.tryFind binding with
+            | None -> [||]
+            | Some occurrences ->
+                let offset = offsets |> Map.tryFind binding |> Option.defaultValue 0
+
+                if offset >= occurrences.Length then
+                    [||]
+                else
+                    offsets <- offsets |> Map.add binding (offset + 1)
+                    occurrences.[offset]
 
 [<JavaScript>]
 module ArguFormRenderer =
@@ -709,7 +736,7 @@ module ArguFormRenderer =
                     yield! flattenNodeDefaults item
         }
 
-    let defaultsFromDocument (document: SduiFormDocumentDto option) =
+    let defaultsFromDocument (document: SduiFormDocumentDto option) : Map<string, string[][]> =
         match document with
         | None -> Map.empty
         | Some document when isNull (box document) -> Map.empty
@@ -725,21 +752,18 @@ module ArguFormRenderer =
                     None
                 else
                     Some(binding, values))
-            |> Map.ofSeq
+            |> Seq.toArray
+            |> ArguFormDefaultOccurrences.group
 
-    let defaultValuesFor defaultMap caseName fieldName =
-        let binding = asText caseName + "." + asText fieldName
+    let defaultValuesReader (defaultMap: Map<string, string[][]>) : string -> string -> string[] =
+        ArguFormDefaultOccurrences.reader defaultMap
 
-        defaultMap
-        |> Map.tryFind binding
-        |> Option.defaultValue [||]
-
-    let renderField (refresh: unit -> unit) defaultMap caseName (field: ArguFormFieldDto) =
+    let renderField (refresh: unit -> unit) readDefaults caseName (field: ArguFormFieldDto) =
         let row = element "div" "dynamic-argu-field" null |> setTestId ("dynamic-argu-field-" + asText field.name)
         row.SetAttribute("data-dynamic-argu-field", asText field.name)
         row.SetAttribute("data-dynamic-argu-kind", asText field.kind)
         row.AppendChild(label (if isBlank field.label then field.name else field.label)) |> ignore
-        let fieldDefaults = defaultValuesFor defaultMap caseName field.name
+        let fieldDefaults = readDefaults caseName field.name
 
         let mutable getter = fun () -> [||]
         let wireInputEvents (node: #Element) =
@@ -820,7 +844,7 @@ module ArguFormRenderer =
             |> Array.iteri (fun index item ->
                 let itemRow = element "div" "dynamic-argu-tuple-item" null |> setTestId $"dynamic-argu-tuple-item-{asText field.name}-{index + 1}"
                 itemRow.AppendChild(label $"{index + 1}. {if isBlank item.label then item.name else item.label}") |> ignore
-                let node, valueGetter = renderScalarInput "" item.kind item.options (defaultValuesFor defaultMap caseName item.name)
+                let node, valueGetter = renderScalarInput "" item.kind item.options (readDefaults caseName item.name)
                 node.SetAttribute("data-dynamic-argu-tuple-item", string (index + 1))
                 itemGetters.Add valueGetter
                 itemRow.AppendChild node |> ignore
@@ -897,9 +921,22 @@ module ArguFormRenderer =
         else
             prefix + " " + raw
 
+    let renderComposerModeControl (context: AppendInputContextDto) =
+        let group = element "div" "append-composer-mode" null |> setTestId "append-composer-mode"
+        group.SetAttribute("data-mode", "form")
+        let plain = button "append-composer-mode-button" "append-composer-mode-plain" "Plain"
+        let formButton = button "append-composer-mode-button" "append-composer-mode-form" "Form"
+        plain.SetAttribute("aria-pressed", "false")
+        formButton.SetAttribute("aria-pressed", "true")
+        plain.AddEventListener("click", fun () -> context.setComposerMode(box "plain"))
+        formButton.AddEventListener("click", fun () -> context.setComposerMode(box "form"))
+        append group [| plain :> Node; formButton :> Node |] |> ignore
+        group
+
     let renderSchemaIntoRoot (root: Element) (context: AppendInputContextDto) typeName document (schema: ArguFormSchemaDto) =
         root.TextContent <- ""
         let defaultMap = defaultsFromDocument document
+        let readDefaults = defaultValuesReader defaultMap
         let isDocumentBacked = Option.isSome document
 
         let allowed =
@@ -919,6 +956,9 @@ module ArguFormRenderer =
         if unionCases.Length = 0 then
             root.AppendChild(errorNode ("Dynamic Argu schema has no requested union cases for DU type: " + typeName)) |> ignore
         else
+            if not isDocumentBacked then
+                root.AppendChild(renderComposerModeControl context) |> ignore
+
             let fullPreviewOpt =
                 if isDocumentBacked then
                     Some(element "pre" "dynamic-argu-raw-preview full" "" |> setTestId "dynamic-argu-raw-preview-full")
@@ -976,7 +1016,7 @@ module ArguFormRenderer =
                     unionCase.fields
                     |> arrayOrEmpty
                     |> Array.map (fun field ->
-                        let row, getter = renderField refreshPreview defaultMap caseName field
+                        let row, getter = renderField refreshPreview readDefaults caseName field
                         fields.AppendChild row |> ignore
                         field, getter)
 
@@ -1019,7 +1059,9 @@ module ArguFormRenderer =
 
                             context.submit(box payload))
 
-                    append root [| fullPreview :> Node; fullSend :> Node |] |> ignore
+                    let actions = element "div" "dynamic-argu-composer-actions" null |> setTestId "dynamic-argu-composer-actions"
+                    append actions [| renderComposerModeControl context :> Node; fullSend :> Node |] |> ignore
+                    append root [| fullPreview :> Node; actions :> Node |] |> ignore
                     refreshFullPreview()
                 | _ -> ()
 

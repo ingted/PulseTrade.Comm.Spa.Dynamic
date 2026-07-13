@@ -81,4 +81,5 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - PTCS server adapter verifier：`dotnet run --project tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests.fsproj -c Release -- --summary`，revision 4，5/5 Pass。
 - PTCS browser client verifier：`dotnet run --project tests/PtcsTaClient.Tests/PtcsTaClient.Tests.fsproj -c Release -- --summary`，revision 5，6/6 Pass。
 - Cross-repo real browser gate由`G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-ta-research-live.fsx` revision 1擁有；本文件只回鏈，不新增重複verifier。
+- DYN-TA-011 closure沿用該 cross-repo verifier revision 7；2026-07-14 formal 82 pass artifact為`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\beta96-acl-readback-20260714025738`，涵蓋strict envelope、summary-only collapsed、lazy inline/fullscreen、reconnect、Plain/Form boundary與ACL SQL audit readback。
 - Cross-repo gate目前為revision 5；formal service process replacement後完成20 polls，並透過Playwright CDP直接驗證IndexedDB object-store counts不變，artifact為`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-restart-indexeddb-202607122114`。

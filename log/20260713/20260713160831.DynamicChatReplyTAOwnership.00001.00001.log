@@ -36,3 +36,25 @@ Dynamic TA workspace目前可能由 page identity直接掛載；產品規格要�
 # Prompt / 上下文摘要
 
 使用者要求正式 Host依 mock回到 chat-session-first，TA Research只由 reply出現並可 inline與near-fullscreen展開。
+# Closure correction fields
+
+## 執行命令/參數
+
+- Dynamic Contracts/root/Ptcs/Renderer/PtcsTaClient Release suites；cross-repo formal verifier使用82 existing service。
+
+## 結果
+
+Package suites與formal mixed-reply/TA lifecycle gate通過。
+
+## 根因判讀
+
+Detached reply element用id lookup mount與`ActiveChanged false`立即dispose會造成無圖/in-flight snapshot遺失；改成direct element mount與pending close lifecycle。
+
+## 下一步
+
+完成check、commit/push後停止；不進DYN-TA-005 E2EQ。
+
+## 關聯文件/工單/PR
+
+- `doc/TAResearch/WBS.DYN-TA-011.md`
+- `doc/RFC/RFC-PTCS-DYNAMIC-0008.chat-reply-canvas-presentation.md`

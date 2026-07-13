@@ -566,7 +566,7 @@ module DynamicFormDsl =
             |> Option.map (fun field -> [| $"{caseBindingPrefix}.{field.Name}", [| "true" |] |])
             |> Option.defaultValue [||]
 
-    let defaultsFromParsedTargetForSchema (schema: ArguFormSchema) (target: ParsedArguTarget) =
+    let defaultEntriesFromParsedTargetForSchema (schema: ArguFormSchema) (target: ParsedArguTarget) =
         let rootEntries =
             target.RootCases
             |> Array.collect (fun parsedCase ->
@@ -597,7 +597,13 @@ module DynamicFormDsl =
                             parsedCase))
                 |> Option.defaultValue [||])
 
-        Array.append rootEntries tailEntries |> Map.ofArray
+        Array.append rootEntries tailEntries
+
+    let defaultsFromParsedTargetForSchema (schema: ArguFormSchema) (target: ParsedArguTarget) =
+        defaultEntriesFromParsedTargetForSchema schema target
+        |> Array.groupBy fst
+        |> Array.map (fun (binding, entries) -> binding, entries |> Array.collect snd)
+        |> Map.ofArray
 
     let rec applyDefaultsToNode defaults (node: SduiFormNode) =
         let defaultValues =
@@ -686,10 +692,43 @@ module DynamicFormDsl =
                         Fields = unionCase.Fields |> Array.map (addDefaultOptionsToField defaults unionCase.Name [||]) }) }
 
     let applyParsedDefaultsToDocument parsedTarget (document: SduiFormDocument) =
-        let defaults = defaultsFromParsedTargetForSchema document.ArguFormSchema parsedTarget
+        let defaultsByBinding =
+            defaultEntriesFromParsedTargetForSchema document.ArguFormSchema parsedTarget
+            |> Array.groupBy fst
+            |> Array.map (fun (binding, entries) -> binding, entries |> Array.map snd)
+            |> Map.ofArray
+
+        let mutable offsets = Map.empty<string, int>
+
+        let nextDefaults binding fallback =
+            match defaultsByBinding |> Map.tryFind binding with
+            | None -> fallback
+            | Some occurrences ->
+                let offset = offsets |> Map.tryFind binding |> Option.defaultValue 0
+
+                if offset >= occurrences.Length then
+                    fallback
+                else
+                    offsets <- offsets |> Map.add binding (offset + 1)
+                    occurrences[offset]
 
         { document with
-            Nodes = document.Nodes |> Array.map (applyDefaultsToNode defaults) }
+            Nodes =
+                document.Nodes
+                |> Array.map (fun node ->
+                    let rec apply (current: SduiFormNode) =
+                        let defaults =
+                            if String.IsNullOrWhiteSpace current.Binding then
+                                current.DefaultValues
+                            else
+                                nextDefaults current.Binding current.DefaultValues
+
+                        { current with
+                            DefaultValues = defaults
+                            Children = current.Children |> Array.map apply
+                            Items = current.Items |> Array.map apply }
+
+                    apply node) }
 
     let filterSchemaByParsedRootCases (parsedTarget: ParsedArguTarget) (schema: ArguFormSchema) =
         let unionCasesByName =
@@ -714,9 +753,7 @@ module DynamicFormDsl =
 
         schema
         |> fromArguFormSchemaWithAliases documentId aliases
-        |> fun document ->
-            { document with
-                Nodes = document.Nodes |> Array.map (applyDefaultsToNode defaults) }
+        |> applyParsedDefaultsToDocument parsedTarget
 
     let fromParsedArguTarget documentId aliases schema parsedTarget =
         schema

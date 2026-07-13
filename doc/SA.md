@@ -131,3 +131,20 @@ First slice 的實作落在既有 `Client/ActorDynamicTab.fs`，不是新 client
 - classifier 目前用 `IndexOf("ActorTopologyPage")`，不是 final strict JSON parser；PTCS page renderer registry 只會傳 ActorsPage payload，因此 first slice 可接受。後續 DYN-WBS-519 必須補 strict parser/codec test。
 - first slice renderer 只接管 whole page host 並顯示 summary；尚未完成 node grouping/tree/grid/actions。
 - 若 renderer throw 或回 `None`，PTCS fallback 仍是權威 UI。
+
+## RFC-PTCS-DYNAMIC-0008 Mixed-reply Presentation Analysis
+
+正式82畫面把大量`SduiValue Case/Fields` series直接輸出到history，表示問題不是chart CSS，而是production envelope沒有被`TaResearchReplyPresentation.runtimeFrames`正確解開。Dynamic必須在message boundary完成strict/bounded decode；PTCS不應知道`fCell2`或TA document schema。
+
+| Input shape | Required result |
+| --- | --- |
+| plain string | `None`，由PTCS顯示文字 |
+| valid static `fskynet-sdui` | static presentation，不開TA channel |
+| direct RuntimeFrame JSON | RuntimeTa presentation |
+| JSON-string包RuntimeFrame | bounded unwrap後RuntimeTa |
+| `ptc.comm.fcell2.value.v1`/`fCell2.A`/F# DU `Case/Fields` | 只擷取合法reply frames，RuntimeTa |
+| declared runtime但invalid/oversized | controlled error presentation，不顯示全量raw payload |
+
+summary與chart lifecycle是同一presentation的不同成本層級。分類時只建立bounded metadata model；Collapsed不建立`TaResearchTransientClientHandle`。Inline或Fullscreen才建立handle，collapse/unmount/disconnect必須dispose。decode/base revision失敗發生在in-flight response，因此resync reducer必須能取消該request並替換成full snapshot，不能以`not InFlight` guard忽略。
+
+Dynamic FormInput renderer仍只負責「Host已選Form模式時如何畫表單」。它不得因selected target含DU/template就接管整個page或自動改變PTCS composer mode。

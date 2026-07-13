@@ -22,6 +22,7 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-008 | 9 | Package/release closure | exact refs, NuGet, downstream bump, docs/runbook | DYN-TA-001..007 | T-001..T-020 | 88% | Active | [@DYN-TA-008](WBS.DYN-TA-008.md) |
 | DYN-TA-009 | 1 | Composite row / multi-trace DSL | additive trace contracts、renderer、legacy projection、四列geometry | DYN-TA-001..004 | T-021 | 100% | Completed | [@DYN-TA-009](WBS.DYN-TA-009.md) |
 | DYN-TA-010 | 2 | Browser delta wire v2 | keyed upsert/remove-before/status delta、client merge/resync | DYN-TA-009 | T-022 | 100% | Completed | [@DYN-TA-010](WBS.DYN-TA-010.md) |
+| DYN-TA-011 | 1 | Mixed-reply TA presentation closure | production envelope decode、summary-only collapsed、lazy inline/fullscreen、Plain/Form boundary | DYN-TA-003/004/010 + PTCS WBS-069 | T-023..030 | 95% | External blocked | runtime/E2E完成，只剩public NuGet credential，詳見[@DYN-TA-011](WBS.DYN-TA-011.md) |
 
 
 ## 2. Legacy prerequisite policy

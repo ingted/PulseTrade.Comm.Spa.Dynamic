@@ -1,10 +1,11 @@
 # RFC-PTCS-DYNAMIC-0008 Chat Reply Canvas Presentation Adapter
 
 - ID：RFC-PTCS-DYNAMIC-0008
-- Status：Proposed / awaiting review
+- Status：Accepted / DEV authorized
 - Date：2026-07-13
 - Related：`G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC\RFC-PTC-SPA-0020.chat-reply-canvas-presentation.md`、`RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
 - REQ：`doc/TAResearch/REQ.ChatReplyCanvasPresentation.md`
+- Gap evidence：`G:\PulseTrade2.fs\misc\2026-07-13_ta 圖不見，只剩下 json，底下的 FormInput高度只能有現在的 三分之一，不然都不用看圖了.png`
 
 ## 背景
 
@@ -20,6 +21,8 @@ Dynamic應只判斷「這一則reply如何呈現」，不應決定PTCS page shel
 4. per-reply/canvas instance獨立；多個inline TA Canvas可共存且各自bounded poll。
 5. inline/fullscreen共享同一runtime state，避免雙channel、雙poll或view reset。
 6. 以純WebSharper F#實作；v2 path不得使用`JS.Inline`或手寫JavaScript，既有legacy fullscreen path在migration slice改由typed WebSharper API實作。
+7. 正確解開formal Host回覆的nested `fCell2/RuntimeFrame/SduiValue` envelope；claim成功時只交付summary/presentation，不把原始series JSON呈現給使用者。
+8. Dynamic append input renderer不得強迫PTCS進Form mode；Plain/Form composer由PTCS owns。
 
 ## 非目標
 
@@ -27,6 +30,7 @@ Dynamic應只判斷「這一則reply如何呈現」，不應決定PTCS page shel
 - 不解析target key來決定presentation；只看reply payload與PTCS提供的context。
 - 不把summary、expand state或fullscreen state寫入server journal。
 - 不修改TA calculation、PTMD query或RN durable route。
+- 不提供DU type/canonical Argu profile editor；既有FormInput renderer只在Host明確選擇Form mode時mount。
 
 ## 情境
 
@@ -46,12 +50,15 @@ Dynamic應只判斷「這一則reply如何呈現」，不應決定PTCS page shel
 
 ```text
 raw reply payload
+  -> unwrap bounded reply/fCell2/RuntimeFrame envelope
   -> valid runtime TA envelope/document?  -> RuntimeTa
   -> valid static fskynet-sdui?           -> StaticSdui
   -> otherwise                            -> None
 ```
 
 分類順序與schema/version必須strict；不得以target alias、page title、actor address、字串包含`TA Research`或key tuple猜測。Malformed已宣告runtime schema的payload回controlled Dynamic error presentation，不得`None`成為看似正常plain success。
+
+正式Host payload可能是JSON-string包JSON、`ptc.comm.fcell2.value.v1` rows、`fCell2.A`多frame或F# DU `Case/Fields` JSON。adapter必須以bounded、typed decoder逐層解開，取得`replied msg:`或合法RuntimeFrame；不得把整段series DOM文字當作fallback成功。
 
 ## TA summary model
 
@@ -138,6 +145,8 @@ CreatePresentation(replyContext)
 6. Collapse/unmount/disconnect後resource count回baseline；delta不增加chat/IndexedDB history。
 7. desktop/mobile Playwright驗證session scrollbar、長Canvas、其他reply可見、fullscreen round-trip與zero console error。
 8. Playwright移動cursor跨至少三個bars，驗證vertical cursor X位置、shared timestamp與每個row value readout同步變更；zoom後仍對齊同一time domain。
+9. formal TA reply初始card只顯示摘要；DOM不得包含完整point-array/raw `Case/Fields` JSON。Collapsed時open/action/poll frame count為0。
+10. PTCS切Plain/Form不影響Dynamic reply cards；Form renderer只在Form mode被呼叫，Plain維持單一host textarea。
 
 ## Review evidence
 

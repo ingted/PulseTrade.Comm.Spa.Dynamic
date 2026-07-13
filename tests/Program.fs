@@ -32,6 +32,15 @@ type TestArgu =
             | Tag _ -> "Send repeated tags."
             | Verbose -> "Enable verbose mode."
 
+type RepeatedResearchArgu =
+    | Add_Row of rowId: string * interval: string * kind: string * lastBars: int
+    | Trace_Sma of rowId: string * traceId: string * period: int
+    interface IArgParserTemplate with
+        member this.Usage =
+            match this with
+            | Add_Row _ -> "Add one ordered research row."
+            | Trace_Sma _ -> "Add one ordered SMA trace."
+
 type GenEnum =
     | CreateTable
     | FSRecord
@@ -608,6 +617,69 @@ let tests =
             Expect.sequenceEqual (defaultValues "BBA.期貨商") [| "F008" |] "tuple default item 1 should be projected into Form DSL"
             Expect.sequenceEqual (defaultValues "BBA.分公司") [| "000" |] "tuple default item 2 should be projected into Form DSL"
             Expect.sequenceEqual (defaultValues "BBA.母帳帳號") [| "9910357" |] "tuple default item 3 should be projected into Form DSL"
+
+        testCase "DYN-T-509A: repeated cases preserve ordered defaults through Form DSL and client reader" <| fun _ ->
+            let raw =
+                "--add-row price M1 Candlestick 2000 --trace-sma price sma13 13 --trace-sma price sma21 21 --add-row dmi M1 Dmi 2000"
+
+            let registration =
+                DynamicArguTemplateRegistration.fromTemplate<RepeatedResearchArgu>
+                    DynamicArguAliasBinding.empty
+                    (Some raw)
+
+            let parsed = DynamicArgStringTarget.scan registration "akka://ta" raw
+            let document = DynamicArgStringTarget.buildFormDocument "tests.repeated-research" registration parsed
+
+            let rec flattenNode (node: SduiFormNode) =
+                seq {
+                    yield node
+                    for child in node.Children do
+                        yield! flattenNode child
+                    for item in node.Items do
+                        yield! flattenNode item
+                }
+
+            let defaultsBySection binding =
+                document.Nodes
+                |> Array.choose (fun section ->
+                    section
+                    |> flattenNode
+                    |> Seq.tryFind (fun node -> node.Binding = binding)
+                    |> Option.map _.DefaultValues)
+
+            Expect.sequenceEqual
+                (defaultsBySection "Add_Row.rowId" |> Array.map Array.exactlyOne)
+                [| "price"; "dmi" |]
+                "Each repeated Add_Row section receives its own ordered default."
+
+            Expect.sequenceEqual
+                (defaultsBySection "Trace_Sma.traceId" |> Array.map Array.exactlyOne)
+                [| "sma13"; "sma21" |]
+                "Each repeated Trace_Sma section receives its own ordered default."
+
+            let rec defaultEntries (node: SduiFormNode) =
+                seq {
+                    if not (String.IsNullOrWhiteSpace node.Binding) && node.DefaultValues.Length > 0 then
+                        yield node.Binding, node.DefaultValues
+
+                    for child in node.Children do
+                        yield! defaultEntries child
+
+                    for item in node.Items do
+                        yield! defaultEntries item
+                }
+
+            let readDefaults =
+                document.Nodes
+                |> Seq.collect defaultEntries
+                |> Seq.toArray
+                |> ArguFormDefaultOccurrences.group
+                |> ArguFormDefaultOccurrences.reader
+
+            Expect.sequenceEqual (readDefaults "Add_Row" "rowId") [| "price" |] "Client reads first Add_Row occurrence."
+            Expect.sequenceEqual (readDefaults "Add_Row" "rowId") [| "dmi" |] "Client reads second Add_Row occurrence."
+            Expect.sequenceEqual (readDefaults "Trace_Sma" "traceId") [| "sma13" |] "Client reads first Trace_Sma occurrence."
+            Expect.sequenceEqual (readDefaults "Trace_Sma" "traceId") [| "sma21" |] "Client reads second Trace_Sma occurrence."
 
         testCase "DYN-T-510: ParseResults DataRange raw command builder should keep datarange tail ordering" <| fun _ ->
             let registration =

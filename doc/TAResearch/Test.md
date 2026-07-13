@@ -41,6 +41,14 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-020 | REQ-013/016 | Soak | bounded polling does not grow timers/channels/DOM series/history | DYN-TA-006 | Partial：20-poll、one-in-flight、500-bar bounded DOM、PCSL history 0、IndexedDB counts stable、dispose close與正式Host process restart後reconnect pass；長時resource/channel observation與E2EQ cross-host gate仍待。 |
 | DYN-TA-T-021 | REQ-019 | Contract/Browser | legacy row導出單trace；四列ordered traces共享row viewport，K+6 SMA、DMI/ADX、兩組MACD可辨識且large history只render bounded visible DOM | DYN-TA-009 | Passed：正式Playwright四列/17 series、desktop/mobile/reconnect |
 | DYN-TA-T-022 | REQ-020 | Wire/E2E | initial/reconnect bounded full；stable poll只送changed keyed points/remove-before/status，client merge等價full reducer state，base mismatch resync | DYN-TA-010 | Passed：server 7/7、client 7/7、deployed delta 978→979→empty |
+| DYN-TA-T-023 | DYN-CHAT-REQ-001..021 | Document | RFC/REQ/SA/SD/WBS/Test ownership、composer boundary、lifecycle與stop boundary一致 | DYN-TA-011 | Pass：2026-07-13 accepted chain |
+| DYN-TA-T-024 | DYN-CHAT-REQ-001/002/018 | Unit | direct、JSON-string、canonical fCell2 envelope、fCell2.A與Case/Fields payload解成同一RuntimeFrame set | DYN-TA-011 | Pass |
+| DYN-TA-T-025 | DYN-CHAT-REQ-010/018/019 | Negative | oversize/depth/unknown/malformed runtime回bounded controlled error；plain回None；DOM不含raw point arrays | DYN-TA-011 | Pass |
+| DYN-TA-T-026 | DYN-CHAT-REQ-003/004/019 | Unit/Browser | 四列摘要含instrument/range/scale、SMA/DMI/ADX/MACD參數與freshness，沒有full JSON | DYN-TA-011 | Pass |
+| DYN-TA-T-027 | DYN-CHAT-REQ-005..009 | Browser | Collapsed chart/open/poll均0；inline才mount/open/poll；collapse回baseline | DYN-TA-011 | Pass |
+| DYN-TA-T-028 | DYN-CHAT-REQ-006..009 | Browser | fullscreen close回原inline/collapsed、scroll/focus/view revision；不雙channel/poll，多reply隔離 | DYN-TA-011 | Pass |
+| DYN-TA-T-029 | DYN-CHAT-REQ-021 | Reducer/E2E | in-flight invalid/base mismatch取消舊timeout並只送一次full snapshot，成功後恢復poll | DYN-TA-011 | Pass |
+| DYN-TA-T-030 | DYN-CHAT-REQ-020 | PTCS E2E | Plain/Form切換不由Dynamic強迫；Plain single input，Form既有renderer，mixed replies保持 | DYN-TA-011 | Pass：formal beta96 82 gate |
 
 
 ## 3. Playwright operation and viewport gates

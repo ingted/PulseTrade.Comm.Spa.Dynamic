@@ -452,3 +452,35 @@ The Playwright gate now verifies page ownership, clean host/port grouping, role 
 3. Polish actor hierarchy tree connector geometry and card/action layout.
 4. Add grid/cards/actions from the same ActorsPage DSL document.
 5. Replace the current source-host Playwright proof with reusable F# verifier coverage through PTCS `/actors`, including Dynamic accepted, Dynamic absent, and unsupported renderer fallback paths.
+
+## RFC-PTCS-DYNAMIC-0008 Reply Presentation Adapter Design
+
+### Bounded envelope decoder
+
+`TaResearchReplyPresentation.runtimeFrames`改為明確pipeline：
+
+```text
+payload
+  -> trim / size-depth guard
+  -> unwrap JSON string at bounded depth
+  -> inspect canonical fCell2 envelope or Case/Fields DU
+  -> select inbound/replied cells only
+  -> strict RuntimeFrameCodec decode
+  -> validate protocol/document/canvas identity
+```
+
+decoder不得用target alias、page title或substring猜測。成功回`RuntimeFrame array`；真正NonSdui回`None`；present-invalid回bounded error model。raw points只留在runtime data，不進summary DOM/text。
+
+### Summary projection
+
+`summaryFromFrames`只投影instrument、interval/scale、requested range/coverage、ordered rows與trace parameters、freshness/watermark/quality。summary Node不得序列化完整frame、series或point array；diagnostic只保留stable reason code與bounded message。
+
+### Lazy runtime handle
+
+`tryResolve`回傳`ReplyPresentation`時只建立summary closure與canvas identity，不呼叫`mountByIdWithOptions`。`MountInline`/`MountFullscreen`才建立或移轉唯一handle；disposer必須執行`SetActive false`與`Dispose`。Collapsed、reply removal、page unmount及disconnect後timer/socket/subscription均回baseline。
+
+`TaClientLifecycle.ResyncRequired`在connected/active狀態即使`InFlight=true`也可執行：先`CancelPoll`與`CancelTimeout`，再送唯一`RequestFullSnapshot`並排新timeout。這是invalid production delta/reply的恢復路徑。
+
+### Composer boundary
+
+`ArguFormRenderer`不持有Plain/Form mode。它只在PTCS Form host被建立時render，submit仍回raw Argu string；Plain single textarea、mode switch、selected target與history由PTCS core owns。

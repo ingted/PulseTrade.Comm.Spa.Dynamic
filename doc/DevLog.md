@@ -1014,3 +1014,10 @@ Implementation status:
 - Renderer tests pass 13/13；Dynamic.Ptcs and Ptcs.Client pass 7/7 each，and root Dynamic tests pass 23/23. Existing generated-log ACL remains a tooling constraint；staging build evidence does not claim that ACL issue is fixed.
 - Published Dynamic.Ptcs `0.1.0-alpha6-win12` and Dynamic `0.1.3-beta78`, both exact-pinning `PulseTrade.Comm.Spa 0.2.5-beta89` where applicable. Formal 81/82 service now consumes those versions.
 - The currently observed page-level TA mount with zero chat replies is not accepted behavior；it remains the next RFC-0020 / RFC-PTCS-DYNAMIC-0008 implementation slice.
+
+## 2026-07-14 - DYN-TA-011 reply-owned TA presentation closure
+
+- Implemented the accepted RFC/REQ/SA/SD boundary: Dynamic registers presentation/input renderers but does not select Plain/Form or own the chat timeline.
+- Production RuntimeFrame classification now handles direct, JSON-string, canonical fCell2 envelope, fCell2.A and Case/Fields shapes with bounded controlled fallback. Collapsed TA shows only instrument/range/scale/indicator/freshness summary and does not mount chart/open channel/poll.
+- Added direct detached-element mount for reply cards, per-reply Collapsed/Inline/Fullscreen handles, and close/resync state that does not discard an in-flight full snapshot. Package suites passed: Contracts, root, Ptcs, Renderer and PtcsTaClient.
+- Formal 82 F# Playwright evidence `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\beta96-acl-readback-20260714025738` passed strict decode, summary, four-row chart, lazy lifecycle, reconnect and Plain/Form boundary. Public NuGet push credential is the only remaining DYN-TA-011 release blocker.

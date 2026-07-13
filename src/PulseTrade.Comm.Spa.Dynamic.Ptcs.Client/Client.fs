@@ -5,6 +5,7 @@ open PulseTrade.Comm.Spa.Dynamic.Contracts
 open PulseTrade.Comm.Spa.Dynamic.Renderer
 open WebSharper
 open WebSharper.JavaScript
+open WebSharper.JavaScript.Dom
 open WebSharper.UI
 open WebSharper.UI.Client
 
@@ -145,6 +146,7 @@ type TaClientLifecycleState =
       InFlight: bool
       DataRevision: int64
       ReconnectAttempt: int
+      DisposePending: bool
       Disposed: bool }
 
 [<JavaScript; RequireQualifiedAccess>]
@@ -170,6 +172,7 @@ type TaClientLifecycleEffect =
     | CancelPoll
     | CancelTimeout
     | CancelReconnect
+    | CloseTransport
 
 [<JavaScript; RequireQualifiedAccess>]
 module TaClientLifecycle =
@@ -188,6 +191,7 @@ module TaClientLifecycle =
           InFlight = false
           DataRevision = 0L
           ReconnectAttempt = 0
+          DisposePending = false
           Disposed = false }
 
     let reconnectDelay options attempt =
@@ -200,6 +204,32 @@ module TaClientLifecycle =
     let transition options event state =
         if state.Disposed && event <> TaClientLifecycleEvent.Dispose then
             state, [||]
+        elif state.DisposePending then
+            match event with
+            | TaClientLifecycleEvent.StateAccepted revision ->
+                { state with
+                    Poll = RuntimePollState.Disposed
+                    InFlight = true
+                    DataRevision = revision },
+                [| TaClientLifecycleEffect.CancelPoll
+                   TaClientLifecycleEffect.CancelTimeout
+                   TaClientLifecycleEffect.CancelReconnect
+                   TaClientLifecycleEffect.SendUnmounted
+                   TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
+            | TaClientLifecycleEvent.RequestTimedOut _
+            | TaClientLifecycleEvent.Disconnected ->
+                { state with
+                    Poll = RuntimePollState.Disposed
+                    Connected = false
+                    InFlight = false
+                    DisposePending = false
+                    Disposed = true },
+                [| TaClientLifecycleEffect.CancelPoll
+                   TaClientLifecycleEffect.CancelTimeout
+                   TaClientLifecycleEffect.CancelReconnect
+                   TaClientLifecycleEffect.CloseTransport |]
+            | TaClientLifecycleEvent.Dispose -> state, [||]
+            | _ -> state, [||]
         else
             match event with
             | TaClientLifecycleEvent.Connected ->
@@ -245,31 +275,43 @@ module TaClientLifecycle =
                    TaClientLifecycleEffect.CancelTimeout
                    TaClientLifecycleEffect.ScheduleReconnect(reconnectDelay options attempt) |]
             | TaClientLifecycleEvent.ActiveChanged active ->
-                let ready = active && state.Connected
-                let effects =
-                    if ready then [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |]
-                    else [| TaClientLifecycleEffect.CancelPoll; TaClientLifecycleEffect.CancelTimeout |]
-
-                { state with
-                    Active = active
-                    Poll = if ready then RuntimePollState.Ready else RuntimePollState.Suspended
-                    InFlight = if ready then state.InFlight else false },
-                effects
-            | TaClientLifecycleEvent.ResyncRequired reason when state.Connected && state.Active && not state.InFlight ->
+                if active && state.Connected && not state.InFlight then
+                    { state with Active = true; Poll = RuntimePollState.Ready },
+                    [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |]
+                elif active then
+                    { state with Active = true }, [||]
+                else
+                    { state with Active = false; Poll = RuntimePollState.Suspended },
+                    [| TaClientLifecycleEffect.CancelPoll |]
+            | TaClientLifecycleEvent.ResyncRequired reason when state.Connected && state.Active ->
                 { state with Poll = RuntimePollState.PausedForResync; InFlight = true },
                 [| TaClientLifecycleEffect.CancelPoll
+                   TaClientLifecycleEffect.CancelTimeout
                    TaClientLifecycleEffect.SendAction(SduiAction.RequestFullSnapshot(state.CanvasInstanceId, reason))
                    TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
             | TaClientLifecycleEvent.Dispose ->
-                { state with
-                    Poll = RuntimePollState.Disposed
-                    Connected = false
-                    InFlight = false
-                    Disposed = true },
-                [| TaClientLifecycleEffect.CancelPoll
-                   TaClientLifecycleEffect.CancelTimeout
-                   TaClientLifecycleEffect.CancelReconnect
-                   if state.Connected then TaClientLifecycleEffect.SendUnmounted |]
+                if state.Connected then
+                    { state with
+                        Poll = RuntimePollState.Disposed
+                        Active = false
+                        InFlight = true
+                        DisposePending = true },
+                    [| TaClientLifecycleEffect.CancelPoll
+                       TaClientLifecycleEffect.CancelReconnect
+                       if not state.InFlight then
+                           TaClientLifecycleEffect.SendUnmounted
+                           TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
+                else
+                    { state with
+                        Poll = RuntimePollState.Disposed
+                        Connected = false
+                        Active = false
+                        InFlight = false
+                        Disposed = true },
+                    [| TaClientLifecycleEffect.CancelPoll
+                       TaClientLifecycleEffect.CancelTimeout
+                       TaClientLifecycleEffect.CancelReconnect
+                       TaClientLifecycleEffect.CloseTransport |]
             | _ -> state, [||]
 
 [<JavaScript; RequireQualifiedAccess>]
@@ -540,7 +582,7 @@ module TaResearchTransientClient =
         let protocol = if JS.Window.Location.Protocol = "https:" then "wss://" else "ws://"
         protocol + JS.Window.Location.Host + "/sync/ws"
 
-    let mountByIdWithOptions rootId extensionId channelId canvasId lifecycleOptions =
+    let mountWithOptions (mountDocument: Doc -> unit) extensionId channelId canvasId lifecycleOptions =
         let identity =
             { DocumentId = DocumentId("pending-" + channelId)
               CanvasInstanceId = CanvasInstanceId canvasId }
@@ -654,6 +696,7 @@ module TaResearchTransientClient =
                 | TaClientLifecycleEffect.CancelPoll -> cancelPollTimer ()
                 | TaClientLifecycleEffect.CancelTimeout -> cancelTimeoutTimer ()
                 | TaClientLifecycleEffect.CancelReconnect -> cancelReconnectTimer ()
+                | TaClientLifecycleEffect.CloseTransport -> closeSocket ()
 
         and connect () =
             if not lifecycle.Disposed then
@@ -716,20 +759,20 @@ module TaResearchTransientClient =
                     } }
 
         TaWorkspaceRenderer.render TaWorkspaceRenderer.defaultOptions callbacks runtimeState
-        |> Doc.RunById rootId
+        |> mountDocument
 
         connect ()
 
         { RuntimeState = runtimeState
           SetActive = fun active -> apply (TaClientLifecycleEvent.ActiveChanged active) |> ignore
           Dispose =
-            fun () ->
-                apply TaClientLifecycleEvent.Dispose |> ignore
+            fun () -> apply TaClientLifecycleEvent.Dispose |> ignore }
 
-                match socket with
-                | Some value when value.ReadyState = WebSocketReadyState.Open ->
-                    timeoutTimer <- Some(JS.SetTimeout closeSocket 1000)
-                | _ -> closeSocket () }
+    let mountOnElementWithOptions (root: Element) extensionId channelId canvasId lifecycleOptions =
+        mountWithOptions (Doc.Run root) extensionId channelId canvasId lifecycleOptions
+
+    let mountByIdWithOptions rootId extensionId channelId canvasId lifecycleOptions =
+        mountWithOptions (Doc.RunById rootId) extensionId channelId canvasId lifecycleOptions
 
     let mountById rootId extensionId channelId canvasId =
         mountByIdWithOptions rootId extensionId channelId canvasId TaClientLifecycle.defaults

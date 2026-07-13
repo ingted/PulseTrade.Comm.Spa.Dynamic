@@ -201,10 +201,34 @@ let tests =
               Expect.equal stillPolling polling "second poll while in flight must be a no-op."
               Expect.isEmpty duplicateEffects "second poll must emit no command."
 
+              let inactivePolling, inactivePollingEffects =
+                  TaClientLifecycle.transition options (TaClientLifecycleEvent.ActiveChanged false) polling
+              Expect.isTrue inactivePolling.InFlight "hiding a mounted surface must not forget its in-flight request."
+              Expect.isFalse
+                  (inactivePollingEffects |> Array.contains TaClientLifecycleEffect.CancelTimeout)
+                  "the in-flight request timeout must remain armed while the surface is hidden."
+              let pendingDispose, pendingDisposeEffects =
+                  TaClientLifecycle.transition options TaClientLifecycleEvent.Dispose inactivePolling
+              Expect.isTrue pendingDispose.DisposePending "hidden in-flight surfaces must defer disposal."
+              Expect.isFalse
+                  (pendingDisposeEffects |> Array.contains TaClientLifecycleEffect.SendUnmounted)
+                  "hidden in-flight surfaces must not overlap close with the active request."
+
               let timedOut, retryEffects =
                   TaClientLifecycle.transition options (TaClientLifecycleEvent.RequestTimedOut DateTimeOffset.UtcNow) polling
               Expect.equal timedOut.DataRevision 9L "timeout must retain last-good revision."
-              Expect.isTrue (retryEffects |> Array.contains (TaClientLifecycleEffect.SchedulePoll 2000)) "timeout should schedule bounded retry.")
+              Expect.isTrue (retryEffects |> Array.contains (TaClientLifecycleEffect.SchedulePoll 2000)) "timeout should schedule bounded retry."
+
+              let resyncing, resyncEffects =
+                  TaClientLifecycle.transition options (TaClientLifecycleEvent.ResyncRequired "invalid-browser-state") polling
+              Expect.equal resyncing.Poll RuntimePollState.PausedForResync "invalid in-flight reply should enter explicit resync."
+              Expect.isTrue (resyncEffects |> Array.contains TaClientLifecycleEffect.CancelTimeout) "resync must cancel the failed request timeout."
+              Expect.isTrue
+                  (resyncEffects
+                   |> Array.exists (function
+                       | TaClientLifecycleEffect.SendAction(SduiAction.RequestFullSnapshot(_, "invalid-browser-state")) -> true
+                       | _ -> false))
+                  "resync must replace the failed in-flight request with a full snapshot command.")
 
           testCase "lifecycle reconnect backoff, active suspension, resync and dispose fail closed" (fun _ ->
               let canvas = CanvasInstanceId "canvas"
@@ -230,9 +254,26 @@ let tests =
                    |> Array.exists (function TaClientLifecycleEffect.SendAction(SduiAction.RequestFullSnapshot(_, "sequence-gap")) -> true | _ -> false))
                   "resync should request a full snapshot."
 
-              let disposed, disposeEffects = TaClientLifecycle.transition options TaClientLifecycleEvent.Dispose resync
-              Expect.equal disposed.Poll RuntimePollState.Disposed "dispose should be terminal."
+              let disposePending, disposeEffects = TaClientLifecycle.transition options TaClientLifecycleEvent.Dispose resync
+              Expect.equal disposePending.Poll RuntimePollState.Disposed "dispose should hide the mounted surface immediately."
+              Expect.isTrue disposePending.DisposePending "an in-flight request must settle before close is sent."
+              Expect.isFalse
+                  (disposeEffects |> Array.contains TaClientLifecycleEffect.SendUnmounted)
+                  "dispose must not overlap close with the in-flight resync request."
               Expect.isTrue (disposeEffects |> Array.contains TaClientLifecycleEffect.CancelReconnect) "dispose should cancel reconnect timer."
+
+              let closing, closeEffects =
+                  TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted 4L) disposePending
+              Expect.isTrue closing.DisposePending "close remains pending until the transport confirms or disconnects."
+              Expect.isTrue (closeEffects |> Array.contains TaClientLifecycleEffect.SendUnmounted) "the settled request should release exactly one channel."
+
+              let disposed, disconnectedEffects =
+                  TaClientLifecycle.transition options TaClientLifecycleEvent.Disconnected closing
+              Expect.isTrue disposed.Disposed "disconnect after close should finish disposal."
+              Expect.isTrue
+                  (disconnectedEffects |> Array.contains TaClientLifecycleEffect.CloseTransport)
+                  "finished disposal must release the transport without reconnecting."
+
               let afterDispose, afterEffects = TaClientLifecycle.transition options TaClientLifecycleEvent.Connected disposed
               Expect.equal afterDispose disposed "disposed channel must not reconnect."
               Expect.isEmpty afterEffects "disposed channel must emit no effects.") ]

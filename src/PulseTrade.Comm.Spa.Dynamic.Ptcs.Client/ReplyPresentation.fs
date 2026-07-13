@@ -23,6 +23,10 @@ type TaRuntimeReplySummary =
 /// PTCS reply presentation adapter for Dynamic TA RuntimeFrame payloads.
 [<JavaScript; RequireQualifiedAccess>]
 module TaResearchReplyPresentation =
+    let setClassifierState state =
+        if not (isNull (box JS.Document.Body)) then
+            JS.Document.Body.SetAttribute("data-ta-reply-presentation", state)
+
     let tryGet<'T> name (value: obj) =
         try
             if isNull value || not (JS.HasOwnProperty value name) then None
@@ -45,22 +49,55 @@ module TaResearchReplyPresentation =
     let extractReplyPayload (rawContent: string) =
         let value = if isNull rawContent then "" else rawContent.Trim()
         let marker = "replied msg:"
-        let index = value.IndexOf(marker)
-        if index >= 0 then value.Substring(index + marker.Length).Trim() else value
+        let afterMarker (candidate: string) =
+            let index = candidate.IndexOf(marker)
+            if index >= 0 then candidate.Substring(index + marker.Length).Trim() else candidate
+
+        try
+            let envelope = JSON.Parse value
+            let schema = tryGet<string> "schema" envelope |> Option.defaultValue ""
+
+            if schema = "ptc.comm.fcell2.value.v1" then
+                tryGet<obj array> "rows" envelope
+                |> Option.defaultValue [||]
+                |> Array.map textValue
+                |> Array.tryFind (fun row -> row.IndexOf(marker) >= 0)
+                |> Option.map afterMarker
+                |> Option.defaultValue value
+            else
+                afterMarker value
+        with _ ->
+            afterMarker value
 
     let runtimeFrames rawContent =
         let content = extractReplyPayload rawContent
 
         try
             let parsed = JSON.Parse content
-            let candidates = if JS.Global?Array?isArray(parsed) then As<obj array> parsed else [| parsed |]
-            let frames =
-                candidates
-                |> Array.filter (fun candidate ->
-                    tryGet<string> "protocol" candidate
-                    |> Option.exists (fun protocol -> protocol = "sdui-runtime.v1"))
+            let protocol candidate =
+                tryGetAny<string> [| "protocol"; "Protocol" |] candidate
+                |> Option.defaultValue ""
 
-            if frames.Length = candidates.Length && frames.Length > 0 then Some frames else None
+            let rec collect depth candidate =
+                if depth > 6 || isNull candidate then
+                    [||]
+                elif protocol candidate = "sdui-runtime.v1" then
+                    [| candidate |]
+                elif JS.TypeOf candidate = JS.Kind.String then
+                    try collect (depth + 1) (JSON.Parse(string candidate)) with _ -> [||]
+                elif JS.Global?Array?isArray(candidate) then
+                    As<obj array> candidate |> Array.collect (collect (depth + 1))
+                else
+                    let caseName = tryGetAny<string> [| "Case"; "case" |] candidate |> Option.defaultValue ""
+                    let fields = tryGetAny<obj array> [| "Fields"; "fields" |] candidate |> Option.defaultValue [||]
+
+                    match caseName with
+                    | "S"
+                    | "A" -> fields |> Array.collect (collect (depth + 1))
+                    | _ -> [||]
+
+            let frames = collect 0 parsed
+            if frames.Length > 0 then Some frames else None
         with _ -> None
 
     let unionCase value =
@@ -70,20 +107,40 @@ module TaResearchReplyPresentation =
         tryGetAny<obj array> [| "Fields"; "fields" |] value |> Option.defaultValue [||]
 
     let documentFromFrame frame =
-        match tryGet<obj> "payload" frame with
+        match tryGetAny<obj> [| "payload"; "Payload" |] frame with
         | None -> None
         | Some payload when unionCase payload = "Document" -> unionFields payload |> Array.tryHead
         | Some payload -> tryGetAny<obj> [| "Document"; "document" |] payload
 
     let mapValue key mapObject =
-        tryGet<obj> key mapObject |> Option.map textValue |> Option.defaultValue ""
+        let direct = tryGet<obj> key mapObject
+
+        let fromObjectUnion () =
+            if unionCase mapObject <> "Object" then
+                None
+            else
+                unionFields mapObject
+                |> Array.tryHead
+                |> Option.bind (fun entries ->
+                    if JS.Global?Array?isArray(entries) then
+                        As<obj array> entries
+                        |> Array.tryPick (fun entry ->
+                            if JS.Global?Array?isArray(entry) then
+                                let pair = As<obj array> entry
+                                if pair.Length >= 2 && textValue pair[0] = key then Some pair[1] else None
+                            else
+                                None)
+                    else
+                        None)
+
+        direct |> Option.orElseWith fromObjectUnion |> Option.map textValue |> Option.defaultValue ""
 
     let rowSummary (row: obj) =
-        let rowId = tryGet<string> "rowId" row |> Option.defaultValue "row"
-        let traces = tryGet<obj array> "traces" row |> Option.defaultValue [||]
+        let rowId = tryGetAny<string> [| "rowId"; "RowId" |] row |> Option.defaultValue "row"
+        let traces = tryGetAny<obj array> [| "traces"; "Traces" |] row |> Option.defaultValue [||]
         let labels =
             traces
-            |> Array.choose (fun trace -> tryGet<string> "label" trace)
+            |> Array.choose (fun trace -> tryGetAny<string> [| "label"; "Label" |] trace)
             |> Array.filter (String.IsNullOrWhiteSpace >> not)
 
         if labels.Length = 0 then rowId else rowId + ": " + String.concat ", " labels
@@ -96,15 +153,15 @@ module TaResearchReplyPresentation =
         | Some value ->
             let canvasInstanceId =
                 frames
-                |> Array.tryPick (fun frame -> tryGet<obj> "canvasInstanceId" frame |> Option.map textValue)
+                |> Array.tryPick (fun frame -> tryGetAny<obj> [| "canvasInstanceId"; "CanvasInstanceId" |] frame |> Option.map textValue)
                 |> Option.defaultValue ""
 
             if String.IsNullOrWhiteSpace canvasInstanceId then
                 None
             else
-                let title = tryGet<string> "title" value |> Option.defaultValue "TA Research"
-                let rows = tryGet<obj array> "rows" value |> Option.defaultValue [||] |> Array.map rowSummary
-                let defaultView = tryGet<obj> "defaultView" value |> Option.defaultValue null
+                let title = tryGetAny<string> [| "title"; "Title" |] value |> Option.defaultValue "TA Research"
+                let rows = tryGetAny<obj array> [| "rows"; "Rows" |] value |> Option.defaultValue [||] |> Array.map rowSummary
+                let defaultView = tryGetAny<obj> [| "defaultView"; "DefaultView" |] value |> Option.defaultValue null
                 let instrument = mapValue "query.instrument" defaultView
                 let interval =
                     match mapValue "query.intervalMinutes" defaultView with
@@ -168,28 +225,38 @@ module TaResearchReplyPresentation =
         root :> Node
 
     let tryResolve extensionId (context: ReplyPresentationContext) =
-        runtimeFrames context.Payload
-        |> Option.bind summaryFromFrames
-        |> Option.map (fun summary ->
-            { Kind = "runtime-ta"
-              RenderSummary = fun () -> renderSummary summary
-              Mount =
-                fun _ host ->
-                    clearHost host
-                    let identity = safeIdentity context.ValueId
-                    host.Id <- "ptcs-ta-reply-" + identity
-                    let channelId = "ta-reply-" + identity
-                    let handle =
-                        TaResearchTransientClient.mountByIdWithOptions
-                            host.Id
-                            extensionId
-                            channelId
-                            summary.CanvasInstanceId
-                            TaClientLifecycle.defaults
+        match runtimeFrames context.Payload with
+        | None ->
+            setClassifierState "frames-missing"
+            None
+        | Some frames ->
+            match summaryFromFrames frames with
+            | None ->
+                setClassifierState "summary-missing"
+                None
+            | Some summary ->
+                setClassifierState "matched"
+                Some
+                    { Kind = "runtime-ta"
+                      RenderSummary = fun () -> renderSummary summary
+                      Mount =
+                        fun _ host ->
+                            clearHost host
+                            let identity = safeIdentity context.ValueId
+                            host.Id <- "ptcs-ta-reply-" + identity
+                            let channelId = "ta-reply-" + identity
+                            let handle =
+                                TaResearchTransientClient.mountOnElementWithOptions
+                                    host
+                                    extensionId
+                                    channelId
+                                    summary.CanvasInstanceId
+                                    TaClientLifecycle.defaults
 
-                    fun () ->
-                        handle.Dispose()
-                        clearHost host })
+                            fun () ->
+                                handle.Dispose()
+                                clearHost host }
 
     let register extensionId =
+        setClassifierState "registered"
         Client.RegisterReplyPresentation("dynamic-runtime-ta-v2", tryResolve extensionId)

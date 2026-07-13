@@ -1,6 +1,6 @@
 # REQ-PTCS-DYNAMIC-TA-0002 Chat Reply Canvas Presentation
 
-- Status：Draft / RFC review
+- Status：Accepted / DEV authorized
 - Date：2026-07-13
 - RFC：`doc/RFC/RFC-PTCS-DYNAMIC-0008.chat-reply-canvas-presentation.md`
 - PTCS dependency：`G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC\RFC-PTC-SPA-0020.chat-reply-canvas-presentation.md`
@@ -26,6 +26,10 @@
 | DYN-CHAT-REQ-015 | 每個TA row必須提供獨立Y axis domain、ticks、labels與unit；不同量綱不得共用或省略尺度。 |
 | DYN-CHAT-REQ-016 | 所有TA rows必須共享同一time viewport，並只在chart stack底部render一組shared X axis；所有row points須按同一timestamp/bar identity對齊。 |
 | DYN-CHAT-REQ-017 | pointer移動必須顯示跨所有rows的shared vertical cursor，並同步顯示該timestamp下每個row/trace的indicator values；zoom/pan後hit-test仍須對齊。 |
+| DYN-CHAT-REQ-018 | classifier必須bounded解開formal Host nested JSON string、`ptc.comm.fcell2.value.v1`、`fCell2.A`與F# DU `Case/Fields` envelope，並只從合法reply/frame取得runtime document。 |
+| DYN-CHAT-REQ-019 | RuntimeTa claim成功時不得把raw frame/series/point JSON顯示為message body；Collapsed只輸出domain摘要與controls。 |
+| DYN-CHAT-REQ-020 | Dynamic append input renderer不得自行選擇或強迫Form mode；PTCS選擇Plain時Dynamic不得mount FormInput。 |
+| DYN-CHAT-REQ-021 | in-flight reply decode/base-revision失敗必須取消舊timeout並送一次full-snapshot resync，不得讓lifecycle永久停在PollInFlight。 |
 
 ## Four-row summary example
 
