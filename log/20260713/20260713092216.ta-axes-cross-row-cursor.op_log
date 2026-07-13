@@ -1,0 +1,7 @@
+# Operation evidence
+
+- Review correction started before document/source changes。
+- Added Dynamic RFC/REQ contracts for per-row Y axes, one shared time X axis and same-bar cross-row cursor/value readout。
+- Playwright review artifact verification passed desktop inline, fullscreen and 390x844 mobile geometry；cursor moved across three bars with synchronized row values and the page reported zero console warnings/errors。
+- Production note: the mock's CSS hover zones are presentation-only；typed WebSharper implementation must use the renderer time scale for continuous pointer hit-test。
+- Harness correction：第一次check指出pre-work log缺少執行命令/參數，因此在本輪尚未commit前補上該最低欄位；這使同一session baseline正確標示log已變動。後續以新的final-gate session建立修正後baseline，且本op_log已在log之後前進。

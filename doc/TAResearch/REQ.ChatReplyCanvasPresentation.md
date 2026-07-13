@@ -23,6 +23,9 @@
 | DYN-CHAT-REQ-012 | presentation不得寫chat history、PCSL business stream或IndexedDB message row；snapshot/delta只更新mounted instance。 |
 | DYN-CHAT-REQ-013 | v2 presentation與被遷移的legacy fullscreen path只能使用typed F#與WebSharper API；不得使用`JS.Inline`、手寫JavaScript或string-built script。 |
 | DYN-CHAT-REQ-014 | reducer/unit/Playwright需涵蓋classification、summary、lazy mount、兩則獨立展開、fullscreen round-trip、session scroll及cleanup。 |
+| DYN-CHAT-REQ-015 | 每個TA row必須提供獨立Y axis domain、ticks、labels與unit；不同量綱不得共用或省略尺度。 |
+| DYN-CHAT-REQ-016 | 所有TA rows必須共享同一time viewport，並只在chart stack底部render一組shared X axis；所有row points須按同一timestamp/bar identity對齊。 |
+| DYN-CHAT-REQ-017 | pointer移動必須顯示跨所有rows的shared vertical cursor，並同步顯示該timestamp下每個row/trace的indicator values；zoom/pan後hit-test仍須對齊。 |
 
 ## Four-row summary example
 
@@ -42,3 +45,4 @@ MACD Short: 13/21/7
 2. Inline root完整跟隨message card寬度，Canvas高度由rows決定，外層session負責上下scroll。
 3. 展開/收合其中一則reply時，其他reply DOM、view state與scroll anchor不被重置。
 4. fullscreen close後回到原inline位置與view，不建立另一則reply或另一個target。
+5. Y axes、shared X axis與cross-row cursor在inline及fullscreen都存在；cursor readout可掃描同一bar的price、DMI/ADX與MACD values。

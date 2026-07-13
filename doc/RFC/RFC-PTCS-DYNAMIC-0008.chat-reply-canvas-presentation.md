@@ -107,6 +107,9 @@ CreatePresentation(replyContext)
 2. inline TA chart完整高度交由外層chat timeline scroll；只在必要時提供horizontal viewport。
 3. fullscreen renderer使用PTCS提供的fullscreen host/close callback，不自行建立不可追蹤的global overlay。
 4. summary、inline、fullscreen controls需提供stable test id、keyboard focus與accessible label。
+5. 每個TA row必須顯示自己的Y axis scale、ticks與unit；price、DMI/ADX、MACD不得假設共用Y domain，也不得只畫series而沒有可判讀尺度。
+6. 所有rows共享同一time viewport/domain，X axis只在整個chart stack最底部呈現一次；zoom/pan/range change必須同步更新所有rows與shared X ticks。
+7. pointer hit-test必須產生一條跨越所有rows的shared vertical cursor，並以同一timestamp/bar identity顯示每個row的series values。cursor不可在各row各自選到不同bar。
 
 ## 方案取捨
 
@@ -134,3 +137,10 @@ CreatePresentation(replyContext)
 5. Inline -> Fullscreen -> Inline保留local view與data revision，沒有雙poll。
 6. Collapse/unmount/disconnect後resource count回baseline；delta不增加chat/IndexedDB history。
 7. desktop/mobile Playwright驗證session scrollbar、長Canvas、其他reply可見、fullscreen round-trip與zero console error。
+8. Playwright移動cursor跨至少三個bars，驗證vertical cursor X位置、shared timestamp與每個row value readout同步變更；zoom後仍對齊同一time domain。
+
+## Review evidence
+
+- 原始缺口：`G:\PulseTrade2.fs\misc\2026-07-13_Y軸不見了，共用的，X軸也不見了，跟隨游標移動的cross rows vertical cursor(隨著bar的移動呈現指到每 row 指標值)也不見了.png`。
+- 修正版desktop/fullscreen/mobile證據位於`G:\PulseTrade2.fs\misc\2026-07-13_PTCS_TA_axes_*.png`；mock本體為`G:\PulseTrade2.fs\misc\2026-07-13_PTCS_ChatReplyCanvasPresentation_Mock.html`。
+- review mock以CSS hover zones表達interaction；production renderer不得沿用離散zones，必須用實際time-scale hit-test取得bar identity並同步所有rows。

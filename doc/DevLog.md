@@ -1000,3 +1000,10 @@ Implementation status:
 - The proposal defines strict plain/static/runtime classification, domain-aware TA summaries, lazy inline mount, existing fullscreen preservation, per-reply state isolation and one logical transient channel across inline/fullscreen modes.
 - Collapsed replies do not mount chart DOM or poll. Inline Canvas delegates vertical scrolling to the PTCS chat timeline; snapshot/delta remains transient and does not create new reply/history rows.
 - This entry records design only. RFC status remains Proposed pending review; no implementation or package version change is claimed.
+
+## 2026-07-13 - TA axes and cross-row cursor contract correction
+
+- Extended RFC-PTCS-DYNAMIC-0008 and REQ-PTCS-DYNAMIC-TA-0002 with per-row Y-axis, single shared X-axis and same-bar cross-row cursor/readout requirements.
+- The PTCS review mock demonstrates the corrected interaction in inline, fullscreen and mobile layouts. Playwright verified four Y axes, one shared X axis, cursor movement across three bars, synchronized price/DMI/MACD values and zero current-page console warnings/errors.
+- The mock uses CSS hover zones only to review presentation. Production Dynamic must resolve pointer coordinates through the real time scale and must not implement discrete mock zones or handwritten JavaScript.
+- This remains design/review evidence; no Dynamic package version or production renderer status changed in this slice.

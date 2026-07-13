@@ -1,0 +1,14 @@
+# Dynamic TA axes and cross-row cursor requirements
+
+- 背景：review指出目前presentation mock漏掉TA renderer必要的Y axis、shared X axis與cross-row cursor/value readout。
+- 目標：把coordinate/cursor invariant補進Dynamic RFC/REQ，避免後續只修mock未修產品規格。
+- 計畫步驟：修訂RFC/REQ -> cross-repo Playwright evidence -> commit/push。
+- 執行命令/參數：Playwright以1440x900與390x844操作PTCS HTML review artifact；`check.fsx`使用本repo log、DevLog與git root作closeout gate。
+- 預計修改/讀取範圍：`doc/RFC/RFC-PTCS-DYNAMIC-0008...`、`doc/TAResearch/REQ.ChatReplyCanvasPresentation.md`、DevLog/log。
+- 驗收方式：requirements明確規範per-row Y、single shared X、cross-row vertical cursor與同timestamp row values。
+- 風險：cursor語意與zoom/viewport/domain alignment耦合，不能只畫一條DOM線。
+- Prompt/上下文摘要：使用者要求補回研究圖必要的axes與cursor interaction。
+- 結果：待文件修訂。
+- 根因判讀：前一版RFC只提crosshair但未把shared coordinate system寫成強制acceptance。
+- 下一步：文件與mock驗證後等待review。
+- 關聯文件/工單/PR：`doc/RFC/RFC-PTCS-DYNAMIC-0008.chat-reply-canvas-presentation.md`、`doc/TAResearch/REQ.ChatReplyCanvasPresentation.md`。
