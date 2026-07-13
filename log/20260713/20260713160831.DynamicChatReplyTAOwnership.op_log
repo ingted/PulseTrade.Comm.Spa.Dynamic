@@ -13,3 +13,7 @@
 - DYN-TA-011A..E完成；F只剩public NuGet push 401 credential blocker。未推進E2EQ。
 - Dynamic check：PASS=27、WARN=4、FAIL=0；既有invalid diagnostic log、dirty與cross-repo RFC trace warning為非blocking，latest-plan缺欄位已追加correction。
 - Final check：PASS=28、WARN=3、FAIL=0；staged diff/strict UTF-8通過，未stageLiveDemo generated `wwwroot`。
+
+## Commit/push evidence
+
+- 2026-07-14：commit `3cf12283381e07637377e6930600e1460719d86e`（`Complete Dynamic TA reply presentation`）已推送至 `origin/20260711_027.win.TACanvas`。
