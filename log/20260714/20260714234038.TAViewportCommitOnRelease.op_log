@@ -7,3 +7,4 @@
 - 正式82 F# Playwright artifact：`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-ta2000-final-bounded-win39-alpha45-20260715022108`；loaded=2000、visible=48、drag/release/head-tail、delta/reconnect/memory均通過。
 - 既有untracked `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo/wwwroot/`與generated log ACL不屬本輪；未刪除、未stage。build使用外部clean staging避免碰觸既有ACL。
 - Fresh-session `check.fsx`（`DynamicTAViewport-202607150245`）結果`FAIL=0`；既有invalid log name與RFC coverage WARN不影響本輪。Dynamic `git diff --check`與strict UTF-8/NUL/U+FFFD gate通過。
+- Primary closeout commit `8ba2f41 Complete 2000-point TA viewport interaction`已push至`origin/20260711_027.win.TACanvas`。Untracked LiveDemo `wwwroot/`仍維持未stage。
