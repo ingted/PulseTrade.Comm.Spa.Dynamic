@@ -92,6 +92,27 @@ let tests =
 
             Expect.equal actual { StartIndex = 0; Count = 5 } "short data renders all available points"
 
+        testCase "follow latest resolves to tail while historical viewport remains stable" <| fun _ ->
+            let requested = { StartIndex = 24; Count = 48 }
+            let latest = RendererModel.resolveWindow 12 160 2000 true requested
+            let historical = RendererModel.resolveWindow 12 160 2000 false requested
+            let latestAfterDelta = RendererModel.resolveWindow 12 160 2001 true requested
+            let historicalAfterDelta = RendererModel.resolveWindow 12 160 2001 false requested
+
+            Expect.equal latest { StartIndex = 1952; Count = 48 } "follow-latest should anchor the bounded window to the loaded tail"
+            Expect.equal latestAfterDelta { StartIndex = 1953; Count = 48 } "a delta should advance only a follow-latest viewport"
+            Expect.equal historical requested "a historical viewport should preserve its explicit start"
+            Expect.equal historicalAfterDelta requested "a delta must not force a historical viewport back to the tail"
+            Expect.equal (RendererModel.viewportMaximumStart 2000 latest) 1952 "navigator maximum start should expose the full loaded range"
+
+        testCase "pointer ratio maps deterministically to a visible bar" <| fun _ ->
+            Expect.equal (RendererModel.cursorIndexFromRatio 48 0.0) (Some 0) "left edge should select the first visible bar"
+            Expect.equal (RendererModel.cursorIndexFromRatio 48 0.5) (Some 24) "middle should select the nearest visible bar"
+            Expect.equal (RendererModel.cursorIndexFromRatio 48 1.0) (Some 47) "right edge should select the last visible bar"
+            Expect.equal (RendererModel.cursorIndexFromClientX 48 100.0 800.0 300.0) (Some 12) "client coordinates should be normalized by the actual row width"
+            Expect.equal (RendererModel.cursorIndexFromRatio 0 0.5) None "empty series has no cursor index"
+            Expect.equal (RendererModel.cursorIndexFromClientX 48 0.0 0.0 10.0) None "zero-width row cannot be hit-tested"
+
         testCase "select window is deterministic" <| fun _ ->
             let actual = RendererModel.selectWindow { StartIndex = 2; Count = 3 } [| 0; 1; 2; 3; 4; 5 |]
             Expect.sequenceEqual actual [| 2; 3; 4 |] "window must preserve ordering"

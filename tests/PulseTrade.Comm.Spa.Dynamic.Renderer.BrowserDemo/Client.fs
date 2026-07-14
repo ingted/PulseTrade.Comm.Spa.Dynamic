@@ -67,7 +67,8 @@ module Client =
           DataRef = dataRef
           HeightWeight = weight
           Visible = true
-          Options = Map.empty }
+          Options = Map.empty
+          Traces = [||] }
 
     let sampleState () =
         let identity =

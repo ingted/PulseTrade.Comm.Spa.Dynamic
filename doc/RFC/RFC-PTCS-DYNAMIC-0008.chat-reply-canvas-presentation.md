@@ -5,7 +5,7 @@
 - Date：2026-07-13
 - Related：`G:\PulseTrade2.fs\Libs\PulseTrade.Comm.Spa\doc\RFC\RFC-PTC-SPA-0020.chat-reply-canvas-presentation.md`、`RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
 - REQ：`doc/TAResearch/REQ.ChatReplyCanvasPresentation.md`
-- Gap evidence：`G:\PulseTrade2.fs\misc\2026-07-13_ta 圖不見，只剩下 json，底下的 FormInput高度只能有現在的 三分之一，不然都不用看圖了.png`
+- Gap evidence：`G:\PulseTrade2.fs\misc\2026-07-13_ta 圖不見，只剩下 json，底下的 FormInput高度只能有現在的 三分之一，不然都不用看圖了.png`、`G:\PulseTrade2.fs\misc\2026-07-14_摘要說有 2000 根，但是看起來就沒有(缺 x軸 scroll bar？)，另外缺了 cross-row verical cursor (直的虛線，滑鼠移動到不同的 x 軸位置會跟著移動).png`
 
 ## 背景
 
@@ -117,6 +117,10 @@ CreatePresentation(replyContext)
 5. 每個TA row必須顯示自己的Y axis scale、ticks與unit；price、DMI/ADX、MACD不得假設共用Y domain，也不得只畫series而沒有可判讀尺度。
 6. 所有rows共享同一time viewport/domain，X axis只在整個chart stack最底部呈現一次；zoom/pan/range change必須同步更新所有rows與shared X ticks。
 7. pointer hit-test必須產生一條跨越所有rows的shared vertical cursor，並以同一timestamp/bar identity顯示每個row的series values。cursor不可在各row各自選到不同bar。
+8. `requested range`、`loaded range`與`visible window`是三個不同狀態。Collapsed summary只能把document中的`lastBars`稱為requested；展開後renderer以實際series length顯示loaded N與viewing A-B。
+9. horizontal viewport採單一canonical navigator：track代表目前loaded range，thumb/value代表bounded window start，zoom決定window count。它不觸發provider request；越界資料只能由明確query action取得。
+10. 初始/reset viewport位於tail並follow latest；使用者pan/navigate到history後，delta只更新loaded state，不改使用者window。回到最大start才恢復follow latest。
+11. cursor control不得冒充viewport。pointer移動到任一row時以該row實際bounding rect正規化成visible bar index，更新單一shared cursor state；所有row crosshair使用同一normalized X。
 
 ## 方案取捨
 
@@ -147,9 +151,17 @@ CreatePresentation(replyContext)
 8. Playwright移動cursor跨至少三個bars，驗證vertical cursor X位置、shared timestamp與每個row value readout同步變更；zoom後仍對齊同一time domain。
 9. formal TA reply初始card只顯示摘要；DOM不得包含完整point-array/raw `Case/Fields` JSON。Collapsed時open/action/poll frame count為0。
 10. PTCS切Plain/Form不影響Dynamic reply cards；Form renderer只在Form mode被呼叫，Plain維持單一host textarea。
+11. requested 2000的reply在展開後顯示實際loaded count與visible range；navigator至少從tail移到一個歷史window，candlestick DOM仍不超過MaximumVisibleBars。
+12. F# Playwright在任一row以pointer移動至少三個X位置；四列crosshair X誤差在1px內，timestamp/value readout隨bar改變，操作不送transient action。
 
 ## Review evidence
 
 - 原始缺口：`G:\PulseTrade2.fs\misc\2026-07-13_Y軸不見了，共用的，X軸也不見了，跟隨游標移動的cross rows vertical cursor(隨著bar的移動呈現指到每 row 指標值)也不見了.png`。
 - 修正版desktop/fullscreen/mobile證據位於`G:\PulseTrade2.fs\misc\2026-07-13_PTCS_TA_axes_*.png`；mock本體為`G:\PulseTrade2.fs\misc\2026-07-13_PTCS_ChatReplyCanvasPresentation_Mock.html`。
 - review mock以CSS hover zones表達interaction；production renderer不得沿用離散zones，必須用實際time-scale hit-test取得bar identity並同步所有rows。
+
+## 2026-07-14 correction：viewport與pointer gate假陽性
+
+先前production renderer只有`ta-cursor-slider`，它選的是目前48根中的cursor index，不是可瀏覽完整loaded range的viewport。既有F# Playwright把slider由B48移到B1視為crosshair完成，但沒有發送真pointer event，也沒有證明2000-bar request對應的actual loaded/visible範圍，因此屬測試假陽性。
+
+修正責任仍在Dynamic renderer；PTCS只需提供不裁切pointer hit-test的message-body/fullscreen host。正式驗收必須同時證明：requested/loaded/visible文字誠實、navigator改變`StartIndex`、pointer改變shared `CursorIndex`、四列X一致、兩者皆零network side effect。

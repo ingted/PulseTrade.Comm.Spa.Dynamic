@@ -23,6 +23,7 @@ type TaRendererOptions =
 
 type TaRendererUiState =
     { Window: TaVisibleWindow
+      FollowLatest: bool
       HiddenRows: Set<string>
       AddRowOpen: bool
       CursorIndex: int option
@@ -271,7 +272,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvg rowId (traces: TaTraceSpec array) data window cursorIndex =
+    let compositeSvg rowId (traces: TaTraceSpec array) data window sharedVisibleCount cursorIndex setCursorIndex =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -338,7 +339,13 @@ module TaWorkspaceRenderer =
             svgAttr "role" "img"
             svgAttr "aria-label" ("Composite TA row " + rowId)
             Attr.Create "data-testid" svgTestId
+            Attr.Create "data-cursor-index" (cursorIndex |> Option.map string |> Option.defaultValue "")
             attr.style ("display:block; width:100%; height:" + fixedText height + "px; background:#fbfcfe;")
+            on.mouseMove (fun element event ->
+                let bounds = element.GetBoundingClientRect()
+                match RendererModel.cursorIndexFromClientX sharedVisibleCount bounds.Left bounds.Width event.ClientX with
+                | Some index -> setCursorIndex (Some index)
+                | None -> ())
         ] [
             for gridIndex in 0 .. 4 do
                 let y = top + plotHeight * float gridIndex / 4.0
@@ -383,16 +390,14 @@ module TaWorkspaceRenderer =
                     yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); svgAttr "d" path; svgAttr "fill" "none"; svgAttr "stroke" traceColor; svgAttr "stroke-width" (fixedText trace.Width); svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
                 | _ -> ()
 
-            match cursorPosition width referenceTimestamps.Length cursorIndex with
+            match cursorPosition width sharedVisibleCount cursorIndex with
             | Some x -> yield svgElement "line" [ Attr.Create "data-testid" (svgTestId + "-crosshair"); svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" "0"; svgAttr "y2" (fixedText plotHeight); svgAttr "stroke" "#1f4f73"; svgAttr "stroke-width" "1"; svgAttr "stroke-dasharray" "3 3" ] []
             | None -> ()
         ], referenceTimestamps
 
-    let renderRow (options: TaRendererOptions) (state: RuntimeState) (ui: TaRendererUiState) (row: TaRowSpec) =
+    let renderRow (state: RuntimeState) (ui: TaRendererUiState) visibleWindow sharedVisibleCount setCursorIndex showSharedTimeAxis (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
-        let referenceLength = RendererModel.rowReferenceLength row state.Data
-        let window = RendererModel.clampWindow options.MinimumVisibleBars options.MaximumVisibleBars referenceLength ui.Window
-        let chart, timestamps = compositeSvg row.RowId traces state.Data window ui.CursorIndex
+        let chart, timestamps = compositeSvg row.RowId traces state.Data visibleWindow sharedVisibleCount ui.CursorIndex setCursorIndex
         let title =
             if isNull row.Traces || row.Traces.Length = 0 then
                 rowKindText row.Kind
@@ -401,8 +406,11 @@ module TaWorkspaceRenderer =
                 |> Array.map (fun trace -> if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label)
                 |> String.concat " / "
                 |> fun value -> if String.IsNullOrWhiteSpace value then rowKindText row.Kind else value
-        let height = if traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick) then 278 else 140
-        chartFrame title ("ta-row-" + row.RowId) height [ chart; timeAxis ("ta-time-axis-" + row.RowId) timestamps ]
+        let chartHeight = if traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick) then 262 else 124
+        let children =
+            if showSharedTimeAxis then [ chart; timeAxis "ta-time-axis-shared" timestamps ]
+            else [ chart ]
+        chartFrame title ("ta-row-" + row.RowId) (chartHeight + if showSharedTimeAxis then 16 else 0) children
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
         let canvasId = runtimeState.Value.Identity.CanvasInstanceId
@@ -416,14 +424,64 @@ module TaWorkspaceRenderer =
         let uiState =
             Var.Create
                 { Window = { StartIndex = 0; Count = options.DefaultVisibleBars }
+                  FollowLatest = true
                   HiddenRows = Set.empty
                   AddRowOpen = false
-                  CursorIndex = Some(options.DefaultVisibleBars - 1)
+                  CursorIndex = None
                   Feedback = "" }
 
-        let updateWindow transform =
+        let referenceLength () =
+            match runtimeState.Value.Document with
+            | None -> 0
+            | Some document ->
+                document.Rows
+                |> Array.tryFind _.Visible
+                |> Option.map (fun row -> RendererModel.rowReferenceLength row runtimeState.Value.Data)
+                |> Option.defaultValue 0
+
+        let resolvedWindow ui =
+            RendererModel.resolveWindow
+                options.MinimumVisibleBars
+                options.MaximumVisibleBars
+                (referenceLength ())
+                ui.FollowLatest
+                ui.Window
+
+        let setWindow followLatest window =
             let current = uiState.Value
-            uiState.Value <- { current with Window = transform current.Window }
+            let total = referenceLength ()
+            let bounded = RendererModel.resolveWindow options.MinimumVisibleBars options.MaximumVisibleBars total followLatest window
+            uiState.Value <-
+                { current with
+                    Window = bounded
+                    FollowLatest = followLatest
+                    CursorIndex = None }
+
+        let panWindow delta =
+            let current = uiState.Value
+            let total = referenceLength ()
+            let visible = resolvedWindow current
+            let candidate =
+                RendererModel.clampWindow
+                    options.MinimumVisibleBars
+                    options.MaximumVisibleBars
+                    total
+                    { visible with StartIndex = visible.StartIndex + delta }
+            let followLatest = candidate.StartIndex = RendererModel.viewportMaximumStart total candidate
+            setWindow followLatest candidate
+
+        let zoomWindow delta =
+            let current = uiState.Value
+            let visible = resolvedWindow current
+            setWindow current.FollowLatest { visible with Count = visible.Count + delta }
+
+        let resetWindow () =
+            setWindow true { StartIndex = 0; Count = options.DefaultVisibleBars }
+            uiState.Value <- { uiState.Value with Feedback = "Local view reset." }
+
+        let setCursorIndex value =
+            if uiState.Value.CursorIndex <> value then
+                uiState.Value <- { uiState.Value with CursorIndex = value }
 
         let applyQuery () =
             let parsedInterval =
@@ -531,11 +589,15 @@ module TaWorkspaceRenderer =
                                 primaryButtonState "ta-apply-query" "Load / Apply" commandsDisabled applyQuery
                             ]
                             div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [
-                                compactButton "ta-pan-left" "←" "Pan earlier" (fun () -> updateWindow (fun window -> { window with StartIndex = max 0 (window.StartIndex - max 1 (window.Count / 4)) }))
-                                compactButton "ta-pan-right" "→" "Pan later" (fun () -> updateWindow (fun window -> { window with StartIndex = window.StartIndex + max 1 (window.Count / 4) }))
-                                compactButton "ta-zoom-in" "+" "Show fewer bars" (fun () -> updateWindow (fun window -> { window with Count = max options.MinimumVisibleBars (window.Count - 8) }))
-                                compactButton "ta-zoom-out" "−" "Show more bars" (fun () -> updateWindow (fun window -> { window with Count = min options.MaximumVisibleBars (window.Count + 8) }))
-                                compactButton "ta-reset-view" "Reset View" "Reset local viewport only" (fun () -> uiState.Value <- { uiState.Value with Window = { StartIndex = 0; Count = options.DefaultVisibleBars }; Feedback = "Local view reset." })
+                                compactButton "ta-pan-left" "←" "Pan earlier" (fun () ->
+                                    let visible = resolvedWindow uiState.Value
+                                    panWindow (-max 1 (visible.Count / 4)))
+                                compactButton "ta-pan-right" "→" "Pan later" (fun () ->
+                                    let visible = resolvedWindow uiState.Value
+                                    panWindow (max 1 (visible.Count / 4)))
+                                compactButton "ta-zoom-in" "+" "Show fewer bars" (fun () -> zoomWindow -8)
+                                compactButton "ta-zoom-out" "−" "Show more bars" (fun () -> zoomWindow 8)
+                                compactButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" resetWindow
                                 compactButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" (fun () -> submit callbacks uiState (SduiAction.ResetCanvas canvasId) "Canvas reset requested.")
                                 compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = not uiState.Value.AddRowOpen })
                                 span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "local view controls do not query the backend" ]
@@ -598,14 +660,23 @@ module TaWorkspaceRenderer =
                             let referenceLength =
                                 visibleRows
                                 |> Array.tryHead
-                                |> Option.map (fun row -> RendererModel.seriesValues row.DataRef state.Data |> Array.length)
+                                |> Option.map (fun row -> RendererModel.rowReferenceLength row state.Data)
                                 |> Option.defaultValue 0
-                            let visibleWindow = RendererModel.clampWindow options.MinimumVisibleBars options.MaximumVisibleBars referenceLength ui.Window
-                            let cursorIndex = ui.CursorIndex |> Option.defaultValue (max 0 (visibleWindow.Count - 1)) |> max 0 |> min (max 0 (visibleWindow.Count - 1))
-                            let cursor = RendererModel.cursorSnapshot document state.Data visibleWindow cursorIndex
+                            let visibleWindow =
+                                RendererModel.resolveWindow
+                                    options.MinimumVisibleBars
+                                    options.MaximumVisibleBars
+                                    referenceLength
+                                    ui.FollowLatest
+                                    ui.Window
+                            let cursorIndex =
+                                ui.CursorIndex
+                                |> Option.map (fun value -> value |> max 0 |> min (max 0 (visibleWindow.Count - 1)))
+                            let cursorDocument = { document with Rows = visibleRows }
+                            let cursor = cursorIndex |> Option.bind (RendererModel.cursorSnapshot cursorDocument state.Data visibleWindow)
                             let cursorValues =
                                 match cursor with
-                                | None -> div [ attr.style "font-size:11px; color:#718197;" ] [ text "No cursor data." ]
+                                | None -> div [ attr.style "font-size:11px; color:#718197;" ] [ text "Move the pointer over any chart row to inspect one shared bar." ]
                                 | Some value ->
                                     div [ Attr.Create "data-testid" "ta-cursor-values"; attr.style "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;" ] [
                                         yield strong [ attr.style "white-space:nowrap;" ] [ text (compactTimestamp value.Timestamp) ]
@@ -613,29 +684,54 @@ module TaWorkspaceRenderer =
                                             yield span [ Attr.Create "data-cursor-row" item.Label; attr.style "min-width:0;" ] [ text (item.Label + " " + item.Value) ]
                                     ]
 
-                            div [ Attr.Create "data-testid" "ta-chart-stack"; attr.style "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;" ] [
-                                yield div [ Attr.Create "data-testid" "ta-cursor-panel"; attr.style "display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:50px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;" ] [
-                                    yield element "input" [
-                                        Attr.Create "data-testid" "ta-cursor-slider"
-                                        attr.``type`` "range"
-                                        Attr.Create "min" "0"
-                                        Attr.Create "max" (string (max 0 (visibleWindow.Count - 1)))
-                                        attr.value (string cursorIndex)
-                                        attr.style "width:100%; min-width:0; accent-color:#1f6f78;"
-                                        on.afterRender (fun node ->
-                                            let input = node |> As<HTMLInputElement>
-                                            input.AddEventListener("input", fun () ->
-                                                match Int32.TryParse input.Value with
-                                                | true, value -> uiState.Value <- { uiState.Value with CursorIndex = Some value }
-                                                | _ -> ()))
-                                    ] []
+                            let maximumStart = RendererModel.viewportMaximumStart referenceLength visibleWindow
+                            let visibleStart = if visibleWindow.Count = 0 then 0 else visibleWindow.StartIndex + 1
+                            let visibleEnd = visibleWindow.StartIndex + visibleWindow.Count
+                            div [
+                                Attr.Create "data-testid" "ta-chart-stack"
+                                Attr.Create "data-loaded-bars" (string referenceLength)
+                                Attr.Create "data-visible-start" (string visibleStart)
+                                Attr.Create "data-visible-end" (string visibleEnd)
+                                Attr.Create "data-follow-latest" (if ui.FollowLatest then "true" else "false")
+                                Attr.Create "data-cursor-index" (cursorIndex |> Option.map string |> Option.defaultValue "")
+                                attr.style "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"
+                            ] [
+                                yield div [ Attr.Create "data-testid" "ta-cursor-panel"; attr.style "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;" ] [
                                     yield cursorValues
                                 ]
                                 if visibleRows.Length = 0 then
                                     yield div [ attr.style "padding:18px; color:#667891;" ] [ text "No visible TA rows." ]
                                 else
-                                    for row in visibleRows do
-                                        yield renderRow options state ui row
+                                    for index in 0 .. visibleRows.Length - 1 do
+                                        yield renderRow state { ui with CursorIndex = cursorIndex } visibleWindow visibleWindow.Count setCursorIndex (index = visibleRows.Length - 1) visibleRows[index]
+                                yield div [
+                                    Attr.Create "data-testid" "ta-viewport-panel"
+                                    attr.style "order:-1; display:grid; grid-template-columns:minmax(180px,auto) minmax(160px,1fr); gap:8px 12px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
+                                ] [
+                                    span [
+                                        Attr.Create "data-testid" "ta-viewport-range"
+                                        attr.style "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;"
+                                    ] [ text $"Loaded {referenceLength} bars · Viewing {visibleStart}-{visibleEnd}" ]
+                                    element "input" [
+                                        Attr.Create "data-testid" "ta-viewport-slider"
+                                        Attr.Create "aria-label" "Move visible time window"
+                                        attr.``type`` "range"
+                                        Attr.Create "min" "0"
+                                        Attr.Create "max" (string maximumStart)
+                                        Attr.Create "step" "1"
+                                        attr.value (string visibleWindow.StartIndex)
+                                        if maximumStart = 0 then attr.disabled "disabled"
+                                        attr.style "width:100%; min-width:0; accent-color:#1f6f78;"
+                                        on.afterRender (fun node ->
+                                            let input = node |> As<HTMLInputElement>
+                                            input.AddEventListener("input", fun () ->
+                                                match Int32.TryParse input.Value with
+                                                | true, value ->
+                                                    let next = { visibleWindow with StartIndex = value }
+                                                    setWindow (value = maximumStart) next
+                                                | _ -> ()))
+                                    ] []
+                                ]
                             ] :> Doc)
                         |> Doc.EmbedView
                     ] :> Doc)

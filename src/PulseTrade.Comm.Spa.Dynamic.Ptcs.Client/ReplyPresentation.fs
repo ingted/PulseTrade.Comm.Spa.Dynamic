@@ -173,7 +173,7 @@ module TaResearchReplyPresentation =
                     | "last-bars" ->
                         match mapValue "query.lastBars" defaultView with
                         | "" -> "last bars"
-                        | count -> "last " + count + " bars"
+                        | count -> "requested last " + count + " bars"
                     | "between-utc" ->
                         mapValue "query.fromUtc" defaultView + " .. " + mapValue "query.toUtcExclusive" defaultView
                     | "trading-day" -> mapValue "query.fromUtc" defaultView
@@ -185,7 +185,7 @@ module TaResearchReplyPresentation =
                       Instrument = if String.IsNullOrWhiteSpace instrument then title else instrument
                       Interval = interval
                       RequestedRange = requestedRange
-                      Coverage = "loads on expand"
+                      Coverage = "actual coverage shown after expand"
                       Freshness = "initial snapshot"
                       Rows = rows }
 

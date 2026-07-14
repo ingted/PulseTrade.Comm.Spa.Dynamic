@@ -173,7 +173,7 @@ let tests =
               let mismatched = { delta with baseDataRevision = 8L }
               Expect.isError (TaResearchClientWire.applyWire initial mismatched) "revision gaps must request resync rather than corrupt client state.")
 
-          testCase "lifecycle enforces one in-flight poll and retry without losing revision" (fun _ ->
+          testCase "lifecycle enforces one in-flight request and reconnects without overlap after timeout" (fun _ ->
               let canvas = CanvasInstanceId "canvas"
               let options =
                   { TaClientLifecycle.defaults with
@@ -217,7 +217,17 @@ let tests =
               let timedOut, retryEffects =
                   TaClientLifecycle.transition options (TaClientLifecycleEvent.RequestTimedOut DateTimeOffset.UtcNow) polling
               Expect.equal timedOut.DataRevision 9L "timeout must retain last-good revision."
-              Expect.isTrue (retryEffects |> Array.contains (TaClientLifecycleEffect.SchedulePoll 2000)) "timeout should schedule bounded retry."
+              Expect.isFalse timedOut.Connected "timeout must retire the still-busy transport before retrying."
+              Expect.isTrue (retryEffects |> Array.contains TaClientLifecycleEffect.CloseTransport) "timeout must close the channel that may still own an in-flight server request."
+              Expect.isTrue (retryEffects |> Array.contains (TaClientLifecycleEffect.ScheduleReconnect 1000)) "timeout should schedule bounded reconnect."
+              Expect.isFalse
+                  (retryEffects |> Array.exists (function TaClientLifecycleEffect.SchedulePoll _ -> true | _ -> false))
+                  "timeout must not overlap the server request with another poll on the same channel."
+
+              let afterClose, afterCloseEffects =
+                  TaClientLifecycle.transition options TaClientLifecycleEvent.Disconnected timedOut
+              Expect.equal afterClose timedOut "the close callback for an already retired transport must be idempotent."
+              Expect.isEmpty afterCloseEffects "the close callback must not schedule a duplicate reconnect."
 
               let resyncing, resyncEffects =
                   TaClientLifecycle.transition options (TaClientLifecycleEvent.ResyncRequired "invalid-browser-state") polling

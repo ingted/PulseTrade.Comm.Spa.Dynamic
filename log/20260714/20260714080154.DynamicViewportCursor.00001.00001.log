@@ -1,0 +1,34 @@
+# Dynamic TA viewport navigator / cross-row cursor
+
+## 背景與目標
+
+正式PTCS 82 evidence顯示TA renderer只有cursor range slider與local pan buttons；使用者無法辨識requested/loaded/visible bars，也無法用pointer驅動四列共用cursor。
+
+本輪先修訂RFC/REQ/SA/SD/WBS/Test，再實作純WebSharper F# canonical viewport navigator、loaded/visible readout、pointer hit-test與shared cursor；不碰E2EQ。
+
+## 計畫
+
+1. 更正`DYN-TA-T-006`假陽性與DYN-TA-003 current-state。
+2. 新增DYN-TA-012細分implementation/test/release狀態。
+3. 實作bounded window navigator與pointer cursor。
+4. 跑Renderer tests、F# Playwright formal 82、package/deploy alignment。
+
+## 驗收與風險
+
+- loaded N與viewing A-B可見；navigator可從latest移到history且不送network。
+- pointer跨至少三個位置時四列crosshair同X，timestamp/value同步。
+- delta/reconnect保留history viewport；follow-latest只在viewport位於tail時成立。
+- 不render 2000個SVG bars；DOM仍bounded。
+
+## Prompt摘要
+
+來源為`G:\PulseTrade2.fs\misc\2026-07-14_摘要說有 2000 根，但是看起來就沒有(缺 x軸 scroll bar？)，另外缺了 cross-row verical cursor (直的虛線，滑鼠移動到不同的 x 軸位置會跟著移動).png`。
+
+## Closeout correction
+
+- 計畫步驟：文件鏈 -> pure model -> WebSharper renderer -> package/browser gate -> formal PTCS gate。
+- 執行命令/參數：Renderer/Ptcs.Client/Ptcs tests、F# Playwright verifier、exact pack/push。
+- 結果：renderer/model 15/15、Ptcs.Client 7/7、Ptcs 7/7；formal PTCS route blocked。
+- 根因判讀：formal failure屬old RN terminal completion與PTCS memory，不是Dynamic pointer/navigator。
+- 下一步：保留DYN-TA-012E/F active，等待formal dependency修復後重驗。
+- 關聯文件/工單/PR：`DYN-TA-012`、`DYN-TA-T-031..034`。

@@ -326,8 +326,8 @@ function postJson(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -1016,8 +1016,8 @@ function postJson_1(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson_1(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
@@ -1107,12 +1107,12 @@ function joinPath(segments, count){
 }
 function makeActorTreeNode(id, parentId, label_1, fullPath, address, kind, status){
   return{
-    id:id,
-    parentId:parentId,
-    label:label_1,
-    fullPath:fullPath,
-    address:address,
-    kind:kind,
+    id:id, 
+    parentId:parentId, 
+    label:label_1, 
+    fullPath:fullPath, 
+    address:address, 
+    kind:kind, 
     status:status
   };
 }
@@ -1502,7 +1502,7 @@ function appendPageDefinitionFingerprint(page){
   return concat_2("\u001e", map(asText_2, [page.pageId, page.tabId, page.path, page.title, page.setName, page.shape, page.description, page.keyPlaceholder, page.valuePlaceholder, page.defaultKey, concat_2("\u001f", arrayOrEmpty_1(page.tags))]));
 }
 function mountAppendPage(page, definition){
-  let currentLineageHealth, selected, selectedKeyJson, buckets, locallyHiddenKeyIds, pendingSelectKeyId, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, addKeyEditorOpen, addKeyMode, composerMode, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, renderedValueCardKeys, renderedValueCardValueIds, renderedValueCardElements, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
+  let currentLineageHealth, selected, selectedKeyJson, buckets, acceptedLiveValueIds, locallyHiddenKeyIds, pendingSelectKeyId, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, addKeyEditorOpen, addKeyMode, composerMode, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, renderedValueCardKeys, renderedValueCardValueIds, renderedValueCardElements, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
   page.className="page append-page";
   setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId_1("append-page-"+asText_2(definition.pageId), page)));
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
@@ -1519,6 +1519,7 @@ function mountAppendPage(page, definition){
   selected="";
   selectedKeyJson="";
   buckets=[];
+  acceptedLiveValueIds=[];
   locallyHiddenKeyIds=[];
   pendingSelectKeyId="";
   loadGeneration=0;
@@ -1531,6 +1532,7 @@ function mountAppendPage(page, definition){
   const rememberLocallyHiddenKeyId=(keyId) => {
     if(!isBlank_2(keyId)&&!isLocallyHiddenKeyId(keyId))locallyHiddenKeyIds=locallyHiddenKeyIds.concat([keyId]);
   };
+  const isAcceptedLiveValueId=(valueId) =>!isBlank_2(valueId)&&exists((accepted) => sameText(accepted, valueId), acceptedLiveValueIds);
   const side=element_1("aside", "sidebar append-sidebar", null);
   const sideHead=element_1("div", "panel-head", null);
   const sideActions=element_1("div", "head-actions", null);
@@ -1558,6 +1560,8 @@ function mountAppendPage(page, definition){
   const list=setTestId_1("append-key-list", element_1("div", "list", null));
   const work=setTestId_1("append-work", element_1("section", "append-work", null));
   const values=setTestId_1("append-values", element_1("div", "append-values", null));
+  const valuesControl=setTestId_1("append-values-control", element_1("div", "append-values-control", null));
+  values.appendChild(valuesControl);
   const form=setTestId_1("append-form", element_1("div", "append-form", null));
   const valueInput=setTestId_1("append-value-input", textarea("append-value-input", textOr("JSON value", definition.valuePlaceholder)));
   const directionInput=setTestId_1("append-direction", input_1("outbound-message"));
@@ -1731,16 +1735,38 @@ function mountAppendPage(page, definition){
     iter(add, arrayOrEmpty_1(existing));
     return sortBy((value) => asText_2(value.createdAtUtc), merged);
   };
-  const replyCardKey=(value) => concat_2("\u001f", [selected, asText_2(value.valueId), String(value.sequence)]);
+  const replyCardKey=(value) => concat_2("\u001f", [selected, asText_2(value.valueId)]);
   const disposeReplyCardsExcept=(retainedKeys) => {
     const retainedIndexes=map((t) => t[0], filter((_3) => {
       const key=_3[1];
       return exists((y) => key==y, retainedKeys);
     }, mapi((_3, _4) =>[_3, _4], renderedValueCardKeys)));
-    iteri((_3, _4) =>!exists((y) => _4==y, retainedKeys)?disposeReplyPresentation(concat_2("\u001f", [asText_2(definition.pageId), asText_2(definition.tabId), get(renderedValueCardValueIds, _3)])):null, renderedValueCardKeys);
+    iteri((_3, _4) => {
+      if(!exists((y) => _4==y, retainedKeys)){
+        disposeReplyPresentation(concat_2("\u001f", [asText_2(definition.pageId), asText_2(definition.tabId), get(renderedValueCardValueIds, _3)]));
+        const card=get(renderedValueCardElements, _3);
+        return!(card.parentNode==null)?void card.parentNode.removeChild(card):null;
+      }
+      else return null;
+    }, renderedValueCardKeys);
     renderedValueCardKeys=map((index) => get(renderedValueCardKeys, index), retainedIndexes);
     renderedValueCardValueIds=map((index) => get(renderedValueCardValueIds, index), retainedIndexes);
     renderedValueCardElements=map((index) => get(renderedValueCardElements, index), retainedIndexes);
+  };
+  const cardForValue=(value) => {
+    const key=replyCardKey(value);
+    const m=tryFindIndex((y) => key==y, renderedValueCardKeys);
+    if(m==null){
+      const card=renderAppendValue(definition, value);
+      renderedValueCardKeys=renderedValueCardKeys.concat([key]);
+      renderedValueCardValueIds=renderedValueCardValueIds.concat([asText_2(value.valueId)]);
+      renderedValueCardElements=renderedValueCardElements.concat([card]);
+      return card;
+    }
+    else {
+      const index=m.$0;
+      return get(renderedValueCardElements, index);
+    }
   };
   function renderList(){
     clear(list);
@@ -1784,7 +1810,7 @@ function mountAppendPage(page, definition){
           const allValues=arrayOrEmpty_1(bucket_1.values);
           const visible=latestArray(visibleValueLimit, allValues);
           disposeReplyCardsExcept(map(replyCardKey, visible));
-          clear(values);
+          clear(valuesControl);
           const a=0;
           const b=length(allValues)-length(visible);
           const hiddenCached=Compare(a, b)===1?a:b;
@@ -1815,7 +1841,7 @@ function mountAppendPage(page, definition){
           const x_10=(((n, v) =>(n_1) => setData(n, v, n_1))("snapshot-seqid", String(newestSequence)))(x_9);
           ((((n, v) =>(n_1) => setData(n, v, n_1))("backend-gap", backendGapAvailable?"true":"false"))(x_10));
           updateBrowserCacheHealth(length(visible), length(allValues), oldestSequence, newestSequence, newestSequence, backendGapAvailable);
-          if(length(visible)===0)_3=void values.appendChild(element_1("div", "empty", "No values appended yet."));
+          if(length(visible)===0)_3=void valuesControl.appendChild(element_1("div", "empty", "No values appended yet."));
           else {
             if(hiddenCached>0){
               const x_11=button_1("", "Load older ("+String(hiddenCached)+")");
@@ -1825,37 +1851,30 @@ function mountAppendPage(page, definition){
                 const b_3=visibleValueLimit+defaultRenderLimit();
                 visibleValueLimit=Compare(a_3, b_3)===-1?a_3:b_3;
                 return renderValues();
-              })(allValues)),void values.appendChild(loadOlder));
+              })(allValues)),void valuesControl.appendChild(loadOlder));
             }
             else if(backendGapAvailable){
               const x_12=button_1("", "Load older (backend)");
               const loadOlder_1=(((i) =>(n) => setTestId_1(i, n))("append-load-older"))(x_12);
-              _4=(loadOlder_1.addEventListener("click", ((bucket_2, oldestSequence_1) =>() => readOlderFromBackend(bucket_2, oldestSequence_1))(bucket_1, oldestSequence)),void values.appendChild(loadOlder_1));
+              _4=(loadOlder_1.addEventListener("click", ((bucket_2, oldestSequence_1) =>() => readOlderFromBackend(bucket_2, oldestSequence_1))(bucket_1, oldestSequence)),void valuesControl.appendChild(loadOlder_1));
             }
             else _4=null;
+            const desiredCards=map(cardForValue, visible);
             _3=(((a_3) =>(a_4) => {
-              iter(a_3, a_4);
-            })((value) => {
-              let _6;
-              const key=replyCardKey(value);
-              const m=tryFindIndex((y) => key==y, renderedValueCardKeys);
-              if(m==null){
-                const card=renderAppendValue(definition, value);
-                _6=(renderedValueCardKeys=renderedValueCardKeys.concat([key]),renderedValueCardValueIds=renderedValueCardValueIds.concat([asText_2(value.valueId)]),renderedValueCardElements=renderedValueCardElements.concat([card]),card);
+              iteri((_6, _7) =>(a_3(_6))(_7), a_4);
+            })(((isAttachedToTimeline, desiredCards_1) =>(index) =>(card) => {
+              if(!isAttachedToTimeline(card)){
+                const nextAttached=tryFind(isAttachedToTimeline, skip(index+1, desiredCards_1));
+                return nextAttached==null?void values.appendChild(card):void values.insertBefore(card, nextAttached.$0);
               }
-              else {
-                const index=m.$0;
-                _6=get(renderedValueCardElements, index);
-              }
-              let _7=_6;
-              values.appendChild(_7);
-            }))(visible);
+              else return null;
+            })((card) => card.parentNode===values, desiredCards)))(desiredCards);
           }
           _5=length(visible)<reportedCount?setStatus(workState, "Showing "+String(length(visible))+"/"+String(reportedCount)+" value(s)"):setStatus(workState, String(reportedCount)+" value(s)");
         }
         else {
           disposeReplyCardsExcept([]);
-          clear(values);
+          clear(valuesControl);
           const x_13=(((n, v) =>(n_1) => setData(n, v, n_1))("rendered-count", "0"))(values);
           const x_14=(((n, v) =>(n_1) => setData(n, v, n_1))("cached-count", "0"))(x_13);
           const x_15=(((n, v) =>(n_1) => setData(n, v, n_1))("oldest-sequence", "0"))(x_14);
@@ -1872,7 +1891,7 @@ function mountAppendPage(page, definition){
           ((((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-keys", ""))(x_21));
           lineageDetailValueCount.textContent="0";
           lineageDetailValueStreams.textContent="none";
-          values.appendChild(element_1("div", "empty", "No key selected."));
+          valuesControl.appendChild(element_1("div", "empty", "No key selected."));
           _5=setStatus(workState, "No key selected");
         }
         if(scrollValuesToBottomAfterNextRender){
@@ -1962,24 +1981,59 @@ function mountAppendPage(page, definition){
     });
   };
   const applySnapshot=(source, data) => {
-    let _3;
+    let _3, _4;
     applyLineage(data.lineage);
     applyLineageHealth(data.lineageHealth);
     const b=data.keyMaxSequence;
     currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
-    buckets=filter((bucket_1) =>!isLocallyHiddenKeyId(bucket_1.keyId), arrayOrEmpty_1(data.buckets));
+    const backendBuckets=filter((bucket_1) =>!isLocallyHiddenKeyId(bucket_1.keyId), arrayOrEmpty_1(data.buckets));
+    if(sameText(source, "backend")){
+      const projectedValueIds=map((a) => a.valueId, collect((bucket_1) => arrayOrEmpty_1(bucket_1.values), backendBuckets));
+      _3=void(acceptedLiveValueIds=filter((accepted) =>!exists((projected) => sameText(projected, accepted), projectedValueIds), acceptedLiveValueIds));
+    }
+    else _3=null;
+    buckets=sortAppendPageBuckets(map((backendBucket) => {
+      const m_1=tryFind((existing_1) => sameText(existing_1.keyId, backendBucket.keyId), buckets);
+      if(m_1!=null&&m_1.$==1){
+        const existing=m_1.$0;
+        const v=mergeAppendValues(filter((value) => isAcceptedLiveValueId(value.valueId), arrayOrEmpty_1(existing.values)), backendBucket.values);
+        const merged=latestArray(defaultCacheLimit(), v);
+        const p=sequenceBounds(merged);
+        const minSequence=p[0];
+        const a=backendBucket.valueCount;
+        const b_1=length(merged);
+        let _5=Compare(a, b_1)===1?a:b_1;
+        const a_1=backendBucket.maxSequence;
+        const b_2=p[1];
+        let _6=Compare(a_1, b_2)===1?a_1:b_2;
+        return New_12(backendBucket.keyId, backendBucket.keys, backendBucket.displayName, backendBucket.setName, _5, minSequence>0n?minSequence:backendBucket.minSequence, _6, textOr(backendBucket.updatedAtUtc, existing.updatedAtUtc), merged);
+      }
+      else return backendBucket;
+    }, backendBuckets).concat(choose((existing) => {
+      const v=filter((value) => isAcceptedLiveValueId(value.valueId), arrayOrEmpty_1(existing.values));
+      const pendingAcceptedValues=latestArray(defaultCacheLimit(), v);
+      if(length(pendingAcceptedValues)===0)return null;
+      else {
+        const p=sequenceBounds(pendingAcceptedValues);
+        const a=existing.valueCount;
+        const b_1=length(pendingAcceptedValues);
+        let _5=Compare(a, b_1)===1?a:b_1;
+        let _6=New_12(existing.keyId, existing.keys, existing.displayName, existing.setName, _5, p[0], p[1], existing.updatedAtUtc, pendingAcceptedValues);
+        return Some(_6);
+      }
+    }, filter((existing) =>!isLocallyHiddenKeyId(existing.keyId)&&!exists((backend) => sameText(backend.keyId, existing.keyId), backendBuckets), buckets))));
     visibleValueLimit=defaultRenderLimit();
-    if(isBlank_2(pendingSelectKeyId))_3=false;
+    if(isBlank_2(pendingSelectKeyId))_4=false;
     else {
       const m=tryFind((bucket_1) => sameText(bucket_1.keyId, pendingSelectKeyId), buckets);
-      if(m==null)_3=false;
+      if(m==null)_4=false;
       else {
         const bucket=m.$0;
         const selectedPending=bucket==null?false:selectBucketKeys(bucket.keys);
-        _3=(selectedPending?pendingSelectKeyId="":void 0,selectedPending);
+        _4=(selectedPending?pendingSelectKeyId="":void 0,selectedPending);
       }
     }
-    if(_3)null;
+    if(_4)null;
     else(isBlank_2(selected)||!exists((bucket_1) => bucket_1.keyId==selected, buckets))&&length(buckets)>0?(selected=get(buckets, 0).keyId,selectedKeyJson=keysAsJson(get(buckets, 0).keys),void(newKeyInput.value=selectedKeyJson)):length(buckets)===0?(selected="",void(selectedKeyJson="")):null;
     setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s)");
     renderList();
@@ -2273,6 +2327,9 @@ function mountAppendPage(page, definition){
               if(sameText(responseType, "actor-argu"))(((event_1, value) => {
                 let keys, matched, _5;
                 if(!(value==null)&&!isBlank_2(value.valueId)){
+                  const valueId=value.valueId;
+                  if(!isBlank_2(valueId)&&!isAcceptedLiveValueId(valueId))acceptedLiveValueIds=acceptedLiveValueIds.concat([valueId]);
+                  else null;
                   const eventKeys=event_1==null||event_1.streamKey==null?[]:arrayOrEmpty_1(event_1.streamKey.keys);
                   if(length(eventKeys)>0)keys=eventKeys;
                   else {
@@ -4292,18 +4349,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    keyPlaceholder:String(_5||""),
-    defaultKey:String(_6||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    keyPlaceholder:String(_5||""), 
+    defaultKey:String(_6||""), 
     submitKey:(payload) => {
       _7(payload);
-    },
+    }, 
     cancelKey:() => {
       _8();
-    },
+    }, 
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -4387,26 +4444,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    selectedKeyId:String(_5||""),
-    selectedKeyJson:String(_6||""),
-    selectedKeys:keyParts.slice(),
-    keyParts:keyParts.slice(),
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    valuePlaceholder:String(_8||""),
-    valueText:String(_9||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    selectedKeyId:String(_5||""), 
+    selectedKeyJson:String(_6||""), 
+    selectedKeys:keyParts.slice(), 
+    keyParts:keyParts.slice(), 
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    valuePlaceholder:String(_8||""), 
+    valueText:String(_9||""), 
     submit:(payload) => {
       _10(payload);
-    },
+    }, 
     setValue:(payload) => {
       _11(payload);
-    },
-    composerMode:String(_12||"plain"),
+    }, 
+    composerMode:String(_12||"plain"), 
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -4932,8 +4989,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"),
-      priority:Number(priority||0),
+      name:String(name||"unnamed"), 
+      priority:Number(priority||0), 
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -5533,9 +5590,9 @@ function toUInt(x){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status,
-    count:count,
-    maxSequence:maxSequence,
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
     pages:pages
   };
 }
@@ -5596,6 +5653,21 @@ function mapi(f, arr){
 function iteri(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)f(i, arr[i]);
 }
+function skip(i, ar){
+  return i<0?nonNegative():i>ar.length?insufficient():ar.slice(i);
+}
+function collect(f, x){
+  return Array.prototype.concat.apply([], map(f, x));
+}
+function choose(f, arr){
+  const q=[];
+  for(let i=0, _1=arr.length-1;i<=_1;i++){
+    const m=f(arr[i]);
+    if(m==null){ }
+    else q.push(m.$0);
+  }
+  return q;
+}
 function forall2(f, x1, x2){
   let a, i;
   checkLength(x1, x2);
@@ -5617,15 +5689,6 @@ function tryFindIndex(f, arr){
       i=i+1;
     }
   return res;
-}
-function choose(f, arr){
-  const q=[];
-  for(let i=0, _1=arr.length-1;i<=_1;i++){
-    const m=f(arr[i]);
-    if(m==null){ }
-    else q.push(m.$0);
-  }
-  return q;
 }
 function distinctBy(f, a){
   return ofSeq(distinctBy_1(f, a));
@@ -5665,9 +5728,6 @@ function ofSeq(xs){
     }
   }
 }
-function skip(i, ar){
-  return i<0?nonNegative():i>ar.length?insufficient():ar.slice(i);
-}
 function checkLength(arr1, arr2){
   if(arr1.length!==arr2.length)FailWith("The arrays have different lengths.");
 }
@@ -5694,9 +5754,6 @@ function foldBack(f, arr, zero){
   const len=arr.length;
   for(let i=1, _1=len;i<=_1;i++)acc=f(arr[len-i], acc);
   return acc;
-}
-function collect(f, x){
-  return Array.prototype.concat.apply([], map(f, x));
 }
 function pick(f, arr){
   const m=tryPick(f, arr);
@@ -6275,16 +6332,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type,
-    requestId:requestId,
+    type:type, 
+    requestId:requestId, 
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
     count:count
   };
 }
@@ -6579,15 +6636,15 @@ function unfold(f, s){
 }
 function New_4(shape, selectedKeyJson, selectedKeys, keyParts, actorAddress, duTypeName, unionCaseNames, submit, composerMode, setComposerMode){
   return{
-    shape:shape,
-    selectedKeyJson:selectedKeyJson,
-    selectedKeys:selectedKeys,
-    keyParts:keyParts,
-    actorAddress:actorAddress,
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    submit:submit,
-    composerMode:composerMode,
+    shape:shape, 
+    selectedKeyJson:selectedKeyJson, 
+    selectedKeys:selectedKeys, 
+    keyParts:keyParts, 
+    actorAddress:actorAddress, 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    submit:submit, 
+    composerMode:composerMode, 
     setComposerMode:setComposerMode
   };
 }
@@ -7146,8 +7203,8 @@ class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_1(FSharpList, {
-      $:1,
-      $0:Head,
+      $:1, 
+      $0:Head, 
       $1:Tail
     });
   }
@@ -7175,58 +7232,58 @@ function TryParse_1(s, r){
 }
 function New_6(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId,
-    tabId:tabId,
-    path:path,
-    title:title,
-    setName:setName,
-    shape:shape,
-    description:description,
-    keyPlaceholder:keyPlaceholder,
-    valuePlaceholder:valuePlaceholder,
-    defaultKey:defaultKey,
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
     tags:tags
   };
 }
 function New_7(pageId, mode, setName, keys){
   return{
-    pageId:pageId,
-    mode:mode,
-    setName:setName,
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
     keys:keys
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_9(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
-    readRepairPolicy:readRepairPolicy,
-    candidateValueStreamKeys:candidateValueStreamKeys,
-    candidateValueStreamCount:candidateValueStreamCount,
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_10(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId,
-    serverRealityId:serverRealityId,
-    kind:kind,
-    target:target,
-    url:url,
-    method:method,
-    payloadJson:payloadJson,
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
     status:status
   };
 }
@@ -7337,51 +7394,51 @@ function listEmpty(){
 }
 function New_11(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status,
-    page:page,
-    bucketCount:bucketCount,
-    maxSequence:maxSequence,
-    keyMaxSequence:keyMaxSequence,
-    lineage:lineage,
-    lineageHealth:lineageHealth,
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
     buckets:buckets
   };
 }
 function New_12(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    keys:keys,
-    displayName:displayName,
-    setName:setName,
-    valueCount:valueCount,
-    minSequence:minSequence,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    keys:keys, 
+    displayName:displayName, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_13(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
     tags:tags
   };
 }
 function New_14(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    keyMode:keyMode,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    keyMode:keyMode, 
     displayName:displayName
   };
 }
 function New_15(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    rawArgu:rawArgu,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
     tags:tags
   };
 }
@@ -7393,60 +7450,60 @@ function New_17(pageId, keyId){
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    actorAddress:actorAddress,
-    rawArgu:rawArgu,
-    renderMode:renderMode,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_19(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_20(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
-    payload:payload,
-    sourceKind:sourceKind,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_21(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    setName:setName,
-    keys:keys,
-    valueCount:valueCount,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
@@ -7455,10 +7512,10 @@ function New_22(maxSequence, buckets){
 }
 function New_23(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId,
-    keys:keys,
-    createdAtUtc:createdAtUtc,
-    value:value,
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
     tags:tags
   };
 }
@@ -7467,9 +7524,9 @@ function New_24(reason){
 }
 function New_25(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount,
-    actorCount:actorCount,
-    maxSequence:maxSequence,
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
     nodes:nodes
   };
 }
@@ -7587,30 +7644,30 @@ function OfArray(a){
 }
 function New_26(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId,
-    displayName:displayName,
-    kind:kind,
-    keys:keys,
-    status:status,
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
     routees:routees
   };
 }
 function New_27(nodeId_1, nodeAddress_1, status, roles, actors){
   return{
-    nodeId:nodeId_1,
-    nodeAddress:nodeAddress_1,
-    status:status,
-    roles:roles,
+    nodeId:nodeId_1, 
+    nodeAddress:nodeAddress_1, 
+    status:status, 
+    roles:roles, 
     actors:actors
   };
 }
 function New_28(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId,
-    fromId:fromId,
-    toId:toId,
-    scope:scope,
-    body:body,
+    messageId:messageId, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
     createdAtUtc:createdAtUtc
   };
 }
@@ -7619,30 +7676,30 @@ function New_29(messages, nextAfterMessageId){
 }
 function New_30(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId,
-    newestSequence:newestSequence,
-    cachedCount:cachedCount,
-    source:source,
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
     touchedAt:touchedAt
   };
 }
 function New_31(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    fromId:fromId,
-    toId:toId,
-    body:body,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_32(fromId, toId, body, tags){
   return{
-    fromId:fromId,
-    toId:toId,
-    body:body,
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
     tags:tags
   };
 }
@@ -7707,9 +7764,9 @@ class T extends Object_1 {
 }
 function New_33(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
-    rawArgu:rawArgu,
-    duTypeName:duTypeName,
-    unionCaseName:unionCaseName,
+    rawArgu:rawArgu, 
+    duTypeName:duTypeName, 
+    unionCaseName:unionCaseName, 
     keyJson:keyJson
   };
 }
@@ -7921,8 +7978,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_1(Attr, {
-      $:2,
-      $0:Item1,
+      $:2, 
+      $0:Item1, 
       $1:Item2
     });
   }
@@ -8213,8 +8270,8 @@ function SyncElemNode(childrenOnly, el){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""),
-    Dirty:false,
+    Text:globalThis.document.createTextNode(""), 
+    Dirty:false, 
     Value:""
   };
 }
@@ -8330,71 +8387,109 @@ function DoSyncElement(el){
 }
 function New_35(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId,
-    TabId:TabId,
-    ValueId:ValueId,
-    CreatedAtUtc:CreatedAtUtc,
-    Direction:Direction,
-    Tags:Tags,
+    PageId:PageId, 
+    TabId:TabId, 
+    ValueId:ValueId, 
+    CreatedAtUtc:CreatedAtUtc, 
+    Direction:Direction, 
+    Tags:Tags, 
     Payload:Payload
   };
 }
 function New_36(Kind, RenderSummary, Mount){
   return{
-    Kind:Kind,
-    RenderSummary:RenderSummary,
+    Kind:Kind, 
+    RenderSummary:RenderSummary, 
     Mount:Mount
   };
 }
 function New_37(shape, label_1, badge, className){
   return{
-    shape:shape,
-    label:label_1,
-    badge:badge,
+    shape:shape, 
+    label:label_1, 
+    badge:badge, 
     className:className
   };
 }
 function New_38(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath,
-    sessionPath:sessionPath,
-    logoutPath:logoutPath,
-    returnUrl:returnUrl,
-    protectedRoute:protectedRoute,
-    sessionCookieName:sessionCookieName,
-    title:title,
-    lead:lead,
-    providerLabel:providerLabel,
+    submitPath:submitPath, 
+    sessionPath:sessionPath, 
+    logoutPath:logoutPath, 
+    returnUrl:returnUrl, 
+    protectedRoute:protectedRoute, 
+    sessionCookieName:sessionCookieName, 
+    title:title, 
+    lead:lead, 
+    providerLabel:providerLabel, 
     aclLabel:aclLabel
   };
 }
 function New_39(userName, password, returnUrl, keepSession){
   return{
-    userName:userName,
-    password:password,
-    returnUrl:returnUrl,
+    userName:userName, 
+    password:password, 
+    returnUrl:returnUrl, 
     keepSession:keepSession
   };
 }
 function New_40(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
-    participantId:participantId,
-    displayName:displayName,
-    login:login,
-    authenticated:authenticated,
-    provider:provider,
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
     logoutPath:logoutPath
   };
 }
+function nonNegative(){
+  return FailWith("The input must be non-negative.");
+}
+function insufficient(){
+  return FailWith("The input sequence has an insufficient number of elements.");
+}
+function groupBy(f, a){
+  const d=new Dictionary("New_5");
+  const keys=[];
+  for(let i=0, _1=length(a)-1;i<=_1;i++){
+    const c=a[i];
+    const k=f(c);
+    if(d.ContainsKey(k))d.Item(k).push(c);
+    else {
+      keys.push(k);
+      d.DAdd(k, [c]);
+    }
+  }
+  mapInPlace((k_1) =>[k_1, d.Item(k_1)], keys);
+  return keys;
+}
+function mapInPlace(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
+}
+function mapiInPlace(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
+  return arr;
+}
+function arrContains(item, arr){
+  let c, i;
+  c=true;
+  i=0;
+  const l=length(arr);
+  while(c&&i<l)
+    if(Equals(arr[i], item))c=false;
+    else i=i+1;
+  return!c;
+}
 function New_41(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    shape:shape,
-    tabId:tabId,
-    tabMode:tabMode,
-    path:path,
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
     description:description
   };
 }
@@ -8564,44 +8659,6 @@ function Rebuild(spine, t){
   }
   return t_1;
 }
-function groupBy(f, a){
-  const d=new Dictionary("New_5");
-  const keys=[];
-  for(let i=0, _1=length(a)-1;i<=_1;i++){
-    const c=a[i];
-    const k=f(c);
-    if(d.ContainsKey(k))d.Item(k).push(c);
-    else {
-      keys.push(k);
-      d.DAdd(k, [c]);
-    }
-  }
-  mapInPlace((k_1) =>[k_1, d.Item(k_1)], keys);
-  return keys;
-}
-function nonNegative(){
-  return FailWith("The input must be non-negative.");
-}
-function insufficient(){
-  return FailWith("The input sequence has an insufficient number of elements.");
-}
-function mapInPlace(f, arr){
-  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
-}
-function mapiInPlace(f, arr){
-  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
-  return arr;
-}
-function arrContains(item, arr){
-  let c, i;
-  c=true;
-  i=0;
-  const l=length(arr);
-  while(c&&i<l)
-    if(Equals(arr[i], item))c=false;
-    else i=i+1;
-  return!c;
-}
 function buildRawArguFromValues(fields){
   const parts=MarkResizable([]);
   iter((_1) => appendFieldParts(parts, _1[0], _1[1]), arrayOrEmpty_2(fields));
@@ -8684,8 +8741,8 @@ function counter(){
 }
 function Ready(Item1, Item2){
   return{
-    $:2,
-    $0:Item1,
+    $:2, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -8694,8 +8751,8 @@ function Forever(Item){
 }
 function Waiting(Item1, Item2){
   return{
-    $:3,
-    $0:Item1,
+    $:3, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -8849,8 +8906,8 @@ function EmbedDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0,
-    $0:Item1,
+    $:0, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -8990,9 +9047,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1,
-      Children:Children_1,
-      El:El,
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -9385,10 +9442,10 @@ let _c_4=Lazy((_i) => class Proxy {
 });
 function New_43(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1,
-    Left:Left,
-    Right:Right,
-    Height:Height,
+    Node:Node_1, 
+    Left:Left, 
+    Right:Right, 
+    Height:Height, 
     Count:Count
   };
 }
@@ -9424,16 +9481,16 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_1(Updates_1, {
-      c:Current,
-      s:Snap,
+      c:Current, 
+      s:Snap, 
       v:VarView
     });
   }
 }
 function New_44(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem,
-    DynFlags:DynFlags,
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -9489,8 +9546,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2,
-    $0:x,
+    $:2, 
+    $0:x, 
     $1:y
   };
 }
@@ -9941,8 +9998,8 @@ class CheckedInput {
   }
   static Valid(value, inputText){
     return Create_1(CheckedInput, {
-      $:0,
-      $0:value,
+      $:0, 
+      $0:value, 
       $1:inputText
     });
   }
@@ -10076,8 +10133,8 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
 });
 function New_47(created, evalOrVal, force){
   return{
-    c:created,
-    v:evalOrVal,
+    c:created, 
+    v:evalOrVal, 
     f:force
   };
 }

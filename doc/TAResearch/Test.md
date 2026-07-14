@@ -24,7 +24,7 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-003 | REQ-010 | Reducer | duplicate no-op；gap/out-of-order/base mismatch requests resync and keeps last-good data | DYN-TA-002 | Pass：duplicate no-op；sequence gap/base mismatch/identity或target mismatch保留data並typed resync。 |
 | DYN-TA-T-004 | REQ-006 | Reducer | ResetView local-only；ResetCanvas sends one snapshot action and restores defaults | DYN-TA-002 | Pass：ResetView回default view且NoEffect；ResetCanvas只產生一個typed SubmitAction。 |
 | DYN-TA-T-005 | REQ-004/005 | Component | all TA row kinds, shared x-axis, separate y-scale, unknown-kind error | DYN-TA-003 | Partial：alpha5 render七種row、shared window/x-axis/crosshair、compact timestamp與separate y-scale；exact model tests 11/11。研究級DMI/MACD多線與legend仍待。 |
-| DYN-TA-T-006 | REQ-005 | Browser | zoom/pan/crosshair/toggle/visibility send no network；cursor values match visible bars | DYN-TA-003 | Pass：F# Playwright證明pan/zoom/reset-view/row toggle callback count保持0，slider由B48移到B1時七列crosshair同為x=0，cursor OHLC/indicator values對齊visible index；desktop/mobile geometry與console gate通過。 |
+| DYN-TA-T-006 | REQ-005 | Browser | zoom/pan/crosshair/toggle/visibility send no network；cursor values match visible bars | DYN-TA-003/012 | Regression found：原gate只操作cursor slider，沒有pointer event，也沒有loaded-range navigator；2026-07-14回到Active，改由T-031..034關閉。 |
 | DYN-TA-T-007 | REQ-007 | Browser | instrument/interval/range/Add/Remove Row each send one typed action with coherent disabled/in-flight state | DYN-TA-003/004 | Pass：query、Add/Remove Row、Reset Canvas送typed action；renderer與真PTCS deployed browser gate證明in-flight禁用、server ack與連續document/transport revision。 |
 | DYN-TA-T-008 | REQ-008/009/010 | Lifecycle | only visible/expanded/ready polls；one in-flight；timeout/backoff/reconnect/resync | DYN-TA-002/004 | Pass for PTCS path：pure lifecycle與WebSharper interpreter涵蓋active/connected gate、one-in-flight、timeout/backoff、bounded reconnect/full snapshot；same Host第二browser context重新bootstrap並READY。Process restart仍列cross-host T-020。 |
 | DYN-TA-T-009 | REQ-009 | Lifecycle | hidden/collapse/unmount/disconnect cancels timer/channel/subscription | DYN-TA-002 | Partial：registry與Ptcs.Client handle均有suspend/dispose terminal、CancelPoll/Timeout/Reconnect；browser hide/show/disconnect resource observation留DYN-TA-006。 |
@@ -49,6 +49,10 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-028 | DYN-CHAT-REQ-006..009 | Browser | fullscreen close回原inline/collapsed、scroll/focus/view revision；不雙channel/poll，多reply隔離 | DYN-TA-011 | Pass |
 | DYN-TA-T-029 | DYN-CHAT-REQ-021 | Reducer/E2E | in-flight invalid/base mismatch取消舊timeout並只送一次full snapshot，成功後恢復poll | DYN-TA-011 | Pass |
 | DYN-TA-T-030 | DYN-CHAT-REQ-020 | PTCS E2E | Plain/Form切換不由Dynamic強迫；Plain single input，Form既有renderer，mixed replies保持 | DYN-TA-011 | Pass：formal beta96 82 gate |
+| DYN-TA-T-031 | DYN-CHAT-REQ-022..024 | Document | requested/loaded/visible、canonical navigator、follow-latest與pointer責任可追溯 | DYN-TA-012 | Pass：2026-07-14 correction chain |
+| DYN-TA-T-032 | DYN-CHAT-REQ-022..024 | Unit | viewport clamp/tail/history/delta follow、pointer ratio→index、short/empty series deterministic | DYN-TA-012 | Pass：renderer/model suite 15/15 |
+| DYN-TA-T-033 | DYN-CHAT-REQ-016/017/023 | F# Playwright | inline展開首屏直接可見navigator；navigator從tail移到history；pointer跨三個X；四列crosshair X誤差<=1px且timestamp/value同步；network delta=0 | DYN-TA-012 | Pass at isolated renderer/package gate；formal route另由T-034追蹤 |
+| DYN-TA-T-034 | DYN-CHAT-REQ-005..009/024 | Formal PTCS 82 | actual loaded/readout、bounded DOM、inline/fullscreen state、collapse zero resource、delta/reconnect不重置history viewport | DYN-TA-012 | Blocked：old RN terminal completion未回新PTCS route；formal memory gate failed |
 
 
 ## 3. Playwright operation and viewport gates

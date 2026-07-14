@@ -234,6 +234,36 @@ type SduiAction =
 
 `ResetView`由reducer本地處理，不呼叫host；其他remote cases經callback。server仍需驗證interval/range/row kind/ACL，client allowlist不等於authorization。
 
+## 2026-07-14 canonical viewport and pointer cursor
+
+```fsharp
+type TaRendererUiState =
+    { Window: TaVisibleWindow
+      FollowLatest: bool
+      CursorIndex: int option
+      HiddenRows: Set<string>
+      AddRowOpen: bool
+      Feedback: string }
+
+resolveWindow total state =
+    let bounded = clampWindow limits total state.Window
+    if state.FollowLatest then tail total bounded.Count else bounded
+
+pointerIndex rect clientX visibleCount =
+    clamp 0 (visibleCount - 1)
+        (round ((clientX - rect.left) / rect.width * (visibleCount - 1)))
+```
+
+Renderer輸出stable hooks：
+
+- `ta-viewport-panel`、`ta-viewport-slider`、`ta-viewport-range`；attributes含`data-loaded-bars`、`data-visible-start`、`data-visible-end`、`data-follow-latest`。
+- navigator必須位於cursor panel之後、rows之前；inline展開後不需先捲過四列圖即可看到`Loaded N bars · Viewing A-B`與range track。rows之後不得再藏一份重複navigator。
+- 每個row SVG使用typed WebSharper `afterRender/AddEventListener`綁pointer/mouse move；不得用`JS.Inline`或string-built JavaScript。
+- `ta-chart-stack`持有唯一shared cursor state；row crosshair以同一normalized X render。X axis只在最後一個visible row後render一次。
+- viewport change清除或重新clamp cursor；delta只在follow-latest時移動window。Collapsed不建立上述DOM/event handler。
+
+Summary將`lastBars`寫成`requested last N bars`；actual coverage只由展開後reduced snapshot的series count/readout宣告。
+
 ## 9. Poll state machine
 
 ```text

@@ -232,6 +232,29 @@ module RendererModel =
             let startIndex = max 0 (min requested.StartIndex (total - count))
             { StartIndex = startIndex; Count = count }
 
+    let resolveWindow minimumCount maximumCount total followLatest requested =
+        let bounded = clampWindow minimumCount maximumCount total requested
+
+        if followLatest && bounded.Count > 0 then
+            { bounded with StartIndex = max 0 (total - bounded.Count) }
+        else
+            bounded
+
+    let viewportMaximumStart total window =
+        max 0 (total - max 0 window.Count)
+
+    let cursorIndexFromRatio visibleCount ratio =
+        if visibleCount <= 0 then
+            None
+        else
+            let boundedRatio = max 0.0 (min 1.0 ratio)
+            let maximumIndex = visibleCount - 1
+            Some(int (Math.Round(boundedRatio * float maximumIndex)))
+
+    let cursorIndexFromClientX visibleCount left width clientX =
+        if width <= 0.0 then None
+        else cursorIndexFromRatio visibleCount ((clientX - left) / width)
+
     let selectWindow window (values: 'T array) =
         if window.Count <= 0 || values.Length = 0 then [||]
         else values |> Array.skip window.StartIndex |> Array.truncate window.Count

@@ -178,7 +178,7 @@ type TaClientLifecycleEffect =
 module TaClientLifecycle =
     let defaults =
         { PollIntervalMs = 5000
-          RequestTimeoutMs = 10000
+          RequestTimeoutMs = 150000
           PollRetryMs = 2000
           ReconnectBaseMs = 1000
           ReconnectMaximumMs = 30000 }
@@ -256,14 +256,20 @@ module TaClientLifecycle =
                 { state with Poll = RuntimePollState.PollInFlight; InFlight = true },
                 [| TaClientLifecycleEffect.SendAction(SduiAction.PollDelta(state.CanvasInstanceId, state.DataRevision))
                    TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
-            | TaClientLifecycleEvent.RequestTimedOut nowUtc when state.InFlight ->
-                let nextPoll = RuntimePollState.Backoff(nowUtc.AddMilliseconds(float options.PollRetryMs))
-                let retry =
-                    if state.Connected && state.Active then [| TaClientLifecycleEffect.SchedulePoll options.PollRetryMs |]
-                    else [||]
-
-                { state with Poll = nextPoll; InFlight = false },
-                Array.append [| TaClientLifecycleEffect.CancelTimeout |] retry
+            | TaClientLifecycleEvent.RequestTimedOut _ when state.InFlight ->
+                let attempt = state.ReconnectAttempt + 1
+                { state with
+                    Poll = RuntimePollState.Suspended
+                    Connected = false
+                    InFlight = false
+                    ReconnectAttempt = attempt },
+                [| TaClientLifecycleEffect.CancelPoll
+                   TaClientLifecycleEffect.CancelTimeout
+                   TaClientLifecycleEffect.CancelReconnect
+                   TaClientLifecycleEffect.CloseTransport
+                   TaClientLifecycleEffect.ScheduleReconnect(reconnectDelay options attempt) |]
+            | TaClientLifecycleEvent.Disconnected when not state.Connected ->
+                state, [||]
             | TaClientLifecycleEvent.Disconnected ->
                 let attempt = state.ReconnectAttempt + 1
                 { state with

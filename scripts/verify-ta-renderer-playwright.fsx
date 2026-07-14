@@ -94,23 +94,44 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-status-detail']")) "watermark 2026-07-11T09:30:00Z"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"
 
+    let chartStack = page.Locator("[data-testid='ta-chart-stack']")
+    require (chartStack.GetAttributeAsync("data-loaded-bars") |> awaitTask = "96") "loaded-range metadata must report all 96 browser-demo bars"
+    require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = "49") "follow-latest viewport must begin at loaded bar 49"
+    require (chartStack.GetAttributeAsync("data-visible-end") |> awaitTask = "96") "follow-latest viewport must end at loaded bar 96"
+    requireText (page.Locator("[data-testid='ta-viewport-range']")) "Loaded 96 bars"
+    requireText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 49-96"
+    let viewportBox = page.Locator("[data-testid='ta-viewport-panel']").BoundingBoxAsync() |> awaitTask
+    let initialPriceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
+    require (not (isNull viewportBox) && not (isNull initialPriceBox)) "viewport navigator and first chart row must expose geometry"
+    require (viewportBox.Y + viewportBox.Height <= initialPriceBox.Y + 1.0f) "viewport navigator must be visible before the first chart row"
+    require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 0) "cross-row cursor must not be fabricated before pointer movement"
+    require ((page.Locator("[data-testid='ta-time-axis-shared']").CountAsync() |> awaitTask) = 1) "all rows must share one X axis"
+
+    page.Locator("[data-testid='ta-viewport-slider']").FillAsync("0") |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 1-48"
+    require (chartStack.GetAttributeAsync("data-follow-latest") |> awaitTask = "false") "historical viewport navigation must leave follow-latest mode"
+
+    let priceChart = page.Locator("[data-testid='ta-candle-price']")
+    let pointerBox = priceChart.BoundingBoxAsync() |> awaitTask
+    require (not (isNull pointerBox)) "price chart must expose pointer geometry"
+    priceChart.HoverAsync() |> awaitUnit
     let cursorValues = page.Locator("[data-testid='ta-cursor-values']")
-    requireText cursorValues "B48"
-    require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 7) "every visible row must share one crosshair"
-    let timeLabels = page.Locator("[data-testid='ta-time-axis-price'] span")
-    require ((timeLabels.CountAsync() |> awaitTask) = 3) "price chart must expose first, middle, and last time labels"
+    waitForText cursorValues "B25"
+    require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 7) "pointer movement on one row must create one shared crosshair in every visible row"
+    let timeLabels = page.Locator("[data-testid='ta-time-axis-shared'] span")
+    require ((timeLabels.CountAsync() |> awaitTask) = 3) "shared X axis must expose first, middle, and last time labels"
     requireText (timeLabels.Nth(0)) "B1"
     requireText (timeLabels.Nth(1)) "B25"
     requireText (timeLabels.Nth(2)) "B48"
-    page.Locator("[data-testid='ta-cursor-slider']").FillAsync("0") |> awaitUnit
-    waitForText cursorValues "B1"
     let crosshairPositions =
         page.Locator("[data-testid$='-crosshair']").AllAsync()
         |> awaitTask
         |> Seq.map (fun locator -> locator.GetAttributeAsync("x1") |> awaitTask |> Option.ofObj |> Option.defaultValue "missing")
         |> Seq.distinct
         |> Seq.toArray
-    require (crosshairPositions = [| "0" |]) ("shared cursor crosshair positions diverged: " + String.concat "," crosshairPositions)
+    require (crosshairPositions.Length = 1 && crosshairPositions[0] <> "0" && crosshairPositions[0] <> "100") ("shared pointer crosshair positions diverged: " + String.concat "," crosshairPositions)
+    Directory.CreateDirectory outputDirectory |> ignore
+    page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "desktop-crossrow-cursor.png"), FullPage = true)) |> awaitTask |> ignore
 
     let chartBodiesBeforeStatusChange = page.Locator("[data-testid='ta-candle-price'] rect").CountAsync() |> awaitTask
     page.Locator("[data-testid='ta-demo-inflight']").ClickAsync() |> awaitUnit
@@ -188,6 +209,7 @@ let verifyMobile (browser: IBrowser) =
     requireBoxInside viewportWidth "workspace" (page.Locator("[data-testid='ta-workspace']").BoundingBoxAsync() |> awaitTask)
     requireBoxInside viewportWidth "query toolbar" (page.Locator("[data-testid='ta-query-toolbar']").BoundingBoxAsync() |> awaitTask)
     requireBoxInside viewportWidth "cursor panel" (page.Locator("[data-testid='ta-cursor-panel']").BoundingBoxAsync() |> awaitTask)
+    requireBoxInside viewportWidth "viewport navigator" (page.Locator("[data-testid='ta-viewport-panel']").BoundingBoxAsync() |> awaitTask)
     requireBoxInside viewportWidth "price chart" (page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask)
     require ((page.Locator("[data-testid='ta-query-toolbar'] input").CountAsync() |> awaitTask) = 3) "mobile query form must retain all text inputs"
     require (page.Locator("[data-testid='ta-apply-query']").IsVisibleAsync() |> awaitTask) "mobile Load / Apply must remain visible"

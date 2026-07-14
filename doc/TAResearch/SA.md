@@ -180,4 +180,12 @@ PTCS-specific transient integration落在獨立`PulseTrade.Comm.Spa.Dynamic.Ptcs
 
 單一`row.Kind + row.DataRef`把layout、indicator語意與presentation綁成同一層，無法表達K棒疊多條SMA、DMI/ADX共列或MACD三component。修正採additive兩層模型：row擁有viewport/time axis/height；ordered traces擁有dataRef、presentation、label/style。legacy row由contract helper投影成單trace，讓既有E2EQ/PTCS fixture可漸進更新。
 
+## 2026-07-14 viewport / cursor system analysis
+
+`query.lastBars=2000`是server request，不代表snapshot實際有2000 points；renderer只能從reduced state各series長度計算loaded count。UI狀態拆成：`LoadedCount`（data authority）、`VisibleWindow`（browser local）、`FollowLatest`（tail policy）、`CursorIndex`（visible-window local）。
+
+Canonical navigator只改`VisibleWindow.StartIndex`，zoom只改`Count`；兩者不送network。若`FollowLatest=true`，delta後window重新anchor到tail；使用者pan到history後為false，delta不得移動window。pointer hit-test從任一row DOM rect取得normalized X並映射成visible index；所有row使用同一index/domain畫vertical cursor，避免各row依自身缺值數量算不同X。
+
+PTCS container只負責不裁切、不攔截pointer與保留chat scroll；Dynamic owns navigator/cursor。Host/PTMD owns actual data量與coverage，不能由summary request文字冒充loaded evidence。
+
 browser delta責任在PTCS adapter邊界，而非Renderer。server reducer已有authoritative previous/next state，能以`dataRef + t`比較changed points並產生upsert/remove-before；client以同一keyed merge規則更新bounded state。Renderer只觀察新的RuntimeState，不理解transport delta。provider仍可能先回authoritative latest window，這是SQL/query效率議題，不得與browser wire bandwidth混為一談。

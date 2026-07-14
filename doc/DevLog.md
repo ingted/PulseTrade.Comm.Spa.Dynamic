@@ -1021,3 +1021,10 @@ Implementation status:
 - Production RuntimeFrame classification now handles direct, JSON-string, canonical fCell2 envelope, fCell2.A and Case/Fields shapes with bounded controlled fallback. Collapsed TA shows only instrument/range/scale/indicator/freshness summary and does not mount chart/open channel/poll.
 - Added direct detached-element mount for reply cards, per-reply Collapsed/Inline/Fullscreen handles, and close/resync state that does not discard an in-flight full snapshot. Package suites passed: Contracts, root, Ptcs, Renderer and PtcsTaClient.
 - Formal 82 F# Playwright evidence `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\beta96-acl-readback-20260714025738` passed strict decode, summary, four-row chart, lazy lifecycle, reconnect and Plain/Form boundary. Public NuGet push credential is the only remaining DYN-TA-011 release blocker.
+
+## 2026-07-14 - DYN-TA-012 temporary closeout
+
+- Renderer/model 15/15 passes with loaded/visible range, horizontal navigator, follow-latest, pointer hit-test, four-row shared-X cursor and current-bar OHLC/DMI/MACD values.
+- Dynamic.Ptcs.Client and Dynamic.Ptcs each pass 7/7 against the new exact package graph.
+- Formal PTCS 82 remains blocked outside renderer ownership: the old RN deployment does not return terminal completion to the new PTCS chat projection, and the formal process memory gate failed. No E2EQ code was changed.
+- Dynamic `0.1.3-beta97`, Dynamic.Ptcs `0.1.0-alpha7-win32` and Dynamic.Ptcs.Client `0.1.0-alpha8-win40` were pushed successfully to NuGet.org.

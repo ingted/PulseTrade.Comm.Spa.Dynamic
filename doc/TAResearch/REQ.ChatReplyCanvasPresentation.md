@@ -30,6 +30,9 @@
 | DYN-CHAT-REQ-019 | RuntimeTa claim成功時不得把raw frame/series/point JSON顯示為message body；Collapsed只輸出domain摘要與controls。 |
 | DYN-CHAT-REQ-020 | Dynamic append input renderer不得自行選擇或強迫Form mode；PTCS選擇Plain時Dynamic不得mount FormInput。 |
 | DYN-CHAT-REQ-021 | in-flight reply decode/base-revision失敗必須取消舊timeout並送一次full-snapshot resync，不得讓lifecycle永久停在PollInFlight。 |
+| DYN-CHAT-REQ-022 | UI必須明確區分requested bars、實際loaded bars與目前visible window；不得把`last 2000 bars` request文案呈現成已載入2000根的事實。 |
+| DYN-CHAT-REQ-023 | 展開Canvas須提供唯一canonical horizontal viewport navigator，能在完整loaded range移動bounded visible window；不得以一次render所有points或另一套fetch scrollbar達成。 |
+| DYN-CHAT-REQ-024 | 初始viewport預設follow latest；使用者移到history後snapshot/delta不得強迫跳回tail，只有Reset View或navigator回到tail才恢復follow-latest。 |
 
 ## Four-row summary example
 
@@ -50,3 +53,5 @@ MACD Short: 13/21/7
 3. 展開/收合其中一則reply時，其他reply DOM、view state與scroll anchor不被重置。
 4. fullscreen close後回到原inline位置與view，不建立另一則reply或另一個target。
 5. Y axes、shared X axis與cross-row cursor在inline及fullscreen都存在；cursor readout可掃描同一bar的price、DMI/ADX與MACD values。
+6. Canvas顯示`Loaded N bars · Viewing A-B`；viewport navigator可從tail移到history，且移動只改browser local state、network action count不變。
+7. pointer在任一row移動時，四列vertical cursor須使用同一normalized X、timestamp與bar identity；固定在最右側的預設線或只靠range input不算完成。

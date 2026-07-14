@@ -1,0 +1,12 @@
+# Operation evidence
+
+## 2026-07-14 temporary closeout
+
+- Renderer/model 15/15 Pass；loaded/visible range、horizontal navigator、follow-latest、pointer cross-row cursor與floating values完成。
+- Dynamic.Ptcs.Client 7/7、Dynamic.Ptcs 7/7 Pass；exact packages已產生。
+- formal 82 production-path gate被old RN terminal completion與PTCS memory問題阻塞；不把integration failure回退為renderer未完成。
+- 本輪不推進E2EQ。
+- NuGet push成功：Dynamic beta97、Dynamic.Ptcs win32、Dynamic.Ptcs.Client win40。
+- check.fsx cross-repo shared session產生log deletion假陽性；closeout改用Dynamic-specific session id重跑。
+
+- 2026-07-14 08:01 +08:00：定位到現有`ta-cursor-slider`只選visible bar，沒有viewport navigator；crosshair由固定CursorIndex render，沒有pointer handler。

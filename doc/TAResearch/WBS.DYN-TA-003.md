@@ -1,6 +1,6 @@
 # @DYN-TA-003 WebSharper TA renderer
 
-Status: Active / 88%
+Status: Active / 94%
 
 ## Deliverables
 
@@ -43,3 +43,7 @@ Primary chart dominates first viewport; controls are compact and predictable; Ad
 - DMI/MACD研究級多線、legends與indicator-specific cursor detail。
 - authoritative patch後focus/viewport保持、Delayed/Backfill/Unavailable各狀態的browser visual matrix。
 - 真PTCS transient poll/reconnect/resync仍由DYN-TA-004/006追蹤。
+
+## 2026-07-14 correction
+
+`shared cursor slider`只證明同一visible index的model projection，不是RFC要求的pointer cross-row cursor；renderer也沒有代表完整loaded range的viewport navigator。這兩項回歸改由`DYN-TA-012`完成，DYN-TA-003維持Active，不再以原T-006宣稱完整browser interaction已完成。
