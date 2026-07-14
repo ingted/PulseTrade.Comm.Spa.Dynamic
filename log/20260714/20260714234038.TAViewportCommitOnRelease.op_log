@@ -1,0 +1,4 @@
+# Operation evidence
+
+- 2026-07-14：開始 RFC/document chain。已確認 renderer range `input` 每格 commit chart state；PTCS browser full/delta 共用 200-point cap；formal evidence loaded=200、visible=48。
+- 2026-07-14：完成RFC-PTCS-DYNAMIC-0009與REQ/SA/SD/WBS/Test/Verification對齊；DYN-TA-013拆為wire、renderer、isolated Playwright、formal service四個實作gate。

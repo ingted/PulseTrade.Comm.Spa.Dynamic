@@ -33,6 +33,10 @@
 | DYN-CHAT-REQ-022 | UI必須明確區分requested bars、實際loaded bars與目前visible window；不得把`last 2000 bars` request文案呈現成已載入2000根的事實。 |
 | DYN-CHAT-REQ-023 | 展開Canvas須提供唯一canonical horizontal viewport navigator，能在完整loaded range移動bounded visible window；不得以一次render所有points或另一套fetch scrollbar達成。 |
 | DYN-CHAT-REQ-024 | 初始viewport預設follow latest；使用者移到history後snapshot/delta不得強迫跳回tail，只有Reset View或navigator回到tail才恢復follow-latest。 |
+| DYN-CHAT-REQ-025 | authoritative full bootstrap/reconnect必須保留最多2000 actual points per series；stable delta可維持較小bounded cap，但不得用delta cap截斷第一次data bootstrap。 |
+| DYN-CHAT-REQ-026 | navigator drag須區分draft與committed viewport；拖曳中只更新thumb/preview，release後才commit一次chart render。 |
+| DYN-CHAT-REQ-027 | loaded range navigation必須browser-local、zero-network，且visible DOM仍受`MaxVisiblePoints`限制；不得一次mount全部2000 points。 |
+| DYN-CHAT-REQ-028 | browser wire需省略不適用的default point fields並維持strict typed decode；compactness不得改變OHLC/line語意或fail-closed行為。 |
 
 ## Four-row summary example
 

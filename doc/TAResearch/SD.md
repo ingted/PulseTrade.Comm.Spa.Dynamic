@@ -379,3 +379,34 @@ type TaRowSpec =
 `TaRowSpec.effectiveTraces`在`Traces`空時由legacy欄位導出一個trace。validation將row primary ref與所有trace refs加入document registry，限制trace id/dataRef uniqueness、每row trace count與style bounds。
 
 `ta-browser.v2` series wire包含`mode=replace|upsert`、changed points與optional `removeBeforeTime`。server在document revision改變、初始、gap/resync時送replace；穩定document比較previous/next keyed state後只送upsert/remove-before/status。client先驗base revision，再merge、sort、套用2000-point retention；不符即`RequestFullSnapshot`。
+# 2026-07-14 Commit-on-release and wire design
+
+```fsharp
+let draftStart = Var.Create None
+
+onInput value =
+    draftStart.Value <- Some (clampStart loadedCount visibleCount value)
+    // preview only; no setWindow and no chart rebuild
+
+onChange value =
+    let startIndex = clampStart loadedCount visibleCount value
+    draftStart.Value <- None
+    if startIndex <> committed.StartIndex then
+        setWindow { committed with StartIndex = startIndex; FollowLatest = isTail startIndex }
+```
+
+chart root暴露`data-chart-render-sequence`。sequence只在committed chart composition增加，Playwright用它驗證pointer down/move期間不變、pointer up/change後恰增1；不得用sleep推測效能。
+
+```fsharp
+MaxFullSnapshotPointsPerSeries = DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries // 2000
+MaxDeltaPointsPerSeries = 200
+
+if previousRelevantSeriesIsEmpty && nextRelevantSeriesHasData then
+    Full (tail MaxFullSnapshotPointsPerSeries next)
+else
+    Delta (tail MaxDeltaPointsPerSeries changed)
+```
+
+server JSON options使用`DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault`。client仍以`hasOpenValue/hasHighValue/...`判定OHLC fields；缺省false/0不改變point semantics。
+
+Playwright需以real mouse drag驗證，不以`FillAsync`代替release lifecycle；同時驗loaded=2000、head/tail皆可到達、visible<=160、network action count不變。

@@ -53,6 +53,10 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-032 | DYN-CHAT-REQ-022..024 | Unit | viewport clamp/tail/history/delta follow、pointer ratio→index、short/empty series deterministic | DYN-TA-012 | Pass：renderer/model suite 15/15 |
 | DYN-TA-T-033 | DYN-CHAT-REQ-016/017/023 | F# Playwright | inline展開首屏直接可見navigator；navigator從tail移到history；pointer跨三個X；四列crosshair X誤差<=1px且timestamp/value同步；network delta=0 | DYN-TA-012 | Pass at isolated renderer/package gate；formal route另由T-034追蹤 |
 | DYN-TA-T-034 | DYN-CHAT-REQ-005..009/024 | Formal PTCS 82 | actual loaded/readout、bounded DOM、inline/fullscreen state、collapse zero resource、delta/reconnect不重置history viewport | DYN-TA-012 | Pass：beta111/Dynamic beta100/RN alpha60；200 loaded/48 visible、四列17 traces、inline/fullscreen/cursor/reconnect及memory gate通過。 |
+| DYN-TA-T-035 | DYN-CHAT-REQ-025/028 | Unit/Wire | 2000-point full保留2000；empty-to-first-data為full；stable delta<=200；compact JSON省略不適用default fields | DYN-TA-013 | Planned |
+| DYN-TA-T-036 | DYN-CHAT-REQ-026/027 | Model/Browser | draft start不改committed window；release clamp/follow-latest deterministic；visible<=160 | DYN-TA-013 | Planned |
+| DYN-TA-T-037 | DYN-CHAT-REQ-026/027 | F# Playwright | real mouse drag期間render sequence不變，release後恰增1；可由2000-range tail移至head；network action delta=0 | DYN-TA-013 | Planned |
+| DYN-TA-T-038 | DYN-CHAT-REQ-025..028 | Formal PTCS 82 | actual loaded>=2000、head/tail navigation、bounded visible DOM、inline/fullscreen/reconnect與console error=0 | DYN-TA-013 | Planned |
 
 
 ## 3. Playwright operation and viewport gates

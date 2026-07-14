@@ -1,0 +1,16 @@
+# TA viewport commit-on-release 與 2000 bars recovery
+
+- 起始時間：2026-07-14 23:40:38 +08:00
+- 背景：正式 82-port TA Research reply 初次展開可能空白；navigator 拖曳每格重畫；browser 只收到 200 points，無法在完整 2000-bar loaded range 左右移動。
+- 目標：完成 RFC 文件鏈後，讓 full bootstrap 保留最多 2000 points、delta 維持 bounded；range drag 只更新 preview，release 才 commit 一次 render；以 Playwright 驗證完整 loaded range navigation。
+- 假設：主要根因為 range `input` 直接更新 chart state，以及 PTCS adapter `MaxBootstrapPointsPerSeries = 200`。正式 SQL coverage 不足 2000 需由 PTMD 真實 backfill 獨立補足。
+- 計畫步驟：
+  1. 完成 PTMD、PTCS.Dynamic、PTCS.Host RFC/REQ/SA/SD/WBS/Test。
+  2. 先補 model/wire/browser regression，再修改 renderer 與 PTCS adapter。
+  3. 以真 Binance REST backfill 補正式 SQL coverage，不使用 synthetic/mock bars。
+  4. 發布 exact NuGet、更新 Host、部署 82 port。
+  5. 執行正式 Playwright gate，確認拖曳中 render sequence 不變、release 後只增加一次、loaded bars >= 2000、visible DOM bounded。
+- 預計修改範圍：`doc/TAResearch/`、`src/PulseTrade.Comm.Spa.Dynamic.Renderer/`、`src/Server/TaResearchTransient.fs`、相關 tests/scripts/package references。
+- 驗收：targeted build/tests、F# Playwright、正式 82-port verifier、health/port、package/deployment alignment。
+- 風險：2000x17 wire payload 與弱機首次 decode 成本；用 full/delta 分流、default-field omission 與 bounded visible DOM 控制。
+- Prompt 摘要：使用者不要縮圖 navigator；要完整 2000-bar loaded range 可左右移動，拖曳放手後才 render；完成後停止。

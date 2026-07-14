@@ -192,3 +192,10 @@ Canonical navigator只改`VisibleWindow.StartIndex`，zoom只改`Count`；兩者
 PTCS container只負責不裁切、不攔截pointer與保留chat scroll；Dynamic owns navigator/cursor。Host/PTMD owns actual data量與coverage，不能由summary request文字冒充loaded evidence。
 
 browser delta責任在PTCS adapter邊界，而非Renderer。server reducer已有authoritative previous/next state，能以`dataRef + t`比較changed points並產生upsert/remove-before；client以同一keyed merge規則更新bounded state。Renderer只觀察新的RuntimeState，不理解transport delta。provider仍可能先回authoritative latest window，這是SQL/query效率議題，不得與browser wire bandwidth混為一談。
+# 2026-07-14 Loaded range / interaction analysis
+
+現有lag不是native range本身，而是range `input`直接修改renderer committed state。每一pixel/step都重新select window、建四列17 traces與SVG/DOM。資料transport另有獨立缺口：full與delta共用200-point cap，導致`LastBars 2000`只在request存在，browser authority永遠只有200。
+
+新state boundary為`Loaded series state -> Committed visible window -> Draft navigator preview`。chart只依賴前兩者；draft不進chart dependency graph。這樣pointer拖曳可保持thumb/label回應，但昂貴render只在release發生一次。loaded 2000保留在typed reduced state，visible最多160，local navigation不產生server action。
+
+首次document可能先於data snapshot到達；因此「previous存在」不代表可送delta。只要relevant series由empty轉為non-empty，就必須送authoritative full。stable revision後才使用200-point delta。
