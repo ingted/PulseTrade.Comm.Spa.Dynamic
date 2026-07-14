@@ -1028,3 +1028,10 @@ Implementation status:
 - Dynamic.Ptcs.Client and Dynamic.Ptcs each pass 7/7 against the new exact package graph.
 - Formal PTCS 82 remains blocked outside renderer ownership: the old RN deployment does not return terminal completion to the new PTCS chat projection, and the formal process memory gate failed. No E2EQ code was changed.
 - Dynamic `0.1.3-beta97`, Dynamic.Ptcs `0.1.0-alpha7-win32` and Dynamic.Ptcs.Client `0.1.0-alpha8-win40` were pushed successfully to NuGet.org.
+
+## 2026-07-14 - Correction: DYN-TA-012 formal gate completed
+
+- The prior RN/PTCS blocker is resolved with PTCS beta111, Dynamic beta100 and RN DurableProxy alpha60. Formal `ta.research.query` terminal completion reaches the PTCS chat projection without the accepted-inline bridge.
+- Formal 82 F# Playwright passed 200 loaded/48 visible, four rows/17 traces, navigator, inline/fullscreen, shared-X cross-row cursor/floating values, five transient polls and second-context reconnect.
+- Same-PID memory stayed within the 1024/512 MiB limits (total +542 MiB, reconnect +420 MiB). DYN-TA-012 is complete; long-running/E2EQ work remains separately tracked and was not advanced in this closeout.
+- Evidence: `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-formal-doc-only-202607142115`.

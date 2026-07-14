@@ -1,0 +1,7 @@
+# Operation evidence
+
+- Corrected DYN-TA-012 to Done/100 after formal PTCS beta111/Dynamic beta100/RN alpha60 gate passed.
+- Updated Test and DevLog with 200 loaded/48 visible, four rows/17 traces, inline/fullscreen/cursor/reconnect and same-PID memory evidence.
+- Retained artifact: `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-formal-doc-only-202607142115`.
+- No Dynamic runtime source was changed in this correction slice.
+- `check.fsx` exit 0、FAIL=0；WARN僅nested log-dir、latest-log欄位、dirty與既有RFC thin link。staged本批runtime/package/test/docs與correction logs，排除LiveDemo build-generated `wwwroot`。敏感掃描high=0。

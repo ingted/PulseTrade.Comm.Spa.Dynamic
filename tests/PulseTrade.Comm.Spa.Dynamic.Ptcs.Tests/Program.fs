@@ -282,7 +282,18 @@ let tests =
               Expect.equal stateB1.DataRevision 0L "session B must not inherit session A data revision." })
 
           testCaseAsync "invalid payload fails closed and disconnect removes reducer state" (async {
-              let handler = TaResearchTransientServer.createHandler backend
+              let unmounted = ResizeArray<CanvasInstanceId>()
+              let cleanupBackend =
+                  { HandleAsync =
+                      fun context frameValue ->
+                          async {
+                              match frameValue with
+                              | RuntimeClientFrame.Unmounted canvas -> unmounted.Add canvas
+                              | _ -> ()
+
+                              return! backend.HandleAsync context frameValue
+                          } }
+              let handler = TaResearchTransientServer.createHandler cleanupBackend
               let invalid = { context "invalid" "open" "bad" (RuntimeClientFrame.Mounted canvasId) with Payload = "{" }
               let! invalidResult = handler invalid
               Expect.isError invalidResult "invalid JSON must fail closed."
@@ -292,7 +303,12 @@ let tests =
                   { context "cleanup" "disconnect" "disconnect" (RuntimeClientFrame.Unmounted canvasId) with Payload = "" }
 
               let! disconnected = handler disconnect
-              Expect.equal disconnected (Ok "{}") "disconnect should remove channel reducer state without invoking backend." })
+              Expect.equal disconnected (Ok "{}") "disconnect should remove channel reducer state."
+              Expect.sequenceEqual unmounted [| canvasId |] "disconnect must notify the host backend with authoritative Unmounted identity."
+
+              let! disconnectedAgain = handler disconnect
+              Expect.equal disconnectedAgain (Ok "{}") "repeated disconnect should be idempotent."
+              Expect.equal unmounted.Count 1 "repeated disconnect must not invoke backend cleanup twice." })
 
           testCaseAsync "bounded browser wire uses the same reducer without recursive SDUI values" (async {
               let handler = TaResearchTransientServer.createHandler backend

@@ -23,7 +23,7 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-009 | 1 | Composite row / multi-trace DSL | additive trace contracts、renderer、legacy projection、四列geometry | DYN-TA-001..004 | T-021 | 100% | Completed | [@DYN-TA-009](WBS.DYN-TA-009.md) |
 | DYN-TA-010 | 2 | Browser delta wire v2 | keyed upsert/remove-before/status delta、client merge/resync | DYN-TA-009 | T-022 | 100% | Completed | [@DYN-TA-010](WBS.DYN-TA-010.md) |
 | DYN-TA-011 | 1 | Mixed-reply TA presentation closure | production envelope decode、summary-only collapsed、lazy inline/fullscreen、Plain/Form boundary | DYN-TA-003/004/010 + PTCS WBS-069 | T-023..030 | 95% | External blocked | runtime/E2E完成，只剩public NuGet credential，詳見[@DYN-TA-011](WBS.DYN-TA-011.md) |
-| DYN-TA-012 | 1 | Loaded-range viewport與pointer cross-row cursor修正 | requested/loaded/visible語意、canonical navigator、follow-latest、pointer hit-test、formal 82 gate | DYN-TA-003/011 | T-006,T-031..034 | 82% | Active | renderer/model完成；formal RN completion/memory gate未關閉，詳見[@DYN-TA-012](WBS.DYN-TA-012.md) |
+| DYN-TA-012 | 1 | Loaded-range viewport與pointer cross-row cursor修正 | requested/loaded/visible語意、canonical navigator、follow-latest、pointer hit-test、formal 82 gate | DYN-TA-003/011 | T-006,T-031..034 | 100% | Done | renderer/model與formal beta111/beta100/alpha60 terminal/browser/memory gate通過，詳見[@DYN-TA-012](WBS.DYN-TA-012.md) |
 
 
 ## 2. Legacy prerequisite policy

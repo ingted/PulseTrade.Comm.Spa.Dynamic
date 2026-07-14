@@ -745,8 +745,23 @@ module TaResearchTransientServer =
                 let key = stateKey context
 
                 if context.Operation = "disconnect" then
-                    lock gate (fun () -> states.Remove key |> ignore)
-                    return Ok "{}"
+                    let existing =
+                        lock gate (fun () ->
+                            match states.TryGetValue key with
+                            | true, state ->
+                                states.Remove key |> ignore
+                                Some state
+                            | _ -> None)
+
+                    match existing with
+                    | None -> return Ok "{}"
+                    | Some state ->
+                        let! cleanup =
+                            backend.HandleAsync
+                                context
+                                (RuntimeClientFrame.Unmounted state.Identity.CanvasInstanceId)
+
+                        return cleanup |> Result.map (fun _ -> "{}")
                 else
                     try
                         let browserWire = JsonSerializer.Deserialize<TaBrowserClientFrameWire>(context.Payload, jsonOptions)

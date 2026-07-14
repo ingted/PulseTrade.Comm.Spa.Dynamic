@@ -125,6 +125,10 @@ TaWorkspace
 3. 預設/最小5秒；timeout後bounded backoff。
 4. duplicate no-op；gap/base mismatch要求resync。
 5. unmount/close/disconnect取消timer、request、subscription與registry entry。
+
+### 2026-07-14 lifecycle correction
+
+`disconnect` 不只移除 Dynamic reducer 的 `RuntimeState`。server adapter 必須先取得該 channel 的 authoritative `CanvasInstanceId`，以 `RuntimeClientFrame.Unmounted` 通知 host backend，再移除 reducer state；即使 backend cleanup失敗，兩層 state都不得繼續被 registry引用。否則 browser非正常中斷會讓 Host 的 pending frame、last accepted frame、command與delivery sequence長期殘留。
 6. heartbeat/patch不進chat history；是否audit user action由host adapter決定。
 
 ### D7. PTCS adapter

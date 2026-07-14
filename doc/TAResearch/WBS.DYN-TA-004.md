@@ -61,5 +61,10 @@ Status: Active / 99%
 - Ptcs.Client `0.1.0-alpha7-win10` and Host client `0.1.0-alpha8` were published with exact dependency readback from NuGet public registration。
 - PTC-VFY-027 now triggers a real one-sided-date error，proves last-good Canvas/FormInput retention and successful recovery，then executes Add/Remove、Apply、Reset、poll。
 - A second fresh browser context against the same Host proves channel-scoped sequence bootstrap and reconstructs the document instead of entering `paused-for-resync`。Latest deployed artifact：`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-channel-rebase-20260712204956`。
+
+## 2026-07-14 abrupt disconnect cleanup
+
+- 發現server adapter `disconnect`只移除canonical reducer state，未呼叫Host backend `Unmounted`；Host per-channel pending/lastAccepted/command/sequence可跨browser session殘留。
+- 本slice新增backend cleanup與idempotent disconnect test；完成後需搭配FAkka.WebSocket bounded outbound及正式PTCS兩輪memory gate，不能只以unit test關閉production缺口。
 - Formal Host process restart後相同browser gate通過；Playwright CDP證明20 polls不增加IndexedDB counts。Latest artifact：`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-restart-indexeddb-202607122114`。
 - Remaining for this combined detail：E2EQ parallel-path parity與長時cross-host resource observation；PTCS adapter/browser path itself is functionally closed。

@@ -123,11 +123,14 @@ Browser working set必須bounded。移除舊點以typed `remove-series-before`�
 
 - submit typed action；
 - open/close transient frame channel；
+- server-derived disconnect需由adapter映射成backend `Unmounted`；Dynamic reducer state與Host channel state是兩個獨立owner，任一層未清都會形成retention；
 - report visibility/expanded state；
 - schedule/cancel poll；
 - report diagnostics。
 
 PTCS path使用authenticated same-session channel，host決定user action是否audit、poll/heartbeat不進journal/history。E2EQ path使用既有backend/WebSocket/HTTP orchestration，但必須映射成相同frames；Renderer不辨識transport type。
+
+正常collapse走client `close + Unmounted`；browser abort、refresh或transport failure可能來不及送close，因此PTCS以proxy `Terminated`發出server-derived `disconnect`。adapter需從既有per-channel `RuntimeState.Identity.CanvasInstanceId`建構`Unmounted`，不可相信client補送的identity。cleanup採finally語意：backend result可供diagnostic，但不能阻止adapter移除state。
 
 ## 9. E2EQ migration feasibility
 

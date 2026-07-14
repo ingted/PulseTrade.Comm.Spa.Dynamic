@@ -335,6 +335,8 @@ PTCS ClientExtensionTransientCommandContext
 
 Package：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha2`，exact PTCS beta82 + Contracts alpha4。state key固定為`sessionId + extensionId + channelId`；disconnect移除。Client提供的user/session欄位不參與identity，authoritative identity只來自PTCS context。
 
+2026-07-14 correction：`disconnect` 需從 `states[key]` 取得 `RuntimeState.Identity.CanvasInstanceId`，先移除adapter state，再呼叫 `backend.HandleAsync context (RuntimeClientFrame.Unmounted canvasId)`。backend exception/result error不得讓adapter state復活；沒有既有state時cleanup為idempotent success。
+
 Browser alpha2不交付。下一版wire不得直接把recursive generic `SduiValue` graph交給WebSharper compiler，改用bounded TA-specific rows/points/status DTO；server端再與canonical `SduiValue`互轉。browser adapter需獨立package、pure WebSharper、same-origin PTCS channel、無URL/header/credential參數，並以Playwright驗證last-good/in-flight/reconnect/history invariants。
 
 ## 2026-07-12 E2EQuotation adapter isolation

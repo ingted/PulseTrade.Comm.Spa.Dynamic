@@ -1,6 +1,6 @@
 # @DYN-TA-012 Loaded-range Viewport / Pointer Cross-row Cursor
 
-Status: Active / 82%
+Status: Done / 100%
 
 ## 背景
 
@@ -16,8 +16,8 @@ Evidence：`G:\PulseTrade2.fs\misc\2026-07-14_摘要說有 2000 根，但是看�
 | DYN-TA-012B | pure viewport/follow-latest/cursor hit-test model | T-032 | 100% | Done |
 | DYN-TA-012C | pure WebSharper navigator、loaded/viewing readout、single shared X axis | T-033 | 100% | Done |
 | DYN-TA-012D | pointer move驅動四列shared cursor/readout，零network | T-033 | 100% | Done |
-| DYN-TA-012E | delta/reconnect/inline/fullscreen/collapse state regression | T-034 | 70% | Active |
-| DYN-TA-012F | exact package、formal 82 F# Playwright、deployment/readback | T-034 | 50% | Blocked：formal terminal completion/memory |
+| DYN-TA-012E | delta/reconnect/inline/fullscreen/collapse state regression | T-034 | 100% | Done |
+| DYN-TA-012F | exact package、formal 82 F# Playwright、deployment/readback | T-034 | 100% | Done：beta100 + formal 82 |
 
 ## Done gate
 
@@ -32,4 +32,4 @@ Evidence：`G:\PulseTrade2.fs\misc\2026-07-14_摘要說有 2000 根，但是看�
 
 - Renderer/model 15/15 Pass；loaded/visible viewport、horizontal navigator、follow-latest、pointer hit-test、四列同X crosshair與OHLC/DMI/MACD floating values已實作。
 - Dynamic.Ptcs.Client 7/7、Dynamic.Ptcs 7/7 Pass；exact package graph已產生。
-- formal 82未關閉：native TA actor有完成計算，但舊RN deployment未將terminal completion投影回新PTCS chat route，formal process memory亦曾約8 GiB。這不回退DYN-TA-012B/C/D，但DYN-TA-012E/F維持未完成。
+- formal 82以PTCS beta111、Dynamic beta100、RN DurableProxy alpha60關閉：`ta.research.query` terminal Completed；200 loaded/48 visible、四列17 traces、inline/fullscreen、cross-row cursor、5 polls與reconnect通過。same-PID memory為`2410 -> 2532 -> 2952 MiB`，通過1024/512 MiB gate。artifact：`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-formal-doc-only-202607142115`。

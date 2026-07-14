@@ -50,6 +50,7 @@ Dynamic不得reference PTMD、broker SDK、SQL client或PTCS.Host executable。
 | DYN-TA-REQ-008 | transport-neutral host callback需支援submit、open/close transient channel、visibility、clock/scheduler與dispose；不得假設PTCS global socket。 |
 | DYN-TA-REQ-009 | client-pull預設/最小5秒，只在Canvas mounted、expanded、page visible且channel ready時poll；同一canvas最多一個in-flight。 |
 | DYN-TA-REQ-010 | timeout/backoff可恢復；unmount/close/disconnect必須取消timer、request與subscription。 |
+| DYN-TA-REQ-010A | abrupt WebSocket disconnect必須通知 host transient backend執行同等於`Unmounted`的cleanup，再移除server reducer state；不得只清其中一層。 |
 | DYN-TA-REQ-011 | revision gap、unknown instance、base mismatch產生resync effect；duplicate為no-op，out-of-order不得silent套用。 |
 | DYN-TA-REQ-012 | snapshot/patch/heartbeat不得每次新增chat history或IndexedDB message row；durable audit政策由host adapter決定。 |
 | DYN-TA-REQ-013 | initial snapshot、rows、bars、patch items與browser working set皆有hard limits；超限保留last-good canvas並顯示controlled error。 |

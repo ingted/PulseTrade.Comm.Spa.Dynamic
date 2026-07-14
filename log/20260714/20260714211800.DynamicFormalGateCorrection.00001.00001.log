@@ -1,0 +1,7 @@
+# Dynamic formal gate correction plan
+
+- Aggregate task start remains the parent 2026-07-14 PTCS/RN recovery; this closeout log does not reset the continuation clock.
+- Goal: correct DYN-TA-012 WBS/Test/DevLog after the formal PTCS 82 gate changed from blocked to passed.
+- Scope: documentation only; no Dynamic runtime source change in this correction slice.
+- Acceptance: authoritative WBS/Test/DevLog cite the retained formal F# Playwright artifact and bounded memory numbers; diff/check and Git closeout pass.
+- Process deviation: this cross-repo correction log was created after the first documentation edit because the active parent log was in the PTC/PTCS repositories. No implementation or deployment occurred before this log.
