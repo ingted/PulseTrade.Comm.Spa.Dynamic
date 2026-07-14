@@ -1035,3 +1035,11 @@ Implementation status:
 - Formal 82 F# Playwright passed 200 loaded/48 visible, four rows/17 traces, navigator, inline/fullscreen, shared-X cross-row cursor/floating values, five transient polls and second-context reconnect.
 - Same-PID memory stayed within the 1024/512 MiB limits (total +542 MiB, reconnect +420 MiB). DYN-TA-012 is complete; long-running/E2EQ work remains separately tracked and was not advanced in this closeout.
 - Evidence: `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-formal-doc-only-202607142115`.
+
+## 2026-07-15 - DYN-TA-013 2000-point viewport closure
+
+- Released Renderer `0.1.0-alpha19`, Dynamic.Ptcs `0.1.0-alpha7-win39` and Dynamic.Ptcs.Client `0.1.0-alpha8-win47` with exact package references.
+- `ta-browser.v3` separates a 2000-point authoritative full snapshot from the 200-point stable delta cap. The browser keeps the loaded range locally while mounting only the bounded visible window.
+- The horizontal navigator now previews on `input` and commits one chart render on release/`change`; shorter SMA/ADX/MACD warm-up traces align by timestamp rather than array index.
+- A rejected transient command returns `CommandRejected` without terminating a healthy WebSocket, so the next request can succeed on the same connection.
+- Package gates passed Renderer `17/17`, Ptcs.Client `8/8` and Dynamic.Ptcs `7/7`. Formal 82 evidence `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-ta2000-final-bounded-win39-alpha45-20260715022108` loaded 2000 points, rendered 48 candles, passed drag/release/head-tail/reconnect and remained within the memory gates.

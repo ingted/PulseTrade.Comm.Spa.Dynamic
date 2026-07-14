@@ -3,6 +3,8 @@ namespace PulseTrade.Comm.Spa.Dynamic
 open System
 open System.Collections.Generic
 open System.Text.Json
+open System.Text.Json.Serialization
+open System.Text.Json.Serialization.Metadata
 open PulseTrade.Comm.Spa
 open PulseTrade.Comm.Spa.Dynamic.Contracts
 
@@ -120,7 +122,16 @@ type TaBrowserSeriesWire =
       mode: string
       removeBeforeTime: string
       hasRemoveBeforeTime: bool
-      points: TaBrowserPointWire array }
+      points: TaBrowserPointWire array
+      pointCount: int
+      startIndex: int
+      timeIndices: int array
+      openValues: float array
+      highValues: float array
+      lowValues: float array
+      closeValues: float array
+      volumeValues: float array
+      lineValues: float array }
 
 [<CLIMutable>]
 type TaBrowserTraceWire =
@@ -161,6 +172,7 @@ type TaBrowserStateWire =
       queryFromUtc: string
       queryToUtcExclusive: string
       queryIncludePartial: bool
+      timeline: string array
       series: TaBrowserSeriesWire array
       statusLabel: string
       freshness: string
@@ -472,7 +484,14 @@ module TaResearchTransientWire =
 [<RequireQualifiedAccess>]
 module TaResearchBrowserWire =
     [<Literal>]
-    let MaxBootstrapPointsPerSeries = 200
+    let MaxFullSnapshotPointsPerSeries = 2000
+
+    [<Literal>]
+    let MaxDeltaPointsPerSeries = 200
+
+    // Retained source compatibility; full and delta now have separate budgets.
+    [<Literal>]
+    let MaxBootstrapPointsPerSeries = MaxFullSnapshotPointsPerSeries
 
     let revisionFromBrowser fieldName value =
         if Double.IsNaN value || Double.IsInfinity value || value < 0.0 || Math.Truncate value <> value || value > float Int64.MaxValue then
@@ -547,7 +566,16 @@ module TaResearchBrowserWire =
           mode = "replace"
           removeBeforeTime = ""
           hasRemoveBeforeTime = false
-          points = seriesPoints state dataRef |> boundedTail MaxBootstrapPointsPerSeries }
+          points = seriesPoints state dataRef |> boundedTail MaxFullSnapshotPointsPerSeries
+          pointCount = 0
+          startIndex = 0
+          timeIndices = [||]
+          openValues = [||]
+          highValues = [||]
+          lowValues = [||]
+          closeValues = [||]
+          volumeValues = [||]
+          lineValues = [||] }
 
     let deltaSeriesFromState (previous: RuntimeState) (next: RuntimeState) dataRef =
         let previousPoints = seriesPoints previous dataRef
@@ -559,7 +587,7 @@ module TaResearchBrowserWire =
                 match Map.tryFind point.time previousByTime with
                 | Some previousPoint -> previousPoint <> point
                 | None -> true)
-            |> boundedTail MaxBootstrapPointsPerSeries
+            |> boundedTail MaxDeltaPointsPerSeries
         let removeBeforeTime = if nextPoints.Length = 0 then "" else nextPoints[0].time
         let hasRemovedPrefix =
             not (String.IsNullOrWhiteSpace removeBeforeTime)
@@ -569,7 +597,43 @@ module TaResearchBrowserWire =
           mode = "upsert"
           removeBeforeTime = removeBeforeTime
           hasRemoveBeforeTime = hasRemovedPrefix
-          points = changed }
+          points = changed
+          pointCount = 0
+          startIndex = 0
+          timeIndices = [||]
+          openValues = [||]
+          highValues = [||]
+          lowValues = [||]
+          closeValues = [||]
+          volumeValues = [||]
+          lineValues = [||] }
+
+    let columnarSeries (timelineIndex: IDictionary<string, int>) (series: TaBrowserSeriesWire) =
+        let points = if isNull series.points then [||] else series.points
+        let indices =
+            points
+            |> Array.map (fun point ->
+                match timelineIndex.TryGetValue point.time with
+                | true, index -> index
+                | _ -> invalidOp $"TA browser timeline does not contain point time `{point.time}`.")
+        let contiguous =
+            indices.Length = 0
+            || indices |> Array.mapi (fun offset index -> index = indices[0] + offset) |> Array.forall id
+        let candle = points.Length > 0 && points[0].hasOpen
+        let values predicate selector =
+            if points.Length > 0 && points |> Array.forall predicate then points |> Array.map selector else [||]
+
+        { series with
+            points = [||]
+            pointCount = points.Length
+            startIndex = if indices.Length = 0 then 0 else indices[0]
+            timeIndices = if contiguous then [||] else indices
+            openValues = if candle then values _.hasOpen _.openValue else [||]
+            highValues = if candle then values _.hasHigh _.highValue else [||]
+            lowValues = if candle then values _.hasLow _.lowValue else [||]
+            closeValues = if candle then values _.hasClose _.closeValue else [||]
+            volumeValues = if candle then values _.hasVolume _.volumeValue else [||]
+            lineValues = if candle then [||] else values _.hasLineValue _.lineValue }
 
     let browserTrace (trace: TaTraceSpec) =
         { traceId = trace.TraceId
@@ -605,12 +669,30 @@ module TaResearchBrowserWire =
         let sendFull =
             match previous with
             | None -> true
-            | Some value -> value.Identity <> state.Identity || value.DocumentRevision <> state.DocumentRevision
+            | Some value ->
+                let previousHasData = dataRefs |> Array.exists (seriesPoints value >> Array.isEmpty >> not)
+                let nextHasData = dataRefs |> Array.exists (seriesPoints state >> Array.isEmpty >> not)
+
+                value.Identity <> state.Identity
+                || value.DocumentRevision <> state.DocumentRevision
+                || (not previousHasData && nextHasData)
         let series =
             if sendFull then dataRefs |> Array.map (fullSeriesFromState state)
             else
                 let value = previous |> Option.get
                 dataRefs |> Array.map (deltaSeriesFromState value state)
+        let timeline =
+            series
+            |> Array.collect _.points
+            |> Array.map _.time
+            |> Array.filter (String.IsNullOrWhiteSpace >> not)
+            |> Array.distinct
+            |> Array.sort
+        let timelineIndex =
+            timeline
+            |> Array.mapi (fun index timestamp -> timestamp, index)
+            |> dict
+        let series = series |> Array.map (columnarSeries timelineIndex)
         let defaultView = document |> Option.map _.DefaultView |> Option.defaultValue Map.empty
         let queryText key = defaultView |> Map.tryFind key |> Option.bind tryText |> Option.defaultValue ""
         let queryInterval =
@@ -644,7 +726,7 @@ module TaResearchBrowserWire =
             | Some error -> error.ReasonCode, error.Message, error.Recoverable
             | None -> "", "", false
 
-        { wireVersion = "ta-browser.v2"
+        { wireVersion = "ta-browser.v3"
           updateKind = if sendFull then "full" else "delta"
           baseDataRevision = previous |> Option.map _.DataRevision |> Option.defaultValue 0L
           documentId = documentId
@@ -662,6 +744,7 @@ module TaResearchBrowserWire =
           queryFromUtc = queryText "query.fromUtc"
           queryToUtcExclusive = queryText "query.toUtcExclusive"
           queryIncludePartial = queryIncludePartial
+          timeline = timeline
           series = series
           statusLabel = statusLabel
           freshness = freshness
@@ -731,7 +814,38 @@ type TaResearchTransientBackend =
 
 [<RequireQualifiedAccess>]
 module TaResearchTransientServer =
-    let jsonOptions = JsonSerializerOptions(PropertyNamingPolicy = JsonNamingPolicy.CamelCase)
+    let pointWireResolver =
+        let resolver = DefaultJsonTypeInfoResolver()
+        resolver.Modifiers.Add(fun typeInfo ->
+            if typeInfo.Type = typeof<TaBrowserPointWire> then
+                let predicates =
+                    dict [
+                        "openValue", fun (point: TaBrowserPointWire) -> point.hasOpen
+                        "highValue", fun point -> point.hasHigh
+                        "lowValue", fun point -> point.hasLow
+                        "closeValue", fun point -> point.hasClose
+                        "volumeValue", fun point -> point.hasVolume
+                        "lineValue", fun point -> point.hasLineValue
+                        "hasOpen", fun point -> point.hasOpen
+                        "hasHigh", fun point -> point.hasHigh
+                        "hasLow", fun point -> point.hasLow
+                        "hasClose", fun point -> point.hasClose
+                        "hasVolume", fun point -> point.hasVolume
+                        "hasLineValue", fun point -> point.hasLineValue
+                    ]
+
+                for property in typeInfo.Properties do
+                    match predicates.TryGetValue property.Name with
+                    | true, predicate ->
+                        property.ShouldSerialize <- Func<obj, obj, bool>(fun owner _ -> predicate (unbox owner))
+                    | _ -> ())
+        resolver
+
+    let jsonOptions =
+        JsonSerializerOptions(
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+            TypeInfoResolver = pointWireResolver)
 
     let createHandler backend : ClientExtensionTransientHandler =
         let gate = obj()

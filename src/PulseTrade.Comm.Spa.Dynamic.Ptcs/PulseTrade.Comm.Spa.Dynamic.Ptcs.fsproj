@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Ptcs</PackageId>
-    <Version>0.1.0-alpha7-win36</Version>
+    <Version>0.1.0-alpha7-win39</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>PTCS same-session transient adapter for PulseTrade Dynamic SDUI runtime.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>

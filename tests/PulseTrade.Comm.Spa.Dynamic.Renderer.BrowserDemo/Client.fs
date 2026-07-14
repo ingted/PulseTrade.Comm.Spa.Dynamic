@@ -93,7 +93,7 @@ module Client =
                        row "heikin" TaRowKind.HeikinAshi "series.heikin" 2.0 |]
                   AllowedActions = [| "reset-view"; "reset-canvas"; "add-row"; "change-query" |]
                   DefaultView = Map [ "visibleBars", SduiValue.Number 48.0 ] }
-          Data = sampleSeries 96
+          Data = sampleSeries 2000
           DocumentRevision = 1L
           DataRevision = 42L
           LastTransportSequence = 2L

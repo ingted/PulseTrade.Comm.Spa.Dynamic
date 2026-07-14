@@ -1,6 +1,6 @@
 # RFC-PTCS-DYNAMIC-0009 Loaded Range Commit-on-Release
 
-- Status：Accepted / DEV authorized
+- Status：Implemented / Verified
 - Date：2026-07-14
 - Owners：PTCS.Dynamic Renderer / PTCS adapter
 - Related：`doc/TAResearch/REQ.ChatReplyCanvasPresentation.md`、`doc/TAResearch/WBS.DYN-TA-013.md`
@@ -61,3 +61,10 @@ JSON忽略default numeric/bool fields。line points只送time/value；OHLC field
 4. loaded>=2000時可從tail移到head；visible<=160；network action count不變。
 5. pure WebSharper/F#，無handwritten JavaScript。
 
+## 實作結果（2026-07-15）
+
+- exact packages：Renderer `0.1.0-alpha19`、Ptcs `0.1.0-alpha7-win39`、Ptcs.Client `0.1.0-alpha8-win47`。
+- wire採`ta-browser.v3` columnar shape；full最多2000、delta最多200，first-data不再被誤編為delta。
+- navigator的`input`只更新preview，`change`才commit一次；warm-up traces以timestamp對齊主timeline。
+- server validation rejection以`CommandRejected`回覆且保留健康WebSocket，後續request可在同一connection成功。
+- Renderer `17/17`、Ptcs.Client `8/8`、Ptcs `7/7`；正式82 artifact為`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-ta2000-final-bounded-win39-alpha45-20260715022108`。

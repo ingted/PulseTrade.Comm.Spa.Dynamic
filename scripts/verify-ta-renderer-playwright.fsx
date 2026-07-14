@@ -61,6 +61,12 @@ let requireText (locator: ILocator) (expected: string) =
     let actualText = locator.TextContentAsync() |> awaitTask |> Option.ofObj |> Option.defaultValue ""
     require (actualText.Contains expected) $"expected `{expected}` in `{actualText}`"
 
+let requiredIntAttribute (locator: ILocator) name =
+    let value = locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    match Int32.TryParse value with
+    | true, parsed -> parsed
+    | _ -> failwith $"TA renderer Playwright verification failed: `{name}` is not an integer: `{value}`"
+
 let waitForText (locator: ILocator) (expected: string) =
     let deadline = DateTime.UtcNow.AddSeconds 3.0
     let mutable matched = false
@@ -95,11 +101,11 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"
 
     let chartStack = page.Locator("[data-testid='ta-chart-stack']")
-    require (chartStack.GetAttributeAsync("data-loaded-bars") |> awaitTask = "96") "loaded-range metadata must report all 96 browser-demo bars"
-    require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = "49") "follow-latest viewport must begin at loaded bar 49"
-    require (chartStack.GetAttributeAsync("data-visible-end") |> awaitTask = "96") "follow-latest viewport must end at loaded bar 96"
-    requireText (page.Locator("[data-testid='ta-viewport-range']")) "Loaded 96 bars"
-    requireText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 49-96"
+    require (chartStack.GetAttributeAsync("data-loaded-bars") |> awaitTask = "2000") "loaded-range metadata must report all 2000 browser-demo bars"
+    require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = "1953") "follow-latest viewport must begin at loaded bar 1953"
+    require (chartStack.GetAttributeAsync("data-visible-end") |> awaitTask = "2000") "follow-latest viewport must end at loaded bar 2000"
+    requireText (page.Locator("[data-testid='ta-viewport-range']")) "Loaded 2000 bars"
+    requireText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 1953-2000"
     let viewportBox = page.Locator("[data-testid='ta-viewport-panel']").BoundingBoxAsync() |> awaitTask
     let initialPriceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
     require (not (isNull viewportBox) && not (isNull initialPriceBox)) "viewport navigator and first chart row must expose geometry"
@@ -107,8 +113,20 @@ let verifyDesktop (browser: IBrowser) =
     require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 0) "cross-row cursor must not be fabricated before pointer movement"
     require ((page.Locator("[data-testid='ta-time-axis-shared']").CountAsync() |> awaitTask) = 1) "all rows must share one X axis"
 
-    page.Locator("[data-testid='ta-viewport-slider']").FillAsync("0") |> awaitUnit
+    let slider = page.Locator("[data-testid='ta-viewport-slider']")
+    let sliderBox = slider.BoundingBoxAsync() |> awaitTask
+    require (not (isNull sliderBox)) "viewport slider must expose pointer geometry"
+    let renderSequenceBeforeDrag = requiredIntAttribute chartStack "data-chart-render-sequence"
+    let sliderY = sliderBox.Y + sliderBox.Height / 2.0f
+    page.Mouse.MoveAsync(sliderBox.X + sliderBox.Width - 3.0f, sliderY) |> awaitUnit
+    page.Mouse.DownAsync() |> awaitUnit
+    page.Mouse.MoveAsync(sliderBox.X + 3.0f, sliderY, MouseMoveOptions(Steps = 12)) |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Preview 1-48"
+    require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeDrag) "drag preview must not rebuild the chart"
+    require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = "1953") "committed viewport must remain stable before release"
+    page.Mouse.UpAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 1-48"
+    require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeDrag + 1) "release must commit exactly one chart render"
     require (chartStack.GetAttributeAsync("data-follow-latest") |> awaitTask = "false") "historical viewport navigation must leave follow-latest mode"
 
     let priceChart = page.Locator("[data-testid='ta-candle-price']")

@@ -105,6 +105,19 @@ let tests =
             Expect.equal historicalAfterDelta requested "a delta must not force a historical viewport back to the tail"
             Expect.equal (RendererModel.viewportMaximumStart 2000 latest) 1952 "navigator maximum start should expose the full loaded range"
 
+        testCase "navigator draft clamps without changing committed window until release" <| fun _ ->
+            let committed = { StartIndex = 1952; Count = 48 }
+            let preview = RendererModel.previewWindow 2000 committed -25
+            let followLatestAtHead, committedAtHead = RendererModel.commitPreview 2000 committed -25
+            let followLatestAtTail, committedAtTail = RendererModel.commitPreview 2000 committed 9999
+
+            Expect.equal committed { StartIndex = 1952; Count = 48 } "preview must not mutate the committed value"
+            Expect.equal preview { StartIndex = 0; Count = 48 } "preview clamps to the loaded-range head"
+            Expect.equal committedAtHead preview "release commits the same clamped preview window"
+            Expect.isFalse followLatestAtHead "historical release leaves follow-latest mode"
+            Expect.equal committedAtTail committed "tail release clamps to the maximum start"
+            Expect.isTrue followLatestAtTail "tail release restores follow-latest mode"
+
         testCase "pointer ratio maps deterministically to a visible bar" <| fun _ ->
             Expect.equal (RendererModel.cursorIndexFromRatio 48 0.0) (Some 0) "left edge should select the first visible bar"
             Expect.equal (RendererModel.cursorIndexFromRatio 48 0.5) (Some 24) "middle should select the nearest visible bar"
@@ -116,6 +129,9 @@ let tests =
         testCase "select window is deterministic" <| fun _ ->
             let actual = RendererModel.selectWindow { StartIndex = 2; Count = 3 } [| 0; 1; 2; 3; 4; 5 |]
             Expect.sequenceEqual actual [| 2; 3; 4 |] "window must preserve ordering"
+
+            let beyondShortWarmup = RendererModel.selectWindow { StartIndex = 1952; Count = 48 } [| 0 .. 1767 |]
+            Expect.isEmpty beyondShortWarmup "a short warm-up trace must not throw when the canonical viewport starts after its last point"
 
         testCase "normalization keeps higher value visually above lower" <| fun _ ->
             let lowY = RendererModel.normalize 10.0 20.0 5.0 100.0 10.0
@@ -156,6 +172,63 @@ let tests =
             Expect.equal (snapshot.Values |> Array.map _.Label) [| "price"; "sma" |] "Every visible row should expose one cursor value."
             Expect.stringContains snapshot.Values[0].Value "C 12" "Price detail should expose OHLC."
             Expect.equal snapshot.Values[1].Value "11.5" "Indicator detail should align to the same bar."
+
+        testCase "shared cursor aligns short warm-up traces by timestamp rather than local index" <| fun _ ->
+            let line timestamp value =
+                SduiValue.Object(Map [ "t", SduiValue.Text timestamp; "v", SduiValue.Number value ])
+
+            let trace traceId kind dataRef =
+                { TraceId = traceId
+                  Kind = kind
+                  DataRef = dataRef
+                  Label = traceId
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  Options = Map.empty }
+
+            let row =
+                { RowId = "price"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "price"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Traces =
+                    [| trace "price" TaTraceKind.Candlestick "price"
+                       trace "sma233" TaTraceKind.Line "sma233" |]
+                  Options = Map.empty }
+
+            let document =
+                { WorkspaceId = "warm-up-test"
+                  Title = "Warm-up"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  Rows = [| row |]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+
+            let data =
+                Map [
+                    "price",
+                    SduiValue.Array
+                        [| candle "B1" 10.0 12.0 9.0 11.0 100.0
+                           candle "B2" 11.0 13.0 10.0 12.0 120.0
+                           candle "B3" 12.0 14.0 11.0 13.0 130.0 |]
+                    "sma233", SduiValue.Array [| line "B2" 11.5; line "B3" 12.5 |]
+                ]
+
+            let timeline = RendererModel.referenceTimeline document.Rows data
+            Expect.sequenceEqual timeline [| "B1"; "B2"; "B3" |] "candles define the canonical viewport timeline"
+
+            let first = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 3 } 0 |> Option.defaultWith (fun () -> failwith "first cursor missing")
+            Expect.equal first.Timestamp "B1" "the first canonical bar remains addressable"
+            Expect.equal (first.Values |> Array.map _.Label) [| "price" |] "an indicator without a warm-up value stays absent instead of shifting B2 onto B1"
+
+            let last = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 3 } 2 |> Option.defaultWith (fun () -> failwith "last cursor missing")
+            Expect.equal last.Timestamp "B3" "the cursor targets the canonical timestamp"
+            Expect.equal (last.Values |> Array.map _.Label) [| "price"; "sma233" |] "the warmed-up indicator joins at its exact timestamp"
+            Expect.equal last.Values[1].Value "12.5" "the indicator value must not be offset by its shorter history"
 
         testCase "status presentation preserves all freshness quality and last-good error states" <| fun _ ->
             let identity = { DocumentId = DocumentId "status-doc"; CanvasInstanceId = CanvasInstanceId "status-canvas" }

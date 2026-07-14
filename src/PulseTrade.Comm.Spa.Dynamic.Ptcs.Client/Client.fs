@@ -31,7 +31,16 @@ type TaBrowserSeriesWire =
       mode: string
       removeBeforeTime: string
       hasRemoveBeforeTime: bool
-      points: TaBrowserPointWire array }
+      points: TaBrowserPointWire array
+      pointCount: int
+      startIndex: int
+      timeIndices: int array
+      openValues: float array
+      highValues: float array
+      lowValues: float array
+      closeValues: float array
+      volumeValues: float array
+      lineValues: float array }
 
 [<JavaScript; CLIMutable>]
 type TaBrowserTraceWire =
@@ -72,6 +81,7 @@ type TaBrowserStateWire =
       queryFromUtc: string
       queryToUtcExclusive: string
       queryIncludePartial: bool
+      timeline: string array
       series: TaBrowserSeriesWire array
       statusLabel: string
       freshness: string
@@ -153,6 +163,7 @@ type TaClientLifecycleState =
 type TaClientLifecycleEvent =
     | Connected
     | StateAccepted of dataRevision: int64
+    | CommandRejected
     | StartAction of SduiAction
     | PollDue of nowUtc: DateTimeOffset
     | RequestTimedOut of nowUtc: DateTimeOffset
@@ -246,6 +257,12 @@ module TaClientLifecycle =
                 let schedule = if state.Active then [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |] else [||]
 
                 { state with Poll = nextPoll; InFlight = false; DataRevision = revision },
+                Array.append [| TaClientLifecycleEffect.CancelTimeout |] schedule
+            | TaClientLifecycleEvent.CommandRejected when state.Connected && state.InFlight ->
+                let nextPoll = if state.Active then RuntimePollState.Ready else RuntimePollState.Suspended
+                let schedule = if state.Active then [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |] else [||]
+
+                { state with Poll = nextPoll; InFlight = false },
                 Array.append [| TaClientLifecycleEffect.CancelTimeout |] schedule
             | TaClientLifecycleEvent.StartAction action when state.Connected && state.Active && not state.InFlight ->
                 { state with Poll = RuntimePollState.PollInFlight; InFlight = true },
@@ -372,8 +389,38 @@ module TaResearchClientWire =
         |> Map.ofList
         |> SduiValue.Object
 
+    let columnarPointValues (timeline: string array) (series: TaBrowserSeriesWire) =
+        let timeline = if isNull timeline then [||] else timeline
+        let count = max 0 series.pointCount
+        let indices = if isNull series.timeIndices then [||] else series.timeIndices
+
+        Array.init count (fun offset ->
+            let timelineIndex =
+                if indices.Length = count then indices[offset]
+                else series.startIndex + offset
+            let timestamp =
+                if timelineIndex >= 0 && timelineIndex < timeline.Length then text timeline[timelineIndex]
+                else ""
+            let values = ResizeArray<string * SduiValue>()
+            if not (String.IsNullOrWhiteSpace timestamp) then values.Add(("t", SduiValue.Text timestamp))
+            if not (isNull series.openValues) && series.openValues.Length = count then values.Add(("o", SduiValue.Number series.openValues[offset]))
+            if not (isNull series.highValues) && series.highValues.Length = count then values.Add(("h", SduiValue.Number series.highValues[offset]))
+            if not (isNull series.lowValues) && series.lowValues.Length = count then values.Add(("l", SduiValue.Number series.lowValues[offset]))
+            if not (isNull series.closeValues) && series.closeValues.Length = count then values.Add(("c", SduiValue.Number series.closeValues[offset]))
+            if not (isNull series.volumeValues) && series.volumeValues.Length = count then values.Add(("v", SduiValue.Number series.volumeValues[offset]))
+            if not (isNull series.lineValues) && series.lineValues.Length = count then values.Add(("v", SduiValue.Number series.lineValues[offset]))
+            values
+            |> Seq.toList
+            |> Map.ofList
+            |> SduiValue.Object)
+
+    let seriesPointValues (wire: TaBrowserStateWire) (series: TaBrowserSeriesWire) =
+        if wire.wireVersion = "ta-browser.v3" then columnarPointValues wire.timeline series
+        elif isNull series.points then [||]
+        else series.points |> Array.map pointValue
+
     let stateFromWire (wire: TaBrowserStateWire) =
-        if isNull (box wire) || (wire.wireVersion <> "ta-browser.v1" && wire.wireVersion <> "ta-browser.v2") then
+        if isNull (box wire) || (wire.wireVersion <> "ta-browser.v1" && wire.wireVersion <> "ta-browser.v2" && wire.wireVersion <> "ta-browser.v3") then
             Result.Error "Unsupported TA browser state wire."
         else
             let rows =
@@ -406,9 +453,7 @@ module TaResearchClientWire =
                 else
                     wire.series
                     |> Array.map (fun series ->
-                        let points =
-                            if isNull series.points then [||]
-                            else series.points |> Array.map pointValue
+                        let points = seriesPointValues wire series
 
                         text series.dataRef, SduiValue.Array points)
                     |> Map.ofArray
@@ -474,7 +519,7 @@ module TaResearchClientWire =
             | _ -> ""
         | _ -> ""
 
-    let mergeSeries (current: RuntimeState) (wire: TaBrowserSeriesWire) =
+    let mergeSeries (current: RuntimeState) (timeline: string array) (wire: TaBrowserSeriesWire) =
         let dataRef = text wire.dataRef
         let currentPoints =
             match Map.tryFind dataRef current.Data with
@@ -484,7 +529,10 @@ module TaResearchClientWire =
             if wire.hasRemoveBeforeTime && not (String.IsNullOrWhiteSpace wire.removeBeforeTime) then
                 currentPoints |> Array.filter (fun point -> String.Compare(pointTime point, wire.removeBeforeTime) >= 0)
             else currentPoints
-        let incoming = if isNull wire.points then [||] else wire.points |> Array.map pointValue
+        let incoming =
+            if wire.pointCount > 0 then columnarPointValues timeline wire
+            elif isNull wire.points then [||]
+            else wire.points |> Array.map pointValue
         let merged =
             Array.append retained incoming
             |> Array.filter (pointTime >> String.IsNullOrWhiteSpace >> not)
@@ -512,7 +560,7 @@ module TaResearchClientWire =
                     else
                         wire.series
                         |> Array.fold (fun data series ->
-                            let dataRef, value = mergeSeries { current with Data = data } series
+                            let dataRef, value = mergeSeries { current with Data = data } wire.timeline series
                             Map.add dataRef value data) current.Data
                 let statusRef = decoded.Document |> Option.map _.StatusRef |> Option.defaultValue "status"
                 let mergedData =
@@ -735,7 +783,7 @@ module TaResearchTransientClient =
                                                 { ReasonCode = "transient-command-failed"
                                                   Message = TaResearchClientWire.text response.error
                                                   Recoverable = true } }
-                                apply (TaClientLifecycleEvent.RequestTimedOut DateTimeOffset.UtcNow) |> ignore
+                                apply TaClientLifecycleEvent.CommandRejected |> ignore
                         with _ ->
                             apply (TaClientLifecycleEvent.ResyncRequired "invalid-transient-response") |> ignore
 

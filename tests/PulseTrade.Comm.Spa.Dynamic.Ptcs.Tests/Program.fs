@@ -238,19 +238,67 @@ let tests =
               Expect.equal wire.baseDataRevision 10L "delta records its exact base revision."
               Expect.equal wire.series.Length 1 "one trace produces one bounded series delta."
               Expect.equal wire.series[0].mode "upsert" "series delta uses timestamp-keyed upsert semantics."
-              Expect.equal wire.series[0].points.Length 1 "only the newly appended point crosses the wire."
+              Expect.equal wire.series[0].pointCount 1 "only the newly appended point crosses the wire."
               Expect.isTrue wire.series[0].hasRemoveBeforeTime "rolling removal is explicit."
               Expect.equal wire.series[0].removeBeforeTime "2026-07-12T00:01:00Z" "the retained-window boundary is stable."
 
-              let large =
-                  Array.init 250 (fun index ->
-                      pointValue (sprintf "2026-07-12T%02d:%02d:00Z" (index / 60) (index % 60)) (100.0 + float index))
-                  |> state 12L
-                  |> TaResearchBrowserWire.stateToWire
+              let largePoints =
+                  Array.init 2500 (fun index ->
+                      pointValue (sprintf "2026-07-%02dT%02d:%02d:00Z" (12 + index / 1440) ((index / 60) % 24) (index % 60)) (100.0 + float index))
+              let large = largePoints |> state 12L |> TaResearchBrowserWire.stateToWire
               Expect.equal
-                  large.series[0].points.Length
-                  TaResearchBrowserWire.MaxBootstrapPointsPerSeries
-                  "bootstrap wire must bound each series while server RuntimeState retains the full history." )
+                  large.series[0].pointCount
+                  TaResearchBrowserWire.MaxFullSnapshotPointsPerSeries
+                  "full bootstrap must retain the complete product working set while server RuntimeState remains authoritative."
+              Expect.equal large.timeline.Length 2000 "the v3 bootstrap timeline contains all retained timestamps."
+              Expect.equal large.series[0].closeValues.Length 2000 "the v3 candle close column contains all retained values."
+              Expect.isEmpty large.series[0].points "the v3 wire does not duplicate row objects."
+
+              let empty = state 11L [||]
+              let firstData = largePoints |> state 12L |> TaResearchBrowserWire.stateToWireAgainst (Some empty)
+              Expect.equal firstData.updateKind "full" "empty-to-first-data must not be truncated by the stable delta cap."
+              Expect.equal firstData.series[0].pointCount 2000 "first data bootstrap retains 2000 points."
+
+              let changed =
+                  largePoints
+                  |> Array.map (function
+                      | SduiValue.Object values ->
+                          let closeValue = values["c"] |> function SduiValue.Number value -> value | _ -> 0.0
+                          SduiValue.Object(values |> Map.add "c" (SduiValue.Number(closeValue + 1.0)))
+                      | value -> value)
+                  |> state 13L
+                  |> TaResearchBrowserWire.stateToWireAgainst (Some (state 12L largePoints))
+              Expect.equal changed.updateKind "delta" "stable non-empty revisions use delta."
+              Expect.equal changed.series[0].pointCount TaResearchBrowserWire.MaxDeltaPointsPerSeries "delta remains independently bounded."
+
+              let linePoint =
+                  SduiValue.Object(Map [ "t", SduiValue.Text "2026-07-12T00:00:00Z"; "v", SduiValue.Number 42.0 ])
+                  |> TaResearchBrowserWire.pointFromValue
+                  |> Option.defaultWith (fun () -> failtest "line point was rejected")
+              let compactJson = JsonSerializer.Serialize(linePoint, TaResearchTransientServer.jsonOptions)
+              Expect.stringContains compactJson "\"lineValue\":42" "line value must remain present."
+              Expect.isFalse (compactJson.Contains("openValue", StringComparison.Ordinal)) "unused OHLC defaults must be omitted."
+              Expect.isFalse (compactJson.Contains("hasOpen", StringComparison.Ordinal)) "false field flags must be omitted."
+
+              let zeroRevisionJson =
+                  state 0L [||]
+                  |> TaResearchBrowserWire.stateToWire
+                  |> fun value -> JsonSerializer.Serialize(value, TaResearchTransientServer.jsonOptions)
+
+              Expect.stringContains zeroRevisionJson "\"baseDataRevision\":0" "wire base revision zero is protocol state and must not be omitted."
+              Expect.stringContains zeroRevisionJson "\"documentRevision\":1" "wire document revision must remain explicit."
+              Expect.stringContains zeroRevisionJson "\"dataRevision\":0" "wire data revision zero is protocol state and must not be omitted."
+              Expect.stringContains zeroRevisionJson "\"transportSequence\":0" "wire transport sequence zero is protocol state and must not be omitted."
+
+              let zeroPoll =
+                  browserPayload "action" "poll-delta"
+                  |> fun text -> JsonSerializer.Deserialize<TaBrowserClientFrameWire>(text, TaResearchTransientServer.jsonOptions)
+                  |> TaResearchBrowserWire.clientFrameFromWire
+
+              Expect.equal
+                  zeroPoll
+                  (Ok(RuntimeClientFrame.Action(SduiAction.PollDelta(canvasId, 0L))))
+                  "poll-delta revision zero must survive the browser wire round trip." )
 
           testCaseAsync "server adapter applies canonical reducer and keeps sessions isolated" (async {
               let handler = TaResearchTransientServer.createHandler backend
@@ -316,7 +364,7 @@ let tests =
                   handler (browserContext "browser-a" "open" "browser-open" (browserPayload "mounted" ""))
 
               let openedState = opened |> requireOk |> decodeBrowserState
-              Expect.equal openedState.wireVersion "ta-browser.v2" "browser response must use the bounded delta-capable wire version."
+              Expect.equal openedState.wireVersion "ta-browser.v3" "browser response must use the compact columnar wire version."
               Expect.equal openedState.updateKind "full" "first browser response must be authoritative."
               Expect.equal openedState.title "TA Research" "document metadata should be projected for the browser."
               Expect.equal openedState.rows.Length 1 "document rows should be projected without recursive values."
@@ -349,7 +397,7 @@ let tests =
               Expect.equal queriedState.quality "complete" "quality should survive the bounded browser wire."
               Expect.equal queriedState.reasonCode "historical-query" "freshness reason should survive the bounded browser wire."
               Expect.equal queriedState.series.Length 1 "browser wire should expose one bounded series per row."
-              Expect.isEmpty queriedState.series[0].points "the empty backend series should remain empty." })
+              Expect.equal queriedState.series[0].pointCount 0 "the empty backend series should remain empty." })
 
           testCaseAsync "browser revision rejects fractional JS numbers" (async {
               let handler = TaResearchTransientServer.createHandler backend

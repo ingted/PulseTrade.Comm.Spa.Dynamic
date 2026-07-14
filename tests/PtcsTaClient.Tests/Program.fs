@@ -50,12 +50,22 @@ let wire =
       queryFromUtc = ""
       queryToUtcExclusive = ""
       queryIncludePartial = true
+      timeline = [||]
       series =
         [| { dataRef = "series.price"
              mode = "replace"
              removeBeforeTime = ""
              hasRemoveBeforeTime = false
-             points = [| point |] } |]
+             points = [| point |]
+             pointCount = 0
+             startIndex = 0
+             timeIndices = [||]
+             openValues = [||]
+             highValues = [||]
+             lowValues = [||]
+             closeValues = [||]
+             volumeValues = [||]
+             lineValues = [||] } |]
       statusLabel = "LIVE"
       freshness = "live"
       watermarkUtc = "2026-07-11T09:00:00Z"
@@ -96,6 +106,37 @@ let tests =
               | SduiValue.Array [| SduiValue.Object values |] ->
                   Expect.equal values["c"] (SduiValue.Number 103.0) "candle close should use renderer field vocabulary."
               | other -> failtestf "Unexpected projected series: %A" other)
+
+          testCase "columnar v3 projects 2000-point compatible candle data without row objects" (fun _ ->
+              let v3 =
+                  { wire with
+                      wireVersion = "ta-browser.v3"
+                      timeline = [| point.time; "2026-07-11T09:01:00+08:00" |]
+                      series =
+                        [| { dataRef = "series.price"
+                             mode = "replace"
+                             removeBeforeTime = ""
+                             hasRemoveBeforeTime = false
+                             points = [||]
+                             pointCount = 2
+                             startIndex = 0
+                             timeIndices = [||]
+                             openValues = [| 100.0; 103.0 |]
+                             highValues = [| 105.0; 106.0 |]
+                             lowValues = [| 98.0; 102.0 |]
+                             closeValues = [| 103.0; 104.0 |]
+                             volumeValues = [| 20.0; 22.0 |]
+                             lineValues = [||] } |] }
+              let state = TaResearchClientWire.stateFromWire v3 |> Result.defaultWith failtest
+              match state.Data["series.price"] with
+              | SduiValue.Array points ->
+                  Expect.equal points.Length 2 "columnar points are reconstructed for the renderer."
+                  match points[1] with
+                  | SduiValue.Object values ->
+                      Expect.equal values["t"] (SduiValue.Text "2026-07-11T09:01:00+08:00") "timeline index is reconstructed."
+                      Expect.equal values["c"] (SduiValue.Number 104.0) "close column is reconstructed."
+                  | value -> failtestf "Unexpected v3 point: %A" value
+              | value -> failtestf "Unexpected v3 series: %A" value)
 
           testCase "add-row action emits canonical lowercase row kind" (fun _ ->
               let action =
@@ -148,7 +189,16 @@ let tests =
                              mode = "upsert"
                              removeBeforeTime = ""
                              hasRemoveBeforeTime = false
-                             points = [| nextPoint |] } |] }
+                             points = [| nextPoint |]
+                             pointCount = 0
+                             startIndex = 0
+                             timeIndices = [||]
+                             openValues = [||]
+                             highValues = [||]
+                             lowValues = [||]
+                             closeValues = [||]
+                             volumeValues = [||]
+                             lineValues = [||] } |] }
               let merged = TaResearchClientWire.applyWire initial delta |> Result.defaultWith failtest
               match merged.Data["series.price"] with
               | SduiValue.Array points -> Expect.equal points.Length 2 "delta append retains the prior point."
@@ -164,7 +214,16 @@ let tests =
                              mode = "upsert"
                              removeBeforeTime = nextPoint.time
                              hasRemoveBeforeTime = true
-                             points = [||] } |] }
+                             points = [||]
+                             pointCount = 0
+                             startIndex = 0
+                             timeIndices = [||]
+                             openValues = [||]
+                             highValues = [||]
+                             lowValues = [||]
+                             closeValues = [||]
+                             volumeValues = [||]
+                             lineValues = [||] } |] }
               let trimmed = TaResearchClientWire.applyWire merged trimmedWire |> Result.defaultWith failtest
               match trimmed.Data["series.price"] with
               | SduiValue.Array points -> Expect.equal points.Length 1 "rolling-window trim removes only the stale prefix."
@@ -213,6 +272,15 @@ let tests =
               Expect.isFalse
                   (pendingDisposeEffects |> Array.contains TaClientLifecycleEffect.SendUnmounted)
                   "hidden in-flight surfaces must not overlap close with the active request."
+
+              let rejected, rejectedEffects =
+                  TaClientLifecycle.transition options TaClientLifecycleEvent.CommandRejected polling
+              Expect.isTrue rejected.Connected "a domain command rejection must preserve the healthy WebSocket transport."
+              Expect.isFalse rejected.InFlight "a command rejection must release the single-flight slot."
+              Expect.equal rejected.Poll RuntimePollState.Ready "an active rejected command should return to ready polling."
+              Expect.isTrue (rejectedEffects |> Array.contains TaClientLifecycleEffect.CancelTimeout) "a command rejection cancels its request timeout."
+              Expect.isTrue (rejectedEffects |> Array.contains (TaClientLifecycleEffect.SchedulePoll 5000)) "a command rejection resumes bounded polling."
+              Expect.isFalse (rejectedEffects |> Array.contains TaClientLifecycleEffect.CloseTransport) "a domain error must not close a healthy transport."
 
               let timedOut, retryEffects =
                   TaClientLifecycle.transition options (TaClientLifecycleEvent.RequestTimedOut DateTimeOffset.UtcNow) polling

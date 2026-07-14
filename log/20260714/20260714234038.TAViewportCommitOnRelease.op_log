@@ -2,3 +2,8 @@
 
 - 2026-07-14：開始 RFC/document chain。已確認 renderer range `input` 每格 commit chart state；PTCS browser full/delta 共用 200-point cap；formal evidence loaded=200、visible=48。
 - 2026-07-14：完成RFC-PTCS-DYNAMIC-0009與REQ/SA/SD/WBS/Test/Verification對齊；DYN-TA-013拆為wire、renderer、isolated Playwright、formal service四個實作gate。
+- 2026-07-15：完成`ta-browser.v3` columnar full/delta分流（2000/200）、empty-to-first-data full、draft preview/release single commit、timestamp-aligned warm-up traces與`CommandRejected` same-connection recovery。
+- Exact packages已發布：Renderer `0.1.0-alpha19`、Ptcs `0.1.0-alpha7-win39`、Ptcs.Client `0.1.0-alpha8-win47`。Package suites通過`17/17`、`7/7`、`8/8`。
+- 正式82 F# Playwright artifact：`G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-ta2000-final-bounded-win39-alpha45-20260715022108`；loaded=2000、visible=48、drag/release/head-tail、delta/reconnect/memory均通過。
+- 既有untracked `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo/wwwroot/`與generated log ACL不屬本輪；未刪除、未stage。build使用外部clean staging避免碰觸既有ACL。
+- Fresh-session `check.fsx`（`DynamicTAViewport-202607150245`）結果`FAIL=0`；既有invalid log name與RFC coverage WARN不影響本輪。Dynamic `git diff --check`與strict UTF-8/NUL/U+FFFD gate通過。

@@ -222,6 +222,31 @@ module RendererModel =
         |> Array.tryHead
         |> Option.defaultValue 0
 
+    let traceTimestamps (trace: TaTraceSpec) data =
+        match trace.Kind with
+        | TaTraceKind.Candlestick
+        | TaTraceKind.Volume -> candleSeries trace.DataRef data |> Array.map _.Timestamp
+        | TaTraceKind.Line
+        | TaTraceKind.Histogram -> lineSeries trace.DataRef data |> Array.map _.Timestamp
+
+    let referenceTimeline (rows: TaRowSpec array) data =
+        let traces =
+            rows
+            |> Array.filter _.Visible
+            |> Array.collect effectiveTraces
+            |> Array.filter _.Visible
+
+        let tryTimeline predicate =
+            traces
+            |> Array.filter predicate
+            |> Array.tryPick (fun trace ->
+                let timestamps = traceTimestamps trace data
+                if timestamps.Length = 0 then None else Some timestamps)
+
+        tryTimeline (fun trace -> trace.Kind = TaTraceKind.Candlestick)
+        |> Option.orElseWith (fun () -> tryTimeline (fun _ -> true))
+        |> Option.defaultValue [||]
+
     let clampWindow minimumCount maximumCount total requested =
         if total <= 0 then
             { StartIndex = 0; Count = 0 }
@@ -243,6 +268,14 @@ module RendererModel =
     let viewportMaximumStart total window =
         max 0 (total - max 0 window.Count)
 
+    let previewWindow total window candidateStart =
+        { window with
+            StartIndex = max 0 (min candidateStart (viewportMaximumStart total window)) }
+
+    let commitPreview total window candidateStart =
+        let next = previewWindow total window candidateStart
+        next.StartIndex = viewportMaximumStart total next, next
+
     let cursorIndexFromRatio visibleCount ratio =
         if visibleCount <= 0 then
             None
@@ -257,7 +290,9 @@ module RendererModel =
 
     let selectWindow window (values: 'T array) =
         if window.Count <= 0 || values.Length = 0 then [||]
-        else values |> Array.skip window.StartIndex |> Array.truncate window.Count
+        else
+            let startIndex = max 0 (min window.StartIndex values.Length)
+            values |> Array.skip startIndex |> Array.truncate window.Count
 
     let paddedRange fallbackLow fallbackHigh values =
         if Array.isEmpty values then fallbackLow, fallbackHigh
@@ -284,16 +319,15 @@ module RendererModel =
 
     let cursorSnapshot (document: TaWorkspaceDocument) data window cursorIndex =
         let visibleRows = document.Rows |> Array.filter _.Visible
-        let referenceLength =
-            visibleRows
-            |> Array.tryHead
-            |> Option.map (fun row -> rowReferenceLength row data)
-            |> Option.defaultValue 0
+        let timeline = referenceTimeline visibleRows data
+        let referenceLength = timeline.Length
         let effectiveWindow = clampWindow 1 Int32.MaxValue referenceLength window
+        let visibleTimestamps = selectWindow effectiveWindow timeline
 
-        if effectiveWindow.Count = 0 then None
+        if visibleTimestamps.Length = 0 then None
         else
-            let index = max 0 (min cursorIndex (effectiveWindow.Count - 1))
+            let index = max 0 (min cursorIndex (visibleTimestamps.Length - 1))
+            let timestamp = visibleTimestamps[index]
             let values =
                 visibleRows
                 |> Array.collect (fun row ->
@@ -305,8 +339,7 @@ module RendererModel =
                         | TaTraceKind.Candlestick
                         | TaTraceKind.Volume ->
                             candleSeries trace.DataRef data
-                            |> selectWindow effectiveWindow
-                            |> Array.tryItem index
+                            |> Array.tryFind (fun point -> point.Timestamp = timestamp)
                             |> Option.map (fun point ->
                                 let value =
                                     if trace.Kind = TaTraceKind.Volume then fixedNumber point.Volume
@@ -319,16 +352,13 @@ module RendererModel =
                         | TaTraceKind.Line
                         | TaTraceKind.Histogram ->
                             lineSeries trace.DataRef data
-                            |> selectWindow effectiveWindow
-                            |> Array.tryItem index
+                            |> Array.tryFind (fun point -> point.Timestamp = timestamp)
                             |> Option.map (fun point -> point.Timestamp, { Label = label; Value = fixedNumber point.Value })))
 
-            values
-            |> Array.tryHead
-            |> Option.map (fun (timestamp, _) ->
+            Some
                 { VisibleIndex = index
                   Timestamp = timestamp
-                  Values = values |> Array.map snd })
+                  Values = values |> Array.map snd }
 
     let freshnessFromStatus status =
         let kind = objectText "freshness" status |> Option.defaultValue "unavailable" |> fun value -> value.ToLower()

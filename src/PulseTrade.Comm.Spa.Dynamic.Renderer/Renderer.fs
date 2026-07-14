@@ -272,7 +272,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvg rowId (traces: TaTraceSpec array) data window sharedVisibleCount cursorIndex setCursorIndex =
+    let compositeSvg rowId (traces: TaTraceSpec array) data (referenceTimestamps: string array) cursorIndex setCursorIndex =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -282,29 +282,21 @@ module TaWorkspaceRenderer =
         let color index (trace: TaTraceSpec) =
             if String.IsNullOrWhiteSpace trace.Color then palette[index % palette.Length] else trace.Color
 
+        let timestampIndex =
+            referenceTimestamps
+            |> Array.mapi (fun index timestamp -> timestamp, index)
+            |> Map.ofArray
+
+        let containsTimestamp timestamp = timestampIndex |> Map.containsKey timestamp
+        let tryTimestampIndex timestamp = timestampIndex |> Map.tryFind timestamp
+
         let candleSeries =
             traces
             |> Array.tryFind (fun trace -> trace.Kind = TaTraceKind.Candlestick)
-            |> Option.map (fun trace -> RendererModel.candleSeries trace.DataRef data |> RendererModel.selectWindow window)
+            |> Option.map (fun trace ->
+                RendererModel.candleSeries trace.DataRef data
+                |> Array.filter (fun point -> containsTimestamp point.Timestamp))
             |> Option.defaultValue [||]
-
-        let referenceTimestamps =
-            if candleSeries.Length > 0 then candleSeries |> Array.map _.Timestamp
-            else
-                traces
-                |> Array.tryPick (fun trace ->
-                    match trace.Kind with
-                    | TaTraceKind.Volume ->
-                        let points = RendererModel.candleSeries trace.DataRef data |> RendererModel.selectWindow window
-                        if points.Length = 0 then None else Some(points |> Array.map _.Timestamp)
-                    | TaTraceKind.Line
-                    | TaTraceKind.Histogram ->
-                        let points = RendererModel.lineSeries trace.DataRef data |> RendererModel.selectWindow window
-                        if points.Length = 0 then None else Some(points |> Array.map _.Timestamp)
-                    | _ -> None)
-                |> Option.defaultValue [||]
-
-        let timestampIndex timestamp = referenceTimestamps |> Array.tryFindIndex ((=) timestamp)
         let xAt index =
             if referenceTimestamps.Length <= 1 then width / 2.0
             else width * float index / float (referenceTimestamps.Length - 1)
@@ -320,7 +312,7 @@ module TaWorkspaceRenderer =
                      | TaTraceKind.Line
                      | TaTraceKind.Histogram -> RendererModel.lineSeries trace.DataRef data
                      | _ -> [||])
-                    |> Array.filter (fun point -> timestampIndex point.Timestamp |> Option.isSome)
+                    |> Array.filter (fun point -> containsTimestamp point.Timestamp)
                 index, trace, points)
 
         let scaleValues =
@@ -343,7 +335,7 @@ module TaWorkspaceRenderer =
             attr.style ("display:block; width:100%; height:" + fixedText height + "px; background:#fbfcfe;")
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
-                match RendererModel.cursorIndexFromClientX sharedVisibleCount bounds.Left bounds.Width event.ClientX with
+                match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
                 | Some index -> setCursorIndex (Some index)
                 | None -> ())
         ] [
@@ -371,7 +363,7 @@ module TaWorkspaceRenderer =
                 | TaTraceKind.Volume ->
                     let zeroY = RendererModel.normalize low high top plotHeight 0.0
                     for point in points do
-                        match timestampIndex point.Timestamp with
+                        match tryTimestampIndex point.Timestamp with
                         | Some index ->
                             let x = slot * (float index + 0.18)
                             let valueY = RendererModel.normalize low high top plotHeight point.Value
@@ -383,21 +375,21 @@ module TaWorkspaceRenderer =
                     let path =
                         points
                         |> Array.choose (fun point ->
-                            timestampIndex point.Timestamp
+                            tryTimestampIndex point.Timestamp
                             |> Option.map (fun index -> xAt index, RendererModel.normalize low high top plotHeight point.Value))
                         |> Array.mapi (fun index (x, y) -> (if index = 0 then "M" else "L") + " " + fixedText x + " " + fixedText y)
                         |> String.concat " "
                     yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); svgAttr "d" path; svgAttr "fill" "none"; svgAttr "stroke" traceColor; svgAttr "stroke-width" (fixedText trace.Width); svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
                 | _ -> ()
 
-            match cursorPosition width sharedVisibleCount cursorIndex with
+            match cursorPosition width referenceTimestamps.Length cursorIndex with
             | Some x -> yield svgElement "line" [ Attr.Create "data-testid" (svgTestId + "-crosshair"); svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" "0"; svgAttr "y2" (fixedText plotHeight); svgAttr "stroke" "#1f4f73"; svgAttr "stroke-width" "1"; svgAttr "stroke-dasharray" "3 3" ] []
             | None -> ()
         ], referenceTimestamps
 
-    let renderRow (state: RuntimeState) (ui: TaRendererUiState) visibleWindow sharedVisibleCount setCursorIndex showSharedTimeAxis (row: TaRowSpec) =
+    let renderRow (state: RuntimeState) (ui: TaRendererUiState) visibleTimestamps setCursorIndex showSharedTimeAxis (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
-        let chart, timestamps = compositeSvg row.RowId traces state.Data visibleWindow sharedVisibleCount ui.CursorIndex setCursorIndex
+        let chart, timestamps = compositeSvg row.RowId traces state.Data visibleTimestamps ui.CursorIndex setCursorIndex
         let title =
             if isNull row.Traces || row.Traces.Length = 0 then
                 rowKindText row.Kind
@@ -421,6 +413,8 @@ module TaWorkspaceRenderer =
         let mutable synchronizedDocumentRevision = -1L
         let addKind = Var.Create "Sma"
         let addDataRef = Var.Create "series.sma"
+        let draftStartIndex = Var.Create<int option> None
+        let mutable chartRenderSequence = 0
         let uiState =
             Var.Create
                 { Window = { StartIndex = 0; Count = options.DefaultVisibleBars }
@@ -653,15 +647,14 @@ module TaWorkspaceRenderer =
                         ]
                         uiState.View
                         |> View.Map (fun ui ->
+                            chartRenderSequence <- chartRenderSequence + 1
+                            let renderSequence = chartRenderSequence
                             let visibleRows =
                                 document.Rows
                                 |> Array.filter (fun row -> row.Visible && not (Set.contains row.RowId ui.HiddenRows))
 
-                            let referenceLength =
-                                visibleRows
-                                |> Array.tryHead
-                                |> Option.map (fun row -> RendererModel.rowReferenceLength row state.Data)
-                                |> Option.defaultValue 0
+                            let referenceTimeline = RendererModel.referenceTimeline visibleRows state.Data
+                            let referenceLength = referenceTimeline.Length
                             let visibleWindow =
                                 RendererModel.resolveWindow
                                     options.MinimumVisibleBars
@@ -669,9 +662,10 @@ module TaWorkspaceRenderer =
                                     referenceLength
                                     ui.FollowLatest
                                     ui.Window
+                            let visibleTimestamps = RendererModel.selectWindow visibleWindow referenceTimeline
                             let cursorIndex =
                                 ui.CursorIndex
-                                |> Option.map (fun value -> value |> max 0 |> min (max 0 (visibleWindow.Count - 1)))
+                                |> Option.map (fun value -> value |> max 0 |> min (max 0 (visibleTimestamps.Length - 1)))
                             let cursorDocument = { document with Rows = visibleRows }
                             let cursor = cursorIndex |> Option.bind (RendererModel.cursorSnapshot cursorDocument state.Data visibleWindow)
                             let cursorValues =
@@ -687,8 +681,19 @@ module TaWorkspaceRenderer =
                             let maximumStart = RendererModel.viewportMaximumStart referenceLength visibleWindow
                             let visibleStart = if visibleWindow.Count = 0 then 0 else visibleWindow.StartIndex + 1
                             let visibleEnd = visibleWindow.StartIndex + visibleWindow.Count
+                            let viewportRangeText =
+                                draftStartIndex.View
+                                |> View.Map (fun draft ->
+                                    match draft with
+                                    | None -> $"Loaded {referenceLength} bars · Viewing {visibleStart}-{visibleEnd}"
+                                    | Some candidate ->
+                                        let preview = RendererModel.previewWindow referenceLength visibleWindow candidate
+                                        let previewStart = if preview.Count = 0 then 0 else preview.StartIndex + 1
+                                        let previewEnd = preview.StartIndex + preview.Count
+                                        $"Loaded {referenceLength} bars · Preview {previewStart}-{previewEnd} · release to render")
                             div [
                                 Attr.Create "data-testid" "ta-chart-stack"
+                                Attr.Create "data-chart-render-sequence" (string renderSequence)
                                 Attr.Create "data-loaded-bars" (string referenceLength)
                                 Attr.Create "data-visible-start" (string visibleStart)
                                 Attr.Create "data-visible-end" (string visibleEnd)
@@ -703,7 +708,7 @@ module TaWorkspaceRenderer =
                                     yield div [ attr.style "padding:18px; color:#667891;" ] [ text "No visible TA rows." ]
                                 else
                                     for index in 0 .. visibleRows.Length - 1 do
-                                        yield renderRow state { ui with CursorIndex = cursorIndex } visibleWindow visibleWindow.Count setCursorIndex (index = visibleRows.Length - 1) visibleRows[index]
+                                        yield renderRow state { ui with CursorIndex = cursorIndex } visibleTimestamps setCursorIndex (index = visibleRows.Length - 1) visibleRows[index]
                                 yield div [
                                     Attr.Create "data-testid" "ta-viewport-panel"
                                     attr.style "order:-1; display:grid; grid-template-columns:minmax(180px,auto) minmax(160px,1fr); gap:8px 12px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
@@ -711,7 +716,7 @@ module TaWorkspaceRenderer =
                                     span [
                                         Attr.Create "data-testid" "ta-viewport-range"
                                         attr.style "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;"
-                                    ] [ text $"Loaded {referenceLength} bars · Viewing {visibleStart}-{visibleEnd}" ]
+                                    ] [ textView viewportRangeText ]
                                     element "input" [
                                         Attr.Create "data-testid" "ta-viewport-slider"
                                         Attr.Create "aria-label" "Move visible time window"
@@ -727,9 +732,18 @@ module TaWorkspaceRenderer =
                                             input.AddEventListener("input", fun () ->
                                                 match Int32.TryParse input.Value with
                                                 | true, value ->
-                                                    let next = { visibleWindow with StartIndex = value }
-                                                    setWindow (value = maximumStart) next
-                                                | _ -> ()))
+                                                    let preview = RendererModel.previewWindow referenceLength visibleWindow value
+                                                    draftStartIndex.Value <- Some preview.StartIndex
+                                                | _ -> ())
+                                            input.AddEventListener("change", fun () ->
+                                                match Int32.TryParse input.Value with
+                                                | true, value ->
+                                                    let followLatest, next = RendererModel.commitPreview referenceLength visibleWindow value
+                                                    draftStartIndex.Value <- None
+
+                                                    if next <> visibleWindow || followLatest <> ui.FollowLatest then
+                                                        setWindow followLatest next
+                                                | _ -> draftStartIndex.Value <- None))
                                     ] []
                                 ]
                             ] :> Doc)
