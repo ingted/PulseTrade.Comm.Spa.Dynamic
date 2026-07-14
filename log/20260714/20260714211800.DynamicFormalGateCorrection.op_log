@@ -5,3 +5,4 @@
 - Retained artifact: `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-formal-doc-only-202607142115`.
 - No Dynamic runtime source was changed in this correction slice.
 - `check.fsx` exit 0、FAIL=0；WARN僅nested log-dir、latest-log欄位、dirty與既有RFC thin link。staged本批runtime/package/test/docs與correction logs，排除LiveDemo build-generated `wwwroot`。敏感掃描high=0。
+- 2026-07-14 closeout commit：Dynamic formal viewport gate文件與證據以 `c9981f3`（`Close Dynamic TA formal viewport gate`）提交並已 push 至 `20260711_027.win.TACanvas`。
