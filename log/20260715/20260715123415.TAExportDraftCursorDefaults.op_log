@@ -7,3 +7,5 @@
 - 最終packages：Renderer `0.1.0-alpha25`、Dynamic.Ptcs `0.1.0-alpha7-win41`、Ptcs.Client `0.1.0-alpha8-win55`。win54因formal gate發現browser GUID/bootstrap缺陷而由win55取代。
 - Cross-repo正式F# Playwright artifact `G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchExport.alpha53.final.20260715150500`下載並parse 2000-point OHLCV/indicator data，通過lifecycle、Apply、cursor、row order、ACL、reconnect與memory gates。
 - Closeout check將使用固定Dynamic root `log/`與新session id，避免不同log root baseline造成readonly誤判。
+- Commit `4519a28 Complete TA runtime JSON export`已push至`origin/20260715_030.win.TACanvas_cross.bar.cursor.first.done`。
+- Final harness gate PASS=34/WARN=3/FAIL=0；本輪RFC已不在thin sample，剩餘WARN為既有legacy log/RFC追溯缺口。敏感掃描High=0，三個final Dynamic packages flat-container均HTTP 200。
