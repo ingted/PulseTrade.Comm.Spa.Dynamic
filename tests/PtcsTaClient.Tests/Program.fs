@@ -244,7 +244,7 @@ let tests =
               Expect.equal connected.Poll RuntimePollState.MountedIdle "connected channel should begin with mounted handshake."
               Expect.isTrue (connectEffects |> Array.contains TaClientLifecycleEffect.SendMounted) "connect should send one mounted frame."
 
-              let ready, readyEffects = TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted 9L) connected
+              let ready, readyEffects = TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted(9L, true)) connected
               Expect.equal ready.Poll RuntimePollState.Ready "accepted state should make polling ready."
               Expect.isTrue (readyEffects |> Array.contains (TaClientLifecycleEffect.SchedulePoll 5000)) "accepted state should schedule one poll."
 
@@ -313,13 +313,13 @@ let tests =
               let options = { TaClientLifecycle.defaults with ReconnectBaseMs = 1000; ReconnectMaximumMs = 4000 }
               let initial = TaClientLifecycle.initial canvas
               let connected, _ = TaClientLifecycle.transition options TaClientLifecycleEvent.Connected initial
-              let ready, _ = TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted 3L) connected
+              let ready, _ = TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted(3L, true)) connected
               let disconnected, effects = TaClientLifecycle.transition options TaClientLifecycleEvent.Disconnected ready
               Expect.equal disconnected.Poll RuntimePollState.Suspended "disconnect should preserve data but suspend polling."
               Expect.isTrue (effects |> Array.contains (TaClientLifecycleEffect.ScheduleReconnect 1000)) "first reconnect should use base delay."
 
               let reconnected, _ = TaClientLifecycle.transition options TaClientLifecycleEvent.Connected disconnected
-              let readyAgain, _ = TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted 3L) reconnected
+              let readyAgain, _ = TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted(3L, true)) reconnected
               let inactive, inactiveEffects = TaClientLifecycle.transition options (TaClientLifecycleEvent.ActiveChanged false) readyAgain
               Expect.equal inactive.Poll RuntimePollState.Suspended "inactive surface should not poll."
               Expect.isTrue (inactiveEffects |> Array.contains TaClientLifecycleEffect.CancelPoll) "inactive surface should cancel poll timer."
@@ -341,7 +341,7 @@ let tests =
               Expect.isTrue (disposeEffects |> Array.contains TaClientLifecycleEffect.CancelReconnect) "dispose should cancel reconnect timer."
 
               let closing, closeEffects =
-                  TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted 4L) disposePending
+                  TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted(4L, true)) disposePending
               Expect.isTrue closing.DisposePending "close remains pending until the transport confirms or disconnects."
               Expect.isTrue (closeEffects |> Array.contains TaClientLifecycleEffect.SendUnmounted) "the settled request should release exactly one channel."
 
@@ -354,7 +354,35 @@ let tests =
 
               let afterDispose, afterEffects = TaClientLifecycle.transition options TaClientLifecycleEvent.Connected disposed
               Expect.equal afterDispose disposed "disposed channel must not reconnect."
-              Expect.isEmpty afterEffects "disposed channel must emit no effects.") ]
+              Expect.isEmpty afterEffects "disposed channel must emit no effects.")
+
+          testCase "static documents do not schedule polling without poll-delta capability" (fun _ ->
+              let canvas = CanvasInstanceId "static-canvas"
+              let options = { TaClientLifecycle.defaults with PollIntervalMs = 5000 }
+              let initial = TaClientLifecycle.initial canvas
+              let connected, _ = TaClientLifecycle.transition options TaClientLifecycleEvent.Connected initial
+              let ready, effects =
+                  TaClientLifecycle.transition options (TaClientLifecycleEvent.StateAccepted(1L, false)) connected
+
+              Expect.isFalse ready.PollEnabled "static documents must retain an explicit disabled poll capability."
+              Expect.equal ready.Poll RuntimePollState.Suspended "static documents remain mounted without entering a poll cadence."
+              Expect.isFalse
+                  (effects |> Array.exists (function TaClientLifecycleEffect.SchedulePoll _ -> true | _ -> false))
+                  "static documents must not schedule a periodic poll."
+
+              let afterDue, dueEffects =
+                  TaClientLifecycle.transition options (TaClientLifecycleEvent.PollDue DateTimeOffset.UtcNow) ready
+              Expect.equal afterDue ready "a stray timer callback must not mutate a static document lifecycle."
+              Expect.isEmpty dueEffects "a stray timer callback must not send poll-delta for a static document."
+
+              let active, activeEffects =
+                  ready
+                  |> TaClientLifecycle.transition options (TaClientLifecycleEvent.ActiveChanged false)
+                  |> fun (inactive, _) -> TaClientLifecycle.transition options (TaClientLifecycleEvent.ActiveChanged true) inactive
+              Expect.isFalse active.PollEnabled "reactivation must not invent live capability."
+              Expect.isFalse
+                  (activeEffects |> Array.exists (function TaClientLifecycleEffect.SchedulePoll _ -> true | _ -> false))
+                  "reactivation must keep static documents at zero poll.") ]
 
 [<EntryPoint>]
 let main argv = runTestsWithCLIArgs [] argv tests

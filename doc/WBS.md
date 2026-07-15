@@ -94,5 +94,6 @@ RFC：`doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
 | DYN-TA-011 | Mixed-reply TA presentation closure | External blocked | 95 | DYN-TA-T-023..030 | 1~9 runtime、package tests與formal 81/82 gate完成；只剩public NuGet credential。不得用本工項推進E2EQ。 |
 | DYN-TA-013 | 2000-point full bootstrap / commit-on-release | Done | 100 | DYN-TA-T-035..038 | full=2000、delta=200、columnar v3、drag preview/release單次render與正式82 gate完成，詳見[@DYN-TA-013](TAResearch/WBS.DYN-TA-013.md)。 |
 | DYN-TA-014 | TA overview / typed Add Row / reset / copy | Done | 100 | DYN-TA-T-039..044 | dual-bound overview、48/200/All、typed Add Row、initial reset、copy JSON與正式82 E2E皆通過；詳見[@DYN-TA-014](TAResearch/WBS.DYN-TA-014.md)。 |
+| DYN-TA-016 | Editor shell / capability poll / Reset regression | Done | 100 | DYN-TA-T-051..055 | capability-gated poll、stable editor shell與multi-row Reset formal 82 gate完成；詳見[@DYN-TA-016](TAResearch/WBS.DYN-TA-016.md)。 |
 
 Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target FormInput真host Playwright已重跑；`DYN-WBS-519`移除`IndexOf("ActorTopologyPage")` classifier並通過4 blocks/26 rows ActorsPage gate。Public OAuth、production RN/cross-service registry與report persistence等原remaining不在本slice宣稱完成。

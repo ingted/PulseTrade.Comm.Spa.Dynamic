@@ -218,3 +218,11 @@ compact Document與full browser state是兩種不同產品artifact。前者可jo
 query select立即重render的根因是draft與authoritative RuntimeState共用reactive `Var`。draft應位於renderer control local state，只在document revision變更時重新基準化；data poll不具覆蓋使用者輸入的authority。
 
 cursor偏移的根因是兩套X公式：K棒使用slot center，line/cursor使用`index/(count-1)` endpoint。這不是CSS微調；所有series與pointer mapping都必須改用同一slot domain，否則first/last與跨row永遠無法對齊。
+
+## 16. 2026-07-15 Editor shell / poll capability / Reset correction
+
+先前只把draft值提升到renderer instance，沒有把editor DOM本身移出`RuntimeState.View.Map`。因此`PollInFlight -> Ready`即使Document revision不變，仍會替換整個workspace node；「editor仍visible」不足以證明focus/select identity穩定。正確邊界是Document shell依Document revision cache，status與chart另訂閱live runtime state。
+
+poll cadence是Document capability，不是renderer type推論。`AllowedActions`含`poll-delta`才代表live provider；static document沒有該action時必須zero-poll。這同時避免無live data source的Canvas每5秒產生無意義transport/action。
+
+Reset由Host initial command決定，Dynamic只接受authoritative Document。browser端仍須single in-flight，避免Remove response與Reset request競爭造成看似partial restore。正式驗證需從單列reset提高為連續刪除多列後一次完整restore。

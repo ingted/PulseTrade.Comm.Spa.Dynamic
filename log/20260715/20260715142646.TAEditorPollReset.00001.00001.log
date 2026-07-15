@@ -1,0 +1,27 @@
+# TA Editor poll stability / reset semantics 計畫
+
+## 背景與目標
+
+修復TA Add Row select被週期poll收合，以及Reset無法從mount-time原始DSL完整恢復所有rows/traces。
+
+## 計畫步驟
+
+1. 定點定位reactive DOM、poll ownership、Reset reducer與initial command。
+2. 先補失敗測試，再修實作。
+3. 執行package與正式82 F# Playwright gate，更新文件鏈與release。
+
+## 驗收方式
+
+select跨兩個poll保持open/focus；刪除DMI與MACD後一次Reset完整恢復四列17 traces；非live provider不poll。
+
+## 風險
+
+WebSharper DOM reconciliation與server/client initial-state revision競態。
+
+## Prompt / 上下文摘要
+
+使用者回報五秒刷新破壞editor操作，且Reset只恢復最後一部分。
+
+## Repo baseline
+
+- Dynamic branch `20260715_030.win.TACanvas_cross.bar.cursor.first.done`，baseline `ea139fd`，開始時clean。

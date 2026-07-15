@@ -459,3 +459,22 @@ download action
 query draft以renderer-instance mutable state保存。`DocumentRevision`改變時才從`DefaultView.query`同步；`DataRevision` poll不得同步。Apply讀draft並送一次`ChangeQuery`，accepted document再更新authoritative值。
 
 所有row使用：`slot=width/count`、`x=slot*(index+0.5)`；pointer使用`floor(ratio*count)`並bounded。K棒body/wick、line/histogram、cross-row cursor及floating values都使用同一visible index/domain。
+
+## 2026-07-15 Stable editor shell / capability poll design
+
+```fsharp
+type TaClientLifecycleState =
+    { PollEnabled: bool
+      // existing lifecycle fields
+    }
+
+type TaClientLifecycleEvent =
+    | StateAccepted of dataRevision: int64 * pollEnabled: bool
+
+let pollEnabled document =
+    document.AllowedActions |> Array.contains "poll-delta"
+```
+
+`StateAccepted`只有在`Active && PollEnabled`時產生`SchedulePoll`；`PollDue`與重新active亦須檢查同一flag。renderer以Document identity/revision作shell cache key；status/poll及chart使用nested `runtimeState.View`。所有remote button使用`attr.disabledBool`衍生live狀態，click callback再次讀`runtimeState.Value.Poll`，不得capture舊的`commandsDisabled`。
+
+Document revision變更可重建rows/query shell；單純Poll/DataRevision不得重建`ta-add-row-kind`。Reset response抵達後，以authoritative initial Document取代rows並清HiddenRows/CursorIndex/draft window。

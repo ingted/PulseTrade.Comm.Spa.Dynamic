@@ -1060,3 +1060,10 @@ Implementation status:
 - Renderer `0.1.0-alpha25`統一line、K棒與cross-row cursor的slot-center geometry，fallback line width為1.25。Dynamic.Ptcs `0.1.0-alpha7-win41`與Ptcs.Client `0.1.0-alpha8-win55`已發布並由Host exact-pin。
 - Ptcs.Client win54曾暴露WebSharper GUID字串與zero-data collapsed bootstrap缺陷，已由win55取代。Package gates Renderer `20/20`、Ptcs `7/7`、Ptcs.Client `8/8`與LiveDemo WebSharper build均通過。
 - 正式F# Playwright artifact `G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchExport.alpha53.final.20260715150500`實際下載729355-byte JSON並回讀2000筆完整資料；Apply、cursor、row order、ACL、reconnect與memory gates通過。
+
+## 2026-07-15 - DYN-TA-016 editor poll / Reset regression closure
+
+- Renderer `0.1.0-alpha27`把document/editor shell與runtime status/chart更新拆開；純poll不再替換Add Row原生select，chart cache同時使用document/data revision與transport sequence，避免reopen時漏掉same-revision full frame。
+- Ptcs.Client `0.1.0-alpha8-win57`只在Document宣告`poll-delta` capability時排程週期poll；static document在open、stray due與reactivate均保持zero-poll。
+- Renderer `20/20`、Ptcs.Client `9/9`及Host focused `31/31`通過。正式F# Playwright在82 port跨兩次poll保留`ta-add-row-kind` focus，連續刪除DMI與兩列MACD後一次Reset完整恢復四列17 traces。
+- 正式release為`live81-82-ptcs-beta112-ta-editor-reset-alpha55-win57-20260715153000`；artifact為`G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaEditorPollReset.alpha55.final.20260715153500\artifacts`。NuGet.org public push因本機未提供API key回401；local immutable packages與正式service不受影響，public publication仍待具備核准secret的release流程。

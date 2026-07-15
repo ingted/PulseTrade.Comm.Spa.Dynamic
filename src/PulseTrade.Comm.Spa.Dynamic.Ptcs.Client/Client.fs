@@ -159,6 +159,7 @@ type TaClientLifecycleOptions =
 type TaClientLifecycleState =
     { CanvasInstanceId: CanvasInstanceId
       Poll: RuntimePollState
+      PollEnabled: bool
       Connected: bool
       Active: bool
       InFlight: bool
@@ -170,7 +171,7 @@ type TaClientLifecycleState =
 [<JavaScript; RequireQualifiedAccess>]
 type TaClientLifecycleEvent =
     | Connected
-    | StateAccepted of dataRevision: int64
+    | StateAccepted of dataRevision: int64 * pollEnabled: bool
     | CommandRejected
     | StartAction of SduiAction
     | PollDue of nowUtc: DateTimeOffset
@@ -205,6 +206,7 @@ module TaClientLifecycle =
     let initial canvasInstanceId =
         { CanvasInstanceId = canvasInstanceId
           Poll = RuntimePollState.Unmounted
+          PollEnabled = false
           Connected = false
           Active = true
           InFlight = false
@@ -225,9 +227,10 @@ module TaClientLifecycle =
             state, [||]
         elif state.DisposePending then
             match event with
-            | TaClientLifecycleEvent.StateAccepted revision ->
+            | TaClientLifecycleEvent.StateAccepted(revision, pollEnabled) ->
                 { state with
                     Poll = RuntimePollState.Disposed
+                    PollEnabled = pollEnabled
                     InFlight = true
                     DataRevision = revision },
                 [| TaClientLifecycleEffect.CancelPoll
@@ -260,15 +263,15 @@ module TaClientLifecycle =
                 [| TaClientLifecycleEffect.CancelReconnect
                    TaClientLifecycleEffect.SendMounted
                    TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
-            | TaClientLifecycleEvent.StateAccepted revision ->
-                let nextPoll = if state.Active then RuntimePollState.Ready else RuntimePollState.Suspended
-                let schedule = if state.Active then [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |] else [||]
+            | TaClientLifecycleEvent.StateAccepted(revision, pollEnabled) ->
+                let nextPoll = if state.Active && pollEnabled then RuntimePollState.Ready else RuntimePollState.Suspended
+                let schedule = if state.Active && pollEnabled then [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |] else [||]
 
-                { state with Poll = nextPoll; InFlight = false; DataRevision = revision },
+                { state with Poll = nextPoll; PollEnabled = pollEnabled; InFlight = false; DataRevision = revision },
                 Array.append [| TaClientLifecycleEffect.CancelTimeout |] schedule
             | TaClientLifecycleEvent.CommandRejected when state.Connected && state.InFlight ->
-                let nextPoll = if state.Active then RuntimePollState.Ready else RuntimePollState.Suspended
-                let schedule = if state.Active then [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |] else [||]
+                let nextPoll = if state.Active && state.PollEnabled then RuntimePollState.Ready else RuntimePollState.Suspended
+                let schedule = if state.Active && state.PollEnabled then [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |] else [||]
 
                 { state with Poll = nextPoll; InFlight = false },
                 Array.append [| TaClientLifecycleEffect.CancelTimeout |] schedule
@@ -277,7 +280,7 @@ module TaClientLifecycle =
                 [| TaClientLifecycleEffect.CancelPoll
                    TaClientLifecycleEffect.SendAction action
                    TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
-            | TaClientLifecycleEvent.PollDue _ when state.Connected && state.Active && not state.InFlight ->
+            | TaClientLifecycleEvent.PollDue _ when state.Connected && state.Active && state.PollEnabled && not state.InFlight ->
                 { state with Poll = RuntimePollState.PollInFlight; InFlight = true },
                 [| TaClientLifecycleEffect.SendAction(SduiAction.PollDelta(state.CanvasInstanceId, state.DataRevision))
                    TaClientLifecycleEffect.ScheduleTimeout options.RequestTimeoutMs |]
@@ -306,7 +309,7 @@ module TaClientLifecycle =
                    TaClientLifecycleEffect.CancelTimeout
                    TaClientLifecycleEffect.ScheduleReconnect(reconnectDelay options attempt) |]
             | TaClientLifecycleEvent.ActiveChanged active ->
-                if active && state.Connected && not state.InFlight then
+                if active && state.Connected && state.PollEnabled && not state.InFlight then
                     { state with Active = true; Poll = RuntimePollState.Ready },
                     [| TaClientLifecycleEffect.SchedulePoll options.PollIntervalMs |]
                 elif active then
@@ -880,7 +883,13 @@ module TaResearchTransientClient =
                                                               Message = "The TA export response was not a full runtime state."
                                                               Recoverable = true } }
 
-                                    apply (TaClientLifecycleEvent.StateAccepted state.DataRevision) |> ignore
+                                    let pollEnabled =
+                                        state.Document
+                                        |> Option.exists (fun document ->
+                                            document.AllowedActions
+                                            |> Array.exists (fun action -> action = "poll-delta"))
+
+                                    apply (TaClientLifecycleEvent.StateAccepted(state.DataRevision, pollEnabled)) |> ignore
 
                                     if jsonExportCompleted && disposeAfterJsonExport then
                                         apply TaClientLifecycleEvent.Dispose |> ignore

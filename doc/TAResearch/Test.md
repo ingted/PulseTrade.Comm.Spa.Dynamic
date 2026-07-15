@@ -120,3 +120,13 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-048 | REQ-030 | Component/Playwright | interval draft跨poll不改render/query/action count；Apply後恰一次authoritative update。 | Pass：正式82在select後render/action count不變，Apply後action delta恰為1。 |
 | DYN-TA-T-049 | REQ-031 | Model/geometry | first/middle/last pointer mapping、K棒/line/cursor slot center與cross-row X<=1px。 | Pass：Renderer `20/20`與正式cross-row screenshot/geometry gate通過。 |
 | DYN-TA-T-050 | REQ-028..031 | Package/formal 82 | exact packages、mixed reply/ACL/collapse/inline/fullscreen/reconnect與console/page error gate。 | Pass：Renderer alpha25、Dynamic.Ptcs win41、Ptcs.Client win55；formal artifact `G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchExport.alpha53.final.20260715150500`。 |
+
+## DYN-TA-016 Editor shell / capability poll / Reset regression
+
+| ID | Requirement | Level | Acceptance | Status |
+| --- | --- | --- | --- | --- |
+| DYN-TA-T-051 | REQ-032..034 | Document | `RFC-PTCS-DYNAMIC-0012`與REQ/SA/SD/WBS/Test、Host companion一致。 | Pass：兩個repo的RFC/current-state/WBS/Test互相回鏈。 |
+| DYN-TA-T-052 | REQ-032 | Lifecycle unit | Document無`poll-delta`時跨兩個interval不產生poll；live capability維持既有cadence。 | Pass：Ptcs.Client `9/9`，static open/stray due/reactivate均不產生poll。 |
+| DYN-TA-T-053 | REQ-033/034 | F# Playwright | Add Row select focus跨至少兩個live poll保持；chart/status仍更新；remote action in-flight不可重入。 | Pass：final isolated與正式82 gate跨兩次poll維持`ta-add-row-kind` focus，2000 bars仍更新。 |
+| DYN-TA-T-054 | REQ-034 | Formal 82 | 連續刪除DMI、macd-short、macd-long後Reset一次恢復原始四列17 traces與順序。 | Pass：一次Reset恢復`price,dmi,macd-short,macd-long`與17 traces。 |
+| DYN-TA-T-055 | REQ-032..034 | Release | exact packages、正式82、mixed reply/ACL/reconnect/console/page error通過。 | Pass：Renderer alpha27、Ptcs.Client win57、Host client alpha55；正式82 artifact `verify.ptcsHostTaEditorPollReset.alpha55.final.20260715153500`。 |

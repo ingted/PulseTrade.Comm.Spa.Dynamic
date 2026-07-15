@@ -145,6 +145,35 @@ module TaWorkspaceRenderer =
             on.click (fun _ _ -> if not disabled then onClick ())
         ] [ text label ]
 
+    let primaryButtonView (testId: string) (label: string) (disabled: View<bool>) (isDisabled: unit -> bool) (onClick: unit -> unit) =
+        let enabledStyle =
+            "height:30px; border:1px solid #0f766e; border-radius:4px; background:#0f766e; color:#fff; padding:3px 11px; font-size:12px; cursor:pointer; white-space:nowrap;"
+        let disabledStyle =
+            "height:30px; border:1px solid #9aa8b8; border-radius:4px; background:#d8e0e8; color:#667587; padding:3px 11px; font-size:12px; cursor:not-allowed; white-space:nowrap;"
+
+        button [
+            attr.``type`` "button"
+            Attr.Create "data-testid" testId
+            attr.disabledBool disabled
+            Attr.Dynamic "style" (disabled |> View.Map (fun value -> if value then disabledStyle else enabledStyle))
+            on.click (fun _ _ -> if not (isDisabled ()) then onClick ())
+        ] [ text label ]
+
+    let compactRemoteButton (testId: string) (label: string) (titleText: string) (disabled: View<bool>) (isDisabled: unit -> bool) (onClick: unit -> unit) =
+        let enabledStyle =
+            "height:30px; border:1px solid #9fb0c6; border-radius:4px; background:#f8fafc; color:#20344f; padding:3px 9px; font-size:12px; cursor:pointer; white-space:nowrap;"
+        let disabledStyle =
+            "height:30px; border:1px solid #c8d2df; border-radius:4px; background:#edf1f5; color:#8b98a8; padding:3px 9px; font-size:12px; cursor:not-allowed; white-space:nowrap;"
+
+        button [
+            attr.``type`` "button"
+            Attr.Create "data-testid" testId
+            attr.title titleText
+            attr.disabledBool disabled
+            Attr.Dynamic "style" (disabled |> View.Map (fun value -> if value then disabledStyle else enabledStyle))
+            on.click (fun _ _ -> if not (isDisabled ()) then onClick ())
+        ] [ text label ]
+
     let primaryButton testId label onClick =
         primaryButtonState testId label false onClick
 
@@ -506,6 +535,21 @@ module TaWorkspaceRenderer =
                   AddRowOpen = false
                   CursorIndex = None
                   Feedback = "" }
+        let commandsDisabledView = runtimeState.View |> View.Map (fun state -> remoteDisabled state.Poll)
+        let commandsDisabledNow () = remoteDisabled runtimeState.Value.Poll
+        let sameDocumentShell (left: RuntimeState) (right: RuntimeState) =
+            let samePresence =
+                match left.Document, right.Document with
+                | None, None -> true
+                | Some leftDocument, Some rightDocument -> leftDocument.WorkspaceId = rightDocument.WorkspaceId
+                | _ -> false
+
+            samePresence && left.DocumentRevision = right.DocumentRevision
+        let sameChartState (left: RuntimeState) (right: RuntimeState) =
+            left.DocumentRevision = right.DocumentRevision
+            && left.DataRevision = right.DataRevision
+            && left.LastTransportSequence = right.LastTransportSequence
+        let chartRuntimeView: View<RuntimeState> = runtimeState.View |> View.MapCachedBy sameChartState id
 
         let referenceLength () =
             match runtimeState.Value.Document with
@@ -681,7 +725,7 @@ module TaWorkspaceRenderer =
             attr.style "display:flex; flex-direction:column; min-width:0; width:100%; min-height:640px; color:#142033; background:#f4f7fb; font-family:Segoe UI, Arial, sans-serif; letter-spacing:0;"
         ] [
             runtimeState.View
-            |> View.Map (fun state ->
+            |> View.MapCachedBy sameDocumentShell (fun state ->
                 match state.Document with
                 | None ->
                     let pending = RendererModel.workspaceBootstrapPresentation state
@@ -709,42 +753,47 @@ module TaWorkspaceRenderer =
                         | _ -> ()
                         synchronizedDocumentRevision <- state.DocumentRevision
 
-                    let status = RendererModel.statusPresentation document.StatusRef state
-                    let commandsDisabled = remoteDisabled state.Poll
-
                     div [ attr.style "display:flex; flex-direction:column; min-width:0;" ] [
                         header [ attr.style "display:flex; flex-direction:column; gap:7px; padding:10px 12px 8px; background:#fff; border-bottom:1px solid #dbe3ee;" ] [
                             div [ attr.style "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;" ] [
                                 div [ attr.style "min-width:0;" ] [
                                     h2 [ Attr.Create "data-testid" "ta-workspace-title"; attr.style "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;" ] [ text document.Title ]
-                                    div [ attr.style "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" ] [ text ("canvas " + canvasIdText canvasId + " / revision " + string state.DataRevision) ]
-                                ]
-                                div [ attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;" ] [
-                                    div [ Attr.Create "data-testid" "ta-freshness"; Attr.Create "data-freshness" (freshnessClass status.Freshness); attr.style "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;" ] [
-                                        text status.Label
-                                    ]
-                                    div [ Attr.Create "data-testid" "ta-poll-state"; Attr.Create "data-poll-state" (pollText state.Poll); attr.style "border:1px solid #c3cfdd; border-radius:4px; padding:3px 7px; font-size:10px; color:#53667d; background:#fff;" ] [
-                                        text (pollText state.Poll)
+                                    div [ attr.style "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" ] [
+                                        runtimeState.View
+                                        |> View.Map (fun current -> "canvas " + canvasIdText canvasId + " / revision " + string current.DataRevision)
+                                        |> textView
                                     ]
                                 ]
+                                runtimeState.View
+                                |> View.Map (fun current ->
+                                    let status = RendererModel.statusPresentation document.StatusRef current
+                                    div [ attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;" ] [
+                                        div [ Attr.Create "data-testid" "ta-freshness"; Attr.Create "data-freshness" (freshnessClass status.Freshness); attr.style "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;" ] [ text status.Label ]
+                                        div [ Attr.Create "data-testid" "ta-poll-state"; Attr.Create "data-poll-state" (pollText current.Poll); attr.style "border:1px solid #c3cfdd; border-radius:4px; padding:3px 7px; font-size:10px; color:#53667d; background:#fff;" ] [ text (pollText current.Poll) ]
+                                    ] :> Doc)
+                                |> Doc.EmbedView
                             ]
-                            div [ Attr.Create "data-testid" "ta-status-detail"; attr.style "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;" ] [
-                                match status.Watermark with
-                                | Some value -> yield span [] [ text ("watermark " + value) ]
-                                | None -> ()
-                                match status.Quality with
-                                | Some value -> yield span [] [ text ("quality " + value) ]
-                                | None -> ()
-                                match status.Error with
-                                | Some value -> yield span [ Attr.Create "data-testid" "ta-last-good-error"; attr.style "color:#a33b43; font-weight:600;" ] [ text value ]
-                                | None -> ()
-                            ]
+                            runtimeState.View
+                            |> View.Map (fun current ->
+                                let status = RendererModel.statusPresentation document.StatusRef current
+                                div [ Attr.Create "data-testid" "ta-status-detail"; attr.style "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;" ] [
+                                    match status.Watermark with
+                                    | Some value -> yield span [] [ text ("watermark " + value) ]
+                                    | None -> ()
+                                    match status.Quality with
+                                    | Some value -> yield span [] [ text ("quality " + value) ]
+                                    | None -> ()
+                                    match status.Error with
+                                    | Some value -> yield span [ Attr.Create "data-testid" "ta-last-good-error"; attr.style "color:#a33b43; font-weight:600;" ] [ text value ]
+                                    | None -> ()
+                                ] :> Doc)
+                            |> Doc.EmbedView
                             div [ Attr.Create "data-testid" "ta-query-toolbar"; attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;" ] [
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Instrument"; inputText "ta-instrument" "Instrument" instrumentDraft (fun value -> instrumentDraft <- value) ]
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Interval"; selectInput "ta-interval" intervalDraft [ "1", "1m"; "5", "5m"; "30", "30m"; "60", "60m"; "930", "Session" ] (fun value -> intervalDraft <- value) ]
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "From"; inputText "ta-from" "YYYY-MM-DD" fromDateDraft (fun value -> fromDateDraft <- value) ]
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDateDraft (fun value -> toDateDraft <- value) ]
-                                primaryButtonState "ta-apply-query" "Load / Apply" commandsDisabled applyQuery
+                                primaryButtonView "ta-apply-query" "Load / Apply" commandsDisabledView commandsDisabledNow applyQuery
                             ]
                             div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [
                                 compactButton "ta-pan-left" "←" "Pan earlier" (fun () ->
@@ -756,7 +805,7 @@ module TaWorkspaceRenderer =
                                 compactButton "ta-zoom-in" "+" "Show fewer bars" (fun () -> zoomWindow -8)
                                 compactButton "ta-zoom-out" "−" "Show more bars" (fun () -> zoomWindow 8)
                                 compactButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" resetWindow
-                                compactButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" (fun () -> submit callbacks uiState (SduiAction.ResetCanvas canvasId) "Canvas reset requested.")
+                                compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () -> submit callbacks uiState (SduiAction.ResetCanvas canvasId) "Canvas reset requested.")
                                 compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = not uiState.Value.AddRowOpen })
                                 span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "local view controls do not query the backend" ]
                             ]
@@ -783,10 +832,12 @@ module TaWorkspaceRenderer =
                                                     attr.``type`` "button"
                                                     Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
                                                     attr.title ("Remove " + rowKindText row.Kind + " row")
-                                                    if commandsDisabled then attr.disabled "disabled"
-                                                    attr.style (if commandsDisabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;" else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;")
+                                                    attr.disabledBool commandsDisabledView
+                                                    Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                        if disabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;"
+                                                        else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
                                                     on.click (fun _ _ ->
-                                                        if not commandsDisabled then
+                                                        if not (commandsDisabledNow ()) then
                                                             submit callbacks uiState (SduiAction.RemoveTaRow(canvasId, row.RowId)) (rowKindText row.Kind + " row removal requested."))
                                                 ] [ text "×" ]
                                             ]
@@ -826,7 +877,7 @@ module TaWorkspaceRenderer =
                                             | _ -> span [ attr.style "font-size:11px; color:#728196;" ] [ text "No indicator parameters." ] :> Doc)
                                         |> Doc.EmbedView
                                         compactButton "ta-add-row-cancel" "Cancel" "Close without submitting" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = false })
-                                        primaryButtonState "ta-add-row-submit" "Add" commandsDisabled addRow
+                                        primaryButtonView "ta-add-row-submit" "Add" commandsDisabledView commandsDisabledNow addRow
                                     ] :> Doc)
                             |> Doc.EmbedView
                             uiState.View
@@ -835,8 +886,7 @@ module TaWorkspaceRenderer =
                                 else div [ Attr.Create "data-testid" "ta-feedback"; attr.style "font-size:11px; color:#40536d; min-height:15px;" ] [ text ui.Feedback ] :> Doc)
                             |> Doc.EmbedView
                         ]
-                        uiState.View
-                        |> View.Map (fun ui ->
+                        View.Map2 (fun (state: RuntimeState) ui ->
                             chartRenderSequence <- chartRenderSequence + 1
                             let renderSequence = chartRenderSequence
                             let visibleRows =
@@ -925,7 +975,7 @@ module TaWorkspaceRenderer =
                                         |> Doc.EmbedView
                                     ]
                                 ]
-                            ] :> Doc)
+                            ] :> Doc) chartRuntimeView uiState.View
                         |> Doc.EmbedView
                     ] :> Doc)
             |> Doc.EmbedView

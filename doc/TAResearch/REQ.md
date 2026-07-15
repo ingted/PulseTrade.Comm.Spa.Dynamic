@@ -102,3 +102,6 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-029 | collapsed/unmounted reply平時不得mount、開channel或poll；只有使用者明確點下載才可建立bounded one-shot mount/full/close lifecycle，成功或失敗均不得留下poll。durable Document仍不含series points。 |
 | DYN-TA-REQ-030 | instrument/interval/range controls是local draft；改值不得在Apply前送action、改authoritative query或重render，poll不得覆蓋draft。 |
 | DYN-TA-REQ-031 | K棒、line points、cross-row cursor與pointer hit-test須共用slot-center geometry；所有rows同一index的cursor X誤差<=1px。 |
+| DYN-TA-REQ-032 | 只有Document明確宣告`poll-delta` capability時才可排週期poll；static SDUI Document不得因TA renderer存在而自動更新。 |
+| DYN-TA-REQ-033 | live poll只可更新status/data/chart subtree，不得替換Add Row/query editor DOM；已開啟select、focus及draft須跨poll保持。 |
+| DYN-TA-REQ-034 | remote Add/Remove/Reset/Apply必須single in-flight；Reset Canvas一次恢復原始ordered rows/query，不是undo最後一次修改。 |

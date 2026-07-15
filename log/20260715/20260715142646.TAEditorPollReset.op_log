@@ -1,0 +1,10 @@
+# Operation evidence
+
+- 2026-07-15 14:26 +08:00：開始本輪；Dynamic baseline `ea139fd`，開始時clean。
+- Root cause：Renderer以整個`RuntimeState.View`建立document/editor subtree，任何poll狀態變動都替換native select DOM；client同時對未宣告live capability的document排程poll。Reset server authority原本正確，但缺少連續刪除多列的formal regression。
+- 實作：Renderer alpha27保留stable document shell，status/chart使用nested runtime views；chart cache key納入transport sequence，避免reopen same-data-revision full frame被濾除。Ptcs.Client win57以`poll-delta` capability控制poll cadence。
+- 測試：Renderer `20/20`、Ptcs.Client `9/9`；isolated F# Playwright通過editor跨兩poll focus、2000 bars與multi-row Reset。Host companion focused suite `31/31`。
+- 部署：正式82 artifact `G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaEditorPollReset.alpha55.final.20260715153500\artifacts`通過real SQL/login/ACL/reconnect/memory gate；release `live81-82-ptcs-beta112-ta-editor-reset-alpha55-win57-20260715153000`。
+- NuGet.org push嘗試因未提供API key回401；未讀取或輸出secret，final nupkg保留於SDK `10.0.301` library-packs供immutable service使用。
+- Closeout第一輪FAIL=0；新RFC被traceability gate列為thin，已補情境、方案取捨、影響範圍與關聯文件後重跑。
+- Harness correction：thin實際表示完整RFC ID只被一份stock doc引用；Test row已改用完整ID。相同session重跑會把已append的op_log判成readonly modify並要求log advanced，final check改用新session baseline，保留前次FAIL證據而不製造無資訊log。
