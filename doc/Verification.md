@@ -92,3 +92,10 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - `scripts/verify-ta-renderer-playwright.fsx`使用2000-point fixture與real mouse drag，讀`data-chart-render-sequence`驗drag中0 render、release後1 render，並驗head/tail、visible<=160、network action delta=0；latest pass。
 - `PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests`已覆蓋2000 full、first-data full、200 delta cap與columnar v3 roundtrip；latest `7/7`。
 - 正式service evidence由PTC `PTC-VFY-027`驗actual SQL/browser loaded=2000、48/200/All、typed ADX/MACD、remove/re-add/reset、clipboard、inline/fullscreen、mobile/reconnect與memory gate；artifact：`G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchFormal82.20260715111500`。
+
+## 2026-07-15 TA full export / draft query / cursor revision 2
+
+- 沿用cross-repo `G:\PulseTrade.fs\Libs\PulseTrade.Comm\scripts\verify-ptcs-host-ta-research-live.fsx` revision 12，不新增重複verifier。
+- package gates：Renderer `20/20`、Dynamic.Ptcs `7/7`、Ptcs.Client `8/8`，LiveDemo WebSharper Release build通過。
+- formal 82 gate實際下載`yyyyMMddHHmmss-GUID.json`並parse `ptcs-ta-research-export.v1`，驗2000 timeline、OHLCV、indicator series、metadata/revisions；另驗collapsed bounded one-shot、interval Apply唯一action、slot-center cursor、短MACD先於長MACD、inline/fullscreen/mobile/reconnect與memory gate。
+- exact packages：Renderer `0.1.0-alpha25`、Dynamic.Ptcs `0.1.0-alpha7-win41`、Ptcs.Client `0.1.0-alpha8-win55`。Evidence：`G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchExport.alpha53.final.20260715150500`。

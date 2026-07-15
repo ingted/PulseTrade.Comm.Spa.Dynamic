@@ -149,6 +149,12 @@ let tests =
             Expect.equal (RendererModel.cursorIndexFromRatio 0 0.5) None "empty series has no cursor index"
             Expect.equal (RendererModel.cursorIndexFromClientX 48 0.0 0.0 10.0) None "zero-width row cannot be hit-tested"
 
+        testCase "cursor, line and candle use the same slot centers" <| fun _ ->
+            Expect.equal (RendererModel.slotCenter 1000.0 48 0) (Some(1000.0 / 96.0)) "first cursor is centered in the first candle slot"
+            Expect.equal (RendererModel.slotCenter 1000.0 48 24) (Some(1000.0 / 48.0 * 24.5)) "middle cursor shares the line and candle center"
+            Expect.equal (RendererModel.slotCenter 1000.0 48 47) (Some(1000.0 / 48.0 * 47.5)) "last cursor remains half a slot inside the plot"
+            Expect.equal (RendererModel.slotCenter 1000.0 0 0) None "empty plots have no slot center"
+
         testCase "select window is deterministic" <| fun _ ->
             let actual = RendererModel.selectWindow { StartIndex = 2; Count = 3 } [| 0; 1; 2; 3; 4; 5 |]
             Expect.sequenceEqual actual [| 2; 3; 4 |] "window must preserve ordering"

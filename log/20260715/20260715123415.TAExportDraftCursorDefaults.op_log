@@ -1,0 +1,9 @@
+# Operation evidence
+
+- 2026-07-15 12:34 +08:00：開始本輪；Dynamic baseline `ac39d0b`。
+
+- 完成`RFC-PTCS-DYNAMIC-0011` / `DYN-TA-015`：versioned full runtime export、collapsed bounded one-shot download、local query draft/Apply boundary與shared slot-center geometry。
+- Package suites通過Renderer `20/20`、Dynamic.Ptcs `7/7`、Ptcs.Client `8/8`；LiveDemo WebSharper Release build通過。
+- 最終packages：Renderer `0.1.0-alpha25`、Dynamic.Ptcs `0.1.0-alpha7-win41`、Ptcs.Client `0.1.0-alpha8-win55`。win54因formal gate發現browser GUID/bootstrap缺陷而由win55取代。
+- Cross-repo正式F# Playwright artifact `G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchExport.alpha53.final.20260715150500`下載並parse 2000-point OHLCV/indicator data，通過lifecycle、Apply、cursor、row order、ACL、reconnect與memory gates。
+- Closeout check將使用固定Dynamic root `log/`與新session id，避免不同log root baseline造成readonly誤判。

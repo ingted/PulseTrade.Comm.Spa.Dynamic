@@ -4,6 +4,7 @@ Status: Accepted / Ready for DEV
 Date: 2026-07-11
 Owner: `PulseTrade.Comm.Spa.Dynamic*` packages
 RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
+Current change: `doc/RFC/RFC-PTCS-DYNAMIC-0011.ta-export-draft-cursor-defaults.md`
 SA: `doc/TAResearch/SA.md`
 SD: `doc/TAResearch/SD.md`
 Test: `doc/TAResearch/Test.md`
@@ -92,3 +93,12 @@ Dynamic不得reference PTMD、broker SDK、SQL client或PTCS.Host executable。
 ## 7. Upstream dependencies
 
 PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這是PTCS adapter的dependency，不是Renderer本身的dependency。E2EQ可先用自己的transport adapter驗證Renderer，但不得把E2EQ-specific socket寫入Contracts/Renderer。完整PTCS production acceptance必須等PTCS companion seam完成。
+
+## 8. 2026-07-15 Full export / draft query / cursor requirements
+
+| ID | Requirement |
+| --- | --- |
+| DYN-TA-REQ-028 | REQ-027由full-data JSON download取代：下載檔須包含document、timeline、OHLCV、indicator series、query/provider metadata、revision/freshness；檔名為`yyyyMMddHHmmss-<GUID>.json`。已展開時沿用active channel；收合時明確點下載可使用一次性channel。 |
+| DYN-TA-REQ-029 | collapsed/unmounted reply平時不得mount、開channel或poll；只有使用者明確點下載才可建立bounded one-shot mount/full/close lifecycle，成功或失敗均不得留下poll。durable Document仍不含series points。 |
+| DYN-TA-REQ-030 | instrument/interval/range controls是local draft；改值不得在Apply前送action、改authoritative query或重render，poll不得覆蓋draft。 |
+| DYN-TA-REQ-031 | K棒、line points、cross-row cursor與pointer hit-test須共用slot-center geometry；所有rows同一index的cursor X誤差<=1px。 |

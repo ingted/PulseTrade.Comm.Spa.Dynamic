@@ -109,3 +109,14 @@ WBS: `doc/TAResearch/WBS.md`
 - `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-channel-rebase-20260712204956`：正式82 local-login、controlled error/recovery、Add/Remove、Apply、Reset、poll、desktop/mobile與第二browser context bootstrap；production projection empty時明確UNAVAILABLE。
 - `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\deployed-restart-indexeddb-202607122114`：正式service process replacement後20 polls；Playwright CDP直讀IndexedDB三個object store，前後counts相同且無JavaScript/EvaluateAsync。
 - 尚未覆蓋：Host process restart中的last-good/resync、E2EQ host parity、present-invalid static visual gate。
+
+## DYN-TA-015 Full export / draft query / cursor
+
+| ID | Requirement | Level | Acceptance | Status |
+| --- | --- | --- | --- | --- |
+| DYN-TA-T-045 | REQ-028..031 | Document | RFC/current REQ/SA/SD/WBS/Test與Host companion責任一致。 | Pass：2026-07-15 accepted chain。 |
+| DYN-TA-T-046 | REQ-028/029 | Server/client | explicit full request回full wire；mounted handle產生完整export；collapsed平時zero-resource，明確下載只走one-shot mount/full/close且不留下poll。 | Pass：Ptcs `7/7`、Ptcs.Client `8/8`；正式browser wire為open -> bootstrap poll -> full -> close。 |
+| DYN-TA-T-047 | REQ-028 | F# Playwright download | 捕獲檔名、parse schema；2000 timeline、OHLCV、indicator series、metadata/revisions完整。 | Pass：下載`20260715135129-34ab4eed-1e4c-48f3-8cf2-b3b2c440367b.json`，729355 bytes，schema與2000筆完整資料回讀通過。 |
+| DYN-TA-T-048 | REQ-030 | Component/Playwright | interval draft跨poll不改render/query/action count；Apply後恰一次authoritative update。 | Pass：正式82在select後render/action count不變，Apply後action delta恰為1。 |
+| DYN-TA-T-049 | REQ-031 | Model/geometry | first/middle/last pointer mapping、K棒/line/cursor slot center與cross-row X<=1px。 | Pass：Renderer `20/20`與正式cross-row screenshot/geometry gate通過。 |
+| DYN-TA-T-050 | REQ-028..031 | Package/formal 82 | exact packages、mixed reply/ACL/collapse/inline/fullscreen/reconnect與console/page error gate。 | Pass：Renderer alpha25、Dynamic.Ptcs win41、Ptcs.Client win55；formal artifact `G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchExport.alpha53.final.20260715150500`。 |

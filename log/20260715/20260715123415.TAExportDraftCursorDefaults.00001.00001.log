@@ -1,0 +1,39 @@
+# TA Export / Draft / Cursor / Defaults 計畫
+
+## 背景與目標
+
+調整TA Research renderer：可離線JSON下載、MACD預設順序、cross-row cursor與trace樣式、interval draft/apply ownership。
+
+## 假設
+
+DSL與runtime frame分離；下載應是document envelope。interval在Apply前只屬local draft。
+
+## 計畫步驟
+
+1. 定點盤點renderer/model/client action。
+2. 同步RFC/current-state文件鏈。
+3. 實作與model/browser測試。
+4. package/push、正式82整合驗證與closeout。
+
+## 執行命令/參數
+
+沿用`doc/Verification.md`既有F# verifier。
+
+## 驗收方式
+
+下載內容與檔名、row order、cursor geometry、Apply前後render sequence均有deterministic與Playwright證據。
+
+## 風險
+
+WebSharper download binding、2000-point payload size、poll/draft ownership。
+
+## Prompt / 上下文摘要
+
+使用者要求四項相鄰TA canvas修正並詢問DSL/data邊界。
+
+## Closeout correction
+
+- 結果：Dynamic full export、Apply boundary與slot geometry完成，`DYN-TA-015`為100%。
+- 根因判讀：舊copy只有compact document；query inputs直接進reactive state；cursor與K棒geometry不一致。
+- 下一步：本RFC範圍結案，不延伸其他Dynamic/E2EQ工項。
+- 關聯文件/工單/PR：`doc/RFC/RFC-PTCS-DYNAMIC-0011.ta-export-draft-cursor-defaults.md`、`doc/TAResearch/WBS.DYN-TA-015.md`。

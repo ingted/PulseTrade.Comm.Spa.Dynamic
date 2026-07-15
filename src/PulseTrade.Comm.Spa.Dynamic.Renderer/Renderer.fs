@@ -161,9 +161,7 @@ module TaWorkspaceRenderer =
 
     let cursorPosition width pointCount cursorIndex =
         cursorIndex
-        |> Option.map (fun index ->
-            let bounded = max 0 (min index (max 0 (pointCount - 1)))
-            if pointCount <= 1 then width / 2.0 else width * float bounded / float (pointCount - 1))
+        |> Option.bind (RendererModel.slotCenter width pointCount)
 
     let compactTimestamp (value: string) =
         if String.IsNullOrWhiteSpace value then ""
@@ -359,8 +357,8 @@ module TaWorkspaceRenderer =
                 |> Array.filter (fun point -> containsTimestamp point.Timestamp))
             |> Option.defaultValue [||]
         let xAt index =
-            if referenceTimestamps.Length <= 1 then width / 2.0
-            else width * float index / float (referenceTimestamps.Length - 1)
+            RendererModel.slotCenter width referenceTimestamps.Length index
+            |> Option.defaultValue (width / 2.0)
 
         let linePoints =
             traces
@@ -482,10 +480,10 @@ module TaWorkspaceRenderer =
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
         let canvasId = runtimeState.Value.Identity.CanvasInstanceId
-        let instrument = Var.Create ""
-        let interval = Var.Create ""
-        let fromDate = Var.Create ""
-        let toDate = Var.Create ""
+        let mutable instrumentDraft = ""
+        let mutable intervalDraft = ""
+        let mutable fromDateDraft = ""
+        let mutable toDateDraft = ""
         let mutable synchronizedDocumentRevision = -1L
         let addKind = Var.Create "Sma"
         let addDataRef = Var.Create "series.sma"
@@ -606,16 +604,16 @@ module TaWorkspaceRenderer =
 
         let applyQuery () =
             let parsedInterval =
-                match Int32.TryParse interval.Value with
+                match Int32.TryParse intervalDraft with
                 | true, value when value > 0 -> Some value
                 | _ -> None
 
             let query =
                 { SourceId = None
-                  Instrument = if String.IsNullOrWhiteSpace instrument.Value then None else Some instrument.Value
+                  Instrument = if String.IsNullOrWhiteSpace instrumentDraft then None else Some instrumentDraft
                   IntervalMinutes = parsedInterval
-                  FromUtc = if String.IsNullOrWhiteSpace fromDate.Value then None else Some fromDate.Value
-                  ToUtcExclusive = if String.IsNullOrWhiteSpace toDate.Value then None else Some toDate.Value
+                  FromUtc = if String.IsNullOrWhiteSpace fromDateDraft then None else Some fromDateDraft
+                  ToUtcExclusive = if String.IsNullOrWhiteSpace toDateDraft then None else Some toDateDraft
                   IncludePartial = Some true }
 
             submit callbacks uiState (SduiAction.ChangeTaQuery(canvasId, query)) "Query submitted."
@@ -700,10 +698,10 @@ module TaWorkspaceRenderer =
                 | Some document ->
                     if state.DocumentRevision <> synchronizedDocumentRevision then
                         let query = RendererModel.queryDraft document.DefaultView
-                        instrument.Value <- query.Instrument
-                        interval.Value <- query.IntervalMinutes
-                        fromDate.Value <- query.FromUtc
-                        toDate.Value <- query.ToUtcExclusive
+                        instrumentDraft <- query.Instrument
+                        intervalDraft <- query.IntervalMinutes
+                        fromDateDraft <- query.FromUtc
+                        toDateDraft <- query.ToUtcExclusive
                         match pendingAddRowId with
                         | Some rowId when document.Rows |> Array.exists (fun row -> row.RowId = rowId) ->
                             pendingAddRowId <- None
@@ -742,10 +740,10 @@ module TaWorkspaceRenderer =
                                 | None -> ()
                             ]
                             div [ Attr.Create "data-testid" "ta-query-toolbar"; attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;" ] [
-                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Instrument"; inputText "ta-instrument" "Instrument" instrument.Value (fun value -> instrument.Value <- value) ]
-                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Interval"; selectInput "ta-interval" interval.Value [ "1", "1m"; "5", "5m"; "30", "30m"; "60", "60m"; "930", "Session" ] (fun value -> interval.Value <- value) ]
-                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "From"; inputText "ta-from" "YYYY-MM-DD" fromDate.Value (fun value -> fromDate.Value <- value) ]
-                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDate.Value (fun value -> toDate.Value <- value) ]
+                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Instrument"; inputText "ta-instrument" "Instrument" instrumentDraft (fun value -> instrumentDraft <- value) ]
+                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Interval"; selectInput "ta-interval" intervalDraft [ "1", "1m"; "5", "5m"; "30", "30m"; "60", "60m"; "930", "Session" ] (fun value -> intervalDraft <- value) ]
+                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "From"; inputText "ta-from" "YYYY-MM-DD" fromDateDraft (fun value -> fromDateDraft <- value) ]
+                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDateDraft (fun value -> toDateDraft <- value) ]
                                 primaryButtonState "ta-apply-query" "Load / Apply" commandsDisabled applyQuery
                             ]
                             div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [

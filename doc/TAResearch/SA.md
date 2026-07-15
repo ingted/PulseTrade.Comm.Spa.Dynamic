@@ -4,6 +4,7 @@ Status: Accepted / Ready for DEV
 Date: 2026-07-11
 REQ: `doc/TAResearch/REQ.md`
 RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
+Current change: `doc/RFC/RFC-PTCS-DYNAMIC-0011.ta-export-draft-cursor-defaults.md`
 SD: `doc/TAResearch/SD.md`
 Test: `doc/TAResearch/Test.md`
 WBS: `doc/TAResearch/WBS.md`
@@ -209,3 +210,11 @@ single-thumb只表示固定Count的StartIndex，無法表達「看全部2000」�
 Add Row draft目前在`runtimeState.View.Map`內重建，poll revision可替換DOM並造成focus/editor消失。draft Vars與editor shell需提升到renderer instance scope；runtime state只影響disabled/status與document rows。`TaRowSpec.Options`已是transport-neutral extension point，可直接承載typed periods，不需新增TA-specific action union。
 
 Reset failure來自Host把mutated current command當initial。Dynamic不能猜原始rows；它只送ResetCanvas並在authoritative fresh snapshot後套用document default view。copy action則透過PTCS generic action seam，不把clipboard責任塞進renderer或Host。
+
+## 15. 2026-07-15 Export、draft與geometry authority analysis
+
+compact Document與full browser state是兩種不同產品artifact。前者可journal/replay、只描述怎麼取得與呈現資料；後者是當次runtime的bounded research dataset。把後者塞進前者會破壞durable event size與lazy lifecycle，所以offline export只能從authenticated transient state產生。下載不是另一個provider query API：展開時沿用active channel；收合時以使用者明確動作建立one-shot channel，取得authoritative full wire後立即dispose，保留ACL、revision、range與既有2000-point limit。
+
+query select立即重render的根因是draft與authoritative RuntimeState共用reactive `Var`。draft應位於renderer control local state，只在document revision變更時重新基準化；data poll不具覆蓋使用者輸入的authority。
+
+cursor偏移的根因是兩套X公式：K棒使用slot center，line/cursor使用`index/(count-1)` endpoint。這不是CSS微調；所有series與pointer mapping都必須改用同一slot domain，否則first/last與跨row永遠無法對齊。

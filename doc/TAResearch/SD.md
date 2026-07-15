@@ -4,6 +4,7 @@ Status: Accepted / Ready for DEV
 Date: 2026-07-11
 REQ: `doc/TAResearch/REQ.md`
 RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
+Current change: `doc/RFC/RFC-PTCS-DYNAMIC-0011.ta-export-draft-cursor-defaults.md`
 SA: `doc/TAResearch/SA.md`
 Test: `doc/TAResearch/Test.md`
 WBS: `doc/TAResearch/WBS.md`
@@ -439,3 +440,22 @@ Add Row canonical options：
 editor Vars與DOM shell建立於renderer instance，不置於runtime revision的document composition內。submit前檢查positive period及`fast < slow`；row id為`row-{kind}-{sequence}`。server rejection保留editor/draft並顯示feedback；accepted document才收合或清理。
 
 `ReplyPresentation.Actions`註冊`copy-json`。payload使用`extractReplyPayload context.Payload`的canonical結果；typed clipboard promise成功/失敗只更新action feedback，不能更動presentation mode。ResetCanvas由Host回initial command fresh snapshot後，renderer清hidden rows、cursor與draft window並依DefaultView重建Committed。
+
+# 2026-07-15 Full export / draft query / slot geometry design
+
+```text
+download action
+  -> mounted handle RequestJsonExport
+  -> or collapsed requestJsonExportOnce (headless, bounded)
+  -> RequestFullSnapshot("json-export")
+  -> server stateToWire current (full, not delta)
+  -> validate/apply wire
+  -> ptcs-ta-research-export.v1 envelope
+  -> typed Blob download yyyyMMddHHmmss-GUID.json
+```
+
+`TaResearchTransientClientHandle`持有`RequestJsonExport`，pending export只允許一個；busy時排在目前response之後。`requestJsonExportOnce`只在使用者點擊時建立不mount renderer的client，initial state後送explicit full request，下載完成即dispose。response只有`updateKind=full`才可完成export，error/close/dispose均清pending。download不更動history、viewport或IndexedDB；one-shot不得進入週期poll。
+
+query draft以renderer-instance mutable state保存。`DocumentRevision`改變時才從`DefaultView.query`同步；`DataRevision` poll不得同步。Apply讀draft並送一次`ChangeQuery`，accepted document再更新authoritative值。
+
+所有row使用：`slot=width/count`、`x=slot*(index+0.5)`；pointer使用`floor(ratio*count)`並bounded。K棒body/wick、line/histogram、cross-row cursor及floating values都使用同一visible index/domain。

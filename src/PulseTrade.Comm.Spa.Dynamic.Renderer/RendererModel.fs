@@ -222,7 +222,7 @@ module RendererModel =
                  DataRef = row.DataRef
                  Label = row.RowId
                  Color = ""
-                 Width = 2.0
+                 Width = 1.25
                  Visible = true
                  Options = Map.empty } |]
 
@@ -339,8 +339,14 @@ module RendererModel =
             None
         else
             let boundedRatio = max 0.0 (min 1.0 ratio)
-            let maximumIndex = visibleCount - 1
-            Some(int (Math.Round(boundedRatio * float maximumIndex)))
+            Some(min (visibleCount - 1) (int (Math.Floor(boundedRatio * float visibleCount))))
+
+    let slotCenter width visibleCount index =
+        if visibleCount <= 0 then
+            None
+        else
+            let boundedIndex = max 0 (min index (visibleCount - 1))
+            Some(width / float visibleCount * (float boundedIndex + 0.5))
 
     let cursorIndexFromClientX visibleCount left width clientX =
         if width <= 0.0 then None

@@ -203,23 +203,6 @@ module TaResearchReplyPresentation =
         while not (isNull host.FirstChild) do
             host.RemoveChild(host.FirstChild) |> ignore
 
-    let copyCanonicalJson content =
-        if isNull (box JS.Document.Body) then
-            Result.Error "Document body is unavailable."
-        else
-            let textarea = JS.Document.CreateElement("textarea") |> As<HTMLTextAreaElement>
-            textarea.Value <- content
-            textarea.SetAttribute("readonly", "readonly")
-            textarea.SetAttribute("aria-hidden", "true")
-            textarea.SetAttribute("style", "position:fixed; left:-10000px; top:0; width:1px; height:1px; opacity:0;")
-            JS.Document.Body.AppendChild textarea |> ignore
-            textarea.Select()
-
-            let copied = JS.Document.ExecCommand("copy", false, "")
-            JS.Document.Body.RemoveChild textarea |> ignore
-
-            if copied then Result.Ok "JSON copied." else Result.Error "Clipboard copy was rejected."
-
     let renderSummary (summary: TaRuntimeReplySummary) =
         let root = JS.Document.CreateElement("div")
         let rowText = if summary.Rows.Length = 0 then "rows pending" else String.concat " | " summary.Rows
@@ -253,20 +236,30 @@ module TaResearchReplyPresentation =
                 None
             | Some summary ->
                 setClassifierState "matched"
+                let mutable mountedHandle: TaResearchTransientClientHandle option = None
+                let identity = safeIdentity context.ValueId
+                let channelId = "ta-reply-" + identity
                 Some
                     { Kind = "runtime-ta"
                       RenderSummary = fun () -> renderSummary summary
                       Actions =
-                        [| { ActionId = "copy-json"
-                             Label = "複製 JSON"
-                             Title = "Copy canonical SDUI JSON"
-                             Invoke = fun () -> copyCanonicalJson (extractReplyPayload context.Payload) } |]
+                        [| { ActionId = "download-json"
+                             Label = "下載 JSON"
+                             Title = "Download the full TA Research runtime state as JSON"
+                             Invoke =
+                                fun () ->
+                                    match mountedHandle with
+                                    | Some handle -> handle.RequestJsonExport()
+                                    | None ->
+                                        TaResearchTransientClient.requestJsonExportOnce
+                                            extensionId
+                                            channelId
+                                            summary.CanvasInstanceId
+                                            TaClientLifecycle.defaults } |]
                       Mount =
                         fun _ host ->
                             clearHost host
-                            let identity = safeIdentity context.ValueId
                             host.Id <- "ptcs-ta-reply-" + identity
-                            let channelId = "ta-reply-" + identity
                             let handle =
                                 TaResearchTransientClient.mountOnElementWithOptions
                                     host
@@ -274,8 +267,10 @@ module TaResearchReplyPresentation =
                                     channelId
                                     summary.CanvasInstanceId
                                     TaClientLifecycle.defaults
+                            mountedHandle <- Some handle
 
                             fun () ->
+                                mountedHandle <- None
                                 handle.Dispose()
                                 clearHost host }
 

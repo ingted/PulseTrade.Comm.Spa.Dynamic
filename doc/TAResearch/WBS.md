@@ -26,6 +26,7 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-012 | 1 | Loaded-range viewport與pointer cross-row cursor修正 | requested/loaded/visible語意、canonical navigator、follow-latest、pointer hit-test、formal 82 gate | DYN-TA-003/011 | T-006,T-031..034 | 100% | Done | renderer/model與formal beta111/beta100/alpha60 terminal/browser/memory gate通過，詳見[@DYN-TA-012](WBS.DYN-TA-012.md) |
 | DYN-TA-013 | 1 | 2000-point full bootstrap與commit-on-release navigator | full/delta cap分流、compact wire、draft/committed viewport、formal weak-device interaction gate | DYN-TA-004/012 | T-035..038 | 100% | Done | [@DYN-TA-013](WBS.DYN-TA-013.md) |
 | DYN-TA-014 | 1 | Overview / typed Add Row / reset / copy | dual-handle overview、full-range compressed view、stable typed editor、canonical reset、reply copy action | DYN-TA-013 + PTCS WBS-071 | T-039..044 | 100% | Done | [@DYN-TA-014](WBS.DYN-TA-014.md) |
+| DYN-TA-015 | 1 | Full runtime export / draft query / slot cursor | full-data download、Apply boundary、shared slot geometry、exact package/formal gate | DYN-TA-014 | T-045..050 | 100% | Done | [@DYN-TA-015](WBS.DYN-TA-015.md) |
 
 
 ## 2. Legacy prerequisite policy

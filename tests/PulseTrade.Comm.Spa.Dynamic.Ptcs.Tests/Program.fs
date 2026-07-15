@@ -75,6 +75,8 @@ let backend =
                               Freshness = TaFreshness.Backfill "query" }
 
                         Ok(frame 2L 1L (RuntimePayload.Snapshot snapshot))
+                    | RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot _) ->
+                        Ok(frame 3L 1L (RuntimePayload.Heartbeat { ObservedAtUtc = DateTimeOffset.UtcNow }))
                     | RuntimeClientFrame.Action(SduiAction.PollDelta _) ->
                         let patch =
                             { Operations =
@@ -397,7 +399,19 @@ let tests =
               Expect.equal queriedState.quality "complete" "quality should survive the bounded browser wire."
               Expect.equal queriedState.reasonCode "historical-query" "freshness reason should survive the bounded browser wire."
               Expect.equal queriedState.series.Length 1 "browser wire should expose one bounded series per row."
-              Expect.equal queriedState.series[0].pointCount 0 "the empty backend series should remain empty." })
+              Expect.equal queriedState.series[0].pointCount 0 "the empty backend series should remain empty."
+
+              let fullRequest =
+                  browserPayload "action" "full-snapshot"
+                  |> fun text -> JsonSerializer.Deserialize<TaBrowserClientFrameWire>(text, TaResearchTransientServer.jsonOptions)
+                  |> fun wire -> { wire with reasonCode = "json-export" }
+                  |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
+              let! exported = handler (browserContext "browser-a" "action" "browser-export" fullRequest)
+              let exportedState = exported |> requireOk |> decodeBrowserState
+              Expect.equal exportedState.updateKind "full" "explicit export/resync requests must return a complete browser state, not an empty delta."
+              Expect.equal exportedState.dataRevision 1L "full export preserves the authoritative data revision."
+              Expect.equal exportedState.rows.Length 1 "full export includes document rows."
+              Expect.equal exportedState.series.Length 1 "full export includes every available series." })
 
           testCaseAsync "browser revision rejects fractional JS numbers" (async {
               let handler = TaResearchTransientServer.createHandler backend

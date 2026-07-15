@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Renderer</PackageId>
-    <Version>0.1.0-alpha24</Version>
+    <Version>0.1.0-alpha25</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Pure WebSharper renderer for transport-neutral PulseTrade Dynamic SDUI runtime documents.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>

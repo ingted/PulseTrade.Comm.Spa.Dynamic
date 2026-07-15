@@ -98,6 +98,14 @@ type TaBrowserStateWire =
       errorRecoverable: bool }
 
 [<JavaScript; CLIMutable>]
+type TaResearchJsonExportWire =
+    { schema: string
+      exportedAtUtc: string
+      documentRevision: int64
+      dataRevision: int64
+      state: TaBrowserStateWire }
+
+[<JavaScript; CLIMutable>]
 type TaBrowserClientFrameWire =
     { wireVersion: string
       kind: string
@@ -628,6 +636,7 @@ module TaResearchClientWire =
 type TaResearchTransientClientHandle =
     { RuntimeState: Var<RuntimeState>
       SetActive: bool -> unit
+      RequestJsonExport: unit -> Result<string, string>
       Dispose: unit -> unit }
 
 [<JavaScript; RequireQualifiedAccess>]
@@ -636,7 +645,59 @@ module TaResearchTransientClient =
         let protocol = if JS.Window.Location.Protocol = "https:" then "wss://" else "ws://"
         protocol + JS.Window.Location.Host + "/sync/ws"
 
-    let mountWithOptions (mountDocument: Doc -> unit) extensionId channelId canvasId lifecycleOptions =
+    let twoDigits value =
+        if value < 10 then "0" + string value else string value
+
+    let exportFileName () =
+        let now = new WebSharper.JavaScript.Date()
+        let random = Random()
+        let hex = "0123456789abcdef"
+        let compactGuid =
+            Array.init 32 (fun _ -> hex[random.Next(hex.Length)])
+            |> Array.map string
+            |> String.concat ""
+        let guid =
+            compactGuid.Substring(0, 8) + "-"
+            + compactGuid.Substring(8, 4) + "-4" + compactGuid.Substring(13, 3) + "-"
+            + "8" + compactGuid.Substring(17, 3) + "-" + compactGuid.Substring(20, 12)
+        let timestamp =
+            string (now.GetFullYear())
+            + twoDigits (now.GetMonth() + 1)
+            + twoDigits (now.GetDate())
+            + twoDigits (now.GetHours())
+            + twoDigits (now.GetMinutes())
+            + twoDigits (now.GetSeconds())
+        timestamp + "-" + guid + ".json"
+
+    let downloadJsonExport (wire: TaBrowserStateWire) =
+        if isNull (box JS.Document.Body) then
+            Result.Error "Document body is unavailable."
+        else
+            try
+                let export =
+                    { schema = "ptcs-ta-research-export.v1"
+                      exportedAtUtc = (new WebSharper.JavaScript.Date()).ToISOString()
+                      documentRevision = wire.documentRevision
+                      dataRevision = wire.dataRevision
+                      state = wire }
+                let options = new BlobPropertyBag()
+                options.Type <- "application/json;charset=utf-8"
+                let blob = new Blob([| JSON.Stringify export |], options)
+                let url = URL.CreateObjectURL blob
+                let anchor = JS.Document.CreateElement("a") |> As<HTMLElement>
+                anchor.SetAttribute("href", url)
+                anchor.SetAttribute("download", exportFileName ())
+                anchor.SetAttribute("aria-hidden", "true")
+                anchor.SetAttribute("style", "display:none;")
+                JS.Document.Body.AppendChild anchor |> ignore
+                anchor.Click()
+                JS.Document.Body.RemoveChild anchor |> ignore
+                JS.SetTimeout (fun () -> URL.RevokeObjectURL url) 250 |> ignore
+                Result.Ok "TA Research JSON download started."
+            with error ->
+                Result.Error error.Message
+
+    let mountCore (mountDocument: Doc -> unit) extensionId channelId canvasId lifecycleOptions disposeAfterJsonExport =
         let identity =
             { DocumentId = DocumentId("pending-" + channelId)
               CanvasInstanceId = CanvasInstanceId canvasId }
@@ -658,6 +719,10 @@ module TaResearchTransientClient =
         let mutable pollTimer: JS.Handle option = None
         let mutable timeoutTimer: JS.Handle option = None
         let mutable reconnectTimer: JS.Handle option = None
+        let mutable jsonExportRequested = false
+        let mutable jsonExportBootstrapAttempts = 0
+        let mutable jsonExportBootstrapInFlight = false
+        let mutable jsonExportInFlight = false
 
         let nextRequestId () =
             requestSequence <- requestSequence + 1
@@ -703,6 +768,17 @@ module TaResearchTransientClient =
             socket <- None
 
         let rec apply event =
+            match event with
+            | TaClientLifecycleEvent.CommandRejected
+            | TaClientLifecycleEvent.RequestTimedOut _
+            | TaClientLifecycleEvent.Disconnected
+            | TaClientLifecycleEvent.Dispose ->
+                jsonExportRequested <- false
+                jsonExportBootstrapAttempts <- 0
+                jsonExportBootstrapInFlight <- false
+                jsonExportInFlight <- false
+            | _ -> ()
+
             let next, effects = TaClientLifecycle.transition lifecycleOptions event lifecycle
             lifecycle <- next
             runtimeState.Value <- { runtimeState.Value with Poll = next.Poll }
@@ -772,7 +848,44 @@ module TaResearchTransientClient =
                                 match TaResearchClientWire.applyWire runtimeState.Value wire with
                                 | Result.Ok state ->
                                     runtimeState.Value <- state
+
+                                    let completesJsonExport = jsonExportInFlight
+                                    let completesJsonExportBootstrap = jsonExportBootstrapInFlight
+                                    let mutable jsonExportCompleted = false
+
+                                    if completesJsonExportBootstrap then
+                                        jsonExportBootstrapInFlight <- false
+
+                                    if completesJsonExport then
+                                        jsonExportRequested <- false
+                                        jsonExportInFlight <- false
+
+                                        if wire.updateKind = "full" then
+                                            match downloadJsonExport wire with
+                                            | Result.Ok _ -> jsonExportCompleted <- true
+                                            | Result.Error message ->
+                                                runtimeState.Value <-
+                                                    { runtimeState.Value with
+                                                        LastError =
+                                                            Some
+                                                                { ReasonCode = "ta-export-download-failed"
+                                                                  Message = message
+                                                                  Recoverable = true } }
+                                        else
+                                            runtimeState.Value <-
+                                                { runtimeState.Value with
+                                                    LastError =
+                                                        Some
+                                                            { ReasonCode = "ta-export-full-state-required"
+                                                              Message = "The TA export response was not a full runtime state."
+                                                              Recoverable = true } }
+
                                     apply (TaClientLifecycleEvent.StateAccepted state.DataRevision) |> ignore
+
+                                    if jsonExportCompleted && disposeAfterJsonExport then
+                                        apply TaClientLifecycleEvent.Dispose |> ignore
+                                    else
+                                        tryStartJsonExport ()
                                 | Result.Error _ ->
                                     apply (TaClientLifecycleEvent.ResyncRequired "invalid-browser-state") |> ignore
                             elif response.``type`` = "extension-transient" then
@@ -793,6 +906,41 @@ module TaResearchTransientClient =
                         apply TaClientLifecycleEvent.Disconnected |> ignore
 
                 value.OnError <- fun () -> ()
+
+        and tryStartJsonExport () =
+            if jsonExportRequested && not jsonExportBootstrapInFlight && not jsonExportInFlight && lifecycle.Connected && lifecycle.Active && not lifecycle.InFlight then
+                let hasRuntimeData = runtimeState.Value.DataRevision > 0L
+
+                if not hasRuntimeData && jsonExportBootstrapAttempts >= 3 then
+                    jsonExportRequested <- false
+                    jsonExportBootstrapInFlight <- false
+                    runtimeState.Value <-
+                        { runtimeState.Value with
+                            LastError =
+                                Some
+                                    { ReasonCode = "ta-export-bootstrap-empty"
+                                      Message = "TA export bootstrap returned no runtime data after three attempts."
+                                      Recoverable = true } }
+                    if disposeAfterJsonExport then
+                        apply TaClientLifecycleEvent.Dispose |> ignore
+                else
+                    let action =
+                        if hasRuntimeData then
+                            SduiAction.RequestFullSnapshot(identity.CanvasInstanceId, "json-export")
+                        else
+                            SduiAction.PollDelta(identity.CanvasInstanceId, runtimeState.Value.DataRevision)
+                    let effects = apply (TaClientLifecycleEvent.StartAction action)
+                    let accepted =
+                        effects
+                        |> Array.exists (function TaClientLifecycleEffect.SendAction _ -> true | _ -> false)
+
+                    if accepted then
+                        if hasRuntimeData then
+                            jsonExportRequested <- false
+                            jsonExportInFlight <- true
+                        else
+                            jsonExportBootstrapAttempts <- jsonExportBootstrapAttempts + 1
+                            jsonExportBootstrapInFlight <- true
 
         let callbacks =
             { SubmitAction =
@@ -817,10 +965,29 @@ module TaResearchTransientClient =
 
         connect ()
 
+        let requestJsonExport () =
+            if jsonExportRequested || jsonExportBootstrapInFlight || jsonExportInFlight then
+                Result.Error "A TA Research JSON export is already pending."
+            elif lifecycle.Disposed || lifecycle.DisposePending then
+                Result.Error "The TA transient channel has already been disposed."
+            else
+                jsonExportBootstrapAttempts <- 0
+                jsonExportRequested <- true
+                tryStartJsonExport ()
+                Result.Ok "TA Research JSON export requested."
+
         { RuntimeState = runtimeState
           SetActive = fun active -> apply (TaClientLifecycleEvent.ActiveChanged active) |> ignore
+          RequestJsonExport = requestJsonExport
           Dispose =
-            fun () -> apply TaClientLifecycleEvent.Dispose |> ignore }
+             fun () -> apply TaClientLifecycleEvent.Dispose |> ignore }
+
+    let mountWithOptions (mountDocument: Doc -> unit) extensionId channelId canvasId lifecycleOptions =
+        mountCore mountDocument extensionId channelId canvasId lifecycleOptions false
+
+    let requestJsonExportOnce extensionId channelId canvasId lifecycleOptions =
+        let handle = mountCore ignore extensionId channelId canvasId lifecycleOptions true
+        handle.RequestJsonExport()
 
     let mountOnElementWithOptions (root: Element) extensionId channelId canvasId lifecycleOptions =
         mountWithOptions (Doc.Run root) extensionId channelId canvasId lifecycleOptions

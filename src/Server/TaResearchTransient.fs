@@ -917,12 +917,20 @@ module TaResearchTransientServer =
                                         let next, _ = RuntimeReducer.reduce current validated
                                         lock gate (fun () -> states[key] <- next)
 
+                                        let fullSnapshotRequested =
+                                            match clientFrame with
+                                            | RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot _) -> true
+                                            | _ -> false
+
                                         if context.Operation = "close" then
                                             lock gate (fun () -> states.Remove key |> ignore)
 
                                         let payload =
                                             if isBrowserWire then
-                                                TaResearchBrowserWire.stateToWireAgainst (Some current) next
+                                                (if fullSnapshotRequested then
+                                                     TaResearchBrowserWire.stateToWire next
+                                                 else
+                                                     TaResearchBrowserWire.stateToWireAgainst (Some current) next)
                                                 |> fun value -> JsonSerializer.Serialize(value, jsonOptions)
                                             else
                                                 next

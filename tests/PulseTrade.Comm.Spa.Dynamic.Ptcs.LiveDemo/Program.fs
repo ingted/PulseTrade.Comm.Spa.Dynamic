@@ -27,7 +27,8 @@ module Program =
           DataRef = dataRef
           HeightWeight = weight
           Visible = true
-          Options = Map.empty }
+          Options = Map.empty
+          Traces = [||] }
 
     let document =
         { WorkspaceId = "ta-live-workspace"

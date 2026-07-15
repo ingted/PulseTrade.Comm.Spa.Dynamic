@@ -1052,3 +1052,11 @@ Implementation status:
 - Renderer model passes 19/19, isolated F# Playwright passes, and formal 82 artifact `G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchFormal82.20260715111500` passes 2000 loaded points, clipboard, typed rows, reset, inline/fullscreen, mobile, reconnect and memory gates.
 - NuGet.org accepted Dynamic beta101, Renderer alpha24, Dynamic.Ptcs win40 and Ptcs.Client win52 (`Created`); immediate flat-container indexing remained propagation-pending.
 - Follow-up flat-container HEAD returned 200 for all four Dynamic versions; public indexing is complete.
+
+## 2026-07-15 - DYN-TA-015 full runtime export / draft query / slot cursor closure
+
+- Durable `SduiDocument`維持compact provider/query/layout metadata，不包含OHLCV或indicator points；下載改為由authenticated transient state組成`ptcs-ta-research-export.v1`，並以`yyyyMMddHHmmss-GUID.json`交付。
+- Collapsed reply平時仍不mount/poll；明確下載使用bounded one-shot open/bootstrap/full/close。Interval/日期欄位維持local draft，只有Apply送一次typed action並重render。
+- Renderer `0.1.0-alpha25`統一line、K棒與cross-row cursor的slot-center geometry，fallback line width為1.25。Dynamic.Ptcs `0.1.0-alpha7-win41`與Ptcs.Client `0.1.0-alpha8-win55`已發布並由Host exact-pin。
+- Ptcs.Client win54曾暴露WebSharper GUID字串與zero-data collapsed bootstrap缺陷，已由win55取代。Package gates Renderer `20/20`、Ptcs `7/7`、Ptcs.Client `8/8`與LiveDemo WebSharper build均通過。
+- 正式F# Playwright artifact `G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchExport.alpha53.final.20260715150500`實際下載729355-byte JSON並回讀2000筆完整資料；Apply、cursor、row order、ACL、reconnect與memory gates通過。
