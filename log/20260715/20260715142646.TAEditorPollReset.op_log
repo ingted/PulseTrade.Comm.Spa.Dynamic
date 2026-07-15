@@ -8,3 +8,4 @@
 - NuGet.org push嘗試因未提供API key回401；未讀取或輸出secret，final nupkg保留於SDK `10.0.301` library-packs供immutable service使用。
 - Closeout第一輪FAIL=0；新RFC被traceability gate列為thin，已補情境、方案取捨、影響範圍與關聯文件後重跑。
 - Harness correction：thin實際表示完整RFC ID只被一份stock doc引用；Test row已改用完整ID。相同session重跑會把已append的op_log判成readonly modify並要求log advanced，final check改用新session baseline，保留前次FAIL證據而不製造無資訊log。
+- Closeout：final check `PASS=27/WARN=4/FAIL=0`；commit `80ce0ef Stabilize TA editor polling and reset`已push至`github/20260715_030.win.TACanvas_cross.bar.cursor.first.done`。WARN僅既有diag log命名、pre-work log欄位與全域舊追溯缺口。
