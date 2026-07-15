@@ -410,3 +410,32 @@ else
 server JSON options使用`DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault`。client仍以`hasOpenValue/hasHighValue/...`判定OHLC fields；缺省false/0不改變point semantics。
 
 Playwright需以real mouse drag驗證，不以`FillAsync`代替release lifecycle；同時驗loaded=2000、head/tail皆可到達、visible<=160、network action count不變。
+
+# 2026-07-15 Overview / typed row editor / reset / copy design
+
+```fsharp
+type TaVisibleWindow = { StartIndex: int; Count: int }
+type TaWindowDrag = Move | ResizeLeft | ResizeRight
+
+previewWindowBounds minimum total committed drag delta
+commitWindowBounds minimum total committed draft
+selectionRatios total window
+aggregateOhlc targetBuckets points
+aggregateLine targetBuckets points
+```
+
+overview target bucket count由實際chart width換算並受hard limit；無geometry時使用deterministic default。left/right hit area大於可見handle。pointer move只更新`draftWindow`與selection/readout；pointer up才`setWindow`。selection擴到total時顯示`Full trend · compressed N bars`。主圖projection budget獨立於loaded retention，aggregation保留OHLC envelope及line/histogram first/last/min/max。
+
+Add Row canonical options：
+
+| Kind | Fields | `TaRowSpec.Options` |
+| --- | --- | --- |
+| SMA | Period | `period` |
+| DMI | DI period | `period` |
+| ADX | DI period, ADX period | `diPeriod`, `adxPeriod` |
+| MACD | Fast, Slow, Signal | `fastPeriod`, `slowPeriod`, `signalPeriod` |
+| Volume / Heikin-Ashi | none | empty |
+
+editor Vars與DOM shell建立於renderer instance，不置於runtime revision的document composition內。submit前檢查positive period及`fast < slow`；row id為`row-{kind}-{sequence}`。server rejection保留editor/draft並顯示feedback；accepted document才收合或清理。
+
+`ReplyPresentation.Actions`註冊`copy-json`。payload使用`extractReplyPayload context.Payload`的canonical結果；typed clipboard promise成功/失敗只更新action feedback，不能更動presentation mode。ResetCanvas由Host回initial command fresh snapshot後，renderer清hidden rows、cursor與draft window並依DefaultView重建Committed。

@@ -1,0 +1,9 @@
+# Operation evidence
+
+- 2026-07-15 08:09 +08:00：開始本輪，baseline `5d8b607`；已建立pre-work plan，尚未修改產品碼。
+- 完成RFC-PTCS-DYNAMIC-0010、DYN-TA-014及current REQ/SA/SD/Test/Verification同步。
+- Renderer alpha24實作2000-point bounded overview、雙handle/move、48/200/All、release commit、typed Add Row與initial Reset Canvas；Ptcs.Client win52實作PTCS typed action canonical JSON clipboard。
+- Renderer 19/19、Ptcs 7/7、Ptcs.Client 8/8、isolated F# Playwright皆PASS；正式82 cross-repo artifact為`G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchFormal82.20260715111500`。
+- Dynamic beta101、Renderer alpha24、Dynamic.Ptcs win40、Ptcs.Client win52均由NuGet.org接受並回`Created`；立即flat-container查詢仍在index propagation。
+- Follow-up flat-container HEAD四個版本均回200，public indexing完成。
+- PTCS dependency commit `39e294d` 已push至同名remote branch；PTCS package `0.2.5-beta112`與typed reply presentation action已成為本批次exact dependency。

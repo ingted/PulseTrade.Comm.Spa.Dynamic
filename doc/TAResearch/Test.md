@@ -88,6 +88,17 @@ WBS: `doc/TAResearch/WBS.md`
 
 `DYN-TA-001..008`完成、T-001..020 Pass、PTCS transient seam與E2EQ parity都有真路徑證據後才可標記Implemented。`T-000A`只關閉legacy readiness。
 
+## DYN-TA-014 Overview / typed row editor / reset / copy
+
+| ID | Layer | Acceptance | WBS | Status |
+| --- | --- | --- | --- | --- |
+| DYN-TA-T-039 | Document | RFC-0010與REQ/SA/SD/WBS/Test/Verification ownership及supersede關係一致。 | DYN-TA-014A | Pass |
+| DYN-TA-T-040 | Pure model | dual-bound clamp/move/left/right/full-range、selection ratios、OHLC/line bucket determinism與bounds。 | DYN-TA-014B | Pass：Renderer model 19/19。 |
+| DYN-TA-T-041 | F# Playwright | loaded=2000 overview、left/right/move、48/200/2000 views；drag render delta=0、release=1、remote action delta=0、primitive bounded。 | DYN-TA-014C | Pass：isolated verifier `artifacts/ta-renderer-playwright`。 |
+| DYN-TA-T-042 | Package/browser | editor跨poll保持；SMA/DMI/ADX/MACD fields/options；remove/re-add；invalid periods fail visibly。 | DYN-TA-014D | Pass：正式82驗ADX與MACD typed fields、poll穩定及remove/re-add。 |
+| DYN-TA-T-043 | PTCS browser | copy action鄰接展開，clipboard canonical JSON；不mount/poll/mode change；error bounded。 | DYN-TA-014E | Pass：正式82以clipboard readback驗canonical JSON且presentation lifecycle不變。 |
+| DYN-TA-T-044 | Formal 82 | Reset restores initial rows/query；mixed reply/ACL/inline/fullscreen/reconnect及2000 SQL/browser evidence通過。 | DYN-TA-014F | Pass：`verify.ptcsHostTaResearchFormal82.20260715111500`。 |
+
 ## 5. 2026-07-12 PTCS production integration evidence
 
 - Renderer model：12/12 Pass；涵蓋query metadata與missing-metadata不使用demo default。

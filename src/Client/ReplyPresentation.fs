@@ -79,6 +79,7 @@ module ReplyPresentation =
             Some
                 { Kind = "static-sdui"
                   RenderSummary = fun () -> renderSummary title elementCount
+                  Actions = [||]
                   Mount =
                     fun _ host ->
                         clearHost host

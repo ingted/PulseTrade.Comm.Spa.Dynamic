@@ -1043,3 +1043,12 @@ Implementation status:
 - The horizontal navigator now previews on `input` and commits one chart render on release/`change`; shorter SMA/ADX/MACD warm-up traces align by timestamp rather than array index.
 - A rejected transient command returns `CommandRejected` without terminating a healthy WebSocket, so the next request can succeed on the same connection.
 - Package gates passed Renderer `17/17`, Ptcs.Client `8/8` and Dynamic.Ptcs `7/7`. Formal 82 evidence `G:\PulseTrade.fs.Comm.Log\verification\ptcsHostTaResearchLive\run-ta2000-final-bounded-win39-alpha45-20260715022108` loaded 2000 points, rendered 48 candles, passed drag/release/head-tail/reconnect and remained within the memory gates.
+
+## 2026-07-15 - DYN-TA-014 overview/editor/reset/copy closure
+
+- Renderer alpha24 adds a bounded 2000-point overview, left/right resize handles, move region, 48/200/All selection and draft-during-drag/commit-on-release rendering.
+- Add Row now exposes stable typed parameters: SMA/DMI period, ADX DI+ADX periods and MACD fast+slow+signal. Poll no longer closes or rewrites the editor; remove/re-add and initial-command Reset Canvas pass.
+- Dynamic Ptcs.Client win52 consumes PTCS beta112 typed reply action support and copies canonical SDUI JSON without changing expand/mount/poll state.
+- Renderer model passes 19/19, isolated F# Playwright passes, and formal 82 artifact `G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaResearchFormal82.20260715111500` passes 2000 loaded points, clipboard, typed rows, reset, inline/fullscreen, mobile, reconnect and memory gates.
+- NuGet.org accepted Dynamic beta101, Renderer alpha24, Dynamic.Ptcs win40 and Ptcs.Client win52 (`Created`); immediate flat-container indexing remained propagation-pending.
+- Follow-up flat-container HEAD returned 200 for all four Dynamic versions; public indexing is complete.

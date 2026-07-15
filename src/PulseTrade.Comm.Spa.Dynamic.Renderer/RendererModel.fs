@@ -20,6 +20,17 @@ type TaVisibleWindow =
     { StartIndex: int
       Count: int }
 
+[<JavaScript; RequireQualifiedAccess>]
+module TaWindowDrag =
+    [<Literal>]
+    let Move = "move"
+
+    [<Literal>]
+    let ResizeLeft = "resize-left"
+
+    [<Literal>]
+    let ResizeRight = "resize-right"
+
 type TaCursorValue =
     { Label: string
       Value: string }
@@ -275,6 +286,53 @@ module RendererModel =
     let commitPreview total window candidateStart =
         let next = previewWindow total window candidateStart
         next.StartIndex = viewportMaximumStart total next, next
+
+    let previewWindowBounds minimumCount maximumCount total committed drag delta =
+        let committed = clampWindow minimumCount maximumCount total committed
+
+        if committed.Count <= 0 then
+            committed
+        else
+            let startIndex = committed.StartIndex
+            let endExclusive = startIndex + committed.Count
+
+            match drag with
+            | TaWindowDrag.Move ->
+                { committed with
+                    StartIndex = max 0 (min (startIndex + delta) (total - committed.Count)) }
+            | TaWindowDrag.ResizeLeft ->
+                let maximumStart = endExclusive - min minimumCount committed.Count
+                let nextStart = max 0 (min (startIndex + delta) maximumStart)
+                clampWindow minimumCount maximumCount total { StartIndex = nextStart; Count = endExclusive - nextStart }
+            | _ ->
+                let minimumEnd = startIndex + min minimumCount (max 1 total)
+                let nextEnd = max minimumEnd (min total (endExclusive + delta))
+                clampWindow minimumCount maximumCount total { StartIndex = startIndex; Count = nextEnd - startIndex }
+
+    let commitWindowBounds minimumCount maximumCount total draft =
+        let next = clampWindow minimumCount maximumCount total draft
+        next.StartIndex = viewportMaximumStart total next, next
+
+    let selectionRatios total window =
+        if total <= 0 || window.Count <= 0 then
+            0.0, 0.0
+        else
+            let bounded = clampWindow 1 Int32.MaxValue total window
+            float bounded.StartIndex / float total,
+            float (bounded.StartIndex + bounded.Count) / float total
+
+    let sampleEvenly maximumCount (values: 'T array) =
+        if maximumCount <= 0 || values.Length = 0 then
+            [||]
+        elif values.Length <= maximumCount then
+            Array.copy values
+        elif maximumCount = 1 then
+            [| values[values.Length - 1] |]
+        else
+            [| for sampleIndex in 0 .. maximumCount - 1 do
+                   let sourceIndex =
+                       int (Math.Round(float sampleIndex * float (values.Length - 1) / float (maximumCount - 1)))
+                   yield values[sourceIndex] |]
 
     let cursorIndexFromRatio visibleCount ratio =
         if visibleCount <= 0 then

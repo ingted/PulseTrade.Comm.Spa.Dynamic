@@ -12,6 +12,6 @@
 
   <ItemGroup>
     <PackageReference Include="Expecto" Version="10.2.3" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.0-alpha19]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.0-alpha24]" />
   </ItemGroup>
 </Project>

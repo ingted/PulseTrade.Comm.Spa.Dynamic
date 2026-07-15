@@ -61,6 +61,13 @@ Dynamic不得reference PTMD、broker SDK、SQL client或PTCS.Host executable。
 | DYN-TA-REQ-018 | 現有static Canvas payload保持相容；runtime v1只有在明確protocol時啟用。 |
 | DYN-TA-REQ-019 | 一個TA row必須支援ordered multi-trace；legacy single `Kind/DataRef`自動導出一個trace，同row的K棒/線/柱共享viewport與time axis。 |
 | DYN-TA-REQ-020 | browser wire在initial/document change/gap使用bounded full state；穩定document的poll只傳changed keyed points、remove-before與status delta，client deterministic merge且base mismatch要求resync。 |
+| DYN-TA-REQ-021 | loaded range須有bounded OHLC overview；selection提供left/right handles與move，能選minimum bars至actual loaded count，draft期間不重畫主圖、release只commit一次。 |
+| DYN-TA-REQ-022 | full-range最多2000 bars可壓縮呈現完整from/to與長趨勢；overview與主圖primitive須依pixel budget deterministic aggregation，不得用2000組DOM bar拖垮弱機。 |
+| DYN-TA-REQ-023 | overview只投影browser reduced state，不是fetch、IndexedDB、PCSL或provider authority；local viewport操作network action count為零。 |
+| DYN-TA-REQ-024 | Add Row editor draft跨snapshot/patch/heartbeat保持開啟與可編輯；SMA/DMI/ADX/MACD須提供kind-specific typed parameters，不能只用單一generic欄位。 |
+| DYN-TA-REQ-025 | remove後可重新加入同kind row；client產生unique row id，server仍負責authoritative uniqueness與parameter validation。 |
+| DYN-TA-REQ-026 | Reset Canvas成功後須恢復initial ordered rows/query/view；Reset View仍只改local viewport。 |
+| DYN-TA-REQ-027 | TA reply須提供copy canonical SDUI JSON action；copy不得expand、mount、poll、改history或複製fCell envelope。 |
 
 
 ## 5. User scenarios

@@ -123,15 +123,41 @@ module Client =
 
     [<SPAEntryPoint>]
     let Main () =
-        let runtimeState = Var.Create(sampleState ())
+        let initialState = sampleState ()
+        let runtimeState = Var.Create initialState
         let actionCount = Var.Create 0
         let lastAction = Var.Create "none"
+        let applyAuthoritativeAction action =
+            let current = runtimeState.Value
+
+            match action, current.Document with
+            | SduiAction.AddTaRow(_, row), Some document ->
+                runtimeState.Value <-
+                    { current with
+                        Document = Some { document with Rows = Array.append document.Rows [| row |] }
+                        DocumentRevision = current.DocumentRevision + 1L
+                        LastTransportSequence = current.LastTransportSequence + 1L }
+            | SduiAction.RemoveTaRow(_, rowId), Some document ->
+                runtimeState.Value <-
+                    { current with
+                        Document = Some { document with Rows = document.Rows |> Array.filter (fun row -> row.RowId <> rowId) }
+                        DocumentRevision = current.DocumentRevision + 1L
+                        LastTransportSequence = current.LastTransportSequence + 1L }
+            | SduiAction.ResetCanvas _, _ ->
+                runtimeState.Value <-
+                    { initialState with
+                        DocumentRevision = current.DocumentRevision + 1L
+                        DataRevision = current.DataRevision + 1L
+                        LastTransportSequence = current.LastTransportSequence + 1L }
+            | _ -> ()
+
         let callbacks =
             { SubmitAction =
                 fun action ->
                     async {
                         actionCount.Value <- actionCount.Value + 1
                         lastAction.Value <- actionName action
+                        applyAuthoritativeAction action
                         return Ok()
                     } }
 

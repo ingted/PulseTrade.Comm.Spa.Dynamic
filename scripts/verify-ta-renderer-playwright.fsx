@@ -57,8 +57,11 @@ let awaitUnit (task: Task) = task.GetAwaiter().GetResult()
 let require condition message =
     if not condition then failwith ("TA renderer Playwright verification failed: " + message)
 
+let textOf (locator: ILocator) =
+    locator.TextContentAsync() |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+
 let requireText (locator: ILocator) (expected: string) =
-    let actualText = locator.TextContentAsync() |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    let actualText = textOf locator
     require (actualText.Contains expected) $"expected `{expected}` in `{actualText}`"
 
 let requiredIntAttribute (locator: ILocator) name =
@@ -66,6 +69,16 @@ let requiredIntAttribute (locator: ILocator) name =
     match Int32.TryParse value with
     | true, parsed -> parsed
     | _ -> failwith $"TA renderer Playwright verification failed: `{name}` is not an integer: `{value}`"
+
+let waitForIntAttribute (locator: ILocator) name expected =
+    let deadline = DateTime.UtcNow.AddSeconds 3.0
+    let mutable actual = requiredIntAttribute locator name
+
+    while actual <> expected && DateTime.UtcNow < deadline do
+        Threading.Thread.Sleep 40
+        actual <- requiredIntAttribute locator name
+
+    require (actual = expected) $"expected `{name}`={expected}, actual={actual}"
 
 let waitForText (locator: ILocator) (expected: string) =
     let deadline = DateTime.UtcNow.AddSeconds 3.0
@@ -96,7 +109,7 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-workspace-title']")) "PTMD TA Research"
     requireText (page.Locator("[data-testid='ta-freshness']")) "LIVE"
     require ((page.Locator("[data-testid='ta-chart-stack'] section").CountAsync() |> awaitTask) = 7) "all seven configured TA rows must render"
-    require ((page.Locator("[data-testid='ta-candle-price'] rect").CountAsync() |> awaitTask) >= 24) "candlestick chart must contain visible bodies"
+    require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = 48) "candlestick chart must retain all 48 committed visible points"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "watermark 2026-07-11T09:30:00Z"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"
 
@@ -113,19 +126,34 @@ let verifyDesktop (browser: IBrowser) =
     require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 0) "cross-row cursor must not be fabricated before pointer movement"
     require ((page.Locator("[data-testid='ta-time-axis-shared']").CountAsync() |> awaitTask) = 1) "all rows must share one X axis"
 
-    let slider = page.Locator("[data-testid='ta-viewport-slider']")
-    let sliderBox = slider.BoundingBoxAsync() |> awaitTask
-    require (not (isNull sliderBox)) "viewport slider must expose pointer geometry"
+    let navigator = page.Locator("[data-testid='ta-overview-navigator']")
+    let navigatorBox = navigator.BoundingBoxAsync() |> awaitTask
+    let selectionBox = page.Locator("[data-testid='ta-overview-selection']").BoundingBoxAsync() |> awaitTask
+    require (not (isNull navigatorBox) && not (isNull selectionBox)) "overview navigator and selection must expose pointer geometry"
+    require (page.Locator("[data-testid='ta-overview-left-handle']").IsVisibleAsync() |> awaitTask) "overview must expose a left resize handle"
+    require (page.Locator("[data-testid='ta-overview-right-handle']").IsVisibleAsync() |> awaitTask) "overview must expose a right resize handle"
     let renderSequenceBeforeDrag = requiredIntAttribute chartStack "data-chart-render-sequence"
-    let sliderY = sliderBox.Y + sliderBox.Height / 2.0f
-    page.Mouse.MoveAsync(sliderBox.X + sliderBox.Width - 3.0f, sliderY) |> awaitUnit
+    let navigatorY = navigatorBox.Y + navigatorBox.Height / 2.0f
+    page.Mouse.MoveAsync(selectionBox.X + selectionBox.Width / 2.0f, navigatorY) |> awaitUnit
     page.Mouse.DownAsync() |> awaitUnit
-    page.Mouse.MoveAsync(sliderBox.X + 3.0f, sliderY, MouseMoveOptions(Steps = 12)) |> awaitUnit
-    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Preview 1-48"
+    page.Mouse.MoveAsync(navigatorBox.X + selectionBox.Width / 2.0f, navigatorY, MouseMoveOptions(Steps = 12)) |> awaitUnit
+    let viewportRange = page.Locator("[data-testid='ta-viewport-range']")
+    waitForText viewportRange "Preview"
+    let previewText = textOf viewportRange
+    let previewMatch = Text.RegularExpressions.Regex.Match(previewText, "Preview ([0-9]+-[0-9]+)")
+    require previewMatch.Success ("move drag did not expose bounded preview range: " + previewText)
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeDrag) "drag preview must not rebuild the chart"
     require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = "1953") "committed viewport must remain stable before release"
     page.Mouse.UpAsync() |> awaitUnit
-    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 1-48"
+    System.Threading.Thread.Sleep 100
+    let committedText = textOf viewportRange
+    let committedMatch = Text.RegularExpressions.Regex.Match(committedText, "Viewing ([0-9]+)-([0-9]+)")
+    require committedMatch.Success ("release did not publish committed bounds: " + committedText)
+    let committedStart = Int32.Parse committedMatch.Groups[1].Value
+    let committedEnd = Int32.Parse committedMatch.Groups[2].Value
+    require
+        (committedEnd - committedStart + 1 = 48 && committedStart < 1953)
+        ("move release must commit one historical 48-bar window: " + committedText)
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeDrag + 1) "release must commit exactly one chart render"
     require (chartStack.GetAttributeAsync("data-follow-latest") |> awaitTask = "false") "historical viewport navigation must leave follow-latest mode"
 
@@ -134,13 +162,14 @@ let verifyDesktop (browser: IBrowser) =
     require (not (isNull pointerBox)) "price chart must expose pointer geometry"
     priceChart.HoverAsync() |> awaitUnit
     let cursorValues = page.Locator("[data-testid='ta-cursor-values']")
-    waitForText cursorValues "B25"
+    let expectedMiddleLabel = "B" + string (committedStart + 24)
+    waitForText cursorValues expectedMiddleLabel
     require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 7) "pointer movement on one row must create one shared crosshair in every visible row"
     let timeLabels = page.Locator("[data-testid='ta-time-axis-shared'] span")
     require ((timeLabels.CountAsync() |> awaitTask) = 3) "shared X axis must expose first, middle, and last time labels"
-    requireText (timeLabels.Nth(0)) "B1"
-    requireText (timeLabels.Nth(1)) "B25"
-    requireText (timeLabels.Nth(2)) "B48"
+    requireText (timeLabels.Nth(0)) ("B" + string committedStart)
+    requireText (timeLabels.Nth(1)) expectedMiddleLabel
+    requireText (timeLabels.Nth(2)) ("B" + string committedEnd)
     let crosshairPositions =
         page.Locator("[data-testid$='-crosshair']").AllAsync()
         |> awaitTask
@@ -151,7 +180,7 @@ let verifyDesktop (browser: IBrowser) =
     Directory.CreateDirectory outputDirectory |> ignore
     page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "desktop-crossrow-cursor.png"), FullPage = true)) |> awaitTask |> ignore
 
-    let chartBodiesBeforeStatusChange = page.Locator("[data-testid='ta-candle-price'] rect").CountAsync() |> awaitTask
+    let chartPointsBeforeStatusChange = requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count"
     page.Locator("[data-testid='ta-demo-inflight']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-poll-state']")) "UPDATING"
     require (page.Locator("[data-testid='ta-apply-query']").IsDisabledAsync() |> awaitTask) "remote query must be disabled while a poll is in flight"
@@ -162,7 +191,7 @@ let verifyDesktop (browser: IBrowser) =
     waitForText (page.Locator("[data-testid='ta-freshness']")) "STALE"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality gap suspected"
     requireText (page.Locator("[data-testid='ta-last-good-error']")) "retaining last good canvas"
-    require ((page.Locator("[data-testid='ta-candle-price'] rect").CountAsync() |> awaitTask) = chartBodiesBeforeStatusChange) "stale transport status must retain the last-good canvas"
+    require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = chartPointsBeforeStatusChange) "stale transport status must retain the last-good canvas"
     page.Locator("[data-testid='ta-demo-live']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-poll-state']")) "READY"
     require (not (page.Locator("[data-testid='ta-apply-query']").IsDisabledAsync() |> awaitTask)) "remote query must recover after the runtime returns to ready"
@@ -195,18 +224,64 @@ let verifyDesktop (browser: IBrowser) =
     page.Locator("[data-testid='ta-add-row-toggle']").ClickAsync() |> awaitUnit
     let editor = page.Locator("[data-testid='ta-add-row-editor']")
     editor.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
+    page.Locator("[data-testid='ta-demo-live']").ClickAsync() |> awaitUnit
+    System.Threading.Thread.Sleep 350
+    require (editor.IsVisibleAsync() |> awaitTask) "status refresh must not collapse an unfinished Add Row editor"
+    page.Locator("[data-testid='ta-add-row-kind']").SelectOptionAsync("Macd") |> awaitTask |> ignore
+    page.Locator("[data-testid='ta-add-row-fast-period']").FillAsync("13") |> awaitUnit
+    page.Locator("[data-testid='ta-add-row-slow-period']").FillAsync("21") |> awaitUnit
+    page.Locator("[data-testid='ta-add-row-signal-period']").FillAsync("7") |> awaitUnit
+    require ((page.Locator("[data-testid^='ta-add-row-'][data-testid$='-period']").CountAsync() |> awaitTask) >= 3) "MACD Add Row must expose fast, slow and signal fields"
     page.Locator("[data-testid='ta-add-row-cancel']").ClickAsync() |> awaitUnit
     editor.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Hidden, Timeout = 3000.0f)) |> awaitUnit
     page.Locator("[data-testid='ta-add-row-toggle']").ClickAsync() |> awaitUnit
+    page.Locator("[data-testid='ta-add-row-kind']").SelectOptionAsync("Adx") |> awaitTask |> ignore
     page.Locator("[data-testid='ta-add-row-data-ref']").FillAsync("series.adx") |> awaitUnit
+    page.Locator("[data-testid='ta-add-row-di-period']").FillAsync("7") |> awaitUnit
+    page.Locator("[data-testid='ta-add-row-adx-period']").FillAsync("21") |> awaitUnit
     page.Locator("[data-testid='ta-add-row-submit']").ClickAsync() |> awaitUnit
     editor.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Hidden, Timeout = 3000.0f)) |> awaitUnit
     waitForText callbackState "last AddTaRow"
+
+    page.Locator("[data-testid='ta-remove-row-volume']").ClickAsync() |> awaitUnit
+    volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Hidden, Timeout = 3000.0f)) |> awaitUnit
 
     page.Locator("[data-testid='ta-apply-query']").ClickAsync() |> awaitUnit
     waitForText callbackState "last ChangeTaQuery"
     page.Locator("[data-testid='ta-reset-canvas']").ClickAsync() |> awaitUnit
     waitForText callbackState "last ResetCanvas"
+    volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
+    require ((page.Locator("[data-testid^='ta-row-row-adx-']").CountAsync() |> awaitTask) = 0) "Reset Canvas must remove post-mount added rows"
+
+    let renderBeforeRightHandle = requiredIntAttribute chartStack "data-chart-render-sequence"
+    page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 1-2000"
+    require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = 2000) "All preset must render the full loaded 2000-bar range"
+    let allNavigatorBox = navigator.BoundingBoxAsync() |> awaitTask
+    let rightHandle = page.Locator("[data-testid='ta-overview-right-handle']")
+    let rightHandleBox = rightHandle.BoundingBoxAsync() |> awaitTask
+    require (not (isNull rightHandleBox)) "right overview handle must expose geometry"
+    rightHandle.HoverAsync() |> awaitUnit
+    page.Mouse.DownAsync() |> awaitUnit
+    page.Mouse.MoveAsync(allNavigatorBox.X + allNavigatorBox.Width * 0.75f, allNavigatorBox.Y + allNavigatorBox.Height / 2.0f, MouseMoveOptions(Steps = 8)) |> awaitUnit
+    System.Threading.Thread.Sleep 50
+    require ((textOf (page.Locator("[data-testid='ta-viewport-range']"))).Contains "Preview") "right-handle drag must publish preview bounds"
+    require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderBeforeRightHandle + 1) "right-handle preview must not rebuild after the All preset render"
+    page.Mouse.UpAsync() |> awaitUnit
+    waitForIntAttribute chartStack "data-chart-render-sequence" (renderBeforeRightHandle + 2)
+    let resizedNavigatorBox = navigator.BoundingBoxAsync() |> awaitTask
+    let leftHandle = page.Locator("[data-testid='ta-overview-left-handle']")
+    let leftHandleBox = leftHandle.BoundingBoxAsync() |> awaitTask
+    let renderBeforeLeftHandle = requiredIntAttribute chartStack "data-chart-render-sequence"
+    require (not (isNull leftHandleBox)) "left overview handle must expose geometry"
+    leftHandle.HoverAsync() |> awaitUnit
+    page.Mouse.DownAsync() |> awaitUnit
+    page.Mouse.MoveAsync(resizedNavigatorBox.X + resizedNavigatorBox.Width * 0.25f, resizedNavigatorBox.Y + resizedNavigatorBox.Height / 2.0f, MouseMoveOptions(Steps = 8)) |> awaitUnit
+    System.Threading.Thread.Sleep 50
+    require ((textOf (page.Locator("[data-testid='ta-viewport-range']"))).Contains "Preview") "left-handle drag must publish preview bounds"
+    require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderBeforeLeftHandle) "left-handle preview must not rebuild the chart"
+    page.Mouse.UpAsync() |> awaitUnit
+    waitForIntAttribute chartStack "data-chart-render-sequence" (renderBeforeLeftHandle + 1)
     require (consoleErrors.Count = 0) ("desktop console errors: " + String.concat " | " consoleErrors)
 
     Directory.CreateDirectory outputDirectory |> ignore

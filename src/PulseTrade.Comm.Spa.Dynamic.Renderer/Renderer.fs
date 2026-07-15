@@ -34,7 +34,7 @@ module TaWorkspaceRenderer =
     let defaultOptions =
         { MinimumVisibleBars = 12
           DefaultVisibleBars = 48
-          MaximumVisibleBars = 160 }
+          MaximumVisibleBars = 2000 }
 
     let element name attrs (children: seq<#Doc>) =
         Doc.Element name attrs (children |> Seq.cast<Doc>) :> Doc
@@ -118,6 +118,7 @@ module TaWorkspaceRenderer =
             Attr.Create "data-testid" testId
             attr.style "height:30px; min-width:0; width:100%; border:1px solid #b9c6d8; border-radius:4px; background:#fff; color:#142033; padding:3px 6px; box-sizing:border-box; font-size:12px;"
             on.afterRender (fun node ->
+                // WebSharper's DOM wrapper exposes the shared value property through HTMLInputElement.
                 let input = node |> As<HTMLInputElement>
                 input.Value <- initial
                 input.AddEventListener("change", fun () -> onChanged input.Value))
@@ -177,6 +178,66 @@ module TaWorkspaceRenderer =
             let alignment = if position = 0 then "left" elif position = 2 then "right" else "center"
             span [ attr.style ("min-width:0; text-align:" + alignment + "; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;") ] [ text (compactTimestamp label) ] :> Doc)
         |> fun labels -> div [ Attr.Create "data-testid" testId; attr.style "display:grid; grid-template-columns:1fr 1fr 1fr; min-width:0; height:16px; padding:0 1px;" ] labels
+
+    let rectanglePath x y width height =
+        "M " + fixedText x + " " + fixedText y
+        + " h " + fixedText width
+        + " v " + fixedText height
+        + " h " + fixedText (-width)
+        + " Z"
+
+    let overviewSvg points selectionWindow onReady onDragStart =
+        let width = 1000.0
+        let height = 82.0
+        let sampled = RendererModel.sampleEvenly 280 points
+        let low, high =
+            sampled
+            |> Array.collect (fun point -> [| point.Low; point.High |])
+            |> RendererModel.paddedRange 0.0 1.0
+        let xAt index =
+            if sampled.Length <= 1 then width / 2.0
+            else width * float index / float (sampled.Length - 1)
+        let closePath =
+            sampled
+            |> Array.mapi (fun index point ->
+                (if index = 0 then "M " else "L ")
+                + fixedText (xAt index) + " "
+                + fixedText (RendererModel.normalize low high 8.0 62.0 point.Close))
+            |> String.concat " "
+        let leftRatio, rightRatio = selectionWindow
+        let selectionX = leftRatio * width
+        let selectionWidth = max 4.0 ((rightRatio - leftRatio) * width)
+        let handleWidth = 8.0
+        let handleX edge = max 0.0 (min (width - handleWidth) (edge - handleWidth / 2.0))
+
+        svgElement "svg" [
+            Attr.Create "data-testid" "ta-overview-navigator"
+            Attr.Create "data-loaded-sample-count" (string sampled.Length)
+            svgAttr "viewBox" "0 0 1000 82"
+            svgAttr "preserveAspectRatio" "none"
+            attr.style "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"
+            on.afterRender onReady
+        ] [
+            svgElement "path" [ svgAttr "d" closePath; svgAttr "fill" "none"; svgAttr "stroke" "#3d718e"; svgAttr "stroke-width" "1.5" ] []
+            svgElement "rect" [
+                Attr.Create "data-testid" "ta-overview-selection"
+                svgAttr "x" (fixedText selectionX); svgAttr "y" "1"; svgAttr "width" (fixedText selectionWidth); svgAttr "height" "80"
+                svgAttr "fill" "rgba(15,118,110,.10)"; svgAttr "stroke" "#0f766e"; svgAttr "stroke-width" "2"; svgAttr "style" "cursor:grab;"
+                on.mouseDown (fun _ event -> onDragStart TaWindowDrag.Move event)
+            ] []
+            svgElement "rect" [
+                Attr.Create "data-testid" "ta-overview-left-handle"
+                svgAttr "x" (fixedText (handleX selectionX)); svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
+                svgAttr "fill" "#155f73"; svgAttr "fill-opacity" "0.82"; svgAttr "style" "cursor:ew-resize;"
+                on.mouseDown (fun _ event -> onDragStart TaWindowDrag.ResizeLeft event)
+            ] []
+            svgElement "rect" [
+                Attr.Create "data-testid" "ta-overview-right-handle"
+                svgAttr "x" (fixedText (handleX (selectionX + selectionWidth))); svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
+                svgAttr "fill" "#155f73"; svgAttr "fill-opacity" "0.82"; svgAttr "style" "cursor:ew-resize;"
+                on.mouseDown (fun _ event -> onDragStart TaWindowDrag.ResizeRight event)
+            ] []
+        ]
 
     let candleSvg testId (points: TaCandlePoint array) cursorIndex =
         let width = 1000.0
@@ -331,6 +392,7 @@ module TaWorkspaceRenderer =
             svgAttr "role" "img"
             svgAttr "aria-label" ("Composite TA row " + rowId)
             Attr.Create "data-testid" svgTestId
+            Attr.Create "data-point-count" (string referenceTimestamps.Length)
             Attr.Create "data-cursor-index" (cursorIndex |> Option.map string |> Option.defaultValue "")
             attr.style ("display:block; width:100%; height:" + fixedText height + "px; background:#fbfcfe;")
             on.mouseMove (fun element event ->
@@ -343,18 +405,30 @@ module TaWorkspaceRenderer =
                 let y = top + plotHeight * float gridIndex / 4.0
                 yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" (fixedText y); svgAttr "y2" (fixedText y); svgAttr "stroke" "#e7ecf3"; svgAttr "stroke-width" "1" ] []
 
-            for index in 0 .. candleSeries.Length - 1 do
-                let point = candleSeries[index]
-                let x = slot * (float index + 0.5)
-                let openY = RendererModel.normalize low high top plotHeight point.Open
-                let closeY = RendererModel.normalize low high top plotHeight point.Close
-                let highY = RendererModel.normalize low high top plotHeight point.High
-                let lowY = RendererModel.normalize low high top plotHeight point.Low
-                let candleColor = if point.Close >= point.Open then "#0f8a78" else "#c2414b"
-                let bodyY = min openY closeY
-                let bodyHeight = max 1.2 (abs (closeY - openY))
-                yield svgElement "line" [ svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" (fixedText highY); svgAttr "y2" (fixedText lowY); svgAttr "stroke" candleColor; svgAttr "stroke-width" "1.4" ] []
-                yield svgElement "rect" [ svgAttr "x" (fixedText (x - bodyWidth / 2.0)); svgAttr "y" (fixedText bodyY); svgAttr "width" (fixedText bodyWidth); svgAttr "height" (fixedText bodyHeight); svgAttr "fill" candleColor; svgAttr "rx" "0.6" ] []
+            for rising, candleColor in [ true, "#0f8a78"; false, "#c2414b" ] do
+                let selected = candleSeries |> Array.filter (fun point -> (point.Close >= point.Open) = rising)
+                let wickPath =
+                    selected
+                    |> Array.choose (fun point ->
+                        tryTimestampIndex point.Timestamp
+                        |> Option.map (fun index ->
+                            let x = slot * (float index + 0.5)
+                            let highY = RendererModel.normalize low high top plotHeight point.High
+                            let lowY = RendererModel.normalize low high top plotHeight point.Low
+                            "M " + fixedText x + " " + fixedText highY + " V " + fixedText lowY))
+                    |> String.concat " "
+                let bodyPath =
+                    selected
+                    |> Array.choose (fun point ->
+                        tryTimestampIndex point.Timestamp
+                        |> Option.map (fun index ->
+                            let x = slot * (float index + 0.5)
+                            let openY = RendererModel.normalize low high top plotHeight point.Open
+                            let closeY = RendererModel.normalize low high top plotHeight point.Close
+                            rectanglePath (x - bodyWidth / 2.0) (min openY closeY) bodyWidth (max 1.2 (abs (closeY - openY)))))
+                    |> String.concat " "
+                yield svgElement "path" [ Attr.Create "data-candle-part" (if rising then "rising-wicks" else "falling-wicks"); svgAttr "d" wickPath; svgAttr "fill" "none"; svgAttr "stroke" candleColor; svgAttr "stroke-width" "1.2" ] []
+                yield svgElement "path" [ Attr.Create "data-candle-part" (if rising then "rising-bodies" else "falling-bodies"); svgAttr "d" bodyPath; svgAttr "fill" candleColor ] []
 
             for traceIndex, trace, points in linePoints do
                 let traceColor = color traceIndex trace
@@ -362,15 +436,17 @@ module TaWorkspaceRenderer =
                 | TaTraceKind.Histogram
                 | TaTraceKind.Volume ->
                     let zeroY = RendererModel.normalize low high top plotHeight 0.0
-                    for point in points do
-                        match tryTimestampIndex point.Timestamp with
-                        | Some index ->
-                            let x = slot * (float index + 0.18)
-                            let valueY = RendererModel.normalize low high top plotHeight point.Value
-                            let y = min zeroY valueY
-                            let barHeight = max 1.0 (abs (zeroY - valueY))
-                            yield svgElement "rect" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); svgAttr "x" (fixedText x); svgAttr "y" (fixedText y); svgAttr "width" (fixedText (max 1.0 (slot * 0.64))); svgAttr "height" (fixedText barHeight); svgAttr "fill" traceColor; svgAttr "fill-opacity" "0.62" ] []
-                        | None -> ()
+                    let barWidth = max 1.0 (slot * 0.64)
+                    let path =
+                        points
+                        |> Array.choose (fun point ->
+                            tryTimestampIndex point.Timestamp
+                            |> Option.map (fun index ->
+                                let x = slot * (float index + 0.18)
+                                let valueY = RendererModel.normalize low high top plotHeight point.Value
+                                rectanglePath x (min zeroY valueY) barWidth (max 1.0 (abs (zeroY - valueY)))))
+                        |> String.concat " "
+                    yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); svgAttr "d" path; svgAttr "fill" traceColor; svgAttr "fill-opacity" "0.62" ] []
                 | TaTraceKind.Line ->
                     let path =
                         points
@@ -413,7 +489,16 @@ module TaWorkspaceRenderer =
         let mutable synchronizedDocumentRevision = -1L
         let addKind = Var.Create "Sma"
         let addDataRef = Var.Create "series.sma"
-        let draftStartIndex = Var.Create<int option> None
+        let addPeriod = Var.Create "20"
+        let addDiPeriod = Var.Create "14"
+        let addAdxPeriod = Var.Create "14"
+        let addFastPeriod = Var.Create "12"
+        let addSlowPeriod = Var.Create "26"
+        let addSignalPeriod = Var.Create "9"
+        let draftWindow = Var.Create<TaVisibleWindow option> None
+        let mutable addRowSequence = 0
+        let mutable pendingAddRowId: string option = None
+        let mutable navigatorElement: Element = null
         let mutable chartRenderSequence = 0
         let uiState =
             Var.Create
@@ -450,6 +535,7 @@ module TaWorkspaceRenderer =
                     Window = bounded
                     FollowLatest = followLatest
                     CursorIndex = None }
+            draftWindow.Value <- None
 
         let panWindow delta =
             let current = uiState.Value
@@ -472,6 +558,47 @@ module TaWorkspaceRenderer =
         let resetWindow () =
             setWindow true { StartIndex = 0; Count = options.DefaultVisibleBars }
             uiState.Value <- { uiState.Value with Feedback = "Local view reset." }
+
+        let setWindowCount count =
+            let total = referenceLength ()
+            let boundedCount = max options.MinimumVisibleBars (min total count)
+            setWindow true { StartIndex = max 0 (total - boundedCount); Count = boundedCount }
+
+        let startNavigatorDrag drag (event: MouseEvent) =
+            if not (isNull navigatorElement) then
+                event.PreventDefault()
+                event.StopPropagation()
+                let bounds = navigatorElement.GetBoundingClientRect()
+                let total = referenceLength ()
+                let committed = resolvedWindow uiState.Value
+                let startClientX = event.ClientX
+                let mutable moveHandler: Action<Event> = null
+                let mutable upHandler: Action<Event> = null
+
+                let cleanup () =
+                    if not (isNull moveHandler) then JS.Document.RemoveEventListener("mousemove", moveHandler)
+                    if not (isNull upHandler) then JS.Document.RemoveEventListener("mouseup", upHandler)
+
+                moveHandler <-
+                    Action<Event>(fun rawEvent ->
+                        let mouse = rawEvent :?> MouseEvent
+                        let delta =
+                            if bounds.Width <= 0.0 || total <= 0 then 0
+                            else int (Math.Round(float (mouse.ClientX - startClientX) / bounds.Width * float total))
+                        draftWindow.Value <-
+                            Some(RendererModel.previewWindowBounds options.MinimumVisibleBars options.MaximumVisibleBars total committed drag delta))
+
+                upHandler <-
+                    Action<Event>(fun _ ->
+                        let draft = defaultArg draftWindow.Value committed
+                        let followLatest, next =
+                            RendererModel.commitWindowBounds options.MinimumVisibleBars options.MaximumVisibleBars total draft
+                        cleanup ()
+                        if next <> committed || followLatest <> uiState.Value.FollowLatest then setWindow followLatest next
+                        else draftWindow.Value <- None)
+
+                JS.Document.AddEventListener("mousemove", moveHandler)
+                JS.Document.AddEventListener("mouseup", upHandler)
 
         let setCursorIndex value =
             if uiState.Value.CursorIndex <> value then
@@ -503,18 +630,52 @@ module TaWorkspaceRenderer =
                 | "HeikinAshi" -> TaRowKind.HeikinAshi
                 | _ -> TaRowKind.Sma
 
-            let rowId = "row-" + addKind.Value.ToLower()
-            let spec =
-                { RowId = rowId
-                  Kind = kind
-                  DataRef = addDataRef.Value
-                  HeightWeight = 1.0
-                  Visible = true
-                  Options = Map.empty
-                  Traces = [||] }
+            let positive fieldName (textValue: string) : Result<int, string> =
+                match Int32.TryParse textValue with
+                | true, value when value > 0 -> Result.Ok value
+                | _ -> Result.Error(fieldName + " must be a positive integer.")
 
-            submit callbacks uiState (SduiAction.AddTaRow(canvasId, spec)) "Row request submitted."
-            uiState.Value <- { uiState.Value with AddRowOpen = false }
+            let optionsResult: Result<Map<string, SduiValue>, string> =
+                match kind with
+                | TaRowKind.Sma
+                | TaRowKind.Dmi ->
+                    positive "Period" addPeriod.Value
+                    |> Result.map (fun value -> Map [ "period", SduiValue.Number(float value) ])
+                | TaRowKind.Adx ->
+                    match positive "DI period" addDiPeriod.Value, positive "ADX period" addAdxPeriod.Value with
+                    | Ok diPeriod, Ok adxPeriod ->
+                        Ok(Map [ "diPeriod", SduiValue.Number(float diPeriod); "adxPeriod", SduiValue.Number(float adxPeriod) ])
+                    | Result.Error message, _
+                    | _, Result.Error message -> Result.Error message
+                | TaRowKind.Macd ->
+                    match positive "Fast period" addFastPeriod.Value, positive "Slow period" addSlowPeriod.Value, positive "Signal period" addSignalPeriod.Value with
+                    | Ok fast, Ok slow, Ok signal when fast < slow ->
+                        Ok(Map [ "fastPeriod", SduiValue.Number(float fast); "slowPeriod", SduiValue.Number(float slow); "signalPeriod", SduiValue.Number(float signal) ])
+                    | Ok _, Ok _, Ok _ -> Result.Error "MACD fast period must be smaller than slow period."
+                    | Result.Error message, _, _
+                    | _, Result.Error message, _
+                    | _, _, Result.Error message -> Result.Error message
+                | _ -> Result.Ok Map.empty
+
+            match optionsResult with
+            | Result.Error message -> uiState.Value <- { uiState.Value with Feedback = message }
+            | Ok rowOptions ->
+                addRowSequence <- addRowSequence + 1
+                let rowId = "row-" + addKind.Value.ToLower() + "-" + string addRowSequence
+                let dataRef =
+                    if String.IsNullOrWhiteSpace addDataRef.Value then "series." + rowId
+                    else addDataRef.Value.Trim()
+                let spec =
+                    { RowId = rowId
+                      Kind = kind
+                      DataRef = dataRef
+                      HeightWeight = 1.0
+                      Visible = true
+                      Options = rowOptions
+                      Traces = [||] }
+
+                pendingAddRowId <- Some rowId
+                submit callbacks uiState (SduiAction.AddTaRow(canvasId, spec)) "Row request submitted."
 
         div [
             attr.``class`` "ptcs-ta-workspace"
@@ -543,6 +704,11 @@ module TaWorkspaceRenderer =
                         interval.Value <- query.IntervalMinutes
                         fromDate.Value <- query.FromUtc
                         toDate.Value <- query.ToUtcExclusive
+                        match pendingAddRowId with
+                        | Some rowId when document.Rows |> Array.exists (fun row -> row.RowId = rowId) ->
+                            pendingAddRowId <- None
+                            uiState.Value <- { uiState.Value with AddRowOpen = false; Feedback = "Row added." }
+                        | _ -> ()
                         synchronizedDocumentRevision <- state.DocumentRevision
 
                     let status = RendererModel.statusPresentation document.StatusRef state
@@ -633,8 +799,34 @@ module TaWorkspaceRenderer =
                                 if not ui.AddRowOpen then Doc.Empty
                                 else
                                     div [ Attr.Create "data-testid" "ta-add-row-editor"; attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;" ] [
-                                        label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text "Row kind"; selectInput "ta-add-row-kind" addKind.Value [ "Sma", "SMA"; "Volume", "Volume"; "Dmi", "DMI"; "Adx", "ADX"; "Macd", "MACD"; "HeikinAshi", "Heikin-Ashi" ] (fun value -> addKind.Value <- value) ]
+                                        label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [
+                                            text "Row kind"
+                                            selectInput "ta-add-row-kind" addKind.Value [ "Sma", "SMA"; "Volume", "Volume"; "Dmi", "DMI"; "Adx", "ADX"; "Macd", "MACD"; "HeikinAshi", "Heikin-Ashi" ] (fun value ->
+                                                addKind.Value <- value
+                                                addDataRef.Value <- "series." + value.ToLower())
+                                        ]
                                         label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text "Data ref"; inputText "ta-add-row-data-ref" "series.sma" addDataRef.Value (fun value -> addDataRef.Value <- value) ]
+                                        addKind.View
+                                        |> View.Map (fun kind ->
+                                            let field labelText testId value onChanged =
+                                                label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text labelText; inputText testId labelText value onChanged ] :> Doc
+
+                                            match kind with
+                                            | "Sma"
+                                            | "Dmi" -> field "Period" "ta-add-row-period" addPeriod.Value (fun value -> addPeriod.Value <- value)
+                                            | "Adx" ->
+                                                div [ attr.style "display:grid; grid-template-columns:1fr 1fr; gap:6px; min-width:0;" ] [
+                                                    field "DI period" "ta-add-row-di-period" addDiPeriod.Value (fun value -> addDiPeriod.Value <- value)
+                                                    field "ADX period" "ta-add-row-adx-period" addAdxPeriod.Value (fun value -> addAdxPeriod.Value <- value)
+                                                ] :> Doc
+                                            | "Macd" ->
+                                                div [ attr.style "display:grid; grid-template-columns:repeat(3,1fr); gap:6px; min-width:0;" ] [
+                                                    field "Fast" "ta-add-row-fast-period" addFastPeriod.Value (fun value -> addFastPeriod.Value <- value)
+                                                    field "Slow" "ta-add-row-slow-period" addSlowPeriod.Value (fun value -> addSlowPeriod.Value <- value)
+                                                    field "Signal" "ta-add-row-signal-period" addSignalPeriod.Value (fun value -> addSignalPeriod.Value <- value)
+                                                ] :> Doc
+                                            | _ -> span [ attr.style "font-size:11px; color:#728196;" ] [ text "No indicator parameters." ] :> Doc)
+                                        |> Doc.EmbedView
                                         compactButton "ta-add-row-cancel" "Cancel" "Close without submitting" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = false })
                                         primaryButtonState "ta-add-row-submit" "Add" commandsDisabled addRow
                                     ] :> Doc)
@@ -655,6 +847,12 @@ module TaWorkspaceRenderer =
 
                             let referenceTimeline = RendererModel.referenceTimeline visibleRows state.Data
                             let referenceLength = referenceTimeline.Length
+                            let overviewPoints =
+                                visibleRows
+                                |> Array.collect RendererModel.effectiveTraces
+                                |> Array.tryFind (fun trace -> trace.Visible && trace.Kind = TaTraceKind.Candlestick)
+                                |> Option.map (fun trace -> RendererModel.candleSeries trace.DataRef state.Data)
+                                |> Option.defaultValue [||]
                             let visibleWindow =
                                 RendererModel.resolveWindow
                                     options.MinimumVisibleBars
@@ -678,16 +876,14 @@ module TaWorkspaceRenderer =
                                             yield span [ Attr.Create "data-cursor-row" item.Label; attr.style "min-width:0;" ] [ text (item.Label + " " + item.Value) ]
                                     ]
 
-                            let maximumStart = RendererModel.viewportMaximumStart referenceLength visibleWindow
                             let visibleStart = if visibleWindow.Count = 0 then 0 else visibleWindow.StartIndex + 1
                             let visibleEnd = visibleWindow.StartIndex + visibleWindow.Count
                             let viewportRangeText =
-                                draftStartIndex.View
+                                draftWindow.View
                                 |> View.Map (fun draft ->
                                     match draft with
                                     | None -> $"Loaded {referenceLength} bars · Viewing {visibleStart}-{visibleEnd}"
-                                    | Some candidate ->
-                                        let preview = RendererModel.previewWindow referenceLength visibleWindow candidate
+                                    | Some preview ->
                                         let previewStart = if preview.Count = 0 then 0 else preview.StartIndex + 1
                                         let previewEnd = preview.StartIndex + preview.Count
                                         $"Loaded {referenceLength} bars · Preview {previewStart}-{previewEnd} · release to render")
@@ -711,40 +907,25 @@ module TaWorkspaceRenderer =
                                         yield renderRow state { ui with CursorIndex = cursorIndex } visibleTimestamps setCursorIndex (index = visibleRows.Length - 1) visibleRows[index]
                                 yield div [
                                     Attr.Create "data-testid" "ta-viewport-panel"
-                                    attr.style "order:-1; display:grid; grid-template-columns:minmax(180px,auto) minmax(160px,1fr); gap:8px 12px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
+                                    attr.style "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
                                 ] [
                                     span [
                                         Attr.Create "data-testid" "ta-viewport-range"
                                         attr.style "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;"
                                     ] [ textView viewportRangeText ]
-                                    element "input" [
-                                        Attr.Create "data-testid" "ta-viewport-slider"
-                                        Attr.Create "aria-label" "Move visible time window"
-                                        attr.``type`` "range"
-                                        Attr.Create "min" "0"
-                                        Attr.Create "max" (string maximumStart)
-                                        Attr.Create "step" "1"
-                                        attr.value (string visibleWindow.StartIndex)
-                                        if maximumStart = 0 then attr.disabled "disabled"
-                                        attr.style "width:100%; min-width:0; accent-color:#1f6f78;"
-                                        on.afterRender (fun node ->
-                                            let input = node |> As<HTMLInputElement>
-                                            input.AddEventListener("input", fun () ->
-                                                match Int32.TryParse input.Value with
-                                                | true, value ->
-                                                    let preview = RendererModel.previewWindow referenceLength visibleWindow value
-                                                    draftStartIndex.Value <- Some preview.StartIndex
-                                                | _ -> ())
-                                            input.AddEventListener("change", fun () ->
-                                                match Int32.TryParse input.Value with
-                                                | true, value ->
-                                                    let followLatest, next = RendererModel.commitPreview referenceLength visibleWindow value
-                                                    draftStartIndex.Value <- None
-
-                                                    if next <> visibleWindow || followLatest <> ui.FollowLatest then
-                                                        setWindow followLatest next
-                                                | _ -> draftStartIndex.Value <- None))
-                                    ] []
+                                    div [ Attr.Create "data-testid" "ta-viewport-presets"; attr.style "display:flex; gap:4px; align-items:center;" ] [
+                                        compactButton "ta-view-48" "48" "Show latest 48 bars" (fun () -> setWindowCount 48)
+                                        compactButton "ta-view-200" "200" "Show latest 200 bars" (fun () -> setWindowCount 200)
+                                        compactButton "ta-view-all" "All" "Show the complete loaded range" (fun () -> setWindowCount referenceLength)
+                                    ]
+                                    div [ attr.style "grid-column:1 / -1; min-width:0;" ] [
+                                        draftWindow.View
+                                        |> View.Map (fun draft ->
+                                            let selection = defaultArg draft visibleWindow
+                                            let ratios = RendererModel.selectionRatios referenceLength selection
+                                            overviewSvg overviewPoints ratios (fun node -> navigatorElement <- node |> As<Element>) startNavigatorDrag :> Doc)
+                                        |> Doc.EmbedView
+                                    ]
                                 ]
                             ] :> Doc)
                         |> Doc.EmbedView

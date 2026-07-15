@@ -199,3 +199,13 @@ browser delta責任在PTCS adapter邊界，而非Renderer。server reducer已有
 新state boundary為`Loaded series state -> Committed visible window -> Draft navigator preview`。chart只依賴前兩者；draft不進chart dependency graph。這樣pointer拖曳可保持thumb/label回應，但昂貴render只在release發生一次。loaded 2000保留在typed reduced state，visible最多160，local navigation不產生server action。
 
 首次document可能先於data snapshot到達；因此「previous存在」不代表可送delta。只要relevant series由empty轉為non-empty，就必須送authoritative full。stable revision後才使用200-point delta。
+
+## 2026-07-15 overview / editor / reset analysis
+
+single-thumb只表示固定Count的StartIndex，無法表達「看全部2000」或左右縮放。新state仍維持`Loaded -> Committed -> Draft`三層，但Draft改為完整`TaVisibleWindow`。overview與主圖共用同一reference timeline；overview永遠涵蓋Loaded，selection才投影Committed。這不是第二套資料來源，也不觸發server query。
+
+弱機瓶頸不是array持有2000 points，而是每次pointer move重建四列SVG與過多primitive。overview先做bounded bucket；Committed Count超過detail budget時主圖也做deterministic aggregate。資料完整度以loaded count/from/to證明，render primitive數與資料點數明確分離。
+
+Add Row draft目前在`runtimeState.View.Map`內重建，poll revision可替換DOM並造成focus/editor消失。draft Vars與editor shell需提升到renderer instance scope；runtime state只影響disabled/status與document rows。`TaRowSpec.Options`已是transport-neutral extension point，可直接承載typed periods，不需新增TA-specific action union。
+
+Reset failure來自Host把mutated current command當initial。Dynamic不能猜原始rows；它只送ResetCanvas並在authoritative fresh snapshot後套用document default view。copy action則透過PTCS generic action seam，不把clipboard責任塞進renderer或Host。

@@ -1,0 +1,24 @@
+# Dynamic TA Canvas overview / row editor / clipboard plan
+
+## 背景與目標
+
+正式82 UI目前已載入2000點但只提供固定48-point單端range；Add Row只有單參數且editor draft會被runtime refresh覆寫；Reset未恢復初始document；reply摘要缺Copy JSON。
+
+## 計畫
+
+1. 盤點RendererModel、Renderer、Ptcs Client與Host presentation ownership。
+2. 先完成Dynamic RFC/REQ/SA/SD/WBS/Test。
+3. 以pure WebSharper F#實作downsampled overview、雙端range、full-range模式、typed row parameter editor、stable local draft與canonical reset。
+4. 補unit/Playwright tests並發布exact packages。
+
+## 範圍
+
+`src/PulseTrade.Comm.Spa.Dynamic.Renderer`、`src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`、`src/Server`、相關tests/scripts/docs。
+
+## 驗收與風險
+
+驗收2000 loaded、雙端release commit、full-range、poll不覆寫draft、DMI/ADX/MACD typed args、Reset恢復初始rows。主要風險是WebSharper DOM binding與overview materialization成本；禁止以2000 DOM或每input rerender實作。
+
+## Prompt摘要
+
+使用者要求補JSON clipboard、E2EQ式overview/雙端viewport/長趨勢、修Add Row與Reset，並走完整文件與開發流程。

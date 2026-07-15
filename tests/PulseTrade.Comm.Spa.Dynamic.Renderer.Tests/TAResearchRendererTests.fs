@@ -118,6 +118,29 @@ let tests =
             Expect.equal committedAtTail committed "tail release clamps to the maximum start"
             Expect.isTrue followLatestAtTail "tail release restores follow-latest mode"
 
+        testCase "dual-bound navigator previews move and both resize handles" <| fun _ ->
+            let committed = { StartIndex = 1952; Count = 48 }
+            let moved = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.Move -952
+            let left = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.ResizeLeft -152
+            let right = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.ResizeRight -20
+            let full = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.ResizeLeft -9999
+            let followLatest, committedFull = RendererModel.commitWindowBounds 12 2000 2000 full
+
+            Expect.equal moved { StartIndex = 1000; Count = 48 } "selection move preserves width"
+            Expect.equal left { StartIndex = 1800; Count = 200 } "left handle expands toward history"
+            Expect.equal right { StartIndex = 1952; Count = 28 } "right handle shrinks at the tail"
+            Expect.equal committedFull { StartIndex = 0; Count = 2000 } "left handle can expose the complete loaded range"
+            Expect.isTrue followLatest "a full-range window still ends at the loaded tail"
+            Expect.equal (RendererModel.selectionRatios 2000 committedFull) (0.0, 1.0) "full range occupies the complete overview"
+
+        testCase "overview sampling is deterministic and bounded" <| fun _ ->
+            let values = [| 0 .. 1999 |]
+            let sampled = RendererModel.sampleEvenly 250 values
+            Expect.equal sampled.Length 250 "overview must not create one visual item per loaded bar"
+            Expect.equal sampled[0] 0 "sampling preserves the loaded head"
+            Expect.equal sampled[sampled.Length - 1] 1999 "sampling preserves the loaded tail"
+            Expect.sequenceEqual (RendererModel.sampleEvenly 8 [| 1; 2; 3 |]) [| 1; 2; 3 |] "short inputs remain exact"
+
         testCase "pointer ratio maps deterministically to a visible bar" <| fun _ ->
             Expect.equal (RendererModel.cursorIndexFromRatio 48 0.0) (Some 0) "left edge should select the first visible bar"
             Expect.equal (RendererModel.cursorIndexFromRatio 48 0.5) (Some 24) "middle should select the nearest visible bar"
