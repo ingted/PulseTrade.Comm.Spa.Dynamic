@@ -7,3 +7,4 @@
 - Dynamic beta101、Renderer alpha24、Dynamic.Ptcs win40、Ptcs.Client win52均由NuGet.org接受並回`Created`；立即flat-container查詢仍在index propagation。
 - Follow-up flat-container HEAD四個版本均回200，public indexing完成。
 - PTCS dependency commit `39e294d` 已push至同名remote branch；PTCS package `0.2.5-beta112`與typed reply presentation action已成為本批次exact dependency。
+- Dynamic product commit `4e7494a` 已push至`origin/20260715_030.win.TACanvas_cross.bar.cursor.first.done`；staged audit未包含Playwright artifact。
