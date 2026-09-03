@@ -1067,3 +1067,9 @@ Implementation status:
 - Ptcs.Client `0.1.0-alpha8-win57`只在Document宣告`poll-delta` capability時排程週期poll；static document在open、stray due與reactivate均保持zero-poll。
 - Renderer `20/20`、Ptcs.Client `9/9`及Host focused `31/31`通過。正式F# Playwright在82 port跨兩次poll保留`ta-add-row-kind` focus，連續刪除DMI與兩列MACD後一次Reset完整恢復四列17 traces。
 - 正式release為`live81-82-ptcs-beta112-ta-editor-reset-alpha55-win57-20260715153000`；artifact為`G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaEditorPollReset.alpha55.final.20260715153500\artifacts`。NuGet.org public push因本機未提供API key回401；local immutable packages與正式service不受影響，public publication仍待具備核准secret的release流程。
+
+## 2026-09-04 - PTCS beta116 dependency alignment
+
+- Published dependency-only compatibility slices `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta105`, `PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha7-win45`, and `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha8-win61` against exact `PulseTrade.Comm.Spa 0.2.5-beta116`.
+- Added explicit `FSharp.Core 10.1.301` references so package metadata does not drift with the active .NET SDK. Renderer/SDUI wire behavior is unchanged.
+- Updated LiveDemo and focused package consumers to the same exact graph. Release builds/packs passed; NuGet pushes returned successful creation. A stale WebSharper compiler service lock caused one transient `websharper.log` access failure; stopping that project-scoped compiler process and rebuilding closed it.

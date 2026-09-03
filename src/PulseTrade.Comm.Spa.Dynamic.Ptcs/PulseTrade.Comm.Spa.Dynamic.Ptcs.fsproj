@@ -4,12 +4,13 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Ptcs</PackageId>
-    <Version>0.1.0-alpha7-win41</Version>
+    <Version>0.1.0-alpha7-win45</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>PTCS same-session transient adapter for PulseTrade Dynamic SDUI runtime.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <LangVersion>preview</LangVersion>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,7 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta112]" />
+    <PackageReference Include="FSharp.Core" Version="10.1.301" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta116]" />
     <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha5]" />
   </ItemGroup>
 </Project>

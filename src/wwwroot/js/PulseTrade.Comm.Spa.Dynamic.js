@@ -3707,7 +3707,7 @@ function mountChat(page){
     }, arrayOrEmpty_1(messages));
     scrollToBottomAfterRender(thread);
   }
-  function loadParticipants(){
+  function loadParticipants(refreshSelectedThread){
     setStatus(state, "Loading participants");
     readJson(participantsCacheKey, (a) => {
       if(a!=null&&a.$==1)if(a.$0,length(participants)===0){
@@ -3715,20 +3715,21 @@ function mountChat(page){
         isBlank_2(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
         renderParticipants();
         setStatus(state, "Loaded "+String(length(participants))+" cached participant(s)");
-        pollThread(true);
-        ensureSelectedChatSubscription();
-        replayPendingChatCommands();
+        refreshSelectedThread?(pollThread(true),ensureSelectedChatSubscription(),replayPendingChatCommands()):void 0;
       }
     });
     getJson("/chat/api/agents", (data) => {
       participants=arrayOrEmpty_1(data.participants);
       writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-agents");
-      isBlank_2(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
+      const selectedWasBlank=isBlank_2(selected);
+      if(selectedWasBlank&&length(participants)>0)selected=get(participants, 0).participantId;
       renderParticipants();
       setStatus(state, "Loaded "+String(length(participants))+" participant(s)");
-      pollThread(true);
-      ensureSelectedChatSubscription();
-      replayPendingChatCommands();
+      if(refreshSelectedThread||selectedWasBlank){
+        pollThread(true);
+        ensureSelectedChatSubscription();
+        replayPendingChatCommands();
+      }
     }, (t) => {
       setStatus(state, t);
     });
@@ -3782,7 +3783,7 @@ function mountChat(page){
           appendMessages(messages);
           if(!isBlank_2(cached.nextAfterMessageId))cursor=cached.nextAfterMessageId;
           setStatus(state, "Loaded "+String(length(messages))+" cached message(s); syncing missing tail");
-          fetchThread(!isBlank_2(cursor));
+          fetchThread(false);
         }
       });
       else fetchThread(!isBlank_2(cursor));
@@ -3961,12 +3962,13 @@ function mountChat(page){
       scrollToBottomAfterRender(thread);
     }
   }
-  reload.addEventListener("click", loadParticipants);
+  reload.addEventListener("click", () => loadParticipants(true));
   send.addEventListener("click", sendMessage);
   draft.addEventListener("keydown", (event) => event.key=="Enter"&&!event.shiftKey?(event.preventDefault(),sendMessage()):null);
   globalThis.setInterval(() => pollThread(false), 2500);
+  globalThis.setInterval(() => loadParticipants(false), 2500);
   refreshChatPendingState();
-  loadParticipants();
+  loadParticipants(true);
 }
 function refreshAppendNav(activePath){
   const applyDefinitions=(data) => {
