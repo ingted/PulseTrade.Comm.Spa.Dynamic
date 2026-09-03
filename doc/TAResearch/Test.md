@@ -140,7 +140,7 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-058 | REQ-036 | Reducer | valid event透過owner reducer套用；exact/stale duplicate no-op。 | Pass：Contracts suite 11/11。 |
 | DYN-TA-T-059 | REQ-036/037 | Reducer negative | sequence gap、stream/schema/epoch change、base revision mismatch、crossed snapshot order與domain reject保留last-good並回typed snapshot request。 | Pass：Contracts suite 11/11。 |
 | DYN-TA-T-060 | REQ-035/037 | Dependency | Contracts不reference MDCQ、TradeCore、FsStl、FCell2、SQL/PTCS；source revision不直接變DocumentRevision。 | Pass：dependency reflection/source gate。 |
-| DYN-TA-T-061 | REQ-038/039 | Contract/reducer | generic editor list/group/choice、stable row id、correlated accepted/rejected/conflict及reject-preserves-document。 | Planned |
+| DYN-TA-T-061 | REQ-038/039 | Contract/reducer | generic editor list/group/choice、stable row id、correlated accepted/rejected/conflict及reject-preserves-document。 | Pass：Contracts suite 12/12；schema hard limits/default type、single in-flight與correlation negatives均通過。 |
 | DYN-TA-T-062 | REQ-038..040 | F# Playwright | add/remove/reconfigure不同參數row；pending/reject；1K+5K及5K+30K geometry、missing/partial/final/quality/availability。 | Blocked by owner normalized metadata |
 | DYN-TA-T-063 | REQ-041 | DIB integration | dedicated chart root auto-display，不攔截Expression/FloatingPoint/list formatter；resource prepare/swap/release可重現。 | Daedalus-owned integration |
 | DYN-TA-T-064 | REQ-040..042 | Production E2E | 新版MDCQ real source + `dotnet dib` + Playwright MCP；history/live reconnect/resync、console、geometry與package manifest。 | External dependency |

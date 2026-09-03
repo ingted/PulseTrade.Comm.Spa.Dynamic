@@ -280,4 +280,106 @@ let tests =
 
             for forbidden in [ "MdcQuote.Next.Client"; "SymbolicNet6.TradeCore.FsStl"; "SymbolicNet6"; "FAkka.FCell2"; "PulseTrade.Comm.Spa"; "Microsoft.Data.SqlClient" ] do
                 Expect.isFalse (Set.contains forbidden assemblyNames) $"Source envelope must not reference owner package {forbidden}."
+
+        testCase "DYN-TA-T-061 generic editor and correlated actions preserve authoritative document" <| fun _ ->
+            let editorSchema =
+                { TemplateKey = "ta.indicator"
+                  DisplayName = "Technical indicator"
+                  SchemaRevision = 3L
+                  Fields =
+                    [| { Key = "indicator"
+                         Label = "Indicator"
+                         Kind =
+                            EditorValueKind.Choice
+                                [| { Key = "sma"; Label = "SMA"; Value = SduiValue.Text "sma" }
+                                   { Key = "macd"; Label = "MACD"; Value = SduiValue.Text "macd" } |]
+                         Required = true
+                         DefaultValue = Some(SduiValue.Text "sma") }
+                       { Key = "scales"
+                         Label = "Scales"
+                         Kind = EditorValueKind.List(EditorValueKind.Scale [| "1k"; "5k"; "30k" |], Some 1, Some 3)
+                         Required = true
+                         DefaultValue = Some(SduiValue.Array [| SduiValue.Text "1k"; SduiValue.Text "5k" |]) }
+                       { Key = "parameters"
+                         Label = "Parameters"
+                         Kind =
+                            EditorValueKind.Group
+                                [| { Key = "period"; Label = "Period"; Kind = EditorValueKind.Integer(Some 1L, Some 500L); Required = true; DefaultValue = Some(SduiValue.Number 13.0) }
+                                   { Key = "alpha"; Label = "Alpha"; Kind = EditorValueKind.Decimal(Some 0.0M, Some 1.0M); Required = false; DefaultValue = Some(SduiValue.Number 0.5) }
+                                   { Key = "visible"; Label = "Visible"; Kind = EditorValueKind.Boolean; Required = true; DefaultValue = Some(SduiValue.Bool true) } |]
+                         Required = true
+                         DefaultValue =
+                            Some(
+                                SduiValue.Object
+                                    (Map
+                                        [ "period", SduiValue.Number 13.0
+                                          "alpha", SduiValue.Number 0.5
+                                          "visible", SduiValue.Bool true ])) } |] }
+
+            Expect.isOk (DynamicEditorValidation.validateSchema DynamicEditorDefaults.limits editorSchema) "List/group/choice editor schema should validate."
+
+            let duplicateFieldSchema =
+                { editorSchema with
+                    Fields = [| editorSchema.Fields[0]; editorSchema.Fields[0] |] }
+
+            Expect.isError (DynamicEditorValidation.validateSchema DynamicEditorDefaults.limits duplicateFieldSchema) "Duplicate editor keys must fail closed."
+
+            let sma13 =
+                { row with
+                    RowId = "sma-13"
+                    Kind = TaRowKind.Sma
+                    DataRef = "series.sma-13" }
+
+            let sma21 =
+                { row with
+                    RowId = "sma-21"
+                    Kind = TaRowKind.Sma
+                    DataRef = "series.sma-21" }
+
+            let stableDocument = { document with Rows = [| sma13; sma21 |] }
+            Expect.isOk (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document stableDocument }) "Same template kind with different stable row ids should coexist."
+
+            let duplicateRowDocument = { stableDocument with Rows = [| sma13; { sma21 with RowId = sma13.RowId } |] }
+            Expect.isError (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document duplicateRowDocument }) "Duplicate stable row ids must fail closed."
+
+            let originalDocument = stableDocument
+            let request =
+                { RequestId = "remove-sma-13"
+                  ExpectedDocumentRevision = Some 7L
+                  Action = SduiAction.RemoveTaRow(identity.CanvasInstanceId, sma13.RowId) }
+
+            let pending =
+                DynamicActionLifecycle.beginRequest 7L request DynamicActionLifecycle.empty
+                |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal pending.Pending (Some request) "Accepted request enters pending exactly once."
+            Expect.isError (DynamicActionLifecycle.beginRequest 7L request pending) "A second action must not replace an in-flight request."
+
+            let rejected = DynamicActionResult.Rejected(request.RequestId, "provider-unavailable", "Provider is unavailable.")
+            let afterReject =
+                DynamicActionLifecycle.complete rejected pending
+                |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal afterReject.Pending None "Rejected result clears the matching pending request."
+            Expect.equal afterReject.LastResult (Some rejected) "Rejected result remains available for bounded UI feedback."
+            Expect.equal stableDocument originalDocument "Action lifecycle must not mutate the authoritative document."
+
+            let conflict =
+                DynamicActionLifecycle.beginRequest 8L request DynamicActionLifecycle.empty
+                |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal conflict.Pending None "Revision conflict must not submit an action."
+            Expect.equal conflict.LastResult (Some(DynamicActionResult.RevisionConflict(request.RequestId, 8L))) "Conflict reports the actual revision."
+
+            let acceptedRequest = { request with RequestId = "remove-sma-21"; Action = SduiAction.RemoveTaRow(identity.CanvasInstanceId, sma21.RowId) }
+            let acceptedPending =
+                DynamicActionLifecycle.beginRequest 7L acceptedRequest DynamicActionLifecycle.empty
+                |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+            let acceptedResult = DynamicActionResult.Accepted(acceptedRequest.RequestId, 8L)
+            let acceptedState =
+                DynamicActionLifecycle.complete acceptedResult acceptedPending
+                |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal acceptedState.LastResult (Some acceptedResult) "Accepted result correlates and clears pending."
+            Expect.isError (DynamicActionLifecycle.complete rejected acceptedPending) "Mismatched result id must preserve pending state through a controlled error."
     ]

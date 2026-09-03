@@ -236,3 +236,7 @@ source sequence/revision與document/data revision解決不同問題：前者證�
 風險最高處是部分建立resource後action失敗。renderer不得optimistic刪除row；Daedalus controller須prepare next resource、驗ready、在send gate內swap，再exactly-once release old lease。Aster只提供request/result與pending/reject UX，不控制TradeCore resource。
 
 930K/1380K、availability與current partial都不是前端可推論的presentation shortcut。renderer只消費actual interval/frontier/optional availability與quality；缺失時標unknown/unavailable，不能用event/receive/render time補造。
+
+generic editor schema只描述欄位與限制，不承載FsStl/TradeCore union。Choice/Scale選項由owner adapter提供；List/Group讓同一套renderer容納SMA/DMI/MACD/BBO等不同參數形狀。`TaRowSpec.RowId`是workspace instance identity，不是indicator kind；因此同template不同參數可並存，duplicate RowId則在document validation fail closed。
+
+action state與document state分離。client同時只允許一筆pending request；request id必須與result correlation一致。revision mismatch在送出前形成typed conflict；backend rejection只更新bounded feedback。只有backend完成resource transition後發布的新Document frame，才可改變rows與DocumentRevision。

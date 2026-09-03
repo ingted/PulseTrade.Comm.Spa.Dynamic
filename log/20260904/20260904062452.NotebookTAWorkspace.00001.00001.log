@@ -17,3 +17,4 @@
 - 06:28：建立RFC-0013與DYN-TA-017 current-state鏈，定義source envelope只處理ordering/resync，不複製Daedalus `StructuredSeries` DTO。
 - 06:33：實作SourceEnvelope codec/validation/reducer；首次F#型別推斷錯誤以公開函式明確型別標註修正，Contracts suite 11/11 pass。
 - 06:38：發現 `WebSharperRunCompiler=false` 產生的Contracts assembly不含JS metadata，incremental client build因此回WS9001。停止02:08/02:27遺留的stale compiler process並對Contracts/Interactive.Client執行full rebuild後通過；後續full gate固定先rebuild Contracts。
+- 06:46：完成DYN-TA-017C。新增generic editor schema/recursive validation與correlated action lifecycle；stable RowId、duplicate、single-in-flight、accepted/rejected/conflict/correlation negatives納入DYN-TA-T-061。Contracts 12/12、Contracts與Interactive.Client full WebSharper rebuild通過。

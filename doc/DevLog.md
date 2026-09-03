@@ -1079,3 +1079,9 @@ Implementation status:
 - Added `RFC-PTCS-DYNAMIC-0013` and synchronized TA REQ/SA/SD/WBS/Test/Verification for the four-agent owner boundary. Dynamic consumes owner-normalized projection data; it does not duplicate Daedalus `StructuredSeries` types or reference MDCQ/TradeCore/FsStl/FCell2/SQL.
 - Added `SourceSnapshotEnvelope`, `SourceEventEnvelope`, strict codec/validation and `SourceProjection`. Valid events delegate payload changes to an injected domain reducer; duplicate is a no-op, while gap/identity/revision/order/reducer conflicts retain last-good state and return a typed snapshot request.
 - Contracts tests advanced from 7/7 to 11/11. Canonical Contracts and Interactive.Client full WebSharper rebuilds passed. A no-WebSharper test build can overwrite the assembly without JS metadata, so the full downstream gate now requires rebuilding Contracts before Interactive.Client.
+
+## 2026-09-04 - DYN-TA-017 generic editor and action lifecycle
+
+- Added transport-neutral Text/Integer/Decimal/Boolean/Choice/Scale/List/Group editor schema with recursive hard-limit, key, range, safe-payload and default-value validation.
+- Added single-in-flight correlated action request/result lifecycle. Revision conflicts do not submit; mismatched results fail closed; accepted/rejected feedback never mutates the authoritative document.
+- Stable row identity remains `TaRowSpec.RowId`; same-kind parameterized rows coexist while duplicate row ids reject the frame. Contracts advanced to 12/12 and Contracts/Interactive.Client full WebSharper rebuilds passed.

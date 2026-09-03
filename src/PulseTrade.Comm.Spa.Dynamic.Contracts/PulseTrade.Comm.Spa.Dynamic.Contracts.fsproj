@@ -19,6 +19,7 @@
     <Compile Include="RuntimeValidation.fs" />
     <Compile Include="RuntimeCodec.fs" />
     <Compile Include="SourceEnvelope.fs" />
+    <Compile Include="EditorAction.fs" />
     <Compile Include="BrowserRuntimeCodec.fs" />
     <Compile Include="RuntimeReducer.fs" />
     <None Include="README.md" Pack="true" PackagePath="" />

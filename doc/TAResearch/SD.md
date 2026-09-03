@@ -516,3 +516,27 @@ validation要求identity非空且bounded、revision/sequence非負、event new r
 event只有在stream identity相同、`Sequence = LastSequence + 1`、`BaseSourceRevision = SourceRevision`且domain reducer成功時套用。duplicate/stale no-op；gap、stream/schema/epoch改變、revision mismatch、crossed snapshot order或domain reducer reject保留last-good並回typed snapshot request。request不含payload或例外全文。
 
 Daedalus adapter負責把authoritative `StructuredSeriesBatch`及其他owner payload轉成`SduiValue`與domain reducer；Aster source projection不引用owner type。apply成功也不直接變更DocumentRevision，workspace controller完成resource transition後才建立RuntimeFrame。
+
+## 2026-09-04 Generic editor and correlated action design
+
+```fsharp
+type EditorValueKind =
+    | Text | Integer of int64 option * int64 option
+    | Decimal of decimal option * decimal option | Boolean
+    | Choice of EditorChoice array | Scale of string array
+    | List of EditorValueKind * int option * int option
+    | Group of EditorFieldSchema array
+
+type DynamicActionLifecycleState =
+    { Pending: DynamicActionRequest option
+      LastResult: DynamicActionResult option }
+
+DynamicActionLifecycle.beginRequest actualDocumentRevision request state
+DynamicActionLifecycle.complete result state
+```
+
+`DynamicEditorValidation`遞迴驗schema depth、總field數、choice/list上限、key uniqueness、numeric/list range與default value型別；所有default/choice payload亦套用shared unsafe-value規則。owner adapter只能提供data/choices，不可把script、URL、selector或credential塞入schema。
+
+same-template instance以backend產生且跨revision穩定的`TaRowSpec.RowId`識別。renderer不得用array index、display label或參數hash當identity；document validator在duplicate RowId時拒絕整個frame並保留last-good。
+
+`beginRequest`先驗request/canvas/action與expected revision；已pending時回`action-in-flight`，revision mismatch回typed `RevisionConflict`且不送backend。`complete`只接受相同RequestId；accepted/rejected均只清pending與記錄feedback，不修改RuntimeState document。下一個authoritative Document frame才提交add/remove/reconfigure結果。`RuntimeClientFrame` wire本slice不變，correlated transport與renderer pending UX由DYN-TA-017D接線，避免未同步Server/PTCS adapter時出現半套protocol。

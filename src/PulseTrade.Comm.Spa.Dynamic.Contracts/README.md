@@ -14,6 +14,10 @@ remote action/poll/resync -> typed SduiAction -> host adapter
 
 `SourceSnapshotEnvelope` / `SourceEventEnvelope` 是跨 domain 的 ordering seam。`SourceProjection`只驗stream identity、epoch、sequence、source revision並在gap/conflict/reducer reject時要求authoritative snapshot；payload reducer仍由domain owner adapter注入，package不擁有MDCQ、TradeCore、FsStl、SOR或FCell2型別。source revision不會直接提升browser `DocumentRevision`。
 
+`DynamicTemplateSchema`以`EditorValueKind`描述Text/Integer/Decimal/Boolean/Choice/Scale/List/Group，不包含domain union或provider client。`DynamicEditorValidation`遞迴限制depth/fields/choices/list items，驗default value型別與safe payload；同template的不同參數實例以`TaRowSpec.RowId`區分，document validator拒絕重複RowId。
+
+`DynamicActionLifecycle`只管理單一pending request與correlated result。revision conflict不送出request；accepted/rejected只清除相符request並保存bounded feedback，均不直接修改authoritative document。Host完成resource prepare/swap後，必須以新的`RuntimeFrame`發布document revision。
+
 `Error`與invalid/gapped frame保留last-good document/data/view；duplicate frame no-op；sequence gap、identity mismatch或patch base mismatch只產生typed resync effect。
 
 Browser-facing numeric使用JSON number/`float`，query range使用canonical ISO-8601 string。host/server必須重新驗證range並轉成domain `DateTimeOffset`；Contracts不把browser parser當authorization或domain validation。
