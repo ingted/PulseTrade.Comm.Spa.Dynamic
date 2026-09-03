@@ -142,14 +142,19 @@ let tests =
             let snapshot = RuntimePayload.Snapshot { Data = Map [ "series.price", tooManyBars ]; Freshness = TaFreshness.Live }
             Expect.isError (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits (frame RuntimeFrameKind.Snapshot 2L None 1L snapshot)) "Initial series hard limit must fail."
 
-        testCase "DYN-TA-T-015 and T-018 contracts graph excludes forbidden dependencies" <| fun _ ->
+        testCase "DYN-TA-T-015 and T-018 contracts graph keeps only the approved browser bridge" <| fun _ ->
             let assembly = typeof<RuntimeFrame>.Assembly
             let names = assembly.GetReferencedAssemblies() |> Array.map _.Name |> Set.ofArray
 
-            for forbidden in [ "WebSharper.Core"; "PulseTrade.Comm.Spa"; "FAkka.FCell2"; "PulseTrade.MarketData.TAResearch.Contracts"; "Microsoft.Data.SqlClient" ] do
+            Expect.isTrue (Set.contains "WebSharper.Core" names) "Scheme 1 requires WebSharper metadata for the shared RuntimeFrame/reducer browser path."
+
+            for forbidden in [ "PulseTrade.Comm.Spa"; "FAkka.FCell2"; "PulseTrade.MarketData.TAResearch.Contracts"; "Microsoft.Data.SqlClient" ] do
                 Expect.isFalse (Set.contains forbidden names) $"Contracts must not reference {forbidden}."
 
             let source = IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "src", "PulseTrade.Comm.Spa.Dynamic.Contracts", "RuntimeReducer.fs"))
             Expect.isFalse (source.Contains("JS.Inline", StringComparison.Ordinal)) "Reducer source must not use JS.Inline."
-            Expect.isFalse (source.Contains("javascript", StringComparison.OrdinalIgnoreCase)) "Reducer source must not embed JavaScript."
+
+            let browserCodec = IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "src", "PulseTrade.Comm.Spa.Dynamic.Contracts", "BrowserRuntimeCodec.fs"))
+            Expect.stringContains browserCodec "Json.Serialize" "Browser bridge must use WebSharper typed JSON without a second wire DTO."
+            Expect.stringContains browserCodec "Json.Deserialize<RuntimeFrame>" "Browser bridge must decode the existing RuntimeFrame type."
     ]

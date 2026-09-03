@@ -66,6 +66,7 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo/wwwroot/js/
+src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/wwwroot/js/
 
 # Tye
 .tye/

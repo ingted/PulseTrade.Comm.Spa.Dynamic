@@ -1,6 +1,7 @@
 namespace PulseTrade.Comm.Spa.Dynamic.Contracts
 
 open System
+open WebSharper
 
 [<Struct>]
 type CanvasInstanceId = CanvasInstanceId of string
@@ -61,7 +62,7 @@ type TaRowSpec =
       Options: Map<string, SduiValue>
       Traces: TaTraceSpec array }
 
-[<RequireQualifiedAccess>]
+[<JavaScript; RequireQualifiedAccess>]
 module TaRowSpec =
     let legacyTraceKind = function
         | TaRowKind.Candlestick
@@ -198,7 +199,7 @@ type DynamicRuntimeLimits =
       MaxFrameBytes: int
       MinimumPollInterval: TimeSpan }
 
-[<RequireQualifiedAccess>]
+[<JavaScript; RequireQualifiedAccess>]
 module DynamicRuntimeDefaults =
     [<Literal>]
     let protocol = "sdui-runtime.v1"

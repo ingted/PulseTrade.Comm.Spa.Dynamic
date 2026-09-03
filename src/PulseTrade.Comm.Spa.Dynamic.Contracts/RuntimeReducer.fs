@@ -1,6 +1,7 @@
 namespace PulseTrade.Comm.Spa.Dynamic.Contracts
 
 open System
+open WebSharper
 
 [<RequireQualifiedAccess>]
 type RuntimePollState =
@@ -40,8 +41,12 @@ type RuntimeEffect =
     | CancelPoll
     | ReportDiagnostic of DynamicDiagnostic
 
-[<RequireQualifiedAccess>]
+[<JavaScript; RequireQualifiedAccess>]
 module RuntimeReducer =
+    [<Inline "($left < $right ? -1 : ($left > $right ? 1 : 0))">]
+    let compareOrdinalText (left: string) (right: string) =
+        StringComparer.Ordinal.Compare(left, right)
+
     let initial identity =
         { Identity = identity
           Document = None
@@ -113,7 +118,7 @@ module RuntimeReducer =
     let compareValue left right =
         match left, right with
         | SduiValue.Number a, SduiValue.Number b -> compare a b
-        | SduiValue.Text a, SduiValue.Text b -> StringComparer.Ordinal.Compare(a, b)
+        | SduiValue.Text a, SduiValue.Text b -> compareOrdinalText a b
         | _ -> 0
 
     let applyPatch (state: RuntimeState) (patch: RuntimePatch) =

@@ -13,6 +13,6 @@
 
   <ItemGroup>
     <PackageReference Include="Expecto" Version="11.1.0" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha5]" />
+    <ProjectReference Include="..\src\PulseTrade.Comm.Spa.Dynamic.Contracts\PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj" />
   </ItemGroup>
 </Project>
