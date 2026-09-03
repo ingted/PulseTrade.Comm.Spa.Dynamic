@@ -81,6 +81,12 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 | DYN-WBS-528 | PTCS beta86 terminal-observer package alignment | Done | 100 | DYN-T-536 / PTCS-T-067D | Dynamic `0.1.3-beta75`與Dynamic.Ptcs `0.1.0-alpha6-win2` exact-pin PTCS `0.2.5-beta86`；23/23 tests通過，兩個package push回Created；不改renderer/wire contract。 |
 | DYN-WBS-529 | TA workspace bootstrap presentation / PTCS beta89 alignment | Done | 100 | DYN-TA-T-021 / PTCS-T-068E | Renderer `0.1.0-alpha12`把正常`Document=None` bootstrap狀態呈現為preparing/connecting/loading/retrying/resyncing，只在nonrecoverable error顯示terminal unavailable；Renderer 13/13、Ptcs/Ptcs.Client 7/7、root 23/23通過。Dynamic.Ptcs `0.1.0-alpha6-win12`與Dynamic `0.1.3-beta78` exact-pinPTCS beta89並已發布。此工項不允許page-level workspace脫離chat reply自行mount。 |
 
+## 2026-09-04 Notebook TA Workspace production
+
+| ID | 工項 | 狀態 | Progress | Test ID | 證據 / 備註 |
+| --- | --- | --- | ---: | --- | --- |
+| DYN-TA-017 | Generic source envelope、editor/action、production renderer與real Notebook gate | Active | 33 | DYN-TA-T-056..064 | RFC-0013與current-state鏈已建立；source envelope/codec/reducer完成，Contracts 11/11與full WebSharper chain通過。詳見[@DYN-TA-017](TAResearch/WBS.DYN-TA-017.md)。 |
+
 ## 2026-07-11 Transport-Neutral Realtime TA Canvas
 
 Canonical detail：`doc/TAResearch/WBS.md`

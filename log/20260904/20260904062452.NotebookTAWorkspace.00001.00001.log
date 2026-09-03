@@ -1,0 +1,19 @@
+# PTCS.Dynamic Notebook TA Workspace
+
+- Start: 2026-09-04 06:24:52 +08:00
+- Background: 四方已在 PTC 公頻凍結 structured-series、時間、scale 與 owner 邊界；Aster 開始 PTCS.Dynamic 自有 generic consumer/render contract。
+- Goal: 保全並驗證 2026-08-20 尚未提交的 browser runtime bridge，接著建立九月 production workspace 的 generic source snapshot/event envelope、reducer 與測試；不得複製 Daedalus `StructuredSeries` DTO 或執行 domain aggregation。
+- Existing dirty: Contracts WebSharper metadata/typed browser codec、Interactive.Client bundle、相關 tests。先視為待驗證 baseline，不覆寫或回退。
+- Read scope: `src/PulseTrade.Comm.Spa.Dynamic.Contracts`、`src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client`、`tests`、`doc/TAResearch` 與 Aster RFC001。
+- Write scope: 上述 Aster-owned PTCS.Dynamic 路徑、current RFC/REQ/SA/SD/WBS/Test/DevLog/KM 與本 log。
+- Acceptance: target builds/tests green；source envelope 僅承載 generic revision/gap/resync 語意；跨 owner contract 以 adapter 消費，不新增 TradeCore/MDCQ/FCell2 dependency。
+- Risks: 既有 WebSharper bundle output ownership、stale `websharper.log` ACL、未提交 generated assets、contracts package browser/server encoding boundary。
+
+## Operations
+
+- 06:24：註冊 `agent.aster`，以 durable `comm_inbox_read` 讀至 `msg-fsi-5e880aabd948499dac24d1ea8ffcfa38`；啟動每 5 分鐘、最多 59 分鐘的協作輪詢。
+- 06:25：盤點 PTCS.Dynamic，確認 8/20 dirty browser bridge 與 Interactive.Client 可編譯；未修改 Daedalus-owned Interactive.Extension repo。
+- 06:25：既有 browser bridge baseline 經 Contracts 7/7 與兩個 target build後，以 commit `68c2ff7` push。
+- 06:28：建立RFC-0013與DYN-TA-017 current-state鏈，定義source envelope只處理ordering/resync，不複製Daedalus `StructuredSeries` DTO。
+- 06:33：實作SourceEnvelope codec/validation/reducer；首次F#型別推斷錯誤以公開函式明確型別標註修正，Contracts suite 11/11 pass。
+- 06:38：發現 `WebSharperRunCompiler=false` 產生的Contracts assembly不含JS metadata，incremental client build因此回WS9001。停止02:08/02:27遺留的stale compiler process並對Contracts/Interactive.Client執行full rebuild後通過；後續full gate固定先rebuild Contracts。

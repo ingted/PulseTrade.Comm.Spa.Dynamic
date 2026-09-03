@@ -12,6 +12,8 @@ remote action/poll/resync -> typed SduiAction -> host adapter
 
 `RuntimeCodec` 的既有 System.Text.Json wire 與 `BrowserRuntimeCodec` 的 WebSharper typed-JSON wire 是兩條明確分離的 encoding；兩者共用相同 RuntimeFrame/RuntimeClientFrame 型別，但 JSON bytes 不可交叉解碼。
 
+`SourceSnapshotEnvelope` / `SourceEventEnvelope` 是跨 domain 的 ordering seam。`SourceProjection`只驗stream identity、epoch、sequence、source revision並在gap/conflict/reducer reject時要求authoritative snapshot；payload reducer仍由domain owner adapter注入，package不擁有MDCQ、TradeCore、FsStl、SOR或FCell2型別。source revision不會直接提升browser `DocumentRevision`。
+
 `Error`與invalid/gapped frame保留last-good document/data/view；duplicate frame no-op；sequence gap、identity mismatch或patch base mismatch只產生typed resync effect。
 
 Browser-facing numeric使用JSON number/`float`，query range使用canonical ISO-8601 string。host/server必須重新驗證range並轉成domain `DateTimeOffset`；Contracts不把browser parser當authorization或domain validation。

@@ -1073,3 +1073,9 @@ Implementation status:
 - Published dependency-only compatibility slices `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta105`, `PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha7-win45`, and `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha8-win61` against exact `PulseTrade.Comm.Spa 0.2.5-beta116`.
 - Added explicit `FSharp.Core 10.1.301` references so package metadata does not drift with the active .NET SDK. Renderer/SDUI wire behavior is unchanged.
 - Updated LiveDemo and focused package consumers to the same exact graph. Release builds/packs passed; NuGet pushes returned successful creation. A stale WebSharper compiler service lock caused one transient `websharper.log` access failure; stopping that project-scoped compiler process and rebuilding closed it.
+
+## 2026-09-04 - DYN-TA-017 Notebook production source envelope
+
+- Added `RFC-PTCS-DYNAMIC-0013` and synchronized TA REQ/SA/SD/WBS/Test/Verification for the four-agent owner boundary. Dynamic consumes owner-normalized projection data; it does not duplicate Daedalus `StructuredSeries` types or reference MDCQ/TradeCore/FsStl/FCell2/SQL.
+- Added `SourceSnapshotEnvelope`, `SourceEventEnvelope`, strict codec/validation and `SourceProjection`. Valid events delegate payload changes to an injected domain reducer; duplicate is a no-op, while gap/identity/revision/order/reducer conflicts retain last-good state and return a typed snapshot request.
+- Contracts tests advanced from 7/7 to 11/11. Canonical Contracts and Interactive.Client full WebSharper rebuilds passed. A no-WebSharper test build can overwrite the assembly without JS metadata, so the full downstream gate now requires rebuilding Contracts before Interactive.Client.

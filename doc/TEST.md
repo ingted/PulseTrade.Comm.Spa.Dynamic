@@ -648,3 +648,7 @@ Canonical matrix：`doc/TAResearch/Test.md`。`DYN-TA-T-000A..020`已accepted並
 - `Document=None`且沒有terminal error時不得顯示`TA workspace document is not available`；依channel狀態顯示Preparing、Connecting、Loading、Retrying或Resyncing。
 - 只有nonrecoverable `LastError`可呈現terminal unavailable；last-good document與FormInput不得因transient bootstrap/error消失。
 - Renderer exact-package tests通過13/13；Dynamic.Ptcs與Ptcs.Client各7/7，root Dynamic package tests 23/23。formal 82 beta89不再於正常bootstrap顯示terminal unavailable，但page-level auto-mount仍由PTCS RFC-0020下一slice修正。
+
+## 2026-09-04 DYN-TA-T-056..064 Notebook TA Workspace production
+
+Canonical matrix：`doc/TAResearch/Test.md`。第一批DYN-TA-T-056..060已完成RFC/current-state鏈、generic source envelope codec/validation/reducer與owner dependency gate；Contracts `11/11`、Contracts與Interactive.Client full WebSharper rebuild通過。Editor/action、renderer、Daedalus Notebook adapter與real MDCQ DIB/Playwright仍依DYN-TA-017追蹤，不以synthetic M12取代。

@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>false</IsPackable>
     <LangVersion>preview</LangVersion>
-    <WebSharperProject>Bundle</WebSharperProject>
+    <WebSharperProject>spa</WebSharperProject>
     <WebSharperBundleOutputDir>wwwroot\js</WebSharperBundleOutputDir>
     <WebSharperRunCompiler>true</WebSharperRunCompiler>
   </PropertyGroup>

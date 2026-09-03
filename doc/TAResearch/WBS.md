@@ -27,6 +27,8 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-013 | 1 | 2000-point full bootstrap與commit-on-release navigator | full/delta cap分流、compact wire、draft/committed viewport、formal weak-device interaction gate | DYN-TA-004/012 | T-035..038 | 100% | Done | [@DYN-TA-013](WBS.DYN-TA-013.md) |
 | DYN-TA-014 | 1 | Overview / typed Add Row / reset / copy | dual-handle overview、full-range compressed view、stable typed editor、canonical reset、reply copy action | DYN-TA-013 + PTCS WBS-071 | T-039..044 | 100% | Done | [@DYN-TA-014](WBS.DYN-TA-014.md) |
 | DYN-TA-015 | 1 | Full runtime export / draft query / slot cursor | full-data download、Apply boundary、shared slot geometry、exact package/formal gate | DYN-TA-014 | T-045..050 | 100% | Done | [@DYN-TA-015](WBS.DYN-TA-015.md) |
+| DYN-TA-016 | 1 | Editor shell / capability poll / Reset regression | stable editor DOM、capability-gated poll、multi-row reset | DYN-TA-015 | T-051..055 | 100% | Done | [@DYN-TA-016](WBS.DYN-TA-016.md) |
+| DYN-TA-017 | 1 | Notebook TA Workspace production | generic source envelope、editor/action contract、production renderer與real DIB | DYN-TA-016 + owner contracts | T-056..064 | 33% | Active | [@DYN-TA-017](WBS.DYN-TA-017.md) |
 
 
 ## 2. Legacy prerequisite policy

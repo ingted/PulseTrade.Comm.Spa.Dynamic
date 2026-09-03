@@ -36,7 +36,7 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-015 | REQ-015 | Source gate | new runtime has no JavaScript/inline/global callback workaround | DYN-TA-001..003 | Pass：Contracts與Renderer source gate無`JS.Inline`、script、eval或global callback workaround。 |
 | DYN-TA-T-016 | REQ-018 | Regression | static Canvas/FormInput/Argu/ActorsPage and facade remain compatible | DYN-TA-00A/004/007 | Partial：beta74 canonical classifier保留legacy/explicit Canvas、FormInput、ActorsPage與runtime v1；package tests 23/23 pass。真browser facade delegation仍待DYN-TA-007。 |
 | DYN-TA-T-017 | REQ-014 | Extension behavior | absent uses host fallback；present-invalid shows controlled error | DYN-TA-00A/004/007 | Partial：unrelated/missing schema分類為`NonSdui`；present unsupported protocol/surface/document type分類為typed `InvalidSdui reasonCode`。Browser absent/present-invalid visual gate待補。 |
-| DYN-TA-T-018 | REQ-008 | Dependency | Contracts/Renderer graphs exclude forbidden dependencies | DYN-TA-001 | Pass：Contracts無WebSharper/PTCS/fCell2/PTMD/SQL；Renderer僅增加WebSharper並排除PTCS/fCell2/PTMD/SQL。 |
+| DYN-TA-T-018 | REQ-008 | Dependency | Contracts/Renderer graphs exclude forbidden dependencies | DYN-TA-001 | Pass：Contracts只增加WebSharper metadata/typed browser codec並排除PTCS/fCell2/PTMD/MDCQ/TradeCore/FsStl/SQL；Renderer排除PTCS/fCell2/PTMD/SQL。 |
 | DYN-TA-T-019 | REQ-017 | E2EQ AgentE2E | Historical/RT source/symbol/range/hover/tag/viewport/navigator regression | DYN-TA-005 | Blocked：real Binance collector與seeded E2EQ host可啟動，但目前只會送出stale legacy bundle；需先完成isolated clean bundle/route，才可執行AgentE2E。 |
 | DYN-TA-T-020 | REQ-010A/013/016 | Soak | bounded polling does not grow timers/channels/DOM series/history/server backend state | DYN-TA-006 | Pass for formal bounded gate：5 polls + second-context reconnect，memory total +542 MiB、reconnect +420 MiB低於1024/512；長時間soak仍由DYN-TA-006追蹤。 |
 | DYN-TA-T-021 | REQ-019 | Contract/Browser | legacy row導出單trace；四列ordered traces共享row viewport，K+6 SMA、DMI/ADX、兩組MACD可辨識且large history只render bounded visible DOM | DYN-TA-009 | Passed：正式Playwright四列/17 series、desktop/mobile/reconnect |
@@ -130,3 +130,17 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-053 | REQ-033/034 | F# Playwright | Add Row select focus跨至少兩個live poll保持；chart/status仍更新；remote action in-flight不可重入。 | Pass：final isolated與正式82 gate跨兩次poll維持`ta-add-row-kind` focus，2000 bars仍更新。 |
 | DYN-TA-T-054 | REQ-034 | Formal 82 | 連續刪除DMI、macd-short、macd-long後Reset一次恢復原始四列17 traces與順序。 | Pass：一次Reset恢復`price,dmi,macd-short,macd-long`與17 traces。 |
 | DYN-TA-T-055 | REQ-032..034 | Release | exact packages、正式82、mixed reply/ACL/reconnect/console/page error通過。 | Pass：Renderer alpha27、Ptcs.Client win57、Host client alpha55；正式82 artifact `verify.ptcsHostTaEditorPollReset.alpha55.final.20260715153500`。 |
+
+## DYN-TA-017 Notebook TA Workspace production
+
+| Test ID | Requirements | Level | Expected | Status |
+| --- | --- | --- | --- | --- |
+| DYN-TA-T-056 | REQ-035..042 | Document | RFC/REQ/SA/SD/WBS/Test/Verification owner boundary一致，沒有複製Daedalus `StructuredSeries` DTO。 | Pass：RFC-0013與current-state鏈已同步。 |
+| DYN-TA-T-057 | REQ-035/036 | Contract/codec | snapshot/event roundtrip；blank/oversize identity、negative revision/sequence、non-UTC timestamp、unsafe/oversize payload fail closed。 | Pass：Contracts suite 11/11。 |
+| DYN-TA-T-058 | REQ-036 | Reducer | valid event透過owner reducer套用；exact/stale duplicate no-op。 | Pass：Contracts suite 11/11。 |
+| DYN-TA-T-059 | REQ-036/037 | Reducer negative | sequence gap、stream/schema/epoch change、base revision mismatch、crossed snapshot order與domain reject保留last-good並回typed snapshot request。 | Pass：Contracts suite 11/11。 |
+| DYN-TA-T-060 | REQ-035/037 | Dependency | Contracts不reference MDCQ、TradeCore、FsStl、FCell2、SQL/PTCS；source revision不直接變DocumentRevision。 | Pass：dependency reflection/source gate。 |
+| DYN-TA-T-061 | REQ-038/039 | Contract/reducer | generic editor list/group/choice、stable row id、correlated accepted/rejected/conflict及reject-preserves-document。 | Planned |
+| DYN-TA-T-062 | REQ-038..040 | F# Playwright | add/remove/reconfigure不同參數row；pending/reject；1K+5K及5K+30K geometry、missing/partial/final/quality/availability。 | Blocked by owner normalized metadata |
+| DYN-TA-T-063 | REQ-041 | DIB integration | dedicated chart root auto-display，不攔截Expression/FloatingPoint/list formatter；resource prepare/swap/release可重現。 | Daedalus-owned integration |
+| DYN-TA-T-064 | REQ-040..042 | Production E2E | 新版MDCQ real source + `dotnet dib` + Playwright MCP；history/live reconnect/resync、console、geometry與package manifest。 | External dependency |

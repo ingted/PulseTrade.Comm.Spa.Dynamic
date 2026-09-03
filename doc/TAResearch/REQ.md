@@ -20,7 +20,7 @@ WBS: `doc/TAResearch/WBS.md`
 
 | Package | Responsibility |
 | --- | --- |
-| `PulseTrade.Comm.Spa.Dynamic.Contracts` | SDUI document/snapshot/patch/action/freshness DTO、strict codec、limits與revision rules；無WebSharper/PTCS/PTMD依賴。 |
+| `PulseTrade.Comm.Spa.Dynamic.Contracts` | SDUI document/snapshot/patch/action/freshness DTO、strict codec、limits與revision rules；只含WebSharper metadata/typed browser codec，不依賴PTCS/PTMD/MDCQ/TradeCore/FsStl/FCell2/SQL。 |
 | `PulseTrade.Comm.Spa.Dynamic.Renderer` | pure WebSharper reducer、Canvas/TA renderer、local interaction、lifecycle與transport-neutral host callbacks。 |
 | `PulseTrade.Comm.Spa.Dynamic` | 現有相容facade與PTCS adapter；保留`CommHub.useDynamicSdui`/extension bundle整合。 |
 
@@ -105,3 +105,16 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-032 | 只有Document明確宣告`poll-delta` capability時才可排週期poll；static SDUI Document不得因TA renderer存在而自動更新。 |
 | DYN-TA-REQ-033 | live poll只可更新status/data/chart subtree，不得替換Add Row/query editor DOM；已開啟select、focus及draft須跨poll保持。 |
 | DYN-TA-REQ-034 | remote Add/Remove/Reset/Apply必須single in-flight；Reset Canvas一次恢復原始ordered rows/query，不是undo最後一次修改。 |
+
+## 9. 2026-09-04 Notebook TA Workspace production requirements
+
+| ID | Requirement |
+| --- | --- |
+| DYN-TA-REQ-035 | Dynamic提供generic source snapshot/event envelope，只擁有identity、epoch、sequence、revision、validation與resync；domain payload/reducer由owner adapter提供。 |
+| DYN-TA-REQ-036 | source duplicate須no-op；sequence gap、identity/epoch/schema change、base revision mismatch或domain reducer reject須保留last-good state並產生typed snapshot request。 |
+| DYN-TA-REQ-037 | source revision/sequence不得直接提升DocumentRevision；只有backend resource transition成功後才能發布新的authoritative document revision。 |
+| DYN-TA-REQ-038 | schema-driven editor支援list add/remove/reorder、group與owner-provided choices；同template不同參數row以stable RowId並存。 |
+| DYN-TA-REQ-039 | mutation使用correlated request/result；pending不得冒充完成，reject只更新action feedback，revision conflict要求full snapshot。 |
+| DYN-TA-REQ-040 | renderer不得聚合行情或推論availability；多尺度interval/frontier/partial/final/quality由owner normalized metadata驅動。 |
+| DYN-TA-REQ-041 | dedicated chart root不得攔截既有Expression、FloatingPoint或一般list formatter；cell不需手工SDUI JSON/Display plumbing。 |
+| DYN-TA-REQ-042 | production acceptance須使用新版MDCQ real source、`dotnet dib`與Playwright MCP；synthetic M12只作regression。 |

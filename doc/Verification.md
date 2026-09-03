@@ -99,3 +99,11 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - package gates：Renderer `20/20`、Dynamic.Ptcs `7/7`、Ptcs.Client `8/8`，LiveDemo WebSharper Release build通過。
 - formal 82 gate實際下載`yyyyMMddHHmmss-GUID.json`並parse `ptcs-ta-research-export.v1`，驗2000 timeline、OHLCV、indicator series、metadata/revisions；另驗collapsed bounded one-shot、interval Apply唯一action、slot-center cursor、短MACD先於長MACD、inline/fullscreen/mobile/reconnect與memory gate。
 - exact packages：Renderer `0.1.0-alpha27`、Dynamic.Ptcs `0.1.0-alpha7-win41`、Ptcs.Client `0.1.0-alpha8-win57`。Evidence：`G:\PulseTrade.fs\Libs\PulseTrade.Comm\.pcsl\verify.ptcsHostTaEditorPollReset.alpha55.final.20260715153500\artifacts`。
+
+## DYN-TA-017 Notebook production revision 1
+
+- `DYN-TA-T-057..060`沿用 `tests/PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.fsproj`，不新增重複 verifier；命令：`dotnet run --project tests/PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.fsproj -c Release --no-restore`。
+- 2026-09-04：Contracts suite `11/11` pass。因 `WebSharperRunCompiler=false` 會產生不含JS metadata的assembly，full gate必須對Contracts與Interactive.Client使用 `-t:Rebuild`；兩者full WebSharper rebuild已pass。
+- verifier只修改 build output；不連production、不寫provider/PCSL/SQL，不讀secret。
+- `DYN-TA-T-062/064`未達可執行條件前不得以synthetic或source marker代替。條件是Daedalus normalized metadata/workspace adapter、MDCQ real provider identity/cursor與可啟動的production DIB。
+- browser gate優先Playwright MCP；`dotnet dib`只驗kernel/extension/host lifecycle，不能取代browser geometry與操作驗收。

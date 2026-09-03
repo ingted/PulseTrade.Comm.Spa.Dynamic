@@ -26,6 +26,7 @@
 | `RFC-PTCS-DYNAMIC-0003` | Draft / Review | Correct product direction to common SDUI DSL and arg-string-driven backend FormInput resolution: Canvas/FormInput share document model; Argu/DU is parser-backed adapter; PTCS.Host owns demo DU。 |
 | `RFC-PTCS-DYNAMIC-0004` | Accepted / In development | Actor Dynamic direct actor key / DU target / proxy key mode split; Actor Argu FormInput-only; canvas renderer remains payload-based。 |
 | `RFC-PTCS-DYNAMIC-0005` | Proposed / first implementation slice | ActorsPage page-level renderer for PTCS `/actors`; separate from generic Canvas message renderer。 |
+| `RFC-PTCS-DYNAMIC-0013` | Accepted / DEV authorized | Production Notebook TA workspace：generic source ordering envelope、schema/editor/action contract、owner adapter boundary與real DIB/Playwright acceptance。 |
 
 ## Cross-Project References
 
@@ -77,3 +78,5 @@
 | `DYN-VFY-009` | `DYN-WBS-521` | Demo, production-SQL no-wait, browser Playwright, and formal service redeploy slices passed on 2026-07-02 with `src\poc.full.nuget.journal.ACL2.fsx` plus PTC Host verification; latest package-startup and browser slices use PTCS beta71 + Dynamic beta61 + `PulseTrade.Comm.Spa.ACL 0.1.0-alpha11` + `PulseTrade.Comm.Spa.Login 0.1.0-alpha13`, verifying the NoGithubOAuth local-login host and PTCS Playwright gate can run on the FAkka.WebSocket win12 stack-safe loop. Latest formal service evidence remains beta70/beta60/alpha10/alpha12 until redeploy. Remaining final gate is fallback cleanup and service redeploy on the beta71 package set。 |
 | `DYN-VFY-009A/B` | `DYN-WBS-521` | `src\full.nuget.journal.ACL2.NoLogin.fsx` GitHub-only variant keeps PTCS.Login disabled. 009A verifies NoLogin health/static/durable probe/PingPong/Echo reuse; 009B adds `PFCF_AKKA_CMD_FOR_ProtoTyping` under `pfcf-akka-cmd-prototyping` and verifies canonical PFCF arg-string parser/build/resolve/default projection with `datarange` tail ordering。 |
 | `DYN-VFY-009C` | `DYN-WBS-521` | `src\full.nuget.journal.ACL2.NoGithubOAuth.fsx` is the local-login-only ACL2 variant. It starts only the PTCS.Login listener, defaults fixed mode to 82, keeps PTCS.ACL/PTCS.Login/Dynamic/PFCF prototype active, verifies local sys-admin/Terry login and ACL matrix, and avoids GitHub OAuth client id/secret and GitHub OAuth host startup。 |
+| `DYN-TA-T-056..060` | `DYN-TA-017A/B` | `tests/PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.fsproj` verifies document ownership、source envelope codec/validation/reducer、last-good preservation與dependency boundary。 |
+| `DYN-TA-T-061..064` | `DYN-TA-017C..F` | Contracts/Renderer tests、ColdFar Notebook `dotnet dib` fixture及Playwright MCP real-path matrix；synthetic M12僅作regression。 |

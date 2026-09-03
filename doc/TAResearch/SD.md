@@ -29,7 +29,7 @@ PulseTrade.Comm.Spa.Dynamic.fsproj
   Extension.fs compatibility facade
 ```
 
-Contracts同時擁有transport vocabulary與pure reducer/registry/poll state machine，讓PTCS與E2EQ可得到完全相同的state transition而不載入WebSharper。Contracts不得referenceWebSharper/PTCS/fCell2/PTMD。Renderer不得referencePTCS/fCell2/PTMD/SQL。facade以exact NuGet package reference消費Contracts/Renderer，禁止ProjectReference作release-facing integration。
+Contracts同時擁有transport vocabulary與pure reducer/registry/poll state machine，讓PTCS與E2EQ得到相同state transition。Contracts只允許WebSharper metadata與typed browser codec；server仍使用System.Text.Json codec，兩種wire bytes不可混用。Contracts不得reference PTCS/fCell2/PTMD/MDCQ/TradeCore/FsStl/SQL。Renderer不得referencePTCS/fCell2/PTMD/SQL。facade以exact NuGet package reference消費Contracts/Renderer，禁止ProjectReference作release-facing integration。
 
 ## 2. Runtime types
 
@@ -478,3 +478,41 @@ let pollEnabled document =
 `StateAccepted`只有在`Active && PollEnabled`時產生`SchedulePoll`；`PollDue`與重新active亦須檢查同一flag。renderer以Document identity/revision作shell cache key；status/poll及chart使用nested `runtimeState.View`。所有remote button使用`attr.disabledBool`衍生live狀態，click callback再次讀`runtimeState.Value.Poll`，不得capture舊的`commandsDisabled`。
 
 Document revision變更可重建rows/query shell；單純Poll/DataRevision不得重建`ta-add-row-kind`。Reset response抵達後，以authoritative initial Document取代rows並清HiddenRows/CursorIndex/draft window。
+
+## 2026-09-04 Generic source envelope design
+
+```fsharp
+type SourceProjectionState =
+    { Stream: SourceStreamIdentity
+      SourceRevision: int64
+      LastSequence: int64
+      CapturedAtUtc: DateTimeOffset
+      Payload: SduiValue }
+
+type SourceResyncReason =
+    | StreamChanged
+    | SequenceGap
+    | RevisionMismatch
+    | SnapshotOrderConflict
+    | DomainReducerRejected of reasonCode:string
+
+type SourceApplyResult =
+    | Applied of SourceProjectionState
+    | Duplicate of SourceProjectionState
+    | ResyncRequired of lastGood:SourceProjectionState * request:SourceSnapshotRequest
+
+SourceProjection.applySnapshot :
+    SourceProjectionState option -> SourceSnapshotEnvelope
+        -> Result<SourceApplyResult, DynamicValidationError list>
+
+SourceProjection.applyEvent :
+    (SduiValue -> SduiValue -> Result<SduiValue, string>) ->
+    SourceProjectionState -> SourceEventEnvelope
+        -> Result<SourceApplyResult, DynamicValidationError list>
+```
+
+validation要求identity非空且bounded、revision/sequence非負、event new revision大於base revision、UTC timestamp與safe payload。codec沿用同一System.Text.Json options但以獨立source encode/decode入口維持frame/source type safety與byte limit。
+
+event只有在stream identity相同、`Sequence = LastSequence + 1`、`BaseSourceRevision = SourceRevision`且domain reducer成功時套用。duplicate/stale no-op；gap、stream/schema/epoch改變、revision mismatch、crossed snapshot order或domain reducer reject保留last-good並回typed snapshot request。request不含payload或例外全文。
+
+Daedalus adapter負責把authoritative `StructuredSeriesBatch`及其他owner payload轉成`SduiValue`與domain reducer；Aster source projection不引用owner type。apply成功也不直接變更DocumentRevision，workspace controller完成resource transition後才建立RuntimeFrame。

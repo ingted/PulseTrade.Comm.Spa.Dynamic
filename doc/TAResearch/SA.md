@@ -55,7 +55,7 @@ Canonical source locations：
 
 | Component | Owns | Does not own |
 | --- | --- | --- |
-| `Dynamic.Contracts` | DU/DTO、strict codec、schema version、limits、revision validation | DOM、network、PTMD math |
+| `Dynamic.Contracts` | DU/DTO、strict server/browser codec、WebSharper metadata、schema version、limits、revision validation | DOM、network、PTMD math、PTCS/domain packages |
 | `SduiRuntimeReducer` | pure transition、effects、last-good-state、resync decision | timers/socket |
 | `CanvasRuntimeRegistry` | mount/instance/in-flight/dispose | caller auth/domain query |
 | `Dynamic.Renderer` | WebSharper nodes、TA charts、view state、interaction | provider/SQL/fCell2 |
@@ -226,3 +226,13 @@ cursor偏移的根因是兩套X公式：K棒使用slot center，line/cursor使�
 poll cadence是Document capability，不是renderer type推論。`AllowedActions`含`poll-delta`才代表live provider；static document沒有該action時必須zero-poll。這同時避免無live data source的Canvas每5秒產生無意義transport/action。
 
 Reset由Host initial command決定，Dynamic只接受authoritative Document。browser端仍須single in-flight，避免Remove response與Reset request競爭造成看似partial restore。正式驗證需從單列reset提高為連續刪除多列後一次完整restore。
+
+## 17. 2026-09-04 Production Notebook owner-boundary analysis
+
+`StructuredSeries`是Daedalus-owned provider ingest contract，Dynamic source envelope是Aster-owned projection ordering contract，兩者不可合併成共享巨型DTO。MdcQuote adapter先把Arrow/provider資料交給TradeCore sink；Daedalus workspace adapter完成domain transition與resource ownership後，才輸出Dynamic envelope/frame。這維持依賴方向 `provider -> owner adapter -> generic Dynamic contract`，Dynamic不反向依賴MDCQ/TradeCore/FsStl/FCell2。
+
+source sequence/revision與document/data revision解決不同問題：前者證明upstream incarnation/order，後者管理browser projection。直接共用會讓失敗的domain mutation也提升UI revision。故source reducer只回Applied/Duplicate/ResyncRequired，workspace controller成功prepare/swap後才產生新的document revision。
+
+風險最高處是部分建立resource後action失敗。renderer不得optimistic刪除row；Daedalus controller須prepare next resource、驗ready、在send gate內swap，再exactly-once release old lease。Aster只提供request/result與pending/reject UX，不控制TradeCore resource。
+
+930K/1380K、availability與current partial都不是前端可推論的presentation shortcut。renderer只消費actual interval/frontier/optional availability與quality；缺失時標unknown/unavailable，不能用event/receive/render time補造。

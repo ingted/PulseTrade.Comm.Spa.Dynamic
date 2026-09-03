@@ -40,6 +40,28 @@ let frame kind sequence baseRevision dataRevision payload =
 
 let documentFrame = frame RuntimeFrameKind.Document 1L None 0L (RuntimePayload.Document document)
 
+let sourceStream =
+    { SourceId = "mdcq.es.1k"
+      SchemaKey = "tradecore.structured-series.v1"
+      Epoch = "epoch-20260904" }
+
+let sourceTime = DateTimeOffset(2026, 9, 4, 0, 0, 0, TimeSpan.Zero)
+
+let sourceSnapshot : SourceSnapshotEnvelope =
+    { Stream = sourceStream
+      SourceRevision = 10L
+      LastSequence = 20L
+      CapturedAtUtc = sourceTime
+      Payload = SduiValue.Object(Map [ "value", SduiValue.Number 10.0 ]) }
+
+let sourceEvent sequence baseRevision newRevision payload : SourceEventEnvelope =
+    { Stream = sourceStream
+      BaseSourceRevision = baseRevision
+      NewSourceRevision = newRevision
+      Sequence = sequence
+      EventTimeUtc = sourceTime.AddSeconds(float sequence)
+      Payload = payload }
+
 let tests =
     testList "Dynamic TA Contracts" [
         testCase "DYN-TA-T-001 all frame kinds strict roundtrip" <| fun _ ->
@@ -157,4 +179,105 @@ let tests =
             let browserCodec = IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "src", "PulseTrade.Comm.Spa.Dynamic.Contracts", "BrowserRuntimeCodec.fs"))
             Expect.stringContains browserCodec "Json.Serialize" "Browser bridge must use WebSharper typed JSON without a second wire DTO."
             Expect.stringContains browserCodec "Json.Deserialize<RuntimeFrame>" "Browser bridge must decode the existing RuntimeFrame type."
+
+        testCase "DYN-TA-T-057 source envelope codec and validation are strict" <| fun _ ->
+            let snapshotRoundtrip =
+                sourceSnapshot
+                |> SourceEnvelopeCodec.encodeSnapshot
+                |> SourceEnvelopeCodec.decodeSnapshot DynamicRuntimeDefaults.limits
+
+            Expect.equal snapshotRoundtrip (Ok sourceSnapshot) "Source snapshot must roundtrip."
+
+            let event = sourceEvent 21L 10L 11L (SduiValue.Number 1.0)
+            let eventRoundtrip =
+                event
+                |> SourceEnvelopeCodec.encodeEvent
+                |> SourceEnvelopeCodec.decodeEvent DynamicRuntimeDefaults.limits
+
+            Expect.equal eventRoundtrip (Ok event) "Source event must roundtrip."
+            Expect.isError (SourceEnvelopeValidation.validateSnapshot { sourceSnapshot with Stream = { sourceStream with SourceId = "" } }) "Blank source identity must fail."
+            Expect.isError (SourceEnvelopeValidation.validateSnapshot { sourceSnapshot with SourceRevision = -1L }) "Negative revision must fail."
+            Expect.isError (SourceEnvelopeValidation.validateEvent { event with NewSourceRevision = event.BaseSourceRevision }) "Non-advancing revision must fail."
+            Expect.isError (SourceEnvelopeValidation.validateEvent { event with EventTimeUtc = event.EventTimeUtc.ToOffset(TimeSpan.FromHours 8.0) }) "Non-UTC event time must fail."
+
+            let unsafeEvent = { event with Payload = SduiValue.Object(Map [ "url", SduiValue.Text "https://example.invalid" ]) }
+            Expect.isError (SourceEnvelopeValidation.validateEvent unsafeEvent) "Unsafe payload must fail."
+
+            let tinyLimits = { DynamicRuntimeDefaults.limits with MaxFrameBytes = 10 }
+            Expect.isError (SourceEnvelopeCodec.decodeSnapshot tinyLimits (SourceEnvelopeCodec.encodeSnapshot sourceSnapshot)) "Oversize envelope must fail before decode."
+
+        testCase "DYN-TA-T-058 source projection applies owner reducer and ignores duplicates" <| fun _ ->
+            let initial =
+                SourceProjection.applySnapshot None sourceSnapshot
+                |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
+            let state =
+                match initial with
+                | SourceApplyResult.Applied value -> value
+                | other -> failtestf "Expected applied snapshot, got %A" other
+
+            let reduce current incoming =
+                match current, incoming with
+                | SduiValue.Object values, SduiValue.Number delta ->
+                    match Map.tryFind "value" values with
+                    | Some(SduiValue.Number value) -> Ok(SduiValue.Object(Map.add "value" (SduiValue.Number(value + delta)) values))
+                    | _ -> Error "missing-value"
+                | _ -> Error "shape-mismatch"
+
+            let event = sourceEvent 21L 10L 11L (SduiValue.Number 2.0)
+            let applied = SourceProjection.applyEvent reduce state event |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
+            let next =
+                match applied with
+                | SourceApplyResult.Applied value -> value
+                | other -> failtestf "Expected applied event, got %A" other
+
+            Expect.equal next.SourceRevision 11L "Owner reducer advances source revision only after success."
+            Expect.equal next.LastSequence 21L "Owner reducer advances source sequence."
+            Expect.equal next.Payload (SduiValue.Object(Map [ "value", SduiValue.Number 12.0 ])) "Owner reducer controls payload transition."
+
+            let duplicate = SourceProjection.applyEvent reduce next event |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal duplicate (SourceApplyResult.Duplicate next) "Exact duplicate must be a no-op."
+
+            let stale = sourceEvent 20L 9L 10L (SduiValue.Number 99.0)
+            let staleResult = SourceProjection.applyEvent reduce next stale |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal staleResult (SourceApplyResult.Duplicate next) "Older event must be a no-op."
+
+        testCase "DYN-TA-T-059 gaps conflicts and reducer rejection preserve last good" <| fun _ ->
+            let state = SourceProjection.stateOfSnapshot sourceSnapshot
+            let reject _ _ = Error "owner-rejected"
+
+            let expectResync expectedReason event =
+                let result = SourceProjection.applyEvent reject state event |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
+                match result with
+                | SourceApplyResult.ResyncRequired(lastGood, request) ->
+                    Expect.equal lastGood state "Resync must preserve last-good projection."
+                    Expect.equal request.Reason expectedReason "Resync reason must be typed."
+                | other -> failtestf "Expected resync, got %A" other
+
+            expectResync SourceResyncReason.SequenceGap (sourceEvent 22L 10L 11L SduiValue.Null)
+            expectResync SourceResyncReason.RevisionMismatch (sourceEvent 21L 9L 11L SduiValue.Null)
+            expectResync (SourceResyncReason.DomainReducerRejected "owner-rejected") (sourceEvent 21L 10L 11L SduiValue.Null)
+
+            let changedStream =
+                { sourceEvent 21L 10L 11L SduiValue.Null with
+                    Stream = { sourceStream with Epoch = "epoch-next" } }
+
+            expectResync SourceResyncReason.StreamChanged changedStream
+
+            let crossedSnapshot = { sourceSnapshot with SourceRevision = 11L; LastSequence = 19L }
+            let crossed = SourceProjection.applySnapshot (Some state) crossedSnapshot |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
+            match crossed with
+            | SourceApplyResult.ResyncRequired(lastGood, request) ->
+                Expect.equal lastGood state "Snapshot order conflict keeps last good."
+                Expect.equal request.Reason SourceResyncReason.SnapshotOrderConflict "Snapshot order conflict is explicit."
+            | other -> failtestf "Expected snapshot resync, got %A" other
+
+        testCase "DYN-TA-T-060 source contract keeps owner dependencies out" <| fun _ ->
+            let assemblyNames = typeof<SourceEventEnvelope>.Assembly.GetReferencedAssemblies() |> Array.map _.Name |> Set.ofArray
+
+            for forbidden in [ "MdcQuote.Next.Client"; "SymbolicNet6.TradeCore.FsStl"; "SymbolicNet6"; "FAkka.FCell2"; "PulseTrade.Comm.Spa"; "Microsoft.Data.SqlClient" ] do
+                Expect.isFalse (Set.contains forbidden assemblyNames) $"Source envelope must not reference owner package {forbidden}."
     ]
