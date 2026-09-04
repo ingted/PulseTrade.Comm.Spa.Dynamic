@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Interactive.Client</PackageId>
-    <Version>0.1.0-alpha2</Version>
+    <Version>0.1.0-alpha3</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Transport-neutral WebSharper client shell for embedding the Dynamic SDUI runtime in interactive hosts.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -17,6 +17,10 @@
   <ItemGroup>
     <Compile Include="Client.fs" />
     <None Include="README.md" Pack="true" PackagePath="" />
+    <None Include="bundle.manifest.json" Pack="true" PackagePath="contentFiles\any\any\ptcs-dynamic-interactive\bundle.manifest.json" PackageCopyToOutput="true" />
+    <None Include="wwwroot\js\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.js" Pack="true" PackagePath="contentFiles\any\any\ptcs-dynamic-interactive\client.js" PackageCopyToOutput="true" />
+    <None Include="wwwroot\js\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.min.js" Pack="true" PackagePath="contentFiles\any\any\ptcs-dynamic-interactive\client.min.js" PackageCopyToOutput="true" />
+    <None Include="wwwroot\js\WebSharper.Core.JavaScript\Runtime.js" Pack="true" PackagePath="contentFiles\any\any\ptcs-dynamic-interactive\WebSharper.Core.JavaScript\Runtime.js" PackageCopyToOutput="true" />
   </ItemGroup>
 
   <ItemGroup>

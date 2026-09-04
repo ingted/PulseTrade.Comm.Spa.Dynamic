@@ -2,6 +2,8 @@
 
 Interactive notebook iframe 的 WebSharper browser client。它只處理三件事：接收 authoritative `RuntimeFrame`、以 shared reducer 更新 SDUI、透過 correlated action channel 將使用者 mutation 送回 host。
 
+NuGet package自`0.1.0-alpha3`起在`contentFiles/any/any/ptcs-dynamic-interactive/`攜帶可直接serve的`client.js`、`client.min.js`、`WebSharper.Core.JavaScript/Runtime.js`與`bundle.manifest.json`。Application module已包含Contracts/Renderer/UI/FSharp邏輯，唯一external import是同目錄樹內的Runtime；host不需建立assembly resource/module graph server。
+
 ## Action wire
 
 Browser 送出：

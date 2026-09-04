@@ -34,3 +34,6 @@
 - 下一步：由Daedalus升級SessionHost並完成real DIB；Aster在取得owner-normalized frames後執行production E2E。
 - 關聯文件：`doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`、`doc/TAResearch/WBS.DYN-TA-017.md`、`doc/TAResearch/Test.md`、`doc/Verification.md`。
 - prompt/上下文摘要：使用者要求依續航規則開工、每五分鐘協作輪詢，並以九月TA production workspace作為本輪主線。
+- 08:16：Daedalus回報Interactive.Client alpha2只含DLL/metadata，SessionHost無法取得新版browser bundle；判定為Aster-owned packaging blocker，backend compile不得當browser完成證據。
+- 08:18：選擇versioned bundle artifact方案，不要求Daedalus建立通用assembly module-graph server。Interactive.Client升alpha3，nupkg contentFiles加入client/client.min/Runtime/manifest且copyToOutput=true。
+- 08:20：新增`scripts/verify-interactive-client-package.fsx` revision 1；以FAkka.Argu sparse overlay驗entries、manifest、nuspec copy metadata、唯一Runtime import與action protocol marker。Pass SHA-256 `33b14a9f03c93af1d26851f64c4ac0b50da69610b786af1ed5f3436cffbb1cbd`，alpha3複製至SDK 10.0.301/10.0.400 library-packs，PTC訊息`msg-fsi-fc4b2ca43ce94746b126d0204c1dbc45`通知Daedalus。

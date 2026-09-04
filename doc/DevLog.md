@@ -1093,3 +1093,9 @@ Implementation status:
 - Added `ptcs-dynamic-action.v1` request/result frames. Interactive.Client now sends correlated requests and fails closed on busy, send failure, 30-second timeout, disconnect or request-id mismatch. Accepted results do not mutate authoritative state; the host must publish the new `RuntimeFrame` revision.
 - Exact local package graph: Contracts `0.1.0-alpha11`, Renderer `0.1.0-alpha32`, Dynamic.Ptcs `0.1.0-alpha7-win50`, Ptcs.Client `0.1.0-alpha8-win68`, Interactive.Client `0.1.0-alpha2`. Packages were copied to SDK 10.0.301/10.0.400 library-packs; no public push is claimed.
 - Gates passed Contracts `15/15`, Renderer `22/22`, PTCS `10/10`, Ptcs.Client `12/12`, Interactive.Client/BrowserDemo/LiveDemo Release WebSharper builds. Playwright MCP verified desktop/mobile multi-scale presentation, generic editor pending/accept lifecycle and zero console errors. Daedalus SessionHost and real owner-backed DIB remain external production gates.
+
+## 2026-09-04 - Interactive.Client browser artifact packaging correction
+
+- Daedalus integration review found that Interactive.Client alpha2 carried only DLL metadata, so a SessionHost package reference could compile without receiving the browser application artifact. Backend compile was therefore insufficient evidence of browser completion.
+- Interactive.Client alpha3 now packages `client.js`, `client.min.js`, WebSharper `Runtime.js` and a versioned bundle manifest under `contentFiles/any/any/ptcs-dynamic-interactive/`, with `copyToOutput=true`. The application module contains Contracts/Renderer/UI/FSharp logic and only imports the packaged Runtime.
+- `scripts/verify-interactive-client-package.fsx` validates package entries, manifest, nuspec copy metadata, action protocol marker and external-import boundary. Revision 1 passed; package SHA-256 is `33b14a9f03c93af1d26851f64c4ac0b50da69610b786af1ed5f3436cffbb1cbd`.
