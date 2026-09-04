@@ -305,7 +305,7 @@ let tests =
                          Kind =
                             EditorValueKind.Group
                                 [| { Key = "period"; Label = "Period"; Kind = EditorValueKind.Integer(Some 1L, Some 500L); Required = true; DefaultValue = Some(SduiValue.Number 13.0) }
-                                   { Key = "alpha"; Label = "Alpha"; Kind = EditorValueKind.Decimal(Some 0.0M, Some 1.0M); Required = false; DefaultValue = Some(SduiValue.Number 0.5) }
+                                   { Key = "alpha"; Label = "Alpha"; Kind = EditorValueKind.Decimal(Some 0.0, Some 1.0); Required = false; DefaultValue = Some(SduiValue.Number 0.5) }
                                    { Key = "visible"; Label = "Visible"; Kind = EditorValueKind.Boolean; Required = true; DefaultValue = Some(SduiValue.Bool true) } |]
                          Required = true
                          DefaultValue =
@@ -317,12 +317,27 @@ let tests =
                                           "visible", SduiValue.Bool true ])) } |] }
 
             Expect.isOk (DynamicEditorValidation.validateSchema DynamicEditorDefaults.limits editorSchema) "List/group/choice editor schema should validate."
+            let editorDefaults = DynamicEditorValidation.defaultInputs editorSchema
+            Expect.sequenceEqual
+                (editorDefaults |> Array.map _.Path)
+                [| "indicator"; "scales[0]"; "scales[1]"; "parameters.period"; "parameters.alpha"; "parameters.visible" |]
+                "Defaults should flatten list/group values into stable input paths."
+            Expect.isOk (DynamicEditorValidation.validateInputs DynamicEditorDefaults.limits editorSchema editorDefaults) "Flattened defaults should validate against the same schema."
 
             let duplicateFieldSchema =
                 { editorSchema with
                     Fields = [| editorSchema.Fields[0]; editorSchema.Fields[0] |] }
 
             Expect.isError (DynamicEditorValidation.validateSchema DynamicEditorDefaults.limits duplicateFieldSchema) "Duplicate editor keys must fail closed."
+
+            let applyTemplate =
+                SduiAction.ApplyTemplate(identity.CanvasInstanceId, None, editorSchema.TemplateKey, editorDefaults)
+
+            Expect.isEmpty (DynamicActionValidation.actionErrors applyTemplate) "Generic template action should accept typed flat editor values."
+            let duplicateInputs = Array.append editorDefaults [| editorDefaults[0] |]
+            Expect.isNonEmpty
+                (DynamicActionValidation.actionErrors (SduiAction.ApplyTemplate(identity.CanvasInstanceId, None, editorSchema.TemplateKey, duplicateInputs)))
+                "Duplicate editor input paths must fail closed."
 
             let sma13 =
                 { row with
@@ -382,4 +397,92 @@ let tests =
 
             Expect.equal acceptedState.LastResult (Some acceptedResult) "Accepted result correlates and clears pending."
             Expect.isError (DynamicActionLifecycle.complete rejected acceptedPending) "Mismatched result id must preserve pending state through a controlled error."
+
+        testCase "DYN-TA-T-063 browser action wire round-trips correlated request and results" <| fun _ ->
+            let request =
+                { RequestId = "interactive:42"
+                  ExpectedDocumentRevision = Some 7L
+                  Action = SduiAction.RemoveTaRow(identity.CanvasInstanceId, "sma-13") }
+
+            let requestJson = BrowserRuntimeCodec.encodeActionRequest request
+            let decodedRequest =
+                BrowserRuntimeCodec.decodeActionRequest requestJson
+                |> Result.defaultWith failtest
+
+            Expect.equal decodedRequest request "Action request envelope must preserve request id, expected revision and action."
+
+            [ DynamicActionResult.Accepted(request.RequestId, 8L)
+              DynamicActionResult.Rejected(request.RequestId, "provider-unavailable", "Provider is unavailable.")
+              DynamicActionResult.RevisionConflict(request.RequestId, 9L) ]
+            |> List.iter (fun expected ->
+                let actual =
+                    expected
+                    |> BrowserRuntimeCodec.encodeActionResult
+                    |> BrowserRuntimeCodec.decodeActionResult
+                    |> Result.defaultWith failtest
+
+                Expect.equal actual expected "Action result envelope must preserve every correlated result case.")
+
+            let badProtocol =
+                { DynamicActionWireDefaults.requestFrame request with Protocol = "ptcs-dynamic-action.v0" }
+
+            Expect.isError (DynamicActionValidation.clientFrameErrors badProtocol |> function [] -> Ok() | errors -> Error errors) "Unsupported action protocol must fail closed."
+            Expect.isError (BrowserRuntimeCodec.decodeActionRequest (WebSharper.Json.Serialize badProtocol)) "Browser codec must reject unsupported action protocol."
+
+            let missingRequestId =
+                { request with RequestId = "" }
+
+            Expect.isError (BrowserRuntimeCodec.decodeActionRequest (BrowserRuntimeCodec.encodeActionRequest missingRequestId)) "Browser codec must reject an uncorrelatable request."
+
+            let badKind =
+                { DynamicActionWireDefaults.resultFrame (DynamicActionResult.Accepted(request.RequestId, 8L)) with Kind = "runtime-frame" }
+
+            Expect.isError (DynamicActionValidation.serverFrameErrors badKind |> function [] -> Ok() | errors -> Error errors) "Wrong action result kind must fail closed."
+            Expect.isError (BrowserRuntimeCodec.decodeActionResult (WebSharper.Json.Serialize badKind)) "Browser codec must reject wrong action result kind."
+
+        testCase "DYN-TA-T-062 temporal point codec preserves causal presentation evidence" <| fun _ ->
+            let intervalStart = DateTimeOffset.Parse("2026-09-03T13:00:00Z")
+            let intervalEnd = DateTimeOffset.Parse("2026-09-03T13:05:00Z")
+            let point =
+                { SourceIntervalId = "es-5k:20260903T1300Z"
+                  ScaleKey = "5K"
+                  IntervalStartUtc = intervalStart
+                  IntervalEndUtc = intervalEnd
+                  ObservedThroughUtc = intervalEnd
+                  AvailableAtUtc = Some(intervalEnd.AddMilliseconds 25.0)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.RepeatAcrossBaseBuckets
+                  Quality = Some "complete"
+                  Value = Some(SduiValue.Object(Map [ "t", SduiValue.Text "2026-09-03T13:00:00Z"; "v", SduiValue.Number 42.0 ])) }
+
+            let encoded = TemporalPointCodec.encode point
+            let decoded =
+                TemporalPointCodec.decode encoded
+                |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal decoded point "Temporal point wire must round-trip interval, frontier, availability, finality, projection, quality and payload."
+
+        testCase "DYN-TA-T-062 temporal point validation rejects non-causal final and availability" <| fun _ ->
+            let intervalStart = DateTimeOffset.Parse("2026-09-03T13:00:00Z")
+            let intervalEnd = DateTimeOffset.Parse("2026-09-03T13:05:00Z")
+            let invalid =
+                { SourceIntervalId = "es-5k:20260903T1300Z"
+                  ScaleKey = "5K"
+                  IntervalStartUtc = intervalStart
+                  IntervalEndUtc = intervalEnd
+                  ObservedThroughUtc = intervalEnd.AddMinutes(-1.0)
+                  AvailableAtUtc = Some intervalStart
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete"
+                  Value = None }
+
+            let errors =
+                TemporalPointCodec.validate invalid
+                |> function
+                    | Error values -> values
+                    | Ok _ -> failtest "Invalid causal metadata must be rejected."
+
+            Expect.isTrue (errors |> List.exists (fun error -> error.Code = "invalid-final-frontier")) "Final points must reach interval end."
+            Expect.isTrue (errors |> List.exists (fun error -> error.Code = "invalid-availability")) "Availability cannot precede observed frontier."
     ]

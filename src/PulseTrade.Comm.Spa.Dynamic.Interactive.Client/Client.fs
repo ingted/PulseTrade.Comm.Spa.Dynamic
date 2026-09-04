@@ -28,6 +28,36 @@ module Client =
         let socket = new WebSocket(webSocketUrl ())
         let mutable runtimeState: Var<RuntimeState> option = None
         let mutable mounted = false
+        let mutable pendingAction: (string * (Result<DynamicActionResult, DynamicHostError> -> unit) * JS.Handle) option = None
+
+        let clearPendingAction () =
+            pendingAction
+            |> Option.iter (fun (_, _, timeout) -> JS.ClearTimeout timeout)
+
+            pendingAction <- None
+
+        let failPendingAction code message =
+            match pendingAction with
+            | Some(_, continuation, _) ->
+                clearPendingAction ()
+                continuation (Result.Error { Code = code; Message = message })
+            | None -> ()
+
+        let completePendingAction result =
+            let requestId =
+                match result with
+                | DynamicActionResult.Accepted(value, _)
+                | DynamicActionResult.Rejected(value, _, _)
+                | DynamicActionResult.RevisionConflict(value, _) -> value
+            match pendingAction with
+            | Some(pendingRequestId, continuation, _) when pendingRequestId = requestId ->
+                clearPendingAction ()
+                continuation (Result.Ok result)
+                Result.Ok()
+            | Some _ ->
+                failPendingAction "interactive-action-correlation-mismatch" "The action result does not match the pending request."
+                Result.Error "ACTION CORRELATION ERROR"
+            | None -> Result.Error "UNEXPECTED ACTION RESULT"
 
         let send clientFrame =
             if socket.ReadyState = WebSocketReadyState.Open then
@@ -42,11 +72,33 @@ module Client =
         let mount (state: Var<RuntimeState>) =
             let callbacks =
                 { SubmitAction =
-                    fun action ->
-                        async {
-                            send (RuntimeClientFrame.Action action)
-                            return Ok()
-                        } }
+                    fun request ->
+                        Async.FromContinuations(fun (continuation, _, _) ->
+                            if pendingAction.IsSome then
+                                continuation
+                                    (Result.Error
+                                        { Code = "interactive-action-busy"
+                                          Message = "A dynamic action is already in flight." })
+                            elif socket.ReadyState <> WebSocketReadyState.Open then
+                                continuation
+                                    (Result.Error
+                                        { Code = "interactive-channel-not-open"
+                                          Message = "The interactive action channel is not open." })
+                            else
+                                let timeout =
+                                    JS.SetTimeout
+                                        (fun () ->
+                                            failPendingAction
+                                                "interactive-action-timeout"
+                                                "The interactive host did not acknowledge the action within 30 seconds.")
+                                        30000
+
+                                pendingAction <- Some(request.RequestId, continuation, timeout)
+
+                                try
+                                    socket.Send(BrowserRuntimeCodec.encodeActionRequest request)
+                                with error ->
+                                    failPendingAction "interactive-action-send-failed" error.Message) }
 
             TaWorkspaceRenderer.render TaWorkspaceRenderer.defaultOptions callbacks state
             |> Doc.RunById "app"
@@ -83,14 +135,28 @@ module Client =
 
         socket.OnMessage <-
             fun event ->
-                match BrowserRuntimeCodec.decode (string event.Data) with
-                | Ok frame ->
-                    applyFrame frame
-                    setStatus "READY"
-                | Error message -> setStatus ("FRAME ERROR: " + message)
+                let text = string event.Data
+                match BrowserRuntimeCodec.decodeActionResult text with
+                | Ok result ->
+                    match completePendingAction result with
+                    | Ok _ -> setStatus "READY"
+                    | Error message -> setStatus message
+                | Error _ ->
+                    match BrowserRuntimeCodec.decode text with
+                    | Ok frame ->
+                        applyFrame frame
+                        setStatus "READY"
+                    | Error message -> setStatus ("FRAME ERROR: " + message)
 
-        socket.OnError <- fun _ -> setStatus "CONNECTION ERROR"
-        socket.OnClose <- fun _ -> setStatus "DISCONNECTED"
+        socket.OnError <-
+            fun _ ->
+                failPendingAction "interactive-channel-error" "The interactive action channel failed."
+                setStatus "CONNECTION ERROR"
+
+        socket.OnClose <-
+            fun _ ->
+                failPendingAction "interactive-channel-disconnected" "The interactive action channel disconnected before the action completed."
+                setStatus "DISCONNECTED"
 
         JS.Window.AddEventListener(
             "beforeunload",

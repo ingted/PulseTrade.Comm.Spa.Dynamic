@@ -276,7 +276,7 @@ function mergeAppendPageRegistryEvents(baseline, events){
           if(o==null)null;
           else {
             const page=o.$0;
-            pages=sortAppendPages(filter((existing) =>!sameTextInvariant(existing.pageId, page.pageId), pages).concat([page]));
+            pages=sortAppendPages(filter_1((existing) =>!sameTextInvariant(existing.pageId, page.pageId), pages).concat([page]));
           }
         }
         catch(m_1){
@@ -292,7 +292,7 @@ function mergeAppendPageRegistryEvents(baseline, events){
           else {
             const _1=o_1.$0[0];
             const _2=o_1.$0[1];
-            pages=sortAppendPages(filter((page_1) =>!(sameTextInvariant(page_1.pageId, _1)||sameTextInvariant(page_1.tabId, _2)||sameTextInvariant(page_1.pageId, _2)||sameTextInvariant(page_1.tabId, _1)), pages));
+            pages=sortAppendPages(filter_1((page_1) =>!(sameTextInvariant(page_1.pageId, _1)||sameTextInvariant(page_1.tabId, _2)||sameTextInvariant(page_1.pageId, _2)||sameTextInvariant(page_1.tabId, _1)), pages));
           }
         }
         catch(m_2){
@@ -522,7 +522,7 @@ function mountAppendPage(page, definition){
   renderedValueCardValueIds=[];
   renderedValueCardElements=[];
   const refreshPendingState=() => {
-    readPendingRealitySplit((_3, _4) => renderPendingInspection(pendingState, filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _3), filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _4)));
+    readPendingRealitySplit((_3, _4) => renderPendingInspection(pendingState, filter_1((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _3), filter_1((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1), _4)));
   };
   const isPendingForThisPage=(command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText(definition.pageId)+"\"")!=-1);
   const currentFilterText=() => isBlank(keyFilter.value)?"":Trim(keyFilter.value);
@@ -599,7 +599,7 @@ function mountAppendPage(page, definition){
   };
   const replyCardKey=(value) => concat_1("\u001f", [selected, asText(value.valueId)]);
   const disposeReplyCardsExcept=(retainedKeys) => {
-    const retainedIndexes=map((t) => t[0], filter((_3) => {
+    const retainedIndexes=map((t) => t[0], filter_1((_3) => {
       const key=_3[1];
       return exists((y) => key==y, retainedKeys);
     }, mapi((_3, _4) =>[_3, _4], renderedValueCardKeys)));
@@ -848,17 +848,17 @@ function mountAppendPage(page, definition){
     applyLineageHealth(data.lineageHealth);
     const b=data.keyMaxSequence;
     currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
-    const backendBuckets=filter((bucket_1) =>!isLocallyHiddenKeyId(bucket_1.keyId), arrayOrEmpty(data.buckets));
+    const backendBuckets=filter_1((bucket_1) =>!isLocallyHiddenKeyId(bucket_1.keyId), arrayOrEmpty(data.buckets));
     if(sameText(source, "backend")){
       const projectedValueIds=map((a) => a.valueId, collect((bucket_1) => arrayOrEmpty(bucket_1.values), backendBuckets));
-      _3=void(acceptedLiveValueIds=filter((accepted) =>!exists((projected) => sameText(projected, accepted), projectedValueIds), acceptedLiveValueIds));
+      _3=void(acceptedLiveValueIds=filter_1((accepted) =>!exists((projected) => sameText(projected, accepted), projectedValueIds), acceptedLiveValueIds));
     }
     else _3=null;
     buckets=sortAppendPageBuckets(map((backendBucket) => {
       const m_1=tryFind((existing_1) => sameText(existing_1.keyId, backendBucket.keyId), buckets);
       if(m_1!=null&&m_1.$==1){
         const existing=m_1.$0;
-        const v=mergeAppendValues(filter((value) => isAcceptedLiveValueId(value.valueId), arrayOrEmpty(existing.values)), backendBucket.values);
+        const v=mergeAppendValues(filter_1((value) => isAcceptedLiveValueId(value.valueId), arrayOrEmpty(existing.values)), backendBucket.values);
         const merged=latestArray(defaultCacheLimit(), v);
         const p=sequenceBounds(merged);
         const minSequence=p[0];
@@ -872,7 +872,7 @@ function mountAppendPage(page, definition){
       }
       else return backendBucket;
     }, backendBuckets).concat(choose((existing) => {
-      const v=filter((value) => isAcceptedLiveValueId(value.valueId), arrayOrEmpty(existing.values));
+      const v=filter_1((value) => isAcceptedLiveValueId(value.valueId), arrayOrEmpty(existing.values));
       const pendingAcceptedValues=latestArray(defaultCacheLimit(), v);
       if(length(pendingAcceptedValues)===0)return null;
       else {
@@ -883,7 +883,7 @@ function mountAppendPage(page, definition){
         let _6=New_11(existing.keyId, existing.keys, existing.displayName, existing.setName, _5, p[0], p[1], existing.updatedAtUtc, pendingAcceptedValues);
         return Some(_6);
       }
-    }, filter((existing) =>!isLocallyHiddenKeyId(existing.keyId)&&!exists((backend) => sameText(backend.keyId, existing.keyId), backendBuckets), buckets))));
+    }, filter_1((existing) =>!isLocallyHiddenKeyId(existing.keyId)&&!exists((backend) => sameText(backend.keyId, existing.keyId), backendBuckets), buckets))));
     visibleValueLimit=defaultRenderLimit();
     if(isBlank(pendingSelectKeyId))_4=false;
     else {
@@ -939,7 +939,7 @@ function mountAppendPage(page, definition){
       else if(a.$0,generation===loadGeneration){
         const cached=a.$0;
         applySnapshot("cached", cached);
-        const sequenceBuckets=filter((bucket) => bucket.maxSequence>0n, arrayOrEmpty(cached.buckets));
+        const sequenceBuckets=filter_1((bucket) => bucket.maxSequence>0n, arrayOrEmpty(cached.buckets));
         if(length(sequenceBuckets)===0)fetchFullState();
         else {
           iter((_3) => readNewerFromBackend(generation, _3), sequenceBuckets);
@@ -1028,7 +1028,7 @@ function mountAppendPage(page, definition){
       };
       return readAllPending((commands) => {
         let remaining;
-        const accepted=filter(commandMatches, commands);
+        const accepted=filter_1(commandMatches, commands);
         if(length(accepted)>0){
           remaining=length(accepted);
           const finishOne=() => {
@@ -1057,7 +1057,7 @@ function mountAppendPage(page, definition){
               const wire=json(event.payload);
               if(wire==null||asText(wire.schema)!="ptc.comm.spa.append-page.key.v1"||!sameText(wire.pageId, definition.pageId))o=null;
               else {
-                const keys=filter((key) =>!isBlank(key), map(asText, arrayOrEmpty(wire.keys)));
+                const keys=filter_1((key) =>!isBlank(key), map(asText, arrayOrEmpty(wire.keys)));
                 o=length(keys)===0?null:Some([keys, Trim(asText(wire.displayName))]);
               }
             }
@@ -1079,7 +1079,7 @@ function mountAppendPage(page, definition){
                   const existing=m_2.$0;
                   updated=New_11(existing.keyId, _4, textOr(existing.displayName, _5), definition.setName, existing.valueCount, existing.minSequence, existing.maxSequence, textOr(existing.updatedAtUtc, event.createdAtUtc), existing.values);
                 }
-                _3=(buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),sameText(pendingSelectKeyId, keyId)?selectBucketKeys(_4)?void(pendingSelectKeyId=""):null:isBlank(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(_4),void(newKeyInput.value=selectedKeyJson)):null);
+                _3=(buckets=sortAppendPageBuckets(filter_1((bucket_1) =>!sameText(bucket_1.keyId, keyId), buckets).concat([updated])),sameText(pendingSelectKeyId, keyId)?selectBucketKeys(_4)?void(pendingSelectKeyId=""):null:isBlank(selected)||!exists((bucket_1) => sameText(bucket_1.keyId, selected), buckets)?(selected=keyId,selectedKeyJson=keysAsJson(_4),void(newKeyInput.value=selectedKeyJson)):null);
               }
               else _3=null;
               writeCurrentSnapshot();
@@ -1104,7 +1104,7 @@ function mountAppendPage(page, definition){
               const b_1=event.sequence;
               currentKeyMaxSequence=Compare(currentKeyMaxSequence, b_1)===1?currentKeyMaxSequence:b_1;
               rememberLocallyHiddenKeyId(keyId_1);
-              buckets=sortAppendPageBuckets(filter((bucket_1) =>!sameText(bucket_1.keyId, keyId_1), buckets));
+              buckets=sortAppendPageBuckets(filter_1((bucket_1) =>!sameText(bucket_1.keyId, keyId_1), buckets));
               if(sameText(selected, keyId_1))if(length(buckets)>0){
                 selected=get(buckets, 0).keyId;
                 selectedKeyJson=keysAsJson(get(buckets, 0).keys);
@@ -1179,7 +1179,7 @@ function mountAppendPage(page, definition){
               return asText(response.streamKey).indexOf("append-page-key-registry")!=-1?setKeyRegistryWsState("subscribed"):setWsState("subscribed");
             case 1:
               if(exists((id) => id==requestId, pendingWsAppendIds)){
-                pendingWsAppendIds=filter((id) => id!=requestId, pendingWsAppendIds);
+                pendingWsAppendIds=filter_1((id) => id!=requestId, pendingWsAppendIds);
                 deletePendingThen(requestId, () => {
                   valueInput.value="";
                   refreshPendingState();
@@ -1242,7 +1242,7 @@ function mountAppendPage(page, definition){
             case 3:
               return iter((_5) => handleSyncEvent("tail", _5), arrayOrEmpty(response.events));
             case 4:
-              return exists((id) => id==requestId, pendingWsAppendIds)?(pendingWsAppendIds=filter((id) => id!=requestId, pendingWsAppendIds),deletePendingThen(requestId, () => {
+              return exists((id) => id==requestId, pendingWsAppendIds)?(pendingWsAppendIds=filter_1((id) => id!=requestId, pendingWsAppendIds),deletePendingThen(requestId, () => {
                 refreshPendingState();
                 setStatus(workState, pendingFailure("WebSocket command", asText(response.error)));
               })):setStatus(status, "WebSocket sync error: "+asText(response.error));
@@ -1340,7 +1340,7 @@ function mountAppendPage(page, definition){
           let _3;
           if(!(reply.key==null)){
             const keyId=reply.key.keyId;
-            if(!isBlank(keyId))locallyHiddenKeyIds=filter((hidden) =>!sameText(hidden, keyId), locallyHiddenKeyIds);
+            if(!isBlank(keyId))locallyHiddenKeyIds=filter_1((hidden) =>!sameText(hidden, keyId), locallyHiddenKeyIds);
             pendingSelectKeyId=reply.key.keyId;
             _3=selectBucketKeys(reply.key.keys);
           }
@@ -1536,7 +1536,7 @@ function mountAppendPage(page, definition){
       replayingPending=true;
       readAllPending((commands) => {
         let remaining, accepted;
-        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter(isPendingForThisPage, commands));
+        const mine=filter_1((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter_1(isPendingForThisPage, commands));
         if(length(mine)===0){
           replayingPending=false;
           refreshPendingState();
@@ -1600,7 +1600,7 @@ function mountAppendPage(page, definition){
       postRemoveAppendPageKey("/pages/api/remove-key", request, () => {
         deletePendingThen(pendingId, () => {
           rememberLocallyHiddenKeyId(removedKeyId);
-          buckets=filter((bucket) =>!sameText(bucket.keyId, removedKeyId), buckets);
+          buckets=filter_1((bucket) =>!sameText(bucket.keyId, removedKeyId), buckets);
           selected="";
           selectedKeyJson="";
           writeCurrentSnapshot();
@@ -1765,7 +1765,7 @@ function mountSets(page){
   const setValueStreamKey=(pageId, mode, setName, keys) => New_6(asText(pageId), textOr("set", mode), asText(setName), arrayOrEmpty(keys));
   const setKeyId=(setName, keys) => asText(setName)+"::"+concat_1(" + ", arrayOrEmpty(keys));
   const forgetHidden=(keyId) => {
-    hiddenSetStreams=filter((_1) =>!sameText(_1[0], keyId), hiddenSetStreams);
+    hiddenSetStreams=filter_1((_1) =>!sameText(_1[0], keyId), hiddenSetStreams);
   };
   const eventIsVisibleAfterTombstone=(keyId, createdAtUtc) => {
     const m=tryPick((_1) => sameText(_1[0], keyId)?Some(_1[1]):null, hiddenSetStreams);
@@ -2026,8 +2026,8 @@ function mountSets(page){
         else {
           const streamKey_1=m_2.$0;
           const keyId_1=setKeyId(asText(streamKey_1.setName), arrayOrEmpty(streamKey_1.keys));
-          hiddenSetStreams=filter((_5) =>!sameText(_5[0], keyId_1), hiddenSetStreams).concat([[keyId_1, asText(event.createdAtUtc)]]);
-          buckets=filter((bucket) =>!sameText(bucket.keyId, keyId_1), buckets);
+          hiddenSetStreams=filter_1((_5) =>!sameText(_5[0], keyId_1), hiddenSetStreams).concat([[keyId_1, asText(event.createdAtUtc)]]);
+          buckets=filter_1((bucket) =>!sameText(bucket.keyId, keyId_1), buckets);
           if(sameText(selected, keyId_1)){
             const o=tryHead(buckets);
             const o_1=o==null?null:Some(o.$0.keyId);
@@ -2056,7 +2056,7 @@ function mountSets(page){
                 const existing=m_3.$0;
                 const existingValues=arrayOrEmpty(existing.values);
                 const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
-                const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
+                const v=filter_1((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
                 const mergedValues=latestArray(defaultRenderLimit(), v);
                 if(alreadyVisible)_2=existing.valueCount;
                 else {
@@ -2070,7 +2070,7 @@ function mountSets(page){
                 let _4=Compare(a_1, b_1)===1?a_1:b_1;
                 updated=New_20(existing.keyId, existing.setName, existing.keys, _2, _4, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
               }
-              buckets=sortSetBuckets(filter((bucket) =>!sameText(bucket.keyId, keyId_3), buckets).concat([updated]));
+              buckets=sortSetBuckets(filter_1((bucket) =>!sameText(bucket.keyId, keyId_3), buckets).concat([updated]));
               selected=keyId_3;
               renderList();
               renderDetail();
@@ -2269,7 +2269,7 @@ function mountActors(page){
         else return null;
       }
       const roots=arrayOrEmpty(tree.rootNodeIds);
-      let _2=length(roots)===0?map((a) => a.id, filter((node) => isBlank(node.parentId), safeNodes)):roots;
+      let _2=length(roots)===0?map((a) => a.id, filter_1((node) => isBlank(node.parentId), safeNodes)):roots;
       let _3=choose((id) => nodeMap.TryFind(asText(id)), _2);
       let _4=sortBy((node) => asText(node.label), _3);
       iter((_6) => renderNode(0, _6), _4);
@@ -2429,10 +2429,10 @@ function mountActors(page){
           if(m==null)updatedNode=New_26(nodeId, nodeAddress, "up", roles, [actor]);
           else {
             const existing=m.$0;
-            const actors=sortBy((row) => asText(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors)).concat([actor]));
+            const actors=sortBy((row) => asText(row.actorId), filter_1((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors)).concat([actor]));
             updatedNode=New_26(existing.nodeId, isBlank(nodeAddress)?asText(existing.nodeAddress):nodeAddress, textOr("up", existing.status), length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
           }
-          const nodes_1=sortBy((node) => asText(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
+          const nodes_1=sortBy((node) => asText(node.nodeId), filter_1((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
           let _2=length(nodes_1);
           let _3=fold((_5, _6) => _5+_6, 0, map((node) => arrayOrEmpty(node.actors).length, nodes_1));
           const a=actorSnapshot.maxSequence;
@@ -2569,7 +2569,7 @@ function mountChat(page){
     }, arrayOrEmpty(messages));
     scrollToBottomAfterRender(thread);
   }
-  function loadParticipants(){
+  function loadParticipants(refreshSelectedThread){
     setStatus(state, "Loading participants");
     readJson(participantsCacheKey, (a) => {
       if(a!=null&&a.$==1)if(a.$0,length(participants)===0){
@@ -2577,20 +2577,21 @@ function mountChat(page){
         isBlank(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
         renderParticipants();
         setStatus(state, "Loaded "+String(length(participants))+" cached participant(s)");
-        pollThread(true);
-        ensureSelectedChatSubscription();
-        replayPendingChatCommands();
+        refreshSelectedThread?(pollThread(true),ensureSelectedChatSubscription(),replayPendingChatCommands()):void 0;
       }
     });
     getJson("/chat/api/agents", (data) => {
       participants=arrayOrEmpty(data.participants);
       writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-agents");
-      isBlank(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
+      const selectedWasBlank=isBlank(selected);
+      if(selectedWasBlank&&length(participants)>0)selected=get(participants, 0).participantId;
       renderParticipants();
       setStatus(state, "Loaded "+String(length(participants))+" participant(s)");
-      pollThread(true);
-      ensureSelectedChatSubscription();
-      replayPendingChatCommands();
+      if(refreshSelectedThread||selectedWasBlank){
+        pollThread(true);
+        ensureSelectedChatSubscription();
+        replayPendingChatCommands();
+      }
     }, (t) => {
       setStatus(state, t);
     });
@@ -2644,21 +2645,21 @@ function mountChat(page){
           appendMessages(messages);
           if(!isBlank(cached.nextAfterMessageId))cursor=cached.nextAfterMessageId;
           setStatus(state, "Loaded "+String(length(messages))+" cached message(s); syncing missing tail");
-          fetchThread(!isBlank(cursor));
+          fetchThread(false);
         }
       });
       else fetchThread(!isBlank(cursor));
     }
   }
   function refreshChatPendingState(){
-    readPendingRealitySplit((_1, _2) => renderPendingInspection(pendingState, filter(isPendingForThisChat, _1), filter(isPendingForThisChat, _2)));
+    readPendingRealitySplit((_1, _2) => renderPendingInspection(pendingState, filter_1(isPendingForThisChat, _1), filter_1(isPendingForThisChat, _2)));
   }
   function replayPendingChatCommands(){
     if(!replayingPending){
       replayingPending=true;
       readAllPending((commands) => {
         let remaining, accepted;
-        const mine=filter((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter(isPendingForThisChat, commands));
+        const mine=filter_1((command) => sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), filter_1(isPendingForThisChat, commands));
         if(length(mine)===0){
           replayingPending=false;
           refreshChatPendingState();
@@ -2714,7 +2715,7 @@ function mountChat(page){
       if(responseStatus=="ok"){
         if(responseType=="subscribe")setChatWsState("subscribed");
         else if(responseType=="chat-send"){
-          exists((id) => id==requestId, pendingWsChatIds)?(pendingWsChatIds=filter((id) => id!=requestId, pendingWsChatIds),deletePendingThen(requestId, () => {
+          exists((id) => id==requestId, pendingWsChatIds)?(pendingWsChatIds=filter_1((id) => id!=requestId, pendingWsChatIds),deletePendingThen(requestId, () => {
             refreshChatPendingState();
             draft.value="";
           })):void 0;
@@ -2823,12 +2824,13 @@ function mountChat(page){
       scrollToBottomAfterRender(thread);
     }
   }
-  reload.addEventListener("click", loadParticipants);
+  reload.addEventListener("click", () => loadParticipants(true));
   send.addEventListener("click", sendMessage);
   draft.addEventListener("keydown", (event) => event.key=="Enter"&&!event.shiftKey?(event.preventDefault(),sendMessage()):null);
   globalThis.setInterval(() => pollThread(false), 2500);
+  globalThis.setInterval(() => loadParticipants(false), 2500);
   refreshChatPendingState();
-  loadParticipants();
+  loadParticipants(true);
 }
 function refreshAppendNav(activePath){
   const applyDefinitions=(data) => {
@@ -3128,7 +3130,7 @@ function disposeReplyPresentation(identity){
   catch(m){
     _1=null;
   }
-  set_replyPresentationDisposers(filter((_2) => _2[0]!=identity, replyPresentationDisposers()));
+  set_replyPresentationDisposers(filter_1((_2) => _2[0]!=identity, replyPresentationDisposers()));
 }
 function joinValues(values){
   const values_1=arrayOrEmpty(values);
@@ -3745,7 +3747,7 @@ function renderPageCreator(nav, activePath, pages){
     replayingPendingPageRegistration=true;
     readAllPending((commands) => {
       let remaining, accepted;
-      const mine=filter((command) =>!(command==null)&&sameText(command.kind, "append-page-register")&&sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), commands);
+      const mine=filter_1((command) =>!(command==null)&&sameText(command.kind, "append-page-register")&&sameText(command.method, "POST")&&!isBlank(command.url)&&!isBlank(command.payloadJson), commands);
       if(length(mine)===0)replayingPendingPageRegistration=false;
       else {
         remaining=length(mine);
@@ -4002,7 +4004,7 @@ function registerReplyPresentationDisposer(identity, dispose){
   set_replyPresentationDisposers(replyPresentationDisposers().concat([[identity, dispose]]));
 }
 function setReplyPresentationMode(identity, mode){
-  set_replyPresentationModes(filter((_1) => _1[0]!=identity, replyPresentationModes()).concat([[identity, mode]]));
+  set_replyPresentationModes(filter_1((_1) => _1[0]!=identity, replyPresentationModes()).concat([[identity, mode]]));
 }
 function replyPresentationMode(identity){
   const o=tryPick((_1) => _1[0]==identity?Some(_1[1]):null, replyPresentationModes());
@@ -4157,7 +4159,7 @@ function builtInAppendPageShapes(){
   return[shapeRegistration("fcell-chat", "FCell Chat", "C", "fcell-chat"), shapeRegistration("fcell-list", "FCell List", "L", "fcell-list"), shapeRegistration("fcell-grid", "FCell Grid", "G", "fcell-grid"), shapeRegistration("actor-argu", "Actor Argu", "aa", "actor-argu"), shapeRegistration("raw", "Raw", "R", "raw")];
 }
 function manifestAppendPageShapes(){
-  return filter((shape) => shape.shape!="raw", map((shape) => shape==null?shapeRegistration("raw", "Raw", "R", "raw"):shapeRegistration(shape.shape, shape.label, shape.badge, shape.className), collect((extension) => extension==null?[]:arrayOrEmpty(extension.appendPageShapes), serverClientExtensions())));
+  return filter_1((shape) => shape.shape!="raw", map((shape) => shape==null?shapeRegistration("raw", "Raw", "R", "raw"):shapeRegistration(shape.shape, shape.label, shape.badge, shape.className), collect((extension) => extension==null?[]:arrayOrEmpty(extension.appendPageShapes), serverClientExtensions())));
 }
 function runtimeAppendPageShapes(){
   return _c_1.runtimeAppendPageShapes;
@@ -4353,7 +4355,7 @@ function mountWithOptions(mountDocument, extensionId, channelId, canvasId, lifec
   return mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOptions, false);
 }
 function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOptions, disposeAfterJsonExport){
-  let socket, requestSequence, lifecycle, pollTimer, timeoutTimer, reconnectTimer, jsonExportRequested, jsonExportInFlight;
+  let socket, requestSequence, lifecycle, pollTimer, timeoutTimer, reconnectTimer, jsonExportRequested, jsonExportBootstrapAttempts, jsonExportBootstrapInFlight, jsonExportInFlight, actionRequestOverride, pendingActionCompletion;
   const identity={DocumentId:{$:0, $0:"pending-"+channelId}, CanvasInstanceId:{$:0, $0:canvasId}};
   const runtimeState=_c_3.Create_1({
     Identity:identity, 
@@ -4373,10 +4375,40 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
   timeoutTimer=null;
   reconnectTimer=null;
   jsonExportRequested=false;
+  jsonExportBootstrapAttempts=0;
+  jsonExportBootstrapInFlight=false;
   jsonExportInFlight=false;
-  const sendPayload=(operation, payload) => {
-    const text_1=JSON.stringify(New_38("extension-transient", (requestSequence=requestSequence+1,channelId+":"+String(requestSequence)), extensionId, channelId, operation, JSON.stringify(payload)));
+  actionRequestOverride=null;
+  pendingActionCompletion=null;
+  const nextRequestId=() => {
+    requestSequence=requestSequence+1;
+    return channelId+":"+String(requestSequence);
+  };
+  const sendPayloadWithRequestId=(requestId, operation, payload) => {
+    const text_1=JSON.stringify(New_38("extension-transient", requestId, extensionId, channelId, operation, JSON.stringify(payload)));
     return socket!=null&&socket.$==1&&(Equals(socket.$0.readyState, 1)&&(socket.$0.send(text_1),true));
+  };
+  const sendPayload=(operation, payload) => sendPayloadWithRequestId(nextRequestId(), operation, payload);
+  const completePendingAction=(requestId, result) => {
+    if(pendingActionCompletion!=null&&pendingActionCompletion.$==1){
+      const pendingRequestId=pendingActionCompletion.$0[0];
+      if(pendingActionCompletion.$0,pendingRequestId==requestId){
+        const continuation=pendingActionCompletion.$0[1];
+        pendingActionCompletion.$0;
+        pendingActionCompletion=null;
+        return continuation(Ok(result));
+      }
+      else return null;
+    }
+    else return null;
+  };
+  const failPendingAction=(code, message) => {
+    if(pendingActionCompletion==null)return null;
+    else {
+      const continuation=pendingActionCompletion.$0[1];
+      pendingActionCompletion=null;
+      return continuation(Error_1({Code:code, Message:message}));
+    }
   };
   const cancelPollTimer=() => {
     pollTimer==null?void 0:clearTimeout(pollTimer.$0);
@@ -4403,7 +4435,10 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
   function apply(event){
     if(event.$==2||(event.$==5||(event.$==6||event.$==9))){
       jsonExportRequested=false;
+      jsonExportBootstrapAttempts=0;
+      jsonExportBootstrapInFlight=false;
       jsonExportInFlight=false;
+      event.$==5?failPendingAction("transient-command-timeout", "The TA action response timed out."):event.$==6?failPendingAction("transient-channel-disconnected", "The TA transient channel disconnected before the action completed."):event.$==9?failPendingAction("transient-channel-disposed", "The TA transient channel was disposed before the action completed."):null;
     }
     else null;
     const p=transition(lifecycleOptions, event, lifecycle);
@@ -4428,10 +4463,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
   }
   function interpret(effects){
     for(let i=0, _1=effects.length-1;i<=_1;i++){
+      let p;
       const effect=get(effects, i);
       if(effect.$==1)sendPayload("close", emptyFrame("unmounted", "", canvasId));
       else if(effect.$==2){
-        if(!sendPayload("action", actionToWire(effect.$0)))apply(Disconnected);
+        const action=effect.$0;
+        if(actionRequestOverride==null)p=[nextRequestId(), actionToWire(action)];
+        else {
+          const request=actionRequestOverride.$0;
+          p=(actionRequestOverride=null,[request.RequestId, actionRequestToWire(request)]);
+        }
+        if(!sendPayloadWithRequestId(p[0], "action", p[1]))apply(Disconnected);
       }
       else if(effect.$==3){
         const delayMs=effect.$0;
@@ -4473,96 +4515,138 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
       };
       value.onmessage=(event) => {
         try {
-          let jsonExportCompleted, _1;
+          let jsonExportCompleted, _1, o, m, _2, _3;
           const response=JSON.parse(String(event.data));
           if(response.type=="extension-transient"&&response.operation=="close")return closeSocket();
           else if(response.type=="extension-transient"&&response.status=="ok"){
             const wire=JSON.parse(response.payload);
-            const m=applyWire(runtimeState.Get(), wire);
-            if(m.$==1){
+            const m_1=applyWire(runtimeState.Get(), wire);
+            if(m_1.$==1){
               apply(ResyncRequired("invalid-browser-state"));
               return;
             }
             else {
-              const state=m.$0;
+              const state=m_1.$0;
               runtimeState.Set(state);
+              const completesJsonExport=jsonExportInFlight;
               jsonExportCompleted=false;
-              if(jsonExportInFlight){
+              if(jsonExportBootstrapInFlight)jsonExportBootstrapInFlight=false;
+              else null;
+              if(completesJsonExport){
                 jsonExportRequested=false;
                 jsonExportInFlight=false;
                 if(wire.updateKind=="full"){
-                  const m_1=downloadJsonExport(wire);
-                  if(m_1.$==1){
-                    const message=m_1.$0;
-                    const _2=runtimeState.Get();
-                    let _3={
-                      Identity:_2.Identity, 
-                      Document:_2.Document, 
-                      Data:_2.Data, 
-                      DocumentRevision:_2.DocumentRevision, 
-                      DataRevision:_2.DataRevision, 
-                      LastTransportSequence:_2.LastTransportSequence, 
-                      View:_2.View, 
-                      Poll:_2.Poll, 
+                  const m_2=downloadJsonExport(wire);
+                  if(m_2.$==1){
+                    const message=m_2.$0;
+                    const _4=runtimeState.Get();
+                    let _5={
+                      Identity:_4.Identity, 
+                      Document:_4.Document, 
+                      Data:_4.Data, 
+                      DocumentRevision:_4.DocumentRevision, 
+                      DataRevision:_4.DataRevision, 
+                      LastTransportSequence:_4.LastTransportSequence, 
+                      View:_4.View, 
+                      Poll:_4.Poll, 
                       LastError:Some({
                         ReasonCode:"ta-export-download-failed", 
                         Message:message, 
                         Recoverable:true
                       })
                     };
-                    _1=runtimeState.Set(_3);
+                    _1=runtimeState.Set(_5);
                   }
                   else _1=void(jsonExportCompleted=true);
                 }
                 else {
-                  const _4=runtimeState.Get();
-                  let _5={
-                    Identity:_4.Identity, 
-                    Document:_4.Document, 
-                    Data:_4.Data, 
-                    DocumentRevision:_4.DocumentRevision, 
-                    DataRevision:_4.DataRevision, 
-                    LastTransportSequence:_4.LastTransportSequence, 
-                    View:_4.View, 
-                    Poll:_4.Poll, 
+                  const _6=runtimeState.Get();
+                  let _7={
+                    Identity:_6.Identity, 
+                    Document:_6.Document, 
+                    Data:_6.Data, 
+                    DocumentRevision:_6.DocumentRevision, 
+                    DataRevision:_6.DataRevision, 
+                    LastTransportSequence:_6.LastTransportSequence, 
+                    View:_6.View, 
+                    Poll:_6.Poll, 
                     LastError:Some({
                       ReasonCode:"ta-export-full-state-required", 
                       Message:"The TA export response was not a full runtime state.", 
                       Recoverable:true
                     })
                   };
-                  _1=runtimeState.Set(_5);
+                  _1=runtimeState.Set(_7);
                 }
               }
               else _1=null;
-              apply(StateAccepted(state.DataRevision));
+              const o_1=state.Document;
+              let _8=o_1==null?false:exists((action) => action=="poll-delta", o_1.$0.AllowedActions);
+              let _9=StateAccepted(state.DataRevision, _8);
+              apply(_9);
+              completePendingAction(response.requestId, {
+                $:0, 
+                $0:response.requestId, 
+                $1:state.DocumentRevision
+              });
               return jsonExportCompleted&&disposeAfterJsonExport?void apply(Dispose):tryStartJsonExport();
             }
           }
           else if(response.type=="extension-transient"){
-            const _6=runtimeState.Get();
-            let _7={
-              Identity:_6.Identity, 
-              Document:_6.Document, 
-              Data:_6.Data, 
-              DocumentRevision:_6.DocumentRevision, 
-              DataRevision:_6.DataRevision, 
-              LastTransportSequence:_6.LastTransportSequence, 
-              View:_6.View, 
-              Poll:_6.Poll, 
+            const responseError=text(response.error);
+            const conflictPrefix="ta-revision-conflict:";
+            if(StartsWith(responseError, conflictPrefix)){
+              o=0;
+              const _10=Number(responseError.substring(conflictPrefix.length));
+              let _11=isNaN(_10)?false:(o=_10,true);
+              m=[_11, o];
+              if(m[0]){
+                const revision=m[1];
+                _2=revision>=0&&(revision<0?Math.ceil(revision):Math.floor(revision))===revision;
+              }
+              else _2=false;
+              _3=_2?{
+                $:2, 
+                $0:response.requestId, 
+                $1:BigInt(Math.trunc(m[1]))
+              }:{
+                $:1, 
+                $0:response.requestId, 
+                $1:"transient-command-failed", 
+                $2:responseError
+              };
+            }
+            else _3={
+              $:1, 
+              $0:response.requestId, 
+              $1:"transient-command-failed", 
+              $2:responseError
+            };
+            completePendingAction(response.requestId, _3);
+            const _12=runtimeState.Get();
+            let _13={
+              Identity:_12.Identity, 
+              Document:_12.Document, 
+              Data:_12.Data, 
+              DocumentRevision:_12.DocumentRevision, 
+              DataRevision:_12.DataRevision, 
+              LastTransportSequence:_12.LastTransportSequence, 
+              View:_12.View, 
+              Poll:_12.Poll, 
               LastError:Some({
                 ReasonCode:"transient-command-failed", 
                 Message:text(response.error), 
                 Recoverable:true
               })
             };
-            runtimeState.Set(_7);
+            runtimeState.Set(_13);
             apply(CommandRejected);
             return;
           }
           else return null;
         }
-        catch(m_2){
+        catch(m_3){
+          failPendingAction("invalid-transient-response", "The TA transient response could not be decoded.");
           apply(ResyncRequired("invalid-transient-response"));
           return;
         }
@@ -4575,20 +4659,53 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
     }
   }
   function tryStartJsonExport(){
-    if(jsonExportRequested&&!jsonExportInFlight&&lifecycle.Connected&&lifecycle.Active&&!lifecycle.InFlight)if(exists((a) => a.$==2, apply(StartAction({
-      $:6, 
-      $0:identity.CanvasInstanceId, 
-      $1:"json-export"
-    })))){
-      jsonExportRequested=false;
-      jsonExportInFlight=true;
+    if(jsonExportRequested&&!jsonExportBootstrapInFlight&&!jsonExportInFlight&&lifecycle.Connected&&lifecycle.Active&&!lifecycle.InFlight){
+      const hasRuntimeData=runtimeState.Get().DataRevision>0n;
+      if(!hasRuntimeData&&jsonExportBootstrapAttempts>=3){
+        jsonExportRequested=false;
+        jsonExportBootstrapInFlight=false;
+        const _1=runtimeState.Get();
+        let _2={
+          Identity:_1.Identity, 
+          Document:_1.Document, 
+          Data:_1.Data, 
+          DocumentRevision:_1.DocumentRevision, 
+          DataRevision:_1.DataRevision, 
+          LastTransportSequence:_1.LastTransportSequence, 
+          View:_1.View, 
+          Poll:_1.Poll, 
+          LastError:Some({
+            ReasonCode:"ta-export-bootstrap-empty", 
+            Message:"TA export bootstrap returned no runtime data after three attempts.", 
+            Recoverable:true
+          })
+        };
+        runtimeState.Set(_2);
+        if(disposeAfterJsonExport)apply(Dispose);
+      }
+      else if(exists((a) => a.$==2, apply(StartAction(hasRuntimeData?{
+        $:7, 
+        $0:identity.CanvasInstanceId, 
+        $1:"json-export"
+      }:{
+        $:6, 
+        $0:identity.CanvasInstanceId, 
+        $1:runtimeState.Get().DataRevision
+      }))))if(hasRuntimeData){
+        jsonExportRequested=false;
+        jsonExportInFlight=true;
+      }
+      else {
+        jsonExportBootstrapAttempts=jsonExportBootstrapAttempts+1;
+        jsonExportBootstrapInFlight=true;
+      }
     }
   }
-  mountDocument(render(defaultOptions(), {SubmitAction:(action) => Delay(() => exists((a) => a.$==2, apply(StartAction(action)))?Return(Ok(null)):Return(Error_1({Code:lifecycle.Connected?"transient-command-busy":"transient-channel-not-open", Message:lifecycle.Connected?"A TA transient command is already in flight.":"TA transient channel is not open."})))}, runtimeState));
+  mountDocument(render(defaultOptions(), {SubmitAction:(request) => FromContinuations((continuation) => pendingActionCompletion!=null?continuation(Error_1({Code:"transient-command-busy", Message:"A TA transient command is already in flight."})):(pendingActionCompletion=Some([request.RequestId, continuation]),actionRequestOverride=Some(request),!exists((a) => a.$==2, apply(StartAction(request.Action)))?(actionRequestOverride=null,pendingActionCompletion=null,continuation(Error_1({Code:lifecycle.Connected?"transient-command-busy":"transient-channel-not-open", Message:lifecycle.Connected?"A TA transient command is already in flight.":"TA transient channel is not open."}))):null))}, runtimeState));
   connect();
   return New_1(runtimeState, (active) => {
     apply(ActiveChanged(active));
-  }, () => jsonExportRequested||jsonExportInFlight?Error_1("A TA Research JSON export is already pending."):lifecycle.Disposed||lifecycle.DisposePending?Error_1("The TA transient channel has already been disposed."):(jsonExportRequested=true,tryStartJsonExport(),Ok("TA Research JSON export requested.")), () => {
+  }, () => jsonExportRequested||jsonExportBootstrapInFlight||jsonExportInFlight?Error_1("A TA Research JSON export is already pending."):lifecycle.Disposed||lifecycle.DisposePending?Error_1("The TA transient channel has already been disposed."):(jsonExportBootstrapAttempts=0,jsonExportRequested=true,tryStartJsonExport(),Ok("TA Research JSON export requested.")), () => {
     apply(Dispose);
   });
 }
@@ -4620,8 +4737,8 @@ function exportFileName(){
   const now=new Date();
   const random=new Random();
   const hex="0123456789abcdef";
-  const compactGuid=new String(init(32, () => hex[random.Next_1(hex.length)]));
-  const guid=compactGuid.substring(0, 8)+"-"+compactGuid.substring(8, 4)+"-4"+compactGuid.substring(13, 3)+"-"+"8"+compactGuid.substring(17, 3)+"-"+compactGuid.substring(20, 12);
+  const compactGuid=concat_1("", map((v) => v, init(32, () => hex[random.Next_1(hex.length)])));
+  const guid=Substring(compactGuid, 0, 8)+"-"+Substring(compactGuid, 8, 4)+"-4"+Substring(compactGuid, 13, 3)+"-"+"8"+Substring(compactGuid, 17, 3)+"-"+Substring(compactGuid, 20, 12);
   return String(now.getFullYear())+twoDigits(now.getMonth()+1)+twoDigits(now.getDate())+twoDigits(now.getHours())+twoDigits(now.getMinutes())+twoDigits(now.getSeconds())+"-"+guid+".json";
 }
 function twoDigits(value){
@@ -4634,54 +4751,55 @@ function defaults(){
   return _c.defaults;
 }
 function initial(canvasInstanceId){
-  return New_39(canvasInstanceId, {$:0}, false, true, false, 0n, 0, false, false);
+  return New_39(canvasInstanceId, {$:0}, false, false, true, false, 0n, 0, false, false);
 }
 function transition(options, event, state){
   let _1;
   if(state.Disposed&&event.$!==9)return[state, []];
   else if(state.DisposePending)switch(event.$==1?0:event.$==5?1:event.$==6?1:event.$==9?2:3){
     case 0:
-      return[New_39(state.CanvasInstanceId, {$:7}, state.Connected, state.Active, true, event.$0, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, SendUnmounted, ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_39(state.CanvasInstanceId, {$:7}, event.$1, state.Connected, state.Active, true, event.$0, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, SendUnmounted, ScheduleTimeout(options.RequestTimeoutMs)]];
     case 1:
-      return[New_39(state.CanvasInstanceId, {$:7}, false, state.Active, false, state.DataRevision, state.ReconnectAttempt, false, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
+      return[New_39(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, state.Active, false, state.DataRevision, state.ReconnectAttempt, false, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
     case 2:
       return[state, []];
     case 3:
       return[state, []];
   }
-  else switch(event.$==1?(_1=event.$0,1):event.$==2?state.Connected&&state.InFlight?2:11:event.$==3?(event.$0,state.Connected&&state.Active&&!state.InFlight?(_1=event.$0,3):11):event.$==4?state.Connected&&state.Active&&!state.InFlight?4:11:event.$==5?state.InFlight?5:11:event.$==6?!state.Connected?6:7:event.$==7?(_1=event.$0,8):event.$==8?(event.$0,state.Connected&&state.Active?(_1=event.$0,9):11):event.$==9?10:0){
+  else switch(event.$==1?(_1=[event.$1, event.$0],1):event.$==2?state.Connected&&state.InFlight?2:11:event.$==3?(event.$0,state.Connected&&state.Active&&!state.InFlight?(_1=event.$0,3):11):event.$==4?state.Connected&&state.Active&&state.PollEnabled&&!state.InFlight?4:11:event.$==5?state.InFlight?5:11:event.$==6?!state.Connected?6:7:event.$==7?(_1=event.$0,8):event.$==8?(event.$0,state.Connected&&state.Active?(_1=event.$0,9):11):event.$==9?10:0){
     case 0:
-      return[New_39(state.CanvasInstanceId, {$:1}, true, state.Active, true, state.DataRevision, 0, state.DisposePending, state.Disposed), [CancelReconnect, SendMounted, ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_39(state.CanvasInstanceId, {$:1}, state.PollEnabled, true, state.Active, true, state.DataRevision, 0, state.DisposePending, state.Disposed), [CancelReconnect, SendMounted, ScheduleTimeout(options.RequestTimeoutMs)]];
     case 1:
-      return[New_39(state.CanvasInstanceId, state.Active?{$:2}:{$:5}, state.Connected, state.Active, false, _1, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active?[SchedulePoll(options.PollIntervalMs)]:[])];
+      const pollEnabled=_1[0];
+      return[New_39(state.CanvasInstanceId, state.Active&&pollEnabled?{$:2}:{$:5}, pollEnabled, state.Connected, state.Active, false, _1[1], state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&pollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
     case 2:
-      return[New_39(state.CanvasInstanceId, state.Active?{$:2}:{$:5}, state.Connected, state.Active, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active?[SchedulePoll(options.PollIntervalMs)]:[])];
+      return[New_39(state.CanvasInstanceId, state.Active&&state.PollEnabled?{$:2}:{$:5}, state.PollEnabled, state.Connected, state.Active, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&state.PollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
     case 3:
-      return[New_39(state.CanvasInstanceId, {$:3}, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_39(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 4:
-      return[New_39(state.CanvasInstanceId, {$:3}, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
-        $:5, 
+      return[New_39(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
+        $:6, 
         $0:state.CanvasInstanceId, 
         $1:state.DataRevision
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 5:
       const attempt=state.ReconnectAttempt+1;
-      return[New_39(state.CanvasInstanceId, {$:5}, false, state.Active, false, state.DataRevision, attempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport, ScheduleReconnect(reconnectDelay(options, attempt))]];
+      return[New_39(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport, ScheduleReconnect(reconnectDelay(options, attempt))]];
     case 6:
       return[state, []];
     case 7:
       const attempt_1=state.ReconnectAttempt+1;
-      return[New_39(state.CanvasInstanceId, {$:5}, false, state.Active, false, state.DataRevision, attempt_1, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, ScheduleReconnect(reconnectDelay(options, attempt_1))]];
+      return[New_39(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt_1, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, ScheduleReconnect(reconnectDelay(options, attempt_1))]];
     case 8:
-      return _1&&state.Connected&&!state.InFlight?[New_39(state.CanvasInstanceId, {$:2}, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_39(state.CanvasInstanceId, state.Poll, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_39(state.CanvasInstanceId, {$:5}, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
+      return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_39(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_39(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_39(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
     case 9:
-      return[New_39(state.CanvasInstanceId, {$:6}, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
-        $:6, 
+      return[New_39(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
+        $:7, 
         $0:state.CanvasInstanceId, 
         $1:_1
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 10:
-      return state.Connected?[New_39(state.CanvasInstanceId, {$:7}, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_1([CancelPoll], delay(() => append_1([CancelReconnect], delay(() =>!state.InFlight?append_1([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_39(state.CanvasInstanceId, {$:7}, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
+      return state.Connected?[New_39(state.CanvasInstanceId, {$:7}, state.PollEnabled, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_1([CancelPoll], delay(() => append_1([CancelReconnect], delay(() =>!state.InFlight?append_1([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_39(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
     case 11:
       return[state, []];
   }
@@ -4734,6 +4852,12 @@ class Attr {
     const x=ofSeqNonCopying(xs);
     return TreeReduce(EmptyAttr(), (_1, _2) => AppendTree(_1, _2), x);
   }
+  static A1(Item){
+    return Create_1(Attr, {$:1, $0:Item});
+  }
+  static A4(onAfterRender){
+    return Create_1(Attr, {$:4, $0:onAfterRender});
+  }
   static A2(Item1, Item2){
     return Create_1(Attr, {
       $:2, 
@@ -4741,12 +4865,13 @@ class Attr {
       $1:Item2
     });
   }
-  static A4(onAfterRender){
-    return Create_1(Attr, {$:4, $0:onAfterRender});
-  }
   $;
   $0;
   $1;
+}
+function filter(f, o){
+  let _1;
+  return o!=null&&o.$==1&&(f(o.$0)&&(_1=o.$0,true))?o:null;
 }
 function New_1(RuntimeState, SetActive, RequestJsonExport, Dispose_1){
   return{
@@ -4767,7 +4892,7 @@ function New_2(status, count, maxSequence, pages){
 function iter(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)f(arr[i]);
 }
-function filter(f, arr){
+function filter_1(f, arr){
   const r=[];
   for(let i=0, _1=arr.length-1;i<=_1;i++)if(f(arr[i]))r.push(arr[i]);
   return r;
@@ -4914,6 +5039,9 @@ function foldBack(f, arr, zero){
   for(let i=1, _1=len;i<=_1;i++)acc=f(arr[len-i], acc);
   return acc;
 }
+function indexed(ar){
+  return mapi((_1, _2) =>[_1, _2], ar);
+}
 function concat(xs){
   return Array.prototype.concat.apply([], ofSeq(xs));
 }
@@ -4923,6 +5051,19 @@ function init(size, f){
   const r=new Array(size);
   for(let i=0, _1=size-1;i<=_1;i++)r[i]=f(i);
   return r;
+}
+function sortDescending(arr){
+  return map((t) => t[0], mapi((_1, _2) =>[_2, _1], arr).sort((_1, _2) =>-Compare(_1, _2)));
+}
+function tryLast(arr){
+  const len=arr.length;
+  return len===0?null:Some(arr[len-1]);
+}
+function sort(arr){
+  return map((t) => t[0], mapi((_1, _2) =>[_2, _1], arr).sort(Compare));
+}
+function sortByDescending(f, arr){
+  return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) =>-Compare(_1[1], _2[1])));
 }
 function pick(f, arr){
   const m=tryPick(f, arr);
@@ -5017,7 +5158,7 @@ function isMissing(value){
 function readPendingRealitySplit(onRead){
   readAllPendingRaw((commands) => {
     const reality=currentServerRealityId();
-    onRead(filter((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)==reality, commands), filter((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)!=reality, commands));
+    onRead(filter_1((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)==reality, commands), filter_1((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)!=reality, commands));
   });
 }
 function writeWatermark(streamId, newestSequence, cachedCount, source){
@@ -5036,7 +5177,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
 function readAllPending(onRead){
   readAllPendingRaw((commands) => {
     const reality=currentServerRealityId();
-    onRead(filter((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)==reality, commands));
+    onRead(filter_1((command) =>!(command==null)&&textOr("legacy", command.serverRealityId)==reality, commands));
   });
 }
 function deletePendingThen(commandId, onDeleted){
@@ -5045,7 +5186,7 @@ function deletePendingThen(commandId, onDeleted){
 function deleteSnapshotsByPrefix(prefix, onDeleted){
   if(isBlank(prefix))onDeleted();
   else readAllSnapshotKeys((keys) => {
-    const matching=filter((key) =>!isBlank(key)&&StartsWith(key, prefix), keys);
+    const matching=filter_1((key) =>!isBlank(key)&&StartsWith(key, prefix), keys);
     if(length(matching)===0)onDeleted();
     else withSnapshotWatermarkStores("readwrite", (_1, _2, _3) =>((((tx) =>(snapshots) =>(watermarks) => {
       let finished;
@@ -5181,11 +5322,11 @@ function compactSnapshots(){
     const overflow=length(watermarks_1)-maxSnapshotRecords();
     if(overflow>0)iter((watermark) => {
       deleteSnapshotAndWatermark(watermark.streamId);
-    }, sortBy(watermarkTouchedAt, filter((watermark) =>!(watermark==null)&&!isBlank(watermark.streamId)&&!protectedSnapshotKey(watermark.streamId), watermarks_1)).slice(0, overflow));
+    }, sortBy(watermarkTouchedAt, filter_1((watermark) =>!(watermark==null)&&!isBlank(watermark.streamId)&&!protectedSnapshotKey(watermark.streamId), watermarks_1)).slice(0, overflow));
     readAllSnapshotKeys((snapshotKeys) => {
       iter((key) => {
         deleteFrom(snapshotStore(), key);
-      }, filter((key) =>!isBlank(key)&&!protectedSnapshotKey(key)&&!exists((watermark) =>!(watermark==null)&&watermark.streamId==key, watermarks_1), snapshotKeys));
+      }, filter_1((key) =>!isBlank(key)&&!protectedSnapshotKey(key)&&!exists((watermark) =>!(watermark==null)&&watermark.streamId==key, watermarks_1), snapshotKeys));
     });
   });
 }
@@ -5827,6 +5968,9 @@ function HasChangeAnim(attr_1){
 function GetChangeAnim(dyn){
   return GetAnim(dyn, (_1, _2) => _1.NGetChangeAnim(_2));
 }
+function Dynamic(view, set_1){
+  return Attr.A1(new DynamicAttrNode(view, set_1));
+}
 function Updates(dyn){
   return MapTreeReduce((x) => x.NChanged, Const(), Map2Unit, dyn.DynNodes);
 }
@@ -5918,6 +6062,12 @@ function Handler(name, callback){
   return Attr.A3((el) => {
     el.addEventListener(name, (d) =>(callback(el))(d), false);
   });
+}
+function Dynamic_1(name, view){
+  return Dynamic(view, (el) =>(v) => el.setAttribute(name, v));
+}
+function DynamicBool(name, boolview){
+  return Dynamic(boolview, (_1) =>(_2) => _2?_1.setAttribute(name, ""):_1.removeAttribute(name));
 }
 function OnAfterRender(callback){
   return Attr.A4(callback);
@@ -6038,13 +6188,16 @@ function IsNullOrWhiteSpace(x){
   return x==null||(new RegExp("^\\s*$")).test(x);
 }
 function Split(s, pat, opts){
-  return opts===1?filter((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
+  return opts===1?filter_1((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
 }
 function RegexEscape(s){
   return s.replace(new RegExp("[-\\/\\\\^$*+?.()|[\\]{}]", "g"), "\\$&");
 }
 function SplitWith(str, pat){
   return str.split(pat);
+}
+function IndexOf(s, c, i){
+  return s.indexOf(c, i);
 }
 function forall_1(f, s){
   return forall_2(f, protect(s));
@@ -6854,7 +7007,7 @@ class Dictionary extends Object_1 {
     const d=this.data[h];
     if(d==null)return false;
     else {
-      const r=filter((a) =>!this.equals.apply(null, [(KeyValue(a))[0], k]), d);
+      const r=filter_1((a) =>!this.equals.apply(null, [(KeyValue(a))[0], k]), d);
       return length(r)<d.length&&(this.count=this.count-1,this.data[h]=r,true);
     }
   }
@@ -6946,7 +7099,7 @@ function InsertDoc(parent, doc_1, pos){
     }
 }
 function CreateRunState(parent, doc_1){
-  return New_40(get_Empty(), CreateElemNode(parent, EmptyAttr(), doc_1));
+  return New_40(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_1));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_1){
   return get_UseAnimations()?Delay(() => {
@@ -7140,8 +7293,15 @@ function Sink(act, a){
   }
   scheduler().Fork(loop);
 }
+function Map2(fn, a, a_1){
+  return CreateLazy(() => Map2_1(fn, a(), a_1()));
+}
 function Map(fn, a){
   return CreateLazy(() => Map_1(fn, a()));
+}
+function MapCachedBy(eq, fn, a){
+  const vref=[null];
+  return CreateLazy(() => MapCachedBy_1(eq, vref, fn, a()));
 }
 function CreateLazy(observe){
   const lv={c:null, o:observe};
@@ -7362,9 +7522,6 @@ class FSharpMap extends Object_1 {
   GetHashCode(){
     return Hash(ofSeq(this));
   }
-  ContainsKey(k){
-    return Contains(Pair.New(k, void 0), this.tree);
-  }
   get Tree(){
     return this.tree;
   }
@@ -7580,6 +7737,9 @@ function Anim(Item){
 function Concat(xs){
   return Anim(Concat_1(map_2(List, xs)));
 }
+function get_Empty(){
+  return Anim(Empty());
+}
 function BatchUpdatesEnabled(){
   return _c_4.BatchUpdatesEnabled;
 }
@@ -7619,10 +7779,17 @@ function New_38(type, requestId, extensionId, channelId, operation, payload){
     payload:payload
   };
 }
-function New_39(CanvasInstanceId, Poll, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
+function Ok(ResultValue){
+  return{$:0, $0:ResultValue};
+}
+function Error_1(ErrorValue){
+  return{$:1, $0:ErrorValue};
+}
+function New_39(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
   return{
     CanvasInstanceId:CanvasInstanceId, 
     Poll:Poll, 
+    PollEnabled:PollEnabled, 
     Connected:Connected_1, 
     Active:Active, 
     InFlight:InFlight, 
@@ -7633,36 +7800,50 @@ function New_39(CanvasInstanceId, Poll, Connected_1, Active, InFlight, DataRevis
   };
 }
 function emptyFrame(kind, actionKind, canvasId){
-  return New_41("ta-browser.v1", kind, actionKind, canvasId, "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "");
+  return New_41("ta-browser.v1", kind, actionKind, canvasId, "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "", "", false, [], 0, false);
 }
 function actionToWire(action){
   if(action.$==1)return emptyFrame("action", "reset-canvas", canvasText(action.$0));
   else if(action.$==2){
     const row=action.$1;
     const _1=emptyFrame("action", "add-row", canvasText(action.$0));
-    return New_41(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode);
+    return New_41(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _1.expectedDocumentRevision, _1.hasExpectedDocumentRevision);
   }
   else if(action.$==3){
+    const values=action.$3;
+    const templateKey=action.$2;
     const rowId=action.$1;
-    const _2=emptyFrame("action", "remove-row", canvasText(action.$0));
-    return New_41(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode);
+    const _2=emptyFrame("action", "apply-template", canvasText(action.$0));
+    return New_41(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId==null?"":rowId.$0, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode, templateKey, rowId!=null, map(editorInputToWire, values==null?[]:values), _2.expectedDocumentRevision, _2.hasExpectedDocumentRevision);
   }
   else if(action.$==4){
-    const query=action.$1;
-    const _3=emptyFrame("action", "change-query", canvasText(action.$0));
-    return New_41(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, _3.rowId, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _3.afterDataRevision, _3.dataRevision, _3.reasonCode);
+    const rowId_1=action.$1;
+    const _3=emptyFrame("action", "remove-row", canvasText(action.$0));
+    return New_41(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, rowId_1, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, _3.sourceId, _3.instrument, _3.intervalMinutes, _3.fromUtc, _3.toUtcExclusive, _3.includePartial, _3.afterDataRevision, _3.dataRevision, _3.reasonCode, _3.templateKey, _3.hasTemplateRowId, _3.editorValues, _3.expectedDocumentRevision, _3.hasExpectedDocumentRevision);
   }
   else if(action.$==5){
-    const revision=action.$1;
-    const _4=emptyFrame("action", "poll-delta", canvasText(action.$0));
-    return New_41(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, _4.rowId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, _4.sourceId, _4.instrument, _4.intervalMinutes, _4.fromUtc, _4.toUtcExclusive, _4.includePartial, Number(revision), _4.dataRevision, _4.reasonCode);
+    const query=action.$1;
+    const _4=emptyFrame("action", "change-query", canvasText(action.$0));
+    return New_41(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, _4.rowId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _4.afterDataRevision, _4.dataRevision, _4.reasonCode, _4.templateKey, _4.hasTemplateRowId, _4.editorValues, _4.expectedDocumentRevision, _4.hasExpectedDocumentRevision);
   }
   else if(action.$==6){
+    const revision=action.$1;
+    const _5=emptyFrame("action", "poll-delta", canvasText(action.$0));
+    return New_41(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, _5.sourceId, _5.instrument, _5.intervalMinutes, _5.fromUtc, _5.toUtcExclusive, _5.includePartial, Number(revision), _5.dataRevision, _5.reasonCode, _5.templateKey, _5.hasTemplateRowId, _5.editorValues, _5.expectedDocumentRevision, _5.hasExpectedDocumentRevision);
+  }
+  else if(action.$==7){
     const reason=action.$1;
-    const _5=emptyFrame("action", "full-snapshot", canvasText(action.$0));
-    return New_41(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, _5.sourceId, _5.instrument, _5.intervalMinutes, _5.fromUtc, _5.toUtcExclusive, _5.includePartial, _5.afterDataRevision, _5.dataRevision, reason);
+    const _6=emptyFrame("action", "full-snapshot", canvasText(action.$0));
+    return New_41(_6.wireVersion, _6.kind, _6.actionKind, _6.canvasInstanceId, _6.rowId, _6.rowKind, _6.dataRef, _6.heightWeight, _6.visible, _6.sourceId, _6.instrument, _6.intervalMinutes, _6.fromUtc, _6.toUtcExclusive, _6.includePartial, _6.afterDataRevision, _6.dataRevision, reason, _6.templateKey, _6.hasTemplateRowId, _6.editorValues, _6.expectedDocumentRevision, _6.hasExpectedDocumentRevision);
   }
   else return emptyFrame("action", "reset-view", canvasText(action.$0));
+}
+function actionRequestToWire(request){
+  const _1=actionToWire(request.Action);
+  const o=request.ExpectedDocumentRevision;
+  const o_1=o==null?null:Some(Number(o.$0));
+  let _2=o_1==null?0:o_1.$0;
+  return New_41(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, _1.rowId, _1.rowKind, _1.dataRef, _1.heightWeight, _1.visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _2, request.ExpectedDocumentRevision!=null);
 }
 function applyWire(current, wire){
   return Bind_2((decoded) => {
@@ -7714,6 +7895,10 @@ function canvasText(a){
 function rowKindText(a){
   return a.$==1?"volume":a.$==2?"sma":a.$==3?"dmi":a.$==4?"adx":a.$==5?"macd":a.$==6?"heikin-ashi":"candlestick";
 }
+function editorInputToWire(input_1){
+  const m=input_1.Value;
+  return m.$==1?New_45(input_1.Path, "number", "", m.$0, false):m.$==2?New_45(input_1.Path, "bool", "", 0, m.$0):New_45(input_1.Path, "text", m.$0, 0, false);
+}
 function optionBool(value){
   return value==null?false:value.$0;
 }
@@ -7724,7 +7909,13 @@ function optionInt(value){
   return value==null?0:value.$0;
 }
 function stateFromWire(wire){
-  if(wire==null||wire.wireVersion!="ta-browser.v1"&&wire.wireVersion!="ta-browser.v2"&&wire.wireVersion!="ta-browser.v3")return Error_1("Unsupported TA browser state wire.");
+  if(wire==null||wire.wireVersion!="ta-browser.v1"&&wire.wireVersion!="ta-browser.v2"&&wire.wireVersion!="ta-browser.v3"&&wire.wireVersion!="ta-browser.v4")return Error_1("Unsupported TA browser state wire.");
+  else if(wire.wireVersion=="ta-browser.v4"&&!(wire.series==null)&&exists((series) => {
+    const a=0;
+    const b=series.pointCount;
+    let _1=Compare(a, b)===1?a:b;
+    return!temporalSeriesMetadataIsValid(_1, series);
+  }, wire.series))return Error_1("TA browser temporal metadata arrays do not match pointCount.");
   else {
     const rows=wire.rows==null?[]:map((row) => {
       const R=text(row.rowId);
@@ -7790,7 +7981,7 @@ function mergeSeries(current, timeline, wire){
   const m=current.Data.TryFind(dataRef);
   const currentPoints=m!=null&&m.$==1&&(m.$0.$==4&&(_1=m.$0.$0,true))?_1:[];
   const f=(x) => IsNullOrWhiteSpace(pointTime(x));
-  let _2=filter((x) =>!f(x), (wire.hasRemoveBeforeTime&&!IsNullOrWhiteSpace(wire.removeBeforeTime)?filter((point) => Compare(pointTime(point), wire.removeBeforeTime)>=0, currentPoints):currentPoints).concat(wire.pointCount>0?columnarPointValues(timeline, wire):wire.points==null?[]:map(pointValue, wire.points)));
+  let _2=filter_1((x) =>!f(x), (wire.hasRemoveBeforeTime&&!IsNullOrWhiteSpace(wire.removeBeforeTime)?filter_1((point) => Compare(pointTime(point), wire.removeBeforeTime)>=0, currentPoints):currentPoints).concat(wire.pointCount>0?columnarPointValues(timeline, wire):wire.points==null?[]:map(pointValue, wire.points)));
   let _3=map((point) =>[pointTime(point), point], _2);
   let _4=OfArray(_3);
   let _5=ToSeq(_4);
@@ -7799,12 +7990,15 @@ function mergeSeries(current, timeline, wire){
   let _8={$:4, $0:_7};
   return[dataRef, _8];
 }
+function temporalSeriesMetadataIsValid(count, series){
+  return!series.hasTemporal||!(series.sourceIntervalIds==null)&&length(series.sourceIntervalIds)===count&&!(series.scaleKeys==null)&&length(series.scaleKeys)===count&&!(series.intervalStartUtc==null)&&length(series.intervalStartUtc)===count&&!(series.intervalEndUtc==null)&&length(series.intervalEndUtc)===count&&!(series.observedThroughUtc==null)&&length(series.observedThroughUtc)===count&&!(series.availableAtUtc==null)&&length(series.availableAtUtc)===count&&!(series.hasAvailableAtUtc==null)&&length(series.hasAvailableAtUtc)===count&&!(series.finality==null)&&length(series.finality)===count&&!(series.projections==null)&&length(series.projections)===count&&!(series.qualities==null)&&length(series.qualities)===count;
+}
 function pollState(value){
   const m=text(value);
   return m=="mounted-idle"?{$:1}:m=="ready"?{$:2}:m=="poll-in-flight"?{$:3}:m=="suspended"?{$:5}:m=="paused-for-resync"?{$:6}:m=="disposed"?{$:7}:{$:0};
 }
 function seriesPointValues(wire, series){
-  return wire.wireVersion=="ta-browser.v3"?columnarPointValues(wire.timeline, series):series.points==null?[]:map(pointValue, series.points);
+  return wire.wireVersion=="ta-browser.v3"||wire.wireVersion=="ta-browser.v4"?columnarPointValues(wire.timeline, series):series.points==null?[]:map(pointValue, series.points);
 }
 function traceKind(value){
   const m=text(value);
@@ -7815,9 +8009,20 @@ function rowKind(value){
   return m=="volume"?{$:1}:m=="sma"?{$:2}:m=="dmi"?{$:3}:m=="adx"?{$:4}:m=="macd"?{$:5}:m=="heikin-ashi"?{$:6}:{$:0};
 }
 function pointTime(value){
+  let _1;
   if(value.$==5){
-    const m=value.$0.TryFind("t");
-    return m!=null&&m.$==1?m.$0.$==3?text(m.$0.$0):"":"";
+    const values=value.$0;
+    const _2=values.TryFind("_type");
+    const _3=values.TryFind("intervalStartUtc");
+    const _4=values.TryFind("t");
+    switch(_2!=null&&_2.$==1?_2.$0.$==3?_2.$0.$0=="temporal-point.v1"?_3!=null&&_3.$==1?_3.$0.$==3?(_1=_3.$0.$0,0):_4!=null&&_4.$==1?_4.$0.$==3?(_1=_4.$0.$0,1):2:2:_4!=null&&_4.$==1?_4.$0.$==3?(_1=_4.$0.$0,1):2:2:_4!=null&&_4.$==1?_4.$0.$==3?(_1=_4.$0.$0,1):2:2:_4!=null&&_4.$==1?_4.$0.$==3?(_1=_4.$0.$0,1):2:2:_4!=null&&_4.$==1?_4.$0.$==3?(_1=_4.$0.$0,1):2:2){
+      case 0:
+        return text(_1);
+      case 1:
+        return text(_1);
+      case 2:
+        return"";
+    }
   }
   else return"";
 }
@@ -7829,20 +8034,17 @@ function columnarPointValues(timeline, series){
   const indices=series.timeIndices==null?[]:series.timeIndices;
   return init(count, (offset) => {
     const timelineIndex=length(indices)===count?get(indices, offset):series.startIndex+offset;
-    const timestamp=timelineIndex>=0&&timelineIndex<length(timeline_1)?text(get(timeline_1, timelineIndex)):"";
-    const values=MarkResizable([]);
-    if(!IsNullOrWhiteSpace(timestamp))values.push(["t", {$:3, $0:timestamp}]);
-    if(!(series.openValues==null)&&length(series.openValues)===count)values.push(["o", {$:2, $0:get(series.openValues, offset)}]);
-    if(!(series.highValues==null)&&length(series.highValues)===count)values.push(["h", {$:2, $0:get(series.highValues, offset)}]);
-    if(!(series.lowValues==null)&&length(series.lowValues)===count)values.push(["l", {$:2, $0:get(series.lowValues, offset)}]);
-    if(!(series.closeValues==null)&&length(series.closeValues)===count)values.push(["c", {$:2, $0:get(series.closeValues, offset)}]);
-    if(!(series.volumeValues==null)&&length(series.volumeValues)===count)values.push(["v", {$:2, $0:get(series.volumeValues, offset)}]);
-    if(!(series.lineValues==null)&&length(series.lineValues)===count)values.push(["v", {$:2, $0:get(series.lineValues, offset)}]);
-    return{$:5, $0:OfArray(ofSeq(ofSeq_1(values)))};
+    return series.hasTemporal?temporalPointValue(get(series.sourceIntervalIds, offset), get(series.scaleKeys, offset), get(series.intervalStartUtc, offset), get(series.intervalEndUtc, offset), get(series.observedThroughUtc, offset), get(series.availableAtUtc, offset), get(series.hasAvailableAtUtc, offset), get(series.finality, offset), get(series.projections, offset), get(series.qualities, offset), pointPayload(timelineIndex>=0&&timelineIndex<length(timeline_1)?text(get(timeline_1, timelineIndex)):"", !(series.openValues==null)&&length(series.openValues)===count, series.openValues==null||length(series.openValues)!==count?0:get(series.openValues, offset), !(series.highValues==null)&&length(series.highValues)===count, series.highValues==null||length(series.highValues)!==count?0:get(series.highValues, offset), !(series.lowValues==null)&&length(series.lowValues)===count, series.lowValues==null||length(series.lowValues)!==count?0:get(series.lowValues, offset), !(series.closeValues==null)&&length(series.closeValues)===count, series.closeValues==null||length(series.closeValues)!==count?0:get(series.closeValues, offset), !(series.volumeValues==null)&&length(series.volumeValues)===count, series.volumeValues==null||length(series.volumeValues)!==count?0:get(series.volumeValues, offset), !(series.lineValues==null)&&length(series.lineValues)===count, series.lineValues==null||length(series.lineValues)!==count?0:get(series.lineValues, offset))):pointPayload(timelineIndex>=0&&timelineIndex<length(timeline_1)?text(get(timeline_1, timelineIndex)):"", !(series.openValues==null)&&length(series.openValues)===count, series.openValues==null||length(series.openValues)!==count?0:get(series.openValues, offset), !(series.highValues==null)&&length(series.highValues)===count, series.highValues==null||length(series.highValues)!==count?0:get(series.highValues, offset), !(series.lowValues==null)&&length(series.lowValues)===count, series.lowValues==null||length(series.lowValues)!==count?0:get(series.lowValues, offset), !(series.closeValues==null)&&length(series.closeValues)===count, series.closeValues==null||length(series.closeValues)!==count?0:get(series.closeValues, offset), !(series.volumeValues==null)&&length(series.volumeValues)===count, series.volumeValues==null||length(series.volumeValues)!==count?0:get(series.volumeValues, offset), !(series.lineValues==null)&&length(series.lineValues)===count, series.lineValues==null||length(series.lineValues)!==count?0:get(series.lineValues, offset));
   });
 }
 function pointValue(point){
-  return{$:5, $0:OfArray(ofSeq(ofSeq_1(delay(() => append_1(!IsNullOrWhiteSpace(point.time)?[["t", {$:3, $0:point.time}]]:[], delay(() => append_1(point.hasOpen?[["o", {$:2, $0:point.openValue}]]:[], delay(() => append_1(point.hasHigh?[["h", {$:2, $0:point.highValue}]]:[], delay(() => append_1(point.hasLow?[["l", {$:2, $0:point.lowValue}]]:[], delay(() => append_1(point.hasClose?[["c", {$:2, $0:point.closeValue}]]:[], delay(() => append_1(point.hasVolume?[["v", {$:2, $0:point.volumeValue}]]:[], delay(() => point.hasLineValue?[["v", {$:2, $0:point.lineValue}]]:[]))))))))))))))))};
+  return point.hasTemporal?temporalPointValue(point.sourceIntervalId, point.scaleKey, point.intervalStartUtc, point.intervalEndUtc, point.observedThroughUtc, point.availableAtUtc, point.hasAvailableAtUtc, point.finality, point.projection, point.quality, pointPayload(point.time, point.hasOpen, point.openValue, point.hasHigh, point.highValue, point.hasLow, point.lowValue, point.hasClose, point.closeValue, point.hasVolume, point.volumeValue, point.hasLineValue, point.lineValue)):pointPayload(point.time, point.hasOpen, point.openValue, point.hasHigh, point.highValue, point.hasLow, point.lowValue, point.hasClose, point.closeValue, point.hasVolume, point.volumeValue, point.hasLineValue, point.lineValue);
+}
+function pointPayload(time, hasOpen, openValue, hasHigh, highValue, hasLow, lowValue, hasClose, closeValue, hasVolume, volumeValue, hasLineValue, lineValue){
+  return{$:5, $0:OfArray(ofSeq(ofSeq_1(delay(() => append_1(!IsNullOrWhiteSpace(time)?[["t", {$:3, $0:time}]]:[], delay(() => append_1(hasOpen?[["o", {$:2, $0:openValue}]]:[], delay(() => append_1(hasHigh?[["h", {$:2, $0:highValue}]]:[], delay(() => append_1(hasLow?[["l", {$:2, $0:lowValue}]]:[], delay(() => append_1(hasClose?[["c", {$:2, $0:closeValue}]]:[], delay(() => append_1(hasVolume?[["v", {$:2, $0:volumeValue}]]:[], delay(() => hasLineValue?[["v", {$:2, $0:lineValue}]]:[]))))))))))))))))};
+}
+function temporalPointValue(sourceIntervalId, scaleKey, intervalStartUtc, intervalEndUtc, observedThroughUtc, availableAtUtc, hasAvailableAtUtc, finality, projection, quality, payload){
+  return{$:5, $0:OfArray(ofSeq(ofSeq_1(delay(() => append_1([["_type", {$:3, $0:"temporal-point.v1"}]], delay(() => append_1([["sourceIntervalId", {$:3, $0:sourceIntervalId}]], delay(() => append_1([["scaleKey", {$:3, $0:scaleKey}]], delay(() => append_1([["intervalStartUtc", {$:3, $0:intervalStartUtc}]], delay(() => append_1([["intervalEndUtc", {$:3, $0:intervalEndUtc}]], delay(() => append_1([["observedThroughUtc", {$:3, $0:observedThroughUtc}]], delay(() => append_1([["finality", {$:3, $0:finality}]], delay(() => append_1([["projection", {$:3, $0:projection}]], delay(() => append_1([["value", payload]], delay(() => append_1(hasAvailableAtUtc?[["availableAtUtc", {$:3, $0:availableAtUtc}]]:[], delay(() =>!IsNullOrWhiteSpace(quality)?[["quality", {$:3, $0:quality}]]:[]))))))))))))))))))))))))};
 }
 let Disconnected={$:6};
 function PollDue(nowUtc){
@@ -7855,8 +8057,12 @@ let Connected={$:0};
 function ResyncRequired(reasonCode){
   return{$:8, $0:reasonCode};
 }
-function StateAccepted(dataRevision){
-  return{$:1, $0:dataRevision};
+function StateAccepted(dataRevision, pollEnabled){
+  return{
+    $:1, 
+    $0:dataRevision, 
+    $1:pollEnabled
+  };
 }
 let Dispose={$:9};
 let CommandRejected={$:2};
@@ -7867,8 +8073,16 @@ function ActiveChanged(Item){
   return{$:7, $0:Item};
 }
 function render(options, callbacks, runtimeState){
-  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, navigatorElement, chartRenderSequence;
+  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, navigatorElement, chartRenderSequence, actionSequence;
   const canvasId=runtimeState.Get().Identity.CanvasInstanceId;
+  const editorSchemas=options.EditorSchemas==null?[]:options.EditorSchemas;
+  const initialEditorSchema=tryHead(editorSchemas);
+  const o=initialEditorSchema==null?null:Some(initialEditorSchema.$0.TemplateKey);
+  let _1=o==null?"":o.$0;
+  const selectedTemplate=_c_3.Create_1(_1);
+  const o_1=initialEditorSchema==null?null:Some(initialEditorInputs(initialEditorSchema.$0));
+  let _2=o_1==null?[]:o_1.$0;
+  const editorValues=_c_3.Create_1(_2);
   instrumentDraft="";
   intervalDraft="";
   fromDateDraft="";
@@ -7893,14 +8107,28 @@ function render(options, callbacks, runtimeState){
     HiddenRows:new FSharpSet("New_2", null), 
     AddRowOpen:false, 
     CursorIndex:null, 
+    PendingActionId:null, 
     Feedback:""
   });
+  actionSequence=0;
+  const commandsDisabledView=Map2((_3, _4) => remoteDisabled(_3.Poll)||_4.PendingActionId!=null, runtimeState.View, uiState.View);
+  const commandsDisabledNow=() => remoteDisabled(runtimeState.Get().Poll)||uiState.Get().PendingActionId!=null;
+  const startAction=(action, successText, onAccepted) => {
+    actionSequence=actionSequence+1;
+    const request={
+      RequestId:canvasIdText(canvasId)+":ui:"+String(actionSequence), 
+      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision), 
+      Action:action
+    };
+    return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted);
+  };
+  const chartRuntimeView=MapCachedBy((_3, _4) => _3.DocumentRevision===_4.DocumentRevision&&_3.DataRevision===_4.DataRevision&&_3.LastTransportSequence===_4.LastTransportSequence, (x) => x, runtimeState.View);
   const referenceLength=() => {
     const m=runtimeState.Get().Document;
     if(m!=null&&m.$==1){
-      const o=tryFind((a) => a.Visible, m.$0.Rows);
-      const o_1=o==null?null:Some(rowReferenceLength(o.$0, runtimeState.Get().Data));
-      return o_1==null?0:o_1.$0;
+      const o_2=tryFind((a) => a.Visible, m.$0.Rows);
+      const o_3=o_2==null?null:Some(rowReferenceLength(o_2.$0, runtimeState.Get().Data));
+      return o_3==null?0:o_3.$0;
     }
     else return 0;
   };
@@ -7913,6 +8141,7 @@ function render(options, callbacks, runtimeState){
       HiddenRows:current.HiddenRows, 
       AddRowOpen:current.AddRowOpen, 
       CursorIndex:null, 
+      PendingActionId:current.PendingActionId, 
       Feedback:current.Feedback
     });
     return draftWindow.Set(null);
@@ -7931,16 +8160,17 @@ function render(options, callbacks, runtimeState){
   };
   const resetWindow=() => {
     setWindow(true, {StartIndex:0, Count:options.DefaultVisibleBars});
-    const _1=uiState.Get();
-    let _2={
-      Window:_1.Window, 
-      FollowLatest:_1.FollowLatest, 
-      HiddenRows:_1.HiddenRows, 
-      AddRowOpen:_1.AddRowOpen, 
-      CursorIndex:_1.CursorIndex, 
+    const _3=uiState.Get();
+    let _4={
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:_3.PendingActionId, 
       Feedback:"Local view reset."
     };
-    uiState.Set(_2);
+    uiState.Set(_4);
   };
   const setWindowCount=(count) => {
     const total=referenceLength();
@@ -7949,32 +8179,162 @@ function render(options, callbacks, runtimeState){
     const boundedCount=Compare(a, b)===1?a:b;
     const a_1=0;
     const b_1=total-boundedCount;
-    let _1=Compare(a_1, b_1)===1?a_1:b_1;
-    let _2={StartIndex:_1, Count:boundedCount};
-    setWindow(true, _2);
+    let _3=Compare(a_1, b_1)===1?a_1:b_1;
+    let _4={StartIndex:_3, Count:boundedCount};
+    setWindow(true, _4);
   };
   const setCursorIndex=(value) => {
     if(!Equals(uiState.Get().CursorIndex, value)){
-      const _1=uiState.Get();
-      let _2={
-        Window:_1.Window, 
-        FollowLatest:_1.FollowLatest, 
-        HiddenRows:_1.HiddenRows, 
-        AddRowOpen:_1.AddRowOpen, 
+      const _3=uiState.Get();
+      let _4={
+        Window:_3.Window, 
+        FollowLatest:_3.FollowLatest, 
+        HiddenRows:_3.HiddenRows, 
+        AddRowOpen:_3.AddRowOpen, 
         CursorIndex:value, 
-        Feedback:_1.Feedback
+        PendingActionId:_3.PendingActionId, 
+        Feedback:_3.Feedback
       };
-      uiState.Set(_2);
+      uiState.Set(_4);
     }
   };
+  const resetEditorFor=(templateKey) => {
+    selectedTemplate.Set(templateKey);
+    const o_2=tryFind((schema) => schema.TemplateKey==templateKey, editorSchemas);
+    const o_3=o_2==null?null:Some(initialEditorInputs(o_2.$0));
+    let _3=o_3==null?[]:o_3.$0;
+    editorValues.Set(_3);
+  };
+  const editorTestId=(path) =>"ta-editor-"+Replace(Replace(Replace(path, ".", "-"), "[", "-"), "]", "");
+  const setEditorScalar=(path, value) => editorValues.Set(setEditorInput({Path:path, Value:value}, editorValues.Get()));
+  const removeEditorScalar=(path) => {
+    editorValues.Set(filter_1((current) => current.Path!=path, editorValues.Get()));
+  };
+  const scalarText=(path) => {
+    const o_2=tryEditorInput(path, editorValues.Get());
+    const o_3=o_2==null?null:Some(editorScalarText(o_2.$0));
+    return o_3==null?"":o_3.$0;
+  };
+  function editorKind(path){
+    return(labelText) =>(required) =>(kind) => {
+      if(kind.$==7){
+        const fields=kind.$0;
+        return Doc.Element("fieldset", [Attr.Create("style", "min-width:0; margin:0; padding:7px; border:1px solid #cbd6e5; border-radius:5px;")], [Doc.Element("legend", [Attr.Create("style", "padding:0 4px; font-size:11px; color:#40536d;")], [Doc.TextNode(labelText)]), Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:7px; min-width:0;")], ofSeq_1(delay(() => map_2((field_1) =>(((editorKind(path+"."+field_1.Key))(field_1.Label))(field_1.Required))(field_1.Kind), fields))))]);
+      }
+      else if(kind.$==6){
+        const maximum=kind.$2;
+        const itemKind=kind.$0;
+        const indexesView=MapCachedBy(Equals, (x) => x, Map((v) => listIndexes(path, v), editorValues.View));
+        return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; gap:5px; min-width:0;")], [Doc.Element("span", [Attr.Create("style", "font-size:10px; color:#60738b;")], [Doc.TextNode(required?labelText+" *":labelText)]), Doc.EmbedView(Map((indexes) => Doc.Element("div", [Attr.Create("data-testid", editorTestId(path)+"-items"), Attr.Create("style", "display:flex; flex-direction:column; gap:5px;")], ofSeq_1(delay(() => collect_1((m_1) => {
+          const position=m_1[0];
+          const index=m_1[1];
+          const itemPath=String(path)+"["+String(index)+"]";
+          return[Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:auto minmax(0,1fr); gap:5px; align-items:end;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:3px; height:30px;")], [compactButton(editorTestId(itemPath)+"-up", "\u2191", "Move item up", () => {
+            if(position>0)editorValues.Set(moveListItem(path, index, get(indexes, position-1), editorValues.Get()));
+          }), compactButton(editorTestId(itemPath)+"-down", "\u2193", "Move item down", () => {
+            if(position<length(indexes)-1)editorValues.Set(moveListItem(path, index, get(indexes, position+1), editorValues.Get()));
+          }), compactButton(editorTestId(itemPath)+"-remove", "×", "Remove item", () => {
+            editorValues.Set(removeListItem(path, index, editorValues.Get()));
+          })]), (((editorKind(itemPath))("Item "+String(position+1)))(true))(itemKind)])];
+        }, indexed(indexes))))), indexesView)), compactButton(editorTestId(path)+"-add", "+ Add", "Add "+labelText, () => {
+          let _3;
+          const count=listIndexes(path, editorValues.Get()).length;
+          if(maximum!=null&&maximum.$==1&&(count>=maximum.$0&&(_3=maximum.$0,true))){
+            const _4=uiState.Get();
+            let _5={
+              Window:_4.Window, 
+              FollowLatest:_4.FollowLatest, 
+              HiddenRows:_4.HiddenRows, 
+              AddRowOpen:_4.AddRowOpen, 
+              CursorIndex:_4.CursorIndex, 
+              PendingActionId:_4.PendingActionId, 
+              Feedback:String(labelText)+" allows at most "+String(_3)+" item(s)."
+            };
+            uiState.Set(_5);
+          }
+          else editorValues.Set(addListItem(path, itemKind, editorValues.Get()));
+        })]);
+      }
+      else {
+        const caption=required?labelText+" *":labelText;
+        const shell_1=(control) => Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:3px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode(caption), control]);
+        if(kind.$==0)return shell_1(inputText(editorTestId(path), labelText, scalarText(path), (value) => {
+          setEditorScalar(path, {$:0, $0:value});
+        }));
+        else if(kind.$==1){
+          const minimum=kind.$0;
+          const maximum_1=kind.$1;
+          return shell_1(element_1("input", ofSeq_1(delay(() => append_1([Attr.Create("data-testid", editorTestId(path))], delay(() => append_1([Attr.Create("type", "number")], delay(() => append_1([Attr.Create("value", scalarText(path))], delay(() => append_1([Attr.Create("step", "1")], delay(() => append_1([Attr.Create("style", "height:30px; min-width:0; width:100%; border:1px solid #b9c6d8; border-radius:4px; background:#fff; color:#142033; padding:4px 7px; box-sizing:border-box; font-size:12px;")], delay(() => append_1([OnAfterRender((node) => {
+            const input_1=node;
+            input_1.addEventListener("input", () => {
+              let o_4;
+              const m_1=(o_4=0n,[TryParse_1(input_1.value, {get:() => o_4, set:(v) => {
+                o_4=v;
+              }}), o_4]);
+              return m_1[0]?setEditorScalar(path, {$:1, $0:Number(m_1[1])}):removeEditorScalar(path);
+            });
+          })], delay(() => append_1(minimum==null?[EmptyAttr()]:[Attr.Create("min", String(minimum.$0))], delay(() => maximum_1==null?[EmptyAttr()]:[Attr.Create("max", String(maximum_1.$0))])))))))))))))))), []));
+        }
+        else if(kind.$==2){
+          const minimum_1=kind.$0;
+          const maximum_2=kind.$1;
+          return shell_1(element_1("input", ofSeq_1(delay(() => append_1([Attr.Create("data-testid", editorTestId(path))], delay(() => append_1([Attr.Create("type", "number")], delay(() => append_1([Attr.Create("value", scalarText(path))], delay(() => append_1([Attr.Create("step", "any")], delay(() => append_1([Attr.Create("style", "height:30px; min-width:0; width:100%; border:1px solid #b9c6d8; border-radius:4px; background:#fff; color:#142033; padding:4px 7px; box-sizing:border-box; font-size:12px;")], delay(() => append_1([OnAfterRender((node) => {
+            const input_1=node;
+            input_1.addEventListener("input", () => {
+              let o_4;
+              o_4=0;
+              const _3=Number(input_1.value);
+              let _4=isNaN(_3)?false:(o_4=_3,true);
+              const m_1=[_4, o_4];
+              return m_1[0]?setEditorScalar(path, {$:1, $0:m_1[1]}):removeEditorScalar(path);
+            });
+          })], delay(() => append_1(minimum_1==null?[EmptyAttr()]:[Attr.Create("min", fixedText(minimum_1.$0))], delay(() => maximum_2==null?[EmptyAttr()]:[Attr.Create("max", fixedText(maximum_2.$0))])))))))))))))))), []));
+        }
+        else if(kind.$==3){
+          const m=tryEditorInput(path, editorValues.Get());
+          const isChecked=m!=null&&m.$==1&&(m.$0.$==2&&m.$0.$0);
+          return Doc.Element("label", [Attr.Create("style", "display:flex; align-items:center; gap:6px; min-height:30px; font-size:11px; color:#40536d;")], [element_1("input", ofSeq_1(delay(() => append_1([Attr.Create("data-testid", editorTestId(path))], delay(() => append_1([Attr.Create("type", "checkbox")], delay(() => append_1(isChecked?[Attr.Create("checked", "checked")]:[], delay(() =>[OnAfterRender((node) => {
+            const input_1=node;
+            input_1.addEventListener("change", () => setEditorScalar(path, {$:2, $0:input_1.checked}));
+          })])))))))), []), Doc.TextNode(caption)]);
+        }
+        else if(kind.$==4){
+          const choices=kind.$0;
+          const o_2=tryFind((choice) => {
+            const o_4=tryEditorInput(path, editorValues.Get());
+            return o_4==null?false:editorScalarEqualsSdui(o_4.$0, choice.Value);
+          }, choices);
+          const o_3=o_2==null?null:Some(o_2.$0.Key);
+          const selectedKey=o_3==null?"":o_3.$0;
+          return shell_1(selectInput(editorTestId(path), selectedKey, ofArray(map((choice) =>[choice.Key, choice.Label], choices)), (key) => {
+            let x;
+            const o_4=tryFind((choice) => choice.Key==key, choices);
+            if(o_4==null)x=null;
+            else {
+              const m_1=o_4.$0.Value;
+              x=m_1.$==3?Some({$:0, $0:m_1.$0}):m_1.$==2?Some({$:1, $0:m_1.$0}):m_1.$==1?Some({$:2, $0:m_1.$0}):null;
+            }
+            if(x!=null)setEditorScalar(path, x.$0);
+          }));
+        }
+        else if(kind.$==5){
+          const scaleKeys=kind.$0;
+          return shell_1(selectInput(editorTestId(path), scalarText(path), ofArray(map((value) =>[value, value], scaleKeys)), (value) => {
+            setEditorScalar(path, {$:0, $0:value});
+          }));
+        }
+        else return Doc.Empty;
+      }
+    };
+  }
   const applyQuery=() => {
-    let o;
-    const m=(o=0,[TryParse(intervalDraft, {get:() => o, set:(v) => {
-      o=v;
-    }}), o]);
+    let o_2;
+    const m=(o_2=0,[TryParse(intervalDraft, {get:() => o_2, set:(v) => {
+      o_2=v;
+    }}), o_2]);
     const parsedInterval=m[0]&&m[1]>0?Some(m[1]):null;
-    submit(callbacks, uiState, {
-      $:4, 
+    startAction({
+      $:5, 
       $0:canvasId, 
       $1:{
         SourceId:null, 
@@ -7984,86 +8344,130 @@ function render(options, callbacks, runtimeState){
         ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft), 
         IncludePartial:Some(true)
       }
-    }, "Query submitted.");
+    }, "Query accepted.", () => { });
   };
   const addRow=() => {
     let optionsResult;
-    const m=addKind.Get();
-    const kind=m=="Volume"?{$:1}:m=="Dmi"?{$:3}:m=="Adx"?{$:4}:m=="Macd"?{$:5}:m=="HeikinAshi"?{$:6}:{$:2};
-    const positive=(fieldName, textValue) => {
-      let o;
-      const m_1=(o=0,[TryParse(textValue, {get:() => o, set:(v) => {
-        o=v;
-      }}), o]);
-      return m_1[0]&&m_1[1]>0?Ok(m_1[1]):Error_1(fieldName+" must be a positive integer.");
-    };
-    switch(kind.$==2?0:kind.$==3?0:kind.$==4?1:kind.$==5?2:3){
-      case 0:
-        optionsResult=Map_2((value) => new FSharpMap("New", ofArray([["period", {$:2, $0:value}]])), positive("Period", addPeriod.Get()));
-        break;
-      case 1:
-        let _1;
-        const _2=positive("DI period", addDiPeriod.Get());
-        const _3=positive("ADX period", addAdxPeriod.Get());
-        optionsResult=(_2.$==1?(_1=_2.$0,false):_3.$==1?(_1=_3.$0,false):(_1=[_3.$0, _2.$0],true))?Ok(new FSharpMap("New", ofArray([["diPeriod", {$:2, $0:_1[1]}], ["adxPeriod", {$:2, $0:_1[0]}]]))):Error_1(_1);
-        break;
-      case 2:
-        let _4;
-        const _5=positive("Fast period", addFastPeriod.Get());
-        const _6=positive("Slow period", addSlowPeriod.Get());
-        const _7=positive("Signal period", addSignalPeriod.Get());
-        switch(_5.$==1?(_4=_5.$0,2):_6.$==1?(_4=_6.$0,2):_7.$==1?(_4=_7.$0,2):(_7.$0,_5.$0<_6.$0?(_4=[_5.$0, _7.$0, _6.$0],0):1)){
-          case 0:
-            optionsResult=Ok(new FSharpMap("New", ofArray([["fastPeriod", {$:2, $0:_4[0]}], ["slowPeriod", {$:2, $0:_4[2]}], ["signalPeriod", {$:2, $0:_4[1]}]])));
-            break;
-          case 1:
-            optionsResult=Error_1("MACD fast period must be smaller than slow period.");
-            break;
-          case 2:
-            optionsResult=Error_1(_4);
-            break;
-        }
-        break;
-      case 3:
-        optionsResult=Ok(new FSharpMap("New", []));
-        break;
-    }
-    if(optionsResult.$==0){
-      const rowOptions=optionsResult.$0;
-      addRowSequence=addRowSequence+1;
-      const rowId="row-"+addKind.Get().toLowerCase()+"-"+String(addRowSequence);
-      const spec={
-        RowId:rowId, 
-        Kind:kind, 
-        DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()), 
-        HeightWeight:1, 
-        Visible:true, 
-        Options:rowOptions, 
-        Traces:[]
-      };
-      pendingAddRowId=Some(rowId);
-      submit(callbacks, uiState, {
-        $:2, 
+    const m=tryFind((schema_1) => schema_1.TemplateKey==selectedTemplate.Get(), editorSchemas);
+    if(m!=null&&m.$==1){
+      const schema=m.$0;
+      const errors=validateEditorSubmission(schema, editorValues.Get());
+      if(length(errors)>0){
+        const _3=uiState.Get();
+        let _4={
+          Window:_3.Window, 
+          FollowLatest:_3.FollowLatest, 
+          HiddenRows:_3.HiddenRows, 
+          AddRowOpen:_3.AddRowOpen, 
+          CursorIndex:_3.CursorIndex, 
+          PendingActionId:_3.PendingActionId, 
+          Feedback:concat_1(" ", errors)
+        };
+        uiState.Set(_4);
+      }
+      else startAction({
+        $:3, 
         $0:canvasId, 
-        $1:spec
-      }, "Row request submitted.");
+        $1:null, 
+        $2:schema.TemplateKey, 
+        $3:editorValues.Get()
+      }, schema.DisplayName+" accepted.", () => {
+        const _14=uiState.Get();
+        let _15={
+          Window:_14.Window, 
+          FollowLatest:_14.FollowLatest, 
+          HiddenRows:_14.HiddenRows, 
+          AddRowOpen:false, 
+          CursorIndex:_14.CursorIndex, 
+          PendingActionId:_14.PendingActionId, 
+          Feedback:_14.Feedback
+        };
+        uiState.Set(_15);
+      });
     }
     else {
-      const message=optionsResult.$0;
-      const _8=uiState.Get();
-      let _9={
-        Window:_8.Window, 
-        FollowLatest:_8.FollowLatest, 
-        HiddenRows:_8.HiddenRows, 
-        AddRowOpen:_8.AddRowOpen, 
-        CursorIndex:_8.CursorIndex, 
-        Feedback:message
+      const m_1=addKind.Get();
+      const kind=m_1=="Volume"?{$:1}:m_1=="Dmi"?{$:3}:m_1=="Adx"?{$:4}:m_1=="Macd"?{$:5}:m_1=="HeikinAshi"?{$:6}:{$:2};
+      const positive=(fieldName, textValue) => {
+        let o_2;
+        const m_2=(o_2=0,[TryParse(textValue, {get:() => o_2, set:(v) => {
+          o_2=v;
+        }}), o_2]);
+        return m_2[0]&&m_2[1]>0?Ok(m_2[1]):Error_1(fieldName+" must be a positive integer.");
       };
-      uiState.Set(_9);
+      switch(kind.$==2?0:kind.$==3?0:kind.$==4?1:kind.$==5?2:3){
+        case 0:
+          optionsResult=Map_2((value) => new FSharpMap("New", ofArray([["period", {$:2, $0:value}]])), positive("Period", addPeriod.Get()));
+          break;
+        case 1:
+          let _5;
+          const _6=positive("DI period", addDiPeriod.Get());
+          const _7=positive("ADX period", addAdxPeriod.Get());
+          optionsResult=(_6.$==1?(_5=_6.$0,false):_7.$==1?(_5=_7.$0,false):(_5=[_7.$0, _6.$0],true))?Ok(new FSharpMap("New", ofArray([["diPeriod", {$:2, $0:_5[1]}], ["adxPeriod", {$:2, $0:_5[0]}]]))):Error_1(_5);
+          break;
+        case 2:
+          let _8;
+          const _9=positive("Fast period", addFastPeriod.Get());
+          const _10=positive("Slow period", addSlowPeriod.Get());
+          const _11=positive("Signal period", addSignalPeriod.Get());
+          switch(_9.$==1?(_8=_9.$0,2):_10.$==1?(_8=_10.$0,2):_11.$==1?(_8=_11.$0,2):(_11.$0,_9.$0<_10.$0?(_8=[_9.$0, _11.$0, _10.$0],0):1)){
+            case 0:
+              optionsResult=Ok(new FSharpMap("New", ofArray([["fastPeriod", {$:2, $0:_8[0]}], ["slowPeriod", {$:2, $0:_8[2]}], ["signalPeriod", {$:2, $0:_8[1]}]])));
+              break;
+            case 1:
+              optionsResult=Error_1("MACD fast period must be smaller than slow period.");
+              break;
+            case 2:
+              optionsResult=Error_1(_8);
+              break;
+          }
+          break;
+        case 3:
+          optionsResult=Ok(new FSharpMap("New", []));
+          break;
+      }
+      if(optionsResult.$==0){
+        const rowOptions=optionsResult.$0;
+        addRowSequence=addRowSequence+1;
+        const rowId="row-"+addKind.Get().toLowerCase()+"-"+String(addRowSequence);
+        const spec={
+          RowId:rowId, 
+          Kind:kind, 
+          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()), 
+          HeightWeight:1, 
+          Visible:true, 
+          Options:rowOptions, 
+          Traces:[]
+        };
+        pendingAddRowId=Some(rowId);
+        startAction({
+          $:2, 
+          $0:canvasId, 
+          $1:spec
+        }, "Row accepted.", () => { });
+      }
+      else {
+        const message=optionsResult.$0;
+        const _12=uiState.Get();
+        let _13={
+          Window:_12.Window, 
+          FollowLatest:_12.FollowLatest, 
+          HiddenRows:_12.HiddenRows, 
+          AddRowOpen:_12.AddRowOpen, 
+          CursorIndex:_12.CursorIndex, 
+          PendingActionId:_12.PendingActionId, 
+          Feedback:message
+        };
+        uiState.Set(_13);
+      }
     }
   };
-  return Doc.Element("div", [Attr.Create("class", "ptcs-ta-workspace"), Attr.Create("data-testid", "ta-workspace"), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; width:100%; min-height:640px; color:#142033; background:#f4f7fb; font-family:Segoe UI, Arial, sans-serif; letter-spacing:0;")], [Doc.EmbedView(Map((state) => {
-    let _1, _2;
+  return Doc.Element("div", [Attr.Create("class", "ptcs-ta-workspace"), Attr.Create("data-testid", "ta-workspace"), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; width:100%; min-height:640px; color:#142033; background:#f4f7fb; font-family:Segoe UI, Arial, sans-serif; letter-spacing:0;")], [Doc.EmbedView(MapCachedBy((_3, _4) => {
+    const _5=_3.Document;
+    const _6=_4.Document;
+    return(_5!=null&&_5.$==1?_6!=null&&_6.$==1&&_5.$0.WorkspaceId==_6.$0.WorkspaceId:_6==null)&&_3.DocumentRevision===_4.DocumentRevision;
+  }, (state) => {
+    let _3, _4;
     const m=state.Document;
     if(m!=null&&m.$==1){
       const document=m.$0;
@@ -8078,41 +8482,46 @@ function render(options, callbacks, runtimeState){
           if(exists((row) => row.RowId==rowId, document.Rows)){
             pendingAddRowId.$0;
             pendingAddRowId=null;
-            const _3=uiState.Get();
-            let _4={
-              Window:_3.Window, 
-              FollowLatest:_3.FollowLatest, 
-              HiddenRows:_3.HiddenRows, 
+            const _5=uiState.Get();
+            let _6={
+              Window:_5.Window, 
+              FollowLatest:_5.FollowLatest, 
+              HiddenRows:_5.HiddenRows, 
               AddRowOpen:false, 
-              CursorIndex:_3.CursorIndex, 
+              CursorIndex:_5.CursorIndex, 
+              PendingActionId:_5.PendingActionId, 
               Feedback:"Row added."
             };
-            _1=uiState.Set(_4);
+            _3=uiState.Set(_6);
           }
-          else _1=null;
+          else _3=null;
         }
-        else _1=null;
-        _2=void(synchronizedDocumentRevision=state.DocumentRevision);
+        else _3=null;
+        _4=void(synchronizedDocumentRevision=state.DocumentRevision);
       }
-      else _2=null;
-      const status=statusPresentation(document.StatusRef, state);
-      const commandsDisabled=remoteDisabled(state.Poll);
-      return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; min-width:0;")], [Doc.Element("header", [Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:10px 12px 8px; background:#fff; border-bottom:1px solid #dbe3ee;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;")], [Doc.Element("div", [Attr.Create("style", "min-width:0;")], [Doc.Element("h2", [Attr.Create("data-testid", "ta-workspace-title"), Attr.Create("style", "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;")], [Doc.TextNode(document.Title)]), Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextNode("canvas "+canvasIdText(canvasId)+" / revision "+String(state.DataRevision))])]), Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-freshness"), Attr.Create("data-freshness", freshnessClass(status.Freshness)), Attr.Create("style", "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;")], [Doc.TextNode(status.Label)]), Doc.Element("div", [Attr.Create("data-testid", "ta-poll-state"), Attr.Create("data-poll-state", pollText(state.Poll)), Attr.Create("style", "border:1px solid #c3cfdd; border-radius:4px; padding:3px 7px; font-size:10px; color:#53667d; background:#fff;")], [Doc.TextNode(pollText(state.Poll))])])]), Doc.Element("div", [Attr.Create("data-testid", "ta-status-detail"), Attr.Create("style", "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;")], ofSeq_1(delay(() => {
-        const m_1=status.Watermark;
-        let _5=m_1==null?[]:[Doc.Element("span", [], [Doc.TextNode("watermark "+m_1.$0)])];
-        return append_1(_5, delay(() => {
-          const m_2=status.Quality;
-          let _6=m_2==null?[]:[Doc.Element("span", [], [Doc.TextNode("quality "+m_2.$0)])];
-          return append_1(_6, delay(() => {
-            const m_3=status.Error;
-            if(m_3==null)return[];
-            else {
-              const value=m_3.$0;
-              return[Doc.Element("span", [Attr.Create("data-testid", "ta-last-good-error"), Attr.Create("style", "color:#a33b43; font-weight:600;")], [Doc.TextNode(value)])];
-            }
+      else _4=null;
+      return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; min-width:0;")], [Doc.Element("header", [Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:10px 12px 8px; background:#fff; border-bottom:1px solid #dbe3ee;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;")], [Doc.Element("div", [Attr.Create("style", "min-width:0;")], [Doc.Element("h2", [Attr.Create("data-testid", "ta-workspace-title"), Attr.Create("style", "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;")], [Doc.TextNode(document.Title)]), Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextView(Map((current) =>"canvas "+canvasIdText(canvasId)+" / revision "+String(current.DataRevision), runtimeState.View))])]), Doc.EmbedView(Map((current) => {
+        const status=statusPresentation(document.StatusRef, current);
+        return Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-freshness"), Attr.Create("data-freshness", freshnessClass(status.Freshness)), Attr.Create("style", "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;")], [Doc.TextNode(status.Label)]), Doc.Element("div", [Attr.Create("data-testid", "ta-poll-state"), Attr.Create("data-poll-state", pollText(current.Poll)), Attr.Create("style", "border:1px solid #c3cfdd; border-radius:4px; padding:3px 7px; font-size:10px; color:#53667d; background:#fff;")], [Doc.TextNode(pollText(current.Poll))])]);
+      }, runtimeState.View))]), Doc.EmbedView(Map((current) => {
+        const status=statusPresentation(document.StatusRef, current);
+        return Doc.Element("div", [Attr.Create("data-testid", "ta-status-detail"), Attr.Create("style", "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;")], ofSeq_1(delay(() => {
+          const m_1=status.Watermark;
+          let _7=m_1==null?[]:[Doc.Element("span", [], [Doc.TextNode("watermark "+m_1.$0)])];
+          return append_1(_7, delay(() => {
+            const m_2=status.Quality;
+            let _8=m_2==null?[]:[Doc.Element("span", [], [Doc.TextNode("quality "+m_2.$0)])];
+            return append_1(_8, delay(() => {
+              const m_3=status.Error;
+              if(m_3==null)return[];
+              else {
+                const value=m_3.$0;
+                return[Doc.Element("span", [Attr.Create("data-testid", "ta-last-good-error"), Attr.Create("style", "color:#a33b43; font-weight:600;")], [Doc.TextNode(value)])];
+              }
+            }));
           }));
-        }));
-      }))), Doc.Element("div", [Attr.Create("data-testid", "ta-query-toolbar"), Attr.Create("style", "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Instrument"), inputText("ta-instrument", "Instrument", instrumentDraft, (value) => {
+        })));
+      }, runtimeState.View)), Doc.Element("div", [Attr.Create("data-testid", "ta-query-toolbar"), Attr.Create("style", "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Instrument"), inputText("ta-instrument", "Instrument", instrumentDraft, (value) => {
         instrumentDraft=value;
       })]), Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Interval"), selectInput("ta-interval", intervalDraft, ofArray([["1", "1m"], ["5", "5m"], ["30", "30m"], ["60", "60m"], ["930", "Session"]]), (value) => {
         intervalDraft=value;
@@ -8120,53 +8529,62 @@ function render(options, callbacks, runtimeState){
         fromDateDraft=value;
       })]), Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("To"), inputText("ta-to", "YYYY-MM-DD", toDateDraft, (value) => {
         toDateDraft=value;
-      })]), primaryButtonState("ta-apply-query", "Load / Apply", commandsDisabled, applyQuery)]), Doc.Element("div", [Attr.Create("data-testid", "ta-local-toolbar"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], [compactButton("ta-pan-left", "\u2190", "Pan earlier", () => {
+      })]), primaryButtonView("ta-apply-query", "Load / Apply", commandsDisabledView, commandsDisabledNow, applyQuery)]), Doc.Element("div", [Attr.Create("data-testid", "ta-local-toolbar"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], [compactButton("ta-pan-left", "\u2190", "Pan earlier", () => {
         const a=1;
         const b=resolvedWindow(uiState.Get()).Count/4>>0;
-        let _5=-(Compare(a, b)===1?a:b);
-        panWindow(_5);
+        let _7=-(Compare(a, b)===1?a:b);
+        panWindow(_7);
       }), compactButton("ta-pan-right", "\u2192", "Pan later", () => {
         const a=1;
         const b=resolvedWindow(uiState.Get()).Count/4>>0;
-        let _5=Compare(a, b)===1?a:b;
-        panWindow(_5);
+        let _7=Compare(a, b)===1?a:b;
+        panWindow(_7);
       }), compactButton("ta-zoom-in", "+", "Show fewer bars", () => {
         zoomWindow(-8);
       }), compactButton("ta-zoom-out", "\u2212", "Show more bars", () => {
         zoomWindow(8);
-      }), compactButton("ta-reset-view", "Reset View", "Reset local viewport to the latest bars", resetWindow), compactButton("ta-reset-canvas", "Reset Canvas", "Request server canvas reset", () => {
-        submit(callbacks, uiState, {$:1, $0:canvasId}, "Canvas reset requested.");
+      }), compactButton("ta-reset-view", "Reset View", "Reset local viewport to the latest bars", resetWindow), compactRemoteButton("ta-reset-canvas", "Reset Canvas", "Request server canvas reset", commandsDisabledView, commandsDisabledNow, () => {
+        startAction({$:1, $0:canvasId}, "Canvas reset accepted.", () => { });
       }), compactButton("ta-add-row-toggle", "Add Row", "Open row request editor", () => {
-        const _5=uiState.Get();
-        let _6={
-          Window:_5.Window, 
-          FollowLatest:_5.FollowLatest, 
-          HiddenRows:_5.HiddenRows, 
+        const _7=uiState.Get();
+        let _8={
+          Window:_7.Window, 
+          FollowLatest:_7.FollowLatest, 
+          HiddenRows:_7.HiddenRows, 
           AddRowOpen:!uiState.Get().AddRowOpen, 
-          CursorIndex:_5.CursorIndex, 
-          Feedback:_5.Feedback
+          CursorIndex:_7.CursorIndex, 
+          PendingActionId:_7.PendingActionId, 
+          Feedback:_7.Feedback
         };
-        uiState.Set(_6);
+        uiState.Set(_8);
       }), Doc.Element("span", [Attr.Create("style", "margin-left:auto; color:#60738b; font-size:11px;")], [Doc.TextNode("local view controls do not query the backend")])]), Doc.EmbedView(Map((ui) => Doc.Element("div", [Attr.Create("data-testid", "ta-row-toggles"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], ofSeq_1(delay(() => collect_1((row) => {
         const hidden=ui.HiddenRows.Contains(row.RowId);
         return[Doc.Element("div", [Attr.Create("style", "display:inline-flex; align-items:stretch; height:26px;")], [Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-toggle-row-"+row.RowId), Attr.Create("aria-pressed", hidden?"false":"true"), Attr.Create("style", hidden?"height:26px; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;":"height:26px; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;"), Handler("click", () =>() => {
           const nextHidden=hidden?uiState.Get().HiddenRows.Remove_1(row.RowId):uiState.Get().HiddenRows.Add_1(row.RowId);
-          const _5=uiState.Get();
-          let _6={
-            Window:_5.Window, 
-            FollowLatest:_5.FollowLatest, 
+          const _7=uiState.Get();
+          let _8={
+            Window:_7.Window, 
+            FollowLatest:_7.FollowLatest, 
             HiddenRows:nextHidden, 
-            AddRowOpen:_5.AddRowOpen, 
-            CursorIndex:_5.CursorIndex, 
-            Feedback:_5.Feedback
+            AddRowOpen:_7.AddRowOpen, 
+            CursorIndex:_7.CursorIndex, 
+            PendingActionId:_7.PendingActionId, 
+            Feedback:_7.Feedback
           };
-          return uiState.Set(_6);
-        })], [Doc.TextNode(rowKindText_1(row.Kind))]), Doc.Element("button", ofSeq_1(delay(() => append_1([Attr.Create("type", "button")], delay(() => append_1([Attr.Create("data-testid", "ta-remove-row-"+row.RowId)], delay(() => append_1([Attr.Create("title", "Remove "+rowKindText_1(row.Kind)+" row")], delay(() => append_1(commandsDisabled?[Attr.Create("disabled", "disabled")]:[], delay(() => append_1([Attr.Create("style", commandsDisabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;")], delay(() =>[Handler("click", () =>() =>!commandsDisabled?submit(callbacks, uiState, {
-          $:3, 
+          return uiState.Set(_8);
+        })], [Doc.TextNode(rowKindText_1(row.Kind))]), Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+rowKindText_1(row.Kind)+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
+          $:4, 
           $0:canvasId, 
           $1:row.RowId
-        }, rowKindText_1(row.Kind)+" row removal requested."):null)])))))))))))), [Doc.TextNode("×")])])];
-      }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;")], [Doc.TextNode("Row kind"), selectInput("ta-add-row-kind", addKind.Get(), ofArray([["Sma", "SMA"], ["Volume", "Volume"], ["Dmi", "DMI"], ["Adx", "ADX"], ["Macd", "MACD"], ["HeikinAshi", "Heikin-Ashi"]]), (value) => {
+        }, rowKindText_1(row.Kind)+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])];
+      }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], ofSeq_1(delay(() => append_1(length(editorSchemas)>0?[Doc.Element("div", [Attr.Create("data-testid", "ta-generic-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; min-width:0;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Template"), selectInput("ta-editor-template", selectedTemplate.Get(), ofArray(map((schema) =>[schema.TemplateKey, schema.DisplayName], editorSchemas)), resetEditorFor)]), Doc.EmbedView(Map((templateKey) => {
+        const m_1=tryFind((schema_1) => schema_1.TemplateKey==templateKey, editorSchemas);
+        if(m_1!=null&&m_1.$==1){
+          const schema=m_1.$0;
+          return Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:7px; min-width:0;")], ofSeq_1(delay(() => map_2((field_1) =>(((editorKind(field_1.Key))(field_1.Label))(field_1.Required))(field_1.Kind), schema.Fields))));
+        }
+        else return Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#9a2f2f;")], [Doc.TextNode("Template schema is unavailable.")]);
+      }, selectedTemplate.View))])]:[Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;")], [Doc.TextNode("Row kind"), selectInput("ta-add-row-kind", addKind.Get(), ofArray([["Sma", "SMA"], ["Volume", "Volume"], ["Dmi", "DMI"], ["Adx", "ADX"], ["Macd", "MACD"], ["HeikinAshi", "Heikin-Ashi"]]), (value) => {
         addKind.Set(value);
         addDataRef.Set("series."+value.toLowerCase());
       })]), Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;")], [Doc.TextNode("Data ref"), inputText("ta-add-row-data-ref", "series.sma", addDataRef.Get(), (value) => {
@@ -8196,39 +8614,40 @@ function render(options, callbacks, runtimeState){
           default:
             return Doc.Element("span", [Attr.Create("style", "font-size:11px; color:#728196;")], [Doc.TextNode("No indicator parameters.")]);
         }
-      }, addKind.View)), compactButton("ta-add-row-cancel", "Cancel", "Close without submitting", () => {
-        const _5=uiState.Get();
-        let _6={
-          Window:_5.Window, 
-          FollowLatest:_5.FollowLatest, 
-          HiddenRows:_5.HiddenRows, 
+      }, addKind.View))])], delay(() =>[Doc.Element("div", [Attr.Create("style", "display:flex; justify-content:flex-end; gap:6px;")], [compactButton("ta-add-row-cancel", "Cancel", "Close without submitting", () => {
+        const _7=uiState.Get();
+        let _8={
+          Window:_7.Window, 
+          FollowLatest:_7.FollowLatest, 
+          HiddenRows:_7.HiddenRows, 
           AddRowOpen:false, 
-          CursorIndex:_5.CursorIndex, 
-          Feedback:_5.Feedback
+          CursorIndex:_7.CursorIndex, 
+          PendingActionId:_7.PendingActionId, 
+          Feedback:_7.Feedback
         };
-        uiState.Set(_6);
-      }), primaryButtonState("ta-add-row-submit", "Add", commandsDisabled, addRow)]), uiState.View)), Doc.EmbedView(Map((ui) => IsNullOrWhiteSpace(ui.Feedback)?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-feedback"), Attr.Create("style", "font-size:11px; color:#40536d; min-height:15px;")], [Doc.TextNode(ui.Feedback)]), uiState.View))]), Doc.EmbedView(Map((ui) => {
+        uiState.Set(_8);
+      }), primaryButtonView("ta-add-row-submit", "Add", commandsDisabledView, commandsDisabledNow, addRow)])]))))), uiState.View)), Doc.EmbedView(Map((ui) => IsNullOrWhiteSpace(ui.Feedback)?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-feedback"), Attr.Create("style", "font-size:11px; color:#40536d; min-height:15px;")], [Doc.TextNode(ui.Feedback)]), uiState.View))]), Doc.EmbedView(Map2((_7, _8) => {
         let cursorIndex, cursorValues;
         chartRenderSequence=chartRenderSequence+1;
-        const visibleRows=filter((row) => row.Visible&&!ui.HiddenRows.Contains(row.RowId), document.Rows);
-        const referenceTimeline_1=referenceTimeline(visibleRows, state.Data);
+        const visibleRows=filter_1((row) => row.Visible&&!_8.HiddenRows.Contains(row.RowId), document.Rows);
+        const referenceTimeline_1=referenceTimeline(visibleRows, _7.Data);
         const referenceLength_1=length(referenceTimeline_1);
-        const o=tryFind((trace) => trace.Visible&&Equals(trace.Kind, {$:0}), collect(effectiveTraces, visibleRows));
-        const o_1=o==null?null:Some(candleSeries(o.$0.DataRef, state.Data));
-        const overviewPoints=o_1==null?[]:o_1.$0;
-        const visibleWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength_1, ui.FollowLatest, ui.Window);
+        const o_2=tryFind((trace) => trace.Visible&&Equals(trace.Kind, {$:0}), collect(effectiveTraces, visibleRows));
+        const o_3=o_2==null?null:Some(candleSeries(o_2.$0.DataRef, _7.Data));
+        const overviewPoints=o_3==null?[]:o_3.$0;
+        const visibleWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength_1, _8.FollowLatest, _8.Window);
         const visibleTimestamps=selectWindow(visibleWindow, referenceTimeline_1);
-        const o_2=ui.CursorIndex;
-        if(o_2==null)cursorIndex=null;
+        const o_4=_8.CursorIndex;
+        if(o_4==null)cursorIndex=null;
         else {
-          const value=o_2.$0;
+          const value=o_4.$0;
           const a=0;
           const x=Compare(a, value)===1?a:value;
           const a_1=0;
           const b=length(visibleTimestamps)-1;
           const e=Compare(a_1, b)===1?a_1:b;
-          let _5=Compare(e, x)===-1?e:x;
-          cursorIndex=Some(_5);
+          let _9=Compare(e, x)===-1?e:x;
+          cursorIndex=Some(_9);
         }
         const cursorDocument={
           WorkspaceId:document.WorkspaceId, 
@@ -8240,7 +8659,7 @@ function render(options, callbacks, runtimeState){
           AllowedActions:document.AllowedActions, 
           DefaultView:document.DefaultView
         };
-        const cursor=cursorIndex==null?null:cursorSnapshot(cursorDocument, state.Data, visibleWindow, cursorIndex.$0);
+        const cursor=cursorIndex==null?null:cursorSnapshot(cursorDocument, _7.Data, visibleWindow, cursorIndex.$0);
         if(cursor!=null&&cursor.$==1){
           const value_1=cursor.$0;
           cursorValues=Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-values"), Attr.Create("style", "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => append_1([Doc.Element("strong", [Attr.Create("style", "white-space:nowrap;")], [Doc.TextNode(compactTimestamp(value_1.Timestamp))])], delay(() => map_2((item) => Doc.Element("span", [Attr.Create("data-cursor-row", item.Label), Attr.Create("style", "min-width:0;")], [Doc.TextNode(item.Label+" "+item.Value)]), value_1.Values))))));
@@ -8255,23 +8674,24 @@ function render(options, callbacks, runtimeState){
           }
           else return"Loaded "+String(referenceLength_1)+" bars · Viewing "+String(visibleStart)+"-"+String(visibleEnd);
         }, draftWindow.View);
-        let _6=Attr.Create("data-testid", "ta-chart-stack");
-        let _7=Attr.Create("data-chart-render-sequence", String(chartRenderSequence));
-        let _8=Attr.Create("data-loaded-bars", String(referenceLength_1));
-        let _9=Attr.Create("data-visible-start", String(visibleStart));
-        let _10=Attr.Create("data-visible-end", String(visibleEnd));
-        let _11=Attr.Create("data-follow-latest", ui.FollowLatest?"true":"false");
-        const o_3=cursorIndex==null?null:Some(String(cursorIndex.$0));
-        let _12=o_3==null?"":o_3.$0;
-        let _13=Attr.Create("data-cursor-index", _12);
-        let _14=[_6, _7, _8, _9, _10, _11, _13, Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;")];
-        return Doc.Element("div", _14, ofSeq_1(delay(() => append_1([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[cursorValues])))], delay(() => append_1(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:map_2((index) => renderRow(state, {
-          Window:ui.Window, 
-          FollowLatest:ui.FollowLatest, 
-          HiddenRows:ui.HiddenRows, 
-          AddRowOpen:ui.AddRowOpen, 
+        let _10=Attr.Create("data-testid", "ta-chart-stack");
+        let _11=Attr.Create("data-chart-render-sequence", String(chartRenderSequence));
+        let _12=Attr.Create("data-loaded-bars", String(referenceLength_1));
+        let _13=Attr.Create("data-visible-start", String(visibleStart));
+        let _14=Attr.Create("data-visible-end", String(visibleEnd));
+        let _15=Attr.Create("data-follow-latest", _8.FollowLatest?"true":"false");
+        const o_5=cursorIndex==null?null:Some(String(cursorIndex.$0));
+        let _16=o_5==null?"":o_5.$0;
+        let _17=Attr.Create("data-cursor-index", _16);
+        let _18=[_10, _11, _12, _13, _14, _15, _17, Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;")];
+        return Doc.Element("div", _18, ofSeq_1(delay(() => append_1([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[cursorValues])))], delay(() => append_1(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:map_2((index) => renderRow(_7, {
+          Window:_8.Window, 
+          FollowLatest:_8.FollowLatest, 
+          HiddenRows:_8.HiddenRows, 
+          AddRowOpen:_8.AddRowOpen, 
           CursorIndex:cursorIndex, 
-          Feedback:ui.Feedback
+          PendingActionId:_8.PendingActionId, 
+          Feedback:_8.Feedback
         }, visibleTimestamps, setCursorIndex, index===length(visibleRows)-1, get(visibleRows, index)), range(0, length(visibleRows)-1)), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
           setWindowCount(48);
         }), compactButton("ta-view-200", "200", "Show latest 200 bars", () => {
@@ -8296,8 +8716,8 @@ function render(options, callbacks, runtimeState){
               moveHandler=(rawEvent) => draftWindow.Set(Some(previewWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, committed, drag, bounds.width<=0||total<=0?0:toInt(Math.round((rawEvent.clientX-startClientX)/bounds.width*total)))));
               upHandler=() => {
                 const x_1=draftWindow.Get();
-                let _15=x_1==null?committed:x_1.$0;
-                const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _15);
+                let _19=x_1==null?committed:x_1.$0;
+                const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _19);
                 const next=p[1];
                 const followLatest=p[0];
                 if(!(moveHandler==null))globalThis.document.removeEventListener("mousemove", moveHandler);
@@ -8310,7 +8730,7 @@ function render(options, callbacks, runtimeState){
             else return null;
           });
         }, draftWindow.View))])])])))))));
-      }, uiState.View))]);
+      }, chartRuntimeView, uiState.View))]);
     }
     else {
       const pending=workspaceBootstrapPresentation(state);
@@ -8324,8 +8744,128 @@ function defaultOptions(){
 function remoteDisabled(a){
   return a.$==3||(a.$==6||(a.$==0||a.$==7));
 }
+function submit(callbacks, uiState, actualDocumentRevision, request, successText, onAccepted){
+  const m=request.ExpectedDocumentRevision;
+  const expectedRevisionMatches=m==null||m.$0===actualDocumentRevision;
+  if(uiState.Get().PendingActionId!=null){
+    const _1=uiState.Get();
+    let _2={
+      Window:_1.Window, 
+      FollowLatest:_1.FollowLatest, 
+      HiddenRows:_1.HiddenRows, 
+      AddRowOpen:_1.AddRowOpen, 
+      CursorIndex:_1.CursorIndex, 
+      PendingActionId:_1.PendingActionId, 
+      Feedback:"action-in-flight: wait for the pending action result."
+    };
+    uiState.Set(_2);
+  }
+  else if(!expectedRevisionMatches){
+    const _3=uiState.Get();
+    let _4={
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:null, 
+      Feedback:"revision-conflict: workspace is at revision "+String(actualDocumentRevision)+"."
+    };
+    uiState.Set(_4);
+  }
+  else {
+    const _5=uiState.Get();
+    let _6={
+      Window:_5.Window, 
+      FollowLatest:_5.FollowLatest, 
+      HiddenRows:_5.HiddenRows, 
+      AddRowOpen:_5.AddRowOpen, 
+      CursorIndex:_5.CursorIndex, 
+      PendingActionId:Some(request.RequestId), 
+      Feedback:"Submitting "+request.RequestId+"..."
+    };
+    uiState.Set(_6);
+    StartImmediate(Delay(() => Bind_1(callbacks.SubmitAction(request), (a) => {
+      let result;
+      if(a.$==1){
+        const error=a.$0;
+        result={
+          $:1, 
+          $0:request.RequestId, 
+          $1:error.Code, 
+          $2:error.Message
+        };
+      }
+      else result=a.$0;
+      if((result.$==1?result.$0:result.$==2?result.$0:result.$0)!=request.RequestId){
+        const _7=uiState.Get();
+        let _8={
+          Window:_7.Window, 
+          FollowLatest:_7.FollowLatest, 
+          HiddenRows:_7.HiddenRows, 
+          AddRowOpen:_7.AddRowOpen, 
+          CursorIndex:_7.CursorIndex, 
+          PendingActionId:null, 
+          Feedback:"action-correlation-mismatch: result does not match the pending request."
+        };
+        uiState.Set(_8);
+        return Zero();
+      }
+      else if(result.$==1){
+        const message=result.$2;
+        const code=result.$1;
+        const _9=uiState.Get();
+        let _10={
+          Window:_9.Window, 
+          FollowLatest:_9.FollowLatest, 
+          HiddenRows:_9.HiddenRows, 
+          AddRowOpen:_9.AddRowOpen, 
+          CursorIndex:_9.CursorIndex, 
+          PendingActionId:null, 
+          Feedback:code+": "+message
+        };
+        uiState.Set(_10);
+        return Zero();
+      }
+      else if(result.$==2){
+        const actualRevision=result.$1;
+        const _11=uiState.Get();
+        let _12={
+          Window:_11.Window, 
+          FollowLatest:_11.FollowLatest, 
+          HiddenRows:_11.HiddenRows, 
+          AddRowOpen:_11.AddRowOpen, 
+          CursorIndex:_11.CursorIndex, 
+          PendingActionId:null, 
+          Feedback:"revision-conflict: workspace is at revision "+String(actualRevision)+"."
+        };
+        uiState.Set(_12);
+        return Zero();
+      }
+      else {
+        const revision=result.$1;
+        onAccepted();
+        const _13=uiState.Get();
+        let _14={
+          Window:_13.Window, 
+          FollowLatest:_13.FollowLatest, 
+          HiddenRows:_13.HiddenRows, 
+          AddRowOpen:_13.AddRowOpen, 
+          CursorIndex:_13.CursorIndex, 
+          PendingActionId:null, 
+          Feedback:successText+" Revision "+String(revision)+"."
+        };
+        uiState.Set(_14);
+        return Zero();
+      }
+    })), null);
+  }
+}
 function canvasIdText(a){
   return a.$0;
+}
+function compactButton(testId, label, titleText, onClick){
+  return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", testId), Attr.Create("title", titleText), Attr.Create("style", "height:30px; border:1px solid #9fb0c6; border-radius:4px; background:#f8fafc; color:#20344f; padding:3px 9px; font-size:12px; cursor:pointer; white-space:nowrap;"), Handler("click", () =>() => onClick())], [Doc.TextNode(label)]);
 }
 function freshnessClass(freshness){
   return freshness.$==1?"delayed":freshness.$==3?"delayed":freshness.$==2?"stale":freshness.$==4?"stale":"live";
@@ -8346,57 +8886,35 @@ function selectInput(testId, initial_1, values, onChanged){
     input_1.addEventListener("change", () => onChanged(input_1.value));
   })], ofSeq_1(delay(() => collect_1((m) =>[element_1("option", [Attr.Create("value", m[0])], [Doc.TextNode(m[1])])], values))));
 }
-function primaryButtonState(testId, label, disabled, onClick){
-  return Doc.Element("button", ofSeq_1(delay(() => append_1([Attr.Create("type", "button")], delay(() => append_1([Attr.Create("data-testid", testId)], delay(() => append_1(disabled?[Attr.Create("disabled", "disabled")]:[], delay(() => append_1([Attr.Create("style", disabled?"height:30px; border:1px solid #9aa8b8; border-radius:4px; background:#d8e0e8; color:#667587; padding:3px 11px; font-size:12px; cursor:not-allowed; white-space:nowrap;":"height:30px; border:1px solid #0f766e; border-radius:4px; background:#0f766e; color:#fff; padding:3px 11px; font-size:12px; cursor:pointer; white-space:nowrap;")], delay(() =>[Handler("click", () =>() =>!disabled?onClick():null)])))))))))), [Doc.TextNode(label)]);
+function primaryButtonView(testId, label, disabled, isDisabled, onClick){
+  return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", testId), DynamicBool("disabled", disabled), Dynamic_1("style", Map((value) => value?"height:30px; border:1px solid #9aa8b8; border-radius:4px; background:#d8e0e8; color:#667587; padding:3px 11px; font-size:12px; cursor:not-allowed; white-space:nowrap;":"height:30px; border:1px solid #0f766e; border-radius:4px; background:#0f766e; color:#fff; padding:3px 11px; font-size:12px; cursor:pointer; white-space:nowrap;", disabled)), Handler("click", () =>() =>!isDisabled()?onClick():null)], [Doc.TextNode(label)]);
 }
-function compactButton(testId, label, titleText, onClick){
-  return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", testId), Attr.Create("title", titleText), Attr.Create("style", "height:30px; border:1px solid #9fb0c6; border-radius:4px; background:#f8fafc; color:#20344f; padding:3px 9px; font-size:12px; cursor:pointer; white-space:nowrap;"), Handler("click", () =>() => onClick())], [Doc.TextNode(label)]);
-}
-function submit(callbacks, uiState, action, successText){
-  StartImmediate(Delay(() => Bind_1(callbacks.SubmitAction(action), (a) => {
-    if(a.$==1){
-      const error=a.$0;
-      const _1=uiState.Get();
-      let _2={
-        Window:_1.Window, 
-        FollowLatest:_1.FollowLatest, 
-        HiddenRows:_1.HiddenRows, 
-        AddRowOpen:_1.AddRowOpen, 
-        CursorIndex:_1.CursorIndex, 
-        Feedback:error.Code+": "+error.Message
-      };
-      uiState.Set(_2);
-      return Zero();
-    }
-    else {
-      const _3=uiState.Get();
-      let _4={
-        Window:_3.Window, 
-        FollowLatest:_3.FollowLatest, 
-        HiddenRows:_3.HiddenRows, 
-        AddRowOpen:_3.AddRowOpen, 
-        CursorIndex:_3.CursorIndex, 
-        Feedback:successText
-      };
-      uiState.Set(_4);
-      return Zero();
-    }
-  })), null);
+function compactRemoteButton(testId, label, titleText, disabled, isDisabled, onClick){
+  return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", testId), Attr.Create("title", titleText), DynamicBool("disabled", disabled), Dynamic_1("style", Map((value) => value?"height:30px; border:1px solid #c8d2df; border-radius:4px; background:#edf1f5; color:#8b98a8; padding:3px 9px; font-size:12px; cursor:not-allowed; white-space:nowrap;":"height:30px; border:1px solid #9fb0c6; border-radius:4px; background:#f8fafc; color:#20344f; padding:3px 9px; font-size:12px; cursor:pointer; white-space:nowrap;", disabled)), Handler("click", () =>() =>!isDisabled()?onClick():null)], [Doc.TextNode(label)]);
 }
 function rowKindText_1(a){
   return a.$==1?"Volume":a.$==2?"SMA":a.$==3?"DMI":a.$==4?"ADX":a.$==5?"MACD":a.$==6?"Heikin-Ashi":"Candlestick";
 }
 function renderRow(state, ui, visibleTimestamps, setCursorIndex, showSharedTimeAxis, row){
-  let _1;
-  const traces=filter((a) => a.Visible, effectiveTraces(row));
+  let title;
+  const traces=filter_1((a) => a.Visible, effectiveTraces(row));
   const p=compositeSvg(row.RowId, traces, state.Data, visibleTimestamps, ui.CursorIndex, setCursorIndex);
   const chart=p[0];
-  if(row.Traces==null||length(row.Traces)===0)_1=rowKindText_1(row.Kind);
+  if(row.Traces==null||length(row.Traces)===0)title=rowKindText_1(row.Kind);
   else {
     const value=concat_1(" / ", map((trace) => IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label, traces));
-    _1=IsNullOrWhiteSpace(value)?rowKindText_1(row.Kind):value;
+    title=IsNullOrWhiteSpace(value)?rowKindText_1(row.Kind):value;
   }
-  return chartFrame(_1, "ta-row-"+row.RowId, (exists((trace) => Equals(trace.Kind, {$:0}), traces)?262:124)+(showSharedTimeAxis?16:0), showSharedTimeAxis?ofArray([chart, timeAxis("ta-time-axis-shared", p[1])]):ofArray([chart]));
+  const chartHeight=exists((trace) => Equals(trace.Kind, {$:0}), traces)?262:124;
+  const children=showSharedTimeAxis?ofArray([chart, timeAxis("ta-time-axis-shared", p[1])]):ofArray([chart]);
+  return chartFrame(title, ofArray(map((value_1) => {
+    const o=value_1.AvailableAtUtc;
+    const o_1=o==null?null:Some(compactTimestamp(o.$0));
+    const availability=o_1==null?"unknown":o_1.$0;
+    const o_2=value_1.Quality;
+    const quality=o_2==null?"unknown":o_2.$0;
+    return Doc.Element("span", [Attr.Create("data-testid", "ta-row-meta-"+row.RowId+"-"+value_1.ScaleKey), Attr.Create("data-scale-key", value_1.ScaleKey), Attr.Create("data-finality", value_1.Finality), Attr.Create("data-quality", quality), Attr.Create("title", temporalDetail(value_1)), Attr.Create("style", "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;")], [Doc.TextNode(value_1.ScaleKey+" | "+value_1.Finality+" | "+quality+" | frontier "+compactTimestamp(value_1.ObservedThroughUtc)+" | available "+availability)]);
+  }, rowTemporalMetadata(row, state.Data))), "ta-row-"+row.RowId, chartHeight+(showSharedTimeAxis?16:0), children);
 }
 function overviewSvg(points, s, s_1, onReady, onDragStart){
   const width=1000;
@@ -8425,24 +8943,31 @@ function compactTimestamp(value){
 function element_1(name, attrs, children){
   return Doc.Element(name, attrs, children);
 }
+function fixedText(value){
+  return String(value);
+}
 function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, setCursorIndex){
   const width=1000;
   const hasCandles=exists((trace) => Equals(trace.Kind, {$:0}), traces);
   const top=10;
   const plotHeight=hasCandles?214:82;
   const palette=["#2764b0", "#9b5b24", "#6a4ca3", "#0f766e", "#b45309", "#be185d", "#475569", "#0891b2"];
-  const timestampIndex=OfArray(mapi((_11, _12) =>[_12, _11], referenceTimestamps));
-  const containsTimestamp=(timestamp) => timestampIndex.ContainsKey(timestamp);
-  const tryTimestampIndex=(timestamp) => timestampIndex.TryFind(timestamp);
-  const o=tryFind((trace) => Equals(trace.Kind, {$:0}), traces);
-  const o_1=o==null?null:Some(filter((point) => containsTimestamp(point.Timestamp), candleSeries(o.$0.DataRef, data)));
-  const candleSeries_1=o_1==null?[]:o_1.$0;
+  const color=(index, trace) => IsNullOrWhiteSpace(trace.Color)?get(palette, index%length(palette)):trace.Color;
+  const candleSeries_1=collect((_11) => {
+    const traceIndex=_11[0];
+    const trace=_11[1];
+    return map((point) =>[traceIndex, trace, point], filter_1((point) => candleSlotRange(referenceTimestamps, point)!=null, candleSeries(trace.DataRef, data)));
+  }, filter_1((_11) => Equals(_11[1].Kind, {$:0}), mapi((_11, _12) =>[_11, _12], traces)));
   const linePoints=mapi((_11, _12) => {
     let _13;
     const m=_12.Kind;
     switch(m.$==1?0:m.$==2?1:m.$==3?1:2){
       case 0:
-        _13=map((point) =>({Timestamp:point.Timestamp, Value:point.Volume}), candleSeries(_12.DataRef, data));
+        _13=map((point) =>({
+          Timestamp:point.Timestamp, 
+          Value:point.Volume, 
+          Temporal:point.Temporal
+        }), candleSeries(_12.DataRef, data));
         break;
       case 1:
         _13=lineSeries(_12.DataRef, data);
@@ -8451,19 +8976,19 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
         _13=[];
         break;
     }
-    let _14=filter((point) => containsTimestamp(point.Timestamp), _13);
+    let _14=projectedLinePoints(referenceTimestamps, _13);
     return[_11, _12, _14];
   }, traces);
-  const p=paddedRange(0, 1, ofSeq(delay(() => append_1(collect((point) =>[point.Low, point.High], candleSeries_1), delay(() => collect((_11) => {
-    const values=map((a_1) => a_1.Value, _11[2]);
+  const p=paddedRange(0, 1, ofSeq(delay(() => append_1(collect((_11) => {
+    const point=_11[2];
+    return[point.Low, point.High];
+  }, candleSeries_1), delay(() => collect((_11) => {
+    const values=map((_12) => _12[1].Value, _11[2]);
     return Equals(_11[1].Kind, {$:3})?[0].concat(values):values;
   }, linePoints))))));
   const low=p[0];
   const high=p[1];
   const slot=length(referenceTimestamps)===0?width:width/length(referenceTimestamps);
-  const a=2;
-  const b=slot*0.56;
-  const bodyWidth=Compare(a, b)===1?a:b;
   const svgTestId=hasCandles?"ta-candle-"+rowId:"ta-composite-"+rowId;
   let _1=svgAttr("viewBox", hasCandles?"0 0 1000 250":"0 0 1000 112");
   let _2=svgAttr("preserveAspectRatio", "none");
@@ -8471,8 +8996,8 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
   let _4=svgAttr("aria-label", "Composite TA row "+rowId);
   let _5=Attr.Create("data-testid", svgTestId);
   let _6=Attr.Create("data-point-count", String(length(referenceTimestamps)));
-  const o_2=cursorIndex==null?null:Some(String(cursorIndex.$0));
-  let _7=o_2==null?"":o_2.$0;
+  const o=cursorIndex==null?null:Some(String(cursorIndex.$0));
+  let _7=o==null?"":o.$0;
   let _8=Attr.Create("data-cursor-index", _7);
   let _9=[_1, _2, _3, _4, _5, _6, _8, Attr.Create("style", "display:block; width:100%; height:"+fixedText(hasCandles?250:112)+"px; background:#fbfcfe;"), Handler("mousemove", (element_2) =>(event) => {
     const bounds=element_2.getBoundingClientRect();
@@ -8483,65 +9008,72 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
     const y=top+plotHeight*gridIndex/4;
     return[svgElement("line", [svgAttr("x1", "0"), svgAttr("x2", "1000"), svgAttr("y1", fixedText(y)), svgAttr("y2", fixedText(y)), svgAttr("stroke", "#e7ecf3"), svgAttr("stroke-width", "1")], [])];
   }, range(0, 4)), delay(() => append_1(collect_1((m) => {
-    const rising=m[0];
-    const candleColor=m[1];
-    const selected=filter((point) => point.Close>=point.Open==rising, candleSeries_1);
-    const wickPath=concat_1(" ", choose((point) => {
-      const o_3=tryTimestampIndex(point.Timestamp);
-      return o_3==null?null:Some("M "+fixedText(slot*(o_3.$0+0.5))+" "+fixedText(normalize(low, high, top, plotHeight, point.High))+" V "+fixedText(normalize(low, high, top, plotHeight, point.Low)));
-    }, selected));
-    const bodyPath=concat_1(" ", choose((point) => {
-      const o_3=tryTimestampIndex(point.Timestamp);
-      if(o_3==null)return null;
-      else {
-        const index=o_3.$0;
-        const openY=normalize(low, high, top, plotHeight, point.Open);
-        const closeY=normalize(low, high, top, plotHeight, point.Close);
-        let _11=Compare(openY, closeY)===-1?openY:closeY;
+    const trace=m[1];
+    const point=m[2];
+    const m_1=candleSlotRange(referenceTimestamps, point);
+    if(m_1!=null&&m_1.$==1){
+      const firstSlot=m_1.$0[0];
+      const endExclusive=m_1.$0[1];
+      const left=slot*firstSlot;
+      const right=slot*endExclusive;
+      const center=(left+right)/2;
+      const a=2;
+      const b=(right-left)*0.72;
+      const bodyWidth=Compare(a, b)===1?a:b;
+      const candleColor=point.Close>=point.Open?"#0f8a78":"#c2414b";
+      const highY=normalize(low, high, top, plotHeight, point.High);
+      const lowY=normalize(low, high, top, plotHeight, point.Low);
+      const openY=normalize(low, high, top, plotHeight, point.Open);
+      const closeY=normalize(low, high, top, plotHeight, point.Close);
+      const o_1=point.Temporal;
+      const o_2=o_1==null?null:Some(o_1.$0.SourceIntervalId);
+      const sourceIntervalId=o_2==null?point.Timestamp:o_2.$0;
+      const spanCount=endExclusive-firstSlot;
+      const traceColor=spanCount>1?color(m[0], trace):candleColor;
+      const traceTestId="ta-candle-"+rowId+"-"+trace.TraceId;
+      return append_1([svgElement("line", ofSeq_1(delay(() => append_1([Attr.Create("data-testid", traceTestId)], delay(() => append_1([Attr.Create("data-candle-part", "wick")], delay(() => append_1([Attr.Create("data-source-interval-id", sourceIntervalId)], delay(() => append_1([Attr.Create("data-span-slots", String(spanCount))], delay(() => append_1([svgAttr("x1", fixedText(center))], delay(() => append_1([svgAttr("x2", fixedText(center))], delay(() => append_1([svgAttr("y1", fixedText(highY))], delay(() => append_1([svgAttr("y2", fixedText(lowY))], delay(() => append_1([svgAttr("stroke", traceColor)], delay(() => append_1([svgAttr("stroke-width", spanCount>1?"1.8":"1.2")], delay(() => spanCount>1?[svgAttr("stroke-dasharray", "4 2")]:[])))))))))))))))))))))), [])], delay(() => {
+        let _11=Attr.Create("data-testid", traceTestId);
+        let _12=Attr.Create("data-candle-part", "body");
+        let _13=Attr.Create("data-source-interval-id", sourceIntervalId);
+        let _14=Attr.Create("data-span-slots", String(spanCount));
+        let _15=svgAttr("x", fixedText(center-bodyWidth/2));
+        let _16=svgAttr("y", fixedText(Compare(openY, closeY)===-1?openY:closeY));
+        let _17=svgAttr("width", fixedText(bodyWidth));
         const a_1=1.2;
         const b_1=Math.abs(closeY-openY);
-        let _12=Compare(a_1, b_1)===1?a_1:b_1;
-        let _13=rectanglePath(slot*(index+0.5)-bodyWidth/2, _11, bodyWidth, _12);
-        return Some(_13);
-      }
-    }, selected));
-    return append_1([svgElement("path", [Attr.Create("data-candle-part", rising?"rising-wicks":"falling-wicks"), svgAttr("d", wickPath), svgAttr("fill", "none"), svgAttr("stroke", candleColor), svgAttr("stroke-width", "1.2")], [])], delay(() =>[svgElement("path", [Attr.Create("data-candle-part", rising?"rising-bodies":"falling-bodies"), svgAttr("d", bodyPath), svgAttr("fill", candleColor)], [])]));
-  }, [[true, "#0f8a78"], [false, "#c2414b"]]), delay(() => append_1(collect_1((m) => {
+        let _18=Compare(a_1, b_1)===1?a_1:b_1;
+        let _19=fixedText(_18);
+        let _20=svgAttr("height", _19);
+        let _21=[_11, _12, _13, _14, _15, _16, _17, _20, svgAttr("fill", spanCount>1?"none":candleColor), svgAttr("stroke", traceColor), svgAttr("stroke-width", spanCount>1?"1.8":"0"), svgAttr("rx", "0.6")];
+        return[svgElement("rect", _21, [])];
+      }));
+    }
+    else return[];
+  }, candleSeries_1), delay(() => append_1(collect_1((m) => {
     const trace=m[1];
     const points=m[2];
-    const traceColor=IsNullOrWhiteSpace(trace.Color)?get(palette, m[0]%length(palette)):trace.Color;
+    const traceColor=color(m[0], trace);
     const m_1=trace.Kind;
     switch(m_1.$==3?0:m_1.$==1?0:m_1.$==2?1:2){
       case 0:
         const zeroY=normalize(low, high, top, plotHeight, 0);
-        const a_1=1;
-        const b_1=slot*0.64;
-        const barWidth=Compare(a_1, b_1)===1?a_1:b_1;
-        const path=concat_1(" ", choose((point) => {
-          const o_3=tryTimestampIndex(point.Timestamp);
-          if(o_3==null)return null;
-          else {
-            const index=o_3.$0;
-            const valueY=normalize(low, high, top, plotHeight, point.Value);
-            let _11=Compare(zeroY, valueY)===-1?zeroY:valueY;
-            const a_2=1;
-            const b_2=Math.abs(zeroY-valueY);
-            let _12=Compare(a_2, b_2)===1?a_2:b_2;
-            let _13=rectanglePath(slot*(index+0.18), _11, barWidth, _12);
-            return Some(_13);
-          }
+        const a=1;
+        const b=slot*0.64;
+        const barWidth=Compare(a, b)===1?a:b;
+        const path=concat_1(" ", map((_11) => {
+          const valueY=normalize(low, high, top, plotHeight, _11[1].Value);
+          let _12=Compare(zeroY, valueY)===-1?zeroY:valueY;
+          const a_1=1;
+          const b_1=Math.abs(zeroY-valueY);
+          let _13=Compare(a_1, b_1)===1?a_1:b_1;
+          return rectanglePath(slot*(_11[0]+0.18), _12, barWidth, _13);
         }, points));
         return[svgElement("path", [Attr.Create("data-testid", "ta-trace-"+rowId+"-"+trace.TraceId), svgAttr("d", path), svgAttr("fill", traceColor), svgAttr("fill-opacity", "0.62")], [])];
       case 1:
-        const path_1=concat_1(" ", mapi((_11, _12) =>(_11===0?"M":"L")+" "+fixedText(_12[0])+" "+fixedText(_12[1]), choose((point) => {
-          const o_3=tryTimestampIndex(point.Timestamp);
-          if(o_3==null)return null;
-          else {
-            const o_4=slotCenter(width, length(referenceTimestamps), o_3.$0);
-            let _11=o_4==null?width/2:o_4.$0;
-            let _12=[_11, normalize(low, high, top, plotHeight, point.Value)];
-            return Some(_12);
-          }
+        const path_1=concat_1(" ", mapi((_11, _12) =>(_11===0?"M":"L")+" "+fixedText(_12[0])+" "+fixedText(_12[1]), map((_11) => {
+          const o_1=slotCenter(width, length(referenceTimestamps), _11[0]);
+          let _12=o_1==null?width/2:o_1.$0;
+          return[_12, normalize(low, high, top, plotHeight, _11[1].Value)];
         }, points)));
         return[svgElement("path", [Attr.Create("data-testid", "ta-trace-"+rowId+"-"+trace.TraceId), svgAttr("d", path_1), svgAttr("fill", "none"), svgAttr("stroke", traceColor), svgAttr("stroke-width", fixedText(trace.Width)), svgAttr("stroke-linejoin", "round"), svgAttr("stroke-linecap", "round")], [])];
       case 2:
@@ -8557,8 +9089,8 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
   })))))))));
   return[_10, referenceTimestamps];
 }
-function chartFrame(titleText, testId, height, children){
-  return Doc.Element("section", [Attr.Create("data-testid", testId), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; min-height:"+String(height)+"px; border-top:1px solid #e1e7ef; background:#fff;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; justify-content:space-between; height:28px; padding:0 8px; color:#40536d; font-size:11px;")], [Doc.Element("strong", [], [Doc.TextNode(titleText)])]), element_1("div", [Attr.Create("style", "min-width:0; overflow:hidden;")], children)]);
+function chartFrame(titleText, metadata, testId, height, children){
+  return Doc.Element("section", [Attr.Create("data-testid", testId), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; min-height:"+String(height)+"px; border-top:1px solid #e1e7ef; background:#fff;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:6px 10px; min-height:28px; padding:4px 8px; color:#40536d; font-size:11px; flex-wrap:wrap;")], ofSeq_1(delay(() => append_1([Doc.Element("strong", [Attr.Create("style", "margin-right:auto;")], [Doc.TextNode(titleText)])], delay(() => metadata))))), element_1("div", [Attr.Create("style", "min-width:0; overflow:hidden;")], children)]);
 }
 function timeAxis(testId, timestamps){
   const labels=mapi((_1, _2) => Doc.Element("span", [Attr.Create("style", "min-width:0; text-align:"+(_1===0?"left":_1===2?"right":"center")+"; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextNode(compactTimestamp(_2[1]))]), timeLabels(timestamps));
@@ -8570,20 +9102,11 @@ function svgElement(name, attrs, children){
 function svgAttr(name, value){
   return Attr.Create(name, value);
 }
-function fixedText(value){
-  return String(value);
-}
 function rectanglePath(x, y, width, height){
   return"M "+fixedText(x)+" "+fixedText(y)+" h "+fixedText(width)+" v "+fixedText(height)+" h "+fixedText(-width)+" Z";
 }
 function cursorPosition(width, pointCount, cursorIndex){
   return cursorIndex==null?null:slotCenter(width, pointCount, cursorIndex.$0);
-}
-function Error_1(ErrorValue){
-  return{$:1, $0:ErrorValue};
-}
-function Ok(ResultValue){
-  return{$:0, $0:ResultValue};
 }
 function WhenRun(snap, avail, obs){
   const m=snap.s;
@@ -8600,6 +9123,27 @@ function WhenRun(snap, avail, obs){
   }
   else avail(m.$0);
 }
+function Map2_1(fn, sn1, sn2){
+  const _1=sn1.s;
+  const _2=sn2.s;
+  if(_1!=null&&_1.$==0)return _2!=null&&_2.$==0?{s:Forever(fn(_1.$0, _2.$0))}:Map2Opt1(fn, _1.$0, sn2);
+  else if(_2!=null&&_2.$==0)return Map2Opt2(fn, _2.$0, sn1);
+  else {
+    const res={s:Waiting([], [])};
+    const cont=() => {
+      const m=res.s;
+      if(!(m!=null&&m.$==0||m!=null&&m.$==2)){
+        const _3=ValueAndForever(sn1);
+        const _4=ValueAndForever(sn2);
+        if(_3!=null&&_3.$==1)if(_4!=null&&_4.$==1)if(_3.$0[1]&&_4.$0[1])MarkForever(res, fn(_3.$0[0], _4.$0[0]));
+        else MarkReady(res, fn(_3.$0[0], _4.$0[0]));
+      }
+    };
+    When(sn1, cont, res);
+    When(sn2, cont, res);
+    return res;
+  }
+}
 function Map_1(fn, sn){
   const m=sn.s;
   if(m!=null&&m.$==0)return{s:Forever(fn(m.$0))};
@@ -8611,10 +9155,51 @@ function Map_1(fn, sn){
     return res;
   }
 }
+function MapCachedBy_1(eq, prev, fn, sn){
+  return Map_1((x) => {
+    let _1;
+    const m=prev[0];
+    if(m!=null&&m.$==1&&(m.$0,eq(x, m.$0[0])&&(_1=[m.$0[0], m.$0[1]],true)))return _1[1];
+    else {
+      const y=fn(x);
+      prev[0]=Some([x, y]);
+      return y;
+    }
+  }, sn);
+}
 function WhenObsoleteRun(snap, obs){
   const m=snap.s;
   if(m==null)obs();
   else m!=null&&m.$==2?(m.$0,m.$1.push(obs)):m!=null&&m.$==3?(m.$0,m.$1.push(obs)):m.$0;
+}
+function Map2Opt1(fn, x, sn2){
+  return Map_1((y) => fn(x, y), sn2);
+}
+function Map2Opt2(fn, y, sn1){
+  return Map_1((x) => fn(x, y), sn1);
+}
+function ValueAndForever(snap){
+  const m=snap.s;
+  return m!=null&&m.$==0?Some([m.$0, true]):m!=null&&m.$==2?Some([m.$0, false]):null;
+}
+function MarkForever(sn, v){
+  const m=sn.s;
+  if(m!=null&&m.$==3){
+    const q=m.$0;
+    sn.s=Forever(v);
+    for(let i=0, _1=length(q)-1;i<=_1;i++)(get(q, i))(v);
+  }
+  else void 0;
+}
+function MarkReady(sn, v){
+  const m=sn.s;
+  if(m!=null&&m.$==3){
+    const q2=m.$1;
+    const q1=m.$0;
+    sn.s=Ready(v, q2);
+    for(let i=0, _1=length(q1)-1;i<=_1;i++)(get(q1, i))(v);
+  }
+  else void 0;
 }
 function When(snap, avail, obs){
   const m=snap.s;
@@ -8691,33 +9276,10 @@ function EnqueueSafe(q, x){
   }
   else void 0;
 }
-function MarkForever(sn, v){
-  const m=sn.s;
-  if(m!=null&&m.$==3){
-    const q=m.$0;
-    sn.s=Forever(v);
-    for(let i=0, _1=length(q)-1;i<=_1;i++)(get(q, i))(v);
-  }
-  else void 0;
-}
-function MarkReady(sn, v){
-  const m=sn.s;
-  if(m!=null&&m.$==3){
-    const q2=m.$1;
-    const q1=m.$0;
-    sn.s=Ready(v, q2);
-    for(let i=0, _1=length(q1)-1;i<=_1;i++)(get(q1, i))(v);
-  }
-  else void 0;
-}
 function WhenObsolete(snap, obs){
   const m=snap.s;
   if(m==null)Obsolete(obs);
   else m!=null&&m.$==2?(m.$0,EnqueueSafe(m.$1, obs)):m!=null&&m.$==3?(m.$0,EnqueueSafe(m.$1, obs)):m.$0;
-}
-function ValueAndForever(snap){
-  const m=snap.s;
-  return m!=null&&m.$==0?Some([m.$0, true]):m!=null&&m.$==2?Some([m.$0, false]):null;
 }
 function Join_1(snap){
   const res={s:Waiting([], [])};
@@ -8783,7 +9345,7 @@ function removeHolesExcept(instance, dontRemove){
     if(!dontRemove.Contains(e.getAttribute("ws-replace")))e.parentNode.removeChild(e);
   });
   foreachNotPreserved(instance, "[ws-on]", (e) => {
-    e.setAttribute("ws-on", concat_1(" ", filter((x) => dontRemove.Contains(get(SplitChars(x, [":"], 1), 1)), SplitChars(e.getAttribute("ws-on"), [" "], 1))));
+    e.setAttribute("ws-on", concat_1(" ", filter_1((x) => dontRemove.Contains(get(SplitChars(x, [":"], 1), 1)), SplitChars(e.getAttribute("ws-on"), [" "], 1))));
   });
   foreachNotPreserved(instance, "[ws-attr-holes]", (e) => {
     const holeAttrs=SplitChars(e.getAttribute("ws-attr-holes"), [" "], 1);
@@ -8943,7 +9505,7 @@ class DocElemNode {
 function New_40(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
-function get_Empty(){
+function get_Empty_1(){
   return NodeSet(new HashSet("New_3"));
 }
 function FindAll(doc_1){
@@ -9006,68 +9568,6 @@ function ToArray(a){
 function Intersect(a, a_1){
   return NodeSet(Intersect_1(a.$0, a_1.$0));
 }
-function Delay(mk){
-  return(c) => {
-    try {
-      (mk())(c);
-    }
-    catch(e){
-      c.k(No(e));
-    }
-  };
-}
-function Return(x){
-  return(c) => {
-    c.k(Ok_1(x));
-  };
-}
-function Bind_1(r, f){
-  return checkCancel((c) => {
-    r(New_45((a) => {
-      if(a.$==0){
-        const x=a.$0;
-        scheduler().Fork(() => {
-          try {
-            (f(x))(c);
-          }
-          catch(e){
-            c.k(No(e));
-          }
-        });
-      }
-      else scheduler().Fork(() => {
-        c.k(a);
-      });
-    }, c.ct));
-  });
-}
-function Zero(){
-  return _c_9.Zero;
-}
-function Start(c, ctOpt){
-  const d=(defCTS())[0];
-  const ct=ctOpt==null?d:ctOpt.$0;
-  scheduler().Fork(() => {
-    if(!ct.c)c(New_45((a) => {
-      if(a.$==1)UncaughtAsyncError(a.$0);
-    }, ct));
-  });
-}
-function scheduler(){
-  return _c_9.scheduler;
-}
-function checkCancel(r){
-  return(c) => {
-    if(c.ct.c)cancel(c);
-    else r(c);
-  };
-}
-function defCTS(){
-  return _c_9.defCTS;
-}
-function UncaughtAsyncError(e){
-  console.log("WebSharper: Uncaught asynchronous exception", e);
-}
 function FromContinuations(subscribe){
   return(c) => {
     const continued=[false];
@@ -9093,10 +9593,72 @@ function FromContinuations(subscribe){
     });
   };
 }
+function Delay(mk){
+  return(c) => {
+    try {
+      (mk())(c);
+    }
+    catch(e){
+      c.k(No(e));
+    }
+  };
+}
+function Bind_1(r, f){
+  return checkCancel((c) => {
+    r(New_46((a) => {
+      if(a.$==0){
+        const x=a.$0;
+        scheduler().Fork(() => {
+          try {
+            (f(x))(c);
+          }
+          catch(e){
+            c.k(No(e));
+          }
+        });
+      }
+      else scheduler().Fork(() => {
+        c.k(a);
+      });
+    }, c.ct));
+  });
+}
+function Zero(){
+  return _c_9.Zero;
+}
+function Start(c, ctOpt){
+  const d=(defCTS())[0];
+  const ct=ctOpt==null?d:ctOpt.$0;
+  scheduler().Fork(() => {
+    if(!ct.c)c(New_46((a) => {
+      if(a.$==1)UncaughtAsyncError(a.$0);
+    }, ct));
+  });
+}
+function Return(x){
+  return(c) => {
+    c.k(Ok_1(x));
+  };
+}
+function scheduler(){
+  return _c_9.scheduler;
+}
+function checkCancel(r){
+  return(c) => {
+    if(c.ct.c)cancel(c);
+    else r(c);
+  };
+}
+function defCTS(){
+  return _c_9.defCTS;
+}
+function UncaughtAsyncError(e){
+  console.log("WebSharper: Uncaught asynchronous exception", e);
+}
 function StartImmediate(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
-  if(!ct.c)c(New_45((a) => {
+  if(!ct.c)c(New_46((a) => {
     if(a.$==1)UncaughtAsyncError(a.$0);
   }, ct));
 }
@@ -9206,7 +9768,7 @@ function SendAction(Item){
 function ScheduleReconnect(delayMs){
   return{$:5, $0:delayMs};
 }
-function New_41(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode){
+function New_41(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision){
   return{
     wireVersion:wireVersion, 
     kind:kind, 
@@ -9225,7 +9787,12 @@ function New_41(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_
     includePartial:includePartial, 
     afterDataRevision:afterDataRevision, 
     dataRevision:dataRevision, 
-    reasonCode:reasonCode
+    reasonCode:reasonCode, 
+    templateKey:templateKey, 
+    hasTemplateRowId:hasTemplateRowId, 
+    editorValues:editorValues, 
+    expectedDocumentRevision:expectedDocumentRevision, 
+    hasExpectedDocumentRevision:hasExpectedDocumentRevision
   };
 }
 function Bind_2(f, r){
@@ -9243,8 +9810,14 @@ function New_42(schema, exportedAtUtc, documentRevision, dataRevision, state){
     state:state
   };
 }
+function initialEditorInputs(schema){
+  return collect((field_1) => {
+    const m=field_1.DefaultValue;
+    return m==null?fallbackInputs(field_1.Key, field_1.Kind):flattenEditorValue(field_1.Key, field_1.Kind, m.$0);
+  }, schema.Fields);
+}
 function rowReferenceLength(row, data){
-  const o=tryHead(map((trace) => seriesValues(trace.DataRef, data).length, filter((a) => a.Visible, effectiveTraces(row))));
+  const o=tryHead(sortDescending(map((trace) => seriesValues(trace.DataRef, data).length, filter_1((a) => a.Visible, effectiveTraces(row)))));
   return o==null?0:o.$0;
 }
 function resolveWindow(minimumCount, maximumCount, total, followLatest, requested){
@@ -9280,6 +9853,49 @@ function viewportMaximumStart(total, window_1){
   let _1=Compare(a_1, b)===1?a_1:b;
   const b_1=total-_1;
   return Compare(a, b_1)===1?a:b_1;
+}
+function setEditorInput(input_1, values){
+  return sortBy((a) => a.Path, [input_1].concat(filter_1((current) => current.Path!=input_1.Path, values)));
+}
+function tryEditorInput(path, values){
+  const o=tryFind((value) => value.Path==path, values);
+  return o==null?null:Some(o.$0.Value);
+}
+function editorScalarText(a){
+  return a.$==1?fixedNumber(a.$0):a.$==2?a.$0?"true":"false":a.$0;
+}
+function moveListItem(listPath, fromIndex, toIndex, values){
+  return sortBy((a) => a.Path, map((value) => {
+    const m=tryListIndex(listPath, value.Path);
+    return m!=null&&m.$==1?m.$0===fromIndex?(m.$0,{Path:replaceListIndex(listPath, fromIndex, toIndex, value.Path), Value:value.Value}):m.$0===toIndex?(m.$0,{Path:replaceListIndex(listPath, toIndex, fromIndex, value.Path), Value:value.Value}):value:value;
+  }, values));
+}
+function removeListItem(listPath, index, values){
+  return sortBy((a) => a.Path, choose((value) => {
+    let _1;
+    const m=tryListIndex(listPath, value.Path);
+    switch(m!=null&&m.$==1?m.$0===index?(_1=m.$0,0):m.$0>index?(_1=m.$0,1):2:2){
+      case 0:
+        return null;
+      case 1:
+        return Some({Path:replaceListIndex(listPath, _1, _1-1, value.Path), Value:value.Value});
+      case 2:
+        return Some(value);
+    }
+  }, values));
+}
+function addListItem(listPath, itemKind, values){
+  const m=tryLast(listIndexes(listPath, values));
+  let _1=m==null?0:m.$0+1;
+  let _2=String(_1);
+  let _3=String(listPath)+"["+_2;
+  let _4=_3+"]";
+  let _5=fallbackInputs(_4, itemKind);
+  let _6=values.concat(_5);
+  return sortBy((a) => a.Path, _6);
+}
+function listIndexes(listPath, values){
+  return sort(distinct(choose((value) => tryListIndex(listPath, value.Path), values)));
 }
 function queryDraft(values){
   const textValue=(name) => {
@@ -9329,13 +9945,8 @@ function statusPresentation(statusRef, state){
   };
 }
 function referenceTimeline(rows, data){
-  const traces=filter((a) => a.Visible, collect(effectiveTraces, filter((a) => a.Visible, rows)));
-  const tryTimeline=(predicate) => tryPick((trace) => {
-    const timestamps=traceTimestamps(trace, data);
-    return length(timestamps)===0?null:Some(timestamps);
-  }, filter(predicate, traces));
-  const o=tryTimeline((trace) => Equals(trace.Kind, {$:0}));
-  const o_1=o==null?tryTimeline(() => true):(o.$0,o);
+  const o=tryHead(sortByDescending((_1) =>[length(_1[1]), Equals(_1[0].Kind, {$:0})], filter_1((_1) => length(_1[1])>0, map((trace) =>[trace, distinct(traceTimestamps(trace, data))], filter_1((a) => a.Visible, collect(effectiveTraces, filter_1((a) => a.Visible, rows)))))));
+  const o_1=o==null?null:Some(o.$0[1]);
   return o_1==null?[]:o_1.$0;
 }
 function selectWindow(window_1, values){
@@ -9351,7 +9962,7 @@ function selectWindow(window_1, values){
   }
 }
 function cursorSnapshot(document, data, window_1, cursorIndex){
-  const visibleRows=filter((a_1) => a_1.Visible, document.Rows);
+  const visibleRows=filter_1((a_1) => a_1.Visible, document.Rows);
   const timeline=referenceTimeline(visibleRows, data);
   const visibleTimestamps=selectWindow(clampWindow(1, 2147483647, length(timeline), window_1), timeline);
   if(length(visibleTimestamps)===0)return null;
@@ -9365,27 +9976,43 @@ function cursorSnapshot(document, data, window_1, cursorIndex){
       VisibleIndex:index, 
       Timestamp:timestamp, 
       Values:map((t) => t[1], collect((row) => choose((trace) => {
+        let _1, _2;
         const label=IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label;
         const m=trace.Kind;
         if(m.$==1||(m.$==2?false:m.$!=3)){
-          const o=tryFind((point_2) => point_2.Timestamp==timestamp, candleSeries(trace.DataRef, data));
+          const o=tryCandleAt(timestamp, candleSeries(trace.DataRef, data));
           if(o==null)return null;
           else {
             const point=o.$0;
-            let _1=[point.Timestamp, {Label:label, Value:Equals(trace.Kind, {$:1})?fixedNumber(point.Volume):"O "+fixedNumber(point.Open)+" H "+fixedNumber(point.High)+" L "+fixedNumber(point.Low)+" C "+fixedNumber(point.Close)}];
-            return Some(_1);
+            const baseValue=Equals(trace.Kind, {$:1})?fixedNumber(point.Volume):"O "+fixedNumber(point.Open)+" H "+fixedNumber(point.High)+" L "+fixedNumber(point.Low)+" C "+fixedNumber(point.Close);
+            const m_1=point.Temporal;
+            if(m_1==null)_1=baseValue;
+            else {
+              const metadata=m_1.$0;
+              _1=baseValue+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
+            }
+            let _3={Label:label, Value:_1};
+            let _4=[point.Timestamp, _3];
+            return Some(_4);
           }
         }
         else {
-          const o_1=tryFind((point_2) => point_2.Timestamp==timestamp, lineSeries(trace.DataRef, data));
+          const o_1=tryLineAt(timestamp, lineSeries(trace.DataRef, data));
           if(o_1==null)return null;
           else {
             const point_1=o_1.$0;
-            let _2=[point_1.Timestamp, {Label:label, Value:fixedNumber(point_1.Value)}];
-            return Some(_2);
+            const m_2=point_1.Temporal;
+            if(m_2==null)_2=fixedNumber(point_1.Value);
+            else {
+              const metadata_1=m_2.$0;
+              _2=fixedNumber(point_1.Value)+" | "+metadata_1.ScaleKey+" "+metadata_1.Finality+" | "+metadata_1.SourceIntervalId;
+            }
+            let _5={Label:label, Value:_2};
+            let _6=[point_1.Timestamp, _5];
+            return Some(_6);
           }
         }
-      }, filter((a_1) => a_1.Visible, effectiveTraces(row))), visibleRows))
+      }, filter_1((a_1) => a_1.Visible, effectiveTraces(row))), visibleRows))
     });
   }
 }
@@ -9495,6 +10122,12 @@ function workspaceBootstrapPresentation(state){
     };
   }
 }
+function validateEditorSubmission(schema, values){
+  return collect((field_1) => editorSubmissionErrors(field_1.Key, field_1.Required, field_1.Kind, values), schema.Fields);
+}
+function editorScalarEqualsSdui(scalar, value){
+  return scalar.$==1?value.$==2&&scalar.$0===value.$0:scalar.$==2?value.$==1&&scalar.$0==value.$0:value.$==3&&scalar.$0==value.$0;
+}
 function previewWindowBounds(minimumCount, maximumCount, total, committed, drag, delta){
   const committed_1=clampWindow(minimumCount, maximumCount, total, committed);
   if(committed_1.Count<=0)return committed_1;
@@ -9537,10 +10170,96 @@ function commitWindowBounds(minimumCount, maximumCount, total, draft){
   const next=clampWindow(minimumCount, maximumCount, total, draft);
   return[next.StartIndex===viewportMaximumStart(total, next), next];
 }
+function fallbackInputs(path, kind){
+  let o;
+  if(kind.$==1){
+    const x=kind.$0;
+    let _1=x==null?0n:x.$0;
+    let _2=Number(_1);
+    let _3={$:1, $0:_2};
+    return[{Path:path, Value:_3}];
+  }
+  else if(kind.$==2){
+    const x_1=kind.$0;
+    let _4=x_1==null?0:x_1.$0;
+    let _5={$:1, $0:_4};
+    return[{Path:path, Value:_5}];
+  }
+  else if(kind.$==3)return[{Path:path, Value:{$:2, $0:false}}];
+  else if(kind.$==4){
+    const o_1=tryHead(kind.$0);
+    if(o_1==null)o=null;
+    else {
+      const m=o_1.$0.Value;
+      o=m.$==3?Some({$:0, $0:m.$0}):m.$==2?Some({$:1, $0:m.$0}):m.$==1?Some({$:2, $0:m.$0}):null;
+    }
+    const o_2=o==null?null:Some([{Path:path, Value:o.$0}]);
+    return o_2==null?[]:o_2.$0;
+  }
+  else if(kind.$==5){
+    const o_3=tryHead(kind.$0);
+    const o_4=o_3==null?null:Some([{Path:path, Value:{$:0, $0:o_3.$0}}]);
+    return o_4==null?[]:o_4.$0;
+  }
+  else if(kind.$==6){
+    const minimum=kind.$1;
+    const itemKind=kind.$0;
+    return concat(init(minimum==null?0:minimum.$0, (index) => fallbackInputs(String(path)+"["+String(index)+"]", itemKind)));
+  }
+  else return kind.$==7?collect((field_1) => {
+    const childPath=path+"."+field_1.Key;
+    const m_1=field_1.DefaultValue;
+    return m_1==null?fallbackInputs(childPath, field_1.Kind):flattenEditorValue(childPath, field_1.Kind, m_1.$0);
+  }, kind.$0):[{Path:path, Value:{$:0, $0:""}}];
+}
+function flattenEditorValue(path, kind, value){
+  let _1;
+  switch(kind.$==7?value.$==5?(_1=[kind.$0, value.$0],0):value.$==3?(_1=value.$0,2):value.$==2?(_1=value.$0,3):value.$==1?(_1=value.$0,4):5:kind.$==6?value.$==4?(_1=[kind.$0, value.$0],1):value.$==3?(_1=value.$0,2):value.$==2?(_1=value.$0,3):value.$==1?(_1=value.$0,4):5:value.$==3?(_1=value.$0,2):value.$==2?(_1=value.$0,3):value.$==1?(_1=value.$0,4):5){
+    case 0:
+      const values=_1[1];
+      return collect((field_1) => {
+        const m=values.TryFind(field_1.Key);
+        return m==null?[]:flattenEditorValue(path+"."+field_1.Key, field_1.Kind, m.$0);
+      }, _1[0]);
+    case 1:
+      const itemKind=_1[0];
+      return collect((_2) => flattenEditorValue(String(path)+"["+String(_2[0])+"]", itemKind, _2[1]), indexed(_1[1]));
+    case 2:
+      return[{Path:path, Value:{$:0, $0:_1}}];
+    case 3:
+      return[{Path:path, Value:{$:1, $0:_1}}];
+    case 4:
+      return[{Path:path, Value:{$:2, $0:_1}}];
+    case 5:
+      return[];
+  }
+}
 function seriesValues(dataRef, data){
   let _1;
   const m=data.TryFind(dataRef);
   return m!=null&&m.$==1&&(m.$0.$==4&&(_1=m.$0.$0,true))?_1:[];
+}
+function fixedNumber(value){
+  return String(value);
+}
+function tryListIndex(listPath, path){
+  let o;
+  const prefix=listPath+"[";
+  if(path==null||!StartsWith(path, prefix))return null;
+  else {
+    const closeIndex=IndexOf(path, "]", prefix.length);
+    if(closeIndex<prefix.length)return null;
+    else {
+      const m=(o=0,[TryParse(Substring(path, prefix.length, closeIndex-prefix.length), {get:() => o, set:(v) => {
+        o=v;
+      }}), o]);
+      return m[0]&&m[1]>=0?Some(m[1]):null;
+    }
+  }
+}
+function replaceListIndex(listPath, oldIndex, newIndex, path){
+  const oldPrefix=String(listPath)+"["+String(oldIndex)+"]";
+  return StartsWith(path, oldPrefix)?String(listPath)+"["+String(newIndex)+"]"+path.substring(oldPrefix.length):path;
 }
 function tryText(a){
   return a.$==3?Some(a.$0):null;
@@ -9577,11 +10296,30 @@ function traceTimestamps(trace, data){
   const m=trace.Kind;
   return m.$==1||(m.$==2?false:m.$!=3)?map((a) => a.Timestamp, candleSeries(trace.DataRef, data)):map((a) => a.Timestamp, lineSeries(trace.DataRef, data));
 }
-function fixedNumber(value){
-  return String(value);
+function tryCandleAt(timestamp, values){
+  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
 }
 function lineSeries(dataRef, data){
   return choose(parseLine, seriesValues(dataRef, data));
+}
+function tryLineAt(timestamp, values){
+  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
+}
+function rowTemporalMetadata(row, data){
+  return distinctBy((value) =>[value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality], choose((trace) => latestTemporalMetadata(trace, data), filter_1((a) => a.Visible, effectiveTraces(row))));
+}
+function temporalDetail(metadata){
+  const o=metadata.Quality;
+  let _1=o==null?"unknown":o.$0;
+  let _2=String(_1);
+  let _3=String(metadata.ScaleKey)+" | "+String(metadata.Finality)+" | quality "+_2;
+  let _4=_3+" | frontier ";
+  let _5=_4+String(metadata.ObservedThroughUtc);
+  let _6=_5+" | available ";
+  const o_1=metadata.AvailableAtUtc;
+  let _7=o_1==null?"unknown":o_1.$0;
+  let _8=String(_7);
+  return _6+_8;
 }
 function sampleEvenly(maximumCount, values){
   return maximumCount<=0||length(values)===0?[]:length(values)<=maximumCount?values.slice():maximumCount===1?[get(values, length(values)-1)]:ofSeq(delay(() => collect_1((sampleIndex) =>[get(values, toInt(Math.round(sampleIndex*(length(values)-1)/(maximumCount-1))))], range(0, maximumCount-1))));
@@ -9605,11 +10343,15 @@ function normalize(low, high, top, height, value){
 }
 function parseCandle(value){
   let _1;
-  const o=tryObject(value);
-  if(o==null)return null;
+  const p=pointPayload_1(value);
+  const temporal=p[0];
+  const o=p[1];
+  const o_1=o==null?null:tryObject(o.$0);
+  if(o_1==null)return null;
   else {
-    const item=o.$0;
-    const _2=objectText("t", item);
+    const item=o_1.$0;
+    const o_2=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
+    const _2=o_2==null?objectText("t", item):(o_2.$0,o_2);
     const _3=objectNumber("o", item);
     const _4=objectNumber("h", item);
     const _5=objectNumber("l", item);
@@ -9621,8 +10363,68 @@ function parseCandle(value){
       High:_1[1], 
       Low:_1[2], 
       Close:_1[0], 
-      Volume:_1[5]
+      Volume:_1[5], 
+      Temporal:temporal
     }):null;
+  }
+}
+function editorSubmissionErrors(path, required, kind, values){
+  let _1;
+  const missing=() => required?[path+" is required."]:[];
+  if(kind.$==7)return collect((field_1) => editorSubmissionErrors(path+"."+field_1.Key, field_1.Required, field_1.Kind, values), kind.$0);
+  else if(kind.$==6){
+    const minimum=kind.$1;
+    const maximum=kind.$2;
+    const itemKind=kind.$0;
+    const indexes=listIndexes(path, values);
+    return ofSeq(delay(() => {
+      let _2;
+      return append_1(minimum!=null&&minimum.$==1&&(length(indexes)<minimum.$0&&(_2=minimum.$0,true))?[String(path)+" requires at least "+String(_2)+" item(s)."]:[], delay(() => {
+        let _3;
+        return append_1(maximum!=null&&maximum.$==1&&(length(indexes)>maximum.$0&&(_3=maximum.$0,true))?[String(path)+" allows at most "+String(_3)+" item(s)."]:[], delay(() => collect_1((index) => editorSubmissionErrors(String(path)+"["+String(index)+"]", true, itemKind, values), indexes)));
+      }));
+    }));
+  }
+  else {
+    const m=tryEditorInput(path, values);
+    if(m!=null&&m.$==1){
+      const scalar=m.$0;
+      switch(kind.$==0?scalar.$==0?required&&IsNullOrWhiteSpace(scalar.$0)?(_1=scalar.$0,0):1:6:kind.$==3?scalar.$==2?1:6:kind.$==1?scalar.$==1?(_1=[kind.$1, kind.$0, scalar.$0],2):6:kind.$==2?scalar.$==1?(_1=[kind.$1, kind.$0, scalar.$0],3):6:kind.$==4?exists((choice) => editorScalarEqualsSdui(scalar, choice.Value), kind.$0)?(_1=kind.$0,4):6:kind.$==5?scalar.$==0?arrContains(scalar.$0, kind.$0)?(_1=[kind.$0, scalar.$0],5):6:6:6){
+        case 0:
+          return missing();
+        case 1:
+          return[];
+        case 2:
+          const maximum_1=_1[0];
+          const minimum_1=_1[1];
+          const value=_1[2];
+          return ofSeq(delay(() => append_1(isNaN(value)||Math.abs(value)===Infinity||(value<0?Math.ceil(value):Math.floor(value))!==value?[path+" must be an integer."]:[], delay(() => {
+            let _2;
+            return append_1(minimum_1!=null&&minimum_1.$==1&&(value<Number(minimum_1.$0)&&(_2=minimum_1.$0,true))?[path+" is below its minimum."]:[], delay(() => {
+              let _3;
+              return maximum_1!=null&&maximum_1.$==1&&(value>Number(maximum_1.$0)&&(_3=maximum_1.$0,true))?[path+" exceeds its maximum."]:[];
+            }));
+          }))));
+        case 3:
+          const maximum_2=_1[0];
+          const minimum_2=_1[1];
+          const value_1=_1[2];
+          return ofSeq(delay(() => append_1(isNaN(value_1)||Math.abs(value_1)===Infinity?[path+" must be finite."]:[], delay(() => {
+            let _2;
+            return append_1(minimum_2!=null&&minimum_2.$==1&&(value_1<minimum_2.$0&&(_2=minimum_2.$0,true))?[path+" is below its minimum."]:[], delay(() => {
+              let _3;
+              return maximum_2!=null&&maximum_2.$==1&&(value_1>maximum_2.$0&&(_3=maximum_2.$0,true))?[path+" exceeds its maximum."]:[];
+            }));
+          }))));
+        case 4:
+          return[];
+        case 5:
+          return[];
+        case 6:
+          return[path+" does not match its editor kind."];
+      }
+    }
+    else return missing();
   }
 }
 function objectNumber(name, value){
@@ -9632,16 +10434,53 @@ function objectNumber(name, value){
 function objectField(name, value){
   return value.TryFind(name);
 }
+function pointMatchesTimestamp(timestamp, pointTimestamp, temporal){
+  let _1, _2;
+  if(temporal!=null&&temporal.$==1){
+    const metadata=temporal.$0;
+    _2=metadata.Projection=="repeat-across-base-buckets"||metadata.Projection=="candle-span"?(_1=temporal.$0,0):temporal.$0.Projection=="step-after-close"?(_1=temporal.$0,1):2;
+  }
+  else _2=2;
+  switch(_2){
+    case 0:
+      return timestampInInterval(timestamp, _1);
+    case 1:
+      return availableAtOrAfter(timestamp, _1);
+    case 2:
+      return pointTimestamp==timestamp;
+  }
+}
 function parseLine(value){
   let _1;
-  const o=tryObject(value);
-  if(o==null)return null;
+  const p=pointPayload_1(value);
+  const temporal=p[0];
+  const o=p[1];
+  const o_1=o==null?null:tryObject(o.$0);
+  if(o_1==null)return null;
   else {
-    const item=o.$0;
-    const _2=objectText("t", item);
+    const item=o_1.$0;
+    const o_2=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
+    const _2=o_2==null?objectText("t", item):(o_2.$0,o_2);
     const _3=objectNumber("v", item);
-    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_1=[_3.$0, _2.$0],true))?Some({Timestamp:_1[1], Value:_1[0]}):null;
+    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_1=[_3.$0, _2.$0],true))?Some({
+      Timestamp:_1[1], 
+      Value:_1[0], 
+      Temporal:temporal
+    }):null;
   }
+}
+function candleSlotRange(referenceTimestamps, point){
+  let _1;
+  const matching=choose((_4) => pointMatchesTimestamp(_4[1], point.Timestamp, point.Temporal)?Some(_4[0]):null, indexed(referenceTimestamps));
+  const _2=tryHead(matching);
+  const _3=tryLast(matching);
+  return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_1=[_2.$0, _3.$0],true))?Some([_1[0], _1[1]+1]):null;
+}
+function projectedLinePoints(referenceTimestamps, points){
+  return choose((_1) => {
+    const o=tryLineAt(_1[1], points);
+    return o==null?null:Some([_1[0], o.$0]);
+  }, indexed(referenceTimestamps));
 }
 function cursorIndexFromClientX(visibleCount, left, width, clientX){
   return width<=0?null:cursorIndexFromRatio(visibleCount, (clientX-left)/width);
@@ -9658,8 +10497,25 @@ function slotCenter(width, visibleCount, index){
     return Some(_3);
   }
 }
+function latestTemporalMetadata(trace, data){
+  return tryLast(choose((x) => {
+    const o=tryTemporalPoint(x);
+    return o==null?null:Some(o.$0[0]);
+  }, seriesValues(trace.DataRef, data)));
+}
 function timeLabels(timestamps){
   return length(timestamps)===0?[]:length(timestamps)===1?[[0, get(timestamps, 0)]]:map((index) =>[index, get(timestamps, index)], distinct([0, length(timestamps)/2>>0, length(timestamps)-1]));
+}
+function pointPayload_1(value){
+  const m=tryTemporalPoint(value);
+  return m==null?[null, Some(value)]:[Some(m.$0[0]), m.$0[1]];
+}
+function timestampInInterval(timestamp, metadata){
+  return Compare(timestamp, metadata.IntervalStartUtc)>=0&&Compare(timestamp, metadata.IntervalEndUtc)<0;
+}
+function availableAtOrAfter(timestamp, metadata){
+  const o=metadata.AvailableAtUtc;
+  return o==null?false:Compare(o.$0, timestamp)<=0;
 }
 function cursorIndexFromRatio(visibleCount, ratio){
   if(visibleCount<=0)return null;
@@ -9676,6 +10532,45 @@ function cursorIndexFromRatio(visibleCount, ratio){
     return Some(_4);
   }
 }
+function tryTemporalPoint(value){
+  let _1, _2;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const fields=o.$0;
+    if(!Equals(objectText("_type", fields), Some("temporal-point.v1")))return null;
+    else {
+      const _3=requiredObjectText("sourceIntervalId", fields);
+      const _4=requiredObjectText("scaleKey", fields);
+      const _5=requiredObjectText("intervalStartUtc", fields);
+      const _6=requiredObjectText("intervalEndUtc", fields);
+      const _7=requiredObjectText("observedThroughUtc", fields);
+      const _8=requiredObjectText("finality", fields);
+      const _9=requiredObjectText("projection", fields);
+      if(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _9.$0, _4.$0, _3.$0],true)))))))){
+        let _10={
+          SourceIntervalId:_1[6], 
+          ScaleKey:_1[5], 
+          IntervalStartUtc:_1[2], 
+          IntervalEndUtc:_1[1], 
+          ObservedThroughUtc:_1[3], 
+          AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
+          Finality:_1[0], 
+          Projection:_1[4], 
+          Quality:requiredObjectText("quality", fields)
+        };
+        const m=fields.TryFind("value");
+        let _11=m==null||(m.$0.$==0||(_2=m.$0,false))?null:Some(_2);
+        let _12=[_10, _11];
+        return Some(_12);
+      }
+      else return null;
+    }
+  }
+}
+function requiredObjectText(name, value){
+  return filter((x) =>!IsNullOrWhiteSpace(x), objectText(name, value));
+}
 let _c_5=Lazy((_i) => class $StartupCode_Renderer {
   static {
     _c_5=_i(this);
@@ -9685,7 +10580,8 @@ let _c_5=Lazy((_i) => class $StartupCode_Renderer {
     this.defaultOptions={
       MinimumVisibleBars:12, 
       DefaultVisibleBars:48, 
-      MaximumVisibleBars:2000
+      MaximumVisibleBars:2000, 
+      EditorSchemas:[]
     };
   }
 });
@@ -9874,6 +10770,15 @@ function fromSeq(s){
   sortInPlace(a);
   return Build(a, 0, a.length-1);
 }
+function New_45(path, kind, textValue, numberValue, boolValue){
+  return{
+    path:path, 
+    kind:kind, 
+    textValue:textValue, 
+    numberValue:numberValue, 
+    boolValue:boolValue
+  };
+}
 class Random extends Object_1 {
   Next_1(maxValue){
     return maxValue<0?FailWith("'maxValue' must be greater than zero."):Math.floor(Math.random()*maxValue);
@@ -9938,14 +10843,14 @@ function TryParseBigInt(s, min_1, max_2, r){
   }
   else return false;
 }
-function New_45(k, ct){
+function New_46(k, ct){
   return{k:k, ct:ct};
-}
-function No(Item){
-  return{$:1, $0:Item};
 }
 function Ok_1(Item){
   return{$:0, $0:Item};
+}
+function No(Item){
+  return{$:1, $0:Item};
 }
 function Cc(Item){
   return{$:2, $0:Item};
@@ -10198,7 +11103,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_46(false, []);
+    this.noneCT=New_47(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -10207,11 +11112,11 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_46(IsCancellationRequested, Registrations){
+function New_47(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
-  return new HashSet("New_2", filter(ok, ToArray_2(set_1)));
+  return new HashSet("New_2", filter_1(ok, ToArray_2(set_1)));
 }
 function Except_1(excluded, included){
   const set_1=new HashSet("New_2", ToArray_2(included));
@@ -10227,6 +11132,40 @@ function Intersect_1(a, b){
   const set_1=new HashSet("New_2", ToArray_2(a));
   set_1.IntersectWith(ToArray_2(b));
   return set_1;
+}
+class DynamicAttrNode extends Object_1 {
+  push;
+  value;
+  dirty;
+  updates;
+  NGetExitAnim(parent){
+    return get_Empty();
+  }
+  NGetEnterAnim(parent){
+    return get_Empty();
+  }
+  NGetChangeAnim(parent){
+    return get_Empty();
+  }
+  get NChanged(){
+    return this.updates;
+  }
+  NSync(parent){
+    if(this.dirty){
+      (this.push(parent))(this.value);
+      this.dirty=false;
+    }
+  }
+  constructor(view, push){
+    super();
+    this.push=push;
+    this.value=void 0;
+    this.dirty=false;
+    this.updates=Map((x) => {
+      this.value=x;
+      this.dirty=true;
+    }, view);
+  }
 }
 class KeyNotFoundException extends Error {
   constructor(i, _1){
@@ -10406,7 +11345,7 @@ function Children(elem, delims){
 }
 function Except_2(a, a_1){
   const excluded=a.$0;
-  return DomNodes(filter((n) => forall((k) =>!(n===k), excluded), a_1.$0));
+  return DomNodes(filter_1((n) => forall((k) =>!(n===k), excluded), a_1.$0));
 }
 function Iter(f, a){
   iter(f, a.$0);
@@ -10476,7 +11415,7 @@ function TryParse_3(s){
   return isNaN(d)?null:Some(d);
 }
 function Create(f){
-  return New_47(false, f, forceLazy);
+  return New_48(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -10497,7 +11436,7 @@ let _c_11=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_47(created, evalOrVal, force){
+function New_48(created, evalOrVal, force){
   return{
     c:created, 
     v:evalOrVal, 

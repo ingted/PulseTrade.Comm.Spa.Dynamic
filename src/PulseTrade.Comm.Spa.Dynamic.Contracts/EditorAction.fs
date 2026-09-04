@@ -11,7 +11,7 @@ type EditorChoice =
 type EditorValueKind =
     | Text
     | Integer of minValue: int64 option * maxValue: int64 option
-    | Decimal of minValue: decimal option * maxValue: decimal option
+    | Decimal of minValue: float option * maxValue: float option
     | Boolean
     | Choice of EditorChoice array
     | Scale of allowedScaleKeys: string array
@@ -55,6 +55,37 @@ type DynamicActionResult =
     | Accepted of requestId: string * resultingRevision: int64
     | Rejected of requestId: string * code: string * message: string
     | RevisionConflict of requestId: string * actualRevision: int64
+
+type DynamicActionClientFrame =
+    { Protocol: string
+      Kind: string
+      Request: DynamicActionRequest }
+
+type DynamicActionServerFrame =
+    { Protocol: string
+      Kind: string
+      Result: DynamicActionResult }
+
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
+module DynamicActionWireDefaults =
+    [<Literal>]
+    let Protocol = "ptcs-dynamic-action.v1"
+
+    [<Literal>]
+    let RequestKind = "action-request"
+
+    [<Literal>]
+    let ResultKind = "action-result"
+
+    let requestFrame request =
+        { Protocol = Protocol
+          Kind = RequestKind
+          Request = request }
+
+    let resultFrame result =
+        { Protocol = Protocol
+          Kind = ResultKind
+          Result = result }
 
 type DynamicActionLifecycleState =
     { Pending: DynamicActionRequest option
@@ -127,12 +158,11 @@ module DynamicEditorValidation =
               if Double.IsNaN number || Double.IsInfinity number then
                   yield RuntimeValidation.error "invalid-decimal" field $"{field} must be finite."
               else
-                  let decimalValue = decimal number
                   match minimum with
-                  | Some lower when decimalValue < lower -> yield RuntimeValidation.error "below-minimum" field $"{field} is below its minimum."
+                  | Some lower when number < lower -> yield RuntimeValidation.error "below-minimum" field $"{field} is below its minimum."
                   | _ -> ()
                   match maximum with
-                  | Some upper when decimalValue > upper -> yield RuntimeValidation.error "above-maximum" field $"{field} exceeds its maximum."
+                  | Some upper when number > upper -> yield RuntimeValidation.error "above-maximum" field $"{field} exceeds its maximum."
                   | _ -> ()
           | EditorValueKind.Choice choices, _ ->
               if nonNull choices |> Array.exists (fun choice -> choice.Value = value) |> not then
@@ -222,6 +252,109 @@ module DynamicEditorValidation =
         | [] -> Ok schema
         | errors -> Error errors
 
+    let scalarOfValue = function
+        | SduiValue.Text value -> Some(EditorScalarValue.Text value)
+        | SduiValue.Number value -> Some(EditorScalarValue.Number value)
+        | SduiValue.Bool value -> Some(EditorScalarValue.Bool value)
+        | _ -> None
+
+    let scalarAsValue = function
+        | EditorScalarValue.Text value -> SduiValue.Text value
+        | EditorScalarValue.Number value -> SduiValue.Number value
+        | EditorScalarValue.Bool value -> SduiValue.Bool value
+
+    let rec flattenValue path kind value =
+        match kind, value with
+        | EditorValueKind.Group fields, SduiValue.Object values ->
+            nonNull fields
+            |> Array.collect (fun field ->
+                match Map.tryFind field.Key values with
+                | Some child -> flattenValue ($"{path}.{field.Key}") field.Kind child
+                | None -> [||])
+        | EditorValueKind.List(itemKind, _, _), SduiValue.Array values ->
+            nonNull values
+            |> Array.indexed
+            |> Array.collect (fun (index, item) -> flattenValue ($"{path}[{index}]") itemKind item)
+        | _, scalar ->
+            match scalarOfValue scalar with
+            | Some value -> [| { Path = path; Value = value } |]
+            | None -> [||]
+
+    let rec fieldDefaults path (field: EditorFieldSchema) =
+        match field.DefaultValue with
+        | Some value -> flattenValue path field.Kind value
+        | None ->
+            match field.Kind with
+            | EditorValueKind.Group fields ->
+                nonNull fields
+                |> Array.collect (fun child -> fieldDefaults ($"{path}.{child.Key}") child)
+            | _ -> [||]
+
+    let defaultInputs schema =
+        nonNull schema.Fields
+        |> Array.collect (fun field -> fieldDefaults field.Key field)
+
+    let takeListIndex limits field (text: string) =
+        if String.IsNullOrEmpty text || text[0] <> '[' then
+            Error [ RuntimeValidation.error "editor-list-index-required" field $"{field} requires a list index." ]
+        else
+            let closeIndex = text.IndexOf(']')
+            if closeIndex <= 1 then
+                Error [ RuntimeValidation.error "editor-list-index-invalid" field $"{field} has an invalid list index." ]
+            else
+                match Int32.TryParse(text.Substring(1, closeIndex - 1)) with
+                | true, index when index >= 0 && index < limits.MaxListItems -> Ok(index, text.Substring(closeIndex + 1))
+                | _ -> Error [ RuntimeValidation.error "editor-list-index-invalid" field $"{field} list index is outside the allowed range." ]
+
+    let rec resolveKind (limits: DynamicEditorLimits) (field: string) (kind: EditorValueKind) (remainder: string) =
+        match kind with
+        | EditorValueKind.Group fields when remainder.StartsWith(".", StringComparison.Ordinal) ->
+            let childPath = remainder.Substring(1)
+            let separator = childPath.IndexOfAny([| '.'; '[' |])
+            let key = if separator < 0 then childPath else childPath.Substring(0, separator)
+            let childRemainder = if separator < 0 then "" else childPath.Substring(separator)
+            match nonNull fields |> Array.tryFind (fun child -> child.Key = key) with
+            | Some child -> resolveKind limits field child.Kind childRemainder
+            | None -> Error [ RuntimeValidation.error "editor-path-unknown" field $"{field} does not exist in the template schema." ]
+        | EditorValueKind.List(itemKind, _, _) ->
+            takeListIndex limits field remainder
+            |> Result.bind (fun (_, childRemainder) -> resolveKind limits field itemKind childRemainder)
+        | _ when remainder = "" -> Ok kind
+        | _ -> Error [ RuntimeValidation.error "editor-path-invalid" field $"{field} does not match the template schema." ]
+
+    let resolvePath limits (schema: DynamicTemplateSchema) (path: string) =
+        let separator = if isNull path then -1 else path.IndexOfAny([| '.'; '[' |])
+        let key =
+            if String.IsNullOrWhiteSpace path then ""
+            elif separator < 0 then path
+            else path.Substring(0, separator)
+        let remainder = if separator < 0 then "" else path.Substring(separator)
+        match nonNull schema.Fields |> Array.tryFind (fun field -> field.Key = key) with
+        | Some field -> resolveKind limits path field.Kind remainder
+        | None -> Error [ RuntimeValidation.error "editor-path-unknown" path $"{path} does not exist in the template schema." ]
+
+    let scalarErrors field kind scalar =
+        let value = scalarAsValue scalar
+        valueErrors DynamicEditorDefaults.limits field 1 kind value
+
+    let inputErrors limits schema values =
+        let inputs = nonNull values
+        [ yield! schemaErrors limits schema
+          if inputs.Length > limits.MaxFields then
+              yield RuntimeValidation.error "limit-editor-inputs" "editor.values" $"Editor inputs exceed hard limit {limits.MaxFields}."
+          if inputs |> Array.countBy _.Path |> Array.exists (fun (_, count) -> count > 1) then
+              yield RuntimeValidation.error "duplicate-editor-input" "editor.values" "Editor input paths must be unique."
+          for index, input in inputs |> Array.indexed do
+              yield! RuntimeValidation.identifier $"editor.values[{index}].path" input.Path
+              match resolvePath limits schema input.Path with
+              | Ok kind -> yield! scalarErrors $"editor.values[{index}].value" kind input.Value
+              | Error errors -> yield! errors ]
+
+    let validateInputs limits schema values =
+        match inputErrors limits schema values with
+        | [] -> Ok values
+        | errors -> Error errors
+
 [<RequireQualifiedAccess>]
 module DynamicActionValidation =
     let canvasErrors field (CanvasInstanceId canvasId) =
@@ -247,6 +380,24 @@ module DynamicActionValidation =
         | SduiAction.ResetCanvas canvas -> canvasErrors "action.canvasInstanceId" canvas
         | SduiAction.AddTaRow(canvas, row) ->
             canvasErrors "action.canvasInstanceId" canvas @ RuntimeValidation.rowErrors 0 row
+        | SduiAction.ApplyTemplate(canvas, rowId, templateKey, values) ->
+            [ yield! canvasErrors "action.canvasInstanceId" canvas
+              match rowId with
+              | Some value -> yield! RuntimeValidation.identifier "action.rowId" value
+              | None -> ()
+              yield! RuntimeValidation.identifier "action.templateKey" templateKey
+              let inputs = DynamicEditorValidation.nonNull values
+              if inputs.Length > DynamicEditorDefaults.limits.MaxFields then
+                  yield RuntimeValidation.error "limit-editor-inputs" "action.values" $"Editor inputs exceed hard limit {DynamicEditorDefaults.limits.MaxFields}."
+              if inputs |> Array.countBy _.Path |> Array.exists (fun (_, count) -> count > 1) then
+                  yield RuntimeValidation.error "duplicate-editor-input" "action.values" "Editor input paths must be unique."
+              for index, input in inputs |> Array.indexed do
+                  yield! RuntimeValidation.identifier $"action.values[{index}].path" input.Path
+                  match input.Value with
+                  | EditorScalarValue.Text value -> yield! RuntimeValidation.unsafeValue $"action.values[{index}].value" (SduiValue.Text value)
+                  | EditorScalarValue.Number value when Double.IsNaN value || Double.IsInfinity value ->
+                      yield RuntimeValidation.error "invalid-editor-number" $"action.values[{index}].value" "Editor number must be finite."
+                  | _ -> () ]
         | SduiAction.RemoveTaRow(canvas, rowId) ->
             canvasErrors "action.canvasInstanceId" canvas @ RuntimeValidation.identifier "action.rowId" rowId
         | SduiAction.ChangeTaQuery(canvas, query) ->
@@ -283,6 +434,26 @@ module DynamicActionValidation =
               if isNull message || message.Length > 512 then
                   yield RuntimeValidation.error "invalid-action-message" "actionResult.message" "Action result message must not exceed 512 characters."
           | _ -> () ]
+
+    let clientFrameErrors (frame: DynamicActionClientFrame) =
+        [ if frame.Protocol <> DynamicActionWireDefaults.Protocol then
+              yield RuntimeValidation.error "unsupported-action-protocol" "actionFrame.protocol" "Unsupported dynamic action protocol."
+          if frame.Kind <> DynamicActionWireDefaults.RequestKind then
+              yield RuntimeValidation.error "invalid-action-frame-kind" "actionFrame.kind" "Dynamic action client frame must be an action request."
+          if isNull (box frame.Request) then
+              yield RuntimeValidation.error "missing-action-request" "actionFrame.request" "Dynamic action request is required."
+          else
+              yield! requestErrors frame.Request ]
+
+    let serverFrameErrors (frame: DynamicActionServerFrame) =
+        [ if frame.Protocol <> DynamicActionWireDefaults.Protocol then
+              yield RuntimeValidation.error "unsupported-action-protocol" "actionFrame.protocol" "Unsupported dynamic action protocol."
+          if frame.Kind <> DynamicActionWireDefaults.ResultKind then
+              yield RuntimeValidation.error "invalid-action-frame-kind" "actionFrame.kind" "Dynamic action server frame must be an action result."
+          if isNull (box frame.Result) then
+              yield RuntimeValidation.error "missing-action-result" "actionFrame.result" "Dynamic action result is required."
+          else
+              yield! resultErrors frame.Result ]
 
 [<RequireQualifiedAccess>]
 module DynamicActionLifecycle =

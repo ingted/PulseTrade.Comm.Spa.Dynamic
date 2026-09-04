@@ -23,7 +23,18 @@ type TaBrowserPointWire =
       hasLow: bool
       hasClose: bool
       hasVolume: bool
-      hasLineValue: bool }
+      hasLineValue: bool
+      hasTemporal: bool
+      sourceIntervalId: string
+      scaleKey: string
+      intervalStartUtc: string
+      intervalEndUtc: string
+      observedThroughUtc: string
+      availableAtUtc: string
+      hasAvailableAtUtc: bool
+      finality: string
+      projection: string
+      quality: string }
 
 [<JavaScript; CLIMutable>]
 type TaBrowserSeriesWire =
@@ -40,7 +51,18 @@ type TaBrowserSeriesWire =
       lowValues: float array
       closeValues: float array
       volumeValues: float array
-      lineValues: float array }
+      lineValues: float array
+      hasTemporal: bool
+      sourceIntervalIds: string array
+      scaleKeys: string array
+      intervalStartUtc: string array
+      intervalEndUtc: string array
+      observedThroughUtc: string array
+      availableAtUtc: string array
+      hasAvailableAtUtc: bool array
+      finality: string array
+      projections: string array
+      qualities: string array }
 
 [<JavaScript; CLIMutable>]
 type TaBrowserTraceWire =
@@ -106,6 +128,14 @@ type TaResearchJsonExportWire =
       state: TaBrowserStateWire }
 
 [<JavaScript; CLIMutable>]
+type TaBrowserEditorInputWire =
+    { path: string
+      kind: string
+      textValue: string
+      numberValue: float
+      boolValue: bool }
+
+[<JavaScript; CLIMutable>]
 type TaBrowserClientFrameWire =
     { wireVersion: string
       kind: string
@@ -124,7 +154,12 @@ type TaBrowserClientFrameWire =
       includePartial: bool
       afterDataRevision: float
       dataRevision: float
-      reasonCode: string }
+      reasonCode: string
+      templateKey: string
+      hasTemplateRowId: bool
+      editorValues: TaBrowserEditorInputWire array
+      expectedDocumentRevision: float
+      hasExpectedDocumentRevision: bool }
 
 [<JavaScript; CLIMutable>]
 type ExtensionTransientRequestWire =
@@ -388,17 +423,52 @@ module TaResearchClientWire =
         | "disposed" -> RuntimePollState.Disposed
         | _ -> RuntimePollState.Unmounted
 
-    let pointValue (point: TaBrowserPointWire) =
-        [ if not (String.IsNullOrWhiteSpace point.time) then
-              "t", SduiValue.Text point.time
-          if point.hasOpen then "o", SduiValue.Number point.openValue
-          if point.hasHigh then "h", SduiValue.Number point.highValue
-          if point.hasLow then "l", SduiValue.Number point.lowValue
-          if point.hasClose then "c", SduiValue.Number point.closeValue
-          if point.hasVolume then "v", SduiValue.Number point.volumeValue
-          if point.hasLineValue then "v", SduiValue.Number point.lineValue ]
+    let pointPayload time hasOpen openValue hasHigh highValue hasLow lowValue hasClose closeValue hasVolume volumeValue hasLineValue lineValue =
+        [ if not (String.IsNullOrWhiteSpace time) then "t", SduiValue.Text time
+          if hasOpen then "o", SduiValue.Number openValue
+          if hasHigh then "h", SduiValue.Number highValue
+          if hasLow then "l", SduiValue.Number lowValue
+          if hasClose then "c", SduiValue.Number closeValue
+          if hasVolume then "v", SduiValue.Number volumeValue
+          if hasLineValue then "v", SduiValue.Number lineValue ]
         |> Map.ofList
         |> SduiValue.Object
+
+    let temporalPointValue sourceIntervalId scaleKey intervalStartUtc intervalEndUtc observedThroughUtc availableAtUtc hasAvailableAtUtc finality projection quality payload =
+        [ "_type", SduiValue.Text "temporal-point.v1"
+          "sourceIntervalId", SduiValue.Text sourceIntervalId
+          "scaleKey", SduiValue.Text scaleKey
+          "intervalStartUtc", SduiValue.Text intervalStartUtc
+          "intervalEndUtc", SduiValue.Text intervalEndUtc
+          "observedThroughUtc", SduiValue.Text observedThroughUtc
+          "finality", SduiValue.Text finality
+          "projection", SduiValue.Text projection
+          "value", payload
+          if hasAvailableAtUtc then "availableAtUtc", SduiValue.Text availableAtUtc
+          if not (String.IsNullOrWhiteSpace quality) then "quality", SduiValue.Text quality ]
+        |> Map.ofList
+        |> SduiValue.Object
+
+    let pointValue (point: TaBrowserPointWire) =
+        let payload =
+            pointPayload point.time point.hasOpen point.openValue point.hasHigh point.highValue point.hasLow point.lowValue point.hasClose point.closeValue point.hasVolume point.volumeValue point.hasLineValue point.lineValue
+
+        if point.hasTemporal then
+            temporalPointValue point.sourceIntervalId point.scaleKey point.intervalStartUtc point.intervalEndUtc point.observedThroughUtc point.availableAtUtc point.hasAvailableAtUtc point.finality point.projection point.quality payload
+        else payload
+
+    let temporalSeriesMetadataIsValid count (series: TaBrowserSeriesWire) =
+        not series.hasTemporal
+        || (not (isNull series.sourceIntervalIds) && series.sourceIntervalIds.Length = count
+            && not (isNull series.scaleKeys) && series.scaleKeys.Length = count
+            && not (isNull series.intervalStartUtc) && series.intervalStartUtc.Length = count
+            && not (isNull series.intervalEndUtc) && series.intervalEndUtc.Length = count
+            && not (isNull series.observedThroughUtc) && series.observedThroughUtc.Length = count
+            && not (isNull series.availableAtUtc) && series.availableAtUtc.Length = count
+            && not (isNull series.hasAvailableAtUtc) && series.hasAvailableAtUtc.Length = count
+            && not (isNull series.finality) && series.finality.Length = count
+            && not (isNull series.projections) && series.projections.Length = count
+            && not (isNull series.qualities) && series.qualities.Length = count)
 
     let columnarPointValues (timeline: string array) (series: TaBrowserSeriesWire) =
         let timeline = if isNull timeline then [||] else timeline
@@ -412,27 +482,38 @@ module TaResearchClientWire =
             let timestamp =
                 if timelineIndex >= 0 && timelineIndex < timeline.Length then text timeline[timelineIndex]
                 else ""
-            let values = ResizeArray<string * SduiValue>()
-            if not (String.IsNullOrWhiteSpace timestamp) then values.Add(("t", SduiValue.Text timestamp))
-            if not (isNull series.openValues) && series.openValues.Length = count then values.Add(("o", SduiValue.Number series.openValues[offset]))
-            if not (isNull series.highValues) && series.highValues.Length = count then values.Add(("h", SduiValue.Number series.highValues[offset]))
-            if not (isNull series.lowValues) && series.lowValues.Length = count then values.Add(("l", SduiValue.Number series.lowValues[offset]))
-            if not (isNull series.closeValues) && series.closeValues.Length = count then values.Add(("c", SduiValue.Number series.closeValues[offset]))
-            if not (isNull series.volumeValues) && series.volumeValues.Length = count then values.Add(("v", SduiValue.Number series.volumeValues[offset]))
-            if not (isNull series.lineValues) && series.lineValues.Length = count then values.Add(("v", SduiValue.Number series.lineValues[offset]))
-            values
-            |> Seq.toList
-            |> Map.ofList
-            |> SduiValue.Object)
+            let payload =
+                pointPayload
+                    timestamp
+                    (not (isNull series.openValues) && series.openValues.Length = count)
+                    (if isNull series.openValues || series.openValues.Length <> count then 0.0 else series.openValues[offset])
+                    (not (isNull series.highValues) && series.highValues.Length = count)
+                    (if isNull series.highValues || series.highValues.Length <> count then 0.0 else series.highValues[offset])
+                    (not (isNull series.lowValues) && series.lowValues.Length = count)
+                    (if isNull series.lowValues || series.lowValues.Length <> count then 0.0 else series.lowValues[offset])
+                    (not (isNull series.closeValues) && series.closeValues.Length = count)
+                    (if isNull series.closeValues || series.closeValues.Length <> count then 0.0 else series.closeValues[offset])
+                    (not (isNull series.volumeValues) && series.volumeValues.Length = count)
+                    (if isNull series.volumeValues || series.volumeValues.Length <> count then 0.0 else series.volumeValues[offset])
+                    (not (isNull series.lineValues) && series.lineValues.Length = count)
+                    (if isNull series.lineValues || series.lineValues.Length <> count then 0.0 else series.lineValues[offset])
+
+            if series.hasTemporal then
+                temporalPointValue series.sourceIntervalIds[offset] series.scaleKeys[offset] series.intervalStartUtc[offset] series.intervalEndUtc[offset] series.observedThroughUtc[offset] series.availableAtUtc[offset] series.hasAvailableAtUtc[offset] series.finality[offset] series.projections[offset] series.qualities[offset] payload
+            else payload)
 
     let seriesPointValues (wire: TaBrowserStateWire) (series: TaBrowserSeriesWire) =
-        if wire.wireVersion = "ta-browser.v3" then columnarPointValues wire.timeline series
+        if wire.wireVersion = "ta-browser.v3" || wire.wireVersion = "ta-browser.v4" then columnarPointValues wire.timeline series
         elif isNull series.points then [||]
         else series.points |> Array.map pointValue
 
     let stateFromWire (wire: TaBrowserStateWire) =
-        if isNull (box wire) || (wire.wireVersion <> "ta-browser.v1" && wire.wireVersion <> "ta-browser.v2" && wire.wireVersion <> "ta-browser.v3") then
+        if isNull (box wire) || (wire.wireVersion <> "ta-browser.v1" && wire.wireVersion <> "ta-browser.v2" && wire.wireVersion <> "ta-browser.v3" && wire.wireVersion <> "ta-browser.v4") then
             Result.Error "Unsupported TA browser state wire."
+        elif wire.wireVersion = "ta-browser.v4"
+             && not (isNull wire.series)
+             && wire.series |> Array.exists (fun series -> not (temporalSeriesMetadataIsValid (max 0 series.pointCount) series)) then
+            Result.Error "TA browser temporal metadata arrays do not match pointCount."
         else
             let rows =
                 if isNull wire.rows then [||]
@@ -525,8 +606,9 @@ module TaResearchClientWire =
     let pointTime value =
         match value with
         | SduiValue.Object values ->
-            match Map.tryFind "t" values with
-            | Some(SduiValue.Text value) -> text value
+            match Map.tryFind "_type" values, Map.tryFind "intervalStartUtc" values, Map.tryFind "t" values with
+            | Some(SduiValue.Text "temporal-point.v1"), Some(SduiValue.Text value), _ -> text value
+            | _, _, Some(SduiValue.Text value) -> text value
             | _ -> ""
         | _ -> ""
 
@@ -602,12 +684,26 @@ module TaResearchClientWire =
           includePartial = false
           afterDataRevision = 0.0
           dataRevision = 0.0
-          reasonCode = "" }
+          reasonCode = ""
+          templateKey = ""
+          hasTemplateRowId = false
+          editorValues = [||]
+          expectedDocumentRevision = 0.0
+          hasExpectedDocumentRevision = false }
 
     let optionText value = value |> Option.defaultValue ""
     let optionInt value = value |> Option.defaultValue 0
     let optionBool value = value |> Option.defaultValue false
     let canvasText (CanvasInstanceId value) = value
+
+    let editorInputToWire (input: EditorInputValue) =
+        match input.Value with
+        | EditorScalarValue.Text value ->
+            { path = input.Path; kind = "text"; textValue = value; numberValue = 0.0; boolValue = false }
+        | EditorScalarValue.Number value ->
+            { path = input.Path; kind = "number"; textValue = ""; numberValue = value; boolValue = false }
+        | EditorScalarValue.Bool value ->
+            { path = input.Path; kind = "bool"; textValue = ""; numberValue = 0.0; boolValue = value }
 
     let actionToWire action =
         match action with
@@ -620,6 +716,12 @@ module TaResearchClientWire =
                 dataRef = row.DataRef
                 heightWeight = row.HeightWeight
                 visible = row.Visible }
+        | SduiAction.ApplyTemplate(canvas, rowId, templateKey, values) ->
+            { emptyFrame "action" "apply-template" (canvasText canvas) with
+                rowId = rowId |> Option.defaultValue ""
+                templateKey = templateKey
+                hasTemplateRowId = rowId.IsSome
+                editorValues = (if isNull values then [||] else values) |> Array.map editorInputToWire }
         | SduiAction.RemoveTaRow(canvas, rowId) ->
             { emptyFrame "action" "remove-row" (canvasText canvas) with rowId = rowId }
         | SduiAction.ChangeTaQuery(canvas, query) ->
@@ -634,6 +736,11 @@ module TaResearchClientWire =
             { emptyFrame "action" "poll-delta" (canvasText canvas) with afterDataRevision = float revision }
         | SduiAction.RequestFullSnapshot(canvas, reason) ->
             { emptyFrame "action" "full-snapshot" (canvasText canvas) with reasonCode = reason }
+
+    let actionRequestToWire request =
+        { actionToWire request.Action with
+            expectedDocumentRevision = request.ExpectedDocumentRevision |> Option.map float |> Option.defaultValue 0.0
+            hasExpectedDocumentRevision = request.ExpectedDocumentRevision.IsSome }
 
 [<JavaScript>]
 type TaResearchTransientClientHandle =
@@ -726,15 +833,17 @@ module TaResearchTransientClient =
         let mutable jsonExportBootstrapAttempts = 0
         let mutable jsonExportBootstrapInFlight = false
         let mutable jsonExportInFlight = false
+        let mutable actionRequestOverride: DynamicActionRequest option = None
+        let mutable pendingActionCompletion: (string * (Result<DynamicActionResult, DynamicHostError> -> unit)) option = None
 
         let nextRequestId () =
             requestSequence <- requestSequence + 1
             channelId + ":" + string requestSequence
 
-        let sendPayload operation payload =
+        let sendPayloadWithRequestId requestId operation payload =
             let request =
                 { ``type`` = "extension-transient"
-                  requestId = nextRequestId ()
+                  requestId = requestId
                   extensionId = extensionId
                   channelId = channelId
                   operation = operation
@@ -747,6 +856,23 @@ module TaResearchTransientClient =
                 value.Send text
                 true
             | _ -> false
+
+        let sendPayload operation payload =
+            sendPayloadWithRequestId (nextRequestId ()) operation payload
+
+        let completePendingAction requestId result =
+            match pendingActionCompletion with
+            | Some(pendingRequestId, continuation) when pendingRequestId = requestId ->
+                pendingActionCompletion <- None
+                continuation (Ok result)
+            | _ -> ()
+
+        let failPendingAction code message =
+            match pendingActionCompletion with
+            | Some(_, continuation) ->
+                pendingActionCompletion <- None
+                continuation (Result.Error { Code = code; Message = message })
+            | None -> ()
 
         let cancelPollTimer () =
             pollTimer |> Option.iter JS.ClearTimeout
@@ -780,6 +906,11 @@ module TaResearchTransientClient =
                 jsonExportBootstrapAttempts <- 0
                 jsonExportBootstrapInFlight <- false
                 jsonExportInFlight <- false
+                match event with
+                | TaClientLifecycleEvent.RequestTimedOut _ -> failPendingAction "transient-command-timeout" "The TA action response timed out."
+                | TaClientLifecycleEvent.Disconnected -> failPendingAction "transient-channel-disconnected" "The TA transient channel disconnected before the action completed."
+                | TaClientLifecycleEvent.Dispose -> failPendingAction "transient-channel-disposed" "The TA transient channel was disposed before the action completed."
+                | _ -> ()
             | _ -> ()
 
             let next, effects = TaClientLifecycle.transition lifecycleOptions event lifecycle
@@ -797,7 +928,13 @@ module TaResearchTransientClient =
                 | TaClientLifecycleEffect.SendUnmounted ->
                     sendPayload "close" (TaResearchClientWire.emptyFrame "unmounted" "" canvasId) |> ignore
                 | TaClientLifecycleEffect.SendAction action ->
-                    if not (sendPayload "action" (TaResearchClientWire.actionToWire action)) then
+                    let requestId, payload =
+                        match actionRequestOverride with
+                        | Some request ->
+                            actionRequestOverride <- None
+                            request.RequestId, TaResearchClientWire.actionRequestToWire request
+                        | None -> nextRequestId (), TaResearchClientWire.actionToWire action
+                    if not (sendPayloadWithRequestId requestId "action" payload) then
                         apply TaClientLifecycleEvent.Disconnected |> ignore
                 | TaClientLifecycleEffect.SchedulePoll delayMs ->
                     cancelPollTimer ()
@@ -890,6 +1027,9 @@ module TaResearchTransientClient =
                                             |> Array.exists (fun action -> action = "poll-delta"))
 
                                     apply (TaClientLifecycleEvent.StateAccepted(state.DataRevision, pollEnabled)) |> ignore
+                                    completePendingAction
+                                        response.requestId
+                                        (DynamicActionResult.Accepted(response.requestId, state.DocumentRevision))
 
                                     if jsonExportCompleted && disposeAfterJsonExport then
                                         apply TaClientLifecycleEvent.Dispose |> ignore
@@ -898,6 +1038,17 @@ module TaResearchTransientClient =
                                 | Result.Error _ ->
                                     apply (TaClientLifecycleEvent.ResyncRequired "invalid-browser-state") |> ignore
                             elif response.``type`` = "extension-transient" then
+                                let responseError = TaResearchClientWire.text response.error
+                                let conflictPrefix = "ta-revision-conflict:"
+                                let actionResult =
+                                    if responseError.StartsWith conflictPrefix then
+                                        match Double.TryParse(responseError.Substring(conflictPrefix.Length)) with
+                                        | true, revision when revision >= 0.0 && Math.Truncate revision = revision ->
+                                            DynamicActionResult.RevisionConflict(response.requestId, int64 revision)
+                                        | _ -> DynamicActionResult.Rejected(response.requestId, "transient-command-failed", responseError)
+                                    else
+                                        DynamicActionResult.Rejected(response.requestId, "transient-command-failed", responseError)
+                                completePendingAction response.requestId actionResult
                                 runtimeState.Value <-
                                     { runtimeState.Value with
                                         LastError =
@@ -907,6 +1058,7 @@ module TaResearchTransientClient =
                                                   Recoverable = true } }
                                 apply TaClientLifecycleEvent.CommandRejected |> ignore
                         with _ ->
+                            failPendingAction "invalid-transient-response" "The TA transient response could not be decoded."
                             apply (TaClientLifecycleEvent.ResyncRequired "invalid-transient-response") |> ignore
 
                 value.OnClose <-
@@ -953,21 +1105,28 @@ module TaResearchTransientClient =
 
         let callbacks =
             { SubmitAction =
-                fun action ->
-                    async {
-                        let effects = apply (TaClientLifecycleEvent.StartAction action)
-                        let accepted =
-                            effects
-                            |> Array.exists (function TaClientLifecycleEffect.SendAction _ -> true | _ -> false)
-
-                        if accepted then
-                            return Result.Ok()
+                fun request ->
+                    Async.FromContinuations(fun (continuation, _, _) ->
+                        if pendingActionCompletion.IsSome then
+                            continuation
+                                (Result.Error
+                                    { Code = "transient-command-busy"
+                                      Message = "A TA transient command is already in flight." })
                         else
-                            return
-                                Result.Error
-                                    { Code = if lifecycle.Connected then "transient-command-busy" else "transient-channel-not-open"
-                                      Message = if lifecycle.Connected then "A TA transient command is already in flight." else "TA transient channel is not open." }
-                    } }
+                            pendingActionCompletion <- Some(request.RequestId, continuation)
+                            actionRequestOverride <- Some request
+                            let effects = apply (TaClientLifecycleEvent.StartAction request.Action)
+                            let accepted =
+                                effects
+                                |> Array.exists (function TaClientLifecycleEffect.SendAction _ -> true | _ -> false)
+
+                            if not accepted then
+                                actionRequestOverride <- None
+                                pendingActionCompletion <- None
+                                continuation
+                                    (Result.Error
+                                        { Code = if lifecycle.Connected then "transient-command-busy" else "transient-channel-not-open"
+                                          Message = if lifecycle.Connected then "A TA transient command is already in flight." else "TA transient channel is not open." })) }
 
         TaWorkspaceRenderer.render TaWorkspaceRenderer.defaultOptions callbacks runtimeState
         |> mountDocument

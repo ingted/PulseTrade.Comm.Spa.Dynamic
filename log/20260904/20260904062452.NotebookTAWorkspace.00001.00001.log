@@ -18,3 +18,19 @@
 - 06:33：實作SourceEnvelope codec/validation/reducer；首次F#型別推斷錯誤以公開函式明確型別標註修正，Contracts suite 11/11 pass。
 - 06:38：發現 `WebSharperRunCompiler=false` 產生的Contracts assembly不含JS metadata，incremental client build因此回WS9001。停止02:08/02:27遺留的stale compiler process並對Contracts/Interactive.Client執行full rebuild後通過；後續full gate固定先rebuild Contracts。
 - 06:46：完成DYN-TA-017C。新增generic editor schema/recursive validation與correlated action lifecycle；stable RowId、duplicate、single-in-flight、accepted/rejected/conflict/correlation negatives納入DYN-TA-T-061。Contracts 12/12、Contracts與Interactive.Client full WebSharper rebuild通過。
+- 07:00..07:50：完成temporal-point與`ta-browser.v4` bounded wire。Renderer支援多candlestick、CandleSpan、RepeatAcrossBaseBuckets、StepAfterClose與source interval cursor metadata；PTCS server/client保留temporal finality/quality/availability並對malformed arrays fail closed。
+- 08:00..08:14：完成`ptcs-dynamic-action.v1` request/result envelope與Interactive.Client correlation。single pending、send/timeout/disconnect/mismatch均typed fail closed；legacy RuntimeClientFrame/RuntimeFrame不變。Contracts 15/15、Renderer 22/22、PTCS 10/10、Ptcs.Client 12/12及三個WebSharper target build通過。
+- 08:10：Playwright MCP以1440x1000與390x844驗證alpha32 BrowserDemo；1K/5K candle、1K/5K SMA、1K/30K causal MACD、generic editor、pending disabled、accepted revision與console 0均通過。修正mobile demo toolbar固定24px造成的負Y座標。
+- 08:14：local exact packages產出並複製至SDK 10.0.301/10.0.400 library-packs：Contracts alpha11、Renderer alpha32、PTCS win50、Ptcs.Client win68、Interactive.Client alpha2。PTC公頻以`msg-fsi-d2ec9656462d4be5a848a312e6505f28`通知Daedalus SessionHost整合wire；未宣稱owner real DIB或public NuGet完成。
+
+## 流程欄位補充
+
+- 背景：九月四方規格已凍結owner邊界，本輪只開發Aster-owned generic Dynamic contract、renderer與PTCS adapter/client。
+- 目標：完成DYN-TA-017 generic source/editor/temporal/action slices，並保留real DIB與provider為外部production gate。
+- 計畫步驟：contract與codec -> exact package graph -> unit/package gates -> Playwright MCP -> 文件鏈與跨agent通知。
+- 執行命令/參數：主要使用`dotnet run --project <test> -c Release`、`dotnet pack <project> -c Release`及Playwright MCP操作18882 browser demo。
+- 結果：source與exact package gates全綠；generic isolated UI通過；real SessionHost/DIB尚未完成。
+- 根因判讀：原Interactive.Client只有fail-closed stub且SessionHost沒有correlated result，故需獨立versioned action wire；multi-scale資料若無interval/finality/projection則無法避免look-ahead與錯位。
+- 下一步：由Daedalus升級SessionHost並完成real DIB；Aster在取得owner-normalized frames後執行production E2E。
+- 關聯文件：`doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`、`doc/TAResearch/WBS.DYN-TA-017.md`、`doc/TAResearch/Test.md`、`doc/Verification.md`。
+- prompt/上下文摘要：使用者要求依續航規則開工、每五分鐘協作輪詢，並以九月TA production workspace作為本輪主線。

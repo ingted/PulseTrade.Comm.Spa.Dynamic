@@ -4,17 +4,30 @@ open System
 open PulseTrade.Comm.Spa.Dynamic.Contracts
 open WebSharper
 
+type TaTemporalPointPresentation =
+    { SourceIntervalId: string
+      ScaleKey: string
+      IntervalStartUtc: string
+      IntervalEndUtc: string
+      ObservedThroughUtc: string
+      AvailableAtUtc: string option
+      Finality: string
+      Projection: string
+      Quality: string option }
+
 type TaCandlePoint =
     { Timestamp: string
       Open: float
       High: float
       Low: float
       Close: float
-      Volume: float }
+      Volume: float
+      Temporal: TaTemporalPointPresentation option }
 
 type TaLinePoint =
     { Timestamp: string
-      Value: float }
+      Value: float
+      Temporal: TaTemporalPointPresentation option }
 
 type TaVisibleWindow =
     { StartIndex: int
@@ -63,6 +76,12 @@ type TaWorkspaceBootstrapPresentation =
 
 [<JavaScript; RequireQualifiedAccess>]
 module RendererModel =
+    [<Literal>]
+    let TemporalPointTypeKey = "_type"
+
+    [<Literal>]
+    let TemporalPointTypeValue = "temporal-point.v1"
+
     let workspaceBootstrapPresentation (state: RuntimeState) =
         match state.LastError with
         | Some error when not error.Recoverable ->
@@ -135,6 +154,50 @@ module RendererModel =
     let objectNumber name value =
         objectField name value |> Option.bind tryNumber
 
+    let requiredObjectText name value =
+        objectText name value
+        |> Option.filter (String.IsNullOrWhiteSpace >> not)
+
+    let tryTemporalPoint value =
+        value
+        |> tryObject
+        |> Option.bind (fun fields ->
+            if objectText TemporalPointTypeKey fields <> Some TemporalPointTypeValue then
+                None
+            else
+                match
+                    requiredObjectText "sourceIntervalId" fields,
+                    requiredObjectText "scaleKey" fields,
+                    requiredObjectText "intervalStartUtc" fields,
+                    requiredObjectText "intervalEndUtc" fields,
+                    requiredObjectText "observedThroughUtc" fields,
+                    requiredObjectText "finality" fields,
+                    requiredObjectText "projection" fields
+                with
+                | Some sourceIntervalId, Some scaleKey, Some intervalStartUtc, Some intervalEndUtc, Some observedThroughUtc, Some finality, Some projection ->
+                    let metadata =
+                        { SourceIntervalId = sourceIntervalId
+                          ScaleKey = scaleKey
+                          IntervalStartUtc = intervalStartUtc
+                          IntervalEndUtc = intervalEndUtc
+                          ObservedThroughUtc = observedThroughUtc
+                          AvailableAtUtc = requiredObjectText "availableAtUtc" fields
+                          Finality = finality
+                          Projection = projection
+                          Quality = requiredObjectText "quality" fields }
+                    let payload =
+                        match Map.tryFind "value" fields with
+                        | Some SduiValue.Null
+                        | None -> None
+                        | Some item -> Some item
+                    Some(metadata, payload)
+                | _ -> None)
+
+    let pointPayload value =
+        match tryTemporalPoint value with
+        | Some(metadata, payload) -> Some metadata, payload
+        | None -> None, Some value
+
     let queryDraft (values: Map<string, SduiValue>) =
         let textValue name =
             values
@@ -166,11 +229,12 @@ module RendererModel =
         string value
 
     let parseCandle value =
-        value
-        |> tryObject
+        let temporal, payload = pointPayload value
+        payload
+        |> Option.bind tryObject
         |> Option.bind (fun item ->
             match
-                objectText "t" item,
+                (temporal |> Option.map _.IntervalStartUtc |> Option.orElseWith (fun () -> objectText "t" item)),
                 objectNumber "o" item,
                 objectNumber "h" item,
                 objectNumber "l" item,
@@ -184,15 +248,17 @@ module RendererModel =
                       High = high
                       Low = low
                       Close = close
-                      Volume = volume }
+                      Volume = volume
+                      Temporal = temporal }
             | _ -> None)
 
     let parseLine value =
-        value
-        |> tryObject
+        let temporal, payload = pointPayload value
+        payload
+        |> Option.bind tryObject
         |> Option.bind (fun item ->
-            match objectText "t" item, objectNumber "v" item with
-            | Some timestamp, Some lineValue -> Some { Timestamp = timestamp; Value = lineValue }
+            match temporal |> Option.map _.IntervalStartUtc |> Option.orElseWith (fun () -> objectText "t" item), objectNumber "v" item with
+            | Some timestamp, Some lineValue -> Some { Timestamp = timestamp; Value = lineValue; Temporal = temporal }
             | _ -> None)
 
     let seriesValues dataRef data =
@@ -230,6 +296,7 @@ module RendererModel =
         effectiveTraces row
         |> Array.filter _.Visible
         |> Array.map (fun trace -> seriesValues trace.DataRef data |> Array.length)
+        |> Array.sortDescending
         |> Array.tryHead
         |> Option.defaultValue 0
 
@@ -247,16 +314,73 @@ module RendererModel =
             |> Array.collect effectiveTraces
             |> Array.filter _.Visible
 
-        let tryTimeline predicate =
-            traces
-            |> Array.filter predicate
-            |> Array.tryPick (fun trace ->
-                let timestamps = traceTimestamps trace data
-                if timestamps.Length = 0 then None else Some timestamps)
-
-        tryTimeline (fun trace -> trace.Kind = TaTraceKind.Candlestick)
-        |> Option.orElseWith (fun () -> tryTimeline (fun _ -> true))
+        traces
+        |> Array.map (fun trace -> trace, traceTimestamps trace data |> Array.distinct)
+        |> Array.filter (fun (_, timestamps) -> timestamps.Length > 0)
+        |> Array.sortByDescending (fun (trace, timestamps) -> timestamps.Length, trace.Kind = TaTraceKind.Candlestick)
+        |> Array.tryHead
+        |> Option.map snd
         |> Option.defaultValue [||]
+
+    let timestampInInterval timestamp (metadata: TaTemporalPointPresentation) =
+        compare timestamp metadata.IntervalStartUtc >= 0
+        && compare timestamp metadata.IntervalEndUtc < 0
+
+    let availableAtOrAfter timestamp (metadata: TaTemporalPointPresentation) =
+        metadata.AvailableAtUtc
+        |> Option.exists (fun availableAt -> compare availableAt timestamp <= 0)
+
+    let pointMatchesTimestamp timestamp pointTimestamp temporal =
+        match temporal with
+        | Some metadata when metadata.Projection = "repeat-across-base-buckets" || metadata.Projection = "candle-span" ->
+            timestampInInterval timestamp metadata
+        | Some metadata when metadata.Projection = "step-after-close" ->
+            availableAtOrAfter timestamp metadata
+        | _ -> pointTimestamp = timestamp
+
+    let tryCandleAt timestamp (values: TaCandlePoint array) =
+        values
+        |> Array.filter (fun value -> pointMatchesTimestamp timestamp value.Timestamp value.Temporal)
+        |> Array.tryLast
+
+    let tryLineAt timestamp (values: TaLinePoint array) =
+        values
+        |> Array.filter (fun value -> pointMatchesTimestamp timestamp value.Timestamp value.Temporal)
+        |> Array.tryLast
+
+    let projectedLinePoints (referenceTimestamps: string array) (points: TaLinePoint array) =
+        referenceTimestamps
+        |> Array.indexed
+        |> Array.choose (fun (index, timestamp) ->
+            tryLineAt timestamp points
+            |> Option.map (fun point -> index, point))
+
+    let candleSlotRange (referenceTimestamps: string array) (point: TaCandlePoint) =
+        let matching =
+            referenceTimestamps
+            |> Array.indexed
+            |> Array.choose (fun (index, timestamp) ->
+                if pointMatchesTimestamp timestamp point.Timestamp point.Temporal then Some index else None)
+
+        match matching |> Array.tryHead, matching |> Array.tryLast with
+        | Some first, Some last -> Some(first, last + 1)
+        | _ -> None
+
+    let temporalDetail (metadata: TaTemporalPointPresentation) =
+        let availability = metadata.AvailableAtUtc |> Option.defaultValue "unknown"
+        let quality = metadata.Quality |> Option.defaultValue "unknown"
+        $"{metadata.ScaleKey} | {metadata.Finality} | quality {quality} | frontier {metadata.ObservedThroughUtc} | available {availability}"
+
+    let latestTemporalMetadata (trace: TaTraceSpec) data =
+        seriesValues trace.DataRef data
+        |> Array.choose (tryTemporalPoint >> Option.map fst)
+        |> Array.tryLast
+
+    let rowTemporalMetadata (row: TaRowSpec) data =
+        effectiveTraces row
+        |> Array.filter _.Visible
+        |> Array.choose (fun trace -> latestTemporalMetadata trace data)
+        |> Array.distinctBy (fun value -> value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality)
 
     let clampWindow minimumCount maximumCount total requested =
         if total <= 0 then
@@ -403,21 +527,30 @@ module RendererModel =
                         | TaTraceKind.Candlestick
                         | TaTraceKind.Volume ->
                             candleSeries trace.DataRef data
-                            |> Array.tryFind (fun point -> point.Timestamp = timestamp)
+                            |> tryCandleAt timestamp
                             |> Option.map (fun point ->
-                                let value =
+                                let baseValue =
                                     if trace.Kind = TaTraceKind.Volume then fixedNumber point.Volume
                                     else
                                         "O " + fixedNumber point.Open
                                         + " H " + fixedNumber point.High
                                         + " L " + fixedNumber point.Low
                                         + " C " + fixedNumber point.Close
+                                let value =
+                                    match point.Temporal with
+                                    | Some metadata -> baseValue + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
+                                    | None -> baseValue
                                 point.Timestamp, { Label = label; Value = value })
                         | TaTraceKind.Line
                         | TaTraceKind.Histogram ->
                             lineSeries trace.DataRef data
-                            |> Array.tryFind (fun point -> point.Timestamp = timestamp)
-                            |> Option.map (fun point -> point.Timestamp, { Label = label; Value = fixedNumber point.Value })))
+                            |> tryLineAt timestamp
+                            |> Option.map (fun point ->
+                                let value =
+                                    match point.Temporal with
+                                    | Some metadata -> fixedNumber point.Value + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
+                                    | None -> fixedNumber point.Value
+                                point.Timestamp, { Label = label; Value = value })))
 
             Some
                 { VisibleIndex = index
@@ -450,3 +583,174 @@ module RendererModel =
           Watermark = objectText "watermarkUtc" status
           Quality = objectText "quality" status
           Error = state.LastError |> Option.map (fun error -> error.ReasonCode + ": " + error.Message) }
+
+    let rec fallbackInputs path kind =
+        match kind with
+        | EditorValueKind.Text -> [| { Path = path; Value = EditorScalarValue.Text "" } |]
+        | EditorValueKind.Integer(minimum, _) -> [| { Path = path; Value = EditorScalarValue.Number(float (defaultArg minimum 0L)) } |]
+        | EditorValueKind.Decimal(minimum, _) -> [| { Path = path; Value = EditorScalarValue.Number(defaultArg minimum 0.0) } |]
+        | EditorValueKind.Boolean -> [| { Path = path; Value = EditorScalarValue.Bool false } |]
+        | EditorValueKind.Choice choices ->
+            choices
+            |> Array.tryHead
+            |> Option.bind (fun choice ->
+                match choice.Value with
+                | SduiValue.Text value -> Some(EditorScalarValue.Text value)
+                | SduiValue.Number value -> Some(EditorScalarValue.Number value)
+                | SduiValue.Bool value -> Some(EditorScalarValue.Bool value)
+                | _ -> None)
+            |> Option.map (fun value -> [| { Path = path; Value = value } |])
+            |> Option.defaultValue [||]
+        | EditorValueKind.Scale scaleKeys ->
+            scaleKeys
+            |> Array.tryHead
+            |> Option.map (fun value -> [| { Path = path; Value = EditorScalarValue.Text value } |])
+            |> Option.defaultValue [||]
+        | EditorValueKind.List(itemKind, minimum, _) ->
+            Array.init (defaultArg minimum 0) (fun index -> fallbackInputs ($"{path}[{index}]") itemKind)
+            |> Array.concat
+        | EditorValueKind.Group fields ->
+            fields
+            |> Array.collect (fun field ->
+                let childPath = $"{path}.{field.Key}"
+                match field.DefaultValue with
+                | Some value -> flattenEditorValue childPath field.Kind value
+                | None -> fallbackInputs childPath field.Kind)
+
+    and flattenEditorValue path kind value =
+        match kind, value with
+        | EditorValueKind.Group fields, SduiValue.Object values ->
+            fields
+            |> Array.collect (fun field ->
+                match Map.tryFind field.Key values with
+                | Some child -> flattenEditorValue ($"{path}.{field.Key}") field.Kind child
+                | None -> [||])
+        | EditorValueKind.List(itemKind, _, _), SduiValue.Array values ->
+            values
+            |> Array.indexed
+            |> Array.collect (fun (index, item) -> flattenEditorValue ($"{path}[{index}]") itemKind item)
+        | _, SduiValue.Text value -> [| { Path = path; Value = EditorScalarValue.Text value } |]
+        | _, SduiValue.Number value -> [| { Path = path; Value = EditorScalarValue.Number value } |]
+        | _, SduiValue.Bool value -> [| { Path = path; Value = EditorScalarValue.Bool value } |]
+        | _ -> [||]
+
+    let initialEditorInputs (schema: DynamicTemplateSchema) =
+        schema.Fields
+        |> Array.collect (fun field ->
+            match field.DefaultValue with
+            | Some value -> flattenEditorValue field.Key field.Kind value
+            | None -> fallbackInputs field.Key field.Kind)
+
+    let setEditorInput input values =
+        values
+        |> Array.filter (fun current -> current.Path <> input.Path)
+        |> Array.append [| input |]
+        |> Array.sortBy _.Path
+
+    let tryEditorInput path values =
+        values |> Array.tryFind (fun value -> value.Path = path) |> Option.map _.Value
+
+    let tryListIndex listPath (path: string) =
+        let prefix = listPath + "["
+        if isNull path || not (path.StartsWith(prefix)) then None
+        else
+            let closeIndex = path.IndexOf(']', prefix.Length)
+            if closeIndex < prefix.Length then None
+            else
+                match Int32.TryParse(path.Substring(prefix.Length, closeIndex - prefix.Length)) with
+                | true, index when index >= 0 -> Some index
+                | _ -> None
+
+    let listIndexes listPath values =
+        values
+        |> Array.choose (fun value -> tryListIndex listPath value.Path)
+        |> Array.distinct
+        |> Array.sort
+
+    let replaceListIndex listPath oldIndex newIndex (path: string) =
+        let oldPrefix = $"{listPath}[{oldIndex}]"
+        if path.StartsWith(oldPrefix) then
+            $"{listPath}[{newIndex}]" + path.Substring(oldPrefix.Length)
+        else
+            path
+
+    let addListItem listPath itemKind values =
+        let nextIndex =
+            match listIndexes listPath values |> Array.tryLast with
+            | Some index -> index + 1
+            | None -> 0
+        Array.append values (fallbackInputs ($"{listPath}[{nextIndex}]") itemKind)
+        |> Array.sortBy _.Path
+
+    let removeListItem listPath index values =
+        values
+        |> Array.choose (fun value ->
+            match tryListIndex listPath value.Path with
+            | Some current when current = index -> None
+            | Some current when current > index ->
+                Some { value with Path = replaceListIndex listPath current (current - 1) value.Path }
+            | _ -> Some value)
+        |> Array.sortBy _.Path
+
+    let moveListItem listPath fromIndex toIndex values =
+        values
+        |> Array.map (fun value ->
+            match tryListIndex listPath value.Path with
+            | Some current when current = fromIndex -> { value with Path = replaceListIndex listPath fromIndex toIndex value.Path }
+            | Some current when current = toIndex -> { value with Path = replaceListIndex listPath toIndex fromIndex value.Path }
+            | _ -> value)
+        |> Array.sortBy _.Path
+
+    let editorScalarText = function
+        | EditorScalarValue.Text value -> value
+        | EditorScalarValue.Number value -> fixedNumber value
+        | EditorScalarValue.Bool value -> if value then "true" else "false"
+
+    let editorScalarEqualsSdui scalar value =
+        match scalar, value with
+        | EditorScalarValue.Text left, SduiValue.Text right -> left = right
+        | EditorScalarValue.Number left, SduiValue.Number right -> left = right
+        | EditorScalarValue.Bool left, SduiValue.Bool right -> left = right
+        | _ -> false
+
+    let rec editorSubmissionErrors path required kind values =
+        let missing () =
+            if required then [| path + " is required." |] else [||]
+
+        match kind with
+        | EditorValueKind.Group fields ->
+            fields
+            |> Array.collect (fun field -> editorSubmissionErrors ($"{path}.{field.Key}") field.Required field.Kind values)
+        | EditorValueKind.List(itemKind, minimum, maximum) ->
+            let indexes = listIndexes path values
+            [| match minimum with
+               | Some count when indexes.Length < count -> yield $"{path} requires at least {count} item(s)."
+               | _ -> ()
+               match maximum with
+               | Some count when indexes.Length > count -> yield $"{path} allows at most {count} item(s)."
+               | _ -> ()
+               for index in indexes do
+                   yield! editorSubmissionErrors ($"{path}[{index}]") true itemKind values |]
+        | _ ->
+            match tryEditorInput path values with
+            | None -> missing ()
+            | Some scalar ->
+                match kind, scalar with
+                | EditorValueKind.Text, EditorScalarValue.Text value when required && String.IsNullOrWhiteSpace value -> missing ()
+                | EditorValueKind.Text, EditorScalarValue.Text _
+                | EditorValueKind.Boolean, EditorScalarValue.Bool _ -> [||]
+                | EditorValueKind.Integer(minimum, maximum), EditorScalarValue.Number value ->
+                    [| if Double.IsNaN value || Double.IsInfinity value || Math.Truncate value <> value then yield path + " must be an integer."
+                       match minimum with Some lower when value < float lower -> yield path + " is below its minimum." | _ -> ()
+                       match maximum with Some upper when value > float upper -> yield path + " exceeds its maximum." | _ -> () |]
+                | EditorValueKind.Decimal(minimum, maximum), EditorScalarValue.Number value ->
+                    [| if Double.IsNaN value || Double.IsInfinity value then yield path + " must be finite."
+                       match minimum with Some lower when value < lower -> yield path + " is below its minimum." | _ -> ()
+                       match maximum with Some upper when value > upper -> yield path + " exceeds its maximum." | _ -> () |]
+                | EditorValueKind.Choice choices, _ when choices |> Array.exists (fun choice -> editorScalarEqualsSdui scalar choice.Value) -> [||]
+                | EditorValueKind.Scale scaleKeys, EditorScalarValue.Text value when Array.contains value scaleKeys -> [||]
+                | _ -> [| path + " does not match its editor kind." |]
+
+    let validateEditorSubmission (schema: DynamicTemplateSchema) values =
+        schema.Fields
+        |> Array.collect (fun field -> editorSubmissionErrors field.Key field.Required field.Kind values)

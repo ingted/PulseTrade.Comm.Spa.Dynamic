@@ -10,7 +10,7 @@ local action -> reducer effect
 remote action/poll/resync -> typed SduiAction -> host adapter
 ```
 
-`RuntimeCodec` 的既有 System.Text.Json wire 與 `BrowserRuntimeCodec` 的 WebSharper typed-JSON wire 是兩條明確分離的 encoding；兩者共用相同 RuntimeFrame/RuntimeClientFrame 型別，但 JSON bytes 不可交叉解碼。
+`RuntimeCodec` 的既有 System.Text.Json wire 與 `BrowserRuntimeCodec` 的 WebSharper typed-JSON wire 是兩條明確分離的 encoding；兩者共用相同 RuntimeFrame/RuntimeClientFrame 型別，但 JSON bytes 不可交叉解碼。Interactive mutation 另用 `ptcs-dynamic-action.v1` 的 `DynamicActionClientFrame` / `DynamicActionServerFrame`，以 `RequestId`、`ExpectedDocumentRevision` 與 explicit result 建立 correlation；action result 不屬於 authoritative `RuntimePayload`。
 
 `SourceSnapshotEnvelope` / `SourceEventEnvelope` 是跨 domain 的 ordering seam。`SourceProjection`只驗stream identity、epoch、sequence、source revision並在gap/conflict/reducer reject時要求authoritative snapshot；payload reducer仍由domain owner adapter注入，package不擁有MDCQ、TradeCore、FsStl、SOR或FCell2型別。source revision不會直接提升browser `DocumentRevision`。
 

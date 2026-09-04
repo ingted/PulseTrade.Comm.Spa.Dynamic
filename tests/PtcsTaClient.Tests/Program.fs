@@ -16,7 +16,18 @@ let point =
       hasLow = true
       hasClose = true
       hasVolume = true
-      hasLineValue = false }
+      hasLineValue = false
+      hasTemporal = false
+      sourceIntervalId = ""
+      scaleKey = ""
+      intervalStartUtc = ""
+      intervalEndUtc = ""
+      observedThroughUtc = ""
+      availableAtUtc = ""
+      hasAvailableAtUtc = false
+      finality = ""
+      projection = ""
+      quality = "" }
 
 let wire =
     { wireVersion = "ta-browser.v2"
@@ -65,7 +76,18 @@ let wire =
              lowValues = [||]
              closeValues = [||]
              volumeValues = [||]
-             lineValues = [||] } |]
+             lineValues = [||]
+             hasTemporal = false
+             sourceIntervalIds = [||]
+             scaleKeys = [||]
+             intervalStartUtc = [||]
+             intervalEndUtc = [||]
+             observedThroughUtc = [||]
+             availableAtUtc = [||]
+             hasAvailableAtUtc = [||]
+             finality = [||]
+             projections = [||]
+             qualities = [||] } |]
       statusLabel = "LIVE"
       freshness = "live"
       watermarkUtc = "2026-07-11T09:00:00Z"
@@ -126,7 +148,18 @@ let tests =
                              lowValues = [| 98.0; 102.0 |]
                              closeValues = [| 103.0; 104.0 |]
                              volumeValues = [| 20.0; 22.0 |]
-                             lineValues = [||] } |] }
+                             lineValues = [||]
+                             hasTemporal = false
+                             sourceIntervalIds = [||]
+                             scaleKeys = [||]
+                             intervalStartUtc = [||]
+                             intervalEndUtc = [||]
+                             observedThroughUtc = [||]
+                             availableAtUtc = [||]
+                             hasAvailableAtUtc = [||]
+                             finality = [||]
+                             projections = [||]
+                             qualities = [||] } |] }
               let state = TaResearchClientWire.stateFromWire v3 |> Result.defaultWith failtest
               match state.Data["series.price"] with
               | SduiValue.Array points ->
@@ -137,6 +170,69 @@ let tests =
                       Expect.equal values["c"] (SduiValue.Number 104.0) "close column is reconstructed."
                   | value -> failtestf "Unexpected v3 point: %A" value
               | value -> failtestf "Unexpected v3 series: %A" value)
+
+          testCase "columnar v4 reconstructs temporal wrappers and merges by source interval start" (fun _ ->
+              let temporalSeries sourceIntervalId startUtc endUtc value =
+                  { wire.series[0] with
+                      mode = "upsert"
+                      points = [||]
+                      pointCount = 1
+                      startIndex = 0
+                      timeIndices = [||]
+                      openValues = [||]
+                      highValues = [||]
+                      lowValues = [||]
+                      closeValues = [||]
+                      volumeValues = [||]
+                      lineValues = [| value |]
+                      hasTemporal = true
+                      sourceIntervalIds = [| sourceIntervalId |]
+                      scaleKeys = [| "5K" |]
+                      intervalStartUtc = [| startUtc |]
+                      intervalEndUtc = [| endUtc |]
+                      observedThroughUtc = [| endUtc |]
+                      availableAtUtc = [| endUtc |]
+                      hasAvailableAtUtc = [| true |]
+                      finality = [| "final" |]
+                      projections = [| "repeat-across-base-buckets" |]
+                      qualities = [| "complete" |] }
+
+              let firstSeries = temporalSeries "es-5k:1300" "2026-09-03T13:00:00Z" "2026-09-03T13:05:00Z" 10.0
+              let v4 =
+                  { wire with
+                      wireVersion = "ta-browser.v4"
+                      dataRevision = 10L
+                      transportSequence = 20L
+                      timeline = [| "2026-09-03T13:00:00Z" |]
+                      series = [| { firstSeries with mode = "replace" } |] }
+              let initial = TaResearchClientWire.stateFromWire v4 |> Result.defaultWith failtest
+
+              match initial.Data["series.price"] with
+              | SduiValue.Array [| point |] ->
+                  let temporal = TemporalPointCodec.decode point |> Result.defaultWith (List.map _.Message >> String.concat "; " >> failtest)
+                  Expect.equal temporal.SourceIntervalId "es-5k:1300" "source interval identity survives browser reconstruction."
+                  Expect.equal temporal.ScaleKey "5K" "scale survives browser reconstruction."
+                  Expect.equal temporal.Finality PointFinality.Final "finality survives browser reconstruction."
+                  Expect.equal temporal.Projection TemporalProjection.RepeatAcrossBaseBuckets "projection survives browser reconstruction."
+                  Expect.equal temporal.Quality (Some "complete") "quality survives browser reconstruction."
+              | value -> failtestf "Unexpected v4 temporal series: %A" value
+
+              let secondSeries = temporalSeries "es-5k:1305" "2026-09-03T13:05:00Z" "2026-09-03T13:10:00Z" 20.0
+              let delta =
+                  { v4 with
+                      updateKind = "delta"
+                      baseDataRevision = 10L
+                      dataRevision = 11L
+                      transportSequence = 21L
+                      timeline = [| "2026-09-03T13:05:00Z" |]
+                      series = [| secondSeries |] }
+              let merged = TaResearchClientWire.applyWire initial delta |> Result.defaultWith failtest
+              match merged.Data["series.price"] with
+              | SduiValue.Array points -> Expect.equal points.Length 2 "delta merge keys temporal points by interval start instead of dropping wrappers."
+              | value -> failtestf "Unexpected merged temporal series: %A" value
+
+              let malformed = { v4 with series = [| { firstSeries with sourceIntervalIds = [||] } |] }
+              Expect.isError (TaResearchClientWire.stateFromWire malformed) "malformed temporal arrays fail closed instead of silently dropping metadata.")
 
           testCase "add-row action emits canonical lowercase row kind" (fun _ ->
               let action =
@@ -152,6 +248,33 @@ let tests =
 
               let encoded = TaResearchClientWire.actionToWire action
               Expect.equal encoded.rowKind "sma" "Browser wire must not leak F# union-case casing.")
+
+          testCase "generic editor action emits a flat typed browser payload" (fun _ ->
+              let action =
+                  SduiAction.ApplyTemplate(
+                      CanvasInstanceId "canvas",
+                      Some "sma-1k",
+                      "ta.sma",
+                      [| { Path = "scales[0]"; Value = EditorScalarValue.Text "1k" }
+                         { Path = "periods[0]"; Value = EditorScalarValue.Number 13.0 }
+                         { Path = "style.visible"; Value = EditorScalarValue.Bool true } |])
+
+              let actual = TaResearchClientWire.actionToWire action
+              Expect.equal actual.actionKind "apply-template" "template action must have its own wire discriminator."
+              Expect.equal actual.templateKey "ta.sma" "template identity must survive browser encoding."
+              Expect.equal actual.rowId "sma-1k" "optional reconfigure row identity must survive browser encoding."
+              Expect.isTrue actual.hasTemplateRowId "row identity presence must not depend on empty-string guessing."
+              Expect.sequenceEqual (actual.editorValues |> Array.map _.kind) [| "text"; "number"; "bool" |] "editor scalar kinds must remain explicit and non-recursive."
+              Expect.equal actual.editorValues[1].numberValue 13.0 "numeric editor value must survive browser encoding.")
+
+          testCase "correlated action request carries its optimistic document revision" (fun _ ->
+              let request =
+                  { RequestId = "canvas:ui:1"
+                    ExpectedDocumentRevision = Some 42L
+                    Action = SduiAction.ResetCanvas(CanvasInstanceId "canvas") }
+              let actual = TaResearchClientWire.actionRequestToWire request
+              Expect.isTrue actual.hasExpectedDocumentRevision "presence must be explicit for revision zero."
+              Expect.equal actual.expectedDocumentRevision 42.0 "expected revision must remain JS-safe and exact.")
 
           testCase "typed query action maps to bounded browser command" (fun _ ->
               let action =
@@ -198,7 +321,18 @@ let tests =
                              lowValues = [||]
                              closeValues = [||]
                              volumeValues = [||]
-                             lineValues = [||] } |] }
+                             lineValues = [||]
+                             hasTemporal = false
+                             sourceIntervalIds = [||]
+                             scaleKeys = [||]
+                             intervalStartUtc = [||]
+                             intervalEndUtc = [||]
+                             observedThroughUtc = [||]
+                             availableAtUtc = [||]
+                             hasAvailableAtUtc = [||]
+                             finality = [||]
+                             projections = [||]
+                             qualities = [||] } |] }
               let merged = TaResearchClientWire.applyWire initial delta |> Result.defaultWith failtest
               match merged.Data["series.price"] with
               | SduiValue.Array points -> Expect.equal points.Length 2 "delta append retains the prior point."
@@ -223,7 +357,18 @@ let tests =
                              lowValues = [||]
                              closeValues = [||]
                              volumeValues = [||]
-                             lineValues = [||] } |] }
+                             lineValues = [||]
+                             hasTemporal = false
+                             sourceIntervalIds = [||]
+                             scaleKeys = [||]
+                             intervalStartUtc = [||]
+                             intervalEndUtc = [||]
+                             observedThroughUtc = [||]
+                             availableAtUtc = [||]
+                             hasAvailableAtUtc = [||]
+                             finality = [||]
+                             projections = [||]
+                             qualities = [||] } |] }
               let trimmed = TaResearchClientWire.applyWire merged trimmedWire |> Result.defaultWith failtest
               match trimmed.Data["series.price"] with
               | SduiValue.Array points -> Expect.equal points.Length 1 "rolling-window trim removes only the stale prefix."

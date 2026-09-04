@@ -1085,3 +1085,11 @@ Implementation status:
 - Added transport-neutral Text/Integer/Decimal/Boolean/Choice/Scale/List/Group editor schema with recursive hard-limit, key, range, safe-payload and default-value validation.
 - Added single-in-flight correlated action request/result lifecycle. Revision conflicts do not submit; mismatched results fail closed; accepted/rejected feedback never mutates the authoritative document.
 - Stable row identity remains `TaRowSpec.RowId`; same-kind parameterized rows coexist while duplicate row ids reject the frame. Contracts advanced to 12/12 and Contracts/Interactive.Client full WebSharper rebuilds passed.
+
+## 2026-09-04 - DYN-TA-017 temporal projection and action channel
+
+- Added validated `TemporalPoint` metadata and bounded `ta-browser.v4` PTCS wire so multi-scale rows retain source interval, scale, observation/availability frontier, preview/final state, quality and explicit projection semantics.
+- Renderer now draws multiple candlestick traces in one row. Coarse candles span base slots, repeated lines align to each base bucket, and causal step values appear only after source interval close; cursor metadata identifies the source interval.
+- Added `ptcs-dynamic-action.v1` request/result frames. Interactive.Client now sends correlated requests and fails closed on busy, send failure, 30-second timeout, disconnect or request-id mismatch. Accepted results do not mutate authoritative state; the host must publish the new `RuntimeFrame` revision.
+- Exact local package graph: Contracts `0.1.0-alpha11`, Renderer `0.1.0-alpha32`, Dynamic.Ptcs `0.1.0-alpha7-win50`, Ptcs.Client `0.1.0-alpha8-win68`, Interactive.Client `0.1.0-alpha2`. Packages were copied to SDK 10.0.301/10.0.400 library-packs; no public push is claimed.
+- Gates passed Contracts `15/15`, Renderer `22/22`, PTCS `10/10`, Ptcs.Client `12/12`, Interactive.Client/BrowserDemo/LiveDemo Release WebSharper builds. Playwright MCP verified desktop/mobile multi-scale presentation, generic editor pending/accept lifecycle and zero console errors. Daedalus SessionHost and real owner-backed DIB remain external production gates.

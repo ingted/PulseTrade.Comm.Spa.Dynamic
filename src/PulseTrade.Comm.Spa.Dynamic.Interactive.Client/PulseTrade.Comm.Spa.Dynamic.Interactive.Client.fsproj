@@ -2,7 +2,12 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
-    <IsPackable>false</IsPackable>
+    <IsPackable>true</IsPackable>
+    <PackageId>PulseTrade.Comm.Spa.Dynamic.Interactive.Client</PackageId>
+    <Version>0.1.0-alpha2</Version>
+    <Authors>PulseTrade Team</Authors>
+    <Description>Transport-neutral WebSharper client shell for embedding the Dynamic SDUI runtime in interactive hosts.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>preview</LangVersion>
     <WebSharperProject>spa</WebSharperProject>
     <WebSharperBundleOutputDir>wwwroot\js</WebSharperBundleOutputDir>
@@ -11,11 +16,12 @@
 
   <ItemGroup>
     <Compile Include="Client.fs" />
+    <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PulseTrade.Comm.Spa.Dynamic.Contracts\PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.0-alpha27]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha11]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.0-alpha32]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.6.676" />
     <PackageReference Include="WebSharper.UI" Version="10.1.5.676" />
   </ItemGroup>

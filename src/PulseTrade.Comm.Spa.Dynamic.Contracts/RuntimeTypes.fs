@@ -19,6 +19,29 @@ type SduiValue =
     | Object of Map<string, SduiValue>
 
 [<RequireQualifiedAccess>]
+type PointFinality =
+    | Preview
+    | Final
+
+[<RequireQualifiedAccess>]
+type TemporalProjection =
+    | CandleSpan
+    | RepeatAcrossBaseBuckets
+    | StepAfterClose
+
+type TemporalPoint =
+    { SourceIntervalId: string
+      ScaleKey: string
+      IntervalStartUtc: DateTimeOffset
+      IntervalEndUtc: DateTimeOffset
+      ObservedThroughUtc: DateTimeOffset
+      AvailableAtUtc: DateTimeOffset option
+      Finality: PointFinality
+      Projection: TemporalProjection
+      Quality: string option
+      Value: SduiValue option }
+
+[<RequireQualifiedAccess>]
 type TaFreshness =
     | Live
     | Delayed of lag: TimeSpan
@@ -159,10 +182,21 @@ type TaQueryChange =
       IncludePartial: bool option }
 
 [<RequireQualifiedAccess>]
+type EditorScalarValue =
+    | Text of string
+    | Number of float
+    | Bool of bool
+
+type EditorInputValue =
+    { Path: string
+      Value: EditorScalarValue }
+
+[<RequireQualifiedAccess>]
 type SduiAction =
     | ResetView of CanvasInstanceId
     | ResetCanvas of CanvasInstanceId
     | AddTaRow of CanvasInstanceId * TaRowSpec
+    | ApplyTemplate of CanvasInstanceId * rowId: string option * templateKey: string * values: EditorInputValue array
     | RemoveTaRow of CanvasInstanceId * rowId: string
     | ChangeTaQuery of CanvasInstanceId * TaQueryChange
     | PollDelta of CanvasInstanceId * afterDataRevision: int64

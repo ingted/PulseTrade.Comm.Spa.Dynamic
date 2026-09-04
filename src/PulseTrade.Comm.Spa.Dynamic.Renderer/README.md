@@ -16,6 +16,8 @@
 - Add Row：SMA/DMI輸入單一period，ADX輸入DI + ADX periods，MACD輸入fast + slow + signal；editor draft不會被poll覆蓋，remove後可用同kind重新加入。
 - Reset Canvas：送remote typed action恢復mount時initial ordered rows/query；Reset View只恢復local viewport。
 - timeline：各trace依timestamp對齊reference timeline；SMA/ADX/MACD warm-up縮短不會用array index錯位或造成sequence failure。
+- temporal projection：`TemporalPoint`明確指定source interval與projection；coarse K棒用`CandleSpan`跨base slots，coarse line用`RepeatAcrossBaseBuckets`，只在close後可知的indicator用`StepAfterClose`，避免look-ahead。
+- multi-candle：同一row可同時畫1K/5K等多個candlestick traces；base candle維持實心，coarse candle以trace色outline/dashed wick呈現並保留source interval metadata。
 - cursor/style：K棒、line point與cross-row cursor共用slot-center幾何；indicator line width為1.25，histogram維持1.0。
 
 ## API
@@ -27,11 +29,11 @@ TaWorkspaceRenderer.render
     runtimeState
 ```
 
-`runtimeState`是`Var<RuntimeState>`；host adapter負責strict frame decode/reducer與更新Var。`callbacks.SubmitAction`只能接收`SduiAction`，不提供arbitrary URL、SQL或raw credential。
+`runtimeState`是`Var<RuntimeState>`；host adapter負責strict frame decode/reducer與更新Var。`callbacks.SubmitAction`接收含RequestId/revision的`DynamicActionRequest`並回`DynamicActionResult`；不提供arbitrary URL、SQL或raw credential。
 
 ## Verification
 
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha25`。`Document=None` 依 runtime poll/error狀態呈現 preparing、connecting、recovering、closed 或 unavailable；正常 bootstrap 不再被誤標成 terminal error。Current model gate 20/20，isolated F# Playwright使用2000-point fixture通過dual handles、drag-release commit與desktop/mobile geometry。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha32`。Current model gate 22/22；isolated Playwright MCP使用2000-point與multi-scale fixture通過generic editor、pending/accept及desktop/mobile geometry。

@@ -14,12 +14,13 @@ type DynamicHostError =
       Message: string }
 
 type TaRendererCallbacks =
-    { SubmitAction: SduiAction -> Async<Result<unit, DynamicHostError>> }
+    { SubmitAction: DynamicActionRequest -> Async<Result<DynamicActionResult, DynamicHostError>> }
 
 type TaRendererOptions =
     { MinimumVisibleBars: int
       DefaultVisibleBars: int
-      MaximumVisibleBars: int }
+      MaximumVisibleBars: int
+      EditorSchemas: DynamicTemplateSchema array }
 
 type TaRendererUiState =
     { Window: TaVisibleWindow
@@ -27,6 +28,7 @@ type TaRendererUiState =
       HiddenRows: Set<string>
       AddRowOpen: bool
       CursorIndex: int option
+      PendingActionId: string option
       Feedback: string }
 
 [<JavaScript>]
@@ -34,7 +36,8 @@ module TaWorkspaceRenderer =
     let defaultOptions =
         { MinimumVisibleBars = 12
           DefaultVisibleBars = 48
-          MaximumVisibleBars = 2000 }
+          MaximumVisibleBars = 2000
+          EditorSchemas = [||] }
 
     let element name attrs (children: seq<#Doc>) =
         Doc.Element name attrs (children |> Seq.cast<Doc>) :> Doc
@@ -91,15 +94,69 @@ module TaWorkspaceRenderer =
         | RuntimePollState.Disposed -> true
         | _ -> false
 
-    let submit (callbacks: TaRendererCallbacks) (uiState: Var<TaRendererUiState>) action successText =
-        async {
-            let! result = callbacks.SubmitAction action
+    let submit
+        (callbacks: TaRendererCallbacks)
+        (uiState: Var<TaRendererUiState>)
+        actualDocumentRevision
+        request
+        successText
+        onAccepted =
+        let expectedRevisionMatches =
+            match request.ExpectedDocumentRevision with
+            | Some expected -> expected = actualDocumentRevision
+            | None -> true
 
-            match result with
-            | Ok () -> uiState.Value <- { uiState.Value with Feedback = successText }
-            | Error error -> uiState.Value <- { uiState.Value with Feedback = error.Code + ": " + error.Message }
-        }
-        |> Async.StartImmediate
+        if uiState.Value.PendingActionId.IsSome then
+            uiState.Value <- { uiState.Value with Feedback = "action-in-flight: wait for the pending action result." }
+        elif not expectedRevisionMatches then
+            uiState.Value <-
+                { uiState.Value with
+                    PendingActionId = None
+                    Feedback = "revision-conflict: workspace is at revision " + string actualDocumentRevision + "." }
+        else
+            uiState.Value <-
+                { uiState.Value with
+                    PendingActionId = Some request.RequestId
+                    Feedback = "Submitting " + request.RequestId + "..." }
+
+            async {
+                let! response = callbacks.SubmitAction request
+                let result =
+                    match response with
+                    | Ok accepted -> accepted
+                    | Error error -> DynamicActionResult.Rejected(request.RequestId, error.Code, error.Message)
+
+                let resultRequestId =
+                    match result with
+                    | DynamicActionResult.Accepted(requestId, _)
+                    | DynamicActionResult.Rejected(requestId, _, _)
+                    | DynamicActionResult.RevisionConflict(requestId, _) -> requestId
+
+                if resultRequestId <> request.RequestId then
+                    uiState.Value <-
+                        { uiState.Value with
+                            PendingActionId = None
+                            Feedback = "action-correlation-mismatch: result does not match the pending request." }
+                else
+                    match result with
+                    | DynamicActionResult.Accepted(_, revision) ->
+                        onAccepted ()
+                        uiState.Value <-
+                            { uiState.Value with
+                                PendingActionId = None
+                                Feedback = successText + " Revision " + string revision + "." }
+                    | DynamicActionResult.Rejected(_, code, message) ->
+                        uiState.Value <-
+                            { uiState.Value with
+                                PendingActionId = None
+                                Feedback = code + ": " + message }
+                    | DynamicActionResult.RevisionConflict(_, actualRevision) ->
+                        uiState.Value <-
+                            { uiState.Value with
+                                PendingActionId = None
+                                Feedback = "revision-conflict: workspace is at revision " + string actualRevision + "." }
+            }
+            |> Async.StartImmediate
 
     let inputText (testId: string) (placeholder: string) (initial: string) (onChanged: string -> unit) =
         element "input" [
@@ -177,13 +234,14 @@ module TaWorkspaceRenderer =
     let primaryButton testId label onClick =
         primaryButtonState testId label false onClick
 
-    let chartFrame titleText testId height children =
+    let chartFrame titleText metadata testId height children =
         section [
             Attr.Create "data-testid" testId
             attr.style ("display:flex; flex-direction:column; min-width:0; min-height:" + string height + "px; border-top:1px solid #e1e7ef; background:#fff;")
         ] [
-            div [ attr.style "display:flex; align-items:center; justify-content:space-between; height:28px; padding:0 8px; color:#40536d; font-size:11px;" ] [
-                strong [] [ text titleText ]
+            div [ attr.style "display:flex; align-items:center; gap:6px 10px; min-height:28px; padding:4px 8px; color:#40536d; font-size:11px; flex-wrap:wrap;" ] [
+                strong [ attr.style "margin-right:auto;" ] [ text titleText ]
+                yield! metadata
             ]
             element "div" [ attr.style "min-width:0; overflow:hidden;" ] children
         ]
@@ -370,21 +428,14 @@ module TaWorkspaceRenderer =
         let color index (trace: TaTraceSpec) =
             if String.IsNullOrWhiteSpace trace.Color then palette[index % palette.Length] else trace.Color
 
-        let timestampIndex =
-            referenceTimestamps
-            |> Array.mapi (fun index timestamp -> timestamp, index)
-            |> Map.ofArray
-
-        let containsTimestamp timestamp = timestampIndex |> Map.containsKey timestamp
-        let tryTimestampIndex timestamp = timestampIndex |> Map.tryFind timestamp
-
         let candleSeries =
             traces
-            |> Array.tryFind (fun trace -> trace.Kind = TaTraceKind.Candlestick)
-            |> Option.map (fun trace ->
+            |> Array.mapi (fun traceIndex trace -> traceIndex, trace)
+            |> Array.filter (fun (_, trace) -> trace.Kind = TaTraceKind.Candlestick)
+            |> Array.collect (fun (traceIndex, trace) ->
                 RendererModel.candleSeries trace.DataRef data
-                |> Array.filter (fun point -> containsTimestamp point.Timestamp))
-            |> Option.defaultValue [||]
+                |> Array.filter (fun point -> RendererModel.candleSlotRange referenceTimestamps point |> Option.isSome)
+                |> Array.map (fun point -> traceIndex, trace, point))
         let xAt index =
             RendererModel.slotCenter width referenceTimestamps.Length index
             |> Option.defaultValue (width / 2.0)
@@ -396,21 +447,20 @@ module TaWorkspaceRenderer =
                     (match trace.Kind with
                      | TaTraceKind.Volume ->
                          RendererModel.candleSeries trace.DataRef data
-                         |> Array.map (fun point -> { Timestamp = point.Timestamp; Value = point.Volume })
+                         |> Array.map (fun point -> { Timestamp = point.Timestamp; Value = point.Volume; Temporal = point.Temporal })
                      | TaTraceKind.Line
                      | TaTraceKind.Histogram -> RendererModel.lineSeries trace.DataRef data
                      | _ -> [||])
-                    |> Array.filter (fun point -> containsTimestamp point.Timestamp)
+                    |> RendererModel.projectedLinePoints referenceTimestamps
                 index, trace, points)
 
         let scaleValues =
-            [| yield! candleSeries |> Array.collect (fun point -> [| point.Low; point.High |])
+            [| yield! candleSeries |> Array.collect (fun (_, _, point) -> [| point.Low; point.High |])
                yield! linePoints |> Array.collect (fun (_, trace, points) ->
-                   let values = points |> Array.map _.Value
+                   let values = points |> Array.map (fun (_, point: TaLinePoint) -> point.Value)
                    if trace.Kind = TaTraceKind.Histogram then Array.append [| 0.0 |] values else values) |]
         let low, high = RendererModel.paddedRange 0.0 1.0 scaleValues
         let slot = if referenceTimestamps.Length = 0 then width else width / float referenceTimestamps.Length
-        let bodyWidth = max 2.0 (slot * 0.56)
         let svgTestId = if hasCandles then "ta-candle-" + rowId else "ta-composite-" + rowId
 
         svgElement "svg" [
@@ -432,30 +482,25 @@ module TaWorkspaceRenderer =
                 let y = top + plotHeight * float gridIndex / 4.0
                 yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" (fixedText y); svgAttr "y2" (fixedText y); svgAttr "stroke" "#e7ecf3"; svgAttr "stroke-width" "1" ] []
 
-            for rising, candleColor in [ true, "#0f8a78"; false, "#c2414b" ] do
-                let selected = candleSeries |> Array.filter (fun point -> (point.Close >= point.Open) = rising)
-                let wickPath =
-                    selected
-                    |> Array.choose (fun point ->
-                        tryTimestampIndex point.Timestamp
-                        |> Option.map (fun index ->
-                            let x = slot * (float index + 0.5)
-                            let highY = RendererModel.normalize low high top plotHeight point.High
-                            let lowY = RendererModel.normalize low high top plotHeight point.Low
-                            "M " + fixedText x + " " + fixedText highY + " V " + fixedText lowY))
-                    |> String.concat " "
-                let bodyPath =
-                    selected
-                    |> Array.choose (fun point ->
-                        tryTimestampIndex point.Timestamp
-                        |> Option.map (fun index ->
-                            let x = slot * (float index + 0.5)
-                            let openY = RendererModel.normalize low high top plotHeight point.Open
-                            let closeY = RendererModel.normalize low high top plotHeight point.Close
-                            rectanglePath (x - bodyWidth / 2.0) (min openY closeY) bodyWidth (max 1.2 (abs (closeY - openY)))))
-                    |> String.concat " "
-                yield svgElement "path" [ Attr.Create "data-candle-part" (if rising then "rising-wicks" else "falling-wicks"); svgAttr "d" wickPath; svgAttr "fill" "none"; svgAttr "stroke" candleColor; svgAttr "stroke-width" "1.2" ] []
-                yield svgElement "path" [ Attr.Create "data-candle-part" (if rising then "rising-bodies" else "falling-bodies"); svgAttr "d" bodyPath; svgAttr "fill" candleColor ] []
+            for traceIndex, trace, point in candleSeries do
+                match RendererModel.candleSlotRange referenceTimestamps point with
+                | None -> ()
+                | Some(firstSlot, endExclusive) ->
+                    let left = slot * float firstSlot
+                    let right = slot * float endExclusive
+                    let center = (left + right) / 2.0
+                    let bodyWidth = max 2.0 ((right - left) * 0.72)
+                    let candleColor = if point.Close >= point.Open then "#0f8a78" else "#c2414b"
+                    let highY = RendererModel.normalize low high top plotHeight point.High
+                    let lowY = RendererModel.normalize low high top plotHeight point.Low
+                    let openY = RendererModel.normalize low high top plotHeight point.Open
+                    let closeY = RendererModel.normalize low high top plotHeight point.Close
+                    let sourceIntervalId = point.Temporal |> Option.map _.SourceIntervalId |> Option.defaultValue point.Timestamp
+                    let spanCount = endExclusive - firstSlot
+                    let traceColor = if spanCount > 1 then color traceIndex trace else candleColor
+                    let traceTestId = "ta-candle-" + rowId + "-" + trace.TraceId
+                    yield svgElement "line" [ Attr.Create "data-testid" traceTestId; Attr.Create "data-candle-part" "wick"; Attr.Create "data-source-interval-id" sourceIntervalId; Attr.Create "data-span-slots" (string spanCount); svgAttr "x1" (fixedText center); svgAttr "x2" (fixedText center); svgAttr "y1" (fixedText highY); svgAttr "y2" (fixedText lowY); svgAttr "stroke" traceColor; svgAttr "stroke-width" (if spanCount > 1 then "1.8" else "1.2"); if spanCount > 1 then svgAttr "stroke-dasharray" "4 2" ] []
+                    yield svgElement "rect" [ Attr.Create "data-testid" traceTestId; Attr.Create "data-candle-part" "body"; Attr.Create "data-source-interval-id" sourceIntervalId; Attr.Create "data-span-slots" (string spanCount); svgAttr "x" (fixedText (center - bodyWidth / 2.0)); svgAttr "y" (fixedText (min openY closeY)); svgAttr "width" (fixedText bodyWidth); svgAttr "height" (fixedText (max 1.2 (abs (closeY - openY)))); svgAttr "fill" (if spanCount > 1 then "none" else candleColor); svgAttr "stroke" traceColor; svgAttr "stroke-width" (if spanCount > 1 then "1.8" else "0"); svgAttr "rx" "0.6" ] []
 
             for traceIndex, trace, points in linePoints do
                 let traceColor = color traceIndex trace
@@ -466,20 +511,16 @@ module TaWorkspaceRenderer =
                     let barWidth = max 1.0 (slot * 0.64)
                     let path =
                         points
-                        |> Array.choose (fun point ->
-                            tryTimestampIndex point.Timestamp
-                            |> Option.map (fun index ->
+                        |> Array.map (fun (index, point: TaLinePoint) ->
                                 let x = slot * (float index + 0.18)
                                 let valueY = RendererModel.normalize low high top plotHeight point.Value
-                                rectanglePath x (min zeroY valueY) barWidth (max 1.0 (abs (zeroY - valueY)))))
+                                rectanglePath x (min zeroY valueY) barWidth (max 1.0 (abs (zeroY - valueY))))
                         |> String.concat " "
                     yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); svgAttr "d" path; svgAttr "fill" traceColor; svgAttr "fill-opacity" "0.62" ] []
                 | TaTraceKind.Line ->
                     let path =
                         points
-                        |> Array.choose (fun point ->
-                            tryTimestampIndex point.Timestamp
-                            |> Option.map (fun index -> xAt index, RendererModel.normalize low high top plotHeight point.Value))
+                        |> Array.map (fun (index, point: TaLinePoint) -> xAt index, RendererModel.normalize low high top plotHeight point.Value)
                         |> Array.mapi (fun index (x, y) -> (if index = 0 then "M" else "L") + " " + fixedText x + " " + fixedText y)
                         |> String.concat " "
                     yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); svgAttr "d" path; svgAttr "fill" "none"; svgAttr "stroke" traceColor; svgAttr "stroke-width" (fixedText trace.Width); svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
@@ -505,10 +546,28 @@ module TaWorkspaceRenderer =
         let children =
             if showSharedTimeAxis then [ chart; timeAxis "ta-time-axis-shared" timestamps ]
             else [ chart ]
-        chartFrame title ("ta-row-" + row.RowId) (chartHeight + if showSharedTimeAxis then 16 else 0) children
+        let metadata =
+            RendererModel.rowTemporalMetadata row state.Data
+            |> Array.map (fun value ->
+                let availability = value.AvailableAtUtc |> Option.map compactTimestamp |> Option.defaultValue "unknown"
+                let quality = value.Quality |> Option.defaultValue "unknown"
+                span [
+                    Attr.Create "data-testid" ("ta-row-meta-" + row.RowId + "-" + value.ScaleKey)
+                    Attr.Create "data-scale-key" value.ScaleKey
+                    Attr.Create "data-finality" value.Finality
+                    Attr.Create "data-quality" quality
+                    attr.title (RendererModel.temporalDetail value)
+                    attr.style "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;"
+                ] [ text (value.ScaleKey + " | " + value.Finality + " | " + quality + " | frontier " + compactTimestamp value.ObservedThroughUtc + " | available " + availability) ] :> Doc)
+            |> Array.toList
+        chartFrame title metadata ("ta-row-" + row.RowId) (chartHeight + if showSharedTimeAxis then 16 else 0) children
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
         let canvasId = runtimeState.Value.Identity.CanvasInstanceId
+        let editorSchemas = if isNull options.EditorSchemas then [||] else options.EditorSchemas
+        let initialEditorSchema = editorSchemas |> Array.tryHead
+        let selectedTemplate = Var.Create(initialEditorSchema |> Option.map _.TemplateKey |> Option.defaultValue "")
+        let editorValues = Var.Create(initialEditorSchema |> Option.map RendererModel.initialEditorInputs |> Option.defaultValue [||])
         let mutable instrumentDraft = ""
         let mutable intervalDraft = ""
         let mutable fromDateDraft = ""
@@ -534,9 +593,23 @@ module TaWorkspaceRenderer =
                   HiddenRows = Set.empty
                   AddRowOpen = false
                   CursorIndex = None
+                  PendingActionId = None
                   Feedback = "" }
-        let commandsDisabledView = runtimeState.View |> View.Map (fun state -> remoteDisabled state.Poll)
-        let commandsDisabledNow () = remoteDisabled runtimeState.Value.Poll
+        let mutable actionSequence = 0
+        let commandsDisabledView =
+            View.Map2
+                (fun state ui -> remoteDisabled state.Poll || ui.PendingActionId.IsSome)
+                runtimeState.View
+                uiState.View
+        let commandsDisabledNow () =
+            remoteDisabled runtimeState.Value.Poll || uiState.Value.PendingActionId.IsSome
+        let startAction action successText onAccepted =
+            actionSequence <- actionSequence + 1
+            let request =
+                { RequestId = canvasIdText canvasId + ":ui:" + string actionSequence
+                  ExpectedDocumentRevision = Some runtimeState.Value.DocumentRevision
+                  Action = action }
+            submit callbacks uiState runtimeState.Value.DocumentRevision request successText onAccepted
         let sameDocumentShell (left: RuntimeState) (right: RuntimeState) =
             let samePresence =
                 match left.Document, right.Document with
@@ -646,6 +719,177 @@ module TaWorkspaceRenderer =
             if uiState.Value.CursorIndex <> value then
                 uiState.Value <- { uiState.Value with CursorIndex = value }
 
+        let selectedEditorSchema () =
+            editorSchemas |> Array.tryFind (fun schema -> schema.TemplateKey = selectedTemplate.Value)
+
+        let resetEditorFor templateKey =
+            selectedTemplate.Value <- templateKey
+            editorValues.Value <-
+                editorSchemas
+                |> Array.tryFind (fun schema -> schema.TemplateKey = templateKey)
+                |> Option.map RendererModel.initialEditorInputs
+                |> Option.defaultValue [||]
+
+        let editorTestId (path: string) =
+            "ta-editor-" + path.Replace(".", "-").Replace("[", "-").Replace("]", "")
+
+        let setEditorScalar path value =
+            editorValues.Value <- RendererModel.setEditorInput { Path = path; Value = value } editorValues.Value
+
+        let removeEditorScalar path =
+            editorValues.Value <- editorValues.Value |> Array.filter (fun current -> current.Path <> path)
+
+        let scalarText path =
+            RendererModel.tryEditorInput path editorValues.Value
+            |> Option.map RendererModel.editorScalarText
+            |> Option.defaultValue ""
+
+        let scalarEditor path labelText required kind =
+            let caption = if required then labelText + " *" else labelText
+            let shell control =
+                label [ attr.style "display:flex; flex-direction:column; gap:3px; min-width:0; font-size:10px; color:#60738b;" ] [
+                    text caption
+                    control
+                ] :> Doc
+
+            match kind with
+            | EditorValueKind.Text ->
+                inputText (editorTestId path) labelText (scalarText path) (fun value -> setEditorScalar path (EditorScalarValue.Text value))
+                |> shell
+            | EditorValueKind.Integer(minimum, maximum) ->
+                let attrs =
+                    [ Attr.Create "data-testid" (editorTestId path)
+                      attr.``type`` "number"
+                      attr.value (scalarText path)
+                      Attr.Create "step" "1"
+                      attr.style "height:30px; min-width:0; width:100%; border:1px solid #b9c6d8; border-radius:4px; background:#fff; color:#142033; padding:4px 7px; box-sizing:border-box; font-size:12px;"
+                      on.afterRender (fun node ->
+                          let input = node |> As<HTMLInputElement>
+                          input.AddEventListener("input", fun () ->
+                              match Int64.TryParse input.Value with
+                              | true, value -> setEditorScalar path (EditorScalarValue.Number(float value))
+                              | _ -> removeEditorScalar path))
+                      match minimum with Some value -> Attr.Create "min" (string value) | None -> Attr.Empty
+                      match maximum with Some value -> Attr.Create "max" (string value) | None -> Attr.Empty ]
+                element "input" attrs [] |> shell
+            | EditorValueKind.Decimal(minimum, maximum) ->
+                let attrs =
+                    [ Attr.Create "data-testid" (editorTestId path)
+                      attr.``type`` "number"
+                      attr.value (scalarText path)
+                      Attr.Create "step" "any"
+                      attr.style "height:30px; min-width:0; width:100%; border:1px solid #b9c6d8; border-radius:4px; background:#fff; color:#142033; padding:4px 7px; box-sizing:border-box; font-size:12px;"
+                      on.afterRender (fun node ->
+                          let input = node |> As<HTMLInputElement>
+                          input.AddEventListener("input", fun () ->
+                              match Double.TryParse input.Value with
+                              | true, value -> setEditorScalar path (EditorScalarValue.Number value)
+                              | _ -> removeEditorScalar path))
+                      match minimum with Some value -> Attr.Create "min" (fixedText value) | None -> Attr.Empty
+                      match maximum with Some value -> Attr.Create "max" (fixedText value) | None -> Attr.Empty ]
+                element "input" attrs [] |> shell
+            | EditorValueKind.Boolean ->
+                let isChecked =
+                    match RendererModel.tryEditorInput path editorValues.Value with
+                    | Some(EditorScalarValue.Bool value) -> value
+                    | _ -> false
+                label [ attr.style "display:flex; align-items:center; gap:6px; min-height:30px; font-size:11px; color:#40536d;" ] [
+                    element "input" [
+                        Attr.Create "data-testid" (editorTestId path)
+                        attr.``type`` "checkbox"
+                        if isChecked then Attr.Create "checked" "checked"
+                        on.afterRender (fun node ->
+                            let input = node |> As<HTMLInputElement>
+                            input.AddEventListener("change", fun () -> setEditorScalar path (EditorScalarValue.Bool input.Checked)))
+                    ] []
+                    text caption
+                ] :> Doc
+            | EditorValueKind.Choice choices ->
+                let selectedKey =
+                    choices
+                    |> Array.tryFind (fun choice ->
+                        RendererModel.tryEditorInput path editorValues.Value
+                        |> Option.exists (fun current -> RendererModel.editorScalarEqualsSdui current choice.Value))
+                    |> Option.map _.Key
+                    |> Option.defaultValue ""
+                selectInput (editorTestId path) selectedKey (choices |> Array.map (fun choice -> choice.Key, choice.Label) |> Array.toList) (fun key ->
+                    choices
+                    |> Array.tryFind (fun choice -> choice.Key = key)
+                    |> Option.bind (fun choice ->
+                        match choice.Value with
+                        | SduiValue.Text value -> Some(EditorScalarValue.Text value)
+                        | SduiValue.Number value -> Some(EditorScalarValue.Number value)
+                        | SduiValue.Bool value -> Some(EditorScalarValue.Bool value)
+                        | _ -> None)
+                    |> Option.iter (setEditorScalar path))
+                |> shell
+            | EditorValueKind.Scale scaleKeys ->
+                selectInput (editorTestId path) (scalarText path) (scaleKeys |> Array.map (fun value -> value, value) |> Array.toList) (fun value -> setEditorScalar path (EditorScalarValue.Text value))
+                |> shell
+            | _ -> Doc.Empty
+
+        let rec editorKind path labelText required kind =
+            match kind with
+            | EditorValueKind.Group fields ->
+                fieldset [ attr.style "min-width:0; margin:0; padding:7px; border:1px solid #cbd6e5; border-radius:5px;" ] [
+                    legend [ attr.style "padding:0 4px; font-size:11px; color:#40536d;" ] [ text labelText ]
+                    div [ attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:7px; min-width:0;" ] [
+                        for field in fields do
+                            yield editorKind ($"{path}.{field.Key}") field.Label field.Required field.Kind
+                    ]
+                ] :> Doc
+            | EditorValueKind.List(itemKind, _, maximum) ->
+                let indexesView =
+                    editorValues.View
+                    |> View.Map (RendererModel.listIndexes path)
+                    |> View.MapCachedBy (=) id
+
+                div [ attr.style "display:flex; flex-direction:column; gap:5px; min-width:0;" ] [
+                    span [ attr.style "font-size:10px; color:#60738b;" ] [ text (if required then labelText + " *" else labelText) ]
+                    indexesView
+                    |> View.Map (fun indexes ->
+                        div [ Attr.Create "data-testid" (editorTestId path + "-items"); attr.style "display:flex; flex-direction:column; gap:5px;" ] [
+                            for position, index in indexes |> Array.indexed do
+                                let itemPath = $"{path}[{index}]"
+                                yield div [ attr.style "display:grid; grid-template-columns:auto minmax(0,1fr); gap:5px; align-items:end;" ] [
+                                    div [ attr.style "display:flex; align-items:center; gap:3px; height:30px;" ] [
+                                        compactButton (editorTestId itemPath + "-up") "↑" "Move item up" (fun () ->
+                                            if position > 0 then editorValues.Value <- RendererModel.moveListItem path index indexes[position - 1] editorValues.Value)
+                                        compactButton (editorTestId itemPath + "-down") "↓" "Move item down" (fun () ->
+                                            if position < indexes.Length - 1 then editorValues.Value <- RendererModel.moveListItem path index indexes[position + 1] editorValues.Value)
+                                        compactButton (editorTestId itemPath + "-remove") "×" "Remove item" (fun () ->
+                                            editorValues.Value <- RendererModel.removeListItem path index editorValues.Value)
+                                    ]
+                                    editorKind itemPath $"Item {position + 1}" true itemKind
+                                ]
+                        ] :> Doc)
+                    |> Doc.EmbedView
+                    compactButton (editorTestId path + "-add") "+ Add" ("Add " + labelText) (fun () ->
+                        let count = RendererModel.listIndexes path editorValues.Value |> Array.length
+                        match maximum with
+                        | Some limit when count >= limit -> uiState.Value <- { uiState.Value with Feedback = $"{labelText} allows at most {limit} item(s)." }
+                        | _ -> editorValues.Value <- RendererModel.addListItem path itemKind editorValues.Value)
+                ] :> Doc
+            | scalar -> scalarEditor path labelText required scalar
+
+        let genericEditor () =
+            div [ Attr.Create "data-testid" "ta-generic-row-editor"; attr.style "display:flex; flex-direction:column; gap:7px; min-width:0;" ] [
+                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [
+                    text "Template"
+                    selectInput "ta-editor-template" selectedTemplate.Value (editorSchemas |> Array.map (fun schema -> schema.TemplateKey, schema.DisplayName) |> Array.toList) resetEditorFor
+                ]
+                selectedTemplate.View
+                |> View.Map (fun templateKey ->
+                    match editorSchemas |> Array.tryFind (fun schema -> schema.TemplateKey = templateKey) with
+                    | None -> div [ attr.style "font-size:11px; color:#9a2f2f;" ] [ text "Template schema is unavailable." ] :> Doc
+                    | Some schema ->
+                        div [ attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:7px; min-width:0;" ] [
+                            for field in schema.Fields do
+                                yield editorKind field.Key field.Label field.Required field.Kind
+                        ] :> Doc)
+                |> Doc.EmbedView
+            ]
+
         let applyQuery () =
             let parsedInterval =
                 match Int32.TryParse intervalDraft with
@@ -660,9 +904,9 @@ module TaWorkspaceRenderer =
                   ToUtcExclusive = if String.IsNullOrWhiteSpace toDateDraft then None else Some toDateDraft
                   IncludePartial = Some true }
 
-            submit callbacks uiState (SduiAction.ChangeTaQuery(canvasId, query)) "Query submitted."
+            startAction (SduiAction.ChangeTaQuery(canvasId, query)) "Query accepted." ignore
 
-        let addRow () =
+        let addLegacyRow () =
             let kind =
                 match addKind.Value with
                 | "Volume" -> TaRowKind.Volume
@@ -717,7 +961,20 @@ module TaWorkspaceRenderer =
                       Traces = [||] }
 
                 pendingAddRowId <- Some rowId
-                submit callbacks uiState (SduiAction.AddTaRow(canvasId, spec)) "Row request submitted."
+                startAction (SduiAction.AddTaRow(canvasId, spec)) "Row accepted." ignore
+
+        let addRow () =
+            match selectedEditorSchema () with
+            | None -> addLegacyRow ()
+            | Some schema ->
+                let errors = RendererModel.validateEditorSubmission schema editorValues.Value
+                if errors.Length > 0 then
+                    uiState.Value <- { uiState.Value with Feedback = String.concat " " errors }
+                else
+                    startAction
+                        (SduiAction.ApplyTemplate(canvasId, None, schema.TemplateKey, editorValues.Value))
+                        (schema.DisplayName + " accepted.")
+                        (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = false })
 
         div [
             attr.``class`` "ptcs-ta-workspace"
@@ -805,7 +1062,7 @@ module TaWorkspaceRenderer =
                                 compactButton "ta-zoom-in" "+" "Show fewer bars" (fun () -> zoomWindow -8)
                                 compactButton "ta-zoom-out" "−" "Show more bars" (fun () -> zoomWindow 8)
                                 compactButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" resetWindow
-                                compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () -> submit callbacks uiState (SduiAction.ResetCanvas canvasId) "Canvas reset requested.")
+                                compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () -> startAction (SduiAction.ResetCanvas canvasId) "Canvas reset accepted." ignore)
                                 compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = not uiState.Value.AddRowOpen })
                                 span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "local view controls do not query the backend" ]
                             ]
@@ -838,7 +1095,7 @@ module TaWorkspaceRenderer =
                                                         else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
                                                     on.click (fun _ _ ->
                                                         if not (commandsDisabledNow ()) then
-                                                            submit callbacks uiState (SduiAction.RemoveTaRow(canvasId, row.RowId)) (rowKindText row.Kind + " row removal requested."))
+                                                            startAction (SduiAction.RemoveTaRow(canvasId, row.RowId)) (rowKindText row.Kind + " row removal accepted.") ignore)
                                                 ] [ text "×" ]
                                             ]
                                 ] :> Doc)
@@ -847,37 +1104,44 @@ module TaWorkspaceRenderer =
                             |> View.Map (fun ui ->
                                 if not ui.AddRowOpen then Doc.Empty
                                 else
-                                    div [ Attr.Create "data-testid" "ta-add-row-editor"; attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;" ] [
-                                        label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [
-                                            text "Row kind"
-                                            selectInput "ta-add-row-kind" addKind.Value [ "Sma", "SMA"; "Volume", "Volume"; "Dmi", "DMI"; "Adx", "ADX"; "Macd", "MACD"; "HeikinAshi", "Heikin-Ashi" ] (fun value ->
-                                                addKind.Value <- value
-                                                addDataRef.Value <- "series." + value.ToLower())
-                                        ]
-                                        label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text "Data ref"; inputText "ta-add-row-data-ref" "series.sma" addDataRef.Value (fun value -> addDataRef.Value <- value) ]
-                                        addKind.View
-                                        |> View.Map (fun kind ->
-                                            let field labelText testId value onChanged =
-                                                label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text labelText; inputText testId labelText value onChanged ] :> Doc
+                                    div [ Attr.Create "data-testid" "ta-add-row-editor"; attr.style "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;" ] [
+                                        if editorSchemas.Length > 0 then
+                                            genericEditor ()
+                                        else
+                                            div [ attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;" ] [
+                                                label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [
+                                                    text "Row kind"
+                                                    selectInput "ta-add-row-kind" addKind.Value [ "Sma", "SMA"; "Volume", "Volume"; "Dmi", "DMI"; "Adx", "ADX"; "Macd", "MACD"; "HeikinAshi", "Heikin-Ashi" ] (fun value ->
+                                                        addKind.Value <- value
+                                                        addDataRef.Value <- "series." + value.ToLower())
+                                                ]
+                                                label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text "Data ref"; inputText "ta-add-row-data-ref" "series.sma" addDataRef.Value (fun value -> addDataRef.Value <- value) ]
+                                                addKind.View
+                                                |> View.Map (fun kind ->
+                                                    let field labelText testId value onChanged =
+                                                        label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text labelText; inputText testId labelText value onChanged ] :> Doc
 
-                                            match kind with
-                                            | "Sma"
-                                            | "Dmi" -> field "Period" "ta-add-row-period" addPeriod.Value (fun value -> addPeriod.Value <- value)
-                                            | "Adx" ->
-                                                div [ attr.style "display:grid; grid-template-columns:1fr 1fr; gap:6px; min-width:0;" ] [
-                                                    field "DI period" "ta-add-row-di-period" addDiPeriod.Value (fun value -> addDiPeriod.Value <- value)
-                                                    field "ADX period" "ta-add-row-adx-period" addAdxPeriod.Value (fun value -> addAdxPeriod.Value <- value)
-                                                ] :> Doc
-                                            | "Macd" ->
-                                                div [ attr.style "display:grid; grid-template-columns:repeat(3,1fr); gap:6px; min-width:0;" ] [
-                                                    field "Fast" "ta-add-row-fast-period" addFastPeriod.Value (fun value -> addFastPeriod.Value <- value)
-                                                    field "Slow" "ta-add-row-slow-period" addSlowPeriod.Value (fun value -> addSlowPeriod.Value <- value)
-                                                    field "Signal" "ta-add-row-signal-period" addSignalPeriod.Value (fun value -> addSignalPeriod.Value <- value)
-                                                ] :> Doc
-                                            | _ -> span [ attr.style "font-size:11px; color:#728196;" ] [ text "No indicator parameters." ] :> Doc)
-                                        |> Doc.EmbedView
-                                        compactButton "ta-add-row-cancel" "Cancel" "Close without submitting" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = false })
-                                        primaryButtonView "ta-add-row-submit" "Add" commandsDisabledView commandsDisabledNow addRow
+                                                    match kind with
+                                                    | "Sma"
+                                                    | "Dmi" -> field "Period" "ta-add-row-period" addPeriod.Value (fun value -> addPeriod.Value <- value)
+                                                    | "Adx" ->
+                                                        div [ attr.style "display:grid; grid-template-columns:1fr 1fr; gap:6px; min-width:0;" ] [
+                                                            field "DI period" "ta-add-row-di-period" addDiPeriod.Value (fun value -> addDiPeriod.Value <- value)
+                                                            field "ADX period" "ta-add-row-adx-period" addAdxPeriod.Value (fun value -> addAdxPeriod.Value <- value)
+                                                        ] :> Doc
+                                                    | "Macd" ->
+                                                        div [ attr.style "display:grid; grid-template-columns:repeat(3,1fr); gap:6px; min-width:0;" ] [
+                                                            field "Fast" "ta-add-row-fast-period" addFastPeriod.Value (fun value -> addFastPeriod.Value <- value)
+                                                            field "Slow" "ta-add-row-slow-period" addSlowPeriod.Value (fun value -> addSlowPeriod.Value <- value)
+                                                            field "Signal" "ta-add-row-signal-period" addSignalPeriod.Value (fun value -> addSignalPeriod.Value <- value)
+                                                        ] :> Doc
+                                                    | _ -> span [ attr.style "font-size:11px; color:#728196;" ] [ text "No indicator parameters." ] :> Doc)
+                                                |> Doc.EmbedView
+                                            ]
+                                        div [ attr.style "display:flex; justify-content:flex-end; gap:6px;" ] [
+                                            compactButton "ta-add-row-cancel" "Cancel" "Close without submitting" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = false })
+                                            primaryButtonView "ta-add-row-submit" "Add" commandsDisabledView commandsDisabledNow addRow
+                                        ]
                                     ] :> Doc)
                             |> Doc.EmbedView
                             uiState.View

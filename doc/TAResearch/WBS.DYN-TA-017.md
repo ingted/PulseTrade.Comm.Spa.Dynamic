@@ -2,14 +2,14 @@
 
 - RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`
 - Status: Active
-- Progress: 50%
+- Progress: 64%
 
 | Slice | Deliverable | Test | Progress | Status |
 | --- | --- | --- | ---: | --- |
 | DYN-TA-017A | RFC/REQ/SA/SD/WBS/Test/Verification文件鏈 | T-056 | 100% | Done |
-| DYN-TA-017B | generic source identity/snapshot/event、validation、codec、reducer | T-057..060 | 100% | Done：Contracts suite 11/11；full Contracts/Interactive.Client WebSharper rebuild通過。 |
-| DYN-TA-017C | generic editor schema、correlated action lifecycle、stable row identity | T-061 | 100% | Done：Contracts suite 12/12；full Contracts/Interactive.Client WebSharper rebuild通過。 |
-| DYN-TA-017D | WebSharper production workspace UX與multi-scale presentation | T-062 | 0% | Depends on B/C + owner metadata |
+| DYN-TA-017B | generic source identity/snapshot/event、validation、codec、reducer | T-057..060 | 100% | Done：Contracts suite與full WebSharper chain通過。 |
+| DYN-TA-017C | generic editor schema、versioned correlated action wire/lifecycle、stable row identity | T-061 | 100% | Done：`ptcs-dynamic-action.v1` request/result、single pending、timeout/disconnect/correlation fail-closed；Contracts 15/15與Interactive.Client alpha2 build通過。 |
+| DYN-TA-017D | WebSharper production workspace UX與multi-scale presentation | T-062 | 85% | Generic isolated path完成：temporal-point、1K/5K candle span、repeat、30K causal step、multi-candle、generic editor、pending/reject、desktop/mobile Playwright；owner real metadata/DIB仍待E/F。 |
 | DYN-TA-017E | ColdFar Notebook adapter / typed chart root | T-063 | 0% | Daedalus-owned integration |
 | DYN-TA-017F | real MDCQ DIB + Playwright MCP + release | T-064 | 0% | Depends on D/E + provider readiness |
 
@@ -19,6 +19,14 @@
 - Daedalus owns `StructuredSeries` authority、FsStl/TradeCore semantics、workspace resource transition and typed chart root。
 - MdcQuoteAgent owns source truth/cursor/capability/readiness evidence。
 - TradeWeaver/SOR payload only enters through owner adapter; Dynamic does not grow a SOR-specific union。
+
+## D slice evidence
+
+- Contracts `0.1.0-alpha11`：`TemporalPoint`保存source interval、scale、observed/available frontier、preview/final與projection；`ptcs-dynamic-action.v1`把action result與authoritative runtime frame分流。
+- Renderer `0.1.0-alpha32`：同列支援多candlestick trace；coarse candle以跨base slots的outline span呈現，line可repeat，causal indicator只在close後step。
+- PTCS adapter `0.1.0-alpha7-win50` / client `0.1.0-alpha8-win68`：`ta-browser.v4` columnar wire保留temporal metadata，malformed array fail closed。
+- Isolated gates：Contracts `15/15`、Renderer `22/22`、PTCS `10/10`、PTCS.Client `12/12`；Playwright MCP驗desktop/mobile、pending lock、accepted mutation與0 console error。
+- 尚未宣稱production：Daedalus SessionHost須消費Interactive.Client alpha2 action envelope；owner-normalized real DIB與MDCQ provider仍是E/F gate。
 
 ## Completion gate
 

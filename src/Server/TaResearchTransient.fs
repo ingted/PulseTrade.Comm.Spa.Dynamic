@@ -89,6 +89,14 @@ type TaTransientQueryWire =
       hasIncludePartial: bool }
 
 [<CLIMutable>]
+type TaTransientEditorInputWire =
+    { path: string
+      kind: string
+      textValue: string
+      numberValue: float
+      boolValue: bool }
+
+[<CLIMutable>]
 type TaTransientClientFrameWire =
     { kind: string
       actionKind: string
@@ -98,7 +106,10 @@ type TaTransientClientFrameWire =
       query: TaTransientQueryWire
       afterDataRevision: int64
       dataRevision: int64
-      reasonCode: string }
+      reasonCode: string
+      templateKey: string
+      hasTemplateRowId: bool
+      editorValues: TaTransientEditorInputWire array }
 
 [<CLIMutable>]
 type TaBrowserPointWire =
@@ -114,7 +125,18 @@ type TaBrowserPointWire =
       hasLow: bool
       hasClose: bool
       hasVolume: bool
-      hasLineValue: bool }
+      hasLineValue: bool
+      hasTemporal: bool
+      sourceIntervalId: string
+      scaleKey: string
+      intervalStartUtc: string
+      intervalEndUtc: string
+      observedThroughUtc: string
+      availableAtUtc: string
+      hasAvailableAtUtc: bool
+      finality: string
+      projection: string
+      quality: string }
 
 [<CLIMutable>]
 type TaBrowserSeriesWire =
@@ -131,7 +153,18 @@ type TaBrowserSeriesWire =
       lowValues: float array
       closeValues: float array
       volumeValues: float array
-      lineValues: float array }
+      lineValues: float array
+      hasTemporal: bool
+      sourceIntervalIds: string array
+      scaleKeys: string array
+      intervalStartUtc: string array
+      intervalEndUtc: string array
+      observedThroughUtc: string array
+      availableAtUtc: string array
+      hasAvailableAtUtc: bool array
+      finality: string array
+      projections: string array
+      qualities: string array }
 
 [<CLIMutable>]
 type TaBrowserTraceWire =
@@ -207,7 +240,12 @@ type TaBrowserClientFrameWire =
       includePartial: bool
       afterDataRevision: float
       dataRevision: float
-      reasonCode: string }
+      reasonCode: string
+      templateKey: string
+      hasTemplateRowId: bool
+      editorValues: TaTransientEditorInputWire array
+      expectedDocumentRevision: float
+      hasExpectedDocumentRevision: bool }
 
 [<RequireQualifiedAccess>]
 module TaResearchTransientWire =
@@ -447,7 +485,41 @@ module TaResearchTransientWire =
           query = emptyQuery ()
           afterDataRevision = 0L
           dataRevision = 0L
-          reasonCode = "" }
+          reasonCode = ""
+          templateKey = ""
+          hasTemplateRowId = false
+          editorValues = [||] }
+
+    let editorInputToWire input =
+        match input.Value with
+        | EditorScalarValue.Text value ->
+            { path = text input.Path; kind = "text"; textValue = text value; numberValue = 0.0; boolValue = false }
+        | EditorScalarValue.Number value ->
+            { path = text input.Path; kind = "number"; textValue = ""; numberValue = value; boolValue = false }
+        | EditorScalarValue.Bool value ->
+            { path = text input.Path; kind = "bool"; textValue = ""; numberValue = 0.0; boolValue = value }
+
+    let editorInputFromWire (wire: TaTransientEditorInputWire) =
+        if isNull (box wire) || String.IsNullOrWhiteSpace wire.path then
+            Error "TA editor input path is required."
+        else
+            match text wire.kind with
+            | "text" -> Ok { Path = wire.path.Trim(); Value = EditorScalarValue.Text(text wire.textValue) }
+            | "number" when Double.IsNaN wire.numberValue || Double.IsInfinity wire.numberValue ->
+                Error "TA editor input number must be finite."
+            | "number" -> Ok { Path = wire.path.Trim(); Value = EditorScalarValue.Number wire.numberValue }
+            | "bool" -> Ok { Path = wire.path.Trim(); Value = EditorScalarValue.Bool wire.boolValue }
+            | _ -> Error "Unsupported TA editor input kind."
+
+    let editorInputsFromWire values =
+        let values = if isNull values then [||] else values
+        values
+        |> Array.fold (fun state wire ->
+            match state, editorInputFromWire wire with
+            | Ok accepted, Ok value -> Ok(value :: accepted)
+            | Error error, _ -> Error error
+            | _, Error error -> Error error) (Ok [])
+        |> Result.map (List.rev >> List.toArray)
 
     let clientFrameToWire (frame: RuntimeClientFrame) : TaTransientClientFrameWire =
         match frame with
@@ -460,6 +532,13 @@ module TaResearchTransientWire =
             | SduiAction.ResetView(CanvasInstanceId canvasId) -> { emptyClientFrame "action" canvasId with actionKind = "reset-view" }
             | SduiAction.ResetCanvas(CanvasInstanceId canvasId) -> { emptyClientFrame "action" canvasId with actionKind = "reset-canvas" }
             | SduiAction.AddTaRow(CanvasInstanceId canvasId, row) -> { emptyClientFrame "action" canvasId with actionKind = "add-row"; row = rowToWire row }
+            | SduiAction.ApplyTemplate(CanvasInstanceId canvasId, rowId, templateKey, values) ->
+                { emptyClientFrame "action" canvasId with
+                    actionKind = "apply-template"
+                    rowId = rowId |> Option.defaultValue ""
+                    templateKey = text templateKey
+                    hasTemplateRowId = rowId.IsSome
+                    editorValues = (if isNull values then [||] else values) |> Array.map editorInputToWire }
             | SduiAction.RemoveTaRow(CanvasInstanceId canvasId, rowId) -> { emptyClientFrame "action" canvasId with actionKind = "remove-row"; rowId = rowId }
             | SduiAction.ChangeTaQuery(CanvasInstanceId canvasId, query) -> { emptyClientFrame "action" canvasId with actionKind = "change-query"; query = queryToWire query }
             | SduiAction.PollDelta(CanvasInstanceId canvasId, revision) -> { emptyClientFrame "action" canvasId with actionKind = "poll-delta"; afterDataRevision = revision }
@@ -475,6 +554,15 @@ module TaResearchTransientWire =
         | "action", "reset-view" -> Ok(RuntimeClientFrame.Action(SduiAction.ResetView canvas))
         | "action", "reset-canvas" -> Ok(RuntimeClientFrame.Action(SduiAction.ResetCanvas canvas))
         | "action", "add-row" -> Ok(RuntimeClientFrame.Action(SduiAction.AddTaRow(canvas, rowFromWire wire.row)))
+        | "action", "apply-template" ->
+            editorInputsFromWire wire.editorValues
+            |> Result.map (fun values ->
+                RuntimeClientFrame.Action(
+                    SduiAction.ApplyTemplate(
+                        canvas,
+                        (if wire.hasTemplateRowId then Some(text wire.rowId) else None),
+                        text wire.templateKey,
+                        values)))
         | "action", "remove-row" -> Ok(RuntimeClientFrame.Action(SduiAction.RemoveTaRow(canvas, text wire.rowId)))
         | "action", "change-query" -> Ok(RuntimeClientFrame.Action(SduiAction.ChangeTaQuery(canvas, queryFromWire wire.query)))
         | "action", "poll-delta" -> Ok(RuntimeClientFrame.Action(SduiAction.PollDelta(canvas, wire.afterDataRevision)))
@@ -531,22 +619,61 @@ module TaResearchBrowserWire =
     let hasAny fields values =
         fields |> List.exists (fun field -> has field values)
 
-    let pointFromValue = function
+    let pointFromObject time temporal values =
+        let hasTemporal, sourceIntervalId, scaleKey, intervalStartUtc, intervalEndUtc, observedThroughUtc, availableAtUtc, hasAvailableAtUtc, finality, projection, quality =
+            match temporal with
+            | Some(point: TemporalPoint) ->
+                true,
+                point.SourceIntervalId,
+                point.ScaleKey,
+                TemporalPointCodec.timestampText point.IntervalStartUtc,
+                TemporalPointCodec.timestampText point.IntervalEndUtc,
+                TemporalPointCodec.timestampText point.ObservedThroughUtc,
+                (point.AvailableAtUtc |> Option.map TemporalPointCodec.timestampText |> Option.defaultValue ""),
+                point.AvailableAtUtc.IsSome,
+                TemporalPointCodec.finalityText point.Finality,
+                TemporalPointCodec.projectionText point.Projection,
+                defaultArg point.Quality ""
+            | None -> false, "", "", "", "", "", "", false, "", "", ""
+
+        { time = time
+          openValue = valueOrZeroAny [ "o"; "open" ] values
+          highValue = valueOrZeroAny [ "h"; "high" ] values
+          lowValue = valueOrZeroAny [ "l"; "low" ] values
+          closeValue = valueOrZeroAny [ "c"; "close" ] values
+          volumeValue = valueOrZeroAny [ "v"; "volume" ] values
+          lineValue = valueOrZeroAny [ "v"; "value" ] values
+          hasOpen = hasAny [ "o"; "open" ] values
+          hasHigh = hasAny [ "h"; "high" ] values
+          hasLow = hasAny [ "l"; "low" ] values
+          hasClose = hasAny [ "c"; "close" ] values
+          hasVolume = hasAny [ "v"; "volume" ] values
+          hasLineValue = hasAny [ "v"; "value" ] values
+          hasTemporal = hasTemporal
+          sourceIntervalId = sourceIntervalId
+          scaleKey = scaleKey
+          intervalStartUtc = intervalStartUtc
+          intervalEndUtc = intervalEndUtc
+          observedThroughUtc = observedThroughUtc
+          availableAtUtc = availableAtUtc
+          hasAvailableAtUtc = hasAvailableAtUtc
+          finality = finality
+          projection = projection
+          quality = quality }
+
+    let pointFromValue value =
+        match value with
+        | SduiValue.Object values when textAny [ TemporalPointCodec.TypeKey ] values = TemporalPointCodec.TypeValue ->
+            match TemporalPointCodec.decode value with
+            | Ok point ->
+                match point.Value with
+                | Some(SduiValue.Object payload) ->
+                    pointFromObject (TemporalPointCodec.timestampText point.IntervalStartUtc) (Some point) payload |> Some
+                | _ -> None
+            | Error _ -> None
         | SduiValue.Object values ->
             Some
-                { time = textAny [ "t"; "time" ] values
-                  openValue = valueOrZeroAny [ "o"; "open" ] values
-                  highValue = valueOrZeroAny [ "h"; "high" ] values
-                  lowValue = valueOrZeroAny [ "l"; "low" ] values
-                  closeValue = valueOrZeroAny [ "c"; "close" ] values
-                  volumeValue = valueOrZeroAny [ "v"; "volume" ] values
-                  lineValue = valueOrZeroAny [ "v"; "value" ] values
-                  hasOpen = hasAny [ "o"; "open" ] values
-                  hasHigh = hasAny [ "h"; "high" ] values
-                  hasLow = hasAny [ "l"; "low" ] values
-                  hasClose = hasAny [ "c"; "close" ] values
-                  hasVolume = hasAny [ "v"; "volume" ] values
-                  hasLineValue = hasAny [ "v"; "value" ] values }
+                (pointFromObject (textAny [ "t"; "time" ] values) None values)
         | _ -> None
 
     let seriesPoints (state: RuntimeState) dataRef =
@@ -575,7 +702,18 @@ module TaResearchBrowserWire =
           lowValues = [||]
           closeValues = [||]
           volumeValues = [||]
-          lineValues = [||] }
+          lineValues = [||]
+          hasTemporal = false
+          sourceIntervalIds = [||]
+          scaleKeys = [||]
+          intervalStartUtc = [||]
+          intervalEndUtc = [||]
+          observedThroughUtc = [||]
+          availableAtUtc = [||]
+          hasAvailableAtUtc = [||]
+          finality = [||]
+          projections = [||]
+          qualities = [||] }
 
     let deltaSeriesFromState (previous: RuntimeState) (next: RuntimeState) dataRef =
         let previousPoints = seriesPoints previous dataRef
@@ -606,7 +744,18 @@ module TaResearchBrowserWire =
           lowValues = [||]
           closeValues = [||]
           volumeValues = [||]
-          lineValues = [||] }
+          lineValues = [||]
+          hasTemporal = false
+          sourceIntervalIds = [||]
+          scaleKeys = [||]
+          intervalStartUtc = [||]
+          intervalEndUtc = [||]
+          observedThroughUtc = [||]
+          availableAtUtc = [||]
+          hasAvailableAtUtc = [||]
+          finality = [||]
+          projections = [||]
+          qualities = [||] }
 
     let columnarSeries (timelineIndex: IDictionary<string, int>) (series: TaBrowserSeriesWire) =
         let points = if isNull series.points then [||] else series.points
@@ -620,8 +769,10 @@ module TaResearchBrowserWire =
             indices.Length = 0
             || indices |> Array.mapi (fun offset index -> index = indices[0] + offset) |> Array.forall id
         let candle = points.Length > 0 && points[0].hasOpen
+        let temporal = points.Length > 0 && points |> Array.forall _.hasTemporal
         let values predicate selector =
             if points.Length > 0 && points |> Array.forall predicate then points |> Array.map selector else [||]
+        let temporalValues selector = if temporal then points |> Array.map selector else [||]
 
         { series with
             points = [||]
@@ -633,7 +784,18 @@ module TaResearchBrowserWire =
             lowValues = if candle then values _.hasLow _.lowValue else [||]
             closeValues = if candle then values _.hasClose _.closeValue else [||]
             volumeValues = if candle then values _.hasVolume _.volumeValue else [||]
-            lineValues = if candle then [||] else values _.hasLineValue _.lineValue }
+            lineValues = if candle then [||] else values _.hasLineValue _.lineValue
+            hasTemporal = temporal
+            sourceIntervalIds = temporalValues _.sourceIntervalId
+            scaleKeys = temporalValues _.scaleKey
+            intervalStartUtc = temporalValues _.intervalStartUtc
+            intervalEndUtc = temporalValues _.intervalEndUtc
+            observedThroughUtc = temporalValues _.observedThroughUtc
+            availableAtUtc = temporalValues _.availableAtUtc
+            hasAvailableAtUtc = temporalValues _.hasAvailableAtUtc
+            finality = temporalValues _.finality
+            projections = temporalValues _.projection
+            qualities = temporalValues _.quality }
 
     let browserTrace (trace: TaTraceSpec) =
         { traceId = trace.TraceId
@@ -726,7 +888,7 @@ module TaResearchBrowserWire =
             | Some error -> error.ReasonCode, error.Message, error.Recoverable
             | None -> "", "", false
 
-        { wireVersion = "ta-browser.v3"
+        { wireVersion = "ta-browser.v4"
           updateKind = if sendFull then "full" else "delta"
           baseDataRevision = previous |> Option.map _.DataRevision |> Option.defaultValue 0L
           documentId = documentId
@@ -791,6 +953,15 @@ module TaResearchBrowserWire =
                                Visible = wire.visible
                                Traces = [||]
                                Options = Map.empty })))
+            | "action", "apply-template" ->
+                TaResearchTransientWire.editorInputsFromWire wire.editorValues
+                |> Result.map (fun values ->
+                    RuntimeClientFrame.Action(
+                        SduiAction.ApplyTemplate(
+                            canvas,
+                            (if wire.hasTemplateRowId then Some(text wire.rowId) else None),
+                            text wire.templateKey,
+                            values)))
             | "action", "remove-row" -> Ok(RuntimeClientFrame.Action(SduiAction.RemoveTaRow(canvas, text wire.rowId)))
             | "action", "change-query" ->
                 Ok(
@@ -832,6 +1003,17 @@ module TaResearchTransientServer =
                         "hasClose", fun point -> point.hasClose
                         "hasVolume", fun point -> point.hasVolume
                         "hasLineValue", fun point -> point.hasLineValue
+                        "hasTemporal", fun point -> point.hasTemporal
+                        "sourceIntervalId", fun point -> point.hasTemporal
+                        "scaleKey", fun point -> point.hasTemporal
+                        "intervalStartUtc", fun point -> point.hasTemporal
+                        "intervalEndUtc", fun point -> point.hasTemporal
+                        "observedThroughUtc", fun point -> point.hasTemporal
+                        "availableAtUtc", fun point -> point.hasTemporal && point.hasAvailableAtUtc
+                        "hasAvailableAtUtc", fun point -> point.hasTemporal && point.hasAvailableAtUtc
+                        "finality", fun point -> point.hasTemporal
+                        "projection", fun point -> point.hasTemporal
+                        "quality", fun point -> point.hasTemporal && not (String.IsNullOrWhiteSpace point.quality)
                     ]
 
                 for property in typeInfo.Properties do
@@ -897,47 +1079,66 @@ module TaResearchTransientServer =
                         match decoded with
                             | Error error -> return Error error
                             | Ok clientFrame ->
-                                let! result = backend.HandleAsync context clientFrame
+                                let currentBeforeAction =
+                                    lock gate (fun () ->
+                                        match states.TryGetValue key with
+                                        | true, value -> Some value
+                                        | _ -> None)
 
-                                match result with
+                                let expectedRevision =
+                                    if isBrowserWire && browserWire.hasExpectedDocumentRevision then
+                                        TaResearchBrowserWire.revisionFromBrowser
+                                            "expected-document"
+                                            browserWire.expectedDocumentRevision
+                                        |> Result.map Some
+                                    else
+                                        Ok None
+
+                                match expectedRevision with
                                 | Error error -> return Error error
-                                | Ok frame ->
-                                    match RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits frame with
-                                    | Error errors -> return Error(errors |> List.map _.Message |> String.concat "; ")
-                                    | Ok validated ->
-                                        let current =
-                                            lock gate (fun () ->
-                                                match states.TryGetValue key with
-                                                | true, value -> value
-                                                | _ ->
+                                | Ok(Some expected) when currentBeforeAction |> Option.exists (fun state -> state.DocumentRevision <> expected) ->
+                                    let actual = currentBeforeAction |> Option.map _.DocumentRevision |> Option.defaultValue 0L
+                                    return Error("ta-revision-conflict:" + string actual)
+                                | _ ->
+                                    let! result = backend.HandleAsync context clientFrame
+
+                                    match result with
+                                    | Error error -> return Error error
+                                    | Ok frame ->
+                                        match RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits frame with
+                                        | Error errors -> return Error(errors |> List.map _.Message |> String.concat "; ")
+                                        | Ok validated ->
+                                            let current =
+                                                currentBeforeAction
+                                                |> Option.defaultWith (fun () ->
                                                     RuntimeReducer.initial
                                                         { DocumentId = validated.DocumentId
                                                           CanvasInstanceId = validated.CanvasInstanceId })
 
-                                        let next, _ = RuntimeReducer.reduce current validated
-                                        lock gate (fun () -> states[key] <- next)
+                                            let next, _ = RuntimeReducer.reduce current validated
+                                            lock gate (fun () -> states[key] <- next)
 
-                                        let fullSnapshotRequested =
-                                            match clientFrame with
-                                            | RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot _) -> true
-                                            | _ -> false
+                                            let fullSnapshotRequested =
+                                                match clientFrame with
+                                                | RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot _) -> true
+                                                | _ -> false
 
-                                        if context.Operation = "close" then
-                                            lock gate (fun () -> states.Remove key |> ignore)
+                                            if context.Operation = "close" then
+                                                lock gate (fun () -> states.Remove key |> ignore)
 
-                                        let payload =
-                                            if isBrowserWire then
-                                                (if fullSnapshotRequested then
-                                                     TaResearchBrowserWire.stateToWire next
-                                                 else
-                                                     TaResearchBrowserWire.stateToWireAgainst (Some current) next)
-                                                |> fun value -> JsonSerializer.Serialize(value, jsonOptions)
-                                            else
-                                                next
-                                                |> TaResearchTransientWire.stateToWire
-                                                |> fun value -> JsonSerializer.Serialize(value, jsonOptions)
+                                            let payload =
+                                                if isBrowserWire then
+                                                    (if fullSnapshotRequested then
+                                                         TaResearchBrowserWire.stateToWire next
+                                                     else
+                                                         TaResearchBrowserWire.stateToWireAgainst (Some current) next)
+                                                    |> fun value -> JsonSerializer.Serialize(value, jsonOptions)
+                                                else
+                                                    next
+                                                    |> TaResearchTransientWire.stateToWire
+                                                    |> fun value -> JsonSerializer.Serialize(value, jsonOptions)
 
-                                        return Ok payload
+                                            return Ok payload
                     with ex ->
                         return Error(ex.GetBaseException().Message)
             }

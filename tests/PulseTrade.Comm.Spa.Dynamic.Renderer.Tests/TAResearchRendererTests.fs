@@ -16,6 +16,19 @@ let candle timestamp openValue high low close volume =
             "v", SduiValue.Number volume
         ])
 
+let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc availableAt finality projection quality value =
+    TemporalPointCodec.encode
+        { SourceIntervalId = sourceIntervalId
+          ScaleKey = scale
+          IntervalStartUtc = DateTimeOffset.Parse startUtc
+          IntervalEndUtc = DateTimeOffset.Parse endUtc
+          ObservedThroughUtc = DateTimeOffset.Parse observedThroughUtc
+          AvailableAtUtc = availableAt |> Option.map DateTimeOffset.Parse
+          Finality = finality
+          Projection = projection
+          Quality = quality
+          Value = value }
+
 let tests =
     testList "TA renderer model" [
         testCase "workspace bootstrap distinguishes lifecycle progress from terminal failure" <| fun _ ->
@@ -295,6 +308,137 @@ let tests =
         testCase "browser timestamp labels remain compact" <| fun _ ->
             Expect.equal (TaWorkspaceRenderer.compactTimestamp "2026-07-01T03:55:00.0000000+00:00") "07-01 03:55" "TA labels should not expose the full transport timestamp."
             Expect.equal (TaWorkspaceRenderer.compactTimestamp "B1") "B1" "Non-ISO labels should remain unchanged."
+
+        testCase "multi-scale temporal projection aligns candle spans repeated lines and causal step values" <| fun _ ->
+            let timestamps =
+                [| for minute in 0 .. 9 -> sprintf "2026-09-03T13:%02d:00.0000000+00:00" minute |]
+            let baseCandles =
+                timestamps
+                |> Array.mapi (fun index timestamp -> candle timestamp (100.0 + float index) (102.0 + float index) (99.0 + float index) (101.0 + float index) 20.0)
+            let coarseLine =
+                [| temporalPoint
+                       "es-5k:1300"
+                       "5K"
+                       "2026-09-03T13:00:00Z"
+                       "2026-09-03T13:05:00Z"
+                       "2026-09-03T13:05:00Z"
+                       (Some "2026-09-03T13:05:00Z")
+                       PointFinality.Final
+                       TemporalProjection.RepeatAcrossBaseBuckets
+                       (Some "complete")
+                       (Some(SduiValue.Object(Map [ "v", SduiValue.Number 10.0 ])))
+                   temporalPoint
+                       "es-5k:1305"
+                       "5K"
+                       "2026-09-03T13:05:00Z"
+                       "2026-09-03T13:10:00Z"
+                       "2026-09-03T13:10:00Z"
+                       (Some "2026-09-03T13:10:00Z")
+                       PointFinality.Final
+                       TemporalProjection.RepeatAcrossBaseBuckets
+                       (Some "complete")
+                       (Some(SduiValue.Object(Map [ "v", SduiValue.Number 20.0 ]))) |]
+            let coarseCandle =
+                temporalPoint
+                    "es-5k:1300"
+                    "5K"
+                    "2026-09-03T13:00:00Z"
+                    "2026-09-03T13:05:00Z"
+                    "2026-09-03T13:05:00Z"
+                    (Some "2026-09-03T13:05:00Z")
+                    PointFinality.Final
+                    TemporalProjection.CandleSpan
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "o", SduiValue.Number 100.0; "h", SduiValue.Number 110.0; "l", SduiValue.Number 95.0; "c", SduiValue.Number 108.0; "v", SduiValue.Number 90.0 ])) )
+            let stepLine =
+                temporalPoint
+                    "es-5k:1300-step"
+                    "5K"
+                    "2026-09-03T13:00:00Z"
+                    "2026-09-03T13:05:00Z"
+                    "2026-09-03T13:05:00Z"
+                    (Some "2026-09-03T13:05:00Z")
+                    PointFinality.Final
+                    TemporalProjection.StepAfterClose
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "v", SduiValue.Number 33.0 ])))
+            let trace traceId kind dataRef label =
+                { TraceId = traceId; Kind = kind; DataRef = dataRef; Label = label; Color = ""; Width = 1.0; Visible = true; Options = Map.empty }
+            let row =
+                { RowId = "multi-scale"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "series.base"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces =
+                    [| trace "base" TaTraceKind.Candlestick "series.base" "1K"
+                       trace "coarse-candle" TaTraceKind.Candlestick "series.coarse-candle" "5K candle"
+                       trace "coarse-line" TaTraceKind.Line "series.coarse-line" "5K SMA"
+                       trace "step-line" TaTraceKind.Line "series.step-line" "5K causal step" |] }
+            let data =
+                Map [
+                    "series.base", SduiValue.Array baseCandles
+                    "series.coarse-candle", SduiValue.Array [| coarseCandle |]
+                    "series.coarse-line", SduiValue.Array coarseLine
+                    "series.step-line", SduiValue.Array [| stepLine |]
+                ]
+
+            Expect.sequenceEqual (RendererModel.referenceTimeline [| row |] data) timestamps "The longest real timestamp series is the base axis."
+            let parsedCandle = RendererModel.candleSeries "series.coarse-candle" data |> Array.exactlyOne
+            Expect.equal (RendererModel.candleSlotRange timestamps parsedCandle) (Some(0, 5)) "A 5K source candle spans five real 1K slots without cloning source records."
+            let repeated = RendererModel.lineSeries "series.coarse-line" data |> RendererModel.projectedLinePoints timestamps
+            Expect.equal repeated.Length 10 "Two final 5K values project across ten 1K presentation cells."
+            Expect.sequenceEqual (repeated |> Array.map (snd >> _.Value)) [| 10.0; 10.0; 10.0; 10.0; 10.0; 20.0; 20.0; 20.0; 20.0; 20.0 |] "Repeated cells preserve each source interval value."
+            let stepped = RendererModel.lineSeries "series.step-line" data |> RendererModel.projectedLinePoints timestamps
+            Expect.sequenceEqual (stepped |> Array.map fst) [| 5; 6; 7; 8; 9 |] "Step-after-close remains invisible before owner-provided availability."
+            let metadata = RendererModel.rowTemporalMetadata row data
+            Expect.isTrue (metadata |> Array.exists (fun value -> value.ScaleKey = "5K" && value.Quality = Some "complete")) "Legend metadata preserves scale and quality."
+
+            let document =
+                { WorkspaceId = "multi-scale"
+                  Title = "Multi scale"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  Rows = [| row |]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let cursor = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 10 } 3 |> Option.defaultWith (fun () -> failwith "cursor missing")
+            Expect.isTrue (cursor.Values |> Array.exists (fun value -> value.Value.Contains("5K final | es-5k:1300"))) "Cursor traces a repeated presentation cell back to its source interval."
+
+        testCase "generic editor list operations retain stable paths and validation" <| fun _ ->
+            let schema =
+                { TemplateKey = "ta.sma"
+                  DisplayName = "SMA rows"
+                  SchemaRevision = 1L
+                  Fields =
+                    [| { Key = "scales"
+                         Label = "Scales"
+                         Kind = EditorValueKind.List(EditorValueKind.Scale [| "1k"; "5k"; "30k" |], Some 1, Some 3)
+                         Required = true
+                         DefaultValue = Some(SduiValue.Array [| SduiValue.Text "1k"; SduiValue.Text "5k" |]) }
+                       { Key = "period"
+                         Label = "Period"
+                         Kind = EditorValueKind.Integer(Some 1L, Some 500L)
+                         Required = true
+                         DefaultValue = Some(SduiValue.Number 13.0) } |] }
+
+            let initial = RendererModel.initialEditorInputs schema
+            Expect.sequenceEqual (RendererModel.listIndexes "scales" initial) [| 0; 1 |] "Two scale defaults should preserve their list positions."
+            Expect.isEmpty (RendererModel.validateEditorSubmission schema initial) "Initial editor values should validate."
+
+            let removed = RendererModel.removeListItem "scales" 0 initial
+            Expect.sequenceEqual (RendererModel.listIndexes "scales" removed) [| 0 |] "Remove should compact list indexes."
+            Expect.equal (RendererModel.tryEditorInput "scales[0]" removed) (Some(EditorScalarValue.Text "5k")) "The retained value should move with its compacted path."
+
+            let added = RendererModel.addListItem "scales" (EditorValueKind.Scale [| "1k"; "5k"; "30k" |]) removed
+            Expect.sequenceEqual (RendererModel.listIndexes "scales" added) [| 0; 1 |] "Add should append one stable list position."
+            let moved = RendererModel.moveListItem "scales" 1 0 added
+            Expect.equal (RendererModel.tryEditorInput "scales[1]" moved) (Some(EditorScalarValue.Text "5k")) "Move should swap complete list-item path groups."
+
+            let missingPeriod = moved |> Array.filter (fun value -> value.Path <> "period")
+            Expect.isNonEmpty (RendererModel.validateEditorSubmission schema missingPeriod) "Required scalar omission should fail before submit."
 
         testCase "renderer package remains host neutral" <| fun _ ->
             let assembly = typeof<TaRendererOptions>.Assembly

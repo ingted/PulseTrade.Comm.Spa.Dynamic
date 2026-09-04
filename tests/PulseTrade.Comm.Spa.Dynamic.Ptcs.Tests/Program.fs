@@ -132,7 +132,12 @@ let browserPayload kind actionKind =
       includePartial = false
       afterDataRevision = 0.0
       dataRevision = 0.0
-      reasonCode = "" }
+      reasonCode = ""
+      templateKey = ""
+      hasTemplateRowId = false
+      editorValues = [||]
+      expectedDocumentRevision = 0.0
+      hasExpectedDocumentRevision = false }
     |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
 
 let browserContext sessionId operation requestId payloadText =
@@ -164,6 +169,41 @@ let tests =
 
               let actual = value |> TaResearchTransientWire.valueToWire |> TaResearchTransientWire.valueFromWire
               Expect.equal actual value "recursive SDUI value wire should round-trip." )
+
+          testCase "generic editor action survives transient and flat browser wires" (fun _ ->
+              let expected =
+                  RuntimeClientFrame.Action(
+                      SduiAction.ApplyTemplate(
+                          canvasId,
+                          Some "sma-1k",
+                          "ta.sma",
+                          [| { Path = "scales[0]"; Value = EditorScalarValue.Text "1k" }
+                             { Path = "periods[0]"; Value = EditorScalarValue.Number 13.0 }
+                             { Path = "style.visible"; Value = EditorScalarValue.Bool true } |]))
+
+              let transient =
+                  expected
+                  |> TaResearchTransientWire.clientFrameToWire
+                  |> TaResearchTransientWire.clientFrameFromWire
+
+              Expect.equal transient (Ok expected) "server-side transient wire must preserve typed editor values."
+
+              let browserBase =
+                  browserPayload "action" "apply-template"
+                  |> fun text -> JsonSerializer.Deserialize<TaBrowserClientFrameWire>(text, TaResearchTransientServer.jsonOptions)
+
+              let browser =
+                  { browserBase with
+                      rowId = "sma-1k"
+                      templateKey = "ta.sma"
+                      hasTemplateRowId = true
+                      editorValues =
+                          [| { path = "scales[0]"; kind = "text"; textValue = "1k"; numberValue = 0.0; boolValue = false }
+                             { path = "periods[0]"; kind = "number"; textValue = ""; numberValue = 13.0; boolValue = false }
+                             { path = "style.visible"; kind = "bool"; textValue = ""; numberValue = 0.0; boolValue = true } |] }
+                  |> TaResearchBrowserWire.clientFrameFromWire
+
+              Expect.equal browser (Ok expected) "browser wire must preserve the same typed editor action without recursive JSON." )
 
           testCase "browser point wire accepts canonical compact keys and legacy aliases" (fun _ ->
               let compactCandle =
@@ -252,9 +292,9 @@ let tests =
                   large.series[0].pointCount
                   TaResearchBrowserWire.MaxFullSnapshotPointsPerSeries
                   "full bootstrap must retain the complete product working set while server RuntimeState remains authoritative."
-              Expect.equal large.timeline.Length 2000 "the v3 bootstrap timeline contains all retained timestamps."
-              Expect.equal large.series[0].closeValues.Length 2000 "the v3 candle close column contains all retained values."
-              Expect.isEmpty large.series[0].points "the v3 wire does not duplicate row objects."
+              Expect.equal large.timeline.Length 2000 "the v4 bootstrap timeline contains all retained timestamps."
+              Expect.equal large.series[0].closeValues.Length 2000 "the v4 candle close column contains all retained values."
+              Expect.isEmpty large.series[0].points "the v4 wire does not duplicate row objects."
 
               let empty = state 11L [||]
               let firstData = largePoints |> state 12L |> TaResearchBrowserWire.stateToWireAgainst (Some empty)
@@ -301,6 +341,46 @@ let tests =
                   zeroPoll
                   (Ok(RuntimeClientFrame.Action(SduiAction.PollDelta(canvasId, 0L))))
                   "poll-delta revision zero must survive the browser wire round trip." )
+
+          testCase "browser v4 preserves temporal projection metadata in bounded columns" (fun _ ->
+              let point =
+                  TemporalPointCodec.encode
+                      { SourceIntervalId = "es-5k:1300"
+                        ScaleKey = "5K"
+                        IntervalStartUtc = DateTimeOffset.Parse "2026-09-03T13:00:00Z"
+                        IntervalEndUtc = DateTimeOffset.Parse "2026-09-03T13:05:00Z"
+                        ObservedThroughUtc = DateTimeOffset.Parse "2026-09-03T13:05:00Z"
+                        AvailableAtUtc = Some(DateTimeOffset.Parse "2026-09-03T13:05:01Z")
+                        Finality = PointFinality.Final
+                        Projection = TemporalProjection.CandleSpan
+                        Quality = Some "complete"
+                        Value =
+                            Some(
+                                SduiValue.Object(
+                                    Map [ "o", SduiValue.Number 100.0
+                                          "h", SduiValue.Number 110.0
+                                          "l", SduiValue.Number 95.0
+                                          "c", SduiValue.Number 108.0
+                                          "v", SduiValue.Number 90.0 ])) }
+              let state =
+                  { Identity = { DocumentId = documentId; CanvasInstanceId = canvasId }
+                    Document = Some document
+                    Data = Map [ "series.price", SduiValue.Array [| point |] ]
+                    DocumentRevision = 1L
+                    DataRevision = 20L
+                    LastTransportSequence = 20L
+                    View = { Values = Map.empty }
+                    Poll = RuntimePollState.Ready
+                    LastError = None }
+
+              let wire = TaResearchBrowserWire.stateToWire state
+              Expect.equal wire.wireVersion "ta-browser.v4" "temporal metadata requires the v4 bounded browser wire."
+              Expect.isTrue wire.series[0].hasTemporal "temporal columns are explicit per homogeneous series."
+              Expect.sequenceEqual wire.series[0].sourceIntervalIds [| "es-5k:1300" |] "source interval identity must survive transport."
+              Expect.sequenceEqual wire.series[0].scaleKeys [| "5K" |] "scale must survive transport."
+              Expect.sequenceEqual wire.series[0].finality [| "final" |] "finality must survive transport."
+              Expect.sequenceEqual wire.series[0].projections [| "candle-span" |] "presentation projection must survive transport."
+              Expect.sequenceEqual wire.series[0].hasAvailableAtUtc [| true |] "availability presence is not inferred from empty text.")
 
           testCaseAsync "server adapter applies canonical reducer and keeps sessions isolated" (async {
               let handler = TaResearchTransientServer.createHandler backend
@@ -360,13 +440,30 @@ let tests =
               Expect.equal disconnectedAgain (Ok "{}") "repeated disconnect should be idempotent."
               Expect.equal unmounted.Count 1 "repeated disconnect must not invoke backend cleanup twice." })
 
+          testCaseAsync "stale browser action is rejected before the owner backend" (async {
+              let handler = TaResearchTransientServer.createHandler backend
+              let! opened = handler (browserContext "stale-action" "open" "open" (browserPayload "mounted" ""))
+              Expect.isOk opened "the browser session must establish authoritative revision state first."
+
+              let stale =
+                  browserPayload "action" "reset-canvas"
+                  |> fun text -> JsonSerializer.Deserialize<TaBrowserClientFrameWire>(text, TaResearchTransientServer.jsonOptions)
+                  |> fun wire ->
+                      { wire with
+                          expectedDocumentRevision = 99.0
+                          hasExpectedDocumentRevision = true }
+                  |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
+
+              let! result = handler (browserContext "stale-action" "action" "stale-reset" stale)
+              Expect.equal result (Error "ta-revision-conflict:1") "stale action must not enter the owner backend or mutate the session canvas." })
+
           testCaseAsync "bounded browser wire uses the same reducer without recursive SDUI values" (async {
               let handler = TaResearchTransientServer.createHandler backend
               let! opened =
                   handler (browserContext "browser-a" "open" "browser-open" (browserPayload "mounted" ""))
 
               let openedState = opened |> requireOk |> decodeBrowserState
-              Expect.equal openedState.wireVersion "ta-browser.v3" "browser response must use the compact columnar wire version."
+              Expect.equal openedState.wireVersion "ta-browser.v4" "browser response must use the temporal-capable compact columnar wire version."
               Expect.equal openedState.updateKind "full" "first browser response must be authoritative."
               Expect.equal openedState.title "TA Research" "document metadata should be projected for the browser."
               Expect.equal openedState.rows.Length 1 "document rows should be projected without recursive values."
