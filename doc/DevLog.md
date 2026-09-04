@@ -1099,3 +1099,9 @@ Implementation status:
 - Daedalus integration review found that Interactive.Client alpha2 carried only DLL metadata, so a SessionHost package reference could compile without receiving the browser application artifact. Backend compile was therefore insufficient evidence of browser completion.
 - Interactive.Client alpha3 now packages `client.js`, `client.min.js`, WebSharper `Runtime.js` and a versioned bundle manifest under `contentFiles/any/any/ptcs-dynamic-interactive/`, with `copyToOutput=true`. The application module contains Contracts/Renderer/UI/FSharp logic and only imports the packaged Runtime.
 - `scripts/verify-interactive-client-package.fsx` validates package entries, manifest, nuspec copy metadata, action protocol marker and external-import boundary. Revision 1 passed; package SHA-256 is `33b14a9f03c93af1d26851f64c4ac0b50da69610b786af1ed5f3436cffbb1cbd`.
+
+## 2026-09-04 - Daedalus FSharp.Core consumer compatibility correction
+
+- Daedalus integration restore exposed that Contracts alpha11 inherited `FSharp.Core >= 10.1.400` from the active SDK while the owner repository and first-party graph intentionally pin `10.1.302`. The leaf packages now disable the implicit FSharp.Core reference and publish exact `[10.1.302]` dependencies: Contracts `0.1.0-alpha12`, Renderer `0.1.0-alpha33`, Interactive.Client `0.1.0-alpha4`.
+- Contracts 15/15 and Renderer 22/22 passed with 10.1.302 consumers. Interactive.Client and BrowserDemo full WebSharper builds passed; package verifier revision 2 passed with SHA-256 `93a644db23022ed9f3755a39b0a474f191c4a8db396c607daa3821f958247f85`. The three immutable packages were copied to SDK 10.0.301/10.0.400 library-packs; no public push is claimed.
+- `ApplyTemplate` remains the authoritative prepare/swap/release operation in the Daedalus Interactive.Extension controller. PTCS.Dynamic transports typed actions/results and renders state; it does not introduce a competing workspace mutation implementation.

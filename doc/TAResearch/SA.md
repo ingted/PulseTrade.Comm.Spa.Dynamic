@@ -233,7 +233,7 @@ Reset由Host initial command決定，Dynamic只接受authoritative Document。br
 
 source sequence/revision與document/data revision解決不同問題：前者證明upstream incarnation/order，後者管理browser projection。直接共用會讓失敗的domain mutation也提升UI revision。故source reducer只回Applied/Duplicate/ResyncRequired，workspace controller成功prepare/swap後才產生新的document revision。
 
-風險最高處是部分建立resource後action失敗。renderer不得optimistic刪除row；Daedalus controller須prepare next resource、驗ready、在send gate內swap，再exactly-once release old lease。Aster只提供request/result與pending/reject UX，不控制TradeCore resource。
+風險最高處是部分建立resource後action失敗。renderer不得optimistic刪除row；Daedalus Interactive.Extension controller 的 `ApplyTemplate` 是 authoritative mutation，須prepare next resource、驗ready、在send gate內swap，再exactly-once release old lease。Aster只提供request/result與pending/reject UX，不控制TradeCore resource，也不實作第二套template mutation。
 
 930K/1380K、availability與current partial都不是前端可推論的presentation shortcut。renderer只消費actual interval/frontier/optional availability與quality；缺失時標unknown/unavailable，不能用event/receive/render time補造。
 

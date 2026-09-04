@@ -515,7 +515,7 @@ validation要求identity非空且bounded、revision/sequence非負、event new r
 
 event只有在stream identity相同、`Sequence = LastSequence + 1`、`BaseSourceRevision = SourceRevision`且domain reducer成功時套用。duplicate/stale no-op；gap、stream/schema/epoch改變、revision mismatch、crossed snapshot order或domain reducer reject保留last-good並回typed snapshot request。request不含payload或例外全文。
 
-Daedalus adapter負責把authoritative `StructuredSeriesBatch`及其他owner payload轉成`SduiValue`與domain reducer；Aster source projection不引用owner type。apply成功也不直接變更DocumentRevision，workspace controller完成resource transition後才建立RuntimeFrame。
+Daedalus adapter負責把authoritative `StructuredSeriesBatch`及其他owner payload轉成`SduiValue`與domain reducer；Aster source projection不引用owner type。`ApplyTemplate` 保留在 Daedalus Interactive.Extension controller，依序 prepare、validate、swap、release；Aster action/result wire只承載請求與結果。apply成功也不直接變更DocumentRevision，workspace controller完成resource transition後才建立RuntimeFrame。
 
 ## 2026-09-04 Generic editor and correlated action design
 

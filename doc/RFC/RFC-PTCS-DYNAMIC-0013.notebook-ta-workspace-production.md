@@ -65,7 +65,7 @@ Daedalus repo 的 `StructuredSeries` public type 是 provider ingest contract。
 
 ### 3. UI mutation 由 backend authority 決定
 
-renderer送 correlated request，UI只呈現 pending。backend prepare new resources、驗 revision/capability/schema後原子 swap，再回 accepted revision；reject只顯示該 action錯誤，不移除既有 Canvas。resource cleanup由 Daedalus workspace controller exactly-once處理。
+renderer送 correlated request，UI只呈現 pending。Daedalus Interactive.Extension controller 的 `ApplyTemplate` 是 authoritative workspace mutation：prepare new resources、驗 revision/capability/schema後原子 swap，再回 accepted revision；reject只顯示該 action錯誤，不移除既有 Canvas。PTCS.Dynamic 不另做 template mutation，resource cleanup由 Daedalus workspace controller exactly-once處理。
 
 ### 4. Temporal projection 邊界
 
@@ -109,4 +109,3 @@ browser與server可共用 `RuntimeFrame` type，但 System.Text.Json codec與 We
 - `doc/TAResearch/SD.md`
 - `doc/TAResearch/WBS.DYN-TA-017.md`
 - `doc/TAResearch/Test.md`
-

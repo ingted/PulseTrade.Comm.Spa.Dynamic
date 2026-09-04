@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>preview</LangVersion>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
     <RestoreAdditionalProjectSources>$(RestoreAdditionalProjectSources);$(MSBuildSDKsPath)\..\FSharp\library-packs</RestoreAdditionalProjectSources>
   </PropertyGroup>
 
@@ -12,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="[10.1.302]" />
     <PackageReference Include="Expecto" Version="11.1.0" />
     <ProjectReference Include="..\src\PulseTrade.Comm.Spa.Dynamic.Contracts\PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj" />
   </ItemGroup>
