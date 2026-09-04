@@ -1105,3 +1105,9 @@ Implementation status:
 - Daedalus integration restore exposed that Contracts alpha11 inherited `FSharp.Core >= 10.1.400` from the active SDK while the owner repository and first-party graph intentionally pin `10.1.302`. The leaf packages now disable the implicit FSharp.Core reference and publish exact `[10.1.302]` dependencies: Contracts `0.1.0-alpha12`, Renderer `0.1.0-alpha33`, Interactive.Client `0.1.0-alpha4`.
 - Contracts 15/15 and Renderer 22/22 passed with 10.1.302 consumers. Interactive.Client and BrowserDemo full WebSharper builds passed; package verifier revision 2 passed with SHA-256 `93a644db23022ed9f3755a39b0a474f191c4a8db396c607daa3821f958247f85`. The three immutable packages were copied to SDK 10.0.301/10.0.400 library-packs; no public push is claimed.
 - `ApplyTemplate` remains the authoritative prepare/swap/release operation in the Daedalus Interactive.Extension controller. PTCS.Dynamic transports typed actions/results and renders state; it does not introduce a competing workspace mutation implementation.
+
+## 2026-09-04 - PTCS beta117 exact dependency alignment
+
+- Advanced the active Dynamic package graph to `PulseTrade.Comm.Spa.Dynamic 0.1.3-beta106`, `PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha7-win52`, and `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha8-win70`. Unpublished win51/win69 local artifacts were superseded after NuGet cached their pre-alignment nuspecs; they are not release versions.
+- All three packages now consume exact `PulseTrade.Comm.Spa 0.2.5-beta117`; the adapters also align to current Contracts alpha12 / Renderer alpha33 and exact FSharp.Core 10.1.302. The LiveDemo graph is aligned to the same versions. No Dynamic renderer, SDUI wire, ActorArgu target or transient-channel behavior changed.
+- Build/package/publication evidence is recorded by the 2026-09-04 exact-dependency operation log.

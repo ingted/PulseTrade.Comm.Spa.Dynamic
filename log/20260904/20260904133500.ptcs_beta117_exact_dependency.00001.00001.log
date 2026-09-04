@@ -1,0 +1,16 @@
+# PTCS.Dynamic beta117 exact dependency alignment
+
+- 開始時間：2026-09-04 13:35:00 +08:00
+- 背景：PTCS beta117改變presence/chat UI但維持Dynamic extension API；Dynamic packages仍pin beta116。
+- 目標：只更新active Dynamic package graph的exact PTCS dependency與版本，build/pack/push並供PTCS.Host消費。
+- 計畫步驟：更新Dynamic、Dynamic.Ptcs、Dynamic.Ptcs.Client與LiveDemo；逐一build/test/pack/push；同步README/DevLog/Verification。
+- 讀寫範圍：active `src/`、LiveDemo、doc與本log；不動archived src-new/src2/src3/src4/src5。
+- 驗收：active fsproj不再參考beta116，packages可restore/build，Host可exact消費。
+- 風險：WebSharper bundle build成本較高；各package只發布一次。
+
+## Operations
+
+- 2026-09-04 13:35 +08:00：確認repo clean，active版本為Dynamic beta105、Dynamic.Ptcs win50、Dynamic.Ptcs.Client win68。
+- 2026-09-04 13:40-13:46 +08:00：Dynamic beta106 build/pack通過。adapter初版win51/win69 build通過，但LiveDemo揭露其pre-alignment local nuspec已被NuGet global cache固定；未清cache或覆寫immutable artifact，改以前進win52/win70處理。
+- 2026-09-04 13:46 +08:00：Dynamic.Ptcs win52與Ptcs.Client win70對齊PTCS beta117、Contracts alpha12、Renderer alpha33及exact FSharp.Core 10.1.302；build/pack通過，放入SDK 10.0.400 library-packs後LiveDemo full WebSharper build通過，僅保留既有WS9002 project-type warning。
+- 2026-09-04 13:39 +08:00：focused adapter suites通過10/10與12/12；無renderer/wire行為變更。

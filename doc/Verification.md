@@ -115,3 +115,8 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Contracts alpha12、Renderer alpha33、Interactive.Client alpha4 改為停用 implicit FSharp.Core 並 exact reference `[10.1.302]`。Contracts 15/15、Renderer 22/22、Interactive.Client與BrowserDemo full WebSharper build、DYN-VFY-017 revision 2均通過。
 - 三個 nupkg 已複製至 SDK 10.0.301/10.0.400 library-packs。PTCS LiveDemo 仍引用較舊且要求 `FSharp.Core >= 10.1.400` 的 PTCS adapter package，故其 warning 不作 Daedalus leaf-package gate；後續 adapter 全圖升版另行追蹤。
 - browser gate優先Playwright MCP；`dotnet dib`只驗kernel/extension/host lifecycle，不能取代browser geometry與操作驗收。
+
+## 2026-09-04 PTCS beta117 dependency-only release gate
+
+- Active package graph：Dynamic `0.1.3-beta106`、Dynamic.Ptcs `0.1.0-alpha7-win52`、Dynamic.Ptcs.Client `0.1.0-alpha8-win70`，皆exact依賴PTCS `0.2.5-beta117`。未發布win51/win69因local restore已快取pre-alignment nuspec而作廢，不作release evidence。
+- LiveDemo必須以同一圖restore/build；本gate不改renderer與wire行為，沿用既有Contracts/Renderer/Ptcs/Ptcs.Client suite。

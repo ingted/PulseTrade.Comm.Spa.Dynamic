@@ -380,7 +380,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
       send.addEventListener("click", () => {
         const raw=caseRaw();
         rawPreview.textContent=raw;
-        return context.submit(New_33(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+        return context.submit(New_34(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
       });
       append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
       root.appendChild(caseRow);
@@ -394,7 +394,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
           fullSend.addEventListener("click", () => {
             const raw=fullRaw();
             fullPreview.textContent=raw;
-            return context.submit(New_33(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+            return context.submit(New_34(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
           const actions=setTestId("dynamic-argu-composer-actions", element("div", "dynamic-argu-composer-actions", null));
           append(actions, [renderComposerModeControl(context), fullSend]);
@@ -844,7 +844,7 @@ function generateActorReport(outputDirectory, status){
   if(isBlank_1(trimmed))status.Set("Report output directory is required.");
   else {
     status.Set("Generating actor state report...");
-    postJson_1("/actors/api/report", New_34(trimmed), (reply) => {
+    postJson_1("/actors/api/report", New_35(trimmed), (reply) => {
       status.Set("Report written: "+(isBlank_1(reply.filePath)?reply.fileName:reply.filePath));
     }, (message) => {
       status.Set("Report failed: "+asText_1(message));
@@ -3428,7 +3428,7 @@ function mountActors(page){
       const dynamicNode=m.$0;
       dynamicActorsPageAccepted=true;
       clear(nodes);
-      nodes.setAttribute("style", "display:none;");
+      nodes.setAttribute("hidden", "");
       const host=setTestId_1("actor-tree-dynamic-page", element_1("div", "actor-tree-dynamic-page", null));
       setData("renderer", "dynamic-actors-page", treePanel);
       host.appendChild(dynamicNode);
@@ -3439,7 +3439,7 @@ function mountActors(page){
   const applySnapshot=(source, data) => {
     actorSnapshot=data==null?emptySnapshot:data;
     clear(nodes);
-    dynamicActorsPageAccepted?nodes.setAttribute("style", "display:none;"):(nodes.removeAttribute("style"),iter((node) => {
+    dynamicActorsPageAccepted?nodes.setAttribute("hidden", ""):(nodes.removeAttribute("hidden"),iter((node) => {
       const block=setData("node-id", node.nodeId, setTestId_1("actor-node", element_1("section", "node-block", null)));
       const blockHead=element_1("div", "work-head", null);
       const title_1=element_1("div", "", null);
@@ -3617,18 +3617,23 @@ function mountActors(page){
   subscribeRegistry();
 }
 function mountChat(page){
-  let selected, cursor, polling, participants, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
+  let selected, cursor, polling, participants, selectedThreadMessages, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
   selected="";
   cursor="";
   polling=false;
   participants=[];
+  selectedThreadMessages=[];
   const participantId=currentUserId();
   page.className="page chat-grid";
   const side=element_1("aside", "sidebar", null);
   const sideHead=element_1("div", "panel-head", null);
-  const reload=button_1("", "Reload");
+  const sideActions=element_1("div", "head-actions", null);
+  const export_1=setTestId_1("chat-export", button_1("", "Export"));
+  setData("message-count", "0", export_1);
+  const reload=setTestId_1("chat-reload", button_1("", "Reload"));
   const list=element_1("div", "list", null);
-  append_1(sideHead, [element_1("h1", "", "Chat"), reload]);
+  append_1(sideActions, [export_1, reload]);
+  append_1(sideHead, [element_1("h1", "", "Chat"), sideActions]);
   append_1(side, [sideHead, element_1("div", "", null), list]);
   const work=setTestId_1("chat-work", element_1("section", "work", null));
   const workHead=element_1("div", "work-head", null);
@@ -3637,6 +3642,8 @@ function mountChat(page){
   const state=element_1("div", "state", "Loading participants");
   const pendingState=setTestId_1("chat-pending-state", element_1("div", "state pending-state", ""));
   const thread=setTestId_1("thread-list", setId("thread-list", element_1("div", "thread-list", null)));
+  thread.setAttribute("tabindex", "0");
+  setData("follow-bottom", "true", thread);
   const composer=setTestId_1("chat-composer", element_1("div", "chat-composer", null));
   const draft=setTestId_1("chat-draft", textarea("draft", "Type a message"));
   const actions=element_1("div", "actions", null);
@@ -3674,6 +3681,8 @@ function mountChat(page){
       item.addEventListener("click", () => {
         selected=p_1.participantId;
         cursor="";
+        selectedThreadMessages=[];
+        setData("message-count", "0", export_1);
         clear(thread);
         renderParticipants();
         refreshChatPendingState();
@@ -3691,8 +3700,12 @@ function mountChat(page){
     toTitle.textContent=_1;
   }
   function appendMessages(messages){
+    let appendedCount;
+    const shouldFollow=isNearBottom(thread);
+    appendedCount=0;
     iter((message) => {
       if(!(message==null)&&!isBlank_2(message.messageId)&&doc_1().getElementById("thread-"+message.messageId)==null){
+        appendedCount=appendedCount+1;
         const outbound=message.fromId==participantId;
         const wrap=setId("thread-"+message.messageId, element_1("div", outbound?"message outbound":"message inbound", null));
         setData("message-id", message.messageId, setTestId_1("chat-message", wrap));
@@ -3705,7 +3718,10 @@ function mountChat(page){
         thread.appendChild(wrap);
       }
     }, arrayOrEmpty_1(messages));
-    scrollToBottomAfterRender(thread);
+    selectedThreadMessages=distinctMessages(selectedThreadMessages.concat(arrayOrEmpty_1(messages)));
+    setData("message-count", String(length(selectedThreadMessages)), export_1);
+    if(appendedCount>0&&shouldFollow)scrollToBottomNow(thread);
+    setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
   }
   function loadParticipants(refreshSelectedThread){
     setStatus(state, "Loading participants");
@@ -3959,11 +3975,43 @@ function mountChat(page){
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
       sendChatSyncFrame(JSON.stringify(wsRequest));
-      scrollToBottomAfterRender(thread);
+    }
+  }
+  function exportSelectedThread(){
+    if(isBlank_2(selected))setStatus(state, "Select a participant first");
+    else if(length(selectedThreadMessages)===0)setStatus(state, "No loaded messages to export");
+    else if(globalThis.document.body==null)setStatus(state, "Document body is unavailable");
+    else {
+      try {
+        const rows=map((message) => New_33(asText_2(message.messageId), asText_2(message.fromId), asText_2(message.createdAtUtc), asText_2(message.body)), selectedThreadMessages);
+        const url=URL.createObjectURL(new Blob([concat_2("\n", map((v) => JSON.stringify(v), rows))], {type:"application/x-ndjson;charset=utf-8"}));
+        const now=new Date();
+        const twoDigits=(value) => value<10?"0"+String(value):String(value);
+        const timestamp=String(now.getFullYear())+twoDigits(now.getMonth()+1)+twoDigits(now.getDate())+twoDigits(now.getHours())+twoDigits(now.getMinutes())+twoDigits(now.getSeconds());
+        const anchor=globalThis.document.createElement("a");
+        anchor.setAttribute("href", url);
+        anchor.setAttribute("download", "ptcs-chat-"+timestamp+".jsonl");
+        anchor.setAttribute("aria-hidden", "true");
+        anchor.className="download-anchor";
+        globalThis.document.body.appendChild(anchor);
+        anchor.click();
+        globalThis.document.body.removeChild(anchor);
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 250);
+        setStatus(state, "Exported "+String(length(rows))+" message(s)");
+      }
+      catch(error){
+        setStatus(state, "Chat export failed: "+errorMessage_2(error));
+      }
     }
   }
   reload.addEventListener("click", () => loadParticipants(true));
+  export_1.addEventListener("click", exportSelectedThread);
   send.addEventListener("click", sendMessage);
+  thread.addEventListener("scroll", () => {
+    setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
+  });
   draft.addEventListener("keydown", (event) => event.key=="Enter"&&!event.shiftKey?(event.preventDefault(),sendMessage()):null);
   globalThis.setInterval(() => pollThread(false), 2500);
   globalThis.setInterval(() => loadParticipants(false), 2500);
@@ -4055,7 +4103,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_39(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_40(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_2(request.userName)||isBlank_2(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -4085,7 +4133,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_2(node.textContent)?New_38("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_2(node.textContent)?New_39("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_2(value)?fallback:value;
@@ -4536,7 +4584,7 @@ function renderAppendValue(definition, value){
   const head_2=element_1("div", "fcell-head", null);
   append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_2(value.valueId)+" / "+asText_2(value.createdAtUtc))]);
   card.appendChild(head_2);
-  const presentationContext=New_35(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
+  const presentationContext=New_36(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
   const m_1=tryResolveReplyPresentation(presentationContext);
   if(m_1!=null&&m_1.$==1){
     const presentation=m_1.$0;
@@ -4859,7 +4907,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_2(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_41(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_42(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_2("/pages/api/register-page", request, (reply) => {
@@ -4990,6 +5038,33 @@ function compactMessageId(value){
   const text=asText_2(value);
   return text.length<=32?text:StartsWith(text.toLowerCase(), "pending-command")?"pending-command:"+String(text.length):Substring(text, 0, 24)+"..."+text.substring(text.length-6);
 }
+function distinctMessages(messages){
+  let kept;
+  kept=[];
+  iter((message) => {
+    if(!(message==null)&&!isBlank_2(message.messageId)&&!exists((row) => row.messageId==message.messageId, kept))kept=kept.concat([message]);
+  }, arrayOrEmpty_1(messages));
+  return kept;
+}
+function scrollToBottomNow(node){
+  if(!(node==null)){
+    try {
+      node.scrollTop=node.scrollHeight;
+    }
+    catch(m){
+      null;
+    }
+  }
+}
+function isNearBottom(node){
+  if(node==null)return false;
+  else try {
+    return node.scrollHeight-node.scrollTop-node.clientHeight<=8;
+  }
+  catch(m){
+    return false;
+  }
+}
 function mergeThreadMessages(existing, incoming){
   const v=distinctMessages(arrayOrEmpty_1(existing).concat(arrayOrEmpty_1(incoming)));
   return latestArray(defaultRenderLimit(), v);
@@ -5087,10 +5162,10 @@ function hasTag(tag, tags){
 }
 function currentBrowserUser(){
   const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_2(userNode.textContent))return New_40("user.web", "Web User", "", false, "anonymous", "/chat/logout");
+  if(userNode==null||isBlank_2(userNode.textContent))return New_41("user.web", "Web User", "", false, "anonymous", "/chat/logout");
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank_2(user.participantId)?New_40("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
+    return user==null||isBlank_2(user.participantId)?New_41("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
   }
 }
 function replyPresentationDisposers(){
@@ -5098,16 +5173,6 @@ function replyPresentationDisposers(){
 }
 function set_replyPresentationDisposers(_1){
   _c_1.replyPresentationDisposers=_1;
-}
-function scrollToBottomNow(node){
-  if(!(node==null)){
-    try {
-      node.scrollTop=node.scrollHeight;
-    }
-    catch(m){
-      null;
-    }
-  }
 }
 function newPendingCommandId(kind, target, url, payloadJson){
   set_pendingCommandSeq(pendingCommandSeq()+1);
@@ -5175,14 +5240,6 @@ function navigationPathForCreatedPage(page){
 function isLive(status){
   const m=asText_2(status).toLowerCase();
   return m=="online"||(m=="running"||(m=="up"||m=="available"));
-}
-function distinctMessages(messages){
-  let kept;
-  kept=[];
-  iter((message) => {
-    if(!(message==null)&&!isBlank_2(message.messageId)&&!exists((row) => row.messageId==message.messageId, kept))kept=kept.concat([message]);
-  }, arrayOrEmpty_1(messages));
-  return kept;
 }
 function tryParseSequence(prefix, value){
   const text=asText_2(value);
@@ -5316,7 +5373,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
-  return New_37(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_38(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -5548,7 +5605,7 @@ function tryResolve(context){
     const p=staticCanvasSummary(payload);
     const title=p[0];
     const elementCount=p[1];
-    return Some(New_36("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
+    return Some(New_37("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
       clearHost(host);
       const doc_2=createSduiCanvasBody(content);
       LoadLocalTemplates("");
@@ -7739,6 +7796,14 @@ function New_32(fromId, toId, body, tags){
     tags:tags
   };
 }
+function New_33(messageId, speaker, createdAtUtc, body){
+  return{
+    messageId:messageId,
+    speaker:speaker,
+    createdAtUtc:createdAtUtc,
+    body:body
+  };
+}
 let _c_2=Lazy((_i) => class $StartupCode_ArguFormRenderer {
   static {
     _c_2=_i(this);
@@ -7798,7 +7863,7 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_33(rawArgu, duTypeName, unionCaseName, keyJson){
+function New_34(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
     rawArgu:rawArgu,
     duTypeName:duTypeName,
@@ -8034,7 +8099,7 @@ function Handler(name, callback){
 function Dynamic(name, view){
   return Dynamic_1(view, (el) =>(v) => el.setAttribute(name, v));
 }
-function New_34(outputDirectory){
+function New_35(outputDirectory){
   return{outputDirectory:outputDirectory};
 }
 function ofSeqNonCopying(xs){
@@ -8246,7 +8311,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_42(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_43(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -8421,7 +8486,7 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_35(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+function New_36(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
     PageId:PageId,
     TabId:TabId,
@@ -8432,7 +8497,7 @@ function New_35(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
     Payload:Payload
   };
 }
-function New_36(Kind, RenderSummary, Actions_1, Mount){
+function New_37(Kind, RenderSummary, Actions_1, Mount){
   return{
     Kind:Kind,
     RenderSummary:RenderSummary,
@@ -8440,7 +8505,7 @@ function New_36(Kind, RenderSummary, Actions_1, Mount){
     Mount:Mount
   };
 }
-function New_37(shape, label_1, badge, className){
+function New_38(shape, label_1, badge, className){
   return{
     shape:shape,
     label:label_1,
@@ -8448,7 +8513,7 @@ function New_37(shape, label_1, badge, className){
     className:className
   };
 }
-function New_38(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_39(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
     submitPath:submitPath,
     sessionPath:sessionPath,
@@ -8462,7 +8527,7 @@ function New_38(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, 
     aclLabel:aclLabel
   };
 }
-function New_39(userName, password, returnUrl, keepSession){
+function New_40(userName, password, returnUrl, keepSession){
   return{
     userName:userName,
     password:password,
@@ -8470,7 +8535,7 @@ function New_39(userName, password, returnUrl, keepSession){
     keepSession:keepSession
   };
 }
-function New_40(participantId, displayName, login, authenticated, provider, logoutPath){
+function New_41(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
     participantId:participantId,
     displayName:displayName,
@@ -8518,7 +8583,7 @@ function arrContains(item, arr){
     else i=i+1;
   return!c;
 }
-function New_41(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_42(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
     pageId:pageId,
     title:title,
@@ -8626,7 +8691,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_43(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_44(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Add(x, t){
   return Put((_1, _2) => _2, x, t);
@@ -8832,7 +8897,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_44(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_45(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -9271,7 +9336,7 @@ class KeyCollection extends Object_1 {
     this.d=d;
   }
 }
-function New_42(PreviousNodes, Top){
+function New_43(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -9349,7 +9414,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_45((a) => {
+    r(New_46((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -9374,7 +9439,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_45((a) => {
+    if(!ct.c)c(New_46((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -9477,7 +9542,7 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_43(Node_1, Left, Right, Height, Count){
+function New_44(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1,
     Left:Left,
@@ -9524,7 +9589,7 @@ class Updates_1 {
     });
   }
 }
-function New_44(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_45(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
     DynElem:DynElem,
     DynFlags:DynFlags,
@@ -9859,7 +9924,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_45(k, ct){
+function New_46(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -9881,7 +9946,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_46(false, []);
+    this.noneCT=New_47(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -9890,7 +9955,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_46(IsCancellationRequested, Registrations){
+function New_47(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -10147,7 +10212,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create(f){
-  return New_47(false, f, forceLazy);
+  return New_48(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -10168,7 +10233,7 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_47(created, evalOrVal, force){
+function New_48(created, evalOrVal, force){
   return{
     c:created,
     v:evalOrVal,
