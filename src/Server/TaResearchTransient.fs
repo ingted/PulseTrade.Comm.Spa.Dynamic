@@ -50,6 +50,7 @@ type TaTransientDocumentWire =
       statusRef: string
       sharedTimeAxis: bool
       rows: TaTransientRowWire array
+      editorSchemas: TaTransientValueWire array
       allowedActions: string array
       defaultView: TaTransientFieldWire array }
 
@@ -183,6 +184,7 @@ type TaBrowserRowWire =
       dataRef: string
       heightWeight: float
       visible: bool
+      options: TaTransientFieldWire array
       traces: TaBrowserTraceWire array }
 
 [<CLIMutable>]
@@ -198,6 +200,7 @@ type TaBrowserStateWire =
       statusRef: string
       sharedTimeAxis: bool
       rows: TaBrowserRowWire array
+      editorSchemas: TaTransientValueWire array
       allowedActions: string array
       querySourceId: string
       queryInstrument: string
@@ -372,6 +375,9 @@ module TaResearchTransientWire =
           statusRef = document.StatusRef
           sharedTimeAxis = document.SharedTimeAxis
           rows = document.Rows |> Array.map rowToWire
+          editorSchemas =
+            if isNull document.EditorSchemas then [||]
+            else document.EditorSchemas |> Array.map (DynamicTemplateSchemaCodec.toValue >> valueToWire)
           allowedActions = document.AllowedActions
           defaultView = mapToWire document.DefaultView }
 
@@ -382,6 +388,11 @@ module TaResearchTransientWire =
           StatusRef = text wire.statusRef
           SharedTimeAxis = wire.sharedTimeAxis
           Rows = if isNull wire.rows then [||] else wire.rows |> Array.map rowFromWire
+          EditorSchemas =
+            if isNull wire.editorSchemas then [||]
+            else
+                wire.editorSchemas
+                |> Array.choose (valueFromWire >> DynamicTemplateSchemaCodec.fromValue >> Result.toOption)
           AllowedActions = if isNull wire.allowedActions then [||] else wire.allowedActions
           DefaultView = mapFromWire wire.defaultView }
 
@@ -447,7 +458,7 @@ module TaResearchTransientWire =
           Poll = pollFromWire wire.pollKind wire.retryAtUtc
           LastError = error }
 
-    let emptyRow () =
+    let emptyRow () : TaTransientRowWire =
         { rowId = ""; kind = ""; dataRef = ""; heightWeight = 0.0; visible = false; options = [||]; traces = [||] }
 
     let emptyQuery () =
@@ -476,7 +487,7 @@ module TaResearchTransientWire =
           ToUtcExclusive = if wire.hasToUtcExclusive then Some(text wire.toUtcExclusive) else None
           IncludePartial = if wire.hasIncludePartial then Some wire.includePartial else None }
 
-    let emptyClientFrame kind canvasId =
+    let emptyClientFrame kind canvasId : TaTransientClientFrameWire =
         { kind = kind
           actionKind = ""
           canvasInstanceId = canvasId
@@ -818,6 +829,7 @@ module TaResearchBrowserWire =
                       dataRef = row.DataRef
                       heightWeight = row.HeightWeight
                       visible = row.Visible
+                      options = TaResearchTransientWire.mapToWire row.Options
                       traces = if isNull row.Traces then [||] else row.Traces |> Array.map browserTrace }))
             |> Option.defaultValue [||]
 
@@ -899,6 +911,12 @@ module TaResearchBrowserWire =
           statusRef = statusRef
           sharedTimeAxis = document |> Option.map _.SharedTimeAxis |> Option.defaultValue true
           rows = rows
+          editorSchemas =
+            document
+            |> Option.map _.EditorSchemas
+            |> Option.defaultValue [||]
+            |> fun values -> if isNull values then [||] else values
+            |> Array.map (DynamicTemplateSchemaCodec.toValue >> TaResearchTransientWire.valueToWire)
           allowedActions = document |> Option.map _.AllowedActions |> Option.defaultValue [||]
           querySourceId = queryText "query.sourceId"
           queryInstrument = queryText "query.instrument"

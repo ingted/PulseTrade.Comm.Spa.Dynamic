@@ -2,7 +2,7 @@ namespace PulseTrade.Comm.Spa.Dynamic.Contracts
 
 open System
 
-[<RequireQualifiedAccess>]
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
 module RuntimeValidation =
     let error code field message =
         { Code = code
@@ -19,10 +19,10 @@ module RuntimeValidation =
 
     let rec unsafeValue field value =
         match value with
-        | SduiValue.Text text when text.TrimStart().StartsWith("javascript:", StringComparison.OrdinalIgnoreCase) ->
+        | SduiValue.Text text when text.TrimStart().ToLower().StartsWith("javascript:") ->
             [ error "script-forbidden" field "Script URLs are forbidden." ]
-        | SduiValue.Text text when text.TrimStart().StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-                                   || text.TrimStart().StartsWith("https://", StringComparison.OrdinalIgnoreCase) ->
+        | SduiValue.Text text when text.TrimStart().ToLower().StartsWith("http://")
+                                   || text.TrimStart().ToLower().StartsWith("https://") ->
             [ error "url-forbidden" field "Arbitrary URLs are forbidden in the shared runtime contract." ]
         | SduiValue.Array values -> values |> Array.toList |> List.collect (unsafeValue field)
         | SduiValue.Object values ->
@@ -30,7 +30,7 @@ module RuntimeValidation =
             |> Map.toList
             |> List.collect (fun (key, item) ->
                 let keyErrors =
-                    if Set.contains (key.Trim().ToLowerInvariant()) (Set.ofList [ "script"; "selector"; "url"; "href" ]) then
+                    if Set.contains (key.Trim().ToLower()) (Set.ofList [ "script"; "selector"; "url"; "href" ]) then
                         [ error "unsafe-key" field $"Unsafe option key `{key}` is forbidden." ]
                     else
                         []
@@ -61,8 +61,78 @@ module RuntimeValidation =
           for KeyValue(key, value) in row.Options do
               yield! unsafeValue $"rows[{index}].options.{key}" value ]
 
+    let rec editorKindErrors field depth kind =
+        [ if depth > 8 then
+              yield error "limit-schema-depth" field "Editor schema depth exceeds hard limit 8."
+          match kind with
+          | EditorValueKind.Integer(minimum, maximum) ->
+              match minimum, maximum with
+              | Some lower, Some upper when lower > upper -> yield error "invalid-range" field "Editor integer minimum exceeds maximum."
+              | _ -> ()
+          | EditorValueKind.Decimal(minimum, maximum) ->
+              match minimum, maximum with
+              | Some lower, Some upper when lower > upper -> yield error "invalid-range" field "Editor decimal minimum exceeds maximum."
+              | _ -> ()
+          | EditorValueKind.Choice choices ->
+              let values = if isNull choices then [||] else choices
+              if values.Length = 0 || values.Length > 128 then
+                  yield error "invalid-choice-count" field "Editor choice count must be between 1 and 128."
+              if values |> Array.countBy _.Key |> Array.exists (fun (_, count) -> count > 1) then
+                  yield error "duplicate-choice-key" field "Editor choice keys must be unique."
+              for index, choice in values |> Array.indexed do
+                  yield! identifier $"{field}.choices[{index}].key" choice.Key
+                  yield! identifier $"{field}.choices[{index}].label" choice.Label
+                  yield! unsafeValue $"{field}.choices[{index}].value" choice.Value
+          | EditorValueKind.Scale scaleKeys ->
+              let values = if isNull scaleKeys then [||] else scaleKeys
+              if values.Length = 0 || values.Length > 128 then
+                  yield error "invalid-scale-count" field "Editor scale count must be between 1 and 128."
+              if values |> Array.countBy id |> Array.exists (fun (_, count) -> count > 1) then
+                  yield error "duplicate-scale-key" field "Editor scale keys must be unique."
+              for index, scaleKey in values |> Array.indexed do
+                  yield! identifier $"{field}.scaleKeys[{index}]" scaleKey
+          | EditorValueKind.List(item, minimum, maximum) ->
+              match minimum, maximum with
+              | Some lower, Some upper when lower < 0 || upper < lower || upper > 128 ->
+                  yield error "invalid-list-range" field "Editor list bounds must be ordered within 0..128."
+              | Some lower, None when lower < 0 || lower > 128 ->
+                  yield error "invalid-list-range" field "Editor list minimum must be within 0..128."
+              | None, Some upper when upper < 0 || upper > 128 ->
+                  yield error "invalid-list-range" field "Editor list maximum must be within 0..128."
+              | _ -> ()
+              yield! editorKindErrors (field + ".item") (depth + 1) item
+          | EditorValueKind.Group fields ->
+              let values = if isNull fields then [||] else fields
+              if values |> Array.countBy _.Key |> Array.exists (fun (_, count) -> count > 1) then
+                  yield error "duplicate-editor-field" field "Editor field keys must be unique."
+              for index, child in values |> Array.indexed do
+                  yield! editorFieldErrors $"{field}.fields[{index}]" (depth + 1) child
+          | _ -> () ]
+
+    and editorFieldErrors field depth (schema: EditorFieldSchema) =
+        [ yield! identifier (field + ".key") schema.Key
+          yield! identifier (field + ".label") schema.Label
+          yield! editorKindErrors (field + ".kind") depth schema.Kind
+          match schema.DefaultValue with
+          | Some value -> yield! unsafeValue (field + ".defaultValue") value
+          | None -> () ]
+
+    let editorSchemaErrors index (schema: DynamicTemplateSchema) =
+        let fields = if isNull schema.Fields then [||] else schema.Fields
+        [ yield! identifier $"document.editorSchemas[{index}].templateKey" schema.TemplateKey
+          yield! identifier $"document.editorSchemas[{index}].displayName" schema.DisplayName
+          if schema.SchemaRevision < 0L then
+              yield error "invalid-schema-revision" $"document.editorSchemas[{index}].schemaRevision" "Schema revision must be non-negative."
+          if fields.Length > 128 then
+              yield error "limit-editor-fields" $"document.editorSchemas[{index}].fields" "Editor field count exceeds hard limit 128."
+          if fields |> Array.countBy _.Key |> Array.exists (fun (_, count) -> count > 1) then
+              yield error "duplicate-editor-field" $"document.editorSchemas[{index}].fields" "Editor field keys must be unique."
+          for fieldIndex, field in fields |> Array.indexed do
+              yield! editorFieldErrors $"document.editorSchemas[{index}].fields[{fieldIndex}]" 1 field ]
+
     let documentErrors limits (document: TaWorkspaceDocument) =
         let allowedActions = Set.ofList [ "reset-view"; "reset-canvas"; "add-row"; "remove-row"; "change-query"; "poll-delta"; "request-full-snapshot" ]
+        let editorSchemas = if isNull document.EditorSchemas then [||] else document.EditorSchemas
 
         [ yield! identifier "document.workspaceId" document.WorkspaceId
           yield! identifier "document.rowsRef" document.RowsRef
@@ -95,6 +165,12 @@ module RuntimeValidation =
 
           if duplicateIds.Length > 0 then
               yield error "duplicate-row-id" "document.rows" "Row ids must be unique."
+
+          if editorSchemas.Length > 128 then
+              yield error "limit-editor-schemas" "document.editorSchemas" "Editor schema count exceeds hard limit 128."
+          if editorSchemas |> Array.countBy _.TemplateKey |> Array.exists (fun (_, count) -> count > 1) then
+              yield error "duplicate-template-key" "document.editorSchemas" "Editor template keys must be unique."
+          yield! editorSchemas |> Array.toList |> List.mapi editorSchemaErrors |> List.concat
 
           for action in document.AllowedActions do
               if not (Set.contains action allowedActions) then

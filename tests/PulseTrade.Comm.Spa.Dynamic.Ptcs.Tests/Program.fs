@@ -8,6 +8,21 @@ open PulseTrade.Comm.Spa.Dynamic.Contracts
 let canvasId = CanvasInstanceId "canvas-main"
 let documentId = DocumentId "document-main"
 
+let editorSchema =
+    { TemplateKey = "ta.sma"
+      DisplayName = "SMA overlay"
+      SchemaRevision = 3L
+      Fields =
+        [| { Key = "periods"
+             Label = "Periods"
+             Kind = EditorValueKind.List(EditorValueKind.Integer(Some 1L, Some 500L), Some 1, Some 8)
+             Required = true
+             DefaultValue = Some(SduiValue.Array [| SduiValue.Number 13.0 |]) } |] }
+
+let editorBinding =
+    { TemplateKey = editorSchema.TemplateKey
+      Values = [| { Path = "periods[0]"; Value = EditorScalarValue.Number 21.0 } |] }
+
 let row =
     { RowId = "price"
       Kind = TaRowKind.Candlestick
@@ -16,6 +31,8 @@ let row =
       Visible = true
       Traces = [||]
       Options = Map.empty }
+    |> TaRowEditorBinding.attach editorBinding
+    |> Result.defaultWith (List.map _.Message >> String.concat "; " >> failwith)
 
 let document =
     { WorkspaceId = "workspace-main"
@@ -24,6 +41,7 @@ let document =
       StatusRef = "status"
       SharedTimeAxis = true
       Rows = [| row |]
+      EditorSchemas = [| editorSchema |]
       AllowedActions = [| "change-query"; "poll-delta" |]
       DefaultView =
         Map [
@@ -169,6 +187,27 @@ let tests =
 
               let actual = value |> TaResearchTransientWire.valueToWire |> TaResearchTransientWire.valueFromWire
               Expect.equal actual value "recursive SDUI value wire should round-trip." )
+
+          testCase "document editor catalog and row binding survive transient and browser wires" (fun _ ->
+              let transient = document |> TaResearchTransientWire.documentToWire |> TaResearchTransientWire.documentFromWire
+              Expect.equal transient.EditorSchemas [| editorSchema |] "document schema catalog must survive the transient wire."
+              Expect.equal transient.Rows[0].Options row.Options "versioned row binding must survive the transient wire."
+
+              let state =
+                  { Identity = { DocumentId = documentId; CanvasInstanceId = canvasId }
+                    Document = Some document
+                    Data = Map.empty
+                    DocumentRevision = 7L
+                    DataRevision = 0L
+                    LastTransportSequence = 1L
+                    View = { Values = Map.empty }
+                    Poll = RuntimePollState.Ready
+                    LastError = None }
+              let browser = TaResearchBrowserWire.stateToWire state
+              Expect.equal browser.editorSchemas.Length 1 "browser state must carry the document editor catalog."
+              Expect.isTrue
+                  (browser.rows[0].options |> Array.exists (fun field -> field.key = TaRowEditorBinding.OptionKey))
+                  "browser row options must carry the versioned editor binding." )
 
           testCase "generic editor action survives transient and flat browser wires" (fun _ ->
               let expected =

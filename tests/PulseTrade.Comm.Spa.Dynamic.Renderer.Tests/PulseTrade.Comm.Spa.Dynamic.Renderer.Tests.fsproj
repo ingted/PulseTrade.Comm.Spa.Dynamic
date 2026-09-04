@@ -14,6 +14,6 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.302]" />
     <PackageReference Include="Expecto" Version="10.2.3" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.0-alpha33]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.0-alpha37]" />
   </ItemGroup>
 </Project>

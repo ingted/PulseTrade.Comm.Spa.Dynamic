@@ -29,6 +29,28 @@ let point =
       projection = ""
       quality = "" }
 
+let rec browserValueWire (value: SduiValue) : TaBrowserValueWire =
+    let empty kind boolValue numberValue textValue items fields =
+        { kind = kind
+          boolValue = boolValue
+          numberValue = numberValue
+          textValue = textValue
+          items = items
+          fields = fields }
+
+    match value with
+    | SduiValue.Null -> empty "null" false 0.0 "" [||] [||]
+    | SduiValue.Bool value -> empty "bool" value 0.0 "" [||] [||]
+    | SduiValue.Number value -> empty "number" false value "" [||] [||]
+    | SduiValue.Text value -> empty "text" false 0.0 value [||] [||]
+    | SduiValue.Array values -> empty "array" false 0.0 "" (values |> Array.map browserValueWire) [||]
+    | SduiValue.Object values -> empty "object" false 0.0 "" [||] (browserMapWire values)
+
+and browserMapWire (values: Map<string, SduiValue>) : TaBrowserFieldWire array =
+    values
+    |> Map.toArray
+    |> Array.map (fun (key, value) -> { key = key; value = browserValueWire value })
+
 let wire =
     { wireVersion = "ta-browser.v2"
       updateKind = "full"
@@ -46,6 +68,7 @@ let wire =
              dataRef = "series.price"
              heightWeight = 2.0
              visible = true
+             options = [||]
              traces =
                 [| { traceId = "kbar"
                      kind = "candlestick"
@@ -54,6 +77,7 @@ let wire =
                      color = "#0f766e"
                      width = 2.0
                      visible = true } |] } |]
+      editorSchemas = [||]
       allowedActions = [| "change-query" |]
       querySourceId = "binance"
       queryInstrument = "BTCUSDT"
@@ -128,6 +152,40 @@ let tests =
               | SduiValue.Array [| SduiValue.Object values |] ->
                   Expect.equal values["c"] (SduiValue.Number 103.0) "candle close should use renderer field vocabulary."
               | other -> failtestf "Unexpected projected series: %A" other)
+
+          testCase "document editor catalog and row binding reach the browser runtime" (fun _ ->
+              let schema =
+                  { TemplateKey = "ta.sma"
+                    DisplayName = "SMA overlay"
+                    SchemaRevision = 4L
+                    Fields =
+                      [| { Key = "periods"
+                           Label = "Periods"
+                           Kind = EditorValueKind.List(EditorValueKind.Integer(Some 1L, Some 500L), Some 1, Some 8)
+                           Required = true
+                           DefaultValue = Some(SduiValue.Array [| SduiValue.Number 13.0 |]) } |] }
+              let binding =
+                  { TemplateKey = schema.TemplateKey
+                    Values = [| { Path = "periods[0]"; Value = EditorScalarValue.Number 21.0 } |] }
+              let bindingFields =
+                  Map [ TaRowEditorBinding.OptionKey, TaRowEditorBinding.toValue binding ]
+                  |> browserMapWire
+              let enriched =
+                  { wire with
+                      rows = [| { wire.rows[0] with options = bindingFields } |]
+                      editorSchemas = [| schema |> DynamicTemplateSchemaCodec.toValue |> browserValueWire |] }
+              let state = TaResearchClientWire.stateFromWire enriched |> Result.defaultWith failtest
+              let document = state.Document |> Option.defaultWith (fun () -> failtest "Document was not projected.")
+              Expect.equal document.EditorSchemas [| schema |] "browser runtime must receive the authoritative schema catalog."
+              let resolved =
+                  TaRowEditorBinding.tryResolve document.EditorSchemas document.Rows[0]
+                  |> Result.defaultWith (List.map _.Message >> String.concat "; " >> failtest)
+              Expect.equal resolved (Some(schema, binding.Values)) "browser runtime must recover the editor binding for stable-row reconfigure."
+
+              let malformed =
+                  { enriched with
+                      editorSchemas = [| { enriched.editorSchemas[0] with kind = "null" } |] }
+              Expect.isError (TaResearchClientWire.stateFromWire malformed) "malformed schema entries must fail the complete browser state." )
 
           testCase "columnar v3 projects 2000-point compatible candle data without row objects" (fun _ ->
               let v3 =

@@ -540,3 +540,22 @@ DynamicActionLifecycle.complete result state
 same-template instance以backend產生且跨revision穩定的`TaRowSpec.RowId`識別。renderer不得用array index、display label或參數hash當identity；document validator在duplicate RowId時拒絕整個frame並保留last-good。
 
 `beginRequest`先驗request/canvas/action與expected revision；已pending時回`action-in-flight`，revision mismatch回typed `RevisionConflict`且不送backend。`complete`只接受相同RequestId；accepted/rejected均只清pending與記錄feedback，不修改RuntimeState document。下一個authoritative Document frame才提交add/remove/reconfigure結果。`RuntimeClientFrame` wire本slice不變，correlated transport與renderer pending UX由DYN-TA-017D接線，避免未同步Server/PTCS adapter時出現半套protocol。
+
+## 2026-09-04 Document editor catalog revision 5
+
+```fsharp
+type TaWorkspaceDocument =
+    { // existing fields
+      Rows: TaRowSpec array
+      EditorSchemas: DynamicTemplateSchema array }
+
+type TaRowEditorBinding =
+    { TemplateKey: string
+      Values: EditorInputValue array }
+
+TaRowEditorBinding.OptionKey = "ptcs.dynamic.editor.binding.v1"
+```
+
+`DynamicTemplateSchemaCodec`以`SduiValue`遞迴編解Text/Integer/Decimal/Boolean/Choice/Scale/List/Group與default。Runtime validation同時限制schema depth、field/choice/list數量、key uniqueness、數字範圍與unsafe payload。PTCS `ta-browser.v4`新增additive `editorSchemas`，row wire新增`options`；舊payload缺欄位時皆解為empty。
+
+renderer先讀current document catalog，只有standalone/test document未提供catalog時才可使用options fallback。Add送`ApplyTemplate(..., None, ...)`；Edit先以保留key解析binding並填入draft，再送`ApplyTemplate(..., Some rowId, ...)`。pending/reject保留editor與原row；accepted仍等authoritative next document。row沒有有效binding/schema時不顯示Edit，避免從presentation反推domain參數。

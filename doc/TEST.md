@@ -651,4 +651,4 @@ Canonical matrix：`doc/TAResearch/Test.md`。`DYN-TA-T-000A..020`已accepted並
 
 ## 2026-09-04 DYN-TA-T-056..064 Notebook TA Workspace production
 
-Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061已完成RFC/current-state鏈、generic source envelope codec/validation/reducer、owner dependency gate、editor schema與correlated action lifecycle；Contracts `15/15`、Renderer `22/22`、Contracts/Renderer/Interactive.Client full WebSharper rebuild通過。Daedalus consumer package blocker已由Contracts alpha12 / Renderer alpha33 / Interactive.Client alpha4 exact `FSharp.Core [10.1.302]`解除；Notebook adapter與real MDCQ DIB/Playwright仍依DYN-TA-017追蹤，不以synthetic M12取代。
+Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061已完成RFC/current-state鏈、generic source envelope codec/validation/reducer、owner dependency gate、editor schema與correlated action lifecycle；Contracts `15/15`、Renderer `22/22`、Contracts/Renderer/Interactive.Client full WebSharper rebuild通過。Daedalus consumer package blocker已由Contracts alpha15 / Renderer alpha37 / Interactive.Client alpha8 exact `FSharp.Core [10.1.302]`解除；Notebook adapter與real MDCQ DIB/Playwright仍依DYN-TA-017追蹤，不以synthetic M12取代。

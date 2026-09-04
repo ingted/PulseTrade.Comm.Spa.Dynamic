@@ -100,7 +100,8 @@ module TaWorkspaceRenderer =
         actualDocumentRevision
         request
         successText
-        onAccepted =
+        onAccepted
+        onRejected =
         let expectedRevisionMatches =
             match request.ExpectedDocumentRevision with
             | Some expected -> expected = actualDocumentRevision
@@ -109,6 +110,7 @@ module TaWorkspaceRenderer =
         if uiState.Value.PendingActionId.IsSome then
             uiState.Value <- { uiState.Value with Feedback = "action-in-flight: wait for the pending action result." }
         elif not expectedRevisionMatches then
+            onRejected ()
             uiState.Value <-
                 { uiState.Value with
                     PendingActionId = None
@@ -133,6 +135,7 @@ module TaWorkspaceRenderer =
                     | DynamicActionResult.RevisionConflict(requestId, _) -> requestId
 
                 if resultRequestId <> request.RequestId then
+                    onRejected ()
                     uiState.Value <-
                         { uiState.Value with
                             PendingActionId = None
@@ -146,11 +149,13 @@ module TaWorkspaceRenderer =
                                 PendingActionId = None
                                 Feedback = successText + " Revision " + string revision + "." }
                     | DynamicActionResult.Rejected(_, code, message) ->
+                        onRejected ()
                         uiState.Value <-
                             { uiState.Value with
                                 PendingActionId = None
                                 Feedback = code + ": " + message }
                     | DynamicActionResult.RevisionConflict(_, actualRevision) ->
+                        onRejected ()
                         uiState.Value <-
                             { uiState.Value with
                                 PendingActionId = None
@@ -271,7 +276,7 @@ module TaWorkspaceRenderer =
         + " h " + fixedText (-width)
         + " Z"
 
-    let overviewSvg points selectionWindow onReady onDragStart =
+    let overviewSvg points selectionWindow onReady onDragStart onDragEnd =
         let width = 1000.0
         let height = 82.0
         let sampled = RendererModel.sampleEvenly 280 points
@@ -289,11 +294,12 @@ module TaWorkspaceRenderer =
                 + fixedText (xAt index) + " "
                 + fixedText (RendererModel.normalize low high 8.0 62.0 point.Close))
             |> String.concat " "
-        let leftRatio, rightRatio = selectionWindow
-        let selectionX = leftRatio * width
-        let selectionWidth = max 4.0 ((rightRatio - leftRatio) * width)
         let handleWidth = 8.0
         let handleX edge = max 0.0 (min (width - handleWidth) (edge - handleWidth / 2.0))
+        let selectionX = selectionWindow |> View.Map (fun (leftRatio, _) -> fixedText (leftRatio * width))
+        let selectionWidth = selectionWindow |> View.Map (fun (leftRatio, rightRatio) -> fixedText (max 4.0 ((rightRatio - leftRatio) * width)))
+        let leftHandleX = selectionWindow |> View.Map (fun (leftRatio, _) -> fixedText (handleX (leftRatio * width)))
+        let rightHandleX = selectionWindow |> View.Map (fun (_, rightRatio) -> fixedText (handleX (rightRatio * width)))
 
         svgElement "svg" [
             Attr.Create "data-testid" "ta-overview-navigator"
@@ -302,23 +308,24 @@ module TaWorkspaceRenderer =
             svgAttr "preserveAspectRatio" "none"
             attr.style "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"
             on.afterRender onReady
+            on.mouseUp (fun _ event -> onDragEnd event)
         ] [
             svgElement "path" [ svgAttr "d" closePath; svgAttr "fill" "none"; svgAttr "stroke" "#3d718e"; svgAttr "stroke-width" "1.5" ] []
             svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-selection"
-                svgAttr "x" (fixedText selectionX); svgAttr "y" "1"; svgAttr "width" (fixedText selectionWidth); svgAttr "height" "80"
+                Attr.Dynamic "x" selectionX; svgAttr "y" "1"; Attr.Dynamic "width" selectionWidth; svgAttr "height" "80"
                 svgAttr "fill" "rgba(15,118,110,.10)"; svgAttr "stroke" "#0f766e"; svgAttr "stroke-width" "2"; svgAttr "style" "cursor:grab;"
                 on.mouseDown (fun _ event -> onDragStart TaWindowDrag.Move event)
             ] []
             svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-left-handle"
-                svgAttr "x" (fixedText (handleX selectionX)); svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
+                Attr.Dynamic "x" leftHandleX; svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
                 svgAttr "fill" "#155f73"; svgAttr "fill-opacity" "0.82"; svgAttr "style" "cursor:ew-resize;"
                 on.mouseDown (fun _ event -> onDragStart TaWindowDrag.ResizeLeft event)
             ] []
             svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-right-handle"
-                svgAttr "x" (fixedText (handleX (selectionX + selectionWidth))); svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
+                Attr.Dynamic "x" rightHandleX; svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
                 svgAttr "fill" "#155f73"; svgAttr "fill-opacity" "0.82"; svgAttr "style" "cursor:ew-resize;"
                 on.mouseDown (fun _ event -> onDragStart TaWindowDrag.ResizeRight event)
             ] []
@@ -564,8 +571,20 @@ module TaWorkspaceRenderer =
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
         let canvasId = runtimeState.Value.Identity.CanvasInstanceId
-        let editorSchemas = if isNull options.EditorSchemas then [||] else options.EditorSchemas
-        let initialEditorSchema = editorSchemas |> Array.tryHead
+        let configuredEditorSchemas = if isNull options.EditorSchemas then [||] else options.EditorSchemas
+        let editorSchemasNow () =
+            let documentSchemas =
+                runtimeState.Value.Document
+                |> Option.map _.EditorSchemas
+                |> Option.defaultValue [||]
+                |> fun values -> if isNull values then [||] else values
+            let schemas = if documentSchemas.Length > 0 then documentSchemas else configuredEditorSchemas
+            schemas
+            |> Array.filter (fun schema ->
+                match DynamicEditorValidation.validateSchema DynamicEditorDefaults.limits schema with
+                | Ok _ -> true
+                | Error _ -> false)
+        let initialEditorSchema = editorSchemasNow () |> Array.tryHead
         let selectedTemplate = Var.Create(initialEditorSchema |> Option.map _.TemplateKey |> Option.defaultValue "")
         let editorValues = Var.Create(initialEditorSchema |> Option.map RendererModel.initialEditorInputs |> Option.defaultValue [||])
         let mutable instrumentDraft = ""
@@ -584,7 +603,10 @@ module TaWorkspaceRenderer =
         let draftWindow = Var.Create<TaVisibleWindow option> None
         let mutable addRowSequence = 0
         let mutable pendingAddRowId: string option = None
+        let mutable editingRowId: string option = None
+        let mutable pendingEditorMutation: (int64 * string option * Set<string> * TaRowEditorBinding) option = None
         let mutable navigatorElement: Element = null
+        let mutable finishNavigatorDrag: (unit -> unit) option = None
         let mutable chartRenderSequence = 0
         let uiState =
             Var.Create
@@ -603,13 +625,15 @@ module TaWorkspaceRenderer =
                 uiState.View
         let commandsDisabledNow () =
             remoteDisabled runtimeState.Value.Poll || uiState.Value.PendingActionId.IsSome
-        let startAction action successText onAccepted =
+        let startActionWith action successText onAccepted onRejected =
             actionSequence <- actionSequence + 1
             let request =
                 { RequestId = canvasIdText canvasId + ":ui:" + string actionSequence
                   ExpectedDocumentRevision = Some runtimeState.Value.DocumentRevision
                   Action = action }
-            submit callbacks uiState runtimeState.Value.DocumentRevision request successText onAccepted
+            submit callbacks uiState runtimeState.Value.DocumentRevision request successText onAccepted onRejected
+        let startAction action successText onAccepted =
+            startActionWith action successText onAccepted ignore
         let sameDocumentShell (left: RuntimeState) (right: RuntimeState) =
             let samePresence =
                 match left.Document, right.Document with
@@ -689,10 +713,22 @@ module TaWorkspaceRenderer =
                 let startClientX = event.ClientX
                 let mutable moveHandler: Action<Event> = null
                 let mutable upHandler: Action<Event> = null
+                let mutable finished = false
 
                 let cleanup () =
                     if not (isNull moveHandler) then JS.Document.RemoveEventListener("mousemove", moveHandler)
                     if not (isNull upHandler) then JS.Document.RemoveEventListener("mouseup", upHandler)
+
+                let finish () =
+                    if not finished then
+                        finished <- true
+                        finishNavigatorDrag <- None
+                        let draft = defaultArg draftWindow.Value committed
+                        let followLatest, next =
+                            RendererModel.commitWindowBounds options.MinimumVisibleBars options.MaximumVisibleBars total draft
+                        if next <> committed || followLatest <> uiState.Value.FollowLatest then setWindow followLatest next
+                        else draftWindow.Value <- None
+                        cleanup ()
 
                 moveHandler <-
                     Action<Event>(fun rawEvent ->
@@ -704,31 +740,87 @@ module TaWorkspaceRenderer =
                             Some(RendererModel.previewWindowBounds options.MinimumVisibleBars options.MaximumVisibleBars total committed drag delta))
 
                 upHandler <-
-                    Action<Event>(fun _ ->
-                        let draft = defaultArg draftWindow.Value committed
-                        let followLatest, next =
-                            RendererModel.commitWindowBounds options.MinimumVisibleBars options.MaximumVisibleBars total draft
-                        cleanup ()
-                        if next <> committed || followLatest <> uiState.Value.FollowLatest then setWindow followLatest next
-                        else draftWindow.Value <- None)
+                    Action<Event>(fun _ -> finish ())
 
+                finishNavigatorDrag <- Some finish
                 JS.Document.AddEventListener("mousemove", moveHandler)
                 JS.Document.AddEventListener("mouseup", upHandler)
+
+        let finishNavigatorDragFromElement (event: MouseEvent) =
+            event.PreventDefault()
+            finishNavigatorDrag |> Option.iter (fun finish -> finish ())
 
         let setCursorIndex value =
             if uiState.Value.CursorIndex <> value then
                 uiState.Value <- { uiState.Value with CursorIndex = value }
 
         let selectedEditorSchema () =
-            editorSchemas |> Array.tryFind (fun schema -> schema.TemplateKey = selectedTemplate.Value)
+            editorSchemasNow () |> Array.tryFind (fun schema -> schema.TemplateKey = selectedTemplate.Value)
 
         let resetEditorFor templateKey =
             selectedTemplate.Value <- templateKey
             editorValues.Value <-
-                editorSchemas
+                editorSchemasNow ()
                 |> Array.tryFind (fun schema -> schema.TemplateKey = templateKey)
                 |> Option.map RendererModel.initialEditorInputs
                 |> Option.defaultValue [||]
+
+        let forceCloseRowEditor () =
+            editingRowId <- None
+            pendingEditorMutation <- None
+            uiState.Value <- { uiState.Value with AddRowOpen = false }
+
+        let closeRowEditor () =
+            if uiState.Value.PendingActionId.IsNone then forceCloseRowEditor ()
+
+        let openNewRowEditor () =
+            editingRowId <- None
+            match editorSchemasNow () |> Array.tryHead with
+            | Some schema -> resetEditorFor schema.TemplateKey
+            | None -> ()
+            uiState.Value <- { uiState.Value with AddRowOpen = true; Feedback = "" }
+
+        let openRowEditor row =
+            match TaRowEditorBinding.tryResolve (editorSchemasNow ()) row with
+            | Ok(Some(schema, values)) ->
+                editingRowId <- Some row.RowId
+                selectedTemplate.Value <- schema.TemplateKey
+                editorValues.Value <- values
+                uiState.Value <- { uiState.Value with AddRowOpen = true; Feedback = "" }
+            | Ok None -> ()
+            | Error _ ->
+                editingRowId <- None
+                uiState.Value <-
+                    { uiState.Value with
+                        AddRowOpen = false
+                        Feedback = "This row's editor metadata is invalid; the row remains read-only." }
+
+        let completeEditorMutation (document: TaWorkspaceDocument) documentRevision =
+            let bindingOf row =
+                TaRowEditorBinding.tryFind row
+                |> Result.toOption
+                |> Option.flatten
+
+            match pendingEditorMutation with
+            | Some(baseRevision, targetRowId, priorRowIds, expectedBinding) when documentRevision > baseRevision ->
+                let matched =
+                    match targetRowId with
+                    | Some rowId ->
+                        document.Rows
+                        |> Array.tryFind (fun row -> row.RowId = rowId)
+                        |> Option.bind bindingOf
+                        |> Option.exists ((=) expectedBinding)
+                    | None ->
+                        document.Rows
+                        |> Array.exists (fun row ->
+                            not (Set.contains row.RowId priorRowIds)
+                            && bindingOf row = Some expectedBinding)
+
+                if matched then
+                    let feedback = if targetRowId.IsSome then "Row updated." else "Row added."
+                    forceCloseRowEditor ()
+                    uiState.Value <- { uiState.Value with Feedback = feedback }
+            | _ -> ()
 
         let editorTestId (path: string) =
             "ta-editor-" + path.Replace(".", "-").Replace("[", "-").Replace("]", "")
@@ -876,11 +968,11 @@ module TaWorkspaceRenderer =
             div [ Attr.Create "data-testid" "ta-generic-row-editor"; attr.style "display:flex; flex-direction:column; gap:7px; min-width:0;" ] [
                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [
                     text "Template"
-                    selectInput "ta-editor-template" selectedTemplate.Value (editorSchemas |> Array.map (fun schema -> schema.TemplateKey, schema.DisplayName) |> Array.toList) resetEditorFor
+                    selectInput "ta-editor-template" selectedTemplate.Value (editorSchemasNow () |> Array.map (fun schema -> schema.TemplateKey, schema.DisplayName) |> Array.toList) resetEditorFor
                 ]
                 selectedTemplate.View
                 |> View.Map (fun templateKey ->
-                    match editorSchemas |> Array.tryFind (fun schema -> schema.TemplateKey = templateKey) with
+                    match editorSchemasNow () |> Array.tryFind (fun schema -> schema.TemplateKey = templateKey) with
                     | None -> div [ attr.style "font-size:11px; color:#9a2f2f;" ] [ text "Template schema is unavailable." ] :> Doc
                     | Some schema ->
                         div [ attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:7px; min-width:0;" ] [
@@ -971,10 +1063,24 @@ module TaWorkspaceRenderer =
                 if errors.Length > 0 then
                     uiState.Value <- { uiState.Value with Feedback = String.concat " " errors }
                 else
-                    startAction
-                        (SduiAction.ApplyTemplate(canvasId, None, schema.TemplateKey, editorValues.Value))
-                        (schema.DisplayName + " accepted.")
-                        (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = false })
+                    let currentRows =
+                        runtimeState.Value.Document
+                        |> Option.map _.Rows
+                        |> Option.defaultValue [||]
+                    let binding =
+                        { TemplateKey = schema.TemplateKey
+                          Values = Array.copy editorValues.Value }
+                    pendingEditorMutation <-
+                        Some(
+                            runtimeState.Value.DocumentRevision,
+                            editingRowId,
+                            currentRows |> Array.map _.RowId |> Set.ofArray,
+                            binding)
+                    startActionWith
+                        (SduiAction.ApplyTemplate(canvasId, editingRowId, schema.TemplateKey, editorValues.Value))
+                        (schema.DisplayName + " accepted; awaiting authoritative document.")
+                        ignore
+                        (fun () -> pendingEditorMutation <- None)
 
         div [
             attr.``class`` "ptcs-ta-workspace"
@@ -1003,11 +1109,17 @@ module TaWorkspaceRenderer =
                         intervalDraft <- query.IntervalMinutes
                         fromDateDraft <- query.FromUtc
                         toDateDraft <- query.ToUtcExclusive
+                        let currentSchemas = editorSchemasNow ()
+                        if currentSchemas |> Array.exists (fun schema -> schema.TemplateKey = selectedTemplate.Value) |> not then
+                            match currentSchemas |> Array.tryHead with
+                            | Some schema -> resetEditorFor schema.TemplateKey
+                            | None -> closeRowEditor ()
                         match pendingAddRowId with
                         | Some rowId when document.Rows |> Array.exists (fun row -> row.RowId = rowId) ->
                             pendingAddRowId <- None
                             uiState.Value <- { uiState.Value with AddRowOpen = false; Feedback = "Row added." }
                         | _ -> ()
+                        completeEditorMutation document state.DocumentRevision
                         synchronizedDocumentRevision <- state.DocumentRevision
 
                     div [ attr.style "display:flex; flex-direction:column; min-width:0;" ] [
@@ -1052,25 +1164,33 @@ module TaWorkspaceRenderer =
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDateDraft (fun value -> toDateDraft <- value) ]
                                 primaryButtonView "ta-apply-query" "Load / Apply" commandsDisabledView commandsDisabledNow applyQuery
                             ]
-                            div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [
-                                compactButton "ta-pan-left" "←" "Pan earlier" (fun () ->
-                                    let visible = resolvedWindow uiState.Value
-                                    panWindow (-max 1 (visible.Count / 4)))
-                                compactButton "ta-pan-right" "→" "Pan later" (fun () ->
-                                    let visible = resolvedWindow uiState.Value
-                                    panWindow (max 1 (visible.Count / 4)))
-                                compactButton "ta-zoom-in" "+" "Show fewer bars" (fun () -> zoomWindow -8)
-                                compactButton "ta-zoom-out" "−" "Show more bars" (fun () -> zoomWindow 8)
-                                compactButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" resetWindow
-                                compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () -> startAction (SduiAction.ResetCanvas canvasId) "Canvas reset accepted." ignore)
-                                compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = not uiState.Value.AddRowOpen })
-                                span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "local view controls do not query the backend" ]
-                            ]
+                            div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ]
+                                ([ compactButton "ta-pan-left" "←" "Pan earlier" (fun () ->
+                                       let visible = resolvedWindow uiState.Value
+                                       panWindow (-max 1 (visible.Count / 4)))
+                                   compactButton "ta-pan-right" "→" "Pan later" (fun () ->
+                                       let visible = resolvedWindow uiState.Value
+                                       panWindow (max 1 (visible.Count / 4)))
+                                   compactButton "ta-zoom-in" "+" "Show fewer bars" (fun () -> zoomWindow -8)
+                                   compactButton "ta-zoom-out" "−" "Show more bars" (fun () -> zoomWindow 8)
+                                   compactButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" resetWindow
+                                   compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () -> startAction (SduiAction.ResetCanvas canvasId) "Canvas reset accepted." ignore) ]
+                                 @ (if (editorSchemasNow ()).Length > 0 then
+                                        [ compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () ->
+                                              if uiState.Value.AddRowOpen then closeRowEditor ()
+                                              else openNewRowEditor ()) ]
+                                    else
+                                        [])
+                                 @ [ span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "local view controls do not query the backend" ] ])
                             uiState.View
                             |> View.Map (fun ui ->
                                 div [ Attr.Create "data-testid" "ta-row-toggles"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [
                                     for row in document.Rows do
                                         let hidden = Set.contains row.RowId ui.HiddenRows
+                                        let editable =
+                                            match TaRowEditorBinding.tryResolve (editorSchemasNow ()) row with
+                                            | Ok(Some _) -> true
+                                            | _ -> false
                                         yield
                                             div [ attr.style "display:inline-flex; align-items:stretch; height:26px;" ] [
                                                 button [
@@ -1085,6 +1205,18 @@ module TaWorkspaceRenderer =
 
                                                         uiState.Value <- { uiState.Value with HiddenRows = nextHidden })
                                                 ] [ text (rowKindText row.Kind) ]
+                                                if editable then
+                                                    button [
+                                                        attr.``type`` "button"
+                                                        Attr.Create "data-testid" ("ta-edit-row-" + row.RowId)
+                                                        attr.title ("Edit " + rowKindText row.Kind + " parameters")
+                                                        attr.disabledBool commandsDisabledView
+                                                        Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                            if disabled then "height:26px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; cursor:not-allowed;"
+                                                            else "height:26px; border:1px solid #9cb3cc; border-right:0; background:#fff; color:#315d88; padding:2px 7px; font-size:11px; cursor:pointer;"))
+                                                        on.click (fun _ _ ->
+                                                            if not (commandsDisabledNow ()) then openRowEditor row)
+                                                    ] [ text "Edit" ]
                                                 button [
                                                     attr.``type`` "button"
                                                     Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
@@ -1105,42 +1237,14 @@ module TaWorkspaceRenderer =
                                 if not ui.AddRowOpen then Doc.Empty
                                 else
                                     div [ Attr.Create "data-testid" "ta-add-row-editor"; attr.style "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;" ] [
-                                        if editorSchemas.Length > 0 then
-                                            genericEditor ()
-                                        else
-                                            div [ attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;" ] [
-                                                label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [
-                                                    text "Row kind"
-                                                    selectInput "ta-add-row-kind" addKind.Value [ "Sma", "SMA"; "Volume", "Volume"; "Dmi", "DMI"; "Adx", "ADX"; "Macd", "MACD"; "HeikinAshi", "Heikin-Ashi" ] (fun value ->
-                                                        addKind.Value <- value
-                                                        addDataRef.Value <- "series." + value.ToLower())
-                                                ]
-                                                label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text "Data ref"; inputText "ta-add-row-data-ref" "series.sma" addDataRef.Value (fun value -> addDataRef.Value <- value) ]
-                                                addKind.View
-                                                |> View.Map (fun kind ->
-                                                    let field labelText testId value onChanged =
-                                                        label [ attr.style "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;" ] [ text labelText; inputText testId labelText value onChanged ] :> Doc
-
-                                                    match kind with
-                                                    | "Sma"
-                                                    | "Dmi" -> field "Period" "ta-add-row-period" addPeriod.Value (fun value -> addPeriod.Value <- value)
-                                                    | "Adx" ->
-                                                        div [ attr.style "display:grid; grid-template-columns:1fr 1fr; gap:6px; min-width:0;" ] [
-                                                            field "DI period" "ta-add-row-di-period" addDiPeriod.Value (fun value -> addDiPeriod.Value <- value)
-                                                            field "ADX period" "ta-add-row-adx-period" addAdxPeriod.Value (fun value -> addAdxPeriod.Value <- value)
-                                                        ] :> Doc
-                                                    | "Macd" ->
-                                                        div [ attr.style "display:grid; grid-template-columns:repeat(3,1fr); gap:6px; min-width:0;" ] [
-                                                            field "Fast" "ta-add-row-fast-period" addFastPeriod.Value (fun value -> addFastPeriod.Value <- value)
-                                                            field "Slow" "ta-add-row-slow-period" addSlowPeriod.Value (fun value -> addSlowPeriod.Value <- value)
-                                                            field "Signal" "ta-add-row-signal-period" addSignalPeriod.Value (fun value -> addSignalPeriod.Value <- value)
-                                                        ] :> Doc
-                                                    | _ -> span [ attr.style "font-size:11px; color:#728196;" ] [ text "No indicator parameters." ] :> Doc)
-                                                |> Doc.EmbedView
-                                            ]
-                                        div [ attr.style "display:flex; justify-content:flex-end; gap:6px;" ] [
-                                            compactButton "ta-add-row-cancel" "Cancel" "Close without submitting" (fun () -> uiState.Value <- { uiState.Value with AddRowOpen = false })
-                                            primaryButtonView "ta-add-row-submit" "Add" commandsDisabledView commandsDisabledNow addRow
+                                        genericEditor ()
+                                        div [ attr.style "display:flex; align-items:center; justify-content:flex-end; gap:6px;" ] [
+                                            match editingRowId with
+                                            | Some rowId ->
+                                                yield span [ Attr.Create "data-testid" "ta-row-editor-mode"; attr.style "margin-right:auto; font-size:11px; color:#40536d;" ] [ text ("Editing " + rowId) ]
+                                            | None -> ()
+                                            yield compactButton "ta-add-row-cancel" "Cancel" "Close without submitting" closeRowEditor
+                                            yield primaryButtonView "ta-add-row-submit" (if editingRowId.IsSome then "Apply" else "Add") commandsDisabledView commandsDisabledNow addRow
                                         ]
                                     ] :> Doc)
                             |> Doc.EmbedView
@@ -1231,12 +1335,15 @@ module TaWorkspaceRenderer =
                                         compactButton "ta-view-all" "All" "Show the complete loaded range" (fun () -> setWindowCount referenceLength)
                                     ]
                                     div [ attr.style "grid-column:1 / -1; min-width:0;" ] [
-                                        draftWindow.View
-                                        |> View.Map (fun draft ->
-                                            let selection = defaultArg draft visibleWindow
-                                            let ratios = RendererModel.selectionRatios referenceLength selection
-                                            overviewSvg overviewPoints ratios (fun node -> navigatorElement <- node |> As<Element>) startNavigatorDrag :> Doc)
-                                        |> Doc.EmbedView
+                                        overviewSvg
+                                            overviewPoints
+                                            (draftWindow.View
+                                             |> View.Map (fun draft ->
+                                             let selection = defaultArg draft visibleWindow
+                                             RendererModel.selectionRatios referenceLength selection))
+                                            (fun node -> navigatorElement <- node |> As<Element>)
+                                            startNavigatorDrag
+                                            finishNavigatorDragFromElement
                                     ]
                                 ]
                             ] :> Doc) chartRuntimeView uiState.View

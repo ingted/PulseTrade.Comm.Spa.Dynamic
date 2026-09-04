@@ -78,6 +78,12 @@ renderer送 correlated request，UI只呈現 pending。Daedalus Interactive.Exte
 
 browser與server可共用 `RuntimeFrame` type，但 System.Text.Json codec與 WebSharper typed JSON codec是兩條 wire，bytes不可混用。前端只使用 F#/WebSharper；禁止手寫 JavaScript、inline script與 string-built callback。
 
+### 6. Editor catalog 與 row reconfigure
+
+`TaWorkspaceDocument.EditorSchemas` 是 authoritative editor catalog，必須與 `Rows` 由同一個 `DocumentRevision` 原子發布。renderer options 的 schema 只保留 standalone/test fallback；正式 Interactive/PTCS runtime 不可依賴 host-local options 注入，否則 browser 收到 row 卻無法 Add/Edit。
+
+可修改 row 在 `TaRowSpec.Options["ptcs.dynamic.editor.binding.v1"]` 保存 `{ templateKey; values }`。renderer 由 row binding 找 schema，送 `ApplyTemplate(canvasId, Some rowId, templateKey, values)`；backend 以 stable row id 原位替換，row count與identity不得改變。舊 row 沒有 binding 時仍可呈現與移除，但不顯示 Edit；binding malformed 或 schema 不存在時 fail closed，不以猜測參數重建 editor。
+
 ## 開發順序
 
 1. DYN-TA-017A：RFC/REQ/SA/SD/WBS/Test/Verification。

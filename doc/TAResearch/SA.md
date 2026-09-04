@@ -240,3 +240,11 @@ source sequence/revision與document/data revision解決不同問題：前者證�
 generic editor schema只描述欄位與限制，不承載FsStl/TradeCore union。Choice/Scale選項由owner adapter提供；List/Group讓同一套renderer容納SMA/DMI/MACD/BBO等不同參數形狀。`TaRowSpec.RowId`是workspace instance identity，不是indicator kind；因此同template不同參數可並存，duplicate RowId則在document validation fail closed。
 
 action state與document state分離。client同時只允許一筆pending request；request id必須與result correlation一致。revision mismatch在送出前形成typed conflict；backend rejection只更新bounded feedback。只有backend完成resource transition後發布的新Document frame，才可改變rows與DocumentRevision。
+
+## 18. 2026-09-04 Editor catalog delivery gap
+
+既有generic editor schema只存在renderer options；Interactive.Client用`defaultOptions`，PTCS `ta-browser.v4`也未承載schema，因此package consumer即使建立了TradeCore template catalog，browser仍只能看到rows，無法Add/Edit。這是contract delivery gap，不是Interactive.Extension應以另一份UI registry繞過的問題。
+
+修正依賴方向為 `owner catalog -> TaWorkspaceDocument.EditorSchemas -> RuntimeFrame/PTCS browser wire -> Renderer`。`EditorSchemas`與`Rows`由相同DocumentRevision保證一致，舊wire缺欄位時解成empty catalog並隱藏mutation controls。row reconfigure另需在row options保存保留key binding；binding只含generic template key/value，不含provider、instrument、source lease或TradeCore型別。
+
+這個邊界讓Daedalus只負責把`IndicatorTemplateCatalog`映射為generic schema與執行authoritative resource transition；Aster負責codec、validation、wire、renderer與相容性。invalid catalog/binding保留last-good workspace並關閉對應Edit，不得讓UI自行推測domain參數。

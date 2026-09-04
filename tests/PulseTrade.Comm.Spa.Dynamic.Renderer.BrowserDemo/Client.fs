@@ -235,6 +235,13 @@ module Client =
                        true
                        None |] } |]
 
+    let bindEditor templateKey values rowSpec =
+        TaRowEditorBinding.attach
+            { TemplateKey = templateKey
+              Values = values }
+            rowSpec
+        |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+
     let sampleState () =
         let identity =
             { DocumentId = DocumentId "ta-demo-document"
@@ -264,6 +271,7 @@ module Client =
                            1.0
                            [| trace "sma-1k" TaTraceKind.Line "series.sma" "1K SMA" "#2563eb" 1.3
                               trace "sma-5k" TaTraceKind.Line "series.sma-5k" "5K SMA" "#b45309" 1.8 |]
+                       |> bindEditor "ta.sma" (DynamicEditorValidation.defaultInputs sampleEditorSchemas[0])
                        row "dmi" TaRowKind.Dmi "series.dmi" 1.0
                        row "adx" TaRowKind.Adx "series.adx" 1.0
                        compositeRow
@@ -274,6 +282,7 @@ module Client =
                            [| trace "macd-1k" TaTraceKind.Line "series.macd" "1K MACD" "#0f766e" 1.3
                               trace "macd-30k" TaTraceKind.Line "series.macd-30k" "30K MACD causal" "#be185d" 1.8 |]
                        row "heikin" TaRowKind.HeikinAshi "series.heikin" 2.0 |]
+                  EditorSchemas = sampleEditorSchemas
                   AllowedActions = [| "reset-view"; "reset-canvas"; "add-row"; "change-query" |]
                   DefaultView = Map [ "visibleBars", SduiValue.Number 48.0 ] }
           Data = sampleSeries 2000
@@ -329,15 +338,34 @@ module Client =
                         Document = Some { document with Rows = document.Rows |> Array.filter (fun row -> row.RowId <> rowId) }
                         DocumentRevision = current.DocumentRevision + 1L
                         LastTransportSequence = current.LastTransportSequence + 1L }
-            | SduiAction.ApplyTemplate(_, _, templateKey, values), Some document ->
-                let rowId = "template-" + templateKey.Replace(".", "-") + "-" + string (document.Rows.Length + 1)
+            | SduiAction.ApplyTemplate(_, requestedRowId, templateKey, values), Some document ->
+                let rowId =
+                    requestedRowId
+                    |> Option.defaultValue ("template-" + templateKey.Replace(".", "-") + "-" + string (document.Rows.Length + 1))
                 let kind = if templateKey = "ta.macd" then TaRowKind.Macd else TaRowKind.Sma
+                let binding = { TemplateKey = templateKey; Values = values }
+                let nextRows =
+                    match requestedRowId with
+                    | None ->
+                        row rowId kind ("series." + rowId) 1.0
+                        |> TaRowEditorBinding.attach binding
+                        |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; "))
+                        |> Array.singleton
+                        |> Array.append document.Rows
+                    | Some existingRowId ->
+                        document.Rows
+                        |> Array.map (fun existing ->
+                            if existing.RowId <> existingRowId then existing
+                            else
+                                { existing with Kind = kind }
+                                |> TaRowEditorBinding.attach binding
+                                |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; ")))
                 runtimeState.Value <-
                     { current with
                         Document =
                             Some
                                 { document with
-                                    Rows = Array.append document.Rows [| row rowId kind ("series." + rowId) 1.0 |] }
+                                    Rows = nextRows }
                         DocumentRevision = current.DocumentRevision + 1L
                         LastTransportSequence = current.LastTransportSequence + 1L
                         LastError =
@@ -357,7 +385,7 @@ module Client =
             { SubmitAction =
                 fun request ->
                     async {
-                        do! Async.Sleep 5000
+                        do! Async.Sleep 750
                         actionCount.Value <- actionCount.Value + 1
                         lastAction.Value <- actionName request.Action
                         if rejectNext.Value then
@@ -398,7 +426,7 @@ module Client =
                 textView lastAction.View
             ]
             TaWorkspaceRenderer.render
-                { TaWorkspaceRenderer.defaultOptions with EditorSchemas = sampleEditorSchemas }
+                TaWorkspaceRenderer.defaultOptions
                 callbacks
                 runtimeState
         ]

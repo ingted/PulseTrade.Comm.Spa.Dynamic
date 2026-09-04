@@ -324,7 +324,7 @@ function defaultCacheLimit(){
 function getJson(url, onOk, onError){
   const options=requestOptions();
   options.cache="no-store";
-  (globalThis.fetch(url, options).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank(body)?"{}":body)):onError(isBlank(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank(body)?"{}":body)):onError(isBlank(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error_2) => onError(errorMessage(error_2)));
 }
 function set_currentAclSnapshotJson(_1){
   _c_1.currentAclSnapshotJson=_1;
@@ -838,8 +838,8 @@ function mountAppendPage(page, definition){
         }
         else setStatus(status, "Cached data is current");
       }
-    }, (error) => {
-      if(generation===loadGeneration)setStatus(status, "Cached data loaded; tail sync failed: "+error);
+    }, (error_2) => {
+      if(generation===loadGeneration)setStatus(status, "Cached data loaded; tail sync failed: "+error_2);
     });
   };
   const applySnapshot=(source, data) => {
@@ -925,10 +925,10 @@ function mountAppendPage(page, definition){
           writeAppendPageKeyWatermark(data);
           applySnapshot("backend", data);
         }
-      }, (error) => {
+      }, (error_2) => {
         if(generation===loadGeneration){
-          setStatus(status, error);
-          setStatus(workState, error);
+          setStatus(status, error_2);
+          setStatus(workState, error_2);
         }
       });
     };
@@ -1250,8 +1250,8 @@ function mountAppendPage(page, definition){
               return null;
           }
         }
-        catch(error){
-          return setStatus(status, "WebSocket sync parse failed: "+errorMessage(error));
+        catch(error_2){
+          return setStatus(status, "WebSocket sync parse failed: "+errorMessage(error_2));
         }
       };
       socket_1.onerror=() => {
@@ -1353,8 +1353,8 @@ function mountAppendPage(page, definition){
           refreshPendingState();
           load();
         });
-      }, (error) => {
-        setStatus(status, pendingFailure("Add key", error));
+      }, (error_2) => {
+        setStatus(status, pendingFailure("Add key", error_2));
         refreshPendingState();
       });
     }
@@ -1373,7 +1373,7 @@ function mountAppendPage(page, definition){
         if(isBlank(actorAddress))setStatus(workState, "Actor address key is required");
         else {
           const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_1);
-          const wsRequest=New_17("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request_1.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+          const wsRequest=New_17("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request_1.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
           pendingWsAppendIds=pendingWsAppendIds.concat([pendingId]);
           refreshPendingState();
           setStatus(workState, "Sending through WebSocket; pending command saved in browser DB");
@@ -1389,7 +1389,7 @@ function mountAppendPage(page, definition){
       if(m_1!=null&&m_1.$==1){
         const bucket_1=m_1.$0;
         const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_1=New_19("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_1=New_19("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_1]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -1404,7 +1404,7 @@ function mountAppendPage(page, definition){
       if(m_2!=null&&m_2.$==1){
         const bucket_2=m_2.$0;
         const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_2=New_18("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_1(arrayOrEmpty(definition.tags), delay(() => append_1(arrayOrEmpty(request.tags), delay(() => append_1(["page:"+asText(definition.pageId)], delay(() => append_1(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        const wsRequest_2=New_18("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_2]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -1609,8 +1609,8 @@ function mountAppendPage(page, definition){
           setStatus(status, "Key removed");
           refreshPendingState();
         });
-      }, (error) => {
-        setStatus(status, pendingFailure("Remove key", error));
+      }, (error_2) => {
+        setStatus(status, pendingFailure("Remove key", error_2));
         refreshPendingState();
       });
     }
@@ -1625,8 +1625,8 @@ function mountAppendPage(page, definition){
         setStatus(status, "Page removed");
         globalThis.location.assign("/chat");
       });
-    }, (error) => {
-      setStatus(status, pendingFailure("Remove page", error));
+    }, (error_2) => {
+      setStatus(status, pendingFailure("Remove page", error_2));
       refreshPendingState();
     });
   }),reload.addEventListener("click", load),keyFilter.addEventListener("input", load),appendButton.addEventListener("click", appendValue),load(),subscribeKeyRegistry(),refreshPendingState());
@@ -1663,10 +1663,10 @@ function renderNav(nav, activePath, pages){
       return postJson("/pages/api/remove-page", New_15(page.pageId), (reply) => {
         writeAppendPagesDefinitions(reply);
         isCurrentPage(activePath, href)?globalThis.location.assign("/chat"):renderNav(nav, activePath, reply.pages);
-      }, (error) => {
+      }, (error_2) => {
         closeButton.removeAttribute("disabled");
         closeButton.textContent="!";
-        closeButton.setAttribute("title", "Remove page failed: "+error);
+        closeButton.setAttribute("title", "Remove page failed: "+error_2);
       });
     });
     append(link, [badge, element("span", "nav-title", pageTitle(page)), closeButton]);
@@ -1875,8 +1875,8 @@ function mountSets(page){
         writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, setValueCount(data.buckets), "sets-state");
         applySnapshot("backend", data);
       }
-    }, (error) => {
-      if(generation===loadGeneration)setStatus(status, error);
+    }, (error_2) => {
+      if(generation===loadGeneration)setStatus(status, error_2);
     });
   };
   const closeActionPool=() => {
@@ -2111,8 +2111,8 @@ function mountSets(page){
           break;
       }
     }
-    catch(error){
-      setStatus(status, "WebSocket sets sync parse failed: "+errorMessage(error));
+    catch(error_2){
+      setStatus(status, "WebSocket sets sync parse failed: "+errorMessage(error_2));
     }
   }
   ensureSetsSubscriptions=() => {
@@ -2140,8 +2140,8 @@ function mountSets(page){
         setStatus(status, "Cleaned "+String(reply.hiddenCount)+" no-show actor stream(s)");
         load();
       });
-    }, (error) => {
-      setStatus(status, "CleanAllNoShow Actors failed: "+error);
+    }, (error_2) => {
+      setStatus(status, "CleanAllNoShow Actors failed: "+error_2);
     });
   });
   cleanParticipantsAction.addEventListener("click", () => {
@@ -2156,8 +2156,8 @@ function mountSets(page){
         setStatus(status, "Cleaned "+String(reply.cleanedParticipantCount)+" inactive participant(s); hidden "+String(reply.hiddenCount)+" stream(s)");
         load();
       });
-    }, (error) => {
-      setStatus(status, "Clean Inactive Participant Collections failed: "+error);
+    }, (error_2) => {
+      setStatus(status, "Clean Inactive Participant Collections failed: "+error_2);
     });
   });
   keyFilter.addEventListener("input", load);
@@ -2336,9 +2336,9 @@ function mountActors(page){
     });
     getJson("/actors/api/tree", (data) => {
       renderActorTree("backend", data);
-    }, (error) => {
+    }, (error_2) => {
       clear(treePanel);
-      treePanel.appendChild(element("div", "empty", "ActorTree unavailable: "+error));
+      treePanel.appendChild(element("div", "empty", "ActorTree unavailable: "+error_2));
     });
   };
   const setWsState=(value) => {
@@ -2470,8 +2470,8 @@ function mountActors(page){
           break;
       }
     }
-    catch(error){
-      setStatus(status, "WebSocket actors sync parse failed: "+errorMessage(error));
+    catch(error_2){
+      setStatus(status, "WebSocket actors sync parse failed: "+errorMessage(error_2));
     }
   }
   reload.addEventListener("click", load);
@@ -2648,8 +2648,8 @@ function mountChat(page){
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
           polling=false;
-        }, (error) => {
-          setStatus(state, error);
+        }, (error_2) => {
+          setStatus(state, error_2);
           polling=false;
         });
       };
@@ -2711,12 +2711,12 @@ function mountChat(page){
       });
     }
   }
-  function cacheAcceptedChatMessage(sequence, message){
+  function cacheAcceptedChatMessage(sequence_1, message){
     if(!(message==null)&&!isBlank(message.messageId)&&!isBlank(selected)){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_28(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_28(merged, message.messageId), sequence_1>0n?sequence_1:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -2765,8 +2765,8 @@ function mountChat(page){
       }
       else responseStatus=="error"?exists((id) => id==requestId, pendingWsChatIds)?(setStatus(state, pendingFailure("WebSocket chat send", asText(response.error))),refreshChatPendingState()):setStatus(state, "WebSocket chat error: "+asText(response.error)):null;
     }
-    catch(error){
-      setStatus(state, "WebSocket chat parse failed: "+errorMessage(error));
+    catch(error_2){
+      setStatus(state, "WebSocket chat parse failed: "+errorMessage(error_2));
     }
   }
   function flushChatSyncFrames(socket){
@@ -2863,8 +2863,8 @@ function mountChat(page){
         }, 250);
         setStatus(state, "Exported "+String(length(rows))+" message(s)");
       }
-      catch(error){
-        setStatus(state, "Chat export failed: "+errorMessage(error));
+      catch(error_2){
+        setStatus(state, "Chat export failed: "+errorMessage(error_2));
       }
     }
   }
@@ -2967,10 +2967,10 @@ function mountLoginFallback(root){
       postJson(config.submitPath, request, (reply) => {
         const target=textOr(config.returnUrl, reply.returnUrl);
         globalThis.location.assign(target);
-      }, (error) => {
+      }, (error_2) => {
         submit_1.removeAttribute("disabled");
         submit_1.textContent="\u767b\u5165\u4e26\u8fd4\u56de PTCS";
-        setError(isBlank(error)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error);
+        setError(isBlank(error_2)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error_2);
       });
     }
   };
@@ -3026,8 +3026,8 @@ function requestSeq(){
 function requestOptions(){
   return{credentials:"same-origin"};
 }
-function errorMessage(error){
-  return error==null?"request failed":String(error);
+function errorMessage(error_2){
+  return error_2==null?"request failed":String(error_2);
 }
 function isCurrentPage(activePath, href){
   return TrimEnd(activePath, ["/"])==TrimEnd(href, ["/"]);
@@ -3226,10 +3226,10 @@ function postAppendPageKey(url, body, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_2) => onError(errorMessage(error_2)));
 }
-function pendingFailure(action, error){
-  return String(action)+" failed; pending command kept in browser DB: "+String(asText(error));
+function pendingFailure(action, error_2){
+  return String(action)+" failed; pending command kept in browser DB: "+String(asText(error_2));
 }
 function rememberPending(kind, target, url, body){
   const payloadJson=JSON.stringify(body);
@@ -3410,7 +3410,7 @@ function postJsonText(url, payloadJson, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=textOr("{}", payloadJson);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_2) => onError(errorMessage(error_2)));
 }
 function postJson(url, body, onOk, onError){
   const headers=new Headers();
@@ -3419,7 +3419,7 @@ function postJson(url, body, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_2) => onError(errorMessage(error_2)));
 }
 function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
@@ -3428,7 +3428,7 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_2) => onError(errorMessage(error_2)));
 }
 function renderAppendValue(definition, value){
   let mounted, savedScrollTop, modeBeforeFullscreen, focusBeforeFullscreen, presentationRendered, _1, _2;
@@ -3476,9 +3476,9 @@ function renderAppendValue(definition, value){
             return;
           }
         }
-        catch(error){
+        catch(error_2){
           actionFeedback.className="reply-presentation-action-feedback error";
-          actionFeedback.textContent=textOr("Action failed", errorMessage(error));
+          actionFeedback.textContent=textOr("Action failed", errorMessage(error_2));
           return;
         }
       });
@@ -3510,8 +3510,8 @@ function renderAppendValue(definition, value){
           mounted=true;
           setData("mount-state", "mounted", shell_1);
         }
-        catch(error){
-          inlineHost.appendChild(element("div", "reply-presentation-error", textOr("Reply presentation failed.", errorMessage(error))));
+        catch(error_2){
+          inlineHost.appendChild(element("div", "reply-presentation-error", textOr("Reply presentation failed.", errorMessage(error_2))));
           setData("mount-state", "error", shell_1);
         }
       }
@@ -3748,9 +3748,9 @@ function renderPageCreator(nav, activePath, pages){
         candidatesLoaded=true;
         binding.setAttribute("data-candidate-count", String(length(candidates)));
         onDone();
-      }, (error) => {
+      }, (error_2) => {
         resetBinding();
-        setStatus(status, error);
+        setStatus(status, error_2);
         onDone();
       }));
     }
@@ -3771,8 +3771,8 @@ function renderPageCreator(nav, activePath, pages){
           refresh(reply.pages);
           reply.page==null?setStatus(status, "Saved"):(setStatus(status, "Saved "+pageTitle(reply.page)),globalThis.location.assign(navigationPathForCreatedPage(reply.page)));
         });
-      }, (error) => {
-        setStatus(status, pendingFailure("Create page", error));
+      }, (error_2) => {
+        setStatus(status, pendingFailure("Create page", error_2));
       });
     }
   };
@@ -3815,12 +3815,12 @@ function renderPageCreator(nav, activePath, pages){
                 finishOne();
               });
             }
-            catch(error){
-              setStatus(status, "Replay create page parse failed: "+errorMessage(error));
+            catch(error_2){
+              setStatus(status, "Replay create page parse failed: "+errorMessage(error_2));
               finishOne();
             }
-          }, (error) => {
-            setStatus(status, pendingFailure("Replay create page", error));
+          }, (error_2) => {
+            setStatus(status, pendingFailure("Replay create page", error_2));
             finishOne();
           });
         }, mine);
@@ -4786,8 +4786,8 @@ function downloadJsonExport(wire){
     }, 250);
     return Ok("TA Research JSON download started.");
   }
-  catch(error){
-    return Error_1(error.message);
+  catch(error_2){
+    return Error_1(error_2.message);
   }
 }
 function exportFileName(){
@@ -4856,7 +4856,7 @@ function transition(options, event, state){
         $1:_1
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 10:
-      return state.Connected?[New_40(state.CanvasInstanceId, {$:7}, state.PollEnabled, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_1([CancelPoll], delay(() => append_1([CancelReconnect], delay(() =>!state.InFlight?append_1([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_40(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
+      return state.Connected?[New_40(state.CanvasInstanceId, {$:7}, state.PollEnabled, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_2([CancelPoll], delay(() => append_2([CancelReconnect], delay(() =>!state.InFlight?append_2([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_40(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
     case 11:
       return[state, []];
   }
@@ -5125,6 +5125,11 @@ function sortByDescending(f, arr){
 function pick(f, arr){
   const m=tryPick(f, arr);
   return m==null?FailWith("KeyNotFoundException"):m.$0;
+}
+function sumBy(f, arr){
+  let sum=0;
+  for(let i=0;i<arr.length;i++)sum+=f(arr[i]);
+  return sum;
 }
 function min(arr){
   let m;
@@ -6002,7 +6007,7 @@ function Insert(elem, tree){
   return _1;
 }
 function EmptyAttr(){
-  return _c_8.EmptyAttr;
+  return _c_9.EmptyAttr;
 }
 function HasExitAnim(attr_1){
   const flag=2;
@@ -6084,19 +6089,19 @@ function ParseHTMLIntoFakeRoot(elem){
   }
 }
 function rhtml(){
-  return _c_7.rhtml;
+  return _c_8.rhtml;
 }
 function wrapMap(){
-  return _c_7.wrapMap;
+  return _c_8.wrapMap;
 }
 function defaultWrap(){
-  return _c_7.defaultWrap;
+  return _c_8.defaultWrap;
 }
 function rxhtmlTag(){
-  return _c_7.rxhtmlTag;
+  return _c_8.rxhtmlTag;
 }
 function rtagName(){
-  return _c_7.rtagName;
+  return _c_8.rtagName;
 }
 function IterSelector(el, selector, f){
   const l=el.querySelectorAll(selector);
@@ -6262,6 +6267,9 @@ function forall_1(f, s){
 function protect(s){
   return s==null?"":s;
 }
+function IsNullOrEmpty(x){
+  return x==null||x=="";
+}
 class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
@@ -6423,6 +6431,29 @@ function ofSeq_1(s){
     }
   }
 }
+function append_1(x, y){
+  let r, l, go;
+  if(x.$==0)return y;
+  else if(y.$==0)return x;
+  else {
+    const res=Create_1(FSharpList, {$:1});
+    r=res;
+    l=x;
+    go=true;
+    while(go)
+      {
+        r.$0=l.$0;
+        l=l.$1;
+        if(l.$==0)go=false;
+        else {
+          const t=Create_1(FSharpList, {$:1});
+          r=(r.$1=t,t);
+        }
+      }
+    r.$1=y;
+    return res;
+  }
+}
 function head(l){
   return l.$==1?l.$0:listEmpty();
 }
@@ -6431,6 +6462,9 @@ function tail(l){
 }
 function listEmpty(){
   return FailWith("The input list was empty.");
+}
+function collect_1(f, l){
+  return ofSeq_1(collect_2(f, l));
 }
 function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
@@ -6507,7 +6541,7 @@ function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress
 function delay(f){
   return{GetEnumerator:() => Get(f())};
 }
-function append_1(s1, s2){
+function append_2(s1, s2){
   return{GetEnumerator:() => {
     const e1=Get(s1);
     const first=[true];
@@ -6575,7 +6609,7 @@ function forall_2(p, s){
 function distinct_1(s){
   return distinctBy_1((x) => x, s);
 }
-function collect_1(f, s){
+function collect_2(f, s){
   return concat_2(map_2(f, s));
 }
 function exists_1(p, s){
@@ -7492,6 +7526,20 @@ function arrContains(item, arr){
     else i=i+1;
   return!c;
 }
+function countBy(f, a){
+  const d=new Dictionary("New_5");
+  const keys=[];
+  for(let i=0, _1=length(a)-1;i<=_1;i++){
+    const k=f(a[i]);
+    if(d.ContainsKey(k))d.set_Item(k, d.Item(k)+1);
+    else {
+      keys.push(k);
+      d.DAdd(k, 1);
+    }
+  }
+  mapInPlace((k_1) =>[k_1, d.Item(k_1)], keys);
+  return keys;
+}
 function Get(x){
   return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):x.GetEnumerator();
 }
@@ -7674,7 +7722,7 @@ function Remove(k, src){
   else if(t.Right==null)return Rebuild(spine, t.Left);
   else if(t.Left==null)return Rebuild(spine, t.Right);
   else {
-    const d=ofSeq(append_1(Enumerate(false, t.Left), Enumerate(false, t.Right)));
+    const d=ofSeq(append_2(Enumerate(false, t.Left), Enumerate(false, t.Right)));
     let _1=Build(d, 0, d.length-1);
     return Rebuild(spine, _1);
   }
@@ -7974,6 +8022,7 @@ function optionInt(value){
   return value==null?0:value.$0;
 }
 function stateFromWire(wire){
+  let editorSchemas;
   if(wire==null||wire.wireVersion!="ta-browser.v1"&&wire.wireVersion!="ta-browser.v2"&&wire.wireVersion!="ta-browser.v3"&&wire.wireVersion!="ta-browser.v4")return Error_1("Unsupported TA browser state wire.");
   else if(wire.wireVersion=="ta-browser.v4"&&!(wire.series==null)&&exists((series) => {
     const a=0;
@@ -8002,7 +8051,7 @@ function stateFromWire(wire){
         DataRef:D,
         HeightWeight:row.heightWeight,
         Visible:row.visible,
-        Options:new FSharpMap("New", []),
+        Options:mapFromWire(row.options),
         Traces:T_1
       };
     }, wire.rows);
@@ -8012,13 +8061,18 @@ function stateFromWire(wire){
     }, wire.series));
     const status={$:5, $0:new FSharpMap("New", ofArray([["label", {$:3, $0:text(wire.statusLabel)}], ["freshness", {$:3, $0:text(wire.freshness)}], ["watermarkUtc", {$:3, $0:text(wire.watermarkUtc)}], ["quality", {$:3, $0:text(wire.quality)}], ["lagSeconds", {$:2, $0:wire.lagSeconds}], ["reasonCode", {$:3, $0:text(wire.reasonCode)}]]))};
     const data=seriesData.Add_1(text(wire.statusRef), status);
-    const defaultView=OfArray(ofSeq(ofSeq_1(delay(() => append_1(!IsNullOrWhiteSpace(wire.querySourceId)?[["query.sourceId", {$:3, $0:text(wire.querySourceId)}]]:[], delay(() => append_1(!IsNullOrWhiteSpace(wire.queryInstrument)?[["query.instrument", {$:3, $0:text(wire.queryInstrument)}]]:[], delay(() => append_1(wire.queryIntervalMinutes>0?[["query.intervalMinutes", {$:2, $0:wire.queryIntervalMinutes}]]:[], delay(() => append_1(!IsNullOrWhiteSpace(wire.queryFromUtc)?[["query.fromUtc", {$:3, $0:text(wire.queryFromUtc)}]]:[], delay(() => append_1(!IsNullOrWhiteSpace(wire.queryToUtcExclusive)?[["query.toUtcExclusive", {$:3, $0:text(wire.queryToUtcExclusive)}]]:[], delay(() =>[["query.includePartial", {$:1, $0:wire.queryIncludePartial}]]))))))))))))));
+    const defaultView=OfArray(ofSeq(ofSeq_1(delay(() => append_2(!IsNullOrWhiteSpace(wire.querySourceId)?[["query.sourceId", {$:3, $0:text(wire.querySourceId)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryInstrument)?[["query.instrument", {$:3, $0:text(wire.queryInstrument)}]]:[], delay(() => append_2(wire.queryIntervalMinutes>0?[["query.intervalMinutes", {$:2, $0:wire.queryIntervalMinutes}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryFromUtc)?[["query.fromUtc", {$:3, $0:text(wire.queryFromUtc)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryToUtcExclusive)?[["query.toUtcExclusive", {$:3, $0:text(wire.queryToUtcExclusive)}]]:[], delay(() =>[["query.includePartial", {$:1, $0:wire.queryIncludePartial}]]))))))))))))));
     const lastError=IsNullOrWhiteSpace(wire.errorCode)&&IsNullOrWhiteSpace(wire.errorMessage)?null:Some({
       ReasonCode:text(wire.errorCode),
       Message:text(wire.errorMessage),
       Recoverable:wire.errorRecoverable
     });
-    return Ok({
+    if(wire.editorSchemas==null)editorSchemas=[];
+    else {
+      const f=(x) => fromValue(valueFromWire(x));
+      editorSchemas=choose((x) => ToOption(f(x)), wire.editorSchemas);
+    }
+    return!(wire.editorSchemas==null)&&length(editorSchemas)!==length(wire.editorSchemas)?Error_1("TA browser editor schema catalog is invalid."):Ok({
       Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}},
       Document:Some({
         WorkspaceId:text(wire.workspaceId),
@@ -8027,6 +8081,7 @@ function stateFromWire(wire){
         StatusRef:text(wire.statusRef),
         SharedTimeAxis:wire.sharedTimeAxis,
         Rows:rows,
+        EditorSchemas:editorSchemas,
         AllowedActions:wire.allowedActions==null?[]:wire.allowedActions,
         DefaultView:defaultView
       }),
@@ -8058,12 +8113,22 @@ function mergeSeries(current, timeline, wire){
 function temporalSeriesMetadataIsValid(count, series){
   return!series.hasTemporal||!(series.sourceIntervalIds==null)&&length(series.sourceIntervalIds)===count&&!(series.scaleKeys==null)&&length(series.scaleKeys)===count&&!(series.intervalStartUtc==null)&&length(series.intervalStartUtc)===count&&!(series.intervalEndUtc==null)&&length(series.intervalEndUtc)===count&&!(series.observedThroughUtc==null)&&length(series.observedThroughUtc)===count&&!(series.availableAtUtc==null)&&length(series.availableAtUtc)===count&&!(series.hasAvailableAtUtc==null)&&length(series.hasAvailableAtUtc)===count&&!(series.finality==null)&&length(series.finality)===count&&!(series.projections==null)&&length(series.projections)===count&&!(series.qualities==null)&&length(series.qualities)===count;
 }
+function valueFromWire(wire){
+  if(wire==null)return{$:0};
+  else {
+    const m=text(wire.kind);
+    return m=="bool"?{$:1, $0:wire.boolValue}:m=="number"?{$:2, $0:wire.numberValue}:m=="text"?{$:3, $0:text(wire.textValue)}:m=="array"?wire.items==null?{$:4, $0:[]}:{$:4, $0:map(valueFromWire, wire.items)}:m=="object"?{$:5, $0:mapFromWire(wire.fields)}:{$:0};
+  }
+}
 function pollState(value){
   const m=text(value);
   return m=="mounted-idle"?{$:1}:m=="ready"?{$:2}:m=="poll-in-flight"?{$:3}:m=="suspended"?{$:5}:m=="paused-for-resync"?{$:6}:m=="disposed"?{$:7}:{$:0};
 }
 function seriesPointValues(wire, series){
   return wire.wireVersion=="ta-browser.v3"||wire.wireVersion=="ta-browser.v4"?columnarPointValues(wire.timeline, series):series.points==null?[]:map(pointValue, series.points);
+}
+function mapFromWire(fields){
+  return fields==null?new FSharpMap("New", []):OfArray(map((field_1) =>[text(field_1.key), valueFromWire(field_1.value)], fields));
 }
 function traceKind(value){
   const m=text(value);
@@ -8106,10 +8171,10 @@ function pointValue(point){
   return point.hasTemporal?temporalPointValue(point.sourceIntervalId, point.scaleKey, point.intervalStartUtc, point.intervalEndUtc, point.observedThroughUtc, point.availableAtUtc, point.hasAvailableAtUtc, point.finality, point.projection, point.quality, pointPayload(point.time, point.hasOpen, point.openValue, point.hasHigh, point.highValue, point.hasLow, point.lowValue, point.hasClose, point.closeValue, point.hasVolume, point.volumeValue, point.hasLineValue, point.lineValue)):pointPayload(point.time, point.hasOpen, point.openValue, point.hasHigh, point.highValue, point.hasLow, point.lowValue, point.hasClose, point.closeValue, point.hasVolume, point.volumeValue, point.hasLineValue, point.lineValue);
 }
 function pointPayload(time, hasOpen, openValue, hasHigh, highValue, hasLow, lowValue, hasClose, closeValue, hasVolume, volumeValue, hasLineValue, lineValue){
-  return{$:5, $0:OfArray(ofSeq(ofSeq_1(delay(() => append_1(!IsNullOrWhiteSpace(time)?[["t", {$:3, $0:time}]]:[], delay(() => append_1(hasOpen?[["o", {$:2, $0:openValue}]]:[], delay(() => append_1(hasHigh?[["h", {$:2, $0:highValue}]]:[], delay(() => append_1(hasLow?[["l", {$:2, $0:lowValue}]]:[], delay(() => append_1(hasClose?[["c", {$:2, $0:closeValue}]]:[], delay(() => append_1(hasVolume?[["v", {$:2, $0:volumeValue}]]:[], delay(() => hasLineValue?[["v", {$:2, $0:lineValue}]]:[]))))))))))))))))};
+  return{$:5, $0:OfArray(ofSeq(ofSeq_1(delay(() => append_2(!IsNullOrWhiteSpace(time)?[["t", {$:3, $0:time}]]:[], delay(() => append_2(hasOpen?[["o", {$:2, $0:openValue}]]:[], delay(() => append_2(hasHigh?[["h", {$:2, $0:highValue}]]:[], delay(() => append_2(hasLow?[["l", {$:2, $0:lowValue}]]:[], delay(() => append_2(hasClose?[["c", {$:2, $0:closeValue}]]:[], delay(() => append_2(hasVolume?[["v", {$:2, $0:volumeValue}]]:[], delay(() => hasLineValue?[["v", {$:2, $0:lineValue}]]:[]))))))))))))))))};
 }
 function temporalPointValue(sourceIntervalId, scaleKey, intervalStartUtc, intervalEndUtc, observedThroughUtc, availableAtUtc, hasAvailableAtUtc, finality, projection, quality, payload){
-  return{$:5, $0:OfArray(ofSeq(ofSeq_1(delay(() => append_1([["_type", {$:3, $0:"temporal-point.v1"}]], delay(() => append_1([["sourceIntervalId", {$:3, $0:sourceIntervalId}]], delay(() => append_1([["scaleKey", {$:3, $0:scaleKey}]], delay(() => append_1([["intervalStartUtc", {$:3, $0:intervalStartUtc}]], delay(() => append_1([["intervalEndUtc", {$:3, $0:intervalEndUtc}]], delay(() => append_1([["observedThroughUtc", {$:3, $0:observedThroughUtc}]], delay(() => append_1([["finality", {$:3, $0:finality}]], delay(() => append_1([["projection", {$:3, $0:projection}]], delay(() => append_1([["value", payload]], delay(() => append_1(hasAvailableAtUtc?[["availableAtUtc", {$:3, $0:availableAtUtc}]]:[], delay(() =>!IsNullOrWhiteSpace(quality)?[["quality", {$:3, $0:quality}]]:[]))))))))))))))))))))))))};
+  return{$:5, $0:OfArray(ofSeq(ofSeq_1(delay(() => append_2([["_type", {$:3, $0:"temporal-point.v1"}]], delay(() => append_2([["sourceIntervalId", {$:3, $0:sourceIntervalId}]], delay(() => append_2([["scaleKey", {$:3, $0:scaleKey}]], delay(() => append_2([["intervalStartUtc", {$:3, $0:intervalStartUtc}]], delay(() => append_2([["intervalEndUtc", {$:3, $0:intervalEndUtc}]], delay(() => append_2([["observedThroughUtc", {$:3, $0:observedThroughUtc}]], delay(() => append_2([["finality", {$:3, $0:finality}]], delay(() => append_2([["projection", {$:3, $0:projection}]], delay(() => append_2([["value", payload]], delay(() => append_2(hasAvailableAtUtc?[["availableAtUtc", {$:3, $0:availableAtUtc}]]:[], delay(() =>!IsNullOrWhiteSpace(quality)?[["quality", {$:3, $0:quality}]]:[]))))))))))))))))))))))))};
 }
 let Disconnected={$:6};
 function PollDue(nowUtc){
@@ -8138,10 +8203,17 @@ function ActiveChanged(Item){
   return{$:7, $0:Item};
 }
 function render(options, callbacks, runtimeState){
-  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, navigatorElement, chartRenderSequence, actionSequence;
+  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, editingRowId, pendingEditorMutation, navigatorElement, finishNavigatorDrag, chartRenderSequence, actionSequence;
   const canvasId=runtimeState.Get().Identity.CanvasInstanceId;
-  const editorSchemas=options.EditorSchemas==null?[]:options.EditorSchemas;
-  const initialEditorSchema=tryHead(editorSchemas);
+  const configuredEditorSchemas=options.EditorSchemas==null?[]:options.EditorSchemas;
+  const editorSchemasNow=() => {
+    const o_2=runtimeState.Get().Document;
+    const o_3=o_2==null?null:Some(o_2.$0.EditorSchemas);
+    const values=o_3==null?[]:o_3.$0;
+    const documentSchemas=values==null?[]:values;
+    return filter_1((schema) => validateSchema(limits(), schema).$!=1, length(documentSchemas)>0?documentSchemas:configuredEditorSchemas);
+  };
+  const initialEditorSchema=tryHead(editorSchemasNow());
   const o=initialEditorSchema==null?null:Some(initialEditorSchema.$0.TemplateKey);
   let _1=o==null?"":o.$0;
   const selectedTemplate=_c_3.Create_1(_1);
@@ -8164,7 +8236,10 @@ function render(options, callbacks, runtimeState){
   const draftWindow=_c_3.Create_1(null);
   addRowSequence=0;
   pendingAddRowId=null;
+  editingRowId=null;
+  pendingEditorMutation=null;
   navigatorElement=null;
+  finishNavigatorDrag=null;
   chartRenderSequence=0;
   const uiState=_c_3.Create_1({
     Window:{StartIndex:0, Count:options.DefaultVisibleBars},
@@ -8178,15 +8253,16 @@ function render(options, callbacks, runtimeState){
   actionSequence=0;
   const commandsDisabledView=Map2((_3, _4) => remoteDisabled(_3.Poll)||_4.PendingActionId!=null, runtimeState.View, uiState.View);
   const commandsDisabledNow=() => remoteDisabled(runtimeState.Get().Poll)||uiState.Get().PendingActionId!=null;
-  const startAction=(action, successText, onAccepted) => {
+  const startActionWith=(action, successText, onAccepted, onRejected) => {
     actionSequence=actionSequence+1;
     const request={
       RequestId:canvasIdText(canvasId)+":ui:"+String(actionSequence),
       ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision),
       Action:action
     };
-    return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted);
+    return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted, onRejected);
   };
+  const startAction=(action, successText, onAccepted) => startActionWith(action, successText, onAccepted, () => { });
   const chartRuntimeView=MapCachedBy((_3, _4) => _3.DocumentRevision===_4.DocumentRevision&&_3.DataRevision===_4.DataRevision&&_3.LastTransportSequence===_4.LastTransportSequence, (x) => x, runtimeState.View);
   const referenceLength=() => {
     const m=runtimeState.Get().Document;
@@ -8248,6 +8324,10 @@ function render(options, callbacks, runtimeState){
     let _4={StartIndex:_3, Count:boundedCount};
     setWindow(true, _4);
   };
+  const finishNavigatorDragFromElement=(event) => {
+    event.preventDefault();
+    finishNavigatorDrag==null?void 0:finishNavigatorDrag.$0();
+  };
   const setCursorIndex=(value) => {
     if(!Equals(uiState.Get().CursorIndex, value)){
       const _3=uiState.Get();
@@ -8265,10 +8345,28 @@ function render(options, callbacks, runtimeState){
   };
   const resetEditorFor=(templateKey) => {
     selectedTemplate.Set(templateKey);
-    const o_2=tryFind((schema) => schema.TemplateKey==templateKey, editorSchemas);
+    const o_2=tryFind((schema) => schema.TemplateKey==templateKey, editorSchemasNow());
     const o_3=o_2==null?null:Some(initialEditorInputs(o_2.$0));
     let _3=o_3==null?[]:o_3.$0;
     editorValues.Set(_3);
+  };
+  const forceCloseRowEditor=() => {
+    editingRowId=null;
+    pendingEditorMutation=null;
+    const _3=uiState.Get();
+    let _4={
+      Window:_3.Window,
+      FollowLatest:_3.FollowLatest,
+      HiddenRows:_3.HiddenRows,
+      AddRowOpen:false,
+      CursorIndex:_3.CursorIndex,
+      PendingActionId:_3.PendingActionId,
+      Feedback:_3.Feedback
+    };
+    uiState.Set(_4);
+  };
+  const closeRowEditor=() => {
+    if(uiState.Get().PendingActionId==null)forceCloseRowEditor();
   };
   const editorTestId=(path) =>"ta-editor-"+Replace(Replace(Replace(path, ".", "-"), "[", "-"), "]", "");
   const setEditorScalar=(path, value) => editorValues.Set(setEditorInput({Path:path, Value:value}, editorValues.Get()));
@@ -8290,7 +8388,7 @@ function render(options, callbacks, runtimeState){
         const maximum=kind.$2;
         const itemKind=kind.$0;
         const indexesView=MapCachedBy(Equals, (x) => x, Map((v) => listIndexes(path, v), editorValues.View));
-        return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; gap:5px; min-width:0;")], [Doc.Element("span", [Attr.Create("style", "font-size:10px; color:#60738b;")], [Doc.TextNode(required?labelText+" *":labelText)]), Doc.EmbedView(Map((indexes) => Doc.Element("div", [Attr.Create("data-testid", editorTestId(path)+"-items"), Attr.Create("style", "display:flex; flex-direction:column; gap:5px;")], ofSeq_1(delay(() => collect_1((m_1) => {
+        return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; gap:5px; min-width:0;")], [Doc.Element("span", [Attr.Create("style", "font-size:10px; color:#60738b;")], [Doc.TextNode(required?labelText+" *":labelText)]), Doc.EmbedView(Map((indexes) => Doc.Element("div", [Attr.Create("data-testid", editorTestId(path)+"-items"), Attr.Create("style", "display:flex; flex-direction:column; gap:5px;")], ofSeq_1(delay(() => collect_2((m_1) => {
           const position=m_1[0];
           const index=m_1[1];
           const itemPath=String(path)+"["+String(index)+"]";
@@ -8329,7 +8427,7 @@ function render(options, callbacks, runtimeState){
         else if(kind.$==1){
           const minimum=kind.$0;
           const maximum_1=kind.$1;
-          return shell_1(element_1("input", ofSeq_1(delay(() => append_1([Attr.Create("data-testid", editorTestId(path))], delay(() => append_1([Attr.Create("type", "number")], delay(() => append_1([Attr.Create("value", scalarText(path))], delay(() => append_1([Attr.Create("step", "1")], delay(() => append_1([Attr.Create("style", "height:30px; min-width:0; width:100%; border:1px solid #b9c6d8; border-radius:4px; background:#fff; color:#142033; padding:4px 7px; box-sizing:border-box; font-size:12px;")], delay(() => append_1([OnAfterRender((node) => {
+          return shell_1(element_1("input", ofSeq_1(delay(() => append_2([Attr.Create("data-testid", editorTestId(path))], delay(() => append_2([Attr.Create("type", "number")], delay(() => append_2([Attr.Create("value", scalarText(path))], delay(() => append_2([Attr.Create("step", "1")], delay(() => append_2([Attr.Create("style", "height:30px; min-width:0; width:100%; border:1px solid #b9c6d8; border-radius:4px; background:#fff; color:#142033; padding:4px 7px; box-sizing:border-box; font-size:12px;")], delay(() => append_2([OnAfterRender((node) => {
             const input_1=node;
             input_1.addEventListener("input", () => {
               let o_4;
@@ -8338,12 +8436,12 @@ function render(options, callbacks, runtimeState){
               }}), o_4]);
               return m_1[0]?setEditorScalar(path, {$:1, $0:Number(m_1[1])}):removeEditorScalar(path);
             });
-          })], delay(() => append_1(minimum==null?[EmptyAttr()]:[Attr.Create("min", String(minimum.$0))], delay(() => maximum_1==null?[EmptyAttr()]:[Attr.Create("max", String(maximum_1.$0))])))))))))))))))), []));
+          })], delay(() => append_2(minimum==null?[EmptyAttr()]:[Attr.Create("min", String(minimum.$0))], delay(() => maximum_1==null?[EmptyAttr()]:[Attr.Create("max", String(maximum_1.$0))])))))))))))))))), []));
         }
         else if(kind.$==2){
           const minimum_1=kind.$0;
           const maximum_2=kind.$1;
-          return shell_1(element_1("input", ofSeq_1(delay(() => append_1([Attr.Create("data-testid", editorTestId(path))], delay(() => append_1([Attr.Create("type", "number")], delay(() => append_1([Attr.Create("value", scalarText(path))], delay(() => append_1([Attr.Create("step", "any")], delay(() => append_1([Attr.Create("style", "height:30px; min-width:0; width:100%; border:1px solid #b9c6d8; border-radius:4px; background:#fff; color:#142033; padding:4px 7px; box-sizing:border-box; font-size:12px;")], delay(() => append_1([OnAfterRender((node) => {
+          return shell_1(element_1("input", ofSeq_1(delay(() => append_2([Attr.Create("data-testid", editorTestId(path))], delay(() => append_2([Attr.Create("type", "number")], delay(() => append_2([Attr.Create("value", scalarText(path))], delay(() => append_2([Attr.Create("step", "any")], delay(() => append_2([Attr.Create("style", "height:30px; min-width:0; width:100%; border:1px solid #b9c6d8; border-radius:4px; background:#fff; color:#142033; padding:4px 7px; box-sizing:border-box; font-size:12px;")], delay(() => append_2([OnAfterRender((node) => {
             const input_1=node;
             input_1.addEventListener("input", () => {
               let o_4;
@@ -8353,12 +8451,12 @@ function render(options, callbacks, runtimeState){
               const m_1=[_4, o_4];
               return m_1[0]?setEditorScalar(path, {$:1, $0:m_1[1]}):removeEditorScalar(path);
             });
-          })], delay(() => append_1(minimum_1==null?[EmptyAttr()]:[Attr.Create("min", fixedText(minimum_1.$0))], delay(() => maximum_2==null?[EmptyAttr()]:[Attr.Create("max", fixedText(maximum_2.$0))])))))))))))))))), []));
+          })], delay(() => append_2(minimum_1==null?[EmptyAttr()]:[Attr.Create("min", fixedText(minimum_1.$0))], delay(() => maximum_2==null?[EmptyAttr()]:[Attr.Create("max", fixedText(maximum_2.$0))])))))))))))))))), []));
         }
         else if(kind.$==3){
           const m=tryEditorInput(path, editorValues.Get());
           const isChecked=m!=null&&m.$==1&&(m.$0.$==2&&m.$0.$0);
-          return Doc.Element("label", [Attr.Create("style", "display:flex; align-items:center; gap:6px; min-height:30px; font-size:11px; color:#40536d;")], [element_1("input", ofSeq_1(delay(() => append_1([Attr.Create("data-testid", editorTestId(path))], delay(() => append_1([Attr.Create("type", "checkbox")], delay(() => append_1(isChecked?[Attr.Create("checked", "checked")]:[], delay(() =>[OnAfterRender((node) => {
+          return Doc.Element("label", [Attr.Create("style", "display:flex; align-items:center; gap:6px; min-height:30px; font-size:11px; color:#40536d;")], [element_1("input", ofSeq_1(delay(() => append_2([Attr.Create("data-testid", editorTestId(path))], delay(() => append_2([Attr.Create("type", "checkbox")], delay(() => append_2(isChecked?[Attr.Create("checked", "checked")]:[], delay(() =>[OnAfterRender((node) => {
             const input_1=node;
             input_1.addEventListener("change", () => setEditorScalar(path, {$:2, $0:input_1.checked}));
           })])))))))), []), Doc.TextNode(caption)]);
@@ -8413,7 +8511,7 @@ function render(options, callbacks, runtimeState){
   };
   const addRow=() => {
     let optionsResult;
-    const m=tryFind((schema_1) => schema_1.TemplateKey==selectedTemplate.Get(), editorSchemas);
+    const m=tryFind((schema_1) => schema_1.TemplateKey==selectedTemplate.Get(), editorSchemasNow());
     if(m!=null&&m.$==1){
       const schema=m.$0;
       const errors=validateEditorSubmission(schema, editorValues.Get());
@@ -8430,34 +8528,31 @@ function render(options, callbacks, runtimeState){
         };
         uiState.Set(_4);
       }
-      else startAction({
-        $:3,
-        $0:canvasId,
-        $1:null,
-        $2:schema.TemplateKey,
-        $3:editorValues.Get()
-      }, schema.DisplayName+" accepted.", () => {
-        const _14=uiState.Get();
-        let _15={
-          Window:_14.Window,
-          FollowLatest:_14.FollowLatest,
-          HiddenRows:_14.HiddenRows,
-          AddRowOpen:false,
-          CursorIndex:_14.CursorIndex,
-          PendingActionId:_14.PendingActionId,
-          Feedback:_14.Feedback
-        };
-        uiState.Set(_15);
-      });
+      else {
+        const o_2=runtimeState.Get().Document;
+        const o_3=o_2==null?null:Some(o_2.$0.Rows);
+        const currentRows=o_3==null?[]:o_3.$0;
+        const binding={TemplateKey:schema.TemplateKey, Values:editorValues.Get().slice()};
+        pendingEditorMutation=Some([runtimeState.Get().DocumentRevision, editingRowId, new FSharpSet("New_2", OfSeq(map((a) => a.RowId, currentRows))), binding]);
+        startActionWith({
+          $:3,
+          $0:canvasId,
+          $1:editingRowId,
+          $2:schema.TemplateKey,
+          $3:editorValues.Get()
+        }, schema.DisplayName+" accepted; awaiting authoritative document.", () => { }, () => {
+          pendingEditorMutation=null;
+        });
+      }
     }
     else {
       const m_1=addKind.Get();
       const kind=m_1=="Volume"?{$:1}:m_1=="Dmi"?{$:3}:m_1=="Adx"?{$:4}:m_1=="Macd"?{$:5}:m_1=="HeikinAshi"?{$:6}:{$:2};
       const positive=(fieldName, textValue) => {
-        let o_2;
-        const m_2=(o_2=0,[TryParse(textValue, {get:() => o_2, set:(v) => {
-          o_2=v;
-        }}), o_2]);
+        let o_4;
+        const m_2=(o_4=0,[TryParse(textValue, {get:() => o_4, set:(v) => {
+          o_4=v;
+        }}), o_4]);
         return m_2[0]&&m_2[1]>0?Ok(m_2[1]):Error_1(fieldName+" must be a positive integer.");
       };
       switch(kind.$==2?0:kind.$==3?0:kind.$==4?1:kind.$==5?2:3){
@@ -8532,7 +8627,7 @@ function render(options, callbacks, runtimeState){
     const _6=_4.Document;
     return(_5!=null&&_5.$==1?_6!=null&&_6.$==1&&_5.$0.WorkspaceId==_6.$0.WorkspaceId:_6==null)&&_3.DocumentRevision===_4.DocumentRevision;
   }, (state) => {
-    let _3, _4;
+    let _3, _4, _5, _6, _7;
     const m=state.Document;
     if(m!=null&&m.$==1){
       const document=m.$0;
@@ -8542,45 +8637,90 @@ function render(options, callbacks, runtimeState){
         intervalDraft=query.IntervalMinutes;
         fromDateDraft=query.FromUtc;
         toDateDraft=query.ToUtcExclusive;
+        const currentSchemas=editorSchemasNow();
+        if(!exists((schema) => schema.TemplateKey==selectedTemplate.Get(), currentSchemas)){
+          const m_1=tryHead(currentSchemas);
+          _3=m_1==null?closeRowEditor():resetEditorFor(m_1.$0.TemplateKey);
+        }
+        else _3=null;
         if(pendingAddRowId!=null&&pendingAddRowId.$==1){
           const rowId=pendingAddRowId.$0;
           if(exists((row) => row.RowId==rowId, document.Rows)){
             pendingAddRowId.$0;
             pendingAddRowId=null;
-            const _5=uiState.Get();
-            let _6={
-              Window:_5.Window,
-              FollowLatest:_5.FollowLatest,
-              HiddenRows:_5.HiddenRows,
+            const _8=uiState.Get();
+            let _9={
+              Window:_8.Window,
+              FollowLatest:_8.FollowLatest,
+              HiddenRows:_8.HiddenRows,
               AddRowOpen:false,
-              CursorIndex:_5.CursorIndex,
-              PendingActionId:_5.PendingActionId,
+              CursorIndex:_8.CursorIndex,
+              PendingActionId:_8.PendingActionId,
               Feedback:"Row added."
             };
-            _3=uiState.Set(_6);
+            _4=uiState.Set(_9);
           }
-          else _3=null;
+          else _4=null;
         }
-        else _3=null;
-        _4=void(synchronizedDocumentRevision=state.DocumentRevision);
+        else _4=null;
+        const bindingOf=(row) => {
+          const o_4=ToOption(tryFind_1(row));
+          return o_4==null?null:o_4.$0;
+        };
+        if(pendingEditorMutation!=null&&pendingEditorMutation.$==1){
+          pendingEditorMutation.$0[1];
+          pendingEditorMutation.$0[2];
+          pendingEditorMutation.$0[3];
+          if(state.DocumentRevision>pendingEditorMutation.$0[0]){
+            pendingEditorMutation.$0[0];
+            const expectedBinding=pendingEditorMutation.$0[3];
+            const priorRowIds=pendingEditorMutation.$0[2];
+            const targetRowId=pendingEditorMutation.$0[1];
+            if(targetRowId==null)_5=exists((row) =>!priorRowIds.Contains(row.RowId)&&Equals(bindingOf(row), Some(expectedBinding)), document.Rows);
+            else {
+              const rowId_1=targetRowId.$0;
+              const o_2=tryFind((row) => row.RowId==rowId_1, document.Rows);
+              const o_3=o_2==null?null:bindingOf(o_2.$0);
+              _5=o_3==null?false:Equals(expectedBinding, o_3.$0);
+            }
+            if(_5){
+              forceCloseRowEditor();
+              const _10=uiState.Get();
+              let _11={
+                Window:_10.Window,
+                FollowLatest:_10.FollowLatest,
+                HiddenRows:_10.HiddenRows,
+                AddRowOpen:_10.AddRowOpen,
+                CursorIndex:_10.CursorIndex,
+                PendingActionId:_10.PendingActionId,
+                Feedback:targetRowId!=null?"Row updated.":"Row added."
+              };
+              _6=uiState.Set(_11);
+            }
+            else _6=null;
+          }
+          else _6=null;
+        }
+        else _6=null;
+        _7=void(synchronizedDocumentRevision=state.DocumentRevision);
       }
-      else _4=null;
+      else _7=null;
       return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; min-width:0;")], [Doc.Element("header", [Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:10px 12px 8px; background:#fff; border-bottom:1px solid #dbe3ee;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;")], [Doc.Element("div", [Attr.Create("style", "min-width:0;")], [Doc.Element("h2", [Attr.Create("data-testid", "ta-workspace-title"), Attr.Create("style", "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;")], [Doc.TextNode(document.Title)]), Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextView(Map((current) =>"canvas "+canvasIdText(canvasId)+" / revision "+String(current.DataRevision), runtimeState.View))])]), Doc.EmbedView(Map((current) => {
         const status=statusPresentation(document.StatusRef, current);
         return Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-freshness"), Attr.Create("data-freshness", freshnessClass(status.Freshness)), Attr.Create("style", "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;")], [Doc.TextNode(status.Label)]), Doc.Element("div", [Attr.Create("data-testid", "ta-poll-state"), Attr.Create("data-poll-state", pollText(current.Poll)), Attr.Create("style", "border:1px solid #c3cfdd; border-radius:4px; padding:3px 7px; font-size:10px; color:#53667d; background:#fff;")], [Doc.TextNode(pollText(current.Poll))])]);
       }, runtimeState.View))]), Doc.EmbedView(Map((current) => {
         const status=statusPresentation(document.StatusRef, current);
         return Doc.Element("div", [Attr.Create("data-testid", "ta-status-detail"), Attr.Create("style", "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;")], ofSeq_1(delay(() => {
-          const m_1=status.Watermark;
-          let _7=m_1==null?[]:[Doc.Element("span", [], [Doc.TextNode("watermark "+m_1.$0)])];
-          return append_1(_7, delay(() => {
-            const m_2=status.Quality;
-            let _8=m_2==null?[]:[Doc.Element("span", [], [Doc.TextNode("quality "+m_2.$0)])];
-            return append_1(_8, delay(() => {
-              const m_3=status.Error;
-              if(m_3==null)return[];
+          const m_2=status.Watermark;
+          let _12=m_2==null?[]:[Doc.Element("span", [], [Doc.TextNode("watermark "+m_2.$0)])];
+          return append_2(_12, delay(() => {
+            const m_3=status.Quality;
+            let _13=m_3==null?[]:[Doc.Element("span", [], [Doc.TextNode("quality "+m_3.$0)])];
+            return append_2(_13, delay(() => {
+              const m_4=status.Error;
+              if(m_4==null)return[];
               else {
-                const value=m_3.$0;
+                const value=m_4.$0;
                 return[Doc.Element("span", [Attr.Create("data-testid", "ta-last-good-error"), Attr.Create("style", "color:#a33b43; font-weight:600;")], [Doc.TextNode(value)])];
               }
             }));
@@ -8594,125 +8734,143 @@ function render(options, callbacks, runtimeState){
         fromDateDraft=value;
       })]), Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("To"), inputText("ta-to", "YYYY-MM-DD", toDateDraft, (value) => {
         toDateDraft=value;
-      })]), primaryButtonView("ta-apply-query", "Load / Apply", commandsDisabledView, commandsDisabledNow, applyQuery)]), Doc.Element("div", [Attr.Create("data-testid", "ta-local-toolbar"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], [compactButton("ta-pan-left", "\u2190", "Pan earlier", () => {
+      })]), primaryButtonView("ta-apply-query", "Load / Apply", commandsDisabledView, commandsDisabledNow, applyQuery)]), Doc.Element("div", [Attr.Create("data-testid", "ta-local-toolbar"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], append_1(ofArray([compactButton("ta-pan-left", "\u2190", "Pan earlier", () => {
         const a=1;
         const b=resolvedWindow(uiState.Get()).Count/4>>0;
-        let _7=-(Compare(a, b)===1?a:b);
-        panWindow(_7);
+        let _12=-(Compare(a, b)===1?a:b);
+        panWindow(_12);
       }), compactButton("ta-pan-right", "\u2192", "Pan later", () => {
         const a=1;
         const b=resolvedWindow(uiState.Get()).Count/4>>0;
-        let _7=Compare(a, b)===1?a:b;
-        panWindow(_7);
+        let _12=Compare(a, b)===1?a:b;
+        panWindow(_12);
       }), compactButton("ta-zoom-in", "+", "Show fewer bars", () => {
         zoomWindow(-8);
       }), compactButton("ta-zoom-out", "\u2212", "Show more bars", () => {
         zoomWindow(8);
       }), compactButton("ta-reset-view", "Reset View", "Reset local viewport to the latest bars", resetWindow), compactRemoteButton("ta-reset-canvas", "Reset Canvas", "Request server canvas reset", commandsDisabledView, commandsDisabledNow, () => {
         startAction({$:1, $0:canvasId}, "Canvas reset accepted.", () => { });
-      }), compactButton("ta-add-row-toggle", "Add Row", "Open row request editor", () => {
-        const _7=uiState.Get();
-        let _8={
-          Window:_7.Window,
-          FollowLatest:_7.FollowLatest,
-          HiddenRows:_7.HiddenRows,
-          AddRowOpen:!uiState.Get().AddRowOpen,
-          CursorIndex:_7.CursorIndex,
-          PendingActionId:_7.PendingActionId,
-          Feedback:_7.Feedback
-        };
-        uiState.Set(_8);
-      }), Doc.Element("span", [Attr.Create("style", "margin-left:auto; color:#60738b; font-size:11px;")], [Doc.TextNode("local view controls do not query the backend")])]), Doc.EmbedView(Map((ui) => Doc.Element("div", [Attr.Create("data-testid", "ta-row-toggles"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], ofSeq_1(delay(() => collect_1((row) => {
-        const hidden=ui.HiddenRows.Contains(row.RowId);
-        return[Doc.Element("div", [Attr.Create("style", "display:inline-flex; align-items:stretch; height:26px;")], [Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-toggle-row-"+row.RowId), Attr.Create("aria-pressed", hidden?"false":"true"), Attr.Create("style", hidden?"height:26px; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;":"height:26px; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;"), Handler("click", () =>() => {
-          const nextHidden=hidden?uiState.Get().HiddenRows.Remove_1(row.RowId):uiState.Get().HiddenRows.Add_1(row.RowId);
-          const _7=uiState.Get();
-          let _8={
-            Window:_7.Window,
-            FollowLatest:_7.FollowLatest,
-            HiddenRows:nextHidden,
-            AddRowOpen:_7.AddRowOpen,
-            CursorIndex:_7.CursorIndex,
-            PendingActionId:_7.PendingActionId,
-            Feedback:_7.Feedback
+      })]), append_1(length(editorSchemasNow())>0?ofArray([compactButton("ta-add-row-toggle", "Add Row", "Open row request editor", () => {
+        if(uiState.Get().AddRowOpen)closeRowEditor();
+        else {
+          editingRowId=null;
+          const m_2=tryHead(editorSchemasNow());
+          if(m_2==null){ }
+          else resetEditorFor(m_2.$0.TemplateKey);
+          const _12=uiState.Get();
+          let _13={
+            Window:_12.Window,
+            FollowLatest:_12.FollowLatest,
+            HiddenRows:_12.HiddenRows,
+            AddRowOpen:true,
+            CursorIndex:_12.CursorIndex,
+            PendingActionId:_12.PendingActionId,
+            Feedback:""
           };
-          return uiState.Set(_8);
-        })], [Doc.TextNode(rowKindText_1(row.Kind))]), Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+rowKindText_1(row.Kind)+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
+          uiState.Set(_13);
+        }
+      })]):FSharpList.Empty, ofArray([Doc.Element("span", [Attr.Create("style", "margin-left:auto; color:#60738b; font-size:11px;")], [Doc.TextNode("local view controls do not query the backend")])])))), Doc.EmbedView(Map((ui) => Doc.Element("div", [Attr.Create("data-testid", "ta-row-toggles"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], ofSeq_1(delay(() => collect_2((row) => {
+        let editable;
+        const hidden=ui.HiddenRows.Contains(row.RowId);
+        const m_2=tryResolve(editorSchemasNow(), row);
+        if(m_2.$==0){
+          const _12=m_2.$0;
+          editable=_12!=null&&_12.$==1;
+        }
+        else editable=false;
+        return[Doc.Element("div", [Attr.Create("style", "display:inline-flex; align-items:stretch; height:26px;")], ofSeq_1(delay(() => append_2([Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-toggle-row-"+row.RowId), Attr.Create("aria-pressed", hidden?"false":"true"), Attr.Create("style", hidden?"height:26px; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;":"height:26px; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;"), Handler("click", () =>() => {
+          const nextHidden=hidden?uiState.Get().HiddenRows.Remove_1(row.RowId):uiState.Get().HiddenRows.Add_1(row.RowId);
+          const _13=uiState.Get();
+          let _14={
+            Window:_13.Window,
+            FollowLatest:_13.FollowLatest,
+            HiddenRows:nextHidden,
+            AddRowOpen:_13.AddRowOpen,
+            CursorIndex:_13.CursorIndex,
+            PendingActionId:_13.PendingActionId,
+            Feedback:_13.Feedback
+          };
+          return uiState.Set(_14);
+        })], [Doc.TextNode(rowKindText_1(row.Kind))])], delay(() => append_2(editable?[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-edit-row-"+row.RowId), Attr.Create("title", "Edit "+rowKindText_1(row.Kind)+" parameters"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"height:26px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; cursor:not-allowed;":"height:26px; border:1px solid #9cb3cc; border-right:0; background:#fff; color:#315d88; padding:2px 7px; font-size:11px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() => {
+          if(!commandsDisabledNow()){
+            const m_3=tryResolve(editorSchemasNow(), row);
+            if(m_3.$==1){
+              editingRowId=null;
+              const _13=uiState.Get();
+              let _14={
+                Window:_13.Window,
+                FollowLatest:_13.FollowLatest,
+                HiddenRows:_13.HiddenRows,
+                AddRowOpen:false,
+                CursorIndex:_13.CursorIndex,
+                PendingActionId:_13.PendingActionId,
+                Feedback:"This row's editor metadata is invalid; the row remains read-only."
+              };
+              return uiState.Set(_14);
+            }
+            else if(m_3.$0==null)return null;
+            else {
+              const values=m_3.$0.$0[1];
+              const schema=m_3.$0.$0[0];
+              editingRowId=Some(row.RowId);
+              selectedTemplate.Set(schema.TemplateKey);
+              editorValues.Set(values);
+              const _15=uiState.Get();
+              let _16={
+                Window:_15.Window,
+                FollowLatest:_15.FollowLatest,
+                HiddenRows:_15.HiddenRows,
+                AddRowOpen:true,
+                CursorIndex:_15.CursorIndex,
+                PendingActionId:_15.PendingActionId,
+                Feedback:""
+              };
+              return uiState.Set(_16);
+            }
+          }
+          else return null;
+        })], [Doc.TextNode("Edit")])]:[], delay(() =>[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+rowKindText_1(row.Kind)+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
           $:4,
           $0:canvasId,
           $1:row.RowId
-        }, rowKindText_1(row.Kind)+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])];
-      }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], ofSeq_1(delay(() => append_1(length(editorSchemas)>0?[Doc.Element("div", [Attr.Create("data-testid", "ta-generic-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; min-width:0;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Template"), selectInput("ta-editor-template", selectedTemplate.Get(), ofArray(map((schema) =>[schema.TemplateKey, schema.DisplayName], editorSchemas)), resetEditorFor)]), Doc.EmbedView(Map((templateKey) => {
-        const m_1=tryFind((schema_1) => schema_1.TemplateKey==templateKey, editorSchemas);
-        if(m_1!=null&&m_1.$==1){
-          const schema=m_1.$0;
+        }, rowKindText_1(row.Kind)+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])))))))];
+      }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-generic-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; min-width:0;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Template"), selectInput("ta-editor-template", selectedTemplate.Get(), ofArray(map((schema) =>[schema.TemplateKey, schema.DisplayName], editorSchemasNow())), resetEditorFor)]), Doc.EmbedView(Map((templateKey) => {
+        const m_2=tryFind((schema_1) => schema_1.TemplateKey==templateKey, editorSchemasNow());
+        if(m_2!=null&&m_2.$==1){
+          const schema=m_2.$0;
           return Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:7px; min-width:0;")], ofSeq_1(delay(() => map_2((field_1) =>(((editorKind(field_1.Key))(field_1.Label))(field_1.Required))(field_1.Kind), schema.Fields))));
         }
         else return Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#9a2f2f;")], [Doc.TextNode("Template schema is unavailable.")]);
-      }, selectedTemplate.View))])]:[Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;")], [Doc.TextNode("Row kind"), selectInput("ta-add-row-kind", addKind.Get(), ofArray([["Sma", "SMA"], ["Volume", "Volume"], ["Dmi", "DMI"], ["Adx", "ADX"], ["Macd", "MACD"], ["HeikinAshi", "Heikin-Ashi"]]), (value) => {
-        addKind.Set(value);
-        addDataRef.Set("series."+value.toLowerCase());
-      })]), Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;")], [Doc.TextNode("Data ref"), inputText("ta-add-row-data-ref", "series.sma", addDataRef.Get(), (value) => {
-        addDataRef.Set(value);
-      })]), Doc.EmbedView(Map((kind) => {
-        const field_1=(labelText, testId, value, onChanged) => Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; font-size:10px; color:#60738b;")], [Doc.TextNode(labelText), inputText(testId, labelText, value, onChanged)]);
-        switch(kind){
-          case"Dmi":
-          case"Sma":
-            return field_1("Period", "ta-add-row-period", addPeriod.Get(), (value) => {
-              addPeriod.Set(value);
-            });
-          case"Adx":
-            return Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:1fr 1fr; gap:6px; min-width:0;")], [field_1("DI period", "ta-add-row-di-period", addDiPeriod.Get(), (value) => {
-              addDiPeriod.Set(value);
-            }), field_1("ADX period", "ta-add-row-adx-period", addAdxPeriod.Get(), (value) => {
-              addAdxPeriod.Set(value);
-            })]);
-          case"Macd":
-            return Doc.Element("div", [Attr.Create("style", "display:grid; grid-template-columns:repeat(3,1fr); gap:6px; min-width:0;")], [field_1("Fast", "ta-add-row-fast-period", addFastPeriod.Get(), (value) => {
-              addFastPeriod.Set(value);
-            }), field_1("Slow", "ta-add-row-slow-period", addSlowPeriod.Get(), (value) => {
-              addSlowPeriod.Set(value);
-            }), field_1("Signal", "ta-add-row-signal-period", addSignalPeriod.Get(), (value) => {
-              addSignalPeriod.Set(value);
-            })]);
-          default:
-            return Doc.Element("span", [Attr.Create("style", "font-size:11px; color:#728196;")], [Doc.TextNode("No indicator parameters.")]);
+      }, selectedTemplate.View))]), Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; justify-content:flex-end; gap:6px;")], ofSeq_1(delay(() => {
+        let _12;
+        if(editingRowId==null)_12=[];
+        else {
+          const rowId_2=editingRowId.$0;
+          _12=[Doc.Element("span", [Attr.Create("data-testid", "ta-row-editor-mode"), Attr.Create("style", "margin-right:auto; font-size:11px; color:#40536d;")], [Doc.TextNode("Editing "+rowId_2)])];
         }
-      }, addKind.View))])], delay(() =>[Doc.Element("div", [Attr.Create("style", "display:flex; justify-content:flex-end; gap:6px;")], [compactButton("ta-add-row-cancel", "Cancel", "Close without submitting", () => {
-        const _7=uiState.Get();
-        let _8={
-          Window:_7.Window,
-          FollowLatest:_7.FollowLatest,
-          HiddenRows:_7.HiddenRows,
-          AddRowOpen:false,
-          CursorIndex:_7.CursorIndex,
-          PendingActionId:_7.PendingActionId,
-          Feedback:_7.Feedback
-        };
-        uiState.Set(_8);
-      }), primaryButtonView("ta-add-row-submit", "Add", commandsDisabledView, commandsDisabledNow, addRow)])]))))), uiState.View)), Doc.EmbedView(Map((ui) => IsNullOrWhiteSpace(ui.Feedback)?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-feedback"), Attr.Create("style", "font-size:11px; color:#40536d; min-height:15px;")], [Doc.TextNode(ui.Feedback)]), uiState.View))]), Doc.EmbedView(Map2((_7, _8) => {
+        return append_2(_12, delay(() => append_2([compactButton("ta-add-row-cancel", "Cancel", "Close without submitting", closeRowEditor)], delay(() =>[primaryButtonView("ta-add-row-submit", editingRowId!=null?"Apply":"Add", commandsDisabledView, commandsDisabledNow, addRow)]))));
+      })))]), uiState.View)), Doc.EmbedView(Map((ui) => IsNullOrWhiteSpace(ui.Feedback)?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-feedback"), Attr.Create("style", "font-size:11px; color:#40536d; min-height:15px;")], [Doc.TextNode(ui.Feedback)]), uiState.View))]), Doc.EmbedView(Map2((_12, _13) => {
         let cursorIndex, cursorValues;
         chartRenderSequence=chartRenderSequence+1;
-        const visibleRows=filter_1((row) => row.Visible&&!_8.HiddenRows.Contains(row.RowId), document.Rows);
-        const referenceTimeline_1=referenceTimeline(visibleRows, _7.Data);
+        const visibleRows=filter_1((row) => row.Visible&&!_13.HiddenRows.Contains(row.RowId), document.Rows);
+        const referenceTimeline_1=referenceTimeline(visibleRows, _12.Data);
         const referenceLength_1=length(referenceTimeline_1);
-        const o_2=tryFind((trace) => trace.Visible&&Equals(trace.Kind, {$:0}), collect(effectiveTraces, visibleRows));
-        const o_3=o_2==null?null:Some(candleSeries(o_2.$0.DataRef, _7.Data));
-        const overviewPoints=o_3==null?[]:o_3.$0;
-        const visibleWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength_1, _8.FollowLatest, _8.Window);
+        const o_4=tryFind((trace) => trace.Visible&&Equals(trace.Kind, {$:0}), collect(effectiveTraces, visibleRows));
+        const o_5=o_4==null?null:Some(candleSeries(o_4.$0.DataRef, _12.Data));
+        const overviewPoints=o_5==null?[]:o_5.$0;
+        const visibleWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength_1, _13.FollowLatest, _13.Window);
         const visibleTimestamps=selectWindow(visibleWindow, referenceTimeline_1);
-        const o_4=_8.CursorIndex;
-        if(o_4==null)cursorIndex=null;
+        const o_6=_13.CursorIndex;
+        if(o_6==null)cursorIndex=null;
         else {
-          const value=o_4.$0;
+          const value=o_6.$0;
           const a=0;
           const x=Compare(a, value)===1?a:value;
           const a_1=0;
           const b=length(visibleTimestamps)-1;
           const e=Compare(a_1, b)===1?a_1:b;
-          let _9=Compare(e, x)===-1?e:x;
-          cursorIndex=Some(_9);
+          let _14=Compare(e, x)===-1?e:x;
+          cursorIndex=Some(_14);
         }
         const cursorDocument={
           WorkspaceId:document.WorkspaceId,
@@ -8721,13 +8879,14 @@ function render(options, callbacks, runtimeState){
           StatusRef:document.StatusRef,
           SharedTimeAxis:document.SharedTimeAxis,
           Rows:visibleRows,
+          EditorSchemas:document.EditorSchemas,
           AllowedActions:document.AllowedActions,
           DefaultView:document.DefaultView
         };
-        const cursor=cursorIndex==null?null:cursorSnapshot(cursorDocument, _7.Data, visibleWindow, cursorIndex.$0);
+        const cursor=cursorIndex==null?null:cursorSnapshot(cursorDocument, _12.Data, visibleWindow, cursorIndex.$0);
         if(cursor!=null&&cursor.$==1){
           const value_1=cursor.$0;
-          cursorValues=Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-values"), Attr.Create("style", "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => append_1([Doc.Element("strong", [Attr.Create("style", "white-space:nowrap;")], [Doc.TextNode(compactTimestamp(value_1.Timestamp))])], delay(() => map_2((item) => Doc.Element("span", [Attr.Create("data-cursor-row", item.Label), Attr.Create("style", "min-width:0;")], [Doc.TextNode(item.Label+" "+item.Value)]), value_1.Values))))));
+          cursorValues=Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-values"), Attr.Create("style", "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "white-space:nowrap;")], [Doc.TextNode(compactTimestamp(value_1.Timestamp))])], delay(() => map_2((item) => Doc.Element("span", [Attr.Create("data-cursor-row", item.Label), Attr.Create("style", "min-width:0;")], [Doc.TextNode(item.Label+" "+item.Value)]), value_1.Values))))));
         }
         else cursorValues=Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#718197;")], [Doc.TextNode("Move the pointer over any chart row to inspect one shared bar.")]);
         const visibleStart=visibleWindow.Count===0?0:visibleWindow.StartIndex+1;
@@ -8739,62 +8898,67 @@ function render(options, callbacks, runtimeState){
           }
           else return"Loaded "+String(referenceLength_1)+" bars · Viewing "+String(visibleStart)+"-"+String(visibleEnd);
         }, draftWindow.View);
-        let _10=Attr.Create("data-testid", "ta-chart-stack");
-        let _11=Attr.Create("data-chart-render-sequence", String(chartRenderSequence));
-        let _12=Attr.Create("data-loaded-bars", String(referenceLength_1));
-        let _13=Attr.Create("data-visible-start", String(visibleStart));
-        let _14=Attr.Create("data-visible-end", String(visibleEnd));
-        let _15=Attr.Create("data-follow-latest", _8.FollowLatest?"true":"false");
-        const o_5=cursorIndex==null?null:Some(String(cursorIndex.$0));
-        let _16=o_5==null?"":o_5.$0;
-        let _17=Attr.Create("data-cursor-index", _16);
-        let _18=[_10, _11, _12, _13, _14, _15, _17, Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;")];
-        return Doc.Element("div", _18, ofSeq_1(delay(() => append_1([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[cursorValues])))], delay(() => append_1(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:map_2((index) => renderRow(_7, {
-          Window:_8.Window,
-          FollowLatest:_8.FollowLatest,
-          HiddenRows:_8.HiddenRows,
-          AddRowOpen:_8.AddRowOpen,
+        let _15=Attr.Create("data-testid", "ta-chart-stack");
+        let _16=Attr.Create("data-chart-render-sequence", String(chartRenderSequence));
+        let _17=Attr.Create("data-loaded-bars", String(referenceLength_1));
+        let _18=Attr.Create("data-visible-start", String(visibleStart));
+        let _19=Attr.Create("data-visible-end", String(visibleEnd));
+        let _20=Attr.Create("data-follow-latest", _13.FollowLatest?"true":"false");
+        const o_7=cursorIndex==null?null:Some(String(cursorIndex.$0));
+        let _21=o_7==null?"":o_7.$0;
+        let _22=Attr.Create("data-cursor-index", _21);
+        let _23=[_15, _16, _17, _18, _19, _20, _22, Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;")];
+        return Doc.Element("div", _23, ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[cursorValues])))], delay(() => append_2(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:map_2((index) => renderRow(_12, {
+          Window:_13.Window,
+          FollowLatest:_13.FollowLatest,
+          HiddenRows:_13.HiddenRows,
+          AddRowOpen:_13.AddRowOpen,
           CursorIndex:cursorIndex,
-          PendingActionId:_8.PendingActionId,
-          Feedback:_8.Feedback
+          PendingActionId:_13.PendingActionId,
+          Feedback:_13.Feedback
         }, visibleTimestamps, setCursorIndex, index===length(visibleRows)-1, get(visibleRows, index)), range(0, length(visibleRows)-1)), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
           setWindowCount(48);
         }), compactButton("ta-view-200", "200", "Show latest 200 bars", () => {
           setWindowCount(200);
         }), compactButton("ta-view-all", "All", "Show the complete loaded range", () => {
           setWindowCount(referenceLength_1);
-        })]), Doc.Element("div", [Attr.Create("style", "grid-column:1 / -1; min-width:0;")], [Doc.EmbedView(Map((draft) => {
-          const ratios=selectionRatios(referenceLength_1, draft==null?visibleWindow:draft.$0);
-          return overviewSvg(overviewPoints, ratios[0], ratios[1], (node) => {
-            navigatorElement=node;
-          }, (drag, event) => {
-            let moveHandler, upHandler;
-            if(!(navigatorElement==null)){
-              event.preventDefault();
-              event.stopPropagation();
-              const bounds=navigatorElement.getBoundingClientRect();
-              const total=referenceLength();
-              const committed=resolvedWindow(uiState.Get());
-              const startClientX=event.clientX;
-              moveHandler=null;
-              upHandler=null;
-              moveHandler=(rawEvent) => draftWindow.Set(Some(previewWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, committed, drag, bounds.width<=0||total<=0?0:toInt(Math.round((rawEvent.clientX-startClientX)/bounds.width*total)))));
-              upHandler=() => {
+        })]), Doc.Element("div", [Attr.Create("style", "grid-column:1 / -1; min-width:0;")], [overviewSvg(overviewPoints, Map((draft) => selectionRatios(referenceLength_1, draft==null?visibleWindow:draft.$0), draftWindow.View), (node) => {
+          navigatorElement=node;
+        }, (drag, event) => {
+          let moveHandler, upHandler, finished;
+          if(!(navigatorElement==null)){
+            event.preventDefault();
+            event.stopPropagation();
+            const bounds=navigatorElement.getBoundingClientRect();
+            const total=referenceLength();
+            const committed=resolvedWindow(uiState.Get());
+            const startClientX=event.clientX;
+            moveHandler=null;
+            upHandler=null;
+            finished=false;
+            const finish=() => {
+              if(!finished){
+                finished=true;
+                finishNavigatorDrag=null;
                 const x_1=draftWindow.Get();
-                let _19=x_1==null?committed:x_1.$0;
-                const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _19);
+                let _24=x_1==null?committed:x_1.$0;
+                const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _24);
                 const next=p[1];
                 const followLatest=p[0];
+                if(!Equals(next, committed)||followLatest!=uiState.Get().FollowLatest)setWindow(followLatest, next);
+                else draftWindow.Set(null);
                 if(!(moveHandler==null))globalThis.document.removeEventListener("mousemove", moveHandler);
                 if(!(upHandler==null))globalThis.document.removeEventListener("mouseup", upHandler);
-                return!Equals(next, committed)||followLatest!=uiState.Get().FollowLatest?setWindow(followLatest, next):draftWindow.Set(null);
-              };
-              globalThis.document.addEventListener("mousemove", moveHandler);
-              return globalThis.document.addEventListener("mouseup", upHandler);
-            }
-            else return null;
-          });
-        }, draftWindow.View))])])])))))));
+              }
+            };
+            moveHandler=(rawEvent) => draftWindow.Set(Some(previewWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, committed, drag, bounds.width<=0||total<=0?0:toInt(Math.round((rawEvent.clientX-startClientX)/bounds.width*total)))));
+            upHandler=() => finish();
+            finishNavigatorDrag=Some(finish);
+            globalThis.document.addEventListener("mousemove", moveHandler);
+            return globalThis.document.addEventListener("mouseup", upHandler);
+          }
+          else return null;
+        }, finishNavigatorDragFromElement)])])])))))));
       }, chartRuntimeView, uiState.View))]);
     }
     else {
@@ -8809,7 +8973,7 @@ function defaultOptions(){
 function remoteDisabled(a){
   return a.$==3||(a.$==6||(a.$==0||a.$==7));
 }
-function submit(callbacks, uiState, actualDocumentRevision, request, successText, onAccepted){
+function submit(callbacks, uiState, actualDocumentRevision, request, successText, onAccepted, onRejected){
   const m=request.ExpectedDocumentRevision;
   const expectedRevisionMatches=m==null||m.$0===actualDocumentRevision;
   if(uiState.Get().PendingActionId!=null){
@@ -8826,6 +8990,7 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
     uiState.Set(_2);
   }
   else if(!expectedRevisionMatches){
+    onRejected();
     const _3=uiState.Get();
     let _4={
       Window:_3.Window,
@@ -8853,16 +9018,17 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
     StartImmediate(Delay(() => Bind_1(callbacks.SubmitAction(request), (a) => {
       let result;
       if(a.$==1){
-        const error=a.$0;
+        const error_2=a.$0;
         result={
           $:1,
           $0:request.RequestId,
-          $1:error.Code,
-          $2:error.Message
+          $1:error_2.Code,
+          $2:error_2.Message
         };
       }
       else result=a.$0;
       if((result.$==1?result.$0:result.$==2?result.$0:result.$0)!=request.RequestId){
+        onRejected();
         const _7=uiState.Get();
         let _8={
           Window:_7.Window,
@@ -8879,6 +9045,7 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
       else if(result.$==1){
         const message=result.$2;
         const code=result.$1;
+        onRejected();
         const _9=uiState.Get();
         let _10={
           Window:_9.Window,
@@ -8894,6 +9061,7 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
       }
       else if(result.$==2){
         const actualRevision=result.$1;
+        onRejected();
         const _11=uiState.Get();
         let _12={
           Window:_11.Window,
@@ -8949,7 +9117,7 @@ function selectInput(testId, initial_1, values, onChanged){
     const input_1=node;
     input_1.value=initial_1;
     input_1.addEventListener("change", () => onChanged(input_1.value));
-  })], ofSeq_1(delay(() => collect_1((m) =>[element_1("option", [Attr.Create("value", m[0])], [Doc.TextNode(m[1])])], values))));
+  })], ofSeq_1(delay(() => collect_2((m) =>[element_1("option", [Attr.Create("value", m[0])], [Doc.TextNode(m[1])])], values))));
 }
 function primaryButtonView(testId, label, disabled, isDisabled, onClick){
   return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", testId), DynamicBool("disabled", disabled), Dynamic_1("style", Map((value) => value?"height:30px; border:1px solid #9aa8b8; border-radius:4px; background:#d8e0e8; color:#667587; padding:3px 11px; font-size:12px; cursor:not-allowed; white-space:nowrap;":"height:30px; border:1px solid #0f766e; border-radius:4px; background:#0f766e; color:#fff; padding:3px 11px; font-size:12px; cursor:pointer; white-space:nowrap;", disabled)), Handler("click", () =>() =>!isDisabled()?onClick():null)], [Doc.TextNode(label)]);
@@ -8981,26 +9149,31 @@ function renderRow(state, ui, visibleTimestamps, setCursorIndex, showSharedTimeA
     return Doc.Element("span", [Attr.Create("data-testid", "ta-row-meta-"+row.RowId+"-"+value_1.ScaleKey), Attr.Create("data-scale-key", value_1.ScaleKey), Attr.Create("data-finality", value_1.Finality), Attr.Create("data-quality", quality), Attr.Create("title", temporalDetail(value_1)), Attr.Create("style", "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;")], [Doc.TextNode(value_1.ScaleKey+" | "+value_1.Finality+" | "+quality+" | frontier "+compactTimestamp(value_1.ObservedThroughUtc)+" | available "+availability)]);
   }, rowTemporalMetadata(row, state.Data))), "ta-row-"+row.RowId, chartHeight+(showSharedTimeAxis?16:0), children);
 }
-function overviewSvg(points, s, s_1, onReady, onDragStart){
+function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
   const width=1000;
   const sampled=sampleEvenly(280, points);
   const p=paddedRange(0, 1, collect((point) =>[point.Low, point.High], sampled));
   const low=p[0];
   const high=p[1];
   const closePath=concat_1(" ", mapi((_1, _2) =>(_1===0?"M ":"L ")+fixedText(length(sampled)<=1?width/2:width*_1/(length(sampled)-1))+" "+fixedText(normalize(low, high, 8, 62, _2.Close)), sampled));
-  const selectionX=s*width;
-  const a=4;
-  const b=(s_1-s)*width;
-  const selectionWidth=Compare(a, b)===1?a:b;
   const handleWidth=8;
   const handleX=(edge) => {
-    const a_1=0;
-    const a_2=width-handleWidth;
-    const b_1=edge-handleWidth/2;
-    const b_2=Compare(a_2, b_1)===-1?a_2:b_1;
-    return Compare(a_1, b_2)===1?a_1:b_2;
+    const a=0;
+    const a_1=width-handleWidth;
+    const b=edge-handleWidth/2;
+    const b_1=Compare(a_1, b)===-1?a_1:b;
+    return Compare(a, b_1)===1?a:b_1;
   };
-  return svgElement("svg", [Attr.Create("data-testid", "ta-overview-navigator"), Attr.Create("data-loaded-sample-count", String(length(sampled))), svgAttr("viewBox", "0 0 1000 82"), svgAttr("preserveAspectRatio", "none"), Attr.Create("style", "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"), OnAfterRender(onReady)], [svgElement("path", [svgAttr("d", closePath), svgAttr("fill", "none"), svgAttr("stroke", "#3d718e"), svgAttr("stroke-width", "1.5")], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-selection"), svgAttr("x", fixedText(selectionX)), svgAttr("y", "1"), svgAttr("width", fixedText(selectionWidth)), svgAttr("height", "80"), svgAttr("fill", "rgba(15,118,110,.10)"), svgAttr("stroke", "#0f766e"), svgAttr("stroke-width", "2"), svgAttr("style", "cursor:grab;"), Handler("mousedown", () =>(event) => onDragStart("move", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-left-handle"), svgAttr("x", fixedText(handleX(selectionX))), svgAttr("y", "0"), svgAttr("width", fixedText(handleWidth)), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-left", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-right-handle"), svgAttr("x", fixedText(handleX(selectionX+selectionWidth))), svgAttr("y", "0"), svgAttr("width", fixedText(handleWidth)), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-right", event))], [])]);
+  const selectionX=Map((_1) => fixedText(_1[0]*width), selectionWindow);
+  const selectionWidth=Map((_1) => {
+    const a=4;
+    const b=(_1[1]-_1[0])*width;
+    let _2=Compare(a, b)===1?a:b;
+    return fixedText(_2);
+  }, selectionWindow);
+  const leftHandleX=Map((_1) => fixedText(handleX(_1[0]*width)), selectionWindow);
+  const rightHandleX=Map((_1) => fixedText(handleX(_1[1]*width)), selectionWindow);
+  return svgElement("svg", [Attr.Create("data-testid", "ta-overview-navigator"), Attr.Create("data-loaded-sample-count", String(length(sampled))), svgAttr("viewBox", "0 0 1000 82"), svgAttr("preserveAspectRatio", "none"), Attr.Create("style", "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"), OnAfterRender(onReady), Handler("mouseup", () => onDragEnd)], [svgElement("path", [svgAttr("d", closePath), svgAttr("fill", "none"), svgAttr("stroke", "#3d718e"), svgAttr("stroke-width", "1.5")], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-selection"), Dynamic_1("x", selectionX), svgAttr("y", "1"), Dynamic_1("width", selectionWidth), svgAttr("height", "80"), svgAttr("fill", "rgba(15,118,110,.10)"), svgAttr("stroke", "#0f766e"), svgAttr("stroke-width", "2"), svgAttr("style", "cursor:grab;"), Handler("mousedown", () =>(event) => onDragStart("move", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-left-handle"), Dynamic_1("x", leftHandleX), svgAttr("y", "0"), svgAttr("width", fixedText(handleWidth)), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-left", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-right-handle"), Dynamic_1("x", rightHandleX), svgAttr("y", "0"), svgAttr("width", fixedText(handleWidth)), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-right", event))], [])]);
 }
 function compactTimestamp(value){
   return IsNullOrWhiteSpace(value)?"":value.length>=16&&value[4]==="-"&&value[7]==="-"&&(value[10]==="T"||value[10]===" ")?Substring(value, 5, 5)+" "+Substring(value, 11, 5):value;
@@ -9044,7 +9217,7 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
     let _14=projectedLinePoints(referenceTimestamps, _13);
     return[_11, _12, _14];
   }, traces);
-  const p=paddedRange(0, 1, ofSeq(delay(() => append_1(collect((_11) => {
+  const p=paddedRange(0, 1, ofSeq(delay(() => append_2(collect((_11) => {
     const point=_11[2];
     return[point.Low, point.High];
   }, candleSeries_1), delay(() => collect((_11) => {
@@ -9069,10 +9242,10 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
     const m=cursorIndexFromClientX(length(referenceTimestamps), bounds.left, bounds.width, event.clientX);
     return m==null?null:setCursorIndex(Some(m.$0));
   })];
-  let _10=svgElement("svg", _9, ofSeq_1(delay(() => append_1(collect_1((gridIndex) => {
+  let _10=svgElement("svg", _9, ofSeq_1(delay(() => append_2(collect_2((gridIndex) => {
     const y=top+plotHeight*gridIndex/4;
     return[svgElement("line", [svgAttr("x1", "0"), svgAttr("x2", "1000"), svgAttr("y1", fixedText(y)), svgAttr("y2", fixedText(y)), svgAttr("stroke", "#e7ecf3"), svgAttr("stroke-width", "1")], [])];
-  }, range(0, 4)), delay(() => append_1(collect_1((m) => {
+  }, range(0, 4)), delay(() => append_2(collect_2((m) => {
     const trace=m[1];
     const point=m[2];
     const m_1=candleSlotRange(referenceTimestamps, point);
@@ -9096,7 +9269,7 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
       const spanCount=endExclusive-firstSlot;
       const traceColor=spanCount>1?color(m[0], trace):candleColor;
       const traceTestId="ta-candle-"+rowId+"-"+trace.TraceId;
-      return append_1([svgElement("line", ofSeq_1(delay(() => append_1([Attr.Create("data-testid", traceTestId)], delay(() => append_1([Attr.Create("data-candle-part", "wick")], delay(() => append_1([Attr.Create("data-source-interval-id", sourceIntervalId)], delay(() => append_1([Attr.Create("data-span-slots", String(spanCount))], delay(() => append_1([svgAttr("x1", fixedText(center))], delay(() => append_1([svgAttr("x2", fixedText(center))], delay(() => append_1([svgAttr("y1", fixedText(highY))], delay(() => append_1([svgAttr("y2", fixedText(lowY))], delay(() => append_1([svgAttr("stroke", traceColor)], delay(() => append_1([svgAttr("stroke-width", spanCount>1?"1.8":"1.2")], delay(() => spanCount>1?[svgAttr("stroke-dasharray", "4 2")]:[])))))))))))))))))))))), [])], delay(() => {
+      return append_2([svgElement("line", ofSeq_1(delay(() => append_2([Attr.Create("data-testid", traceTestId)], delay(() => append_2([Attr.Create("data-candle-part", "wick")], delay(() => append_2([Attr.Create("data-source-interval-id", sourceIntervalId)], delay(() => append_2([Attr.Create("data-span-slots", String(spanCount))], delay(() => append_2([svgAttr("x1", fixedText(center))], delay(() => append_2([svgAttr("x2", fixedText(center))], delay(() => append_2([svgAttr("y1", fixedText(highY))], delay(() => append_2([svgAttr("y2", fixedText(lowY))], delay(() => append_2([svgAttr("stroke", traceColor)], delay(() => append_2([svgAttr("stroke-width", spanCount>1?"1.8":"1.2")], delay(() => spanCount>1?[svgAttr("stroke-dasharray", "4 2")]:[])))))))))))))))))))))), [])], delay(() => {
         let _11=Attr.Create("data-testid", traceTestId);
         let _12=Attr.Create("data-candle-part", "body");
         let _13=Attr.Create("data-source-interval-id", sourceIntervalId);
@@ -9114,7 +9287,7 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
       }));
     }
     else return[];
-  }, candleSeries_1), delay(() => append_1(collect_1((m) => {
+  }, candleSeries_1), delay(() => append_2(collect_2((m) => {
     const trace=m[1];
     const points=m[2];
     const traceColor=color(m[0], trace);
@@ -9155,7 +9328,7 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
   return[_10, referenceTimestamps];
 }
 function chartFrame(titleText, metadata, testId, height, children){
-  return Doc.Element("section", [Attr.Create("data-testid", testId), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; min-height:"+String(height)+"px; border-top:1px solid #e1e7ef; background:#fff;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:6px 10px; min-height:28px; padding:4px 8px; color:#40536d; font-size:11px; flex-wrap:wrap;")], ofSeq_1(delay(() => append_1([Doc.Element("strong", [Attr.Create("style", "margin-right:auto;")], [Doc.TextNode(titleText)])], delay(() => metadata))))), element_1("div", [Attr.Create("style", "min-width:0; overflow:hidden;")], children)]);
+  return Doc.Element("section", [Attr.Create("data-testid", testId), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; min-height:"+String(height)+"px; border-top:1px solid #e1e7ef; background:#fff;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:6px 10px; min-height:28px; padding:4px 8px; color:#40536d; font-size:11px; flex-wrap:wrap;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "margin-right:auto;")], [Doc.TextNode(titleText)])], delay(() => metadata))))), element_1("div", [Attr.Create("style", "min-width:0; overflow:hidden;")], children)]);
 }
 function timeAxis(testId, timestamps){
   const labels=mapi((_1, _2) => Doc.Element("span", [Attr.Create("style", "min-width:0; text-align:"+(_1===0?"left":_1===2?"right":"center")+"; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextNode(compactTimestamp(_2[1]))]), timeLabels(timestamps));
@@ -9689,7 +9862,7 @@ function Bind_1(r, f){
   });
 }
 function Zero(){
-  return _c_9.Zero;
+  return _c_10.Zero;
 }
 function Start(c, ctOpt){
   const d=(defCTS())[0];
@@ -9706,7 +9879,7 @@ function Return(x){
   };
 }
 function scheduler(){
-  return _c_9.scheduler;
+  return _c_10.scheduler;
 }
 function checkCancel(r){
   return(c) => {
@@ -9715,7 +9888,7 @@ function checkCancel(r){
   };
 }
 function defCTS(){
-  return _c_9.defCTS;
+  return _c_10.defCTS;
 }
 function UncaughtAsyncError(e){
   console.log("WebSharper: Uncaught asynchronous exception", e);
@@ -9866,6 +10039,9 @@ function Bind_2(f, r){
 function Map_2(f, r){
   return r.$==1?Error_1(r.$0):Ok(f(r.$0));
 }
+function ToOption(result){
+  return result.$==0?Some(result.$0):null;
+}
 function New_43(schema, exportedAtUtc, documentRevision, dataRevision, state){
   return{
     schema:schema,
@@ -9874,6 +10050,223 @@ function New_43(schema, exportedAtUtc, documentRevision, dataRevision, state){
     dataRevision:dataRevision,
     state:state
   };
+}
+function validateSchema(limits_1, schema){
+  const m=schemaErrors(limits_1, schema);
+  return m.$==0?Ok(schema):Error_1(m);
+}
+function schemaErrors(limits_1, schema){
+  const fields=nonNull(schema.Fields);
+  return ofSeq_1(delay(() => append_2(identifier("schema.templateKey", schema.TemplateKey), delay(() => append_2(identifier("schema.displayName", schema.DisplayName), delay(() => append_2(schema.SchemaRevision<0n?[error_1("invalid-schema-revision", "schema.schemaRevision", "Schema revision must be non-negative.")]:[], delay(() => append_2(length(fields)+sumBy((field_1) => fieldCount(field_1.Kind), fields)>limits_1.MaxFields?[error_1("limit-editor-fields", "schema.fields", "Editor fields exceed hard limit "+String(limits_1.MaxFields)+".")]:[], delay(() => append_2(duplicateKey("schema.fields", (field_1) => field_1.Key, fields), delay(() => collect_2((m) => fieldErrors(limits_1, "schema.fields["+String(m[0])+"]", 1, m[1]), indexed(fields))))))))))))));
+}
+function nonNull(values){
+  return values==null?[]:values;
+}
+function duplicateKey(field_1, keyOf, values){
+  return exists((_1) => _1[1]>1, countBy((x) => x, map(keyOf, values)))?ofArray([error_1("duplicate-key", field_1, field_1+" keys must be unique.")]):FSharpList.Empty;
+}
+function fieldErrors(limits_1, field_1, depth, schema){
+  return ofSeq_1(delay(() => append_2(identifier(field_1+".key", schema.Key), delay(() => append_2(identifier(field_1+".label", schema.Label), delay(() => append_2(kindErrors(limits_1, field_1+".kind", depth, schema.Kind), delay(() => {
+    const m=schema.DefaultValue;
+    return m==null?[]:valueErrors(limits_1, field_1+".defaultValue", depth, schema.Kind, m.$0);
+  }))))))));
+}
+function fieldCount(kind){
+  while(true)
+    {
+      if(kind.$==7){
+        const x=nonNull(kind.$0);
+        return(((p) =>(a) => sumBy(p, a))((field_1) => 1+fieldCount(field_1.Kind)))(x);
+      }
+      else if(kind.$==6){
+        const item=kind.$0;
+        kind=item;
+      }
+      else return 0;
+    }
+}
+function validateInputs(limits_1, schema, values){
+  const m=inputErrors(limits_1, schema, values);
+  return m.$==0?Ok(values):Error_1(m);
+}
+function kindErrors(limits_1, field_1, depth, kind){
+  return ofSeq_1(delay(() => append_2(depth>limits_1.MaxSchemaDepth?[error_1("limit-schema-depth", field_1, "Schema depth exceeds hard limit "+String(limits_1.MaxSchemaDepth)+".")]:[], delay(() => {
+    if(kind.$==1)return rangeErrors(field_1, kind.$0, kind.$1);
+    else if(kind.$==2)return rangeErrors(field_1, kind.$0, kind.$1);
+    else if(kind.$==4){
+      const values=nonNull(kind.$0);
+      return append_2(length(values)===0?[error_1("choice-required", field_1, "Choice editor requires at least one choice.")]:[], delay(() => append_2(length(values)>limits_1.MaxChoicesPerField?[error_1("limit-editor-choices", field_1, "Choices exceed hard limit "+String(limits_1.MaxChoicesPerField)+".")]:[], delay(() => append_2(duplicateKey(field_1, (choice) => choice.Key, values), delay(() => collect_2((m) => {
+        const index=m[0];
+        const choice=m[1];
+        return append_2(identifier(String(field_1)+".choices["+String(index)+"].key", choice.Key), delay(() => append_2(identifier(String(field_1)+".choices["+String(index)+"].label", choice.Label), delay(() => unsafeValue(String(field_1)+".choices["+String(index)+"].value", choice.Value)))));
+      }, indexed(values))))))));
+    }
+    else if(kind.$==5){
+      const values_1=nonNull(kind.$0);
+      return append_2(length(values_1)===0?[error_1("scale-required", field_1, "Scale editor requires at least one allowed key.")]:[], delay(() => append_2(duplicateKey(field_1, (x) => x, values_1), delay(() => collect_2((m) => identifier(String(field_1)+".scaleKeys["+String(m[0])+"]", m[1]), indexed(values_1))))));
+    }
+    else if(kind.$==6){
+      const minimum=kind.$1;
+      const maximum=kind.$2;
+      const itemKind=kind.$0;
+      return append_2(listRangeErrors(limits_1, field_1, minimum, maximum), delay(() => kindErrors(limits_1, field_1+".item", depth+1, itemKind)));
+    }
+    else if(kind.$==7){
+      const values_2=nonNull(kind.$0);
+      return append_2(duplicateKey(field_1, (child) => child.Key, values_2), delay(() => collect_2((m) => fieldErrors(limits_1, String(field_1)+".fields["+String(m[0])+"]", depth+1, m[1]), indexed(values_2))));
+    }
+    else return[];
+  }))));
+}
+function valueErrors(limits_1, field_1, depth, kind, value){
+  return ofSeq_1(delay(() => append_2(unsafeValue(field_1, value), delay(() => {
+    let _1;
+    switch(kind.$==3?value.$==1?0:7:kind.$==1?value.$==2?(_1=[kind.$1, kind.$0, value.$0],1):7:kind.$==2?value.$==2?(_1=[kind.$1, kind.$0, value.$0],2):7:kind.$==4?(_1=kind.$0,3):kind.$==5?value.$==3?(_1=[value.$0, kind.$0],4):7:kind.$==6?value.$==4?(_1=[kind.$0, value.$0, kind.$2, kind.$1],5):7:kind.$==7?value.$==5?(_1=[kind.$0, value.$0],6):7:value.$==3?0:7){
+      case 0:
+        return[];
+      case 1:
+        let _2;
+        const maximum=_1[0];
+        const number=_1[2];
+        if(isNaN(number)||Math.abs(number)===Infinity||(number<0?Math.ceil(number):Math.floor(number))!==number)return[error_1("invalid-integer", field_1, field_1+" must be an integer.")];
+        else if(number<Number(-9223372036854775808n)||number>Number(9223372036854775807n))return[error_1("integer-out-of-range", field_1, field_1+" is outside Int64 range.")];
+        else {
+          const integer=BigInt(Math.trunc(number));
+          const m=_1[1];
+          let _3=m!=null&&m.$==1&&(integer<m.$0&&(_2=m.$0,true))?[error_1("below-minimum", field_1, field_1+" is below its minimum.")]:[];
+          return append_2(_3, delay(() => {
+            let _8;
+            return maximum!=null&&maximum.$==1&&(integer>maximum.$0&&(_8=maximum.$0,true))?[error_1("above-maximum", field_1, field_1+" exceeds its maximum.")]:[];
+          }));
+        }
+        break;
+      case 2:
+        let _4;
+        const maximum_1=_1[0];
+        const number_1=_1[2];
+        if(isNaN(number_1)||Math.abs(number_1)===Infinity)return[error_1("invalid-decimal", field_1, field_1+" must be finite.")];
+        else {
+          const m_1=_1[1];
+          let _5=m_1!=null&&m_1.$==1&&(number_1<m_1.$0&&(_4=m_1.$0,true))?[error_1("below-minimum", field_1, field_1+" is below its minimum.")]:[];
+          return append_2(_5, delay(() => {
+            let _8;
+            return maximum_1!=null&&maximum_1.$==1&&(number_1>maximum_1.$0&&(_8=maximum_1.$0,true))?[error_1("above-maximum", field_1, field_1+" exceeds its maximum.")]:[];
+          }));
+        }
+        break;
+      case 3:
+        return!exists((choice) => Equals(choice.Value, value), nonNull(_1))?[error_1("choice-not-allowed", field_1, field_1+" is not one of the declared choices.")]:[];
+      case 4:
+        return!arrContains(_1[0], nonNull(_1[1]))?[error_1("scale-not-allowed", field_1, field_1+" is not one of the declared scales.")]:[];
+      case 5:
+        let _6;
+        const itemKind=_1[0];
+        const maximum_2=_1[2];
+        const values=nonNull(_1[1]);
+        const m_2=_1[3];
+        let _7=m_2!=null&&m_2.$==1&&(length(values)<m_2.$0&&(_6=m_2.$0,true))?[error_1("list-too-short", field_1, field_1+" has fewer than the required items.")]:[];
+        return append_2(_7, delay(() => {
+          let _8;
+          return append_2(maximum_2!=null&&maximum_2.$==1&&(length(values)>maximum_2.$0&&(_8=maximum_2.$0,true))?[error_1("list-too-long", field_1, field_1+" exceeds its item limit.")]:[], delay(() => append_2(length(values)>limits_1.MaxListItems?[error_1("limit-list-items", field_1, String(field_1)+" exceeds hard limit "+String(limits_1.MaxListItems)+".")]:[], delay(() => collect_2((m_3) => valueErrors(limits_1, String(field_1)+"["+String(m_3[0])+"]", depth+1, itemKind, m_3[1]), indexed(values))))));
+        }));
+      case 6:
+        const values_1=_1[1];
+        return collect_2((child) => {
+          const m_3=values_1.TryFind(child.Key);
+          return m_3==null?child.Required?[error_1("required", field_1+"."+child.Key, child.Key+" is required.")]:[]:valueErrors(limits_1, field_1+"."+child.Key, depth+1, child.Kind, m_3.$0);
+        }, nonNull(_1[0]));
+      case 7:
+        return[error_1("editor-value-kind-mismatch", field_1, field_1+" does not match its editor kind.")];
+    }
+  }))));
+}
+function inputErrors(limits_1, schema, values){
+  const inputs=nonNull(values);
+  return ofSeq_1(delay(() => append_2(schemaErrors(limits_1, schema), delay(() => append_2(length(inputs)>limits_1.MaxFields?[error_1("limit-editor-inputs", "editor.values", "Editor inputs exceed hard limit "+String(limits_1.MaxFields)+".")]:[], delay(() => append_2(exists((_1) => _1[1]>1, countBy((a) => a.Path, inputs))?[error_1("duplicate-editor-input", "editor.values", "Editor input paths must be unique.")]:[], delay(() => collect_2((m) => {
+    const input_1=m[1];
+    const index=m[0];
+    return append_2(identifier("editor.values["+String(index)+"].path", input_1.Path), delay(() => {
+      const m_1=resolvePath(limits_1, schema, input_1.Path);
+      return m_1.$==1?m_1.$0:scalarErrors("editor.values["+String(index)+"].value", m_1.$0, input_1.Value);
+    }));
+  }, indexed(inputs))))))))));
+}
+function rangeErrors(field_1, minimum, maximum){
+  let _1;
+  return minimum!=null&&minimum.$==1&&(maximum!=null&&maximum.$==1&&(Compare(minimum.$0, maximum.$0)===1&&(_1=[minimum.$0, maximum.$0],true)))?ofArray([error_1("invalid-range", field_1, field_1+" minimum must not exceed maximum.")]):FSharpList.Empty;
+}
+function listRangeErrors(limits_1, field_1, minimum, maximum){
+  return ofSeq_1(delay(() => {
+    let _1;
+    return append_2(minimum!=null&&minimum.$==1&&(minimum.$0<0&&(_1=minimum.$0,true))?[error_1("invalid-list-minimum", field_1, field_1+" minimum must be non-negative.")]:[], delay(() => {
+      let _2, _3;
+      if(maximum!=null&&maximum.$==1){
+        const value=maximum.$0;
+        _2=(value<0||value>limits_1.MaxListItems)&&(_3=maximum.$0,true);
+      }
+      else _2=false;
+      let _4=_2?[error_1("invalid-list-maximum", field_1, String(field_1)+" maximum must be between zero and "+String(limits_1.MaxListItems)+".")]:[];
+      return append_2(_4, delay(() => rangeErrors(field_1, minimum, maximum)));
+    }));
+  }));
+}
+function resolvePath(limits_1, schema, path){
+  const separator=path==null?-1:firstPathSeparator(path);
+  const key=IsNullOrWhiteSpace(path)?"":separator<0?path:Substring(path, 0, separator);
+  const remainder=separator<0?"":path.substring(separator);
+  const m=tryFind((field_1) => field_1.Key==key, nonNull(schema.Fields));
+  return m==null?Error_1(ofArray([error_1("editor-path-unknown", path, path+" does not exist in the template schema.")])):resolveKind(limits_1, path, m.$0.Kind, remainder);
+}
+function scalarErrors(field_1, kind, scalar){
+  return valueErrors(limits(), field_1, 1, kind, scalarAsValue(scalar));
+}
+function firstPathSeparator(text_1){
+  const dotIndex=text_1.indexOf(".");
+  const bracketIndex=text_1.indexOf("[");
+  return dotIndex<0?bracketIndex:bracketIndex<0?dotIndex:Compare(dotIndex, bracketIndex)===-1?dotIndex:bracketIndex;
+}
+function resolveKind(limits_1, field_1, kind, remainder){
+  let _1;
+  switch(kind.$==7?(kind.$0,StartsWith(remainder, ".")?(_1=kind.$0,0):remainder==""?2:3):kind.$==6?(_1=kind.$0,1):remainder==""?2:3){
+    case 0:
+      const childPath=remainder.substring(1);
+      const separator=firstPathSeparator(childPath);
+      const key=separator<0?childPath:Substring(childPath, 0, separator);
+      const childRemainder=separator<0?"":childPath.substring(separator);
+      const m=tryFind((child) => child.Key==key, nonNull(_1));
+      return m==null?Error_1(ofArray([error_1("editor-path-unknown", field_1, field_1+" does not exist in the template schema.")])):resolveKind(limits_1, field_1, m.$0.Kind, childRemainder);
+    case 1:
+      return Bind_2((_2) => resolveKind(limits_1, field_1, _1, _2[1]), takeListIndex(limits_1, field_1, remainder));
+    case 2:
+      return Ok(kind);
+    case 3:
+      return Error_1(ofArray([error_1("editor-path-invalid", field_1, field_1+" does not match the template schema.")]));
+  }
+}
+function scalarAsValue(a){
+  return a.$==1?{$:2, $0:a.$0}:a.$==2?{$:1, $0:a.$0}:{$:3, $0:a.$0};
+}
+function takeListIndex(limits_1, field_1, text_1){
+  let o, _1;
+  if(IsNullOrEmpty(text_1)||text_1[0]!=="[")return Error_1(ofArray([error_1("editor-list-index-required", field_1, field_1+" requires a list index.")]));
+  else {
+    const closeIndex=text_1.indexOf("]");
+    if(closeIndex<=1)return Error_1(ofArray([error_1("editor-list-index-invalid", field_1, field_1+" has an invalid list index.")]));
+    else {
+      const m=(o=0,[TryParse(Substring(text_1, 1, closeIndex-1), {get:() => o, set:(v) => {
+        o=v;
+      }}), o]);
+      if(m[0]){
+        const index=m[1];
+        _1=index>=0&&index<limits_1.MaxListItems;
+      }
+      else _1=false;
+      return _1?Ok([m[1], text_1.substring(closeIndex+1)]):Error_1(ofArray([error_1("editor-list-index-invalid", field_1, field_1+" list index is outside the allowed range.")]));
+    }
+  }
+}
+function limits(){
+  return _c_7.limits;
 }
 function initialEditorInputs(schema){
   return collect((field_1) => {
@@ -9998,8 +10391,8 @@ function statusPresentation(statusRef, state){
   const o_2=state.LastError;
   if(o_2==null)_1=null;
   else {
-    const error=o_2.$0;
-    _1=Some(error.ReasonCode+": "+error.Message);
+    const error_2=o_2.$0;
+    _1=Some(error_2.ReasonCode+": "+error_2.Message);
   }
   return{
     Freshness:freshness,
@@ -10169,20 +10562,20 @@ function workspaceBootstrapPresentation(state){
     }
   }
   else if(!m.$0.Recoverable){
-    const error=m.$0;
+    const error_2=m.$0;
     return{
       State:"unavailable",
       Title:"TA workspace unavailable",
-      Detail:error.ReasonCode+": "+error.Message,
+      Detail:error_2.ReasonCode+": "+error_2.Message,
       IsError:true
     };
   }
   else {
-    const error_1=m.$0;
+    const error_3=m.$0;
     return{
       State:"recovering",
       Title:"Restoring TA workspace",
-      Detail:error_1.ReasonCode+": "+error_1.Message,
+      Detail:error_3.ReasonCode+": "+error_3.Message,
       IsError:false
     };
   }
@@ -10192,6 +10585,10 @@ function validateEditorSubmission(schema, values){
 }
 function editorScalarEqualsSdui(scalar, value){
   return scalar.$==1?value.$==2&&scalar.$0===value.$0:scalar.$==2?value.$==1&&scalar.$0==value.$0:value.$==3&&scalar.$0==value.$0;
+}
+function commitWindowBounds(minimumCount, maximumCount, total, draft){
+  const next=clampWindow(minimumCount, maximumCount, total, draft);
+  return[next.StartIndex===viewportMaximumStart(total, next), next];
 }
 function previewWindowBounds(minimumCount, maximumCount, total, committed, drag, delta){
   const committed_1=clampWindow(minimumCount, maximumCount, total, committed);
@@ -10230,10 +10627,6 @@ function previewWindowBounds(minimumCount, maximumCount, total, committed, drag,
       return clampWindow(minimumCount, maximumCount, total, _6);
     }
   }
-}
-function commitWindowBounds(minimumCount, maximumCount, total, draft){
-  const next=clampWindow(minimumCount, maximumCount, total, draft);
-  return[next.StartIndex===viewportMaximumStart(total, next), next];
 }
 function fallbackInputs(path, kind){
   let o;
@@ -10387,7 +10780,7 @@ function temporalDetail(metadata){
   return _6+_8;
 }
 function sampleEvenly(maximumCount, values){
-  return maximumCount<=0||length(values)===0?[]:length(values)<=maximumCount?values.slice():maximumCount===1?[get(values, length(values)-1)]:ofSeq(delay(() => collect_1((sampleIndex) =>[get(values, toInt(Math.round(sampleIndex*(length(values)-1)/(maximumCount-1))))], range(0, maximumCount-1))));
+  return maximumCount<=0||length(values)===0?[]:length(values)<=maximumCount?values.slice():maximumCount===1?[get(values, length(values)-1)]:ofSeq(delay(() => collect_2((sampleIndex) =>[get(values, toInt(Math.round(sampleIndex*(length(values)-1)/(maximumCount-1))))], range(0, maximumCount-1))));
 }
 function paddedRange(fallbackLow, fallbackHigh, values){
   if(values.length==0)return[fallbackLow, fallbackHigh];
@@ -10444,9 +10837,9 @@ function editorSubmissionErrors(path, required, kind, values){
     const indexes=listIndexes(path, values);
     return ofSeq(delay(() => {
       let _2;
-      return append_1(minimum!=null&&minimum.$==1&&(length(indexes)<minimum.$0&&(_2=minimum.$0,true))?[String(path)+" requires at least "+String(_2)+" item(s)."]:[], delay(() => {
+      return append_2(minimum!=null&&minimum.$==1&&(length(indexes)<minimum.$0&&(_2=minimum.$0,true))?[String(path)+" requires at least "+String(_2)+" item(s)."]:[], delay(() => {
         let _3;
-        return append_1(maximum!=null&&maximum.$==1&&(length(indexes)>maximum.$0&&(_3=maximum.$0,true))?[String(path)+" allows at most "+String(_3)+" item(s)."]:[], delay(() => collect_1((index) => editorSubmissionErrors(String(path)+"["+String(index)+"]", true, itemKind, values), indexes)));
+        return append_2(maximum!=null&&maximum.$==1&&(length(indexes)>maximum.$0&&(_3=maximum.$0,true))?[String(path)+" allows at most "+String(_3)+" item(s)."]:[], delay(() => collect_2((index) => editorSubmissionErrors(String(path)+"["+String(index)+"]", true, itemKind, values), indexes)));
       }));
     }));
   }
@@ -10463,9 +10856,9 @@ function editorSubmissionErrors(path, required, kind, values){
           const maximum_1=_1[0];
           const minimum_1=_1[1];
           const value=_1[2];
-          return ofSeq(delay(() => append_1(isNaN(value)||Math.abs(value)===Infinity||(value<0?Math.ceil(value):Math.floor(value))!==value?[path+" must be an integer."]:[], delay(() => {
+          return ofSeq(delay(() => append_2(isNaN(value)||Math.abs(value)===Infinity||(value<0?Math.ceil(value):Math.floor(value))!==value?[path+" must be an integer."]:[], delay(() => {
             let _2;
-            return append_1(minimum_1!=null&&minimum_1.$==1&&(value<Number(minimum_1.$0)&&(_2=minimum_1.$0,true))?[path+" is below its minimum."]:[], delay(() => {
+            return append_2(minimum_1!=null&&minimum_1.$==1&&(value<Number(minimum_1.$0)&&(_2=minimum_1.$0,true))?[path+" is below its minimum."]:[], delay(() => {
               let _3;
               return maximum_1!=null&&maximum_1.$==1&&(value>Number(maximum_1.$0)&&(_3=maximum_1.$0,true))?[path+" exceeds its maximum."]:[];
             }));
@@ -10474,9 +10867,9 @@ function editorSubmissionErrors(path, required, kind, values){
           const maximum_2=_1[0];
           const minimum_2=_1[1];
           const value_1=_1[2];
-          return ofSeq(delay(() => append_1(isNaN(value_1)||Math.abs(value_1)===Infinity?[path+" must be finite."]:[], delay(() => {
+          return ofSeq(delay(() => append_2(isNaN(value_1)||Math.abs(value_1)===Infinity?[path+" must be finite."]:[], delay(() => {
             let _2;
-            return append_1(minimum_2!=null&&minimum_2.$==1&&(value_1<minimum_2.$0&&(_2=minimum_2.$0,true))?[path+" is below its minimum."]:[], delay(() => {
+            return append_2(minimum_2!=null&&minimum_2.$==1&&(value_1<minimum_2.$0&&(_2=minimum_2.$0,true))?[path+" is below its minimum."]:[], delay(() => {
               let _3;
               return maximum_2!=null&&maximum_2.$==1&&(value_1>maximum_2.$0&&(_3=maximum_2.$0,true))?[path+" exceeds its maximum."]:[];
             }));
@@ -10636,6 +11029,87 @@ function tryTemporalPoint(value){
 function requiredObjectText(name, value){
   return filter((x) =>!IsNullOrWhiteSpace(x), objectText(name, value));
 }
+function tryResolve(schemas, row){
+  return Bind_2((a) => {
+    if(a!=null&&a.$==1){
+      const binding=a.$0;
+      const m=tryFind((schema_1) => schema_1.TemplateKey==binding.TemplateKey, nonNull(schemas));
+      if(m!=null&&m.$==1){
+        const schema=m.$0;
+        return Map_2((values) => Some([schema, values]), validateForSchema(schema, binding));
+      }
+      else return Error_1(ofArray([error_1("editor-binding-schema-unavailable", "row.editorBinding.templateKey", "Editor binding schema is unavailable.")]));
+    }
+    else return Ok(null);
+  }, tryFind_1(row));
+}
+function tryFind_1(row){
+  const m=row.Options.TryFind("ptcs.dynamic.editor.binding.v1");
+  return m!=null&&m.$==1?Map_2((V) => Some(V), tryDecodeValue(m.$0)):Ok(null);
+}
+function validateForSchema(schema, binding){
+  return schema.TemplateKey!=binding.TemplateKey?Error_1(ofArray([error_1("editor-binding-template-mismatch", "row.editorBinding.templateKey", "Editor binding template does not match the selected schema.")])):validateInputs(limits(), schema, binding.Values);
+}
+function tryDecodeValue(value){
+  let _1;
+  if(value.$==5){
+    const fields=value.$0;
+    const _2=fields.TryFind("templateKey");
+    const _3=fields.TryFind("values");
+    if(_2!=null&&_2.$==1&&(_2.$0.$==3&&(_3!=null&&_3.$==1&&(_3.$0.$==4&&(_1=[_2.$0.$0, _3.$0.$0],true))))){
+      const decoded=mapi((_4, _5) => {
+        let _6;
+        if(_5.$==5){
+          const input_1=_5.$0;
+          const _7=input_1.TryFind("path");
+          const _8=input_1.TryFind("value");
+          if(_7!=null&&_7.$==1&&(_7.$0.$==3&&(_8!=null&&_8.$==1&&(_6=[_7.$0.$0, _8.$0],true)))){
+            const m=valueScalar(_6[1]);
+            return m==null?Error_1(error_1("editor-binding-value-kind", "row.editorBinding.values["+String(_4)+"].value", "Editor binding values must be text, number or boolean.")):Ok({Path:_6[0], Value:m.$0});
+          }
+          else return Error_1(error_1("editor-binding-input-shape", "row.editorBinding.values["+String(_4)+"]", "Editor binding input requires path and value."));
+        }
+        else return Error_1(error_1("editor-binding-input-shape", "row.editorBinding.values["+String(_4)+"]", "Editor binding inputs must be objects."));
+      }, nonNull(_1[1]));
+      const errors=choose((a) => a.$==0?null:Some(a.$0), decoded);
+      return length(errors)>0?Error_1(ofArray(errors)):validate({TemplateKey:_1[0], Values:choose((a) => a.$==1?null:Some(a.$0), decoded)});
+    }
+    else return Error_1(ofArray([error_1("editor-binding-shape", "row.editorBinding", "Editor binding requires templateKey and values.")]));
+  }
+  else return Error_1(ofArray([error_1("editor-binding-shape", "row.editorBinding", "Editor binding must be an object.")]));
+}
+function valueScalar(a){
+  return a.$==3?Some({$:0, $0:a.$0}):a.$==2?Some({$:1, $0:a.$0}):a.$==1?Some({$:2, $0:a.$0}):null;
+}
+function validate(binding){
+  const m=bindingErrors(binding);
+  return m.$==0?Ok(binding):Error_1(m);
+}
+function bindingErrors(binding){
+  const values=nonNull(binding.Values);
+  return ofSeq_1(delay(() => append_2(identifier("row.editorBinding.templateKey", binding.TemplateKey), delay(() => append_2(length(values)>limits().MaxFields?[error_1("limit-editor-inputs", "row.editorBinding.values", "Editor binding inputs exceed hard limit "+String(limits().MaxFields)+".")]:[], delay(() => append_2(exists((_1) => _1[1]>1, countBy((a) => a.Path, values))?[error_1("duplicate-editor-input", "row.editorBinding.values", "Editor binding paths must be unique.")]:[], delay(() => collect_2((m) => {
+    const input_1=m[1];
+    const index=m[0];
+    return append_2(identifier("row.editorBinding.values["+String(index)+"].path", input_1.Path), delay(() => {
+      let _1, _2;
+      const m_1=input_1.Value;
+      if(m_1.$==0)_2=(_1=m_1.$0,0);
+      else if(m_1.$==1){
+        const value=m_1.$0;
+        _2=isNaN(value)||Math.abs(value)===Infinity?(_1=m_1.$0,1):2;
+      }
+      else _2=2;
+      switch(_2){
+        case 0:
+          return unsafeValue("row.editorBinding.values["+String(index)+"].value", {$:3, $0:_1});
+        case 1:
+          return[error_1("invalid-editor-number", "row.editorBinding.values["+String(index)+"].value", "Editor binding number must be finite.")];
+        case 2:
+          return[];
+      }
+    }));
+  }, indexed(values))))))))));
+}
 let _c_5=Lazy((_i) => class $StartupCode_Renderer {
   static {
     _c_5=_i(this);
@@ -10762,10 +11236,10 @@ function Int(){
   return counter();
 }
 function set_counter(_1){
-  _c_10.counter=_1;
+  _c_11.counter=_1;
 }
 function counter(){
-  return _c_10.counter;
+  return _c_11.counter;
 }
 function Obsolete(sn){
   let _1;
@@ -10828,7 +11302,7 @@ function Concat_1(xs){
   return TreeReduce(Empty(), Append_1, x);
 }
 function Empty(){
-  return _c_11.Empty;
+  return _c_12.Empty;
 }
 function fromSeq(s){
   const a=ofSeq(map_2((_1) => Pair.New(_1[0], _1[1]), distinctBy_1((t) => t[0], rev(s))));
@@ -10844,11 +11318,285 @@ function New_46(path, kind, textValue, numberValue, boolValue){
     boolValue:boolValue
   };
 }
+function fromValue(value){
+  let _1, _2;
+  if(value.$==5){
+    const values=value.$0;
+    const _3=values.TryFind("templateKey");
+    const _4=values.TryFind("displayName");
+    const _5=values.TryFind("schemaRevision");
+    const _6=values.TryFind("fields");
+    if(_3!=null&&_3.$==1){
+      if(_3.$0.$==3){
+        if(_4!=null&&_4.$==1){
+          if(_4.$0.$==3){
+            if(_5!=null&&_5.$==1){
+              if(_5.$0.$==2){
+                if(_6!=null&&_6.$==1){
+                  if(_6.$0.$==4){
+                    _3.$0.$0;
+                    const revision=_5.$0.$0;
+                    _1=(_6.$0.$0,_4.$0.$0,revision>=0&&revision<=Number(9223372036854775807n)&&(revision<0?Math.ceil(revision):Math.floor(revision))===revision)&&(_2=[_4.$0.$0, _6.$0.$0, _5.$0.$0, _3.$0.$0],true);
+                  }
+                  else _1=false;
+                }
+                else _1=false;
+              }
+              else _1=false;
+            }
+            else _1=false;
+          }
+          else _1=false;
+        }
+        else _1=false;
+      }
+      else _1=false;
+    }
+    else _1=false;
+    if(_1){
+      const displayName=_2[0];
+      const revision_1=_2[2];
+      const templateKey=_2[3];
+      return Bind_2((decodedFields) => validateSchema(limits(), {
+        TemplateKey:templateKey,
+        DisplayName:displayName,
+        SchemaRevision:BigInt(Math.trunc(revision_1)),
+        Fields:decodedFields
+      }), sequence(mapi((_7, _8) => fieldFromValue("schema.fields["+String(_7)+"]", _8), nonNull(_2[1]))));
+    }
+    else return error("editor-schema-shape", "schema", "Template schema requires templateKey, displayName, schemaRevision and fields.");
+  }
+  else return error("editor-schema-shape", "schema", "Template schema must be an object.");
+}
+function fieldFromValue(field_1, value){
+  let _1;
+  if(value.$==5){
+    const values=value.$0;
+    const _2=values.TryFind("key");
+    const _3=values.TryFind("label");
+    const _4=values.TryFind("kind");
+    const _5=values.TryFind("required");
+    if(_2!=null&&_2.$==1&&(_2.$0.$==3&&(_3!=null&&_3.$==1&&(_3.$0.$==3&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_5.$0.$==1&&(_1=[_2.$0.$0, _4.$0, _3.$0.$0, _5.$0.$0],true)))))))){
+      const key=_1[0];
+      const label=_1[2];
+      const required=_1[3];
+      return Map_2((decodedKind) =>({
+        Key:key,
+        Label:label,
+        Kind:decodedKind,
+        Required:required,
+        DefaultValue:values.TryFind("defaultValue")
+      }), kindFromValue(field_1+".kind", _1[1]));
+    }
+    else return error("editor-schema-field", field_1, "Editor field requires key, label, kind and required.");
+  }
+  else return error("editor-schema-field", field_1, "Editor field must be an object.");
+}
+function sequence(results){
+  const errors=collect((a) => a.$==0?[]:ofList(a.$0), results);
+  return length(errors)>0?Error_1(ofArray(errors)):Ok(choose((a) => a.$==1?null:Some(a.$0), results));
+}
+function error(code, field_1, message){
+  return Error_1(ofArray([error_1(code, field_1, message)]));
+}
+function kindFromValue(field_1, value){
+  if(value.$==5){
+    const values=value.$0;
+    const m=values.TryFind("type");
+    switch(m!=null&&m.$==1?m.$0.$==3?m.$0.$0=="text"?0:m.$0.$0=="boolean"?1:m.$0.$0=="integer"?2:m.$0.$0=="decimal"?3:m.$0.$0=="choice"?4:m.$0.$0=="scale"?5:m.$0.$0=="list"?6:m.$0.$0=="group"?7:8:8:8){
+      case 0:
+        return Ok({$:0});
+      case 1:
+        return Ok({$:3});
+      case 2:
+        let _1;
+        const _2=optionalInt64(field_1+".minimum", "minimum", values);
+        const _3=optionalInt64(field_1+".maximum", "maximum", values);
+        switch(_2.$==1?_3.$==1?(_1=[_2.$0, _3.$0],2):(_1=_2.$0,1):_3.$==1?(_1=_3.$0,1):(_1=[_3.$0, _2.$0],0)){
+          case 0:
+            return Ok({
+              $:1,
+              $0:_1[1],
+              $1:_1[0]
+            });
+          case 1:
+            return Error_1(_1);
+          case 2:
+            return Error_1(append_1(_1[0], _1[1]));
+        }
+        break;
+      case 3:
+        let _4;
+        const _5=optionalFloat(field_1+".minimum", "minimum", values);
+        const _6=optionalFloat(field_1+".maximum", "maximum", values);
+        switch(_5.$==1?_6.$==1?(_4=[_5.$0, _6.$0],2):(_4=_5.$0,1):_6.$==1?(_4=_6.$0,1):(_4=[_6.$0, _5.$0],0)){
+          case 0:
+            return Ok({
+              $:2,
+              $0:_4[1],
+              $1:_4[0]
+            });
+          case 1:
+            return Error_1(_4);
+          case 2:
+            return Error_1(append_1(_4[0], _4[1]));
+        }
+        break;
+      case 4:
+        let _7;
+        const m_1=values.TryFind("choices");
+        return m_1!=null&&m_1.$==1&&(m_1.$0.$==4&&(_7=m_1.$0.$0,true))?Map_2((I) =>({$:4, $0:I}), sequence(mapi((_12, _13) => choiceFromValue(String(field_1)+".choices["+String(_12)+"]", _13), nonNull(_7)))):error("editor-schema-choice", field_1, "Choice schema requires choices.");
+      case 5:
+        let _8;
+        const m_2=values.TryFind("scaleKeys");
+        return m_2!=null&&m_2.$==1&&(m_2.$0.$==4&&(_8=m_2.$0.$0,true))?Map_2((a) =>({$:5, $0:a}), sequence(mapi((_12, _13) => _13.$==3?Ok(_13.$0):error("editor-schema-scale", String(field_1)+".scaleKeys["+String(_12)+"]", "Scale key must be text."), nonNull(_8)))):error("editor-schema-scale", field_1, "Scale schema requires scaleKeys.");
+      case 6:
+        let _9, _10;
+        const m_3=values.TryFind("item");
+        if(m_3!=null&&m_3.$==1){
+          const m_4=[kindFromValue(field_1+".item", m_3.$0), optionalInt(field_1+".minimum", "minimum", values), optionalInt(field_1+".maximum", "maximum", values)];
+          const c=m_4[0];
+          if(c.$==0){
+            const c_1=m_4[1];
+            if(c_1.$==0){
+              const c_2=m_4[2];
+              _9=c_2.$==0?(_10=[c.$0, c_2.$0, c_1.$0],true):(_10=m_4,false);
+            }
+            else _9=(_10=m_4,false);
+          }
+          else _9=(_10=m_4,false);
+          return _9?Ok({
+            $:6,
+            $0:_10[0],
+            $1:_10[2],
+            $2:_10[1]
+          }):Error_1(ofSeq_1(delay(() => {
+            const c_3=_10[0];
+            let _12=c_3.$==1?c_3.$0:[];
+            return append_2(_12, delay(() => {
+              const c_4=_10[1];
+              let _13=c_4.$==1?c_4.$0:[];
+              return append_2(_13, delay(() => {
+                const c_5=_10[2];
+                return c_5.$==1?c_5.$0:[];
+              }));
+            }));
+          })));
+        }
+        else return error("editor-schema-list", field_1, "List schema requires an item kind.");
+        break;
+      case 7:
+        let _11;
+        const m_5=values.TryFind("fields");
+        return m_5!=null&&m_5.$==1&&(m_5.$0.$==4&&(_11=m_5.$0.$0,true))?Map_2((f) =>({$:7, $0:f}), sequence(mapi((_12, _13) => fieldFromValue(String(field_1)+".fields["+String(_12)+"]", _13), nonNull(_11)))):error("editor-schema-group", field_1, "Group schema requires fields.");
+      case 8:
+        return error("editor-schema-kind", field_1, "Unknown editor schema kind.");
+    }
+  }
+  else return error("editor-schema-kind", field_1, "Editor schema kind must be an object.");
+}
+function optionalInt64(field_1, key, values){
+  let _1, _2;
+  const m=values.TryFind(key);
+  if(m!=null&&m.$==1){
+    if(m.$0.$==2){
+      const value=m.$0.$0;
+      _2=value>=Number(-9223372036854775808n)&&value<=Number(9223372036854775807n)&&(value<0?Math.ceil(value):Math.floor(value))===value?(_1=m.$0.$0,1):2;
+    }
+    else _2=2;
+  }
+  else _2=0;
+  switch(_2){
+    case 0:
+      return Ok(null);
+    case 1:
+      return Ok(Some(BigInt(Math.trunc(_1))));
+    case 2:
+      return error("editor-schema-number", field_1, "Editor schema bound must be an integer.");
+  }
+}
+function optionalFloat(field_1, key, values){
+  let _1, _2;
+  const m=values.TryFind(key);
+  if(m!=null&&m.$==1){
+    if(m.$0.$==2){
+      const value=m.$0.$0;
+      _2=!(isNaN(value)||Math.abs(value)===Infinity)?(_1=m.$0.$0,1):2;
+    }
+    else _2=2;
+  }
+  else _2=0;
+  switch(_2){
+    case 0:
+      return Ok(null);
+    case 1:
+      return Ok(Some(_1));
+    case 2:
+      return error("editor-schema-number", field_1, "Editor schema bound must be finite.");
+  }
+}
+function choiceFromValue(field_1, value){
+  let _1;
+  if(value.$==5){
+    const values=value.$0;
+    const _2=values.TryFind("key");
+    const _3=values.TryFind("label");
+    const _4=values.TryFind("value");
+    return _2!=null&&_2.$==1&&(_2.$0.$==3&&(_3!=null&&_3.$==1&&(_3.$0.$==3&&(_4!=null&&_4.$==1&&(_1=[_4.$0, _2.$0.$0, _3.$0.$0],true)))))?Ok({
+      Key:_1[1],
+      Label:_1[2],
+      Value:_1[0]
+    }):error("editor-schema-choice", field_1, "Editor choice requires key, label and value.");
+  }
+  else return error("editor-schema-choice", field_1, "Editor choice must be an object.");
+}
+function optionalInt(field_1, key, values){
+  let _1, _2;
+  const m=values.TryFind(key);
+  if(m!=null&&m.$==1){
+    if(m.$0.$==2){
+      const value=m.$0.$0;
+      _2=value>=0&&value<=2147483647&&(value<0?Math.ceil(value):Math.floor(value))===value?(_1=m.$0.$0,1):2;
+    }
+    else _2=2;
+  }
+  else _2=0;
+  switch(_2){
+    case 0:
+      return Ok(null);
+    case 1:
+      return Ok(Some(toInt(_1)));
+    case 2:
+      return error("editor-schema-number", field_1, "Editor schema bound must be a non-negative integer.");
+  }
+}
 class Random extends Object_1 {
   Next_1(maxValue){
     return maxValue<0?FailWith("'maxValue' must be greater than zero."):Math.floor(Math.random()*maxValue);
   }
 }
+let _c_7=Lazy((_i) => class $StartupCode_EditorAction {
+  static {
+    _c_7=_i(this);
+  }
+  static OptionKey;
+  static ResultKind;
+  static RequestKind;
+  static Protocol;
+  static limits;
+  static {
+    this.limits={
+      MaxSchemaDepth:8,
+      MaxFields:128,
+      MaxChoicesPerField:128,
+      MaxListItems:128
+    };
+    this.Protocol="ptcs-dynamic-action.v1";
+    this.RequestKind="action-request";
+    this.ResultKind="action-result";
+    this.OptionKey="ptcs.dynamic.editor.binding.v1";
+  }
+});
 class FSharpSet extends Object_1 {
   tree;
   Contains(v){
@@ -10882,6 +11630,44 @@ class FSharpSet extends Object_1 {
       super();
       this.tree=tree;
     }
+  }
+}
+function error_1(code, field_1, message){
+  return{
+    Code:code,
+    Field:field_1,
+    Message:message
+  };
+}
+function identifier(field_1, value){
+  return IsNullOrWhiteSpace(value)?ofArray([error_1("required", field_1, field_1+" is required.")]):value.length>128?ofArray([error_1("too-long", field_1, field_1+" exceeds 128 characters.")]):FSharpList.Empty;
+}
+function unsafeValue(field_1, value){
+  let _1, _2;
+  if(value.$==3){
+    if(StartsWith(TrimStart(value.$0, null).toLowerCase(), "javascript:"))_2=(_1=value.$0,0);
+    else {
+      const text_1=value.$0;
+      _2=StartsWith(TrimStart(text_1, null).toLowerCase(), "http://")||StartsWith(TrimStart(text_1, null).toLowerCase(), "https://")?(_1=value.$0,1):4;
+    }
+  }
+  else _2=value.$==4?(_1=value.$0,2):value.$==5?(_1=value.$0,3):4;
+  switch(_2){
+    case 0:
+      return ofArray([error_1("script-forbidden", field_1, "Script URLs are forbidden.")]);
+    case 1:
+      return ofArray([error_1("url-forbidden", field_1, "Arbitrary URLs are forbidden in the shared runtime contract.")]);
+    case 2:
+      return collect_1((v) => unsafeValue(field_1, v), ofArray(_1));
+    case 3:
+      return collect_1((_3) => {
+        const key=_3[0];
+        const v=Trim(key).toLowerCase();
+        let _4=(new FSharpSet("New_2", OfSeq(ofArray(["script", "selector", "url", "href"])))).Contains(v)?ofArray([error_1("unsafe-key", field_1, "Unsafe option key `"+key+"` is forbidden.")]):FSharpList.Empty;
+        return append_1(_4, unsafeValue(field_1+"."+key, _3[1]));
+      }, ofSeq_1(ToSeq(_1)));
+    case 4:
+      return FSharpList.Empty;
   }
 }
 function TryParse_2(s, min_1, max_2, r){
@@ -10950,9 +11736,9 @@ function concat_3(o){
   for(var k_1 in o)r.push.apply(r, o[k_1]);
   return r;
 }
-let _c_7=Lazy((_i) => class $StartupCode_DomUtility {
+let _c_8=Lazy((_i) => class $StartupCode_DomUtility {
   static {
-    _c_7=_i(this);
+    _c_8=_i(this);
   }
   static defaultWrap;
   static wrapMap;
@@ -10969,9 +11755,9 @@ let _c_7=Lazy((_i) => class $StartupCode_DomUtility {
     this.defaultWrap=[0, "", ""];
   }
 });
-let _c_8=Lazy((_i) => class Client {
+let _c_9=Lazy((_i) => class Client {
   static {
-    _c_8=_i(this);
+    _c_9=_i(this);
   }
   static FloatApplyChecked;
   static FloatGetChecked;
@@ -11020,7 +11806,7 @@ let _c_8=Lazy((_i) => class Client {
     };
     this.StringListGet=(el) => {
       const selectedOptions=el.selectedOptions;
-      return Some(ofSeq(delay(() => collect_1((i) =>[selectedOptions.item(i).value], range(0, selectedOptions.length-1)))));
+      return Some(ofSeq(delay(() => collect_2((i) =>[selectedOptions.item(i).value], range(0, selectedOptions.length-1)))));
     };
     const g_1=StringListGet();
     const s_1=StringListSet();
@@ -11158,9 +11944,9 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
+let _c_10=Lazy((_i) => class $StartupCode_Concurrency {
   static {
-    _c_9=_i(this);
+    _c_10=_i(this);
   }
   static GetCT;
   static Zero;
@@ -11252,9 +12038,9 @@ class ArgumentException extends Error {
     }
   }
 }
-let _c_10=Lazy((_i) => class $StartupCode_Abbrev {
+let _c_11=Lazy((_i) => class $StartupCode_Abbrev {
   static {
-    _c_10=_i(this);
+    _c_11=_i(this);
   }
   static counter;
   static {
@@ -11284,22 +12070,22 @@ function ApplyValue(get_1, set_1, var_1){
   }, var_1.View)];
 }
 function StringSet(){
-  return _c_8.StringSet;
+  return _c_9.StringSet;
 }
 function StringGet(){
-  return _c_8.StringGet;
+  return _c_9.StringGet;
 }
 function StringListSet(){
-  return _c_8.StringListSet;
+  return _c_9.StringListSet;
 }
 function StringListGet(){
-  return _c_8.StringListGet;
+  return _c_9.StringListGet;
 }
 function DateTimeSetUnchecked(){
-  return _c_8.DateTimeSetUnchecked;
+  return _c_9.DateTimeSetUnchecked;
 }
 function DateTimeGetUnchecked(){
-  return _c_8.DateTimeGetUnchecked;
+  return _c_9.DateTimeGetUnchecked;
 }
 function FileApplyValue(get_1, set_1, var_1){
   let expectedValue;
@@ -11321,34 +12107,34 @@ function FileApplyValue(get_1, set_1, var_1){
   }, var_1.View)];
 }
 function FileSetUnchecked(){
-  return _c_8.FileSetUnchecked;
+  return _c_9.FileSetUnchecked;
 }
 function FileGetUnchecked(){
-  return _c_8.FileGetUnchecked;
+  return _c_9.FileGetUnchecked;
 }
 function IntSetUnchecked(){
-  return _c_8.IntSetUnchecked;
+  return _c_9.IntSetUnchecked;
 }
 function IntGetUnchecked(){
-  return _c_8.IntGetUnchecked;
+  return _c_9.IntGetUnchecked;
 }
 function IntSetChecked(){
-  return _c_8.IntSetChecked;
+  return _c_9.IntSetChecked;
 }
 function IntGetChecked(){
-  return _c_8.IntGetChecked;
+  return _c_9.IntGetChecked;
 }
 function FloatSetUnchecked(){
-  return _c_8.FloatSetUnchecked;
+  return _c_9.FloatSetUnchecked;
 }
 function FloatGetUnchecked(){
-  return _c_8.FloatGetUnchecked;
+  return _c_9.FloatGetUnchecked;
 }
 function FloatSetChecked(){
-  return _c_8.FloatSetChecked;
+  return _c_9.FloatSetChecked;
 }
 function FloatGetChecked(){
-  return _c_8.FloatGetChecked;
+  return _c_9.FloatGetChecked;
 }
 function isBlank_1(s){
   return forall_1(IsWhiteSpace, s);
@@ -11492,9 +12278,9 @@ function forceLazy(){
 function cachedLazy(){
   return this.v;
 }
-let _c_11=Lazy((_i) => class $StartupCode_AppendList {
+let _c_12=Lazy((_i) => class $StartupCode_AppendList {
   static {
-    _c_11=_i(this);
+    _c_12=_i(this);
   }
   static Empty;
   static {

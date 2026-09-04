@@ -2,42 +2,13 @@ namespace PulseTrade.Comm.Spa.Dynamic.Contracts
 
 open System
 
-type EditorChoice =
-    { Key: string
-      Label: string
-      Value: SduiValue }
-
-[<RequireQualifiedAccess>]
-type EditorValueKind =
-    | Text
-    | Integer of minValue: int64 option * maxValue: int64 option
-    | Decimal of minValue: float option * maxValue: float option
-    | Boolean
-    | Choice of EditorChoice array
-    | Scale of allowedScaleKeys: string array
-    | List of item: EditorValueKind * minItems: int option * maxItems: int option
-    | Group of fields: EditorFieldSchema array
-
-and EditorFieldSchema =
-    { Key: string
-      Label: string
-      Kind: EditorValueKind
-      Required: bool
-      DefaultValue: SduiValue option }
-
-type DynamicTemplateSchema =
-    { TemplateKey: string
-      DisplayName: string
-      SchemaRevision: int64
-      Fields: EditorFieldSchema array }
-
 type DynamicEditorLimits =
     { MaxSchemaDepth: int
       MaxFields: int
       MaxChoicesPerField: int
       MaxListItems: int }
 
-[<RequireQualifiedAccess>]
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
 module DynamicEditorDefaults =
     let limits =
         { MaxSchemaDepth = 8
@@ -91,7 +62,7 @@ type DynamicActionLifecycleState =
     { Pending: DynamicActionRequest option
       LastResult: DynamicActionResult option }
 
-[<RequireQualifiedAccess>]
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
 module DynamicEditorValidation =
     let nonNull values =
         if isNull values then [||] else values
@@ -306,11 +277,18 @@ module DynamicEditorValidation =
                 | true, index when index >= 0 && index < limits.MaxListItems -> Ok(index, text.Substring(closeIndex + 1))
                 | _ -> Error [ RuntimeValidation.error "editor-list-index-invalid" field $"{field} list index is outside the allowed range." ]
 
+    let firstPathSeparator (text: string) =
+        let dotIndex = text.IndexOf('.')
+        let bracketIndex = text.IndexOf('[')
+        if dotIndex < 0 then bracketIndex
+        elif bracketIndex < 0 then dotIndex
+        else min dotIndex bracketIndex
+
     let rec resolveKind (limits: DynamicEditorLimits) (field: string) (kind: EditorValueKind) (remainder: string) =
         match kind with
-        | EditorValueKind.Group fields when remainder.StartsWith(".", StringComparison.Ordinal) ->
+        | EditorValueKind.Group fields when remainder.StartsWith(".") ->
             let childPath = remainder.Substring(1)
-            let separator = childPath.IndexOfAny([| '.'; '[' |])
+            let separator = firstPathSeparator childPath
             let key = if separator < 0 then childPath else childPath.Substring(0, separator)
             let childRemainder = if separator < 0 then "" else childPath.Substring(separator)
             match nonNull fields |> Array.tryFind (fun child -> child.Key = key) with
@@ -323,7 +301,7 @@ module DynamicEditorValidation =
         | _ -> Error [ RuntimeValidation.error "editor-path-invalid" field $"{field} does not match the template schema." ]
 
     let resolvePath limits (schema: DynamicTemplateSchema) (path: string) =
-        let separator = if isNull path then -1 else path.IndexOfAny([| '.'; '[' |])
+        let separator = if isNull path then -1 else firstPathSeparator path
         let key =
             if String.IsNullOrWhiteSpace path then ""
             elif separator < 0 then path
@@ -354,6 +332,376 @@ module DynamicEditorValidation =
         match inputErrors limits schema values with
         | [] -> Ok values
         | errors -> Error errors
+
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
+module DynamicTemplateSchemaCodec =
+    let optionInt64Number (value: int64 option) = value |> Option.map (float >> SduiValue.Number)
+    let optionIntNumber (value: int option) = value |> Option.map (float >> SduiValue.Number)
+
+    let rec kindToValue kind =
+        let fields =
+            match kind with
+            | EditorValueKind.Text -> Map [ "type", SduiValue.Text "text" ]
+            | EditorValueKind.Integer(minimum, maximum) ->
+                Map [
+                    "type", SduiValue.Text "integer"
+                    match optionInt64Number minimum with Some value -> "minimum", value | None -> ()
+                    match optionInt64Number maximum with Some value -> "maximum", value | None -> ()
+                ]
+            | EditorValueKind.Decimal(minimum, maximum) ->
+                Map [
+                    "type", SduiValue.Text "decimal"
+                    match minimum with Some value -> "minimum", SduiValue.Number value | None -> ()
+                    match maximum with Some value -> "maximum", SduiValue.Number value | None -> ()
+                ]
+            | EditorValueKind.Boolean -> Map [ "type", SduiValue.Text "boolean" ]
+            | EditorValueKind.Choice choices ->
+                Map [
+                    "type", SduiValue.Text "choice"
+                    "choices",
+                    SduiValue.Array(
+                        DynamicEditorValidation.nonNull choices
+                        |> Array.map (fun choice ->
+                            SduiValue.Object(
+                                Map [
+                                    "key", SduiValue.Text choice.Key
+                                    "label", SduiValue.Text choice.Label
+                                    "value", choice.Value
+                                ])))
+                ]
+            | EditorValueKind.Scale scaleKeys ->
+                Map [
+                    "type", SduiValue.Text "scale"
+                    "scaleKeys", SduiValue.Array(DynamicEditorValidation.nonNull scaleKeys |> Array.map SduiValue.Text)
+                ]
+            | EditorValueKind.List(item, minimum, maximum) ->
+                Map [
+                    "type", SduiValue.Text "list"
+                    "item", kindToValue item
+                    match optionIntNumber minimum with Some value -> "minimum", value | None -> ()
+                    match optionIntNumber maximum with Some value -> "maximum", value | None -> ()
+                ]
+            | EditorValueKind.Group childFields ->
+                Map [
+                    "type", SduiValue.Text "group"
+                    "fields", SduiValue.Array(DynamicEditorValidation.nonNull childFields |> Array.map fieldToValue)
+                ]
+
+        SduiValue.Object fields
+
+    and fieldToValue field =
+        SduiValue.Object(
+            Map [
+                "key", SduiValue.Text field.Key
+                "label", SduiValue.Text field.Label
+                "kind", kindToValue field.Kind
+                "required", SduiValue.Bool field.Required
+                match field.DefaultValue with Some value -> "defaultValue", value | None -> ()
+            ])
+
+    let toValue schema =
+        SduiValue.Object(
+            Map [
+                "templateKey", SduiValue.Text schema.TemplateKey
+                "displayName", SduiValue.Text schema.DisplayName
+                "schemaRevision", SduiValue.Number(float schema.SchemaRevision)
+                "fields", SduiValue.Array(DynamicEditorValidation.nonNull schema.Fields |> Array.map fieldToValue)
+            ])
+
+    let error code field message = Error [ RuntimeValidation.error code field message ]
+
+    let optionalInt field key values =
+        match Map.tryFind key values with
+        | None -> Ok None
+        | Some(SduiValue.Number value) when value >= 0.0 && value <= float Int32.MaxValue && Math.Truncate value = value -> Ok(Some(int value))
+        | _ -> error "editor-schema-number" field "Editor schema bound must be a non-negative integer."
+
+    let optionalInt64 field key values =
+        match Map.tryFind key values with
+        | None -> Ok None
+        | Some(SduiValue.Number value) when value >= float Int64.MinValue && value <= float Int64.MaxValue && Math.Truncate value = value -> Ok(Some(int64 value))
+        | _ -> error "editor-schema-number" field "Editor schema bound must be an integer."
+
+    let optionalFloat field key values =
+        match Map.tryFind key values with
+        | None -> Ok None
+        | Some(SduiValue.Number value) when not (Double.IsNaN value || Double.IsInfinity value) -> Ok(Some value)
+        | _ -> error "editor-schema-number" field "Editor schema bound must be finite."
+
+    let sequence results =
+        let errors = results |> Array.collect (function Error values -> List.toArray values | Ok _ -> [||])
+        if errors.Length > 0 then Error(List.ofArray errors)
+        else Ok(results |> Array.choose (function Ok value -> Some value | Error _ -> None))
+
+    let rec kindFromValue field value =
+        match value with
+        | SduiValue.Object values ->
+            match Map.tryFind "type" values with
+            | Some(SduiValue.Text "text") -> Ok EditorValueKind.Text
+            | Some(SduiValue.Text "boolean") -> Ok EditorValueKind.Boolean
+            | Some(SduiValue.Text "integer") ->
+                match optionalInt64 (field + ".minimum") "minimum" values, optionalInt64 (field + ".maximum") "maximum" values with
+                | Ok minimum, Ok maximum -> Ok(EditorValueKind.Integer(minimum, maximum))
+                | Error errors, Ok _
+                | Ok _, Error errors -> Error errors
+                | Error left, Error right -> Error(left @ right)
+            | Some(SduiValue.Text "decimal") ->
+                match optionalFloat (field + ".minimum") "minimum" values, optionalFloat (field + ".maximum") "maximum" values with
+                | Ok minimum, Ok maximum -> Ok(EditorValueKind.Decimal(minimum, maximum))
+                | Error errors, Ok _
+                | Ok _, Error errors -> Error errors
+                | Error left, Error right -> Error(left @ right)
+            | Some(SduiValue.Text "choice") ->
+                match Map.tryFind "choices" values with
+                | Some(SduiValue.Array choices) ->
+                    DynamicEditorValidation.nonNull choices
+                    |> Array.mapi (fun index choice -> choiceFromValue $"{field}.choices[{index}]" choice)
+                    |> sequence
+                    |> Result.map EditorValueKind.Choice
+                | _ -> error "editor-schema-choice" field "Choice schema requires choices."
+            | Some(SduiValue.Text "scale") ->
+                match Map.tryFind "scaleKeys" values with
+                | Some(SduiValue.Array scaleKeys) ->
+                    let decoded =
+                        DynamicEditorValidation.nonNull scaleKeys
+                        |> Array.mapi (fun index item ->
+                            match item with
+                            | SduiValue.Text key -> Ok key
+                            | _ -> error "editor-schema-scale" $"{field}.scaleKeys[{index}]" "Scale key must be text.")
+                    sequence decoded |> Result.map EditorValueKind.Scale
+                | _ -> error "editor-schema-scale" field "Scale schema requires scaleKeys."
+            | Some(SduiValue.Text "list") ->
+                match Map.tryFind "item" values with
+                | None -> error "editor-schema-list" field "List schema requires an item kind."
+                | Some item ->
+                    match kindFromValue (field + ".item") item, optionalInt (field + ".minimum") "minimum" values, optionalInt (field + ".maximum") "maximum" values with
+                    | Ok itemKind, Ok minimum, Ok maximum -> Ok(EditorValueKind.List(itemKind, minimum, maximum))
+                    | results ->
+                        [ match results with
+                          | Error errors, _, _ -> yield! errors
+                          | _ -> ()
+                          match results with
+                          | _, Error errors, _ -> yield! errors
+                          | _ -> ()
+                          match results with
+                          | _, _, Error errors -> yield! errors
+                          | _ -> () ]
+                        |> Error
+            | Some(SduiValue.Text "group") ->
+                match Map.tryFind "fields" values with
+                | Some(SduiValue.Array fields) ->
+                    DynamicEditorValidation.nonNull fields
+                    |> Array.mapi (fun index child -> fieldFromValue $"{field}.fields[{index}]" child)
+                    |> sequence
+                    |> Result.map EditorValueKind.Group
+                | _ -> error "editor-schema-group" field "Group schema requires fields."
+            | _ -> error "editor-schema-kind" field "Unknown editor schema kind."
+        | _ -> error "editor-schema-kind" field "Editor schema kind must be an object."
+
+    and choiceFromValue field value =
+        match value with
+        | SduiValue.Object values ->
+            match Map.tryFind "key" values, Map.tryFind "label" values, Map.tryFind "value" values with
+            | Some(SduiValue.Text key), Some(SduiValue.Text label), Some choiceValue ->
+                Ok { Key = key; Label = label; Value = choiceValue }
+            | _ -> error "editor-schema-choice" field "Editor choice requires key, label and value."
+        | _ -> error "editor-schema-choice" field "Editor choice must be an object."
+
+    and fieldFromValue field value =
+        match value with
+        | SduiValue.Object values ->
+            match Map.tryFind "key" values, Map.tryFind "label" values, Map.tryFind "kind" values, Map.tryFind "required" values with
+            | Some(SduiValue.Text key), Some(SduiValue.Text label), Some kind, Some(SduiValue.Bool required) ->
+                kindFromValue (field + ".kind") kind
+                |> Result.map (fun decodedKind ->
+                    { Key = key
+                      Label = label
+                      Kind = decodedKind
+                      Required = required
+                      DefaultValue = Map.tryFind "defaultValue" values })
+            | _ -> error "editor-schema-field" field "Editor field requires key, label, kind and required."
+        | _ -> error "editor-schema-field" field "Editor field must be an object."
+
+    let fromValue value =
+        match value with
+        | SduiValue.Object values ->
+            match Map.tryFind "templateKey" values, Map.tryFind "displayName" values, Map.tryFind "schemaRevision" values, Map.tryFind "fields" values with
+            | Some(SduiValue.Text templateKey), Some(SduiValue.Text displayName), Some(SduiValue.Number revision), Some(SduiValue.Array fields)
+                when revision >= 0.0 && revision <= float Int64.MaxValue && Math.Truncate revision = revision ->
+                DynamicEditorValidation.nonNull fields
+                |> Array.mapi (fun index field -> fieldFromValue $"schema.fields[{index}]" field)
+                |> sequence
+                |> Result.bind (fun decodedFields ->
+                    { TemplateKey = templateKey
+                      DisplayName = displayName
+                      SchemaRevision = int64 revision
+                      Fields = decodedFields }
+                    |> DynamicEditorValidation.validateSchema DynamicEditorDefaults.limits)
+            | _ -> error "editor-schema-shape" "schema" "Template schema requires templateKey, displayName, schemaRevision and fields."
+        | _ -> error "editor-schema-shape" "schema" "Template schema must be an object."
+
+type TaRowEditorBinding =
+    { TemplateKey: string
+      Values: EditorInputValue array }
+
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
+module TaRowEditorBinding =
+    [<Literal>]
+    let OptionKey = "ptcs.dynamic.editor.binding.v1"
+
+    let scalarValue = function
+        | EditorScalarValue.Text value -> SduiValue.Text value
+        | EditorScalarValue.Number value -> SduiValue.Number value
+        | EditorScalarValue.Bool value -> SduiValue.Bool value
+
+    let valueScalar = function
+        | SduiValue.Text value -> Some(EditorScalarValue.Text value)
+        | SduiValue.Number value -> Some(EditorScalarValue.Number value)
+        | SduiValue.Bool value -> Some(EditorScalarValue.Bool value)
+        | _ -> None
+
+    let toValue binding =
+        let values =
+            DynamicEditorValidation.nonNull binding.Values
+            |> Array.map (fun input ->
+                SduiValue.Object(
+                    Map [
+                        "path", SduiValue.Text input.Path
+                        "value", scalarValue input.Value
+                    ]))
+
+        SduiValue.Object(
+            Map [
+                "templateKey", SduiValue.Text binding.TemplateKey
+                "values", SduiValue.Array values
+            ])
+
+    let bindingErrors binding =
+        let values = DynamicEditorValidation.nonNull binding.Values
+
+        [ yield! RuntimeValidation.identifier "row.editorBinding.templateKey" binding.TemplateKey
+          if values.Length > DynamicEditorDefaults.limits.MaxFields then
+              yield
+                  RuntimeValidation.error
+                      "limit-editor-inputs"
+                      "row.editorBinding.values"
+                      $"Editor binding inputs exceed hard limit {DynamicEditorDefaults.limits.MaxFields}."
+          if values |> Array.countBy _.Path |> Array.exists (fun (_, count) -> count > 1) then
+              yield
+                  RuntimeValidation.error
+                      "duplicate-editor-input"
+                      "row.editorBinding.values"
+                      "Editor binding paths must be unique."
+          for index, input in values |> Array.indexed do
+              yield! RuntimeValidation.identifier $"row.editorBinding.values[{index}].path" input.Path
+              match input.Value with
+              | EditorScalarValue.Text value ->
+                  yield! RuntimeValidation.unsafeValue $"row.editorBinding.values[{index}].value" (SduiValue.Text value)
+              | EditorScalarValue.Number value when Double.IsNaN value || Double.IsInfinity value ->
+                  yield
+                      RuntimeValidation.error
+                          "invalid-editor-number"
+                          $"row.editorBinding.values[{index}].value"
+                          "Editor binding number must be finite."
+              | _ -> () ]
+
+    let validate binding =
+        match bindingErrors binding with
+        | [] -> Ok binding
+        | errors -> Error errors
+
+    let tryDecodeValue value =
+        match value with
+        | SduiValue.Object fields ->
+            match Map.tryFind "templateKey" fields, Map.tryFind "values" fields with
+            | Some(SduiValue.Text templateKey), Some(SduiValue.Array values) ->
+                let decoded =
+                    DynamicEditorValidation.nonNull values
+                    |> Array.mapi (fun index item ->
+                        match item with
+                        | SduiValue.Object input ->
+                            match Map.tryFind "path" input, Map.tryFind "value" input with
+                            | Some(SduiValue.Text path), Some scalar ->
+                                match valueScalar scalar with
+                                | Some scalarValue -> Ok { Path = path; Value = scalarValue }
+                                | None ->
+                                    Error(
+                                        RuntimeValidation.error
+                                            "editor-binding-value-kind"
+                                            $"row.editorBinding.values[{index}].value"
+                                            "Editor binding values must be text, number or boolean.")
+                            | _ ->
+                                Error(
+                                    RuntimeValidation.error
+                                        "editor-binding-input-shape"
+                                        $"row.editorBinding.values[{index}]"
+                                        "Editor binding input requires path and value.")
+                        | _ ->
+                            Error(
+                                RuntimeValidation.error
+                                    "editor-binding-input-shape"
+                                    $"row.editorBinding.values[{index}]"
+                                    "Editor binding inputs must be objects."))
+
+                let errors = decoded |> Array.choose (function Error error -> Some error | Ok _ -> None)
+
+                if errors.Length > 0 then
+                    Error(List.ofArray errors)
+                else
+                    { TemplateKey = templateKey
+                      Values = decoded |> Array.choose (function Ok input -> Some input | Error _ -> None) }
+                    |> validate
+            | _ ->
+                Error
+                    [ RuntimeValidation.error
+                          "editor-binding-shape"
+                          "row.editorBinding"
+                          "Editor binding requires templateKey and values." ]
+        | _ ->
+            Error
+                [ RuntimeValidation.error
+                      "editor-binding-shape"
+                      "row.editorBinding"
+                      "Editor binding must be an object." ]
+
+    let attach (binding: TaRowEditorBinding) (row: TaRowSpec) =
+        match validate binding with
+        | Error errors -> Error errors
+        | Ok valid ->
+            Ok
+                { row with
+                    Options = row.Options |> Map.add OptionKey (toValue valid) }
+
+    let tryFind (row: TaRowSpec) =
+        match row.Options |> Map.tryFind OptionKey with
+        | None -> Ok None
+        | Some value -> tryDecodeValue value |> Result.map Some
+
+    let validateForSchema (schema: DynamicTemplateSchema) (binding: TaRowEditorBinding) =
+        if schema.TemplateKey <> binding.TemplateKey then
+            Error
+                [ RuntimeValidation.error
+                      "editor-binding-template-mismatch"
+                      "row.editorBinding.templateKey"
+                      "Editor binding template does not match the selected schema." ]
+        else
+            DynamicEditorValidation.validateInputs DynamicEditorDefaults.limits schema binding.Values
+
+    let tryResolve (schemas: DynamicTemplateSchema array) (row: TaRowSpec) =
+        tryFind row
+        |> Result.bind (function
+            | None -> Ok None
+            | Some binding ->
+                match DynamicEditorValidation.nonNull schemas |> Array.tryFind (fun schema -> schema.TemplateKey = binding.TemplateKey) with
+                | None ->
+                    Error
+                        [ RuntimeValidation.error
+                              "editor-binding-schema-unavailable"
+                              "row.editorBinding.templateKey"
+                              "Editor binding schema is unavailable." ]
+                | Some schema ->
+                    validateForSchema schema binding
+                    |> Result.map (fun values -> Some(schema, values)))
 
 [<RequireQualifiedAccess>]
 module DynamicActionValidation =

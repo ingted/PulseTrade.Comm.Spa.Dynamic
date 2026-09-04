@@ -113,6 +113,35 @@ module TaRowSpec =
         |> Array.filter (String.IsNullOrWhiteSpace >> not)
         |> Array.distinct
 
+type EditorChoice =
+    { Key: string
+      Label: string
+      Value: SduiValue }
+
+[<RequireQualifiedAccess>]
+type EditorValueKind =
+    | Text
+    | Integer of minValue: int64 option * maxValue: int64 option
+    | Decimal of minValue: float option * maxValue: float option
+    | Boolean
+    | Choice of EditorChoice array
+    | Scale of allowedScaleKeys: string array
+    | List of item: EditorValueKind * minItems: int option * maxItems: int option
+    | Group of fields: EditorFieldSchema array
+
+and EditorFieldSchema =
+    { Key: string
+      Label: string
+      Kind: EditorValueKind
+      Required: bool
+      DefaultValue: SduiValue option }
+
+type DynamicTemplateSchema =
+    { TemplateKey: string
+      DisplayName: string
+      SchemaRevision: int64
+      Fields: EditorFieldSchema array }
+
 type TaWorkspaceDocument =
     { WorkspaceId: string
       Title: string
@@ -120,6 +149,7 @@ type TaWorkspaceDocument =
       StatusRef: string
       SharedTimeAxis: bool
       Rows: TaRowSpec array
+      EditorSchemas: DynamicTemplateSchema array
       AllowedActions: string array
       DefaultView: Map<string, SduiValue> }
 

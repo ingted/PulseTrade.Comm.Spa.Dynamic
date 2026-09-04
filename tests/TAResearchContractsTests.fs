@@ -24,6 +24,7 @@ let document =
       StatusRef = "ta.status"
       SharedTimeAxis = true
       Rows = [| row |]
+      EditorSchemas = [||]
       AllowedActions = [| "reset-view"; "reset-canvas"; "add-row"; "change-query" |]
       DefaultView = Map [ "zoom", SduiValue.Number 1.0 ] }
 
@@ -323,6 +324,49 @@ let tests =
                 [| "indicator"; "scales[0]"; "scales[1]"; "parameters.period"; "parameters.alpha"; "parameters.visible" |]
                 "Defaults should flatten list/group values into stable input paths."
             Expect.isOk (DynamicEditorValidation.validateInputs DynamicEditorDefaults.limits editorSchema editorDefaults) "Flattened defaults should validate against the same schema."
+            let decodedSchema =
+                editorSchema
+                |> DynamicTemplateSchemaCodec.toValue
+                |> DynamicTemplateSchemaCodec.fromValue
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal decodedSchema editorSchema "Template schema must round-trip through the transport-neutral SDUI value codec."
+
+            let documentWithSchema = { document with EditorSchemas = [| editorSchema |] }
+            Expect.isOk
+                (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document documentWithSchema })
+                "A document must atomically validate its editor schema catalog with its rows."
+            let duplicateSchemaDocument = { documentWithSchema with EditorSchemas = [| editorSchema; editorSchema |] }
+            Expect.isError
+                (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document duplicateSchemaDocument })
+                "Duplicate template keys in one document revision must fail closed."
+
+            let editorBinding =
+                { TemplateKey = editorSchema.TemplateKey
+                  Values = editorDefaults }
+
+            let boundRow =
+                TaRowEditorBinding.attach editorBinding row
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            let resolvedBinding =
+                TaRowEditorBinding.tryResolve [| editorSchema |] boundRow
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+                |> Option.defaultWith (fun () -> failtest "Bound rows must expose a reconfigure editor binding.")
+
+            Expect.equal (fst resolvedBinding).TemplateKey editorSchema.TemplateKey "Editor binding must retain the authoritative template key."
+            Expect.sequenceEqual (snd resolvedBinding) editorDefaults "Editor binding must round-trip all typed flat values."
+            Expect.equal
+                (TaRowEditorBinding.tryFind row)
+                (Ok None)
+                "Legacy rows without editor binding metadata must remain valid and read-only."
+
+            let invalidBindingRow =
+                { row with
+                    Options = row.Options |> Map.add TaRowEditorBinding.OptionKey (SduiValue.Text "invalid") }
+
+            Expect.isError
+                (TaRowEditorBinding.tryResolve [| editorSchema |] invalidBindingRow)
+                "Malformed editor binding metadata must fail closed instead of opening an empty editor."
 
             let duplicateFieldSchema =
                 { editorSchema with

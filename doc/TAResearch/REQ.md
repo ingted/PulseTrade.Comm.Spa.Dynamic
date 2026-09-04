@@ -118,3 +118,5 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-040 | renderer不得聚合行情或推論availability；多尺度interval/frontier/partial/final/quality由owner normalized metadata驅動。 |
 | DYN-TA-REQ-041 | dedicated chart root不得攔截既有Expression、FloatingPoint或一般list formatter；cell不需手工SDUI JSON/Display plumbing。 |
 | DYN-TA-REQ-042 | production acceptance須使用新版MDCQ real source、`dotnet dib`與Playwright MCP；synthetic M12只作regression。 |
+| DYN-TA-REQ-043 | authoritative `TaWorkspaceDocument`須以同一DocumentRevision攜帶rows與generic editor schema catalog；正式runtime不可依賴renderer-local schema options。catalog空白時不得顯示Add/Edit。 |
+| DYN-TA-REQ-044 | 可修改row須保存versioned template/value binding；Edit以stable RowId送`ApplyTemplate(Some rowId, ...)`並原位替換。legacy無binding row仍可顯示/移除但不可猜測成可編輯。 |

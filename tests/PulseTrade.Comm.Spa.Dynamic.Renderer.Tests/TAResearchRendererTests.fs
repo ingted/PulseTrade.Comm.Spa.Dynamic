@@ -200,6 +200,7 @@ let tests =
                   StatusRef = "status"
                   SharedTimeAxis = true
                   Rows = [| row "price" TaRowKind.Candlestick "price"; row "sma" TaRowKind.Sma "sma" |]
+                  EditorSchemas = [||]
                   AllowedActions = [||]
                   DefaultView = Map.empty }
 
@@ -247,6 +248,7 @@ let tests =
                   StatusRef = "status"
                   SharedTimeAxis = true
                   Rows = [| row |]
+                  EditorSchemas = [||]
                   AllowedActions = [||]
                   DefaultView = Map.empty }
 
@@ -402,6 +404,7 @@ let tests =
                   StatusRef = "status"
                   SharedTimeAxis = true
                   Rows = [| row |]
+                  EditorSchemas = [||]
                   AllowedActions = [||]
                   DefaultView = Map.empty }
             let cursor = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 10 } 3 |> Option.defaultWith (fun () -> failwith "cursor missing")

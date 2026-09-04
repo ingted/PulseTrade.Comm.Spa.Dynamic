@@ -40,6 +40,7 @@ module Program =
             [| row "price" TaRowKind.Candlestick "series.price" 2.4
                row "volume" TaRowKind.Volume "series.volume" 1.0
                row "sma" TaRowKind.Sma "series.sma" 1.0 |]
+          EditorSchemas = [||]
           AllowedActions = [| "change-query"; "poll-delta"; "request-full-snapshot" |]
           DefaultView = Map.empty }
 

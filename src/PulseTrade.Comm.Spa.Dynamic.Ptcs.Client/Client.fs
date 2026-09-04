@@ -10,6 +10,19 @@ open WebSharper.UI
 open WebSharper.UI.Client
 
 [<JavaScript; CLIMutable>]
+type TaBrowserFieldWire =
+    { key: string
+      value: TaBrowserValueWire }
+
+and [<JavaScript; CLIMutable>] TaBrowserValueWire =
+    { kind: string
+      boolValue: bool
+      numberValue: float
+      textValue: string
+      items: TaBrowserValueWire array
+      fields: TaBrowserFieldWire array }
+
+[<JavaScript; CLIMutable>]
 type TaBrowserPointWire =
     { time: string
       openValue: float
@@ -81,6 +94,7 @@ type TaBrowserRowWire =
       dataRef: string
       heightWeight: float
       visible: bool
+      options: TaBrowserFieldWire array
       traces: TaBrowserTraceWire array }
 
 [<JavaScript; CLIMutable>]
@@ -96,6 +110,7 @@ type TaBrowserStateWire =
       statusRef: string
       sharedTimeAxis: bool
       rows: TaBrowserRowWire array
+      editorSchemas: TaBrowserValueWire array
       allowedActions: string array
       querySourceId: string
       queryInstrument: string
@@ -387,6 +402,27 @@ module TaClientLifecycle =
 module TaResearchClientWire =
     let text value = if isNull value then "" else value
 
+    let rec valueFromWire (wire: TaBrowserValueWire) =
+        if isNull (box wire) then
+            SduiValue.Null
+        else
+            match text wire.kind with
+            | "bool" -> SduiValue.Bool wire.boolValue
+            | "number" -> SduiValue.Number wire.numberValue
+            | "text" -> SduiValue.Text(text wire.textValue)
+            | "array" ->
+                if isNull wire.items then SduiValue.Array [||]
+                else SduiValue.Array(wire.items |> Array.map valueFromWire)
+            | "object" -> SduiValue.Object(mapFromWire wire.fields)
+            | _ -> SduiValue.Null
+
+    and mapFromWire fields =
+        if isNull fields then Map.empty
+        else
+            fields
+            |> Array.map (fun field -> text field.key, valueFromWire field.value)
+            |> Map.ofArray
+
     let rowKind value =
         match text value |> fun item -> item.ToLower() with
         | "volume" -> TaRowKind.Volume
@@ -538,7 +574,7 @@ module TaResearchClientWire =
                                       Width = trace.width
                                       Visible = trace.visible
                                       Options = Map.empty })
-                          Options = Map.empty })
+                          Options = mapFromWire row.options })
 
             let seriesData =
                 if isNull wire.series then Map.empty
@@ -581,27 +617,37 @@ module TaResearchClientWire =
                           Message = text wire.errorMessage
                           Recoverable = wire.errorRecoverable }
 
-            Result.Ok
-                { Identity =
-                    { DocumentId = DocumentId(text wire.documentId)
-                      CanvasInstanceId = CanvasInstanceId(text wire.canvasInstanceId) }
-                  Document =
-                    Some
-                        { WorkspaceId = text wire.workspaceId
-                          Title = text wire.title
-                          RowsRef = text wire.rowsRef
-                          StatusRef = text wire.statusRef
-                          SharedTimeAxis = wire.sharedTimeAxis
-                          Rows = rows
-                          AllowedActions = if isNull wire.allowedActions then [||] else wire.allowedActions
-                          DefaultView = defaultView }
-                  Data = data
-                  DocumentRevision = wire.documentRevision
-                  DataRevision = wire.dataRevision
-                  LastTransportSequence = wire.transportSequence
-                  View = { Values = Map.empty }
-                  Poll = pollState wire.pollKind
-                  LastError = lastError }
+            let editorSchemas =
+                if isNull wire.editorSchemas then [||]
+                else
+                    wire.editorSchemas
+                    |> Array.choose (valueFromWire >> DynamicTemplateSchemaCodec.fromValue >> Result.toOption)
+
+            if not (isNull wire.editorSchemas) && editorSchemas.Length <> wire.editorSchemas.Length then
+                Result.Error "TA browser editor schema catalog is invalid."
+            else
+                Result.Ok
+                    { Identity =
+                        { DocumentId = DocumentId(text wire.documentId)
+                          CanvasInstanceId = CanvasInstanceId(text wire.canvasInstanceId) }
+                      Document =
+                        Some
+                            { WorkspaceId = text wire.workspaceId
+                              Title = text wire.title
+                              RowsRef = text wire.rowsRef
+                              StatusRef = text wire.statusRef
+                              SharedTimeAxis = wire.sharedTimeAxis
+                              Rows = rows
+                              EditorSchemas = editorSchemas
+                              AllowedActions = if isNull wire.allowedActions then [||] else wire.allowedActions
+                              DefaultView = defaultView }
+                      Data = data
+                      DocumentRevision = wire.documentRevision
+                      DataRevision = wire.dataRevision
+                      LastTransportSequence = wire.transportSequence
+                      View = { Values = Map.empty }
+                      Poll = pollState wire.pollKind
+                      LastError = lastError }
 
     let pointTime value =
         match value with

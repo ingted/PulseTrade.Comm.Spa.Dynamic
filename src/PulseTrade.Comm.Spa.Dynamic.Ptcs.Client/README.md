@@ -6,7 +6,7 @@ Pure WebSharper F# client adapter for the PTCS same-session transient channel.
 
 - Connects only to the current origin `/sync/ws`; callers cannot inject an upstream URL or credential.
 - Sends `extension-transient` frames and consumes `ta-browser.v1..v4` columnar payloads；v4 reconstructs validated `TemporalPoint` values。
-- Projects bounded, non-recursive browser wire data into `RuntimeState` and renders through `PulseTrade.Comm.Spa.Dynamic.Renderer`.
+- Projects bounded, non-recursive browser wire data into `RuntimeState` and renders through `PulseTrade.Comm.Spa.Dynamic.Renderer`；document editor catalog與row binding option一併投影，任一malformed schema使整份state fail closed。
 - Projects server query metadata into `TaWorkspaceDocument.DefaultView`；browser不再自行發明TXF/5m/date defaults。
 - Does not own PTCS authentication, ACL, SQL, market-data access, persistence, or the canonical reducer.
 
@@ -43,4 +43,4 @@ TA durable reply只保存compact layout/query descriptor，不含OHLCV或indicat
 
 The PTCS host must register the same `extensionId` with `PulseTrade.Comm.Spa.Dynamic.Ptcs.TaResearchTransientServer.register`.
 
-Current exact package is `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha8-win68`, consuming Contracts `[0.1.0-alpha11]` and Renderer `[0.1.0-alpha32]`。Browser revision fields use JSON-safe numbers and are validated back to domain `int64` at the server boundary；dispose waits for the transient close response before closing its dedicated socket。Add/Remove Row、Change Query、full-data export與Reset Canvas都走同一one-in-flight typed action channel。Export在data revision為0時先送一次immediate PollDelta取得snapshot，再要求authoritative full state；不依賴固定poll sleep。Initial transient bootstrap now renders as lifecycle progress rather than `document unavailable`。
+Current exact package is `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha8-win73`, consuming Contracts `[0.1.0-alpha15]` and Renderer `[0.1.0-alpha37]`。Browser revision fields use JSON-safe numbers and are validated back to domain `int64` at the server boundary；dispose waits for the transient close response before closing its dedicated socket。Add/Remove/Edit Row、Change Query、full-data export與Reset Canvas都走同一one-in-flight typed action channel。Editor catalog與row binding transport gate 13/13通過。

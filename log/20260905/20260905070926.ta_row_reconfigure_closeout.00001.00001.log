@@ -1,0 +1,70 @@
+# DYN-TA-017D row reconfigure closeout
+
+- Start recorded: 2026-09-05 07:04:04 +08:00
+- Repo: `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`
+- Branch: `20260715_030.win.TACanvas_cross.bar.cursor.first.done`
+- Goal: close the existing DYN-TA-017D dirty implementation, verify package-first WebSharper/UI behavior, update current-state documentation, then commit and push.
+- Existing scope: 26-file editor catalog/row reconfigure change was present before this continuation and was preserved.
+- Process deviation: the resumed turn initially continued from `log/20260904/20260904154347.ta_row_reconfigure.00001.00001.log` and created a DEBUG hypothesis file, but did not create the required new `.log` before package/test operations. No destructive, deployment or secret-bearing operation occurred. This file records the deviation and bounded evidence before closeout.
+- Read/write scope: Contracts、Renderer、Interactive.Client、Dynamic.Ptcs、Ptcs.Client、their focused tests/demos, TA Research RFC/current-state docs and verification scripts.
+- Acceptance: exact packages compile with WebSharper metadata；Contracts/Renderer/PTCS/Ptcs.Client tests pass；desktop/mobile Playwright Add/Edit and geometry pass；bundle package verifier passes；git push succeeds.
+
+## 背景
+
+DYN-TA-017D 已有 authoritative editor catalog 與 stable-row reconfigure 的 dirty implementation；本輪承接既有修改，補齊 package-first、browser E2E 與 current-state 文件後提交。
+
+## 目標
+
+完成 DYN-TA-017D 的實作、測試、文件、版本一致性與 git 交付，不把尚待 Daedalus/MDCQ owner 的 DYN-TA-017E/F 誤列為完成。
+
+## 假設
+
+- 本輪既有 dirty files 均屬同一 DYN-TA-017D scope，不覆蓋或回退使用者修改。
+- WebSharper generated bundle 是 LiveDemo 可重現 browser artifact，需隨 source 一併提交。
+- package 僅做 local pack/library-packs 驗證；未獲要求，不執行 public NuGet push。
+
+## 計畫步驟 / Planned steps
+
+1. 盤點既有 dirty diff 與 authoritative RFC/REQ/SA/SD/WBS/Test。
+2. 修正 Contracts、Renderer、PTCS adapter/client 與 Interactive bundle package graph。
+3. 執行 focused tests、full WebSharper builds、F# Playwright 與 package verifier。
+4. 同步 current-state 文件、Verification、DevLog，執行 check/sensitive/encoding gates。
+5. 僅 stage task-scoped files，commit 並 push current branch。
+
+## 執行命令/參數
+
+執行四組 `dotnet run --project ... -c Release` focused tests、兩組 full WebSharper build、`dotnet fsi --exec scripts/verify-ta-renderer-playwright.fsx`、`dotnet fsi --exec scripts/verify-interactive-client-package.fsx`，以及 root `check.fsx` 的 task-scoped SA/SD/WBS/Test/DevLog/Verification/Traceability gate。
+
+## 結果
+
+四組 focused tests 與兩組 WebSharper build 均通過；F# Playwright 連續兩次通過；五個 exact local packages 已產生並驗證。Git commit/push 結果於完成後追加至本 log。
+
+## 根因判讀
+
+原 dirty slice 的主要缺口是 browser metadata、conditional toolbar composition、navigator drag SVG identity 與 package graph/manifest 不一致；修正後由 source、package、browser 三層 gate 覆蓋。
+
+## 下一步
+
+完成 commit/push 後，DYN-TA-017E/F 仍由 Daedalus real DIB controller 與 MDCQ provider owner 提供 production evidence；本輪不以 synthetic fixture 代替。
+
+## 關聯文件/工單/PR
+
+- `doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`
+- `doc/TAResearch/WBS.DYN-TA-017.md`
+- `doc/TAResearch/Test.md`
+- `doc/Verification.md`
+
+## Prompt/上下文摘要
+
+使用者要求三個相關 repo 均 commit/push；`G:\PulseTrade.fs` 與 `G:\PulseTrade2.fs` 已交付，本 log 覆蓋剩餘 `PulseTrade.Comm.Spa.Dynamic` repo。
+
+## Operations
+
+- Contracts source test passed 15/15. Full WebSharper pack required a clean short-path staging copy because generated `websharper.log` in the canonical project directory was inaccessible；the staging copy used only fsproj-listed source/content files and did not change package behavior.
+- Package-first compile exposed missing browser metadata on `DynamicTemplateSchemaCodec` and browser-incompatible string overloads. Added WebSharper metadata and equivalent browser-supported operations；Contracts alpha15 packed successfully.
+- Renderer alpha37 packed successfully. It composes the local toolbar without conditional-list expression loss and keeps navigator SVG identity stable during drag while updating selection attributes dynamically.
+- Dynamic.Ptcs win54 and Ptcs.Client win73 packed successfully. Server/client wire tests verify editor schema catalog and row binding；Interactive.Client alpha8 corrected its package manifest version and passed the package verifier.
+- Focused tests passed：Contracts 15/15、Renderer 22/22、PTCS 11/11、Ptcs.Client 13/13。BrowserDemo and PTCS LiveDemo full WebSharper builds passed；known warnings are WebSharper legacy `Bundle` project type and existing package-range warnings in PTCS test consumers.
+- F# Playwright initially exposed a 100ms release assertion race and stale synthetic `B<n>` label assumption. The verifier now waits boundedly for committed `Viewing` state and validates cursor against the actual shared temporal-axis label. Two consecutive full runs passed at `http://127.0.0.1:18882/`.
+- Final package SHA-256：Contracts alpha15 `84a10b3859c735984b319abd66203db4e9518e295bfa0a86284c4ce0cbb6f4a3`；Renderer alpha37 `9019d4e97f787af5cfb738b5a8a0da3ac9e08ed6b2eee19183cfbe1379c83111`；Dynamic.Ptcs win54 `c3db8d2c945c1fecbd743c9675925fc1ef04f382c41522f543aaed79c4927d32`；Ptcs.Client win73 `768d36e0efd029938973d688097b869b55688d280b93e35e68ffbe61d30c3d77`；Interactive.Client alpha8 `300176314bc32f71676504b9301a513d8e368f1553c700136c62b083dcb775be`。
+- Repository gate exposed that the first uncommitted closeout filename lacked required sequence fields. The canonical log was corrected before staging；the malformed transient file is not delivery evidence.

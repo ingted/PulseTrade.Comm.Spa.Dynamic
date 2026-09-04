@@ -37,3 +37,7 @@ match BrowserRuntimeCodec.decodeActionRequest text with
 ```
 
 Host 不得只收到 request 就回 `Accepted`。它必須先檢查 `ExpectedDocumentRevision`、完成 provider/resource prepare 與 authoritative swap，再回結果並發布新 revision。
+
+authoritative document必須同時帶`Rows`與`EditorSchemas`。可修改row帶`ptcs.dynamic.editor.binding.v1`；client由document catalog生成Add/Edit表單，不接受host另外維護一份renderer-local schema registry。Edit request保留stable RowId，Host完成原位resource transition後以同一份new document revision發布row與binding。
+
+Current exact package：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.0-alpha8`，exact依賴Contracts `[0.1.0-alpha15]`、Renderer `[0.1.0-alpha37]`與FSharp.Core `[10.1.302]`；bundle manifest版本須與nuspec一致。
