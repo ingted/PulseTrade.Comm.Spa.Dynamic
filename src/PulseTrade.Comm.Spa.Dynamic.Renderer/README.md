@@ -36,4 +36,4 @@ TaWorkspaceRenderer.render
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha37`。Current model gate 22/22；isolated F# Playwright使用2000-point與multi-scale fixture連續通過Add/Edit/reject、navigator release、shared cursor及desktop/mobile geometry。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha38`，exact依賴Contracts `[0.1.0-alpha16]`與FSharp.Core `[10.1.400]`。Current model gate 22/22；alpha38不改renderer/domain behavior。

@@ -1,0 +1,15 @@
+# FSharp.Core 10.1.400 相容套件重發
+
+- 開始時間：2026-09-06 15:32 +08:00
+- 背景：Daedalus production consumer 已統一使用 `FSharp.Core [10.1.400]`，目前 Dynamic Contracts/Renderer/Interactive.Client 仍 exact pin `[10.1.302]`。
+- 目標：不改 domain contract shape，依序重發三個相容 package，執行既有測試並回報唯一版本組。
+- 範圍：`PulseTrade.Comm.Spa.Dynamic.Contracts`、`PulseTrade.Comm.Spa.Dynamic.Renderer`、`PulseTrade.Comm.Spa.Dynamic.Interactive.Client` 及直接測試/範例 consumer。
+- 驗收：三專案 Release build/pack、相關測試通過、NuGet push 成功、package metadata 全部 exact pin `[10.1.400]`。
+- 風險：WebSharper toolchain 或既有 consumer 可能仍 pin 10.1.302；只修本相容鏈，不擴張 domain contract。
+
+## Operations
+
+- 15:32-15:35：將Contracts/Renderer/Interactive.Client升為alpha16/alpha38/alpha9，全部exact-pin FSharp.Core `[10.1.400]`；只同步package dependency與bundle manifest，未改domain source。
+- Contracts Release build與15/15 tests通過；Renderer Release build與22/22 tests通過；Interactive.Client Release build與package verifier通過，SHA-256 `cfe09b2bdc71b90c42079039bfab6423c846ac17442bb15a5feaa6bbbd3d1bbb`。
+- 三個nupkg複製至SDK 10.0.400 `FSharp/library-packs`；NuGet三次均回`Created`。
+- 已透過comm公頻交接Daedalus唯一版本組與`ApplyTemplate`現行語意；Daedalus controller保有source/instrument推導與IndicatorSlot runtime profile責任。

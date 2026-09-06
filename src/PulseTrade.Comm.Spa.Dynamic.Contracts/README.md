@@ -24,7 +24,7 @@ remote action/poll/resync -> typed SduiAction -> host adapter
 
 `Error`與invalid/gapped frame保留last-good document/data/view；duplicate frame no-op；sequence gap、identity mismatch或patch base mismatch只產生typed resync effect。
 
-Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha15`，exact依賴FSharp.Core `[10.1.302]`；所有browser call graph module與schema codec均攜帶WebSharper metadata。
+Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha16`，exact依賴FSharp.Core `[10.1.400]`；所有browser call graph module與schema codec均攜帶WebSharper metadata。alpha16只重發compiler/runtime相容性，domain contract shape與alpha15相同。
 
 Browser-facing numeric使用JSON number/`float`，query range使用canonical ISO-8601 string。host/server必須重新驗證range並轉成domain `DateTimeOffset`；Contracts不把browser parser當authorization或domain validation。
 

@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Contracts</PackageId>
-    <Version>0.1.0-alpha15</Version>
+    <Version>0.1.0-alpha16</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Transport-neutral SDUI runtime contracts and reducer for PulseTrade.Comm.Spa.Dynamic.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FSharp.Core" Version="[10.1.302]" />
+    <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.6.676" />
   </ItemGroup>

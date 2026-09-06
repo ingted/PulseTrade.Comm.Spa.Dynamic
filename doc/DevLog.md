@@ -1119,3 +1119,9 @@ Implementation status:
 - Exact local package graph：Contracts `0.1.0-alpha15`、Renderer `0.1.0-alpha37`、Dynamic.Ptcs `0.1.0-alpha7-win54`、Ptcs.Client `0.1.0-alpha8-win73`、Interactive.Client `0.1.0-alpha8`。All exact-pin FSharp.Core `[10.1.302]`；packages were copied to SDK 10.0.301/10.0.400 library-packs. No public NuGet push is claimed.
 - Gates passed Contracts `15/15`、Renderer `22/22`、PTCS `11/11`、Ptcs.Client `13/13`、Interactive bundle package manifest/nuspec verifier、BrowserDemo and PTCS LiveDemo full WebSharper builds. Intermediate local-only candidates alpha13/14、Renderer alpha34..36、Ptcs win53、Ptcs.Client win71/72 and Interactive alpha5..7 are superseded and are not release evidence.
 - DYN-TA-017D is 100% complete. Daedalus-owned chart-root/resource transition and the real MDCQ DIB/Playwright gate remain DYN-TA-017E/F；this closeout does not claim those external production gates.
+
+## 2026-09-06 - FSharp.Core 10.1.400 production consumer compatibility
+
+- Re-published the transport-neutral package set without changing the domain contract: Contracts `0.1.0-alpha16`, Renderer `0.1.0-alpha38`, Interactive.Client `0.1.0-alpha9`. All three exact-pin `FSharp.Core [10.1.400]`; Renderer exact-pins Contracts alpha16 and Interactive.Client exact-pins the same Contracts/Renderer pair.
+- Contracts tests pass `15/15`, Renderer tests pass `22/22`, Interactive bundle package verifier revision 4 passes with SHA-256 `cfe09b2bdc71b90c42079039bfab6423c846ac17442bb15a5feaa6bbbd3d1bbb`. All three packages were copied to SDK 10.0.400 library-packs and NuGet returned `Created`.
+- `ApplyTemplate` remains `(canvasId, rowId option, templateKey, values)` and does not acquire source/instrument/IndicatorSlot fields. Daedalus owns authoritative edit lookup and new-row source inference/rejection in the Interactive Extension controller.

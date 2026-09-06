@@ -97,12 +97,12 @@ let expectProperty (name: string) expected =
 
 expectProperty "schema" "ptcs-dynamic-interactive-bundle.v1"
 expectProperty "packageId" "PulseTrade.Comm.Spa.Dynamic.Interactive.Client"
-expectProperty "packageVersion" "0.1.0-alpha8"
+expectProperty "packageVersion" "0.1.0-alpha9"
 
 for dependency in
-    [ "FSharp.Core", "[10.1.302]"
-      "PulseTrade.Comm.Spa.Dynamic.Contracts", "[0.1.0-alpha15]"
-      "PulseTrade.Comm.Spa.Dynamic.Renderer", "[0.1.0-alpha37]" ] do
+    [ "FSharp.Core", "[10.1.400]"
+      "PulseTrade.Comm.Spa.Dynamic.Contracts", "[0.1.0-alpha16]"
+      "PulseTrade.Comm.Spa.Dynamic.Renderer", "[0.1.0-alpha38]" ] do
     let packageId, version = dependency
     if not (nuspecText.Contains($"id=\"{packageId}\"")) || not (nuspecText.Contains($"version=\"{version}\"")) then
         failwith $"Nuspec dependency mismatch: {packageId} {version}."
