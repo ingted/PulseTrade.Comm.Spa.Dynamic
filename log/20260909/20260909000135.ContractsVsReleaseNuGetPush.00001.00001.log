@@ -44,3 +44,4 @@ Contracts原本可pack但沒有自己的Release post-pack push hook；使用者�
 - 00:11：repo checker指出0.1.1 consumers仍引用alpha版本；既有`DYN-TA-008 Package/release closure`已涵蓋exact refs/downstream bump，將其priority由9調整為0並明記0.1.1，未修改consumer source/project。
 - 00:13：WBS補充完整package id/version與`PackageReference`最高優先驗收文字，讓既有0.1.1 migration缺口可由deterministic checker追蹤。
 - 00:14：closeout checker為FAIL=0；保留WARN指出0.1.1 consumer references尚未同步，已由priority 0 `DYN-TA-008`追蹤。changed-path sensitive scan為High=0、Medium=0。
+- 00:17：只提交本輪hook、WBS、DevLog與log；同一fsproj既有BOM/Version/WebSharper變更保留在working tree未納入。commit `9a1ae69`已push至current branch。
