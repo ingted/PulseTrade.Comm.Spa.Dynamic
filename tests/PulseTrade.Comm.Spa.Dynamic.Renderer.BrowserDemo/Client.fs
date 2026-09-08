@@ -10,6 +10,12 @@ open WebSharper.UI.Client
 
 [<JavaScript>]
 module Client =
+    [<Literal>]
+    let capacityPointCount = 3820
+
+    [<Literal>]
+    let capacitySeriesCount = 28
+
     let candle timestamp openValue closeValue volume =
         let high = max openValue closeValue + 4.0
         let low = min openValue closeValue - 3.0
@@ -85,7 +91,7 @@ module Client =
                                         "finality", SduiValue.Text "final"
                                         "projection", SduiValue.Text "candle-span"
                                         "quality", SduiValue.Text "complete" ]))) ])
-        let sharedSma =
+        let sharedScalarSeries seriesIndex =
             SduiValue.Object(
                 Map [ "_type", SduiValue.Text "temporal-series.v1"
                       "axisRef", SduiValue.Text sharedAxisRef
@@ -95,7 +101,11 @@ module Client =
                           Array.init count (fun index ->
                               SduiValue.Object(
                                   Map [ "position", SduiValue.Number(float index)
-                                        "value", SduiValue.Number(21820.0 + Math.Sin(float index / 6.0) * 28.0) ]))) ])
+                                        "value",
+                                        SduiValue.Number(
+                                            21820.0
+                                            + float seriesIndex * 0.25
+                                            + Math.Sin(float index / (6.0 + float (seriesIndex % 5))) * (28.0 + float (seriesIndex % 3))) ]))) ])
         let candles =
             Array.init count (fun index ->
                 let baseline = 21800.0 + float index * 1.7 + Math.Sin(float index / 4.0) * 24.0
@@ -175,25 +185,28 @@ module Client =
                            (linePayload (Math.Sin(float startIndex / 90.0) * 22.0)) |]
 
         Map [
-            sharedAxisRef, sharedAxis
-            "series.price", SduiValue.Array candles
-            "series.price-5k", SduiValue.Array fiveMinuteCandles
-            "series.volume", SduiValue.Array candles
-            "series.sma", sharedSma
-            "series.sma-5k", SduiValue.Array fiveMinuteSma
-            "series.dmi", SduiValue.Array(line 25.0 11.0 4.5)
-            "series.adx", SduiValue.Array(line 22.0 8.0 7.0)
-            "series.macd", SduiValue.Array(line 0.0 18.0 5.5)
-            "series.macd-30k", SduiValue.Array thirtyMinuteMacd
-            "series.heikin", SduiValue.Array heikin
-            "ta.status",
-            SduiValue.Object(
-                Map [
-                    "freshness", SduiValue.Text "live"
-                    "label", SduiValue.Text "LIVE / revision 42"
-                    "watermarkUtc", SduiValue.Text "2026-07-11T09:30:00Z"
-                    "quality", SduiValue.Text "complete"
-                ])
+            yield sharedAxisRef, sharedAxis
+            yield "series.price", SduiValue.Array candles
+            yield "series.price-5k", SduiValue.Array fiveMinuteCandles
+            yield "series.volume", SduiValue.Array candles
+            yield "series.sma", sharedScalarSeries 0
+            for seriesIndex in 1 .. capacitySeriesCount - 1 do
+                yield "series.capacity-" + string seriesIndex, sharedScalarSeries seriesIndex
+            yield "series.sma-5k", SduiValue.Array fiveMinuteSma
+            yield "series.dmi", SduiValue.Array(line 25.0 11.0 4.5)
+            yield "series.adx", SduiValue.Array(line 22.0 8.0 7.0)
+            yield "series.macd", SduiValue.Array(line 0.0 18.0 5.5)
+            yield "series.macd-30k", SduiValue.Array thirtyMinuteMacd
+            yield "series.heikin", SduiValue.Array heikin
+            yield
+                "ta.status",
+                SduiValue.Object(
+                    Map [
+                        "freshness", SduiValue.Text "live"
+                        "label", SduiValue.Text "LIVE / revision 42"
+                        "watermarkUtc", SduiValue.Text "2026-07-11T09:30:00Z"
+                        "quality", SduiValue.Text "complete"
+                    ])
         ]
 
     let row rowId kind dataRef weight =
@@ -336,7 +349,7 @@ module Client =
                        "shared-cursor-changed"
                        "visible-range-changed" |]
                   DefaultView = Map [ "visibleBars", SduiValue.Number 48.0 ] }
-          Data = sampleSeries 2000
+          Data = sampleSeries capacityPointCount
           DocumentRevision = 1L
           DataRevision = 42L
           LastTransportSequence = 2L
@@ -466,7 +479,11 @@ module Client =
                     Poll = RuntimePollState.Backoff(DateTimeOffset.UtcNow.AddSeconds 5.0)
                     LastError = Some { ReasonCode = "delta-timeout"; Message = "retaining last good canvas"; Recoverable = true } }
 
-        div [ attr.style "max-width:1460px; margin:0 auto; min-width:0;" ] [
+        div [
+            attr.style "max-width:1460px; margin:0 auto; min-width:0;"
+            Attr.Create "data-capacity-positions" (string capacityPointCount)
+            Attr.Create "data-capacity-shared-series" (string capacitySeriesCount)
+        ] [
             let demoButtonStyle = attr.style "min-height:24px; padding:2px 6px; white-space:nowrap;"
             div [ Attr.Create "data-testid" "ta-demo-callback-state"; attr.style "min-height:32px; height:auto; display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:flex-end; padding:4px 12px; background:#182a42; color:#d9e5f3; font-size:11px;" ] [
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-live"; on.click (fun _ _ -> setLive ()) ] [ text "Live" ]

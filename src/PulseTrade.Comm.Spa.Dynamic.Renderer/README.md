@@ -38,4 +38,4 @@ TaWorkspaceRenderer.render
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha46`，exact依賴Contracts `[0.1.0-alpha20]`與FSharp.Core `[10.1.400]`。Current model gate 25/25。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha48`，exact依賴Contracts `[0.1.0-alpha20]`與FSharp.Core `[10.1.400]`。Current model gate 25/25；高密度overview selection以不重疊的move/left-resize/right-resize hit-area保留三種操作。

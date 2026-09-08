@@ -9236,24 +9236,34 @@ function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
   const low=p[0];
   const high=p[1];
   const closePath=concat_1(" ", mapi((_1, _2) =>(_1===0?"M ":"L ")+fixedText(length(sampled)<=1?width/2:width*_1/(length(sampled)-1))+" "+fixedText(normalize(low, high, 8, 62, _2.Close)), sampled));
-  const handleWidth=8;
-  const handleX=(edge) => {
-    const a=0;
-    const a_1=width-handleWidth;
-    const b=edge-handleWidth/2;
-    const b_1=Compare(a_1, b)===-1?a_1:b;
-    return Compare(a, b_1)===1?a:b_1;
+  const geometryText=(projection) => {
+    const f=(_1, _2) => {
+      const a=24;
+      const a_1=0;
+      const b=(_2-_1)*width;
+      const b_1=Compare(a_1, b)===1?a_1:b;
+      const b_2=Compare(a, b_1)===1?a:b_1;
+      const displayedWidth=Compare(width, b_2)===-1?width:b_2;
+      const a_2=0;
+      const a_3=width-displayedWidth;
+      const b_3=_1*width;
+      const b_4=Compare(a_3, b_3)===-1?a_3:b_3;
+      const displayedX=Compare(a_2, b_4)===1?a_2:b_4;
+      const a_4=8;
+      const b_5=(displayedWidth-4)/2;
+      const handleWidth_1=Compare(a_4, b_5)===-1?a_4:b_5;
+      return[displayedX, displayedWidth, handleWidth_1, displayedX+handleWidth_1, displayedWidth-handleWidth_1*2];
+    };
+    const f_1=(x) => projection(f.apply(null, x));
+    return Map((x) => fixedText(f_1(x)), selectionWindow);
   };
-  const selectionX=Map((_1) => fixedText(_1[0]*width), selectionWindow);
-  const selectionWidth=Map((_1) => {
-    const a=4;
-    const b=(_1[1]-_1[0])*width;
-    let _2=Compare(a, b)===1?a:b;
-    return fixedText(_2);
-  }, selectionWindow);
-  const leftHandleX=Map((_1) => fixedText(handleX(_1[0]*width)), selectionWindow);
-  const rightHandleX=Map((_1) => fixedText(handleX(_1[1]*width)), selectionWindow);
-  return svgElement("svg", [Attr.Create("data-testid", "ta-overview-navigator"), Attr.Create("data-loaded-sample-count", String(length(sampled))), svgAttr("viewBox", "0 0 1000 82"), svgAttr("preserveAspectRatio", "none"), Attr.Create("style", "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"), OnAfterRender(onReady), Handler("mouseup", () => onDragEnd)], [svgElement("path", [svgAttr("d", closePath), svgAttr("fill", "none"), svgAttr("stroke", "#3d718e"), svgAttr("stroke-width", "1.5")], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-selection"), Dynamic_1("x", selectionX), svgAttr("y", "1"), Dynamic_1("width", selectionWidth), svgAttr("height", "80"), svgAttr("fill", "rgba(15,118,110,.10)"), svgAttr("stroke", "#0f766e"), svgAttr("stroke-width", "2"), svgAttr("style", "cursor:grab;"), Handler("mousedown", () =>(event) => onDragStart("move", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-left-handle"), Dynamic_1("x", leftHandleX), svgAttr("y", "0"), svgAttr("width", fixedText(handleWidth)), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-left", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-right-handle"), Dynamic_1("x", rightHandleX), svgAttr("y", "0"), svgAttr("width", fixedText(handleWidth)), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-right", event))], [])]);
+  const selectionX=geometryText((t) => t[0]);
+  const selectionWidth=geometryText((t) => t[1]);
+  const handleWidth=geometryText((t) => t[2]);
+  const rightHandleX=geometryText((t) => t[0]+t[1]-t[2]);
+  const moveHitX=geometryText((t) => t[3]);
+  const moveHitWidth=geometryText((t) => t[4]);
+  return svgElement("svg", [Attr.Create("data-testid", "ta-overview-navigator"), Attr.Create("data-loaded-sample-count", String(length(sampled))), svgAttr("viewBox", "0 0 1000 82"), svgAttr("preserveAspectRatio", "none"), Attr.Create("style", "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"), OnAfterRender(onReady), Handler("mouseup", () => onDragEnd)], [svgElement("path", [svgAttr("d", closePath), svgAttr("fill", "none"), svgAttr("stroke", "#3d718e"), svgAttr("stroke-width", "1.5")], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-selection"), Dynamic_1("x", selectionX), svgAttr("y", "1"), Dynamic_1("width", selectionWidth), svgAttr("height", "80"), svgAttr("fill", "rgba(15,118,110,.10)"), svgAttr("stroke", "#0f766e"), svgAttr("stroke-width", "2"), svgAttr("pointer-events", "none")], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-left-handle"), Dynamic_1("x", selectionX), svgAttr("y", "0"), Dynamic_1("width", handleWidth), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-left", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-right-handle"), Dynamic_1("x", rightHandleX), svgAttr("y", "0"), Dynamic_1("width", handleWidth), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-right", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-move-hit"), Dynamic_1("x", moveHitX), svgAttr("y", "0"), Dynamic_1("width", moveHitWidth), svgAttr("height", "82"), svgAttr("fill", "transparent"), svgAttr("style", "cursor:grab;"), Handler("mousedown", () =>(event) => onDragStart("move", event))], [])]);
 }
 function compactTimestamp(value){
   return IsNullOrWhiteSpace(value)?"":value.length>=16&&value[4]==="-"&&value[7]==="-"&&(value[10]==="T"||value[10]===" ")?Substring(value, 5, 5)+" "+Substring(value, 11, 5):value;

@@ -13,7 +13,7 @@
 | DYN-TA-017E | ColdFar Notebook adapter / typed chart root | T-063 | 0% | Daedalus-owned integration |
 | DYN-TA-017F | real MDCQ DIB + Playwright MCP + release | T-064 | 0% | Depends on D/E + provider readiness |
 | DYN-TA-017G | SPAA/DIExt generic runtime hardening：retention/resync -> cursor/range -> reconnect/application lifecycle | T-066..068 | 100% | Done：三個phase均完成；Interactive.Client具single Start/Dispose、bounded reconnect、snapshot timeout/resync與stale generation fence。 |
-| DYN-TA-017H | shared temporal axis、scalar series與PTCS v5 compact transport | T-069/070 | 98% | Exact packages已公開索引且public nuspec依賴回讀通過；generic F# Playwright通過，待Daedalus real DIB/Playwright MCP。 |
+| DYN-TA-017H | shared temporal axis、scalar series與PTCS v5 compact transport | T-069/070 | 98% | Generic 3,820×28真browser capacity、F# Playwright與Playwright MCP均通過；待Daedalus real MDCQ/DIB browser gate。 |
 
 ## Boundary
 
@@ -34,6 +34,8 @@
 - Lifecycle gate：exact-package pure lifecycle `4/4`；F# Playwright以真WebSocket force-drop驗last-good、single reconnect/full snapshot及terminal dispose。Playwright MCP另驗desktop/mobile UI、無overflow/console error。
 - 尚未宣稱production：Daedalus SessionHost須消費Interactive.Client alpha19 action envelope；owner-normalized real DIB與MDCQ provider仍是E/F gate。
 - Shared temporal axis：`TemporalAxis`保存一份sparse Position/time authority，`TemporalSeries`只保存Position/value；Position不可由scale推算。五條scalar O/H/L/C/V由`TaCandleDataRefs`合成K棒。PTCS `ta-browser.v5`直接搬運shared values；3820 x 28 deterministic frame、malformed/revision/unknown-position fail-closed及legacy相容已通過T-069/070的非UI部分。
+- Generic browser capacity：BrowserDemo實際載入3,820-position shared axis與28條shared scalar series；Renderer alpha48以互不重疊的left-resize/move/right-resize hit regions維持窄selection可操作性。F# Playwright驗48-bar平移、左右resize、All、desktop/mobile與console 0；Playwright MCP另實際切換All/48並驗`Loaded 3820`、viewport與geometry。
+- Current releases：Renderer `0.1.0-alpha48`、Interactive.Client `0.1.0-alpha22`、Ptcs.Client `0.1.0-alpha8-win81`，分別exact依賴Contracts alpha20、Renderer alpha48及PTCS beta117；NuGet push均回`Created`，public nuspec已回`200`並完成dependency readback。
 
 ## Completion gate
 

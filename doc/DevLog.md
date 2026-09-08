@@ -1171,3 +1171,13 @@ Implementation status:
 
 - Contracts `0.1.0-alpha20`、Renderer `0.1.0-alpha46`、Interactive.Client `0.1.0-alpha20`、Dynamic.Ptcs `0.1.0-alpha7-win56`與Ptcs.Client `0.1.0-alpha8-win79`的public flat-container均已回`200`。
 - Public nuspec readback確認Contracts/Renderer/Interactive.Client與PTCS adapter edges皆符合exact package graph；不重複push。T-070只剩Daedalus real MDCQ/DIB 3820x28與Playwright MCP gate。
+
+## 2026-09-08 - DYN-TA-017H generic 3,820 x 28 browser capacity
+
+- BrowserDemo改為實際建立3,820-position shared temporal axis及28條shared scalar series；既有七列TA畫面仍只投影所需refs，capacity markers供F# verifier確認state確實進入browser。
+- 3,820密度下48-bar overview selection暴露固定handle互相覆蓋的操作缺陷；Renderer alpha48改用互斥left-resize/move/right-resize geometry，視覺selection不再攔pointer。F# Playwright驗平移保留48 bars、左右resize與All；Playwright MCP desktop/mobile驗viewport、geometry與console 0。
+- Exact packages Renderer `0.1.0-alpha48`、Interactive.Client `0.1.0-alpha22`、Ptcs.Client `0.1.0-alpha8-win81`均已push且回`Created`。Renderer 25/25、Interactive lifecycle 4/4、Ptcs.Client 15/15及三個full demo build通過；public indexing另由Verification revision 11追蹤。Real MDCQ/DIB 3,820×28仍由Daedalus gate，未宣稱production完成。
+
+## 2026-09-08 - Correction: generic capacity release indexing complete
+
+- Renderer alpha48、Interactive.Client alpha22及Ptcs.Client win81的public flat-container nuspec均已回`200`；FSharp.Core、Contracts、Renderer與PTCS dependencies均符合local exact graph，不重複push。

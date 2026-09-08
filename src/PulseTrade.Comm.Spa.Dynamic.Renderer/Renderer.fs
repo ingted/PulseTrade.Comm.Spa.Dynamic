@@ -294,12 +294,24 @@ module TaWorkspaceRenderer =
                 + fixedText (xAt index) + " "
                 + fixedText (RendererModel.normalize low high 8.0 62.0 point.Close))
             |> String.concat " "
-        let handleWidth = 8.0
-        let handleX edge = max 0.0 (min (width - handleWidth) (edge - handleWidth / 2.0))
-        let selectionX = selectionWindow |> View.Map (fun (leftRatio, _) -> fixedText (leftRatio * width))
-        let selectionWidth = selectionWindow |> View.Map (fun (leftRatio, rightRatio) -> fixedText (max 4.0 ((rightRatio - leftRatio) * width)))
-        let leftHandleX = selectionWindow |> View.Map (fun (leftRatio, _) -> fixedText (handleX (leftRatio * width)))
-        let rightHandleX = selectionWindow |> View.Map (fun (_, rightRatio) -> fixedText (handleX (rightRatio * width)))
+        let maximumHandleWidth = 8.0
+        let minimumSelectionWidth = 24.0
+        let minimumMoveHitWidth = 4.0
+        let selectionGeometry (leftRatio, rightRatio) =
+            let requestedX = leftRatio * width
+            let requestedWidth = max 0.0 ((rightRatio - leftRatio) * width)
+            let displayedWidth = min width (max minimumSelectionWidth requestedWidth)
+            let displayedX = max 0.0 (min (width - displayedWidth) requestedX)
+            let handleWidth = min maximumHandleWidth ((displayedWidth - minimumMoveHitWidth) / 2.0)
+            displayedX, displayedWidth, handleWidth, displayedX + handleWidth, displayedWidth - handleWidth * 2.0
+        let geometryText projection = selectionWindow |> View.Map (selectionGeometry >> projection >> fixedText)
+        let selectionX = geometryText (fun (selectionX, _, _, _, _) -> selectionX)
+        let selectionWidth = geometryText (fun (_, selectionWidth, _, _, _) -> selectionWidth)
+        let handleWidth = geometryText (fun (_, _, handleWidth, _, _) -> handleWidth)
+        let leftHandleX = selectionX
+        let rightHandleX = geometryText (fun (selectionX, selectionWidth, handleWidth, _, _) -> selectionX + selectionWidth - handleWidth)
+        let moveHitX = geometryText (fun (_, _, _, moveHitX, _) -> moveHitX)
+        let moveHitWidth = geometryText (fun (_, _, _, _, moveHitWidth) -> moveHitWidth)
 
         svgElement "svg" [
             Attr.Create "data-testid" "ta-overview-navigator"
@@ -314,20 +326,25 @@ module TaWorkspaceRenderer =
             svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-selection"
                 Attr.Dynamic "x" selectionX; svgAttr "y" "1"; Attr.Dynamic "width" selectionWidth; svgAttr "height" "80"
-                svgAttr "fill" "rgba(15,118,110,.10)"; svgAttr "stroke" "#0f766e"; svgAttr "stroke-width" "2"; svgAttr "style" "cursor:grab;"
-                on.mouseDown (fun _ event -> onDragStart TaWindowDrag.Move event)
+                svgAttr "fill" "rgba(15,118,110,.10)"; svgAttr "stroke" "#0f766e"; svgAttr "stroke-width" "2"; svgAttr "pointer-events" "none"
             ] []
             svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-left-handle"
-                Attr.Dynamic "x" leftHandleX; svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
+                Attr.Dynamic "x" leftHandleX; svgAttr "y" "0"; Attr.Dynamic "width" handleWidth; svgAttr "height" "82"
                 svgAttr "fill" "#155f73"; svgAttr "fill-opacity" "0.82"; svgAttr "style" "cursor:ew-resize;"
                 on.mouseDown (fun _ event -> onDragStart TaWindowDrag.ResizeLeft event)
             ] []
             svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-right-handle"
-                Attr.Dynamic "x" rightHandleX; svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
+                Attr.Dynamic "x" rightHandleX; svgAttr "y" "0"; Attr.Dynamic "width" handleWidth; svgAttr "height" "82"
                 svgAttr "fill" "#155f73"; svgAttr "fill-opacity" "0.82"; svgAttr "style" "cursor:ew-resize;"
                 on.mouseDown (fun _ event -> onDragStart TaWindowDrag.ResizeRight event)
+            ] []
+            svgElement "rect" [
+                Attr.Create "data-testid" "ta-overview-move-hit"
+                Attr.Dynamic "x" moveHitX; svgAttr "y" "0"; Attr.Dynamic "width" moveHitWidth; svgAttr "height" "82"
+                svgAttr "fill" "transparent"; svgAttr "style" "cursor:grab;"
+                on.mouseDown (fun _ event -> onDragStart TaWindowDrag.Move event)
             ] []
         ]
 

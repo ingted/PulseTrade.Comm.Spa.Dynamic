@@ -62,6 +62,11 @@ let awaitUnit (task: Task) = task.GetAwaiter().GetResult()
 let require condition message =
     if not condition then failwith ("TA renderer Playwright verification failed: " + message)
 
+let capacityPointCount = 3820
+let capacitySeriesCount = 28
+let visiblePointCount = 48
+let initialVisibleStart = capacityPointCount - visiblePointCount + 1
+
 let textOf (locator: ILocator) =
     locator.TextContentAsync() |> awaitTask |> Option.ofObj |> Option.defaultValue ""
 
@@ -129,21 +134,23 @@ let verifyDesktop (browser: IBrowser) =
     page.PageError.Add(fun (error: string) -> consoleErrors.Add error; printfn "desktop page error: %s" error)
 
     page.GotoAsync(url, PageGotoOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
-    page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 5000.0f)) |> awaitUnit
+    page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
 
     requireText (page.Locator("[data-testid='ta-workspace-title']")) "PTMD TA Research"
     requireText (page.Locator("[data-testid='ta-freshness']")) "LIVE"
     require ((page.Locator("[data-testid='ta-chart-stack'] section").CountAsync() |> awaitTask) = 7) "all seven configured TA rows must render"
-    require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = 48) "candlestick chart must retain all 48 committed visible points"
+    require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = visiblePointCount) "candlestick chart must retain all committed visible points"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "watermark 2026-07-11T09:30:00Z"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"
 
     let chartStack = page.Locator("[data-testid='ta-chart-stack']")
-    require (chartStack.GetAttributeAsync("data-loaded-bars") |> awaitTask = "2000") "loaded-range metadata must report all 2000 browser-demo bars"
-    require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = "1953") "follow-latest viewport must begin at loaded bar 1953"
-    require (chartStack.GetAttributeAsync("data-visible-end") |> awaitTask = "2000") "follow-latest viewport must end at loaded bar 2000"
-    requireText (page.Locator("[data-testid='ta-viewport-range']")) "Loaded 2000 bars"
-    requireText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 1953-2000"
+    require (chartStack.GetAttributeAsync("data-loaded-bars") |> awaitTask = string capacityPointCount) "loaded-range metadata must report the full capacity fixture"
+    require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = string initialVisibleStart) "follow-latest viewport must begin at the expected capacity position"
+    require (chartStack.GetAttributeAsync("data-visible-end") |> awaitTask = string capacityPointCount) "follow-latest viewport must end at the capacity tail"
+    require (page.Locator("[data-capacity-positions='3820']").CountAsync() |> awaitTask = 1) "browser fixture must declare 3,820 positions"
+    require (page.Locator("[data-capacity-shared-series='28']").CountAsync() |> awaitTask = 1) "browser fixture must declare 28 shared scalar series"
+    requireText (page.Locator("[data-testid='ta-viewport-range']")) $"Loaded {capacityPointCount} bars"
+    requireText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing {initialVisibleStart}-{capacityPointCount}"
     let sharedSma = page.Locator("[data-testid='ta-trace-sma-sma-1k']")
     require (sharedSma.CountAsync() |> awaitTask = 1) "shared-axis SMA trace must be mounted exactly once"
     require
@@ -174,7 +181,7 @@ let verifyDesktop (browser: IBrowser) =
     let previewMatch = Text.RegularExpressions.Regex.Match(previewText, "Preview ([0-9]+-[0-9]+)")
     require previewMatch.Success ("move drag did not expose bounded preview range: " + previewText)
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeDrag) "drag preview must not rebuild the chart"
-    require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = "1953") "committed viewport must remain stable before release"
+    require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = string initialVisibleStart) "committed viewport must remain stable before release"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForText viewportRange "Viewing"
     let committedText = textOf viewportRange
@@ -183,7 +190,7 @@ let verifyDesktop (browser: IBrowser) =
     let committedStart = Int32.Parse committedMatch.Groups[1].Value
     let committedEnd = Int32.Parse committedMatch.Groups[2].Value
     require
-        (committedEnd - committedStart + 1 = 48 && committedStart < 1953)
+        (committedEnd - committedStart + 1 = visiblePointCount && committedStart < initialVisibleStart)
         ("move release must commit one historical 48-bar window: " + committedText)
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeDrag + 1) "release must commit exactly one chart render"
     require (chartStack.GetAttributeAsync("data-follow-latest") |> awaitTask = "false") "historical viewport navigation must leave follow-latest mode"
@@ -310,11 +317,11 @@ let verifyDesktop (browser: IBrowser) =
     require ((page.Locator("[data-testid='ta-row-template-ta-macd-8']").CountAsync() |> awaitTask) = 0) "Reset Canvas must remove post-mount added rows"
 
     page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
-    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 1-2000"
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing 1-{capacityPointCount}"
     waitForText callbackState "last VisibleRangeChanged"
     waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls after All"
     let renderBeforeRightHandle = requiredIntAttribute chartStack "data-chart-render-sequence"
-    require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = 2000) "All preset must render the full loaded 2000-bar range"
+    require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = capacityPointCount) "All preset must render the full loaded capacity range"
     let allNavigatorBox = navigator.BoundingBoxAsync() |> awaitTask
     let rightHandle = page.Locator("[data-testid='ta-overview-right-handle']")
     let rightHandleBox = rightHandle.BoundingBoxAsync() |> awaitTask
@@ -356,7 +363,7 @@ let verifyMobile (browser: IBrowser) =
     page.PageError.Add(fun (error: string) -> consoleErrors.Add error; printfn "mobile page error: %s" error)
 
     page.GotoAsync(url, PageGotoOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
-    page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 5000.0f)) |> awaitUnit
+    page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
     requireBoxInside viewportWidth "workspace" (page.Locator("[data-testid='ta-workspace']").BoundingBoxAsync() |> awaitTask)
     requireBoxInside viewportWidth "query toolbar" (page.Locator("[data-testid='ta-query-toolbar']").BoundingBoxAsync() |> awaitTask)
     requireBoxInside viewportWidth "cursor panel" (page.Locator("[data-testid='ta-cursor-panel']").BoundingBoxAsync() |> awaitTask)
