@@ -2844,7 +2844,7 @@ function shell(activePath, pages){
   };
   navJumpGo.addEventListener("click", activateSelectedTab);
   navJumpSelect.addEventListener("keydown", (event) => event.key=="Enter"?(event.preventDefault(),activateSelectedTab()):null);
-  append_1(brandCluster, [element_1("div", "brand", "PTC.Comm SPA"), registryHealth]);
+  append_1(brandCluster, [element_1("div", "brand", currentProductLabel()), registryHealth]);
   renderNav(nav, activePath, pages);
   renderTabJumpOptions(navJumpSelect, activePath, staticNavigationDestinations().concat(map((page_1) =>[pagePath(page_1), pageTitle(page_1)], arrayOrEmpty_1(pages))));
   const userActions=element_1("div", "topbar-user-actions", null);
@@ -5022,6 +5022,10 @@ function select(options){
 function setId(id, node){
   node.setAttribute("id", id);
   return node;
+}
+function currentProductLabel(){
+  const node=doc_1().getElementById("ptc-comm-product-label");
+  return node==null||isBlank_2(node.textContent)?"PTC.SPA":Trim(node.textContent);
 }
 function currentLogoutPath(){
   const path=currentBrowserUser().logoutPath;

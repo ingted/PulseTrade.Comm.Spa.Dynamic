@@ -1194,3 +1194,8 @@ Implementation status:
 - 一般CLI與Debug build預設不push；可用`PulseTradeCommSpaDynamicContractsPushNuGet=false`明確停用VS push。驗證只產生本機package，不觸發外部NuGet發布。
 
 Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-TA-008 Package/release closure`已提升為priority 0追蹤，不將本次pack成功誤述為整個package graph已結案。
+
+## 2026-09-09 - PTCS 0.2.16 Host dependency cascade
+
+- Dynamic direct PTCS consumers were aligned from exact `PulseTrade.Comm.Spa 0.2.15` to `0.2.16`; the Host-facing `PulseTrade.Comm.Spa.Dynamic.Ptcs` package was published as `0.1.3`.
+- Main `PulseTrade.Comm.Spa.Dynamic` package was published as `0.1.5` for the formal SPA Host graph. This release is a dependency alignment for PTCS startup-memory/product-identity work and does not claim additional Dynamic UI behavior.

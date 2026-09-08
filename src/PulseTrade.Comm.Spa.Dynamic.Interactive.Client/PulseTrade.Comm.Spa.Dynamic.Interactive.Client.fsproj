@@ -13,6 +13,7 @@
     <WebSharperBundleOutputDir>wwwroot\js</WebSharperBundleOutputDir>
     <WebSharperRunCompiler>true</WebSharperRunCompiler>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+	  <PowerShellExe Condition="'$(OS)' == 'Windows_NT'">powershell</PowerShellExe>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,4 +33,11 @@
     <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
     <PackageReference Include="WebSharper.UI" Version="10.1.4.674" />
   </ItemGroup>
+	
+	<Target Name="PushContractsReleasePackageToNuGet"
+		AfterTargets="Pack"
+		Condition="'$(Configuration)' == 'Release'">
+		<Exec WorkingDirectory="$(MSBuildProjectDirectory)"
+			  Command="$(PowerShellExe) -NoProfile -ExecutionPolicy Bypass -File &quot;G:\PulseTrade.fs\Libs\Akka.Proc.Supervisor\PostBuildEvent.ps1&quot; -assembly &quot;$(PackageId)&quot; -build &quot;$(Configuration)&quot;" />
+	</Target>
 </Project>
