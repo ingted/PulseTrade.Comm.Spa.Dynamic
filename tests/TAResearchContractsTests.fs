@@ -402,6 +402,28 @@ let tests =
             Expect.equal effect RuntimeEffect.NoEffect "3,820 by 28 shared-axis snapshot should be reducer-safe."
             Expect.equal reduced.Data.Count (seriesCount + 1) "Reducer must retain one shared axis plus all compact series."
 
+            let statusOperation index =
+                PatchOperation.SetStatus(
+                    boundedDocument.StatusRef,
+                    Map.ofList [ "operation", SduiValue.Number(float index) ])
+            let acceptedOperations = Array.init 47 statusOperation
+            let acceptedPatchFrame =
+                frame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                    (RuntimePayload.Patch { Operations = acceptedOperations })
+            let acceptedState, acceptedEffect = RuntimeReducer.reduce reduced acceptedPatchFrame
+            Expect.equal acceptedEffect RuntimeEffect.NoEffect "A 47-operation compact TA patch must remain one atomic frame."
+            Expect.equal acceptedState.DataRevision 2L "An accepted 47-operation patch must advance exactly one data revision."
+
+            let oversizedOperations = Array.init 65 statusOperation
+            let oversizedPatchFrame =
+                frame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                    (RuntimePayload.Patch { Operations = oversizedOperations })
+            let rejectedState, rejectedEffect = RuntimeReducer.reduce reduced oversizedPatchFrame
+            Expect.equal rejectedState.Data reduced.Data "A 65-operation patch must be rejected before any operation becomes visible."
+            Expect.equal rejectedState.DataRevision 1L "A rejected operation-count overflow must preserve the committed revision."
+            Expect.equal rejectedState.LastError.Value.ReasonCode "limit-patch-operations" "The operation-count rejection reason must be explicit."
+            Expect.equal rejectedEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 1L)) "An oversized patch must request one authoritative resync."
+
         testCase "DYN-TA-T-067 base event-time actions are correlated bounded and fail closed" <| fun _ ->
             let cursor =
                 SduiAction.SharedCursorChanged(

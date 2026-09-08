@@ -289,7 +289,7 @@ default/minimum poll interval為5秒。每canvas一個in-flight；backoff capped
 | rows per canvas | 8 | reject action/frame, keep last good |
 | initial bars per series | 5000 | reject oversized snapshot |
 | retained bars per series | 2000 | server/client typed remove-before policy |
-| patch operations | 32 | reject frame + resync |
+| patch operations | 64 | reject frame + resync |
 | patch items | 500 | reject frame + resync |
 | frame bytes | 2 MiB | channel rejects before decode |
 | poll interval | 5 sec minimum | clamp/reject invalid config |
@@ -691,6 +691,6 @@ let newRevision = expectedRevision + 1L
        UpsertTemporalSeriesPoints(smaRef, axisRef, newRevision, smaItems) |] }
 ```
 
-修改axis後，所有仍引用該axis的series在最終candidate都必須pin到最終`newRevision`；本批沒有新value的series仍以空items upsert revision。trim與upsert若分成兩個axis operations，後者的`expectedRevision`須接前者的`newRevision`，series則使用最終axis revision。operation超過`MaxPatchOperations`、committed revision不明、session epoch改變或owner無法列出完整相依series時，改送authoritative full snapshot，不得發布半套patch。producer只可在authoritative session接受frame後推進committed revision；snapshot初始revision由session owner建立，不可由stateless projector永久寫死。
+修改axis後，所有仍引用該axis的series在最終candidate都必須pin到最終`newRevision`；本批沒有新value的series仍以空items upsert revision。trim與upsert若分成兩個axis operations，後者的`expectedRevision`須接前者的`newRevision`，series則使用最終axis revision。operation超過`MaxPatchOperations=64`、committed revision不明、session epoch改變或owner無法列出完整相依series時，改送authoritative full snapshot，不得發布半套patch。64允許兩尺度compact TA以單一47-operation frame原子發布；`MaxPatchItems=500`與`MaxFrameBytes=16MiB`仍獨立限制payload。producer只可在authoritative session接受frame後推進committed revision；snapshot初始revision由session owner建立，不可由stateless projector永久寫死。
 
 PTCS server v5把typed axis/series放入`sharedTemporalData`；legacy arrays仍使用bounded timeline/columnar `series`。client full frame直接建立shared map，delta以dataRef替換changed axis/series，再交canonical reducer/renderer。3820 x 28 gate須驗serialized frame低於16MiB；UI仍只mount bounded SVG primitives，不因working set上限4000而一次建立4000組DOM。

@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>PulseTrade.Comm.Spa.ACL</PackageId>
-    <Version>0.1.0-alpha14</Version>
+    <Version>0.1.1</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Open PTCS ACL extension facade for PulseTrade.Comm.Spa.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -13,6 +13,9 @@
     <WebSharperRunCompiler>true</WebSharperRunCompiler>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PowerShellExe Condition="'$(OS)' == 'Windows_NT'">powershell</PowerShellExe>
+    <PulseTradeCommSpaAclPushNuGet Condition="'$(PulseTradeCommSpaAclPushNuGet)' == '' and '$(BuildingInsideVisualStudio)' == 'true'">true</PulseTradeCommSpaAclPushNuGet>
+    <PulseTradeCommSpaAclPushNuGet Condition="'$(PulseTradeCommSpaAclPushNuGet)' == ''">false</PulseTradeCommSpaAclPushNuGet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,12 +25,19 @@
 
   <ItemGroup>
     <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta75]" />
-    <PackageReference Include="PulseTrade.Comm.ACL.Core" Version="[0.1.0-alpha2]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.15" />
+    <PackageReference Include="PulseTrade.Comm.ACL.Core" Version="[0.1.1]" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="wwwroot\**\*.*" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="contentFiles\any\net10.0\wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
+
+  <Target Name="PushSpaAclReleasePackageToNuGet"
+          AfterTargets="Pack"
+          Condition="'$(Configuration)' == 'Release' and '$(OS)' == 'Windows_NT' and '$(PulseTradeCommSpaAclPushNuGet)' == 'true'">
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)"
+          Command="$(PowerShellExe) -NoProfile -ExecutionPolicy Bypass -File &quot;G:\PulseTrade.fs\Libs\Akka.Proc.Supervisor\PostBuildEvent.ps1&quot; -assembly &quot;$(PackageId)&quot; -build &quot;$(Configuration)&quot;" />
+  </Target>
 
 </Project>

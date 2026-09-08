@@ -1,6 +1,6 @@
 import Runtime from "./WebSharper.Core.JavaScript/Runtime.js"
 Runtime.ScriptBasePath="/Scripts/";
-import { MarkResizable, Lazy, Create } from "./WebSharper.Core.JavaScript/Runtime.js"
+import { MarkResizable, Lazy, Create as Create_2, GetOptional, SetOptional } from "./WebSharper.Core.JavaScript/Runtime.js"
 function isIDisposable(x){
   return"Dispose"in x;
 }
@@ -60,7 +60,7 @@ function mountLogin(root, configJson){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_30(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_35(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank(request.userName)||isBlank(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -172,7 +172,7 @@ function setHref(value, node){
   return node;
 }
 function defaultConfig(){
-  return New_29("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode");
+  return New_34("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode");
 }
 function asText(value){
   return value==null||Equals(typeof value, "undefined")?"":value;
@@ -181,7 +181,7 @@ function errorMessage(error){
   return error==null?"unknown error":String(error);
 }
 function Main_1(){
-  let mountedPageElement, mountedAppendPageResolved, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
+  let mountedPageElement, mountedAppendPageResolved, mountedAppendPageDefinitionFingerprint, mounted, appendRegistryWsState, appendRegistryPageCount, appendRegistryMaxSequence, appendRegistrySocket, queuedAppendRegistryFrames, appendRegistrySubscribed, appendRegistryTailRequested;
   const loginRoot=doc_1().getElementById("ptcs-login-root");
   if(!(loginRoot==null))mountLogin_1(loginRoot);
   else {
@@ -190,6 +190,7 @@ function Main_1(){
     const path=isBlank_1(trimmed)?"/chat":trimmed;
     mountedPageElement=null;
     mountedAppendPageResolved=false;
+    mountedAppendPageDefinitionFingerprint=null;
     const cacheKey_1=appendPagesDefinitionsCacheKey();
     mounted=false;
     appendRegistryWsState="idle";
@@ -204,16 +205,18 @@ function Main_1(){
         const page=p[1];
         mountedPageElement=Some(page);
         mountedAppendPageResolved=false;
+        mountedAppendPageDefinitionFingerprint=null;
         setMain(p[0]);
         if(path=="/sets")_1=mountSets(page);
         else if(path=="/actors")_1=mountActors(page);
+        else if(path=="/management")_1=mountManagement(page);
         else if(path=="/chat")_1=mountChat(page);
         else {
           const m=findAppendPage(path, pages_1);
           if(m==null)_1=mountUnknownPage(page, path);
           else {
             const definition=m.$0;
-            _1=(mountedAppendPageResolved=true,mountAppendPage(page, definition));
+            _1=(mountedAppendPageResolved=true,mountedAppendPageDefinitionFingerprint=Some(appendPageDefinitionFingerprint(definition)),mountAppendPage(page, definition));
           }
         }
         globalThis.setInterval(() => refreshAppendNav(path), 5000);
@@ -241,15 +244,23 @@ function Main_1(){
       if(mounted){
         const nav=doc_1().getElementById("ptc-nav");
         if(!(nav==null))renderNav(nav, path, arrayOrEmpty(data_1.pages));
-        if(path!="/sets"&&path!="/actors"&&path!="/chat"&&!mountedAppendPageResolved){
+        if(path!="/sets"&&path!="/actors"&&path!="/management"&&path!="/chat"){
           const _2=findAppendPage(path, arrayOrEmpty(data_1.pages));
           if(mountedPageElement!=null&&mountedPageElement.$==1){
-            if(_2!=null&&_2.$==1){
-              const definition=_2.$0;
-              const page=mountedPageElement.$0;
-              _1=(clear_1(page),mountedAppendPageResolved=true,mountAppendPage(page, definition));
+            if(_2==null){
+              mountedPageElement.$0;
+              if(mountedAppendPageResolved){
+                const page=mountedPageElement.$0;
+                _1=(clear_1(page),mountedAppendPageResolved=false,mountedAppendPageDefinitionFingerprint=null,mountUnknownPage(page, path));
+              }
+              else _1=void 0;
             }
-            else _1=void 0;
+            else {
+              const definition=_2.$0;
+              const page_1=mountedPageElement.$0;
+              const nextFingerprint=appendPageDefinitionFingerprint(definition);
+              _1=!mountedAppendPageResolved||!Equals(mountedAppendPageDefinitionFingerprint, Some(nextFingerprint))?(clear_1(page_1),mountedAppendPageResolved=true,mountedAppendPageDefinitionFingerprint=Some(nextFingerprint),mountAppendPage(page_1, definition)):void 0;
+            }
           }
           else _1=void 0;
         }
@@ -504,8 +515,15 @@ function findAppendPage(path, pages){
 function clear_1(node){
   node.textContent="";
 }
+function mountUnknownPage(page, path){
+  page.className="page actors-page";
+  page.appendChild(element_1("div", "empty", "No append page is registered for "+String(path)+"."));
+}
+function appendPageDefinitionFingerprint(page){
+  return concat_1("\u001e", map(asText_1, [page.pageId, page.tabId, page.path, page.title, page.setName, page.shape, page.description, page.keyPlaceholder, page.valuePlaceholder, page.defaultKey, concat_1("\u001f", arrayOrEmpty(page.tags))]));
+}
 function mountAppendPage(page, definition){
-  let currentLineageHealth, selected, selectedKeyJson, buckets, locallyHiddenKeyIds, pendingSelectKeyId, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, addKeyEditorOpen, addKeyMode, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
+  let currentLineageHealth, selected, selectedKeyJson, buckets, acceptedLiveValueIds, locallyHiddenKeyIds, pendingSelectKeyId, loadGeneration, visibleValueLimit, scrollValuesToBottomAfterNextRender, addKeyEditorOpen, addKeyMode, composerMode, ensureSelectedSubscription, replayPendingCommands, deleteAcceptedPendingAppends, rerenderAppendForm, rerenderAddKeyBuilder, renderedValueCardKeys, renderedValueCardValueIds, renderedValueCardElements, currentKeyMaxSequence, keyRegistryWsState, syncSocket, queuedSyncFrames, subscribedValueStream, keyRegistrySubscribed, keyRegistryTailRequested, pendingWsAppendIds, syncRepairScheduled, repairSyncAfterClose, replayingPending;
   page.className="page append-page";
   setData("tab-id", definition.tabId, setData("page-id", definition.pageId, setTestId_1("append-page-"+asText_1(definition.pageId), page)));
   const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
@@ -522,6 +540,7 @@ function mountAppendPage(page, definition){
   selected="";
   selectedKeyJson="";
   buckets=[];
+  acceptedLiveValueIds=[];
   locallyHiddenKeyIds=[];
   pendingSelectKeyId="";
   loadGeneration=0;
@@ -529,10 +548,12 @@ function mountAppendPage(page, definition){
   scrollValuesToBottomAfterNextRender=false;
   addKeyEditorOpen=false;
   addKeyMode="target";
+  composerMode="plain";
   const isLocallyHiddenKeyId=(keyId) =>!isBlank_1(keyId)&&exists((hidden) => sameText(hidden, keyId), locallyHiddenKeyIds);
   const rememberLocallyHiddenKeyId=(keyId) => {
     if(!isBlank_1(keyId)&&!isLocallyHiddenKeyId(keyId))locallyHiddenKeyIds=locallyHiddenKeyIds.concat([keyId]);
   };
+  const isAcceptedLiveValueId=(valueId) =>!isBlank_1(valueId)&&exists((accepted) => sameText(accepted, valueId), acceptedLiveValueIds);
   const side=element_1("aside", "sidebar append-sidebar", null);
   const sideHead=element_1("div", "panel-head", null);
   const sideActions=element_1("div", "head-actions", null);
@@ -560,6 +581,8 @@ function mountAppendPage(page, definition){
   const list=setTestId_1("append-key-list", element_1("div", "list", null));
   const work=setTestId_1("append-work", element_1("section", "append-work", null));
   const values=setTestId_1("append-values", element_1("div", "append-values", null));
+  const valuesControl=setTestId_1("append-values-control", element_1("div", "append-values-control", null));
+  values.appendChild(valuesControl);
   const form=setTestId_1("append-form", element_1("div", "append-form", null));
   const valueInput=setTestId_1("append-value-input", textarea("append-value-input", textOr_1("JSON value", definition.valuePlaceholder)));
   const directionInput=setTestId_1("append-direction", input_1("outbound-message"));
@@ -574,7 +597,7 @@ function mountAppendPage(page, definition){
   setHidden(!canRemoveKey, removeKeyButton);
   setHidden(!canRemovePage, removePageButton);
   setHidden(!canAppendValue, appendButton);
-  const head_1=element_1("div", "work-head", null);
+  const head_2=element_1("div", "work-head", null);
   const titleBox=element_1("div", "", null);
   const workState=setTestId_1("append-work-status", element_1("div", "state", "Loading"));
   const pendingState=setTestId_1("append-pending-state", element_1("div", "state pending-state", ""));
@@ -620,7 +643,7 @@ function mountAppendPage(page, definition){
   append_1(filters, [addKeyPanel, keyFilter, status]);
   append_1(side, [sideHead, sideActions, filters, list]);
   append_1(titleBox, [setTestId_1("append-page-type-label", element_1("label", "", pageTypeLabel(definition)+" / "+asText_1(definition.setName))), element_1("h2", "", pageTitle(definition)), element_1("div", "meta wrap", asText_1(definition.description)), lineageInfo]);
-  append_1(head_1, [titleBox, workState]);
+  append_1(head_2, [titleBox, workState]);
   const applyLineageHealth=(health) => {
     const health_1=health==null?defaultLineageHealth():health;
     currentLineageHealth=health_1;
@@ -646,7 +669,7 @@ function mountAppendPage(page, definition){
     append_1(form, [valueInput, appendButton]);
   }
   else asText_1(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append_1(form, [directionInput, valueInput, appendButton])):append_1(form, [valueInput, appendButton]);
-  append_1(work, [head_1, pendingState, values, form]);
+  append_1(work, [head_2, pendingState, values, form]);
   append_1(page, [side, work]);
   const browserId=currentUserId();
   ensureSelectedSubscription=() => { };
@@ -654,6 +677,9 @@ function mountAppendPage(page, definition){
   deleteAcceptedPendingAppends=() =>() => null;
   rerenderAppendForm=() => { };
   rerenderAddKeyBuilder=() => { };
+  renderedValueCardKeys=[];
+  renderedValueCardValueIds=[];
+  renderedValueCardElements=[];
   const refreshPendingState=() => {
     readPendingRealitySplit((_3, _4) => renderPendingInspection(pendingState, filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_1(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_1(definition.pageId)+"\"")!=-1), _3), filter((command) =>!(command==null)&&(sameText(command.target, definition.pageId)||!isBlank_1(command.payloadJson)&&command.payloadJson.indexOf("\"pageId\":\""+asText_1(definition.pageId)+"\"")!=-1), _4)));
   };
@@ -730,6 +756,39 @@ function mountAppendPage(page, definition){
     iter(add, arrayOrEmpty(existing));
     return sortBy((value) => asText_1(value.createdAtUtc), merged);
   };
+  const replyCardKey=(value) => concat_1("\u001f", [selected, asText_1(value.valueId)]);
+  const disposeReplyCardsExcept=(retainedKeys) => {
+    const retainedIndexes=map((t) => t[0], filter((_3) => {
+      const key=_3[1];
+      return exists((y) => key==y, retainedKeys);
+    }, mapi((_3, _4) =>[_3, _4], renderedValueCardKeys)));
+    iteri((_3, _4) => {
+      if(!exists((y) => _4==y, retainedKeys)){
+        disposeReplyPresentation(concat_1("\u001f", [asText_1(definition.pageId), asText_1(definition.tabId), get(renderedValueCardValueIds, _3)]));
+        const card=get(renderedValueCardElements, _3);
+        return!(card.parentNode==null)?void card.parentNode.removeChild(card):null;
+      }
+      else return null;
+    }, renderedValueCardKeys);
+    renderedValueCardKeys=map((index) => get(renderedValueCardKeys, index), retainedIndexes);
+    renderedValueCardValueIds=map((index) => get(renderedValueCardValueIds, index), retainedIndexes);
+    renderedValueCardElements=map((index) => get(renderedValueCardElements, index), retainedIndexes);
+  };
+  const cardForValue=(value) => {
+    const key=replyCardKey(value);
+    const m=tryFindIndex((y) => key==y, renderedValueCardKeys);
+    if(m==null){
+      const card=renderAppendValue(definition, value);
+      renderedValueCardKeys=renderedValueCardKeys.concat([key]);
+      renderedValueCardValueIds=renderedValueCardValueIds.concat([asText_1(value.valueId)]);
+      renderedValueCardElements=renderedValueCardElements.concat([card]);
+      return card;
+    }
+    else {
+      const index=m.$0;
+      return get(renderedValueCardElements, index);
+    }
+  };
   function renderList(){
     clear_1(list);
     iter((bucket) => {
@@ -764,7 +823,6 @@ function mountAppendPage(page, definition){
     while(true)
       {
         let _3, _4, _5;
-        clear_1(values);
         const x=(((n) =>(n_1) => setData(n, selected, n_1))("selected-key-id"))(work);
         ((((n) =>(n_1) => setData(n, selectedKeyJson, n_1))("selected-key-json"))(x));
         const bucket=(((p) =>(a_3) => tryFind(p, a_3))((bucket_2) => bucket_2.keyId==selected))(buckets);
@@ -772,6 +830,8 @@ function mountAppendPage(page, definition){
           const bucket_1=bucket.$0;
           const allValues=arrayOrEmpty(bucket_1.values);
           const visible=latestArray(visibleValueLimit, allValues);
+          disposeReplyCardsExcept(map(replyCardKey, visible));
+          clear_1(valuesControl);
           const a=0;
           const b=length(allValues)-length(visible);
           const hiddenCached=Compare(a, b)===1?a:b;
@@ -802,7 +862,7 @@ function mountAppendPage(page, definition){
           const x_10=(((n, v) =>(n_1) => setData(n, v, n_1))("snapshot-seqid", String(newestSequence)))(x_9);
           ((((n, v) =>(n_1) => setData(n, v, n_1))("backend-gap", backendGapAvailable?"true":"false"))(x_10));
           updateBrowserCacheHealth(length(visible), length(allValues), oldestSequence, newestSequence, newestSequence, backendGapAvailable);
-          if(length(visible)===0)_3=void values.appendChild(element_1("div", "empty", "No values appended yet."));
+          if(length(visible)===0)_3=void valuesControl.appendChild(element_1("div", "empty", "No values appended yet."));
           else {
             if(hiddenCached>0){
               const x_11=button_1("", "Load older ("+String(hiddenCached)+")");
@@ -812,23 +872,30 @@ function mountAppendPage(page, definition){
                 const b_3=visibleValueLimit+defaultRenderLimit();
                 visibleValueLimit=Compare(a_3, b_3)===-1?a_3:b_3;
                 return renderValues();
-              })(allValues)),void values.appendChild(loadOlder));
+              })(allValues)),void valuesControl.appendChild(loadOlder));
             }
             else if(backendGapAvailable){
               const x_12=button_1("", "Load older (backend)");
               const loadOlder_1=(((i) =>(n) => setTestId_1(i, n))("append-load-older"))(x_12);
-              _4=(loadOlder_1.addEventListener("click", ((bucket_2, oldestSequence_1) =>() => readOlderFromBackend(bucket_2, oldestSequence_1))(bucket_1, oldestSequence)),void values.appendChild(loadOlder_1));
+              _4=(loadOlder_1.addEventListener("click", ((bucket_2, oldestSequence_1) =>() => readOlderFromBackend(bucket_2, oldestSequence_1))(bucket_1, oldestSequence)),void valuesControl.appendChild(loadOlder_1));
             }
             else _4=null;
+            const desiredCards=map(cardForValue, visible);
             _3=(((a_3) =>(a_4) => {
-              iter(a_3, a_4);
-            })((value) => {
-              values.appendChild(renderAppendValue(value));
-            }))(visible);
+              iteri((_6, _7) =>(a_3(_6))(_7), a_4);
+            })(((isAttachedToTimeline, desiredCards_1) =>(index) =>(card) => {
+              if(!isAttachedToTimeline(card)){
+                const nextAttached=tryFind(isAttachedToTimeline, skip(index+1, desiredCards_1));
+                return nextAttached==null?void values.appendChild(card):void values.insertBefore(card, nextAttached.$0);
+              }
+              else return null;
+            })((card) => card.parentNode===values, desiredCards)))(desiredCards);
           }
           _5=length(visible)<reportedCount?setStatus(workState, "Showing "+String(length(visible))+"/"+String(reportedCount)+" value(s)"):setStatus(workState, String(reportedCount)+" value(s)");
         }
         else {
+          disposeReplyCardsExcept([]);
+          clear_1(valuesControl);
           const x_13=(((n, v) =>(n_1) => setData(n, v, n_1))("rendered-count", "0"))(values);
           const x_14=(((n, v) =>(n_1) => setData(n, v, n_1))("cached-count", "0"))(x_13);
           const x_15=(((n, v) =>(n_1) => setData(n, v, n_1))("oldest-sequence", "0"))(x_14);
@@ -845,7 +912,7 @@ function mountAppendPage(page, definition){
           ((((n, v) =>(n_1) => setData(n, v, n_1))("candidate-value-stream-keys", ""))(x_21));
           lineageDetailValueCount.textContent="0";
           lineageDetailValueStreams.textContent="none";
-          values.appendChild(element_1("div", "empty", "No key selected."));
+          valuesControl.appendChild(element_1("div", "empty", "No key selected."));
           _5=setStatus(workState, "No key selected");
         }
         if(scrollValuesToBottomAfterNextRender){
@@ -935,24 +1002,59 @@ function mountAppendPage(page, definition){
     });
   };
   const applySnapshot=(source, data) => {
-    let _3;
+    let _3, _4;
     applyLineage(data.lineage);
     applyLineageHealth(data.lineageHealth);
     const b=data.keyMaxSequence;
     currentKeyMaxSequence=Compare(currentKeyMaxSequence, b)===1?currentKeyMaxSequence:b;
-    buckets=filter((bucket_1) =>!isLocallyHiddenKeyId(bucket_1.keyId), arrayOrEmpty(data.buckets));
+    const backendBuckets=filter((bucket_1) =>!isLocallyHiddenKeyId(bucket_1.keyId), arrayOrEmpty(data.buckets));
+    if(sameText(source, "backend")){
+      const projectedValueIds=map((a) => a.valueId, collect((bucket_1) => arrayOrEmpty(bucket_1.values), backendBuckets));
+      _3=void(acceptedLiveValueIds=filter((accepted) =>!exists((projected) => sameText(projected, accepted), projectedValueIds), acceptedLiveValueIds));
+    }
+    else _3=null;
+    buckets=sortAppendPageBuckets(map((backendBucket) => {
+      const m_1=tryFind((existing_1) => sameText(existing_1.keyId, backendBucket.keyId), buckets);
+      if(m_1!=null&&m_1.$==1){
+        const existing=m_1.$0;
+        const v=mergeAppendValues(filter((value) => isAcceptedLiveValueId(value.valueId), arrayOrEmpty(existing.values)), backendBucket.values);
+        const merged=latestArray(defaultCacheLimit(), v);
+        const p=sequenceBounds(merged);
+        const minSequence=p[0];
+        const a=backendBucket.valueCount;
+        const b_1=length(merged);
+        let _5=Compare(a, b_1)===1?a:b_1;
+        const a_1=backendBucket.maxSequence;
+        const b_2=p[1];
+        let _6=Compare(a_1, b_2)===1?a_1:b_2;
+        return New_9(backendBucket.keyId, backendBucket.keys, backendBucket.displayName, backendBucket.setName, _5, minSequence>0n?minSequence:backendBucket.minSequence, _6, textOr_1(backendBucket.updatedAtUtc, existing.updatedAtUtc), merged);
+      }
+      else return backendBucket;
+    }, backendBuckets).concat(choose((existing) => {
+      const v=filter((value) => isAcceptedLiveValueId(value.valueId), arrayOrEmpty(existing.values));
+      const pendingAcceptedValues=latestArray(defaultCacheLimit(), v);
+      if(length(pendingAcceptedValues)===0)return null;
+      else {
+        const p=sequenceBounds(pendingAcceptedValues);
+        const a=existing.valueCount;
+        const b_1=length(pendingAcceptedValues);
+        let _5=Compare(a, b_1)===1?a:b_1;
+        let _6=New_9(existing.keyId, existing.keys, existing.displayName, existing.setName, _5, p[0], p[1], existing.updatedAtUtc, pendingAcceptedValues);
+        return Some(_6);
+      }
+    }, filter((existing) =>!isLocallyHiddenKeyId(existing.keyId)&&!exists((backend) => sameText(backend.keyId, existing.keyId), backendBuckets), buckets))));
     visibleValueLimit=defaultRenderLimit();
-    if(isBlank_1(pendingSelectKeyId))_3=false;
+    if(isBlank_1(pendingSelectKeyId))_4=false;
     else {
       const m=tryFind((bucket_1) => sameText(bucket_1.keyId, pendingSelectKeyId), buckets);
-      if(m==null)_3=false;
+      if(m==null)_4=false;
       else {
         const bucket=m.$0;
         const selectedPending=bucket==null?false:selectBucketKeys(bucket.keys);
-        _3=(selectedPending?pendingSelectKeyId="":void 0,selectedPending);
+        _4=(selectedPending?pendingSelectKeyId="":void 0,selectedPending);
       }
     }
-    if(_3)null;
+    if(_4)null;
     else(isBlank_1(selected)||!exists((bucket_1) => bucket_1.keyId==selected, buckets))&&length(buckets)>0?(selected=get(buckets, 0).keyId,selectedKeyJson=keysAsJson(get(buckets, 0).keys),void(newKeyInput.value=selectedKeyJson)):length(buckets)===0?(selected="",void(selectedKeyJson="")):null;
     setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s)");
     renderList();
@@ -1038,6 +1140,23 @@ function mountAppendPage(page, definition){
       const bucket=m.$0;
       return length(selectedJsonKeys)>0&&sameText(appendPageKeyId(selectedJsonKeys), bucket.keyId)?(m.$0,selectedKeyJson):keysAsJson(m.$0.keys);
     }
+  };
+  const effectiveSelectedKeyId=() => {
+    const m=tryFind((bucket) => bucket.keyId==selected, buckets);
+    if(m==null){
+      const keys=keysFromJson(selectedKeyJson);
+      return length(keys)===0?"":appendPageKeyId(keys);
+    }
+    else return m.$0.keyId;
+  };
+  const applyEffectiveKeySelection=() => {
+    const keyJson=effectiveSelectedKeyJson();
+    const keys=effectiveSelectedKeys();
+    if(isBlank_1(selectedKeyJson)&&!isBlank_1(keyJson)){
+      selectedKeyJson=keyJson;
+      newKeyInput.value=keyJson;
+    }
+    if(isBlank_1(selected)&&length(keys)>0)selected=appendPageKeyId(keys);
   };
   const selectedBucket=() => {
     const m=tryFind((bucket_1) => bucket_1.keyId==selected, buckets);
@@ -1229,6 +1348,9 @@ function mountAppendPage(page, definition){
               if(sameText(responseType, "actor-argu"))(((event_1, value) => {
                 let keys, matched, _5;
                 if(!(value==null)&&!isBlank_1(value.valueId)){
+                  const valueId=value.valueId;
+                  if(!isBlank_1(valueId)&&!isAcceptedLiveValueId(valueId))acceptedLiveValueIds=acceptedLiveValueIds.concat([valueId]);
+                  else null;
                   const eventKeys=event_1==null||event_1.streamKey==null?[]:arrayOrEmpty(event_1.streamKey.keys);
                   if(length(eventKeys)>0)keys=eventKeys;
                   else {
@@ -1279,7 +1401,10 @@ function mountAppendPage(page, definition){
             case 3:
               return iter((_5) => handleSyncEvent("tail", _5), arrayOrEmpty(response.events));
             case 4:
-              return exists((id) => id==requestId, pendingWsAppendIds)?setStatus(workState, pendingFailure("WebSocket append", asText_1(response.error))):setStatus(status, "WebSocket sync error: "+asText_1(response.error));
+              return exists((id) => id==requestId, pendingWsAppendIds)?(pendingWsAppendIds=filter((id) => id!=requestId, pendingWsAppendIds),deletePendingThen(requestId, () => {
+                refreshPendingState();
+                setStatus(workState, pendingFailure("WebSocket command", asText_1(response.error)));
+              })):setStatus(status, "WebSocket sync error: "+asText_1(response.error));
             case 5:
               return null;
           }
@@ -1494,20 +1619,36 @@ function mountAppendPage(page, definition){
     else addKeyEditorOpen?(setHidden(false, fallbackAddKeyPanel),addKeyRendererHost.textContent=""):setData("renderer-state", "closed", addKeyRendererHost);
   };
   rerenderAppendForm=() => {
-    let effectiveKeyId;
     const rendererShape=isActorArguPage(definition)?"actor-argu":definition.shape;
     clear_1(form);
     const effectiveKeyJson=effectiveSelectedKeyJson();
-    const m=tryFind((bucket) => bucket.keyId==selected, buckets);
-    if(m==null){
-      const keys=keysFromJson(selectedKeyJson);
-      effectiveKeyId=length(keys)===0?"":appendPageKeyId(keys);
-    }
-    else effectiveKeyId=m.$0.keyId;
+    const effectiveKeyId=effectiveSelectedKeyId();
     const selectedKeys=effectiveSelectedKeys();
     const x=setData("selected-key-json", effectiveKeyJson, setData("selected-key-id", effectiveKeyId, setData("shape", rendererShape, setData("renderer-state", "fallback", form))));
-    setData("selected-key-source", isBlank_1(effectiveKeyJson)?"none":"selected", x);
-    const customNode=isBlank_1(effectiveKeyJson)?null:tryRenderAppendInputWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, effectiveKeyId, effectiveKeyJson, selectedKeys, valueInput.placeholder, valueInput.value, (payload) => {
+    const n=setData("selected-key-source", isBlank_1(effectiveKeyJson)?"none":"selected", x);
+    setData("composer-mode", composerMode, n);
+    const setComposerMode=(nextMode) => {
+      const normalized=sameText(asText_1(nextMode), "form")?"form":"plain";
+      if(!sameText(composerMode, normalized)){
+        composerMode=normalized;
+        rerenderAppendForm();
+      }
+    };
+    const renderPlainComposer=() => {
+      form.className="append-form actor-argu-form plain-composer";
+      appendButton.textContent="Send";
+      const actions=setTestId_1("append-composer-actions", element_1("div", "append-composer-actions", null));
+      let _3=actions;
+      const n_1=setTestId_1("append-composer-mode", element_1("div", "append-composer-mode", null));
+      const group=setData("mode", composerMode, n_1);
+      const plain=setTestId_1("append-composer-mode-plain", button_1("append-composer-mode-button", "Plain"));
+      const formButton=setTestId_1("append-composer-mode-form", button_1("append-composer-mode-button", "Form"));
+      let _4=(plain.setAttribute("aria-pressed", sameText(composerMode, "plain")?"true":"false"),formButton.setAttribute("aria-pressed", sameText(composerMode, "form")?"true":"false"),plain.addEventListener("click", () => setComposerMode("plain")),formButton.addEventListener("click", () => setComposerMode("form")),append_1(group, [plain, formButton]),group);
+      let _5=[_4, appendButton];
+      append_1(_3, _5);
+      append_1(form, [valueInput, actions]);
+    };
+    const customNode=!sameText(composerMode, "form")||isBlank_1(effectiveKeyJson)?null:tryRenderAppendInputWithRegisteredRenderers(definition.pageId, rendererShape, definition.title, definition.setName, effectiveKeyId, effectiveKeyJson, selectedKeys, valueInput.placeholder, valueInput.value, (payload) => {
       let _3;
       const submitted=rendererSubmittedText(payload);
       const submittedKeyJson=rendererSubmittedKeyJson(payload);
@@ -1518,13 +1659,7 @@ function mountAppendPage(page, definition){
           _3=length(submittedKeys)>0?(selectedKeyJson=submittedKeyJson,selected=appendPageKeyId(submittedKeys),newKeyInput.value=submittedKeyJson):void 0;
         }
         else _3=void 0;
-        const keyJson=effectiveSelectedKeyJson();
-        const keys_1=effectiveSelectedKeys();
-        if(isBlank_1(selectedKeyJson)&&!isBlank_1(keyJson)){
-          selectedKeyJson=keyJson;
-          newKeyInput.value=keyJson;
-        }
-        if(isBlank_1(selected)&&length(keys_1)>0)selected=appendPageKeyId(keys_1);
+        applyEffectiveKeySelection();
         valueInput.value=submitted;
         setData("last-raw-argu", submitted, form);
         appendValue();
@@ -1535,14 +1670,22 @@ function mountAppendPage(page, definition){
         valueInput.value=submitted;
         setData("last-raw-argu", submitted, form);
       }
+    }, composerMode, (value) => {
+      setComposerMode(String(value));
     });
-    if(customNode==null)isActorArguPage(definition)?(form.className="append-form actor-argu-form",append_1(form, [valueInput, appendButton])):asText_1(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append_1(form, [directionInput, valueInput, appendButton])):(form.className="append-form",append_1(form, [valueInput, appendButton]));
-    else {
-      const node=customNode.$0;
-      form.className="append-form custom-append-input-form";
-      setData("renderer-state", "custom", form);
-      form.appendChild(node);
+    if(composerMode=="form"){
+      if(customNode==null){
+        setData("renderer-state", "form-unavailable", form);
+        renderPlainComposer();
+      }
+      else {
+        const node=customNode.$0;
+        form.className="append-form custom-append-input-form";
+        setData("renderer-state", "custom", form);
+        form.appendChild(node);
+      }
     }
+    else isActorArguPage(definition)||isActorDynamicPage(definition)?renderPlainComposer():asText_1(definition.shape).toLowerCase()=="fcell-chat"?(form.className="append-form chat-form",append_1(form, [directionInput, valueInput, appendButton])):(form.className="append-form",append_1(form, [valueInput, appendButton]));
   };
   rerenderAddKeyBuilder();
   rerenderAppendForm();
@@ -1605,9 +1748,10 @@ function mountAppendPage(page, definition){
     newKeyInput.value="";
     newKeyAliasInput.value="";
   }),cancelKeyButton.addEventListener("click", cancelAddKeyEditor),okKeyButton.addEventListener("click", () => addKeyWithKeyJson(isBlank_1(newKeyInput.value)?asText_1(definition.defaultKey):Trim(newKeyInput.value), newKeyAliasInput.value)),removeKeyButton.addEventListener("click", () => {
-    if(isBlank_1(selected))setStatus(status, "Select a key first");
+    applyEffectiveKeySelection();
+    const removedKeyId=effectiveSelectedKeyId();
+    if(isBlank_1(removedKeyId))setStatus(status, "Select a key first");
     else {
-      const removedKeyId=selected;
       const request=New_14(definition.pageId, removedKeyId);
       const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request);
       refreshPendingState();
@@ -1615,7 +1759,7 @@ function mountAppendPage(page, definition){
       postRemoveAppendPageKey("/pages/api/remove-key", request, () => {
         deletePendingThen(pendingId, () => {
           rememberLocallyHiddenKeyId(removedKeyId);
-          buckets=filter((bucket) => bucket.keyId!=removedKeyId, buckets);
+          buckets=filter((bucket) =>!sameText(bucket.keyId, removedKeyId), buckets);
           selected="";
           selectedKeyJson="";
           writeCurrentSnapshot();
@@ -1656,7 +1800,7 @@ function renderNav(nav, activePath, pages){
     const x=setHref_1(href, element_1("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", label));
     let _2=setTestId_1("nav-"+label.toLowerCase(), x);
     nav.appendChild(_2);
-  }, [["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"]]);
+  }, staticNavigationDestinations());
   iter((page) => {
     const href=pagePath(page);
     const x=setHref_1(href, element_1("a", isCurrentPage(activePath, href)?"nav-link active":"nav-link", null));
@@ -1687,6 +1831,8 @@ function renderNav(nav, activePath, pages){
     append_1(link, [badge, element_1("span", "nav-title", pageTitle(page)), closeButton]);
     nav.appendChild(link);
   }, arrayOrEmpty(pages));
+  const jump=doc_1().getElementById("ptc-tab-jump");
+  if(!(jump==null))renderTabJumpOptions(jump, activePath, staticNavigationDestinations().concat(map((page) =>[pagePath(page), pageTitle(page)], arrayOrEmpty(pages))));
 }
 function shell(activePath, pages){
   const app=element_1("div", "app", null);
@@ -1694,28 +1840,44 @@ function shell(activePath, pages){
   const topRow=element_1("div", "topbar-main", null);
   const brandCluster=element_1("div", "brand-cluster", null);
   const navShell=element_1("div", "nav-shell", null);
+  const navJump=setTestId_1("nav-jump-control", element_1("div", "nav-jump", null));
+  const navJumpSelect=setTestId_1("nav-jump-select", setId_1("ptc-tab-jump", select([])));
+  const navJumpGo=setTestId_1("nav-jump-go", button_1("nav-jump-go", "Go"));
   const navViewport=setTestId_1("nav-viewport", element_1("div", "nav-viewport", null));
   const nav=setId_1("ptc-nav", element_1("nav", "nav", null));
   const navBack=setTestId_1("nav-scroll-left", button_1("nav-scroll", "<"));
   const navForward=setTestId_1("nav-scroll-right", button_1("nav-scroll", ">"));
-  const create=renderPageCreator(nav, activePath, pages);
+  const create_1=renderPageCreator(nav, activePath, pages);
   const registryHealth=setTestId_1("append-registry-health", element_1("div", "state registry-health", "append registry ws pending"));
   const scrollTabs=(delta) => {
     navViewport.scrollLeft=navViewport.scrollLeft+delta;
   };
   navBack.setAttribute("aria-label", "Scroll tabs left");
   navForward.setAttribute("aria-label", "Scroll tabs right");
+  navJumpSelect.setAttribute("aria-label", "Jump to tab");
+  navJumpGo.setAttribute("aria-label", "Go to selected tab");
   navBack.addEventListener("click", () => scrollTabs(-260));
   navForward.addEventListener("click", () => scrollTabs(260));
+  const activateSelectedTab=() => {
+    const href=asText_1(navJumpSelect.value);
+    if(!isBlank_1(href))globalThis.location.assign(href);
+  };
+  navJumpGo.addEventListener("click", activateSelectedTab);
+  navJumpSelect.addEventListener("keydown", (event) => event.key=="Enter"?(event.preventDefault(),activateSelectedTab()):null);
   append_1(brandCluster, [element_1("div", "brand", "PTC.Comm SPA"), registryHealth]);
   renderNav(nav, activePath, pages);
+  renderTabJumpOptions(navJumpSelect, activePath, staticNavigationDestinations().concat(map((page_1) =>[pagePath(page_1), pageTitle(page_1)], arrayOrEmpty(pages))));
+  const userActions=element_1("div", "topbar-user-actions", null);
+  const viewAs=renderViewAsControl();
   const x=element_1("a", "logout", "Logout");
   const logout=setHref_1(currentLogoutPath(), x);
   const page=element_1("main", "page", null);
   append_1(navViewport, [nav]);
-  append_1(navShell, [navBack, navViewport, navForward]);
-  append_1(topRow, [brandCluster, navShell, logout]);
-  append_1(top, [topRow, create]);
+  append_1(navJump, [navJumpSelect, navJumpGo]);
+  append_1(navShell, [navJump, navViewport, navBack, navForward]);
+  append_1(userActions, [viewAs, logout]);
+  append_1(topRow, [brandCluster, userActions]);
+  append_1(top, [topRow, create_1, navShell]);
   append_1(app, [top, page]);
   return[app, page];
 }
@@ -1727,20 +1889,28 @@ function setMain(node){
   }
 }
 function mountSets(page){
-  let selected, buckets, syncSocket, queuedSyncFrames, subscribedStreams, tailRequestedStreams, registryTailRequested, ensureSetsSubscriptions, loadGeneration;
+  let selected, buckets, syncSocket, queuedSyncFrames, subscribedStreams, tailRequestedStreams, registryTailRequested, ensureSetsSubscriptions, loadGeneration, hiddenSetStreams;
   page.className="page sets-grid";
   selected="";
   buckets=[];
   const side=element_1("aside", "sidebar", null);
   const sideHead=element_1("div", "panel-head", null);
-  const reload=button_1("", "Reload");
+  const actionPool=setTestId_1("sets-action-pool", element_1("details", "append-page-actions", null));
+  const actionSummary=setTestId_1("sets-action-summary", element_1("summary", "append-page-actions-summary", "Actions"));
+  const actionMenu=setTestId_1("sets-action-menu", element_1("div", "append-page-actions-menu", null));
+  const reloadAction=setTestId_1("sets-action-reload", button_1("", "Reload"));
+  const cleanNoShowAction=setTestId_1("sets-action-clean-noshow", button_1("", "CleanAllNoShow Actors"));
+  const cleanParticipantsAction=setTestId_1("sets-action-clean-participants", button_1("", "Clean Inactive Inboxes"));
+  cleanParticipantsAction.setAttribute("title", "Tombstone fully acknowledged inbox/ack collections for inactive participants.");
   const filters=element_1("div", "filters", null);
   const keyFilter=input_1("key contains");
   const setFilter=input_1("set name");
   const status=element_1("div", "state", "Loading sets");
   const list=element_1("div", "list", null);
   const work=element_1("section", "work", null);
-  append_1(sideHead, [element_1("h1", "", "Sets"), reload]);
+  append_1(actionMenu, [reloadAction, cleanNoShowAction, cleanParticipantsAction]);
+  append_1(actionPool, [actionSummary, actionMenu]);
+  append_1(sideHead, [element_1("h1", "", "Sets"), actionPool]);
   append_1(filters, [keyFilter, setFilter, status]);
   append_1(side, [sideHead, filters, list]);
   append_1(page, [side, work]);
@@ -1751,13 +1921,37 @@ function mountSets(page){
   registryTailRequested=false;
   ensureSetsSubscriptions=() => { };
   loadGeneration=0;
+  hiddenSetStreams=[];
   const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
   const streamIdentity=(streamKey) => concat_1("\n", [asText_1(streamKey.pageId), asText_1(streamKey.mode), asText_1(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
   const setValueStreamKey=(pageId, mode, setName, keys) => New_4(asText_1(pageId), textOr_1("set", mode), asText_1(setName), arrayOrEmpty(keys));
+  const setKeyId=(setName, keys) => asText_1(setName)+"::"+concat_1(" + ", arrayOrEmpty(keys));
+  const forgetHidden=(keyId) => {
+    hiddenSetStreams=filter((_1) =>!sameText(_1[0], keyId), hiddenSetStreams);
+  };
+  const eventIsVisibleAfterTombstone=(keyId, createdAtUtc) => {
+    const m=tryPick((_1) => sameText(_1[0], keyId)?Some(_1[1]):null, hiddenSetStreams);
+    if(m!=null&&m.$==1){
+      const hiddenAtUtc=m.$0;
+      return Compare(asText_1(createdAtUtc), hiddenAtUtc)>0;
+    }
+    else return true;
+  };
   const currentFilterTexts=() =>[isBlank_1(keyFilter.value)?"":Trim(keyFilter.value), isBlank_1(setFilter.value)?"":Trim(setFilter.value)];
   const currentCacheKey=() => {
     const p=currentFilterTexts();
     return cacheKey("sets-state", ofArray([p[0], p[1]]));
+  };
+  const filtersAccept=(setName, keys) => {
+    const p=currentFilterTexts();
+    const setText=p[1];
+    const keyText=p[0];
+    return(isBlank_1(setText)||sameText(setName, setText))&&(isBlank_1(keyText)||exists((key) => asText_1(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty(keys)));
+  };
+  const sortSetBuckets=(rows) => sortBy((bucket) =>[asText_1(bucket.setName), asText_1(bucket.keyId)], arrayOrEmpty(rows));
+  const writeSetsCache=() => {
+    const snapshot=New_19(fold((_1, _2) => Compare(_1, _2)===1?_1:_2, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
+    writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
   };
   function renderList(){
     clear_1(list);
@@ -1768,7 +1962,8 @@ function mountSets(page){
       item.addEventListener("click", () => {
         selected=bucket.keyId;
         renderList();
-        return renderDetail();
+        renderDetail();
+        return ensureSetsSubscriptions();
       });
       list.appendChild(item);
     }, buckets);
@@ -1779,11 +1974,11 @@ function mountSets(page){
     if(bucket!=null&&bucket.$==1){
       const bucket_1=bucket.$0;
       const detail=element_1("div", "detail", null);
-      const head_1=element_1("div", "work-head", null);
+      const head_2=element_1("div", "work-head", null);
       const title=element_1("div", "", null);
       append_1(title, [element_1("label", "", "Key set"), element_1("h2", "", bucket_1.keyId)]);
-      append_1(head_1, [title, element_1("div", "state", String(bucket_1.valueCount)+" value(s)")]);
-      detail.appendChild(head_1);
+      append_1(head_2, [title, element_1("div", "state", String(bucket_1.valueCount)+" value(s)")]);
+      detail.appendChild(head_2);
       const table=element_1("table", "data-table", null);
       const thead=element_1("thead", "", null);
       const headerRow=element_1("tr", "", null);
@@ -1845,6 +2040,19 @@ function mountSets(page){
     }, (error) => {
       if(generation===loadGeneration)setStatus(status, error);
     });
+  };
+  const closeActionPool=() => {
+    actionPool.removeAttribute("open");
+  };
+  const tryReadSetRegistry=(event) => {
+    if(event==null||isBlank_1(event.payload))return null;
+    else try {
+      const wire=json(event.payload);
+      return wire==null||asText_1(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
+    }
+    catch(m){
+      return null;
+    }
   };
   const setWsState=(value) => {
     setData("ws-state", value, page);
@@ -1933,64 +2141,106 @@ function mountSets(page){
   function requestReadTailOnce(streamKey){
     return recF(2, streamKey);
   }
+  function ensureSelectedBucketSubscription(){
+    const m=tryFind((bucket_1) => sameText(bucket_1.keyId, selected), buckets);
+    if(m==null)void 0;
+    else {
+      const bucket=m.$0;
+      const streamKey=setValueStreamKey("", "set", bucket.setName, bucket.keys);
+      subscribeStream(streamKey);
+      requestReadTailOnce(streamKey);
+    }
+  }
   function handleSyncEvent(event){
     if(!(event==null)&&!(event.streamKey==null)){
-      let m, updated, _1;
-      const m_1=asText_1(event.sourceKind).toLowerCase();
-      if(m_1=="set.stream"){
-        if(event==null||isBlank_1(event.payload))m=null;
-        else try {
-          const wire=json(event.payload);
-          m=wire==null||asText_1(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
-        }
-        catch(m_3){
-          m=null;
-        }
-        if(m==null)void 0;
+      let _1, updated, _2;
+      const m=asText_1(event.sourceKind).toLowerCase();
+      if(m=="set.stream"){
+        const m_1=tryReadSetRegistry(event);
+        if(m_1==null)void 0;
         else {
-          const streamKey=m.$0;
-          subscribeStream(streamKey);
-          requestReadTailOnce(streamKey);
+          const streamKey=m_1.$0;
+          const setName=asText_1(streamKey.setName);
+          const keys=arrayOrEmpty(streamKey.keys);
+          const keyId=setKeyId(setName, keys);
+          if(filtersAccept(setName, keys)&&eventIsVisibleAfterTombstone(keyId, event.createdAtUtc)){
+            forgetHidden(keyId);
+            if(!exists((bucket) => sameText(bucket.keyId, keyId), buckets)){
+              buckets=sortSetBuckets(buckets.concat([New_18(keyId, setName, keys, 0, event.sequence, asText_1(event.createdAtUtc), [])]));
+              isBlank_1(selected)?selected=keyId:void 0;
+              renderList();
+              renderDetail();
+              writeSetsCache();
+            }
+            if(sameText(keyId, selected)){
+              const selectedStreamKey=setValueStreamKey("", "set", setName, keys);
+              subscribeStream(selectedStreamKey);
+              requestReadTailOnce(selectedStreamKey);
+            }
+            else void 0;
+          }
+          else void 0;
         }
       }
-      else if(m_1=="set"){
-        if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
-          const setName=asText_1(event.streamKey.setName);
-          const keys=arrayOrEmpty(event.streamKey.keys);
-          const p=currentFilterTexts();
-          const setText=p[1];
-          const keyText=p[0];
-          if((isBlank_1(setText)||sameText(setName, setText))&&(isBlank_1(keyText)||exists((key) => asText_1(key).toLowerCase().indexOf(keyText.toLowerCase())!=-1, arrayOrEmpty(keys)))){
-            const value=New_19(textOr_1(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText_1(event.createdAtUtc), asText_1(event.payload), arrayOrEmpty(event.tags));
-            const keyId=asText_1(setName)+"::"+concat_1(" + ", arrayOrEmpty(keys));
-            const m_2=tryFind((bucket) => sameText(bucket.keyId, keyId), buckets);
-            if(m_2==null)updated=New_18(keyId, setName, keys, 1, event.sequence, asText_1(event.createdAtUtc), [value]);
-            else {
-              const existing=m_2.$0;
-              const existingValues=arrayOrEmpty(existing.values);
-              const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
-              const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
-              const mergedValues=latestArray(defaultRenderLimit(), v);
-              if(alreadyVisible)_1=existing.valueCount;
+      else if(m=="set.stream.hidden"){
+        const m_2=tryReadSetRegistry(event);
+        if(m_2==null)void 0;
+        else {
+          const streamKey_1=m_2.$0;
+          const keyId_1=setKeyId(asText_1(streamKey_1.setName), arrayOrEmpty(streamKey_1.keys));
+          hiddenSetStreams=filter((_5) =>!sameText(_5[0], keyId_1), hiddenSetStreams).concat([[keyId_1, asText_1(event.createdAtUtc)]]);
+          buckets=filter((bucket) =>!sameText(bucket.keyId, keyId_1), buckets);
+          if(sameText(selected, keyId_1)){
+            const o=tryHead(buckets);
+            const o_1=o==null?null:Some(o.$0.keyId);
+            _1=selected=o_1==null?"":o_1.$0;
+          }
+          else _1=void 0;
+          renderList();
+          renderDetail();
+          writeSetsCache();
+          setStatus(status, "Hidden set stream "+keyId_1);
+        }
+      }
+      else if(m=="set"){
+        const keyId_2=setKeyId(asText_1(event.streamKey.setName), arrayOrEmpty(event.streamKey.keys));
+        if(eventIsVisibleAfterTombstone(keyId_2, event.createdAtUtc)){
+          forgetHidden(keyId_2);
+          if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
+            const setName_1=asText_1(event.streamKey.setName);
+            const keys_1=arrayOrEmpty(event.streamKey.keys);
+            if(filtersAccept(setName_1, keys_1)){
+              const value=New_20(textOr_1(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText_1(event.createdAtUtc), asText_1(event.payload), arrayOrEmpty(event.tags));
+              const keyId_3=setKeyId(setName_1, keys_1);
+              const m_3=tryFind((bucket) => sameText(bucket.keyId, keyId_3), buckets);
+              if(m_3==null)updated=New_18(keyId_3, setName_1, keys_1, 1, event.sequence, asText_1(event.createdAtUtc), [value]);
               else {
-                const a=existing.valueCount;
-                const b=length(existingValues);
-                let _2=Compare(a, b)===1?a:b;
-                _1=_2+1;
+                const existing=m_3.$0;
+                const existingValues=arrayOrEmpty(existing.values);
+                const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
+                const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
+                const mergedValues=latestArray(defaultRenderLimit(), v);
+                if(alreadyVisible)_2=existing.valueCount;
+                else {
+                  const a=existing.valueCount;
+                  const b=length(existingValues);
+                  let _3=Compare(a, b)===1?a:b;
+                  _2=_3+1;
+                }
+                const a_1=existing.maxSequence;
+                const b_1=event.sequence;
+                let _4=Compare(a_1, b_1)===1?a_1:b_1;
+                updated=New_18(existing.keyId, existing.setName, existing.keys, _2, _4, textOr_1(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
               }
-              const a_1=existing.maxSequence;
-              const b_1=event.sequence;
-              let _3=Compare(a_1, b_1)===1?a_1:b_1;
-              updated=New_18(existing.keyId, existing.setName, existing.keys, _1, _3, textOr_1(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+              buckets=sortSetBuckets(filter((bucket) =>!sameText(bucket.keyId, keyId_3), buckets).concat([updated]));
+              selected=keyId_3;
+              renderList();
+              renderDetail();
+              writeSetsCache();
+              ensureSetsSubscriptions();
+              setStatus(status, "Synced set event "+value.valueId);
             }
-            buckets=sortBy((bucket) =>[asText_1(bucket.setName), asText_1(bucket.keyId)], arrayOrEmpty(filter((bucket) =>!sameText(bucket.keyId, keyId), buckets).concat([updated])));
-            selected=keyId;
-            renderList();
-            renderDetail();
-            const snapshot=New_20(fold((_4, _5) => Compare(_4, _5)===1?_4:_5, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
-            writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
-            ensureSetsSubscriptions();
-            setStatus(status, "Synced set event "+value.valueId);
+            else void 0;
           }
           else void 0;
         }
@@ -2034,13 +2284,44 @@ function mountSets(page){
       registryTailRequested=true;
       requestReadTail(registryKey);
     }
-    iter((bucket) => {
-      const streamKey=setValueStreamKey("", "set", bucket.setName, bucket.keys);
-      subscribeStream(streamKey);
-      requestReadTailOnce(streamKey);
-    }, buckets);
+    ensureSelectedBucketSubscription();
   };
-  reload.addEventListener("click", load);
+  reloadAction.addEventListener("click", () => {
+    closeActionPool();
+    return load();
+  });
+  cleanNoShowAction.addEventListener("click", () => {
+    closeActionPool();
+    setStatus(status, "Cleaning no-show actor set streams");
+    return postJson_1("/sets/api/clean-no-show-actors", New_21("browser-action"), (reply) => {
+      deleteSnapshotsByPrefix(cacheKey("sets-state", FSharpList.Empty), () => {
+        subscribedStreams=[];
+        tailRequestedStreams=[];
+        registryTailRequested=false;
+        setData("ws-stream-count", String(length(subscribedStreams)), page);
+        setStatus(status, "Cleaned "+String(reply.hiddenCount)+" no-show actor stream(s)");
+        load();
+      });
+    }, (error) => {
+      setStatus(status, "CleanAllNoShow Actors failed: "+error);
+    });
+  });
+  cleanParticipantsAction.addEventListener("click", () => {
+    closeActionPool();
+    setStatus(status, "Cleaning inactive participant collections");
+    postJson_1("/sets/api/clean-inactive-participant-collections", New_21("browser-action"), (reply) => {
+      deleteSnapshotsByPrefix(cacheKey("sets-state", FSharpList.Empty), () => {
+        subscribedStreams=[];
+        tailRequestedStreams=[];
+        registryTailRequested=false;
+        setData("ws-stream-count", String(length(subscribedStreams)), page);
+        setStatus(status, "Cleaned "+String(reply.cleanedParticipantCount)+" inactive participant(s); hidden "+String(reply.hiddenCount)+" stream(s)");
+        load();
+      });
+    }, (error) => {
+      setStatus(status, "Clean Inactive Participant Collections failed: "+error);
+    });
+  });
   keyFilter.addEventListener("input", load);
   setFilter.addEventListener("input", load);
   load();
@@ -2048,7 +2329,7 @@ function mountSets(page){
 function mountActors(page){
   let actorSnapshot, syncSocket, queuedSyncFrames, subscribedRegistry, registryTailRequested, dynamicActorsPageAccepted;
   page.className="page actors-page";
-  const head_1=element_1("div", "work-head actors-head", null);
+  const head_2=element_1("div", "work-head actors-head", null);
   const title=element_1("div", "", null);
   const actions=element_1("div", "head-actions", null);
   const status=element_1("div", "state", "Loading actors");
@@ -2057,9 +2338,9 @@ function mountActors(page){
   const treePanel=setTestId_1("actor-tree-panel", element_1("section", "actor-tree-panel", null));
   append_1(title, [element_1("label", "", "Actor / Participant Management"), element_1("h1", "", "Actors")]);
   append_1(actions, [status, reload]);
-  append_1(head_1, [title, actions]);
-  append_1(page, [head_1, treePanel, nodes]);
-  const emptySnapshot=New_21(0, 0, 0n, []);
+  append_1(head_2, [title, actions]);
+  append_1(page, [head_2, treePanel, nodes]);
+  const emptySnapshot=New_22(0, 0, 0n, []);
   actorSnapshot=emptySnapshot;
   syncSocket=null;
   queuedSyncFrames=[];
@@ -2069,6 +2350,14 @@ function mountActors(page){
   const collapsedTreeNodes=new HashSet("New_3");
   const cacheKey_1=cacheKey("actors-snapshot", FSharpList.Empty);
   const sameText=(left, right) => asText_1(left).toLowerCase()==asText_1(right).toLowerCase();
+  const actorStatusLooksOffline=(value) => {
+    const text=Trim(asText_1(value)).toLowerCase();
+    return text.indexOf("offline")!=-1||text.indexOf("unreachable")!=-1||text.indexOf("stale")!=-1||text.indexOf("terminated")!=-1||text.indexOf("stopped")!=-1||text.indexOf("dead")!=-1||text.indexOf("failed")!=-1;
+  };
+  const actorTagValue=(prefix, tags) => tryPick((tag) => {
+    const value=asText_1(tag);
+    return StartsWith(value, prefix)?Some(value.substring(prefix.length)):null;
+  }, arrayOrEmpty(tags));
   const actorRegistryStreamKey=() => New_4("__actor-registry", "actor-registry", "__actors", ["__actors"]);
   const isAkkaAddress=(value) => {
     const text=asText_1(value).toLowerCase();
@@ -2171,7 +2460,7 @@ function mountActors(page){
       const dynamicNode=m.$0;
       dynamicActorsPageAccepted=true;
       clear_1(nodes);
-      nodes.setAttribute("style", "display:none;");
+      nodes.setAttribute("hidden", "");
       const host=setTestId_1("actor-tree-dynamic-page", element_1("div", "actor-tree-dynamic-page", null));
       setData("renderer", "dynamic-actors-page", treePanel);
       host.appendChild(dynamicNode);
@@ -2182,7 +2471,7 @@ function mountActors(page){
   const applySnapshot=(source, data) => {
     actorSnapshot=data==null?emptySnapshot:data;
     clear_1(nodes);
-    dynamicActorsPageAccepted?nodes.setAttribute("style", "display:none;"):(nodes.removeAttribute("style"),iter((node) => {
+    dynamicActorsPageAccepted?nodes.setAttribute("hidden", ""):(nodes.removeAttribute("hidden"),iter((node) => {
       const block=setData("node-id", node.nodeId, setTestId_1("actor-node", element_1("section", "node-block", null)));
       const blockHead=element_1("div", "work-head", null);
       const title_1=element_1("div", "", null);
@@ -2293,7 +2582,7 @@ function mountActors(page){
         const wire=json(event.payload);
         x=wire==null||asText_1(wire.schema)!="ptc.comm.spa.actor.registration.v1"?null:Some(wire);
       }
-      catch(m_1){
+      catch(m){
         x=null;
       }
       if(x==null)void 0;
@@ -2305,24 +2594,32 @@ function mountActors(page){
         if(!isBlank_1(nodeId)&&!isBlank_1(actorId)){
           const tags=arrayOrEmpty(_1.tags);
           const roles=arrayOrEmpty(_1.roles);
-          const actor=New_22(actorId, textOr_1(actorId, _1.displayName), textOr_1("actor", _1.kind), [nodeId, actorId].concat(tags), textOr_1("running", _1.status), arrayOrEmpty(_1.routees));
-          const m=tryFind((node) => sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes));
-          if(m==null)updatedNode=New_23(nodeId, nodeAddress, "up", roles, [actor]);
-          else {
-            const existing=m.$0;
-            const actors=sortBy((row) => asText_1(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors)).concat([actor]));
-            updatedNode=New_23(existing.nodeId, isBlank_1(nodeAddress)?asText_1(existing.nodeAddress):nodeAddress, textOr_1("up", existing.status), length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
+          const incomingGeneration=actorTagValue("generation:", tags);
+          const incomingEventKind=actorTagValue("event:", tags);
+          const existingNode=tryFind((node) => sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes));
+          const o=existingNode==null?null:tryFind((actor_1) => sameText(actor_1.actorId, actorId), arrayOrEmpty(existingNode.$0.actors));
+          const _2=o==null?null:actorTagValue("generation:", o.$0.keys);
+          if(_2!=null&&_2.$==1?incomingGeneration!=null&&incomingGeneration.$==1?!sameText(_2.$0, incomingGeneration.$0)?(_2.$0,incomingGeneration.$0,incomingEventKind==null?false:sameText(incomingEventKind.$0, "Registered")):true:true:true){
+            const actor=New_24(actorId, textOr_1(actorId, _1.displayName), textOr_1("actor", _1.kind), [nodeId, actorId].concat(tags), textOr_1("running", _1.status), arrayOrEmpty(_1.routees));
+            if(existingNode==null)updatedNode=New_23(nodeId, nodeAddress, actorStatusLooksOffline(actor.status)?"offline":"up", roles, actorStatusLooksOffline(actor.status)?[]:[actor]);
+            else {
+              const existing=existingNode.$0;
+              const retainedActors=filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors));
+              const actors=sortBy((row) => asText_1(row.actorId), actorStatusLooksOffline(actor.status)?retainedActors:retainedActors.concat([actor]));
+              updatedNode=New_23(existing.nodeId, isBlank_1(nodeAddress)?asText_1(existing.nodeAddress):nodeAddress, length(actors)===0?"offline":"up", length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
+            }
+            const nodes_1=sortBy((node) => asText_1(node.nodeId), length(arrayOrEmpty(updatedNode.actors))===0?filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)):filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
+            let _3=length(nodes_1);
+            let _4=fold((_6, _7) => _6+_7, 0, map((node) => arrayOrEmpty(node.actors).length, nodes_1));
+            const a=actorSnapshot.maxSequence;
+            const b=event.sequence;
+            let _5=Compare(a, b)===1?a:b;
+            actorSnapshot=New_22(_3, _4, _5, nodes_1);
+            writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
+            applySnapshot("synced", actorSnapshot);
+            setStatus(status, "Synced actor "+actorId);
           }
-          const nodes_1=sortBy((node) => asText_1(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
-          let _2=length(nodes_1);
-          let _3=fold((_5, _6) => _5+_6, 0, map((node) => arrayOrEmpty(node.actors).length, nodes_1));
-          const a=actorSnapshot.maxSequence;
-          const b=event.sequence;
-          let _4=Compare(a, b)===1?a:b;
-          actorSnapshot=New_21(_2, _3, _4, nodes_1);
-          writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
-          applySnapshot("synced", actorSnapshot);
-          setStatus(status, "Synced actor "+actorId);
+          else void 0;
         }
         else void 0;
       }
@@ -2359,19 +2656,191 @@ function mountActors(page){
   load();
   subscribeRegistry();
 }
+function mountManagement(page){
+  let allPages, allParticipants, pageIndex, participantPageIndex, pageSize, participantPageSize;
+  page.className="page management-page";
+  const pageRows=Create((row) => asText_1(row.pageId)+"\u001f"+asText_1(row.tabId), FSharpList.Empty);
+  const participantRows=Create((row) => asText_1(row.participantId), FSharpList.Empty);
+  allPages=[];
+  allParticipants=[];
+  pageIndex=0;
+  participantPageIndex=0;
+  pageSize=10;
+  participantPageSize=10;
+  const heading=element_1("div", "management-head", null);
+  const title=element_1("div", "", null);
+  append_1(title, [element_1("h1", "", "Management")]);
+  const reload=setTestId_1("management-reload", button_1("", "Reload"));
+  append_1(heading, [title, reload]);
+  const pageSection=setTestId_1("management-pages", element_1("section", "management-section", null));
+  const pageSectionHead=element_1("div", "management-section-head", null);
+  const pageCount=setTestId_1("management-pages-count", element_1("span", "state", ""));
+  append_1(pageSectionHead, [element_1("h2", "", "Tab pages"), pageCount]);
+  const pageTableHostId="management-pages-grid";
+  const pageTableHost=setId_1(pageTableHostId, element_1("div", "management-table-viewport", null));
+  const pagePager=element_1("div", "management-pager", null);
+  const pagePrevious=setTestId_1("management-pages-previous", button_1("", "Previous"));
+  const pageNext=setTestId_1("management-pages-next", button_1("", "Next"));
+  const pageSizeSelect=setTestId_1("management-pages-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
+  const pagePagerStatus=setTestId_1("management-pages-page", element_1("span", "state", ""));
+  append_1(pagePager, [pagePrevious, pageNext, element_1("span", "management-page-size-label", "Rows"), pageSizeSelect, pagePagerStatus]);
+  append_1(pageSection, [pageSectionHead, pageTableHost, pagePager]);
+  const participantSection=setTestId_1("management-participants", element_1("section", "management-section", null));
+  const participantSectionHead=element_1("div", "management-section-head", null);
+  const participantCount=setTestId_1("management-participants-count", element_1("span", "state", ""));
+  append_1(participantSectionHead, [element_1("h2", "", "Participants"), participantCount]);
+  const participantTableHostId="management-participants-grid";
+  const participantTableHost=setId_1(participantTableHostId, element_1("div", "management-table-viewport", null));
+  const participantPager=element_1("div", "management-pager", null);
+  const participantPrevious=setTestId_1("management-participants-previous", button_1("", "Previous"));
+  const participantNext=setTestId_1("management-participants-next", button_1("", "Next"));
+  const participantSizeSelect=setTestId_1("management-participants-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
+  const participantPagerStatus=setTestId_1("management-participants-page", element_1("span", "state", ""));
+  append_1(participantPager, [participantPrevious, participantNext, element_1("span", "management-page-size-label", "Rows"), participantSizeSelect, participantPagerStatus]);
+  append_1(participantSection, [participantSectionHead, participantTableHost, participantPager]);
+  append_1(page, [heading, pageSection, participantSection]);
+  const pageCountFor=(total, size) => total===0?1:size===0?1:toInt(Math.ceil(total/size));
+  const sliceRows=(index, size, rows) => {
+    if(size===0)return rows;
+    else {
+      const a=length(rows);
+      const b=index*size;
+      let _1=Compare(a, b)===-1?a:b;
+      let _2=skip(_1, rows);
+      return _2.slice(0, size);
+    }
+  };
+  const applyPageProjection=() => {
+    const pages=pageCountFor(length(allPages), pageSize);
+    const a=0;
+    const a_1=pages-1;
+    const b=Compare(a_1, pageIndex)===-1?a_1:pageIndex;
+    pageIndex=Compare(a, b)===1?a:b;
+    pageRows.Set(sliceRows(pageIndex, pageSize, allPages));
+    pageCount.textContent=String(length(allPages))+" page lineage(s)";
+    pagePagerStatus.textContent="Page "+String(pageIndex+1)+" / "+String(pages);
+    setHidden(pageIndex===0, pagePrevious);
+    setHidden(pageIndex>=pages-1, pageNext);
+  };
+  const applyParticipantProjection=() => {
+    const pages=pageCountFor(length(allParticipants), participantPageSize);
+    const a=0;
+    const a_1=pages-1;
+    const b=Compare(a_1, participantPageIndex)===-1?a_1:participantPageIndex;
+    participantPageIndex=Compare(a, b)===1?a:b;
+    participantRows.Set(sliceRows(participantPageIndex, participantPageSize, allParticipants));
+    participantCount.textContent=String(length(allParticipants))+" participant(s)";
+    participantPagerStatus.textContent="Page "+String(participantPageIndex+1)+" / "+String(pages);
+    setHidden(participantPageIndex===0, participantPrevious);
+    setHidden(participantPageIndex>=pages-1, participantNext);
+  };
+  function loadPages(){
+    setStatus(pageCount, "Loading...");
+    getJson("/management/api/pages", (reply) => {
+      allPages=arrayOrEmpty(reply.pages);
+      applyPageProjection();
+    }, (error) => {
+      setStatus(pageCount, "Load failed: "+error);
+    });
+  }
+  function mutatePage(endpoint){
+    return(action) =>(row) =>!EndsWith(endpoint, "/delete")||globalThis.confirm("Delete tab page '"+textOr_1(row.pageId, row.title)+"'? This cannot be undone for this page lineage.")?(setStatus(pageCount, action+" "+row.pageId+"..."),postJson_1(endpoint, New_25(row.pageId, row.tabId), () => {
+      loadPages();
+    }, (error) => {
+      setStatus(pageCount, action+" failed: "+error);
+    })):null;
+  }
+  function loadParticipants(){
+    setStatus(participantCount, "Loading...");
+    getJson("/management/api/participants", (reply) => {
+      allParticipants=arrayOrEmpty(reply.participants);
+      applyParticipantProjection();
+    }, (error) => {
+      setStatus(participantCount, "Load failed: "+error);
+    });
+  }
+  function mutateParticipant(endpoint){
+    return(action) =>(row) =>!EndsWith(endpoint, "/delete")||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson_1(endpoint, New_26(row.participantId), () => {
+      loadParticipants();
+    }, (error) => {
+      setStatus(participantCount, action+" failed: "+error);
+    })):null;
+  }
+  const pageTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-pages-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [], [Doc.TextNode("Tab page")]), Doc.Element("th", [], [Doc.TextNode("Created")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
+    const visibilityLabel=row.visible?"Hide":"Show";
+    const visibilityEndpoint=row.visible?"/management/api/pages/hide":"/management/api/pages/show";
+    const resourceAllows=(action) => pageAclAllows(row.pageId, action)||systemAclAllows("*", action);
+    const visibilityButton=resourceAllows(row.visible?"ptcs.management.page.hide":"ptcs.management.page.show")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "management-page-visibility-"+row.pageId), Handler("click", () =>() =>((mutatePage(visibilityEndpoint))(visibilityLabel))(row))], [Doc.TextNode(visibilityLabel)]):Doc.Empty;
+    const deleteButton=resourceAllows("ptcs.management.page.delete")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("class", "management-delete"), Attr.Create("data-testid", "management-page-delete-"+row.pageId), Handler("click", () =>() =>((mutatePage("/management/api/pages/delete"))("Delete"))(row))], [Doc.TextNode("Delete")]):Doc.Empty;
+    return Doc.Element("tr", [Attr.Create("data-page-id", row.pageId), Attr.Create("data-visible", String(row.visible).toLowerCase())], [Doc.Element("td", [Attr.Create("data-label", "Tab page")], [Doc.Element("strong", [], [Doc.TextNode(textOr_1(row.pageId, row.title))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.pageId)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode("tab: "+row.tabId)])]), Doc.Element("td", [Attr.Create("data-label", "Created")], [Doc.TextNode(row.createdAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [visibilityButton, deleteButton])]);
+  }, pageRows.v)])]);
+  const participantTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-participants-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [], [Doc.TextNode("Participant")]), Doc.Element("th", [], [Doc.TextNode("Registered")]), Doc.Element("th", [], [Doc.TextNode("Last seen")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
+    const visibilityLabel=row.visible?"Hide":"Show";
+    const visibilityEndpoint=row.visible?"/management/api/participants/hide":"/management/api/participants/show";
+    const resourceAllows=(action) => aclAllows(action, "ptcs.participant", row.participantId)||systemAclAllows("*", action);
+    const visibilityButton=resourceAllows(row.visible?"ptcs.management.participant.hide":"ptcs.management.participant.show")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "management-participant-visibility-"+row.participantId), Handler("click", () =>() =>((mutateParticipant(visibilityEndpoint))(visibilityLabel))(row))], [Doc.TextNode(visibilityLabel)]):Doc.Empty;
+    const deleteButton=resourceAllows("ptcs.management.participant.delete")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("class", "management-delete"), Attr.Create("data-testid", "management-participant-delete-"+row.participantId), Handler("click", () =>() =>((mutateParticipant("/management/api/participants/delete"))("Delete"))(row))], [Doc.TextNode("Delete")]):Doc.Empty;
+    return Doc.Element("tr", [Attr.Create("data-participant-id", row.participantId), Attr.Create("data-visible", String(row.visible).toLowerCase())], [Doc.Element("td", [Attr.Create("data-label", "Participant")], [Doc.Element("strong", [], [Doc.TextNode(textOr_1(row.participantId, row.displayName))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.participantId)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.kind+" / "+row.status)])]), Doc.Element("td", [Attr.Create("data-label", "Registered")], [Doc.TextNode(row.registeredAt)]), Doc.Element("td", [Attr.Create("data-label", "Last seen")], [Doc.TextNode(row.lastSeenAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [visibilityButton, deleteButton])]);
+  }, participantRows.v)])]);
+  LoadLocalTemplates("");
+  Doc.RunById(pageTableHostId, pageTable);
+  LoadLocalTemplates("");
+  Doc.RunById(participantTableHostId, participantTable);
+  pagePrevious.addEventListener("click", () => {
+    const a=0;
+    const b=pageIndex-1;
+    pageIndex=Compare(a, b)===1?a:b;
+    return applyPageProjection();
+  });
+  pageNext.addEventListener("click", () => {
+    pageIndex=pageIndex+1;
+    return applyPageProjection();
+  });
+  pageSizeSelect.addEventListener("change", () => {
+    pageSize=toInt(Number(pageSizeSelect.value));
+    pageIndex=0;
+    return applyPageProjection();
+  });
+  participantPrevious.addEventListener("click", () => {
+    const a=0;
+    const b=participantPageIndex-1;
+    participantPageIndex=Compare(a, b)===1?a:b;
+    return applyParticipantProjection();
+  });
+  participantNext.addEventListener("click", () => {
+    participantPageIndex=participantPageIndex+1;
+    return applyParticipantProjection();
+  });
+  participantSizeSelect.addEventListener("change", () => {
+    participantPageSize=toInt(Number(participantSizeSelect.value));
+    participantPageIndex=0;
+    return applyParticipantProjection();
+  });
+  reload.addEventListener("click", () => {
+    loadPages();
+    return loadParticipants();
+  });
+  loadPages();
+  loadParticipants();
+}
 function mountChat(page){
-  let selected, cursor, polling, participants, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
+  let selected, cursor, polling, participants, selectedThreadMessages, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
   selected="";
   cursor="";
   polling=false;
   participants=[];
+  selectedThreadMessages=[];
   const participantId=currentUserId();
   page.className="page chat-grid";
   const side=element_1("aside", "sidebar", null);
   const sideHead=element_1("div", "panel-head", null);
-  const reload=button_1("", "Reload");
+  const sideActions=element_1("div", "head-actions", null);
+  const export_1=setTestId_1("chat-export", button_1("", "Export"));
+  setData("message-count", "0", export_1);
+  const reload=setTestId_1("chat-reload", button_1("", "Reload"));
   const list=element_1("div", "list", null);
-  append_1(sideHead, [element_1("h1", "", "Chat"), reload]);
+  append_1(sideActions, [export_1, reload]);
+  append_1(sideHead, [element_1("h1", "", "Chat"), sideActions]);
   append_1(side, [sideHead, element_1("div", "", null), list]);
   const work=setTestId_1("chat-work", element_1("section", "work", null));
   const workHead=element_1("div", "work-head", null);
@@ -2380,11 +2849,16 @@ function mountChat(page){
   const state=element_1("div", "state", "Loading participants");
   const pendingState=setTestId_1("chat-pending-state", element_1("div", "state pending-state", ""));
   const thread=setTestId_1("thread-list", setId_1("thread-list", element_1("div", "thread-list", null)));
+  thread.setAttribute("tabindex", "0");
+  setData("follow-bottom", "true", thread);
   const composer=setTestId_1("chat-composer", element_1("div", "chat-composer", null));
   const draft=setTestId_1("chat-draft", textarea("draft", "Type a message"));
   const actions=element_1("div", "actions", null);
   const send=setTestId_1("chat-send", button_1("primary", "Send"));
-  const participantsCacheKey=cacheKey("chat-agents", ofArray([participantId]));
+  const readOnlyView=currentBrowserUser().viewAsActive;
+  setHidden(readOnlyView, composer);
+  if(readOnlyView)work.className="work view-as-read-only";
+  const participantsCacheKey=cacheKey("chat-participants-v2", ofArray([participantId]));
   const threadCacheKey=(peerId) => cacheKey("chat-thread", ofArray([participantId, peerId]));
   append_1(titleBox, [element_1("label", "", "To"), toTitle]);
   append_1(workHead, [titleBox, state]);
@@ -2417,6 +2891,8 @@ function mountChat(page){
       item.addEventListener("click", () => {
         selected=p_1.participantId;
         cursor="";
+        selectedThreadMessages=[];
+        setData("message-count", "0", export_1);
         clear_1(thread);
         renderParticipants();
         refreshChatPendingState();
@@ -2434,8 +2910,12 @@ function mountChat(page){
     toTitle.textContent=_1;
   }
   function appendMessages(messages){
+    let appendedCount;
+    const shouldFollow=isNearBottom(thread);
+    appendedCount=0;
     iter((message) => {
       if(!(message==null)&&!isBlank_1(message.messageId)&&doc_1().getElementById("thread-"+message.messageId)==null){
+        appendedCount=appendedCount+1;
         const outbound=message.fromId==participantId;
         const wrap=setId_1("thread-"+message.messageId, element_1("div", outbound?"message outbound":"message inbound", null));
         setData("message-id", message.messageId, setTestId_1("chat-message", wrap));
@@ -2448,9 +2928,12 @@ function mountChat(page){
         thread.appendChild(wrap);
       }
     }, arrayOrEmpty(messages));
-    scrollToBottomAfterRender(thread);
+    selectedThreadMessages=distinctMessages(selectedThreadMessages.concat(arrayOrEmpty(messages)));
+    setData("message-count", String(length(selectedThreadMessages)), export_1);
+    if(appendedCount>0&&shouldFollow)scrollToBottomNow(thread);
+    setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
   }
-  function loadParticipants(){
+  function loadParticipants(refreshSelectedThread){
     setStatus(state, "Loading participants");
     readJson(participantsCacheKey, (a) => {
       if(a!=null&&a.$==1)if(a.$0,length(participants)===0){
@@ -2458,20 +2941,21 @@ function mountChat(page){
         isBlank_1(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
         renderParticipants();
         setStatus(state, "Loaded "+String(length(participants))+" cached participant(s)");
+        refreshSelectedThread?(pollThread(true),ensureSelectedChatSubscription(),replayPendingChatCommands()):void 0;
+      }
+    });
+    getJson("/chat/api/participants", (data) => {
+      participants=arrayOrEmpty(data.participants);
+      writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-participants");
+      const selectedWasBlank=isBlank_1(selected);
+      if(selectedWasBlank&&length(participants)>0)selected=get(participants, 0).participantId;
+      renderParticipants();
+      setStatus(state, "Loaded "+String(length(participants))+" participant(s)");
+      if(refreshSelectedThread||selectedWasBlank){
         pollThread(true);
         ensureSelectedChatSubscription();
         replayPendingChatCommands();
       }
-    });
-    getJson("/chat/api/agents", (data) => {
-      participants=arrayOrEmpty(data.participants);
-      writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-agents");
-      isBlank_1(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
-      renderParticipants();
-      setStatus(state, "Loaded "+String(length(participants))+" participant(s)");
-      pollThread(true);
-      ensureSelectedChatSubscription();
-      replayPendingChatCommands();
     }, (t) => {
       setStatus(state, t);
     });
@@ -2507,7 +2991,7 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_25(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_29(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -2525,7 +3009,7 @@ function mountChat(page){
           appendMessages(messages);
           if(!isBlank_1(cached.nextAfterMessageId))cursor=cached.nextAfterMessageId;
           setStatus(state, "Loaded "+String(length(messages))+" cached message(s); syncing missing tail");
-          fetchThread(!isBlank_1(cursor));
+          fetchThread(false);
         }
       });
       else fetchThread(!isBlank_1(cursor));
@@ -2580,7 +3064,7 @@ function mountChat(page){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_25(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_29(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -2612,7 +3096,7 @@ function mountChat(page){
               o=message==null||isBlank_1(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_24(textOr_1(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_1(event_1.payload), asText_1(event_1.createdAtUtc)));
+              o=Some(New_28(textOr_1(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_1(event_1.payload), asText_1(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -2694,26 +3178,55 @@ function mountChat(page){
     if(isBlank_1(selected))setStatus(state, "Select a participant first");
     else if(isBlank_1(body))setStatus(state, "Message is empty");
     else {
-      const request=New_28(participantId, selected, body, ["web-chat"]);
+      const request=New_32(participantId, selected, body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_27("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_31("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
       sendChatSyncFrame(JSON.stringify(wsRequest));
-      scrollToBottomAfterRender(thread);
     }
   }
-  reload.addEventListener("click", loadParticipants);
+  function exportSelectedThread(){
+    if(isBlank_1(selected))setStatus(state, "Select a participant first");
+    else if(length(selectedThreadMessages)===0)setStatus(state, "No loaded messages to export");
+    else if(globalThis.document.body==null)setStatus(state, "Document body is unavailable");
+    else {
+      try {
+        const rows=map((message) => New_33(asText_1(message.messageId), asText_1(message.fromId), asText_1(message.createdAtUtc), asText_1(message.body)), selectedThreadMessages);
+        const url=URL.createObjectURL(new Blob([concat_1("\n", map((v) => JSON.stringify(v), rows))], {type:"application/x-ndjson;charset=utf-8"}));
+        const now=new Date();
+        const twoDigits=(value) => value<10?"0"+String(value):String(value);
+        const timestamp=String(now.getFullYear())+twoDigits(now.getMonth()+1)+twoDigits(now.getDate())+twoDigits(now.getHours())+twoDigits(now.getMinutes())+twoDigits(now.getSeconds());
+        const anchor=globalThis.document.createElement("a");
+        anchor.setAttribute("href", url);
+        anchor.setAttribute("download", "ptcs-chat-"+timestamp+".jsonl");
+        anchor.setAttribute("aria-hidden", "true");
+        anchor.className="download-anchor";
+        globalThis.document.body.appendChild(anchor);
+        anchor.click();
+        globalThis.document.body.removeChild(anchor);
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 250);
+        setStatus(state, "Exported "+String(length(rows))+" message(s)");
+      }
+      catch(error){
+        setStatus(state, "Chat export failed: "+errorMessage_1(error));
+      }
+    }
+  }
+  reload.addEventListener("click", () => loadParticipants(true));
+  export_1.addEventListener("click", exportSelectedThread);
   send.addEventListener("click", sendMessage);
+  thread.addEventListener("scroll", () => {
+    setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
+  });
   draft.addEventListener("keydown", (event) => event.key=="Enter"&&!event.shiftKey?(event.preventDefault(),sendMessage()):null);
   globalThis.setInterval(() => pollThread(false), 2500);
+  globalThis.setInterval(() => loadParticipants(false), 30000);
   refreshChatPendingState();
-  loadParticipants();
-}
-function mountUnknownPage(page, path){
-  page.className="page actors-page";
-  page.appendChild(element_1("div", "empty", "No append page is registered for "+String(path)+"."));
+  loadParticipants(true);
 }
 function refreshAppendNav(activePath){
   const applyDefinitions=(data) => {
@@ -2793,7 +3306,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_33(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_38(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_1(request.userName)||isBlank_1(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -2823,7 +3336,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_1(node.textContent)?New_32("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_1(node.textContent)?New_37("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr_1(fallback, value){
   return isBlank_1(value)?fallback:value;
@@ -2872,18 +3385,18 @@ function pagePath(page){
   const path=asText_1(page.path);
   return exists((alias) => sameTextInvariant(path, alias), ["/fcell-chat", "/fcell-list", "/fcell-grid"])?path:"/page/"+pageId;
 }
+function element_1(tag, className, textValue){
+  const node=doc_1().createElement(tag);
+  if(!isBlank_1(className))node.className=className;
+  if(!(textValue==null))node.textContent=textValue;
+  return node;
+}
 function setTestId_1(id, node){
   !isBlank_1(id)?node.setAttribute("data-testid", id):void 0;
   return node;
 }
 function defaultRenderLimit(){
   return _c.defaultRenderLimit;
-}
-function element_1(tag, className, textValue){
-  const node=doc_1().createElement(tag);
-  if(!isBlank_1(className))node.className=className;
-  if(!(textValue==null))node.textContent=textValue;
-  return node;
 }
 function button_1(className, text){
   const node=element_1("button", className, text);
@@ -3003,6 +3516,18 @@ function keysAsJson(keys){
   const keys_1=arrayOrEmpty(keys);
   return length(keys_1)===1?JSON.stringify(get(keys_1, 0)):JSON.stringify(keys_1);
 }
+function disposeReplyPresentation(identity){
+  let _1;
+  const o=tryPick((_2) => _2[0]==identity?Some(_2[1]):null, replyPresentationDisposers());
+  if(o==null)_1=void 0;
+  else try {
+    _1=o.$0();
+  }
+  catch(m){
+    _1=null;
+  }
+  set_replyPresentationDisposers(filter((_2) => _2[0]!=identity, replyPresentationDisposers()));
+}
 function joinValues(values){
   const values_1=arrayOrEmpty(values);
   return length(values_1)===0?"":concat_1(" / ", values_1);
@@ -3010,57 +3535,6 @@ function joinValues(values){
 function latestArray(limit, values){
   const values_1=arrayOrEmpty(values);
   return length(values_1)<=limit?values_1:skip(length(values_1)-limit, values_1);
-}
-function renderAppendValue(value){
-  let _1;
-  const mode=asText_1(value.mode);
-  const m=mode.toLowerCase();
-  const className=m=="inbound-message"?"fcell-card fcell-chat inbound":m=="outbound-message"?"fcell-card fcell-chat outbound":m=="list"?"fcell-card fcell-list":m=="grid"?"fcell-card fcell-grid":"fcell-card";
-  const card=setData("mode", mode, setTestId_1("append-value-card", element_1("div", className, null)));
-  const head_1=element_1("div", "fcell-head", null);
-  append_1(head_1, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_1(value.valueId)+" / "+asText_1(value.createdAtUtc))]);
-  card.appendChild(head_1);
-  const m_1=mode.toLowerCase();
-  switch(m_1){
-    case"outbound-message":
-    case"inbound-message":
-      _1=iter((row) => {
-        card.appendChild(renderTextBlock("fcell-message-body", row));
-      }, arrayOrEmpty(value.rows));
-      break;
-    case"list":
-      const list=element_1("ul", "fcell-list-items", null);
-      _1=(iter((row) => {
-        list.appendChild(element_1("li", "", asText_1(row)));
-      }, arrayOrEmpty(value.rows)),void card.appendChild(list));
-      break;
-    case"grid":
-      let _2;
-      const table=element_1("table", "fcell-grid-table", null);
-      const columns=arrayOrEmpty(value.columns);
-      if(length(columns)>0){
-        const thead=element_1("thead", "", null);
-        const header=element_1("tr", "", null);
-        _2=(iter((column) => {
-          header.appendChild(element_1("th", "wrap", asText_1(column)));
-        }, columns),thead.appendChild(header),void table.appendChild(thead));
-      }
-      else _2=null;
-      const tbody=element_1("tbody", "", null);
-      _1=(iter((cells) => {
-        const tr=element_1("tr", "", null);
-        iter((cell) => {
-          tr.appendChild(element_1("td", "wrap", asText_1(cell)));
-        }, arrayOrEmpty(cells));
-        tbody.appendChild(tr);
-      }, arrayOrEmpty(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
-      break;
-    default:
-      _1=void card.appendChild(renderTextBlock("fcell-source", value.rawValue));
-      break;
-  }
-  if(!isBlank_1(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message")card.appendChild(renderTextBlock("fcell-source", value.source));
-  return card;
 }
 function setStatus(node, text){
   node.textContent=text;
@@ -3192,7 +3666,7 @@ function rendererSubmittedDisplayName(payload){
   value=String(value||"").trim();
   return value;
 }
-function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setName, selectedKeyId, selectedKeyJson, selectedKeys, valuePlaceholder, valueText, submit, setValue){
+function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setName, selectedKeyId, selectedKeyJson, selectedKeys, valuePlaceholder, valueText, submit, setValue, composerMode, setComposerMode){
   let r;
   const _1=pageId;
   const _2=shape;
@@ -3205,6 +3679,8 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   const _9=valueText;
   const _10=submit;
   const _11=setValue;
+  const _12=composerMode;
+  const _13=setComposerMode;
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AppendInputRenderers))return null;
   let renderers=globalThis.PulseTrade.AppendInputRenderers;
   let keyParts=Array.isArray(_7)?_7.slice().map(String):[];
@@ -3239,6 +3715,10 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
     }, 
     setValue:(payload) => {
       _11(payload);
+    }, 
+    composerMode:String(_12||"plain"), 
+    setComposerMode:(mode) => {
+      _13(mode);
     }
   };
   for(let i=0;i<renderers.length;i++){
@@ -3298,6 +3778,186 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   options.body=JSON.stringify(body);
   (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
+function renderAppendValue(definition, value){
+  let mounted, savedScrollTop, modeBeforeFullscreen, focusBeforeFullscreen, presentationRendered, _1, _2;
+  const mode=asText_1(value.mode);
+  const m=mode.toLowerCase();
+  const className=m=="inbound-message"?"fcell-card fcell-chat inbound":m=="outbound-message"?"fcell-card fcell-chat outbound":m=="list"?"fcell-card fcell-list":m=="grid"?"fcell-card fcell-grid":"fcell-card";
+  const card=setData("mode", mode, setTestId_1("append-value-card", element_1("div", className, null)));
+  const head_2=element_1("div", "fcell-head", null);
+  append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_1(value.valueId)+" / "+asText_1(value.createdAtUtc))]);
+  card.appendChild(head_2);
+  const presentationContext=New_39(asText_1(definition.pageId), asText_1(definition.tabId), asText_1(value.valueId), asText_1(value.createdAtUtc), mode, arrayOrEmpty(value.tags), asText_1(value.rawValue));
+  const m_1=tryResolveReplyPresentation(presentationContext);
+  if(m_1!=null&&m_1.$==1){
+    const presentation=m_1.$0;
+    const identity=replyPresentationIdentity(presentationContext);
+    const x=setData("reply-id", identity, setTestId_1("reply-presentation", element_1("section", "reply-presentation", null)));
+    const shell_1=setData("presentation-kind", asText_1(presentation.Kind), x);
+    const summary=setTestId_1("reply-presentation-summary", element_1("div", "reply-presentation-summary", null));
+    summary.setAttribute("role", "button");
+    summary.setAttribute("tabindex", "0");
+    summary.appendChild(presentation.RenderSummary());
+    const controls=element_1("div", "reply-presentation-actions", null);
+    const actionFeedback=setTestId_1("reply-presentation-action-feedback", element_1("span", "reply-presentation-action-feedback", null));
+    actionFeedback.setAttribute("aria-live", "polite");
+    const presentationActions=presentation.Actions==null?[]:presentation.Actions;
+    for(let i=0, _4=presentationActions.length-1;i<=_4;i++)((() => {
+      const action=get(presentationActions, i);
+      const actionButton=setData("action-id", asText_1(action.ActionId), setTestId_1("reply-presentation-extension-action", button_1("reply-presentation-extension-action", textOr_1("Action", action.Label))));
+      actionButton.setAttribute("title", textOr_1(action.Label, action.Title));
+      actionButton.setAttribute("aria-label", textOr_1(action.Label, action.Title));
+      actionButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        try {
+          const m_3=action.Invoke();
+          if(m_3.$==1){
+            const message=m_3.$0;
+            actionFeedback.className="reply-presentation-action-feedback error";
+            actionFeedback.textContent=textOr_1("Action failed", message);
+            return;
+          }
+          else {
+            const message_1=m_3.$0;
+            actionFeedback.className="reply-presentation-action-feedback success";
+            actionFeedback.textContent=textOr_1("Done", message_1);
+            return;
+          }
+        }
+        catch(error){
+          actionFeedback.className="reply-presentation-action-feedback error";
+          actionFeedback.textContent=textOr_1("Action failed", errorMessage_1(error));
+          return;
+        }
+      });
+      controls.appendChild(actionButton);
+    })());
+    const toggle=setTestId_1("reply-presentation-toggle", button_1("reply-presentation-toggle", "+"));
+    toggle.setAttribute("title", "Expand in chat session");
+    toggle.setAttribute("aria-label", "Expand reply in chat session");
+    const fullscreen=setTestId_1("reply-presentation-fullscreen-toggle", button_1("reply-presentation-fullscreen-toggle", "\u5c55\u958b"));
+    fullscreen.setAttribute("title", "Open near-fullscreen canvas");
+    fullscreen.setAttribute("aria-label", "Open reply as near-fullscreen canvas");
+    const inlineHost=setTestId_1("reply-presentation-inline", element_1("div", "reply-presentation-inline", null));
+    controls.appendChild(toggle);
+    controls.appendChild(fullscreen);
+    controls.appendChild(actionFeedback);
+    shell_1.appendChild(summary);
+    shell_1.appendChild(controls);
+    shell_1.appendChild(inlineHost);
+    card.appendChild(shell_1);
+    mounted=false;
+    savedScrollTop=0;
+    modeBeforeFullscreen="collapsed";
+    focusBeforeFullscreen=null;
+    const mountInline=() => {
+      if(!mounted){
+        clear_1(inlineHost);
+        try {
+          registerReplyPresentationDisposer(identity, (presentation.Mount("inline"))(inlineHost));
+          mounted=true;
+          setData("mount-state", "mounted", shell_1);
+        }
+        catch(error){
+          inlineHost.appendChild(element_1("div", "reply-presentation-error", textOr_1("Reply presentation failed.", errorMessage_1(error))));
+          setData("mount-state", "error", shell_1);
+        }
+      }
+    };
+    function applyPresentationMode(nextMode){
+      const m_3=asText_1(nextMode).toLowerCase();
+      const normalized=m_3=="inline"?"inline":m_3=="fullscreen"?"fullscreen":"collapsed";
+      setReplyPresentationMode(identity, normalized);
+      setData("presentation-mode", normalized, shell_1);
+      if(normalized=="collapsed"){
+        disposeReplyPresentation(identity);
+        mounted=false;
+        clear_1(inlineHost);
+        setData("mount-state", "unmounted", shell_1);
+        inlineHost.setAttribute("hidden", "hidden");
+        fullscreen.removeAttribute("hidden");
+        shell_1.className="reply-presentation";
+        summary.setAttribute("aria-expanded", "false");
+        toggle.textContent="+";
+        toggle.setAttribute("title", "Expand in chat session");
+        toggle.setAttribute("aria-label", "Expand reply in chat session");
+        fullscreen.textContent="\u5c55\u958b";
+        fullscreen.setAttribute("title", "Open near-fullscreen canvas");
+        fullscreen.setAttribute("aria-label", "Open reply as near-fullscreen canvas");
+      }
+      else normalized=="fullscreen"?(mountInline(),inlineHost.removeAttribute("hidden"),fullscreen.removeAttribute("hidden"),shell_1.className="reply-presentation fullscreen",summary.setAttribute("aria-expanded", "true"),toggle.textContent="\u2212",toggle.setAttribute("title", "Collapse reply"),toggle.setAttribute("aria-label", "Collapse reply"),fullscreen.textContent="\u8fd4\u56de",fullscreen.setAttribute("title", "Return to inline canvas"),fullscreen.setAttribute("aria-label", "Return to inline canvas")):(mountInline(),inlineHost.removeAttribute("hidden"),fullscreen.removeAttribute("hidden"),shell_1.className="reply-presentation",summary.setAttribute("aria-expanded", "true"),toggle.textContent="\u2212",toggle.setAttribute("title", "Collapse reply"),toggle.setAttribute("aria-label", "Collapse reply"),fullscreen.textContent="\u5c55\u958b",fullscreen.setAttribute("title", "Open near-fullscreen canvas"),fullscreen.setAttribute("aria-label", "Open reply as near-fullscreen canvas"));
+    }
+    const toggleInline=() => {
+      if(replyPresentationMode(identity)=="collapsed")applyPresentationMode("inline");
+      else applyPresentationMode("collapsed");
+    };
+    presentationRendered=(summary.addEventListener("click", toggleInline),toggle.addEventListener("click", toggleInline),fullscreen.addEventListener("click", () => {
+      if(replyPresentationMode(identity)=="fullscreen"){
+        applyPresentationMode(modeBeforeFullscreen);
+        const m_3=card.parentElement;
+        if(Equals(m_3, null))null;
+        else m_3.scrollTop=savedScrollTop;
+        return!(focusBeforeFullscreen==null)?focusBeforeFullscreen.focus():null;
+      }
+      else {
+        modeBeforeFullscreen=replyPresentationMode(identity);
+        focusBeforeFullscreen=globalThis.document.activeElement;
+        const m_4=card.parentElement;
+        if(Equals(m_4, null))savedScrollTop=0;
+        else savedScrollTop=m_4.scrollTop;
+        return applyPresentationMode("fullscreen");
+      }
+    }),applyPresentationMode(replyPresentationMode(identity)),true);
+  }
+  else presentationRendered=false;
+  if(!presentationRendered){
+    const m_2=mode.toLowerCase();
+    switch(m_2){
+      case"outbound-message":
+      case"inbound-message":
+        _1=iter((row) => {
+          card.appendChild(renderTextBlock("fcell-message-body", row));
+        }, arrayOrEmpty(value.rows));
+        break;
+      case"list":
+        const list=element_1("ul", "fcell-list-items", null);
+        _1=(iter((row) => {
+          list.appendChild(element_1("li", "", asText_1(row)));
+        }, arrayOrEmpty(value.rows)),void card.appendChild(list));
+        break;
+      case"grid":
+        let _3;
+        const table=element_1("table", "fcell-grid-table", null);
+        const columns=arrayOrEmpty(value.columns);
+        if(length(columns)>0){
+          const thead=element_1("thead", "", null);
+          const header=element_1("tr", "", null);
+          _3=(iter((column) => {
+            header.appendChild(element_1("th", "wrap", asText_1(column)));
+          }, columns),thead.appendChild(header),void table.appendChild(thead));
+        }
+        else _3=null;
+        const tbody=element_1("tbody", "", null);
+        _1=(iter((cells) => {
+          const tr=element_1("tr", "", null);
+          iter((cell) => {
+            tr.appendChild(element_1("td", "wrap", asText_1(cell)));
+          }, arrayOrEmpty(cells));
+          tbody.appendChild(tr);
+        }, arrayOrEmpty(value.tableRows)),table.appendChild(tbody),void card.appendChild(table));
+        break;
+      default:
+        _1=void card.appendChild(renderTextBlock("fcell-source", value.rawValue));
+        break;
+    }
+    _2=!isBlank_1(value.source)&&mode.toLowerCase()!="inbound-message"&&mode.toLowerCase()!="outbound-message"?void card.appendChild(renderTextBlock("fcell-source", value.source)):null;
+  }
+  else _2=null;
+  return card;
+}
+function staticNavigationDestinations(){
+  return filter((_1) => _1[0]!="/management"||systemAclAllows("*", "ptcs.management.read"), [["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"], ["/management", "Management"]]);
+}
 function setHref_1(href, node){
   node.setAttribute("href", href);
   return node;
@@ -3342,6 +4002,36 @@ function pageTypeBadge(page){
     return m_1==null?"R":textOr_1("?", m_1.$0.badge);
   }
 }
+function renderTabJumpOptions(jump, activePath, destinations){
+  let selectedPath;
+  const draftPath=asText_1(jump.value);
+  if(exists((_1) => sameTextInvariant(_1[0], draftPath), destinations))selectedPath=draftPath;
+  else {
+    const o=tryFind((_1) => isCurrentPage(activePath, _1[0]), destinations);
+    const o_1=o==null?null:Some(o.$0[0]);
+    selectedPath=o_1==null?"/chat":o_1.$0;
+  }
+  clear_1(jump);
+  iter((_1) => {
+    const href=_1[0];
+    const option=doc_1().createElement("option");
+    option.setAttribute("value", href);
+    option.textContent=_1[1];
+    if(sameTextInvariant(selectedPath, href))option.setAttribute("selected", "selected");
+    jump.appendChild(option);
+  }, destinations);
+  if(jump.childElementCount>0)jump.value=selectedPath;
+}
+function select(options){
+  const node=doc_1().createElement("select");
+  iter((_1) => {
+    const option=doc_1().createElement("option");
+    option.setAttribute("value", _1[0]);
+    option.textContent=_1[1];
+    node.appendChild(option);
+  }, options);
+  return node;
+}
 function setId_1(id, node){
   node.setAttribute("id", id);
   return node;
@@ -3349,6 +4039,55 @@ function setId_1(id, node){
 function currentLogoutPath(){
   const path=currentBrowserUser().logoutPath;
   return isBlank_1(path)?"/chat/logout":path;
+}
+function renderViewAsControl(){
+  const user=currentBrowserUser();
+  const wrap=setTestId_1("view-as-control", element_1("div", "view-as-control", null));
+  const toggle=setTestId_1("view-as-toggle", button_1("view-as-toggle", user.viewAsActive?"View as: "+textOr_1(user.viewAsParticipantId, user.displayName):"View as"));
+  const panel=setHidden(true, setTestId_1("view-as-panel", element_1("div", "view-as-panel", null)));
+  const chooser=setTestId_1("view-as-select", select([]));
+  const apply=setTestId_1("view-as-apply", button_1("primary", "Apply"));
+  const cancel_1=setTestId_1("view-as-cancel", button_1("", "Cancel"));
+  const status=setTestId_1("view-as-status", element_1("span", "state view-as-status", ""));
+  toggle.addEventListener("click", () => {
+    const isHidden=panel.hasAttribute("hidden");
+    setHidden(!isHidden, panel);
+    return isHidden?(setStatus(status, "Loading participants..."),getJson("/management/api/view-as", (reply) => {
+      clear_1(chooser);
+      const own=doc_1().createElement("option");
+      own.setAttribute("value", "");
+      own.textContent="Own view ("+reply.actualParticipantId+")";
+      chooser.appendChild(own);
+      iter((participant) => {
+        const option=doc_1().createElement("option");
+        option.setAttribute("value", participant.participantId);
+        option.textContent=textOr_1(participant.participantId, participant.displayName)+" ("+participant.participantId+")";
+        chooser.appendChild(option);
+      }, arrayOrEmpty(reply.participants));
+      chooser.value=reply.viewAsParticipantId;
+      setStatus(status, "Read-only conversation view");
+    }, (error) => {
+      setStatus(status, "Unable to load participants: "+error);
+    })):null;
+  });
+  cancel_1.addEventListener("click", () => {
+    setHidden(true, panel);
+  });
+  apply.addEventListener("click", () => {
+    apply.setAttribute("disabled", "disabled");
+    return postJson_1("/management/api/view-as", New_40(asText_1(chooser.value)), () => {
+      globalThis.location.reload();
+    }, (error) => {
+      apply.removeAttribute("disabled");
+      setStatus(status, "View as failed: "+error);
+    });
+  });
+  const actions=element_1("div", "view-as-panel-actions", null);
+  append_1(actions, [cancel_1, apply]);
+  append_1(panel, [chooser, actions, status]);
+  append_1(wrap, [toggle, panel]);
+  setHidden(!user.authenticated||!systemAclAllows("*", "ptcs.management.view-as"), wrap);
+  return wrap;
 }
 function renderPageCreator(nav, activePath, pages){
   let candidatePageId, candidatesLoaded, replayingPendingPageRegistration;
@@ -3370,7 +4109,7 @@ function renderPageCreator(nav, activePath, pages){
   };
   const resetBinding=() => {
     clear_1(binding);
-    appendOption("", "Default", binding);
+    appendOption("", "Use page id history", binding);
     binding.value="";
     binding.setAttribute("data-candidate-count", "0");
     candidatesLoaded=false;
@@ -3390,7 +4129,7 @@ function renderPageCreator(nav, activePath, pages){
         const candidates=arrayOrEmpty(reply.candidates);
         clear_1(binding);
         if(length(candidates)===0){
-          appendOption("", "Default", binding);
+          appendOption("", "Use page id history", binding);
           binding.value="";
           setStatus(status, "Ready");
         }
@@ -3420,7 +4159,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_1(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_35(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_41(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr_1(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_1("/pages/api/register-page", request, (reply) => {
@@ -3547,9 +4286,51 @@ function statusDot(status){
   node.setAttribute("title", asText_1(status));
   return node;
 }
+function aclAllows(action, resourceKind, resourceId){
+  const m=tryAclCapabilityProvider(action, resourceKind, resourceId);
+  return m==null?aclAllowsFallback(action, resourceKind, resourceId):m.$0;
+}
+function systemAclAllows(resourceId, action){
+  return aclAllows(action, "ptcs.system", resourceId);
+}
+function currentBrowserUser(){
+  const userNode=doc_1().getElementById("ptc-comm-user");
+  if(userNode==null||isBlank_1(userNode.textContent))return New_27("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
+  else {
+    const user=json(userNode.textContent);
+    return user==null||isBlank_1(user.participantId)?New_27("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
+  }
+}
 function compactMessageId(value){
   const text=asText_1(value);
   return text.length<=32?text:StartsWith(text.toLowerCase(), "pending-command")?"pending-command:"+String(text.length):Substring(text, 0, 24)+"..."+text.substring(text.length-6);
+}
+function distinctMessages(messages){
+  let kept;
+  kept=[];
+  iter((message) => {
+    if(!(message==null)&&!isBlank_1(message.messageId)&&!exists((row) => row.messageId==message.messageId, kept))kept=kept.concat([message]);
+  }, arrayOrEmpty(messages));
+  return kept;
+}
+function scrollToBottomNow(node){
+  if(!(node==null)){
+    try {
+      node.scrollTop=node.scrollHeight;
+    }
+    catch(m){
+      null;
+    }
+  }
+}
+function isNearBottom(node){
+  if(node==null)return false;
+  else try {
+    return node.scrollHeight-node.scrollTop-node.clientHeight<=8;
+  }
+  catch(m){
+    return false;
+  }
 }
 function mergeThreadMessages(existing, incoming){
   const v=distinctMessages(arrayOrEmpty(existing).concat(arrayOrEmpty(incoming)));
@@ -3571,6 +4352,7 @@ function initializeClientExtensionGlobals(){
   if(!globalThis.PulseTrade.LoginRenderers)globalThis.PulseTrade.LoginRenderers=[];
   if(!globalThis.PulseTrade.AclSnapshotObservers)globalThis.PulseTrade.AclSnapshotObservers=[];
   if(!globalThis.PulseTrade.AclCapabilityProviders)globalThis.PulseTrade.AclCapabilityProviders=[];
+  if(!globalThis.PulseTrade.ReplyPresentationResolvers)globalThis.PulseTrade.ReplyPresentationResolvers=[];
   if(!globalThis.PulseTrade.Renderers)globalThis.PulseTrade.Renderers=globalThis.PulseTrade.MessageRenderers;
   let register=(collection, name, priority, func) => {
     if(typeof priority==="function"){
@@ -3606,6 +4388,9 @@ function initializeClientExtensionGlobals(){
   globalThis.PulseTradeRegisterAclCapabilityProvider=(name, priority, func) => {
     register(globalThis.PulseTrade.AclCapabilityProviders, name, priority, func);
   };
+  globalThis.PulseTradeRegisterReplyPresentation=(name, priority, func) => {
+    register(globalThis.PulseTrade.ReplyPresentationResolvers, name, priority, func);
+  };
 }
 function routeItem_1(icon, name, value){
   const item=element_1("li", "route-item", null);
@@ -3621,28 +4406,26 @@ function field_1(labelText, inputId, control){
   append_1(wrap, [label, control]);
   return wrap;
 }
-function aclAllows(action, resourceKind, resourceId){
-  const m=tryAclCapabilityProvider(action, resourceKind, resourceId);
-  return m==null?aclAllowsFallback(action, resourceKind, resourceId):m.$0;
-}
 function findAppendPageShape(shape){
   const normalized=normalizeShapeText(shape);
   return tryFind((candidate) => normalizeShapeText(candidate.shape)==normalized, appendPageShapeRegistry());
 }
 function normalizeShapeText(value){
   const text=Trim(asText_1(value)).toLowerCase();
-  return text.length>0&&text.length<=64&&forall((ch) => ch>="a"&&ch<="z"||ch>="0"&&ch<="9"||ch==="-"||ch==="_"||ch===".", text)?text:"raw";
+  return text.length>0&&text.length<=64&&forall_2((ch) => ch>="a"&&ch<="z"||ch>="0"&&ch<="9"||ch==="-"||ch==="_"||ch===".", text)?text:"raw";
 }
 function hasTag(tag, tags){
   return exists((value) => asText_1(value).toLowerCase()==tag, arrayOrEmpty(tags));
 }
-function currentBrowserUser(){
-  const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_1(userNode.textContent))return New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout");
-  else {
-    const user=json(userNode.textContent);
-    return user==null||isBlank_1(user.participantId)?New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
-  }
+function replyPresentationDisposers(){
+  return _c.replyPresentationDisposers;
+}
+function set_replyPresentationDisposers(_1){
+  _c.replyPresentationDisposers=_1;
+}
+function newPendingCommandId(kind, target, url, payloadJson){
+  set_pendingCommandSeq(pendingCommandSeq()+1);
+  return cacheKey("pending-command", ofArray([kind, target, url, payloadJson, "attempt-"+String(pendingCommandSeq()), "rand-"+String(Math.floor(Math.random()*1000000000))]));
 }
 function fcellValueModeLabel(mode, tags){
   return hasTag("actor-argu-command", tags)?"Actor Argu Outbound":hasTag("actor-argu-reply", tags)?"Actor Argu Reply":hasTag("actor-argu-error", tags)?"Actor Argu Error":fcellModeLabel(mode);
@@ -3651,35 +4434,49 @@ function renderTextBlock(className, text){
   const m=tryRenderWithRegisteredRenderers(text);
   return m==null?element_1("pre", className, asText_1(text)):m.$0;
 }
-function scrollToBottomNow(node){
-  if(!(node==null)){
+function tryResolveReplyPresentation(context){
+  const o=((context_1) => {
+    let found=null;
+    if(globalThis.PulseTrade&&globalThis.PulseTrade.ReplyPresentationResolvers){
+      const resolvers=globalThis.PulseTrade.ReplyPresentationResolvers;
+      for(let i=0;i<resolvers.length&&found==null;i++){
+        const resolver=resolvers[i];
+        try {
+          const value=(resolver.render||resolver[1])(context_1);
+          if(value!=null)found=value;
+        }
+        catch(e){
+          console.error("Reply presentation resolver exception:", e);
+        }
+      }
+    }
+    return found;
+  })(context);
+  return o==null?tryPick((_1) => {
     try {
-      node.scrollTop=node.scrollHeight;
+      return _1[1](context);
     }
     catch(m){
-      null;
+      return null;
     }
-  }
+  }, registeredReplyPresentationResolvers()):(o.$0,o);
 }
-function newPendingCommandId(kind, target, url, payloadJson){
-  set_pendingCommandSeq(pendingCommandSeq()+1);
-  return cacheKey("pending-command", ofArray([kind, target, url, payloadJson, "attempt-"+String(pendingCommandSeq()), "rand-"+String(Math.floor(Math.random()*1000000000))]));
+function replyPresentationIdentity(context){
+  return concat_1("\u001f", [context.PageId, context.TabId, context.ValueId]);
 }
-function select(options){
-  const node=doc_1().createElement("select");
-  iter((_1) => {
-    const option=doc_1().createElement("option");
-    option.setAttribute("value", _1[0]);
-    option.textContent=_1[1];
-    node.appendChild(option);
-  }, options);
-  return node;
+function registerReplyPresentationDisposer(identity, dispose){
+  disposeReplyPresentation(identity);
+  set_replyPresentationDisposers(replyPresentationDisposers().concat([[identity, dispose]]));
+}
+function setReplyPresentationMode(identity, mode){
+  set_replyPresentationModes(filter((_1) => _1[0]!=identity, replyPresentationModes()).concat([[identity, mode]]));
+}
+function replyPresentationMode(identity){
+  const o=tryPick((_1) => _1[0]==identity?Some(_1[1]):null, replyPresentationModes());
+  return o==null?"collapsed":o.$0;
 }
 function appendPageShapeOptions(){
   return map((shape) =>[normalizeShapeText(shape.shape), textOr_1(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
-}
-function systemAclAllows(resourceId, action){
-  return aclAllows(action, "ptcs.system", resourceId);
 }
 function navigationPathForCreatedPage(page){
   const pageId=asText_1(page.pageId);
@@ -3689,24 +4486,6 @@ function navigationPathForCreatedPage(page){
 function isLive(status){
   const m=asText_1(status).toLowerCase();
   return m=="online"||(m=="running"||(m=="up"||m=="available"));
-}
-function distinctMessages(messages){
-  let kept;
-  kept=[];
-  iter((message) => {
-    if(!(message==null)&&!isBlank_1(message.messageId)&&!exists((row) => row.messageId==message.messageId, kept))kept=kept.concat([message]);
-  }, arrayOrEmpty(messages));
-  return kept;
-}
-function tryParseSequence(prefix, value){
-  const text=asText_1(value);
-  if(isBlank_1(text)||!StartsWith(text, prefix))return 0n;
-  else try {
-    return BigInt(text.substring(prefix.length));
-  }
-  catch(m){
-    return 0n;
-  }
 }
 function tryAclCapabilityProvider(action, resourceKind, resourceId){
   const normalized=Trim(asText_1(((action_1, resourceKind_1, resourceId_1, snapshotJson) => {
@@ -3747,8 +4526,24 @@ function aclAllowsFallback(action, resourceKind, resourceId){
   }
   else return true;
 }
+function tryParseSequence(prefix, value){
+  const text=asText_1(value);
+  if(isBlank_1(text)||!StartsWith(text, prefix))return 0n;
+  else try {
+    return BigInt(text.substring(prefix.length));
+  }
+  catch(m){
+    return 0n;
+  }
+}
 function appendPageShapeRegistry(){
   return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
+}
+function set_pendingCommandSeq(_1){
+  _c.pendingCommandSeq=_1;
+}
+function pendingCommandSeq(){
+  return _c.pendingCommandSeq;
 }
 function fcellModeLabel(mode){
   const m=asText_1(mode).toLowerCase();
@@ -3795,11 +4590,14 @@ function tryRenderWithRegisteredRenderers(text){
     else return Some(local.$0);
   }
 }
-function set_pendingCommandSeq(_1){
-  _c.pendingCommandSeq=_1;
+function registeredReplyPresentationResolvers(){
+  return _c.registeredReplyPresentationResolvers;
 }
-function pendingCommandSeq(){
-  return _c.pendingCommandSeq;
+function set_replyPresentationModes(_1){
+  _c.replyPresentationModes=_1;
+}
+function replyPresentationModes(){
+  return _c.replyPresentationModes;
 }
 function currentAclSnapshot(){
   return _c.currentAclSnapshot;
@@ -3824,7 +4622,7 @@ function registeredRenderers(){
   return _c.registeredRenderers;
 }
 function shapeRegistration(shape, label, badge, className){
-  return New_31(normalizeShapeText(shape), textOr_1(normalizeShapeText(shape), label), textOr_1("?", badge), textOr_1(normalizeShapeText(shape), className));
+  return New_36(normalizeShapeText(shape), textOr_1(normalizeShapeText(shape), label), textOr_1("?", badge), textOr_1(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -3858,11 +4656,22 @@ function GetFieldValues(o){
   for(var k_1 in o)r.push(o[k_1]);
   return r;
 }
+function toInt(x){
+  const u=toUInt(x);
+  return u>2147483647?u-4294967296:u;
+}
 function FailWith(msg){
   throw new Error(msg);
 }
+function toUInt(x){
+  return(x<0?Math.ceil(x):Math.floor(x))>>>0;
+}
 function KeyValue(kvp){
   return[kvp.K, kvp.V];
+}
+function range(min, max_1){
+  const count=1+max_1-min;
+  return count<=0?[]:init_1(count, (x) => x+min);
 }
 function New(status, count, maxSequence, pages){
   return{
@@ -3891,6 +4700,11 @@ function tryFind(f, arr){
     }
   return res;
 }
+function map(f, arr){
+  const r=new Array(arr.length);
+  for(let i=0, _1=arr.length-1;i<=_1;i++)r[i]=f(arr[i]);
+  return r;
+}
 function exists(f, x){
   let e, i;
   e=false;
@@ -3901,13 +4715,31 @@ function exists(f, x){
     else i=i+1;
   return e;
 }
-function map(f, arr){
-  const r=new Array(arr.length);
-  for(let i=0, _1=arr.length-1;i<=_1;i++)r[i]=f(arr[i]);
-  return r;
-}
 function sortBy(f, arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) => Compare(_1[1], _2[1])));
+}
+function mapi(f, arr){
+  const y=new Array(arr.length);
+  for(let i=0, _1=arr.length-1;i<=_1;i++)y[i]=f(i, arr[i]);
+  return y;
+}
+function iteri(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)f(i, arr[i]);
+}
+function skip(i, ar){
+  return i<0?nonNegative():i>ar.length?insufficient():ar.slice(i);
+}
+function collect(f, x){
+  return Array.prototype.concat.apply([], map(f, x));
+}
+function choose(f, arr){
+  const q=[];
+  for(let i=0, _1=arr.length-1;i<=_1;i++){
+    const m=f(arr[i]);
+    if(m==null){ }
+    else q.push(m.$0);
+  }
+  return q;
 }
 function tryHead(arr){
   return arr.length===0?null:Some(arr[0]);
@@ -3923,14 +4755,16 @@ function forall2(f, x1, x2){
     else a=false;
   return a;
 }
-function choose(f, arr){
-  const q=[];
-  for(let i=0, _1=arr.length-1;i<=_1;i++){
-    const m=f(arr[i]);
-    if(m==null){ }
-    else q.push(m.$0);
-  }
-  return q;
+function tryFindIndex(f, arr){
+  let res, i;
+  res=null;
+  i=0;
+  while(i<arr.length&&res==null)
+    {
+      f(arr[i])?res=Some(i):void 0;
+      i=i+1;
+    }
+  return res;
 }
 function distinctBy(f, a){
   return ofSeq(distinctBy_1(f, a));
@@ -3941,16 +4775,20 @@ function fold(f, zero, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)acc=f(acc, arr[i]);
   return acc;
 }
+function tryPick(f, arr){
+  let res, i;
+  res=null;
+  i=0;
+  while(i<arr.length&&res==null)
+    {
+      const m=f(arr[i]);
+      if(m!=null&&m.$==1)res=m;
+      i=i+1;
+    }
+  return res;
+}
 function distinct(l){
   return ofSeq(distinct_1(l));
-}
-function mapi(f, arr){
-  const y=new Array(arr.length);
-  for(let i=0, _1=arr.length-1;i<=_1;i++)y[i]=f(i, arr[i]);
-  return y;
-}
-function skip(i, ar){
-  return i<0?nonNegative():i>ar.length?insufficient():ar.slice(i);
 }
 function ofSeq(xs){
   if(xs instanceof Array)return xs.slice();
@@ -3989,35 +4827,38 @@ function sortInPlace(arr){
 function concat(xs){
   return Array.prototype.concat.apply([], ofSeq(xs));
 }
-function tryPick(f, arr){
-  let res, i;
-  res=null;
-  i=0;
-  while(i<arr.length&&res==null)
-    {
-      const m=f(arr[i]);
-      if(m!=null&&m.$==1)res=m;
-      i=i+1;
-    }
-  return res;
-}
-function collect(f, x){
-  return Array.prototype.concat.apply([], map(f, x));
-}
 function pick(f, arr){
   const m=tryPick(f, arr);
   return m==null?FailWith("KeyNotFoundException"):m.$0;
 }
-function tryFindIndex(f, arr){
-  let res, i;
-  res=null;
+function foldBack(f, arr, zero){
+  let acc;
+  acc=zero;
+  const len=arr.length;
+  for(let i=1, _1=len;i<=_1;i++)acc=f(arr[len-i], acc);
+  return acc;
+}
+function create(size, value){
+  const r=new Array(size);
+  for(let i=0, _1=size-1;i<=_1;i++)r[i]=value;
+  return r;
+}
+function init(size, f){
+  if(size<0)FailWith("Negative size given.");
+  else null;
+  const r=new Array(size);
+  for(let i=0, _1=size-1;i<=_1;i++)r[i]=f(i);
+  return r;
+}
+function forall(f, x){
+  let a, i;
+  a=true;
   i=0;
-  while(i<arr.length&&res==null)
-    {
-      f(arr[i])?res=Some(i):void 0;
-      i=i+1;
-    }
-  return res;
+  const l=length(x);
+  while(a&&i<l)
+    if(f(x[i]))i=i+1;
+    else a=false;
+  return a;
 }
 function readJson(key, onRead){
   if(isBlank_1(key))onRead(null);
@@ -4081,7 +4922,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_26(streamId, _3, _4, asText_1(source), nowTicks());
+    let _5=New_30(streamId, _3, _4, asText_1(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -4094,6 +4935,35 @@ function readAllPending(onRead){
 }
 function deletePendingThen(commandId, onDeleted){
   deleteFromThen(pendingStore(), commandId, onDeleted);
+}
+function deleteSnapshotsByPrefix(prefix, onDeleted){
+  if(isBlank_1(prefix))onDeleted();
+  else readAllSnapshotKeys((keys) => {
+    const matching=filter((key) =>!isBlank_1(key)&&StartsWith(key, prefix), keys);
+    if(length(matching)===0)onDeleted();
+    else withSnapshotWatermarkStores("readwrite", (_1, _2, _3) =>((((tx) =>(snapshots) =>(watermarks) => {
+      let finished;
+      finished=false;
+      const finish=() => {
+        if(!finished){
+          finished=true;
+          onDeleted();
+        }
+      };
+      tx.oncomplete=() => finish();
+      tx.onabort=() => finish();
+      tx.onerror=() => finish();
+      try {
+        return iter((key) => {
+          snapshots["delete"](key);
+          watermarks["delete"](key);
+        }, matching);
+      }
+      catch(m){
+        return finish();
+      }
+    })(_1))(_2))(_3), onDeleted);
+  });
 }
 function readWatermark(key, onRead){
   if(isBlank_1(key))onRead(null);
@@ -4242,6 +5112,45 @@ function pendingStore(){
 function writePending(command){
   writeJsonTo(pendingStore(), command.commandId, command);
 }
+function readAllSnapshotKeys(onRead){
+  withStore(snapshotStore(), "readonly", (store) => {
+    try {
+      const request=store.getAllKeys();
+      request.onsuccess=(event) => {
+        const value=eventResult(event);
+        if(isMissing(value))return onRead([]);
+        else try {
+          return onRead(value);
+        }
+        catch(m){
+          return onRead([]);
+        }
+      };
+      request.onerror=() => onRead([]);
+    }
+    catch(m){
+      onRead([]);
+    }
+  }, () => {
+    onRead([]);
+  });
+}
+function withSnapshotWatermarkStores(mode, onStores, onUnavailable){
+  openDb((db) => {
+    try {
+      const a=[[snapshotStore(), watermarkStore()], mode];
+      const tx=db.transaction.apply(db, a);
+      const a_1=[snapshotStore()];
+      let _1=tx.objectStore.apply(tx, a_1);
+      const a_2=[watermarkStore()];
+      let _2=tx.objectStore.apply(tx, a_2);
+      onStores(tx, _1, _2);
+    }
+    catch(m){
+      onUnavailable();
+    }
+  }, onUnavailable);
+}
 function databaseName(){
   return _c.databaseName;
 }
@@ -4294,7 +5203,7 @@ function watermarkTouchedAt(watermark){
   let o;
   if(watermark==null)return 0n;
   else {
-    const m=(o=0n,[TryParse(asText_1(watermark.touchedAt), {get:() => o, set:(v) => {
+    const m=(o=0n,[TryParse_1(asText_1(watermark.touchedAt), {get:() => o, set:(v) => {
       o=v;
     }}), o]);
     return m[0]?m[1]:0n;
@@ -4311,29 +5220,6 @@ function deleteSnapshotAndWatermark(key){
       return null;
     }
   }, () => { });
-}
-function readAllSnapshotKeys(onRead){
-  withStore(snapshotStore(), "readonly", (store) => {
-    try {
-      const request=store.getAllKeys();
-      request.onsuccess=(event) => {
-        const value=eventResult(event);
-        if(isMissing(value))return onRead([]);
-        else try {
-          return onRead(value);
-        }
-        catch(m){
-          return onRead([]);
-        }
-      };
-      request.onerror=() => onRead([]);
-    }
-    catch(m){
-      onRead([]);
-    }
-  }, () => {
-    onRead([]);
-  });
 }
 function deleteFrom(storeName, key){
   if(!isBlank_1(key))withStore(storeName, "readwrite", (store) => {
@@ -4367,22 +5253,6 @@ function ensureStore(storeName, db){
     _1=false;
   }
   if(!_1)db.createObjectStore(storeName);
-}
-function withSnapshotWatermarkStores(mode, onStores, onUnavailable){
-  openDb((db) => {
-    try {
-      const a=[[snapshotStore(), watermarkStore()], mode];
-      const tx=db.transaction.apply(db, a);
-      const a_1=[snapshotStore()];
-      let _1=tx.objectStore.apply(tx, a_1);
-      const a_2=[watermarkStore()];
-      let _2=tx.objectStore.apply(tx, a_2);
-      onStores(tx, _1, _2);
-    }
-    catch(m){
-      onUnavailable();
-    }
-  }, onUnavailable);
 }
 function Equals(a, b){
   let _1;
@@ -4573,6 +5443,9 @@ let _c=Lazy((_i) => class $StartupCode_Client {
   static currentAclSnapshotJson;
   static currentAclSnapshot;
   static runtimeAppendPageShapes;
+  static replyPresentationDisposers;
+  static replyPresentationModes;
+  static registeredReplyPresentationResolvers;
   static registeredRenderers;
   static defaultCacheLimit;
   static defaultRenderLimit;
@@ -4582,6 +5455,9 @@ let _c=Lazy((_i) => class $StartupCode_Client {
     this.defaultRenderLimit=200;
     this.defaultCacheLimit=1000;
     this.registeredRenderers=[];
+    this.registeredReplyPresentationResolvers=[];
+    this.replyPresentationModes=[];
+    this.replyPresentationDisposers=[];
     this.runtimeAppendPageShapes=[];
     this.currentAclSnapshot=null;
     this.currentAclSnapshotJson="";
@@ -4648,19 +5524,40 @@ function TrimStart(s, t){
     return s.substring(i);
   }
 }
+function EndsWith(x, s){
+  return x.substring(x.length-s.length)==s;
+}
 function Substring(s, ix, ct){
   return s.substr(ix, ct);
 }
-function ReplaceOnce(string, search, replace){
-  return string.replace(search, replace);
+function ReplaceOnce(string_1, search, replace){
+  return string_1.replace(search, replace);
 }
 function TrimStartWS(s){
   return s.replace(new RegExp("^\\s+"), "");
 }
+function SplitChars(s, sep, opts){
+  return Split(s, new RegExp("["+RegexEscape(sep.join(""))+"]"), opts);
+}
+function Split(s, pat, opts){
+  return opts===1?filter((x) => x!=="", SplitWith(s, pat)):SplitWith(s, pat);
+}
+function RegexEscape(s){
+  return s.replace(new RegExp("[-\\/\\\\^$*+?.()|[\\]{}]", "g"), "\\$&");
+}
+function SplitWith(str, pat){
+  return str.split(pat);
+}
+function forall_1(f, s){
+  return forall_2(f, protect(s));
+}
+function protect(s){
+  return s==null?"":s;
+}
 class FSharpList {
-  static Empty=Create(FSharpList, {$:0});
+  static Empty=Create_2(FSharpList, {$:0});
   static Cons(Head, Tail){
-    return Create(FSharpList, {
+    return Create_2(FSharpList, {
       $:1, 
       $0:Head, 
       $1:Tail
@@ -4691,6 +5588,9 @@ class Object_1 {
   }
 }
 function TryParse(s, r){
+  return TryParse_2(s, -2147483648, 2147483647, r);
+}
+function TryParse_1(s, r){
   return TryParseBigInt(s, -9223372036854775808n, 9223372036854775807n, r);
 }
 function New_3(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
@@ -4717,6 +5617,10 @@ function get(arr, n){
 }
 function checkBounds(arr, n){
   if(n<0||n>=arr.length)FailWith("Index was outside the bounds of the array.");
+}
+function set(arr, n, x){
+  checkBounds(arr, n);
+  arr[n]=x;
 }
 function New_4(pageId, mode, setName, keys){
   return{
@@ -4770,7 +5674,7 @@ function map_1(f, x){
   let r, l, go;
   if(x.$==0)return x;
   else {
-    const res=Create(FSharpList, {$:1});
+    const res=Create_2(FSharpList, {$:1});
     r=res;
     l=x;
     go=true;
@@ -4780,7 +5684,7 @@ function map_1(f, x){
         l=l.$1;
         if(l.$==0)go=false;
         else {
-          const t=Create(FSharpList, {$:1});
+          const t=Create_2(FSharpList, {$:1});
           r=(r.$1=t,t);
         }
       }
@@ -4835,7 +5739,7 @@ function New_11(pageId, keyJson, keyMode, displayName){
   return{
     pageId:pageId, 
     keyJson:keyJson, 
-    keyMode:keyMode,
+    keyMode:keyMode, 
     displayName:displayName
   };
 }
@@ -4924,11 +5828,22 @@ function map_2(f, s){
     });
   }};
 }
-function forall(p, s){
+function forall_2(p, s){
   return!exists_1((x) =>!p(x), s);
 }
 function distinct_1(s){
   return distinctBy_1((x) => x, s);
+}
+function iter_1(p, s){
+  const e=Get(s);
+  try {
+    while(e.MoveNext())
+      p(e.Current);
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
 }
 function exists_1(p, s){
   const e=Get(s);
@@ -4938,6 +5853,16 @@ function exists_1(p, s){
     while(!r&&e.MoveNext())
       r=p(e.Current);
     return r;
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function head_1(s){
+  const e=Get(s);
+  try {
+    return e.MoveNext()?e.Current:insufficient();
   }
   finally {
     const _1=e;
@@ -4992,6 +5917,20 @@ function exists2(p, s1, s2){
     if(typeof _2=="object"&&isIDisposable(_2))e1.Dispose();
   }
 }
+function fold_1(f, x, s){
+  let r;
+  r=x;
+  const e=Get(s);
+  try {
+    while(e.MoveNext())
+      r=f(r, e.Current);
+    return r;
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
 function unfold(f, s){
   return{GetEnumerator:() => new T(s, null, (e) => {
     const m=f(e.s);
@@ -5003,6 +5942,94 @@ function unfold(f, s){
       e.s=s_1;
       return true;
     }
+  }, void 0)};
+}
+function collect_1(f, s){
+  return concat_2(map_2(f, s));
+}
+function max(s){
+  const e=Get(s);
+  try {
+    let m;
+    if(!e.MoveNext())seqEmpty();
+    else null;
+    m=e.Current;
+    while(e.MoveNext())
+      {
+        const x=e.Current;
+        if(Compare(x, m)===1)m=x;
+      }
+    return m;
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
+}
+function concat_2(ss){
+  return{GetEnumerator:() => {
+    const outerE=Get(ss);
+    function next(st){
+      while(true)
+        {
+          const m=st.s;
+          if(Equals(m, null)){
+            if(outerE.MoveNext()){
+              st.s=Get(outerE.Current);
+              st=st;
+            }
+            else {
+              outerE.Dispose();
+              return false;
+            }
+          }
+          else if(m.MoveNext()){
+            st.c=m.Current;
+            return true;
+          }
+          else {
+            st.Dispose();
+            st.s=null;
+            st=st;
+          }
+        }
+    }
+    return new T(null, null, next, (st) => {
+      const x=st.s;
+      if(!Equals(x, null))x.Dispose();
+      const x_1=outerE;
+      if(!Equals(x_1, null))x_1.Dispose();
+    });
+  }};
+}
+function init_1(n, f){
+  return take(n, initInfinite(f));
+}
+function seqEmpty(){
+  return FailWith("The input sequence was empty.");
+}
+function take(n, s){
+  n<0?nonNegative():void 0;
+  return{GetEnumerator:() => {
+    const e=[Get(s)];
+    return new T(0, null, (o) => {
+      o.s=o.s+1;
+      if(o.s>n)return false;
+      else {
+        const en=e[0];
+        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
+      }
+    }, () => {
+      const x=e[0];
+      if(!Equals(x, null))x.Dispose();
+    });
+  }};
+}
+function initInfinite(f){
+  return{GetEnumerator:() => new T(0, null, (e) => {
+    e.c=f(e.s);
+    e.s=e.s+1;
+    return true;
   }, void 0)};
 }
 function New_16(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
@@ -5048,7 +6075,10 @@ function New_18(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, val
     values:values
   };
 }
-function New_19(valueId, keys, createdAtUtc, value, tags){
+function New_19(maxSequence, buckets){
+  return{maxSequence:maxSequence, buckets:buckets};
+}
+function New_20(valueId, keys, createdAtUtc, value, tags){
   return{
     valueId:valueId, 
     keys:keys, 
@@ -5057,10 +6087,10 @@ function New_19(valueId, keys, createdAtUtc, value, tags){
     tags:tags
   };
 }
-function New_20(maxSequence, buckets){
-  return{maxSequence:maxSequence, buckets:buckets};
+function New_21(reason){
+  return{reason:reason};
 }
-function New_21(nodeCount, actorCount, maxSequence, nodes){
+function New_22(nodeCount, actorCount, maxSequence, nodes){
   return{
     nodeCount:nodeCount, 
     actorCount:actorCount, 
@@ -5113,7 +6143,33 @@ class HashSet extends Object_1 {
     return arr==null?(this.data[h]=[item],this.count=this.count+1,true):this.arrContains(item, arr)?false:(arr.push(item),this.count=this.count+1,true);
   }
   GetEnumerator(){
-    return Get(concat_2(this.data));
+    return Get(concat_3(this.data));
+  }
+  ExceptWith(xs){
+    const e=Get(xs);
+    try {
+      while(e.MoveNext())
+        this.Remove(e.Current);
+    }
+    finally {
+      const _1=e;
+      if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+    }
+  }
+  get Count(){
+    return this.count;
+  }
+  IntersectWith(xs){
+    const other=new HashSet("New_4", xs, this.equals, this.hash);
+    const all=concat_3(this.data);
+    for(let i=0, _1=all.length-1;i<=_1;i++){
+      const item=all[i];
+      if(!other.Contains(item))this.Remove(item);
+    }
+  }
+  CopyTo(arr, index){
+    const all=concat_3(this.data);
+    for(let i=0, _1=all.length-1;i<=_1;i++)set(arr, i+index, all[i]);
   }
   constructor(i, _1, _2, _3){
     if(i=="New_3"){
@@ -5122,8 +6178,16 @@ class HashSet extends Object_1 {
       _2=Equals;
       _3=Hash;
     }
+    let init_2;
+    if(i=="New_2"){
+      init_2=_1;
+      i="New_4";
+      _1=init_2;
+      _2=Equals;
+      _3=Hash;
+    }
     if(i=="New_4"){
-      const init=_1;
+      const init_3=_1;
       const equals=_2;
       const hash=_3;
       super();
@@ -5131,7 +6195,7 @@ class HashSet extends Object_1 {
       this.hash=hash;
       this.data=[];
       this.count=0;
-      const e=Get(init);
+      const e=Get(init_3);
       try {
         while(e.MoveNext())
           this.add(e.Current);
@@ -5146,16 +6210,6 @@ class HashSet extends Object_1 {
 function OfArray(a){
   return new FSharpMap("New_1", OfSeq(map_2((_1) => Pair.New(_1[0], _1[1]), a)));
 }
-function New_22(actorId, displayName, kind, keys, status, routees){
-  return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
-    routees:routees
-  };
-}
 function New_23(nodeId, nodeAddress, status, roles, actors){
   return{
     nodeId:nodeId, 
@@ -5165,7 +6219,169 @@ function New_23(nodeId, nodeAddress, status, roles, actors){
     actors:actors
   };
 }
-function New_24(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_24(actorId, displayName, kind, keys, status, routees){
+  return{
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
+    routees:routees
+  };
+}
+function Create(key, init_2){
+  return CreateWithStorage(key, InMemory(ofSeq(init_2)));
+}
+function CreateWithStorage(key, storage){
+  return new ListModel("New", key, storage);
+}
+class ListModel extends Object_1 {
+  key;
+  u0076ar;
+  storage;
+  v;
+  it;
+  Set(lst){
+    this.u0076ar.Set(this.storage.SSet(lst));
+    this.ObsoleteAll();
+  }
+  ObsoleteAll(){
+    iter_1((ksn) => {
+      Obsolete(ksn.V);
+    }, this.it);
+    this.it.Clear();
+  }
+  GetEnumerator(){
+    return Get(this.u0076ar.Get());
+  }
+  GetEnumerator0(){
+    return Get0(this.u0076ar.Get());
+  }
+  constructor(i, _1, _2, _3){
+    let key, storage;
+    if(i=="New"){
+      key=_1;
+      storage=_2;
+      i="New_3";
+      _1=key;
+      _2=_c_2.Create_1(ofSeq(distinctBy_1(key, storage.SInit())));
+      _3=storage;
+    }
+    if(i=="New_3"){
+      const key_1=_1;
+      const var_1=_2;
+      const storage_1=_3;
+      super();
+      this.key=key_1;
+      this.u0076ar=var_1;
+      this.storage=storage_1;
+      this.v=Map((x) => x.slice(), this.u0076ar.View);
+      this.it=new Dictionary("New_5");
+    }
+  }
+}
+function New_25(pageId, tabId){
+  return{pageId:pageId, tabId:tabId};
+}
+function New_26(participantId){
+  return{participantId:participantId};
+}
+class attr extends Object_1 { }
+class Attr {
+  static Create(name, value){
+    return Attr.A3((el) => {
+      el.setAttribute(name, value);
+    });
+  }
+  static A3(init_2){
+    return Create_2(Attr, {$:3, $0:init_2});
+  }
+  static Concat(xs){
+    const x=ofSeqNonCopying(xs);
+    return TreeReduce(EmptyAttr(), (_1, _2) => AppendTree(_1, _2), x);
+  }
+  static A2(Item1, Item2){
+    return Create_2(Attr, {
+      $:2, 
+      $0:Item1, 
+      $1:Item2
+    });
+  }
+  $;
+  $0;
+  $1;
+}
+class Doc extends Object_1 {
+  docNode;
+  updates;
+  static get Empty(){
+    return Doc.Mk(null, Const());
+  }
+  static RunById(id, tr){
+    const m=globalThis.document.getElementById(id);
+    if(Equals(m, null))FailWith("invalid id: "+id);
+    else Doc.Run(m, tr);
+  }
+  static TextNode(v){
+    return Doc.Mk(TextNodeDoc(globalThis.document.createTextNode(v)), Const());
+  }
+  static Mk(node, updates){
+    return new Doc(node, updates);
+  }
+  static Run(parent, doc_2){
+    LinkElement(parent, doc_2.docNode);
+    Doc.RunInPlace(false, parent, doc_2);
+  }
+  static Element(name, attr_1, children){
+    const a=Attr.Concat(attr_1);
+    const c=Doc.Concat(children);
+    return Elt.New(globalThis.document.createElement(name), a, c);
+  }
+  static Convert(render, view){
+    return Doc.Flatten(MapSeqCached(render, view));
+  }
+  static RunInPlace(childrenOnly, parent, doc_2){
+    const st=CreateRunState(parent, doc_2.docNode);
+    Sink(get_UseAnimations()||BatchUpdatesEnabled()?StartProcessor(PerformAnimatedUpdate(childrenOnly, st, doc_2.docNode)):() => {
+      PerformSyncUpdate(childrenOnly, st, doc_2.docNode);
+    }, doc_2.updates);
+  }
+  static Concat(xs){
+    return TreeReduce(Doc.Empty, Doc.Append, ofSeqNonCopying(xs));
+  }
+  static Flatten(view){
+    return Doc.EmbedView(Map((x) => Doc.Concat(x), view));
+  }
+  static Append(a, b){
+    return Doc.Mk(AppendDoc(a.docNode, b.docNode), Map2Unit(a.updates, b.updates));
+  }
+  static EmbedView(view){
+    const node=CreateEmbedNode();
+    return Doc.Mk(EmbedDoc(node), Map(() => { }, Bind((doc_2) => {
+      UpdateEmbedNode(node, doc_2.docNode);
+      return doc_2.updates;
+    }, view)));
+  }
+  constructor(docNode, updates){
+    super();
+    this.docNode=docNode;
+    this.updates=updates;
+  }
+}
+function New_27(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
+  return{
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
+    logoutPath:logoutPath, 
+    authenticatedParticipantId:authenticatedParticipantId, 
+    viewAsParticipantId:viewAsParticipantId, 
+    viewAsActive:viewAsActive
+  };
+}
+function New_28(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
     messageId:messageId, 
     fromId:fromId, 
@@ -5175,10 +6391,10 @@ function New_24(messageId, fromId, toId, scope, body, createdAtUtc){
     createdAtUtc:createdAtUtc
   };
 }
-function New_25(messages, nextAfterMessageId){
+function New_29(messages, nextAfterMessageId){
   return{messages:messages, nextAfterMessageId:nextAfterMessageId};
 }
-function New_26(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_30(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
     streamId:streamId, 
     newestSequence:newestSequence, 
@@ -5187,7 +6403,7 @@ function New_26(streamId, newestSequence, cachedCount, source, touchedAt){
     touchedAt:touchedAt
   };
 }
-function New_27(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_31(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -5199,7 +6415,7 @@ function New_27(type, requestId, fromId, toId, body, tags, browserId, tabId){
     tabId:tabId
   };
 }
-function New_28(fromId, toId, body, tags){
+function New_32(fromId, toId, body, tags){
   return{
     fromId:fromId, 
     toId:toId, 
@@ -5207,7 +6423,15 @@ function New_28(fromId, toId, body, tags){
     tags:tags
   };
 }
-function New_29(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_33(messageId, speaker, createdAtUtc, body){
+  return{
+    messageId:messageId, 
+    speaker:speaker, 
+    createdAtUtc:createdAtUtc, 
+    body:body
+  };
+}
+function New_34(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
     submitPath:submitPath, 
     sessionPath:sessionPath, 
@@ -5221,7 +6445,7 @@ function New_29(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, 
     aclLabel:aclLabel
   };
 }
-function New_30(userName, password, returnUrl, keepSession){
+function New_35(userName, password, returnUrl, keepSession){
   return{
     userName:userName, 
     password:password, 
@@ -5229,7 +6453,7 @@ function New_30(userName, password, returnUrl, keepSession){
     keepSession:keepSession
   };
 }
-function New_31(shape, label, badge, className){
+function New_36(shape, label, badge, className){
   return{
     shape:shape, 
     label:label, 
@@ -5237,7 +6461,7 @@ function New_31(shape, label, badge, className){
     className:className
   };
 }
-function New_32(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_37(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
     submitPath:submitPath, 
     sessionPath:sessionPath, 
@@ -5251,7 +6475,7 @@ function New_32(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, 
     aclLabel:aclLabel
   };
 }
-function New_33(userName, password, returnUrl, keepSession){
+function New_38(userName, password, returnUrl, keepSession){
   return{
     userName:userName, 
     password:password, 
@@ -5259,15 +6483,43 @@ function New_33(userName, password, returnUrl, keepSession){
     keepSession:keepSession
   };
 }
-function New_34(participantId, displayName, login, authenticated, provider, logoutPath){
-  return{
-    participantId:participantId, 
-    displayName:displayName, 
-    login:login, 
-    authenticated:authenticated, 
-    provider:provider, 
-    logoutPath:logoutPath
-  };
+function nonNegative(){
+  return FailWith("The input must be non-negative.");
+}
+function insufficient(){
+  return FailWith("The input sequence has an insufficient number of elements.");
+}
+function groupBy(f, a){
+  const d=new Dictionary("New_5");
+  const keys=[];
+  for(let i=0, _1=length(a)-1;i<=_1;i++){
+    const c=a[i];
+    const k=f(c);
+    if(d.ContainsKey(k))d.Item(k).push(c);
+    else {
+      keys.push(k);
+      d.DAdd(k, [c]);
+    }
+  }
+  mapInPlace((k_1) =>[k_1, d.Item(k_1)], keys);
+  return keys;
+}
+function mapInPlace(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
+}
+function mapiInPlace(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
+  return arr;
+}
+function arrContains(item, arr){
+  let c, i;
+  c=true;
+  i=0;
+  const l=length(arr);
+  while(c&&i<l)
+    if(Equals(arr[i], item))c=false;
+    else i=i+1;
+  return!c;
 }
 function Get(x){
   return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):x.GetEnumerator();
@@ -5313,7 +6565,21 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_35(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_39(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+  return{
+    PageId:PageId, 
+    TabId:TabId, 
+    ValueId:ValueId, 
+    CreatedAtUtc:CreatedAtUtc, 
+    Direction:Direction, 
+    Tags:Tags, 
+    Payload:Payload
+  };
+}
+function New_40(participantId){
+  return{participantId:participantId};
+}
+function New_41(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
     pageId:pageId, 
     title:title, 
@@ -5374,7 +6640,7 @@ class Pair {
     return Compare(this.Key, other.Key);
   }
   static New(Key, Value){
-    return Create(Pair, {Key:Key, Value:Value});
+    return Create_2(Pair, {Key:Key, Value:Value});
   }
 }
 function OfSeq(data){
@@ -5400,11 +6666,11 @@ function Lookup(k, t){
     }
   return[t_1, spine];
 }
-function Build(data, min, max){
-  if(max-min+1<=0)return null;
+function Build(data, min, max_1){
+  if(max_1-min+1<=0)return null;
   else {
-    const center=(min+max)/2>>0;
-    return Branch(get(data, center), Build(data, min, center-1), Build(data, center+1, max));
+    const center=(min+max_1)/2>>0;
+    return Branch(get(data, center), Build(data, min, center-1), Build(data, center+1, max_1));
   }
 }
 function Branch(node, left, right){
@@ -5412,7 +6678,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_36(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_42(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -5441,33 +6707,513 @@ function Enumerate(flip, t){
   }
   return unfold((_1) => gen(_1[0], _1[1]), [t, FSharpList.Empty]);
 }
-function groupBy(f, a){
-  const d=new Dictionary("New_5");
-  const keys=[];
-  for(let i=0, _1=length(a)-1;i<=_1;i++){
-    const c=a[i];
-    const k=f(c);
-    if(d.ContainsKey(k))d.Item(k).push(c);
-    else {
-      keys.push(k);
-      d.DAdd(k, [c]);
+function InMemory(init_2){
+  return new ArrayStorage(init_2);
+}
+class Var extends Object_1 { }
+function LoadLocalTemplates(baseName){
+  !LocalTemplatesLoaded()?(set_LocalTemplatesLoaded(true),LoadNestedTemplates(globalThis.document.body, "")):void 0;
+  LoadedTemplates().set_Item(baseName, LoadedTemplateFile(""));
+}
+function LocalTemplatesLoaded(){
+  return _c_3.LocalTemplatesLoaded;
+}
+function set_LocalTemplatesLoaded(_1){
+  _c_3.LocalTemplatesLoaded=_1;
+}
+function LoadNestedTemplates(root, baseName){
+  const loadedTpls=LoadedTemplateFile(baseName);
+  const rawTpls=new Dictionary("New_5");
+  const wsTemplates=root.querySelectorAll("[ws-template]");
+  for(let i=0, _1=wsTemplates.length-1;i<=_1;i++){
+    const node=wsTemplates[i];
+    const name=node.getAttribute("ws-template").toLowerCase();
+    node.removeAttribute("ws-template");
+    rawTpls.set_Item(name, FakeRootSingle(node));
+  }
+  const wsChildrenTemplates=root.querySelectorAll("[ws-children-template]");
+  for(let i_1=0, _2=wsChildrenTemplates.length-1;i_1<=_2;i_1++){
+    const node_1=wsChildrenTemplates[i_1];
+    const name_1=node_1.getAttribute("ws-children-template").toLowerCase();
+    node_1.removeAttribute("ws-children-template");
+    rawTpls.set_Item(name_1, FakeRoot(node_1));
+  }
+  const html5TemplateBasedTemplates=root.querySelectorAll("template[id]");
+  for(let i_2=0, _3=html5TemplateBasedTemplates.length-1;i_2<=_3;i_2++){
+    const node_2=html5TemplateBasedTemplates[i_2];
+    rawTpls.set_Item(node_2.getAttribute("id").toLowerCase(), FakeRootFromHTMLTemplate(node_2));
+  }
+  const html5TemplateBasedTemplates_1=root.querySelectorAll("template[name]");
+  for(let i_3=0, _4=html5TemplateBasedTemplates_1.length-1;i_3<=_4;i_3++){
+    const node_3=html5TemplateBasedTemplates_1[i_3];
+    rawTpls.set_Item(node_3.getAttribute("name").toLowerCase(), FakeRootFromHTMLTemplate(node_3));
+  }
+  const instantiated=new HashSet("New_3");
+  function prepareTemplate(name_2){
+    if(!loadedTpls.ContainsKey(name_2)){
+      let o;
+      const m=(o=null,[rawTpls.TryGetValue(name_2, {get:() => o, set:(v) => {
+        o=v;
+      }}), o]);
+      if(m[0]){
+        instantiated.SAdd(name_2);
+        rawTpls.RemoveKey(name_2);
+        PrepareTemplateStrict(baseName, Some(name_2), m[1], Some(prepareTemplate));
+      }
+      else console.warn(instantiated.Contains(name_2)?"Encountered loop when instantiating "+name_2:"Local template does not exist: "+name_2);
     }
   }
-  mapInPlace((k_1) =>[k_1, d.Item(k_1)], keys);
-  return keys;
+  while(rawTpls.count>0)
+    prepareTemplate(head_1(rawTpls.Keys));
 }
-function nonNegative(){
-  return FailWith("The input must be non-negative.");
+function LoadedTemplates(){
+  return _c_3.LoadedTemplates;
 }
-function insufficient(){
-  return FailWith("The input sequence has an insufficient number of elements.");
+function LoadedTemplateFile(name){
+  let o;
+  const m=(o=null,[LoadedTemplates().TryGetValue(name, {get:() => o, set:(v) => {
+    o=v;
+  }}), o]);
+  if(m[0])return m[1];
+  else {
+    const d=new Dictionary("New_5");
+    LoadedTemplates().set_Item(name, d);
+    return d;
+  }
 }
-function mapInPlace(f, arr){
-  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
+function FakeRootSingle(el){
+  let _1;
+  el.removeAttribute("ws-template");
+  const m=el.getAttribute("ws-replace");
+  if(m==null)_1=null;
+  else {
+    el.removeAttribute("ws-replace");
+    const m_1=el.parentNode;
+    if(Equals(m_1, null))_1=null;
+    else {
+      const n=globalThis.document.createElement(el.tagName);
+      _1=(n.setAttribute("ws-replace", m),void m_1.replaceChild(n, el));
+    }
+  }
+  const fakeroot=globalThis.document.createElement("div");
+  fakeroot.appendChild(el);
+  return fakeroot;
 }
-function mapiInPlace(f, arr){
-  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(i, arr[i]);
-  return arr;
+function FakeRoot(parent){
+  const fakeroot=globalThis.document.createElement("div");
+  while(parent.hasChildNodes())
+    fakeroot.appendChild(parent.firstChild);
+  return fakeroot;
+}
+function FakeRootFromHTMLTemplate(parent){
+  const fakeroot=globalThis.document.createElement("div");
+  const content=parent.content;
+  for(let i=0, _1=content.childNodes.length-1;i<=_1;i++)fakeroot.appendChild(content.childNodes[i].cloneNode(true));
+  return fakeroot;
+}
+function PrepareTemplateStrict(baseName, name, fakeroot, prepareLocalTemplate){
+  const processedHTML5Templates=new HashSet("New_3");
+  function recF(recI, _1){
+    while(true)
+      switch(recI){
+        case 0:
+          if(_1!==null){
+            const next=_1.nextSibling;
+            if(Equals(_1.nodeType, Node.TEXT_NODE))convertTextNode(_1);
+            else Equals(_1.nodeType, Node.ELEMENT_NODE)?convertElement(_1):null;
+            _1=next;
+          }
+          else return null;
+          break;
+        case 1:
+          let _2;
+          let _3;
+          const name_2=string(_1.nodeName, Some(3), null).toLowerCase();
+          const m=name_2.indexOf(".");
+          const p=m===-1?[baseName, name_2]:[string(name_2, null, Some(m-1)), string(name_2, Some(m+1), null)];
+          const instName=p[1];
+          const instBaseName=p[0];
+          if(instBaseName!=""&&!LoadedTemplates().ContainsKey(instBaseName))return failNotLoaded(instName);
+          else {
+            if(instBaseName==""&&prepareLocalTemplate!=null)prepareLocalTemplate.$0(instName);
+            else null;
+            const d=LoadedTemplates().Item(instBaseName);
+            if(!d.ContainsKey(instName))return failNotLoaded(instName);
+            else {
+              const t=d.Item(instName);
+              const instance=t.cloneNode(true);
+              const usedHoles=new HashSet("New_3");
+              const mappings=new Dictionary("New_5");
+              const attrs=_1.attributes;
+              for(let i=0, _6=attrs.length-1;i<=_6;i++){
+                const name_3=attrs.item(i).name.toLowerCase();
+                const m_1=attrs.item(i).nodeValue;
+                let _4=m_1!=null&&m_1.length===0?name_3:m_1.toLowerCase();
+                mappings.set_Item(name_3, _4);
+                if(!usedHoles.SAdd(name_3))console.warn("Hole mapped twice", name_3);
+              }
+              for(let i_1=0, _7=_1.childNodes.length-1;i_1<=_7;i_1++){
+                const n=_1.childNodes[i_1];
+                if(Equals(n.nodeType, Node.ELEMENT_NODE))if(!usedHoles.SAdd(n.nodeName.toLowerCase()))console.warn("Hole filled twice", instName);
+              }
+              const singleTextFill=_1.childNodes.length===1&&Equals(_1.firstChild.nodeType, Node.TEXT_NODE);
+              if(singleTextFill){
+                const x=fillTextHole(instance, _1.firstChild.textContent, instName);
+                const f=((usedHoles_1) =>(i_2) => usedHoles_1.SAdd(i_2))(usedHoles);
+                let _5=((a) =>(o) => {
+                  if(o!=null)a(o.$0);
+                })((x_1) => {
+                  f(x_1);
+                });
+                _2=_5(x);
+              }
+              else _2=null;
+              removeHolesExcept(instance, usedHoles);
+              if(!singleTextFill){
+                for(let i_2=0, _8=_1.childNodes.length-1;i_2<=_8;i_2++){
+                  const n_1=_1.childNodes[i_2];
+                  if(Equals(n_1.nodeType, Node.ELEMENT_NODE))if(n_1.hasAttributes())fillInstanceAttrs(instance, n_1);
+                  else fillDocHole(instance, n_1);
+                }
+                _3=void 0;
+              }
+              else _3=null;
+              mapHoles(instance, mappings);
+              fill(instance, _1.parentNode, _1);
+              _1.parentNode.removeChild(_1);
+              return;
+            }
+          }
+          break;
+      }
+  }
+  function fillDocHole(instance, fillWith){
+    const name_2=fillWith.nodeName.toLowerCase();
+    const fillHole=(p, n) => {
+      let _1;
+      if(name_2=="title"&&fillWith.hasChildNodes()){
+        const parsed=ParseHTMLIntoFakeRoot(fillWith.textContent);
+        fillWith.removeChild(fillWith.firstChild);
+        while(parsed.hasChildNodes())
+          fillWith.appendChild(parsed.firstChild);
+        _1=void 0;
+      }
+      else _1=null;
+      convertElement(fillWith);
+      return fill(fillWith, p, n);
+    };
+    foreachNotPreserved(instance, "[ws-attr-holes]", (e) => {
+      const holeAttrs=SplitChars(e.getAttribute("ws-attr-holes"), [" "], 1);
+      for(let i=0, _2=holeAttrs.length-1;i<=_2;i++){
+        const attrName=get(holeAttrs, i);
+        let this_1=new RegExp("\\${"+name_2+"}", "ig");
+        let str=e.getAttribute(attrName);
+        let newSubStr=fillWith.textContent;
+        let _1=str.replace(this_1, newSubStr);
+        e.setAttribute(attrName, _1);
+      }
+    });
+    const m=instance.querySelector("[ws-hole="+name_2+"]");
+    if(Equals(m, null)){
+      const m_1=instance.querySelector("[ws-replace="+name_2+"]");
+      if(Equals(m_1, null)){
+        const m_2=instance.querySelector("slot[name="+name_2+"]");
+        return instance.tagName.toLowerCase()=="template"?(fillHole(m_2.parentNode, m_2),void m_2.parentNode.removeChild(m_2)):null;
+      }
+      else {
+        fillHole(m_1.parentNode, m_1);
+        m_1.parentNode.removeChild(m_1);
+        return;
+      }
+    }
+    else {
+      while(m.hasChildNodes())
+        m.removeChild(m.lastChild);
+      m.removeAttribute("ws-hole");
+      return(((a) => {
+        const _1=a;
+        return(_2) => fillHole(_1, _2);
+      })(m))(null);
+    }
+  }
+  function convertElement(el){
+    if(!el.hasAttribute("ws-preserve"))if(StartsWith(el.nodeName.toLowerCase(), "ws-"))convertInstantiation(el);
+    else {
+      convertAttrs(el);
+      convertNodeAndSiblings(el.firstChild);
+    }
+  }
+  function convertNodeAndSiblings(n){
+    return recF(0, n);
+  }
+  function convertInstantiation(el){
+    return recF(1, el);
+  }
+  function convertNestedTemplates(el){
+    while(true)
+      {
+        const m=el.querySelector("[ws-template]");
+        if(Equals(m, null)){
+          const m_1=el.querySelector("[ws-children-template]");
+          if(Equals(m_1, null)){
+            const idTemplates=el.querySelectorAll("template[id]");
+            for(let i=1, _1=idTemplates.length-1;i<=_1;i++){
+              const n=idTemplates[i];
+              if(processedHTML5Templates.Contains(n)){ }
+              else {
+                PrepareTemplateStrict(baseName, Some(n.getAttribute("id")), n, null);
+                processedHTML5Templates.SAdd(n);
+              }
+            }
+            const nameTemplates=el.querySelectorAll("template[name]");
+            for(let i_1=1, _2=nameTemplates.length-1;i_1<=_2;i_1++){
+              const n_1=nameTemplates[i_1];
+              if(processedHTML5Templates.Contains(n_1)){ }
+              else {
+                PrepareTemplateStrict(baseName, Some(n_1.getAttribute("name")), n_1, null);
+                processedHTML5Templates.SAdd(n_1);
+              }
+            }
+            return null;
+          }
+          else {
+            const name_2=m_1.getAttribute("ws-children-template");
+            m_1.removeAttribute("ws-children-template");
+            PrepareTemplateStrict(baseName, Some(name_2), m_1, null);
+            el=el;
+          }
+        }
+        else {
+          const name_3=m.getAttribute("ws-template");
+          (PrepareSingleTemplate(baseName, Some(name_3), m))(null);
+          el=el;
+        }
+      }
+  }
+  const name_1=(name==null?"":name.$0).toLowerCase();
+  LoadedTemplateFile(baseName).set_Item(name_1, fakeroot);
+  if(fakeroot.hasChildNodes()){
+    convertNestedTemplates(fakeroot);
+    convertNodeAndSiblings(fakeroot.firstChild);
+  }
+}
+function foreachNotPreserved(root, selector, f){
+  IterSelector(root, selector, (p) => {
+    if(p.closest("[ws-preserve]")==null)f(p);
+  });
+}
+function PrepareSingleTemplate(baseName, name, el){
+  const root=FakeRootSingle(el);
+  return(p) => {
+    PrepareTemplateStrict(baseName, name, root, p);
+  };
+}
+function TextHoleRE(){
+  return _c_3.TextHoleRE;
+}
+function Updates(dyn){
+  return MapTreeReduce((x) => x.NChanged, Const(), Map2Unit, dyn.DynNodes);
+}
+function AppendTree(a, b){
+  if(a===null)return b;
+  else if(b===null)return a;
+  else {
+    const x=Attr.A2(a, b);
+    SetFlags(x, Flags(a)|Flags(b));
+    return x;
+  }
+}
+function EmptyAttr(){
+  return _c_7.EmptyAttr;
+}
+function Insert(elem, tree){
+  const nodes=[];
+  const oar=[];
+  function loop(node){
+    while(true)
+      {
+        if(!(node===null)){
+          if(node!=null&&node.$==1)return nodes.push(node.$0);
+          else if(node!=null&&node.$==2){
+            const b=node.$1;
+            const a=node.$0;
+            loop(a);
+            node=b;
+          }
+          else return node!=null&&node.$==3?node.$0(elem):node!=null&&node.$==4?oar.push(node.$0):null;
+        }
+        else return null;
+      }
+  }
+  loop(tree);
+  const arr=nodes.slice(0);
+  let _1=New_43(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+    iter_1((f) => {
+      f(el);
+    }, oar);
+  }));
+  return _1;
+}
+function HasExitAnim(attr_1){
+  const flag=2;
+  return(attr_1.DynFlags&flag)===flag;
+}
+function GetExitAnim(dyn){
+  return GetAnim(dyn, (_1, _2) => _1.NGetExitAnim(_2));
+}
+function HasEnterAnim(attr_1){
+  const flag=1;
+  return(attr_1.DynFlags&flag)===flag;
+}
+function GetEnterAnim(dyn){
+  return GetAnim(dyn, (_1, _2) => _1.NGetEnterAnim(_2));
+}
+function HasChangeAnim(attr_1){
+  const flag=4;
+  return(attr_1.DynFlags&flag)===flag;
+}
+function GetChangeAnim(dyn){
+  return GetAnim(dyn, (_1, _2) => _1.NGetChangeAnim(_2));
+}
+function SetFlags(a, f){
+  a.flags=f;
+}
+function Flags(a){
+  return a!==null&&a.hasOwnProperty("flags")?a.flags:0;
+}
+function GetAnim(dyn, f){
+  return Concat(map((n) => f(n, dyn.DynElem), dyn.DynNodes));
+}
+function Sync(elem, dyn){
+  iter((d) => {
+    d.NSync(elem);
+  }, dyn.DynNodes);
+}
+function ParseHTMLIntoFakeRoot(elem){
+  const root=globalThis.document.createElement("div");
+  if(!rhtml().test(elem)){
+    root.appendChild(globalThis.document.createTextNode(elem));
+    return root;
+  }
+  else {
+    const m=rtagName().exec(elem);
+    const tag=Equals(m, null)?"":get(m, 1).toLowerCase();
+    const w=(wrapMap())[tag];
+    const p=w?w:defaultWrap();
+    root.innerHTML=p[1]+elem.replace(rxhtmlTag(), "<$1></$2>")+p[2];
+    function unwrap(elt, a){
+      while(true)
+        {
+          if(a===0)return elt;
+          else {
+            const i=a;
+            elt=elt.lastChild;
+            a=i-1;
+          }
+        }
+    }
+    return(((a) => {
+      const _1=a;
+      return(_2) => unwrap(_1, _2);
+    })(root))(p[0]);
+  }
+}
+function rhtml(){
+  return _c_5.rhtml;
+}
+function wrapMap(){
+  return _c_5.wrapMap;
+}
+function defaultWrap(){
+  return _c_5.defaultWrap;
+}
+function rxhtmlTag(){
+  return _c_5.rxhtmlTag;
+}
+function rtagName(){
+  return _c_5.rtagName;
+}
+function IterSelector(el, selector, f){
+  const l=el.querySelectorAll(selector);
+  for(let i=0, _1=l.length-1;i<=_1;i++)f(l[i]);
+}
+function InsertAt(parent, pos, node){
+  let _1;
+  if(node.parentNode===parent){
+    const m=node.nextSibling;
+    let _2=Equals(m, null)?null:m;
+    _1=pos===_2;
+  }
+  else _1=false;
+  if(!_1)parent.insertBefore(node, pos);
+}
+function RemoveNode(parent, el){
+  if(el.parentNode===parent)parent.removeChild(el);
+}
+function Handler(name, callback){
+  return Attr.A3((el) => {
+    el.addEventListener(name, (d) =>(callback(el))(d), false);
+  });
+}
+function Const(x){
+  const o={s:Forever(x)};
+  return() => o;
+}
+function MapSeqCached(conv, view){
+  return MapSeqCachedBy((x) => x, conv, view);
+}
+function Sink(act, a){
+  function loop(){
+    WhenRun(a(), act, () => {
+      scheduler().Fork(loop);
+    });
+  }
+  scheduler().Fork(loop);
+}
+function MapSeqCachedBy(key, conv, view){
+  const state=[new Dictionary("New_5")];
+  return Map((xs) => {
+    const prevState=state[0];
+    const newState=new Dictionary("New_5");
+    const result=mapInPlace_1((x) => {
+      const k=key(x);
+      const res=prevState.ContainsKey(k)?prevState.Item(k):conv(x);
+      newState.set_Item(k, res);
+      return res;
+    }, ofSeq(xs));
+    state[0]=newState;
+    return result;
+  }, view);
+}
+function Map(fn, a){
+  return CreateLazy(() => Map_1(fn, a()));
+}
+function Map2Unit(a, a_1){
+  return CreateLazy(() => Map2Unit_1(a(), a_1()));
+}
+function CreateLazy(observe){
+  const lv={c:null, o:observe};
+  return() => {
+    let c;
+    c=lv.c;
+    if(c===null){
+      c=lv.o();
+      lv.c=c;
+      const _1=c.s;
+      if(_1!=null&&_1.$==0)lv.o=null;
+      else WhenObsoleteRun(c, () => {
+        lv.c=null;
+      });
+      return c;
+    }
+    else return c;
+  };
+}
+function Bind(fn, view){
+  return Join(Map(fn, view));
+}
+function Join(a){
+  return CreateLazy(() => Join_1(a()));
 }
 let _c_1=Lazy((_i) => class $StartupCode_Library {
   static {
@@ -5494,6 +7240,13 @@ class Dictionary extends Object_1 {
   DAdd(k, v){
     this.add(k, v);
   }
+  Clear(){
+    this.data=[];
+    this.count=0;
+  }
+  set_Item(k, v){
+    this.set(k, v);
+  }
   get(k){
     const d=this.data[this.hash(k)];
     return d==null?notPresent():pick((a) => {
@@ -5514,6 +7267,23 @@ class Dictionary extends Object_1 {
       d.push({K:k, V:v});
     }
   }
+  TryGetValue(k, res){
+    const d=this.data[this.hash(k)];
+    if(d==null)return false;
+    else {
+      const v=tryPick((a) => {
+        const a_1=KeyValue(a);
+        return this.equals.apply(null, [a_1[0], k])?Some(a_1[1]):null;
+      }, d);
+      return v!=null&&v.$==1&&(res.set(v.$0),true);
+    }
+  }
+  RemoveKey(k){
+    return this.remove(k);
+  }
+  get Keys(){
+    return new KeyCollection(this);
+  }
   set(k, v){
     const h=this.hash(k);
     const d=this.data[h];
@@ -5533,6 +7303,15 @@ class Dictionary extends Object_1 {
   GetEnumerator(){
     return Get0(concat(GetFieldValues(this.data)));
   }
+  remove(k){
+    const h=this.hash(k);
+    const d=this.data[h];
+    if(d==null)return false;
+    else {
+      const r=filter((a) =>!this.equals.apply(null, [(KeyValue(a))[0], k]), d);
+      return length(r)<d.length&&(this.count=this.count-1,this.data[h]=r,true);
+    }
+  }
   constructor(i, _1, _2, _3){
     if(i=="New_5"){
       i="New_6";
@@ -5541,7 +7320,7 @@ class Dictionary extends Object_1 {
       _3=Hash;
     }
     if(i=="New_6"){
-      const init=_1;
+      const init_2=_1;
       const equals=_2;
       const hash=_3;
       super();
@@ -5549,7 +7328,7 @@ class Dictionary extends Object_1 {
       this.hash=hash;
       this.count=0;
       this.data=[];
-      const e=Get(init);
+      const e=Get(init_2);
       try {
         while(e.MoveNext())
           {
@@ -5564,7 +7343,204 @@ class Dictionary extends Object_1 {
     }
   }
 }
-function New_36(Node_1, Left, Right, Height, Count){
+class ArrayStorage extends Object_1 {
+  init;
+  SSet(coll){
+    return ofSeq(coll);
+  }
+  SInit(){
+    return this.init;
+  }
+  constructor(init_2){
+    super();
+    this.init=init_2;
+  }
+}
+class View { }
+function Obsolete(sn){
+  let _1;
+  const m=sn.s;
+  if(m==null||(m!=null&&m.$==2?(_1=m.$1,false):m!=null&&m.$==3?(_1=m.$1,false):true))void 0;
+  else {
+    sn.s=null;
+    for(let i=0, _2=length(_1)-1;i<=_2;i++){
+      const o=get(_1, i);
+      if(typeof o=="object")(((sn_1) => {
+        Obsolete(sn_1);
+      })(o));
+      else o();
+    }
+  }
+}
+function WhenRun(snap, avail, obs){
+  const m=snap.s;
+  if(m==null)obs();
+  else if(m!=null&&m.$==2){
+    const v=m.$0;
+    m.$1.push(obs);
+    avail(v);
+  }
+  else if(m!=null&&m.$==3){
+    const q2=m.$1;
+    m.$0.push(avail);
+    q2.push(obs);
+  }
+  else avail(m.$0);
+}
+function Map_1(fn, sn){
+  const m=sn.s;
+  if(m!=null&&m.$==0)return{s:Forever(fn(m.$0))};
+  else {
+    const res={s:Waiting([], [])};
+    When(sn, (a) => {
+      MarkDone(res, sn, fn(a));
+    }, res);
+    return res;
+  }
+}
+function Copy(sn){
+  const m=sn.s;
+  if(m==null)return sn;
+  else if(m!=null&&m.$==2){
+    const res={s:Ready(m.$0, [])};
+    WhenObsolete(sn, res);
+    return res;
+  }
+  else if(m!=null&&m.$==3){
+    const res_1={s:Waiting([], [])};
+    When(sn, (v) => {
+      MarkDone(res_1, sn, v);
+    }, res_1);
+    return res_1;
+  }
+  else return sn;
+}
+function WhenObsoleteRun(snap, obs){
+  const m=snap.s;
+  if(m==null)obs();
+  else m!=null&&m.$==2?(m.$0,m.$1.push(obs)):m!=null&&m.$==3?(m.$0,m.$1.push(obs)):m.$0;
+}
+function Map2Unit_1(sn1, sn2){
+  const _1=sn1.s;
+  const _2=sn2.s;
+  if(_1!=null&&_1.$==0)return _2!=null&&_2.$==0?{s:Forever(null)}:sn2;
+  else if(_2!=null&&_2.$==0)return sn1;
+  else {
+    const res={s:Waiting([], [])};
+    const cont=() => {
+      const m=res.s;
+      if(!(m!=null&&m.$==0||m!=null&&m.$==2)){
+        const _3=ValueAndForever(sn1);
+        const _4=ValueAndForever(sn2);
+        if(_3!=null&&_3.$==1)if(_4!=null&&_4.$==1)if(_3.$0[1]&&_4.$0[1])MarkForever(res, null);
+        else MarkReady(res, null);
+      }
+    };
+    When(sn1, cont, res);
+    When(sn2, cont, res);
+    return res;
+  }
+}
+function When(snap, avail, obs){
+  const m=snap.s;
+  if(m==null)Obsolete(obs);
+  else if(m!=null&&m.$==2){
+    const v=m.$0;
+    EnqueueSafe(m.$1, obs);
+    avail(v);
+  }
+  else if(m!=null&&m.$==3){
+    const q2=m.$1;
+    m.$0.push(avail);
+    EnqueueSafe(q2, obs);
+  }
+  else avail(m.$0);
+}
+function MarkDone(res, sn, v){
+  const _1=sn.s;
+  if(_1!=null&&_1.$==0)MarkForever(res, v);
+  else MarkReady(res, v);
+}
+function WhenObsolete(snap, obs){
+  const m=snap.s;
+  if(m==null)Obsolete(obs);
+  else m!=null&&m.$==2?(m.$0,EnqueueSafe(m.$1, obs)):m!=null&&m.$==3?(m.$0,EnqueueSafe(m.$1, obs)):m.$0;
+}
+function ValueAndForever(snap){
+  const m=snap.s;
+  return m!=null&&m.$==0?Some([m.$0, true]):m!=null&&m.$==2?Some([m.$0, false]):null;
+}
+function MarkForever(sn, v){
+  const m=sn.s;
+  if(m!=null&&m.$==3){
+    const q=m.$0;
+    sn.s=Forever(v);
+    for(let i=0, _1=length(q)-1;i<=_1;i++)(get(q, i))(v);
+  }
+  else void 0;
+}
+function MarkReady(sn, v){
+  const m=sn.s;
+  if(m!=null&&m.$==3){
+    const q2=m.$1;
+    const q1=m.$0;
+    sn.s=Ready(v, q2);
+    for(let i=0, _1=length(q1)-1;i<=_1;i++)(get(q1, i))(v);
+  }
+  else void 0;
+}
+function EnqueueSafe(q, x){
+  q.push(x);
+  if(q.length%20===0){
+    const qcopy=q.slice(0);
+    Clear(q);
+    for(let i=0, _1=length(qcopy)-1;i<=_1;i++){
+      const o=get(qcopy, i);
+      if(typeof o=="object")(((sn) => {
+        if(sn.s)q.push(sn);
+      })(o));
+      else(((f) => {
+        q.push(f);
+      })(o));
+    }
+  }
+  else void 0;
+}
+function Join_1(snap){
+  const res={s:Waiting([], [])};
+  When(snap, (x) => {
+    const y=x();
+    When(y, (v) => {
+      let _1;
+      const _2=y.s;
+      if(_2!=null&&_2.$==0){
+        const _3=snap.s;
+        _1=_3!=null&&_3.$==0;
+      }
+      else _1=false;
+      if(_1)MarkForever(res, v);
+      else MarkReady(res, v);
+    }, res);
+  }, res);
+  return res;
+}
+function TextNodeDoc(Item){
+  return{$:5, $0:Item};
+}
+function ElemDoc(Item){
+  return{$:1, $0:Item};
+}
+function AppendDoc(Item1, Item2){
+  return{
+    $:0, 
+    $0:Item1, 
+    $1:Item2
+  };
+}
+function EmbedDoc(Item){
+  return{$:2, $0:Item};
+}
+function New_42(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1, 
     Left:Left, 
@@ -5573,7 +7549,279 @@ function New_36(Node_1, Left, Right, Height, Count){
     Count:Count
   };
 }
-function TryParseBigInt(s, min, max, r){
+let _c_2=Lazy((_i) => class Var_1 extends Object_1 {
+  static {
+    _c_2=_i(this);
+  }
+  static Create_1(v){
+    return new ConcreteVar(false, {s:Ready(v, [])}, v);
+  }
+  static { }
+});
+function Forever(Item){
+  return{$:0, $0:Item};
+}
+function Ready(Item1, Item2){
+  return{
+    $:2, 
+    $0:Item1, 
+    $1:Item2
+  };
+}
+function Waiting(Item1, Item2){
+  return{
+    $:3, 
+    $0:Item1, 
+    $1:Item2
+  };
+}
+let _c_3=Lazy((_i) => class $StartupCode_Templates {
+  static {
+    _c_3=_i(this);
+  }
+  static RenderedFullDocTemplate;
+  static TextHoleRE;
+  static GlobalHoles;
+  static LocalTemplatesLoaded;
+  static LoadedTemplates;
+  static {
+    this.LoadedTemplates=new Dictionary("New_5");
+    this.LocalTemplatesLoaded=false;
+    this.GlobalHoles=new Dictionary("New_5");
+    this.TextHoleRE="\\${([^}]+)}";
+    this.RenderedFullDocTemplate=null;
+  }
+});
+function LinkElement(el, children){
+  InsertDoc(el, children, null);
+}
+function InsertDoc(parent, doc_2, pos){
+  while(true)
+    {
+      if(doc_2!=null&&doc_2.$==1){
+        const e=doc_2.$0;
+        return InsertNode(parent, e.El, pos);
+      }
+      else if(doc_2!=null&&doc_2.$==2){
+        const d=doc_2.$0;
+        d.Dirty=false;
+        doc_2=d.Current;
+      }
+      else if(doc_2==null)return pos;
+      else if(doc_2!=null&&doc_2.$==4){
+        const t=doc_2.$0;
+        return InsertNode(parent, t.Text, pos);
+      }
+      else if(doc_2!=null&&doc_2.$==5){
+        const t_1=doc_2.$0;
+        return InsertNode(parent, t_1, pos);
+      }
+      else if(doc_2!=null&&doc_2.$==6)return foldBack((_1, _2) =>((((parent_1) =>(el) =>(pos_1) => el==null||el.constructor===Object?InsertDoc(parent_1, el, pos_1):InsertNode(parent_1, el, pos_1))(parent))(_1))(_2), doc_2.$0.Els, pos);
+      else {
+        const b=doc_2.$1;
+        const a=doc_2.$0;
+        doc_2=a;
+        pos=InsertDoc(parent, b, pos);
+      }
+    }
+}
+function CreateRunState(parent, doc_2){
+  return New_44(get_Empty(), CreateElemNode(parent, EmptyAttr(), doc_2));
+}
+function PerformAnimatedUpdate(childrenOnly, st, doc_2){
+  return get_UseAnimations()?Delay(() => {
+    const cur=FindAll(doc_2);
+    const change=ComputeChangeAnim(st, cur);
+    const enter=ComputeEnterAnim(st, cur);
+    return Bind_1(Play(Append(change, ComputeExitAnim(st, cur))), () => Bind_1(SyncElemNodesNextFrame(childrenOnly, st), () => Bind_1(Play(enter), () => {
+      st.PreviousNodes=cur;
+      return Return(null);
+    })));
+  }):SyncElemNodesNextFrame(childrenOnly, st);
+}
+function PerformSyncUpdate(childrenOnly, st, doc_2){
+  const cur=FindAll(doc_2);
+  SyncElemNode(childrenOnly, st.Top);
+  st.PreviousNodes=cur;
+}
+function InsertNode(parent, node, pos){
+  InsertAt(parent, pos, node);
+  return node;
+}
+function CreateElemNode(el, attr_1, children){
+  LinkElement(el, children);
+  const attr_2=Insert(el, attr_1);
+  return DocElemNode.New(attr_2, children, null, el, Int(), GetOptional(attr_2.OnAfterRender));
+}
+function SyncElemNodesNextFrame(childrenOnly, st){
+  if(BatchUpdatesEnabled()){
+    const c=(ok) => {
+      requestAnimationFrame(() => {
+        SyncElemNode(childrenOnly, st.Top);
+        ok();
+      });
+    };
+    return FromContinuations((_1, _2, _3) => c.apply(null, [_1, _2, _3]));
+  }
+  else {
+    SyncElemNode(childrenOnly, st.Top);
+    return Return(null);
+  }
+}
+function ComputeExitAnim(st, cur){
+  return Concat(map((n) => GetExitAnim(n.Attr), ToArray(Except(cur, Filter((n) => HasExitAnim(n.Attr), st.PreviousNodes)))));
+}
+function ComputeEnterAnim(st, cur){
+  return Concat(map((n) => GetEnterAnim(n.Attr), ToArray(Except(st.PreviousNodes, Filter((n) => HasEnterAnim(n.Attr), cur)))));
+}
+function ComputeChangeAnim(st, cur){
+  const f=(n) => HasChangeAnim(n.Attr);
+  const relevant=(a) => Filter(f, a);
+  return Concat(map((n) => GetChangeAnim(n.Attr), ToArray(Intersect(relevant(st.PreviousNodes), relevant(cur)))));
+}
+function SyncElemNode(childrenOnly, el){
+  !childrenOnly?SyncElement(el):void 0;
+  Sync_1(el.Children);
+  AfterRender(el);
+}
+function CreateEmbedNode(){
+  return{Current:null, Dirty:false};
+}
+function UpdateEmbedNode(node, upd){
+  node.Current=upd;
+  node.Dirty=true;
+}
+function SyncElement(el){
+  function hasDirtyChildren(el_1){
+    function dirty(doc_2){
+      while(true)
+        {
+          if(doc_2!=null&&doc_2.$==0){
+            const b=doc_2.$1;
+            const a=doc_2.$0;
+            if(dirty(a))return true;
+            else doc_2=b;
+          }
+          else if(doc_2!=null&&doc_2.$==2){
+            const d=doc_2.$0;
+            if(d.Dirty)return true;
+            else doc_2=d.Current;
+          }
+          else if(doc_2!=null&&doc_2.$==6){
+            const t=doc_2.$0;
+            return t.Dirty||exists(hasDirtyChildren, t.Holes);
+          }
+          else return false;
+        }
+    }
+    return dirty(el_1.Children);
+  }
+  Sync(el.El, el.Attr);
+  if(hasDirtyChildren(el))DoSyncElement(el);
+}
+function Sync_1(doc_2){
+  while(true)
+    {
+      if(doc_2!=null&&doc_2.$==1)return SyncElemNode(false, doc_2.$0);
+      else if(doc_2!=null&&doc_2.$==2){
+        const n=doc_2.$0;
+        doc_2=n.Current;
+      }
+      else if(doc_2==null)return null;
+      else if(doc_2!=null&&doc_2.$==5)return null;
+      else if(doc_2!=null&&doc_2.$==4){
+        const d=doc_2.$0;
+        return d.Dirty?(d.Text.nodeValue=d.Value,d.Dirty=false):null;
+      }
+      else if(doc_2!=null&&doc_2.$==6){
+        const t=doc_2.$0;
+        iter((h) => {
+          SyncElemNode(false, h);
+        }, t.Holes);
+        iter((t_1) => {
+          Sync(t_1[0], t_1[1]);
+        }, t.Attrs);
+        return AfterRender(t);
+      }
+      else {
+        const b=doc_2.$1;
+        const a=doc_2.$0;
+        Sync_1(a);
+        doc_2=b;
+      }
+    }
+}
+function AfterRender(el){
+  const m=GetOptional(el.Render);
+  if(m!=null&&m.$==1){
+    m.$0(el.El);
+    SetOptional(el, "Render", null);
+  }
+}
+function DoSyncElement(el){
+  const parent=el.El;
+  function ins(doc_2, pos){
+    while(true)
+      {
+        if(doc_2!=null&&doc_2.$==1)return doc_2.$0.El;
+        else if(doc_2!=null&&doc_2.$==2){
+          const d=doc_2.$0;
+          if(d.Dirty){
+            d.Dirty=false;
+            return InsertDoc(parent, d.Current, pos);
+          }
+          else doc_2=d.Current;
+        }
+        else if(doc_2==null)return pos;
+        else if(doc_2!=null&&doc_2.$==4)return doc_2.$0.Text;
+        else if(doc_2!=null&&doc_2.$==5)return doc_2.$0;
+        else if(doc_2!=null&&doc_2.$==6){
+          const t=doc_2.$0;
+          if(t.Dirty)t.Dirty=false;
+          return foldBack((_3, _4) => _3==null||_3.constructor===Object?ins(_3, _4):_3, t.Els, pos);
+        }
+        else {
+          const b=doc_2.$1;
+          const a=doc_2.$0;
+          doc_2=a;
+          pos=ins(b, pos);
+        }
+      }
+  }
+  const p=el.El;
+  Iter((e) => {
+    RemoveNode(p, e);
+  }, Except_2(DocChildren(el), Children(el.El, GetOptional(el.Delimiters))));
+  let _1=el.Children;
+  const m=GetOptional(el.Delimiters);
+  let _2=m!=null&&m.$==1?m.$0[1]:null;
+  ins(_1, _2);
+}
+class DocElemNode {
+  Attr;
+  Children;
+  Delimiters;
+  El;
+  ElKey;
+  Render;
+  Equals(o){
+    return this.ElKey===o.ElKey;
+  }
+  GetHashCode(){
+    return this.ElKey;
+  }
+  static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
+    const _1={
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
+      ElKey:ElKey
+    };
+    let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
+    return Create_2(DocElemNode, _2);
+  }
+}
+function TryParseBigInt(s, min, max_1, r){
   let o, _1;
   o=0n;
   try {
@@ -5585,13 +7833,377 @@ function TryParseBigInt(s, min, max, r){
   const m=[_1, o];
   if(m[0]){
     const x=m[1];
-    const ok=x===x-x%1n&&x>=min&&x<=max;
+    const ok=x===x-x%1n&&x>=min&&x<=max_1;
     if(ok)r.set(x);
     return ok;
   }
   else return false;
 }
-function concat_2(o){
+function TryParse_2(s, min, max_1, r){
+  const x=+s;
+  const ok=x===x-x%1&&x>=min&&x<=max_1;
+  if(ok)r.set(x);
+  return ok;
+}
+class ConcreteVar extends Var {
+  isConst;
+  current;
+  snap;
+  view;
+  id;
+  Set(v){
+    if(this.isConst)(((_1) => _1("WebSharper.UI: invalid attempt to change value of a Var after calling SetFinal"))((s) => {
+      console.log(s);
+    }));
+    else {
+      Obsolete(this.snap);
+      this.current=v;
+      this.snap={s:Ready(v, [])};
+    }
+  }
+  get View(){
+    return this.view;
+  }
+  Get(){
+    return this.current;
+  }
+  UpdateMaybe(f){
+    const m=f(this.Get());
+    if(m!=null&&m.$==1)this.Set(m.$0);
+  }
+  constructor(isConst, initSnap, initValue){
+    super();
+    this.isConst=isConst;
+    this.current=initValue;
+    this.snap=initSnap;
+    this.view=() => this.snap;
+    this.id=Int();
+  }
+}
+class TemplateHole extends Object_1 { }
+function convertTextNode(n){
+  let m, li;
+  m=null;
+  li=0;
+  const s=n.textContent;
+  const strRE=new RegExp(TextHoleRE(), "g");
+  while(m=strRE.exec(s),m!==null)
+    {
+      n.parentNode.insertBefore(globalThis.document.createTextNode(string(s, Some(li), Some(strRE.lastIndex-get(m, 0).length-1))), n);
+      li=strRE.lastIndex;
+      const hole=globalThis.document.createElement("span");
+      hole.setAttribute("ws-replace", get(m, 1).toLowerCase());
+      n.parentNode.insertBefore(hole, n);
+    }
+  strRE.lastIndex=0;
+  n.textContent=string(s, Some(li), null);
+}
+function failNotLoaded(name){
+  console.warn("Instantiating non-loaded template", name);
+}
+function fillTextHole(instance, fillWith, templateName){
+  const m=instance.querySelector("[ws-replace]");
+  return Equals(m, null)?(console.warn("Filling non-existent text hole", templateName),null):(m.parentNode.replaceChild(globalThis.document.createTextNode(fillWith), m),Some(m.getAttribute("ws-replace")));
+}
+function removeHolesExcept(instance, dontRemove){
+  const run=(attrName) => {
+    foreachNotPreserved(instance, "["+attrName+"]", (e) => {
+      if(!dontRemove.Contains(e.getAttribute(attrName)))e.removeAttribute(attrName);
+    });
+  };
+  run("ws-attr");
+  run("ws-onafterrender");
+  run("ws-var");
+  foreachNotPreserved(instance, "[ws-hole]", (e) => {
+    if(!dontRemove.Contains(e.getAttribute("ws-hole"))){
+      e.removeAttribute("ws-hole");
+      while(e.hasChildNodes())
+        e.removeChild(e.lastChild);
+    }
+  });
+  foreachNotPreserved(instance, "[ws-replace]", (e) => {
+    if(!dontRemove.Contains(e.getAttribute("ws-replace")))e.parentNode.removeChild(e);
+  });
+  foreachNotPreserved(instance, "[ws-on]", (e) => {
+    e.setAttribute("ws-on", concat_1(" ", filter((x) => dontRemove.Contains(get(SplitChars(x, [":"], 1), 1)), SplitChars(e.getAttribute("ws-on"), [" "], 1))));
+  });
+  foreachNotPreserved(instance, "[ws-attr-holes]", (e) => {
+    const holeAttrs=SplitChars(e.getAttribute("ws-attr-holes"), [" "], 1);
+    for(let i=0, _2=holeAttrs.length-1;i<=_2;i++){
+      const attrName=get(holeAttrs, i);
+      let this_1=new RegExp(TextHoleRE(), "g");
+      let str=e.getAttribute(attrName);
+      let replaceFn=(_3, _4) => dontRemove.Contains(_4)?_3:"";
+      let _1=str.replace(this_1, replaceFn);
+      e.setAttribute(attrName, _1);
+    }
+  });
+}
+function fillInstanceAttrs(instance, fillWith){
+  convertAttrs(fillWith);
+  const name=fillWith.nodeName.toLowerCase();
+  const m=instance.querySelector("[ws-attr="+name+"]");
+  if(Equals(m, null))console.warn("Filling non-existent attr hole", name);
+  else {
+    m.removeAttribute("ws-attr");
+    for(let i=0, _1=fillWith.attributes.length-1;i<=_1;i++){
+      const a=fillWith.attributes.item(i);
+      if(a.name=="class"&&m.hasAttribute("class"))m.setAttribute("class", m.getAttribute("class")+" "+a.nodeValue);
+      else m.setAttribute(a.name, a.nodeValue);
+    }
+  }
+}
+function mapHoles(t, mappings){
+  const run=(attrName) => {
+    foreachNotPreserved(t, "["+attrName+"]", (e) => {
+      let o;
+      const m=(o=null,[mappings.TryGetValue(e.getAttribute(attrName).toLowerCase(), {get:() => o, set:(v) => {
+        o=v;
+      }}), o]);
+      if(m[0])e.setAttribute(attrName, m[1]);
+    });
+  };
+  run("ws-hole");
+  run("ws-replace");
+  run("ws-attr");
+  run("ws-onafterrender");
+  run("ws-var");
+  foreachNotPreserved(t, "[ws-on]", (e) => {
+    e.setAttribute("ws-on", concat_1(" ", map((x) => {
+      let o;
+      const a=SplitChars(x, [":"], 1);
+      const m=(o=null,[mappings.TryGetValue(get(a, 1), {get:() => o, set:(v) => {
+        o=v;
+      }}), o]);
+      return m[0]?get(a, 0)+":"+m[1]:x;
+    }, SplitChars(e.getAttribute("ws-on"), [" "], 1))));
+  });
+  foreachNotPreserved(t, "[ws-attr-holes]", (e) => {
+    const holeAttrs=SplitChars(e.getAttribute("ws-attr-holes"), [" "], 1);
+    for(let i=0, _1=holeAttrs.length-1;i<=_1;i++)((() => {
+      const attrName=get(holeAttrs, i);
+      return e.setAttribute(attrName, fold_1((_2, _3) => {
+        const a=KeyValue(_3);
+        return _2.replace(new RegExp("\\${"+a[0]+"}", "ig"), "${"+a[1]+"}");
+      }, e.getAttribute(attrName), mappings));
+    })());
+  });
+}
+function fill(fillWith, p, n){
+  while(true)
+    {
+      if(fillWith.hasChildNodes())n=p.insertBefore(fillWith.lastChild, n);
+      else return null;
+    }
+}
+function convertAttrs(el){
+  const attrs=el.attributes;
+  const toRemove=[];
+  const events=[];
+  const holedAttrs=[];
+  for(let i=0, _2=attrs.length-1;i<=_2;i++){
+    const a=attrs.item(i);
+    if(StartsWith(a.nodeName, "ws-on")&&a.nodeName!="ws-onafterrender"&&a.nodeName!="ws-on"){
+      toRemove.push(a.nodeName);
+      events.push(string(a.nodeName, Some("ws-on".length), null)+":"+a.nodeValue.toLowerCase());
+    }
+    else if(!StartsWith(a.nodeName, "ws-")&&(new RegExp(TextHoleRE())).test(a.nodeValue)){
+      let this_1=new RegExp(TextHoleRE(), "g");
+      let str=a.nodeValue;
+      let replaceFn=(_3, _4) =>"${"+_4.toLowerCase()+"}";
+      let _1=str.replace(this_1, replaceFn);
+      a.nodeValue=_1;
+      holedAttrs.push(a.nodeName);
+    }
+    else void 0;
+  }
+  if(!(events.length==0))el.setAttribute("ws-on", concat_1(" ", events));
+  if(!(holedAttrs.length==0))el.setAttribute("ws-attr-holes", concat_1(" ", holedAttrs));
+  const lowercaseAttr=(name) => {
+    const m=el.getAttribute(name);
+    if(m==null){ }
+    else el.setAttribute(name, m.toLowerCase());
+  };
+  lowercaseAttr("ws-hole");
+  lowercaseAttr("ws-replace");
+  lowercaseAttr("ws-attr");
+  lowercaseAttr("ws-onafterrender");
+  lowercaseAttr("ws-var");
+  iter((a_1) => {
+    el.removeAttribute(a_1);
+  }, toRemove);
+}
+function string(source, start, finish){
+  if(start==null){
+    if(finish!=null&&finish.$==1){
+      const f=finish.$0;
+      return f<0?"":source.slice(0, f+1);
+    }
+    else return"";
+  }
+  else if(finish==null)return source.slice(start.$0);
+  else {
+    const f_1=finish.$0;
+    const s=start.$0;
+    return f_1<0?"":source.slice(s, f_1+1);
+  }
+}
+class KeyCollection extends Object_1 {
+  d;
+  GetEnumerator(){
+    return Get(map_2((kvp) => kvp.K, this.d));
+  }
+  constructor(d){
+    super();
+    this.d=d;
+  }
+}
+function get_UseAnimations(){
+  return UseAnimations();
+}
+function Play(anim){
+  return Delay(() => Bind_1(Run(() => { }, Actions(anim)), () => {
+    Finalize(anim);
+    return Return(null);
+  }));
+}
+function Append(a, a_1){
+  return Anim(Append_1(a.$0, a_1.$0));
+}
+function Run(k, anim){
+  const dur=anim.Duration;
+  if(dur===0)return Zero();
+  else {
+    const c=(ok) => {
+      function loop(start){
+        return(now) => {
+          const t=now-start;
+          anim.Compute(t);
+          k();
+          return t<=dur?void requestAnimationFrame((t_1) => {
+            (loop(start))(t_1);
+          }):ok();
+        };
+      }
+      requestAnimationFrame((t) => {
+        (loop(t))(t);
+      });
+    };
+    return FromContinuations((_1, _2, _3) => c.apply(null, [_1, _2, _3]));
+  }
+}
+function Anim(Item){
+  return{$:0, $0:Item};
+}
+function Concat(xs){
+  return Anim(Concat_1(map_2(List, xs)));
+}
+function BatchUpdatesEnabled(){
+  return _c_4.BatchUpdatesEnabled;
+}
+function StartProcessor(procAsync){
+  const st=[0];
+  function work(){
+    return Delay(() => Bind_1(procAsync, () => {
+      const m=st[0];
+      return Equals(m, 1)?(st[0]=0,Zero()):Equals(m, 2)?(st[0]=1,work()):Zero();
+    }));
+  }
+  return() => {
+    const m=st[0];
+    if(Equals(m, 0)){
+      st[0]=1;
+      Start(work(), null);
+    }
+    else Equals(m, 1)?st[0]=2:void 0;
+  };
+}
+class Elt extends Doc {
+  docNode_1;
+  updates_1;
+  elt;
+  rvUpdates;
+  static New(el, attr_1, children){
+    const node=CreateElemNode(el, attr_1, children.docNode);
+    const rvUpdates=Updates_1.Create(children.updates);
+    return new Elt(ElemDoc(node), Map2Unit(Updates(node.Attr), rvUpdates.v), el, rvUpdates);
+  }
+  constructor(docNode, updates, elt, rvUpdates){
+    super(docNode, updates);
+    this.docNode_1=docNode;
+    this.updates_1=updates;
+    this.elt=elt;
+    this.rvUpdates=rvUpdates;
+  }
+}
+function ofSeqNonCopying(xs){
+  if(xs instanceof Array)return xs;
+  else if(xs instanceof FSharpList)return ofList(xs);
+  else if(xs===null)return[];
+  else {
+    const q=[];
+    const o=Get(xs);
+    try {
+      while(o.MoveNext())
+        q.push(o.Current);
+      return q;
+    }
+    finally {
+      const _1=o;
+      if(typeof _1=="object"&&isIDisposable(_1))o.Dispose();
+    }
+  }
+}
+function TreeReduce(defaultValue, reduction, array){
+  const l=length(array);
+  function loop(off){
+    return(len) => {
+      let _1;
+      switch(len<=0?0:len===1?off>=0&&off<l?1:(_1=len,2):(_1=len,2)){
+        case 0:
+          return defaultValue;
+        case 1:
+          return get(array, off);
+        case 2:
+          const l2=len/2>>0;
+          return reduction((loop(off))(l2), (loop(off+l2))(len-l2));
+      }
+    };
+  }
+  return(loop(0))(l);
+}
+function mapInPlace_1(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
+  return arr;
+}
+function MapTreeReduce(mapping, defaultValue, reduction, array){
+  const l=length(array);
+  function loop(off){
+    return(len) => {
+      let _1;
+      switch(len<=0?0:len===1?off>=0&&off<l?1:(_1=len,2):(_1=len,2)){
+        case 0:
+          return defaultValue;
+        case 1:
+          return mapping(get(array, off));
+        case 2:
+          const l2=len/2>>0;
+          return reduction((loop(off))(l2), (loop(off+l2))(len-l2));
+      }
+    };
+  }
+  return(loop(0))(l);
+}
+function New_43(DynElem, DynFlags, DynNodes, OnAfterRender){
+  const _1={
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
+    DynNodes:DynNodes
+  };
+  SetOptional(_1, "OnAfterRender", OnAfterRender);
+  return _1;
+}
+function concat_3(o){
   let r=[];
   let k;
   for(var k_1 in o)r.push.apply(r, o[k_1]);
@@ -5616,6 +8228,813 @@ class ArgumentException extends Error {
       super(message);
     }
   }
+}
+function Int(){
+  set_counter(counter()+1);
+  return counter();
+}
+function set_counter(_1){
+  _c_8.counter=_1;
+}
+function counter(){
+  return _c_8.counter;
+}
+function New_44(PreviousNodes, Top){
+  return{PreviousNodes:PreviousNodes, Top:Top};
+}
+function get_Empty(){
+  return NodeSet(new HashSet("New_3"));
+}
+function FindAll(doc_2){
+  const q=[];
+  function recF(recI, _1){
+    while(true)
+      switch(recI){
+        case 0:
+          if(_1!=null&&_1.$==0){
+            const b=_1.$1;
+            const a=_1.$0;
+            recF(0, a);
+            _1=b;
+          }
+          else if(_1!=null&&_1.$==1){
+            const el=_1.$0;
+            _1=el;
+            recI=1;
+          }
+          else if(_1!=null&&_1.$==2){
+            const em=_1.$0;
+            _1=em.Current;
+          }
+          else if(_1!=null&&_1.$==6){
+            const x=_1.$0.Holes;
+            return(((a_1) =>(a_2) => {
+              iter(a_1, a_2);
+            })(loopEN))(x);
+          }
+          else return null;
+          break;
+        case 1:
+          q.push(_1);
+          _1=_1.Children;
+          recI=0;
+          break;
+      }
+  }
+  function loop(node){
+    return recF(0, node);
+  }
+  function loopEN(el){
+    return recF(1, el);
+  }
+  loop(doc_2);
+  return NodeSet(new HashSet("New_2", q));
+}
+function NodeSet(Item){
+  return{$:0, $0:Item};
+}
+function Filter(f, a){
+  return NodeSet(Filter_1(f, a.$0));
+}
+function Except(a, a_1){
+  return NodeSet(Except_1(a.$0, a_1.$0));
+}
+function ToArray(a){
+  return ToArray_2(a.$0);
+}
+function Intersect(a, a_1){
+  return NodeSet(Intersect_1(a.$0, a_1.$0));
+}
+function Delay(mk){
+  return(c) => {
+    try {
+      (mk())(c);
+    }
+    catch(e){
+      c.k(No(e));
+    }
+  };
+}
+function Bind_1(r, f){
+  return checkCancel((c) => {
+    r(New_45((a) => {
+      if(a.$==0){
+        const x=a.$0;
+        scheduler().Fork(() => {
+          try {
+            (f(x))(c);
+          }
+          catch(e){
+            c.k(No(e));
+          }
+        });
+      }
+      else scheduler().Fork(() => {
+        c.k(a);
+      });
+    }, c.ct));
+  });
+}
+function Zero(){
+  return _c_9.Zero;
+}
+function Start(c, ctOpt){
+  const d=(defCTS())[0];
+  const ct=ctOpt==null?d:ctOpt.$0;
+  scheduler().Fork(() => {
+    if(!ct.c)c(New_45((a) => {
+      if(a.$==1)UncaughtAsyncError(a.$0);
+    }, ct));
+  });
+}
+function Return(x){
+  return(c) => {
+    c.k(Ok(x));
+  };
+}
+function scheduler(){
+  return _c_9.scheduler;
+}
+function checkCancel(r){
+  return(c) => {
+    if(c.ct.c)cancel(c);
+    else r(c);
+  };
+}
+function defCTS(){
+  return _c_9.defCTS;
+}
+function UncaughtAsyncError(e){
+  console.log("WebSharper: Uncaught asynchronous exception", e);
+}
+function FromContinuations(subscribe){
+  return(c) => {
+    const continued=[false];
+    const once=(cont) => {
+      if(continued[0])FailWith("A continuation provided by Async.FromContinuations was invoked multiple times");
+      else {
+        continued[0]=true;
+        scheduler().Fork(cont);
+      }
+    };
+    subscribe((a) => {
+      once(() => {
+        c.k(Ok(a));
+      });
+    }, (e) => {
+      once(() => {
+        c.k(No(e));
+      });
+    }, (e) => {
+      once(() => {
+        c.k(Cc(e));
+      });
+    });
+  };
+}
+function cancel(c){
+  c.k(Cc(new OperationCanceledException("New", c.ct)));
+}
+function UseAnimations(){
+  return _c_6.UseAnimations;
+}
+function Actions(a){
+  return ConcatActions(choose((a_1) => a_1.$==1?Some(a_1.$0):null, ToArray_1(a.$0)));
+}
+function Finalize(a){
+  iter((a_1) => {
+    if(a_1.$==0)a_1.$0();
+  }, ToArray_1(a.$0));
+}
+function ConcatActions(xs){
+  const xs_1=ofSeqNonCopying(xs);
+  const m=length(xs_1);
+  if(m===0)return Const_1();
+  else if(m===1)return get(xs_1, 0);
+  else {
+    const dur=max(map_2((anim) => anim.Duration, xs_1));
+    const xs_2=map((x) => Prolong(dur, x), xs_1);
+    return Def(dur, (t) => {
+      iter((anim) => {
+        anim.Compute(t);
+      }, xs_2);
+    });
+  }
+}
+function List(a){
+  return a.$0;
+}
+function Const_1(v){
+  return Def(0, () => v);
+}
+function Def(d, f){
+  return{Compute:f, Duration:d};
+}
+function Prolong(nextDuration, anim){
+  const comp=anim.Compute;
+  const dur=anim.Duration;
+  const last=Create_1(() => anim.Compute(anim.Duration));
+  return{Compute:(t) => t>=dur?last.f():comp(t), Duration:nextDuration};
+}
+let _c_4=Lazy((_i) => class Proxy {
+  static {
+    _c_4=_i(this);
+  }
+  static BatchUpdatesEnabled;
+  static {
+    this.BatchUpdatesEnabled=true;
+  }
+});
+class Updates_1 {
+  c;
+  s;
+  v;
+  static Create(v){
+    let var_1;
+    var_1=null;
+    var_1=Updates_1.New(v, null, () => {
+      let c;
+      c=var_1.s;
+      return c===null?(c=Copy(var_1.c()),var_1.s=c,WhenObsoleteRun(c, () => {
+        var_1.s=null;
+      }),c):c;
+    });
+    return var_1;
+  }
+  static New(Current, Snap, VarView){
+    return Create_2(Updates_1, {
+      c:Current, 
+      s:Snap, 
+      v:VarView
+    });
+  }
+}
+let _c_5=Lazy((_i) => class $StartupCode_DomUtility {
+  static {
+    _c_5=_i(this);
+  }
+  static defaultWrap;
+  static wrapMap;
+  static rhtml;
+  static rtagName;
+  static rxhtmlTag;
+  static {
+    this.rxhtmlTag=new RegExp("<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\\w:]+)[^>]*)\\/>", "gi");
+    this.rtagName=new RegExp("<([\\w:]+)");
+    this.rhtml=new RegExp("<|&#?\\w+;");
+    const table=[1, "<table>", "</table>"];
+    let _1=Object.fromEntries([["option", [1, "<select multiple='multiple'>", "</select>"]], ["legend", [1, "<fieldset>", "</fieldset>"]], ["area", [1, "<map>", "</map>"]], ["param", [1, "<object>", "</object>"]], ["thead", table], ["tbody", table], ["tfoot", table], ["tr", [2, "<table><tbody>", "</tbody></table>"]], ["col", [2, "<table><colgroup>", "</colgoup></table>"]], ["td", [3, "<table><tbody><tr>", "</tr></tbody></table>"]]]);
+    this.wrapMap=_1;
+    this.defaultWrap=[0, "", ""];
+  }
+});
+let _c_6=Lazy((_i) => class $StartupCode_Animation {
+  static {
+    _c_6=_i(this);
+  }
+  static UseAnimations;
+  static CubicInOut;
+  static {
+    this.CubicInOut=Easing.Custom((t) => {
+      const t2=t*t;
+      return 3*t2-2*(t2*t);
+    });
+    this.UseAnimations=true;
+  }
+});
+function Append_1(x, y){
+  return x.$==0?y:y.$==0?x:{
+    $:2, 
+    $0:x, 
+    $1:y
+  };
+}
+function ToArray_1(xs){
+  const out=[];
+  function loop(xs_1){
+    while(true)
+      {
+        if(xs_1.$==1)return out.push(xs_1.$0);
+        else if(xs_1.$==2){
+          const y=xs_1.$1;
+          const x=xs_1.$0;
+          loop(x);
+          xs_1=y;
+        }
+        else return xs_1.$==3?iter((v) => {
+          out.push(v);
+        }, xs_1.$0):null;
+      }
+  }
+  loop(xs);
+  return out.slice(0);
+}
+function Concat_1(xs){
+  const x=ofSeqNonCopying(xs);
+  return TreeReduce(Empty(), Append_1, x);
+}
+function Empty(){
+  return _c_10.Empty;
+}
+let _c_7=Lazy((_i) => class Client {
+  static {
+    _c_7=_i(this);
+  }
+  static FloatApplyChecked;
+  static FloatGetChecked;
+  static FloatSetChecked;
+  static FloatApplyUnchecked;
+  static FloatGetUnchecked;
+  static FloatSetUnchecked;
+  static IntApplyChecked;
+  static IntGetChecked;
+  static IntSetChecked;
+  static IntApplyUnchecked;
+  static IntGetUnchecked;
+  static IntSetUnchecked;
+  static FileApplyUnchecked;
+  static FileGetUnchecked;
+  static FileSetUnchecked;
+  static DateTimeApplyUnchecked;
+  static DateTimeGetUnchecked;
+  static DateTimeSetUnchecked;
+  static StringListApply;
+  static StringListGet;
+  static StringListSet;
+  static StringApply;
+  static StringGet;
+  static StringSet;
+  static BoolCheckedApply;
+  static EmptyAttr;
+  static {
+    this.EmptyAttr=null;
+    this.BoolCheckedApply=(var_1) =>[(el) => {
+      el.addEventListener("change", () => var_1.Get()!=el.checked?var_1.Set(el.checked):null);
+    }, (_1) =>(_2) => _2!=null&&_2.$==1?void(_1.checked=_2.$0):null, Map((V) => Some(V), var_1.View)];
+    this.StringSet=(el) =>(s_8) => {
+      el.value=s_8;
+    };
+    this.StringGet=(el) => Some(el.value);
+    const g=StringGet();
+    const s=StringSet();
+    this.StringApply=(v) => ApplyValue(g, s, v);
+    this.StringListSet=(el) =>(s_8) => {
+      const options_=el.options;
+      for(let i=0, _1=options_.length-1;i<=_1;i++)((() => {
+        const option=options_.item(i);
+        option.selected=arrContains(option.value, s_8);
+      })());
+    };
+    this.StringListGet=(el) => {
+      const selectedOptions=el.selectedOptions;
+      return Some(ofSeq(delay(() => collect_1((i) =>[selectedOptions.item(i).value], range(0, selectedOptions.length-1)))));
+    };
+    const g_1=StringListGet();
+    const s_1=StringListSet();
+    this.StringListApply=(v) => ApplyValue(g_1, s_1, v);
+    this.DateTimeSetUnchecked=(el) =>(i) => {
+      el.value=(new Date(i)).toLocaleString();
+    };
+    this.DateTimeGetUnchecked=(el) => {
+      let o, m;
+      const s_8=el.value;
+      if(isBlank_2(s_8))return Some(-8640000000000000);
+      else {
+        o=0;
+        const m_1=TryParse_3(s_8);
+        let _1=m_1!=null&&m_1.$==1&&(o=m_1.$0,true);
+        m=[_1, o];
+        return m[0]?Some(m[1]):null;
+      }
+    };
+    const g_2=DateTimeGetUnchecked();
+    const s_2=DateTimeSetUnchecked();
+    this.DateTimeApplyUnchecked=(v) => ApplyValue(g_2, s_2, v);
+    this.FileSetUnchecked=() =>() => null;
+    this.FileGetUnchecked=(el) => {
+      const files=el.files;
+      return Some(ofSeq(delay(() => map_2((i) => files.item(i), range(0, files.length-1)))));
+    };
+    const g_3=FileGetUnchecked();
+    const s_3=FileSetUnchecked();
+    this.FileApplyUnchecked=(v) => FileApplyValue(g_3, s_3, v);
+    this.IntSetUnchecked=(el) =>(i) => {
+      el.value=String(i);
+    };
+    this.IntGetUnchecked=(el) => {
+      const s_8=el.value;
+      if(isBlank_2(s_8))return Some(0);
+      else {
+        const pd=+s_8;
+        return pd!==pd>>0?null:Some(pd);
+      }
+    };
+    const g_4=IntGetUnchecked();
+    const s_4=IntSetUnchecked();
+    this.IntApplyUnchecked=(v) => ApplyValue(g_4, s_4, v);
+    this.IntSetChecked=(el) =>(i) => {
+      const i_1=i.Input;
+      return el.value!=i_1?void(el.value=i_1):null;
+    };
+    this.IntGetChecked=(el) => {
+      let _1, o;
+      const s_8=el.value;
+      if(isBlank_2(s_8))_1=(el.checkValidity?el.checkValidity():true)?CheckedInput.Blank(s_8):CheckedInput.Invalid(s_8);
+      else {
+        const m=(o=0,[TryParse(s_8, {get:() => o, set:(v) => {
+          o=v;
+        }}), o]);
+        _1=m[0]?CheckedInput.Valid(m[1], s_8):CheckedInput.Invalid(s_8);
+      }
+      return Some(_1);
+    };
+    const g_5=IntGetChecked();
+    const s_5=IntSetChecked();
+    this.IntApplyChecked=(v) => ApplyValue(g_5, s_5, v);
+    this.FloatSetUnchecked=(el) =>(i) => {
+      el.value=String(i);
+    };
+    this.FloatGetUnchecked=(el) => {
+      const s_8=el.value;
+      if(isBlank_2(s_8))return Some(0);
+      else {
+        const pd=+s_8;
+        return isNaN(pd)?null:Some(pd);
+      }
+    };
+    const g_6=FloatGetUnchecked();
+    const s_6=FloatSetUnchecked();
+    this.FloatApplyUnchecked=(v) => ApplyValue(g_6, s_6, v);
+    this.FloatSetChecked=(el) =>(i) => {
+      const i_1=i.Input;
+      return el.value!=i_1?void(el.value=i_1):null;
+    };
+    this.FloatGetChecked=(el) => {
+      let _1;
+      const s_8=el.value;
+      if(isBlank_2(s_8))_1=(el.checkValidity?el.checkValidity():true)?CheckedInput.Blank(s_8):CheckedInput.Invalid(s_8);
+      else {
+        const i=+s_8;
+        _1=isNaN(i)?CheckedInput.Invalid(s_8):CheckedInput.Valid(i, s_8);
+      }
+      return Some(_1);
+    };
+    const g_7=FloatGetChecked();
+    const s_7=FloatSetChecked();
+    this.FloatApplyChecked=(v) => ApplyValue(g_7, s_7, v);
+  }
+});
+let _c_8=Lazy((_i) => class $StartupCode_Abbrev {
+  static {
+    _c_8=_i(this);
+  }
+  static counter;
+  static {
+    this.counter=0;
+  }
+});
+class Scheduler extends Object_1 {
+  idle;
+  robin;
+  Fork(action){
+    this.robin.push(action);
+    this.idle?(this.idle=false,setTimeout(() => {
+      this.tick();
+    }, 0)):void 0;
+  }
+  tick(){
+    let loop;
+    const t=Date.now();
+    loop=true;
+    while(loop)
+      if(this.robin.length===0){
+        this.idle=true;
+        loop=false;
+      }
+      else {
+        (this.robin.shift())();
+        Date.now()-t>40?(setTimeout(() => {
+          this.tick();
+        }, 0),loop=false):void 0;
+      }
+  }
+  constructor(){
+    super();
+    this.idle=true;
+    this.robin=[];
+  }
+}
+class Easing extends Object_1 {
+  transformTime;
+  static Custom(f){
+    return new Easing(f);
+  }
+  constructor(transformTime){
+    super();
+    this.transformTime=transformTime;
+  }
+}
+function New_45(k, ct){
+  return{k:k, ct:ct};
+}
+function No(Item){
+  return{$:1, $0:Item};
+}
+function Ok(Item){
+  return{$:0, $0:Item};
+}
+function Cc(Item){
+  return{$:2, $0:Item};
+}
+let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
+  static {
+    _c_9=_i(this);
+  }
+  static GetCT;
+  static Zero;
+  static defCTS;
+  static scheduler;
+  static noneCT;
+  static {
+    this.noneCT=New_46(false, []);
+    this.scheduler=new Scheduler();
+    this.defCTS=[new CancellationTokenSource()];
+    this.Zero=Return();
+    this.GetCT=(c) => {
+      c.k(Ok(c.ct));
+    };
+  }
+});
+function New_46(IsCancellationRequested, Registrations){
+  return{c:IsCancellationRequested, r:Registrations};
+}
+function Filter_1(ok, set_1){
+  return new HashSet("New_2", filter(ok, ToArray_2(set_1)));
+}
+function Except_1(excluded, included){
+  const set_1=new HashSet("New_2", ToArray_2(included));
+  set_1.ExceptWith(ToArray_2(excluded));
+  return set_1;
+}
+function ToArray_2(set_1){
+  const arr=create(set_1.Count, void 0);
+  set_1.CopyTo(arr, 0);
+  return arr;
+}
+function Intersect_1(a, b){
+  const set_1=new HashSet("New_2", ToArray_2(a));
+  set_1.IntersectWith(ToArray_2(b));
+  return set_1;
+}
+function ApplyValue(get_1, set_1, var_1){
+  let expectedValue;
+  expectedValue=null;
+  return[(el) => {
+    const onChange=() => {
+      var_1.UpdateMaybe((v) => {
+        let _1;
+        expectedValue=get_1(el);
+        return expectedValue!=null&&expectedValue.$==1&&(!Equals(expectedValue.$0, v)&&(_1=[expectedValue, expectedValue.$0],true))?_1[0]:null;
+      });
+    };
+    el.addEventListener("change", onChange);
+    el.addEventListener("input", onChange);
+    el.addEventListener("keypress", onChange);
+  }, (x) => {
+    const _1=set_1(x);
+    return(_2) => _2==null?null:_1(_2.$0);
+  }, Map((v) => {
+    let _1;
+    return expectedValue!=null&&expectedValue.$==1&&(Equals(expectedValue.$0, v)&&(_1=expectedValue.$0,true))?null:Some(v);
+  }, var_1.View)];
+}
+function StringSet(){
+  return _c_7.StringSet;
+}
+function StringGet(){
+  return _c_7.StringGet;
+}
+function StringListSet(){
+  return _c_7.StringListSet;
+}
+function StringListGet(){
+  return _c_7.StringListGet;
+}
+function DateTimeSetUnchecked(){
+  return _c_7.DateTimeSetUnchecked;
+}
+function DateTimeGetUnchecked(){
+  return _c_7.DateTimeGetUnchecked;
+}
+function FileApplyValue(get_1, set_1, var_1){
+  let expectedValue;
+  expectedValue=null;
+  return[(el) => {
+    el.addEventListener("change", () => {
+      var_1.UpdateMaybe((v) => {
+        let _1;
+        expectedValue=get_1(el);
+        return expectedValue!=null&&expectedValue.$==1&&(expectedValue.$0!==v&&(_1=[expectedValue, expectedValue.$0],true))?_1[0]:null;
+      });
+    });
+  }, (x) => {
+    const _1=set_1(x);
+    return(_2) => _2==null?null:_1(_2.$0);
+  }, Map((v) => {
+    let _1;
+    return expectedValue!=null&&expectedValue.$==1&&(Equals(expectedValue.$0, v)&&(_1=expectedValue.$0,true))?null:Some(v);
+  }, var_1.View)];
+}
+function FileSetUnchecked(){
+  return _c_7.FileSetUnchecked;
+}
+function FileGetUnchecked(){
+  return _c_7.FileGetUnchecked;
+}
+function IntSetUnchecked(){
+  return _c_7.IntSetUnchecked;
+}
+function IntGetUnchecked(){
+  return _c_7.IntGetUnchecked;
+}
+function IntSetChecked(){
+  return _c_7.IntSetChecked;
+}
+function IntGetChecked(){
+  return _c_7.IntGetChecked;
+}
+function FloatSetUnchecked(){
+  return _c_7.FloatSetUnchecked;
+}
+function FloatGetUnchecked(){
+  return _c_7.FloatGetUnchecked;
+}
+function FloatSetChecked(){
+  return _c_7.FloatSetChecked;
+}
+function FloatGetChecked(){
+  return _c_7.FloatGetChecked;
+}
+function isBlank_2(s){
+  return forall_1(IsWhiteSpace, s);
+}
+class CheckedInput {
+  get Input(){
+    return this.$==1?this.$0:this.$==2?this.$0:this.$1;
+  }
+  static Blank(inputText){
+    return Create_2(CheckedInput, {$:2, $0:inputText});
+  }
+  static Invalid(inputText){
+    return Create_2(CheckedInput, {$:1, $0:inputText});
+  }
+  static Valid(value, inputText){
+    return Create_2(CheckedInput, {
+      $:0, 
+      $0:value, 
+      $1:inputText
+    });
+  }
+  $;
+  $0;
+  $1;
+}
+class CancellationTokenSource extends Object_1 {
+  init;
+  c;
+  pending;
+  r;
+  constructor(){
+    super();
+    this.c=false;
+    this.pending=null;
+    this.r=[];
+    this.init=1;
+  }
+}
+function Children(elem, delims){
+  let n;
+  if(delims!=null&&delims.$==1){
+    const rdelim=delims.$0[1];
+    const ldelim=delims.$0[0];
+    const a=[];
+    n=ldelim.nextSibling;
+    while(n!==rdelim)
+      {
+        a.push(n);
+        n=n.nextSibling;
+      }
+    return DomNodes(a);
+  }
+  else {
+    let _1=elem.childNodes.length;
+    const o=elem.childNodes;
+    let _2=init(_1, (i) => o[i]);
+    return DomNodes(_2);
+  }
+}
+function Except_2(a, a_1){
+  const excluded=a.$0;
+  return DomNodes(filter((n) => forall((k) =>!(n===k), excluded), a_1.$0));
+}
+function Iter(f, a){
+  iter(f, a.$0);
+}
+function DocChildren(node){
+  const q=[];
+  function loop(doc_2){
+    while(true)
+      {
+        if(doc_2!=null&&doc_2.$==2){
+          const d=doc_2.$0;
+          doc_2=d.Current;
+        }
+        else if(doc_2!=null&&doc_2.$==1)return q.push(doc_2.$0.El);
+        else if(doc_2==null)return null;
+        else if(doc_2!=null&&doc_2.$==5)return q.push(doc_2.$0);
+        else if(doc_2!=null&&doc_2.$==4)return q.push(doc_2.$0.Text);
+        else if(doc_2!=null&&doc_2.$==6){
+          const x=doc_2.$0.Els;
+          return(((a_1) =>(a_2) => {
+            iter(a_1, a_2);
+          })((a_1) => {
+            if(a_1==null||a_1.constructor===Object)loop(a_1);
+            else q.push(a_1);
+          }))(x);
+        }
+        else {
+          const b=doc_2.$1;
+          const a=doc_2.$0;
+          loop(a);
+          doc_2=b;
+        }
+      }
+  }
+  loop(node.Children);
+  return DomNodes(ofSeqNonCopying(q));
+}
+function DomNodes(Item){
+  return{$:0, $0:Item};
+}
+function IsWhiteSpace(c){
+  return c.match(new RegExp("\\s"))!==null;
+}
+function TryParse_3(s){
+  const d=Date.parse(s);
+  return isNaN(d)?null:Some(d);
+}
+class OperationCanceledException extends Error {
+  ct;
+  constructor(i, _1, _2, _3){
+    let ct;
+    if(i=="New"){
+      ct=_1;
+      i="New_1";
+      _1="The operation was canceled.";
+      _2=null;
+      _3=ct;
+    }
+    if(i=="New_1"){
+      const message=_1;
+      const inner=_2;
+      const ct_1=_3;
+      super(message);
+      this.inner=inner;
+      this.ct=ct_1;
+    }
+  }
+}
+function Create_1(f){
+  return New_47(false, f, forceLazy);
+}
+function forceLazy(){
+  const v=this.v();
+  this.c=true;
+  this.v=v;
+  this.f=cachedLazy;
+  return v;
+}
+function cachedLazy(){
+  return this.v;
+}
+let _c_10=Lazy((_i) => class $StartupCode_AppendList {
+  static {
+    _c_10=_i(this);
+  }
+  static Empty;
+  static {
+    this.Empty={$:0};
+  }
+});
+function Clear(a){
+  a.splice(0, length(a));
+}
+function New_47(created, evalOrVal, force){
+  return{
+    c:created, 
+    v:evalOrVal, 
+    f:force
+  };
 }
 Main();
 

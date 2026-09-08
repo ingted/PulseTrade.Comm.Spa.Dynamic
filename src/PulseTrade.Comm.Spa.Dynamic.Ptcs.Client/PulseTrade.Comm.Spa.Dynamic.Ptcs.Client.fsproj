@@ -1,10 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Ptcs.Client</PackageId>
-    <Version>0.1.0-alpha8-win81</Version>
+    <Version>0.1.1</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Pure WebSharper same-origin PTCS transient client adapter for Dynamic TA Research.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -13,6 +13,10 @@
     <WebSharperProject>Library</WebSharperProject>
     <WebSharperRunCompiler>true</WebSharperRunCompiler>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PowerShellExe Condition="'$(OS)' == 'Windows_NT'">powershell</PowerShellExe>
+    <PulseTradeCommSpaDynamicPtcsClientPushNuGet Condition="'$(PulseTradeCommSpaDynamicPtcsClientPushNuGet)' == '' and '$(BuildingInsideVisualStudio)' == 'true'">true</PulseTradeCommSpaDynamicPtcsClientPushNuGet>
+    <PulseTradeCommSpaDynamicPtcsClientPushNuGet Condition="'$(PulseTradeCommSpaDynamicPtcsClientPushNuGet)' == ''">false</PulseTradeCommSpaDynamicPtcsClientPushNuGet>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Client.fs" />
@@ -21,10 +25,17 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha20]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.0-alpha48]" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta117]" />
-    <PackageReference Include="WebSharper.FSharp" Version="10.1.6.676" />
-    <PackageReference Include="WebSharper.UI" Version="10.1.5.676" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="0.1.1" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.1]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="0.2.15" />
+    <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
+    <PackageReference Include="WebSharper.UI" Version="10.1.4.674" />
   </ItemGroup>
+
+  <Target Name="PushDynamicPtcsClientReleasePackageToNuGet"
+          AfterTargets="Pack"
+          Condition="'$(Configuration)' == 'Release' and '$(OS)' == 'Windows_NT' and '$(PulseTradeCommSpaDynamicPtcsClientPushNuGet)' == 'true'">
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)"
+          Command="$(PowerShellExe) -NoProfile -ExecutionPolicy Bypass -File &quot;G:\PulseTrade.fs\Libs\Akka.Proc.Supervisor\PostBuildEvent.ps1&quot; -assembly &quot;$(PackageId)&quot; -build &quot;$(Configuration)&quot;" />
+  </Target>
 </Project>

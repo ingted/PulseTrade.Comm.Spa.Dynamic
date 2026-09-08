@@ -507,7 +507,19 @@ module RuntimeReducer =
         elif frame.Kind <> RuntimeFrameKind.Document && state.Document.IsNone then
             state, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
         else
-            applyValidatedFrame state frame
+            match RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits frame with
+            | Ok _ -> applyValidatedFrame state frame
+            | Error (error :: _) ->
+                { state with
+                    Poll = RuntimePollState.PausedForResync
+                    LastError =
+                        Some
+                            { ReasonCode = error.Code
+                              Message = error.Message
+                              Recoverable = true } },
+                RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
+            | Error [] ->
+                state, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
 
     let resetView state =
         match state.Document with

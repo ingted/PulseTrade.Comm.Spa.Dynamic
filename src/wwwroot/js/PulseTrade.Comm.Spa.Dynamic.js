@@ -1,6 +1,6 @@
 import Runtime from "./WebSharper.Core.JavaScript/Runtime.js"
 Runtime.ScriptBasePath="/Scripts/";
-import { MarkResizable, Lazy, Create as Create_1, GetOptional, SetOptional } from "./WebSharper.Core.JavaScript/Runtime.js"
+import { MarkResizable, Lazy, Create as Create_2, GetOptional, SetOptional } from "./WebSharper.Core.JavaScript/Runtime.js"
 function isIDisposable(x){
   return"Dispose"in x;
 }
@@ -326,8 +326,8 @@ function postJson(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -380,7 +380,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
       send.addEventListener("click", () => {
         const raw=caseRaw();
         rawPreview.textContent=raw;
-        return context.submit(New_34(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+        return context.submit(New_37(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
       });
       append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
       root.appendChild(caseRow);
@@ -394,7 +394,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
           fullSend.addEventListener("click", () => {
             const raw=fullRaw();
             fullPreview.textContent=raw;
-            return context.submit(New_34(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+            return context.submit(New_37(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
           const actions=setTestId("dynamic-argu-composer-actions", element("div", "dynamic-argu-composer-actions", null));
           append(actions, [renderComposerModeControl(context), fullSend]);
@@ -844,7 +844,7 @@ function generateActorReport(outputDirectory, status){
   if(isBlank_1(trimmed))status.Set("Report output directory is required.");
   else {
     status.Set("Generating actor state report...");
-    postJson_1("/actors/api/report", New_35(trimmed), (reply) => {
+    postJson_1("/actors/api/report", New_38(trimmed), (reply) => {
       status.Set("Report written: "+(isBlank_1(reply.filePath)?reply.fileName:reply.filePath));
     }, (message) => {
       status.Set("Report failed: "+asText_1(message));
@@ -1016,8 +1016,8 @@ function postJson_1(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson_1(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
@@ -1107,12 +1107,12 @@ function joinPath(segments, count){
 }
 function makeActorTreeNode(id, parentId, label_1, fullPath, address, kind, status){
   return{
-    id:id,
-    parentId:parentId,
-    label:label_1,
-    fullPath:fullPath,
-    address:address,
-    kind:kind,
+    id:id, 
+    parentId:parentId, 
+    label:label_1, 
+    fullPath:fullPath, 
+    address:address, 
+    kind:kind, 
     status:status
   };
 }
@@ -1189,6 +1189,7 @@ function Main_1(){
         setMain(p[0]);
         if(path=="/sets")_1=mountSets(page);
         else if(path=="/actors")_1=mountActors(page);
+        else if(path=="/management")_1=mountManagement(page);
         else if(path=="/chat")_1=mountChat(page);
         else {
           const m=findAppendPage(path, pages_1);
@@ -1223,7 +1224,7 @@ function Main_1(){
       if(mounted){
         const nav=doc_1().getElementById("ptc-nav");
         if(!(nav==null))renderNav(nav, path, arrayOrEmpty_1(data_1.pages));
-        if(path!="/sets"&&path!="/actors"&&path!="/chat"){
+        if(path!="/sets"&&path!="/actors"&&path!="/management"&&path!="/chat"){
           const _2=findAppendPage(path, arrayOrEmpty_1(data_1.pages));
           if(mountedPageElement!=null&&mountedPageElement.$==1){
             if(_2==null){
@@ -2846,13 +2847,16 @@ function shell(activePath, pages){
   append_1(brandCluster, [element_1("div", "brand", "PTC.Comm SPA"), registryHealth]);
   renderNav(nav, activePath, pages);
   renderTabJumpOptions(navJumpSelect, activePath, staticNavigationDestinations().concat(map((page_1) =>[pagePath(page_1), pageTitle(page_1)], arrayOrEmpty_1(pages))));
+  const userActions=element_1("div", "topbar-user-actions", null);
+  const viewAs=renderViewAsControl();
   const x=element_1("a", "logout", "Logout");
   const logout=setHref(currentLogoutPath(), x);
   const page=element_1("main", "page", null);
   append_1(navViewport, [nav]);
   append_1(navJump, [navJumpSelect, navJumpGo]);
   append_1(navShell, [navJump, navViewport, navBack, navForward]);
-  append_1(topRow, [brandCluster, logout]);
+  append_1(userActions, [viewAs, logout]);
+  append_1(topRow, [brandCluster, userActions]);
   append_1(top, [topRow, create_1, navShell]);
   append_1(app, [top, page]);
   return[app, page];
@@ -3326,6 +3330,14 @@ function mountActors(page){
   const collapsedTreeNodes=new HashSet("New_3");
   const cacheKey_1=cacheKey("actors-snapshot", FSharpList.Empty);
   const sameText=(left, right) => asText_2(left).toLowerCase()==asText_2(right).toLowerCase();
+  const actorStatusLooksOffline=(value) => {
+    const text=Trim(asText_2(value)).toLowerCase();
+    return text.indexOf("offline")!=-1||text.indexOf("unreachable")!=-1||text.indexOf("stale")!=-1||text.indexOf("terminated")!=-1||text.indexOf("stopped")!=-1||text.indexOf("dead")!=-1||text.indexOf("failed")!=-1;
+  };
+  const actorTagValue=(prefix, tags) => tryPick((tag) => {
+    const value=asText_2(tag);
+    return StartsWith(value, prefix)?Some(value.substring(prefix.length)):null;
+  }, arrayOrEmpty_1(tags));
   const actorRegistryStreamKey=() => New_7("__actor-registry", "actor-registry", "__actors", ["__actors"]);
   const isAkkaAddress=(value) => {
     const text=asText_2(value).toLowerCase();
@@ -3550,7 +3562,7 @@ function mountActors(page){
         const wire=json(event.payload);
         x=wire==null||asText_2(wire.schema)!="ptc.comm.spa.actor.registration.v1"?null:Some(wire);
       }
-      catch(m_1){
+      catch(m){
         x=null;
       }
       if(x==null)void 0;
@@ -3562,24 +3574,32 @@ function mountActors(page){
         if(!isBlank_2(nodeId_1)&&!isBlank_2(actorId)){
           const tags=arrayOrEmpty_1(_1.tags);
           const roles=arrayOrEmpty_1(_1.roles);
-          const actor=New_26(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
-          const m=tryFind((node) => sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes));
-          if(m==null)updatedNode=New_27(nodeId_1, nodeAddress_1, "up", roles, [actor]);
-          else {
-            const existing=m.$0;
-            const actors=sortBy((row) => asText_2(row.actorId), filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty_1(existing.actors)).concat([actor]));
-            updatedNode=New_27(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, textOr("up", existing.status), length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
+          const incomingGeneration=actorTagValue("generation:", tags);
+          const incomingEventKind=actorTagValue("event:", tags);
+          const existingNode=tryFind((node) => sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes));
+          const o=existingNode==null?null:tryFind((actor_1) => sameText(actor_1.actorId, actorId), arrayOrEmpty_1(existingNode.$0.actors));
+          const _2=o==null?null:actorTagValue("generation:", o.$0.keys);
+          if(_2!=null&&_2.$==1?incomingGeneration!=null&&incomingGeneration.$==1?!sameText(_2.$0, incomingGeneration.$0)?(_2.$0,incomingGeneration.$0,incomingEventKind==null?false:sameText(incomingEventKind.$0, "Registered")):true:true:true){
+            const actor=New_27(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
+            if(existingNode==null)updatedNode=New_26(nodeId_1, nodeAddress_1, actorStatusLooksOffline(actor.status)?"offline":"up", roles, actorStatusLooksOffline(actor.status)?[]:[actor]);
+            else {
+              const existing=existingNode.$0;
+              const retainedActors=filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty_1(existing.actors));
+              const actors=sortBy((row) => asText_2(row.actorId), actorStatusLooksOffline(actor.status)?retainedActors:retainedActors.concat([actor]));
+              updatedNode=New_26(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, length(actors)===0?"offline":"up", length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
+            }
+            const nodes_1=sortBy((node) => asText_2(node.nodeId), length(arrayOrEmpty_1(updatedNode.actors))===0?filter((node) =>!sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes)):filter((node) =>!sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes)).concat([updatedNode]));
+            let _3=length(nodes_1);
+            let _4=fold((_6, _7) => _6+_7, 0, map((node) => arrayOrEmpty_1(node.actors).length, nodes_1));
+            const a=actorSnapshot.maxSequence;
+            const b=event.sequence;
+            let _5=Compare(a, b)===1?a:b;
+            actorSnapshot=New_25(_3, _4, _5, nodes_1);
+            writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
+            applySnapshot("synced", actorSnapshot);
+            setStatus(status, "Synced actor "+actorId);
           }
-          const nodes_1=sortBy((node) => asText_2(node.nodeId), filter((node) =>!sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes)).concat([updatedNode]));
-          let _2=length(nodes_1);
-          let _3=fold((_5, _6) => _5+_6, 0, map((node) => arrayOrEmpty_1(node.actors).length, nodes_1));
-          const a=actorSnapshot.maxSequence;
-          const b=event.sequence;
-          let _4=Compare(a, b)===1?a:b;
-          actorSnapshot=New_25(_2, _3, _4, nodes_1);
-          writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
-          applySnapshot("synced", actorSnapshot);
-          setStatus(status, "Synced actor "+actorId);
+          else void 0;
         }
         else void 0;
       }
@@ -3616,6 +3636,173 @@ function mountActors(page){
   load();
   subscribeRegistry();
 }
+function mountManagement(page){
+  let allPages, allParticipants, pageIndex, participantPageIndex, pageSize, participantPageSize;
+  page.className="page management-page";
+  const pageRows=Create((row) => asText_2(row.pageId)+"\u001f"+asText_2(row.tabId), FSharpList.Empty);
+  const participantRows=Create((row) => asText_2(row.participantId), FSharpList.Empty);
+  allPages=[];
+  allParticipants=[];
+  pageIndex=0;
+  participantPageIndex=0;
+  pageSize=10;
+  participantPageSize=10;
+  const heading=element_1("div", "management-head", null);
+  const title=element_1("div", "", null);
+  append_1(title, [element_1("h1", "", "Management")]);
+  const reload=setTestId_1("management-reload", button_1("", "Reload"));
+  append_1(heading, [title, reload]);
+  const pageSection=setTestId_1("management-pages", element_1("section", "management-section", null));
+  const pageSectionHead=element_1("div", "management-section-head", null);
+  const pageCount=setTestId_1("management-pages-count", element_1("span", "state", ""));
+  append_1(pageSectionHead, [element_1("h2", "", "Tab pages"), pageCount]);
+  const pageTableHostId="management-pages-grid";
+  const pageTableHost=setId(pageTableHostId, element_1("div", "management-table-viewport", null));
+  const pagePager=element_1("div", "management-pager", null);
+  const pagePrevious=setTestId_1("management-pages-previous", button_1("", "Previous"));
+  const pageNext=setTestId_1("management-pages-next", button_1("", "Next"));
+  const pageSizeSelect=setTestId_1("management-pages-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
+  const pagePagerStatus=setTestId_1("management-pages-page", element_1("span", "state", ""));
+  append_1(pagePager, [pagePrevious, pageNext, element_1("span", "management-page-size-label", "Rows"), pageSizeSelect, pagePagerStatus]);
+  append_1(pageSection, [pageSectionHead, pageTableHost, pagePager]);
+  const participantSection=setTestId_1("management-participants", element_1("section", "management-section", null));
+  const participantSectionHead=element_1("div", "management-section-head", null);
+  const participantCount=setTestId_1("management-participants-count", element_1("span", "state", ""));
+  append_1(participantSectionHead, [element_1("h2", "", "Participants"), participantCount]);
+  const participantTableHostId="management-participants-grid";
+  const participantTableHost=setId(participantTableHostId, element_1("div", "management-table-viewport", null));
+  const participantPager=element_1("div", "management-pager", null);
+  const participantPrevious=setTestId_1("management-participants-previous", button_1("", "Previous"));
+  const participantNext=setTestId_1("management-participants-next", button_1("", "Next"));
+  const participantSizeSelect=setTestId_1("management-participants-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
+  const participantPagerStatus=setTestId_1("management-participants-page", element_1("span", "state", ""));
+  append_1(participantPager, [participantPrevious, participantNext, element_1("span", "management-page-size-label", "Rows"), participantSizeSelect, participantPagerStatus]);
+  append_1(participantSection, [participantSectionHead, participantTableHost, participantPager]);
+  append_1(page, [heading, pageSection, participantSection]);
+  const pageCountFor=(total, size) => total===0?1:size===0?1:toInt(Math.ceil(total/size));
+  const sliceRows=(index, size, rows) => {
+    if(size===0)return rows;
+    else {
+      const a=length(rows);
+      const b=index*size;
+      let _1=Compare(a, b)===-1?a:b;
+      let _2=skip(_1, rows);
+      return _2.slice(0, size);
+    }
+  };
+  const applyPageProjection=() => {
+    const pages=pageCountFor(length(allPages), pageSize);
+    const a=0;
+    const a_1=pages-1;
+    const b=Compare(a_1, pageIndex)===-1?a_1:pageIndex;
+    pageIndex=Compare(a, b)===1?a:b;
+    pageRows.Set(sliceRows(pageIndex, pageSize, allPages));
+    pageCount.textContent=String(length(allPages))+" page lineage(s)";
+    pagePagerStatus.textContent="Page "+String(pageIndex+1)+" / "+String(pages);
+    setHidden(pageIndex===0, pagePrevious);
+    setHidden(pageIndex>=pages-1, pageNext);
+  };
+  const applyParticipantProjection=() => {
+    const pages=pageCountFor(length(allParticipants), participantPageSize);
+    const a=0;
+    const a_1=pages-1;
+    const b=Compare(a_1, participantPageIndex)===-1?a_1:participantPageIndex;
+    participantPageIndex=Compare(a, b)===1?a:b;
+    participantRows.Set(sliceRows(participantPageIndex, participantPageSize, allParticipants));
+    participantCount.textContent=String(length(allParticipants))+" participant(s)";
+    participantPagerStatus.textContent="Page "+String(participantPageIndex+1)+" / "+String(pages);
+    setHidden(participantPageIndex===0, participantPrevious);
+    setHidden(participantPageIndex>=pages-1, participantNext);
+  };
+  function loadPages(){
+    setStatus(pageCount, "Loading...");
+    getJson("/management/api/pages", (reply) => {
+      allPages=arrayOrEmpty_1(reply.pages);
+      applyPageProjection();
+    }, (error) => {
+      setStatus(pageCount, "Load failed: "+error);
+    });
+  }
+  function mutatePage(endpoint){
+    return(action) =>(row) =>!EndsWith(endpoint, "/delete")||globalThis.confirm("Delete tab page '"+textOr(row.pageId, row.title)+"'? This cannot be undone for this page lineage.")?(setStatus(pageCount, action+" "+row.pageId+"..."),postJson_2(endpoint, New_28(row.pageId, row.tabId), () => {
+      loadPages();
+    }, (error) => {
+      setStatus(pageCount, action+" failed: "+error);
+    })):null;
+  }
+  function loadParticipants(){
+    setStatus(participantCount, "Loading...");
+    getJson("/management/api/participants", (reply) => {
+      allParticipants=arrayOrEmpty_1(reply.participants);
+      applyParticipantProjection();
+    }, (error) => {
+      setStatus(participantCount, "Load failed: "+error);
+    });
+  }
+  function mutateParticipant(endpoint){
+    return(action) =>(row) =>!EndsWith(endpoint, "/delete")||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson_2(endpoint, New_29(row.participantId), () => {
+      loadParticipants();
+    }, (error) => {
+      setStatus(participantCount, action+" failed: "+error);
+    })):null;
+  }
+  const pageTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-pages-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [], [Doc.TextNode("Tab page")]), Doc.Element("th", [], [Doc.TextNode("Created")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
+    const visibilityLabel=row.visible?"Hide":"Show";
+    const visibilityEndpoint=row.visible?"/management/api/pages/hide":"/management/api/pages/show";
+    const resourceAllows=(action) => pageAclAllows(row.pageId, action)||systemAclAllows("*", action);
+    const visibilityButton=resourceAllows(row.visible?"ptcs.management.page.hide":"ptcs.management.page.show")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "management-page-visibility-"+row.pageId), Handler("click", () =>() =>((mutatePage(visibilityEndpoint))(visibilityLabel))(row))], [Doc.TextNode(visibilityLabel)]):Doc.Empty;
+    const deleteButton=resourceAllows("ptcs.management.page.delete")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("class", "management-delete"), Attr.Create("data-testid", "management-page-delete-"+row.pageId), Handler("click", () =>() =>((mutatePage("/management/api/pages/delete"))("Delete"))(row))], [Doc.TextNode("Delete")]):Doc.Empty;
+    return Doc.Element("tr", [Attr.Create("data-page-id", row.pageId), Attr.Create("data-visible", String(row.visible).toLowerCase())], [Doc.Element("td", [Attr.Create("data-label", "Tab page")], [Doc.Element("strong", [], [Doc.TextNode(textOr(row.pageId, row.title))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.pageId)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode("tab: "+row.tabId)])]), Doc.Element("td", [Attr.Create("data-label", "Created")], [Doc.TextNode(row.createdAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [visibilityButton, deleteButton])]);
+  }, pageRows.v)])]);
+  const participantTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-participants-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [], [Doc.TextNode("Participant")]), Doc.Element("th", [], [Doc.TextNode("Registered")]), Doc.Element("th", [], [Doc.TextNode("Last seen")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
+    const visibilityLabel=row.visible?"Hide":"Show";
+    const visibilityEndpoint=row.visible?"/management/api/participants/hide":"/management/api/participants/show";
+    const resourceAllows=(action) => aclAllows(action, "ptcs.participant", row.participantId)||systemAclAllows("*", action);
+    const visibilityButton=resourceAllows(row.visible?"ptcs.management.participant.hide":"ptcs.management.participant.show")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "management-participant-visibility-"+row.participantId), Handler("click", () =>() =>((mutateParticipant(visibilityEndpoint))(visibilityLabel))(row))], [Doc.TextNode(visibilityLabel)]):Doc.Empty;
+    const deleteButton=resourceAllows("ptcs.management.participant.delete")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("class", "management-delete"), Attr.Create("data-testid", "management-participant-delete-"+row.participantId), Handler("click", () =>() =>((mutateParticipant("/management/api/participants/delete"))("Delete"))(row))], [Doc.TextNode("Delete")]):Doc.Empty;
+    return Doc.Element("tr", [Attr.Create("data-participant-id", row.participantId), Attr.Create("data-visible", String(row.visible).toLowerCase())], [Doc.Element("td", [Attr.Create("data-label", "Participant")], [Doc.Element("strong", [], [Doc.TextNode(textOr(row.participantId, row.displayName))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.participantId)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.kind+" / "+row.status)])]), Doc.Element("td", [Attr.Create("data-label", "Registered")], [Doc.TextNode(row.registeredAt)]), Doc.Element("td", [Attr.Create("data-label", "Last seen")], [Doc.TextNode(row.lastSeenAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [visibilityButton, deleteButton])]);
+  }, participantRows.v)])]);
+  LoadLocalTemplates("");
+  Doc.RunById(pageTableHostId, pageTable);
+  LoadLocalTemplates("");
+  Doc.RunById(participantTableHostId, participantTable);
+  pagePrevious.addEventListener("click", () => {
+    const a=0;
+    const b=pageIndex-1;
+    pageIndex=Compare(a, b)===1?a:b;
+    return applyPageProjection();
+  });
+  pageNext.addEventListener("click", () => {
+    pageIndex=pageIndex+1;
+    return applyPageProjection();
+  });
+  pageSizeSelect.addEventListener("change", () => {
+    pageSize=toInt(Number(pageSizeSelect.value));
+    pageIndex=0;
+    return applyPageProjection();
+  });
+  participantPrevious.addEventListener("click", () => {
+    const a=0;
+    const b=participantPageIndex-1;
+    participantPageIndex=Compare(a, b)===1?a:b;
+    return applyParticipantProjection();
+  });
+  participantNext.addEventListener("click", () => {
+    participantPageIndex=participantPageIndex+1;
+    return applyParticipantProjection();
+  });
+  participantSizeSelect.addEventListener("change", () => {
+    participantPageSize=toInt(Number(participantSizeSelect.value));
+    participantPageIndex=0;
+    return applyParticipantProjection();
+  });
+  reload.addEventListener("click", () => {
+    loadPages();
+    return loadParticipants();
+  });
+  loadPages();
+  loadParticipants();
+}
 function mountChat(page){
   let selected, cursor, polling, participants, selectedThreadMessages, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
   selected="";
@@ -3648,7 +3835,10 @@ function mountChat(page){
   const draft=setTestId_1("chat-draft", textarea("draft", "Type a message"));
   const actions=element_1("div", "actions", null);
   const send=setTestId_1("chat-send", button_1("primary", "Send"));
-  const participantsCacheKey=cacheKey("chat-agents", ofArray([participantId]));
+  const readOnlyView=currentBrowserUser().viewAsActive;
+  setHidden(readOnlyView, composer);
+  if(readOnlyView)work.className="work view-as-read-only";
+  const participantsCacheKey=cacheKey("chat-participants-v2", ofArray([participantId]));
   const threadCacheKey=(peerId) => cacheKey("chat-thread", ofArray([participantId, peerId]));
   append_1(titleBox, [element_1("label", "", "To"), toTitle]);
   append_1(workHead, [titleBox, state]);
@@ -3734,9 +3924,9 @@ function mountChat(page){
         refreshSelectedThread?(pollThread(true),ensureSelectedChatSubscription(),replayPendingChatCommands()):void 0;
       }
     });
-    getJson("/chat/api/agents", (data) => {
+    getJson("/chat/api/participants", (data) => {
       participants=arrayOrEmpty_1(data.participants);
-      writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-agents");
+      writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-participants");
       const selectedWasBlank=isBlank_2(selected);
       if(selectedWasBlank&&length(participants)>0)selected=get(participants, 0).participantId;
       renderParticipants();
@@ -3781,7 +3971,7 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_29(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_32(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -3854,7 +4044,7 @@ function mountChat(page){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_29(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_32(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -3886,7 +4076,7 @@ function mountChat(page){
               o=message==null||isBlank_2(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_28(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
+              o=Some(New_31(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -3968,9 +4158,9 @@ function mountChat(page){
     if(isBlank_2(selected))setStatus(state, "Select a participant first");
     else if(isBlank_2(body))setStatus(state, "Message is empty");
     else {
-      const request=New_32(participantId, selected, body, ["web-chat"]);
+      const request=New_35(participantId, selected, body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_31("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_34("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -3983,7 +4173,7 @@ function mountChat(page){
     else if(globalThis.document.body==null)setStatus(state, "Document body is unavailable");
     else {
       try {
-        const rows=map((message) => New_33(asText_2(message.messageId), asText_2(message.fromId), asText_2(message.createdAtUtc), asText_2(message.body)), selectedThreadMessages);
+        const rows=map((message) => New_36(asText_2(message.messageId), asText_2(message.fromId), asText_2(message.createdAtUtc), asText_2(message.body)), selectedThreadMessages);
         const url=URL.createObjectURL(new Blob([concat_2("\n", map((v) => JSON.stringify(v), rows))], {type:"application/x-ndjson;charset=utf-8"}));
         const now=new Date();
         const twoDigits=(value) => value<10?"0"+String(value):String(value);
@@ -4014,7 +4204,7 @@ function mountChat(page){
   });
   draft.addEventListener("keydown", (event) => event.key=="Enter"&&!event.shiftKey?(event.preventDefault(),sendMessage()):null);
   globalThis.setInterval(() => pollThread(false), 2500);
-  globalThis.setInterval(() => loadParticipants(false), 2500);
+  globalThis.setInterval(() => loadParticipants(false), 30000);
   refreshChatPendingState();
   loadParticipants(true);
 }
@@ -4103,7 +4293,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_40(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_43(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_2(request.userName)||isBlank_2(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -4133,7 +4323,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_2(node.textContent)?New_39("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_2(node.textContent)?New_42("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_2(value)?fallback:value;
@@ -4399,18 +4589,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    keyPlaceholder:String(_5||""),
-    defaultKey:String(_6||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    keyPlaceholder:String(_5||""), 
+    defaultKey:String(_6||""), 
     submitKey:(payload) => {
       _7(payload);
-    },
+    }, 
     cancelKey:() => {
       _8();
-    },
+    }, 
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -4494,26 +4684,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    selectedKeyId:String(_5||""),
-    selectedKeyJson:String(_6||""),
-    selectedKeys:keyParts.slice(),
-    keyParts:keyParts.slice(),
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    valuePlaceholder:String(_8||""),
-    valueText:String(_9||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    selectedKeyId:String(_5||""), 
+    selectedKeyJson:String(_6||""), 
+    selectedKeys:keyParts.slice(), 
+    keyParts:keyParts.slice(), 
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    valuePlaceholder:String(_8||""), 
+    valueText:String(_9||""), 
     submit:(payload) => {
       _10(payload);
-    },
+    }, 
     setValue:(payload) => {
       _11(payload);
-    },
-    composerMode:String(_12||"plain"),
+    }, 
+    composerMode:String(_12||"plain"), 
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -4584,7 +4774,7 @@ function renderAppendValue(definition, value){
   const head_2=element_1("div", "fcell-head", null);
   append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_2(value.valueId)+" / "+asText_2(value.createdAtUtc))]);
   card.appendChild(head_2);
-  const presentationContext=New_36(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
+  const presentationContext=New_39(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
   const m_1=tryResolveReplyPresentation(presentationContext);
   if(m_1!=null&&m_1.$==1){
     const presentation=m_1.$0;
@@ -4753,7 +4943,7 @@ function renderAppendValue(definition, value){
   return card;
 }
 function staticNavigationDestinations(){
-  return _c_1.staticNavigationDestinations;
+  return filter((_1) => _1[0]!="/management"||systemAclAllows("*", "ptcs.management.read"), [["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"], ["/management", "Management"]]);
 }
 function setHref(href, node){
   node.setAttribute("href", href);
@@ -4837,6 +5027,55 @@ function currentLogoutPath(){
   const path=currentBrowserUser().logoutPath;
   return isBlank_2(path)?"/chat/logout":path;
 }
+function renderViewAsControl(){
+  const user=currentBrowserUser();
+  const wrap=setTestId_1("view-as-control", element_1("div", "view-as-control", null));
+  const toggle=setTestId_1("view-as-toggle", button_1("view-as-toggle", user.viewAsActive?"View as: "+textOr(user.viewAsParticipantId, user.displayName):"View as"));
+  const panel=setHidden(true, setTestId_1("view-as-panel", element_1("div", "view-as-panel", null)));
+  const chooser=setTestId_1("view-as-select", select([]));
+  const apply=setTestId_1("view-as-apply", button_1("primary", "Apply"));
+  const cancel_1=setTestId_1("view-as-cancel", button_1("", "Cancel"));
+  const status=setTestId_1("view-as-status", element_1("span", "state view-as-status", ""));
+  toggle.addEventListener("click", () => {
+    const isHidden=panel.hasAttribute("hidden");
+    setHidden(!isHidden, panel);
+    return isHidden?(setStatus(status, "Loading participants..."),getJson("/management/api/view-as", (reply) => {
+      clear(chooser);
+      const own=doc_1().createElement("option");
+      own.setAttribute("value", "");
+      own.textContent="Own view ("+reply.actualParticipantId+")";
+      chooser.appendChild(own);
+      iter((participant) => {
+        const option=doc_1().createElement("option");
+        option.setAttribute("value", participant.participantId);
+        option.textContent=textOr(participant.participantId, participant.displayName)+" ("+participant.participantId+")";
+        chooser.appendChild(option);
+      }, arrayOrEmpty_1(reply.participants));
+      chooser.value=reply.viewAsParticipantId;
+      setStatus(status, "Read-only conversation view");
+    }, (error) => {
+      setStatus(status, "Unable to load participants: "+error);
+    })):null;
+  });
+  cancel_1.addEventListener("click", () => {
+    setHidden(true, panel);
+  });
+  apply.addEventListener("click", () => {
+    apply.setAttribute("disabled", "disabled");
+    return postJson_2("/management/api/view-as", New_44(asText_2(chooser.value)), () => {
+      globalThis.location.reload();
+    }, (error) => {
+      apply.removeAttribute("disabled");
+      setStatus(status, "View as failed: "+error);
+    });
+  });
+  const actions=element_1("div", "view-as-panel-actions", null);
+  append_1(actions, [cancel_1, apply]);
+  append_1(panel, [chooser, actions, status]);
+  append_1(wrap, [toggle, panel]);
+  setHidden(!user.authenticated||!systemAclAllows("*", "ptcs.management.view-as"), wrap);
+  return wrap;
+}
 function renderPageCreator(nav, activePath, pages){
   let candidatePageId, candidatesLoaded, replayingPendingPageRegistration;
   const wrap=setTestId_1("page-create", element_1("div", "page-create", null));
@@ -4907,7 +5146,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_2(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_42(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_45(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_2("/pages/api/register-page", request, (reply) => {
@@ -5034,6 +5273,21 @@ function statusDot(status){
   node.setAttribute("title", asText_2(status));
   return node;
 }
+function aclAllows(action, resourceKind, resourceId){
+  const m=tryAclCapabilityProvider(action, resourceKind, resourceId);
+  return m==null?aclAllowsFallback(action, resourceKind, resourceId):m.$0;
+}
+function systemAclAllows(resourceId, action){
+  return aclAllows(action, "ptcs.system", resourceId);
+}
+function currentBrowserUser(){
+  const userNode=doc_1().getElementById("ptc-comm-user");
+  if(userNode==null||isBlank_2(userNode.textContent))return New_30("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
+  else {
+    const user=json(userNode.textContent);
+    return user==null||isBlank_2(user.participantId)?New_30("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
+  }
+}
 function compactMessageId(value){
   const text=asText_2(value);
   return text.length<=32?text:StartsWith(text.toLowerCase(), "pending-command")?"pending-command:"+String(text.length):Substring(text, 0, 24)+"..."+text.substring(text.length-6);
@@ -5100,8 +5354,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"),
-      priority:Number(priority||0),
+      name:String(name||"unnamed"), 
+      priority:Number(priority||0), 
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -5145,10 +5399,6 @@ function field(labelText, inputId, control){
   append_1(wrap, [label_1, control]);
   return wrap;
 }
-function aclAllows(action, resourceKind, resourceId){
-  const m=tryAclCapabilityProvider(action, resourceKind, resourceId);
-  return m==null?aclAllowsFallback(action, resourceKind, resourceId):m.$0;
-}
 function findAppendPageShape(shape){
   const normalized=normalizeShapeText(shape);
   return tryFind((candidate) => normalizeShapeText(candidate.shape)==normalized, appendPageShapeRegistry());
@@ -5159,14 +5409,6 @@ function normalizeShapeText(value){
 }
 function hasTag(tag, tags){
   return exists((value) => asText_2(value).toLowerCase()==tag, arrayOrEmpty_1(tags));
-}
-function currentBrowserUser(){
-  const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_2(userNode.textContent))return New_41("user.web", "Web User", "", false, "anonymous", "/chat/logout");
-  else {
-    const user=json(userNode.textContent);
-    return user==null||isBlank_2(user.participantId)?New_41("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
-  }
 }
 function replyPresentationDisposers(){
   return _c_1.replyPresentationDisposers;
@@ -5229,9 +5471,6 @@ function replyPresentationMode(identity){
 function appendPageShapeOptions(){
   return map((shape) =>[normalizeShapeText(shape.shape), textOr(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
 }
-function systemAclAllows(resourceId, action){
-  return aclAllows(action, "ptcs.system", resourceId);
-}
 function navigationPathForCreatedPage(page){
   const pageId=asText_2(page.pageId);
   const path=asText_2(page.path);
@@ -5240,16 +5479,6 @@ function navigationPathForCreatedPage(page){
 function isLive(status){
   const m=asText_2(status).toLowerCase();
   return m=="online"||(m=="running"||(m=="up"||m=="available"));
-}
-function tryParseSequence(prefix, value){
-  const text=asText_2(value);
-  if(isBlank_2(text)||!StartsWith(text, prefix))return 0n;
-  else try {
-    return BigInt(text.substring(prefix.length));
-  }
-  catch(m){
-    return 0n;
-  }
 }
 function tryAclCapabilityProvider(action, resourceKind, resourceId){
   const normalized=Trim(asText_2(((action_1, resourceKind_1, resourceId_1, snapshotJson) => {
@@ -5289,6 +5518,16 @@ function aclAllowsFallback(action, resourceKind, resourceId){
     }
   }
   else return true;
+}
+function tryParseSequence(prefix, value){
+  const text=asText_2(value);
+  if(isBlank_2(text)||!StartsWith(text, prefix))return 0n;
+  else try {
+    return BigInt(text.substring(prefix.length));
+  }
+  catch(m){
+    return 0n;
+  }
 }
 function appendPageShapeRegistry(){
   return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
@@ -5373,7 +5612,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
-  return New_38(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_41(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -5605,7 +5844,7 @@ function tryResolve(context){
     const p=staticCanvasSummary(payload);
     const title=p[0];
     const elementCount=p[1];
-    return Some(New_37("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
+    return Some(New_40("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
       clearHost(host);
       const doc_2=createSduiCanvasBody(content);
       LoadLocalTemplates("");
@@ -5664,28 +5903,28 @@ function extractReplyPayload(rawContent){
   const index=value.indexOf(marker);
   return index>=0?Trim(value.substring(index+marker.length)):value;
 }
+function toInt(x){
+  const u=toUInt(x);
+  return u>2147483647?u-4294967296:u;
+}
 function FailWith(msg){
   throw new Error(msg);
+}
+function toUInt(x){
+  return(x<0?Math.ceil(x):Math.floor(x))>>>0;
 }
 function range(min, max_1){
   const count=1+max_1-min;
   return count<=0?[]:init_1(count, (x) => x+min);
 }
-function toInt(x){
-  const u=toUInt(x);
-  return u>2147483647?u-4294967296:u;
-}
 function KeyValue(kvp){
   return[kvp.K, kvp.V];
 }
-function toUInt(x){
-  return(x<0?Math.ceil(x):Math.floor(x))>>>0;
-}
 function New(status, count, maxSequence, pages){
   return{
-    status:status,
-    count:count,
-    maxSequence:maxSequence,
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
     pages:pages
   };
 }
@@ -5836,7 +6075,7 @@ function ofList(xs){
   return q;
 }
 function sortInPlace(arr){
-  mapInPlace((t) => t[0], mapiInPlace((_1, _2) =>[_2, _1], arr).sort(Compare));
+  mapInPlace_1((t) => t[0], mapiInPlace((_1, _2) =>[_2, _1], arr).sort(Compare));
 }
 function take(n, ar){
   return n<0?nonNegative():n>ar.length?insufficient():ar.slice(0, n);
@@ -5936,7 +6175,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_30(streamId, _3, _4, asText_2(source), nowTicks());
+    let _5=New_33(streamId, _3, _4, asText_2(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -6425,16 +6664,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type,
-    requestId:requestId,
+    type:type, 
+    requestId:requestId, 
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
     count:count
   };
 }
@@ -6538,6 +6777,17 @@ function head(s){
 }
 function forall_1(p, s){
   return!exists_1((x) =>!p(x), s);
+}
+function iter_1(p, s){
+  const e=Get(s);
+  try {
+    while(e.MoveNext())
+      p(e.Current);
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
 }
 function concat_1(ss){
   return{GetEnumerator:() => {
@@ -6660,17 +6910,6 @@ function initInfinite(f){
 function rev(s){
   return delay(() => ofSeq(s).slice().reverse());
 }
-function iter_1(p, s){
-  const e=Get(s);
-  try {
-    while(e.MoveNext())
-      p(e.Current);
-  }
-  finally {
-    const _1=e;
-    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-  }
-}
 function exists2(p, s1, s2){
   const e1=Get(s1);
   try {
@@ -6729,15 +6968,15 @@ function unfold(f, s){
 }
 function New_4(shape, selectedKeyJson, selectedKeys, keyParts, actorAddress, duTypeName, unionCaseNames, submit, composerMode, setComposerMode){
   return{
-    shape:shape,
-    selectedKeyJson:selectedKeyJson,
-    selectedKeys:selectedKeys,
-    keyParts:keyParts,
-    actorAddress:actorAddress,
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    submit:submit,
-    composerMode:composerMode,
+    shape:shape, 
+    selectedKeyJson:selectedKeyJson, 
+    selectedKeys:selectedKeys, 
+    keyParts:keyParts, 
+    actorAddress:actorAddress, 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    submit:submit, 
+    composerMode:composerMode, 
     setComposerMode:setComposerMode
   };
 }
@@ -6805,6 +7044,24 @@ function Sink(act, a){
 function Join(a){
   return CreateLazy(() => Join_2(a()));
 }
+function MapSeqCached(conv, view){
+  return MapSeqCachedBy((x) => x, conv, view);
+}
+function MapSeqCachedBy(key, conv, view){
+  const state=[new Dictionary("New_5")];
+  return Map((xs) => {
+    const prevState=state[0];
+    const newState=new Dictionary("New_5");
+    const result=mapInPlace((x) => {
+      const k=key(x);
+      const res=prevState.ContainsKey(k)?prevState.Item(k):conv(x);
+      newState.set_Item(k, res);
+      return res;
+    }, ofSeq(xs));
+    state[0]=newState;
+    return result;
+  }, view);
+}
 class Doc extends Object_1 {
   docNode;
   updates;
@@ -6814,6 +7071,9 @@ class Doc extends Object_1 {
   static Run(parent, doc_2){
     LinkElement(parent, doc_2.docNode);
     Doc.RunInPlace(false, parent, doc_2);
+  }
+  static get Empty(){
+    return Doc.Mk(null, Const());
   }
   static TextNode(v){
     return Doc.Mk(TextNodeDoc(globalThis.document.createTextNode(v)), Const());
@@ -6833,23 +7093,31 @@ class Doc extends Object_1 {
   static Append(a, b){
     return Doc.Mk(AppendDoc(a.docNode, b.docNode), Map2Unit(a.updates, b.updates));
   }
-  static get Empty(){
-    return Doc.Mk(null, Const());
-  }
   static RunInPlace(childrenOnly, parent, doc_2){
     const st=CreateRunState(parent, doc_2.docNode);
     Sink(get_UseAnimations()||BatchUpdatesEnabled()?StartProcessor(PerformAnimatedUpdate(childrenOnly, st, doc_2.docNode)):() => {
       PerformSyncUpdate(childrenOnly, st, doc_2.docNode);
     }, doc_2.updates);
   }
+  static RunById(id, tr){
+    const m=globalThis.document.getElementById(id);
+    if(Equals(m, null))FailWith("invalid id: "+id);
+    else Doc.Run(m, tr);
+  }
   static Mk(node, updates){
     return new Doc(node, updates);
+  }
+  static Convert(render, view){
+    return Doc.Flatten(MapSeqCached(render, view));
   }
   static TextView(txt){
     const node=CreateTextNode();
     return Doc.Mk(TextDoc(node), Map((t) => {
       UpdateTextNode(node, t);
     }, txt));
+  }
+  static Flatten(view){
+    return Doc.EmbedView(Map((x) => Doc.Concat(x), view));
   }
   constructor(docNode, updates){
     super();
@@ -7161,7 +7429,6 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
   static {
     _c_1=_i(this);
   }
-  static staticNavigationDestinations;
   static requestSeq;
   static pendingCommandSeq;
   static maxSnapshotRecords;
@@ -7201,7 +7468,6 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
     this.maxSnapshotRecords=256;
     this.pendingCommandSeq=0;
     this.requestSeq=0;
-    this.staticNavigationDestinations=[["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"]];
   }
 });
 function TrimEnd(s, t){
@@ -7256,6 +7522,9 @@ function TrimStart(s, t){
     return s.substring(i);
   }
 }
+function EndsWith(x, s){
+  return x.substring(x.length-s.length)==s;
+}
 function IsNullOrWhiteSpace(x){
   return x==null||(new RegExp("^\\s*$")).test(x);
 }
@@ -7293,11 +7562,11 @@ function protect(s){
   return s==null?"":s;
 }
 class FSharpList {
-  static Empty=Create_1(FSharpList, {$:0});
+  static Empty=Create_2(FSharpList, {$:0});
   static Cons(Head, Tail){
-    return Create_1(FSharpList, {
-      $:1,
-      $0:Head,
+    return Create_2(FSharpList, {
+      $:1, 
+      $0:Head, 
       $1:Tail
     });
   }
@@ -7325,58 +7594,58 @@ function TryParse_1(s, r){
 }
 function New_6(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId,
-    tabId:tabId,
-    path:path,
-    title:title,
-    setName:setName,
-    shape:shape,
-    description:description,
-    keyPlaceholder:keyPlaceholder,
-    valuePlaceholder:valuePlaceholder,
-    defaultKey:defaultKey,
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
     tags:tags
   };
 }
 function New_7(pageId, mode, setName, keys){
   return{
-    pageId:pageId,
-    mode:mode,
-    setName:setName,
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
     keys:keys
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_9(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
-    readRepairPolicy:readRepairPolicy,
-    candidateValueStreamKeys:candidateValueStreamKeys,
-    candidateValueStreamCount:candidateValueStreamCount,
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_10(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId,
-    serverRealityId:serverRealityId,
-    kind:kind,
-    target:target,
-    url:url,
-    method:method,
-    payloadJson:payloadJson,
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
     status:status
   };
 }
@@ -7396,13 +7665,13 @@ function ofSeq_1(s){
       go=e.MoveNext();
       if(!go)return FSharpList.Empty;
       else {
-        const res=Create_1(FSharpList, {$:1});
+        const res=Create_2(FSharpList, {$:1});
         r=res;
         while(go)
           {
             r.$0=e.Current;
             if(e.MoveNext()){
-              const t=Create_1(FSharpList, {$:1});
+              const t=Create_2(FSharpList, {$:1});
               r=(r.$1=t,t);
             }
             else go=false;
@@ -7421,7 +7690,7 @@ function map_2(f, x){
   let r, l, go;
   if(x.$==0)return x;
   else {
-    const res=Create_1(FSharpList, {$:1});
+    const res=Create_2(FSharpList, {$:1});
     r=res;
     l=x;
     go=true;
@@ -7431,7 +7700,7 @@ function map_2(f, x){
         l=l.$1;
         if(l.$==0)go=false;
         else {
-          const t=Create_1(FSharpList, {$:1});
+          const t=Create_2(FSharpList, {$:1});
           r=(r.$1=t,t);
         }
       }
@@ -7458,7 +7727,7 @@ function append_3(x, y){
   if(x.$==0)return y;
   else if(y.$==0)return x;
   else {
-    const res=Create_1(FSharpList, {$:1});
+    const res=Create_2(FSharpList, {$:1});
     r=res;
     l=x;
     go=true;
@@ -7468,7 +7737,7 @@ function append_3(x, y){
         l=l.$1;
         if(l.$==0)go=false;
         else {
-          const t=Create_1(FSharpList, {$:1});
+          const t=Create_2(FSharpList, {$:1});
           r=(r.$1=t,t);
         }
       }
@@ -7487,51 +7756,51 @@ function listEmpty(){
 }
 function New_11(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status,
-    page:page,
-    bucketCount:bucketCount,
-    maxSequence:maxSequence,
-    keyMaxSequence:keyMaxSequence,
-    lineage:lineage,
-    lineageHealth:lineageHealth,
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
     buckets:buckets
   };
 }
 function New_12(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    keys:keys,
-    displayName:displayName,
-    setName:setName,
-    valueCount:valueCount,
-    minSequence:minSequence,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    keys:keys, 
+    displayName:displayName, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_13(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
     tags:tags
   };
 }
 function New_14(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    keyMode:keyMode,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    keyMode:keyMode, 
     displayName:displayName
   };
 }
 function New_15(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    rawArgu:rawArgu,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
     tags:tags
   };
 }
@@ -7543,60 +7812,60 @@ function New_17(pageId, keyId){
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    actorAddress:actorAddress,
-    rawArgu:rawArgu,
-    renderMode:renderMode,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_19(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_20(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
-    payload:payload,
-    sourceKind:sourceKind,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_21(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    setName:setName,
-    keys:keys,
-    valueCount:valueCount,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
@@ -7605,10 +7874,10 @@ function New_22(maxSequence, buckets){
 }
 function New_23(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId,
-    keys:keys,
-    createdAtUtc:createdAtUtc,
-    value:value,
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
     tags:tags
   };
 }
@@ -7617,9 +7886,9 @@ function New_24(reason){
 }
 function New_25(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount,
-    actorCount:actorCount,
-    maxSequence:maxSequence,
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
     nodes:nodes
   };
 }
@@ -7735,72 +8004,172 @@ class HashSet extends Object_1 {
 function OfArray(a){
   return new FSharpMap("New_1", OfSeq(map_1((_1) => Pair.New(_1[0], _1[1]), a)));
 }
-function New_26(actorId, displayName, kind, keys, status, routees){
+function New_26(nodeId_1, nodeAddress_1, status, roles, actors){
   return{
-    actorId:actorId,
-    displayName:displayName,
-    kind:kind,
-    keys:keys,
-    status:status,
-    routees:routees
-  };
-}
-function New_27(nodeId_1, nodeAddress_1, status, roles, actors){
-  return{
-    nodeId:nodeId_1,
-    nodeAddress:nodeAddress_1,
-    status:status,
-    roles:roles,
+    nodeId:nodeId_1, 
+    nodeAddress:nodeAddress_1, 
+    status:status, 
+    roles:roles, 
     actors:actors
   };
 }
-function New_28(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_27(actorId, displayName, kind, keys, status, routees){
   return{
-    messageId:messageId,
-    fromId:fromId,
-    toId:toId,
-    scope:scope,
-    body:body,
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
+    routees:routees
+  };
+}
+function Create(key, init_2){
+  return CreateWithStorage(key, InMemory(ofSeq(init_2)));
+}
+function CreateWithStorage(key, storage){
+  return new ListModel("New", key, storage);
+}
+class ListModel extends Object_1 {
+  key;
+  u0076ar;
+  storage;
+  v;
+  it;
+  Set(lst){
+    this.u0076ar.Set(this.storage.SSet(lst));
+    this.ObsoleteAll();
+  }
+  ObsoleteAll(){
+    iter_1((ksn) => {
+      Obsolete(ksn.V);
+    }, this.it);
+    this.it.Clear();
+  }
+  GetEnumerator(){
+    return Get(this.u0076ar.Get());
+  }
+  GetEnumerator0(){
+    return Get0(this.u0076ar.Get());
+  }
+  constructor(i, _1, _2, _3){
+    let key, storage;
+    if(i=="New"){
+      key=_1;
+      storage=_2;
+      i="New_3";
+      _1=key;
+      _2=_c.Create_1(ofSeq(distinctBy_1(key, storage.SInit())));
+      _3=storage;
+    }
+    if(i=="New_3"){
+      const key_1=_1;
+      const var_1=_2;
+      const storage_1=_3;
+      super();
+      this.key=key_1;
+      this.u0076ar=var_1;
+      this.storage=storage_1;
+      this.v=Map((x) => x.slice(), this.u0076ar.View);
+      this.it=new Dictionary("New_5");
+    }
+  }
+}
+function New_28(pageId, tabId){
+  return{pageId:pageId, tabId:tabId};
+}
+function New_29(participantId){
+  return{participantId:participantId};
+}
+class Attr {
+  static Create(name, value){
+    return Attr.A3((el) => {
+      el.setAttribute(name, value);
+    });
+  }
+  static A4(onAfterRender){
+    return Create_2(Attr, {$:4, $0:onAfterRender});
+  }
+  static Concat(xs){
+    const x=ofSeqNonCopying(xs);
+    return TreeReduce(EmptyAttr(), (_1, _2) => AppendTree(_1, _2), x);
+  }
+  static A3(init_2){
+    return Create_2(Attr, {$:3, $0:init_2});
+  }
+  static A1(Item){
+    return Create_2(Attr, {$:1, $0:Item});
+  }
+  static A2(Item1, Item2){
+    return Create_2(Attr, {
+      $:2, 
+      $0:Item1, 
+      $1:Item2
+    });
+  }
+  $;
+  $0;
+  $1;
+}
+function New_30(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
+  return{
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
+    logoutPath:logoutPath, 
+    authenticatedParticipantId:authenticatedParticipantId, 
+    viewAsParticipantId:viewAsParticipantId, 
+    viewAsActive:viewAsActive
+  };
+}
+function New_31(messageId, fromId, toId, scope, body, createdAtUtc){
+  return{
+    messageId:messageId, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
     createdAtUtc:createdAtUtc
   };
 }
-function New_29(messages, nextAfterMessageId){
+function New_32(messages, nextAfterMessageId){
   return{messages:messages, nextAfterMessageId:nextAfterMessageId};
 }
-function New_30(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_33(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId,
-    newestSequence:newestSequence,
-    cachedCount:cachedCount,
-    source:source,
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
     touchedAt:touchedAt
   };
 }
-function New_31(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_34(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    fromId:fromId,
-    toId:toId,
-    body:body,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
-function New_32(fromId, toId, body, tags){
+function New_35(fromId, toId, body, tags){
   return{
-    fromId:fromId,
-    toId:toId,
-    body:body,
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
     tags:tags
   };
 }
-function New_33(messageId, speaker, createdAtUtc, body){
+function New_36(messageId, speaker, createdAtUtc, body){
   return{
-    messageId:messageId,
-    speaker:speaker,
-    createdAtUtc:createdAtUtc,
+    messageId:messageId, 
+    speaker:speaker, 
+    createdAtUtc:createdAtUtc, 
     body:body
   };
 }
@@ -7863,11 +8232,11 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_34(rawArgu, duTypeName, unionCaseName, keyJson){
+function New_37(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
-    rawArgu:rawArgu,
-    duTypeName:duTypeName,
-    unionCaseName:unionCaseName,
+    rawArgu:rawArgu, 
+    duTypeName:duTypeName, 
+    unionCaseName:unionCaseName, 
     keyJson:keyJson
   };
 }
@@ -8058,36 +8427,6 @@ function WhenObsolete(snap, obs){
   if(m==null)Obsolete(obs);
   else m!=null&&m.$==2?(m.$0,EnqueueSafe(m.$1, obs)):m!=null&&m.$==3?(m.$0,EnqueueSafe(m.$1, obs)):m.$0;
 }
-class Attr {
-  static Create(name, value){
-    return Attr.A3((el) => {
-      el.setAttribute(name, value);
-    });
-  }
-  static A4(onAfterRender){
-    return Create_1(Attr, {$:4, $0:onAfterRender});
-  }
-  static Concat(xs){
-    const x=ofSeqNonCopying(xs);
-    return TreeReduce(EmptyAttr(), (_1, _2) => AppendTree(_1, _2), x);
-  }
-  static A3(init_2){
-    return Create_1(Attr, {$:3, $0:init_2});
-  }
-  static A1(Item){
-    return Create_1(Attr, {$:1, $0:Item});
-  }
-  static A2(Item1, Item2){
-    return Create_1(Attr, {
-      $:2,
-      $0:Item1,
-      $1:Item2
-    });
-  }
-  $;
-  $0;
-  $1;
-}
 function OnAfterRender(callback){
   return Attr.A4(callback);
 }
@@ -8099,7 +8438,7 @@ function Handler(name, callback){
 function Dynamic(name, view){
   return Dynamic_1(view, (el) =>(v) => el.setAttribute(name, v));
 }
-function New_35(outputDirectory){
+function New_38(outputDirectory){
   return{outputDirectory:outputDirectory};
 }
 function ofSeqNonCopying(xs){
@@ -8156,6 +8495,10 @@ function MapTreeReduce(mapping, defaultValue, reduction, array){
   }
   return(loop(0))(l);
 }
+function mapInPlace(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
+  return arr;
+}
 class Dictionary extends Object_1 {
   equals;
   hash;
@@ -8206,6 +8549,10 @@ class Dictionary extends Object_1 {
   }
   DAdd(k, v){
     this.add(k, v);
+  }
+  Clear(){
+    this.data=[];
+    this.count=0;
   }
   remove(k){
     const h=this.hash(k);
@@ -8311,7 +8658,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_43(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_46(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -8371,8 +8718,8 @@ function SyncElemNode(childrenOnly, el){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""),
-    Dirty:false,
+    Text:globalThis.document.createTextNode(""), 
+    Dirty:false, 
     Value:""
   };
 }
@@ -8486,63 +8833,53 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_36(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+function New_39(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId,
-    TabId:TabId,
-    ValueId:ValueId,
-    CreatedAtUtc:CreatedAtUtc,
-    Direction:Direction,
-    Tags:Tags,
+    PageId:PageId, 
+    TabId:TabId, 
+    ValueId:ValueId, 
+    CreatedAtUtc:CreatedAtUtc, 
+    Direction:Direction, 
+    Tags:Tags, 
     Payload:Payload
   };
 }
-function New_37(Kind, RenderSummary, Actions_1, Mount){
+function New_40(Kind, RenderSummary, Actions_1, Mount){
   return{
-    Kind:Kind,
-    RenderSummary:RenderSummary,
-    Actions:Actions_1,
+    Kind:Kind, 
+    RenderSummary:RenderSummary, 
+    Actions:Actions_1, 
     Mount:Mount
   };
 }
-function New_38(shape, label_1, badge, className){
+function New_41(shape, label_1, badge, className){
   return{
-    shape:shape,
-    label:label_1,
-    badge:badge,
+    shape:shape, 
+    label:label_1, 
+    badge:badge, 
     className:className
   };
 }
-function New_39(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_42(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath,
-    sessionPath:sessionPath,
-    logoutPath:logoutPath,
-    returnUrl:returnUrl,
-    protectedRoute:protectedRoute,
-    sessionCookieName:sessionCookieName,
-    title:title,
-    lead:lead,
-    providerLabel:providerLabel,
+    submitPath:submitPath, 
+    sessionPath:sessionPath, 
+    logoutPath:logoutPath, 
+    returnUrl:returnUrl, 
+    protectedRoute:protectedRoute, 
+    sessionCookieName:sessionCookieName, 
+    title:title, 
+    lead:lead, 
+    providerLabel:providerLabel, 
     aclLabel:aclLabel
   };
 }
-function New_40(userName, password, returnUrl, keepSession){
+function New_43(userName, password, returnUrl, keepSession){
   return{
-    userName:userName,
-    password:password,
-    returnUrl:returnUrl,
+    userName:userName, 
+    password:password, 
+    returnUrl:returnUrl, 
     keepSession:keepSession
-  };
-}
-function New_41(participantId, displayName, login, authenticated, provider, logoutPath){
-  return{
-    participantId:participantId,
-    displayName:displayName,
-    login:login,
-    authenticated:authenticated,
-    provider:provider,
-    logoutPath:logoutPath
   };
 }
 function nonNegative(){
@@ -8563,10 +8900,10 @@ function groupBy(f, a){
       d.DAdd(k, [c]);
     }
   }
-  mapInPlace((k_1) =>[k_1, d.Item(k_1)], keys);
+  mapInPlace_1((k_1) =>[k_1, d.Item(k_1)], keys);
   return keys;
 }
-function mapInPlace(f, arr){
+function mapInPlace_1(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
 }
 function mapiInPlace(f, arr){
@@ -8583,15 +8920,18 @@ function arrContains(item, arr){
     else i=i+1;
   return!c;
 }
-function New_42(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_44(participantId){
+  return{participantId:participantId};
+}
+function New_45(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    shape:shape,
-    tabId:tabId,
-    tabMode:tabMode,
-    path:path,
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
     description:description
   };
 }
@@ -8653,7 +8993,7 @@ class Pair {
     return Compare(this.Key, other.Key);
   }
   static New(Key, Value){
-    return Create_1(Pair, {Key:Key, Value:Value});
+    return Create_2(Pair, {Key:Key, Value:Value});
   }
 }
 function OfSeq(data){
@@ -8691,7 +9031,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_44(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_47(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Add(x, t){
   return Put((_1, _2) => _2, x, t);
@@ -8761,102 +9101,8 @@ function Rebuild(spine, t){
   }
   return t_1;
 }
-function buildRawArguFromValues(fields){
-  const parts=MarkResizable([]);
-  iter((_1) => appendFieldParts(parts, _1[0], _1[1]), arrayOrEmpty_2(fields));
-  return Join_1(" ", ofSeq(parts));
-}
-function arrayOrEmpty_2(values){
-  return values==null?[]:values;
-}
-function appendFieldParts(parts, field_1, values){
-  const values_1=filter((value_3) => value_3.length>0, map((a) => Trim(a), map(asText_3, arrayOrEmpty_2(values))));
-  const m=asText_3(field_1.kind);
-  if(m=="bool"){
-    const o=tryHead(values_1);
-    const o_1=o==null?null:Some(o.$0.toLowerCase());
-    if(o_1==null)void 0;
-    else {
-      const value=o_1.$0;
-      if(value=="true"||value=="1"||value=="yes")parts.push(asText_3(field_1.arguName));
-    }
-  }
-  else if(m=="bool-value"){
-    const o_2=tryHead(values_1);
-    if(o_2==null)void 0;
-    else {
-      const value_1=o_2.$0;
-      parts.push(asText_3(field_1.arguName));
-      parts.push(quoteArg(value_1));
-    }
-  }
-  else if(m=="list")length(values_1)>0?(parts.push(asText_3(field_1.arguName)),iter((x) => {
-    parts.push(quoteArg(x));
-  }, values_1)):void 0;
-  else if(m=="tuple")length(values_1)>0?(parts.push(asText_3(field_1.arguName)),iter((x) => {
-    parts.push(quoteArg(x));
-  }, values_1)):void 0;
-  else {
-    const o_3=tryHead(values_1);
-    if(o_3==null)void 0;
-    else {
-      const value_2=o_3.$0;
-      parts.push(asText_3(field_1.arguName));
-      parts.push(quoteArg(value_2));
-    }
-  }
-}
-function asText_3(value){
-  return value==null?"":value;
-}
-function quoteArg(value){
-  const text=asText_3(value);
-  return text.length===0?"\"\"":exists_1(IsWhiteSpace, text)||text.indexOf("\"")!=-1?"\""+Replace(Replace(text, "\\", "\\\\"), "\"", "\\\"")+"\"":text;
-}
-function reader(defaultMap){
-  let offsets;
-  offsets=new FSharpMap("New", []);
-  return(caseName) =>(fieldName) => {
-    const binding=caseName+"."+fieldName;
-    const m=defaultMap.TryFind(binding);
-    if(m!=null&&m.$==1){
-      const occurrences=m.$0;
-      const o=offsets.TryFind(binding);
-      const offset=o==null?0:o.$0;
-      return offset>=length(occurrences)?[]:(offsets=offsets.Add_1(binding, offset+1),get(occurrences, offset));
-    }
-    else return[];
-  };
-}
-function group(entries){
-  return OfArray(map((_1) =>[_1[0], map((t) => t[1], _1[1])], groupBy((t) => t[0], entries)));
-}
-function Int(){
-  set_counter(counter()+1);
-  return counter();
-}
-function set_counter(_1){
-  _c_5.counter=_1;
-}
-function counter(){
-  return _c_5.counter;
-}
-function Ready(Item1, Item2){
-  return{
-    $:2,
-    $0:Item1,
-    $1:Item2
-  };
-}
-function Forever(Item){
-  return{$:0, $0:Item};
-}
-function Waiting(Item1, Item2){
-  return{
-    $:3,
-    $0:Item1,
-    $1:Item2
-  };
+function InMemory(init_2){
+  return new ArrayStorage(init_2);
 }
 function Dynamic_1(view, set_1){
   return Attr.A1(new DynamicAttrNode(view, set_1));
@@ -8897,7 +9143,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_45(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_48(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -9000,6 +9246,103 @@ function InsertAt(parent, pos, node){
 function RemoveNode(parent, el){
   if(el.parentNode===parent)parent.removeChild(el);
 }
+function buildRawArguFromValues(fields){
+  const parts=MarkResizable([]);
+  iter((_1) => appendFieldParts(parts, _1[0], _1[1]), arrayOrEmpty_2(fields));
+  return Join_1(" ", ofSeq(parts));
+}
+function arrayOrEmpty_2(values){
+  return values==null?[]:values;
+}
+function appendFieldParts(parts, field_1, values){
+  const values_1=filter((value_3) => value_3.length>0, map((a) => Trim(a), map(asText_3, arrayOrEmpty_2(values))));
+  const m=asText_3(field_1.kind);
+  if(m=="bool"){
+    const o=tryHead(values_1);
+    const o_1=o==null?null:Some(o.$0.toLowerCase());
+    if(o_1==null)void 0;
+    else {
+      const value=o_1.$0;
+      if(value=="true"||value=="1"||value=="yes")parts.push(asText_3(field_1.arguName));
+    }
+  }
+  else if(m=="bool-value"){
+    const o_2=tryHead(values_1);
+    if(o_2==null)void 0;
+    else {
+      const value_1=o_2.$0;
+      parts.push(asText_3(field_1.arguName));
+      parts.push(quoteArg(value_1));
+    }
+  }
+  else if(m=="list")length(values_1)>0?(parts.push(asText_3(field_1.arguName)),iter((x) => {
+    parts.push(quoteArg(x));
+  }, values_1)):void 0;
+  else if(m=="tuple")length(values_1)>0?(parts.push(asText_3(field_1.arguName)),iter((x) => {
+    parts.push(quoteArg(x));
+  }, values_1)):void 0;
+  else {
+    const o_3=tryHead(values_1);
+    if(o_3==null)void 0;
+    else {
+      const value_2=o_3.$0;
+      parts.push(asText_3(field_1.arguName));
+      parts.push(quoteArg(value_2));
+    }
+  }
+}
+function asText_3(value){
+  return value==null?"":value;
+}
+function quoteArg(value){
+  const text=asText_3(value);
+  return text.length===0?"\"\"":exists_1(IsWhiteSpace, text)||text.indexOf("\"")!=-1?"\""+Replace(Replace(text, "\\", "\\\\"), "\"", "\\\"")+"\"":text;
+}
+function reader(defaultMap){
+  let offsets;
+  offsets=new FSharpMap("New", []);
+  return(caseName) =>(fieldName) => {
+    const binding=caseName+"."+fieldName;
+    const m=defaultMap.TryFind(binding);
+    if(m!=null&&m.$==1){
+      const occurrences=m.$0;
+      const o=offsets.TryFind(binding);
+      const offset=o==null?0:o.$0;
+      return offset>=length(occurrences)?[]:(offsets=offsets.Add_1(binding, offset+1),get(occurrences, offset));
+    }
+    else return[];
+  };
+}
+function group(entries){
+  return OfArray(map((_1) =>[_1[0], map((t) => t[1], _1[1])], groupBy((t) => t[0], entries)));
+}
+function Int(){
+  set_counter(counter()+1);
+  return counter();
+}
+function set_counter(_1){
+  _c_5.counter=_1;
+}
+function counter(){
+  return _c_5.counter;
+}
+function Ready(Item1, Item2){
+  return{
+    $:2, 
+    $0:Item1, 
+    $1:Item2
+  };
+}
+function Forever(Item){
+  return{$:0, $0:Item};
+}
+function Waiting(Item1, Item2){
+  return{
+    $:3, 
+    $0:Item1, 
+    $1:Item2
+  };
+}
 function TextNodeDoc(Item){
   return{$:5, $0:Item};
 }
@@ -9008,8 +9351,8 @@ function EmbedDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0,
-    $0:Item1,
+    $:0, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -9116,6 +9459,19 @@ function StartProcessor(procAsync){
     else Equals(m, 1)?st[0]=2:void 0;
   };
 }
+class ArrayStorage extends Object_1 {
+  init;
+  SSet(coll){
+    return ofSeq(coll);
+  }
+  SInit(){
+    return this.init;
+  }
+  constructor(init_2){
+    super();
+    this.init=init_2;
+  }
+}
 class Elt extends Doc {
   docNode_1;
   updates_1;
@@ -9149,13 +9505,13 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1,
-      Children:Children_1,
-      El:El,
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
-    return Create_1(DocElemNode, _2);
+    return Create_2(DocElemNode, _2);
   }
 }
 class TemplateHole extends Object_1 { }
@@ -9336,7 +9692,7 @@ class KeyCollection extends Object_1 {
     this.d=d;
   }
 }
-function New_43(PreviousNodes, Top){
+function New_46(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -9414,7 +9770,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_46((a) => {
+    r(New_49((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -9439,7 +9795,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_46((a) => {
+    if(!ct.c)c(New_49((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -9530,7 +9886,7 @@ function Def(d, f){
 function Prolong(nextDuration, anim){
   const comp=anim.Compute;
   const dur=anim.Duration;
-  const last=Create(() => anim.Compute(anim.Duration));
+  const last=Create_1(() => anim.Compute(anim.Duration));
   return{Compute:(t) => t>=dur?last.f():comp(t), Duration:nextDuration};
 }
 let _c_4=Lazy((_i) => class Proxy {
@@ -9542,12 +9898,12 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_44(Node_1, Left, Right, Height, Count){
+function New_47(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1,
-    Left:Left,
-    Right:Right,
-    Height:Height,
+    Node:Node_1, 
+    Left:Left, 
+    Right:Right, 
+    Height:Height, 
     Count:Count
   };
 }
@@ -9582,17 +9938,17 @@ class Updates_1 {
     return var_1;
   }
   static New(Current, Snap, VarView){
-    return Create_1(Updates_1, {
-      c:Current,
-      s:Snap,
+    return Create_2(Updates_1, {
+      c:Current, 
+      s:Snap, 
       v:VarView
     });
   }
 }
-function New_45(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_48(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem,
-    DynFlags:DynFlags,
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -9648,8 +10004,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2,
-    $0:x,
+    $:2, 
+    $0:x, 
     $1:y
   };
 }
@@ -9924,7 +10280,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_46(k, ct){
+function New_49(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -9946,7 +10302,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_47(false, []);
+    this.noneCT=New_50(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -9955,7 +10311,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_47(IsCancellationRequested, Registrations){
+function New_50(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -10093,15 +10449,15 @@ class CheckedInput {
     return this.$==1?this.$0:this.$==2?this.$0:this.$1;
   }
   static Blank(inputText){
-    return Create_1(CheckedInput, {$:2, $0:inputText});
+    return Create_2(CheckedInput, {$:2, $0:inputText});
   }
   static Invalid(inputText){
-    return Create_1(CheckedInput, {$:1, $0:inputText});
+    return Create_2(CheckedInput, {$:1, $0:inputText});
   }
   static Valid(value, inputText){
-    return Create_1(CheckedInput, {
-      $:0,
-      $0:value,
+    return Create_2(CheckedInput, {
+      $:0, 
+      $0:value, 
       $1:inputText
     });
   }
@@ -10211,8 +10567,8 @@ class OperationCanceledException extends Error {
     }
   }
 }
-function Create(f){
-  return New_48(false, f, forceLazy);
+function Create_1(f){
+  return New_51(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -10233,10 +10589,10 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_48(created, evalOrVal, force){
+function New_51(created, evalOrVal, force){
   return{
-    c:created,
-    v:evalOrVal,
+    c:created, 
+    v:evalOrVal, 
     f:force
   };
 }

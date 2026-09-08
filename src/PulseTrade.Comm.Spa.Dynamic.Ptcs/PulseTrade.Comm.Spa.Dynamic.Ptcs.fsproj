@@ -1,16 +1,20 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Ptcs</PackageId>
-    <Version>0.1.0-alpha7-win56</Version>
+    <Version>0.1.2</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>PTCS same-session transient adapter for PulseTrade Dynamic SDUI runtime.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <LangVersion>preview</LangVersion>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <PowerShellExe Condition="'$(OS)' == 'Windows_NT'">powershell</PowerShellExe>
+    <PulseTradeCommSpaDynamicPtcsPushNuGet Condition="'$(PulseTradeCommSpaDynamicPtcsPushNuGet)' == '' and '$(BuildingInsideVisualStudio)' == 'true'">true</PulseTradeCommSpaDynamicPtcsPushNuGet>
+    <PulseTradeCommSpaDynamicPtcsPushNuGet Condition="'$(PulseTradeCommSpaDynamicPtcsPushNuGet)' == ''">false</PulseTradeCommSpaDynamicPtcsPushNuGet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,7 +24,14 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta117]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha20]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.15]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.1]" />
   </ItemGroup>
+
+  <Target Name="PushDynamicPtcsReleasePackageToNuGet"
+          AfterTargets="Pack"
+          Condition="'$(Configuration)' == 'Release' and '$(OS)' == 'Windows_NT' and '$(PulseTradeCommSpaDynamicPtcsPushNuGet)' == 'true'">
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)"
+          Command="$(PowerShellExe) -NoProfile -ExecutionPolicy Bypass -File &quot;G:\PulseTrade.fs\Libs\Akka.Proc.Supervisor\PostBuildEvent.ps1&quot; -assembly &quot;$(PackageId)&quot; -build &quot;$(Configuration)&quot;" />
+  </Target>
 </Project>

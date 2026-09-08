@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="src/PulseTrade.Comm.Spa.ACL/PulseTrade.Comm.Spa.ACL.fsproj" />
+  <Project Path="src/PulseTrade.Comm.Spa.Dynamic.Contracts/PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj" />
+  <Project Path="src/PulseTrade.Comm.Spa.Dynamic.fsproj" />
+  <Project Path="src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj" />
+  <Project Path="src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client.fsproj" />
+  <Project Path="src/PulseTrade.Comm.Spa.Dynamic.Ptcs/PulseTrade.Comm.Spa.Dynamic.Ptcs.fsproj" />
+  <Project Path="src/PulseTrade.Comm.Spa.Dynamic.Renderer/PulseTrade.Comm.Spa.Dynamic.Renderer.fsproj" />
+  <Project Path="src/PulseTrade.Comm.Spa.Login/PulseTrade.Comm.Spa.Login.fsproj" />
+</Solution>

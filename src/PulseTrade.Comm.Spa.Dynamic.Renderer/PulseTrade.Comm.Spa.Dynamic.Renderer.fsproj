@@ -1,10 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Renderer</PackageId>
-    <Version>0.1.0-alpha48</Version>
+    <Version>0.1.1</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Pure WebSharper renderer for transport-neutral PulseTrade Dynamic SDUI runtime documents.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -13,6 +13,10 @@
     <WebSharperProject>Library</WebSharperProject>
     <WebSharperRunCompiler>true</WebSharperRunCompiler>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PowerShellExe Condition="'$(OS)' == 'Windows_NT'">powershell</PowerShellExe>
+    <PulseTradeCommSpaDynamicRendererPushNuGet Condition="'$(PulseTradeCommSpaDynamicRendererPushNuGet)' == '' and '$(BuildingInsideVisualStudio)' == 'true'">true</PulseTradeCommSpaDynamicRendererPushNuGet>
+    <PulseTradeCommSpaDynamicRendererPushNuGet Condition="'$(PulseTradeCommSpaDynamicRendererPushNuGet)' == ''">false</PulseTradeCommSpaDynamicRendererPushNuGet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,8 +27,12 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha20]" />
-    <PackageReference Include="WebSharper.FSharp" Version="10.1.6.676" />
-    <PackageReference Include="WebSharper.UI" Version="10.1.5.676" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="0.1.1" />
+    <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
+    <PackageReference Include="WebSharper.UI" Version="10.1.4.674" />
   </ItemGroup>
+
+  <Target Name="PushDynamicRendererReleasePackageToNuGet" AfterTargets="Pack" Condition="'$(Configuration)' == 'Release' and '$(OS)' == 'Windows_NT' and '$(PulseTradeCommSpaDynamicRendererPushNuGet)' == 'true'">
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="$(PowerShellExe) -NoProfile -ExecutionPolicy Bypass -File &quot;G:\PulseTrade.fs\Libs\Akka.Proc.Supervisor\PostBuildEvent.ps1&quot; -assembly &quot;$(PackageId)&quot; -build &quot;$(Configuration)&quot;" />
+  </Target>
 </Project>
