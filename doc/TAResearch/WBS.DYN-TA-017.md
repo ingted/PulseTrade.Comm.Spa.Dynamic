@@ -13,7 +13,7 @@
 | DYN-TA-017E | ColdFar Notebook adapter / typed chart root | T-063 | 0% | Daedalus-owned integration |
 | DYN-TA-017F | real MDCQ DIB + Playwright MCP + release | T-064 | 0% | Depends on D/E + provider readiness |
 | DYN-TA-017G | SPAA/DIExt generic runtime hardening：retention/resync -> cursor/range -> reconnect/application lifecycle | T-066..068 | 100% | Done：三個phase均完成；Interactive.Client具single Start/Dispose、bounded reconnect、snapshot timeout/resync與stale generation fence。 |
-| DYN-TA-017H | shared temporal axis、scalar series與PTCS v5 compact transport | T-069/070 | 95% | Exact packages已push、generic F# Playwright通過；待public indexing與Daedalus real DIB/Playwright MCP。 |
+| DYN-TA-017H | shared temporal axis、scalar series與PTCS v5 compact transport | T-069/070 | 98% | Exact packages已公開索引且public nuspec依賴回讀通過；generic F# Playwright通過，待Daedalus real DIB/Playwright MCP。 |
 
 ## Boundary
 

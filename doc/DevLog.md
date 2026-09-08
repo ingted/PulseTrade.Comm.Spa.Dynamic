@@ -1166,3 +1166,8 @@ Implementation status:
 - Current exact graph為Contracts `0.1.0-alpha20`、Renderer `0.1.0-alpha46`、Interactive.Client `0.1.0-alpha20`、Dynamic.Ptcs `0.1.0-alpha7-win56`、Ptcs.Client `0.1.0-alpha8-win79`。五顆NuGet push均回`Created`；local nuspec readback確認FSharp.Core及自有package edges皆exact，public flat-container仍在indexing propagation。
 - Gates：Contracts `19/19`、Renderer `25/25`、Interactive lifecycle `4/4`、PTCS `13/13`、Ptcs.Client `15/15`，五專案與兩個LiveDemo full build通過。Interactive package verifier revision 10 hash為`8e4555a06e710853b90eeb6dbbdcd3354c91acb8396ec591ecdbe77f6700d6cc`。混合legacy/shared BrowserDemo的F# Playwright desktop/mobile通過，shared SMA SVG path非空；內建Browser runtime無可用instance，未宣稱Playwright MCP gate通過。
 - 已透過Comm `msg-fsi-fb6b5f44e4c747d69b899d89a7736828`交付Daedalus exact producer contract與版本，等待其真MDCQ/DIB 3820x28 frame、browser OOM與Playwright結果完成production T-070。
+
+## 2026-09-08 - Correction: DYN-TA-017H public NuGet indexing complete
+
+- Contracts `0.1.0-alpha20`、Renderer `0.1.0-alpha46`、Interactive.Client `0.1.0-alpha20`、Dynamic.Ptcs `0.1.0-alpha7-win56`與Ptcs.Client `0.1.0-alpha8-win79`的public flat-container均已回`200`。
+- Public nuspec readback確認Contracts/Renderer/Interactive.Client與PTCS adapter edges皆符合exact package graph；不重複push。T-070只剩Daedalus real MDCQ/DIB 3820x28與Playwright MCP gate。

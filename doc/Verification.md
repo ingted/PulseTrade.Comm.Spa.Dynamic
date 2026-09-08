@@ -164,5 +164,5 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - 復用`DYN-VFY-011/012/013/014/017`，不新增重複verifier。Contracts gate加入sparse axis、preview same-position revision、malformed/missing/revision/position fail-closed與3820x28 serialized frame上限。
 - Current graph：Contracts `0.1.0-alpha20`、Renderer `0.1.0-alpha46`、Interactive.Client `0.1.0-alpha20`、Dynamic.Ptcs `0.1.0-alpha7-win56`、Ptcs.Client `0.1.0-alpha8-win79`；全數exact-pin `FSharp.Core [10.1.400]`。
 - 非UI結果：Contracts `19/19`、Renderer `25/25`、Interactive lifecycle `4/4`、PTCS `13/13`、Ptcs.Client `15/15`；五個發行專案full build通過。PTCS既有WebSharper.UI dependency-range NU1608 warning不影響本契約。
-- Interactive.Client package verifier Pass，SHA-256 `8e4555a06e710853b90eeb6dbbdcd3354c91acb8396ec591ecdbe77f6700d6cc`；五顆push均回`Created`且local nuspec exact graph通過。public flat-container indexing、Daedalus real DIB與Playwright MCP仍待完成，DYN-TA-T-070維持Partial。
+- Interactive.Client package verifier Pass，SHA-256 `8e4555a06e710853b90eeb6dbbdcd3354c91acb8396ec591ecdbe77f6700d6cc`；五顆push均回`Created`，public flat-container已回`200`，public nuspec exact graph與local readback一致。Daedalus real DIB與Playwright MCP仍待完成，DYN-TA-T-070維持Partial。
 - 混合legacy/shared BrowserDemo的F# Playwright desktop/mobile Pass；新增assertion驗`ta-trace-sma-sma-1k` path唯一且非空。截圖為`artifacts/ta-renderer-playwright/desktop.png`與`mobile.png`。內建Browser runtime discovery為空，故本輪沒有冒充Playwright MCP證據。
