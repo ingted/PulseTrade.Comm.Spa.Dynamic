@@ -12,6 +12,8 @@ remote action/poll/resync -> typed SduiAction -> host adapter
 
 `RuntimeCodec` 的既有 System.Text.Json wire 與 `BrowserRuntimeCodec` 的 WebSharper typed-JSON wire 是兩條明確分離的 encoding；兩者共用相同 RuntimeFrame/RuntimeClientFrame 型別，但 JSON bytes 不可交叉解碼。Interactive mutation 另用 `ptcs-dynamic-action.v1` 的 `DynamicActionClientFrame` / `DynamicActionServerFrame`，以 `RequestId`、`ExpectedDocumentRevision` 與 explicit result 建立 correlation；action result 不屬於 authoritative `RuntimePayload`。
 
+Patch retention以整個ordered operation batch套用後的candidate data為驗證單位。替換既有key或先trim再append可維持在hard limit；多個operation合計超限時，整批patch不會進入authoritative state，reducer保留last-good data/revision並回`RequestResync`。
+
 `SourceSnapshotEnvelope` / `SourceEventEnvelope` 是跨 domain 的 ordering seam。`SourceProjection`只驗stream identity、epoch、sequence、source revision並在gap/conflict/reducer reject時要求authoritative snapshot；payload reducer仍由domain owner adapter注入，package不擁有MDCQ、TradeCore、FsStl、SOR或FCell2型別。source revision不會直接提升browser `DocumentRevision`。
 
 `DynamicTemplateSchema`以`EditorValueKind`描述Text/Integer/Decimal/Boolean/Choice/Scale/List/Group，不包含domain union或provider client。`DynamicEditorValidation`遞迴限制depth/fields/choices/list items，驗default value型別與safe payload；同template的不同參數實例以`TaRowSpec.RowId`區分，document validator拒絕重複RowId。
@@ -24,7 +26,7 @@ remote action/poll/resync -> typed SduiAction -> host adapter
 
 `Error`與invalid/gapped frame保留last-good document/data/view；duplicate frame no-op；sequence gap、identity mismatch或patch base mismatch只產生typed resync effect。
 
-Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha16`，exact依賴FSharp.Core `[10.1.400]`；所有browser call graph module與schema codec均攜帶WebSharper metadata。alpha16只重發compiler/runtime相容性，domain contract shape與alpha15相同。
+Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha17`，exact依賴FSharp.Core `[10.1.400]`；所有browser call graph module與schema codec均攜帶WebSharper metadata。alpha17修正ordered patch的atomic candidate retention/resync語意，不改wire shape。
 
 Browser-facing numeric使用JSON number/`float`，query range使用canonical ISO-8601 string。host/server必須重新驗證range並轉成domain `DateTimeOffset`；Contracts不把browser parser當authorization或domain validation。
 

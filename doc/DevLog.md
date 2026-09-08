@@ -1125,3 +1125,9 @@ Implementation status:
 - Re-published the transport-neutral package set without changing the domain contract: Contracts `0.1.0-alpha16`, Renderer `0.1.0-alpha38`, Interactive.Client `0.1.0-alpha9`. All three exact-pin `FSharp.Core [10.1.400]`; Renderer exact-pins Contracts alpha16 and Interactive.Client exact-pins the same Contracts/Renderer pair.
 - Contracts tests pass `15/15`, Renderer tests pass `22/22`, Interactive bundle package verifier revision 4 passes with SHA-256 `cfe09b2bdc71b90c42079039bfab6423c846ac17442bb15a5feaa6bbbd3d1bbb`. All three packages were copied to SDK 10.0.400 library-packs and NuGet returned `Created`.
 - `ApplyTemplate` remains `(canvasId, rowId option, templateKey, values)` and does not acquire source/instrument/IndicatorSlot fields. Daedalus owns authoritative edit lookup and new-row source inference/rejection in the Interactive Extension controller.
+
+## 2026-09-08 - DYN-TA-017G retention/resync atomic candidate
+
+- `RuntimeReducer`改以完整ordered patch計算不可見candidate data，再驗受影響series的最終retained count；移除逐operation以原state估算造成的same-key與trim/append誤判。
+- 新增`DYN-TA-T-066`：same-key at limit與trim後append均接受；多個upsert合計超限則atomic reject、保留last-good data/revision並要求full resync。
+- Contracts完整WebSharper build通過，Expecto `16/16`通過；`DYN-VFY-018`三項deterministic diagnostics均PASS、findings=0。已發布Contracts `0.1.0-alpha17`、Renderer `0.1.0-alpha39`、Interactive.Client `0.1.0-alpha10` exact package graph；Renderer `22/22`、BrowserDemo full WebSharper build與bundle package verifier均通過。下一個Aster-owned slice為`BaseRowId` shared event-time cursor與`VisibleRangeChanged`。

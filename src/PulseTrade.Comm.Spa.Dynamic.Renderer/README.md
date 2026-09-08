@@ -36,4 +36,4 @@ TaWorkspaceRenderer.render
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha38`，exact依賴Contracts `[0.1.0-alpha16]`與FSharp.Core `[10.1.400]`。Current model gate 22/22；alpha38不改renderer/domain behavior。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha39`，exact依賴Contracts `[0.1.0-alpha17]`與FSharp.Core `[10.1.400]`。Current model gate 22/22；alpha39只承接Contracts retention/resync修正，不改renderer/domain behavior。

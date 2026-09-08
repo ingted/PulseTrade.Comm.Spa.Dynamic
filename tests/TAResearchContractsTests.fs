@@ -130,6 +130,65 @@ let tests =
             let _, canvasEffect = RuntimeReducer.resetCanvas changed
             Expect.equal canvasEffect (RuntimeEffect.SubmitAction(SduiAction.ResetCanvas identity.CanvasInstanceId)) "ResetCanvas submits one typed action."
 
+        testCase "DYN-TA-T-066 retained series validates the atomic candidate state" <| fun _ ->
+            let point index value =
+                SduiValue.Object(
+                    Map [ "timestamp", SduiValue.Number(float index)
+                          "value", SduiValue.Number value ])
+
+            let pointMap index value =
+                match point index value with
+                | SduiValue.Object fields -> fields
+                | _ -> Map.empty
+
+            let retainedCount (state: RuntimeState) =
+                match state.Data["series.price"] with
+                | SduiValue.Array values -> values.Length
+                | _ -> 0
+
+            let limit = DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries
+            let documentState, _ = RuntimeReducer.reduce (RuntimeReducer.initial identity) documentFrame
+            let snapshot count =
+                frame RuntimeFrameKind.Snapshot 2L None 1L
+                    (RuntimePayload.Snapshot
+                        { Data = Map [ "series.price", SduiValue.Array(Array.init count (fun index -> point index (float index))) ]
+                          Freshness = TaFreshness.Live })
+
+            let patch operations =
+                frame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                    (RuntimePayload.Patch { Operations = operations })
+
+            let fullState, _ = RuntimeReducer.reduce documentState (snapshot limit)
+            let replaced, replaceEffect =
+                RuntimeReducer.reduce fullState
+                    (patch [| PatchOperation.UpsertSeriesPoints("series.price", "timestamp", [| pointMap (limit - 1) -1.0 |]) |])
+
+            Expect.equal replaced.DataRevision 2L "Replacing an existing key at the limit must be accepted."
+            Expect.equal (retainedCount replaced) limit "Replacing an existing key must not grow retained state."
+            Expect.equal replaceEffect RuntimeEffect.NoEffect "Accepted replacement needs no resync."
+
+            let trimmedThenAppended, trimEffect =
+                RuntimeReducer.reduce fullState
+                    (patch
+                        [| PatchOperation.RemoveSeriesBefore("series.price", "timestamp", SduiValue.Number 1.0)
+                           PatchOperation.UpsertSeriesPoints("series.price", "timestamp", [| pointMap limit (float limit) |]) |])
+
+            Expect.equal trimmedThenAppended.DataRevision 2L "Ordered trim then append at the limit must be accepted."
+            Expect.equal (retainedCount trimmedThenAppended) limit "Trim then append must retain the bounded final window."
+            Expect.equal trimEffect RuntimeEffect.NoEffect "Accepted trim and append needs no resync."
+
+            let nearlyFullState, _ = RuntimeReducer.reduce documentState (snapshot (limit - 1))
+            let rejected, rejectEffect =
+                RuntimeReducer.reduce nearlyFullState
+                    (patch
+                        [| PatchOperation.UpsertSeriesPoints("series.price", "timestamp", [| pointMap (limit - 1) (float (limit - 1)) |])
+                           PatchOperation.UpsertSeriesPoints("series.price", "timestamp", [| pointMap limit (float limit) |]) |])
+
+            Expect.equal rejected.DataRevision 1L "Combined operations exceeding the limit must be rejected atomically."
+            Expect.equal (retainedCount rejected) (limit - 1) "Rejected patch must preserve last-good data."
+            Expect.equal rejected.LastError.Value.ReasonCode "limit-retained-bars" "Rejected patch exposes the retained limit reason."
+            Expect.equal rejectEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 1L)) "Rejected patch requests one full resync."
+
         testCase "DYN-TA-T-008 and T-009 poll lifecycle is one-in-flight and disposed terminal" <| fun _ ->
             let mounted = RuntimePoll.mount RuntimePollState.Unmounted
             let ready = RuntimePoll.ready true true true mounted

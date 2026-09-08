@@ -76,31 +76,6 @@ module RuntimeReducer =
               yield! document.Rows |> Array.map _.RowId ]
             |> Set.ofList
 
-    let patchRuntimeError state (patch: RuntimePatch) =
-        let refs = knownDataRefs state
-        let targets = knownTargetIds state
-
-        patch.Operations
-        |> Array.tryPick (function
-            | PatchOperation.ReplaceDataRef(dataRef, _)
-            | PatchOperation.UpsertSeriesPoints(dataRef, _, _)
-            | PatchOperation.RemoveSeriesBefore(dataRef, _, _)
-            | PatchOperation.SetStatus(dataRef, _) when not (Set.contains dataRef refs) ->
-                Some("unknown-data-ref", $"Patch dataRef `{dataRef}` is not registered by the document.")
-            | PatchOperation.SetOptions(targetId, _) when not (Set.contains targetId targets) ->
-                Some("unknown-target-id", $"Patch target `{targetId}` is not registered by the document.")
-            | PatchOperation.UpsertSeriesPoints(dataRef, _, items) ->
-                let existingCount =
-                    match Map.tryFind dataRef state.Data with
-                    | Some(SduiValue.Array values) -> values.Length
-                    | _ -> 0
-
-                if existingCount + items.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries then
-                    Some("limit-retained-bars", $"Series `{dataRef}` would exceed retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
-                else
-                    None
-            | _ -> None)
-
     let upsertPoints keyField existing items =
         let existingItems =
             match existing with
@@ -120,6 +95,71 @@ module RuntimeReducer =
         | SduiValue.Number a, SduiValue.Number b -> compare a b
         | SduiValue.Text a, SduiValue.Text b -> compareOrdinalText a b
         | _ -> 0
+
+    let applyDataOperation refs data operation =
+        match operation with
+        | PatchOperation.ReplaceDataRef(dataRef, value) when Set.contains dataRef refs ->
+            Map.add dataRef value data
+        | PatchOperation.UpsertSeriesPoints(dataRef, keyField, items) when Set.contains dataRef refs ->
+            Map.add dataRef (upsertPoints keyField (Map.tryFind dataRef data) items) data
+        | PatchOperation.RemoveSeriesBefore(dataRef, keyField, key) when Set.contains dataRef refs ->
+            let next =
+                match Map.tryFind dataRef data with
+                | Some(SduiValue.Array values) ->
+                    values
+                    |> Array.filter (function
+                        | SduiValue.Object item ->
+                            item
+                            |> Map.tryFind keyField
+                            |> Option.map (fun value -> compareValue value key >= 0)
+                            |> Option.defaultValue false
+                        | _ -> false)
+                    |> SduiValue.Array
+                | value -> value |> Option.defaultValue SduiValue.Null
+
+            Map.add dataRef next data
+        | PatchOperation.SetStatus(dataRef, value) when Set.contains dataRef refs ->
+            Map.add dataRef (SduiValue.Object value) data
+        | _ -> data
+
+    let patchRuntimeError state (patch: RuntimePatch) =
+        let refs = knownDataRefs state
+        let targets = knownTargetIds state
+
+        let structuralError =
+            patch.Operations
+            |> Array.tryPick (function
+                | PatchOperation.ReplaceDataRef(dataRef, _)
+                | PatchOperation.UpsertSeriesPoints(dataRef, _, _)
+                | PatchOperation.RemoveSeriesBefore(dataRef, _, _)
+                | PatchOperation.SetStatus(dataRef, _) when not (Set.contains dataRef refs) ->
+                    Some("unknown-data-ref", $"Patch dataRef `{dataRef}` is not registered by the document.")
+                | PatchOperation.SetOptions(targetId, _) when not (Set.contains targetId targets) ->
+                    Some("unknown-target-id", $"Patch target `{targetId}` is not registered by the document.")
+                | _ -> None)
+
+        match structuralError with
+        | Some error -> Some error
+        | None ->
+            let candidateData =
+                patch.Operations
+                |> Array.fold (applyDataOperation refs) state.Data
+
+            patch.Operations
+            |> Array.choose (function
+                | PatchOperation.ReplaceDataRef(dataRef, _)
+                | PatchOperation.UpsertSeriesPoints(dataRef, _, _)
+                | PatchOperation.RemoveSeriesBefore(dataRef, _, _) -> Some dataRef
+                | _ -> None)
+            |> Array.distinct
+            |> Array.tryPick (fun dataRef ->
+                match Map.tryFind dataRef candidateData with
+                | Some(SduiValue.Array values)
+                    when values.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
+                    Some(
+                        "limit-retained-bars",
+                        $"Series `{dataRef}` would exceed retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
+                | _ -> None)
 
     let applyPatch (state: RuntimeState) (patch: RuntimePatch) =
         let refs = knownDataRefs state
