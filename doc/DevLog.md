@@ -1181,3 +1181,9 @@ Implementation status:
 ## 2026-09-08 - Correction: generic capacity release indexing complete
 
 - Renderer alpha48、Interactive.Client alpha22及Ptcs.Client win81的public flat-container nuspec均已回`200`；FSharp.Core、Contracts、Renderer與PTCS dependencies均符合local exact graph，不重複push。
+
+## 2026-09-08 - Shared temporal patch producer conformance
+
+- Canonical SD補充producer/controller責任：保存committed axis revision；同一ordered patch內更新axis及全部相依series；未變series使用empty-items pin新revision；超過operation上限或無法保證完整相依集合時改送authoritative snapshot。
+- 擴充既有DYN-TA-T-069，以兩條series證明漏掉相依revision update會atomic reject、保留last-good並要求resync；補empty-items update後接受且未變series值保持。Contracts suite維持`19/19`通過，未修改public API或重發NuGet。
+- Read-only consumer review另發現Daedalus shared-axis projector目前只支援snapshot，以及不同priority的同Position interval衝突未完整拒絕；已透過Comm交付owner修正，不在Aster repo越界修改。

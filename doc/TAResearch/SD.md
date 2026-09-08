@@ -679,4 +679,18 @@ owner normalized bars/TA
 
 patch使用`UpsertTemporalAxisPoints`/`RemoveTemporalAxisBefore`與`UpsertTemporalSeriesPoints`/`RemoveTemporalSeriesBefore`。同一preview Position可替換，但axis及相依series必須在同一ordered patch內到達相同revision；中間candidate不對外可見，最終candidate不一致時整批拒絕並`RequestResync`。Position缺口保持缺口，不根據ScaleKey插值。
 
+Contracts不持有session/provider state。producer/controller須保存每個`axisRef`最後成功提交的revision，並依下列順序建立patch：
+
+```fsharp
+let expectedRevision = committedAxisRevision[axisRef]
+let newRevision = expectedRevision + 1L
+
+{ Operations =
+    [| UpsertTemporalAxisPoints(axisRef, expectedRevision, newRevision, axisItems)
+       UpsertTemporalSeriesPoints(closeRef, axisRef, newRevision, closeItems)
+       UpsertTemporalSeriesPoints(smaRef, axisRef, newRevision, smaItems) |] }
+```
+
+修改axis後，所有仍引用該axis的series在最終candidate都必須pin到最終`newRevision`；本批沒有新value的series仍以空items upsert revision。trim與upsert若分成兩個axis operations，後者的`expectedRevision`須接前者的`newRevision`，series則使用最終axis revision。operation超過`MaxPatchOperations`、committed revision不明、session epoch改變或owner無法列出完整相依series時，改送authoritative full snapshot，不得發布半套patch。producer只可在authoritative session接受frame後推進committed revision；snapshot初始revision由session owner建立，不可由stateless projector永久寫死。
+
 PTCS server v5把typed axis/series放入`sharedTemporalData`；legacy arrays仍使用bounded timeline/columnar `series`。client full frame直接建立shared map，delta以dataRef替換changed axis/series，再交canonical reducer/renderer。3820 x 28 gate須驗serialized frame低於16MiB；UI仍只mount bounded SVG primitives，不因working set上限4000而一次建立4000組DOM。

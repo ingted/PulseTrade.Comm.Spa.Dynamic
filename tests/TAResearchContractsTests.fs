@@ -212,10 +212,29 @@ let tests =
                 { AxisRef = axisRef
                   AxisRevision = revision
                   Points = points |> Array.map (fun (position, value) -> { Position = position; Value = SduiValue.Number value }) }
-            let sharedDocument = { document with TemporalAxisRefs = [| axisRef |] }
+            let sharedTrace traceId dataRef =
+                { TraceId = traceId
+                  Kind = TaTraceKind.Line
+                  DataRef = dataRef
+                  Label = traceId
+                  Color = "#335577"
+                  Width = 2.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let sharedRow =
+                { row with
+                    Traces =
+                        [| sharedTrace "price" "series.price"
+                           sharedTrace "sma" "series.sma" |] }
+            let sharedDocument =
+                { document with
+                    TemporalAxisRefs = [| axisRef |]
+                    Rows = [| sharedRow |] }
             let sharedDocumentFrame = { documentFrame with Payload = RuntimePayload.Document sharedDocument }
             let initialAxis = axis 1L [| axisPoint 10L 0 60 PointFinality.Final; axisPoint 11L 5 30 PointFinality.Preview |]
             let initialSeries = series 1L [| 10L, 100.0; 11L, 101.0 |]
+            let initialSma = series 1L [| 10L, 99.0 |]
 
             Expect.equal (TemporalAxisCodec.decode (TemporalAxisCodec.encode initialAxis)) (Ok initialAxis) "Irregular axis gaps must roundtrip without inferred bars."
             Expect.equal (TemporalSeriesCodec.decode (TemporalSeriesCodec.encode initialSeries)) (Ok initialSeries) "Compact scalar series must roundtrip."
@@ -224,7 +243,10 @@ let tests =
             let missingAxisFrame =
                 frame RuntimeFrameKind.Snapshot 2L None 1L
                     (RuntimePayload.Snapshot
-                        { Data = Map [ "series.price", TemporalSeriesCodec.encode initialSeries ]
+                        { Data =
+                            Map
+                                [ "series.price", TemporalSeriesCodec.encode initialSeries
+                                  "series.sma", TemporalSeriesCodec.encode initialSma ]
                           Freshness = TaFreshness.Live })
             let missingAxisState, missingAxisEffect = RuntimeReducer.reduce state1 missingAxisFrame
             Expect.equal missingAxisState.Data state1.Data "Missing axis must retain last-good data."
@@ -234,7 +256,11 @@ let tests =
             let snapshotFrame =
                 frame RuntimeFrameKind.Snapshot 2L None 1L
                     (RuntimePayload.Snapshot
-                        { Data = Map [ axisRef, TemporalAxisCodec.encode initialAxis; "series.price", TemporalSeriesCodec.encode initialSeries ]
+                        { Data =
+                            Map
+                                [ axisRef, TemporalAxisCodec.encode initialAxis
+                                  "series.price", TemporalSeriesCodec.encode initialSeries
+                                  "series.sma", TemporalSeriesCodec.encode initialSma ]
                           Freshness = TaFreshness.Live })
             let state2, snapshotEffect = RuntimeReducer.reduce state1 snapshotFrame
             Expect.equal snapshotEffect RuntimeEffect.NoEffect "A declared shared axis snapshot should be accepted."
@@ -257,7 +283,11 @@ let tests =
             let malformedFrame =
                 frame RuntimeFrameKind.Snapshot 3L (Some 1L) 2L
                     (RuntimePayload.Snapshot
-                        { Data = Map [ axisRef, malformedAxis; "series.price", TemporalSeriesCodec.encode initialSeries ]
+                        { Data =
+                            Map
+                                [ axisRef, malformedAxis
+                                  "series.price", TemporalSeriesCodec.encode initialSeries
+                                  "series.sma", TemporalSeriesCodec.encode initialSma ]
                           Freshness = TaFreshness.Live })
             let malformedState, malformedEffect = RuntimeReducer.reduce state2 malformedFrame
             Expect.equal malformedState.Data state2.Data "Malformed axis metadata must preserve the last-good state."
@@ -265,21 +295,36 @@ let tests =
             Expect.equal malformedEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 1L)) "Malformed axis metadata requests an authoritative resync."
 
             let revisedPreview = axisPoint 11L 5 45 PointFinality.Preview
-            let patchFrame =
+            let incompletePatchFrame =
                 frame RuntimeFrameKind.Patch 3L (Some 1L) 2L
                     (RuntimePayload.Patch
                         { Operations =
                             [| PatchOperation.UpsertTemporalAxisPoints(axisRef, 1L, 2L, [| TemporalAxisCodec.encodePointFields revisedPreview |])
                                PatchOperation.UpsertTemporalSeriesPoints("series.price", axisRef, 2L, [| TemporalSeriesCodec.encodePointFields { Position = 11L; Value = SduiValue.Number 102.0 } |]) |] })
+            let incompleteState, incompleteEffect = RuntimeReducer.reduce state2 incompletePatchFrame
+            Expect.equal incompleteState.Data state2.Data "An axis revision without every dependent series must be rejected atomically."
+            Expect.equal incompleteState.LastError.Value.ReasonCode "temporal-axis-revision-mismatch" "The stale dependent series revision must be explicit."
+            Expect.equal incompleteEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 1L)) "An incomplete shared-axis patch requests resync."
+
+            let patchFrame =
+                frame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.UpsertTemporalAxisPoints(axisRef, 1L, 2L, [| TemporalAxisCodec.encodePointFields revisedPreview |])
+                               PatchOperation.UpsertTemporalSeriesPoints("series.price", axisRef, 2L, [| TemporalSeriesCodec.encodePointFields { Position = 11L; Value = SduiValue.Number 102.0 } |])
+                               PatchOperation.UpsertTemporalSeriesPoints("series.sma", axisRef, 2L, [||]) |] })
             let state3, patchEffect = RuntimeReducer.reduce state2 patchFrame
             Expect.equal patchEffect RuntimeEffect.NoEffect "Same-position preview replacement should be atomic."
             let revisedAxis = state3.Data[axisRef] |> TemporalAxisCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
             let revisedSeries = state3.Data["series.price"] |> TemporalSeriesCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            let revisedSma = state3.Data["series.sma"] |> TemporalSeriesCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
             Expect.equal revisedAxis.Revision 2L "Axis revision should advance."
             Expect.equal revisedAxis.Points.Length 2 "Replacing a preview position must not infer or append another bar."
             Expect.equal revisedAxis.Points[1].ObservedThroughUtc revisedPreview.ObservedThroughUtc "Preview frontier should replace in place."
             Expect.equal revisedSeries.AxisRevision 2L "Series must bind the revised axis."
             Expect.equal revisedSeries.Points[1].Value (SduiValue.Number 102.0) "Series value should replace at the same position."
+            Expect.equal revisedSma.AxisRevision 2L "An unchanged dependent series must pin the revised axis."
+            Expect.equal revisedSma.Points initialSma.Points "An empty-items revision pin must preserve existing values."
 
             let badRevision =
                 frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
