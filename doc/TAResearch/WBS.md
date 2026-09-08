@@ -19,7 +19,7 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-005 | 6 | E2EQ adapter / parallel path | frame/action mapper and feature-gated shared renderer | DYN-TA-001..003 | T-013,T-014,T-019 | 55% | Active | [@DYN-TA-005](WBS.DYN-TA-005.md) |
 | DYN-TA-006 | 7 | Cross-host E2E and bounded soak | PTCS/E2EQ Playwright matrix, 20-poll/resource evidence | DYN-TA-004/005 | T-010,T-014,T-019,T-020 | 86% | Active | [@DYN-TA-004](WBS.DYN-TA-004.md) |
 | DYN-TA-007 | 8 | Static compatibility and DSL sync | static Canvas/FormInput regression and canonical DSL | DYN-TA-001..004 | T-001,T-016,T-017 | 40% | Active | [@DYN-TA-007](WBS.DYN-TA-007.md) |
-| DYN-TA-008 | 9 | Package/release closure | exact refs, NuGet, downstream bump, docs/runbook | DYN-TA-001..007 | T-001..T-020 | 88% | Active | [@DYN-TA-008](WBS.DYN-TA-008.md) |
+| DYN-TA-008 | 0 | Package/release closure | 0.1.1 exact refs, NuGet, downstream bump, docs/runbook | DYN-TA-001..007 | T-001..T-020 | 88% | Active | [@DYN-TA-008](WBS.DYN-TA-008.md) |
 | DYN-TA-009 | 1 | Composite row / multi-trace DSL | additive trace contracts、renderer、legacy projection、四列geometry | DYN-TA-001..004 | T-021 | 100% | Completed | [@DYN-TA-009](WBS.DYN-TA-009.md) |
 | DYN-TA-010 | 2 | Browser delta wire v2 | keyed upsert/remove-before/status delta、client merge/resync | DYN-TA-009 | T-022 | 100% | Completed | [@DYN-TA-010](WBS.DYN-TA-010.md) |
 | DYN-TA-011 | 1 | Mixed-reply TA presentation closure | production envelope decode、summary-only collapsed、lazy inline/fullscreen、Plain/Form boundary | DYN-TA-003/004/010 + PTCS WBS-069 | T-023..030 | 95% | External blocked | runtime/E2E完成，只剩public NuGet credential，詳見[@DYN-TA-011](WBS.DYN-TA-011.md) |
@@ -29,6 +29,8 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-015 | 1 | Full runtime export / draft query / slot cursor | full-data download、Apply boundary、shared slot geometry、exact package/formal gate | DYN-TA-014 | T-045..050 | 100% | Done | [@DYN-TA-015](WBS.DYN-TA-015.md) |
 | DYN-TA-016 | 1 | Editor shell / capability poll / Reset regression | stable editor DOM、capability-gated poll、multi-row reset | DYN-TA-015 | T-051..055 | 100% | Done | [@DYN-TA-016](WBS.DYN-TA-016.md) |
 | DYN-TA-017 | 1 | Notebook TA Workspace production | generic source envelope、editor/action contract、shared temporal axis、production renderer與real DIB | DYN-TA-016 + owner contracts | T-056..070 | 86% | Active | [@DYN-TA-017](WBS.DYN-TA-017.md) |
+
+`DYN-TA-008`目前是最高優先package更新工項：先將所有`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.1`與`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.1`下游`PackageReference`更新並驗證，再關閉0.1.1 NuGet release closure。
 
 
 ## 2. Legacy prerequisite policy

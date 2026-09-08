@@ -1,0 +1,46 @@
+# Contracts VS Release NuGet push
+
+- Start：2026-09-09 00:01:35 +08:00
+- Prompt / 上下文摘要：讓`PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj`在Visual Studio Release build完成pack後，自動使用`G:\PulseTrade.fs\Libs\Akka.Proc.Supervisor\PostBuildEvent.ps1`push NuGet。
+- 範圍：Contracts project build hook與Dynamic DevLog；不修改大量既有dirty檔案。
+- 計畫步驟：比對既有PostBuild contract；新增VS/Release/Windows guard、GeneratePackageOnBuild與明確opt-out；以CLI Release opt-out驗證pack但不push；檢查encoding、diff與package artifact。
+- 驗收：VS Release預設走Pack -> PostBuildEvent；Debug與一般CLI build不push；`-p:PulseTradeCommSpaDynamicContractsPushNuGet=false`可明確停用。
+- 風險：NuGet push是外部副作用；驗證階段禁止實際push，僅驗證pack artifact與MSBuild property。
+
+## Operations
+
+- 00:01：確認target repo已有大量其他工作dirty；Contracts fsproj既有Version/WebSharper/BOM變更保留，不revert。
+- 00:02：確認指定PostBuildEvent從project working directory的`bin/Release`選package，讀既有API key file並以`--skip-duplicate`push；不在專案寫入secret。
+- 00:07：MSBuild property evaluation通過。normal CLI Release為`GeneratePackageOnBuild=true`、push=false；模擬Visual Studio Release為push=true。
+- 00:08：執行Release build並明確設`-p:PulseTradeCommSpaDynamicContractsPushNuGet=false`，0 warning/0 error；產生`bin/Release/PulseTrade.Comm.Spa.Dynamic.Contracts.0.1.1.nupkg`，未執行external push。
+- 結果：VS Release預設Pack後呼叫指定PostBuildEvent；Debug與normal CLI不push；外部副作用可明確opt-out。
+
+## 背景
+
+Contracts原本可pack但沒有自己的Release post-pack push hook；使用者要求沿用FAkka.Proc.Supervisor的既有腳本，讓Visual Studio build成為明確發布入口。
+
+## 目標
+
+只在Windows Visual Studio Release build完成Pack後push；Debug、一般CLI與驗證build不得意外發布。
+
+## 執行命令/參數
+
+- property gate：`dotnet msbuild <project> -property:Configuration=Release -getProperty:GeneratePackageOnBuild -getProperty:BuildingInsideVisualStudio -getProperty:PulseTradeCommSpaDynamicContractsPushNuGet`
+- safe build：`dotnet build <project> -c Release -p:PulseTradeCommSpaDynamicContractsPushNuGet=false`
+
+## 根因判讀
+
+缺口只在Contracts fsproj未宣告`GeneratePackageOnBuild`與`AfterTargets=Pack` hook；不需要修改PostBuildEvent本身。
+
+## 下一步
+
+使用者在Visual Studio選Release並Build時才會真正push；如只需本機pack，明確設定`PulseTradeCommSpaDynamicContractsPushNuGet=false`或使用一般CLI。
+
+## 關聯文件/工單/PR
+
+- `src/PulseTrade.Comm.Spa.Dynamic.Contracts/PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj`
+- `doc/DevLog.md` 2026-09-09段落
+- repo checker另報既有deleted logs及其他0.1.1 dependency未同步；本輪不改寫外部工作。
+- 00:11：repo checker指出0.1.1 consumers仍引用alpha版本；既有`DYN-TA-008 Package/release closure`已涵蓋exact refs/downstream bump，將其priority由9調整為0並明記0.1.1，未修改consumer source/project。
+- 00:13：WBS補充完整package id/version與`PackageReference`最高優先驗收文字，讓既有0.1.1 migration缺口可由deterministic checker追蹤。
+- 00:14：closeout checker為FAIL=0；保留WARN指出0.1.1 consumer references尚未同步，已由priority 0 `DYN-TA-008`追蹤。changed-path sensitive scan為High=0、Medium=0。

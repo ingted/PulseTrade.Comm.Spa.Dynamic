@@ -1187,3 +1187,10 @@ Implementation status:
 - Canonical SD補充producer/controller責任：保存committed axis revision；同一ordered patch內更新axis及全部相依series；未變series使用empty-items pin新revision；超過operation上限或無法保證完整相依集合時改送authoritative snapshot。
 - 擴充既有DYN-TA-T-069，以兩條series證明漏掉相依revision update會atomic reject、保留last-good並要求resync；補empty-items update後接受且未變series值保持。Contracts suite維持`19/19`通過，未修改public API或重發NuGet。
 - Read-only consumer review另發現Daedalus shared-axis projector目前只支援snapshot，以及不同priority的同Position interval衝突未完整拒絕；已透過Comm交付owner修正，不在Aster repo越界修改。
+
+## 2026-09-09 - Contracts Visual Studio Release auto-push hook
+
+- `PulseTrade.Comm.Spa.Dynamic.Contracts`工作樹版本由既有`0.1.0-alpha20`調整為`0.1.1`；本輪未push。其fsproj啟用`GeneratePackageOnBuild`。Windows上的Visual Studio Release build在Pack完成後，使用`G:\PulseTrade.fs\Libs\Akka.Proc.Supervisor\PostBuildEvent.ps1`將精確PackageId的最新Release nupkg push至NuGet並同步library-packs。
+- 一般CLI與Debug build預設不push；可用`PulseTradeCommSpaDynamicContractsPushNuGet=false`明確停用VS push。驗證只產生本機package，不觸發外部NuGet發布。
+
+Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-TA-008 Package/release closure`已提升為priority 0追蹤，不將本次pack成功誤述為整個package graph已結案。
