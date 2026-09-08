@@ -122,3 +122,4 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-044 | 可修改row須保存versioned template/value binding；Edit以stable RowId送`ApplyTemplate(Some rowId, ...)`並原位替換。legacy無binding row仍可顯示/移除但不可猜測成可編輯。 |
 | DYN-TA-REQ-045 | owner須以`BaseRowId`明確指定shared event-time axis；shared cursor必須落在base row的真實datapoint，其他row只可回finalized containing、finalized as-of或missing，不得取未完成coarse point。 |
 | DYN-TA-REQ-046 | viewport commit須送帶`BaseRowId`的`[startEventTimeUtc, endEventTimeExclusiveUtc)`與`MaximumBasePoints`；上限固定為4000，pending期間不得再提交第二次range mutation。 |
+| DYN-TA-REQ-047 | Interactive browser application須提供idempotent single Start與terminal Dispose；斷線採bounded reconnect，每一replacement transport只送一次Mounted/full-snapshot request，重連snapshot成功前保留last-good document/data，且stale socket callback或逾時不得產生重複channel/timer。 |

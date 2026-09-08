@@ -88,6 +88,10 @@ browser與server可共用 `RuntimeFrame` type，但 System.Text.Json codec與 We
 
 `TaWorkspaceDocument.BaseRowId`由owner指定shared axis。cursor action只傳base row真實timestamp；coarse row只呈現finalized containing或finalized as-of value，沒有符合causality的point就顯示missing。viewport release送半開event-time range與最多4000個base points；pending期間range control不可重入。
 
+### 8. Interactive application lifecycle
+
+Interactive.Client提供single Start/Dispose application handle。Browser只連same-origin frames route；斷線保留last-good state並以bounded backoff重連。replacement transport有既有runtime identity時只送一次Mounted與full-snapshot request；valid Snapshot前不清renderer。socket generation隔離stale callback，snapshot逾時重新連線，Dispose取消所有timer並禁止後續復連。
+
 ## 開發順序
 
 1. DYN-TA-017A：RFC/REQ/SA/SD/WBS/Test/Verification。
@@ -107,6 +111,7 @@ browser與server可共用 `RuntimeFrame` type，但 System.Text.Json codec與 We
 5. Notebook cell最後只需 dedicated chart root，不含手工 JSON 或 `KernelInvocationContext.Display` plumbing。
 6. real-path DIB與Playwright皆通過；M12只作 regression。
 7. `BaseRowId`、shared event-time cursor與半開visible range在contract、PTCS wire、renderer及desktop/mobile browser gate一致；range上限4000且pending不可重入。
+8. Interactive.Client重複Start不新增transport；斷線後最多一個replacement channel與full-snapshot request，resync前last-good可見，Dispose後無active channel或reconnect。
 
 ## 相容性與 rollback
 

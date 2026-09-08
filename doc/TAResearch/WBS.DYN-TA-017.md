@@ -2,7 +2,7 @@
 
 - RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`
 - Status: Active
-- Progress: 78%
+- Progress: 83%
 
 | Slice | Deliverable | Test | Progress | Status |
 | --- | --- | --- | ---: | --- |
@@ -12,7 +12,7 @@
 | DYN-TA-017D | WebSharper production workspace UX與multi-scale presentation | T-062/T-065 | 100% | Done：authoritative editor catalog、stable RowId Add/Edit/reject、PTCS wire、exact package graph與desktop/mobile Playwright均通過。owner real metadata/DIB由E/F追蹤。 |
 | DYN-TA-017E | ColdFar Notebook adapter / typed chart root | T-063 | 0% | Daedalus-owned integration |
 | DYN-TA-017F | real MDCQ DIB + Playwright MCP + release | T-064 | 0% | Depends on D/E + provider readiness |
-| DYN-TA-017G | SPAA/DIExt generic runtime hardening：retention/resync -> cursor/range -> reconnect/application lifecycle | T-066..068 | 67% | Active：atomic retention/resync與BaseRow event-time cursor/range已完成；reconnect/application lifecycle為下一項。 |
+| DYN-TA-017G | SPAA/DIExt generic runtime hardening：retention/resync -> cursor/range -> reconnect/application lifecycle | T-066..068 | 100% | Done：三個phase均完成；Interactive.Client具single Start/Dispose、bounded reconnect、snapshot timeout/resync與stale generation fence。 |
 
 ## Boundary
 
@@ -26,11 +26,12 @@
 - Contracts `0.1.0-alpha19`：`TemporalPoint`保存source interval、scale、observed/available frontier、preview/final與projection；document新增validated `BaseRowId`，cursor/range action使用UTC event-time與4000 hard cap；codec具完整WebSharper metadata與atomic candidate retention。
 - Renderer `0.1.0-alpha45`：同列支援多candlestick trace；base row真實timestamp驅動shared cursor，coarse row只取finalized containing/as-of/missing。viewport release送半開event-time range，pending期間不重入且不因feedback重畫2000-point chart。
 - PTCS adapter `0.1.0-alpha7-win55` / client `0.1.0-alpha8-win78`：`ta-browser.v4` wire保留BaseRowId及cursor/range fields，malformed range/catalog fail closed。
-- Interactive.Client `0.1.0-alpha16` package帶可直接serve的single application bundle、minified bundle、Runtime與version-aligned manifest。
+- Interactive.Client `0.1.0-alpha19` package帶可直接serve的single application bundle、minified bundle、Runtime與version-aligned manifest；application handle具idempotent Start/terminal Dispose，斷線保留last-good並只建立一條replacement channel，且只在authoritative Snapshot accepted後重設backoff。
 - Isolated gates：Contracts `17/17`、Renderer `24/24`、PTCS `12/12`、PTCS.Client `14/14`、bundle package verifier Pass；F# Playwright及Playwright MCP皆通過desktop/mobile、range pending lock、cursor action與0 console error/warning。
-- Daedalus consumer compatibility：Contracts alpha19、Renderer alpha45、Interactive.Client alpha16 的 nuspec 均 exact-pin `FSharp.Core [10.1.400]`；最小consumer只需在document指定BaseRowId並處理兩個typed action。`ApplyTemplate`仍由Daedalus Interactive.Extension controller執行authoritative prepare/swap/release。
+- Daedalus consumer compatibility：Contracts alpha19、Renderer alpha45、Interactive.Client alpha19 的 nuspec 均 exact-pin `FSharp.Core [10.1.400]`；最小consumer只需在document指定BaseRowId並處理兩個typed action。`ApplyTemplate`仍由Daedalus Interactive.Extension controller執行authoritative prepare/swap/release。
 - Retention/resync hardening：patch先依序套入不可見candidate data，再對各受影響series驗最終retained count；same-key replace與trim後append不再誤拒，跨operation合計超限會整批拒絕、保留last-good state並要求full resync。Contracts `16/16`與`DYN-VFY-018`三項邊界均通過。
-- 尚未宣稱production：Daedalus SessionHost須消費Interactive.Client alpha16 action envelope；owner-normalized real DIB與MDCQ provider仍是E/F gate。
+- Lifecycle gate：exact-package pure lifecycle `4/4`；F# Playwright以真WebSocket force-drop驗last-good、single reconnect/full snapshot及terminal dispose。Playwright MCP另驗desktop/mobile UI、無overflow/console error。
+- 尚未宣稱production：Daedalus SessionHost須消費Interactive.Client alpha19 action envelope；owner-normalized real DIB與MDCQ provider仍是E/F gate。
 
 ## Completion gate
 

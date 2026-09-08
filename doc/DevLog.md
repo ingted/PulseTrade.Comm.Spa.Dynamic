@@ -1143,3 +1143,18 @@ Implementation status:
 ## 2026-09-08 - Correction: DYN-TA-017G package indexing complete
 
 - NuGet flat-container已可讀取Contracts alpha19、Renderer alpha45、Interactive.Client alpha16、Dynamic.Ptcs win55與Ptcs.Client win78 nuspec；五版的FSharp.Core與Contracts/Renderer/PTCS dependencies均與current exact graph一致。
+
+## 2026-09-08 - DYN-TA-017G Interactive.Client lifecycle
+
+- Interactive.Client新增pure `InteractiveClientLifecycle`及single `Client.Application` Start/Dispose API。socket generation隔離stale callback，斷線以bounded backoff重連；replacement transport只送一次Mounted/full snapshot，snapshot timeout會淘汰該generation並重試。重連期間保留同一last-good RuntimeState/renderer。
+- 新增exact-package unit與獨立WebSocket LiveDemo/F# Playwright verifier。Unit `4/4`；force-drop gate量得maximum active connection `1`、full snapshot request `1`、resync前`LAST GOOD V1`保留、完成後`RESYNCED V2`，Dispose後active `0`/unmounted `1`；Playwright MCP desktop/mobile geometry及本次console通過。
+- Current package `PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.0-alpha18` exact依賴Contracts `[0.1.0-alpha19]`、Renderer `[0.1.0-alpha45]`、FSharp.Core `[10.1.400]`。DYN-TA-017G已100%；real DIB/MDCQ production acceptance仍由Daedalus/MdcQuoteAgent owned DYN-TA-017E/F追蹤。
+
+## 2026-09-08 - Correction: Interactive.Client recovery completion semantics
+
+- TCP/WebSocket open不足以證明workspace恢復；Interactive.Client alpha19新增`SnapshotAccepted` lifecycle event，僅在reducer接受authoritative Snapshot後重設reconnect backoff。可接受socket但無法完成resync的端點因此保留遞增退避。
+- Exact-package lifecycle unit `4/4`、package verifier revision 8與F# Playwright/Playwright MCP force-drop gate通過；maximum active connection `1`、full snapshot request `1`、Dispose後active `0`/unmounted `1`、console 0。Package SHA-256為`72238a5117b2ab5b3bf755713ab44bde79d76a7f60ddee980f1d8d47c6b6fa4f`，NuGet push回`Created`；flat-container propagation尚待索引。
+
+## 2026-09-08 - Correction: Interactive.Client alpha19 indexing complete
+
+- NuGet flat-container已可讀取Interactive.Client alpha19 nuspec；FSharp.Core `[10.1.400]`、Contracts `[0.1.0-alpha19]`與Renderer `[0.1.0-alpha45]` exact dependencies符合current graph。

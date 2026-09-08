@@ -590,3 +590,44 @@ owner document/frame
 ```
 
 cross-row cursor先找finalized containing point；找不到才找finalized且`AvailableAtUtc <= cursor`的as-of point；未完成coarse point與future-available point均排除。viewport action pending時，48/200/All、navigator move/resize與其他range commit皆不可重入。pending/feedback使用獨立view，不能觸發2000-point chart重建；只有window、follow-latest、hidden rows或cursor index改變才重新composition。
+
+## 2026-09-08 Interactive lifecycle revision 7
+
+```fsharp
+type InteractiveClientLifecycleEvent =
+    | Start
+    | TransportOpened of hasRuntimeIdentity: bool
+    | SnapshotAccepted
+    | TransportClosed
+    | ReconnectDue
+    | Dispose
+
+type InteractiveClientLifecycleEffect =
+    | OpenTransport
+    | SendMounted
+    | RequestFullSnapshot
+    | SendUnmounted
+    | ScheduleReconnect of delayMs: int
+    | CancelReconnect
+    | CloseTransport
+
+type InteractiveApplicationHandle =
+    { Start: unit -> unit
+      Dispose: unit -> unit
+      IsDisposed: unit -> bool
+      IsConnected: unit -> bool }
+```
+
+`Client.Application.startWithOptions`是single application入口；重複Start回傳既有未disposed handle。socket callback捕捉monotonic generation，只有current generation可處理frame、close或排reconnect。reconnect delay由1秒指數增加至30秒上限；同一close generation只能存在一個timer。`TransportOpened`不重設backoff；只有reducer接受authoritative Snapshot後送入`SnapshotAccepted`才視為恢復成功並歸零。
+
+```text
+Start -> same-origin WebSocket
+  -> first open -> host bootstrap -> Document -> Snapshot -> Mounted
+  -> disconnect -> preserve RuntimeState -> bounded reconnect
+  -> replacement open -> Mounted + RequestFullSnapshot exactly once
+  -> valid Snapshot -> replace authoritative data / cancel snapshot timeout
+  -> timeout -> invalidate generation / close / reconnect
+Dispose -> cancel reconnect+snapshot+action timers -> Unmounted -> close -> terminal
+```
+
+`RuntimeReducer`仍是frame acceptance authority。重連期間renderer持有同一`Var<RuntimeState>`；Error、invalid frame、sequence gap或逾時不得清除document/data。valid Snapshot前status可為`RESYNCING`/`RECONNECTING`，但畫面維持last-good。application不接收remote URL或credential options。

@@ -258,3 +258,13 @@ cursor語意分三層：base row落actual point；其他row優先取涵蓋cursor
 viewport仍先做local committed window，但有`visible-range-changed` capability時，release後以event-time半開區間送authoritative action。client傳`MaximumBasePoints`只是bounded request，不是provider authority；contract hard cap為4000。action pending期間range controls保持disabled，避免本地window與backend result交錯。
 
 這一層只定義generic interaction contract。Daedalus負責把FsStl workspace/resource轉成base row與normalized temporal metadata；MdcQuoteAgent仍擁有source cursor/fixed-cut/epoch。Dynamic不得由Raw Deal自行聚合或推算calendar cut。
+
+## 20. 2026-09-08 Interactive browser application lifecycle analysis
+
+原Interactive.Client在SPA entry point直接建立一次WebSocket。transport close只更新文字，沒有replacement transport；host也無法以明確handle管理application lifetime。Notebook iframe reload、kernel host暫斷或網路切換因此無法保留last-good workspace並回到authoritative snapshot。
+
+修正分成pure lifecycle與browser adapter兩層。`InteractiveClientLifecycle`只處理idempotent Start、open/close、bounded exponential reconnect與terminal Dispose effects；`Client.Application`才持有同源URL、socket generation、reconnect/snapshot/action timers及renderer instance。舊generation callback一律忽略，任一時刻最多一個open/connecting socket與一個reconnect timer。
+
+replacement transport成功open後，已有runtime identity才重送一次Mounted與`RequestFullSnapshot`。等待期間不清空`RuntimeState`、不重建renderer；valid Snapshot才解除snapshot wait。snapshot逾時會關閉該generation並重新進入bounded reconnect，不把單純TCP open誤當projection已恢復。Dispose先取消timers、送Unmounted、使generation失效再close，後續close/reconnect callback皆為no-op。
+
+這仍是generic browser application能力。Daedalus SessionHost擁有authoritative frame與resource lifecycle；MDCQ reconnect/cursor/epoch不進Interactive.Client。host只能使用same-origin `/view/ -> /frames/`路徑，API不接受arbitrary URL、header或credential。
