@@ -144,6 +144,11 @@ let verifyDesktop (browser: IBrowser) =
     require (chartStack.GetAttributeAsync("data-visible-end") |> awaitTask = "2000") "follow-latest viewport must end at loaded bar 2000"
     requireText (page.Locator("[data-testid='ta-viewport-range']")) "Loaded 2000 bars"
     requireText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 1953-2000"
+    let sharedSma = page.Locator("[data-testid='ta-trace-sma-sma-1k']")
+    require (sharedSma.CountAsync() |> awaitTask = 1) "shared-axis SMA trace must be mounted exactly once"
+    require
+        (sharedSma.GetAttributeAsync("d") |> awaitTask |> Option.ofObj |> Option.exists (String.IsNullOrWhiteSpace >> not))
+        "shared-axis SMA trace path must be non-empty"
     let viewportBox = page.Locator("[data-testid='ta-viewport-panel']").BoundingBoxAsync() |> awaitTask
     let initialPriceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
     require (not (isNull viewportBox) && not (isNull initialPriceBox)) "viewport navigator and first chart row must expose geometry"

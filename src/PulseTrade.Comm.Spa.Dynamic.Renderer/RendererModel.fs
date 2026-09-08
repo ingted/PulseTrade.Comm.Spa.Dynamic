@@ -29,6 +29,10 @@ type TaLinePoint =
       Value: float
       Temporal: TaTemporalPointPresentation option }
 
+type TaResolvedSeriesPoint =
+    { Payload: SduiValue option
+      Temporal: TaTemporalPointPresentation option }
+
 type TaVisibleWindow =
     { StartIndex: int
       Count: int }
@@ -86,6 +90,12 @@ module RendererModel =
 
     [<Literal>]
     let TemporalPointTypeValue = "temporal-point.v1"
+
+    [<Literal>]
+    let TemporalAxisTypeValue = "temporal-axis.v1"
+
+    [<Literal>]
+    let TemporalSeriesTypeValue = "temporal-series.v1"
 
     let workspaceBootstrapPresentation (state: RuntimeState) =
         match state.LastError with
@@ -203,6 +213,92 @@ module RendererModel =
         | Some(metadata, payload) -> Some metadata, payload
         | None -> None, Some value
 
+    let nonNegativeInteger name fields =
+        objectNumber name fields
+        |> Option.filter (fun value -> value >= 0.0 && value = Math.Truncate value)
+
+    let tryTemporalAxisPoint value =
+        value
+        |> tryObject
+        |> Option.bind (fun fields ->
+            match
+                nonNegativeInteger "position" fields,
+                requiredObjectText "sourceIntervalId" fields,
+                requiredObjectText "scaleKey" fields,
+                requiredObjectText "intervalStartUtc" fields,
+                requiredObjectText "intervalEndUtc" fields,
+                requiredObjectText "observedThroughUtc" fields,
+                requiredObjectText "finality" fields,
+                requiredObjectText "projection" fields
+            with
+            | Some position, Some sourceIntervalId, Some scaleKey, Some intervalStartUtc, Some intervalEndUtc, Some observedThroughUtc, Some finality, Some projection ->
+                Some(
+                    position,
+                    { SourceIntervalId = sourceIntervalId
+                      ScaleKey = scaleKey
+                      IntervalStartUtc = intervalStartUtc
+                      IntervalEndUtc = intervalEndUtc
+                      ObservedThroughUtc = observedThroughUtc
+                      AvailableAtUtc = requiredObjectText "availableAtUtc" fields
+                      Finality = finality
+                      Projection = projection
+                      Quality = requiredObjectText "quality" fields })
+            | _ -> None)
+
+    let tryTemporalAxis value =
+        value
+        |> tryObject
+        |> Option.bind (fun fields ->
+            if objectText TemporalPointTypeKey fields <> Some TemporalAxisTypeValue then None
+            else
+                match requiredObjectText "axisRef" fields, nonNegativeInteger "revision" fields, Map.tryFind "points" fields with
+                | Some axisRef, Some revision, Some(SduiValue.Array points) ->
+                    let decoded = points |> Array.choose tryTemporalAxisPoint
+                    if decoded.Length <> points.Length then None
+                    else Some(axisRef, revision, decoded |> Map.ofArray)
+                | _ -> None)
+
+    let tryTemporalSeries value =
+        value
+        |> tryObject
+        |> Option.bind (fun fields ->
+            if objectText TemporalPointTypeKey fields <> Some TemporalSeriesTypeValue then None
+            else
+                match requiredObjectText "axisRef" fields, nonNegativeInteger "axisRevision" fields, Map.tryFind "points" fields with
+                | Some axisRef, Some revision, Some(SduiValue.Array points) ->
+                    let decoded =
+                        points
+                        |> Array.choose (fun point ->
+                            point
+                            |> tryObject
+                            |> Option.bind (fun values ->
+                                match nonNegativeInteger "position" values, Map.tryFind "value" values with
+                                | Some position, Some payload -> Some(position, payload)
+                                | _ -> None))
+                    if decoded.Length <> points.Length then None
+                    else Some(axisRef, revision, decoded)
+                | _ -> None)
+
+    let resolvedSeries dataRef data =
+        match Map.tryFind dataRef data with
+        | Some(SduiValue.Array values) ->
+            values
+            |> Array.map (fun value ->
+                let temporal, payload = pointPayload value
+                { Payload = payload; Temporal = temporal })
+        | Some value ->
+            match tryTemporalSeries value with
+            | Some(axisRef, axisRevision, points) ->
+                match Map.tryFind axisRef data |> Option.bind tryTemporalAxis with
+                | Some(encodedAxisRef, revision, axis) when encodedAxisRef = axisRef && revision = axisRevision ->
+                    points
+                    |> Array.choose (fun (position, payload) ->
+                        Map.tryFind position axis
+                        |> Option.map (fun temporal -> { Payload = Some payload; Temporal = Some temporal }))
+                | _ -> [||]
+            | None -> [||]
+        | None -> [||]
+
     let queryDraft (values: Map<string, SduiValue>) =
         let textValue name =
             values
@@ -233,8 +329,7 @@ module RendererModel =
     let fixedNumber (value: float) =
         string value
 
-    let parseCandle value =
-        let temporal, payload = pointPayload value
+    let parseCandleResolved temporal payload =
         payload
         |> Option.bind tryObject
         |> Option.bind (fun item ->
@@ -257,25 +352,71 @@ module RendererModel =
                       Temporal = temporal }
             | _ -> None)
 
+    let parseCandle value =
+        let temporal, payload = pointPayload value
+        parseCandleResolved temporal payload
+
+    let parseLineResolved temporal payload =
+        match payload, temporal with
+        | Some(SduiValue.Number lineValue), Some metadata ->
+            Some { Timestamp = metadata.IntervalStartUtc; Value = lineValue; Temporal = temporal }
+        | _ ->
+            payload
+            |> Option.bind tryObject
+            |> Option.bind (fun item ->
+                match temporal |> Option.map _.IntervalStartUtc |> Option.orElseWith (fun () -> objectText "t" item), objectNumber "v" item with
+                | Some timestamp, Some lineValue -> Some { Timestamp = timestamp; Value = lineValue; Temporal = temporal }
+                | _ -> None)
+
     let parseLine value =
         let temporal, payload = pointPayload value
-        payload
-        |> Option.bind tryObject
-        |> Option.bind (fun item ->
-            match temporal |> Option.map _.IntervalStartUtc |> Option.orElseWith (fun () -> objectText "t" item), objectNumber "v" item with
-            | Some timestamp, Some lineValue -> Some { Timestamp = timestamp; Value = lineValue; Temporal = temporal }
-            | _ -> None)
+        parseLineResolved temporal payload
 
     let seriesValues dataRef data =
-        match Map.tryFind dataRef data with
-        | Some(SduiValue.Array values) -> values
-        | _ -> [||]
+        resolvedSeries dataRef data
+        |> Array.choose _.Payload
 
     let candleSeries dataRef data =
-        seriesValues dataRef data |> Array.choose parseCandle
+        resolvedSeries dataRef data
+        |> Array.choose (fun point -> parseCandleResolved point.Temporal point.Payload)
 
     let lineSeries dataRef data =
-        seriesValues dataRef data |> Array.choose parseLine
+        resolvedSeries dataRef data
+        |> Array.choose (fun point -> parseLineResolved point.Temporal point.Payload)
+
+    let candleSeriesForTrace (trace: TaTraceSpec) data =
+        match trace.CandleDataRefs with
+        | None -> candleSeries trace.DataRef data
+        | Some refs ->
+            let valuesByTimestamp dataRef =
+                lineSeries dataRef data
+                |> Array.map (fun point -> point.Timestamp, point)
+                |> Map.ofArray
+
+            let opens = lineSeries refs.OpenRef data
+            let highs = valuesByTimestamp refs.HighRef
+            let lows = valuesByTimestamp refs.LowRef
+            let closes = valuesByTimestamp refs.CloseRef
+            let volumes = valuesByTimestamp refs.VolumeRef
+
+            opens
+            |> Array.choose (fun openPoint ->
+                match
+                    Map.tryFind openPoint.Timestamp highs,
+                    Map.tryFind openPoint.Timestamp lows,
+                    Map.tryFind openPoint.Timestamp closes,
+                    Map.tryFind openPoint.Timestamp volumes
+                with
+                | Some high, Some low, Some close, Some volume ->
+                    Some
+                        { Timestamp = openPoint.Timestamp
+                          Open = openPoint.Value
+                          High = high.Value
+                          Low = low.Value
+                          Close = close.Value
+                          Volume = volume.Value
+                          Temporal = openPoint.Temporal }
+                | _ -> None)
 
     let effectiveTraces (row: TaRowSpec) =
         if not (isNull row.Traces) && row.Traces.Length > 0 then
@@ -295,6 +436,7 @@ module RendererModel =
                  Color = ""
                  Width = 1.25
                  Visible = true
+                 CandleDataRefs = None
                  Options = Map.empty } |]
 
     let rowReferenceLength (row: TaRowSpec) data =
@@ -308,7 +450,7 @@ module RendererModel =
     let traceTimestamps (trace: TaTraceSpec) data =
         match trace.Kind with
         | TaTraceKind.Candlestick
-        | TaTraceKind.Volume -> candleSeries trace.DataRef data |> Array.map _.Timestamp
+        | TaTraceKind.Volume -> candleSeriesForTrace trace data |> Array.map _.Timestamp
         | TaTraceKind.Line
         | TaTraceKind.Histogram -> lineSeries trace.DataRef data |> Array.map _.Timestamp
 
@@ -359,7 +501,7 @@ module RendererModel =
             match trace.Kind with
             | TaTraceKind.Candlestick
             | TaTraceKind.Volume ->
-                candleSeries trace.DataRef data
+                candleSeriesForTrace trace data
                 |> Array.tryFind (fun point -> point.Timestamp = timestamp)
                 |> Option.bind _.Temporal
                 |> Option.map _.IntervalEndUtc
@@ -459,8 +601,8 @@ module RendererModel =
         $"{metadata.ScaleKey} | {metadata.Finality} | quality {quality} | frontier {metadata.ObservedThroughUtc} | available {availability}"
 
     let latestTemporalMetadata (trace: TaTraceSpec) data =
-        seriesValues trace.DataRef data
-        |> Array.choose (tryTemporalPoint >> Option.map fst)
+        resolvedSeries trace.DataRef data
+        |> Array.choose _.Temporal
         |> Array.tryLast
 
     let rowTemporalMetadata (row: TaRowSpec) data =
@@ -634,7 +776,7 @@ module RendererModel =
                         match trace.Kind with
                         | TaTraceKind.Candlestick
                         | TaTraceKind.Volume ->
-                            candleSeries trace.DataRef data
+                            candleSeriesForTrace trace data
                             |> tryCandleForCursor isBaseRow timestamp
                             |> Option.map (fun point ->
                                 let baseValue =

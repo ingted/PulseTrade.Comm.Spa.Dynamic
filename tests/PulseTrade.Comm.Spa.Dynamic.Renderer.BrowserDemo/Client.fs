@@ -65,6 +65,37 @@ module Client =
     let linePayload value = SduiValue.Object(Map [ "v", SduiValue.Number value ])
 
     let sampleSeries count =
+        let sharedAxisRef = "axis.1k"
+        let sharedAxis =
+            SduiValue.Object(
+                Map [ "_type", SduiValue.Text "temporal-axis.v1"
+                      "axisRef", SduiValue.Text sharedAxisRef
+                      "revision", SduiValue.Number 1.0
+                      "points",
+                      SduiValue.Array(
+                          Array.init count (fun index ->
+                              SduiValue.Object(
+                                  Map [ "position", SduiValue.Number(float index)
+                                        "sourceIntervalId", SduiValue.Text("es-1k:" + string index)
+                                        "scaleKey", SduiValue.Text "1K"
+                                        "intervalStartUtc", SduiValue.Text(timestamp index)
+                                        "intervalEndUtc", SduiValue.Text(timestamp (index + 1))
+                                        "observedThroughUtc", SduiValue.Text(timestamp (index + 1))
+                                        "availableAtUtc", SduiValue.Text(timestamp (index + 1))
+                                        "finality", SduiValue.Text "final"
+                                        "projection", SduiValue.Text "candle-span"
+                                        "quality", SduiValue.Text "complete" ]))) ])
+        let sharedSma =
+            SduiValue.Object(
+                Map [ "_type", SduiValue.Text "temporal-series.v1"
+                      "axisRef", SduiValue.Text sharedAxisRef
+                      "axisRevision", SduiValue.Number 1.0
+                      "points",
+                      SduiValue.Array(
+                          Array.init count (fun index ->
+                              SduiValue.Object(
+                                  Map [ "position", SduiValue.Number(float index)
+                                        "value", SduiValue.Number(21820.0 + Math.Sin(float index / 6.0) * 28.0) ]))) ])
         let candles =
             Array.init count (fun index ->
                 let baseline = 21800.0 + float index * 1.7 + Math.Sin(float index / 4.0) * 24.0
@@ -144,10 +175,11 @@ module Client =
                            (linePayload (Math.Sin(float startIndex / 90.0) * 22.0)) |]
 
         Map [
+            sharedAxisRef, sharedAxis
             "series.price", SduiValue.Array candles
             "series.price-5k", SduiValue.Array fiveMinuteCandles
             "series.volume", SduiValue.Array candles
-            "series.sma", SduiValue.Array(line 21820.0 28.0 6.0)
+            "series.sma", sharedSma
             "series.sma-5k", SduiValue.Array fiveMinuteSma
             "series.dmi", SduiValue.Array(line 25.0 11.0 4.5)
             "series.adx", SduiValue.Array(line 22.0 8.0 7.0)
@@ -181,6 +213,7 @@ module Client =
           Color = color
           Width = width
           Visible = true
+          CandleDataRefs = None
           Options = Map.empty }
 
     let compositeRow rowId kind dataRef weight traces =
@@ -265,6 +298,7 @@ module Client =
                   RowsRef = "ta.rows"
                   StatusRef = "ta.status"
                   SharedTimeAxis = true
+                  TemporalAxisRefs = [| "axis.1k" |]
                   BaseRowId = Some "price"
                   Rows =
                     [| compositeRow

@@ -28,7 +28,9 @@ Patch retention以整個ordered operation batch套用後的candidate data為驗�
 
 `TaWorkspaceDocument.BaseRowId`指定shared event-time axis。`SharedCursorChanged`傳actual base datapoint timestamp；`VisibleRangeChanged`傳`[start,end)`與`MaximumBasePoints <= 4000`，兩者沿用correlated action lifecycle。
 
-Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha19`，exact依賴FSharp.Core `[10.1.400]`；current contract gate 17/17。
+`TemporalAxis`/`TemporalSeries`是provider-neutral的shared temporal representation。axis point保存唯一`Position`及完整interval/frontier/finality/projection；scalar series只保存`Position + SduiValue`並exact-pin `AxisRevision`。Position只作join key，不依scale推算或補空K；current-K preview以相同Position和新的axis/series revision原位替換。`TaCandleDataRefs`把O/H/L/C/V五條scalar series組成candlestick，避免每個TA scalar重複28份時間metadata。既有`temporal-point.v1`仍可解碼。
+
+Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha20`，exact依賴FSharp.Core `[10.1.400]`；current contract gate 19/19。
 
 Browser-facing numeric使用JSON number/`float`，query range使用canonical ISO-8601 string。host/server必須重新驗證range並轉成domain `DateTimeOffset`；Contracts不把browser parser當authorization或domain validation。
 

@@ -41,6 +41,32 @@ type TemporalPoint =
       Quality: string option
       Value: SduiValue option }
 
+type TemporalAxisPoint =
+    { Position: int64
+      SourceIntervalId: string
+      ScaleKey: string
+      IntervalStartUtc: DateTimeOffset
+      IntervalEndUtc: DateTimeOffset
+      ObservedThroughUtc: DateTimeOffset
+      AvailableAtUtc: DateTimeOffset option
+      Finality: PointFinality
+      Projection: TemporalProjection
+      Quality: string option }
+
+type TemporalAxis =
+    { AxisRef: string
+      Revision: int64
+      Points: TemporalAxisPoint array }
+
+type TemporalSeriesPoint =
+    { Position: int64
+      Value: SduiValue }
+
+type TemporalSeries =
+    { AxisRef: string
+      AxisRevision: int64
+      Points: TemporalSeriesPoint array }
+
 [<RequireQualifiedAccess>]
 type TaFreshness =
     | Live
@@ -66,6 +92,13 @@ type TaTraceKind =
     | Line
     | Histogram
 
+type TaCandleDataRefs =
+    { OpenRef: string
+      HighRef: string
+      LowRef: string
+      CloseRef: string
+      VolumeRef: string }
+
 type TaTraceSpec =
     { TraceId: string
       Kind: TaTraceKind
@@ -74,6 +107,7 @@ type TaTraceSpec =
       Color: string
       Width: float
       Visible: bool
+      CandleDataRefs: TaCandleDataRefs option
       Options: Map<string, SduiValue> }
 
 type TaRowSpec =
@@ -104,11 +138,15 @@ module TaRowSpec =
                  Color = ""
                  Width = 2.0
                  Visible = true
+                 CandleDataRefs = None
                  Options = Map.empty } |]
 
     let dataRefs row =
         effectiveTraces row
-        |> Array.map _.DataRef
+        |> Array.collect (fun trace ->
+            match trace.CandleDataRefs with
+            | Some refs -> [| trace.DataRef; refs.OpenRef; refs.HighRef; refs.LowRef; refs.CloseRef; refs.VolumeRef |]
+            | None -> [| trace.DataRef |])
         |> Array.append [| row.DataRef |]
         |> Array.filter (String.IsNullOrWhiteSpace >> not)
         |> Array.distinct
@@ -148,6 +186,7 @@ type TaWorkspaceDocument =
       RowsRef: string
       StatusRef: string
       SharedTimeAxis: bool
+      TemporalAxisRefs: string array
       BaseRowId: string option
       Rows: TaRowSpec array
       EditorSchemas: DynamicTemplateSchema array
@@ -163,6 +202,10 @@ type PatchOperation =
     | ReplaceDataRef of dataRef: string * value: SduiValue
     | UpsertSeriesPoints of dataRef: string * keyField: string * items: Map<string, SduiValue> array
     | RemoveSeriesBefore of dataRef: string * keyField: string * key: SduiValue
+    | UpsertTemporalAxisPoints of axisRef: string * expectedRevision: int64 * newRevision: int64 * items: Map<string, SduiValue> array
+    | RemoveTemporalAxisBefore of axisRef: string * expectedRevision: int64 * newRevision: int64 * position: int64
+    | UpsertTemporalSeriesPoints of dataRef: string * axisRef: string * axisRevision: int64 * items: Map<string, SduiValue> array
+    | RemoveTemporalSeriesBefore of dataRef: string * axisRef: string * axisRevision: int64 * position: int64
     | SetStatus of dataRef: string * value: Map<string, SduiValue>
     | SetOptions of targetId: string * value: Map<string, SduiValue>
 
@@ -289,7 +332,7 @@ module DynamicRuntimeDefaults =
           MaxTracesPerRow = 32
           MaxTotalTraces = 64
           MaxInitialBarsPerSeries = 5000
-          MaxRetainedBarsPerSeries = 2000
+          MaxRetainedBarsPerSeries = 4000
           MaxPatchOperations = 32
           MaxPatchItems = 500
           MaxFrameBytes = 16 * 1024 * 1024

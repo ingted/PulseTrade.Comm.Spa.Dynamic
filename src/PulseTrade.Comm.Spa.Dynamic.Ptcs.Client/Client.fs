@@ -85,7 +85,13 @@ type TaBrowserTraceWire =
       label: string
       color: string
       width: float
-      visible: bool }
+      visible: bool
+      hasCandleDataRefs: bool
+      candleOpenRef: string
+      candleHighRef: string
+      candleLowRef: string
+      candleCloseRef: string
+      candleVolumeRef: string }
 
 [<JavaScript; CLIMutable>]
 type TaBrowserRowWire =
@@ -109,6 +115,7 @@ type TaBrowserStateWire =
       rowsRef: string
       statusRef: string
       sharedTimeAxis: bool
+      temporalAxisRefs: string array
       baseRowId: string
       rows: TaBrowserRowWire array
       editorSchemas: TaBrowserValueWire array
@@ -121,6 +128,7 @@ type TaBrowserStateWire =
       queryIncludePartial: bool
       timeline: string array
       series: TaBrowserSeriesWire array
+      sharedTemporalData: TaBrowserFieldWire array
       statusLabel: string
       freshness: string
       watermarkUtc: string
@@ -545,14 +553,14 @@ module TaResearchClientWire =
             else payload)
 
     let seriesPointValues (wire: TaBrowserStateWire) (series: TaBrowserSeriesWire) =
-        if wire.wireVersion = "ta-browser.v3" || wire.wireVersion = "ta-browser.v4" then columnarPointValues wire.timeline series
+        if wire.wireVersion = "ta-browser.v3" || wire.wireVersion = "ta-browser.v4" || wire.wireVersion = "ta-browser.v5" then columnarPointValues wire.timeline series
         elif isNull series.points then [||]
         else series.points |> Array.map pointValue
 
     let stateFromWire (wire: TaBrowserStateWire) =
-        if isNull (box wire) || (wire.wireVersion <> "ta-browser.v1" && wire.wireVersion <> "ta-browser.v2" && wire.wireVersion <> "ta-browser.v3" && wire.wireVersion <> "ta-browser.v4") then
+        if isNull (box wire) || (wire.wireVersion <> "ta-browser.v1" && wire.wireVersion <> "ta-browser.v2" && wire.wireVersion <> "ta-browser.v3" && wire.wireVersion <> "ta-browser.v4" && wire.wireVersion <> "ta-browser.v5") then
             Result.Error "Unsupported TA browser state wire."
-        elif wire.wireVersion = "ta-browser.v4"
+        elif (wire.wireVersion = "ta-browser.v4" || wire.wireVersion = "ta-browser.v5")
              && not (isNull wire.series)
              && wire.series |> Array.exists (fun series -> not (temporalSeriesMetadataIsValid (max 0 series.pointCount) series)) then
             Result.Error "TA browser temporal metadata arrays do not match pointCount."
@@ -579,6 +587,15 @@ module TaResearchClientWire =
                                       Color = text trace.color
                                       Width = trace.width
                                       Visible = trace.visible
+                                      CandleDataRefs =
+                                        if trace.hasCandleDataRefs then
+                                            Some
+                                                { OpenRef = text trace.candleOpenRef
+                                                  HighRef = text trace.candleHighRef
+                                                  LowRef = text trace.candleLowRef
+                                                  CloseRef = text trace.candleCloseRef
+                                                  VolumeRef = text trace.candleVolumeRef }
+                                        else None
                                       Options = Map.empty })
                           Options = mapFromWire row.options })
 
@@ -591,6 +608,7 @@ module TaResearchClientWire =
 
                         text series.dataRef, SduiValue.Array points)
                     |> Map.ofArray
+            let sharedTemporalData = mapFromWire wire.sharedTemporalData
 
             let status =
                 SduiValue.Object(
@@ -601,7 +619,10 @@ module TaResearchClientWire =
                           "lagSeconds", SduiValue.Number wire.lagSeconds
                           "reasonCode", SduiValue.Text(text wire.reasonCode) ])
 
-            let data = Map.add (text wire.statusRef) status seriesData
+            let data =
+                sharedTemporalData
+                |> Map.fold (fun values dataRef value -> Map.add dataRef value values) seriesData
+                |> Map.add (text wire.statusRef) status
             let defaultView =
                 [ if not (String.IsNullOrWhiteSpace wire.querySourceId) then
                       "query.sourceId", SduiValue.Text(text wire.querySourceId)
@@ -643,6 +664,7 @@ module TaResearchClientWire =
                               RowsRef = text wire.rowsRef
                               StatusRef = text wire.statusRef
                               SharedTimeAxis = wire.sharedTimeAxis
+                              TemporalAxisRefs = if isNull wire.temporalAxisRefs then [||] else wire.temporalAxisRefs
                               BaseRowId = if String.IsNullOrWhiteSpace wire.baseRowId then None else Some(text wire.baseRowId)
                               Rows = rows
                               EditorSchemas = editorSchemas
@@ -709,10 +731,13 @@ module TaResearchClientWire =
                             let dataRef, value = mergeSeries { current with Data = data } wire.timeline series
                             Map.add dataRef value data) current.Data
                 let statusRef = decoded.Document |> Option.map _.StatusRef |> Option.defaultValue "status"
+                let mergedSharedTemporal =
+                    mapFromWire wire.sharedTemporalData
+                    |> Map.fold (fun data dataRef value -> Map.add dataRef value data) mergedSeries
                 let mergedData =
                     match Map.tryFind statusRef decoded.Data with
-                    | Some status -> Map.add statusRef status mergedSeries
-                    | None -> mergedSeries
+                    | Some status -> Map.add statusRef status mergedSharedTemporal
+                    | None -> mergedSharedTemporal
 
                 Result.Ok
                     { decoded with

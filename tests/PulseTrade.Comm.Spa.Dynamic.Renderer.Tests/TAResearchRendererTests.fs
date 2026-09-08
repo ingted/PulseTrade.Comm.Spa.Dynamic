@@ -199,6 +199,7 @@ let tests =
                   RowsRef = "rows"
                   StatusRef = "status"
                   SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
                   BaseRowId = Some "price"
                   Rows = [| row "price" TaRowKind.Candlestick "price"; row "sma" TaRowKind.Sma "sma" |]
                   EditorSchemas = [||]
@@ -229,6 +230,7 @@ let tests =
                   Color = ""
                   Width = 1.0
                   Visible = true
+                  CandleDataRefs = None
                   Options = Map.empty }
 
             let row =
@@ -248,6 +250,7 @@ let tests =
                   RowsRef = "rows"
                   StatusRef = "status"
                   SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
                   BaseRowId = Some "price"
                   Rows = [| row |]
                   EditorSchemas = [||]
@@ -297,6 +300,7 @@ let tests =
                   RowsRef = "rows"
                   StatusRef = "status"
                   SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
                   BaseRowId = Some "base"
                   Rows = [| row "base" "base"; row "longer" "longer" |]
                   EditorSchemas = [||]
@@ -352,6 +356,7 @@ let tests =
                   RowsRef = "rows"
                   StatusRef = "status"
                   SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
                   BaseRowId = Some "base"
                   Rows = [| row "base" "base"; row "coarse" "coarse" |]
                   EditorSchemas = [||]
@@ -472,7 +477,7 @@ let tests =
                     (Some "complete")
                     (Some(SduiValue.Object(Map [ "v", SduiValue.Number 33.0 ])))
             let trace traceId kind dataRef label =
-                { TraceId = traceId; Kind = kind; DataRef = dataRef; Label = label; Color = ""; Width = 1.0; Visible = true; Options = Map.empty }
+                { TraceId = traceId; Kind = kind; DataRef = dataRef; Label = label; Color = ""; Width = 1.0; Visible = true; CandleDataRefs = None; Options = Map.empty }
             let row =
                 { RowId = "multi-scale"
                   Kind = TaRowKind.Candlestick
@@ -510,6 +515,7 @@ let tests =
                   RowsRef = "rows"
                   StatusRef = "status"
                   SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
                   BaseRowId = Some "multi-scale"
                   Rows = [| row |]
                   EditorSchemas = [||]
@@ -517,6 +523,71 @@ let tests =
                   DefaultView = Map.empty }
             let cursor = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 10 } 3 |> Option.defaultWith (fun () -> failwith "cursor missing")
             Expect.isTrue (cursor.Values |> Array.exists (fun value -> value.Value.Contains("5K final | es-5k:1300"))) "Cursor traces a repeated presentation cell back to its source interval."
+
+        testCase "shared temporal axis joins five scalar candle components without filling gaps" <| fun _ ->
+            let axisRef = "axis.ha.1k"
+            let time minute = DateTimeOffset(2026, 9, 8, 1, minute, 0, TimeSpan.Zero)
+            let axisPoint position minute =
+                { Position = position
+                  SourceIntervalId = $"ha:{minute}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = time minute
+                  IntervalEndUtc = (time minute).AddMinutes 1.0
+                  ObservedThroughUtc = (time minute).AddMinutes 1.0
+                  AvailableAtUtc = Some((time minute).AddMinutes 1.0)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+            let series values =
+                { AxisRef = axisRef
+                  AxisRevision = 7L
+                  Points =
+                    values
+                    |> Array.mapi (fun index value ->
+                        { Position = if index = 0 then 40L else 41L
+                          Value = SduiValue.Number value }) }
+                |> TemporalSeriesCodec.encode
+            let refs =
+                { OpenRef = "ha.open"
+                  HighRef = "ha.high"
+                  LowRef = "ha.low"
+                  CloseRef = "ha.close"
+                  VolumeRef = "ha.volume" }
+            let trace =
+                { TraceId = "ha"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = refs.OpenRef
+                  Label = "Heikin-Ashi 1K"
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = Some refs
+                  Options = Map.empty }
+            let row =
+                { RowId = "ha"
+                  Kind = TaRowKind.HeikinAshi
+                  DataRef = refs.OpenRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Traces = [| trace |]
+                  Options = Map.empty }
+            let data =
+                Map [ axisRef, TemporalAxisCodec.encode { AxisRef = axisRef; Revision = 7L; Points = [| axisPoint 40L 0; axisPoint 41L 5 |] }
+                      refs.OpenRef, series [| 100.0; 105.0 |]
+                      refs.HighRef, series [| 110.0; 115.0 |]
+                      refs.LowRef, series [| 95.0; 101.0 |]
+                      refs.CloseRef, series [| 108.0; 112.0 |]
+                      refs.VolumeRef, series [| 900.0; 1200.0 |] ]
+            let candles = RendererModel.candleSeriesForTrace trace data
+            Expect.equal candles.Length 2 "Five shared-axis scalar series should synthesize two candles."
+            Expect.equal (candles |> Array.map _.Timestamp) [| "2026-09-08T01:00:00.0000000+00:00"; "2026-09-08T01:05:00.0000000+00:00" |] "Irregular gap must stay irregular; renderer must not infer 01:01..01:04."
+            Expect.equal candles[1].Open 105.0 "Open component should join by axis position."
+            Expect.equal candles[1].High 115.0 "High component should join by axis position."
+            Expect.equal candles[1].Low 101.0 "Low component should join by axis position."
+            Expect.equal candles[1].Close 112.0 "Close component should join by axis position."
+            Expect.equal candles[1].Volume 1200.0 "Volume component should join by axis position."
+            Expect.equal (RendererModel.referenceTimeline [| row |] data).Length 2 "Shared timeline should expose only actual axis positions."
+            Expect.equal TaWorkspaceRenderer.defaultOptions.MaximumVisibleBars 4000 "Default renderer viewport must accept the stakeholder 4,000-bar gate."
 
         testCase "generic editor list operations retain stable paths and validation" <| fun _ ->
             let schema =

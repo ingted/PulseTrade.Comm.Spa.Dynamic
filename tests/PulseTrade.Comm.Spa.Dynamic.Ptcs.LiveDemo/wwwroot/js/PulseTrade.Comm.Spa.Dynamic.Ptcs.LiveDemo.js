@@ -3254,18 +3254,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    keyPlaceholder:String(_5||""), 
-    defaultKey:String(_6||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    keyPlaceholder:String(_5||""),
+    defaultKey:String(_6||""),
     submitKey:(payload) => {
       _7(payload);
-    }, 
+    },
     cancelKey:() => {
       _8();
-    }, 
+    },
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -3349,26 +3349,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    selectedKeyId:String(_5||""), 
-    selectedKeyJson:String(_6||""), 
-    selectedKeys:keyParts.slice(), 
-    keyParts:keyParts.slice(), 
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    valuePlaceholder:String(_8||""), 
-    valueText:String(_9||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    selectedKeyId:String(_5||""),
+    selectedKeyJson:String(_6||""),
+    selectedKeys:keyParts.slice(),
+    keyParts:keyParts.slice(),
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    valuePlaceholder:String(_8||""),
+    valueText:String(_9||""),
     submit:(payload) => {
       _10(payload);
-    }, 
+    },
     setValue:(payload) => {
       _11(payload);
-    }, 
-    composerMode:String(_12||"plain"), 
+    },
+    composerMode:String(_12||"plain"),
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -3949,8 +3949,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"), 
-      priority:Number(priority||0), 
+      name:String(name||"unnamed"),
+      priority:Number(priority||0),
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -4415,14 +4415,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
   let socket, requestSequence, lifecycle, pollTimer, timeoutTimer, reconnectTimer, jsonExportRequested, jsonExportBootstrapAttempts, jsonExportBootstrapInFlight, jsonExportInFlight, actionRequestOverride, pendingActionCompletion;
   const identity={DocumentId:{$:0, $0:"pending-"+channelId}, CanvasInstanceId:{$:0, $0:canvasId}};
   const runtimeState=_c_3.Create_1({
-    Identity:identity, 
-    Document:null, 
-    Data:new FSharpMap("New", []), 
-    DocumentRevision:0n, 
-    DataRevision:0n, 
-    LastTransportSequence:0n, 
-    View:{Values:new FSharpMap("New", [])}, 
-    Poll:{$:0}, 
+    Identity:identity,
+    Document:null,
+    Data:new FSharpMap("New", []),
+    DocumentRevision:0n,
+    DataRevision:0n,
+    LastTransportSequence:0n,
+    View:{Values:new FSharpMap("New", [])},
+    Poll:{$:0},
     LastError:null
   });
   socket=null;
@@ -4504,14 +4504,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
     lifecycle=next;
     const _1=runtimeState.Get();
     let _2={
-      Identity:_1.Identity, 
-      Document:_1.Document, 
-      Data:_1.Data, 
-      DocumentRevision:_1.DocumentRevision, 
-      DataRevision:_1.DataRevision, 
-      LastTransportSequence:_1.LastTransportSequence, 
-      View:_1.View, 
-      Poll:next.Poll, 
+      Identity:_1.Identity,
+      Document:_1.Document,
+      Data:_1.Data,
+      DocumentRevision:_1.DocumentRevision,
+      DataRevision:_1.DataRevision,
+      LastTransportSequence:_1.LastTransportSequence,
+      View:_1.View,
+      Poll:next.Poll,
       LastError:_1.LastError
     };
     runtimeState.Set(_2);
@@ -4598,17 +4598,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                     const message=m_2.$0;
                     const _4=runtimeState.Get();
                     let _5={
-                      Identity:_4.Identity, 
-                      Document:_4.Document, 
-                      Data:_4.Data, 
-                      DocumentRevision:_4.DocumentRevision, 
-                      DataRevision:_4.DataRevision, 
-                      LastTransportSequence:_4.LastTransportSequence, 
-                      View:_4.View, 
-                      Poll:_4.Poll, 
+                      Identity:_4.Identity,
+                      Document:_4.Document,
+                      Data:_4.Data,
+                      DocumentRevision:_4.DocumentRevision,
+                      DataRevision:_4.DataRevision,
+                      LastTransportSequence:_4.LastTransportSequence,
+                      View:_4.View,
+                      Poll:_4.Poll,
                       LastError:Some({
-                        ReasonCode:"ta-export-download-failed", 
-                        Message:message, 
+                        ReasonCode:"ta-export-download-failed",
+                        Message:message,
                         Recoverable:true
                       })
                     };
@@ -4619,17 +4619,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                 else {
                   const _6=runtimeState.Get();
                   let _7={
-                    Identity:_6.Identity, 
-                    Document:_6.Document, 
-                    Data:_6.Data, 
-                    DocumentRevision:_6.DocumentRevision, 
-                    DataRevision:_6.DataRevision, 
-                    LastTransportSequence:_6.LastTransportSequence, 
-                    View:_6.View, 
-                    Poll:_6.Poll, 
+                    Identity:_6.Identity,
+                    Document:_6.Document,
+                    Data:_6.Data,
+                    DocumentRevision:_6.DocumentRevision,
+                    DataRevision:_6.DataRevision,
+                    LastTransportSequence:_6.LastTransportSequence,
+                    View:_6.View,
+                    Poll:_6.Poll,
                     LastError:Some({
-                      ReasonCode:"ta-export-full-state-required", 
-                      Message:"The TA export response was not a full runtime state.", 
+                      ReasonCode:"ta-export-full-state-required",
+                      Message:"The TA export response was not a full runtime state.",
                       Recoverable:true
                     })
                   };
@@ -4642,8 +4642,8 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               let _9=StateAccepted(state.DataRevision, _8);
               apply(_9);
               completePendingAction(response.requestId, {
-                $:0, 
-                $0:response.requestId, 
+                $:0,
+                $0:response.requestId,
                 $1:state.DocumentRevision
               });
               return jsonExportCompleted&&disposeAfterJsonExport?void apply(Dispose):tryStartJsonExport();
@@ -4663,36 +4663,36 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               }
               else _2=false;
               _3=_2?{
-                $:2, 
-                $0:response.requestId, 
+                $:2,
+                $0:response.requestId,
                 $1:BigInt(Math.trunc(m[1]))
               }:{
-                $:1, 
-                $0:response.requestId, 
-                $1:"transient-command-failed", 
+                $:1,
+                $0:response.requestId,
+                $1:"transient-command-failed",
                 $2:responseError
               };
             }
             else _3={
-              $:1, 
-              $0:response.requestId, 
-              $1:"transient-command-failed", 
+              $:1,
+              $0:response.requestId,
+              $1:"transient-command-failed",
               $2:responseError
             };
             completePendingAction(response.requestId, _3);
             const _12=runtimeState.Get();
             let _13={
-              Identity:_12.Identity, 
-              Document:_12.Document, 
-              Data:_12.Data, 
-              DocumentRevision:_12.DocumentRevision, 
-              DataRevision:_12.DataRevision, 
-              LastTransportSequence:_12.LastTransportSequence, 
-              View:_12.View, 
-              Poll:_12.Poll, 
+              Identity:_12.Identity,
+              Document:_12.Document,
+              Data:_12.Data,
+              DocumentRevision:_12.DocumentRevision,
+              DataRevision:_12.DataRevision,
+              LastTransportSequence:_12.LastTransportSequence,
+              View:_12.View,
+              Poll:_12.Poll,
               LastError:Some({
-                ReasonCode:"transient-command-failed", 
-                Message:text(response.error), 
+                ReasonCode:"transient-command-failed",
+                Message:text(response.error),
                 Recoverable:true
               })
             };
@@ -4723,17 +4723,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         jsonExportBootstrapInFlight=false;
         const _1=runtimeState.Get();
         let _2={
-          Identity:_1.Identity, 
-          Document:_1.Document, 
-          Data:_1.Data, 
-          DocumentRevision:_1.DocumentRevision, 
-          DataRevision:_1.DataRevision, 
-          LastTransportSequence:_1.LastTransportSequence, 
-          View:_1.View, 
-          Poll:_1.Poll, 
+          Identity:_1.Identity,
+          Document:_1.Document,
+          Data:_1.Data,
+          DocumentRevision:_1.DocumentRevision,
+          DataRevision:_1.DataRevision,
+          LastTransportSequence:_1.LastTransportSequence,
+          View:_1.View,
+          Poll:_1.Poll,
           LastError:Some({
-            ReasonCode:"ta-export-bootstrap-empty", 
-            Message:"TA export bootstrap returned no runtime data after three attempts.", 
+            ReasonCode:"ta-export-bootstrap-empty",
+            Message:"TA export bootstrap returned no runtime data after three attempts.",
             Recoverable:true
           })
         };
@@ -4741,12 +4741,12 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         if(disposeAfterJsonExport)apply(Dispose);
       }
       else if(exists((a) => a.$==2, apply(StartAction(hasRuntimeData?{
-        $:9, 
-        $0:identity.CanvasInstanceId, 
+        $:9,
+        $0:identity.CanvasInstanceId,
         $1:"json-export"
       }:{
-        $:8, 
-        $0:identity.CanvasInstanceId, 
+        $:8,
+        $0:identity.CanvasInstanceId,
         $1:runtimeState.Get().DataRevision
       }))))if(hasRuntimeData){
         jsonExportRequested=false;
@@ -4835,8 +4835,8 @@ function transition(options, event, state){
       return[New_40(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 4:
       return[New_40(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
-        $:8, 
-        $0:state.CanvasInstanceId, 
+        $:8,
+        $0:state.CanvasInstanceId,
         $1:state.DataRevision
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 5:
@@ -4851,8 +4851,8 @@ function transition(options, event, state){
       return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_40(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_40(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_40(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
     case 9:
       return[New_40(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
-        $:9, 
-        $0:state.CanvasInstanceId, 
+        $:9,
+        $0:state.CanvasInstanceId,
         $1:_1
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 10:
@@ -4880,10 +4880,10 @@ function reconnectDelay(options, attempt){
 }
 function New(PollIntervalMs, RequestTimeoutMs, PollRetryMs, ReconnectBaseMs, ReconnectMaximumMs){
   return{
-    PollIntervalMs:PollIntervalMs, 
-    RequestTimeoutMs:RequestTimeoutMs, 
-    PollRetryMs:PollRetryMs, 
-    ReconnectBaseMs:ReconnectBaseMs, 
+    PollIntervalMs:PollIntervalMs,
+    RequestTimeoutMs:RequestTimeoutMs,
+    PollRetryMs:PollRetryMs,
+    ReconnectBaseMs:ReconnectBaseMs,
     ReconnectMaximumMs:ReconnectMaximumMs
   };
 }
@@ -4917,8 +4917,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_1(Attr, {
-      $:2, 
-      $0:Item1, 
+      $:2,
+      $0:Item1,
       $1:Item2
     });
   }
@@ -4932,17 +4932,17 @@ function filter(f, o){
 }
 function New_1(RuntimeState, SetActive, RequestJsonExport, Dispose_1){
   return{
-    RuntimeState:RuntimeState, 
-    SetActive:SetActive, 
-    RequestJsonExport:RequestJsonExport, 
+    RuntimeState:RuntimeState,
+    SetActive:SetActive,
+    RequestJsonExport:RequestJsonExport,
     Dispose:Dispose_1
   };
 }
 function New_2(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
@@ -5573,16 +5573,16 @@ function tryJson(text_1){
 }
 function New_3(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_4(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
   };
 }
@@ -6271,8 +6271,8 @@ class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_1(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -6300,16 +6300,16 @@ function TryParse_1(s, r){
 }
 function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
@@ -6329,43 +6329,43 @@ function set(arr, n, x){
 }
 function New_6(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
 function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -6465,51 +6465,51 @@ function collect_1(f, l){
 }
 function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
 function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    displayName:displayName, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    displayName:displayName,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_12(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
 function New_13(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    keyMode:keyMode, 
+    pageId:pageId,
+    keyJson:keyJson,
+    keyMode:keyMode,
     displayName:displayName
   };
 }
 function New_14(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
@@ -6521,17 +6521,17 @@ function New_16(pageId, keyId){
 }
 function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
@@ -6799,44 +6799,44 @@ function seqEmpty(){
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
@@ -6845,10 +6845,10 @@ function New_21(maxSequence, buckets){
 }
 function New_22(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
     tags:tags
   };
 }
@@ -6857,9 +6857,9 @@ function New_23(reason){
 }
 function New_24(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
@@ -6975,35 +6975,38 @@ class HashSet extends Object_1 {
 function OfArray(a){
   return new FSharpMap("New_1", OfSeq(map_2((_1) => Pair.New(_1[0], _1[1]), a)));
 }
+function Fold(f, s, m){
+  return fold_1((_1, _2) => f(_1, _2.Key, _2.Value), s, Enumerate(false, m.Tree));
+}
 function ToSeq(m){
   return map_2((kv) =>[kv.Key, kv.Value], Enumerate(false, m.Tree));
 }
 function New_25(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
 function New_26(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId, 
-    nodeAddress:nodeAddress, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId,
+    nodeAddress:nodeAddress,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
 function New_27(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
@@ -7012,38 +7015,38 @@ function New_28(messages, nextAfterMessageId){
 }
 function New_29(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
 function New_30(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_31(fromId, toId, body, tags){
   return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    fromId:fromId,
+    toId:toId,
+    body:body,
     tags:tags
   };
 }
 function New_32(messageId, speaker, createdAtUtc, body){
   return{
-    messageId:messageId, 
-    speaker:speaker, 
-    createdAtUtc:createdAtUtc, 
+    messageId:messageId,
+    speaker:speaker,
+    createdAtUtc:createdAtUtc,
     body:body
   };
 }
@@ -7368,8 +7371,8 @@ function UpdateEmbedNode(node, upd){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""), 
-    Dirty:false, 
+    Text:globalThis.document.createTextNode(""),
+    Dirty:false,
     Value:""
   };
 }
@@ -7434,8 +7437,8 @@ function ElemDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0, 
-    $0:Item1, 
+    $:0,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -7447,41 +7450,41 @@ function TextDoc(Item){
 }
 function New_33(shape, label, badge, className){
   return{
-    shape:shape, 
-    label:label, 
-    badge:badge, 
+    shape:shape,
+    label:label,
+    badge:badge,
     className:className
   };
 }
 function New_34(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath, 
-    sessionPath:sessionPath, 
-    logoutPath:logoutPath, 
-    returnUrl:returnUrl, 
-    protectedRoute:protectedRoute, 
-    sessionCookieName:sessionCookieName, 
-    title:title, 
-    lead:lead, 
-    providerLabel:providerLabel, 
+    submitPath:submitPath,
+    sessionPath:sessionPath,
+    logoutPath:logoutPath,
+    returnUrl:returnUrl,
+    protectedRoute:protectedRoute,
+    sessionCookieName:sessionCookieName,
+    title:title,
+    lead:lead,
+    providerLabel:providerLabel,
     aclLabel:aclLabel
   };
 }
 function New_35(userName, password, returnUrl, keepSession){
   return{
-    userName:userName, 
-    password:password, 
-    returnUrl:returnUrl, 
+    userName:userName,
+    password:password,
+    returnUrl:returnUrl,
     keepSession:keepSession
   };
 }
 function New_36(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
-    participantId:participantId, 
-    displayName:displayName, 
-    login:login, 
-    authenticated:authenticated, 
-    provider:provider, 
+    participantId:participantId,
+    displayName:displayName,
+    login:login,
+    authenticated:authenticated,
+    provider:provider,
     logoutPath:logoutPath
   };
 }
@@ -7583,24 +7586,24 @@ class T extends Object_1 {
 }
 function New_37(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId, 
-    TabId:TabId, 
-    ValueId:ValueId, 
-    CreatedAtUtc:CreatedAtUtc, 
-    Direction:Direction, 
-    Tags:Tags, 
+    PageId:PageId,
+    TabId:TabId,
+    ValueId:ValueId,
+    CreatedAtUtc:CreatedAtUtc,
+    Direction:Direction,
+    Tags:Tags,
     Payload:Payload
   };
 }
 function New_38(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -7705,25 +7708,6 @@ function Branch(node, left, right){
   let _2=1+_1;
   return New_44(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
-function Add(x, t){
-  return Put((_1, _2) => _2, x, t);
-}
-function Contains(v, t){
-  return!((Lookup(v, t))[0]==null);
-}
-function Remove(k, src){
-  const p=Lookup(k, src);
-  const t=p[0];
-  const spine=p[1];
-  if(t==null)return src;
-  else if(t.Right==null)return Rebuild(spine, t.Left);
-  else if(t.Left==null)return Rebuild(spine, t.Right);
-  else {
-    const d=ofSeq(append_2(Enumerate(false, t.Left), Enumerate(false, t.Right)));
-    let _1=Build(d, 0, d.length-1);
-    return Rebuild(spine, _1);
-  }
-}
 function Enumerate(flip, t){
   function gen(t_1, spine){
     let t_2;
@@ -7750,6 +7734,25 @@ function Enumerate(flip, t){
       }
   }
   return unfold((_1) => gen(_1[0], _1[1]), [t, FSharpList.Empty]);
+}
+function Add(x, t){
+  return Put((_1, _2) => _2, x, t);
+}
+function Contains(v, t){
+  return!((Lookup(v, t))[0]==null);
+}
+function Remove(k, src){
+  const p=Lookup(k, src);
+  const t=p[0];
+  const spine=p[1];
+  if(t==null)return src;
+  else if(t.Right==null)return Rebuild(spine, t.Left);
+  else if(t.Left==null)return Rebuild(spine, t.Right);
+  else {
+    const d=ofSeq(append_2(Enumerate(false, t.Left), Enumerate(false, t.Right)));
+    let _1=Build(d, 0, d.length-1);
+    return Rebuild(spine, _1);
+  }
 }
 function Put(combine, k, t){
   const p=Lookup(k, t);
@@ -7881,11 +7884,11 @@ let _c_3=Lazy((_i) => class Var_1 extends Object_1 {
 });
 function New_39(type, requestId, extensionId, channelId, operation, payload){
   return{
-    type:type, 
-    requestId:requestId, 
-    extensionId:extensionId, 
-    channelId:channelId, 
-    operation:operation, 
+    type:type,
+    requestId:requestId,
+    extensionId:extensionId,
+    channelId:channelId,
+    operation:operation,
     payload:payload
   };
 }
@@ -7897,15 +7900,15 @@ function Error_1(ErrorValue){
 }
 function New_40(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
   return{
-    CanvasInstanceId:CanvasInstanceId, 
-    Poll:Poll, 
-    PollEnabled:PollEnabled, 
-    Connected:Connected_1, 
-    Active:Active, 
-    InFlight:InFlight, 
-    DataRevision:DataRevision, 
-    ReconnectAttempt:ReconnectAttempt, 
-    DisposePending:DisposePending, 
+    CanvasInstanceId:CanvasInstanceId,
+    Poll:Poll,
+    PollEnabled:PollEnabled,
+    Connected:Connected_1,
+    Active:Active,
+    InFlight:InFlight,
+    DataRevision:DataRevision,
+    ReconnectAttempt:ReconnectAttempt,
+    DisposePending:DisposePending,
     Disposed:Disposed
   };
 }
@@ -7974,14 +7977,14 @@ function applyWire(current, wire){
     else {
       const mergedSeries=wire.series==null?current.Data:fold((_3, _4) => {
         const p=mergeSeries({
-          Identity:current.Identity, 
-          Document:current.Document, 
-          Data:_3, 
-          DocumentRevision:current.DocumentRevision, 
-          DataRevision:current.DataRevision, 
-          LastTransportSequence:current.LastTransportSequence, 
-          View:current.View, 
-          Poll:current.Poll, 
+          Identity:current.Identity,
+          Document:current.Document,
+          Data:_3,
+          DocumentRevision:current.DocumentRevision,
+          DataRevision:current.DataRevision,
+          LastTransportSequence:current.LastTransportSequence,
+          View:current.View,
+          Poll:current.Poll,
           LastError:current.LastError
         }, wire.timeline, _4);
         return _3.Add_1(p[0], p[1]);
@@ -7989,17 +7992,18 @@ function applyWire(current, wire){
       const o=decoded.Document;
       const o_1=o==null?null:Some(o.$0.StatusRef);
       const statusRef=o_1==null?"status":o_1.$0;
+      const mergedSharedTemporal=Fold((_3, _4, _5) => _3.Add_1(_4, _5), mergedSeries, mapFromWire(wire.sharedTemporalData));
       const m=decoded.Data.TryFind(statusRef);
-      let _1=m==null?mergedSeries:mergedSeries.Add_1(statusRef, m.$0);
+      let _1=m==null?mergedSharedTemporal:mergedSharedTemporal.Add_1(statusRef, m.$0);
       let _2={
-        Identity:decoded.Identity, 
-        Document:decoded.Document, 
-        Data:_1, 
-        DocumentRevision:decoded.DocumentRevision, 
-        DataRevision:decoded.DataRevision, 
-        LastTransportSequence:decoded.LastTransportSequence, 
-        View:current.View, 
-        Poll:decoded.Poll, 
+        Identity:decoded.Identity,
+        Document:decoded.Document,
+        Data:_1,
+        DocumentRevision:decoded.DocumentRevision,
+        DataRevision:decoded.DataRevision,
+        LastTransportSequence:decoded.LastTransportSequence,
+        View:current.View,
+        Poll:decoded.Poll,
         LastError:decoded.LastError
       };
       return Ok(_2);
@@ -8030,8 +8034,8 @@ function optionInt(value){
 }
 function stateFromWire(wire){
   let editorSchemas;
-  if(wire==null||wire.wireVersion!="ta-browser.v1"&&wire.wireVersion!="ta-browser.v2"&&wire.wireVersion!="ta-browser.v3"&&wire.wireVersion!="ta-browser.v4")return Error_1("Unsupported TA browser state wire.");
-  else if(wire.wireVersion=="ta-browser.v4"&&!(wire.series==null)&&exists((series) => {
+  if(wire==null||wire.wireVersion!="ta-browser.v1"&&wire.wireVersion!="ta-browser.v2"&&wire.wireVersion!="ta-browser.v3"&&wire.wireVersion!="ta-browser.v4"&&wire.wireVersion!="ta-browser.v5")return Error_1("Unsupported TA browser state wire.");
+  else if((wire.wireVersion=="ta-browser.v4"||wire.wireVersion=="ta-browser.v5")&&!(wire.series==null)&&exists((series) => {
     const a=0;
     const b=series.pointCount;
     let _1=Compare(a, b)===1?a:b;
@@ -8043,22 +8047,29 @@ function stateFromWire(wire){
       const K=rowKind(row.kind);
       const D=text(row.dataRef);
       const T_1=row.traces==null?[]:map((trace) =>({
-        TraceId:text(trace.traceId), 
-        Kind:traceKind(trace.kind), 
-        DataRef:text(trace.dataRef), 
-        Label:text(trace.label), 
-        Color:text(trace.color), 
-        Width:trace.width, 
-        Visible:trace.visible, 
+        TraceId:text(trace.traceId),
+        Kind:traceKind(trace.kind),
+        DataRef:text(trace.dataRef),
+        Label:text(trace.label),
+        Color:text(trace.color),
+        Width:trace.width,
+        Visible:trace.visible,
+        CandleDataRefs:trace.hasCandleDataRefs?Some({
+          OpenRef:text(trace.candleOpenRef),
+          HighRef:text(trace.candleHighRef),
+          LowRef:text(trace.candleLowRef),
+          CloseRef:text(trace.candleCloseRef),
+          VolumeRef:text(trace.candleVolumeRef)
+        }):null,
         Options:new FSharpMap("New", [])
       }), row.traces);
       return{
-        RowId:R, 
-        Kind:K, 
-        DataRef:D, 
-        HeightWeight:row.heightWeight, 
-        Visible:row.visible, 
-        Options:mapFromWire(row.options), 
+        RowId:R,
+        Kind:K,
+        DataRef:D,
+        HeightWeight:row.heightWeight,
+        Visible:row.visible,
+        Options:mapFromWire(row.options),
         Traces:T_1
       };
     }, wire.rows);
@@ -8066,12 +8077,13 @@ function stateFromWire(wire){
       const points=seriesPointValues(wire, series);
       return[text(series.dataRef), {$:4, $0:points}];
     }, wire.series));
+    const sharedTemporalData=mapFromWire(wire.sharedTemporalData);
     const status={$:5, $0:new FSharpMap("New", ofArray([["label", {$:3, $0:text(wire.statusLabel)}], ["freshness", {$:3, $0:text(wire.freshness)}], ["watermarkUtc", {$:3, $0:text(wire.watermarkUtc)}], ["quality", {$:3, $0:text(wire.quality)}], ["lagSeconds", {$:2, $0:wire.lagSeconds}], ["reasonCode", {$:3, $0:text(wire.reasonCode)}]]))};
-    const data=seriesData.Add_1(text(wire.statusRef), status);
+    const data=Fold((_1, _2, _3) => _1.Add_1(_2, _3), seriesData, sharedTemporalData).Add_1(text(wire.statusRef), status);
     const defaultView=OfArray(ofSeq(ofSeq_1(delay(() => append_2(!IsNullOrWhiteSpace(wire.querySourceId)?[["query.sourceId", {$:3, $0:text(wire.querySourceId)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryInstrument)?[["query.instrument", {$:3, $0:text(wire.queryInstrument)}]]:[], delay(() => append_2(wire.queryIntervalMinutes>0?[["query.intervalMinutes", {$:2, $0:wire.queryIntervalMinutes}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryFromUtc)?[["query.fromUtc", {$:3, $0:text(wire.queryFromUtc)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryToUtcExclusive)?[["query.toUtcExclusive", {$:3, $0:text(wire.queryToUtcExclusive)}]]:[], delay(() =>[["query.includePartial", {$:1, $0:wire.queryIncludePartial}]]))))))))))))));
     const lastError=IsNullOrWhiteSpace(wire.errorCode)&&IsNullOrWhiteSpace(wire.errorMessage)?null:Some({
-      ReasonCode:text(wire.errorCode), 
-      Message:text(wire.errorMessage), 
+      ReasonCode:text(wire.errorCode),
+      Message:text(wire.errorMessage),
       Recoverable:wire.errorRecoverable
     });
     if(wire.editorSchemas==null)editorSchemas=[];
@@ -8080,28 +8092,32 @@ function stateFromWire(wire){
       editorSchemas=choose((x) => ToOption(f(x)), wire.editorSchemas);
     }
     return!(wire.editorSchemas==null)&&length(editorSchemas)!==length(wire.editorSchemas)?Error_1("TA browser editor schema catalog is invalid."):Ok({
-      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}}, 
+      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}},
       Document:Some({
-        WorkspaceId:text(wire.workspaceId), 
-        Title:text(wire.title), 
-        RowsRef:text(wire.rowsRef), 
-        StatusRef:text(wire.statusRef), 
-        SharedTimeAxis:wire.sharedTimeAxis, 
-        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)), 
-        Rows:rows, 
-        EditorSchemas:editorSchemas, 
-        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions, 
+        WorkspaceId:text(wire.workspaceId),
+        Title:text(wire.title),
+        RowsRef:text(wire.rowsRef),
+        StatusRef:text(wire.statusRef),
+        SharedTimeAxis:wire.sharedTimeAxis,
+        TemporalAxisRefs:wire.temporalAxisRefs==null?[]:wire.temporalAxisRefs,
+        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)),
+        Rows:rows,
+        EditorSchemas:editorSchemas,
+        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions,
         DefaultView:defaultView
-      }), 
-      Data:data, 
-      DocumentRevision:wire.documentRevision, 
-      DataRevision:wire.dataRevision, 
-      LastTransportSequence:wire.transportSequence, 
-      View:{Values:new FSharpMap("New", [])}, 
-      Poll:pollState(wire.pollKind), 
+      }),
+      Data:data,
+      DocumentRevision:wire.documentRevision,
+      DataRevision:wire.dataRevision,
+      LastTransportSequence:wire.transportSequence,
+      View:{Values:new FSharpMap("New", [])},
+      Poll:pollState(wire.pollKind),
       LastError:lastError
     });
   }
+}
+function mapFromWire(fields){
+  return fields==null?new FSharpMap("New", []):OfArray(map((field_1) =>[text(field_1.key), valueFromWire(field_1.value)], fields));
 }
 function mergeSeries(current, timeline, wire){
   let _1;
@@ -8133,10 +8149,7 @@ function pollState(value){
   return m=="mounted-idle"?{$:1}:m=="ready"?{$:2}:m=="poll-in-flight"?{$:3}:m=="suspended"?{$:5}:m=="paused-for-resync"?{$:6}:m=="disposed"?{$:7}:{$:0};
 }
 function seriesPointValues(wire, series){
-  return wire.wireVersion=="ta-browser.v3"||wire.wireVersion=="ta-browser.v4"?columnarPointValues(wire.timeline, series):series.points==null?[]:map(pointValue, series.points);
-}
-function mapFromWire(fields){
-  return fields==null?new FSharpMap("New", []):OfArray(map((field_1) =>[text(field_1.key), valueFromWire(field_1.value)], fields));
+  return wire.wireVersion=="ta-browser.v3"||wire.wireVersion=="ta-browser.v4"||wire.wireVersion=="ta-browser.v5"?columnarPointValues(wire.timeline, series):series.points==null?[]:map(pointValue, series.points);
 }
 function traceKind(value){
   const m=text(value);
@@ -8197,8 +8210,8 @@ function ResyncRequired(reasonCode){
 }
 function StateAccepted(dataRevision, pollEnabled){
   return{
-    $:1, 
-    $0:dataRevision, 
+    $:1,
+    $0:dataRevision,
     $1:pollEnabled
   };
 }
@@ -8250,12 +8263,12 @@ function render(options, callbacks, runtimeState){
   finishNavigatorDrag=null;
   chartRenderSequence=0;
   const uiState=_c_3.Create_1({
-    Window:{StartIndex:0, Count:options.DefaultVisibleBars}, 
-    FollowLatest:true, 
-    HiddenRows:new FSharpSet("New_2", null), 
-    AddRowOpen:false, 
-    CursorIndex:null, 
-    PendingActionId:null, 
+    Window:{StartIndex:0, Count:options.DefaultVisibleBars},
+    FollowLatest:true,
+    HiddenRows:new FSharpSet("New_2", null),
+    AddRowOpen:false,
+    CursorIndex:null,
+    PendingActionId:null,
     Feedback:""
   });
   const chartUiState=_c_3.Create_1(uiState.Get());
@@ -8278,8 +8291,8 @@ function render(options, callbacks, runtimeState){
   const startActionWith=(action, successText, onAccepted, onRejected) => {
     actionSequence=actionSequence+1;
     const request={
-      RequestId:canvasIdText(canvasId)+":ui:"+String(actionSequence), 
-      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision), 
+      RequestId:canvasIdText(canvasId)+":ui:"+String(actionSequence),
+      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision),
       Action:action
     };
     return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted, onRejected);
@@ -8303,12 +8316,12 @@ function render(options, callbacks, runtimeState){
       const bounded=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), followLatest, window_1);
       const changed=!Equals(bounded, resolvedWindow(current))||followLatest!=current.FollowLatest;
       setUiState({
-        Window:bounded, 
-        FollowLatest:followLatest, 
-        HiddenRows:current.HiddenRows, 
-        AddRowOpen:current.AddRowOpen, 
-        CursorIndex:null, 
-        PendingActionId:current.PendingActionId, 
+        Window:bounded,
+        FollowLatest:followLatest,
+        HiddenRows:current.HiddenRows,
+        AddRowOpen:current.AddRowOpen,
+        CursorIndex:null,
+        PendingActionId:current.PendingActionId,
         Feedback:current.Feedback
       });
       draftWindow.Set(null);
@@ -8326,14 +8339,14 @@ function render(options, callbacks, runtimeState){
             const b_1=Compare(a_1, b)===1?a_1:b;
             let _3=Compare(a, b_1)===-1?a:b_1;
             let _4={
-              BaseRowId:range_1.BaseRowId, 
-              StartEventTimeUtc:range_1.StartEventTimeUtc, 
-              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc, 
+              BaseRowId:range_1.BaseRowId,
+              StartEventTimeUtc:range_1.StartEventTimeUtc,
+              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc,
               MaximumBasePoints:_3
             };
             let _5={
-              $:7, 
-              $0:canvasId, 
+              $:7,
+              $0:canvasId,
               $1:_4
             };
             return startAction(_5, "Visible range synchronized.", () => { });
@@ -8360,12 +8373,12 @@ function render(options, callbacks, runtimeState){
     setWindow(true, {StartIndex:0, Count:options.DefaultVisibleBars});
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window, 
-      FollowLatest:_3.FollowLatest, 
-      HiddenRows:_3.HiddenRows, 
-      AddRowOpen:_3.AddRowOpen, 
-      CursorIndex:_3.CursorIndex, 
-      PendingActionId:_3.PendingActionId, 
+      Window:_3.Window,
+      FollowLatest:_3.FollowLatest,
+      HiddenRows:_3.HiddenRows,
+      AddRowOpen:_3.AddRowOpen,
+      CursorIndex:_3.CursorIndex,
+      PendingActionId:_3.PendingActionId,
       Feedback:"Local view reset."
     };
     setUiState(_4);
@@ -8389,12 +8402,12 @@ function render(options, callbacks, runtimeState){
     if(!Equals(uiState.Get().CursorIndex, value)){
       const _3=uiState.Get();
       let _4={
-        Window:_3.Window, 
-        FollowLatest:_3.FollowLatest, 
-        HiddenRows:_3.HiddenRows, 
-        AddRowOpen:_3.AddRowOpen, 
-        CursorIndex:value, 
-        PendingActionId:_3.PendingActionId, 
+        Window:_3.Window,
+        FollowLatest:_3.FollowLatest,
+        HiddenRows:_3.HiddenRows,
+        AddRowOpen:_3.AddRowOpen,
+        CursorIndex:value,
+        PendingActionId:_3.PendingActionId,
         Feedback:_3.Feedback
       };
       setUiState(_4);
@@ -8413,8 +8426,8 @@ function render(options, callbacks, runtimeState){
         if(m_1!=null&&m_1.$==1){
           m_1.$0;
           index>=0&&index<length(visible)?startAction({
-            $:6, 
-            $0:canvasId, 
+            $:6,
+            $0:canvasId,
             $1:{BaseRowId:m_1.$0, EventTimeUtc:get(visible, index)}
           }, "Shared cursor synchronized.", () => { }):void 0;
         }
@@ -8433,12 +8446,12 @@ function render(options, callbacks, runtimeState){
     pendingEditorMutation=null;
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window, 
-      FollowLatest:_3.FollowLatest, 
-      HiddenRows:_3.HiddenRows, 
-      AddRowOpen:false, 
-      CursorIndex:_3.CursorIndex, 
-      PendingActionId:_3.PendingActionId, 
+      Window:_3.Window,
+      FollowLatest:_3.FollowLatest,
+      HiddenRows:_3.HiddenRows,
+      AddRowOpen:false,
+      CursorIndex:_3.CursorIndex,
+      PendingActionId:_3.PendingActionId,
       Feedback:_3.Feedback
     };
     setUiState(_4);
@@ -8483,12 +8496,12 @@ function render(options, callbacks, runtimeState){
           if(maximum!=null&&maximum.$==1&&(count>=maximum.$0&&(_3=maximum.$0,true))){
             const _4=uiState.Get();
             let _5={
-              Window:_4.Window, 
-              FollowLatest:_4.FollowLatest, 
-              HiddenRows:_4.HiddenRows, 
-              AddRowOpen:_4.AddRowOpen, 
-              CursorIndex:_4.CursorIndex, 
-              PendingActionId:_4.PendingActionId, 
+              Window:_4.Window,
+              FollowLatest:_4.FollowLatest,
+              HiddenRows:_4.HiddenRows,
+              AddRowOpen:_4.AddRowOpen,
+              CursorIndex:_4.CursorIndex,
+              PendingActionId:_4.PendingActionId,
               Feedback:String(labelText)+" allows at most "+String(_3)+" item(s)."
             };
             setUiState(_5);
@@ -8575,14 +8588,14 @@ function render(options, callbacks, runtimeState){
     }}), o_2]);
     const parsedInterval=m[0]&&m[1]>0?Some(m[1]):null;
     startAction({
-      $:5, 
-      $0:canvasId, 
+      $:5,
+      $0:canvasId,
       $1:{
-        SourceId:null, 
-        Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft), 
-        IntervalMinutes:parsedInterval, 
-        FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft), 
-        ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft), 
+        SourceId:null,
+        Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft),
+        IntervalMinutes:parsedInterval,
+        FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft),
+        ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft),
         IncludePartial:Some(true)
       }
     }, "Query accepted.", () => { });
@@ -8596,12 +8609,12 @@ function render(options, callbacks, runtimeState){
       if(length(errors)>0){
         const _3=uiState.Get();
         let _4={
-          Window:_3.Window, 
-          FollowLatest:_3.FollowLatest, 
-          HiddenRows:_3.HiddenRows, 
-          AddRowOpen:_3.AddRowOpen, 
-          CursorIndex:_3.CursorIndex, 
-          PendingActionId:_3.PendingActionId, 
+          Window:_3.Window,
+          FollowLatest:_3.FollowLatest,
+          HiddenRows:_3.HiddenRows,
+          AddRowOpen:_3.AddRowOpen,
+          CursorIndex:_3.CursorIndex,
+          PendingActionId:_3.PendingActionId,
           Feedback:concat_1(" ", errors)
         };
         setUiState(_4);
@@ -8613,10 +8626,10 @@ function render(options, callbacks, runtimeState){
         const binding={TemplateKey:schema.TemplateKey, Values:editorValues.Get().slice()};
         pendingEditorMutation=Some([runtimeState.Get().DocumentRevision, editingRowId, new FSharpSet("New_2", OfSeq(map((a) => a.RowId, currentRows))), binding]);
         startActionWith({
-          $:3, 
-          $0:canvasId, 
-          $1:editingRowId, 
-          $2:schema.TemplateKey, 
+          $:3,
+          $0:canvasId,
+          $1:editingRowId,
+          $2:schema.TemplateKey,
           $3:editorValues.Get()
         }, schema.DisplayName+" accepted; awaiting authoritative document.", () => { }, () => {
           pendingEditorMutation=null;
@@ -8669,18 +8682,18 @@ function render(options, callbacks, runtimeState){
         addRowSequence=addRowSequence+1;
         const rowId="row-"+addKind.Get().toLowerCase()+"-"+String(addRowSequence);
         const spec={
-          RowId:rowId, 
-          Kind:kind, 
-          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()), 
-          HeightWeight:1, 
-          Visible:true, 
-          Options:rowOptions, 
+          RowId:rowId,
+          Kind:kind,
+          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()),
+          HeightWeight:1,
+          Visible:true,
+          Options:rowOptions,
           Traces:[]
         };
         pendingAddRowId=Some(rowId);
         startAction({
-          $:2, 
-          $0:canvasId, 
+          $:2,
+          $0:canvasId,
           $1:spec
         }, "Row accepted.", () => { });
       }
@@ -8688,12 +8701,12 @@ function render(options, callbacks, runtimeState){
         const message=optionsResult.$0;
         const _12=uiState.Get();
         let _13={
-          Window:_12.Window, 
-          FollowLatest:_12.FollowLatest, 
-          HiddenRows:_12.HiddenRows, 
-          AddRowOpen:_12.AddRowOpen, 
-          CursorIndex:_12.CursorIndex, 
-          PendingActionId:_12.PendingActionId, 
+          Window:_12.Window,
+          FollowLatest:_12.FollowLatest,
+          HiddenRows:_12.HiddenRows,
+          AddRowOpen:_12.AddRowOpen,
+          CursorIndex:_12.CursorIndex,
+          PendingActionId:_12.PendingActionId,
           Feedback:message
         };
         setUiState(_13);
@@ -8728,12 +8741,12 @@ function render(options, callbacks, runtimeState){
             pendingAddRowId=null;
             const _8=uiState.Get();
             let _9={
-              Window:_8.Window, 
-              FollowLatest:_8.FollowLatest, 
-              HiddenRows:_8.HiddenRows, 
-              AddRowOpen:false, 
-              CursorIndex:_8.CursorIndex, 
-              PendingActionId:_8.PendingActionId, 
+              Window:_8.Window,
+              FollowLatest:_8.FollowLatest,
+              HiddenRows:_8.HiddenRows,
+              AddRowOpen:false,
+              CursorIndex:_8.CursorIndex,
+              PendingActionId:_8.PendingActionId,
               Feedback:"Row added."
             };
             _4=setUiState(_9);
@@ -8765,12 +8778,12 @@ function render(options, callbacks, runtimeState){
               forceCloseRowEditor();
               const _10=uiState.Get();
               let _11={
-                Window:_10.Window, 
-                FollowLatest:_10.FollowLatest, 
-                HiddenRows:_10.HiddenRows, 
-                AddRowOpen:_10.AddRowOpen, 
-                CursorIndex:_10.CursorIndex, 
-                PendingActionId:_10.PendingActionId, 
+                Window:_10.Window,
+                FollowLatest:_10.FollowLatest,
+                HiddenRows:_10.HiddenRows,
+                AddRowOpen:_10.AddRowOpen,
+                CursorIndex:_10.CursorIndex,
+                PendingActionId:_10.PendingActionId,
                 Feedback:targetRowId!=null?"Row updated.":"Row added."
               };
               _6=setUiState(_11);
@@ -8837,12 +8850,12 @@ function render(options, callbacks, runtimeState){
           else resetEditorFor(m_2.$0.TemplateKey);
           const _12=uiState.Get();
           let _13={
-            Window:_12.Window, 
-            FollowLatest:_12.FollowLatest, 
-            HiddenRows:_12.HiddenRows, 
-            AddRowOpen:true, 
-            CursorIndex:_12.CursorIndex, 
-            PendingActionId:_12.PendingActionId, 
+            Window:_12.Window,
+            FollowLatest:_12.FollowLatest,
+            HiddenRows:_12.HiddenRows,
+            AddRowOpen:true,
+            CursorIndex:_12.CursorIndex,
+            PendingActionId:_12.PendingActionId,
             Feedback:""
           };
           setUiState(_13);
@@ -8860,12 +8873,12 @@ function render(options, callbacks, runtimeState){
           const nextHidden=hidden?uiState.Get().HiddenRows.Remove_1(row.RowId):uiState.Get().HiddenRows.Add_1(row.RowId);
           const _13=uiState.Get();
           let _14={
-            Window:_13.Window, 
-            FollowLatest:_13.FollowLatest, 
-            HiddenRows:nextHidden, 
-            AddRowOpen:_13.AddRowOpen, 
-            CursorIndex:_13.CursorIndex, 
-            PendingActionId:_13.PendingActionId, 
+            Window:_13.Window,
+            FollowLatest:_13.FollowLatest,
+            HiddenRows:nextHidden,
+            AddRowOpen:_13.AddRowOpen,
+            CursorIndex:_13.CursorIndex,
+            PendingActionId:_13.PendingActionId,
             Feedback:_13.Feedback
           };
           return setUiState(_14);
@@ -8876,12 +8889,12 @@ function render(options, callbacks, runtimeState){
               editingRowId=null;
               const _13=uiState.Get();
               let _14={
-                Window:_13.Window, 
-                FollowLatest:_13.FollowLatest, 
-                HiddenRows:_13.HiddenRows, 
-                AddRowOpen:false, 
-                CursorIndex:_13.CursorIndex, 
-                PendingActionId:_13.PendingActionId, 
+                Window:_13.Window,
+                FollowLatest:_13.FollowLatest,
+                HiddenRows:_13.HiddenRows,
+                AddRowOpen:false,
+                CursorIndex:_13.CursorIndex,
+                PendingActionId:_13.PendingActionId,
                 Feedback:"This row's editor metadata is invalid; the row remains read-only."
               };
               return setUiState(_14);
@@ -8895,12 +8908,12 @@ function render(options, callbacks, runtimeState){
               editorValues.Set(values);
               const _15=uiState.Get();
               let _16={
-                Window:_15.Window, 
-                FollowLatest:_15.FollowLatest, 
-                HiddenRows:_15.HiddenRows, 
-                AddRowOpen:true, 
-                CursorIndex:_15.CursorIndex, 
-                PendingActionId:_15.PendingActionId, 
+                Window:_15.Window,
+                FollowLatest:_15.FollowLatest,
+                HiddenRows:_15.HiddenRows,
+                AddRowOpen:true,
+                CursorIndex:_15.CursorIndex,
+                PendingActionId:_15.PendingActionId,
                 Feedback:""
               };
               return setUiState(_16);
@@ -8908,8 +8921,8 @@ function render(options, callbacks, runtimeState){
           }
           else return null;
         })], [Doc.TextNode("Edit")])]:[], delay(() =>[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+rowKindText_1(row.Kind)+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
-          $:4, 
-          $0:canvasId, 
+          $:4,
+          $0:canvasId,
           $1:row.RowId
         }, rowKindText_1(row.Kind)+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])))))))];
       }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-generic-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; min-width:0;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Template"), selectInput("ta-editor-template", selectedTemplate.Get(), ofArray(map((schema) =>[schema.TemplateKey, schema.DisplayName], editorSchemasNow())), resetEditorFor)]), Doc.EmbedView(Map((templateKey) => {
@@ -8934,7 +8947,7 @@ function render(options, callbacks, runtimeState){
         const referenceTimeline_1=referenceTimelineForDocument(document, _12.Data);
         const referenceLength_1=length(referenceTimeline_1);
         const o_4=tryFind((trace) => trace.Visible&&Equals(trace.Kind, {$:0}), collect(effectiveTraces, visibleRows));
-        const o_5=o_4==null?null:Some(candleSeries(o_4.$0.DataRef, _12.Data));
+        const o_5=o_4==null?null:Some(candleSeriesForTrace(o_4.$0, _12.Data));
         const overviewPoints=o_5==null?[]:o_5.$0;
         const visibleWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength_1, _13.FollowLatest, _13.Window);
         const visibleTimestamps=selectWindow(visibleWindow, referenceTimeline_1);
@@ -8976,12 +8989,12 @@ function render(options, callbacks, runtimeState){
         let _22=Attr.Create("data-cursor-index", _21);
         let _23=[_15, _16, _17, _18, _19, _20, _22, Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;")];
         return Doc.Element("div", _23, ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[cursorValues])))], delay(() => append_2(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:map_2((index) => renderRow(_12, {
-          Window:_13.Window, 
-          FollowLatest:_13.FollowLatest, 
-          HiddenRows:_13.HiddenRows, 
-          AddRowOpen:_13.AddRowOpen, 
-          CursorIndex:cursorIndex, 
-          PendingActionId:_13.PendingActionId, 
+          Window:_13.Window,
+          FollowLatest:_13.FollowLatest,
+          HiddenRows:_13.HiddenRows,
+          AddRowOpen:_13.AddRowOpen,
+          CursorIndex:cursorIndex,
+          PendingActionId:_13.PendingActionId,
           Feedback:_13.Feedback
         }, visibleTimestamps, setCursorIndex, commitCursorIndex, index===length(visibleRows)-1, get(visibleRows, index)), range(0, length(visibleRows)-1)), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
           setWindowCount(48);
@@ -9046,12 +9059,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
   if(uiState.Get().PendingActionId!=null){
     const _1=uiState.Get();
     let _2={
-      Window:_1.Window, 
-      FollowLatest:_1.FollowLatest, 
-      HiddenRows:_1.HiddenRows, 
-      AddRowOpen:_1.AddRowOpen, 
-      CursorIndex:_1.CursorIndex, 
-      PendingActionId:_1.PendingActionId, 
+      Window:_1.Window,
+      FollowLatest:_1.FollowLatest,
+      HiddenRows:_1.HiddenRows,
+      AddRowOpen:_1.AddRowOpen,
+      CursorIndex:_1.CursorIndex,
+      PendingActionId:_1.PendingActionId,
       Feedback:"action-in-flight: wait for the pending action result."
     };
     uiState.Set(_2);
@@ -9060,12 +9073,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
     onRejected();
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window, 
-      FollowLatest:_3.FollowLatest, 
-      HiddenRows:_3.HiddenRows, 
-      AddRowOpen:_3.AddRowOpen, 
-      CursorIndex:_3.CursorIndex, 
-      PendingActionId:null, 
+      Window:_3.Window,
+      FollowLatest:_3.FollowLatest,
+      HiddenRows:_3.HiddenRows,
+      AddRowOpen:_3.AddRowOpen,
+      CursorIndex:_3.CursorIndex,
+      PendingActionId:null,
       Feedback:"revision-conflict: workspace is at revision "+String(actualDocumentRevision)+"."
     };
     uiState.Set(_4);
@@ -9073,12 +9086,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
   else {
     const _5=uiState.Get();
     let _6={
-      Window:_5.Window, 
-      FollowLatest:_5.FollowLatest, 
-      HiddenRows:_5.HiddenRows, 
-      AddRowOpen:_5.AddRowOpen, 
-      CursorIndex:_5.CursorIndex, 
-      PendingActionId:Some(request.RequestId), 
+      Window:_5.Window,
+      FollowLatest:_5.FollowLatest,
+      HiddenRows:_5.HiddenRows,
+      AddRowOpen:_5.AddRowOpen,
+      CursorIndex:_5.CursorIndex,
+      PendingActionId:Some(request.RequestId),
       Feedback:"Submitting "+request.RequestId+"..."
     };
     uiState.Set(_6);
@@ -9087,9 +9100,9 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
       if(a.$==1){
         const error_2=a.$0;
         result={
-          $:1, 
-          $0:request.RequestId, 
-          $1:error_2.Code, 
+          $:1,
+          $0:request.RequestId,
+          $1:error_2.Code,
           $2:error_2.Message
         };
       }
@@ -9098,12 +9111,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _7=uiState.Get();
         let _8={
-          Window:_7.Window, 
-          FollowLatest:_7.FollowLatest, 
-          HiddenRows:_7.HiddenRows, 
-          AddRowOpen:_7.AddRowOpen, 
-          CursorIndex:_7.CursorIndex, 
-          PendingActionId:null, 
+          Window:_7.Window,
+          FollowLatest:_7.FollowLatest,
+          HiddenRows:_7.HiddenRows,
+          AddRowOpen:_7.AddRowOpen,
+          CursorIndex:_7.CursorIndex,
+          PendingActionId:null,
           Feedback:"action-correlation-mismatch: result does not match the pending request."
         };
         uiState.Set(_8);
@@ -9115,12 +9128,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _9=uiState.Get();
         let _10={
-          Window:_9.Window, 
-          FollowLatest:_9.FollowLatest, 
-          HiddenRows:_9.HiddenRows, 
-          AddRowOpen:_9.AddRowOpen, 
-          CursorIndex:_9.CursorIndex, 
-          PendingActionId:null, 
+          Window:_9.Window,
+          FollowLatest:_9.FollowLatest,
+          HiddenRows:_9.HiddenRows,
+          AddRowOpen:_9.AddRowOpen,
+          CursorIndex:_9.CursorIndex,
+          PendingActionId:null,
           Feedback:code+": "+message
         };
         uiState.Set(_10);
@@ -9131,12 +9144,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _11=uiState.Get();
         let _12={
-          Window:_11.Window, 
-          FollowLatest:_11.FollowLatest, 
-          HiddenRows:_11.HiddenRows, 
-          AddRowOpen:_11.AddRowOpen, 
-          CursorIndex:_11.CursorIndex, 
-          PendingActionId:null, 
+          Window:_11.Window,
+          FollowLatest:_11.FollowLatest,
+          HiddenRows:_11.HiddenRows,
+          AddRowOpen:_11.AddRowOpen,
+          CursorIndex:_11.CursorIndex,
+          PendingActionId:null,
           Feedback:"revision-conflict: workspace is at revision "+String(actualRevision)+"."
         };
         uiState.Set(_12);
@@ -9147,12 +9160,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onAccepted();
         const _13=uiState.Get();
         let _14={
-          Window:_13.Window, 
-          FollowLatest:_13.FollowLatest, 
-          HiddenRows:_13.HiddenRows, 
-          AddRowOpen:_13.AddRowOpen, 
-          CursorIndex:_13.CursorIndex, 
-          PendingActionId:null, 
+          Window:_13.Window,
+          FollowLatest:_13.FollowLatest,
+          HiddenRows:_13.HiddenRows,
+          AddRowOpen:_13.AddRowOpen,
+          CursorIndex:_13.CursorIndex,
+          PendingActionId:null,
           Feedback:successText+" Revision "+String(revision)+"."
         };
         uiState.Set(_14);
@@ -9261,7 +9274,7 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
   const candleSeries_1=collect((_11) => {
     const traceIndex=_11[0];
     const trace=_11[1];
-    return map((point) =>[traceIndex, trace, point], filter_1((point) => candleSlotRange(referenceTimestamps, point)!=null, candleSeries(trace.DataRef, data)));
+    return map((point) =>[traceIndex, trace, point], filter_1((point) => candleSlotRange(referenceTimestamps, point)!=null, candleSeriesForTrace(trace, data)));
   }, filter_1((_11) => Equals(_11[1].Kind, {$:0}), mapi((_11, _12) =>[_11, _12], traces)));
   const linePoints=mapi((_11, _12) => {
     let _13;
@@ -9269,10 +9282,10 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
     switch(m.$==1?0:m.$==2?1:m.$==3?1:2){
       case 0:
         _13=map((point) =>({
-          Timestamp:point.Timestamp, 
-          Value:point.Volume, 
+          Timestamp:point.Timestamp,
+          Value:point.Volume,
           Temporal:point.Temporal
-        }), candleSeries(_12.DataRef, data));
+        }), candleSeriesForTrace(_12, data));
         break;
       case 1:
         _13=lineSeries(_12.DataRef, data);
@@ -9802,9 +9815,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1, 
-      Children:Children_1, 
-      El:El, 
+      Attr:Attr_1,
+      Children:Children_1,
+      El:El,
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -10079,33 +10092,33 @@ function ScheduleReconnect(delayMs){
 }
 function New_42(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints){
   return{
-    wireVersion:wireVersion, 
-    kind:kind, 
-    actionKind:actionKind, 
-    canvasInstanceId:canvasInstanceId, 
-    rowId:rowId, 
-    rowKind:rowKind_1, 
-    dataRef:dataRef, 
-    heightWeight:heightWeight, 
-    visible:visible, 
-    sourceId:sourceId, 
-    instrument:instrument, 
-    intervalMinutes:intervalMinutes, 
-    fromUtc:fromUtc, 
-    toUtcExclusive:toUtcExclusive, 
-    includePartial:includePartial, 
-    afterDataRevision:afterDataRevision, 
-    dataRevision:dataRevision, 
-    reasonCode:reasonCode, 
-    templateKey:templateKey, 
-    hasTemplateRowId:hasTemplateRowId, 
-    editorValues:editorValues, 
-    expectedDocumentRevision:expectedDocumentRevision, 
-    hasExpectedDocumentRevision:hasExpectedDocumentRevision, 
-    baseRowId:baseRowId, 
-    eventTimeUtc:eventTimeUtc, 
-    startEventTimeUtc:startEventTimeUtc, 
-    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc, 
+    wireVersion:wireVersion,
+    kind:kind,
+    actionKind:actionKind,
+    canvasInstanceId:canvasInstanceId,
+    rowId:rowId,
+    rowKind:rowKind_1,
+    dataRef:dataRef,
+    heightWeight:heightWeight,
+    visible:visible,
+    sourceId:sourceId,
+    instrument:instrument,
+    intervalMinutes:intervalMinutes,
+    fromUtc:fromUtc,
+    toUtcExclusive:toUtcExclusive,
+    includePartial:includePartial,
+    afterDataRevision:afterDataRevision,
+    dataRevision:dataRevision,
+    reasonCode:reasonCode,
+    templateKey:templateKey,
+    hasTemplateRowId:hasTemplateRowId,
+    editorValues:editorValues,
+    expectedDocumentRevision:expectedDocumentRevision,
+    hasExpectedDocumentRevision:hasExpectedDocumentRevision,
+    baseRowId:baseRowId,
+    eventTimeUtc:eventTimeUtc,
+    startEventTimeUtc:startEventTimeUtc,
+    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc,
     maximumBasePoints:maximumBasePoints
   };
 }
@@ -10120,10 +10133,10 @@ function ToOption(result){
 }
 function New_43(schema, exportedAtUtc, documentRevision, dataRevision, state){
   return{
-    schema:schema, 
-    exportedAtUtc:exportedAtUtc, 
-    documentRevision:documentRevision, 
-    dataRevision:dataRevision, 
+    schema:schema,
+    exportedAtUtc:exportedAtUtc,
+    documentRevision:documentRevision,
+    dataRevision:dataRevision,
     state:state
   };
 }
@@ -10383,8 +10396,8 @@ function visibleEventRange(document, data, window_1){
       const endIndex=window_1.StartIndex+length(selected);
       const o=filter((value) => Compare(value, startTime)>0, endIndex<length(timeline)?Some(get(timeline, endIndex)):tryBasePointIntervalEnd(baseRow, data, get(selected, length(selected)-1)));
       return o==null?null:Some({
-        BaseRowId:baseRowId, 
-        StartEventTimeUtc:startTime, 
+        BaseRowId:baseRowId,
+        StartEventTimeUtc:startTime,
         EndEventTimeExclusiveUtc:o.$0
       });
     }
@@ -10472,11 +10485,11 @@ function queryDraft(values){
   const o_4=o_3==null?null:tryBool(o_3.$0);
   const includePartial=o_4==null||o_4.$0;
   return{
-    SourceId:textValue("query.sourceId"), 
-    Instrument:textValue("query.instrument"), 
-    IntervalMinutes:interval, 
-    FromUtc:textValue("query.fromUtc"), 
-    ToUtcExclusive:textValue("query.toUtcExclusive"), 
+    SourceId:textValue("query.sourceId"),
+    Instrument:textValue("query.instrument"),
+    IntervalMinutes:interval,
+    FromUtc:textValue("query.fromUtc"),
+    ToUtcExclusive:textValue("query.toUtcExclusive"),
     IncludePartial:includePartial
   };
 }
@@ -10498,10 +10511,10 @@ function statusPresentation(statusRef, state){
     _1=Some(error_2.ReasonCode+": "+error_2.Message);
   }
   return{
-    Freshness:freshness, 
-    Label:_2, 
-    Watermark:_3, 
-    Quality:_4, 
+    Freshness:freshness,
+    Label:_2,
+    Watermark:_3,
+    Quality:_4,
     Error:_1
   };
 }
@@ -10528,8 +10541,8 @@ function cursorSnapshotForRows(document, visibleRows, data, window_1, cursorInde
     const index=Compare(a, b_1)===1?a:b_1;
     const timestamp=get(visibleTimestamps, index);
     return Some({
-      VisibleIndex:index, 
-      Timestamp:timestamp, 
+      VisibleIndex:index,
+      Timestamp:timestamp,
       Values:map((t) => t[1], collect((row) => {
         const isBaseRow=Equals(document.BaseRowId, Some(row.RowId));
         return choose((trace) => {
@@ -10537,7 +10550,7 @@ function cursorSnapshotForRows(document, visibleRows, data, window_1, cursorInde
           const label=IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label;
           const m=trace.Kind;
           if(m.$==1||(m.$==2?false:m.$!=3)){
-            const o=tryCandleForCursor(isBaseRow, timestamp, candleSeries(trace.DataRef, data));
+            const o=tryCandleForCursor(isBaseRow, timestamp, candleSeriesForTrace(trace, data));
             if(o==null)return null;
             else {
               const point=o.$0;
@@ -10598,19 +10611,46 @@ function effectiveTraces(row){
         break;
     }
     return[{
-      TraceId:row.RowId, 
-      Kind:_1, 
-      DataRef:row.DataRef, 
-      Label:row.RowId, 
-      Color:"", 
-      Width:1.25, 
-      Visible:true, 
+      TraceId:row.RowId,
+      Kind:_1,
+      DataRef:row.DataRef,
+      Label:row.RowId,
+      Color:"",
+      Width:1.25,
+      Visible:true,
+      CandleDataRefs:null,
       Options:new FSharpMap("New", [])
     }];
   }
 }
-function candleSeries(dataRef, data){
-  return choose(parseCandle, seriesValues(dataRef, data));
+function candleSeriesForTrace(trace, data){
+  const m=trace.CandleDataRefs;
+  if(m!=null&&m.$==1){
+    const refs=m.$0;
+    const valuesByTimestamp=(dataRef) => OfArray(map((point) =>[point.Timestamp, point], lineSeries(dataRef, data)));
+    const opens=lineSeries(refs.OpenRef, data);
+    const highs=valuesByTimestamp(refs.HighRef);
+    const lows=valuesByTimestamp(refs.LowRef);
+    const closes=valuesByTimestamp(refs.CloseRef);
+    const volumes=valuesByTimestamp(refs.VolumeRef);
+    return choose((openPoint) => {
+      let _1;
+      const _2=highs.TryFind(openPoint.Timestamp);
+      const _3=lows.TryFind(openPoint.Timestamp);
+      const _4=closes.TryFind(openPoint.Timestamp);
+      const _5=volumes.TryFind(openPoint.Timestamp);
+      return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_1=[_4.$0, _2.$0, _3.$0, _5.$0],true))))?Some({
+        Timestamp:openPoint.Timestamp,
+        Open:openPoint.Value,
+        High:_1[1].Value,
+        Low:_1[2].Value,
+        Close:_1[0].Value,
+        Volume:_1[3].Value,
+        Temporal:openPoint.Temporal
+      }):null;
+    }, opens);
+  }
+  else return candleSeries(trace.DataRef, data);
 }
 function workspaceBootstrapPresentation(state){
   const m=state.LastError;
@@ -10619,44 +10659,44 @@ function workspaceBootstrapPresentation(state){
     switch(m_1.$==1?1:m_1.$==4?2:m_1.$==6?3:m_1.$==7?4:m_1.$==2?5:m_1.$==3?5:m_1.$==5?5:0){
       case 0:
         return{
-          State:"preparing", 
-          Title:"Preparing TA workspace", 
-          Detail:"Waiting for the workspace channel to mount.", 
+          State:"preparing",
+          Title:"Preparing TA workspace",
+          Detail:"Waiting for the workspace channel to mount.",
           IsError:false
         };
       case 1:
         return{
-          State:"connecting", 
-          Title:"Connecting TA workspace", 
-          Detail:"Waiting for the initial workspace document.", 
+          State:"connecting",
+          Title:"Connecting TA workspace",
+          Detail:"Waiting for the initial workspace document.",
           IsError:false
         };
       case 2:
         return{
-          State:"retrying", 
-          Title:"Restoring TA workspace", 
-          Detail:"A reconnect attempt is scheduled.", 
+          State:"retrying",
+          Title:"Restoring TA workspace",
+          Detail:"A reconnect attempt is scheduled.",
           IsError:false
         };
       case 3:
         return{
-          State:"resyncing", 
-          Title:"Resynchronizing TA workspace", 
-          Detail:"Requesting a full workspace document.", 
+          State:"resyncing",
+          Title:"Resynchronizing TA workspace",
+          Detail:"Requesting a full workspace document.",
           IsError:false
         };
       case 4:
         return{
-          State:"closed", 
-          Title:"TA workspace closed", 
-          Detail:"Open the page again to reconnect.", 
+          State:"closed",
+          Title:"TA workspace closed",
+          Detail:"Open the page again to reconnect.",
           IsError:false
         };
       case 5:
         return{
-          State:"loading", 
-          Title:"Loading TA workspace", 
-          Detail:"Waiting for the workspace document.", 
+          State:"loading",
+          Title:"Loading TA workspace",
+          Detail:"Waiting for the workspace document.",
           IsError:false
         };
     }
@@ -10664,18 +10704,18 @@ function workspaceBootstrapPresentation(state){
   else if(!m.$0.Recoverable){
     const error_2=m.$0;
     return{
-      State:"unavailable", 
-      Title:"TA workspace unavailable", 
-      Detail:error_2.ReasonCode+": "+error_2.Message, 
+      State:"unavailable",
+      Title:"TA workspace unavailable",
+      Detail:error_2.ReasonCode+": "+error_2.Message,
       IsError:true
     };
   }
   else {
     const error_3=m.$0;
     return{
-      State:"recovering", 
-      Title:"Restoring TA workspace", 
-      Detail:error_3.ReasonCode+": "+error_3.Message, 
+      State:"recovering",
+      Title:"Restoring TA workspace",
+      Detail:error_3.ReasonCode+": "+error_3.Message,
       IsError:false
     };
   }
@@ -10820,7 +10860,7 @@ function tryBasePointIntervalEnd(row, data, timestamp){
     const trace=o.$0;
     const m=trace.Kind;
     if(m.$==1||(m.$==2?false:m.$!=3)){
-      const o_1=tryFind((point) => point.Timestamp==timestamp, candleSeries(trace.DataRef, data));
+      const o_1=tryFind((point) => point.Timestamp==timestamp, candleSeriesForTrace(trace, data));
       const o_2=o_1==null?null:o_1.$0.Temporal;
       return o_2==null?null:Some(o_2.$0.IntervalEndUtc);
     }
@@ -10875,8 +10915,8 @@ function freshnessFromStatus(status){
   const o_2=objectText("reasonCode", status);
   const reason=o_2==null?kind:o_2.$0;
   return kind=="live"?{$:0}:kind=="delayed"?{$:1, $0:lag}:kind=="stale"?{
-    $:2, 
-    $0:lag, 
+    $:2,
+    $0:lag,
     $1:reason
   }:kind=="backfill"?{$:3, $0:reason}:{$:4, $0:reason};
 }
@@ -10892,7 +10932,7 @@ function tryCandleForCursor(isBaseRow, timestamp, values){
   }
 }
 function lineSeries(dataRef, data){
-  return choose(parseLine, seriesValues(dataRef, data));
+  return choose((point) => parseLineResolved(point.Temporal, point.Payload), resolvedSeries(dataRef, data));
 }
 function tryLineForCursor(isBaseRow, timestamp, values){
   if(isBaseRow)return tryLineAt(timestamp, values);
@@ -10937,37 +10977,8 @@ function paddedRange(fallbackLow, fallbackHigh, values){
 function normalize(low, high, top, height, value){
   return low===high?top+height/2:top+height-(value-low)/(high-low)*height;
 }
-function seriesValues(dataRef, data){
-  let _1;
-  const m=data.TryFind(dataRef);
-  return m!=null&&m.$==1&&(m.$0.$==4&&(_1=m.$0.$0,true))?_1:[];
-}
-function parseCandle(value){
-  let _1;
-  const p=pointPayload_1(value);
-  const temporal=p[0];
-  const o=p[1];
-  const o_1=o==null?null:tryObject(o.$0);
-  if(o_1==null)return null;
-  else {
-    const item=o_1.$0;
-    const o_2=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
-    const _2=o_2==null?objectText("t", item):(o_2.$0,o_2);
-    const _3=objectNumber("o", item);
-    const _4=objectNumber("h", item);
-    const _5=objectNumber("l", item);
-    const _6=objectNumber("c", item);
-    const _7=objectNumber("v", item);
-    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_1=[_6.$0, _4.$0, _5.$0, _3.$0, _2.$0, _7.$0],true))))))?Some({
-      Timestamp:_1[4], 
-      Open:_1[3], 
-      High:_1[1], 
-      Low:_1[2], 
-      Close:_1[0], 
-      Volume:_1[5], 
-      Temporal:temporal
-    }):null;
-  }
+function candleSeries(dataRef, data){
+  return choose((point) => parseCandleResolved(point.Temporal, point.Payload), resolvedSeries(dataRef, data));
 }
 function editorSubmissionErrors(path, required, kind, values){
   let _1;
@@ -11030,7 +11041,7 @@ function editorSubmissionErrors(path, required, kind, values){
 }
 function traceTimestamps(trace, data){
   const m=trace.Kind;
-  return m.$==1||(m.$==2?false:m.$!=3)?map((a) => a.Timestamp, candleSeries(trace.DataRef, data)):map((a) => a.Timestamp, lineSeries(trace.DataRef, data));
+  return m.$==1||(m.$==2?false:m.$!=3)?map((a) => a.Timestamp, candleSeriesForTrace(trace, data)):map((a) => a.Timestamp, lineSeries(trace.DataRef, data));
 }
 function objectNumber(name, value){
   const o=objectField(name, value);
@@ -11059,23 +11070,55 @@ function finalizedAsOf(timestamp, temporal){
     return finalizedTemporal(metadata)&&availableAtOrAfter(timestamp, metadata);
   }
 }
-function parseLine(value){
+function resolvedSeries(dataRef, data){
   let _1;
-  const p=pointPayload_1(value);
-  const temporal=p[0];
-  const o=p[1];
-  const o_1=o==null?null:tryObject(o.$0);
-  if(o_1==null)return null;
+  const m=data.TryFind(dataRef);
+  if(m==null)return[];
+  else if(m.$0.$==4)return map((value) => {
+    const p=pointPayload_1(value);
+    return{Payload:p[1], Temporal:p[0]};
+  }, m.$0.$0);
   else {
-    const item=o_1.$0;
-    const o_2=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
-    const _2=o_2==null?objectText("t", item):(o_2.$0,o_2);
-    const _3=objectNumber("v", item);
-    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_1=[_3.$0, _2.$0],true))?Some({
-      Timestamp:_1[1], 
-      Value:_1[0], 
-      Temporal:temporal
-    }):null;
+    const m_1=tryTemporalSeries(m.$0);
+    if(m_1==null)return[];
+    else {
+      const points=m_1.$0[2];
+      const axisRevision=m_1.$0[1];
+      const axisRef=m_1.$0[0];
+      const o=data.TryFind(axisRef);
+      const m_2=o==null?null:tryTemporalAxis(o.$0);
+      if(m_2!=null&&m_2.$==1&&((m_2.$0,m_2.$0[0]==axisRef&&m_2.$0[1]===axisRevision)&&(_1=[m_2.$0[2], m_2.$0[0], m_2.$0[1]],true))){
+        const axis=_1[0];
+        return choose((_2) => {
+          const o_1=axis.TryFind(_2[0]);
+          return o_1==null?null:Some({Payload:Some(_2[1]), Temporal:Some(o_1.$0)});
+        }, points);
+      }
+      else return[];
+    }
+  }
+}
+function parseLineResolved(temporal, payload){
+  let _1, _2;
+  if(payload!=null&&payload.$==1&&(payload.$0.$==2&&(temporal!=null&&temporal.$==1&&(_1=[payload.$0.$0, temporal.$0],true))))return Some({
+    Timestamp:_1[1].IntervalStartUtc,
+    Value:_1[0],
+    Temporal:temporal
+  });
+  else {
+    const o=payload==null?null:tryObject(payload.$0);
+    if(o==null)return null;
+    else {
+      const item=o.$0;
+      const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
+      const _3=o_1==null?objectText("t", item):(o_1.$0,o_1);
+      const _4=objectNumber("v", item);
+      return _3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_2=[_4.$0, _3.$0],true))?Some({
+        Timestamp:_2[1],
+        Value:_2[0],
+        Temporal:temporal
+      }):null;
+    }
   }
 }
 function tryLineAt(timestamp, values){
@@ -11110,17 +11153,34 @@ function slotCenter(width, visibleCount, index){
   }
 }
 function latestTemporalMetadata(trace, data){
-  return tryLast(choose((x) => {
-    const o=tryTemporalPoint(x);
-    return o==null?null:Some(o.$0[0]);
-  }, seriesValues(trace.DataRef, data)));
+  return tryLast(choose((a) => a.Temporal, resolvedSeries(trace.DataRef, data)));
 }
 function timeLabels(timestamps){
   return length(timestamps)===0?[]:length(timestamps)===1?[[0, get(timestamps, 0)]]:map((index) =>[index, get(timestamps, index)], distinct([0, length(timestamps)/2>>0, length(timestamps)-1]));
 }
-function pointPayload_1(value){
-  const m=tryTemporalPoint(value);
-  return m==null?[null, Some(value)]:[Some(m.$0[0]), m.$0[1]];
+function parseCandleResolved(temporal, payload){
+  let _1;
+  const o=payload==null?null:tryObject(payload.$0);
+  if(o==null)return null;
+  else {
+    const item=o.$0;
+    const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
+    const _2=o_1==null?objectText("t", item):(o_1.$0,o_1);
+    const _3=objectNumber("o", item);
+    const _4=objectNumber("h", item);
+    const _5=objectNumber("l", item);
+    const _6=objectNumber("c", item);
+    const _7=objectNumber("v", item);
+    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_1=[_6.$0, _4.$0, _5.$0, _3.$0, _2.$0, _7.$0],true))))))?Some({
+      Timestamp:_1[4],
+      Open:_1[3],
+      High:_1[1],
+      Low:_1[2],
+      Close:_1[0],
+      Volume:_1[5],
+      Temporal:temporal
+    }):null;
+  }
 }
 function pointMatchesTimestamp(timestamp, pointTimestamp, temporal){
   let _1, _2;
@@ -11147,6 +11207,60 @@ function timestampInInterval(timestamp, metadata){
 function availableAtOrAfter(timestamp, metadata){
   const o=metadata.AvailableAtUtc;
   return o==null?false:Compare(o.$0, timestamp)<=0;
+}
+function pointPayload_1(value){
+  const m=tryTemporalPoint(value);
+  return m==null?[null, Some(value)]:[Some(m.$0[0]), m.$0[1]];
+}
+function tryTemporalSeries(value){
+  let _1;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const fields=o.$0;
+    if(!Equals(objectText("_type", fields), Some("temporal-series.v1")))return null;
+    else {
+      const _2=requiredObjectText("axisRef", fields);
+      const _3=nonNegativeInteger("axisRevision", fields);
+      const _4=fields.TryFind("points");
+      if(_2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_4.$0.$==4&&(_1=[_2.$0, _4.$0.$0, _3.$0],true))))){
+        const points=_1[1];
+        const decoded=choose((point) => {
+          let _5;
+          const o_1=tryObject(point);
+          if(o_1==null)return null;
+          else {
+            const values=o_1.$0;
+            const _6=nonNegativeInteger("position", values);
+            const _7=values.TryFind("value");
+            return _6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_5=[_7.$0, _6.$0],true))?Some([_5[1], _5[0]]):null;
+          }
+        }, points);
+        return length(decoded)!==length(points)?null:Some([_1[0], _1[2], decoded]);
+      }
+      else return null;
+    }
+  }
+}
+function tryTemporalAxis(value){
+  let _1;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const fields=o.$0;
+    if(!Equals(objectText("_type", fields), Some("temporal-axis.v1")))return null;
+    else {
+      const _2=requiredObjectText("axisRef", fields);
+      const _3=nonNegativeInteger("revision", fields);
+      const _4=fields.TryFind("points");
+      if(_2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_4.$0.$==4&&(_1=[_2.$0, _4.$0.$0, _3.$0],true))))){
+        const points=_1[1];
+        const decoded=choose(tryTemporalAxisPoint, points);
+        return length(decoded)!==length(points)?null:Some([_1[0], _1[2], OfArray(decoded)]);
+      }
+      else return null;
+    }
+  }
 }
 function cursorIndexFromRatio(visibleCount, ratio){
   if(visibleCount<=0)return null;
@@ -11180,14 +11294,14 @@ function tryTemporalPoint(value){
       const _9=requiredObjectText("projection", fields);
       if(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _9.$0, _4.$0, _3.$0],true)))))))){
         let _10={
-          SourceIntervalId:_1[6], 
-          ScaleKey:_1[5], 
-          IntervalStartUtc:_1[2], 
-          IntervalEndUtc:_1[1], 
-          ObservedThroughUtc:_1[3], 
-          AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
-          Finality:_1[0], 
-          Projection:_1[4], 
+          SourceIntervalId:_1[6],
+          ScaleKey:_1[5],
+          IntervalStartUtc:_1[2],
+          IntervalEndUtc:_1[1],
+          ObservedThroughUtc:_1[3],
+          AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
+          Finality:_1[0],
+          Projection:_1[4],
           Quality:requiredObjectText("quality", fields)
         };
         const m=fields.TryFind("value");
@@ -11201,6 +11315,36 @@ function tryTemporalPoint(value){
 }
 function requiredObjectText(name, value){
   return filter((x) =>!IsNullOrWhiteSpace(x), objectText(name, value));
+}
+function nonNegativeInteger(name, fields){
+  return filter((value) => value>=0&&value===(value<0?Math.ceil(value):Math.floor(value)), objectNumber(name, fields));
+}
+function tryTemporalAxisPoint(value){
+  let _1;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const fields=o.$0;
+    const _2=nonNegativeInteger("position", fields);
+    const _3=requiredObjectText("sourceIntervalId", fields);
+    const _4=requiredObjectText("scaleKey", fields);
+    const _5=requiredObjectText("intervalStartUtc", fields);
+    const _6=requiredObjectText("intervalEndUtc", fields);
+    const _7=requiredObjectText("observedThroughUtc", fields);
+    const _8=requiredObjectText("finality", fields);
+    const _9=requiredObjectText("projection", fields);
+    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _2.$0, _9.$0, _4.$0, _3.$0],true))))))))?Some([_1[4], {
+      SourceIntervalId:_1[7],
+      ScaleKey:_1[6],
+      IntervalStartUtc:_1[2],
+      IntervalEndUtc:_1[1],
+      ObservedThroughUtc:_1[3],
+      AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
+      Finality:_1[0],
+      Projection:_1[5],
+      Quality:requiredObjectText("quality", fields)
+    }]):null;
+  }
 }
 function tryResolve(schemas, row){
   return Bind_2((a) => {
@@ -11290,9 +11434,9 @@ let _c_5=Lazy((_i) => class $StartupCode_Renderer {
   static defaultOptions;
   static {
     this.defaultOptions={
-      MinimumVisibleBars:12, 
-      DefaultVisibleBars:48, 
-      MaximumVisibleBars:2000, 
+      MinimumVisibleBars:12,
+      DefaultVisibleBars:48,
+      MaximumVisibleBars:4000,
       EditorSchemas:[]
     };
   }
@@ -11374,31 +11518,31 @@ function Forever(Item){
 }
 function Ready(Item1, Item2){
   return{
-    $:2, 
-    $0:Item1, 
+    $:2,
+    $0:Item1,
     $1:Item2
   };
 }
 function Waiting(Item1, Item2){
   return{
-    $:3, 
-    $0:Item1, 
+    $:3,
+    $0:Item1,
     $1:Item2
   };
 }
 function New_44(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1, 
-    Left:Left, 
-    Right:Right, 
-    Height:Height, 
+    Node:Node_1,
+    Left:Left,
+    Right:Right,
+    Height:Height,
     Count:Count
   };
 }
 function New_45(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem, 
-    DynFlags:DynFlags, 
+    DynElem:DynElem,
+    DynFlags:DynFlags,
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -11445,8 +11589,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2, 
-    $0:x, 
+    $:2,
+    $0:x,
     $1:y
   };
 }
@@ -11484,10 +11628,10 @@ function fromSeq(s){
 }
 function New_46(path, kind, textValue, numberValue, boolValue){
   return{
-    path:path, 
-    kind:kind, 
-    textValue:textValue, 
-    numberValue:numberValue, 
+    path:path,
+    kind:kind,
+    textValue:textValue,
+    numberValue:numberValue,
     boolValue:boolValue
   };
 }
@@ -11531,9 +11675,9 @@ function fromValue(value){
       const revision_1=_2[2];
       const templateKey=_2[3];
       return Bind_2((decodedFields) => validateSchema(limits(), {
-        TemplateKey:templateKey, 
-        DisplayName:displayName, 
-        SchemaRevision:BigInt(Math.trunc(revision_1)), 
+        TemplateKey:templateKey,
+        DisplayName:displayName,
+        SchemaRevision:BigInt(Math.trunc(revision_1)),
         Fields:decodedFields
       }), sequence(mapi((_7, _8) => fieldFromValue("schema.fields["+String(_7)+"]", _8), nonNull(_2[1]))));
     }
@@ -11554,10 +11698,10 @@ function fieldFromValue(field_1, value){
       const label=_1[2];
       const required=_1[3];
       return Map_2((decodedKind) =>({
-        Key:key, 
-        Label:label, 
-        Kind:decodedKind, 
-        Required:required, 
+        Key:key,
+        Label:label,
+        Kind:decodedKind,
+        Required:required,
         DefaultValue:values.TryFind("defaultValue")
       }), kindFromValue(field_1+".kind", _1[1]));
     }
@@ -11588,8 +11732,8 @@ function kindFromValue(field_1, value){
         switch(_2.$==1?_3.$==1?(_1=[_2.$0, _3.$0],2):(_1=_2.$0,1):_3.$==1?(_1=_3.$0,1):(_1=[_3.$0, _2.$0],0)){
           case 0:
             return Ok({
-              $:1, 
-              $0:_1[1], 
+              $:1,
+              $0:_1[1],
               $1:_1[0]
             });
           case 1:
@@ -11605,8 +11749,8 @@ function kindFromValue(field_1, value){
         switch(_5.$==1?_6.$==1?(_4=[_5.$0, _6.$0],2):(_4=_5.$0,1):_6.$==1?(_4=_6.$0,1):(_4=[_6.$0, _5.$0],0)){
           case 0:
             return Ok({
-              $:2, 
-              $0:_4[1], 
+              $:2,
+              $0:_4[1],
               $1:_4[0]
             });
           case 1:
@@ -11639,9 +11783,9 @@ function kindFromValue(field_1, value){
           }
           else _9=(_10=m_4,false);
           return _9?Ok({
-            $:6, 
-            $0:_10[0], 
-            $1:_10[2], 
+            $:6,
+            $0:_10[0],
+            $1:_10[2],
             $2:_10[1]
           }):Error_1(ofSeq_1(delay(() => {
             const c_3=_10[0];
@@ -11716,8 +11860,8 @@ function choiceFromValue(field_1, value){
     const _3=values.TryFind("label");
     const _4=values.TryFind("value");
     return _2!=null&&_2.$==1&&(_2.$0.$==3&&(_3!=null&&_3.$==1&&(_3.$0.$==3&&(_4!=null&&_4.$==1&&(_1=[_4.$0, _2.$0.$0, _3.$0.$0],true)))))?Ok({
-      Key:_1[1], 
-      Label:_1[2], 
+      Key:_1[1],
+      Label:_1[2],
       Value:_1[0]
     }):error("editor-schema-choice", field_1, "Editor choice requires key, label and value.");
   }
@@ -11759,9 +11903,9 @@ let _c_7=Lazy((_i) => class $StartupCode_EditorAction {
   static limits;
   static {
     this.limits={
-      MaxSchemaDepth:8, 
-      MaxFields:128, 
-      MaxChoicesPerField:128, 
+      MaxSchemaDepth:8,
+      MaxFields:128,
+      MaxChoicesPerField:128,
       MaxListItems:128
     };
     this.Protocol="ptcs-dynamic-action.v1";
@@ -11807,8 +11951,8 @@ class FSharpSet extends Object_1 {
 }
 function error_1(code, field_1, message){
   return{
-    Code:code, 
-    Field:field_1, 
+    Code:code,
+    Field:field_1,
     Message:message
   };
 }
@@ -11897,8 +12041,8 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_1(Updates_1, {
-      c:Current, 
-      s:Snap, 
+      c:Current,
+      s:Snap,
       v:VarView
     });
   }
@@ -12324,8 +12468,8 @@ class CheckedInput {
   }
   static Valid(value, inputText_1){
     return Create_1(CheckedInput, {
-      $:0, 
-      $0:value, 
+      $:0,
+      $0:value,
       $1:inputText_1
     });
   }
@@ -12462,8 +12606,8 @@ let _c_12=Lazy((_i) => class $StartupCode_AppendList {
 });
 function New_49(created, evalOrVal, force){
   return{
-    c:created, 
-    v:evalOrVal, 
+    c:created,
+    v:evalOrVal,
     f:force
   };
 }

@@ -268,3 +268,13 @@ viewport仍先做local committed window，但有`visible-range-changed` capabili
 replacement transport成功open後，已有runtime identity才重送一次Mounted與`RequestFullSnapshot`。等待期間不清空`RuntimeState`、不重建renderer；valid Snapshot才解除snapshot wait。snapshot逾時會關閉該generation並重新進入bounded reconnect，不把單純TCP open誤當projection已恢復。Dispose先取消timers、送Unmounted、使generation失效再close，後續close/reconnect callback皆為no-op。
 
 這仍是generic browser application能力。Daedalus SessionHost擁有authoritative frame與resource lifecycle；MDCQ reconnect/cursor/epoch不進Interactive.Client。host只能使用same-origin `/view/ -> /frames/`路徑，API不接受arbitrary URL、header或credential。
+
+## 21. 2026-09-08 Shared temporal axis analysis
+
+Daedalus真資料gate為3820 bars、28 scalar series。舊`temporal-point.v1`把source interval、scale、frontier、availability、finality與projection複製到每一scalar point，初始frame與browser object graph因此隨`bars x series x metadata`成長；這不是行情筆數過多，而是共用時間authority被重複表示。
+
+新邊界把資料拆成一份`TemporalAxis`與多份`TemporalSeries`。axis擁有Position及時間/因果metadata，series只擁有Position與值並exact-pin AxisRevision。Position不是minute index，也不是由scale推算的slot；owner可以跳過無Deal interval，Dynamic不得合成空1K或把5K展開成五個虛構點。同一current-K preview使用相同Position，由axis revision與全部相依series revision共同替換。
+
+K棒不是特殊巨型payload。`TaCandleDataRefs`明確連結O/H/L/C/V五條scalar series，Renderer在同一axis position上合成candlestick；任一component缺值時該candle缺失，不以相鄰值補造。Heikin-Ashi同樣由owner提供五條series，Dynamic只render，不計算行情或指標。
+
+相容策略是雙讀、單一新寫法：Renderer繼續接受legacy `temporal-point.v1`；新workspace優先送`temporal-axis.v1`/`temporal-series.v1`。PTCS `ta-browser.v5`直接搬運typed shared values，禁止先展開成legacy timeline再於client重建。malformed axis、missing axis、revision mismatch與unknown position均保留last-good並要求authoritative resync。

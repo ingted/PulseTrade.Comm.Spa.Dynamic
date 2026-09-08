@@ -2,7 +2,7 @@
 
 - RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`
 - Status: Active
-- Progress: 83%
+- Progress: 86%
 
 | Slice | Deliverable | Test | Progress | Status |
 | --- | --- | --- | ---: | --- |
@@ -13,6 +13,7 @@
 | DYN-TA-017E | ColdFar Notebook adapter / typed chart root | T-063 | 0% | Daedalus-owned integration |
 | DYN-TA-017F | real MDCQ DIB + Playwright MCP + release | T-064 | 0% | Depends on D/E + provider readiness |
 | DYN-TA-017G | SPAA/DIExt generic runtime hardening：retention/resync -> cursor/range -> reconnect/application lifecycle | T-066..068 | 100% | Done：三個phase均完成；Interactive.Client具single Start/Dispose、bounded reconnect、snapshot timeout/resync與stale generation fence。 |
+| DYN-TA-017H | shared temporal axis、scalar series與PTCS v5 compact transport | T-069/070 | 95% | Exact packages已push、generic F# Playwright通過；待public indexing與Daedalus real DIB/Playwright MCP。 |
 
 ## Boundary
 
@@ -32,6 +33,7 @@
 - Retention/resync hardening：patch先依序套入不可見candidate data，再對各受影響series驗最終retained count；same-key replace與trim後append不再誤拒，跨operation合計超限會整批拒絕、保留last-good state並要求full resync。Contracts `16/16`與`DYN-VFY-018`三項邊界均通過。
 - Lifecycle gate：exact-package pure lifecycle `4/4`；F# Playwright以真WebSocket force-drop驗last-good、single reconnect/full snapshot及terminal dispose。Playwright MCP另驗desktop/mobile UI、無overflow/console error。
 - 尚未宣稱production：Daedalus SessionHost須消費Interactive.Client alpha19 action envelope；owner-normalized real DIB與MDCQ provider仍是E/F gate。
+- Shared temporal axis：`TemporalAxis`保存一份sparse Position/time authority，`TemporalSeries`只保存Position/value；Position不可由scale推算。五條scalar O/H/L/C/V由`TaCandleDataRefs`合成K棒。PTCS `ta-browser.v5`直接搬運shared values；3820 x 28 deterministic frame、malformed/revision/unknown-position fail-closed及legacy相容已通過T-069/070的非UI部分。
 
 ## Completion gate
 

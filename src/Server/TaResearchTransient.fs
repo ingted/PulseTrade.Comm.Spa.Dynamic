@@ -30,6 +30,12 @@ type TaTransientTraceWire =
       color: string
       width: float
       visible: bool
+      hasCandleDataRefs: bool
+      candleOpenRef: string
+      candleHighRef: string
+      candleLowRef: string
+      candleCloseRef: string
+      candleVolumeRef: string
       options: TaTransientFieldWire array }
 
 [<CLIMutable>]
@@ -49,6 +55,7 @@ type TaTransientDocumentWire =
       rowsRef: string
       statusRef: string
       sharedTimeAxis: bool
+      temporalAxisRefs: string array
       baseRowId: string
       rows: TaTransientRowWire array
       editorSchemas: TaTransientValueWire array
@@ -181,7 +188,13 @@ type TaBrowserTraceWire =
       label: string
       color: string
       width: float
-      visible: bool }
+      visible: bool
+      hasCandleDataRefs: bool
+      candleOpenRef: string
+      candleHighRef: string
+      candleLowRef: string
+      candleCloseRef: string
+      candleVolumeRef: string }
 
 [<CLIMutable>]
 type TaBrowserRowWire =
@@ -205,6 +218,7 @@ type TaBrowserStateWire =
       rowsRef: string
       statusRef: string
       sharedTimeAxis: bool
+      temporalAxisRefs: string array
       baseRowId: string
       rows: TaBrowserRowWire array
       editorSchemas: TaTransientValueWire array
@@ -217,6 +231,7 @@ type TaBrowserStateWire =
       queryIncludePartial: bool
       timeline: string array
       series: TaBrowserSeriesWire array
+      sharedTemporalData: TaTransientFieldWire array
       statusLabel: string
       freshness: string
       watermarkUtc: string
@@ -339,6 +354,7 @@ module TaResearchTransientWire =
         | _ -> TaTraceKind.Candlestick
 
     let traceToWire (trace: TaTraceSpec) : TaTransientTraceWire =
+        let candleRefs = trace.CandleDataRefs
         { traceId = trace.TraceId
           kind = traceKindText trace.Kind
           dataRef = trace.DataRef
@@ -346,6 +362,12 @@ module TaResearchTransientWire =
           color = trace.Color
           width = trace.Width
           visible = trace.Visible
+          hasCandleDataRefs = candleRefs.IsSome
+          candleOpenRef = candleRefs |> Option.map _.OpenRef |> Option.defaultValue ""
+          candleHighRef = candleRefs |> Option.map _.HighRef |> Option.defaultValue ""
+          candleLowRef = candleRefs |> Option.map _.LowRef |> Option.defaultValue ""
+          candleCloseRef = candleRefs |> Option.map _.CloseRef |> Option.defaultValue ""
+          candleVolumeRef = candleRefs |> Option.map _.VolumeRef |> Option.defaultValue ""
           options = mapToWire trace.Options }
 
     let traceFromWire (wire: TaTransientTraceWire) : TaTraceSpec =
@@ -356,6 +378,15 @@ module TaResearchTransientWire =
           Color = text wire.color
           Width = wire.width
           Visible = wire.visible
+          CandleDataRefs =
+            if wire.hasCandleDataRefs then
+                Some
+                    { OpenRef = text wire.candleOpenRef
+                      HighRef = text wire.candleHighRef
+                      LowRef = text wire.candleLowRef
+                      CloseRef = text wire.candleCloseRef
+                      VolumeRef = text wire.candleVolumeRef }
+            else None
           Options = mapFromWire wire.options }
 
     let rowToWire (row: TaRowSpec) : TaTransientRowWire =
@@ -386,6 +417,7 @@ module TaResearchTransientWire =
           rowsRef = document.RowsRef
           statusRef = document.StatusRef
           sharedTimeAxis = document.SharedTimeAxis
+          temporalAxisRefs = if isNull document.TemporalAxisRefs then [||] else document.TemporalAxisRefs
           baseRowId = document.BaseRowId |> Option.defaultValue ""
           rows = document.Rows |> Array.map rowToWire
           editorSchemas =
@@ -400,6 +432,7 @@ module TaResearchTransientWire =
           RowsRef = text wire.rowsRef
           StatusRef = text wire.statusRef
           SharedTimeAxis = wire.sharedTimeAxis
+          TemporalAxisRefs = if isNull wire.temporalAxisRefs then [||] else wire.temporalAxisRefs
           BaseRowId = if String.IsNullOrWhiteSpace wire.baseRowId then None else Some(wire.baseRowId.Trim())
           Rows = if isNull wire.rows then [||] else wire.rows |> Array.map rowFromWire
           EditorSchemas =
@@ -856,13 +889,20 @@ module TaResearchBrowserWire =
             qualities = temporalValues _.quality }
 
     let browserTrace (trace: TaTraceSpec) =
+        let candleRefs = trace.CandleDataRefs
         { traceId = trace.TraceId
           kind = TaResearchTransientWire.traceKindText trace.Kind
           dataRef = trace.DataRef
           label = trace.Label
           color = trace.Color
           width = trace.Width
-          visible = trace.Visible }
+          visible = trace.Visible
+          hasCandleDataRefs = candleRefs.IsSome
+          candleOpenRef = candleRefs |> Option.map _.OpenRef |> Option.defaultValue ""
+          candleHighRef = candleRefs |> Option.map _.HighRef |> Option.defaultValue ""
+          candleLowRef = candleRefs |> Option.map _.LowRef |> Option.defaultValue ""
+          candleCloseRef = candleRefs |> Option.map _.CloseRef |> Option.defaultValue ""
+          candleVolumeRef = candleRefs |> Option.map _.VolumeRef |> Option.defaultValue "" }
 
     let stateToWireAgainst (previous: RuntimeState option) (state: RuntimeState) =
         let document = state.Document
@@ -880,13 +920,26 @@ module TaResearchBrowserWire =
                       traces = if isNull row.Traces then [||] else row.Traces |> Array.map browserTrace }))
             |> Option.defaultValue [||]
 
-        let dataRefs =
+        let isSharedTemporalValue = function
+            | SduiValue.Object fields ->
+                match Map.tryFind TemporalPointCodec.TypeKey fields with
+                | Some(SduiValue.Text kind) -> kind = TemporalAxisCodec.TypeValue || kind = TemporalSeriesCodec.TypeValue
+                | _ -> false
+            | _ -> false
+        let allDataRefs =
             rows
             |> Array.collect (fun row ->
                 if isNull row.traces || row.traces.Length = 0 then [| row.dataRef |]
                 else row.traces |> Array.map _.dataRef)
             |> Array.filter (String.IsNullOrWhiteSpace >> not)
             |> Array.distinct
+        let dataRefs =
+            allDataRefs
+            |> Array.filter (fun dataRef ->
+                state.Data
+                |> Map.tryFind dataRef
+                |> Option.exists isSharedTemporalValue
+                |> not)
         let sendFull =
             match previous with
             | None -> true
@@ -914,6 +967,15 @@ module TaResearchBrowserWire =
             |> Array.mapi (fun index timestamp -> timestamp, index)
             |> dict
         let series = series |> Array.map (columnarSeries timelineIndex)
+        let currentSharedTemporalData = state.Data |> Map.filter (fun _ value -> isSharedTemporalValue value)
+        let sharedTemporalData =
+            if sendFull then
+                currentSharedTemporalData
+            else
+                let previousData = previous |> Option.map _.Data |> Option.defaultValue Map.empty
+                currentSharedTemporalData
+                |> Map.filter (fun dataRef value -> Map.tryFind dataRef previousData <> Some value)
+            |> TaResearchTransientWire.mapToWire
         let defaultView = document |> Option.map _.DefaultView |> Option.defaultValue Map.empty
         let queryText key = defaultView |> Map.tryFind key |> Option.bind tryText |> Option.defaultValue ""
         let queryInterval =
@@ -947,7 +1009,7 @@ module TaResearchBrowserWire =
             | Some error -> error.ReasonCode, error.Message, error.Recoverable
             | None -> "", "", false
 
-        { wireVersion = "ta-browser.v4"
+        { wireVersion = "ta-browser.v5"
           updateKind = if sendFull then "full" else "delta"
           baseDataRevision = previous |> Option.map _.DataRevision |> Option.defaultValue 0L
           documentId = documentId
@@ -957,6 +1019,11 @@ module TaResearchBrowserWire =
           rowsRef = document |> Option.map _.RowsRef |> Option.defaultValue "rows"
           statusRef = statusRef
           sharedTimeAxis = document |> Option.map _.SharedTimeAxis |> Option.defaultValue true
+          temporalAxisRefs =
+            document
+            |> Option.map _.TemporalAxisRefs
+            |> Option.defaultValue [||]
+            |> fun values -> if isNull values then [||] else values
           baseRowId = document |> Option.bind _.BaseRowId |> Option.defaultValue ""
           rows = rows
           editorSchemas =
@@ -974,6 +1041,7 @@ module TaResearchBrowserWire =
           queryIncludePartial = queryIncludePartial
           timeline = timeline
           series = series
+          sharedTemporalData = sharedTemporalData
           statusLabel = statusLabel
           freshness = freshness
           watermarkUtc = watermarkUtc

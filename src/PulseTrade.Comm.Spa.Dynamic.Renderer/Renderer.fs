@@ -36,7 +36,7 @@ module TaWorkspaceRenderer =
     let defaultOptions =
         { MinimumVisibleBars = 12
           DefaultVisibleBars = 48
-          MaximumVisibleBars = 2000
+          MaximumVisibleBars = 4000
           EditorSchemas = [||] }
 
     let element name attrs (children: seq<#Doc>) =
@@ -440,7 +440,7 @@ module TaWorkspaceRenderer =
             |> Array.mapi (fun traceIndex trace -> traceIndex, trace)
             |> Array.filter (fun (_, trace) -> trace.Kind = TaTraceKind.Candlestick)
             |> Array.collect (fun (traceIndex, trace) ->
-                RendererModel.candleSeries trace.DataRef data
+                RendererModel.candleSeriesForTrace trace data
                 |> Array.filter (fun point -> RendererModel.candleSlotRange referenceTimestamps point |> Option.isSome)
                 |> Array.map (fun point -> traceIndex, trace, point))
         let xAt index =
@@ -453,7 +453,7 @@ module TaWorkspaceRenderer =
                 let points =
                     (match trace.Kind with
                      | TaTraceKind.Volume ->
-                         RendererModel.candleSeries trace.DataRef data
+                         RendererModel.candleSeriesForTrace trace data
                          |> Array.map (fun point -> { Timestamp = point.Timestamp; Value = point.Volume; Temporal = point.Temporal })
                      | TaTraceKind.Line
                      | TaTraceKind.Histogram -> RendererModel.lineSeries trace.DataRef data
@@ -1335,7 +1335,7 @@ module TaWorkspaceRenderer =
                                 visibleRows
                                 |> Array.collect RendererModel.effectiveTraces
                                 |> Array.tryFind (fun trace -> trace.Visible && trace.Kind = TaTraceKind.Candlestick)
-                                |> Option.map (fun trace -> RendererModel.candleSeries trace.DataRef state.Data)
+                                |> Option.map (fun trace -> RendererModel.candleSeriesForTrace trace state.Data)
                                 |> Option.defaultValue [||]
                             let visibleWindow =
                                 RendererModel.resolveWindow

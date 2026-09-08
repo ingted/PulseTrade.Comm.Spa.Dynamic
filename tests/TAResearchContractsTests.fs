@@ -23,6 +23,7 @@ let document =
       RowsRef = "ta.rows"
       StatusRef = "ta.status"
       SharedTimeAxis = true
+      TemporalAxisRefs = [||]
       BaseRowId = Some "price"
       Rows = [| row |]
       EditorSchemas = [||]
@@ -189,6 +190,172 @@ let tests =
             Expect.equal (retainedCount rejected) (limit - 1) "Rejected patch must preserve last-good data."
             Expect.equal rejected.LastError.Value.ReasonCode "limit-retained-bars" "Rejected patch exposes the retained limit reason."
             Expect.equal rejectEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 1L)) "Rejected patch requests one full resync."
+
+        testCase "DYN-TA-T-069 shared temporal axis is sparse versioned and reducer-atomic" <| fun _ ->
+            let axisRef = "axis.1k"
+            let baseTime = DateTimeOffset(2026, 9, 8, 1, 0, 0, TimeSpan.Zero)
+            let axisPoint position startOffset observedOffset finality =
+                let startTime = baseTime.AddMinutes(float startOffset)
+                let endTime = startTime.AddMinutes 1.0
+                { Position = position
+                  SourceIntervalId = $"1k:{startOffset}"
+                  ScaleKey = "1k"
+                  IntervalStartUtc = startTime
+                  IntervalEndUtc = endTime
+                  ObservedThroughUtc = startTime.AddSeconds(float observedOffset)
+                  AvailableAtUtc = if finality = PointFinality.Final then Some endTime else None
+                  Finality = finality
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "authoritative" }
+            let axis revision points = { AxisRef = axisRef; Revision = revision; Points = points }
+            let series revision points =
+                { AxisRef = axisRef
+                  AxisRevision = revision
+                  Points = points |> Array.map (fun (position, value) -> { Position = position; Value = SduiValue.Number value }) }
+            let sharedDocument = { document with TemporalAxisRefs = [| axisRef |] }
+            let sharedDocumentFrame = { documentFrame with Payload = RuntimePayload.Document sharedDocument }
+            let initialAxis = axis 1L [| axisPoint 10L 0 60 PointFinality.Final; axisPoint 11L 5 30 PointFinality.Preview |]
+            let initialSeries = series 1L [| 10L, 100.0; 11L, 101.0 |]
+
+            Expect.equal (TemporalAxisCodec.decode (TemporalAxisCodec.encode initialAxis)) (Ok initialAxis) "Irregular axis gaps must roundtrip without inferred bars."
+            Expect.equal (TemporalSeriesCodec.decode (TemporalSeriesCodec.encode initialSeries)) (Ok initialSeries) "Compact scalar series must roundtrip."
+
+            let state1, _ = RuntimeReducer.reduce (RuntimeReducer.initial identity) sharedDocumentFrame
+            let missingAxisFrame =
+                frame RuntimeFrameKind.Snapshot 2L None 1L
+                    (RuntimePayload.Snapshot
+                        { Data = Map [ "series.price", TemporalSeriesCodec.encode initialSeries ]
+                          Freshness = TaFreshness.Live })
+            let missingAxisState, missingAxisEffect = RuntimeReducer.reduce state1 missingAxisFrame
+            Expect.equal missingAxisState.Data state1.Data "Missing axis must retain last-good data."
+            Expect.equal missingAxisState.LastError.Value.ReasonCode "missing-temporal-axis" "Missing axis must be explicit."
+            Expect.equal missingAxisEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 0L)) "Missing axis requests resync."
+
+            let snapshotFrame =
+                frame RuntimeFrameKind.Snapshot 2L None 1L
+                    (RuntimePayload.Snapshot
+                        { Data = Map [ axisRef, TemporalAxisCodec.encode initialAxis; "series.price", TemporalSeriesCodec.encode initialSeries ]
+                          Freshness = TaFreshness.Live })
+            let state2, snapshotEffect = RuntimeReducer.reduce state1 snapshotFrame
+            Expect.equal snapshotEffect RuntimeEffect.NoEffect "A declared shared axis snapshot should be accepted."
+            Expect.equal state2.DataRevision 1L "Accepted shared snapshot advances data revision."
+
+            let malformedAxis =
+                match TemporalAxisCodec.encode initialAxis with
+                | SduiValue.Object fields ->
+                    let malformedPoints =
+                        match fields["points"] with
+                        | SduiValue.Array points ->
+                            points
+                            |> Array.map (function
+                                | SduiValue.Object point -> SduiValue.Object(Map.remove "scaleKey" point)
+                                | value -> value)
+                            |> SduiValue.Array
+                        | value -> value
+                    SduiValue.Object(Map.add "points" malformedPoints fields)
+                | value -> value
+            let malformedFrame =
+                frame RuntimeFrameKind.Snapshot 3L (Some 1L) 2L
+                    (RuntimePayload.Snapshot
+                        { Data = Map [ axisRef, malformedAxis; "series.price", TemporalSeriesCodec.encode initialSeries ]
+                          Freshness = TaFreshness.Live })
+            let malformedState, malformedEffect = RuntimeReducer.reduce state2 malformedFrame
+            Expect.equal malformedState.Data state2.Data "Malformed axis metadata must preserve the last-good state."
+            Expect.equal malformedState.LastError.Value.ReasonCode "invalid-temporal-axis" "Missing axis metadata must fail closed."
+            Expect.equal malformedEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 1L)) "Malformed axis metadata requests an authoritative resync."
+
+            let revisedPreview = axisPoint 11L 5 45 PointFinality.Preview
+            let patchFrame =
+                frame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.UpsertTemporalAxisPoints(axisRef, 1L, 2L, [| TemporalAxisCodec.encodePointFields revisedPreview |])
+                               PatchOperation.UpsertTemporalSeriesPoints("series.price", axisRef, 2L, [| TemporalSeriesCodec.encodePointFields { Position = 11L; Value = SduiValue.Number 102.0 } |]) |] })
+            let state3, patchEffect = RuntimeReducer.reduce state2 patchFrame
+            Expect.equal patchEffect RuntimeEffect.NoEffect "Same-position preview replacement should be atomic."
+            let revisedAxis = state3.Data[axisRef] |> TemporalAxisCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            let revisedSeries = state3.Data["series.price"] |> TemporalSeriesCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal revisedAxis.Revision 2L "Axis revision should advance."
+            Expect.equal revisedAxis.Points.Length 2 "Replacing a preview position must not infer or append another bar."
+            Expect.equal revisedAxis.Points[1].ObservedThroughUtc revisedPreview.ObservedThroughUtc "Preview frontier should replace in place."
+            Expect.equal revisedSeries.AxisRevision 2L "Series must bind the revised axis."
+            Expect.equal revisedSeries.Points[1].Value (SduiValue.Number 102.0) "Series value should replace at the same position."
+
+            let badRevision =
+                frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
+                    (RuntimePayload.Patch
+                        { Operations = [| PatchOperation.UpsertTemporalSeriesPoints("series.price", axisRef, 1L, [||]) |] })
+            let rejectedRevision, revisionEffect = RuntimeReducer.reduce state3 badRevision
+            Expect.equal rejectedRevision.Data state3.Data "Axis revision mismatch must retain last-good data."
+            Expect.equal rejectedRevision.LastError.Value.ReasonCode "temporal-axis-revision-mismatch" "Revision mismatch must be explicit."
+            Expect.equal revisionEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 2L)) "Revision mismatch requests resync."
+
+            let badPosition =
+                frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
+                    (RuntimePayload.Patch
+                        { Operations = [| PatchOperation.UpsertTemporalSeriesPoints("series.price", axisRef, 2L, [| TemporalSeriesCodec.encodePointFields { Position = 12L; Value = SduiValue.Number 103.0 } |]) |] })
+            let rejectedPosition, positionEffect = RuntimeReducer.reduce state3 badPosition
+            Expect.equal rejectedPosition.Data state3.Data "Unknown axis position must retain last-good data."
+            Expect.equal rejectedPosition.LastError.Value.ReasonCode "unknown-temporal-position" "Unknown position must be explicit."
+            Expect.equal positionEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 2L)) "Unknown position requests resync."
+
+        testCase "DYN-TA-T-070 shared axis keeps 3820 by 28 initial frame bounded" <| fun _ ->
+            let pointCount = 3820
+            let seriesCount = 28
+            let axisRef = "axis.real.1k"
+            let startTime = DateTimeOffset(2026, 1, 2, 0, 0, 0, TimeSpan.Zero)
+            let axisPoints =
+                Array.init pointCount (fun index ->
+                    let intervalStart = startTime.AddMinutes(float index)
+                    let intervalEnd = intervalStart.AddMinutes 1.0
+                    { Position = int64 index
+                      SourceIntervalId = $"mdcq:1k:{index}"
+                      ScaleKey = "1k"
+                      IntervalStartUtc = intervalStart
+                      IntervalEndUtc = intervalEnd
+                      ObservedThroughUtc = intervalEnd
+                      AvailableAtUtc = Some intervalEnd
+                      Finality = PointFinality.Final
+                      Projection = TemporalProjection.CandleSpan
+                      Quality = Some "authoritative" })
+            let traces =
+                Array.init seriesCount (fun index ->
+                    { TraceId = $"trace-{index}"
+                      Kind = TaTraceKind.Line
+                      DataRef = $"series-{index}"
+                      Label = $"Series {index}"
+                      Color = ""
+                      Width = 1.0
+                      Visible = true
+                      CandleDataRefs = None
+                      Options = Map.empty })
+            let boundedRow = { row with DataRef = traces[0].DataRef; Traces = traces }
+            let boundedDocument =
+                { document with
+                    TemporalAxisRefs = [| axisRef |]
+                    Rows = [| boundedRow |] }
+            let boundedData =
+                [ yield axisRef, TemporalAxisCodec.encode { AxisRef = axisRef; Revision = 1L; Points = axisPoints }
+                  for seriesIndex in 0 .. seriesCount - 1 do
+                      let points =
+                          Array.init pointCount (fun position ->
+                              { Position = int64 position
+                                Value = SduiValue.Number(float position + float seriesIndex) })
+                      yield $"series-{seriesIndex}", TemporalSeriesCodec.encode { AxisRef = axisRef; AxisRevision = 1L; Points = points } ]
+                |> Map.ofList
+            let boundedFrame =
+                { frame RuntimeFrameKind.Snapshot 2L None 1L (RuntimePayload.Snapshot { Data = boundedData; Freshness = TaFreshness.Live }) with
+                    Payload = RuntimePayload.Snapshot { Data = boundedData; Freshness = TaFreshness.Live } }
+            let encoded = RuntimeCodec.encode boundedFrame
+            Expect.isLessThan encoded.Length DynamicRuntimeDefaults.limits.MaxFrameBytes "3,820 by 28 shared-axis payload must stay below the frame hard limit."
+            Expect.isOk (RuntimeCodec.decode DynamicRuntimeDefaults.limits encoded) "Bounded shared-axis payload must decode under production limits."
+
+            let documentState, _ =
+                RuntimeReducer.reduce (RuntimeReducer.initial identity)
+                    { documentFrame with Payload = RuntimePayload.Document boundedDocument }
+            let reduced, effect = RuntimeReducer.reduce documentState boundedFrame
+            Expect.equal effect RuntimeEffect.NoEffect "3,820 by 28 shared-axis snapshot should be reducer-safe."
+            Expect.equal reduced.Data.Count (seriesCount + 1) "Reducer must retain one shared axis plus all compact series."
 
         testCase "DYN-TA-T-067 base event-time actions are correlated bounded and fail closed" <| fun _ ->
             let cursor =

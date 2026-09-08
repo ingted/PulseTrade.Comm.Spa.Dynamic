@@ -40,6 +40,7 @@ module Program =
           RowsRef = "rows"
           StatusRef = "ta.status"
           SharedTimeAxis = true
+          TemporalAxisRefs = [||]
           BaseRowId = Some "price"
           Rows = [| row |]
           EditorSchemas = [||]

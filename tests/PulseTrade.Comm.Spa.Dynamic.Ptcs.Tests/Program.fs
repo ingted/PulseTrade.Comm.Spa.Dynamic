@@ -40,6 +40,7 @@ let document =
       RowsRef = "rows"
       StatusRef = "status"
       SharedTimeAxis = true
+      TemporalAxisRefs = [||]
       BaseRowId = Some "price"
       Rows = [| row |]
       EditorSchemas = [| editorSchema |]
@@ -430,7 +431,7 @@ let tests =
                   (Ok(RuntimeClientFrame.Action(SduiAction.PollDelta(canvasId, 0L))))
                   "poll-delta revision zero must survive the browser wire round trip." )
 
-          testCase "browser v4 preserves temporal projection metadata in bounded columns" (fun _ ->
+          testCase "browser v5 preserves legacy temporal projection metadata in bounded columns" (fun _ ->
               let point =
                   TemporalPointCodec.encode
                       { SourceIntervalId = "es-5k:1300"
@@ -462,13 +463,66 @@ let tests =
                     LastError = None }
 
               let wire = TaResearchBrowserWire.stateToWire state
-              Expect.equal wire.wireVersion "ta-browser.v4" "temporal metadata requires the v4 bounded browser wire."
+              Expect.equal wire.wireVersion "ta-browser.v5" "temporal metadata requires the v5 bounded browser wire."
+              Expect.isEmpty wire.sharedTemporalData "legacy point envelopes remain columnar and do not masquerade as shared temporal data."
               Expect.isTrue wire.series[0].hasTemporal "temporal columns are explicit per homogeneous series."
               Expect.sequenceEqual wire.series[0].sourceIntervalIds [| "es-5k:1300" |] "source interval identity must survive transport."
               Expect.sequenceEqual wire.series[0].scaleKeys [| "5K" |] "scale must survive transport."
               Expect.sequenceEqual wire.series[0].finality [| "final" |] "finality must survive transport."
               Expect.sequenceEqual wire.series[0].projections [| "candle-span" |] "presentation projection must survive transport."
               Expect.sequenceEqual wire.series[0].hasAvailableAtUtc [| true |] "availability presence is not inferred from empty text.")
+
+          testCase "browser v5 carries shared temporal axes and compact series without legacy expansion" (fun _ ->
+              let axisPoint finality observedThroughUtc =
+                  { Position = 40L
+                    SourceIntervalId = "es-5k:1300"
+                    ScaleKey = "5K"
+                    IntervalStartUtc = DateTimeOffset.Parse "2026-09-03T13:00:00Z"
+                    IntervalEndUtc = DateTimeOffset.Parse "2026-09-03T13:05:00Z"
+                    ObservedThroughUtc = DateTimeOffset.Parse observedThroughUtc
+                    AvailableAtUtc = None
+                    Finality = finality
+                    Projection = TemporalProjection.CandleSpan
+                    Quality = Some "complete" }
+              let temporalDocument = { document with TemporalAxisRefs = [| "axis.es" |] }
+              let state revision axisRevision finality observedThroughUtc closeValue =
+                  { Identity = { DocumentId = documentId; CanvasInstanceId = canvasId }
+                    Document = Some temporalDocument
+                    Data =
+                      Map [ "axis.es",
+                            TemporalAxisCodec.encode
+                                { AxisRef = "axis.es"
+                                  Revision = axisRevision
+                                  Points = [| axisPoint finality observedThroughUtc |] }
+                            "series.price",
+                            TemporalSeriesCodec.encode
+                                { AxisRef = "axis.es"
+                                  AxisRevision = axisRevision
+                                  Points = [| { Position = 40L; Value = SduiValue.Number closeValue } |] } ]
+                    DocumentRevision = 1L
+                    DataRevision = revision
+                    LastTransportSequence = revision
+                    View = { Values = Map.empty }
+                    Poll = RuntimePollState.Ready
+                    LastError = None }
+
+              let preview = state 20L 1L PointFinality.Preview "2026-09-03T13:04:00Z" 108.0
+              let full = TaResearchBrowserWire.stateToWire preview
+              Expect.equal full.wireVersion "ta-browser.v5" "shared temporal transport is introduced by browser wire v5."
+              Expect.isEmpty full.timeline "shared axes are not expanded into the legacy timeline."
+              Expect.isEmpty full.series "compact temporal series are not expanded into legacy point columns."
+              Expect.sequenceEqual
+                  (full.sharedTemporalData |> Array.map _.key |> Array.sort)
+                  [| "axis.es"; "series.price" |]
+                  "the axis and its position-keyed series cross the PTCS boundary exactly once."
+
+              let finalState = state 21L 2L PointFinality.Final "2026-09-03T13:05:00Z" 109.0
+              let delta = TaResearchBrowserWire.stateToWireAgainst (Some preview) finalState
+              Expect.equal delta.updateKind "delta" "same-position preview replacement remains an incremental update."
+              Expect.sequenceEqual
+                  (delta.sharedTemporalData |> Array.map _.key |> Array.sort)
+                  [| "axis.es"; "series.price" |]
+                  "axis and series revisions are replaced together without synthesizing a new position.")
 
           testCaseAsync "server adapter applies canonical reducer and keeps sessions isolated" (async {
               let handler = TaResearchTransientServer.createHandler backend
@@ -551,7 +605,7 @@ let tests =
                   handler (browserContext "browser-a" "open" "browser-open" (browserPayload "mounted" ""))
 
               let openedState = opened |> requireOk |> decodeBrowserState
-              Expect.equal openedState.wireVersion "ta-browser.v4" "browser response must use the temporal-capable compact columnar wire version."
+              Expect.equal openedState.wireVersion "ta-browser.v5" "browser response must use the shared-axis-capable compact wire version."
               Expect.equal openedState.updateKind "full" "first browser response must be authoritative."
               Expect.equal openedState.title "TA Research" "document metadata should be projected for the browser."
               Expect.equal openedState.rows.Length 1 "document rows should be projected without recursive values."

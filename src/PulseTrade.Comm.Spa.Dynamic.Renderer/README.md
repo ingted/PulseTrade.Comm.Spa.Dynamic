@@ -12,11 +12,12 @@
 - status：保留freshness、watermark、quality與recoverable last-good error；remote in-flight只禁用remote submit，不凍結local view。
 - query draft：只從`TaWorkspaceDocument.DefaultView`的`query.*` metadata初始化；document revision不變的poll不覆蓋使用者輸入，metadata缺失時保持空白，禁止回退到demo symbol/interval/date。
 - Apply boundary：instrument/interval/range只更新local draft；選擇interval不送action、不改authoritative query、不重render，按`Load / Apply`才送一次`ChangeTaQuery`。
-- loaded range：browser可保留2000 points；overview以bounded bucket呈現全range，左右handle可resize，中段可move，48/200/All可切換。drag只更新draft，pointer release/`change`才commit一次render，local navigation不送server action；All模式可把2000 points壓縮成bounded SVG primitives觀察長趨勢。
+- loaded range：shared-axis working set可保留最多4000 positions；overview以bounded bucket呈現全range，左右handle可resize，中段可move，48/200/All可切換。drag只更新draft，pointer release/`change`才commit一次render，local navigation不送server action；All模式把完整working set壓縮成bounded SVG primitives觀察長趨勢。
 - Add/Edit Row：由`TaWorkspaceDocument.EditorSchemas`生成generic Text/Integer/Decimal/Boolean/Choice/Scale/List/Group表單；同template可建立多個參數實例。帶`ptcs.dynamic.editor.binding.v1`的row可預填並以stable RowId重新設定；legacy無binding row保持read-only。editor draft不會被poll覆蓋。
 - Reset Canvas：送remote typed action恢復mount時initial ordered rows/query；Reset View只恢復local viewport。
 - timeline：各trace依timestamp對齊reference timeline；SMA/ADX/MACD warm-up縮短不會用array index錯位或造成sequence failure。
 - temporal projection：`TemporalPoint`明確指定source interval與projection；coarse K棒用`CandleSpan`跨base slots，coarse line用`RepeatAcrossBaseBuckets`，只在close後可知的indicator用`StepAfterClose`，避免look-ahead。
+- shared temporal data：`temporal-axis.v1`提供唯一sparse Position/time authority，`temporal-series.v1`以Position join。Renderer不依scale推算缺失點；同一K的preview revision原位替換。candlestick可由`TaCandleDataRefs`指定的O/H/L/C/V五條scalar series合成。
 - multi-candle：同一row可同時畫1K/5K等多個candlestick traces；base candle維持實心，coarse candle以trace色outline/dashed wick呈現並保留source interval metadata。
 - cursor/style：K棒、line point與cross-row cursor共用slot-center幾何；indicator line width為1.25，histogram維持1.0。
 - event-time interaction：`BaseRowId`的真實timestamp驅動shared cursor；coarse row只使用finalized containing/as-of point，否則missing。viewport release送半開event-time range，pending期間controls不可重入。
@@ -37,4 +38,4 @@ TaWorkspaceRenderer.render
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha45`，exact依賴Contracts `[0.1.0-alpha19]`與FSharp.Core `[10.1.400]`。Current model gate 24/24。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.0-alpha46`，exact依賴Contracts `[0.1.0-alpha20]`與FSharp.Core `[10.1.400]`。Current model gate 25/25。

@@ -123,3 +123,6 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-045 | owner須以`BaseRowId`明確指定shared event-time axis；shared cursor必須落在base row的真實datapoint，其他row只可回finalized containing、finalized as-of或missing，不得取未完成coarse point。 |
 | DYN-TA-REQ-046 | viewport commit須送帶`BaseRowId`的`[startEventTimeUtc, endEventTimeExclusiveUtc)`與`MaximumBasePoints`；上限固定為4000，pending期間不得再提交第二次range mutation。 |
 | DYN-TA-REQ-047 | Interactive browser application須提供idempotent single Start與terminal Dispose；斷線採bounded reconnect，每一replacement transport只送一次Mounted/full-snapshot request，重連snapshot成功前保留last-good document/data，且stale socket callback或逾時不得產生重複channel/timer。 |
+| DYN-TA-REQ-048 | 多條TA series共用時間資訊時只能傳一份versioned temporal axis；series以Position與AxisRevision連接，不得逐scalar複製interval/frontier/finality metadata。 |
+| DYN-TA-REQ-049 | Position只作axis join key。sparse axis不得依scale補空K；同一current-K preview沿用Position並以新的axis/series revision原位替換，revision不一致或未知Position須保留last-good並要求resync。 |
+| DYN-TA-REQ-050 | candlestick可由同一axis上的O/H/L/C/V五條scalar series組成；shared-axis transport須支援至少3820 positions x 28 series且低於既有16MiB frame上限，同時維持`temporal-point.v1`相容解碼。 |

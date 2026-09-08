@@ -46,6 +46,21 @@ module RuntimeValidation =
           for traceIndex, trace in traces |> Array.indexed do
               yield! identifier $"rows[{index}].traces[{traceIndex}].traceId" trace.TraceId
               yield! identifier $"rows[{index}].traces[{traceIndex}].dataRef" trace.DataRef
+              match trace.CandleDataRefs with
+              | Some refs when trace.Kind <> TaTraceKind.Candlestick ->
+                  yield error "candle-refs-kind-mismatch" $"rows[{index}].traces[{traceIndex}].candleDataRefs" "Candle component refs require a Candlestick trace."
+              | Some refs ->
+                  for field, value in
+                      [ "openRef", refs.OpenRef
+                        "highRef", refs.HighRef
+                        "lowRef", refs.LowRef
+                        "closeRef", refs.CloseRef
+                        "volumeRef", refs.VolumeRef ] do
+                      yield! identifier $"rows[{index}].traces[{traceIndex}].candleDataRefs.{field}" value
+                  let values = [| refs.OpenRef; refs.HighRef; refs.LowRef; refs.CloseRef; refs.VolumeRef |]
+                  if values |> Array.distinct |> Array.length <> values.Length then
+                      yield error "duplicate-candle-data-ref" $"rows[{index}].traces[{traceIndex}].candleDataRefs" "Candle component refs must be distinct."
+              | None -> ()
               if trace.Width <= 0.0 || trace.Width > 12.0 then
                   yield error "invalid-trace-width" $"rows[{index}].traces[{traceIndex}].width" "Trace width must be greater than 0 and at most 12."
               for KeyValue(key, value) in trace.Options do
@@ -143,10 +158,26 @@ module RuntimeValidation =
                   "poll-delta"
                   "request-full-snapshot" ]
         let editorSchemas = if isNull document.EditorSchemas then [||] else document.EditorSchemas
+        let temporalAxisRefs = if isNull document.TemporalAxisRefs then [||] else document.TemporalAxisRefs
 
         [ yield! identifier "document.workspaceId" document.WorkspaceId
           yield! identifier "document.rowsRef" document.RowsRef
           yield! identifier "document.statusRef" document.StatusRef
+
+          for index, axisRef in temporalAxisRefs |> Array.indexed do
+              yield! identifier $"document.temporalAxisRefs[{index}]" axisRef
+
+          if temporalAxisRefs |> Array.countBy id |> Array.exists (fun (_, count) -> count > 1) then
+              yield error "duplicate-temporal-axis-ref" "document.temporalAxisRefs" "Temporal axis refs must be unique."
+
+          let nonAxisRefs =
+              [ yield document.RowsRef
+                yield document.StatusRef
+                for row in document.Rows do
+                    yield! TaRowSpec.dataRefs row ]
+              |> Set.ofList
+          if temporalAxisRefs |> Array.exists (fun axisRef -> Set.contains axisRef nonAxisRefs) then
+              yield error "temporal-axis-ref-collision" "document.temporalAxisRefs" "Temporal axis refs must not collide with row, status or series refs."
 
           match document.BaseRowId with
           | Some baseRowId ->
@@ -206,7 +237,11 @@ module RuntimeValidation =
 
           let itemCount =
               patch.Operations
-              |> Array.sumBy (function PatchOperation.UpsertSeriesPoints(_, _, items) -> items.Length | _ -> 0)
+              |> Array.sumBy (function
+                  | PatchOperation.UpsertSeriesPoints(_, _, items)
+                  | PatchOperation.UpsertTemporalAxisPoints(_, _, _, items)
+                  | PatchOperation.UpsertTemporalSeriesPoints(_, _, _, items) -> items.Length
+                  | _ -> 0)
 
           if itemCount > limits.MaxPatchItems then
               yield error "limit-patch-items" "patch.operations" $"Patch items exceed hard limit {limits.MaxPatchItems}."
@@ -225,10 +260,42 @@ module RuntimeValidation =
 
                   for item in items do
                       yield! unsafeValue "patch.item" (SduiValue.Object item)
-              | PatchOperation.RemoveSeriesBefore(dataRef, keyField, _) ->
-                  yield! identifier "patch.dataRef" dataRef
-                  yield! identifier "patch.keyField" keyField
-              | PatchOperation.SetStatus(dataRef, value) ->
+               | PatchOperation.RemoveSeriesBefore(dataRef, keyField, _) ->
+                   yield! identifier "patch.dataRef" dataRef
+                   yield! identifier "patch.keyField" keyField
+               | PatchOperation.UpsertTemporalAxisPoints(axisRef, expectedRevision, newRevision, items) ->
+                   yield! identifier "patch.axisRef" axisRef
+                   if expectedRevision < 0L || newRevision <= expectedRevision then
+                       yield error "invalid-axis-revision" "patch.axisRevision" "Temporal axis revision must advance from a non-negative expected revision."
+                   for item in items do
+                       match Map.tryFind "position" item with
+                       | Some(SduiValue.Number value) when value >= 0.0 && value = System.Math.Truncate value -> ()
+                       | _ -> yield error "invalid-position" "patch.axisPoints" "Every temporal axis point must contain a non-negative integer position."
+                       yield! unsafeValue "patch.axisPoint" (SduiValue.Object item)
+               | PatchOperation.RemoveTemporalAxisBefore(axisRef, expectedRevision, newRevision, position) ->
+                   yield! identifier "patch.axisRef" axisRef
+                   if expectedRevision < 0L || newRevision <= expectedRevision then
+                       yield error "invalid-axis-revision" "patch.axisRevision" "Temporal axis revision must advance from a non-negative expected revision."
+                   if position < 0L then
+                       yield error "invalid-position" "patch.position" "Temporal axis trim position must be non-negative."
+               | PatchOperation.UpsertTemporalSeriesPoints(dataRef, axisRef, axisRevision, items) ->
+                   yield! identifier "patch.dataRef" dataRef
+                   yield! identifier "patch.axisRef" axisRef
+                   if axisRevision < 0L then
+                       yield error "invalid-axis-revision" "patch.axisRevision" "Temporal series axis revision must be non-negative."
+                   for item in items do
+                       match Map.tryFind "position" item, Map.tryFind "value" item with
+                       | Some(SduiValue.Number value), Some payload when value >= 0.0 && value = System.Math.Truncate value ->
+                           yield! unsafeValue "patch.seriesPoint.value" payload
+                       | _ -> yield error "invalid-temporal-series-point" "patch.seriesPoints" "Every temporal series point must contain a non-negative integer position and value."
+               | PatchOperation.RemoveTemporalSeriesBefore(dataRef, axisRef, axisRevision, position) ->
+                   yield! identifier "patch.dataRef" dataRef
+                   yield! identifier "patch.axisRef" axisRef
+                   if axisRevision < 0L then
+                       yield error "invalid-axis-revision" "patch.axisRevision" "Temporal series axis revision must be non-negative."
+                   if position < 0L then
+                       yield error "invalid-position" "patch.position" "Temporal series trim position must be non-negative."
+               | PatchOperation.SetStatus(dataRef, value) ->
                   yield! identifier "patch.dataRef" dataRef
                   yield! unsafeValue "patch.status" (SduiValue.Object value)
               | PatchOperation.SetOptions(targetId, value) ->
@@ -240,8 +307,17 @@ module RuntimeValidation =
               yield! identifier "snapshot.dataRef" dataRef
               yield! unsafeValue $"snapshot.{dataRef}" value
 
-              match value with
-              | SduiValue.Array items when items.Length > limits.MaxInitialBarsPerSeries ->
+              let itemCount =
+                  match value with
+                  | SduiValue.Array items -> Some items.Length
+                  | SduiValue.Object fields ->
+                      match Map.tryFind "_type" fields, Map.tryFind "points" fields with
+                      | Some(SduiValue.Text kind), Some(SduiValue.Array items)
+                          when kind = "temporal-axis.v1" || kind = "temporal-series.v1" -> Some items.Length
+                      | _ -> None
+                  | _ -> None
+              match itemCount with
+              | Some count when count > limits.MaxInitialBarsPerSeries ->
                   yield error "limit-initial-bars" $"snapshot.{dataRef}" $"Series exceeds hard limit {limits.MaxInitialBarsPerSeries}."
               | _ -> () ]
 

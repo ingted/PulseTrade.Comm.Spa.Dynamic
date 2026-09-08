@@ -5,7 +5,7 @@ Pure WebSharper F# client adapter for the PTCS same-session transient channel.
 ## Boundary
 
 - Connects only to the current origin `/sync/ws`; callers cannot inject an upstream URL or credential.
-- Sends `extension-transient` frames and consumes `ta-browser.v1..v4` columnar payloads；v4 reconstructs validated `TemporalPoint` values。
+- Sends `extension-transient` frames and consumes `ta-browser.v1..v5` payloads；v4 reconstructs legacy `TemporalPoint` values，v5保留shared axis/position-keyed scalar series與five-component candle refs。
 - Projects bounded, non-recursive browser wire data into `RuntimeState` and renders through `PulseTrade.Comm.Spa.Dynamic.Renderer`；document editor catalog與row binding option一併投影，任一malformed schema使整份state fail closed。
 - Projects server query metadata into `TaWorkspaceDocument.DefaultView`；browser不再自行發明TXF/5m/date defaults。
 - Does not own PTCS authentication, ACL, SQL, market-data access, persistence, or the canonical reducer.
@@ -43,4 +43,4 @@ TA durable reply只保存compact layout/query descriptor，不含OHLCV或indicat
 
 The PTCS host must register the same `extensionId` with `PulseTrade.Comm.Spa.Dynamic.Ptcs.TaResearchTransientServer.register`.
 
-Current exact package is `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha8-win78`, consuming Contracts `[0.1.0-alpha19]` and Renderer `[0.1.0-alpha45]`。Browser revision fields use JSON-safe numbers and are validated back to domain `int64` at the server boundary；dispose waits for the transient close response before closing its dedicated socket。Add/Remove/Edit Row、Change Query、shared cursor、visible range、full-data export與Reset Canvas都走同一one-in-flight typed action channel。Current transport gate 14/14通過。
+Current exact package is `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.0-alpha8-win79`, consuming Contracts `[0.1.0-alpha20]` and Renderer `[0.1.0-alpha46]`。Browser revision fields use JSON-safe numbers and are validated back to domain `int64` at the server boundary；dispose waits for the transient close response before closing its dedicated socket。Add/Remove/Edit Row、Change Query、shared cursor、visible range、full-data export與Reset Canvas都走同一one-in-flight typed action channel。Current transport gate 15/15通過。

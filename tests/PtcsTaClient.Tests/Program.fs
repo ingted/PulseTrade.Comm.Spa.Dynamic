@@ -62,6 +62,7 @@ let wire =
       rowsRef = "rows"
       statusRef = "status"
       sharedTimeAxis = true
+      temporalAxisRefs = [||]
       baseRowId = "price"
       rows =
         [| { rowId = "price"
@@ -77,7 +78,13 @@ let wire =
                      label = "K Bar"
                      color = "#0f766e"
                      width = 2.0
-                     visible = true } |] } |]
+                     visible = true
+                     hasCandleDataRefs = false
+                     candleOpenRef = ""
+                     candleHighRef = ""
+                     candleLowRef = ""
+                     candleCloseRef = ""
+                     candleVolumeRef = "" } |] } |]
       editorSchemas = [||]
       allowedActions = [| "change-query" |]
       querySourceId = "binance"
@@ -113,6 +120,7 @@ let wire =
              finality = [||]
              projections = [||]
              qualities = [||] } |]
+      sharedTemporalData = [||]
       statusLabel = "LIVE"
       freshness = "live"
       watermarkUtc = "2026-07-11T09:00:00Z"
@@ -292,6 +300,80 @@ let tests =
 
               let malformed = { v4 with series = [| { firstSeries with sourceIntervalIds = [||] } |] }
               Expect.isError (TaResearchClientWire.stateFromWire malformed) "malformed temporal arrays fail closed instead of silently dropping metadata.")
+
+          testCase "browser v5 preserves shared temporal axis and candle component references" (fun _ ->
+              let axis =
+                  TemporalAxisCodec.encode
+                      { AxisRef = "axis.es"
+                        Revision = 7L
+                        Points =
+                          [| { Position = 40L
+                               SourceIntervalId = "es-5k:1300"
+                               ScaleKey = "5K"
+                               IntervalStartUtc = DateTimeOffset.Parse "2026-09-03T13:00:00Z"
+                               IntervalEndUtc = DateTimeOffset.Parse "2026-09-03T13:05:00Z"
+                               ObservedThroughUtc = DateTimeOffset.Parse "2026-09-03T13:04:00Z"
+                               AvailableAtUtc = None
+                               Finality = PointFinality.Preview
+                               Projection = TemporalProjection.CandleSpan
+                               Quality = Some "partial" } |] }
+              let scalar dataRef value =
+                  { key = dataRef
+                    value =
+                      TemporalSeriesCodec.encode
+                          { AxisRef = "axis.es"
+                            AxisRevision = 7L
+                            Points = [| { Position = 40L; Value = SduiValue.Number value } |] }
+                      |> browserValueWire }
+              let candleRefs =
+                  [| "series.open"; "series.high"; "series.low"; "series.close"; "series.volume" |]
+              let trace =
+                  { wire.rows[0].traces[0] with
+                      hasCandleDataRefs = true
+                      candleOpenRef = candleRefs[0]
+                      candleHighRef = candleRefs[1]
+                      candleLowRef = candleRefs[2]
+                      candleCloseRef = candleRefs[3]
+                      candleVolumeRef = candleRefs[4] }
+              let v5 =
+                  { wire with
+                      wireVersion = "ta-browser.v5"
+                      temporalAxisRefs = [| "axis.es" |]
+                      rows = [| { wire.rows[0] with traces = [| trace |] } |]
+                      timeline = [||]
+                      series = [||]
+                      sharedTemporalData =
+                        Array.append
+                            [| { key = "axis.es"; value = browserValueWire axis } |]
+                            [| scalar candleRefs[0] 100.0
+                               scalar candleRefs[1] 105.0
+                               scalar candleRefs[2] 98.0
+                               scalar candleRefs[3] 103.0
+                               scalar candleRefs[4] 20.0 |] }
+              let state = TaResearchClientWire.stateFromWire v5 |> Result.defaultWith failtest
+              let document = state.Document |> Option.defaultWith (fun () -> failtest "Document was not projected.")
+              Expect.sequenceEqual document.TemporalAxisRefs [| "axis.es" |] "the shared axis declaration reaches the renderer contract."
+              let projectedTrace = document.Rows[0].Traces[0]
+              Expect.equal
+                  projectedTrace.CandleDataRefs
+                  (Some
+                      { OpenRef = candleRefs[0]
+                        HighRef = candleRefs[1]
+                        LowRef = candleRefs[2]
+                        CloseRef = candleRefs[3]
+                        VolumeRef = candleRefs[4] })
+                  "five scalar candle components retain their explicit renderer binding."
+              let decodedAxis =
+                  state.Data["axis.es"]
+                  |> TemporalAxisCodec.decode
+                  |> Result.defaultWith (List.map _.Message >> String.concat "; " >> failtest)
+              Expect.equal decodedAxis.Revision 7L "the axis revision is not flattened or inferred by the PTCS client."
+              let decodedClose =
+                  state.Data[candleRefs[3]]
+                  |> TemporalSeriesCodec.decode
+                  |> Result.defaultWith (List.map _.Message >> String.concat "; " >> failtest)
+              Expect.equal decodedClose.AxisRevision 7L "the scalar series keeps the exact axis revision."
+              Expect.equal decodedClose.Points[0].Value (SduiValue.Number 103.0) "the compact close value survives browser decoding.")
 
           testCase "add-row action emits canonical lowercase row kind" (fun _ ->
               let action =

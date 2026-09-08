@@ -631,3 +631,52 @@ Dispose -> cancel reconnect+snapshot+action timers -> Unmounted -> close -> term
 ```
 
 `RuntimeReducer`仍是frame acceptance authority。重連期間renderer持有同一`Var<RuntimeState>`；Error、invalid frame、sequence gap或逾時不得清除document/data。valid Snapshot前status可為`RESYNCING`/`RECONNECTING`，但畫面維持last-good。application不接收remote URL或credential options。
+
+## 2026-09-08 Shared temporal axis revision 8
+
+```fsharp
+type TemporalAxisPoint =
+    { Position: int64
+      SourceIntervalId: string
+      ScaleKey: string
+      IntervalStartUtc: DateTimeOffset
+      IntervalEndUtc: DateTimeOffset
+      ObservedThroughUtc: DateTimeOffset
+      AvailableAtUtc: DateTimeOffset option
+      Finality: PointFinality
+      Projection: TemporalProjection
+      Quality: string option }
+
+type TemporalAxis =
+    { AxisRef: string
+      Revision: int64
+      Points: TemporalAxisPoint array }
+
+type TemporalSeriesPoint =
+    { Position: int64
+      Value: SduiValue }
+
+type TemporalSeries =
+    { AxisRef: string
+      AxisRevision: int64
+      Points: TemporalSeriesPoint array }
+
+type TaCandleDataRefs =
+    { OpenRef: string; HighRef: string; LowRef: string
+      CloseRef: string; VolumeRef: string }
+```
+
+`TaWorkspaceDocument.TemporalAxisRefs`宣告合法axis data refs；`TaTraceSpec.CandleDataRefs`只允許candlestick且五個ref須nonblank/distinct。axis/series codec分別使用`temporal-axis.v1`與`temporal-series.v1`。snapshot與patch均驗strictly increasing Position、retention <= 4000、完整axis metadata、declared axis、exact AxisRevision及Position membership。
+
+```text
+owner normalized bars/TA
+  -> one TemporalAxis(revision N, sparse positions)
+  -> O/H/L/C/V + indicator TemporalSeries(axisRevision N)
+  -> RuntimeReducer atomic candidate validation
+  -> Renderer join by Position
+  -> PTCS ta-browser.v5 sharedTemporalData (no legacy expansion)
+```
+
+patch使用`UpsertTemporalAxisPoints`/`RemoveTemporalAxisBefore`與`UpsertTemporalSeriesPoints`/`RemoveTemporalSeriesBefore`。同一preview Position可替換，但axis及相依series必須在同一ordered patch內到達相同revision；中間candidate不對外可見，最終candidate不一致時整批拒絕並`RequestResync`。Position缺口保持缺口，不根據ScaleKey插值。
+
+PTCS server v5把typed axis/series放入`sharedTemporalData`；legacy arrays仍使用bounded timeline/columnar `series`。client full frame直接建立shared map，delta以dataRef替換changed axis/series，再交canonical reducer/renderer。3820 x 28 gate須驗serialized frame低於16MiB；UI仍只mount bounded SVG primitives，不因working set上限4000而一次建立4000組DOM。
