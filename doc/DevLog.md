@@ -1199,3 +1199,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Dynamic direct PTCS consumers were aligned from exact `PulseTrade.Comm.Spa 0.2.15` to `0.2.16`; the Host-facing `PulseTrade.Comm.Spa.Dynamic.Ptcs` package was published as `0.1.3`.
 - Main `PulseTrade.Comm.Spa.Dynamic` package was published as `0.1.5` for the formal SPA Host graph. This release is a dependency alignment for PTCS startup-memory/product-identity work and does not claim additional Dynamic UI behavior.
+
+## 2026-09-09 - PTCS 0.2.18 dependency and package-integrity cascade
+
+- Direct PTCS consumers now pin exact `PulseTrade.Comm.Spa 0.2.18`. Fresh build-first releases are Dynamic.Ptcs `0.1.5`, Dynamic.Ptcs.Client `0.1.3`, and main Dynamic `0.1.7`.
+- `0.1.6` was superseded because pack-first can retain a previous Release assembly. Dynamic.Ptcs and Ptcs.Client were rebuilt before `pack --no-build`; main Dynamic was built from a source-identical staging copy because canonical generated `src/websharper.log` remained OS access-denied.
+- The staging WebSharper build completed with only existing WS9002, and generated tracked JS hashes were identical to canonical source. NuGet pushes returned `Created`; no new Dynamic UI behavior is claimed by this dependency release.
