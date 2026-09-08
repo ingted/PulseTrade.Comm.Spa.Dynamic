@@ -199,6 +199,7 @@ let tests =
                   RowsRef = "rows"
                   StatusRef = "status"
                   SharedTimeAxis = true
+                  BaseRowId = Some "price"
                   Rows = [| row "price" TaRowKind.Candlestick "price"; row "sma" TaRowKind.Sma "sma" |]
                   EditorSchemas = [||]
                   AllowedActions = [||]
@@ -247,6 +248,7 @@ let tests =
                   RowsRef = "rows"
                   StatusRef = "status"
                   SharedTimeAxis = true
+                  BaseRowId = Some "price"
                   Rows = [| row |]
                   EditorSchemas = [||]
                   AllowedActions = [||]
@@ -273,6 +275,111 @@ let tests =
             Expect.equal last.Timestamp "B3" "the cursor targets the canonical timestamp"
             Expect.equal (last.Values |> Array.map _.Label) [| "price"; "sma233" |] "the warmed-up indicator joins at its exact timestamp"
             Expect.equal last.Values[1].Value "12.5" "the indicator value must not be offset by its shorter history"
+
+        testCase "explicit base row controls event-time axis and visible range" <| fun _ ->
+            let line timestamp value =
+                SduiValue.Object(Map [ "t", SduiValue.Text timestamp; "v", SduiValue.Number value ])
+            let row rowId dataRef =
+                { RowId = rowId
+                  Kind = TaRowKind.Sma
+                  DataRef = dataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let baseTimes =
+                [| "2026-09-08T01:00:00Z"
+                   "2026-09-08T01:01:00Z"
+                   "2026-09-08T01:02:00Z" |]
+            let document =
+                { WorkspaceId = "base-row-test"
+                  Title = "Base row"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  BaseRowId = Some "base"
+                  Rows = [| row "base" "base"; row "longer" "longer" |]
+                  EditorSchemas = [||]
+                  AllowedActions = [| "shared-cursor-changed"; "visible-range-changed" |]
+                  DefaultView = Map.empty }
+            let data =
+                Map [
+                    "base", SduiValue.Array(baseTimes |> Array.mapi (fun index timestamp -> line timestamp (float index)))
+                    "longer",
+                    SduiValue.Array
+                        [| line "2026-09-08T00:59:00Z" 0.0
+                           line "2026-09-08T01:00:00Z" 1.0
+                           line "2026-09-08T01:01:00Z" 2.0
+                           line "2026-09-08T01:02:00Z" 3.0
+                           line "2026-09-08T01:03:00Z" 4.0 |] ]
+
+            Expect.sequenceEqual (RendererModel.referenceTimelineForDocument document data) baseTimes "Host-selected base row must win over a longer visible series."
+            let range =
+                RendererModel.visibleEventRange document data { StartIndex = 0; Count = 2 }
+                |> Option.defaultWith (fun () -> failtest "Visible event range missing.")
+            Expect.equal range.BaseRowId "base" "Range must retain the explicit base identity."
+            Expect.equal range.StartEventTimeUtc baseTimes[0] "Range starts at the first visible base datapoint."
+            Expect.equal range.EndEventTimeExclusiveUtc baseTimes[2] "Range ends at the next base datapoint."
+
+            let cursor = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 3 } 1 |> Option.get
+            Expect.equal cursor.Timestamp baseTimes[1] "Cursor must land on a real base datapoint."
+
+        testCase "coarse cursor values require finalized event-time evidence" <| fun _ ->
+            let temporalLine sourceId scale startTime endTime availableAt finality projection value =
+                SduiValue.Object(
+                    Map [
+                        "_type", SduiValue.Text "temporal-point.v1"
+                        "sourceIntervalId", SduiValue.Text sourceId
+                        "scaleKey", SduiValue.Text scale
+                        "intervalStartUtc", SduiValue.Text startTime
+                        "intervalEndUtc", SduiValue.Text endTime
+                        "observedThroughUtc", SduiValue.Text endTime
+                        "availableAtUtc", SduiValue.Text availableAt
+                        "finality", SduiValue.Text finality
+                        "projection", SduiValue.Text projection
+                        "value", SduiValue.Object(Map [ "t", SduiValue.Text startTime; "v", SduiValue.Number value ]) ])
+            let row rowId dataRef =
+                { RowId = rowId
+                  Kind = TaRowKind.Sma
+                  DataRef = dataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let document =
+                { WorkspaceId = "finality-test"
+                  Title = "Finality"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  BaseRowId = Some "base"
+                  Rows = [| row "base" "base"; row "coarse" "coarse" |]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let cursorTime = "2026-09-08T01:04:00Z"
+            let basePreview =
+                temporalLine "base-0104" "1k" cursorTime "2026-09-08T01:05:00Z" "2026-09-08T01:04:30Z" "preview" "candle-span" 104.0
+            let priorFinal =
+                temporalLine "coarse-0055" "5k" "2026-09-08T00:55:00Z" "2026-09-08T01:00:00Z" "2026-09-08T01:00:00Z" "final" "candle-span" 10.0
+            let currentPreview =
+                temporalLine "coarse-0100-preview" "5k" "2026-09-08T01:00:00Z" "2026-09-08T01:05:00Z" "2026-09-08T01:04:30Z" "preview" "candle-span" 99.0
+            let currentFinal =
+                temporalLine "coarse-0100-final" "5k" "2026-09-08T01:00:00Z" "2026-09-08T01:05:00Z" "2026-09-08T01:05:00Z" "final" "candle-span" 20.0
+            let snapshot coarse =
+                RendererModel.cursorSnapshot
+                    document
+                    (Map [ "base", SduiValue.Array [| basePreview |]; "coarse", SduiValue.Array coarse ])
+                    { StartIndex = 0; Count = 1 }
+                    0
+                |> Option.defaultWith (fun () -> failtest "cursor snapshot missing")
+
+            let fallback = snapshot [| priorFinal; currentPreview |]
+            Expect.stringStarts fallback.Values[0].Value "104" "base row may expose its current preview datapoint."
+            Expect.stringStarts fallback.Values[1].Value "10" "unfinished coarse data must fall back to the latest available finalized value."
+
+            let containing = snapshot [| priorFinal; currentPreview; currentFinal |]
+            Expect.stringStarts containing.Values[1].Value "20" "a finalized coarse interval containing base event-time wins over as-of fallback."
 
         testCase "status presentation preserves all freshness quality and last-good error states" <| fun _ ->
             let identity = { DocumentId = DocumentId "status-doc"; CanvasInstanceId = CanvasInstanceId "status-canvas" }
@@ -403,6 +510,7 @@ let tests =
                   RowsRef = "rows"
                   StatusRef = "status"
                   SharedTimeAxis = true
+                  BaseRowId = Some "multi-scale"
                   Rows = [| row |]
                   EditorSchemas = [||]
                   AllowedActions = [||]

@@ -62,6 +62,7 @@ let wire =
       rowsRef = "rows"
       statusRef = "status"
       sharedTimeAxis = true
+      baseRowId = "price"
       rows =
         [| { rowId = "price"
              kind = "candlestick"
@@ -355,6 +356,30 @@ let tests =
                   SduiAction.PollDelta(CanvasInstanceId "canvas", 9L)
                   |> TaResearchClientWire.actionToWire
               Expect.equal actual.afterDataRevision 9.0 "browser command revisions must not become JavaScript BigInt values.")
+
+          testCase "event-time cursor and visible range map to flat browser payloads" (fun _ ->
+              let cursor =
+                  SduiAction.SharedCursorChanged(
+                      CanvasInstanceId "canvas",
+                      { BaseRowId = "price-1k"
+                        EventTimeUtc = "2026-09-08T01:23:00Z" })
+                  |> TaResearchClientWire.actionToWire
+              let range =
+                  SduiAction.VisibleRangeChanged(
+                      CanvasInstanceId "canvas",
+                      { BaseRowId = "price-1k"
+                        StartEventTimeUtc = "2026-09-08T01:00:00Z"
+                        EndEventTimeExclusiveUtc = "2026-09-08T02:00:00Z"
+                        MaximumBasePoints = 4000 })
+                  |> TaResearchClientWire.actionToWire
+
+              Expect.equal cursor.actionKind "shared-cursor-changed" "cursor action uses the stable discriminator."
+              Expect.equal cursor.baseRowId "price-1k" "cursor carries the host-selected base row."
+              Expect.equal cursor.eventTimeUtc "2026-09-08T01:23:00Z" "cursor carries UTC event-time."
+              Expect.equal range.actionKind "visible-range-changed" "range action uses the stable discriminator."
+              Expect.equal range.startEventTimeUtc "2026-09-08T01:00:00Z" "range carries its inclusive start."
+              Expect.equal range.endEventTimeExclusiveUtc "2026-09-08T02:00:00Z" "range carries its exclusive end."
+              Expect.equal range.maximumBasePoints 4000 "range carries the hard base-point cap.")
 
           testCase "delta wire upserts points, trims rolling prefixes and rejects revision gaps" (fun _ ->
               let initial = TaResearchClientWire.stateFromWire wire |> Result.defaultWith failtest

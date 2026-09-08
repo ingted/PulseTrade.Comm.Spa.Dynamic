@@ -131,12 +131,33 @@ module RuntimeValidation =
               yield! editorFieldErrors $"document.editorSchemas[{index}].fields[{fieldIndex}]" 1 field ]
 
     let documentErrors limits (document: TaWorkspaceDocument) =
-        let allowedActions = Set.ofList [ "reset-view"; "reset-canvas"; "add-row"; "remove-row"; "change-query"; "poll-delta"; "request-full-snapshot" ]
+        let allowedActions =
+            Set.ofList
+                [ "reset-view"
+                  "reset-canvas"
+                  "add-row"
+                  "remove-row"
+                  "change-query"
+                  "shared-cursor-changed"
+                  "visible-range-changed"
+                  "poll-delta"
+                  "request-full-snapshot" ]
         let editorSchemas = if isNull document.EditorSchemas then [||] else document.EditorSchemas
 
         [ yield! identifier "document.workspaceId" document.WorkspaceId
           yield! identifier "document.rowsRef" document.RowsRef
           yield! identifier "document.statusRef" document.StatusRef
+
+          match document.BaseRowId with
+          | Some baseRowId ->
+              yield! identifier "document.baseRowId" baseRowId
+              match document.Rows |> Array.tryFind (fun row -> row.RowId = baseRowId) with
+              | None ->
+                  yield error "base-row-not-found" "document.baseRowId" "BaseRowId must identify a document row."
+              | Some row when not row.Visible ->
+                  yield error "base-row-not-visible" "document.baseRowId" "BaseRowId must identify a visible row."
+              | Some _ -> ()
+          | None -> ()
 
           if document.Rows.Length > limits.MaxRowsPerCanvas then
               yield error "limit-rows" "document.rows" $"Rows exceed hard limit {limits.MaxRowsPerCanvas}."

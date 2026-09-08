@@ -109,6 +109,7 @@ type TaBrowserStateWire =
       rowsRef: string
       statusRef: string
       sharedTimeAxis: bool
+      baseRowId: string
       rows: TaBrowserRowWire array
       editorSchemas: TaBrowserValueWire array
       allowedActions: string array
@@ -174,7 +175,12 @@ type TaBrowserClientFrameWire =
       hasTemplateRowId: bool
       editorValues: TaBrowserEditorInputWire array
       expectedDocumentRevision: float
-      hasExpectedDocumentRevision: bool }
+      hasExpectedDocumentRevision: bool
+      baseRowId: string
+      eventTimeUtc: string
+      startEventTimeUtc: string
+      endEventTimeExclusiveUtc: string
+      maximumBasePoints: int }
 
 [<JavaScript; CLIMutable>]
 type ExtensionTransientRequestWire =
@@ -637,6 +643,7 @@ module TaResearchClientWire =
                               RowsRef = text wire.rowsRef
                               StatusRef = text wire.statusRef
                               SharedTimeAxis = wire.sharedTimeAxis
+                              BaseRowId = if String.IsNullOrWhiteSpace wire.baseRowId then None else Some(text wire.baseRowId)
                               Rows = rows
                               EditorSchemas = editorSchemas
                               AllowedActions = if isNull wire.allowedActions then [||] else wire.allowedActions
@@ -735,7 +742,12 @@ module TaResearchClientWire =
           hasTemplateRowId = false
           editorValues = [||]
           expectedDocumentRevision = 0.0
-          hasExpectedDocumentRevision = false }
+          hasExpectedDocumentRevision = false
+          baseRowId = ""
+          eventTimeUtc = ""
+          startEventTimeUtc = ""
+          endEventTimeExclusiveUtc = ""
+          maximumBasePoints = 0 }
 
     let optionText value = value |> Option.defaultValue ""
     let optionInt value = value |> Option.defaultValue 0
@@ -778,6 +790,16 @@ module TaResearchClientWire =
                 fromUtc = optionText query.FromUtc
                 toUtcExclusive = optionText query.ToUtcExclusive
                 includePartial = optionBool query.IncludePartial }
+        | SduiAction.SharedCursorChanged(canvas, change) ->
+            { emptyFrame "action" "shared-cursor-changed" (canvasText canvas) with
+                baseRowId = change.BaseRowId
+                eventTimeUtc = change.EventTimeUtc }
+        | SduiAction.VisibleRangeChanged(canvas, change) ->
+            { emptyFrame "action" "visible-range-changed" (canvasText canvas) with
+                baseRowId = change.BaseRowId
+                startEventTimeUtc = change.StartEventTimeUtc
+                endEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
+                maximumBasePoints = change.MaximumBasePoints }
         | SduiAction.PollDelta(canvas, revision) ->
             { emptyFrame "action" "poll-delta" (canvasText canvas) with afterDataRevision = float revision }
         | SduiAction.RequestFullSnapshot(canvas, reason) ->

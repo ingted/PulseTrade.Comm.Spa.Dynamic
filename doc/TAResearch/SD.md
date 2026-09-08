@@ -4,7 +4,7 @@ Status: Accepted / Ready for DEV
 Date: 2026-07-11
 REQ: `doc/TAResearch/REQ.md`
 RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
-Current change: `doc/RFC/RFC-PTCS-DYNAMIC-0011.ta-export-draft-cursor-defaults.md`
+Current change: `doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`
 SA: `doc/TAResearch/SA.md`
 Test: `doc/TAResearch/Test.md`
 WBS: `doc/TAResearch/WBS.md`
@@ -559,3 +559,34 @@ TaRowEditorBinding.OptionKey = "ptcs.dynamic.editor.binding.v1"
 `DynamicTemplateSchemaCodec`以`SduiValue`遞迴編解Text/Integer/Decimal/Boolean/Choice/Scale/List/Group與default。Runtime validation同時限制schema depth、field/choice/list數量、key uniqueness、數字範圍與unsafe payload。PTCS `ta-browser.v4`新增additive `editorSchemas`，row wire新增`options`；舊payload缺欄位時皆解為empty。
 
 renderer先讀current document catalog，只有standalone/test document未提供catalog時才可使用options fallback。Add送`ApplyTemplate(..., None, ...)`；Edit先以保留key解析binding並填入draft，再送`ApplyTemplate(..., Some rowId, ...)`。pending/reject保留editor與原row；accepted仍等authoritative next document。row沒有有效binding/schema時不顯示Edit，避免從presentation反推domain參數。
+
+## 2026-09-08 BaseRow cursor/range revision 6
+
+```fsharp
+type TaWorkspaceDocument =
+    { // existing fields
+      BaseRowId: string option }
+
+type SharedCursorChange =
+    { BaseRowId: string
+      EventTimeUtc: string }
+
+type VisibleRangeChange =
+    { BaseRowId: string
+      StartEventTimeUtc: string
+      EndEventTimeExclusiveUtc: string
+      MaximumBasePoints: int }
+```
+
+`BaseRowId`必須指向visible document row。`SharedCursorChanged`與`VisibleRangeChanged`沿用`DynamicActionRequest`的RequestId、ExpectedDocumentRevision與single-pending lifecycle；UTC string、半開區間順序與`MaximumBasePoints <= 4000`在contract boundary重新驗證。
+
+```text
+owner document/frame
+  -> BaseRowId + normalized TemporalPoint metadata
+  -> renderer base timeline
+  -> chart click -> SharedCursorChanged(actual base timestamp)
+  -> viewport release -> VisibleRangeChanged([start,end), max<=4000)
+  -> correlated authoritative result -> later RuntimeFrame
+```
+
+cross-row cursor先找finalized containing point；找不到才找finalized且`AvailableAtUtc <= cursor`的as-of point；未完成coarse point與future-available point均排除。viewport action pending時，48/200/All、navigator move/resize與其他range commit皆不可重入。pending/feedback使用獨立view，不能觸發2000-point chart重建；只有window、follow-latest、hidden rows或cursor index改變才重新composition。

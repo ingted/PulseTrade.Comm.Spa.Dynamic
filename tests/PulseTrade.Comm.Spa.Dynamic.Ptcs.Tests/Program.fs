@@ -40,6 +40,7 @@ let document =
       RowsRef = "rows"
       StatusRef = "status"
       SharedTimeAxis = true
+      BaseRowId = Some "price"
       Rows = [| row |]
       EditorSchemas = [| editorSchema |]
       AllowedActions = [| "change-query"; "poll-delta" |]
@@ -155,7 +156,12 @@ let browserPayload kind actionKind =
       hasTemplateRowId = false
       editorValues = [||]
       expectedDocumentRevision = 0.0
-      hasExpectedDocumentRevision = false }
+      hasExpectedDocumentRevision = false
+      baseRowId = ""
+      eventTimeUtc = ""
+      startEventTimeUtc = ""
+      endEventTimeExclusiveUtc = ""
+      maximumBasePoints = 0 }
     |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
 
 let browserContext sessionId operation requestId payloadText =
@@ -243,6 +249,49 @@ let tests =
                   |> TaResearchBrowserWire.clientFrameFromWire
 
               Expect.equal browser (Ok expected) "browser wire must preserve the same typed editor action without recursive JSON." )
+
+          testCase "event-time cursor and visible range survive transient and browser wires" (fun _ ->
+              let cursor =
+                  RuntimeClientFrame.Action(
+                      SduiAction.SharedCursorChanged(
+                          canvasId,
+                          { BaseRowId = "price-1k"
+                            EventTimeUtc = "2026-09-08T01:23:00Z" }))
+              let range =
+                  RuntimeClientFrame.Action(
+                      SduiAction.VisibleRangeChanged(
+                          canvasId,
+                          { BaseRowId = "price-1k"
+                            StartEventTimeUtc = "2026-09-08T01:00:00Z"
+                            EndEventTimeExclusiveUtc = "2026-09-08T02:00:00Z"
+                            MaximumBasePoints = 4000 }))
+
+              let transient value =
+                  value
+                  |> TaResearchTransientWire.clientFrameToWire
+                  |> TaResearchTransientWire.clientFrameFromWire
+
+              Expect.equal (transient cursor) (Ok cursor) "transient cursor wire must preserve base identity and UTC event-time."
+              Expect.equal (transient range) (Ok range) "transient range wire must preserve the bounded base-point request."
+
+              let browserCursor =
+                  browserPayload "action" "shared-cursor-changed"
+                  |> fun text -> JsonSerializer.Deserialize<TaBrowserClientFrameWire>(text, TaResearchTransientServer.jsonOptions)
+                  |> fun wire -> { wire with baseRowId = "price-1k"; eventTimeUtc = "2026-09-08T01:23:00Z" }
+                  |> TaResearchBrowserWire.clientFrameFromWire
+              let browserRange =
+                  browserPayload "action" "visible-range-changed"
+                  |> fun text -> JsonSerializer.Deserialize<TaBrowserClientFrameWire>(text, TaResearchTransientServer.jsonOptions)
+                  |> fun wire ->
+                      { wire with
+                          baseRowId = "price-1k"
+                          startEventTimeUtc = "2026-09-08T01:00:00Z"
+                          endEventTimeExclusiveUtc = "2026-09-08T02:00:00Z"
+                          maximumBasePoints = 4000 }
+                  |> TaResearchBrowserWire.clientFrameFromWire
+
+              Expect.equal browserCursor (Ok cursor) "browser cursor wire must preserve base identity and UTC event-time."
+              Expect.equal browserRange (Ok range) "browser range wire must preserve the bounded base-point request.")
 
           testCase "browser point wire accepts canonical compact keys and legacy aliases" (fun _ ->
               let compactCandle =

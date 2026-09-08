@@ -425,7 +425,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvg rowId (traces: TaTraceSpec array) data (referenceTimestamps: string array) cursorIndex setCursorIndex =
+    let compositeSvg rowId (traces: TaTraceSpec array) data (referenceTimestamps: string array) cursorIndex setCursorIndex commitCursorIndex =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -484,6 +484,11 @@ module TaWorkspaceRenderer =
                 match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
                 | Some index -> setCursorIndex (Some index)
                 | None -> ())
+            on.click (fun element event ->
+                let bounds = element.GetBoundingClientRect()
+                match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
+                | Some index -> commitCursorIndex index
+                | None -> ())
         ] [
             for gridIndex in 0 .. 4 do
                 let y = top + plotHeight * float gridIndex / 4.0
@@ -538,9 +543,9 @@ module TaWorkspaceRenderer =
             | None -> ()
         ], referenceTimestamps
 
-    let renderRow (state: RuntimeState) (ui: TaRendererUiState) visibleTimestamps setCursorIndex showSharedTimeAxis (row: TaRowSpec) =
+    let renderRow (state: RuntimeState) (ui: TaRendererUiState) visibleTimestamps setCursorIndex commitCursorIndex showSharedTimeAxis (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
-        let chart, timestamps = compositeSvg row.RowId traces state.Data visibleTimestamps ui.CursorIndex setCursorIndex
+        let chart, timestamps = compositeSvg row.RowId traces state.Data visibleTimestamps ui.CursorIndex setCursorIndex commitCursorIndex
         let title =
             if isNull row.Traces || row.Traces.Length = 0 then
                 rowKindText row.Kind
@@ -617,6 +622,16 @@ module TaWorkspaceRenderer =
                   CursorIndex = None
                   PendingActionId = None
                   Feedback = "" }
+        let sameChartUiState (left: TaRendererUiState) (right: TaRendererUiState) =
+            left.Window = right.Window
+            && left.FollowLatest = right.FollowLatest
+            && left.HiddenRows = right.HiddenRows
+            && left.CursorIndex = right.CursorIndex
+        let chartUiState = Var.Create uiState.Value
+        let setUiState next =
+            let previousChartState = chartUiState.Value
+            uiState.Value <- next
+            if not (sameChartUiState previousChartState next) then chartUiState.Value <- next
         let mutable actionSequence = 0
         let commandsDisabledView =
             View.Map2
@@ -625,6 +640,20 @@ module TaWorkspaceRenderer =
                 uiState.View
         let commandsDisabledNow () =
             remoteDisabled runtimeState.Value.Poll || uiState.Value.PendingActionId.IsSome
+        let visibleRangeActionAllowed state =
+            state.Document
+            |> Option.map _.AllowedActions
+            |> Option.defaultValue [||]
+            |> Array.contains "visible-range-changed"
+        let viewportCommandsDisabledView =
+            View.Map2
+                (fun state ui ->
+                    visibleRangeActionAllowed state
+                    && (remoteDisabled state.Poll || ui.PendingActionId.IsSome))
+                runtimeState.View
+                uiState.View
+        let viewportCommandsDisabledNow () =
+            visibleRangeActionAllowed runtimeState.Value && commandsDisabledNow ()
         let startActionWith action successText onAccepted onRejected =
             actionSequence <- actionSequence + 1
             let request =
@@ -648,14 +677,16 @@ module TaWorkspaceRenderer =
             && left.LastTransportSequence = right.LastTransportSequence
         let chartRuntimeView: View<RuntimeState> = runtimeState.View |> View.MapCachedBy sameChartState id
 
+        let actionAllowed actionName =
+            runtimeState.Value.Document
+            |> Option.map _.AllowedActions
+            |> Option.defaultValue [||]
+            |> Array.contains actionName
+
         let referenceLength () =
             match runtimeState.Value.Document with
             | None -> 0
-            | Some document ->
-                document.Rows
-                |> Array.tryFind _.Visible
-                |> Option.map (fun row -> RendererModel.rowReferenceLength row runtimeState.Value.Data)
-                |> Option.defaultValue 0
+            | Some document -> RendererModel.referenceTimelineForDocument document runtimeState.Value.Data |> Array.length
 
         let resolvedWindow ui =
             RendererModel.resolveWindow
@@ -666,15 +697,33 @@ module TaWorkspaceRenderer =
                 ui.Window
 
         let setWindow followLatest window =
-            let current = uiState.Value
-            let total = referenceLength ()
-            let bounded = RendererModel.resolveWindow options.MinimumVisibleBars options.MaximumVisibleBars total followLatest window
-            uiState.Value <-
-                { current with
-                    Window = bounded
-                    FollowLatest = followLatest
-                    CursorIndex = None }
-            draftWindow.Value <- None
+            if not (viewportCommandsDisabledNow ()) then
+                let current = uiState.Value
+                let total = referenceLength ()
+                let bounded = RendererModel.resolveWindow options.MinimumVisibleBars options.MaximumVisibleBars total followLatest window
+                let changed = bounded <> resolvedWindow current || followLatest <> current.FollowLatest
+                setUiState
+                    { current with
+                        Window = bounded
+                        FollowLatest = followLatest
+                        CursorIndex = None }
+                draftWindow.Value <- None
+                if changed && actionAllowed "visible-range-changed" then
+                    match runtimeState.Value.Document with
+                    | Some document ->
+                        match RendererModel.visibleEventRange document runtimeState.Value.Data bounded with
+                        | Some range ->
+                            startAction
+                                (SduiAction.VisibleRangeChanged(
+                                    canvasId,
+                                    { BaseRowId = range.BaseRowId
+                                      StartEventTimeUtc = range.StartEventTimeUtc
+                                      EndEventTimeExclusiveUtc = range.EndEventTimeExclusiveUtc
+                                      MaximumBasePoints = min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 options.MaximumVisibleBars) }))
+                                "Visible range synchronized."
+                                ignore
+                        | None -> ()
+                    | None -> ()
 
         let panWindow delta =
             let current = uiState.Value
@@ -696,7 +745,7 @@ module TaWorkspaceRenderer =
 
         let resetWindow () =
             setWindow true { StartIndex = 0; Count = options.DefaultVisibleBars }
-            uiState.Value <- { uiState.Value with Feedback = "Local view reset." }
+            setUiState { uiState.Value with Feedback = "Local view reset." }
 
         let setWindowCount count =
             let total = referenceLength ()
@@ -704,7 +753,7 @@ module TaWorkspaceRenderer =
             setWindow true { StartIndex = max 0 (total - boundedCount); Count = boundedCount }
 
         let startNavigatorDrag drag (event: MouseEvent) =
-            if not (isNull navigatorElement) then
+            if not (viewportCommandsDisabledNow ()) && not (isNull navigatorElement) then
                 event.PreventDefault()
                 event.StopPropagation()
                 let bounds = navigatorElement.GetBoundingClientRect()
@@ -752,7 +801,26 @@ module TaWorkspaceRenderer =
 
         let setCursorIndex value =
             if uiState.Value.CursorIndex <> value then
-                uiState.Value <- { uiState.Value with CursorIndex = value }
+                setUiState { uiState.Value with CursorIndex = value }
+
+        let commitCursorIndex index =
+            setCursorIndex (Some index)
+            if actionAllowed "shared-cursor-changed" then
+                match runtimeState.Value.Document with
+                | Some document ->
+                    let timeline = RendererModel.referenceTimelineForDocument document runtimeState.Value.Data
+                    let visible = resolvedWindow uiState.Value |> fun window -> RendererModel.selectWindow window timeline
+                    match document.BaseRowId with
+                    | Some baseRowId when index >= 0 && index < visible.Length ->
+                        startAction
+                            (SduiAction.SharedCursorChanged(
+                                canvasId,
+                                { BaseRowId = baseRowId
+                                  EventTimeUtc = visible[index] }))
+                            "Shared cursor synchronized."
+                            ignore
+                    | _ -> ()
+                | None -> ()
 
         let selectedEditorSchema () =
             editorSchemasNow () |> Array.tryFind (fun schema -> schema.TemplateKey = selectedTemplate.Value)
@@ -768,7 +836,7 @@ module TaWorkspaceRenderer =
         let forceCloseRowEditor () =
             editingRowId <- None
             pendingEditorMutation <- None
-            uiState.Value <- { uiState.Value with AddRowOpen = false }
+            setUiState { uiState.Value with AddRowOpen = false }
 
         let closeRowEditor () =
             if uiState.Value.PendingActionId.IsNone then forceCloseRowEditor ()
@@ -778,7 +846,7 @@ module TaWorkspaceRenderer =
             match editorSchemasNow () |> Array.tryHead with
             | Some schema -> resetEditorFor schema.TemplateKey
             | None -> ()
-            uiState.Value <- { uiState.Value with AddRowOpen = true; Feedback = "" }
+            setUiState { uiState.Value with AddRowOpen = true; Feedback = "" }
 
         let openRowEditor row =
             match TaRowEditorBinding.tryResolve (editorSchemasNow ()) row with
@@ -786,11 +854,11 @@ module TaWorkspaceRenderer =
                 editingRowId <- Some row.RowId
                 selectedTemplate.Value <- schema.TemplateKey
                 editorValues.Value <- values
-                uiState.Value <- { uiState.Value with AddRowOpen = true; Feedback = "" }
+                setUiState { uiState.Value with AddRowOpen = true; Feedback = "" }
             | Ok None -> ()
             | Error _ ->
                 editingRowId <- None
-                uiState.Value <-
+                setUiState
                     { uiState.Value with
                         AddRowOpen = false
                         Feedback = "This row's editor metadata is invalid; the row remains read-only." }
@@ -819,7 +887,7 @@ module TaWorkspaceRenderer =
                 if matched then
                     let feedback = if targetRowId.IsSome then "Row updated." else "Row added."
                     forceCloseRowEditor ()
-                    uiState.Value <- { uiState.Value with Feedback = feedback }
+                    setUiState { uiState.Value with Feedback = feedback }
             | _ -> ()
 
         let editorTestId (path: string) =
@@ -959,7 +1027,7 @@ module TaWorkspaceRenderer =
                     compactButton (editorTestId path + "-add") "+ Add" ("Add " + labelText) (fun () ->
                         let count = RendererModel.listIndexes path editorValues.Value |> Array.length
                         match maximum with
-                        | Some limit when count >= limit -> uiState.Value <- { uiState.Value with Feedback = $"{labelText} allows at most {limit} item(s)." }
+                        | Some limit when count >= limit -> setUiState { uiState.Value with Feedback = $"{labelText} allows at most {limit} item(s)." }
                         | _ -> editorValues.Value <- RendererModel.addListItem path itemKind editorValues.Value)
                 ] :> Doc
             | scalar -> scalarEditor path labelText required scalar
@@ -1036,7 +1104,7 @@ module TaWorkspaceRenderer =
                 | _ -> Result.Ok Map.empty
 
             match optionsResult with
-            | Result.Error message -> uiState.Value <- { uiState.Value with Feedback = message }
+            | Result.Error message -> setUiState { uiState.Value with Feedback = message }
             | Ok rowOptions ->
                 addRowSequence <- addRowSequence + 1
                 let rowId = "row-" + addKind.Value.ToLower() + "-" + string addRowSequence
@@ -1061,7 +1129,7 @@ module TaWorkspaceRenderer =
             | Some schema ->
                 let errors = RendererModel.validateEditorSubmission schema editorValues.Value
                 if errors.Length > 0 then
-                    uiState.Value <- { uiState.Value with Feedback = String.concat " " errors }
+                    setUiState { uiState.Value with Feedback = String.concat " " errors }
                 else
                     let currentRows =
                         runtimeState.Value.Document
@@ -1117,7 +1185,7 @@ module TaWorkspaceRenderer =
                         match pendingAddRowId with
                         | Some rowId when document.Rows |> Array.exists (fun row -> row.RowId = rowId) ->
                             pendingAddRowId <- None
-                            uiState.Value <- { uiState.Value with AddRowOpen = false; Feedback = "Row added." }
+                            setUiState { uiState.Value with AddRowOpen = false; Feedback = "Row added." }
                         | _ -> ()
                         completeEditorMutation document state.DocumentRevision
                         synchronizedDocumentRevision <- state.DocumentRevision
@@ -1165,15 +1233,15 @@ module TaWorkspaceRenderer =
                                 primaryButtonView "ta-apply-query" "Load / Apply" commandsDisabledView commandsDisabledNow applyQuery
                             ]
                             div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ]
-                                ([ compactButton "ta-pan-left" "←" "Pan earlier" (fun () ->
+                                ([ compactRemoteButton "ta-pan-left" "←" "Pan earlier" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () ->
                                        let visible = resolvedWindow uiState.Value
                                        panWindow (-max 1 (visible.Count / 4)))
-                                   compactButton "ta-pan-right" "→" "Pan later" (fun () ->
+                                   compactRemoteButton "ta-pan-right" "→" "Pan later" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () ->
                                        let visible = resolvedWindow uiState.Value
                                        panWindow (max 1 (visible.Count / 4)))
-                                   compactButton "ta-zoom-in" "+" "Show fewer bars" (fun () -> zoomWindow -8)
-                                   compactButton "ta-zoom-out" "−" "Show more bars" (fun () -> zoomWindow 8)
-                                   compactButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" resetWindow
+                                   compactRemoteButton "ta-zoom-in" "+" "Show fewer bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow -8)
+                                   compactRemoteButton "ta-zoom-out" "−" "Show more bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow 8)
+                                   compactRemoteButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" viewportCommandsDisabledView viewportCommandsDisabledNow resetWindow
                                    compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () -> startAction (SduiAction.ResetCanvas canvasId) "Canvas reset accepted." ignore) ]
                                  @ (if (editorSchemasNow ()).Length > 0 then
                                         [ compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () ->
@@ -1181,7 +1249,7 @@ module TaWorkspaceRenderer =
                                               else openNewRowEditor ()) ]
                                     else
                                         [])
-                                 @ [ span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "local view controls do not query the backend" ] ])
+                                  @ [ span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "viewport changes request the selected event-time range when enabled" ] ])
                             uiState.View
                             |> View.Map (fun ui ->
                                 div [ Attr.Create "data-testid" "ta-row-toggles"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [
@@ -1203,7 +1271,7 @@ module TaWorkspaceRenderer =
                                                             if hidden then Set.remove row.RowId uiState.Value.HiddenRows
                                                             else Set.add row.RowId uiState.Value.HiddenRows
 
-                                                        uiState.Value <- { uiState.Value with HiddenRows = nextHidden })
+                                                        setUiState { uiState.Value with HiddenRows = nextHidden })
                                                 ] [ text (rowKindText row.Kind) ]
                                                 if editable then
                                                     button [
@@ -1261,7 +1329,7 @@ module TaWorkspaceRenderer =
                                 document.Rows
                                 |> Array.filter (fun row -> row.Visible && not (Set.contains row.RowId ui.HiddenRows))
 
-                            let referenceTimeline = RendererModel.referenceTimeline visibleRows state.Data
+                            let referenceTimeline = RendererModel.referenceTimelineForDocument document state.Data
                             let referenceLength = referenceTimeline.Length
                             let overviewPoints =
                                 visibleRows
@@ -1280,8 +1348,7 @@ module TaWorkspaceRenderer =
                             let cursorIndex =
                                 ui.CursorIndex
                                 |> Option.map (fun value -> value |> max 0 |> min (max 0 (visibleTimestamps.Length - 1)))
-                            let cursorDocument = { document with Rows = visibleRows }
-                            let cursor = cursorIndex |> Option.bind (RendererModel.cursorSnapshot cursorDocument state.Data visibleWindow)
+                            let cursor = cursorIndex |> Option.bind (RendererModel.cursorSnapshotForRows document visibleRows state.Data visibleWindow)
                             let cursorValues =
                                 match cursor with
                                 | None -> div [ attr.style "font-size:11px; color:#718197;" ] [ text "Move the pointer over any chart row to inspect one shared bar." ]
@@ -1320,7 +1387,7 @@ module TaWorkspaceRenderer =
                                     yield div [ attr.style "padding:18px; color:#667891;" ] [ text "No visible TA rows." ]
                                 else
                                     for index in 0 .. visibleRows.Length - 1 do
-                                        yield renderRow state { ui with CursorIndex = cursorIndex } visibleTimestamps setCursorIndex (index = visibleRows.Length - 1) visibleRows[index]
+                                        yield renderRow state { ui with CursorIndex = cursorIndex } visibleTimestamps setCursorIndex commitCursorIndex (index = visibleRows.Length - 1) visibleRows[index]
                                 yield div [
                                     Attr.Create "data-testid" "ta-viewport-panel"
                                     attr.style "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
@@ -1346,7 +1413,7 @@ module TaWorkspaceRenderer =
                                             finishNavigatorDragFromElement
                                     ]
                                 ]
-                            ] :> Doc) chartRuntimeView uiState.View
+                            ] :> Doc) chartRuntimeView chartUiState.View
                         |> Doc.EmbedView
                     ] :> Doc)
             |> Doc.EmbedView

@@ -722,6 +722,13 @@ module DynamicActionValidation =
               | Some text -> yield! RuntimeValidation.identifier $"action.query.{field}" text
               | None -> () ]
 
+    let utcEventTimeErrors field value =
+        [ yield! RuntimeValidation.identifier field value
+          match DateTimeOffset.TryParse value with
+          | true, parsed when parsed.Offset = TimeSpan.Zero -> ()
+          | _ ->
+              yield RuntimeValidation.error "invalid-utc-event-time" field $"{field} must be a UTC ISO-8601 timestamp." ]
+
     let actionErrors action =
         match action with
         | SduiAction.ResetView canvas
@@ -750,6 +757,24 @@ module DynamicActionValidation =
             canvasErrors "action.canvasInstanceId" canvas @ RuntimeValidation.identifier "action.rowId" rowId
         | SduiAction.ChangeTaQuery(canvas, query) ->
             canvasErrors "action.canvasInstanceId" canvas @ queryErrors query
+        | SduiAction.SharedCursorChanged(canvas, change) ->
+            [ yield! canvasErrors "action.canvasInstanceId" canvas
+              yield! RuntimeValidation.identifier "action.cursor.baseRowId" change.BaseRowId
+              yield! utcEventTimeErrors "action.cursor.eventTimeUtc" change.EventTimeUtc ]
+        | SduiAction.VisibleRangeChanged(canvas, change) ->
+            [ yield! canvasErrors "action.canvasInstanceId" canvas
+              yield! RuntimeValidation.identifier "action.range.baseRowId" change.BaseRowId
+              yield! utcEventTimeErrors "action.range.startEventTimeUtc" change.StartEventTimeUtc
+              yield! utcEventTimeErrors "action.range.endEventTimeExclusiveUtc" change.EndEventTimeExclusiveUtc
+              match DateTimeOffset.TryParse change.StartEventTimeUtc, DateTimeOffset.TryParse change.EndEventTimeExclusiveUtc with
+              | (true, startTime), (true, endTime) when endTime <= startTime ->
+                  yield RuntimeValidation.error "invalid-visible-range" "action.range" "Visible range end must be later than its start."
+              | _ -> ()
+              if change.MaximumBasePoints <= 0 || change.MaximumBasePoints > DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints then
+                  yield RuntimeValidation.error
+                      "invalid-maximum-base-points"
+                      "action.range.maximumBasePoints"
+                      $"MaximumBasePoints must be between 1 and {DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints}." ]
         | SduiAction.PollDelta(canvas, revision) ->
             [ yield! canvasErrors "action.canvasInstanceId" canvas
               if revision < 0L then

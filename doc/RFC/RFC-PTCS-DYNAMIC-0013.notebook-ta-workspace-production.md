@@ -5,7 +5,7 @@
 - Date: 2026-09-04
 - Owner: Aster / PulseTrade.Comm.Spa.Dynamic
 - WBS: `doc/TAResearch/WBS.DYN-TA-017.md`
-- Test: `doc/TAResearch/Test.md` DYN-TA-T-056..064
+- Test: `doc/TAResearch/Test.md` DYN-TA-T-056..068
 
 ## 背景
 
@@ -84,14 +84,19 @@ browser與server可共用 `RuntimeFrame` type，但 System.Text.Json codec與 We
 
 可修改 row 在 `TaRowSpec.Options["ptcs.dynamic.editor.binding.v1"]` 保存 `{ templateKey; values }`。renderer 由 row binding 找 schema，送 `ApplyTemplate(canvasId, Some rowId, templateKey, values)`；backend 以 stable row id 原位替換，row count與identity不得改變。舊 row 沒有 binding 時仍可呈現與移除，但不顯示 Edit；binding malformed 或 schema 不存在時 fail closed，不以猜測參數重建 editor。
 
+### 7. BaseRow event-time cursor 與 range
+
+`TaWorkspaceDocument.BaseRowId`由owner指定shared axis。cursor action只傳base row真實timestamp；coarse row只呈現finalized containing或finalized as-of value，沒有符合causality的point就顯示missing。viewport release送半開event-time range與最多4000個base points；pending期間range control不可重入。
+
 ## 開發順序
 
 1. DYN-TA-017A：RFC/REQ/SA/SD/WBS/Test/Verification。
 2. DYN-TA-017B：source envelope、validation、codec、pure reducer與 tests。
 3. DYN-TA-017C：generic editor schema、correlated action result、stable row identity。
 4. DYN-TA-017D：renderer pending/reject、multi-instance row、多尺度 presentation。
-5. DYN-TA-017E：Daedalus-owned Interactive.Extension adapter與 typed chart root integration。
-6. DYN-TA-017F：real MDCQ + `dotnet dib` + Playwright MCP production acceptance、package/release。
+5. DYN-TA-017G：atomic retention/resync、BaseRow cursor/range、Interactive.Client application lifecycle。
+6. DYN-TA-017E：Daedalus-owned Interactive.Extension adapter與 typed chart root integration。
+7. DYN-TA-017F：real MDCQ + `dotnet dib` + Playwright MCP production acceptance、package/release。
 
 ## 驗收
 
@@ -101,6 +106,7 @@ browser與server可共用 `RuntimeFrame` type，但 System.Text.Json codec與 We
 4. 1K+5K與5K+30K alignment、missing/partial/final/availability/quality以 browser geometry/legend/cursor驗證。
 5. Notebook cell最後只需 dedicated chart root，不含手工 JSON 或 `KernelInvocationContext.Display` plumbing。
 6. real-path DIB與Playwright皆通過；M12只作 regression。
+7. `BaseRowId`、shared event-time cursor與半開visible range在contract、PTCS wire、renderer及desktop/mobile browser gate一致；range上限4000且pending不可重入。
 
 ## 相容性與 rollback
 

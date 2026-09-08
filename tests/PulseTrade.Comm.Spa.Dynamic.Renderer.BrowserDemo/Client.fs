@@ -69,7 +69,17 @@ module Client =
             Array.init count (fun index ->
                 let baseline = 21800.0 + float index * 1.7 + Math.Sin(float index / 4.0) * 24.0
                 let closeValue = baseline + Math.Cos(float index / 3.0) * 9.0
-                candle (timestamp index) baseline closeValue (900.0 + float ((index * 73) % 520)))
+                temporalPoint
+                    ("es-1k:" + string index)
+                    "1K"
+                    (timestamp index)
+                    (timestamp (index + 1))
+                    (timestamp (index + 1))
+                    (Some(timestamp (index + 1)))
+                    "final"
+                    "candle-span"
+                    "complete"
+                    (candlePayload baseline closeValue (900.0 + float ((index * 73) % 520))))
 
         let heikin =
             Array.init count (fun index ->
@@ -255,6 +265,7 @@ module Client =
                   RowsRef = "ta.rows"
                   StatusRef = "ta.status"
                   SharedTimeAxis = true
+                  BaseRowId = Some "price"
                   Rows =
                     [| compositeRow
                            "price"
@@ -283,7 +294,13 @@ module Client =
                               trace "macd-30k" TaTraceKind.Line "series.macd-30k" "30K MACD causal" "#be185d" 1.8 |]
                        row "heikin" TaRowKind.HeikinAshi "series.heikin" 2.0 |]
                   EditorSchemas = sampleEditorSchemas
-                  AllowedActions = [| "reset-view"; "reset-canvas"; "add-row"; "change-query" |]
+                  AllowedActions =
+                    [| "reset-view"
+                       "reset-canvas"
+                       "add-row"
+                       "change-query"
+                       "shared-cursor-changed"
+                       "visible-range-changed" |]
                   DefaultView = Map [ "visibleBars", SduiValue.Number 48.0 ] }
           Data = sampleSeries 2000
           DocumentRevision = 1L
@@ -301,6 +318,8 @@ module Client =
             "ApplyTemplate " + templateKey + " / " + string values.Length + " inputs"
         | SduiAction.RemoveTaRow _ -> "RemoveTaRow"
         | SduiAction.ChangeTaQuery _ -> "ChangeTaQuery"
+        | SduiAction.SharedCursorChanged _ -> "SharedCursorChanged"
+        | SduiAction.VisibleRangeChanged _ -> "VisibleRangeChanged"
         | SduiAction.PollDelta _ -> "PollDelta"
         | SduiAction.RequestFullSnapshot _ -> "RequestFullSnapshot"
 

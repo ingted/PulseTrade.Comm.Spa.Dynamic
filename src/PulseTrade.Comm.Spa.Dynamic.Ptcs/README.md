@@ -10,4 +10,5 @@ PTCS-specific adapter for the transport-neutral Dynamic Contracts package.
 - Transient runtime data does not enter PTCS page/chat history; the host backend remains authoritative for provider queries and ACL policy.
 - Full snapshot/reconnect每series最多2000 points；stable delta最多200。empty-to-first-data必須輸出authoritative full。
 - explicit `RequestFullSnapshot`一律回authoritative full wire，供離線JSON export；不得因current/next revision相同退化成空delta。
-- Current exact package：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha7-win54`；editor catalog與row options wire gate 11/11通過。
+- `ta-browser.v4`同時投影`BaseRowId`，cursor/range action沿用typed PTCS transient channel，不走額外HTTP或history path。
+- Current exact package：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.0-alpha7-win55`；current wire gate 12/12通過。

@@ -1131,3 +1131,15 @@ Implementation status:
 - `RuntimeReducer`改以完整ordered patch計算不可見candidate data，再驗受影響series的最終retained count；移除逐operation以原state估算造成的same-key與trim/append誤判。
 - 新增`DYN-TA-T-066`：same-key at limit與trim後append均接受；多個upsert合計超限則atomic reject、保留last-good data/revision並要求full resync。
 - Contracts完整WebSharper build通過，Expecto `16/16`通過；`DYN-VFY-018`三項deterministic diagnostics均PASS、findings=0。已發布Contracts `0.1.0-alpha17`、Renderer `0.1.0-alpha39`、Interactive.Client `0.1.0-alpha10` exact package graph；Renderer `22/22`、BrowserDemo full WebSharper build與bundle package verifier均通過。下一個Aster-owned slice為`BaseRowId` shared event-time cursor與`VisibleRangeChanged`。
+
+## 2026-09-08 - DYN-TA-017G BaseRow event-time cursor/range
+
+- Contracts新增validated `TaWorkspaceDocument.BaseRowId`、`SharedCursorChanged`與`VisibleRangeChanged`。range使用`[startEventTimeUtc, endEventTimeExclusiveUtc)`並限制`MaximumBasePoints <= 4000`；兩者沿用correlated action與single-pending lifecycle。
+- Renderer改以BaseRow真實timestamp作shared axis；其他row只呈現finalized containing、finalized as-of或missing，不讀未完成coarse point。viewport release才送range action，pending期間controls不可重入；pending/feedback不再觸發2000-point chart重建。
+- PTCS server/client `ta-browser.v4` wire同步BaseRowId及新增actions。Current exact graph為Contracts `0.1.0-alpha19`、Renderer `0.1.0-alpha45`、Interactive.Client `0.1.0-alpha16`、Dynamic.Ptcs `0.1.0-alpha7-win55`、Ptcs.Client `0.1.0-alpha8-win78`，全部exact-pin FSharp.Core `[10.1.400]`。
+- Gates：Contracts `17/17`、Renderer `24/24`、PTCS `12/12`、Ptcs.Client `14/14`、兩個full WebSharper demo build與Interactive bundle verifier通過；F# Playwright及Playwright MCP desktop/mobile驗event-time actions、pending lock、無overflow/overlap與console 0。real MDCQ/DIB仍由DYN-TA-T-063/064驗收。
+- 五個current package push均回`Created`；首次NuGet flat-container讀取仍為404 propagation pending，待索引後再完成public dependency readback。
+
+## 2026-09-08 - Correction: DYN-TA-017G package indexing complete
+
+- NuGet flat-container已可讀取Contracts alpha19、Renderer alpha45、Interactive.Client alpha16、Dynamic.Ptcs win55與Ptcs.Client win78 nuspec；五版的FSharp.Core與Contracts/Renderer/PTCS dependencies均與current exact graph一致。

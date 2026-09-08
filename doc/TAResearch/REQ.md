@@ -4,7 +4,7 @@ Status: Accepted / Ready for DEV
 Date: 2026-07-11
 Owner: `PulseTrade.Comm.Spa.Dynamic*` packages
 RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
-Current change: `doc/RFC/RFC-PTCS-DYNAMIC-0011.ta-export-draft-cursor-defaults.md`
+Current change: `doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`
 SA: `doc/TAResearch/SA.md`
 SD: `doc/TAResearch/SD.md`
 Test: `doc/TAResearch/Test.md`
@@ -120,3 +120,5 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-042 | production acceptance須使用新版MDCQ real source、`dotnet dib`與Playwright MCP；synthetic M12只作regression。 |
 | DYN-TA-REQ-043 | authoritative `TaWorkspaceDocument`須以同一DocumentRevision攜帶rows與generic editor schema catalog；正式runtime不可依賴renderer-local schema options。catalog空白時不得顯示Add/Edit。 |
 | DYN-TA-REQ-044 | 可修改row須保存versioned template/value binding；Edit以stable RowId送`ApplyTemplate(Some rowId, ...)`並原位替換。legacy無binding row仍可顯示/移除但不可猜測成可編輯。 |
+| DYN-TA-REQ-045 | owner須以`BaseRowId`明確指定shared event-time axis；shared cursor必須落在base row的真實datapoint，其他row只可回finalized containing、finalized as-of或missing，不得取未完成coarse point。 |
+| DYN-TA-REQ-046 | viewport commit須送帶`BaseRowId`的`[startEventTimeUtc, endEventTimeExclusiveUtc)`與`MaximumBasePoints`；上限固定為4000，pending期間不得再提交第二次range mutation。 |

@@ -53,6 +53,11 @@ type TaCursorSnapshot =
       Timestamp: string
       Values: TaCursorValue array }
 
+type TaVisibleEventRange =
+    { BaseRowId: string
+      StartEventTimeUtc: string
+      EndEventTimeExclusiveUtc: string }
+
 type TaStatusPresentation =
     { Freshness: TaFreshness
       Label: string
@@ -322,6 +327,49 @@ module RendererModel =
         |> Option.map snd
         |> Option.defaultValue [||]
 
+    let rowTimeline (row: TaRowSpec) data =
+        let traces = effectiveTraces row |> Array.filter _.Visible
+        traces
+        |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
+        |> Option.orElseWith (fun () -> traces |> Array.tryHead)
+        |> Option.map (fun trace -> traceTimestamps trace data |> Array.distinct)
+        |> Option.defaultValue [||]
+
+    let referenceTimelineForDocument (document: TaWorkspaceDocument) data =
+        match document.BaseRowId with
+        | Some baseRowId ->
+            document.Rows
+            |> Array.tryFind (fun row -> row.Visible && row.RowId = baseRowId)
+            |> Option.map (fun row -> rowTimeline row data)
+            |> Option.defaultValue [||]
+        | None -> referenceTimeline document.Rows data
+
+    let tryBaseRow (document: TaWorkspaceDocument) : (string * TaRowSpec) option =
+        document.BaseRowId
+        |> Option.bind (fun baseRowId ->
+            document.Rows
+            |> Array.tryFind (fun row -> row.Visible && row.RowId = baseRowId)
+            |> Option.map (fun row -> baseRowId, row))
+
+    let tryBasePointIntervalEnd row data timestamp =
+        effectiveTraces row
+        |> Array.filter _.Visible
+        |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
+        |> Option.bind (fun trace ->
+            match trace.Kind with
+            | TaTraceKind.Candlestick
+            | TaTraceKind.Volume ->
+                candleSeries trace.DataRef data
+                |> Array.tryFind (fun point -> point.Timestamp = timestamp)
+                |> Option.bind _.Temporal
+                |> Option.map _.IntervalEndUtc
+            | TaTraceKind.Line
+            | TaTraceKind.Histogram ->
+                lineSeries trace.DataRef data
+                |> Array.tryFind (fun point -> point.Timestamp = timestamp)
+                |> Option.bind _.Temporal
+                |> Option.map _.IntervalEndUtc)
+
     let timestampInInterval timestamp (metadata: TaTemporalPointPresentation) =
         compare timestamp metadata.IntervalStartUtc >= 0
         && compare timestamp metadata.IntervalEndUtc < 0
@@ -347,6 +395,45 @@ module RendererModel =
         values
         |> Array.filter (fun value -> pointMatchesTimestamp timestamp value.Timestamp value.Temporal)
         |> Array.tryLast
+
+    let finalizedTemporal (metadata: TaTemporalPointPresentation) =
+        metadata.Finality.Trim().ToLower() = "final"
+
+    let finalizedCursorMatch timestamp pointTimestamp temporal =
+        match temporal with
+        | None -> pointTimestamp = timestamp
+        | Some metadata when not (finalizedTemporal metadata) -> false
+        | Some metadata when metadata.Projection = "repeat-across-base-buckets" || metadata.Projection = "candle-span" ->
+            timestampInInterval timestamp metadata
+        | Some metadata when metadata.Projection = "step-after-close" ->
+            availableAtOrAfter timestamp metadata
+        | Some _ -> pointTimestamp = timestamp
+
+    let finalizedAsOf timestamp temporal =
+        temporal
+        |> Option.exists (fun metadata -> finalizedTemporal metadata && availableAtOrAfter timestamp metadata)
+
+    let tryCandleForCursor isBaseRow timestamp (values: TaCandlePoint array) =
+        if isBaseRow then tryCandleAt timestamp values
+        else
+            values
+            |> Array.filter (fun value -> finalizedCursorMatch timestamp value.Timestamp value.Temporal)
+            |> Array.tryLast
+            |> Option.orElseWith (fun () ->
+                values
+                |> Array.filter (fun value -> finalizedAsOf timestamp value.Temporal)
+                |> Array.tryLast)
+
+    let tryLineForCursor isBaseRow timestamp (values: TaLinePoint array) =
+        if isBaseRow then tryLineAt timestamp values
+        else
+            values
+            |> Array.filter (fun value -> finalizedCursorMatch timestamp value.Timestamp value.Temporal)
+            |> Array.tryLast
+            |> Option.orElseWith (fun () ->
+                values
+                |> Array.filter (fun value -> finalizedAsOf timestamp value.Temporal)
+                |> Array.tryLast)
 
     let projectedLinePoints (referenceTimestamps: string array) (points: TaLinePoint array) =
         referenceTimestamps
@@ -482,6 +569,27 @@ module RendererModel =
             let startIndex = max 0 (min window.StartIndex values.Length)
             values |> Array.skip startIndex |> Array.truncate window.Count
 
+    let visibleEventRange (document: TaWorkspaceDocument) data window =
+        match tryBaseRow document with
+        | None -> None
+        | Some(baseRowId, baseRow) ->
+            let timeline = rowTimeline baseRow data
+            let selected = selectWindow window timeline
+            if selected.Length = 0 then None
+            else
+                let startTime = selected[0]
+                let endIndex = window.StartIndex + selected.Length
+                let endExclusive =
+                    if endIndex < timeline.Length then Some timeline[endIndex]
+                    else tryBasePointIntervalEnd baseRow data selected[selected.Length - 1]
+
+                endExclusive
+                |> Option.filter (fun value -> compare value startTime > 0)
+                |> Option.map (fun value ->
+                    { BaseRowId = baseRowId
+                      StartEventTimeUtc = startTime
+                      EndEventTimeExclusiveUtc = value })
+
     let paddedRange fallbackLow fallbackHigh values =
         if Array.isEmpty values then fallbackLow, fallbackHigh
         else
@@ -505,9 +613,8 @@ module RendererModel =
             |> Array.distinct
             |> Array.map (fun index -> index, timestamps[index])
 
-    let cursorSnapshot (document: TaWorkspaceDocument) data window cursorIndex =
-        let visibleRows = document.Rows |> Array.filter _.Visible
-        let timeline = referenceTimeline visibleRows data
+    let cursorSnapshotForRows (document: TaWorkspaceDocument) visibleRows data window cursorIndex =
+        let timeline = referenceTimelineForDocument document data
         let referenceLength = timeline.Length
         let effectiveWindow = clampWindow 1 Int32.MaxValue referenceLength window
         let visibleTimestamps = selectWindow effectiveWindow timeline
@@ -519,6 +626,7 @@ module RendererModel =
             let values =
                 visibleRows
                 |> Array.collect (fun row ->
+                    let isBaseRow = document.BaseRowId = Some row.RowId
                     effectiveTraces row
                     |> Array.filter _.Visible
                     |> Array.choose (fun trace ->
@@ -527,7 +635,7 @@ module RendererModel =
                         | TaTraceKind.Candlestick
                         | TaTraceKind.Volume ->
                             candleSeries trace.DataRef data
-                            |> tryCandleAt timestamp
+                            |> tryCandleForCursor isBaseRow timestamp
                             |> Option.map (fun point ->
                                 let baseValue =
                                     if trace.Kind = TaTraceKind.Volume then fixedNumber point.Volume
@@ -544,7 +652,7 @@ module RendererModel =
                         | TaTraceKind.Line
                         | TaTraceKind.Histogram ->
                             lineSeries trace.DataRef data
-                            |> tryLineAt timestamp
+                            |> tryLineForCursor isBaseRow timestamp
                             |> Option.map (fun point ->
                                 let value =
                                     match point.Temporal with
@@ -556,6 +664,9 @@ module RendererModel =
                 { VisibleIndex = index
                   Timestamp = timestamp
                   Values = values |> Array.map snd }
+
+    let cursorSnapshot (document: TaWorkspaceDocument) data window cursorIndex =
+        cursorSnapshotForRows document (document.Rows |> Array.filter _.Visible) data window cursorIndex
 
     let freshnessFromStatus status =
         let kind = objectText "freshness" status |> Option.defaultValue "unavailable" |> fun value -> value.ToLower()

@@ -20,7 +20,7 @@ type VerifyArgs =
 let defaultArgumentsText =
     sprintf
         "--package \"%s\""
-        "artifacts/packages/dyn-ta-017/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.0.1.0-alpha8.nupkg"
+        "artifacts/packages/dyn-ta-017/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.0.1.0-alpha16.nupkg"
 
 let parser = ArgumentParser.Create<VerifyArgs>(programName = "verify-interactive-client-package.fsx")
 let parse text =
@@ -97,12 +97,12 @@ let expectProperty (name: string) expected =
 
 expectProperty "schema" "ptcs-dynamic-interactive-bundle.v1"
 expectProperty "packageId" "PulseTrade.Comm.Spa.Dynamic.Interactive.Client"
-expectProperty "packageVersion" "0.1.0-alpha10"
+expectProperty "packageVersion" "0.1.0-alpha13"
 
 for dependency in
     [ "FSharp.Core", "[10.1.400]"
-      "PulseTrade.Comm.Spa.Dynamic.Contracts", "[0.1.0-alpha17]"
-      "PulseTrade.Comm.Spa.Dynamic.Renderer", "[0.1.0-alpha39]" ] do
+      "PulseTrade.Comm.Spa.Dynamic.Contracts", "[0.1.0-alpha19]"
+      "PulseTrade.Comm.Spa.Dynamic.Renderer", "[0.1.0-alpha45]" ] do
     let packageId, version = dependency
     if not (nuspecText.Contains($"id=\"{packageId}\"")) || not (nuspecText.Contains($"version=\"{version}\"")) then
         failwith $"Nuspec dependency mismatch: {packageId} {version}."

@@ -4,7 +4,7 @@ Status: Accepted / Ready for DEV
 Date: 2026-07-11
 REQ: `doc/TAResearch/REQ.md`
 RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
-Current change: `doc/RFC/RFC-PTCS-DYNAMIC-0011.ta-export-draft-cursor-defaults.md`
+Current change: `doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`
 SD: `doc/TAResearch/SD.md`
 Test: `doc/TAResearch/Test.md`
 WBS: `doc/TAResearch/WBS.md`
@@ -248,3 +248,13 @@ action state與document state分離。client同時只允許一筆pending request
 修正依賴方向為 `owner catalog -> TaWorkspaceDocument.EditorSchemas -> RuntimeFrame/PTCS browser wire -> Renderer`。`EditorSchemas`與`Rows`由相同DocumentRevision保證一致，舊wire缺欄位時解成empty catalog並隱藏mutation controls。row reconfigure另需在row options保存保留key binding；binding只含generic template key/value，不含provider、instrument、source lease或TradeCore型別。
 
 這個邊界讓Daedalus只負責把`IndicatorTemplateCatalog`映射為generic schema與執行authoritative resource transition；Aster負責codec、validation、wire、renderer與相容性。invalid catalog/binding保留last-good workspace並關閉對應Edit，不得讓UI自行推測domain參數。
+
+## 19. 2026-09-08 BaseRow event-time interaction analysis
+
+跨尺度workspace不能再以各row array index當共同時間。authoritative document以`BaseRowId`指定可見最小尺度row，renderer只從該row的真實timestamp建立shared axis；若BaseRow不存在或不可見，整份document validation fail closed。
+
+cursor語意分三層：base row落actual point；其他row優先取涵蓋cursor time且已finalized的point，沒有containing point時才取`AvailableAtUtc <= cursor time`的最新finalized point，再沒有就是missing。unfinished coarse bar即使時間涵蓋cursor也不可顯示，避免look-ahead。
+
+viewport仍先做local committed window，但有`visible-range-changed` capability時，release後以event-time半開區間送authoritative action。client傳`MaximumBasePoints`只是bounded request，不是provider authority；contract hard cap為4000。action pending期間range controls保持disabled，避免本地window與backend result交錯。
+
+這一層只定義generic interaction contract。Daedalus負責把FsStl workspace/resource轉成base row與normalized temporal metadata；MdcQuoteAgent仍擁有source cursor/fixed-cut/epoch。Dynamic不得由Raw Deal自行聚合或推算calendar cut。

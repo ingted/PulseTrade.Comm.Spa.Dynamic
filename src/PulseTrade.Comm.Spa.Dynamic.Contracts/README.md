@@ -26,7 +26,9 @@ Patch retention以整個ordered operation batch套用後的candidate data為驗�
 
 `Error`與invalid/gapped frame保留last-good document/data/view；duplicate frame no-op；sequence gap、identity mismatch或patch base mismatch只產生typed resync effect。
 
-Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha17`，exact依賴FSharp.Core `[10.1.400]`；所有browser call graph module與schema codec均攜帶WebSharper metadata。alpha17修正ordered patch的atomic candidate retention/resync語意，不改wire shape。
+`TaWorkspaceDocument.BaseRowId`指定shared event-time axis。`SharedCursorChanged`傳actual base datapoint timestamp；`VisibleRangeChanged`傳`[start,end)`與`MaximumBasePoints <= 4000`，兩者沿用correlated action lifecycle。
+
+Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.0-alpha19`，exact依賴FSharp.Core `[10.1.400]`；current contract gate 17/17。
 
 Browser-facing numeric使用JSON number/`float`，query range使用canonical ISO-8601 string。host/server必須重新驗證range並轉成domain `DateTimeOffset`；Contracts不把browser parser當authorization或domain validation。
 

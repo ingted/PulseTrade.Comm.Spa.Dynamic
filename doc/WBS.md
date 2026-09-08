@@ -85,7 +85,7 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 
 | ID | 工項 | 狀態 | Progress | Test ID | 證據 / 備註 |
 | --- | --- | --- | ---: | --- | --- |
-| DYN-TA-017 | Generic source envelope、editor/action、production renderer與real Notebook gate | Active | 68 | DYN-TA-T-056..064 | Generic contract/action wire、temporal multi-scale renderer與isolated Playwright已完成；Daedalus production相容組已發布為Contracts alpha16 / Renderer alpha38 / Interactive.Client alpha9 exact `FSharp.Core [10.1.400]`，SessionHost、real owner metadata/DIB與MDCQ production gate待續。詳見[@DYN-TA-017](TAResearch/WBS.DYN-TA-017.md)。 |
+| DYN-TA-017 | Generic source envelope、editor/action、production renderer與real Notebook gate | Active | 78 | DYN-TA-T-056..068 | Generic contract/action wire、temporal multi-scale renderer、atomic retention/resync與BaseRow event-time cursor/range已完成；current graph為Contracts alpha19 / Renderer alpha45 / Interactive.Client alpha16 exact `FSharp.Core [10.1.400]`。Application lifecycle、SessionHost、real owner metadata/DIB與MDCQ production gate待續。詳見[@DYN-TA-017](TAResearch/WBS.DYN-TA-017.md)。 |
 
 ## 2026-07-11 Transport-Neutral Realtime TA Canvas
 

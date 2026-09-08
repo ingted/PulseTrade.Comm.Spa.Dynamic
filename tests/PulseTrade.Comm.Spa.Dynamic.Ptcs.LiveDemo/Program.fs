@@ -36,6 +36,7 @@ module Program =
           RowsRef = "rows"
           StatusRef = "ta.status"
           SharedTimeAxis = true
+          BaseRowId = Some "price"
           Rows =
             [| row "price" TaRowKind.Candlestick "series.price" 2.4
                row "volume" TaRowKind.Volume "series.volume" 1.0

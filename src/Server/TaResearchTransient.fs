@@ -49,6 +49,7 @@ type TaTransientDocumentWire =
       rowsRef: string
       statusRef: string
       sharedTimeAxis: bool
+      baseRowId: string
       rows: TaTransientRowWire array
       editorSchemas: TaTransientValueWire array
       allowedActions: string array
@@ -110,7 +111,12 @@ type TaTransientClientFrameWire =
       reasonCode: string
       templateKey: string
       hasTemplateRowId: bool
-      editorValues: TaTransientEditorInputWire array }
+      editorValues: TaTransientEditorInputWire array
+      baseRowId: string
+      eventTimeUtc: string
+      startEventTimeUtc: string
+      endEventTimeExclusiveUtc: string
+      maximumBasePoints: int }
 
 [<CLIMutable>]
 type TaBrowserPointWire =
@@ -199,6 +205,7 @@ type TaBrowserStateWire =
       rowsRef: string
       statusRef: string
       sharedTimeAxis: bool
+      baseRowId: string
       rows: TaBrowserRowWire array
       editorSchemas: TaTransientValueWire array
       allowedActions: string array
@@ -248,7 +255,12 @@ type TaBrowserClientFrameWire =
       hasTemplateRowId: bool
       editorValues: TaTransientEditorInputWire array
       expectedDocumentRevision: float
-      hasExpectedDocumentRevision: bool }
+      hasExpectedDocumentRevision: bool
+      baseRowId: string
+      eventTimeUtc: string
+      startEventTimeUtc: string
+      endEventTimeExclusiveUtc: string
+      maximumBasePoints: int }
 
 [<RequireQualifiedAccess>]
 module TaResearchTransientWire =
@@ -374,6 +386,7 @@ module TaResearchTransientWire =
           rowsRef = document.RowsRef
           statusRef = document.StatusRef
           sharedTimeAxis = document.SharedTimeAxis
+          baseRowId = document.BaseRowId |> Option.defaultValue ""
           rows = document.Rows |> Array.map rowToWire
           editorSchemas =
             if isNull document.EditorSchemas then [||]
@@ -387,6 +400,7 @@ module TaResearchTransientWire =
           RowsRef = text wire.rowsRef
           StatusRef = text wire.statusRef
           SharedTimeAxis = wire.sharedTimeAxis
+          BaseRowId = if String.IsNullOrWhiteSpace wire.baseRowId then None else Some(wire.baseRowId.Trim())
           Rows = if isNull wire.rows then [||] else wire.rows |> Array.map rowFromWire
           EditorSchemas =
             if isNull wire.editorSchemas then [||]
@@ -499,7 +513,12 @@ module TaResearchTransientWire =
           reasonCode = ""
           templateKey = ""
           hasTemplateRowId = false
-          editorValues = [||] }
+          editorValues = [||]
+          baseRowId = ""
+          eventTimeUtc = ""
+          startEventTimeUtc = ""
+          endEventTimeExclusiveUtc = ""
+          maximumBasePoints = 0 }
 
     let editorInputToWire input =
         match input.Value with
@@ -552,6 +571,18 @@ module TaResearchTransientWire =
                     editorValues = (if isNull values then [||] else values) |> Array.map editorInputToWire }
             | SduiAction.RemoveTaRow(CanvasInstanceId canvasId, rowId) -> { emptyClientFrame "action" canvasId with actionKind = "remove-row"; rowId = rowId }
             | SduiAction.ChangeTaQuery(CanvasInstanceId canvasId, query) -> { emptyClientFrame "action" canvasId with actionKind = "change-query"; query = queryToWire query }
+            | SduiAction.SharedCursorChanged(CanvasInstanceId canvasId, change) ->
+                { emptyClientFrame "action" canvasId with
+                    actionKind = "shared-cursor-changed"
+                    baseRowId = change.BaseRowId
+                    eventTimeUtc = change.EventTimeUtc }
+            | SduiAction.VisibleRangeChanged(CanvasInstanceId canvasId, change) ->
+                { emptyClientFrame "action" canvasId with
+                    actionKind = "visible-range-changed"
+                    baseRowId = change.BaseRowId
+                    startEventTimeUtc = change.StartEventTimeUtc
+                    endEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
+                    maximumBasePoints = change.MaximumBasePoints }
             | SduiAction.PollDelta(CanvasInstanceId canvasId, revision) -> { emptyClientFrame "action" canvasId with actionKind = "poll-delta"; afterDataRevision = revision }
             | SduiAction.RequestFullSnapshot(CanvasInstanceId canvasId, reason) -> { emptyClientFrame "action" canvasId with actionKind = "full-snapshot"; reasonCode = reason }
 
@@ -576,6 +607,22 @@ module TaResearchTransientWire =
                         values)))
         | "action", "remove-row" -> Ok(RuntimeClientFrame.Action(SduiAction.RemoveTaRow(canvas, text wire.rowId)))
         | "action", "change-query" -> Ok(RuntimeClientFrame.Action(SduiAction.ChangeTaQuery(canvas, queryFromWire wire.query)))
+        | "action", "shared-cursor-changed" ->
+            Ok(
+                RuntimeClientFrame.Action(
+                    SduiAction.SharedCursorChanged(
+                        canvas,
+                        { BaseRowId = text wire.baseRowId
+                          EventTimeUtc = text wire.eventTimeUtc })))
+        | "action", "visible-range-changed" ->
+            Ok(
+                RuntimeClientFrame.Action(
+                    SduiAction.VisibleRangeChanged(
+                        canvas,
+                        { BaseRowId = text wire.baseRowId
+                          StartEventTimeUtc = text wire.startEventTimeUtc
+                          EndEventTimeExclusiveUtc = text wire.endEventTimeExclusiveUtc
+                          MaximumBasePoints = wire.maximumBasePoints })))
         | "action", "poll-delta" -> Ok(RuntimeClientFrame.Action(SduiAction.PollDelta(canvas, wire.afterDataRevision)))
         | "action", "full-snapshot" -> Ok(RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot(canvas, text wire.reasonCode)))
         | _ -> Error "Unsupported TA transient client frame."
@@ -910,6 +957,7 @@ module TaResearchBrowserWire =
           rowsRef = document |> Option.map _.RowsRef |> Option.defaultValue "rows"
           statusRef = statusRef
           sharedTimeAxis = document |> Option.map _.SharedTimeAxis |> Option.defaultValue true
+          baseRowId = document |> Option.bind _.BaseRowId |> Option.defaultValue ""
           rows = rows
           editorSchemas =
             document
@@ -992,6 +1040,22 @@ module TaResearchBrowserWire =
                               FromUtc = optionalText wire.fromUtc
                               ToUtcExclusive = optionalText wire.toUtcExclusive
                               IncludePartial = Some wire.includePartial })))
+            | "action", "shared-cursor-changed" ->
+                Ok(
+                    RuntimeClientFrame.Action(
+                        SduiAction.SharedCursorChanged(
+                            canvas,
+                            { BaseRowId = text wire.baseRowId
+                              EventTimeUtc = text wire.eventTimeUtc })))
+            | "action", "visible-range-changed" ->
+                Ok(
+                    RuntimeClientFrame.Action(
+                        SduiAction.VisibleRangeChanged(
+                            canvas,
+                            { BaseRowId = text wire.baseRowId
+                              StartEventTimeUtc = text wire.startEventTimeUtc
+                              EndEventTimeExclusiveUtc = text wire.endEventTimeExclusiveUtc
+                              MaximumBasePoints = wire.maximumBasePoints })))
             | "action", "poll-delta" ->
                 revisionFromBrowser "after-data" wire.afterDataRevision
                 |> Result.map (fun revision -> RuntimeClientFrame.Action(SduiAction.PollDelta(canvas, revision)))

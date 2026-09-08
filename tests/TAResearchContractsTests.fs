@@ -23,6 +23,7 @@ let document =
       RowsRef = "ta.rows"
       StatusRef = "ta.status"
       SharedTimeAxis = true
+      BaseRowId = Some "price"
       Rows = [| row |]
       EditorSchemas = [||]
       AllowedActions = [| "reset-view"; "reset-canvas"; "add-row"; "change-query" |]
@@ -188,6 +189,49 @@ let tests =
             Expect.equal (retainedCount rejected) (limit - 1) "Rejected patch must preserve last-good data."
             Expect.equal rejected.LastError.Value.ReasonCode "limit-retained-bars" "Rejected patch exposes the retained limit reason."
             Expect.equal rejectEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 1L)) "Rejected patch requests one full resync."
+
+        testCase "DYN-TA-T-067 base event-time actions are correlated bounded and fail closed" <| fun _ ->
+            let cursor =
+                SduiAction.SharedCursorChanged(
+                    identity.CanvasInstanceId,
+                    { BaseRowId = "price"
+                      EventTimeUtc = "2026-09-08T01:02:00Z" })
+            let range =
+                SduiAction.VisibleRangeChanged(
+                    identity.CanvasInstanceId,
+                    { BaseRowId = "price"
+                      StartEventTimeUtc = "2026-09-08T01:00:00Z"
+                      EndEventTimeExclusiveUtc = "2026-09-08T02:00:00Z"
+                      MaximumBasePoints = 4000 })
+
+            for index, action in [| cursor; range |] |> Array.indexed do
+                let request =
+                    { RequestId = "event-time:" + string index
+                      ExpectedDocumentRevision = Some 12L
+                      Action = action }
+                Expect.isEmpty (DynamicActionValidation.requestErrors request) "Valid event-time action should pass validation."
+                let decoded =
+                    request
+                    |> BrowserRuntimeCodec.encodeActionRequest
+                    |> BrowserRuntimeCodec.decodeActionRequest
+                    |> Result.defaultWith failtest
+                Expect.equal decoded request "Browser wire must preserve correlation, revision and typed event-time payload."
+
+            let missingBase = { document with BaseRowId = Some "missing" }
+            let hiddenBase = { document with Rows = [| { row with Visible = false } |] }
+            Expect.isNonEmpty (RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits missingBase) "Unknown base row must fail closed."
+            Expect.isNonEmpty (RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits hiddenBase) "Hidden base row must fail closed."
+
+            let oversizedRange =
+                SduiAction.VisibleRangeChanged(
+                    identity.CanvasInstanceId,
+                    { BaseRowId = "price"
+                      StartEventTimeUtc = "2026-09-08T02:00:00Z"
+                      EndEventTimeExclusiveUtc = "2026-09-08T01:00:00Z"
+                      MaximumBasePoints = 4001 })
+            let errors = DynamicActionValidation.actionErrors oversizedRange
+            Expect.isTrue (errors |> List.exists (fun error -> error.Code = "invalid-visible-range")) "Reverse range must fail."
+            Expect.isTrue (errors |> List.exists (fun error -> error.Code = "invalid-maximum-base-points")) "Range over 4000 base points must fail."
 
         testCase "DYN-TA-T-008 and T-009 poll lifecycle is one-in-flight and disposed terminal" <| fun _ ->
             let mounted = RuntimePoll.mount RuntimePollState.Unmounted
@@ -454,7 +498,7 @@ let tests =
                     Kind = TaRowKind.Sma
                     DataRef = "series.sma-21" }
 
-            let stableDocument = { document with Rows = [| sma13; sma21 |] }
+            let stableDocument = { document with BaseRowId = None; Rows = [| sma13; sma21 |] }
             Expect.isOk (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document stableDocument }) "Same template kind with different stable row ids should coexist."
 
             let duplicateRowDocument = { stableDocument with Rows = [| sma13; { sma21 with RowId = sma13.RowId } |] }

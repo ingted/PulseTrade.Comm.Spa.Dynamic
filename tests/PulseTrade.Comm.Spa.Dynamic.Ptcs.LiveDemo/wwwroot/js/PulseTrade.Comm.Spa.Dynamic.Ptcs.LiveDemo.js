@@ -3254,18 +3254,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    keyPlaceholder:String(_5||""),
-    defaultKey:String(_6||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    keyPlaceholder:String(_5||""), 
+    defaultKey:String(_6||""), 
     submitKey:(payload) => {
       _7(payload);
-    },
+    }, 
     cancelKey:() => {
       _8();
-    },
+    }, 
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -3349,26 +3349,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    selectedKeyId:String(_5||""),
-    selectedKeyJson:String(_6||""),
-    selectedKeys:keyParts.slice(),
-    keyParts:keyParts.slice(),
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    valuePlaceholder:String(_8||""),
-    valueText:String(_9||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    selectedKeyId:String(_5||""), 
+    selectedKeyJson:String(_6||""), 
+    selectedKeys:keyParts.slice(), 
+    keyParts:keyParts.slice(), 
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    valuePlaceholder:String(_8||""), 
+    valueText:String(_9||""), 
     submit:(payload) => {
       _10(payload);
-    },
+    }, 
     setValue:(payload) => {
       _11(payload);
-    },
-    composerMode:String(_12||"plain"),
+    }, 
+    composerMode:String(_12||"plain"), 
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -3949,8 +3949,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"),
-      priority:Number(priority||0),
+      name:String(name||"unnamed"), 
+      priority:Number(priority||0), 
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -4415,14 +4415,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
   let socket, requestSequence, lifecycle, pollTimer, timeoutTimer, reconnectTimer, jsonExportRequested, jsonExportBootstrapAttempts, jsonExportBootstrapInFlight, jsonExportInFlight, actionRequestOverride, pendingActionCompletion;
   const identity={DocumentId:{$:0, $0:"pending-"+channelId}, CanvasInstanceId:{$:0, $0:canvasId}};
   const runtimeState=_c_3.Create_1({
-    Identity:identity,
-    Document:null,
-    Data:new FSharpMap("New", []),
-    DocumentRevision:0n,
-    DataRevision:0n,
-    LastTransportSequence:0n,
-    View:{Values:new FSharpMap("New", [])},
-    Poll:{$:0},
+    Identity:identity, 
+    Document:null, 
+    Data:new FSharpMap("New", []), 
+    DocumentRevision:0n, 
+    DataRevision:0n, 
+    LastTransportSequence:0n, 
+    View:{Values:new FSharpMap("New", [])}, 
+    Poll:{$:0}, 
     LastError:null
   });
   socket=null;
@@ -4504,14 +4504,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
     lifecycle=next;
     const _1=runtimeState.Get();
     let _2={
-      Identity:_1.Identity,
-      Document:_1.Document,
-      Data:_1.Data,
-      DocumentRevision:_1.DocumentRevision,
-      DataRevision:_1.DataRevision,
-      LastTransportSequence:_1.LastTransportSequence,
-      View:_1.View,
-      Poll:next.Poll,
+      Identity:_1.Identity, 
+      Document:_1.Document, 
+      Data:_1.Data, 
+      DocumentRevision:_1.DocumentRevision, 
+      DataRevision:_1.DataRevision, 
+      LastTransportSequence:_1.LastTransportSequence, 
+      View:_1.View, 
+      Poll:next.Poll, 
       LastError:_1.LastError
     };
     runtimeState.Set(_2);
@@ -4598,17 +4598,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                     const message=m_2.$0;
                     const _4=runtimeState.Get();
                     let _5={
-                      Identity:_4.Identity,
-                      Document:_4.Document,
-                      Data:_4.Data,
-                      DocumentRevision:_4.DocumentRevision,
-                      DataRevision:_4.DataRevision,
-                      LastTransportSequence:_4.LastTransportSequence,
-                      View:_4.View,
-                      Poll:_4.Poll,
+                      Identity:_4.Identity, 
+                      Document:_4.Document, 
+                      Data:_4.Data, 
+                      DocumentRevision:_4.DocumentRevision, 
+                      DataRevision:_4.DataRevision, 
+                      LastTransportSequence:_4.LastTransportSequence, 
+                      View:_4.View, 
+                      Poll:_4.Poll, 
                       LastError:Some({
-                        ReasonCode:"ta-export-download-failed",
-                        Message:message,
+                        ReasonCode:"ta-export-download-failed", 
+                        Message:message, 
                         Recoverable:true
                       })
                     };
@@ -4619,17 +4619,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                 else {
                   const _6=runtimeState.Get();
                   let _7={
-                    Identity:_6.Identity,
-                    Document:_6.Document,
-                    Data:_6.Data,
-                    DocumentRevision:_6.DocumentRevision,
-                    DataRevision:_6.DataRevision,
-                    LastTransportSequence:_6.LastTransportSequence,
-                    View:_6.View,
-                    Poll:_6.Poll,
+                    Identity:_6.Identity, 
+                    Document:_6.Document, 
+                    Data:_6.Data, 
+                    DocumentRevision:_6.DocumentRevision, 
+                    DataRevision:_6.DataRevision, 
+                    LastTransportSequence:_6.LastTransportSequence, 
+                    View:_6.View, 
+                    Poll:_6.Poll, 
                     LastError:Some({
-                      ReasonCode:"ta-export-full-state-required",
-                      Message:"The TA export response was not a full runtime state.",
+                      ReasonCode:"ta-export-full-state-required", 
+                      Message:"The TA export response was not a full runtime state.", 
                       Recoverable:true
                     })
                   };
@@ -4642,8 +4642,8 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               let _9=StateAccepted(state.DataRevision, _8);
               apply(_9);
               completePendingAction(response.requestId, {
-                $:0,
-                $0:response.requestId,
+                $:0, 
+                $0:response.requestId, 
                 $1:state.DocumentRevision
               });
               return jsonExportCompleted&&disposeAfterJsonExport?void apply(Dispose):tryStartJsonExport();
@@ -4663,36 +4663,36 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               }
               else _2=false;
               _3=_2?{
-                $:2,
-                $0:response.requestId,
+                $:2, 
+                $0:response.requestId, 
                 $1:BigInt(Math.trunc(m[1]))
               }:{
-                $:1,
-                $0:response.requestId,
-                $1:"transient-command-failed",
+                $:1, 
+                $0:response.requestId, 
+                $1:"transient-command-failed", 
                 $2:responseError
               };
             }
             else _3={
-              $:1,
-              $0:response.requestId,
-              $1:"transient-command-failed",
+              $:1, 
+              $0:response.requestId, 
+              $1:"transient-command-failed", 
               $2:responseError
             };
             completePendingAction(response.requestId, _3);
             const _12=runtimeState.Get();
             let _13={
-              Identity:_12.Identity,
-              Document:_12.Document,
-              Data:_12.Data,
-              DocumentRevision:_12.DocumentRevision,
-              DataRevision:_12.DataRevision,
-              LastTransportSequence:_12.LastTransportSequence,
-              View:_12.View,
-              Poll:_12.Poll,
+              Identity:_12.Identity, 
+              Document:_12.Document, 
+              Data:_12.Data, 
+              DocumentRevision:_12.DocumentRevision, 
+              DataRevision:_12.DataRevision, 
+              LastTransportSequence:_12.LastTransportSequence, 
+              View:_12.View, 
+              Poll:_12.Poll, 
               LastError:Some({
-                ReasonCode:"transient-command-failed",
-                Message:text(response.error),
+                ReasonCode:"transient-command-failed", 
+                Message:text(response.error), 
                 Recoverable:true
               })
             };
@@ -4723,17 +4723,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         jsonExportBootstrapInFlight=false;
         const _1=runtimeState.Get();
         let _2={
-          Identity:_1.Identity,
-          Document:_1.Document,
-          Data:_1.Data,
-          DocumentRevision:_1.DocumentRevision,
-          DataRevision:_1.DataRevision,
-          LastTransportSequence:_1.LastTransportSequence,
-          View:_1.View,
-          Poll:_1.Poll,
+          Identity:_1.Identity, 
+          Document:_1.Document, 
+          Data:_1.Data, 
+          DocumentRevision:_1.DocumentRevision, 
+          DataRevision:_1.DataRevision, 
+          LastTransportSequence:_1.LastTransportSequence, 
+          View:_1.View, 
+          Poll:_1.Poll, 
           LastError:Some({
-            ReasonCode:"ta-export-bootstrap-empty",
-            Message:"TA export bootstrap returned no runtime data after three attempts.",
+            ReasonCode:"ta-export-bootstrap-empty", 
+            Message:"TA export bootstrap returned no runtime data after three attempts.", 
             Recoverable:true
           })
         };
@@ -4741,12 +4741,12 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         if(disposeAfterJsonExport)apply(Dispose);
       }
       else if(exists((a) => a.$==2, apply(StartAction(hasRuntimeData?{
-        $:7,
-        $0:identity.CanvasInstanceId,
+        $:9, 
+        $0:identity.CanvasInstanceId, 
         $1:"json-export"
       }:{
-        $:6,
-        $0:identity.CanvasInstanceId,
+        $:8, 
+        $0:identity.CanvasInstanceId, 
         $1:runtimeState.Get().DataRevision
       }))))if(hasRuntimeData){
         jsonExportRequested=false;
@@ -4835,8 +4835,8 @@ function transition(options, event, state){
       return[New_40(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 4:
       return[New_40(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
-        $:6,
-        $0:state.CanvasInstanceId,
+        $:8, 
+        $0:state.CanvasInstanceId, 
         $1:state.DataRevision
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 5:
@@ -4851,8 +4851,8 @@ function transition(options, event, state){
       return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_40(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_40(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_40(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
     case 9:
       return[New_40(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
-        $:7,
-        $0:state.CanvasInstanceId,
+        $:9, 
+        $0:state.CanvasInstanceId, 
         $1:_1
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 10:
@@ -4880,10 +4880,10 @@ function reconnectDelay(options, attempt){
 }
 function New(PollIntervalMs, RequestTimeoutMs, PollRetryMs, ReconnectBaseMs, ReconnectMaximumMs){
   return{
-    PollIntervalMs:PollIntervalMs,
-    RequestTimeoutMs:RequestTimeoutMs,
-    PollRetryMs:PollRetryMs,
-    ReconnectBaseMs:ReconnectBaseMs,
+    PollIntervalMs:PollIntervalMs, 
+    RequestTimeoutMs:RequestTimeoutMs, 
+    PollRetryMs:PollRetryMs, 
+    ReconnectBaseMs:ReconnectBaseMs, 
     ReconnectMaximumMs:ReconnectMaximumMs
   };
 }
@@ -4917,8 +4917,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_1(Attr, {
-      $:2,
-      $0:Item1,
+      $:2, 
+      $0:Item1, 
       $1:Item2
     });
   }
@@ -4932,17 +4932,17 @@ function filter(f, o){
 }
 function New_1(RuntimeState, SetActive, RequestJsonExport, Dispose_1){
   return{
-    RuntimeState:RuntimeState,
-    SetActive:SetActive,
-    RequestJsonExport:RequestJsonExport,
+    RuntimeState:RuntimeState, 
+    SetActive:SetActive, 
+    RequestJsonExport:RequestJsonExport, 
     Dispose:Dispose_1
   };
 }
 function New_2(status, count, maxSequence, pages){
   return{
-    status:status,
-    count:count,
-    maxSequence:maxSequence,
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
     pages:pages
   };
 }
@@ -5109,18 +5109,12 @@ function init(size, f){
   for(let i=0, _1=size-1;i<=_1;i++)r[i]=f(i);
   return r;
 }
-function sortDescending(arr){
-  return map((t) => t[0], mapi((_1, _2) =>[_2, _1], arr).sort((_1, _2) =>-Compare(_1, _2)));
-}
 function tryLast(arr){
   const len=arr.length;
   return len===0?null:Some(arr[len-1]);
 }
 function sort(arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, _1], arr).sort(Compare));
-}
-function sortByDescending(f, arr){
-  return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) =>-Compare(_1[1], _2[1])));
 }
 function pick(f, arr){
   const m=tryPick(f, arr);
@@ -5130,6 +5124,9 @@ function sumBy(f, arr){
   let sum=0;
   for(let i=0;i<arr.length;i++)sum+=f(arr[i]);
   return sum;
+}
+function sortByDescending(f, arr){
+  return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) =>-Compare(_1[1], _2[1])));
 }
 function min(arr){
   let m;
@@ -5576,16 +5573,16 @@ function tryJson(text_1){
 }
 function New_3(type, requestId, streamKey){
   return{
-    type:type,
-    requestId:requestId,
+    type:type, 
+    requestId:requestId, 
     streamKey:streamKey
   };
 }
 function New_4(type, requestId, streamKey, count){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
     count:count
   };
 }
@@ -6274,8 +6271,8 @@ class FSharpList {
   static Empty=Create_1(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_1(FSharpList, {
-      $:1,
-      $0:Head,
+      $:1, 
+      $0:Head, 
       $1:Tail
     });
   }
@@ -6303,16 +6300,16 @@ function TryParse_1(s, r){
 }
 function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId,
-    tabId:tabId,
-    path:path,
-    title:title,
-    setName:setName,
-    shape:shape,
-    description:description,
-    keyPlaceholder:keyPlaceholder,
-    valuePlaceholder:valuePlaceholder,
-    defaultKey:defaultKey,
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
     tags:tags
   };
 }
@@ -6332,43 +6329,43 @@ function set(arr, n, x){
 }
 function New_6(pageId, mode, setName, keys){
   return{
-    pageId:pageId,
-    mode:mode,
-    setName:setName,
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
     keys:keys
   };
 }
 function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
-    readRepairPolicy:readRepairPolicy,
-    candidateValueStreamKeys:candidateValueStreamKeys,
-    candidateValueStreamCount:candidateValueStreamCount,
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId,
-    serverRealityId:serverRealityId,
-    kind:kind,
-    target:target,
-    url:url,
-    method:method,
-    payloadJson:payloadJson,
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
     status:status
   };
 }
@@ -6468,51 +6465,51 @@ function collect_1(f, l){
 }
 function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status,
-    page:page,
-    bucketCount:bucketCount,
-    maxSequence:maxSequence,
-    keyMaxSequence:keyMaxSequence,
-    lineage:lineage,
-    lineageHealth:lineageHealth,
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
     buckets:buckets
   };
 }
 function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    keys:keys,
-    displayName:displayName,
-    setName:setName,
-    valueCount:valueCount,
-    minSequence:minSequence,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    keys:keys, 
+    displayName:displayName, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_12(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
     tags:tags
   };
 }
 function New_13(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    keyMode:keyMode,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    keyMode:keyMode, 
     displayName:displayName
   };
 }
 function New_14(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    rawArgu:rawArgu,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
     tags:tags
   };
 }
@@ -6524,17 +6521,17 @@ function New_16(pageId, keyId){
 }
 function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    actorAddress:actorAddress,
-    rawArgu:rawArgu,
-    renderMode:renderMode,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
@@ -6802,44 +6799,44 @@ function seqEmpty(){
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
-    payload:payload,
-    sourceKind:sourceKind,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    setName:setName,
-    keys:keys,
-    valueCount:valueCount,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
@@ -6848,10 +6845,10 @@ function New_21(maxSequence, buckets){
 }
 function New_22(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId,
-    keys:keys,
-    createdAtUtc:createdAtUtc,
-    value:value,
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
     tags:tags
   };
 }
@@ -6860,9 +6857,9 @@ function New_23(reason){
 }
 function New_24(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount,
-    actorCount:actorCount,
-    maxSequence:maxSequence,
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
     nodes:nodes
   };
 }
@@ -6983,30 +6980,30 @@ function ToSeq(m){
 }
 function New_25(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId,
-    displayName:displayName,
-    kind:kind,
-    keys:keys,
-    status:status,
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
     routees:routees
   };
 }
 function New_26(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId,
-    nodeAddress:nodeAddress,
-    status:status,
-    roles:roles,
+    nodeId:nodeId, 
+    nodeAddress:nodeAddress, 
+    status:status, 
+    roles:roles, 
     actors:actors
   };
 }
 function New_27(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId,
-    fromId:fromId,
-    toId:toId,
-    scope:scope,
-    body:body,
+    messageId:messageId, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
     createdAtUtc:createdAtUtc
   };
 }
@@ -7015,38 +7012,38 @@ function New_28(messages, nextAfterMessageId){
 }
 function New_29(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId,
-    newestSequence:newestSequence,
-    cachedCount:cachedCount,
-    source:source,
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
     touchedAt:touchedAt
   };
 }
 function New_30(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    fromId:fromId,
-    toId:toId,
-    body:body,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_31(fromId, toId, body, tags){
   return{
-    fromId:fromId,
-    toId:toId,
-    body:body,
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
     tags:tags
   };
 }
 function New_32(messageId, speaker, createdAtUtc, body){
   return{
-    messageId:messageId,
-    speaker:speaker,
-    createdAtUtc:createdAtUtc,
+    messageId:messageId, 
+    speaker:speaker, 
+    createdAtUtc:createdAtUtc, 
     body:body
   };
 }
@@ -7371,8 +7368,8 @@ function UpdateEmbedNode(node, upd){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""),
-    Dirty:false,
+    Text:globalThis.document.createTextNode(""), 
+    Dirty:false, 
     Value:""
   };
 }
@@ -7437,8 +7434,8 @@ function ElemDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0,
-    $0:Item1,
+    $:0, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -7450,41 +7447,41 @@ function TextDoc(Item){
 }
 function New_33(shape, label, badge, className){
   return{
-    shape:shape,
-    label:label,
-    badge:badge,
+    shape:shape, 
+    label:label, 
+    badge:badge, 
     className:className
   };
 }
 function New_34(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath,
-    sessionPath:sessionPath,
-    logoutPath:logoutPath,
-    returnUrl:returnUrl,
-    protectedRoute:protectedRoute,
-    sessionCookieName:sessionCookieName,
-    title:title,
-    lead:lead,
-    providerLabel:providerLabel,
+    submitPath:submitPath, 
+    sessionPath:sessionPath, 
+    logoutPath:logoutPath, 
+    returnUrl:returnUrl, 
+    protectedRoute:protectedRoute, 
+    sessionCookieName:sessionCookieName, 
+    title:title, 
+    lead:lead, 
+    providerLabel:providerLabel, 
     aclLabel:aclLabel
   };
 }
 function New_35(userName, password, returnUrl, keepSession){
   return{
-    userName:userName,
-    password:password,
-    returnUrl:returnUrl,
+    userName:userName, 
+    password:password, 
+    returnUrl:returnUrl, 
     keepSession:keepSession
   };
 }
 function New_36(participantId, displayName, login, authenticated, provider, logoutPath){
   return{
-    participantId:participantId,
-    displayName:displayName,
-    login:login,
-    authenticated:authenticated,
-    provider:provider,
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
     logoutPath:logoutPath
   };
 }
@@ -7586,24 +7583,24 @@ class T extends Object_1 {
 }
 function New_37(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId,
-    TabId:TabId,
-    ValueId:ValueId,
-    CreatedAtUtc:CreatedAtUtc,
-    Direction:Direction,
-    Tags:Tags,
+    PageId:PageId, 
+    TabId:TabId, 
+    ValueId:ValueId, 
+    CreatedAtUtc:CreatedAtUtc, 
+    Direction:Direction, 
+    Tags:Tags, 
     Payload:Payload
   };
 }
 function New_38(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    shape:shape,
-    tabId:tabId,
-    tabMode:tabMode,
-    path:path,
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
     description:description
   };
 }
@@ -7884,11 +7881,11 @@ let _c_3=Lazy((_i) => class Var_1 extends Object_1 {
 });
 function New_39(type, requestId, extensionId, channelId, operation, payload){
   return{
-    type:type,
-    requestId:requestId,
-    extensionId:extensionId,
-    channelId:channelId,
-    operation:operation,
+    type:type, 
+    requestId:requestId, 
+    extensionId:extensionId, 
+    channelId:channelId, 
+    operation:operation, 
     payload:payload
   };
 }
@@ -7900,54 +7897,64 @@ function Error_1(ErrorValue){
 }
 function New_40(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
   return{
-    CanvasInstanceId:CanvasInstanceId,
-    Poll:Poll,
-    PollEnabled:PollEnabled,
-    Connected:Connected_1,
-    Active:Active,
-    InFlight:InFlight,
-    DataRevision:DataRevision,
-    ReconnectAttempt:ReconnectAttempt,
-    DisposePending:DisposePending,
+    CanvasInstanceId:CanvasInstanceId, 
+    Poll:Poll, 
+    PollEnabled:PollEnabled, 
+    Connected:Connected_1, 
+    Active:Active, 
+    InFlight:InFlight, 
+    DataRevision:DataRevision, 
+    ReconnectAttempt:ReconnectAttempt, 
+    DisposePending:DisposePending, 
     Disposed:Disposed
   };
 }
 function emptyFrame(kind, actionKind, canvasId){
-  return New_42("ta-browser.v1", kind, actionKind, canvasId, "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "", "", false, [], 0, false);
+  return New_42("ta-browser.v1", kind, actionKind, canvasId, "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "", "", false, [], 0, false, "", "", "", "", 0);
 }
 function actionToWire(action){
   if(action.$==1)return emptyFrame("action", "reset-canvas", canvasText(action.$0));
   else if(action.$==2){
     const row=action.$1;
     const _1=emptyFrame("action", "add-row", canvasText(action.$0));
-    return New_42(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _1.expectedDocumentRevision, _1.hasExpectedDocumentRevision);
+    return New_42(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _1.expectedDocumentRevision, _1.hasExpectedDocumentRevision, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
   }
   else if(action.$==3){
     const values=action.$3;
     const templateKey=action.$2;
     const rowId=action.$1;
     const _2=emptyFrame("action", "apply-template", canvasText(action.$0));
-    return New_42(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId==null?"":rowId.$0, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode, templateKey, rowId!=null, map(editorInputToWire, values==null?[]:values), _2.expectedDocumentRevision, _2.hasExpectedDocumentRevision);
+    return New_42(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId==null?"":rowId.$0, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode, templateKey, rowId!=null, map(editorInputToWire, values==null?[]:values), _2.expectedDocumentRevision, _2.hasExpectedDocumentRevision, _2.baseRowId, _2.eventTimeUtc, _2.startEventTimeUtc, _2.endEventTimeExclusiveUtc, _2.maximumBasePoints);
   }
   else if(action.$==4){
     const rowId_1=action.$1;
     const _3=emptyFrame("action", "remove-row", canvasText(action.$0));
-    return New_42(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, rowId_1, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, _3.sourceId, _3.instrument, _3.intervalMinutes, _3.fromUtc, _3.toUtcExclusive, _3.includePartial, _3.afterDataRevision, _3.dataRevision, _3.reasonCode, _3.templateKey, _3.hasTemplateRowId, _3.editorValues, _3.expectedDocumentRevision, _3.hasExpectedDocumentRevision);
+    return New_42(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, rowId_1, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, _3.sourceId, _3.instrument, _3.intervalMinutes, _3.fromUtc, _3.toUtcExclusive, _3.includePartial, _3.afterDataRevision, _3.dataRevision, _3.reasonCode, _3.templateKey, _3.hasTemplateRowId, _3.editorValues, _3.expectedDocumentRevision, _3.hasExpectedDocumentRevision, _3.baseRowId, _3.eventTimeUtc, _3.startEventTimeUtc, _3.endEventTimeExclusiveUtc, _3.maximumBasePoints);
   }
   else if(action.$==5){
     const query=action.$1;
     const _4=emptyFrame("action", "change-query", canvasText(action.$0));
-    return New_42(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, _4.rowId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _4.afterDataRevision, _4.dataRevision, _4.reasonCode, _4.templateKey, _4.hasTemplateRowId, _4.editorValues, _4.expectedDocumentRevision, _4.hasExpectedDocumentRevision);
+    return New_42(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, _4.rowId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _4.afterDataRevision, _4.dataRevision, _4.reasonCode, _4.templateKey, _4.hasTemplateRowId, _4.editorValues, _4.expectedDocumentRevision, _4.hasExpectedDocumentRevision, _4.baseRowId, _4.eventTimeUtc, _4.startEventTimeUtc, _4.endEventTimeExclusiveUtc, _4.maximumBasePoints);
   }
   else if(action.$==6){
-    const revision=action.$1;
-    const _5=emptyFrame("action", "poll-delta", canvasText(action.$0));
-    return New_42(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, _5.sourceId, _5.instrument, _5.intervalMinutes, _5.fromUtc, _5.toUtcExclusive, _5.includePartial, Number(revision), _5.dataRevision, _5.reasonCode, _5.templateKey, _5.hasTemplateRowId, _5.editorValues, _5.expectedDocumentRevision, _5.hasExpectedDocumentRevision);
+    const change=action.$1;
+    const _5=emptyFrame("action", "shared-cursor-changed", canvasText(action.$0));
+    return New_42(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, _5.sourceId, _5.instrument, _5.intervalMinutes, _5.fromUtc, _5.toUtcExclusive, _5.includePartial, _5.afterDataRevision, _5.dataRevision, _5.reasonCode, _5.templateKey, _5.hasTemplateRowId, _5.editorValues, _5.expectedDocumentRevision, _5.hasExpectedDocumentRevision, change.BaseRowId, change.EventTimeUtc, _5.startEventTimeUtc, _5.endEventTimeExclusiveUtc, _5.maximumBasePoints);
   }
   else if(action.$==7){
+    const change_1=action.$1;
+    const _6=emptyFrame("action", "visible-range-changed", canvasText(action.$0));
+    return New_42(_6.wireVersion, _6.kind, _6.actionKind, _6.canvasInstanceId, _6.rowId, _6.rowKind, _6.dataRef, _6.heightWeight, _6.visible, _6.sourceId, _6.instrument, _6.intervalMinutes, _6.fromUtc, _6.toUtcExclusive, _6.includePartial, _6.afterDataRevision, _6.dataRevision, _6.reasonCode, _6.templateKey, _6.hasTemplateRowId, _6.editorValues, _6.expectedDocumentRevision, _6.hasExpectedDocumentRevision, change_1.BaseRowId, _6.eventTimeUtc, change_1.StartEventTimeUtc, change_1.EndEventTimeExclusiveUtc, change_1.MaximumBasePoints);
+  }
+  else if(action.$==8){
+    const revision=action.$1;
+    const _7=emptyFrame("action", "poll-delta", canvasText(action.$0));
+    return New_42(_7.wireVersion, _7.kind, _7.actionKind, _7.canvasInstanceId, _7.rowId, _7.rowKind, _7.dataRef, _7.heightWeight, _7.visible, _7.sourceId, _7.instrument, _7.intervalMinutes, _7.fromUtc, _7.toUtcExclusive, _7.includePartial, Number(revision), _7.dataRevision, _7.reasonCode, _7.templateKey, _7.hasTemplateRowId, _7.editorValues, _7.expectedDocumentRevision, _7.hasExpectedDocumentRevision, _7.baseRowId, _7.eventTimeUtc, _7.startEventTimeUtc, _7.endEventTimeExclusiveUtc, _7.maximumBasePoints);
+  }
+  else if(action.$==9){
     const reason=action.$1;
-    const _6=emptyFrame("action", "full-snapshot", canvasText(action.$0));
-    return New_42(_6.wireVersion, _6.kind, _6.actionKind, _6.canvasInstanceId, _6.rowId, _6.rowKind, _6.dataRef, _6.heightWeight, _6.visible, _6.sourceId, _6.instrument, _6.intervalMinutes, _6.fromUtc, _6.toUtcExclusive, _6.includePartial, _6.afterDataRevision, _6.dataRevision, reason, _6.templateKey, _6.hasTemplateRowId, _6.editorValues, _6.expectedDocumentRevision, _6.hasExpectedDocumentRevision);
+    const _8=emptyFrame("action", "full-snapshot", canvasText(action.$0));
+    return New_42(_8.wireVersion, _8.kind, _8.actionKind, _8.canvasInstanceId, _8.rowId, _8.rowKind, _8.dataRef, _8.heightWeight, _8.visible, _8.sourceId, _8.instrument, _8.intervalMinutes, _8.fromUtc, _8.toUtcExclusive, _8.includePartial, _8.afterDataRevision, _8.dataRevision, reason, _8.templateKey, _8.hasTemplateRowId, _8.editorValues, _8.expectedDocumentRevision, _8.hasExpectedDocumentRevision, _8.baseRowId, _8.eventTimeUtc, _8.startEventTimeUtc, _8.endEventTimeExclusiveUtc, _8.maximumBasePoints);
   }
   else return emptyFrame("action", "reset-view", canvasText(action.$0));
 }
@@ -7956,7 +7963,7 @@ function actionRequestToWire(request){
   const o=request.ExpectedDocumentRevision;
   const o_1=o==null?null:Some(Number(o.$0));
   let _2=o_1==null?0:o_1.$0;
-  return New_42(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, _1.rowId, _1.rowKind, _1.dataRef, _1.heightWeight, _1.visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _2, request.ExpectedDocumentRevision!=null);
+  return New_42(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, _1.rowId, _1.rowKind, _1.dataRef, _1.heightWeight, _1.visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _2, request.ExpectedDocumentRevision!=null, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
 }
 function applyWire(current, wire){
   return Bind_2((decoded) => {
@@ -7967,14 +7974,14 @@ function applyWire(current, wire){
     else {
       const mergedSeries=wire.series==null?current.Data:fold((_3, _4) => {
         const p=mergeSeries({
-          Identity:current.Identity,
-          Document:current.Document,
-          Data:_3,
-          DocumentRevision:current.DocumentRevision,
-          DataRevision:current.DataRevision,
-          LastTransportSequence:current.LastTransportSequence,
-          View:current.View,
-          Poll:current.Poll,
+          Identity:current.Identity, 
+          Document:current.Document, 
+          Data:_3, 
+          DocumentRevision:current.DocumentRevision, 
+          DataRevision:current.DataRevision, 
+          LastTransportSequence:current.LastTransportSequence, 
+          View:current.View, 
+          Poll:current.Poll, 
           LastError:current.LastError
         }, wire.timeline, _4);
         return _3.Add_1(p[0], p[1]);
@@ -7985,14 +7992,14 @@ function applyWire(current, wire){
       const m=decoded.Data.TryFind(statusRef);
       let _1=m==null?mergedSeries:mergedSeries.Add_1(statusRef, m.$0);
       let _2={
-        Identity:decoded.Identity,
-        Document:decoded.Document,
-        Data:_1,
-        DocumentRevision:decoded.DocumentRevision,
-        DataRevision:decoded.DataRevision,
-        LastTransportSequence:decoded.LastTransportSequence,
-        View:current.View,
-        Poll:decoded.Poll,
+        Identity:decoded.Identity, 
+        Document:decoded.Document, 
+        Data:_1, 
+        DocumentRevision:decoded.DocumentRevision, 
+        DataRevision:decoded.DataRevision, 
+        LastTransportSequence:decoded.LastTransportSequence, 
+        View:current.View, 
+        Poll:decoded.Poll, 
         LastError:decoded.LastError
       };
       return Ok(_2);
@@ -8036,22 +8043,22 @@ function stateFromWire(wire){
       const K=rowKind(row.kind);
       const D=text(row.dataRef);
       const T_1=row.traces==null?[]:map((trace) =>({
-        TraceId:text(trace.traceId),
-        Kind:traceKind(trace.kind),
-        DataRef:text(trace.dataRef),
-        Label:text(trace.label),
-        Color:text(trace.color),
-        Width:trace.width,
-        Visible:trace.visible,
+        TraceId:text(trace.traceId), 
+        Kind:traceKind(trace.kind), 
+        DataRef:text(trace.dataRef), 
+        Label:text(trace.label), 
+        Color:text(trace.color), 
+        Width:trace.width, 
+        Visible:trace.visible, 
         Options:new FSharpMap("New", [])
       }), row.traces);
       return{
-        RowId:R,
-        Kind:K,
-        DataRef:D,
-        HeightWeight:row.heightWeight,
-        Visible:row.visible,
-        Options:mapFromWire(row.options),
+        RowId:R, 
+        Kind:K, 
+        DataRef:D, 
+        HeightWeight:row.heightWeight, 
+        Visible:row.visible, 
+        Options:mapFromWire(row.options), 
         Traces:T_1
       };
     }, wire.rows);
@@ -8063,8 +8070,8 @@ function stateFromWire(wire){
     const data=seriesData.Add_1(text(wire.statusRef), status);
     const defaultView=OfArray(ofSeq(ofSeq_1(delay(() => append_2(!IsNullOrWhiteSpace(wire.querySourceId)?[["query.sourceId", {$:3, $0:text(wire.querySourceId)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryInstrument)?[["query.instrument", {$:3, $0:text(wire.queryInstrument)}]]:[], delay(() => append_2(wire.queryIntervalMinutes>0?[["query.intervalMinutes", {$:2, $0:wire.queryIntervalMinutes}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryFromUtc)?[["query.fromUtc", {$:3, $0:text(wire.queryFromUtc)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryToUtcExclusive)?[["query.toUtcExclusive", {$:3, $0:text(wire.queryToUtcExclusive)}]]:[], delay(() =>[["query.includePartial", {$:1, $0:wire.queryIncludePartial}]]))))))))))))));
     const lastError=IsNullOrWhiteSpace(wire.errorCode)&&IsNullOrWhiteSpace(wire.errorMessage)?null:Some({
-      ReasonCode:text(wire.errorCode),
-      Message:text(wire.errorMessage),
+      ReasonCode:text(wire.errorCode), 
+      Message:text(wire.errorMessage), 
       Recoverable:wire.errorRecoverable
     });
     if(wire.editorSchemas==null)editorSchemas=[];
@@ -8073,24 +8080,25 @@ function stateFromWire(wire){
       editorSchemas=choose((x) => ToOption(f(x)), wire.editorSchemas);
     }
     return!(wire.editorSchemas==null)&&length(editorSchemas)!==length(wire.editorSchemas)?Error_1("TA browser editor schema catalog is invalid."):Ok({
-      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}},
+      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}}, 
       Document:Some({
-        WorkspaceId:text(wire.workspaceId),
-        Title:text(wire.title),
-        RowsRef:text(wire.rowsRef),
-        StatusRef:text(wire.statusRef),
-        SharedTimeAxis:wire.sharedTimeAxis,
-        Rows:rows,
-        EditorSchemas:editorSchemas,
-        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions,
+        WorkspaceId:text(wire.workspaceId), 
+        Title:text(wire.title), 
+        RowsRef:text(wire.rowsRef), 
+        StatusRef:text(wire.statusRef), 
+        SharedTimeAxis:wire.sharedTimeAxis, 
+        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)), 
+        Rows:rows, 
+        EditorSchemas:editorSchemas, 
+        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions, 
         DefaultView:defaultView
-      }),
-      Data:data,
-      DocumentRevision:wire.documentRevision,
-      DataRevision:wire.dataRevision,
-      LastTransportSequence:wire.transportSequence,
-      View:{Values:new FSharpMap("New", [])},
-      Poll:pollState(wire.pollKind),
+      }), 
+      Data:data, 
+      DocumentRevision:wire.documentRevision, 
+      DataRevision:wire.dataRevision, 
+      LastTransportSequence:wire.transportSequence, 
+      View:{Values:new FSharpMap("New", [])}, 
+      Poll:pollState(wire.pollKind), 
       LastError:lastError
     });
   }
@@ -8189,8 +8197,8 @@ function ResyncRequired(reasonCode){
 }
 function StateAccepted(dataRevision, pollEnabled){
   return{
-    $:1,
-    $0:dataRevision,
+    $:1, 
+    $0:dataRevision, 
     $1:pollEnabled
   };
 }
@@ -8242,50 +8250,99 @@ function render(options, callbacks, runtimeState){
   finishNavigatorDrag=null;
   chartRenderSequence=0;
   const uiState=_c_3.Create_1({
-    Window:{StartIndex:0, Count:options.DefaultVisibleBars},
-    FollowLatest:true,
-    HiddenRows:new FSharpSet("New_2", null),
-    AddRowOpen:false,
-    CursorIndex:null,
-    PendingActionId:null,
+    Window:{StartIndex:0, Count:options.DefaultVisibleBars}, 
+    FollowLatest:true, 
+    HiddenRows:new FSharpSet("New_2", null), 
+    AddRowOpen:false, 
+    CursorIndex:null, 
+    PendingActionId:null, 
     Feedback:""
   });
+  const chartUiState=_c_3.Create_1(uiState.Get());
+  const setUiState=(next) => {
+    const previousChartState=chartUiState.Get();
+    uiState.Set(next);
+    if(!(Equals(previousChartState.Window, next.Window)&&previousChartState.FollowLatest==next.FollowLatest&&Equals(previousChartState.HiddenRows, next.HiddenRows)&&Equals(previousChartState.CursorIndex, next.CursorIndex)))chartUiState.Set(next);
+  };
   actionSequence=0;
   const commandsDisabledView=Map2((_3, _4) => remoteDisabled(_3.Poll)||_4.PendingActionId!=null, runtimeState.View, uiState.View);
   const commandsDisabledNow=() => remoteDisabled(runtimeState.Get().Poll)||uiState.Get().PendingActionId!=null;
+  const visibleRangeActionAllowed=(state) => {
+    const o_2=state.Document;
+    const o_3=o_2==null?null:Some(o_2.$0.AllowedActions);
+    let _3=o_3==null?[]:o_3.$0;
+    return arrContains("visible-range-changed", _3);
+  };
+  const viewportCommandsDisabledView=Map2((_3, _4) => visibleRangeActionAllowed(_3)&&(remoteDisabled(_3.Poll)||_4.PendingActionId!=null), runtimeState.View, uiState.View);
+  const viewportCommandsDisabledNow=() => visibleRangeActionAllowed(runtimeState.Get())&&commandsDisabledNow();
   const startActionWith=(action, successText, onAccepted, onRejected) => {
     actionSequence=actionSequence+1;
     const request={
-      RequestId:canvasIdText(canvasId)+":ui:"+String(actionSequence),
-      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision),
+      RequestId:canvasIdText(canvasId)+":ui:"+String(actionSequence), 
+      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision), 
       Action:action
     };
     return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted, onRejected);
   };
   const startAction=(action, successText, onAccepted) => startActionWith(action, successText, onAccepted, () => { });
   const chartRuntimeView=MapCachedBy((_3, _4) => _3.DocumentRevision===_4.DocumentRevision&&_3.DataRevision===_4.DataRevision&&_3.LastTransportSequence===_4.LastTransportSequence, (x) => x, runtimeState.View);
+  const actionAllowed=(actionName) => {
+    const o_2=runtimeState.Get().Document;
+    const o_3=o_2==null?null:Some(o_2.$0.AllowedActions);
+    let _3=o_3==null?[]:o_3.$0;
+    return arrContains(actionName, _3);
+  };
   const referenceLength=() => {
     const m=runtimeState.Get().Document;
-    if(m!=null&&m.$==1){
-      const o_2=tryFind((a) => a.Visible, m.$0.Rows);
-      const o_3=o_2==null?null:Some(rowReferenceLength(o_2.$0, runtimeState.Get().Data));
-      return o_3==null?0:o_3.$0;
-    }
-    else return 0;
+    return m!=null&&m.$==1?referenceTimelineForDocument(m.$0, runtimeState.Get().Data).length:0;
   };
   const resolvedWindow=(ui) => resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), ui.FollowLatest, ui.Window);
   const setWindow=(followLatest, window_1) => {
-    const current=uiState.Get();
-    uiState.Set({
-      Window:resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), followLatest, window_1),
-      FollowLatest:followLatest,
-      HiddenRows:current.HiddenRows,
-      AddRowOpen:current.AddRowOpen,
-      CursorIndex:null,
-      PendingActionId:current.PendingActionId,
-      Feedback:current.Feedback
-    });
-    return draftWindow.Set(null);
+    if(!viewportCommandsDisabledNow()){
+      const current=uiState.Get();
+      const bounded=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), followLatest, window_1);
+      const changed=!Equals(bounded, resolvedWindow(current))||followLatest!=current.FollowLatest;
+      setUiState({
+        Window:bounded, 
+        FollowLatest:followLatest, 
+        HiddenRows:current.HiddenRows, 
+        AddRowOpen:current.AddRowOpen, 
+        CursorIndex:null, 
+        PendingActionId:current.PendingActionId, 
+        Feedback:current.Feedback
+      });
+      draftWindow.Set(null);
+      if(changed&&actionAllowed("visible-range-changed")){
+        const m=runtimeState.Get().Document;
+        if(m==null)return null;
+        else {
+          const m_1=visibleEventRange(m.$0, runtimeState.Get().Data, bounded);
+          if(m_1==null)return null;
+          else {
+            const range_1=m_1.$0;
+            const a=4000;
+            const a_1=1;
+            const b=options.MaximumVisibleBars;
+            const b_1=Compare(a_1, b)===1?a_1:b;
+            let _3=Compare(a, b_1)===-1?a:b_1;
+            let _4={
+              BaseRowId:range_1.BaseRowId, 
+              StartEventTimeUtc:range_1.StartEventTimeUtc, 
+              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc, 
+              MaximumBasePoints:_3
+            };
+            let _5={
+              $:7, 
+              $0:canvasId, 
+              $1:_4
+            };
+            return startAction(_5, "Visible range synchronized.", () => { });
+          }
+        }
+      }
+      else return null;
+    }
+    else return null;
   };
   const panWindow=(delta) => {
     const current=uiState.Get();
@@ -8303,15 +8360,15 @@ function render(options, callbacks, runtimeState){
     setWindow(true, {StartIndex:0, Count:options.DefaultVisibleBars});
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:_3.AddRowOpen,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:_3.PendingActionId,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:_3.PendingActionId, 
       Feedback:"Local view reset."
     };
-    uiState.Set(_4);
+    setUiState(_4);
   };
   const setWindowCount=(count) => {
     const total=referenceLength();
@@ -8332,15 +8389,36 @@ function render(options, callbacks, runtimeState){
     if(!Equals(uiState.Get().CursorIndex, value)){
       const _3=uiState.Get();
       let _4={
-        Window:_3.Window,
-        FollowLatest:_3.FollowLatest,
-        HiddenRows:_3.HiddenRows,
-        AddRowOpen:_3.AddRowOpen,
-        CursorIndex:value,
-        PendingActionId:_3.PendingActionId,
+        Window:_3.Window, 
+        FollowLatest:_3.FollowLatest, 
+        HiddenRows:_3.HiddenRows, 
+        AddRowOpen:_3.AddRowOpen, 
+        CursorIndex:value, 
+        PendingActionId:_3.PendingActionId, 
         Feedback:_3.Feedback
       };
-      uiState.Set(_4);
+      setUiState(_4);
+    }
+  };
+  const commitCursorIndex=(index) => {
+    setCursorIndex(Some(index));
+    if(actionAllowed("shared-cursor-changed")){
+      const m=runtimeState.Get().Document;
+      if(m==null){ }
+      else {
+        const document=m.$0;
+        const timeline=referenceTimelineForDocument(document, runtimeState.Get().Data);
+        const visible=selectWindow(resolvedWindow(uiState.Get()), timeline);
+        const m_1=document.BaseRowId;
+        if(m_1!=null&&m_1.$==1){
+          m_1.$0;
+          index>=0&&index<length(visible)?startAction({
+            $:6, 
+            $0:canvasId, 
+            $1:{BaseRowId:m_1.$0, EventTimeUtc:get(visible, index)}
+          }, "Shared cursor synchronized.", () => { }):void 0;
+        }
+      }
     }
   };
   const resetEditorFor=(templateKey) => {
@@ -8355,15 +8433,15 @@ function render(options, callbacks, runtimeState){
     pendingEditorMutation=null;
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:false,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:_3.PendingActionId,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:false, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:_3.PendingActionId, 
       Feedback:_3.Feedback
     };
-    uiState.Set(_4);
+    setUiState(_4);
   };
   const closeRowEditor=() => {
     if(uiState.Get().PendingActionId==null)forceCloseRowEditor();
@@ -8405,15 +8483,15 @@ function render(options, callbacks, runtimeState){
           if(maximum!=null&&maximum.$==1&&(count>=maximum.$0&&(_3=maximum.$0,true))){
             const _4=uiState.Get();
             let _5={
-              Window:_4.Window,
-              FollowLatest:_4.FollowLatest,
-              HiddenRows:_4.HiddenRows,
-              AddRowOpen:_4.AddRowOpen,
-              CursorIndex:_4.CursorIndex,
-              PendingActionId:_4.PendingActionId,
+              Window:_4.Window, 
+              FollowLatest:_4.FollowLatest, 
+              HiddenRows:_4.HiddenRows, 
+              AddRowOpen:_4.AddRowOpen, 
+              CursorIndex:_4.CursorIndex, 
+              PendingActionId:_4.PendingActionId, 
               Feedback:String(labelText)+" allows at most "+String(_3)+" item(s)."
             };
-            uiState.Set(_5);
+            setUiState(_5);
           }
           else editorValues.Set(addListItem(path, itemKind, editorValues.Get()));
         })]);
@@ -8497,14 +8575,14 @@ function render(options, callbacks, runtimeState){
     }}), o_2]);
     const parsedInterval=m[0]&&m[1]>0?Some(m[1]):null;
     startAction({
-      $:5,
-      $0:canvasId,
+      $:5, 
+      $0:canvasId, 
       $1:{
-        SourceId:null,
-        Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft),
-        IntervalMinutes:parsedInterval,
-        FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft),
-        ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft),
+        SourceId:null, 
+        Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft), 
+        IntervalMinutes:parsedInterval, 
+        FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft), 
+        ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft), 
         IncludePartial:Some(true)
       }
     }, "Query accepted.", () => { });
@@ -8518,15 +8596,15 @@ function render(options, callbacks, runtimeState){
       if(length(errors)>0){
         const _3=uiState.Get();
         let _4={
-          Window:_3.Window,
-          FollowLatest:_3.FollowLatest,
-          HiddenRows:_3.HiddenRows,
-          AddRowOpen:_3.AddRowOpen,
-          CursorIndex:_3.CursorIndex,
-          PendingActionId:_3.PendingActionId,
+          Window:_3.Window, 
+          FollowLatest:_3.FollowLatest, 
+          HiddenRows:_3.HiddenRows, 
+          AddRowOpen:_3.AddRowOpen, 
+          CursorIndex:_3.CursorIndex, 
+          PendingActionId:_3.PendingActionId, 
           Feedback:concat_1(" ", errors)
         };
-        uiState.Set(_4);
+        setUiState(_4);
       }
       else {
         const o_2=runtimeState.Get().Document;
@@ -8535,10 +8613,10 @@ function render(options, callbacks, runtimeState){
         const binding={TemplateKey:schema.TemplateKey, Values:editorValues.Get().slice()};
         pendingEditorMutation=Some([runtimeState.Get().DocumentRevision, editingRowId, new FSharpSet("New_2", OfSeq(map((a) => a.RowId, currentRows))), binding]);
         startActionWith({
-          $:3,
-          $0:canvasId,
-          $1:editingRowId,
-          $2:schema.TemplateKey,
+          $:3, 
+          $0:canvasId, 
+          $1:editingRowId, 
+          $2:schema.TemplateKey, 
           $3:editorValues.Get()
         }, schema.DisplayName+" accepted; awaiting authoritative document.", () => { }, () => {
           pendingEditorMutation=null;
@@ -8591,18 +8669,18 @@ function render(options, callbacks, runtimeState){
         addRowSequence=addRowSequence+1;
         const rowId="row-"+addKind.Get().toLowerCase()+"-"+String(addRowSequence);
         const spec={
-          RowId:rowId,
-          Kind:kind,
-          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()),
-          HeightWeight:1,
-          Visible:true,
-          Options:rowOptions,
+          RowId:rowId, 
+          Kind:kind, 
+          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()), 
+          HeightWeight:1, 
+          Visible:true, 
+          Options:rowOptions, 
           Traces:[]
         };
         pendingAddRowId=Some(rowId);
         startAction({
-          $:2,
-          $0:canvasId,
+          $:2, 
+          $0:canvasId, 
           $1:spec
         }, "Row accepted.", () => { });
       }
@@ -8610,15 +8688,15 @@ function render(options, callbacks, runtimeState){
         const message=optionsResult.$0;
         const _12=uiState.Get();
         let _13={
-          Window:_12.Window,
-          FollowLatest:_12.FollowLatest,
-          HiddenRows:_12.HiddenRows,
-          AddRowOpen:_12.AddRowOpen,
-          CursorIndex:_12.CursorIndex,
-          PendingActionId:_12.PendingActionId,
+          Window:_12.Window, 
+          FollowLatest:_12.FollowLatest, 
+          HiddenRows:_12.HiddenRows, 
+          AddRowOpen:_12.AddRowOpen, 
+          CursorIndex:_12.CursorIndex, 
+          PendingActionId:_12.PendingActionId, 
           Feedback:message
         };
-        uiState.Set(_13);
+        setUiState(_13);
       }
     }
   };
@@ -8650,15 +8728,15 @@ function render(options, callbacks, runtimeState){
             pendingAddRowId=null;
             const _8=uiState.Get();
             let _9={
-              Window:_8.Window,
-              FollowLatest:_8.FollowLatest,
-              HiddenRows:_8.HiddenRows,
-              AddRowOpen:false,
-              CursorIndex:_8.CursorIndex,
-              PendingActionId:_8.PendingActionId,
+              Window:_8.Window, 
+              FollowLatest:_8.FollowLatest, 
+              HiddenRows:_8.HiddenRows, 
+              AddRowOpen:false, 
+              CursorIndex:_8.CursorIndex, 
+              PendingActionId:_8.PendingActionId, 
               Feedback:"Row added."
             };
-            _4=uiState.Set(_9);
+            _4=setUiState(_9);
           }
           else _4=null;
         }
@@ -8687,15 +8765,15 @@ function render(options, callbacks, runtimeState){
               forceCloseRowEditor();
               const _10=uiState.Get();
               let _11={
-                Window:_10.Window,
-                FollowLatest:_10.FollowLatest,
-                HiddenRows:_10.HiddenRows,
-                AddRowOpen:_10.AddRowOpen,
-                CursorIndex:_10.CursorIndex,
-                PendingActionId:_10.PendingActionId,
+                Window:_10.Window, 
+                FollowLatest:_10.FollowLatest, 
+                HiddenRows:_10.HiddenRows, 
+                AddRowOpen:_10.AddRowOpen, 
+                CursorIndex:_10.CursorIndex, 
+                PendingActionId:_10.PendingActionId, 
                 Feedback:targetRowId!=null?"Row updated.":"Row added."
               };
-              _6=uiState.Set(_11);
+              _6=setUiState(_11);
             }
             else _6=null;
           }
@@ -8734,21 +8812,21 @@ function render(options, callbacks, runtimeState){
         fromDateDraft=value;
       })]), Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("To"), inputText("ta-to", "YYYY-MM-DD", toDateDraft, (value) => {
         toDateDraft=value;
-      })]), primaryButtonView("ta-apply-query", "Load / Apply", commandsDisabledView, commandsDisabledNow, applyQuery)]), Doc.Element("div", [Attr.Create("data-testid", "ta-local-toolbar"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], append_1(ofArray([compactButton("ta-pan-left", "\u2190", "Pan earlier", () => {
+      })]), primaryButtonView("ta-apply-query", "Load / Apply", commandsDisabledView, commandsDisabledNow, applyQuery)]), Doc.Element("div", [Attr.Create("data-testid", "ta-local-toolbar"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], append_1(ofArray([compactRemoteButton("ta-pan-left", "\u2190", "Pan earlier", viewportCommandsDisabledView, viewportCommandsDisabledNow, () => {
         const a=1;
         const b=resolvedWindow(uiState.Get()).Count/4>>0;
         let _12=-(Compare(a, b)===1?a:b);
         panWindow(_12);
-      }), compactButton("ta-pan-right", "\u2192", "Pan later", () => {
+      }), compactRemoteButton("ta-pan-right", "\u2192", "Pan later", viewportCommandsDisabledView, viewportCommandsDisabledNow, () => {
         const a=1;
         const b=resolvedWindow(uiState.Get()).Count/4>>0;
         let _12=Compare(a, b)===1?a:b;
         panWindow(_12);
-      }), compactButton("ta-zoom-in", "+", "Show fewer bars", () => {
+      }), compactRemoteButton("ta-zoom-in", "+", "Show fewer bars", viewportCommandsDisabledView, viewportCommandsDisabledNow, () => {
         zoomWindow(-8);
-      }), compactButton("ta-zoom-out", "\u2212", "Show more bars", () => {
+      }), compactRemoteButton("ta-zoom-out", "\u2212", "Show more bars", viewportCommandsDisabledView, viewportCommandsDisabledNow, () => {
         zoomWindow(8);
-      }), compactButton("ta-reset-view", "Reset View", "Reset local viewport to the latest bars", resetWindow), compactRemoteButton("ta-reset-canvas", "Reset Canvas", "Request server canvas reset", commandsDisabledView, commandsDisabledNow, () => {
+      }), compactRemoteButton("ta-reset-view", "Reset View", "Reset local viewport to the latest bars", viewportCommandsDisabledView, viewportCommandsDisabledNow, resetWindow), compactRemoteButton("ta-reset-canvas", "Reset Canvas", "Request server canvas reset", commandsDisabledView, commandsDisabledNow, () => {
         startAction({$:1, $0:canvasId}, "Canvas reset accepted.", () => { });
       })]), append_1(length(editorSchemasNow())>0?ofArray([compactButton("ta-add-row-toggle", "Add Row", "Open row request editor", () => {
         if(uiState.Get().AddRowOpen)closeRowEditor();
@@ -8759,17 +8837,17 @@ function render(options, callbacks, runtimeState){
           else resetEditorFor(m_2.$0.TemplateKey);
           const _12=uiState.Get();
           let _13={
-            Window:_12.Window,
-            FollowLatest:_12.FollowLatest,
-            HiddenRows:_12.HiddenRows,
-            AddRowOpen:true,
-            CursorIndex:_12.CursorIndex,
-            PendingActionId:_12.PendingActionId,
+            Window:_12.Window, 
+            FollowLatest:_12.FollowLatest, 
+            HiddenRows:_12.HiddenRows, 
+            AddRowOpen:true, 
+            CursorIndex:_12.CursorIndex, 
+            PendingActionId:_12.PendingActionId, 
             Feedback:""
           };
-          uiState.Set(_13);
+          setUiState(_13);
         }
-      })]):FSharpList.Empty, ofArray([Doc.Element("span", [Attr.Create("style", "margin-left:auto; color:#60738b; font-size:11px;")], [Doc.TextNode("local view controls do not query the backend")])])))), Doc.EmbedView(Map((ui) => Doc.Element("div", [Attr.Create("data-testid", "ta-row-toggles"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], ofSeq_1(delay(() => collect_2((row) => {
+      })]):FSharpList.Empty, ofArray([Doc.Element("span", [Attr.Create("style", "margin-left:auto; color:#60738b; font-size:11px;")], [Doc.TextNode("viewport changes request the selected event-time range when enabled")])])))), Doc.EmbedView(Map((ui) => Doc.Element("div", [Attr.Create("data-testid", "ta-row-toggles"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], ofSeq_1(delay(() => collect_2((row) => {
         let editable;
         const hidden=ui.HiddenRows.Contains(row.RowId);
         const m_2=tryResolve(editorSchemasNow(), row);
@@ -8782,15 +8860,15 @@ function render(options, callbacks, runtimeState){
           const nextHidden=hidden?uiState.Get().HiddenRows.Remove_1(row.RowId):uiState.Get().HiddenRows.Add_1(row.RowId);
           const _13=uiState.Get();
           let _14={
-            Window:_13.Window,
-            FollowLatest:_13.FollowLatest,
-            HiddenRows:nextHidden,
-            AddRowOpen:_13.AddRowOpen,
-            CursorIndex:_13.CursorIndex,
-            PendingActionId:_13.PendingActionId,
+            Window:_13.Window, 
+            FollowLatest:_13.FollowLatest, 
+            HiddenRows:nextHidden, 
+            AddRowOpen:_13.AddRowOpen, 
+            CursorIndex:_13.CursorIndex, 
+            PendingActionId:_13.PendingActionId, 
             Feedback:_13.Feedback
           };
-          return uiState.Set(_14);
+          return setUiState(_14);
         })], [Doc.TextNode(rowKindText_1(row.Kind))])], delay(() => append_2(editable?[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-edit-row-"+row.RowId), Attr.Create("title", "Edit "+rowKindText_1(row.Kind)+" parameters"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"height:26px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; cursor:not-allowed;":"height:26px; border:1px solid #9cb3cc; border-right:0; background:#fff; color:#315d88; padding:2px 7px; font-size:11px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() => {
           if(!commandsDisabledNow()){
             const m_3=tryResolve(editorSchemasNow(), row);
@@ -8798,15 +8876,15 @@ function render(options, callbacks, runtimeState){
               editingRowId=null;
               const _13=uiState.Get();
               let _14={
-                Window:_13.Window,
-                FollowLatest:_13.FollowLatest,
-                HiddenRows:_13.HiddenRows,
-                AddRowOpen:false,
-                CursorIndex:_13.CursorIndex,
-                PendingActionId:_13.PendingActionId,
+                Window:_13.Window, 
+                FollowLatest:_13.FollowLatest, 
+                HiddenRows:_13.HiddenRows, 
+                AddRowOpen:false, 
+                CursorIndex:_13.CursorIndex, 
+                PendingActionId:_13.PendingActionId, 
                 Feedback:"This row's editor metadata is invalid; the row remains read-only."
               };
-              return uiState.Set(_14);
+              return setUiState(_14);
             }
             else if(m_3.$0==null)return null;
             else {
@@ -8817,21 +8895,21 @@ function render(options, callbacks, runtimeState){
               editorValues.Set(values);
               const _15=uiState.Get();
               let _16={
-                Window:_15.Window,
-                FollowLatest:_15.FollowLatest,
-                HiddenRows:_15.HiddenRows,
-                AddRowOpen:true,
-                CursorIndex:_15.CursorIndex,
-                PendingActionId:_15.PendingActionId,
+                Window:_15.Window, 
+                FollowLatest:_15.FollowLatest, 
+                HiddenRows:_15.HiddenRows, 
+                AddRowOpen:true, 
+                CursorIndex:_15.CursorIndex, 
+                PendingActionId:_15.PendingActionId, 
                 Feedback:""
               };
-              return uiState.Set(_16);
+              return setUiState(_16);
             }
           }
           else return null;
         })], [Doc.TextNode("Edit")])]:[], delay(() =>[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+rowKindText_1(row.Kind)+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
-          $:4,
-          $0:canvasId,
+          $:4, 
+          $0:canvasId, 
           $1:row.RowId
         }, rowKindText_1(row.Kind)+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])))))))];
       }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-generic-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; min-width:0;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Template"), selectInput("ta-editor-template", selectedTemplate.Get(), ofArray(map((schema) =>[schema.TemplateKey, schema.DisplayName], editorSchemasNow())), resetEditorFor)]), Doc.EmbedView(Map((templateKey) => {
@@ -8853,7 +8931,7 @@ function render(options, callbacks, runtimeState){
         let cursorIndex, cursorValues;
         chartRenderSequence=chartRenderSequence+1;
         const visibleRows=filter_1((row) => row.Visible&&!_13.HiddenRows.Contains(row.RowId), document.Rows);
-        const referenceTimeline_1=referenceTimeline(visibleRows, _12.Data);
+        const referenceTimeline_1=referenceTimelineForDocument(document, _12.Data);
         const referenceLength_1=length(referenceTimeline_1);
         const o_4=tryFind((trace) => trace.Visible&&Equals(trace.Kind, {$:0}), collect(effectiveTraces, visibleRows));
         const o_5=o_4==null?null:Some(candleSeries(o_4.$0.DataRef, _12.Data));
@@ -8872,18 +8950,7 @@ function render(options, callbacks, runtimeState){
           let _14=Compare(e, x)===-1?e:x;
           cursorIndex=Some(_14);
         }
-        const cursorDocument={
-          WorkspaceId:document.WorkspaceId,
-          Title:document.Title,
-          RowsRef:document.RowsRef,
-          StatusRef:document.StatusRef,
-          SharedTimeAxis:document.SharedTimeAxis,
-          Rows:visibleRows,
-          EditorSchemas:document.EditorSchemas,
-          AllowedActions:document.AllowedActions,
-          DefaultView:document.DefaultView
-        };
-        const cursor=cursorIndex==null?null:cursorSnapshot(cursorDocument, _12.Data, visibleWindow, cursorIndex.$0);
+        const cursor=cursorIndex==null?null:cursorSnapshotForRows(document, visibleRows, _12.Data, visibleWindow, cursorIndex.$0);
         if(cursor!=null&&cursor.$==1){
           const value_1=cursor.$0;
           cursorValues=Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-values"), Attr.Create("style", "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "white-space:nowrap;")], [Doc.TextNode(compactTimestamp(value_1.Timestamp))])], delay(() => map_2((item) => Doc.Element("span", [Attr.Create("data-cursor-row", item.Label), Attr.Create("style", "min-width:0;")], [Doc.TextNode(item.Label+" "+item.Value)]), value_1.Values))))));
@@ -8909,14 +8976,14 @@ function render(options, callbacks, runtimeState){
         let _22=Attr.Create("data-cursor-index", _21);
         let _23=[_15, _16, _17, _18, _19, _20, _22, Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;")];
         return Doc.Element("div", _23, ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[cursorValues])))], delay(() => append_2(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:map_2((index) => renderRow(_12, {
-          Window:_13.Window,
-          FollowLatest:_13.FollowLatest,
-          HiddenRows:_13.HiddenRows,
-          AddRowOpen:_13.AddRowOpen,
-          CursorIndex:cursorIndex,
-          PendingActionId:_13.PendingActionId,
+          Window:_13.Window, 
+          FollowLatest:_13.FollowLatest, 
+          HiddenRows:_13.HiddenRows, 
+          AddRowOpen:_13.AddRowOpen, 
+          CursorIndex:cursorIndex, 
+          PendingActionId:_13.PendingActionId, 
           Feedback:_13.Feedback
-        }, visibleTimestamps, setCursorIndex, index===length(visibleRows)-1, get(visibleRows, index)), range(0, length(visibleRows)-1)), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
+        }, visibleTimestamps, setCursorIndex, commitCursorIndex, index===length(visibleRows)-1, get(visibleRows, index)), range(0, length(visibleRows)-1)), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
           setWindowCount(48);
         }), compactButton("ta-view-200", "200", "Show latest 200 bars", () => {
           setWindowCount(200);
@@ -8926,7 +8993,7 @@ function render(options, callbacks, runtimeState){
           navigatorElement=node;
         }, (drag, event) => {
           let moveHandler, upHandler, finished;
-          if(!(navigatorElement==null)){
+          if(!viewportCommandsDisabledNow()&&!(navigatorElement==null)){
             event.preventDefault();
             event.stopPropagation();
             const bounds=navigatorElement.getBoundingClientRect();
@@ -8959,7 +9026,7 @@ function render(options, callbacks, runtimeState){
           }
           else return null;
         }, finishNavigatorDragFromElement)])])])))))));
-      }, chartRuntimeView, uiState.View))]);
+      }, chartRuntimeView, chartUiState.View))]);
     }
     else {
       const pending=workspaceBootstrapPresentation(state);
@@ -8979,12 +9046,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
   if(uiState.Get().PendingActionId!=null){
     const _1=uiState.Get();
     let _2={
-      Window:_1.Window,
-      FollowLatest:_1.FollowLatest,
-      HiddenRows:_1.HiddenRows,
-      AddRowOpen:_1.AddRowOpen,
-      CursorIndex:_1.CursorIndex,
-      PendingActionId:_1.PendingActionId,
+      Window:_1.Window, 
+      FollowLatest:_1.FollowLatest, 
+      HiddenRows:_1.HiddenRows, 
+      AddRowOpen:_1.AddRowOpen, 
+      CursorIndex:_1.CursorIndex, 
+      PendingActionId:_1.PendingActionId, 
       Feedback:"action-in-flight: wait for the pending action result."
     };
     uiState.Set(_2);
@@ -8993,12 +9060,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
     onRejected();
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:_3.AddRowOpen,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:null,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:null, 
       Feedback:"revision-conflict: workspace is at revision "+String(actualDocumentRevision)+"."
     };
     uiState.Set(_4);
@@ -9006,12 +9073,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
   else {
     const _5=uiState.Get();
     let _6={
-      Window:_5.Window,
-      FollowLatest:_5.FollowLatest,
-      HiddenRows:_5.HiddenRows,
-      AddRowOpen:_5.AddRowOpen,
-      CursorIndex:_5.CursorIndex,
-      PendingActionId:Some(request.RequestId),
+      Window:_5.Window, 
+      FollowLatest:_5.FollowLatest, 
+      HiddenRows:_5.HiddenRows, 
+      AddRowOpen:_5.AddRowOpen, 
+      CursorIndex:_5.CursorIndex, 
+      PendingActionId:Some(request.RequestId), 
       Feedback:"Submitting "+request.RequestId+"..."
     };
     uiState.Set(_6);
@@ -9020,9 +9087,9 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
       if(a.$==1){
         const error_2=a.$0;
         result={
-          $:1,
-          $0:request.RequestId,
-          $1:error_2.Code,
+          $:1, 
+          $0:request.RequestId, 
+          $1:error_2.Code, 
           $2:error_2.Message
         };
       }
@@ -9031,12 +9098,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _7=uiState.Get();
         let _8={
-          Window:_7.Window,
-          FollowLatest:_7.FollowLatest,
-          HiddenRows:_7.HiddenRows,
-          AddRowOpen:_7.AddRowOpen,
-          CursorIndex:_7.CursorIndex,
-          PendingActionId:null,
+          Window:_7.Window, 
+          FollowLatest:_7.FollowLatest, 
+          HiddenRows:_7.HiddenRows, 
+          AddRowOpen:_7.AddRowOpen, 
+          CursorIndex:_7.CursorIndex, 
+          PendingActionId:null, 
           Feedback:"action-correlation-mismatch: result does not match the pending request."
         };
         uiState.Set(_8);
@@ -9048,12 +9115,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _9=uiState.Get();
         let _10={
-          Window:_9.Window,
-          FollowLatest:_9.FollowLatest,
-          HiddenRows:_9.HiddenRows,
-          AddRowOpen:_9.AddRowOpen,
-          CursorIndex:_9.CursorIndex,
-          PendingActionId:null,
+          Window:_9.Window, 
+          FollowLatest:_9.FollowLatest, 
+          HiddenRows:_9.HiddenRows, 
+          AddRowOpen:_9.AddRowOpen, 
+          CursorIndex:_9.CursorIndex, 
+          PendingActionId:null, 
           Feedback:code+": "+message
         };
         uiState.Set(_10);
@@ -9064,12 +9131,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _11=uiState.Get();
         let _12={
-          Window:_11.Window,
-          FollowLatest:_11.FollowLatest,
-          HiddenRows:_11.HiddenRows,
-          AddRowOpen:_11.AddRowOpen,
-          CursorIndex:_11.CursorIndex,
-          PendingActionId:null,
+          Window:_11.Window, 
+          FollowLatest:_11.FollowLatest, 
+          HiddenRows:_11.HiddenRows, 
+          AddRowOpen:_11.AddRowOpen, 
+          CursorIndex:_11.CursorIndex, 
+          PendingActionId:null, 
           Feedback:"revision-conflict: workspace is at revision "+String(actualRevision)+"."
         };
         uiState.Set(_12);
@@ -9080,12 +9147,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onAccepted();
         const _13=uiState.Get();
         let _14={
-          Window:_13.Window,
-          FollowLatest:_13.FollowLatest,
-          HiddenRows:_13.HiddenRows,
-          AddRowOpen:_13.AddRowOpen,
-          CursorIndex:_13.CursorIndex,
-          PendingActionId:null,
+          Window:_13.Window, 
+          FollowLatest:_13.FollowLatest, 
+          HiddenRows:_13.HiddenRows, 
+          AddRowOpen:_13.AddRowOpen, 
+          CursorIndex:_13.CursorIndex, 
+          PendingActionId:null, 
           Feedback:successText+" Revision "+String(revision)+"."
         };
         uiState.Set(_14);
@@ -9128,10 +9195,10 @@ function compactRemoteButton(testId, label, titleText, disabled, isDisabled, onC
 function rowKindText_1(a){
   return a.$==1?"Volume":a.$==2?"SMA":a.$==3?"DMI":a.$==4?"ADX":a.$==5?"MACD":a.$==6?"Heikin-Ashi":"Candlestick";
 }
-function renderRow(state, ui, visibleTimestamps, setCursorIndex, showSharedTimeAxis, row){
+function renderRow(state, ui, visibleTimestamps, setCursorIndex, commitCursorIndex, showSharedTimeAxis, row){
   let title;
   const traces=filter_1((a) => a.Visible, effectiveTraces(row));
-  const p=compositeSvg(row.RowId, traces, state.Data, visibleTimestamps, ui.CursorIndex, setCursorIndex);
+  const p=compositeSvg(row.RowId, traces, state.Data, visibleTimestamps, ui.CursorIndex, setCursorIndex, commitCursorIndex);
   const chart=p[0];
   if(row.Traces==null||length(row.Traces)===0)title=rowKindText_1(row.Kind);
   else {
@@ -9184,7 +9251,7 @@ function element_1(name, attrs, children){
 function fixedText(value){
   return String(value);
 }
-function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, setCursorIndex){
+function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, setCursorIndex, commitCursorIndex){
   const width=1000;
   const hasCandles=exists((trace) => Equals(trace.Kind, {$:0}), traces);
   const top=10;
@@ -9202,8 +9269,8 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
     switch(m.$==1?0:m.$==2?1:m.$==3?1:2){
       case 0:
         _13=map((point) =>({
-          Timestamp:point.Timestamp,
-          Value:point.Volume,
+          Timestamp:point.Timestamp, 
+          Value:point.Volume, 
           Temporal:point.Temporal
         }), candleSeries(_12.DataRef, data));
         break;
@@ -9241,6 +9308,10 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
     const bounds=element_2.getBoundingClientRect();
     const m=cursorIndexFromClientX(length(referenceTimestamps), bounds.left, bounds.width, event.clientX);
     return m==null?null:setCursorIndex(Some(m.$0));
+  }), Handler("click", (element_2) =>(event) => {
+    const bounds=element_2.getBoundingClientRect();
+    const m=cursorIndexFromClientX(length(referenceTimestamps), bounds.left, bounds.width, event.clientX);
+    return m==null?null:commitCursorIndex(m.$0);
   })];
   let _10=svgElement("svg", _9, ofSeq_1(delay(() => append_2(collect_2((gridIndex) => {
     const y=top+plotHeight*gridIndex/4;
@@ -9731,9 +9802,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1,
-      Children:Children_1,
-      El:El,
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -10006,31 +10077,36 @@ function SendAction(Item){
 function ScheduleReconnect(delayMs){
   return{$:5, $0:delayMs};
 }
-function New_42(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision){
+function New_42(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints){
   return{
-    wireVersion:wireVersion,
-    kind:kind,
-    actionKind:actionKind,
-    canvasInstanceId:canvasInstanceId,
-    rowId:rowId,
-    rowKind:rowKind_1,
-    dataRef:dataRef,
-    heightWeight:heightWeight,
-    visible:visible,
-    sourceId:sourceId,
-    instrument:instrument,
-    intervalMinutes:intervalMinutes,
-    fromUtc:fromUtc,
-    toUtcExclusive:toUtcExclusive,
-    includePartial:includePartial,
-    afterDataRevision:afterDataRevision,
-    dataRevision:dataRevision,
-    reasonCode:reasonCode,
-    templateKey:templateKey,
-    hasTemplateRowId:hasTemplateRowId,
-    editorValues:editorValues,
-    expectedDocumentRevision:expectedDocumentRevision,
-    hasExpectedDocumentRevision:hasExpectedDocumentRevision
+    wireVersion:wireVersion, 
+    kind:kind, 
+    actionKind:actionKind, 
+    canvasInstanceId:canvasInstanceId, 
+    rowId:rowId, 
+    rowKind:rowKind_1, 
+    dataRef:dataRef, 
+    heightWeight:heightWeight, 
+    visible:visible, 
+    sourceId:sourceId, 
+    instrument:instrument, 
+    intervalMinutes:intervalMinutes, 
+    fromUtc:fromUtc, 
+    toUtcExclusive:toUtcExclusive, 
+    includePartial:includePartial, 
+    afterDataRevision:afterDataRevision, 
+    dataRevision:dataRevision, 
+    reasonCode:reasonCode, 
+    templateKey:templateKey, 
+    hasTemplateRowId:hasTemplateRowId, 
+    editorValues:editorValues, 
+    expectedDocumentRevision:expectedDocumentRevision, 
+    hasExpectedDocumentRevision:hasExpectedDocumentRevision, 
+    baseRowId:baseRowId, 
+    eventTimeUtc:eventTimeUtc, 
+    startEventTimeUtc:startEventTimeUtc, 
+    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc, 
+    maximumBasePoints:maximumBasePoints
   };
 }
 function Bind_2(f, r){
@@ -10044,10 +10120,10 @@ function ToOption(result){
 }
 function New_43(schema, exportedAtUtc, documentRevision, dataRevision, state){
   return{
-    schema:schema,
-    exportedAtUtc:exportedAtUtc,
-    documentRevision:documentRevision,
-    dataRevision:dataRevision,
+    schema:schema, 
+    exportedAtUtc:exportedAtUtc, 
+    documentRevision:documentRevision, 
+    dataRevision:dataRevision, 
     state:state
   };
 }
@@ -10274,9 +10350,15 @@ function initialEditorInputs(schema){
     return m==null?fallbackInputs(field_1.Key, field_1.Kind):flattenEditorValue(field_1.Key, field_1.Kind, m.$0);
   }, schema.Fields);
 }
-function rowReferenceLength(row, data){
-  const o=tryHead(sortDescending(map((trace) => seriesValues(trace.DataRef, data).length, filter_1((a) => a.Visible, effectiveTraces(row)))));
-  return o==null?0:o.$0;
+function referenceTimelineForDocument(document, data){
+  const m=document.BaseRowId;
+  if(m==null)return referenceTimeline(document.Rows, data);
+  else {
+    const baseRowId=m.$0;
+    const o=tryFind((row) => row.Visible&&row.RowId==baseRowId, document.Rows);
+    const o_1=o==null?null:Some(rowTimeline(o.$0, data));
+    return o_1==null?[]:o_1.$0;
+  }
 }
 function resolveWindow(minimumCount, maximumCount, total, followLatest, requested){
   const bounded=clampWindow(minimumCount, maximumCount, total, requested);
@@ -10287,6 +10369,27 @@ function resolveWindow(minimumCount, maximumCount, total, followLatest, requeste
     return{StartIndex:_1, Count:bounded.Count};
   }
   else return bounded;
+}
+function visibleEventRange(document, data, window_1){
+  const m=tryBaseRow(document);
+  if(m!=null&&m.$==1){
+    const baseRowId=m.$0[0];
+    const baseRow=m.$0[1];
+    const timeline=rowTimeline(baseRow, data);
+    const selected=selectWindow(window_1, timeline);
+    if(length(selected)===0)return null;
+    else {
+      const startTime=get(selected, 0);
+      const endIndex=window_1.StartIndex+length(selected);
+      const o=filter((value) => Compare(value, startTime)>0, endIndex<length(timeline)?Some(get(timeline, endIndex)):tryBasePointIntervalEnd(baseRow, data, get(selected, length(selected)-1)));
+      return o==null?null:Some({
+        BaseRowId:baseRowId, 
+        StartEventTimeUtc:startTime, 
+        EndEventTimeExclusiveUtc:o.$0
+      });
+    }
+  }
+  else return null;
 }
 function clampWindow(minimumCount, maximumCount, total, requested){
   if(total<=0)return{StartIndex:0, Count:0};
@@ -10369,11 +10472,11 @@ function queryDraft(values){
   const o_4=o_3==null?null:tryBool(o_3.$0);
   const includePartial=o_4==null||o_4.$0;
   return{
-    SourceId:textValue("query.sourceId"),
-    Instrument:textValue("query.instrument"),
-    IntervalMinutes:interval,
-    FromUtc:textValue("query.fromUtc"),
-    ToUtcExclusive:textValue("query.toUtcExclusive"),
+    SourceId:textValue("query.sourceId"), 
+    Instrument:textValue("query.instrument"), 
+    IntervalMinutes:interval, 
+    FromUtc:textValue("query.fromUtc"), 
+    ToUtcExclusive:textValue("query.toUtcExclusive"), 
     IncludePartial:includePartial
   };
 }
@@ -10395,17 +10498,12 @@ function statusPresentation(statusRef, state){
     _1=Some(error_2.ReasonCode+": "+error_2.Message);
   }
   return{
-    Freshness:freshness,
-    Label:_2,
-    Watermark:_3,
-    Quality:_4,
+    Freshness:freshness, 
+    Label:_2, 
+    Watermark:_3, 
+    Quality:_4, 
     Error:_1
   };
-}
-function referenceTimeline(rows, data){
-  const o=tryHead(sortByDescending((_1) =>[length(_1[1]), Equals(_1[0].Kind, {$:0})], filter_1((_1) => length(_1[1])>0, map((trace) =>[trace, distinct(traceTimestamps(trace, data))], filter_1((a) => a.Visible, collect(effectiveTraces, filter_1((a) => a.Visible, rows)))))));
-  const o_1=o==null?null:Some(o.$0[1]);
-  return o_1==null?[]:o_1.$0;
 }
 function selectWindow(window_1, values){
   if(window_1.Count<=0||length(values)===0)return[];
@@ -10419,9 +10517,8 @@ function selectWindow(window_1, values){
     return _2.slice(0, window_1.Count);
   }
 }
-function cursorSnapshot(document, data, window_1, cursorIndex){
-  const visibleRows=filter_1((a_1) => a_1.Visible, document.Rows);
-  const timeline=referenceTimeline(visibleRows, data);
+function cursorSnapshotForRows(document, visibleRows, data, window_1, cursorIndex){
+  const timeline=referenceTimelineForDocument(document, data);
   const visibleTimestamps=selectWindow(clampWindow(1, 2147483647, length(timeline), window_1), timeline);
   if(length(visibleTimestamps)===0)return null;
   else {
@@ -10431,46 +10528,49 @@ function cursorSnapshot(document, data, window_1, cursorIndex){
     const index=Compare(a, b_1)===1?a:b_1;
     const timestamp=get(visibleTimestamps, index);
     return Some({
-      VisibleIndex:index,
-      Timestamp:timestamp,
-      Values:map((t) => t[1], collect((row) => choose((trace) => {
-        let _1, _2;
-        const label=IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label;
-        const m=trace.Kind;
-        if(m.$==1||(m.$==2?false:m.$!=3)){
-          const o=tryCandleAt(timestamp, candleSeries(trace.DataRef, data));
-          if(o==null)return null;
-          else {
-            const point=o.$0;
-            const baseValue=Equals(trace.Kind, {$:1})?fixedNumber(point.Volume):"O "+fixedNumber(point.Open)+" H "+fixedNumber(point.High)+" L "+fixedNumber(point.Low)+" C "+fixedNumber(point.Close);
-            const m_1=point.Temporal;
-            if(m_1==null)_1=baseValue;
+      VisibleIndex:index, 
+      Timestamp:timestamp, 
+      Values:map((t) => t[1], collect((row) => {
+        const isBaseRow=Equals(document.BaseRowId, Some(row.RowId));
+        return choose((trace) => {
+          let _1, _2;
+          const label=IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label;
+          const m=trace.Kind;
+          if(m.$==1||(m.$==2?false:m.$!=3)){
+            const o=tryCandleForCursor(isBaseRow, timestamp, candleSeries(trace.DataRef, data));
+            if(o==null)return null;
             else {
-              const metadata=m_1.$0;
-              _1=baseValue+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
+              const point=o.$0;
+              const baseValue=Equals(trace.Kind, {$:1})?fixedNumber(point.Volume):"O "+fixedNumber(point.Open)+" H "+fixedNumber(point.High)+" L "+fixedNumber(point.Low)+" C "+fixedNumber(point.Close);
+              const m_1=point.Temporal;
+              if(m_1==null)_1=baseValue;
+              else {
+                const metadata=m_1.$0;
+                _1=baseValue+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
+              }
+              let _3={Label:label, Value:_1};
+              let _4=[point.Timestamp, _3];
+              return Some(_4);
             }
-            let _3={Label:label, Value:_1};
-            let _4=[point.Timestamp, _3];
-            return Some(_4);
           }
-        }
-        else {
-          const o_1=tryLineAt(timestamp, lineSeries(trace.DataRef, data));
-          if(o_1==null)return null;
           else {
-            const point_1=o_1.$0;
-            const m_2=point_1.Temporal;
-            if(m_2==null)_2=fixedNumber(point_1.Value);
+            const o_1=tryLineForCursor(isBaseRow, timestamp, lineSeries(trace.DataRef, data));
+            if(o_1==null)return null;
             else {
-              const metadata_1=m_2.$0;
-              _2=fixedNumber(point_1.Value)+" | "+metadata_1.ScaleKey+" "+metadata_1.Finality+" | "+metadata_1.SourceIntervalId;
+              const point_1=o_1.$0;
+              const m_2=point_1.Temporal;
+              if(m_2==null)_2=fixedNumber(point_1.Value);
+              else {
+                const metadata_1=m_2.$0;
+                _2=fixedNumber(point_1.Value)+" | "+metadata_1.ScaleKey+" "+metadata_1.Finality+" | "+metadata_1.SourceIntervalId;
+              }
+              let _5={Label:label, Value:_2};
+              let _6=[point_1.Timestamp, _5];
+              return Some(_6);
             }
-            let _5={Label:label, Value:_2};
-            let _6=[point_1.Timestamp, _5];
-            return Some(_6);
           }
-        }
-      }, filter_1((a_1) => a_1.Visible, effectiveTraces(row))), visibleRows))
+        }, filter_1((a_1) => a_1.Visible, effectiveTraces(row)));
+      }, visibleRows))
     });
   }
 }
@@ -10498,13 +10598,13 @@ function effectiveTraces(row){
         break;
     }
     return[{
-      TraceId:row.RowId,
-      Kind:_1,
-      DataRef:row.DataRef,
-      Label:row.RowId,
-      Color:"",
-      Width:1.25,
-      Visible:true,
+      TraceId:row.RowId, 
+      Kind:_1, 
+      DataRef:row.DataRef, 
+      Label:row.RowId, 
+      Color:"", 
+      Width:1.25, 
+      Visible:true, 
       Options:new FSharpMap("New", [])
     }];
   }
@@ -10519,44 +10619,44 @@ function workspaceBootstrapPresentation(state){
     switch(m_1.$==1?1:m_1.$==4?2:m_1.$==6?3:m_1.$==7?4:m_1.$==2?5:m_1.$==3?5:m_1.$==5?5:0){
       case 0:
         return{
-          State:"preparing",
-          Title:"Preparing TA workspace",
-          Detail:"Waiting for the workspace channel to mount.",
+          State:"preparing", 
+          Title:"Preparing TA workspace", 
+          Detail:"Waiting for the workspace channel to mount.", 
           IsError:false
         };
       case 1:
         return{
-          State:"connecting",
-          Title:"Connecting TA workspace",
-          Detail:"Waiting for the initial workspace document.",
+          State:"connecting", 
+          Title:"Connecting TA workspace", 
+          Detail:"Waiting for the initial workspace document.", 
           IsError:false
         };
       case 2:
         return{
-          State:"retrying",
-          Title:"Restoring TA workspace",
-          Detail:"A reconnect attempt is scheduled.",
+          State:"retrying", 
+          Title:"Restoring TA workspace", 
+          Detail:"A reconnect attempt is scheduled.", 
           IsError:false
         };
       case 3:
         return{
-          State:"resyncing",
-          Title:"Resynchronizing TA workspace",
-          Detail:"Requesting a full workspace document.",
+          State:"resyncing", 
+          Title:"Resynchronizing TA workspace", 
+          Detail:"Requesting a full workspace document.", 
           IsError:false
         };
       case 4:
         return{
-          State:"closed",
-          Title:"TA workspace closed",
-          Detail:"Open the page again to reconnect.",
+          State:"closed", 
+          Title:"TA workspace closed", 
+          Detail:"Open the page again to reconnect.", 
           IsError:false
         };
       case 5:
         return{
-          State:"loading",
-          Title:"Loading TA workspace",
-          Detail:"Waiting for the workspace document.",
+          State:"loading", 
+          Title:"Loading TA workspace", 
+          Detail:"Waiting for the workspace document.", 
           IsError:false
         };
     }
@@ -10564,18 +10664,18 @@ function workspaceBootstrapPresentation(state){
   else if(!m.$0.Recoverable){
     const error_2=m.$0;
     return{
-      State:"unavailable",
-      Title:"TA workspace unavailable",
-      Detail:error_2.ReasonCode+": "+error_2.Message,
+      State:"unavailable", 
+      Title:"TA workspace unavailable", 
+      Detail:error_2.ReasonCode+": "+error_2.Message, 
       IsError:true
     };
   }
   else {
     const error_3=m.$0;
     return{
-      State:"recovering",
-      Title:"Restoring TA workspace",
-      Detail:error_3.ReasonCode+": "+error_3.Message,
+      State:"recovering", 
+      Title:"Restoring TA workspace", 
+      Detail:error_3.ReasonCode+": "+error_3.Message, 
       IsError:false
     };
   }
@@ -10692,10 +10792,44 @@ function flattenEditorValue(path, kind, value){
       return[];
   }
 }
-function seriesValues(dataRef, data){
-  let _1;
-  const m=data.TryFind(dataRef);
-  return m!=null&&m.$==1&&(m.$0.$==4&&(_1=m.$0.$0,true))?_1:[];
+function referenceTimeline(rows, data){
+  const o=tryHead(sortByDescending((_1) =>[length(_1[1]), Equals(_1[0].Kind, {$:0})], filter_1((_1) => length(_1[1])>0, map((trace) =>[trace, distinct(traceTimestamps(trace, data))], filter_1((a) => a.Visible, collect(effectiveTraces, filter_1((a) => a.Visible, rows)))))));
+  const o_1=o==null?null:Some(o.$0[1]);
+  return o_1==null?[]:o_1.$0;
+}
+function rowTimeline(row, data){
+  const traces=filter_1((a) => a.Visible, effectiveTraces(row));
+  const o=tryFind((trace) => trace.DataRef==row.DataRef, traces);
+  const o_1=o==null?tryHead(traces):(o.$0,o);
+  const o_2=o_1==null?null:Some(distinct(traceTimestamps(o_1.$0, data)));
+  return o_2==null?[]:o_2.$0;
+}
+function tryBaseRow(document){
+  const o=document.BaseRowId;
+  if(o==null)return null;
+  else {
+    const baseRowId=o.$0;
+    const o_1=tryFind((row) => row.Visible&&row.RowId==baseRowId, document.Rows);
+    return o_1==null?null:Some([baseRowId, o_1.$0]);
+  }
+}
+function tryBasePointIntervalEnd(row, data, timestamp){
+  const o=tryFind((trace_1) => trace_1.DataRef==row.DataRef, filter_1((a) => a.Visible, effectiveTraces(row)));
+  if(o==null)return null;
+  else {
+    const trace=o.$0;
+    const m=trace.Kind;
+    if(m.$==1||(m.$==2?false:m.$!=3)){
+      const o_1=tryFind((point) => point.Timestamp==timestamp, candleSeries(trace.DataRef, data));
+      const o_2=o_1==null?null:o_1.$0.Temporal;
+      return o_2==null?null:Some(o_2.$0.IntervalEndUtc);
+    }
+    else {
+      const o_3=tryFind((point) => point.Timestamp==timestamp, lineSeries(trace.DataRef, data));
+      const o_4=o_3==null?null:o_3.$0.Temporal;
+      return o_4==null?null:Some(o_4.$0.IntervalEndUtc);
+    }
+  }
 }
 function fixedNumber(value){
   return String(value);
@@ -10741,8 +10875,8 @@ function freshnessFromStatus(status){
   const o_2=objectText("reasonCode", status);
   const reason=o_2==null?kind:o_2.$0;
   return kind=="live"?{$:0}:kind=="delayed"?{$:1, $0:lag}:kind=="stale"?{
-    $:2,
-    $0:lag,
+    $:2, 
+    $0:lag, 
     $1:reason
   }:kind=="backfill"?{$:3, $0:reason}:{$:4, $0:reason};
 }
@@ -10750,18 +10884,22 @@ function objectText(name, value){
   const o=objectField(name, value);
   return o==null?null:tryText(o.$0);
 }
-function traceTimestamps(trace, data){
-  const m=trace.Kind;
-  return m.$==1||(m.$==2?false:m.$!=3)?map((a) => a.Timestamp, candleSeries(trace.DataRef, data)):map((a) => a.Timestamp, lineSeries(trace.DataRef, data));
-}
-function tryCandleAt(timestamp, values){
-  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
+function tryCandleForCursor(isBaseRow, timestamp, values){
+  if(isBaseRow)return tryCandleAt(timestamp, values);
+  else {
+    const o=tryLast(filter_1((value) => finalizedCursorMatch(timestamp, value.Timestamp, value.Temporal), values));
+    return o==null?tryLast(filter_1((value) => finalizedAsOf(timestamp, value.Temporal), values)):(o.$0,o);
+  }
 }
 function lineSeries(dataRef, data){
   return choose(parseLine, seriesValues(dataRef, data));
 }
-function tryLineAt(timestamp, values){
-  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
+function tryLineForCursor(isBaseRow, timestamp, values){
+  if(isBaseRow)return tryLineAt(timestamp, values);
+  else {
+    const o=tryLast(filter_1((value) => finalizedCursorMatch(timestamp, value.Timestamp, value.Temporal), values));
+    return o==null?tryLast(filter_1((value) => finalizedAsOf(timestamp, value.Temporal), values)):(o.$0,o);
+  }
 }
 function rowTemporalMetadata(row, data){
   return distinctBy((value) =>[value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality], choose((trace) => latestTemporalMetadata(trace, data), filter_1((a) => a.Visible, effectiveTraces(row))));
@@ -10799,6 +10937,11 @@ function paddedRange(fallbackLow, fallbackHigh, values){
 function normalize(low, high, top, height, value){
   return low===high?top+height/2:top+height-(value-low)/(high-low)*height;
 }
+function seriesValues(dataRef, data){
+  let _1;
+  const m=data.TryFind(dataRef);
+  return m!=null&&m.$==1&&(m.$0.$==4&&(_1=m.$0.$0,true))?_1:[];
+}
 function parseCandle(value){
   let _1;
   const p=pointPayload_1(value);
@@ -10816,12 +10959,12 @@ function parseCandle(value){
     const _6=objectNumber("c", item);
     const _7=objectNumber("v", item);
     return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_1=[_6.$0, _4.$0, _5.$0, _3.$0, _2.$0, _7.$0],true))))))?Some({
-      Timestamp:_1[4],
-      Open:_1[3],
-      High:_1[1],
-      Low:_1[2],
-      Close:_1[0],
-      Volume:_1[5],
+      Timestamp:_1[4], 
+      Open:_1[3], 
+      High:_1[1], 
+      Low:_1[2], 
+      Close:_1[0], 
+      Volume:_1[5], 
       Temporal:temporal
     }):null;
   }
@@ -10885,6 +11028,10 @@ function editorSubmissionErrors(path, required, kind, values){
     else return missing();
   }
 }
+function traceTimestamps(trace, data){
+  const m=trace.Kind;
+  return m.$==1||(m.$==2?false:m.$!=3)?map((a) => a.Timestamp, candleSeries(trace.DataRef, data)):map((a) => a.Timestamp, lineSeries(trace.DataRef, data));
+}
 function objectNumber(name, value){
   const o=objectField(name, value);
   return o==null?null:tryNumber(o.$0);
@@ -10892,20 +11039,24 @@ function objectNumber(name, value){
 function objectField(name, value){
   return value.TryFind(name);
 }
-function pointMatchesTimestamp(timestamp, pointTimestamp, temporal){
-  let _1, _2;
+function tryCandleAt(timestamp, values){
+  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
+}
+function finalizedCursorMatch(timestamp, pointTimestamp, temporal){
   if(temporal!=null&&temporal.$==1){
-    const metadata=temporal.$0;
-    _2=metadata.Projection=="repeat-across-base-buckets"||metadata.Projection=="candle-span"?(_1=temporal.$0,0):temporal.$0.Projection=="step-after-close"?(_1=temporal.$0,1):2;
+    if(!finalizedTemporal(temporal.$0))return false;
+    else {
+      const metadata=temporal.$0;
+      return metadata.Projection=="repeat-across-base-buckets"||metadata.Projection=="candle-span"?timestampInInterval(timestamp, temporal.$0):temporal.$0.Projection=="step-after-close"?availableAtOrAfter(timestamp, temporal.$0):pointTimestamp==timestamp;
+    }
   }
-  else _2=2;
-  switch(_2){
-    case 0:
-      return timestampInInterval(timestamp, _1);
-    case 1:
-      return availableAtOrAfter(timestamp, _1);
-    case 2:
-      return pointTimestamp==timestamp;
+  else return pointTimestamp==timestamp;
+}
+function finalizedAsOf(timestamp, temporal){
+  if(temporal==null)return false;
+  else {
+    const metadata=temporal.$0;
+    return finalizedTemporal(metadata)&&availableAtOrAfter(timestamp, metadata);
   }
 }
 function parseLine(value){
@@ -10921,11 +11072,14 @@ function parseLine(value){
     const _2=o_2==null?objectText("t", item):(o_2.$0,o_2);
     const _3=objectNumber("v", item);
     return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_1=[_3.$0, _2.$0],true))?Some({
-      Timestamp:_1[1],
-      Value:_1[0],
+      Timestamp:_1[1], 
+      Value:_1[0], 
       Temporal:temporal
     }):null;
   }
+}
+function tryLineAt(timestamp, values){
+  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
 }
 function candleSlotRange(referenceTimestamps, point){
   let _1;
@@ -10968,6 +11122,25 @@ function pointPayload_1(value){
   const m=tryTemporalPoint(value);
   return m==null?[null, Some(value)]:[Some(m.$0[0]), m.$0[1]];
 }
+function pointMatchesTimestamp(timestamp, pointTimestamp, temporal){
+  let _1, _2;
+  if(temporal!=null&&temporal.$==1){
+    const metadata=temporal.$0;
+    _2=metadata.Projection=="repeat-across-base-buckets"||metadata.Projection=="candle-span"?(_1=temporal.$0,0):temporal.$0.Projection=="step-after-close"?(_1=temporal.$0,1):2;
+  }
+  else _2=2;
+  switch(_2){
+    case 0:
+      return timestampInInterval(timestamp, _1);
+    case 1:
+      return availableAtOrAfter(timestamp, _1);
+    case 2:
+      return pointTimestamp==timestamp;
+  }
+}
+function finalizedTemporal(metadata){
+  return Trim(metadata.Finality).toLowerCase()=="final";
+}
 function timestampInInterval(timestamp, metadata){
   return Compare(timestamp, metadata.IntervalStartUtc)>=0&&Compare(timestamp, metadata.IntervalEndUtc)<0;
 }
@@ -11007,14 +11180,14 @@ function tryTemporalPoint(value){
       const _9=requiredObjectText("projection", fields);
       if(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _9.$0, _4.$0, _3.$0],true)))))))){
         let _10={
-          SourceIntervalId:_1[6],
-          ScaleKey:_1[5],
-          IntervalStartUtc:_1[2],
-          IntervalEndUtc:_1[1],
-          ObservedThroughUtc:_1[3],
-          AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
-          Finality:_1[0],
-          Projection:_1[4],
+          SourceIntervalId:_1[6], 
+          ScaleKey:_1[5], 
+          IntervalStartUtc:_1[2], 
+          IntervalEndUtc:_1[1], 
+          ObservedThroughUtc:_1[3], 
+          AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
+          Finality:_1[0], 
+          Projection:_1[4], 
           Quality:requiredObjectText("quality", fields)
         };
         const m=fields.TryFind("value");
@@ -11117,9 +11290,9 @@ let _c_5=Lazy((_i) => class $StartupCode_Renderer {
   static defaultOptions;
   static {
     this.defaultOptions={
-      MinimumVisibleBars:12,
-      DefaultVisibleBars:48,
-      MaximumVisibleBars:2000,
+      MinimumVisibleBars:12, 
+      DefaultVisibleBars:48, 
+      MaximumVisibleBars:2000, 
       EditorSchemas:[]
     };
   }
@@ -11201,31 +11374,31 @@ function Forever(Item){
 }
 function Ready(Item1, Item2){
   return{
-    $:2,
-    $0:Item1,
+    $:2, 
+    $0:Item1, 
     $1:Item2
   };
 }
 function Waiting(Item1, Item2){
   return{
-    $:3,
-    $0:Item1,
+    $:3, 
+    $0:Item1, 
     $1:Item2
   };
 }
 function New_44(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1,
-    Left:Left,
-    Right:Right,
-    Height:Height,
+    Node:Node_1, 
+    Left:Left, 
+    Right:Right, 
+    Height:Height, 
     Count:Count
   };
 }
 function New_45(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem,
-    DynFlags:DynFlags,
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -11272,8 +11445,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2,
-    $0:x,
+    $:2, 
+    $0:x, 
     $1:y
   };
 }
@@ -11311,10 +11484,10 @@ function fromSeq(s){
 }
 function New_46(path, kind, textValue, numberValue, boolValue){
   return{
-    path:path,
-    kind:kind,
-    textValue:textValue,
-    numberValue:numberValue,
+    path:path, 
+    kind:kind, 
+    textValue:textValue, 
+    numberValue:numberValue, 
     boolValue:boolValue
   };
 }
@@ -11358,9 +11531,9 @@ function fromValue(value){
       const revision_1=_2[2];
       const templateKey=_2[3];
       return Bind_2((decodedFields) => validateSchema(limits(), {
-        TemplateKey:templateKey,
-        DisplayName:displayName,
-        SchemaRevision:BigInt(Math.trunc(revision_1)),
+        TemplateKey:templateKey, 
+        DisplayName:displayName, 
+        SchemaRevision:BigInt(Math.trunc(revision_1)), 
         Fields:decodedFields
       }), sequence(mapi((_7, _8) => fieldFromValue("schema.fields["+String(_7)+"]", _8), nonNull(_2[1]))));
     }
@@ -11381,10 +11554,10 @@ function fieldFromValue(field_1, value){
       const label=_1[2];
       const required=_1[3];
       return Map_2((decodedKind) =>({
-        Key:key,
-        Label:label,
-        Kind:decodedKind,
-        Required:required,
+        Key:key, 
+        Label:label, 
+        Kind:decodedKind, 
+        Required:required, 
         DefaultValue:values.TryFind("defaultValue")
       }), kindFromValue(field_1+".kind", _1[1]));
     }
@@ -11415,8 +11588,8 @@ function kindFromValue(field_1, value){
         switch(_2.$==1?_3.$==1?(_1=[_2.$0, _3.$0],2):(_1=_2.$0,1):_3.$==1?(_1=_3.$0,1):(_1=[_3.$0, _2.$0],0)){
           case 0:
             return Ok({
-              $:1,
-              $0:_1[1],
+              $:1, 
+              $0:_1[1], 
               $1:_1[0]
             });
           case 1:
@@ -11432,8 +11605,8 @@ function kindFromValue(field_1, value){
         switch(_5.$==1?_6.$==1?(_4=[_5.$0, _6.$0],2):(_4=_5.$0,1):_6.$==1?(_4=_6.$0,1):(_4=[_6.$0, _5.$0],0)){
           case 0:
             return Ok({
-              $:2,
-              $0:_4[1],
+              $:2, 
+              $0:_4[1], 
               $1:_4[0]
             });
           case 1:
@@ -11466,9 +11639,9 @@ function kindFromValue(field_1, value){
           }
           else _9=(_10=m_4,false);
           return _9?Ok({
-            $:6,
-            $0:_10[0],
-            $1:_10[2],
+            $:6, 
+            $0:_10[0], 
+            $1:_10[2], 
             $2:_10[1]
           }):Error_1(ofSeq_1(delay(() => {
             const c_3=_10[0];
@@ -11543,8 +11716,8 @@ function choiceFromValue(field_1, value){
     const _3=values.TryFind("label");
     const _4=values.TryFind("value");
     return _2!=null&&_2.$==1&&(_2.$0.$==3&&(_3!=null&&_3.$==1&&(_3.$0.$==3&&(_4!=null&&_4.$==1&&(_1=[_4.$0, _2.$0.$0, _3.$0.$0],true)))))?Ok({
-      Key:_1[1],
-      Label:_1[2],
+      Key:_1[1], 
+      Label:_1[2], 
       Value:_1[0]
     }):error("editor-schema-choice", field_1, "Editor choice requires key, label and value.");
   }
@@ -11586,9 +11759,9 @@ let _c_7=Lazy((_i) => class $StartupCode_EditorAction {
   static limits;
   static {
     this.limits={
-      MaxSchemaDepth:8,
-      MaxFields:128,
-      MaxChoicesPerField:128,
+      MaxSchemaDepth:8, 
+      MaxFields:128, 
+      MaxChoicesPerField:128, 
       MaxListItems:128
     };
     this.Protocol="ptcs-dynamic-action.v1";
@@ -11634,8 +11807,8 @@ class FSharpSet extends Object_1 {
 }
 function error_1(code, field_1, message){
   return{
-    Code:code,
-    Field:field_1,
+    Code:code, 
+    Field:field_1, 
     Message:message
   };
 }
@@ -11724,8 +11897,8 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_1(Updates_1, {
-      c:Current,
-      s:Snap,
+      c:Current, 
+      s:Snap, 
       v:VarView
     });
   }
@@ -12151,8 +12324,8 @@ class CheckedInput {
   }
   static Valid(value, inputText_1){
     return Create_1(CheckedInput, {
-      $:0,
-      $0:value,
+      $:0, 
+      $0:value, 
       $1:inputText_1
     });
   }
@@ -12289,8 +12462,8 @@ let _c_12=Lazy((_i) => class $StartupCode_AppendList {
 });
 function New_49(created, evalOrVal, force){
   return{
-    c:created,
-    v:evalOrVal,
+    c:created, 
+    v:evalOrVal, 
     f:force
   };
 }

@@ -148,6 +148,7 @@ type TaWorkspaceDocument =
       RowsRef: string
       StatusRef: string
       SharedTimeAxis: bool
+      BaseRowId: string option
       Rows: TaRowSpec array
       EditorSchemas: DynamicTemplateSchema array
       AllowedActions: string array
@@ -211,6 +212,16 @@ type TaQueryChange =
       ToUtcExclusive: string option
       IncludePartial: bool option }
 
+type SharedCursorChange =
+    { BaseRowId: string
+      EventTimeUtc: string }
+
+type VisibleRangeChange =
+    { BaseRowId: string
+      StartEventTimeUtc: string
+      EndEventTimeExclusiveUtc: string
+      MaximumBasePoints: int }
+
 [<RequireQualifiedAccess>]
 type EditorScalarValue =
     | Text of string
@@ -229,6 +240,8 @@ type SduiAction =
     | ApplyTemplate of CanvasInstanceId * rowId: string option * templateKey: string * values: EditorInputValue array
     | RemoveTaRow of CanvasInstanceId * rowId: string
     | ChangeTaQuery of CanvasInstanceId * TaQueryChange
+    | SharedCursorChanged of CanvasInstanceId * SharedCursorChange
+    | VisibleRangeChanged of CanvasInstanceId * VisibleRangeChange
     | PollDelta of CanvasInstanceId * afterDataRevision: int64
     | RequestFullSnapshot of CanvasInstanceId * reasonCode: string
 
@@ -267,6 +280,9 @@ type DynamicRuntimeLimits =
 module DynamicRuntimeDefaults =
     [<Literal>]
     let protocol = "sdui-runtime.v1"
+
+    [<Literal>]
+    let MaximumVisibleRangeBasePoints = 4000
 
     let limits =
         { MaxRowsPerCanvas = 8
