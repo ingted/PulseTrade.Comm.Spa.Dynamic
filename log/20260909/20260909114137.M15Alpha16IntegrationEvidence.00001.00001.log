@@ -11,3 +11,5 @@
 - 11:43 Daedalus M13 fixed-history gate：GREEN。真MDCQ為3,820 committed bars、1/5/30/60K、76 TA series，stderr為空。
 - 11:44 Playwright MCP 390x844複驗：Dynamic canvas寬度可收斂至viewport；SPAA top form固定七欄造成右側欄位與Run按鈕溢出。根因與位置已透過Comm交付Daedalus。
 - 11:45 同步WBS/Test/Verification/DevLog；DYN-TA-017為95%，保留M13 iframe、行動版top-form與OPEN_END bootstrap ACK為未完成gate。
+- 11:49 M13 F# Playwright真DIB gate在iframe前Fail：`SDUI-M13-MDCQ-HISTORY-LIVE`。
+- 11:52 MdcQuote EsK direct gate確認相同區間range回`bar-window-limit-exceeded / fixed read cut unavailable`，history-live 30秒無bootstrap。M13 realtime start仍固定2026-07-07；另有單一StartUtc無法兼顧1K cap與60K SMA233 warm-up的contract blocker，已交Daedalus/MdcQuoteAgent決策。

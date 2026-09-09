@@ -1235,3 +1235,4 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - M15 exact pin已更新為Interactive.Extension `0.1.0-alpha16`；`dotnet dib`實際載入alpha16 assembly，FloatingPoint canonical series、time-keyed sequence、NestedMap、Deedle Frame、date-scale validation、shared temporal axis及typed multi-scale TA chart全數GREEN。真SPAA回2 frames／7 rows／4 axes，points=`3820,763,127,63`。
 - Daedalus M13 fixed-history production notebook gate以真MDCQ通過3,820 committed bars、1/5/30/60K與76 TA series，stderr為空。Playwright MCP另驗桌機shared hover／hide-show／console 0；行動版確認canvas正常而SPAA fixed-grid top form overflow，已精確回報owner。
 - OPEN_END adapter仍需保證bootstrap callback在initial frames被transport接受後才回`Ok`／ACK，並覆蓋sink reject、取消、bootstrap前失敗與single-use continuation；本批不宣稱History-to-Live完成。
+- 後續執行M13真browser gate時，OPEN_END在iframe建立前失敗。MdcQuote EsK直測證明2026-07-07到current cut超過1K每尺度4,000筆上限；M13 realtime start沿用fixed fixture日期是立即根因。跨尺度長週期warm-up仍需provider owner決定per-scale range/tail policy，不能只縮短demo日期後宣稱production完成。
