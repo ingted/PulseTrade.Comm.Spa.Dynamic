@@ -1260,3 +1260,4 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 ## 2026-09-09 - Browser cache semantic validation investigation
 
 - `log/20260909/20260909143300_issue_browser_cache_semantic_validation.hypothesis.md`記錄DYN-TA-018C的fail-closed缺口：browser read目前只做淺層decode，JSON合法但Document/Snapshot語意無效的entry仍可能被回報為Hit。後續實驗將以完整`RuntimeCache.validateEntry`作read gate，並補semantic-invalid IndexedDB record的F# Playwright回歸。
+- 第一個實驗因整個`RuntimeCache`進入WebSharper graph而觸發`TemporalAxisCodec`非JavaScript type的`WS9001`，已完整撤回。`log/20260909/20260909144000_issue_browser_cache_validation_boundary.hypothesis.md`改採窄邊界：抽出browser-safe entry validator，coverage derivation維持server-only。
