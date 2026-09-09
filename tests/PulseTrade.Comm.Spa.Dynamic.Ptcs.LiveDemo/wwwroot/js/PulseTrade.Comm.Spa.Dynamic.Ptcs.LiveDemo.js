@@ -1,6 +1,6 @@
 import Runtime from "./WebSharper.Core.JavaScript/Runtime.js"
 Runtime.ScriptBasePath="/Scripts/";
-import { MarkResizable, Create as Create_1, Lazy, GetOptional, SetOptional } from "./WebSharper.Core.JavaScript/Runtime.js"
+import { MarkResizable, Create as Create_2, Lazy, GetOptional, SetOptional } from "./WebSharper.Core.JavaScript/Runtime.js"
 function isIDisposable(x){
   return"Dispose"in x;
 }
@@ -51,6 +51,7 @@ function Main_1(){
         setMain(p[0]);
         if(path=="/sets")_1=mountSets(page);
         else if(path=="/actors")_1=mountActors(page);
+        else if(path=="/management")_1=mountManagement(page);
         else if(path=="/chat")_1=mountChat(page);
         else {
           const m=findAppendPage(path, pages_1);
@@ -85,7 +86,7 @@ function Main_1(){
       if(mounted){
         const nav=doc().getElementById("ptc-nav");
         if(!(nav==null))renderNav(nav, path, arrayOrEmpty(data_1.pages));
-        if(path!="/sets"&&path!="/actors"&&path!="/chat"){
+        if(path!="/sets"&&path!="/actors"&&path!="/management"&&path!="/chat"){
           const _2=findAppendPage(path, arrayOrEmpty(data_1.pages));
           if(mountedPageElement!=null&&mountedPageElement.$==1){
             if(_2==null){
@@ -1705,16 +1706,19 @@ function shell(activePath, pages){
   };
   navJumpGo.addEventListener("click", activateSelectedTab);
   navJumpSelect.addEventListener("keydown", (event) => event.key=="Enter"?(event.preventDefault(),activateSelectedTab()):null);
-  append(brandCluster, [element("div", "brand", "PTC.Comm SPA"), registryHealth]);
+  append(brandCluster, [element("div", "brand", currentProductLabel()), registryHealth]);
   renderNav(nav, activePath, pages);
   renderTabJumpOptions(navJumpSelect, activePath, staticNavigationDestinations().concat(map((page_1) =>[pagePath(page_1), pageTitle(page_1)], arrayOrEmpty(pages))));
+  const userActions=element("div", "topbar-user-actions", null);
+  const viewAs=renderViewAsControl();
   const x=element("a", "logout", "Logout");
   const logout=setHref(currentLogoutPath(), x);
   const page=element("main", "page", null);
   append(navViewport, [nav]);
   append(navJump, [navJumpSelect, navJumpGo]);
   append(navShell, [navJump, navViewport, navBack, navForward]);
-  append(topRow, [brandCluster, logout]);
+  append(userActions, [viewAs, logout]);
+  append(topRow, [brandCluster, userActions]);
   append(top, [topRow, create_1, navShell]);
   append(app, [top, page]);
   return[app, page];
@@ -2188,6 +2192,14 @@ function mountActors(page){
   const collapsedTreeNodes=new HashSet("New_3");
   const cacheKey_1=cacheKey("actors-snapshot", FSharpList.Empty);
   const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
+  const actorStatusLooksOffline=(value) => {
+    const text_1=Trim(asText(value)).toLowerCase();
+    return text_1.indexOf("offline")!=-1||text_1.indexOf("unreachable")!=-1||text_1.indexOf("stale")!=-1||text_1.indexOf("terminated")!=-1||text_1.indexOf("stopped")!=-1||text_1.indexOf("dead")!=-1||text_1.indexOf("failed")!=-1;
+  };
+  const actorTagValue=(prefix, tags) => tryPick((tag) => {
+    const value=asText(tag);
+    return StartsWith(value, prefix)?Some(value.substring(prefix.length)):null;
+  }, arrayOrEmpty(tags));
   const actorRegistryStreamKey=() => New_6("__actor-registry", "actor-registry", "__actors", ["__actors"]);
   const isAkkaAddress=(value) => {
     const text_1=asText(value).toLowerCase();
@@ -2412,7 +2424,7 @@ function mountActors(page){
         const wire=json(event.payload);
         x=wire==null||asText(wire.schema)!="ptc.comm.spa.actor.registration.v1"?null:Some(wire);
       }
-      catch(m_1){
+      catch(m){
         x=null;
       }
       if(x==null)void 0;
@@ -2424,24 +2436,32 @@ function mountActors(page){
         if(!isBlank(nodeId)&&!isBlank(actorId)){
           const tags=arrayOrEmpty(_1.tags);
           const roles=arrayOrEmpty(_1.roles);
-          const actor=New_25(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty(_1.routees));
-          const m=tryFind((node) => sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes));
-          if(m==null)updatedNode=New_26(nodeId, nodeAddress, "up", roles, [actor]);
-          else {
-            const existing=m.$0;
-            const actors=sortBy((row) => asText(row.actorId), filter_1((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors)).concat([actor]));
-            updatedNode=New_26(existing.nodeId, isBlank(nodeAddress)?asText(existing.nodeAddress):nodeAddress, textOr("up", existing.status), length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
+          const incomingGeneration=actorTagValue("generation:", tags);
+          const incomingEventKind=actorTagValue("event:", tags);
+          const existingNode=tryFind((node) => sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes));
+          const o=existingNode==null?null:tryFind((actor_1) => sameText(actor_1.actorId, actorId), arrayOrEmpty(existingNode.$0.actors));
+          const _2=o==null?null:actorTagValue("generation:", o.$0.keys);
+          if(_2!=null&&_2.$==1?incomingGeneration!=null&&incomingGeneration.$==1?!sameText(_2.$0, incomingGeneration.$0)?(_2.$0,incomingGeneration.$0,incomingEventKind==null?false:sameText(incomingEventKind.$0, "Registered")):true:true:true){
+            const actor=New_26(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty(_1.routees));
+            if(existingNode==null)updatedNode=New_25(nodeId, nodeAddress, actorStatusLooksOffline(actor.status)?"offline":"up", roles, actorStatusLooksOffline(actor.status)?[]:[actor]);
+            else {
+              const existing=existingNode.$0;
+              const retainedActors=filter_1((row) =>!sameText(row.actorId, actorId), arrayOrEmpty(existing.actors));
+              const actors=sortBy((row) => asText(row.actorId), actorStatusLooksOffline(actor.status)?retainedActors:retainedActors.concat([actor]));
+              updatedNode=New_25(existing.nodeId, isBlank(nodeAddress)?asText(existing.nodeAddress):nodeAddress, length(actors)===0?"offline":"up", length(roles)===0?arrayOrEmpty(existing.roles):roles, actors);
+            }
+            const nodes_1=sortBy((node) => asText(node.nodeId), length(arrayOrEmpty(updatedNode.actors))===0?filter_1((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)):filter_1((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
+            let _3=length(nodes_1);
+            let _4=fold((_6, _7) => _6+_7, 0, map((node) => arrayOrEmpty(node.actors).length, nodes_1));
+            const a=actorSnapshot.maxSequence;
+            const b=event.sequence;
+            let _5=Compare(a, b)===1?a:b;
+            actorSnapshot=New_24(_3, _4, _5, nodes_1);
+            writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
+            applySnapshot("synced", actorSnapshot);
+            setStatus(status, "Synced actor "+actorId);
           }
-          const nodes_1=sortBy((node) => asText(node.nodeId), filter_1((node) =>!sameText(node.nodeId, nodeId), arrayOrEmpty(actorSnapshot.nodes)).concat([updatedNode]));
-          let _2=length(nodes_1);
-          let _3=fold((_5, _6) => _5+_6, 0, map((node) => arrayOrEmpty(node.actors).length, nodes_1));
-          const a=actorSnapshot.maxSequence;
-          const b=event.sequence;
-          let _4=Compare(a, b)===1?a:b;
-          actorSnapshot=New_24(_2, _3, _4, nodes_1);
-          writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
-          applySnapshot("synced", actorSnapshot);
-          setStatus(status, "Synced actor "+actorId);
+          else void 0;
         }
         else void 0;
       }
@@ -2478,6 +2498,173 @@ function mountActors(page){
   load();
   subscribeRegistry();
 }
+function mountManagement(page){
+  let allPages, allParticipants, pageIndex, participantPageIndex, pageSize, participantPageSize;
+  page.className="page management-page";
+  const pageRows=Create((row) => asText(row.pageId)+"\u001f"+asText(row.tabId), FSharpList.Empty);
+  const participantRows=Create((row) => asText(row.participantId), FSharpList.Empty);
+  allPages=[];
+  allParticipants=[];
+  pageIndex=0;
+  participantPageIndex=0;
+  pageSize=10;
+  participantPageSize=10;
+  const heading=element("div", "management-head", null);
+  const title=element("div", "", null);
+  append(title, [element("h1", "", "Management")]);
+  const reload=setTestId("management-reload", button("", "Reload"));
+  append(heading, [title, reload]);
+  const pageSection=setTestId("management-pages", element("section", "management-section", null));
+  const pageSectionHead=element("div", "management-section-head", null);
+  const pageCount=setTestId("management-pages-count", element("span", "state", ""));
+  append(pageSectionHead, [element("h2", "", "Tab pages"), pageCount]);
+  const pageTableHostId="management-pages-grid";
+  const pageTableHost=setId(pageTableHostId, element("div", "management-table-viewport", null));
+  const pagePager=element("div", "management-pager", null);
+  const pagePrevious=setTestId("management-pages-previous", button("", "Previous"));
+  const pageNext=setTestId("management-pages-next", button("", "Next"));
+  const pageSizeSelect=setTestId("management-pages-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
+  const pagePagerStatus=setTestId("management-pages-page", element("span", "state", ""));
+  append(pagePager, [pagePrevious, pageNext, element("span", "management-page-size-label", "Rows"), pageSizeSelect, pagePagerStatus]);
+  append(pageSection, [pageSectionHead, pageTableHost, pagePager]);
+  const participantSection=setTestId("management-participants", element("section", "management-section", null));
+  const participantSectionHead=element("div", "management-section-head", null);
+  const participantCount=setTestId("management-participants-count", element("span", "state", ""));
+  append(participantSectionHead, [element("h2", "", "Participants"), participantCount]);
+  const participantTableHostId="management-participants-grid";
+  const participantTableHost=setId(participantTableHostId, element("div", "management-table-viewport", null));
+  const participantPager=element("div", "management-pager", null);
+  const participantPrevious=setTestId("management-participants-previous", button("", "Previous"));
+  const participantNext=setTestId("management-participants-next", button("", "Next"));
+  const participantSizeSelect=setTestId("management-participants-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
+  const participantPagerStatus=setTestId("management-participants-page", element("span", "state", ""));
+  append(participantPager, [participantPrevious, participantNext, element("span", "management-page-size-label", "Rows"), participantSizeSelect, participantPagerStatus]);
+  append(participantSection, [participantSectionHead, participantTableHost, participantPager]);
+  append(page, [heading, pageSection, participantSection]);
+  const pageCountFor=(total, size) => total===0?1:size===0?1:toInt(Math.ceil(total/size));
+  const sliceRows=(index, size, rows) => {
+    if(size===0)return rows;
+    else {
+      const a=length(rows);
+      const b=index*size;
+      let _1=Compare(a, b)===-1?a:b;
+      let _2=skip(_1, rows);
+      return _2.slice(0, size);
+    }
+  };
+  const applyPageProjection=() => {
+    const pages=pageCountFor(length(allPages), pageSize);
+    const a=0;
+    const a_1=pages-1;
+    const b=Compare(a_1, pageIndex)===-1?a_1:pageIndex;
+    pageIndex=Compare(a, b)===1?a:b;
+    pageRows.Set(sliceRows(pageIndex, pageSize, allPages));
+    pageCount.textContent=String(length(allPages))+" page lineage(s)";
+    pagePagerStatus.textContent="Page "+String(pageIndex+1)+" / "+String(pages);
+    setHidden(pageIndex===0, pagePrevious);
+    setHidden(pageIndex>=pages-1, pageNext);
+  };
+  const applyParticipantProjection=() => {
+    const pages=pageCountFor(length(allParticipants), participantPageSize);
+    const a=0;
+    const a_1=pages-1;
+    const b=Compare(a_1, participantPageIndex)===-1?a_1:participantPageIndex;
+    participantPageIndex=Compare(a, b)===1?a:b;
+    participantRows.Set(sliceRows(participantPageIndex, participantPageSize, allParticipants));
+    participantCount.textContent=String(length(allParticipants))+" participant(s)";
+    participantPagerStatus.textContent="Page "+String(participantPageIndex+1)+" / "+String(pages);
+    setHidden(participantPageIndex===0, participantPrevious);
+    setHidden(participantPageIndex>=pages-1, participantNext);
+  };
+  function loadPages(){
+    setStatus(pageCount, "Loading...");
+    getJson("/management/api/pages", (reply) => {
+      allPages=arrayOrEmpty(reply.pages);
+      applyPageProjection();
+    }, (error_2) => {
+      setStatus(pageCount, "Load failed: "+error_2);
+    });
+  }
+  function mutatePage(endpoint){
+    return(action) =>(row) =>!EndsWith(endpoint, "/delete")||globalThis.confirm("Delete tab page '"+textOr(row.pageId, row.title)+"'? This cannot be undone for this page lineage.")?(setStatus(pageCount, action+" "+row.pageId+"..."),postJson(endpoint, New_27(row.pageId, row.tabId), () => {
+      loadPages();
+    }, (error_2) => {
+      setStatus(pageCount, action+" failed: "+error_2);
+    })):null;
+  }
+  function loadParticipants(){
+    setStatus(participantCount, "Loading...");
+    getJson("/management/api/participants", (reply) => {
+      allParticipants=arrayOrEmpty(reply.participants);
+      applyParticipantProjection();
+    }, (error_2) => {
+      setStatus(participantCount, "Load failed: "+error_2);
+    });
+  }
+  function mutateParticipant(endpoint){
+    return(action) =>(row) =>!EndsWith(endpoint, "/delete")||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson(endpoint, New_28(row.participantId), () => {
+      loadParticipants();
+    }, (error_2) => {
+      setStatus(participantCount, action+" failed: "+error_2);
+    })):null;
+  }
+  const pageTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-pages-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [], [Doc.TextNode("Tab page")]), Doc.Element("th", [], [Doc.TextNode("Created")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
+    const visibilityLabel=row.visible?"Hide":"Show";
+    const visibilityEndpoint=row.visible?"/management/api/pages/hide":"/management/api/pages/show";
+    const resourceAllows=(action) => pageAclAllows(row.pageId, action)||systemAclAllows("*", action);
+    const visibilityButton=resourceAllows(row.visible?"ptcs.management.page.hide":"ptcs.management.page.show")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "management-page-visibility-"+row.pageId), Handler("click", () =>() =>((mutatePage(visibilityEndpoint))(visibilityLabel))(row))], [Doc.TextNode(visibilityLabel)]):Doc.Empty;
+    const deleteButton=resourceAllows("ptcs.management.page.delete")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("class", "management-delete"), Attr.Create("data-testid", "management-page-delete-"+row.pageId), Handler("click", () =>() =>((mutatePage("/management/api/pages/delete"))("Delete"))(row))], [Doc.TextNode("Delete")]):Doc.Empty;
+    return Doc.Element("tr", [Attr.Create("data-page-id", row.pageId), Attr.Create("data-visible", String(row.visible).toLowerCase())], [Doc.Element("td", [Attr.Create("data-label", "Tab page")], [Doc.Element("strong", [], [Doc.TextNode(textOr(row.pageId, row.title))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.pageId)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode("tab: "+row.tabId)])]), Doc.Element("td", [Attr.Create("data-label", "Created")], [Doc.TextNode(row.createdAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [visibilityButton, deleteButton])]);
+  }, pageRows.v)])]);
+  const participantTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-participants-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [], [Doc.TextNode("Participant")]), Doc.Element("th", [], [Doc.TextNode("Registered")]), Doc.Element("th", [], [Doc.TextNode("Last seen")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
+    const visibilityLabel=row.visible?"Hide":"Show";
+    const visibilityEndpoint=row.visible?"/management/api/participants/hide":"/management/api/participants/show";
+    const resourceAllows=(action) => aclAllows(action, "ptcs.participant", row.participantId)||systemAclAllows("*", action);
+    const visibilityButton=resourceAllows(row.visible?"ptcs.management.participant.hide":"ptcs.management.participant.show")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "management-participant-visibility-"+row.participantId), Handler("click", () =>() =>((mutateParticipant(visibilityEndpoint))(visibilityLabel))(row))], [Doc.TextNode(visibilityLabel)]):Doc.Empty;
+    const deleteButton=resourceAllows("ptcs.management.participant.delete")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("class", "management-delete"), Attr.Create("data-testid", "management-participant-delete-"+row.participantId), Handler("click", () =>() =>((mutateParticipant("/management/api/participants/delete"))("Delete"))(row))], [Doc.TextNode("Delete")]):Doc.Empty;
+    return Doc.Element("tr", [Attr.Create("data-participant-id", row.participantId), Attr.Create("data-visible", String(row.visible).toLowerCase())], [Doc.Element("td", [Attr.Create("data-label", "Participant")], [Doc.Element("strong", [], [Doc.TextNode(textOr(row.participantId, row.displayName))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.participantId)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.kind+" / "+row.status)])]), Doc.Element("td", [Attr.Create("data-label", "Registered")], [Doc.TextNode(row.registeredAt)]), Doc.Element("td", [Attr.Create("data-label", "Last seen")], [Doc.TextNode(row.lastSeenAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [visibilityButton, deleteButton])]);
+  }, participantRows.v)])]);
+  LoadLocalTemplates("");
+  Doc.RunById(pageTableHostId, pageTable);
+  LoadLocalTemplates("");
+  Doc.RunById(participantTableHostId, participantTable);
+  pagePrevious.addEventListener("click", () => {
+    const a=0;
+    const b=pageIndex-1;
+    pageIndex=Compare(a, b)===1?a:b;
+    return applyPageProjection();
+  });
+  pageNext.addEventListener("click", () => {
+    pageIndex=pageIndex+1;
+    return applyPageProjection();
+  });
+  pageSizeSelect.addEventListener("change", () => {
+    pageSize=toInt(Number(pageSizeSelect.value));
+    pageIndex=0;
+    return applyPageProjection();
+  });
+  participantPrevious.addEventListener("click", () => {
+    const a=0;
+    const b=participantPageIndex-1;
+    participantPageIndex=Compare(a, b)===1?a:b;
+    return applyParticipantProjection();
+  });
+  participantNext.addEventListener("click", () => {
+    participantPageIndex=participantPageIndex+1;
+    return applyParticipantProjection();
+  });
+  participantSizeSelect.addEventListener("change", () => {
+    participantPageSize=toInt(Number(participantSizeSelect.value));
+    participantPageIndex=0;
+    return applyParticipantProjection();
+  });
+  reload.addEventListener("click", () => {
+    loadPages();
+    return loadParticipants();
+  });
+  loadPages();
+  loadParticipants();
+}
 function mountChat(page){
   let selected, cursor, polling, participants, selectedThreadMessages, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
   selected="";
@@ -2510,7 +2697,10 @@ function mountChat(page){
   const draft=setTestId("chat-draft", textarea("draft", "Type a message"));
   const actions=element("div", "actions", null);
   const send=setTestId("chat-send", button("primary", "Send"));
-  const participantsCacheKey=cacheKey("chat-agents", ofArray([participantId]));
+  const readOnlyView=currentBrowserUser().viewAsActive;
+  setHidden(readOnlyView, composer);
+  if(readOnlyView)work.className="work view-as-read-only";
+  const participantsCacheKey=cacheKey("chat-participants-v2", ofArray([participantId]));
   const threadCacheKey=(peerId) => cacheKey("chat-thread", ofArray([participantId, peerId]));
   append(titleBox, [element("label", "", "To"), toTitle]);
   append(workHead, [titleBox, state]);
@@ -2596,9 +2786,9 @@ function mountChat(page){
         refreshSelectedThread?(pollThread(true),ensureSelectedChatSubscription(),replayPendingChatCommands()):void 0;
       }
     });
-    getJson("/chat/api/agents", (data) => {
+    getJson("/chat/api/participants", (data) => {
       participants=arrayOrEmpty(data.participants);
-      writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-agents");
+      writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-participants");
       const selectedWasBlank=isBlank(selected);
       if(selectedWasBlank&&length(participants)>0)selected=get(participants, 0).participantId;
       renderParticipants();
@@ -2643,7 +2833,7 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_28(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_31(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -2716,7 +2906,7 @@ function mountChat(page){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_28(merged, message.messageId), sequence_1>0n?sequence_1:maxMessageSequence(merged), length(merged), "chat-thread");
+        writeSnapshotWithWatermark(cacheKey_1, New_31(merged, message.messageId), sequence_1>0n?sequence_1:maxMessageSequence(merged), length(merged), "chat-thread");
       });
     }
     else return null;
@@ -2748,7 +2938,7 @@ function mountChat(page){
               o=message==null||isBlank(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_27(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
+              o=Some(New_30(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -2830,9 +3020,9 @@ function mountChat(page){
     if(isBlank(selected))setStatus(state, "Select a participant first");
     else if(isBlank(body))setStatus(state, "Message is empty");
     else {
-      const request=New_31(participantId, selected, body, ["web-chat"]);
+      const request=New_34(participantId, selected, body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_30("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_33("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -2845,7 +3035,7 @@ function mountChat(page){
     else if(globalThis.document.body==null)setStatus(state, "Document body is unavailable");
     else {
       try {
-        const rows=map((message) => New_32(asText(message.messageId), asText(message.fromId), asText(message.createdAtUtc), asText(message.body)), selectedThreadMessages);
+        const rows=map((message) => New_35(asText(message.messageId), asText(message.fromId), asText(message.createdAtUtc), asText(message.body)), selectedThreadMessages);
         const url=URL.createObjectURL(new Blob([concat_1("\n", map((v) => JSON.stringify(v), rows))], {type:"application/x-ndjson;charset=utf-8"}));
         const now=new Date();
         const twoDigits_1=(value) => value<10?"0"+String(value):String(value);
@@ -2876,7 +3066,7 @@ function mountChat(page){
   });
   draft.addEventListener("keydown", (event) => event.key=="Enter"&&!event.shiftKey?(event.preventDefault(),sendMessage()):null);
   globalThis.setInterval(() => pollThread(false), 2500);
-  globalThis.setInterval(() => loadParticipants(false), 2500);
+  globalThis.setInterval(() => loadParticipants(false), 30000);
   refreshChatPendingState();
   loadParticipants(true);
 }
@@ -2958,7 +3148,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_35(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_38(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank(request.userName)||isBlank(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -2988,7 +3178,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc().getElementById("ptcs-login-config");
-  return node==null||isBlank(node.textContent)?New_34("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank(node.textContent)?New_37("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank(value)?fallback:value;
@@ -3254,18 +3444,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    keyPlaceholder:String(_5||""),
-    defaultKey:String(_6||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    keyPlaceholder:String(_5||""), 
+    defaultKey:String(_6||""), 
     submitKey:(payload) => {
       _7(payload);
-    },
+    }, 
     cancelKey:() => {
       _8();
-    },
+    }, 
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -3349,26 +3539,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    selectedKeyId:String(_5||""),
-    selectedKeyJson:String(_6||""),
-    selectedKeys:keyParts.slice(),
-    keyParts:keyParts.slice(),
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    valuePlaceholder:String(_8||""),
-    valueText:String(_9||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    selectedKeyId:String(_5||""), 
+    selectedKeyJson:String(_6||""), 
+    selectedKeys:keyParts.slice(), 
+    keyParts:keyParts.slice(), 
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    valuePlaceholder:String(_8||""), 
+    valueText:String(_9||""), 
     submit:(payload) => {
       _10(payload);
-    },
+    }, 
     setValue:(payload) => {
       _11(payload);
-    },
-    composerMode:String(_12||"plain"),
+    }, 
+    composerMode:String(_12||"plain"), 
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -3439,7 +3629,7 @@ function renderAppendValue(definition, value){
   const head_2=element("div", "fcell-head", null);
   append(head_2, [element("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element("span", "muted wrap", asText(value.valueId)+" / "+asText(value.createdAtUtc))]);
   card.appendChild(head_2);
-  const presentationContext=New_37(asText(definition.pageId), asText(definition.tabId), asText(value.valueId), asText(value.createdAtUtc), mode, arrayOrEmpty(value.tags), asText(value.rawValue));
+  const presentationContext=New_39(asText(definition.pageId), asText(definition.tabId), asText(value.valueId), asText(value.createdAtUtc), mode, arrayOrEmpty(value.tags), asText(value.rawValue));
   const m_1=tryResolveReplyPresentation(presentationContext);
   if(m_1!=null&&m_1.$==1){
     const presentation=m_1.$0;
@@ -3608,7 +3798,7 @@ function renderAppendValue(definition, value){
   return card;
 }
 function staticNavigationDestinations(){
-  return _c_1.staticNavigationDestinations;
+  return filter_1((_1) => _1[0]!="/management"||systemAclAllows("*", "ptcs.management.read"), [["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"], ["/management", "Management"]]);
 }
 function setHref(href, node){
   node.setAttribute("href", href);
@@ -3688,9 +3878,62 @@ function setId(id, node){
   node.setAttribute("id", id);
   return node;
 }
+function currentProductLabel(){
+  const node=doc().getElementById("ptc-comm-product-label");
+  return node==null||isBlank(node.textContent)?"PTC.SPA":Trim(node.textContent);
+}
 function currentLogoutPath(){
   const path=currentBrowserUser().logoutPath;
   return isBlank(path)?"/chat/logout":path;
+}
+function renderViewAsControl(){
+  const user=currentBrowserUser();
+  const wrap=setTestId("view-as-control", element("div", "view-as-control", null));
+  const toggle=setTestId("view-as-toggle", button("view-as-toggle", user.viewAsActive?"View as: "+textOr(user.viewAsParticipantId, user.displayName):"View as"));
+  const panel=setHidden(true, setTestId("view-as-panel", element("div", "view-as-panel", null)));
+  const chooser=setTestId("view-as-select", select([]));
+  const apply=setTestId("view-as-apply", button("primary", "Apply"));
+  const cancel_1=setTestId("view-as-cancel", button("", "Cancel"));
+  const status=setTestId("view-as-status", element("span", "state view-as-status", ""));
+  toggle.addEventListener("click", () => {
+    const isHidden=panel.hasAttribute("hidden");
+    setHidden(!isHidden, panel);
+    return isHidden?(setStatus(status, "Loading participants..."),getJson("/management/api/view-as", (reply) => {
+      clear(chooser);
+      const own=doc().createElement("option");
+      own.setAttribute("value", "");
+      own.textContent="Own view ("+reply.actualParticipantId+")";
+      chooser.appendChild(own);
+      iter((participant) => {
+        const option=doc().createElement("option");
+        option.setAttribute("value", participant.participantId);
+        option.textContent=textOr(participant.participantId, participant.displayName)+" ("+participant.participantId+")";
+        chooser.appendChild(option);
+      }, arrayOrEmpty(reply.participants));
+      chooser.value=reply.viewAsParticipantId;
+      setStatus(status, "Read-only conversation view");
+    }, (error_2) => {
+      setStatus(status, "Unable to load participants: "+error_2);
+    })):null;
+  });
+  cancel_1.addEventListener("click", () => {
+    setHidden(true, panel);
+  });
+  apply.addEventListener("click", () => {
+    apply.setAttribute("disabled", "disabled");
+    return postJson("/management/api/view-as", New_40(asText(chooser.value)), () => {
+      globalThis.location.reload();
+    }, (error_2) => {
+      apply.removeAttribute("disabled");
+      setStatus(status, "View as failed: "+error_2);
+    });
+  });
+  const actions=element("div", "view-as-panel-actions", null);
+  append(actions, [cancel_1, apply]);
+  append(panel, [chooser, actions, status]);
+  append(wrap, [toggle, panel]);
+  setHidden(!user.authenticated||!systemAclAllows("*", "ptcs.management.view-as"), wrap);
+  return wrap;
 }
 function renderPageCreator(nav, activePath, pages){
   let candidatePageId, candidatesLoaded, replayingPendingPageRegistration;
@@ -3762,7 +4005,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_38(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_41(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson("/pages/api/register-page", request, (reply) => {
@@ -3889,6 +4132,21 @@ function statusDot(status){
   node.setAttribute("title", asText(status));
   return node;
 }
+function aclAllows(action, resourceKind, resourceId){
+  const m=tryAclCapabilityProvider(action, resourceKind, resourceId);
+  return m==null?aclAllowsFallback(action, resourceKind, resourceId):m.$0;
+}
+function systemAclAllows(resourceId, action){
+  return aclAllows(action, "ptcs.system", resourceId);
+}
+function currentBrowserUser(){
+  const userNode=doc().getElementById("ptc-comm-user");
+  if(userNode==null||isBlank(userNode.textContent))return New_29("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
+  else {
+    const user=json(userNode.textContent);
+    return user==null||isBlank(user.participantId)?New_29("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
+  }
+}
 function compactMessageId(value){
   const text_1=asText(value);
   return text_1.length<=32?text_1:StartsWith(text_1.toLowerCase(), "pending-command")?"pending-command:"+String(text_1.length):Substring(text_1, 0, 24)+"..."+text_1.substring(text_1.length-6);
@@ -3949,8 +4207,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"),
-      priority:Number(priority||0),
+      name:String(name||"unnamed"), 
+      priority:Number(priority||0), 
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -3994,10 +4252,6 @@ function field(labelText, inputId, control){
   append(wrap, [label, control]);
   return wrap;
 }
-function aclAllows(action, resourceKind, resourceId){
-  const m=tryAclCapabilityProvider(action, resourceKind, resourceId);
-  return m==null?aclAllowsFallback(action, resourceKind, resourceId):m.$0;
-}
 function findAppendPageShape(shape){
   const normalized=normalizeShapeText(shape);
   return tryFind((candidate) => normalizeShapeText(candidate.shape)==normalized, appendPageShapeRegistry());
@@ -4008,14 +4262,6 @@ function normalizeShapeText(value){
 }
 function hasTag(tag, tags){
   return exists((value) => asText(value).toLowerCase()==tag, arrayOrEmpty(tags));
-}
-function currentBrowserUser(){
-  const userNode=doc().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank(userNode.textContent))return New_36("user.web", "Web User", "", false, "anonymous", "/chat/logout");
-  else {
-    const user=json(userNode.textContent);
-    return user==null||isBlank(user.participantId)?New_36("user.web", "Web User", "", false, "anonymous", "/chat/logout"):user;
-  }
 }
 function replyPresentationDisposers(){
   return _c_1.replyPresentationDisposers;
@@ -4078,9 +4324,6 @@ function replyPresentationMode(identity){
 function appendPageShapeOptions(){
   return map((shape) =>[normalizeShapeText(shape.shape), textOr(normalizeShapeText(shape.shape), shape.label)], appendPageShapeRegistry());
 }
-function systemAclAllows(resourceId, action){
-  return aclAllows(action, "ptcs.system", resourceId);
-}
 function navigationPathForCreatedPage(page){
   const pageId=asText(page.pageId);
   const path=asText(page.path);
@@ -4089,16 +4332,6 @@ function navigationPathForCreatedPage(page){
 function isLive(status){
   const m=asText(status).toLowerCase();
   return m=="online"||(m=="running"||(m=="up"||m=="available"));
-}
-function tryParseSequence(prefix, value){
-  const text_1=asText(value);
-  if(isBlank(text_1)||!StartsWith(text_1, prefix))return 0n;
-  else try {
-    return BigInt(text_1.substring(prefix.length));
-  }
-  catch(m){
-    return 0n;
-  }
 }
 function tryAclCapabilityProvider(action, resourceKind, resourceId){
   const normalized=Trim(asText(((action_1, resourceKind_1, resourceId_1, snapshotJson) => {
@@ -4138,6 +4371,16 @@ function aclAllowsFallback(action, resourceKind, resourceId){
     }
   }
   else return true;
+}
+function tryParseSequence(prefix, value){
+  const text_1=asText(value);
+  if(isBlank(text_1)||!StartsWith(text_1, prefix))return 0n;
+  else try {
+    return BigInt(text_1.substring(prefix.length));
+  }
+  catch(m){
+    return 0n;
+  }
 }
 function appendPageShapeRegistry(){
   return distinctBy((shape) => normalizeShapeText(shape.shape), concat([builtInAppendPageShapes(), manifestAppendPageShapes(), runtimeAppendPageShapes()]));
@@ -4225,7 +4468,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label, badge, className){
-  return New_33(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_36(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc().getElementById("ptc-comm-client-extensions");
@@ -4235,8 +4478,15 @@ function serverClientExtensions(){
     return o==null?[]:o.$0;
   }
 }
+function toInt(x){
+  const u=toUInt(x);
+  return u>2147483647?u-4294967296:u;
+}
 function FailWith(msg){
   throw new Error(msg);
+}
+function toUInt(x){
+  return(x<0?Math.ceil(x):Math.floor(x))>>>0;
 }
 function KeyValue(kvp){
   return[kvp.K, kvp.V];
@@ -4244,13 +4494,6 @@ function KeyValue(kvp){
 function range(min_1, max_2){
   const count=1+max_2-min_1;
   return count<=0?[]:init_1(count, (x) => x+min_1);
-}
-function toInt(x){
-  const u=toUInt(x);
-  return u>2147483647?u-4294967296:u;
-}
-function toUInt(x){
-  return(x<0?Math.ceil(x):Math.floor(x))>>>0;
 }
 function Equals(a, b){
   let _1;
@@ -4415,14 +4658,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
   let socket, requestSequence, lifecycle, pollTimer, timeoutTimer, reconnectTimer, jsonExportRequested, jsonExportBootstrapAttempts, jsonExportBootstrapInFlight, jsonExportInFlight, actionRequestOverride, pendingActionCompletion;
   const identity={DocumentId:{$:0, $0:"pending-"+channelId}, CanvasInstanceId:{$:0, $0:canvasId}};
   const runtimeState=_c_3.Create_1({
-    Identity:identity,
-    Document:null,
-    Data:new FSharpMap("New", []),
-    DocumentRevision:0n,
-    DataRevision:0n,
-    LastTransportSequence:0n,
-    View:{Values:new FSharpMap("New", [])},
-    Poll:{$:0},
+    Identity:identity, 
+    Document:null, 
+    Data:new FSharpMap("New", []), 
+    DocumentRevision:0n, 
+    DataRevision:0n, 
+    LastTransportSequence:0n, 
+    View:{Values:new FSharpMap("New", [])}, 
+    Poll:{$:0}, 
     LastError:null
   });
   socket=null;
@@ -4442,7 +4685,7 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
     return channelId+":"+String(requestSequence);
   };
   const sendPayloadWithRequestId=(requestId, operation, payload) => {
-    const text_1=JSON.stringify(New_39("extension-transient", requestId, extensionId, channelId, operation, JSON.stringify(payload)));
+    const text_1=JSON.stringify(New_42("extension-transient", requestId, extensionId, channelId, operation, JSON.stringify(payload)));
     return socket!=null&&socket.$==1&&(Equals(socket.$0.readyState, 1)&&(socket.$0.send(text_1),true));
   };
   const sendPayload=(operation, payload) => sendPayloadWithRequestId(nextRequestId(), operation, payload);
@@ -4504,14 +4747,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
     lifecycle=next;
     const _1=runtimeState.Get();
     let _2={
-      Identity:_1.Identity,
-      Document:_1.Document,
-      Data:_1.Data,
-      DocumentRevision:_1.DocumentRevision,
-      DataRevision:_1.DataRevision,
-      LastTransportSequence:_1.LastTransportSequence,
-      View:_1.View,
-      Poll:next.Poll,
+      Identity:_1.Identity, 
+      Document:_1.Document, 
+      Data:_1.Data, 
+      DocumentRevision:_1.DocumentRevision, 
+      DataRevision:_1.DataRevision, 
+      LastTransportSequence:_1.LastTransportSequence, 
+      View:_1.View, 
+      Poll:next.Poll, 
       LastError:_1.LastError
     };
     runtimeState.Set(_2);
@@ -4598,17 +4841,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                     const message=m_2.$0;
                     const _4=runtimeState.Get();
                     let _5={
-                      Identity:_4.Identity,
-                      Document:_4.Document,
-                      Data:_4.Data,
-                      DocumentRevision:_4.DocumentRevision,
-                      DataRevision:_4.DataRevision,
-                      LastTransportSequence:_4.LastTransportSequence,
-                      View:_4.View,
-                      Poll:_4.Poll,
+                      Identity:_4.Identity, 
+                      Document:_4.Document, 
+                      Data:_4.Data, 
+                      DocumentRevision:_4.DocumentRevision, 
+                      DataRevision:_4.DataRevision, 
+                      LastTransportSequence:_4.LastTransportSequence, 
+                      View:_4.View, 
+                      Poll:_4.Poll, 
                       LastError:Some({
-                        ReasonCode:"ta-export-download-failed",
-                        Message:message,
+                        ReasonCode:"ta-export-download-failed", 
+                        Message:message, 
                         Recoverable:true
                       })
                     };
@@ -4619,17 +4862,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                 else {
                   const _6=runtimeState.Get();
                   let _7={
-                    Identity:_6.Identity,
-                    Document:_6.Document,
-                    Data:_6.Data,
-                    DocumentRevision:_6.DocumentRevision,
-                    DataRevision:_6.DataRevision,
-                    LastTransportSequence:_6.LastTransportSequence,
-                    View:_6.View,
-                    Poll:_6.Poll,
+                    Identity:_6.Identity, 
+                    Document:_6.Document, 
+                    Data:_6.Data, 
+                    DocumentRevision:_6.DocumentRevision, 
+                    DataRevision:_6.DataRevision, 
+                    LastTransportSequence:_6.LastTransportSequence, 
+                    View:_6.View, 
+                    Poll:_6.Poll, 
                     LastError:Some({
-                      ReasonCode:"ta-export-full-state-required",
-                      Message:"The TA export response was not a full runtime state.",
+                      ReasonCode:"ta-export-full-state-required", 
+                      Message:"The TA export response was not a full runtime state.", 
                       Recoverable:true
                     })
                   };
@@ -4642,8 +4885,8 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               let _9=StateAccepted(state.DataRevision, _8);
               apply(_9);
               completePendingAction(response.requestId, {
-                $:0,
-                $0:response.requestId,
+                $:0, 
+                $0:response.requestId, 
                 $1:state.DocumentRevision
               });
               return jsonExportCompleted&&disposeAfterJsonExport?void apply(Dispose):tryStartJsonExport();
@@ -4663,36 +4906,36 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               }
               else _2=false;
               _3=_2?{
-                $:2,
-                $0:response.requestId,
+                $:2, 
+                $0:response.requestId, 
                 $1:BigInt(Math.trunc(m[1]))
               }:{
-                $:1,
-                $0:response.requestId,
-                $1:"transient-command-failed",
+                $:1, 
+                $0:response.requestId, 
+                $1:"transient-command-failed", 
                 $2:responseError
               };
             }
             else _3={
-              $:1,
-              $0:response.requestId,
-              $1:"transient-command-failed",
+              $:1, 
+              $0:response.requestId, 
+              $1:"transient-command-failed", 
               $2:responseError
             };
             completePendingAction(response.requestId, _3);
             const _12=runtimeState.Get();
             let _13={
-              Identity:_12.Identity,
-              Document:_12.Document,
-              Data:_12.Data,
-              DocumentRevision:_12.DocumentRevision,
-              DataRevision:_12.DataRevision,
-              LastTransportSequence:_12.LastTransportSequence,
-              View:_12.View,
-              Poll:_12.Poll,
+              Identity:_12.Identity, 
+              Document:_12.Document, 
+              Data:_12.Data, 
+              DocumentRevision:_12.DocumentRevision, 
+              DataRevision:_12.DataRevision, 
+              LastTransportSequence:_12.LastTransportSequence, 
+              View:_12.View, 
+              Poll:_12.Poll, 
               LastError:Some({
-                ReasonCode:"transient-command-failed",
-                Message:text(response.error),
+                ReasonCode:"transient-command-failed", 
+                Message:text(response.error), 
                 Recoverable:true
               })
             };
@@ -4723,17 +4966,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         jsonExportBootstrapInFlight=false;
         const _1=runtimeState.Get();
         let _2={
-          Identity:_1.Identity,
-          Document:_1.Document,
-          Data:_1.Data,
-          DocumentRevision:_1.DocumentRevision,
-          DataRevision:_1.DataRevision,
-          LastTransportSequence:_1.LastTransportSequence,
-          View:_1.View,
-          Poll:_1.Poll,
+          Identity:_1.Identity, 
+          Document:_1.Document, 
+          Data:_1.Data, 
+          DocumentRevision:_1.DocumentRevision, 
+          DataRevision:_1.DataRevision, 
+          LastTransportSequence:_1.LastTransportSequence, 
+          View:_1.View, 
+          Poll:_1.Poll, 
           LastError:Some({
-            ReasonCode:"ta-export-bootstrap-empty",
-            Message:"TA export bootstrap returned no runtime data after three attempts.",
+            ReasonCode:"ta-export-bootstrap-empty", 
+            Message:"TA export bootstrap returned no runtime data after three attempts.", 
             Recoverable:true
           })
         };
@@ -4741,12 +4984,12 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         if(disposeAfterJsonExport)apply(Dispose);
       }
       else if(exists((a) => a.$==2, apply(StartAction(hasRuntimeData?{
-        $:9,
-        $0:identity.CanvasInstanceId,
+        $:9, 
+        $0:identity.CanvasInstanceId, 
         $1:"json-export"
       }:{
-        $:8,
-        $0:identity.CanvasInstanceId,
+        $:8, 
+        $0:identity.CanvasInstanceId, 
         $1:runtimeState.Get().DataRevision
       }))))if(hasRuntimeData){
         jsonExportRequested=false;
@@ -4772,7 +5015,7 @@ function syncWebSocketUrl_1(){
 function downloadJsonExport(wire){
   if(globalThis.document.body==null)return Error_1("Document body is unavailable.");
   else try {
-    const url=URL.createObjectURL(new Blob([JSON.stringify(New_43("ptcs-ta-research-export.v1", (new Date()).toISOString(), wire.documentRevision, wire.dataRevision, wire))], {type:"application/json;charset=utf-8"}));
+    const url=URL.createObjectURL(new Blob([JSON.stringify(New_46("ptcs-ta-research-export.v1", (new Date()).toISOString(), wire.documentRevision, wire.dataRevision, wire))], {type:"application/json;charset=utf-8"}));
     const anchor=globalThis.document.createElement("a");
     anchor.setAttribute("href", url);
     anchor.setAttribute("download", exportFileName());
@@ -4808,16 +5051,16 @@ function defaults(){
   return _c.defaults;
 }
 function initial(canvasInstanceId){
-  return New_40(canvasInstanceId, {$:0}, false, false, true, false, 0n, 0, false, false);
+  return New_43(canvasInstanceId, {$:0}, false, false, true, false, 0n, 0, false, false);
 }
 function transition(options, event, state){
   let _1;
   if(state.Disposed&&event.$!==9)return[state, []];
   else if(state.DisposePending)switch(event.$==1?0:event.$==5?1:event.$==6?1:event.$==9?2:3){
     case 0:
-      return[New_40(state.CanvasInstanceId, {$:7}, event.$1, state.Connected, state.Active, true, event.$0, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, SendUnmounted, ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_43(state.CanvasInstanceId, {$:7}, event.$1, state.Connected, state.Active, true, event.$0, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, SendUnmounted, ScheduleTimeout(options.RequestTimeoutMs)]];
     case 1:
-      return[New_40(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, state.Active, false, state.DataRevision, state.ReconnectAttempt, false, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
+      return[New_43(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, state.Active, false, state.DataRevision, state.ReconnectAttempt, false, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
     case 2:
       return[state, []];
     case 3:
@@ -4825,38 +5068,38 @@ function transition(options, event, state){
   }
   else switch(event.$==1?(_1=[event.$1, event.$0],1):event.$==2?state.Connected&&state.InFlight?2:11:event.$==3?(event.$0,state.Connected&&state.Active&&!state.InFlight?(_1=event.$0,3):11):event.$==4?state.Connected&&state.Active&&state.PollEnabled&&!state.InFlight?4:11:event.$==5?state.InFlight?5:11:event.$==6?!state.Connected?6:7:event.$==7?(_1=event.$0,8):event.$==8?(event.$0,state.Connected&&state.Active?(_1=event.$0,9):11):event.$==9?10:0){
     case 0:
-      return[New_40(state.CanvasInstanceId, {$:1}, state.PollEnabled, true, state.Active, true, state.DataRevision, 0, state.DisposePending, state.Disposed), [CancelReconnect, SendMounted, ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_43(state.CanvasInstanceId, {$:1}, state.PollEnabled, true, state.Active, true, state.DataRevision, 0, state.DisposePending, state.Disposed), [CancelReconnect, SendMounted, ScheduleTimeout(options.RequestTimeoutMs)]];
     case 1:
       const pollEnabled=_1[0];
-      return[New_40(state.CanvasInstanceId, state.Active&&pollEnabled?{$:2}:{$:5}, pollEnabled, state.Connected, state.Active, false, _1[1], state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&pollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
+      return[New_43(state.CanvasInstanceId, state.Active&&pollEnabled?{$:2}:{$:5}, pollEnabled, state.Connected, state.Active, false, _1[1], state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&pollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
     case 2:
-      return[New_40(state.CanvasInstanceId, state.Active&&state.PollEnabled?{$:2}:{$:5}, state.PollEnabled, state.Connected, state.Active, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&state.PollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
+      return[New_43(state.CanvasInstanceId, state.Active&&state.PollEnabled?{$:2}:{$:5}, state.PollEnabled, state.Connected, state.Active, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&state.PollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
     case 3:
-      return[New_40(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_43(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 4:
-      return[New_40(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
-        $:8,
-        $0:state.CanvasInstanceId,
+      return[New_43(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
+        $:8, 
+        $0:state.CanvasInstanceId, 
         $1:state.DataRevision
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 5:
       const attempt=state.ReconnectAttempt+1;
-      return[New_40(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport, ScheduleReconnect(reconnectDelay(options, attempt))]];
+      return[New_43(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport, ScheduleReconnect(reconnectDelay(options, attempt))]];
     case 6:
       return[state, []];
     case 7:
       const attempt_1=state.ReconnectAttempt+1;
-      return[New_40(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt_1, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, ScheduleReconnect(reconnectDelay(options, attempt_1))]];
+      return[New_43(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt_1, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, ScheduleReconnect(reconnectDelay(options, attempt_1))]];
     case 8:
-      return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_40(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_40(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_40(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
+      return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_43(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_43(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_43(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
     case 9:
-      return[New_40(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
-        $:9,
-        $0:state.CanvasInstanceId,
+      return[New_43(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
+        $:9, 
+        $0:state.CanvasInstanceId, 
         $1:_1
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 10:
-      return state.Connected?[New_40(state.CanvasInstanceId, {$:7}, state.PollEnabled, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_2([CancelPoll], delay(() => append_2([CancelReconnect], delay(() =>!state.InFlight?append_2([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_40(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
+      return state.Connected?[New_43(state.CanvasInstanceId, {$:7}, state.PollEnabled, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_2([CancelPoll], delay(() => append_2([CancelReconnect], delay(() =>!state.InFlight?append_2([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_43(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
     case 11:
       return[state, []];
   }
@@ -4880,10 +5123,10 @@ function reconnectDelay(options, attempt){
 }
 function New(PollIntervalMs, RequestTimeoutMs, PollRetryMs, ReconnectBaseMs, ReconnectMaximumMs){
   return{
-    PollIntervalMs:PollIntervalMs,
-    RequestTimeoutMs:RequestTimeoutMs,
-    PollRetryMs:PollRetryMs,
-    ReconnectBaseMs:ReconnectBaseMs,
+    PollIntervalMs:PollIntervalMs, 
+    RequestTimeoutMs:RequestTimeoutMs, 
+    PollRetryMs:PollRetryMs, 
+    ReconnectBaseMs:ReconnectBaseMs, 
     ReconnectMaximumMs:ReconnectMaximumMs
   };
 }
@@ -4903,22 +5146,22 @@ class Attr {
     });
   }
   static A3(init_2){
-    return Create_1(Attr, {$:3, $0:init_2});
+    return Create_2(Attr, {$:3, $0:init_2});
   }
   static Concat(xs){
     const x=ofSeqNonCopying(xs);
     return TreeReduce(EmptyAttr(), (_1, _2) => AppendTree(_1, _2), x);
   }
   static A1(Item){
-    return Create_1(Attr, {$:1, $0:Item});
+    return Create_2(Attr, {$:1, $0:Item});
   }
   static A4(onAfterRender){
-    return Create_1(Attr, {$:4, $0:onAfterRender});
+    return Create_2(Attr, {$:4, $0:onAfterRender});
   }
   static A2(Item1, Item2){
-    return Create_1(Attr, {
-      $:2,
-      $0:Item1,
+    return Create_2(Attr, {
+      $:2, 
+      $0:Item1, 
       $1:Item2
     });
   }
@@ -4932,17 +5175,17 @@ function filter(f, o){
 }
 function New_1(RuntimeState, SetActive, RequestJsonExport, Dispose_1){
   return{
-    RuntimeState:RuntimeState,
-    SetActive:SetActive,
-    RequestJsonExport:RequestJsonExport,
+    RuntimeState:RuntimeState, 
+    SetActive:SetActive, 
+    RequestJsonExport:RequestJsonExport, 
     Dispose:Dispose_1
   };
 }
 function New_2(status, count, maxSequence, pages){
   return{
-    status:status,
-    count:count,
-    maxSequence:maxSequence,
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
     pages:pages
   };
 }
@@ -5228,7 +5471,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_29(streamId, _3, _4, asText(source), nowTicks());
+    let _5=New_32(streamId, _3, _4, asText(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -5573,16 +5816,16 @@ function tryJson(text_1){
 }
 function New_3(type, requestId, streamKey){
   return{
-    type:type,
-    requestId:requestId,
+    type:type, 
+    requestId:requestId, 
     streamKey:streamKey
   };
 }
 function New_4(type, requestId, streamKey, count){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
     count:count
   };
 }
@@ -5914,6 +6157,9 @@ class Doc extends Object_1 {
   static TextNode(v){
     return Doc.Mk(TextNodeDoc(globalThis.document.createTextNode(v)), Const());
   }
+  static get Empty(){
+    return Doc.Mk(null, Const());
+  }
   static RunInPlace(childrenOnly, parent, doc_1){
     const st=CreateRunState(parent, doc_1.docNode);
     Sink(get_UseAnimations()||BatchUpdatesEnabled()?StartProcessor(PerformAnimatedUpdate(childrenOnly, st, doc_1.docNode)):() => {
@@ -5936,11 +6182,14 @@ class Doc extends Object_1 {
   static Concat(xs){
     return TreeReduce(Doc.Empty, Doc.Append, ofSeqNonCopying(xs));
   }
-  static get Empty(){
-    return Doc.Mk(null, Const());
+  static Convert(render_1, view){
+    return Doc.Flatten(MapSeqCached(render_1, view));
   }
   static Append(a, b){
     return Doc.Mk(AppendDoc(a.docNode, b.docNode), Map2Unit(a.updates, b.updates));
+  }
+  static Flatten(view){
+    return Doc.EmbedView(Map((x) => Doc.Concat(x), view));
   }
   static EmbedView(view){
     const node=CreateEmbedNode();
@@ -5996,7 +6245,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_45(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_48(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -6136,7 +6385,6 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
   static {
     _c_1=_i(this);
   }
-  static staticNavigationDestinations;
   static requestSeq;
   static pendingCommandSeq;
   static maxSnapshotRecords;
@@ -6176,7 +6424,6 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
     this.maxSnapshotRecords=256;
     this.pendingCommandSeq=0;
     this.requestSeq=0;
-    this.staticNavigationDestinations=[["/chat", "Chat"], ["/sets", "Sets"], ["/actors", "Actors"]];
   }
 });
 function TrimEnd(s, t){
@@ -6231,6 +6478,9 @@ function TrimStart(s, t){
     return s.substring(i);
   }
 }
+function EndsWith(x, s){
+  return x.substring(x.length-s.length)==s;
+}
 function Substring(s, ix, ct){
   return s.substr(ix, ct);
 }
@@ -6268,11 +6518,11 @@ function IsNullOrEmpty(x){
   return x==null||x=="";
 }
 class FSharpList {
-  static Empty=Create_1(FSharpList, {$:0});
+  static Empty=Create_2(FSharpList, {$:0});
   static Cons(Head, Tail){
-    return Create_1(FSharpList, {
-      $:1,
-      $0:Head,
+    return Create_2(FSharpList, {
+      $:1, 
+      $0:Head, 
       $1:Tail
     });
   }
@@ -6300,16 +6550,16 @@ function TryParse_1(s, r){
 }
 function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId,
-    tabId:tabId,
-    path:path,
-    title:title,
-    setName:setName,
-    shape:shape,
-    description:description,
-    keyPlaceholder:keyPlaceholder,
-    valuePlaceholder:valuePlaceholder,
-    defaultKey:defaultKey,
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
     tags:tags
   };
 }
@@ -6329,43 +6579,43 @@ function set(arr, n, x){
 }
 function New_6(pageId, mode, setName, keys){
   return{
-    pageId:pageId,
-    mode:mode,
-    setName:setName,
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
     keys:keys
   };
 }
 function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
-    readRepairPolicy:readRepairPolicy,
-    candidateValueStreamKeys:candidateValueStreamKeys,
-    candidateValueStreamCount:candidateValueStreamCount,
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId,
-    serverRealityId:serverRealityId,
-    kind:kind,
-    target:target,
-    url:url,
-    method:method,
-    payloadJson:payloadJson,
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
     status:status
   };
 }
@@ -6379,7 +6629,7 @@ function map_1(f, x){
   let r, l, go;
   if(x.$==0)return x;
   else {
-    const res=Create_1(FSharpList, {$:1});
+    const res=Create_2(FSharpList, {$:1});
     r=res;
     l=x;
     go=true;
@@ -6389,7 +6639,7 @@ function map_1(f, x){
         l=l.$1;
         if(l.$==0)go=false;
         else {
-          const t=Create_1(FSharpList, {$:1});
+          const t=Create_2(FSharpList, {$:1});
           r=(r.$1=t,t);
         }
       }
@@ -6407,13 +6657,13 @@ function ofSeq_1(s){
       go=e.MoveNext();
       if(!go)return FSharpList.Empty;
       else {
-        const res=Create_1(FSharpList, {$:1});
+        const res=Create_2(FSharpList, {$:1});
         r=res;
         while(go)
           {
             r.$0=e.Current;
             if(e.MoveNext()){
-              const t=Create_1(FSharpList, {$:1});
+              const t=Create_2(FSharpList, {$:1});
               r=(r.$1=t,t);
             }
             else go=false;
@@ -6433,7 +6683,7 @@ function append_1(x, y){
   if(x.$==0)return y;
   else if(y.$==0)return x;
   else {
-    const res=Create_1(FSharpList, {$:1});
+    const res=Create_2(FSharpList, {$:1});
     r=res;
     l=x;
     go=true;
@@ -6443,7 +6693,7 @@ function append_1(x, y){
         l=l.$1;
         if(l.$==0)go=false;
         else {
-          const t=Create_1(FSharpList, {$:1});
+          const t=Create_2(FSharpList, {$:1});
           r=(r.$1=t,t);
         }
       }
@@ -6465,51 +6715,51 @@ function collect_1(f, l){
 }
 function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status,
-    page:page,
-    bucketCount:bucketCount,
-    maxSequence:maxSequence,
-    keyMaxSequence:keyMaxSequence,
-    lineage:lineage,
-    lineageHealth:lineageHealth,
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
     buckets:buckets
   };
 }
 function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    keys:keys,
-    displayName:displayName,
-    setName:setName,
-    valueCount:valueCount,
-    minSequence:minSequence,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    keys:keys, 
+    displayName:displayName, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_12(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
     tags:tags
   };
 }
 function New_13(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    keyMode:keyMode,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    keyMode:keyMode, 
     displayName:displayName
   };
 }
 function New_14(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    rawArgu:rawArgu,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
     tags:tags
   };
 }
@@ -6521,17 +6771,17 @@ function New_16(pageId, keyId){
 }
 function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    actorAddress:actorAddress,
-    rawArgu:rawArgu,
-    renderMode:renderMode,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
@@ -6605,6 +6855,17 @@ function forall_2(p, s){
 }
 function distinct_1(s){
   return distinctBy_1((x) => x, s);
+}
+function iter_1(p, s){
+  const e=Get(s);
+  try {
+    while(e.MoveNext())
+      p(e.Current);
+  }
+  finally {
+    const _1=e;
+    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
+  }
 }
 function collect_2(f, s){
   return concat_2(map_2(f, s));
@@ -6700,9 +6961,6 @@ function concat_2(ss){
     });
   }};
 }
-function init_1(n, f){
-  return take(n, initInfinite(f));
-}
 function exists2(p, s1, s2){
   const e1=Get(s1);
   try {
@@ -6724,43 +6982,8 @@ function exists2(p, s1, s2){
     if(typeof _2=="object"&&isIDisposable(_2))e1.Dispose();
   }
 }
-function iter_1(p, s){
-  const e=Get(s);
-  try {
-    while(e.MoveNext())
-      p(e.Current);
-  }
-  finally {
-    const _1=e;
-    if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
-  }
-}
 function rev(s){
   return delay(() => ofSeq(s).slice().reverse());
-}
-function take(n, s){
-  n<0?nonNegative():void 0;
-  return{GetEnumerator:() => {
-    const e=[Get(s)];
-    return new T(0, null, (o) => {
-      o.s=o.s+1;
-      if(o.s>n)return false;
-      else {
-        const en=e[0];
-        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
-      }
-    }, () => {
-      const x=e[0];
-      if(!Equals(x, null))x.Dispose();
-    });
-  }};
-}
-function initInfinite(f){
-  return{GetEnumerator:() => new T(0, null, (e) => {
-    e.c=f(e.s);
-    e.s=e.s+1;
-    return true;
-  }, void 0)};
 }
 function max_1(s){
   const e=Get(s);
@@ -6794,49 +7017,76 @@ function unfold(f, s){
     }
   }, void 0)};
 }
+function init_1(n, f){
+  return take(n, initInfinite(f));
+}
 function seqEmpty(){
   return FailWith("The input sequence was empty.");
 }
+function take(n, s){
+  n<0?nonNegative():void 0;
+  return{GetEnumerator:() => {
+    const e=[Get(s)];
+    return new T(0, null, (o) => {
+      o.s=o.s+1;
+      if(o.s>n)return false;
+      else {
+        const en=e[0];
+        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
+      }
+    }, () => {
+      const x=e[0];
+      if(!Equals(x, null))x.Dispose();
+    });
+  }};
+}
+function initInfinite(f){
+  return{GetEnumerator:() => new T(0, null, (e) => {
+    e.c=f(e.s);
+    e.s=e.s+1;
+    return true;
+  }, void 0)};
+}
 function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
-    payload:payload,
-    sourceKind:sourceKind,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    setName:setName,
-    keys:keys,
-    valueCount:valueCount,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
@@ -6845,10 +7095,10 @@ function New_21(maxSequence, buckets){
 }
 function New_22(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId,
-    keys:keys,
-    createdAtUtc:createdAtUtc,
-    value:value,
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
     tags:tags
   };
 }
@@ -6857,9 +7107,9 @@ function New_23(reason){
 }
 function New_24(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount,
-    actorCount:actorCount,
-    maxSequence:maxSequence,
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
     nodes:nodes
   };
 }
@@ -6981,72 +7231,142 @@ function Fold(f, s, m){
 function ToSeq(m){
   return map_2((kv) =>[kv.Key, kv.Value], Enumerate(false, m.Tree));
 }
-function New_25(actorId, displayName, kind, keys, status, routees){
+function New_25(nodeId, nodeAddress, status, roles, actors){
   return{
-    actorId:actorId,
-    displayName:displayName,
-    kind:kind,
-    keys:keys,
-    status:status,
-    routees:routees
-  };
-}
-function New_26(nodeId, nodeAddress, status, roles, actors){
-  return{
-    nodeId:nodeId,
-    nodeAddress:nodeAddress,
-    status:status,
-    roles:roles,
+    nodeId:nodeId, 
+    nodeAddress:nodeAddress, 
+    status:status, 
+    roles:roles, 
     actors:actors
   };
 }
-function New_27(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_26(actorId, displayName, kind, keys, status, routees){
   return{
-    messageId:messageId,
-    fromId:fromId,
-    toId:toId,
-    scope:scope,
-    body:body,
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
+    routees:routees
+  };
+}
+function Create(key, init_2){
+  return CreateWithStorage(key, InMemory(ofSeq(init_2)));
+}
+function CreateWithStorage(key, storage){
+  return new ListModel("New", key, storage);
+}
+class ListModel extends Object_1 {
+  key;
+  u0076ar;
+  storage;
+  v;
+  it;
+  Set(lst){
+    this.u0076ar.Set(this.storage.SSet(lst));
+    this.ObsoleteAll();
+  }
+  ObsoleteAll(){
+    iter_1((ksn) => {
+      Obsolete(ksn.V);
+    }, this.it);
+    this.it.Clear();
+  }
+  GetEnumerator(){
+    return Get(this.u0076ar.Get());
+  }
+  GetEnumerator0(){
+    return Get0(this.u0076ar.Get());
+  }
+  constructor(i, _1, _2, _3){
+    let key, storage;
+    if(i=="New"){
+      key=_1;
+      storage=_2;
+      i="New_3";
+      _1=key;
+      _2=_c_3.Create_1(ofSeq(distinctBy_1(key, storage.SInit())));
+      _3=storage;
+    }
+    if(i=="New_3"){
+      const key_1=_1;
+      const var_1=_2;
+      const storage_1=_3;
+      super();
+      this.key=key_1;
+      this.u0076ar=var_1;
+      this.storage=storage_1;
+      this.v=Map((x) => x.slice(), this.u0076ar.View);
+      this.it=new Dictionary("New_5");
+    }
+  }
+}
+function New_27(pageId, tabId){
+  return{pageId:pageId, tabId:tabId};
+}
+function New_28(participantId){
+  return{participantId:participantId};
+}
+function New_29(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
+  return{
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
+    logoutPath:logoutPath, 
+    authenticatedParticipantId:authenticatedParticipantId, 
+    viewAsParticipantId:viewAsParticipantId, 
+    viewAsActive:viewAsActive
+  };
+}
+function New_30(messageId, fromId, toId, scope, body, createdAtUtc){
+  return{
+    messageId:messageId, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
     createdAtUtc:createdAtUtc
   };
 }
-function New_28(messages, nextAfterMessageId){
+function New_31(messages, nextAfterMessageId){
   return{messages:messages, nextAfterMessageId:nextAfterMessageId};
 }
-function New_29(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_32(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId,
-    newestSequence:newestSequence,
-    cachedCount:cachedCount,
-    source:source,
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
     touchedAt:touchedAt
   };
 }
-function New_30(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_33(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    fromId:fromId,
-    toId:toId,
-    body:body,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
-function New_31(fromId, toId, body, tags){
+function New_34(fromId, toId, body, tags){
   return{
-    fromId:fromId,
-    toId:toId,
-    body:body,
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
     tags:tags
   };
 }
-function New_32(messageId, speaker, createdAtUtc, body){
+function New_35(messageId, speaker, createdAtUtc, body){
   return{
-    messageId:messageId,
-    speaker:speaker,
-    createdAtUtc:createdAtUtc,
+    messageId:messageId, 
+    speaker:speaker, 
+    createdAtUtc:createdAtUtc, 
     body:body
   };
 }
@@ -7100,6 +7420,10 @@ class Dictionary extends Object_1 {
   }
   DAdd(k, v){
     this.add(k, v);
+  }
+  Clear(){
+    this.data=[];
+    this.count=0;
   }
   remove(k){
     const h=this.hash(k);
@@ -7198,7 +7522,7 @@ function InsertDoc(parent, doc_1, pos){
     }
 }
 function CreateRunState(parent, doc_1){
-  return New_41(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_1));
+  return New_44(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_1));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_1){
   return get_UseAnimations()?Delay(() => {
@@ -7371,8 +7695,8 @@ function UpdateEmbedNode(node, upd){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""),
-    Dirty:false,
+    Text:globalThis.document.createTextNode(""), 
+    Dirty:false, 
     Value:""
   };
 }
@@ -7402,6 +7726,9 @@ function MapCachedBy(eq, fn, a){
   const vref=[null];
   return CreateLazy(() => MapCachedBy_1(eq, vref, fn, a()));
 }
+function MapSeqCached(conv, view){
+  return MapSeqCachedBy((x) => x, conv, view);
+}
 function CreateLazy(observe){
   const lv={c:null, o:observe};
   return() => {
@@ -7423,6 +7750,21 @@ function CreateLazy(observe){
 function Map2Unit(a, a_1){
   return CreateLazy(() => Map2Unit_1(a(), a_1()));
 }
+function MapSeqCachedBy(key, conv, view){
+  const state=[new Dictionary("New_5")];
+  return Map((xs) => {
+    const prevState=state[0];
+    const newState=new Dictionary("New_5");
+    const result=mapInPlace_1((x) => {
+      const k=key(x);
+      const res=prevState.ContainsKey(k)?prevState.Item(k):conv(x);
+      newState.set_Item(k, res);
+      return res;
+    }, ofSeq(xs));
+    state[0]=newState;
+    return result;
+  }, view);
+}
 function Bind(fn, view){
   return Join(Map(fn, view));
 }
@@ -7437,8 +7779,8 @@ function ElemDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0,
-    $0:Item1,
+    $:0, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -7448,44 +7790,34 @@ function EmbedDoc(Item){
 function TextDoc(Item){
   return{$:4, $0:Item};
 }
-function New_33(shape, label, badge, className){
+function New_36(shape, label, badge, className){
   return{
-    shape:shape,
-    label:label,
-    badge:badge,
+    shape:shape, 
+    label:label, 
+    badge:badge, 
     className:className
   };
 }
-function New_34(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_37(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath,
-    sessionPath:sessionPath,
-    logoutPath:logoutPath,
-    returnUrl:returnUrl,
-    protectedRoute:protectedRoute,
-    sessionCookieName:sessionCookieName,
-    title:title,
-    lead:lead,
-    providerLabel:providerLabel,
+    submitPath:submitPath, 
+    sessionPath:sessionPath, 
+    logoutPath:logoutPath, 
+    returnUrl:returnUrl, 
+    protectedRoute:protectedRoute, 
+    sessionCookieName:sessionCookieName, 
+    title:title, 
+    lead:lead, 
+    providerLabel:providerLabel, 
     aclLabel:aclLabel
   };
 }
-function New_35(userName, password, returnUrl, keepSession){
+function New_38(userName, password, returnUrl, keepSession){
   return{
-    userName:userName,
-    password:password,
-    returnUrl:returnUrl,
+    userName:userName, 
+    password:password, 
+    returnUrl:returnUrl, 
     keepSession:keepSession
-  };
-}
-function New_36(participantId, displayName, login, authenticated, provider, logoutPath){
-  return{
-    participantId:participantId,
-    displayName:displayName,
-    login:login,
-    authenticated:authenticated,
-    provider:provider,
-    logoutPath:logoutPath
   };
 }
 function nonNegative(){
@@ -7540,6 +7872,18 @@ function countBy(f, a){
   mapInPlace((k_1) =>[k_1, d.Item(k_1)], keys);
   return keys;
 }
+function tryFindBack(f, arr){
+  let res, i;
+  res=null;
+  i=arr.length-1;
+  while(i>=0&&res==null)
+    {
+      const r=arr[i];
+      if(f(r))res=Some(r);
+      i=i-1;
+    }
+  return res;
+}
 function Get(x){
   return x instanceof Array?ArrayEnumerator(x):Equals(typeof x, "string")?StringEnumerator(x):x.GetEnumerator();
 }
@@ -7584,26 +7928,29 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_37(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+function New_39(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId,
-    TabId:TabId,
-    ValueId:ValueId,
-    CreatedAtUtc:CreatedAtUtc,
-    Direction:Direction,
-    Tags:Tags,
+    PageId:PageId, 
+    TabId:TabId, 
+    ValueId:ValueId, 
+    CreatedAtUtc:CreatedAtUtc, 
+    Direction:Direction, 
+    Tags:Tags, 
     Payload:Payload
   };
 }
-function New_38(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_40(participantId){
+  return{participantId:participantId};
+}
+function New_41(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    shape:shape,
-    tabId:tabId,
-    tabMode:tabMode,
-    path:path,
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
     description:description
   };
 }
@@ -7668,7 +8015,7 @@ class Pair {
     return Compare(this.Key, other.Key);
   }
   static New(Key, Value){
-    return Create_1(Pair, {Key:Key, Value:Value});
+    return Create_2(Pair, {Key:Key, Value:Value});
   }
 }
 function OfSeq(data){
@@ -7706,7 +8053,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_44(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_47(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -7791,6 +8138,9 @@ function Rebuild(spine, t){
     }
   }
   return t_1;
+}
+function InMemory(init_2){
+  return new ArrayStorage(init_2);
 }
 let _c_2=Lazy((_i) => class $StartupCode_Templates {
   static {
@@ -7882,13 +8232,13 @@ let _c_3=Lazy((_i) => class Var_1 extends Object_1 {
   }
   static { }
 });
-function New_39(type, requestId, extensionId, channelId, operation, payload){
+function New_42(type, requestId, extensionId, channelId, operation, payload){
   return{
-    type:type,
-    requestId:requestId,
-    extensionId:extensionId,
-    channelId:channelId,
-    operation:operation,
+    type:type, 
+    requestId:requestId, 
+    extensionId:extensionId, 
+    channelId:channelId, 
+    operation:operation, 
     payload:payload
   };
 }
@@ -7898,66 +8248,66 @@ function Ok(ResultValue){
 function Error_1(ErrorValue){
   return{$:1, $0:ErrorValue};
 }
-function New_40(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
+function New_43(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
   return{
-    CanvasInstanceId:CanvasInstanceId,
-    Poll:Poll,
-    PollEnabled:PollEnabled,
-    Connected:Connected_1,
-    Active:Active,
-    InFlight:InFlight,
-    DataRevision:DataRevision,
-    ReconnectAttempt:ReconnectAttempt,
-    DisposePending:DisposePending,
+    CanvasInstanceId:CanvasInstanceId, 
+    Poll:Poll, 
+    PollEnabled:PollEnabled, 
+    Connected:Connected_1, 
+    Active:Active, 
+    InFlight:InFlight, 
+    DataRevision:DataRevision, 
+    ReconnectAttempt:ReconnectAttempt, 
+    DisposePending:DisposePending, 
     Disposed:Disposed
   };
 }
 function emptyFrame(kind, actionKind, canvasId){
-  return New_42("ta-browser.v1", kind, actionKind, canvasId, "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "", "", false, [], 0, false, "", "", "", "", 0);
+  return New_45("ta-browser.v1", kind, actionKind, canvasId, "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "", "", false, [], 0, false, "", "", "", "", 0);
 }
 function actionToWire(action){
   if(action.$==1)return emptyFrame("action", "reset-canvas", canvasText(action.$0));
   else if(action.$==2){
     const row=action.$1;
     const _1=emptyFrame("action", "add-row", canvasText(action.$0));
-    return New_42(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _1.expectedDocumentRevision, _1.hasExpectedDocumentRevision, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
+    return New_45(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _1.expectedDocumentRevision, _1.hasExpectedDocumentRevision, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
   }
   else if(action.$==3){
     const values=action.$3;
     const templateKey=action.$2;
     const rowId=action.$1;
     const _2=emptyFrame("action", "apply-template", canvasText(action.$0));
-    return New_42(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId==null?"":rowId.$0, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode, templateKey, rowId!=null, map(editorInputToWire, values==null?[]:values), _2.expectedDocumentRevision, _2.hasExpectedDocumentRevision, _2.baseRowId, _2.eventTimeUtc, _2.startEventTimeUtc, _2.endEventTimeExclusiveUtc, _2.maximumBasePoints);
+    return New_45(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId==null?"":rowId.$0, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode, templateKey, rowId!=null, map(editorInputToWire, values==null?[]:values), _2.expectedDocumentRevision, _2.hasExpectedDocumentRevision, _2.baseRowId, _2.eventTimeUtc, _2.startEventTimeUtc, _2.endEventTimeExclusiveUtc, _2.maximumBasePoints);
   }
   else if(action.$==4){
     const rowId_1=action.$1;
     const _3=emptyFrame("action", "remove-row", canvasText(action.$0));
-    return New_42(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, rowId_1, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, _3.sourceId, _3.instrument, _3.intervalMinutes, _3.fromUtc, _3.toUtcExclusive, _3.includePartial, _3.afterDataRevision, _3.dataRevision, _3.reasonCode, _3.templateKey, _3.hasTemplateRowId, _3.editorValues, _3.expectedDocumentRevision, _3.hasExpectedDocumentRevision, _3.baseRowId, _3.eventTimeUtc, _3.startEventTimeUtc, _3.endEventTimeExclusiveUtc, _3.maximumBasePoints);
+    return New_45(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, rowId_1, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, _3.sourceId, _3.instrument, _3.intervalMinutes, _3.fromUtc, _3.toUtcExclusive, _3.includePartial, _3.afterDataRevision, _3.dataRevision, _3.reasonCode, _3.templateKey, _3.hasTemplateRowId, _3.editorValues, _3.expectedDocumentRevision, _3.hasExpectedDocumentRevision, _3.baseRowId, _3.eventTimeUtc, _3.startEventTimeUtc, _3.endEventTimeExclusiveUtc, _3.maximumBasePoints);
   }
   else if(action.$==5){
     const query=action.$1;
     const _4=emptyFrame("action", "change-query", canvasText(action.$0));
-    return New_42(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, _4.rowId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _4.afterDataRevision, _4.dataRevision, _4.reasonCode, _4.templateKey, _4.hasTemplateRowId, _4.editorValues, _4.expectedDocumentRevision, _4.hasExpectedDocumentRevision, _4.baseRowId, _4.eventTimeUtc, _4.startEventTimeUtc, _4.endEventTimeExclusiveUtc, _4.maximumBasePoints);
+    return New_45(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, _4.rowId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _4.afterDataRevision, _4.dataRevision, _4.reasonCode, _4.templateKey, _4.hasTemplateRowId, _4.editorValues, _4.expectedDocumentRevision, _4.hasExpectedDocumentRevision, _4.baseRowId, _4.eventTimeUtc, _4.startEventTimeUtc, _4.endEventTimeExclusiveUtc, _4.maximumBasePoints);
   }
   else if(action.$==6){
     const change=action.$1;
     const _5=emptyFrame("action", "shared-cursor-changed", canvasText(action.$0));
-    return New_42(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, _5.sourceId, _5.instrument, _5.intervalMinutes, _5.fromUtc, _5.toUtcExclusive, _5.includePartial, _5.afterDataRevision, _5.dataRevision, _5.reasonCode, _5.templateKey, _5.hasTemplateRowId, _5.editorValues, _5.expectedDocumentRevision, _5.hasExpectedDocumentRevision, change.BaseRowId, change.EventTimeUtc, _5.startEventTimeUtc, _5.endEventTimeExclusiveUtc, _5.maximumBasePoints);
+    return New_45(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, _5.sourceId, _5.instrument, _5.intervalMinutes, _5.fromUtc, _5.toUtcExclusive, _5.includePartial, _5.afterDataRevision, _5.dataRevision, _5.reasonCode, _5.templateKey, _5.hasTemplateRowId, _5.editorValues, _5.expectedDocumentRevision, _5.hasExpectedDocumentRevision, change.BaseRowId, change.EventTimeUtc, _5.startEventTimeUtc, _5.endEventTimeExclusiveUtc, _5.maximumBasePoints);
   }
   else if(action.$==7){
     const change_1=action.$1;
     const _6=emptyFrame("action", "visible-range-changed", canvasText(action.$0));
-    return New_42(_6.wireVersion, _6.kind, _6.actionKind, _6.canvasInstanceId, _6.rowId, _6.rowKind, _6.dataRef, _6.heightWeight, _6.visible, _6.sourceId, _6.instrument, _6.intervalMinutes, _6.fromUtc, _6.toUtcExclusive, _6.includePartial, _6.afterDataRevision, _6.dataRevision, _6.reasonCode, _6.templateKey, _6.hasTemplateRowId, _6.editorValues, _6.expectedDocumentRevision, _6.hasExpectedDocumentRevision, change_1.BaseRowId, _6.eventTimeUtc, change_1.StartEventTimeUtc, change_1.EndEventTimeExclusiveUtc, change_1.MaximumBasePoints);
+    return New_45(_6.wireVersion, _6.kind, _6.actionKind, _6.canvasInstanceId, _6.rowId, _6.rowKind, _6.dataRef, _6.heightWeight, _6.visible, _6.sourceId, _6.instrument, _6.intervalMinutes, _6.fromUtc, _6.toUtcExclusive, _6.includePartial, _6.afterDataRevision, _6.dataRevision, _6.reasonCode, _6.templateKey, _6.hasTemplateRowId, _6.editorValues, _6.expectedDocumentRevision, _6.hasExpectedDocumentRevision, change_1.BaseRowId, _6.eventTimeUtc, change_1.StartEventTimeUtc, change_1.EndEventTimeExclusiveUtc, change_1.MaximumBasePoints);
   }
   else if(action.$==8){
     const revision=action.$1;
     const _7=emptyFrame("action", "poll-delta", canvasText(action.$0));
-    return New_42(_7.wireVersion, _7.kind, _7.actionKind, _7.canvasInstanceId, _7.rowId, _7.rowKind, _7.dataRef, _7.heightWeight, _7.visible, _7.sourceId, _7.instrument, _7.intervalMinutes, _7.fromUtc, _7.toUtcExclusive, _7.includePartial, Number(revision), _7.dataRevision, _7.reasonCode, _7.templateKey, _7.hasTemplateRowId, _7.editorValues, _7.expectedDocumentRevision, _7.hasExpectedDocumentRevision, _7.baseRowId, _7.eventTimeUtc, _7.startEventTimeUtc, _7.endEventTimeExclusiveUtc, _7.maximumBasePoints);
+    return New_45(_7.wireVersion, _7.kind, _7.actionKind, _7.canvasInstanceId, _7.rowId, _7.rowKind, _7.dataRef, _7.heightWeight, _7.visible, _7.sourceId, _7.instrument, _7.intervalMinutes, _7.fromUtc, _7.toUtcExclusive, _7.includePartial, Number(revision), _7.dataRevision, _7.reasonCode, _7.templateKey, _7.hasTemplateRowId, _7.editorValues, _7.expectedDocumentRevision, _7.hasExpectedDocumentRevision, _7.baseRowId, _7.eventTimeUtc, _7.startEventTimeUtc, _7.endEventTimeExclusiveUtc, _7.maximumBasePoints);
   }
   else if(action.$==9){
     const reason=action.$1;
     const _8=emptyFrame("action", "full-snapshot", canvasText(action.$0));
-    return New_42(_8.wireVersion, _8.kind, _8.actionKind, _8.canvasInstanceId, _8.rowId, _8.rowKind, _8.dataRef, _8.heightWeight, _8.visible, _8.sourceId, _8.instrument, _8.intervalMinutes, _8.fromUtc, _8.toUtcExclusive, _8.includePartial, _8.afterDataRevision, _8.dataRevision, reason, _8.templateKey, _8.hasTemplateRowId, _8.editorValues, _8.expectedDocumentRevision, _8.hasExpectedDocumentRevision, _8.baseRowId, _8.eventTimeUtc, _8.startEventTimeUtc, _8.endEventTimeExclusiveUtc, _8.maximumBasePoints);
+    return New_45(_8.wireVersion, _8.kind, _8.actionKind, _8.canvasInstanceId, _8.rowId, _8.rowKind, _8.dataRef, _8.heightWeight, _8.visible, _8.sourceId, _8.instrument, _8.intervalMinutes, _8.fromUtc, _8.toUtcExclusive, _8.includePartial, _8.afterDataRevision, _8.dataRevision, reason, _8.templateKey, _8.hasTemplateRowId, _8.editorValues, _8.expectedDocumentRevision, _8.hasExpectedDocumentRevision, _8.baseRowId, _8.eventTimeUtc, _8.startEventTimeUtc, _8.endEventTimeExclusiveUtc, _8.maximumBasePoints);
   }
   else return emptyFrame("action", "reset-view", canvasText(action.$0));
 }
@@ -7966,7 +8316,7 @@ function actionRequestToWire(request){
   const o=request.ExpectedDocumentRevision;
   const o_1=o==null?null:Some(Number(o.$0));
   let _2=o_1==null?0:o_1.$0;
-  return New_42(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, _1.rowId, _1.rowKind, _1.dataRef, _1.heightWeight, _1.visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _2, request.ExpectedDocumentRevision!=null, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
+  return New_45(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, _1.rowId, _1.rowKind, _1.dataRef, _1.heightWeight, _1.visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _2, request.ExpectedDocumentRevision!=null, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
 }
 function applyWire(current, wire){
   return Bind_2((decoded) => {
@@ -7977,14 +8327,14 @@ function applyWire(current, wire){
     else {
       const mergedSeries=wire.series==null?current.Data:fold((_3, _4) => {
         const p=mergeSeries({
-          Identity:current.Identity,
-          Document:current.Document,
-          Data:_3,
-          DocumentRevision:current.DocumentRevision,
-          DataRevision:current.DataRevision,
-          LastTransportSequence:current.LastTransportSequence,
-          View:current.View,
-          Poll:current.Poll,
+          Identity:current.Identity, 
+          Document:current.Document, 
+          Data:_3, 
+          DocumentRevision:current.DocumentRevision, 
+          DataRevision:current.DataRevision, 
+          LastTransportSequence:current.LastTransportSequence, 
+          View:current.View, 
+          Poll:current.Poll, 
           LastError:current.LastError
         }, wire.timeline, _4);
         return _3.Add_1(p[0], p[1]);
@@ -7996,14 +8346,14 @@ function applyWire(current, wire){
       const m=decoded.Data.TryFind(statusRef);
       let _1=m==null?mergedSharedTemporal:mergedSharedTemporal.Add_1(statusRef, m.$0);
       let _2={
-        Identity:decoded.Identity,
-        Document:decoded.Document,
-        Data:_1,
-        DocumentRevision:decoded.DocumentRevision,
-        DataRevision:decoded.DataRevision,
-        LastTransportSequence:decoded.LastTransportSequence,
-        View:current.View,
-        Poll:decoded.Poll,
+        Identity:decoded.Identity, 
+        Document:decoded.Document, 
+        Data:_1, 
+        DocumentRevision:decoded.DocumentRevision, 
+        DataRevision:decoded.DataRevision, 
+        LastTransportSequence:decoded.LastTransportSequence, 
+        View:current.View, 
+        Poll:decoded.Poll, 
         LastError:decoded.LastError
       };
       return Ok(_2);
@@ -8021,7 +8371,7 @@ function rowKindText(a){
 }
 function editorInputToWire(input_1){
   const m=input_1.Value;
-  return m.$==1?New_46(input_1.Path, "number", "", m.$0, false):m.$==2?New_46(input_1.Path, "bool", "", 0, m.$0):New_46(input_1.Path, "text", m.$0, 0, false);
+  return m.$==1?New_49(input_1.Path, "number", "", m.$0, false):m.$==2?New_49(input_1.Path, "bool", "", 0, m.$0):New_49(input_1.Path, "text", m.$0, 0, false);
 }
 function optionBool(value){
   return value==null?false:value.$0;
@@ -8047,29 +8397,29 @@ function stateFromWire(wire){
       const K=rowKind(row.kind);
       const D=text(row.dataRef);
       const T_1=row.traces==null?[]:map((trace) =>({
-        TraceId:text(trace.traceId),
-        Kind:traceKind(trace.kind),
-        DataRef:text(trace.dataRef),
-        Label:text(trace.label),
-        Color:text(trace.color),
-        Width:trace.width,
-        Visible:trace.visible,
+        TraceId:text(trace.traceId), 
+        Kind:traceKind(trace.kind), 
+        DataRef:text(trace.dataRef), 
+        Label:text(trace.label), 
+        Color:text(trace.color), 
+        Width:trace.width, 
+        Visible:trace.visible, 
         CandleDataRefs:trace.hasCandleDataRefs?Some({
-          OpenRef:text(trace.candleOpenRef),
-          HighRef:text(trace.candleHighRef),
-          LowRef:text(trace.candleLowRef),
-          CloseRef:text(trace.candleCloseRef),
+          OpenRef:text(trace.candleOpenRef), 
+          HighRef:text(trace.candleHighRef), 
+          LowRef:text(trace.candleLowRef), 
+          CloseRef:text(trace.candleCloseRef), 
           VolumeRef:text(trace.candleVolumeRef)
-        }):null,
+        }):null, 
         Options:new FSharpMap("New", [])
       }), row.traces);
       return{
-        RowId:R,
-        Kind:K,
-        DataRef:D,
-        HeightWeight:row.heightWeight,
-        Visible:row.visible,
-        Options:mapFromWire(row.options),
+        RowId:R, 
+        Kind:K, 
+        DataRef:D, 
+        HeightWeight:row.heightWeight, 
+        Visible:row.visible, 
+        Options:mapFromWire(row.options), 
         Traces:T_1
       };
     }, wire.rows);
@@ -8082,8 +8432,8 @@ function stateFromWire(wire){
     const data=Fold((_1, _2, _3) => _1.Add_1(_2, _3), seriesData, sharedTemporalData).Add_1(text(wire.statusRef), status);
     const defaultView=OfArray(ofSeq(ofSeq_1(delay(() => append_2(!IsNullOrWhiteSpace(wire.querySourceId)?[["query.sourceId", {$:3, $0:text(wire.querySourceId)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryInstrument)?[["query.instrument", {$:3, $0:text(wire.queryInstrument)}]]:[], delay(() => append_2(wire.queryIntervalMinutes>0?[["query.intervalMinutes", {$:2, $0:wire.queryIntervalMinutes}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryFromUtc)?[["query.fromUtc", {$:3, $0:text(wire.queryFromUtc)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryToUtcExclusive)?[["query.toUtcExclusive", {$:3, $0:text(wire.queryToUtcExclusive)}]]:[], delay(() =>[["query.includePartial", {$:1, $0:wire.queryIncludePartial}]]))))))))))))));
     const lastError=IsNullOrWhiteSpace(wire.errorCode)&&IsNullOrWhiteSpace(wire.errorMessage)?null:Some({
-      ReasonCode:text(wire.errorCode),
-      Message:text(wire.errorMessage),
+      ReasonCode:text(wire.errorCode), 
+      Message:text(wire.errorMessage), 
       Recoverable:wire.errorRecoverable
     });
     if(wire.editorSchemas==null)editorSchemas=[];
@@ -8092,26 +8442,26 @@ function stateFromWire(wire){
       editorSchemas=choose((x) => ToOption(f(x)), wire.editorSchemas);
     }
     return!(wire.editorSchemas==null)&&length(editorSchemas)!==length(wire.editorSchemas)?Error_1("TA browser editor schema catalog is invalid."):Ok({
-      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}},
+      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}}, 
       Document:Some({
-        WorkspaceId:text(wire.workspaceId),
-        Title:text(wire.title),
-        RowsRef:text(wire.rowsRef),
-        StatusRef:text(wire.statusRef),
-        SharedTimeAxis:wire.sharedTimeAxis,
-        TemporalAxisRefs:wire.temporalAxisRefs==null?[]:wire.temporalAxisRefs,
-        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)),
-        Rows:rows,
-        EditorSchemas:editorSchemas,
-        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions,
+        WorkspaceId:text(wire.workspaceId), 
+        Title:text(wire.title), 
+        RowsRef:text(wire.rowsRef), 
+        StatusRef:text(wire.statusRef), 
+        SharedTimeAxis:wire.sharedTimeAxis, 
+        TemporalAxisRefs:wire.temporalAxisRefs==null?[]:wire.temporalAxisRefs, 
+        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)), 
+        Rows:rows, 
+        EditorSchemas:editorSchemas, 
+        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions, 
         DefaultView:defaultView
-      }),
-      Data:data,
-      DocumentRevision:wire.documentRevision,
-      DataRevision:wire.dataRevision,
-      LastTransportSequence:wire.transportSequence,
-      View:{Values:new FSharpMap("New", [])},
-      Poll:pollState(wire.pollKind),
+      }), 
+      Data:data, 
+      DocumentRevision:wire.documentRevision, 
+      DataRevision:wire.dataRevision, 
+      LastTransportSequence:wire.transportSequence, 
+      View:{Values:new FSharpMap("New", [])}, 
+      Poll:pollState(wire.pollKind), 
       LastError:lastError
     });
   }
@@ -8210,8 +8560,8 @@ function ResyncRequired(reasonCode){
 }
 function StateAccepted(dataRevision, pollEnabled){
   return{
-    $:1,
-    $0:dataRevision,
+    $:1, 
+    $0:dataRevision, 
     $1:pollEnabled
   };
 }
@@ -8225,7 +8575,7 @@ function ActiveChanged(Item){
 }
 function render(options, callbacks, runtimeState){
   let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, editingRowId, pendingEditorMutation, navigatorElement, finishNavigatorDrag, chartRenderSequence, actionSequence;
-  const canvasId=runtimeState.Get().Identity.CanvasInstanceId;
+  const currentCanvasId=() => runtimeState.Get().Identity.CanvasInstanceId;
   const configuredEditorSchemas=options.EditorSchemas==null?[]:options.EditorSchemas;
   const editorSchemasNow=() => {
     const o_2=runtimeState.Get().Document;
@@ -8262,20 +8612,21 @@ function render(options, callbacks, runtimeState){
   navigatorElement=null;
   finishNavigatorDrag=null;
   chartRenderSequence=0;
+  const cursorIndex=_c_3.Create_1(null);
   const uiState=_c_3.Create_1({
-    Window:{StartIndex:0, Count:options.DefaultVisibleBars},
-    FollowLatest:true,
-    HiddenRows:new FSharpSet("New_2", null),
-    AddRowOpen:false,
-    CursorIndex:null,
-    PendingActionId:null,
+    Window:{StartIndex:0, Count:options.DefaultVisibleBars}, 
+    FollowLatest:true, 
+    HiddenRows:new FSharpSet("New_2", null), 
+    AddRowOpen:false, 
+    CursorIndex:null, 
+    PendingActionId:null, 
     Feedback:""
   });
   const chartUiState=_c_3.Create_1(uiState.Get());
   const setUiState=(next) => {
     const previousChartState=chartUiState.Get();
     uiState.Set(next);
-    if(!(Equals(previousChartState.Window, next.Window)&&previousChartState.FollowLatest==next.FollowLatest&&Equals(previousChartState.HiddenRows, next.HiddenRows)&&Equals(previousChartState.CursorIndex, next.CursorIndex)))chartUiState.Set(next);
+    if(!(Equals(previousChartState.Window, next.Window)&&previousChartState.FollowLatest==next.FollowLatest&&Equals(previousChartState.HiddenRows, next.HiddenRows)))chartUiState.Set(next);
   };
   actionSequence=0;
   const commandsDisabledView=Map2((_3, _4) => remoteDisabled(_3.Poll)||_4.PendingActionId!=null, runtimeState.View, uiState.View);
@@ -8286,13 +8637,13 @@ function render(options, callbacks, runtimeState){
     let _3=o_3==null?[]:o_3.$0;
     return arrContains("visible-range-changed", _3);
   };
-  const viewportCommandsDisabledView=Map2((_3, _4) => visibleRangeActionAllowed(_3)&&(remoteDisabled(_3.Poll)||_4.PendingActionId!=null), runtimeState.View, uiState.View);
-  const viewportCommandsDisabledNow=() => visibleRangeActionAllowed(runtimeState.Get())&&commandsDisabledNow();
+  const viewportCommandsDisabledView=Map2((_3, _4) => visibleRangeActionAllowed(_3)&&(localViewportDisabled(_3.Poll)||_4.PendingActionId!=null), runtimeState.View, uiState.View);
+  const viewportCommandsDisabledNow=() => visibleRangeActionAllowed(runtimeState.Get())&&(localViewportDisabled(runtimeState.Get().Poll)||uiState.Get().PendingActionId!=null);
   const startActionWith=(action, successText, onAccepted, onRejected) => {
     actionSequence=actionSequence+1;
     const request={
-      RequestId:canvasIdText(canvasId)+":ui:"+String(actionSequence),
-      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision),
+      RequestId:canvasIdText(currentCanvasId())+":ui:"+String(actionSequence), 
+      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision), 
       Action:action
     };
     return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted, onRejected);
@@ -8316,16 +8667,17 @@ function render(options, callbacks, runtimeState){
       const bounded=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), followLatest, window_1);
       const changed=!Equals(bounded, resolvedWindow(current))||followLatest!=current.FollowLatest;
       setUiState({
-        Window:bounded,
-        FollowLatest:followLatest,
-        HiddenRows:current.HiddenRows,
-        AddRowOpen:current.AddRowOpen,
-        CursorIndex:null,
-        PendingActionId:current.PendingActionId,
+        Window:bounded, 
+        FollowLatest:followLatest, 
+        HiddenRows:current.HiddenRows, 
+        AddRowOpen:current.AddRowOpen, 
+        CursorIndex:null, 
+        PendingActionId:current.PendingActionId, 
         Feedback:current.Feedback
       });
+      cursorIndex.Set(null);
       draftWindow.Set(null);
-      if(changed&&actionAllowed("visible-range-changed")){
+      if(changed&&actionAllowed("visible-range-changed")&&!commandsDisabledNow()){
         const m=runtimeState.Get().Document;
         if(m==null)return null;
         else {
@@ -8333,23 +8685,24 @@ function render(options, callbacks, runtimeState){
           if(m_1==null)return null;
           else {
             const range_1=m_1.$0;
+            let _3=currentCanvasId();
             const a=4000;
             const a_1=1;
             const b=options.MaximumVisibleBars;
             const b_1=Compare(a_1, b)===1?a_1:b;
-            let _3=Compare(a, b_1)===-1?a:b_1;
-            let _4={
-              BaseRowId:range_1.BaseRowId,
-              StartEventTimeUtc:range_1.StartEventTimeUtc,
-              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc,
-              MaximumBasePoints:_3
-            };
+            let _4=Compare(a, b_1)===-1?a:b_1;
             let _5={
-              $:7,
-              $0:canvasId,
-              $1:_4
+              BaseRowId:range_1.BaseRowId, 
+              StartEventTimeUtc:range_1.StartEventTimeUtc, 
+              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc, 
+              MaximumBasePoints:_4
             };
-            return startAction(_5, "Visible range synchronized.", () => { });
+            let _6={
+              $:7, 
+              $0:_3, 
+              $1:_5
+            };
+            return startAction(_6, "Visible range synchronized.", () => { });
           }
         }
       }
@@ -8373,12 +8726,12 @@ function render(options, callbacks, runtimeState){
     setWindow(true, {StartIndex:0, Count:options.DefaultVisibleBars});
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:_3.AddRowOpen,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:_3.PendingActionId,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:_3.PendingActionId, 
       Feedback:"Local view reset."
     };
     setUiState(_4);
@@ -8399,23 +8752,11 @@ function render(options, callbacks, runtimeState){
     finishNavigatorDrag==null?void 0:finishNavigatorDrag.$0();
   };
   const setCursorIndex=(value) => {
-    if(!Equals(uiState.Get().CursorIndex, value)){
-      const _3=uiState.Get();
-      let _4={
-        Window:_3.Window,
-        FollowLatest:_3.FollowLatest,
-        HiddenRows:_3.HiddenRows,
-        AddRowOpen:_3.AddRowOpen,
-        CursorIndex:value,
-        PendingActionId:_3.PendingActionId,
-        Feedback:_3.Feedback
-      };
-      setUiState(_4);
-    }
+    if(!Equals(cursorIndex.Get(), value))cursorIndex.Set(value);
   };
   const commitCursorIndex=(index) => {
     setCursorIndex(Some(index));
-    if(actionAllowed("shared-cursor-changed")){
+    if(actionAllowed("shared-cursor-changed")&&!commandsDisabledNow()){
       const m=runtimeState.Get().Document;
       if(m==null){ }
       else {
@@ -8425,11 +8766,14 @@ function render(options, callbacks, runtimeState){
         const m_1=document.BaseRowId;
         if(m_1!=null&&m_1.$==1){
           m_1.$0;
-          index>=0&&index<length(visible)?startAction({
-            $:6,
-            $0:canvasId,
-            $1:{BaseRowId:m_1.$0, EventTimeUtc:get(visible, index)}
-          }, "Shared cursor synchronized.", () => { }):void 0;
+          if(index>=0&&index<length(visible)){
+            const baseRowId=m_1.$0;
+            startAction({
+              $:6, 
+              $0:currentCanvasId(), 
+              $1:{BaseRowId:baseRowId, EventTimeUtc:get(visible, index)}
+            }, "Shared cursor synchronized.", () => { });
+          }
         }
       }
     }
@@ -8446,12 +8790,12 @@ function render(options, callbacks, runtimeState){
     pendingEditorMutation=null;
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:false,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:_3.PendingActionId,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:false, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:_3.PendingActionId, 
       Feedback:_3.Feedback
     };
     setUiState(_4);
@@ -8496,12 +8840,12 @@ function render(options, callbacks, runtimeState){
           if(maximum!=null&&maximum.$==1&&(count>=maximum.$0&&(_3=maximum.$0,true))){
             const _4=uiState.Get();
             let _5={
-              Window:_4.Window,
-              FollowLatest:_4.FollowLatest,
-              HiddenRows:_4.HiddenRows,
-              AddRowOpen:_4.AddRowOpen,
-              CursorIndex:_4.CursorIndex,
-              PendingActionId:_4.PendingActionId,
+              Window:_4.Window, 
+              FollowLatest:_4.FollowLatest, 
+              HiddenRows:_4.HiddenRows, 
+              AddRowOpen:_4.AddRowOpen, 
+              CursorIndex:_4.CursorIndex, 
+              PendingActionId:_4.PendingActionId, 
               Feedback:String(labelText)+" allows at most "+String(_3)+" item(s)."
             };
             setUiState(_5);
@@ -8587,17 +8931,18 @@ function render(options, callbacks, runtimeState){
       o_2=v;
     }}), o_2]);
     const parsedInterval=m[0]&&m[1]>0?Some(m[1]):null;
+    const query={
+      SourceId:null, 
+      Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft), 
+      IntervalMinutes:parsedInterval, 
+      FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft), 
+      ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft), 
+      IncludePartial:Some(true)
+    };
     startAction({
-      $:5,
-      $0:canvasId,
-      $1:{
-        SourceId:null,
-        Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft),
-        IntervalMinutes:parsedInterval,
-        FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft),
-        ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft),
-        IncludePartial:Some(true)
-      }
+      $:5, 
+      $0:currentCanvasId(), 
+      $1:query
     }, "Query accepted.", () => { });
   };
   const addRow=() => {
@@ -8609,12 +8954,12 @@ function render(options, callbacks, runtimeState){
       if(length(errors)>0){
         const _3=uiState.Get();
         let _4={
-          Window:_3.Window,
-          FollowLatest:_3.FollowLatest,
-          HiddenRows:_3.HiddenRows,
-          AddRowOpen:_3.AddRowOpen,
-          CursorIndex:_3.CursorIndex,
-          PendingActionId:_3.PendingActionId,
+          Window:_3.Window, 
+          FollowLatest:_3.FollowLatest, 
+          HiddenRows:_3.HiddenRows, 
+          AddRowOpen:_3.AddRowOpen, 
+          CursorIndex:_3.CursorIndex, 
+          PendingActionId:_3.PendingActionId, 
           Feedback:concat_1(" ", errors)
         };
         setUiState(_4);
@@ -8626,10 +8971,10 @@ function render(options, callbacks, runtimeState){
         const binding={TemplateKey:schema.TemplateKey, Values:editorValues.Get().slice()};
         pendingEditorMutation=Some([runtimeState.Get().DocumentRevision, editingRowId, new FSharpSet("New_2", OfSeq(map((a) => a.RowId, currentRows))), binding]);
         startActionWith({
-          $:3,
-          $0:canvasId,
-          $1:editingRowId,
-          $2:schema.TemplateKey,
+          $:3, 
+          $0:currentCanvasId(), 
+          $1:editingRowId, 
+          $2:schema.TemplateKey, 
           $3:editorValues.Get()
         }, schema.DisplayName+" accepted; awaiting authoritative document.", () => { }, () => {
           pendingEditorMutation=null;
@@ -8682,18 +9027,18 @@ function render(options, callbacks, runtimeState){
         addRowSequence=addRowSequence+1;
         const rowId="row-"+addKind.Get().toLowerCase()+"-"+String(addRowSequence);
         const spec={
-          RowId:rowId,
-          Kind:kind,
-          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()),
-          HeightWeight:1,
-          Visible:true,
-          Options:rowOptions,
+          RowId:rowId, 
+          Kind:kind, 
+          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()), 
+          HeightWeight:1, 
+          Visible:true, 
+          Options:rowOptions, 
           Traces:[]
         };
         pendingAddRowId=Some(rowId);
         startAction({
-          $:2,
-          $0:canvasId,
+          $:2, 
+          $0:currentCanvasId(), 
           $1:spec
         }, "Row accepted.", () => { });
       }
@@ -8701,23 +9046,19 @@ function render(options, callbacks, runtimeState){
         const message=optionsResult.$0;
         const _12=uiState.Get();
         let _13={
-          Window:_12.Window,
-          FollowLatest:_12.FollowLatest,
-          HiddenRows:_12.HiddenRows,
-          AddRowOpen:_12.AddRowOpen,
-          CursorIndex:_12.CursorIndex,
-          PendingActionId:_12.PendingActionId,
+          Window:_12.Window, 
+          FollowLatest:_12.FollowLatest, 
+          HiddenRows:_12.HiddenRows, 
+          AddRowOpen:_12.AddRowOpen, 
+          CursorIndex:_12.CursorIndex, 
+          PendingActionId:_12.PendingActionId, 
           Feedback:message
         };
         setUiState(_13);
       }
     }
   };
-  return Doc.Element("div", [Attr.Create("class", "ptcs-ta-workspace"), Attr.Create("data-testid", "ta-workspace"), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; width:100%; min-height:640px; color:#142033; background:#f4f7fb; font-family:Segoe UI, Arial, sans-serif; letter-spacing:0;")], [Doc.EmbedView(MapCachedBy((_3, _4) => {
-    const _5=_3.Document;
-    const _6=_4.Document;
-    return(_5!=null&&_5.$==1?_6!=null&&_6.$==1&&_5.$0.WorkspaceId==_6.$0.WorkspaceId:_6==null)&&_3.DocumentRevision===_4.DocumentRevision;
-  }, (state) => {
+  return Doc.Element("div", [Attr.Create("class", "ptcs-ta-workspace"), Attr.Create("data-testid", "ta-workspace"), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; width:100%; min-height:640px; color:#142033; background:#f4f7fb; font-family:Segoe UI, Arial, sans-serif; letter-spacing:0;")], [Doc.EmbedView(MapCachedBy(sameDocumentShell, (state) => {
     let _3, _4, _5, _6, _7;
     const m=state.Document;
     if(m!=null&&m.$==1){
@@ -8741,12 +9082,12 @@ function render(options, callbacks, runtimeState){
             pendingAddRowId=null;
             const _8=uiState.Get();
             let _9={
-              Window:_8.Window,
-              FollowLatest:_8.FollowLatest,
-              HiddenRows:_8.HiddenRows,
-              AddRowOpen:false,
-              CursorIndex:_8.CursorIndex,
-              PendingActionId:_8.PendingActionId,
+              Window:_8.Window, 
+              FollowLatest:_8.FollowLatest, 
+              HiddenRows:_8.HiddenRows, 
+              AddRowOpen:false, 
+              CursorIndex:_8.CursorIndex, 
+              PendingActionId:_8.PendingActionId, 
               Feedback:"Row added."
             };
             _4=setUiState(_9);
@@ -8778,12 +9119,12 @@ function render(options, callbacks, runtimeState){
               forceCloseRowEditor();
               const _10=uiState.Get();
               let _11={
-                Window:_10.Window,
-                FollowLatest:_10.FollowLatest,
-                HiddenRows:_10.HiddenRows,
-                AddRowOpen:_10.AddRowOpen,
-                CursorIndex:_10.CursorIndex,
-                PendingActionId:_10.PendingActionId,
+                Window:_10.Window, 
+                FollowLatest:_10.FollowLatest, 
+                HiddenRows:_10.HiddenRows, 
+                AddRowOpen:_10.AddRowOpen, 
+                CursorIndex:_10.CursorIndex, 
+                PendingActionId:_10.PendingActionId, 
                 Feedback:targetRowId!=null?"Row updated.":"Row added."
               };
               _6=setUiState(_11);
@@ -8796,7 +9137,7 @@ function render(options, callbacks, runtimeState){
         _7=void(synchronizedDocumentRevision=state.DocumentRevision);
       }
       else _7=null;
-      return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; min-width:0;")], [Doc.Element("header", [Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:10px 12px 8px; background:#fff; border-bottom:1px solid #dbe3ee;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;")], [Doc.Element("div", [Attr.Create("style", "min-width:0;")], [Doc.Element("h2", [Attr.Create("data-testid", "ta-workspace-title"), Attr.Create("style", "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;")], [Doc.TextNode(document.Title)]), Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextView(Map((current) =>"canvas "+canvasIdText(canvasId)+" / revision "+String(current.DataRevision), runtimeState.View))])]), Doc.EmbedView(Map((current) => {
+      return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; min-width:0;")], [Doc.Element("header", [Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:10px 12px 8px; background:#fff; border-bottom:1px solid #dbe3ee;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;")], [Doc.Element("div", [Attr.Create("style", "min-width:0;")], [Doc.Element("h2", [Attr.Create("data-testid", "ta-workspace-title"), Attr.Create("style", "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;")], [Doc.TextNode(document.Title)]), Doc.Element("div", [Attr.Create("data-testid", "ta-canvas-identity"), Attr.Create("style", "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextView(Map((current) =>"canvas "+canvasIdText(current.Identity.CanvasInstanceId)+" / revision "+String(current.DataRevision), runtimeState.View))])]), Doc.EmbedView(Map((current) => {
         const status=statusPresentation(document.StatusRef, current);
         return Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-freshness"), Attr.Create("data-freshness", freshnessClass(status.Freshness)), Attr.Create("style", "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;")], [Doc.TextNode(status.Label)]), Doc.Element("div", [Attr.Create("data-testid", "ta-poll-state"), Attr.Create("data-poll-state", pollText(current.Poll)), Attr.Create("style", "border:1px solid #c3cfdd; border-radius:4px; padding:3px 7px; font-size:10px; color:#53667d; background:#fff;")], [Doc.TextNode(pollText(current.Poll))])]);
       }, runtimeState.View))]), Doc.EmbedView(Map((current) => {
@@ -8840,7 +9181,7 @@ function render(options, callbacks, runtimeState){
       }), compactRemoteButton("ta-zoom-out", "\u2212", "Show more bars", viewportCommandsDisabledView, viewportCommandsDisabledNow, () => {
         zoomWindow(8);
       }), compactRemoteButton("ta-reset-view", "Reset View", "Reset local viewport to the latest bars", viewportCommandsDisabledView, viewportCommandsDisabledNow, resetWindow), compactRemoteButton("ta-reset-canvas", "Reset Canvas", "Request server canvas reset", commandsDisabledView, commandsDisabledNow, () => {
-        startAction({$:1, $0:canvasId}, "Canvas reset accepted.", () => { });
+        startAction({$:1, $0:currentCanvasId()}, "Canvas reset accepted.", () => { });
       })]), append_1(length(editorSchemasNow())>0?ofArray([compactButton("ta-add-row-toggle", "Add Row", "Open row request editor", () => {
         if(uiState.Get().AddRowOpen)closeRowEditor();
         else {
@@ -8850,12 +9191,12 @@ function render(options, callbacks, runtimeState){
           else resetEditorFor(m_2.$0.TemplateKey);
           const _12=uiState.Get();
           let _13={
-            Window:_12.Window,
-            FollowLatest:_12.FollowLatest,
-            HiddenRows:_12.HiddenRows,
-            AddRowOpen:true,
-            CursorIndex:_12.CursorIndex,
-            PendingActionId:_12.PendingActionId,
+            Window:_12.Window, 
+            FollowLatest:_12.FollowLatest, 
+            HiddenRows:_12.HiddenRows, 
+            AddRowOpen:true, 
+            CursorIndex:_12.CursorIndex, 
+            PendingActionId:_12.PendingActionId, 
             Feedback:""
           };
           setUiState(_13);
@@ -8863,6 +9204,7 @@ function render(options, callbacks, runtimeState){
       })]):FSharpList.Empty, ofArray([Doc.Element("span", [Attr.Create("style", "margin-left:auto; color:#60738b; font-size:11px;")], [Doc.TextNode("viewport changes request the selected event-time range when enabled")])])))), Doc.EmbedView(Map((ui) => Doc.Element("div", [Attr.Create("data-testid", "ta-row-toggles"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], ofSeq_1(delay(() => collect_2((row) => {
         let editable;
         const hidden=ui.HiddenRows.Contains(row.RowId);
+        const displayLabel=rowDisplayLabel(row);
         const m_2=tryResolve(editorSchemasNow(), row);
         if(m_2.$==0){
           const _12=m_2.$0;
@@ -8873,28 +9215,28 @@ function render(options, callbacks, runtimeState){
           const nextHidden=hidden?uiState.Get().HiddenRows.Remove_1(row.RowId):uiState.Get().HiddenRows.Add_1(row.RowId);
           const _13=uiState.Get();
           let _14={
-            Window:_13.Window,
-            FollowLatest:_13.FollowLatest,
-            HiddenRows:nextHidden,
-            AddRowOpen:_13.AddRowOpen,
-            CursorIndex:_13.CursorIndex,
-            PendingActionId:_13.PendingActionId,
+            Window:_13.Window, 
+            FollowLatest:_13.FollowLatest, 
+            HiddenRows:nextHidden, 
+            AddRowOpen:_13.AddRowOpen, 
+            CursorIndex:_13.CursorIndex, 
+            PendingActionId:_13.PendingActionId, 
             Feedback:_13.Feedback
           };
           return setUiState(_14);
-        })], [Doc.TextNode(rowKindText_1(row.Kind))])], delay(() => append_2(editable?[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-edit-row-"+row.RowId), Attr.Create("title", "Edit "+rowKindText_1(row.Kind)+" parameters"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"height:26px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; cursor:not-allowed;":"height:26px; border:1px solid #9cb3cc; border-right:0; background:#fff; color:#315d88; padding:2px 7px; font-size:11px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() => {
+        })], [Doc.TextNode(displayLabel)])], delay(() => append_2(editable?[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-edit-row-"+row.RowId), Attr.Create("title", "Edit "+displayLabel+" parameters"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"height:26px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; cursor:not-allowed;":"height:26px; border:1px solid #9cb3cc; border-right:0; background:#fff; color:#315d88; padding:2px 7px; font-size:11px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() => {
           if(!commandsDisabledNow()){
             const m_3=tryResolve(editorSchemasNow(), row);
             if(m_3.$==1){
               editingRowId=null;
               const _13=uiState.Get();
               let _14={
-                Window:_13.Window,
-                FollowLatest:_13.FollowLatest,
-                HiddenRows:_13.HiddenRows,
-                AddRowOpen:false,
-                CursorIndex:_13.CursorIndex,
-                PendingActionId:_13.PendingActionId,
+                Window:_13.Window, 
+                FollowLatest:_13.FollowLatest, 
+                HiddenRows:_13.HiddenRows, 
+                AddRowOpen:false, 
+                CursorIndex:_13.CursorIndex, 
+                PendingActionId:_13.PendingActionId, 
                 Feedback:"This row's editor metadata is invalid; the row remains read-only."
               };
               return setUiState(_14);
@@ -8908,23 +9250,23 @@ function render(options, callbacks, runtimeState){
               editorValues.Set(values);
               const _15=uiState.Get();
               let _16={
-                Window:_15.Window,
-                FollowLatest:_15.FollowLatest,
-                HiddenRows:_15.HiddenRows,
-                AddRowOpen:true,
-                CursorIndex:_15.CursorIndex,
-                PendingActionId:_15.PendingActionId,
+                Window:_15.Window, 
+                FollowLatest:_15.FollowLatest, 
+                HiddenRows:_15.HiddenRows, 
+                AddRowOpen:true, 
+                CursorIndex:_15.CursorIndex, 
+                PendingActionId:_15.PendingActionId, 
                 Feedback:""
               };
               return setUiState(_16);
             }
           }
           else return null;
-        })], [Doc.TextNode("Edit")])]:[], delay(() =>[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+rowKindText_1(row.Kind)+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
-          $:4,
-          $0:canvasId,
+        })], [Doc.TextNode("Edit")])]:[], delay(() =>[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+displayLabel+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
+          $:4, 
+          $0:currentCanvasId(), 
           $1:row.RowId
-        }, rowKindText_1(row.Kind)+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])))))))];
+        }, displayLabel+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])))))))];
       }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-generic-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; min-width:0;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Template"), selectInput("ta-editor-template", selectedTemplate.Get(), ofArray(map((schema) =>[schema.TemplateKey, schema.DisplayName], editorSchemasNow())), resetEditorFor)]), Doc.EmbedView(Map((templateKey) => {
         const m_2=tryFind((schema_1) => schema_1.TemplateKey==templateKey, editorSchemasNow());
         if(m_2!=null&&m_2.$==1){
@@ -8941,7 +9283,6 @@ function render(options, callbacks, runtimeState){
         }
         return append_2(_12, delay(() => append_2([compactButton("ta-add-row-cancel", "Cancel", "Close without submitting", closeRowEditor)], delay(() =>[primaryButtonView("ta-add-row-submit", editingRowId!=null?"Apply":"Add", commandsDisabledView, commandsDisabledNow, addRow)]))));
       })))]), uiState.View)), Doc.EmbedView(Map((ui) => IsNullOrWhiteSpace(ui.Feedback)?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-feedback"), Attr.Create("style", "font-size:11px; color:#40536d; min-height:15px;")], [Doc.TextNode(ui.Feedback)]), uiState.View))]), Doc.EmbedView(Map2((_12, _13) => {
-        let cursorIndex, cursorValues;
         chartRenderSequence=chartRenderSequence+1;
         const visibleRows=filter_1((row) => row.Visible&&!_13.HiddenRows.Contains(row.RowId), document.Rows);
         const referenceTimeline_1=referenceTimelineForDocument(document, _12.Data);
@@ -8951,24 +9292,33 @@ function render(options, callbacks, runtimeState){
         const overviewPoints=o_5==null?[]:o_5.$0;
         const visibleWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength_1, _13.FollowLatest, _13.Window);
         const visibleTimestamps=selectWindow(visibleWindow, referenceTimeline_1);
-        const o_6=_13.CursorIndex;
-        if(o_6==null)cursorIndex=null;
-        else {
-          const value=o_6.$0;
-          const a=0;
-          const x=Compare(a, value)===1?a:value;
-          const a_1=0;
-          const b=length(visibleTimestamps)-1;
-          const e=Compare(a_1, b)===1?a_1:b;
-          let _14=Compare(e, x)===-1?e:x;
-          cursorIndex=Some(_14);
-        }
-        const cursor=cursorIndex==null?null:cursorSnapshotForRows(document, visibleRows, _12.Data, visibleWindow, cursorIndex.$0);
-        if(cursor!=null&&cursor.$==1){
-          const value_1=cursor.$0;
-          cursorValues=Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-values"), Attr.Create("style", "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "white-space:nowrap;")], [Doc.TextNode(compactTimestamp(value_1.Timestamp))])], delay(() => map_2((item) => Doc.Element("span", [Attr.Create("data-cursor-row", item.Label), Attr.Create("style", "min-width:0;")], [Doc.TextNode(item.Label+" "+item.Value)]), value_1.Values))))));
-        }
-        else cursorValues=Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#718197;")], [Doc.TextNode("Move the pointer over any chart row to inspect one shared bar.")]);
+        const renderedRows=mapi((_14, _15) => renderRowReactivePrepared(_12, _13, visibleTimestamps, cursorIndex.View, setCursorIndex, commitCursorIndex, _14===length(visibleRows)-1, Equals(document.BaseRowId, Some(_15.RowId)), _15), visibleRows);
+        const cursorReaders=collect((t) => t[1], renderedRows);
+        const cursorIndexView=Map((o_6) => {
+          if(o_6==null)return null;
+          else {
+            const value=o_6.$0;
+            const a=0;
+            const x=Compare(a, value)===1?a:value;
+            const a_1=0;
+            const b=length(visibleTimestamps)-1;
+            const e=Compare(a_1, b)===1?a_1:b;
+            let _14=Compare(e, x)===-1?e:x;
+            return Some(_14);
+          }
+        }, cursorIndex.View);
+        const cursorValues=Map((currentIndex) => {
+          if(currentIndex!=null&&currentIndex.$==1){
+            const index=currentIndex.$0;
+            if(index>=0&&index<length(visibleTimestamps)){
+              const timestamp=get(visibleTimestamps, currentIndex.$0);
+              const values=choose((readCursor) => readCursor(timestamp), cursorReaders);
+              return Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-values"), Attr.Create("style", "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "white-space:nowrap;")], [Doc.TextNode(compactTimestamp(timestamp))])], delay(() => map_2((item) => Doc.Element("span", [Attr.Create("data-cursor-row", item.Label), Attr.Create("style", "min-width:0;")], [Doc.TextNode(item.Label+" "+item.Value)]), values))))));
+            }
+            else return Doc.Empty;
+          }
+          else return Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#718197;")], [Doc.TextNode("Move the pointer over any chart row to inspect one shared bar.")]);
+        }, cursorIndexView);
         const visibleStart=visibleWindow.Count===0?0:visibleWindow.StartIndex+1;
         const visibleEnd=visibleWindow.StartIndex+visibleWindow.Count;
         const viewportRangeText=Map((draft) => {
@@ -8978,25 +9328,10 @@ function render(options, callbacks, runtimeState){
           }
           else return"Loaded "+String(referenceLength_1)+" bars · Viewing "+String(visibleStart)+"-"+String(visibleEnd);
         }, draftWindow.View);
-        let _15=Attr.Create("data-testid", "ta-chart-stack");
-        let _16=Attr.Create("data-chart-render-sequence", String(chartRenderSequence));
-        let _17=Attr.Create("data-loaded-bars", String(referenceLength_1));
-        let _18=Attr.Create("data-visible-start", String(visibleStart));
-        let _19=Attr.Create("data-visible-end", String(visibleEnd));
-        let _20=Attr.Create("data-follow-latest", _13.FollowLatest?"true":"false");
-        const o_7=cursorIndex==null?null:Some(String(cursorIndex.$0));
-        let _21=o_7==null?"":o_7.$0;
-        let _22=Attr.Create("data-cursor-index", _21);
-        let _23=[_15, _16, _17, _18, _19, _20, _22, Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;")];
-        return Doc.Element("div", _23, ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[cursorValues])))], delay(() => append_2(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:map_2((index) => renderRow(_12, {
-          Window:_13.Window,
-          FollowLatest:_13.FollowLatest,
-          HiddenRows:_13.HiddenRows,
-          AddRowOpen:_13.AddRowOpen,
-          CursorIndex:cursorIndex,
-          PendingActionId:_13.PendingActionId,
-          Feedback:_13.Feedback
-        }, visibleTimestamps, setCursorIndex, commitCursorIndex, index===length(visibleRows)-1, get(visibleRows, index)), range(0, length(visibleRows)-1)), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
+        return Doc.Element("div", [Attr.Create("data-testid", "ta-chart-stack"), Attr.Create("data-chart-render-sequence", String(chartRenderSequence)), Attr.Create("data-loaded-bars", String(referenceLength_1)), Attr.Create("data-visible-start", String(visibleStart)), Attr.Create("data-visible-end", String(visibleEnd)), Attr.Create("data-follow-latest", _13.FollowLatest?"true":"false"), Dynamic_1("data-cursor-index", Map((x) => {
+          const o_6=x==null?null:Some(String(x.$0));
+          return o_6==null?"":o_6.$0;
+        }, cursorIndexView)), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;")], ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[Doc.EmbedView(cursorValues)])))], delay(() => append_2(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:collect_2((m_2) =>[m_2[0]], renderedRows), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
           setWindowCount(48);
         }), compactButton("ta-view-200", "200", "Show latest 200 bars", () => {
           setWindowCount(200);
@@ -9020,9 +9355,9 @@ function render(options, callbacks, runtimeState){
               if(!finished){
                 finished=true;
                 finishNavigatorDrag=null;
-                const x_1=draftWindow.Get();
-                let _24=x_1==null?committed:x_1.$0;
-                const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _24);
+                const x=draftWindow.Get();
+                let _14=x==null?committed:x.$0;
+                const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _14);
                 const next=p[1];
                 const followLatest=p[0];
                 if(!Equals(next, committed)||followLatest!=uiState.Get().FollowLatest)setWindow(followLatest, next);
@@ -9053,18 +9388,21 @@ function defaultOptions(){
 function remoteDisabled(a){
   return a.$==3||(a.$==6||(a.$==0||a.$==7));
 }
+function localViewportDisabled(a){
+  return a.$==3||(a.$==0||a.$==7);
+}
 function submit(callbacks, uiState, actualDocumentRevision, request, successText, onAccepted, onRejected){
   const m=request.ExpectedDocumentRevision;
   const expectedRevisionMatches=m==null||m.$0===actualDocumentRevision;
   if(uiState.Get().PendingActionId!=null){
     const _1=uiState.Get();
     let _2={
-      Window:_1.Window,
-      FollowLatest:_1.FollowLatest,
-      HiddenRows:_1.HiddenRows,
-      AddRowOpen:_1.AddRowOpen,
-      CursorIndex:_1.CursorIndex,
-      PendingActionId:_1.PendingActionId,
+      Window:_1.Window, 
+      FollowLatest:_1.FollowLatest, 
+      HiddenRows:_1.HiddenRows, 
+      AddRowOpen:_1.AddRowOpen, 
+      CursorIndex:_1.CursorIndex, 
+      PendingActionId:_1.PendingActionId, 
       Feedback:"action-in-flight: wait for the pending action result."
     };
     uiState.Set(_2);
@@ -9073,12 +9411,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
     onRejected();
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:_3.AddRowOpen,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:null,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:null, 
       Feedback:"revision-conflict: workspace is at revision "+String(actualDocumentRevision)+"."
     };
     uiState.Set(_4);
@@ -9086,12 +9424,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
   else {
     const _5=uiState.Get();
     let _6={
-      Window:_5.Window,
-      FollowLatest:_5.FollowLatest,
-      HiddenRows:_5.HiddenRows,
-      AddRowOpen:_5.AddRowOpen,
-      CursorIndex:_5.CursorIndex,
-      PendingActionId:Some(request.RequestId),
+      Window:_5.Window, 
+      FollowLatest:_5.FollowLatest, 
+      HiddenRows:_5.HiddenRows, 
+      AddRowOpen:_5.AddRowOpen, 
+      CursorIndex:_5.CursorIndex, 
+      PendingActionId:Some(request.RequestId), 
       Feedback:"Submitting "+request.RequestId+"..."
     };
     uiState.Set(_6);
@@ -9100,9 +9438,9 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
       if(a.$==1){
         const error_2=a.$0;
         result={
-          $:1,
-          $0:request.RequestId,
-          $1:error_2.Code,
+          $:1, 
+          $0:request.RequestId, 
+          $1:error_2.Code, 
           $2:error_2.Message
         };
       }
@@ -9111,12 +9449,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _7=uiState.Get();
         let _8={
-          Window:_7.Window,
-          FollowLatest:_7.FollowLatest,
-          HiddenRows:_7.HiddenRows,
-          AddRowOpen:_7.AddRowOpen,
-          CursorIndex:_7.CursorIndex,
-          PendingActionId:null,
+          Window:_7.Window, 
+          FollowLatest:_7.FollowLatest, 
+          HiddenRows:_7.HiddenRows, 
+          AddRowOpen:_7.AddRowOpen, 
+          CursorIndex:_7.CursorIndex, 
+          PendingActionId:null, 
           Feedback:"action-correlation-mismatch: result does not match the pending request."
         };
         uiState.Set(_8);
@@ -9128,12 +9466,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _9=uiState.Get();
         let _10={
-          Window:_9.Window,
-          FollowLatest:_9.FollowLatest,
-          HiddenRows:_9.HiddenRows,
-          AddRowOpen:_9.AddRowOpen,
-          CursorIndex:_9.CursorIndex,
-          PendingActionId:null,
+          Window:_9.Window, 
+          FollowLatest:_9.FollowLatest, 
+          HiddenRows:_9.HiddenRows, 
+          AddRowOpen:_9.AddRowOpen, 
+          CursorIndex:_9.CursorIndex, 
+          PendingActionId:null, 
           Feedback:code+": "+message
         };
         uiState.Set(_10);
@@ -9144,12 +9482,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _11=uiState.Get();
         let _12={
-          Window:_11.Window,
-          FollowLatest:_11.FollowLatest,
-          HiddenRows:_11.HiddenRows,
-          AddRowOpen:_11.AddRowOpen,
-          CursorIndex:_11.CursorIndex,
-          PendingActionId:null,
+          Window:_11.Window, 
+          FollowLatest:_11.FollowLatest, 
+          HiddenRows:_11.HiddenRows, 
+          AddRowOpen:_11.AddRowOpen, 
+          CursorIndex:_11.CursorIndex, 
+          PendingActionId:null, 
           Feedback:"revision-conflict: workspace is at revision "+String(actualRevision)+"."
         };
         uiState.Set(_12);
@@ -9160,12 +9498,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onAccepted();
         const _13=uiState.Get();
         let _14={
-          Window:_13.Window,
-          FollowLatest:_13.FollowLatest,
-          HiddenRows:_13.HiddenRows,
-          AddRowOpen:_13.AddRowOpen,
-          CursorIndex:_13.CursorIndex,
-          PendingActionId:null,
+          Window:_13.Window, 
+          FollowLatest:_13.FollowLatest, 
+          HiddenRows:_13.HiddenRows, 
+          AddRowOpen:_13.AddRowOpen, 
+          CursorIndex:_13.CursorIndex, 
+          PendingActionId:null, 
           Feedback:successText+" Revision "+String(revision)+"."
         };
         uiState.Set(_14);
@@ -9205,29 +9543,26 @@ function primaryButtonView(testId, label, disabled, isDisabled, onClick){
 function compactRemoteButton(testId, label, titleText, disabled, isDisabled, onClick){
   return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", testId), Attr.Create("title", titleText), DynamicBool("disabled", disabled), Dynamic_1("style", Map((value) => value?"height:30px; border:1px solid #c8d2df; border-radius:4px; background:#edf1f5; color:#8b98a8; padding:3px 9px; font-size:12px; cursor:not-allowed; white-space:nowrap;":"height:30px; border:1px solid #9fb0c6; border-radius:4px; background:#f8fafc; color:#20344f; padding:3px 9px; font-size:12px; cursor:pointer; white-space:nowrap;", disabled)), Handler("click", () =>() =>!isDisabled()?onClick():null)], [Doc.TextNode(label)]);
 }
-function rowKindText_1(a){
-  return a.$==1?"Volume":a.$==2?"SMA":a.$==3?"DMI":a.$==4?"ADX":a.$==5?"MACD":a.$==6?"Heikin-Ashi":"Candlestick";
+function rowDisplayLabel(row){
+  const x=rowExplicitLabel(row);
+  const v=rowKindText_1(row.Kind);
+  return x==null?v:x.$0;
 }
-function renderRow(state, ui, visibleTimestamps, setCursorIndex, commitCursorIndex, showSharedTimeAxis, row){
-  let title;
+function renderRowReactivePrepared(state, _1, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex, showSharedTimeAxis, isBaseRow, row){
   const traces=filter_1((a) => a.Visible, effectiveTraces(row));
-  const p=compositeSvg(row.RowId, traces, state.Data, visibleTimestamps, ui.CursorIndex, setCursorIndex, commitCursorIndex);
+  const p=compositeSvgReactivePrepared(row.RowId, isBaseRow, traces, state.Data, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex);
   const chart=p[0];
-  if(row.Traces==null||length(row.Traces)===0)title=rowKindText_1(row.Kind);
-  else {
-    const value=concat_1(" / ", map((trace) => IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label, traces));
-    title=IsNullOrWhiteSpace(value)?rowKindText_1(row.Kind):value;
-  }
+  const title=rowTitle(row, traces);
   const chartHeight=exists((trace) => Equals(trace.Kind, {$:0}), traces)?262:124;
   const children=showSharedTimeAxis?ofArray([chart, timeAxis("ta-time-axis-shared", p[1])]):ofArray([chart]);
-  return chartFrame(title, ofArray(map((value_1) => {
-    const o=value_1.AvailableAtUtc;
+  return[chartFrame(title, ofArray(map((value) => {
+    const o=value.AvailableAtUtc;
     const o_1=o==null?null:Some(compactTimestamp(o.$0));
     const availability=o_1==null?"unknown":o_1.$0;
-    const o_2=value_1.Quality;
+    const o_2=value.Quality;
     const quality=o_2==null?"unknown":o_2.$0;
-    return Doc.Element("span", [Attr.Create("data-testid", "ta-row-meta-"+row.RowId+"-"+value_1.ScaleKey), Attr.Create("data-scale-key", value_1.ScaleKey), Attr.Create("data-finality", value_1.Finality), Attr.Create("data-quality", quality), Attr.Create("title", temporalDetail(value_1)), Attr.Create("style", "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;")], [Doc.TextNode(value_1.ScaleKey+" | "+value_1.Finality+" | "+quality+" | frontier "+compactTimestamp(value_1.ObservedThroughUtc)+" | available "+availability)]);
-  }, rowTemporalMetadata(row, state.Data))), "ta-row-"+row.RowId, chartHeight+(showSharedTimeAxis?16:0), children);
+    return Doc.Element("span", [Attr.Create("data-testid", "ta-row-meta-"+row.RowId+"-"+value.ScaleKey), Attr.Create("data-scale-key", value.ScaleKey), Attr.Create("data-finality", value.Finality), Attr.Create("data-quality", quality), Attr.Create("title", temporalDetail(value)), Attr.Create("style", "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;")], [Doc.TextNode(value.ScaleKey+" | "+value.Finality+" | "+quality+" | frontier "+compactTimestamp(value.ObservedThroughUtc)+" | available "+availability)]);
+  }, rowTemporalMetadata(row, state.Data))), "ta-row-"+row.RowId, chartHeight+(showSharedTimeAxis?16:0), children), p[2]];
 }
 function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
   const width=1000;
@@ -9268,66 +9603,91 @@ function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
 function compactTimestamp(value){
   return IsNullOrWhiteSpace(value)?"":value.length>=16&&value[4]==="-"&&value[7]==="-"&&(value[10]==="T"||value[10]===" ")?Substring(value, 5, 5)+" "+Substring(value, 11, 5):value;
 }
+function sameDocumentShell(left, right){
+  const _1=left.Document;
+  const _2=right.Document;
+  const samePresence=_1!=null&&_1.$==1?_2!=null&&_2.$==1&&_1.$0.WorkspaceId==_2.$0.WorkspaceId:_2==null;
+  return Equals(left.Identity, right.Identity)&&samePresence&&left.DocumentRevision===right.DocumentRevision;
+}
 function element_1(name, attrs, children){
   return Doc.Element(name, attrs, children);
 }
 function fixedText(value){
   return String(value);
 }
-function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, setCursorIndex, commitCursorIndex){
+function rowExplicitLabel(row){
+  let _1;
+  if(row.Options==null)return null;
+  else {
+    const m=row.Options.TryFind("label");
+    return m!=null&&m.$==1&&(m.$0.$==3&&(!IsNullOrWhiteSpace(m.$0.$0)&&(_1=m.$0.$0,true)))?Some(_1):null;
+  }
+}
+function rowKindText_1(a){
+  return a.$==1?"Volume":a.$==2?"SMA":a.$==3?"DMI":a.$==4?"ADX":a.$==5?"MACD":a.$==6?"Heikin-Ashi":"Candlestick";
+}
+function compositeSvgReactivePrepared(rowId, isBaseRow, traces, data, referenceTimestamps, cursorIndex, setCursorIndex, commitCursorIndex){
   const width=1000;
   const hasCandles=exists((trace) => Equals(trace.Kind, {$:0}), traces);
   const top=10;
   const plotHeight=hasCandles?214:82;
   const palette=["#2764b0", "#9b5b24", "#6a4ca3", "#0f766e", "#b45309", "#be185d", "#475569", "#0891b2"];
   const color=(index, trace) => IsNullOrWhiteSpace(trace.Color)?get(palette, index%length(palette)):trace.Color;
-  const candleSeries_1=collect((_11) => {
-    const traceIndex=_11[0];
-    const trace=_11[1];
-    return map((point) =>[traceIndex, trace, point], filter_1((point) => candleSlotRange(referenceTimestamps, point)!=null, candleSeriesForTrace(trace, data)));
-  }, filter_1((_11) => Equals(_11[1].Kind, {$:0}), mapi((_11, _12) =>[_11, _12], traces)));
-  const linePoints=mapi((_11, _12) => {
-    let _13;
-    const m=_12.Kind;
-    switch(m.$==1?0:m.$==2?1:m.$==3?1:2){
-      case 0:
-        _13=map((point) =>({
-          Timestamp:point.Timestamp,
-          Value:point.Volume,
-          Temporal:point.Temporal
-        }), candleSeriesForTrace(_12, data));
-        break;
-      case 1:
-        _13=lineSeries(_12.DataRef, data);
-        break;
-      case 2:
-        _13=[];
-        break;
+  const preparedTraces=mapi((_1, _2) => {
+    const label=IsNullOrWhiteSpace(_2.Label)?_2.TraceId:_2.Label;
+    const m=_2.Kind;
+    if(m.$==1||(m.$==2?false:m.$!=3)){
+      const candles=candleSeriesForTrace(_2, data);
+      return[_1, _2, candles, [], (timestamp) => candleCursorValue(label, _2.Kind, isBaseRow, timestamp, candles)];
     }
-    let _14=projectedLinePoints(referenceTimestamps, _13);
-    return[_11, _12, _14];
+    else {
+      const lines=lineSeries(_2.DataRef, data);
+      return[_1, _2, [], lines, (timestamp) => lineCursorValue(label, isBaseRow, timestamp, lines)];
+    }
   }, traces);
-  const p=paddedRange(0, 1, ofSeq(delay(() => append_2(collect((_11) => {
-    const point=_11[2];
+  const candleSeries_1=collect((_1) => {
+    const traceIndex=_1[0];
+    const trace=_1[1];
+    return collect((point) => map((_2) =>[traceIndex, trace, _2[0], _2[1], _2[2]], projectedCandleSlots(referenceTimestamps, point)), _1[2]);
+  }, filter_1((_1) => Equals(_1[1].Kind, {$:0}), preparedTraces));
+  const xAt=(index) => {
+    const o=slotCenter(width, length(referenceTimestamps), index);
+    return o==null?width/2:o.$0;
+  };
+  const linePoints=map((_1) => {
+    const trace=_1[1];
+    const lines=_1[3];
+    const m=trace.Kind;
+    let _2=m.$==1?map((point) =>({
+      Timestamp:point.Timestamp, 
+      Value:point.Volume, 
+      Temporal:point.Temporal
+    }), _1[2]):m.$==2?lines:m.$==3?lines:[];
+    let _3=projectedLinePoints(referenceTimestamps, _2);
+    return[_1[0], trace, _3];
+  }, preparedTraces);
+  const p=paddedRange(0, 1, ofSeq(delay(() => append_2(collect((_1) => {
+    const point=_1[4];
     return[point.Low, point.High];
-  }, candleSeries_1), delay(() => collect((_11) => {
-    const values=map((_12) => _12[1].Value, _11[2]);
-    return Equals(_11[1].Kind, {$:3})?[0].concat(values):values;
+  }, candleSeries_1), delay(() => collect((_1) => {
+    const values=map((_2) => _2[1].Value, _1[2]);
+    return Equals(_1[1].Kind, {$:3})?[0].concat(values):values;
   }, linePoints))))));
   const low=p[0];
   const high=p[1];
   const slot=length(referenceTimestamps)===0?width:width/length(referenceTimestamps);
   const svgTestId=hasCandles?"ta-candle-"+rowId:"ta-composite-"+rowId;
-  let _1=svgAttr("viewBox", hasCandles?"0 0 1000 250":"0 0 1000 112");
-  let _2=svgAttr("preserveAspectRatio", "none");
-  let _3=svgAttr("role", "img");
-  let _4=svgAttr("aria-label", "Composite TA row "+rowId);
-  let _5=Attr.Create("data-testid", svgTestId);
-  let _6=Attr.Create("data-point-count", String(length(referenceTimestamps)));
-  const o=cursorIndex==null?null:Some(String(cursorIndex.$0));
-  let _7=o==null?"":o.$0;
-  let _8=Attr.Create("data-cursor-index", _7);
-  let _9=[_1, _2, _3, _4, _5, _6, _8, Attr.Create("style", "display:block; width:100%; height:"+fixedText(hasCandles?250:112)+"px; background:#fbfcfe;"), Handler("mousemove", (element_2) =>(event) => {
+  const cursorX=Map((value) => {
+    const o=cursorPosition(width, length(referenceTimestamps), value);
+    let _1=o==null?0:o.$0;
+    return fixedText(_1);
+  }, cursorIndex);
+  const cursorVisibility=Map((value) => cursorPosition(width, length(referenceTimestamps), value)!=null?"visible":"hidden", cursorIndex);
+  const cursorIndexText=Map((x) => {
+    const o=x==null?null:Some(String(x.$0));
+    return o==null?"":o.$0;
+  }, cursorIndex);
+  return[svgElement("svg", [svgAttr("viewBox", hasCandles?"0 0 1000 250":"0 0 1000 112"), svgAttr("preserveAspectRatio", "none"), svgAttr("role", "img"), svgAttr("aria-label", "Composite TA row "+rowId), Attr.Create("data-testid", svgTestId), Attr.Create("data-point-count", String(length(referenceTimestamps))), Dynamic_1("data-cursor-index", cursorIndexText), Attr.Create("style", "display:block; width:100%; height:"+fixedText(hasCandles?250:112)+"px; background:#fbfcfe;"), Handler("mousemove", (element_2) =>(event) => {
     const bounds=element_2.getBoundingClientRect();
     const m=cursorIndexFromClientX(length(referenceTimestamps), bounds.left, bounds.width, event.clientX);
     return m==null?null:setCursorIndex(Some(m.$0));
@@ -9335,52 +9695,42 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
     const bounds=element_2.getBoundingClientRect();
     const m=cursorIndexFromClientX(length(referenceTimestamps), bounds.left, bounds.width, event.clientX);
     return m==null?null:commitCursorIndex(m.$0);
-  })];
-  let _10=svgElement("svg", _9, ofSeq_1(delay(() => append_2(collect_2((gridIndex) => {
+  })], ofSeq_1(delay(() => append_2(collect_2((gridIndex) => {
     const y=top+plotHeight*gridIndex/4;
     return[svgElement("line", [svgAttr("x1", "0"), svgAttr("x2", "1000"), svgAttr("y1", fixedText(y)), svgAttr("y2", fixedText(y)), svgAttr("stroke", "#e7ecf3"), svgAttr("stroke-width", "1")], [])];
   }, range(0, 4)), delay(() => append_2(collect_2((m) => {
     const trace=m[1];
-    const point=m[2];
-    const m_1=candleSlotRange(referenceTimestamps, point);
-    if(m_1!=null&&m_1.$==1){
-      const firstSlot=m_1.$0[0];
-      const endExclusive=m_1.$0[1];
-      const left=slot*firstSlot;
-      const right=slot*endExclusive;
-      const center=(left+right)/2;
-      const a=2;
-      const b=(right-left)*0.72;
-      const bodyWidth=Compare(a, b)===1?a:b;
-      const candleColor=point.Close>=point.Open?"#0f8a78":"#c2414b";
-      const highY=normalize(low, high, top, plotHeight, point.High);
-      const lowY=normalize(low, high, top, plotHeight, point.Low);
-      const openY=normalize(low, high, top, plotHeight, point.Open);
-      const closeY=normalize(low, high, top, plotHeight, point.Close);
-      const o_1=point.Temporal;
-      const o_2=o_1==null?null:Some(o_1.$0.SourceIntervalId);
-      const sourceIntervalId=o_2==null?point.Timestamp:o_2.$0;
-      const spanCount=endExclusive-firstSlot;
-      const traceColor=spanCount>1?color(m[0], trace):candleColor;
-      const traceTestId="ta-candle-"+rowId+"-"+trace.TraceId;
-      return append_2([svgElement("line", ofSeq_1(delay(() => append_2([Attr.Create("data-testid", traceTestId)], delay(() => append_2([Attr.Create("data-candle-part", "wick")], delay(() => append_2([Attr.Create("data-source-interval-id", sourceIntervalId)], delay(() => append_2([Attr.Create("data-span-slots", String(spanCount))], delay(() => append_2([svgAttr("x1", fixedText(center))], delay(() => append_2([svgAttr("x2", fixedText(center))], delay(() => append_2([svgAttr("y1", fixedText(highY))], delay(() => append_2([svgAttr("y2", fixedText(lowY))], delay(() => append_2([svgAttr("stroke", traceColor)], delay(() => append_2([svgAttr("stroke-width", spanCount>1?"1.8":"1.2")], delay(() => spanCount>1?[svgAttr("stroke-dasharray", "4 2")]:[])))))))))))))))))))))), [])], delay(() => {
-        let _11=Attr.Create("data-testid", traceTestId);
-        let _12=Attr.Create("data-candle-part", "body");
-        let _13=Attr.Create("data-source-interval-id", sourceIntervalId);
-        let _14=Attr.Create("data-span-slots", String(spanCount));
-        let _15=svgAttr("x", fixedText(center-bodyWidth/2));
-        let _16=svgAttr("y", fixedText(Compare(openY, closeY)===-1?openY:closeY));
-        let _17=svgAttr("width", fixedText(bodyWidth));
-        const a_1=1.2;
-        const b_1=Math.abs(closeY-openY);
-        let _18=Compare(a_1, b_1)===1?a_1:b_1;
-        let _19=fixedText(_18);
-        let _20=svgAttr("height", _19);
-        let _21=[_11, _12, _13, _14, _15, _16, _17, _20, svgAttr("fill", spanCount>1?"none":candleColor), svgAttr("stroke", traceColor), svgAttr("stroke-width", spanCount>1?"1.8":"0"), svgAttr("rx", "0.6")];
-        return[svgElement("rect", _21, [])];
-      }));
-    }
-    else return[];
+    const sourceSpanCount=m[3];
+    const slotIndex=m[2];
+    const point=m[4];
+    const center=xAt(slotIndex);
+    const a=2;
+    const b=slot*0.64;
+    const bodyWidth=Compare(a, b)===1?a:b;
+    const candleColor=point.Close>=point.Open?"#0f8a78":"#c2414b";
+    const openY=normalize(low, high, top, plotHeight, point.Open);
+    const closeY=normalize(low, high, top, plotHeight, point.Close);
+    const o=point.Temporal;
+    const o_1=o==null?null:Some(o.$0.SourceIntervalId);
+    const sourceIntervalId=o_1==null?point.Timestamp:o_1.$0;
+    const traceColor=sourceSpanCount>1?color(m[0], trace):candleColor;
+    const traceTestId="ta-candle-"+rowId+"-"+trace.TraceId;
+    const sourceAttrs=(part) => ofArray([Attr.Create("data-testid", traceTestId), Attr.Create("data-candle-part", part), Attr.Create("data-source-interval-id", sourceIntervalId), Attr.Create("data-span-slots", String(sourceSpanCount)), Attr.Create("data-projected-slot-index", String(slotIndex))]);
+    return append_2([svgElement("line", append_1(sourceAttrs("wick"), ofArray([svgAttr("x1", fixedText(center)), svgAttr("x2", fixedText(center)), svgAttr("y1", fixedText(normalize(low, high, top, plotHeight, point.High))), svgAttr("y2", fixedText(normalize(low, high, top, plotHeight, point.Low))), svgAttr("stroke", traceColor), svgAttr("stroke-width", "1.2")])), [])], delay(() => {
+      let _1=sourceAttrs("body");
+      let _2=svgAttr("x", fixedText(center-bodyWidth/2));
+      let _3=svgAttr("y", fixedText(Compare(openY, closeY)===-1?openY:closeY));
+      let _4=svgAttr("width", fixedText(bodyWidth));
+      const a_1=1.2;
+      const b_1=Math.abs(closeY-openY);
+      let _5=Compare(a_1, b_1)===1?a_1:b_1;
+      let _6=fixedText(_5);
+      let _7=svgAttr("height", _6);
+      let _8=[_2, _3, _4, _7, svgAttr("fill", candleColor), svgAttr("fill-opacity", sourceSpanCount>1?"0.48":"1"), svgAttr("stroke", traceColor), svgAttr("stroke-width", sourceSpanCount>1?"1":"0"), svgAttr("rx", "0.6")];
+      let _9=ofArray(_8);
+      let _10=append_1(_1, _9);
+      return[svgElement("rect", _10, [])];
+    }));
   }, candleSeries_1), delay(() => append_2(collect_2((m) => {
     const trace=m[1];
     const points=m[2];
@@ -9392,34 +9742,22 @@ function compositeSvg(rowId, traces, data, referenceTimestamps, cursorIndex, set
         const a=1;
         const b=slot*0.64;
         const barWidth=Compare(a, b)===1?a:b;
-        const path=concat_1(" ", map((_11) => {
-          const valueY=normalize(low, high, top, plotHeight, _11[1].Value);
-          let _12=Compare(zeroY, valueY)===-1?zeroY:valueY;
+        const path=concat_1(" ", map((_1) => {
+          const valueY=normalize(low, high, top, plotHeight, _1[1].Value);
+          let _2=Compare(zeroY, valueY)===-1?zeroY:valueY;
           const a_1=1;
           const b_1=Math.abs(zeroY-valueY);
-          let _13=Compare(a_1, b_1)===1?a_1:b_1;
-          return rectanglePath(slot*(_11[0]+0.18), _12, barWidth, _13);
+          let _3=Compare(a_1, b_1)===1?a_1:b_1;
+          return rectanglePath(slot*(_1[0]+0.18), _2, barWidth, _3);
         }, points));
         return[svgElement("path", [Attr.Create("data-testid", "ta-trace-"+rowId+"-"+trace.TraceId), svgAttr("d", path), svgAttr("fill", traceColor), svgAttr("fill-opacity", "0.62")], [])];
       case 1:
-        const path_1=concat_1(" ", mapi((_11, _12) =>(_11===0?"M":"L")+" "+fixedText(_12[0])+" "+fixedText(_12[1]), map((_11) => {
-          const o_1=slotCenter(width, length(referenceTimestamps), _11[0]);
-          let _12=o_1==null?width/2:o_1.$0;
-          return[_12, normalize(low, high, top, plotHeight, _11[1].Value)];
-        }, points)));
+        const path_1=concat_1(" ", mapi((_1, _2) =>(_1===0?"M":"L")+" "+fixedText(_2[0])+" "+fixedText(_2[1]), map((_1) =>[xAt(_1[0]), normalize(low, high, top, plotHeight, _1[1].Value)], points)));
         return[svgElement("path", [Attr.Create("data-testid", "ta-trace-"+rowId+"-"+trace.TraceId), svgAttr("d", path_1), svgAttr("fill", "none"), svgAttr("stroke", traceColor), svgAttr("stroke-width", fixedText(trace.Width)), svgAttr("stroke-linejoin", "round"), svgAttr("stroke-linecap", "round")], [])];
       case 2:
         return[];
     }
-  }, linePoints), delay(() => {
-    const m=cursorPosition(width, length(referenceTimestamps), cursorIndex);
-    if(m==null)return[];
-    else {
-      const x=m.$0;
-      return[svgElement("line", [Attr.Create("data-testid", svgTestId+"-crosshair"), svgAttr("x1", fixedText(x)), svgAttr("x2", fixedText(x)), svgAttr("y1", "0"), svgAttr("y2", fixedText(plotHeight)), svgAttr("stroke", "#1f4f73"), svgAttr("stroke-width", "1"), svgAttr("stroke-dasharray", "3 3")], [])];
-    }
-  })))))))));
-  return[_10, referenceTimestamps];
+  }, linePoints), delay(() =>[svgElement("line", [Attr.Create("data-testid", svgTestId+"-crosshair"), Dynamic_1("x1", cursorX), Dynamic_1("x2", cursorX), Dynamic_1("visibility", cursorVisibility), svgAttr("y1", "0"), svgAttr("y2", fixedText(plotHeight)), svgAttr("stroke", "#1f4f73"), svgAttr("stroke-width", "1"), svgAttr("stroke-dasharray", "3 3"), svgAttr("pointer-events", "none")], [])]))))))))), referenceTimestamps, map((_1) => _1[4], preparedTraces)];
 }
 function chartFrame(titleText, metadata, testId, height, children){
   return Doc.Element("section", [Attr.Create("data-testid", testId), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; min-height:"+String(height)+"px; border-top:1px solid #e1e7ef; background:#fff;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:6px 10px; min-height:28px; padding:4px 8px; color:#40536d; font-size:11px; flex-wrap:wrap;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "margin-right:auto;")], [Doc.TextNode(titleText)])], delay(() => metadata))))), element_1("div", [Attr.Create("style", "min-width:0; overflow:hidden;")], children)]);
@@ -9428,17 +9766,28 @@ function timeAxis(testId, timestamps){
   const labels=mapi((_1, _2) => Doc.Element("span", [Attr.Create("style", "min-width:0; text-align:"+(_1===0?"left":_1===2?"right":"center")+"; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextNode(compactTimestamp(_2[1]))]), timeLabels(timestamps));
   return Doc.Element("div", [Attr.Create("data-testid", testId), Attr.Create("style", "display:grid; grid-template-columns:1fr 1fr 1fr; min-width:0; height:16px; padding:0 1px;")], labels);
 }
+function rowTitle(row, traces){
+  const m=rowExplicitLabel(row);
+  if(m==null){
+    if(traces==null||length(traces)===0)return rowKindText_1(row.Kind);
+    else {
+      const value=concat_1(" / ", map((trace) => IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label, traces));
+      return IsNullOrWhiteSpace(value)?rowKindText_1(row.Kind):value;
+    }
+  }
+  else return m.$0;
+}
 function svgElement(name, attrs, children){
   return Doc.SvgElement(name, attrs, children);
 }
 function svgAttr(name, value){
   return Attr.Create(name, value);
 }
-function rectanglePath(x, y, width, height){
-  return"M "+fixedText(x)+" "+fixedText(y)+" h "+fixedText(width)+" v "+fixedText(height)+" h "+fixedText(-width)+" Z";
-}
 function cursorPosition(width, pointCount, cursorIndex){
   return cursorIndex==null?null:slotCenter(width, pointCount, cursorIndex.$0);
+}
+function rectanglePath(x, y, width, height){
+  return"M "+fixedText(x)+" "+fixedText(y)+" h "+fixedText(width)+" v "+fixedText(height)+" h "+fixedText(-width)+" Z";
 }
 function WhenRun(snap, avail, obs){
   const m=snap.s;
@@ -9632,6 +9981,34 @@ function Join_1(snap){
   return res;
 }
 class Exception extends Object_1 { }
+class ArrayStorage extends Object_1 {
+  init;
+  SSet(coll){
+    return ofSeq(coll);
+  }
+  SInit(){
+    return this.init;
+  }
+  constructor(init_2){
+    super();
+    this.init=init_2;
+  }
+}
+function Obsolete(sn){
+  let _1;
+  const m=sn.s;
+  if(m==null||(m!=null&&m.$==2?(_1=m.$1,false):m!=null&&m.$==3?(_1=m.$1,false):true))void 0;
+  else {
+    sn.s=null;
+    for(let i=0, _2=length(_1)-1;i<=_2;i++){
+      const o=get(_1, i);
+      if(typeof o=="object")(((sn_1) => {
+        Obsolete(sn_1);
+      })(o));
+      else o();
+    }
+  }
+}
 class TemplateHole extends Object_1 { }
 function convertTextNode(n){
   let m, li;
@@ -9825,16 +10202,16 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1,
-      Children:Children_1,
-      El:El,
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
-    return Create_1(DocElemNode, _2);
+    return Create_2(DocElemNode, _2);
   }
 }
-function New_41(PreviousNodes, Top){
+function New_44(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -9937,7 +10314,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_47((a) => {
+    r(New_50((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -9962,7 +10339,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_47((a) => {
+    if(!ct.c)c(New_50((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -9990,7 +10367,7 @@ function UncaughtAsyncError(e){
 function StartImmediate(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
-  if(!ct.c)c(New_47((a) => {
+  if(!ct.c)c(New_50((a) => {
     if(a.$==1)UncaughtAsyncError(a.$0);
   }, ct));
 }
@@ -10035,7 +10412,7 @@ function Def(d, f){
 function Prolong(nextDuration, anim){
   const comp=anim.Compute;
   const dur=anim.Duration;
-  const last=Create(() => anim.Compute(anim.Duration));
+  const last=Create_1(() => anim.Compute(anim.Duration));
   return{Compute:(t) => t>=dur?last.f():comp(t), Duration:nextDuration};
 }
 let _c_4=Lazy((_i) => class Proxy {
@@ -10100,35 +10477,35 @@ function SendAction(Item){
 function ScheduleReconnect(delayMs){
   return{$:5, $0:delayMs};
 }
-function New_42(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints){
+function New_45(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints){
   return{
-    wireVersion:wireVersion,
-    kind:kind,
-    actionKind:actionKind,
-    canvasInstanceId:canvasInstanceId,
-    rowId:rowId,
-    rowKind:rowKind_1,
-    dataRef:dataRef,
-    heightWeight:heightWeight,
-    visible:visible,
-    sourceId:sourceId,
-    instrument:instrument,
-    intervalMinutes:intervalMinutes,
-    fromUtc:fromUtc,
-    toUtcExclusive:toUtcExclusive,
-    includePartial:includePartial,
-    afterDataRevision:afterDataRevision,
-    dataRevision:dataRevision,
-    reasonCode:reasonCode,
-    templateKey:templateKey,
-    hasTemplateRowId:hasTemplateRowId,
-    editorValues:editorValues,
-    expectedDocumentRevision:expectedDocumentRevision,
-    hasExpectedDocumentRevision:hasExpectedDocumentRevision,
-    baseRowId:baseRowId,
-    eventTimeUtc:eventTimeUtc,
-    startEventTimeUtc:startEventTimeUtc,
-    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc,
+    wireVersion:wireVersion, 
+    kind:kind, 
+    actionKind:actionKind, 
+    canvasInstanceId:canvasInstanceId, 
+    rowId:rowId, 
+    rowKind:rowKind_1, 
+    dataRef:dataRef, 
+    heightWeight:heightWeight, 
+    visible:visible, 
+    sourceId:sourceId, 
+    instrument:instrument, 
+    intervalMinutes:intervalMinutes, 
+    fromUtc:fromUtc, 
+    toUtcExclusive:toUtcExclusive, 
+    includePartial:includePartial, 
+    afterDataRevision:afterDataRevision, 
+    dataRevision:dataRevision, 
+    reasonCode:reasonCode, 
+    templateKey:templateKey, 
+    hasTemplateRowId:hasTemplateRowId, 
+    editorValues:editorValues, 
+    expectedDocumentRevision:expectedDocumentRevision, 
+    hasExpectedDocumentRevision:hasExpectedDocumentRevision, 
+    baseRowId:baseRowId, 
+    eventTimeUtc:eventTimeUtc, 
+    startEventTimeUtc:startEventTimeUtc, 
+    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc, 
     maximumBasePoints:maximumBasePoints
   };
 }
@@ -10141,12 +10518,12 @@ function Map_2(f, r){
 function ToOption(result){
   return result.$==0?Some(result.$0):null;
 }
-function New_43(schema, exportedAtUtc, documentRevision, dataRevision, state){
+function New_46(schema, exportedAtUtc, documentRevision, dataRevision, state){
   return{
-    schema:schema,
-    exportedAtUtc:exportedAtUtc,
-    documentRevision:documentRevision,
-    dataRevision:dataRevision,
+    schema:schema, 
+    exportedAtUtc:exportedAtUtc, 
+    documentRevision:documentRevision, 
+    dataRevision:dataRevision, 
     state:state
   };
 }
@@ -10406,8 +10783,8 @@ function visibleEventRange(document, data, window_1){
       const endIndex=window_1.StartIndex+length(selected);
       const o=filter((value) => Compare(value, startTime)>0, endIndex<length(timeline)?Some(get(timeline, endIndex)):tryBasePointIntervalEnd(baseRow, data, get(selected, length(selected)-1)));
       return o==null?null:Some({
-        BaseRowId:baseRowId,
-        StartEventTimeUtc:startTime,
+        BaseRowId:baseRowId, 
+        StartEventTimeUtc:startTime, 
         EndEventTimeExclusiveUtc:o.$0
       });
     }
@@ -10495,11 +10872,11 @@ function queryDraft(values){
   const o_4=o_3==null?null:tryBool(o_3.$0);
   const includePartial=o_4==null||o_4.$0;
   return{
-    SourceId:textValue("query.sourceId"),
-    Instrument:textValue("query.instrument"),
-    IntervalMinutes:interval,
-    FromUtc:textValue("query.fromUtc"),
-    ToUtcExclusive:textValue("query.toUtcExclusive"),
+    SourceId:textValue("query.sourceId"), 
+    Instrument:textValue("query.instrument"), 
+    IntervalMinutes:interval, 
+    FromUtc:textValue("query.fromUtc"), 
+    ToUtcExclusive:textValue("query.toUtcExclusive"), 
     IncludePartial:includePartial
   };
 }
@@ -10521,10 +10898,10 @@ function statusPresentation(statusRef, state){
     _1=Some(error_2.ReasonCode+": "+error_2.Message);
   }
   return{
-    Freshness:freshness,
-    Label:_2,
-    Watermark:_3,
-    Quality:_4,
+    Freshness:freshness, 
+    Label:_2, 
+    Watermark:_3, 
+    Quality:_4, 
     Error:_1
   };
 }
@@ -10538,63 +10915,6 @@ function selectWindow(window_1, values){
     let _1=Compare(a, b_1)===1?a:b_1;
     let _2=skip(_1, values);
     return _2.slice(0, window_1.Count);
-  }
-}
-function cursorSnapshotForRows(document, visibleRows, data, window_1, cursorIndex){
-  const timeline=referenceTimelineForDocument(document, data);
-  const visibleTimestamps=selectWindow(clampWindow(1, 2147483647, length(timeline), window_1), timeline);
-  if(length(visibleTimestamps)===0)return null;
-  else {
-    const a=0;
-    const b=length(visibleTimestamps)-1;
-    const b_1=Compare(cursorIndex, b)===-1?cursorIndex:b;
-    const index=Compare(a, b_1)===1?a:b_1;
-    const timestamp=get(visibleTimestamps, index);
-    return Some({
-      VisibleIndex:index,
-      Timestamp:timestamp,
-      Values:map((t) => t[1], collect((row) => {
-        const isBaseRow=Equals(document.BaseRowId, Some(row.RowId));
-        return choose((trace) => {
-          let _1, _2;
-          const label=IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label;
-          const m=trace.Kind;
-          if(m.$==1||(m.$==2?false:m.$!=3)){
-            const o=tryCandleForCursor(isBaseRow, timestamp, candleSeriesForTrace(trace, data));
-            if(o==null)return null;
-            else {
-              const point=o.$0;
-              const baseValue=Equals(trace.Kind, {$:1})?fixedNumber(point.Volume):"O "+fixedNumber(point.Open)+" H "+fixedNumber(point.High)+" L "+fixedNumber(point.Low)+" C "+fixedNumber(point.Close);
-              const m_1=point.Temporal;
-              if(m_1==null)_1=baseValue;
-              else {
-                const metadata=m_1.$0;
-                _1=baseValue+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
-              }
-              let _3={Label:label, Value:_1};
-              let _4=[point.Timestamp, _3];
-              return Some(_4);
-            }
-          }
-          else {
-            const o_1=tryLineForCursor(isBaseRow, timestamp, lineSeries(trace.DataRef, data));
-            if(o_1==null)return null;
-            else {
-              const point_1=o_1.$0;
-              const m_2=point_1.Temporal;
-              if(m_2==null)_2=fixedNumber(point_1.Value);
-              else {
-                const metadata_1=m_2.$0;
-                _2=fixedNumber(point_1.Value)+" | "+metadata_1.ScaleKey+" "+metadata_1.Finality+" | "+metadata_1.SourceIntervalId;
-              }
-              let _5={Label:label, Value:_2};
-              let _6=[point_1.Timestamp, _5];
-              return Some(_6);
-            }
-          }
-        }, filter_1((a_1) => a_1.Visible, effectiveTraces(row)));
-      }, visibleRows))
-    });
   }
 }
 function selectionRatios(total, window_1){
@@ -10621,14 +10941,14 @@ function effectiveTraces(row){
         break;
     }
     return[{
-      TraceId:row.RowId,
-      Kind:_1,
-      DataRef:row.DataRef,
-      Label:row.RowId,
-      Color:"",
-      Width:1.25,
-      Visible:true,
-      CandleDataRefs:null,
+      TraceId:row.RowId, 
+      Kind:_1, 
+      DataRef:row.DataRef, 
+      Label:row.RowId, 
+      Color:"", 
+      Width:1.25, 
+      Visible:true, 
+      CandleDataRefs:null, 
       Options:new FSharpMap("New", [])
     }];
   }
@@ -10650,12 +10970,12 @@ function candleSeriesForTrace(trace, data){
       const _4=closes.TryFind(openPoint.Timestamp);
       const _5=volumes.TryFind(openPoint.Timestamp);
       return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_1=[_4.$0, _2.$0, _3.$0, _5.$0],true))))?Some({
-        Timestamp:openPoint.Timestamp,
-        Open:openPoint.Value,
-        High:_1[1].Value,
-        Low:_1[2].Value,
-        Close:_1[0].Value,
-        Volume:_1[3].Value,
+        Timestamp:openPoint.Timestamp, 
+        Open:openPoint.Value, 
+        High:_1[1].Value, 
+        Low:_1[2].Value, 
+        Close:_1[0].Value, 
+        Volume:_1[3].Value, 
         Temporal:openPoint.Temporal
       }):null;
     }, opens);
@@ -10669,44 +10989,44 @@ function workspaceBootstrapPresentation(state){
     switch(m_1.$==1?1:m_1.$==4?2:m_1.$==6?3:m_1.$==7?4:m_1.$==2?5:m_1.$==3?5:m_1.$==5?5:0){
       case 0:
         return{
-          State:"preparing",
-          Title:"Preparing TA workspace",
-          Detail:"Waiting for the workspace channel to mount.",
+          State:"preparing", 
+          Title:"Preparing TA workspace", 
+          Detail:"Waiting for the workspace channel to mount.", 
           IsError:false
         };
       case 1:
         return{
-          State:"connecting",
-          Title:"Connecting TA workspace",
-          Detail:"Waiting for the initial workspace document.",
+          State:"connecting", 
+          Title:"Connecting TA workspace", 
+          Detail:"Waiting for the initial workspace document.", 
           IsError:false
         };
       case 2:
         return{
-          State:"retrying",
-          Title:"Restoring TA workspace",
-          Detail:"A reconnect attempt is scheduled.",
+          State:"retrying", 
+          Title:"Restoring TA workspace", 
+          Detail:"A reconnect attempt is scheduled.", 
           IsError:false
         };
       case 3:
         return{
-          State:"resyncing",
-          Title:"Resynchronizing TA workspace",
-          Detail:"Requesting a full workspace document.",
+          State:"resyncing", 
+          Title:"Resynchronizing TA workspace", 
+          Detail:"Requesting a full workspace document.", 
           IsError:false
         };
       case 4:
         return{
-          State:"closed",
-          Title:"TA workspace closed",
-          Detail:"Open the page again to reconnect.",
+          State:"closed", 
+          Title:"TA workspace closed", 
+          Detail:"Open the page again to reconnect.", 
           IsError:false
         };
       case 5:
         return{
-          State:"loading",
-          Title:"Loading TA workspace",
-          Detail:"Waiting for the workspace document.",
+          State:"loading", 
+          Title:"Loading TA workspace", 
+          Detail:"Waiting for the workspace document.", 
           IsError:false
         };
     }
@@ -10714,18 +11034,18 @@ function workspaceBootstrapPresentation(state){
   else if(!m.$0.Recoverable){
     const error_2=m.$0;
     return{
-      State:"unavailable",
-      Title:"TA workspace unavailable",
-      Detail:error_2.ReasonCode+": "+error_2.Message,
+      State:"unavailable", 
+      Title:"TA workspace unavailable", 
+      Detail:error_2.ReasonCode+": "+error_2.Message, 
       IsError:true
     };
   }
   else {
     const error_3=m.$0;
     return{
-      State:"recovering",
-      Title:"Restoring TA workspace",
-      Detail:error_3.ReasonCode+": "+error_3.Message,
+      State:"recovering", 
+      Title:"Restoring TA workspace", 
+      Detail:error_3.ReasonCode+": "+error_3.Message, 
       IsError:false
     };
   }
@@ -10925,31 +11245,14 @@ function freshnessFromStatus(status){
   const o_2=objectText("reasonCode", status);
   const reason=o_2==null?kind:o_2.$0;
   return kind=="live"?{$:0}:kind=="delayed"?{$:1, $0:lag}:kind=="stale"?{
-    $:2,
-    $0:lag,
+    $:2, 
+    $0:lag, 
     $1:reason
   }:kind=="backfill"?{$:3, $0:reason}:{$:4, $0:reason};
 }
 function objectText(name, value){
   const o=objectField(name, value);
   return o==null?null:tryText(o.$0);
-}
-function tryCandleForCursor(isBaseRow, timestamp, values){
-  if(isBaseRow)return tryCandleAt(timestamp, values);
-  else {
-    const o=tryLast(filter_1((value) => finalizedCursorMatch(timestamp, value.Timestamp, value.Temporal), values));
-    return o==null?tryLast(filter_1((value) => finalizedAsOf(timestamp, value.Temporal), values)):(o.$0,o);
-  }
-}
-function lineSeries(dataRef, data){
-  return choose((point) => parseLineResolved(point.Temporal, point.Payload), resolvedSeries(dataRef, data));
-}
-function tryLineForCursor(isBaseRow, timestamp, values){
-  if(isBaseRow)return tryLineAt(timestamp, values);
-  else {
-    const o=tryLast(filter_1((value) => finalizedCursorMatch(timestamp, value.Timestamp, value.Temporal), values));
-    return o==null?tryLast(filter_1((value) => finalizedAsOf(timestamp, value.Temporal), values)):(o.$0,o);
-  }
 }
 function rowTemporalMetadata(row, data){
   return distinctBy((value) =>[value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality], choose((trace) => latestTemporalMetadata(trace, data), filter_1((a) => a.Visible, effectiveTraces(row))));
@@ -10986,6 +11289,9 @@ function paddedRange(fallbackLow, fallbackHigh, values){
 }
 function normalize(low, high, top, height, value){
   return low===high?top+height/2:top+height-(value-low)/(high-low)*height;
+}
+function lineSeries(dataRef, data){
+  return choose((point) => parseLineResolved(point.Temporal, point.Payload), resolvedSeries(dataRef, data));
 }
 function candleSeries(dataRef, data){
   return choose((point) => parseCandleResolved(point.Temporal, point.Payload), resolvedSeries(dataRef, data));
@@ -11060,25 +11366,70 @@ function objectNumber(name, value){
 function objectField(name, value){
   return value.TryFind(name);
 }
-function tryCandleAt(timestamp, values){
-  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
-}
-function finalizedCursorMatch(timestamp, pointTimestamp, temporal){
-  if(temporal!=null&&temporal.$==1){
-    if(!finalizedTemporal(temporal.$0))return false;
-    else {
-      const metadata=temporal.$0;
-      return metadata.Projection=="repeat-across-base-buckets"||metadata.Projection=="candle-span"?timestampInInterval(timestamp, temporal.$0):temporal.$0.Projection=="step-after-close"?availableAtOrAfter(timestamp, temporal.$0):pointTimestamp==timestamp;
-    }
-  }
-  else return pointTimestamp==timestamp;
-}
-function finalizedAsOf(timestamp, temporal){
-  if(temporal==null)return false;
+function candleCursorValue(label, kind, isBaseRow, timestamp, values){
+  let _1;
+  const o=tryCandleForCursor(isBaseRow, timestamp, values);
+  if(o==null)return null;
   else {
-    const metadata=temporal.$0;
-    return finalizedTemporal(metadata)&&availableAtOrAfter(timestamp, metadata);
+    const point=o.$0;
+    const baseValue=Equals(kind, {$:1})?fixedNumber(point.Volume):"O "+fixedNumber(point.Open)+" H "+fixedNumber(point.High)+" L "+fixedNumber(point.Low)+" C "+fixedNumber(point.Close);
+    const m=point.Temporal;
+    if(m==null)_1=baseValue;
+    else {
+      const metadata=m.$0;
+      _1=baseValue+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
+    }
+    let _2={Label:label, Value:_1};
+    return Some(_2);
   }
+}
+function lineCursorValue(label, isBaseRow, timestamp, values){
+  let _1;
+  const o=tryLineForCursor(isBaseRow, timestamp, values);
+  if(o==null)return null;
+  else {
+    const point=o.$0;
+    const m=point.Temporal;
+    if(m==null)_1=fixedNumber(point.Value);
+    else {
+      const metadata=m.$0;
+      _1=fixedNumber(point.Value)+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
+    }
+    let _2={Label:label, Value:_1};
+    return Some(_2);
+  }
+}
+function projectedCandleSlots(referenceTimestamps, point){
+  const matchingSlots=choose((_1) => pointMatchesTimestamp(_1[1], point.Timestamp, point.Temporal)?Some(_1[0]):null, indexed(referenceTimestamps));
+  const sourceSpanCount=length(matchingSlots);
+  return map((slotIndex) =>[slotIndex, sourceSpanCount, point], matchingSlots);
+}
+function slotCenter(width, visibleCount, index){
+  if(visibleCount<=0)return null;
+  else {
+    const a=0;
+    const b=visibleCount-1;
+    const b_1=Compare(index, b)===-1?index:b;
+    let _1=Compare(a, b_1)===1?a:b_1;
+    let _2=_1+0.5;
+    let _3=width/visibleCount*_2;
+    return Some(_3);
+  }
+}
+function projectedLinePoints(referenceTimestamps, points){
+  return choose((_1) => {
+    const o=tryLineAt(_1[1], points);
+    return o==null?null:Some([_1[0], o.$0]);
+  }, indexed(referenceTimestamps));
+}
+function cursorIndexFromClientX(visibleCount, left, width, clientX){
+  return width<=0?null:cursorIndexFromRatio(visibleCount, (clientX-left)/width);
+}
+function latestTemporalMetadata(trace, data){
+  return tryLast(choose((a) => a.Temporal, resolvedSeries(trace.DataRef, data)));
+}
+function timeLabels(timestamps){
+  return length(timestamps)===0?[]:length(timestamps)===1?[[0, get(timestamps, 0)]]:map((index) =>[index, get(timestamps, index)], distinct([0, length(timestamps)/2>>0, length(timestamps)-1]));
 }
 function resolvedSeries(dataRef, data){
   let _1;
@@ -11111,8 +11462,8 @@ function resolvedSeries(dataRef, data){
 function parseLineResolved(temporal, payload){
   let _1, _2;
   if(payload!=null&&payload.$==1&&(payload.$0.$==2&&(temporal!=null&&temporal.$==1&&(_1=[payload.$0.$0, temporal.$0],true))))return Some({
-    Timestamp:_1[1].IntervalStartUtc,
-    Value:_1[0],
+    Timestamp:_1[1].IntervalStartUtc, 
+    Value:_1[0], 
     Temporal:temporal
   });
   else {
@@ -11124,49 +11475,12 @@ function parseLineResolved(temporal, payload){
       const _3=o_1==null?objectText("t", item):(o_1.$0,o_1);
       const _4=objectNumber("v", item);
       return _3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_2=[_4.$0, _3.$0],true))?Some({
-        Timestamp:_2[1],
-        Value:_2[0],
+        Timestamp:_2[1], 
+        Value:_2[0], 
         Temporal:temporal
       }):null;
     }
   }
-}
-function tryLineAt(timestamp, values){
-  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
-}
-function candleSlotRange(referenceTimestamps, point){
-  let _1;
-  const matching=choose((_4) => pointMatchesTimestamp(_4[1], point.Timestamp, point.Temporal)?Some(_4[0]):null, indexed(referenceTimestamps));
-  const _2=tryHead(matching);
-  const _3=tryLast(matching);
-  return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_1=[_2.$0, _3.$0],true))?Some([_1[0], _1[1]+1]):null;
-}
-function projectedLinePoints(referenceTimestamps, points){
-  return choose((_1) => {
-    const o=tryLineAt(_1[1], points);
-    return o==null?null:Some([_1[0], o.$0]);
-  }, indexed(referenceTimestamps));
-}
-function cursorIndexFromClientX(visibleCount, left, width, clientX){
-  return width<=0?null:cursorIndexFromRatio(visibleCount, (clientX-left)/width);
-}
-function slotCenter(width, visibleCount, index){
-  if(visibleCount<=0)return null;
-  else {
-    const a=0;
-    const b=visibleCount-1;
-    const b_1=Compare(index, b)===-1?index:b;
-    let _1=Compare(a, b_1)===1?a:b_1;
-    let _2=_1+0.5;
-    let _3=width/visibleCount*_2;
-    return Some(_3);
-  }
-}
-function latestTemporalMetadata(trace, data){
-  return tryLast(choose((a) => a.Temporal, resolvedSeries(trace.DataRef, data)));
-}
-function timeLabels(timestamps){
-  return length(timestamps)===0?[]:length(timestamps)===1?[[0, get(timestamps, 0)]]:map((index) =>[index, get(timestamps, index)], distinct([0, length(timestamps)/2>>0, length(timestamps)-1]));
 }
 function parseCandleResolved(temporal, payload){
   let _1;
@@ -11182,14 +11496,28 @@ function parseCandleResolved(temporal, payload){
     const _6=objectNumber("c", item);
     const _7=objectNumber("v", item);
     return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_1=[_6.$0, _4.$0, _5.$0, _3.$0, _2.$0, _7.$0],true))))))?Some({
-      Timestamp:_1[4],
-      Open:_1[3],
-      High:_1[1],
-      Low:_1[2],
-      Close:_1[0],
-      Volume:_1[5],
+      Timestamp:_1[4], 
+      Open:_1[3], 
+      High:_1[1], 
+      Low:_1[2], 
+      Close:_1[0], 
+      Volume:_1[5], 
       Temporal:temporal
     }):null;
+  }
+}
+function tryCandleForCursor(isBaseRow, timestamp, values){
+  if(isBaseRow)return tryCandleAt(timestamp, values);
+  else {
+    const o=tryFindBack((value) => finalizedCursorMatch(timestamp, value.Timestamp, value.Temporal), values);
+    return o==null?tryFindBack((value) => finalizedAsOf(timestamp, value.Temporal), values):(o.$0,o);
+  }
+}
+function tryLineForCursor(isBaseRow, timestamp, values){
+  if(isBaseRow)return tryLineAt(timestamp, values);
+  else {
+    const o=tryFindBack((value) => finalizedCursorMatch(timestamp, value.Timestamp, value.Temporal), values);
+    return o==null?tryFindBack((value) => finalizedAsOf(timestamp, value.Temporal), values):(o.$0,o);
   }
 }
 function pointMatchesTimestamp(timestamp, pointTimestamp, temporal){
@@ -11208,15 +11536,23 @@ function pointMatchesTimestamp(timestamp, pointTimestamp, temporal){
       return pointTimestamp==timestamp;
   }
 }
-function finalizedTemporal(metadata){
-  return Trim(metadata.Finality).toLowerCase()=="final";
+function tryLineAt(timestamp, values){
+  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
 }
-function timestampInInterval(timestamp, metadata){
-  return Compare(timestamp, metadata.IntervalStartUtc)>=0&&Compare(timestamp, metadata.IntervalEndUtc)<0;
-}
-function availableAtOrAfter(timestamp, metadata){
-  const o=metadata.AvailableAtUtc;
-  return o==null?false:Compare(o.$0, timestamp)<=0;
+function cursorIndexFromRatio(visibleCount, ratio){
+  if(visibleCount<=0)return null;
+  else {
+    const a=visibleCount-1;
+    const a_1=0;
+    const a_2=1;
+    const b=Compare(a_2, ratio)===-1?a_2:ratio;
+    let _1=Compare(a_1, b)===1?a_1:b;
+    let _2=_1*visibleCount;
+    let _3=Math.floor(_2);
+    const b_1=toInt(_3);
+    let _4=Compare(a, b_1)===-1?a:b_1;
+    return Some(_4);
+  }
 }
 function pointPayload_1(value){
   const m=tryTemporalPoint(value);
@@ -11272,20 +11608,32 @@ function tryTemporalAxis(value){
     }
   }
 }
-function cursorIndexFromRatio(visibleCount, ratio){
-  if(visibleCount<=0)return null;
-  else {
-    const a=visibleCount-1;
-    const a_1=0;
-    const a_2=1;
-    const b=Compare(a_2, ratio)===-1?a_2:ratio;
-    let _1=Compare(a_1, b)===1?a_1:b;
-    let _2=_1*visibleCount;
-    let _3=Math.floor(_2);
-    const b_1=toInt(_3);
-    let _4=Compare(a, b_1)===-1?a:b_1;
-    return Some(_4);
+function tryCandleAt(timestamp, values){
+  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
+}
+function finalizedCursorMatch(timestamp, pointTimestamp, temporal){
+  if(temporal!=null&&temporal.$==1){
+    if(!finalizedTemporal(temporal.$0))return false;
+    else {
+      const metadata=temporal.$0;
+      return metadata.Projection=="repeat-across-base-buckets"||metadata.Projection=="candle-span"?timestampInInterval(timestamp, temporal.$0):temporal.$0.Projection=="step-after-close"?availableAtOrAfter(timestamp, temporal.$0):pointTimestamp==timestamp;
+    }
   }
+  else return pointTimestamp==timestamp;
+}
+function finalizedAsOf(timestamp, temporal){
+  if(temporal==null)return false;
+  else {
+    const metadata=temporal.$0;
+    return finalizedTemporal(metadata)&&availableAtOrAfter(timestamp, metadata);
+  }
+}
+function timestampInInterval(timestamp, metadata){
+  return Compare(timestamp, metadata.IntervalStartUtc)>=0&&Compare(timestamp, metadata.IntervalEndUtc)<0;
+}
+function availableAtOrAfter(timestamp, metadata){
+  const o=metadata.AvailableAtUtc;
+  return o==null?false:Compare(o.$0, timestamp)<=0;
 }
 function tryTemporalPoint(value){
   let _1, _2;
@@ -11304,14 +11652,14 @@ function tryTemporalPoint(value){
       const _9=requiredObjectText("projection", fields);
       if(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _9.$0, _4.$0, _3.$0],true)))))))){
         let _10={
-          SourceIntervalId:_1[6],
-          ScaleKey:_1[5],
-          IntervalStartUtc:_1[2],
-          IntervalEndUtc:_1[1],
-          ObservedThroughUtc:_1[3],
-          AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
-          Finality:_1[0],
-          Projection:_1[4],
+          SourceIntervalId:_1[6], 
+          ScaleKey:_1[5], 
+          IntervalStartUtc:_1[2], 
+          IntervalEndUtc:_1[1], 
+          ObservedThroughUtc:_1[3], 
+          AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
+          Finality:_1[0], 
+          Projection:_1[4], 
           Quality:requiredObjectText("quality", fields)
         };
         const m=fields.TryFind("value");
@@ -11344,17 +11692,20 @@ function tryTemporalAxisPoint(value){
     const _8=requiredObjectText("finality", fields);
     const _9=requiredObjectText("projection", fields);
     return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _2.$0, _9.$0, _4.$0, _3.$0],true))))))))?Some([_1[4], {
-      SourceIntervalId:_1[7],
-      ScaleKey:_1[6],
-      IntervalStartUtc:_1[2],
-      IntervalEndUtc:_1[1],
-      ObservedThroughUtc:_1[3],
-      AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
-      Finality:_1[0],
-      Projection:_1[5],
+      SourceIntervalId:_1[7], 
+      ScaleKey:_1[6], 
+      IntervalStartUtc:_1[2], 
+      IntervalEndUtc:_1[1], 
+      ObservedThroughUtc:_1[3], 
+      AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
+      Finality:_1[0], 
+      Projection:_1[5], 
       Quality:requiredObjectText("quality", fields)
     }]):null;
   }
+}
+function finalizedTemporal(metadata){
+  return Trim(metadata.Finality).toLowerCase()=="final";
 }
 function tryResolve(schemas, row){
   return Bind_2((a) => {
@@ -11444,9 +11795,9 @@ let _c_5=Lazy((_i) => class $StartupCode_Renderer {
   static defaultOptions;
   static {
     this.defaultOptions={
-      MinimumVisibleBars:12,
-      DefaultVisibleBars:48,
-      MaximumVisibleBars:4000,
+      MinimumVisibleBars:12, 
+      DefaultVisibleBars:48, 
+      MaximumVisibleBars:4000, 
       EditorSchemas:[]
     };
   }
@@ -11523,36 +11874,40 @@ function MapTreeReduce(mapping, defaultValue, reduction, array){
   }
   return(loop(0))(l);
 }
+function mapInPlace_1(f, arr){
+  for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
+  return arr;
+}
 function Forever(Item){
   return{$:0, $0:Item};
 }
 function Ready(Item1, Item2){
   return{
-    $:2,
-    $0:Item1,
+    $:2, 
+    $0:Item1, 
     $1:Item2
   };
 }
 function Waiting(Item1, Item2){
   return{
-    $:3,
-    $0:Item1,
+    $:3, 
+    $0:Item1, 
     $1:Item2
   };
 }
-function New_44(Node_1, Left, Right, Height, Count){
+function New_47(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1,
-    Left:Left,
-    Right:Right,
-    Height:Height,
+    Node:Node_1, 
+    Left:Left, 
+    Right:Right, 
+    Height:Height, 
     Count:Count
   };
 }
-function New_45(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_48(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem,
-    DynFlags:DynFlags,
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -11567,21 +11922,6 @@ function set_counter(_1){
 }
 function counter(){
   return _c_11.counter;
-}
-function Obsolete(sn){
-  let _1;
-  const m=sn.s;
-  if(m==null||(m!=null&&m.$==2?(_1=m.$1,false):m!=null&&m.$==3?(_1=m.$1,false):true))void 0;
-  else {
-    sn.s=null;
-    for(let i=0, _2=length(_1)-1;i<=_2;i++){
-      const o=get(_1, i);
-      if(typeof o=="object")(((sn_1) => {
-        Obsolete(sn_1);
-      })(o));
-      else o();
-    }
-  }
 }
 let _c_6=Lazy((_i) => class $StartupCode_Animation {
   static {
@@ -11599,8 +11939,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2,
-    $0:x,
+    $:2, 
+    $0:x, 
     $1:y
   };
 }
@@ -11636,12 +11976,12 @@ function fromSeq(s){
   sortInPlace(a);
   return Build(a, 0, a.length-1);
 }
-function New_46(path, kind, textValue, numberValue, boolValue){
+function New_49(path, kind, textValue, numberValue, boolValue){
   return{
-    path:path,
-    kind:kind,
-    textValue:textValue,
-    numberValue:numberValue,
+    path:path, 
+    kind:kind, 
+    textValue:textValue, 
+    numberValue:numberValue, 
     boolValue:boolValue
   };
 }
@@ -11685,9 +12025,9 @@ function fromValue(value){
       const revision_1=_2[2];
       const templateKey=_2[3];
       return Bind_2((decodedFields) => validateSchema(limits(), {
-        TemplateKey:templateKey,
-        DisplayName:displayName,
-        SchemaRevision:BigInt(Math.trunc(revision_1)),
+        TemplateKey:templateKey, 
+        DisplayName:displayName, 
+        SchemaRevision:BigInt(Math.trunc(revision_1)), 
         Fields:decodedFields
       }), sequence(mapi((_7, _8) => fieldFromValue("schema.fields["+String(_7)+"]", _8), nonNull(_2[1]))));
     }
@@ -11708,10 +12048,10 @@ function fieldFromValue(field_1, value){
       const label=_1[2];
       const required=_1[3];
       return Map_2((decodedKind) =>({
-        Key:key,
-        Label:label,
-        Kind:decodedKind,
-        Required:required,
+        Key:key, 
+        Label:label, 
+        Kind:decodedKind, 
+        Required:required, 
         DefaultValue:values.TryFind("defaultValue")
       }), kindFromValue(field_1+".kind", _1[1]));
     }
@@ -11742,8 +12082,8 @@ function kindFromValue(field_1, value){
         switch(_2.$==1?_3.$==1?(_1=[_2.$0, _3.$0],2):(_1=_2.$0,1):_3.$==1?(_1=_3.$0,1):(_1=[_3.$0, _2.$0],0)){
           case 0:
             return Ok({
-              $:1,
-              $0:_1[1],
+              $:1, 
+              $0:_1[1], 
               $1:_1[0]
             });
           case 1:
@@ -11759,8 +12099,8 @@ function kindFromValue(field_1, value){
         switch(_5.$==1?_6.$==1?(_4=[_5.$0, _6.$0],2):(_4=_5.$0,1):_6.$==1?(_4=_6.$0,1):(_4=[_6.$0, _5.$0],0)){
           case 0:
             return Ok({
-              $:2,
-              $0:_4[1],
+              $:2, 
+              $0:_4[1], 
               $1:_4[0]
             });
           case 1:
@@ -11793,9 +12133,9 @@ function kindFromValue(field_1, value){
           }
           else _9=(_10=m_4,false);
           return _9?Ok({
-            $:6,
-            $0:_10[0],
-            $1:_10[2],
+            $:6, 
+            $0:_10[0], 
+            $1:_10[2], 
             $2:_10[1]
           }):Error_1(ofSeq_1(delay(() => {
             const c_3=_10[0];
@@ -11870,8 +12210,8 @@ function choiceFromValue(field_1, value){
     const _3=values.TryFind("label");
     const _4=values.TryFind("value");
     return _2!=null&&_2.$==1&&(_2.$0.$==3&&(_3!=null&&_3.$==1&&(_3.$0.$==3&&(_4!=null&&_4.$==1&&(_1=[_4.$0, _2.$0.$0, _3.$0.$0],true)))))?Ok({
-      Key:_1[1],
-      Label:_1[2],
+      Key:_1[1], 
+      Label:_1[2], 
       Value:_1[0]
     }):error("editor-schema-choice", field_1, "Editor choice requires key, label and value.");
   }
@@ -11913,9 +12253,9 @@ let _c_7=Lazy((_i) => class $StartupCode_EditorAction {
   static limits;
   static {
     this.limits={
-      MaxSchemaDepth:8,
-      MaxFields:128,
-      MaxChoicesPerField:128,
+      MaxSchemaDepth:8, 
+      MaxFields:128, 
+      MaxChoicesPerField:128, 
       MaxListItems:128
     };
     this.Protocol="ptcs-dynamic-action.v1";
@@ -11961,8 +12301,8 @@ class FSharpSet extends Object_1 {
 }
 function error_1(code, field_1, message){
   return{
-    Code:code,
-    Field:field_1,
+    Code:code, 
+    Field:field_1, 
     Message:message
   };
 }
@@ -12021,7 +12361,7 @@ function TryParseBigInt(s, min_1, max_2, r){
   }
   else return false;
 }
-function New_47(k, ct){
+function New_50(k, ct){
   return{k:k, ct:ct};
 }
 function Ok_1(Item){
@@ -12050,9 +12390,9 @@ class Updates_1 {
     return var_1;
   }
   static New(Current, Snap, VarView){
-    return Create_1(Updates_1, {
-      c:Current,
-      s:Snap,
+    return Create_2(Updates_1, {
+      c:Current, 
+      s:Snap, 
       v:VarView
     });
   }
@@ -12281,7 +12621,7 @@ let _c_10=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_48(false, []);
+    this.noneCT=New_51(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -12290,7 +12630,7 @@ let _c_10=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_48(IsCancellationRequested, Registrations){
+function New_51(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -12471,15 +12811,15 @@ class CheckedInput {
     return this.$==1?this.$0:this.$==2?this.$0:this.$1;
   }
   static Blank(inputText_1){
-    return Create_1(CheckedInput, {$:2, $0:inputText_1});
+    return Create_2(CheckedInput, {$:2, $0:inputText_1});
   }
   static Invalid(inputText_1){
-    return Create_1(CheckedInput, {$:1, $0:inputText_1});
+    return Create_2(CheckedInput, {$:1, $0:inputText_1});
   }
   static Valid(value, inputText_1){
-    return Create_1(CheckedInput, {
-      $:0,
-      $0:value,
+    return Create_2(CheckedInput, {
+      $:0, 
+      $0:value, 
       $1:inputText_1
     });
   }
@@ -12592,8 +12932,8 @@ function TryParse_3(s){
   const d=Date.parse(s);
   return isNaN(d)?null:Some(d);
 }
-function Create(f){
-  return New_49(false, f, forceLazy);
+function Create_1(f){
+  return New_52(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -12614,10 +12954,10 @@ let _c_12=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_49(created, evalOrVal, force){
+function New_52(created, evalOrVal, force){
   return{
-    c:created,
-    v:evalOrVal,
+    c:created, 
+    v:evalOrVal, 
     f:force
   };
 }

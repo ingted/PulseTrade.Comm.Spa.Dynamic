@@ -559,23 +559,44 @@ module RendererModel =
         if isBaseRow then tryCandleAt timestamp values
         else
             values
-            |> Array.filter (fun value -> finalizedCursorMatch timestamp value.Timestamp value.Temporal)
-            |> Array.tryLast
+            |> Array.tryFindBack (fun value -> finalizedCursorMatch timestamp value.Timestamp value.Temporal)
             |> Option.orElseWith (fun () ->
                 values
-                |> Array.filter (fun value -> finalizedAsOf timestamp value.Temporal)
-                |> Array.tryLast)
+                |> Array.tryFindBack (fun value -> finalizedAsOf timestamp value.Temporal))
 
     let tryLineForCursor isBaseRow timestamp (values: TaLinePoint array) =
         if isBaseRow then tryLineAt timestamp values
         else
             values
-            |> Array.filter (fun value -> finalizedCursorMatch timestamp value.Timestamp value.Temporal)
-            |> Array.tryLast
+            |> Array.tryFindBack (fun value -> finalizedCursorMatch timestamp value.Timestamp value.Temporal)
             |> Option.orElseWith (fun () ->
                 values
-                |> Array.filter (fun value -> finalizedAsOf timestamp value.Temporal)
-                |> Array.tryLast)
+                |> Array.tryFindBack (fun value -> finalizedAsOf timestamp value.Temporal))
+
+    let candleCursorValue label kind isBaseRow timestamp values =
+        tryCandleForCursor isBaseRow timestamp values
+        |> Option.map (fun point ->
+            let baseValue =
+                if kind = TaTraceKind.Volume then fixedNumber point.Volume
+                else
+                    "O " + fixedNumber point.Open
+                    + " H " + fixedNumber point.High
+                    + " L " + fixedNumber point.Low
+                    + " C " + fixedNumber point.Close
+            let value =
+                match point.Temporal with
+                | Some metadata -> baseValue + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
+                | None -> baseValue
+            { Label = label; Value = value })
+
+    let lineCursorValue label isBaseRow timestamp values =
+        tryLineForCursor isBaseRow timestamp values
+        |> Option.map (fun point ->
+            let value =
+                match point.Temporal with
+                | Some metadata -> fixedNumber point.Value + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
+                | None -> fixedNumber point.Value
+            { Label = label; Value = value })
 
     let projectedLinePoints (referenceTimestamps: string array) (points: TaLinePoint array) =
         referenceTimestamps
@@ -594,6 +615,15 @@ module RendererModel =
         match matching |> Array.tryHead, matching |> Array.tryLast with
         | Some first, Some last -> Some(first, last + 1)
         | _ -> None
+
+    let projectedCandleSlots (referenceTimestamps: string array) (point: TaCandlePoint) =
+        let matchingSlots =
+            referenceTimestamps
+            |> Array.indexed
+            |> Array.choose (fun (index, timestamp) ->
+                if pointMatchesTimestamp timestamp point.Timestamp point.Temporal then Some index else None)
+        let sourceSpanCount = matchingSlots.Length
+        matchingSlots |> Array.map (fun slotIndex -> slotIndex, sourceSpanCount, point)
 
     let temporalDetail (metadata: TaTemporalPointPresentation) =
         let availability = metadata.AvailableAtUtc |> Option.defaultValue "unknown"
@@ -777,30 +807,13 @@ module RendererModel =
                         | TaTraceKind.Candlestick
                         | TaTraceKind.Volume ->
                             candleSeriesForTrace trace data
-                            |> tryCandleForCursor isBaseRow timestamp
-                            |> Option.map (fun point ->
-                                let baseValue =
-                                    if trace.Kind = TaTraceKind.Volume then fixedNumber point.Volume
-                                    else
-                                        "O " + fixedNumber point.Open
-                                        + " H " + fixedNumber point.High
-                                        + " L " + fixedNumber point.Low
-                                        + " C " + fixedNumber point.Close
-                                let value =
-                                    match point.Temporal with
-                                    | Some metadata -> baseValue + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
-                                    | None -> baseValue
-                                point.Timestamp, { Label = label; Value = value })
+                            |> candleCursorValue label trace.Kind isBaseRow timestamp
+                            |> Option.map (fun value -> timestamp, value)
                         | TaTraceKind.Line
                         | TaTraceKind.Histogram ->
                             lineSeries trace.DataRef data
-                            |> tryLineForCursor isBaseRow timestamp
-                            |> Option.map (fun point ->
-                                let value =
-                                    match point.Temporal with
-                                    | Some metadata -> fixedNumber point.Value + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
-                                    | None -> fixedNumber point.Value
-                                point.Timestamp, { Label = label; Value = value })))
+                            |> lineCursorValue label isBaseRow timestamp
+                            |> Option.map (fun value -> timestamp, value)))
 
             Some
                 { VisibleIndex = index

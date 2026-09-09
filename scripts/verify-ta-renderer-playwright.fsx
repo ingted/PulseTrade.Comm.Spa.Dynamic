@@ -90,6 +90,17 @@ let waitForIntAttribute (locator: ILocator) name expected =
 
     require (actual = expected) $"expected `{name}`={expected}, actual={actual}"
 
+let waitForAttributeChange (locator: ILocator) name previous =
+    let deadline = DateTime.UtcNow.AddSeconds 8.0
+    let mutable actual = locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+
+    while actual = previous && DateTime.UtcNow < deadline do
+        Threading.Thread.Sleep 10
+        actual <- locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+
+    require (actual <> previous) $"expected `{name}` to change from `{previous}`"
+    actual
+
 let waitForText (locator: ILocator) (expected: string) =
     let deadline = DateTime.UtcNow.AddSeconds 8.0
     let mutable matched = false
@@ -142,6 +153,16 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-toggle-row-price']")) "ES 1K + SMA(20)"
     requireText (page.Locator("[data-testid='ta-row-price']")) "ES 1K + SMA(20)"
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = visiblePointCount) "candlestick chart must retain all committed visible points"
+    let projectedCoarseCandles = page.Locator("[data-testid='ta-candle-price-price-5k'][data-candle-part='body']")
+    let projectedCoarseCount = projectedCoarseCandles.CountAsync() |> awaitTask
+    require (projectedCoarseCount = visiblePointCount) $"5K source candles must project onto each of the {visiblePointCount} actual visible base slots; actual={projectedCoarseCount}"
+    let projectedIndexes =
+        [| for index in 0 .. projectedCoarseCount - 1 -> requiredIntAttribute (projectedCoarseCandles.Nth(index)) "data-projected-slot-index" |]
+    require (projectedIndexes |> Array.distinct |> Array.length = visiblePointCount) "projected high-scale candles must use distinct actual base-axis slots"
+    let projectedSourceIds =
+        [| for index in 0 .. projectedCoarseCount - 1 -> projectedCoarseCandles.Nth(index).GetAttributeAsync("data-source-interval-id") |> awaitTask |]
+    require (projectedSourceIds |> Array.forall (String.IsNullOrWhiteSpace >> not)) "every projected candle must retain its canonical source interval id"
+    require (projectedSourceIds |> Array.distinct |> Array.length < projectedCoarseCount) "multiple projected slots must reference the same sparse high-scale source candle"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "watermark 2026-07-11T09:30:00Z"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"
 
@@ -162,7 +183,9 @@ let verifyDesktop (browser: IBrowser) =
     let initialPriceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
     require (not (isNull viewportBox) && not (isNull initialPriceBox)) "viewport navigator and first chart row must expose geometry"
     require (viewportBox.Y + viewportBox.Height <= initialPriceBox.Y + 1.0f) "viewport navigator must be visible before the first chart row"
-    require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 0) "cross-row cursor must not be fabricated before pointer movement"
+    let crosshairs = page.Locator("[data-testid$='-crosshair']")
+    require ((crosshairs.CountAsync() |> awaitTask) = 7) "every visible row must mount one stable crosshair overlay"
+    require ((page.Locator("[data-testid$='-crosshair'][visibility='hidden']").CountAsync() |> awaitTask) = 7) "crosshair overlays must remain hidden before pointer movement"
     require ((page.Locator("[data-testid='ta-time-axis-shared']").CountAsync() |> awaitTask) = 1) "all rows must share one X axis"
 
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
@@ -210,17 +233,25 @@ let verifyDesktop (browser: IBrowser) =
     require (not (String.IsNullOrWhiteSpace expectedMiddleLabel)) "shared X axis middle label must not be empty"
     require (not (String.IsNullOrWhiteSpace lastTimeLabel)) "shared X axis last label must not be empty"
     require (firstTimeLabel <> lastTimeLabel) "shared X axis endpoints must represent different bars"
+    let renderSequenceBeforeCursor = requiredIntAttribute chartStack "data-chart-render-sequence"
+    let firstCrosshair = crosshairs.First
+    let crosshairXBefore = firstCrosshair.GetAttributeAsync("x1") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    let cursorLatency = Diagnostics.Stopwatch.StartNew()
     priceChart.HoverAsync() |> awaitUnit
+    let crosshairXAfter = waitForAttributeChange firstCrosshair "x1" crosshairXBefore
+    cursorLatency.Stop()
     let cursorValues = page.Locator("[data-testid='ta-cursor-values']")
     waitForText cursorValues expectedMiddleLabel
-    require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 7) "pointer movement on one row must create one shared crosshair in every visible row"
+    require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeCursor) "pointer movement must update only the cursor overlay, not rebuild the chart stack"
+    require (cursorLatency.ElapsedMilliseconds <= 500L) $"shared cursor update exceeded 500ms: {cursorLatency.ElapsedMilliseconds}ms"
+    require ((page.Locator("[data-testid$='-crosshair'][visibility='visible']").CountAsync() |> awaitTask) = 7) "pointer movement on one row must reveal one shared crosshair in every visible row"
     let crosshairPositions =
         page.Locator("[data-testid$='-crosshair']").AllAsync()
         |> awaitTask
         |> Seq.map (fun locator -> locator.GetAttributeAsync("x1") |> awaitTask |> Option.ofObj |> Option.defaultValue "missing")
         |> Seq.distinct
         |> Seq.toArray
-    require (crosshairPositions.Length = 1 && crosshairPositions[0] <> "0" && crosshairPositions[0] <> "100") ("shared pointer crosshair positions diverged: " + String.concat "," crosshairPositions)
+    require (crosshairPositions.Length = 1 && crosshairPositions[0] = crosshairXAfter && crosshairPositions[0] <> "0" && crosshairPositions[0] <> "100") ("shared pointer crosshair positions diverged: " + String.concat "," crosshairPositions)
     priceChart.ClickAsync() |> awaitUnit
     waitForText callbackState "callback actions 2 / last SharedCursorChanged"
     Directory.CreateDirectory outputDirectory |> ignore
@@ -363,12 +394,20 @@ let verifyDesktop (browser: IBrowser) =
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderBeforeLeftHandle) "left-handle preview must not rebuild the chart"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForIntAttribute chartStack "data-chart-render-sequence" (renderBeforeLeftHandle + 1)
+
+    page.Locator("[data-testid='ta-demo-replace-document']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-workspace-title']")) "SMA(30)"
+    waitForText (page.Locator("[data-testid='ta-canvas-identity']")) "ta-demo-canvas-replacement"
+    requireText (page.Locator("[data-testid='ta-toggle-row-price']")) "ES 1K + SMA(30)"
+    requireText (page.Locator("[data-testid='ta-row-price']")) "ES 1K + SMA(30)"
+    require (not ((textOf (page.Locator("[data-testid='ta-row-price']"))).Contains "SMA(20)")) "replacement document must not retain the prior static row label"
+
     require (consoleErrors.Count = 0) ("desktop console errors: " + String.concat " | " consoleErrors)
 
     Directory.CreateDirectory outputDirectory |> ignore
     page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "desktop.png"), FullPage = true)) |> awaitTask |> ignore
     context.CloseAsync() |> awaitUnit
-    titleBox, priceBox
+    titleBox, priceBox, cursorLatency.ElapsedMilliseconds
 
 let verifyMobile (browser: IBrowser) =
     let viewportWidth = 390
@@ -408,9 +447,9 @@ if not (String.IsNullOrWhiteSpace browserExecutablePath) && File.Exists browserE
 let browser = playwright.Chromium.LaunchAsync(launch) |> awaitTask
 
 try
-    let titleBox, priceBox = verifyDesktop browser
+    let titleBox, priceBox, cursorLatencyMs = verifyDesktop browser
     verifyMobile browser
-    printfn "TA renderer Playwright PASS url=%s desktopTitle=(%.1f,%.1f,%.1f,%.1f) desktopPrice=(%.1f,%.1f,%.1f,%.1f) output=%s" url titleBox.X titleBox.Y titleBox.Width titleBox.Height priceBox.X priceBox.Y priceBox.Width priceBox.Height outputDirectory
+    printfn "TA renderer Playwright PASS url=%s cursorLatencyMs=%d chartRerender=false desktopTitle=(%.1f,%.1f,%.1f,%.1f) desktopPrice=(%.1f,%.1f,%.1f,%.1f) output=%s" url cursorLatencyMs titleBox.X titleBox.Y titleBox.Width titleBox.Height priceBox.X priceBox.Y priceBox.Width priceBox.Height outputDirectory
 finally
     browser.CloseAsync() |> awaitUnit
     playwright.Dispose()

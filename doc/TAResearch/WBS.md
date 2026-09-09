@@ -28,12 +28,12 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-014 | 1 | Overview / typed Add Row / reset / copy | dual-handle overview、full-range compressed view、stable typed editor、canonical reset、reply copy action | DYN-TA-013 + PTCS WBS-071 | T-039..044 | 100% | Done | [@DYN-TA-014](WBS.DYN-TA-014.md) |
 | DYN-TA-015 | 1 | Full runtime export / draft query / slot cursor | full-data download、Apply boundary、shared slot geometry、exact package/formal gate | DYN-TA-014 | T-045..050 | 100% | Done | [@DYN-TA-015](WBS.DYN-TA-015.md) |
 | DYN-TA-016 | 1 | Editor shell / capability poll / Reset regression | stable editor DOM、capability-gated poll、multi-row reset | DYN-TA-015 | T-051..055 | 100% | Done | [@DYN-TA-016](WBS.DYN-TA-016.md) |
-| DYN-TA-017 | 1 | Notebook TA Workspace production | generic source envelope、editor/action contract、shared temporal axis、production renderer與real DIB | DYN-TA-016 + owner contracts | T-056..070 | 95% | Active | [@DYN-TA-017](WBS.DYN-TA-017.md) |
-| DYN-TA-018 | 0 | Browser range cache/resume | owner fingerprint、accepted projection cache、IndexedDB、resume/full handshake與真DIB range E2E | DYN-TA-017 + Daedalus fingerprint/action host | T-071..076 | 68% | Active；browser accepted-state API與paused local interaction完成，待SPAA lifecycle/真DIB | [@DYN-TA-018](WBS.DYN-TA-018.md) |
+| DYN-TA-017 | 1 | Notebook TA Workspace production | generic source envelope、editor/action contract、shared temporal axis、production renderer與real DIB | DYN-TA-016 + owner contracts | T-056..070 | 100% | Done；M16真provider capacity/shared-axis/cursor gate完成 | [@DYN-TA-017](WBS.DYN-TA-017.md) |
+| DYN-TA-018 | 0 | Browser range cache/resume | owner fingerprint、accepted projection cache、IndexedDB、resume/full handshake與真DIB range E2E | DYN-TA-017 + Daedalus fingerprint/action host | T-071..076 | 100% | Done；M17 OPEN_END finalized-prefix cache/history-to-live authoritative replacement完成 | [@DYN-TA-018](WBS.DYN-TA-018.md) |
 
-九月`基於FSSTL的TA Research`主線以`DYN-TA-018`為最高優先；舊`DYN-TA-008`package closure只在本切片需要發布直接dependency時同步處理，不擴張到legacy consumer。
+九月`基於FSSTL的TA Research`第一個production切片`DYN-TA-017/018`已完成；舊`DYN-TA-008`package closure只在後續TA切片需要發布直接dependency時同步處理，不擴張到legacy consumer。
 
-目前package cascade的最高優先/最優先更新 package 工項：將active `PackageReference`同步至`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.6`、Renderer `0.1.8`與Interactive.Client `0.1.7`；再更新PTCS adapters/tests。`artifacts/staging`歷史build副本不修改、不作active consumer。
+目前TA cache/renderer最終graph為Contracts `0.1.7`、Renderer `0.1.14`、Interactive.Client `0.1.11`、Dynamic.Ptcs `0.1.7`與Ptcs.Client `0.1.8`；已push且public index/nuspec可讀。SPAA真provider M16/M17皆GREEN。`artifacts/staging`歷史build副本不修改、不作active consumer。
 
 
 ## 2. Legacy prerequisite policy

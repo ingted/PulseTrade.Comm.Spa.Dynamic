@@ -45,7 +45,7 @@ Operations記錄focused Rebuild、Expecto、F# Playwright、package verifier、N
 
 ## 結果
 
-進行中；browser API與package cascade已完成，public NuGet indexing、commit/push及Daedalus `.dib` integration仍在進行。
+browser API、package cascade、public NuGet readback及fixed-history SPAA cache E2E已完成；OPEN_END cache/resume authority仍待owner contract，不在本批誤宣稱完成。
 
 ## 根因判讀
 
@@ -67,3 +67,32 @@ cache projection原先只有server surface，SPAA WebSharper consumer因而WS900
 - 16:31: PTCS adapter exact-package suites通過13/13與15/15；測試專案explicit pin FSharp.Core 10.1.400後消除SDK 10.0.401 implicit 10.1.401造成的NU1608。
 - 16:34: Contracts 0.1.6、Renderer 0.1.8、Interactive.Client 0.1.7、Dynamic.Ptcs 0.1.6、Ptcs.Client 0.1.4依序NuGet push回Created；public flat-container仍在propagation，未將404誤記為readback完成。
 - 16:36: BrowserCacheDemo改成exact PackageReference Interactive.Client 0.1.7後full WebSharper build通過，F# Playwright再次通過accepted write、paused reject、rehydrate與storage gates；證明新browser API可由nupkg consumer編譯執行。
+- 16:55: public flat-container已可讀Contracts 0.1.6、Renderer 0.1.8、Dynamic.Ptcs 0.1.6與Ptcs.Client 0.1.4；Interactive.Client 0.1.7仍在indexing，未重複push。
+- 16:59: read-only review發現SPAA inspect/cache/provider非同步callback缺少captured generation gate，已透過comm回報Daedalus；Aster不修改owner的active dirty WIP。
+- 17:00: `Milestone15.FsStlMultiScaleFloatingPointCollections.dib`原檔因固定SDK 10.0.400 feed失敗；以temp copy只替換為本機10.0.401後`dotnet dib` exit 0。package、FloatingPoint sequence/NestedMap/Deedle Frame、shared temporal contract及1K/5K/30K/60K FSSTL typed TA view均GREEN；SPAA real-provider僅因18883未啟而明確BLOCKED。
+- 17:04: `Milestone13.TaProductDemo.AllES.dib`以同樣temp feed correction及`SDUI_M13_FIXED_HISTORY_ONLY=true`實跑真MdcQuote dev provider，exit 0；得到3,820 committed bars、4 scales、76 TA series、28 visible refs。
+- 17:06: Playwright MCP對M13 formatter iframe完成desktop/mobile操作。1K/5K K/SMA/DMI/MACD/Heikin-Ashi均呈現，48→200 viewport與DMI row hide/show有效；hover同一1K event-time同時讀到對應5K containing bucket，證明跨尺度shared cursor。唯一console error是缺少favicon.ico，非TA runtime錯誤；hold host已正常停止且port關閉。
+- 17:10: Interactive.Client 0.1.7重送回Conflict/already exists；隨後public flat-container回200，nuspec readback為FSharp.Core `[10.1.400]`、Contracts `[0.1.6]`、Renderer `[0.1.8]`。五顆current package均完成public readback。
+- 17:17: Playwright MCP獨立驗SPAA double-run race：兩次`/api/workspace/inspect`只產生一次`/api/workspace/runs`，最後狀態READY，console 0；owner generation guard未讓stale callback覆寫current run。
+- 17:20: 同一query reload後Run顯示`CACHE READY`；network只有一次inspect、零runs，console error/warning 0。證明fixed-history IndexedDB cache由application lifecycle實際命中，不只是isolated fixture。
+- 17:22: WBS提升DYN-TA-018至91%，T-075/076仍標Partial；OPEN_END cache的source-revision與resume/full authority尚未對齊，不以fixed-history成功關閉production gate。
+- 17:38: Daedalus確認OPEN_END cache authority：各temporal axis只保存Final位置，series依自身axis同步裁切；coverage依finalized base axis；rehydrate display-first後立即重連authoritative full/provider，cache revision不得作delta continuation。
+- 18:05: Contracts新增`RuntimeCacheProjection.finalAxisProjection`、`projectTemporalSeries`與`tryFinalizedProjection`；T-072/073驗preview排除、axis/series一致、preview-only fail closed及rehydrate保留current revision。BrowserCache F# Playwright驗`finalized-prefix=1 preview-count=0`與revision-continuation=false。
+- 18:22: final exact graph全部focused gate通過：Contracts 21/21、Renderer 27/27、Dynamic.Ptcs 13/13、Interactive.Client 4/4、Ptcs.Client 15/15；三組F# Playwright及全部WebSharper builds通過。package verifier另攔下並修正stale bundle manifest。
+- 18:34: Contracts 0.1.7、Renderer 0.1.12、Interactive.Client 0.1.9、Dynamic.Ptcs 0.1.7、Ptcs.Client 0.1.6全部完成NuGet public index readback；exact hash/API已交Daedalus重跑Milestone16 true-provider gate。
+- 18:41: Daedalus M16量得cursor 1,300ms且chart sequence改變；建立`20260909184100_issue_cursor_full_chart_rerender.hypothesis.md`，定位CursorIndex誤入main chart reconciliation key。
+- 18:50: Renderer以獨立cursor Var、persistent SVG overlay與small cursor detail view修正；0.1.13 unit 27/27，3,820x28/7-row F# Playwright量得180ms、chart sequence不變、desktop/mobile及console gates通過。
+- 18:55: Interactive.Client 0.1.10與Ptcs.Client 0.1.7 exact cascade完成；unit 4/4及15/15、lifecycle/cache Playwright、package verifier與WebSharper builds通過。
+- 19:04: 三顆修正版package push回Created且public flat-container可讀；exact hashes已交Daedalus以相同M16真provider gate驗證。
+- 19:05: Daedalus M16確認0.1.13 no-rerender成立，但兩次latency為543ms/508ms，仍未達500ms；不放寬gate。
+- 19:21: 第二實驗讓cursor detail重用chart render已解析series並移除cursor lookup的Array.filter配置；Renderer 0.1.14本地F# Playwright為79ms/no-rerender。Interactive.Client 0.1.11與Ptcs.Client 0.1.8 local packages已交Daedalus，真provider gate通過前不push。
+- 19:28: verifier改以第一條SVG crosshair `x1`變更計時，本機3,820x28/7-row結果62ms、7列x1一致且chart render sequence不變；desktop/mobile截圖無重疊。
+- 19:29: Daedalus原M16真provider gate以Renderer 0.1.14/Interactive.Client 0.1.11通過：loaded=3,820、visible=48、7 rows、projected candle、30K horizontal-step、cursor 125ms且no-rerender。
+- 19:30: Daedalus M17通過：loaded=4,000、current 1K preview、IndexedDB finalized-prefix cache hit、authoritative provider reattach及live revision 2->3；generic package無缺口。
+- 19:36: Renderer 0.1.14、Interactive.Client 0.1.11與Ptcs.Client 0.1.8經既有encrypted-key PostBuild流程push並回Created。
+- 19:38: 三顆package public flat-container及nuspec readback完成；local SHA-256與先前交付值一致，public dependency edges均為預期exact自有package range。
+- 19:39: final exact Interactive lifecycle與BrowserCache F# Playwright均通過；DYN-TA-017/018 completion gates完成，current WBS/Test/Verification已同步。
+- 19:41: PTCS LiveDemo未另起；18883由Daedalus當前`PulseTrade.Comm.Spa.Dynamic.FsStl.Spaa` owner process持有，不中斷其M16/M17工作。以Ptcs.Client 15/15、LiveDemo full WebSharper build及owner真provider gate作本輪證據。
+- 19:42: final consolidated exact suites再驗Contracts 21/21、Renderer 27/27、Interactive.Client 4/4、Dynamic.Ptcs 13/13、Ptcs.Client 15/15；Interactive.Client package verifier通過0.1.11四項bundle與SHA-256。
+- 19:44: changed-path sensitive scan為high=0/medium=0；strict changed-file檢查無NUL或U+FFFD。`git diff --check`只因WebSharper compiler產生且tracked的Ptcs.LiveDemo JS使用既有trailing-space格式而失敗，非手寫JS或產品source缺陷；不重寫generated bundle改變compiler輸出。
+- 19:46: task-scoped `check.fsx`以TAResearch REQ/SA/SD/WBS/Test、Verification及DevLog執行為PASS=30/WARN=3/FAIL=0。WARN為三個既有舊log命名、目前待commit dirty及歷史RFC coverage，不與本切片衝突；首次誤傳不存在的root MCP.KM路徑造成km_missing，移除不適用參數後重跑通過。

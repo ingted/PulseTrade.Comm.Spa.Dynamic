@@ -1269,3 +1269,34 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - package graph升為Contracts `0.1.5`、Renderer `0.1.7`、Interactive.Client `0.1.6`；NuGet push與package hash待final package gate後補記。
 - 2026-09-09：DYN-TA-018 browser application surface完成可獨立交付切片。Contracts `0.1.6`新增WebSharper-safe `RuntimeCacheProjection`，Interactive.Client `0.1.7`提供`BrowserRuntimeCache.writeAcceptedState`/`tryRehydrate`，Renderer `0.1.8`在`PausedForResync`保留local pan/zoom/hover/cursor並抑制remote range/cursor。修正SPAA identity contract：OwnerFingerprint由stable Program/DataSource/cache schema組成且不含range，QueryFingerprint只作診斷，range只進Coverage。
 - 2026-09-09：Contracts 21/21、Renderer 26/26、PTCS adapters 13/13及15/15通過；Renderer與Interactive BrowserCache兩組F# Playwright通過。BrowserCacheDemo改用exact package驗新API可由NuGet consumer編譯/執行；PTCS LiveDemo full WebSharper build通過。NuGet push均回Created：Contracts `0.1.6`、Renderer `0.1.8`、Interactive.Client `0.1.7`、Dynamic.Ptcs `0.1.6`、Ptcs.Client `0.1.4`；public flat-container readback待propagation。
+
+## 2026-09-09 - DYN-TA-018 SPAA fixed-history cache E2E
+
+- Public flat-container已可讀Contracts `0.1.6`、Renderer `0.1.8`、Interactive.Client `0.1.7`、Dynamic.Ptcs `0.1.6`與Ptcs.Client `0.1.4`；Interactive.Client nuspec exact依賴Contracts `[0.1.6]`與Renderer `[0.1.8]`。
+- M15 collection/typed view與M13 fixed-history真MDCQ gate通過；M13得到3,820 committed bars、四尺度、76 TA series與28 visible refs。Playwright MCP驗desktop/mobile、viewport、row toggle與1K/5K shared hover，TA runtime console為0。
+- SPAA `18883` double-run race最後READY且兩次inspect只建立一次provider run；reload後為`CACHE READY`，只有inspect、沒有第二次runs，console 0。Owner source已加入inspect/cache/provider callback generation guard及stale run best-effort stop。
+- OPEN_END cache仍需owner定案source revision與resume/full語意。Aster只提出generic cache projection選項，不在未對齊前實作或宣稱完成。
+
+## 2026-09-09 - DYN-TA-018 OPEN_END finalized cache and renderer replacement
+
+- Daedalus與Aster定案OPEN_END authority：cache只保存每個temporal axis的Final位置，所有temporal series依自身axis同步裁切；rehydrate只供display-first、保留current `DataRevision`並進`PausedForResync`，owner仍立即重連authoritative full/provider，cache revision不作continuation authority。
+- Contracts 0.1.7新增`RuntimeCacheProjection.finalAxisProjection`、`projectTemporalSeries`與`tryFinalizedProjection`。T-072/073及BrowserCache F# Playwright驗finalized prefix、preview-only fail closed、axis/series一致與revision-continuation=false。
+- Renderer修正same-revision Document/Canvas替換仍重用舊DOM/route的根因，並將高尺度candle投影成actual base-axis constituent slots；source/storage仍只有canonical candle，不補不存在的slot。Renderer 0.1.12 unit 27/27與3,820-position F# Playwright通過。
+- final focused gates：Contracts 21/21、Renderer 27/27、Dynamic.Ptcs 13/13、Interactive.Client 4/4、Ptcs.Client 15/15；Interactive lifecycle、BrowserCache與Renderer三組F# Playwright及WebSharper builds通過。final Playwright MCP runtime當下回`No browser is available`；同source interim gate已通過，但未將其冒充0.1.12 final MCP結果。
+- final exact graph均已push且public NuGet index可讀：Contracts 0.1.7、Renderer 0.1.12、Interactive.Client 0.1.9、Dynamic.Ptcs 0.1.7、Ptcs.Client 0.1.6。Daedalus已收到exact SHA/API，DYN-TA-018E待其以final packages重跑Milestone16 true-provider shared-axis與reload/range authoritative replacement gate。
+
+## 2026-09-09 - Renderer shared cursor no-rerender correction
+
+- Daedalus的真provider M16量得visible 48/source 3,820時單次cursor move約1,300ms，且`data-chart-render-sequence`由3變4；根因是`CursorIndex`位於main chart reconciliation key，mousemove會重算全部timeline/projection並重建7-row SVG。
+- Renderer將cursor移至獨立`Var`；crosshair改為persistent SVG line搭配`Attr.Dynamic`只更新x/visibility，cursor detail由獨立`Doc.EmbedView`更新。document/series/viewport變更與remote `SharedCursorChanged`語意不變。
+- Renderer 0.1.13 unit 27/27及3,820-position/28-series F# Playwright通過；7-row cursor為180ms、chart render sequence不變、desktop/mobile無overlap、console/page error 0。Interactive.Client 0.1.10 unit 4/4與lifecycle/cache Playwright通過；Ptcs.Client 0.1.7 unit 15/15及LiveDemo full WebSharper build通過。
+- Renderer 0.1.13、Interactive.Client 0.1.10、Ptcs.Client 0.1.7皆經既有encrypted-key PostBuild流程push並回`Created`，且public flat-container可讀。Daedalus final exact-package M16仍待回讀，不在此紀錄冒充完成。
+
+## 2026-09-09 - DYN-TA-017/018 final true-provider closure
+
+- Correction：前一節的0.1.13/0.1.10/0.1.7不是最終圖。Daedalus M16雖確認no-rerender，但兩次真provider cursor latency為543ms/508ms，仍未達既定500ms gate；因此未以該結果關閉WBS。
+- Renderer 0.1.14在chart建立時保存已解析且bounded的cursor readers，mousemove不再對28條完整series重做decode/resolution，並以`Array.tryFindBack`移除cursor lookup的暫存配置。generic F# Playwright直接量SVG crosshair `x1`變更為62ms、7列`x1`一致、chart sequence不變，desktop/mobile無重疊且console 0。
+- Daedalus M16真provider原failing gate以final exact graph通過：loaded=3,820、visible=48、7 rows、projected candles、30K horizontal-step、SVG cursor 125ms、7列`x1`一致且chart sequence不變。M17亦通過loaded=4,000、current 1K preview、IndexedDB finalized-prefix cache hit、authoritative provider reattach及live revision 2->3，未發現generic package缺口。
+- Final exact-package gates通過：Contracts 21/21、Renderer 27/27、Interactive.Client 4/4、Dynamic.Ptcs 13/13、Ptcs.Client 15/15；Interactive lifecycle與browser-cache F# Playwright分別驗single reconnect/resync/dispose及finalized-prefix/coverage/corrupt eviction/authority邊界。
+- Final graph為Contracts 0.1.7、Renderer 0.1.14、Interactive.Client 0.1.11、Dynamic.Ptcs 0.1.7、Ptcs.Client 0.1.8。三顆本輪新package push均回`Created`且public flat-container/nuspec可讀；Renderer、Interactive.Client、Ptcs.Client SHA-256依序為`8D0E185BB7A8800EA23DFDD6EFFD8A44FFD7E77005731C71B2C420672A7AAC26`、`053883DDB8586FFE51D43C0DC53994FE3E26FE43F3758DB5983AF818901B9ACE`、`85F547AA9A99F60A42F40AC68EB17399DDFCA138CEB5B97F2DCE02704085779C`。
+- `DYN-TA-017`與`DYN-TA-018`依真FSSTL/MDCQ `.dib`、browser、cache authority及immutable package gates改為100% Done；不將舊E2EQ/static/legacy package closure納入本次九月主線。

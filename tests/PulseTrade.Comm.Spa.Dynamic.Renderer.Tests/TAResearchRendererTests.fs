@@ -449,6 +449,21 @@ let tests =
             Expect.equal (TaWorkspaceRenderer.rowDisplayLabel unlabeled) "Candlestick" "Toolbar fallback should remain the typed row kind."
             Expect.equal (TaWorkspaceRenderer.rowTitle unlabeled unlabeled.Traces) "ES_1K / 1K" "Card fallback should retain the trace label."
 
+        testCase "document shell cache key includes runtime document and canvas identity" <| fun _ ->
+            let first =
+                RuntimeReducer.initial
+                    { DocumentId = DocumentId "run-29"
+                      CanvasInstanceId = CanvasInstanceId "canvas-29" }
+            let same = RuntimeReducer.initial first.Identity
+            let replacement =
+                RuntimeReducer.initial
+                    { DocumentId = DocumentId "run-30"
+                      CanvasInstanceId = CanvasInstanceId "canvas-30" }
+
+            Expect.isTrue (TaWorkspaceRenderer.sameDocumentShell first same) "The same runtime identity and revision should reuse its shell."
+            Expect.isFalse (TaWorkspaceRenderer.sameDocumentShell first replacement) "A replacement run must rebuild the shell even when both revisions start at zero."
+            Expect.isFalse (TaWorkspaceRenderer.sameDocumentShell first { same with DocumentRevision = 1L }) "A newer document revision must rebuild the shell."
+
         testCase "multi-scale temporal projection aligns candle spans repeated lines and causal step values" <| fun _ ->
             let timestamps =
                 [| for minute in 0 .. 9 -> sprintf "2026-09-03T13:%02d:00.0000000+00:00" minute |]
@@ -527,6 +542,13 @@ let tests =
             Expect.sequenceEqual (RendererModel.referenceTimeline [| row |] data) timestamps "The longest real timestamp series is the base axis."
             let parsedCandle = RendererModel.candleSeries "series.coarse-candle" data |> Array.exactlyOne
             Expect.equal (RendererModel.candleSlotRange timestamps parsedCandle) (Some(0, 5)) "A 5K source candle spans five real 1K slots without cloning source records."
+            let projectedCandles = RendererModel.projectedCandleSlots timestamps parsedCandle
+            Expect.equal projectedCandles.Length 5 "A 5K source candle must render once at each real constituent 1K slot."
+            Expect.sequenceEqual (projectedCandles |> Array.map (fun (index, _, _) -> index)) [| 0; 1; 2; 3; 4 |] "Projected candles retain the actual base-axis slot positions."
+            Expect.isTrue (projectedCandles |> Array.forall (fun (_, span, point) -> span = 5 && (point.Temporal |> Option.exists (fun value -> value.SourceIntervalId = "es-5k:1300")))) "Every projected candle retains its canonical source interval identity."
+            let sparseTimestamps = timestamps |> Array.removeAt 2
+            let sparseProjected = RendererModel.projectedCandleSlots sparseTimestamps parsedCandle
+            Expect.equal sparseProjected.Length 4 "Projection must not invent a missing base-axis slot."
             let repeated = RendererModel.lineSeries "series.coarse-line" data |> RendererModel.projectedLinePoints timestamps
             Expect.equal repeated.Length 10 "Two final 5K values project across ten 1K presentation cells."
             Expect.sequenceEqual (repeated |> Array.map (snd >> _.Value)) [| 10.0; 10.0; 10.0; 10.0; 10.0; 20.0; 20.0; 20.0; 20.0; 20.0 |] "Repeated cells preserve each source interval value."

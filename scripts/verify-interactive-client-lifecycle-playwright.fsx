@@ -1,6 +1,6 @@
 // Real-browser lifecycle verifier. Start the dedicated LiveDemo host before running this client.
 
-#i @"nuget: C:\Program Files\dotnet\sdk\10.0.400\FSharp\library-packs"
+#i @"nuget: C:\Program Files\dotnet\sdk\10.0.401\FSharp\library-packs"
 #r "nuget: FAkka.Argu, [10.1.301]"
 #r "nuget: Microsoft.Playwright, 1.52.0"
 

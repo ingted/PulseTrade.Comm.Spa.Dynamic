@@ -13,6 +13,6 @@
   <ItemGroup>
     <PackageReference Include="Expecto" Version="11.1.0" />
     <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs" Version="[0.1.6]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs" Version="[0.1.7]" />
   </ItemGroup>
 </Project>

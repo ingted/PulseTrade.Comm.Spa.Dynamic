@@ -38,4 +38,4 @@ TaWorkspaceRenderer.render
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.8`，exact依賴Contracts `[0.1.6]`與FSharp.Core `[10.1.400]`。TA row顯示名稱依序採 authored `Options["label"]`、trace labels、typed row kind；row card與toolbar不得各自產生不同名稱。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.13`，exact依賴Contracts `[0.1.7]`與FSharp.Core `[10.1.400]`。TA row顯示名稱依序採 authored `Options["label"]`、trace labels、typed row kind；row card與toolbar不得各自產生不同名稱。document shell cache key與action routing都使用current `DocumentId`／`CanvasInstanceId`。高尺度source candle只在presentation依actual base-axis slots展開成等值candles，保留canonical source interval且不複製storage series。shared cursor使用獨立reactive overlay與detail panel，不得使main chart geometry重新render。

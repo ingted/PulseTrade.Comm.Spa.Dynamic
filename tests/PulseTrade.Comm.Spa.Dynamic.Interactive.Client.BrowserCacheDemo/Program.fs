@@ -36,7 +36,17 @@ module Program =
                      AvailableAtUtc = Some(startUtc.AddDays(1.0))
                      Finality = PointFinality.Final
                      Projection = TemporalProjection.CandleSpan
-                     Quality = Some "complete" } |] }
+                     Quality = Some "complete" }
+                   { Position = 1L
+                     SourceIntervalId = "browser-cache-preview-" + string index
+                     ScaleKey = "1K"
+                     IntervalStartUtc = startUtc.AddDays(1.0)
+                     IntervalEndUtc = startUtc.AddDays(2.0)
+                     ObservedThroughUtc = startUtc.AddDays(1.5)
+                     AvailableAtUtc = None
+                     Finality = PointFinality.Preview
+                     Projection = TemporalProjection.CandleSpan
+                     Quality = Some "preview" } |] }
         let entryDocument = { document with TemporalAxisRefs = [| axisRef |] }
 
         { CacheIdentity =

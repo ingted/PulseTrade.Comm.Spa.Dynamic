@@ -869,31 +869,36 @@ let tests =
 
         testCase "DYN-TA-T-072 accepted shared-axis state creates a bounded cache entry" <| fun _ ->
             let startUtc = DateTimeOffset(2026, 9, 8, 13, 0, 0, TimeSpan.Zero)
-            let axisPoint position minute =
+            let axisPoint position minute finality =
                 let intervalStart = startUtc.AddMinutes(float minute)
+                let intervalEnd = intervalStart.AddMinutes 1.0
 
                 { Position = position
                   SourceIntervalId = $"mdcq-es-1k-{position}"
                   ScaleKey = "1K"
                   IntervalStartUtc = intervalStart
-                  IntervalEndUtc = intervalStart.AddMinutes 1.0
-                  ObservedThroughUtc = intervalStart.AddMinutes 1.0
-                  AvailableAtUtc = Some(intervalStart.AddMinutes 1.0)
-                  Finality = PointFinality.Final
+                  IntervalEndUtc = intervalEnd
+                  ObservedThroughUtc = if finality = PointFinality.Final then intervalEnd else intervalStart.AddSeconds 20.0
+                  AvailableAtUtc = if finality = PointFinality.Final then Some intervalEnd else None
+                  Finality = finality
                   Projection = TemporalProjection.CandleSpan
                   Quality = Some "complete" }
 
             let axis =
                 { AxisRef = "axis.es.1k"
                   Revision = 1L
-                  Points = [| axisPoint 0L 0; axisPoint 1L 1 |] }
+                  Points =
+                    [| axisPoint 0L 0 PointFinality.Final
+                       axisPoint 1L 1 PointFinality.Final
+                       axisPoint 2L 2 PointFinality.Preview |] }
 
             let series =
                 { AxisRef = axis.AxisRef
                   AxisRevision = axis.Revision
                   Points =
                     [| { Position = 0L; Value = SduiValue.Number 100.0 }
-                       { Position = 1L; Value = SduiValue.Number 101.0 } |] }
+                       { Position = 1L; Value = SduiValue.Number 101.0 }
+                       { Position = 2L; Value = SduiValue.Number 102.0 } |] }
 
             let cacheDocument =
                 { document with
@@ -927,6 +932,42 @@ let tests =
             Expect.equal entry.Coverage.StartEventTimeUtc startUtc "Cache coverage starts at the actual base-axis interval."
             Expect.equal entry.Coverage.EndEventTimeExclusiveUtc (startUtc.AddMinutes 2.0) "Cache coverage ends at the actual final interval end."
             Expect.isTrue (RuntimeCache.covers entry.Coverage entry.Coverage) "An entry covers its exact half-open range."
+
+            let cachedAxis =
+                entry.Snapshot.Data[axis.AxisRef]
+                |> TemporalAxisCodec.decode
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            let cachedSeries =
+                entry.Snapshot.Data[row.DataRef]
+                |> TemporalSeriesCodec.decode
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal (cachedAxis.Points |> Array.map _.Position) [| 0L; 1L |] "OPEN_END cache must exclude the preview axis frontier."
+            Expect.equal (cachedSeries.Points |> Array.map _.Position) [| 0L; 1L |] "Every temporal series must be cut to the finalized axis positions."
+
+            let previewOnlyAxis =
+                { axis with Points = [| axisPoint 2L 2 PointFinality.Preview |] }
+
+            let previewOnlySeries =
+                { series with Points = [| { Position = 2L; Value = SduiValue.Number 102.0 } |] }
+
+            let previewOnlyState =
+                { accepted with
+                    Data =
+                        Map
+                            [ axis.AxisRef, TemporalAxisCodec.encode previewOnlyAxis
+                              row.DataRef, TemporalSeriesCodec.encode previewOnlySeries ] }
+
+            let previewOnlyErrors =
+                RuntimeCache.tryCreateEntry (sourceTime.AddHours 1.0) cacheIdentity previewOnlyState
+                |> function
+                    | Error errors -> errors
+                    | Ok _ -> failtest "A preview-only OPEN_END state must not produce an empty cache entry."
+
+            Expect.isTrue
+                (previewOnlyErrors |> List.exists (fun error -> error.Code = "cache-finalized-coverage-unavailable"))
+                "Preview-only OPEN_END state must fail with an explicit finalized-coverage reason."
 
             let roundTrip =
                 entry
@@ -1048,7 +1089,7 @@ let tests =
             Expect.equal browserHydrated hydrated "Browser and server rehydration must share one canonical reducer result."
             Expect.equal hydrated.DocumentRevision currentDocumentState.DocumentRevision "Cache data must not override the current authoritative document revision."
             Expect.equal hydrated.LastTransportSequence currentDocumentState.LastTransportSequence "Cache hydration must not consume a server transport sequence."
-            Expect.equal hydrated.DataRevision entry.DataRevision "Cached data revision is retained as a delta resume hint."
+            Expect.equal hydrated.DataRevision currentDocumentState.DataRevision "Cached data revision must not become an authoritative delta continuation hint."
             Expect.equal hydrated.Poll RuntimePollState.PausedForResync "Hydrated cache remains explicitly non-authoritative."
 
             let authoritativeSnapshot =

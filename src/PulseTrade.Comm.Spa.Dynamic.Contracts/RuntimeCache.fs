@@ -221,7 +221,139 @@ module RuntimeCacheProjection =
         cached.StartEventTimeUtc <= requested.StartEventTimeUtc
         && cached.EndEventTimeExclusiveUtc >= requested.EndEventTimeExclusiveUtc
 
-    let tryBaseAxisCoverage state = RuntimeCacheBrowserCoverage.tryBaseAxisCoverage state
+    let finalAxisProjection axisRef value =
+        match RuntimeReducer.temporalObject TemporalAxisCodec.TypeValue value with
+        | None ->
+            Error
+                [ RuntimeValidation.error
+                      "cache-axis-invalid"
+                      "cache.snapshot.data"
+                      $"Declared temporal axis `{axisRef}` is not temporal-axis.v1 data." ]
+        | Some fields ->
+            match RuntimeReducer.temporalText "axisRef" fields, Map.tryFind "points" fields with
+            | Some encodedAxisRef, Some(SduiValue.Array points) when encodedAxisRef = axisRef ->
+                let finalized =
+                    points
+                    |> Array.filter (function
+                        | SduiValue.Object pointFields ->
+                            RuntimeReducer.temporalText "finality" pointFields = Some "final"
+                        | _ -> false)
+
+                let positions =
+                    finalized
+                    |> Array.choose (function
+                        | SduiValue.Object pointFields -> RuntimeReducer.temporalPosition pointFields
+                        | _ -> None)
+                    |> Set.ofArray
+
+                let projected = SduiValue.Object(Map.add "points" (SduiValue.Array finalized) fields)
+
+                match RuntimeCacheBrowserCoverage.decodeAxis projected with
+                | Ok coverage -> Ok(axisRef, positions, coverage, projected)
+                | Error errors -> Error errors
+            | Some encodedAxisRef, _ when encodedAxisRef <> axisRef ->
+                Error
+                    [ RuntimeValidation.error
+                          "cache-axis-ref-mismatch"
+                          "cache.snapshot.data"
+                          $"Declared temporal axis `{axisRef}` contains axisRef `{encodedAxisRef}`." ]
+            | _ ->
+                Error
+                    [ RuntimeValidation.error
+                          "cache-axis-invalid"
+                          "cache.snapshot.data"
+                          $"Declared temporal axis `{axisRef}` has no valid points array." ]
+
+    let projectTemporalSeries finalizedPositions value =
+        match RuntimeReducer.temporalObject TemporalSeriesCodec.TypeValue value with
+        | None -> value
+        | Some fields ->
+            match RuntimeReducer.temporalText "axisRef" fields, Map.tryFind "points" fields with
+            | Some axisRef, Some(SduiValue.Array points) ->
+                match Map.tryFind axisRef finalizedPositions with
+                | None -> value
+                | Some allowed ->
+                    let finalized =
+                        points
+                        |> Array.filter (function
+                            | SduiValue.Object pointFields ->
+                                RuntimeReducer.temporalPosition pointFields
+                                |> Option.exists (fun position -> Set.contains position allowed)
+                            | _ -> false)
+
+                    SduiValue.Object(Map.add "points" (SduiValue.Array finalized) fields)
+            | _ -> value
+
+    let tryFinalizedProjection state =
+        match state.Document with
+        | None ->
+            Error
+                [ RuntimeValidation.error
+                      "cache-document-required"
+                      "cache.document"
+                      "A document is required before finalized cache data can be projected." ]
+        | Some document ->
+            let axisRefs = if isNull document.TemporalAxisRefs then [||] else document.TemporalAxisRefs
+            let projectedAxes =
+                axisRefs
+                |> Array.map (fun axisRef ->
+                    match Map.tryFind axisRef state.Data with
+                    | Some value -> finalAxisProjection axisRef value
+                    | None ->
+                        Error
+                            [ RuntimeValidation.error
+                                  "cache-axis-missing"
+                                  "cache.snapshot.data"
+                                  $"Declared temporal axis `{axisRef}` is missing from the accepted runtime data." ])
+
+            let errors =
+                projectedAxes
+                |> Array.choose (function Error values -> Some values | Ok _ -> None)
+                |> Array.toList
+                |> List.concat
+
+            if not (List.isEmpty errors) then
+                Error errors
+            else
+                let axes =
+                    projectedAxes
+                    |> Array.choose (function Ok value -> Some value | Error _ -> None)
+
+                let coverageAxis =
+                    axes
+                    |> Array.filter (fun (_, _, coverage, _) -> coverage.Length > 0)
+                    |> Array.sortByDescending (fun (_, _, coverage, _) -> coverage.Length)
+                    |> Array.tryHead
+
+                match coverageAxis with
+                | None ->
+                    Error
+                        [ RuntimeValidation.error
+                              "cache-finalized-coverage-unavailable"
+                              "cache.coverage"
+                              "Accepted runtime data has no finalized temporal axis interval to cache." ]
+                | Some(_, _, coveragePoints, _) ->
+                    let finalizedPositions =
+                        axes
+                        |> Array.map (fun (axisRef, positions, _, _) -> axisRef, positions)
+                        |> Map.ofArray
+
+                    let withProjectedAxes =
+                        axes
+                        |> Array.fold (fun data (axisRef, _, _, value) -> Map.add axisRef value data) state.Data
+
+                    let projectedData =
+                        withProjectedAxes
+                        |> Map.map (fun _ value -> projectTemporalSeries finalizedPositions value)
+
+                    let coverage =
+                        { StartEventTimeUtc = coveragePoints |> Array.minBy fst |> fst
+                          EndEventTimeExclusiveUtc = coveragePoints |> Array.maxBy snd |> snd }
+
+                    Ok(coverage, projectedData)
+
+    let tryBaseAxisCoverage state =
+        tryFinalizedProjection state |> Result.map fst
 
     let stateIsCacheable state =
         state.Document.IsSome
@@ -278,8 +410,9 @@ module RuntimeCacheProjection =
                   CapturedAtUtc = capturedAtUtc }
 
     let tryCreateEntry (capturedAtUtc: DateTimeOffset) cacheIdentity state =
-        tryBaseAxisCoverage state
-        |> Result.bind (fun coverage -> tryCreateEntryWithCoverage capturedAtUtc cacheIdentity coverage state)
+        tryFinalizedProjection state
+        |> Result.bind (fun (coverage, projectedData) ->
+            tryCreateEntryWithCoverage capturedAtUtc cacheIdentity coverage { state with Data = projectedData })
 
     let validateEntry limits entry = RuntimeCacheEntryValidation.validate limits entry
 
@@ -315,6 +448,7 @@ module RuntimeCacheProjection =
                         Ok
                             { candidate with
                                 DocumentRevision = current.DocumentRevision
+                                DataRevision = current.DataRevision
                                 LastTransportSequence = current.LastTransportSequence
                                 Poll = RuntimePollState.PausedForResync
                                 LastError = None })
@@ -334,59 +468,14 @@ module RuntimeCache =
     let covers requested cached = RuntimeCacheProjection.covers requested cached
 
     let tryBaseAxisCoverage (state: RuntimeState) =
-        match state.Document with
-        | None ->
-            Error [ RuntimeValidation.error "cache-document-required" "cache.document" "A document is required before cache coverage can be derived." ]
-        | Some document ->
-            let axisRefs = if isNull document.TemporalAxisRefs then [||] else document.TemporalAxisRefs
-            let decoded =
-                axisRefs
-                |> Array.map (fun axisRef ->
-                    match Map.tryFind axisRef state.Data with
-                    | None ->
-                        Error
-                            [ RuntimeValidation.error
-                                  "cache-axis-missing"
-                                  "cache.snapshot.data"
-                                  $"Declared temporal axis `{axisRef}` is missing from the accepted runtime data." ]
-                    | Some value -> TemporalAxisCodec.decode value)
-
-            let errors =
-                decoded
-                |> Array.choose (function Error values -> Some values | Ok _ -> None)
-                |> Array.toList
-                |> List.concat
-
-            if not (List.isEmpty errors) then
-                Error errors
-            else
-                let baseAxis =
-                    decoded
-                    |> Array.choose (function
-                        | Ok axis when not (isNull axis.Points) && axis.Points.Length > 0 -> Some axis
-                        | _ -> None)
-                    |> Array.sortByDescending (fun axis -> axis.Points.Length)
-                    |> Array.tryHead
-
-                match baseAxis with
-                | None ->
-                    Error
-                        [ RuntimeValidation.error
-                              "cache-coverage-unavailable"
-                              "cache.coverage"
-                              "Accepted runtime data has no non-empty temporal axis from which cache coverage can be derived." ]
-                | Some axis ->
-                    Ok
-                        { StartEventTimeUtc = axis.Points |> Array.minBy _.IntervalStartUtc |> _.IntervalStartUtc
-                          EndEventTimeExclusiveUtc = axis.Points |> Array.maxBy _.IntervalEndUtc |> _.IntervalEndUtc }
+        RuntimeCacheProjection.tryBaseAxisCoverage state
 
     let stateIsCacheable state = RuntimeCacheProjection.stateIsCacheable state
 
     let shouldPersistFrame frame effect state = RuntimeCacheProjection.shouldPersistFrame frame effect state
 
     let tryCreateEntry capturedAtUtc cacheIdentity state =
-        tryBaseAxisCoverage state
-        |> Result.bind (fun coverage -> RuntimeCacheProjection.tryCreateEntryWithCoverage capturedAtUtc cacheIdentity coverage state)
+        RuntimeCacheProjection.tryCreateEntry capturedAtUtc cacheIdentity state
 
     let validateEntry limits entry = RuntimeCacheProjection.validateEntry limits entry
 

@@ -486,6 +486,26 @@ module Client =
                     Poll = RuntimePollState.Backoff(DateTimeOffset.UtcNow.AddSeconds 5.0)
                     LastError = Some { ReasonCode = "delta-timeout"; Message = "retaining last good canvas"; Recoverable = true } }
 
+        let replaceDocumentWithSameRevision () =
+            let current = runtimeState.Value
+            let nextDocument =
+                current.Document
+                |> Option.map (fun document ->
+                    { document with
+                        Title = "PTMD TA Research / SMA(30)"
+                        Rows =
+                            document.Rows
+                            |> Array.map (fun row ->
+                                if row.RowId <> "price" then row
+                                else { row with Options = row.Options |> Map.add "label" (SduiValue.Text "ES 1K + SMA(30)") }) })
+
+            runtimeState.Value <-
+                { current with
+                    Identity =
+                        { DocumentId = DocumentId "ta-demo-document-replacement"
+                          CanvasInstanceId = CanvasInstanceId "ta-demo-canvas-replacement" }
+                    Document = nextDocument }
+
         div [
             attr.style "max-width:1460px; margin:0 auto; min-width:0;"
             Attr.Create "data-capacity-positions" (string capacityPointCount)
@@ -497,6 +517,7 @@ module Client =
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-inflight"; on.click (fun _ _ -> setInFlight ()) ] [ text "In-flight" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-paused"; on.click (fun _ _ -> setPaused ()) ] [ text "Paused" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-stale"; on.click (fun _ _ -> setStale ()) ] [ text "Stale" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-document"; on.click (fun _ _ -> replaceDocumentWithSameRevision ()) ] [ text "Replace document" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-reject-next"; on.click (fun _ _ -> rejectNext.Value <- true) ] [ text "Reject next" ]
                 text "callback actions "
                 textView (actionCount.View |> View.Map string)

@@ -82,6 +82,17 @@ module TaWorkspaceRenderer =
             |> String.concat " / "
             |> fun value -> if String.IsNullOrWhiteSpace value then rowKindText row.Kind else value
 
+    let sameDocumentShell (left: RuntimeState) (right: RuntimeState) =
+        let samePresence =
+            match left.Document, right.Document with
+            | None, None -> true
+            | Some leftDocument, Some rightDocument -> leftDocument.WorkspaceId = rightDocument.WorkspaceId
+            | _ -> false
+
+        left.Identity = right.Identity
+        && samePresence
+        && left.DocumentRevision = right.DocumentRevision
+
     let freshnessText (freshness: TaFreshness) =
         match freshness with
         | TaFreshness.Live -> "LIVE"
@@ -469,7 +480,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvg rowId (traces: TaTraceSpec array) data (referenceTimestamps: string array) cursorIndex setCursorIndex commitCursorIndex =
+    let compositeSvgReactivePrepared rowId isBaseRow (traces: TaTraceSpec array) data (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -479,40 +490,63 @@ module TaWorkspaceRenderer =
         let color index (trace: TaTraceSpec) =
             if String.IsNullOrWhiteSpace trace.Color then palette[index % palette.Length] else trace.Color
 
-        let candleSeries =
+        let preparedTraces: (int * TaTraceSpec * TaCandlePoint array * TaLinePoint array * (string -> TaCursorValue option)) array =
             traces
-            |> Array.mapi (fun traceIndex trace -> traceIndex, trace)
-            |> Array.filter (fun (_, trace) -> trace.Kind = TaTraceKind.Candlestick)
-            |> Array.collect (fun (traceIndex, trace) ->
-                RendererModel.candleSeriesForTrace trace data
-                |> Array.filter (fun point -> RendererModel.candleSlotRange referenceTimestamps point |> Option.isSome)
-                |> Array.map (fun point -> traceIndex, trace, point))
+            |> Array.mapi (fun traceIndex trace ->
+                let label = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
+                match trace.Kind with
+                | TaTraceKind.Candlestick
+                | TaTraceKind.Volume ->
+                    let candles = RendererModel.candleSeriesForTrace trace data
+                    let readCursor timestamp = RendererModel.candleCursorValue label trace.Kind isBaseRow timestamp candles
+                    traceIndex, trace, candles, [||], readCursor
+                | TaTraceKind.Line
+                | TaTraceKind.Histogram ->
+                    let lines = RendererModel.lineSeries trace.DataRef data
+                    let readCursor timestamp = RendererModel.lineCursorValue label isBaseRow timestamp lines
+                    traceIndex, trace, [||], lines, readCursor)
+
+        let candleSeries =
+            preparedTraces
+            |> Array.filter (fun (_, trace, _, _, _) -> trace.Kind = TaTraceKind.Candlestick)
+            |> Array.collect (fun (traceIndex, trace, candles, _, _) ->
+                candles
+                |> Array.collect (fun point ->
+                    RendererModel.projectedCandleSlots referenceTimestamps point
+                    |> Array.map (fun (slotIndex, sourceSpanCount, projected) -> traceIndex, trace, slotIndex, sourceSpanCount, projected)))
         let xAt index =
             RendererModel.slotCenter width referenceTimestamps.Length index
             |> Option.defaultValue (width / 2.0)
 
         let linePoints =
-            traces
-            |> Array.mapi (fun index trace ->
+            preparedTraces
+            |> Array.map (fun (index, trace, candles, lines, _) ->
                 let points =
                     (match trace.Kind with
                      | TaTraceKind.Volume ->
-                         RendererModel.candleSeriesForTrace trace data
+                         candles
                          |> Array.map (fun point -> { Timestamp = point.Timestamp; Value = point.Volume; Temporal = point.Temporal })
                      | TaTraceKind.Line
-                     | TaTraceKind.Histogram -> RendererModel.lineSeries trace.DataRef data
+                     | TaTraceKind.Histogram -> lines
                      | _ -> [||])
                     |> RendererModel.projectedLinePoints referenceTimestamps
                 index, trace, points)
 
         let scaleValues =
-            [| yield! candleSeries |> Array.collect (fun (_, _, point) -> [| point.Low; point.High |])
+            [| yield! candleSeries |> Array.collect (fun (_, _, _, _, point) -> [| point.Low; point.High |])
                yield! linePoints |> Array.collect (fun (_, trace, points) ->
                    let values = points |> Array.map (fun (_, point: TaLinePoint) -> point.Value)
                    if trace.Kind = TaTraceKind.Histogram then Array.append [| 0.0 |] values else values) |]
         let low, high = RendererModel.paddedRange 0.0 1.0 scaleValues
         let slot = if referenceTimestamps.Length = 0 then width else width / float referenceTimestamps.Length
         let svgTestId = if hasCandles then "ta-candle-" + rowId else "ta-composite-" + rowId
+        let cursorX =
+            cursorIndex
+            |> View.Map (fun value -> cursorPosition width referenceTimestamps.Length value |> Option.defaultValue 0.0 |> fixedText)
+        let cursorVisibility =
+            cursorIndex
+            |> View.Map (fun value -> if cursorPosition width referenceTimestamps.Length value |> Option.isSome then "visible" else "hidden")
+        let cursorIndexText = cursorIndex |> View.Map (Option.map string >> Option.defaultValue "")
 
         svgElement "svg" [
             svgAttr "viewBox" (if hasCandles then "0 0 1000 250" else "0 0 1000 112")
@@ -521,7 +555,7 @@ module TaWorkspaceRenderer =
             svgAttr "aria-label" ("Composite TA row " + rowId)
             Attr.Create "data-testid" svgTestId
             Attr.Create "data-point-count" (string referenceTimestamps.Length)
-            Attr.Create "data-cursor-index" (cursorIndex |> Option.map string |> Option.defaultValue "")
+            Attr.Dynamic "data-cursor-index" cursorIndexText
             attr.style ("display:block; width:100%; height:" + fixedText height + "px; background:#fbfcfe;")
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
@@ -538,25 +572,25 @@ module TaWorkspaceRenderer =
                 let y = top + plotHeight * float gridIndex / 4.0
                 yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" (fixedText y); svgAttr "y2" (fixedText y); svgAttr "stroke" "#e7ecf3"; svgAttr "stroke-width" "1" ] []
 
-            for traceIndex, trace, point in candleSeries do
-                match RendererModel.candleSlotRange referenceTimestamps point with
-                | None -> ()
-                | Some(firstSlot, endExclusive) ->
-                    let left = slot * float firstSlot
-                    let right = slot * float endExclusive
-                    let center = (left + right) / 2.0
-                    let bodyWidth = max 2.0 ((right - left) * 0.72)
-                    let candleColor = if point.Close >= point.Open then "#0f8a78" else "#c2414b"
-                    let highY = RendererModel.normalize low high top plotHeight point.High
-                    let lowY = RendererModel.normalize low high top plotHeight point.Low
-                    let openY = RendererModel.normalize low high top plotHeight point.Open
-                    let closeY = RendererModel.normalize low high top plotHeight point.Close
-                    let sourceIntervalId = point.Temporal |> Option.map _.SourceIntervalId |> Option.defaultValue point.Timestamp
-                    let spanCount = endExclusive - firstSlot
-                    let traceColor = if spanCount > 1 then color traceIndex trace else candleColor
-                    let traceTestId = "ta-candle-" + rowId + "-" + trace.TraceId
-                    yield svgElement "line" [ Attr.Create "data-testid" traceTestId; Attr.Create "data-candle-part" "wick"; Attr.Create "data-source-interval-id" sourceIntervalId; Attr.Create "data-span-slots" (string spanCount); svgAttr "x1" (fixedText center); svgAttr "x2" (fixedText center); svgAttr "y1" (fixedText highY); svgAttr "y2" (fixedText lowY); svgAttr "stroke" traceColor; svgAttr "stroke-width" (if spanCount > 1 then "1.8" else "1.2"); if spanCount > 1 then svgAttr "stroke-dasharray" "4 2" ] []
-                    yield svgElement "rect" [ Attr.Create "data-testid" traceTestId; Attr.Create "data-candle-part" "body"; Attr.Create "data-source-interval-id" sourceIntervalId; Attr.Create "data-span-slots" (string spanCount); svgAttr "x" (fixedText (center - bodyWidth / 2.0)); svgAttr "y" (fixedText (min openY closeY)); svgAttr "width" (fixedText bodyWidth); svgAttr "height" (fixedText (max 1.2 (abs (closeY - openY)))); svgAttr "fill" (if spanCount > 1 then "none" else candleColor); svgAttr "stroke" traceColor; svgAttr "stroke-width" (if spanCount > 1 then "1.8" else "0"); svgAttr "rx" "0.6" ] []
+            for traceIndex, trace, slotIndex, sourceSpanCount, point in candleSeries do
+                let center = xAt slotIndex
+                let bodyWidth = max 2.0 (slot * 0.64)
+                let candleColor = if point.Close >= point.Open then "#0f8a78" else "#c2414b"
+                let highY = RendererModel.normalize low high top plotHeight point.High
+                let lowY = RendererModel.normalize low high top plotHeight point.Low
+                let openY = RendererModel.normalize low high top plotHeight point.Open
+                let closeY = RendererModel.normalize low high top plotHeight point.Close
+                let sourceIntervalId = point.Temporal |> Option.map _.SourceIntervalId |> Option.defaultValue point.Timestamp
+                let traceColor = if sourceSpanCount > 1 then color traceIndex trace else candleColor
+                let traceTestId = "ta-candle-" + rowId + "-" + trace.TraceId
+                let sourceAttrs part =
+                    [ Attr.Create "data-testid" traceTestId
+                      Attr.Create "data-candle-part" part
+                      Attr.Create "data-source-interval-id" sourceIntervalId
+                      Attr.Create "data-span-slots" (string sourceSpanCount)
+                      Attr.Create "data-projected-slot-index" (string slotIndex) ]
+                yield svgElement "line" (sourceAttrs "wick" @ [ svgAttr "x1" (fixedText center); svgAttr "x2" (fixedText center); svgAttr "y1" (fixedText highY); svgAttr "y2" (fixedText lowY); svgAttr "stroke" traceColor; svgAttr "stroke-width" "1.2" ]) []
+                yield svgElement "rect" (sourceAttrs "body" @ [ svgAttr "x" (fixedText (center - bodyWidth / 2.0)); svgAttr "y" (fixedText (min openY closeY)); svgAttr "width" (fixedText bodyWidth); svgAttr "height" (fixedText (max 1.2 (abs (closeY - openY)))); svgAttr "fill" candleColor; svgAttr "fill-opacity" (if sourceSpanCount > 1 then "0.48" else "1"); svgAttr "stroke" traceColor; svgAttr "stroke-width" (if sourceSpanCount > 1 then "1" else "0"); svgAttr "rx" "0.6" ]) []
 
             for traceIndex, trace, points in linePoints do
                 let traceColor = color traceIndex trace
@@ -582,14 +616,32 @@ module TaWorkspaceRenderer =
                     yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); svgAttr "d" path; svgAttr "fill" "none"; svgAttr "stroke" traceColor; svgAttr "stroke-width" (fixedText trace.Width); svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
                 | _ -> ()
 
-            match cursorPosition width referenceTimestamps.Length cursorIndex with
-            | Some x -> yield svgElement "line" [ Attr.Create "data-testid" (svgTestId + "-crosshair"); svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" "0"; svgAttr "y2" (fixedText plotHeight); svgAttr "stroke" "#1f4f73"; svgAttr "stroke-width" "1"; svgAttr "stroke-dasharray" "3 3" ] []
-            | None -> ()
-        ], referenceTimestamps
+            yield
+                svgElement "line" [
+                    Attr.Create "data-testid" (svgTestId + "-crosshair")
+                    Attr.Dynamic "x1" cursorX
+                    Attr.Dynamic "x2" cursorX
+                    Attr.Dynamic "visibility" cursorVisibility
+                    svgAttr "y1" "0"
+                    svgAttr "y2" (fixedText plotHeight)
+                    svgAttr "stroke" "#1f4f73"
+                    svgAttr "stroke-width" "1"
+                    svgAttr "stroke-dasharray" "3 3"
+                    svgAttr "pointer-events" "none"
+                ] []
+        ], referenceTimestamps, (preparedTraces |> Array.map (fun (_, _, _, _, readCursor) -> readCursor))
 
-    let renderRow (state: RuntimeState) (ui: TaRendererUiState) visibleTimestamps setCursorIndex commitCursorIndex showSharedTimeAxis (row: TaRowSpec) =
+    let compositeSvgReactive rowId traces data referenceTimestamps cursorIndex setCursorIndex commitCursorIndex =
+        let chart, timestamps, _ = compositeSvgReactivePrepared rowId false traces data referenceTimestamps cursorIndex setCursorIndex commitCursorIndex
+        chart, timestamps
+
+    let compositeSvg rowId traces data referenceTimestamps cursorIndex setCursorIndex commitCursorIndex =
+        let cursor = Var.Create cursorIndex
+        compositeSvgReactive rowId traces data referenceTimestamps cursor.View setCursorIndex commitCursorIndex
+
+    let renderRowReactivePrepared (state: RuntimeState) (ui: TaRendererUiState) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
-        let chart, timestamps = compositeSvg row.RowId traces state.Data visibleTimestamps ui.CursorIndex setCursorIndex commitCursorIndex
+        let chart, timestamps, cursorReaders = compositeSvgReactivePrepared row.RowId isBaseRow traces state.Data visibleTimestamps cursorIndex setCursorIndex commitCursorIndex
         let title = rowTitle row traces
         let chartHeight = if traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick) then 262 else 124
         let children =
@@ -609,10 +661,18 @@ module TaWorkspaceRenderer =
                     attr.style "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;"
                 ] [ text (value.ScaleKey + " | " + value.Finality + " | " + quality + " | frontier " + compactTimestamp value.ObservedThroughUtc + " | available " + availability) ] :> Doc)
             |> Array.toList
-        chartFrame title metadata ("ta-row-" + row.RowId) (chartHeight + if showSharedTimeAxis then 16 else 0) children
+        chartFrame title metadata ("ta-row-" + row.RowId) (chartHeight + if showSharedTimeAxis then 16 else 0) children, cursorReaders
+
+    let renderRowReactive (state: RuntimeState) (ui: TaRendererUiState) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis (row: TaRowSpec) =
+        renderRowReactivePrepared state ui visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis false row
+        |> fst
+
+    let renderRow state ui visibleTimestamps setCursorIndex commitCursorIndex showSharedTimeAxis row =
+        let cursor = Var.Create ui.CursorIndex
+        renderRowReactive state ui visibleTimestamps cursor.View setCursorIndex commitCursorIndex showSharedTimeAxis row
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
-        let canvasId = runtimeState.Value.Identity.CanvasInstanceId
+        let currentCanvasId () = runtimeState.Value.Identity.CanvasInstanceId
         let configuredEditorSchemas = if isNull options.EditorSchemas then [||] else options.EditorSchemas
         let editorSchemasNow () =
             let documentSchemas =
@@ -650,6 +710,7 @@ module TaWorkspaceRenderer =
         let mutable navigatorElement: Element = null
         let mutable finishNavigatorDrag: (unit -> unit) option = None
         let mutable chartRenderSequence = 0
+        let cursorIndex = Var.Create<int option> None
         let uiState =
             Var.Create
                 { Window = { StartIndex = 0; Count = options.DefaultVisibleBars }
@@ -663,7 +724,6 @@ module TaWorkspaceRenderer =
             left.Window = right.Window
             && left.FollowLatest = right.FollowLatest
             && left.HiddenRows = right.HiddenRows
-            && left.CursorIndex = right.CursorIndex
         let chartUiState = Var.Create uiState.Value
         let setUiState next =
             let previousChartState = chartUiState.Value
@@ -695,20 +755,12 @@ module TaWorkspaceRenderer =
         let startActionWith action successText onAccepted onRejected =
             actionSequence <- actionSequence + 1
             let request =
-                { RequestId = canvasIdText canvasId + ":ui:" + string actionSequence
+                { RequestId = canvasIdText (currentCanvasId ()) + ":ui:" + string actionSequence
                   ExpectedDocumentRevision = Some runtimeState.Value.DocumentRevision
                   Action = action }
             submit callbacks uiState runtimeState.Value.DocumentRevision request successText onAccepted onRejected
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
-        let sameDocumentShell (left: RuntimeState) (right: RuntimeState) =
-            let samePresence =
-                match left.Document, right.Document with
-                | None, None -> true
-                | Some leftDocument, Some rightDocument -> leftDocument.WorkspaceId = rightDocument.WorkspaceId
-                | _ -> false
-
-            samePresence && left.DocumentRevision = right.DocumentRevision
         let sameChartState (left: RuntimeState) (right: RuntimeState) =
             left.DocumentRevision = right.DocumentRevision
             && left.DataRevision = right.DataRevision
@@ -745,6 +797,7 @@ module TaWorkspaceRenderer =
                         Window = bounded
                         FollowLatest = followLatest
                         CursorIndex = None }
+                cursorIndex.Value <- None
                 draftWindow.Value <- None
                 if changed && actionAllowed "visible-range-changed" && not (commandsDisabledNow ()) then
                     match runtimeState.Value.Document with
@@ -753,7 +806,7 @@ module TaWorkspaceRenderer =
                         | Some range ->
                             startAction
                                 (SduiAction.VisibleRangeChanged(
-                                    canvasId,
+                                    currentCanvasId (),
                                     { BaseRowId = range.BaseRowId
                                       StartEventTimeUtc = range.StartEventTimeUtc
                                       EndEventTimeExclusiveUtc = range.EndEventTimeExclusiveUtc
@@ -838,8 +891,7 @@ module TaWorkspaceRenderer =
             finishNavigatorDrag |> Option.iter (fun finish -> finish ())
 
         let setCursorIndex value =
-            if uiState.Value.CursorIndex <> value then
-                setUiState { uiState.Value with CursorIndex = value }
+            if cursorIndex.Value <> value then cursorIndex.Value <- value
 
         let commitCursorIndex index =
             setCursorIndex (Some index)
@@ -852,7 +904,7 @@ module TaWorkspaceRenderer =
                     | Some baseRowId when index >= 0 && index < visible.Length ->
                         startAction
                             (SduiAction.SharedCursorChanged(
-                                canvasId,
+                                currentCanvasId (),
                                 { BaseRowId = baseRowId
                                   EventTimeUtc = visible[index] }))
                             "Shared cursor synchronized."
@@ -1102,7 +1154,7 @@ module TaWorkspaceRenderer =
                   ToUtcExclusive = if String.IsNullOrWhiteSpace toDateDraft then None else Some toDateDraft
                   IncludePartial = Some true }
 
-            startAction (SduiAction.ChangeTaQuery(canvasId, query)) "Query accepted." ignore
+            startAction (SduiAction.ChangeTaQuery(currentCanvasId (), query)) "Query accepted." ignore
 
         let addLegacyRow () =
             let kind =
@@ -1159,7 +1211,7 @@ module TaWorkspaceRenderer =
                       Traces = [||] }
 
                 pendingAddRowId <- Some rowId
-                startAction (SduiAction.AddTaRow(canvasId, spec)) "Row accepted." ignore
+                startAction (SduiAction.AddTaRow(currentCanvasId (), spec)) "Row accepted." ignore
 
         let addRow () =
             match selectedEditorSchema () with
@@ -1183,7 +1235,7 @@ module TaWorkspaceRenderer =
                             currentRows |> Array.map _.RowId |> Set.ofArray,
                             binding)
                     startActionWith
-                        (SduiAction.ApplyTemplate(canvasId, editingRowId, schema.TemplateKey, editorValues.Value))
+                        (SduiAction.ApplyTemplate(currentCanvasId (), editingRowId, schema.TemplateKey, editorValues.Value))
                         (schema.DisplayName + " accepted; awaiting authoritative document.")
                         ignore
                         (fun () -> pendingEditorMutation <- None)
@@ -1233,9 +1285,9 @@ module TaWorkspaceRenderer =
                             div [ attr.style "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;" ] [
                                 div [ attr.style "min-width:0;" ] [
                                     h2 [ Attr.Create "data-testid" "ta-workspace-title"; attr.style "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;" ] [ text document.Title ]
-                                    div [ attr.style "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" ] [
+                                    div [ Attr.Create "data-testid" "ta-canvas-identity"; attr.style "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" ] [
                                         runtimeState.View
-                                        |> View.Map (fun current -> "canvas " + canvasIdText canvasId + " / revision " + string current.DataRevision)
+                                        |> View.Map (fun current -> "canvas " + canvasIdText current.Identity.CanvasInstanceId + " / revision " + string current.DataRevision)
                                         |> textView
                                     ]
                                 ]
@@ -1280,7 +1332,7 @@ module TaWorkspaceRenderer =
                                    compactRemoteButton "ta-zoom-in" "+" "Show fewer bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow -8)
                                    compactRemoteButton "ta-zoom-out" "−" "Show more bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow 8)
                                    compactRemoteButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" viewportCommandsDisabledView viewportCommandsDisabledNow resetWindow
-                                   compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () -> startAction (SduiAction.ResetCanvas canvasId) "Canvas reset accepted." ignore) ]
+                                   compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () -> startAction (SduiAction.ResetCanvas(currentCanvasId ())) "Canvas reset accepted." ignore) ]
                                  @ (if (editorSchemasNow ()).Length > 0 then
                                         [ compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () ->
                                               if uiState.Value.AddRowOpen then closeRowEditor ()
@@ -1334,7 +1386,7 @@ module TaWorkspaceRenderer =
                                                         else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
                                                     on.click (fun _ _ ->
                                                         if not (commandsDisabledNow ()) then
-                                                            startAction (SduiAction.RemoveTaRow(canvasId, row.RowId)) (displayLabel + " row removal accepted.") ignore)
+                                                            startAction (SduiAction.RemoveTaRow(currentCanvasId (), row.RowId)) (displayLabel + " row removal accepted.") ignore)
                                                 ] [ text "×" ]
                                             ]
                                 ] :> Doc)
@@ -1384,19 +1436,37 @@ module TaWorkspaceRenderer =
                                     ui.FollowLatest
                                     ui.Window
                             let visibleTimestamps = RendererModel.selectWindow visibleWindow referenceTimeline
-                            let cursorIndex =
-                                ui.CursorIndex
-                                |> Option.map (fun value -> value |> max 0 |> min (max 0 (visibleTimestamps.Length - 1)))
-                            let cursor = cursorIndex |> Option.bind (RendererModel.cursorSnapshotForRows document visibleRows state.Data visibleWindow)
+                            let renderedRows =
+                                visibleRows
+                                |> Array.mapi (fun index row ->
+                                    renderRowReactivePrepared
+                                        state
+                                        ui
+                                        visibleTimestamps
+                                        cursorIndex.View
+                                        setCursorIndex
+                                        commitCursorIndex
+                                        (index = visibleRows.Length - 1)
+                                        (document.BaseRowId = Some row.RowId)
+                                        row)
+                            let cursorReaders = renderedRows |> Array.collect snd
+                            let cursorIndexView =
+                                cursorIndex.View
+                                |> View.Map (Option.map (fun value -> value |> max 0 |> min (max 0 (visibleTimestamps.Length - 1))))
                             let cursorValues =
-                                match cursor with
-                                | None -> div [ attr.style "font-size:11px; color:#718197;" ] [ text "Move the pointer over any chart row to inspect one shared bar." ]
-                                | Some value ->
-                                    div [ Attr.Create "data-testid" "ta-cursor-values"; attr.style "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;" ] [
-                                        yield strong [ attr.style "white-space:nowrap;" ] [ text (compactTimestamp value.Timestamp) ]
-                                        for item in value.Values do
-                                            yield span [ Attr.Create "data-cursor-row" item.Label; attr.style "min-width:0;" ] [ text (item.Label + " " + item.Value) ]
-                                    ]
+                                cursorIndexView
+                                |> View.Map (fun currentIndex ->
+                                    match currentIndex with
+                                    | None -> div [ attr.style "font-size:11px; color:#718197;" ] [ text "Move the pointer over any chart row to inspect one shared bar." ] :> Doc
+                                    | Some index when index >= 0 && index < visibleTimestamps.Length ->
+                                        let timestamp = visibleTimestamps[index]
+                                        let values = cursorReaders |> Array.choose (fun readCursor -> readCursor timestamp)
+                                        div [ Attr.Create "data-testid" "ta-cursor-values"; attr.style "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;" ] [
+                                            yield strong [ attr.style "white-space:nowrap;" ] [ text (compactTimestamp timestamp) ]
+                                            for item in values do
+                                                yield span [ Attr.Create "data-cursor-row" item.Label; attr.style "min-width:0;" ] [ text (item.Label + " " + item.Value) ]
+                                        ] :> Doc
+                                    | Some _ -> Doc.Empty)
 
                             let visibleStart = if visibleWindow.Count = 0 then 0 else visibleWindow.StartIndex + 1
                             let visibleEnd = visibleWindow.StartIndex + visibleWindow.Count
@@ -1416,17 +1486,17 @@ module TaWorkspaceRenderer =
                                 Attr.Create "data-visible-start" (string visibleStart)
                                 Attr.Create "data-visible-end" (string visibleEnd)
                                 Attr.Create "data-follow-latest" (if ui.FollowLatest then "true" else "false")
-                                Attr.Create "data-cursor-index" (cursorIndex |> Option.map string |> Option.defaultValue "")
+                                Attr.Dynamic "data-cursor-index" (cursorIndexView |> View.Map (Option.map string >> Option.defaultValue ""))
                                 attr.style "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"
                             ] [
                                 yield div [ Attr.Create "data-testid" "ta-cursor-panel"; attr.style "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;" ] [
-                                    yield cursorValues
+                                    yield cursorValues |> Doc.EmbedView
                                 ]
                                 if visibleRows.Length = 0 then
                                     yield div [ attr.style "padding:18px; color:#667891;" ] [ text "No visible TA rows." ]
                                 else
-                                    for index in 0 .. visibleRows.Length - 1 do
-                                        yield renderRow state { ui with CursorIndex = cursorIndex } visibleTimestamps setCursorIndex commitCursorIndex (index = visibleRows.Length - 1) visibleRows[index]
+                                    for rowDoc, _ in renderedRows do
+                                        yield rowDoc
                                 yield div [
                                     Attr.Create "data-testid" "ta-viewport-panel"
                                     attr.style "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"

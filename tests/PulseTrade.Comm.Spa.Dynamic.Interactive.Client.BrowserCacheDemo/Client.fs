@@ -130,6 +130,36 @@ module Client =
                         | BrowserRuntimeCacheAcceptedStateWriteResult.Written -> status.Value <- "PAUSED:WRITTEN"
                         | BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason)
 
+        let readAcceptedProjection () =
+            if entries.Length <= 9 then
+                status.Value <- "FIXTURE-MISSING"
+            else
+                let source = entries[9]
+
+                BrowserRuntimeCache.readLatest
+                    source.CacheIdentity
+                    source.WorkspaceId
+                    None
+                    (function
+                        | BrowserRuntimeCacheReadResult.Hit cached ->
+                            let axisRef = cached.Document.TemporalAxisRefs[0]
+
+                            match Map.tryFind axisRef cached.Snapshot.Data with
+                            | Some axisValue ->
+                                let previewCount =
+                                    RuntimeReducer.temporalObject "temporal-axis.v1" axisValue
+                                    |> Option.map RuntimeReducer.temporalPointMaps
+                                    |> Option.defaultValue [||]
+                                    |> Array.filter (fun point -> RuntimeReducer.temporalText "finality" point = Some "preview")
+                                    |> Array.length
+
+                                match RuntimeCacheBrowserCoverage.decodeAxis axisValue with
+                                | Ok points -> status.Value <- "ACCEPTED-PROJECTION:" + string points.Length + ":" + string previewCount
+                                | Error _ -> status.Value <- "ACCEPTED-PROJECTION:INVALID"
+                            | _ -> status.Value <- "ACCEPTED-PROJECTION:INVALID"
+                        | BrowserRuntimeCacheReadResult.Miss -> status.Value <- "ACCEPTED-PROJECTION:MISS"
+                        | BrowserRuntimeCacheReadResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason)
+
         let rehydrate () =
             if entries.Length <= 9 then
                 status.Value <- "FIXTURE-MISSING"
@@ -141,11 +171,19 @@ module Client =
                         DataRevision = 0L
                         LastTransportSequence = 19L }
 
-                match BrowserRuntimeCache.tryRehydrate entry.CacheIdentity current entry with
-                | Ok hydrated ->
-                    let poll = if hydrated.Poll = RuntimePollState.PausedForResync then "PAUSED" else "UNEXPECTED"
-                    status.Value <- "REHYDRATED:" + string hydrated.DataRevision + ":" + string hydrated.LastTransportSequence + ":" + poll
-                | Error errors -> status.Value <- "REHYDRATE:REJECTED:" + string errors.Length
+                BrowserRuntimeCache.readLatest
+                    entry.CacheIdentity
+                    entry.WorkspaceId
+                    None
+                    (function
+                        | BrowserRuntimeCacheReadResult.Hit cached ->
+                            match BrowserRuntimeCache.tryRehydrate entry.CacheIdentity current cached with
+                            | Ok hydrated ->
+                                let poll = if hydrated.Poll = RuntimePollState.PausedForResync then "PAUSED" else "UNEXPECTED"
+                                status.Value <- "REHYDRATED:" + string hydrated.DataRevision + ":" + string hydrated.LastTransportSequence + ":" + poll
+                            | Error errors -> status.Value <- "REHYDRATE:REJECTED:" + string errors.Length
+                        | BrowserRuntimeCacheReadResult.Miss -> status.Value <- "REHYDRATE:MISS"
+                        | BrowserRuntimeCacheReadResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason)
 
         let seedCorrupt () =
             let key = "browser-cache-corrupt"
@@ -201,6 +239,7 @@ module Client =
                 button [ buttonStyle; Attr.Create "data-testid" "cache-coverage-miss"; on.click (fun _ _ -> readCovering 9 0) ] [ text "Coverage miss" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-clear"; on.click (fun _ _ -> clear ()) ] [ text "Clear" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-write-accepted"; on.click (fun _ _ -> writeAccepted ()) ] [ text "Write accepted state" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-read-accepted-projection"; on.click (fun _ _ -> readAcceptedProjection ()) ] [ text "Read accepted projection" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-reject-paused"; on.click (fun _ _ -> rejectPausedState ()) ] [ text "Reject paused state" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-rehydrate"; on.click (fun _ _ -> rehydrate ()) ] [ text "Rehydrate" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-seed-corrupt"; on.click (fun _ _ -> seedCorrupt ()) ] [ text "Seed corrupt" ]

@@ -112,8 +112,10 @@ page.GetByTestId("cache-write-accepted").ClickAsync() |> awaitUnit
 waitStatus page "ACCEPTED:WRITTEN"
 page.GetByTestId("cache-count").ClickAsync() |> awaitUnit
 waitStatus page "COUNT:1"
+page.GetByTestId("cache-read-accepted-projection").ClickAsync() |> awaitUnit
+waitStatus page "ACCEPTED-PROJECTION:1:0"
 page.GetByTestId("cache-rehydrate").ClickAsync() |> awaitUnit
-waitStatus page "REHYDRATED:10:19:PAUSED"
+waitStatus page "REHYDRATED:0:19:PAUSED"
 page.GetByTestId("cache-reject-paused").ClickAsync() |> awaitUnit
 waitStatus page "PAUSED:REJECTED:runtime-state-not-cacheable:cache.runtimeState"
 page.GetByTestId("cache-count").ClickAsync() |> awaitUnit
@@ -129,5 +131,5 @@ browser.CloseAsync() |> awaitUnit
 playwright.Dispose()
 
 printfn "PASS interactive-client-browser-cache-playwright"
-printfn "persisted-count=8 latest-revision=10 evicted-oldest=true covering-hit=true coverage-miss=true corrupt-removed=true semantic-invalid-removed=true accepted-state-write=true paused-state-rejected=true rehydrate=paused cleared-count=0"
+printfn "persisted-count=8 latest-revision=10 evicted-oldest=true covering-hit=true coverage-miss=true corrupt-removed=true semantic-invalid-removed=true finalized-prefix=1 preview-count=0 accepted-state-write=true paused-state-rejected=true rehydrate=paused revision-continuation=false cleared-count=0"
 printfn "evidence=%s" (Path.Combine(outputDirectory, "browser-cache-persisted.png"))
