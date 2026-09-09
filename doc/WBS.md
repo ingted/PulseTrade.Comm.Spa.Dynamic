@@ -85,7 +85,7 @@ Progress 是粗略 implementation checkpoint，不代表正式驗收。
 
 | ID | 工項 | 狀態 | Progress | Test ID | 證據 / 備註 |
 | --- | --- | --- | ---: | --- | --- |
-| DYN-TA-017 | Generic source envelope、editor/action、production renderer與real Notebook gate | Active | 83 | DYN-TA-T-056..068 | Aster-owned generic contract/action/renderer hardening已完成，含atomic retention、BaseRow event-time interaction與Interactive.Client reconnect/Dispose；current graph為Contracts alpha19 / Renderer alpha45 / Interactive.Client alpha19 exact `FSharp.Core [10.1.400]`。Daedalus SessionHost、real owner metadata/DIB與MDCQ production gate待續。詳見[@DYN-TA-017](TAResearch/WBS.DYN-TA-017.md)。 |
+| DYN-TA-017 | Generic source envelope、editor/action、production renderer與real Notebook gate | Active | 94 | DYN-TA-T-056..070 | Aster-owned generic contract/action/renderer與capacity hardening已完成。M15以Interactive.Extension alpha15／TradeCore.FsStl win139通過FloatingPoint collection、typed FSSTL及fixed-range真MDCQ automation gate；Daedalus M13擁有production QuoteSlot/session與`taView.ForQuoteSlot slotId` final-cell。剩餘為M13 iframe/Playwright及OPEN_END history→live ACK，不以M15取代。詳見[@DYN-TA-017](TAResearch/WBS.DYN-TA-017.md)。 |
 
 ## 2026-07-11 Transport-Neutral Realtime TA Canvas
 

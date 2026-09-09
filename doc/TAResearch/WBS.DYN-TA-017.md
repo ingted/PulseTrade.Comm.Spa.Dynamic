@@ -2,7 +2,7 @@
 
 - RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`
 - Status: Active
-- Progress: 92%
+- Progress: 94%
 
 | Slice | Deliverable | Test | Progress | Status |
 | --- | --- | --- | ---: | --- |
@@ -10,8 +10,8 @@
 | DYN-TA-017B | generic source identity/snapshot/event、validation、codec、reducer | T-057..060 | 100% | Done：Contracts suite與full WebSharper chain通過。 |
 | DYN-TA-017C | generic editor schema、versioned correlated action wire/lifecycle、stable row identity | T-061 | 100% | Done：`ptcs-dynamic-action.v1` request/result、single pending、timeout/disconnect/correlation fail-closed；Contracts 16/16與Interactive.Client alpha10 bundle package gate通過。 |
 | DYN-TA-017D | WebSharper production workspace UX與multi-scale presentation | T-062/T-065 | 100% | Done：authoritative editor catalog、stable RowId Add/Edit/reject、PTCS wire、exact package graph與desktop/mobile Playwright均通過。owner real metadata/DIB由E/F追蹤。 |
-| DYN-TA-017E | ColdFar Notebook adapter / typed chart root | T-063 | 75% | Aster M15 exact-alpha14 collection contract GREEN；Daedalus current source已以typed `TA_CHART`控制7個row與trace順序。Dynamic Renderer/Interactive.Client `0.1.3`已發布並正確呈現authored row label；尚待win139/alpha15 exact package及cell chart-root auto-display/iframe gate。 |
-| DYN-TA-017F | real MDCQ DIB + Playwright MCP + release | T-064 | 50% | fixed-range真MDCQ DIB與Playwright曾完整GREEN：7 rows、4 axes、shared hover、hide/show、console 0；label fix另以package BrowserDemo經Playwright MCP驗證。MDCQ ES access首輪後的role exit正在由MdcQuoteAgent修復；OPEN_END/ACK、repeat generation及exact release仍未完成。 |
+| DYN-TA-017E | ColdFar Notebook adapter / typed chart root | T-063 | 90% | Aster M15以Interactive.Extension exact alpha15及TradeCore.FsStl win139驗證`FsStlSeries<FloatingPoint>`、time-keyed sequence、Deedle Frame、NestedMap與typed `TA_CHART -> FsStlTaView.compile -> ForQuoteSlot -> Decode`；7 rows／12 requests／12 dataRefs／minimum scale 1皆GREEN。Dynamic Renderer/Interactive.Client `0.1.3`已發布並正確呈現authored row label。Daedalus M13擁有真QuoteSlot/session與final-cell auto-display，尚待該production DIB iframe gate。 |
+| DYN-TA-017F | real MDCQ DIB + Playwright MCP + release | T-064 | 75% | fixed-range真MDCQ與alpha15 M15均GREEN：2 frames、7 rows、4 axes、axis points=`3820/763/127/63`；dev.69後連續兩輪alpha14再加一輪alpha15未重現0-row／timeout／role exit。既有Playwright已驗1K+SMA、5K DMI、30K MACD、60K Heikin-Ashi、shared hover、hide/show與console 0。尚待M13 final-cell的alpha15 iframe/Playwright，以及OPEN_END history→live ACK gate。 |
 | DYN-TA-017G | SPAA/DIExt generic runtime hardening：retention/resync -> cursor/range -> reconnect/application lifecycle | T-066..068 | 100% | Done：三個phase均完成；Interactive.Client具single Start/Dispose、bounded reconnect、snapshot timeout/resync與stale generation fence。 |
 | DYN-TA-017H | shared temporal axis、scalar series與PTCS v5 compact transport | T-069/070 | 98% | Generic 3,820×28真browser capacity、F# Playwright與Playwright MCP均通過；待Daedalus real MDCQ/DIB browser gate。 |
 
@@ -36,6 +36,8 @@
 - Shared temporal axis：`TemporalAxis`保存一份sparse Position/time authority，`TemporalSeries`只保存Position/value；Position不可由scale推算。五條scalar O/H/L/C/V由`TaCandleDataRefs`合成K棒。PTCS `ta-browser.v5`直接搬運shared values；3820 x 28 deterministic frame、malformed/revision/unknown-position fail-closed及legacy相容已通過T-069/070的非UI部分。
 - Generic browser capacity：BrowserDemo實際載入3,820-position shared axis與28條shared scalar series；Renderer alpha48以互不重疊的left-resize/move/right-resize hit regions維持窄selection可操作性。F# Playwright驗48-bar平移、左右resize、All、desktop/mobile與console 0；Playwright MCP另實際切換All/48並驗`Loaded 3820`、viewport與geometry。
 - Current releases：Renderer `0.1.0-alpha48`、Interactive.Client `0.1.0-alpha22`、Ptcs.Client `0.1.0-alpha8-win81`，分別exact依賴Contracts alpha20、Renderer alpha48及PTCS beta117；NuGet push均回`Created`，public nuspec已回`200`並完成dependency readback。
+- M15 typed package gate：Daedalus repo commit `70afe353`只承載automation acceptance，不複製production binding。Interactive.Extension exact `0.1.0-alpha15`載入後，`dotnet dib`驗證canonical FloatingPoint series、顯式time-key sequence、Deedle Frame、NestedMap、1440K date key與1380K fail-closed；typed view為7 rows／12 requests／12 dataRefs。真SPAA fixed-range run為2 frames與4條shared axes。
+- Owner boundary：M13才是production notebook，沿用真provider/session並以`taView.ForQuoteSlot slotId`作最後expression；M15不建立第二套`createBinding`或手動`Display`。本session Browser MCP無可控browser，故alpha15 iframe gate保持未完成，不以`dotnet dib`替代。
 
 ## Completion gate
 

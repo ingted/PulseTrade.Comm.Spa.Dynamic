@@ -1,0 +1,23 @@
+# M15 typed TA gate documentation
+
+- 開始：2026-09-09 10:45:46 +08:00
+- prompt/上下文摘要：九月TA Research主線要求Aster支援Daedalus，並提供FSSTL多尺度TA與FloatingPoint collection的`.dib`整合驗收。
+- 背景：Daedalus已確認M13擁有production QuoteSlot/session與`taView.ForQuoteSlot slotId` final-cell；Aster M15只擁有generic package/contract/automation驗收。
+- 目標：將Interactive.Extension alpha15、FloatingPoint collection、typed FSSTL與真SPAA fixed-range gate的最新證據回寫Dynamic current-state文件。
+- 範圍：`doc/WBS.md`、`doc/TAResearch/WBS.DYN-TA-017.md`、`doc/TAResearch/Test.md`、`doc/Verification.md`、`doc/Traceability.md`、`doc/DevLog.md`；不修改Daedalus FSSTL/SPAA implementation。
+- 計畫步驟：更新E/F/H進度與owner boundary；新增Milestone15 revision；跑文件鏈檢查與敏感掃描；commit/push本repo。
+- 驗收：文件明確區分M15 automation gate與M13 production DIB；記錄alpha15 exact package及真provider結果；Playwright MCP缺口不被誤標完成。
+- 風險：Dynamic與Daedalus repo並行更新，package/version證據需以已發布artifact與commit `70afe353`為準。
+- 執行命令/參數：使用`dotnet dib`、changed-path sensitive scan與`G:\PulseTrade.fs\check.fsx`的Dynamic task-scoped SA/SD/WBS/Test/DevLog/watch參數。
+- 根因判讀：文件落後於dev.69恢復、alpha15/win139發布與M15 repeat gate；功能證據已更新，但M13 iframe與OPEN_END ACK仍未完成。
+- 下一步：完成checker、commit/push並持續以comm支援M13 history-to-live整合。
+- 關聯文件/工單/PR：`DYN-TA-017E/F/H`、`DYN-TA-T-063/064/070`、Daedalus commit `70afe353`。
+
+## Operations
+
+- 10:46：比對WBS/Test/Verification後確認文件仍把alpha15/win139、repeat generation與MDCQ role-exit修復列為待辦；依已發布artifact與M15重跑證據更新，不提升M13 iframe與OPEN_END ACK。
+- 10:49：同步root/detail WBS、TA Test、Verification revision 12、Traceability與append-only DevLog；M15/M13 owner boundary明確化。
+- 10:52：root sensitive scanner不支援cross-repo `--repo`參數；改用Daedalus current scanner的explicit-path mode，8 files、High=0、Medium=0。首次checker抓到log命名與中文欄位錨點，已修正本輪未提交log後重驗。
+- 10:56：修正後task-scoped checker PASS=32／WARN=2／FAIL=0；WARN僅為預期dirty與既有RFC coverage。最終changed-path sensitive scan將在commit前重跑。
+- 10:57：comm協作確認MdcQuote dev.70改採provider-neutral`MdcqFsStlProviderUpdate<'T>`，包含Snapshot、PreviewByScale finality metadata、HasCommittedOneMinute與IsBootstrap，callback acceptance位於ACK前；尚待owner exact release，未提前寫入current release證據。
+- 10:58：最終changed-path scan為8 files、High=0、Medium=0；task-scoped checker PASS=33／FAIL=0，WARN僅為同輪unchanged anchors、dirty及既有RFC coverage。

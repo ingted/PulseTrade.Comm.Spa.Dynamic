@@ -174,3 +174,11 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Gates：Renderer `25/25`、Interactive lifecycle `4/4`、Ptcs.Client `15/15`；BrowserDemo、Interactive LiveDemo與PTCS LiveDemo full build通過。F# Playwright驗3,820×28、48/200/All、move/left/right、desktop/mobile與console 0；Playwright MCP另實際切換All/48並驗desktop `1536×900`、mobile `390×844`與console error/warning 0。
 - Exact releases：Renderer alpha48 SHA-256 `82e01c554ab5eb147ee85414a511e372a73625f38f85db6fe486130c1f978d31`；Interactive.Client alpha22 SHA-256 `82ed025e6ee6512eb2c06dbf5fbdf58a4e3495cbc8b79ad1d5eebc42e4dfa66f`；Ptcs.Client win81 SHA-256 `5760c603cb1a8831a83347dc9a7f8a13b0ddacd65984e22d766840a16d86e890`。三顆NuGet push均回`Created`，public nuspec均回`200`且exact dependency readback通過；不發布曾含失敗hit-area實驗的alpha47/alpha21/win80。
 - 本gate仍是generic fixture，不取代Daedalus real MDCQ/DIB 3,820×28 browser acceptance；T-070維持Partial。
+
+## DYN-TA-017 M15 typed FSSTL integration revision 12
+
+- Canonical automation notebook：`G:\coldfar_py\coldfar-symbolics\PulseTrade.Comm.Spa.Dynamic.Interactive.Extension.Test\Milestone15.FsStlMultiScaleFloatingPointCollections.dib`；Aster-owned commit `70afe353`。執行：`dotnet dib .\PulseTrade.Comm.Spa.Dynamic.Interactive.Extension.Test\Milestone15.FsStlMultiScaleFloatingPointCollections.dib`，工作目錄為Daedalus repo root。
+- Exact package readback：Interactive.Extension `0.1.0-alpha15` SHA-256 `B65A9B432BA32BE50398F81A6844BC1A9FCFDE995093EE7CBA6E591E9759CDBD`；TradeCore.FsStl `10.1.400-win139` SHA-256 `78EBABBB97A360CCCD06C0E143C0890CFB120624FD339E9B9F604D6588517877`。
+- Contract gate Pass：canonical `FsStlSeries<FloatingPoint>`、time-keyed sequence、Deedle Frame、NestedMap、1440K UTC date key、1380K fail-closed與shared temporal axis；typed `FsStlTaView`為7 rows／12 requests／12 dataRefs／minimum scale 1。
+- Real fixed-range gate Pass：dev.69後兩輪alpha14與一輪alpha15均回2 frames／7 rows／4 axes；latest run `88be5948dc5f46ef8ed98b7687d90a87`，axis points=`3820,763,127,63`。未重現先前0-row／timeout／role exit。
+- 邊界：M15是package/contract/automation gate；Daedalus M13是production notebook，沿用真provider/session並以`taView.ForQuoteSlot slotId`作最後expression。Browser MCP目前無可控browser，故alpha15 iframe/Playwright與OPEN_END ACK仍未完成，`dotnet dib`不取代UI驗收。

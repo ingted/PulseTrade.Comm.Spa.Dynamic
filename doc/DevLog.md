@@ -1223,3 +1223,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - root cause是SPAA已將`TA_ROW` label寫入`TaRowSpec.Options["label"]`，但Renderer的row card與toolbar分別使用trace labels與row kind。Renderer現統一precedence為authored row label、trace labels、typed row kind，並讓toggle、card、edit/remove tooltip及feedback共用同一顯示名稱。
 - Renderer exact-package focused suite `26/26`、source-identical WebSharper BrowserDemo與Playwright MCP通過；toolbar與row card均呈現`ES 1K + SMA(20)`，console warning/error為0。
 - 正式發布`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.3`與`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.3`。Interactive bundle manifest與nuspec已同版，package gate及lifecycle `4/4`通過；Interactive package SHA-256為`8aaf9033a34981323884e319e25fb88cf04b005a978e893637b1ce197b3af045`。
+
+## 2026-09-09 - M15 alpha15 typed FSSTL automation gate
+
+- Aster acceptance notebook已以commit `70afe353`獨立交付，exact載入Interactive.Extension `0.1.0-alpha15`與TradeCore.FsStl `10.1.400-win139`。`dotnet dib`驗證canonical FloatingPoint series、time-keyed sequence、Deedle Frame、NestedMap、shared temporal axis與typed `TA_CHART -> FsStlTaView.compile -> ForQuoteSlot -> Decode`皆GREEN。
+- typed view為7 rows、12 requests、12 dataRefs、minimum scale 1；dev.69後兩輪alpha14及一輪alpha15 fixed-range真SPAA均回2 frames／7 rows／4 axes，latest points=`3820,763,127,63`，未重現先前0-row／timeout／role exit。
+- Daedalus確認M13才是production DIB：沿用真QuoteSlot/session並以`taView.ForQuoteSlot slotId`作最後expression。M15不複製`createBinding`或手動`Display`。本session Browser MCP仍無可控browser，因此alpha15 iframe/Playwright與OPEN_END history→live ACK維持未完成。
