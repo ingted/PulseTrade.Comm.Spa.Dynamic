@@ -197,6 +197,24 @@ type RuntimeSnapshot =
     { Data: Map<string, SduiValue>
       Freshness: TaFreshness }
 
+type RuntimeCacheIdentity =
+    { OwnerFingerprint: string
+      SchemaRevision: int64 }
+
+type RuntimeCacheCoverage =
+    { StartEventTimeUtc: DateTimeOffset
+      EndEventTimeExclusiveUtc: DateTimeOffset }
+
+type RuntimeCacheEntry =
+    { CacheIdentity: RuntimeCacheIdentity
+      WorkspaceId: string
+      Document: TaWorkspaceDocument
+      Snapshot: RuntimeSnapshot
+      DocumentRevision: int64
+      DataRevision: int64
+      Coverage: RuntimeCacheCoverage
+      CapturedAtUtc: DateTimeOffset }
+
 [<RequireQualifiedAccess>]
 type PatchOperation =
     | ReplaceDataRef of dataRef: string * value: SduiValue

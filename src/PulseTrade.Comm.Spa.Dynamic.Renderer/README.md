@@ -38,4 +38,4 @@ TaWorkspaceRenderer.render
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.3`，exact依賴Contracts `[0.1.1]`與FSharp.Core `[10.1.400]`。TA row顯示名稱依序採 authored `Options["label"]`、trace labels、typed row kind；row card與toolbar不得各自產生不同名稱。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.6`，exact依賴Contracts `[0.1.4]`與FSharp.Core `[10.1.400]`。TA row顯示名稱依序採 authored `Options["label"]`、trace labels、typed row kind；row card與toolbar不得各自產生不同名稱。

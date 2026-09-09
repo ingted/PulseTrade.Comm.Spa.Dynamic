@@ -1,0 +1,33 @@
+# Aster Dynamic Range/Cache Seam
+
+- Start: 2026-09-09 12:51:22 +08:00
+- Goal: 讓 FSSTL TA Research workspace 沿用 Dynamic action/result/frame contract，具備可補載 visible range 與 IndexedDB last-good cache 的通用接點。
+- Scope: `PulseTrade.Comm.Spa.Dynamic.Contracts`、`PulseTrade.Comm.Spa.Dynamic.Interactive.Client`、必要 verifier 與 `doc/TAResearch` 文件鏈。
+- Non-goals: 不修改 Daedalus 當前 dirty SPAA UI；不在 Dynamic 內定義 FSSTL/MDCQ query、calendar 或 TA fingerprint；不把 browser cache 當 authoritative source。
+- Known facts:
+  - `VisibleRangeChanged`、`DynamicActionRequest/Result`、`RuntimePatch/Snapshot` 已存在。
+  - SPAA 現況 `SubmitAction` 回 `workspace-action-not-ready`，且只取得一次 fixed HTTP snapshot。
+  - Interactive.Client 已處理 action correlation、RuntimeReducer、reconnect/full snapshot，但尚無 IndexedDB cache。
+- Plan:
+  1. 盤點 cache identity、source fingerprint 與 accepted-state 邊界。
+  2. 建 RFC-PTCS-DYNAMIC-0014，並同步 REQ/SA/SD/WBS/Test/Verification。
+  3. 先實作純 contract/cache reducer 與 tests，再實作 WebSharper IndexedDB adapter。
+  4. 提供 `.dib`/browser integration gate，協助 Daedalus 將 FSSTL range action 接到 authoritative frames。
+- Acceptance:
+  - owner 可提供 stable source/query fingerprint，不需 Dynamic 理解 FSSTL/MDCQ。
+  - 只有 RuntimeReducer accepted state 可寫 cache；invalid/gap frame 不污染 last-good。
+  - reconnect 能先呈現 bounded cached state，再向 host要求 authoritative resync。
+  - visible-range action 經 correlated result 後，以 RuntimeFrame 而非 action response 更新資料。
+- Risks: IndexedDB 改變資料保存與重連行為，必須先完成 RFC；cache key 若缺 source/query fingerprint 會錯配不同參數資料。
+
+## Operations
+
+- 2026-09-09 12:51 +08:00：`agent.aster` 已註冊上線並讀取 durable inbox；本批無新訊息。已公頻回覆 Daedalus 現有 generic action/result/frame contract 與預計 cache seam。
+- 2026-09-09 12:52 +08:00：Daedalus確認沿用action/result/frame，將提供canonical fingerprint與SPAA authoritative action handler。已向MdcQuoteAgent追問per-scale warm-up contract。
+- 2026-09-09 13:00 +08:00：建立RFC-PTCS-DYNAMIC-0014並同步REQ-051..056、SA/SD revision 9、DYN-TA-018與T-071..076；下一步實作pure cache gate。
+- 2026-09-09 13:13 +08:00：完成`RuntimeCache` pure contract、browser codec與T-072/T-073；Contracts test 21/21。WebSharper compiler service曾因鎖住專案根`websharper.log`退出，僅停止本repo 10.1.5 compiler service後重跑通過，未干預Daedalus 10.1.6服務。
+- 2026-09-09 13:24 +08:00：DYN-TA-018B更新為100%；開始DYN-TA-018C，新增bounded IndexedDB adapter，保持cache non-authoritative並讓storage failure降級為no-cache。
+- 2026-09-09 13:52 +08:00：WebSharper BrowserCache fixture首次通過F# Playwright：寫入10筆後bounded count=8，reload後latest hit、oldest evicted、coverage hit/miss、clear=0，console error=0。
+- 2026-09-09 13:57 +08:00：Daedalus確認三段fingerprint均為64字元SHA-256，但Dynamic應維持generic `OwnerFingerprint`；SPAA以`QueryFingerprint`映射exact identity，Program+DataSource secondary index留在owner。尚未push的三欄草稿已依此修正，未將TA-specific欄位固化進generic contract。
+- 2026-09-09 14:08 +08:00：release train順延為Contracts `0.1.4`、Renderer `0.1.6`、Interactive.Client `0.1.5`，避免重用已在local cache封裝過舊schema的版本。Contracts 21/21、Renderer 26/26、Interactive lifecycle 4/4、browser cache Playwright及client nupkg verifier皆通過；三個package依序push NuGet成功。
+- 2026-09-09 14:09 +08:00：透過comm交付Daedalus exact版本與API邊界。MdcQuoteAgent確認dev.70沒有per-scale tail/lookback，將以dev.71 additive typed fixed-cut selection提供每scale最多4000根completed observations；OPEN_END E2E在該contract完成前維持blocked，不以短range或靜默truncate取代。

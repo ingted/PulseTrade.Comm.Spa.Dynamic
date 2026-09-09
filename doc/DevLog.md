@@ -1248,3 +1248,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - M15已exact載入Interactive.Extension `0.1.0-alpha18`與owner build commit `03cc7860`；FloatingPoint collection、typed TA view及真SPAA fixed-range均GREEN，SPAA為2 frames／7 rows／4 axes，points=`3820/763/127/63`。
 - alpha18 two-phase provider bridge focused tests新增live cancellation no-ACK/no-commit，連同initial ordering、sink reject、timeout、prepare cancellation與single-use皆通過。
 - M13 OPEN_END改為`currentCut - 3999m`後可建立iframe，但MDCQ initial只有`committed=0/previews=4`，Playwright在180秒內無1K SMA trace。這只證明transport/lifecycle接通；per-scale/tail warm-history contract仍由MdcQuote owner處理。
+
+## 2026-09-09 - DYN-TA-018 browser range cache foundation
+
+- Accepted RFC-PTCS-DYNAMIC-0014並同步REQ/SA/SD/WBS/Test。Dynamic cache identity維持generic `{ OwnerFingerprint; SchemaRevision }`；SPAA以bounded SHA-256 `QueryFingerprint`映射exact identity，Program/DataSource/Query診斷與跨range secondary index仍由owner負責。
+- `RuntimeCache`新增accepted-state entry、actual temporal-axis coverage、16MiB codec、write gate與non-authoritative rehydrate；Contracts `21/21`。`BrowserRuntimeCache`以純WebSharper F#提供IndexedDB write/readLatest/readCovering/clear與8-entry LRU，F# Playwright驗reload persistence、latest hit、oldest eviction、exact-owner coverage hit/miss、clear及console 0。
+- 正式發布Contracts `0.1.4`、Renderer `0.1.6`、Interactive.Client `0.1.5`；exact dependency graph為Client -> Renderer `[0.1.6]` + Contracts `[0.1.4]`。Renderer `26/26`、Interactive lifecycle `4/4`與nupkg manifest verifier通過，三個NuGet push均回`Created`。
+- Daedalus SPAA Client integration與真DIB reload/range E2E仍由DYN-TA-018D/E追蹤。MdcQuoteAgent確認dev.70尚無per-scale tail/lookback，預計dev.71提供fixed-cut typed selection；完成前OPEN_END不宣稱production ready。

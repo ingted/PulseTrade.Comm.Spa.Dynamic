@@ -29,8 +29,9 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-015 | 1 | Full runtime export / draft query / slot cursor | full-data download、Apply boundary、shared slot geometry、exact package/formal gate | DYN-TA-014 | T-045..050 | 100% | Done | [@DYN-TA-015](WBS.DYN-TA-015.md) |
 | DYN-TA-016 | 1 | Editor shell / capability poll / Reset regression | stable editor DOM、capability-gated poll、multi-row reset | DYN-TA-015 | T-051..055 | 100% | Done | [@DYN-TA-016](WBS.DYN-TA-016.md) |
 | DYN-TA-017 | 1 | Notebook TA Workspace production | generic source envelope、editor/action contract、shared temporal axis、production renderer與real DIB | DYN-TA-016 + owner contracts | T-056..070 | 95% | Active | [@DYN-TA-017](WBS.DYN-TA-017.md) |
+| DYN-TA-018 | 0 | Browser range cache/resume | owner fingerprint、accepted projection cache、IndexedDB、resume/full handshake與真DIB range E2E | DYN-TA-017 + Daedalus fingerprint/action host | T-071..076 | 50% | Active；contract 21/21、browser cache Playwright pass | [@DYN-TA-018](WBS.DYN-TA-018.md) |
 
-`DYN-TA-008`目前是最高優先package更新工項：先將所有`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.1`與`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.1`下游`PackageReference`更新並驗證，再關閉0.1.1 NuGet release closure。
+九月`基於FSSTL的TA Research`主線以`DYN-TA-018`為最高優先；舊`DYN-TA-008`package closure只在本切片需要發布直接dependency時同步處理，不擴張到legacy consumer。
 
 
 ## 2. Legacy prerequisite policy

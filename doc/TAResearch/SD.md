@@ -694,3 +694,52 @@ let newRevision = expectedRevision + 1L
 修改axis後，所有仍引用該axis的series在最終candidate都必須pin到最終`newRevision`；本批沒有新value的series仍以空items upsert revision。trim與upsert若分成兩個axis operations，後者的`expectedRevision`須接前者的`newRevision`，series則使用最終axis revision。operation超過`MaxPatchOperations=64`、committed revision不明、session epoch改變或owner無法列出完整相依series時，改送authoritative full snapshot，不得發布半套patch。64允許兩尺度compact TA以單一47-operation frame原子發布；`MaxPatchItems=500`與`MaxFrameBytes=16MiB`仍獨立限制payload。producer只可在authoritative session接受frame後推進committed revision；snapshot初始revision由session owner建立，不可由stateless projector永久寫死。
 
 PTCS server v5把typed axis/series放入`sharedTemporalData`；legacy arrays仍使用bounded timeline/columnar `series`。client full frame直接建立shared map，delta以dataRef替換changed axis/series，再交canonical reducer/renderer。3820 x 28 gate須驗serialized frame低於16MiB；UI仍只mount bounded SVG primitives，不因working set上限4000而一次建立4000組DOM。
+
+## 2026-09-09 Browser range cache/resume revision 9
+
+```fsharp
+type RuntimeCacheIdentity =
+    { OwnerFingerprint: string
+      SchemaRevision: int64 }
+
+type RuntimeCacheCoverage =
+    { StartEventTimeUtc: DateTimeOffset
+      EndEventTimeExclusiveUtc: DateTimeOffset }
+
+type RuntimeCacheEntry =
+    { CacheIdentity: RuntimeCacheIdentity
+      WorkspaceId: string
+      Document: TaWorkspaceDocument
+      Snapshot: RuntimeSnapshot
+      DocumentRevision: int64
+      DataRevision: int64
+      Coverage: RuntimeCacheCoverage
+      CapturedAtUtc: DateTimeOffset }
+```
+
+cache identity只承接owner提供的opaque canonical `OwnerFingerprint`與Dynamic schema revision。SPAA將其bounded SHA-256 `QueryFingerprint`映射為OwnerFingerprint；Program/DataSource/Query三欄仍保留在SPAA response供診斷與owner-side secondary index，不進generic Dynamic contract。exact reload比對OwnerFingerprint；跨range候選由SPAA以Program+DataSource索引並驗Query/coverage後提出，Dynamic不得自行推論兩個query相容。Query不同時不得拿cached revision作delta resume。entry保存可重新驗證的Document+Snapshot，不直接序列化socket、timer、pending action、poll state或session capability。coverage由accepted base temporal axis的actual interval start/end取得，不由scale或requested range補造。
+
+```fsharp
+let tryCreateEntry now cacheIdentity state =
+    validate cacheIdentity
+    |> bind (fun _ -> requireAcceptedDocumentAndData state)
+    |> bind deriveActualCoverage
+    |> map (fun coverage -> snapshotOf state coverage now)
+
+let tryRehydrate currentDocument currentIdentity entry =
+    validateEntry entry
+    |> bind (requireFingerprint currentDocument)
+    |> bind (fun cached -> reduceSnapshotAgainstCurrentDocument currentIdentity cached.Snapshot)
+```
+
+rehydrate永遠採current session的DocumentId/CanvasInstanceId，transport sequence從current document frame繼續；舊entry只提供data candidate。reducer拒絕、known dataRef/axis/revision不一致時刪entry並request full。cache寫入點在`applyFrame`得到非`RequestResync`且document/data完整之後；Error/Heartbeat/rejected action不觸發寫入。
+
+IndexedDB以WebSharper F#實作，database=`PulseTrade.Comm.Spa.Dynamic.Interactive`、store=`runtimeSnapshots`、version=1。key由origin隔離後的OwnerFingerprint/schema/workspace/timestamp組成；value含coverage、revision、captured timestamp與bounded encoded entry。預設最多8筆，依touched time LRU清理。generic `readLatest/readCovering`都只查exact owner identity；跨query range index屬owner seam。open/read/write/delete/compaction任何錯誤都回typed unavailable並降級，不把storage錯誤送成domain action。
+
+```text
+first load: Document -> cache miss -> RequestFullSnapshot -> accepted Snapshot -> cache write
+reload: Document -> cache hit/rebase -> CACHED/RESYNCING -> PollDelta -> Patch or Snapshot -> READY/write
+range revisit: VisibleRangeChanged + covering cache preview -> Accepted != data -> authoritative frame -> READY/write
+```
+
+Daedalus host負責fingerprint與document-first response。Aster client不要求arbitrary URL/header，不解析FSSTL query；MDCQ per-scale warm-up仍由provider owner處理。

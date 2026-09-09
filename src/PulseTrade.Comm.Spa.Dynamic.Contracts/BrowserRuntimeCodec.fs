@@ -94,3 +94,31 @@ module BrowserRuntimeCodec =
             | message -> Error message
         with error ->
             Error error.Message
+
+    let encodeCacheEntry (entry: RuntimeCacheEntry) = Json.Serialize entry
+
+    let decodeCacheEntry (text: string) =
+        try
+            let entry: RuntimeCacheEntry = Json.Deserialize text
+
+            if isNull (box entry) then
+                Error "Runtime cache entry is required."
+            elif isNull (box entry.CacheIdentity)
+                 || System.String.IsNullOrWhiteSpace entry.CacheIdentity.OwnerFingerprint
+                 || entry.CacheIdentity.SchemaRevision <= 0L then
+                Error "Runtime cache identity is invalid."
+            elif System.String.IsNullOrWhiteSpace entry.WorkspaceId
+                 || entry.DocumentRevision < 0L
+                 || entry.DataRevision < 0L then
+                Error "Runtime cache workspace or revision is invalid."
+            elif isNull (box entry.Coverage)
+                 || entry.Coverage.StartEventTimeUtc.Offset <> System.TimeSpan.Zero
+                 || entry.Coverage.EndEventTimeExclusiveUtc.Offset <> System.TimeSpan.Zero
+                 || entry.Coverage.EndEventTimeExclusiveUtc <= entry.Coverage.StartEventTimeUtc then
+                Error "Runtime cache coverage is invalid."
+            elif isNull (box entry.Document) || isNull (box entry.Snapshot) then
+                Error "Runtime cache document and snapshot are required."
+            else
+                Ok entry
+        with error ->
+            Error error.Message

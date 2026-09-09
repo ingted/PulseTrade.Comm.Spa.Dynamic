@@ -671,7 +671,7 @@ module TaWorkspaceRenderer =
                 uiState.View
         let commandsDisabledNow () =
             remoteDisabled runtimeState.Value.Poll || uiState.Value.PendingActionId.IsSome
-        let visibleRangeActionAllowed state =
+        let visibleRangeActionAllowed (state: RuntimeState) =
             state.Document
             |> Option.map _.AllowedActions
             |> Option.defaultValue [||]

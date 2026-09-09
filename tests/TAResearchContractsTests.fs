@@ -866,4 +866,192 @@ let tests =
 
             Expect.isTrue (errors |> List.exists (fun error -> error.Code = "invalid-final-frontier")) "Final points must reach interval end."
             Expect.isTrue (errors |> List.exists (fun error -> error.Code = "invalid-availability")) "Availability cannot precede observed frontier."
+
+        testCase "DYN-TA-T-072 accepted shared-axis state creates a bounded cache entry" <| fun _ ->
+            let startUtc = DateTimeOffset(2026, 9, 8, 13, 0, 0, TimeSpan.Zero)
+            let axisPoint position minute =
+                let intervalStart = startUtc.AddMinutes(float minute)
+
+                { Position = position
+                  SourceIntervalId = $"mdcq-es-1k-{position}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = intervalStart
+                  IntervalEndUtc = intervalStart.AddMinutes 1.0
+                  ObservedThroughUtc = intervalStart.AddMinutes 1.0
+                  AvailableAtUtc = Some(intervalStart.AddMinutes 1.0)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+
+            let axis =
+                { AxisRef = "axis.es.1k"
+                  Revision = 1L
+                  Points = [| axisPoint 0L 0; axisPoint 1L 1 |] }
+
+            let series =
+                { AxisRef = axis.AxisRef
+                  AxisRevision = axis.Revision
+                  Points =
+                    [| { Position = 0L; Value = SduiValue.Number 100.0 }
+                       { Position = 1L; Value = SduiValue.Number 101.0 } |] }
+
+            let cacheDocument =
+                { document with
+                    WorkspaceId = "fsstl-es-multiscale-7f01"
+                    TemporalAxisRefs = [| axis.AxisRef |] }
+
+            let cacheDocumentFrame =
+                { documentFrame with
+                    Payload = RuntimePayload.Document cacheDocument }
+
+            let afterDocument, _ = RuntimeReducer.reduce (RuntimeReducer.initial identity) cacheDocumentFrame
+            let snapshot =
+                { Data =
+                    Map
+                        [ axis.AxisRef, TemporalAxisCodec.encode axis
+                          row.DataRef, TemporalSeriesCodec.encode series ]
+                  Freshness = TaFreshness.Live }
+
+            let snapshotFrame = frame RuntimeFrameKind.Snapshot 2L None 7L (RuntimePayload.Snapshot snapshot)
+            let accepted, effect = RuntimeReducer.reduce afterDocument snapshotFrame
+            Expect.equal effect RuntimeEffect.NoEffect "The source state must be accepted before it becomes cacheable."
+
+            let cacheIdentity =
+                { OwnerFingerprint = "es-utc-range-sha256-7f01"
+                  SchemaRevision = RuntimeCache.CurrentSchemaRevision }
+
+            let entry =
+                RuntimeCache.tryCreateEntry (sourceTime.AddHours 1.0) cacheIdentity accepted
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal entry.Coverage.StartEventTimeUtc startUtc "Cache coverage starts at the actual base-axis interval."
+            Expect.equal entry.Coverage.EndEventTimeExclusiveUtc (startUtc.AddMinutes 2.0) "Cache coverage ends at the actual final interval end."
+            Expect.isTrue (RuntimeCache.covers entry.Coverage entry.Coverage) "An entry covers its exact half-open range."
+
+            let roundTrip =
+                entry
+                |> RuntimeCacheCodec.encode
+                |> RuntimeCacheCodec.decode DynamicRuntimeDefaults.limits
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal roundTrip entry "System.Text.Json cache entry codec must round-trip the accepted projection."
+
+            let browserRoundTrip =
+                entry
+                |> BrowserRuntimeCodec.encodeCacheEntry
+                |> BrowserRuntimeCodec.decodeCacheEntry
+                |> Result.defaultWith failtest
+
+            Expect.equal browserRoundTrip entry "WebSharper cache entry codec must preserve the same contract."
+            Expect.isError
+                (RuntimeCache.validateEntry
+                    DynamicRuntimeDefaults.limits
+                    { entry with CacheIdentity = { cacheIdentity with OwnerFingerprint = "" } })
+                "Blank owner fingerprints must fail closed."
+            Expect.isError
+                (RuntimeCache.validateEntry
+                    DynamicRuntimeDefaults.limits
+                    { entry with Coverage = { entry.Coverage with EndEventTimeExclusiveUtc = entry.Coverage.StartEventTimeUtc } })
+                "Empty cache coverage must fail closed."
+
+        testCase "DYN-TA-T-073 cache write and rehydrate preserve frame authority" <| fun _ ->
+            let startUtc = DateTimeOffset(2026, 9, 8, 14, 0, 0, TimeSpan.Zero)
+            let axis =
+                { AxisRef = "axis.resume.1k"
+                  Revision = 4L
+                  Points =
+                    [| { Position = 4L
+                         SourceIntervalId = "resume-4"
+                         ScaleKey = "1K"
+                         IntervalStartUtc = startUtc
+                         IntervalEndUtc = startUtc.AddMinutes 1.0
+                         ObservedThroughUtc = startUtc.AddMinutes 1.0
+                         AvailableAtUtc = Some(startUtc.AddMinutes 1.0)
+                         Finality = PointFinality.Final
+                         Projection = TemporalProjection.CandleSpan
+                         Quality = Some "complete" } |] }
+
+            let series =
+                { AxisRef = axis.AxisRef
+                  AxisRevision = axis.Revision
+                  Points = [| { Position = 4L; Value = SduiValue.Text "cached" } |] }
+
+            let cacheDocument =
+                { document with
+                    WorkspaceId = "fsstl-resume-fingerprint"
+                    TemporalAxisRefs = [| axis.AxisRef |] }
+
+            let sourceDocumentFrame = { documentFrame with Payload = RuntimePayload.Document cacheDocument }
+            let sourceAfterDocument, _ = RuntimeReducer.reduce (RuntimeReducer.initial identity) sourceDocumentFrame
+            let cachedSnapshot =
+                { Data = Map [ axis.AxisRef, TemporalAxisCodec.encode axis; row.DataRef, TemporalSeriesCodec.encode series ]
+                  Freshness = TaFreshness.Live }
+            let acceptedFrame = frame RuntimeFrameKind.Snapshot 2L None 11L (RuntimePayload.Snapshot cachedSnapshot)
+            let sourceAccepted, acceptedEffect = RuntimeReducer.reduce sourceAfterDocument acceptedFrame
+            let cacheIdentity =
+                { OwnerFingerprint = "fsstl-resume-query-fingerprint"
+                  SchemaRevision = RuntimeCache.CurrentSchemaRevision }
+
+            Expect.isTrue
+                (RuntimeCache.shouldPersistFrame acceptedFrame acceptedEffect sourceAccepted)
+                "An accepted snapshot may advance the cache."
+
+            let heartbeatFrame = frame RuntimeFrameKind.Heartbeat 3L None 11L (RuntimePayload.Heartbeat { ObservedAtUtc = sourceTime })
+            let afterHeartbeat, heartbeatEffect = RuntimeReducer.reduce sourceAccepted heartbeatFrame
+            Expect.isFalse
+                (RuntimeCache.shouldPersistFrame heartbeatFrame heartbeatEffect afterHeartbeat)
+                "Heartbeat frames must not rewrite cache entries."
+
+            let gapFrame = { heartbeatFrame with TransportSequence = 5L }
+            let afterGap, gapEffect = RuntimeReducer.reduce sourceAccepted gapFrame
+            Expect.isFalse
+                (RuntimeCache.shouldPersistFrame gapFrame gapEffect afterGap)
+                "Sequence gaps must not pollute the last-good cache."
+
+            let entry =
+                RuntimeCache.tryCreateEntry sourceTime cacheIdentity sourceAccepted
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            let currentIdentity =
+                { DocumentId = DocumentId "new-session-document"
+                  CanvasInstanceId = CanvasInstanceId "new-session-canvas" }
+
+            let currentDocumentFrame =
+                { sourceDocumentFrame with
+                    DocumentId = currentIdentity.DocumentId
+                    CanvasInstanceId = currentIdentity.CanvasInstanceId
+                    DocumentRevision = 9L }
+
+            let currentDocumentState, _ = RuntimeReducer.reduce (RuntimeReducer.initial currentIdentity) currentDocumentFrame
+            let hydrated =
+                RuntimeCache.tryRehydrate DynamicRuntimeDefaults.limits cacheIdentity currentDocumentState entry
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal hydrated.Identity currentIdentity "Cache data must be rebased onto the current session identity."
+            Expect.equal hydrated.DocumentRevision currentDocumentState.DocumentRevision "Cache data must not override the current authoritative document revision."
+            Expect.equal hydrated.LastTransportSequence currentDocumentState.LastTransportSequence "Cache hydration must not consume a server transport sequence."
+            Expect.equal hydrated.DataRevision entry.DataRevision "Cached data revision is retained as a delta resume hint."
+            Expect.equal hydrated.Poll RuntimePollState.PausedForResync "Hydrated cache remains explicitly non-authoritative."
+
+            let authoritativeSnapshot =
+                { cachedSnapshot with
+                    Data = cachedSnapshot.Data |> Map.add row.DataRef (TemporalSeriesCodec.encode { series with Points = [| { Position = 4L; Value = SduiValue.Text "authoritative" } |] }) }
+            let authoritativeFrame =
+                { currentDocumentFrame with
+                    Kind = RuntimeFrameKind.Snapshot
+                    DataRevision = 12L
+                    TransportSequence = 2L
+                    Payload = RuntimePayload.Snapshot authoritativeSnapshot }
+            let synchronized, synchronizedEffect = RuntimeReducer.reduce hydrated authoritativeFrame
+            Expect.equal synchronizedEffect RuntimeEffect.NoEffect "The next authoritative snapshot must replace a hydrated cache without a sequence conflict."
+            Expect.equal synchronized.DataRevision 12L "Authoritative data revision replaces the cached resume revision."
+            Expect.equal synchronized.Poll RuntimePollState.Ready "Authoritative replacement returns the runtime to ready."
+
+            Expect.isError
+                (RuntimeCache.tryRehydrate
+                    DynamicRuntimeDefaults.limits
+                    { cacheIdentity with OwnerFingerprint = "different-query" }
+                    currentDocumentState
+                    entry)
+                "A different query fingerprint must not hydrate cached data."
     ]

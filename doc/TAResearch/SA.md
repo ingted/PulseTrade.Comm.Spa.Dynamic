@@ -278,3 +278,13 @@ Daedalus真資料gate為3820 bars、28 scalar series。舊`temporal-point.v1`把
 K棒不是特殊巨型payload。`TaCandleDataRefs`明確連結O/H/L/C/V五條scalar series，Renderer在同一axis position上合成candlestick；任一component缺值時該candle缺失，不以相鄰值補造。Heikin-Ashi同樣由owner提供五條series，Dynamic只render，不計算行情或指標。
 
 相容策略是雙讀、單一新寫法：Renderer繼續接受legacy `temporal-point.v1`；新workspace優先送`temporal-axis.v1`/`temporal-series.v1`。PTCS `ta-browser.v5`直接搬運typed shared values，禁止先展開成legacy timeline再於client重建。malformed axis、missing axis、revision mismatch與unknown position均保留last-good並要求authoritative resync。
+
+## 22. 2026-09-09 Browser range cache/resume analysis
+
+SPAA現況已有authoritative action/frame producer，Interactive.Client則只有記憶體內last-good。若SPAA另建第二套browser cache或action wire，會複製Dynamic reducer/order/resync並讓Notebook application擁有renderer internals。正確依賴方向仍是`owner identity/action handler -> Dynamic action/frame -> reducer -> browser cache`。
+
+cache lookup不能只用session URL、DocumentId或人類可讀chart id：session會重建，chart id也無法證明source、instrument、range semantics與TA params相同。Dynamic contract只接opaque `OwnerFingerprint`；SPAA將其64字元SHA-256 `QueryFingerprint`映射為exact identity，並在owner side保留Program/DataSource/Query三段fingerprint。Dynamic不理解其內容，identity變更即cache miss。跨range候選只能由SPAA的Program+DataSource secondary index提出，再由Dynamic驗coverage與payload；generic client不得猜測query相容性。
+
+IndexedDB只保存accepted projection，不保存upstream cursor truth。cache hit的意義是「這份last-good可先顯示並作delta hint」，不是「provider已確認仍有效」。因此browser仍送`PollDelta`或`RequestFullSnapshot`，host依current source authority回patch/full；correlated Accepted只結束command pending，不能直接修改資料。
+
+現有SessionHost立即送`Document+Snapshot`仍可相容，但無法省下初始full transfer。production resume需要document-first handshake：先讓browser驗fingerprint/cache，再由host選delta/full。range revisit同理；cache lookup可與`VisibleRangeChanged`並行，但不得吞掉該action。storage unavailable或quota失敗只關閉cache，不可阻斷WebSocket truth path。
