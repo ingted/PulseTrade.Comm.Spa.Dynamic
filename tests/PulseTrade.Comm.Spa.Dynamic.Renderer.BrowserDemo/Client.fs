@@ -392,6 +392,8 @@ module Client =
         let actionCount = Var.Create 0
         let lastAction = Var.Create "none"
         let rejectNext = Var.Create false
+        let previewStreamGeneration = Var.Create 0
+        let previewStreamUpdates = Var.Create 0
         let applyAuthoritativeAction action =
             let current = runtimeState.Value
 
@@ -473,6 +475,82 @@ module Client =
                     Poll = RuntimePollState.Ready
                     LastError = None }
 
+        let updateLatestPreview () =
+            let updateCandleValue = function
+                | SduiValue.Object fields ->
+                    match fields |> Map.tryFind "value" with
+                    | Some(SduiValue.Object candleFields) ->
+                        let currentClose =
+                            candleFields
+                            |> Map.tryFind "c"
+                            |> Option.bind (function SduiValue.Number value -> Some value | _ -> None)
+                            |> Option.defaultValue 0.0
+                        SduiValue.Object(fields |> Map.add "value" (SduiValue.Object(candleFields |> Map.add "c" (SduiValue.Number(currentClose + 1.25)))))
+                    | _ -> SduiValue.Object fields
+                | value -> value
+
+            let current = runtimeState.Value
+            let nextPrice =
+                current.Data
+                |> Map.tryFind "series.price"
+                |> Option.bind (function SduiValue.Array values -> Some values | _ -> None)
+                |> Option.map (fun values ->
+                    values
+                    |> Array.mapi (fun index value -> if index = values.Length - 1 then updateCandleValue value else value)
+                    |> SduiValue.Array)
+
+            match nextPrice with
+            | Some price ->
+                runtimeState.Value <-
+                    { current with
+                        Data = current.Data |> Map.add "series.price" price
+                        DataRevision = current.DataRevision + 1L
+                        LastTransportSequence = current.LastTransportSequence + 1L }
+            | None -> ()
+
+        let updateLatestSmaValue nextValue =
+            let updatePoint = function
+                | SduiValue.Object fields -> SduiValue.Object(fields |> Map.add "value" nextValue)
+                | value -> value
+
+            let current = runtimeState.Value
+            let nextSeries =
+                current.Data
+                |> Map.tryFind "series.sma"
+                |> Option.bind (function
+                    | SduiValue.Object fields ->
+                        fields
+                        |> Map.tryFind "points"
+                        |> Option.bind (function
+                            | SduiValue.Array values when values.Length > 0 ->
+                                let nextPoints = values |> Array.mapi (fun index value -> if index = values.Length - 1 then updatePoint value else value)
+                                Some(SduiValue.Object(fields |> Map.add "points" (SduiValue.Array nextPoints)))
+                            | _ -> None)
+                    | _ -> None)
+
+            match nextSeries with
+            | Some series ->
+                runtimeState.Value <-
+                    { current with
+                        Data = current.Data |> Map.add "series.sma" series
+                        DataRevision = current.DataRevision + 1L
+                        LastTransportSequence = current.LastTransportSequence + 1L }
+            | None -> ()
+
+        let startPreviewStream () =
+            let generation = previewStreamGeneration.Value + 1
+            previewStreamGeneration.Value <- generation
+            previewStreamUpdates.Value <- 0
+
+            async {
+                for _ in 1 .. 12 do
+                    do! Async.Sleep 1000
+                    if previewStreamGeneration.Value = generation then
+                        updateLatestPreview ()
+                        previewStreamUpdates.Value <- previewStreamUpdates.Value + 1
+            }
+            |> Async.StartImmediate
+
         let setInFlight () =
             runtimeState.Value <- { runtimeState.Value with Poll = RuntimePollState.PollInFlight }
 
@@ -510,10 +588,15 @@ module Client =
             attr.style "max-width:1460px; margin:0 auto; min-width:0;"
             Attr.Create "data-capacity-positions" (string capacityPointCount)
             Attr.Create "data-capacity-shared-series" (string capacitySeriesCount)
+            Attr.Dynamic "data-preview-stream-updates" (previewStreamUpdates.View |> View.Map string)
         ] [
             let demoButtonStyle = attr.style "min-height:24px; padding:2px 6px; white-space:nowrap;"
             div [ Attr.Create "data-testid" "ta-demo-callback-state"; attr.style "min-height:32px; height:auto; display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:flex-end; padding:4px 12px; background:#182a42; color:#d9e5f3; font-size:11px;" ] [
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-live"; on.click (fun _ _ -> setLive ()) ] [ text "Live" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-preview-update"; on.click (fun _ _ -> updateLatestPreview ()) ] [ text "Update preview" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-preview-stream"; on.click (fun _ _ -> startPreviewStream ()) ] [ text "Stream preview" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-legend-undef"; on.click (fun _ _ -> updateLatestSmaValue SduiValue.Null) ] [ text "Legend Undef" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-legend-long"; on.click (fun _ _ -> updateLatestSmaValue (SduiValue.Number 123456789.123456)) ] [ text "Legend long" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-inflight"; on.click (fun _ _ -> setInFlight ()) ] [ text "In-flight" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-paused"; on.click (fun _ _ -> setPaused ()) ] [ text "Paused" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-stale"; on.click (fun _ _ -> setStale ()) ] [ text "Stale" ]

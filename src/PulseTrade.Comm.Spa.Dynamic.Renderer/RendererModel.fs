@@ -33,6 +33,16 @@ type TaResolvedSeriesPoint =
     { Payload: SduiValue option
       Temporal: TaTemporalPointPresentation option }
 
+type TaPreparedTemporalAxis =
+    { Revision: float
+      RawPoints: SduiValue array
+      Points: Map<float, TaTemporalPointPresentation> }
+
+type TaPreparedRendererData =
+    { RawData: Map<string, SduiValue>
+      ResolvedAxes: Map<string, TaPreparedTemporalAxis>
+      ResolvedSeries: Map<string, TaResolvedSeriesPoint array> }
+
 type TaVisibleWindow =
     { StartIndex: int
       Count: int }
@@ -245,7 +255,7 @@ module RendererModel =
                       Quality = requiredObjectText "quality" fields })
             | _ -> None)
 
-    let tryTemporalAxis value =
+    let tryTemporalAxisRaw value =
         value
         |> tryObject
         |> Option.bind (fun fields ->
@@ -253,12 +263,25 @@ module RendererModel =
             else
                 match requiredObjectText "axisRef" fields, nonNegativeInteger "revision" fields, Map.tryFind "points" fields with
                 | Some axisRef, Some revision, Some(SduiValue.Array points) ->
-                    let decoded = points |> Array.choose tryTemporalAxisPoint
-                    if decoded.Length <> points.Length then None
-                    else Some(axisRef, revision, decoded |> Map.ofArray)
+                    Some(axisRef, revision, points)
                 | _ -> None)
 
-    let tryTemporalSeries value =
+    let tryTemporalAxis value =
+        tryTemporalAxisRaw value
+        |> Option.bind (fun (axisRef, revision, points) ->
+            let decoded = points |> Array.choose tryTemporalAxisPoint
+            if decoded.Length <> points.Length then None
+            else Some(axisRef, revision, decoded |> Map.ofArray))
+
+    let tryTemporalSeriesPoint value =
+        value
+        |> tryObject
+        |> Option.bind (fun values ->
+            match nonNegativeInteger "position" values, Map.tryFind "value" values with
+            | Some position, Some payload -> Some(position, payload)
+            | _ -> None)
+
+    let tryTemporalSeriesRaw value =
         value
         |> tryObject
         |> Option.bind (fun fields ->
@@ -266,18 +289,239 @@ module RendererModel =
             else
                 match requiredObjectText "axisRef" fields, nonNegativeInteger "axisRevision" fields, Map.tryFind "points" fields with
                 | Some axisRef, Some revision, Some(SduiValue.Array points) ->
-                    let decoded =
-                        points
-                        |> Array.choose (fun point ->
-                            point
-                            |> tryObject
-                            |> Option.bind (fun values ->
-                                match nonNegativeInteger "position" values, Map.tryFind "value" values with
-                                | Some position, Some payload -> Some(position, payload)
-                                | _ -> None))
-                    if decoded.Length <> points.Length then None
-                    else Some(axisRef, revision, decoded)
+                    Some(axisRef, revision, points)
                 | _ -> None)
+
+    let tryTemporalSeries value =
+        tryTemporalSeriesRaw value
+        |> Option.bind (fun (axisRef, revision, points) ->
+            let decoded = points |> Array.choose tryTemporalSeriesPoint
+            if decoded.Length <> points.Length then None
+            else Some(axisRef, revision, decoded))
+
+    [<Inline "$left === $right">]
+    let sameReference (left: obj) (right: obj) = Object.ReferenceEquals(left, right)
+
+    let sharedPrefixLength (left: SduiValue array) (right: SduiValue array) =
+        let limit = min left.Length right.Length
+        let mutable index = 0
+        while index < limit && sameReference (box left[index]) (box right[index]) do
+            index <- index + 1
+        index
+
+    let resolveTemporalPoints axisPoints rawPoints =
+        rawPoints
+        |> Array.choose (fun point ->
+            tryTemporalSeriesPoint point
+            |> Option.bind (fun (position, payload) ->
+                Map.tryFind position axisPoints
+                |> Option.map (fun temporal -> { Payload = Some payload; Temporal = Some temporal })))
+
+    let prepareAxis value =
+        tryTemporalAxisRaw value
+        |> Option.bind (fun (axisRef, revision, rawPoints) ->
+            let decoded = rawPoints |> Array.choose tryTemporalAxisPoint
+            if decoded.Length <> rawPoints.Length then None
+            else
+                Some(
+                    axisRef,
+                    { Revision = revision
+                      RawPoints = rawPoints
+                      Points = decoded |> Map.ofArray }))
+
+    let updateAxis previous value =
+        match tryTemporalAxisRaw value with
+        | None -> None
+        | Some(axisRef, revision, rawPoints) ->
+            match Map.tryFind axisRef previous.ResolvedAxes with
+            | Some oldAxis when sameReference (box oldAxis.RawPoints) (box rawPoints) ->
+                Some(
+                    axisRef,
+                    { oldAxis with Revision = revision },
+                    Some Set.empty)
+            | Some oldAxis ->
+                let prefix = sharedPrefixLength oldAxis.RawPoints rawPoints
+                let incrementalShape =
+                    prefix = min oldAxis.RawPoints.Length rawPoints.Length
+                    || oldAxis.RawPoints.Length = rawPoints.Length
+                if incrementalShape then
+                    let oldSuffix = oldAxis.RawPoints |> Array.skip prefix |> Array.choose tryTemporalAxisPoint
+                    let newSuffix = rawPoints |> Array.skip prefix |> Array.choose tryTemporalAxisPoint
+                    if oldSuffix.Length = oldAxis.RawPoints.Length - prefix
+                       && newSuffix.Length = rawPoints.Length - prefix then
+                        let changedPositions =
+                            Array.append (oldSuffix |> Array.map fst) (newSuffix |> Array.map fst)
+                            |> Set.ofArray
+                        let points =
+                            oldSuffix
+                            |> Array.fold (fun state (position, _) -> Map.remove position state) oldAxis.Points
+                            |> fun state -> newSuffix |> Array.fold (fun current (position, metadata) -> Map.add position metadata current) state
+                        Some(
+                            axisRef,
+                            { Revision = revision
+                              RawPoints = rawPoints
+                              Points = points },
+                            Some changedPositions)
+                    else
+                        prepareAxis value |> Option.map (fun (key, axis) -> key, axis, None)
+                else
+                    prepareAxis value |> Option.map (fun (key, axis) -> key, axis, None)
+            | None -> prepareAxis value |> Option.map (fun (key, axis) -> key, axis, None)
+
+    let tryFindTemporalPointIndex (position: float) (rawPoints: SduiValue array) =
+        let rec search low high =
+            if low > high then None
+            else
+                let middle = low + ((high - low) / 2)
+                match tryTemporalSeriesPoint rawPoints.[middle] with
+                | Some(candidate, _) when candidate = position -> Some middle
+                | Some(candidate, _) when candidate < position -> search (middle + 1) high
+                | Some _ -> search low (middle - 1)
+                | None -> None
+        search 0 (rawPoints.Length - 1)
+
+    let updateTemporalSeries
+        (previousRaw: SduiValue array)
+        (previousResolved: TaResolvedSeriesPoint array)
+        (rawPoints: SduiValue array)
+        (axisPoints: Map<float, TaTemporalPointPresentation>)
+        (changedAxisPositions: Set<float> option) =
+        let full () = resolveTemporalPoints axisPoints rawPoints
+        let baseResolved =
+            if previousResolved.Length <> previousRaw.Length then full ()
+            elif sameReference (box previousRaw) (box rawPoints) then previousResolved
+            else
+                let prefix = sharedPrefixLength previousRaw rawPoints
+                let incrementalShape = prefix = min previousRaw.Length rawPoints.Length || previousRaw.Length = rawPoints.Length
+                if not incrementalShape then full ()
+                else
+                    let suffix = rawPoints |> Array.skip prefix |> resolveTemporalPoints axisPoints
+                    if suffix.Length <> rawPoints.Length - prefix then full ()
+                    else Array.append (previousResolved |> Array.take prefix) suffix
+
+        match changedAxisPositions with
+        | Some positions when not positions.IsEmpty && baseResolved.Length = rawPoints.Length ->
+            let next = Array.copy baseResolved
+            for position in positions do
+                match tryFindTemporalPointIndex position rawPoints with
+                | Some index ->
+                    match tryTemporalSeriesPoint rawPoints.[index], Map.tryFind position axisPoints with
+                    | Some(_, payload), Some temporal ->
+                        next[index] <- { Payload = Some payload; Temporal = Some temporal }
+                    | _ -> ()
+                | None -> ()
+            next
+        | Some _ -> baseResolved
+        | None -> full ()
+
+    let updateInlineSeries
+        (previousRaw: SduiValue array)
+        (previousResolved: TaResolvedSeriesPoint array)
+        (rawPoints: SduiValue array) =
+        let mapPoint item =
+            let temporal, payload = pointPayload item
+            { Payload = payload; Temporal = temporal }
+        if sameReference (box previousRaw) (box rawPoints) then previousResolved
+        elif previousResolved.Length <> previousRaw.Length then rawPoints |> Array.map mapPoint
+        else
+            let prefix = sharedPrefixLength previousRaw rawPoints
+            let incrementalShape = prefix = min previousRaw.Length rawPoints.Length || previousRaw.Length = rawPoints.Length
+            if not incrementalShape then rawPoints |> Array.map mapPoint
+            else Array.append (previousResolved |> Array.take prefix) (rawPoints |> Array.skip prefix |> Array.map mapPoint)
+
+    let prepareData data =
+        let axes =
+            data
+            |> Map.toArray
+            |> Array.choose (fun (_, value) ->
+                prepareAxis value)
+            |> Map.ofArray
+
+        let resolved =
+            data
+            |> Map.toArray
+            |> Array.choose (fun (dataRef, value) ->
+                match value with
+                | SduiValue.Array values ->
+                    values
+                    |> Array.map (fun item ->
+                        let temporal, payload = pointPayload item
+                        { Payload = payload; Temporal = temporal })
+                    |> fun points -> Some(dataRef, points)
+                | _ ->
+                    match tryTemporalSeries value with
+                    | Some(axisRef, axisRevision, points) ->
+                        match Map.tryFind axisRef axes with
+                        | Some axis when axis.Revision = axisRevision ->
+                            points
+                            |> Array.choose (fun (position, payload) ->
+                                Map.tryFind position axis.Points
+                                |> Option.map (fun temporal -> { Payload = Some payload; Temporal = Some temporal }))
+                            |> fun resolvedPoints -> Some(dataRef, resolvedPoints)
+                        | _ -> Some(dataRef, [||])
+                    | None -> None)
+            |> Map.ofArray
+
+        { RawData = data
+          ResolvedAxes = axes
+          ResolvedSeries = resolved }
+
+    let prepareDataIncremental previous data =
+        let axisUpdates =
+            data
+            |> Map.toArray
+            |> Array.choose (fun (_, value) -> updateAxis previous value)
+
+        let axes =
+            axisUpdates
+            |> Array.map (fun (axisRef, axis, _) -> axisRef, axis)
+            |> Map.ofArray
+
+        let axisChanges =
+            axisUpdates
+            |> Array.map (fun (axisRef, _, changedPositions) -> axisRef, changedPositions)
+            |> Map.ofArray
+
+        let resolved =
+            data
+            |> Map.toArray
+            |> Array.choose (fun (dataRef, value) ->
+                match value with
+                | SduiValue.Array rawPoints ->
+                    match Map.tryFind dataRef previous.RawData, Map.tryFind dataRef previous.ResolvedSeries with
+                    | Some(SduiValue.Array previousRaw), Some previousResolved ->
+                        Some(dataRef, updateInlineSeries previousRaw previousResolved rawPoints)
+                    | _ ->
+                        rawPoints
+                        |> Array.map (fun item ->
+                            let temporal, payload = pointPayload item
+                            { Payload = payload; Temporal = temporal })
+                        |> fun points -> Some(dataRef, points)
+                | _ ->
+                    match tryTemporalSeriesRaw value with
+                    | Some(axisRef, axisRevision, rawPoints) ->
+                        match Map.tryFind axisRef axes with
+                        | Some axis when axis.Revision = axisRevision ->
+                            match Map.tryFind dataRef previous.RawData, Map.tryFind dataRef previous.ResolvedSeries with
+                            | Some previousValue, Some previousResolved ->
+                                match tryTemporalSeriesRaw previousValue with
+                                | Some(previousAxisRef, _, previousRaw) when previousAxisRef = axisRef ->
+                                    let changedAxisPositions = Map.tryFind axisRef axisChanges |> Option.defaultValue None
+                                    Some(dataRef, updateTemporalSeries previousRaw previousResolved rawPoints axis.Points changedAxisPositions)
+                                | _ -> Some(dataRef, resolveTemporalPoints axis.Points rawPoints)
+                            | _ -> Some(dataRef, resolveTemporalPoints axis.Points rawPoints)
+                        | _ -> Some(dataRef, [||])
+                    | None -> None)
+            |> Map.ofArray
+
+        { RawData = data
+          ResolvedAxes = axes
+          ResolvedSeries = resolved }
+
+    let resolvedSeriesPrepared dataRef prepared =
+        prepared.ResolvedSeries
+        |> Map.tryFind dataRef
+        |> Option.defaultValue [||]
 
     let resolvedSeries dataRef data =
         match Map.tryFind dataRef data with
@@ -376,24 +620,36 @@ module RendererModel =
         resolvedSeries dataRef data
         |> Array.choose _.Payload
 
-    let candleSeries dataRef data =
-        resolvedSeries dataRef data
+    let candleSeriesFromResolved resolved =
+        resolved
         |> Array.choose (fun point -> parseCandleResolved point.Temporal point.Payload)
 
-    let lineSeries dataRef data =
-        resolvedSeries dataRef data
+    let lineSeriesFromResolved resolved =
+        resolved
         |> Array.choose (fun point -> parseLineResolved point.Temporal point.Payload)
 
-    let candleSeriesForTrace (trace: TaTraceSpec) data =
+    let candleSeries dataRef data =
+        resolvedSeries dataRef data |> candleSeriesFromResolved
+
+    let lineSeries dataRef data =
+        resolvedSeries dataRef data |> lineSeriesFromResolved
+
+    let candleSeriesPrepared dataRef prepared =
+        resolvedSeriesPrepared dataRef prepared |> candleSeriesFromResolved
+
+    let lineSeriesPrepared dataRef prepared =
+        resolvedSeriesPrepared dataRef prepared |> lineSeriesFromResolved
+
+    let candleSeriesForTracePrepared (trace: TaTraceSpec) prepared =
         match trace.CandleDataRefs with
-        | None -> candleSeries trace.DataRef data
+        | None -> candleSeriesPrepared trace.DataRef prepared
         | Some refs ->
             let valuesByTimestamp dataRef =
-                lineSeries dataRef data
+                lineSeriesPrepared dataRef prepared
                 |> Array.map (fun point -> point.Timestamp, point)
                 |> Map.ofArray
 
-            let opens = lineSeries refs.OpenRef data
+            let opens = lineSeriesPrepared refs.OpenRef prepared
             let highs = valuesByTimestamp refs.HighRef
             let lows = valuesByTimestamp refs.LowRef
             let closes = valuesByTimestamp refs.CloseRef
@@ -417,6 +673,9 @@ module RendererModel =
                           Volume = volume.Value
                           Temporal = openPoint.Temporal }
                 | _ -> None)
+
+    let candleSeriesForTrace (trace: TaTraceSpec) data =
+        candleSeriesForTracePrepared trace (prepareData data)
 
     let effectiveTraces (row: TaRowSpec) =
         if not (isNull row.Traces) && row.Traces.Length > 0 then
@@ -453,6 +712,21 @@ module RendererModel =
         | TaTraceKind.Volume -> candleSeriesForTrace trace data |> Array.map _.Timestamp
         | TaTraceKind.Line
         | TaTraceKind.Histogram -> lineSeries trace.DataRef data |> Array.map _.Timestamp
+
+    let traceTimestampsPrepared (trace: TaTraceSpec) prepared =
+        match trace.Kind with
+        | TaTraceKind.Candlestick
+        | TaTraceKind.Volume -> candleSeriesForTracePrepared trace prepared |> Array.map _.Timestamp
+        | TaTraceKind.Line
+        | TaTraceKind.Histogram -> lineSeriesPrepared trace.DataRef prepared |> Array.map _.Timestamp
+
+    let traceTopologyTimestampsPrepared (trace: TaTraceSpec) prepared =
+        let temporalPositions =
+            resolvedSeriesPrepared trace.DataRef prepared
+            |> Array.choose (fun point -> point.Temporal |> Option.map _.IntervalStartUtc)
+
+        if temporalPositions.Length > 0 then temporalPositions
+        else traceTimestampsPrepared trace prepared
 
     let referenceTimeline (rows: TaRowSpec array) data =
         let traces =
@@ -573,55 +847,111 @@ module RendererModel =
                 values
                 |> Array.tryFindBack (fun value -> finalizedAsOf timestamp value.Temporal))
 
+    let candleCursorPointValue label kind (point: TaCandlePoint) =
+        let baseValue =
+            if kind = TaTraceKind.Volume then fixedNumber point.Volume
+            else
+                "O " + fixedNumber point.Open
+                + " H " + fixedNumber point.High
+                + " L " + fixedNumber point.Low
+                + " C " + fixedNumber point.Close
+        let value =
+            match point.Temporal with
+            | Some metadata -> baseValue + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
+            | None -> baseValue
+        { Label = label; Value = value }
+
     let candleCursorValue label kind isBaseRow timestamp values =
         tryCandleForCursor isBaseRow timestamp values
-        |> Option.map (fun point ->
-            let baseValue =
-                if kind = TaTraceKind.Volume then fixedNumber point.Volume
-                else
-                    "O " + fixedNumber point.Open
-                    + " H " + fixedNumber point.High
-                    + " L " + fixedNumber point.Low
-                    + " C " + fixedNumber point.Close
-            let value =
-                match point.Temporal with
-                | Some metadata -> baseValue + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
-                | None -> baseValue
-            { Label = label; Value = value })
+        |> Option.map (candleCursorPointValue label kind)
+
+    let lineCursorPointValue label (point: TaLinePoint) =
+        let value =
+            match point.Temporal with
+            | Some metadata -> fixedNumber point.Value + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
+            | None -> fixedNumber point.Value
+        { Label = label; Value = value }
 
     let lineCursorValue label isBaseRow timestamp values =
         tryLineForCursor isBaseRow timestamp values
-        |> Option.map (fun point ->
-            let value =
-                match point.Temporal with
-                | Some metadata -> fixedNumber point.Value + " | " + metadata.ScaleKey + " " + metadata.Finality + " | " + metadata.SourceIntervalId
-                | None -> fixedNumber point.Value
-            { Label = label; Value = value })
+        |> Option.map (lineCursorPointValue label)
+
+    let lowerTimestampBound (referenceTimestamps: string array) value =
+        let mutable low = 0
+        let mutable high = referenceTimestamps.Length
+        while low < high do
+            let middle = low + (high - low) / 2
+            if compare referenceTimestamps[middle] value < 0 then low <- middle + 1
+            else high <- middle
+        low
+
+    let upperTimestampBound (referenceTimestamps: string array) value =
+        let mutable low = 0
+        let mutable high = referenceTimestamps.Length
+        while low < high do
+            let middle = low + (high - low) / 2
+            if compare referenceTimestamps[middle] value <= 0 then low <- middle + 1
+            else high <- middle
+        low
+
+    let matchingReferenceRange (referenceTimestamps: string array) pointTimestamp temporal =
+        let first, lastExclusive =
+            match temporal with
+            | Some metadata when metadata.Projection = "repeat-across-base-buckets" || metadata.Projection = "candle-span" ->
+                lowerTimestampBound referenceTimestamps metadata.IntervalStartUtc,
+                lowerTimestampBound referenceTimestamps metadata.IntervalEndUtc
+            | Some metadata when metadata.Projection = "step-after-close" ->
+                match metadata.AvailableAtUtc with
+                | Some availableAt -> lowerTimestampBound referenceTimestamps availableAt, referenceTimestamps.Length
+                | None -> 0, 0
+            | _ ->
+                lowerTimestampBound referenceTimestamps pointTimestamp,
+                upperTimestampBound referenceTimestamps pointTimestamp
+
+        if first >= lastExclusive then None
+        else Some(first, lastExclusive)
+
+    let matchingReferenceIndexes (referenceTimestamps: string array) pointTimestamp temporal =
+        match matchingReferenceRange referenceTimestamps pointTimestamp temporal with
+        | Some(first, lastExclusive) -> [| first .. lastExclusive - 1 |]
+        | None -> [||]
 
     let projectedLinePoints (referenceTimestamps: string array) (points: TaLinePoint array) =
-        referenceTimestamps
-        |> Array.indexed
-        |> Array.choose (fun (index, timestamp) ->
-            tryLineAt timestamp points
-            |> Option.map (fun point -> index, point))
+        let projected: TaLinePoint option array = Array.create referenceTimestamps.Length None
+        let nextUnassignedSlot = Array.init (referenceTimestamps.Length + 1) id
+
+        let rec findNextUnassigned index =
+            let parent = nextUnassignedSlot[index]
+            if parent = index then index
+            else
+                let root = findNextUnassigned parent
+                nextUnassignedSlot[index] <- root
+                root
+
+        // Reverse assignment preserves the prior "last matching source point wins" rule,
+        // while path compression ensures every reference slot is materialized at most once.
+        let mutable sourceIndex = points.Length - 1
+        while sourceIndex >= 0 do
+            let point = points[sourceIndex]
+            match matchingReferenceRange referenceTimestamps point.Timestamp point.Temporal with
+            | Some(first, lastExclusive) ->
+                let mutable targetIndex = findNextUnassigned first
+                while targetIndex < lastExclusive do
+                    projected[targetIndex] <- Some point
+                    nextUnassignedSlot[targetIndex] <- findNextUnassigned (targetIndex + 1)
+                    targetIndex <- nextUnassignedSlot[targetIndex]
+            | None -> ()
+            sourceIndex <- sourceIndex - 1
+
+        projected
+        |> Array.mapi (fun index point -> point |> Option.map (fun value -> index, value))
+        |> Array.choose id
 
     let candleSlotRange (referenceTimestamps: string array) (point: TaCandlePoint) =
-        let matching =
-            referenceTimestamps
-            |> Array.indexed
-            |> Array.choose (fun (index, timestamp) ->
-                if pointMatchesTimestamp timestamp point.Timestamp point.Temporal then Some index else None)
-
-        match matching |> Array.tryHead, matching |> Array.tryLast with
-        | Some first, Some last -> Some(first, last + 1)
-        | _ -> None
+        matchingReferenceRange referenceTimestamps point.Timestamp point.Temporal
 
     let projectedCandleSlots (referenceTimestamps: string array) (point: TaCandlePoint) =
-        let matchingSlots =
-            referenceTimestamps
-            |> Array.indexed
-            |> Array.choose (fun (index, timestamp) ->
-                if pointMatchesTimestamp timestamp point.Timestamp point.Temporal then Some index else None)
+        let matchingSlots = matchingReferenceIndexes referenceTimestamps point.Timestamp point.Temporal
         let sourceSpanCount = matchingSlots.Length
         matchingSlots |> Array.map (fun slotIndex -> slotIndex, sourceSpanCount, point)
 
@@ -635,10 +965,21 @@ module RendererModel =
         |> Array.choose _.Temporal
         |> Array.tryLast
 
+    let latestTemporalMetadataPrepared (trace: TaTraceSpec) prepared =
+        resolvedSeriesPrepared trace.DataRef prepared
+        |> Array.choose _.Temporal
+        |> Array.tryLast
+
     let rowTemporalMetadata (row: TaRowSpec) data =
         effectiveTraces row
         |> Array.filter _.Visible
         |> Array.choose (fun trace -> latestTemporalMetadata trace data)
+        |> Array.distinctBy (fun value -> value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality)
+
+    let rowTemporalMetadataPrepared (row: TaRowSpec) prepared =
+        effectiveTraces row
+        |> Array.filter _.Visible
+        |> Array.choose (fun trace -> latestTemporalMetadataPrepared trace prepared)
         |> Array.distinctBy (fun value -> value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality)
 
     let clampWindow minimumCount maximumCount total requested =

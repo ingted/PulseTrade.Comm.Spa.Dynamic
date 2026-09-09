@@ -1307,3 +1307,25 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 新增Contracts與Renderer明確回歸：同一`series.1k`／`series.5k`可同時被overlay與separate rows引用，shared cursor仍獨立產生四個trace值。Contracts 22/22、Renderer 28/28、Interactive.Client 4/4、Dynamic.Ptcs 13/13、Ptcs.Client 15/15通過。
 - Exact graph升為Contracts `0.1.8`、Renderer `0.1.15`、Interactive.Client `0.1.12`、Dynamic.Ptcs `0.1.8`、Ptcs.Client `0.1.9`。Interactive bundle manifest已與0.1.12對齊；package push/public readback於本log後續紀錄。
 - 五顆package push均回`Created`，NuGet public flat-container已可讀全部exact版本。Daedalus已收到版本、contract與M18 owner compose gate交接訊息`msg-fsi-0a72fc890c1c497faccd356ba4f3054d`。
+
+## 2026-09-09 - Live preview visible-close / chart hot-path correction
+
+- 使用者在真`02-history-live-1k-5k-sma.fsstl`觀察到最新bar close不隨成交價變動，且cursor約每秒卡頓。SPAA actual API verifier已證明同一current 1K Position的close由`7656`變成`7655.75`，剩餘根因為Renderer把每個`DataRevision`都送入chart composition，替換整個SVG stack。
+- Renderer改為分離chart topology state與live data state；同Position preview以WebSharper dynamic attributes原位更新candlestick/line/histogram及cursor reader，只有identity、DocumentRevision或visible timestamp topology改變才重建。新增unit明確區分same-position與appended-position。
+- Renderer `0.1.17` unit 29/29及exact-package BrowserDemo F# Playwright通過：visible close `28278.2038 -> 28279.4538`、chart render sequence不變、latest rerun cursor 168ms、console/page error 0。原project full WebSharper build被不可存取的ignored `websharper.log`阻擋；source-identical isolated staging full compiler build通過，未將工具檔ACL問題誤稱source failure。
+- 已發布Renderer `0.1.17`、Interactive.Client `0.1.13`、Ptcs.Client `0.1.10`並同步active demos/tests exact refs。Daedalus已收到版本與owner boundary，正以真SPAA重跑visible close/no-rerender/cursor gate；完成前DYN-TA-019維持95%。
+
+## 2026-09-10 - Live preview sustained cursor hot-path correction
+
+- Correction：Renderer `0.1.20`雖通過generic單次cursor/no-rerender gate，Daedalus以真SPAA 4,000 bars、12 SMA重測時第二次cursor為2650ms；12秒僅174個rAF sample／28次crosshair change。SPAA host CPU約6.97%，因此0.1.20不視為final。
+- Renderer `0.1.21`將mousemove從chart-wide `cursorIndex Var/View`移出，以單一requestAnimationFrame latest-wins slot直接更新固定crosshair/time/value DOM；live geometry改為per-candle與per-trace結構比較，只通知實際變動的SVG element/path。
+- 完整WebSharper編譯與exact-package gates通過：Renderer 29/29；Interactive lifecycle 4/4；Ptcs.Client 15/15。3,820 bars／28 series F# Playwright量得單次cursor 87ms、連續120 transitions共4919ms、最大246ms，same-position close原位更新、chart sequence不變、desktop/mobile console error 0。
+- 發布candidate graph：Contracts `0.1.8`、Renderer `0.1.21`、Interactive.Client `0.1.17`、Dynamic.Ptcs `0.1.8`、Ptcs.Client `0.1.14`。三顆push均回`Created`；local package SHA-256依序為`9C7BFD8E7EA6BC6FDBE412212F20A10AB0B3B2E798068A045A28BBBC6D0B131A`、`A7BAFBCC68F7447BCD7E975E4DB8CCD4E50E195B1E3EE1797462F1C2565D54D3`、`AA62AF871F82F0144707201D9716F058847C32D79A1A5436DB4D39673CE831E0`。DYN-TA-019仍待Daedalus真`02-history-live-1k-5k-sma.fsstl` M17 sustained gate後才關閉。
+- 三顆版本均已出現在public NuGet index；排除NuGet repository signing metadata後，public/local package entries逐項SHA-256 mismatch皆為0。
+
+## 2026-09-10 - Incremental preparation and stable live value readers
+
+- 真SPAA M17顯示Renderer `0.1.21`雖已移除cursor reactive fan-out，DataRevision仍會對全部retained data執行`prepareData`。Contracts `0.1.10`改為保留temporal prefix references並以operation-local revision驗證一次套用；T-078以精確4,000-point append/trim證明final axis/series revision一致且不要求resync。
+- Renderer `0.1.25`改為按`dataRef`、shared prefix與changed axis position增量prepare。WebSharper會把單純轉呼叫mutable tuple函式的reader wrapper eta-reduce成初始snapshot；改以每條trace的mutable reader cell保存最新cursor/legend reader後，同Position preview可同步更新SVG與既有row-value node。
+- UI補齊每列固定30px value band、label/value相鄰、`Undef`與長值不改row geometry，以及預設收合的chart-bottom跨尺度summary。F# Playwright以3,820 positions/28 series驗300次crosshair transitions共5602ms、max132ms、5次並行live preview、render sequence不變、historical close isolation與console/page error 0。
+- Local exact candidate graph為Contracts `0.1.10`、Renderer `0.1.25`、Interactive.Client `0.1.21`、Dynamic.Ptcs `0.1.10`、Ptcs.Client `0.1.18`；focused suites依序23/23、29/29、4/4、13/13、15/15通過。已以comm訊息`msg-fsi-b2b0281c782b41798814143bc22c1912`交接Daedalus重跑真`02-history-live-1k-5k-sma.fsstl` M17；完成前不public push、不標final。

@@ -3444,18 +3444,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    keyPlaceholder:String(_5||""), 
-    defaultKey:String(_6||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    keyPlaceholder:String(_5||""),
+    defaultKey:String(_6||""),
     submitKey:(payload) => {
       _7(payload);
-    }, 
+    },
     cancelKey:() => {
       _8();
-    }, 
+    },
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -3539,26 +3539,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    selectedKeyId:String(_5||""), 
-    selectedKeyJson:String(_6||""), 
-    selectedKeys:keyParts.slice(), 
-    keyParts:keyParts.slice(), 
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    valuePlaceholder:String(_8||""), 
-    valueText:String(_9||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    selectedKeyId:String(_5||""),
+    selectedKeyJson:String(_6||""),
+    selectedKeys:keyParts.slice(),
+    keyParts:keyParts.slice(),
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    valuePlaceholder:String(_8||""),
+    valueText:String(_9||""),
     submit:(payload) => {
       _10(payload);
-    }, 
+    },
     setValue:(payload) => {
       _11(payload);
-    }, 
-    composerMode:String(_12||"plain"), 
+    },
+    composerMode:String(_12||"plain"),
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -4207,8 +4207,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"), 
-      priority:Number(priority||0), 
+      name:String(name||"unnamed"),
+      priority:Number(priority||0),
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -4658,14 +4658,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
   let socket, requestSequence, lifecycle, pollTimer, timeoutTimer, reconnectTimer, jsonExportRequested, jsonExportBootstrapAttempts, jsonExportBootstrapInFlight, jsonExportInFlight, actionRequestOverride, pendingActionCompletion;
   const identity={DocumentId:{$:0, $0:"pending-"+channelId}, CanvasInstanceId:{$:0, $0:canvasId}};
   const runtimeState=_c_3.Create_1({
-    Identity:identity, 
-    Document:null, 
-    Data:new FSharpMap("New", []), 
-    DocumentRevision:0n, 
-    DataRevision:0n, 
-    LastTransportSequence:0n, 
-    View:{Values:new FSharpMap("New", [])}, 
-    Poll:{$:0}, 
+    Identity:identity,
+    Document:null,
+    Data:new FSharpMap("New", []),
+    DocumentRevision:0n,
+    DataRevision:0n,
+    LastTransportSequence:0n,
+    View:{Values:new FSharpMap("New", [])},
+    Poll:{$:0},
     LastError:null
   });
   socket=null;
@@ -4747,14 +4747,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
     lifecycle=next;
     const _1=runtimeState.Get();
     let _2={
-      Identity:_1.Identity, 
-      Document:_1.Document, 
-      Data:_1.Data, 
-      DocumentRevision:_1.DocumentRevision, 
-      DataRevision:_1.DataRevision, 
-      LastTransportSequence:_1.LastTransportSequence, 
-      View:_1.View, 
-      Poll:next.Poll, 
+      Identity:_1.Identity,
+      Document:_1.Document,
+      Data:_1.Data,
+      DocumentRevision:_1.DocumentRevision,
+      DataRevision:_1.DataRevision,
+      LastTransportSequence:_1.LastTransportSequence,
+      View:_1.View,
+      Poll:next.Poll,
       LastError:_1.LastError
     };
     runtimeState.Set(_2);
@@ -4841,17 +4841,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                     const message=m_2.$0;
                     const _4=runtimeState.Get();
                     let _5={
-                      Identity:_4.Identity, 
-                      Document:_4.Document, 
-                      Data:_4.Data, 
-                      DocumentRevision:_4.DocumentRevision, 
-                      DataRevision:_4.DataRevision, 
-                      LastTransportSequence:_4.LastTransportSequence, 
-                      View:_4.View, 
-                      Poll:_4.Poll, 
+                      Identity:_4.Identity,
+                      Document:_4.Document,
+                      Data:_4.Data,
+                      DocumentRevision:_4.DocumentRevision,
+                      DataRevision:_4.DataRevision,
+                      LastTransportSequence:_4.LastTransportSequence,
+                      View:_4.View,
+                      Poll:_4.Poll,
                       LastError:Some({
-                        ReasonCode:"ta-export-download-failed", 
-                        Message:message, 
+                        ReasonCode:"ta-export-download-failed",
+                        Message:message,
                         Recoverable:true
                       })
                     };
@@ -4862,17 +4862,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                 else {
                   const _6=runtimeState.Get();
                   let _7={
-                    Identity:_6.Identity, 
-                    Document:_6.Document, 
-                    Data:_6.Data, 
-                    DocumentRevision:_6.DocumentRevision, 
-                    DataRevision:_6.DataRevision, 
-                    LastTransportSequence:_6.LastTransportSequence, 
-                    View:_6.View, 
-                    Poll:_6.Poll, 
+                    Identity:_6.Identity,
+                    Document:_6.Document,
+                    Data:_6.Data,
+                    DocumentRevision:_6.DocumentRevision,
+                    DataRevision:_6.DataRevision,
+                    LastTransportSequence:_6.LastTransportSequence,
+                    View:_6.View,
+                    Poll:_6.Poll,
                     LastError:Some({
-                      ReasonCode:"ta-export-full-state-required", 
-                      Message:"The TA export response was not a full runtime state.", 
+                      ReasonCode:"ta-export-full-state-required",
+                      Message:"The TA export response was not a full runtime state.",
                       Recoverable:true
                     })
                   };
@@ -4885,8 +4885,8 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               let _9=StateAccepted(state.DataRevision, _8);
               apply(_9);
               completePendingAction(response.requestId, {
-                $:0, 
-                $0:response.requestId, 
+                $:0,
+                $0:response.requestId,
                 $1:state.DocumentRevision
               });
               return jsonExportCompleted&&disposeAfterJsonExport?void apply(Dispose):tryStartJsonExport();
@@ -4906,36 +4906,36 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               }
               else _2=false;
               _3=_2?{
-                $:2, 
-                $0:response.requestId, 
+                $:2,
+                $0:response.requestId,
                 $1:BigInt(Math.trunc(m[1]))
               }:{
-                $:1, 
-                $0:response.requestId, 
-                $1:"transient-command-failed", 
+                $:1,
+                $0:response.requestId,
+                $1:"transient-command-failed",
                 $2:responseError
               };
             }
             else _3={
-              $:1, 
-              $0:response.requestId, 
-              $1:"transient-command-failed", 
+              $:1,
+              $0:response.requestId,
+              $1:"transient-command-failed",
               $2:responseError
             };
             completePendingAction(response.requestId, _3);
             const _12=runtimeState.Get();
             let _13={
-              Identity:_12.Identity, 
-              Document:_12.Document, 
-              Data:_12.Data, 
-              DocumentRevision:_12.DocumentRevision, 
-              DataRevision:_12.DataRevision, 
-              LastTransportSequence:_12.LastTransportSequence, 
-              View:_12.View, 
-              Poll:_12.Poll, 
+              Identity:_12.Identity,
+              Document:_12.Document,
+              Data:_12.Data,
+              DocumentRevision:_12.DocumentRevision,
+              DataRevision:_12.DataRevision,
+              LastTransportSequence:_12.LastTransportSequence,
+              View:_12.View,
+              Poll:_12.Poll,
               LastError:Some({
-                ReasonCode:"transient-command-failed", 
-                Message:text(response.error), 
+                ReasonCode:"transient-command-failed",
+                Message:text(response.error),
                 Recoverable:true
               })
             };
@@ -4966,17 +4966,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         jsonExportBootstrapInFlight=false;
         const _1=runtimeState.Get();
         let _2={
-          Identity:_1.Identity, 
-          Document:_1.Document, 
-          Data:_1.Data, 
-          DocumentRevision:_1.DocumentRevision, 
-          DataRevision:_1.DataRevision, 
-          LastTransportSequence:_1.LastTransportSequence, 
-          View:_1.View, 
-          Poll:_1.Poll, 
+          Identity:_1.Identity,
+          Document:_1.Document,
+          Data:_1.Data,
+          DocumentRevision:_1.DocumentRevision,
+          DataRevision:_1.DataRevision,
+          LastTransportSequence:_1.LastTransportSequence,
+          View:_1.View,
+          Poll:_1.Poll,
           LastError:Some({
-            ReasonCode:"ta-export-bootstrap-empty", 
-            Message:"TA export bootstrap returned no runtime data after three attempts.", 
+            ReasonCode:"ta-export-bootstrap-empty",
+            Message:"TA export bootstrap returned no runtime data after three attempts.",
             Recoverable:true
           })
         };
@@ -4984,12 +4984,12 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         if(disposeAfterJsonExport)apply(Dispose);
       }
       else if(exists((a) => a.$==2, apply(StartAction(hasRuntimeData?{
-        $:9, 
-        $0:identity.CanvasInstanceId, 
+        $:9,
+        $0:identity.CanvasInstanceId,
         $1:"json-export"
       }:{
-        $:8, 
-        $0:identity.CanvasInstanceId, 
+        $:8,
+        $0:identity.CanvasInstanceId,
         $1:runtimeState.Get().DataRevision
       }))))if(hasRuntimeData){
         jsonExportRequested=false;
@@ -5078,8 +5078,8 @@ function transition(options, event, state){
       return[New_43(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 4:
       return[New_43(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
-        $:8, 
-        $0:state.CanvasInstanceId, 
+        $:8,
+        $0:state.CanvasInstanceId,
         $1:state.DataRevision
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 5:
@@ -5094,8 +5094,8 @@ function transition(options, event, state){
       return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_43(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_43(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_43(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
     case 9:
       return[New_43(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
-        $:9, 
-        $0:state.CanvasInstanceId, 
+        $:9,
+        $0:state.CanvasInstanceId,
         $1:_1
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 10:
@@ -5123,10 +5123,10 @@ function reconnectDelay(options, attempt){
 }
 function New(PollIntervalMs, RequestTimeoutMs, PollRetryMs, ReconnectBaseMs, ReconnectMaximumMs){
   return{
-    PollIntervalMs:PollIntervalMs, 
-    RequestTimeoutMs:RequestTimeoutMs, 
-    PollRetryMs:PollRetryMs, 
-    ReconnectBaseMs:ReconnectBaseMs, 
+    PollIntervalMs:PollIntervalMs,
+    RequestTimeoutMs:RequestTimeoutMs,
+    PollRetryMs:PollRetryMs,
+    ReconnectBaseMs:ReconnectBaseMs,
     ReconnectMaximumMs:ReconnectMaximumMs
   };
 }
@@ -5160,8 +5160,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_2(Attr, {
-      $:2, 
-      $0:Item1, 
+      $:2,
+      $0:Item1,
       $1:Item2
     });
   }
@@ -5175,17 +5175,17 @@ function filter(f, o){
 }
 function New_1(RuntimeState, SetActive, RequestJsonExport, Dispose_1){
   return{
-    RuntimeState:RuntimeState, 
-    SetActive:SetActive, 
-    RequestJsonExport:RequestJsonExport, 
+    RuntimeState:RuntimeState,
+    SetActive:SetActive,
+    RequestJsonExport:RequestJsonExport,
     Dispose:Dispose_1
   };
 }
 function New_2(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
@@ -5339,6 +5339,9 @@ function foldBack(f, arr, zero){
   for(let i=1, _1=len;i<=_1;i++)acc=f(arr[len-i], acc);
   return acc;
 }
+function tryItem(i, arr){
+  return arr.length<=i||i<0?null:Some(arr[i]);
+}
 function indexed(ar){
   return mapi((_1, _2) =>[_1, _2], ar);
 }
@@ -5368,8 +5371,15 @@ function sumBy(f, arr){
   for(let i=0;i<arr.length;i++)sum+=f(arr[i]);
   return sum;
 }
+function take(n, ar){
+  return n<0?nonNegative():n>ar.length?insufficient():ar.slice(0, n);
+}
 function sortByDescending(f, arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) =>-Compare(_1[1], _2[1])));
+}
+function find(f, arr){
+  const m=tryFind(f, arr);
+  return m==null?FailWith("KeyNotFoundException"):m.$0;
 }
 function min(arr){
   let m;
@@ -5816,16 +5826,16 @@ function tryJson(text_1){
 }
 function New_3(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_4(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
   };
 }
@@ -6521,8 +6531,8 @@ class FSharpList {
   static Empty=Create_2(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_2(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -6550,16 +6560,16 @@ function TryParse_1(s, r){
 }
 function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
@@ -6579,43 +6589,43 @@ function set(arr, n, x){
 }
 function New_6(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
 function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -6715,51 +6725,51 @@ function collect_1(f, l){
 }
 function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
 function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    displayName:displayName, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    displayName:displayName,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_12(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
 function New_13(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    keyMode:keyMode, 
+    pageId:pageId,
+    keyJson:keyJson,
+    keyMode:keyMode,
     displayName:displayName
   };
 }
 function New_14(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
@@ -6771,17 +6781,17 @@ function New_16(pageId, keyId){
 }
 function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
@@ -6925,6 +6935,9 @@ function fold_1(f, x, s){
     if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
   }
 }
+function init_1(n, f){
+  return take_1(n, initInfinite(f));
+}
 function concat_2(ss){
   return{GetEnumerator:() => {
     const outerE=Get(ss);
@@ -6985,6 +6998,30 @@ function exists2(p, s1, s2){
 function rev(s){
   return delay(() => ofSeq(s).slice().reverse());
 }
+function take_1(n, s){
+  n<0?nonNegative():void 0;
+  return{GetEnumerator:() => {
+    const e=[Get(s)];
+    return new T(0, null, (o) => {
+      o.s=o.s+1;
+      if(o.s>n)return false;
+      else {
+        const en=e[0];
+        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
+      }
+    }, () => {
+      const x=e[0];
+      if(!Equals(x, null))x.Dispose();
+    });
+  }};
+}
+function initInfinite(f){
+  return{GetEnumerator:() => new T(0, null, (e) => {
+    e.c=f(e.s);
+    e.s=e.s+1;
+    return true;
+  }, void 0)};
+}
 function max_1(s){
   const e=Get(s);
   try {
@@ -7017,76 +7054,49 @@ function unfold(f, s){
     }
   }, void 0)};
 }
-function init_1(n, f){
-  return take(n, initInfinite(f));
-}
 function seqEmpty(){
   return FailWith("The input sequence was empty.");
 }
-function take(n, s){
-  n<0?nonNegative():void 0;
-  return{GetEnumerator:() => {
-    const e=[Get(s)];
-    return new T(0, null, (o) => {
-      o.s=o.s+1;
-      if(o.s>n)return false;
-      else {
-        const en=e[0];
-        return Equals(en, null)?insufficient():en.MoveNext()?(o.c=en.Current,o.s===n?(en.Dispose(),e[0]=null):void 0,true):(en.Dispose(),e[0]=null,insufficient());
-      }
-    }, () => {
-      const x=e[0];
-      if(!Equals(x, null))x.Dispose();
-    });
-  }};
-}
-function initInfinite(f){
-  return{GetEnumerator:() => new T(0, null, (e) => {
-    e.c=f(e.s);
-    e.s=e.s+1;
-    return true;
-  }, void 0)};
-}
 function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
@@ -7095,10 +7105,10 @@ function New_21(maxSequence, buckets){
 }
 function New_22(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
     tags:tags
   };
 }
@@ -7107,9 +7117,9 @@ function New_23(reason){
 }
 function New_24(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
@@ -7233,20 +7243,20 @@ function ToSeq(m){
 }
 function New_25(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId, 
-    nodeAddress:nodeAddress, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId,
+    nodeAddress:nodeAddress,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
 function New_26(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
@@ -7309,24 +7319,24 @@ function New_28(participantId){
 }
 function New_29(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
   return{
-    participantId:participantId, 
-    displayName:displayName, 
-    login:login, 
-    authenticated:authenticated, 
-    provider:provider, 
-    logoutPath:logoutPath, 
-    authenticatedParticipantId:authenticatedParticipantId, 
-    viewAsParticipantId:viewAsParticipantId, 
+    participantId:participantId,
+    displayName:displayName,
+    login:login,
+    authenticated:authenticated,
+    provider:provider,
+    logoutPath:logoutPath,
+    authenticatedParticipantId:authenticatedParticipantId,
+    viewAsParticipantId:viewAsParticipantId,
     viewAsActive:viewAsActive
   };
 }
 function New_30(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
@@ -7335,38 +7345,38 @@ function New_31(messages, nextAfterMessageId){
 }
 function New_32(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
 function New_33(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_34(fromId, toId, body, tags){
   return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    fromId:fromId,
+    toId:toId,
+    body:body,
     tags:tags
   };
 }
 function New_35(messageId, speaker, createdAtUtc, body){
   return{
-    messageId:messageId, 
-    speaker:speaker, 
-    createdAtUtc:createdAtUtc, 
+    messageId:messageId,
+    speaker:speaker,
+    createdAtUtc:createdAtUtc,
     body:body
   };
 }
@@ -7695,8 +7705,8 @@ function UpdateEmbedNode(node, upd){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""), 
-    Dirty:false, 
+    Text:globalThis.document.createTextNode(""),
+    Dirty:false,
     Value:""
   };
 }
@@ -7779,8 +7789,8 @@ function ElemDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0, 
-    $0:Item1, 
+    $:0,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -7792,31 +7802,31 @@ function TextDoc(Item){
 }
 function New_36(shape, label, badge, className){
   return{
-    shape:shape, 
-    label:label, 
-    badge:badge, 
+    shape:shape,
+    label:label,
+    badge:badge,
     className:className
   };
 }
 function New_37(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath, 
-    sessionPath:sessionPath, 
-    logoutPath:logoutPath, 
-    returnUrl:returnUrl, 
-    protectedRoute:protectedRoute, 
-    sessionCookieName:sessionCookieName, 
-    title:title, 
-    lead:lead, 
-    providerLabel:providerLabel, 
+    submitPath:submitPath,
+    sessionPath:sessionPath,
+    logoutPath:logoutPath,
+    returnUrl:returnUrl,
+    protectedRoute:protectedRoute,
+    sessionCookieName:sessionCookieName,
+    title:title,
+    lead:lead,
+    providerLabel:providerLabel,
     aclLabel:aclLabel
   };
 }
 function New_38(userName, password, returnUrl, keepSession){
   return{
-    userName:userName, 
-    password:password, 
-    returnUrl:returnUrl, 
+    userName:userName,
+    password:password,
+    returnUrl:returnUrl,
     keepSession:keepSession
   };
 }
@@ -7930,12 +7940,12 @@ class T extends Object_1 {
 }
 function New_39(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId, 
-    TabId:TabId, 
-    ValueId:ValueId, 
-    CreatedAtUtc:CreatedAtUtc, 
-    Direction:Direction, 
-    Tags:Tags, 
+    PageId:PageId,
+    TabId:TabId,
+    ValueId:ValueId,
+    CreatedAtUtc:CreatedAtUtc,
+    Direction:Direction,
+    Tags:Tags,
     Payload:Payload
   };
 }
@@ -7944,13 +7954,13 @@ function New_40(participantId){
 }
 function New_41(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -7984,6 +7994,9 @@ class FSharpMap extends Object_1 {
   }
   get Tree(){
     return this.tree;
+  }
+  Remove_1(k){
+    return new FSharpMap("New_1", Remove(Pair.New(k, void 0), this.tree));
   }
   CompareTo0(other){
     return compareWith((_1, _2) => Compare(_1, _2), this, other);
@@ -8234,11 +8247,11 @@ let _c_3=Lazy((_i) => class Var_1 extends Object_1 {
 });
 function New_42(type, requestId, extensionId, channelId, operation, payload){
   return{
-    type:type, 
-    requestId:requestId, 
-    extensionId:extensionId, 
-    channelId:channelId, 
-    operation:operation, 
+    type:type,
+    requestId:requestId,
+    extensionId:extensionId,
+    channelId:channelId,
+    operation:operation,
     payload:payload
   };
 }
@@ -8250,15 +8263,15 @@ function Error_1(ErrorValue){
 }
 function New_43(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
   return{
-    CanvasInstanceId:CanvasInstanceId, 
-    Poll:Poll, 
-    PollEnabled:PollEnabled, 
-    Connected:Connected_1, 
-    Active:Active, 
-    InFlight:InFlight, 
-    DataRevision:DataRevision, 
-    ReconnectAttempt:ReconnectAttempt, 
-    DisposePending:DisposePending, 
+    CanvasInstanceId:CanvasInstanceId,
+    Poll:Poll,
+    PollEnabled:PollEnabled,
+    Connected:Connected_1,
+    Active:Active,
+    InFlight:InFlight,
+    DataRevision:DataRevision,
+    ReconnectAttempt:ReconnectAttempt,
+    DisposePending:DisposePending,
     Disposed:Disposed
   };
 }
@@ -8327,14 +8340,14 @@ function applyWire(current, wire){
     else {
       const mergedSeries=wire.series==null?current.Data:fold((_3, _4) => {
         const p=mergeSeries({
-          Identity:current.Identity, 
-          Document:current.Document, 
-          Data:_3, 
-          DocumentRevision:current.DocumentRevision, 
-          DataRevision:current.DataRevision, 
-          LastTransportSequence:current.LastTransportSequence, 
-          View:current.View, 
-          Poll:current.Poll, 
+          Identity:current.Identity,
+          Document:current.Document,
+          Data:_3,
+          DocumentRevision:current.DocumentRevision,
+          DataRevision:current.DataRevision,
+          LastTransportSequence:current.LastTransportSequence,
+          View:current.View,
+          Poll:current.Poll,
           LastError:current.LastError
         }, wire.timeline, _4);
         return _3.Add_1(p[0], p[1]);
@@ -8346,14 +8359,14 @@ function applyWire(current, wire){
       const m=decoded.Data.TryFind(statusRef);
       let _1=m==null?mergedSharedTemporal:mergedSharedTemporal.Add_1(statusRef, m.$0);
       let _2={
-        Identity:decoded.Identity, 
-        Document:decoded.Document, 
-        Data:_1, 
-        DocumentRevision:decoded.DocumentRevision, 
-        DataRevision:decoded.DataRevision, 
-        LastTransportSequence:decoded.LastTransportSequence, 
-        View:current.View, 
-        Poll:decoded.Poll, 
+        Identity:decoded.Identity,
+        Document:decoded.Document,
+        Data:_1,
+        DocumentRevision:decoded.DocumentRevision,
+        DataRevision:decoded.DataRevision,
+        LastTransportSequence:decoded.LastTransportSequence,
+        View:current.View,
+        Poll:decoded.Poll,
         LastError:decoded.LastError
       };
       return Ok(_2);
@@ -8397,29 +8410,29 @@ function stateFromWire(wire){
       const K=rowKind(row.kind);
       const D=text(row.dataRef);
       const T_1=row.traces==null?[]:map((trace) =>({
-        TraceId:text(trace.traceId), 
-        Kind:traceKind(trace.kind), 
-        DataRef:text(trace.dataRef), 
-        Label:text(trace.label), 
-        Color:text(trace.color), 
-        Width:trace.width, 
-        Visible:trace.visible, 
+        TraceId:text(trace.traceId),
+        Kind:traceKind(trace.kind),
+        DataRef:text(trace.dataRef),
+        Label:text(trace.label),
+        Color:text(trace.color),
+        Width:trace.width,
+        Visible:trace.visible,
         CandleDataRefs:trace.hasCandleDataRefs?Some({
-          OpenRef:text(trace.candleOpenRef), 
-          HighRef:text(trace.candleHighRef), 
-          LowRef:text(trace.candleLowRef), 
-          CloseRef:text(trace.candleCloseRef), 
+          OpenRef:text(trace.candleOpenRef),
+          HighRef:text(trace.candleHighRef),
+          LowRef:text(trace.candleLowRef),
+          CloseRef:text(trace.candleCloseRef),
           VolumeRef:text(trace.candleVolumeRef)
-        }):null, 
+        }):null,
         Options:new FSharpMap("New", [])
       }), row.traces);
       return{
-        RowId:R, 
-        Kind:K, 
-        DataRef:D, 
-        HeightWeight:row.heightWeight, 
-        Visible:row.visible, 
-        Options:mapFromWire(row.options), 
+        RowId:R,
+        Kind:K,
+        DataRef:D,
+        HeightWeight:row.heightWeight,
+        Visible:row.visible,
+        Options:mapFromWire(row.options),
         Traces:T_1
       };
     }, wire.rows);
@@ -8432,8 +8445,8 @@ function stateFromWire(wire){
     const data=Fold((_1, _2, _3) => _1.Add_1(_2, _3), seriesData, sharedTemporalData).Add_1(text(wire.statusRef), status);
     const defaultView=OfArray(ofSeq(ofSeq_1(delay(() => append_2(!IsNullOrWhiteSpace(wire.querySourceId)?[["query.sourceId", {$:3, $0:text(wire.querySourceId)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryInstrument)?[["query.instrument", {$:3, $0:text(wire.queryInstrument)}]]:[], delay(() => append_2(wire.queryIntervalMinutes>0?[["query.intervalMinutes", {$:2, $0:wire.queryIntervalMinutes}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryFromUtc)?[["query.fromUtc", {$:3, $0:text(wire.queryFromUtc)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryToUtcExclusive)?[["query.toUtcExclusive", {$:3, $0:text(wire.queryToUtcExclusive)}]]:[], delay(() =>[["query.includePartial", {$:1, $0:wire.queryIncludePartial}]]))))))))))))));
     const lastError=IsNullOrWhiteSpace(wire.errorCode)&&IsNullOrWhiteSpace(wire.errorMessage)?null:Some({
-      ReasonCode:text(wire.errorCode), 
-      Message:text(wire.errorMessage), 
+      ReasonCode:text(wire.errorCode),
+      Message:text(wire.errorMessage),
       Recoverable:wire.errorRecoverable
     });
     if(wire.editorSchemas==null)editorSchemas=[];
@@ -8442,26 +8455,26 @@ function stateFromWire(wire){
       editorSchemas=choose((x) => ToOption(f(x)), wire.editorSchemas);
     }
     return!(wire.editorSchemas==null)&&length(editorSchemas)!==length(wire.editorSchemas)?Error_1("TA browser editor schema catalog is invalid."):Ok({
-      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}}, 
+      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}},
       Document:Some({
-        WorkspaceId:text(wire.workspaceId), 
-        Title:text(wire.title), 
-        RowsRef:text(wire.rowsRef), 
-        StatusRef:text(wire.statusRef), 
-        SharedTimeAxis:wire.sharedTimeAxis, 
-        TemporalAxisRefs:wire.temporalAxisRefs==null?[]:wire.temporalAxisRefs, 
-        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)), 
-        Rows:rows, 
-        EditorSchemas:editorSchemas, 
-        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions, 
+        WorkspaceId:text(wire.workspaceId),
+        Title:text(wire.title),
+        RowsRef:text(wire.rowsRef),
+        StatusRef:text(wire.statusRef),
+        SharedTimeAxis:wire.sharedTimeAxis,
+        TemporalAxisRefs:wire.temporalAxisRefs==null?[]:wire.temporalAxisRefs,
+        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)),
+        Rows:rows,
+        EditorSchemas:editorSchemas,
+        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions,
         DefaultView:defaultView
-      }), 
-      Data:data, 
-      DocumentRevision:wire.documentRevision, 
-      DataRevision:wire.dataRevision, 
-      LastTransportSequence:wire.transportSequence, 
-      View:{Values:new FSharpMap("New", [])}, 
-      Poll:pollState(wire.pollKind), 
+      }),
+      Data:data,
+      DocumentRevision:wire.documentRevision,
+      DataRevision:wire.dataRevision,
+      LastTransportSequence:wire.transportSequence,
+      View:{Values:new FSharpMap("New", [])},
+      Poll:pollState(wire.pollKind),
       LastError:lastError
     });
   }
@@ -8560,8 +8573,8 @@ function ResyncRequired(reasonCode){
 }
 function StateAccepted(dataRevision, pollEnabled){
   return{
-    $:1, 
-    $0:dataRevision, 
+    $:1,
+    $0:dataRevision,
     $1:pollEnabled
   };
 }
@@ -8574,7 +8587,7 @@ function ActiveChanged(Item){
   return{$:7, $0:Item};
 }
 function render(options, callbacks, runtimeState){
-  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, editingRowId, pendingEditorMutation, navigatorElement, finishNavigatorDrag, chartRenderSequence, actionSequence;
+  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, editingRowId, pendingEditorMutation, navigatorElement, finishNavigatorDrag, chartRenderSequence, chartStackElement, latestCursorTimestamps, latestCursorReaders, pendingCursorIndex, cursorFrameScheduled, actionSequence, preparedDataForShell, observedChartTopology, observedDataIdentity, observedDataRevision;
   const currentCanvasId=() => runtimeState.Get().Identity.CanvasInstanceId;
   const configuredEditorSchemas=options.EditorSchemas==null?[]:options.EditorSchemas;
   const editorSchemasNow=() => {
@@ -8613,13 +8626,18 @@ function render(options, callbacks, runtimeState){
   finishNavigatorDrag=null;
   chartRenderSequence=0;
   const cursorIndex=_c_3.Create_1(null);
+  chartStackElement=null;
+  latestCursorTimestamps=[];
+  latestCursorReaders=[];
+  pendingCursorIndex=null;
+  cursorFrameScheduled=false;
   const uiState=_c_3.Create_1({
-    Window:{StartIndex:0, Count:options.DefaultVisibleBars}, 
-    FollowLatest:true, 
-    HiddenRows:new FSharpSet("New_2", null), 
-    AddRowOpen:false, 
-    CursorIndex:null, 
-    PendingActionId:null, 
+    Window:{StartIndex:0, Count:options.DefaultVisibleBars},
+    FollowLatest:true,
+    HiddenRows:new FSharpSet("New_2", null),
+    AddRowOpen:false,
+    CursorIndex:null,
+    PendingActionId:null,
     Feedback:""
   });
   const chartUiState=_c_3.Create_1(uiState.Get());
@@ -8642,14 +8660,37 @@ function render(options, callbacks, runtimeState){
   const startActionWith=(action, successText, onAccepted, onRejected) => {
     actionSequence=actionSequence+1;
     const request={
-      RequestId:canvasIdText(currentCanvasId())+":ui:"+String(actionSequence), 
-      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision), 
+      RequestId:canvasIdText(currentCanvasId())+":ui:"+String(actionSequence),
+      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision),
       Action:action
     };
     return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted, onRejected);
   };
   const startAction=(action, successText, onAccepted) => startActionWith(action, successText, onAccepted, () => { });
-  const chartRuntimeView=MapCachedBy((_3, _4) => _3.DocumentRevision===_4.DocumentRevision&&_3.DataRevision===_4.DataRevision&&_3.LastTransportSequence===_4.LastTransportSequence, (x) => x, runtimeState.View);
+  const chartRuntimeState=_c_3.Create_1(runtimeState.Get());
+  const initialPreparedData=prepareData(runtimeState.Get().Data);
+  const runtimeDataState=_c_3.Create_1(initialPreparedData);
+  preparedDataForShell=initialPreparedData;
+  observedChartTopology=chartTopologySignaturePrepared(runtimeState.Get(), initialPreparedData);
+  observedDataIdentity=runtimeState.Get().Identity;
+  observedDataRevision=runtimeState.Get().DataRevision;
+  Sink((next) => {
+    const dataChanged=!Equals(next.Identity, observedDataIdentity)||next.DataRevision!==observedDataRevision;
+    const nextPreparedData=!Equals(next.Identity, observedDataIdentity)?prepareData(next.Data):dataChanged?prepareDataIncremental(runtimeDataState.Get(), next.Data):runtimeDataState.Get();
+    const nextChartTopology=chartTopologySignaturePrepared(next, nextPreparedData);
+    if(!Equals(next.Identity, chartRuntimeState.Get().Identity)||next.DocumentRevision!==chartRuntimeState.Get().DocumentRevision||!Equals(nextChartTopology, observedChartTopology)){
+      observedChartTopology=nextChartTopology;
+      preparedDataForShell=nextPreparedData;
+      chartRuntimeState.Set(next);
+    }
+    if(dataChanged){
+      observedDataIdentity=next.Identity;
+      observedDataRevision=next.DataRevision;
+      runtimeDataState.Set(nextPreparedData);
+    }
+  }, runtimeState.View);
+  const chartRuntimeView=chartRuntimeState.View;
+  const runtimeDataView=runtimeDataState.View;
   const actionAllowed=(actionName) => {
     const o_2=runtimeState.Get().Document;
     const o_3=o_2==null?null:Some(o_2.$0.AllowedActions);
@@ -8667,12 +8708,12 @@ function render(options, callbacks, runtimeState){
       const bounded=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), followLatest, window_1);
       const changed=!Equals(bounded, resolvedWindow(current))||followLatest!=current.FollowLatest;
       setUiState({
-        Window:bounded, 
-        FollowLatest:followLatest, 
-        HiddenRows:current.HiddenRows, 
-        AddRowOpen:current.AddRowOpen, 
-        CursorIndex:null, 
-        PendingActionId:current.PendingActionId, 
+        Window:bounded,
+        FollowLatest:followLatest,
+        HiddenRows:current.HiddenRows,
+        AddRowOpen:current.AddRowOpen,
+        CursorIndex:null,
+        PendingActionId:current.PendingActionId,
         Feedback:current.Feedback
       });
       cursorIndex.Set(null);
@@ -8692,14 +8733,14 @@ function render(options, callbacks, runtimeState){
             const b_1=Compare(a_1, b)===1?a_1:b;
             let _4=Compare(a, b_1)===-1?a:b_1;
             let _5={
-              BaseRowId:range_1.BaseRowId, 
-              StartEventTimeUtc:range_1.StartEventTimeUtc, 
-              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc, 
+              BaseRowId:range_1.BaseRowId,
+              StartEventTimeUtc:range_1.StartEventTimeUtc,
+              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc,
               MaximumBasePoints:_4
             };
             let _6={
-              $:7, 
-              $0:_3, 
+              $:7,
+              $0:_3,
               $1:_5
             };
             return startAction(_6, "Visible range synchronized.", () => { });
@@ -8726,12 +8767,12 @@ function render(options, callbacks, runtimeState){
     setWindow(true, {StartIndex:0, Count:options.DefaultVisibleBars});
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window, 
-      FollowLatest:_3.FollowLatest, 
-      HiddenRows:_3.HiddenRows, 
-      AddRowOpen:_3.AddRowOpen, 
-      CursorIndex:_3.CursorIndex, 
-      PendingActionId:_3.PendingActionId, 
+      Window:_3.Window,
+      FollowLatest:_3.FollowLatest,
+      HiddenRows:_3.HiddenRows,
+      AddRowOpen:_3.AddRowOpen,
+      CursorIndex:_3.CursorIndex,
+      PendingActionId:_3.PendingActionId,
       Feedback:"Local view reset."
     };
     setUiState(_4);
@@ -8751,11 +8792,103 @@ function render(options, callbacks, runtimeState){
     event.preventDefault();
     finishNavigatorDrag==null?void 0:finishNavigatorDrag.$0();
   };
+  const cursorElements=(selector) => {
+    if(chartStackElement==null)return[];
+    else {
+      const nodes=chartStackElement.querySelectorAll(selector);
+      return ofSeq(delay(() => map_2((index) => nodes[index], range(0, toInt(nodes.length)-1))));
+    }
+  };
+  const setElementHidden=(hidden, element_2) => hidden?element_2.setAttribute("hidden", "hidden"):element_2.removeAttribute("hidden");
+  const applyCursorIndex=(value) => {
+    if(!(chartStackElement==null)){
+      let bounded, _3, _4;
+      if(value==null)bounded=null;
+      else {
+        const index=value.$0;
+        if(length(latestCursorTimestamps)===0)bounded=null;
+        else {
+          const a=0;
+          const b=length(latestCursorTimestamps)-1;
+          const b_1=Compare(index, b)===-1?index:b;
+          let _5=Compare(a, b_1)===1?a:b_1;
+          bounded=Some(_5);
+        }
+      }
+      let _6=chartStackElement;
+      const o_2=bounded==null?null:Some(String(bounded.$0));
+      let _7=o_2==null?"":o_2.$0;
+      _6.setAttribute("data-cursor-index", _7);
+      const crosshairs=cursorElements("[data-ta-shared-crosshair='true']");
+      const m=cursorPosition(1000, length(latestCursorTimestamps), bounded);
+      if(m==null){
+        for(let i=0, _8=crosshairs.length-1;i<=_8;i++)get(crosshairs, i).setAttribute("visibility", "hidden");
+        _3=void 0;
+      }
+      else {
+        const x=m.$0;
+        const xText=fixedText(x);
+        for(let i_1=0, _9=crosshairs.length-1;i_1<=_9;i_1++){
+          const line=get(crosshairs, i_1);
+          line.setAttribute("x1", xText);
+          line.setAttribute("x2", xText);
+          line.setAttribute("visibility", "visible");
+        }
+        _3=void 0;
+      }
+      const hint=tryHead(cursorElements("[data-ta-cursor-hint]"));
+      const time=tryHead(cursorElements("[data-ta-cursor-time]"));
+      const valueNodes=cursorElements("[data-ta-cursor-value-index]");
+      if(bounded!=null&&bounded.$==1){
+        const index_1=bounded.$0;
+        if(hint==null){ }
+        else setElementHidden(true, hint.$0);
+        if(time==null)_4=void 0;
+        else {
+          const node=time.$0;
+          _4=(node.textContent=compactTimestamp(get(latestCursorTimestamps, index_1)),setElementHidden(false, node));
+        }
+        for(let valueIndex=0, _10=length(valueNodes)-1;valueIndex<=_10;valueIndex++)(((valueIndex_1) => {
+          const node_1=get(valueNodes, valueIndex);
+          const o_3=tryItem(valueIndex_1, latestCursorReaders);
+          const m_1=o_3==null?null:o_3.$0(index_1);
+          if(m_1==null){
+            node_1.textContent="";
+            node_1.removeAttribute("data-cursor-row");
+            return setElementHidden(true, node_1);
+          }
+          else {
+            const current=m_1.$0;
+            node_1.textContent=current.Label+" "+current.Value;
+            node_1.setAttribute("data-cursor-row", current.Label);
+            return setElementHidden(false, node_1);
+          }
+        })(valueIndex));
+      }
+      else {
+        if(hint==null){ }
+        else setElementHidden(false, hint.$0);
+        if(time==null){ }
+        else setElementHidden(true, time.$0);
+        for(let i_2=0, _11=valueNodes.length-1;i_2<=_11;i_2++)setElementHidden(true, get(valueNodes, i_2));
+      }
+    }
+  };
   const setCursorIndex=(value) => {
-    if(!Equals(cursorIndex.Get(), value))cursorIndex.Set(value);
+    pendingCursorIndex=Some(value);
+    !cursorFrameScheduled?(cursorFrameScheduled=true,requestAnimationFrame(() => {
+      cursorFrameScheduled=false;
+      if(pendingCursorIndex==null){ }
+      else {
+        const value_1=pendingCursorIndex.$0;
+        pendingCursorIndex=null;
+        applyCursorIndex(value_1);
+      }
+    })):void 0;
   };
   const commitCursorIndex=(index) => {
     setCursorIndex(Some(index));
+    if(!Equals(cursorIndex.Get(), Some(index)))cursorIndex.Set(Some(index));
     if(actionAllowed("shared-cursor-changed")&&!commandsDisabledNow()){
       const m=runtimeState.Get().Document;
       if(m==null){ }
@@ -8769,8 +8902,8 @@ function render(options, callbacks, runtimeState){
           if(index>=0&&index<length(visible)){
             const baseRowId=m_1.$0;
             startAction({
-              $:6, 
-              $0:currentCanvasId(), 
+              $:6,
+              $0:currentCanvasId(),
               $1:{BaseRowId:baseRowId, EventTimeUtc:get(visible, index)}
             }, "Shared cursor synchronized.", () => { });
           }
@@ -8790,12 +8923,12 @@ function render(options, callbacks, runtimeState){
     pendingEditorMutation=null;
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window, 
-      FollowLatest:_3.FollowLatest, 
-      HiddenRows:_3.HiddenRows, 
-      AddRowOpen:false, 
-      CursorIndex:_3.CursorIndex, 
-      PendingActionId:_3.PendingActionId, 
+      Window:_3.Window,
+      FollowLatest:_3.FollowLatest,
+      HiddenRows:_3.HiddenRows,
+      AddRowOpen:false,
+      CursorIndex:_3.CursorIndex,
+      PendingActionId:_3.PendingActionId,
       Feedback:_3.Feedback
     };
     setUiState(_4);
@@ -8840,12 +8973,12 @@ function render(options, callbacks, runtimeState){
           if(maximum!=null&&maximum.$==1&&(count>=maximum.$0&&(_3=maximum.$0,true))){
             const _4=uiState.Get();
             let _5={
-              Window:_4.Window, 
-              FollowLatest:_4.FollowLatest, 
-              HiddenRows:_4.HiddenRows, 
-              AddRowOpen:_4.AddRowOpen, 
-              CursorIndex:_4.CursorIndex, 
-              PendingActionId:_4.PendingActionId, 
+              Window:_4.Window,
+              FollowLatest:_4.FollowLatest,
+              HiddenRows:_4.HiddenRows,
+              AddRowOpen:_4.AddRowOpen,
+              CursorIndex:_4.CursorIndex,
+              PendingActionId:_4.PendingActionId,
               Feedback:String(labelText)+" allows at most "+String(_3)+" item(s)."
             };
             setUiState(_5);
@@ -8932,16 +9065,16 @@ function render(options, callbacks, runtimeState){
     }}), o_2]);
     const parsedInterval=m[0]&&m[1]>0?Some(m[1]):null;
     const query={
-      SourceId:null, 
-      Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft), 
-      IntervalMinutes:parsedInterval, 
-      FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft), 
-      ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft), 
+      SourceId:null,
+      Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft),
+      IntervalMinutes:parsedInterval,
+      FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft),
+      ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft),
       IncludePartial:Some(true)
     };
     startAction({
-      $:5, 
-      $0:currentCanvasId(), 
+      $:5,
+      $0:currentCanvasId(),
       $1:query
     }, "Query accepted.", () => { });
   };
@@ -8954,12 +9087,12 @@ function render(options, callbacks, runtimeState){
       if(length(errors)>0){
         const _3=uiState.Get();
         let _4={
-          Window:_3.Window, 
-          FollowLatest:_3.FollowLatest, 
-          HiddenRows:_3.HiddenRows, 
-          AddRowOpen:_3.AddRowOpen, 
-          CursorIndex:_3.CursorIndex, 
-          PendingActionId:_3.PendingActionId, 
+          Window:_3.Window,
+          FollowLatest:_3.FollowLatest,
+          HiddenRows:_3.HiddenRows,
+          AddRowOpen:_3.AddRowOpen,
+          CursorIndex:_3.CursorIndex,
+          PendingActionId:_3.PendingActionId,
           Feedback:concat_1(" ", errors)
         };
         setUiState(_4);
@@ -8971,10 +9104,10 @@ function render(options, callbacks, runtimeState){
         const binding={TemplateKey:schema.TemplateKey, Values:editorValues.Get().slice()};
         pendingEditorMutation=Some([runtimeState.Get().DocumentRevision, editingRowId, new FSharpSet("New_2", OfSeq(map((a) => a.RowId, currentRows))), binding]);
         startActionWith({
-          $:3, 
-          $0:currentCanvasId(), 
-          $1:editingRowId, 
-          $2:schema.TemplateKey, 
+          $:3,
+          $0:currentCanvasId(),
+          $1:editingRowId,
+          $2:schema.TemplateKey,
           $3:editorValues.Get()
         }, schema.DisplayName+" accepted; awaiting authoritative document.", () => { }, () => {
           pendingEditorMutation=null;
@@ -9027,18 +9160,18 @@ function render(options, callbacks, runtimeState){
         addRowSequence=addRowSequence+1;
         const rowId="row-"+addKind.Get().toLowerCase()+"-"+String(addRowSequence);
         const spec={
-          RowId:rowId, 
-          Kind:kind, 
-          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()), 
-          HeightWeight:1, 
-          Visible:true, 
-          Options:rowOptions, 
+          RowId:rowId,
+          Kind:kind,
+          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()),
+          HeightWeight:1,
+          Visible:true,
+          Options:rowOptions,
           Traces:[]
         };
         pendingAddRowId=Some(rowId);
         startAction({
-          $:2, 
-          $0:currentCanvasId(), 
+          $:2,
+          $0:currentCanvasId(),
           $1:spec
         }, "Row accepted.", () => { });
       }
@@ -9046,12 +9179,12 @@ function render(options, callbacks, runtimeState){
         const message=optionsResult.$0;
         const _12=uiState.Get();
         let _13={
-          Window:_12.Window, 
-          FollowLatest:_12.FollowLatest, 
-          HiddenRows:_12.HiddenRows, 
-          AddRowOpen:_12.AddRowOpen, 
-          CursorIndex:_12.CursorIndex, 
-          PendingActionId:_12.PendingActionId, 
+          Window:_12.Window,
+          FollowLatest:_12.FollowLatest,
+          HiddenRows:_12.HiddenRows,
+          AddRowOpen:_12.AddRowOpen,
+          CursorIndex:_12.CursorIndex,
+          PendingActionId:_12.PendingActionId,
           Feedback:message
         };
         setUiState(_13);
@@ -9082,12 +9215,12 @@ function render(options, callbacks, runtimeState){
             pendingAddRowId=null;
             const _8=uiState.Get();
             let _9={
-              Window:_8.Window, 
-              FollowLatest:_8.FollowLatest, 
-              HiddenRows:_8.HiddenRows, 
-              AddRowOpen:false, 
-              CursorIndex:_8.CursorIndex, 
-              PendingActionId:_8.PendingActionId, 
+              Window:_8.Window,
+              FollowLatest:_8.FollowLatest,
+              HiddenRows:_8.HiddenRows,
+              AddRowOpen:false,
+              CursorIndex:_8.CursorIndex,
+              PendingActionId:_8.PendingActionId,
               Feedback:"Row added."
             };
             _4=setUiState(_9);
@@ -9119,12 +9252,12 @@ function render(options, callbacks, runtimeState){
               forceCloseRowEditor();
               const _10=uiState.Get();
               let _11={
-                Window:_10.Window, 
-                FollowLatest:_10.FollowLatest, 
-                HiddenRows:_10.HiddenRows, 
-                AddRowOpen:_10.AddRowOpen, 
-                CursorIndex:_10.CursorIndex, 
-                PendingActionId:_10.PendingActionId, 
+                Window:_10.Window,
+                FollowLatest:_10.FollowLatest,
+                HiddenRows:_10.HiddenRows,
+                AddRowOpen:_10.AddRowOpen,
+                CursorIndex:_10.CursorIndex,
+                PendingActionId:_10.PendingActionId,
                 Feedback:targetRowId!=null?"Row updated.":"Row added."
               };
               _6=setUiState(_11);
@@ -9191,12 +9324,12 @@ function render(options, callbacks, runtimeState){
           else resetEditorFor(m_2.$0.TemplateKey);
           const _12=uiState.Get();
           let _13={
-            Window:_12.Window, 
-            FollowLatest:_12.FollowLatest, 
-            HiddenRows:_12.HiddenRows, 
-            AddRowOpen:true, 
-            CursorIndex:_12.CursorIndex, 
-            PendingActionId:_12.PendingActionId, 
+            Window:_12.Window,
+            FollowLatest:_12.FollowLatest,
+            HiddenRows:_12.HiddenRows,
+            AddRowOpen:true,
+            CursorIndex:_12.CursorIndex,
+            PendingActionId:_12.PendingActionId,
             Feedback:""
           };
           setUiState(_13);
@@ -9215,12 +9348,12 @@ function render(options, callbacks, runtimeState){
           const nextHidden=hidden?uiState.Get().HiddenRows.Remove_1(row.RowId):uiState.Get().HiddenRows.Add_1(row.RowId);
           const _13=uiState.Get();
           let _14={
-            Window:_13.Window, 
-            FollowLatest:_13.FollowLatest, 
-            HiddenRows:nextHidden, 
-            AddRowOpen:_13.AddRowOpen, 
-            CursorIndex:_13.CursorIndex, 
-            PendingActionId:_13.PendingActionId, 
+            Window:_13.Window,
+            FollowLatest:_13.FollowLatest,
+            HiddenRows:nextHidden,
+            AddRowOpen:_13.AddRowOpen,
+            CursorIndex:_13.CursorIndex,
+            PendingActionId:_13.PendingActionId,
             Feedback:_13.Feedback
           };
           return setUiState(_14);
@@ -9231,12 +9364,12 @@ function render(options, callbacks, runtimeState){
               editingRowId=null;
               const _13=uiState.Get();
               let _14={
-                Window:_13.Window, 
-                FollowLatest:_13.FollowLatest, 
-                HiddenRows:_13.HiddenRows, 
-                AddRowOpen:false, 
-                CursorIndex:_13.CursorIndex, 
-                PendingActionId:_13.PendingActionId, 
+                Window:_13.Window,
+                FollowLatest:_13.FollowLatest,
+                HiddenRows:_13.HiddenRows,
+                AddRowOpen:false,
+                CursorIndex:_13.CursorIndex,
+                PendingActionId:_13.PendingActionId,
                 Feedback:"This row's editor metadata is invalid; the row remains read-only."
               };
               return setUiState(_14);
@@ -9250,12 +9383,12 @@ function render(options, callbacks, runtimeState){
               editorValues.Set(values);
               const _15=uiState.Get();
               let _16={
-                Window:_15.Window, 
-                FollowLatest:_15.FollowLatest, 
-                HiddenRows:_15.HiddenRows, 
-                AddRowOpen:true, 
-                CursorIndex:_15.CursorIndex, 
-                PendingActionId:_15.PendingActionId, 
+                Window:_15.Window,
+                FollowLatest:_15.FollowLatest,
+                HiddenRows:_15.HiddenRows,
+                AddRowOpen:true,
+                CursorIndex:_15.CursorIndex,
+                PendingActionId:_15.PendingActionId,
                 Feedback:""
               };
               return setUiState(_16);
@@ -9263,8 +9396,8 @@ function render(options, callbacks, runtimeState){
           }
           else return null;
         })], [Doc.TextNode("Edit")])]:[], delay(() =>[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+displayLabel+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
-          $:4, 
-          $0:currentCanvasId(), 
+          $:4,
+          $0:currentCanvasId(),
           $1:row.RowId
         }, displayLabel+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])))))))];
       }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-generic-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; min-width:0;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Template"), selectInput("ta-editor-template", selectedTemplate.Get(), ofArray(map((schema) =>[schema.TemplateKey, schema.DisplayName], editorSchemasNow())), resetEditorFor)]), Doc.EmbedView(Map((templateKey) => {
@@ -9292,33 +9425,8 @@ function render(options, callbacks, runtimeState){
         const overviewPoints=o_5==null?[]:o_5.$0;
         const visibleWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength_1, _13.FollowLatest, _13.Window);
         const visibleTimestamps=selectWindow(visibleWindow, referenceTimeline_1);
-        const renderedRows=mapi((_14, _15) => renderRowReactivePrepared(_12, _13, visibleTimestamps, cursorIndex.View, setCursorIndex, commitCursorIndex, _14===length(visibleRows)-1, Equals(document.BaseRowId, Some(_15.RowId)), _15), visibleRows);
+        const renderedRows=mapi((_14, _15) => renderRowReactivePreparedLive(_12, _13, preparedDataForShell, runtimeDataView, visibleTimestamps, cursorIndex.View, setCursorIndex, commitCursorIndex, _14===length(visibleRows)-1, Equals(document.BaseRowId, Some(_15.RowId)), _15), visibleRows);
         const cursorReaders=collect((t) => t[1], renderedRows);
-        const cursorIndexView=Map((o_6) => {
-          if(o_6==null)return null;
-          else {
-            const value=o_6.$0;
-            const a=0;
-            const x=Compare(a, value)===1?a:value;
-            const a_1=0;
-            const b=length(visibleTimestamps)-1;
-            const e=Compare(a_1, b)===1?a_1:b;
-            let _14=Compare(e, x)===-1?e:x;
-            return Some(_14);
-          }
-        }, cursorIndex.View);
-        const cursorValues=Map((currentIndex) => {
-          if(currentIndex!=null&&currentIndex.$==1){
-            const index=currentIndex.$0;
-            if(index>=0&&index<length(visibleTimestamps)){
-              const timestamp=get(visibleTimestamps, currentIndex.$0);
-              const values=choose((readCursor) => readCursor(timestamp), cursorReaders);
-              return Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-values"), Attr.Create("style", "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "white-space:nowrap;")], [Doc.TextNode(compactTimestamp(timestamp))])], delay(() => map_2((item) => Doc.Element("span", [Attr.Create("data-cursor-row", item.Label), Attr.Create("style", "min-width:0;")], [Doc.TextNode(item.Label+" "+item.Value)]), values))))));
-            }
-            else return Doc.Empty;
-          }
-          else return Doc.Element("div", [Attr.Create("style", "font-size:11px; color:#718197;")], [Doc.TextNode("Move the pointer over any chart row to inspect one shared bar.")]);
-        }, cursorIndexView);
         const visibleStart=visibleWindow.Count===0?0:visibleWindow.StartIndex+1;
         const visibleEnd=visibleWindow.StartIndex+visibleWindow.Count;
         const viewportRangeText=Map((draft) => {
@@ -9328,10 +9436,12 @@ function render(options, callbacks, runtimeState){
           }
           else return"Loaded "+String(referenceLength_1)+" bars · Viewing "+String(visibleStart)+"-"+String(visibleEnd);
         }, draftWindow.View);
-        return Doc.Element("div", [Attr.Create("data-testid", "ta-chart-stack"), Attr.Create("data-chart-render-sequence", String(chartRenderSequence)), Attr.Create("data-loaded-bars", String(referenceLength_1)), Attr.Create("data-visible-start", String(visibleStart)), Attr.Create("data-visible-end", String(visibleEnd)), Attr.Create("data-follow-latest", _13.FollowLatest?"true":"false"), Dynamic_1("data-cursor-index", Map((x) => {
-          const o_6=x==null?null:Some(String(x.$0));
-          return o_6==null?"":o_6.$0;
-        }, cursorIndexView)), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;")], ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[Doc.EmbedView(cursorValues)])))], delay(() => append_2(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:collect_2((m_2) =>[m_2[0]], renderedRows), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
+        return Doc.Element("div", [Attr.Create("data-testid", "ta-chart-stack"), Attr.Create("data-chart-render-sequence", String(chartRenderSequence)), Attr.Create("data-loaded-bars", String(referenceLength_1)), Attr.Create("data-visible-start", String(visibleStart)), Attr.Create("data-visible-end", String(visibleEnd)), Attr.Create("data-follow-latest", _13.FollowLatest?"true":"false"), Attr.Create("data-cursor-index", ""), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"), OnAfterRender((node) => {
+          chartStackElement=node;
+          latestCursorTimestamps=visibleTimestamps;
+          latestCursorReaders=cursorReaders;
+          applyCursorIndex(cursorIndex.Get());
+        })], ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:-2; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-height:34px; padding:6px 8px; border-bottom:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-values"), Attr.Create("style", "display:flex; align-items:center; gap:4px 12px; min-width:0; flex-wrap:wrap; white-space:normal; overflow-wrap:anywhere; font-family:Consolas, monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => append_2([Doc.Element("span", [Attr.Create("data-ta-cursor-hint", "true"), Attr.Create("style", "font-size:11px; color:#718197;")], [Doc.TextNode("Move the pointer over any chart row to inspect one shared bar.")])], delay(() => append_2([Doc.Element("strong", [Attr.Create("data-ta-cursor-time", "true"), Attr.Create("hidden", "hidden"), Attr.Create("style", "white-space:nowrap;")], [Doc.TextNode("")])], delay(() => map_2((index) => Doc.Element("span", [Attr.Create("data-ta-cursor-value-index", String(index)), Attr.Create("hidden", "hidden"), Attr.Create("style", "min-width:0;")], [Doc.TextNode("")]), range(0, length(cursorReaders)-1)))))))))])))], delay(() => append_2(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:collect_2((m_2) =>[m_2[0]], renderedRows), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
           setWindowCount(48);
         }), compactButton("ta-view-200", "200", "Show latest 200 bars", () => {
           setWindowCount(200);
@@ -9397,12 +9507,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
   if(uiState.Get().PendingActionId!=null){
     const _1=uiState.Get();
     let _2={
-      Window:_1.Window, 
-      FollowLatest:_1.FollowLatest, 
-      HiddenRows:_1.HiddenRows, 
-      AddRowOpen:_1.AddRowOpen, 
-      CursorIndex:_1.CursorIndex, 
-      PendingActionId:_1.PendingActionId, 
+      Window:_1.Window,
+      FollowLatest:_1.FollowLatest,
+      HiddenRows:_1.HiddenRows,
+      AddRowOpen:_1.AddRowOpen,
+      CursorIndex:_1.CursorIndex,
+      PendingActionId:_1.PendingActionId,
       Feedback:"action-in-flight: wait for the pending action result."
     };
     uiState.Set(_2);
@@ -9411,12 +9521,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
     onRejected();
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window, 
-      FollowLatest:_3.FollowLatest, 
-      HiddenRows:_3.HiddenRows, 
-      AddRowOpen:_3.AddRowOpen, 
-      CursorIndex:_3.CursorIndex, 
-      PendingActionId:null, 
+      Window:_3.Window,
+      FollowLatest:_3.FollowLatest,
+      HiddenRows:_3.HiddenRows,
+      AddRowOpen:_3.AddRowOpen,
+      CursorIndex:_3.CursorIndex,
+      PendingActionId:null,
       Feedback:"revision-conflict: workspace is at revision "+String(actualDocumentRevision)+"."
     };
     uiState.Set(_4);
@@ -9424,12 +9534,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
   else {
     const _5=uiState.Get();
     let _6={
-      Window:_5.Window, 
-      FollowLatest:_5.FollowLatest, 
-      HiddenRows:_5.HiddenRows, 
-      AddRowOpen:_5.AddRowOpen, 
-      CursorIndex:_5.CursorIndex, 
-      PendingActionId:Some(request.RequestId), 
+      Window:_5.Window,
+      FollowLatest:_5.FollowLatest,
+      HiddenRows:_5.HiddenRows,
+      AddRowOpen:_5.AddRowOpen,
+      CursorIndex:_5.CursorIndex,
+      PendingActionId:Some(request.RequestId),
       Feedback:"Submitting "+request.RequestId+"..."
     };
     uiState.Set(_6);
@@ -9438,9 +9548,9 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
       if(a.$==1){
         const error_2=a.$0;
         result={
-          $:1, 
-          $0:request.RequestId, 
-          $1:error_2.Code, 
+          $:1,
+          $0:request.RequestId,
+          $1:error_2.Code,
           $2:error_2.Message
         };
       }
@@ -9449,12 +9559,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _7=uiState.Get();
         let _8={
-          Window:_7.Window, 
-          FollowLatest:_7.FollowLatest, 
-          HiddenRows:_7.HiddenRows, 
-          AddRowOpen:_7.AddRowOpen, 
-          CursorIndex:_7.CursorIndex, 
-          PendingActionId:null, 
+          Window:_7.Window,
+          FollowLatest:_7.FollowLatest,
+          HiddenRows:_7.HiddenRows,
+          AddRowOpen:_7.AddRowOpen,
+          CursorIndex:_7.CursorIndex,
+          PendingActionId:null,
           Feedback:"action-correlation-mismatch: result does not match the pending request."
         };
         uiState.Set(_8);
@@ -9466,12 +9576,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _9=uiState.Get();
         let _10={
-          Window:_9.Window, 
-          FollowLatest:_9.FollowLatest, 
-          HiddenRows:_9.HiddenRows, 
-          AddRowOpen:_9.AddRowOpen, 
-          CursorIndex:_9.CursorIndex, 
-          PendingActionId:null, 
+          Window:_9.Window,
+          FollowLatest:_9.FollowLatest,
+          HiddenRows:_9.HiddenRows,
+          AddRowOpen:_9.AddRowOpen,
+          CursorIndex:_9.CursorIndex,
+          PendingActionId:null,
           Feedback:code+": "+message
         };
         uiState.Set(_10);
@@ -9482,12 +9592,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _11=uiState.Get();
         let _12={
-          Window:_11.Window, 
-          FollowLatest:_11.FollowLatest, 
-          HiddenRows:_11.HiddenRows, 
-          AddRowOpen:_11.AddRowOpen, 
-          CursorIndex:_11.CursorIndex, 
-          PendingActionId:null, 
+          Window:_11.Window,
+          FollowLatest:_11.FollowLatest,
+          HiddenRows:_11.HiddenRows,
+          AddRowOpen:_11.AddRowOpen,
+          CursorIndex:_11.CursorIndex,
+          PendingActionId:null,
           Feedback:"revision-conflict: workspace is at revision "+String(actualRevision)+"."
         };
         uiState.Set(_12);
@@ -9498,12 +9608,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onAccepted();
         const _13=uiState.Get();
         let _14={
-          Window:_13.Window, 
-          FollowLatest:_13.FollowLatest, 
-          HiddenRows:_13.HiddenRows, 
-          AddRowOpen:_13.AddRowOpen, 
-          CursorIndex:_13.CursorIndex, 
-          PendingActionId:null, 
+          Window:_13.Window,
+          FollowLatest:_13.FollowLatest,
+          HiddenRows:_13.HiddenRows,
+          AddRowOpen:_13.AddRowOpen,
+          CursorIndex:_13.CursorIndex,
+          PendingActionId:null,
           Feedback:successText+" Revision "+String(revision)+"."
         };
         uiState.Set(_14);
@@ -9514,6 +9624,27 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
 }
 function canvasIdText(a){
   return a.$0;
+}
+function chartTopologySignaturePrepared(state, prepared){
+  const m=state.Document;
+  return m!=null&&m.$==1?collect((row) => map((trace) => {
+    const timestamps=traceTimestampsPrepared(trace, prepared);
+    let _1=length(timestamps);
+    const o=tryHead(timestamps);
+    let _2=o==null?"":o.$0;
+    const o_1=tryLast(timestamps);
+    let _3=o_1==null?"":o_1.$0;
+    return[row.RowId, trace.TraceId, _1, _2, _3];
+  }, filter_1((a) => a.Visible, effectiveTraces(row))), m.$0.Rows):[];
+}
+function cursorPosition(width, pointCount, cursorIndex){
+  return cursorIndex==null?null:slotCenter(width, pointCount, cursorIndex.$0);
+}
+function fixedText(value){
+  return String(value);
+}
+function compactTimestamp(value){
+  return IsNullOrWhiteSpace(value)?"":value.length>=16&&value[4]==="-"&&value[7]==="-"&&(value[10]==="T"||value[10]===" ")?Substring(value, 5, 5)+" "+Substring(value, 11, 5):value;
 }
 function compactButton(testId, label, titleText, onClick){
   return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", testId), Attr.Create("title", titleText), Attr.Create("style", "height:30px; border:1px solid #9fb0c6; border-radius:4px; background:#f8fafc; color:#20344f; padding:3px 9px; font-size:12px; cursor:pointer; white-space:nowrap;"), Handler("click", () =>() => onClick())], [Doc.TextNode(label)]);
@@ -9548,21 +9679,21 @@ function rowDisplayLabel(row){
   const v=rowKindText_1(row.Kind);
   return x==null?v:x.$0;
 }
-function renderRowReactivePrepared(state, _1, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex, showSharedTimeAxis, isBaseRow, row){
+function renderRowReactivePreparedLive(_1, _2, preparedData, dataView, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex, showSharedTimeAxis, isBaseRow, row){
   const traces=filter_1((a) => a.Visible, effectiveTraces(row));
-  const p=compositeSvgReactivePrepared(row.RowId, isBaseRow, traces, state.Data, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex);
+  const p=compositeSvgReactivePreparedLive(row.RowId, isBaseRow, traces, preparedData, dataView, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex);
   const chart=p[0];
   const title=rowTitle(row, traces);
   const chartHeight=exists((trace) => Equals(trace.Kind, {$:0}), traces)?262:124;
   const children=showSharedTimeAxis?ofArray([chart, timeAxis("ta-time-axis-shared", p[1])]):ofArray([chart]);
-  return[chartFrame(title, ofArray(map((value) => {
+  return[chartFrame(title, [Doc.EmbedView(Map((currentData) => Doc.Element("span", [Attr.Create("style", "display:inline-flex; align-items:center; gap:6px 10px; flex-wrap:wrap;")], ofSeq_1(delay(() => collect_2((value) => {
     const o=value.AvailableAtUtc;
     const o_1=o==null?null:Some(compactTimestamp(o.$0));
     const availability=o_1==null?"unknown":o_1.$0;
     const o_2=value.Quality;
     const quality=o_2==null?"unknown":o_2.$0;
-    return Doc.Element("span", [Attr.Create("data-testid", "ta-row-meta-"+row.RowId+"-"+value.ScaleKey), Attr.Create("data-scale-key", value.ScaleKey), Attr.Create("data-finality", value.Finality), Attr.Create("data-quality", quality), Attr.Create("title", temporalDetail(value)), Attr.Create("style", "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;")], [Doc.TextNode(value.ScaleKey+" | "+value.Finality+" | "+quality+" | frontier "+compactTimestamp(value.ObservedThroughUtc)+" | available "+availability)]);
-  }, rowTemporalMetadata(row, state.Data))), "ta-row-"+row.RowId, chartHeight+(showSharedTimeAxis?16:0), children), p[2]];
+    return[Doc.Element("span", [Attr.Create("data-testid", "ta-row-meta-"+row.RowId+"-"+value.ScaleKey), Attr.Create("data-scale-key", value.ScaleKey), Attr.Create("data-finality", value.Finality), Attr.Create("data-quality", quality), Attr.Create("title", temporalDetail(value)), Attr.Create("style", "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;")], [Doc.TextNode(value.ScaleKey+" | "+value.Finality+" | "+quality+" | frontier "+compactTimestamp(value.ObservedThroughUtc)+" | available "+availability)])];
+  }, rowTemporalMetadataPrepared(row, currentData))))), dataView))], "ta-row-"+row.RowId, chartHeight+(showSharedTimeAxis?16:0), children), p[2]];
 }
 function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
   const width=1000;
@@ -9600,9 +9731,6 @@ function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
   const moveHitWidth=geometryText((t) => t[4]);
   return svgElement("svg", [Attr.Create("data-testid", "ta-overview-navigator"), Attr.Create("data-loaded-sample-count", String(length(sampled))), svgAttr("viewBox", "0 0 1000 82"), svgAttr("preserveAspectRatio", "none"), Attr.Create("style", "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"), OnAfterRender(onReady), Handler("mouseup", () => onDragEnd)], [svgElement("path", [svgAttr("d", closePath), svgAttr("fill", "none"), svgAttr("stroke", "#3d718e"), svgAttr("stroke-width", "1.5")], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-selection"), Dynamic_1("x", selectionX), svgAttr("y", "1"), Dynamic_1("width", selectionWidth), svgAttr("height", "80"), svgAttr("fill", "rgba(15,118,110,.10)"), svgAttr("stroke", "#0f766e"), svgAttr("stroke-width", "2"), svgAttr("pointer-events", "none")], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-left-handle"), Dynamic_1("x", selectionX), svgAttr("y", "0"), Dynamic_1("width", handleWidth), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-left", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-right-handle"), Dynamic_1("x", rightHandleX), svgAttr("y", "0"), Dynamic_1("width", handleWidth), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-right", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-move-hit"), Dynamic_1("x", moveHitX), svgAttr("y", "0"), Dynamic_1("width", moveHitWidth), svgAttr("height", "82"), svgAttr("fill", "transparent"), svgAttr("style", "cursor:grab;"), Handler("mousedown", () =>(event) => onDragStart("move", event))], [])]);
 }
-function compactTimestamp(value){
-  return IsNullOrWhiteSpace(value)?"":value.length>=16&&value[4]==="-"&&value[7]==="-"&&(value[10]==="T"||value[10]===" ")?Substring(value, 5, 5)+" "+Substring(value, 11, 5):value;
-}
 function sameDocumentShell(left, right){
   const _1=left.Document;
   const _2=right.Document;
@@ -9611,9 +9739,6 @@ function sameDocumentShell(left, right){
 }
 function element_1(name, attrs, children){
   return Doc.Element(name, attrs, children);
-}
-function fixedText(value){
-  return String(value);
 }
 function rowExplicitLabel(row){
   let _1;
@@ -9626,68 +9751,159 @@ function rowExplicitLabel(row){
 function rowKindText_1(a){
   return a.$==1?"Volume":a.$==2?"SMA":a.$==3?"DMI":a.$==4?"ADX":a.$==5?"MACD":a.$==6?"Heikin-Ashi":"Candlestick";
 }
-function compositeSvgReactivePrepared(rowId, isBaseRow, traces, data, referenceTimestamps, cursorIndex, setCursorIndex, commitCursorIndex){
+function compositeSvgReactivePreparedLive(rowId, isBaseRow, traces, preparedData, dataView, referenceTimestamps, _1, setCursorIndex, commitCursorIndex){
+  let latestGeometry;
   const width=1000;
   const hasCandles=exists((trace) => Equals(trace.Kind, {$:0}), traces);
   const top=10;
   const plotHeight=hasCandles?214:82;
   const palette=["#2764b0", "#9b5b24", "#6a4ca3", "#0f766e", "#b45309", "#be185d", "#475569", "#0891b2"];
   const color=(index, trace) => IsNullOrWhiteSpace(trace.Color)?get(palette, index%length(palette)):trace.Color;
-  const preparedTraces=mapi((_1, _2) => {
-    const label=IsNullOrWhiteSpace(_2.Label)?_2.TraceId:_2.Label;
-    const m=_2.Kind;
-    if(m.$==1||(m.$==2?false:m.$!=3)){
-      const candles=candleSeriesForTrace(_2, data);
-      return[_1, _2, candles, [], (timestamp) => candleCursorValue(label, _2.Kind, isBaseRow, timestamp, candles)];
-    }
-    else {
-      const lines=lineSeries(_2.DataRef, data);
-      return[_1, _2, [], lines, (timestamp) => lineCursorValue(label, isBaseRow, timestamp, lines)];
-    }
-  }, traces);
-  const candleSeries_1=collect((_1) => {
-    const traceIndex=_1[0];
-    const trace=_1[1];
-    return collect((point) => map((_2) =>[traceIndex, trace, _2[0], _2[1], _2[2]], projectedCandleSlots(referenceTimestamps, point)), _1[2]);
-  }, filter_1((_1) => Equals(_1[1].Kind, {$:0}), preparedTraces));
   const xAt=(index) => {
     const o=slotCenter(width, length(referenceTimestamps), index);
     return o==null?width/2:o.$0;
   };
-  const linePoints=map((_1) => {
-    const trace=_1[1];
-    const lines=_1[3];
-    const m=trace.Kind;
-    let _2=m.$==1?map((point) =>({
-      Timestamp:point.Timestamp, 
-      Value:point.Volume, 
-      Temporal:point.Temporal
-    }), _1[2]):m.$==2?lines:m.$==3?lines:[];
-    let _3=projectedLinePoints(referenceTimestamps, _2);
-    return[_1[0], trace, _3];
-  }, preparedTraces);
-  const p=paddedRange(0, 1, ofSeq(delay(() => append_2(collect((_1) => {
-    const point=_1[4];
-    return[point.Low, point.High];
-  }, candleSeries_1), delay(() => collect((_1) => {
-    const values=map((_2) => _2[1].Value, _1[2]);
-    return Equals(_1[1].Kind, {$:3})?[0].concat(values):values;
-  }, linePoints))))));
-  const low=p[0];
-  const high=p[1];
+  const prepareGeometry=(currentData) => {
+    const preparedTraces=mapi((_2, _3) => {
+      const m=_3.Kind;
+      return m.$==1||(m.$==2?false:m.$!=3)?[_2, _3, candleSeriesForTracePrepared(_3, currentData), []]:[_2, _3, [], lineSeriesPrepared(_3.DataRef, currentData)];
+    }, traces);
+    const candleSeries=collect((_2) => {
+      const traceIndex=_2[0];
+      const trace=_2[1];
+      return collect((point) => map((_3) =>[traceIndex, trace, _3[0], _3[1], _3[2]], projectedCandleSlots(referenceTimestamps, point)), _2[2]);
+    }, filter_1((_2) => Equals(_2[1].Kind, {$:0}), preparedTraces));
+    const linePoints=map((_2) => {
+      const trace=_2[1];
+      const lines=_2[3];
+      const m=trace.Kind;
+      let _3=m.$==1?map((point) =>({
+        Timestamp:point.Timestamp,
+        Value:point.Volume,
+        Temporal:point.Temporal
+      }), _2[2]):m.$==2?lines:m.$==3?lines:[];
+      let _4=projectedLinePoints(referenceTimestamps, _3);
+      return[_2[0], trace, _4];
+    }, preparedTraces);
+    const p=paddedRange(0, 1, ofSeq(delay(() => append_2(collect((_2) => {
+      const point=_2[4];
+      return[point.Low, point.High];
+    }, candleSeries), delay(() => collect((_2) => {
+      const values=map((_3) => _3[1].Value, _2[2]);
+      return Equals(_2[1].Kind, {$:3})?[0].concat(values):values;
+    }, linePoints))))));
+    return[preparedTraces, candleSeries, linePoints, map((_2) => {
+      let values;
+      const traceIndex=_2[0];
+      const trace=_2[1];
+      const candles=_2[2];
+      const label=IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label;
+      const m=trace.Kind;
+      if(m.$==1||(m.$==2?false:m.$!=3)){
+        const projected=OfArray(choose((_3) => _3[0]===traceIndex?Some([_3[2], _3[4]]):null, candleSeries));
+        values=mapi((_3, _4) => {
+          const o_1=projected.TryFind(_3);
+          const o_2=o_1==null?isBaseRow?null:tryCandleForCursor(false, _4, candles):(o_1.$0,o_1);
+          return o_2==null?null:Some(candleCursorPointValue(label, trace.Kind, o_2.$0));
+        }, referenceTimestamps);
+      }
+      else {
+        const o=tryFind((_3) => _3[0]===traceIndex, linePoints);
+        const x=o==null?null:Some((o.$0,o.$0,OfArray(o.$0[2])));
+        const v=new FSharpMap("New", []);
+        const projected_1=x==null?v:x.$0;
+        values=mapi((_3) => {
+          const o_1=projected_1.TryFind(_3);
+          return o_1==null?null:Some(lineCursorPointValue(label, o_1.$0));
+        }, referenceTimestamps);
+      }
+      return(index) => {
+        const o_1=tryItem(index, values);
+        return o_1==null?null:o_1.$0;
+      };
+    }, preparedTraces), p[0], p[1]];
+  };
+  const initialGeometry=prepareGeometry(preparedData);
+  const initialLinePoints=initialGeometry[2];
+  const initialCandleSeries=initialGeometry[1];
+  latestGeometry=initialGeometry;
   const slot=length(referenceTimestamps)===0?width:width/length(referenceTimestamps);
   const svgTestId=hasCandles?"ta-candle-"+rowId:"ta-composite-"+rowId;
-  const cursorX=Map((value) => {
-    const o=cursorPosition(width, length(referenceTimestamps), value);
-    let _1=o==null?0:o.$0;
-    return fixedText(_1);
-  }, cursorIndex);
-  const cursorVisibility=Map((value) => cursorPosition(width, length(referenceTimestamps), value)!=null?"visible":"hidden", cursorIndex);
-  const cursorIndexText=Map((x) => {
-    const o=x==null?null:Some(String(x.$0));
-    return o==null?"":o.$0;
-  }, cursorIndex);
-  return[svgElement("svg", [svgAttr("viewBox", hasCandles?"0 0 1000 250":"0 0 1000 112"), svgAttr("preserveAspectRatio", "none"), svgAttr("role", "img"), svgAttr("aria-label", "Composite TA row "+rowId), Attr.Create("data-testid", svgTestId), Attr.Create("data-point-count", String(length(referenceTimestamps))), Dynamic_1("data-cursor-index", cursorIndexText), Attr.Create("style", "display:block; width:100%; height:"+fixedText(hasCandles?250:112)+"px; background:#fbfcfe;"), Handler("mousemove", (element_2) =>(event) => {
+  const candleVisual=(index, t) => {
+    const low=t[4];
+    const high=t[5];
+    const o=tryItem(index, t[1]);
+    const p=o==null?get(initialCandleSeries, index):o.$0;
+    const point=p[4];
+    const center=xAt(p[2]);
+    const a=2;
+    const b=slot*0.64;
+    const bodyWidth=Compare(a, b)===1?a:b;
+    const candleColor=point.Close>=point.Open?"#0f8a78":"#c2414b";
+    return[center, bodyWidth, candleColor, normalize(low, high, top, plotHeight, point.High), normalize(low, high, top, plotHeight, point.Low), normalize(low, high, top, plotHeight, point.Open), normalize(low, high, top, plotHeight, point.Close), p[3]>1?color(p[0], p[1]):candleColor, point];
+  };
+  const lineGeometry=(traceIndex, t) => {
+    const o=tryFind((_4) => _4[0]===traceIndex, t[2]);
+    let _2=o==null?find((_4) => _4[0]===traceIndex, initialLinePoints):o.$0;
+    let _3=_2[2];
+    return[_3, t[4], t[5]];
+  };
+  const linePath=(traceIndex, trace, geometry) => {
+    const p=lineGeometry(traceIndex, geometry);
+    const points=p[0];
+    const low=p[1];
+    const high=p[2];
+    const m=trace.Kind;
+    switch(m.$==3?0:m.$==1?0:m.$==2?1:2){
+      case 0:
+        const zeroY=normalize(low, high, top, plotHeight, 0);
+        const a=1;
+        const b=slot*0.64;
+        const barWidth=Compare(a, b)===1?a:b;
+        return concat_1(" ", map((_2) => {
+          const valueY=normalize(low, high, top, plotHeight, _2[1].Value);
+          let _3=Compare(zeroY, valueY)===-1?zeroY:valueY;
+          const a_1=1;
+          const b_1=Math.abs(zeroY-valueY);
+          let _4=Compare(a_1, b_1)===1?a_1:b_1;
+          return rectanglePath(slot*(_2[0]+0.18), _3, barWidth, _4);
+        }, points));
+      case 1:
+        return concat_1(" ", mapi((_2, _3) =>(_2===0?"M":"L")+" "+fixedText(_3[0])+" "+fixedText(_3[1]), map((_2) =>[xAt(_2[0]), normalize(low, high, top, plotHeight, _2[1].Value)], points)));
+      case 2:
+        return"";
+    }
+  };
+  const lineLastValue=(traceIndex, geometry) => {
+    const o=tryLast((lineGeometry(traceIndex, geometry))[0]);
+    const o_1=o==null?null:Some(fixedText(o.$0[1].Value));
+    return o_1==null?"":o_1.$0;
+  };
+  const candleVisualStates=mapi((_2) => _c_3.Create_1(candleVisual(_2, initialGeometry)), initialCandleSeries);
+  const lineVisualStates=map((_2) => {
+    const traceIndex=_2[0];
+    const trace=_2[1];
+    return[traceIndex, trace, _c_3.Create_1(linePath(traceIndex, trace, initialGeometry)), _c_3.Create_1(lineLastValue(traceIndex, initialGeometry))];
+  }, initialLinePoints);
+  Sink((currentData) => {
+    const geometry=prepareGeometry(currentData);
+    latestGeometry=geometry;
+    for(let index=0, _2=length(candleVisualStates)-1;index<=_2;index++){
+      const next=candleVisual(index, geometry);
+      if(!Equals(get(candleVisualStates, index).Get(), next))get(candleVisualStates, index).Set(next);
+    }
+    for(let i=0, _3=lineVisualStates.length-1;i<=_3;i++){
+      const f=get(lineVisualStates, i);
+      const traceIndex=f[0];
+      const pathState=f[2];
+      const lastValueState=f[3];
+      const nextPath=linePath(traceIndex, f[1], geometry);
+      const nextLastValue=lineLastValue(traceIndex, geometry);
+      if(pathState.Get()!=nextPath)pathState.Set(nextPath);
+      if(lastValueState.Get()!=nextLastValue)lastValueState.Set(nextLastValue);
+    }
+  }, dataView);
+  return[svgElement("svg", [svgAttr("viewBox", hasCandles?"0 0 1000 250":"0 0 1000 112"), svgAttr("preserveAspectRatio", "none"), svgAttr("role", "img"), svgAttr("aria-label", "Composite TA row "+rowId), Attr.Create("data-testid", svgTestId), Attr.Create("data-point-count", String(length(referenceTimestamps))), Attr.Create("style", "display:block; width:100%; height:"+fixedText(hasCandles?250:112)+"px; background:#fbfcfe;"), Handler("mousemove", (element_2) =>(event) => {
     const bounds=element_2.getBoundingClientRect();
     const m=cursorIndexFromClientX(length(referenceTimestamps), bounds.left, bounds.width, event.clientX);
     return m==null?null:setCursorIndex(Some(m.$0));
@@ -9698,66 +9914,49 @@ function compositeSvgReactivePrepared(rowId, isBaseRow, traces, data, referenceT
   })], ofSeq_1(delay(() => append_2(collect_2((gridIndex) => {
     const y=top+plotHeight*gridIndex/4;
     return[svgElement("line", [svgAttr("x1", "0"), svgAttr("x2", "1000"), svgAttr("y1", fixedText(y)), svgAttr("y2", fixedText(y)), svgAttr("stroke", "#e7ecf3"), svgAttr("stroke-width", "1")], [])];
-  }, range(0, 4)), delay(() => append_2(collect_2((m) => {
-    const trace=m[1];
-    const sourceSpanCount=m[3];
-    const slotIndex=m[2];
-    const point=m[4];
+  }, range(0, 4)), delay(() => append_2(collect_2((candleIndex) => {
+    const p=get(initialCandleSeries, candleIndex);
+    const sourceSpanCount=p[3];
+    const slotIndex=p[2];
+    const point=p[4];
     const center=xAt(slotIndex);
     const a=2;
     const b=slot*0.64;
     const bodyWidth=Compare(a, b)===1?a:b;
-    const candleColor=point.Close>=point.Open?"#0f8a78":"#c2414b";
-    const openY=normalize(low, high, top, plotHeight, point.Open);
-    const closeY=normalize(low, high, top, plotHeight, point.Close);
     const o=point.Temporal;
     const o_1=o==null?null:Some(o.$0.SourceIntervalId);
     const sourceIntervalId=o_1==null?point.Timestamp:o_1.$0;
-    const traceColor=sourceSpanCount>1?color(m[0], trace):candleColor;
-    const traceTestId="ta-candle-"+rowId+"-"+trace.TraceId;
+    const traceTestId="ta-candle-"+rowId+"-"+p[1].TraceId;
     const sourceAttrs=(part) => ofArray([Attr.Create("data-testid", traceTestId), Attr.Create("data-candle-part", part), Attr.Create("data-source-interval-id", sourceIntervalId), Attr.Create("data-span-slots", String(sourceSpanCount)), Attr.Create("data-projected-slot-index", String(slotIndex))]);
-    return append_2([svgElement("line", append_1(sourceAttrs("wick"), ofArray([svgAttr("x1", fixedText(center)), svgAttr("x2", fixedText(center)), svgAttr("y1", fixedText(normalize(low, high, top, plotHeight, point.High))), svgAttr("y2", fixedText(normalize(low, high, top, plotHeight, point.Low))), svgAttr("stroke", traceColor), svgAttr("stroke-width", "1.2")])), [])], delay(() => {
-      let _1=sourceAttrs("body");
-      let _2=svgAttr("x", fixedText(center-bodyWidth/2));
-      let _3=svgAttr("y", fixedText(Compare(openY, closeY)===-1?openY:closeY));
-      let _4=svgAttr("width", fixedText(bodyWidth));
+    const visual=get(candleVisualStates, candleIndex).View;
+    return append_2([svgElement("line", append_1(sourceAttrs("wick"), ofArray([svgAttr("x1", fixedText(center)), svgAttr("x2", fixedText(center)), Dynamic_1("y1", Map((_2) => fixedText(_2[3]), visual)), Dynamic_1("y2", Map((_2) => fixedText(_2[4]), visual)), Dynamic_1("stroke", Map((_2) => _2[7], visual)), svgAttr("stroke-width", "1.2")])), [])], delay(() =>[svgElement("rect", append_1(sourceAttrs("body"), ofArray([svgAttr("x", fixedText(center-bodyWidth/2)), svgAttr("width", fixedText(bodyWidth)), Dynamic_1("y", Map((_2) => {
+      const closeY=_2[6];
+      const a_1=_2[5];
+      let _3=Compare(a_1, closeY)===-1?a_1:closeY;
+      return fixedText(_3);
+    }, visual)), Dynamic_1("height", Map((_2) => {
       const a_1=1.2;
-      const b_1=Math.abs(closeY-openY);
-      let _5=Compare(a_1, b_1)===1?a_1:b_1;
-      let _6=fixedText(_5);
-      let _7=svgAttr("height", _6);
-      let _8=[_2, _3, _4, _7, svgAttr("fill", candleColor), svgAttr("fill-opacity", sourceSpanCount>1?"0.48":"1"), svgAttr("stroke", traceColor), svgAttr("stroke-width", sourceSpanCount>1?"1":"0"), svgAttr("rx", "0.6")];
-      let _9=ofArray(_8);
-      let _10=append_1(_1, _9);
-      return[svgElement("rect", _10, [])];
-    }));
-  }, candleSeries_1), delay(() => append_2(collect_2((m) => {
+      const b_1=Math.abs(_2[6]-_2[5]);
+      let _3=Compare(a_1, b_1)===1?a_1:b_1;
+      return fixedText(_3);
+    }, visual)), Dynamic_1("fill", Map((_2) => _2[2], visual)), Dynamic_1("stroke", Map((_2) => _2[7], visual)), Dynamic_1("data-open", Map((_2) => fixedText(_2[8].Open), visual)), Dynamic_1("data-high", Map((_2) => fixedText(_2[8].High), visual)), Dynamic_1("data-low", Map((_2) => fixedText(_2[8].Low), visual)), Dynamic_1("data-close", Map((_2) => fixedText(_2[8].Close), visual)), svgAttr("fill-opacity", sourceSpanCount>1?"0.48":"1"), svgAttr("stroke-width", sourceSpanCount>1?"1":"0"), svgAttr("rx", "0.6")])), [])]));
+  }, range(0, length(initialCandleSeries)-1)), delay(() => append_2(collect_2((m) => {
+    const traceIndex=m[0];
     const trace=m[1];
-    const points=m[2];
-    const traceColor=color(m[0], trace);
+    const traceColor=color(traceIndex, trace);
+    const p=find((_2) => _2[0]===traceIndex, lineVisualStates);
+    const path=p[2].View;
+    const lastValue=p[3].View;
     const m_1=trace.Kind;
     switch(m_1.$==3?0:m_1.$==1?0:m_1.$==2?1:2){
       case 0:
-        const zeroY=normalize(low, high, top, plotHeight, 0);
-        const a=1;
-        const b=slot*0.64;
-        const barWidth=Compare(a, b)===1?a:b;
-        const path=concat_1(" ", map((_1) => {
-          const valueY=normalize(low, high, top, plotHeight, _1[1].Value);
-          let _2=Compare(zeroY, valueY)===-1?zeroY:valueY;
-          const a_1=1;
-          const b_1=Math.abs(zeroY-valueY);
-          let _3=Compare(a_1, b_1)===1?a_1:b_1;
-          return rectanglePath(slot*(_1[0]+0.18), _2, barWidth, _3);
-        }, points));
-        return[svgElement("path", [Attr.Create("data-testid", "ta-trace-"+rowId+"-"+trace.TraceId), svgAttr("d", path), svgAttr("fill", traceColor), svgAttr("fill-opacity", "0.62")], [])];
+        return[svgElement("path", [Attr.Create("data-testid", "ta-trace-"+rowId+"-"+trace.TraceId), Dynamic_1("d", path), Dynamic_1("data-last-value", lastValue), svgAttr("fill", traceColor), svgAttr("fill-opacity", "0.62")], [])];
       case 1:
-        const path_1=concat_1(" ", mapi((_1, _2) =>(_1===0?"M":"L")+" "+fixedText(_2[0])+" "+fixedText(_2[1]), map((_1) =>[xAt(_1[0]), normalize(low, high, top, plotHeight, _1[1].Value)], points)));
-        return[svgElement("path", [Attr.Create("data-testid", "ta-trace-"+rowId+"-"+trace.TraceId), svgAttr("d", path_1), svgAttr("fill", "none"), svgAttr("stroke", traceColor), svgAttr("stroke-width", fixedText(trace.Width)), svgAttr("stroke-linejoin", "round"), svgAttr("stroke-linecap", "round")], [])];
+        return[svgElement("path", [Attr.Create("data-testid", "ta-trace-"+rowId+"-"+trace.TraceId), Dynamic_1("d", path), Dynamic_1("data-last-value", lastValue), svgAttr("fill", "none"), svgAttr("stroke", traceColor), svgAttr("stroke-width", fixedText(trace.Width)), svgAttr("stroke-linejoin", "round"), svgAttr("stroke-linecap", "round")], [])];
       case 2:
         return[];
     }
-  }, linePoints), delay(() =>[svgElement("line", [Attr.Create("data-testid", svgTestId+"-crosshair"), Dynamic_1("x1", cursorX), Dynamic_1("x2", cursorX), Dynamic_1("visibility", cursorVisibility), svgAttr("y1", "0"), svgAttr("y2", fixedText(plotHeight)), svgAttr("stroke", "#1f4f73"), svgAttr("stroke-width", "1"), svgAttr("stroke-dasharray", "3 3"), svgAttr("pointer-events", "none")], [])]))))))))), referenceTimestamps, map((_1) => _1[4], preparedTraces)];
+  }, initialLinePoints), delay(() =>[svgElement("line", [Attr.Create("data-testid", svgTestId+"-crosshair"), Attr.Create("data-ta-shared-crosshair", "true"), svgAttr("x1", "0"), svgAttr("x2", "0"), svgAttr("visibility", "hidden"), svgAttr("y1", "0"), svgAttr("y2", fixedText(plotHeight)), svgAttr("stroke", "#1f4f73"), svgAttr("stroke-width", "1"), svgAttr("stroke-dasharray", "3 3"), svgAttr("pointer-events", "none")], [])]))))))))), referenceTimestamps, mapi((_2) => get(latestGeometry[3], _2), traces)];
 }
 function chartFrame(titleText, metadata, testId, height, children){
   return Doc.Element("section", [Attr.Create("data-testid", testId), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; min-height:"+String(height)+"px; border-top:1px solid #e1e7ef; background:#fff;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:6px 10px; min-height:28px; padding:4px 8px; color:#40536d; font-size:11px; flex-wrap:wrap;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "margin-right:auto;")], [Doc.TextNode(titleText)])], delay(() => metadata))))), element_1("div", [Attr.Create("style", "min-width:0; overflow:hidden;")], children)]);
@@ -9782,9 +9981,6 @@ function svgElement(name, attrs, children){
 }
 function svgAttr(name, value){
   return Attr.Create(name, value);
-}
-function cursorPosition(width, pointCount, cursorIndex){
-  return cursorIndex==null?null:slotCenter(width, pointCount, cursorIndex.$0);
 }
 function rectanglePath(x, y, width, height){
   return"M "+fixedText(x)+" "+fixedText(y)+" h "+fixedText(width)+" v "+fixedText(height)+" h "+fixedText(-width)+" Z";
@@ -10202,9 +10398,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1, 
-      Children:Children_1, 
-      El:El, 
+      Attr:Attr_1,
+      Children:Children_1,
+      El:El,
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -10479,33 +10675,33 @@ function ScheduleReconnect(delayMs){
 }
 function New_45(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints){
   return{
-    wireVersion:wireVersion, 
-    kind:kind, 
-    actionKind:actionKind, 
-    canvasInstanceId:canvasInstanceId, 
-    rowId:rowId, 
-    rowKind:rowKind_1, 
-    dataRef:dataRef, 
-    heightWeight:heightWeight, 
-    visible:visible, 
-    sourceId:sourceId, 
-    instrument:instrument, 
-    intervalMinutes:intervalMinutes, 
-    fromUtc:fromUtc, 
-    toUtcExclusive:toUtcExclusive, 
-    includePartial:includePartial, 
-    afterDataRevision:afterDataRevision, 
-    dataRevision:dataRevision, 
-    reasonCode:reasonCode, 
-    templateKey:templateKey, 
-    hasTemplateRowId:hasTemplateRowId, 
-    editorValues:editorValues, 
-    expectedDocumentRevision:expectedDocumentRevision, 
-    hasExpectedDocumentRevision:hasExpectedDocumentRevision, 
-    baseRowId:baseRowId, 
-    eventTimeUtc:eventTimeUtc, 
-    startEventTimeUtc:startEventTimeUtc, 
-    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc, 
+    wireVersion:wireVersion,
+    kind:kind,
+    actionKind:actionKind,
+    canvasInstanceId:canvasInstanceId,
+    rowId:rowId,
+    rowKind:rowKind_1,
+    dataRef:dataRef,
+    heightWeight:heightWeight,
+    visible:visible,
+    sourceId:sourceId,
+    instrument:instrument,
+    intervalMinutes:intervalMinutes,
+    fromUtc:fromUtc,
+    toUtcExclusive:toUtcExclusive,
+    includePartial:includePartial,
+    afterDataRevision:afterDataRevision,
+    dataRevision:dataRevision,
+    reasonCode:reasonCode,
+    templateKey:templateKey,
+    hasTemplateRowId:hasTemplateRowId,
+    editorValues:editorValues,
+    expectedDocumentRevision:expectedDocumentRevision,
+    hasExpectedDocumentRevision:hasExpectedDocumentRevision,
+    baseRowId:baseRowId,
+    eventTimeUtc:eventTimeUtc,
+    startEventTimeUtc:startEventTimeUtc,
+    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc,
     maximumBasePoints:maximumBasePoints
   };
 }
@@ -10520,10 +10716,10 @@ function ToOption(result){
 }
 function New_46(schema, exportedAtUtc, documentRevision, dataRevision, state){
   return{
-    schema:schema, 
-    exportedAtUtc:exportedAtUtc, 
-    documentRevision:documentRevision, 
-    dataRevision:dataRevision, 
+    schema:schema,
+    exportedAtUtc:exportedAtUtc,
+    documentRevision:documentRevision,
+    dataRevision:dataRevision,
     state:state
   };
 }
@@ -10750,6 +10946,85 @@ function initialEditorInputs(schema){
     return m==null?fallbackInputs(field_1.Key, field_1.Kind):flattenEditorValue(field_1.Key, field_1.Kind, m.$0);
   }, schema.Fields);
 }
+function prepareData(data){
+  const axes=OfArray(choose((_1) => prepareAxis(_1[1]), ofSeq(ToSeq(data))));
+  return{
+    RawData:data,
+    ResolvedAxes:axes,
+    ResolvedSeries:OfArray(choose((_1) => {
+      const dataRef=_1[0];
+      const value=_1[1];
+      let _2;
+      if(value.$==4)return Some([dataRef, map((item) => {
+        const p=pointPayload_1(item);
+        return{Payload:p[1], Temporal:p[0]};
+      }, value.$0)]);
+      else {
+        const m=tryTemporalSeries(value);
+        if(m==null)return null;
+        else {
+          const points=m.$0[2];
+          const axisRevision=m.$0[1];
+          const m_1=axes.TryFind(m.$0[0]);
+          return m_1!=null&&m_1.$==1&&(m_1.$0.Revision===axisRevision&&(_2=m_1.$0,true))?Some([dataRef, choose((_3) => {
+            const o=_2.Points.TryFind(_3[0]);
+            return o==null?null:Some({Payload:Some(_3[1]), Temporal:Some(o.$0)});
+          }, points)]):Some([dataRef, []]);
+        }
+      }
+    }, ofSeq(ToSeq(data))))
+  };
+}
+function prepareDataIncremental(previous, data){
+  const axisUpdates=choose((_1) => updateAxis(previous, _1[1]), ofSeq(ToSeq(data)));
+  const axes=OfArray(map((_1) =>[_1[0], _1[1]], axisUpdates));
+  const axisChanges=OfArray(map((_1) =>[_1[0], _1[2]], axisUpdates));
+  return{
+    RawData:data,
+    ResolvedAxes:axes,
+    ResolvedSeries:OfArray(choose((_1) => {
+      let _2, _3, _4, _5;
+      const dataRef=_1[0];
+      const value=_1[1];
+      if(value.$==4){
+        const rawPoints=value.$0;
+        const _6=previous.RawData.TryFind(dataRef);
+        const _7=previous.ResolvedSeries.TryFind(dataRef);
+        return _6!=null&&_6.$==1&&(_6.$0.$==4&&(_7!=null&&_7.$==1&&(_2=[_6.$0.$0, _7.$0],true)))?Some([dataRef, updateInlineSeries(_2[0], _2[1], rawPoints)]):Some([dataRef, map((item) => {
+          const p=pointPayload_1(item);
+          return{Payload:p[1], Temporal:p[0]};
+        }, rawPoints)]);
+      }
+      else {
+        const m=tryTemporalSeriesRaw(value);
+        if(m==null)return null;
+        else {
+          const rawPoints_1=m.$0[2];
+          const axisRevision=m.$0[1];
+          const axisRef=m.$0[0];
+          const m_1=axes.TryFind(axisRef);
+          if(m_1!=null&&m_1.$==1&&(m_1.$0.Revision===axisRevision&&(_3=m_1.$0,true))){
+            const _8=previous.RawData.TryFind(dataRef);
+            const _9=previous.ResolvedSeries.TryFind(dataRef);
+            if(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_4=[_9.$0, _8.$0],true))){
+              const m_2=tryTemporalSeriesRaw(_4[1]);
+              if(m_2!=null&&m_2.$==1&&(m_2.$0,m_2.$0[0]==axisRef&&(_5=[m_2.$0[0], m_2.$0[2]],true))){
+                const o=axisChanges.TryFind(axisRef);
+                let _10=o==null?null:o.$0;
+                let _11=updateTemporalSeries(_5[1], _4[0], rawPoints_1, _3.Points, _10);
+                let _12=[dataRef, _11];
+                return Some(_12);
+              }
+              else return Some([dataRef, resolveTemporalPoints(_3.Points, rawPoints_1)]);
+            }
+            else return Some([dataRef, resolveTemporalPoints(_3.Points, rawPoints_1)]);
+          }
+          else return Some([dataRef, []]);
+        }
+      }
+    }, ofSeq(ToSeq(data))))
+  };
+}
 function referenceTimelineForDocument(document, data){
   const m=document.BaseRowId;
   if(m==null)return referenceTimeline(document.Rows, data);
@@ -10783,8 +11058,8 @@ function visibleEventRange(document, data, window_1){
       const endIndex=window_1.StartIndex+length(selected);
       const o=filter((value) => Compare(value, startTime)>0, endIndex<length(timeline)?Some(get(timeline, endIndex)):tryBasePointIntervalEnd(baseRow, data, get(selected, length(selected)-1)));
       return o==null?null:Some({
-        BaseRowId:baseRowId, 
-        StartEventTimeUtc:startTime, 
+        BaseRowId:baseRowId,
+        StartEventTimeUtc:startTime,
         EndEventTimeExclusiveUtc:o.$0
       });
     }
@@ -10872,11 +11147,11 @@ function queryDraft(values){
   const o_4=o_3==null?null:tryBool(o_3.$0);
   const includePartial=o_4==null||o_4.$0;
   return{
-    SourceId:textValue("query.sourceId"), 
-    Instrument:textValue("query.instrument"), 
-    IntervalMinutes:interval, 
-    FromUtc:textValue("query.fromUtc"), 
-    ToUtcExclusive:textValue("query.toUtcExclusive"), 
+    SourceId:textValue("query.sourceId"),
+    Instrument:textValue("query.instrument"),
+    IntervalMinutes:interval,
+    FromUtc:textValue("query.fromUtc"),
+    ToUtcExclusive:textValue("query.toUtcExclusive"),
     IncludePartial:includePartial
   };
 }
@@ -10898,10 +11173,10 @@ function statusPresentation(statusRef, state){
     _1=Some(error_2.ReasonCode+": "+error_2.Message);
   }
   return{
-    Freshness:freshness, 
-    Label:_2, 
-    Watermark:_3, 
-    Quality:_4, 
+    Freshness:freshness,
+    Label:_2,
+    Watermark:_3,
+    Quality:_4,
     Error:_1
   };
 }
@@ -10941,46 +11216,20 @@ function effectiveTraces(row){
         break;
     }
     return[{
-      TraceId:row.RowId, 
-      Kind:_1, 
-      DataRef:row.DataRef, 
-      Label:row.RowId, 
-      Color:"", 
-      Width:1.25, 
-      Visible:true, 
-      CandleDataRefs:null, 
+      TraceId:row.RowId,
+      Kind:_1,
+      DataRef:row.DataRef,
+      Label:row.RowId,
+      Color:"",
+      Width:1.25,
+      Visible:true,
+      CandleDataRefs:null,
       Options:new FSharpMap("New", [])
     }];
   }
 }
 function candleSeriesForTrace(trace, data){
-  const m=trace.CandleDataRefs;
-  if(m!=null&&m.$==1){
-    const refs=m.$0;
-    const valuesByTimestamp=(dataRef) => OfArray(map((point) =>[point.Timestamp, point], lineSeries(dataRef, data)));
-    const opens=lineSeries(refs.OpenRef, data);
-    const highs=valuesByTimestamp(refs.HighRef);
-    const lows=valuesByTimestamp(refs.LowRef);
-    const closes=valuesByTimestamp(refs.CloseRef);
-    const volumes=valuesByTimestamp(refs.VolumeRef);
-    return choose((openPoint) => {
-      let _1;
-      const _2=highs.TryFind(openPoint.Timestamp);
-      const _3=lows.TryFind(openPoint.Timestamp);
-      const _4=closes.TryFind(openPoint.Timestamp);
-      const _5=volumes.TryFind(openPoint.Timestamp);
-      return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_1=[_4.$0, _2.$0, _3.$0, _5.$0],true))))?Some({
-        Timestamp:openPoint.Timestamp, 
-        Open:openPoint.Value, 
-        High:_1[1].Value, 
-        Low:_1[2].Value, 
-        Close:_1[0].Value, 
-        Volume:_1[3].Value, 
-        Temporal:openPoint.Temporal
-      }):null;
-    }, opens);
-  }
-  else return candleSeries(trace.DataRef, data);
+  return candleSeriesForTracePrepared(trace, prepareData(data));
 }
 function workspaceBootstrapPresentation(state){
   const m=state.LastError;
@@ -10989,44 +11238,44 @@ function workspaceBootstrapPresentation(state){
     switch(m_1.$==1?1:m_1.$==4?2:m_1.$==6?3:m_1.$==7?4:m_1.$==2?5:m_1.$==3?5:m_1.$==5?5:0){
       case 0:
         return{
-          State:"preparing", 
-          Title:"Preparing TA workspace", 
-          Detail:"Waiting for the workspace channel to mount.", 
+          State:"preparing",
+          Title:"Preparing TA workspace",
+          Detail:"Waiting for the workspace channel to mount.",
           IsError:false
         };
       case 1:
         return{
-          State:"connecting", 
-          Title:"Connecting TA workspace", 
-          Detail:"Waiting for the initial workspace document.", 
+          State:"connecting",
+          Title:"Connecting TA workspace",
+          Detail:"Waiting for the initial workspace document.",
           IsError:false
         };
       case 2:
         return{
-          State:"retrying", 
-          Title:"Restoring TA workspace", 
-          Detail:"A reconnect attempt is scheduled.", 
+          State:"retrying",
+          Title:"Restoring TA workspace",
+          Detail:"A reconnect attempt is scheduled.",
           IsError:false
         };
       case 3:
         return{
-          State:"resyncing", 
-          Title:"Resynchronizing TA workspace", 
-          Detail:"Requesting a full workspace document.", 
+          State:"resyncing",
+          Title:"Resynchronizing TA workspace",
+          Detail:"Requesting a full workspace document.",
           IsError:false
         };
       case 4:
         return{
-          State:"closed", 
-          Title:"TA workspace closed", 
-          Detail:"Open the page again to reconnect.", 
+          State:"closed",
+          Title:"TA workspace closed",
+          Detail:"Open the page again to reconnect.",
           IsError:false
         };
       case 5:
         return{
-          State:"loading", 
-          Title:"Loading TA workspace", 
-          Detail:"Waiting for the workspace document.", 
+          State:"loading",
+          Title:"Loading TA workspace",
+          Detail:"Waiting for the workspace document.",
           IsError:false
         };
     }
@@ -11034,18 +11283,18 @@ function workspaceBootstrapPresentation(state){
   else if(!m.$0.Recoverable){
     const error_2=m.$0;
     return{
-      State:"unavailable", 
-      Title:"TA workspace unavailable", 
-      Detail:error_2.ReasonCode+": "+error_2.Message, 
+      State:"unavailable",
+      Title:"TA workspace unavailable",
+      Detail:error_2.ReasonCode+": "+error_2.Message,
       IsError:true
     };
   }
   else {
     const error_3=m.$0;
     return{
-      State:"recovering", 
-      Title:"Restoring TA workspace", 
-      Detail:error_3.ReasonCode+": "+error_3.Message, 
+      State:"recovering",
+      Title:"Restoring TA workspace",
+      Detail:error_3.ReasonCode+": "+error_3.Message,
       IsError:false
     };
   }
@@ -11162,6 +11411,175 @@ function flattenEditorValue(path, kind, value){
       return[];
   }
 }
+function prepareAxis(value){
+  const o=tryTemporalAxisRaw(value);
+  if(o==null)return null;
+  else {
+    const _1=o.$0[0];
+    const _2=o.$0[1];
+    const _3=o.$0[2];
+    const decoded=choose(tryTemporalAxisPoint, _3);
+    return length(decoded)!==length(_3)?null:Some([_1, {
+      Revision:_2,
+      RawPoints:_3,
+      Points:OfArray(decoded)
+    }]);
+  }
+}
+function pointPayload_1(value){
+  const m=tryTemporalPoint(value);
+  return m==null?[null, Some(value)]:[Some(m.$0[0]), m.$0[1]];
+}
+function tryTemporalSeries(value){
+  const o=tryTemporalSeriesRaw(value);
+  if(o==null)return null;
+  else {
+    const _1=o.$0[0];
+    const _2=o.$0[1];
+    const _3=o.$0[2];
+    const decoded=choose(tryTemporalSeriesPoint, _3);
+    return length(decoded)!==length(_3)?null:Some([_1, _2, decoded]);
+  }
+}
+function traceTimestampsPrepared(trace, prepared){
+  const m=trace.Kind;
+  return m.$==1||(m.$==2?false:m.$!=3)?map((a) => a.Timestamp, candleSeriesForTracePrepared(trace, prepared)):map((a) => a.Timestamp, lineSeriesPrepared(trace.DataRef, prepared));
+}
+function updateAxis(previous, value){
+  const m=tryTemporalAxisRaw(value);
+  if(m!=null&&m.$==1){
+    const revision=m.$0[1];
+    const rawPoints=m.$0[2];
+    const axisRef=m.$0[0];
+    const m_1=previous.ResolvedAxes.TryFind(axisRef);
+    if(m_1==null){
+      const o=prepareAxis(value);
+      return o==null?null:Some([o.$0[0], o.$0[1], null]);
+    }
+    else if(m_1.$0.RawPoints===rawPoints){
+      const oldAxis=m_1.$0;
+      return Some([axisRef, {
+        Revision:revision,
+        RawPoints:oldAxis.RawPoints,
+        Points:oldAxis.Points
+      }, Some(new FSharpSet("New_2", null))]);
+    }
+    else {
+      const oldAxis_1=m_1.$0;
+      const prefix=sharedPrefixLength(oldAxis_1.RawPoints, rawPoints);
+      const a=length(oldAxis_1.RawPoints);
+      const b=length(rawPoints);
+      let _1=Compare(a, b)===-1?a:b;
+      if(prefix===_1||length(oldAxis_1.RawPoints)===length(rawPoints)){
+        const oldSuffix=choose(tryTemporalAxisPoint, skip(prefix, oldAxis_1.RawPoints));
+        const newSuffix=choose(tryTemporalAxisPoint, skip(prefix, rawPoints));
+        if(length(oldSuffix)===length(oldAxis_1.RawPoints)-prefix&&length(newSuffix)===length(rawPoints)-prefix){
+          const changedPositions=new FSharpSet("New_2", OfSeq(map((t) => t[0], oldSuffix).concat(map((t) => t[0], newSuffix))));
+          return Some([axisRef, {
+            Revision:revision,
+            RawPoints:rawPoints,
+            Points:fold((_2, _3) => _2.Add_1(_3[0], _3[1]), fold((_2, _3) => _2.Remove_1(_3[0]), oldAxis_1.Points, oldSuffix), newSuffix)
+          }, Some(changedPositions)]);
+        }
+        else {
+          const o_1=prepareAxis(value);
+          return o_1==null?null:Some([o_1.$0[0], o_1.$0[1], null]);
+        }
+      }
+      else {
+        const o_2=prepareAxis(value);
+        return o_2==null?null:Some([o_2.$0[0], o_2.$0[1], null]);
+      }
+    }
+  }
+  else return null;
+}
+function updateInlineSeries(previousRaw, previousResolved, rawPoints){
+  const mapPoint=(item) => {
+    const p=pointPayload_1(item);
+    return{Payload:p[1], Temporal:p[0]};
+  };
+  if(previousRaw===rawPoints)return previousResolved;
+  else if(length(previousResolved)!==length(previousRaw))return map(mapPoint, rawPoints);
+  else {
+    const prefix=sharedPrefixLength(previousRaw, rawPoints);
+    const a=length(previousRaw);
+    const b=length(rawPoints);
+    let _1=Compare(a, b)===-1?a:b;
+    return!(prefix===_1||length(previousRaw)===length(rawPoints))?map(mapPoint, rawPoints):take(prefix, previousResolved).concat(map(mapPoint, skip(prefix, rawPoints)));
+  }
+}
+function tryTemporalSeriesRaw(value){
+  let _1;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const fields=o.$0;
+    if(!Equals(objectText("_type", fields), Some("temporal-series.v1")))return null;
+    else {
+      const _2=requiredObjectText("axisRef", fields);
+      const _3=nonNegativeInteger("axisRevision", fields);
+      const _4=fields.TryFind("points");
+      return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_4.$0.$==4&&(_1=[_2.$0, _4.$0.$0, _3.$0],true))))?Some([_1[0], _1[2], _1[1]]):null;
+    }
+  }
+}
+function updateTemporalSeries(previousRaw, previousResolved, rawPoints, axisPoints, changedAxisPositions){
+  let baseResolved, _1;
+  const full=() => resolveTemporalPoints(axisPoints, rawPoints);
+  if(length(previousResolved)!==length(previousRaw))baseResolved=full();
+  else if(previousRaw===rawPoints)baseResolved=previousResolved;
+  else {
+    const prefix=sharedPrefixLength(previousRaw, rawPoints);
+    const a=length(previousRaw);
+    const b=length(rawPoints);
+    let _2=Compare(a, b)===-1?a:b;
+    if(!(prefix===_2||length(previousRaw)===length(rawPoints)))baseResolved=full();
+    else {
+      const suffix=resolveTemporalPoints(axisPoints, skip(prefix, rawPoints));
+      baseResolved=length(suffix)!==length(rawPoints)-prefix?full():take(prefix, previousResolved).concat(suffix);
+    }
+  }
+  if(changedAxisPositions==null)return full();
+  else if(!changedAxisPositions.$0.IsEmpty&&length(baseResolved)===length(rawPoints)){
+    const positions=changedAxisPositions.$0;
+    const next=baseResolved.slice();
+    const e=Get(positions);
+    try {
+      while(e.MoveNext())
+        {
+          const position=e.Current;
+          const m=tryFindTemporalPointIndex(position, rawPoints);
+          if(m==null){ }
+          else {
+            const index=m.$0;
+            const _3=tryTemporalSeriesPoint(get(rawPoints, index));
+            const _4=axisPoints.TryFind(position);
+            if(_3!=null&&_3.$==1)if(_4!=null&&_4.$==1)set(next, index, {Payload:Some(_3.$0[1]), Temporal:Some(_4.$0)});
+          }
+        }
+      _1=void 0;
+    }
+    finally {
+      const _5=e;
+      if(typeof _5=="object"&&isIDisposable(_5))e.Dispose();
+    }
+    return next;
+  }
+  else return baseResolved;
+}
+function resolveTemporalPoints(axisPoints, rawPoints){
+  return choose((point) => {
+    const o=tryTemporalSeriesPoint(point);
+    if(o==null)return null;
+    else {
+      const _1=o.$0[0];
+      const _2=o.$0[1];
+      const o_1=axisPoints.TryFind(_1);
+      return o_1==null?null:Some({Payload:Some(_2), Temporal:Some(o_1.$0)});
+    }
+  }, rawPoints);
+}
 function referenceTimeline(rows, data){
   const o=tryHead(sortByDescending((_1) =>[length(_1[1]), Equals(_1[0].Kind, {$:0})], filter_1((_1) => length(_1[1])>0, map((trace) =>[trace, distinct(traceTimestamps(trace, data))], filter_1((a) => a.Visible, collect(effectiveTraces, filter_1((a) => a.Visible, rows)))))));
   const o_1=o==null?null:Some(o.$0[1]);
@@ -11199,6 +11617,18 @@ function tryBasePointIntervalEnd(row, data, timestamp){
       const o_4=o_3==null?null:o_3.$0.Temporal;
       return o_4==null?null:Some(o_4.$0.IntervalEndUtc);
     }
+  }
+}
+function slotCenter(width, visibleCount, index){
+  if(visibleCount<=0)return null;
+  else {
+    const a=0;
+    const b=visibleCount-1;
+    const b_1=Compare(index, b)===-1?index:b;
+    let _1=Compare(a, b_1)===1?a:b_1;
+    let _2=_1+0.5;
+    let _3=width/visibleCount*_2;
+    return Some(_3);
   }
 }
 function fixedNumber(value){
@@ -11245,17 +11675,14 @@ function freshnessFromStatus(status){
   const o_2=objectText("reasonCode", status);
   const reason=o_2==null?kind:o_2.$0;
   return kind=="live"?{$:0}:kind=="delayed"?{$:1, $0:lag}:kind=="stale"?{
-    $:2, 
-    $0:lag, 
+    $:2,
+    $0:lag,
     $1:reason
   }:kind=="backfill"?{$:3, $0:reason}:{$:4, $0:reason};
 }
 function objectText(name, value){
   const o=objectField(name, value);
   return o==null?null:tryText(o.$0);
-}
-function rowTemporalMetadata(row, data){
-  return distinctBy((value) =>[value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality], choose((trace) => latestTemporalMetadata(trace, data), filter_1((a) => a.Visible, effectiveTraces(row))));
 }
 function temporalDetail(metadata){
   const o=metadata.Quality;
@@ -11269,6 +11696,9 @@ function temporalDetail(metadata){
   let _7=o_1==null?"unknown":o_1.$0;
   let _8=String(_7);
   return _6+_8;
+}
+function rowTemporalMetadataPrepared(row, prepared){
+  return distinctBy((value) =>[value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality], choose((trace) => latestTemporalMetadataPrepared(trace, prepared), filter_1((a) => a.Visible, effectiveTraces(row))));
 }
 function sampleEvenly(maximumCount, values){
   return maximumCount<=0||length(values)===0?[]:length(values)<=maximumCount?values.slice():maximumCount===1?[get(values, length(values)-1)]:ofSeq(delay(() => collect_2((sampleIndex) =>[get(values, toInt(Math.round(sampleIndex*(length(values)-1)/(maximumCount-1))))], range(0, maximumCount-1))));
@@ -11290,11 +11720,34 @@ function paddedRange(fallbackLow, fallbackHigh, values){
 function normalize(low, high, top, height, value){
   return low===high?top+height/2:top+height-(value-low)/(high-low)*height;
 }
-function lineSeries(dataRef, data){
-  return choose((point) => parseLineResolved(point.Temporal, point.Payload), resolvedSeries(dataRef, data));
-}
-function candleSeries(dataRef, data){
-  return choose((point) => parseCandleResolved(point.Temporal, point.Payload), resolvedSeries(dataRef, data));
+function candleSeriesForTracePrepared(trace, prepared){
+  const m=trace.CandleDataRefs;
+  if(m!=null&&m.$==1){
+    const refs=m.$0;
+    const valuesByTimestamp=(dataRef) => OfArray(map((point) =>[point.Timestamp, point], lineSeriesPrepared(dataRef, prepared)));
+    const opens=lineSeriesPrepared(refs.OpenRef, prepared);
+    const highs=valuesByTimestamp(refs.HighRef);
+    const lows=valuesByTimestamp(refs.LowRef);
+    const closes=valuesByTimestamp(refs.CloseRef);
+    const volumes=valuesByTimestamp(refs.VolumeRef);
+    return choose((openPoint) => {
+      let _1;
+      const _2=highs.TryFind(openPoint.Timestamp);
+      const _3=lows.TryFind(openPoint.Timestamp);
+      const _4=closes.TryFind(openPoint.Timestamp);
+      const _5=volumes.TryFind(openPoint.Timestamp);
+      return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_1=[_4.$0, _2.$0, _3.$0, _5.$0],true))))?Some({
+        Timestamp:openPoint.Timestamp,
+        Open:openPoint.Value,
+        High:_1[1].Value,
+        Low:_1[2].Value,
+        Close:_1[0].Value,
+        Volume:_1[3].Value,
+        Temporal:openPoint.Temporal
+      }):null;
+    }, opens);
+  }
+  else return candleSeriesPrepared(trace.DataRef, prepared);
 }
 function editorSubmissionErrors(path, required, kind, values){
   let _1;
@@ -11355,9 +11808,143 @@ function editorSubmissionErrors(path, required, kind, values){
     else return missing();
   }
 }
+function tryTemporalAxisRaw(value){
+  let _1;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const fields=o.$0;
+    if(!Equals(objectText("_type", fields), Some("temporal-axis.v1")))return null;
+    else {
+      const _2=requiredObjectText("axisRef", fields);
+      const _3=nonNegativeInteger("revision", fields);
+      const _4=fields.TryFind("points");
+      return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_4.$0.$==4&&(_1=[_2.$0, _4.$0.$0, _3.$0],true))))?Some([_1[0], _1[2], _1[1]]):null;
+    }
+  }
+}
+function tryTemporalAxisPoint(value){
+  let _1;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const fields=o.$0;
+    const _2=nonNegativeInteger("position", fields);
+    const _3=requiredObjectText("sourceIntervalId", fields);
+    const _4=requiredObjectText("scaleKey", fields);
+    const _5=requiredObjectText("intervalStartUtc", fields);
+    const _6=requiredObjectText("intervalEndUtc", fields);
+    const _7=requiredObjectText("observedThroughUtc", fields);
+    const _8=requiredObjectText("finality", fields);
+    const _9=requiredObjectText("projection", fields);
+    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _2.$0, _9.$0, _4.$0, _3.$0],true))))))))?Some([_1[4], {
+      SourceIntervalId:_1[7],
+      ScaleKey:_1[6],
+      IntervalStartUtc:_1[2],
+      IntervalEndUtc:_1[1],
+      ObservedThroughUtc:_1[3],
+      AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
+      Finality:_1[0],
+      Projection:_1[5],
+      Quality:requiredObjectText("quality", fields)
+    }]):null;
+  }
+}
+function tryTemporalPoint(value){
+  let _1, _2;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const fields=o.$0;
+    if(!Equals(objectText("_type", fields), Some("temporal-point.v1")))return null;
+    else {
+      const _3=requiredObjectText("sourceIntervalId", fields);
+      const _4=requiredObjectText("scaleKey", fields);
+      const _5=requiredObjectText("intervalStartUtc", fields);
+      const _6=requiredObjectText("intervalEndUtc", fields);
+      const _7=requiredObjectText("observedThroughUtc", fields);
+      const _8=requiredObjectText("finality", fields);
+      const _9=requiredObjectText("projection", fields);
+      if(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _9.$0, _4.$0, _3.$0],true)))))))){
+        let _10={
+          SourceIntervalId:_1[6],
+          ScaleKey:_1[5],
+          IntervalStartUtc:_1[2],
+          IntervalEndUtc:_1[1],
+          ObservedThroughUtc:_1[3],
+          AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
+          Finality:_1[0],
+          Projection:_1[4],
+          Quality:requiredObjectText("quality", fields)
+        };
+        const m=fields.TryFind("value");
+        let _11=m==null||(m.$0.$==0||(_2=m.$0,false))?null:Some(_2);
+        let _12=[_10, _11];
+        return Some(_12);
+      }
+      else return null;
+    }
+  }
+}
+function tryTemporalSeriesPoint(value){
+  let _1;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const values=o.$0;
+    const _2=nonNegativeInteger("position", values);
+    const _3=values.TryFind("value");
+    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_1=[_3.$0, _2.$0],true))?Some([_1[1], _1[0]]):null;
+  }
+}
+function lineSeriesPrepared(dataRef, prepared){
+  return lineSeriesFromResolved(resolvedSeriesPrepared(dataRef, prepared));
+}
+function sharedPrefixLength(left, right){
+  let index;
+  const a=length(left);
+  const b=length(right);
+  const limit=Compare(a, b)===-1?a:b;
+  index=0;
+  while(index<limit&&get(left, index)===get(right, index))
+    index=index+1;
+  return index;
+}
+function requiredObjectText(name, value){
+  return filter((x) =>!IsNullOrWhiteSpace(x), objectText(name, value));
+}
+function nonNegativeInteger(name, fields){
+  return filter((value) => value>=0&&value===(value<0?Math.ceil(value):Math.floor(value)), objectNumber(name, fields));
+}
+function tryFindTemporalPointIndex(position, rawPoints){
+  function search(low, high){
+    while(true)
+      {
+        if(low>high)return null;
+        else {
+          const middle=low+((high-low)/2>>0);
+          const m=tryTemporalSeriesPoint(get(rawPoints, middle));
+          if(m==null)return null;
+          else if(m.$0[0]===position){
+            m.$0;
+            return Some(middle);
+          }
+          else if(m.$0[0]<position){
+            m.$0[0];
+            low=middle+1;
+          }
+          else high=middle-1;
+        }
+      }
+  }
+  return search(0, length(rawPoints)-1);
+}
 function traceTimestamps(trace, data){
   const m=trace.Kind;
   return m.$==1||(m.$==2?false:m.$!=3)?map((a) => a.Timestamp, candleSeriesForTrace(trace, data)):map((a) => a.Timestamp, lineSeries(trace.DataRef, data));
+}
+function lineSeries(dataRef, data){
+  return lineSeriesFromResolved(resolvedSeries(dataRef, data));
 }
 function objectNumber(name, value){
   const o=objectField(name, value);
@@ -11366,70 +11953,93 @@ function objectNumber(name, value){
 function objectField(name, value){
   return value.TryFind(name);
 }
-function candleCursorValue(label, kind, isBaseRow, timestamp, values){
-  let _1;
-  const o=tryCandleForCursor(isBaseRow, timestamp, values);
-  if(o==null)return null;
-  else {
-    const point=o.$0;
-    const baseValue=Equals(kind, {$:1})?fixedNumber(point.Volume):"O "+fixedNumber(point.Open)+" H "+fixedNumber(point.High)+" L "+fixedNumber(point.Low)+" C "+fixedNumber(point.Close);
-    const m=point.Temporal;
-    if(m==null)_1=baseValue;
-    else {
-      const metadata=m.$0;
-      _1=baseValue+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
-    }
-    let _2={Label:label, Value:_1};
-    return Some(_2);
-  }
-}
-function lineCursorValue(label, isBaseRow, timestamp, values){
-  let _1;
-  const o=tryLineForCursor(isBaseRow, timestamp, values);
-  if(o==null)return null;
-  else {
-    const point=o.$0;
-    const m=point.Temporal;
-    if(m==null)_1=fixedNumber(point.Value);
-    else {
-      const metadata=m.$0;
-      _1=fixedNumber(point.Value)+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
-    }
-    let _2={Label:label, Value:_1};
-    return Some(_2);
-  }
-}
 function projectedCandleSlots(referenceTimestamps, point){
-  const matchingSlots=choose((_1) => pointMatchesTimestamp(_1[1], point.Timestamp, point.Temporal)?Some(_1[0]):null, indexed(referenceTimestamps));
+  const matchingSlots=matchingReferenceIndexes(referenceTimestamps, point.Timestamp, point.Temporal);
   const sourceSpanCount=length(matchingSlots);
   return map((slotIndex) =>[slotIndex, sourceSpanCount, point], matchingSlots);
 }
-function slotCenter(width, visibleCount, index){
-  if(visibleCount<=0)return null;
+function projectedLinePoints(referenceTimestamps, points){
+  let sourceIndex;
+  const projected=create(length(referenceTimestamps), null);
+  const nextUnassignedSlot=init(length(referenceTimestamps)+1, (x) => x);
+  function findNextUnassigned(index){
+    const parent=get(nextUnassignedSlot, index);
+    if(parent===index)return index;
+    else {
+      const root=findNextUnassigned(parent);
+      set(nextUnassignedSlot, index, root);
+      return root;
+    }
+  }
+  sourceIndex=length(points)-1;
+  while(sourceIndex>=0)
+    {
+      let _1, targetIndex;
+      const point=get(points, sourceIndex);
+      const m=matchingReferenceRange(referenceTimestamps, point.Timestamp, point.Temporal);
+      if(m==null)_1=void 0;
+      else {
+        const lastExclusive=m.$0[1];
+        const first=m.$0[0];
+        targetIndex=findNextUnassigned(first);
+        while(targetIndex<lastExclusive)
+          {
+            set(projected, targetIndex, Some(point));
+            set(nextUnassignedSlot, targetIndex, findNextUnassigned(targetIndex+1));
+            targetIndex=get(nextUnassignedSlot, targetIndex);
+          }
+        _1=void 0;
+      }
+      sourceIndex=sourceIndex-1;
+    }
+  return choose((x) => x, mapi((_2, _3) => _3==null?null:Some([_2, _3.$0]), projected));
+}
+function tryCandleForCursor(isBaseRow, timestamp, values){
+  if(isBaseRow)return tryCandleAt(timestamp, values);
   else {
-    const a=0;
-    const b=visibleCount-1;
-    const b_1=Compare(index, b)===-1?index:b;
-    let _1=Compare(a, b_1)===1?a:b_1;
-    let _2=_1+0.5;
-    let _3=width/visibleCount*_2;
-    return Some(_3);
+    const o=tryFindBack((value) => finalizedCursorMatch(timestamp, value.Timestamp, value.Temporal), values);
+    return o==null?tryFindBack((value) => finalizedAsOf(timestamp, value.Temporal), values):(o.$0,o);
   }
 }
-function projectedLinePoints(referenceTimestamps, points){
-  return choose((_1) => {
-    const o=tryLineAt(_1[1], points);
-    return o==null?null:Some([_1[0], o.$0]);
-  }, indexed(referenceTimestamps));
+function candleCursorPointValue(label, kind, point){
+  let _1;
+  const baseValue=Equals(kind, {$:1})?fixedNumber(point.Volume):"O "+fixedNumber(point.Open)+" H "+fixedNumber(point.High)+" L "+fixedNumber(point.Low)+" C "+fixedNumber(point.Close);
+  const m=point.Temporal;
+  if(m==null)_1=baseValue;
+  else {
+    const metadata=m.$0;
+    _1=baseValue+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
+  }
+  return{Label:label, Value:_1};
+}
+function lineCursorPointValue(label, point){
+  let _1;
+  const m=point.Temporal;
+  if(m==null)_1=fixedNumber(point.Value);
+  else {
+    const metadata=m.$0;
+    _1=fixedNumber(point.Value)+" | "+metadata.ScaleKey+" "+metadata.Finality+" | "+metadata.SourceIntervalId;
+  }
+  return{Label:label, Value:_1};
 }
 function cursorIndexFromClientX(visibleCount, left, width, clientX){
   return width<=0?null:cursorIndexFromRatio(visibleCount, (clientX-left)/width);
 }
-function latestTemporalMetadata(trace, data){
-  return tryLast(choose((a) => a.Temporal, resolvedSeries(trace.DataRef, data)));
+function latestTemporalMetadataPrepared(trace, prepared){
+  return tryLast(choose((a) => a.Temporal, resolvedSeriesPrepared(trace.DataRef, prepared)));
 }
 function timeLabels(timestamps){
   return length(timestamps)===0?[]:length(timestamps)===1?[[0, get(timestamps, 0)]]:map((index) =>[index, get(timestamps, index)], distinct([0, length(timestamps)/2>>0, length(timestamps)-1]));
+}
+function candleSeriesPrepared(dataRef, prepared){
+  return candleSeriesFromResolved(resolvedSeriesPrepared(dataRef, prepared));
+}
+function resolvedSeriesPrepared(dataRef, prepared){
+  const o=prepared.ResolvedSeries.TryFind(dataRef);
+  return o==null?[]:o.$0;
+}
+function lineSeriesFromResolved(resolved){
+  return choose((point) => parseLineResolved(point.Temporal, point.Payload), resolved);
 }
 function resolvedSeries(dataRef, data){
   let _1;
@@ -11459,69 +12069,12 @@ function resolvedSeries(dataRef, data){
     }
   }
 }
-function parseLineResolved(temporal, payload){
-  let _1, _2;
-  if(payload!=null&&payload.$==1&&(payload.$0.$==2&&(temporal!=null&&temporal.$==1&&(_1=[payload.$0.$0, temporal.$0],true))))return Some({
-    Timestamp:_1[1].IntervalStartUtc, 
-    Value:_1[0], 
-    Temporal:temporal
-  });
-  else {
-    const o=payload==null?null:tryObject(payload.$0);
-    if(o==null)return null;
-    else {
-      const item=o.$0;
-      const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
-      const _3=o_1==null?objectText("t", item):(o_1.$0,o_1);
-      const _4=objectNumber("v", item);
-      return _3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_2=[_4.$0, _3.$0],true))?Some({
-        Timestamp:_2[1], 
-        Value:_2[0], 
-        Temporal:temporal
-      }):null;
-    }
-  }
+function matchingReferenceIndexes(referenceTimestamps, pointTimestamp, temporal){
+  const m=matchingReferenceRange(referenceTimestamps, pointTimestamp, temporal);
+  return m==null?[]:ofSeq(range(m.$0[0], m.$0[1]-1));
 }
-function parseCandleResolved(temporal, payload){
-  let _1;
-  const o=payload==null?null:tryObject(payload.$0);
-  if(o==null)return null;
-  else {
-    const item=o.$0;
-    const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
-    const _2=o_1==null?objectText("t", item):(o_1.$0,o_1);
-    const _3=objectNumber("o", item);
-    const _4=objectNumber("h", item);
-    const _5=objectNumber("l", item);
-    const _6=objectNumber("c", item);
-    const _7=objectNumber("v", item);
-    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_1=[_6.$0, _4.$0, _5.$0, _3.$0, _2.$0, _7.$0],true))))))?Some({
-      Timestamp:_1[4], 
-      Open:_1[3], 
-      High:_1[1], 
-      Low:_1[2], 
-      Close:_1[0], 
-      Volume:_1[5], 
-      Temporal:temporal
-    }):null;
-  }
-}
-function tryCandleForCursor(isBaseRow, timestamp, values){
-  if(isBaseRow)return tryCandleAt(timestamp, values);
-  else {
-    const o=tryFindBack((value) => finalizedCursorMatch(timestamp, value.Timestamp, value.Temporal), values);
-    return o==null?tryFindBack((value) => finalizedAsOf(timestamp, value.Temporal), values):(o.$0,o);
-  }
-}
-function tryLineForCursor(isBaseRow, timestamp, values){
-  if(isBaseRow)return tryLineAt(timestamp, values);
-  else {
-    const o=tryFindBack((value) => finalizedCursorMatch(timestamp, value.Timestamp, value.Temporal), values);
-    return o==null?tryFindBack((value) => finalizedAsOf(timestamp, value.Temporal), values):(o.$0,o);
-  }
-}
-function pointMatchesTimestamp(timestamp, pointTimestamp, temporal){
-  let _1, _2;
+function matchingReferenceRange(referenceTimestamps, pointTimestamp, temporal){
+  let _1, p, _2;
   if(temporal!=null&&temporal.$==1){
     const metadata=temporal.$0;
     _2=metadata.Projection=="repeat-across-base-buckets"||metadata.Projection=="candle-span"?(_1=temporal.$0,0):temporal.$0.Projection=="step-after-close"?(_1=temporal.$0,1):2;
@@ -11529,84 +12082,19 @@ function pointMatchesTimestamp(timestamp, pointTimestamp, temporal){
   else _2=2;
   switch(_2){
     case 0:
-      return timestampInInterval(timestamp, _1);
+      p=[lowerTimestampBound(referenceTimestamps, _1.IntervalStartUtc), lowerTimestampBound(referenceTimestamps, _1.IntervalEndUtc)];
+      break;
     case 1:
-      return availableAtOrAfter(timestamp, _1);
+      const m=_1.AvailableAtUtc;
+      p=m==null?[0, 0]:[lowerTimestampBound(referenceTimestamps, m.$0), length(referenceTimestamps)];
+      break;
     case 2:
-      return pointTimestamp==timestamp;
+      p=[lowerTimestampBound(referenceTimestamps, pointTimestamp), upperTimestampBound(referenceTimestamps, pointTimestamp)];
+      break;
   }
-}
-function tryLineAt(timestamp, values){
-  return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
-}
-function cursorIndexFromRatio(visibleCount, ratio){
-  if(visibleCount<=0)return null;
-  else {
-    const a=visibleCount-1;
-    const a_1=0;
-    const a_2=1;
-    const b=Compare(a_2, ratio)===-1?a_2:ratio;
-    let _1=Compare(a_1, b)===1?a_1:b;
-    let _2=_1*visibleCount;
-    let _3=Math.floor(_2);
-    const b_1=toInt(_3);
-    let _4=Compare(a, b_1)===-1?a:b_1;
-    return Some(_4);
-  }
-}
-function pointPayload_1(value){
-  const m=tryTemporalPoint(value);
-  return m==null?[null, Some(value)]:[Some(m.$0[0]), m.$0[1]];
-}
-function tryTemporalSeries(value){
-  let _1;
-  const o=tryObject(value);
-  if(o==null)return null;
-  else {
-    const fields=o.$0;
-    if(!Equals(objectText("_type", fields), Some("temporal-series.v1")))return null;
-    else {
-      const _2=requiredObjectText("axisRef", fields);
-      const _3=nonNegativeInteger("axisRevision", fields);
-      const _4=fields.TryFind("points");
-      if(_2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_4.$0.$==4&&(_1=[_2.$0, _4.$0.$0, _3.$0],true))))){
-        const points=_1[1];
-        const decoded=choose((point) => {
-          let _5;
-          const o_1=tryObject(point);
-          if(o_1==null)return null;
-          else {
-            const values=o_1.$0;
-            const _6=nonNegativeInteger("position", values);
-            const _7=values.TryFind("value");
-            return _6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_5=[_7.$0, _6.$0],true))?Some([_5[1], _5[0]]):null;
-          }
-        }, points);
-        return length(decoded)!==length(points)?null:Some([_1[0], _1[2], decoded]);
-      }
-      else return null;
-    }
-  }
-}
-function tryTemporalAxis(value){
-  let _1;
-  const o=tryObject(value);
-  if(o==null)return null;
-  else {
-    const fields=o.$0;
-    if(!Equals(objectText("_type", fields), Some("temporal-axis.v1")))return null;
-    else {
-      const _2=requiredObjectText("axisRef", fields);
-      const _3=nonNegativeInteger("revision", fields);
-      const _4=fields.TryFind("points");
-      if(_2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_4.$0.$==4&&(_1=[_2.$0, _4.$0.$0, _3.$0],true))))){
-        const points=_1[1];
-        const decoded=choose(tryTemporalAxisPoint, points);
-        return length(decoded)!==length(points)?null:Some([_1[0], _1[2], OfArray(decoded)]);
-      }
-      else return null;
-    }
-  }
+  const lastExclusive=p[1];
+  const first=p[0];
+  return first>=lastExclusive?null:Some([first, lastExclusive]);
 }
 function tryCandleAt(timestamp, values){
   return tryLast(filter_1((value) => pointMatchesTimestamp(timestamp, value.Timestamp, value.Temporal), values));
@@ -11628,6 +12116,101 @@ function finalizedAsOf(timestamp, temporal){
     return finalizedTemporal(metadata)&&availableAtOrAfter(timestamp, metadata);
   }
 }
+function cursorIndexFromRatio(visibleCount, ratio){
+  if(visibleCount<=0)return null;
+  else {
+    const a=visibleCount-1;
+    const a_1=0;
+    const a_2=1;
+    const b=Compare(a_2, ratio)===-1?a_2:ratio;
+    let _1=Compare(a_1, b)===1?a_1:b;
+    let _2=_1*visibleCount;
+    let _3=Math.floor(_2);
+    const b_1=toInt(_3);
+    let _4=Compare(a, b_1)===-1?a:b_1;
+    return Some(_4);
+  }
+}
+function candleSeriesFromResolved(resolved){
+  return choose((point) => parseCandleResolved(point.Temporal, point.Payload), resolved);
+}
+function parseLineResolved(temporal, payload){
+  let _1, _2;
+  if(payload!=null&&payload.$==1&&(payload.$0.$==2&&(temporal!=null&&temporal.$==1&&(_1=[payload.$0.$0, temporal.$0],true))))return Some({
+    Timestamp:_1[1].IntervalStartUtc,
+    Value:_1[0],
+    Temporal:temporal
+  });
+  else {
+    const o=payload==null?null:tryObject(payload.$0);
+    if(o==null)return null;
+    else {
+      const item=o.$0;
+      const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
+      const _3=o_1==null?objectText("t", item):(o_1.$0,o_1);
+      const _4=objectNumber("v", item);
+      return _3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_2=[_4.$0, _3.$0],true))?Some({
+        Timestamp:_2[1],
+        Value:_2[0],
+        Temporal:temporal
+      }):null;
+    }
+  }
+}
+function tryTemporalAxis(value){
+  const o=tryTemporalAxisRaw(value);
+  if(o==null)return null;
+  else {
+    const _1=o.$0[0];
+    const _2=o.$0[1];
+    const _3=o.$0[2];
+    const decoded=choose(tryTemporalAxisPoint, _3);
+    return length(decoded)!==length(_3)?null:Some([_1, _2, OfArray(decoded)]);
+  }
+}
+function lowerTimestampBound(referenceTimestamps, value){
+  let low, high;
+  low=0;
+  high=length(referenceTimestamps);
+  while(low<high)
+    {
+      const middle=low+((high-low)/2>>0);
+      if(Compare(get(referenceTimestamps, middle), value)<0)low=middle+1;
+      else high=middle;
+    }
+  return low;
+}
+function upperTimestampBound(referenceTimestamps, value){
+  let low, high;
+  low=0;
+  high=length(referenceTimestamps);
+  while(low<high)
+    {
+      const middle=low+((high-low)/2>>0);
+      if(Compare(get(referenceTimestamps, middle), value)<=0)low=middle+1;
+      else high=middle;
+    }
+  return low;
+}
+function pointMatchesTimestamp(timestamp, pointTimestamp, temporal){
+  let _1, _2;
+  if(temporal!=null&&temporal.$==1){
+    const metadata=temporal.$0;
+    _2=metadata.Projection=="repeat-across-base-buckets"||metadata.Projection=="candle-span"?(_1=temporal.$0,0):temporal.$0.Projection=="step-after-close"?(_1=temporal.$0,1):2;
+  }
+  else _2=2;
+  switch(_2){
+    case 0:
+      return timestampInInterval(timestamp, _1);
+    case 1:
+      return availableAtOrAfter(timestamp, _1);
+    case 2:
+      return pointTimestamp==timestamp;
+  }
+}
+function finalizedTemporal(metadata){
+  return Trim(metadata.Finality).toLowerCase()=="final";
+}
 function timestampInInterval(timestamp, metadata){
   return Compare(timestamp, metadata.IntervalStartUtc)>=0&&Compare(timestamp, metadata.IntervalEndUtc)<0;
 }
@@ -11635,77 +12218,29 @@ function availableAtOrAfter(timestamp, metadata){
   const o=metadata.AvailableAtUtc;
   return o==null?false:Compare(o.$0, timestamp)<=0;
 }
-function tryTemporalPoint(value){
-  let _1, _2;
-  const o=tryObject(value);
-  if(o==null)return null;
-  else {
-    const fields=o.$0;
-    if(!Equals(objectText("_type", fields), Some("temporal-point.v1")))return null;
-    else {
-      const _3=requiredObjectText("sourceIntervalId", fields);
-      const _4=requiredObjectText("scaleKey", fields);
-      const _5=requiredObjectText("intervalStartUtc", fields);
-      const _6=requiredObjectText("intervalEndUtc", fields);
-      const _7=requiredObjectText("observedThroughUtc", fields);
-      const _8=requiredObjectText("finality", fields);
-      const _9=requiredObjectText("projection", fields);
-      if(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _9.$0, _4.$0, _3.$0],true)))))))){
-        let _10={
-          SourceIntervalId:_1[6], 
-          ScaleKey:_1[5], 
-          IntervalStartUtc:_1[2], 
-          IntervalEndUtc:_1[1], 
-          ObservedThroughUtc:_1[3], 
-          AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
-          Finality:_1[0], 
-          Projection:_1[4], 
-          Quality:requiredObjectText("quality", fields)
-        };
-        const m=fields.TryFind("value");
-        let _11=m==null||(m.$0.$==0||(_2=m.$0,false))?null:Some(_2);
-        let _12=[_10, _11];
-        return Some(_12);
-      }
-      else return null;
-    }
-  }
-}
-function requiredObjectText(name, value){
-  return filter((x) =>!IsNullOrWhiteSpace(x), objectText(name, value));
-}
-function nonNegativeInteger(name, fields){
-  return filter((value) => value>=0&&value===(value<0?Math.ceil(value):Math.floor(value)), objectNumber(name, fields));
-}
-function tryTemporalAxisPoint(value){
+function parseCandleResolved(temporal, payload){
   let _1;
-  const o=tryObject(value);
+  const o=payload==null?null:tryObject(payload.$0);
   if(o==null)return null;
   else {
-    const fields=o.$0;
-    const _2=nonNegativeInteger("position", fields);
-    const _3=requiredObjectText("sourceIntervalId", fields);
-    const _4=requiredObjectText("scaleKey", fields);
-    const _5=requiredObjectText("intervalStartUtc", fields);
-    const _6=requiredObjectText("intervalEndUtc", fields);
-    const _7=requiredObjectText("observedThroughUtc", fields);
-    const _8=requiredObjectText("finality", fields);
-    const _9=requiredObjectText("projection", fields);
-    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _2.$0, _9.$0, _4.$0, _3.$0],true))))))))?Some([_1[4], {
-      SourceIntervalId:_1[7], 
-      ScaleKey:_1[6], 
-      IntervalStartUtc:_1[2], 
-      IntervalEndUtc:_1[1], 
-      ObservedThroughUtc:_1[3], 
-      AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
-      Finality:_1[0], 
-      Projection:_1[5], 
-      Quality:requiredObjectText("quality", fields)
-    }]):null;
+    const item=o.$0;
+    const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
+    const _2=o_1==null?objectText("t", item):(o_1.$0,o_1);
+    const _3=objectNumber("o", item);
+    const _4=objectNumber("h", item);
+    const _5=objectNumber("l", item);
+    const _6=objectNumber("c", item);
+    const _7=objectNumber("v", item);
+    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_1=[_6.$0, _4.$0, _5.$0, _3.$0, _2.$0, _7.$0],true))))))?Some({
+      Timestamp:_1[4],
+      Open:_1[3],
+      High:_1[1],
+      Low:_1[2],
+      Close:_1[0],
+      Volume:_1[5],
+      Temporal:temporal
+    }):null;
   }
-}
-function finalizedTemporal(metadata){
-  return Trim(metadata.Finality).toLowerCase()=="final";
 }
 function tryResolve(schemas, row){
   return Bind_2((a) => {
@@ -11795,9 +12330,9 @@ let _c_5=Lazy((_i) => class $StartupCode_Renderer {
   static defaultOptions;
   static {
     this.defaultOptions={
-      MinimumVisibleBars:12, 
-      DefaultVisibleBars:48, 
-      MaximumVisibleBars:4000, 
+      MinimumVisibleBars:12,
+      DefaultVisibleBars:48,
+      MaximumVisibleBars:4000,
       EditorSchemas:[]
     };
   }
@@ -11883,31 +12418,31 @@ function Forever(Item){
 }
 function Ready(Item1, Item2){
   return{
-    $:2, 
-    $0:Item1, 
+    $:2,
+    $0:Item1,
     $1:Item2
   };
 }
 function Waiting(Item1, Item2){
   return{
-    $:3, 
-    $0:Item1, 
+    $:3,
+    $0:Item1,
     $1:Item2
   };
 }
 function New_47(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1, 
-    Left:Left, 
-    Right:Right, 
-    Height:Height, 
+    Node:Node_1,
+    Left:Left,
+    Right:Right,
+    Height:Height,
     Count:Count
   };
 }
 function New_48(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem, 
-    DynFlags:DynFlags, 
+    DynElem:DynElem,
+    DynFlags:DynFlags,
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -11939,8 +12474,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2, 
-    $0:x, 
+    $:2,
+    $0:x,
     $1:y
   };
 }
@@ -11978,10 +12513,10 @@ function fromSeq(s){
 }
 function New_49(path, kind, textValue, numberValue, boolValue){
   return{
-    path:path, 
-    kind:kind, 
-    textValue:textValue, 
-    numberValue:numberValue, 
+    path:path,
+    kind:kind,
+    textValue:textValue,
+    numberValue:numberValue,
     boolValue:boolValue
   };
 }
@@ -12025,9 +12560,9 @@ function fromValue(value){
       const revision_1=_2[2];
       const templateKey=_2[3];
       return Bind_2((decodedFields) => validateSchema(limits(), {
-        TemplateKey:templateKey, 
-        DisplayName:displayName, 
-        SchemaRevision:BigInt(Math.trunc(revision_1)), 
+        TemplateKey:templateKey,
+        DisplayName:displayName,
+        SchemaRevision:BigInt(Math.trunc(revision_1)),
         Fields:decodedFields
       }), sequence(mapi((_7, _8) => fieldFromValue("schema.fields["+String(_7)+"]", _8), nonNull(_2[1]))));
     }
@@ -12048,10 +12583,10 @@ function fieldFromValue(field_1, value){
       const label=_1[2];
       const required=_1[3];
       return Map_2((decodedKind) =>({
-        Key:key, 
-        Label:label, 
-        Kind:decodedKind, 
-        Required:required, 
+        Key:key,
+        Label:label,
+        Kind:decodedKind,
+        Required:required,
         DefaultValue:values.TryFind("defaultValue")
       }), kindFromValue(field_1+".kind", _1[1]));
     }
@@ -12082,8 +12617,8 @@ function kindFromValue(field_1, value){
         switch(_2.$==1?_3.$==1?(_1=[_2.$0, _3.$0],2):(_1=_2.$0,1):_3.$==1?(_1=_3.$0,1):(_1=[_3.$0, _2.$0],0)){
           case 0:
             return Ok({
-              $:1, 
-              $0:_1[1], 
+              $:1,
+              $0:_1[1],
               $1:_1[0]
             });
           case 1:
@@ -12099,8 +12634,8 @@ function kindFromValue(field_1, value){
         switch(_5.$==1?_6.$==1?(_4=[_5.$0, _6.$0],2):(_4=_5.$0,1):_6.$==1?(_4=_6.$0,1):(_4=[_6.$0, _5.$0],0)){
           case 0:
             return Ok({
-              $:2, 
-              $0:_4[1], 
+              $:2,
+              $0:_4[1],
               $1:_4[0]
             });
           case 1:
@@ -12133,9 +12668,9 @@ function kindFromValue(field_1, value){
           }
           else _9=(_10=m_4,false);
           return _9?Ok({
-            $:6, 
-            $0:_10[0], 
-            $1:_10[2], 
+            $:6,
+            $0:_10[0],
+            $1:_10[2],
             $2:_10[1]
           }):Error_1(ofSeq_1(delay(() => {
             const c_3=_10[0];
@@ -12210,8 +12745,8 @@ function choiceFromValue(field_1, value){
     const _3=values.TryFind("label");
     const _4=values.TryFind("value");
     return _2!=null&&_2.$==1&&(_2.$0.$==3&&(_3!=null&&_3.$==1&&(_3.$0.$==3&&(_4!=null&&_4.$==1&&(_1=[_4.$0, _2.$0.$0, _3.$0.$0],true)))))?Ok({
-      Key:_1[1], 
-      Label:_1[2], 
+      Key:_1[1],
+      Label:_1[2],
       Value:_1[0]
     }):error("editor-schema-choice", field_1, "Editor choice requires key, label and value.");
   }
@@ -12253,9 +12788,9 @@ let _c_7=Lazy((_i) => class $StartupCode_EditorAction {
   static limits;
   static {
     this.limits={
-      MaxSchemaDepth:8, 
-      MaxFields:128, 
-      MaxChoicesPerField:128, 
+      MaxSchemaDepth:8,
+      MaxFields:128,
+      MaxChoicesPerField:128,
       MaxListItems:128
     };
     this.Protocol="ptcs-dynamic-action.v1";
@@ -12274,6 +12809,9 @@ class FSharpSet extends Object_1 {
   }
   Add_1(x){
     return new FSharpSet("New_2", Add(x, this.tree));
+  }
+  get IsEmpty(){
+    return this.tree==null;
   }
   Equals(other){
     return this.Count===other.Count&&forall2_1(Equals, this, other);
@@ -12301,8 +12839,8 @@ class FSharpSet extends Object_1 {
 }
 function error_1(code, field_1, message){
   return{
-    Code:code, 
-    Field:field_1, 
+    Code:code,
+    Field:field_1,
     Message:message
   };
 }
@@ -12391,8 +12929,8 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_2(Updates_1, {
-      c:Current, 
-      s:Snap, 
+      c:Current,
+      s:Snap,
       v:VarView
     });
   }
@@ -12818,8 +13356,8 @@ class CheckedInput {
   }
   static Valid(value, inputText_1){
     return Create_2(CheckedInput, {
-      $:0, 
-      $0:value, 
+      $:0,
+      $0:value,
       $1:inputText_1
     });
   }
@@ -12956,8 +13494,8 @@ let _c_12=Lazy((_i) => class $StartupCode_AppendList {
 });
 function New_52(created, evalOrVal, force){
   return{
-    c:created, 
-    v:evalOrVal, 
+    c:created,
+    v:evalOrVal,
     f:force
   };
 }

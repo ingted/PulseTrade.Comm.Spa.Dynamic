@@ -127,6 +127,11 @@ module RuntimeReducer =
             values |> Array.choose (function SduiValue.Object point -> Some point | _ -> None)
         | _ -> [||]
 
+    let temporalPointValues fields =
+        match Map.tryFind "points" fields with
+        | Some(SduiValue.Array values) -> values
+        | _ -> [||]
+
     let temporalPosition fields = temporalNumber "position" fields
 
     let temporalUtcText key fields =
@@ -166,19 +171,42 @@ module RuntimeReducer =
             availableAtValid && causalInterval && knownFinality && knownProjection
         | _ -> false
 
-    let upsertTemporalPointMaps existing items =
-        Array.append existing items
-        |> Array.choose (fun item -> temporalPosition item |> Option.map (fun position -> position, item))
-        |> Array.fold (fun values (position, item) -> Map.add position item values) Map.empty
-        |> Map.toArray
-        |> Array.map (snd >> SduiValue.Object)
+    let upsertTemporalPointValues existing items =
+        let fallback () =
+            Array.append
+                (existing |> Array.choose (function SduiValue.Object point -> Some point | _ -> None))
+                items
+            |> Array.choose (fun item -> temporalPosition item |> Option.map (fun position -> position, item))
+            |> Array.fold (fun values (position, item) -> Map.add position item values) Map.empty
+            |> Map.toArray
+            |> Array.map (snd >> SduiValue.Object)
+
+        match items with
+        | [||] -> existing
+        | [| item |] ->
+            match temporalPosition item with
+            | None -> fallback ()
+            | Some position when existing.Length = 0 -> [| SduiValue.Object item |]
+            | Some position ->
+                match existing[existing.Length - 1] with
+                | SduiValue.Object last ->
+                    match temporalPosition last with
+                    | Some lastPosition when position = lastPosition ->
+                        let next = Array.copy existing
+                        next[next.Length - 1] <- SduiValue.Object item
+                        next
+                    | Some lastPosition when position > lastPosition ->
+                        Array.append existing [| SduiValue.Object item |]
+                    | _ -> fallback ()
+                | _ -> fallback ()
+        | _ -> fallback ()
 
     let updateTemporalObject kind refKey refValue revisionKey revision existing items =
         let fields =
             existing
             |> Option.bind (temporalObject kind)
             |> Option.defaultValue Map.empty
-        let points = upsertTemporalPointMaps (temporalPointMaps fields) items
+        let points = upsertTemporalPointValues (temporalPointValues fields) items
 
         fields
         |> Map.add "_type" (SduiValue.Text kind)
@@ -258,6 +286,29 @@ module RuntimeReducer =
         positions
         |> Array.pairwise
         |> Array.forall (fun (left, right) -> left < right)
+
+    let temporalPositionExists fields position =
+        match rawTemporalPoints fields with
+        | None -> false
+        | Some points ->
+            let rec search low high =
+                if low > high then false
+                else
+                    let middle = low + ((high - low) / 2)
+                    match points[middle] with
+                    | SduiValue.Object point ->
+                        match temporalPosition point with
+                        | Some candidate when candidate = position -> true
+                        | Some candidate when candidate < position -> search (middle + 1) high
+                        | Some _ -> search low (middle - 1)
+                        | None -> false
+                    | _ -> false
+            search 0 (points.Length - 1)
+
+    let firstTemporalPosition fields =
+        rawTemporalPoints fields
+        |> Option.bind Array.tryHead
+        |> Option.bind (function SduiValue.Object point -> temporalPosition point | _ -> None)
 
     let temporalAxisError axisRef value =
         match temporalObject "temporal-axis.v1" value with
@@ -365,7 +416,7 @@ module RuntimeReducer =
             Some("unknown-target-id", $"Patch target `{targetId}` is not registered by the document.")
         | _ -> None
 
-    let patchRuntimeError state (patch: RuntimePatch) =
+    let patchCandidate state (patch: RuntimePatch) =
         let refs = knownDataRefs state
         let axisRefs = documentAxisRefs state
         let targets = knownTargetIds state
@@ -379,19 +430,121 @@ module RuntimeReducer =
                     | Some error -> Error error
                     | None -> Ok(applyDataOperation refs data operation)) (Ok state.Data)
 
-        match candidate with
-        | Error error -> Some error
-        | Ok candidateData ->
-            let retainedError =
-                candidateData
-                |> Map.toSeq
-                |> Seq.tryPick (fun (dataRef, value) ->
-                    match value with
-                    | SduiValue.Array values when values.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
-                        Some("limit-retained-bars", $"Series `{dataRef}` would exceed retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
+        let changedRefs =
+            patch.Operations
+            |> Array.choose (function
+                | PatchOperation.ReplaceDataRef(dataRef, _)
+                | PatchOperation.UpsertSeriesPoints(dataRef, _, _)
+                | PatchOperation.RemoveSeriesBefore(dataRef, _, _)
+                | PatchOperation.UpsertTemporalAxisPoints(dataRef, _, _, _)
+                | PatchOperation.RemoveTemporalAxisBefore(dataRef, _, _, _)
+                | PatchOperation.UpsertTemporalSeriesPoints(dataRef, _, _, _)
+                | PatchOperation.RemoveTemporalSeriesBefore(dataRef, _, _, _)
+                | PatchOperation.SetStatus(dataRef, _) -> Some dataRef
+                | PatchOperation.SetOptions _ -> None)
+            |> Set.ofArray
+
+        let changedAxisRefs =
+            patch.Operations
+            |> Array.choose (function
+                | PatchOperation.UpsertTemporalAxisPoints(axisRef, _, _, _)
+                | PatchOperation.RemoveTemporalAxisBefore(axisRef, _, _, _) -> Some axisRef
+                | _ -> None)
+            |> Set.ofArray
+
+        let requiresFullValidation =
+            patch.Operations
+            |> Array.exists (function PatchOperation.ReplaceDataRef _ -> true | _ -> false)
+
+        let operationLocalError candidateData =
+            patch.Operations
+            |> Array.tryPick (function
+                | PatchOperation.UpsertTemporalAxisPoints(axisRef, _, newRevision, items) ->
+                    match Map.tryFind axisRef candidateData |> Option.bind (temporalObject "temporal-axis.v1") with
+                    | None -> Some("missing-temporal-axis", $"Temporal axis `{axisRef}` is missing after patch application.")
+                    | Some fields ->
+                        let malformed = items |> Array.exists (temporalAxisPointShapeValid >> not)
+                        match temporalText "axisRef" fields, temporalNumber "revision" fields, rawTemporalPoints fields with
+                        | Some encodedRef, _, _ when encodedRef <> axisRef ->
+                            Some("temporal-axis-ref-mismatch", $"Temporal axis key `{axisRef}` contains axisRef `{encodedRef}`.")
+                        | _, Some revision, _ when revision < float newRevision ->
+                            Some("temporal-axis-revision-mismatch", $"Temporal axis `{axisRef}` did not reach revision {newRevision}.")
+                        | _, _, Some points when points.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
+                            Some("limit-retained-bars", $"Temporal axis `{axisRef}` exceeds retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
+                        | _ when malformed -> Some("invalid-temporal-axis", $"Temporal axis `{axisRef}` patch contains malformed point metadata.")
+                        | _ -> None
+                | PatchOperation.UpsertTemporalSeriesPoints(dataRef, axisRef, axisRevision, items) ->
+                    match
+                        Map.tryFind dataRef candidateData |> Option.bind (temporalObject "temporal-series.v1"),
+                        Map.tryFind axisRef candidateData |> Option.bind (temporalObject "temporal-axis.v1")
+                    with
+                    | None, _ -> Some("temporal-series-required", $"Temporal series `{dataRef}` is missing after patch application.")
+                    | _, None -> Some("missing-temporal-axis", $"Temporal series `{dataRef}` references missing axis `{axisRef}`.")
+                    | Some seriesFields, Some axisFields ->
+                        let unknownPosition =
+                            items
+                            |> Array.choose temporalPosition
+                            |> Array.tryFind (temporalPositionExists axisFields >> not)
+                        match temporalText "axisRef" seriesFields, temporalNumber "axisRevision" seriesFields, temporalNumber "revision" axisFields, rawTemporalPoints seriesFields, unknownPosition with
+                        | Some encodedRef, _, _, _, _ when encodedRef <> axisRef ->
+                            Some("temporal-axis-ref-mismatch", $"Temporal series `{dataRef}` uses axis `{encodedRef}`, not `{axisRef}`.")
+                        | _, Some seriesRevision, Some axisCurrentRevision, _, _ when seriesRevision <> axisCurrentRevision || seriesRevision < float axisRevision ->
+                            Some("temporal-axis-revision-mismatch", $"Temporal series `{dataRef}` expects axis revision {seriesRevision}, but `{axisRef}` is {axisCurrentRevision}.")
+                        | _, _, _, Some points, _ when points.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
+                            Some("limit-retained-bars", $"Temporal series `{dataRef}` exceeds retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
+                        | _, _, _, _, Some position ->
+                            Some("unknown-temporal-position", $"Temporal series `{dataRef}` position {position} is absent from axis `{axisRef}`.")
+                        | _ -> None
+                | _ -> None)
+
+        let dependencyError candidateData =
+            candidateData
+            |> Map.toSeq
+            |> Seq.tryPick (fun (dataRef, value) ->
+                match temporalObject "temporal-series.v1" value with
+                | None -> None
+                | Some fields ->
+                    match temporalText "axisRef" fields, temporalNumber "axisRevision" fields, rawTemporalPoints fields with
+                    | Some axisRef, Some seriesRevision, Some points
+                        when Set.contains dataRef changedRefs || Set.contains axisRef changedAxisRefs ->
+                        match Map.tryFind axisRef candidateData |> Option.bind (temporalObject "temporal-axis.v1") with
+                        | None -> Some("missing-temporal-axis", $"Temporal series `{dataRef}` references missing axis `{axisRef}`.")
+                        | Some axisFields ->
+                            match temporalNumber "revision" axisFields with
+                            | Some axisRevision when axisRevision <> seriesRevision ->
+                                Some("temporal-axis-revision-mismatch", $"Temporal series `{dataRef}` expects axis revision {seriesRevision}, but `{axisRef}` is {axisRevision}.")
+                            | _ when points.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
+                                Some("limit-retained-bars", $"Temporal series `{dataRef}` exceeds retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
+                            | _ ->
+                                match firstTemporalPosition fields, firstTemporalPosition axisFields with
+                                | Some seriesFirst, Some axisFirst when seriesFirst < axisFirst ->
+                                    Some("unknown-temporal-position", $"Temporal series `{dataRef}` retains position {seriesFirst}, which is absent from axis `{axisRef}`.")
+                                | _ -> None
+                    | _ when Set.contains dataRef changedRefs ->
+                        Some("invalid-temporal-series", $"Temporal series `{dataRef}` is malformed.")
                     | _ -> None)
 
-            retainedError |> Option.orElseWith (fun () -> temporalDataError state candidateData)
+        match candidate with
+        | Error error -> Error error
+        | Ok candidateData ->
+            let retainedError =
+                changedRefs
+                |> Seq.tryPick (fun dataRef ->
+                    match Map.tryFind dataRef candidateData with
+                    | Some(SduiValue.Array values) when values.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
+                        Some("limit-retained-bars", $"Series `{dataRef}` would exceed retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
+                    | Some _ -> None
+                    | None -> None)
+
+            let error =
+                retainedError
+                |> Option.orElseWith (fun () -> operationLocalError candidateData)
+                |> Option.orElseWith (fun () -> dependencyError candidateData)
+                |> Option.orElseWith (fun () -> if requiresFullValidation then temporalDataError state candidateData else None)
+
+            match error with
+            | Some value -> Error value
+            | None -> Ok candidateData
 
     let applyPatch (state: RuntimeState) (patch: RuntimePatch) =
         let refs = knownDataRefs state
@@ -473,15 +626,15 @@ module RuntimeReducer =
                     Poll = RuntimePollState.Ready
                     LastError = None }, RuntimeEffect.NoEffect
         | RuntimePayload.Patch patch ->
-            match patchRuntimeError state patch with
-            | Some(reasonCode, message) ->
+            match patchCandidate state patch with
+            | Error(reasonCode, message) ->
                 { state with
                     Poll = RuntimePollState.PausedForResync
                     LastError = Some { ReasonCode = reasonCode; Message = message; Recoverable = true } },
                 RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
-            | None ->
-                let next = applyPatch state patch
-                { next with
+            | Ok data ->
+                { state with
+                    Data = data
                     DocumentRevision = frame.DocumentRevision
                     DataRevision = frame.DataRevision
                     LastTransportSequence = frame.TransportSequence

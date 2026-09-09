@@ -352,6 +352,16 @@ let tests =
                             [| PatchOperation.UpsertTemporalAxisPoints(axisRef, 1L, 2L, [| TemporalAxisCodec.encodePointFields revisedPreview |])
                                PatchOperation.UpsertTemporalSeriesPoints("series.price", axisRef, 2L, [| TemporalSeriesCodec.encodePointFields { Position = 11L; Value = SduiValue.Number 102.0 } |])
                                PatchOperation.UpsertTemporalSeriesPoints("series.sma", axisRef, 2L, [||]) |] })
+            let rawPoints dataRef (state: RuntimeState) =
+                match state.Data[dataRef] with
+                | SduiValue.Object fields ->
+                    match fields["points"] with
+                    | SduiValue.Array points -> points
+                    | _ -> failtest $"{dataRef} points must be an array."
+                | _ -> failtest $"{dataRef} must be a temporal object."
+            let beforeAxisPoints = rawPoints axisRef state2
+            let beforePricePoints = rawPoints "series.price" state2
+            let beforeSmaPoints = rawPoints "series.sma" state2
             let state3, patchEffect = RuntimeReducer.reduce state2 patchFrame
             Expect.equal patchEffect RuntimeEffect.NoEffect "Same-position preview replacement should be atomic."
             let revisedAxis = state3.Data[axisRef] |> TemporalAxisCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
@@ -364,6 +374,35 @@ let tests =
             Expect.equal revisedSeries.Points[1].Value (SduiValue.Number 102.0) "Series value should replace at the same position."
             Expect.equal revisedSma.AxisRevision 2L "An unchanged dependent series must pin the revised axis."
             Expect.equal revisedSma.Points initialSma.Points "An empty-items revision pin must preserve existing values."
+            let afterAxisPoints = rawPoints axisRef state3
+            let afterPricePoints = rawPoints "series.price" state3
+            let afterSmaPoints = rawPoints "series.sma" state3
+            Expect.isTrue (Object.ReferenceEquals(beforeAxisPoints[0], afterAxisPoints[0])) "Tail replacement must retain the unchanged axis prefix by reference."
+            Expect.isTrue (Object.ReferenceEquals(beforePricePoints[0], afterPricePoints[0])) "Tail replacement must retain the unchanged series prefix by reference."
+            Expect.isTrue (Object.ReferenceEquals(beforeSmaPoints, afterSmaPoints)) "Revision-only series updates must retain the complete points array by reference."
+
+            let appendedFinal = axisPoint 12L 6 60 PointFinality.Final
+            let retentionPatch =
+                frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.UpsertTemporalAxisPoints(axisRef, 2L, 3L, [| TemporalAxisCodec.encodePointFields appendedFinal |])
+                               PatchOperation.RemoveTemporalAxisBefore(axisRef, 3L, 4L, 11L)
+                               PatchOperation.UpsertTemporalSeriesPoints("series.price", axisRef, 4L, [| TemporalSeriesCodec.encodePointFields { Position = 12L; Value = SduiValue.Number 103.0 } |])
+                               PatchOperation.RemoveTemporalSeriesBefore("series.price", axisRef, 4L, 11L)
+                               PatchOperation.UpsertTemporalSeriesPoints("series.sma", axisRef, 4L, [||])
+                               PatchOperation.RemoveTemporalSeriesBefore("series.sma", axisRef, 4L, 11L) |] })
+            let retainedState, retainedEffect = RuntimeReducer.reduce state3 retentionPatch
+            let retainedAxis = retainedState.Data[axisRef] |> TemporalAxisCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            let retainedSeries = retainedState.Data["series.price"] |> TemporalSeriesCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            let retainedSma = retainedState.Data["series.sma"] |> TemporalSeriesCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal retainedEffect RuntimeEffect.NoEffect "Extension-style upsert-then-trim batches must not request resync."
+            Expect.equal retainedAxis.Revision 4L "Axis must retain the final post-trim revision rather than fail on its intermediate revision."
+            Expect.sequenceEqual (retainedAxis.Points |> Array.map _.Position) [| 11L; 12L |] "Axis retention must apply after the append."
+            Expect.equal retainedSeries.AxisRevision 4L "Changed series must pin the final axis revision."
+            Expect.sequenceEqual (retainedSeries.Points |> Array.map _.Position) [| 11L; 12L |] "Changed series retention must mirror the axis frontier."
+            Expect.equal retainedSma.AxisRevision 4L "Unchanged dependent series must pin the final axis revision."
+            Expect.isEmpty retainedSma.Points "Unchanged dependent values older than the retention frontier must be removed."
 
             let badRevision =
                 frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
@@ -382,6 +421,97 @@ let tests =
             Expect.equal rejectedPosition.Data state3.Data "Unknown axis position must retain last-good data."
             Expect.equal rejectedPosition.LastError.Value.ReasonCode "unknown-temporal-position" "Unknown position must be explicit."
             Expect.equal positionEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 2L)) "Unknown position requests resync."
+
+        testCase "DYN-TA-T-078 max retention append and trim is one atomic revision" <| fun _ ->
+            let limit = DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries
+            let axisRef = "axis.retention.1k"
+            let priceRef = "series.retention.price"
+            let smaRef = "series.retention.sma"
+            let startTime = DateTimeOffset(2026, 9, 9, 0, 0, 0, TimeSpan.Zero)
+            let axisPoints =
+                Array.init limit (fun index ->
+                    let intervalStart = startTime.AddMinutes(float index)
+                    let intervalEnd = intervalStart.AddMinutes 1.0
+                    { Position = int64 index
+                      SourceIntervalId = $"retention:1k:{index}"
+                      ScaleKey = "1k"
+                      IntervalStartUtc = intervalStart
+                      IntervalEndUtc = intervalEnd
+                      ObservedThroughUtc = intervalEnd
+                      AvailableAtUtc = Some intervalEnd
+                      Finality = PointFinality.Final
+                      Projection = TemporalProjection.CandleSpan
+                      Quality = Some "authoritative" })
+            let seriesPoints offset =
+                Array.init limit (fun index ->
+                    { Position = int64 index
+                      Value = SduiValue.Number(float index + offset) })
+            let trace traceId dataRef =
+                { TraceId = traceId
+                  Kind = TaTraceKind.Line
+                  DataRef = dataRef
+                  Label = traceId
+                  Color = "#335577"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let retentionDocument =
+                { document with
+                    TemporalAxisRefs = [| axisRef |]
+                    Rows = [| { row with DataRef = priceRef; Traces = [| trace "price" priceRef; trace "sma" smaRef |] } |] }
+            let initialData =
+                Map
+                    [ axisRef, TemporalAxisCodec.encode { AxisRef = axisRef; Revision = 1L; Points = axisPoints }
+                      priceRef, TemporalSeriesCodec.encode { AxisRef = axisRef; AxisRevision = 1L; Points = seriesPoints 100.0 }
+                      smaRef, TemporalSeriesCodec.encode { AxisRef = axisRef; AxisRevision = 1L; Points = seriesPoints 90.0 } ]
+            let documentState, _ =
+                RuntimeReducer.reduce (RuntimeReducer.initial identity)
+                    { documentFrame with Payload = RuntimePayload.Document retentionDocument }
+            let initialState, initialEffect =
+                RuntimeReducer.reduce documentState
+                    (frame RuntimeFrameKind.Snapshot 2L None 1L
+                        (RuntimePayload.Snapshot { Data = initialData; Freshness = TaFreshness.Live }))
+            Expect.equal initialEffect RuntimeEffect.NoEffect "The exact hard-limit snapshot must be accepted."
+
+            let appendedPosition = int64 limit
+            let intervalStart = startTime.AddMinutes(float limit)
+            let appendedAxis =
+                { Position = appendedPosition
+                  SourceIntervalId = $"retention:1k:{limit}"
+                  ScaleKey = "1k"
+                  IntervalStartUtc = intervalStart
+                  IntervalEndUtc = intervalStart.AddMinutes 1.0
+                  ObservedThroughUtc = intervalStart.AddMinutes 1.0
+                  AvailableAtUtc = Some(intervalStart.AddMinutes 1.0)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "authoritative" }
+            let patch =
+                frame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.UpsertTemporalAxisPoints(axisRef, 1L, 2L, [| TemporalAxisCodec.encodePointFields appendedAxis |])
+                               PatchOperation.RemoveTemporalAxisBefore(axisRef, 2L, 3L, 1L)
+                               PatchOperation.UpsertTemporalSeriesPoints(priceRef, axisRef, 3L, [| TemporalSeriesCodec.encodePointFields { Position = appendedPosition; Value = SduiValue.Number 9999.0 } |])
+                               PatchOperation.RemoveTemporalSeriesBefore(priceRef, axisRef, 3L, 1L)
+                               PatchOperation.UpsertTemporalSeriesPoints(smaRef, axisRef, 3L, [||])
+                               PatchOperation.RemoveTemporalSeriesBefore(smaRef, axisRef, 3L, 1L) |] })
+            let retained, effect = RuntimeReducer.reduce initialState patch
+            let retainedAxis = retained.Data[axisRef] |> TemporalAxisCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            let retainedPrice = retained.Data[priceRef] |> TemporalSeriesCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            let retainedSma = retained.Data[smaRef] |> TemporalSeriesCodec.decode |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal effect RuntimeEffect.NoEffect "The producer's exact upsert-then-trim batch must not request resync."
+            Expect.equal retained.DataRevision 2L "The atomic retention batch must advance one data revision."
+            Expect.equal retainedAxis.Revision 3L "The axis must keep the terminal trim revision."
+            Expect.equal retainedAxis.Points.Length limit "Append then trim must remain at the retained hard limit."
+            Expect.equal retainedAxis.Points[0].Position 1L "The oldest axis position must be trimmed."
+            Expect.equal retainedAxis.Points[limit - 1].Position appendedPosition "The appended axis position must remain visible."
+            Expect.equal retainedPrice.AxisRevision 3L "The changed series must pin the terminal axis revision."
+            Expect.equal retainedPrice.Points.Length limit "The changed series must remain at the retained hard limit."
+            Expect.equal retainedPrice.Points[limit - 1].Position appendedPosition "The appended price must remain visible."
+            Expect.equal retainedSma.AxisRevision 3L "The unchanged dependent series must still pin the terminal axis revision."
+            Expect.equal retainedSma.Points.Length (limit - 1) "The unchanged dependent series must trim without inventing a value."
 
         testCase "DYN-TA-T-070 shared axis keeps 3820 by 28 initial frame bounded" <| fun _ ->
             let pointCount = 3820

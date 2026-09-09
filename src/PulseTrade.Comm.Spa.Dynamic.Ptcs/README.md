@@ -12,4 +12,4 @@ PTCS-specific adapter for the transport-neutral Dynamic Contracts package.
 - Full snapshot/reconnect每series最多2000 points；stable delta最多200。empty-to-first-data必須輸出authoritative full。
 - explicit `RequestFullSnapshot`一律回authoritative full wire，供離線JSON export；不得因current/next revision相同退化成空delta。
 - `ta-browser.v5`延續`BaseRowId`，cursor/range action沿用typed PTCS transient channel，不走額外HTTP或history path。
-- Current exact package：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.8`；exact依賴Contracts `[0.1.8]`，current wire gate須由exact-package suite驗證。
+- Current exact package：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.10`；exact依賴Contracts `[0.1.10]`，current wire gate須由exact-package suite驗證。

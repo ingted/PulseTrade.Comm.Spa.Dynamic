@@ -743,3 +743,66 @@ range revisit: VisibleRangeChanged + covering cache preview -> Accepted != data 
 ```
 
 Daedalus host負責fingerprint與document-first response。Aster client不要求arbitrary URL/header，不解析FSSTL query；MDCQ per-scale warm-up仍由provider owner處理。
+
+## 2026-09-10 Live preview chart hot path revision 11
+
+Renderer將`RuntimeState`拆成兩條browser reactive路徑：
+
+```fsharp
+let chartRuntimeState = Var.Create runtimeState.Value
+let runtimeDataState = Var.Create(RendererModel.prepareData runtimeState.Value.Data)
+
+runtimeState.View
+|> View.Sink (fun next ->
+    if next.Identity <> observedIdentity || next.DataRevision <> observedDataRevision then
+        runtimeDataState.Value <-
+            RendererModel.prepareDataIncremental runtimeDataState.Value next.Data
+    if not (sameChartTopology chartRuntimeState.Value next) then
+        chartRuntimeState.Value <- next)
+```
+
+`chartRuntimeState`只在identity、DocumentRevision或visible trace timestamp topology改變時重建row/SVG topology。`runtimeDataState`在accepted DataRevision前進時更新既有candlestick wick/body、line/histogram path、diagnostic attributes與預先建立的cursor readers。狀態/freshness仍可獨立更新，不得藉由chart cache壓掉。
+
+同一current-K Position的Open/High/Low/Close/Volume與TA值變動屬data mutation，不是topology mutation。每根projected candle持有一個visual state，每條line/histogram持有一組path/last-value state；新geometry只對結構值實際不同者寫入`Var`，避免單一尾端preview令數千個未變SVG attributes同時收到notification。新增/移除Position、換Document/runtime identity、row/trace/visibility或committed viewport改變才重建chart。topology signature使用每條visible trace的row/trace id、position count、first/last timestamp；這依賴accepted temporal axis的既有不變量：finalized prefix不可在中段改寫，live mutation只能替換尾端同Position或append/trim。若未來允許中段timestamp變更，必須先升級signature，不得沿用此快速判斷。
+
+初始snapshot或runtime identity改變才執行完整`RendererModel.prepareData`。後續accepted revision使用`prepareDataIncremental`：Map只枚舉少量`dataRef`；temporal axis/series以保留的raw point reference判斷shared prefix，只解析變動suffix，axis metadata replacement只重算引用該position的series point。所有row共享同一份`TaPreparedRendererData`，不得在每個row或trace重解完整retained data。
+
+Contracts reducer必須支援這項不變量：單點tail replace/append保留未變point reference，空items的axis-revision pin保留原points array。patch validation只檢查本次operation的shape、retention、axis revision與position membership，並檢查changed axis的dependent series；驗證完成的candidate直接成為next state，不可再apply第二次。Snapshot與`ReplaceDataRef`仍做完整資料語意驗證。multi-scale projection使用已排序base axis的lower/upper-bound range lookup；`projectedLinePoints`由source尾端反向指派並搭配next-unassigned path compression，保留「最後匹配source point勝出」且每個base slot最多materialize一次。reference timestamps必須維持UTC lexical ascending，違反時由contract/reducer拒絕，不在renderer排序掩蓋producer錯誤。
+
+每個row revision只建立一次geometry snapshot與`visible index -> cursor value`陣列。mousemove只計算visible index，將最新index覆蓋至pending slot，且同時間最多安排一個`requestAnimationFrame`；frame callback直接更新chart root下固定的crosshair、timestamp與value DOM，不寫入chart-wide WebSharper `Var/View`。click才更新logical cursor並可送`SharedCursorChanged` action。不得在pointer event內重新decode data、resolve temporal series、配置cursor panel DOM或掃描3,820 x 28 points。
+
+```fsharp
+let setCursorIndex next =
+    pendingCursorIndex <- Some next
+    if not cursorFrameScheduled then
+        cursorFrameScheduled <- true
+        JS.RequestAnimationFrame(fun _ ->
+            cursorFrameScheduled <- false
+            pendingCursorIndex |> Option.iter applyCursorIndex
+            pendingCursorIndex <- None)
+        |> ignore
+
+dataView
+|> View.Sink (fun data ->
+    let geometry = prepareGeometry data
+    updateChangedCandleStates geometry
+    updateChangedTraceStates geometry)
+```
+
+WebSharper可能把只轉呼叫mutable tuple內函式的reader wrapper做eta-reduction，令generated bundle在初次render就擷取initial reader。各trace因此須持有明確mutable reader cell；每次geometry更新先替換cell內的cursor/legend reader，再以同一個rAF刷新既有DOM。row value node使用`ta-row-value-{rowId}-{traceId}`，band使用`ta-row-values-{rowId}`與`data-fixed-height="30"`。`Undef`、長數值與preview只改value node文字／state，不得重建row。跨尺度summary使用`ta-cross-scale-values-toggle`與`ta-cross-scale-values`，預設collapsed；其展開只增加chart stack底端高度，不改rows相對stack的位置。
+
+`applyCursorIndex`只可操作目前chart stack root內具`data-ta-shared-crosshair`、`data-ta-cursor-time`與`data-ta-cursor-value-index`的固定節點；不能query整頁或跨chart instance。rAF latest-wins只合併同一paint frame內的pointer位置，不丟棄runtime data revision，也不改provider cadence／ACK語意。
+
+```text
+authoritative same-position preview frame
+  -> RuntimeReducer accepts DataRevision N+1
+  -> runtimeDataState updates
+  -> existing SVG attributes + cursor readers update
+  -> chart render sequence unchanged
+
+new Position / document / viewport topology
+  -> sameChartTopology = false
+  -> rebuild bounded chart stack once
+```
+
+SPAA/provider仍負責事件ACK、revision journal與authoritative frame；Renderer不補tick、不自行產生close，也不跳過revision。exact-package browser gate須先在Follow Latest量可見latest close，再切historical viewport並於live revisions持續抵達期間量`data-chart-render-sequence`、historical close isolation、單次cursor latency與至少300次連續crosshair transitions；owner真SPAA gate另量12秒rAF sample/change/max-gap。單看API revision、單次hover或文字status不足以驗收。

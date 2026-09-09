@@ -19,6 +19,6 @@
     <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.6.676" />
     <PackageReference Include="WebSharper.UI" Version="10.1.5.676" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Interactive.Client" Version="[0.1.12]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Interactive.Client" Version="[0.1.21]" />
   </ItemGroup>
 </Project>

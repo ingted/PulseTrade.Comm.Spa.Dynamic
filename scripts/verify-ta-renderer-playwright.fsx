@@ -90,6 +90,17 @@ let waitForIntAttribute (locator: ILocator) name expected =
 
     require (actual = expected) $"expected `{name}`={expected}, actual={actual}"
 
+let waitForIntAttributeAtLeast (locator: ILocator) name minimum =
+    let deadline = DateTime.UtcNow.AddSeconds 8.0
+    let mutable actual = requiredIntAttribute locator name
+
+    while actual < minimum && DateTime.UtcNow < deadline do
+        Threading.Thread.Sleep 25
+        actual <- requiredIntAttribute locator name
+
+    require (actual >= minimum) $"expected `{name}` >= {minimum}, actual={actual}"
+    actual
+
 let waitForAttributeChange (locator: ILocator) name previous =
     let deadline = DateTime.UtcNow.AddSeconds 8.0
     let mutable actual = locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
@@ -101,6 +112,16 @@ let waitForAttributeChange (locator: ILocator) name previous =
     require (actual <> previous) $"expected `{name}` to change from `{previous}`"
     actual
 
+let waitForAttributeValue (locator: ILocator) name expected =
+    let deadline = DateTime.UtcNow.AddSeconds 8.0
+    let mutable actual = locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+
+    while actual <> expected && DateTime.UtcNow < deadline do
+        Threading.Thread.Sleep 25
+        actual <- locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+
+    require (actual = expected) $"expected `{name}`={expected}, actual={actual}"
+
 let waitForText (locator: ILocator) (expected: string) =
     let deadline = DateTime.UtcNow.AddSeconds 8.0
     let mutable matched = false
@@ -111,6 +132,17 @@ let waitForText (locator: ILocator) (expected: string) =
         if not matched then Threading.Thread.Sleep 50
 
     requireText locator expected
+
+let waitForTextChange (locator: ILocator) previous =
+    let deadline = DateTime.UtcNow.AddSeconds 8.0
+    let mutable actual = textOf locator
+
+    while actual = previous && DateTime.UtcNow < deadline do
+        Threading.Thread.Sleep 10
+        actual <- textOf locator
+
+    require (actual <> previous) $"expected text to change from `{previous}`"
+    actual
 
 let waitForEnabled (locator: ILocator) label =
     let deadline = DateTime.UtcNow.AddSeconds 8.0
@@ -188,6 +220,85 @@ let verifyDesktop (browser: IBrowser) =
     require ((page.Locator("[data-testid$='-crosshair'][visibility='hidden']").CountAsync() |> awaitTask) = 7) "crosshair overlays must remain hidden before pointer movement"
     require ((page.Locator("[data-testid='ta-time-axis-shared']").CountAsync() |> awaitTask) = 1) "all rows must share one X axis"
 
+    let rowLegends = page.Locator("[data-ta-row-values='true']")
+    require ((rowLegends.CountAsync() |> awaitTask) = 7) "every visible row must expose one fixed legend/value band"
+    let initialLegendHeights =
+        [| for index in 0 .. 6 do
+               let box = rowLegends.Nth(index).BoundingBoxAsync() |> awaitTask
+               require (not (isNull box)) $"row legend {index} must expose geometry"
+               yield box.Height |]
+    require (initialLegendHeights |> Array.forall (fun height -> abs (height - 30.0f) <= 0.5f)) ("row legend heights must remain fixed at 30px: " + String.concat "," (initialLegendHeights |> Array.map string))
+
+    let smaLegend = page.Locator("[data-testid='ta-row-values-sma']")
+    let smaLegendToken = page.Locator("[data-testid='ta-row-value-sma-sma-1k']")
+    let smaLegendLabel = smaLegendToken.Locator("[data-ta-row-value-label='true']")
+    let smaLegendValue = smaLegendToken.Locator("[data-ta-row-value-text='true']")
+    require (smaLegend.GetAttributeAsync("data-fixed-height") |> awaitTask = "30") "the SMA row value band must publish its fixed-height contract"
+    waitForAttributeValue smaLegendValue "data-value-state" "defined"
+    let labelBox = smaLegendLabel.BoundingBoxAsync() |> awaitTask
+    let initialValueBox = smaLegendValue.BoundingBoxAsync() |> awaitTask
+    let smaRowBox = page.Locator("[data-testid='ta-row-sma']").BoundingBoxAsync() |> awaitTask
+    require (not (isNull labelBox) && not (isNull initialValueBox) && not (isNull smaRowBox)) "SMA row legend must expose stable label/value/row geometry"
+    require (initialValueBox.X >= labelBox.X + labelBox.Width && initialValueBox.X - (labelBox.X + labelBox.Width) <= 6.0f) "the SMA value must sit immediately to the right of its own label"
+    let renderSequenceBeforeLegendValues = requiredIntAttribute chartStack "data-chart-render-sequence"
+    page.Locator("[data-testid='ta-demo-legend-undef']").ClickAsync() |> awaitUnit
+    waitForAttributeValue smaLegendValue "data-value-state" "undefined"
+    require (textOf smaLegendValue = "Undef") "an unavailable TA value must render as Undef in the existing value node"
+    let undefLegendBox = smaLegend.BoundingBoxAsync() |> awaitTask
+    let undefValueBox = smaLegendValue.BoundingBoxAsync() |> awaitTask
+    let undefRowBox = page.Locator("[data-testid='ta-row-sma']").BoundingBoxAsync() |> awaitTask
+    require (abs (undefLegendBox.Height - initialLegendHeights[2]) <= 0.5f && abs (undefValueBox.Width - initialValueBox.Width) <= 0.5f && abs (undefRowBox.Height - smaRowBox.Height) <= 0.5f) "Undef must not change legend/value/row geometry"
+    page.Locator("[data-testid='ta-demo-legend-long']").ClickAsync() |> awaitUnit
+    waitForAttributeValue smaLegendValue "data-value-state" "defined"
+    waitForText smaLegendValue "123456789"
+    let longLegendBox = smaLegend.BoundingBoxAsync() |> awaitTask
+    let longValueBox = smaLegendValue.BoundingBoxAsync() |> awaitTask
+    let longRowBox = page.Locator("[data-testid='ta-row-sma']").BoundingBoxAsync() |> awaitTask
+    require (abs (longLegendBox.Height - initialLegendHeights[2]) <= 0.5f && abs (longValueBox.Width - initialValueBox.Width) <= 0.5f && abs (longRowBox.Height - smaRowBox.Height) <= 0.5f) "a long realtime value must not change legend/value/row geometry"
+    require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeLegendValues) "legend value changes must update existing text without rebuilding the chart stack"
+
+    let summaryToggle = page.Locator("[data-testid='ta-cross-scale-values-toggle']")
+    let crossScaleValues = page.Locator("[data-testid='ta-cross-scale-values']")
+    require (summaryToggle.GetAttributeAsync("aria-expanded") |> awaitTask = "false") "cross-scale summary must default to collapsed"
+    require (crossScaleValues.GetAttributeAsync("data-expanded") |> awaitTask = "false") "cross-scale panel must expose its collapsed state"
+    require (not (crossScaleValues.IsVisibleAsync() |> awaitTask)) "collapsed cross-scale values must not consume value-band height"
+    let priceRowBoxBeforeSummary = page.Locator("[data-testid='ta-row-price']").BoundingBoxAsync() |> awaitTask
+    let chartStackBoxBeforeSummary = chartStack.BoundingBoxAsync() |> awaitTask
+    require (not (isNull priceRowBoxBeforeSummary) && not (isNull chartStackBoxBeforeSummary)) "price row and chart stack must expose geometry before summary expansion"
+    summaryToggle.ClickAsync() |> awaitUnit
+    waitForAttributeValue summaryToggle "aria-expanded" "true"
+    waitForAttributeValue crossScaleValues "data-expanded" "true"
+    require (crossScaleValues.IsVisibleAsync() |> awaitTask) "human toggle must expand the cross-scale summary"
+    let summaryBox = crossScaleValues.BoundingBoxAsync() |> awaitTask
+    require (not (isNull summaryBox) && abs (summaryBox.Height - 30.0f) <= 0.5f) "expanded cross-scale values must use one fixed-height line"
+    let priceRowBoxAfterSummary = page.Locator("[data-testid='ta-row-price']").BoundingBoxAsync() |> awaitTask
+    let chartStackBoxAfterSummary = chartStack.BoundingBoxAsync() |> awaitTask
+    require
+        (not (isNull priceRowBoxAfterSummary)
+         && not (isNull chartStackBoxAfterSummary)
+         && abs ((priceRowBoxAfterSummary.Y - chartStackBoxAfterSummary.Y) - (priceRowBoxBeforeSummary.Y - chartStackBoxBeforeSummary.Y)) <= 0.5f)
+        "bottom summary expansion must not move chart rows within the chart stack"
+    summaryToggle.ClickAsync() |> awaitUnit
+    waitForAttributeValue summaryToggle "aria-expanded" "false"
+    waitForAttributeValue crossScaleValues "data-expanded" "false"
+
+    let latestPriceCandle = page.Locator("[data-testid='ta-candle-price-price-1k'][data-candle-part='body']").Last
+    let previewCloseBefore = latestPriceCandle.GetAttributeAsync("data-close") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    let renderSequenceBeforePreview = requiredIntAttribute chartStack "data-chart-render-sequence"
+    page.Locator("[data-testid='ta-demo-preview-update']").ClickAsync() |> awaitUnit
+    let previewCloseAfter = waitForAttributeChange latestPriceCandle "data-close" previewCloseBefore
+    require (previewCloseAfter <> previewCloseBefore) "same-position live preview must update the latest candle close"
+    let renderSequenceAfterPreview = requiredIntAttribute chartStack "data-chart-render-sequence"
+    require
+        (renderSequenceAfterPreview = renderSequenceBeforePreview)
+        $"same-position live preview must update SVG attributes without rebuilding the chart stack; render={renderSequenceBeforePreview}->{renderSequenceAfterPreview}; close={previewCloseBefore}->{previewCloseAfter}"
+    let fixtureRoot = page.Locator("[data-capacity-positions]")
+    let streamCloseBefore = latestPriceCandle.GetAttributeAsync("data-close") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    page.Locator("[data-testid='ta-demo-preview-stream']").ClickAsync() |> awaitUnit
+    waitForIntAttributeAtLeast fixtureRoot "data-preview-stream-updates" 1 |> ignore
+    let streamCloseAfter = waitForAttributeChange latestPriceCandle "data-close" streamCloseBefore
+    require (streamCloseAfter <> streamCloseBefore) "the live preview stream must advance the visible close while follow-latest is active"
+
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
     let navigatorBox = navigator.BoundingBoxAsync() |> awaitTask
     let selectionBox = page.Locator("[data-testid='ta-overview-selection']").BoundingBoxAsync() |> awaitTask
@@ -236,14 +347,17 @@ let verifyDesktop (browser: IBrowser) =
     let renderSequenceBeforeCursor = requiredIntAttribute chartStack "data-chart-render-sequence"
     let firstCrosshair = crosshairs.First
     let crosshairXBefore = firstCrosshair.GetAttributeAsync("x1") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    let smaLegendValueBeforeCursor = textOf smaLegendValue
     let cursorLatency = Diagnostics.Stopwatch.StartNew()
     priceChart.HoverAsync() |> awaitUnit
     let crosshairXAfter = waitForAttributeChange firstCrosshair "x1" crosshairXBefore
+    let smaLegendValueAfterCursor = waitForTextChange smaLegendValue smaLegendValueBeforeCursor
     cursorLatency.Stop()
-    let cursorValues = page.Locator("[data-testid='ta-cursor-values']")
+    let cursorValues = page.Locator("[data-testid='ta-cross-scale-values']")
     waitForText cursorValues expectedMiddleLabel
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeCursor) "pointer movement must update only the cursor overlay, not rebuild the chart stack"
-    require (cursorLatency.ElapsedMilliseconds <= 500L) $"shared cursor update exceeded 500ms: {cursorLatency.ElapsedMilliseconds}ms"
+    require (smaLegendValueAfterCursor <> "Undef") "cursor movement must update the existing row legend value node"
+    require (cursorLatency.ElapsedMilliseconds <= 250L) $"shared cursor update exceeded 250ms: {cursorLatency.ElapsedMilliseconds}ms"
     require ((page.Locator("[data-testid$='-crosshair'][visibility='visible']").CountAsync() |> awaitTask) = 7) "pointer movement on one row must reveal one shared crosshair in every visible row"
     let crosshairPositions =
         page.Locator("[data-testid$='-crosshair']").AllAsync()
@@ -252,6 +366,37 @@ let verifyDesktop (browser: IBrowser) =
         |> Seq.distinct
         |> Seq.toArray
     require (crosshairPositions.Length = 1 && crosshairPositions[0] = crosshairXAfter && crosshairPositions[0] <> "0" && crosshairPositions[0] <> "100") ("shared pointer crosshair positions diverged: " + String.concat "," crosshairPositions)
+
+    let previewUpdatesBeforeCursor = requiredIntAttribute fixtureRoot "data-preview-stream-updates"
+    let historicalCloseBeforeCursor = latestPriceCandle.GetAttributeAsync("data-close") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    let sustainedCursor = Diagnostics.Stopwatch.StartNew()
+    let mutable previousCrosshairX = crosshairXAfter
+    let mutable cursorTransitions = 0
+    let mutable maximumCursorLatencyMs = 0L
+    for sample in 0 .. 299 do
+        let ratio = if sample % 2 = 0 then 0.18f else 0.82f
+        let movement = Diagnostics.Stopwatch.StartNew()
+        page.Mouse.MoveAsync(pointerBox.X + pointerBox.Width * ratio, pointerBox.Y + pointerBox.Height / 2.0f) |> awaitUnit
+        let currentCrosshairX = waitForAttributeChange firstCrosshair "x1" previousCrosshairX
+        movement.Stop()
+        cursorTransitions <- cursorTransitions + 1
+        maximumCursorLatencyMs <- max maximumCursorLatencyMs movement.ElapsedMilliseconds
+        previousCrosshairX <- currentCrosshairX
+    sustainedCursor.Stop()
+    require (cursorTransitions >= 300) $"sustained cursor movement produced too few crosshair transitions: {cursorTransitions}"
+    require (maximumCursorLatencyMs < 250L) $"sustained cursor movement stalled for {maximumCursorLatencyMs}ms"
+    require (sustainedCursor.Elapsed < TimeSpan.FromSeconds 12.0) $"sustained cursor movement exceeded 12 seconds: {sustainedCursor.Elapsed}"
+    let concurrentPreviewUpdates = requiredIntAttribute fixtureRoot "data-preview-stream-updates"
+    let concurrentPreviewUpdateCount = concurrentPreviewUpdates - previewUpdatesBeforeCursor
+    require (concurrentPreviewUpdateCount >= 3) $"sustained cursor gate observed only {concurrentPreviewUpdateCount} concurrent live preview updates"
+    let historicalCloseAfterCursor = latestPriceCandle.GetAttributeAsync("data-close") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    require (historicalCloseAfterCursor = historicalCloseBeforeCursor) "realtime tail updates must not overwrite the committed historical viewport"
+    require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeCursor) "sustained pointer movement must not rebuild the chart stack"
+    let sustainedLegendBox = smaLegend.BoundingBoxAsync() |> awaitTask
+    let sustainedValueBox = smaLegendValue.BoundingBoxAsync() |> awaitTask
+    let sustainedRowBox = page.Locator("[data-testid='ta-row-sma']").BoundingBoxAsync() |> awaitTask
+    require (abs (sustainedLegendBox.Height - initialLegendHeights[2]) <= 0.5f && abs (sustainedValueBox.Width - initialValueBox.Width) <= 0.5f && abs (sustainedRowBox.Height - smaRowBox.Height) <= 0.5f) "cursor and concurrent live revisions must not change row legend geometry"
+
     priceChart.ClickAsync() |> awaitUnit
     waitForText callbackState "callback actions 2 / last SharedCursorChanged"
     Directory.CreateDirectory outputDirectory |> ignore
@@ -302,7 +447,7 @@ let verifyDesktop (browser: IBrowser) =
     waitForText callbackState "callback actions 4 / last VisibleRangeChanged"
 
     page.Locator("[data-testid='ta-reset-view']").ClickAsync() |> awaitUnit
-    requireText (page.Locator("[data-testid='ta-feedback']")) "Local view reset."
+    waitForAttributeValue (page.Locator("[data-testid='ta-chart-stack']")) "data-follow-latest" "true"
     waitForText callbackState "callback actions 5 / last VisibleRangeChanged"
 
     let volumeRow = page.Locator("[data-testid='ta-row-volume']")
@@ -395,6 +540,9 @@ let verifyDesktop (browser: IBrowser) =
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForIntAttribute chartStack "data-chart-render-sequence" (renderBeforeLeftHandle + 1)
 
+    page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing {initialVisibleStart}-{capacityPointCount}"
+    waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls before document replacement"
     page.Locator("[data-testid='ta-demo-replace-document']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-workspace-title']")) "SMA(30)"
     waitForText (page.Locator("[data-testid='ta-canvas-identity']")) "ta-demo-canvas-replacement"
@@ -407,7 +555,7 @@ let verifyDesktop (browser: IBrowser) =
     Directory.CreateDirectory outputDirectory |> ignore
     page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "desktop.png"), FullPage = true)) |> awaitTask |> ignore
     context.CloseAsync() |> awaitUnit
-    titleBox, priceBox, cursorLatency.ElapsedMilliseconds
+    titleBox, priceBox, cursorLatency.ElapsedMilliseconds, cursorTransitions, maximumCursorLatencyMs, sustainedCursor.ElapsedMilliseconds, concurrentPreviewUpdateCount
 
 let verifyMobile (browser: IBrowser) =
     let viewportWidth = 390
@@ -447,9 +595,9 @@ if not (String.IsNullOrWhiteSpace browserExecutablePath) && File.Exists browserE
 let browser = playwright.Chromium.LaunchAsync(launch) |> awaitTask
 
 try
-    let titleBox, priceBox, cursorLatencyMs = verifyDesktop browser
+    let titleBox, priceBox, cursorLatencyMs, cursorTransitions, maximumCursorLatencyMs, sustainedCursorMs, concurrentPreviewUpdates = verifyDesktop browser
     verifyMobile browser
-    printfn "TA renderer Playwright PASS url=%s cursorLatencyMs=%d chartRerender=false desktopTitle=(%.1f,%.1f,%.1f,%.1f) desktopPrice=(%.1f,%.1f,%.1f,%.1f) output=%s" url cursorLatencyMs titleBox.X titleBox.Y titleBox.Width titleBox.Height priceBox.X priceBox.Y priceBox.Width priceBox.Height outputDirectory
+    printfn "TA renderer Playwright PASS url=%s cursorLatencyMs=%d sustainedTransitions=%d sustainedMaxLatencyMs=%d sustainedElapsedMs=%d concurrentPreviewUpdates=%d chartRerender=false desktopTitle=(%.1f,%.1f,%.1f,%.1f) desktopPrice=(%.1f,%.1f,%.1f,%.1f) output=%s" url cursorLatencyMs cursorTransitions maximumCursorLatencyMs sustainedCursorMs concurrentPreviewUpdates titleBox.X titleBox.Y titleBox.Width titleBox.Height priceBox.X priceBox.Y priceBox.Width priceBox.Height outputDirectory
 finally
     browser.CloseAsync() |> awaitUnit
     playwright.Dispose()

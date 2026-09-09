@@ -69,6 +69,61 @@ let tests =
             Expect.equal actual.Length 1 "only the complete typed candle should survive"
             Expect.equal actual[0].Close 11.0 "close must preserve transport value"
 
+        testCase "same-position preview updates preserve chart topology while appended bars rebuild it" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "live-preview"
+                  CanvasInstanceId = CanvasInstanceId "live-preview-canvas" }
+            let row =
+                { RowId = "price"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "price"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Traces = [||]
+                  Options = Map.empty }
+            let document =
+                { WorkspaceId = "live-preview"
+                  Title = "Live preview"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "price"
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let state data dataRevision =
+                { RuntimeReducer.initial identity with
+                    Document = Some document
+                    Data = Map [ "price", SduiValue.Array data ]
+                    DocumentRevision = 1L
+                    DataRevision = dataRevision
+                    LastTransportSequence = dataRevision }
+            let initial =
+                state
+                    [| candle "B1" 10.0 12.0 9.0 11.0 100.0
+                       candle "B2" 11.0 13.0 10.0 12.0 120.0 |]
+                    1L
+            let revisedPreview =
+                state
+                    [| candle "B1" 10.0 12.0 9.0 11.0 100.0
+                       candle "B2" 11.0 14.0 10.0 13.5 135.0 |]
+                    2L
+            let appended =
+                state
+                    [| candle "B1" 10.0 12.0 9.0 11.0 100.0
+                       candle "B2" 11.0 14.0 10.0 13.5 135.0
+                       candle "B3" 13.5 15.0 13.0 14.5 80.0 |]
+                    3L
+
+            Expect.isTrue
+                (TaWorkspaceRenderer.sameChartTopology initial revisedPreview)
+                "replacing the current bar at the same timestamp must preserve the mounted SVG topology"
+            Expect.isFalse
+                (TaWorkspaceRenderer.sameChartTopology revisedPreview appended)
+                "appending a new timestamp must rebuild the visible chart topology"
+
         testCase "visible window clamps count and start" <| fun _ ->
             let actual =
                 RendererModel.clampWindow 12 160 96 { StartIndex = 90; Count = 48 }
@@ -517,6 +572,18 @@ let tests =
                     TemporalProjection.StepAfterClose
                     (Some "complete")
                     (Some(SduiValue.Object(Map [ "v", SduiValue.Number 33.0 ])))
+            let laterStepLine =
+                temporalPoint
+                    "es-5k:1305-step"
+                    "5K"
+                    "2026-09-03T13:05:00Z"
+                    "2026-09-03T13:10:00Z"
+                    "2026-09-03T13:08:00Z"
+                    (Some "2026-09-03T13:08:00Z")
+                    PointFinality.Final
+                    TemporalProjection.StepAfterClose
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "v", SduiValue.Number 44.0 ])))
             let trace traceId kind dataRef label =
                 { TraceId = traceId; Kind = kind; DataRef = dataRef; Label = label; Color = ""; Width = 1.0; Visible = true; CandleDataRefs = None; Options = Map.empty }
             let row =
@@ -536,7 +603,7 @@ let tests =
                     "series.base", SduiValue.Array baseCandles
                     "series.coarse-candle", SduiValue.Array [| coarseCandle |]
                     "series.coarse-line", SduiValue.Array coarseLine
-                    "series.step-line", SduiValue.Array [| stepLine |]
+                    "series.step-line", SduiValue.Array [| stepLine; laterStepLine |]
                 ]
 
             Expect.sequenceEqual (RendererModel.referenceTimeline [| row |] data) timestamps "The longest real timestamp series is the base axis."
@@ -554,6 +621,7 @@ let tests =
             Expect.sequenceEqual (repeated |> Array.map (snd >> _.Value)) [| 10.0; 10.0; 10.0; 10.0; 10.0; 20.0; 20.0; 20.0; 20.0; 20.0 |] "Repeated cells preserve each source interval value."
             let stepped = RendererModel.lineSeries "series.step-line" data |> RendererModel.projectedLinePoints timestamps
             Expect.sequenceEqual (stepped |> Array.map fst) [| 5; 6; 7; 8; 9 |] "Step-after-close remains invisible before owner-provided availability."
+            Expect.sequenceEqual (stepped |> Array.map (snd >> _.Value)) [| 33.0; 33.0; 33.0; 44.0; 44.0 |] "A later causal step replaces the prior suffix without expanding every overlapping source range."
             let metadata = RendererModel.rowTemporalMetadata row data
             Expect.isTrue (metadata |> Array.exists (fun value -> value.ScaleKey = "5K" && value.Quality = Some "complete")) "Legend metadata preserves scale and quality."
 
@@ -678,7 +746,14 @@ let tests =
                       refs.CloseRef, series [| 108.0; 112.0 |]
                       refs.VolumeRef, series [| 900.0; 1200.0 |] ]
             let candles = RendererModel.candleSeriesForTrace trace data
+            let prepared = RendererModel.prepareData data
+            let preparedCandles = RendererModel.candleSeriesForTracePrepared trace prepared
             Expect.equal candles.Length 2 "Five shared-axis scalar series should synthesize two candles."
+            Expect.sequenceEqual preparedCandles candles "Prepared shared-axis candle projection must preserve raw-path semantics."
+            Expect.sequenceEqual
+                (RendererModel.lineSeriesPrepared refs.CloseRef prepared)
+                (RendererModel.lineSeries refs.CloseRef data)
+                "Prepared shared-axis line projection must preserve raw-path semantics."
             Expect.equal (candles |> Array.map _.Timestamp) [| "2026-09-08T01:00:00.0000000+00:00"; "2026-09-08T01:05:00.0000000+00:00" |] "Irregular gap must stay irregular; renderer must not infer 01:01..01:04."
             Expect.equal candles[1].Open 105.0 "Open component should join by axis position."
             Expect.equal candles[1].High 115.0 "High component should join by axis position."
@@ -687,6 +762,45 @@ let tests =
             Expect.equal candles[1].Volume 1200.0 "Volume component should join by axis position."
             Expect.equal (RendererModel.referenceTimeline [| row |] data).Length 2 "Shared timeline should expose only actual axis positions."
             Expect.equal TaWorkspaceRenderer.defaultOptions.MaximumVisibleBars 4000 "Default renderer viewport must accept the stakeholder 4,000-bar gate."
+
+            let replaceTemporalTail revisionKey revision replacement value =
+                match value with
+                | SduiValue.Object fields ->
+                    match fields["points"] with
+                    | SduiValue.Array points ->
+                        let nextPoints = Array.copy points
+                        nextPoints[nextPoints.Length - 1] <- replacement
+                        fields
+                        |> Map.add revisionKey (SduiValue.Number revision)
+                        |> Map.add "points" (SduiValue.Array nextPoints)
+                        |> SduiValue.Object
+                    | _ -> failtest "Temporal points must be an array."
+                | _ -> failtest "Temporal data must be an object."
+            let repinTemporalSeries revision value =
+                match value with
+                | SduiValue.Object fields ->
+                    fields
+                    |> Map.add "axisRevision" (SduiValue.Number revision)
+                    |> SduiValue.Object
+                | _ -> failtest "Temporal series must be an object."
+            let revisedAxisPoint = axisPoint 41L 5 |> TemporalAxisCodec.encodePoint
+            let revisedClosePoint =
+                TemporalSeriesCodec.encodePoint { Position = 41L; Value = SduiValue.Number 113.25 }
+            let revisedData =
+                data
+                |> Map.map (fun dataRef value ->
+                    if dataRef = axisRef then replaceTemporalTail "revision" 8.0 revisedAxisPoint value
+                    elif dataRef = refs.CloseRef then replaceTemporalTail "axisRevision" 8.0 revisedClosePoint value
+                    else repinTemporalSeries 8.0 value)
+            let revisedPrepared = RendererModel.prepareDataIncremental prepared revisedData
+            let revisedCandles = RendererModel.candleSeriesForTracePrepared trace revisedPrepared
+            Expect.equal revisedCandles[1].Close 113.25 "Incremental preparation must expose same-position close replacement."
+            Expect.isTrue
+                (Object.ReferenceEquals(prepared.ResolvedSeries[refs.OpenRef][0], revisedPrepared.ResolvedSeries[refs.OpenRef][0]))
+                "Incremental preparation must retain an unaffected prefix instead of rematerializing all retained points."
+            Expect.isFalse
+                (Object.ReferenceEquals(prepared.ResolvedSeries[refs.OpenRef][1], revisedPrepared.ResolvedSeries[refs.OpenRef][1]))
+                "A changed axis position must refresh dependent temporal metadata."
 
         testCase "generic editor list operations retain stable paths and validation" <| fun _ ->
             let schema =
