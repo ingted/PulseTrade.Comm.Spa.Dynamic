@@ -33,7 +33,7 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 
 九月`基於FSSTL的TA Research`第一個production切片`DYN-TA-017/018`已完成；舊`DYN-TA-008`package closure只在後續TA切片需要發布直接dependency時同步處理，不擴張到legacy consumer。
 
-目前TA cache/renderer最終graph為Contracts `0.1.7`、Renderer `0.1.14`、Interactive.Client `0.1.11`、Dynamic.Ptcs `0.1.7`與Ptcs.Client `0.1.8`；已push且public index/nuspec可讀。SPAA真provider M16/M17皆GREEN。`artifacts/staging`歷史build副本不修改、不作active consumer。
+目前TA cache/renderer最終graph為Contracts `0.1.8`、Renderer `0.1.15`、Interactive.Client `0.1.12`、Dynamic.Ptcs `0.1.8`與Ptcs.Client `0.1.9`；已push且public index/nuspec可讀。SPAA真provider M16/M17皆GREEN。`artifacts/staging`歷史build副本不修改、不作active consumer。
 
 
 ## 2. Legacy prerequisite policy
