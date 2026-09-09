@@ -1205,3 +1205,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Direct PTCS consumers now pin exact `PulseTrade.Comm.Spa 0.2.18`. Fresh build-first releases are Dynamic.Ptcs `0.1.5`, Dynamic.Ptcs.Client `0.1.3`, and main Dynamic `0.1.7`.
 - `0.1.6` was superseded because pack-first can retain a previous Release assembly. Dynamic.Ptcs and Ptcs.Client were rebuilt before `pack --no-build`; main Dynamic was built from a source-identical staging copy because canonical generated `src/websharper.log` remained OS access-denied.
 - The staging WebSharper build completed with only existing WS9002, and generated tracked JS hashes were identical to canonical source. NuGet pushes returned `Created`; no new Dynamic UI behavior is claimed by this dependency release.
+
+## 2026-09-09 - M15 FloatingPoint collection and notebook acceptance gate
+
+- Aster在Daedalus repo新增`Milestone15.FsStlMultiScaleFloatingPointCollections.dib`，以Interactive.Extension exact `0.1.0-alpha14`驗證三條公開projection API；canonical `FsStlSeries<FloatingPoint>`保留SnapshotId/EventTime/AvailableAt，顯式時間鍵sequence、Deedle Frame與NestedMap皆可進shared temporal axis。
+- `yyyyMMdd`只允許1440K UTC calendar day，930K／1380K date-only須fail closed；無時間鍵collection不推測時間。package hash與Daedalus公告一致，`dotnet dib` package/collection/shared-axis markers全GREEN。
+- real SPAA preflight使用文字FSSTL描述1K／5K／30K／60K bars及SMA／DMI／MACD／Heikin-Ashi。MDCQ Next恢復期間曾取得真實frames但仍可能`actor-resolve-failed`；Daedalus正在實作compile-time typed `TA_CHART`取代VALUE-name presentation inference。Notebook iframe與Playwright尚未完成，故DYN-TA-017E/F不宣稱production完成。
