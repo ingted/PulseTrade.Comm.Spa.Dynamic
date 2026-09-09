@@ -377,7 +377,7 @@ type TaRowSpec =
       Visible: bool; Options: Map<string,SduiValue>; Traces: TaTraceSpec array }
 ```
 
-`TaRowSpec.effectiveTraces`在`Traces`空時由legacy欄位導出一個trace。validation將row primary ref與所有trace refs加入document registry，限制trace id/dataRef uniqueness、每row trace count與style bounds。
+`TaRowSpec.effectiveTraces`在`Traces`空時由legacy欄位導出一個trace。validation將row primary ref與所有trace refs加入document registry，限制document內`RowId`唯一、同一row內`TraceId`唯一、每row trace count與style bounds。`DataRef`是immutable series identity，不是render instance identity；同一series可同時被overlay row與一或多個separate rows重用，各row仍獨立解析與呈現。FSSTL owner以rows/traces組合決定overlay或分列，Renderer不得依`DataRef`自行合併row。
 
 `ta-browser.v2` series wire包含`mode=replace|upsert`、changed points與optional `removeBeforeTime`。server在document revision改變、初始、gap/resync時送replace；穩定document比較previous/next keyed state後只送upsert/remove-before/status。client先驗base revision，再merge、sort、套用2000-point retention；不符即`RequestFullSnapshot`。
 # 2026-07-14 Commit-on-release and wire design

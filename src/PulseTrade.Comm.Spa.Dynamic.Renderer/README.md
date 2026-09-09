@@ -19,6 +19,7 @@
 - temporal projection：`TemporalPoint`明確指定source interval與projection；coarse K棒用`CandleSpan`跨base slots，coarse line用`RepeatAcrossBaseBuckets`，只在close後可知的indicator用`StepAfterClose`，避免look-ahead。
 - shared temporal data：`temporal-axis.v1`提供唯一sparse Position/time authority，`temporal-series.v1`以Position join。Renderer不依scale推算缺失點；同一K的preview revision原位替換。candlestick可由`TaCandleDataRefs`指定的O/H/L/C/V五條scalar series合成。
 - multi-candle：同一row可同時畫1K/5K等多個candlestick traces；base candle維持實心，coarse candle以trace色outline/dashed wick呈現並保留source interval metadata。
+- row composition：同一immutable `DataRef`可同時出現在overlay row與一或多個separate rows；Renderer逐row獨立解析與呈現，不依`DataRef`合併row。overlay/分列完全由owner提供的`Rows`/`Traces`決定。
 - cursor/style：K棒、line point與cross-row cursor共用slot-center幾何；indicator line width為1.25，histogram維持1.0。
 - event-time interaction：`BaseRowId`的真實timestamp驅動shared cursor；coarse row只使用finalized containing/as-of point，否則missing。viewport release送半開event-time range，pending期間controls不可重入。
 
@@ -38,4 +39,4 @@ TaWorkspaceRenderer.render
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.13`，exact依賴Contracts `[0.1.7]`與FSharp.Core `[10.1.400]`。TA row顯示名稱依序採 authored `Options["label"]`、trace labels、typed row kind；row card與toolbar不得各自產生不同名稱。document shell cache key與action routing都使用current `DocumentId`／`CanvasInstanceId`。高尺度source candle只在presentation依actual base-axis slots展開成等值candles，保留canonical source interval且不複製storage series。shared cursor使用獨立reactive overlay與detail panel，不得使main chart geometry重新render。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.15`，exact依賴Contracts `[0.1.8]`與FSharp.Core `[10.1.400]`。TA row顯示名稱依序採 authored `Options["label"]`、trace labels、typed row kind；row card與toolbar不得各自產生不同名稱。document shell cache key與action routing都使用current `DocumentId`／`CanvasInstanceId`。高尺度source candle只在presentation依actual base-axis slots展開成等值candles，保留canonical source interval且不複製storage series。shared cursor使用獨立reactive overlay與detail panel，不得使main chart geometry重新render。

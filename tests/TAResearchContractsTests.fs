@@ -95,6 +95,45 @@ let tests =
             Expect.isError (RuntimeCodec.decode tinyLimits (RuntimeCodec.encode documentFrame)) "Oversized frame must fail before decode."
             Expect.isError (RuntimeCodec.decode DynamicRuntimeDefaults.limits "{\"protocol\":\"sdui-runtime.v1\",\"kind\":\"Unknown\"}") "Unknown case must fail."
 
+        testCase "DYN-TA-T-021 data refs can be reused by overlay and separate rows" <| fun _ ->
+            let trace traceId dataRef =
+                { TraceId = traceId
+                  Kind = TaTraceKind.Line
+                  DataRef = dataRef
+                  Label = traceId
+                  Color = "#335577"
+                  Width = 2.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let overlay =
+                { row with
+                    RowId = "overlay"
+                    DataRef = "series.1k"
+                    Traces = [| trace "overlay-1k" "series.1k"; trace "overlay-5k" "series.5k" |] }
+            let separate1k =
+                { row with
+                    RowId = "separate-1k"
+                    DataRef = "series.1k"
+                    Traces = [| trace "separate-1k" "series.1k" |] }
+            let separate5k =
+                { row with
+                    RowId = "separate-5k"
+                    DataRef = "series.5k"
+                    Traces = [| trace "separate-5k" "series.5k" |] }
+            let reusableDocument =
+                { document with
+                    BaseRowId = Some overlay.RowId
+                    Rows = [| overlay; separate1k; separate5k |] }
+
+            Expect.isEmpty
+                (RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits reusableDocument)
+                "A DataRef identifies immutable shared series data and must be reusable across independently composed rows."
+            Expect.equal
+                (reusableDocument.Rows |> Array.collect TaRowSpec.dataRefs |> Array.filter ((=) "series.1k") |> Array.length)
+                2
+                "The document registry may contain the same series identity from more than one row before de-duplication."
+
         testCase "DYN-TA-T-003 duplicate gap and base mismatch keep last good and request resync" <| fun _ ->
             let state0 = RuntimeReducer.initial identity
             let state1, _ = RuntimeReducer.reduce state0 documentFrame

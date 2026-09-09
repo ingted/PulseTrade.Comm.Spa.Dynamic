@@ -200,14 +200,6 @@ module RuntimeValidation =
           if totalTraceCount > limits.MaxTotalTraces then
               yield error "limit-total-traces" "document.rows" $"Canvas traces exceed hard limit {limits.MaxTotalTraces}."
 
-          let duplicateDataRefs =
-              document.Rows
-              |> Array.collect TaRowSpec.effectiveTraces
-              |> Array.countBy _.DataRef
-              |> Array.exists (fun (_, count) -> count > 1)
-          if duplicateDataRefs then
-              yield error "duplicate-trace-data-ref" "document.rows" "Trace dataRefs must be unique within a Canvas."
-
           yield! document.Rows |> Array.toList |> List.mapi rowErrors |> List.concat
 
           let duplicateIds =

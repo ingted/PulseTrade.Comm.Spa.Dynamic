@@ -572,6 +572,57 @@ let tests =
             let cursor = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 10 } 3 |> Option.defaultWith (fun () -> failwith "cursor missing")
             Expect.isTrue (cursor.Values |> Array.exists (fun value -> value.Value.Contains("5K final | es-5k:1300"))) "Cursor traces a repeated presentation cell back to its source interval."
 
+        testCase "overlay and separate rows independently render reused data refs" <| fun _ ->
+            let timestamps =
+                [| "2026-09-03T13:00:00.0000000+00:00"
+                   "2026-09-03T13:01:00.0000000+00:00" |]
+            let series offset =
+                timestamps
+                |> Array.mapi (fun index timestamp -> candle timestamp (offset + float index) (offset + float index + 2.0) (offset + float index - 1.0) (offset + float index + 1.0) 20.0)
+            let trace traceId dataRef label =
+                { TraceId = traceId
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = dataRef
+                  Label = label
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let row rowId dataRef traces =
+                { RowId = rowId
+                  Kind = TaRowKind.Candlestick
+                  DataRef = dataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = traces }
+            let rows =
+                [| row "overlay" "series.1k" [| trace "overlay-1k" "series.1k" "Overlay 1K"; trace "overlay-5k" "series.5k" "Overlay 5K" |]
+                   row "separate-1k" "series.1k" [| trace "separate-1k" "series.1k" "Separate 1K" |]
+                   row "separate-5k" "series.5k" [| trace "separate-5k" "series.5k" "Separate 5K" |] |]
+            let document =
+                { WorkspaceId = "overlay-and-separate"
+                  Title = "Overlay and separate rows"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "overlay"
+                  Rows = rows
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let data = Map [ "series.1k", SduiValue.Array(series 100.0); "series.5k", SduiValue.Array(series 200.0) ]
+
+            Expect.isEmpty (RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits document) "Cross-row DataRef reuse is a valid document contract."
+            Expect.sequenceEqual (RendererModel.referenceTimelineForDocument document data) timestamps "The overlay base row owns the shared real-time axis."
+            let cursor = RendererModel.cursorSnapshotForRows document rows data { StartIndex = 0; Count = 2 } 1 |> Option.defaultWith (fun () -> failwith "cursor missing")
+            Expect.sequenceEqual
+                (cursor.Values |> Array.map _.Label)
+                [| "Overlay 1K"; "Overlay 5K"; "Separate 1K"; "Separate 5K" |]
+                "Overlay and separate rows must resolve the reused immutable series independently."
+
         testCase "shared temporal axis joins five scalar candle components without filling gaps" <| fun _ ->
             let axisRef = "axis.ha.1k"
             let time minute = DateTimeOffset(2026, 9, 8, 1, minute, 0, TimeSpan.Zero)

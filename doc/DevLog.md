@@ -1300,3 +1300,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Final exact-package gates通過：Contracts 21/21、Renderer 27/27、Interactive.Client 4/4、Dynamic.Ptcs 13/13、Ptcs.Client 15/15；Interactive lifecycle與browser-cache F# Playwright分別驗single reconnect/resync/dispose及finalized-prefix/coverage/corrupt eviction/authority邊界。
 - Final graph為Contracts 0.1.7、Renderer 0.1.14、Interactive.Client 0.1.11、Dynamic.Ptcs 0.1.7、Ptcs.Client 0.1.8。三顆本輪新package push均回`Created`且public flat-container/nuspec可讀；Renderer、Interactive.Client、Ptcs.Client SHA-256依序為`8D0E185BB7A8800EA23DFDD6EFFD8A44FFD7E77005731C71B2C420672A7AAC26`、`053883DDB8586FFE51D43C0DC53994FE3E26FE43F3758DB5983AF818901B9ACE`、`85F547AA9A99F60A42F40AC68EB17399DDFCA138CEB5B97F2DCE02704085779C`。
 - `DYN-TA-017`與`DYN-TA-018`依真FSSTL/MDCQ `.dib`、browser、cache authority及immutable package gates改為100% Done；不將舊E2EQ/static/legacy package closure納入本次九月主線。
+
+## 2026-09-09 - Overlay and separate-row shared series contract
+
+- Daedalus確認同一FSSTL TA view需同時支援大小K overlay row與各尺度separate rows。Renderer model原本可逐row重用immutable series，但Contracts仍以Canvas-wide `duplicate-trace-data-ref`拒絕完整document；本輪移除此錯誤限制，保留document-wide `RowId`與row-local `TraceId`唯一規則。
+- 新增Contracts與Renderer明確回歸：同一`series.1k`／`series.5k`可同時被overlay與separate rows引用，shared cursor仍獨立產生四個trace值。Contracts 22/22、Renderer 28/28、Interactive.Client 4/4、Dynamic.Ptcs 13/13、Ptcs.Client 15/15通過。
+- Exact graph升為Contracts `0.1.8`、Renderer `0.1.15`、Interactive.Client `0.1.12`、Dynamic.Ptcs `0.1.8`、Ptcs.Client `0.1.9`。Interactive bundle manifest已與0.1.12對齊；package push/public readback於本log後續紀錄。
+- 五顆package push均回`Created`，NuGet public flat-container已可讀全部exact版本。Daedalus已收到版本、contract與M18 owner compose gate交接訊息`msg-fsi-0a72fc890c1c497faccd356ba4f3054d`。

@@ -1,0 +1,32 @@
+# Overlay And Separate Row Reuse
+
+## Plan
+
+- 背景/上下文：Daedalus需要一個FSSTL TA view同時組合multi-scale overlay row與各尺度獨立row，並重用相同immutable series data。
+- 目標：使cross-row `DataRef` reuse成為明確contract，補deterministic regression gate。
+- 假設：FSSTL owner負責row composition；Dynamic只提供通用contract與renderer。
+- 計畫步驟：定位validation與renderer；新增contract/renderer tests；同步SD/Test/WBS/Verification/README/DevLog；建置exact graph；push/readback；通知Daedalus。
+- 範圍：Dynamic Contracts、Renderer、exact package consumers、tests與TA Research current-state文件。
+- 驗收：同一document可驗證並呈現overlay row與重用相同`DataRef`的獨立rows；cursor可分別識別所有trace；exact graph tests通過。
+- 風險：移除錯誤validation若範圍過廣可能掩蓋identity collision；保留RowId/global與TraceId/row-local uniqueness，資料仍由Map/DataRef唯一尋址。
+- 不得改變事項：不改wire shape、不讓Renderer決定overlay/分列、不修改Daedalus owner repo。
+
+## Operations
+
+- 2026-09-09 20:48 +08:00: Daedalus request received through comm; current source inspection confirmed `RowId` is document-unique, `TraceId` is row-local, and `DataRef` has no global uniqueness requirement.
+- Correction 2026-09-09 20:51 +08:00: deeper inspection found the renderer model allows reuse but `RuntimeValidation.documentErrors` still rejected Canvas-wide duplicate `DataRef`. The task therefore requires a backward-compatible Contracts fix and dependent exact-package graph release; Daedalus was notified immediately not to rely on the earlier preliminary answer.
+- 2026-09-09 20:55 +08:00: Contracts source gate passed 22/22 with WebSharper compiler disabled after the full build first hit stale Booster exit `-532462766`; stopping only this repo's stale compiler-service process allowed the subsequent full Contracts build/pack to pass. Daedalus' separate compiler service was not touched.
+- 2026-09-09 20:59 +08:00: Renderer exact-package gate passed 28/28, including the new overlay plus separate-row shared-`DataRef` test.
+- 2026-09-09 21:04 +08:00: Interactive.Client lifecycle 4/4, Dynamic.Ptcs 13/13 and Ptcs.Client 15/15 passed against the new local package graph.
+- 2026-09-09 21:05 +08:00: package verifier correctly rejected Interactive.Client because `bundle.manifest.json` still named 0.1.11; aligned it to 0.1.12 before rebuilding and publishing.
+- 2026-09-09 21:07 +08:00: Interactive.Client package verifier passed with version-aligned manifest, four required entries and SHA-256 `CFC3853E1798BE4AF4A9266023C286349594F5D8BC65E375454360106296DDBE`.
+- 2026-09-09 21:10 +08:00: Renderer BrowserDemo, Interactive.Client LiveDemo and PTCS LiveDemo full WebSharper builds passed against the new exact package graph. Existing WS9002 project-type warnings remain non-blocking.
+- 2026-09-09 21:12 +08:00: Contracts 0.1.8, Renderer 0.1.15, Interactive.Client 0.1.12, Dynamic.Ptcs 0.1.8 and Ptcs.Client 0.1.9 NuGet pushes each returned `Created`. Local nupkg dependency inspection confirmed every exact edge; public flat-container propagation was still pending at the immediate readback.
+- 2026-09-09 21:15 +08:00: changed-path sensitive scan completed with high=0, medium=0.
+- 執行命令/參數：Contracts、Renderer、Interactive、PTCS exact-package build/test；PostBuildEvent逐package push；`check.fsx`使用TA Research authoritative文件鏈。
+- 結果：核心tests與三個WebSharper consumer builds通過；五顆package push均回Created；public propagation待確認。
+- 根因判讀：Renderer可重用series，但Contracts殘留Canvas-wide duplicate DataRef gate，造成owner合法row composition在decode/validation階段被拒。
+- 下一步：修正checker對generated artifacts誤判，確認NuGet public readback，commit/push並把exact versions交給Daedalus。
+- 關聯文件/工單/PR：`doc/TAResearch/SD.md`、`doc/TAResearch/WBS.DYN-TA-009.md`、`doc/TAResearch/Test.md`、`doc/Verification.md`；Daedalus comm request `msg-fsi-d90378b6694440d6aeae69411959a678`。
+- 2026-09-09 21:25 +08:00：NuGet public flat-container已列出五顆新exact版本；以comm訊息`msg-fsi-0a72fc890c1c497faccd356ba4f3054d`交付Daedalus升版與M18 owner compose gate。
+- 2026-09-09 21:26 +08:00：修改後checker已排除generated `artifacts`且active PackageReference同步gate通過；最終check將在本段append後執行。
