@@ -182,3 +182,10 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Contract gate Pass：canonical `FsStlSeries<FloatingPoint>`、time-keyed sequence、Deedle Frame、NestedMap、1440K UTC date key、1380K fail-closed與shared temporal axis；typed `FsStlTaView`為7 rows／12 requests／12 dataRefs／minimum scale 1。
 - Real fixed-range gate Pass：dev.69後兩輪alpha14與一輪alpha15均回2 frames／7 rows／4 axes；latest run `88be5948dc5f46ef8ed98b7687d90a87`，axis points=`3820,763,127,63`。未重現先前0-row／timeout／role exit。
 - 邊界：M15是package/contract/automation gate；Daedalus M13是production notebook，沿用真provider/session並以`taView.ForQuoteSlot slotId`作最後expression。Browser MCP目前無可控browser，故alpha15 iframe/Playwright與OPEN_END ACK仍未完成，`dotnet dib`不取代UI驗收。
+
+## DYN-TA-017 M15/M13 alpha16 integration revision 13
+
+- M15 exact pin更新至Interactive.Extension `0.1.0-alpha16`；local package SHA-256為`FA11D2680598EB2796404EBDFA3A3EC08A484C157CAAC96CABD3B012DAC34500`，assembly informational version為`0.1.0-alpha16+65e528b5...`。
+- `dotnet dib Milestone15.FsStlMultiScaleFloatingPointCollections.dib` Pass：canonical series、time-keyed sequence、NestedMap、Deedle Frame、1440K UTC date key、1380K reject、shared temporal axis及typed TA view皆GREEN。real SPAA run `c3d627641611496e9651cafa4dd41e46`回2 frames／7 rows／4 axes，points=`3820,763,127,63`。
+- `dotnet fsi --exec Milestone13.TaProductDemo.AllES.gate.fsx` Pass：真MDCQ fixed-history為3,820 committed bars、1/5/30/60K、76 TA series，stdout markers完整且stderr為空。
+- Playwright MCP桌機驗shared hover與row hide/show，console 0。390x844顯示Dynamic canvas可縮放，但SPAA `Client.fs`固定七欄top form超出viewport；已交Daedalus修正。M13 final-cell iframe與OPEN_END bootstrap ACK仍是未完成驗收。

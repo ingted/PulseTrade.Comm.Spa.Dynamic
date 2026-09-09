@@ -1229,3 +1229,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Aster acceptance notebook已以commit `70afe353`獨立交付，exact載入Interactive.Extension `0.1.0-alpha15`與TradeCore.FsStl `10.1.400-win139`。`dotnet dib`驗證canonical FloatingPoint series、time-keyed sequence、Deedle Frame、NestedMap、shared temporal axis與typed `TA_CHART -> FsStlTaView.compile -> ForQuoteSlot -> Decode`皆GREEN。
 - typed view為7 rows、12 requests、12 dataRefs、minimum scale 1；dev.69後兩輪alpha14及一輪alpha15 fixed-range真SPAA均回2 frames／7 rows／4 axes，latest points=`3820,763,127,63`，未重現先前0-row／timeout／role exit。
 - Daedalus確認M13才是production DIB：沿用真QuoteSlot/session並以`taView.ForQuoteSlot slotId`作最後expression。M15不複製`createBinding`或手動`Display`。本session Browser MCP仍無可控browser，因此alpha15 iframe/Playwright與OPEN_END history→live ACK維持未完成。
+
+## 2026-09-09 - M15/M13 alpha16 integration evidence
+
+- M15 exact pin已更新為Interactive.Extension `0.1.0-alpha16`；`dotnet dib`實際載入alpha16 assembly，FloatingPoint canonical series、time-keyed sequence、NestedMap、Deedle Frame、date-scale validation、shared temporal axis及typed multi-scale TA chart全數GREEN。真SPAA回2 frames／7 rows／4 axes，points=`3820,763,127,63`。
+- Daedalus M13 fixed-history production notebook gate以真MDCQ通過3,820 committed bars、1/5/30/60K與76 TA series，stderr為空。Playwright MCP另驗桌機shared hover／hide-show／console 0；行動版確認canvas正常而SPAA fixed-grid top form overflow，已精確回報owner。
+- OPEN_END adapter仍需保證bootstrap callback在initial frames被transport接受後才回`Ok`／ACK，並覆蓋sink reject、取消、bootstrap前失敗與single-use continuation；本批不宣稱History-to-Live完成。

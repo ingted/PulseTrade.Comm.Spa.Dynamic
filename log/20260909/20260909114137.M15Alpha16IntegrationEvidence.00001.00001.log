@@ -1,0 +1,13 @@
+# M15 alpha16 integration evidence
+
+- Start: 2026-09-09 11:41:37 +08:00
+- Scope: 同步 `Milestone15.FsStlMultiScaleFloatingPointCollections.dib` 至 Interactive Extension alpha16，重跑 package／collection／typed FSSTL／real SPAA gate，更新 Dynamic current-state evidence。
+- Non-goal: 不修改 Daedalus 正在開發的 M13 provider/session owner files；不以 fixture 取代 production provider 驗收。
+- Acceptance: exact alpha16 assembly 被載入；FloatingPoint sequence/map/frame/canonical series 與 date-scale fail-closed 通過；typed 1/5/30/60K TA chart 通過；real SPAA 回傳非空四尺度資料。
+
+## Operations
+
+- 11:42 `dotnet dib Milestone15.FsStlMultiScaleFloatingPointCollections.dib`：GREEN。載入 Interactive Extension `0.1.0-alpha16+65e528b5...`；collection normalization、shared temporal collection、typed TA view、real SPAA 全通過。SPAA：3820/763/127/63 axis points，7 rows，2 frames，stderr 無錯誤。
+- 11:43 Daedalus M13 fixed-history gate：GREEN。真MDCQ為3,820 committed bars、1/5/30/60K、76 TA series，stderr為空。
+- 11:44 Playwright MCP 390x844複驗：Dynamic canvas寬度可收斂至viewport；SPAA top form固定七欄造成右側欄位與Run按鈕溢出。根因與位置已透過Comm交付Daedalus。
+- 11:45 同步WBS/Test/Verification/DevLog；DYN-TA-017為95%，保留M13 iframe、行動版top-form與OPEN_END bootstrap ACK為未完成gate。
