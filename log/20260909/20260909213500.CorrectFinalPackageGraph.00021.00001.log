@@ -1,0 +1,26 @@
+# Correct final TA package graph
+
+## Pre-work plan
+
+- Background: DYN-TA-017/018 final shared-series release已發布，但canonical TA WBS仍列前一版exact package graph。
+- Goal: 只修正current-state package版本，避免Daedalus與後續agent pin到舊版。
+- Scope: `doc/TAResearch/WBS.md`、本log與必要DevLog append。
+- Non-goal: 不修改Daedalus owner repo，不在finality/completeness尚未對齊前變更contract。
+- Acceptance: WBS列出Contracts 0.1.8、Renderer 0.1.15、Interactive.Client 0.1.12、Dynamic.Ptcs 0.1.8、Ptcs.Client 0.1.9；changed-path sensitive scan與checker通過。
+
+## Operations
+
+- 2026-09-09 21:35 +08:00：開始修正canonical package graph。
+- 2026-09-09 21:38 +08:00：`doc/TAResearch/WBS.md`已對齊public final exact graph；comm核對亦確認MDCQ finalization仍以bucket end作`ObservedThroughUtc`，故不需擴張Dynamic wire contract。
+- 2026-09-09 21:40 +08:00：第一次checker因誤指repo內不存在的`MCP.KM.md`而FAIL；本次只是current-state版本更正，canonical KM位於`G:\PulseTrade.fs\MCP.KM.md`，重跑時改用該路徑。
+
+## Closeout fields
+
+- 背景／prompt上下文摘要：共享series release完成後，WBS仍留下前版exact graph。
+- 目標／計畫步驟：更正單一current-state段落，做diff、敏感掃描、checker，再commit/push。
+- 執行命令／參數：changed-path `checkSensitiveText.fsx`；TA Research SA/SD/WBS/Test與Dynamic DevLog的`check.fsx`。
+- 結果／根因判讀：版本文字漏同步；source/package不受影響。敏感掃描High=0、Medium=0。
+- 下一步：等待Daedalus升版跑M18 owner compose gate；有failure再處理generic package。
+- 關聯文件／工單：`doc/TAResearch/WBS.md`、DYN-TA-017/018、handoff `msg-fsi-0a72fc890c1c497faccd356ba4f3054d`。
+- 2026-09-09 21:41 +08:00：checker重跑PASS=28、WARN=3、FAIL=0；WARN為既有歷史log名稱、dirty-before-commit與既有RFC coverage，不與本次版本更正衝突。
+- 2026-09-09 21:42 +08:00：WBS correction commit `9bc46f4`已push。新log受repo既有ignore規則排除，依workspace規範只對本檔force-add，另作追溯commit。
