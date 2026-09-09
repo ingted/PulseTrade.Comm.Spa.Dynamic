@@ -1,0 +1,13 @@
+# Browser cache semantic validation
+
+- Start: 2026-09-09 14:33 +08:00
+- Repo: `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`
+- Branch: `20260715_030.win.TACanvas_cross.bar.cursor.first.done`
+- Baseline: `b8bf4058d9ffd258c84f63c93e4f10d8161ec86f`, clean worktree.
+- Context: DYN-TA-018C browser cache already removes malformed JSON records, but the read path only performs shallow field checks. A structurally valid entry with an invalid Dynamic document/snapshot can still be returned as `Hit`.
+- Goal: make browser reads fail closed through full `RuntimeCache.validateEntry`, remove semantic-invalid records, and cover the behavior with the reusable F# Playwright verifier.
+- Acceptance: valid reload/LRU/coverage behavior remains green; malformed and semantic-invalid records both return `Miss`, are physically removed, and produce no console/page error.
+
+## Operations
+
+- 14:33: Created pre-work log and linked DEBUG hypothesis before product changes.

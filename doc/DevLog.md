@@ -1256,3 +1256,7 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 正式發布Contracts `0.1.4`、Renderer `0.1.6`、Interactive.Client `0.1.5`；exact dependency graph為Client -> Renderer `[0.1.6]` + Contracts `[0.1.4]`。Renderer `26/26`、Interactive lifecycle `4/4`與nupkg manifest verifier通過，三個NuGet push均回`Created`。
 - Daedalus SPAA Client integration與真DIB reload/range E2E仍由DYN-TA-018D/E追蹤。MdcQuoteAgent確認dev.70尚無per-scale tail/lookback，預計dev.71提供fixed-cut typed selection；完成前OPEN_END不宣稱production ready。
 - DYN-VFY-020 revision 2另以browser fixture直接注入corrupt IndexedDB record，驗證cache read回Miss、record被刪除且不產生console/page error；corrupt storage不再只靠source inspection宣稱。
+
+## 2026-09-09 - Browser cache semantic validation investigation
+
+- `log/20260909/20260909143300_issue_browser_cache_semantic_validation.hypothesis.md`記錄DYN-TA-018C的fail-closed缺口：browser read目前只做淺層decode，JSON合法但Document/Snapshot語意無效的entry仍可能被回報為Hit。後續實驗將以完整`RuntimeCache.validateEntry`作read gate，並補semantic-invalid IndexedDB record的F# Playwright回歸。
