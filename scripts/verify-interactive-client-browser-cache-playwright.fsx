@@ -92,6 +92,12 @@ page.GetByTestId("cache-clear").ClickAsync() |> awaitUnit
 waitStatus page "CLEARED"
 page.GetByTestId("cache-count").ClickAsync() |> awaitUnit
 waitStatus page "COUNT:0"
+page.GetByTestId("cache-seed-corrupt").ClickAsync() |> awaitUnit
+waitStatus page "CORRUPT:SEEDED"
+page.GetByTestId("cache-read-corrupt").ClickAsync() |> awaitUnit
+waitStatus page "CORRUPT:MISS"
+page.GetByTestId("cache-count").ClickAsync() |> awaitUnit
+waitStatus page "COUNT:0"
 require (errors.Count = 0) ("browser console/page errors: " + String.concat " | " errors)
 
 context.CloseAsync() |> awaitUnit
@@ -99,5 +105,5 @@ browser.CloseAsync() |> awaitUnit
 playwright.Dispose()
 
 printfn "PASS interactive-client-browser-cache-playwright"
-printfn "persisted-count=8 latest-revision=10 evicted-oldest=true covering-hit=true coverage-miss=true cleared-count=0"
+printfn "persisted-count=8 latest-revision=10 evicted-oldest=true covering-hit=true coverage-miss=true corrupt-removed=true cleared-count=0"
 printfn "evidence=%s" (Path.Combine(outputDirectory, "browser-cache-persisted.png"))

@@ -83,8 +83,24 @@ module Client =
 
         let clear () =
             BrowserRuntimeCache.clear (function
-                | Ok _ -> status.Value <- "CLEARED"
-                | Error reason -> status.Value <- "UNAVAILABLE:" + reason)
+            | Ok _ -> status.Value <- "CLEARED"
+            | Error reason -> status.Value <- "UNAVAILABLE:" + reason)
+
+        let seedCorrupt () =
+            let key = "browser-cache-corrupt"
+            let record =
+                { Key = key
+                  EntryJson = "{not-json"
+                  TouchedAtTicks = string System.DateTime.UtcNow.Ticks }
+
+            BrowserRuntimeCache.withStore
+                "readwrite"
+                (fun tx store ->
+                    JS.Set tx "oncomplete" (System.Action<obj>(fun _ -> status.Value <- "CORRUPT:SEEDED"))
+                    JS.Set tx "onabort" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-corrupt-seed-aborted"))
+                    JS.Set tx "onerror" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-corrupt-seed-failed"))
+                    JS.Apply<obj> store "put" [| box (Json.Serialize record); box key |] |> ignore)
+                (fun reason -> status.Value <- "UNAVAILABLE:" + reason)
 
         let buttonStyle = attr.style "min-height:32px; padding:4px 10px; border:1px solid #8795a6; background:#fff; cursor:pointer;"
 
@@ -98,6 +114,8 @@ module Client =
                 button [ buttonStyle; Attr.Create "data-testid" "cache-covering-hit"; on.click (fun _ _ -> readCovering 9 9) ] [ text "Covering hit" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-coverage-miss"; on.click (fun _ _ -> readCovering 9 0) ] [ text "Coverage miss" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-clear"; on.click (fun _ _ -> clear ()) ] [ text "Clear" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-seed-corrupt"; on.click (fun _ _ -> seedCorrupt ()) ] [ text "Seed corrupt" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-read-corrupt"; on.click (fun _ _ -> readAt 9 "CORRUPT" None) ] [ text "Read corrupt" ]
             ]
             output [ Attr.Create "data-testid" "cache-status"; attr.style "display:block; margin-top:16px; padding:10px; border:1px solid #c7ced8; font-family:Consolas,monospace;" ] [ textView status.View ]
         ]
