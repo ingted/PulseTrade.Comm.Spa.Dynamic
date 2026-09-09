@@ -2,7 +2,7 @@
 
 - RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0013.notebook-ta-workspace-production.md`
 - Status: Active
-- Progress: 86%
+- Progress: 91%
 
 | Slice | Deliverable | Test | Progress | Status |
 | --- | --- | --- | ---: | --- |
@@ -10,8 +10,8 @@
 | DYN-TA-017B | generic source identity/snapshot/event、validation、codec、reducer | T-057..060 | 100% | Done：Contracts suite與full WebSharper chain通過。 |
 | DYN-TA-017C | generic editor schema、versioned correlated action wire/lifecycle、stable row identity | T-061 | 100% | Done：`ptcs-dynamic-action.v1` request/result、single pending、timeout/disconnect/correlation fail-closed；Contracts 16/16與Interactive.Client alpha10 bundle package gate通過。 |
 | DYN-TA-017D | WebSharper production workspace UX與multi-scale presentation | T-062/T-065 | 100% | Done：authoritative editor catalog、stable RowId Add/Edit/reject、PTCS wire、exact package graph與desktop/mobile Playwright均通過。owner real metadata/DIB由E/F追蹤。 |
-| DYN-TA-017E | ColdFar Notebook adapter / typed chart root | T-063 | 45% | Aster M15 exact-alpha14 collection contract GREEN；Daedalus正在實作typed `TA_CHART`與SPAA projection，尚未完成iframe acceptance。 |
-| DYN-TA-017F | real MDCQ DIB + Playwright MCP + release | T-064 | 10% | M15已走current SPAA真route；provider仍可能`actor-resolve-failed`，待fresh OPEN_END、typed chart、iframe與Playwright全綠。 |
+| DYN-TA-017E | ColdFar Notebook adapter / typed chart root | T-063 | 70% | Aster M15 exact-alpha14 collection contract GREEN；Daedalus current source已以typed `TA_CHART`控制7個row與trace順序。尚待win139/alpha15 exact package及cell chart-root auto-display/iframe gate。 |
+| DYN-TA-017F | real MDCQ DIB + Playwright MCP + release | T-064 | 45% | fixed-range真MDCQ DIB與Playwright曾完整GREEN：7 rows、4 axes、shared hover、hide/show、console 0。MDCQ ES access首輪後的role exit正在由MdcQuoteAgent修復；OPEN_END/ACK、repeat generation及exact release仍未完成。 |
 | DYN-TA-017G | SPAA/DIExt generic runtime hardening：retention/resync -> cursor/range -> reconnect/application lifecycle | T-066..068 | 100% | Done：三個phase均完成；Interactive.Client具single Start/Dispose、bounded reconnect、snapshot timeout/resync與stale generation fence。 |
 | DYN-TA-017H | shared temporal axis、scalar series與PTCS v5 compact transport | T-069/070 | 98% | Generic 3,820×28真browser capacity、F# Playwright與Playwright MCP均通過；待Daedalus real MDCQ/DIB browser gate。 |
 

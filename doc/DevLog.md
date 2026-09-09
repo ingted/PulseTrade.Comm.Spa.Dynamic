@@ -1211,3 +1211,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Aster在Daedalus repo新增`Milestone15.FsStlMultiScaleFloatingPointCollections.dib`，以Interactive.Extension exact `0.1.0-alpha14`驗證三條公開projection API；canonical `FsStlSeries<FloatingPoint>`保留SnapshotId/EventTime/AvailableAt，顯式時間鍵sequence、Deedle Frame與NestedMap皆可進shared temporal axis。
 - `yyyyMMdd`只允許1440K UTC calendar day，930K／1380K date-only須fail closed；無時間鍵collection不推測時間。package hash與Daedalus公告一致，`dotnet dib` package/collection/shared-axis markers全GREEN。
 - real SPAA preflight使用文字FSSTL描述1K／5K／30K／60K bars及SMA／DMI／MACD／Heikin-Ashi。MDCQ Next恢復期間曾取得真實frames但仍可能`actor-resolve-failed`；Daedalus正在實作compile-time typed `TA_CHART`取代VALUE-name presentation inference。Notebook iframe與Playwright尚未完成，故DYN-TA-017E/F不宣稱production完成。
+
+## 2026-09-09 - M15 typed chart real-provider and browser gate
+
+- current SPAA source已以compile-time typed `TA_CHART`作display selection authority；M15 fixed-range真MDCQ run回2 frames、7個宣告順序row、1條SMA overlay及4條shared temporal axes，axis points為`763/3820/127/63`。
+- Playwright MCP確認1K K棒與SMA同列、5K DMI、30K MACD histogram、60K Heikin-Ashi、shared hover、DMI hide/show與console 0；畫面截圖為Daedalus repo Playwright artifact `.playwright-mcp/page-2026-09-09T01-28-03-377Z.png`。
+- repeat request另重現MDCQ ES access role先timeout再退出；MdcQuoteAgent已接手root cause。此批只把E/F提升為partial，不宣稱OPEN_END/ACK、repeat generation、exact win139/alpha15或notebook iframe已完成。
