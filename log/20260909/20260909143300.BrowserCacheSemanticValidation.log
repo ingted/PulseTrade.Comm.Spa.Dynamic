@@ -11,3 +11,4 @@
 ## Operations
 
 - 14:33: Created pre-work log and linked DEBUG hypothesis before product changes.
+- 14:37: Experiment 1 failed at WebSharper compile: annotating the whole `RuntimeCache` module pulled server-side coverage derivation into the browser graph, where `TemporalAxisCodec` is not a JavaScript type (`WS9001`). All experiment-1 product/test changes were removed manually; no owner files or generated artifacts were retained.

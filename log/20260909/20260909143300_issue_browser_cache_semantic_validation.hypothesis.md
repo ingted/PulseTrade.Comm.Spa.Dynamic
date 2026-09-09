@@ -24,3 +24,10 @@
 1. Build Contracts and Interactive.Client.
 2. Run Contracts, Renderer, and lifecycle regression suites.
 3. Run the F# Playwright browser-cache verifier and assert valid cache behavior plus malformed/semantic-invalid deletion.
+
+## Experiment 1
+
+- Result: failed before product tests.
+- Evidence: Contracts Release build returned `WS9001` because marking the complete `RuntimeCache` module as JavaScript-reachable also pulled `TemporalAxisCodec` into the browser compilation graph.
+- Interpretation: full-module annotation is too broad. Server-side coverage derivation must stay outside the browser bundle.
+- Recovery: manually removed all experiment-1 source and test edits, restoring the committed product baseline. The next hypothesis will expose only the shared, bounded entry validation needed by the browser decoder.
