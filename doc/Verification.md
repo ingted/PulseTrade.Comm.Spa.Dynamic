@@ -190,3 +190,15 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - `dotnet fsi --exec Milestone13.TaProductDemo.AllES.gate.fsx` Pass：真MDCQ fixed-history為3,820 committed bars、1/5/30/60K、76 TA series，stdout markers完整且stderr為空。
 - Playwright MCP桌機驗shared hover與row hide/show，console 0。390x844顯示Dynamic canvas可縮放，但SPAA `Client.fs`固定七欄top form超出viewport；已交Daedalus修正。M13 final-cell iframe與OPEN_END bootstrap ACK仍是未完成驗收。
 - M13 `Milestone13.Browser.playwright.fsx` OPEN_END gate Fail：session在iframe URL前回`SDUI-M13-MDCQ-HISTORY-LIVE`。以MdcQuote `EsKAccess.Acceptance.Client.fsx`直測相同2026-07-07到current cut，range明確回`bar-window-limit-exceeded / fixed read cut unavailable`，history-live 30秒無bootstrap；固定歷史區間仍Pass。根因是realtime start沿用舊fixture日期；單一StartUtc對1K cap與60K長週期warm-up的衝突由provider owner決策。
+
+## DYN-TA-017 M15 alpha17 local integration revision 14
+
+- M15 exact pin更新至Interactive.Extension `0.1.0-alpha17`；SDK library-pack SHA-256為`FF5AF6E04D75AE216867E2D602D3DCE87041266FB92359613B444D9E282A09AC`。該package由Daedalus尚未提交的alpha17 owner source產生，只作local integration evidence，不宣稱正式release。
+- `dotnet-dib Milestone15.FsStlMultiScaleFloatingPointCollections.dib --working-dir G:\coldfar_py\coldfar-symbolics` Pass：package identity、四種FloatingPoint collection、shared temporal axis、typed FSSTL TA view與真SPAA均GREEN；SPAA為2 frames／7 rows／4 axes，points=`3820,763,127,63`。
+- Interactive.Extension focused suite已涵蓋provider-composed two-phase bridge：initial callback在Continue前不ACK、sink reject不commit state、initial-connect timeout、prepare cancellation與single-use continuation。owner source/commit與M13 OPEN_END browser gate仍待完成。
+
+## DYN-TA-017 M15/M13 alpha18 integration revision 15
+
+- M15 exact pin更新至Interactive.Extension `0.1.0-alpha18`，載入build metadata commit `03cc7860`；SDK library-pack SHA-256為`A382E0D9F49FB95573AC722564C57DDF95506653DF047315F840261162236F43`。
+- `dotnet-dib Milestone15.FsStlMultiScaleFloatingPointCollections.dib` Pass：FloatingPoint canonical/sequence/NestedMap/Frame、date-scale validation、shared temporal axis、typed TA view及真SPAA全GREEN；SPAA回2 frames／7 rows／4 axes，points=`3820,763,127,63`。Interactive.Extension focused executable亦GREEN，包含live cancellation no-ACK/no-commit gate。
+- `Milestone13.Browser.playwright.fsx` Fail：OPEN_END使用`currentCutUtc - 3999m`後可建立iframe，initial為`committed=0, series=28, previews=4`；180秒內沒有`ta-trace-price-1k-sma-1-13`。停止時provider回typed `SDUI-PROVIDER-LIVE-CANCELLED`。此結果只證明transport/lifecycle，不證明History-to-Live TA資料完成。

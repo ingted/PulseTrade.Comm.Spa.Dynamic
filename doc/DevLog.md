@@ -1236,3 +1236,15 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus M13 fixed-history production notebook gate以真MDCQ通過3,820 committed bars、1/5/30/60K與76 TA series，stderr為空。Playwright MCP另驗桌機shared hover／hide-show／console 0；行動版確認canvas正常而SPAA fixed-grid top form overflow，已精確回報owner。
 - OPEN_END adapter仍需保證bootstrap callback在initial frames被transport接受後才回`Ok`／ACK，並覆蓋sink reject、取消、bootstrap前失敗與single-use continuation；本批不宣稱History-to-Live完成。
 - 後續執行M13真browser gate時，OPEN_END在iframe建立前失敗。MdcQuote EsK直測證明2026-07-07到current cut超過1K每尺度4,000筆上限；M13 realtime start沿用fixed fixture日期是立即根因。跨尺度長週期warm-up仍需provider owner決定per-scale range/tail policy，不能只縮短demo日期後宣稱production完成。
+
+## 2026-09-09 - M15 alpha17 local integration gate
+
+- Aster-owned M15 acceptance notebook已切至Interactive.Extension exact `0.1.0-alpha17` local integration artifact。`dotnet-dib`驗證canonical `FsStlSeries<FloatingPoint>`、time-keyed sequence、NestedMap、Deedle Frame、shared temporal axis與typed multi-scale TA view全GREEN；真SPAA回2 frames／7 rows／4 axes，points=`3820/763/127/63`。
+- alpha17 provider-composed bridge focused gates已涵蓋初始ACK ordering、sink rejection不commit、timeout、cancellation與single-use continuation。package由Daedalus尚未提交的owner source產生，本筆不宣稱正式release。
+- M13 OPEN_END仍受單一`StartUtc`同時承擔1K 4,000上限與30K/60K長週期warm-up的contract限制。running 18883也尚未載入responsive source；兩者都保留為owner E2E gate，不以fixed-history成功取代。
+
+## 2026-09-09 - M15/M13 alpha18 lifecycle evidence
+
+- M15已exact載入Interactive.Extension `0.1.0-alpha18`與owner build commit `03cc7860`；FloatingPoint collection、typed TA view及真SPAA fixed-range均GREEN，SPAA為2 frames／7 rows／4 axes，points=`3820/763/127/63`。
+- alpha18 two-phase provider bridge focused tests新增live cancellation no-ACK/no-commit，連同initial ordering、sink reject、timeout、prepare cancellation與single-use皆通過。
+- M13 OPEN_END改為`currentCut - 3999m`後可建立iframe，但MDCQ initial只有`committed=0/previews=4`，Playwright在180秒內無1K SMA trace。這只證明transport/lifecycle接通；per-scale/tail warm-history contract仍由MdcQuote owner處理。

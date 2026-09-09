@@ -13,3 +13,19 @@
 - 11:45 同步WBS/Test/Verification/DevLog；DYN-TA-017為95%，保留M13 iframe、行動版top-form與OPEN_END bootstrap ACK為未完成gate。
 - 11:49 M13 F# Playwright真DIB gate在iframe前Fail：`SDUI-M13-MDCQ-HISTORY-LIVE`。
 - 11:52 MdcQuote EsK direct gate確認相同區間range回`bar-window-limit-exceeded / fixed read cut unavailable`，history-live 30秒無bootstrap。M13 realtime start仍固定2026-07-07；另有單一StartUtc無法兼顧1K cap與60K SMA233 warm-up的contract blocker，已交Daedalus/MdcQuoteAgent決策。
+- 12:15 M15 exact pin升至Interactive.Extension alpha17 local integration artifact；`dotnet-dib` exit 0。package／FloatingPoint collection／shared temporal axis／typed TA view／真SPAA全GREEN；SPAA回2 frames、7 rows、4 axes，points=`3820/763/127/63`。package SHA-256=`FF5AF6E04D75AE216867E2D602D3DCE87041266FB92359613B444D9E282A09AC`；owner尚未commit，故不宣稱release。
+- 12:16 Playwright MCP mobile複驗running 18883仍呈舊固定七欄DOM；Daedalus source已改responsive grid，但process未重建/重啟。已透過Comm要求fresh host後再驗。
+- 12:31 M15切至Interactive.Extension exact alpha18；`dotnet-dib`及Interactive.Extension focused executable皆GREEN。alpha18載入build commit `03cc7860`，package SHA-256=`A382E0D9F49FB95573AC722564C57DDF95506653DF047315F840261162236F43`；真SPAA仍回2 frames、7 rows、4 axes，points=`3820/763/127/63`。
+- 12:38 M13真browser gate：OPEN_END短窗可建立iframe，但initial僅`committed=0/previews=4`；180秒無1K SMA trace而Fail。shutdown回typed live-cancel，證明cancellation fence；不宣稱history/live data gate完成。
+
+## Checker compatibility summary
+
+- prompt/上下文摘要：九月TA Research優先；Aster提供package-backed `.dib` integration並每3至5分鐘透過Comm支援Daedalus。
+- 背景：M15需覆蓋FloatingPoint collection與typed multi-scale TA；M13需以真MDCQ驗History-to-Live。
+- 目標：驗證alpha18 contract/bridge/fixed provider，並把OPEN_END資料缺口與transport lifecycle分開判定。
+- 計畫步驟：升級M15 exact pin、執行`dotnet-dib`與focused suite、執行M13 F# Playwright、同步WBS/Test/Verification/DevLog。
+- 執行命令/參數：`dotnet-dib Milestone15.FsStlMultiScaleFloatingPointCollections.dib --working-dir G:\coldfar_py\coldfar-symbolics`；`dotnet fsi --exec Milestone13.Browser.playwright.fsx`。
+- 結果：M15與bridge GREEN；M13 iframe建立但`committed=0/previews=4`，180秒無1K SMA trace而Fail。
+- 根因判讀：短窗只能避免1K 4,000 cap，無法跨合法空窗取得足量completed observations；單一StartUtc無法兼顧各尺度長週期warm-up。
+- 下一步：等待MdcQuote owner定案per-scale tail/lookback contract；Daedalus再跑fresh browser與responsive SPAA gate。
+- 關聯文件/工單/PR：`doc/TAResearch/WBS.DYN-TA-017.md`、`doc/TAResearch/Test.md`、`doc/Verification.md`、Daedalus M13/M15 DIB。
