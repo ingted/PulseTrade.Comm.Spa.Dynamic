@@ -139,6 +139,8 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-workspace-title']")) "PTMD TA Research"
     requireText (page.Locator("[data-testid='ta-freshness']")) "LIVE"
     require ((page.Locator("[data-testid='ta-chart-stack'] section").CountAsync() |> awaitTask) = 7) "all seven configured TA rows must render"
+    requireText (page.Locator("[data-testid='ta-toggle-row-price']")) "ES 1K + SMA(20)"
+    requireText (page.Locator("[data-testid='ta-row-price']")) "ES 1K + SMA(20)"
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = visiblePointCount) "candlestick chart must retain all committed visible points"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "watermark 2026-07-11T09:30:00Z"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"

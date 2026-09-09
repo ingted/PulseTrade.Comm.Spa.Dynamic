@@ -1217,3 +1217,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - current SPAA source已以compile-time typed `TA_CHART`作display selection authority；M15 fixed-range真MDCQ run回2 frames、7個宣告順序row、1條SMA overlay及4條shared temporal axes，axis points為`763/3820/127/63`。
 - Playwright MCP確認1K K棒與SMA同列、5K DMI、30K MACD histogram、60K Heikin-Ashi、shared hover、DMI hide/show與console 0；畫面截圖為Daedalus repo Playwright artifact `.playwright-mcp/page-2026-09-09T01-28-03-377Z.png`。
 - repeat request另重現MDCQ ES access role先timeout再退出；MdcQuoteAgent已接手root cause。此批只把E/F提升為partial，不宣稱OPEN_END/ACK、repeat generation、exact win139/alpha15或notebook iframe已完成。
+
+## 2026-09-09 - Authored TA row label 與 Interactive bundle 0.1.3
+
+- root cause是SPAA已將`TA_ROW` label寫入`TaRowSpec.Options["label"]`，但Renderer的row card與toolbar分別使用trace labels與row kind。Renderer現統一precedence為authored row label、trace labels、typed row kind，並讓toggle、card、edit/remove tooltip及feedback共用同一顯示名稱。
+- Renderer exact-package focused suite `26/26`、source-identical WebSharper BrowserDemo與Playwright MCP通過；toolbar與row card均呈現`ES 1K + SMA(20)`，console warning/error為0。
+- 正式發布`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.3`與`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.3`。Interactive bundle manifest與nuspec已同版，package gate及lifecycle `4/4`通過；Interactive package SHA-256為`8aaf9033a34981323884e319e25fb88cf04b005a978e893637b1ce197b3af045`。

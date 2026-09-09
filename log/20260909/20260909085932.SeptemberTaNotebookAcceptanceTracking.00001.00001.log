@@ -1,0 +1,31 @@
+# September TA Notebook Acceptance Tracking
+
+- 開始：2026-09-09 08:59 +08:00
+- 背景：Daedalus已發布Interactive.Extension alpha14；Aster的M15 `.dib`已驗證canonical `FsStlSeries<FloatingPoint>`、顯式時間鍵sequence、Deedle Frame、NestedMap與date-only語意，typed `TA_CHART`與real notebook/browser gate仍在跨repo整合。
+- 目標：把Dynamic authoritative WBS/Test更新到實際進度，保持Aster generic SDUI與Daedalus FSSTL/Notebook owner邊界。
+- 步驟：
+  1. 更新DYN-TA-017E/T-063的package與DIB evidence。
+  2. 將real provider、typed chart root、iframe與Playwright未完成項明確留在T-064。
+  3. 同步append-only DevLog與必要KM，再做scoped verification。
+- 驗收：文件不把fixture當production，不宣稱尚未完成的typed chart/browser gate；WBS/Test/DevLog互相回鏈。
+- 風險：Daedalus與MdcQuoteAgent仍同步施工；本repo只更新Aster owned tracking，不修改外部owner source。
+
+## Operations
+
+- 08:59：建立pre-work log；Dynamic repo起始worktree clean。
+- 09:03：DYN-TA-017E更新為45%、F為10%；T-063記錄alpha14三路API與四種collection gate，T-064明確保留provider/OPEN_END/typed chart/iframe/Playwright缺口。DevLog追加同一批證據，未把fixture或單次frames成功列為production完成。
+## Operations
+
+- 09:38：定位authored TA row label已由SPAA送入row options，Renderer未讀取。
+- 09:40–09:58：補label precedence與focused/browser verifier；Renderer 26/26、Interactive lifecycle 4/4、package gate、WebSharper BrowserDemo/LiveDemo及Playwright MCP通過。
+- 10:00：發布Renderer與Interactive.Client `0.1.3`，Daedalus已收到exact-pin與hash。
+
+## Checkpoint 2026-09-09 10:15 +08:00
+
+- Prompt/上下文摘要：九月主線聚焦FSSTL多尺度TA Chart、FloatingPoint collection與Notebook typed chart root；MDCQ owner尚未解禁provider request。
+- 計畫步驟：完成Dynamic 0.1.3 scoped回歸與提交；等待Daedalus alpha15後更新M15 typed final-cell；等待MDCQ dev.68後重跑real provider與Playwright。
+- 執行命令/參數：Renderer exact-package suite、Interactive lifecycle suite、interactive package verifier、changed-path sensitive scan與root `check.fsx` scoped Dynamic文件鏈。
+- 結果：Renderer `26/26`、lifecycle `4/4`、package verifier與敏感掃描通過；0.1.3 browser label gate已有Playwright MCP證據。
+- 根因判讀：card/toolbar未共用`TA_ROW` authored label precedence；已統一為row option、trace label、row kind順序。
+- 下一步：提交本repo變更，取得alpha15與provider解除通知後完成T-063/T-064剩餘E2E。
+- 關聯文件/工單/PR：`doc/TAResearch/WBS.DYN-TA-017.md`、`doc/TAResearch/Test.md`、`doc/Verification.md`、`log/20260909/20260909093837_issue_ta_row_label.hypothesis.md`。

@@ -423,6 +423,32 @@ let tests =
             Expect.equal (TaWorkspaceRenderer.compactTimestamp "2026-07-01T03:55:00.0000000+00:00") "07-01 03:55" "TA labels should not expose the full transport timestamp."
             Expect.equal (TaWorkspaceRenderer.compactTimestamp "B1") "B1" "Non-ISO labels should remain unchanged."
 
+        testCase "authored row label is the shared card and toolbar display name" <| fun _ ->
+            let trace =
+                { TraceId = "es-1k"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = "es-1k"
+                  Label = "ES_1K / 1K"
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let row =
+                { RowId = "price-1k"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = trace.DataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map [ "label", SduiValue.Text "ES 1K + SMA(20)" ]
+                  Traces = [| trace |] }
+
+            Expect.equal (TaWorkspaceRenderer.rowDisplayLabel row) "ES 1K + SMA(20)" "Toolbar should use the authored TA_ROW label."
+            Expect.equal (TaWorkspaceRenderer.rowTitle row row.Traces) "ES 1K + SMA(20)" "Row card should use the same authored TA_ROW label."
+            let unlabeled = { row with Options = Map.empty }
+            Expect.equal (TaWorkspaceRenderer.rowDisplayLabel unlabeled) "Candlestick" "Toolbar fallback should remain the typed row kind."
+            Expect.equal (TaWorkspaceRenderer.rowTitle unlabeled unlabeled.Traces) "ES_1K / 1K" "Card fallback should retain the trace label."
+
         testCase "multi-scale temporal projection aligns candle spans repeated lines and causal step values" <| fun _ ->
             let timestamps =
                 [| for minute in 0 .. 9 -> sprintf "2026-09-03T13:%02d:00.0000000+00:00" minute |]

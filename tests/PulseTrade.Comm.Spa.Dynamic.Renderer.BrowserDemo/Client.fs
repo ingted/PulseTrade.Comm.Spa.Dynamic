@@ -232,6 +232,9 @@ module Client =
     let compositeRow rowId kind dataRef weight traces =
         { row rowId kind dataRef weight with Traces = traces }
 
+    let withRowLabel label (rowSpec: TaRowSpec) =
+        { rowSpec with Options = rowSpec.Options |> Map.add "label" (SduiValue.Text label) }
+
     let choice key label value =
         { Key = key
           Label = label
@@ -314,13 +317,14 @@ module Client =
                   TemporalAxisRefs = [| "axis.1k" |]
                   BaseRowId = Some "price"
                   Rows =
-                    [| compositeRow
-                           "price"
-                           TaRowKind.Candlestick
-                           "series.price"
-                           3.0
-                           [| trace "price-1k" TaTraceKind.Candlestick "series.price" "1K K Bar" "" 1.0
-                              trace "price-5k" TaTraceKind.Candlestick "series.price-5k" "5K K Bar" "#7c3aed" 1.8 |]
+                    [| (compositeRow
+                            "price"
+                            TaRowKind.Candlestick
+                            "series.price"
+                            3.0
+                            [| trace "price-1k" TaTraceKind.Candlestick "series.price" "1K K Bar" "" 1.0
+                               trace "price-5k" TaTraceKind.Candlestick "series.price-5k" "5K K Bar" "#7c3aed" 1.8 |]
+                        |> withRowLabel "ES 1K + SMA(20)")
                        row "volume" TaRowKind.Volume "series.volume" 1.0
                        compositeRow
                            "sma"

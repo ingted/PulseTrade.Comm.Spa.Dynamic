@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Interactive.Client</PackageId>
-    <Version>0.1.1</Version>
+    <Version>0.1.3</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Transport-neutral WebSharper client shell for embedding the Dynamic SDUI runtime in interactive hosts.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -14,6 +14,8 @@
     <WebSharperRunCompiler>true</WebSharperRunCompiler>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
 	  <PowerShellExe Condition="'$(OS)' == 'Windows_NT'">powershell</PowerShellExe>
+    <PulseTradeCommSpaDynamicInteractiveClientPushNuGet Condition="'$(PulseTradeCommSpaDynamicInteractiveClientPushNuGet)' == '' and '$(BuildingInsideVisualStudio)' == 'true'">true</PulseTradeCommSpaDynamicInteractiveClientPushNuGet>
+    <PulseTradeCommSpaDynamicInteractiveClientPushNuGet Condition="'$(PulseTradeCommSpaDynamicInteractiveClientPushNuGet)' == ''">false</PulseTradeCommSpaDynamicInteractiveClientPushNuGet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,15 +30,15 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="0.1.1" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="0.1.1" />
-    <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
-    <PackageReference Include="WebSharper.UI" Version="10.1.4.674" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.1]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.1.3]" />
+    <PackageReference Include="WebSharper.FSharp" Version="10.1.6.676" />
+    <PackageReference Include="WebSharper.UI" Version="10.1.5.676" />
   </ItemGroup>
 	
-	<Target Name="PushContractsReleasePackageToNuGet"
+	<Target Name="PushInteractiveClientReleasePackageToNuGet"
 		AfterTargets="Pack"
-		Condition="'$(Configuration)' == 'Release'">
+		Condition="'$(Configuration)' == 'Release' and '$(OS)' == 'Windows_NT' and '$(PulseTradeCommSpaDynamicInteractiveClientPushNuGet)' == 'true'">
 		<Exec WorkingDirectory="$(MSBuildProjectDirectory)"
 			  Command="$(PowerShellExe) -NoProfile -ExecutionPolicy Bypass -File &quot;G:\PulseTrade.fs\Libs\Akka.Proc.Supervisor\PostBuildEvent.ps1&quot; -assembly &quot;$(PackageId)&quot; -build &quot;$(Configuration)&quot;" />
 	</Target>

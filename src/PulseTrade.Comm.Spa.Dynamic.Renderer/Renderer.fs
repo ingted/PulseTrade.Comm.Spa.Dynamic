@@ -61,6 +61,27 @@ module TaWorkspaceRenderer =
         | TaRowKind.Macd -> "MACD"
         | TaRowKind.HeikinAshi -> "Heikin-Ashi"
 
+    let rowExplicitLabel (row: TaRowSpec) =
+        if isNull (box row.Options) then
+            None
+        else
+            match row.Options |> Map.tryFind "label" with
+            | Some(SduiValue.Text value) when not (String.IsNullOrWhiteSpace value) -> Some value
+            | _ -> None
+
+    let rowDisplayLabel (row: TaRowSpec) =
+        rowExplicitLabel row |> Option.defaultValue (rowKindText row.Kind)
+
+    let rowTitle (row: TaRowSpec) (traces: TaTraceSpec array) =
+        match rowExplicitLabel row with
+        | Some label -> label
+        | None when isNull traces || traces.Length = 0 -> rowKindText row.Kind
+        | None ->
+            traces
+            |> Array.map (fun trace -> if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label)
+            |> String.concat " / "
+            |> fun value -> if String.IsNullOrWhiteSpace value then rowKindText row.Kind else value
+
     let freshnessText (freshness: TaFreshness) =
         match freshness with
         | TaFreshness.Live -> "LIVE"
@@ -563,14 +584,7 @@ module TaWorkspaceRenderer =
     let renderRow (state: RuntimeState) (ui: TaRendererUiState) visibleTimestamps setCursorIndex commitCursorIndex showSharedTimeAxis (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
         let chart, timestamps = compositeSvg row.RowId traces state.Data visibleTimestamps ui.CursorIndex setCursorIndex commitCursorIndex
-        let title =
-            if isNull row.Traces || row.Traces.Length = 0 then
-                rowKindText row.Kind
-            else
-                traces
-                |> Array.map (fun trace -> if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label)
-                |> String.concat " / "
-                |> fun value -> if String.IsNullOrWhiteSpace value then rowKindText row.Kind else value
+        let title = rowTitle row traces
         let chartHeight = if traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick) then 262 else 124
         let children =
             if showSharedTimeAxis then [ chart; timeAxis "ta-time-axis-shared" timestamps ]
@@ -1272,6 +1286,7 @@ module TaWorkspaceRenderer =
                                 div [ Attr.Create "data-testid" "ta-row-toggles"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [
                                     for row in document.Rows do
                                         let hidden = Set.contains row.RowId ui.HiddenRows
+                                        let displayLabel = rowDisplayLabel row
                                         let editable =
                                             match TaRowEditorBinding.tryResolve (editorSchemasNow ()) row with
                                             | Ok(Some _) -> true
@@ -1289,12 +1304,12 @@ module TaWorkspaceRenderer =
                                                             else Set.add row.RowId uiState.Value.HiddenRows
 
                                                         setUiState { uiState.Value with HiddenRows = nextHidden })
-                                                ] [ text (rowKindText row.Kind) ]
+                                                ] [ text displayLabel ]
                                                 if editable then
                                                     button [
                                                         attr.``type`` "button"
                                                         Attr.Create "data-testid" ("ta-edit-row-" + row.RowId)
-                                                        attr.title ("Edit " + rowKindText row.Kind + " parameters")
+                                                        attr.title ("Edit " + displayLabel + " parameters")
                                                         attr.disabledBool commandsDisabledView
                                                         Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
                                                             if disabled then "height:26px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; cursor:not-allowed;"
@@ -1305,14 +1320,14 @@ module TaWorkspaceRenderer =
                                                 button [
                                                     attr.``type`` "button"
                                                     Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
-                                                    attr.title ("Remove " + rowKindText row.Kind + " row")
+                                                    attr.title ("Remove " + displayLabel + " row")
                                                     attr.disabledBool commandsDisabledView
                                                     Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
                                                         if disabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;"
                                                         else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
                                                     on.click (fun _ _ ->
                                                         if not (commandsDisabledNow ()) then
-                                                            startAction (SduiAction.RemoveTaRow(canvasId, row.RowId)) (rowKindText row.Kind + " row removal accepted.") ignore)
+                                                            startAction (SduiAction.RemoveTaRow(canvasId, row.RowId)) (displayLabel + " row removal accepted.") ignore)
                                                 ] [ text "×" ]
                                             ]
                                 ] :> Doc)
