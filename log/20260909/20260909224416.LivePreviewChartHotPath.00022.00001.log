@@ -62,3 +62,4 @@ Provider確實持續發布close變化；Dynamic Renderer卻把每個DataRevision
 - 2026-09-10 07:42 +08:00：F# Playwright final local gate通過：3,820 positions／28 series、300 transitions／5602ms／max132ms、5次並行preview、chartRerender=false、historical close不被覆寫、console/page error 0。summary toggle驗證改以row相對chart-stack座標，避免Playwright click auto-scroll造成假失敗。
 - 2026-09-10 07:46 +08:00：以comm訊息`msg-fsi-b2b0281c782b41798814143bc22c1912`通知Daedalus更新local candidate並重跑真SPAA/DIB M17。依owner gate，不public push；等待結果不阻擋本輪source與local package交付。
 - 2026-09-10 07:49 +08:00：更名後Contracts gate重跑23/23；`git diff --check`與35檔strict UTF-8/NUL/U+FFFD檢查通過。root checker以本repo TA REQ/SA/SD/WBS/Test/DevLog scope執行為PASS=28/WARN=3/FAIL=0；WARN僅既有三個歷史log檔名與舊RFC追溯缺口。changed-path敏感掃描為high=0、medium=0。
+- 2026-09-10 07:50 +08:00：source與local candidate交付commit `291d8bf`已push。依使用者停點終止BrowserDemo與comm foreground listener；驗`18882` listener=0、`agent.aster` comm bridge process=0，後續不再收發訊息。
