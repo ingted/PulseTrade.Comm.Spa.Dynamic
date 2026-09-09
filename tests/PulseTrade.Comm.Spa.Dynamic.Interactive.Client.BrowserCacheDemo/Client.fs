@@ -102,6 +102,31 @@ module Client =
                     JS.Apply<obj> store "put" [| box (Json.Serialize record); box key |] |> ignore)
                 (fun reason -> status.Value <- "UNAVAILABLE:" + reason)
 
+        let seedSemanticInvalid () =
+            if entries.Length <= 9 then
+                status.Value <- "FIXTURE-MISSING"
+            else
+                let source = entries[9]
+                let invalid =
+                    { source with
+                        Document =
+                            { source.Document with
+                                WorkspaceId = source.WorkspaceId + "-mismatch" } }
+                let key = "browser-cache-semantic-invalid"
+                let record =
+                    { Key = key
+                      EntryJson = BrowserRuntimeCodec.encodeCacheEntry invalid
+                      TouchedAtTicks = string System.DateTime.UtcNow.Ticks }
+
+                BrowserRuntimeCache.withStore
+                    "readwrite"
+                    (fun tx store ->
+                        JS.Set tx "oncomplete" (System.Action<obj>(fun _ -> status.Value <- "SEMANTIC-INVALID:SEEDED"))
+                        JS.Set tx "onabort" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-semantic-seed-aborted"))
+                        JS.Set tx "onerror" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-semantic-seed-failed"))
+                        JS.Apply<obj> store "put" [| box (Json.Serialize record); box key |] |> ignore)
+                    (fun reason -> status.Value <- "UNAVAILABLE:" + reason)
+
         let buttonStyle = attr.style "min-height:32px; padding:4px 10px; border:1px solid #8795a6; background:#fff; cursor:pointer;"
 
         div [ attr.style "max-width:720px; margin:32px auto; padding:20px; font-family:Segoe UI,sans-serif;" ] [
@@ -116,6 +141,8 @@ module Client =
                 button [ buttonStyle; Attr.Create "data-testid" "cache-clear"; on.click (fun _ _ -> clear ()) ] [ text "Clear" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-seed-corrupt"; on.click (fun _ _ -> seedCorrupt ()) ] [ text "Seed corrupt" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-read-corrupt"; on.click (fun _ _ -> readAt 9 "CORRUPT" None) ] [ text "Read corrupt" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-seed-semantic-invalid"; on.click (fun _ _ -> seedSemanticInvalid ()) ] [ text "Seed semantic invalid" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-read-semantic-invalid"; on.click (fun _ _ -> readAt 9 "SEMANTIC-INVALID" None) ] [ text "Read semantic invalid" ]
             ]
             output [ Attr.Create "data-testid" "cache-status"; attr.style "display:block; margin-top:16px; padding:10px; border:1px solid #c7ced8; font-family:Consolas,monospace;" ] [ textView status.View ]
         ]

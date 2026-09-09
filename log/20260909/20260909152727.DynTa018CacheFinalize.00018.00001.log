@@ -1,0 +1,69 @@
+# DYN-TA-018 cache finalize and cached navigation
+
+## 背景
+
+Browser RuntimeCache semantic fail-closed已完成實作與E2E。Daedalus整合fixed-history cache時確認`PausedForResync`需保留local render/hover/zoom，同時不可把cache誤當authority或送出需要authoritative provider的remote action。
+
+## Prompt/上下文摘要
+
+使用者要求繼續九月`基於FSSTL的TA Research`主線，並至少每五分鐘收發comm訊息支援Daedalus。當前priority是DYN-TA-018 browser range cache/resume。
+
+## 目標
+
+1. 完成semantic-invalid cache cleanup、版本文件、package verifier、NuGet與commit/push。
+2. 修正`PausedForResync`下local viewport可操作但remote range/cursor action受抑制的邊界。
+3. 提供Daedalus可直接消費的exact package/version/hash與行為證據。
+
+## 計畫步驟
+
+1. 先將已通過Contracts/Renderer/Interactive/Playwright的cache切片提交為baseline。
+2. 建立獨立DEBUG hypothesis，加入pure policy與renderer regression，最小修改event dispatch gate。
+3. 重跑unit、WebSharper browser、Playwright、package與checker；發布後通知Daedalus。
+
+## 範圍
+
+- Repo：`C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`
+- WBS：`DYN-TA-018B/C`完成，續作`DYN-TA-018D` integration prerequisite。
+- 不修改Daedalus owner repo、MDCQ provider、SPAA wire或使用者既有dirty檔案。
+
+## 驗收
+
+- semantic-invalid IndexedDB record在read callback前完成刪除。
+- cached `PausedForResync`仍render/hover/zoom；不送`VisibleRangeChanged`或`SharedCursorChanged`。
+- Ready狀態的既有remote action行為不變。
+- exact package graph、unit/browser checks與敏感掃描通過。
+
+## 風險
+
+- 不可把`PausedForResync`全面視為Ready；只允許local interaction。
+- 不可讓fixed-history cache hit成為engine/provider authority。
+- WebSharper source只用F#，不新增JavaScript或inline script。
+
+## 關聯文件/工單/PR
+
+- `doc/RFC/RFC-PTCS-DYNAMIC-0014.browser-range-cache-resume.md`
+- `doc/TAResearch/WBS.DYN-TA-018.md`
+- `doc/TAResearch/Test.md` DYN-TA-T-071..076
+- 前序：`log/20260909/20260909143300.BrowserCacheSemanticValidation.log`
+
+## 執行命令/參數
+
+後續Operations逐筆記錄focused build/test、F# Playwright、package verifier、checker與Git命令；不記secret值。
+
+## 結果
+
+進行中。
+
+## 根因判讀
+
+Renderer目前把local viewport更新與remote `VisibleRangeChanged` availability綁在同一disabled判斷；cache rehydrate進`PausedForResync`時因此連local navigation也被禁用。cursor mousemove本來就是local，只有click commit會送remote。
+
+## 下一步
+
+先完成cache baseline commit，再實作local/remote policy分離。
+
+## Operations
+
+- 15:27: 新版checker指出前序log名稱/欄位不符合current schema。舊log保持歷史原文；本continuation log記錄規則切換、累積進度與後續plan。
+- 15:33: Changed-path sensitive scan為high=0/medium=0；encoding與`git diff --check`通過。Checker另抓到active PTCS adapter仍引用舊Contracts/Renderer；WBS明列package cascade為最高優先，歷史`artifacts/staging`不當active consumer。
+- 15:40: continuation checker唯一FAIL來自readonly baseline用的舊命名log成為最新檔；保留該歷史檔，於本合規主log續記，使latest log判定回到current naming。同步comm：Daedalus因SDK 10.0.400安裝不完整暫停build；Aster不變更SDK/global.json，僅以10.0.302 FSI執行checker。

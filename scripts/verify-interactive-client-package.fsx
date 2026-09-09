@@ -7,6 +7,7 @@ open System.IO.Compression
 open System.Security.Cryptography
 open System.Text
 open System.Text.Json
+open System.Xml.Linq
 open Argu
 
 [<CliPrefix(CliPrefix.DoubleDash)>]
@@ -17,10 +18,48 @@ type VerifyArgs =
             match this with
             | Package _ -> "Interactive.Client nupkg path"
 
+let repoRoot = Directory.GetParent(__SOURCE_DIRECTORY__).FullName
+let projectPath =
+    Path.Combine(
+        repoRoot,
+        "src",
+        "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+        "PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj")
+
+let project = XDocument.Load projectPath
+
+let projectVersion =
+    project.Descendants()
+    |> Seq.tryFind (fun element -> element.Name.LocalName = "Version")
+    |> Option.map (fun element -> element.Value)
+    |> Option.filter (String.IsNullOrWhiteSpace >> not)
+    |> Option.defaultWith (fun () -> failwith $"Project Version is missing: {projectPath}")
+
+let projectDependencyVersion packageId =
+    project.Descendants()
+    |> Seq.filter (fun element -> element.Name.LocalName = "PackageReference")
+    |> Seq.tryFind (fun element ->
+        let includeAttribute = element.Attribute(XName.Get "Include")
+        not (isNull includeAttribute) && includeAttribute.Value = packageId)
+    |> Option.bind (fun element ->
+        let versionAttribute = element.Attribute(XName.Get "Version")
+        if isNull versionAttribute then None else Some versionAttribute.Value)
+    |> Option.filter (String.IsNullOrWhiteSpace >> not)
+    |> Option.defaultWith (fun () -> failwith $"Project dependency is missing: {packageId}")
+
+let defaultPackagePath =
+    Path.Combine(
+        repoRoot,
+        "src",
+        "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+        "bin",
+        "Release",
+        $"PulseTrade.Comm.Spa.Dynamic.Interactive.Client.{projectVersion}.nupkg")
+
 let defaultArgumentsText =
     sprintf
         "--package \"%s\""
-        "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/bin/Release/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.0.1.5.nupkg"
+        (defaultPackagePath.Replace('\\', '/'))
 
 let parser = ArgumentParser.Create<VerifyArgs>(programName = "verify-interactive-client-package.fsx")
 let parse text =
@@ -97,13 +136,14 @@ let expectProperty (name: string) expected =
 
 expectProperty "schema" "ptcs-dynamic-interactive-bundle.v1"
 expectProperty "packageId" "PulseTrade.Comm.Spa.Dynamic.Interactive.Client"
-expectProperty "packageVersion" "0.1.5"
+expectProperty "packageVersion" projectVersion
 
 for dependency in
-    [ "FSharp.Core", "[10.1.400]"
-      "PulseTrade.Comm.Spa.Dynamic.Contracts", "[0.1.4]"
-      "PulseTrade.Comm.Spa.Dynamic.Renderer", "[0.1.6]" ] do
-    let packageId, version = dependency
+    [ "FSharp.Core"
+      "PulseTrade.Comm.Spa.Dynamic.Contracts"
+      "PulseTrade.Comm.Spa.Dynamic.Renderer" ] do
+    let version = projectDependencyVersion dependency
+    let packageId = dependency
     if not (nuspecText.Contains($"id=\"{packageId}\"")) || not (nuspecText.Contains($"version=\"{version}\"")) then
         failwith $"Nuspec dependency mismatch: {packageId} {version}."
 expectProperty "protocol" "ptcs-dynamic-action.v1"

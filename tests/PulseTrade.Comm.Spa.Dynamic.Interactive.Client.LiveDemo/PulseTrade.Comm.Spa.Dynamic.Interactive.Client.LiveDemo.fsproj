@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.1]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Interactive.Client" Version="[0.1.3]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.5]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Interactive.Client" Version="[0.1.6]" />
   </ItemGroup>
 </Project>

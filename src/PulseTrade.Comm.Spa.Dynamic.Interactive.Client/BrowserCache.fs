@@ -245,23 +245,29 @@ module BrowserRuntimeCache =
                         | Error _ ->
                             invalidKeys.Add record.Key
                             None
-                        | Ok entry when identityMatches entry.CacheIdentity cacheIdentity && entry.WorkspaceId = workspaceId ->
-                            let covers =
-                                match requestedCoverage with
-                                | None -> true
-                                | Some requested ->
-                                    entry.Coverage.StartEventTimeUtc <= requested.StartEventTimeUtc
-                                    && entry.Coverage.EndEventTimeExclusiveUtc >= requested.EndEventTimeExclusiveUtc
+                        | Ok entry ->
+                            match RuntimeCacheEntryValidation.validate DynamicRuntimeDefaults.limits entry with
+                            | Error _ ->
+                                invalidKeys.Add record.Key
+                                None
+                            | Ok valid when identityMatches valid.CacheIdentity cacheIdentity && valid.WorkspaceId = workspaceId ->
+                                let covers =
+                                    match requestedCoverage with
+                                    | None -> true
+                                    | Some requested ->
+                                        valid.Coverage.StartEventTimeUtc <= requested.StartEventTimeUtc
+                                        && valid.Coverage.EndEventTimeExclusiveUtc >= requested.EndEventTimeExclusiveUtc
 
-                            if covers then Some(record, entry) else None
-                        | Ok _ -> None)
+                                if covers then Some(record, valid) else None
+                            | Ok _ -> None)
                     |> Array.sortByDescending (fst >> touchedAt)
 
-                deleteKeys (invalidKeys.ToArray()) ignore
+                let result =
+                    match Array.tryHead matches with
+                    | Some(_, entry) -> BrowserRuntimeCacheReadResult.Hit entry
+                    | None -> BrowserRuntimeCacheReadResult.Miss
 
-                match Array.tryHead matches with
-                | Some(_, entry) -> complete (BrowserRuntimeCacheReadResult.Hit entry)
-                | None -> complete BrowserRuntimeCacheReadResult.Miss)
+                deleteKeys (invalidKeys.ToArray()) (fun () -> complete result))
             (fun reason -> complete (BrowserRuntimeCacheReadResult.Unavailable reason))
 
     let readLatest cacheIdentity workspaceId requestedCoverage continuation =

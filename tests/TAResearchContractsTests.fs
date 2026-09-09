@@ -943,6 +943,10 @@ let tests =
                 |> Result.defaultWith failtest
 
             Expect.equal browserRoundTrip entry "WebSharper cache entry codec must preserve the same contract."
+            Expect.equal
+                (RuntimeCacheEntryValidation.validate DynamicRuntimeDefaults.limits entry)
+                (RuntimeCache.validateEntry DynamicRuntimeDefaults.limits entry)
+                "Browser and server cache entry validation must share one canonical result."
             Expect.isError
                 (RuntimeCache.validateEntry
                     DynamicRuntimeDefaults.limits
@@ -953,6 +957,11 @@ let tests =
                     DynamicRuntimeDefaults.limits
                     { entry with Coverage = { entry.Coverage with EndEventTimeExclusiveUtc = entry.Coverage.StartEventTimeUtc } })
                 "Empty cache coverage must fail closed."
+            Expect.isError
+                (RuntimeCacheEntryValidation.validate
+                    DynamicRuntimeDefaults.limits
+                    { entry with Document = { entry.Document with WorkspaceId = entry.WorkspaceId + "-mismatch" } })
+                "A semantic workspace/document mismatch must fail in the browser-safe validator."
 
         testCase "DYN-TA-T-073 cache write and rehydrate preserve frame authority" <| fun _ ->
             let startUtc = DateTimeOffset(2026, 9, 8, 14, 0, 0, TimeSpan.Zero)

@@ -3,14 +3,9 @@ namespace PulseTrade.Comm.Spa.Dynamic.Contracts
 open System
 open System.Text
 open System.Text.Json
-[<RequireQualifiedAccess>]
-module RuntimeCache =
-    [<Literal>]
-    let CurrentSchemaRevision = 1L
 
-    [<Literal>]
-    let MaximumEntries = 8
-
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
+module RuntimeCacheEntryValidation =
     let identityErrors field (identity: RuntimeCacheIdentity) =
         if isNull (box identity) then
             [ RuntimeValidation.error "cache-identity-required" field "Runtime cache identity is required." ]
@@ -36,6 +31,87 @@ module RuntimeCache =
 
               if coverage.EndEventTimeExclusiveUtc <= coverage.StartEventTimeUtc then
                   yield RuntimeValidation.error "invalid-cache-coverage" field "Cache coverage end must be later than its start." ]
+
+    let validate limits (entry: RuntimeCacheEntry) =
+        if isNull (box entry) then
+            Error [ RuntimeValidation.error "cache-entry-required" "cache" "Runtime cache entry is required." ]
+        else
+            let errors =
+                [ yield! identityErrors "cache.cacheIdentity" entry.CacheIdentity
+                  yield! RuntimeValidation.identifier "cache.workspaceId" entry.WorkspaceId
+                  yield! coverageErrors "cache.coverage" entry.Coverage
+
+                  if entry.DocumentRevision < 0L then
+                      yield RuntimeValidation.error "invalid-document-revision" "cache.documentRevision" "Document revision must be non-negative."
+
+                  if entry.DataRevision < 0L then
+                      yield RuntimeValidation.error "invalid-data-revision" "cache.dataRevision" "Data revision must be non-negative."
+
+                  if entry.CapturedAtUtc.Offset <> TimeSpan.Zero then
+                      yield RuntimeValidation.error "utc-required" "cache.capturedAtUtc" "Cache capture time must use UTC."
+
+                  if isNull (box entry.Document) then
+                      yield RuntimeValidation.error "cache-document-required" "cache.document" "Cache document is required."
+                  else
+                      yield! RuntimeValidation.documentErrors limits entry.Document
+
+                      if entry.Document.WorkspaceId <> entry.WorkspaceId then
+                          yield RuntimeValidation.error "cache-workspace-mismatch" "cache.workspaceId" "Cache workspace does not match its document."
+
+                  if isNull (box entry.Snapshot) then
+                      yield RuntimeValidation.error "cache-snapshot-required" "cache.snapshot" "Cache snapshot is required."
+                  else
+                      yield! RuntimeValidation.snapshotErrors limits entry.Snapshot ]
+
+            match errors with
+            | _ :: _ -> Error errors
+            | [] ->
+                let validationIdentity =
+                    { DocumentId = DocumentId "cache-validation-document"
+                      CanvasInstanceId = CanvasInstanceId "cache-validation-canvas" }
+
+                let documentFrame =
+                    { Protocol = DynamicRuntimeDefaults.protocol
+                      Kind = RuntimeFrameKind.Document
+                      DocumentId = validationIdentity.DocumentId
+                      CanvasInstanceId = validationIdentity.CanvasInstanceId
+                      DocumentRevision = entry.DocumentRevision
+                      BaseDataRevision = None
+                      DataRevision = 0L
+                      TransportSequence = 1L
+                      Payload = RuntimePayload.Document entry.Document }
+
+                let afterDocument, documentEffect = RuntimeReducer.reduce (RuntimeReducer.initial validationIdentity) documentFrame
+
+                match documentEffect with
+                | RuntimeEffect.RequestResync _ ->
+                    Error [ RuntimeValidation.error "cache-document-invalid" "cache.document" "Cache document cannot seed a valid runtime state." ]
+                | _ ->
+                    let snapshotFrame =
+                        { documentFrame with
+                            Kind = RuntimeFrameKind.Snapshot
+                            DataRevision = entry.DataRevision
+                            TransportSequence = 2L
+                            Payload = RuntimePayload.Snapshot entry.Snapshot }
+
+                    let _, snapshotEffect = RuntimeReducer.reduce afterDocument snapshotFrame
+
+                    match snapshotEffect with
+                    | RuntimeEffect.RequestResync _ ->
+                        Error [ RuntimeValidation.error "cache-snapshot-invalid" "cache.snapshot" "Cache snapshot is incompatible with its document." ]
+                    | _ -> Ok entry
+
+[<RequireQualifiedAccess>]
+module RuntimeCache =
+    [<Literal>]
+    let CurrentSchemaRevision = 1L
+
+    [<Literal>]
+    let MaximumEntries = 8
+
+    let identityErrors field identity = RuntimeCacheEntryValidation.identityErrors field identity
+
+    let coverageErrors field coverage = RuntimeCacheEntryValidation.coverageErrors field coverage
 
     let covers (requested: RuntimeCacheCoverage) (cached: RuntimeCacheCoverage) =
         cached.StartEventTimeUtc <= requested.StartEventTimeUtc
@@ -147,74 +223,7 @@ module RuntimeCache =
                       Coverage = coverage
                       CapturedAtUtc = capturedAtUtc }
 
-    let validateEntry limits (entry: RuntimeCacheEntry) =
-        if isNull (box entry) then
-            Error [ RuntimeValidation.error "cache-entry-required" "cache" "Runtime cache entry is required." ]
-        else
-            let errors =
-                [ yield! identityErrors "cache.cacheIdentity" entry.CacheIdentity
-                  yield! RuntimeValidation.identifier "cache.workspaceId" entry.WorkspaceId
-                  yield! coverageErrors "cache.coverage" entry.Coverage
-
-                  if entry.DocumentRevision < 0L then
-                      yield RuntimeValidation.error "invalid-document-revision" "cache.documentRevision" "Document revision must be non-negative."
-
-                  if entry.DataRevision < 0L then
-                      yield RuntimeValidation.error "invalid-data-revision" "cache.dataRevision" "Data revision must be non-negative."
-
-                  if entry.CapturedAtUtc.Offset <> TimeSpan.Zero then
-                      yield RuntimeValidation.error "utc-required" "cache.capturedAtUtc" "Cache capture time must use UTC."
-
-                  if isNull (box entry.Document) then
-                      yield RuntimeValidation.error "cache-document-required" "cache.document" "Cache document is required."
-                  else
-                      yield! RuntimeValidation.documentErrors limits entry.Document
-
-                      if entry.Document.WorkspaceId <> entry.WorkspaceId then
-                          yield RuntimeValidation.error "cache-workspace-mismatch" "cache.workspaceId" "Cache workspace does not match its document."
-
-                  if isNull (box entry.Snapshot) then
-                      yield RuntimeValidation.error "cache-snapshot-required" "cache.snapshot" "Cache snapshot is required."
-                  else
-                      yield! RuntimeValidation.snapshotErrors limits entry.Snapshot ]
-
-            match errors with
-            | _ :: _ -> Error errors
-            | [] ->
-                let validationIdentity =
-                    { DocumentId = DocumentId "cache-validation-document"
-                      CanvasInstanceId = CanvasInstanceId "cache-validation-canvas" }
-
-                let documentFrame =
-                    { Protocol = DynamicRuntimeDefaults.protocol
-                      Kind = RuntimeFrameKind.Document
-                      DocumentId = validationIdentity.DocumentId
-                      CanvasInstanceId = validationIdentity.CanvasInstanceId
-                      DocumentRevision = entry.DocumentRevision
-                      BaseDataRevision = None
-                      DataRevision = 0L
-                      TransportSequence = 1L
-                      Payload = RuntimePayload.Document entry.Document }
-
-                let afterDocument, documentEffect = RuntimeReducer.reduce (RuntimeReducer.initial validationIdentity) documentFrame
-
-                match documentEffect with
-                | RuntimeEffect.RequestResync _ ->
-                    Error [ RuntimeValidation.error "cache-document-invalid" "cache.document" "Cache document cannot seed a valid runtime state." ]
-                | _ ->
-                    let snapshotFrame =
-                        { documentFrame with
-                            Kind = RuntimeFrameKind.Snapshot
-                            DataRevision = entry.DataRevision
-                            TransportSequence = 2L
-                            Payload = RuntimePayload.Snapshot entry.Snapshot }
-
-                    let _, snapshotEffect = RuntimeReducer.reduce afterDocument snapshotFrame
-
-                    match snapshotEffect with
-                    | RuntimeEffect.RequestResync _ ->
-                        Error [ RuntimeValidation.error "cache-snapshot-invalid" "cache.snapshot" "Cache snapshot is incompatible with its document." ]
-                    | _ -> Ok entry
+    let validateEntry limits entry = RuntimeCacheEntryValidation.validate limits entry
 
     let tryRehydrate limits expectedCacheIdentity (current: RuntimeState) entry =
         validateEntry limits entry

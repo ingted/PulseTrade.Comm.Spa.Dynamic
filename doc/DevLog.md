@@ -1261,3 +1261,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - `log/20260909/20260909143300_issue_browser_cache_semantic_validation.hypothesis.md`記錄DYN-TA-018C的fail-closed缺口：browser read目前只做淺層decode，JSON合法但Document/Snapshot語意無效的entry仍可能被回報為Hit。後續實驗將以完整`RuntimeCache.validateEntry`作read gate，並補semantic-invalid IndexedDB record的F# Playwright回歸。
 - 第一個實驗因整個`RuntimeCache`進入WebSharper graph而觸發`TemporalAxisCodec`非JavaScript type的`WS9001`，已完整撤回。`log/20260909/20260909144000_issue_browser_cache_validation_boundary.hypothesis.md`改採窄邊界：抽出browser-safe entry validator，coverage derivation維持server-only。
+
+## 2026-09-09 - Browser cache semantic fail-closed gate
+
+- Contracts新增browser/server共用的`RuntimeCacheEntryValidation`，保留coverage derivation於server-only `RuntimeCache`。Interactive browser read現在會拒絕並刪除JSON shape有效、但Document/Snapshot/reducer語意無效的IndexedDB record，不再將其回報為cache hit。
+- Contracts `21/21`、Renderer `26/26`、Interactive lifecycle `4/4`通過。DYN-VFY-020 revision 3以F# Playwright驗證8-entry LRU、reload、coverage、malformed與semantic-invalid刪除、clear及console/page error 0。
+- package graph升為Contracts `0.1.5`、Renderer `0.1.7`、Interactive.Client `0.1.6`；NuGet push與package hash待final package gate後補記。
