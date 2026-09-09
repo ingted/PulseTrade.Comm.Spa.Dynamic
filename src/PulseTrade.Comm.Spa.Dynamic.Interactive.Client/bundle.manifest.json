@@ -1,7 +1,7 @@
 {
   "schema": "ptcs-dynamic-interactive-bundle.v1",
   "packageId": "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
-  "packageVersion": "0.1.6",
+  "packageVersion": "0.1.7",
   "protocol": "ptcs-dynamic-action.v1",
   "entry": "client.js",
   "minifiedEntry": "client.min.js",

@@ -22,13 +22,29 @@ module Program =
 
     let entry index =
         let startUtc = DateTimeOffset(2026, 9, 1 + index, 0, 0, 0, TimeSpan.Zero)
+        let axisRef = "browser-cache-axis-" + string index
+        let axis =
+            { AxisRef = axisRef
+              Revision = int64 (index + 1)
+              Points =
+                [| { Position = 0L
+                     SourceIntervalId = "browser-cache-source-" + string index
+                     ScaleKey = "1K"
+                     IntervalStartUtc = startUtc
+                     IntervalEndUtc = startUtc.AddDays(1.0)
+                     ObservedThroughUtc = startUtc.AddDays(1.0)
+                     AvailableAtUtc = Some(startUtc.AddDays(1.0))
+                     Finality = PointFinality.Final
+                     Projection = TemporalProjection.CandleSpan
+                     Quality = Some "complete" } |] }
+        let entryDocument = { document with TemporalAxisRefs = [| axisRef |] }
 
         { CacheIdentity =
             { OwnerFingerprint = "browser-cache-query-" + string index
               SchemaRevision = RuntimeCache.CurrentSchemaRevision }
           WorkspaceId = document.WorkspaceId
-          Document = document
-          Snapshot = { Data = Map.empty; Freshness = TaFreshness.Stale(TimeSpan.Zero, "fixture") }
+          Document = entryDocument
+          Snapshot = { Data = Map [ axisRef, TemporalAxisCodec.encode axis ]; Freshness = TaFreshness.Stale(TimeSpan.Zero, "fixture") }
           DocumentRevision = 1L
           DataRevision = int64 (index + 1)
           Coverage =

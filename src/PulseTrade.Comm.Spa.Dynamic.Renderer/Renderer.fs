@@ -115,6 +115,12 @@ module TaWorkspaceRenderer =
         | RuntimePollState.Disposed -> true
         | _ -> false
 
+    let localViewportDisabled = function
+        | RuntimePollState.PollInFlight
+        | RuntimePollState.Unmounted
+        | RuntimePollState.Disposed -> true
+        | _ -> false
+
     let submit
         (callbacks: TaRendererCallbacks)
         (uiState: Var<TaRendererUiState>)
@@ -680,11 +686,12 @@ module TaWorkspaceRenderer =
             View.Map2
                 (fun state ui ->
                     visibleRangeActionAllowed state
-                    && (remoteDisabled state.Poll || ui.PendingActionId.IsSome))
+                    && (localViewportDisabled state.Poll || ui.PendingActionId.IsSome))
                 runtimeState.View
                 uiState.View
         let viewportCommandsDisabledNow () =
-            visibleRangeActionAllowed runtimeState.Value && commandsDisabledNow ()
+            visibleRangeActionAllowed runtimeState.Value
+            && (localViewportDisabled runtimeState.Value.Poll || uiState.Value.PendingActionId.IsSome)
         let startActionWith action successText onAccepted onRejected =
             actionSequence <- actionSequence + 1
             let request =
@@ -739,7 +746,7 @@ module TaWorkspaceRenderer =
                         FollowLatest = followLatest
                         CursorIndex = None }
                 draftWindow.Value <- None
-                if changed && actionAllowed "visible-range-changed" then
+                if changed && actionAllowed "visible-range-changed" && not (commandsDisabledNow ()) then
                     match runtimeState.Value.Document with
                     | Some document ->
                         match RendererModel.visibleEventRange document runtimeState.Value.Data bounded with
@@ -836,7 +843,7 @@ module TaWorkspaceRenderer =
 
         let commitCursorIndex index =
             setCursorIndex (Some index)
-            if actionAllowed "shared-cursor-changed" then
+            if actionAllowed "shared-cursor-changed" && not (commandsDisabledNow ()) then
                 match runtimeState.Value.Document with
                 | Some document ->
                     let timeline = RendererModel.referenceTimelineForDocument document runtimeState.Value.Data

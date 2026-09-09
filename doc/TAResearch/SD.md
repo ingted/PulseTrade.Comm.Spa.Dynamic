@@ -717,7 +717,7 @@ type RuntimeCacheEntry =
       CapturedAtUtc: DateTimeOffset }
 ```
 
-cache identity只承接owner提供的opaque canonical `OwnerFingerprint`與Dynamic schema revision。SPAA將其bounded SHA-256 `QueryFingerprint`映射為OwnerFingerprint；Program/DataSource/Query三欄仍保留在SPAA response供診斷與owner-side secondary index，不進generic Dynamic contract。exact reload比對OwnerFingerprint；跨range候選由SPAA以Program+DataSource索引並驗Query/coverage後提出，Dynamic不得自行推論兩個query相容。Query不同時不得拿cached revision作delta resume。entry保存可重新驗證的Document+Snapshot，不直接序列化socket、timer、pending action、poll state或session capability。coverage由accepted base temporal axis的actual interval start/end取得，不由scale或requested range補造。
+cache identity只承接owner提供的opaque canonical `OwnerFingerprint`與Dynamic schema revision。SPAA以stable ProgramFingerprint、DataSourceFingerprint及cache semantic/schema version產生OwnerFingerprint；requested/cached time range不得進入。Program/DataSource/Query fingerprint仍保留在SPAA response供診斷，可含range的QueryFingerprint不得作OwnerFingerprint。exact reload比對OwnerFingerprint；同owner的range revisit由Dynamic先驗coverage，再交owner確認provider authority。entry保存可重新驗證的Document+Snapshot，不直接序列化socket、timer、pending action、poll state或session capability。coverage由accepted base temporal axis的actual interval start/end取得，不由scale或requested range補造。
 
 ```fsharp
 let tryCreateEntry now cacheIdentity state =

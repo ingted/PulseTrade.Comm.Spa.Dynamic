@@ -283,7 +283,7 @@ K棒不是特殊巨型payload。`TaCandleDataRefs`明確連結O/H/L/C/V五條sca
 
 SPAA現況已有authoritative action/frame producer，Interactive.Client則只有記憶體內last-good。若SPAA另建第二套browser cache或action wire，會複製Dynamic reducer/order/resync並讓Notebook application擁有renderer internals。正確依賴方向仍是`owner identity/action handler -> Dynamic action/frame -> reducer -> browser cache`。
 
-cache lookup不能只用session URL、DocumentId或人類可讀chart id：session會重建，chart id也無法證明source、instrument、range semantics與TA params相同。Dynamic contract只接opaque `OwnerFingerprint`；SPAA將其64字元SHA-256 `QueryFingerprint`映射為exact identity，並在owner side保留Program/DataSource/Query三段fingerprint。Dynamic不理解其內容，identity變更即cache miss。跨range候選只能由SPAA的Program+DataSource secondary index提出，再由Dynamic驗coverage與payload；generic client不得猜測query相容性。
+cache lookup不能只用session URL、DocumentId或人類可讀chart id：session會重建，chart id也無法證明source、instrument與TA program相同。Dynamic contract只接opaque `OwnerFingerprint`；SPAA以stable ProgramFingerprint、DataSourceFingerprint及cache semantic/schema version產生identity，requested/cached time range不得進入。可含range的`QueryFingerprint`只供單次query診斷。相同owner的跨range候選由Dynamic以entry coverage過濾，再由owner確認provider authority；identity變更即cache miss，generic client不得猜測不同program/source相容。
 
 IndexedDB只保存accepted projection，不保存upstream cursor truth。cache hit的意義是「這份last-good可先顯示並作delta hint」，不是「provider已確認仍有效」。因此browser仍送`PollDelta`或`RequestFullSnapshot`，host依current source authority回patch/full；correlated Accepted只結束command pending，不能直接修改資料。
 

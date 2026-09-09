@@ -16,16 +16,16 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.5-beta117]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.0-alpha21]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs" Version="[0.1.0-alpha7-win57]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs.Client" Version="[0.1.0-alpha8-win82]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.18]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.6]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs" Version="[0.1.6]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs.Client" Version="[0.1.4]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.6.676" />
     <PackageReference Include="WebSharper.UI" Version="10.1.5.676" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.5-beta116\contentFiles\any\any\build\**\*">
+    <Content Update="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.18\contentFiles\any\any\build\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

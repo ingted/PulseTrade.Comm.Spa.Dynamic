@@ -476,6 +476,9 @@ module Client =
         let setInFlight () =
             runtimeState.Value <- { runtimeState.Value with Poll = RuntimePollState.PollInFlight }
 
+        let setPaused () =
+            runtimeState.Value <- { runtimeState.Value with Poll = RuntimePollState.PausedForResync }
+
         let setStale () =
             runtimeState.Value <-
                 { runtimeState.Value with
@@ -492,6 +495,7 @@ module Client =
             div [ Attr.Create "data-testid" "ta-demo-callback-state"; attr.style "min-height:32px; height:auto; display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:flex-end; padding:4px 12px; background:#182a42; color:#d9e5f3; font-size:11px;" ] [
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-live"; on.click (fun _ _ -> setLive ()) ] [ text "Live" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-inflight"; on.click (fun _ _ -> setInFlight ()) ] [ text "In-flight" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-paused"; on.click (fun _ _ -> setPaused ()) ] [ text "Paused" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-stale"; on.click (fun _ _ -> setStale ()) ] [ text "Stale" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-reject-next"; on.click (fun _ _ -> rejectNext.Value <- true) ] [ text "Reject next" ]
                 text "callback actions "

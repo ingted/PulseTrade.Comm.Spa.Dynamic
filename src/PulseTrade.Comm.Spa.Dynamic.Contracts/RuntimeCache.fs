@@ -101,8 +101,112 @@ module RuntimeCacheEntryValidation =
                         Error [ RuntimeValidation.error "cache-snapshot-invalid" "cache.snapshot" "Cache snapshot is incompatible with its document." ]
                     | _ -> Ok entry
 
-[<RequireQualifiedAccess>]
-module RuntimeCache =
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
+module RuntimeCacheBrowserCoverage =
+    let timestamp field key values =
+        match Map.tryFind key values with
+        | Some(SduiValue.Text value) ->
+            try
+                let parsed = WebSharper.Json.Deserialize<DateTimeOffset>(WebSharper.Json.Serialize value)
+
+                if parsed.Offset = TimeSpan.Zero then
+                    Ok parsed
+                else
+                    Error [ RuntimeValidation.error "utc-required" field $"{field} must use UTC offset zero." ]
+            with _ ->
+                Error [ RuntimeValidation.error "invalid-timestamp" field $"{field} must be an ISO-8601 timestamp." ]
+        | _ -> Error [ RuntimeValidation.error "required" field $"{field} is required." ]
+
+    let pointCoverage field = function
+        | SduiValue.Object values ->
+            let startResult = timestamp (field + ".intervalStartUtc") "intervalStartUtc" values
+            let endResult = timestamp (field + ".intervalEndUtc") "intervalEndUtc" values
+
+            match startResult, endResult with
+            | Ok startUtc, Ok endUtc when endUtc > startUtc -> Ok(startUtc, endUtc)
+            | Ok _, Ok _ ->
+                Error [ RuntimeValidation.error "invalid-interval" (field + ".intervalEndUtc") "Interval end must be later than interval start." ]
+            | _ ->
+                [ match startResult with
+                  | Error errors -> yield! errors
+                  | Ok _ -> ()
+                  match endResult with
+                  | Error errors -> yield! errors
+                  | Ok _ -> () ]
+                |> Error
+        | _ -> Error [ RuntimeValidation.error "temporal-axis-point-required" field "Expected a temporal axis point object." ]
+
+    let decodeAxis = function
+        | SduiValue.Object values when Map.tryFind "_type" values = Some(SduiValue.Text "temporal-axis.v1") ->
+            match Map.tryFind "points" values with
+            | Some(SduiValue.Array points) ->
+                let decoded =
+                    points
+                    |> Array.indexed
+                    |> Array.map (fun (index, point) -> pointCoverage $"temporalAxis.points[{index}]" point)
+
+                let errors =
+                    decoded
+                    |> Array.choose (function
+                        | Error values -> Some values
+                        | Ok _ -> None)
+                    |> Array.toList
+                    |> List.concat
+
+                if List.isEmpty errors then
+                    Ok(decoded |> Array.choose (function Ok value -> Some value | Error _ -> None))
+                else
+                    Error errors
+            | _ -> Error [ RuntimeValidation.error "temporal-axis-points-required" "temporalAxis.points" "Temporal axis points are required." ]
+        | _ -> Error [ RuntimeValidation.error "temporal-axis-required" "temporalAxis" "Expected temporal-axis.v1." ]
+
+    let tryBaseAxisCoverage (state: RuntimeState) =
+        match state.Document with
+        | None ->
+            Error [ RuntimeValidation.error "cache-document-required" "cache.document" "A document is required before cache coverage can be derived." ]
+        | Some document ->
+            let axisRefs = if isNull document.TemporalAxisRefs then [||] else document.TemporalAxisRefs
+            let decoded =
+                axisRefs
+                |> Array.map (fun axisRef ->
+                    match Map.tryFind axisRef state.Data with
+                    | None ->
+                        Error
+                            [ RuntimeValidation.error
+                                  "cache-axis-missing"
+                                  "cache.snapshot.data"
+                                  $"Declared temporal axis `{axisRef}` is missing from the accepted runtime data." ]
+                    | Some value -> decodeAxis value)
+
+            let errors =
+                decoded
+                |> Array.choose (function Error values -> Some values | Ok _ -> None)
+                |> Array.toList
+                |> List.concat
+
+            if not (List.isEmpty errors) then
+                Error errors
+            else
+                let baseAxis =
+                    decoded
+                    |> Array.choose (function Ok points when points.Length > 0 -> Some points | _ -> None)
+                    |> Array.sortByDescending _.Length
+                    |> Array.tryHead
+
+                match baseAxis with
+                | None ->
+                    Error
+                        [ RuntimeValidation.error
+                              "cache-coverage-unavailable"
+                              "cache.coverage"
+                              "Accepted runtime data has no non-empty temporal axis from which cache coverage can be derived." ]
+                | Some points ->
+                    Ok
+                        { StartEventTimeUtc = points |> Array.minBy fst |> fst
+                          EndEventTimeExclusiveUtc = points |> Array.maxBy snd |> snd }
+
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
+module RuntimeCacheProjection =
     [<Literal>]
     let CurrentSchemaRevision = 1L
 
@@ -117,55 +221,7 @@ module RuntimeCache =
         cached.StartEventTimeUtc <= requested.StartEventTimeUtc
         && cached.EndEventTimeExclusiveUtc >= requested.EndEventTimeExclusiveUtc
 
-    let tryBaseAxisCoverage (state: RuntimeState) =
-        match state.Document with
-        | None ->
-            Error [ RuntimeValidation.error "cache-document-required" "cache.document" "A document is required before cache coverage can be derived." ]
-        | Some document ->
-            let axisRefs = if isNull document.TemporalAxisRefs then [||] else document.TemporalAxisRefs
-
-            let decoded =
-                axisRefs
-                |> Array.map (fun axisRef ->
-                    match Map.tryFind axisRef state.Data with
-                    | None ->
-                        Error
-                            [ RuntimeValidation.error
-                                  "cache-axis-missing"
-                                  "cache.snapshot.data"
-                                  $"Declared temporal axis `{axisRef}` is missing from the accepted runtime data." ]
-                    | Some value -> TemporalAxisCodec.decode value)
-
-            let errors =
-                decoded
-                |> Array.choose (function
-                    | Error values -> Some values
-                    | Ok _ -> None)
-                |> Array.toList
-                |> List.concat
-
-            if not (List.isEmpty errors) then
-                Error errors
-            else
-                let baseAxis =
-                    decoded
-                    |> Array.choose (function
-                        | Ok axis when not (isNull axis.Points) && axis.Points.Length > 0 -> Some axis
-                        | _ -> None)
-                    |> Array.sortByDescending (fun axis -> axis.Points.Length)
-                    |> Array.tryHead
-
-                match baseAxis with
-                | None ->
-                    Error
-                        [ RuntimeValidation.error
-                              "cache-coverage-unavailable"
-                              "cache.coverage"
-                              "Accepted runtime data has no non-empty temporal axis from which cache coverage can be derived." ]
-                | Some axis ->
-                    Ok
-                        { StartEventTimeUtc = axis.Points |> Array.minBy _.IntervalStartUtc |> _.IntervalStartUtc
-                          EndEventTimeExclusiveUtc = axis.Points |> Array.maxBy _.IntervalEndUtc |> _.IntervalEndUtc }
+    let tryBaseAxisCoverage state = RuntimeCacheBrowserCoverage.tryBaseAxisCoverage state
 
     let stateIsCacheable state =
         state.Document.IsSome
@@ -183,9 +239,10 @@ module RuntimeCache =
         && stateIsCacheable state
         && (frame.Kind = RuntimeFrameKind.Snapshot || frame.Kind = RuntimeFrameKind.Patch)
 
-    let tryCreateEntry (capturedAtUtc: DateTimeOffset) (cacheIdentity: RuntimeCacheIdentity) (state: RuntimeState) =
+    let tryCreateEntryWithCoverage (capturedAtUtc: DateTimeOffset) (cacheIdentity: RuntimeCacheIdentity) (coverage: RuntimeCacheCoverage) (state: RuntimeState) =
         let initialErrors =
             [ yield! identityErrors "cache.cacheIdentity" cacheIdentity
+              yield! coverageErrors "cache.coverage" coverage
 
               if capturedAtUtc.Offset <> TimeSpan.Zero then
                   yield RuntimeValidation.error "utc-required" "cache.capturedAtUtc" "Cache capture time must use UTC."
@@ -208,20 +265,21 @@ module RuntimeCache =
         | [], None ->
             Error [ RuntimeValidation.error "cache-document-required" "cache.document" "A cache entry requires an accepted document." ]
         | [], Some document ->
-            match tryBaseAxisCoverage state with
-            | Error errors -> Error errors
-            | Ok coverage ->
-                Ok
-                    { CacheIdentity = cacheIdentity
-                      WorkspaceId = document.WorkspaceId
-                      Document = document
-                      Snapshot =
-                        { Data = state.Data
-                          Freshness = TaFreshness.Stale(TimeSpan.Zero, "browser-cache-awaiting-authority") }
-                      DocumentRevision = state.DocumentRevision
-                      DataRevision = state.DataRevision
-                      Coverage = coverage
-                      CapturedAtUtc = capturedAtUtc }
+            Ok
+                { CacheIdentity = cacheIdentity
+                  WorkspaceId = document.WorkspaceId
+                  Document = document
+                  Snapshot =
+                    { Data = state.Data
+                      Freshness = TaFreshness.Stale(TimeSpan.Zero, "browser-cache-awaiting-authority") }
+                  DocumentRevision = state.DocumentRevision
+                  DataRevision = state.DataRevision
+                  Coverage = coverage
+                  CapturedAtUtc = capturedAtUtc }
+
+    let tryCreateEntry (capturedAtUtc: DateTimeOffset) cacheIdentity state =
+        tryBaseAxisCoverage state
+        |> Result.bind (fun coverage -> tryCreateEntryWithCoverage capturedAtUtc cacheIdentity coverage state)
 
     let validateEntry limits entry = RuntimeCacheEntryValidation.validate limits entry
 
@@ -260,6 +318,80 @@ module RuntimeCache =
                                 LastTransportSequence = current.LastTransportSequence
                                 Poll = RuntimePollState.PausedForResync
                                 LastError = None })
+
+[<RequireQualifiedAccess>]
+module RuntimeCache =
+    [<Literal>]
+    let CurrentSchemaRevision = 1L
+
+    [<Literal>]
+    let MaximumEntries = 8
+
+    let identityErrors field identity = RuntimeCacheProjection.identityErrors field identity
+
+    let coverageErrors field coverage = RuntimeCacheProjection.coverageErrors field coverage
+
+    let covers requested cached = RuntimeCacheProjection.covers requested cached
+
+    let tryBaseAxisCoverage (state: RuntimeState) =
+        match state.Document with
+        | None ->
+            Error [ RuntimeValidation.error "cache-document-required" "cache.document" "A document is required before cache coverage can be derived." ]
+        | Some document ->
+            let axisRefs = if isNull document.TemporalAxisRefs then [||] else document.TemporalAxisRefs
+            let decoded =
+                axisRefs
+                |> Array.map (fun axisRef ->
+                    match Map.tryFind axisRef state.Data with
+                    | None ->
+                        Error
+                            [ RuntimeValidation.error
+                                  "cache-axis-missing"
+                                  "cache.snapshot.data"
+                                  $"Declared temporal axis `{axisRef}` is missing from the accepted runtime data." ]
+                    | Some value -> TemporalAxisCodec.decode value)
+
+            let errors =
+                decoded
+                |> Array.choose (function Error values -> Some values | Ok _ -> None)
+                |> Array.toList
+                |> List.concat
+
+            if not (List.isEmpty errors) then
+                Error errors
+            else
+                let baseAxis =
+                    decoded
+                    |> Array.choose (function
+                        | Ok axis when not (isNull axis.Points) && axis.Points.Length > 0 -> Some axis
+                        | _ -> None)
+                    |> Array.sortByDescending (fun axis -> axis.Points.Length)
+                    |> Array.tryHead
+
+                match baseAxis with
+                | None ->
+                    Error
+                        [ RuntimeValidation.error
+                              "cache-coverage-unavailable"
+                              "cache.coverage"
+                              "Accepted runtime data has no non-empty temporal axis from which cache coverage can be derived." ]
+                | Some axis ->
+                    Ok
+                        { StartEventTimeUtc = axis.Points |> Array.minBy _.IntervalStartUtc |> _.IntervalStartUtc
+                          EndEventTimeExclusiveUtc = axis.Points |> Array.maxBy _.IntervalEndUtc |> _.IntervalEndUtc }
+
+    let stateIsCacheable state = RuntimeCacheProjection.stateIsCacheable state
+
+    let shouldPersistFrame frame effect state = RuntimeCacheProjection.shouldPersistFrame frame effect state
+
+    let tryCreateEntry capturedAtUtc cacheIdentity state =
+        tryBaseAxisCoverage state
+        |> Result.bind (fun coverage -> RuntimeCacheProjection.tryCreateEntryWithCoverage capturedAtUtc cacheIdentity coverage state)
+
+    let validateEntry limits entry = RuntimeCacheProjection.validateEntry limits entry
+
+    let tryRehydrate limits expectedCacheIdentity current entry =
+        RuntimeCacheProjection.tryRehydrate limits expectedCacheIdentity current entry
 
 [<RequireQualifiedAccess>]
 module RuntimeCacheCodec =

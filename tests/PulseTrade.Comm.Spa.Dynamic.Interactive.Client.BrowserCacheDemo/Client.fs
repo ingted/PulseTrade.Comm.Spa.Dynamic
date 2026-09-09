@@ -32,6 +32,19 @@ module Client =
                     | BrowserRuntimeCacheWriteResult.Written -> writeSequentially entries (index + 1) completed
                     | BrowserRuntimeCacheWriteResult.Unavailable _ -> completed ())
 
+    let runtimeState poll (entry: RuntimeCacheEntry) =
+        { Identity =
+            { DocumentId = DocumentId "browser-cache-demo-document"
+              CanvasInstanceId = CanvasInstanceId "browser-cache-demo-canvas" }
+          Document = Some entry.Document
+          Data = entry.Snapshot.Data
+          DocumentRevision = entry.DocumentRevision
+          DataRevision = entry.DataRevision
+          LastTransportSequence = 2L
+          View = { Values = Map.empty }
+          Poll = poll
+          LastError = None }
+
     [<SPAEntryPoint>]
     let Main () =
         let status = Var.Create "READY"
@@ -86,6 +99,54 @@ module Client =
             | Ok _ -> status.Value <- "CLEARED"
             | Error reason -> status.Value <- "UNAVAILABLE:" + reason)
 
+        let writeAccepted () =
+            if entries.Length <= 9 then
+                status.Value <- "FIXTURE-MISSING"
+            else
+                let entry = entries[9]
+                BrowserRuntimeCache.clear (fun _ ->
+                    BrowserRuntimeCache.writeAcceptedState
+                        entry.CacheIdentity
+                        (runtimeState RuntimePollState.Ready entry)
+                        (function
+                            | BrowserRuntimeCacheAcceptedStateWriteResult.Written -> status.Value <- "ACCEPTED:WRITTEN"
+                            | BrowserRuntimeCacheAcceptedStateWriteResult.Rejected errors ->
+                                let reason = errors |> List.tryHead |> Option.map (fun error -> error.Code + ":" + error.Field) |> Option.defaultValue "unknown"
+                                status.Value <- "ACCEPTED:REJECTED:" + reason
+                            | BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason))
+
+        let rejectPausedState () =
+            if entries.Length <= 9 then
+                status.Value <- "FIXTURE-MISSING"
+            else
+                let entry = entries[9]
+                BrowserRuntimeCache.writeAcceptedState
+                    entry.CacheIdentity
+                    (runtimeState RuntimePollState.PausedForResync entry)
+                    (function
+                        | BrowserRuntimeCacheAcceptedStateWriteResult.Rejected errors ->
+                            let reason = errors |> List.tryHead |> Option.map (fun error -> error.Code + ":" + error.Field) |> Option.defaultValue "unknown"
+                            status.Value <- "PAUSED:REJECTED:" + reason
+                        | BrowserRuntimeCacheAcceptedStateWriteResult.Written -> status.Value <- "PAUSED:WRITTEN"
+                        | BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason)
+
+        let rehydrate () =
+            if entries.Length <= 9 then
+                status.Value <- "FIXTURE-MISSING"
+            else
+                let entry = entries[9]
+                let current =
+                    { runtimeState RuntimePollState.MountedIdle entry with
+                        Data = Map.empty
+                        DataRevision = 0L
+                        LastTransportSequence = 19L }
+
+                match BrowserRuntimeCache.tryRehydrate entry.CacheIdentity current entry with
+                | Ok hydrated ->
+                    let poll = if hydrated.Poll = RuntimePollState.PausedForResync then "PAUSED" else "UNEXPECTED"
+                    status.Value <- "REHYDRATED:" + string hydrated.DataRevision + ":" + string hydrated.LastTransportSequence + ":" + poll
+                | Error errors -> status.Value <- "REHYDRATE:REJECTED:" + string errors.Length
+
         let seedCorrupt () =
             let key = "browser-cache-corrupt"
             let record =
@@ -139,6 +200,9 @@ module Client =
                 button [ buttonStyle; Attr.Create "data-testid" "cache-covering-hit"; on.click (fun _ _ -> readCovering 9 9) ] [ text "Covering hit" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-coverage-miss"; on.click (fun _ _ -> readCovering 9 0) ] [ text "Coverage miss" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-clear"; on.click (fun _ _ -> clear ()) ] [ text "Clear" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-write-accepted"; on.click (fun _ _ -> writeAccepted ()) ] [ text "Write accepted state" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-reject-paused"; on.click (fun _ _ -> rejectPausedState ()) ] [ text "Reject paused state" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-rehydrate"; on.click (fun _ _ -> rehydrate ()) ] [ text "Rehydrate" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-seed-corrupt"; on.click (fun _ _ -> seedCorrupt ()) ] [ text "Seed corrupt" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-read-corrupt"; on.click (fun _ _ -> readAt 9 "CORRUPT" None) ] [ text "Read corrupt" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-seed-semantic-invalid"; on.click (fun _ _ -> seedSemanticInvalid ()) ] [ text "Seed semantic invalid" ]

@@ -76,7 +76,7 @@ type RuntimeCacheEntry =
       CapturedAtUtc: DateTimeOffset }
 ```
 
-Dynamic維持generic identity：`OwnerFingerprint`是owner產生的opaque canonical identity，Dynamic只驗nonblank、長度與schema revision，不重算其內容。SPAA將bounded SHA-256 `QueryFingerprint`映射成OwnerFingerprint；它仍保留Program/DataSource/Query三欄供診斷與owner-side secondary index。exact reload只比對OwnerFingerprint。跨range候選由SPAA以Program+DataSource索引，確認coverage後再交給Dynamic validation/reducer；Query不同不得拿cached revision送`PollDelta`，仍須送range action並等待authoritative frame。session-specific capability不進cache。
+Dynamic維持generic identity：`OwnerFingerprint`是owner產生的opaque canonical identity，Dynamic只驗nonblank、長度與schema revision，不重算其內容。SPAA以stable ProgramFingerprint、DataSourceFingerprint及cache semantic/schema version產生OwnerFingerprint；requested/cached time range不得進入。可含range的`QueryFingerprint`只供單次query診斷。exact reload只比對OwnerFingerprint；同owner的range revisit先由Dynamic驗coverage，再交owner確認provider authority並等待authoritative frame。session-specific capability不進cache。
 
 ### 2. Authoritative handshake
 

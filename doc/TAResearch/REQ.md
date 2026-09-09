@@ -126,7 +126,7 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-048 | 多條TA series共用時間資訊時只能傳一份versioned temporal axis；series以Position與AxisRevision連接，不得逐scalar複製interval/frontier/finality metadata。 |
 | DYN-TA-REQ-049 | Position只作axis join key。sparse axis不得依scale補空K；同一current-K preview沿用Position並以新的axis/series revision原位替換，revision不一致或未知Position須保留last-good並要求resync。 |
 | DYN-TA-REQ-050 | candlestick可由同一axis上的O/H/L/C/V五條scalar series組成；shared-axis transport須支援至少3820 positions x 28 series且低於既有16MiB frame上限，同時維持`temporal-point.v1`相容解碼。 |
-| DYN-TA-REQ-051 | owner須提供opaque stable `OwnerFingerprint`；SPAA以其bounded SHA-256 `QueryFingerprint`映射此欄，並自行保留Program/DataSource/Query三段診斷與secondary index。Dynamic只用於exact cache isolation，不解析或產生FSSTL/MDCQ semantics。 |
+| DYN-TA-REQ-051 | owner須提供opaque stable `OwnerFingerprint`；SPAA以ProgramFingerprint、DataSourceFingerprint及cache semantic/schema version產生此欄，requested/cached time range不得進入identity。可含range的`QueryFingerprint`只供單次query診斷。Dynamic以OwnerFingerprint作exact cache isolation、以`RuntimeCacheCoverage`判斷range覆蓋，不解析或產生FSSTL/MDCQ semantics。 |
 | DYN-TA-REQ-052 | IndexedDB只可保存RuntimeReducer已接受的bounded document/data projection；invalid/gap/error/rejected action不得污染last-good cache。 |
 | DYN-TA-REQ-053 | cache hit可先呈現stale projection，但必須向host送resume/full驗證；`DynamicActionResult.Accepted`不得視為資料已更新，只有authoritative RuntimeFrame可取代cache。 |
 | DYN-TA-REQ-054 | cache rehydrate不得沿用舊session identity或提高revision；fingerprint/schema/range不符、corrupt、oversize或quota failure須fail closed或降級no-cache。 |

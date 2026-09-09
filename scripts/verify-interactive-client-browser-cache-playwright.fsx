@@ -1,6 +1,6 @@
 // Real-browser IndexedDB cache verifier. Start BrowserCacheDemo before running this client.
 
-#i @"nuget: C:\Program Files\dotnet\sdk\10.0.400\FSharp\library-packs"
+#i @"nuget: C:\Program Files\dotnet\sdk\10.0.401\FSharp\library-packs"
 #r "nuget: FAkka.Argu, [10.1.301]"
 #r "nuget: Microsoft.Playwright, 1.52.0"
 
@@ -59,8 +59,12 @@ let awaitUnit (task: Task) = task.GetAwaiter().GetResult()
 let require condition message = if not condition then failwith ("Browser cache verification failed: " + message)
 
 let waitStatus (page: IPage) (expected: string) =
-    page.GetByTestId("cache-status").GetByText(expected, LocatorGetByTextOptions(Exact = true)).WaitForAsync(LocatorWaitForOptions(Timeout = 10000.0f))
-    |> awaitUnit
+    try
+        page.GetByTestId("cache-status").GetByText(expected, LocatorGetByTextOptions(Exact = true)).WaitForAsync(LocatorWaitForOptions(Timeout = 10000.0f))
+        |> awaitUnit
+    with error ->
+        let actual = page.GetByTestId("cache-status").TextContentAsync() |> awaitTask
+        failwith $"Expected cache status `{expected}`, actual `{actual}`: {error.Message}"
 
 Directory.CreateDirectory outputDirectory |> ignore
 require (not (String.IsNullOrWhiteSpace browserExecutablePath) && File.Exists browserExecutablePath) "Chrome or Edge executable is unavailable"
@@ -104,6 +108,20 @@ page.GetByTestId("cache-read-semantic-invalid").ClickAsync() |> awaitUnit
 waitStatus page "SEMANTIC-INVALID:MISS"
 page.GetByTestId("cache-count").ClickAsync() |> awaitUnit
 waitStatus page "COUNT:0"
+page.GetByTestId("cache-write-accepted").ClickAsync() |> awaitUnit
+waitStatus page "ACCEPTED:WRITTEN"
+page.GetByTestId("cache-count").ClickAsync() |> awaitUnit
+waitStatus page "COUNT:1"
+page.GetByTestId("cache-rehydrate").ClickAsync() |> awaitUnit
+waitStatus page "REHYDRATED:10:19:PAUSED"
+page.GetByTestId("cache-reject-paused").ClickAsync() |> awaitUnit
+waitStatus page "PAUSED:REJECTED:runtime-state-not-cacheable:cache.runtimeState"
+page.GetByTestId("cache-count").ClickAsync() |> awaitUnit
+waitStatus page "COUNT:1"
+page.GetByTestId("cache-clear").ClickAsync() |> awaitUnit
+waitStatus page "CLEARED"
+page.GetByTestId("cache-count").ClickAsync() |> awaitUnit
+waitStatus page "COUNT:0"
 require (errors.Count = 0) ("browser console/page errors: " + String.concat " | " errors)
 
 context.CloseAsync() |> awaitUnit
@@ -111,5 +129,5 @@ browser.CloseAsync() |> awaitUnit
 playwright.Dispose()
 
 printfn "PASS interactive-client-browser-cache-playwright"
-printfn "persisted-count=8 latest-revision=10 evicted-oldest=true covering-hit=true coverage-miss=true corrupt-removed=true semantic-invalid-removed=true cleared-count=0"
+printfn "persisted-count=8 latest-revision=10 evicted-oldest=true covering-hit=true coverage-miss=true corrupt-removed=true semantic-invalid-removed=true accepted-state-write=true paused-state-rejected=true rehydrate=paused cleared-count=0"
 printfn "evidence=%s" (Path.Combine(outputDirectory, "browser-cache-persisted.png"))

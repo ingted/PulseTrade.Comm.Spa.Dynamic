@@ -1,6 +1,6 @@
 // Real-browser operation and geometry verifier for the pure WebSharper TA renderer demo.
 
-#i @"nuget: C:\Program Files\dotnet\sdk\10.0.400\FSharp\library-packs"
+#i @"nuget: C:\Program Files\dotnet\sdk\10.0.401\FSharp\library-packs"
 #r "nuget: FAkka.Argu, [10.1.301]"
 #r "nuget: Microsoft.Playwright, 1.52.0"
 
@@ -225,6 +225,20 @@ let verifyDesktop (browser: IBrowser) =
     waitForText callbackState "callback actions 2 / last SharedCursorChanged"
     Directory.CreateDirectory outputDirectory |> ignore
     page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "desktop-crossrow-cursor.png"), FullPage = true)) |> awaitTask |> ignore
+
+    page.Locator("[data-testid='ta-demo-paused']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-poll-state']")) "RESYNC"
+    require (page.Locator("[data-testid='ta-apply-query']").IsDisabledAsync() |> awaitTask) "paused cache must suppress remote query commands"
+    require (not (page.Locator("[data-testid='ta-pan-left']").IsDisabledAsync() |> awaitTask)) "paused cache must retain local viewport navigation"
+    let pausedViewportBefore = textOf viewportRange
+    page.Locator("[data-testid='ta-pan-left']").ClickAsync() |> awaitUnit
+    System.Threading.Thread.Sleep 250
+    require (textOf viewportRange <> pausedViewportBefore) "paused local pan must update the visible viewport"
+    priceChart.HoverAsync() |> awaitUnit
+    require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 7) "paused cache must retain local hover/crosshair"
+    priceChart.ClickAsync() |> awaitUnit
+    System.Threading.Thread.Sleep 250
+    requireText callbackState "callback actions 2 / last SharedCursorChanged"
 
     let chartPointsBeforeStatusChange = requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count"
     page.Locator("[data-testid='ta-demo-inflight']").ClickAsync() |> awaitUnit

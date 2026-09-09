@@ -943,6 +943,10 @@ let tests =
                 |> Result.defaultWith failtest
 
             Expect.equal browserRoundTrip entry "WebSharper cache entry codec must preserve the same contract."
+            let browserProjection =
+                RuntimeCacheProjection.tryCreateEntry (sourceTime.AddHours 1.0) cacheIdentity accepted
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal browserProjection entry "Browser projection and strict server projection must produce the same valid cache entry."
             Expect.equal
                 (RuntimeCacheEntryValidation.validate DynamicRuntimeDefaults.limits entry)
                 (RuntimeCache.validateEntry DynamicRuntimeDefaults.limits entry)
@@ -1036,7 +1040,12 @@ let tests =
                 RuntimeCache.tryRehydrate DynamicRuntimeDefaults.limits cacheIdentity currentDocumentState entry
                 |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
 
+            let browserHydrated =
+                RuntimeCacheProjection.tryRehydrate DynamicRuntimeDefaults.limits cacheIdentity currentDocumentState entry
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
             Expect.equal hydrated.Identity currentIdentity "Cache data must be rebased onto the current session identity."
+            Expect.equal browserHydrated hydrated "Browser and server rehydration must share one canonical reducer result."
             Expect.equal hydrated.DocumentRevision currentDocumentState.DocumentRevision "Cache data must not override the current authoritative document revision."
             Expect.equal hydrated.LastTransportSequence currentDocumentState.LastTransportSequence "Cache hydration must not consume a server transport sequence."
             Expect.equal hydrated.DataRevision entry.DataRevision "Cached data revision is retained as a delta resume hint."

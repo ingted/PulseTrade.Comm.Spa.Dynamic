@@ -21,6 +21,12 @@ type BrowserRuntimeCacheWriteResult =
     | Written
     | Unavailable of reasonCode: string
 
+[<JavaScript; RequireQualifiedAccess>]
+type BrowserRuntimeCacheAcceptedStateWriteResult =
+    | Written
+    | Rejected of errors: DynamicValidationError list
+    | Unavailable of reasonCode: string
+
 /// Bounded, non-authoritative browser persistence for accepted Dynamic runtime projections.
 /// Every returned entry still has to pass the runtime reducer before it may be rendered.
 [<JavaScript; RequireQualifiedAccess>]
@@ -230,6 +236,22 @@ module BrowserRuntimeCache =
                     with _ ->
                         complete (BrowserRuntimeCacheWriteResult.Unavailable "indexeddb-write-exception"))
                 (fun reason -> complete (BrowserRuntimeCacheWriteResult.Unavailable reason))
+
+    /// Validate and persist one accepted runtime projection without making browser storage authoritative.
+    /// Rejected contains canonical contract validation failures; Unavailable is limited to IndexedDB failures.
+    let writeAcceptedState cacheIdentity runtimeState continuation =
+        match RuntimeCacheProjection.tryCreateEntry System.DateTimeOffset.UtcNow cacheIdentity runtimeState with
+        | Error errors -> continuation (BrowserRuntimeCacheAcceptedStateWriteResult.Rejected errors)
+        | Ok entry ->
+            write
+                entry
+                (function
+                    | BrowserRuntimeCacheWriteResult.Written -> continuation BrowserRuntimeCacheAcceptedStateWriteResult.Written
+                    | BrowserRuntimeCacheWriteResult.Unavailable reason -> continuation (BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason))
+
+    /// Rebase a validated cache entry onto the current authoritative document and pause remote commands until resync.
+    let tryRehydrate cacheIdentity currentState entry =
+        RuntimeCacheProjection.tryRehydrate DynamicRuntimeDefaults.limits cacheIdentity currentState entry
 
     let readMatching identityMatches cacheIdentity workspaceId (requestedCoverage: RuntimeCacheCoverage option) continuation =
         let complete = once continuation

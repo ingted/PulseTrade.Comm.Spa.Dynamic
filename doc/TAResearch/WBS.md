@@ -29,11 +29,11 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-015 | 1 | Full runtime export / draft query / slot cursor | full-data download、Apply boundary、shared slot geometry、exact package/formal gate | DYN-TA-014 | T-045..050 | 100% | Done | [@DYN-TA-015](WBS.DYN-TA-015.md) |
 | DYN-TA-016 | 1 | Editor shell / capability poll / Reset regression | stable editor DOM、capability-gated poll、multi-row reset | DYN-TA-015 | T-051..055 | 100% | Done | [@DYN-TA-016](WBS.DYN-TA-016.md) |
 | DYN-TA-017 | 1 | Notebook TA Workspace production | generic source envelope、editor/action contract、shared temporal axis、production renderer與real DIB | DYN-TA-016 + owner contracts | T-056..070 | 95% | Active | [@DYN-TA-017](WBS.DYN-TA-017.md) |
-| DYN-TA-018 | 0 | Browser range cache/resume | owner fingerprint、accepted projection cache、IndexedDB、resume/full handshake與真DIB range E2E | DYN-TA-017 + Daedalus fingerprint/action host | T-071..076 | 60% | Active；contract 21/21、browser cache semantic fail-closed Playwright pass | [@DYN-TA-018](WBS.DYN-TA-018.md) |
+| DYN-TA-018 | 0 | Browser range cache/resume | owner fingerprint、accepted projection cache、IndexedDB、resume/full handshake與真DIB range E2E | DYN-TA-017 + Daedalus fingerprint/action host | T-071..076 | 68% | Active；browser accepted-state API與paused local interaction完成，待SPAA lifecycle/真DIB | [@DYN-TA-018](WBS.DYN-TA-018.md) |
 
 九月`基於FSSTL的TA Research`主線以`DYN-TA-018`為最高優先；舊`DYN-TA-008`package closure只在本切片需要發布直接dependency時同步處理，不擴張到legacy consumer。
 
-目前package cascade的最高優先/最優先更新 package 工項：將active `PackageReference`同步至`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.5`與`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.7`；先完成Interactive.Client direct graph，再更新PTCS adapters/tests。`artifacts/staging`歷史build副本不修改、不作active consumer。
+目前package cascade的最高優先/最優先更新 package 工項：將active `PackageReference`同步至`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.6`、Renderer `0.1.8`與Interactive.Client `0.1.7`；再更新PTCS adapters/tests。`artifacts/staging`歷史build副本不修改、不作active consumer。
 
 
 ## 2. Legacy prerequisite policy

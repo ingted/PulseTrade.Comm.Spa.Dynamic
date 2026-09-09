@@ -1,0 +1,69 @@
+# DYN-TA-018 Cached State Browser Surface
+
+## 背景/上下文
+
+前一個 milestone 已完成 browser IndexedDB entry 的完整語意驗證與失效資料實體刪除。Daedalus 的 SPAA 整合仍被兩個 browser API 缺口阻擋：accepted `RuntimeState` 無法在 WebSharper 端轉成 cache entry，cached entry 亦無可編譯至 JavaScript 的 canonical rehydrate API。Renderer 在 `PausedForResync` 又把 local viewport navigation 與 remote command 一起禁用。
+
+## 目標
+
+- 提供 Interactive.Client browser-safe `writeAcceptedState` 與 `tryRehydrate`。
+- 共用 Contracts canonical validation/projection，不在 SPAA 或 client 複製 cache contract。
+- paused cache 畫面保留 local pan/zoom/hover/cursor，但不送 remote visible-range/shared-cursor action。
+- 修正 SPAA identity 文件：OwnerFingerprint 不含查詢 range，range 僅屬 Coverage；QueryFingerprint 只作 per-run diagnostic。
+
+## 假設/不得改變事項
+
+- cache 只作 display-first projection，不是 provider/engine authority。
+- `OPEN_END` 仍立即 attach authority；fixed-history cache hit 可先顯示後延後 provider。
+- Ready state 既有 remote command 行為不變。
+- 只用 F#/WebSharper，不新增 JavaScript 或 inline script。
+
+## 計畫步驟
+
+1. 抽出 Contracts WebSharper-safe cache projection/rehydration core，server `RuntimeCache` 委派同一邏輯。
+2. Interactive.Client 暴露 browser adapter 並補 browser E2E。
+3. Renderer 分離 local mutation 與 remote dispatch，補 paused/ready regression。
+4. 更新 current docs/version/package cascade，執行 focused build/test/browser/package gates。
+
+## 範圍/驗收
+
+範圍限 Dynamic Contracts、Interactive.Client、Renderer、其 tests/verifier/docs 與 active PTCS adapter dependency cascade。驗收需證明 browser bundle 可呼叫兩個新 API、paused local navigation 有效、remote action suppressed、Ready remote action不回歸。
+
+## 風險/停止條件
+
+目前 machine 的 SDK 10.0.400 installation 被外部移除；不修改 SDK/global.json。若從 global.json 範圍外以現有 10.0.302 仍無法執行 focused build，保留 source/test 並明標 build gate blocked，不宣稱 package 可消費。
+
+## 關聯文件/工單/PR
+
+- `doc/RFC/RFC-PTCS-DYNAMIC-0014.browser-range-cache-resume.md`
+- `doc/TAResearch/WBS.DYN-TA-018.md`
+- `doc/TAResearch/Test.md` DYN-TA-T-073/075/076
+
+## 執行命令/參數
+
+Operations記錄focused Rebuild、Expecto、F# Playwright、package verifier、NuGet push/readback、checker與Git結果；不記secret值。
+
+## 結果
+
+進行中；browser API與package cascade已完成，public NuGet indexing、commit/push及Daedalus `.dib` integration仍在進行。
+
+## 根因判讀
+
+cache projection原先只有server surface，SPAA WebSharper consumer因而WS9001；Renderer又以同一disabled policy同時封鎖local interaction與remote commands。identity文件另把range-bearing QueryFingerprint誤當stable OwnerFingerprint，使range revisit無法命中同owner cache。
+
+## 下一步
+
+完成package public readback與commit/push；Daedalus接線後共同驗真FSSTL多尺度`.dib`的reload/range/cache與authoritative history-to-live。
+
+## Operations
+
+- 15:47: semantic cache milestone `d1890d3` 已 commit/push。comm 已同步 SDK 缺口與 MdcQuote dev.71 per-scale tail contract。
+- 16:19: SDK 10.0.401 已由外部恢復；Dynamic 與 Daedalus repo 均可解析該 SDK，未改 `global.json`。
+- 16:20: Contracts 0.1.6 將 WebSharper-safe coverage/create/rehydrate 抽成 `RuntimeCacheBrowserCoverage`/`RuntimeCacheProjection`，server facade仍以完整 `TemporalAxisCodec`驗證，避免降低server contract。
+- 16:20: Interactive.Client 0.1.7 新增 `writeAcceptedState`與`tryRehydrate`；Renderer 0.1.8 允許paused cache local pan/zoom/hover/cursor，但抑制remote visible-range/shared-cursor action。
+- 16:21: WebSharper compiler service持有generated `websharper.log`；改以對應NuGet tools的standalone compiler驗證，不修改產品碼。Contracts 21/21、Renderer 26/26、Interactive browser cache與Renderer兩組F# Playwright均通過。
+- 16:25: 修正current RFC/REQ/SA/SD/WBS/Test與package README：SPAA OwnerFingerprint由stable Program/DataSource/schema組成，不含range；range只進Coverage，QueryFingerprint只供單次query診斷。
+- 16:29: 發現Ptcs.Client direct WebSharper版本低於Renderer transitive要求；同步至FSharp 10.1.6.676/UI 10.1.5.676後full Rebuild為0 warning/0 error。
+- 16:31: PTCS adapter exact-package suites通過13/13與15/15；測試專案explicit pin FSharp.Core 10.1.400後消除SDK 10.0.401 implicit 10.1.401造成的NU1608。
+- 16:34: Contracts 0.1.6、Renderer 0.1.8、Interactive.Client 0.1.7、Dynamic.Ptcs 0.1.6、Ptcs.Client 0.1.4依序NuGet push回Created；public flat-container仍在propagation，未將404誤記為readback完成。
+- 16:36: BrowserCacheDemo改成exact PackageReference Interactive.Client 0.1.7後full WebSharper build通過，F# Playwright再次通過accepted write、paused reject、rehydrate與storage gates；證明新browser API可由nupkg consumer編譯執行。
