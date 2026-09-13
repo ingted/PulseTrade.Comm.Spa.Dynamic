@@ -1,0 +1,19 @@
+# Dynamic.Ptcs PTCS 0.2.19 dependency alignment
+
+- 背景/上下文：PTCS Management修補發布0.2.19；Dynamic.Ptcs 0.1.10仍exact依賴0.2.18，使正式Host restore產生NU1608。
+- 目標：只升Dynamic.Ptcs package/dependency，維持API與renderer行為不變。
+- 假設：變更為additive PTCS API，Dynamic.Ptcs不需程式修改。
+- 計畫步驟：bump fsproj；Release build/test；pack/push；讓Host改用新版並做整合build/deploy。
+- 範圍：`src/PulseTrade.Comm.Spa.Dynamic.Ptcs`及版本追溯；不改Contracts/Renderer/Interactive client。
+- 驗收：package依賴exact PTCS 0.2.19；build/push成功；Host restore無該NU1608。
+- 風險：WebSharper生成asset不得因純dependency bump意外漂移。
+
+## Operations
+
+- 2026-09-14 02:47 +08:00：開始dependency alignment。
+- 2026-09-14 02:51 +08:00：Dynamic.Ptcs 0.1.11 Release pack/push完成；exact依賴PTCS 0.2.19與Contracts 0.1.10。
+- 2026-09-14 02:54 +08:00：focused transient adapter suite 13/13 Pass；PTC SPA Host downstream Release build 0 warning/0 error。
+- 2026-09-14 03:00 +08:00：checker定位兩個active test consumers仍鎖0.1.10；同步至0.1.11後重跑package consumer gates。
+- 2026-09-14 03:01 +08:00：13/13 package consumer tests Pass；LiveDemo定位直接PTCS 0.2.18 downgrade，升至0.2.19後重建。
+- 2026-09-14 03:03 +08:00：LiveDemo再定位Ptcs.Client 0.1.18的PTCS 0.2.18 constraint；升Ptcs.Client 0.1.19並同步兩個active test consumers。
+- 2026-09-14 03:05 +08:00：Ptcs.Client 0.1.19 pack/push完成；client suite 15/15 Pass。LiveDemo的首次build受project-scoped stale wsfscservice持有generated websharper.log阻擋；停止該PID後Release build通過，僅既有WS9002。

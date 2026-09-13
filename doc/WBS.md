@@ -103,3 +103,9 @@ RFC：`doc/RFC/RFC-PTCS-DYNAMIC-0007.realtime-ta-canvas-runtime.md`
 | DYN-TA-016 | Editor shell / capability poll / Reset regression | Done | 100 | DYN-TA-T-051..055 | capability-gated poll、stable editor shell與multi-row Reset formal 82 gate完成；詳見[@DYN-TA-016](TAResearch/WBS.DYN-TA-016.md)。 |
 
 Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target FormInput真host Playwright已重跑；`DYN-WBS-519`移除`IndexOf("ActorTopologyPage")` classifier並通過4 blocks/26 rows ActorsPage gate。Public OAuth、production RN/cross-service registry與report persistence等原remaining不在本slice宣稱完成。
+
+## 2026-09-14 PTCS stable adapter alignment
+
+| ID | 工項 | 狀態 | Progress | Test ID | 證據 / 備註 |
+| --- | --- | --- | ---: | --- | --- |
+| DYN-WBS-530 | Dynamic.Ptcs stable PTCS 0.2.19 alignment | Done | 100 | DYN-T-537 | `Dynamic.Ptcs 0.1.11`及`Ptcs.Client 0.1.19` exact-pin PTCS 0.2.19與Contracts 0.1.10；server/client adapter tests、LiveDemo build與NuGet push通過，無renderer/wire變更。 |

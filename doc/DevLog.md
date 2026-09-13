@@ -1329,3 +1329,13 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Renderer `0.1.25`改為按`dataRef`、shared prefix與changed axis position增量prepare。WebSharper會把單純轉呼叫mutable tuple函式的reader wrapper eta-reduce成初始snapshot；改以每條trace的mutable reader cell保存最新cursor/legend reader後，同Position preview可同步更新SVG與既有row-value node。
 - UI補齊每列固定30px value band、label/value相鄰、`Undef`與長值不改row geometry，以及預設收合的chart-bottom跨尺度summary。F# Playwright以3,820 positions/28 series驗300次crosshair transitions共5602ms、max132ms、5次並行live preview、render sequence不變、historical close isolation與console/page error 0。
 - Local exact candidate graph為Contracts `0.1.10`、Renderer `0.1.25`、Interactive.Client `0.1.21`、Dynamic.Ptcs `0.1.10`、Ptcs.Client `0.1.18`；focused suites依序23/23、29/29、4/4、13/13、15/15通過。已以comm訊息`msg-fsi-b2b0281c782b41798814143bc22c1912`交接Daedalus重跑真`02-history-live-1k-5k-sma.fsstl` M17；完成前不public push、不標final。
+
+## 2026-09-14 - Dynamic.Ptcs stable PTCS 0.2.19 alignment
+
+- `PulseTrade.Comm.Spa.Dynamic.Ptcs`由0.1.10升至0.1.11，exact dependency由PTCS 0.2.18升至0.2.19；Contracts維持0.1.10，無wire/reducer/renderer程式變更。
+- Release package push回`Created`；transient adapter suite 13/13通過。PTC SPA Host改用0.1.11後Release restore/build無PTCS dependency warning。
+
+### Correction - active client adapter dependency cascade
+
+- LiveDemo package-consumer build另定位`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.18`仍exact PTCS 0.2.18；因此追加發布Ptcs.Client 0.1.19並同步兩個active test consumers。本段補充前述server adapter記錄，不取代或改寫它。
+- Ptcs.Client 0.1.19 push回`Created`，client suite 15/15通過。LiveDemo移除PTCS dependency skew後Release build通過；僅保留既有WebSharper WS9002，首次build的generated-log access failure由停止明確持有該檔的project-scoped compiler helper修復。

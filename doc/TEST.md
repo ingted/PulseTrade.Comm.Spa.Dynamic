@@ -649,6 +649,11 @@ Canonical matrix：`doc/TAResearch/Test.md`。`DYN-TA-T-000A..020`已accepted並
 - 只有nonrecoverable `LastError`可呈現terminal unavailable；last-good document與FormInput不得因transient bootstrap/error消失。
 - Renderer exact-package tests通過13/13；Dynamic.Ptcs與Ptcs.Client各7/7，root Dynamic package tests 23/23。formal 82 beta89不再於正常bootstrap顯示terminal unavailable，但page-level auto-mount仍由PTCS RFC-0020下一slice修正。
 
+## 2026-09-14 DYN-T-537 Dynamic.Ptcs dependency alignment
+
+- `PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.11` and `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.19` restore exact `PulseTrade.Comm.Spa [0.2.19]` and `PulseTrade.Comm.Spa.Dynamic.Contracts [0.1.10]`.
+- Server adapter suite passed 13/13；client suite and LiveDemo build cover the package consumers；package pushes returned `Created`；no source/runtime behavior changed.
+
 ## 2026-09-04 DYN-TA-T-056..064 Notebook TA Workspace production
 
 Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RFC/current-state鏈、generic source envelope codec/validation/reducer、owner dependency gate、editor/action lifecycle及atomic retention/resync；Contracts `16/16`、Renderer `22/22`、Contracts/Renderer/Interactive.Client full WebSharper rebuild通過。Daedalus production consumer只採Contracts alpha17 / Renderer alpha39 / Interactive.Client alpha10 exact `FSharp.Core [10.1.400]`；shared cursor/range、application lifecycle、Notebook adapter與real MDCQ DIB/Playwright仍依DYN-TA-017追蹤，不以synthetic M12取代。
