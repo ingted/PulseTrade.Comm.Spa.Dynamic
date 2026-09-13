@@ -1344,3 +1344,4 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - `PulseTrade.Comm.Spa.Dynamic.Ptcs`由0.1.11升至0.1.12、`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`由0.1.19升至0.1.20；兩者將exact PTCS dependency由0.2.19升至0.2.20。
 - 本次只對齊PTCS Management current-page select-all/deselect-all與bulk page visibility release，未改Dynamic contracts、renderer或wire behavior；active adapter tests與LiveDemo同步使用新exact graph。
+- GW aggregate suite仍直接消費legacy `PulseTrade.Comm.Spa.Dynamic` package，因此同批將aggregate由0.1.7升至0.1.8並把exact PTCS由0.2.18升至0.2.20；不改aggregate功能碼。
