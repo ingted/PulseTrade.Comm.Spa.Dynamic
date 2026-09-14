@@ -1345,3 +1345,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - `PulseTrade.Comm.Spa.Dynamic.Ptcs`由0.1.11升至0.1.12、`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`由0.1.19升至0.1.20；兩者將exact PTCS dependency由0.2.19升至0.2.20。
 - 本次只對齊PTCS Management current-page select-all/deselect-all與bulk page visibility release，未改Dynamic contracts、renderer或wire behavior；active adapter tests與LiveDemo同步使用新exact graph。
 - GW aggregate suite仍直接消費legacy `PulseTrade.Comm.Spa.Dynamic` package，因此同批將aggregate由0.1.7升至0.1.8並把exact PTCS由0.2.18升至0.2.20；不改aggregate功能碼。
+
+## 2026-09-14 - PTCS 0.2.21 adapter alignment
+
+- `PulseTrade.Comm.Spa.Dynamic.Ptcs`進版0.1.13，`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`進版0.1.21；兩者exact-lock `PulseTrade.Comm.Spa 0.2.21`，runtime code、renderer、contracts與Interactive行為不變。
+- 兩個Release build皆0 warning/error，package已推送NuGet並供formal PTCS Host graph使用；Dynamic transient adapter 13/13與PTCS TA client 15/15測試通過。

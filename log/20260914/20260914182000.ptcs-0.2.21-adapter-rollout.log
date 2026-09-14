@@ -1,0 +1,16 @@
+# PTCS 0.2.21 Dynamic adapter rollout
+
+## Pre-work plan
+
+- 背景：Dynamic.Ptcs與Dynamic.Ptcs.Client exact-lock PTCS 0.2.20；PTCS 0.2.21擴充chat thread binary contract。
+- 目標：更新exact dependency、進版、Release build/pack/push，供formal PTCS Host使用一致package graph。
+- 不變事項：不改Dynamic行為、renderer/contracts或Interactive功能。
+- 驗收：兩個adapter build/package成功，package dependency鎖PTCS 0.2.21。
+
+## Operations
+
+- 2026-09-14 18:20 +08:00：建立adapter rollout紀錄；尚未修改專案。
+- 2026-09-14 18:24 +08:00：Dynamic.Ptcs進版0.1.13、Dynamic.Ptcs.Client進版0.1.21，兩者exact-lock PTCS 0.2.21；未修改runtime code。
+- 2026-09-14 18:26 +08:00：兩個Release build皆0 warning/error，0.1.13與0.1.21已推送NuGet。
+- 2026-09-14 18:23 +08:00：`PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests` 13/13、`PtcsTaClient.Tests` 15/15通過，0 ignored/failed/errored。
+- 2026-09-14 18:23 +08:00 Correction：前兩筆18:24/18:26為落檔時的錯誤估計；兩個package實際於18:12~18:13發布，結果敘述不變。
