@@ -1,0 +1,18 @@
+# PTCS 0.2.23 exact consumer rollout
+
+## Pre-work plan
+
+- 背景：PTCS已發布0.2.23；Dynamic active projects使用exact PTCS dependency。
+- 目標：更新直接consumer、上升package版本並依序發布，供正式SPA Host restore。
+- 範圍：Dynamic、Dynamic.Ptcs、Dynamic.Ptcs.Client及LiveDemo reference。
+- 驗收：restore/build與package dependency graph皆只使用PTCS 0.2.23。
+- 假設：本輪只需binary/exact dependency alignment，不需改Dynamic runtime、renderer或wire behavior。
+- 風險：不變更Dynamic runtime行為；Release build依既有PostBuildEvent發布。
+
+## Operations
+
+- 2026-09-15 16:55 +08:00：建立rollout紀錄；尚未修改Dynamic consumers。
+- 2026-09-15 17:01 +08:00：aggregate/Dynamic.Ptcs/Dynamic.Ptcs.Client分別升至0.1.10/0.1.15/0.1.23，exact-lock PTCS 0.2.23；三個Release package push皆回Created。
+- 2026-09-15 17:06 +08:00：Transient adapter 13/13、TA client 15/15通過，LiveDemo references同步。
+- 2026-09-15 17:12 +08:00：LiveDemo canonical build在WebSharper compiler啟動前失敗；Windows .NET Runtime證據為既有`tests/.../websharper.log` ACL拒絕delete，非source/package exception。未以停用WebSharper compiler冒充通過。
+- 2026-09-15 17:26 +08:00：將相同LiveDemo fsproj/Client.fs/Program.fs複製到run-scoped乾淨目錄，完整啟用WebSharper compiler建置通過；0 error，僅既有Bundle/WS9002 warning。
