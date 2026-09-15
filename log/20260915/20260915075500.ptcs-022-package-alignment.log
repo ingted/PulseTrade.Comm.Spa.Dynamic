@@ -1,0 +1,20 @@
+# PTCS 0.2.22 package alignment
+
+## Pre-work plan
+
+- 背景/上下文：PTCS 0.2.22新增group binary contract，Dynamic server/client adapters與aggregate仍鎖舊PTCS。
+- 目標：以exact NuGet references對齊三個active packages，不改Dynamic runtime或SDUI。
+- 假設：package build與PostBuild push使用既有本機NuGet credential，不輸出secret。
+- 計畫步驟：進版server/client adapters；build/pack/push；進版aggregate；同步GW test consumer；文件與commit/push。
+- 範圍：三個fsproj、generated aggregate bundle、DevLog與本log。
+- 驗收：packages Created；GW restore不再出現Dynamic aggregate/PTCS 0.2.20 constraint warning。
+- 風險：WebSharper helper可能鎖generated log；只停止build helper，不動正式服務。
+
+## Operations
+
+- 2026-09-15 07:20 +08:00：Dynamic.Ptcs 0.1.14與Dynamic.Ptcs.Client 0.1.22完成Release build/pack/push，exact PTCS為0.2.22。
+- 2026-09-15 07:47 +08:00：aggregate Dynamic 0.1.9同步exact PTCS 0.2.22並由既有PostBuild完成NuGet push；未改renderer/SDUI行為。
+- 2026-09-15 07:55 +08:00：流程修正：baseline package log已commit後不得append；本successor log承接後續operations。
+- 2026-09-15 08:08 +08:00：changed-path sensitive scan high=0/medium=0；aggregate Release build/push通過，GW restore已消除Dynamic 0.1.8→PTCS 0.2.20 constraint warning。
+- 2026-09-15 08:12 +08:00：checker定位四個test consumer舊版本與LiveDemo直接PTCS 0.2.20 downgrade；同步後transient adapter 13/13、TA client 15/15通過，LiveDemo Release build無NU1605。
+- 2026-09-15 08:18 +08:00：Dynamic adapters與active consumers以 commit `bea624b`（`Align Dynamic adapters with PTCS 0.2.22`）完成提交並推送至 `20260915_033.ptcs_group_support`。
