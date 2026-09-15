@@ -1,0 +1,17 @@
+# PTCS 0.2.27 alignment
+
+## Pre-work plan
+
+- 背景：PTCS 0.2.27 修正 1,381-set physical delete 的 registry write amplification、purge平方掃描與Hub全域鎖阻塞。
+- 目標：Dynamic active packages exact-lock PTCS 0.2.27，保持SDUI renderer/contract行為不變。
+- 範圍：aggregate Dynamic、Dynamic.Ptcs、Dynamic.Ptcs.Client及LiveDemo exact refs；版本依序進版並Release build/push。
+- 驗收：restore/build成功、package push成功、Host可restore同一exact dependency graph。
+- 不得改變：Dynamic DSL、FormInput/Canvas renderer、TA runtime protocol。
+
+## Operations
+
+- 05:51-05:55：versions更新至aggregate 0.1.14、Ptcs 0.1.18、Ptcs.Client 0.1.26；LiveDemo同步。
+- 三個package完成Release pack/push。canonical generated `websharper.log` ACL阻止compiler刪除；因無JS source變更，以`WebSharperRunCompiler=false`重建assembly/dependency graph並沿用既有bundle。
+- Correction/假設：本輪沒有Dynamic F#/JS source改動，既有bundle可與只變更PTCS binary dependency的assembly共同發布。
+- Correction/風險：canonical generated `websharper.log` ACL會阻止compiler清理；停用compiler只能用於此dependency-only slice，不可宣稱前端bundle已重建。
+- 06:16：active test refs同步到Ptcs 0.1.18與Ptcs.Client 0.1.26；transient adapter 13/13、TA client 15/15通過。

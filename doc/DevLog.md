@@ -1367,3 +1367,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Aggregate `PulseTrade.Comm.Spa.Dynamic`進版0.1.13、`Dynamic.Ptcs`進版0.1.17、`Dynamic.Ptcs.Client`進版0.1.25；三者exact-lock PTCS 0.2.26。本次只承接Management physical-delete binary contract，不改Dynamic renderer、SDUI DSL或TA runtime行為。
 - 三個final nupkg均已推送並核對exact dependency。canonical目錄既有generated `websharper.log` ACL仍阻止WebSharper刪檔；aggregate與Ptcs.Client由排除該generated log的run-scoped source staging完整編譯/pack，未停用WebSharper compiler；Dynamic.Ptcs在canonical目錄直接完成。
 - LiveDemo active refs同步至PTCS 0.2.26、Dynamic.Ptcs 0.1.17與Dynamic.Ptcs.Client 0.1.25。
+
+## 2026-09-16 - PTCS 0.2.27 bulk-delete contract alignment
+
+- Aggregate `PulseTrade.Comm.Spa.Dynamic`進版0.1.14、`Dynamic.Ptcs`進版0.1.18、`Dynamic.Ptcs.Client`進版0.1.26；三者exact-lock PTCS 0.2.27。本次只承接Management batch registry wire與bulk-delete binary contract，不改Dynamic renderer、SDUI DSL或TA runtime行為。
+- 三個package已完成Release pack/push，LiveDemo refs同步。canonical generated `websharper.log` ACL仍阻止WebSharper compiler刪檔；因本輪沒有JS source變更，aggregate與Ptcs.Client以`WebSharperRunCompiler=false`重建server/client assembly與exact dependencies並沿用上一版已驗證bundle，未宣稱bundle重新產生。
+- Active package tests同步至Dynamic.Ptcs 0.1.18與Dynamic.Ptcs.Client 0.1.26，避免測試仍消費0.1.15/0.1.23舊contract。
