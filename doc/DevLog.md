@@ -1361,3 +1361,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Aggregate `PulseTrade.Comm.Spa.Dynamic`進版0.1.10、`Dynamic.Ptcs`進版0.1.15、`Dynamic.Ptcs.Client`進版0.1.23；三者exact-lock PTCS 0.2.23。本次只承接bounded Management/participant batch binary contract，不改SDUI/TA runtime行為。
 - 三個package均完成Release build/pack/push。Transient adapter 13/13與TA client 15/15通過；LiveDemo active references已同步。canonical目錄既有不可刪`websharper.log` ACL造成wsfsc啟動前失敗；相同fsproj/Client.fs/Program.fs在run-scoped乾淨目錄完整啟用WebSharper compiler建置通過，僅WS9002。
+
+## 2026-09-16 - PTCS 0.2.26 physical-delete contract alignment
+
+- Aggregate `PulseTrade.Comm.Spa.Dynamic`進版0.1.13、`Dynamic.Ptcs`進版0.1.17、`Dynamic.Ptcs.Client`進版0.1.25；三者exact-lock PTCS 0.2.26。本次只承接Management physical-delete binary contract，不改Dynamic renderer、SDUI DSL或TA runtime行為。
+- 三個final nupkg均已推送並核對exact dependency。canonical目錄既有generated `websharper.log` ACL仍阻止WebSharper刪檔；aggregate與Ptcs.Client由排除該generated log的run-scoped source staging完整編譯/pack，未停用WebSharper compiler；Dynamic.Ptcs在canonical目錄直接完成。
+- LiveDemo active refs同步至PTCS 0.2.26、Dynamic.Ptcs 0.1.17與Dynamic.Ptcs.Client 0.1.25。
