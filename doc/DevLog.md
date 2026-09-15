@@ -1350,3 +1350,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - `PulseTrade.Comm.Spa.Dynamic.Ptcs`進版0.1.13，`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`進版0.1.21；兩者exact-lock `PulseTrade.Comm.Spa 0.2.21`，runtime code、renderer、contracts與Interactive行為不變。
 - 兩個Release build皆0 warning/error，package已推送NuGet並供formal PTCS Host graph使用；Dynamic transient adapter 13/13與PTCS TA client 15/15測試通過。
+
+## 2026-09-15 - PTCS 0.2.22 group contract alignment
+
+- `PulseTrade.Comm.Spa.Dynamic.Ptcs`進版0.1.14、`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`進版0.1.22、aggregate `PulseTrade.Comm.Spa.Dynamic`進版0.1.9；三者exact-lock PTCS 0.2.22。
+- 本次只承接PTCS durable group lifecycle binary contract，不改Dynamic renderer、SDUI DSL或Interactive行為。三個package均完成Release build/pack/push；aggregate僅保留既有WebSharper Bundle deprecation warning。
+- Active test consumers同步至Dynamic.Ptcs 0.1.14、Ptcs.Client 0.1.22與PTCS 0.2.22；transient adapter 13/13、TA client 15/15通過，LiveDemo Release build僅保留既有WebSharper Bundle deprecation warning。

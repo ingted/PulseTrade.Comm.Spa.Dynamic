@@ -326,8 +326,8 @@ function postJson(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -380,7 +380,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
       send.addEventListener("click", () => {
         const raw=caseRaw();
         rawPreview.textContent=raw;
-        return context.submit(New_40(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+        return context.submit(New_43(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
       });
       append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
       root.appendChild(caseRow);
@@ -394,7 +394,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
           fullSend.addEventListener("click", () => {
             const raw=fullRaw();
             fullPreview.textContent=raw;
-            return context.submit(New_40(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+            return context.submit(New_43(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
           const actions=setTestId("dynamic-argu-composer-actions", element("div", "dynamic-argu-composer-actions", null));
           append(actions, [renderComposerModeControl(context), fullSend]);
@@ -844,7 +844,7 @@ function generateActorReport(outputDirectory, status){
   if(isBlank_1(trimmed))status.Set("Report output directory is required.");
   else {
     status.Set("Generating actor state report...");
-    postJson_1("/actors/api/report", New_41(trimmed), (reply) => {
+    postJson_1("/actors/api/report", New_44(trimmed), (reply) => {
       status.Set("Report written: "+(isBlank_1(reply.filePath)?reply.fileName:reply.filePath));
     }, (message) => {
       status.Set("Report failed: "+asText_1(message));
@@ -1016,8 +1016,8 @@ function postJson_1(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST", 
-    headers:headers, 
+    method:"POST",
+    headers:headers,
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson_1(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
@@ -1107,12 +1107,12 @@ function joinPath(segments, count){
 }
 function makeActorTreeNode(id, parentId, label_1, fullPath, address, kind, status){
   return{
-    id:id, 
-    parentId:parentId, 
-    label:label_1, 
-    fullPath:fullPath, 
-    address:address, 
-    kind:kind, 
+    id:id,
+    parentId:parentId,
+    label:label_1,
+    fullPath:fullPath,
+    address:address,
+    kind:kind,
     status:status
   };
 }
@@ -4035,33 +4035,54 @@ function mountManagement(page){
   loadParticipants();
 }
 function mountChat(page){
-  let selected, cursor, polling, participants, selectedThreadMessages, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
+  let selected, cursor, polling, participants, groups, selectedGroup, selectedThreadMessages, oldestSequence, hasOlderMessages, loadingOlderMessages, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
   selected="";
   cursor="";
   polling=false;
   participants=[];
+  groups=[];
+  selectedGroup=null;
   selectedThreadMessages=[];
+  oldestSequence=0n;
+  hasOlderMessages=false;
+  loadingOlderMessages=false;
   const participantId=currentUserId();
   page.className="page chat-grid";
   const side=element_1("aside", "sidebar", null);
   const sideHead=element_1("div", "panel-head", null);
   const sideActions=element_1("div", "head-actions", null);
+  const addGroup=setTestId_1("chat-add-group", button_1("", "Add group"));
+  setHidden(!groupAclAllows("*", "ptcs.group.create"), addGroup);
   const export_1=setTestId_1("chat-export", button_1("", "Export"));
   setData("message-count", "0", export_1);
   const reload=setTestId_1("chat-reload", button_1("", "Reload"));
   const list=element_1("div", "list", null);
-  append_1(sideActions, [export_1, reload]);
+  const groupCreatePanel=setHidden(true, setTestId_1("group-create-panel", element_1("div", "group-create-panel", null)));
+  const groupIdInput=setTestId_1("group-create-id", input_1("group id"));
+  const groupNameInput=setTestId_1("group-create-name", input_1("display name"));
+  const groupHistoryInput=setTestId_1("group-create-history", select([["from-first-join", "History from join"], ["include-history-before-first-join", "Include existing history"]]));
+  const groupCreateActions=element_1("div", "compact-actions", null);
+  const groupCreateCancel=setTestId_1("group-create-cancel", button_1("", "Cancel"));
+  const groupCreateConfirm=setTestId_1("group-create-confirm", button_1("primary", "Create"));
+  append_1(groupCreateActions, [groupCreateCancel, groupCreateConfirm]);
+  append_1(groupCreatePanel, [groupIdInput, groupNameInput, groupHistoryInput, groupCreateActions]);
+  append_1(sideActions, [addGroup, export_1, reload]);
   append_1(sideHead, [element_1("h1", "", "Chat"), sideActions]);
-  append_1(side, [sideHead, element_1("div", "", null), list]);
+  append_1(side, [sideHead, groupCreatePanel, list]);
   const work=setTestId_1("chat-work", element_1("section", "work", null));
   const workHead=element_1("div", "work-head", null);
   const titleBox=element_1("div", "", null);
   const toTitle=element_1("h2", "", "No participant selected");
   const state=element_1("div", "state", "Loading participants");
+  const groupManagement=setHidden(true, setTestId_1("group-management", element_1("details", "group-management", null)));
+  const groupManagementSummary=element_1("summary", "group-management-summary", "Group details");
+  const groupManagementBody=element_1("div", "group-management-body", null);
+  append_1(groupManagement, [groupManagementSummary, groupManagementBody]);
   const pendingState=setTestId_1("chat-pending-state", element_1("div", "state pending-state", ""));
   const thread=setTestId_1("thread-list", setId("thread-list", element_1("div", "thread-list", null)));
   thread.setAttribute("tabindex", "0");
   setData("follow-bottom", "true", thread);
+  setData("has-older", "false", thread);
   const composer=setTestId_1("chat-composer", element_1("div", "chat-composer", null));
   const draft=setTestId_1("chat-draft", textarea("draft", "Type a message"));
   const actions=element_1("div", "actions", null);
@@ -4072,7 +4093,7 @@ function mountChat(page){
   const participantsCacheKey=cacheKey("chat-participants-v2", ofArray([participantId]));
   const threadCacheKey=(peerId) => cacheKey("chat-thread", ofArray([participantId, peerId]));
   append_1(titleBox, [element_1("label", "", "To"), toTitle]);
-  append_1(workHead, [titleBox, state]);
+  append_1(workHead, [titleBox, groupManagement, state]);
   append_1(actions, [send]);
   append_1(composer, [draft, actions]);
   append_1(work, [workHead, pendingState, thread, composer]);
@@ -4084,14 +4105,68 @@ function mountChat(page){
   queuedChatSyncFrames=[];
   subscribedChatStream="";
   pendingWsChatIds=[];
+  const isGroupTarget=(value) => StartsWith(asText_2(value), "group:");
+  const groupTarget=(groupId) =>"group:"+asText_2(groupId);
+  const selectedGroupId=() => isGroupTarget(selected)?selected.substring("group:".length):"";
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
   };
   const chatStreamKey=(peerId) => New_7("", "set", "chat", sameText(peerId, "channel.public")?["channel:public"]:[participantId, peerId]);
   const streamIdentity=(streamKey) => concat_2("\n", [asText_2(streamKey.pageId), asText_2(streamKey.mode), asText_2(streamKey.setName), concat_2("\u001f", arrayOrEmpty_1(streamKey.keys))]);
+  const renderMessageElement=(message) => {
+    let route, x;
+    const outbound=message.fromId==participantId;
+    const wrap=setId("thread-"+message.messageId, element_1("div", outbound?"message outbound":"message inbound", null));
+    setData("message-id", message.messageId, setTestId_1("chat-message", wrap));
+    const meta=element_1("div", "message-meta", null);
+    if(message.scope=="public")route=outbound?"You -> Public":asText_2(message.fromId)+" -> Public";
+    else if(message.scope=="group"){
+      const o=tryFind((group_2) => sameText(groupTarget(group_2.groupId), selected), groups);
+      if(o==null)x=null;
+      else {
+        const group_1=o.$0;
+        let _1=textOr(group_1.groupId, group_1.displayName);
+        x=Some(_1);
+      }
+      const v=selectedGroupId();
+      const groupName=x==null?v:x.$0;
+      route=outbound?"You -> "+groupName:asText_2(message.fromId)+" -> "+groupName;
+    }
+    else route=outbound?"You -> "+asText_2(message.toId):asText_2(message.fromId)+" -> You";
+    const idNode=setData("full-message-id", message.messageId, element_1("span", "message-id", compactMessageId(message.messageId)+"  "+asText_2(message.createdAtUtc)));
+    idNode.setAttribute("title", message.messageId+"  "+asText_2(message.createdAtUtc));
+    append_1(meta, [element_1("span", "", route), idNode]);
+    append_1(wrap, [meta, element_1("pre", "message-body", asText_2(message.body))]);
+    return wrap;
+  };
   function renderParticipants(){
-    let _1;
+    let o, _1, o_1;
     clear(list);
+    if(length(groups)>0)list.appendChild(element_1("div", "list-section-title", "Groups"));
+    iter((group_2) => {
+      const target=groupTarget(group_2.groupId);
+      const item=button_1(target==selected?"list-card active":"list-card", null);
+      setData("group-id", group_2.groupId, setTestId_1("chat-group", item));
+      item.appendChild(cardTitle(textOr(group_2.groupId, group_2.displayName), group_2.groupId, group_2.isActiveMember?group_2.role:"former", String(group_2.memberCount)+" member(s)"));
+      item.addEventListener("click", () => {
+        selected=target;
+        selectedGroup=null;
+        cursor="";
+        selectedThreadMessages=[];
+        oldestSequence=0n;
+        hasOlderMessages=false;
+        loadingOlderMessages=false;
+        setData("has-older", "false", thread);
+        setData("message-count", "0", export_1);
+        clear(thread);
+        renderParticipants();
+        loadGroupDetails();
+        refreshChatPendingState();
+        return pollThread(true);
+      });
+      list.appendChild(item);
+    }, groups);
+    if(length(participants)>0)list.appendChild(element_1("div", "list-section-title", "People and channels"));
     iter((p_1) => {
       const className=p_1.participantId==selected?"list-card active":"list-card";
       const name=textOr(p_1.participantId, p_1.displayName);
@@ -4103,22 +4178,178 @@ function mountChat(page){
         selected=p_1.participantId;
         cursor="";
         selectedThreadMessages=[];
+        oldestSequence=0n;
+        hasOlderMessages=false;
+        loadingOlderMessages=false;
+        setData("has-older", "false", thread);
         setData("message-count", "0", export_1);
         clear(thread);
         renderParticipants();
+        selectedGroup=null;
+        setHidden(true, groupManagement);
         refreshChatPendingState();
         pollThread(true);
         return ensureSelectedChatSubscription();
       });
       list.appendChild(item);
     }, participants);
-    const current=tryFind((p_1) => p_1.participantId==selected, participants);
-    if(current==null)_1="No participant selected";
+    if(isGroupTarget(selected)){
+      const o_2=tryFind((group_2) => groupTarget(group_2.groupId)==selected, groups);
+      if(o_2==null)o=null;
+      else {
+        const group_1=o_2.$0;
+        let _2=textOr(group_1.groupId, group_1.displayName)+" ("+selected+")";
+        o=Some(_2);
+      }
+      _1=o==null?selected:o.$0;
+    }
     else {
-      const p=current.$0;
-      _1=textOr(p.participantId, p.displayName)+" ("+p.participantId+")";
+      const o_3=tryFind((p_1) => p_1.participantId==selected, participants);
+      if(o_3==null)o_1=null;
+      else {
+        const p=o_3.$0;
+        let _3=textOr(p.participantId, p.displayName)+" ("+p.participantId+")";
+        o_1=Some(_3);
+      }
+      _1=o_1==null?"No participant selected":o_1.$0;
     }
     toTitle.textContent=_1;
+    setHidden(readOnlyView||isGroupTarget(selected)&&!groupAclAllows(selectedGroupId(), "ptcs.group.send"), composer);
+  }
+  function mutateSelectedGroup(url, participantId_1, displayName, role, historyPolicy, includeHistory, onOk){
+    if(selectedGroup!=null&&selectedGroup.$==1){
+      const group_1=selectedGroup.$0;
+      return postJson_2(url, New_35(newRequestId("group-mutation"), group_1.groupId, group_1.revision, asText_2(participantId_1), asText_2(displayName), asText_2(role), asText_2(historyPolicy), includeHistory), (reply) => {
+        selectedGroup=Some(reply.group);
+        renderGroupManagement();
+        loadParticipants(false);
+        onOk(reply.group);
+      }, (error) => {
+        setStatus(state, error);
+      });
+    }
+    else return setStatus(state, "Group details are not loaded");
+  }
+  function renderGroupManagement(){
+    let _1, _2, _3;
+    clear(groupManagementBody);
+    if(selectedGroup!=null&&selectedGroup.$==1){
+      const group_1=selectedGroup.$0;
+      setHidden(false, groupManagement);
+      groupManagementSummary.textContent="Group details / "+group_1.displayName;
+      const o=tryFind((member_) => member_.isActive&&sameText(member_.participantId, participantId), arrayOrEmpty_1(group_1.members));
+      const o_1=o==null?null:Some(o.$0.role);
+      const currentRole=o_1==null?"former":o_1.$0;
+      const isOwner=sameText(currentRole, "owner");
+      const isAdmin=sameText(currentRole, "admin");
+      const canManageMembers=(isOwner||isAdmin)&&groupAclAllows(group_1.groupId, "ptcs.group.member.manage");
+      groupManagementBody.appendChild(element_1("div", "group-meta", "Role: "+String(currentRole)+" / revision "+String(group_1.revision)));
+      if(canManageMembers){
+        const existing=map((member_) => member_.participantId, filter((a) => a.isActive, arrayOrEmpty_1(group_1.members)));
+        const candidates=map((p) =>[p.participantId, textOr(p.participantId, p.displayName)], filter((p) => {
+          if(!sameText(p.participantId, "channel.public")){
+            const _4=p.participantId;
+            return!exists((_5) => sameText(_4, _5), existing);
+          }
+          else return false;
+        }, participants));
+        if(length(candidates)>0){
+          const chooser=setTestId_1("group-member-add-select", select(candidates));
+          const addMember=setTestId_1("group-member-add", button_1("", "Add member"));
+          addMember.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/add", chooser.value, "", "", "", null, () => { }));
+          const row=element_1("div", "group-control-row", null);
+          _1=(append_1(row, [chooser, addMember]),groupManagementBody.appendChild(row));
+        }
+        else _1=void 0;
+      }
+      else _1=void 0;
+      const memberList=element_1("div", "group-member-list", null);
+      iter((member_) => {
+        let _4, _5, _6;
+        const row_1=setData("participant-id", member_.participantId, element_1("div", "group-member-row", null));
+        const identity=element_1("span", "group-member-name", member_.participantId+" / "+member_.role);
+        const actions_1=element_1("span", "compact-actions", null);
+        if(isOwner&&!sameText(member_.role, "owner")){
+          if(groupAclAllows(group_1.groupId, "ptcs.group.role.manage")){
+            const nextRole=sameText(member_.role, "admin")?"member":"admin";
+            const roleButton=button_1("", nextRole=="admin"?"Promote":"Demote");
+            _4=(setData("participant-id", member_.participantId, setTestId_1("group-member-role", roleButton)),roleButton.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/role", member_.participantId, "", nextRole, "", null, () => { })),actions_1.appendChild(roleButton));
+          }
+          else _4=void 0;
+          if(groupAclAllows(group_1.groupId, "ptcs.group.owner.transfer")){
+            const transfer=setTestId_1("group-owner-transfer", button_1("", "Make owner"));
+            _5=(transfer.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/owner/transfer", member_.participantId, "", "", "", null, () => { })),actions_1.appendChild(transfer));
+          }
+          else _5=void 0;
+        }
+        else _5=void 0;
+        if((sameText(member_.participantId, participantId)&&!sameText(member_.role, "owner")||isOwner&&!sameText(member_.role, "owner")||isAdmin&&sameText(member_.role, "member"))&&groupAclAllows(group_1.groupId, "ptcs.group.member.manage")){
+          const remove=setTestId_1("group-member-remove", button_1("icon-button", "x"));
+          _6=(remove.setAttribute("title", "Remove member"),remove.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/remove", member_.participantId, "", "", "", null, () => {
+            if(sameText(member_.participantId, participantId)){
+              selected="channel.public";
+              selectedGroup=null;
+              setHidden(true, groupManagement);
+            }
+          })),actions_1.appendChild(remove));
+        }
+        else _6=void 0;
+        append_1(row_1, [identity, actions_1]);
+        memberList.appendChild(row_1);
+      }, sortBy((member_) =>[member_.role, member_.participantId], filter((a) => a.isActive, arrayOrEmpty_1(group_1.members))));
+      groupManagementBody.appendChild(memberList);
+      if(isOwner){
+        const ownerControls=element_1("div", "group-owner-controls", null);
+        if(groupAclAllows(group_1.groupId, "ptcs.group.settings.manage")){
+          const renameInput=setTestId_1("group-rename-input", input_1("group display name"));
+          renameInput.value=group_1.displayName;
+          const rename=setTestId_1("group-rename", button_1("", "Rename"));
+          rename.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/rename", "", renameInput.value, "", "", null, () => { }));
+          const history=setTestId_1("group-history-policy", select([["from-first-join", "History from join"], ["include-history-before-first-join", "Include existing history"]]));
+          history.value=group_1.historyPolicy;
+          const saveHistory=setTestId_1("group-history-save", button_1("", "Save history policy"));
+          _2=(saveHistory.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/history-policy", "", "", "", history.value, null, () => { })),append_1(ownerControls, [renameInput, rename, history, saveHistory]));
+        }
+        else _2=void 0;
+        if(groupAclAllows(group_1.groupId, "ptcs.group.delete")){
+          const delete_1=setTestId_1("group-delete", button_1("danger", "Delete group"));
+          _3=(delete_1.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/delete", "", "", "", "", null, () => {
+            selected="channel.public";
+            selectedGroup=null;
+            setHidden(true, groupManagement);
+            loadParticipants(true);
+          })),ownerControls.appendChild(delete_1));
+        }
+        else _3=void 0;
+        groupManagementBody.appendChild(ownerControls);
+      }
+      else void 0;
+    }
+    else setHidden(true, groupManagement);
+  }
+  function loadGroupDetails(){
+    if(isGroupTarget(selected)){
+      const requestedTarget=selected;
+      getJson("/chat/api/groups/get?groupId="+encodeURIComponent(selectedGroupId()), (reply) => {
+        if(selected==requestedTarget){
+          selectedGroup=Some(reply.group);
+          renderGroupManagement();
+        }
+      }, (error) => {
+        selectedGroup=null;
+        setHidden(true, groupManagement);
+        setStatus(state, error);
+      });
+    }
+  }
+  function refreshGroupAclSnapshot(onReady){
+    getJson("/acl/api/snapshot", (snapshot) => {
+      set_currentAclSnapshotJson(JSON.stringify(snapshot));
+      set_currentAclSnapshot(Some(snapshot));
+      onReady();
+    }, () => {
+      onReady();
+    });
   }
   function appendMessages(messages){
     let appendedCount;
@@ -4127,16 +4358,7 @@ function mountChat(page){
     iter((message) => {
       if(!(message==null)&&!isBlank_2(message.messageId)&&doc_1().getElementById("thread-"+message.messageId)==null){
         appendedCount=appendedCount+1;
-        const outbound=message.fromId==participantId;
-        const wrap=setId("thread-"+message.messageId, element_1("div", outbound?"message outbound":"message inbound", null));
-        setData("message-id", message.messageId, setTestId_1("chat-message", wrap));
-        const meta=element_1("div", "message-meta", null);
-        const route=message.scope=="public"?outbound?"You -> Public":asText_2(message.fromId)+" -> Public":outbound?"You -> "+asText_2(message.toId):asText_2(message.fromId)+" -> You";
-        const idNode=setData("full-message-id", message.messageId, element_1("span", "message-id", compactMessageId(message.messageId)+"  "+asText_2(message.createdAtUtc)));
-        idNode.setAttribute("title", message.messageId+"  "+asText_2(message.createdAtUtc));
-        append_1(meta, [element_1("span", "", route), idNode]);
-        append_1(wrap, [meta, element_1("pre", "message-body", asText_2(message.body))]);
-        thread.appendChild(wrap);
+        thread.appendChild(renderMessageElement(message));
       }
     }, arrayOrEmpty_1(messages));
     selectedThreadMessages=distinctMessages(selectedThreadMessages.concat(arrayOrEmpty_1(messages)));
@@ -4144,22 +4366,47 @@ function mountChat(page){
     if(appendedCount>0&&shouldFollow)scrollToBottomNow(thread);
     setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
   }
+  function prependMessages(messages){
+    let prependedCount;
+    const previousHeight=thread.scrollHeight;
+    const previousTop=thread.scrollTop;
+    const anchor=thread.querySelector("[data-testid='chat-message']");
+    prependedCount=0;
+    iter((message) => {
+      if(!(message==null)&&!isBlank_2(message.messageId)&&doc_1().getElementById("thread-"+message.messageId)==null){
+        prependedCount=prependedCount+1;
+        anchor==null?thread.appendChild(renderMessageElement(message)):thread.insertBefore(renderMessageElement(message), anchor);
+      }
+    }, arrayOrEmpty_1(messages));
+    selectedThreadMessages=distinctMessages(arrayOrEmpty_1(messages).concat(selectedThreadMessages));
+    setData("message-count", String(length(selectedThreadMessages)), export_1);
+    if(prependedCount>0)thread.scrollTop=previousTop+thread.scrollHeight-previousHeight;
+    setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
+  }
   function loadParticipants(refreshSelectedThread){
     setStatus(state, "Loading participants");
     readJson(participantsCacheKey, (a) => {
       if(a!=null&&a.$==1)if(a.$0,length(participants)===0){
-        participants=arrayOrEmpty_1(a.$0.participants);
-        isBlank_2(selected)&&length(participants)>0?selected=get(participants, 0).participantId:void 0;
+        const cached=a.$0;
+        participants=arrayOrEmpty_1(cached.participants);
+        groups=arrayOrEmpty_1(cached.groups);
+        if(isBlank_2(selected))length(participants)>0?selected=get(participants, 0).participantId:length(groups)>0?selected=groupTarget(get(groups, 0).groupId):void 0;
         renderParticipants();
         setStatus(state, "Loaded "+String(length(participants))+" cached participant(s)");
-        refreshSelectedThread?(pollThread(true),ensureSelectedChatSubscription(),replayPendingChatCommands()):void 0;
+        if(refreshSelectedThread){
+          pollThread(true);
+          ensureSelectedChatSubscription();
+          replayPendingChatCommands();
+        }
       }
     });
     getJson("/chat/api/participants", (data) => {
       participants=arrayOrEmpty_1(data.participants);
+      groups=arrayOrEmpty_1(data.groups);
       writeSnapshotWithWatermark(participantsCacheKey, data, 0n, length(participants), "chat-participants");
       const selectedWasBlank=isBlank_2(selected);
-      if(selectedWasBlank&&length(participants)>0)selected=get(participants, 0).participantId;
+      if(selectedWasBlank)length(participants)>0?selected=get(participants, 0).participantId:length(groups)>0?selected=groupTarget(get(groups, 0).groupId):void 0;
+      if(isGroupTarget(selected))loadGroupDetails();
       renderParticipants();
       setStatus(state, "Loaded "+String(length(participants))+" participant(s)");
       if(refreshSelectedThread||selectedWasBlank){
@@ -4181,8 +4428,18 @@ function mountChat(page){
         if(useCursor&&!isBlank_2(cursor))url=url+"&afterMessageId="+encodeURIComponent(cursor);
         getJson(url, (data) => {
           const messages=force&&!useCursor?latestArray(defaultRenderLimit(), data.messages):arrayOrEmpty_1(data.messages);
+          if(force&&!useCursor){
+            clear(thread);
+            selectedThreadMessages=[];
+            setData("follow-bottom", "true", thread);
+          }
           appendMessages(messages);
           if(!isBlank_2(data.nextAfterMessageId))cursor=data.nextAfterMessageId;
+          if(!useCursor){
+            oldestSequence=data.oldestSequence;
+            hasOlderMessages=data.hasOlderMessages;
+            setData("has-older", hasOlderMessages?"true":"false", thread);
+          }
           readJson(cacheKey_1, (cached) => {
             let _1, _2;
             switch(cached!=null&&cached.$==1?(cached.$0,useCursor?(_1=cached.$0,0):(cached.$0,!force?(_1=cached.$0,1):2)):2){
@@ -4198,11 +4455,17 @@ function mountChat(page){
             }
             const merged=mergeThreadMessages(_2, messages);
             const nextAfterMessageId=textOr(cursor, data.nextAfterMessageId);
+            const o=cached==null?null:Some(cached.$0.oldestSequence);
+            const cachedOldestSequence=o==null?0n:o.$0;
+            const o_1=cached==null?null:Some(cached.$0.hasOlderMessages);
+            const cachedHasOlderMessages=o_1==null?false:o_1.$0;
+            const storedOldestSequence=useCursor?cachedOldestSequence:data.oldestSequence;
+            const storedHasOlderMessages=useCursor?cachedHasOlderMessages:data.hasOlderMessages;
             readWatermark(cacheKey_1, (watermark) => {
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_35(merged, nextAfterMessageId), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_36(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -4219,11 +4482,30 @@ function mountChat(page){
           const messages=latestArray(defaultRenderLimit(), cached.messages);
           appendMessages(messages);
           if(!isBlank_2(cached.nextAfterMessageId))cursor=cached.nextAfterMessageId;
+          oldestSequence=cached.oldestSequence;
+          hasOlderMessages=cached.hasOlderMessages;
+          setData("has-older", hasOlderMessages?"true":"false", thread);
           setStatus(state, "Loaded "+String(length(messages))+" cached message(s); syncing missing tail");
           fetchThread(false);
         }
       });
       else fetchThread(!isBlank_2(cursor));
+    }
+  }
+  function loadOlderThread(){
+    if(!loadingOlderMessages&&hasOlderMessages&&oldestSequence>0n&&!isBlank_2(selected)){
+      loadingOlderMessages=true;
+      const requestedPeer=selected;
+      const requestedBefore=oldestSequence;
+      const url="/chat/api/thread?participantId="+encodeURIComponent(participantId)+"&peerId="+encodeURIComponent(requestedPeer)+"&beforeSequence="+String(requestedBefore);
+      setStatus(state, "Loading older messages before "+String(requestedBefore));
+      getJson(url, (data) => {
+        selected==requestedPeer?(prependMessages(data.messages),oldestSequence=data.oldestSequence,hasOlderMessages=data.hasOlderMessages,setData("has-older", hasOlderMessages?"true":"false", thread),setStatus(state, "Loaded "+String(length(data.messages))+" older message(s)")):void 0;
+        loadingOlderMessages=false;
+      }, (error) => {
+        loadingOlderMessages=false;
+        setStatus(state, "Load older messages failed: "+error);
+      });
     }
   }
   function refreshChatPendingState(){
@@ -4275,7 +4557,13 @@ function mountChat(page){
       const cacheKey_1=threadCacheKey(selected);
       return readJson(cacheKey_1, (cached) => {
         const merged=mergeThreadMessages(cached==null?[]:cached.$0.messages, [message]);
-        writeSnapshotWithWatermark(cacheKey_1, New_35(merged, message.messageId), sequence>0n?sequence:maxMessageSequence(merged), length(merged), "chat-thread");
+        const newestSequence=sequence>0n?sequence:maxMessageSequence(merged);
+        const o=cached==null?null:Some(cached.$0.oldestSequence);
+        let _1=o==null?oldestSequence:o.$0;
+        const o_1=cached==null?null:Some(cached.$0.hasOlderMessages);
+        let _2=o_1==null?hasOlderMessages:o_1.$0;
+        let _3=New_36(merged, message.messageId, _1, _2);
+        writeSnapshotWithWatermark(cacheKey_1, _3, newestSequence, length(merged), "chat-thread");
       });
     }
     else return null;
@@ -4374,7 +4662,7 @@ function mountChat(page){
       }
   }
   function ensureSelectedChatSubscription(){
-    if(!isBlank_2(selected)){
+    if(!isBlank_2(selected)&&!isGroupTarget(selected)){
       const streamKey=chatStreamKey(selected);
       const identity=streamIdentity(streamKey);
       if(!isBlank_2(identity)&&identity!=subscribedChatStream){
@@ -4388,11 +4676,30 @@ function mountChat(page){
     const body=Trim(draft.value);
     if(isBlank_2(selected))setStatus(state, "Select a participant first");
     else if(isBlank_2(body))setStatus(state, "Message is empty");
+    else if(isGroupTarget(selected)){
+      const request=New_38(newRequestId("group-send"), selectedGroupId(), body, ["web-chat"]);
+      const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/groups/send", request);
+      refreshChatPendingState();
+      setStatus(state, "Sending group message; pending command saved in browser DB");
+      postJson_2("/chat/api/groups/send", request, (reply) => {
+        deletePendingThen(pendingId, () => {
+          draft.value="";
+          appendMessages([reply.message]);
+          cacheAcceptedChatMessage(int64OrZero(reply.streamSequence), reply.message);
+          cursor=reply.message.messageId;
+          refreshChatPendingState();
+          setStatus(state, "Sent "+compactMessageId(reply.message.messageId)+" "+asText_2(reply.deliveryHint));
+        });
+      }, (error) => {
+        refreshChatPendingState();
+        setStatus(state, error);
+      });
+    }
     else {
-      const request=New_38(participantId, selected, body, ["web-chat"]);
-      const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request);
-      const wsRequest=New_37("chat-send", pendingId, participantId, selected, body, ["web-chat"], participantId, "chat");
-      pendingWsChatIds=pendingWsChatIds.concat([pendingId]);
+      const request_1=New_40(participantId, selected, body, ["web-chat"]);
+      const pendingId_1=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request_1);
+      const wsRequest=New_39("chat-send", pendingId_1, participantId, selected, body, ["web-chat"], participantId, "chat");
+      pendingWsChatIds=pendingWsChatIds.concat([pendingId_1]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
       sendChatSyncFrame(JSON.stringify(wsRequest));
@@ -4404,7 +4711,7 @@ function mountChat(page){
     else if(globalThis.document.body==null)setStatus(state, "Document body is unavailable");
     else {
       try {
-        const rows=map((message) => New_39(asText_2(message.messageId), asText_2(message.fromId), asText_2(message.createdAtUtc), asText_2(message.body)), selectedThreadMessages);
+        const rows=map((message) => New_41(asText_2(message.messageId), asText_2(message.fromId), asText_2(message.createdAtUtc), asText_2(message.body)), selectedThreadMessages);
         const url=URL.createObjectURL(new Blob([concat_2("\n", map((v) => JSON.stringify(v), rows))], {type:"application/x-ndjson;charset=utf-8"}));
         const now=new Date();
         const twoDigits=(value) => value<10?"0"+String(value):String(value);
@@ -4427,11 +4734,41 @@ function mountChat(page){
       }
     }
   }
+  addGroup.addEventListener("click", () => {
+    setHidden(false, groupCreatePanel);
+    return groupIdInput.focus();
+  });
+  groupCreateCancel.addEventListener("click", () => {
+    setHidden(true, groupCreatePanel);
+  });
+  groupCreateConfirm.addEventListener("click", () => {
+    const groupId=Trim(groupIdInput.value);
+    const displayName=Trim(groupNameInput.value);
+    return isBlank_2(groupId)?setStatus(state, "Group id is required"):postJson_2("/chat/api/groups/create", New_42(newRequestId("group-create"), groupId, displayName, [], groupHistoryInput.value, ["web-chat"]), (reply) => {
+      selected=groupTarget(reply.group.groupId);
+      selectedGroup=Some(reply.group);
+      groupIdInput.value="";
+      groupNameInput.value="";
+      setHidden(true, groupCreatePanel);
+      refreshGroupAclSnapshot(() => {
+        loadParticipants(true);
+        renderGroupManagement();
+      });
+    }, (t) => {
+      setStatus(state, t);
+    });
+  });
   reload.addEventListener("click", () => loadParticipants(true));
   export_1.addEventListener("click", exportSelectedThread);
   send.addEventListener("click", sendMessage);
   thread.addEventListener("scroll", () => {
     setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
+    try {
+      return thread.scrollTop<=8?loadOlderThread():null;
+    }
+    catch(m){
+      return null;
+    }
   });
   draft.addEventListener("keydown", (event) => event.key=="Enter"&&!event.shiftKey?(event.preventDefault(),sendMessage()):null);
   globalThis.setInterval(() => pollThread(false), 2500);
@@ -4524,7 +4861,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_46(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_49(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_2(request.userName)||isBlank_2(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -4554,7 +4891,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_2(node.textContent)?New_45("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_2(node.textContent)?New_48("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_2(value)?fallback:value;
@@ -4820,18 +5157,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    keyPlaceholder:String(_5||""), 
-    defaultKey:String(_6||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    keyPlaceholder:String(_5||""),
+    defaultKey:String(_6||""),
     submitKey:(payload) => {
       _7(payload);
-    }, 
+    },
     cancelKey:() => {
       _8();
-    }, 
+    },
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -4915,26 +5252,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""), 
-    shape:String(_2||""), 
-    title:String(_3||""), 
-    setName:String(_4||""), 
-    selectedKeyId:String(_5||""), 
-    selectedKeyJson:String(_6||""), 
-    selectedKeys:keyParts.slice(), 
-    keyParts:keyParts.slice(), 
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    valuePlaceholder:String(_8||""), 
-    valueText:String(_9||""), 
+    pageId:String(_1||""),
+    shape:String(_2||""),
+    title:String(_3||""),
+    setName:String(_4||""),
+    selectedKeyId:String(_5||""),
+    selectedKeyJson:String(_6||""),
+    selectedKeys:keyParts.slice(),
+    keyParts:keyParts.slice(),
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    valuePlaceholder:String(_8||""),
+    valueText:String(_9||""),
     submit:(payload) => {
       _10(payload);
-    }, 
+    },
     setValue:(payload) => {
       _11(payload);
-    }, 
-    composerMode:String(_12||"plain"), 
+    },
+    composerMode:String(_12||"plain"),
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -5005,7 +5342,7 @@ function renderAppendValue(definition, value){
   const head_2=element_1("div", "fcell-head", null);
   append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_2(value.valueId)+" / "+asText_2(value.createdAtUtc))]);
   card.appendChild(head_2);
-  const presentationContext=New_42(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
+  const presentationContext=New_45(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
   const m_1=tryResolveReplyPresentation(presentationContext);
   if(m_1!=null&&m_1.$==1){
     const presentation=m_1.$0;
@@ -5297,7 +5634,7 @@ function renderViewAsControl(){
   });
   apply.addEventListener("click", () => {
     apply.setAttribute("disabled", "disabled");
-    return postJson_2("/management/api/view-as", New_47(asText_2(chooser.value)), () => {
+    return postJson_2("/management/api/view-as", New_50(asText_2(chooser.value)), () => {
       globalThis.location.reload();
     }, (error) => {
       apply.removeAttribute("disabled");
@@ -5381,7 +5718,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_2(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_48(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_51(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_2("/pages/api/register-page", request, (reply) => {
@@ -5515,6 +5852,9 @@ function aclAllows(action, resourceKind, resourceId){
   const m=tryAclCapabilityProvider(action, resourceKind, resourceId);
   return m==null?aclAllowsFallback(action, resourceKind, resourceId):m.$0;
 }
+function groupAclAllows(groupId, action){
+  return aclAllows(action, "ptcs.group", groupId)||systemAclAllows("*", action);
+}
 function currentBrowserUser(){
   const userNode=doc_1().getElementById("ptc-comm-user");
   if(userNode==null||isBlank_2(userNode.textContent))return New_33("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
@@ -5589,8 +5929,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"), 
-      priority:Number(priority||0), 
+      name:String(name||"unnamed"),
+      priority:Number(priority||0),
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -5847,7 +6187,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
-  return New_44(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_47(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -6079,7 +6419,7 @@ function tryResolve(context){
     const p=staticCanvasSummary(payload);
     const title=p[0];
     const elementCount=p[1];
-    return Some(New_43("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
+    return Some(New_46("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
       clearHost(host);
       const doc_2=createSduiCanvasBody(content);
       LoadLocalTemplates("");
@@ -6157,9 +6497,9 @@ function KeyValue(kvp){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status, 
-    count:count, 
-    maxSequence:maxSequence, 
+    status:status,
+    count:count,
+    maxSequence:maxSequence,
     pages:pages
   };
 }
@@ -6410,7 +6750,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_36(streamId, _3, _4, asText_2(source), nowTicks());
+    let _5=New_37(streamId, _3, _4, asText_2(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -6899,16 +7239,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type, 
-    requestId:requestId, 
+    type:type,
+    requestId:requestId,
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
     count:count
   };
 }
@@ -7203,15 +7543,15 @@ function unfold(f, s){
 }
 function New_4(shape, selectedKeyJson, selectedKeys, keyParts, actorAddress, duTypeName, unionCaseNames, submit, composerMode, setComposerMode){
   return{
-    shape:shape, 
-    selectedKeyJson:selectedKeyJson, 
-    selectedKeys:selectedKeys, 
-    keyParts:keyParts, 
-    actorAddress:actorAddress, 
-    duTypeName:duTypeName, 
-    unionCaseNames:unionCaseNames, 
-    submit:submit, 
-    composerMode:composerMode, 
+    shape:shape,
+    selectedKeyJson:selectedKeyJson,
+    selectedKeys:selectedKeys,
+    keyParts:keyParts,
+    actorAddress:actorAddress,
+    duTypeName:duTypeName,
+    unionCaseNames:unionCaseNames,
+    submit:submit,
+    composerMode:composerMode,
     setComposerMode:setComposerMode
   };
 }
@@ -7800,8 +8140,8 @@ class FSharpList {
   static Empty=Create_2(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_2(FSharpList, {
-      $:1, 
-      $0:Head, 
+      $:1,
+      $0:Head,
       $1:Tail
     });
   }
@@ -7829,58 +8169,58 @@ function TryParse_1(s, r){
 }
 function New_6(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId, 
-    tabId:tabId, 
-    path:path, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    description:description, 
-    keyPlaceholder:keyPlaceholder, 
-    valuePlaceholder:valuePlaceholder, 
-    defaultKey:defaultKey, 
+    pageId:pageId,
+    tabId:tabId,
+    path:path,
+    title:title,
+    setName:setName,
+    shape:shape,
+    description:description,
+    keyPlaceholder:keyPlaceholder,
+    valuePlaceholder:valuePlaceholder,
+    defaultKey:defaultKey,
     tags:tags
   };
 }
 function New_7(pageId, mode, setName, keys){
   return{
-    pageId:pageId, 
-    mode:mode, 
-    setName:setName, 
+    pageId:pageId,
+    mode:mode,
+    setName:setName,
     keys:keys
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_9(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId, 
-    lineageKind:lineageKind, 
-    legacyPageIdAlias:legacyPageIdAlias, 
-    readsLegacyPageStreams:readsLegacyPageStreams, 
-    readRepairPolicy:readRepairPolicy, 
-    candidateValueStreamKeys:candidateValueStreamKeys, 
-    candidateValueStreamCount:candidateValueStreamCount, 
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
+    streamPageId:streamPageId,
+    lineageKind:lineageKind,
+    legacyPageIdAlias:legacyPageIdAlias,
+    readsLegacyPageStreams:readsLegacyPageStreams,
+    readRepairPolicy:readRepairPolicy,
+    candidateValueStreamKeys:candidateValueStreamKeys,
+    candidateValueStreamCount:candidateValueStreamCount,
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_10(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId, 
-    serverRealityId:serverRealityId, 
-    kind:kind, 
-    target:target, 
-    url:url, 
-    method:method, 
-    payloadJson:payloadJson, 
+    commandId:commandId,
+    serverRealityId:serverRealityId,
+    kind:kind,
+    target:target,
+    url:url,
+    method:method,
+    payloadJson:payloadJson,
     status:status
   };
 }
@@ -7991,51 +8331,51 @@ function listEmpty(){
 }
 function New_11(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status, 
-    page:page, 
-    bucketCount:bucketCount, 
-    maxSequence:maxSequence, 
-    keyMaxSequence:keyMaxSequence, 
-    lineage:lineage, 
-    lineageHealth:lineageHealth, 
+    status:status,
+    page:page,
+    bucketCount:bucketCount,
+    maxSequence:maxSequence,
+    keyMaxSequence:keyMaxSequence,
+    lineage:lineage,
+    lineageHealth:lineageHealth,
     buckets:buckets
   };
 }
 function New_12(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    keys:keys, 
-    displayName:displayName, 
-    setName:setName, 
-    valueCount:valueCount, 
-    minSequence:minSequence, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    keys:keys,
+    displayName:displayName,
+    setName:setName,
+    valueCount:valueCount,
+    minSequence:minSequence,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
 function New_13(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
+    pageId:pageId,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
     tags:tags
   };
 }
 function New_14(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    keyMode:keyMode, 
+    pageId:pageId,
+    keyJson:keyJson,
+    keyMode:keyMode,
     displayName:displayName
   };
 }
 function New_15(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId, 
-    keyJson:keyJson, 
-    rawArgu:rawArgu, 
+    pageId:pageId,
+    keyJson:keyJson,
+    rawArgu:rawArgu,
     tags:tags
   };
 }
@@ -8047,60 +8387,60 @@ function New_17(pageId, keyId){
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    actorAddress:actorAddress, 
-    rawArgu:rawArgu, 
-    renderMode:renderMode, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    actorAddress:actorAddress,
+    rawArgu:rawArgu,
+    renderMode:renderMode,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_19(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    streamKey:streamKey, 
-    keyJson:keyJson, 
-    valueText:valueText, 
-    direction:direction, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    streamKey:streamKey,
+    keyJson:keyJson,
+    valueText:valueText,
+    direction:direction,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_20(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type, 
-    requestId:requestId, 
-    streamKey:streamKey, 
-    payload:payload, 
-    sourceKind:sourceKind, 
-    renderMode:renderMode, 
-    idempotencyKey:idempotencyKey, 
-    tags:tags, 
-    browserId:browserId, 
+    type:type,
+    requestId:requestId,
+    streamKey:streamKey,
+    payload:payload,
+    sourceKind:sourceKind,
+    renderMode:renderMode,
+    idempotencyKey:idempotencyKey,
+    tags:tags,
+    browserId:browserId,
     tabId:tabId
   };
 }
 function New_21(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId, 
-    setName:setName, 
-    keys:keys, 
-    valueCount:valueCount, 
-    maxSequence:maxSequence, 
-    updatedAtUtc:updatedAtUtc, 
+    keyId:keyId,
+    setName:setName,
+    keys:keys,
+    valueCount:valueCount,
+    maxSequence:maxSequence,
+    updatedAtUtc:updatedAtUtc,
     values:values
   };
 }
@@ -8109,10 +8449,10 @@ function New_22(maxSequence, buckets){
 }
 function New_23(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId, 
-    keys:keys, 
-    createdAtUtc:createdAtUtc, 
-    value:value, 
+    valueId:valueId,
+    keys:keys,
+    createdAtUtc:createdAtUtc,
+    value:value,
     tags:tags
   };
 }
@@ -8121,9 +8461,9 @@ function New_24(reason){
 }
 function New_25(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount, 
-    actorCount:actorCount, 
-    maxSequence:maxSequence, 
+    nodeCount:nodeCount,
+    actorCount:actorCount,
+    maxSequence:maxSequence,
     nodes:nodes
   };
 }
@@ -8241,20 +8581,20 @@ function OfArray(a){
 }
 function New_26(nodeId_1, nodeAddress_1, status, roles, actors){
   return{
-    nodeId:nodeId_1, 
-    nodeAddress:nodeAddress_1, 
-    status:status, 
-    roles:roles, 
+    nodeId:nodeId_1,
+    nodeAddress:nodeAddress_1,
+    status:status,
+    roles:roles,
     actors:actors
   };
 }
 function New_27(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId, 
-    displayName:displayName, 
-    kind:kind, 
-    keys:keys, 
-    status:status, 
+    actorId:actorId,
+    displayName:displayName,
+    kind:kind,
+    keys:keys,
+    status:status,
     routees:routees
   };
 }
@@ -8345,8 +8685,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_2(Attr, {
-      $:2, 
-      $0:Item1, 
+      $:2,
+      $0:Item1,
       $1:Item2
     });
   }
@@ -8356,65 +8696,100 @@ class Attr {
 }
 function New_33(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
   return{
-    participantId:participantId, 
-    displayName:displayName, 
-    login:login, 
-    authenticated:authenticated, 
-    provider:provider, 
-    logoutPath:logoutPath, 
-    authenticatedParticipantId:authenticatedParticipantId, 
-    viewAsParticipantId:viewAsParticipantId, 
+    participantId:participantId,
+    displayName:displayName,
+    login:login,
+    authenticated:authenticated,
+    provider:provider,
+    logoutPath:logoutPath,
+    authenticatedParticipantId:authenticatedParticipantId,
+    viewAsParticipantId:viewAsParticipantId,
     viewAsActive:viewAsActive
   };
 }
 function New_34(messageId, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId, 
-    fromId:fromId, 
-    toId:toId, 
-    scope:scope, 
-    body:body, 
+    messageId:messageId,
+    fromId:fromId,
+    toId:toId,
+    scope:scope,
+    body:body,
     createdAtUtc:createdAtUtc
   };
 }
-function New_35(messages, nextAfterMessageId){
-  return{messages:messages, nextAfterMessageId:nextAfterMessageId};
-}
-function New_36(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_35(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
   return{
-    streamId:streamId, 
-    newestSequence:newestSequence, 
-    cachedCount:cachedCount, 
-    source:source, 
+    commandId:commandId,
+    groupId:groupId,
+    expectedRevision:expectedRevision,
+    participantId:participantId,
+    displayName:displayName,
+    role:role,
+    historyPolicy:historyPolicy,
+    includeHistoryBeforeFirstJoin:includeHistoryBeforeFirstJoin
+  };
+}
+function New_36(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
+  return{
+    messages:messages,
+    nextAfterMessageId:nextAfterMessageId,
+    oldestSequence:oldestSequence,
+    hasOlderMessages:hasOlderMessages
+  };
+}
+function New_37(streamId, newestSequence, cachedCount, source, touchedAt){
+  return{
+    streamId:streamId,
+    newestSequence:newestSequence,
+    cachedCount:cachedCount,
+    source:source,
     touchedAt:touchedAt
   };
 }
-function New_37(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_38(commandId, groupId, body, tags){
   return{
-    type:type, 
-    requestId:requestId, 
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
-    tags:tags, 
-    browserId:browserId, 
-    tabId:tabId
-  };
-}
-function New_38(fromId, toId, body, tags){
-  return{
-    fromId:fromId, 
-    toId:toId, 
-    body:body, 
+    commandId:commandId,
+    groupId:groupId,
+    body:body,
     tags:tags
   };
 }
-function New_39(messageId, speaker, createdAtUtc, body){
+function New_39(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    messageId:messageId, 
-    speaker:speaker, 
-    createdAtUtc:createdAtUtc, 
+    type:type,
+    requestId:requestId,
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags,
+    browserId:browserId,
+    tabId:tabId
+  };
+}
+function New_40(fromId, toId, body, tags){
+  return{
+    fromId:fromId,
+    toId:toId,
+    body:body,
+    tags:tags
+  };
+}
+function New_41(messageId, speaker, createdAtUtc, body){
+  return{
+    messageId:messageId,
+    speaker:speaker,
+    createdAtUtc:createdAtUtc,
     body:body
+  };
+}
+function New_42(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
+  return{
+    commandId:commandId,
+    groupId:groupId,
+    displayName:displayName,
+    initialParticipantIds:initialParticipantIds,
+    historyPolicy:historyPolicy,
+    tags:tags
   };
 }
 let _c_2=Lazy((_i) => class $StartupCode_ArguFormRenderer {
@@ -8476,11 +8851,11 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_40(rawArgu, duTypeName, unionCaseName, keyJson){
+function New_43(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
-    rawArgu:rawArgu, 
-    duTypeName:duTypeName, 
-    unionCaseName:unionCaseName, 
+    rawArgu:rawArgu,
+    duTypeName:duTypeName,
+    unionCaseName:unionCaseName,
     keyJson:keyJson
   };
 }
@@ -8682,7 +9057,7 @@ function Handler(name, callback){
 function Dynamic(name, view){
   return Dynamic_1(view, (el) =>(v) => el.setAttribute(name, v));
 }
-function New_41(outputDirectory){
+function New_44(outputDirectory){
   return{outputDirectory:outputDirectory};
 }
 function ofSeqNonCopying(xs){
@@ -8902,7 +9277,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_49(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_52(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -8962,8 +9337,8 @@ function SyncElemNode(childrenOnly, el){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""), 
-    Dirty:false, 
+    Text:globalThis.document.createTextNode(""),
+    Dirty:false,
     Value:""
   };
 }
@@ -9077,52 +9452,52 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_42(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+function New_45(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId, 
-    TabId:TabId, 
-    ValueId:ValueId, 
-    CreatedAtUtc:CreatedAtUtc, 
-    Direction:Direction, 
-    Tags:Tags, 
+    PageId:PageId,
+    TabId:TabId,
+    ValueId:ValueId,
+    CreatedAtUtc:CreatedAtUtc,
+    Direction:Direction,
+    Tags:Tags,
     Payload:Payload
   };
 }
-function New_43(Kind, RenderSummary, Actions_1, Mount){
+function New_46(Kind, RenderSummary, Actions_1, Mount){
   return{
-    Kind:Kind, 
-    RenderSummary:RenderSummary, 
-    Actions:Actions_1, 
+    Kind:Kind,
+    RenderSummary:RenderSummary,
+    Actions:Actions_1,
     Mount:Mount
   };
 }
-function New_44(shape, label_1, badge, className){
+function New_47(shape, label_1, badge, className){
   return{
-    shape:shape, 
-    label:label_1, 
-    badge:badge, 
+    shape:shape,
+    label:label_1,
+    badge:badge,
     className:className
   };
 }
-function New_45(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_48(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath, 
-    sessionPath:sessionPath, 
-    logoutPath:logoutPath, 
-    returnUrl:returnUrl, 
-    protectedRoute:protectedRoute, 
-    sessionCookieName:sessionCookieName, 
-    title:title, 
-    lead:lead, 
-    providerLabel:providerLabel, 
+    submitPath:submitPath,
+    sessionPath:sessionPath,
+    logoutPath:logoutPath,
+    returnUrl:returnUrl,
+    protectedRoute:protectedRoute,
+    sessionCookieName:sessionCookieName,
+    title:title,
+    lead:lead,
+    providerLabel:providerLabel,
     aclLabel:aclLabel
   };
 }
-function New_46(userName, password, returnUrl, keepSession){
+function New_49(userName, password, returnUrl, keepSession){
   return{
-    userName:userName, 
-    password:password, 
-    returnUrl:returnUrl, 
+    userName:userName,
+    password:password,
+    returnUrl:returnUrl,
     keepSession:keepSession
   };
 }
@@ -9164,18 +9539,18 @@ function arrContains(item, arr){
     else i=i+1;
   return!c;
 }
-function New_47(participantId){
+function New_50(participantId){
   return{participantId:participantId};
 }
-function New_48(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_51(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId, 
-    title:title, 
-    setName:setName, 
-    shape:shape, 
-    tabId:tabId, 
-    tabMode:tabMode, 
-    path:path, 
+    pageId:pageId,
+    title:title,
+    setName:setName,
+    shape:shape,
+    tabId:tabId,
+    tabMode:tabMode,
+    path:path,
     description:description
   };
 }
@@ -9275,7 +9650,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_50(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_53(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Add(x, t){
   return Put((_1, _2) => _2, x, t);
@@ -9387,7 +9762,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_51(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_54(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -9572,8 +9947,8 @@ function counter(){
 }
 function Ready(Item1, Item2){
   return{
-    $:2, 
-    $0:Item1, 
+    $:2,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -9582,8 +9957,8 @@ function Forever(Item){
 }
 function Waiting(Item1, Item2){
   return{
-    $:3, 
-    $0:Item1, 
+    $:3,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -9595,8 +9970,8 @@ function EmbedDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0, 
-    $0:Item1, 
+    $:0,
+    $0:Item1,
     $1:Item2
   };
 }
@@ -9749,9 +10124,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1, 
-      Children:Children_1, 
-      El:El, 
+      Attr:Attr_1,
+      Children:Children_1,
+      El:El,
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -9936,7 +10311,7 @@ class KeyCollection extends Object_1 {
     this.d=d;
   }
 }
-function New_49(PreviousNodes, Top){
+function New_52(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -10014,7 +10389,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_52((a) => {
+    r(New_55((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -10039,7 +10414,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_52((a) => {
+    if(!ct.c)c(New_55((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -10142,12 +10517,12 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_50(Node_1, Left, Right, Height, Count){
+function New_53(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1, 
-    Left:Left, 
-    Right:Right, 
-    Height:Height, 
+    Node:Node_1,
+    Left:Left,
+    Right:Right,
+    Height:Height,
     Count:Count
   };
 }
@@ -10183,16 +10558,16 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_2(Updates_1, {
-      c:Current, 
-      s:Snap, 
+      c:Current,
+      s:Snap,
       v:VarView
     });
   }
 }
-function New_51(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_54(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem, 
-    DynFlags:DynFlags, 
+    DynElem:DynElem,
+    DynFlags:DynFlags,
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -10248,8 +10623,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2, 
-    $0:x, 
+    $:2,
+    $0:x,
     $1:y
   };
 }
@@ -10524,7 +10899,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_52(k, ct){
+function New_55(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -10546,7 +10921,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_53(false, []);
+    this.noneCT=New_56(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -10555,7 +10930,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_53(IsCancellationRequested, Registrations){
+function New_56(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -10700,8 +11075,8 @@ class CheckedInput {
   }
   static Valid(value, inputText){
     return Create_2(CheckedInput, {
-      $:0, 
-      $0:value, 
+      $:0,
+      $0:value,
       $1:inputText
     });
   }
@@ -10812,7 +11187,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create_1(f){
-  return New_54(false, f, forceLazy);
+  return New_57(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -10833,10 +11208,10 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_54(created, evalOrVal, force){
+function New_57(created, evalOrVal, force){
   return{
-    c:created, 
-    v:evalOrVal, 
+    c:created,
+    v:evalOrVal,
     f:force
   };
 }
