@@ -1,0 +1,17 @@
+# PTCS 0.2.32 Dynamic consumer closure
+
+## Pre-work plan
+
+- 背景/上下文：adapter packages已發布，但closeout checker發現四個active test/demo PackageReference仍鎖前一版。
+- 目標：同步Dynamic adapter active consumers並驗證測試/demo仍相容。
+- 假設：PTCS 0.2.32未改Dynamic extension contract，consumer只需exact package alignment。
+- 步驟：更新四個references；跑兩套tests與LiveDemo Release build；重跑checker。
+- 範圍：Dynamic.Ptcs.Tests、PtcsTaClient.Tests與Ptcs.LiveDemo，不改renderer/SDUI runtime。
+- 驗收：consumer mismatch為零，tests/build通過。
+- 風險：canonical `websharper.log` ACL異常；無client source變更時沿用已驗bundle，不誤稱重新編譯前端。
+
+## Operations
+
+- 2026-09-16 09:50 +08:00：Dynamic.Ptcs active consumers同步0.1.23，Ptcs.Client active consumers同步0.1.31。
+- 2026-09-16 09:54 +08:00：兩套tests通過13/13與15/15。LiveDemo首次build揭露direct PTCS 0.2.27 downgrade warning；同步direct ref與contentFiles path至0.2.32後重建。
+- 2026-09-16 09:56 +08:00：LiveDemo Release build通過0 warnings/0 errors；active adapter consumer graph完成對齊。

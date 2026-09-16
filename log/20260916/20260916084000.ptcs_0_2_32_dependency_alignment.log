@@ -1,0 +1,12 @@
+# PTCS 0.2.32 Dynamic dependency alignment
+
+## Pre-work plan
+
+- 目標：將Dynamic PTCS server/client adapters精確對齊`PulseTrade.Comm.Spa 0.2.32`，不改Dynamic行為或bundle source。
+- 範圍：`PulseTrade.Comm.Spa.Dynamic.Ptcs`與`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` package metadata。
+- 驗收：exact package references可restore/build，package發布，formal Host artifact載入對應assembly版本。
+
+## Operations
+
+- 2026-09-16 08:40–09:17 +08:00：Dynamic.Ptcs進版0.1.23、Dynamic.Ptcs.Client進版0.1.31，兩者exact reference改為PTCS 0.2.32並完成package publication。
+- 2026-09-16 09:17 +08:00：formal Host artifact核對載入Dynamic.Ptcs 0.1.23；81/82/8798 health與PTCS focused browser gates通過。
