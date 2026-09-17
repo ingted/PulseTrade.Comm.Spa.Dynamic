@@ -1380,3 +1380,7 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 兩個package均已完成build/pack/push並進入formal Host graph；deployed artifact載入Dynamic.Ptcs 0.1.23，81/82/8798 health與PTCS focused browser gates通過。
 - Active consumers同步：Dynamic.Ptcs.Tests與LiveDemo鎖0.1.23，PtcsTaClient.Tests與LiveDemo鎖Ptcs.Client 0.1.31，避免測試繼續驗舊contract。
 - LiveDemo direct PTCS reference與contentFiles path同步0.2.32，消除adapter 0.1.23所需0.2.32被direct 0.2.27降版的NU1605。
+## 2026-09-17 - PTCS 0.2.34 exact adapter alignment
+
+- `PulseTrade.Comm.Spa.Dynamic.Ptcs` 0.1.24→0.1.25與`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` 0.1.32→0.1.33，兩者exact-lock PTCS 0.2.34。Release build各0 error，兩個NuGet package已push並由正式Spa.Host依賴鏈消費。本輪未變更Dynamic renderer或DSL行為。
+- Active consumers同步：`Dynamic.Ptcs.Tests`與`LiveDemo`鎖Dynamic.Ptcs 0.1.25，`PtcsTaClient.Tests`與`LiveDemo`鎖Ptcs.Client 0.1.33；`LiveDemo`的direct PTCS引用鎖0.2.34，消除NU1605降版。Expecto實跑13/13與15/15通過，LiveDemo Release build 0 error；僅剩既有WS9002 Bundle警告。

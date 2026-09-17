@@ -919,7 +919,7 @@ function mountAppendPage(page, definition){
     url="/pages/api/state?pageId="+encodeURIComponent(asText(definition.pageId))+"&limit="+String(defaultCacheLimit());
     if(!isBlank(filterText))url=url+"&key="+encodeURIComponent(filterText);
     const cacheKey_1=stateCacheKey();
-    const fetchFullState=() => {
+    const fetchFullState=(onFailure) => {
       getJson(url, (data) => {
         if(generation===loadGeneration){
           writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, appendPageValueCount(data), "append-page-state");
@@ -930,22 +930,23 @@ function mountAppendPage(page, definition){
         if(generation===loadGeneration){
           setStatus(status, error_2);
           setStatus(workState, error_2);
+          onFailure();
         }
       });
     };
     readJson(cacheKey_1, (a) => {
       if(a==null){
-        if(generation===loadGeneration)fetchFullState();
+        if(generation===loadGeneration)fetchFullState(() => { });
       }
       else if(a.$0,generation===loadGeneration){
         const cached=a.$0;
         applySnapshot("cached", cached);
-        const sequenceBuckets=filter_1((bucket) => bucket.maxSequence>0n, arrayOrEmpty(cached.buckets));
-        if(length(sequenceBuckets)===0)fetchFullState();
-        else {
-          iter((_3) => readNewerFromBackend(generation, _3), sequenceBuckets);
-          fetchFullState();
-        }
+        fetchFullState(() => {
+          const o=tryFind((bucket) => sameText(bucket.keyId, selected), filter_1((bucket) => bucket.maxSequence>0n, arrayOrEmpty(cached.buckets)));
+          const x=o==null?tryFind((bucket) => bucket.maxSequence>0n, arrayOrEmpty(cached.buckets)):(o.$0,o);
+          if(x==null){ }
+          else readNewerFromBackend(generation, x.$0);
+        });
       }
     });
   };
@@ -1731,7 +1732,7 @@ function setMain(node){
   }
 }
 function mountSets(page){
-  let selected, buckets, syncSocket, queuedSyncFrames, subscribedStreams, tailRequestedStreams, registryTailRequested, ensureSetsSubscriptions, loadGeneration, hiddenSetStreams;
+  let selected, buckets, syncSocket, queuedSyncFrames, subscribedStreams, tailRequestedStreams, registryTailRequested, ensureSetsSubscriptions, loadGeneration, hiddenSetStreams, batchingSetSyncEvents;
   page.className="page sets-grid";
   selected="";
   buckets=[];
@@ -1764,6 +1765,8 @@ function mountSets(page){
   ensureSetsSubscriptions=() => { };
   loadGeneration=0;
   hiddenSetStreams=[];
+  batchingSetSyncEvents=false;
+  const maxSidebarBuckets=200;
   const sameText=(left, right) => asText(left).toLowerCase()==asText(right).toLowerCase();
   const streamIdentity=(streamKey) => concat_1("\n", [asText(streamKey.pageId), asText(streamKey.mode), asText(streamKey.setName), concat_1("\u001f", arrayOrEmpty(streamKey.keys))]);
   const setValueStreamKey=(pageId, mode, setName, keys) => New_6(asText(pageId), textOr("set", mode), asText(setName), arrayOrEmpty(keys));
@@ -1782,7 +1785,7 @@ function mountSets(page){
   const currentFilterTexts=() =>[isBlank(keyFilter.value)?"":Trim(keyFilter.value), isBlank(setFilter.value)?"":Trim(setFilter.value)];
   const currentCacheKey=() => {
     const p=currentFilterTexts();
-    return cacheKey("sets-state", ofArray([p[0], p[1]]));
+    return cacheKey("sets-state-v2", ofArray([p[0], p[1]]));
   };
   const filtersAccept=(setName, keys) => {
     const p=currentFilterTexts();
@@ -1793,7 +1796,7 @@ function mountSets(page){
   const sortSetBuckets=(rows) => sortBy((bucket) =>[asText(bucket.setName), asText(bucket.keyId)], arrayOrEmpty(rows));
   const writeSetsCache=() => {
     const snapshot=New_21(fold((_1, _2) => Compare(_1, _2)===1?_1:_2, 0n, map((bucket) => bucket==null?0n:bucket.maxSequence, buckets)), buckets);
-    writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state");
+    writeSnapshotWithWatermark(currentCacheKey(), snapshot, snapshot.maxSequence, setValueCount(snapshot.buckets), "sets-state-v2");
   };
   function renderList(){
     clear(list);
@@ -1808,7 +1811,7 @@ function mountSets(page){
         return ensureSetsSubscriptions();
       });
       list.appendChild(item);
-    }, buckets);
+    }, buckets.slice(0, maxSidebarBuckets));
   }
   function renderDetail(){
     clear(work);
@@ -1845,7 +1848,7 @@ function mountSets(page){
   const applySnapshot=(source, data) => {
     buckets=arrayOrEmpty(data.buckets);
     (isBlank(selected)||!exists((bucket) => bucket.keyId==selected, buckets))&&length(buckets)>0?selected=get(buckets, 0).keyId:length(buckets)===0?selected="":void 0;
-    setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s)");
+    length(buckets)>maxSidebarBuckets?setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s); showing "+String(maxSidebarBuckets)+". Use filters to narrow the list."):setStatus(status, "Loaded "+String(length(buckets))+" "+String(source)+" bucket(s)");
     renderList();
     renderDetail();
     return ensureSetsSubscriptions();
@@ -1861,6 +1864,7 @@ function mountSets(page){
     if(!isBlank(keyText))parts.push("participantId="+encodeURIComponent(keyText));
     if(!isBlank(setText))parts.push("setName="+encodeURIComponent(setText));
     parts.push("limit="+String(defaultRenderLimit()));
+    parts.push("metadataOnly=true");
     const cacheKey_1=currentCacheKey();
     readJson(cacheKey_1, (a) => {
       if(a==null){
@@ -1876,7 +1880,7 @@ function mountSets(page){
     });
     getJson("/sets/api/state?"+concat_1("&", ofSeq(parts)), (data) => {
       if(generation===loadGeneration){
-        writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, setValueCount(data.buckets), "sets-state");
+        writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, setValueCount(data.buckets), "sets-state-v2");
         applySnapshot("backend", data);
       }
     }, (error_2) => {
@@ -1886,14 +1890,20 @@ function mountSets(page){
   const closeActionPool=() => {
     actionPool.removeAttribute("open");
   };
-  const tryReadSetRegistry=(event) => {
-    if(event==null||isBlank(event.payload))return null;
+  const tryReadSetRegistries=(event) => {
+    if(event==null||isBlank(event.payload))return[];
     else try {
-      const wire=json(event.payload);
-      return wire==null||asText(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
+      if(asText(event.sourceKind).toLowerCase()=="set.stream.hidden.batch"){
+        const batch=json(event.payload);
+        return batch==null||asText(batch.schema)!="ptc.comm.spa.set.stream.batch.v1"?[]:map((wire_1) => setValueStreamKey(wire_1.pageId, wire_1.mode, wire_1.setName, wire_1.keys), arrayOrEmpty(batch.streams));
+      }
+      else {
+        const wire=json(event.payload);
+        return wire==null||asText(wire.schema)!="ptc.comm.spa.set.stream.v1"?[]:[setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys)];
+      }
     }
     catch(m){
-      return null;
+      return[];
     }
   };
   const setWsState=(value) => {
@@ -1995,100 +2005,102 @@ function mountSets(page){
   }
   function handleSyncEvent(event){
     if(!(event==null)&&!(event.streamKey==null)){
-      let _1, updated, _2;
       const m=asText(event.sourceKind).toLowerCase();
-      if(m=="set.stream"){
-        const m_1=tryReadSetRegistry(event);
-        if(m_1==null)void 0;
-        else {
-          const streamKey=m_1.$0;
-          const setName=asText(streamKey.setName);
-          const keys=arrayOrEmpty(streamKey.keys);
-          const keyId=setKeyId(setName, keys);
-          if(filtersAccept(setName, keys)&&eventIsVisibleAfterTombstone(keyId, event.createdAtUtc)){
-            forgetHidden(keyId);
-            if(!exists((bucket) => sameText(bucket.keyId, keyId), buckets)){
-              buckets=sortSetBuckets(buckets.concat([New_20(keyId, setName, keys, 0, event.sequence, asText(event.createdAtUtc), [])]));
-              isBlank(selected)?selected=keyId:void 0;
-              renderList();
-              renderDetail();
-              writeSetsCache();
-            }
-            if(sameText(keyId, selected)){
-              const selectedStreamKey=setValueStreamKey("", "set", setName, keys);
-              subscribeStream(selectedStreamKey);
-              requestReadTailOnce(selectedStreamKey);
-            }
-            else void 0;
-          }
-          else void 0;
-        }
-      }
-      else if(m=="set.stream.hidden"){
-        const m_2=tryReadSetRegistry(event);
-        if(m_2==null)void 0;
-        else {
-          const streamKey_1=m_2.$0;
-          const keyId_1=setKeyId(asText(streamKey_1.setName), arrayOrEmpty(streamKey_1.keys));
-          hiddenSetStreams=filter_1((_5) =>!sameText(_5[0], keyId_1), hiddenSetStreams).concat([[keyId_1, asText(event.createdAtUtc)]]);
-          buckets=filter_1((bucket) =>!sameText(bucket.keyId, keyId_1), buckets);
-          if(sameText(selected, keyId_1)){
-            const o=tryHead(buckets);
-            const o_1=o==null?null:Some(o.$0.keyId);
-            _1=selected=o_1==null?"":o_1.$0;
-          }
-          else _1=void 0;
-          renderList();
-          renderDetail();
-          writeSetsCache();
-          setStatus(status, "Hidden set stream "+keyId_1);
-        }
-      }
-      else if(m=="set"){
-        const keyId_2=setKeyId(asText(event.streamKey.setName), arrayOrEmpty(event.streamKey.keys));
-        if(eventIsVisibleAfterTombstone(keyId_2, event.createdAtUtc)){
-          forgetHidden(keyId_2);
-          if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
-            const setName_1=asText(event.streamKey.setName);
-            const keys_1=arrayOrEmpty(event.streamKey.keys);
-            if(filtersAccept(setName_1, keys_1)){
-              const value=New_22(textOr(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText(event.createdAtUtc), asText(event.payload), arrayOrEmpty(event.tags));
-              const keyId_3=setKeyId(setName_1, keys_1);
-              const m_3=tryFind((bucket) => sameText(bucket.keyId, keyId_3), buckets);
-              if(m_3==null)updated=New_20(keyId_3, setName_1, keys_1, 1, event.sequence, asText(event.createdAtUtc), [value]);
-              else {
-                const existing=m_3.$0;
-                const existingValues=arrayOrEmpty(existing.values);
-                const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
-                const v=filter_1((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
-                const mergedValues=latestArray(defaultRenderLimit(), v);
-                if(alreadyVisible)_2=existing.valueCount;
-                else {
-                  const a=existing.valueCount;
-                  const b=length(existingValues);
-                  let _3=Compare(a, b)===1?a:b;
-                  _2=_3+1;
-                }
-                const a_1=existing.maxSequence;
-                const b_1=event.sequence;
-                let _4=Compare(a_1, b_1)===1?a_1:b_1;
-                updated=New_20(existing.keyId, existing.setName, existing.keys, _2, _4, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+      switch(m){
+        case"set.stream":
+          iter((streamKey) => {
+            const setName_1=asText(streamKey.setName);
+            const keys_1=arrayOrEmpty(streamKey.keys);
+            const keyId_2=setKeyId(setName_1, keys_1);
+            if(filtersAccept(setName_1, keys_1)&&eventIsVisibleAfterTombstone(keyId_2, event.createdAtUtc)){
+              forgetHidden(keyId_2);
+              if(!exists((bucket) => sameText(bucket.keyId, keyId_2), buckets)){
+                buckets=sortSetBuckets(buckets.concat([New_20(keyId_2, setName_1, keys_1, 0, event.sequence, asText(event.createdAtUtc), [])]));
+                isBlank(selected)?selected=keyId_2:void 0;
+                !batchingSetSyncEvents?(renderList(),renderDetail(),writeSetsCache()):void 0;
               }
-              buckets=sortSetBuckets(filter_1((bucket) =>!sameText(bucket.keyId, keyId_3), buckets).concat([updated]));
-              selected=keyId_3;
+              if(sameText(keyId_2, selected)){
+                const selectedStreamKey=setValueStreamKey("", "set", setName_1, keys_1);
+                subscribeStream(selectedStreamKey);
+                requestReadTailOnce(selectedStreamKey);
+              }
+              else void 0;
+            }
+            else void 0;
+          }, tryReadSetRegistries(event));
+          break;
+        case"set.stream.hidden.batch":
+        case"set.stream.hidden":
+          iter((streamKey) => {
+            let _4;
+            const keyId_2=setKeyId(asText(streamKey.setName), arrayOrEmpty(streamKey.keys));
+            hiddenSetStreams=filter_1((_5) =>!sameText(_5[0], keyId_2), hiddenSetStreams).concat([[keyId_2, asText(event.createdAtUtc)]]);
+            buckets=filter_1((bucket) =>!sameText(bucket.keyId, keyId_2), buckets);
+            if(sameText(selected, keyId_2)){
+              const o=tryHead(buckets);
+              const o_1=o==null?null:Some(o.$0.keyId);
+              _4=selected=o_1==null?"":o_1.$0;
+            }
+            else _4=void 0;
+            if(!batchingSetSyncEvents){
               renderList();
               renderDetail();
               writeSetsCache();
-              ensureSetsSubscriptions();
-              setStatus(status, "Synced set event "+value.valueId);
             }
-            else void 0;
+            setStatus(status, "Hidden set stream "+keyId_2);
+          }, tryReadSetRegistries(event));
+          break;
+        case"set":
+          let updated, _1;
+          const keyId=setKeyId(asText(event.streamKey.setName), arrayOrEmpty(event.streamKey.keys));
+          if(eventIsVisibleAfterTombstone(keyId, event.createdAtUtc)){
+            forgetHidden(keyId);
+            if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
+              const setName=asText(event.streamKey.setName);
+              const keys=arrayOrEmpty(event.streamKey.keys);
+              if(filtersAccept(setName, keys)){
+                const value=New_22(textOr(event.eventId, event.sourceId), arrayOrEmpty(event.streamKey.keys), asText(event.createdAtUtc), asText(event.payload), arrayOrEmpty(event.tags));
+                const keyId_1=setKeyId(setName, keys);
+                const m_1=tryFind((bucket) => sameText(bucket.keyId, keyId_1), buckets);
+                if(m_1==null)updated=New_20(keyId_1, setName, keys, 1, event.sequence, asText(event.createdAtUtc), [value]);
+                else {
+                  const existing=m_1.$0;
+                  const existingValues=arrayOrEmpty(existing.values);
+                  const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
+                  const v=filter_1((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
+                  const mergedValues=latestArray(defaultRenderLimit(), v);
+                  if(alreadyVisible)_1=existing.valueCount;
+                  else {
+                    const a=existing.valueCount;
+                    const b=length(existingValues);
+                    let _2=Compare(a, b)===1?a:b;
+                    _1=_2+1;
+                  }
+                  const a_1=existing.maxSequence;
+                  const b_1=event.sequence;
+                  let _3=Compare(a_1, b_1)===1?a_1:b_1;
+                  updated=New_20(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+                }
+                buckets=sortSetBuckets(filter_1((bucket) =>!sameText(bucket.keyId, keyId_1), buckets).concat([updated]));
+                selected=keyId_1;
+                if(!batchingSetSyncEvents){
+                  renderList();
+                  renderDetail();
+                  writeSetsCache();
+                  ensureSetsSubscriptions();
+                }
+                setStatus(status, "Synced set event "+value.valueId);
+              }
+              else null;
+            }
+            else null;
           }
-          else void 0;
-        }
-        else void 0;
+          else null;
+          break;
+        default:
+          null;
+          break;
       }
-      else void 0;
     }
   }
   function handleSyncMessage(text_1){
@@ -2105,7 +2117,18 @@ function mountSets(page){
           handleSyncEvent(response.event);
           break;
         case 2:
-          iter(handleSyncEvent, arrayOrEmpty(response.events));
+          let _1;
+          batchingSetSyncEvents=true;
+          try {
+            _1=iter(handleSyncEvent, arrayOrEmpty(response.events));
+          }
+          finally {
+            batchingSetSyncEvents=false;
+          }
+          renderList();
+          renderDetail();
+          writeSetsCache();
+          ensureSetsSubscriptions();
           break;
         case 3:
           setStatus(status, "WebSocket sets sync error: "+asText(response.error));
@@ -2136,7 +2159,7 @@ function mountSets(page){
     closeActionPool();
     setStatus(status, "Cleaning no-show actor set streams");
     return postJson("/sets/api/clean-no-show-actors", New_23("browser-action"), (reply) => {
-      deleteSnapshotsByPrefix(cacheKey("sets-state", FSharpList.Empty), () => {
+      deleteSnapshotsByPrefix(cacheKey("sets-state-v2", FSharpList.Empty), () => {
         subscribedStreams=[];
         tailRequestedStreams=[];
         registryTailRequested=false;
@@ -2152,7 +2175,7 @@ function mountSets(page){
     closeActionPool();
     setStatus(status, "Cleaning inactive participant collections");
     postJson("/sets/api/clean-inactive-participant-collections", New_23("browser-action"), (reply) => {
-      deleteSnapshotsByPrefix(cacheKey("sets-state", FSharpList.Empty), () => {
+      deleteSnapshotsByPrefix(cacheKey("sets-state-v2", FSharpList.Empty), () => {
         subscribedStreams=[];
         tailRequestedStreams=[];
         registryTailRequested=false;
@@ -2475,6 +2498,7 @@ function mountActors(page){
       switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
         case 0:
           setWsState("subscribed");
+          requestRegistryTail();
           break;
         case 1:
           handleSyncEvent(response.event);
@@ -2495,25 +2519,34 @@ function mountActors(page){
     }
   }
   reload.addEventListener("click", load);
+  readJson(cacheKey_1, (a) => {
+    if(a==null){ }
+    else applySnapshot("cached", a.$0);
+  });
   load();
   subscribeRegistry();
 }
 function mountManagement(page){
-  let allPages, allSets, allParticipants, selectedPageKeys, selectedSetKeys, pageIndex, setPageIndex, participantPageIndex, pageSize, setPageSize, participantPageSize;
+  let allPages, allSets, allGroups, allParticipants, selectedPageKeys, selectedSetKeys, selectedParticipantKeys, pageIndex, setPageIndex, groupPageIndex, participantPageIndex, pageSize, setPageSize, groupPageSize, participantPageSize;
   page.className="page management-page";
   const pageRows=Create((row) => asText(row.pageId)+"\u001f"+asText(row.tabId), FSharpList.Empty);
   const setRows=Create((row) => asText(row.keyId), FSharpList.Empty);
+  const groupRows=Create((row) => asText(row.groupId), FSharpList.Empty);
   const participantRows=Create((row) => asText(row.participantId), FSharpList.Empty);
   allPages=[];
   allSets=[];
+  allGroups=[];
   allParticipants=[];
   selectedPageKeys=[];
   selectedSetKeys=[];
+  selectedParticipantKeys=[];
   pageIndex=0;
   setPageIndex=0;
+  groupPageIndex=0;
   participantPageIndex=0;
   pageSize=10;
   setPageSize=10;
+  groupPageSize=10;
   participantPageSize=10;
   const heading=element("div", "management-head", null);
   const title=element("div", "", null);
@@ -2523,7 +2556,8 @@ function mountManagement(page){
   const pageSection=setTestId("management-pages", element("section", "management-section", null));
   const pageSectionHead=element("div", "management-section-head", null);
   const pageCount=setTestId("management-pages-count", element("span", "state", ""));
-  append(pageSectionHead, [element("h2", "", "Tab pages"), pageCount]);
+  const pageFilter=setTestId("management-pages-filter", input("Filter tab pages"));
+  append(pageSectionHead, [element("h2", "", "Tab pages"), pageFilter, pageCount]);
   const pageSelectionBar=element("div", "management-selection-bar", null);
   const pageSelectionCount=setTestId("management-pages-selected-count", element("span", "state", "0 selected"));
   const pageShowSelected=setTestId("management-pages-show-selected", button("", "Show selected"));
@@ -2545,7 +2579,8 @@ function mountManagement(page){
   const setSection=setTestId("management-sets", element("section", "management-section", null));
   const setSectionHead=element("div", "management-section-head", null);
   const setCount=setTestId("management-sets-count", element("span", "state", ""));
-  append(setSectionHead, [element("h2", "", "Set contents"), setCount]);
+  const setFilter=setTestId("management-sets-filter", input("Filter set contents"));
+  append(setSectionHead, [element("h2", "", "Set contents"), setFilter, setCount]);
   const setSelectionBar=element("div", "management-selection-bar", null);
   const setSelectionCount=setTestId("management-sets-selected-count", element("span", "state", "0 selected"));
   const setDeleteSelected=setTestId("management-sets-delete-selected", button("management-delete", "Delete selected"));
@@ -2560,10 +2595,34 @@ function mountManagement(page){
   const setPagerStatus=setTestId("management-sets-page", element("span", "state", ""));
   append(setPager, [setPrevious, setNext, element("span", "management-page-size-label", "Rows"), setSizeSelect, setPagerStatus]);
   append(setSection, [setSectionHead, setSelectionBar, setTableHost, setPager]);
+  const groupSection=setTestId("management-groups", element("section", "management-section", null));
+  const groupSectionHead=element("div", "management-section-head", null);
+  const groupCount=setTestId("management-groups-count", element("span", "state", ""));
+  const groupFilter=setTestId("management-groups-filter", input("Filter groups"));
+  append(groupSectionHead, [element("h2", "", "Groups"), groupFilter, groupCount]);
+  const groupTableHostId="management-groups-grid";
+  const groupTableHost=setId(groupTableHostId, element("div", "management-table-viewport", null));
+  const groupPager=element("div", "management-pager", null);
+  const groupPrevious=setTestId("management-groups-previous", button("", "Previous"));
+  const groupNext=setTestId("management-groups-next", button("", "Next"));
+  const groupSizeSelect=setTestId("management-groups-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
+  const groupPagerStatus=setTestId("management-groups-page", element("span", "state", ""));
+  append(groupPager, [groupPrevious, groupNext, element("span", "management-page-size-label", "Rows"), groupSizeSelect, groupPagerStatus]);
+  append(groupSection, [groupSectionHead, groupTableHost, groupPager]);
   const participantSection=setTestId("management-participants", element("section", "management-section", null));
   const participantSectionHead=element("div", "management-section-head", null);
   const participantCount=setTestId("management-participants-count", element("span", "state", ""));
-  append(participantSectionHead, [element("h2", "", "Participants"), participantCount]);
+  const participantFilter=setTestId("management-participants-filter", input("Filter participants"));
+  append(participantSectionHead, [element("h2", "", "Participants"), participantFilter, participantCount]);
+  const participantSelectionBar=element("div", "management-selection-bar", null);
+  const participantSelectionCount=setTestId("management-participants-selected-count", element("span", "state", "0 selected"));
+  const participantShowSelected=setTestId("management-participants-show-selected", button("", "Show selected"));
+  const participantHideSelected=setTestId("management-participants-hide-selected", button("", "Hide selected"));
+  const participantDeleteSelected=setTestId("management-participants-delete-selected", button("management-delete", "Delete selected"));
+  participantShowSelected.setAttribute("disabled", "disabled");
+  participantHideSelected.setAttribute("disabled", "disabled");
+  participantDeleteSelected.setAttribute("disabled", "disabled");
+  append(participantSelectionBar, [participantSelectionCount, participantShowSelected, participantHideSelected, participantDeleteSelected]);
   const participantTableHostId="management-participants-grid";
   const participantTableHost=setId(participantTableHostId, element("div", "management-table-viewport", null));
   const participantPager=element("div", "management-pager", null);
@@ -2572,12 +2631,13 @@ function mountManagement(page){
   const participantSizeSelect=setTestId("management-participants-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
   const participantPagerStatus=setTestId("management-participants-page", element("span", "state", ""));
   append(participantPager, [participantPrevious, participantNext, element("span", "management-page-size-label", "Rows"), participantSizeSelect, participantPagerStatus]);
-  append(participantSection, [participantSectionHead, participantTableHost, participantPager]);
-  append(page, [heading, pageSection, setSection, participantSection]);
+  append(participantSection, [participantSectionHead, participantSelectionBar, participantTableHost, participantPager]);
+  append(page, [heading, pageSection, setSection, groupSection, participantSection]);
   const pageCountFor=(total, size) => total===0?1:size===0?1:toInt(Math.ceil(total/size));
   const pageRowKey=(row) => asText(row.pageId)+"\u001f"+asText(row.tabId);
   const pageSelectionElementId=(row) =>"management-page-selection-"+asText(row.pageId)+"-"+asText(row.tabId);
   const setSelectionElementId=(row) =>"management-set-selection-"+asText(row.keyId);
+  const participantSelectionElementId=(row) =>"management-participant-selection-"+asText(row.participantId);
   const toggleSelection=(key, isChecked, selected) => isChecked?exists((current) => current==key, selected)?selected:selected.concat([key]):filter_1((current) => current!=key, selected);
   const sliceRows=(index, size, rows) => {
     if(size===0)return rows;
@@ -2589,11 +2649,30 @@ function mountManagement(page){
       return _2.slice(0, size);
     }
   };
+  const matchesFilter=(filterInput, values) => {
+    const query=Trim(asText(filterInput.value)).toLowerCase();
+    return isBlank(query)||exists((value) => asText(value).toLowerCase().indexOf(query)!=-1, values);
+  };
+  const filteredPages=() => filter_1((row) => matchesFilter(pageFilter, [row.pageId, row.tabId, row.title, row.path]), allPages);
+  const filteredSets=() => filter_1((row) => matchesFilter(setFilter, [row.keyId, row.setName, concat_1(" ", arrayOrEmpty(row.keys))]), allSets);
+  const filteredParticipants=() => filter_1((row) => matchesFilter(participantFilter, [row.participantId, row.displayName, row.kind, row.status]), allParticipants);
   const pageResourceAllows=(row, action) => pageAclAllows(row.pageId, action)||systemAclAllows("*", action);
   const pageCanSelect=(row) => pageResourceAllows(row, "ptcs.management.page.delete");
   const setCanSelect=() => systemAclAllows("sets", "ptcs.set.clean")||systemAclAllows("*", "ptcs.set.clean");
-  const currentPageRows=() => sliceRows(pageIndex, pageSize, allPages);
-  const currentSetRows=() => sliceRows(setPageIndex, setPageSize, allSets);
+  const participantResourceAllows=(row, action) => aclAllows(action, "ptcs.participant", row.participantId)||systemAclAllows("*", action);
+  const participantCanSelect=(row) => participantResourceAllows(row, "ptcs.management.participant.hide")||participantResourceAllows(row, "ptcs.management.participant.show")||participantResourceAllows(row, "ptcs.management.participant.delete");
+  const currentPageRows=() => {
+    const x=filteredPages();
+    return sliceRows(pageIndex, pageSize, x);
+  };
+  const currentSetRows=() => {
+    const x=filteredSets();
+    return sliceRows(setPageIndex, setPageSize, x);
+  };
+  const currentParticipantRows=() => {
+    const x=filteredParticipants();
+    return sliceRows(participantPageIndex, participantPageSize, x);
+  };
   const setButtonEnabled=(target, enabled) => enabled?target.removeAttribute("disabled"):target.setAttribute("disabled", "disabled");
   const updateHeaderSelection=(checkboxId, currentKeys, selected) => {
     const node=doc().getElementById(checkboxId);
@@ -2625,44 +2704,72 @@ function mountManagement(page){
     setButtonEnabled(setDeleteSelected, length(selectedRows)>0);
     updateHeaderSelection("management-sets-select-current", map((a) => a.keyId, filter_1(setCanSelect, currentSetRows())), selectedSetKeys);
   };
+  const updateParticipantSelectionControl=() => {
+    const selectedRows=filter_1((row) => {
+      const x=row.participantId;
+      return exists((y) => x==y, selectedParticipantKeys);
+    }, allParticipants);
+    participantSelectionCount.textContent=String(length(selectedRows))+" participant"+(length(selectedRows)===1?"":"s")+" selected";
+    setButtonEnabled(participantDeleteSelected, exists((row) => participantResourceAllows(row, "ptcs.management.participant.delete"), selectedRows));
+    setButtonEnabled(participantShowSelected, exists((row) =>!row.visible&&participantResourceAllows(row, "ptcs.management.participant.show"), selectedRows));
+    setButtonEnabled(participantHideSelected, exists((row) => row.visible&&participantResourceAllows(row, "ptcs.management.participant.hide"), selectedRows));
+    updateHeaderSelection("management-participants-select-current", map((a) => a.participantId, filter_1(participantCanSelect, currentParticipantRows())), selectedParticipantKeys);
+  };
   const updateCurrentSelection=(isChecked, currentKeys, selected) => isChecked?distinct(selected.concat(currentKeys)):filter_1((key) =>!exists((y) => Equals(key, y), currentKeys), selected);
   const applyPageProjection=() => {
-    const pages=pageCountFor(length(allPages), pageSize);
+    const filtered=filteredPages();
+    const pages=pageCountFor(length(filtered), pageSize);
     const a=0;
     const a_1=pages-1;
     const b=Compare(a_1, pageIndex)===-1?a_1:pageIndex;
     pageIndex=Compare(a, b)===1?a:b;
-    pageRows.Set(sliceRows(pageIndex, pageSize, allPages));
-    pageCount.textContent=String(length(allPages))+" page lineage(s)";
+    pageRows.Set(sliceRows(pageIndex, pageSize, filtered));
+    pageCount.textContent=String(length(filtered))+" / "+String(length(allPages))+" page lineage(s)";
     pagePagerStatus.textContent="Page "+String(pageIndex+1)+" / "+String(pages);
     setHidden(pageIndex===0, pagePrevious);
     setHidden(pageIndex>=pages-1, pageNext);
     updatePageSelectionControl();
   };
   const applySetProjection=() => {
-    const pages=pageCountFor(length(allSets), setPageSize);
+    const filtered=filteredSets();
+    const pages=pageCountFor(length(filtered), setPageSize);
     const a=0;
     const a_1=pages-1;
     const b=Compare(a_1, setPageIndex)===-1?a_1:setPageIndex;
     setPageIndex=Compare(a, b)===1?a:b;
-    setRows.Set(sliceRows(setPageIndex, setPageSize, allSets));
-    setCount.textContent=String(length(allSets))+" set bucket(s)";
+    setRows.Set(sliceRows(setPageIndex, setPageSize, filtered));
+    setCount.textContent=String(length(filtered))+" / "+String(length(allSets))+" set bucket(s)";
     setPagerStatus.textContent="Page "+String(setPageIndex+1)+" / "+String(pages);
     setHidden(setPageIndex===0, setPrevious);
     setHidden(setPageIndex>=pages-1, setNext);
     updateSetSelectionControl();
   };
+  const applyGroupProjection=() => {
+    const filtered=filter_1((row) => matchesFilter(groupFilter, [row.groupId, row.displayName, row.ownerParticipantId]), allGroups);
+    const pages=pageCountFor(length(filtered), groupPageSize);
+    const a=0;
+    const a_1=pages-1;
+    const b=Compare(a_1, groupPageIndex)===-1?a_1:groupPageIndex;
+    groupPageIndex=Compare(a, b)===1?a:b;
+    groupRows.Set(sliceRows(groupPageIndex, groupPageSize, filtered));
+    groupCount.textContent=String(length(filtered))+" / "+String(length(allGroups))+" group(s)";
+    groupPagerStatus.textContent="Page "+String(groupPageIndex+1)+" / "+String(pages);
+    setHidden(groupPageIndex===0, groupPrevious);
+    setHidden(groupPageIndex>=pages-1, groupNext);
+  };
   const applyParticipantProjection=() => {
-    const pages=pageCountFor(length(allParticipants), participantPageSize);
+    const filtered=filteredParticipants();
+    const pages=pageCountFor(length(filtered), participantPageSize);
     const a=0;
     const a_1=pages-1;
     const b=Compare(a_1, participantPageIndex)===-1?a_1:participantPageIndex;
     participantPageIndex=Compare(a, b)===1?a:b;
-    participantRows.Set(sliceRows(participantPageIndex, participantPageSize, allParticipants));
-    participantCount.textContent=String(length(allParticipants))+" participant(s)";
+    participantRows.Set(sliceRows(participantPageIndex, participantPageSize, filtered));
+    participantCount.textContent=String(length(filtered))+" / "+String(length(allParticipants))+" participant(s)";
     participantPagerStatus.textContent="Page "+String(participantPageIndex+1)+" / "+String(pages);
     setHidden(participantPageIndex===0, participantPrevious);
     setHidden(participantPageIndex>=pages-1, participantNext);
+    updateParticipantSelectionControl();
   };
   const refreshManagementNav=() => {
     getJson("/pages/api/definitions", (definitions) => {
@@ -2756,21 +2863,82 @@ function mountManagement(page){
       });
     }
   }
+  function loadGroups(){
+    setStatus(groupCount, "Loading...");
+    getJson("/management/api/groups", (reply) => {
+      allGroups=arrayOrEmpty(reply.groups);
+      applyGroupProjection();
+    }, (error_2) => {
+      setStatus(groupCount, "Load failed: "+error_2);
+    });
+  }
+  function deleteGroup(row){
+    if(row.canDelete&&groupAclAllows(row.groupId, "ptcs.group.delete")&&globalThis.confirm("Delete group '"+textOr(row.groupId, row.displayName)+"'?")){
+      setStatus(groupCount, "Deleting "+row.groupId+"...");
+      postJson("/chat/api/groups/delete", New_31(newRequestId("management-group-delete"), row.groupId, row.revision, "", "", "", "", null), () => {
+        loadGroups();
+      }, (error_2) => {
+        setStatus(groupCount, "Delete failed: "+error_2);
+      });
+    }
+  }
   function loadParticipants(){
     setStatus(participantCount, "Loading...");
     getJson("/management/api/participants", (reply) => {
       allParticipants=arrayOrEmpty(reply.participants);
+      const availableKeys=map((a) => a.participantId, allParticipants);
+      selectedParticipantKeys=filter_1((selected) => exists((y) => selected==y, availableKeys), selectedParticipantKeys);
       applyParticipantProjection();
     }, (error_2) => {
       setStatus(participantCount, "Load failed: "+error_2);
     });
   }
   function mutateParticipant(endpoint){
-    return(action) =>(row) =>!EndsWith(endpoint, "/delete")||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson(endpoint, New_31(row.participantId), () => {
-      loadParticipants();
-    }, (error_2) => {
-      setStatus(participantCount, action+" failed: "+error_2);
-    })):null;
+    return(action) =>(row) => {
+      const destructive=EndsWith(endpoint, "/delete");
+      return!destructive||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson(endpoint, New_32(row.participantId), () => {
+        let _1;
+        if(destructive){
+          const x=row.participantId;
+          selectedParticipantKeys=filter_1((y) => x!=y, selectedParticipantKeys);
+          _1=loadSets();
+        }
+        else _1=void 0;
+        loadParticipants();
+      }, (error_2) => {
+        setStatus(participantCount, action+" failed: "+error_2);
+      })):null;
+    };
+  }
+  function mutateSelectedParticipants(endpoint){
+    return(action) =>(predicate) => {
+      const rows=filter_1(predicate, filter_1((row) => {
+        const x=row.participantId;
+        return exists((y) => x==y, selectedParticipantKeys);
+      }, allParticipants));
+      return length(rows)>0?(setStatus(participantCount, action+" "+String(length(rows))+" selected participants..."),postJson(endpoint, New_33(map((row) => New_32(row.participantId), rows)), () => {
+        loadParticipants();
+      }, (error_2) => {
+        setStatus(participantCount, action+" selected failed: "+error_2);
+      })):null;
+    };
+  }
+  function deleteSelectedParticipants(){
+    const rows=filter_1((row) => participantResourceAllows(row, "ptcs.management.participant.delete"), filter_1((row) => {
+      const x=row.participantId;
+      return exists((y) => x==y, selectedParticipantKeys);
+    }, allParticipants));
+    if(length(rows)>0&&globalThis.confirm("Delete "+String(length(rows))+" selected participants, their inbound direct messages, and participant-scoped set projections?")){
+      setStatus(participantCount, "Deleting "+String(length(rows))+" selected participants...");
+      postJson("/management/api/participants/delete-many", New_33(map((row) => New_32(row.participantId), rows)), () => {
+        selectedParticipantKeys=[];
+        updateParticipantSelectionControl();
+        loadParticipants();
+        loadSets();
+      }, (error_2) => {
+        setStatus(participantCount, "Delete selected failed: "+error_2);
+      });
+    }
   }
   const pageHeaderSelector=Doc.Element("input", [Attr.Create("type", "checkbox"), Attr.Create("id", "management-pages-select-current"), Attr.Create("class", "management-row-selector"), Attr.Create("aria-label", "Select all tab pages on the current page"), Attr.Create("title", "Select or deselect the current page"), Attr.Create("data-testid", "management-pages-select-current"), Handler("change", (element_2) =>() => {
     selectedPageKeys=updateCurrentSelection(element_2.checked, map(pageRowKey, filter_1(pageCanSelect, currentPageRows())), selectedPageKeys);
@@ -2798,6 +2966,19 @@ function mountManagement(page){
     }, currentSetRows());
     return updateSetSelectionControl();
   })], []);
+  const participantHeaderSelector=Doc.Element("input", [Attr.Create("type", "checkbox"), Attr.Create("id", "management-participants-select-current"), Attr.Create("class", "management-row-selector"), Attr.Create("aria-label", "Select all participants on the current page"), Attr.Create("title", "Select or deselect the current page"), Attr.Create("data-testid", "management-participants-select-current"), Handler("change", (element_2) =>() => {
+    selectedParticipantKeys=updateCurrentSelection(element_2.checked, map((a) => a.participantId, filter_1(participantCanSelect, currentParticipantRows())), selectedParticipantKeys);
+    iter((row) => {
+      const node=doc().getElementById(participantSelectionElementId(row));
+      if(!(node==null)){
+        const x=row.participantId;
+        let _1=exists((y) => x==y, selectedParticipantKeys);
+        node.checked=_1;
+      }
+      else void 0;
+    }, currentParticipantRows());
+    return updateParticipantSelectionControl();
+  })], []);
   const pageTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-pages-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [Attr.Create("class", "management-select-cell")], [pageHeaderSelector]), Doc.Element("th", [], [Doc.TextNode("Tab page")]), Doc.Element("th", [], [Doc.TextNode("Created")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
     const visibilityLabel=row.visible?"Hide":"Show";
     const visibilityEndpoint=row.visible?"/management/api/pages/hide":"/management/api/pages/show";
@@ -2823,24 +3004,41 @@ function mountManagement(page){
     })))))))))))), []):Doc.Empty;
     return Doc.Element("tr", [Attr.Create("data-set-key-id", row.keyId)], [Doc.Element("td", [Attr.Create("class", "management-select-cell"), Attr.Create("data-label", "Select")], [selectionControl]), Doc.Element("td", [Attr.Create("data-label", "Set")], [Doc.Element("strong", [], [Doc.TextNode(row.setName)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(concat_1(" + ", arrayOrEmpty(row.keys)))])]), Doc.Element("td", [Attr.Create("data-label", "Values")], [Doc.TextNode(String(row.valueCount))]), Doc.Element("td", [Attr.Create("data-label", "Updated")], [Doc.TextNode(row.updatedAt)])]);
   }, setRows.v)])]);
-  const participantTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-participants-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [], [Doc.TextNode("Participant")]), Doc.Element("th", [], [Doc.TextNode("Registered")]), Doc.Element("th", [], [Doc.TextNode("Last seen")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
+  const groupTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-groups-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [], [Doc.TextNode("Group")]), Doc.Element("th", [], [Doc.TextNode("Owner")]), Doc.Element("th", [], [Doc.TextNode("Members")]), Doc.Element("th", [], [Doc.TextNode("Updated")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
+    const deleteButton=row.canDelete&&groupAclAllows(row.groupId, "ptcs.group.delete")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("class", "management-delete"), Attr.Create("data-testid", "management-group-delete-"+row.groupId), Handler("click", () =>() => deleteGroup(row))], [Doc.TextNode("Delete")]):Doc.Empty;
+    return Doc.Element("tr", [Attr.Create("data-group-id", row.groupId)], [Doc.Element("td", [Attr.Create("data-label", "Group")], [Doc.Element("strong", [], [Doc.TextNode(textOr(row.groupId, row.displayName))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.groupId)])]), Doc.Element("td", [Attr.Create("data-label", "Owner")], [Doc.TextNode(row.ownerParticipantId)]), Doc.Element("td", [Attr.Create("data-label", "Members")], [Doc.TextNode(String(row.activeMemberCount))]), Doc.Element("td", [Attr.Create("data-label", "Updated")], [Doc.TextNode(row.updatedAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [deleteButton])]);
+  }, groupRows.v)])]);
+  const participantTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-participants-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [Attr.Create("class", "management-select-cell")], [participantHeaderSelector]), Doc.Element("th", [], [Doc.TextNode("Participant")]), Doc.Element("th", [], [Doc.TextNode("Registered")]), Doc.Element("th", [], [Doc.TextNode("Last seen")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
     const visibilityLabel=row.visible?"Hide":"Show";
     const visibilityEndpoint=row.visible?"/management/api/participants/hide":"/management/api/participants/show";
     const resourceAllows=(action) => aclAllows(action, "ptcs.participant", row.participantId)||systemAclAllows("*", action);
+    const selectionControl=participantCanSelect(row)?Doc.Element("input", ofSeq_1(delay(() => append_2([Attr.Create("type", "checkbox")], delay(() => append_2([Attr.Create("class", "management-row-selector")], delay(() => append_2([Attr.Create("id", participantSelectionElementId(row))], delay(() => append_2([Attr.Create("aria-label", "Select participant "+row.participantId)], delay(() => append_2([Attr.Create("data-testid", "management-participant-select-"+row.participantId)], delay(() => {
+      const x=row.participantId;
+      let _1=exists((y) => x==y, selectedParticipantKeys)?[Attr.Create("checked", "checked")]:[];
+      return append_2(_1, delay(() =>[Handler("change", (element_2) =>() => {
+        selectedParticipantKeys=toggleSelection(row.participantId, element_2.checked, selectedParticipantKeys);
+        return updateParticipantSelectionControl();
+      })]));
+    })))))))))))), []):Doc.Empty;
     const visibilityButton=resourceAllows(row.visible?"ptcs.management.participant.hide":"ptcs.management.participant.show")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "management-participant-visibility-"+row.participantId), Handler("click", () =>() =>((mutateParticipant(visibilityEndpoint))(visibilityLabel))(row))], [Doc.TextNode(visibilityLabel)]):Doc.Empty;
     const deleteButton=resourceAllows("ptcs.management.participant.delete")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("class", "management-delete"), Attr.Create("data-testid", "management-participant-delete-"+row.participantId), Handler("click", () =>() =>((mutateParticipant("/management/api/participants/delete"))("Delete"))(row))], [Doc.TextNode("Delete")]):Doc.Empty;
-    return Doc.Element("tr", [Attr.Create("data-participant-id", row.participantId), Attr.Create("data-visible", String(row.visible).toLowerCase())], [Doc.Element("td", [Attr.Create("data-label", "Participant")], [Doc.Element("strong", [], [Doc.TextNode(textOr(row.participantId, row.displayName))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.participantId)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.kind+" / "+row.status)])]), Doc.Element("td", [Attr.Create("data-label", "Registered")], [Doc.TextNode(row.registeredAt)]), Doc.Element("td", [Attr.Create("data-label", "Last seen")], [Doc.TextNode(row.lastSeenAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [visibilityButton, deleteButton])]);
+    return Doc.Element("tr", [Attr.Create("data-participant-id", row.participantId), Attr.Create("data-visible", String(row.visible).toLowerCase())], [Doc.Element("td", [Attr.Create("class", "management-select-cell"), Attr.Create("data-label", "Select")], [selectionControl]), Doc.Element("td", [Attr.Create("data-label", "Participant")], [Doc.Element("strong", [], [Doc.TextNode(textOr(row.participantId, row.displayName))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.participantId)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.kind+" / "+row.status)])]), Doc.Element("td", [Attr.Create("data-label", "Registered")], [Doc.TextNode(row.registeredAt)]), Doc.Element("td", [Attr.Create("data-label", "Last seen")], [Doc.TextNode(row.lastSeenAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [visibilityButton, deleteButton])]);
   }, participantRows.v)])]);
   LoadLocalTemplates("");
   Doc.RunById(pageTableHostId, pageTable);
   LoadLocalTemplates("");
   Doc.RunById(setTableHostId, setTable);
   LoadLocalTemplates("");
+  Doc.RunById(groupTableHostId, groupTable);
+  LoadLocalTemplates("");
   Doc.RunById(participantTableHostId, participantTable);
   pageShowSelected.addEventListener("click", () =>((mutateSelectedPages("/management/api/pages/show-many"))("Showing"))((row) =>!row.visible&&pageResourceAllows(row, "ptcs.management.page.show")));
   pageHideSelected.addEventListener("click", () =>((mutateSelectedPages("/management/api/pages/hide-many"))("Hiding"))((row) => row.visible&&pageResourceAllows(row, "ptcs.management.page.hide")));
   pageDeleteSelected.addEventListener("click", deleteSelectedPages);
   setDeleteSelected.addEventListener("click", deleteSelectedSets);
+  participantShowSelected.addEventListener("click", () =>((mutateSelectedParticipants("/management/api/participants/show-many"))("Showing"))((row) =>!row.visible&&participantResourceAllows(row, "ptcs.management.participant.show")));
+  participantHideSelected.addEventListener("click", () =>((mutateSelectedParticipants("/management/api/participants/hide-many"))("Hiding"))((row) => row.visible&&participantResourceAllows(row, "ptcs.management.participant.hide")));
+  participantDeleteSelected.addEventListener("click", deleteSelectedParticipants);
   pagePrevious.addEventListener("click", () => {
     const a=0;
     const b=pageIndex-1;
@@ -2871,6 +3069,21 @@ function mountManagement(page){
     setPageIndex=0;
     return applySetProjection();
   });
+  groupPrevious.addEventListener("click", () => {
+    const a=0;
+    const b=groupPageIndex-1;
+    groupPageIndex=Compare(a, b)===1?a:b;
+    return applyGroupProjection();
+  });
+  groupNext.addEventListener("click", () => {
+    groupPageIndex=groupPageIndex+1;
+    return applyGroupProjection();
+  });
+  groupSizeSelect.addEventListener("change", () => {
+    groupPageSize=toInt(Number(groupSizeSelect.value));
+    groupPageIndex=0;
+    return applyGroupProjection();
+  });
   participantPrevious.addEventListener("click", () => {
     const a=0;
     const b=participantPageIndex-1;
@@ -2886,14 +3099,32 @@ function mountManagement(page){
     participantPageIndex=0;
     return applyParticipantProjection();
   });
+  pageFilter.addEventListener("input", () => {
+    pageIndex=0;
+    return applyPageProjection();
+  });
+  setFilter.addEventListener("input", () => {
+    setPageIndex=0;
+    return applySetProjection();
+  });
+  groupFilter.addEventListener("input", () => {
+    groupPageIndex=0;
+    return applyGroupProjection();
+  });
+  participantFilter.addEventListener("input", () => {
+    participantPageIndex=0;
+    return applyParticipantProjection();
+  });
   reload.addEventListener("click", () => {
     loadPages();
     loadSets();
+    loadGroups();
     loadParticipants();
     return refreshManagementNav();
   });
   loadPages();
   loadSets();
+  loadGroups();
   loadParticipants();
 }
 function mountChat(page){
@@ -2912,12 +3143,10 @@ function mountChat(page){
   page.className="page chat-grid";
   const side=element("aside", "sidebar", null);
   const sideHead=element("div", "panel-head", null);
-  const sideActions=element("div", "head-actions", null);
-  const addGroup=setTestId("chat-add-group", button("", "Add group"));
-  setHidden(!groupAclAllows("*", "ptcs.group.create"), addGroup);
-  const export_1=setTestId("chat-export", button("", "Export"));
-  setData("message-count", "0", export_1);
-  const reload=setTestId("chat-reload", button("", "Reload"));
+  const sideActions=setTestId("chat-actions", element("div", "head-actions chat-actions", null));
+  const actionSelect=setTestId("chat-actions-select", select([["add-group", "Add group"], ["delete-group", "Delete group"], ["export-thread", "Export"], ["reload-thread", "Reload"]]));
+  const actionExecute=setTestId("chat-actions-execute", button("primary", "Execute"));
+  setData("message-count", "0", actionExecute);
   const list=element("div", "list", null);
   const groupCreatePanel=setHidden(true, setTestId("group-create-panel", element("div", "group-create-panel", null)));
   const groupIdInput=setTestId("group-create-id", input("group id"));
@@ -2928,7 +3157,7 @@ function mountChat(page){
   const groupCreateConfirm=setTestId("group-create-confirm", button("primary", "Create"));
   append(groupCreateActions, [groupCreateCancel, groupCreateConfirm]);
   append(groupCreatePanel, [groupIdInput, groupNameInput, groupHistoryInput, groupCreateActions]);
-  append(sideActions, [addGroup, export_1, reload]);
+  append(sideActions, [actionSelect, actionExecute]);
   append(sideHead, [element("h1", "", "Chat"), sideActions]);
   append(side, [sideHead, groupCreatePanel, list]);
   const work=setTestId("chat-work", element("section", "work", null));
@@ -2970,6 +3199,7 @@ function mountChat(page){
   const isGroupTarget=(value) => StartsWith(asText(value), "group:");
   const groupTarget=(groupId) =>"group:"+asText(groupId);
   const selectedGroupId=() => isGroupTarget(selected)?selected.substring("group:".length):"";
+  const isAnnouncementGroup=(groupId) => sameText(groupId, "organization-announcements");
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
   };
@@ -2980,6 +3210,8 @@ function mountChat(page){
     const outbound=message.fromId==participantId;
     const wrap=setId("thread-"+message.messageId, element("div", outbound?"message outbound":"message inbound", null));
     setData("message-id", message.messageId, setTestId("chat-message", wrap));
+    if(!isBlank(message.channelMessageId))setData("channel-message-id", message.channelMessageId, wrap);
+    else null;
     const meta=element("div", "message-meta", null);
     if(message.scope=="public")route=outbound?"You -> Public":asText(message.fromId)+" -> Public";
     else if(message.scope=="group"){
@@ -3002,7 +3234,7 @@ function mountChat(page){
     return wrap;
   };
   function renderParticipants(){
-    let o, _1, o_1;
+    let o, _1, o_1, groupSendDenied;
     clear(list);
     if(length(groups)>0)list.appendChild(element("div", "list-section-title", "Groups"));
     iter((group_1) => {
@@ -3019,7 +3251,7 @@ function mountChat(page){
         hasOlderMessages=false;
         loadingOlderMessages=false;
         setData("has-older", "false", thread);
-        setData("message-count", "0", export_1);
+        setData("message-count", "0", actionExecute);
         clear(thread);
         renderParticipants();
         loadGroupDetails();
@@ -3044,7 +3276,7 @@ function mountChat(page){
         hasOlderMessages=false;
         loadingOlderMessages=false;
         setData("has-older", "false", thread);
-        setData("message-count", "0", export_1);
+        setData("message-count", "0", actionExecute);
         clear(thread);
         renderParticipants();
         selectedGroup=null;
@@ -3076,12 +3308,21 @@ function mountChat(page){
       _1=o_1==null?"No participant selected":o_1.$0;
     }
     toTitle.textContent=_1;
-    setHidden(readOnlyView||isGroupTarget(selected)&&!groupAclAllows(selectedGroupId(), "ptcs.group.send"), composer);
+    if(isGroupTarget(selected)){
+      if(!groupAclAllows(selectedGroupId(), "ptcs.group.send"))groupSendDenied=true;
+      else if(isAnnouncementGroup(selectedGroupId())){
+        const o_4=selectedGroup==null?null:Some(exists((member_) => member_.isActive&&sameText(member_.participantId, participantId)&&(sameText(member_.role, "owner")||sameText(member_.role, "admin")), arrayOrEmpty(selectedGroup.$0.members)));
+        groupSendDenied=!(o_4==null?false:o_4.$0);
+      }
+      else groupSendDenied=false;
+    }
+    else groupSendDenied=false;
+    setHidden(readOnlyView||groupSendDenied, composer);
   }
   function mutateSelectedGroup(url, participantId_1, displayName, role, historyPolicy, includeHistory, onOk){
     if(selectedGroup!=null&&selectedGroup.$==1){
       const group=selectedGroup.$0;
-      return postJson(url, New_34(newRequestId("group-mutation"), group.groupId, group.revision, asText(participantId_1), asText(displayName), asText(role), asText(historyPolicy), includeHistory), (reply) => {
+      return postJson(url, New_31(newRequestId("group-mutation"), group.groupId, group.revision, asText(participantId_1), asText(displayName), asText(role), asText(historyPolicy), includeHistory), (reply) => {
         selectedGroup=Some(reply.group);
         renderGroupManagement();
         loadParticipants(false);
@@ -3099,13 +3340,26 @@ function mountChat(page){
       const group=selectedGroup.$0;
       setHidden(false, groupManagement);
       groupManagementSummary.textContent="Group details / "+group.displayName;
-      const o=tryFind((member_) => member_.isActive&&sameText(member_.participantId, participantId), arrayOrEmpty(group.members));
-      const o_1=o==null?null:Some(o.$0.role);
-      const currentRole=o_1==null?"former":o_1.$0;
+      const currentMember=tryFind((member_) => member_.isActive&&sameText(member_.participantId, participantId), arrayOrEmpty(group.members));
+      const o=currentMember==null?null:Some(currentMember.$0.role);
+      const currentRole=o==null?"former":o.$0;
       const isOwner=sameText(currentRole, "owner");
       const isAdmin=sameText(currentRole, "admin");
-      const canManageMembers=(isOwner||isAdmin)&&groupAclAllows(group.groupId, "ptcs.group.member.manage");
+      const isAnnouncement=isAnnouncementGroup(group.groupId);
+      const canManageMembers=(isOwner||isAdmin&&!isAnnouncement)&&groupAclAllows(group.groupId, "ptcs.group.member.manage");
       groupManagementBody.appendChild(element("div", "group-meta", "Role: "+String(currentRole)+" / revision "+String(group.revision)));
+      if(isAnnouncement&&currentMember!=null&&!readOnlyView){
+        const markRead=setTestId("announcement-mark-read", button("", "Mark read"));
+        _1=(markRead.addEventListener("click", () => {
+          const latest=tryLast(sortBy((a) => a.streamSequence, filter_1((message) =>!isBlank(message.channelMessageId), selectedThreadMessages)));
+          return latest!=null&&latest.$==1?postJson("/chat/api/groups/read/ack", New_36(group.groupId, latest.$0.channelMessageId), (reply) => {
+            setStatus(state, "Read through #"+String(reply.streamSequence));
+          }, (t) => {
+            setStatus(state, t);
+          }):setStatus(state, "No announcement message to mark read");
+        }),groupManagementBody.appendChild(markRead));
+      }
+      else _1=void 0;
       if(canManageMembers){
         const existing=map((member_) => member_.participantId, filter_1((a) => a.isActive, arrayOrEmpty(group.members)));
         const candidates=map((p) =>[p.participantId, textOr(p.participantId, p.displayName)], filter_1((p) => {
@@ -3120,11 +3374,11 @@ function mountChat(page){
           const addMember=setTestId("group-member-add", button("", "Add member"));
           addMember.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/add", chooser.value, "", "", "", null, () => { }));
           const row=element("div", "group-control-row", null);
-          _1=(append(row, [chooser, addMember]),groupManagementBody.appendChild(row));
+          _2=(append(row, [chooser, addMember]),groupManagementBody.appendChild(row));
         }
-        else _1=void 0;
+        else _2=void 0;
       }
-      else _1=void 0;
+      else _2=void 0;
       const memberList=element("div", "group-member-list", null);
       iter((member_) => {
         let _4, _5, _6;
@@ -3133,19 +3387,22 @@ function mountChat(page){
         const actions_1=element("span", "compact-actions", null);
         if(isOwner&&!sameText(member_.role, "owner")){
           if(groupAclAllows(group.groupId, "ptcs.group.role.manage")){
-            const nextRole=sameText(member_.role, "admin")?"member":"admin";
-            const roleButton=button("", nextRole=="admin"?"Promote":"Demote");
-            _4=(setData("participant-id", member_.participantId, setTestId("group-member-role", roleButton)),roleButton.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/role", member_.participantId, "", nextRole, "", null, () => { })),actions_1.appendChild(roleButton));
+            if(!isAnnouncement||StartsWith(member_.participantId, "agent.")){
+              const nextRole=sameText(member_.role, "admin")?"member":"admin";
+              const roleButton=button("", nextRole=="admin"?"Promote":"Demote");
+              _4=(setData("participant-id", member_.participantId, setTestId("group-member-role", roleButton)),roleButton.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/role", member_.participantId, "", nextRole, "", null, () => { })),actions_1.appendChild(roleButton));
+            }
+            else _4=void 0;
           }
           else _4=void 0;
-          if(groupAclAllows(group.groupId, "ptcs.group.owner.transfer")){
+          if(!isAnnouncement&&groupAclAllows(group.groupId, "ptcs.group.owner.transfer")){
             const transfer=setTestId("group-owner-transfer", button("", "Make owner"));
             _5=(transfer.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/owner/transfer", member_.participantId, "", "", "", null, () => { })),actions_1.appendChild(transfer));
           }
           else _5=void 0;
         }
         else _5=void 0;
-        if((sameText(member_.participantId, participantId)&&!sameText(member_.role, "owner")||isOwner&&!sameText(member_.role, "owner")||isAdmin&&sameText(member_.role, "member"))&&groupAclAllows(group.groupId, "ptcs.group.member.manage")){
+        if((isAnnouncement?isOwner&&!sameText(member_.role, "owner"):sameText(member_.participantId, participantId)&&!sameText(member_.role, "owner")||isOwner&&!sameText(member_.role, "owner")||isAdmin&&sameText(member_.role, "member"))&&groupAclAllows(group.groupId, "ptcs.group.member.manage")){
           const remove=setTestId("group-member-remove", button("icon-button", "x"));
           _6=(remove.setAttribute("title", "Remove member"),remove.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/remove", member_.participantId, "", "", "", null, () => {
             if(sameText(member_.participantId, participantId)){
@@ -3160,7 +3417,7 @@ function mountChat(page){
         memberList.appendChild(row_1);
       }, sortBy((member_) =>[member_.role, member_.participantId], filter_1((a) => a.isActive, arrayOrEmpty(group.members))));
       groupManagementBody.appendChild(memberList);
-      if(isOwner){
+      if(isOwner&&!isAnnouncement){
         const ownerControls=element("div", "group-owner-controls", null);
         if(groupAclAllows(group.groupId, "ptcs.group.settings.manage")){
           const renameInput=setTestId("group-rename-input", input("group display name"));
@@ -3170,17 +3427,7 @@ function mountChat(page){
           const history=setTestId("group-history-policy", select([["from-first-join", "History from join"], ["include-history-before-first-join", "Include existing history"]]));
           history.value=group.historyPolicy;
           const saveHistory=setTestId("group-history-save", button("", "Save history policy"));
-          _2=(saveHistory.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/history-policy", "", "", "", history.value, null, () => { })),append(ownerControls, [renameInput, rename, history, saveHistory]));
-        }
-        else _2=void 0;
-        if(groupAclAllows(group.groupId, "ptcs.group.delete")){
-          const delete_1=setTestId("group-delete", button("danger", "Delete group"));
-          _3=(delete_1.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/delete", "", "", "", "", null, () => {
-            selected="channel.public";
-            selectedGroup=null;
-            setHidden(true, groupManagement);
-            loadParticipants(true);
-          })),ownerControls.appendChild(delete_1));
+          _3=(saveHistory.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/history-policy", "", "", "", history.value, null, () => { })),append(ownerControls, [renameInput, rename, history, saveHistory]));
         }
         else _3=void 0;
         groupManagementBody.appendChild(ownerControls);
@@ -3196,6 +3443,7 @@ function mountChat(page){
         if(selected==requestedTarget){
           selectedGroup=Some(reply.group);
           renderGroupManagement();
+          renderParticipants();
         }
       }, (error_2) => {
         selectedGroup=null;
@@ -3224,7 +3472,7 @@ function mountChat(page){
       }
     }, arrayOrEmpty(messages));
     selectedThreadMessages=distinctMessages(selectedThreadMessages.concat(arrayOrEmpty(messages)));
-    setData("message-count", String(length(selectedThreadMessages)), export_1);
+    setData("message-count", String(length(selectedThreadMessages)), actionExecute);
     if(appendedCount>0&&shouldFollow)scrollToBottomNow(thread);
     setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
   }
@@ -3241,7 +3489,7 @@ function mountChat(page){
       }
     }, arrayOrEmpty(messages));
     selectedThreadMessages=distinctMessages(arrayOrEmpty(messages).concat(selectedThreadMessages));
-    setData("message-count", String(length(selectedThreadMessages)), export_1);
+    setData("message-count", String(length(selectedThreadMessages)), actionExecute);
     if(prependedCount>0)thread.scrollTop=previousTop+thread.scrollHeight-previousHeight;
     setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
   }
@@ -3327,7 +3575,7 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_35(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_37(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -3424,7 +3672,7 @@ function mountChat(page){
         let _1=o==null?oldestSequence:o.$0;
         const o_1=cached==null?null:Some(cached.$0.hasOlderMessages);
         let _2=o_1==null?hasOlderMessages:o_1.$0;
-        let _3=New_35(merged, message.messageId, _1, _2);
+        let _3=New_37(merged, message.messageId, _1, _2);
         writeSnapshotWithWatermark(cacheKey_1, _3, newestSequence, length(merged), "chat-thread");
       });
     }
@@ -3457,7 +3705,7 @@ function mountChat(page){
               o=message==null||isBlank(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_33(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
+              o=Some(New_35(textOr(event_1.eventId, event_1.sourceId), "", 0n, "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -3539,7 +3787,7 @@ function mountChat(page){
     if(isBlank(selected))setStatus(state, "Select a participant first");
     else if(isBlank(body))setStatus(state, "Message is empty");
     else if(isGroupTarget(selected)){
-      const request=New_37(newRequestId("group-send"), selectedGroupId(), body, ["web-chat"]);
+      const request=New_39(newRequestId("group-send"), selectedGroupId(), body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/groups/send", request);
       refreshChatPendingState();
       setStatus(state, "Sending group message; pending command saved in browser DB");
@@ -3553,14 +3801,16 @@ function mountChat(page){
           setStatus(state, "Sent "+compactMessageId(reply.message.messageId)+" "+asText(reply.deliveryHint));
         });
       }, (error_2) => {
-        refreshChatPendingState();
-        setStatus(state, error_2);
+        deletePendingThen(pendingId, () => {
+          refreshChatPendingState();
+          setStatus(state, error_2);
+        });
       });
     }
     else {
-      const request_1=New_39(participantId, selected, body, ["web-chat"]);
+      const request_1=New_41(participantId, selected, body, ["web-chat"]);
       const pendingId_1=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request_1);
-      const wsRequest=New_38("chat-send", pendingId_1, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_40("chat-send", pendingId_1, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId_1]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -3573,7 +3823,7 @@ function mountChat(page){
     else if(globalThis.document.body==null)setStatus(state, "Document body is unavailable");
     else {
       try {
-        const rows=map((message) => New_40(asText(message.messageId), asText(message.fromId), asText(message.createdAtUtc), asText(message.body)), selectedThreadMessages);
+        const rows=map((message) => New_42(asText(message.messageId), asText(message.fromId), asText(message.createdAtUtc), asText(message.body)), selectedThreadMessages);
         const url=URL.createObjectURL(new Blob([concat_1("\n", map((v) => JSON.stringify(v), rows))], {type:"application/x-ndjson;charset=utf-8"}));
         const now=new Date();
         const twoDigits_1=(value) => value<10?"0"+String(value):String(value);
@@ -3585,10 +3835,10 @@ function mountChat(page){
         anchor.className="download-anchor";
         globalThis.document.body.appendChild(anchor);
         anchor.click();
-        globalThis.document.body.removeChild(anchor);
         setTimeout(() => {
+          !(anchor.parentNode==null)?anchor.parentNode.removeChild(anchor):void 0;
           URL.revokeObjectURL(url);
-        }, 250);
+        }, 5000);
         setStatus(state, "Exported "+String(length(rows))+" message(s)");
       }
       catch(error_2){
@@ -3596,9 +3846,22 @@ function mountChat(page){
       }
     }
   }
-  addGroup.addEventListener("click", () => {
-    setHidden(false, groupCreatePanel);
-    return groupIdInput.focus();
+  actionExecute.addEventListener("click", () => {
+    const m=actionSelect.value;
+    if(m=="add-group")return groupAclAllows("*", "ptcs.group.create")?(setHidden(false, groupCreatePanel),groupIdInput.focus()):setStatus(state, "Add group is not authorized");
+    else if(m=="delete-group"){
+      if(selectedGroup!=null&&selectedGroup.$==1){
+        const group=selectedGroup.$0;
+        return!sameText(group.ownerParticipantId, participantId)||!groupAclAllows(group.groupId, "ptcs.group.delete")?(selectedGroup.$0,setStatus(state, "Only the group owner can delete this group")):globalThis.confirm("Delete group '"+selectedGroup.$0.displayName+"'?")?(selectedGroup.$0,mutateSelectedGroup("/chat/api/groups/delete", "", "", "", "", null, () => {
+          selected="channel.public";
+          selectedGroup=null;
+          setHidden(true, groupManagement);
+          loadParticipants(true);
+        })):null;
+      }
+      else return setStatus(state, "Select an active group first");
+    }
+    else return m=="export-thread"?exportSelectedThread():m=="reload-thread"?(loadParticipants(true),pollThread(true)):setStatus(state, "Choose an action");
   });
   groupCreateCancel.addEventListener("click", () => {
     setHidden(true, groupCreatePanel);
@@ -3606,7 +3869,7 @@ function mountChat(page){
   groupCreateConfirm.addEventListener("click", () => {
     const groupId=Trim(groupIdInput.value);
     const displayName=Trim(groupNameInput.value);
-    return isBlank(groupId)?setStatus(state, "Group id is required"):postJson("/chat/api/groups/create", New_41(newRequestId("group-create"), groupId, displayName, [], groupHistoryInput.value, ["web-chat"]), (reply) => {
+    return isBlank(groupId)?setStatus(state, "Group id is required"):postJson("/chat/api/groups/create", New_43(newRequestId("group-create"), groupId, displayName, [], groupHistoryInput.value, ["web-chat"]), (reply) => {
       selected=groupTarget(reply.group.groupId);
       selectedGroup=Some(reply.group);
       groupIdInput.value="";
@@ -3620,8 +3883,6 @@ function mountChat(page){
       setStatus(state, t);
     });
   });
-  reload.addEventListener("click", () => loadParticipants(true));
-  export_1.addEventListener("click", exportSelectedThread);
   send.addEventListener("click", sendMessage);
   thread.addEventListener("scroll", () => {
     setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
@@ -3716,7 +3977,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_44(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_46(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank(request.userName)||isBlank(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -3746,7 +4007,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc().getElementById("ptcs-login-config");
-  return node==null||isBlank(node.textContent)?New_43("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank(node.textContent)?New_45("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank(value)?fallback:value;
@@ -4012,18 +4273,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    keyPlaceholder:String(_5||""),
-    defaultKey:String(_6||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    keyPlaceholder:String(_5||""), 
+    defaultKey:String(_6||""), 
     submitKey:(payload) => {
       _7(payload);
-    },
+    }, 
     cancelKey:() => {
       _8();
-    },
+    }, 
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -4107,26 +4368,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    selectedKeyId:String(_5||""),
-    selectedKeyJson:String(_6||""),
-    selectedKeys:keyParts.slice(),
-    keyParts:keyParts.slice(),
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    valuePlaceholder:String(_8||""),
-    valueText:String(_9||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    selectedKeyId:String(_5||""), 
+    selectedKeyJson:String(_6||""), 
+    selectedKeys:keyParts.slice(), 
+    keyParts:keyParts.slice(), 
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    valuePlaceholder:String(_8||""), 
+    valueText:String(_9||""), 
     submit:(payload) => {
       _10(payload);
-    },
+    }, 
     setValue:(payload) => {
       _11(payload);
-    },
-    composerMode:String(_12||"plain"),
+    }, 
+    composerMode:String(_12||"plain"), 
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -4197,7 +4458,7 @@ function renderAppendValue(definition, value){
   const head_2=element("div", "fcell-head", null);
   append(head_2, [element("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element("span", "muted wrap", asText(value.valueId)+" / "+asText(value.createdAtUtc))]);
   card.appendChild(head_2);
-  const presentationContext=New_45(asText(definition.pageId), asText(definition.tabId), asText(value.valueId), asText(value.createdAtUtc), mode, arrayOrEmpty(value.tags), asText(value.rawValue));
+  const presentationContext=New_47(asText(definition.pageId), asText(definition.tabId), asText(value.valueId), asText(value.createdAtUtc), mode, arrayOrEmpty(value.tags), asText(value.rawValue));
   const m_1=tryResolveReplyPresentation(presentationContext);
   if(m_1!=null&&m_1.$==1){
     const presentation=m_1.$0;
@@ -4489,7 +4750,7 @@ function renderViewAsControl(){
   });
   apply.addEventListener("click", () => {
     apply.setAttribute("disabled", "disabled");
-    return postJson("/management/api/view-as", New_46(asText(chooser.value)), () => {
+    return postJson("/management/api/view-as", New_48(asText(chooser.value)), () => {
       globalThis.location.reload();
     }, (error_2) => {
       apply.removeAttribute("disabled");
@@ -4573,7 +4834,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_47(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_49(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson("/pages/api/register-page", request, (reply) => {
@@ -4712,10 +4973,10 @@ function groupAclAllows(groupId, action){
 }
 function currentBrowserUser(){
   const userNode=doc().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank(userNode.textContent))return New_32("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
+  if(userNode==null||isBlank(userNode.textContent))return New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank(user.participantId)?New_32("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
+    return user==null||isBlank(user.participantId)?New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
   }
 }
 function compactMessageId(value){
@@ -4778,8 +5039,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"),
-      priority:Number(priority||0),
+      name:String(name||"unnamed"), 
+      priority:Number(priority||0), 
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -5039,7 +5300,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label, badge, className){
-  return New_42(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_44(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc().getElementById("ptc-comm-client-extensions");
@@ -5229,14 +5490,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
   let socket, requestSequence, lifecycle, pollTimer, timeoutTimer, reconnectTimer, jsonExportRequested, jsonExportBootstrapAttempts, jsonExportBootstrapInFlight, jsonExportInFlight, actionRequestOverride, pendingActionCompletion;
   const identity={DocumentId:{$:0, $0:"pending-"+channelId}, CanvasInstanceId:{$:0, $0:canvasId}};
   const runtimeState=_c_3.Create_1({
-    Identity:identity,
-    Document:null,
-    Data:new FSharpMap("New", []),
-    DocumentRevision:0n,
-    DataRevision:0n,
-    LastTransportSequence:0n,
-    View:{Values:new FSharpMap("New", [])},
-    Poll:{$:0},
+    Identity:identity, 
+    Document:null, 
+    Data:new FSharpMap("New", []), 
+    DocumentRevision:0n, 
+    DataRevision:0n, 
+    LastTransportSequence:0n, 
+    View:{Values:new FSharpMap("New", [])}, 
+    Poll:{$:0}, 
     LastError:null
   });
   socket=null;
@@ -5256,7 +5517,7 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
     return channelId+":"+String(requestSequence);
   };
   const sendPayloadWithRequestId=(requestId, operation, payload) => {
-    const text_1=JSON.stringify(New_48("extension-transient", requestId, extensionId, channelId, operation, JSON.stringify(payload)));
+    const text_1=JSON.stringify(New_50("extension-transient", requestId, extensionId, channelId, operation, JSON.stringify(payload)));
     return socket!=null&&socket.$==1&&(Equals(socket.$0.readyState, 1)&&(socket.$0.send(text_1),true));
   };
   const sendPayload=(operation, payload) => sendPayloadWithRequestId(nextRequestId(), operation, payload);
@@ -5318,14 +5579,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
     lifecycle=next;
     const _1=runtimeState.Get();
     let _2={
-      Identity:_1.Identity,
-      Document:_1.Document,
-      Data:_1.Data,
-      DocumentRevision:_1.DocumentRevision,
-      DataRevision:_1.DataRevision,
-      LastTransportSequence:_1.LastTransportSequence,
-      View:_1.View,
-      Poll:next.Poll,
+      Identity:_1.Identity, 
+      Document:_1.Document, 
+      Data:_1.Data, 
+      DocumentRevision:_1.DocumentRevision, 
+      DataRevision:_1.DataRevision, 
+      LastTransportSequence:_1.LastTransportSequence, 
+      View:_1.View, 
+      Poll:next.Poll, 
       LastError:_1.LastError
     };
     runtimeState.Set(_2);
@@ -5412,17 +5673,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                     const message=m_2.$0;
                     const _4=runtimeState.Get();
                     let _5={
-                      Identity:_4.Identity,
-                      Document:_4.Document,
-                      Data:_4.Data,
-                      DocumentRevision:_4.DocumentRevision,
-                      DataRevision:_4.DataRevision,
-                      LastTransportSequence:_4.LastTransportSequence,
-                      View:_4.View,
-                      Poll:_4.Poll,
+                      Identity:_4.Identity, 
+                      Document:_4.Document, 
+                      Data:_4.Data, 
+                      DocumentRevision:_4.DocumentRevision, 
+                      DataRevision:_4.DataRevision, 
+                      LastTransportSequence:_4.LastTransportSequence, 
+                      View:_4.View, 
+                      Poll:_4.Poll, 
                       LastError:Some({
-                        ReasonCode:"ta-export-download-failed",
-                        Message:message,
+                        ReasonCode:"ta-export-download-failed", 
+                        Message:message, 
                         Recoverable:true
                       })
                     };
@@ -5433,17 +5694,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                 else {
                   const _6=runtimeState.Get();
                   let _7={
-                    Identity:_6.Identity,
-                    Document:_6.Document,
-                    Data:_6.Data,
-                    DocumentRevision:_6.DocumentRevision,
-                    DataRevision:_6.DataRevision,
-                    LastTransportSequence:_6.LastTransportSequence,
-                    View:_6.View,
-                    Poll:_6.Poll,
+                    Identity:_6.Identity, 
+                    Document:_6.Document, 
+                    Data:_6.Data, 
+                    DocumentRevision:_6.DocumentRevision, 
+                    DataRevision:_6.DataRevision, 
+                    LastTransportSequence:_6.LastTransportSequence, 
+                    View:_6.View, 
+                    Poll:_6.Poll, 
                     LastError:Some({
-                      ReasonCode:"ta-export-full-state-required",
-                      Message:"The TA export response was not a full runtime state.",
+                      ReasonCode:"ta-export-full-state-required", 
+                      Message:"The TA export response was not a full runtime state.", 
                       Recoverable:true
                     })
                   };
@@ -5456,8 +5717,8 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               let _9=StateAccepted(state.DataRevision, _8);
               apply(_9);
               completePendingAction(response.requestId, {
-                $:0,
-                $0:response.requestId,
+                $:0, 
+                $0:response.requestId, 
                 $1:state.DocumentRevision
               });
               return jsonExportCompleted&&disposeAfterJsonExport?void apply(Dispose):tryStartJsonExport();
@@ -5477,36 +5738,36 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               }
               else _2=false;
               _3=_2?{
-                $:2,
-                $0:response.requestId,
+                $:2, 
+                $0:response.requestId, 
                 $1:BigInt(Math.trunc(m[1]))
               }:{
-                $:1,
-                $0:response.requestId,
-                $1:"transient-command-failed",
+                $:1, 
+                $0:response.requestId, 
+                $1:"transient-command-failed", 
                 $2:responseError
               };
             }
             else _3={
-              $:1,
-              $0:response.requestId,
-              $1:"transient-command-failed",
+              $:1, 
+              $0:response.requestId, 
+              $1:"transient-command-failed", 
               $2:responseError
             };
             completePendingAction(response.requestId, _3);
             const _12=runtimeState.Get();
             let _13={
-              Identity:_12.Identity,
-              Document:_12.Document,
-              Data:_12.Data,
-              DocumentRevision:_12.DocumentRevision,
-              DataRevision:_12.DataRevision,
-              LastTransportSequence:_12.LastTransportSequence,
-              View:_12.View,
-              Poll:_12.Poll,
+              Identity:_12.Identity, 
+              Document:_12.Document, 
+              Data:_12.Data, 
+              DocumentRevision:_12.DocumentRevision, 
+              DataRevision:_12.DataRevision, 
+              LastTransportSequence:_12.LastTransportSequence, 
+              View:_12.View, 
+              Poll:_12.Poll, 
               LastError:Some({
-                ReasonCode:"transient-command-failed",
-                Message:text(response.error),
+                ReasonCode:"transient-command-failed", 
+                Message:text(response.error), 
                 Recoverable:true
               })
             };
@@ -5537,17 +5798,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         jsonExportBootstrapInFlight=false;
         const _1=runtimeState.Get();
         let _2={
-          Identity:_1.Identity,
-          Document:_1.Document,
-          Data:_1.Data,
-          DocumentRevision:_1.DocumentRevision,
-          DataRevision:_1.DataRevision,
-          LastTransportSequence:_1.LastTransportSequence,
-          View:_1.View,
-          Poll:_1.Poll,
+          Identity:_1.Identity, 
+          Document:_1.Document, 
+          Data:_1.Data, 
+          DocumentRevision:_1.DocumentRevision, 
+          DataRevision:_1.DataRevision, 
+          LastTransportSequence:_1.LastTransportSequence, 
+          View:_1.View, 
+          Poll:_1.Poll, 
           LastError:Some({
-            ReasonCode:"ta-export-bootstrap-empty",
-            Message:"TA export bootstrap returned no runtime data after three attempts.",
+            ReasonCode:"ta-export-bootstrap-empty", 
+            Message:"TA export bootstrap returned no runtime data after three attempts.", 
             Recoverable:true
           })
         };
@@ -5555,12 +5816,12 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         if(disposeAfterJsonExport)apply(Dispose);
       }
       else if(exists((a) => a.$==2, apply(StartAction(hasRuntimeData?{
-        $:9,
-        $0:identity.CanvasInstanceId,
+        $:9, 
+        $0:identity.CanvasInstanceId, 
         $1:"json-export"
       }:{
-        $:8,
-        $0:identity.CanvasInstanceId,
+        $:8, 
+        $0:identity.CanvasInstanceId, 
         $1:runtimeState.Get().DataRevision
       }))))if(hasRuntimeData){
         jsonExportRequested=false;
@@ -5586,7 +5847,7 @@ function syncWebSocketUrl_1(){
 function downloadJsonExport(wire){
   if(globalThis.document.body==null)return Error_1("Document body is unavailable.");
   else try {
-    const url=URL.createObjectURL(new Blob([JSON.stringify(New_52("ptcs-ta-research-export.v1", (new Date()).toISOString(), wire.documentRevision, wire.dataRevision, wire))], {type:"application/json;charset=utf-8"}));
+    const url=URL.createObjectURL(new Blob([JSON.stringify(New_54("ptcs-ta-research-export.v1", (new Date()).toISOString(), wire.documentRevision, wire.dataRevision, wire))], {type:"application/json;charset=utf-8"}));
     const anchor=globalThis.document.createElement("a");
     anchor.setAttribute("href", url);
     anchor.setAttribute("download", exportFileName());
@@ -5622,16 +5883,16 @@ function defaults(){
   return _c.defaults;
 }
 function initial(canvasInstanceId){
-  return New_49(canvasInstanceId, {$:0}, false, false, true, false, 0n, 0, false, false);
+  return New_51(canvasInstanceId, {$:0}, false, false, true, false, 0n, 0, false, false);
 }
 function transition(options, event, state){
   let _1;
   if(state.Disposed&&event.$!==9)return[state, []];
   else if(state.DisposePending)switch(event.$==1?0:event.$==5?1:event.$==6?1:event.$==9?2:3){
     case 0:
-      return[New_49(state.CanvasInstanceId, {$:7}, event.$1, state.Connected, state.Active, true, event.$0, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, SendUnmounted, ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_51(state.CanvasInstanceId, {$:7}, event.$1, state.Connected, state.Active, true, event.$0, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, SendUnmounted, ScheduleTimeout(options.RequestTimeoutMs)]];
     case 1:
-      return[New_49(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, state.Active, false, state.DataRevision, state.ReconnectAttempt, false, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
+      return[New_51(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, state.Active, false, state.DataRevision, state.ReconnectAttempt, false, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
     case 2:
       return[state, []];
     case 3:
@@ -5639,38 +5900,38 @@ function transition(options, event, state){
   }
   else switch(event.$==1?(_1=[event.$1, event.$0],1):event.$==2?state.Connected&&state.InFlight?2:11:event.$==3?(event.$0,state.Connected&&state.Active&&!state.InFlight?(_1=event.$0,3):11):event.$==4?state.Connected&&state.Active&&state.PollEnabled&&!state.InFlight?4:11:event.$==5?state.InFlight?5:11:event.$==6?!state.Connected?6:7:event.$==7?(_1=event.$0,8):event.$==8?(event.$0,state.Connected&&state.Active?(_1=event.$0,9):11):event.$==9?10:0){
     case 0:
-      return[New_49(state.CanvasInstanceId, {$:1}, state.PollEnabled, true, state.Active, true, state.DataRevision, 0, state.DisposePending, state.Disposed), [CancelReconnect, SendMounted, ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_51(state.CanvasInstanceId, {$:1}, state.PollEnabled, true, state.Active, true, state.DataRevision, 0, state.DisposePending, state.Disposed), [CancelReconnect, SendMounted, ScheduleTimeout(options.RequestTimeoutMs)]];
     case 1:
       const pollEnabled=_1[0];
-      return[New_49(state.CanvasInstanceId, state.Active&&pollEnabled?{$:2}:{$:5}, pollEnabled, state.Connected, state.Active, false, _1[1], state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&pollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
+      return[New_51(state.CanvasInstanceId, state.Active&&pollEnabled?{$:2}:{$:5}, pollEnabled, state.Connected, state.Active, false, _1[1], state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&pollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
     case 2:
-      return[New_49(state.CanvasInstanceId, state.Active&&state.PollEnabled?{$:2}:{$:5}, state.PollEnabled, state.Connected, state.Active, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&state.PollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
+      return[New_51(state.CanvasInstanceId, state.Active&&state.PollEnabled?{$:2}:{$:5}, state.PollEnabled, state.Connected, state.Active, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&state.PollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
     case 3:
-      return[New_49(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_51(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 4:
-      return[New_49(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
-        $:8,
-        $0:state.CanvasInstanceId,
+      return[New_51(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
+        $:8, 
+        $0:state.CanvasInstanceId, 
         $1:state.DataRevision
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 5:
       const attempt=state.ReconnectAttempt+1;
-      return[New_49(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport, ScheduleReconnect(reconnectDelay(options, attempt))]];
+      return[New_51(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport, ScheduleReconnect(reconnectDelay(options, attempt))]];
     case 6:
       return[state, []];
     case 7:
       const attempt_1=state.ReconnectAttempt+1;
-      return[New_49(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt_1, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, ScheduleReconnect(reconnectDelay(options, attempt_1))]];
+      return[New_51(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt_1, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, ScheduleReconnect(reconnectDelay(options, attempt_1))]];
     case 8:
-      return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_49(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_49(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_49(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
+      return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_51(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_51(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_51(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
     case 9:
-      return[New_49(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
-        $:9,
-        $0:state.CanvasInstanceId,
+      return[New_51(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
+        $:9, 
+        $0:state.CanvasInstanceId, 
         $1:_1
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 10:
-      return state.Connected?[New_49(state.CanvasInstanceId, {$:7}, state.PollEnabled, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_2([CancelPoll], delay(() => append_2([CancelReconnect], delay(() =>!state.InFlight?append_2([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_49(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
+      return state.Connected?[New_51(state.CanvasInstanceId, {$:7}, state.PollEnabled, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_2([CancelPoll], delay(() => append_2([CancelReconnect], delay(() =>!state.InFlight?append_2([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_51(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
     case 11:
       return[state, []];
   }
@@ -5694,10 +5955,10 @@ function reconnectDelay(options, attempt){
 }
 function New(PollIntervalMs, RequestTimeoutMs, PollRetryMs, ReconnectBaseMs, ReconnectMaximumMs){
   return{
-    PollIntervalMs:PollIntervalMs,
-    RequestTimeoutMs:RequestTimeoutMs,
-    PollRetryMs:PollRetryMs,
-    ReconnectBaseMs:ReconnectBaseMs,
+    PollIntervalMs:PollIntervalMs, 
+    RequestTimeoutMs:RequestTimeoutMs, 
+    PollRetryMs:PollRetryMs, 
+    ReconnectBaseMs:ReconnectBaseMs, 
     ReconnectMaximumMs:ReconnectMaximumMs
   };
 }
@@ -5731,8 +5992,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_2(Attr, {
-      $:2,
-      $0:Item1,
+      $:2, 
+      $0:Item1, 
       $1:Item2
     });
   }
@@ -5746,17 +6007,17 @@ function filter(f, o){
 }
 function New_1(RuntimeState, SetActive, RequestJsonExport, Dispose_1){
   return{
-    RuntimeState:RuntimeState,
-    SetActive:SetActive,
-    RequestJsonExport:RequestJsonExport,
+    RuntimeState:RuntimeState, 
+    SetActive:SetActive, 
+    RequestJsonExport:RequestJsonExport, 
     Dispose:Dispose_1
   };
 }
 function New_2(status, count, maxSequence, pages){
   return{
-    status:status,
-    count:count,
-    maxSequence:maxSequence,
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
     pages:pages
   };
 }
@@ -5869,6 +6130,10 @@ function tryPick(f, arr){
 function distinct(l){
   return ofSeq(distinct_1(l));
 }
+function tryLast(arr){
+  const len=arr.length;
+  return len===0?null:Some(arr[len-1]);
+}
 function ofSeq(xs){
   if(xs instanceof Array)return xs.slice();
   else if(xs instanceof FSharpList)return ofList(xs);
@@ -5925,10 +6190,6 @@ function init(size, f){
   const r=new Array(size);
   for(let i=0, _1=size-1;i<=_1;i++)r[i]=f(i);
   return r;
-}
-function tryLast(arr){
-  const len=arr.length;
-  return len===0?null:Some(arr[len-1]);
 }
 function sort(arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, _1], arr).sort(Compare));
@@ -6058,7 +6319,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_36(streamId, _3, _4, asText(source), nowTicks());
+    let _5=New_38(streamId, _3, _4, asText(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -6403,16 +6664,16 @@ function tryJson(text_1){
 }
 function New_3(type, requestId, streamKey){
   return{
-    type:type,
-    requestId:requestId,
+    type:type, 
+    requestId:requestId, 
     streamKey:streamKey
   };
 }
 function New_4(type, requestId, streamKey, count){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
     count:count
   };
 }
@@ -6832,7 +7093,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_54(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_56(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -7108,8 +7369,8 @@ class FSharpList {
   static Empty=Create_2(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_2(FSharpList, {
-      $:1,
-      $0:Head,
+      $:1, 
+      $0:Head, 
       $1:Tail
     });
   }
@@ -7137,16 +7398,16 @@ function TryParse_1(s, r){
 }
 function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId,
-    tabId:tabId,
-    path:path,
-    title:title,
-    setName:setName,
-    shape:shape,
-    description:description,
-    keyPlaceholder:keyPlaceholder,
-    valuePlaceholder:valuePlaceholder,
-    defaultKey:defaultKey,
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
     tags:tags
   };
 }
@@ -7166,43 +7427,43 @@ function set(arr, n, x){
 }
 function New_6(pageId, mode, setName, keys){
   return{
-    pageId:pageId,
-    mode:mode,
-    setName:setName,
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
     keys:keys
   };
 }
 function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
-    readRepairPolicy:readRepairPolicy,
-    candidateValueStreamKeys:candidateValueStreamKeys,
-    candidateValueStreamCount:candidateValueStreamCount,
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId,
-    serverRealityId:serverRealityId,
-    kind:kind,
-    target:target,
-    url:url,
-    method:method,
-    payloadJson:payloadJson,
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
     status:status
   };
 }
@@ -7302,51 +7563,51 @@ function collect_1(f, l){
 }
 function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status,
-    page:page,
-    bucketCount:bucketCount,
-    maxSequence:maxSequence,
-    keyMaxSequence:keyMaxSequence,
-    lineage:lineage,
-    lineageHealth:lineageHealth,
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
     buckets:buckets
   };
 }
 function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    keys:keys,
-    displayName:displayName,
-    setName:setName,
-    valueCount:valueCount,
-    minSequence:minSequence,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    keys:keys, 
+    displayName:displayName, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_12(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
     tags:tags
   };
 }
 function New_13(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    keyMode:keyMode,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    keyMode:keyMode, 
     displayName:displayName
   };
 }
 function New_14(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    rawArgu:rawArgu,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
     tags:tags
   };
 }
@@ -7358,17 +7619,17 @@ function New_16(pageId, keyId){
 }
 function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    actorAddress:actorAddress,
-    rawArgu:rawArgu,
-    renderMode:renderMode,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
@@ -7636,44 +7897,44 @@ function seqEmpty(){
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
-    payload:payload,
-    sourceKind:sourceKind,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    setName:setName,
-    keys:keys,
-    valueCount:valueCount,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
@@ -7682,10 +7943,10 @@ function New_21(maxSequence, buckets){
 }
 function New_22(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId,
-    keys:keys,
-    createdAtUtc:createdAtUtc,
-    value:value,
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
     tags:tags
   };
 }
@@ -7694,9 +7955,9 @@ function New_23(reason){
 }
 function New_24(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount,
-    actorCount:actorCount,
-    maxSequence:maxSequence,
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
     nodes:nodes
   };
 }
@@ -7820,20 +8081,20 @@ function ToSeq(m){
 }
 function New_25(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId,
-    nodeAddress:nodeAddress,
-    status:status,
-    roles:roles,
+    nodeId:nodeId, 
+    nodeAddress:nodeAddress, 
+    status:status, 
+    roles:roles, 
     actors:actors
   };
 }
 function New_26(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId,
-    displayName:displayName,
-    kind:kind,
-    keys:keys,
-    status:status,
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
     routees:routees
   };
 }
@@ -7900,104 +8161,112 @@ function New_29(sets){
 function New_30(setName, keys){
   return{setName:setName, keys:keys};
 }
-function New_31(participantId){
-  return{participantId:participantId};
-}
-function New_32(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
+function New_31(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
   return{
-    participantId:participantId,
-    displayName:displayName,
-    login:login,
-    authenticated:authenticated,
-    provider:provider,
-    logoutPath:logoutPath,
-    authenticatedParticipantId:authenticatedParticipantId,
-    viewAsParticipantId:viewAsParticipantId,
-    viewAsActive:viewAsActive
-  };
-}
-function New_33(messageId, fromId, toId, scope, body, createdAtUtc){
-  return{
-    messageId:messageId,
-    fromId:fromId,
-    toId:toId,
-    scope:scope,
-    body:body,
-    createdAtUtc:createdAtUtc
-  };
-}
-function New_34(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
-  return{
-    commandId:commandId,
-    groupId:groupId,
-    expectedRevision:expectedRevision,
-    participantId:participantId,
-    displayName:displayName,
-    role:role,
-    historyPolicy:historyPolicy,
+    commandId:commandId, 
+    groupId:groupId, 
+    expectedRevision:expectedRevision, 
+    participantId:participantId, 
+    displayName:displayName, 
+    role:role, 
+    historyPolicy:historyPolicy, 
     includeHistoryBeforeFirstJoin:includeHistoryBeforeFirstJoin
   };
 }
-function New_35(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
+function New_32(participantId){
+  return{participantId:participantId};
+}
+function New_33(participants){
+  return{participants:participants};
+}
+function New_34(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
   return{
-    messages:messages,
-    nextAfterMessageId:nextAfterMessageId,
-    oldestSequence:oldestSequence,
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
+    logoutPath:logoutPath, 
+    authenticatedParticipantId:authenticatedParticipantId, 
+    viewAsParticipantId:viewAsParticipantId, 
+    viewAsActive:viewAsActive
+  };
+}
+function New_35(messageId, channelMessageId, streamSequence, fromId, toId, scope, body, createdAtUtc){
+  return{
+    messageId:messageId, 
+    channelMessageId:channelMessageId, 
+    streamSequence:streamSequence, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
+    createdAtUtc:createdAtUtc
+  };
+}
+function New_36(groupId, channelMessageId){
+  return{groupId:groupId, channelMessageId:channelMessageId};
+}
+function New_37(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
+  return{
+    messages:messages, 
+    nextAfterMessageId:nextAfterMessageId, 
+    oldestSequence:oldestSequence, 
     hasOlderMessages:hasOlderMessages
   };
 }
-function New_36(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_38(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId,
-    newestSequence:newestSequence,
-    cachedCount:cachedCount,
-    source:source,
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
     touchedAt:touchedAt
   };
 }
-function New_37(commandId, groupId, body, tags){
+function New_39(commandId, groupId, body, tags){
   return{
-    commandId:commandId,
-    groupId:groupId,
-    body:body,
+    commandId:commandId, 
+    groupId:groupId, 
+    body:body, 
     tags:tags
   };
 }
-function New_38(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_40(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    fromId:fromId,
-    toId:toId,
-    body:body,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
-function New_39(fromId, toId, body, tags){
+function New_41(fromId, toId, body, tags){
   return{
-    fromId:fromId,
-    toId:toId,
-    body:body,
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
     tags:tags
   };
 }
-function New_40(messageId, speaker, createdAtUtc, body){
+function New_42(messageId, speaker, createdAtUtc, body){
   return{
-    messageId:messageId,
-    speaker:speaker,
-    createdAtUtc:createdAtUtc,
+    messageId:messageId, 
+    speaker:speaker, 
+    createdAtUtc:createdAtUtc, 
     body:body
   };
 }
-function New_41(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
+function New_43(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
   return{
-    commandId:commandId,
-    groupId:groupId,
-    displayName:displayName,
-    initialParticipantIds:initialParticipantIds,
-    historyPolicy:historyPolicy,
+    commandId:commandId, 
+    groupId:groupId, 
+    displayName:displayName, 
+    initialParticipantIds:initialParticipantIds, 
+    historyPolicy:historyPolicy, 
     tags:tags
   };
 }
@@ -8153,7 +8422,7 @@ function InsertDoc(parent, doc_1, pos){
     }
 }
 function CreateRunState(parent, doc_1){
-  return New_50(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_1));
+  return New_52(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_1));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_1){
   return get_UseAnimations()?Delay(() => {
@@ -8326,8 +8595,8 @@ function UpdateEmbedNode(node, upd){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""),
-    Dirty:false,
+    Text:globalThis.document.createTextNode(""), 
+    Dirty:false, 
     Value:""
   };
 }
@@ -8410,8 +8679,8 @@ function ElemDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0,
-    $0:Item1,
+    $:0, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -8421,33 +8690,33 @@ function EmbedDoc(Item){
 function TextDoc(Item){
   return{$:4, $0:Item};
 }
-function New_42(shape, label, badge, className){
+function New_44(shape, label, badge, className){
   return{
-    shape:shape,
-    label:label,
-    badge:badge,
+    shape:shape, 
+    label:label, 
+    badge:badge, 
     className:className
   };
 }
-function New_43(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_45(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath,
-    sessionPath:sessionPath,
-    logoutPath:logoutPath,
-    returnUrl:returnUrl,
-    protectedRoute:protectedRoute,
-    sessionCookieName:sessionCookieName,
-    title:title,
-    lead:lead,
-    providerLabel:providerLabel,
+    submitPath:submitPath, 
+    sessionPath:sessionPath, 
+    logoutPath:logoutPath, 
+    returnUrl:returnUrl, 
+    protectedRoute:protectedRoute, 
+    sessionCookieName:sessionCookieName, 
+    title:title, 
+    lead:lead, 
+    providerLabel:providerLabel, 
     aclLabel:aclLabel
   };
 }
-function New_44(userName, password, returnUrl, keepSession){
+function New_46(userName, password, returnUrl, keepSession){
   return{
-    userName:userName,
-    password:password,
-    returnUrl:returnUrl,
+    userName:userName, 
+    password:password, 
+    returnUrl:returnUrl, 
     keepSession:keepSession
   };
 }
@@ -8559,29 +8828,29 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_45(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+function New_47(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId,
-    TabId:TabId,
-    ValueId:ValueId,
-    CreatedAtUtc:CreatedAtUtc,
-    Direction:Direction,
-    Tags:Tags,
+    PageId:PageId, 
+    TabId:TabId, 
+    ValueId:ValueId, 
+    CreatedAtUtc:CreatedAtUtc, 
+    Direction:Direction, 
+    Tags:Tags, 
     Payload:Payload
   };
 }
-function New_46(participantId){
+function New_48(participantId){
   return{participantId:participantId};
 }
-function New_47(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_49(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    shape:shape,
-    tabId:tabId,
-    tabMode:tabMode,
-    path:path,
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
     description:description
   };
 }
@@ -8687,7 +8956,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_53(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_55(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Enumerate(flip, t){
   function gen(t_1, spine){
@@ -8866,13 +9135,13 @@ let _c_3=Lazy((_i) => class Var_1 extends Object_1 {
   }
   static { }
 });
-function New_48(type, requestId, extensionId, channelId, operation, payload){
+function New_50(type, requestId, extensionId, channelId, operation, payload){
   return{
-    type:type,
-    requestId:requestId,
-    extensionId:extensionId,
-    channelId:channelId,
-    operation:operation,
+    type:type, 
+    requestId:requestId, 
+    extensionId:extensionId, 
+    channelId:channelId, 
+    operation:operation, 
     payload:payload
   };
 }
@@ -8882,66 +9151,66 @@ function Ok(ResultValue){
 function Error_1(ErrorValue){
   return{$:1, $0:ErrorValue};
 }
-function New_49(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
+function New_51(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
   return{
-    CanvasInstanceId:CanvasInstanceId,
-    Poll:Poll,
-    PollEnabled:PollEnabled,
-    Connected:Connected_1,
-    Active:Active,
-    InFlight:InFlight,
-    DataRevision:DataRevision,
-    ReconnectAttempt:ReconnectAttempt,
-    DisposePending:DisposePending,
+    CanvasInstanceId:CanvasInstanceId, 
+    Poll:Poll, 
+    PollEnabled:PollEnabled, 
+    Connected:Connected_1, 
+    Active:Active, 
+    InFlight:InFlight, 
+    DataRevision:DataRevision, 
+    ReconnectAttempt:ReconnectAttempt, 
+    DisposePending:DisposePending, 
     Disposed:Disposed
   };
 }
 function emptyFrame(kind, actionKind, canvasId){
-  return New_51("ta-browser.v1", kind, actionKind, canvasId, "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "", "", false, [], 0, false, "", "", "", "", 0);
+  return New_53("ta-browser.v1", kind, actionKind, canvasId, "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "", "", false, [], 0, false, "", "", "", "", 0);
 }
 function actionToWire(action){
   if(action.$==1)return emptyFrame("action", "reset-canvas", canvasText(action.$0));
   else if(action.$==2){
     const row=action.$1;
     const _1=emptyFrame("action", "add-row", canvasText(action.$0));
-    return New_51(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _1.expectedDocumentRevision, _1.hasExpectedDocumentRevision, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
+    return New_53(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _1.expectedDocumentRevision, _1.hasExpectedDocumentRevision, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
   }
   else if(action.$==3){
     const values=action.$3;
     const templateKey=action.$2;
     const rowId=action.$1;
     const _2=emptyFrame("action", "apply-template", canvasText(action.$0));
-    return New_51(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId==null?"":rowId.$0, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode, templateKey, rowId!=null, map(editorInputToWire, values==null?[]:values), _2.expectedDocumentRevision, _2.hasExpectedDocumentRevision, _2.baseRowId, _2.eventTimeUtc, _2.startEventTimeUtc, _2.endEventTimeExclusiveUtc, _2.maximumBasePoints);
+    return New_53(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId==null?"":rowId.$0, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode, templateKey, rowId!=null, map(editorInputToWire, values==null?[]:values), _2.expectedDocumentRevision, _2.hasExpectedDocumentRevision, _2.baseRowId, _2.eventTimeUtc, _2.startEventTimeUtc, _2.endEventTimeExclusiveUtc, _2.maximumBasePoints);
   }
   else if(action.$==4){
     const rowId_1=action.$1;
     const _3=emptyFrame("action", "remove-row", canvasText(action.$0));
-    return New_51(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, rowId_1, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, _3.sourceId, _3.instrument, _3.intervalMinutes, _3.fromUtc, _3.toUtcExclusive, _3.includePartial, _3.afterDataRevision, _3.dataRevision, _3.reasonCode, _3.templateKey, _3.hasTemplateRowId, _3.editorValues, _3.expectedDocumentRevision, _3.hasExpectedDocumentRevision, _3.baseRowId, _3.eventTimeUtc, _3.startEventTimeUtc, _3.endEventTimeExclusiveUtc, _3.maximumBasePoints);
+    return New_53(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, rowId_1, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, _3.sourceId, _3.instrument, _3.intervalMinutes, _3.fromUtc, _3.toUtcExclusive, _3.includePartial, _3.afterDataRevision, _3.dataRevision, _3.reasonCode, _3.templateKey, _3.hasTemplateRowId, _3.editorValues, _3.expectedDocumentRevision, _3.hasExpectedDocumentRevision, _3.baseRowId, _3.eventTimeUtc, _3.startEventTimeUtc, _3.endEventTimeExclusiveUtc, _3.maximumBasePoints);
   }
   else if(action.$==5){
     const query=action.$1;
     const _4=emptyFrame("action", "change-query", canvasText(action.$0));
-    return New_51(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, _4.rowId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _4.afterDataRevision, _4.dataRevision, _4.reasonCode, _4.templateKey, _4.hasTemplateRowId, _4.editorValues, _4.expectedDocumentRevision, _4.hasExpectedDocumentRevision, _4.baseRowId, _4.eventTimeUtc, _4.startEventTimeUtc, _4.endEventTimeExclusiveUtc, _4.maximumBasePoints);
+    return New_53(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, _4.rowId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _4.afterDataRevision, _4.dataRevision, _4.reasonCode, _4.templateKey, _4.hasTemplateRowId, _4.editorValues, _4.expectedDocumentRevision, _4.hasExpectedDocumentRevision, _4.baseRowId, _4.eventTimeUtc, _4.startEventTimeUtc, _4.endEventTimeExclusiveUtc, _4.maximumBasePoints);
   }
   else if(action.$==6){
     const change=action.$1;
     const _5=emptyFrame("action", "shared-cursor-changed", canvasText(action.$0));
-    return New_51(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, _5.sourceId, _5.instrument, _5.intervalMinutes, _5.fromUtc, _5.toUtcExclusive, _5.includePartial, _5.afterDataRevision, _5.dataRevision, _5.reasonCode, _5.templateKey, _5.hasTemplateRowId, _5.editorValues, _5.expectedDocumentRevision, _5.hasExpectedDocumentRevision, change.BaseRowId, change.EventTimeUtc, _5.startEventTimeUtc, _5.endEventTimeExclusiveUtc, _5.maximumBasePoints);
+    return New_53(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, _5.sourceId, _5.instrument, _5.intervalMinutes, _5.fromUtc, _5.toUtcExclusive, _5.includePartial, _5.afterDataRevision, _5.dataRevision, _5.reasonCode, _5.templateKey, _5.hasTemplateRowId, _5.editorValues, _5.expectedDocumentRevision, _5.hasExpectedDocumentRevision, change.BaseRowId, change.EventTimeUtc, _5.startEventTimeUtc, _5.endEventTimeExclusiveUtc, _5.maximumBasePoints);
   }
   else if(action.$==7){
     const change_1=action.$1;
     const _6=emptyFrame("action", "visible-range-changed", canvasText(action.$0));
-    return New_51(_6.wireVersion, _6.kind, _6.actionKind, _6.canvasInstanceId, _6.rowId, _6.rowKind, _6.dataRef, _6.heightWeight, _6.visible, _6.sourceId, _6.instrument, _6.intervalMinutes, _6.fromUtc, _6.toUtcExclusive, _6.includePartial, _6.afterDataRevision, _6.dataRevision, _6.reasonCode, _6.templateKey, _6.hasTemplateRowId, _6.editorValues, _6.expectedDocumentRevision, _6.hasExpectedDocumentRevision, change_1.BaseRowId, _6.eventTimeUtc, change_1.StartEventTimeUtc, change_1.EndEventTimeExclusiveUtc, change_1.MaximumBasePoints);
+    return New_53(_6.wireVersion, _6.kind, _6.actionKind, _6.canvasInstanceId, _6.rowId, _6.rowKind, _6.dataRef, _6.heightWeight, _6.visible, _6.sourceId, _6.instrument, _6.intervalMinutes, _6.fromUtc, _6.toUtcExclusive, _6.includePartial, _6.afterDataRevision, _6.dataRevision, _6.reasonCode, _6.templateKey, _6.hasTemplateRowId, _6.editorValues, _6.expectedDocumentRevision, _6.hasExpectedDocumentRevision, change_1.BaseRowId, _6.eventTimeUtc, change_1.StartEventTimeUtc, change_1.EndEventTimeExclusiveUtc, change_1.MaximumBasePoints);
   }
   else if(action.$==8){
     const revision=action.$1;
     const _7=emptyFrame("action", "poll-delta", canvasText(action.$0));
-    return New_51(_7.wireVersion, _7.kind, _7.actionKind, _7.canvasInstanceId, _7.rowId, _7.rowKind, _7.dataRef, _7.heightWeight, _7.visible, _7.sourceId, _7.instrument, _7.intervalMinutes, _7.fromUtc, _7.toUtcExclusive, _7.includePartial, Number(revision), _7.dataRevision, _7.reasonCode, _7.templateKey, _7.hasTemplateRowId, _7.editorValues, _7.expectedDocumentRevision, _7.hasExpectedDocumentRevision, _7.baseRowId, _7.eventTimeUtc, _7.startEventTimeUtc, _7.endEventTimeExclusiveUtc, _7.maximumBasePoints);
+    return New_53(_7.wireVersion, _7.kind, _7.actionKind, _7.canvasInstanceId, _7.rowId, _7.rowKind, _7.dataRef, _7.heightWeight, _7.visible, _7.sourceId, _7.instrument, _7.intervalMinutes, _7.fromUtc, _7.toUtcExclusive, _7.includePartial, Number(revision), _7.dataRevision, _7.reasonCode, _7.templateKey, _7.hasTemplateRowId, _7.editorValues, _7.expectedDocumentRevision, _7.hasExpectedDocumentRevision, _7.baseRowId, _7.eventTimeUtc, _7.startEventTimeUtc, _7.endEventTimeExclusiveUtc, _7.maximumBasePoints);
   }
   else if(action.$==9){
     const reason=action.$1;
     const _8=emptyFrame("action", "full-snapshot", canvasText(action.$0));
-    return New_51(_8.wireVersion, _8.kind, _8.actionKind, _8.canvasInstanceId, _8.rowId, _8.rowKind, _8.dataRef, _8.heightWeight, _8.visible, _8.sourceId, _8.instrument, _8.intervalMinutes, _8.fromUtc, _8.toUtcExclusive, _8.includePartial, _8.afterDataRevision, _8.dataRevision, reason, _8.templateKey, _8.hasTemplateRowId, _8.editorValues, _8.expectedDocumentRevision, _8.hasExpectedDocumentRevision, _8.baseRowId, _8.eventTimeUtc, _8.startEventTimeUtc, _8.endEventTimeExclusiveUtc, _8.maximumBasePoints);
+    return New_53(_8.wireVersion, _8.kind, _8.actionKind, _8.canvasInstanceId, _8.rowId, _8.rowKind, _8.dataRef, _8.heightWeight, _8.visible, _8.sourceId, _8.instrument, _8.intervalMinutes, _8.fromUtc, _8.toUtcExclusive, _8.includePartial, _8.afterDataRevision, _8.dataRevision, reason, _8.templateKey, _8.hasTemplateRowId, _8.editorValues, _8.expectedDocumentRevision, _8.hasExpectedDocumentRevision, _8.baseRowId, _8.eventTimeUtc, _8.startEventTimeUtc, _8.endEventTimeExclusiveUtc, _8.maximumBasePoints);
   }
   else return emptyFrame("action", "reset-view", canvasText(action.$0));
 }
@@ -8950,7 +9219,7 @@ function actionRequestToWire(request){
   const o=request.ExpectedDocumentRevision;
   const o_1=o==null?null:Some(Number(o.$0));
   let _2=o_1==null?0:o_1.$0;
-  return New_51(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, _1.rowId, _1.rowKind, _1.dataRef, _1.heightWeight, _1.visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _2, request.ExpectedDocumentRevision!=null, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
+  return New_53(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, _1.rowId, _1.rowKind, _1.dataRef, _1.heightWeight, _1.visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _2, request.ExpectedDocumentRevision!=null, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints);
 }
 function applyWire(current, wire){
   return Bind_2((decoded) => {
@@ -8961,14 +9230,14 @@ function applyWire(current, wire){
     else {
       const mergedSeries=wire.series==null?current.Data:fold((_3, _4) => {
         const p=mergeSeries({
-          Identity:current.Identity,
-          Document:current.Document,
-          Data:_3,
-          DocumentRevision:current.DocumentRevision,
-          DataRevision:current.DataRevision,
-          LastTransportSequence:current.LastTransportSequence,
-          View:current.View,
-          Poll:current.Poll,
+          Identity:current.Identity, 
+          Document:current.Document, 
+          Data:_3, 
+          DocumentRevision:current.DocumentRevision, 
+          DataRevision:current.DataRevision, 
+          LastTransportSequence:current.LastTransportSequence, 
+          View:current.View, 
+          Poll:current.Poll, 
           LastError:current.LastError
         }, wire.timeline, _4);
         return _3.Add_1(p[0], p[1]);
@@ -8980,14 +9249,14 @@ function applyWire(current, wire){
       const m=decoded.Data.TryFind(statusRef);
       let _1=m==null?mergedSharedTemporal:mergedSharedTemporal.Add_1(statusRef, m.$0);
       let _2={
-        Identity:decoded.Identity,
-        Document:decoded.Document,
-        Data:_1,
-        DocumentRevision:decoded.DocumentRevision,
-        DataRevision:decoded.DataRevision,
-        LastTransportSequence:decoded.LastTransportSequence,
-        View:current.View,
-        Poll:decoded.Poll,
+        Identity:decoded.Identity, 
+        Document:decoded.Document, 
+        Data:_1, 
+        DocumentRevision:decoded.DocumentRevision, 
+        DataRevision:decoded.DataRevision, 
+        LastTransportSequence:decoded.LastTransportSequence, 
+        View:current.View, 
+        Poll:decoded.Poll, 
         LastError:decoded.LastError
       };
       return Ok(_2);
@@ -9005,7 +9274,7 @@ function rowKindText(a){
 }
 function editorInputToWire(input_1){
   const m=input_1.Value;
-  return m.$==1?New_55(input_1.Path, "number", "", m.$0, false):m.$==2?New_55(input_1.Path, "bool", "", 0, m.$0):New_55(input_1.Path, "text", m.$0, 0, false);
+  return m.$==1?New_57(input_1.Path, "number", "", m.$0, false):m.$==2?New_57(input_1.Path, "bool", "", 0, m.$0):New_57(input_1.Path, "text", m.$0, 0, false);
 }
 function optionBool(value){
   return value==null?false:value.$0;
@@ -9031,29 +9300,29 @@ function stateFromWire(wire){
       const K=rowKind(row.kind);
       const D=text(row.dataRef);
       const T_1=row.traces==null?[]:map((trace) =>({
-        TraceId:text(trace.traceId),
-        Kind:traceKind(trace.kind),
-        DataRef:text(trace.dataRef),
-        Label:text(trace.label),
-        Color:text(trace.color),
-        Width:trace.width,
-        Visible:trace.visible,
+        TraceId:text(trace.traceId), 
+        Kind:traceKind(trace.kind), 
+        DataRef:text(trace.dataRef), 
+        Label:text(trace.label), 
+        Color:text(trace.color), 
+        Width:trace.width, 
+        Visible:trace.visible, 
         CandleDataRefs:trace.hasCandleDataRefs?Some({
-          OpenRef:text(trace.candleOpenRef),
-          HighRef:text(trace.candleHighRef),
-          LowRef:text(trace.candleLowRef),
-          CloseRef:text(trace.candleCloseRef),
+          OpenRef:text(trace.candleOpenRef), 
+          HighRef:text(trace.candleHighRef), 
+          LowRef:text(trace.candleLowRef), 
+          CloseRef:text(trace.candleCloseRef), 
           VolumeRef:text(trace.candleVolumeRef)
-        }):null,
+        }):null, 
         Options:new FSharpMap("New", [])
       }), row.traces);
       return{
-        RowId:R,
-        Kind:K,
-        DataRef:D,
-        HeightWeight:row.heightWeight,
-        Visible:row.visible,
-        Options:mapFromWire(row.options),
+        RowId:R, 
+        Kind:K, 
+        DataRef:D, 
+        HeightWeight:row.heightWeight, 
+        Visible:row.visible, 
+        Options:mapFromWire(row.options), 
         Traces:T_1
       };
     }, wire.rows);
@@ -9066,8 +9335,8 @@ function stateFromWire(wire){
     const data=Fold((_1, _2, _3) => _1.Add_1(_2, _3), seriesData, sharedTemporalData).Add_1(text(wire.statusRef), status);
     const defaultView=OfArray(ofSeq(ofSeq_1(delay(() => append_2(!IsNullOrWhiteSpace(wire.querySourceId)?[["query.sourceId", {$:3, $0:text(wire.querySourceId)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryInstrument)?[["query.instrument", {$:3, $0:text(wire.queryInstrument)}]]:[], delay(() => append_2(wire.queryIntervalMinutes>0?[["query.intervalMinutes", {$:2, $0:wire.queryIntervalMinutes}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryFromUtc)?[["query.fromUtc", {$:3, $0:text(wire.queryFromUtc)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryToUtcExclusive)?[["query.toUtcExclusive", {$:3, $0:text(wire.queryToUtcExclusive)}]]:[], delay(() =>[["query.includePartial", {$:1, $0:wire.queryIncludePartial}]]))))))))))))));
     const lastError=IsNullOrWhiteSpace(wire.errorCode)&&IsNullOrWhiteSpace(wire.errorMessage)?null:Some({
-      ReasonCode:text(wire.errorCode),
-      Message:text(wire.errorMessage),
+      ReasonCode:text(wire.errorCode), 
+      Message:text(wire.errorMessage), 
       Recoverable:wire.errorRecoverable
     });
     if(wire.editorSchemas==null)editorSchemas=[];
@@ -9076,26 +9345,26 @@ function stateFromWire(wire){
       editorSchemas=choose((x) => ToOption(f(x)), wire.editorSchemas);
     }
     return!(wire.editorSchemas==null)&&length(editorSchemas)!==length(wire.editorSchemas)?Error_1("TA browser editor schema catalog is invalid."):Ok({
-      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}},
+      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}}, 
       Document:Some({
-        WorkspaceId:text(wire.workspaceId),
-        Title:text(wire.title),
-        RowsRef:text(wire.rowsRef),
-        StatusRef:text(wire.statusRef),
-        SharedTimeAxis:wire.sharedTimeAxis,
-        TemporalAxisRefs:wire.temporalAxisRefs==null?[]:wire.temporalAxisRefs,
-        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)),
-        Rows:rows,
-        EditorSchemas:editorSchemas,
-        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions,
+        WorkspaceId:text(wire.workspaceId), 
+        Title:text(wire.title), 
+        RowsRef:text(wire.rowsRef), 
+        StatusRef:text(wire.statusRef), 
+        SharedTimeAxis:wire.sharedTimeAxis, 
+        TemporalAxisRefs:wire.temporalAxisRefs==null?[]:wire.temporalAxisRefs, 
+        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)), 
+        Rows:rows, 
+        EditorSchemas:editorSchemas, 
+        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions, 
         DefaultView:defaultView
-      }),
-      Data:data,
-      DocumentRevision:wire.documentRevision,
-      DataRevision:wire.dataRevision,
-      LastTransportSequence:wire.transportSequence,
-      View:{Values:new FSharpMap("New", [])},
-      Poll:pollState(wire.pollKind),
+      }), 
+      Data:data, 
+      DocumentRevision:wire.documentRevision, 
+      DataRevision:wire.dataRevision, 
+      LastTransportSequence:wire.transportSequence, 
+      View:{Values:new FSharpMap("New", [])}, 
+      Poll:pollState(wire.pollKind), 
       LastError:lastError
     });
   }
@@ -9194,8 +9463,8 @@ function ResyncRequired(reasonCode){
 }
 function StateAccepted(dataRevision, pollEnabled){
   return{
-    $:1,
-    $0:dataRevision,
+    $:1, 
+    $0:dataRevision, 
     $1:pollEnabled
   };
 }
@@ -9267,12 +9536,12 @@ function render(options, callbacks, runtimeState){
   cursorFrameScheduled=false;
   const crossScaleSummaryOpen=_c_3.Create_1(false);
   const uiState=_c_3.Create_1({
-    Window:{StartIndex:0, Count:options.DefaultVisibleBars},
-    FollowLatest:true,
-    HiddenRows:new FSharpSet("New_2", null),
-    AddRowOpen:false,
-    CursorIndex:null,
-    PendingActionId:null,
+    Window:{StartIndex:0, Count:options.DefaultVisibleBars}, 
+    FollowLatest:true, 
+    HiddenRows:new FSharpSet("New_2", null), 
+    AddRowOpen:false, 
+    CursorIndex:null, 
+    PendingActionId:null, 
     Feedback:""
   });
   const chartUiState=_c_3.Create_1(uiState.Get());
@@ -9295,8 +9564,8 @@ function render(options, callbacks, runtimeState){
   const startActionWith=(action, successText, onAccepted, onRejected) => {
     actionSequence=actionSequence+1;
     const request={
-      RequestId:canvasIdText(currentCanvasId())+":ui:"+String(actionSequence),
-      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision),
+      RequestId:canvasIdText(currentCanvasId())+":ui:"+String(actionSequence), 
+      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision), 
       Action:action
     };
     return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted, onRejected);
@@ -9344,12 +9613,12 @@ function render(options, callbacks, runtimeState){
       const bounded=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), followLatest, window_1);
       const changed=!Equals(bounded, resolvedWindow(current))||followLatest!=current.FollowLatest;
       setUiState({
-        Window:bounded,
-        FollowLatest:followLatest,
-        HiddenRows:current.HiddenRows,
-        AddRowOpen:current.AddRowOpen,
-        CursorIndex:null,
-        PendingActionId:current.PendingActionId,
+        Window:bounded, 
+        FollowLatest:followLatest, 
+        HiddenRows:current.HiddenRows, 
+        AddRowOpen:current.AddRowOpen, 
+        CursorIndex:null, 
+        PendingActionId:current.PendingActionId, 
         Feedback:current.Feedback
       });
       cursorIndex.Set(null);
@@ -9369,14 +9638,14 @@ function render(options, callbacks, runtimeState){
             const b_1=Compare(a_1, b)===1?a_1:b;
             let _4=Compare(a, b_1)===-1?a:b_1;
             let _5={
-              BaseRowId:range_1.BaseRowId,
-              StartEventTimeUtc:range_1.StartEventTimeUtc,
-              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc,
+              BaseRowId:range_1.BaseRowId, 
+              StartEventTimeUtc:range_1.StartEventTimeUtc, 
+              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc, 
               MaximumBasePoints:_4
             };
             let _6={
-              $:7,
-              $0:_3,
+              $:7, 
+              $0:_3, 
               $1:_5
             };
             return startAction(_6, "Visible range synchronized.", () => { });
@@ -9403,12 +9672,12 @@ function render(options, callbacks, runtimeState){
     setWindow(true, {StartIndex:0, Count:options.DefaultVisibleBars});
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:_3.AddRowOpen,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:_3.PendingActionId,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:_3.PendingActionId, 
       Feedback:"Local view reset."
     };
     setUiState(_4);
@@ -9557,8 +9826,8 @@ function render(options, callbacks, runtimeState){
           if(index>=0&&index<length(visible)){
             const baseRowId=m_1.$0;
             startAction({
-              $:6,
-              $0:currentCanvasId(),
+              $:6, 
+              $0:currentCanvasId(), 
               $1:{BaseRowId:baseRowId, EventTimeUtc:get(visible, index)}
             }, "Shared cursor synchronized.", () => { });
           }
@@ -9578,12 +9847,12 @@ function render(options, callbacks, runtimeState){
     pendingEditorMutation=null;
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:false,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:_3.PendingActionId,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:false, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:_3.PendingActionId, 
       Feedback:_3.Feedback
     };
     setUiState(_4);
@@ -9628,12 +9897,12 @@ function render(options, callbacks, runtimeState){
           if(maximum!=null&&maximum.$==1&&(count>=maximum.$0&&(_3=maximum.$0,true))){
             const _4=uiState.Get();
             let _5={
-              Window:_4.Window,
-              FollowLatest:_4.FollowLatest,
-              HiddenRows:_4.HiddenRows,
-              AddRowOpen:_4.AddRowOpen,
-              CursorIndex:_4.CursorIndex,
-              PendingActionId:_4.PendingActionId,
+              Window:_4.Window, 
+              FollowLatest:_4.FollowLatest, 
+              HiddenRows:_4.HiddenRows, 
+              AddRowOpen:_4.AddRowOpen, 
+              CursorIndex:_4.CursorIndex, 
+              PendingActionId:_4.PendingActionId, 
               Feedback:String(labelText)+" allows at most "+String(_3)+" item(s)."
             };
             setUiState(_5);
@@ -9720,16 +9989,16 @@ function render(options, callbacks, runtimeState){
     }}), o_2]);
     const parsedInterval=m[0]&&m[1]>0?Some(m[1]):null;
     const query={
-      SourceId:null,
-      Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft),
-      IntervalMinutes:parsedInterval,
-      FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft),
-      ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft),
+      SourceId:null, 
+      Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft), 
+      IntervalMinutes:parsedInterval, 
+      FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft), 
+      ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft), 
       IncludePartial:Some(true)
     };
     startAction({
-      $:5,
-      $0:currentCanvasId(),
+      $:5, 
+      $0:currentCanvasId(), 
       $1:query
     }, "Query accepted.", () => { });
   };
@@ -9742,12 +10011,12 @@ function render(options, callbacks, runtimeState){
       if(length(errors)>0){
         const _3=uiState.Get();
         let _4={
-          Window:_3.Window,
-          FollowLatest:_3.FollowLatest,
-          HiddenRows:_3.HiddenRows,
-          AddRowOpen:_3.AddRowOpen,
-          CursorIndex:_3.CursorIndex,
-          PendingActionId:_3.PendingActionId,
+          Window:_3.Window, 
+          FollowLatest:_3.FollowLatest, 
+          HiddenRows:_3.HiddenRows, 
+          AddRowOpen:_3.AddRowOpen, 
+          CursorIndex:_3.CursorIndex, 
+          PendingActionId:_3.PendingActionId, 
           Feedback:concat_1(" ", errors)
         };
         setUiState(_4);
@@ -9759,10 +10028,10 @@ function render(options, callbacks, runtimeState){
         const binding={TemplateKey:schema.TemplateKey, Values:editorValues.Get().slice()};
         pendingEditorMutation=Some([runtimeState.Get().DocumentRevision, editingRowId, new FSharpSet("New_2", OfSeq(map((a) => a.RowId, currentRows))), binding]);
         startActionWith({
-          $:3,
-          $0:currentCanvasId(),
-          $1:editingRowId,
-          $2:schema.TemplateKey,
+          $:3, 
+          $0:currentCanvasId(), 
+          $1:editingRowId, 
+          $2:schema.TemplateKey, 
           $3:editorValues.Get()
         }, schema.DisplayName+" accepted; awaiting authoritative document.", () => { }, () => {
           pendingEditorMutation=null;
@@ -9815,18 +10084,18 @@ function render(options, callbacks, runtimeState){
         addRowSequence=addRowSequence+1;
         const rowId="row-"+addKind.Get().toLowerCase()+"-"+String(addRowSequence);
         const spec={
-          RowId:rowId,
-          Kind:kind,
-          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()),
-          HeightWeight:1,
-          Visible:true,
-          Options:rowOptions,
+          RowId:rowId, 
+          Kind:kind, 
+          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()), 
+          HeightWeight:1, 
+          Visible:true, 
+          Options:rowOptions, 
           Traces:[]
         };
         pendingAddRowId=Some(rowId);
         startAction({
-          $:2,
-          $0:currentCanvasId(),
+          $:2, 
+          $0:currentCanvasId(), 
           $1:spec
         }, "Row accepted.", () => { });
       }
@@ -9834,12 +10103,12 @@ function render(options, callbacks, runtimeState){
         const message=optionsResult.$0;
         const _12=uiState.Get();
         let _13={
-          Window:_12.Window,
-          FollowLatest:_12.FollowLatest,
-          HiddenRows:_12.HiddenRows,
-          AddRowOpen:_12.AddRowOpen,
-          CursorIndex:_12.CursorIndex,
-          PendingActionId:_12.PendingActionId,
+          Window:_12.Window, 
+          FollowLatest:_12.FollowLatest, 
+          HiddenRows:_12.HiddenRows, 
+          AddRowOpen:_12.AddRowOpen, 
+          CursorIndex:_12.CursorIndex, 
+          PendingActionId:_12.PendingActionId, 
           Feedback:message
         };
         setUiState(_13);
@@ -9870,12 +10139,12 @@ function render(options, callbacks, runtimeState){
             pendingAddRowId=null;
             const _8=uiState.Get();
             let _9={
-              Window:_8.Window,
-              FollowLatest:_8.FollowLatest,
-              HiddenRows:_8.HiddenRows,
-              AddRowOpen:false,
-              CursorIndex:_8.CursorIndex,
-              PendingActionId:_8.PendingActionId,
+              Window:_8.Window, 
+              FollowLatest:_8.FollowLatest, 
+              HiddenRows:_8.HiddenRows, 
+              AddRowOpen:false, 
+              CursorIndex:_8.CursorIndex, 
+              PendingActionId:_8.PendingActionId, 
               Feedback:"Row added."
             };
             _4=setUiState(_9);
@@ -9907,12 +10176,12 @@ function render(options, callbacks, runtimeState){
               forceCloseRowEditor();
               const _10=uiState.Get();
               let _11={
-                Window:_10.Window,
-                FollowLatest:_10.FollowLatest,
-                HiddenRows:_10.HiddenRows,
-                AddRowOpen:_10.AddRowOpen,
-                CursorIndex:_10.CursorIndex,
-                PendingActionId:_10.PendingActionId,
+                Window:_10.Window, 
+                FollowLatest:_10.FollowLatest, 
+                HiddenRows:_10.HiddenRows, 
+                AddRowOpen:_10.AddRowOpen, 
+                CursorIndex:_10.CursorIndex, 
+                PendingActionId:_10.PendingActionId, 
                 Feedback:targetRowId!=null?"Row updated.":"Row added."
               };
               _6=setUiState(_11);
@@ -9979,12 +10248,12 @@ function render(options, callbacks, runtimeState){
           else resetEditorFor(m_2.$0.TemplateKey);
           const _12=uiState.Get();
           let _13={
-            Window:_12.Window,
-            FollowLatest:_12.FollowLatest,
-            HiddenRows:_12.HiddenRows,
-            AddRowOpen:true,
-            CursorIndex:_12.CursorIndex,
-            PendingActionId:_12.PendingActionId,
+            Window:_12.Window, 
+            FollowLatest:_12.FollowLatest, 
+            HiddenRows:_12.HiddenRows, 
+            AddRowOpen:true, 
+            CursorIndex:_12.CursorIndex, 
+            PendingActionId:_12.PendingActionId, 
             Feedback:""
           };
           setUiState(_13);
@@ -10003,12 +10272,12 @@ function render(options, callbacks, runtimeState){
           const nextHidden=hidden?uiState.Get().HiddenRows.Remove_1(row.RowId):uiState.Get().HiddenRows.Add_1(row.RowId);
           const _13=uiState.Get();
           let _14={
-            Window:_13.Window,
-            FollowLatest:_13.FollowLatest,
-            HiddenRows:nextHidden,
-            AddRowOpen:_13.AddRowOpen,
-            CursorIndex:_13.CursorIndex,
-            PendingActionId:_13.PendingActionId,
+            Window:_13.Window, 
+            FollowLatest:_13.FollowLatest, 
+            HiddenRows:nextHidden, 
+            AddRowOpen:_13.AddRowOpen, 
+            CursorIndex:_13.CursorIndex, 
+            PendingActionId:_13.PendingActionId, 
             Feedback:_13.Feedback
           };
           return setUiState(_14);
@@ -10019,12 +10288,12 @@ function render(options, callbacks, runtimeState){
               editingRowId=null;
               const _13=uiState.Get();
               let _14={
-                Window:_13.Window,
-                FollowLatest:_13.FollowLatest,
-                HiddenRows:_13.HiddenRows,
-                AddRowOpen:false,
-                CursorIndex:_13.CursorIndex,
-                PendingActionId:_13.PendingActionId,
+                Window:_13.Window, 
+                FollowLatest:_13.FollowLatest, 
+                HiddenRows:_13.HiddenRows, 
+                AddRowOpen:false, 
+                CursorIndex:_13.CursorIndex, 
+                PendingActionId:_13.PendingActionId, 
                 Feedback:"This row's editor metadata is invalid; the row remains read-only."
               };
               return setUiState(_14);
@@ -10038,12 +10307,12 @@ function render(options, callbacks, runtimeState){
               editorValues.Set(values);
               const _15=uiState.Get();
               let _16={
-                Window:_15.Window,
-                FollowLatest:_15.FollowLatest,
-                HiddenRows:_15.HiddenRows,
-                AddRowOpen:true,
-                CursorIndex:_15.CursorIndex,
-                PendingActionId:_15.PendingActionId,
+                Window:_15.Window, 
+                FollowLatest:_15.FollowLatest, 
+                HiddenRows:_15.HiddenRows, 
+                AddRowOpen:true, 
+                CursorIndex:_15.CursorIndex, 
+                PendingActionId:_15.PendingActionId, 
                 Feedback:""
               };
               return setUiState(_16);
@@ -10051,8 +10320,8 @@ function render(options, callbacks, runtimeState){
           }
           else return null;
         })], [Doc.TextNode("Edit")])]:[], delay(() =>[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+displayLabel+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
-          $:4,
-          $0:currentCanvasId(),
+          $:4, 
+          $0:currentCanvasId(), 
           $1:row.RowId
         }, displayLabel+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])))))))];
       }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-generic-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; min-width:0;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Template"), selectInput("ta-editor-template", selectedTemplate.Get(), ofArray(map((schema) =>[schema.TemplateKey, schema.DisplayName], editorSchemasNow())), resetEditorFor)]), Doc.EmbedView(Map((templateKey) => {
@@ -10164,12 +10433,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
   if(uiState.Get().PendingActionId!=null){
     const _1=uiState.Get();
     let _2={
-      Window:_1.Window,
-      FollowLatest:_1.FollowLatest,
-      HiddenRows:_1.HiddenRows,
-      AddRowOpen:_1.AddRowOpen,
-      CursorIndex:_1.CursorIndex,
-      PendingActionId:_1.PendingActionId,
+      Window:_1.Window, 
+      FollowLatest:_1.FollowLatest, 
+      HiddenRows:_1.HiddenRows, 
+      AddRowOpen:_1.AddRowOpen, 
+      CursorIndex:_1.CursorIndex, 
+      PendingActionId:_1.PendingActionId, 
       Feedback:"action-in-flight: wait for the pending action result."
     };
     uiState.Set(_2);
@@ -10178,12 +10447,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
     onRejected();
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:_3.AddRowOpen,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:null,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:null, 
       Feedback:"revision-conflict: workspace is at revision "+String(actualDocumentRevision)+"."
     };
     uiState.Set(_4);
@@ -10191,12 +10460,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
   else {
     const _5=uiState.Get();
     let _6={
-      Window:_5.Window,
-      FollowLatest:_5.FollowLatest,
-      HiddenRows:_5.HiddenRows,
-      AddRowOpen:_5.AddRowOpen,
-      CursorIndex:_5.CursorIndex,
-      PendingActionId:Some(request.RequestId),
+      Window:_5.Window, 
+      FollowLatest:_5.FollowLatest, 
+      HiddenRows:_5.HiddenRows, 
+      AddRowOpen:_5.AddRowOpen, 
+      CursorIndex:_5.CursorIndex, 
+      PendingActionId:Some(request.RequestId), 
       Feedback:"Submitting "+request.RequestId+"..."
     };
     uiState.Set(_6);
@@ -10205,9 +10474,9 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
       if(a.$==1){
         const error_2=a.$0;
         result={
-          $:1,
-          $0:request.RequestId,
-          $1:error_2.Code,
+          $:1, 
+          $0:request.RequestId, 
+          $1:error_2.Code, 
           $2:error_2.Message
         };
       }
@@ -10216,12 +10485,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _7=uiState.Get();
         let _8={
-          Window:_7.Window,
-          FollowLatest:_7.FollowLatest,
-          HiddenRows:_7.HiddenRows,
-          AddRowOpen:_7.AddRowOpen,
-          CursorIndex:_7.CursorIndex,
-          PendingActionId:null,
+          Window:_7.Window, 
+          FollowLatest:_7.FollowLatest, 
+          HiddenRows:_7.HiddenRows, 
+          AddRowOpen:_7.AddRowOpen, 
+          CursorIndex:_7.CursorIndex, 
+          PendingActionId:null, 
           Feedback:"action-correlation-mismatch: result does not match the pending request."
         };
         uiState.Set(_8);
@@ -10233,12 +10502,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _9=uiState.Get();
         let _10={
-          Window:_9.Window,
-          FollowLatest:_9.FollowLatest,
-          HiddenRows:_9.HiddenRows,
-          AddRowOpen:_9.AddRowOpen,
-          CursorIndex:_9.CursorIndex,
-          PendingActionId:null,
+          Window:_9.Window, 
+          FollowLatest:_9.FollowLatest, 
+          HiddenRows:_9.HiddenRows, 
+          AddRowOpen:_9.AddRowOpen, 
+          CursorIndex:_9.CursorIndex, 
+          PendingActionId:null, 
           Feedback:code+": "+message
         };
         uiState.Set(_10);
@@ -10249,12 +10518,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onRejected();
         const _11=uiState.Get();
         let _12={
-          Window:_11.Window,
-          FollowLatest:_11.FollowLatest,
-          HiddenRows:_11.HiddenRows,
-          AddRowOpen:_11.AddRowOpen,
-          CursorIndex:_11.CursorIndex,
-          PendingActionId:null,
+          Window:_11.Window, 
+          FollowLatest:_11.FollowLatest, 
+          HiddenRows:_11.HiddenRows, 
+          AddRowOpen:_11.AddRowOpen, 
+          CursorIndex:_11.CursorIndex, 
+          PendingActionId:null, 
           Feedback:"revision-conflict: workspace is at revision "+String(actualRevision)+"."
         };
         uiState.Set(_12);
@@ -10265,12 +10534,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
         onAccepted();
         const _13=uiState.Get();
         let _14={
-          Window:_13.Window,
-          FollowLatest:_13.FollowLatest,
-          HiddenRows:_13.HiddenRows,
-          AddRowOpen:_13.AddRowOpen,
-          CursorIndex:_13.CursorIndex,
-          PendingActionId:null,
+          Window:_13.Window, 
+          FollowLatest:_13.FollowLatest, 
+          HiddenRows:_13.HiddenRows, 
+          AddRowOpen:_13.AddRowOpen, 
+          CursorIndex:_13.CursorIndex, 
+          PendingActionId:null, 
           Feedback:successText+" Revision "+String(revision)+"."
         };
         uiState.Set(_14);
@@ -10447,8 +10716,8 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
       const lines=_2[3];
       const m=trace.Kind;
       let _3=m.$==1?map((point) =>({
-        Timestamp:point.Timestamp,
-        Value:point.Volume,
+        Timestamp:point.Timestamp, 
+        Value:point.Volume, 
         Temporal:point.Temporal
       }), _2[2]):m.$==2?lines:m.$==3?lines:[];
       let _4=projectedLinePoints(referenceTimestamps, _3);
@@ -11085,16 +11354,16 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1,
-      Children:Children_1,
-      El:El,
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
     return Create_2(DocElemNode, _2);
   }
 }
-function New_50(PreviousNodes, Top){
+function New_52(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -11197,7 +11466,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_56((a) => {
+    r(New_58((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -11222,7 +11491,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_56((a) => {
+    if(!ct.c)c(New_58((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -11250,7 +11519,7 @@ function UncaughtAsyncError(e){
 function StartImmediate(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
-  if(!ct.c)c(New_56((a) => {
+  if(!ct.c)c(New_58((a) => {
     if(a.$==1)UncaughtAsyncError(a.$0);
   }, ct));
 }
@@ -11360,35 +11629,35 @@ function SendAction(Item){
 function ScheduleReconnect(delayMs){
   return{$:5, $0:delayMs};
 }
-function New_51(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints){
+function New_53(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints){
   return{
-    wireVersion:wireVersion,
-    kind:kind,
-    actionKind:actionKind,
-    canvasInstanceId:canvasInstanceId,
-    rowId:rowId,
-    rowKind:rowKind_1,
-    dataRef:dataRef,
-    heightWeight:heightWeight,
-    visible:visible,
-    sourceId:sourceId,
-    instrument:instrument,
-    intervalMinutes:intervalMinutes,
-    fromUtc:fromUtc,
-    toUtcExclusive:toUtcExclusive,
-    includePartial:includePartial,
-    afterDataRevision:afterDataRevision,
-    dataRevision:dataRevision,
-    reasonCode:reasonCode,
-    templateKey:templateKey,
-    hasTemplateRowId:hasTemplateRowId,
-    editorValues:editorValues,
-    expectedDocumentRevision:expectedDocumentRevision,
-    hasExpectedDocumentRevision:hasExpectedDocumentRevision,
-    baseRowId:baseRowId,
-    eventTimeUtc:eventTimeUtc,
-    startEventTimeUtc:startEventTimeUtc,
-    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc,
+    wireVersion:wireVersion, 
+    kind:kind, 
+    actionKind:actionKind, 
+    canvasInstanceId:canvasInstanceId, 
+    rowId:rowId, 
+    rowKind:rowKind_1, 
+    dataRef:dataRef, 
+    heightWeight:heightWeight, 
+    visible:visible, 
+    sourceId:sourceId, 
+    instrument:instrument, 
+    intervalMinutes:intervalMinutes, 
+    fromUtc:fromUtc, 
+    toUtcExclusive:toUtcExclusive, 
+    includePartial:includePartial, 
+    afterDataRevision:afterDataRevision, 
+    dataRevision:dataRevision, 
+    reasonCode:reasonCode, 
+    templateKey:templateKey, 
+    hasTemplateRowId:hasTemplateRowId, 
+    editorValues:editorValues, 
+    expectedDocumentRevision:expectedDocumentRevision, 
+    hasExpectedDocumentRevision:hasExpectedDocumentRevision, 
+    baseRowId:baseRowId, 
+    eventTimeUtc:eventTimeUtc, 
+    startEventTimeUtc:startEventTimeUtc, 
+    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc, 
     maximumBasePoints:maximumBasePoints
   };
 }
@@ -11401,12 +11670,12 @@ function Map_2(f, r){
 function ToOption(result){
   return result.$==0?Some(result.$0):null;
 }
-function New_52(schema, exportedAtUtc, documentRevision, dataRevision, state){
+function New_54(schema, exportedAtUtc, documentRevision, dataRevision, state){
   return{
-    schema:schema,
-    exportedAtUtc:exportedAtUtc,
-    documentRevision:documentRevision,
-    dataRevision:dataRevision,
+    schema:schema, 
+    exportedAtUtc:exportedAtUtc, 
+    documentRevision:documentRevision, 
+    dataRevision:dataRevision, 
     state:state
   };
 }
@@ -11636,8 +11905,8 @@ function initialEditorInputs(schema){
 function prepareData(data){
   const axes=OfArray(choose((_1) => prepareAxis(_1[1]), ofSeq(ToSeq(data))));
   return{
-    RawData:data,
-    ResolvedAxes:axes,
+    RawData:data, 
+    ResolvedAxes:axes, 
     ResolvedSeries:OfArray(choose((_1) => {
       const dataRef=_1[0];
       const value=_1[1];
@@ -11667,8 +11936,8 @@ function prepareDataIncremental(previous, data){
   const axes=OfArray(map((_1) =>[_1[0], _1[1]], axisUpdates));
   const axisChanges=OfArray(map((_1) =>[_1[0], _1[2]], axisUpdates));
   return{
-    RawData:data,
-    ResolvedAxes:axes,
+    RawData:data, 
+    ResolvedAxes:axes, 
     ResolvedSeries:OfArray(choose((_1) => {
       let _2, _3, _4, _5;
       const dataRef=_1[0];
@@ -11745,8 +12014,8 @@ function visibleEventRange(document, data, window_1){
       const endIndex=window_1.StartIndex+length(selected);
       const o=filter((value) => Compare(value, startTime)>0, endIndex<length(timeline)?Some(get(timeline, endIndex)):tryBasePointIntervalEnd(baseRow, data, get(selected, length(selected)-1)));
       return o==null?null:Some({
-        BaseRowId:baseRowId,
-        StartEventTimeUtc:startTime,
+        BaseRowId:baseRowId, 
+        StartEventTimeUtc:startTime, 
         EndEventTimeExclusiveUtc:o.$0
       });
     }
@@ -11834,11 +12103,11 @@ function queryDraft(values){
   const o_4=o_3==null?null:tryBool(o_3.$0);
   const includePartial=o_4==null||o_4.$0;
   return{
-    SourceId:textValue("query.sourceId"),
-    Instrument:textValue("query.instrument"),
-    IntervalMinutes:interval,
-    FromUtc:textValue("query.fromUtc"),
-    ToUtcExclusive:textValue("query.toUtcExclusive"),
+    SourceId:textValue("query.sourceId"), 
+    Instrument:textValue("query.instrument"), 
+    IntervalMinutes:interval, 
+    FromUtc:textValue("query.fromUtc"), 
+    ToUtcExclusive:textValue("query.toUtcExclusive"), 
     IncludePartial:includePartial
   };
 }
@@ -11860,10 +12129,10 @@ function statusPresentation(statusRef, state){
     _1=Some(error_2.ReasonCode+": "+error_2.Message);
   }
   return{
-    Freshness:freshness,
-    Label:_2,
-    Watermark:_3,
-    Quality:_4,
+    Freshness:freshness, 
+    Label:_2, 
+    Watermark:_3, 
+    Quality:_4, 
     Error:_1
   };
 }
@@ -11903,14 +12172,14 @@ function effectiveTraces(row){
         break;
     }
     return[{
-      TraceId:row.RowId,
-      Kind:_1,
-      DataRef:row.DataRef,
-      Label:row.RowId,
-      Color:"",
-      Width:1.25,
-      Visible:true,
-      CandleDataRefs:null,
+      TraceId:row.RowId, 
+      Kind:_1, 
+      DataRef:row.DataRef, 
+      Label:row.RowId, 
+      Color:"", 
+      Width:1.25, 
+      Visible:true, 
+      CandleDataRefs:null, 
       Options:new FSharpMap("New", [])
     }];
   }
@@ -11925,44 +12194,44 @@ function workspaceBootstrapPresentation(state){
     switch(m_1.$==1?1:m_1.$==4?2:m_1.$==6?3:m_1.$==7?4:m_1.$==2?5:m_1.$==3?5:m_1.$==5?5:0){
       case 0:
         return{
-          State:"preparing",
-          Title:"Preparing TA workspace",
-          Detail:"Waiting for the workspace channel to mount.",
+          State:"preparing", 
+          Title:"Preparing TA workspace", 
+          Detail:"Waiting for the workspace channel to mount.", 
           IsError:false
         };
       case 1:
         return{
-          State:"connecting",
-          Title:"Connecting TA workspace",
-          Detail:"Waiting for the initial workspace document.",
+          State:"connecting", 
+          Title:"Connecting TA workspace", 
+          Detail:"Waiting for the initial workspace document.", 
           IsError:false
         };
       case 2:
         return{
-          State:"retrying",
-          Title:"Restoring TA workspace",
-          Detail:"A reconnect attempt is scheduled.",
+          State:"retrying", 
+          Title:"Restoring TA workspace", 
+          Detail:"A reconnect attempt is scheduled.", 
           IsError:false
         };
       case 3:
         return{
-          State:"resyncing",
-          Title:"Resynchronizing TA workspace",
-          Detail:"Requesting a full workspace document.",
+          State:"resyncing", 
+          Title:"Resynchronizing TA workspace", 
+          Detail:"Requesting a full workspace document.", 
           IsError:false
         };
       case 4:
         return{
-          State:"closed",
-          Title:"TA workspace closed",
-          Detail:"Open the page again to reconnect.",
+          State:"closed", 
+          Title:"TA workspace closed", 
+          Detail:"Open the page again to reconnect.", 
           IsError:false
         };
       case 5:
         return{
-          State:"loading",
-          Title:"Loading TA workspace",
-          Detail:"Waiting for the workspace document.",
+          State:"loading", 
+          Title:"Loading TA workspace", 
+          Detail:"Waiting for the workspace document.", 
           IsError:false
         };
     }
@@ -11970,18 +12239,18 @@ function workspaceBootstrapPresentation(state){
   else if(!m.$0.Recoverable){
     const error_2=m.$0;
     return{
-      State:"unavailable",
-      Title:"TA workspace unavailable",
-      Detail:error_2.ReasonCode+": "+error_2.Message,
+      State:"unavailable", 
+      Title:"TA workspace unavailable", 
+      Detail:error_2.ReasonCode+": "+error_2.Message, 
       IsError:true
     };
   }
   else {
     const error_3=m.$0;
     return{
-      State:"recovering",
-      Title:"Restoring TA workspace",
-      Detail:error_3.ReasonCode+": "+error_3.Message,
+      State:"recovering", 
+      Title:"Restoring TA workspace", 
+      Detail:error_3.ReasonCode+": "+error_3.Message, 
       IsError:false
     };
   }
@@ -12107,8 +12376,8 @@ function prepareAxis(value){
     const _3=o.$0[2];
     const decoded=choose(tryTemporalAxisPoint, _3);
     return length(decoded)!==length(_3)?null:Some([_1, {
-      Revision:_2,
-      RawPoints:_3,
+      Revision:_2, 
+      RawPoints:_3, 
       Points:OfArray(decoded)
     }]);
   }
@@ -12149,8 +12418,8 @@ function updateAxis(previous, value){
     else if(m_1.$0.RawPoints===rawPoints){
       const oldAxis=m_1.$0;
       return Some([axisRef, {
-        Revision:revision,
-        RawPoints:oldAxis.RawPoints,
+        Revision:revision, 
+        RawPoints:oldAxis.RawPoints, 
         Points:oldAxis.Points
       }, Some(new FSharpSet("New_2", null))]);
     }
@@ -12166,8 +12435,8 @@ function updateAxis(previous, value){
         if(length(oldSuffix)===length(oldAxis_1.RawPoints)-prefix&&length(newSuffix)===length(rawPoints)-prefix){
           const changedPositions=new FSharpSet("New_2", OfSeq(map((t) => t[0], oldSuffix).concat(map((t) => t[0], newSuffix))));
           return Some([axisRef, {
-            Revision:revision,
-            RawPoints:rawPoints,
+            Revision:revision, 
+            RawPoints:rawPoints, 
             Points:fold((_2, _3) => _2.Add_1(_3[0], _3[1]), fold((_2, _3) => _2.Remove_1(_3[0]), oldAxis_1.Points, oldSuffix), newSuffix)
           }, Some(changedPositions)]);
         }
@@ -12365,8 +12634,8 @@ function freshnessFromStatus(status){
   const o_2=objectText("reasonCode", status);
   const reason=o_2==null?kind:o_2.$0;
   return kind=="live"?{$:0}:kind=="delayed"?{$:1, $0:lag}:kind=="stale"?{
-    $:2,
-    $0:lag,
+    $:2, 
+    $0:lag, 
     $1:reason
   }:kind=="backfill"?{$:3, $0:reason}:{$:4, $0:reason};
 }
@@ -12427,12 +12696,12 @@ function candleSeriesForTracePrepared(trace, prepared){
       const _4=closes.TryFind(openPoint.Timestamp);
       const _5=volumes.TryFind(openPoint.Timestamp);
       return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_1=[_4.$0, _2.$0, _3.$0, _5.$0],true))))?Some({
-        Timestamp:openPoint.Timestamp,
-        Open:openPoint.Value,
-        High:_1[1].Value,
-        Low:_1[2].Value,
-        Close:_1[0].Value,
-        Volume:_1[3].Value,
+        Timestamp:openPoint.Timestamp, 
+        Open:openPoint.Value, 
+        High:_1[1].Value, 
+        Low:_1[2].Value, 
+        Close:_1[0].Value, 
+        Volume:_1[3].Value, 
         Temporal:openPoint.Temporal
       }):null;
     }, opens);
@@ -12528,14 +12797,14 @@ function tryTemporalAxisPoint(value){
     const _8=requiredObjectText("finality", fields);
     const _9=requiredObjectText("projection", fields);
     return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _2.$0, _9.$0, _4.$0, _3.$0],true))))))))?Some([_1[4], {
-      SourceIntervalId:_1[7],
-      ScaleKey:_1[6],
-      IntervalStartUtc:_1[2],
-      IntervalEndUtc:_1[1],
-      ObservedThroughUtc:_1[3],
-      AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
-      Finality:_1[0],
-      Projection:_1[5],
+      SourceIntervalId:_1[7], 
+      ScaleKey:_1[6], 
+      IntervalStartUtc:_1[2], 
+      IntervalEndUtc:_1[1], 
+      ObservedThroughUtc:_1[3], 
+      AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
+      Finality:_1[0], 
+      Projection:_1[5], 
       Quality:requiredObjectText("quality", fields)
     }]):null;
   }
@@ -12557,14 +12826,14 @@ function tryTemporalPoint(value){
       const _9=requiredObjectText("projection", fields);
       if(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _9.$0, _4.$0, _3.$0],true)))))))){
         let _10={
-          SourceIntervalId:_1[6],
-          ScaleKey:_1[5],
-          IntervalStartUtc:_1[2],
-          IntervalEndUtc:_1[1],
-          ObservedThroughUtc:_1[3],
-          AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
-          Finality:_1[0],
-          Projection:_1[4],
+          SourceIntervalId:_1[6], 
+          ScaleKey:_1[5], 
+          IntervalStartUtc:_1[2], 
+          IntervalEndUtc:_1[1], 
+          ObservedThroughUtc:_1[3], 
+          AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
+          Finality:_1[0], 
+          Projection:_1[4], 
           Quality:requiredObjectText("quality", fields)
         };
         const m=fields.TryFind("value");
@@ -12842,8 +13111,8 @@ function tryTemporalAxis(value){
 function parseLineResolved(temporal, payload){
   let _1, _2;
   if(payload!=null&&payload.$==1&&(payload.$0.$==2&&(temporal!=null&&temporal.$==1&&(_1=[payload.$0.$0, temporal.$0],true))))return Some({
-    Timestamp:_1[1].IntervalStartUtc,
-    Value:_1[0],
+    Timestamp:_1[1].IntervalStartUtc, 
+    Value:_1[0], 
     Temporal:temporal
   });
   else {
@@ -12855,8 +13124,8 @@ function parseLineResolved(temporal, payload){
       const _3=o_1==null?objectText("t", item):(o_1.$0,o_1);
       const _4=objectNumber("v", item);
       return _3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_2=[_4.$0, _3.$0],true))?Some({
-        Timestamp:_2[1],
-        Value:_2[0],
+        Timestamp:_2[1], 
+        Value:_2[0], 
         Temporal:temporal
       }):null;
     }
@@ -12926,12 +13195,12 @@ function parseCandleResolved(temporal, payload){
     const _6=objectNumber("c", item);
     const _7=objectNumber("v", item);
     return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_1=[_6.$0, _4.$0, _5.$0, _3.$0, _2.$0, _7.$0],true))))))?Some({
-      Timestamp:_1[4],
-      Open:_1[3],
-      High:_1[1],
-      Low:_1[2],
-      Close:_1[0],
-      Volume:_1[5],
+      Timestamp:_1[4], 
+      Open:_1[3], 
+      High:_1[1], 
+      Low:_1[2], 
+      Close:_1[0], 
+      Volume:_1[5], 
       Temporal:temporal
     }):null;
   }
@@ -13024,9 +13293,9 @@ let _c_5=Lazy((_i) => class $StartupCode_Renderer {
   static defaultOptions;
   static {
     this.defaultOptions={
-      MinimumVisibleBars:12,
-      DefaultVisibleBars:48,
-      MaximumVisibleBars:4000,
+      MinimumVisibleBars:12, 
+      DefaultVisibleBars:48, 
+      MaximumVisibleBars:4000, 
       EditorSchemas:[]
     };
   }
@@ -13112,31 +13381,31 @@ function Forever(Item){
 }
 function Ready(Item1, Item2){
   return{
-    $:2,
-    $0:Item1,
+    $:2, 
+    $0:Item1, 
     $1:Item2
   };
 }
 function Waiting(Item1, Item2){
   return{
-    $:3,
-    $0:Item1,
+    $:3, 
+    $0:Item1, 
     $1:Item2
   };
 }
-function New_53(Node_1, Left, Right, Height, Count){
+function New_55(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1,
-    Left:Left,
-    Right:Right,
-    Height:Height,
+    Node:Node_1, 
+    Left:Left, 
+    Right:Right, 
+    Height:Height, 
     Count:Count
   };
 }
-function New_54(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_56(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem,
-    DynFlags:DynFlags,
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -13168,8 +13437,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2,
-    $0:x,
+    $:2, 
+    $0:x, 
     $1:y
   };
 }
@@ -13205,12 +13474,12 @@ function fromSeq(s){
   sortInPlace(a);
   return Build(a, 0, a.length-1);
 }
-function New_55(path, kind, textValue, numberValue, boolValue){
+function New_57(path, kind, textValue, numberValue, boolValue){
   return{
-    path:path,
-    kind:kind,
-    textValue:textValue,
-    numberValue:numberValue,
+    path:path, 
+    kind:kind, 
+    textValue:textValue, 
+    numberValue:numberValue, 
     boolValue:boolValue
   };
 }
@@ -13254,9 +13523,9 @@ function fromValue(value){
       const revision_1=_2[2];
       const templateKey=_2[3];
       return Bind_2((decodedFields) => validateSchema(limits(), {
-        TemplateKey:templateKey,
-        DisplayName:displayName,
-        SchemaRevision:BigInt(Math.trunc(revision_1)),
+        TemplateKey:templateKey, 
+        DisplayName:displayName, 
+        SchemaRevision:BigInt(Math.trunc(revision_1)), 
         Fields:decodedFields
       }), sequence(mapi((_7, _8) => fieldFromValue("schema.fields["+String(_7)+"]", _8), nonNull(_2[1]))));
     }
@@ -13277,10 +13546,10 @@ function fieldFromValue(field_1, value){
       const label=_1[2];
       const required=_1[3];
       return Map_2((decodedKind) =>({
-        Key:key,
-        Label:label,
-        Kind:decodedKind,
-        Required:required,
+        Key:key, 
+        Label:label, 
+        Kind:decodedKind, 
+        Required:required, 
         DefaultValue:values.TryFind("defaultValue")
       }), kindFromValue(field_1+".kind", _1[1]));
     }
@@ -13311,8 +13580,8 @@ function kindFromValue(field_1, value){
         switch(_2.$==1?_3.$==1?(_1=[_2.$0, _3.$0],2):(_1=_2.$0,1):_3.$==1?(_1=_3.$0,1):(_1=[_3.$0, _2.$0],0)){
           case 0:
             return Ok({
-              $:1,
-              $0:_1[1],
+              $:1, 
+              $0:_1[1], 
               $1:_1[0]
             });
           case 1:
@@ -13328,8 +13597,8 @@ function kindFromValue(field_1, value){
         switch(_5.$==1?_6.$==1?(_4=[_5.$0, _6.$0],2):(_4=_5.$0,1):_6.$==1?(_4=_6.$0,1):(_4=[_6.$0, _5.$0],0)){
           case 0:
             return Ok({
-              $:2,
-              $0:_4[1],
+              $:2, 
+              $0:_4[1], 
               $1:_4[0]
             });
           case 1:
@@ -13362,9 +13631,9 @@ function kindFromValue(field_1, value){
           }
           else _9=(_10=m_4,false);
           return _9?Ok({
-            $:6,
-            $0:_10[0],
-            $1:_10[2],
+            $:6, 
+            $0:_10[0], 
+            $1:_10[2], 
             $2:_10[1]
           }):Error_1(ofSeq_1(delay(() => {
             const c_3=_10[0];
@@ -13439,8 +13708,8 @@ function choiceFromValue(field_1, value){
     const _3=values.TryFind("label");
     const _4=values.TryFind("value");
     return _2!=null&&_2.$==1&&(_2.$0.$==3&&(_3!=null&&_3.$==1&&(_3.$0.$==3&&(_4!=null&&_4.$==1&&(_1=[_4.$0, _2.$0.$0, _3.$0.$0],true)))))?Ok({
-      Key:_1[1],
-      Label:_1[2],
+      Key:_1[1], 
+      Label:_1[2], 
       Value:_1[0]
     }):error("editor-schema-choice", field_1, "Editor choice requires key, label and value.");
   }
@@ -13482,9 +13751,9 @@ let _c_7=Lazy((_i) => class $StartupCode_EditorAction {
   static limits;
   static {
     this.limits={
-      MaxSchemaDepth:8,
-      MaxFields:128,
-      MaxChoicesPerField:128,
+      MaxSchemaDepth:8, 
+      MaxFields:128, 
+      MaxChoicesPerField:128, 
       MaxListItems:128
     };
     this.Protocol="ptcs-dynamic-action.v1";
@@ -13533,8 +13802,8 @@ class FSharpSet extends Object_1 {
 }
 function error_1(code, field_1, message){
   return{
-    Code:code,
-    Field:field_1,
+    Code:code, 
+    Field:field_1, 
     Message:message
   };
 }
@@ -13593,7 +13862,7 @@ function TryParseBigInt(s, min_1, max_2, r){
   }
   else return false;
 }
-function New_56(k, ct){
+function New_58(k, ct){
   return{k:k, ct:ct};
 }
 function Ok_1(Item){
@@ -13623,8 +13892,8 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_2(Updates_1, {
-      c:Current,
-      s:Snap,
+      c:Current, 
+      s:Snap, 
       v:VarView
     });
   }
@@ -13853,7 +14122,7 @@ let _c_10=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_57(false, []);
+    this.noneCT=New_59(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -13862,7 +14131,7 @@ let _c_10=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_57(IsCancellationRequested, Registrations){
+function New_59(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -14050,8 +14319,8 @@ class CheckedInput {
   }
   static Valid(value, inputText_1){
     return Create_2(CheckedInput, {
-      $:0,
-      $0:value,
+      $:0, 
+      $0:value, 
       $1:inputText_1
     });
   }
@@ -14165,7 +14434,7 @@ function TryParse_3(s){
   return isNaN(d)?null:Some(d);
 }
 function Create_1(f){
-  return New_58(false, f, forceLazy);
+  return New_60(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -14186,10 +14455,10 @@ let _c_12=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_58(created, evalOrVal, force){
+function New_60(created, evalOrVal, force){
   return{
-    c:created,
-    v:evalOrVal,
+    c:created, 
+    v:evalOrVal, 
     f:force
   };
 }

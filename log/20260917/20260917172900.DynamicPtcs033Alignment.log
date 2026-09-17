@@ -1,0 +1,18 @@
+# Dynamic PTCS 0.2.33 alignment
+
+## Plan
+
+- Background: PTCS organization announcement/read-receipt API requires exact 0.2.33 active consumer graph. Dynamic.Ptcs and Dynamic.Ptcs.Client still pin 0.2.32.
+- Goal: bump these adapter packages without changing their behavior, build/package/push in dependency order, and verify Host restore.
+- Scope: only Dynamic.Ptcs and Dynamic.Ptcs.Client fsproj and package-status docs. No other Dynamic UI changes.
+- Acceptance: exact PTCS 0.2.33 dependency in both released packages, no restore/build error; do not overwrite unrelated work.
+- Risk: Release hooks may publish automatically. Inspect package identity before push.
+
+## Operations
+
+- 2026-09-17 17:29 +08:00: pre-work status clean; starting dependency alignment.
+- 2026-09-17 18:00 +08:00: Correction: PTCS final package is 0.2.34 after HTTP/CSS/cache fixes, not the initial 0.2.33. Dynamic.Ptcs 0.1.25 and Ptcs.Client 0.1.33 exact-lock 0.2.34; both Release builds passed with zero errors, packages pushed. Official remote nuspec confirms exact dependency. No Dynamic renderer or DSL behavior changed.
+- 2026-09-17 18:42 +08:00: 假設：此 repo 只需對齊 PTCS 0.2.34 的 exact package dependency；公告頻道的 domain/API/UI 實作與驗收由 PTCS/PT repo 負責。本輪未修改 Dynamic renderer 行為。Changed-path sensitive scan high=0 medium=0；checker FAIL=0。
+- 2026-09-17 18:47 +08:00: Correction: subsequent checker exposed four directly related test/live-demo exact references still pinned to previous adapter packages. Extend scope only to those four references and run their tests. The prior checker FAIL=0 was a first-run baseline, not final closeout.
+- 2026-09-17 18:49 +08:00: Adapter tests executed via dotnet run: Ptcs.Tests 13/13 and PtcsTaClient.Tests 15/15 passed. LiveDemo build exposed direct PTCS 0.2.32 dependency causing NU1605 against adapter-required 0.2.34; align this exact reference and rebuild.
+- 2026-09-17 18:51 +08:00: LiveDemo Release rebuild passed (0 errors); NU1605 cleared, existing WS9002 remains. Checker found an append-only violation after I inserted an assumption into the pre-work Plan; removed that inserted line, retained an Operations correction, and reran checker with FAIL=0. The original Plan's missing-assumption WARN remains, with the assumption now documented in Operations.
