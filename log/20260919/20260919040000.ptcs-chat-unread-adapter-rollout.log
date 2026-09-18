@@ -1,0 +1,15 @@
+# PTCS Chat unread adapter version alignment
+
+## Plan
+
+- Background: PTCS 0.2.35 adds a browser-only unread indicator and bounded activity API. Dynamic.Ptcs and Dynamic.Ptcs.Client pin PTCS 0.2.34.
+- Goal: update only active adapter exact PTCS references and versions for formal Host package graph.
+- Acceptance: Release build/pack/push and dependent Host restore/build; no Dynamic renderer behavior change.
+- Risk: release auto-push; keep unrelated sources and any concurrent work intact.
+
+## Operations
+
+- 04:00 +08:00: Dynamic repo tracked worktree clean before version edits.
+- 04:05-04:12 +08:00: published Dynamic.Ptcs 0.1.26 and Dynamic.Ptcs.Client 0.1.34 with exact PTCS 0.2.35; NuGet HEAD 200. Client WebSharper compiler hit ACL-protected `websharper.log`; no frontend source change, so F# Release/pack used `WebSharperRunCompiler=false` and existing bundle.
+- 04:19-04:20 +08:00: active Ptcs.Tests 13/13, PtcsTaClient.Tests 15/15; LiveDemo direct PTCS/dependencies and stale build asset path aligned to 0.2.35. LiveDemo normal Release WebSharper hit same ACL-protected log, F# Release with compiler disabled passed; no regenerated LiveDemo bundle is claimed. Formal SPA Host bundle had independent PTCS browser verification.
+- 04:26 +08:00: current checker對Dynamic repo得PASS=19、WARN=3、FAIL=0；WARN是plan缺假設/範圍、既有traceability缺口及dirty。定向掃描本輪6個modified paths high=0 medium=0。
