@@ -1,0 +1,25 @@
+# PTCS 0.2.36 exact dependency alignment
+
+## Plan
+
+- Background: PTCS channel-clear authority requires `PulseTrade.Comm.Spa 0.2.36`; active Dynamic PTCS adapters still declare exact `0.2.35`.
+- Goal: bump only the two active adapter packages and preserve exact package-first consumption.
+- Scope: `PulseTrade.Comm.Spa.Dynamic.Ptcs` and `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` project/package metadata.
+- Acceptance: both projects restore/build against exact `PulseTrade.Comm.Spa 0.2.36`; downstream PTCS Host references the new adapter versions.
+- Invariant: no renderer, schema, UI, or runtime behavior change.
+
+## Operations
+
+- 2026-09-20 02:20 +08:00: started exact dependency alignment after PTCS 0.2.36 package tests passed.
+- 2026-09-20 02:22–02:29 +08:00: bumped Dynamic.Ptcs 0.1.26→0.1.27 and Dynamic.Ptcs.Client 0.1.34→0.1.35 with exact PTCS 0.2.36. Protected workspace `websharper.log` prevented normal output cleanup, so clean tracked-source staging was used without modifying the protected file.
+- 2026-09-20 02:29 +08:00: both Release packages built, packed and pushed; nupkgs were copied to the active SDK library-packs. PTCS Host exact references were updated and its Debug build passed.
+- 2026-09-20 02:50 +08:00: DevLog updated; no renderer/schema/UI/runtime source changed.
+
+## Assumptions and risks
+
+- Assumption: PTCS 0.2.36 preserves the adapter-facing contract and only adds channel-clear authority behavior.
+- Risk: an active consumer pinned to an older Dynamic adapter can restore the previous PTCS contract; the PTCS Host exact references and build are the primary downstream gate.
+
+- 2026-09-20 03:00–03:05 +08:00: checker found four active test/demo references pinned to the prior adapter versions. Updated Dynamic.Ptcs.Tests, PtcsTaClient.Tests and LiveDemo; LiveDemo direct PTCS/content path now uses 0.2.36. Both test consumers exited 0. Canonical LiveDemo build reproduced the existing protected `websharper.log` access failure; a clean staging copy ran the full WebSharper build successfully with only WS9002.
+- 假設：PTCS 0.2.36維持adapter-facing contract，只增加channel-clear authority。
+- 風險：active consumer若仍釘舊adapter會restore舊PTCS contract；本輪已同步四個test/demo references並完成主要consumer gate。

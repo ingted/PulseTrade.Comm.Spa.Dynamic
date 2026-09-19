@@ -1389,3 +1389,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - `PulseTrade.Comm.Spa.Dynamic.Ptcs` 0.1.25→0.1.26與`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` 0.1.33→0.1.34，兩者exact-lock PTCS 0.2.35；只調依賴，不改Dynamic renderer/DSL/TA邏輯。Release build/pack/push完成，NuGet flat-container HEAD 200，正式SPA Host graph已使用新版。
 - Active `Dynamic.Ptcs.Tests`、`PtcsTaClient.Tests`及`LiveDemo`引用同步；LiveDemo的direct PTCS與build asset path更新為0.2.35（原path殘留0.2.32）。Expecto 13/13、15/15通過。LiveDemo一般Release WebSharper步驟因既有`websharper.log` ACL拒絕而失敗；未變動的前端源碼以`WebSharperRunCompiler=false`完成F# Release，正式SPA Host的實際WebSharper bundle/頁面另已通過Playwright gate，不宣稱LiveDemo本輪重生bundle。
+
+## 2026-09-20 - PTCS 0.2.36 exact adapter alignment
+
+- `PulseTrade.Comm.Spa.Dynamic.Ptcs` 0.1.26→0.1.27與`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` 0.1.34→0.1.35，兩者exact-lock PTCS 0.2.36；無renderer、DSL、schema或TA行為變更。
+- 兩個package皆以clean tracked-source staging完成Release build/pack/push；原workspace的protected `websharper.log`未修改。PTCS Host已改用Dynamic.Ptcs 0.1.27、Ptcs.Client 0.1.35並build通過。
+- Active `Dynamic.Ptcs.Tests`、`PtcsTaClient.Tests`與`LiveDemo`引用已同步；LiveDemo direct PTCS reference/content path鎖0.2.36。兩個test consumer exit 0，LiveDemo以不含受保護`websharper.log`的clean staging執行完整WebSharper build成功，僅既有WS9002警告。
