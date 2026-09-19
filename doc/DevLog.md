@@ -1395,3 +1395,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - `PulseTrade.Comm.Spa.Dynamic.Ptcs` 0.1.26→0.1.27與`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` 0.1.34→0.1.35，兩者exact-lock PTCS 0.2.36；無renderer、DSL、schema或TA行為變更。
 - 兩個package皆以clean tracked-source staging完成Release build/pack/push；原workspace的protected `websharper.log`未修改。PTCS Host已改用Dynamic.Ptcs 0.1.27、Ptcs.Client 0.1.35並build通過。
 - Active `Dynamic.Ptcs.Tests`、`PtcsTaClient.Tests`與`LiveDemo`引用已同步；LiveDemo direct PTCS reference/content path鎖0.2.36。兩個test consumer exit 0，LiveDemo以不含受保護`websharper.log`的clean staging執行完整WebSharper build成功，僅既有WS9002警告。
+
+## 2026-09-20 - PTCS 0.2.37 exact adapter alignment
+
+- `PulseTrade.Comm.Spa.Dynamic.Ptcs` 0.1.27→0.1.28、`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` 0.1.35→0.1.36及aggregate `PulseTrade.Comm.Spa.Dynamic` 0.1.14→0.1.15，exact-lock PTCS 0.2.37；本輪只同步agent delivery authority相依圖，不改renderer、DSL、schema或TA行為。
+- 三個package已完成Release build/pack/push；正式Spa.Host與TAResearch.Client 0.1.18使用同一exact dependency graph編譯部署。既有受保護`websharper.log`未修改。
+- Active consumers同步：Dynamic.Ptcs.Tests與LiveDemo鎖0.1.28，PtcsTaClient.Tests與LiveDemo鎖Ptcs.Client 0.1.36；LiveDemo direct PTCS/content path鎖0.2.37。Expecto 13/13、15/15及LiveDemo Release build皆通過，後者0 warning/0 error。

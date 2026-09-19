@@ -326,8 +326,8 @@ function postJson(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage(error)));
 }
@@ -380,7 +380,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
       send.addEventListener("click", () => {
         const raw=caseRaw();
         rawPreview.textContent=raw;
-        return context.submit(New_44(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+        return context.submit(New_49(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
       });
       append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
       root.appendChild(caseRow);
@@ -394,7 +394,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
           fullSend.addEventListener("click", () => {
             const raw=fullRaw();
             fullPreview.textContent=raw;
-            return context.submit(New_44(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+            return context.submit(New_49(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
           const actions=setTestId("dynamic-argu-composer-actions", element("div", "dynamic-argu-composer-actions", null));
           append(actions, [renderComposerModeControl(context), fullSend]);
@@ -844,7 +844,7 @@ function generateActorReport(outputDirectory, status){
   if(isBlank_1(trimmed))status.Set("Report output directory is required.");
   else {
     status.Set("Generating actor state report...");
-    postJson_1("/actors/api/report", New_45(trimmed), (reply) => {
+    postJson_1("/actors/api/report", New_50(trimmed), (reply) => {
       status.Set("Report written: "+(isBlank_1(reply.filePath)?reply.fileName:reply.filePath));
     }, (message) => {
       status.Set("Report failed: "+asText_1(message));
@@ -1016,8 +1016,8 @@ function postJson_1(url, body, onOk, onError){
   const headers=new Headers();
   headers.set("Content-Type", "application/json");
   (globalThis.fetch(url, {
-    method:"POST",
-    headers:headers,
+    method:"POST", 
+    headers:headers, 
     body:JSON.stringify(body)
   }).then((response) => response.text().then((responseBody) => response.ok?onOk(decodeJson_1(isBlank_1(responseBody)?"{}":responseBody)):onError(isBlank_1(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error) => onError(errorMessage_1(error)));
 }
@@ -1107,12 +1107,12 @@ function joinPath(segments, count){
 }
 function makeActorTreeNode(id, parentId, label_1, fullPath, address, kind, status){
   return{
-    id:id,
-    parentId:parentId,
-    label:label_1,
-    fullPath:fullPath,
-    address:address,
-    kind:kind,
+    id:id, 
+    parentId:parentId, 
+    label:label_1, 
+    fullPath:fullPath, 
+    address:address, 
+    kind:kind, 
     status:status
   };
 }
@@ -2057,7 +2057,7 @@ function mountAppendPage(page, definition){
     url="/pages/api/state?pageId="+encodeURIComponent(asText_2(definition.pageId))+"&limit="+String(defaultCacheLimit());
     if(!isBlank_2(filterText))url=url+"&key="+encodeURIComponent(filterText);
     const cacheKey_1=stateCacheKey();
-    const fetchFullState=() => {
+    const fetchFullState=(onFailure) => {
       getJson(url, (data) => {
         if(generation===loadGeneration){
           writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, appendPageValueCount(data), "append-page-state");
@@ -2068,22 +2068,23 @@ function mountAppendPage(page, definition){
         if(generation===loadGeneration){
           setStatus(status, error);
           setStatus(workState, error);
+          onFailure();
         }
       });
     };
     readJson(cacheKey_1, (a) => {
       if(a==null){
-        if(generation===loadGeneration)fetchFullState();
+        if(generation===loadGeneration)fetchFullState(() => { });
       }
       else if(a.$0,generation===loadGeneration){
         const cached=a.$0;
         applySnapshot("cached", cached);
-        const sequenceBuckets=filter((bucket) => bucket.maxSequence>0n, arrayOrEmpty_1(cached.buckets));
-        if(length(sequenceBuckets)===0)fetchFullState();
-        else {
-          iter((_3) => readNewerFromBackend(generation, _3), sequenceBuckets);
-          fetchFullState();
-        }
+        fetchFullState(() => {
+          const o=tryFind((bucket) => sameText(bucket.keyId, selected), filter((bucket) => bucket.maxSequence>0n, arrayOrEmpty_1(cached.buckets)));
+          const x=o==null?tryFind((bucket) => bucket.maxSequence>0n, arrayOrEmpty_1(cached.buckets)):(o.$0,o);
+          if(x==null){ }
+          else readNewerFromBackend(generation, x.$0);
+        });
       }
     });
   };
@@ -3027,14 +3028,20 @@ function mountSets(page){
   const closeActionPool=() => {
     actionPool.removeAttribute("open");
   };
-  const tryReadSetRegistry=(event) => {
-    if(event==null||isBlank_2(event.payload))return null;
+  const tryReadSetRegistries=(event) => {
+    if(event==null||isBlank_2(event.payload))return[];
     else try {
-      const wire=json(event.payload);
-      return wire==null||asText_2(wire.schema)!="ptc.comm.spa.set.stream.v1"?null:Some(setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys));
+      if(asText_2(event.sourceKind).toLowerCase()=="set.stream.hidden.batch"){
+        const batch=json(event.payload);
+        return batch==null||asText_2(batch.schema)!="ptc.comm.spa.set.stream.batch.v1"?[]:map((wire_1) => setValueStreamKey(wire_1.pageId, wire_1.mode, wire_1.setName, wire_1.keys), arrayOrEmpty_1(batch.streams));
+      }
+      else {
+        const wire=json(event.payload);
+        return wire==null||asText_2(wire.schema)!="ptc.comm.spa.set.stream.v1"?[]:[setValueStreamKey(wire.pageId, wire.mode, wire.setName, wire.keys)];
+      }
     }
     catch(m){
-      return null;
+      return[];
     }
   };
   const setWsState=(value) => {
@@ -3136,102 +3143,102 @@ function mountSets(page){
   }
   function handleSyncEvent(event){
     if(!(event==null)&&!(event.streamKey==null)){
-      let _1, updated, _2;
       const m=asText_2(event.sourceKind).toLowerCase();
-      if(m=="set.stream"){
-        const m_1=tryReadSetRegistry(event);
-        if(m_1==null)void 0;
-        else {
-          const streamKey=m_1.$0;
-          const setName=asText_2(streamKey.setName);
-          const keys=arrayOrEmpty_1(streamKey.keys);
-          const keyId=setKeyId(setName, keys);
-          if(filtersAccept(setName, keys)&&eventIsVisibleAfterTombstone(keyId, event.createdAtUtc)){
+      switch(m){
+        case"set.stream":
+          iter((streamKey) => {
+            const setName_1=asText_2(streamKey.setName);
+            const keys_1=arrayOrEmpty_1(streamKey.keys);
+            const keyId_2=setKeyId(setName_1, keys_1);
+            if(filtersAccept(setName_1, keys_1)&&eventIsVisibleAfterTombstone(keyId_2, event.createdAtUtc)){
+              forgetHidden(keyId_2);
+              if(!exists((bucket) => sameText(bucket.keyId, keyId_2), buckets)){
+                buckets=sortSetBuckets(buckets.concat([New_21(keyId_2, setName_1, keys_1, 0, event.sequence, asText_2(event.createdAtUtc), [])]));
+                isBlank_2(selected)?selected=keyId_2:void 0;
+                !batchingSetSyncEvents?(renderList(),renderDetail(),writeSetsCache()):void 0;
+              }
+              if(sameText(keyId_2, selected)){
+                const selectedStreamKey=setValueStreamKey("", "set", setName_1, keys_1);
+                subscribeStream(selectedStreamKey);
+                requestReadTailOnce(selectedStreamKey);
+              }
+              else void 0;
+            }
+            else void 0;
+          }, tryReadSetRegistries(event));
+          break;
+        case"set.stream.hidden.batch":
+        case"set.stream.hidden":
+          iter((streamKey) => {
+            let _4;
+            const keyId_2=setKeyId(asText_2(streamKey.setName), arrayOrEmpty_1(streamKey.keys));
+            hiddenSetStreams=filter((_5) =>!sameText(_5[0], keyId_2), hiddenSetStreams).concat([[keyId_2, asText_2(event.createdAtUtc)]]);
+            buckets=filter((bucket) =>!sameText(bucket.keyId, keyId_2), buckets);
+            if(sameText(selected, keyId_2)){
+              const o=tryHead(buckets);
+              const o_1=o==null?null:Some(o.$0.keyId);
+              _4=selected=o_1==null?"":o_1.$0;
+            }
+            else _4=void 0;
+            if(!batchingSetSyncEvents){
+              renderList();
+              renderDetail();
+              writeSetsCache();
+            }
+            setStatus(status, "Hidden set stream "+keyId_2);
+          }, tryReadSetRegistries(event));
+          break;
+        case"set":
+          let updated, _1;
+          const keyId=setKeyId(asText_2(event.streamKey.setName), arrayOrEmpty_1(event.streamKey.keys));
+          if(eventIsVisibleAfterTombstone(keyId, event.createdAtUtc)){
             forgetHidden(keyId);
-            if(!exists((bucket) => sameText(bucket.keyId, keyId), buckets)){
-              buckets=sortSetBuckets(buckets.concat([New_21(keyId, setName, keys, 0, event.sequence, asText_2(event.createdAtUtc), [])]));
-              isBlank_2(selected)?selected=keyId:void 0;
-              !batchingSetSyncEvents?(renderList(),renderDetail(),writeSetsCache()):void 0;
-            }
-            if(sameText(keyId, selected)){
-              const selectedStreamKey=setValueStreamKey("", "set", setName, keys);
-              subscribeStream(selectedStreamKey);
-              requestReadTailOnce(selectedStreamKey);
-            }
-            else void 0;
-          }
-          else void 0;
-        }
-      }
-      else if(m=="set.stream.hidden"){
-        const m_2=tryReadSetRegistry(event);
-        if(m_2==null)void 0;
-        else {
-          const streamKey_1=m_2.$0;
-          const keyId_1=setKeyId(asText_2(streamKey_1.setName), arrayOrEmpty_1(streamKey_1.keys));
-          hiddenSetStreams=filter((_5) =>!sameText(_5[0], keyId_1), hiddenSetStreams).concat([[keyId_1, asText_2(event.createdAtUtc)]]);
-          buckets=filter((bucket) =>!sameText(bucket.keyId, keyId_1), buckets);
-          if(sameText(selected, keyId_1)){
-            const o=tryHead(buckets);
-            const o_1=o==null?null:Some(o.$0.keyId);
-            _1=selected=o_1==null?"":o_1.$0;
-          }
-          else _1=void 0;
-          if(!batchingSetSyncEvents){
-            renderList();
-            renderDetail();
-            writeSetsCache();
-          }
-          setStatus(status, "Hidden set stream "+keyId_1);
-        }
-      }
-      else if(m=="set"){
-        const keyId_2=setKeyId(asText_2(event.streamKey.setName), arrayOrEmpty_1(event.streamKey.keys));
-        if(eventIsVisibleAfterTombstone(keyId_2, event.createdAtUtc)){
-          forgetHidden(keyId_2);
-          if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
-            const setName_1=asText_2(event.streamKey.setName);
-            const keys_1=arrayOrEmpty_1(event.streamKey.keys);
-            if(filtersAccept(setName_1, keys_1)){
-              const value=New_23(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
-              const keyId_3=setKeyId(setName_1, keys_1);
-              const m_3=tryFind((bucket) => sameText(bucket.keyId, keyId_3), buckets);
-              if(m_3==null)updated=New_21(keyId_3, setName_1, keys_1, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
-              else {
-                const existing=m_3.$0;
-                const existingValues=arrayOrEmpty_1(existing.values);
-                const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
-                const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
-                const mergedValues=latestArray(defaultRenderLimit(), v);
-                if(alreadyVisible)_2=existing.valueCount;
+            if(!(event==null)&&event.sequence>0n&&!(event.streamKey==null)){
+              const setName=asText_2(event.streamKey.setName);
+              const keys=arrayOrEmpty_1(event.streamKey.keys);
+              if(filtersAccept(setName, keys)){
+                const value=New_23(textOr(event.eventId, event.sourceId), arrayOrEmpty_1(event.streamKey.keys), asText_2(event.createdAtUtc), asText_2(event.payload), arrayOrEmpty_1(event.tags));
+                const keyId_1=setKeyId(setName, keys);
+                const m_1=tryFind((bucket) => sameText(bucket.keyId, keyId_1), buckets);
+                if(m_1==null)updated=New_21(keyId_1, setName, keys, 1, event.sequence, asText_2(event.createdAtUtc), [value]);
                 else {
-                  const a=existing.valueCount;
-                  const b=length(existingValues);
-                  let _3=Compare(a, b)===1?a:b;
-                  _2=_3+1;
+                  const existing=m_1.$0;
+                  const existingValues=arrayOrEmpty_1(existing.values);
+                  const alreadyVisible=exists((row) => sameText(row.valueId, value.valueId), existingValues);
+                  const v=filter((row) =>!sameText(row.valueId, value.valueId), existingValues).concat([value]);
+                  const mergedValues=latestArray(defaultRenderLimit(), v);
+                  if(alreadyVisible)_1=existing.valueCount;
+                  else {
+                    const a=existing.valueCount;
+                    const b=length(existingValues);
+                    let _2=Compare(a, b)===1?a:b;
+                    _1=_2+1;
+                  }
+                  const a_1=existing.maxSequence;
+                  const b_1=event.sequence;
+                  let _3=Compare(a_1, b_1)===1?a_1:b_1;
+                  updated=New_21(existing.keyId, existing.setName, existing.keys, _1, _3, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
                 }
-                const a_1=existing.maxSequence;
-                const b_1=event.sequence;
-                let _4=Compare(a_1, b_1)===1?a_1:b_1;
-                updated=New_21(existing.keyId, existing.setName, existing.keys, _2, _4, textOr(existing.updatedAtUtc, event.createdAtUtc), mergedValues);
+                buckets=sortSetBuckets(filter((bucket) =>!sameText(bucket.keyId, keyId_1), buckets).concat([updated]));
+                selected=keyId_1;
+                if(!batchingSetSyncEvents){
+                  renderList();
+                  renderDetail();
+                  writeSetsCache();
+                  ensureSetsSubscriptions();
+                }
+                setStatus(status, "Synced set event "+value.valueId);
               }
-              buckets=sortSetBuckets(filter((bucket) =>!sameText(bucket.keyId, keyId_3), buckets).concat([updated]));
-              selected=keyId_3;
-              if(!batchingSetSyncEvents){
-                renderList();
-                renderDetail();
-                writeSetsCache();
-                ensureSetsSubscriptions();
-              }
-              setStatus(status, "Synced set event "+value.valueId);
+              else null;
             }
-            else void 0;
+            else null;
           }
-          else void 0;
-        }
-        else void 0;
+          else null;
+          break;
+        default:
+          null;
+          break;
       }
-      else void 0;
     }
   }
   function handleSyncMessage(text){
@@ -3629,6 +3636,7 @@ function mountActors(page){
       switch(responseStatus=="ok"?responseType=="subscribe"?0:responseType=="stream-event"?1:responseType=="read-tail"?2:responseType=="read"?2:responseType=="tail"?2:4:responseStatus=="error"?3:4){
         case 0:
           setWsState("subscribed");
+          requestRegistryTail();
           break;
         case 1:
           handleSyncEvent(response.event);
@@ -3649,26 +3657,34 @@ function mountActors(page){
     }
   }
   reload.addEventListener("click", load);
+  readJson(cacheKey_1, (a) => {
+    if(a==null){ }
+    else applySnapshot("cached", a.$0);
+  });
   load();
   subscribeRegistry();
 }
 function mountManagement(page){
-  let allPages, allSets, allParticipants, selectedPageKeys, selectedSetKeys, selectedParticipantKeys, pageIndex, setPageIndex, participantPageIndex, pageSize, setPageSize, participantPageSize;
+  let allPages, allSets, allGroups, allParticipants, selectedPageKeys, selectedSetKeys, selectedParticipantKeys, pageIndex, setPageIndex, groupPageIndex, participantPageIndex, pageSize, setPageSize, groupPageSize, participantPageSize;
   page.className="page management-page";
   const pageRows=Create((row) => asText_2(row.pageId)+"\u001f"+asText_2(row.tabId), FSharpList.Empty);
   const setRows=Create((row) => asText_2(row.keyId), FSharpList.Empty);
+  const groupRows=Create((row) => asText_2(row.groupId), FSharpList.Empty);
   const participantRows=Create((row) => asText_2(row.participantId), FSharpList.Empty);
   allPages=[];
   allSets=[];
+  allGroups=[];
   allParticipants=[];
   selectedPageKeys=[];
   selectedSetKeys=[];
   selectedParticipantKeys=[];
   pageIndex=0;
   setPageIndex=0;
+  groupPageIndex=0;
   participantPageIndex=0;
   pageSize=10;
   setPageSize=10;
+  groupPageSize=10;
   participantPageSize=10;
   const heading=element_1("div", "management-head", null);
   const title=element_1("div", "", null);
@@ -3678,7 +3694,8 @@ function mountManagement(page){
   const pageSection=setTestId_1("management-pages", element_1("section", "management-section", null));
   const pageSectionHead=element_1("div", "management-section-head", null);
   const pageCount=setTestId_1("management-pages-count", element_1("span", "state", ""));
-  append_1(pageSectionHead, [element_1("h2", "", "Tab pages"), pageCount]);
+  const pageFilter=setTestId_1("management-pages-filter", input_1("Filter tab pages"));
+  append_1(pageSectionHead, [element_1("h2", "", "Tab pages"), pageFilter, pageCount]);
   const pageSelectionBar=element_1("div", "management-selection-bar", null);
   const pageSelectionCount=setTestId_1("management-pages-selected-count", element_1("span", "state", "0 selected"));
   const pageShowSelected=setTestId_1("management-pages-show-selected", button_1("", "Show selected"));
@@ -3700,7 +3717,8 @@ function mountManagement(page){
   const setSection=setTestId_1("management-sets", element_1("section", "management-section", null));
   const setSectionHead=element_1("div", "management-section-head", null);
   const setCount=setTestId_1("management-sets-count", element_1("span", "state", ""));
-  append_1(setSectionHead, [element_1("h2", "", "Set contents"), setCount]);
+  const setFilter=setTestId_1("management-sets-filter", input_1("Filter set contents"));
+  append_1(setSectionHead, [element_1("h2", "", "Set contents"), setFilter, setCount]);
   const setSelectionBar=element_1("div", "management-selection-bar", null);
   const setSelectionCount=setTestId_1("management-sets-selected-count", element_1("span", "state", "0 selected"));
   const setDeleteSelected=setTestId_1("management-sets-delete-selected", button_1("management-delete", "Delete selected"));
@@ -3715,10 +3733,25 @@ function mountManagement(page){
   const setPagerStatus=setTestId_1("management-sets-page", element_1("span", "state", ""));
   append_1(setPager, [setPrevious, setNext, element_1("span", "management-page-size-label", "Rows"), setSizeSelect, setPagerStatus]);
   append_1(setSection, [setSectionHead, setSelectionBar, setTableHost, setPager]);
+  const groupSection=setTestId_1("management-groups", element_1("section", "management-section", null));
+  const groupSectionHead=element_1("div", "management-section-head", null);
+  const groupCount=setTestId_1("management-groups-count", element_1("span", "state", ""));
+  const groupFilter=setTestId_1("management-groups-filter", input_1("Filter groups"));
+  append_1(groupSectionHead, [element_1("h2", "", "Groups"), groupFilter, groupCount]);
+  const groupTableHostId="management-groups-grid";
+  const groupTableHost=setId(groupTableHostId, element_1("div", "management-table-viewport", null));
+  const groupPager=element_1("div", "management-pager", null);
+  const groupPrevious=setTestId_1("management-groups-previous", button_1("", "Previous"));
+  const groupNext=setTestId_1("management-groups-next", button_1("", "Next"));
+  const groupSizeSelect=setTestId_1("management-groups-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
+  const groupPagerStatus=setTestId_1("management-groups-page", element_1("span", "state", ""));
+  append_1(groupPager, [groupPrevious, groupNext, element_1("span", "management-page-size-label", "Rows"), groupSizeSelect, groupPagerStatus]);
+  append_1(groupSection, [groupSectionHead, groupTableHost, groupPager]);
   const participantSection=setTestId_1("management-participants", element_1("section", "management-section", null));
   const participantSectionHead=element_1("div", "management-section-head", null);
   const participantCount=setTestId_1("management-participants-count", element_1("span", "state", ""));
-  append_1(participantSectionHead, [element_1("h2", "", "Participants"), participantCount]);
+  const participantFilter=setTestId_1("management-participants-filter", input_1("Filter participants"));
+  append_1(participantSectionHead, [element_1("h2", "", "Participants"), participantFilter, participantCount]);
   const participantSelectionBar=element_1("div", "management-selection-bar", null);
   const participantSelectionCount=setTestId_1("management-participants-selected-count", element_1("span", "state", "0 selected"));
   const participantShowSelected=setTestId_1("management-participants-show-selected", button_1("", "Show selected"));
@@ -3737,7 +3770,7 @@ function mountManagement(page){
   const participantPagerStatus=setTestId_1("management-participants-page", element_1("span", "state", ""));
   append_1(participantPager, [participantPrevious, participantNext, element_1("span", "management-page-size-label", "Rows"), participantSizeSelect, participantPagerStatus]);
   append_1(participantSection, [participantSectionHead, participantSelectionBar, participantTableHost, participantPager]);
-  append_1(page, [heading, pageSection, setSection, participantSection]);
+  append_1(page, [heading, pageSection, setSection, groupSection, participantSection]);
   const pageCountFor=(total, size) => total===0?1:size===0?1:toInt(Math.ceil(total/size));
   const pageRowKey=(row) => asText_2(row.pageId)+"\u001f"+asText_2(row.tabId);
   const pageSelectionElementId=(row) =>"management-page-selection-"+asText_2(row.pageId)+"-"+asText_2(row.tabId);
@@ -3754,14 +3787,30 @@ function mountManagement(page){
       return _2.slice(0, size);
     }
   };
+  const matchesFilter=(filterInput, values) => {
+    const query=Trim(asText_2(filterInput.value)).toLowerCase();
+    return isBlank_2(query)||exists((value) => asText_2(value).toLowerCase().indexOf(query)!=-1, values);
+  };
+  const filteredPages=() => filter((row) => matchesFilter(pageFilter, [row.pageId, row.tabId, row.title, row.path]), allPages);
+  const filteredSets=() => filter((row) => matchesFilter(setFilter, [row.keyId, row.setName, concat_2(" ", arrayOrEmpty_1(row.keys))]), allSets);
+  const filteredParticipants=() => filter((row) => matchesFilter(participantFilter, [row.participantId, row.displayName, row.kind, row.status]), allParticipants);
   const pageResourceAllows=(row, action) => pageAclAllows(row.pageId, action)||systemAclAllows("*", action);
   const pageCanSelect=(row) => pageResourceAllows(row, "ptcs.management.page.delete");
   const setCanSelect=() => systemAclAllows("sets", "ptcs.set.clean")||systemAclAllows("*", "ptcs.set.clean");
   const participantResourceAllows=(row, action) => aclAllows(action, "ptcs.participant", row.participantId)||systemAclAllows("*", action);
   const participantCanSelect=(row) => participantResourceAllows(row, "ptcs.management.participant.hide")||participantResourceAllows(row, "ptcs.management.participant.show")||participantResourceAllows(row, "ptcs.management.participant.delete");
-  const currentPageRows=() => sliceRows(pageIndex, pageSize, allPages);
-  const currentSetRows=() => sliceRows(setPageIndex, setPageSize, allSets);
-  const currentParticipantRows=() => sliceRows(participantPageIndex, participantPageSize, allParticipants);
+  const currentPageRows=() => {
+    const x=filteredPages();
+    return sliceRows(pageIndex, pageSize, x);
+  };
+  const currentSetRows=() => {
+    const x=filteredSets();
+    return sliceRows(setPageIndex, setPageSize, x);
+  };
+  const currentParticipantRows=() => {
+    const x=filteredParticipants();
+    return sliceRows(participantPageIndex, participantPageSize, x);
+  };
   const setButtonEnabled=(target, enabled) => enabled?target.removeAttribute("disabled"):target.setAttribute("disabled", "disabled");
   const updateHeaderSelection=(checkboxId, currentKeys, selected) => {
     const node=doc_1().getElementById(checkboxId);
@@ -3806,39 +3855,55 @@ function mountManagement(page){
   };
   const updateCurrentSelection=(isChecked, currentKeys, selected) => isChecked?distinct(selected.concat(currentKeys)):filter((key) =>!exists((y) => Equals(key, y), currentKeys), selected);
   const applyPageProjection=() => {
-    const pages=pageCountFor(length(allPages), pageSize);
+    const filtered=filteredPages();
+    const pages=pageCountFor(length(filtered), pageSize);
     const a=0;
     const a_1=pages-1;
     const b=Compare(a_1, pageIndex)===-1?a_1:pageIndex;
     pageIndex=Compare(a, b)===1?a:b;
-    pageRows.Set(sliceRows(pageIndex, pageSize, allPages));
-    pageCount.textContent=String(length(allPages))+" page lineage(s)";
+    pageRows.Set(sliceRows(pageIndex, pageSize, filtered));
+    pageCount.textContent=String(length(filtered))+" / "+String(length(allPages))+" page lineage(s)";
     pagePagerStatus.textContent="Page "+String(pageIndex+1)+" / "+String(pages);
     setHidden(pageIndex===0, pagePrevious);
     setHidden(pageIndex>=pages-1, pageNext);
     updatePageSelectionControl();
   };
   const applySetProjection=() => {
-    const pages=pageCountFor(length(allSets), setPageSize);
+    const filtered=filteredSets();
+    const pages=pageCountFor(length(filtered), setPageSize);
     const a=0;
     const a_1=pages-1;
     const b=Compare(a_1, setPageIndex)===-1?a_1:setPageIndex;
     setPageIndex=Compare(a, b)===1?a:b;
-    setRows.Set(sliceRows(setPageIndex, setPageSize, allSets));
-    setCount.textContent=String(length(allSets))+" set bucket(s)";
+    setRows.Set(sliceRows(setPageIndex, setPageSize, filtered));
+    setCount.textContent=String(length(filtered))+" / "+String(length(allSets))+" set bucket(s)";
     setPagerStatus.textContent="Page "+String(setPageIndex+1)+" / "+String(pages);
     setHidden(setPageIndex===0, setPrevious);
     setHidden(setPageIndex>=pages-1, setNext);
     updateSetSelectionControl();
   };
+  const applyGroupProjection=() => {
+    const filtered=filter((row) => matchesFilter(groupFilter, [row.groupId, row.displayName, row.ownerParticipantId]), allGroups);
+    const pages=pageCountFor(length(filtered), groupPageSize);
+    const a=0;
+    const a_1=pages-1;
+    const b=Compare(a_1, groupPageIndex)===-1?a_1:groupPageIndex;
+    groupPageIndex=Compare(a, b)===1?a:b;
+    groupRows.Set(sliceRows(groupPageIndex, groupPageSize, filtered));
+    groupCount.textContent=String(length(filtered))+" / "+String(length(allGroups))+" group(s)";
+    groupPagerStatus.textContent="Page "+String(groupPageIndex+1)+" / "+String(pages);
+    setHidden(groupPageIndex===0, groupPrevious);
+    setHidden(groupPageIndex>=pages-1, groupNext);
+  };
   const applyParticipantProjection=() => {
-    const pages=pageCountFor(length(allParticipants), participantPageSize);
+    const filtered=filteredParticipants();
+    const pages=pageCountFor(length(filtered), participantPageSize);
     const a=0;
     const a_1=pages-1;
     const b=Compare(a_1, participantPageIndex)===-1?a_1:participantPageIndex;
     participantPageIndex=Compare(a, b)===1?a:b;
-    participantRows.Set(sliceRows(participantPageIndex, participantPageSize, allParticipants));
-    participantCount.textContent=String(length(allParticipants))+" participant(s)";
+    participantRows.Set(sliceRows(participantPageIndex, participantPageSize, filtered));
+    participantCount.textContent=String(length(filtered))+" / "+String(length(allParticipants))+" participant(s)";
     participantPagerStatus.textContent="Page "+String(participantPageIndex+1)+" / "+String(pages);
     setHidden(participantPageIndex===0, participantPrevious);
     setHidden(participantPageIndex>=pages-1, participantNext);
@@ -3936,6 +4001,25 @@ function mountManagement(page){
       });
     }
   }
+  function loadGroups(){
+    setStatus(groupCount, "Loading...");
+    getJson("/management/api/groups", (reply) => {
+      allGroups=arrayOrEmpty_1(reply.groups);
+      applyGroupProjection();
+    }, (error) => {
+      setStatus(groupCount, "Load failed: "+error);
+    });
+  }
+  function deleteGroup(row){
+    if(row.canDelete&&groupAclAllows(row.groupId, "ptcs.group.delete")&&globalThis.confirm("Delete group '"+textOr(row.groupId, row.displayName)+"'?")){
+      setStatus(groupCount, "Deleting "+row.groupId+"...");
+      postJson_2("/chat/api/groups/delete", New_32(newRequestId("management-group-delete"), row.groupId, row.revision, "", "", "", "", null), () => {
+        loadGroups();
+      }, (error) => {
+        setStatus(groupCount, "Delete failed: "+error);
+      });
+    }
+  }
   function loadParticipants(){
     setStatus(participantCount, "Loading...");
     getJson("/management/api/participants", (reply) => {
@@ -3950,7 +4034,7 @@ function mountManagement(page){
   function mutateParticipant(endpoint){
     return(action) =>(row) => {
       const destructive=EndsWith(endpoint, "/delete");
-      return!destructive||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson_2(endpoint, New_32(row.participantId), () => {
+      return!destructive||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson_2(endpoint, New_33(row.participantId), () => {
         let _1;
         if(destructive){
           const x=row.participantId;
@@ -3970,7 +4054,7 @@ function mountManagement(page){
         const x=row.participantId;
         return exists((y) => x==y, selectedParticipantKeys);
       }, allParticipants));
-      return length(rows)>0?(setStatus(participantCount, action+" "+String(length(rows))+" selected participants..."),postJson_2(endpoint, New_33(map((row) => New_32(row.participantId), rows)), () => {
+      return length(rows)>0?(setStatus(participantCount, action+" "+String(length(rows))+" selected participants..."),postJson_2(endpoint, New_34(map((row) => New_33(row.participantId), rows)), () => {
         loadParticipants();
       }, (error) => {
         setStatus(participantCount, action+" selected failed: "+error);
@@ -3984,7 +4068,7 @@ function mountManagement(page){
     }, allParticipants));
     if(length(rows)>0&&globalThis.confirm("Delete "+String(length(rows))+" selected participants, their inbound direct messages, and participant-scoped set projections?")){
       setStatus(participantCount, "Deleting "+String(length(rows))+" selected participants...");
-      postJson_2("/management/api/participants/delete-many", New_33(map((row) => New_32(row.participantId), rows)), () => {
+      postJson_2("/management/api/participants/delete-many", New_34(map((row) => New_33(row.participantId), rows)), () => {
         selectedParticipantKeys=[];
         updateParticipantSelectionControl();
         loadParticipants();
@@ -4058,6 +4142,10 @@ function mountManagement(page){
     })))))))))))), []):Doc.Empty;
     return Doc.Element("tr", [Attr.Create("data-set-key-id", row.keyId)], [Doc.Element("td", [Attr.Create("class", "management-select-cell"), Attr.Create("data-label", "Select")], [selectionControl]), Doc.Element("td", [Attr.Create("data-label", "Set")], [Doc.Element("strong", [], [Doc.TextNode(row.setName)]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(concat_2(" + ", arrayOrEmpty_1(row.keys)))])]), Doc.Element("td", [Attr.Create("data-label", "Values")], [Doc.TextNode(String(row.valueCount))]), Doc.Element("td", [Attr.Create("data-label", "Updated")], [Doc.TextNode(row.updatedAt)])]);
   }, setRows.v)])]);
+  const groupTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-groups-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [], [Doc.TextNode("Group")]), Doc.Element("th", [], [Doc.TextNode("Owner")]), Doc.Element("th", [], [Doc.TextNode("Members")]), Doc.Element("th", [], [Doc.TextNode("Updated")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
+    const deleteButton=row.canDelete&&groupAclAllows(row.groupId, "ptcs.group.delete")?Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("class", "management-delete"), Attr.Create("data-testid", "management-group-delete-"+row.groupId), Handler("click", () =>() => deleteGroup(row))], [Doc.TextNode("Delete")]):Doc.Empty;
+    return Doc.Element("tr", [Attr.Create("data-group-id", row.groupId)], [Doc.Element("td", [Attr.Create("data-label", "Group")], [Doc.Element("strong", [], [Doc.TextNode(textOr(row.groupId, row.displayName))]), Doc.Element("div", [Attr.Create("class", "management-secondary")], [Doc.TextNode(row.groupId)])]), Doc.Element("td", [Attr.Create("data-label", "Owner")], [Doc.TextNode(row.ownerParticipantId)]), Doc.Element("td", [Attr.Create("data-label", "Members")], [Doc.TextNode(String(row.activeMemberCount))]), Doc.Element("td", [Attr.Create("data-label", "Updated")], [Doc.TextNode(row.updatedAt)]), Doc.Element("td", [Attr.Create("class", "management-actions"), Attr.Create("data-label", "Actions")], [deleteButton])]);
+  }, groupRows.v)])]);
   const participantTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-participants-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [Attr.Create("class", "management-select-cell")], [participantHeaderSelector]), Doc.Element("th", [], [Doc.TextNode("Participant")]), Doc.Element("th", [], [Doc.TextNode("Registered")]), Doc.Element("th", [], [Doc.TextNode("Last seen")]), Doc.Element("th", [], [Doc.TextNode("Actions")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
     const visibilityLabel=row.visible?"Hide":"Show";
     const visibilityEndpoint=row.visible?"/management/api/participants/hide":"/management/api/participants/show";
@@ -4078,6 +4166,8 @@ function mountManagement(page){
   Doc.RunById(pageTableHostId, pageTable);
   LoadLocalTemplates("");
   Doc.RunById(setTableHostId, setTable);
+  LoadLocalTemplates("");
+  Doc.RunById(groupTableHostId, groupTable);
   LoadLocalTemplates("");
   Doc.RunById(participantTableHostId, participantTable);
   pageShowSelected.addEventListener("click", () =>((mutateSelectedPages("/management/api/pages/show-many"))("Showing"))((row) =>!row.visible&&pageResourceAllows(row, "ptcs.management.page.show")));
@@ -4117,6 +4207,21 @@ function mountManagement(page){
     setPageIndex=0;
     return applySetProjection();
   });
+  groupPrevious.addEventListener("click", () => {
+    const a=0;
+    const b=groupPageIndex-1;
+    groupPageIndex=Compare(a, b)===1?a:b;
+    return applyGroupProjection();
+  });
+  groupNext.addEventListener("click", () => {
+    groupPageIndex=groupPageIndex+1;
+    return applyGroupProjection();
+  });
+  groupSizeSelect.addEventListener("change", () => {
+    groupPageSize=toInt(Number(groupSizeSelect.value));
+    groupPageIndex=0;
+    return applyGroupProjection();
+  });
   participantPrevious.addEventListener("click", () => {
     const a=0;
     const b=participantPageIndex-1;
@@ -4132,18 +4237,36 @@ function mountManagement(page){
     participantPageIndex=0;
     return applyParticipantProjection();
   });
+  pageFilter.addEventListener("input", () => {
+    pageIndex=0;
+    return applyPageProjection();
+  });
+  setFilter.addEventListener("input", () => {
+    setPageIndex=0;
+    return applySetProjection();
+  });
+  groupFilter.addEventListener("input", () => {
+    groupPageIndex=0;
+    return applyGroupProjection();
+  });
+  participantFilter.addEventListener("input", () => {
+    participantPageIndex=0;
+    return applyParticipantProjection();
+  });
   reload.addEventListener("click", () => {
     loadPages();
     loadSets();
+    loadGroups();
     loadParticipants();
     return refreshManagementNav();
   });
   loadPages();
   loadSets();
+  loadGroups();
   loadParticipants();
 }
 function mountChat(page){
-  let selected, cursor, polling, participants, groups, selectedGroup, selectedThreadMessages, oldestSequence, hasOlderMessages, loadingOlderMessages, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
+  let selected, cursor, polling, participants, groups, selectedGroup, selectedThreadMessages, oldestSequence, hasOlderMessages, loadingOlderMessages, activityCursors, unreadMessages, activityReady, activityPolling, heldUnreadTarget, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
   selected="";
   cursor="";
   polling=false;
@@ -4154,16 +4277,19 @@ function mountChat(page){
   oldestSequence=0n;
   hasOlderMessages=false;
   loadingOlderMessages=false;
+  activityCursors=[];
+  unreadMessages=[];
+  activityReady=false;
+  activityPolling=false;
+  heldUnreadTarget="";
   const participantId=currentUserId();
   page.className="page chat-grid";
   const side=element_1("aside", "sidebar", null);
   const sideHead=element_1("div", "panel-head", null);
-  const sideActions=element_1("div", "head-actions", null);
-  const addGroup=setTestId_1("chat-add-group", button_1("", "Add group"));
-  setHidden(!groupAclAllows("*", "ptcs.group.create"), addGroup);
-  const export_1=setTestId_1("chat-export", button_1("", "Export"));
-  setData("message-count", "0", export_1);
-  const reload=setTestId_1("chat-reload", button_1("", "Reload"));
+  const sideActions=setTestId_1("chat-actions", element_1("div", "head-actions chat-actions", null));
+  const actionSelect=setTestId_1("chat-actions-select", select([["add-group", "Add group"], ["delete-group", "Delete group"], ["export-thread", "Export"], ["reload-thread", "Reload"]]));
+  const actionExecute=setTestId_1("chat-actions-execute", button_1("primary", "Execute"));
+  setData("message-count", "0", actionExecute);
   const list=element_1("div", "list", null);
   const groupCreatePanel=setHidden(true, setTestId_1("group-create-panel", element_1("div", "group-create-panel", null)));
   const groupIdInput=setTestId_1("group-create-id", input_1("group id"));
@@ -4174,7 +4300,7 @@ function mountChat(page){
   const groupCreateConfirm=setTestId_1("group-create-confirm", button_1("primary", "Create"));
   append_1(groupCreateActions, [groupCreateCancel, groupCreateConfirm]);
   append_1(groupCreatePanel, [groupIdInput, groupNameInput, groupHistoryInput, groupCreateActions]);
-  append_1(sideActions, [addGroup, export_1, reload]);
+  append_1(sideActions, [actionSelect, actionExecute]);
   append_1(sideHead, [element_1("h1", "", "Chat"), sideActions]);
   append_1(side, [sideHead, groupCreatePanel, list]);
   const work=setTestId_1("chat-work", element_1("section", "work", null));
@@ -4198,8 +4324,10 @@ function mountChat(page){
   const readOnlyView=currentBrowserUser().viewAsActive;
   setHidden(readOnlyView, composer);
   if(readOnlyView)work.className="work view-as-read-only";
+  setData("activity-state", "loading", work);
   const participantsCacheKey=cacheKey("chat-participants-v2", ofArray([participantId]));
   const threadCacheKey=(peerId) => cacheKey("chat-thread", ofArray([participantId, peerId]));
+  const activityCacheKey=cacheKey("chat-activity-v1", ofArray([participantId]));
   append_1(titleBox, [element_1("label", "", "To"), toTitle]);
   append_1(workHead, [titleBox, groupManagement, state]);
   append_1(actions, [send]);
@@ -4216,6 +4344,11 @@ function mountChat(page){
   const isGroupTarget=(value) => StartsWith(asText_2(value), "group:");
   const groupTarget=(groupId) =>"group:"+asText_2(groupId);
   const selectedGroupId=() => isGroupTarget(selected)?selected.substring("group:".length):"";
+  const isAnnouncementGroup=(groupId) => sameText(groupId, "organization-announcements");
+  const unreadFor=(target) => tryFind((row) => sameText(row.target, target), unreadMessages);
+  const persistActivity=() => {
+    writeJson(activityCacheKey, New_37(activityCursors, unreadMessages));
+  };
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
   };
@@ -4226,6 +4359,8 @@ function mountChat(page){
     const outbound=message.fromId==participantId;
     const wrap=setId("thread-"+message.messageId, element_1("div", outbound?"message outbound":"message inbound", null));
     setData("message-id", message.messageId, setTestId_1("chat-message", wrap));
+    if(!isBlank_2(message.channelMessageId))setData("channel-message-id", message.channelMessageId, wrap);
+    else null;
     const meta=element_1("div", "message-meta", null);
     if(message.scope=="public")route=outbound?"You -> Public":asText_2(message.fromId)+" -> Public";
     else if(message.scope=="group"){
@@ -4247,87 +4382,187 @@ function mountChat(page){
     append_1(wrap, [meta, element_1("pre", "message-body", asText_2(message.body))]);
     return wrap;
   };
+  function recF(recI, _1){
+    while(true)
+      switch(recI){
+        case 0:
+          let _2;
+          let groupSendDenied;
+          clear(list);
+          if(length(groups)>0)list.appendChild(element_1("div", "list-section-title", "Groups"));
+          else null;
+          ((((a) =>(a_1) => {
+            iter(a, a_1);
+          })((group_1) => {
+            const target=groupTarget(group_1.groupId);
+            const item=button_1("list-card"+(target==selected?" active":"")+(unreadFor(target)!=null?" chat-unread":""), null);
+            setData("group-id", group_1.groupId, setTestId_1("chat-group", item));
+            setData("unread", unreadFor(target)!=null?"true":"false", item);
+            item.appendChild(cardTitle(textOr(group_1.groupId, group_1.displayName), group_1.groupId, group_1.isActiveMember?group_1.role:"former", String(group_1.memberCount)+" member(s)"));
+            item.addEventListener("click", () => {
+              selected=target;
+              heldUnreadTarget="";
+              selectedGroup=null;
+              cursor="";
+              selectedThreadMessages=[];
+              oldestSequence=0n;
+              hasOlderMessages=false;
+              loadingOlderMessages=false;
+              setData("has-older", "false", thread);
+              setData("message-count", "0", actionExecute);
+              clear(thread);
+              recF(0);
+              loadGroupDetails();
+              refreshChatPendingState();
+              return pollThread(true);
+            });
+            list.appendChild(item);
+          }))(groups));
+          if(length(participants)>0)list.appendChild(element_1("div", "list-section-title", "People and channels"));
+          else null;
+          ((((a) =>(a_1) => {
+            iter(a, a_1);
+          })((p) => {
+            const className="list-card"+(p.participantId==selected?" active":"")+(unreadFor(p.participantId)!=null?" chat-unread":"");
+            const name=textOr(p.participantId, p.displayName);
+            const line=asText_2(p.kind)+" / "+joinValues(p.labels);
+            const item=button_1(className, null);
+            setData("participant-id", p.participantId, setTestId_1("chat-participant", item));
+            setData("unread", unreadFor(p.participantId)!=null?"true":"false", item);
+            item.appendChild(cardTitle(name, p.participantId, p.status, line));
+            item.addEventListener("click", () => {
+              selected=p.participantId;
+              heldUnreadTarget="";
+              cursor="";
+              selectedThreadMessages=[];
+              oldestSequence=0n;
+              hasOlderMessages=false;
+              loadingOlderMessages=false;
+              setData("has-older", "false", thread);
+              setData("message-count", "0", actionExecute);
+              clear(thread);
+              recF(0);
+              selectedGroup=null;
+              setHidden(true, groupManagement);
+              refreshChatPendingState();
+              pollThread(true);
+              return ensureSelectedChatSubscription();
+            });
+            list.appendChild(item);
+          }))(participants));
+          if(isGroupTarget(selected)){
+            const x=(((p) =>(a) => tryFind(p, a))((group_1) => groupTarget(group_1.groupId)==selected))(groups);
+            const o=(((m) =>(o_1) => o_1==null?null:Some(m(o_1.$0)))((group_1) => textOr(group_1.groupId, group_1.displayName)+" ("+selected+")"))(x);
+            _2=o==null?selected:o.$0;
+          }
+          else {
+            const x_1=(((p) =>(a) => tryFind(p, a))((p) => p.participantId==selected))(participants);
+            const x_2=(((m) =>(o_1) => o_1==null?null:Some(m(o_1.$0)))((p) => textOr(p.participantId, p.displayName)+" ("+p.participantId+")"))(x_1);
+            _2=(((v) =>(o_1) => o_1==null?v:o_1.$0)("No participant selected"))(x_2);
+          }
+          toTitle.textContent=_2;
+          if(isGroupTarget(selected)){
+            if(!groupAclAllows(selectedGroupId(), "ptcs.group.send"))groupSendDenied=true;
+            else if(isAnnouncementGroup(selectedGroupId())){
+              const x_3=(((m) =>(o_1) => o_1==null?null:Some(m(o_1.$0)))((group_1) => exists((member_) => member_.isActive&&sameText(member_.participantId, participantId)&&(sameText(member_.role, "owner")||sameText(member_.role, "admin")), arrayOrEmpty_1(group_1.members))))(selectedGroup);
+              groupSendDenied=!(((v) =>(o_1) => o_1==null?v:o_1.$0)(false))(x_3);
+            }
+            else groupSendDenied=false;
+          }
+          else groupSendDenied=false;
+          {
+            ((((h) =>(n) => setHidden(h, n))(readOnlyView||groupSendDenied))(composer));
+            return;
+          }
+          break;
+        case 1:
+          const socket=ensureChatSyncSocket();
+          return Equals(socket.readyState, 1)?socket.send(_1):void(queuedChatSyncFrames=queuedChatSyncFrames.concat([_1]));
+      }
+  }
   function renderParticipants(){
-    let o, _1, o_1;
-    clear(list);
-    if(length(groups)>0)list.appendChild(element_1("div", "list-section-title", "Groups"));
-    iter((group_2) => {
-      const target=groupTarget(group_2.groupId);
-      const item=button_1(target==selected?"list-card active":"list-card", null);
-      setData("group-id", group_2.groupId, setTestId_1("chat-group", item));
-      item.appendChild(cardTitle(textOr(group_2.groupId, group_2.displayName), group_2.groupId, group_2.isActiveMember?group_2.role:"former", String(group_2.memberCount)+" member(s)"));
-      item.addEventListener("click", () => {
-        selected=target;
-        selectedGroup=null;
-        cursor="";
-        selectedThreadMessages=[];
-        oldestSequence=0n;
-        hasOlderMessages=false;
-        loadingOlderMessages=false;
-        setData("has-older", "false", thread);
-        setData("message-count", "0", export_1);
-        clear(thread);
-        renderParticipants();
-        loadGroupDetails();
-        refreshChatPendingState();
-        return pollThread(true);
-      });
-      list.appendChild(item);
-    }, groups);
-    if(length(participants)>0)list.appendChild(element_1("div", "list-section-title", "People and channels"));
-    iter((p_1) => {
-      const className=p_1.participantId==selected?"list-card active":"list-card";
-      const name=textOr(p_1.participantId, p_1.displayName);
-      const line=asText_2(p_1.kind)+" / "+joinValues(p_1.labels);
-      const item=button_1(className, null);
-      setData("participant-id", p_1.participantId, setTestId_1("chat-participant", item));
-      item.appendChild(cardTitle(name, p_1.participantId, p_1.status, line));
-      item.addEventListener("click", () => {
-        selected=p_1.participantId;
-        cursor="";
-        selectedThreadMessages=[];
-        oldestSequence=0n;
-        hasOlderMessages=false;
-        loadingOlderMessages=false;
-        setData("has-older", "false", thread);
-        setData("message-count", "0", export_1);
-        clear(thread);
-        renderParticipants();
-        selectedGroup=null;
-        setHidden(true, groupManagement);
-        refreshChatPendingState();
-        pollThread(true);
-        return ensureSelectedChatSubscription();
-      });
-      list.appendChild(item);
-    }, participants);
-    if(isGroupTarget(selected)){
-      const o_2=tryFind((group_2) => groupTarget(group_2.groupId)==selected, groups);
-      if(o_2==null)o=null;
-      else {
-        const group_1=o_2.$0;
-        let _2=textOr(group_1.groupId, group_1.displayName)+" ("+selected+")";
-        o=Some(_2);
+    return recF(0);
+  }
+  function clearReadTarget(target){
+    let _1;
+    if(!sameText(heldUnreadTarget, target)){
+      if(selected==target&&!doc_1().hidden&&isNearBottom(thread)){
+        const o=unreadFor(target);
+        if(o==null)_1=false;
+        else {
+          const row=o.$0;
+          _1=!(doc_1().getElementById("thread-"+row.messageId)==null);
+        }
       }
-      _1=o==null?selected:o.$0;
+      else _1=false;
     }
-    else {
-      const o_3=tryFind((p_1) => p_1.participantId==selected, participants);
-      if(o_3==null)o_1=null;
-      else {
-        const p=o_3.$0;
-        let _3=textOr(p.participantId, p.displayName)+" ("+p.participantId+")";
-        o_1=Some(_3);
-      }
-      _1=o_1==null?"No participant selected":o_1.$0;
+    else _1=false;
+    if(_1){
+      unreadMessages=filter((row_1) =>!sameText(row_1.target, target), unreadMessages);
+      persistActivity();
+      renderParticipants();
     }
-    toTitle.textContent=_1;
-    setHidden(readOnlyView||isGroupTarget(selected)&&!groupAclAllows(selectedGroupId(), "ptcs.group.send"), composer);
+  }
+  function pollActivity(){
+    if(activityReady&&!activityPolling){
+      activityPolling=true;
+      setData("activity-busy", "true", work);
+      postJson_2("/chat/api/activity", New_39(activityCursors), (reply) => {
+        let changed, hasMore, selectedHasNewMessage, _1;
+        activityPolling=false;
+        setData("activity-busy", "false", work);
+        setData("activity-state", "ready", work);
+        changed=false;
+        hasMore=false;
+        selectedHasNewMessage=false;
+        iter((stream) => {
+          if(!(stream==null)&&!isBlank_2(stream.target)){
+            hasMore=hasMore||stream.hasMore;
+            const o=tryFind((row) => sameText(row.target, stream.target), activityCursors);
+            let _2=o==null?null:Some(o.$0.sequence);
+            if(!Equals(_2, Some(stream.nextSequence))){
+              activityCursors=filter((row) =>!sameText(row.target, stream.target), activityCursors).concat([New_40(stream.target, stream.nextSequence)]);
+              changed=true;
+            }
+            iter((event) => {
+              if(!(event==null)&&!isBlank_2(event.target)&&!isBlank_2(event.messageId)){
+                const o_1=unreadFor(event.target);
+                let _3=o_1==null?null:Some(o_1.$0.messageId);
+                if(!Equals(_3, Some(event.messageId))){
+                  unreadMessages=filter((row) =>!sameText(row.target, event.target), unreadMessages).concat([New_36(event.target, event.messageId)]);
+                  changed=true;
+                  selectedHasNewMessage=selectedHasNewMessage||sameText(selected, event.target);
+                }
+              }
+            }, arrayOrEmpty_1(stream.events));
+          }
+        }, arrayOrEmpty_1(reply.streams));
+        if(changed){
+          persistActivity();
+          renderParticipants();
+        }
+        if(selectedHasNewMessage){
+          const target=selected;
+          _1=(heldUnreadTarget=target,pollThread(false),setTimeout(() => {
+            sameText(heldUnreadTarget, target)?heldUnreadTarget="":void 0;
+            clearReadTarget(target);
+          }, 2200));
+        }
+        else _1=void 0;
+        if(hasMore)setTimeout(() => {
+          pollActivity();
+        }, 100);
+      }, () => {
+        activityPolling=false;
+        setData("activity-busy", "false", work);
+        setData("activity-state", "retrying", work);
+      });
+    }
   }
   function mutateSelectedGroup(url, participantId_1, displayName, role, historyPolicy, includeHistory, onOk){
     if(selectedGroup!=null&&selectedGroup.$==1){
       const group_1=selectedGroup.$0;
-      return postJson_2(url, New_36(newRequestId("group-mutation"), group_1.groupId, group_1.revision, asText_2(participantId_1), asText_2(displayName), asText_2(role), asText_2(historyPolicy), includeHistory), (reply) => {
+      return postJson_2(url, New_32(newRequestId("group-mutation"), group_1.groupId, group_1.revision, asText_2(participantId_1), asText_2(displayName), asText_2(role), asText_2(historyPolicy), includeHistory), (reply) => {
         selectedGroup=Some(reply.group);
         renderGroupManagement();
         loadParticipants(false);
@@ -4345,13 +4580,26 @@ function mountChat(page){
       const group_1=selectedGroup.$0;
       setHidden(false, groupManagement);
       groupManagementSummary.textContent="Group details / "+group_1.displayName;
-      const o=tryFind((member_) => member_.isActive&&sameText(member_.participantId, participantId), arrayOrEmpty_1(group_1.members));
-      const o_1=o==null?null:Some(o.$0.role);
-      const currentRole=o_1==null?"former":o_1.$0;
+      const currentMember=tryFind((member_) => member_.isActive&&sameText(member_.participantId, participantId), arrayOrEmpty_1(group_1.members));
+      const o=currentMember==null?null:Some(currentMember.$0.role);
+      const currentRole=o==null?"former":o.$0;
       const isOwner=sameText(currentRole, "owner");
       const isAdmin=sameText(currentRole, "admin");
-      const canManageMembers=(isOwner||isAdmin)&&groupAclAllows(group_1.groupId, "ptcs.group.member.manage");
+      const isAnnouncement=isAnnouncementGroup(group_1.groupId);
+      const canManageMembers=(isOwner||isAdmin&&!isAnnouncement)&&groupAclAllows(group_1.groupId, "ptcs.group.member.manage");
       groupManagementBody.appendChild(element_1("div", "group-meta", "Role: "+String(currentRole)+" / revision "+String(group_1.revision)));
+      if(isAnnouncement&&currentMember!=null&&!readOnlyView){
+        const markRead=setTestId_1("announcement-mark-read", button_1("", "Mark read"));
+        _1=(markRead.addEventListener("click", () => {
+          const latest=tryLast(sortBy((a) => a.streamSequence, filter((message) =>!isBlank_2(message.channelMessageId), selectedThreadMessages)));
+          return latest!=null&&latest.$==1?postJson_2("/chat/api/groups/read/ack", New_41(group_1.groupId, latest.$0.channelMessageId), (reply) => {
+            setStatus(state, "Read through #"+String(reply.streamSequence));
+          }, (t) => {
+            setStatus(state, t);
+          }):setStatus(state, "No announcement message to mark read");
+        }),groupManagementBody.appendChild(markRead));
+      }
+      else _1=void 0;
       if(canManageMembers){
         const existing=map((member_) => member_.participantId, filter((a) => a.isActive, arrayOrEmpty_1(group_1.members)));
         const candidates=map((p) =>[p.participantId, textOr(p.participantId, p.displayName)], filter((p) => {
@@ -4366,11 +4614,11 @@ function mountChat(page){
           const addMember=setTestId_1("group-member-add", button_1("", "Add member"));
           addMember.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/add", chooser.value, "", "", "", null, () => { }));
           const row=element_1("div", "group-control-row", null);
-          _1=(append_1(row, [chooser, addMember]),groupManagementBody.appendChild(row));
+          _2=(append_1(row, [chooser, addMember]),groupManagementBody.appendChild(row));
         }
-        else _1=void 0;
+        else _2=void 0;
       }
-      else _1=void 0;
+      else _2=void 0;
       const memberList=element_1("div", "group-member-list", null);
       iter((member_) => {
         let _4, _5, _6;
@@ -4379,19 +4627,22 @@ function mountChat(page){
         const actions_1=element_1("span", "compact-actions", null);
         if(isOwner&&!sameText(member_.role, "owner")){
           if(groupAclAllows(group_1.groupId, "ptcs.group.role.manage")){
-            const nextRole=sameText(member_.role, "admin")?"member":"admin";
-            const roleButton=button_1("", nextRole=="admin"?"Promote":"Demote");
-            _4=(setData("participant-id", member_.participantId, setTestId_1("group-member-role", roleButton)),roleButton.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/role", member_.participantId, "", nextRole, "", null, () => { })),actions_1.appendChild(roleButton));
+            if(!isAnnouncement||StartsWith(member_.participantId, "agent.")){
+              const nextRole=sameText(member_.role, "admin")?"member":"admin";
+              const roleButton=button_1("", nextRole=="admin"?"Promote":"Demote");
+              _4=(setData("participant-id", member_.participantId, setTestId_1("group-member-role", roleButton)),roleButton.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/role", member_.participantId, "", nextRole, "", null, () => { })),actions_1.appendChild(roleButton));
+            }
+            else _4=void 0;
           }
           else _4=void 0;
-          if(groupAclAllows(group_1.groupId, "ptcs.group.owner.transfer")){
+          if(!isAnnouncement&&groupAclAllows(group_1.groupId, "ptcs.group.owner.transfer")){
             const transfer=setTestId_1("group-owner-transfer", button_1("", "Make owner"));
             _5=(transfer.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/owner/transfer", member_.participantId, "", "", "", null, () => { })),actions_1.appendChild(transfer));
           }
           else _5=void 0;
         }
         else _5=void 0;
-        if((sameText(member_.participantId, participantId)&&!sameText(member_.role, "owner")||isOwner&&!sameText(member_.role, "owner")||isAdmin&&sameText(member_.role, "member"))&&groupAclAllows(group_1.groupId, "ptcs.group.member.manage")){
+        if((isAnnouncement?isOwner&&!sameText(member_.role, "owner"):sameText(member_.participantId, participantId)&&!sameText(member_.role, "owner")||isOwner&&!sameText(member_.role, "owner")||isAdmin&&sameText(member_.role, "member"))&&groupAclAllows(group_1.groupId, "ptcs.group.member.manage")){
           const remove=setTestId_1("group-member-remove", button_1("icon-button", "x"));
           _6=(remove.setAttribute("title", "Remove member"),remove.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/member/remove", member_.participantId, "", "", "", null, () => {
             if(sameText(member_.participantId, participantId)){
@@ -4406,7 +4657,7 @@ function mountChat(page){
         memberList.appendChild(row_1);
       }, sortBy((member_) =>[member_.role, member_.participantId], filter((a) => a.isActive, arrayOrEmpty_1(group_1.members))));
       groupManagementBody.appendChild(memberList);
-      if(isOwner){
+      if(isOwner&&!isAnnouncement){
         const ownerControls=element_1("div", "group-owner-controls", null);
         if(groupAclAllows(group_1.groupId, "ptcs.group.settings.manage")){
           const renameInput=setTestId_1("group-rename-input", input_1("group display name"));
@@ -4416,17 +4667,7 @@ function mountChat(page){
           const history=setTestId_1("group-history-policy", select([["from-first-join", "History from join"], ["include-history-before-first-join", "Include existing history"]]));
           history.value=group_1.historyPolicy;
           const saveHistory=setTestId_1("group-history-save", button_1("", "Save history policy"));
-          _2=(saveHistory.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/history-policy", "", "", "", history.value, null, () => { })),append_1(ownerControls, [renameInput, rename, history, saveHistory]));
-        }
-        else _2=void 0;
-        if(groupAclAllows(group_1.groupId, "ptcs.group.delete")){
-          const delete_1=setTestId_1("group-delete", button_1("danger", "Delete group"));
-          _3=(delete_1.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/delete", "", "", "", "", null, () => {
-            selected="channel.public";
-            selectedGroup=null;
-            setHidden(true, groupManagement);
-            loadParticipants(true);
-          })),ownerControls.appendChild(delete_1));
+          _3=(saveHistory.addEventListener("click", () => mutateSelectedGroup("/chat/api/groups/history-policy", "", "", "", history.value, null, () => { })),append_1(ownerControls, [renameInput, rename, history, saveHistory]));
         }
         else _3=void 0;
         groupManagementBody.appendChild(ownerControls);
@@ -4442,6 +4683,7 @@ function mountChat(page){
         if(selected==requestedTarget){
           selectedGroup=Some(reply.group);
           renderGroupManagement();
+          renderParticipants();
         }
       }, (error) => {
         selectedGroup=null;
@@ -4470,7 +4712,7 @@ function mountChat(page){
       }
     }, arrayOrEmpty_1(messages));
     selectedThreadMessages=distinctMessages(selectedThreadMessages.concat(arrayOrEmpty_1(messages)));
-    setData("message-count", String(length(selectedThreadMessages)), export_1);
+    setData("message-count", String(length(selectedThreadMessages)), actionExecute);
     if(appendedCount>0&&shouldFollow)scrollToBottomNow(thread);
     setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
   }
@@ -4487,7 +4729,7 @@ function mountChat(page){
       }
     }, arrayOrEmpty_1(messages));
     selectedThreadMessages=distinctMessages(arrayOrEmpty_1(messages).concat(selectedThreadMessages));
-    setData("message-count", String(length(selectedThreadMessages)), export_1);
+    setData("message-count", String(length(selectedThreadMessages)), actionExecute);
     if(prependedCount>0)thread.scrollTop=previousTop+thread.scrollHeight-previousHeight;
     setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
   }
@@ -4529,10 +4771,11 @@ function mountChat(page){
   function pollThread(force){
     if(!isBlank_2(selected)&&!polling){
       polling=true;
-      const cacheKey_1=threadCacheKey(selected);
+      const requestedPeer=selected;
+      const cacheKey_1=threadCacheKey(requestedPeer);
       const fetchThread=(useCursor) => {
         let url;
-        url="/chat/api/thread?participantId="+encodeURIComponent(participantId)+"&peerId="+encodeURIComponent(selected);
+        url="/chat/api/thread?participantId="+encodeURIComponent(participantId)+"&peerId="+encodeURIComponent(requestedPeer);
         if(useCursor&&!isBlank_2(cursor))url=url+"&afterMessageId="+encodeURIComponent(cursor);
         getJson(url, (data) => {
           const messages=force&&!useCursor?latestArray(defaultRenderLimit(), data.messages):arrayOrEmpty_1(data.messages);
@@ -4573,10 +4816,11 @@ function mountChat(page){
               const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
               const b=maxMessageSequence(merged);
               let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_37(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
+              writeSnapshotWithWatermark(cacheKey_1, New_42(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
             });
           });
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
+          if(force&&selected==requestedPeer)clearReadTarget(requestedPeer);
           polling=false;
         }, (error) => {
           setStatus(state, error);
@@ -4670,7 +4914,7 @@ function mountChat(page){
         let _1=o==null?oldestSequence:o.$0;
         const o_1=cached==null?null:Some(cached.$0.hasOlderMessages);
         let _2=o_1==null?hasOlderMessages:o_1.$0;
-        let _3=New_37(merged, message.messageId, _1, _2);
+        let _3=New_42(merged, message.messageId, _1, _2);
         writeSnapshotWithWatermark(cacheKey_1, _3, newestSequence, length(merged), "chat-thread");
       });
     }
@@ -4703,7 +4947,7 @@ function mountChat(page){
               o=message==null||isBlank_2(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_35(textOr(event_1.eventId, event_1.sourceId), "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
+              o=Some(New_38(textOr(event_1.eventId, event_1.sourceId), "", 0n, "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -4763,11 +5007,7 @@ function mountChat(page){
     }
   }
   function sendChatSyncFrame(frame){
-    while(true)
-      {
-        const socket=ensureChatSyncSocket();
-        return Equals(socket.readyState, 1)?socket.send(frame):void(queuedChatSyncFrames=queuedChatSyncFrames.concat([frame]));
-      }
+    return recF(1, frame);
   }
   function ensureSelectedChatSubscription(){
     if(!isBlank_2(selected)&&!isGroupTarget(selected)){
@@ -4785,7 +5025,7 @@ function mountChat(page){
     if(isBlank_2(selected))setStatus(state, "Select a participant first");
     else if(isBlank_2(body))setStatus(state, "Message is empty");
     else if(isGroupTarget(selected)){
-      const request=New_39(newRequestId("group-send"), selectedGroupId(), body, ["web-chat"]);
+      const request=New_44(newRequestId("group-send"), selectedGroupId(), body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/groups/send", request);
       refreshChatPendingState();
       setStatus(state, "Sending group message; pending command saved in browser DB");
@@ -4799,14 +5039,16 @@ function mountChat(page){
           setStatus(state, "Sent "+compactMessageId(reply.message.messageId)+" "+asText_2(reply.deliveryHint));
         });
       }, (error) => {
-        refreshChatPendingState();
-        setStatus(state, error);
+        deletePendingThen(pendingId, () => {
+          refreshChatPendingState();
+          setStatus(state, error);
+        });
       });
     }
     else {
-      const request_1=New_41(participantId, selected, body, ["web-chat"]);
+      const request_1=New_46(participantId, selected, body, ["web-chat"]);
       const pendingId_1=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request_1);
-      const wsRequest=New_40("chat-send", pendingId_1, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_45("chat-send", pendingId_1, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId_1]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -4819,7 +5061,7 @@ function mountChat(page){
     else if(globalThis.document.body==null)setStatus(state, "Document body is unavailable");
     else {
       try {
-        const rows=map((message) => New_42(asText_2(message.messageId), asText_2(message.fromId), asText_2(message.createdAtUtc), asText_2(message.body)), selectedThreadMessages);
+        const rows=map((message) => New_47(asText_2(message.messageId), asText_2(message.fromId), asText_2(message.createdAtUtc), asText_2(message.body)), selectedThreadMessages);
         const url=URL.createObjectURL(new Blob([concat_2("\n", map((v) => JSON.stringify(v), rows))], {type:"application/x-ndjson;charset=utf-8"}));
         const now=new Date();
         const twoDigits=(value) => value<10?"0"+String(value):String(value);
@@ -4831,10 +5073,10 @@ function mountChat(page){
         anchor.className="download-anchor";
         globalThis.document.body.appendChild(anchor);
         anchor.click();
-        globalThis.document.body.removeChild(anchor);
         setTimeout(() => {
+          !(anchor.parentNode==null)?anchor.parentNode.removeChild(anchor):void 0;
           URL.revokeObjectURL(url);
-        }, 250);
+        }, 5000);
         setStatus(state, "Exported "+String(length(rows))+" message(s)");
       }
       catch(error){
@@ -4842,9 +5084,22 @@ function mountChat(page){
       }
     }
   }
-  addGroup.addEventListener("click", () => {
-    setHidden(false, groupCreatePanel);
-    return groupIdInput.focus();
+  actionExecute.addEventListener("click", () => {
+    const m=actionSelect.value;
+    if(m=="add-group")return groupAclAllows("*", "ptcs.group.create")?(setHidden(false, groupCreatePanel),groupIdInput.focus()):setStatus(state, "Add group is not authorized");
+    else if(m=="delete-group"){
+      if(selectedGroup!=null&&selectedGroup.$==1){
+        const group_1=selectedGroup.$0;
+        return!sameText(group_1.ownerParticipantId, participantId)||!groupAclAllows(group_1.groupId, "ptcs.group.delete")?(selectedGroup.$0,setStatus(state, "Only the group owner can delete this group")):globalThis.confirm("Delete group '"+selectedGroup.$0.displayName+"'?")?(selectedGroup.$0,mutateSelectedGroup("/chat/api/groups/delete", "", "", "", "", null, () => {
+          selected="channel.public";
+          selectedGroup=null;
+          setHidden(true, groupManagement);
+          loadParticipants(true);
+        })):null;
+      }
+      else return setStatus(state, "Select an active group first");
+    }
+    else return m=="export-thread"?exportSelectedThread():m=="reload-thread"?(loadParticipants(true),pollThread(true)):setStatus(state, "Choose an action");
   });
   groupCreateCancel.addEventListener("click", () => {
     setHidden(true, groupCreatePanel);
@@ -4852,7 +5107,12 @@ function mountChat(page){
   groupCreateConfirm.addEventListener("click", () => {
     const groupId=Trim(groupIdInput.value);
     const displayName=Trim(groupNameInput.value);
-    return isBlank_2(groupId)?setStatus(state, "Group id is required"):postJson_2("/chat/api/groups/create", New_43(newRequestId("group-create"), groupId, displayName, [], groupHistoryInput.value, ["web-chat"]), (reply) => {
+    return isBlank_2(groupId)?setStatus(state, "Group id is required"):postJson_2("/chat/api/groups/create", New_48(newRequestId("group-create"), groupId, displayName, [], groupHistoryInput.value, ["web-chat"]), (reply) => {
+      const createdTarget=groupTarget(reply.group.groupId);
+      if(!exists((row) => sameText(row.target, createdTarget), activityCursors)){
+        activityCursors=activityCursors.concat([New_40(createdTarget, "0")]);
+        persistActivity();
+      }
       selected=groupTarget(reply.group.groupId);
       selectedGroup=Some(reply.group);
       groupIdInput.value="";
@@ -4860,17 +5120,17 @@ function mountChat(page){
       setHidden(true, groupCreatePanel);
       refreshGroupAclSnapshot(() => {
         loadParticipants(true);
+        pollActivity();
         renderGroupManagement();
       });
     }, (t) => {
       setStatus(state, t);
     });
   });
-  reload.addEventListener("click", () => loadParticipants(true));
-  export_1.addEventListener("click", exportSelectedThread);
   send.addEventListener("click", sendMessage);
   thread.addEventListener("scroll", () => {
     setData("follow-bottom", isNearBottom(thread)?"true":"false", thread);
+    clearReadTarget(selected);
     try {
       return thread.scrollTop<=8?loadOlderThread():null;
     }
@@ -4879,7 +5139,20 @@ function mountChat(page){
     }
   });
   draft.addEventListener("keydown", (event) => event.key=="Enter"&&!event.shiftKey?(event.preventDefault(),sendMessage()):null);
+  readJson(activityCacheKey, (cached) => {
+    let _1;
+    setData("activity-cache", cached!=null?"hit":"miss", work);
+    if(cached==null)_1=void 0;
+    else {
+      const value=cached.$0;
+      _1=(activityCursors=arrayOrEmpty_1(value.cursors),unreadMessages=arrayOrEmpty_1(value.unread));
+    }
+    activityReady=true;
+    renderParticipants();
+    pollActivity();
+  });
   globalThis.setInterval(() => pollThread(false), 2500);
+  globalThis.setInterval(pollActivity, 5000);
   globalThis.setInterval(() => loadParticipants(false), 30000);
   refreshChatPendingState();
   loadParticipants(true);
@@ -4969,7 +5242,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_50(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_55(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_2(request.userName)||isBlank_2(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -4999,7 +5272,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_2(node.textContent)?New_49("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_2(node.textContent)?New_54("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_2(value)?fallback:value;
@@ -5265,18 +5538,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    keyPlaceholder:String(_5||""),
-    defaultKey:String(_6||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    keyPlaceholder:String(_5||""), 
+    defaultKey:String(_6||""), 
     submitKey:(payload) => {
       _7(payload);
-    },
+    }, 
     cancelKey:() => {
       _8();
-    },
+    }, 
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -5360,26 +5633,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    selectedKeyId:String(_5||""),
-    selectedKeyJson:String(_6||""),
-    selectedKeys:keyParts.slice(),
-    keyParts:keyParts.slice(),
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    valuePlaceholder:String(_8||""),
-    valueText:String(_9||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    selectedKeyId:String(_5||""), 
+    selectedKeyJson:String(_6||""), 
+    selectedKeys:keyParts.slice(), 
+    keyParts:keyParts.slice(), 
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    valuePlaceholder:String(_8||""), 
+    valueText:String(_9||""), 
     submit:(payload) => {
       _10(payload);
-    },
+    }, 
     setValue:(payload) => {
       _11(payload);
-    },
-    composerMode:String(_12||"plain"),
+    }, 
+    composerMode:String(_12||"plain"), 
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -5450,7 +5723,7 @@ function renderAppendValue(definition, value){
   const head_2=element_1("div", "fcell-head", null);
   append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_2(value.valueId)+" / "+asText_2(value.createdAtUtc))]);
   card.appendChild(head_2);
-  const presentationContext=New_46(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
+  const presentationContext=New_51(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
   const m_1=tryResolveReplyPresentation(presentationContext);
   if(m_1!=null&&m_1.$==1){
     const presentation=m_1.$0;
@@ -5742,7 +6015,7 @@ function renderViewAsControl(){
   });
   apply.addEventListener("click", () => {
     apply.setAttribute("disabled", "disabled");
-    return postJson_2("/management/api/view-as", New_51(asText_2(chooser.value)), () => {
+    return postJson_2("/management/api/view-as", New_56(asText_2(chooser.value)), () => {
       globalThis.location.reload();
     }, (error) => {
       apply.removeAttribute("disabled");
@@ -5826,7 +6099,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_2(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_52(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_57(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_2("/pages/api/register-page", request, (reply) => {
@@ -5965,10 +6238,10 @@ function groupAclAllows(groupId, action){
 }
 function currentBrowserUser(){
   const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_2(userNode.textContent))return New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
+  if(userNode==null||isBlank_2(userNode.textContent))return New_35("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank_2(user.participantId)?New_34("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
+    return user==null||isBlank_2(user.participantId)?New_35("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
   }
 }
 function compactMessageId(value){
@@ -6037,8 +6310,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"),
-      priority:Number(priority||0),
+      name:String(name||"unnamed"), 
+      priority:Number(priority||0), 
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -6295,7 +6568,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
-  return New_48(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_53(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -6527,7 +6800,7 @@ function tryResolve(context){
     const p=staticCanvasSummary(payload);
     const title=p[0];
     const elementCount=p[1];
-    return Some(New_47("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
+    return Some(New_52("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
       clearHost(host);
       const doc_2=createSduiCanvasBody(content);
       LoadLocalTemplates("");
@@ -6605,9 +6878,9 @@ function KeyValue(kvp){
 }
 function New(status, count, maxSequence, pages){
   return{
-    status:status,
-    count:count,
-    maxSequence:maxSequence,
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
     pages:pages
   };
 }
@@ -6725,6 +6998,10 @@ function tryPick(f, arr){
       i=i+1;
     }
   return res;
+}
+function tryLast(arr){
+  const len=arr.length;
+  return len===0?null:Some(arr[len-1]);
 }
 function ofSeq(xs){
   if(xs instanceof Array)return xs.slice();
@@ -6858,7 +7135,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_38(streamId, _3, _4, asText_2(source), nowTicks());
+    let _5=New_43(streamId, _3, _4, asText_2(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -6900,6 +7177,9 @@ function deleteSnapshotsByPrefix(prefix, onDeleted){
       }
     })(_1))(_2))(_3), onDeleted);
   });
+}
+function writeJson(key, value){
+  writeJsonTo(snapshotStore(), key, value);
 }
 function readWatermark(key, onRead){
   if(isBlank_2(key))onRead(null);
@@ -6947,9 +7227,6 @@ function openDb(onReady, onUnavailable){
   catch(m){
     onUnavailable();
   }
-}
-function writeJson(key, value){
-  writeJsonTo(snapshotStore(), key, value);
 }
 function readAllPendingRaw(onRead){
   withStore(pendingStore(), "readonly", (store) => {
@@ -7347,16 +7624,16 @@ function tryJson(text){
 }
 function New_1(type, requestId, streamKey){
   return{
-    type:type,
-    requestId:requestId,
+    type:type, 
+    requestId:requestId, 
     streamKey:streamKey
   };
 }
 function New_2(type, requestId, streamKey, count){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
     count:count
   };
 }
@@ -7651,15 +7928,15 @@ function unfold(f, s){
 }
 function New_4(shape, selectedKeyJson, selectedKeys, keyParts, actorAddress, duTypeName, unionCaseNames, submit, composerMode, setComposerMode){
   return{
-    shape:shape,
-    selectedKeyJson:selectedKeyJson,
-    selectedKeys:selectedKeys,
-    keyParts:keyParts,
-    actorAddress:actorAddress,
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    submit:submit,
-    composerMode:composerMode,
+    shape:shape, 
+    selectedKeyJson:selectedKeyJson, 
+    selectedKeys:selectedKeys, 
+    keyParts:keyParts, 
+    actorAddress:actorAddress, 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    submit:submit, 
+    composerMode:composerMode, 
     setComposerMode:setComposerMode
   };
 }
@@ -8248,8 +8525,8 @@ class FSharpList {
   static Empty=Create_2(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_2(FSharpList, {
-      $:1,
-      $0:Head,
+      $:1, 
+      $0:Head, 
       $1:Tail
     });
   }
@@ -8277,58 +8554,58 @@ function TryParse_1(s, r){
 }
 function New_6(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId,
-    tabId:tabId,
-    path:path,
-    title:title,
-    setName:setName,
-    shape:shape,
-    description:description,
-    keyPlaceholder:keyPlaceholder,
-    valuePlaceholder:valuePlaceholder,
-    defaultKey:defaultKey,
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
     tags:tags
   };
 }
 function New_7(pageId, mode, setName, keys){
   return{
-    pageId:pageId,
-    mode:mode,
-    setName:setName,
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
     keys:keys
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_9(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
-    readRepairPolicy:readRepairPolicy,
-    candidateValueStreamKeys:candidateValueStreamKeys,
-    candidateValueStreamCount:candidateValueStreamCount,
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_10(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId,
-    serverRealityId:serverRealityId,
-    kind:kind,
-    target:target,
-    url:url,
-    method:method,
-    payloadJson:payloadJson,
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
     status:status
   };
 }
@@ -8439,51 +8716,51 @@ function listEmpty(){
 }
 function New_11(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status,
-    page:page,
-    bucketCount:bucketCount,
-    maxSequence:maxSequence,
-    keyMaxSequence:keyMaxSequence,
-    lineage:lineage,
-    lineageHealth:lineageHealth,
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
     buckets:buckets
   };
 }
 function New_12(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    keys:keys,
-    displayName:displayName,
-    setName:setName,
-    valueCount:valueCount,
-    minSequence:minSequence,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    keys:keys, 
+    displayName:displayName, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_13(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
     tags:tags
   };
 }
 function New_14(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    keyMode:keyMode,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    keyMode:keyMode, 
     displayName:displayName
   };
 }
 function New_15(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    rawArgu:rawArgu,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
     tags:tags
   };
 }
@@ -8495,60 +8772,60 @@ function New_17(pageId, keyId){
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    actorAddress:actorAddress,
-    rawArgu:rawArgu,
-    renderMode:renderMode,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_19(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_20(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
-    payload:payload,
-    sourceKind:sourceKind,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_21(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    setName:setName,
-    keys:keys,
-    valueCount:valueCount,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
@@ -8557,10 +8834,10 @@ function New_22(maxSequence, buckets){
 }
 function New_23(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId,
-    keys:keys,
-    createdAtUtc:createdAtUtc,
-    value:value,
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
     tags:tags
   };
 }
@@ -8569,9 +8846,9 @@ function New_24(reason){
 }
 function New_25(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount,
-    actorCount:actorCount,
-    maxSequence:maxSequence,
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
     nodes:nodes
   };
 }
@@ -8689,20 +8966,20 @@ function OfArray(a){
 }
 function New_26(nodeId_1, nodeAddress_1, status, roles, actors){
   return{
-    nodeId:nodeId_1,
-    nodeAddress:nodeAddress_1,
-    status:status,
-    roles:roles,
+    nodeId:nodeId_1, 
+    nodeAddress:nodeAddress_1, 
+    status:status, 
+    roles:roles, 
     actors:actors
   };
 }
 function New_27(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId,
-    displayName:displayName,
-    kind:kind,
-    keys:keys,
-    status:status,
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
     routees:routees
   };
 }
@@ -8769,10 +9046,22 @@ function New_30(sets){
 function New_31(setName, keys){
   return{setName:setName, keys:keys};
 }
-function New_32(participantId){
+function New_32(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
+  return{
+    commandId:commandId, 
+    groupId:groupId, 
+    expectedRevision:expectedRevision, 
+    participantId:participantId, 
+    displayName:displayName, 
+    role:role, 
+    historyPolicy:historyPolicy, 
+    includeHistoryBeforeFirstJoin:includeHistoryBeforeFirstJoin
+  };
+}
+function New_33(participantId){
   return{participantId:participantId};
 }
-function New_33(participants){
+function New_34(participants){
   return{participants:participants};
 }
 class Attr {
@@ -8796,8 +9085,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_2(Attr, {
-      $:2,
-      $0:Item1,
+      $:2, 
+      $0:Item1, 
       $1:Item2
     });
   }
@@ -8805,101 +9094,106 @@ class Attr {
   $0;
   $1;
 }
-function New_34(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
+function New_35(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
   return{
-    participantId:participantId,
-    displayName:displayName,
-    login:login,
-    authenticated:authenticated,
-    provider:provider,
-    logoutPath:logoutPath,
-    authenticatedParticipantId:authenticatedParticipantId,
-    viewAsParticipantId:viewAsParticipantId,
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
+    logoutPath:logoutPath, 
+    authenticatedParticipantId:authenticatedParticipantId, 
+    viewAsParticipantId:viewAsParticipantId, 
     viewAsActive:viewAsActive
   };
 }
-function New_35(messageId, fromId, toId, scope, body, createdAtUtc){
+function New_36(target, messageId){
+  return{target:target, messageId:messageId};
+}
+function New_37(cursors, unread){
+  return{cursors:cursors, unread:unread};
+}
+function New_38(messageId, channelMessageId, streamSequence, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId,
-    fromId:fromId,
-    toId:toId,
-    scope:scope,
-    body:body,
+    messageId:messageId, 
+    channelMessageId:channelMessageId, 
+    streamSequence:streamSequence, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
     createdAtUtc:createdAtUtc
   };
 }
-function New_36(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
-  return{
-    commandId:commandId,
-    groupId:groupId,
-    expectedRevision:expectedRevision,
-    participantId:participantId,
-    displayName:displayName,
-    role:role,
-    historyPolicy:historyPolicy,
-    includeHistoryBeforeFirstJoin:includeHistoryBeforeFirstJoin
-  };
+function New_39(cursors){
+  return{cursors:cursors};
 }
-function New_37(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
+function New_40(target, sequence){
+  return{target:target, sequence:sequence};
+}
+function New_41(groupId, channelMessageId){
+  return{groupId:groupId, channelMessageId:channelMessageId};
+}
+function New_42(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
   return{
-    messages:messages,
-    nextAfterMessageId:nextAfterMessageId,
-    oldestSequence:oldestSequence,
+    messages:messages, 
+    nextAfterMessageId:nextAfterMessageId, 
+    oldestSequence:oldestSequence, 
     hasOlderMessages:hasOlderMessages
   };
 }
-function New_38(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_43(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId,
-    newestSequence:newestSequence,
-    cachedCount:cachedCount,
-    source:source,
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
     touchedAt:touchedAt
   };
 }
-function New_39(commandId, groupId, body, tags){
+function New_44(commandId, groupId, body, tags){
   return{
-    commandId:commandId,
-    groupId:groupId,
-    body:body,
+    commandId:commandId, 
+    groupId:groupId, 
+    body:body, 
     tags:tags
   };
 }
-function New_40(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_45(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    fromId:fromId,
-    toId:toId,
-    body:body,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
-function New_41(fromId, toId, body, tags){
+function New_46(fromId, toId, body, tags){
   return{
-    fromId:fromId,
-    toId:toId,
-    body:body,
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
     tags:tags
   };
 }
-function New_42(messageId, speaker, createdAtUtc, body){
+function New_47(messageId, speaker, createdAtUtc, body){
   return{
-    messageId:messageId,
-    speaker:speaker,
-    createdAtUtc:createdAtUtc,
+    messageId:messageId, 
+    speaker:speaker, 
+    createdAtUtc:createdAtUtc, 
     body:body
   };
 }
-function New_43(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
+function New_48(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
   return{
-    commandId:commandId,
-    groupId:groupId,
-    displayName:displayName,
-    initialParticipantIds:initialParticipantIds,
-    historyPolicy:historyPolicy,
+    commandId:commandId, 
+    groupId:groupId, 
+    displayName:displayName, 
+    initialParticipantIds:initialParticipantIds, 
+    historyPolicy:historyPolicy, 
     tags:tags
   };
 }
@@ -8962,11 +9256,11 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_44(rawArgu, duTypeName, unionCaseName, keyJson){
+function New_49(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
-    rawArgu:rawArgu,
-    duTypeName:duTypeName,
-    unionCaseName:unionCaseName,
+    rawArgu:rawArgu, 
+    duTypeName:duTypeName, 
+    unionCaseName:unionCaseName, 
     keyJson:keyJson
   };
 }
@@ -9168,7 +9462,7 @@ function Handler(name, callback){
 function Dynamic(name, view){
   return Dynamic_1(view, (el) =>(v) => el.setAttribute(name, v));
 }
-function New_45(outputDirectory){
+function New_50(outputDirectory){
   return{outputDirectory:outputDirectory};
 }
 function ofSeqNonCopying(xs){
@@ -9388,7 +9682,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_53(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_58(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -9448,8 +9742,8 @@ function SyncElemNode(childrenOnly, el){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""),
-    Dirty:false,
+    Text:globalThis.document.createTextNode(""), 
+    Dirty:false, 
     Value:""
   };
 }
@@ -9563,52 +9857,52 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_46(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+function New_51(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId,
-    TabId:TabId,
-    ValueId:ValueId,
-    CreatedAtUtc:CreatedAtUtc,
-    Direction:Direction,
-    Tags:Tags,
+    PageId:PageId, 
+    TabId:TabId, 
+    ValueId:ValueId, 
+    CreatedAtUtc:CreatedAtUtc, 
+    Direction:Direction, 
+    Tags:Tags, 
     Payload:Payload
   };
 }
-function New_47(Kind, RenderSummary, Actions_1, Mount){
+function New_52(Kind, RenderSummary, Actions_1, Mount){
   return{
-    Kind:Kind,
-    RenderSummary:RenderSummary,
-    Actions:Actions_1,
+    Kind:Kind, 
+    RenderSummary:RenderSummary, 
+    Actions:Actions_1, 
     Mount:Mount
   };
 }
-function New_48(shape, label_1, badge, className){
+function New_53(shape, label_1, badge, className){
   return{
-    shape:shape,
-    label:label_1,
-    badge:badge,
+    shape:shape, 
+    label:label_1, 
+    badge:badge, 
     className:className
   };
 }
-function New_49(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_54(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath,
-    sessionPath:sessionPath,
-    logoutPath:logoutPath,
-    returnUrl:returnUrl,
-    protectedRoute:protectedRoute,
-    sessionCookieName:sessionCookieName,
-    title:title,
-    lead:lead,
-    providerLabel:providerLabel,
+    submitPath:submitPath, 
+    sessionPath:sessionPath, 
+    logoutPath:logoutPath, 
+    returnUrl:returnUrl, 
+    protectedRoute:protectedRoute, 
+    sessionCookieName:sessionCookieName, 
+    title:title, 
+    lead:lead, 
+    providerLabel:providerLabel, 
     aclLabel:aclLabel
   };
 }
-function New_50(userName, password, returnUrl, keepSession){
+function New_55(userName, password, returnUrl, keepSession){
   return{
-    userName:userName,
-    password:password,
-    returnUrl:returnUrl,
+    userName:userName, 
+    password:password, 
+    returnUrl:returnUrl, 
     keepSession:keepSession
   };
 }
@@ -9650,18 +9944,18 @@ function arrContains(item, arr){
     else i=i+1;
   return!c;
 }
-function New_51(participantId){
+function New_56(participantId){
   return{participantId:participantId};
 }
-function New_52(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_57(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    shape:shape,
-    tabId:tabId,
-    tabMode:tabMode,
-    path:path,
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
     description:description
   };
 }
@@ -9761,7 +10055,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_54(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_59(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Add(x, t){
   return Put((_1, _2) => _2, x, t);
@@ -9873,7 +10167,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_55(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_60(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -10058,8 +10352,8 @@ function counter(){
 }
 function Ready(Item1, Item2){
   return{
-    $:2,
-    $0:Item1,
+    $:2, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -10068,8 +10362,8 @@ function Forever(Item){
 }
 function Waiting(Item1, Item2){
   return{
-    $:3,
-    $0:Item1,
+    $:3, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -10081,8 +10375,8 @@ function EmbedDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0,
-    $0:Item1,
+    $:0, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -10235,9 +10529,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1,
-      Children:Children_1,
-      El:El,
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -10422,7 +10716,7 @@ class KeyCollection extends Object_1 {
     this.d=d;
   }
 }
-function New_53(PreviousNodes, Top){
+function New_58(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -10500,7 +10794,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_56((a) => {
+    r(New_61((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -10525,7 +10819,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_56((a) => {
+    if(!ct.c)c(New_61((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -10628,12 +10922,12 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_54(Node_1, Left, Right, Height, Count){
+function New_59(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1,
-    Left:Left,
-    Right:Right,
-    Height:Height,
+    Node:Node_1, 
+    Left:Left, 
+    Right:Right, 
+    Height:Height, 
     Count:Count
   };
 }
@@ -10669,16 +10963,16 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_2(Updates_1, {
-      c:Current,
-      s:Snap,
+      c:Current, 
+      s:Snap, 
       v:VarView
     });
   }
 }
-function New_55(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_60(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem,
-    DynFlags:DynFlags,
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -10734,8 +11028,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2,
-    $0:x,
+    $:2, 
+    $0:x, 
     $1:y
   };
 }
@@ -11010,7 +11304,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_56(k, ct){
+function New_61(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -11032,7 +11326,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_57(false, []);
+    this.noneCT=New_62(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -11041,7 +11335,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_57(IsCancellationRequested, Registrations){
+function New_62(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -11186,8 +11480,8 @@ class CheckedInput {
   }
   static Valid(value, inputText){
     return Create_2(CheckedInput, {
-      $:0,
-      $0:value,
+      $:0, 
+      $0:value, 
       $1:inputText
     });
   }
@@ -11298,7 +11592,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create_1(f){
-  return New_58(false, f, forceLazy);
+  return New_63(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -11319,10 +11613,10 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_58(created, evalOrVal, force){
+function New_63(created, evalOrVal, force){
   return{
-    c:created,
-    v:evalOrVal,
+    c:created, 
+    v:evalOrVal, 
     f:force
   };
 }

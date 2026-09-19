@@ -1,0 +1,18 @@
+# PTCS 0.2.37 exact dependency cascade
+
+## Plan
+
+- 背景：PTCS agent inbox delivery authority新增public boundary、claim/defer/complete與Host JSON contract。
+- 目標：將active Dynamic PTCS adapters同步到exact PTCS 0.2.37，依序build/pack/push，供PTCS Host避免assembly skew。
+- 不得改變：Dynamic Contracts/Renderer schema與既有SDUI行為；不更新legacy ACL/Login複本或LiveDemo。
+- 範圍：`PulseTrade.Comm.Spa.Dynamic.Ptcs`、`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`及active aggregate `PulseTrade.Comm.Spa.Dynamic`。
+- 假設：PTCS 0.2.37已發布且其public API為本輪canonical dependency；Dynamic schema與renderer不需行為調整。
+- 風險：若active consumer仍鎖0.1.14，restore會重新引入PTCS 0.2.27 exact constraint並造成runtime assembly skew。
+- 驗收：Release build成功、NuGet push成功或明確skip-duplicate、PTCS Host使用同一exact dependency graph編譯。
+
+## Operations
+
+- 2026-09-20 04:51 +08:00：確認repo clean、active direct PTCS consumers與目前版本；開始exact cascade。
+- 2026-09-20 04:58 +08:00：Dynamic.Ptcs 0.1.28、Dynamic.Ptcs.Client 0.1.36與Dynamic aggregate 0.1.15切至exact PTCS 0.2.37；Release build/pack/push完成。
+- 2026-09-20 05:05 +08:00：下游TAResearch.Client 0.1.18與PTCS Host以同一exact graph編譯通過；Dynamic Contracts/Renderer schema未變。
+- 2026-09-20 06:30 +08:00：checker補抓四個active test/demo consumer舊pin；同步0.1.28/0.1.36與LiveDemo direct PTCS/content path 0.2.37。Expecto 13/13、15/15及LiveDemo Release build 0 warning/0 error。
