@@ -1,0 +1,18 @@
+# PTCS 0.2.38 exact adapter alignment
+
+## Plan
+
+- 背景：PTCS isolated announcement authority發布0.2.38，Dynamic active adapters與Host consumers必須維持exact package graph。
+- 目標：同步Dynamic.Ptcs、Dynamic.Ptcs.Client、aggregate與active tests/LiveDemo，完成Release package與consumer verification。
+- 假設：PTCS 0.2.38 public package已可restore，變更只涉及exact dependency alignment。
+- 範圍：Dynamic.Ptcs、Dynamic.Ptcs.Client、aggregate、active tests/LiveDemo與DevLog；不改renderer/DSL source。
+- 不得改變：Dynamic renderer、DSL、schema與TA行為。
+- 驗收：packages build/push；adapter tests通過；LiveDemo無PTCS版本constraint mismatch。
+- 風險：WebSharper compiler service殘留程序可能造成無診斷exit；active consumer漏升會留下NU1608。
+- 流程偏差：本log在版本修改後補建；跨repo續作時沿用root/PTCS既有task log而漏建本repo pre-work log。影響限於操作時序追溯，source/test/package evidence均可由git diff與命令結果還原；後續跨repo開工時先逐repo建log。
+
+## Operations
+
+- 2026-09-20 11:12 +08:00：Dynamic.Ptcs 0.1.29、Dynamic.Ptcs.Client 0.1.37與aggregate Dynamic 0.1.16完成Release build/pack/push；exact-lock PTCS 0.2.38。
+- 2026-09-20 11:27 +08:00：Dynamic.Ptcs.Tests 13/13、PtcsTaClient.Tests 15/15通過。第一次LiveDemo build揭露Ptcs.Client仍鎖0.1.36；同步兩個active consumers到0.1.37後重跑，LiveDemo 0 error，僅既有WS9002 warning。
+- 2026-09-20 11:34 +08:00：checker要求欄位補充（append-only correction）：假設為PTCS 0.2.38已可restore且只做exact alignment；範圍為三個packages、active tests/LiveDemo與DevLog；風險為stale WebSharper compiler service及漏升consumer造成NU1608。首次直接補Plan會破壞readonly snapshot，已恢復原prefix並改以本Operations追加。
