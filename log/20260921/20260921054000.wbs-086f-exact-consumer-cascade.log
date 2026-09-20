@@ -1,0 +1,17 @@
+# WBS-086F Dynamic exact consumer cascade
+
+## Pre-work Plan
+
+- 背景：PTCS升0.2.46；Dynamic三個active package直接exact引用0.2.45。
+- 目標：更新exact PTCS版本、各package升一版並Release build/push，供PTC Host使用。
+- 假設：PTCS 0.2.46保持既有Dynamic adapter public surface相容，本輪不需改renderer或client protocol。
+- 範圍：Dynamic aggregate、Dynamic.Ptcs及Dynamic.Ptcs.Client三個active packages與其DevLog。
+- 不變事項：不變更Dynamic renderer/schema/UI行為。
+- 驗收：三個package Release build成功，nupkg內dependency為PTCS 0.2.46，PTC Host可restore新版。
+- 風險：遺漏exact dependency會讓SPA Host restore出現NU1608或載入錯誤。
+
+## Operations
+
+- 2026-09-21 05:40 +08:00：開始exact consumer版本更新。
+- 2026-09-21 05:50 +08:00：Dynamic 0.1.23、Dynamic.Ptcs 0.1.36與Dynamic.Ptcs.Client 0.1.44完成Release build/pack/push，三者exact-lock PTCS 0.2.46。
+- 2026-09-21 06:01 +08:00：正式SPA Host restore/build通過並消費Dynamic.Ptcs 0.1.36與Dynamic.Ptcs.Client 0.1.44；未修改renderer/schema/UI行為。
