@@ -1,0 +1,19 @@
+# PTCS 0.2.39 exact dependency cascade
+
+## Pre-work plan
+
+- Background: PTCS structured MessageFabric rejection requires active Dynamic adapters to consume exact `PulseTrade.Comm.Spa 0.2.39`.
+- Goal: publish the minimum active Dynamic package cascade without changing renderer/runtime behavior.
+- Scope: Dynamic core, Dynamic.Ptcs, Dynamic.Ptcs.Client and their active test consumers.
+- Assumption: no Dynamic renderer/protocol behavior changes are required; this repo only needs the exact PTCS package cascade.
+- Risk: WebSharper LiveDemo compilation can fail independently of the package cascade; that toolchain failure must not be reported as a behavior regression or silently ignored.
+- Acceptance: exact references contain no superseded versions, package builds/pushes succeed, focused adapter/client tests pass.
+- Process deviation: the dedicated Dynamic log was created after package edits; the authoritative root operation log existed before those edits. This file records the bounded cross-repo cascade and results before closeout.
+
+## Operations
+
+- 2026-09-20 14:05-14:20 +08:00: Published Dynamic 0.1.17, Dynamic.Ptcs 0.1.30 and Dynamic.Ptcs.Client 0.1.38 against PTCS 0.2.39; updated active test consumers.
+- 2026-09-20 14:24 +08:00: Dynamic.Ptcs tests passed 13/13; PtcsTaClient tests passed 15/15.
+- 2026-09-20 14:24 +08:00: LiveDemo build reached `wsfsc.exe` but the compiler process exited with CLR fatal code and no F# diagnostic. This is recorded as a non-blocking WebSharper toolchain regression gap; no renderer or protocol code changed in this slice.
+- 2026-09-20 14:34 +08:00: Exact old-version scan returned no active src/tests fsproj hits.
+- 2026-09-20 15:02 +08:00: Changed-path strict UTF-8 and sensitive scans passed (`high=0`); Dynamic closeout checker passed with `FAIL=0`.

@@ -1406,3 +1406,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - `PulseTrade.Comm.Spa.Dynamic.Ptcs` 0.1.28→0.1.29、`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` 0.1.36→0.1.37及aggregate `PulseTrade.Comm.Spa.Dynamic` 0.1.15→0.1.16，exact-lock PTCS 0.2.38；只同步isolated announcement authority相依圖，不改renderer、DSL、schema或TA行為。
 - 三個package已完成Release build/pack/push。Active Dynamic.Ptcs.Tests、PtcsTaClient.Tests及LiveDemo consumers同步到新版；Expecto 13/13、15/15通過，LiveDemo 0 error且不再有PTCS 0.2.37 constraint mismatch，僅既有WS9002 warning。
+
+## 2026-09-20 - PTCS 0.2.39 exact adapter alignment
+
+- `PulseTrade.Comm.Spa.Dynamic.Ptcs` 0.1.29→0.1.30、`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` 0.1.37→0.1.38及aggregate `PulseTrade.Comm.Spa.Dynamic` 0.1.16→0.1.17，exact-lock PTCS 0.2.39；只同步structured MessageFabric rejection相依圖，不改renderer、DSL、schema或TA行為。
+- 三個package已完成Release build/pack/push。Active Dynamic.Ptcs.Tests、PtcsTaClient.Tests及LiveDemo consumers同步；Expecto 13/13與15/15通過。
+- LiveDemo完整WebSharper build的`wsfsc.exe`以CLR fatal code結束且沒有F# diagnostic；本輪未修改其前端源碼，正式SPA Host Release build已通過。此toolchain regression保留為未完成gate，不誤宣稱LiveDemo全綠。
