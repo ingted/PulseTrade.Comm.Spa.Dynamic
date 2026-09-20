@@ -4266,10 +4266,11 @@ function mountManagement(page){
   loadParticipants();
 }
 function mountChat(page){
-  let selected, cursor, polling, participants, groups, selectedGroup, selectedThreadMessages, oldestSequence, hasOlderMessages, loadingOlderMessages, activityCursors, unreadMessages, activityReady, activityPolling, heldUnreadTarget, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
+  let selected, cursor, polling, forceThreadReloadPending, participants, groups, selectedGroup, selectedThreadMessages, oldestSequence, hasOlderMessages, loadingOlderMessages, activityCursors, unreadMessages, activityReady, activityPolling, heldUnreadTarget, replayingPending, chatSocket, queuedChatSyncFrames, subscribedChatStream, pendingWsChatIds;
   selected="";
   cursor="";
   polling=false;
+  forceThreadReloadPending=false;
   participants=[];
   groups=[];
   selectedGroup=null;
@@ -4769,66 +4770,81 @@ function mountChat(page){
     });
   }
   function pollThread(force){
-    if(!isBlank_2(selected)&&!polling){
+    if(isBlank_2(selected)){ }
+    else if(polling){
+      if(force)forceThreadReloadPending=true;
+    }
+    else {
       polling=true;
       const requestedPeer=selected;
       const cacheKey_1=threadCacheKey(requestedPeer);
+      const finishPoll=(retryCurrent) => {
+        polling=false;
+        const retry=retryCurrent||forceThreadReloadPending;
+        forceThreadReloadPending=false;
+        if(retry&&!isBlank_2(selected))pollThread(true);
+      };
       const fetchThread=(useCursor) => {
         let url;
         url="/chat/api/thread?participantId="+encodeURIComponent(participantId)+"&peerId="+encodeURIComponent(requestedPeer);
         if(useCursor&&!isBlank_2(cursor))url=url+"&afterMessageId="+encodeURIComponent(cursor);
         getJson(url, (data) => {
-          const messages=force&&!useCursor?latestArray(defaultRenderLimit(), data.messages):arrayOrEmpty_1(data.messages);
-          if(force&&!useCursor){
-            clear(thread);
-            selectedThreadMessages=[];
-            setData("follow-bottom", "true", thread);
-          }
-          appendMessages(messages);
-          if(!isBlank_2(data.nextAfterMessageId))cursor=data.nextAfterMessageId;
-          if(!useCursor){
-            oldestSequence=data.oldestSequence;
-            hasOlderMessages=data.hasOlderMessages;
-            setData("has-older", hasOlderMessages?"true":"false", thread);
-          }
-          readJson(cacheKey_1, (cached) => {
-            let _1, _2;
-            switch(cached!=null&&cached.$==1?(cached.$0,useCursor?(_1=cached.$0,0):(cached.$0,!force?(_1=cached.$0,1):2)):2){
-              case 0:
-                _2=_1.messages;
-                break;
-              case 1:
-                _2=_1.messages;
-                break;
-              case 2:
-                _2=[];
-                break;
+          if(!sameText(selected, requestedPeer))finishPoll(true);
+          else {
+            const messages=force&&!useCursor?latestArray(defaultRenderLimit(), data.messages):arrayOrEmpty_1(data.messages);
+            if(force&&!useCursor){
+              clear(thread);
+              selectedThreadMessages=[];
+              setData("follow-bottom", "true", thread);
             }
-            const merged=mergeThreadMessages(_2, messages);
-            const nextAfterMessageId=textOr(cursor, data.nextAfterMessageId);
-            const o=cached==null?null:Some(cached.$0.oldestSequence);
-            const cachedOldestSequence=o==null?0n:o.$0;
-            const o_1=cached==null?null:Some(cached.$0.hasOlderMessages);
-            const cachedHasOlderMessages=o_1==null?false:o_1.$0;
-            const storedOldestSequence=useCursor?cachedOldestSequence:data.oldestSequence;
-            const storedHasOlderMessages=useCursor?cachedHasOlderMessages:data.hasOlderMessages;
-            readWatermark(cacheKey_1, (watermark) => {
-              const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
-              const b=maxMessageSequence(merged);
-              let _3=Compare(a, b)===1?a:b;
-              writeSnapshotWithWatermark(cacheKey_1, New_42(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
+            appendMessages(messages);
+            if(!isBlank_2(data.nextAfterMessageId))cursor=data.nextAfterMessageId;
+            if(!useCursor){
+              oldestSequence=data.oldestSequence;
+              hasOlderMessages=data.hasOlderMessages;
+              setData("has-older", hasOlderMessages?"true":"false", thread);
+            }
+            readJson(cacheKey_1, (cached) => {
+              let _1, _2;
+              switch(cached!=null&&cached.$==1?(cached.$0,useCursor?(_1=cached.$0,0):(cached.$0,!force?(_1=cached.$0,1):2)):2){
+                case 0:
+                  _2=_1.messages;
+                  break;
+                case 1:
+                  _2=_1.messages;
+                  break;
+                case 2:
+                  _2=[];
+                  break;
+              }
+              const merged=mergeThreadMessages(_2, messages);
+              const nextAfterMessageId=textOr(cursor, data.nextAfterMessageId);
+              const o=cached==null?null:Some(cached.$0.oldestSequence);
+              const cachedOldestSequence=o==null?0n:o.$0;
+              const o_1=cached==null?null:Some(cached.$0.hasOlderMessages);
+              const cachedHasOlderMessages=o_1==null?false:o_1.$0;
+              const storedOldestSequence=useCursor?cachedOldestSequence:data.oldestSequence;
+              const storedHasOlderMessages=useCursor?cachedHasOlderMessages:data.hasOlderMessages;
+              readWatermark(cacheKey_1, (watermark) => {
+                const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
+                const b=maxMessageSequence(merged);
+                let _3=Compare(a, b)===1?a:b;
+                writeSnapshotWithWatermark(cacheKey_1, New_42(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
+              });
             });
-          });
-          setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
-          if(force&&selected==requestedPeer)clearReadTarget(requestedPeer);
-          polling=false;
+            setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
+            clearReadTarget(requestedPeer);
+            finishPoll(false);
+          }
         }, (error) => {
-          setStatus(state, error);
-          polling=false;
+          const stale=!sameText(selected, requestedPeer);
+          if(!stale)setStatus(state, error);
+          finishPoll(stale);
         });
       };
       if(force)readJson(cacheKey_1, (a) => {
-        if(a==null)fetchThread(false);
+        if(!sameText(selected, requestedPeer))finishPoll(true);
+        else if(a==null)fetchThread(false);
         else {
           const cached=a.$0;
           const messages=latestArray(defaultRenderLimit(), cached.messages);
