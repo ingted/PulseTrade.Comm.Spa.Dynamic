@@ -1,0 +1,30 @@
+# PTCS 0.2.40 Dynamic dependency cascade
+
+## Background
+SPA Host exact dependency graph仍鎖PTCS 0.2.39，無法直接消費View As unread修正版本。
+
+## Goal
+Align active PTCS.Dynamic packages with exact PulseTrade.Comm.Spa 0.2.40 after the View As unread race fix.
+
+## Assumption
+This is a binary dependency alignment only; renderer, DSL, schema and TA behavior remain unchanged.
+
+## Planned steps
+Update exact references and package versions, build fresh WebSharper packages, push NuGet artifacts, and verify SPA Host restore/build.
+
+## Scope
+Dynamic, Dynamic.Ptcs and Dynamic.Ptcs.Client package references/versions only; no feature behavior changes.
+
+## Acceptance
+Release builds and package pushes succeed; downstream Host restores without NU1608 for these packages.
+
+## Risk
+Pre-existing ACL-locked generated `websharper.log` files may block canonical output cleanup; any isolated build must use the same tracked source and regenerate bundles.
+
+## Operations
+- 2026-09-20 21:25:19 +08:00: Created dependency-cascade log after Host restore identified exact 0.2.39 constraints.
+- 2026-09-20 21:27-21:33 +08:00: Bumped Dynamic.Ptcs 0.1.30→0.1.31, Dynamic.Ptcs.Client 0.1.38→0.1.39 and Dynamic aggregate 0.1.17→0.1.18; all exact-lock PTCS 0.2.40.
+- 2026-09-20 21:29-21:35 +08:00: Canonical WebSharper output folders were blocked by pre-existing ACL-locked generated `websharper.log` files. Built fresh packages from copied tracked source in unique isolated staging folders, excluding only the generated log; full WebSharper compilation, pack and NuGet push succeeded for all three packages.
+- 2026-09-20 21:36 +08:00: SPA Host restore/build consumed Dynamic.Ptcs 0.1.31 and Ptcs.Client 0.1.39 without PTCS exact-version mismatch.
+- 2026-09-20 21:42-21:45 +08:00: Changed-path sensitive scan reported High=0; workspace current checker completed with FAIL=0 after the pre-work schema was completed.
+- 2026-09-20 21:46 +08:00: Source, package versions and DevLog committed/pushed as `6b20135`; this ignored-by-default evidence file is force-added separately per workspace log policy.
