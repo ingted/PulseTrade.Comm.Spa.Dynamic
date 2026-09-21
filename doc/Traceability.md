@@ -17,6 +17,7 @@
 11. `doc/RFC-PTCS-DYNAMIC-0004.actor-dynamic-action-modes.md`：Actor Dynamic / Actor Argu action mode split。
 12. `doc/RFC-PTCS-DYNAMIC-0005.actors-page-renderer.md`：ActorsPage page-level renderer contract。
 13. `doc/RFC/RFC-PTCS-DYNAMIC-0015.generic-marker-overlay.md`：Generic Marker runtime v2、candidate validation、renderer overlay與consumer handoff。
+14. `doc/RFC/RFC-PTCS-DYNAMIC-0016.marker-direction-hollow-contract.md`：Marker direction／anchor解耦、true hollow、v1/v2相容與lane limit修正提案。
 
 ## RFC Map
 
@@ -29,6 +30,7 @@
 | `RFC-PTCS-DYNAMIC-0005` | Proposed / first implementation slice | ActorsPage page-level renderer for PTCS `/actors`; separate from generic Canvas message renderer。 |
 | `RFC-PTCS-DYNAMIC-0013` | Accepted / DEV authorized | Production Notebook TA workspace：generic source ordering envelope、schema/editor/action contract、owner adapter boundary與real DIB/Playwright acceptance。 |
 | `RFC-PTCS-DYNAMIC-0015` | Implemented / Consumer Handoff | Generic Marker runtime v2：strict marker wire、last-good candidate gate、deterministic overlay、Y-domain isolation與exact package closure。 |
+| `RFC-PTCS-DYNAMIC-0016` | Proposed / Review | Generic Marker conformance correction：direction獨立於anchor、true hollow、legacy v1 mapping、bucket與跨trace lane bound。 |
 
 ## Cross-Project References
 

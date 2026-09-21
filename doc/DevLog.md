@@ -1432,3 +1432,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Focused suites通過：Contracts 27/27、Renderer 30/30、PTCS adapter 14/14、PTCS client 16/16、Interactive lifecycle 4/4；aggregate測試的Actor.Registry exact reference由legacy alpha5對齊主package `[0.1.3]`後24/24通過；package verifier與PTCS Host active consumer Release build通過。
 - Daedalus consumer handoff為Contracts `[0.1.12]`／Interactive.Client `[0.1.24]`與Notebook runtime v2 parity；domain projection、Backtest transaction與SPAA state仍由consumer owner負責。
 - `doc/Traceability.md`已加入RFC-PTCS-DYNAMIC-0015與DYN-T-538..544索引；canonical RFC只保留在本repo `doc/RFC`。
+
+## 2026-09-21 - Generic Marker direction / hollow correction RFC
+
+- 新增 proposed `RFC-PTCS-DYNAMIC-0016`，處理 consumer review 發現的三項 conformance 缺口：marker direction 與 anchor 解耦、`Outline` 真正透明，以及 bucket limit 文件語意一致。
+- RFC 採 `ta-marker.v2` current encoder、v1 legacy arrow compatibility decoder與browser cache schema 3；另把跨 marker traces 的 lane collision 納入 candidate aggregate validation及 deterministic stacking gate。
+- 本輪只完成 RFC 與測試矩陣，未修改 source、package version、NuGet 或 consumer project；待 review 接受後才同步 SA／SD／WBS／Test 並實作。

@@ -1,0 +1,21 @@
+# Generic Marker Direction / Hollow RFC
+
+## Pre-work plan
+
+- 背景：`RFC-PTCS-DYNAMIC-0015` 已完成 generic marker，但 consumer review 確認 `Arrow` 方向仍由 anchor 推導、`Outline` 仍以白色半透明填充，且 bucket limit 的文件敘述不一致。
+- 目標：撰寫小型 owner RFC，凍結方向與 anchor 解耦、真正 hollow、wire/cache 相容、bucket 與跨 trace lane 上限及驗收矩陣。
+- 假設：本輪只提出修正 RFC，待 user review 接受後才同步 current-state 文件與修改 public package；既有 v1 payload 可能存在 durable history，因此不可只做 source-breaking rename。
+- 不得改變：Position-only spatial authority、EventTimeUtc 僅作 evidence/tooltip、marker 不參與 Y autoscale、invalid candidate 不覆蓋 last-good、TradeCore/SPAA domain projection 仍由 consumer owner 負責。
+- 步驟：核對 current contract/renderer/tests -> 撰寫 RFC-PTCS-DYNAMIC-0016 -> append DevLog -> 文件檢查與 git diff。
+- 範圍：只修改 PTCS Dynamic 文件；本輪不改程式碼、不 bump/push NuGet、不修改 TradeCore/SPAA。
+- 驗收：RFC 明確列出 public DU、v1/v2 wire、legacy arrow mapping、true hollow SVG 語意、bucket/aggregate lane 限制、package cascade、測試與 rollback。
+- 風險：移除 public `Arrow` 是 source-breaking；須透過 exact package cascade 與 legacy wire decoder 控制，不可讓舊 client 把新 shape 靜默降級。
+
+## Operations
+
+- 2026-09-21 14:48 +08:00：確認 canonical repo branch `20260915_033.ptcs_group_support` clean；current source 仍為 `TaMarkerShape.Arrow`，renderer 依 anchor 決定三角方向，`Outline` 使用白色 0.92 opacity。
+- 2026-09-21 14:50 +08:00：確認 current wire 為 `ta-marker.v1`、每個 `TemporalSeriesPoint.Value` bucket 總量上限 4；renderer lane 只在單一 trace bucket 內計算，需在 RFC 納入跨 trace deterministic lane 回歸。
+- 2026-09-21 15:00 +08:00：新增 proposed `RFC-PTCS-DYNAMIC-0016`；決策為明確 `TriangleUp/TriangleDown`、`ta-marker.v2` encoder、v1 visual-parity decoder、cache schema 3、true hollow與跨 trace aggregate lane gate。
+- 2026-09-21 15:02 +08:00：append `doc/DevLog.md`，並在 `doc/Traceability.md` 加入 proposed RFC；本輪未修改 source／package／consumer。
+- 2026-09-21 15:05 +08:00：changed-path sensitive scan 為 high=0／medium=0；UTF-8 strict decode、no BOM／NUL／U+FFFD與`git diff --check`通過。
+- 2026-09-21 15:06 +08:00：scoped `check.fsx` 回 PASS=29／WARN=4／FAIL=2；兩個 FAIL 均是本輪前既有 readonly state（舊`20260921124505.generic-marker-runtime.log`與root `notes_new/20260921/00202.proc_supervisor持久化.txt`），未修改、未還原。latest log 的缺少「假設」WARN 已補正。
