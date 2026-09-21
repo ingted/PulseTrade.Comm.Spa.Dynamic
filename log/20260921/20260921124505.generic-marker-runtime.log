@@ -18,3 +18,4 @@
 - 2026-09-21 14:10 +08:00：aggregate測試首次因tests仍pin Actor.Registry alpha5而compile fail；對齊主package `[0.1.3]`後24/24通過。這是test dependency closure，不改Actor.Registry行為。
 - 2026-09-21 14:12 +08:00：將誤放於PT root的RFC移回canonical `doc/RFC/RFC-PTCS-DYNAMIC-0015.generic-marker-overlay.md`，並修正repo-relative回鏈。Daedalus consumer adoption維持external owner。
 - Plan correction（append-only）：假設TradeCore feedback中已接受的Position authority、consumer ownership與runtime v2策略是本輪有效決策，package consumer採exact version同步；範圍為PTCS Dynamic Contracts、Reducer、Renderer、PTCS/Interactive clients、owner tests/docs/packages，不修改TradeCore/SPAA domain projection。
+- 2026-09-21 14:18 +08:00：commit/push `c011f2f Add PTCS Dynamic generic marker runtime`至`20260915_033.ptcs_group_support`。
