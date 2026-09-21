@@ -513,3 +513,21 @@ Public seams：
 Failure paths：sequence/base revision/axis gap/missing authoritative state走`PausedForResync + RequestResync`；malformed marker/duplicate id/illegal color/enum/target/hard limit走`Suspended + RejectFrame(Recoverable=false)`。兩者都保留last-good。Unknown v2 trace kind與v1 marker fail closed。Marker-only patch重用未變DataRef與prepared candle資料，不全量重decode。
 
 Test seams：codec round-trip/strict shape；snapshot/patch/clear/move/idempotency；composite/split candle resolver；stack/lane/Y-domain/viewport；v1/v2/cache/unknown-kind compatibility。
+
+### Marker v2 correction
+
+`TaMarkerShape` current cases為`TriangleUp | TriangleDown | Circle | Square | Diamond`。`TaMarkerCodec`只encode `ta-marker.v2`；decode同時接受v2與legacy v1，v1 `arrow + above-bar`映射`TriangleDown`、`arrow + below-bar`映射`TriangleUp`，其餘舊shape同名映射。cache schema 3才可rehydrate current marker；schema 2直接miss/resync。
+
+```text
+candidate marker traces
+  -> validate each DataRef/Position bucket total <= 4
+  -> group decoded markers by (rowId, targetTraceId, Position, Anchor)
+  -> validate aggregate count <= 4
+  -> preserve document trace order then bucket array order
+  -> assign global lane 0..3
+  -> render shape independent of anchor
+```
+
+`Outline` visible glyph使用`fill=none`及`stroke=marker.Color`。若SVG原生paint hit testing不足，renderer增加同geometry透明interaction target；該target只提供pointer/tooltip命中，不得阻止shared cursor依x slot更新，不進Y-domain/numeric legend/time axis，也不得造成candle series rebuild。
+
+Owner release gate以PTCS browser-demo／Interactive Client的desktop/mobile F# Playwright驗direction、fill、tooltip、cursor parity及exact graph。Daedalus升級SPAA／Interactive Extension、真`BacktestPresentationEvent`映射與Notebook `.dib` parity是發布後consumer gate。

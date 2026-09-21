@@ -570,6 +570,7 @@ module TaWorkspaceRenderer =
                             |> Array.tryFind (fun candidate -> candidate.TraceId = options.TargetTraceId && candidate.Kind = TaTraceKind.Candlestick)
                             |> Option.map (fun target -> RendererModel.markerPlacementsPrepared trace target currentData referenceTimestamps)
                             |> Option.defaultValue [||])
+                |> RendererModel.assignAggregateMarkerLanes
 
             let scaleValues =
                 [| yield! candleSeries |> Array.collect (fun (_, _, _, _, point) -> [| point.Low; point.High |])
@@ -711,7 +712,7 @@ module TaWorkspaceRenderer =
             let fill, fillOpacity =
                 match placement.Marker.Fill with
                 | TaMarkerFill.Solid -> placement.Marker.Color, "1"
-                | TaMarkerFill.Outline -> "#ffffff", "0.92"
+                | TaMarkerFill.Outline -> "none", "1"
             let common =
                 [ Attr.Create "data-testid" ("ta-marker-" + placement.TraceId + "-" + placement.Marker.MarkerId)
                   Attr.Create "data-marker-id" placement.Marker.MarkerId
@@ -719,10 +720,13 @@ module TaWorkspaceRenderer =
                   Attr.Create "data-marker-slot" (string placement.SlotIndex)
                   Attr.Create "data-marker-lane" (string placement.Lane)
                   Attr.Create "data-marker-anchor" (if placement.Marker.Anchor = TaMarkerAnchor.AboveBar then "above-bar" else "below-bar")
+                  Attr.Create "data-marker-shape" (TaMarkerCodec.shapeText placement.Marker.Shape)
+                  Attr.Create "data-marker-fill" (TaMarkerCodec.fillText placement.Marker.Fill)
                   svgAttr "fill" fill
                   svgAttr "fill-opacity" fillOpacity
                   svgAttr "stroke" placement.Marker.Color
                   svgAttr "stroke-width" "1.4"
+                  svgAttr "pointer-events" "all"
                   svgAttr "vector-effect" "non-scaling-stroke" ]
             let title = svgElement "title" [] [ text (RendererModel.markerTooltipText placement) ]
             match placement.Marker.Shape with
@@ -733,11 +737,13 @@ module TaWorkspaceRenderer =
             | TaMarkerShape.Diamond ->
                 let points = $"{fixedText x},{fixedText (y - half)} {fixedText (x + half)},{fixedText y} {fixedText x},{fixedText (y + half)} {fixedText (x - half)},{fixedText y}"
                 svgElement "polygon" (common @ [ svgAttr "points" points ]) [ title ]
-            | TaMarkerShape.Arrow ->
+            | TaMarkerShape.TriangleUp
+            | TaMarkerShape.TriangleDown ->
                 let points =
-                    match placement.Marker.Anchor with
-                    | TaMarkerAnchor.AboveBar -> $"{fixedText (x - half)},{fixedText (y - half)} {fixedText (x + half)},{fixedText (y - half)} {fixedText x},{fixedText (y + half)}"
-                    | TaMarkerAnchor.BelowBar -> $"{fixedText (x - half)},{fixedText (y + half)} {fixedText (x + half)},{fixedText (y + half)} {fixedText x},{fixedText (y - half)}"
+                    RendererModel.markerTrianglePoints placement.Marker.Shape x y half
+                    |> Option.defaultValue [||]
+                    |> Array.map (fun (pointX, pointY) -> $"{fixedText pointX},{fixedText pointY}")
+                    |> String.concat " "
                 svgElement "polygon" (common @ [ svgAttr "points" points ]) [ title ]
 
         let markerLayer =

@@ -212,7 +212,7 @@ module RuntimeCacheBrowserCoverage =
 [<WebSharper.JavaScript; RequireQualifiedAccess>]
 module RuntimeCacheProjection =
     [<Literal>]
-    let CurrentSchemaRevision = 2L
+    let CurrentSchemaRevision = 3L
 
     [<Literal>]
     let MaximumEntries = 8
@@ -466,7 +466,7 @@ module RuntimeCacheProjection =
 [<RequireQualifiedAccess>]
 module RuntimeCache =
     [<Literal>]
-    let CurrentSchemaRevision = 2L
+    let CurrentSchemaRevision = 3L
 
     [<Literal>]
     let MaximumEntries = 8

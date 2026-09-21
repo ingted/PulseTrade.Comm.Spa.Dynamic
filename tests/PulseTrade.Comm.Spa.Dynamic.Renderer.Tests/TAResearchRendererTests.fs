@@ -802,7 +802,14 @@ let tests =
                 (Object.ReferenceEquals(prepared.ResolvedSeries[refs.OpenRef][1], revisedPrepared.ResolvedSeries[refs.OpenRef][1]))
                 "A changed axis position must refresh dependent temporal metadata."
 
-        testCase "DYN-T-541 marker placement uses candle position, stable lanes and ordered tooltip" <| fun _ ->
+        testCase "DYN-T-548 triangle direction is independent from anchor" <| fun _ ->
+            let up = RendererModel.markerTrianglePoints TaMarkerShape.TriangleUp 10.0 20.0 4.5 |> Option.get
+            let down = RendererModel.markerTrianglePoints TaMarkerShape.TriangleDown 10.0 20.0 4.5 |> Option.get
+            Expect.equal up [| 5.5, 24.5; 14.5, 24.5; 10.0, 15.5 |] "TriangleUp must point toward the top of the screen."
+            Expect.equal down [| 5.5, 15.5; 14.5, 15.5; 10.0, 24.5 |] "TriangleDown must point toward the bottom of the screen."
+            Expect.isNone (RendererModel.markerTrianglePoints TaMarkerShape.Circle 10.0 20.0 4.5) "Non-triangle shapes do not use triangle geometry."
+
+        testCase "DYN-T-541 DYN-T-551 marker placement uses candle position and aggregate lanes" <| fun _ ->
             let axisRef = "axis.marker.renderer"
             let time minute = DateTimeOffset(2026, 9, 21, 1, minute, 0, TimeSpan.Zero)
             let axisPoint position minute =
@@ -844,7 +851,7 @@ let tests =
                 { MarkerId = markerId
                   EventTimeUtc = "2026-09-21T01:00:30Z"
                   Anchor = anchor
-                  Shape = TaMarkerShape.Arrow
+                  Shape = TaMarkerShape.TriangleDown
                   Fill = TaMarkerFill.Solid
                   Color = "#dc2626"
                   Label = Some label
@@ -877,15 +884,31 @@ let tests =
                                    { Position = 11L; Value = TaMarkerCodec.encodeBucket [||] } |] } ]
             let prepared = RendererModel.prepareData data
             let timeline = RendererModel.traceTimestampsPrepared candleTrace prepared
-            let placements = RendererModel.markerPlacementsPrepared markerTrace candleTrace prepared timeline
+            let placements =
+                RendererModel.markerPlacementsPrepared markerTrace candleTrace prepared timeline
+                |> RendererModel.assignAggregateMarkerLanes
             Expect.equal placements.Length 3 "Every accepted marker receives one placement."
             Expect.sequenceEqual (placements |> Array.map _.SlotIndex) [| 0; 0; 0 |] "Position 10 maps to the first candle slot regardless of EventTime evidence."
             Expect.sequenceEqual (placements |> Array.map _.Lane) [| 0; 0; 1 |] "Above and below anchors own deterministic independent lanes."
+            Expect.isTrue (placements |> Array.forall (fun placement -> placement.TargetTraceId = candleTrace.TraceId)) "Every placement retains its target trace identity."
             Expect.isTrue (placements |> Array.forall (fun placement -> placement.Target.High = 103.0 && placement.Target.Low = 98.0)) "Marker anchors use the target candle at the same position."
             Expect.equal
                 (RendererModel.markerTooltipText placements[0])
                 "Above 1\nEvent time: 2026-09-21T01:00:30Z\n第一: A\n第二: B"
                 "Tooltip fields preserve authored order."
+
+            let secondTracePlacement =
+                { placements[0] with
+                    TraceId = "signals-2"
+                    Lane = 0
+                    Marker = { placements[0].Marker with MarkerId = "above-3" } }
+            let aggregate =
+                Array.append placements [| secondTracePlacement |]
+                |> RendererModel.assignAggregateMarkerLanes
+            Expect.sequenceEqual
+                (aggregate |> Array.map _.Lane)
+                [| 0; 0; 1; 2 |]
+                "Document trace order followed by bucket order must allocate unique lanes across marker traces."
 
             let markerRow =
                 { RowId = "marker-row"

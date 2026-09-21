@@ -31,6 +31,7 @@ type TaLinePoint =
 
 type TaMarkerPlacement =
     { TraceId: string
+      TargetTraceId: string
       Position: float
       SlotIndex: int
       Lane: int
@@ -685,13 +686,6 @@ module RendererModel =
     let candleSeriesForTrace (trace: TaTraceSpec) data =
         candleSeriesForTracePrepared trace (prepareData data)
 
-    let markerLane index (markers: TaMarker array) =
-        let anchor = markers[index].Anchor
-        markers
-        |> Array.take index
-        |> Array.filter (fun marker -> marker.Anchor = anchor)
-        |> Array.length
-
     let markerPlacementsPrepared (trace: TaTraceSpec) (target: TaTraceSpec) prepared referenceTimestamps =
         let targetByTimestamp =
             candleSeriesForTracePrepared target prepared
@@ -716,16 +710,40 @@ module RendererModel =
                         with
                         | Some slotIndex, Some targetPoint ->
                             markers
-                            |> Array.mapi (fun index marker ->
+                            |> Array.map (fun marker ->
                                 { TraceId = trace.TraceId
+                                  TargetTraceId = target.TraceId
                                   Position = position
                                   SlotIndex = slotIndex
-                                  Lane = markerLane index markers
+                                  Lane = 0
                                   Target = targetPoint
                                   Marker = marker })
                         | _ -> [||]
                     | _ -> [||])))
         |> Option.defaultValue [||]
+
+    let assignAggregateMarkerLanes (placements: TaMarkerPlacement array) =
+        let rec assign index counts assigned =
+            if index >= placements.Length then
+                assigned |> List.rev |> List.toArray
+            else
+                let placement = placements[index]
+                let key = placement.TargetTraceId, placement.Position, placement.Marker.Anchor
+                let lane = Map.tryFind key counts |> Option.defaultValue 0
+                assign
+                    (index + 1)
+                    (Map.add key (lane + 1) counts)
+                    ({ placement with Lane = lane } :: assigned)
+
+        assign 0 Map.empty []
+
+    let markerTrianglePoints (shape: TaMarkerShape) (x: float) (y: float) (half: float) =
+        match shape with
+        | TaMarkerShape.TriangleUp ->
+            Some [| x - half, y + half; x + half, y + half; x, y - half |]
+        | TaMarkerShape.TriangleDown ->
+            Some [| x - half, y - half; x + half, y - half; x, y + half |]
+        | _ -> None
 
     let markerTooltipText (placement: TaMarkerPlacement) =
         [| match placement.Marker.Label with

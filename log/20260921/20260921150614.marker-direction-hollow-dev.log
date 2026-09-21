@@ -1,0 +1,24 @@
+# Marker Direction / Hollow Contract DEV
+
+## Pre-work plan
+
+- 背景：Daedalus feedback 對 `RFC-PTCS-DYNAMIC-0016` 為 `ACCEPT DIRECTION / CHANGES REQUIRED BEFORE DEV`，要求修正 DMI mapping、cross-owner gate、hollow/shared-cursor interaction與release語意後即可開發。
+- 目標：修訂 RFC/current-state 文件，完成 Aster-owned Contracts／Renderer／PTCS／Interactive client 修正、focused tests、F# Playwright browser gate、exact package closure與consumer handoff。
+- 假設：feedback 所列四項是進入 DEV 的完整前置修訂；Daedalus-owned SPAA／Notebook 真路徑不作為 owner package 發布 blocker。
+- 不得改變：Position-only spatial authority、EventTimeUtc 僅作 evidence/tooltip、last-good、Y-domain isolation、runtime protocol v2、TradeCore/SPAA domain ownership；不使用 JavaScript workaround。
+- 步驟：修訂 RFC -> 同步 REQ/SA/SD/WBS/Test -> baseline build/test -> Contracts v2 + cache schema -> reducer aggregate lane gate -> Renderer geometry/hit target -> client/cache cascade -> focused/browser tests -> package/consumer matrix -> DevLog/Traceability/commit/push。
+- 範圍：`PulseTrade.Comm.Spa.Dynamic` canonical repo；不直接修改 `coldfar-symbolics` consumer source。
+- 驗收：feedback §2–§5 全部反映；DYN-T-545..555 owner cases通過；v1 visual parity、v2 strict codec、true hollow、shared cursor共存、cross-trace lane與last-good均有證據。
+- 風險：public DU 移除 `Arrow` 會要求所有 active consumers同步；Release build可能觸發既有 pack/push target，因此版本與發布只在 tests全綠後進行。
+
+## Operations
+
+- 2026-09-21 15:06 +08:00：確認 repo HEAD `0d539f6`，唯一既有 dirty 是 reviewer 新增的 `RFC-PTCS-DYNAMIC-0016..._feedback.md`；視為本輪 authoritative review input，保留並納入提交。
+- 2026-09-21 15:10–15:25 +08:00：修訂RFC/REQ/SA/SD/WBS/Test/Traceability；凍結DMI四列mapping、signal/fill time、owner/consumer gates、direction/anchor正交、true hollow/full hit target、wire/aggregate lane雙層limit與rollback。
+- 2026-09-21 15:12–15:35 +08:00：實作Contracts current `ta-marker.v2` five-shape contract、legacy v1 arrow visual mapping、cache schema 3、aggregate candidate lane validation；Renderer加入跨trace lane、triangle direction與`fill=none`/`pointer-events=all`；client/package exact graph同步。
+- 2026-09-21 15:26 +08:00：canonical Contracts/BrowserDemo完整WebSharper build受既有不可讀`websharper.log` ACL阻擋；改由tracked source staging執行相同compiler，不停用WebSharper。Contracts與BrowserDemo staging build通過，aggregate Dynamic full WebSharper build通過。
+- 2026-09-21 15:30–15:48 +08:00：focused suites通過：Contracts 29/29、Renderer 31/31、Dynamic.Ptcs 14/14、Ptcs.Client 16/16、Interactive 4/4、aggregate 24/24，共118/118。package verifier通過。
+- 2026-09-21 15:50 +08:00：F# Playwright desktop/mobile gate通過；3,820 bars下200 cursor transitions總5022ms、max91ms，screenshots為`artifacts/ta-generic-marker-playwright/marker-desktop.png`與`marker-mobile.png`。
+- 2026-09-21 15:55 +08:00：發布Contracts `0.1.13`、Renderer `0.1.30`、Dynamic.Ptcs `0.1.38`、Ptcs.Client `0.1.48`、Interactive.Client `0.1.25`與aggregate Dynamic `0.1.25`，六包NuGet均回`Created`。SHA-256記於`doc/Verification.md` DYN-VFY-021 revision 2。
+- 2026-09-21 16:00–16:14 +08:00：Aster active consumer closure完成：Host TA client `0.1.27`、E2EQuotation Adapter `alpha10`及Browser `alpha4`發布；E2EQ focused 10/10、GW 494/494。Daedalus SPAA/Notebook仍為external handoff，未部署service。
+- 2026-09-21 16:18 +08:00：changed-path sensitive scan 39 files，High=0/Medium=0；strict UTF-8/no-NUL/no-U+FFFD通過。checker首次FAIL為既有tracked RFC log只有mtime變動但git無diff，以及G-root human note被default notes scope帶入；非source finding，待G notes獨立提交後重跑。

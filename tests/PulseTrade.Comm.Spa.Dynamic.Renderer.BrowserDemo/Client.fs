@@ -132,14 +132,14 @@ module Client =
                       SduiValue.Array
                           [| point
                                  (count - 12)
-                                 [| marker "entry-long" (timestamp (count - 12)) TaMarkerAnchor.BelowBar TaMarkerShape.Arrow TaMarkerFill.Solid "#16a34a" (Some "L") "entry" |]
+                                 [| marker "long-entry" (timestamp (count - 12)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some "LE") "long entry signal" |]
                              point
                                  stackedPosition
-                                 [| marker "signal-a" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.Circle TaMarkerFill.Outline "#dc2626" (Some "A") "signal A"
-                                    marker "signal-b" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.Diamond TaMarkerFill.Solid "#7c3aed" (Some "B") "signal B" |]
+                                 [| marker "short-entry" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#000000" (Some "SE") "short entry signal"
+                                    marker "long-exit" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#dc2626" (Some "LX") "long take-profit fill" |]
                              point
                                  (count - 2)
-                                 [| marker "exit-long" (timestamp (count - 2)) TaMarkerAnchor.AboveBar TaMarkerShape.Square TaMarkerFill.Outline "#b45309" None "exit" |] |] ])
+                                 [| marker "short-exit" (timestamp (count - 2)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Solid "#16a34a" (Some "SX") "short stop-loss fill" |] |] ])
         let candles =
             Array.init count (fun index ->
                 let baseline = 21800.0 + float index * 1.7 + Math.Sin(float index / 4.0) * 24.0

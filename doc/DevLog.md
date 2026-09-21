@@ -1438,3 +1438,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 新增 proposed `RFC-PTCS-DYNAMIC-0016`，處理 consumer review 發現的三項 conformance 缺口：marker direction 與 anchor 解耦、`Outline` 真正透明，以及 bucket limit 文件語意一致。
 - RFC 採 `ta-marker.v2` current encoder、v1 legacy arrow compatibility decoder與browser cache schema 3；另把跨 marker traces 的 lane collision 納入 candidate aggregate validation及 deterministic stacking gate。
 - 本輪只完成 RFC 與測試矩陣，未修改 source、package version、NuGet 或 consumer project；待 review 接受後才同步 SA／SD／WBS／Test 並實作。
+
+## 2026-09-21 - Generic Marker direction / hollow implementation
+
+- `RFC-PTCS-DYNAMIC-0016`依consumer feedback定案並完成：direction與anchor正交、v1 arrow visual decode、v2 strict rejection、true hollow/full hit target、cache schema 3、wire bucket與跨trace aggregate lane雙層limit。
+- Owner focused suites118/118與desktop/mobile F# Playwright通過；3,820-bar fixture的200次cursor transitions總5022ms、max91ms，marker不改candle refs、Y-domain、numeric legend、time slot或shared cursor hot path。
+- 發布Contracts `0.1.13`、Renderer `0.1.30`、Dynamic.Ptcs `0.1.38`、Ptcs.Client `0.1.48`、Interactive.Client `0.1.25`與aggregate Dynamic `0.1.25`，NuGet均回`Created`。
+- Aster active consumers同步：Host TA client `0.1.27`、E2EQuotation Adapter `0.1.0-alpha10`與Browser `0.1.0-alpha4`已發布；Host Release build、E2EQuotation focused 10/10與GW 494/494通過。Daedalus SPAA／Notebook與producer enablement仍為external handoff，不宣稱完成。

@@ -95,12 +95,12 @@ let tests =
             Expect.isError (RuntimeCodec.decode tinyLimits (RuntimeCodec.encode documentFrame)) "Oversized frame must fail before decode."
             Expect.isError (RuntimeCodec.decode DynamicRuntimeDefaults.limits "{\"protocol\":\"sdui-runtime.v1\",\"kind\":\"Unknown\"}") "Unknown case must fail."
 
-        testCase "DYN-T-539 marker codec is strict bounded and ordered" <| fun _ ->
+        testCase "DYN-T-539 DYN-T-550 marker codec is strict bounded and ordered" <| fun _ ->
             let marker =
                 { MarkerId = "entry-0001"
                   EventTimeUtc = "2026-09-21T01:02:03.4560000+00:00"
                   Anchor = TaMarkerAnchor.BelowBar
-                  Shape = TaMarkerShape.Arrow
+                  Shape = TaMarkerShape.TriangleUp
                   Fill = TaMarkerFill.Solid
                   Color = "#16a34a"
                   Label = Some "L"
@@ -121,8 +121,67 @@ let tests =
             let badColor = { marker with Color = "url(https://example.invalid)" }
             Expect.isError (TaMarkerCodec.decode "marker" (TaMarkerCodec.encode badColor)) "CSS functions and URLs must be rejected."
 
-            let oversized = Array.create (TaMarkerLimits.MaxMarkersPerBucket + 1) marker |> TaMarkerCodec.encodeBucket
+            let mixedAnchorBucket =
+                [| for index in 0 .. TaMarkerLimits.MaxMarkersPerBucket - 1 ->
+                       { marker with
+                           MarkerId = $"mixed-{index}"
+                           Anchor = if index % 2 = 0 then TaMarkerAnchor.AboveBar else TaMarkerAnchor.BelowBar } |]
+            let mixedAnchorDecoded =
+                mixedAnchorBucket
+                |> TaMarkerCodec.encodeBucket
+                |> TaMarkerCodec.decodeBucket "marker.mixed-anchor"
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal mixedAnchorDecoded mixedAnchorBucket "Four mixed-anchor markers must remain one accepted ordered wire bucket."
+
+            let oversized =
+                Array.append mixedAnchorBucket [| { marker with MarkerId = "mixed-overflow" } |]
+                |> TaMarkerCodec.encodeBucket
             Expect.isError (TaMarkerCodec.decodeBucket "marker.bucket" oversized) "Marker buckets must enforce the hard limit."
+
+        testCase "DYN-T-546 DYN-T-547 marker v2 directions and v1 arrow mapping are strict" <| fun _ ->
+            let marker shape =
+                { MarkerId = "marker-" + TaMarkerCodec.shapeText shape
+                  EventTimeUtc = "2026-09-21T01:02:03Z"
+                  Anchor = TaMarkerAnchor.BelowBar
+                  Shape = shape
+                  Fill = TaMarkerFill.Outline
+                  Color = "#000000"
+                  Label = None
+                  Tooltip = [||] }
+
+            for shape in [ TaMarkerShape.TriangleUp; TaMarkerShape.TriangleDown; TaMarkerShape.Circle; TaMarkerShape.Square; TaMarkerShape.Diamond ] do
+                let value = marker shape |> TaMarkerCodec.encode
+                let decoded = TaMarkerCodec.decode "marker" value |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+                Expect.equal decoded.Shape shape "Every current shape must round-trip exactly."
+                match value with
+                | SduiValue.Object fields -> Expect.equal fields[TaMarkerCodec.TypeKey] (SduiValue.Text TaMarkerCodec.TypeValue) "Current encoder must emit marker v2."
+                | _ -> failtest "Marker encoder must emit an object."
+
+            let legacy anchor =
+                match TaMarkerCodec.encode { marker TaMarkerShape.TriangleUp with Anchor = anchor } with
+                | SduiValue.Object fields ->
+                    SduiValue.Object(
+                        fields
+                        |> Map.add TaMarkerCodec.TypeKey (SduiValue.Text TaMarkerCodec.LegacyTypeValue)
+                        |> Map.add "shape" (SduiValue.Text "arrow"))
+                | value -> value
+
+            let legacyAbove = TaMarkerCodec.decode "legacy.above" (legacy TaMarkerAnchor.AboveBar) |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            let legacyBelow = TaMarkerCodec.decode "legacy.below" (legacy TaMarkerAnchor.BelowBar) |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal legacyAbove.Shape TaMarkerShape.TriangleDown "Legacy above-bar arrow must preserve its old downward visual direction."
+            Expect.equal legacyBelow.Shape TaMarkerShape.TriangleUp "Legacy below-bar arrow must preserve its old upward visual direction."
+
+            let invalidCurrentArrow =
+                match TaMarkerCodec.encode (marker TaMarkerShape.TriangleUp) with
+                | SduiValue.Object fields -> SduiValue.Object(Map.add "shape" (SduiValue.Text "arrow") fields)
+                | value -> value
+            Expect.isError (TaMarkerCodec.decode "current.arrow" invalidCurrentArrow) "Marker v2 must reject the ambiguous arrow shape."
+
+            let unknownVersion =
+                match TaMarkerCodec.encode (marker TaMarkerShape.Circle) with
+                | SduiValue.Object fields -> SduiValue.Object(Map.add TaMarkerCodec.TypeKey (SduiValue.Text "ta-marker.v999") fields)
+                | value -> value
+            Expect.isError (TaMarkerCodec.decode "unknown.version" unknownVersion) "Unknown marker versions must fail closed."
 
         testCase "DYN-T-539 marker document requires same-row candle target and runtime v2" <| fun _ ->
             let candle =
@@ -355,6 +414,103 @@ let tests =
                         Points = [| { Position = 5L; Value = TaMarkerCodec.encodeBucket [| markerValue |] } |] } ]
                 |> Map.ofList
             Expect.isEmpty (MarkerValidation.candidateErrors splitDocument data) "Split candle refs resolve the same marker position contract."
+
+        testCase "DYN-T-552 cross-trace marker lane limit rejects atomically" <| fun _ ->
+            let axisRef = "axis.marker.aggregate"
+            let candleRef = "series.marker.aggregate.price"
+            let markerRefA = "series.marker.aggregate.a"
+            let markerRefB = "series.marker.aggregate.b"
+            let target =
+                { TraceId = "aggregate-price"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = candleRef
+                  Label = "Price"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let markerTrace traceId dataRef =
+                { target with
+                    TraceId = traceId
+                    Kind = TaTraceKind.Marker
+                    DataRef = dataRef
+                    Label = traceId
+                    CandleDataRefs = None
+                    Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = target.TraceId } }
+            let markerA = markerTrace "aggregate-a" markerRefA
+            let markerB = markerTrace "aggregate-b" markerRefB
+            let aggregateRow = { row with RowId = "aggregate-row"; DataRef = candleRef; Traces = [| target; markerA; markerB |] }
+            let aggregateDocument =
+                { document with
+                    WorkspaceId = "marker-aggregate"
+                    TemporalAxisRefs = [| axisRef |]
+                    BaseRowId = Some aggregateRow.RowId
+                    Rows = [| aggregateRow |] }
+            let axisPoint =
+                { Position = 10L
+                  SourceIntervalId = "aggregate-10"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = DateTimeOffset.Parse "2026-09-21T01:10:00Z"
+                  IntervalEndUtc = DateTimeOffset.Parse "2026-09-21T01:11:00Z"
+                  ObservedThroughUtc = DateTimeOffset.Parse "2026-09-21T01:11:00Z"
+                  AvailableAtUtc = Some(DateTimeOffset.Parse "2026-09-21T01:11:00Z")
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+            let marker markerId =
+                { MarkerId = markerId
+                  EventTimeUtc = "2026-09-21T01:10:30Z"
+                  Anchor = TaMarkerAnchor.AboveBar
+                  Shape = TaMarkerShape.TriangleDown
+                  Fill = TaMarkerFill.Solid
+                  Color = "#000000"
+                  Label = None
+                  Tooltip = [||] }
+            let series dataRef markers =
+                dataRef,
+                TemporalSeriesCodec.encode
+                    { AxisRef = axisRef
+                      AxisRevision = 1L
+                      Points = [| { Position = 10L; Value = TaMarkerCodec.encodeBucket markers } |] }
+            let commonData =
+                Map [ axisRef, TemporalAxisCodec.encode { AxisRef = axisRef; Revision = 1L; Points = [| axisPoint |] }
+                      candleRef,
+                      TemporalSeriesCodec.encode
+                          { AxisRef = axisRef
+                            AxisRevision = 1L
+                            Points =
+                                [| { Position = 10L
+                                     Value = SduiValue.Object(Map [ "o", SduiValue.Number 100.0; "h", SduiValue.Number 103.0; "l", SduiValue.Number 98.0; "c", SduiValue.Number 101.0; "v", SduiValue.Number 20.0 ]) } |] }
+                      series markerRefA [| marker "a-1"; marker "a-2" |]
+                      series markerRefB [| marker "b-1"; marker "b-2" |] ]
+            Expect.isEmpty (MarkerValidation.candidateErrors aggregateDocument commonData) "Four markers across traces must fit one aggregate lane."
+
+            let invalidData = commonData |> Map.add markerRefB (snd (series markerRefB [| marker "b-1"; marker "b-2"; marker "b-3" |]))
+            let errors = MarkerValidation.candidateErrors aggregateDocument invalidData
+            Expect.isTrue (errors |> List.exists (fun error -> error.Code = "limit-marker-lane")) "The fifth marker across traces must fail the aggregate lane gate."
+
+            let markerFrame kind sequence baseRevision dataRevision payload =
+                { frame kind sequence baseRevision dataRevision payload with Protocol = DynamicRuntimeDefaults.markerProtocol }
+            let afterDocument, _ =
+                RuntimeReducer.reduce
+                    (RuntimeReducer.initial identity)
+                    (markerFrame RuntimeFrameKind.Document 1L None 0L (RuntimePayload.Document aggregateDocument))
+            Expect.equal afterDocument.Document (Some aggregateDocument) "Aggregate marker document must be accepted before the lane-limit gate."
+            let accepted, _ =
+                RuntimeReducer.reduce
+                    afterDocument
+                    (markerFrame RuntimeFrameKind.Snapshot 2L None 1L (RuntimePayload.Snapshot { Data = commonData; Freshness = TaFreshness.Backfill "aggregate" }))
+            Expect.equal accepted.Data commonData $"Four-marker snapshot must establish last-good state; error={accepted.LastError}."
+            let rejected, effect =
+                RuntimeReducer.reduce
+                    accepted
+                    (markerFrame RuntimeFrameKind.Patch 3L (Some 1L) 2L (RuntimePayload.Patch { Operations = [| PatchOperation.ReplaceDataRef(markerRefB, invalidData[markerRefB]) |] }))
+            Expect.equal rejected.Data accepted.Data "Aggregate lane rejection must preserve last-good data."
+            Expect.equal rejected.DataRevision accepted.DataRevision "Aggregate lane rejection must not advance revision."
+            match effect with
+            | RuntimeEffect.RejectFrame(_, error) -> Expect.equal error.ReasonCode "limit-marker-lane" "Aggregate overflow must return a structured denial."
+            | other -> failtest $"Expected RejectFrame, got {other}."
 
         testCase "DYN-TA-T-021 data refs can be reused by overlay and separate rows" <| fun _ ->
             let trace traceId dataRef =
@@ -1422,7 +1578,7 @@ let tests =
                 (RuntimeCacheEntryValidation.validate DynamicRuntimeDefaults.limits entry)
                 (RuntimeCache.validateEntry DynamicRuntimeDefaults.limits entry)
                 "Browser and server cache entry validation must share one canonical result."
-            Expect.equal RuntimeCache.CurrentSchemaRevision 2L "Marker-capable cache entries must be isolated from the v1 schema."
+            Expect.equal RuntimeCache.CurrentSchemaRevision 3L "Marker v2 cache entries must be isolated from schema 2."
             Expect.isError
                 (RuntimeCache.validateEntry
                     DynamicRuntimeDefaults.limits
@@ -1522,6 +1678,12 @@ let tests =
             Expect.equal hydrated.LastTransportSequence currentDocumentState.LastTransportSequence "Cache hydration must not consume a server transport sequence."
             Expect.equal hydrated.DataRevision currentDocumentState.DataRevision "Cached data revision must not become an authoritative delta continuation hint."
             Expect.equal hydrated.Poll RuntimePollState.PausedForResync "Hydrated cache remains explicitly non-authoritative."
+            let schema2Entry =
+                { entry with
+                    CacheIdentity = { entry.CacheIdentity with SchemaRevision = 2L } }
+            Expect.isError
+                (RuntimeCache.tryRehydrate DynamicRuntimeDefaults.limits cacheIdentity currentDocumentState schema2Entry)
+                "Schema 2 marker cache must miss instead of being guessed into marker v2."
 
             let authoritativeSnapshot =
                 { cachedSnapshot with

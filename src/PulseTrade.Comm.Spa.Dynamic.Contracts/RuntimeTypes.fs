@@ -100,7 +100,8 @@ type TaMarkerAnchor =
 
 [<RequireQualifiedAccess>]
 type TaMarkerShape =
-    | Arrow
+    | TriangleUp
+    | TriangleDown
     | Circle
     | Square
     | Diamond
@@ -419,6 +420,9 @@ module TaMarkerLimits =
     let MaxMarkersPerBucket = 4
 
     [<Literal>]
+    let MaxMarkersPerLane = 4
+
+    [<Literal>]
     let MaxMarkersPerDataRef = 10000
 
     [<Literal>]
@@ -442,13 +446,21 @@ module TaMarkerCodec =
     let TypeKey = "_type"
 
     [<Literal>]
-    let TypeValue = "ta-marker.v1"
+    let TypeValue = "ta-marker.v2"
+
+    [<Literal>]
+    let LegacyTypeValue = "ta-marker.v1"
 
     let error code field message =
         { Code = code; Field = field; Message = message }
 
     let anchorText = function TaMarkerAnchor.AboveBar -> "above-bar" | TaMarkerAnchor.BelowBar -> "below-bar"
-    let shapeText = function TaMarkerShape.Arrow -> "arrow" | TaMarkerShape.Circle -> "circle" | TaMarkerShape.Square -> "square" | TaMarkerShape.Diamond -> "diamond"
+    let shapeText = function
+        | TaMarkerShape.TriangleUp -> "triangle-up"
+        | TaMarkerShape.TriangleDown -> "triangle-down"
+        | TaMarkerShape.Circle -> "circle"
+        | TaMarkerShape.Square -> "square"
+        | TaMarkerShape.Diamond -> "diamond"
     let fillText = function TaMarkerFill.Solid -> "solid" | TaMarkerFill.Outline -> "outline"
 
     let encodeTooltip (field: TaMarkerTooltipField) =
@@ -516,15 +528,32 @@ module TaMarkerCodec =
         | SduiValue.Object values ->
             let expected = Set.ofList [ TypeKey; "markerId"; "eventTimeUtc"; "anchor"; "shape"; "fill"; "color"; "label"; "tooltip" ]
             let unknown = values |> Map.toList |> List.choose (fun (key, _) -> if Set.contains key expected then None else Some(error "unknown-marker-field" (field + "." + key) $"Unknown marker field `{key}`."))
-            let kind = if objectText TypeKey values = Some TypeValue then Ok () else Error(error "marker-type-required" (field + "." + TypeKey) $"Expected `{TypeValue}`.")
+            let markerType = objectText TypeKey values
+            let kind =
+                match markerType with
+                | Some value when value = TypeValue || value = LegacyTypeValue -> Ok ()
+                | _ -> Error(error "marker-type-required" (field + "." + TypeKey) $"Expected `{TypeValue}` or legacy `{LegacyTypeValue}`.")
             let markerId = requiredText TaMarkerLimits.MaxMarkerIdLength (field + ".markerId") "markerId" values
             let eventTime =
                 match objectText "eventTimeUtc" values with
                 | Some value when validUtcTimestamp value -> Ok value
                 | Some _ -> Error(error "invalid-timestamp" (field + ".eventTimeUtc") "eventTimeUtc must be a bounded ISO-8601 UTC timestamp ending in Z or +00:00.")
                 | None -> Error(error "required" (field + ".eventTimeUtc") "eventTimeUtc is required.")
-            let anchor = match objectText "anchor" values with Some "above-bar" -> Ok TaMarkerAnchor.AboveBar | Some "below-bar" -> Ok TaMarkerAnchor.BelowBar | _ -> Error(error "invalid-marker-anchor" (field + ".anchor") "anchor must be above-bar or below-bar.")
-            let shape = match objectText "shape" values with Some "arrow" -> Ok TaMarkerShape.Arrow | Some "circle" -> Ok TaMarkerShape.Circle | Some "square" -> Ok TaMarkerShape.Square | Some "diamond" -> Ok TaMarkerShape.Diamond | _ -> Error(error "invalid-marker-shape" (field + ".shape") "shape is not supported.")
+            let anchorTextValue = objectText "anchor" values
+            let anchor = match anchorTextValue with Some "above-bar" -> Ok TaMarkerAnchor.AboveBar | Some "below-bar" -> Ok TaMarkerAnchor.BelowBar | _ -> Error(error "invalid-marker-anchor" (field + ".anchor") "anchor must be above-bar or below-bar.")
+            let shape =
+                match markerType, objectText "shape" values, anchorTextValue with
+                | Some current, Some "triangle-up", _ when current = TypeValue -> Ok TaMarkerShape.TriangleUp
+                | Some current, Some "triangle-down", _ when current = TypeValue -> Ok TaMarkerShape.TriangleDown
+                | Some current, Some "circle", _ when current = TypeValue -> Ok TaMarkerShape.Circle
+                | Some current, Some "square", _ when current = TypeValue -> Ok TaMarkerShape.Square
+                | Some current, Some "diamond", _ when current = TypeValue -> Ok TaMarkerShape.Diamond
+                | Some legacy, Some "arrow", Some "above-bar" when legacy = LegacyTypeValue -> Ok TaMarkerShape.TriangleDown
+                | Some legacy, Some "arrow", Some "below-bar" when legacy = LegacyTypeValue -> Ok TaMarkerShape.TriangleUp
+                | Some legacy, Some "circle", _ when legacy = LegacyTypeValue -> Ok TaMarkerShape.Circle
+                | Some legacy, Some "square", _ when legacy = LegacyTypeValue -> Ok TaMarkerShape.Square
+                | Some legacy, Some "diamond", _ when legacy = LegacyTypeValue -> Ok TaMarkerShape.Diamond
+                | _ -> Error(error "invalid-marker-shape" (field + ".shape") "shape is not supported by the declared marker version.")
             let fill = match objectText "fill" values with Some "solid" -> Ok TaMarkerFill.Solid | Some "outline" -> Ok TaMarkerFill.Outline | _ -> Error(error "invalid-marker-fill" (field + ".fill") "fill must be solid or outline.")
             let color = match objectText "color" values with Some value when validColor value -> Ok value | _ -> Error(error "invalid-marker-color" (field + ".color") "color must be #RGB, #RRGGBB or #RRGGBBAA.")
             let label = match Map.tryFind "label" values with None | Some SduiValue.Null -> Ok None | Some(SduiValue.Text value) when value.Length <= TaMarkerLimits.MaxLabelLength -> Ok(Some value) | _ -> Error(error "invalid-marker-label" (field + ".label") $"label must be at most {TaMarkerLimits.MaxLabelLength} characters.")

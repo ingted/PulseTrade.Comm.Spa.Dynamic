@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0016：Marker Direction 與 Hollow Contract 修正
 
 - ID：`RFC-PTCS-DYNAMIC-0016`
-- 狀態：`Proposed / Review`
+- 狀態：`Implemented / Consumer Handoff`
 - Owner：Aster（PTCS Dynamic Contracts／Reducer／Renderer／Client）
 - Consumer owner：Daedalus（FSSTL／TradeCore／SPAA／Interactive Extension）
 - 日期：2026-09-21
@@ -52,12 +52,16 @@
 
 ### 4.2 DMI／交易事件 projection
 
-Consumer 可明確建立例如：
+Daedalus consumer acceptance mapping 已凍結為：
 
-- entry：`Anchor = BelowBar`、`Shape = TriangleUp`、`Fill = Solid`、`Color = #16a34a`。
-- exit：`Anchor = AboveBar`、`Shape = TriangleDown`、`Fill = Outline`、`Color = #000000`。
+| Consumer event | Anchor | Shape | Fill | Color |
+| --- | --- | --- | --- | --- |
+| long entry | `BelowBar` | `TriangleUp` | `Outline` | `#000000` |
+| short entry | `AboveBar` | `TriangleDown` | `Solid` | `#000000` |
+| long exit | `AboveBar` | `TriangleDown` | `Solid` | take-profit red／stop-loss green |
+| short exit | `BelowBar` | `TriangleUp` | `Solid` | take-profit red／stop-loss green |
 
-這只是 consumer mapping 範例，不是 PTCS Dynamic 內建的 entry／exit 規則。
+Entry marker 使用 strategy signal time；exit marker 使用 actual simulated fill time。其他 exit reason 由 consumer 傳 neutral color，renderer 不得猜測停利／停損。這仍是 Daedalus-owned consumer mapping，不是 PTCS Dynamic 內建的 long／short、entry／exit或 PnL 規則。
 
 ## 5. 決策
 
@@ -137,6 +141,9 @@ decoder 保留 `ta-marker.v1` ingest compatibility：
 - 不使用白色、背景色或半透明實心 fill 模擬 hollow。
 - stroke width 與 vector effect 沿用既有 bounded geometry。
 - tooltip／hover 仍覆蓋完整 9px glyph bbox；可使用不顯示的 interaction hit target 或等價 `pointer-events` 設定，但不得加入可見填色。
+- invisible hit target 不得吞掉或阻止 row/shared vertical cursor 的 pointer move。
+- marker tooltip 與 shared cursor 必須可在同一次 pointer interaction 共存；pointer 穿越 hollow 內部時，cursor 仍移至相同 slot。
+- hit target 不得加入 Y-domain、numeric legend、額外 time slot，亦不得觸發 candle series rebuild。
 
 `Fill = Solid` 維持 fill/stroke 都使用 `marker.Color`。
 
@@ -180,7 +187,7 @@ Document／Snapshot／Patch 仍先形成完整 candidate，再一次驗證：
 | aggregate Dynamic／tests／LiveDemo | exact package closure與版本同步 |
 | SPAA／Interactive Extension | 使用 `TriangleUp`／`TriangleDown` authoring，exact-pin current packages，執行 Notebook real path gate |
 
-所有 active first-party consumers 必須同一 release wave exact-pin；不得以 binding redirect、ProjectReference 或容忍 NU1608 混版。
+Exact package closure 是啟用 v2 marker producer 前的 deployment gate，不要求 Aster 跨 repo 修改 SPAA／Interactive Extension，也不要求兩個 repo 在同一 commit 或同一 owner task 完成。順序為：Aster 發布 owner packages與migration matrix；Daedalus 升級 SPAA／Interactive Extension並完成 focused build/runtime v2驗證；Daedalus 確認兩個 consumer bundle 相容後才啟用 producer 輸出。不得以 binding redirect、ProjectReference 或容忍 NU1608 混版。
 
 ## 7. 替代方案
 
@@ -199,7 +206,8 @@ Document／Snapshot／Patch 仍先形成完整 candidate，再一次驗證：
 | MDC-002 | candidate aggregate lane validation | bucket 4/5、mixed anchor、cross-trace 4/5、last-good |
 | MDC-003 | renderer triangle／hollow／global lane | geometry model、DOM attrs、tooltip hit area、Y-domain invariant |
 | MDC-004 | PTCS／Interactive client exact cascade | unknown version fail closed、same frame parity、package graph |
-| MDC-005 | consumer handoff與Notebook E2E | DMI up/down + solid/hollow screenshot、runtime v2 real path |
+| MDC-005 | Aster owner browser/client/package gate | PTCS browser-demo desktop/mobile、shared cursor、exact graph、typed runtime v2 sample |
+| MDC-006 | Daedalus consumer handoff acceptance | SPAA／Interactive Extension升版、真Backtest event mapping、active run transaction與Notebook `.dib` parity；external owner |
 
 ## 9. Test matrix
 
@@ -209,13 +217,15 @@ Document／Snapshot／Patch 仍先形成完整 candidate，再一次驗證：
 | DYN-T-546 | v1 arrow above/below decode | 分別映射 `TriangleDown`／`TriangleUp` |
 | DYN-T-547 | v2 rejects `arrow`／unknown shape | structured non-recoverable rejection |
 | DYN-T-548 | four anchor × triangle combinations | 四種 geometry 皆獨立正確 |
-| DYN-T-549 | Outline DOM/SVG | `fill=none`、stroke=color、完整 hover hitbox |
+| DYN-T-549 | Outline DOM/SVG + interaction | `fill=none`、stroke=color、完整hover hitbox；tooltip與shared cursor同時更新且不重建candle series |
 | DYN-T-550 | bucket total 4/5 including mixed anchors | 4 accepted；5 rejected；last-good unchanged |
 | DYN-T-551 | two traces share target/position/anchor | lanes globally unique and deterministic |
 | DYN-T-552 | aggregate lane 4/5 | 4 accepted；5 rejected with `limit-marker-lane` |
 | DYN-T-553 | cache schema 2/3 | 2 miss/resync；3 rehydrate then paused-for-resync |
 | DYN-T-554 | marker-only patch | candle refs/Y-domain/cursor values unchanged |
-| DYN-T-555 | desktop/mobile Notebook DMI path | up/down、solid/hollow與tooltip符合 consumer mapping |
+| DYN-T-555 | Aster desktop/mobile browser-demo／Interactive Client gate | up/down、solid/hollow、tooltip、shared cursor與runtime v2 minimal frame；不要求真FSSTL／TradeCore run |
+
+Consumer handoff acceptance 由 Daedalus 擁有：升級 SPAA／Interactive Extension exact package closure，將真 `BacktestPresentationEvent` 映射成 §4.2 四種 marker，並驗 active run、summary／trades／marker presentation revision及 ColdFar Notebook `.dib` 與 SPAA identical。此 gate 不阻擋 Aster owner package 發布；Aster browser demo也不能替代真 Notebook 驗收。
 
 UI gate 必須用 F# Playwright verifier；不得以 JavaScript workaround 驗收。
 
@@ -226,12 +236,12 @@ UI gate 必須用 F# Playwright verifier；不得以 JavaScript workaround 驗�
 3. 舊 v1 arrow payload 的畫面方向與修正前完全一致；新 encoder 不再輸出 v1／arrow。
 4. 單 bucket 總量與跨 trace visual lane 上限皆 deterministic、bounded，超限不改 last-good。
 5. Marker correction 不改 temporal Position authority、Y autoscale、cursor numeric value、row clipping或 revision semantics。
-6. PTCS、Interactive 與 Notebook 真路徑使用同一 exact Contracts／Renderer graph；無混版 warning。
-7. Daedalus 可用 trader-facing FSSTL／TradeCore projection 產生 DMI marker，不需自行畫 SVG。
+6. PTCS／Interactive owner browser path 使用同一 exact Contracts／Renderer graph，無混版 warning，並提供 typed runtime v2最小範例與migration matrix。
+7. Consumer handoff 明確允許 Daedalus 使用 trader-facing FSSTL／TradeCore projection產生DMI marker而不自行畫SVG；真Notebook驗收是Daedalus-owned follow-up，不阻擋owner release。
 
 ## 11. Rollout 與 rollback
 
-Rollout 順序：Contracts -> Renderer -> PTCS／Interactive clients -> aggregate packages -> PTCS Host／Notebook consumers。producer 必須在 consumer exact package 全部就緒後才輸出 `ta-marker.v2`。
+Rollout 順序：Aster完成 Contracts -> Renderer -> PTCS／Interactive clients -> aggregate packages與owner browser gate；Daedalus再升級SPAA／Interactive Extension並完成focused build/runtime v2 gate；producer必須在Daedalus確認兩個consumer bundle相容後才輸出`ta-marker.v2`。Aster不跨repo代改consumer，Daedalus不以owner browser demo宣稱Notebook真路徑完成。
 
 Rollback 時 producer 停止輸出 v2 marker，回到無 marker frame；或由 current decoder 暫讀既有 v1 payload。不得讓已回退的舊 client 接收 v2 marker。schema 3 cache 可直接丟棄並重新取得 authoritative snapshot，不逆向寫成 schema 2。
 
@@ -243,4 +253,32 @@ Rollback 時 producer 停止輸出 v2 marker，回到無 marker frame；或由 c
 - `G:/coldfar_py/coldfar-symbolics/doc_new2/RFC/RFC-TRADECORE-0025.PTCS-GenericMarker.REQ.md`
 - `G:/coldfar_py/coldfar-symbolics/doc_new2/RFC/RFC-TRADECORE-0025.PTCS-GenericMarker_review_feedback.md`
 
-本 RFC 接受後，才同步 current-state SA／SD／WBS／Test 並進入實作；在此之前不修改 public package。
+本 RFC 已實作；owner package與browser gate完成，Daedalus consumer handoff仍須在啟用真producer前完成。
+
+## 13. Review disposition
+
+`RFC-PTCS-DYNAMIC-0016.marker-direction-hollow-contract_feedback.md` 的 required changes 已納入：
+
+1. §4.2 改為 long/short entry/exit 四列 frozen mapping，並區分 signal time、simulated fill time與neutral exit reason。
+2. MDC-005／DYN-T-555 改為 Aster owner browser/client gate；新增 Daedalus-owned consumer handoff acceptance，不互相冒充完成。
+3. §5.4 凍結 hollow hit target與shared cursor共存、不得改Y-domain/time slot或重建candle series。
+4. §6／§11 將exact-pin解釋為producer啟用前的跨owner deployment closure，而非Aster跨repo同commit修改。
+
+上述修訂完成 feedback 的 DEV 前置條件；owner實作與release evidence見下一節。
+
+## 14. Implementation record
+
+2026-09-21完成owner contract與release：
+
+| Package／consumer | 舊版 | 新版 | 結果 |
+|---|---:|---:|---|
+| `PulseTrade.Comm.Spa.Dynamic.Contracts` | `0.1.12` | `0.1.13` | current `ta-marker.v2` direction contract、v1 visual decode、cache schema 3 |
+| `PulseTrade.Comm.Spa.Dynamic.Renderer` | `0.1.29` | `0.1.30` | true hollow、full hit target、aggregate lanes |
+| `PulseTrade.Comm.Spa.Dynamic.Ptcs` | `0.1.37` | `0.1.38` | exact contract closure |
+| `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` | `0.1.47` | `0.1.48` | exact renderer/contract closure |
+| `PulseTrade.Comm.Spa.Dynamic.Interactive.Client` | `0.1.24` | `0.1.25` | exact renderer/contract closure與typed sample |
+| `PulseTrade.Comm.Spa.Dynamic` | `0.1.24` | `0.1.25` | aggregate package closure |
+| `PulseTrade.Comm.Spa.Host.TAResearch.Client` | `0.1.26` | `0.1.27` | Aster active Host consumer closure |
+| E2EQuotation Adapter／Browser | `alpha8`／`alpha3` | `alpha10`／`alpha4` | current document constructor與action vocabulary；`alpha9`已被`alpha10`取代 |
+
+Owner focused suites共118/118，desktop/mobile F# Playwright與3,820-bar cursor gate通過；Host Release build、E2EQuotation focused 10/10及GW 494/494通過。六個Dynamic owner packages與三個Aster consumer packages均已發布。SPAA／Interactive Extension exact-pin與真Notebook驗收仍由Daedalus完成，owner browser evidence不替代該gate。

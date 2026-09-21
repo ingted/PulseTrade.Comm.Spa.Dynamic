@@ -30,7 +30,40 @@ Patch retention以整個ordered operation batch套用後的candidate data為驗�
 
 `TemporalAxis`/`TemporalSeries`是provider-neutral的shared temporal representation。axis point保存唯一`Position`及完整interval/frontier/finality/projection；scalar series只保存`Position + SduiValue`並exact-pin `AxisRevision`。Position只作join key，不依scale推算或補空K；current-K preview以相同Position和新的axis/series revision原位替換。`TaCandleDataRefs`把O/H/L/C/V五條scalar series組成candlestick，避免每個TA scalar重複28份時間metadata。既有`temporal-point.v1`仍可解碼。
 
-Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.12`，exact依賴FSharp.Core `[10.1.400]`。`0.1.12`加入generic `TaTraceKind.Marker`、strict/bounded `ta-marker.v1` codec、same-row candlestick target、`sdui-runtime.v2` marker gate與candidate-state atomic validation；MarkerId在單一DataRef內唯一，空bucket代表clear，同frame clear/add可原子移動，拒絕不得改動last-good。marker只使用temporal position作空間authority，`eventTimeUtc`僅為evidence。current contract gate另包含4,000-bar同批append/trim revision回歸。`DataRef`代表immutable series identity，可由overlay row與separate rows重用；document內`RowId`仍須唯一，`TraceId`只須在所屬row內唯一。Typed與decoded frame均執行相同validation；single patch最多64 operations，另受500 items與16MiB frame限制。Temporal tail replacement/append保留未變point references；patch以operation-local axis revision、position、retention及shape validation驗證一次後直接採用candidate，避免再次apply與全retained重掃。snapshot與full replacement仍走完整語意驗證。`RuntimeCache`只接受reducer已確認的bounded projection；OPEN_END projection只保存每條temporal axis的`Final` positions，所有temporal series依其axis position set同步裁切，coverage以裁切後最密的base axis計算，preview-only state不建立空cache。generic identity為owner提供的stable `OwnerFingerprint`與Dynamic schema revision。`RuntimeCacheEntryValidation`是WebSharper browser與server共用的完整entry語意gate；JSON合法但Document/Snapshot不一致的entry同樣fail closed。`RuntimeCacheProjection`另提供WebSharper-safe accepted-state write與rehydrate reducer；marker文件使用cache schema 2與runtime v2重建，舊schema須miss/resync。rehydrate只供display-first並固定為`PausedForResync`，cached data revision不成為authoritative delta continuation。SPAA的OwnerFingerprint必須由ProgramFingerprint、DataSourceFingerprint及cache semantic/schema version組成，不得含requested/cached time range；QueryFingerprint可含range但只供單次query診斷。range只進`RuntimeCacheCoverage`，且browser cache不得取代authoritative host state。
+Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.13`，exact依賴FSharp.Core `[10.1.400]`。current marker encoder只輸出strict/bounded `ta-marker.v2`；public shape為`TriangleUp | TriangleDown | Circle | Square | Diamond`，方向不由`AboveBar／BelowBar`推導。decoder可讀legacy v1，將`arrow + above-bar`映射為`TriangleDown`、`arrow + below-bar`映射為`TriangleUp`；v2 `arrow`與unknown shape fail closed。單bucket跨anchor總量最多4；同row／target／position／anchor跨trace合計最多4，超限回structured `RejectFrame`且last-good不變。marker只使用temporal position作空間authority，`eventTimeUtc`僅為evidence。marker browser cache current schema為3；schema 2一律miss/resync，不原地猜測或rewrite。
+
+`RuntimeCache`只接受reducer已確認的bounded projection；OPEN_END projection只保存每條temporal axis的`Final` positions，所有temporal series依其axis position set同步裁切。rehydrate只供display-first並固定為`PausedForResync`，cached revision不可作authoritative delta continuation。`DataRef`是immutable series identity；document內`RowId`唯一，`TraceId`只須在所屬row內唯一。Typed與decoded frame使用同一validation；single patch最多64 operations，另受500 items與16MiB frame限制。
+
+## Marker v2 typed authoring
+
+Producer只建立typed marker與runtime frame，不自行畫SVG：
+
+```fsharp
+let entryMarker : TaMarker =
+    { MarkerId = "long-entry-0001"
+      EventTimeUtc = "2026-09-21T01:10:30Z"
+      Anchor = TaMarkerAnchor.BelowBar
+      Shape = TaMarkerShape.TriangleUp
+      Fill = TaMarkerFill.Outline
+      Color = "#000000"
+      Label = Some "Long entry"
+      Tooltip = [||] }
+
+let markerSeriesValue = TaMarkerCodec.encodeBucket [| entryMarker |]
+
+let snapshotFrame : RuntimeFrame =
+    { Protocol = DynamicRuntimeDefaults.markerProtocol
+      Kind = RuntimeFrameKind.Snapshot
+      DocumentId = documentId
+      CanvasInstanceId = canvasInstanceId
+      DocumentRevision = 1L
+      BaseDataRevision = None
+      DataRevision = 1L
+      TransportSequence = 2L
+      Payload = RuntimePayload.Snapshot { Data = data; Freshness = TaFreshness.Live } }
+```
+
+Marker trace須以`TaMarkerTraceOptionsCodec.encode`指定同row的candlestick `TargetTraceId`。Entry時間由consumer使用strategy signal time；exit使用actual simulated fill time。Contracts不解析long／short、entry／exit、PnL或exit reason。
 
 Browser-facing numeric使用JSON number/`float`，query range使用canonical ISO-8601 string。host/server必須重新驗證range並轉成domain `DateTimeOffset`；Contracts不把browser parser當authorization或domain validation。
 

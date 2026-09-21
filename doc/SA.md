@@ -163,3 +163,7 @@ Marker 是 TA presentation primitive，不是交易domain event。Daedalus擁有
 - patch shape validation目前早於apply，但marker identity/target/position需看完整candidate；必須在commit前加第二層semantic gate。
 - renderer若把marker納入price points會改Y domain；geometry必須是獨立fixed lane overlay。
 - manual browser wire parser目前unknown trace kind可fallback；marker migration必須改成fail closed。
+
+`RFC-PTCS-DYNAMIC-0016`修正presentation contract而不改架構。Anchor是相對candle的空間位置，triangle direction是glyph語意；兩者不可互相推導。Current wire升為`ta-marker.v2`，v1只由compatibility decoder依舊renderer方向映射，browser cache schema升至3並讓schema 2 marker cache miss/resync。`Outline`使用透明內部，但interaction hit target必須與shared cursor同時作用。
+
+數量限制分成wire與visual兩層：每個DataRef/Position bucket跨anchor總量最多4；跨marker traces共享同row/target/Position/anchor時，candidate aggregate亦最多4。後者避免各trace lane從0開始造成重疊，仍由document trace order與bucket order產生唯一順序。Aster擁有package/browser contract；Daedalus擁有DMI event mapping、SPAA transaction與Notebook真路徑，兩者以exact-package deployment closure銜接而非跨repo同commit。

@@ -669,3 +669,14 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-542 | Browser/client/cache | v1 non-marker accepted、v1 marker rejected、v2 marker accepted、unknown kind fail closed、cache schema 2 | PASS；PTCS 14/14、Ptcs.Client 16/16、Interactive 4/4 |
 | DYN-T-543 | Owner integration/performance | exact package closure、aggregate regression、visible marker geometry、mobile clipping、3,820-bar cursor cadence、Host active consumer build | PASS；六包push Created，aggregate 24/24，200 transitions總3597ms/max54ms，PTCS Host Release build通過 |
 | DYN-T-544 | Consumer integration | SPAA/DIExt同一runtime v2 frame與Notebook真路徑呈現相同marker | EXTERNAL；Daedalus owner升版與驗收 |
+| DYN-T-545 | RFC/current-state | feedback §2–§5、owner boundary、DMI mapping、wire/cache/lane/interaction/release決策 | PASS；RFC Accepted / DEV Authorized |
+| DYN-T-546 | Contracts codec | v2 five shapes strict round-trip；v1 arrow above/below映射Down/Up且re-encode v2 | PASS；Contracts 29/29 |
+| DYN-T-547 | Contracts rejection | v2 `arrow`／unknown shape／unknown marker version structured reject，last-good不變 | PASS；structured codec/reducer rejection cases通過 |
+| DYN-T-548 | Renderer geometry | Above/Below × TriangleUp/Down四組方向獨立 | PASS；Renderer 31/31及browser DOM geometry gate |
+| DYN-T-549 | Hollow interaction | `fill=none`、stroke=color、full hitbox；tooltip與shared cursor同slot共存且不重建candle series | PASS；desktop/mobile F# Playwright，console/page error 0 |
+| DYN-T-550 | Wire bucket bound | mixed-anchor bucket 4 accepted、5 rejected，last-good不變 | PASS；explicit mixed-anchor order/limit cases |
+| DYN-T-551 | Cross-trace stacking | 同target/position/anchor跨trace lanes唯一且依document→bucket order | PASS；aggregate renderer model lanes deterministic |
+| DYN-T-552 | Aggregate lane bound | 跨trace aggregate 4 accepted、5以`limit-marker-lane`拒絕 | PASS；candidate validation與last-good case |
+| DYN-T-553 | Cache migration | schema 2 miss/resync；schema 3 rehydrate後paused-for-resync；v1 durable payload可讀 | PASS；PTCS 14/14、Ptcs.Client 16/16、Interactive 4/4 |
+| DYN-T-554 | Runtime invariant | marker-only patch不改candle refs、Y-domain、numeric legend、time slot或cursor hot path | PASS；Renderer model/unit與3,820-bar browser cadence |
+| DYN-T-555 | Owner browser/client/package | desktop/mobile PTCS browser-demo／Interactive Client exact graph與typed minimal runtime v2 frame | PASS；owner 118/118、六包NuGet Created、Host/E2EQ/GW consumers通過；不含Daedalus真FSSTL/TradeCore run |

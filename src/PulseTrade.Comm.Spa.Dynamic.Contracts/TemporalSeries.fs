@@ -519,6 +519,38 @@ module MarkerValidation =
                             else Some(issue "marker-target-candle-unavailable" $"{field}[{point.Position}]" $"Target candle `{target.TraceId}` cannot resolve position {point.Position}."))
                     shapeErrors @ countErrors @ duplicateErrors @ targetErrors
 
+    let aggregateLaneErrors data document =
+        TaMarkerContract.markerTraces document
+        |> Array.collect (fun (row, trace) ->
+            match TaMarkerTraceOptionsCodec.tryDecode trace.Options, trySeries trace.DataRef data with
+            | Some options, Some series ->
+                series.Points
+                |> Array.collect (fun point ->
+                    match TaMarkerCodec.decodeBucket $"marker.{trace.DataRef}[{point.Position}]" point.Value with
+                    | Ok markers ->
+                        markers
+                        |> Array.map (fun marker ->
+                            row.RowId,
+                            options.TargetTraceId,
+                            point.Position,
+                            marker.Anchor,
+                            trace.TraceId,
+                            marker.MarkerId)
+                    | Error _ -> [||])
+            | _ -> [||])
+        |> Array.groupBy (fun (rowId, targetTraceId, position, anchor, _, _) -> rowId, targetTraceId, position, anchor)
+        |> Array.toList
+        |> List.choose (fun ((rowId, targetTraceId, position, anchor), markers) ->
+            if markers.Length > TaMarkerLimits.MaxMarkersPerLane then
+                let anchorText = TaMarkerCodec.anchorText anchor
+                Some(
+                    issue
+                        "limit-marker-lane"
+                        $"marker.{rowId}.{targetTraceId}[{position}].{anchorText}"
+                        $"Marker lane exceeds {TaMarkerLimits.MaxMarkersPerLane} items across traces for row `{rowId}`, target `{targetTraceId}`, position {position}, anchor `{anchorText}`.")
+            else
+                None)
+
     let candidateErrors document data =
         let traceResults =
             TaMarkerContract.markerTraces document
@@ -533,6 +565,7 @@ module MarkerValidation =
                     |> Array.sumBy (fun point ->
                         match TaMarkerCodec.decodeBucket "marker" point.Value with Ok markers -> markers.Length | Error _ -> 0))
         [ for _, errors in traceResults do yield! errors
+          yield! aggregateLaneErrors data document
           if markerTotal > TaMarkerLimits.MaxMarkersPerFrame then
               yield issue "limit-marker-frame" "marker" $"Marker frame exceeds {TaMarkerLimits.MaxMarkersPerFrame} markers." ]
 

@@ -66,22 +66,27 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
     page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
 
     let layer = page.Locator("[data-testid='ta-marker-layer-price']")
-    let entry = page.Locator("[data-testid='ta-marker-signals-entry-long']")
-    let signalA = page.Locator("[data-testid='ta-marker-signals-signal-a']")
-    let signalB = page.Locator("[data-testid='ta-marker-signals-signal-b']")
-    let exitMarker = page.Locator("[data-testid='ta-marker-signals-exit-long']")
+    let longEntry = page.Locator("[data-testid='ta-marker-signals-long-entry']")
+    let shortEntry = page.Locator("[data-testid='ta-marker-signals-short-entry']")
+    let longExit = page.Locator("[data-testid='ta-marker-signals-long-exit']")
+    let shortExit = page.Locator("[data-testid='ta-marker-signals-short-exit']")
     require (layer.CountAsync() |> awaitTask = 1) "price row must mount one marker layer"
     require (intAttribute layer "data-marker-count" = 4) "four visible markers must render"
     require (page.Locator("[data-testid='ta-row-value-price-signals']").CountAsync() |> awaitTask = 0) "marker event overlays must not create a numeric legend token"
     require (not ((page.Locator("[data-testid='ta-row-values-price']").InnerTextAsync() |> awaitTask).Contains("Signals Undef", StringComparison.Ordinal))) "marker event overlays leaked an undefined numeric value"
-    require (attribute entry "data-marker-anchor" = "below-bar") "entry marker anchor changed"
-    require (attribute signalA "data-marker-position" = "3812") "Position must remain the spatial authority"
-    require (intAttribute signalA "data-marker-lane" = 0 && intAttribute signalB "data-marker-lane" = 1) "same-position markers must stack deterministically"
-    let tooltip = textOf (signalA.Locator("title"))
-    require (tooltip.Contains "A" && tooltip.Contains "Reason: signal A" && tooltip.Contains "Source: BrowserDemo") "tooltip order/content changed"
+    require (attribute longEntry "data-marker-anchor" = "below-bar" && attribute longEntry "data-marker-shape" = "triangle-up") "long entry mapping changed"
+    require (attribute longEntry "data-marker-fill" = "outline" && attribute longEntry "fill" = "none") "long entry must render as a true hollow triangle"
+    require (attribute longEntry "stroke" = "#000000" && attribute longEntry "pointer-events" = "all") "hollow marker stroke or hit target changed"
+    require (attribute shortEntry "data-marker-anchor" = "above-bar" && attribute shortEntry "data-marker-shape" = "triangle-down") "short entry mapping changed"
+    require (attribute longExit "data-marker-shape" = "triangle-down" && attribute longExit "data-marker-fill" = "solid") "long exit mapping changed"
+    require (attribute shortExit "data-marker-anchor" = "below-bar" && attribute shortExit "data-marker-shape" = "triangle-up") "short exit mapping changed"
+    require (attribute shortEntry "data-marker-position" = "3812") "Position must remain the spatial authority"
+    require (intAttribute shortEntry "data-marker-lane" = 0 && intAttribute longExit "data-marker-lane" = 1) "same-position markers must stack deterministically"
+    let tooltip = textOf (shortEntry.Locator("title"))
+    require (tooltip.Contains "SE" && tooltip.Contains "Reason: short entry signal" && tooltip.Contains "Source: BrowserDemo") "tooltip order/content changed"
 
     let rowBox = page.Locator("[data-testid='ta-row-price']").BoundingBoxAsync() |> awaitTask
-    for label, marker in [ "entry", entry; "signal-a", signalA; "signal-b", signalB; "exit", exitMarker ] do
+    for label, marker in [ "long-entry", longEntry; "short-entry", shortEntry; "long-exit", longExit; "short-exit", shortExit ] do
         let markerBox = marker.BoundingBoxAsync() |> awaitTask
         require (not (isNull rowBox) && not (isNull markerBox)) (label + " geometry is missing")
         require (markerBox.Y >= rowBox.Y - 0.5f && markerBox.Y + markerBox.Height <= rowBox.Y + rowBox.Height + 0.5f) (label + " escaped its row")
@@ -111,6 +116,16 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         require (maximumMs < 250L) $"cursor transition stalled for {maximumMs}ms"
         require (total.Elapsed < TimeSpan.FromSeconds 8.0) $"200 cursor transitions took {total.Elapsed}"
         printfn "marker cursor gate transitions=200 elapsedMs=%d maxMs=%d" total.ElapsedMilliseconds maximumMs
+
+        let beforeHollowHover = attribute crosshair "x1"
+        longEntry.HoverAsync() |> awaitUnit
+        let deadline = DateTime.UtcNow.AddSeconds 2.0
+        let mutable afterHollowHover = attribute crosshair "x1"
+        while afterHollowHover = beforeHollowHover && DateTime.UtcNow < deadline do
+            Threading.Thread.Sleep 5
+            afterHollowHover <- attribute crosshair "x1"
+        require (afterHollowHover <> beforeHollowHover) "hollow marker hit target blocked the shared cursor"
+        require ((textOf (longEntry.Locator("title"))).Contains "long entry signal") "hollow marker tooltip disappeared during cursor interaction"
 
     require (errors.Count = 0) ("browser errors: " + String.concat " | " errors)
     Directory.CreateDirectory outputDirectory |> ignore

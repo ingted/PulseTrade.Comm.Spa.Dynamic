@@ -100,3 +100,8 @@
 5. Renderer SHALL deterministic stack同position／anchor marker，不改Y autoscale、不侵入相鄰row，且只建立viewport內marker nodes。
 6. Marker frame SHALL 使用 `sdui-runtime.v2`；legacy v1 non-marker流程維持相容，unknown trace kind不得fallback成其他kind。
 7. SPAA與Interactive Extension SHALL 只透過同版Contracts／Renderer消費marker；consumer不得建立私有SVG renderer。
+8. Marker `Anchor`與triangle direction SHALL正交；`AboveBar`／`BelowBar`不得改寫`TriangleUp`／`TriangleDown`。
+9. Current encoder SHALL只輸出`ta-marker.v2`；decoder SHALL以既有畫面方向相容讀取v1 `arrow + anchor`，舊cache不得猜測遷移。
+10. `Outline` SHALL有透明內部；完整hit target SHALL與marker tooltip、shared cursor共存，且不得改變Y-domain、time slot、numeric legend或重建candle series。
+11. 單一DataRef/Position wire bucket跨anchor合計最多4；同row/target/Position/anchor跨marker traces合計最多4，lane依document trace order再bucket order配置。
+12. Aster owner gate SHALL止於Contracts/Renderer/PTCS/Interactive client與browser-demo；SPAA、真Backtest event mapping與Notebook `.dib` parity是Daedalus-owned consumer handoff，不阻擋owner package發布。
