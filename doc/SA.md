@@ -148,3 +148,18 @@ First slice 的實作落在既有 `Client/ActorDynamicTab.fs`，不是新 client
 summary與chart lifecycle是同一presentation的不同成本層級。分類時只建立bounded metadata model；Collapsed不建立`TaResearchTransientClientHandle`。Inline或Fullscreen才建立handle，collapse/unmount/disconnect必須dispose。decode/base revision失敗發生在in-flight response，因此resync reducer必須能取消該request並替換成full snapshot，不能以`not InFlight` guard忽略。
 
 Dynamic FormInput renderer仍只負責「Host已選Form模式時如何畫表單」。它不得因selected target含DU/template就接管整個page或自動改變PTCS composer mode。
+
+## 2026-09-21 Generic Marker Overlay System Analysis
+
+Marker 是 TA presentation primitive，不是交易domain event。Daedalus擁有 domain event→base-axis position／style projection及Backtest workspace revision gate；Dynamic只擁有wire、validation、reducer與render。
+
+既有runtime可直接擴充：marker data沿用`TemporalSeries`與shared axis，document以`TaTraceKind.Marker`聲明，candidate validation在既有reducer commit前執行。另建marker websocket/store會複製sequence、revision、cache與last-good語意，故拒絕。
+
+相容策略採最小protocol bump：v1只承載既有non-marker；v2才承載marker。Contracts／Renderer／browser clients exact package closure處理compile-time相容，protocol與cache schema處理runtime／stale bundle相容；不另造通用capability service。
+
+主要風險：
+
+- F# DU新增case會暴露未處理的exhaustive match；關鍵consumer必須同步build/test。
+- patch shape validation目前早於apply，但marker identity/target/position需看完整candidate；必須在commit前加第二層semantic gate。
+- renderer若把marker納入price points會改Y domain；geometry必須是獨立fixed lane overlay。
+- manual browser wire parser目前unknown trace kind可fallback；marker migration必須改成fail closed。

@@ -198,6 +198,26 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-status-detail']")) "watermark 2026-07-11T09:30:00Z"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"
 
+    let markerLayer = page.Locator("[data-testid='ta-marker-layer-price']")
+    require (markerLayer.CountAsync() |> awaitTask = 1) "price row must mount one marker overlay layer"
+    require (requiredIntAttribute markerLayer "data-marker-count" = 4) "all four visible marker nodes must render"
+    let entryMarker = page.Locator("[data-testid='ta-marker-signals-entry-long']")
+    let signalA = page.Locator("[data-testid='ta-marker-signals-signal-a']")
+    let signalB = page.Locator("[data-testid='ta-marker-signals-signal-b']")
+    let exitMarker = page.Locator("[data-testid='ta-marker-signals-exit-long']")
+    require (entryMarker.GetAttributeAsync("data-marker-anchor") |> awaitTask = "below-bar") "entry marker must retain its below-bar anchor"
+    require (signalA.GetAttributeAsync("data-marker-position") |> awaitTask = string (capacityPointCount - 8)) "marker placement must use authoritative position"
+    require (requiredIntAttribute signalA "data-marker-lane" = 0) "first same-anchor marker must use lane zero"
+    require (requiredIntAttribute signalB "data-marker-lane" = 1) "second same-anchor marker must stack in lane one"
+    requireText (signalA.Locator("title")) "A"
+    requireText (signalA.Locator("title")) "Reason: signal A"
+    requireText (signalA.Locator("title")) "Source: BrowserDemo"
+    let priceRowBox = page.Locator("[data-testid='ta-row-price']").BoundingBoxAsync() |> awaitTask
+    for label, markerNode in [ "entry", entryMarker; "signal-a", signalA; "signal-b", signalB; "exit", exitMarker ] do
+        let markerBox = markerNode.BoundingBoxAsync() |> awaitTask
+        require (not (isNull markerBox) && not (isNull priceRowBox)) (label + " marker and price row must expose geometry")
+        require (markerBox.Y >= priceRowBox.Y - 0.5f && markerBox.Y + markerBox.Height <= priceRowBox.Y + priceRowBox.Height + 0.5f) (label + " marker must remain clipped to its row")
+
     let chartStack = page.Locator("[data-testid='ta-chart-stack']")
     require (chartStack.GetAttributeAsync("data-loaded-bars") |> awaitTask = string capacityPointCount) "loaded-range metadata must report the full capacity fixture"
     require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = string initialVisibleStart) "follow-latest viewport must begin at the expected capacity position"

@@ -6836,7 +6836,7 @@ function tryStaticCanvasPayload(rawContent){
     const schema=o==null?"":o.$0;
     const o_1=tryGet("protocol", payload);
     const protocol=o_1==null?"":o_1.$0;
-    return schema=="fskynet-sdui"&&protocol!="sdui-runtime.v1"&&(tryGet("ui", payload)!=null||tryGet("sdui", payload)!=null)?Some([content, payload]):null;
+    return schema=="fskynet-sdui"&&protocol!="sdui-runtime.v1"&&protocol!="sdui-runtime.v2"&&(tryGet("ui", payload)!=null||tryGet("sdui", payload)!=null)?Some([content, payload]):null;
   }
   catch(m){
     return null;

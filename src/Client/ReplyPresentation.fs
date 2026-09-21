@@ -28,7 +28,11 @@ module ReplyPresentation =
                 DynamicRenderer.tryGet<obj> "ui" payload |> Option.isSome
                 || DynamicRenderer.tryGet<obj> "sdui" payload |> Option.isSome
 
-            if schema = "fskynet-sdui" && protocol <> "sdui-runtime.v1" && hasDocument then Some(content, payload)
+            if schema = "fskynet-sdui"
+               && protocol <> "sdui-runtime.v1"
+               && protocol <> "sdui-runtime.v2"
+               && hasDocument then
+                Some(content, payload)
             else None
         with _ -> None
 

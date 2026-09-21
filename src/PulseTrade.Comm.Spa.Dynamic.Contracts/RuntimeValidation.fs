@@ -202,6 +202,8 @@ module RuntimeValidation =
 
           yield! document.Rows |> Array.toList |> List.mapi rowErrors |> List.concat
 
+          yield! TaMarkerContract.documentErrors document
+
           let duplicateIds =
               document.Rows
               |> Array.countBy _.RowId
@@ -323,8 +325,9 @@ module RuntimeValidation =
         | _ -> false
 
     let frameErrors limits (frame: RuntimeFrame) =
-        [ if frame.Protocol <> DynamicRuntimeDefaults.protocol then
-              yield error "unknown-protocol" "protocol" $"Expected `{DynamicRuntimeDefaults.protocol}`."
+        [ if frame.Protocol <> DynamicRuntimeDefaults.protocol
+             && frame.Protocol <> DynamicRuntimeDefaults.markerProtocol then
+              yield error "unknown-protocol" "protocol" $"Expected `{DynamicRuntimeDefaults.protocol}` or `{DynamicRuntimeDefaults.markerProtocol}`."
 
           let (DocumentId documentId) = frame.DocumentId
           let (CanvasInstanceId canvasId) = frame.CanvasInstanceId
@@ -338,7 +341,10 @@ module RuntimeValidation =
               yield error "payload-kind-mismatch" "payload" "Frame kind and payload case do not match."
 
           match frame.Payload with
-          | RuntimePayload.Document document -> yield! documentErrors limits document
+          | RuntimePayload.Document document ->
+              yield! documentErrors limits document
+              if TaMarkerContract.hasMarkers document && frame.Protocol <> DynamicRuntimeDefaults.markerProtocol then
+                  yield error "marker-requires-runtime-v2" "protocol" $"Marker documents require `{DynamicRuntimeDefaults.markerProtocol}`."
           | RuntimePayload.Snapshot snapshot -> yield! snapshotErrors limits snapshot
           | RuntimePayload.Patch patch -> yield! patchErrors limits patch
           | RuntimePayload.Error value ->

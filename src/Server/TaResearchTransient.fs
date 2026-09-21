@@ -345,13 +345,16 @@ module TaResearchTransientWire =
         | TaTraceKind.Volume -> "volume"
         | TaTraceKind.Line -> "line"
         | TaTraceKind.Histogram -> "histogram"
+        | TaTraceKind.Marker -> "marker"
 
     let traceKind value =
         match text value |> fun item -> item.Trim().ToLowerInvariant() with
+        | "candlestick" -> TaTraceKind.Candlestick
         | "volume" -> TaTraceKind.Volume
         | "line" -> TaTraceKind.Line
         | "histogram" -> TaTraceKind.Histogram
-        | _ -> TaTraceKind.Candlestick
+        | "marker" -> TaTraceKind.Marker
+        | value -> invalidArg "value" $"Unsupported TA transient trace kind `{value}`."
 
     let traceToWire (trace: TaTraceSpec) : TaTransientTraceWire =
         let candleRefs = trace.CandleDataRefs

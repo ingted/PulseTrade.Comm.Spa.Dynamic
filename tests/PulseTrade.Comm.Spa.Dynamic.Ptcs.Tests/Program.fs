@@ -216,6 +216,26 @@ let tests =
                   (browser.rows[0].options |> Array.exists (fun field -> field.key = TaRowEditorBinding.OptionKey))
                   "browser row options must carry the versioned editor binding." )
 
+          testCase "DYN-T-542 marker trace round-trips and unknown transient kinds fail closed" (fun _ ->
+              let markerTrace =
+                  { TraceId = "signals"
+                    Kind = TaTraceKind.Marker
+                    DataRef = "series.markers"
+                    Label = "Signals"
+                    Color = "#16a34a"
+                    Width = 1.0
+                    Visible = true
+                    CandleDataRefs = None
+                    Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = "price" } }
+              let encoded = TaResearchTransientWire.traceToWire markerTrace
+              Expect.equal encoded.kind "marker" "marker kind must use the canonical wire discriminator."
+              Expect.equal (TaResearchTransientWire.traceFromWire encoded) markerTrace "marker trace and options must round-trip."
+
+              let unknown = { encoded with kind = "future-trace" }
+              Expect.throws
+                  (fun () -> TaResearchTransientWire.traceFromWire unknown |> ignore)
+                  "unknown trace kinds must not fall back to candlestick.")
+
           testCase "generic editor action survives transient and flat browser wires" (fun _ ->
               let expected =
                   RuntimeClientFrame.Action(

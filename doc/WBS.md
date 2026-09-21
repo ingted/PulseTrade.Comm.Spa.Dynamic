@@ -109,3 +109,10 @@ Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target F
 | ID | 工項 | 狀態 | Progress | Test ID | 證據 / 備註 |
 | --- | --- | --- | ---: | --- | --- |
 | DYN-WBS-530 | Dynamic.Ptcs stable PTCS 0.2.19 alignment | Done | 100 | DYN-T-537 | `Dynamic.Ptcs 0.1.11`及`Ptcs.Client 0.1.19` exact-pin PTCS 0.2.19與Contracts 0.1.10；server/client adapter tests、LiveDemo build與NuGet push通過，無renderer/wire變更。 |
+| DYN-WBS-531 | Generic marker owner RFC/current-state flow | Done | 100 | DYN-T-538 | `doc/RFC/RFC-PTCS-DYNAMIC-0015.generic-marker-overlay.md`與REQ/SA/SD/WBS/TEST同步，明確切開Dynamic presentation與Daedalus domain/workspace責任。 |
+| DYN-WBS-532 | Marker public types、strict codec、limits、runtime v2 | Done | 100 | DYN-T-539 | Contracts `0.1.12`新增`TaTraceKind.Marker`、typed marker/tooltip/trace options、strict bucket codec與v2 protocol；legacy v1 non-marker維持。 |
+| DYN-WBS-533 | Marker authoritative candidate validation | Done | 100 | DYN-T-540 | Document/target/axis/position/identity/limits在commit前驗完整candidate；recoverable缺資料要求resync，malformed/duplicate回RejectFrame且last-good不變。 |
+| DYN-WBS-534 | Marker overlay renderer | Done | 100 | DYN-T-541 | Renderer `0.1.29`完成canonical candle resolver、fixed lanes、deterministic stacking、edge clipping、tooltip、viewport culling與Y-scale/數值圖例隔離。 |
+| DYN-WBS-535 | Marker browser/client/cache compatibility | Done | 100 | DYN-T-542 | Dynamic.Ptcs `0.1.37`、Ptcs.Client `0.1.47`、Interactive.Client `0.1.24`完成v1/v2、unknown-kind fail closed與cache schema 2 closure。 |
+| DYN-WBS-536 | Marker package/browser/performance release gate | Done | 100 | DYN-T-543 | 六個owner packages（含aggregate Dynamic `0.1.24`）已push `Created`；focused unit共91/91，desktop/mobile Playwright通過，3,820 bars下200次cursor transition總3597ms/max54ms；Host client bundle `0.1.26`已同步。 |
+| DYN-WBS-537 | SPAA/Interactive Extension consumer adoption | External owner | 0 | DYN-T-544 | Daedalus升級Contracts `[0.1.12]`與Interactive.Client `[0.1.24]`，以同一runtime v2 frame驗Notebook真路徑；PTCS Dynamic不代改domain projection。 |

@@ -506,8 +506,9 @@ module TaWorkspaceRenderer =
     let compositeSvgReactivePreparedLiveWithValueRefresh rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex scheduleValueRefresh =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
-        let height = if hasCandles then 250.0 else 112.0
-        let top = 10.0
+        let hasMarkers = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Marker)
+        let height = if hasCandles then (if hasMarkers then 310.0 else 250.0) else 112.0
+        let top = if hasMarkers then 48.0 else 10.0
         let plotHeight = if hasCandles then 214.0 else 82.0
         let palette = [| "#2764b0"; "#9b5b24"; "#6a4ca3"; "#0f766e"; "#b45309"; "#be185d"; "#475569"; "#0891b2" |]
         let color index (trace: TaTraceSpec) =
@@ -529,7 +530,9 @@ module TaWorkspaceRenderer =
                     | TaTraceKind.Line
                     | TaTraceKind.Histogram ->
                         let lines = RendererModel.lineSeriesPrepared trace.DataRef currentData
-                        traceIndex, trace, [||], lines)
+                        traceIndex, trace, [||], lines
+                    | TaTraceKind.Marker ->
+                        traceIndex, trace, [||], [||])
 
             let candleSeries =
                 preparedTraces
@@ -553,6 +556,20 @@ module TaWorkspaceRenderer =
                          | _ -> [||])
                         |> RendererModel.projectedLinePoints referenceTimestamps
                     index, trace, points)
+
+            let markerPlacements =
+                preparedTraces
+                |> Array.collect (fun (_, trace, _, _) ->
+                    if trace.Kind <> TaTraceKind.Marker then
+                        [||]
+                    else
+                        match TaMarkerTraceOptionsCodec.tryDecode trace.Options with
+                        | None -> [||]
+                        | Some options ->
+                            traces
+                            |> Array.tryFind (fun candidate -> candidate.TraceId = options.TargetTraceId && candidate.Kind = TaTraceKind.Candlestick)
+                            |> Option.map (fun target -> RendererModel.markerPlacementsPrepared trace target currentData referenceTimestamps)
+                            |> Option.defaultValue [||])
 
             let scaleValues =
                 [| yield! candleSeries |> Array.collect (fun (_, _, _, _, point) -> [| point.Low; point.High |])
@@ -610,22 +627,25 @@ module TaWorkspaceRenderer =
                             |> Array.tryItem index
                             |> Option.flatten
                             |> Option.map (fun point -> fixedText point.Value)
-                        cursorReader, legendReader)
+                        cursorReader, legendReader
+                    | TaTraceKind.Marker ->
+                        (fun _ -> None), (fun _ -> None))
             let cursorReaders = readers |> Array.map fst
             let legendReaders = readers |> Array.map snd
 
-            preparedTraces, candleSeries, linePoints, cursorReaders, legendReaders, low, high
+            preparedTraces, candleSeries, linePoints, markerPlacements, cursorReaders, legendReaders, low, high
 
         let initialGeometry = prepareGeometry preparedData
-        let _, initialCandleSeries, initialLinePoints, initialCursorReaders, initialLegendReaders, _, _ = initialGeometry
+        let _, initialCandleSeries, initialLinePoints, initialMarkerPlacements, initialCursorReaders, initialLegendReaders, initialLow, initialHigh = initialGeometry
         let mutable latestGeometry = initialGeometry
+        let markerVisualState = Var.Create(initialMarkerPlacements, initialLow, initialHigh)
         let readerStates =
             Array.map2 (fun cursorReader legendReader -> ref (cursorReader, legendReader)) initialCursorReaders initialLegendReaders
 
         let slot = if referenceTimestamps.Length = 0 then width else width / float referenceTimestamps.Length
         let svgTestId = if hasCandles then "ta-candle-" + rowId else "ta-composite-" + rowId
 
-        let candleVisual index (_, currentCandles, _, _, _, low, high) =
+        let candleVisual index (_, currentCandles, _, _, _, _, low, high) =
             let traceIndex, trace, slotIndex, sourceSpanCount, point =
                 currentCandles
                 |> Array.tryItem index
@@ -640,7 +660,7 @@ module TaWorkspaceRenderer =
             let traceColor = if sourceSpanCount > 1 then color traceIndex trace else candleColor
             center, bodyWidth, candleColor, highY, lowY, openY, closeY, traceColor, point
 
-        let lineGeometry traceIndex (_, _, currentLines, _, _, low, high) =
+        let lineGeometry traceIndex (_, _, currentLines, _, _, _, low, high) =
             let _, _, points =
                 currentLines
                 |> Array.tryFind (fun (index, _, _) -> index = traceIndex)
@@ -674,6 +694,61 @@ module TaWorkspaceRenderer =
             |> Option.map (snd >> _.Value >> fixedText)
             |> Option.defaultValue ""
 
+        let markerShape (placement: TaMarkerPlacement) low high =
+            let size = 9.0
+            let half = size / 2.0
+            let laneStep = size + 2.0
+            let x = xAt placement.SlotIndex
+            let anchorY =
+                match placement.Marker.Anchor with
+                | TaMarkerAnchor.AboveBar -> RendererModel.normalize low high top plotHeight placement.Target.High
+                | TaMarkerAnchor.BelowBar -> RendererModel.normalize low high top plotHeight placement.Target.Low
+            let proposedY =
+                match placement.Marker.Anchor with
+                | TaMarkerAnchor.AboveBar -> anchorY - 4.0 - half - float placement.Lane * laneStep
+                | TaMarkerAnchor.BelowBar -> anchorY + 4.0 + half + float placement.Lane * laneStep
+            let y = max half (min (height - half) proposedY)
+            let fill, fillOpacity =
+                match placement.Marker.Fill with
+                | TaMarkerFill.Solid -> placement.Marker.Color, "1"
+                | TaMarkerFill.Outline -> "#ffffff", "0.92"
+            let common =
+                [ Attr.Create "data-testid" ("ta-marker-" + placement.TraceId + "-" + placement.Marker.MarkerId)
+                  Attr.Create "data-marker-id" placement.Marker.MarkerId
+                  Attr.Create "data-marker-position" (fixedText placement.Position)
+                  Attr.Create "data-marker-slot" (string placement.SlotIndex)
+                  Attr.Create "data-marker-lane" (string placement.Lane)
+                  Attr.Create "data-marker-anchor" (if placement.Marker.Anchor = TaMarkerAnchor.AboveBar then "above-bar" else "below-bar")
+                  svgAttr "fill" fill
+                  svgAttr "fill-opacity" fillOpacity
+                  svgAttr "stroke" placement.Marker.Color
+                  svgAttr "stroke-width" "1.4"
+                  svgAttr "vector-effect" "non-scaling-stroke" ]
+            let title = svgElement "title" [] [ text (RendererModel.markerTooltipText placement) ]
+            match placement.Marker.Shape with
+            | TaMarkerShape.Circle ->
+                svgElement "circle" (common @ [ svgAttr "cx" (fixedText x); svgAttr "cy" (fixedText y); svgAttr "r" (fixedText half) ]) [ title ]
+            | TaMarkerShape.Square ->
+                svgElement "rect" (common @ [ svgAttr "x" (fixedText (x - half)); svgAttr "y" (fixedText (y - half)); svgAttr "width" (fixedText size); svgAttr "height" (fixedText size) ]) [ title ]
+            | TaMarkerShape.Diamond ->
+                let points = $"{fixedText x},{fixedText (y - half)} {fixedText (x + half)},{fixedText y} {fixedText x},{fixedText (y + half)} {fixedText (x - half)},{fixedText y}"
+                svgElement "polygon" (common @ [ svgAttr "points" points ]) [ title ]
+            | TaMarkerShape.Arrow ->
+                let points =
+                    match placement.Marker.Anchor with
+                    | TaMarkerAnchor.AboveBar -> $"{fixedText (x - half)},{fixedText (y - half)} {fixedText (x + half)},{fixedText (y - half)} {fixedText x},{fixedText (y + half)}"
+                    | TaMarkerAnchor.BelowBar -> $"{fixedText (x - half)},{fixedText (y + half)} {fixedText (x + half)},{fixedText (y + half)} {fixedText x},{fixedText (y - half)}"
+                svgElement "polygon" (common @ [ svgAttr "points" points ]) [ title ]
+
+        let markerLayer =
+            markerVisualState.View
+            |> View.Map (fun (placements, low, high) ->
+                svgElement "g" [ Attr.Create "data-testid" ("ta-marker-layer-" + rowId); Attr.Create "data-marker-count" (string placements.Length) ] [
+                    for placement in placements do
+                        yield markerShape placement low high
+                ])
+            |> Doc.EmbedView
+
         let candleVisualStates =
             initialCandleSeries
             |> Array.mapi (fun index _ -> Var.Create(candleVisual index initialGeometry))
@@ -690,7 +765,10 @@ module TaWorkspaceRenderer =
         |> View.Sink (fun currentData ->
             let geometry = prepareGeometry currentData
             latestGeometry <- geometry
-            let _, _, _, currentCursorReaders, currentLegendReaders, _, _ = geometry
+            let _, _, _, currentMarkerPlacements, currentCursorReaders, currentLegendReaders, currentLow, currentHigh = geometry
+
+            let nextMarkerVisual = currentMarkerPlacements, currentLow, currentHigh
+            if markerVisualState.Value <> nextMarkerVisual then markerVisualState.Value <- nextMarkerVisual
 
             for index in 0 .. readerStates.Length - 1 do
                 readerStates[index].Value <- currentCursorReaders[index], currentLegendReaders[index]
@@ -709,7 +787,7 @@ module TaWorkspaceRenderer =
             scheduleValueRefresh ())
 
         svgElement "svg" [
-            svgAttr "viewBox" (if hasCandles then "0 0 1000 250" else "0 0 1000 112")
+            svgAttr "viewBox" ("0 0 1000 " + fixedText height)
             svgAttr "preserveAspectRatio" "none"
             svgAttr "role" "img"
             svgAttr "aria-label" ("Composite TA row " + rowId)
@@ -783,6 +861,8 @@ module TaWorkspaceRenderer =
                     yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); Attr.Dynamic "d" path; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" "none"; svgAttr "stroke" traceColor; svgAttr "stroke-width" (fixedText trace.Width); svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
                 | _ -> ()
 
+            yield markerLayer
+
             yield
                 svgElement "line" [
                     Attr.Create "data-testid" (svgTestId + "-crosshair")
@@ -830,7 +910,10 @@ module TaWorkspaceRenderer =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
         let chart, timestamps, cursorReaders, legendReaders = compositeSvgReactivePreparedLiveWithValueRefresh row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex scheduleValueRefresh
         let title = rowTitle row traces
-        let chartHeight = if traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick) then 262 else 124
+        let chartHeight =
+            if traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Marker) then 322
+            elif traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick) then 262
+            else 124
         let children =
             if showSharedTimeAxis then [ chart; timeAxis "ta-time-axis-shared" timestamps ]
             else [ chart ]
@@ -861,25 +944,26 @@ module TaWorkspaceRenderer =
             ] [
                 for index in 0 .. traces.Length - 1 do
                     let trace = traces[index]
-                    let label = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
-                    let initialValue =
-                        if timestamps.Length = 0 then "Undef"
-                        else legendReaders[index] (timestamps.Length - 1) |> Option.defaultValue "Undef"
-                    yield
-                        span [
-                            Attr.Create "data-testid" ("ta-row-value-" + row.RowId + "-" + trace.TraceId)
-                            Attr.Create "data-ta-row-value-token" "true"
-                            attr.style "display:inline-flex; align-items:baseline; gap:4px; flex:0 0 auto; height:20px; line-height:20px; white-space:nowrap;"
-                        ] [
-                            span [ Attr.Create "data-ta-row-value-label" "true"; attr.style "font-weight:650;" ] [ text label ]
+                    if trace.Kind <> TaTraceKind.Marker then
+                        let label = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
+                        let initialValue =
+                            if timestamps.Length = 0 then "Undef"
+                            else legendReaders[index] (timestamps.Length - 1) |> Option.defaultValue "Undef"
+                        yield
                             span [
-                                Attr.Create "data-ta-row-value-index" (string index)
-                                Attr.Create "data-ta-row-value-text" "true"
-                                Attr.Create "data-value-state" (if initialValue = "Undef" then "undefined" else "defined")
-                                attr.title (label + " value")
-                                attr.style "display:inline-block; width:16ch; min-width:16ch; max-width:16ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums;"
-                            ] [ text initialValue ]
-                        ]
+                                Attr.Create "data-testid" ("ta-row-value-" + row.RowId + "-" + trace.TraceId)
+                                Attr.Create "data-ta-row-value-token" "true"
+                                attr.style "display:inline-flex; align-items:baseline; gap:4px; flex:0 0 auto; height:20px; line-height:20px; white-space:nowrap;"
+                            ] [
+                                span [ Attr.Create "data-ta-row-value-label" "true"; attr.style "font-weight:650;" ] [ text label ]
+                                span [
+                                    Attr.Create "data-ta-row-value-index" (string index)
+                                    Attr.Create "data-ta-row-value-text" "true"
+                                    Attr.Create "data-value-state" (if initialValue = "Undef" then "undefined" else "defined")
+                                    attr.title (label + " value")
+                                    attr.style "display:inline-block; width:16ch; min-width:16ch; max-width:16ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums;"
+                                ] [ text initialValue ]
+                            ]
             ]
         chartFrame title [ metadata ] legend ("ta-row-" + row.RowId) (chartHeight + 30 + if showSharedTimeAxis then 16 else 0) children, cursorReaders, legendReaders
 
@@ -1202,11 +1286,15 @@ module TaWorkspaceRenderer =
                     | None -> None
                 for valueIndex in 0 .. legendValueNodes.Length - 1 do
                     let node = legendValueNodes[valueIndex]
+                    let traceIndex =
+                        match Int32.TryParse(node.GetAttribute("data-ta-row-value-index")) with
+                        | true, parsed -> parsed
+                        | _ -> valueIndex
                     let nextValue =
                         legendIndex
                         |> Option.bind (fun index ->
                             latestLegendReaders
-                            |> Array.tryItem valueIndex
+                            |> Array.tryItem traceIndex
                             |> Option.bind (fun readLegend -> readLegend index))
                         |> Option.defaultValue "Undef"
                     node.TextContent <- nextValue

@@ -70,6 +70,18 @@ module Client =
 
     let linePayload value = SduiValue.Object(Map [ "v", SduiValue.Number value ])
 
+    let marker markerId eventTimeUtc anchor shape fill color label reason =
+        { MarkerId = markerId
+          EventTimeUtc = eventTimeUtc
+          Anchor = anchor
+          Shape = shape
+          Fill = fill
+          Color = color
+          Label = label
+          Tooltip =
+            [| { Key = "reason"; Label = "Reason"; Value = reason }
+               { Key = "source"; Label = "Source"; Value = "BrowserDemo" } |] }
+
     let sampleSeries count =
         let sharedAxisRef = "axis.1k"
         let sharedAxis =
@@ -106,6 +118,28 @@ module Client =
                                             21820.0
                                             + float seriesIndex * 0.25
                                             + Math.Sin(float index / (6.0 + float (seriesIndex % 5))) * (28.0 + float (seriesIndex % 3))) ]))) ])
+        let markerSeries =
+            let point position markers =
+                SduiValue.Object(
+                    Map [ "position", SduiValue.Number(float position)
+                          "value", TaMarkerCodec.encodeBucket markers ])
+            let stackedPosition = count - 8
+            SduiValue.Object(
+                Map [ "_type", SduiValue.Text "temporal-series.v1"
+                      "axisRef", SduiValue.Text sharedAxisRef
+                      "axisRevision", SduiValue.Number 1.0
+                      "points",
+                      SduiValue.Array
+                          [| point
+                                 (count - 12)
+                                 [| marker "entry-long" (timestamp (count - 12)) TaMarkerAnchor.BelowBar TaMarkerShape.Arrow TaMarkerFill.Solid "#16a34a" (Some "L") "entry" |]
+                             point
+                                 stackedPosition
+                                 [| marker "signal-a" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.Circle TaMarkerFill.Outline "#dc2626" (Some "A") "signal A"
+                                    marker "signal-b" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.Diamond TaMarkerFill.Solid "#7c3aed" (Some "B") "signal B" |]
+                             point
+                                 (count - 2)
+                                 [| marker "exit-long" (timestamp (count - 2)) TaMarkerAnchor.AboveBar TaMarkerShape.Square TaMarkerFill.Outline "#b45309" None "exit" |] |] ])
         let candles =
             Array.init count (fun index ->
                 let baseline = 21800.0 + float index * 1.7 + Math.Sin(float index / 4.0) * 24.0
@@ -190,6 +224,7 @@ module Client =
             yield "series.price-5k", SduiValue.Array fiveMinuteCandles
             yield "series.volume", SduiValue.Array candles
             yield "series.sma", sharedScalarSeries 0
+            yield "series.markers", markerSeries
             for seriesIndex in 1 .. capacitySeriesCount - 1 do
                 yield "series.capacity-" + string seriesIndex, sharedScalarSeries seriesIndex
             yield "series.sma-5k", SduiValue.Array fiveMinuteSma
@@ -323,7 +358,9 @@ module Client =
                             "series.price"
                             3.0
                             [| trace "price-1k" TaTraceKind.Candlestick "series.price" "1K K Bar" "" 1.0
-                               trace "price-5k" TaTraceKind.Candlestick "series.price-5k" "5K K Bar" "#7c3aed" 1.8 |]
+                               trace "price-5k" TaTraceKind.Candlestick "series.price-5k" "5K K Bar" "#7c3aed" 1.8
+                               { trace "signals" TaTraceKind.Marker "series.markers" "Signals" "#dc2626" 1.0 with
+                                   Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = "price-1k" } } |]
                         |> withRowLabel "ES 1K + SMA(20)")
                        row "volume" TaRowKind.Volume "series.volume" 1.0
                        compositeRow

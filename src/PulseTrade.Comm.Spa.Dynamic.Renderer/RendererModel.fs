@@ -29,6 +29,14 @@ type TaLinePoint =
       Value: float
       Temporal: TaTemporalPointPresentation option }
 
+type TaMarkerPlacement =
+    { TraceId: string
+      Position: float
+      SlotIndex: int
+      Lane: int
+      Target: TaCandlePoint
+      Marker: TaMarker }
+
 type TaResolvedSeriesPoint =
     { Payload: SduiValue option
       Temporal: TaTemporalPointPresentation option }
@@ -677,6 +685,57 @@ module RendererModel =
     let candleSeriesForTrace (trace: TaTraceSpec) data =
         candleSeriesForTracePrepared trace (prepareData data)
 
+    let markerLane index (markers: TaMarker array) =
+        let anchor = markers[index].Anchor
+        markers
+        |> Array.take index
+        |> Array.filter (fun marker -> marker.Anchor = anchor)
+        |> Array.length
+
+    let markerPlacementsPrepared (trace: TaTraceSpec) (target: TaTraceSpec) prepared referenceTimestamps =
+        let targetByTimestamp =
+            candleSeriesForTracePrepared target prepared
+            |> Array.map (fun point -> point.Timestamp, point)
+            |> Map.ofArray
+
+        prepared.RawData
+        |> Map.tryFind trace.DataRef
+        |> Option.bind tryTemporalSeries
+        |> Option.bind (fun (axisRef, axisRevision, points) ->
+            prepared.ResolvedAxes
+            |> Map.tryFind axisRef
+            |> Option.filter (fun axis -> axis.Revision = axisRevision)
+            |> Option.map (fun axis ->
+                points
+                |> Array.collect (fun (position, payload) ->
+                    match Map.tryFind position axis.Points, TaMarkerCodec.decodeBucket trace.DataRef payload with
+                    | Some temporal, Ok markers ->
+                        match
+                            referenceTimestamps |> Array.tryFindIndex ((=) temporal.IntervalStartUtc),
+                            Map.tryFind temporal.IntervalStartUtc targetByTimestamp
+                        with
+                        | Some slotIndex, Some targetPoint ->
+                            markers
+                            |> Array.mapi (fun index marker ->
+                                { TraceId = trace.TraceId
+                                  Position = position
+                                  SlotIndex = slotIndex
+                                  Lane = markerLane index markers
+                                  Target = targetPoint
+                                  Marker = marker })
+                        | _ -> [||]
+                    | _ -> [||])))
+        |> Option.defaultValue [||]
+
+    let markerTooltipText (placement: TaMarkerPlacement) =
+        [| match placement.Marker.Label with
+           | Some label when not (String.IsNullOrWhiteSpace label) -> yield label
+           | _ -> ()
+           yield "Event time: " + placement.Marker.EventTimeUtc
+           for field in placement.Marker.Tooltip do
+               yield field.Label + ": " + field.Value |]
+        |> String.concat "\n"
+
     let effectiveTraces (row: TaRowSpec) =
         if not (isNull row.Traces) && row.Traces.Length > 0 then
             row.Traces
@@ -700,7 +759,7 @@ module RendererModel =
 
     let rowReferenceLength (row: TaRowSpec) data =
         effectiveTraces row
-        |> Array.filter _.Visible
+        |> Array.filter (fun trace -> trace.Visible && trace.Kind <> TaTraceKind.Marker)
         |> Array.map (fun trace -> seriesValues trace.DataRef data |> Array.length)
         |> Array.sortDescending
         |> Array.tryHead
@@ -712,6 +771,7 @@ module RendererModel =
         | TaTraceKind.Volume -> candleSeriesForTrace trace data |> Array.map _.Timestamp
         | TaTraceKind.Line
         | TaTraceKind.Histogram -> lineSeries trace.DataRef data |> Array.map _.Timestamp
+        | TaTraceKind.Marker -> [||]
 
     let traceTimestampsPrepared (trace: TaTraceSpec) prepared =
         match trace.Kind with
@@ -719,14 +779,18 @@ module RendererModel =
         | TaTraceKind.Volume -> candleSeriesForTracePrepared trace prepared |> Array.map _.Timestamp
         | TaTraceKind.Line
         | TaTraceKind.Histogram -> lineSeriesPrepared trace.DataRef prepared |> Array.map _.Timestamp
+        | TaTraceKind.Marker -> [||]
 
     let traceTopologyTimestampsPrepared (trace: TaTraceSpec) prepared =
-        let temporalPositions =
-            resolvedSeriesPrepared trace.DataRef prepared
-            |> Array.choose (fun point -> point.Temporal |> Option.map _.IntervalStartUtc)
+        if trace.Kind = TaTraceKind.Marker then
+            [||]
+        else
+            let temporalPositions =
+                resolvedSeriesPrepared trace.DataRef prepared
+                |> Array.choose (fun point -> point.Temporal |> Option.map _.IntervalStartUtc)
 
-        if temporalPositions.Length > 0 then temporalPositions
-        else traceTimestampsPrepared trace prepared
+            if temporalPositions.Length > 0 then temporalPositions
+            else traceTimestampsPrepared trace prepared
 
     let referenceTimeline (rows: TaRowSpec array) data =
         let traces =
@@ -784,7 +848,8 @@ module RendererModel =
                 lineSeries trace.DataRef data
                 |> Array.tryFind (fun point -> point.Timestamp = timestamp)
                 |> Option.bind _.Temporal
-                |> Option.map _.IntervalEndUtc)
+                |> Option.map _.IntervalEndUtc
+            | TaTraceKind.Marker -> None)
 
     let timestampInInterval timestamp (metadata: TaTemporalPointPresentation) =
         compare timestamp metadata.IntervalStartUtc >= 0
@@ -972,13 +1037,13 @@ module RendererModel =
 
     let rowTemporalMetadata (row: TaRowSpec) data =
         effectiveTraces row
-        |> Array.filter _.Visible
+        |> Array.filter (fun trace -> trace.Visible && trace.Kind <> TaTraceKind.Marker)
         |> Array.choose (fun trace -> latestTemporalMetadata trace data)
         |> Array.distinctBy (fun value -> value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality)
 
     let rowTemporalMetadataPrepared (row: TaRowSpec) prepared =
         effectiveTraces row
-        |> Array.filter _.Visible
+        |> Array.filter (fun trace -> trace.Visible && trace.Kind <> TaTraceKind.Marker)
         |> Array.choose (fun trace -> latestTemporalMetadataPrepared trace prepared)
         |> Array.distinctBy (fun value -> value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality)
 
@@ -1154,7 +1219,8 @@ module RendererModel =
                         | TaTraceKind.Histogram ->
                             lineSeries trace.DataRef data
                             |> lineCursorValue label isBaseRow timestamp
-                            |> Option.map (fun value -> timestamp, value)))
+                            |> Option.map (fun value -> timestamp, value)
+                        | TaTraceKind.Marker -> None))
 
             Some
                 { VisibleIndex = index

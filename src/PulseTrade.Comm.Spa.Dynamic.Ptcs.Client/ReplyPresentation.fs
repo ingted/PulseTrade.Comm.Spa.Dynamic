@@ -81,7 +81,7 @@ module TaResearchReplyPresentation =
             let rec collect depth candidate =
                 if depth > 6 || isNull candidate then
                     [||]
-                elif protocol candidate = "sdui-runtime.v1" then
+                elif protocol candidate = "sdui-runtime.v1" || protocol candidate = "sdui-runtime.v2" then
                     [| candidate |]
                 elif JS.TypeOf candidate = JS.Kind.String then
                     try collect (depth + 1) (JSON.Parse(string candidate)) with _ -> [||]

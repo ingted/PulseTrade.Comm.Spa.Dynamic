@@ -457,11 +457,13 @@ module TaResearchClientWire =
         | TaRowKind.HeikinAshi -> "heikin-ashi"
 
     let traceKind value =
-        match text value with
-        | "volume" -> TaTraceKind.Volume
-        | "line" -> TaTraceKind.Line
-        | "histogram" -> TaTraceKind.Histogram
-        | _ -> TaTraceKind.Candlestick
+        match text value |> fun item -> item.Trim().ToLower() with
+        | "candlestick" -> Result.Ok TaTraceKind.Candlestick
+        | "volume" -> Result.Ok TaTraceKind.Volume
+        | "line" -> Result.Ok TaTraceKind.Line
+        | "histogram" -> Result.Ok TaTraceKind.Histogram
+        | "marker" -> Result.Ok TaTraceKind.Marker
+        | value -> Result.Error $"Unsupported TA browser trace kind `{value}`."
 
     let pollState value =
         match text value with
@@ -560,6 +562,12 @@ module TaResearchClientWire =
     let stateFromWire (wire: TaBrowserStateWire) =
         if isNull (box wire) || (wire.wireVersion <> "ta-browser.v1" && wire.wireVersion <> "ta-browser.v2" && wire.wireVersion <> "ta-browser.v3" && wire.wireVersion <> "ta-browser.v4" && wire.wireVersion <> "ta-browser.v5") then
             Result.Error "Unsupported TA browser state wire."
+        elif not (isNull wire.rows)
+             && wire.rows
+                |> Array.exists (fun row ->
+                    not (isNull row.traces)
+                    && row.traces |> Array.exists (fun trace -> traceKind trace.kind |> Result.isError)) then
+            Result.Error "TA browser state contains an unsupported trace kind."
         elif (wire.wireVersion = "ta-browser.v4" || wire.wireVersion = "ta-browser.v5")
              && not (isNull wire.series)
              && wire.series |> Array.exists (fun series -> not (temporalSeriesMetadataIsValid (max 0 series.pointCount) series)) then
@@ -581,7 +589,7 @@ module TaResearchClientWire =
                                 row.traces
                                 |> Array.map (fun trace ->
                                     { TraceId = text trace.traceId
-                                      Kind = traceKind trace.kind
+                                      Kind = traceKind trace.kind |> Result.defaultWith invalidOp
                                       DataRef = text trace.dataRef
                                       Label = text trace.label
                                       Color = text trace.color

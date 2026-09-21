@@ -484,3 +484,32 @@ decoder不得用target alias、page title或substring猜測。成功回`RuntimeF
 ### Composer boundary
 
 `ArguFormRenderer`不持有Plain/Form mode。它只在PTCS Form host被建立時render，submit仍回raw Argu string；Plain single textarea、mode switch、selected target與history由PTCS core owns。
+
+## 2026-09-21 Generic Marker Overlay Design
+
+完整決策見 `doc/RFC/RFC-PTCS-DYNAMIC-0015.generic-marker-overlay.md`。
+
+```text
+producer generic TaMarker[]
+  -> TaMarkerCodec.encodeBucket
+  -> TemporalSeriesPoint(Position, Value)
+  -> RuntimeFrame v2
+  -> frame shape validation
+  -> apply whole frame to candidate
+  -> MarkerValidation.validateCandidate(document, candidate)
+  -> commit OR retain last-good + RequestResync/RejectFrame
+  -> RendererModel resolves target candle by Position
+  -> fixed row-local marker lanes + deterministic stack
+```
+
+Public seams：
+
+- `TaMarkerCodec`：strict marker/bucket encode/decode，preserve tooltip與bucket order。
+- `TaMarkerTraceOptionsCodec`：typed `marker.targetTraceId` options helper。
+- `MarkerValidation`：document與candidate semantic validation；只掃marker refs及target candle refs。
+- `RuntimeEffect.RejectFrame`：structured non-recoverable rejection，不觸發resync loop。
+- `MarkerGeometry`：pure row-local layout，size 9px、first gap 4px、stack gap 2px、top/bottom lanes各44px。
+
+Failure paths：sequence/base revision/axis gap/missing authoritative state走`PausedForResync + RequestResync`；malformed marker/duplicate id/illegal color/enum/target/hard limit走`Suspended + RejectFrame(Recoverable=false)`。兩者都保留last-good。Unknown v2 trace kind與v1 marker fail closed。Marker-only patch重用未變DataRef與prepared candle資料，不全量重decode。
+
+Test seams：codec round-trip/strict shape；snapshot/patch/clear/move/idempotency；composite/split candle resolver；stack/lane/Y-domain/viewport；v1/v2/cache/unknown-kind compatibility。

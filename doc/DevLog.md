@@ -1423,3 +1423,12 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - `PulseTrade.Comm.Spa.Dynamic` 0.1.22→0.1.23、`PulseTrade.Comm.Spa.Dynamic.Ptcs` 0.1.35→0.1.36及`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` 0.1.43→0.1.44，exact-lock PTCS 0.2.46；本輪只同步WBS-086F persistent read projection binary graph，不改renderer、DSL、schema或TA行為。
 - 三個package均完成Release build/pack/push。正式SPA Host消費Dynamic.Ptcs 0.1.36與Ptcs.Client 0.1.44並build/deploy通過。
+
+## 2026-09-21 - Generic Marker runtime v2
+
+- 依`RFC-PTCS-DYNAMIC-0015`完成transport-neutral generic marker：`TaTraceKind.Marker`、strict/bounded `ta-marker.v1` codec、same-row composite/split candle target、runtime v2 gate、candidate commit前validation、structured `RejectFrame`與last-good preservation。Position是唯一spatial authority，EventTime只作tooltip evidence。
+- Renderer新增bounded SVG marker overlay、fixed lane/deterministic stacking、edge/row clipping與visible-only nodes；marker不參與reference timeline、Y autoscale、cursor value或numeric legend。專用F# Playwright在3,820 bars fixture通過desktop/mobile gate，200次cursor transition總3597ms、max54ms。
+- 發布aggregate Dynamic `0.1.24`、Contracts `0.1.12`、Renderer `0.1.29`、Dynamic.Ptcs `0.1.37`、Ptcs.Client `0.1.47`、Interactive.Client `0.1.24`，NuGet均回`Created`。Interactive bundle manifest與package version一致，cache schema升至2。
+- Focused suites通過：Contracts 27/27、Renderer 30/30、PTCS adapter 14/14、PTCS client 16/16、Interactive lifecycle 4/4；aggregate測試的Actor.Registry exact reference由legacy alpha5對齊主package `[0.1.3]`後24/24通過；package verifier與PTCS Host active consumer Release build通過。
+- Daedalus consumer handoff為Contracts `[0.1.12]`／Interactive.Client `[0.1.24]`與Notebook runtime v2 parity；domain projection、Backtest transaction與SPAA state仍由consumer owner負責。
+- `doc/Traceability.md`已加入RFC-PTCS-DYNAMIC-0015與DYN-T-538..544索引；canonical RFC只保留在本repo `doc/RFC`。

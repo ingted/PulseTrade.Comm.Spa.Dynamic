@@ -243,6 +243,8 @@ module Client =
                        (RuntimeClientFrame.Action(
                            SduiAction.RequestFullSnapshot(canvasId, "browser-reducer-resync"))) then
                     scheduleSnapshotTimeout transportGeneration
+            | RuntimeEffect.RejectFrame(_, runtimeError) ->
+                setStatus options.StatusElementId ("FRAME REJECTED: " + runtimeError.ReasonCode)
             | _ -> ()
 
         and mount state =
@@ -298,7 +300,8 @@ module Client =
 
             let accepted =
                 match effect with
-                | RuntimeEffect.RequestResync _ -> false
+                | RuntimeEffect.RequestResync _
+                | RuntimeEffect.RejectFrame _ -> false
                 | _ -> true
 
             match runtimeState with

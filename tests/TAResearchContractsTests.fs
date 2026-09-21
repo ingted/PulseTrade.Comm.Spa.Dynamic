@@ -95,6 +95,267 @@ let tests =
             Expect.isError (RuntimeCodec.decode tinyLimits (RuntimeCodec.encode documentFrame)) "Oversized frame must fail before decode."
             Expect.isError (RuntimeCodec.decode DynamicRuntimeDefaults.limits "{\"protocol\":\"sdui-runtime.v1\",\"kind\":\"Unknown\"}") "Unknown case must fail."
 
+        testCase "DYN-T-539 marker codec is strict bounded and ordered" <| fun _ ->
+            let marker =
+                { MarkerId = "entry-0001"
+                  EventTimeUtc = "2026-09-21T01:02:03.4560000+00:00"
+                  Anchor = TaMarkerAnchor.BelowBar
+                  Shape = TaMarkerShape.Arrow
+                  Fill = TaMarkerFill.Solid
+                  Color = "#16a34a"
+                  Label = Some "L"
+                  Tooltip =
+                    [| { Key = "strategy"; Label = "策略"; Value = "DMI" }
+                       { Key = "side"; Label = "方向"; Value = "Long" } |] }
+
+            let encoded = TaMarkerCodec.encodeBucket [| marker |]
+            let decoded = TaMarkerCodec.decodeBucket "marker.bucket" encoded |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal decoded [| marker |] "Marker codec must preserve bucket and tooltip order."
+
+            let withUnknown =
+                match TaMarkerCodec.encode marker with
+                | SduiValue.Object fields -> SduiValue.Object(Map.add "script" (SduiValue.Text "bad") fields)
+                | value -> value
+            Expect.isError (TaMarkerCodec.decode "marker" withUnknown) "Unknown marker fields must fail closed."
+
+            let badColor = { marker with Color = "url(https://example.invalid)" }
+            Expect.isError (TaMarkerCodec.decode "marker" (TaMarkerCodec.encode badColor)) "CSS functions and URLs must be rejected."
+
+            let oversized = Array.create (TaMarkerLimits.MaxMarkersPerBucket + 1) marker |> TaMarkerCodec.encodeBucket
+            Expect.isError (TaMarkerCodec.decodeBucket "marker.bucket" oversized) "Marker buckets must enforce the hard limit."
+
+        testCase "DYN-T-539 marker document requires same-row candle target and runtime v2" <| fun _ ->
+            let candle =
+                { TraceId = "price-1k"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = "series.price"
+                  Label = "1K"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let markerTrace =
+                { TraceId = "signals"
+                  Kind = TaTraceKind.Marker
+                  DataRef = "series.markers"
+                  Label = "Signals"
+                  Color = "#16a34a"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = candle.TraceId } }
+            let markerDocument =
+                { document with
+                    Rows = [| { row with Traces = [| candle; markerTrace |] } |] }
+            let v1 = { documentFrame with Payload = RuntimePayload.Document markerDocument }
+            let v2 = { v1 with Protocol = DynamicRuntimeDefaults.markerProtocol }
+
+            let v1Errors = RuntimeValidation.frameErrors DynamicRuntimeDefaults.limits v1
+            Expect.contains (v1Errors |> List.map _.Code) "marker-requires-runtime-v2" "Marker document must not enter a v1 runtime."
+            Expect.isEmpty (RuntimeValidation.frameErrors DynamicRuntimeDefaults.limits v2) "A valid marker document must be accepted by runtime v2."
+
+            let missingTarget =
+                { markerDocument with
+                    Rows = [| { row with Traces = [| candle; { markerTrace with Options = Map.empty } |] } |] }
+            Expect.contains
+                (RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits missingTarget |> List.map _.Code)
+                "marker-target-required"
+                "Marker target is an explicit document contract."
+
+        testCase "DYN-T-540 marker snapshot and patch validation preserve last-good atomically" <| fun _ ->
+            let axisRef = "axis.marker.1k"
+            let candleRef = "series.marker.price"
+            let markerRef = "series.marker.events"
+            let startUtc = DateTimeOffset.Parse("2026-09-21T01:00:00Z")
+            let axisPoint position minute =
+                let intervalStart = startUtc.AddMinutes(float minute)
+                let intervalEnd = intervalStart.AddMinutes 1.0
+                { Position = position
+                  SourceIntervalId = $"marker-{position}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = intervalStart
+                  IntervalEndUtc = intervalEnd
+                  ObservedThroughUtc = intervalEnd
+                  AvailableAtUtc = Some intervalEnd
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+            let axis =
+                { AxisRef = axisRef
+                  Revision = 1L
+                  Points = [| axisPoint 0L 0; axisPoint 1L 1 |] }
+            let candleValue value =
+                SduiValue.Object(
+                    Map [ "o", SduiValue.Number value
+                          "h", SduiValue.Number(value + 2.0)
+                          "l", SduiValue.Number(value - 2.0)
+                          "c", SduiValue.Number(value + 1.0)
+                          "v", SduiValue.Number 100.0 ])
+            let candleSeries =
+                { AxisRef = axisRef
+                  AxisRevision = axis.Revision
+                  Points =
+                    [| { Position = 0L; Value = candleValue 100.0 }
+                       { Position = 1L; Value = candleValue 101.0 } |] }
+            let marker markerId label =
+                { MarkerId = markerId
+                  EventTimeUtc = "2026-09-21T01:00:10.0000000+00:00"
+                  Anchor = TaMarkerAnchor.AboveBar
+                  Shape = TaMarkerShape.Diamond
+                  Fill = TaMarkerFill.Solid
+                  Color = "#dc2626"
+                  Label = Some label
+                  Tooltip = [| { Key = "reason"; Label = "原因"; Value = label } |] }
+            let markerAt position markers =
+                { Position = position; Value = TaMarkerCodec.encodeBucket markers }
+            let candleTrace =
+                { TraceId = "price-1k"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = candleRef
+                  Label = "1K"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let markerTrace =
+                { TraceId = "signals"
+                  Kind = TaTraceKind.Marker
+                  DataRef = markerRef
+                  Label = "Signals"
+                  Color = "#dc2626"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = candleTrace.TraceId } }
+            let markerDocument =
+                { document with
+                    TemporalAxisRefs = [| axisRef |]
+                    Rows = [| { row with DataRef = candleRef; Traces = [| candleTrace; markerTrace |] } |] }
+            let markerFrame kind sequence baseRevision dataRevision payload =
+                { frame kind sequence baseRevision dataRevision payload with
+                    Protocol = DynamicRuntimeDefaults.markerProtocol }
+            let afterDocument, documentEffect =
+                RuntimeReducer.reduce
+                    (RuntimeReducer.initial identity)
+                    (markerFrame RuntimeFrameKind.Document 1L None 0L (RuntimePayload.Document markerDocument))
+            Expect.equal documentEffect (RuntimeEffect.SchedulePoll DynamicRuntimeDefaults.limits.MinimumPollInterval) "Marker document schedules the normal poll."
+
+            let firstMarker = marker "marker-1" "entry"
+            let initialMarkerSeries =
+                { AxisRef = axisRef
+                  AxisRevision = axis.Revision
+                  Points = [| markerAt 0L [| firstMarker |]; markerAt 1L [||] |] }
+            let initialData =
+                Map [ axisRef, TemporalAxisCodec.encode axis
+                      candleRef, TemporalSeriesCodec.encode candleSeries
+                      markerRef, TemporalSeriesCodec.encode initialMarkerSeries ]
+            let initialSnapshot =
+                markerFrame RuntimeFrameKind.Snapshot 2L None 1L
+                    (RuntimePayload.Snapshot { Data = initialData; Freshness = TaFreshness.Backfill "marker-test" })
+            let accepted, acceptedEffect = RuntimeReducer.reduce afterDocument initialSnapshot
+            Expect.equal acceptedEffect RuntimeEffect.NoEffect "Valid marker snapshot must be accepted."
+
+            let missingData = initialData |> Map.remove markerRef
+            let missingState, missingEffect =
+                RuntimeReducer.reduce afterDocument
+                    (markerFrame RuntimeFrameKind.Snapshot 2L None 1L
+                        (RuntimePayload.Snapshot { Data = missingData; Freshness = TaFreshness.Backfill "marker-test" }))
+            Expect.equal missingState.Poll RuntimePollState.PausedForResync "Missing marker series is recoverable."
+            Expect.equal missingEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 0L)) "Missing marker series requests a full snapshot."
+
+            let duplicateSeries =
+                { initialMarkerSeries with
+                    Points = [| markerAt 0L [| firstMarker |]; markerAt 1L [| firstMarker |] |] }
+            let duplicateFrame =
+                markerFrame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.ReplaceDataRef(markerRef, TemporalSeriesCodec.encode duplicateSeries) |] })
+            let rejected, rejectedEffect = RuntimeReducer.reduce accepted duplicateFrame
+            Expect.equal rejected.Data accepted.Data "Rejected marker candidate must preserve last-good data."
+            Expect.equal rejected.DataRevision accepted.DataRevision "Rejected marker candidate must not advance revision."
+            match rejectedEffect with
+            | RuntimeEffect.RejectFrame(_, error) ->
+                Expect.equal error.ReasonCode "duplicate-marker-id" "Duplicate MarkerId must be a structured denial."
+                Expect.isFalse error.Recoverable "Malformed producer state must not trigger a resync loop."
+            | effect -> failtest $"Expected RejectFrame, got {effect}."
+
+            let movedMarker = { firstMarker with EventTimeUtc = "2026-09-21T01:01:10.0000000+00:00" }
+            let moveFrame =
+                markerFrame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.UpsertTemporalSeriesPoints(
+                                   markerRef,
+                                   axisRef,
+                                   axis.Revision,
+                                   [| TemporalSeriesCodec.encodePointFields (markerAt 0L [||])
+                                      TemporalSeriesCodec.encodePointFields (markerAt 1L [| movedMarker |]) |]) |] })
+            let moved, movedEffect = RuntimeReducer.reduce accepted moveFrame
+            Expect.equal movedEffect RuntimeEffect.NoEffect "Clear-old plus add-new in one frame must be atomic."
+            let movedSeries =
+                moved.Data[markerRef]
+                |> TemporalSeriesCodec.decode
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal movedSeries.Points[0].Value (TaMarkerCodec.encodeBucket [||]) "An empty bucket is an explicit clear."
+            Expect.equal movedSeries.Points[1].Value (TaMarkerCodec.encodeBucket [| movedMarker |]) "The marker moves in the same accepted frame."
+
+        testCase "DYN-T-540 split candle target is a valid marker spatial authority" <| fun _ ->
+            let axisRef = "axis.marker.split"
+            let refs =
+                { OpenRef = "split.o"; HighRef = "split.h"; LowRef = "split.l"; CloseRef = "split.c"; VolumeRef = "split.v" }
+            let candle =
+                { TraceId = "split-candle"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = refs.CloseRef
+                  Label = "Split candle"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = Some refs
+                  Options = Map.empty }
+            let markerTrace =
+                { candle with
+                    TraceId = "split-markers"
+                    Kind = TaTraceKind.Marker
+                    DataRef = "split.markers"
+                    Label = "Signals"
+                    CandleDataRefs = None
+                    Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = candle.TraceId } }
+            let splitDocument =
+                { document with
+                    TemporalAxisRefs = [| axisRef |]
+                    Rows = [| { row with DataRef = refs.CloseRef; Traces = [| candle; markerTrace |] } |] }
+            let scalarSeries value =
+                TemporalSeriesCodec.encode
+                    { AxisRef = axisRef
+                      AxisRevision = 1L
+                      Points = [| { Position = 5L; Value = SduiValue.Number value } |] }
+            let markerValue =
+                { MarkerId = "split-1"
+                  EventTimeUtc = "2026-09-21T01:05:00Z"
+                  Anchor = TaMarkerAnchor.BelowBar
+                  Shape = TaMarkerShape.Circle
+                  Fill = TaMarkerFill.Outline
+                  Color = "#2563eb"
+                  Label = None
+                  Tooltip = [||] }
+            let data =
+                [ refs.OpenRef, scalarSeries 100.0
+                  refs.HighRef, scalarSeries 102.0
+                  refs.LowRef, scalarSeries 99.0
+                  refs.CloseRef, scalarSeries 101.0
+                  refs.VolumeRef, scalarSeries 20.0
+                  markerTrace.DataRef,
+                  TemporalSeriesCodec.encode
+                      { AxisRef = axisRef
+                        AxisRevision = 1L
+                        Points = [| { Position = 5L; Value = TaMarkerCodec.encodeBucket [| markerValue |] } |] } ]
+                |> Map.ofList
+            Expect.isEmpty (MarkerValidation.candidateErrors splitDocument data) "Split candle refs resolve the same marker position contract."
+
         testCase "DYN-TA-T-021 data refs can be reused by overlay and separate rows" <| fun _ ->
             let trace traceId dataRef =
                 { TraceId = traceId
@@ -1161,6 +1422,7 @@ let tests =
                 (RuntimeCacheEntryValidation.validate DynamicRuntimeDefaults.limits entry)
                 (RuntimeCache.validateEntry DynamicRuntimeDefaults.limits entry)
                 "Browser and server cache entry validation must share one canonical result."
+            Expect.equal RuntimeCache.CurrentSchemaRevision 2L "Marker-capable cache entries must be isolated from the v1 schema."
             Expect.isError
                 (RuntimeCache.validateEntry
                     DynamicRuntimeDefaults.limits

@@ -71,7 +71,11 @@ module RuntimeCacheEntryValidation =
                       CanvasInstanceId = CanvasInstanceId "cache-validation-canvas" }
 
                 let documentFrame =
-                    { Protocol = DynamicRuntimeDefaults.protocol
+                    { Protocol =
+                        if TaMarkerContract.hasMarkers entry.Document then
+                            DynamicRuntimeDefaults.markerProtocol
+                        else
+                            DynamicRuntimeDefaults.protocol
                       Kind = RuntimeFrameKind.Document
                       DocumentId = validationIdentity.DocumentId
                       CanvasInstanceId = validationIdentity.CanvasInstanceId
@@ -208,7 +212,7 @@ module RuntimeCacheBrowserCoverage =
 [<WebSharper.JavaScript; RequireQualifiedAccess>]
 module RuntimeCacheProjection =
     [<Literal>]
-    let CurrentSchemaRevision = 1L
+    let CurrentSchemaRevision = 2L
 
     [<Literal>]
     let MaximumEntries = 8
@@ -364,7 +368,8 @@ module RuntimeCacheProjection =
     let shouldPersistFrame (frame: RuntimeFrame) effect state =
         let accepted =
             match effect with
-            | RuntimeEffect.RequestResync _ -> false
+            | RuntimeEffect.RequestResync _
+            | RuntimeEffect.RejectFrame _ -> false
             | _ -> true
 
         accepted
@@ -427,9 +432,13 @@ module RuntimeCacheProjection =
                     Error [ RuntimeValidation.error "cache-document-required" "runtimeState.document" "The current authoritative document must be accepted before cache rehydration." ]
                 | Some document when document.WorkspaceId <> valid.WorkspaceId ->
                     Error [ RuntimeValidation.error "cache-workspace-mismatch" "cache.workspaceId" "Cache workspace does not match the current document." ]
-                | Some _ ->
+                | Some document ->
                     let snapshotFrame =
-                        { Protocol = DynamicRuntimeDefaults.protocol
+                        { Protocol =
+                            if TaMarkerContract.hasMarkers document then
+                                DynamicRuntimeDefaults.markerProtocol
+                            else
+                                DynamicRuntimeDefaults.protocol
                           Kind = RuntimeFrameKind.Snapshot
                           DocumentId = current.Identity.DocumentId
                           CanvasInstanceId = current.Identity.CanvasInstanceId
@@ -442,7 +451,8 @@ module RuntimeCacheProjection =
                     let candidate, effect = RuntimeReducer.reduce current snapshotFrame
 
                     match effect with
-                    | RuntimeEffect.RequestResync _ ->
+                    | RuntimeEffect.RequestResync _
+                    | RuntimeEffect.RejectFrame _ ->
                         Error [ RuntimeValidation.error "cache-rehydrate-invalid" "cache.snapshot" "Cache snapshot is incompatible with the current authoritative document." ]
                     | _ ->
                         Ok
@@ -456,7 +466,7 @@ module RuntimeCacheProjection =
 [<RequireQualifiedAccess>]
 module RuntimeCache =
     [<Literal>]
-    let CurrentSchemaRevision = 1L
+    let CurrentSchemaRevision = 2L
 
     [<Literal>]
     let MaximumEntries = 8

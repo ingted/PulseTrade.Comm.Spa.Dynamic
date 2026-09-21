@@ -48,7 +48,8 @@ module SduiPayloadClassifier =
                     match tryStringProperty "schema" root with
                     | Some schema when String.Equals(schema, expectedSchema, StringComparison.Ordinal) ->
                         match tryStringProperty "protocol" root with
-                        | Some protocol when String.Equals(protocol, "sdui-runtime.v1", StringComparison.Ordinal) ->
+                        | Some protocol when String.Equals(protocol, "sdui-runtime.v1", StringComparison.Ordinal)
+                                             || String.Equals(protocol, "sdui-runtime.v2", StringComparison.Ordinal) ->
                             SduiPayloadKind.Runtime
                         | Some _ ->
                             SduiPayloadKind.InvalidSdui "unsupported-protocol"

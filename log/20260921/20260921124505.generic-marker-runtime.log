@@ -1,0 +1,20 @@
+# Generic Marker Runtime
+
+## Pre-work plan
+
+- 背景：TradeCore owner feedback 已接受 generic marker方向，並要求 PTCS Dynamic owner凍結 exact public/wire contract。
+- 目標：沿現有 `RuntimeFrame -> RuntimeValidation -> RuntimeReducer -> Renderer` 管線新增 generic marker，不建立 domain-specific renderer。
+- 不得改變：Position-only spatial authority；EventTimeUtc僅作evidence/tooltip；marker不參與Y autoscale；invalid candidate不覆蓋last-good；不加入RunIdentity/summary/trades/PnL。
+- 步驟：正式RFC/current docs -> contracts/codec -> candidate validation -> deterministic stacking renderer -> focused tests -> package/version closure。
+- 驗收：document/snapshot/patch normal、duplicate/malformed/missing-target/revision/move/clear均有測試；renderer驗stack/edge/Y-scale；marker v2與legacy v1相容矩陣可驗。
+- 風險：公開DU case與package exact dependency會要求直接consumer同步升版；browser bundle必須避免舊cache誤接marker frame。
+
+## Operations
+
+- 2026-09-21 12:45 +08:00：確認 repo clean、branch `20260915_033.ptcs_group_support`；現有 RFC 至 0014，Contracts 0.1.10、Renderer 0.1.25。
+- 2026-09-21 12:55..13:35 +08:00：完成RFC-PTCS-DYNAMIC-0015與REQ/SA/SD/WBS/Test同步；實作marker public types、strict codec、runtime v2、candidate semantic validation、RejectFrame/RequestResync、cache schema 2、PTCS/browser adapters與bounded SVG overlay。
+- 2026-09-21 13:35..13:55 +08:00：Contracts 27/27、Renderer 30/30、Dynamic.Ptcs 14/14、Ptcs.Client 16/16、Interactive.Client 4/4通過。F# Playwright在desktop/mobile及3,820 bars fixture驗證marker geometry、tooltip、Y-domain/numeric legend隔離；200 cursor transitions總3597ms、max54ms。
+- 2026-09-21 13:55 +08:00：aggregate Dynamic 0.1.24、Contracts 0.1.12、Renderer 0.1.29、Dynamic.Ptcs 0.1.37、Ptcs.Client 0.1.47、Interactive.Client 0.1.24均完成Release pack/push，NuGet回Created；package hashes記於`doc/Verification.md`。
+- 2026-09-21 14:10 +08:00：aggregate測試首次因tests仍pin Actor.Registry alpha5而compile fail；對齊主package `[0.1.3]`後24/24通過。這是test dependency closure，不改Actor.Registry行為。
+- 2026-09-21 14:12 +08:00：將誤放於PT root的RFC移回canonical `doc/RFC/RFC-PTCS-DYNAMIC-0015.generic-marker-overlay.md`，並修正repo-relative回鏈。Daedalus consumer adoption維持external owner。
+- Plan correction（append-only）：假設TradeCore feedback中已接受的Position authority、consumer ownership與runtime v2策略是本輪有效決策，package consumer採exact version同步；範圍為PTCS Dynamic Contracts、Reducer、Renderer、PTCS/Interactive clients、owner tests/docs/packages，不修改TradeCore/SPAA domain projection。

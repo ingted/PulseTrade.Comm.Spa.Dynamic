@@ -88,3 +88,15 @@
 4. Dynamic 不擁有 Actor Registry truth source、PCSL projection、IndexedDB cache、report endpoint 或 fallback tree/table。
 5. 完整版 renderer 必須支援 host/port node grouping、PTCS/GW/RN/Unknown role ordering、完整 actor address、tree/grid/cards/actions 與 report controls。
 6. WebSharper client code 仍以 F# / WebSharper 撰寫；目前已確認 `String.Contains` 與新增 client `[<JavaScript>]` compile unit 在此專案會造成 `wsfsc.exe` crash，後續實作需遵守 `doc/SDUI_Developer_Manual.md` 的限制。
+
+## 2026-09-21 Generic Marker Overlay
+
+權威變更：`doc/RFC/RFC-PTCS-DYNAMIC-0015.generic-marker-overlay.md`。
+
+1. Dynamic Contracts SHALL 提供 domain-neutral marker type、strict codec與bounded wire schema；不得含 FSSTL／DMI／order／fill／PnL state。
+2. Marker SHALL 以 `TemporalSeriesPoint.Position` 作唯一畫面位置；`EventTimeUtc` 僅保存evidence／tooltip。
+3. Document、Snapshot、Patch SHALL 在 authoritative commit 前驗證 target candle、axis revision、position、identity與limits；invalid candidate不得推進revision或替換last-good。
+4. Producer contract violation SHALL 回 structured non-recoverable rejection；只有可由authoritative snapshot修復的gap／revision／missing state才要求resync。
+5. Renderer SHALL deterministic stack同position／anchor marker，不改Y autoscale、不侵入相鄰row，且只建立viewport內marker nodes。
+6. Marker frame SHALL 使用 `sdui-runtime.v2`；legacy v1 non-marker流程維持相容，unknown trace kind不得fallback成其他kind。
+7. SPAA與Interactive Extension SHALL 只透過同版Contracts／Renderer消費marker；consumer不得建立私有SVG renderer。

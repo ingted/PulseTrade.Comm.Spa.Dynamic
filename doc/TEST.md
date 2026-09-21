@@ -657,3 +657,15 @@ Canonical matrix：`doc/TAResearch/Test.md`。`DYN-TA-T-000A..020`已accepted並
 ## 2026-09-04 DYN-TA-T-056..064 Notebook TA Workspace production
 
 Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RFC/current-state鏈、generic source envelope codec/validation/reducer、owner dependency gate、editor/action lifecycle及atomic retention/resync；Contracts `16/16`、Renderer `22/22`、Contracts/Renderer/Interactive.Client full WebSharper rebuild通過。Daedalus production consumer只採Contracts alpha17 / Renderer alpha39 / Interactive.Client alpha10 exact `FSharp.Core [10.1.400]`；shared cursor/range、application lifecycle、Notebook adapter與real MDCQ DIB/Playwright仍依DYN-TA-017追蹤，不以synthetic M12取代。
+
+## 2026-09-21 Generic Marker Overlay
+
+| Test ID | Scope | Required cases | Status |
+| --- | --- | --- | --- |
+| DYN-T-538 | RFC/traceability | owner/non-owner boundary、exact public/wire/limits、failure/version/geometry/package matrix | PASS |
+| DYN-T-539 | Contracts/codec | marker/bucket round-trip、order、missing/unknown field、UTC、enum/color、label/tooltip/bucket/series/frame limits、v1/v2 | PASS；Contracts 27/27 |
+| DYN-T-540 | Reducer/model | valid snapshot/patch、clear、move、duplicate id、target composite/split candle、missing data、last-good、RejectFrame vs RequestResync | PASS；Contracts 27/27 |
+| DYN-T-541 | Renderer | above/below stack order、fixed lane bounds、edge clipping、visible-only nodes、tooltip order、Y-domain/數值圖例 unchanged | PASS；Renderer 30/30 + desktop/mobile Playwright |
+| DYN-T-542 | Browser/client/cache | v1 non-marker accepted、v1 marker rejected、v2 marker accepted、unknown kind fail closed、cache schema 2 | PASS；PTCS 14/14、Ptcs.Client 16/16、Interactive 4/4 |
+| DYN-T-543 | Owner integration/performance | exact package closure、aggregate regression、visible marker geometry、mobile clipping、3,820-bar cursor cadence、Host active consumer build | PASS；六包push Created，aggregate 24/24，200 transitions總3597ms/max54ms，PTCS Host Release build通過 |
+| DYN-T-544 | Consumer integration | SPAA/DIExt同一runtime v2 frame與Notebook真路徑呈現相同marker | EXTERNAL；Daedalus owner升版與驗收 |

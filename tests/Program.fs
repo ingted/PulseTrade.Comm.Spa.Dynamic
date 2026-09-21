@@ -315,11 +315,13 @@ let tests =
 
         testCase "DYN-TA-T-017: canonical payload classifier separates absence from present-invalid" <| fun _ ->
             let runtime = "{\"schema\":\"fskynet-sdui\",\"protocol\":\"sdui-runtime.v1\"}"
-            let unsupportedProtocol = "{\"schema\":\"fskynet-sdui\",\"protocol\":\"sdui-runtime.v2\"}"
+            let markerRuntime = "{\"schema\":\"fskynet-sdui\",\"protocol\":\"sdui-runtime.v2\"}"
+            let unsupportedProtocol = "{\"schema\":\"fskynet-sdui\",\"protocol\":\"sdui-runtime.v999\"}"
             let invalidActorsPage = "{\"schema\":\"fskynet-sdui\",\"surface\":\"ActorsPage\",\"documentType\":\"Other\"}"
             let unrelated = "{\"schema\":\"other\",\"surface\":\"Canvas\"}"
 
             Expect.equal (SduiPayloadClassifier.classify runtime) SduiPayloadKind.Runtime "runtime protocol is explicit"
+            Expect.equal (SduiPayloadClassifier.classify markerRuntime) SduiPayloadKind.Runtime "marker-capable runtime protocol is explicit"
             Expect.equal
                 (SduiPayloadClassifier.classify unsupportedProtocol)
                 (SduiPayloadKind.InvalidSdui "unsupported-protocol")

@@ -16,6 +16,7 @@
 10. `doc/DevLog.md`：append-only milestone log。
 11. `doc/RFC-PTCS-DYNAMIC-0004.actor-dynamic-action-modes.md`：Actor Dynamic / Actor Argu action mode split。
 12. `doc/RFC-PTCS-DYNAMIC-0005.actors-page-renderer.md`：ActorsPage page-level renderer contract。
+13. `doc/RFC/RFC-PTCS-DYNAMIC-0015.generic-marker-overlay.md`：Generic Marker runtime v2、candidate validation、renderer overlay與consumer handoff。
 
 ## RFC Map
 
@@ -27,6 +28,7 @@
 | `RFC-PTCS-DYNAMIC-0004` | Accepted / In development | Actor Dynamic direct actor key / DU target / proxy key mode split; Actor Argu FormInput-only; canvas renderer remains payload-based。 |
 | `RFC-PTCS-DYNAMIC-0005` | Proposed / first implementation slice | ActorsPage page-level renderer for PTCS `/actors`; separate from generic Canvas message renderer。 |
 | `RFC-PTCS-DYNAMIC-0013` | Accepted / DEV authorized | Production Notebook TA workspace：generic source ordering envelope、schema/editor/action contract、owner adapter boundary與real DIB/Playwright acceptance。 |
+| `RFC-PTCS-DYNAMIC-0015` | Implemented / Consumer Handoff | Generic Marker runtime v2：strict marker wire、last-good candidate gate、deterministic overlay、Y-domain isolation與exact package closure。 |
 
 ## Cross-Project References
 
@@ -75,6 +77,8 @@
 | `DYN-T-526` | `DYN-WBS-519` | Package Expecto verifies ActorsPage classifier accepts `ActorTopologyPage` payload；full WebSharper build is covered by DYN-VFY-001。 |
 | `DYN-T-527` | `DYN-WBS-519` | Package Expecto verifies normal Canvas payload is not claimed by ActorsPage classifier。 |
 | `DYN-T-528..532` | `DYN-WBS-519` | Implemented: host/port grouping, role ordering, full address tree/grid/cards/actions, PTCS `/actors` Playwright accepted path, unsupported fallback path, and browser-local report schedule start/stop. Remaining: strict parser, persisted/server-side report schedule, restart/cache sync, cross-service GW/RN registry feed, and failover visual states。 |
+| `DYN-T-538..543` | `DYN-WBS-531..536` | Generic Marker owner gates：RFC/contract、strict codec、candidate reducer、composite/split candle target、renderer geometry、runtime v1/v2/cache、aggregate regression、exact package與desktop/mobile F# Playwright performance gate。 |
+| `DYN-T-544` | `DYN-WBS-537` | External consumer gate：Daedalus升級SPAA/Interactive Extension exact packages，以同一runtime v2 frame完成Notebook真路徑parity。 |
 | `DYN-VFY-009` | `DYN-WBS-521` | Demo, production-SQL no-wait, browser Playwright, and formal service redeploy slices passed on 2026-07-02 with `src\poc.full.nuget.journal.ACL2.fsx` plus PTC Host verification; latest package-startup and browser slices use PTCS beta71 + Dynamic beta61 + `PulseTrade.Comm.Spa.ACL 0.1.0-alpha11` + `PulseTrade.Comm.Spa.Login 0.1.0-alpha13`, verifying the NoGithubOAuth local-login host and PTCS Playwright gate can run on the FAkka.WebSocket win12 stack-safe loop. Latest formal service evidence remains beta70/beta60/alpha10/alpha12 until redeploy. Remaining final gate is fallback cleanup and service redeploy on the beta71 package set。 |
 | `DYN-VFY-009A/B` | `DYN-WBS-521` | `src\full.nuget.journal.ACL2.NoLogin.fsx` GitHub-only variant keeps PTCS.Login disabled. 009A verifies NoLogin health/static/durable probe/PingPong/Echo reuse; 009B adds `PFCF_AKKA_CMD_FOR_ProtoTyping` under `pfcf-akka-cmd-prototyping` and verifies canonical PFCF arg-string parser/build/resolve/default projection with `datarange` tail ordering。 |
 | `DYN-VFY-009C` | `DYN-WBS-521` | `src\full.nuget.journal.ACL2.NoGithubOAuth.fsx` is the local-login-only ACL2 variant. It starts only the PTCS.Login listener, defaults fixed mode to 82, keeps PTCS.ACL/PTCS.Login/Dynamic/PFCF prototype active, verifies local sys-admin/Terry login and ACL matrix, and avoids GitHub OAuth client id/secret and GitHub OAuth host startup。 |

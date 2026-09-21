@@ -403,3 +403,137 @@ module TemporalSeriesCodec =
                   yield! pointErrors ]
                 |> Error
         | _ -> Error [ RuntimeValidation.error "temporal-series-required" "temporalSeries" "Expected temporal-series.v1." ]
+
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
+module MarkerValidation =
+    let issue code field message = RuntimeValidation.error code field message
+
+    let finiteInteger = function
+        | SduiValue.Number value
+            when not (Double.IsNaN value)
+                 && not (Double.IsInfinity value)
+                 && value >= 0.0
+                 && value = Math.Truncate value ->
+            Some(int64 value)
+        | _ -> None
+
+    let tryPoint = function
+        | SduiValue.Object fields ->
+            match Map.tryFind "position" fields |> Option.bind finiteInteger, Map.tryFind "value" fields with
+            | Some position, Some value -> Some { Position = position; Value = value }
+            | _ -> None
+        | _ -> None
+
+    let tryDecodeSeries = function
+        | SduiValue.Object fields
+            when Map.tryFind TemporalPointCodec.TypeKey fields = Some(SduiValue.Text TemporalSeriesCodec.TypeValue) ->
+            match Map.tryFind "axisRef" fields, Map.tryFind "axisRevision" fields |> Option.bind finiteInteger, Map.tryFind "points" fields with
+            | Some(SduiValue.Text axisRef), Some axisRevision, Some(SduiValue.Array points)
+                when not (String.IsNullOrWhiteSpace axisRef) ->
+                let decoded = points |> Array.map tryPoint
+                if decoded |> Array.exists Option.isNone then
+                    None
+                else
+                    Some
+                        { AxisRef = axisRef
+                          AxisRevision = axisRevision
+                          Points = decoded |> Array.choose id }
+            | _ -> None
+        | _ -> None
+
+    let trySeries dataRef data =
+        Map.tryFind dataRef data
+        |> Option.bind tryDecodeSeries
+
+    let positions (series: TemporalSeries) =
+        series.Points |> Array.map (fun point -> point.Position, point.Value) |> Map.ofArray
+
+    let number = function SduiValue.Number value when not (Double.IsNaN value) && not (Double.IsInfinity value) -> Some value | _ -> None
+
+    let objectNumber key = function
+        | SduiValue.Object fields -> Map.tryFind key fields |> Option.bind number
+        | _ -> None
+
+    let compositeCandleAt position (series: TemporalSeries) =
+        positions series
+        |> Map.tryFind position
+        |> Option.exists (fun value ->
+            [ "o"; "h"; "l"; "c"; "v" ]
+            |> List.forall (fun key -> objectNumber key value |> Option.isSome))
+
+    let splitCandleAt position refs data axisRef axisRevision =
+        [| refs.OpenRef; refs.HighRef; refs.LowRef; refs.CloseRef; refs.VolumeRef |]
+        |> Array.forall (fun dataRef ->
+            match trySeries dataRef data with
+            | Some series when series.AxisRef = axisRef && series.AxisRevision = axisRevision ->
+                positions series |> Map.tryFind position |> Option.bind number |> Option.isSome
+            | _ -> false)
+
+    let targetAtPosition position (markerSeries: TemporalSeries) (target: TaTraceSpec) data =
+        match target.CandleDataRefs with
+        | None ->
+            match trySeries target.DataRef data with
+            | Some series when series.AxisRef = markerSeries.AxisRef && series.AxisRevision = markerSeries.AxisRevision ->
+                compositeCandleAt position series
+            | _ -> false
+        | Some refs -> splitCandleAt position refs data markerSeries.AxisRef markerSeries.AxisRevision
+
+    let traceErrors data (row: TaRowSpec) (trace: TaTraceSpec) =
+        let field = $"marker.{trace.DataRef}"
+        match TaMarkerTraceOptionsCodec.tryDecode trace.Options with
+        | None -> [ issue "marker-target-required" field "Marker trace requires marker.targetTraceId." ]
+        | Some options ->
+            match TaRowSpec.effectiveTraces row |> Array.tryFind (fun candidate -> candidate.TraceId = options.TargetTraceId) with
+            | None -> [ issue "marker-target-not-found" field $"Marker target trace `{options.TargetTraceId}` is absent." ]
+            | Some target ->
+                match trySeries trace.DataRef data with
+                | None -> [ issue "missing-marker-series" field $"Marker DataRef `{trace.DataRef}` is missing or not temporal-series.v1." ]
+                | Some series ->
+                    let decoded =
+                        series.Points
+                        |> Array.map (fun point -> point, TaMarkerCodec.decodeBucket $"{field}[{point.Position}]" point.Value)
+                    let shapeErrors =
+                        decoded
+                        |> Array.toList
+                        |> List.collect (fun (_, result) -> match result with Ok _ -> [] | Error errors -> errors)
+                    let validBuckets =
+                        decoded
+                        |> Array.choose (fun (point, result) -> match result with Ok markers -> Some(point, markers) | Error _ -> None)
+                    let markerCount = validBuckets |> Array.sumBy (snd >> Array.length)
+                    let countErrors =
+                        [ if markerCount > TaMarkerLimits.MaxMarkersPerDataRef then
+                              yield issue "limit-marker-series" field $"Marker DataRef exceeds {TaMarkerLimits.MaxMarkersPerDataRef} markers." ]
+                    let duplicateErrors =
+                        validBuckets
+                        |> Array.collect (fun (point, markers) -> markers |> Array.map (fun marker -> marker.MarkerId, point.Position))
+                        |> Array.groupBy fst
+                        |> Array.toList
+                        |> List.choose (fun (markerId, occurrences) ->
+                            if occurrences.Length > 1 then Some(issue "duplicate-marker-id" field $"MarkerId `{markerId}` is duplicated within DataRef `{trace.DataRef}`.")
+                            else None)
+                    let targetErrors =
+                        validBuckets
+                        |> Array.toList
+                        |> List.choose (fun (point, markers) ->
+                            if markers.Length = 0 || targetAtPosition point.Position series target data then None
+                            else Some(issue "marker-target-candle-unavailable" $"{field}[{point.Position}]" $"Target candle `{target.TraceId}` cannot resolve position {point.Position}."))
+                    shapeErrors @ countErrors @ duplicateErrors @ targetErrors
+
+    let candidateErrors document data =
+        let traceResults =
+            TaMarkerContract.markerTraces document
+            |> Array.map (fun (row, trace) -> trace, traceErrors data row trace)
+        let markerTotal =
+            traceResults
+            |> Array.sumBy (fun (trace, _) ->
+                match trySeries trace.DataRef data with
+                | None -> 0
+                | Some series ->
+                    series.Points
+                    |> Array.sumBy (fun point ->
+                        match TaMarkerCodec.decodeBucket "marker" point.Value with Ok markers -> markers.Length | Error _ -> 0))
+        [ for _, errors in traceResults do yield! errors
+          if markerTotal > TaMarkerLimits.MaxMarkersPerFrame then
+              yield issue "limit-marker-frame" "marker" $"Marker frame exceeds {TaMarkerLimits.MaxMarkersPerFrame} markers." ]
+
+    let firstCandidateError document data = candidateErrors document data |> List.tryHead

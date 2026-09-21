@@ -36,6 +36,7 @@ type RuntimeState =
 type RuntimeEffect =
     | NoEffect
     | RequestResync of CanvasInstanceId * lastDataRevision: int64
+    | RejectFrame of CanvasInstanceId * RuntimeError
     | SubmitAction of SduiAction
     | SchedulePoll of TimeSpan
     | CancelPoll
@@ -599,6 +600,44 @@ module RuntimeReducer =
         | Some dataRef -> Some("unknown-data-ref", $"Snapshot dataRef `{dataRef}` is not registered by the document.")
         | None -> temporalDataError state snapshot.Data
 
+    let markerCandidateError state data =
+        state.Document
+        |> Option.bind (fun document -> MarkerValidation.firstCandidateError document data)
+
+    let markerErrorIsRecoverable (value: DynamicValidationError) =
+        value.Code = "missing-marker-series"
+
+    let markerFailure state (frame: RuntimeFrame) (value: DynamicValidationError) =
+        let runtimeError =
+            { ReasonCode = value.Code
+              Message = value.Message
+              Recoverable = markerErrorIsRecoverable value }
+
+        if runtimeError.Recoverable then
+            { state with Poll = RuntimePollState.PausedForResync; LastError = Some runtimeError },
+            RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
+        else
+            { state with Poll = RuntimePollState.Suspended; LastError = Some runtimeError },
+            RuntimeEffect.RejectFrame(frame.CanvasInstanceId, runtimeError)
+
+    let validationErrorIsNonRecoverable (value: DynamicValidationError) =
+        value.Code.StartsWith("marker-")
+        || value.Code.StartsWith("limit-marker-")
+        || value.Code = "duplicate-marker-id"
+
+    let frameValidationFailure state frame (value: DynamicValidationError) =
+        if validationErrorIsNonRecoverable value then
+            markerFailure state frame value
+        else
+            { state with
+                Poll = RuntimePollState.PausedForResync
+                LastError =
+                    Some
+                        { ReasonCode = value.Code
+                          Message = value.Message
+                          Recoverable = true } },
+            RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
+
     let applyValidatedFrame (state: RuntimeState) (frame: RuntimeFrame) =
         match frame.Payload with
         | RuntimePayload.Document document ->
@@ -618,13 +657,16 @@ module RuntimeReducer =
                     LastError = Some { ReasonCode = reasonCode; Message = message; Recoverable = true } },
                 RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
             | None ->
-                { state with
-                    Data = snapshot.Data
-                    DocumentRevision = frame.DocumentRevision
-                    DataRevision = frame.DataRevision
-                    LastTransportSequence = frame.TransportSequence
-                    Poll = RuntimePollState.Ready
-                    LastError = None }, RuntimeEffect.NoEffect
+                match markerCandidateError state snapshot.Data with
+                | Some value -> markerFailure state frame value
+                | None ->
+                    { state with
+                        Data = snapshot.Data
+                        DocumentRevision = frame.DocumentRevision
+                        DataRevision = frame.DataRevision
+                        LastTransportSequence = frame.TransportSequence
+                        Poll = RuntimePollState.Ready
+                        LastError = None }, RuntimeEffect.NoEffect
         | RuntimePayload.Patch patch ->
             match patchCandidate state patch with
             | Error(reasonCode, message) ->
@@ -633,13 +675,16 @@ module RuntimeReducer =
                     LastError = Some { ReasonCode = reasonCode; Message = message; Recoverable = true } },
                 RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
             | Ok data ->
-                { state with
-                    Data = data
-                    DocumentRevision = frame.DocumentRevision
-                    DataRevision = frame.DataRevision
-                    LastTransportSequence = frame.TransportSequence
-                    Poll = RuntimePollState.Ready
-                    LastError = None }, RuntimeEffect.NoEffect
+                match markerCandidateError state data with
+                | Some value -> markerFailure state frame value
+                | None ->
+                    { state with
+                        Data = data
+                        DocumentRevision = frame.DocumentRevision
+                        DataRevision = frame.DataRevision
+                        LastTransportSequence = frame.TransportSequence
+                        Poll = RuntimePollState.Ready
+                        LastError = None }, RuntimeEffect.NoEffect
         | RuntimePayload.Error runtimeError ->
             { state with
                 LastTransportSequence = frame.TransportSequence
@@ -659,18 +704,19 @@ module RuntimeReducer =
             { state with Poll = RuntimePollState.PausedForResync }, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
         elif frame.Kind <> RuntimeFrameKind.Document && state.Document.IsNone then
             state, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
+        elif
+            frame.Kind <> RuntimeFrameKind.Document
+            && (state.Document |> Option.exists TaMarkerContract.hasMarkers)
+            && frame.Protocol <> DynamicRuntimeDefaults.markerProtocol
+        then
+            markerFailure
+                state
+                frame
+                (RuntimeValidation.error "marker-requires-runtime-v2" "protocol" $"Marker runtime requires `{DynamicRuntimeDefaults.markerProtocol}`.")
         else
             match RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits frame with
             | Ok _ -> applyValidatedFrame state frame
-            | Error (error :: _) ->
-                { state with
-                    Poll = RuntimePollState.PausedForResync
-                    LastError =
-                        Some
-                            { ReasonCode = error.Code
-                              Message = error.Message
-                              Recoverable = true } },
-                RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
+            | Error (error :: _) -> frameValidationFailure state frame error
             | Error [] ->
                 state, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
 

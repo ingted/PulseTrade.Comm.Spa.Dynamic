@@ -802,6 +802,115 @@ let tests =
                 (Object.ReferenceEquals(prepared.ResolvedSeries[refs.OpenRef][1], revisedPrepared.ResolvedSeries[refs.OpenRef][1]))
                 "A changed axis position must refresh dependent temporal metadata."
 
+        testCase "DYN-T-541 marker placement uses candle position, stable lanes and ordered tooltip" <| fun _ ->
+            let axisRef = "axis.marker.renderer"
+            let time minute = DateTimeOffset(2026, 9, 21, 1, minute, 0, TimeSpan.Zero)
+            let axisPoint position minute =
+                { Position = position
+                  SourceIntervalId = $"marker-renderer-{position}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = time minute
+                  IntervalEndUtc = (time minute).AddMinutes 1.0
+                  ObservedThroughUtc = (time minute).AddMinutes 1.0
+                  AvailableAtUtc = Some((time minute).AddMinutes 1.0)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+            let candleValue openValue =
+                SduiValue.Object(
+                    Map [ "o", SduiValue.Number openValue
+                          "h", SduiValue.Number(openValue + 3.0)
+                          "l", SduiValue.Number(openValue - 2.0)
+                          "c", SduiValue.Number(openValue + 1.0)
+                          "v", SduiValue.Number 100.0 ])
+            let candleTrace =
+                { TraceId = "price"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = "series.marker.price"
+                  Label = "Price"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let markerTrace =
+                { candleTrace with
+                    TraceId = "signals"
+                    Kind = TaTraceKind.Marker
+                    DataRef = "series.marker.signals"
+                    Label = "Signals"
+                    Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = candleTrace.TraceId } }
+            let marker markerId anchor label =
+                { MarkerId = markerId
+                  EventTimeUtc = "2026-09-21T01:00:30Z"
+                  Anchor = anchor
+                  Shape = TaMarkerShape.Arrow
+                  Fill = TaMarkerFill.Solid
+                  Color = "#dc2626"
+                  Label = Some label
+                  Tooltip =
+                    [| { Key = "first"; Label = "第一"; Value = "A" }
+                       { Key = "second"; Label = "第二"; Value = "B" } |] }
+            let markers =
+                [| marker "above-1" TaMarkerAnchor.AboveBar "Above 1"
+                   marker "below-1" TaMarkerAnchor.BelowBar "Below 1"
+                   marker "above-2" TaMarkerAnchor.AboveBar "Above 2" |]
+            let axis =
+                { AxisRef = axisRef
+                  Revision = 3L
+                  Points = [| axisPoint 10L 0; axisPoint 11L 1 |] }
+            let data =
+                Map [ axisRef, TemporalAxisCodec.encode axis
+                      candleTrace.DataRef,
+                      TemporalSeriesCodec.encode
+                          { AxisRef = axisRef
+                            AxisRevision = axis.Revision
+                            Points =
+                                [| { Position = 10L; Value = candleValue 100.0 }
+                                   { Position = 11L; Value = candleValue 101.0 } |] }
+                      markerTrace.DataRef,
+                      TemporalSeriesCodec.encode
+                          { AxisRef = axisRef
+                            AxisRevision = axis.Revision
+                            Points =
+                                [| { Position = 10L; Value = TaMarkerCodec.encodeBucket markers }
+                                   { Position = 11L; Value = TaMarkerCodec.encodeBucket [||] } |] } ]
+            let prepared = RendererModel.prepareData data
+            let timeline = RendererModel.traceTimestampsPrepared candleTrace prepared
+            let placements = RendererModel.markerPlacementsPrepared markerTrace candleTrace prepared timeline
+            Expect.equal placements.Length 3 "Every accepted marker receives one placement."
+            Expect.sequenceEqual (placements |> Array.map _.SlotIndex) [| 0; 0; 0 |] "Position 10 maps to the first candle slot regardless of EventTime evidence."
+            Expect.sequenceEqual (placements |> Array.map _.Lane) [| 0; 0; 1 |] "Above and below anchors own deterministic independent lanes."
+            Expect.isTrue (placements |> Array.forall (fun placement -> placement.Target.High = 103.0 && placement.Target.Low = 98.0)) "Marker anchors use the target candle at the same position."
+            Expect.equal
+                (RendererModel.markerTooltipText placements[0])
+                "Above 1\nEvent time: 2026-09-21T01:00:30Z\n第一: A\n第二: B"
+                "Tooltip fields preserve authored order."
+
+            let markerRow =
+                { RowId = "marker-row"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = candleTrace.DataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [| candleTrace; markerTrace |] }
+            let markerDocument =
+                { WorkspaceId = "marker-renderer"
+                  Title = "Marker renderer"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [| axisRef |]
+                  BaseRowId = Some markerRow.RowId
+                  Rows = [| markerRow |]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            Expect.sequenceEqual (RendererModel.referenceTimelineForDocument markerDocument data) timeline "Marker data never becomes the reference timeline."
+            let cursor = RendererModel.cursorSnapshot markerDocument data { StartIndex = 0; Count = 2 } 0 |> Option.get
+            Expect.sequenceEqual (cursor.Values |> Array.map _.Label) [| "Price" |] "Marker is an overlay, not a numeric cursor value."
+
         testCase "generic editor list operations retain stable paths and validation" <| fun _ ->
             let schema =
                 { TemplateKey = "ta.sma"

@@ -196,6 +196,26 @@ let tests =
                       editorSchemas = [| { enriched.editorSchemas[0] with kind = "null" } |] }
               Expect.isError (TaResearchClientWire.stateFromWire malformed) "malformed schema entries must fail the complete browser state." )
 
+          testCase "DYN-T-542 browser wire accepts marker and rejects unknown trace kinds" (fun _ ->
+              let markerTrace =
+                  { wire.rows[0].traces[0] with
+                      traceId = "signals"
+                      kind = "marker"
+                      dataRef = "series.markers"
+                      label = "Signals" }
+              let markerWire =
+                  { wire with
+                      rows = [| { wire.rows[0] with traces = [| wire.rows[0].traces[0]; markerTrace |] } |] }
+              let markerState = TaResearchClientWire.stateFromWire markerWire |> Result.defaultWith failtest
+              Expect.equal markerState.Document.Value.Rows[0].Traces[1].Kind TaTraceKind.Marker "marker kind must survive the PTCS browser wire."
+
+              let unknownWire =
+                  { wire with
+                      rows =
+                        [| { wire.rows[0] with
+                               traces = [| { wire.rows[0].traces[0] with kind = "future-trace" } |] } |] }
+              Expect.isError (TaResearchClientWire.stateFromWire unknownWire) "unknown trace kinds must fail closed instead of becoming candlesticks.")
+
           testCase "columnar v3 projects 2000-point compatible candle data without row objects" (fun _ ->
               let v3 =
                   { wire with
