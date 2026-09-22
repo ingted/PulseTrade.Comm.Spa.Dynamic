@@ -199,6 +199,85 @@ let tests =
             Expect.equal empty.Instrument "" "Missing metadata must not fall back to a demo instrument."
             Expect.equal empty.IntervalMinutes "" "Missing metadata must not fall back to a demo interval."
 
+        testCase "query viewport uses temporal intervals preserves gaps and ignores stale replies" <| fun _ ->
+            let row =
+                { RowId = "base"
+                  Kind = TaRowKind.Sma
+                  DataRef = "base"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let document =
+                { WorkspaceId = "query-window"
+                  Title = "Query viewport"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "base"
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [| "change-query" |]
+                  DefaultView = Map.empty }
+            let point minute =
+                let startUtc = sprintf "2026-09-22T00:%02d:00Z" minute
+                let endUtc = sprintf "2026-09-22T00:%02d:00Z" (minute + 1)
+                temporalPoint
+                    ("query:" + string minute)
+                    "1K"
+                    startUtc
+                    endUtc
+                    endUtc
+                    (Some endUtc)
+                    PointFinality.Final
+                    TemporalProjection.CandleSpan
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "v", SduiValue.Number(float minute) ])))
+            let dataFor minutes =
+                Map [ "base", SduiValue.Array(minutes |> Array.map point) ]
+            let query fromUtc toUtc : TaQueryChange =
+                { SourceId = None
+                  Instrument = None
+                  IntervalMinutes = None
+                  FromUtc = Some fromUtc
+                  ToUtcExclusive = Some toUtc
+                  IncludePartial = Some true }
+            let loaded = dataFor [| 0; 1; 4; 6 |]
+
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:00:30Z" "2026-09-22T00:02:00Z") document loaded)
+                (TaQueryViewportSelection.Selected { StartIndex = 0; Count = 2 })
+                "selection begins where interval end is after From and stops where interval start reaches exclusive To"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:02:30Z" "2026-09-22T00:03:30Z") document loaded)
+                TaQueryViewportSelection.NoIntersection
+                "a gap-only range must not invent observations"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:00:00Z" "2026-09-22T00:07:00Z") document loaded)
+                (TaQueryViewportSelection.Selected { StartIndex = 0; Count = 4 })
+                "the full loaded range maps to the full local window"
+            Expect.equal
+                (RendererModel.queryViewportSelection 5 4 (query "2026-09-22T00:00:00Z" "2026-09-22T00:07:00Z") document loaded)
+                TaQueryViewportSelection.Stale
+                "an older reply cannot override a newer query generation"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:07:00Z" "2026-09-22T00:06:00Z") document loaded)
+                (TaQueryViewportSelection.Invalid "query-range-invalid: FromUtc must be earlier than ToUtcExclusive.")
+                "invalid half-open bounds are explicit"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-02-31" "2026-03-02") document loaded)
+                (TaQueryViewportSelection.Invalid "query-range-invalid: FromUtc and ToUtcExclusive must be valid UTC timestamps.")
+                "invalid calendar dates are rejected"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:04:00Z" "2026-09-22T00:05:00Z") document (dataFor [| 0; 1 |]))
+                TaQueryViewportSelection.NoIntersection
+                "an unloaded range is not selected before its patch is merged"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:04:00Z" "2026-09-22T00:05:00Z") document (dataFor [| 0; 1; 4 |]))
+                (TaQueryViewportSelection.Selected { StartIndex = 2; Count = 1 })
+                "the same query selects after the bounded patch is merged"
+
         testCase "visible window handles short series" <| fun _ ->
             let actual =
                 RendererModel.clampWindow 12 160 5 { StartIndex = 20; Count = 48 }

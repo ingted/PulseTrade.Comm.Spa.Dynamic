@@ -828,3 +828,38 @@ row legend node(rowId, traceIndex)
 All mode先建立完整projected candle/line arrays供scale/readers，再只將presentation path壓為bounded geometry。Candles依trace、projected與slot bucket聚合OHLCV；lines依bucket保留min/max。每個candle trace最多八條path，使用`data-candle-batched=true`供gate計數。
 
 `projectedCandleCursorValues`以reverse range assignment保存last-source-wins。primary只接受finalized matching/containing range；fallback以`AvailableAtUtc`建立suffix，最後逐slot採primary優先。next-unassigned path compression確保每個slot於每輪最多materialize一次，取代`base timestamps x source points`反向掃描。
+
+## 2026-09-22 ChangeQuery accepted viewport revision 13
+
+關聯變更：`doc/RFC/RFC-PTCS-DYNAMIC-0018.change-query-viewport.md`。
+
+`RendererModel.queryViewportSelection`是transport-neutral pure function：輸入current `RuntimeState`、`TaQueryChange`與request/current generation，輸出`NotRequested | Selected window | NoIntersection | Invalid reason | Stale`。UTC bounds正規化為固定寬度ISO字串後ordinal compare；不使用browser locale或JavaScript date parser。
+
+```fsharp
+match queryViewportSelection state query requestGeneration currentGeneration with
+| Selected window -> commitLocalWindow false window
+| NoIntersection -> preserveWindow "requested range has no loaded observations"
+| Invalid reason -> preserveWindow reason
+| Stale -> preserveWindow "A newer query superseded this response"
+| NotRequested -> preserveWindow ""
+```
+
+reference points保留authoritative array順序。temporal point交集以`IntervalEndUtc > from`與`IntervalStartUtc < toExclusive`判斷；plain timestamp以instant處理。start/stop使用binary search，selected window只含實際observations，不擴展gap。無交集或invalid不改Committed/Draft/FollowLatest/Cursor。
+
+Renderer query scheduler只有一筆remote submit：
+
+```text
+apply(query, generation):
+  if queryInFlight then queuedQuery <- Some(query, generation)
+  else queryInFlight <- true; submit query
+
+settled(query, generation):
+  if accepted and generation = currentGeneration then
+      select current merged RuntimeState and commit local window
+  queryInFlight <- false
+  if queuedQuery exists then clear queue and submit newest
+```
+
+callback先套frames再完成task是host adapter既有不變量；Renderer因此不保存patch副本。defensive request check會忽略非current request result，`afterSettled`無論Accepted/Rejected/Conflict都釋放query scheduler。local query selection不呼叫remote range callback。
+
+exact release graph：Contracts `[0.1.13]`、Renderer `0.1.36`、Interactive.Client `0.1.29`、Ptcs.Client `0.1.52`。Interactive/Ptcs client各自仍維持one-in-flight；BrowserDemo以concurrent submit typed rejection鎖住此契約。中間graph `0.1.34/0.1.27/0.1.50`不可使用。

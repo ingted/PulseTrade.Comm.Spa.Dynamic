@@ -177,7 +177,10 @@ for marker in
       "RECONNECTING"
       "DISPOSED"
       "temporal-axis.v1"
-      "temporal-series.v1" ] do
+      "temporal-series.v1"
+      "query-range-invalid"
+      "requested range has no loaded observations"
+      "A newer query superseded this response" ] do
     if not (client.Contains marker) then
         failwith $"Client bundle does not contain lifecycle marker: {marker}."
 

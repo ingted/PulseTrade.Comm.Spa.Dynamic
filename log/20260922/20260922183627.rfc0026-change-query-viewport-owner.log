@@ -1,0 +1,62 @@
+# RFC-TRADECORE-0026 ChangeQuery Viewport Owner Work
+
+## Background
+
+- COMM correlation: `rfc-tradecore-0026-ptcs-renderer-gate-20260922`.
+- Daedalus reports the server-side `ChangeTaQuery` contract is complete, while the owner Renderer currently ignores an `Accepted` response and therefore does not update the local From/To viewport.
+- Canonical feedback: `G:\coldfar_py\coldfar-symbolics\doc_new2\RFC\RFC-TRADECORE-0026.PTCS-ChangeQueryViewport.Feedback.md`.
+
+## Goal
+
+Implement the PTCS Renderer owner seam so an accepted query selects a local window from the merged base/reference temporal axis, patch responses merge before selection, stale replies cannot override newer intent, and cache/document/data identity remain authoritative.
+
+## Assumptions
+
+- The Dynamic repo owns renderer/client orchestration only; TradeCore owns query validation and bounded patch production.
+- Existing exact package graph and cache semantics from RFC-PTCS-DYNAMIC-0017 must remain intact.
+- Performance findings are addressed only where this query path supplies bounded evidence; unrelated host/runtime work remains outside scope.
+
+## Plan
+
+1. Read the canonical feedback and inspect `applyQuery`, query reply types, viewport state, and existing tests.
+2. Add focused unit/browser regressions for accepted-in-cache, patch-then-select, invalid/empty range, and latest-query-wins.
+3. Implement the smallest owner seam without replacing identities or clearing cache.
+4. Run owner tests and the strict browser gate where available; profile only if the new path regresses latency.
+5. Synchronize RFC/current-state/WBS/Test/Verification/DevLog, version and publish exact owner packages.
+6. Commit/push and reply through the originating COMM correlation with versions, commit and consumer gate instructions.
+
+## Scope
+
+- `PulseTrade.Comm.Spa.Dynamic.Interactive.Client` query orchestration
+- Renderer viewport state only where required by the client seam
+- focused owner tests, verifier and documentation
+
+## Acceptance
+
+- `Accepted` selects From/To over an already-loaded merged temporal axis.
+- Patch reply merges frames before selecting the same requested range.
+- Older query replies cannot override the newest query intent.
+- Document/data identity and browser cache remain intact.
+- Targeted unit/browser tests pass and exact owner packages are published.
+
+## Risks
+
+- Query bounds are UTC and half-open; off-by-one or local-time conversion can select the wrong bar.
+- Reply ordering may race with live revisions; generation must gate viewport side effects without dropping valid data patches.
+- Selecting zero loaded bars must remain an explicit empty/error presentation rather than silently reverting to the previous viewport.
+
+## Operations
+
+- 2026-09-22 18:36 +08:00: Received and drained Daedalus direct handoff; restarted the five-minute background listener as PID 31868. Confirmed owner repo clean at commit `5e89963` and canonical feedback file is accessible.
+- 2026-09-22 19:05 +08:00: Added generic temporal query selection and focused unit coverage. Initial callback-concurrency design was rejected because official Interactive/PTCS clients enforce one-in-flight; replaced it with one active query plus a replaceable latest-query queue.
+- 2026-09-22 19:32 +08:00: Clean WebSharper staging builds passed for Renderer 0.1.35, Interactive.Client 0.1.28 and Ptcs.Client 0.1.51. Renderer tests passed 34/34, Interactive tests 4/4 and Ptcs.Client tests 16/16.
+- 2026-09-22 19:38 +08:00: F# Playwright owner gate passed against an explicit one-in-flight BrowserDemo callback: loaded 3,820; batched candle paths 24; 48-to-All 1,829 ms; pointer p95 47.70 ms/max 206 ms; latest query selected 2001..3000, then full range 1..3820; canvas identity unchanged; no console/page errors.
+- 2026-09-22 19:45 +08:00: Package verifier passed for Interactive.Client 0.1.28. Final package SHA-256 values: Renderer `4E0C09C61483515C98BC0C90CD998580F217B852E2AEC1E62856FF46AC6A6023`; Interactive `755FA0A14FF8611206A22C38D0FCFC83396FDF03BA30D9056B097A7B23A2A1F9`; Ptcs.Client `ADA699CAE8050D7A446B11E121D2F18975F3BB6E56698C660B8349E1A9A54586`.
+- 2026-09-22 19:52 +08:00: NuGet push replay returned Conflict/skip-duplicate for all three final packages, proving they already exist at the feed. Flat-container indexing had not yet propagated. Intermediate graph 0.1.34/0.1.27/0.1.50 is explicitly non-adoptable because it does not preserve the client one-in-flight contract.
+- 2026-09-22 20:05 +08:00: Synchronized RFC-0018, REQ/SA/SD/WBS/Test/Verification, package README files and DevLog. Consumer true-SPAA acceptance remains Daedalus-owned and must run with the final exact graph.
+- 2026-09-22 20:20 +08:00: Closeout review found that shape-only UTC validation accepted invalid calendar dates. Added month/leap-year day validation and a `2026-02-31` negative test; bumped the final graph rather than overwriting published artifacts.
+- 2026-09-22 20:39 +08:00: Final2 clean staging passed Renderer 34/34, Interactive.Client 4/4, Ptcs.Client 16/16 and F# Playwright. Browser metrics: All 1,899 ms, 24 batched paths, pointer p95 44.03 ms/max 97 ms; query race and identity invariants passed.
+- 2026-09-22 20:42 +08:00: Published final Renderer 0.1.36, Interactive.Client 0.1.29 and Ptcs.Client 0.1.52; all pushes returned Created. Final hashes are recorded in Verification and DevLog.
+- 2026-09-22 20:47 +08:00: Final Interactive.Client 0.1.29 browser-cache Playwright gate passed: eight-entry LRU, coverage hit/miss, malformed/semantic-invalid removal, finalized-prefix cache, paused-state rejection, no revision continuation and clear all passed.
+- 2026-09-22 20:50 +08:00: Changed-path sensitive scan reported high=0/medium=0. First closeout check reported FAIL=0 with expected dirty warning and an RFC-0018 thin-link warning; added explicit SA/SD links before rerunning.
+- 2026-09-22 20:53 +08:00: Second closeout check reported PASS=35/WARN=7/FAIL=0. RFC-0018 is no longer thin; remaining warnings are expected same-session unchanged files, pre-commit dirty state, and historical repository traceability gaps.

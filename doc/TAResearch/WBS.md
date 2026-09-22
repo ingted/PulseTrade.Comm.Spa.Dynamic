@@ -32,10 +32,11 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-018 | 0 | Browser range cache/resume | owner fingerprint、accepted projection cache、IndexedDB、resume/full handshake與真DIB range E2E | DYN-TA-017 + Daedalus fingerprint/action host | T-071..076 | 100% | Done；M17 OPEN_END finalized-prefix cache/history-to-live authoritative replacement完成 | [@DYN-TA-018](WBS.DYN-TA-018.md) |
 | DYN-TA-019 | 0 | Live preview chart hot path | same-position close/TA原位更新、topology/data view分離、cursor不中斷 | DYN-TA-017/018 + owner live frame | T-077 | 95% | Active；generic exact-package gate完成，等待Daedalus真SPAA browser closure | [@DYN-TA-019](WBS.DYN-TA-019.md) |
 | DYN-TA-020 | 0 | RFC-0026 Renderer owner gate | cache repaint、row legend isolation、3,820x7 bounded All/cursor path | DYN-TA-018/019 | T-079..081 | 100% | Owner completed；consumer真SPAA採版gate已交接 | [RFC-0017](../RFC/RFC-PTCS-DYNAMIC-0017.renderer-cache-row-performance-gate.md) |
+| DYN-TA-021 | 0 | RFC-0026 ChangeQuery viewport | accepted後merged-axis local selection、latest-query-wins queue、explicit no-intersection | DYN-TA-020 + TradeCore query contract | T-082..084 | 100% | Owner completed；consumer真SPAA rerun待Daedalus | [RFC-0018](../RFC/RFC-PTCS-DYNAMIC-0018.change-query-viewport.md) |
 
 九月`基於FSSTL的TA Research`第一個production切片`DYN-TA-017/018`已完成；舊`DYN-TA-008`package closure只在後續TA切片需要發布直接dependency時同步處理，不擴張到legacy consumer。
 
-目前RFC-0026 owner graph為Contracts `0.1.13`、Renderer `0.1.33`、Interactive.Client `0.1.26`與Ptcs.Client `0.1.49`。owner focused suites、package/browser cache與3,820x7 renderer gate已完成；Daedalus真SPAA採版驗收由`Rfc0026.Spaa.Backtest.playwright.fsx`追蹤，不以舊host結果冒充新版consumer通過。
+目前RFC-0026 final owner graph為Contracts `0.1.13`、Renderer `0.1.36`、Interactive.Client `0.1.29`與Ptcs.Client `0.1.52`。owner focused suites、package/browser cache、3,820x7 renderer與ChangeQuery one-in-flight/latest-window gate已完成；Daedalus真SPAA採版驗收由`Rfc0026.Spaa.Backtest.playwright.fsx`追蹤，不以owner fixture冒充新版consumer通過。中間graph `0.1.34/0.1.27/0.1.50`不可採用。
 
 
 ## 2. Legacy prerequisite policy

@@ -56,6 +56,14 @@ type TaVisibleWindow =
     { StartIndex: int
       Count: int }
 
+[<RequireQualifiedAccess>]
+type TaQueryViewportSelection =
+    | NotRequested
+    | Selected of TaVisibleWindow
+    | NoIntersection
+    | Invalid of string
+    | Stale
+
 [<JavaScript; RequireQualifiedAccess>]
 module TaWindowDrag =
     [<Literal>]
@@ -841,6 +849,161 @@ module RendererModel =
             |> Option.map (fun row -> rowTimeline row data)
             |> Option.defaultValue [||]
         | None -> referenceTimeline document.Rows data
+
+    let traceReferencePoints (trace: TaTraceSpec) data =
+        match trace.Kind with
+        | TaTraceKind.Candlestick
+        | TaTraceKind.Volume ->
+            candleSeriesForTrace trace data
+            |> Array.map (fun point -> point.Timestamp, point.Temporal)
+        | TaTraceKind.Line
+        | TaTraceKind.Histogram ->
+            lineSeries trace.DataRef data
+            |> Array.map (fun point -> point.Timestamp, point.Temporal)
+        | TaTraceKind.Marker -> [||]
+        |> Array.distinctBy fst
+
+    let rowReferencePoints (row: TaRowSpec) data =
+        let traces = effectiveTraces row |> Array.filter _.Visible
+        traces
+        |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
+        |> Option.orElseWith (fun () -> traces |> Array.tryHead)
+        |> Option.map (fun trace -> traceReferencePoints trace data)
+        |> Option.defaultValue [||]
+
+    let referencePointsForDocument (document: TaWorkspaceDocument) data =
+        match document.BaseRowId with
+        | Some baseRowId ->
+            document.Rows
+            |> Array.tryFind (fun row -> row.Visible && row.RowId = baseRowId)
+            |> Option.map (fun row -> rowReferencePoints row data)
+            |> Option.defaultValue [||]
+        | None ->
+            document.Rows
+            |> Array.filter _.Visible
+            |> Array.collect effectiveTraces
+            |> Array.filter _.Visible
+            |> Array.map (fun trace -> trace, traceReferencePoints trace data)
+            |> Array.filter (fun (_, points) -> points.Length > 0)
+            |> Array.sortByDescending (fun (trace, points) -> points.Length, trace.Kind = TaTraceKind.Candlestick)
+            |> Array.tryHead
+            |> Option.map snd
+            |> Option.defaultValue [||]
+
+    let tryUtcTimestamp (value: string) =
+        let trimmed = if isNull value then "" else value.Trim()
+        let candidate =
+            if trimmed.Length = 10 && trimmed[4] = '-' && trimmed[7] = '-' then
+                trimmed + "T00:00:00Z"
+            else
+                trimmed
+        let suffixStart =
+            if candidate.EndsWith("Z") then candidate.Length - 1
+            elif candidate.EndsWith("+00:00") then candidate.Length - 6
+            else -1
+        let fixedShape =
+            suffixStart >= 19
+            && candidate.Length >= 20
+            && candidate[4] = '-'
+            && candidate[7] = '-'
+            && (candidate[10] = 'T' || candidate[10] = 't')
+            && candidate[13] = ':'
+            && candidate[16] = ':'
+        let digitIndexes = [| 0; 1; 2; 3; 5; 6; 8; 9; 11; 12; 14; 15; 17; 18 |]
+        let digitsValid =
+            fixedShape
+            && digitIndexes
+               |> Array.forall (fun index ->
+                   let character = candidate[index]
+                   character >= '0' && character <= '9')
+        let fraction =
+            if suffixStart = 19 then Some ""
+            elif suffixStart > 20 && candidate[19] = '.' then Some(candidate.Substring(20, suffixStart - 20))
+            else None
+        let fractionValid =
+            fraction
+            |> Option.exists (fun digits ->
+                digits.Length <= 7
+                && digits
+                   |> Seq.forall (fun character -> character >= '0' && character <= '9'))
+
+        if not digitsValid || not fractionValid then
+            None
+        else
+            let number start count = Int32.Parse(candidate.Substring(start, count))
+            let month = number 5 2
+            let day = number 8 2
+            let hour = number 11 2
+            let minute = number 14 2
+            let second = number 17 2
+            let year = number 0 4
+            let leapYear = year % 400 = 0 || (year % 4 = 0 && year % 100 <> 0)
+            let daysInMonth =
+                match month with
+                | 2 -> if leapYear then 29 else 28
+                | 4 | 6 | 9 | 11 -> 30
+                | 1 | 3 | 5 | 7 | 8 | 10 | 12 -> 31
+                | _ -> 0
+            if day < 1 || day > daysInMonth || hour > 23 || minute > 59 || second > 59 then
+                None
+            else
+                let normalizedFraction = ((fraction |> Option.defaultValue "") + "0000000").Substring(0, 7)
+                Some(candidate.Substring(0, 10) + "T" + candidate.Substring(11, 8) + "." + normalizedFraction)
+
+    let queryViewportSelection latestGeneration intentGeneration (query: TaQueryChange) (document: TaWorkspaceDocument) data =
+        if intentGeneration <> latestGeneration then
+            TaQueryViewportSelection.Stale
+        else
+            match query.FromUtc, query.ToUtcExclusive with
+            | None, None -> TaQueryViewportSelection.NotRequested
+            | Some fromText, Some toText ->
+                match tryUtcTimestamp fromText, tryUtcTimestamp toText with
+                | Some fromUtc, Some toUtc when fromUtc < toUtc ->
+                    let parsedPoints =
+                        referencePointsForDocument document data
+                        |> Array.map (fun (timestamp, temporal) ->
+                            match temporal with
+                            | Some metadata ->
+                                match tryUtcTimestamp metadata.IntervalStartUtc, tryUtcTimestamp metadata.IntervalEndUtc with
+                                | Some startUtc, Some endUtc when startUtc < endUtc -> Some(startUtc, endUtc, true)
+                                | _ -> None
+                            | None ->
+                                tryUtcTimestamp timestamp
+                                |> Option.map (fun instant -> instant, instant, false))
+
+                    if parsedPoints |> Array.exists Option.isNone then
+                        TaQueryViewportSelection.Invalid "query-axis-invalid: one or more reference timestamps are not valid UTC values."
+                    else
+                        let points = parsedPoints |> Array.choose id
+                        let mutable low = 0
+                        let mutable high = points.Length
+                        while low < high do
+                            let middle = low + (high - low) / 2
+                            let startUtc, endUtc, hasInterval = points[middle]
+                            let startsAfterFrom = if hasInterval then endUtc > fromUtc else startUtc >= fromUtc
+                            if startsAfterFrom then high <- middle else low <- middle + 1
+                        let first = low
+
+                        low <- 0
+                        high <- points.Length
+                        while low < high do
+                            let middle = low + (high - low) / 2
+                            let startUtc, _, _ = points[middle]
+                            if startUtc >= toUtc then high <- middle else low <- middle + 1
+                        let lastExclusive = low
+
+                        if first >= lastExclusive then
+                            TaQueryViewportSelection.NoIntersection
+                        else
+                            TaQueryViewportSelection.Selected
+                                { StartIndex = first
+                                  Count = lastExclusive - first }
+                | Some _, Some _ ->
+                    TaQueryViewportSelection.Invalid "query-range-invalid: FromUtc must be earlier than ToUtcExclusive."
+                | _ ->
+                    TaQueryViewportSelection.Invalid "query-range-invalid: FromUtc and ToUtcExclusive must be valid UTC timestamps."
+            | _ ->
+                TaQueryViewportSelection.Invalid "query-range-invalid: FromUtc and ToUtcExclusive must be supplied together."
 
     let tryBaseRow (document: TaWorkspaceDocument) : (string * TaRowSpec) option =
         document.BaseRowId

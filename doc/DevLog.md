@@ -1453,3 +1453,17 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Focused gates通過：Renderer 33/33、Interactive lifecycle 4/4、Ptcs.Client 16/16、Interactive package verifier與browser cache Playwright。Interactive package內確認包含新batched/projection bundle，manifest為0.1.26。
 - 發布Renderer `0.1.33`、Interactive.Client `0.1.26`與Ptcs.Client `0.1.49`，NuGet push均回`Created`；Contracts維持`0.1.13`。local SHA-256依序為`F314C78601E12B51E5039746F8E9678AAC28A095578545BF34D43A8EE63D0B8E`、`1701C19BFD81BFBFF8799E811515027C113D2F7114B7FF815D2119D221BADEA9`、`31529AAF69C4A49B5D2C63FF08E761FA8EC92FC0B40ED89E4865581A62CD7AF4`；public flat-container仍在index propagation。
 - Daedalus真MDCQ/SPAA gate須採新版exact packages後執行`Rfc0026.Spaa.Backtest.playwright.fsx`；本輪不以仍載入舊bundle的18883 host冒充新版consumer驗收。
+
+## 2026-09-22 - RFC-TRADECORE-0026 ChangeQuery viewport owner completion
+
+- 新增`RFC-PTCS-DYNAMIC-0018`：accepted `ChangeTaQuery`在host frames已合併後，依base/reference temporal axis及半開`[FromUtc, ToUtcExclusive)`選local window；invalid、gap/no-intersection與stale generation保留current viewport並回明確feedback，不改document/data identity、authoritative revision或cache。
+- Renderer以單一in-flight query與replaceable latest queue配合正式client one-in-flight contract。連續Apply不再平行呼叫callback；舊response可完成canonical frame merge，但generation stale時不套viewport，settled後只送最新query。
+- Focused gates通過：Renderer 34/34、Interactive.Client 4/4、Ptcs.Client 16/16；3,820-bar BrowserDemo callback主動拒絕concurrent submit，Q1/Q2 race最後window為2001..3000、loaded維持3,820、canvas identity不變。All=1,829ms、24 batched candle paths、pointer p95=47.70ms/max=206ms、console/page error 0。
+- final exact packages已存在於NuGet：Renderer `0.1.35`（SHA-256 `4E0C09C61483515C98BC0C90CD998580F217B852E2AEC1E62856FF46AC6A6023`）、Interactive.Client `0.1.28`（`755FA0A14FF8611206A22C38D0FCFC83396FDF03BA30D9056B097A7B23A2A1F9`）、Ptcs.Client `0.1.51`（`ADA699CAE8050D7A446B11E121D2F18975F3BB6E56698C660B8349E1A9A54586`）；Contracts維持`0.1.13`。中間graph `0.1.34/0.1.27/0.1.50`不可採用。
+- Daedalus須以final graph重跑真SPAA `Rfc0026.Spaa.Backtest.playwright.fsx`；owner fixture不宣稱consumer production gate完成。
+
+## 2026-09-22 - Correction: ChangeQuery final exact graph
+
+- 收尾code review補上UTC calendar date validation與`2026-02-31`負向測試；因此前一段的`0.1.35/0.1.28/0.1.51`已被取代，不是consumer final graph。
+- final exact packages為Renderer `0.1.36`（SHA-256 `9DCF3DA6B5D9C576B0B0CB701FB7209CC3408ECA9ED76A559AE6B96CD113B03B`）、Interactive.Client `0.1.29`（`26461AD96C5F371DC943CD165CE079AF964E3F896D5CCC5882CB979EA2D1E98F`）、Ptcs.Client `0.1.52`（`442A05388DBD1E4956703C47E65A286CA108DC4F9E26D558C94460571229FD9C`）；三顆NuGet push均回`Created`。
+- final2 clean staging gates：Renderer 34/34、Interactive.Client 4/4、Ptcs.Client 16/16與F# Playwright PASS；All=1,899ms、pointer p95=44.03ms/max=97ms、24 batched paths、query latest-window與identity invariants通過。

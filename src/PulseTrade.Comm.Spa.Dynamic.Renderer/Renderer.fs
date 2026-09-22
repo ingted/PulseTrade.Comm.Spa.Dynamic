@@ -172,7 +172,8 @@ module TaWorkspaceRenderer =
         request
         successText
         onAccepted
-        onRejected =
+        onRejected
+        afterSettled =
         let expectedRevisionMatches =
             match request.ExpectedDocumentRevision with
             | Some expected -> expected = actualDocumentRevision
@@ -186,6 +187,7 @@ module TaWorkspaceRenderer =
                 { uiState.Value with
                     PendingActionId = None
                     Feedback = "revision-conflict: workspace is at revision " + string actualDocumentRevision + "." }
+            afterSettled ()
         else
             uiState.Value <-
                 { uiState.Value with
@@ -205,7 +207,9 @@ module TaWorkspaceRenderer =
                     | DynamicActionResult.Rejected(requestId, _, _)
                     | DynamicActionResult.RevisionConflict(requestId, _) -> requestId
 
-                if resultRequestId <> request.RequestId then
+                if uiState.Value.PendingActionId <> Some request.RequestId then
+                    ()
+                elif resultRequestId <> request.RequestId then
                     onRejected ()
                     uiState.Value <-
                         { uiState.Value with
@@ -214,11 +218,13 @@ module TaWorkspaceRenderer =
                 else
                     match result with
                     | DynamicActionResult.Accepted(_, revision) ->
-                        onAccepted ()
+                        let feedbackOverride = onAccepted ()
                         uiState.Value <-
                             { uiState.Value with
                                 PendingActionId = None
-                                Feedback = successText + " Revision " + string revision + "." }
+                                Feedback =
+                                    feedbackOverride
+                                    |> Option.defaultValue (successText + " Revision " + string revision + ".") }
                     | DynamicActionResult.Rejected(_, code, message) ->
                         onRejected ()
                         uiState.Value <-
@@ -231,6 +237,7 @@ module TaWorkspaceRenderer =
                             { uiState.Value with
                                 PendingActionId = None
                                 Feedback = "revision-conflict: workspace is at revision " + string actualRevision + "." }
+                afterSettled ()
             }
             |> Async.StartImmediate
 
@@ -1125,6 +1132,9 @@ module TaWorkspaceRenderer =
             uiState.Value <- next
             if not (sameChartUiState previousChartState next) then chartUiState.Value <- next
         let mutable actionSequence = 0
+        let mutable querySelectionGeneration = 0
+        let mutable queryInFlight = false
+        let mutable queuedQuery: (TaQueryChange * int) option = None
         let commandsDisabledView =
             View.Map2
                 (fun state ui -> remoteDisabled state.Poll || ui.PendingActionId.IsSome)
@@ -1147,13 +1157,15 @@ module TaWorkspaceRenderer =
         let viewportCommandsDisabledNow () =
             visibleRangeActionAllowed runtimeState.Value
             && (localViewportDisabled runtimeState.Value.Poll || uiState.Value.PendingActionId.IsSome)
-        let startActionWith action successText onAccepted onRejected =
+        let startActionWithFeedback action successText onAccepted onRejected afterSettled =
             actionSequence <- actionSequence + 1
             let request =
                 { RequestId = canvasIdText (currentCanvasId ()) + ":ui:" + string actionSequence
                   ExpectedDocumentRevision = Some runtimeState.Value.DocumentRevision
                   Action = action }
-            submit callbacks uiState runtimeState.Value.DocumentRevision request successText onAccepted onRejected
+            submit callbacks uiState runtimeState.Value.DocumentRevision request successText onAccepted onRejected afterSettled
+        let startActionWith action successText onAccepted onRejected =
+            startActionWithFeedback action successText (fun () -> onAccepted (); None) onRejected ignore
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
         let chartRuntimeState = Var.Create runtimeState.Value
@@ -1204,19 +1216,23 @@ module TaWorkspaceRenderer =
                 ui.FollowLatest
                 ui.Window
 
+        let commitLocalWindow followLatest window =
+            let current = uiState.Value
+            let total = referenceLength ()
+            let bounded = RendererModel.resolveWindow options.MinimumVisibleBars options.MaximumVisibleBars total followLatest window
+            let changed = bounded <> resolvedWindow current || followLatest <> current.FollowLatest
+            setUiState
+                { current with
+                    Window = bounded
+                    FollowLatest = followLatest
+                    CursorIndex = None }
+            cursorIndex.Value <- None
+            draftWindow.Value <- None
+            changed, bounded
+
         let setWindow followLatest window =
             if not (viewportCommandsDisabledNow ()) then
-                let current = uiState.Value
-                let total = referenceLength ()
-                let bounded = RendererModel.resolveWindow options.MinimumVisibleBars options.MaximumVisibleBars total followLatest window
-                let changed = bounded <> resolvedWindow current || followLatest <> current.FollowLatest
-                setUiState
-                    { current with
-                        Window = bounded
-                        FollowLatest = followLatest
-                        CursorIndex = None }
-                cursorIndex.Value <- None
-                draftWindow.Value <- None
+                let changed, bounded = commitLocalWindow followLatest window
                 if changed && actionAllowed "visible-range-changed" && not (commandsDisabledNow ()) then
                     match runtimeState.Value.Document with
                     | Some document ->
@@ -1649,6 +1665,44 @@ module TaWorkspaceRenderer =
                 |> Doc.EmbedView
             ]
 
+        let rec submitQuery query intentGeneration =
+            queryInFlight <- true
+            let applyAcceptedQuery () =
+                match runtimeState.Value.Document with
+                | None -> Some "query-viewport-unavailable: the workspace document is not loaded."
+                | Some currentDocument ->
+                    match
+                        RendererModel.queryViewportSelection
+                            querySelectionGeneration
+                            intentGeneration
+                            query
+                            currentDocument
+                            runtimeState.Value.Data
+                    with
+                    | TaQueryViewportSelection.NotRequested -> None
+                    | TaQueryViewportSelection.Selected window ->
+                        commitLocalWindow false window |> ignore
+                        None
+                    | TaQueryViewportSelection.NoIntersection ->
+                        Some "Query accepted, but the requested range has no loaded observations; the current viewport was preserved."
+                    | TaQueryViewportSelection.Invalid reason -> Some reason
+                    | TaQueryViewportSelection.Stale ->
+                        Some "A newer query superseded this response; the current viewport was preserved."
+            let dispatchLatestQueuedQuery () =
+                queryInFlight <- false
+                match queuedQuery with
+                | Some(nextQuery, nextGeneration) ->
+                    queuedQuery <- None
+                    submitQuery nextQuery nextGeneration
+                | None -> ()
+
+            startActionWithFeedback
+                (SduiAction.ChangeTaQuery(currentCanvasId (), query))
+                "Query accepted."
+                applyAcceptedQuery
+                ignore
+                dispatchLatestQueuedQuery
+
         let applyQuery () =
             let parsedInterval =
                 match Int32.TryParse intervalDraft with
@@ -1663,7 +1717,16 @@ module TaWorkspaceRenderer =
                   ToUtcExclusive = if String.IsNullOrWhiteSpace toDateDraft then None else Some toDateDraft
                   IncludePartial = Some true }
 
-            startAction (SduiAction.ChangeTaQuery(currentCanvasId (), query)) "Query accepted." ignore
+            if not (remoteDisabled runtimeState.Value.Poll) then
+                querySelectionGeneration <- querySelectionGeneration + 1
+                let intentGeneration = querySelectionGeneration
+                if queryInFlight then
+                    queuedQuery <- Some(query, intentGeneration)
+                    setUiState { uiState.Value with Feedback = "A newer query is queued and will supersede the pending viewport selection." }
+                elif uiState.Value.PendingActionId.IsSome then
+                    setUiState { uiState.Value with Feedback = "action-in-flight: wait for the pending action result." }
+                else
+                    submitQuery query intentGeneration
 
         let addLegacyRow () =
             let kind =
@@ -1829,7 +1892,12 @@ module TaWorkspaceRenderer =
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Interval"; selectInput "ta-interval" intervalDraft [ "1", "1m"; "5", "5m"; "30", "30m"; "60", "60m"; "930", "Session" ] (fun value -> intervalDraft <- value) ]
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "From"; inputText "ta-from" "YYYY-MM-DD" fromDateDraft (fun value -> fromDateDraft <- value) ]
                                 label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDateDraft (fun value -> toDateDraft <- value) ]
-                                primaryButtonView "ta-apply-query" "Load / Apply" commandsDisabledView commandsDisabledNow applyQuery
+                                primaryButtonView
+                                    "ta-apply-query"
+                                    "Load / Apply"
+                                    (runtimeState.View |> View.Map (fun state -> remoteDisabled state.Poll))
+                                    (fun () -> remoteDisabled runtimeState.Value.Poll)
+                                    applyQuery
                             ]
                             div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ]
                                 ([ compactRemoteButton "ta-pan-left" "←" "Pan earlier" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () ->

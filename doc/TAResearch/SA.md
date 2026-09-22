@@ -296,3 +296,15 @@ Cache rehydrate的domain不變量是current session identity與server revision�
 row legend缺口來自把七列reader flatten後以row-local trace index存取。index本身只在row內有意義，正確key是`rowId + traceIndex`。以trace label或DataRef猜row會在overlay/reused dataRef時再次衝突，因此registry直接按authored RowId分區。
 
 Performance profile證明主要阻塞不是3,820筆source本身，而是non-base candle cursor對每個base timestamp執行`tryFindBack`，以及per-bar SVG reactive nodes。source完整性、cursor fidelity與Y-domain不應因presentation優化下降；因此採一次range projection與固定數量batched paths，視覺抽樣只作用於path geometry。Daedalus仍擁有真FSSTL/MDCQ consumer gate，Dynamic只交付generic package與可重複的3,820-bar owner gate。
+
+## 24. 2026-09-22 ChangeQuery accepted viewport analysis
+
+關聯變更：`doc/RFC/RFC-PTCS-DYNAMIC-0018.change-query-viewport.md`。
+
+TradeCore 回 `Accepted` 只表示 authoritative action 已完成，不代表 query response 本身攜帶可取代 runtime 的資料。若 range 已載入，server 合理地回零個 frames；若未載入，callback 會先把 bounded frames交給 reducer再完成 action task。因此 Dynamic 的責任不是建立另一份 query/data authority，而是在 accepted task完成後讀 current merged state，將已存在的 temporal observations投影成 local window。
+
+generic selection不能依 intervalMinutes 補點，也不能假設base timeline連續。reference axis沿用document `BaseRowId`／既有reference選擇；每個point以 authored interval start/end參與半開區間交集，gap保持gap。無交集時保留current viewport，避免錯誤地顯示 All 讓使用者以為查詢成功命中資料。
+
+client contract同時間只能有一筆pending action。為了讓快速連續的From/To Apply達到latest-query-wins，不能讓Renderer平行呼叫callback；正確做法是 transport外的單槽 replaceable queue。舊response仍可讓其 frames通過canonical reducer，但generation stale時不套local viewport；settled後只送最後一筆queued query。非query remote actions仍維持busy拒絕，避免擴張整個mutation state machine。
+
+這個切片不改OwnerFingerprint、DocumentId、CanvasInstanceId、DocumentRevision、DataRevision或IndexedDB authority。local committed window是presentation state；其更新不得再送`VisibleRangeChanged`，否則會形成 query/action迴圈。Daedalus仍負責server query validation、bounded patch與真MDCQ gate。

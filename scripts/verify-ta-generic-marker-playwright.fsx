@@ -60,6 +60,12 @@ let percentile95 values =
     if ordered.Length = 0 then 0.0
     else ordered[min (ordered.Length - 1) (int (Math.Ceiling(float ordered.Length * 0.95)) - 1)]
 
+let demoTimestamp index =
+    let day = 1 + index / 1440
+    let hour = (index / 60) % 24
+    let minute = index % 60
+    sprintf "2026-09-%02dT%02d:%02d:00.0000000+00:00" day hour minute
+
 let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: IBrowser) =
     let context = browser.NewContextAsync(BrowserNewContextOptions(ViewportSize = ViewportSize(Width = viewportWidth, Height = viewportHeight))) |> awaitTask
     let page = context.NewPageAsync() |> awaitTask
@@ -162,6 +168,35 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
             afterHollowHover <- attribute crosshair "x1"
         require (afterHollowHover <> beforeHollowHover) "hollow marker hit target blocked the shared cursor"
         require ((textOf (longEntry.Locator("title"))).Contains "long entry signal") "hollow marker tooltip disappeared during cursor interaction"
+
+        let identityBeforeQuery = textOf (page.Locator("[data-testid='ta-canvas-identity']"))
+        let fromInput = page.Locator("[data-testid='ta-from']")
+        let toInput = page.Locator("[data-testid='ta-to']")
+        fromInput.FillAsync(demoTimestamp 1000) |> awaitUnit
+        toInput.FillAsync(demoTimestamp 2000) |> awaitUnit
+        page.Locator("[data-testid='ta-apply-query']").ClickAsync() |> awaitUnit
+        fromInput.FillAsync(demoTimestamp 2000) |> awaitUnit
+        toInput.FillAsync(demoTimestamp 3000) |> awaitUnit
+        page.Locator("[data-testid='ta-apply-query']").ClickAsync() |> awaitUnit
+        let latestQueryDeadline = DateTime.UtcNow.AddSeconds 5.0
+        while (attribute chartStack "data-visible-start" <> "2001" || attribute chartStack "data-visible-end" <> "3000")
+              && DateTime.UtcNow < latestQueryDeadline do
+            Threading.Thread.Sleep 10
+        require (attribute chartStack "data-visible-start" = "2001" && attribute chartStack "data-visible-end" = "3000")
+            "latest ChangeTaQuery response did not win the viewport race"
+        require (intAttribute chartStack "data-loaded-bars" = loadedBars) "ChangeTaQuery replaced loaded data instead of selecting a local window"
+        require (textOf (page.Locator("[data-testid='ta-canvas-identity']")) = identityBeforeQuery)
+            "ChangeTaQuery replaced document/canvas identity"
+
+        fromInput.FillAsync(demoTimestamp 0) |> awaitUnit
+        toInput.FillAsync(demoTimestamp loadedBars) |> awaitUnit
+        page.Locator("[data-testid='ta-apply-query']").ClickAsync() |> awaitUnit
+        let fullQueryDeadline = DateTime.UtcNow.AddSeconds 5.0
+        while (attribute chartStack "data-visible-start" <> "1" || attribute chartStack "data-visible-end" <> string loadedBars)
+              && DateTime.UtcNow < fullQueryDeadline do
+            Threading.Thread.Sleep 10
+        require (attribute chartStack "data-visible-start" = "1" && attribute chartStack "data-visible-end" = string loadedBars)
+            "full ChangeTaQuery range did not restore the complete loaded viewport"
 
     require (errors.Count = 0) ("browser errors: " + String.concat " | " errors)
     Directory.CreateDirectory outputDirectory |> ignore

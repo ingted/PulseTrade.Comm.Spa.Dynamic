@@ -429,6 +429,7 @@ module Client =
         let actionCount = Var.Create 0
         let lastAction = Var.Create "none"
         let rejectNext = Var.Create false
+        let mutable actionInFlight = false
         let previewStreamGeneration = Var.Create 0
         let previewStreamUpdates = Var.Create 0
         let applyAuthoritativeAction action =
@@ -494,15 +495,22 @@ module Client =
             { SubmitAction =
                 fun request ->
                     async {
-                        do! Async.Sleep 750
-                        actionCount.Value <- actionCount.Value + 1
-                        lastAction.Value <- actionName request.Action
-                        if rejectNext.Value then
-                            rejectNext.Value <- false
-                            return Ok(DynamicActionResult.Rejected(request.RequestId, "demo-rejected", "The demo rejected this action without changing the canvas."))
+                        if actionInFlight then
+                            return Error { Code = "demo-action-in-flight"; Message = "The demo accepts only one remote action at a time." }
                         else
-                            applyAuthoritativeAction request.Action
-                            return Ok(DynamicActionResult.Accepted(request.RequestId, runtimeState.Value.DocumentRevision))
+                            actionInFlight <- true
+                            try
+                                do! Async.Sleep 750
+                                actionCount.Value <- actionCount.Value + 1
+                                lastAction.Value <- actionName request.Action
+                                if rejectNext.Value then
+                                    rejectNext.Value <- false
+                                    return Ok(DynamicActionResult.Rejected(request.RequestId, "demo-rejected", "The demo rejected this action without changing the canvas."))
+                                else
+                                    applyAuthoritativeAction request.Action
+                                    return Ok(DynamicActionResult.Accepted(request.RequestId, runtimeState.Value.DocumentRevision))
+                            finally
+                                actionInFlight <- false
                     } }
 
         let setLive () =

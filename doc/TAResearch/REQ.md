@@ -136,3 +136,6 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-058 | validated browser cache rehydrate可在current identity與authoritative DataRevision不變時替換Data projection；Renderer必須因Data object變更重畫，不得偽造revision或把cache提升為authority。 |
 | DYN-TA-REQ-059 | TA row legend/value reader必須以row identity與row-local trace index定址；不同row可重用local index但不得互讀。 |
 | DYN-TA-REQ-060 | 3,820 bars x 7 rows的All/48/pan presentation須bounded且保留完整source/Y-domain/cursor語意；48→All低於2秒、pointer-to-form p95低於50ms，禁止per-timestamp full-series反向掃描與per-bar reactive DOM。 |
+| DYN-TA-REQ-061 | `ChangeTaQuery`回`Accepted`後，Renderer須從已合併的base/reference temporal axis依`[FromUtc, ToUtcExclusive)`選local visible window；不得修改document/data identity、authoritative revision或清除loaded cache。 |
+| DYN-TA-REQ-062 | action transport維持one-in-flight；query pending期間的新Apply只保留最新intent，舊generation response可合併authoritative frames但不得覆蓋較新viewport。 |
+| DYN-TA-REQ-063 | query range invalid、時間非UTC、或與loaded observations無交集時須保留current viewport並回明確feedback；不得silent切All、補gap或把Accepted冒充資料更新。 |
