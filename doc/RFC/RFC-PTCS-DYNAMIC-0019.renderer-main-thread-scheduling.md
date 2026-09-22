@@ -9,11 +9,17 @@
 
 3,820 個 base positions、7 rows 的真實工作量曾把初次 render、`All` 與 marker replacement 分別壓成約 987ms、682ms、280ms 的 main-thread long task。總耗時小於兩秒不能代表互動可用；單次同步工作仍會凍結 cursor、scroll 與輸入。
 
-## 目標與非目標
+## 目標
 
-目標是讓 Renderer 自有的資料準備、row mount、row refresh 與 topology replacement 成為 bounded scheduling slices，並以 render/data generation 丟棄 stale work。不得改變 source/cursor/Y-domain、document identity/revision、one-in-flight action 或 authoritative RuntimeFrame 語意。
+讓 Renderer 自有的資料準備、row mount、row refresh 與 topology replacement 成為 bounded scheduling slices，並以 render/data generation 丟棄 stale work。
 
 BrowserDemo 建立大量 fixture 的成本須與 Renderer API setup 分開量測；owner gate不把 consumer 在呼叫 Renderer 前同步建資料的時間誤算成 Renderer，但仍輸出 diagnostic evidence。
+
+## 非目標
+
+- 不改變source/cursor/Y-domain、document identity/revision、one-in-flight action或authoritative RuntimeFrame語意。
+- 不把consumer fixture建立、provider query或FSSTL reducer移入Renderer。
+- 不以放寬owner >100ms gate取代工作切片。
 
 ## 情境
 
