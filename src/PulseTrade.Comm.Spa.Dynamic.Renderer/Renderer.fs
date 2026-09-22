@@ -115,6 +115,17 @@ module TaWorkspaceRenderer =
         && left.DocumentRevision = right.DocumentRevision
         && chartTopologySignature left = chartTopologySignature right
 
+    let runtimeDataChanged (left: RuntimeState) (right: RuntimeState) =
+        left.Identity <> right.Identity
+        || left.DataRevision <> right.DataRevision
+        || not (Object.ReferenceEquals(left.Data, right.Data))
+
+    let tryLegendValue readersByRow rowId traceIndex cursorIndex =
+        readersByRow
+        |> Map.tryFind rowId
+        |> Option.bind (Array.tryItem traceIndex)
+        |> Option.bind (fun readLegend -> readLegend cursorIndex)
+
     let freshnessText (freshness: TaFreshness) =
         match freshness with
         | TaFreshness.Live -> "LIVE"
@@ -518,6 +529,47 @@ module TaWorkspaceRenderer =
             RendererModel.slotCenter width referenceTimestamps.Length index
             |> Option.defaultValue (width / 2.0)
 
+        let maximumVisualPoints = 1000
+
+        let compactCandles (values: (int * TaTraceSpec * int * int * TaCandlePoint) array) =
+            if referenceTimestamps.Length <= maximumVisualPoints then
+                values
+            else
+                values
+                |> Array.groupBy (fun (traceIndex, _, slotIndex, sourceSpanCount, _) ->
+                    traceIndex,
+                    sourceSpanCount > 1,
+                    min (maximumVisualPoints - 1) (slotIndex * maximumVisualPoints / referenceTimestamps.Length))
+                |> Array.map (fun (_, bucket) ->
+                    let ordered = bucket |> Array.sortBy (fun (_, _, slotIndex, _, _) -> slotIndex)
+                    let traceIndex, trace, firstSlot, _, firstPoint = ordered[0]
+                    let _, _, lastSlot, _, lastPoint = ordered[ordered.Length - 1]
+                    let sourceSpanCount = ordered |> Array.maxBy (fun (_, _, _, span, _) -> span) |> fun (_, _, _, span, _) -> span
+                    let aggregate =
+                        { lastPoint with
+                            Open = firstPoint.Open
+                            High = ordered |> Array.maxBy (fun (_, _, _, _, point) -> point.High) |> fun (_, _, _, _, point) -> point.High
+                            Low = ordered |> Array.minBy (fun (_, _, _, _, point) -> point.Low) |> fun (_, _, _, _, point) -> point.Low
+                            Close = lastPoint.Close
+                            Volume = ordered |> Array.sumBy (fun (_, _, _, _, point) -> point.Volume) }
+                    traceIndex, trace, (firstSlot + lastSlot) / 2, sourceSpanCount, aggregate)
+                |> Array.sortBy (fun (traceIndex, _, slotIndex, _, _) -> traceIndex, slotIndex)
+
+        let compactLinePoints (values: (int * TaLinePoint) array) =
+            if referenceTimestamps.Length <= maximumVisualPoints || values.Length <= maximumVisualPoints then
+                values
+            else
+                let bucketCount = max 1 (maximumVisualPoints / 2)
+                values
+                |> Array.groupBy (fun (slotIndex, _) ->
+                    min (bucketCount - 1) (slotIndex * bucketCount / referenceTimestamps.Length))
+                |> Array.collect (fun (_, bucket) ->
+                    let minimum = bucket |> Array.minBy (fun (_, point) -> point.Value)
+                    let maximum = bucket |> Array.maxBy (fun (_, point) -> point.Value)
+                    if fst minimum = fst maximum then [| minimum |]
+                    else [| minimum; maximum |] |> Array.sortBy fst)
+                |> Array.sortBy fst
+
         let prepareGeometry currentData =
             let preparedTraces: (int * TaTraceSpec * TaCandlePoint array * TaLinePoint array) array =
                 traces
@@ -534,7 +586,7 @@ module TaWorkspaceRenderer =
                     | TaTraceKind.Marker ->
                         traceIndex, trace, [||], [||])
 
-            let candleSeries =
+            let projectedCandleSeries =
                 preparedTraces
                 |> Array.filter (fun (_, trace, _, _) -> trace.Kind = TaTraceKind.Candlestick)
                 |> Array.collect (fun (traceIndex, trace, candles, _) ->
@@ -543,7 +595,9 @@ module TaWorkspaceRenderer =
                         RendererModel.projectedCandleSlots referenceTimestamps point
                         |> Array.map (fun (slotIndex, sourceSpanCount, projected) -> traceIndex, trace, slotIndex, sourceSpanCount, projected)))
 
-            let linePoints =
+            let candleSeries = compactCandles projectedCandleSeries
+
+            let projectedLinePoints =
                 preparedTraces
                 |> Array.map (fun (index, trace, candles, lines) ->
                     let points =
@@ -556,6 +610,10 @@ module TaWorkspaceRenderer =
                          | _ -> [||])
                         |> RendererModel.projectedLinePoints referenceTimestamps
                     index, trace, points)
+
+            let linePoints =
+                projectedLinePoints
+                |> Array.map (fun (index, trace, points) -> index, trace, compactLinePoints points)
 
             let markerPlacements =
                 preparedTraces
@@ -573,8 +631,8 @@ module TaWorkspaceRenderer =
                 |> RendererModel.assignAggregateMarkerLanes
 
             let scaleValues =
-                [| yield! candleSeries |> Array.collect (fun (_, _, _, _, point) -> [| point.Low; point.High |])
-                   yield! linePoints |> Array.collect (fun (_, trace, points) ->
+                [| yield! projectedCandleSeries |> Array.collect (fun (_, _, _, _, point) -> [| point.Low; point.High |])
+                   yield! projectedLinePoints |> Array.collect (fun (_, trace, points) ->
                        let values = points |> Array.map (fun (_, point: TaLinePoint) -> point.Value)
                        if trace.Kind = TaTraceKind.Histogram then Array.append [| 0.0 |] values else values) |]
             let low, high = RendererModel.paddedRange 0.0 1.0 scaleValues
@@ -585,18 +643,8 @@ module TaWorkspaceRenderer =
                     match trace.Kind with
                     | TaTraceKind.Candlestick
                     | TaTraceKind.Volume ->
-                        let projected =
-                            candleSeries
-                            |> Array.choose (fun (index, _, slotIndex, _, point) ->
-                                if index = traceIndex then Some(slotIndex, point) else None)
-                            |> Map.ofArray
                         let values =
-                            referenceTimestamps
-                            |> Array.mapi (fun index timestamp ->
-                                Map.tryFind index projected
-                                |> Option.orElseWith (fun () ->
-                                    if isBaseRow then None
-                                    else RendererModel.tryCandleForCursor false timestamp candles))
+                            RendererModel.projectedCandleCursorValues isBaseRow referenceTimestamps candles
                         let cursorReader index =
                             values
                             |> Array.tryItem index
@@ -613,7 +661,7 @@ module TaWorkspaceRenderer =
                     | TaTraceKind.Line
                     | TaTraceKind.Histogram ->
                         let projected =
-                            linePoints
+                            projectedLinePoints
                             |> Array.tryFind (fun (index, _, _) -> index = traceIndex)
                             |> Option.map (fun (_, _, points) -> points |> Map.ofArray)
                             |> Option.defaultValue Map.empty
@@ -638,7 +686,6 @@ module TaWorkspaceRenderer =
 
         let initialGeometry = prepareGeometry preparedData
         let _, initialCandleSeries, initialLinePoints, initialMarkerPlacements, initialCursorReaders, initialLegendReaders, initialLow, initialHigh = initialGeometry
-        let mutable latestGeometry = initialGeometry
         let markerVisualState = Var.Create(initialMarkerPlacements, initialLow, initialHigh)
         let readerStates =
             Array.map2 (fun cursorReader legendReader -> ref (cursorReader, legendReader)) initialCursorReaders initialLegendReaders
@@ -646,20 +693,40 @@ module TaWorkspaceRenderer =
         let slot = if referenceTimestamps.Length = 0 then width else width / float referenceTimestamps.Length
         let svgTestId = if hasCandles then "ta-candle-" + rowId else "ta-composite-" + rowId
 
-        let candleVisual index (_, currentCandles, _, _, _, _, low, high) =
-            let traceIndex, trace, slotIndex, sourceSpanCount, point =
+        let candlePaths traceIndex (_, currentCandles, _, _, _, _, low, high) =
+            let path projected rising body =
                 currentCandles
-                |> Array.tryItem index
-                |> Option.defaultValue initialCandleSeries[index]
-            let center = xAt slotIndex
-            let bodyWidth = max 2.0 (slot * 0.64)
-            let candleColor = if point.Close >= point.Open then "#0f8a78" else "#c2414b"
-            let highY = RendererModel.normalize low high top plotHeight point.High
-            let lowY = RendererModel.normalize low high top plotHeight point.Low
-            let openY = RendererModel.normalize low high top plotHeight point.Open
-            let closeY = RendererModel.normalize low high top plotHeight point.Close
-            let traceColor = if sourceSpanCount > 1 then color traceIndex trace else candleColor
-            center, bodyWidth, candleColor, highY, lowY, openY, closeY, traceColor, point
+                |> Array.choose (fun (currentTraceIndex, _, slotIndex, sourceSpanCount, point) ->
+                    if currentTraceIndex <> traceIndex
+                       || (sourceSpanCount > 1) <> projected
+                       || (point.Close >= point.Open) <> rising then
+                        None
+                    else
+                        let center = xAt slotIndex
+                        let bodyWidth = max 2.0 (slot * 0.64)
+                        let highY = RendererModel.normalize low high top plotHeight point.High
+                        let lowY = RendererModel.normalize low high top plotHeight point.Low
+                        let openY = RendererModel.normalize low high top plotHeight point.Open
+                        let closeY = RendererModel.normalize low high top plotHeight point.Close
+                        if body then
+                            Some(
+                                rectanglePath
+                                    (center - bodyWidth / 2.0)
+                                    (min openY closeY)
+                                    bodyWidth
+                                    (max 1.2 (abs (closeY - openY))))
+                        else
+                            Some($"M {fixedText center} {fixedText highY} L {fixedText center} {fixedText lowY}"))
+                |> String.concat " "
+
+            [| path false true false
+               path false true true
+               path false false false
+               path false false true
+               path true true false
+               path true true true
+               path true false false
+               path true false true |]
 
         let lineGeometry traceIndex (_, _, currentLines, _, _, _, low, high) =
             let _, _, points =
@@ -755,9 +822,14 @@ module TaWorkspaceRenderer =
                 ])
             |> Doc.EmbedView
 
-        let candleVisualStates =
+        let candlePathStates =
             initialCandleSeries
-            |> Array.mapi (fun index _ -> Var.Create(candleVisual index initialGeometry))
+            |> Array.map (fun (traceIndex, trace, _, _, _) -> traceIndex, trace)
+            |> Array.distinctBy fst
+            |> Array.map (fun (traceIndex, trace) ->
+                traceIndex,
+                trace,
+                (candlePaths traceIndex initialGeometry |> Array.map Var.Create))
 
         let lineVisualStates =
             initialLinePoints
@@ -770,7 +842,6 @@ module TaWorkspaceRenderer =
         dataView
         |> View.Sink (fun currentData ->
             let geometry = prepareGeometry currentData
-            latestGeometry <- geometry
             let _, _, _, currentMarkerPlacements, currentCursorReaders, currentLegendReaders, currentLow, currentHigh = geometry
 
             let nextMarkerVisual = currentMarkerPlacements, currentLow, currentHigh
@@ -779,10 +850,11 @@ module TaWorkspaceRenderer =
             for index in 0 .. readerStates.Length - 1 do
                 readerStates[index].Value <- currentCursorReaders[index], currentLegendReaders[index]
 
-            for index in 0 .. candleVisualStates.Length - 1 do
-                let next = candleVisual index geometry
-                if candleVisualStates[index].Value <> next then
-                    candleVisualStates[index].Value <- next
+            for traceIndex, _, pathStates in candlePathStates do
+                let nextPaths = candlePaths traceIndex geometry
+                for index in 0 .. pathStates.Length - 1 do
+                    if pathStates[index].Value <> nextPaths[index] then
+                        pathStates[index].Value <- nextPaths[index]
 
             for traceIndex, trace, pathState, lastValueState in lineVisualStates do
                 let nextPath = linePath traceIndex trace geometry
@@ -815,44 +887,32 @@ module TaWorkspaceRenderer =
                 let y = top + plotHeight * float gridIndex / 4.0
                 yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" (fixedText y); svgAttr "y2" (fixedText y); svgAttr "stroke" "#e7ecf3"; svgAttr "stroke-width" "1" ] []
 
-            for candleIndex in 0 .. initialCandleSeries.Length - 1 do
-                let traceIndex, trace, slotIndex, sourceSpanCount, point = initialCandleSeries[candleIndex]
-                let center = xAt slotIndex
-                let bodyWidth = max 2.0 (slot * 0.64)
-                let sourceIntervalId = point.Temporal |> Option.map _.SourceIntervalId |> Option.defaultValue point.Timestamp
+            for traceIndex, trace, pathStates in candlePathStates do
                 let traceTestId = "ta-candle-" + rowId + "-" + trace.TraceId
-                let sourceAttrs part =
-                    [ Attr.Create "data-testid" traceTestId
-                      Attr.Create "data-candle-part" part
-                      Attr.Create "data-source-interval-id" sourceIntervalId
-                      Attr.Create "data-span-slots" (string sourceSpanCount)
-                      Attr.Create "data-projected-slot-index" (string slotIndex) ]
-                let visual = candleVisualStates[candleIndex].View
-                yield
-                    svgElement "line"
-                        (sourceAttrs "wick"
-                         @ [ svgAttr "x1" (fixedText center)
-                             svgAttr "x2" (fixedText center)
-                             Attr.Dynamic "y1" (visual |> View.Map (fun (_, _, _, highY, _, _, _, _, _) -> fixedText highY))
-                             Attr.Dynamic "y2" (visual |> View.Map (fun (_, _, _, _, lowY, _, _, _, _) -> fixedText lowY))
-                             Attr.Dynamic "stroke" (visual |> View.Map (fun (_, _, _, _, _, _, _, traceColor, _) -> traceColor))
-                             svgAttr "stroke-width" "1.2" ]) []
-                yield
-                    svgElement "rect"
-                        (sourceAttrs "body"
-                         @ [ svgAttr "x" (fixedText (center - bodyWidth / 2.0))
-                             svgAttr "width" (fixedText bodyWidth)
-                             Attr.Dynamic "y" (visual |> View.Map (fun (_, _, _, _, _, openY, closeY, _, _) -> fixedText (min openY closeY)))
-                             Attr.Dynamic "height" (visual |> View.Map (fun (_, _, _, _, _, openY, closeY, _, _) -> fixedText (max 1.2 (abs (closeY - openY)))))
-                             Attr.Dynamic "fill" (visual |> View.Map (fun (_, _, candleColor, _, _, _, _, _, _) -> candleColor))
-                             Attr.Dynamic "stroke" (visual |> View.Map (fun (_, _, _, _, _, _, _, traceColor, _) -> traceColor))
-                             Attr.Dynamic "data-open" (visual |> View.Map (fun (_, _, _, _, _, _, _, _, current) -> fixedText current.Open))
-                             Attr.Dynamic "data-high" (visual |> View.Map (fun (_, _, _, _, _, _, _, _, current) -> fixedText current.High))
-                             Attr.Dynamic "data-low" (visual |> View.Map (fun (_, _, _, _, _, _, _, _, current) -> fixedText current.Low))
-                             Attr.Dynamic "data-close" (visual |> View.Map (fun (_, _, _, _, _, _, _, _, current) -> fixedText current.Close))
-                             svgAttr "fill-opacity" (if sourceSpanCount > 1 then "0.48" else "1")
-                             svgAttr "stroke-width" (if sourceSpanCount > 1 then "1" else "0")
-                             svgAttr "rx" "0.6" ]) []
+                let projectedColor = color traceIndex trace
+                let styles =
+                    [| "normal-up-wick", "none", "#0f8a78", "1.2", "1"
+                       "normal-up-body", "#0f8a78", "none", "0", "1"
+                       "normal-down-wick", "none", "#c2414b", "1.2", "1"
+                       "normal-down-body", "#c2414b", "none", "0", "1"
+                       "projected-up-wick", "none", projectedColor, "1.2", "1"
+                       "projected-up-body", "#0f8a78", projectedColor, "1", "0.48"
+                       "projected-down-wick", "none", projectedColor, "1.2", "1"
+                       "projected-down-body", "#c2414b", projectedColor, "1", "0.48" |]
+                for index in 0 .. styles.Length - 1 do
+                    let part, fill, stroke, strokeWidth, fillOpacity = styles[index]
+                    yield
+                        svgElement "path" [
+                            Attr.Create "data-testid" traceTestId
+                            Attr.Create "data-candle-part" part
+                            Attr.Create "data-candle-batched" "true"
+                            Attr.Dynamic "d" pathStates[index].View
+                            svgAttr "fill" fill
+                            svgAttr "fill-opacity" fillOpacity
+                            svgAttr "stroke" stroke
+                            svgAttr "stroke-width" strokeWidth
+                            svgAttr "vector-effect" "non-scaling-stroke"
+                        ] []
 
             for traceIndex, trace, _ in initialLinePoints do
                 let traceColor = color traceIndex trace
@@ -964,6 +1024,7 @@ module TaWorkspaceRenderer =
                                 span [ Attr.Create "data-ta-row-value-label" "true"; attr.style "font-weight:650;" ] [ text label ]
                                 span [
                                     Attr.Create "data-ta-row-value-index" (string index)
+                                    Attr.Create "data-ta-row-value-row-id" row.RowId
                                     Attr.Create "data-ta-row-value-text" "true"
                                     Attr.Create "data-value-state" (if initialValue = "Undef" then "undefined" else "defined")
                                     attr.title (label + " value")
@@ -1031,7 +1092,7 @@ module TaWorkspaceRenderer =
         let mutable chartStackElement: Element = null
         let mutable latestCursorTimestamps: string array = [||]
         let mutable latestCursorReaders: (int -> TaCursorValue option) array = [||]
-        let mutable latestLegendReaders: (int -> string option) array = [||]
+        let mutable latestLegendReaders: Map<string, (int -> string option) array> = Map.empty
         let mutable displayedCursorIndex: int option = None
         let mutable refreshVisibleValues: (unit -> unit) = ignore
         let mutable visibleValueRefreshScheduled = false
@@ -1100,13 +1161,12 @@ module TaWorkspaceRenderer =
         let runtimeDataState = Var.Create initialPreparedData
         let mutable preparedDataForShell = initialPreparedData
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
-        let mutable observedDataIdentity = runtimeState.Value.Identity
-        let mutable observedDataRevision = runtimeState.Value.DataRevision
+        let mutable observedDataState = runtimeState.Value
         runtimeState.View
         |> View.Sink (fun next ->
-            let dataChanged = next.Identity <> observedDataIdentity || next.DataRevision <> observedDataRevision
+            let dataChanged = runtimeDataChanged observedDataState next
             let nextPreparedData =
-                if next.Identity <> observedDataIdentity then RendererModel.prepareData next.Data
+                if next.Identity <> observedDataState.Identity then RendererModel.prepareData next.Data
                 elif dataChanged then RendererModel.prepareDataIncremental runtimeDataState.Value next.Data
                 else runtimeDataState.Value
             let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
@@ -1119,8 +1179,7 @@ module TaWorkspaceRenderer =
                 preparedDataForShell <- nextPreparedData
                 chartRuntimeState.Value <- next
             if dataChanged then
-                observedDataIdentity <- next.Identity
-                observedDataRevision <- next.DataRevision
+                observedDataState <- next
                 runtimeDataState.Value <- nextPreparedData
                 scheduleVisibleValueRefresh ())
         let chartRuntimeView: View<RuntimeState> = chartRuntimeState.View
@@ -1296,12 +1355,10 @@ module TaWorkspaceRenderer =
                         match Int32.TryParse(node.GetAttribute("data-ta-row-value-index")) with
                         | true, parsed -> parsed
                         | _ -> valueIndex
+                    let rowId = node.GetAttribute("data-ta-row-value-row-id")
                     let nextValue =
                         legendIndex
-                        |> Option.bind (fun index ->
-                            latestLegendReaders
-                            |> Array.tryItem traceIndex
-                            |> Option.bind (fun readLegend -> readLegend index))
+                        |> Option.bind (tryLegendValue latestLegendReaders rowId traceIndex)
                         |> Option.defaultValue "Undef"
                     node.TextContent <- nextValue
                     node.SetAttribute("data-value-state", if nextValue = "Undef" then "undefined" else "defined")
@@ -1905,7 +1962,12 @@ module TaWorkspaceRenderer =
                                         scheduleVisibleValueRefresh
                                         row)
                             let cursorReaders = renderedRows |> Array.collect (fun (_, readers, _) -> readers)
-                            let legendReaders = renderedRows |> Array.collect (fun (_, _, readers) -> readers)
+                            let legendReaders =
+                                Array.map2
+                                    (fun (row: TaRowSpec) (_, _, readers) -> row.RowId, readers)
+                                    visibleRows
+                                    renderedRows
+                                |> Map.ofArray
 
                             let visibleStart = if visibleWindow.Count = 0 then 0 else visibleWindow.StartIndex + 1
                             let visibleEnd = visibleWindow.StartIndex + visibleWindow.Count

@@ -1,0 +1,59 @@
+# RFC-TRADECORE-0026 PTCS Renderer Gate Owner Fix
+
+## Background
+
+- COMM correlation: `rfc-tradecore-0026-ptcs-renderer-gate-20260922`.
+- Consumer gate uses Contracts `0.1.13`, Interactive.Client `0.1.25`, Renderer `0.1.30`, true MDCQ 3820 base bars and seven rows.
+- Reported owner defects: cache rehydrate preserves authoritative identity/revision but does not repaint; legend readers are globally indexed instead of row-qualified; 48-to-All rebuild creates excessive candle DOM and blocks Chrome.
+
+## Goal
+
+Complete the PTCS Dynamic owner package so cache hits paint bars, each row legend reads its own traces, and the 3820-by-7 browser workflow remains responsive without changing authoritative cache identity semantics.
+
+## Assumptions
+
+- The fix belongs in the Renderer package unless bounded source inspection proves a contract change is required.
+- Runtime cache identity and `DataRevision` remain server-authoritative and must not be rewritten merely to force a repaint.
+- Full-range rendering must preserve visible data semantics; performance cannot be obtained by dropping source data or cursor fidelity.
+
+## Plan
+
+1. Reproduce and inspect the three owner defects with bounded source/test reads.
+2. Add focused unit/renderer regression coverage before or alongside the minimal implementation.
+3. Implement cache payload change detection, row-local legend lookup, and bounded SVG candle rendering.
+4. Run owner build/tests and the Daedalus 3820-by-7 Playwright gate where available.
+5. Update RFC/current-state/Test/Verification/DevLog, version and publish exact owner packages.
+6. Commit/push and report exact versions/commit through the originating COMM correlation.
+
+## Scope
+
+- `src/PulseTrade.Comm.Spa.Dynamic.Renderer`
+- packaging consumers only where required to carry the new renderer asset
+- focused owner tests and Dynamic documentation
+
+## Acceptance
+
+- Browser cache rehydrate paints non-zero bars while preserving authoritative identity/revision.
+- Row legends use their row-specific readers.
+- All/48/pan remain responsive at 3820 bars x 7 rows; pointer-to-form p95 is below 50 ms, no sustained >100 ms long task, and no browser crash in the formal gate.
+- Exact package versions and commit are published and sent to Daedalus.
+
+## Risks
+
+- WebSharper DOM generation changes can alter marker/cursor geometry; desktop/mobile visual and cursor tests remain required.
+- Release builds may auto-push packages; use Debug validation until version and source are final.
+
+## Operations
+
+- 2026-09-22 15:56 +08:00: Confirmed clean branch `20260915_033.ptcs_group_support` and exact requested package baseline.
+- 2026-09-22 16:10 +08:00: Reproduced 48-to-All at 6-7 seconds after bounded path work. CDP CPU profile identified `tryCandleForCursor -> Array.tryFindBack -> finalizedCursorMatch` as the dominant O(n^2) path.
+- 2026-09-22 16:28 +08:00: Added reverse range projection/path compression, cache Data-reference invalidation, row-qualified legend registry and bounded candle/line presentation. Renderer staged Release build produced 0.1.33 because canonical generated `websharper.log` remains ACL-locked.
+- 2026-09-22 16:30 +08:00: Renderer Expecto 33/33 PASS. F# Playwright 3820x7 gate PASS: All 1842ms, 24 batched candle paths, pointer p95 29.35ms, max 102ms.
+- 2026-09-22 16:32 +08:00: Interactive.Client 0.1.26 Release bundle built/packed; package inspection found current manifest plus `data-candle-batched` and `projectedCandleCursorValues`. Lifecycle 4/4, package verifier and browser IndexedDB cache verifier PASS.
+- 2026-09-22 16:33 +08:00: Ptcs.Client 0.1.49 Release build and 16/16 tests PASS. Interactive and PTCS LiveDemo builds PASS; PTCS LiveDemo retained pre-existing 0.2.39/0.2.46 NU1605 warning.
+- 2026-09-22 16:40 +08:00: First Renderer publish attempt used a duplicated relative destination, so PostBuild found old 0.1.30 and returned duplicate conflict; no content was published. Corrected the destination to project-relative `bin/Release` and retried.
+- 2026-09-22 16:41 +08:00: NuGet accepted Renderer 0.1.33, Interactive.Client 0.1.26 and Ptcs.Client 0.1.49 (`Created`). Immediate flat-container HEAD remained 404 propagation-pending.
+- 2026-09-22 16:45 +08:00: Added RFC-PTCS-DYNAMIC-0017 and synchronized REQ/SA/SD/WBS/Test/Verification/READMEs. Consumer-owned true MDCQ/SPAA gate remains a version-adoption handoff, not an owner-package blocker.
+- 2026-09-22 16:52 +08:00: Changed-path sensitive scan found High=0; three Medium findings were pre-existing undecodable/locked log files and do not expose a secret. `check.fsx` reported PASS=34, FAIL=0; the current RFC/Test links were then added to Traceability.
+- 2026-09-22 16:57 +08:00: Confirmed test listeners 18882/18885 stopped. NuGet flat-container now serves Renderer 0.1.33; Interactive.Client 0.1.26 and Ptcs.Client 0.1.49 remain propagation-pending after successful `Created` responses. Removed generated bundle trailing whitespace and completed final diff review.
+- 2026-09-22 17:00 +08:00: Final authoritative `check.fsx` returned PASS=37, FAIL=0. WARNs are expected dirty/pre-commit state, same-session unchanged files, legacy traceability debt and unrelated archived WBS inventory; no current RFC-0017/Test link failure remains.

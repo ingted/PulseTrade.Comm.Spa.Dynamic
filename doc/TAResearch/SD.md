@@ -806,3 +806,25 @@ new Position / document / viewport topology
 ```
 
 SPAA/provider仍負責事件ACK、revision journal與authoritative frame；Renderer不補tick、不自行產生close，也不跳過revision。exact-package browser gate須先在Follow Latest量可見latest close，再切historical viewport並於live revisions持續抵達期間量`data-chart-render-sequence`、historical close isolation、單次cursor latency與至少300次連續crosshair transitions；owner真SPAA gate另量12秒rAF sample/change/max-gap。單看API revision、單次hover或文字status不足以驗收。
+
+## 2026-09-22 Renderer cache／row／performance revision 12
+
+`runtimeDataChanged`同時比較runtime identity、DataRevision與Data object reference。前兩者屬authority，最後一項只觸發presentation refresh；cache rehydrate不得自行增加revision。
+
+legend DOM帶row id與local trace index，reader state使用`Map<string, (int -> string option) array>`。`tryLegendValue`只在指定row查詢，missing回None，禁止flatten後以local index跨row存取。
+
+```text
+validated cache Data replacement
+  -> Data reference changed, identity/revision unchanged
+  -> runtimeDataChanged = true
+  -> rebuild bounded chart geometry
+  -> authoritative revision unchanged
+
+row legend node(rowId, traceIndex)
+  -> readersByRow[rowId][traceIndex]
+  -> value | Undef
+```
+
+All mode先建立完整projected candle/line arrays供scale/readers，再只將presentation path壓為bounded geometry。Candles依trace、projected與slot bucket聚合OHLCV；lines依bucket保留min/max。每個candle trace最多八條path，使用`data-candle-batched=true`供gate計數。
+
+`projectedCandleCursorValues`以reverse range assignment保存last-source-wins。primary只接受finalized matching/containing range；fallback以`AvailableAtUtc`建立suffix，最後逐slot採primary優先。next-unassigned path compression確保每個slot於每輪最多materialize一次，取代`base timestamps x source points`反向掃描。

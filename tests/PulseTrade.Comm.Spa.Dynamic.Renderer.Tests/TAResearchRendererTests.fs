@@ -124,6 +124,51 @@ let tests =
                 (TaWorkspaceRenderer.sameChartTopology revisedPreview appended)
                 "appending a new timestamp must rebuild the visible chart topology"
 
+        testCase "cache rehydrate data reference triggers repaint without revision inflation" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "cache-repaint"
+                  CanvasInstanceId = CanvasInstanceId "cache-repaint-canvas" }
+            let initial =
+                { RuntimeReducer.initial identity with
+                    Data = Map [ "price", SduiValue.Array [||] ]
+                    DataRevision = 7L }
+            let pollOnly = { initial with Poll = RuntimePollState.Ready }
+            let rehydrated =
+                { initial with
+                    Data =
+                        Map [
+                            "price",
+                            SduiValue.Array [| candle "B1" 10.0 12.0 9.0 11.0 100.0 |]
+                        ] }
+
+            Expect.isFalse
+                (TaWorkspaceRenderer.runtimeDataChanged initial pollOnly)
+                "poll lifecycle changes must not prepare or repaint unchanged chart data"
+            Expect.isTrue
+                (TaWorkspaceRenderer.runtimeDataChanged initial rehydrated)
+                "cache rehydrate must repaint when Data changes while identity and authoritative revision stay fixed"
+            Expect.equal rehydrated.DataRevision initial.DataRevision "browser cache must not invent an authoritative revision"
+
+        testCase "legend lookup is qualified by row and row-local trace index" <| fun _ ->
+            let readers =
+                Map [
+                    "price", [| (fun _ -> Some "6025.50") |]
+                    "dmi", [| (fun _ -> Some "17.25"); (fun _ -> Some "21.75") |]
+                ]
+
+            Expect.equal
+                (TaWorkspaceRenderer.tryLegendValue readers "dmi" 0 12)
+                (Some "17.25")
+                "DMI index zero must not reuse price row index zero"
+            Expect.equal
+                (TaWorkspaceRenderer.tryLegendValue readers "dmi" 1 12)
+                (Some "21.75")
+                "each row-local trace index must resolve within its own reader collection"
+            Expect.equal
+                (TaWorkspaceRenderer.tryLegendValue readers "missing" 0 12)
+                None
+                "unknown rows fail closed instead of falling back to another row"
+
         testCase "visible window clamps count and start" <| fun _ ->
             let actual =
                 RendererModel.clampWindow 12 160 96 { StartIndex = 90; Count = 48 }
@@ -613,6 +658,9 @@ let tests =
             Expect.equal projectedCandles.Length 5 "A 5K source candle must render once at each real constituent 1K slot."
             Expect.sequenceEqual (projectedCandles |> Array.map (fun (index, _, _) -> index)) [| 0; 1; 2; 3; 4 |] "Projected candles retain the actual base-axis slot positions."
             Expect.isTrue (projectedCandles |> Array.forall (fun (_, span, point) -> span = 5 && (point.Temporal |> Option.exists (fun value -> value.SourceIntervalId = "es-5k:1300")))) "Every projected candle retains its canonical source interval identity."
+            let cursorValues = RendererModel.projectedCandleCursorValues false timestamps [| parsedCandle |]
+            let legacyCursorValues = timestamps |> Array.map (fun timestamp -> RendererModel.tryCandleForCursor false timestamp [| parsedCandle |])
+            Expect.sequenceEqual cursorValues legacyCursorValues "The linear cursor projection preserves finalized match and as-of fallback semantics."
             let sparseTimestamps = timestamps |> Array.removeAt 2
             let sparseProjected = RendererModel.projectedCandleSlots sparseTimestamps parsedCandle
             Expect.equal sparseProjected.Length 4 "Projection must not invent a missing base-axis slot."

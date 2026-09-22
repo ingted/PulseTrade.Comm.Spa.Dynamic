@@ -1038,6 +1038,66 @@ module RendererModel =
         let sourceSpanCount = matchingSlots.Length
         matchingSlots |> Array.map (fun slotIndex -> slotIndex, sourceSpanCount, point)
 
+    let projectRanges referenceCount (values: 'T array) rangeForValue =
+        let projected: 'T option array = Array.create referenceCount None
+        let nextUnassignedSlot = Array.init (referenceCount + 1) id
+
+        let rec findNextUnassigned index =
+            let parent = nextUnassignedSlot[index]
+            if parent = index then index
+            else
+                let root = findNextUnassigned parent
+                nextUnassignedSlot[index] <- root
+                root
+
+        let mutable sourceIndex = values.Length - 1
+        while sourceIndex >= 0 do
+            let value = values[sourceIndex]
+            match rangeForValue value with
+            | Some(first, lastExclusive) when first < lastExclusive ->
+                let mutable targetIndex = findNextUnassigned first
+                while targetIndex < lastExclusive do
+                    projected[targetIndex] <- Some value
+                    nextUnassignedSlot[targetIndex] <- findNextUnassigned (targetIndex + 1)
+                    targetIndex <- nextUnassignedSlot[targetIndex]
+            | _ -> ()
+            sourceIndex <- sourceIndex - 1
+
+        projected
+
+    let projectedCandleCursorValues isBaseRow (referenceTimestamps: string array) (values: TaCandlePoint array) =
+        if isBaseRow then
+            projectRanges
+                referenceTimestamps.Length
+                values
+                (fun value -> matchingReferenceRange referenceTimestamps value.Timestamp value.Temporal)
+        else
+            let primary =
+                projectRanges
+                    referenceTimestamps.Length
+                    values
+                    (fun value ->
+                        match value.Temporal with
+                        | Some metadata when finalizedTemporal metadata ->
+                            matchingReferenceRange referenceTimestamps value.Timestamp value.Temporal
+                        | _ -> None)
+
+            let fallback =
+                projectRanges
+                    referenceTimestamps.Length
+                    values
+                    (fun value ->
+                        match value.Temporal with
+                        | Some metadata when finalizedTemporal metadata ->
+                            metadata.AvailableAtUtc
+                            |> Option.bind (fun availableAt ->
+                                let first = lowerTimestampBound referenceTimestamps availableAt
+                                if first < referenceTimestamps.Length then Some(first, referenceTimestamps.Length)
+                                else None)
+                        | _ -> None)
+
+            Array.map2 (fun direct prior -> direct |> Option.orElse prior) primary fallback
+
     let temporalDetail (metadata: TaTemporalPointPresentation) =
         let availability = metadata.AvailableAtUtc |> Option.defaultValue "unknown"
         let quality = metadata.Quality |> Option.defaultValue "unknown"

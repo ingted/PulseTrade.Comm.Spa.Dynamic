@@ -55,6 +55,10 @@ let intAttribute locator name =
     match Int32.TryParse(attribute locator name) with
     | true, value -> value
     | _ -> failwith $"Generic marker Playwright verification failed: invalid integer attribute `{name}`."
+let percentile95 values =
+    let ordered = values |> Array.sort
+    if ordered.Length = 0 then 0.0
+    else ordered[min (ordered.Length - 1) (int (Math.Ceiling(float ordered.Length * 0.95)) - 1)]
 
 let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: IBrowser) =
     let context = browser.NewContextAsync(BrowserNewContextOptions(ViewportSize = ViewportSize(Width = viewportWidth, Height = viewportHeight))) |> awaitTask
@@ -92,12 +96,42 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         require (markerBox.Y >= rowBox.Y - 0.5f && markerBox.Y + markerBox.Height <= rowBox.Y + rowBox.Height + 0.5f) (label + " escaped its row")
 
     if runCursorGate then
+        let chartStack = page.Locator("[data-testid='ta-chart-stack']")
+        let loadedBars = intAttribute chartStack "data-loaded-bars"
+        require (loadedBars = 3820) $"capacity fixture loaded {loadedBars} bars instead of 3820"
+        let batchedCandlePaths = page.Locator("path[data-candle-batched='true']").CountAsync() |> awaitTask
+        require (batchedCandlePaths <= 32) $"candles expanded into {batchedCandlePaths} DOM paths instead of a bounded row/trace batch"
+
+        page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
+        let allWatch = Diagnostics.Stopwatch.StartNew()
+        page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
+        let allDeadline = DateTime.UtcNow.AddSeconds 5.0
+        while (attribute chartStack "data-visible-start" <> "1" || attribute chartStack "data-visible-end" <> string loadedBars)
+              && DateTime.UtcNow < allDeadline do
+            Threading.Thread.Sleep 5
+        allWatch.Stop()
+        require (attribute chartStack "data-visible-start" = "1" && attribute chartStack "data-visible-end" = string loadedBars)
+            "All viewport did not expose the complete loaded range"
+        require (allWatch.ElapsedMilliseconds <= 2000L) $"48-to-All took {allWatch.ElapsedMilliseconds}ms"
+
+        let dmiLegendText = textOf (page.Locator("[title='dmi value']"))
+        match Double.TryParse(dmiLegendText, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
+        | true, value -> require (value >= 0.0 && value <= 100.0) $"DMI legend reused another row reader: {value}"
+        | _ -> failwith $"Generic marker Playwright verification failed: DMI legend is not numeric: {dmiLegendText}"
+
+        page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
+        let latestDeadline = DateTime.UtcNow.AddSeconds 5.0
+        while attribute chartStack "data-visible-end" <> string loadedBars && DateTime.UtcNow < latestDeadline do
+            Threading.Thread.Sleep 5
+        require (attribute chartStack "data-visible-end" = string loadedBars) "48 viewport did not return to the loaded tail"
+
         let chart = page.Locator("[data-testid='ta-candle-price']")
         let crosshair = page.Locator("[data-testid='ta-candle-price-crosshair']")
         let chartBox = chart.BoundingBoxAsync() |> awaitTask
         require (not (isNull chartBox)) "price chart geometry is missing"
         let mutable prior = attribute crosshair "x1"
         let mutable maximumMs = 0L
+        let transitionDurations = ResizeArray<float>()
         let total = Diagnostics.Stopwatch.StartNew()
         for index in 0 .. 199 do
             let ratio = if index % 2 = 0 then 0.2f else 0.8f
@@ -111,11 +145,13 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
             transition.Stop()
             require (current <> prior) $"cursor transition {index} did not render"
             maximumMs <- max maximumMs transition.ElapsedMilliseconds
+            transitionDurations.Add transition.Elapsed.TotalMilliseconds
             prior <- current
         total.Stop()
-        require (maximumMs < 250L) $"cursor transition stalled for {maximumMs}ms"
+        let pointerP95 = transitionDurations.ToArray() |> percentile95
+        require (pointerP95 < 50.0) $"pointer transition p95 was {pointerP95:F2}ms"
         require (total.Elapsed < TimeSpan.FromSeconds 8.0) $"200 cursor transitions took {total.Elapsed}"
-        printfn "marker cursor gate transitions=200 elapsedMs=%d maxMs=%d" total.ElapsedMilliseconds maximumMs
+        printfn "renderer gate bars=%d paths=%d allMs=%d pointerP95Ms=%.2f maxMs=%d" loadedBars batchedCandlePaths allWatch.ElapsedMilliseconds pointerP95 maximumMs
 
         let beforeHollowHover = attribute crosshair "x1"
         longEntry.HoverAsync() |> awaitUnit

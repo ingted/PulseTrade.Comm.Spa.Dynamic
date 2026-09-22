@@ -133,3 +133,6 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-055 | browser cache須bounded且可淘汰，預設最多8筆、單筆受16MiB上限；不得保存credential、capability或actor address。 |
 | DYN-TA-REQ-056 | production range/cache acceptance須以真FSSTL多尺度FloatingPoint/Frame/map workspace、MDCQ source、`.dib`與Playwright完成reload、range revisit、delta/full及console gate。 |
 | DYN-TA-REQ-057 | 同一event-time/Position的live preview revision須原位更新既有candlestick、line、histogram、cursor reader與每列TA value；不得重建chart stack或重設cursor。每列value band固定30px、label/value相鄰、Undef/長數值/即時更新不換行或改row geometry；跨尺度summary在chart stack底部且預設收合。新增/移除timestamp、DocumentRevision、runtime identity或visible topology改變時才可重建。production gate須同時證明Follow Latest可見close變動、chart render sequence不變、live revision抵達期間單次cursor低於250ms，且realtime tail不得覆寫historical viewport。 |
+| DYN-TA-REQ-058 | validated browser cache rehydrate可在current identity與authoritative DataRevision不變時替換Data projection；Renderer必須因Data object變更重畫，不得偽造revision或把cache提升為authority。 |
+| DYN-TA-REQ-059 | TA row legend/value reader必須以row identity與row-local trace index定址；不同row可重用local index但不得互讀。 |
+| DYN-TA-REQ-060 | 3,820 bars x 7 rows的All/48/pan presentation須bounded且保留完整source/Y-domain/cursor語意；48→All低於2秒、pointer-to-form p95低於50ms，禁止per-timestamp full-series反向掃描與per-bar reactive DOM。 |

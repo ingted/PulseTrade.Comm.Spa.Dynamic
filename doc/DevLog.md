@@ -1445,3 +1445,11 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Owner focused suites118/118與desktop/mobile F# Playwright通過；3,820-bar fixture的200次cursor transitions總5022ms、max91ms，marker不改candle refs、Y-domain、numeric legend、time slot或shared cursor hot path。
 - 發布Contracts `0.1.13`、Renderer `0.1.30`、Dynamic.Ptcs `0.1.38`、Ptcs.Client `0.1.48`、Interactive.Client `0.1.25`與aggregate Dynamic `0.1.25`，NuGet均回`Created`。
 - Aster active consumers同步：Host TA client `0.1.27`、E2EQuotation Adapter `0.1.0-alpha10`與Browser `0.1.0-alpha4`已發布；Host Release build、E2EQuotation focused 10/10與GW 494/494通過。Daedalus SPAA／Notebook與producer enablement仍為external handoff，不宣稱完成。
+
+## 2026-09-22 - RFC-TRADECORE-0026 Renderer owner gate
+
+- 新增`RFC-PTCS-DYNAMIC-0017`並完成cache repaint、row-qualified legend與full-range performance修正。cache rehydrate在identity/revision不變但validated Data object替換時會重畫，仍不偽造authoritative revision；legend reader改以RowId與local trace index分區。
+- 3,820 bars All-mode改為bounded candle/line paths；non-base candle cursor由O(n²)逐timestamp反向掃描改為reverse range projection與path compression。Renderer BrowserDemo量得48→All 1,842ms、24條batched candle paths、200次pointer transition p95 29.35ms/max 102ms。
+- Focused gates通過：Renderer 33/33、Interactive lifecycle 4/4、Ptcs.Client 16/16、Interactive package verifier與browser cache Playwright。Interactive package內確認包含新batched/projection bundle，manifest為0.1.26。
+- 發布Renderer `0.1.33`、Interactive.Client `0.1.26`與Ptcs.Client `0.1.49`，NuGet push均回`Created`；Contracts維持`0.1.13`。local SHA-256依序為`F314C78601E12B51E5039746F8E9678AAC28A095578545BF34D43A8EE63D0B8E`、`1701C19BFD81BFBFF8799E811515027C113D2F7114B7FF815D2119D221BADEA9`、`31529AAF69C4A49B5D2C63FF08E761FA8EC92FC0B40ED89E4865581A62CD7AF4`；public flat-container仍在index propagation。
+- Daedalus真MDCQ/SPAA gate須採新版exact packages後執行`Rfc0026.Spaa.Backtest.playwright.fsx`；本輪不以仍載入舊bundle的18883 host冒充新版consumer驗收。

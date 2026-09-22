@@ -18,6 +18,7 @@
 12. `doc/RFC-PTCS-DYNAMIC-0005.actors-page-renderer.md`：ActorsPage page-level renderer contract。
 13. `doc/RFC/RFC-PTCS-DYNAMIC-0015.generic-marker-overlay.md`：Generic Marker runtime v2、candidate validation、renderer overlay與consumer handoff。
 14. `doc/RFC/RFC-PTCS-DYNAMIC-0016.marker-direction-hollow-contract.md`：Marker direction／anchor解耦、true hollow、v1/v2相容與lane limit修正提案。
+15. `doc/RFC/RFC-PTCS-DYNAMIC-0017.renderer-cache-row-performance-gate.md`：RFC-TRADECORE-0026 cache repaint、row legend與3,820x7 performance owner gate。
 
 ## RFC Map
 
@@ -31,6 +32,7 @@
 | `RFC-PTCS-DYNAMIC-0013` | Accepted / DEV authorized | Production Notebook TA workspace：generic source ordering envelope、schema/editor/action contract、owner adapter boundary與real DIB/Playwright acceptance。 |
 | `RFC-PTCS-DYNAMIC-0015` | Implemented / Consumer Handoff | Generic Marker runtime v2：strict marker wire、last-good candidate gate、deterministic overlay、Y-domain isolation與exact package closure。 |
 | `RFC-PTCS-DYNAMIC-0016` | Implemented / Consumer Handoff | Generic Marker conformance correction：direction獨立於anchor、true hollow、legacy v1 mapping、bucket與跨trace lane bound；owner packages已發布，Daedalus真SPAA/Notebook gate待完成。 |
+| `RFC-PTCS-DYNAMIC-0017` | Implemented / Consumer Handoff | Cache Data-reference repaint、row-qualified legend、bounded All-mode paths與linear finalized cursor projection；owner packages已發布，真SPAA採版gate由Daedalus執行。 |
 
 ## Cross-Project References
 
@@ -90,3 +92,4 @@
 | `DYN-TA-T-062` | `DYN-TA-017D` | Contracts/Renderer/PTCS/Ptcs.Client package suites及BrowserDemo Playwright MCP驗temporal multi-scale projection、generic editor、pending/reject與desktop/mobile；real owner evidence不由synthetic gate取代。 |
 | `DYN-TA-T-063..064` | `DYN-TA-017E..F` | Aster M15 `dotnet dib`以Interactive.Extension alpha15／TradeCore.FsStl win139驗FloatingPoint collection、typed `TA_CHART`與fixed-range真MDCQ automation；Daedalus M13才擁有真QuoteSlot/session及`taView.ForQuoteSlot slotId` production final-cell。M13 iframe/Playwright與OPEN_END history→live ACK仍是owner production gate。 |
 | `DYN-TA-T-066..068` | `DYN-TA-017G` | Aster generic runtime hardening已完成：atomic retention/resync、BaseRowId event-time cursor/VisibleRangeChanged，以及Interactive.Client single Start/Dispose、single-channel reconnect/full snapshot與last-good preservation；由Contracts/Renderer/Interactive exact-package tests與F#/MCP Playwright回歸。 |
+| `DYN-TA-T-079..081` | `DYN-TA-020` | RFC-0026 owner gate：cache repaint、row legend isolation、linear cursor projection、3,820x7 bounded All/pointer、bundle/cache package與consumer handoff。 |

@@ -16,7 +16,7 @@
 | DYN-TA-019A | 區分Document/visible timestamp topology與live data revision | 100% | Done |
 | DYN-TA-019B | live geometry以element/trace差異更新；cursor以單一rAF直接更新固定DOM | 100% | Done |
 | DYN-TA-019C | same-position preview與new-position topology unit/browser回歸 | 100% | Done |
-| DYN-TA-019D | exact packages與active client dependency graph發布 | 90% | 0.1.25 candidate staged；public push待真M17 |
+| DYN-TA-019D | exact packages與active client dependency graph發布 | 100% | RFC-0017 graph已發布；真SPAA gate仍由019E追蹤 |
 | DYN-TA-019E | 真FSSTL `02-history-live-1k-5k-sma.fsstl`可見close/no-rerender/cursor gate | 80% | Owner integration running |
 
 ## Evidence
@@ -26,7 +26,7 @@
 - Renderer `0.1.20`真SPAA M17反證舊generic gate不足：第二次cursor 2650ms，12秒僅174個rAF sample／28次crosshair change；SPAA host CPU約6.97%，瓶頸在browser reactive fan-out。
 - Renderer `0.1.21`真SPAA M17仍失敗：12秒219 frames、最大rAF gap 1383ms、page main thread約80.4%；mousemove約0.6ms且layout/style低於1%，根因縮至RuntimeReducer／`prepareData`全retained materialization。
 - Contracts `0.1.10`改為tail update保留shared prefix、patch candidate只apply一次，並以精確4,000-point append/trim T-078驗final revision。Renderer `0.1.25`按`dataRef`、suffix與changed axis position增量prepare，且以mutable reader cell避免WebSharper把latest reader編譯成initial snapshot。exact-package BrowserDemo驗Follow Latest close、Undef/長值固定30px band、bottom summary，再於historical viewport與5次live revision並行驗300次crosshair transition共5602ms、單次最大132ms、`data-chart-render-sequence`不變、historical close不被覆寫、console/page error 0。
-- current local candidate為Contracts `0.1.10`、Renderer `0.1.25`、Interactive.Client `0.1.21`、Ptcs.Client `0.1.18`與Ptcs `0.1.10`；真SPAA gate完成前不public push、不標final。
+- RFC-0017 current owner graph為Contracts `0.1.13`、Renderer `0.1.33`、Interactive.Client `0.1.26`與Ptcs.Client `0.1.49`，已發布。DYN-TA-019的真SPAA sustained gate仍未由此generic owner gate取代。
 - 上一版public graph Renderer `0.1.21`、Interactive.Client `0.1.17`與Ptcs.Client `0.1.14`均已可讀；排除repository signing metadata後，public/local package entries mismatch皆為0。它們是已被本地candidate取代的中間版本。
 
 ## Boundary

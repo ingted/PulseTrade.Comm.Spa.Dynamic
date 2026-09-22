@@ -288,3 +288,11 @@ cache lookup不能只用session URL、DocumentId或人類可讀chart id：sessio
 IndexedDB只保存accepted projection，不保存upstream cursor truth。cache hit的意義是「這份last-good可先顯示並作delta hint」，不是「provider已確認仍有效」。因此browser仍送`PollDelta`或`RequestFullSnapshot`，host依current source authority回patch/full；correlated Accepted只結束command pending，不能直接修改資料。
 
 現有SessionHost立即送`Document+Snapshot`仍可相容，但無法省下初始full transfer。production resume需要document-first handshake：先讓browser驗fingerprint/cache，再由host選delta/full。range revisit同理；cache lookup可與`VisibleRangeChanged`並行，但不得吞掉該action。storage unavailable或quota失敗只關閉cache，不可阻斷WebSocket truth path。
+
+## 23. 2026-09-22 Renderer gate analysis
+
+Cache rehydrate的domain不變量是current session identity與server revision不能由browser續接；但presentation invalidation若也只看這兩欄，就無法看見validated cached Data。Data map reference因此是renderer-local invalidation signal，不進wire、不改revision，也不改authoritative merge規則。
+
+row legend缺口來自把七列reader flatten後以row-local trace index存取。index本身只在row內有意義，正確key是`rowId + traceIndex`。以trace label或DataRef猜row會在overlay/reused dataRef時再次衝突，因此registry直接按authored RowId分區。
+
+Performance profile證明主要阻塞不是3,820筆source本身，而是non-base candle cursor對每個base timestamp執行`tryFindBack`，以及per-bar SVG reactive nodes。source完整性、cursor fidelity與Y-domain不應因presentation優化下降；因此採一次range projection與固定數量batched paths，視覺抽樣只作用於path geometry。Daedalus仍擁有真FSSTL/MDCQ consumer gate，Dynamic只交付generic package與可重複的3,820-bar owner gate。
