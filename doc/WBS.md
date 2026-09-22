@@ -122,3 +122,5 @@ Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target F
 | DYN-WBS-541 | True hollow／shared cursor renderer | Done | 100 | DYN-T-549,551,554 | Renderer `0.1.30`使用`fill=none`與full pointer hit target，global lane不碰candle refs、Y-domain、numeric legend、time slot或shared cursor hot path。 |
 | DYN-WBS-542 | Owner client/package/browser release gate | Done | 100 | DYN-T-555 | owner六包exact graph已發布；118/118 focused tests、desktop/mobile F# Playwright及Host/E2EQ/GW active consumers通過。Daedalus Notebook gate仍在DYN-WBS-543。 |
 | DYN-WBS-543 | Marker v2 SPAA/Notebook consumer adoption | External owner | 0 | Consumer handoff | Daedalus升級SPAA/Interactive Extension、映射真Backtest events並驗`.dib`；不阻擋Aster owner package發布。 |
+| DYN-WBS-544 | Renderer main-thread scheduling | Done | 100 | DYN-T-556,561 | Renderer `0.1.37`以scheduled prepare、row mount/refresh與generation cancellation消除owner phase >100ms task。 |
+| DYN-WBS-545 | Row axis／crosshair／progressive coverage | Done | 100 | DYN-T-557..561 | 每列adaptive event-time axis、plot-bounded crosshair、3820→4220 coverage extension、event-time reanchor與Max 4000完成；真FSSTL provider merge仍由Daedalus驗收。 |

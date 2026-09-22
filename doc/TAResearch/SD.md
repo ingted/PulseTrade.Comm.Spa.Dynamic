@@ -863,3 +863,27 @@ settled(query, generation):
 callback先套frames再完成task是host adapter既有不變量；Renderer因此不保存patch副本。defensive request check會忽略非current request result，`afterSettled`無論Accepted/Rejected/Conflict都釋放query scheduler。local query selection不呼叫remote range callback。
 
 exact release graph：Contracts `[0.1.13]`、Renderer `0.1.36`、Interactive.Client `0.1.29`、Ptcs.Client `0.1.52`。Interactive/Ptcs client各自仍維持one-in-flight；BrowserDemo以concurrent submit typed rejection鎖住此契約。中間graph `0.1.34/0.1.27/0.1.50`不可使用。
+
+## 2026-09-22 Row axis、progressive coverage與scheduled renderer revision 14
+
+`adaptiveTimeAxisLabels`輸入row width與該row reference slots，依minimum spacing計算bounded tick count並以evenly-spaced indices取樣。formatter只讀canonical UTC文字：跨日／長區間顯示日期＋時間，日內短區間顯示時分；不使用browser locale、calendar或scale補點。
+
+`classifyCoverageExtension`比較merge前後loaded first/last event-time；`adjacentCoverageRequest`只以document query boundary與loaded interval edge組出Earlier/Later半開區間。pending intent包含generation、direction、old boundaries、anchor event-time與pan delta：
+
+```text
+pan beyond loaded boundary
+  -> VisibleRangeChanged(adjacent authoritative range, MaximumBasePoints)
+  -> remember current generation + event-time anchor
+authoritative merge
+  -> coverage expanded in requested direction?
+     yes + generation current -> reanchor by event-time, apply bounded delta
+     no/stale/opposite       -> retain newest viewport
+```
+
+一般prepend即使沒有pending request，也以舊visible start event-time重新定位。append且Follow Latest時維持tail。所有window最後經`MaximumVisibleBars <= 4000`裁切；loaded domain與overview不裁。loaded超過cap時preset文字為`Max <cap>`。
+
+每列axis與crosshair都在row Doc內由current plot geometry建立；crosshair `y1=plotTop`、`y2=plotTop+plotHeight`。resize/topology rebuild後不沿用其他列geometry。
+
+`prepareDataScheduled`分entry準備axis與resolved series，每個entry讓出frame。initial shell先render，準備完成後只有current generation可commit。row mount與refresh逐row排程，新的render/data generation使舊work no-op。CDP trace分離module bootstrap diagnostic與owner interaction phases；owner phase嚴格拒絕 >100ms task，cursor 300 transitions另以transport-observed p95 <125ms、max <400ms驗證。
+
+exact release graph更新為Contracts `[0.1.13]`、Renderer `0.1.37`、Interactive.Client `0.1.30`、Ptcs.Client `0.1.53`。

@@ -33,6 +33,16 @@ type TaRendererUiState =
 
 [<JavaScript>]
 module TaWorkspaceRenderer =
+    let axisViewportWidth = Var.Create 1440.0
+    let mutable axisResizeBound = false
+
+    let ensureAxisResizeTracking () =
+        if not axisResizeBound then
+            axisResizeBound <- true
+            let refresh () = axisViewportWidth.Value <- max 320.0 (float JS.Window.InnerWidth - 48.0)
+            refresh ()
+            JS.Window.AddEventListener("resize", Action<Event>(fun _ -> refresh ()))
+
     let defaultOptions =
         { MinimumVisibleBars = 12
           DefaultVisibleBars = 48
@@ -341,12 +351,29 @@ module TaWorkspaceRenderer =
         else
             value
 
-    let timeAxis testId (timestamps: string array) =
-        RendererModel.timeLabels timestamps
-        |> Array.mapi (fun position (_, label) ->
-            let alignment = if position = 0 then "left" elif position = 2 then "right" else "center"
-            span [ attr.style ("min-width:0; text-align:" + alignment + "; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;") ] [ text (compactTimestamp label) ] :> Doc)
-        |> fun labels -> div [ Attr.Create "data-testid" testId; attr.style "display:grid; grid-template-columns:1fr 1fr 1fr; min-width:0; height:16px; padding:0 1px;" ] labels
+    let timeAxis testId rowId (timestamps: string array) =
+        axisViewportWidth.View
+        |> View.Map (fun width ->
+            let labels = RendererModel.adaptiveTimeLabels 92.0 width timestamps
+            div [
+                Attr.Create "data-testid" testId
+                Attr.Create "data-time-axis-row-id" rowId
+                Attr.Create "data-time-axis-tick-count" (string labels.Length)
+                attr.style "position:relative; min-width:0; height:18px; padding:0 1px; overflow:hidden;"
+            ] [
+                for position in 0 .. labels.Length - 1 do
+                    let index, label = labels[position]
+                    let left = if timestamps.Length <= 1 then 50.0 else float index / float (timestamps.Length - 1) * 100.0
+                    let transform = if position = 0 then "none" elif position = labels.Length - 1 then "translateX(-100%)" else "translateX(-50%)"
+                    yield
+                        span [
+                            Attr.Create "data-time-axis-event-time" label
+                            attr.style (
+                                "position:absolute; left:" + fixedText left + "%; transform:" + transform
+                                + "; max-width:92px; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")
+                        ] [ text (compactTimestamp label) ]
+            ] :> Doc)
+        |> Doc.EmbedView
 
     let rectanglePath x y width height =
         "M " + fixedText x + " " + fixedText y
@@ -846,30 +873,33 @@ module TaWorkspaceRenderer =
                 Var.Create(linePath traceIndex trace initialGeometry),
                 Var.Create(lineLastValue traceIndex initialGeometry))
 
+        let mutable observedPreparedData = preparedData
         dataView
         |> View.Sink (fun currentData ->
-            let geometry = prepareGeometry currentData
-            let _, _, _, currentMarkerPlacements, currentCursorReaders, currentLegendReaders, currentLow, currentHigh = geometry
+            if not (Object.ReferenceEquals(currentData, observedPreparedData)) then
+                observedPreparedData <- currentData
+                let geometry = prepareGeometry currentData
+                let _, _, _, currentMarkerPlacements, currentCursorReaders, currentLegendReaders, currentLow, currentHigh = geometry
 
-            let nextMarkerVisual = currentMarkerPlacements, currentLow, currentHigh
-            if markerVisualState.Value <> nextMarkerVisual then markerVisualState.Value <- nextMarkerVisual
+                let nextMarkerVisual = currentMarkerPlacements, currentLow, currentHigh
+                if markerVisualState.Value <> nextMarkerVisual then markerVisualState.Value <- nextMarkerVisual
 
-            for index in 0 .. readerStates.Length - 1 do
-                readerStates[index].Value <- currentCursorReaders[index], currentLegendReaders[index]
+                for index in 0 .. readerStates.Length - 1 do
+                    readerStates[index].Value <- currentCursorReaders[index], currentLegendReaders[index]
 
-            for traceIndex, _, pathStates in candlePathStates do
-                let nextPaths = candlePaths traceIndex geometry
-                for index in 0 .. pathStates.Length - 1 do
-                    if pathStates[index].Value <> nextPaths[index] then
-                        pathStates[index].Value <- nextPaths[index]
+                for traceIndex, _, pathStates in candlePathStates do
+                    let nextPaths = candlePaths traceIndex geometry
+                    for index in 0 .. pathStates.Length - 1 do
+                        if pathStates[index].Value <> nextPaths[index] then
+                            pathStates[index].Value <- nextPaths[index]
 
-            for traceIndex, trace, pathState, lastValueState in lineVisualStates do
-                let nextPath = linePath traceIndex trace geometry
-                let nextLastValue = lineLastValue traceIndex geometry
-                if pathState.Value <> nextPath then pathState.Value <- nextPath
-                if lastValueState.Value <> nextLastValue then lastValueState.Value <- nextLastValue
+                for traceIndex, trace, pathState, lastValueState in lineVisualStates do
+                    let nextPath = linePath traceIndex trace geometry
+                    let nextLastValue = lineLastValue traceIndex geometry
+                    if pathState.Value <> nextPath then pathState.Value <- nextPath
+                    if lastValueState.Value <> nextLastValue then lastValueState.Value <- nextLastValue
 
-            scheduleValueRefresh ())
+                scheduleValueRefresh ())
 
         svgElement "svg" [
             svgAttr "viewBox" ("0 0 1000 " + fixedText height)
@@ -943,8 +973,8 @@ module TaWorkspaceRenderer =
                     svgAttr "x1" "0"
                     svgAttr "x2" "0"
                     svgAttr "visibility" "hidden"
-                    svgAttr "y1" "0"
-                    svgAttr "y2" (fixedText plotHeight)
+                    svgAttr "y1" (fixedText top)
+                    svgAttr "y2" (fixedText (top + plotHeight))
                     svgAttr "stroke" "#1f4f73"
                     svgAttr "stroke-width" "1"
                     svgAttr "stroke-dasharray" "3 3"
@@ -988,7 +1018,7 @@ module TaWorkspaceRenderer =
             elif traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick) then 262
             else 124
         let children =
-            if showSharedTimeAxis then [ chart; timeAxis "ta-time-axis-shared" timestamps ]
+            if showSharedTimeAxis then [ chart; timeAxis ("ta-time-axis-" + row.RowId) row.RowId timestamps ]
             else [ chart ]
         let metadata =
             dataView
@@ -1057,6 +1087,7 @@ module TaWorkspaceRenderer =
         renderRowReactive state ui visibleTimestamps cursor.View setCursorIndex commitCursorIndex showSharedTimeAxis row
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
+        ensureAxisResizeTracking ()
         let currentCanvasId () = runtimeState.Value.Identity.CanvasInstanceId
         let configuredEditorSchemas = if isNull options.EditorSchemas then [||] else options.EditorSchemas
         let editorSchemasNow () =
@@ -1110,6 +1141,22 @@ module TaWorkspaceRenderer =
                     visibleValueRefreshScheduled <- false
                     refreshVisibleValues ())
                 |> ignore
+        let mutable chartWorkGeneration = 0
+        let mutable dataWorkGeneration = 0
+        let mutable activeRowDataStates: Var<TaPreparedRendererData> array = [||]
+        let scheduleNextFrame work =
+            JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+        let scheduleRowDataRefresh prepared =
+            dataWorkGeneration <- dataWorkGeneration + 1
+            let generation = dataWorkGeneration
+            let targets = activeRowDataStates
+            let rec update index =
+                if generation = dataWorkGeneration && index < targets.Length then
+                    scheduleNextFrame (fun () ->
+                        if generation = dataWorkGeneration then
+                            targets[index].Value <- prepared
+                            update (index + 1))
+            update 0
         let mutable pendingCursorIndex: int option option = None
         let mutable cursorFrameScheduled = false
         let crossScaleSummaryOpen = Var.Create false
@@ -1135,6 +1182,8 @@ module TaWorkspaceRenderer =
         let mutable querySelectionGeneration = 0
         let mutable queryInFlight = false
         let mutable queuedQuery: (TaQueryChange * int) option = None
+        let mutable boundaryPanGeneration = 0
+        let mutable pendingBoundaryPan: (int * TaCoverageDirection * int * string array * TaVisibleWindow) option = None
         let commandsDisabledView =
             View.Map2
                 (fun state ui -> remoteDisabled state.Poll || ui.PendingActionId.IsSome)
@@ -1169,33 +1218,114 @@ module TaWorkspaceRenderer =
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
         let chartRuntimeState = Var.Create runtimeState.Value
-        let initialPreparedData = RendererModel.prepareData runtimeState.Value.Data
-        let runtimeDataState = Var.Create initialPreparedData
+        let initialPreparedData =
+            { RawData = Map.empty
+              ResolvedAxes = Map.empty
+              ResolvedSeries = Map.empty }
+        let mutable latestPreparedData = initialPreparedData
         let mutable preparedDataForShell = initialPreparedData
+        let mutable preparedDataReady = false
+        let mutable preparationGeneration = 0
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
         let mutable observedDataState = runtimeState.Value
+
+        let scheduleFullPreparation () =
+            preparationGeneration <- preparationGeneration + 1
+            let generation = preparationGeneration
+            preparedDataReady <- false
+            chartRuntimeState.Value <- runtimeState.Value
+            let data = runtimeState.Value.Data
+            RendererModel.prepareDataScheduled
+                scheduleNextFrame
+                data
+                (fun prepared ->
+                    if generation = preparationGeneration then
+                        let current = runtimeState.Value
+                        latestPreparedData <- prepared
+                        preparedDataForShell <- prepared
+                        observedChartTopology <- chartTopologySignaturePrepared current prepared
+                        observedDataState <- current
+                        preparedDataReady <- true
+                        chartRuntimeState.Value <- current)
+
         runtimeState.View
         |> View.Sink (fun next ->
             let dataChanged = runtimeDataChanged observedDataState next
-            let nextPreparedData =
-                if next.Identity <> observedDataState.Identity then RendererModel.prepareData next.Data
-                elif dataChanged then RendererModel.prepareDataIncremental runtimeDataState.Value next.Data
-                else runtimeDataState.Value
-            let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
-            let topologyChanged =
-                next.Identity <> chartRuntimeState.Value.Identity
-                || next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision
-                || nextChartTopology <> observedChartTopology
-            if topologyChanged then
-                observedChartTopology <- nextChartTopology
-                preparedDataForShell <- nextPreparedData
-                chartRuntimeState.Value <- next
-            if dataChanged then
+            if next.Identity <> observedDataState.Identity then
+                pendingBoundaryPan <- None
                 observedDataState <- next
-                runtimeDataState.Value <- nextPreparedData
-                scheduleVisibleValueRefresh ())
+                scheduleFullPreparation ()
+            elif not preparedDataReady then
+                if dataChanged then
+                    observedDataState <- next
+                    scheduleFullPreparation ()
+                else
+                    observedDataState <- next
+            else
+                let nextPreparedData =
+                    if dataChanged then RendererModel.prepareDataIncremental latestPreparedData next.Data
+                    else latestPreparedData
+                let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
+                let topologyChanged =
+                    next.Identity <> chartRuntimeState.Value.Identity
+                    || next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision
+                    || nextChartTopology <> observedChartTopology
+                if topologyChanged then
+                    observedChartTopology <- nextChartTopology
+                    preparedDataForShell <- nextPreparedData
+                    match next.Document with
+                    | Some document ->
+                        let nextTimeline = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData
+                        let currentUi = uiState.Value
+                        let generalOldTimeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
+                        let generalOldWindow =
+                            RendererModel.resolveWindow
+                                options.MinimumVisibleBars
+                                options.MaximumVisibleBars
+                                generalOldTimeline.Length
+                                currentUi.FollowLatest
+                                currentUi.Window
+                        let reanchored =
+                            match pendingBoundaryPan with
+                            | Some(_, direction, delta, intentTimeline, intentWindow)
+                                when RendererModel.coverageExtended direction intentTimeline nextTimeline ->
+                                pendingBoundaryPan <- None
+                                RendererModel.tryReanchorWindow
+                                    options.MinimumVisibleBars
+                                    options.MaximumVisibleBars
+                                    delta
+                                    intentTimeline
+                                    nextTimeline
+                                    intentWindow
+                            | _ when not currentUi.FollowLatest
+                                     && generalOldTimeline.Length > 0
+                                     && nextTimeline.Length > generalOldTimeline.Length ->
+                                RendererModel.tryReanchorWindow
+                                    options.MinimumVisibleBars
+                                    options.MaximumVisibleBars
+                                    0
+                                    generalOldTimeline
+                                    nextTimeline
+                                    generalOldWindow
+                            | _ -> None
+                        match reanchored with
+                        | Some window ->
+                            let followLatest = window.StartIndex = RendererModel.viewportMaximumStart nextTimeline.Length window
+                            setUiState
+                                { currentUi with
+                                    Window = window
+                                    FollowLatest = followLatest
+                                    CursorIndex = None }
+                            cursorIndex.Value <- None
+                        | None -> ()
+                    | None -> pendingBoundaryPan <- None
+                    chartRuntimeState.Value <- next
+                elif dataChanged then
+                    scheduleRowDataRefresh nextPreparedData
+                latestPreparedData <- nextPreparedData
+                observedDataState <- next)
+        scheduleFullPreparation ()
         let chartRuntimeView: View<RuntimeState> = chartRuntimeState.View
-        let runtimeDataView: View<TaPreparedRendererData> = runtimeDataState.View
 
         let actionAllowed actionName =
             runtimeState.Value.Document
@@ -1206,7 +1336,7 @@ module TaWorkspaceRenderer =
         let referenceLength () =
             match runtimeState.Value.Document with
             | None -> 0
-            | Some document -> RendererModel.referenceTimelineForDocument document runtimeState.Value.Data |> Array.length
+            | Some document -> RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData |> Array.length
 
         let resolvedWindow ui =
             RendererModel.resolveWindow
@@ -1236,7 +1366,7 @@ module TaWorkspaceRenderer =
                 if changed && actionAllowed "visible-range-changed" && not (commandsDisabledNow ()) then
                     match runtimeState.Value.Document with
                     | Some document ->
-                        match RendererModel.visibleEventRange document runtimeState.Value.Data bounded with
+                        match RendererModel.visibleEventRangePrepared document latestPreparedData bounded with
                         | Some range ->
                             startAction
                                 (SduiAction.VisibleRangeChanged(
@@ -1250,18 +1380,62 @@ module TaWorkspaceRenderer =
                         | None -> ()
                     | None -> ()
 
+        let requestAdjacentCoverage direction delta =
+            if actionAllowed "visible-range-changed" && not (commandsDisabledNow ()) then
+                match runtimeState.Value.Document with
+                | Some document ->
+                    match
+                        RendererModel.tryAdjacentCoverageRange
+                            direction
+                            (min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 options.MaximumVisibleBars))
+                            document
+                            latestPreparedData
+                    with
+                    | Some change ->
+                        let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
+                        let window =
+                            RendererModel.resolveWindow
+                                options.MinimumVisibleBars
+                                options.MaximumVisibleBars
+                                timeline.Length
+                                uiState.Value.FollowLatest
+                                uiState.Value.Window
+                        boundaryPanGeneration <- boundaryPanGeneration + 1
+                        pendingBoundaryPan <- Some(boundaryPanGeneration, direction, delta, timeline, window)
+                        startActionWith
+                            (SduiAction.VisibleRangeChanged(currentCanvasId (), change))
+                            (if direction = TaCoverageDirection.Earlier then "Earlier coverage requested." else "Later coverage requested.")
+                            ignore
+                            (fun () -> pendingBoundaryPan <- None)
+                    | None ->
+                        setUiState
+                            { uiState.Value with
+                                Feedback =
+                                    if direction = TaCoverageDirection.Earlier then
+                                        "Earlier coverage is outside the configured query boundary."
+                                    else
+                                        "Later coverage is outside the configured query boundary." }
+                | None -> ()
+
         let panWindow delta =
             let current = uiState.Value
             let total = referenceLength ()
             let visible = resolvedWindow current
-            let candidate =
-                RendererModel.clampWindow
-                    options.MinimumVisibleBars
-                    options.MaximumVisibleBars
-                    total
-                    { visible with StartIndex = visible.StartIndex + delta }
-            let followLatest = candidate.StartIndex = RendererModel.viewportMaximumStart total candidate
-            setWindow followLatest candidate
+            let requestedStart = visible.StartIndex + delta
+            let maximumStart = RendererModel.viewportMaximumStart total visible
+            if requestedStart < 0 then
+                requestAdjacentCoverage TaCoverageDirection.Earlier delta
+            elif requestedStart > maximumStart then
+                requestAdjacentCoverage TaCoverageDirection.Later delta
+            else
+                let candidate =
+                    RendererModel.clampWindow
+                        options.MinimumVisibleBars
+                        options.MaximumVisibleBars
+                        total
+                        { visible with StartIndex = requestedStart }
+                let followLatest = candidate.StartIndex = RendererModel.viewportMaximumStart total candidate
+                setWindow followLatest candidate
 
         let zoomWindow delta =
             let current = uiState.Value
@@ -1335,27 +1509,8 @@ module TaWorkspaceRenderer =
             if hidden then element.SetAttribute("hidden", "hidden")
             else element.RemoveAttribute("hidden")
 
-        let applyCursorIndex value =
+        let applyVisibleCursorValues bounded =
             if not (isNull chartStackElement) then
-                let bounded =
-                    value
-                    |> Option.bind (fun index ->
-                        if latestCursorTimestamps.Length = 0 then None
-                        else Some(max 0 (min index (latestCursorTimestamps.Length - 1))))
-                displayedCursorIndex <- bounded
-                chartStackElement.SetAttribute("data-cursor-index", bounded |> Option.map string |> Option.defaultValue "")
-
-                let crosshairs = cursorElements "[data-ta-shared-crosshair='true']"
-                match cursorPosition 1000.0 latestCursorTimestamps.Length bounded with
-                | Some x ->
-                    let xText = fixedText x
-                    for line in crosshairs do
-                        line.SetAttribute("x1", xText)
-                        line.SetAttribute("x2", xText)
-                        line.SetAttribute("visibility", "visible")
-                | None ->
-                    for line in crosshairs do line.SetAttribute("visibility", "hidden")
-
                 let hint = cursorElements "[data-ta-cursor-hint]" |> Array.tryHead
                 let time = cursorElements "[data-ta-cursor-time]" |> Array.tryHead
                 let valueNodes = cursorElements "[data-ta-cursor-value-index]"
@@ -1401,7 +1556,30 @@ module TaWorkspaceRenderer =
                             node.RemoveAttribute("data-cursor-row")
                             setElementHidden true node
 
-        refreshVisibleValues <- fun () -> applyCursorIndex displayedCursorIndex
+        refreshVisibleValues <- fun () -> applyVisibleCursorValues displayedCursorIndex
+
+        let applyCursorIndex value =
+            if not (isNull chartStackElement) then
+                let bounded =
+                    value
+                    |> Option.bind (fun index ->
+                        if latestCursorTimestamps.Length = 0 then None
+                        else Some(max 0 (min index (latestCursorTimestamps.Length - 1))))
+                displayedCursorIndex <- bounded
+                chartStackElement.SetAttribute("data-cursor-index", bounded |> Option.map string |> Option.defaultValue "")
+
+                let crosshairs = cursorElements "[data-ta-shared-crosshair='true']"
+                match cursorPosition 1000.0 latestCursorTimestamps.Length bounded with
+                | Some x ->
+                    let xText = fixedText x
+                    for line in crosshairs do
+                        line.SetAttribute("x1", xText)
+                        line.SetAttribute("x2", xText)
+                        line.SetAttribute("visibility", "visible")
+                | None ->
+                    for line in crosshairs do line.SetAttribute("visibility", "hidden")
+
+                applyVisibleCursorValues bounded
 
         let flushCursorFrame () =
             cursorFrameScheduled <- false
@@ -1993,17 +2171,26 @@ module TaWorkspaceRenderer =
                         View.Map2 (fun (state: RuntimeState) ui ->
                             chartRenderSequence <- chartRenderSequence + 1
                             let renderSequence = chartRenderSequence
+                            chartWorkGeneration <- chartWorkGeneration + 1
+                            dataWorkGeneration <- dataWorkGeneration + 1
+                            let workGeneration = chartWorkGeneration
                             let visibleRows =
-                                document.Rows
-                                |> Array.filter (fun row -> row.Visible && not (Set.contains row.RowId ui.HiddenRows))
-
-                            let referenceTimeline = RendererModel.referenceTimelineForDocument document state.Data
+                                if preparedDataReady then
+                                    document.Rows
+                                    |> Array.filter (fun row -> row.Visible && not (Set.contains row.RowId ui.HiddenRows))
+                                else
+                                    [||]
+                            let cursorReaderCount =
+                                visibleRows
+                                |> Array.sumBy (fun row -> RendererModel.effectiveTraces row |> Array.filter _.Visible |> Array.length)
+                            let shellPreparedData = preparedDataForShell
+                            let referenceTimeline = RendererModel.referenceTimelineForDocumentPrepared document shellPreparedData
                             let referenceLength = referenceTimeline.Length
                             let overviewPoints =
                                 visibleRows
                                 |> Array.collect RendererModel.effectiveTraces
                                 |> Array.tryFind (fun trace -> trace.Visible && trace.Kind = TaTraceKind.Candlestick)
-                                |> Option.map (fun trace -> RendererModel.candleSeriesForTrace trace state.Data)
+                                |> Option.map (fun trace -> RendererModel.candleSeriesForTracePreparedSampled 280 trace shellPreparedData)
                                 |> Option.defaultValue [||]
                             let visibleWindow =
                                 RendererModel.resolveWindow
@@ -2013,29 +2200,64 @@ module TaWorkspaceRenderer =
                                     ui.FollowLatest
                                     ui.Window
                             let visibleTimestamps = RendererModel.selectWindow visibleWindow referenceTimeline
-                            let renderedRows =
+                            let rowDataStates = visibleRows |> Array.map (fun _ -> Var.Create shellPreparedData)
+                            let readyRowCount = Var.Create 0
+                            let rowDocs =
                                 visibleRows
                                 |> Array.mapi (fun index row ->
-                                    renderRowReactivePreparedLiveWithValueRefresh
-                                        state
-                                        ui
-                                        preparedDataForShell
-                                        runtimeDataView
-                                        visibleTimestamps
-                                        cursorIndex.View
-                                        setCursorIndex
-                                        commitCursorIndex
-                                        (index = visibleRows.Length - 1)
-                                        (document.BaseRowId = Some row.RowId)
-                                        scheduleVisibleValueRefresh
-                                        row)
-                            let cursorReaders = renderedRows |> Array.collect (fun (_, readers, _) -> readers)
-                            let legendReaders =
-                                Array.map2
-                                    (fun (row: TaRowSpec) (_, _, readers) -> row.RowId, readers)
-                                    visibleRows
-                                    renderedRows
-                                |> Map.ofArray
+                                    let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
+                                    let chartHeight =
+                                        if traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Marker) then 322
+                                        elif traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick) then 262
+                                        else 124
+                                    let reservedHeight = chartHeight + 46
+                                    Var.Create<Doc>(
+                                        div [
+                                            Attr.Create "data-testid" ("ta-row-loading-" + row.RowId)
+                                            attr.style ($"height:{reservedHeight}px; min-height:{reservedHeight}px; padding:12px; border-top:1px solid #e1e7ef; box-sizing:border-box; color:#718197; background:#fff;")
+                                        ] [ text ("Preparing " + rowDisplayLabel row + "...") ] :> Doc))
+                            let stagedCursorReaders: ((int -> TaCursorValue option) array option) array = Array.create visibleRows.Length None
+                            let stagedLegendReaders: ((int -> string option) array option) array = Array.create visibleRows.Length None
+                            activeRowDataStates <- rowDataStates
+                            latestCursorTimestamps <- visibleTimestamps
+                            latestCursorReaders <- [||]
+                            latestLegendReaders <- Map.empty
+
+                            let synchronizeReaders () =
+                                latestCursorReaders <- stagedCursorReaders |> Array.choose id |> Array.collect id
+                                latestLegendReaders <-
+                                    stagedLegendReaders
+                                    |> Array.mapi (fun index readers -> readers |> Option.map (fun values -> visibleRows[index].RowId, values))
+                                    |> Array.choose id
+                                    |> Map.ofArray
+                                applyCursorIndex cursorIndex.Value
+
+                            let rec mountRow index =
+                                if workGeneration = chartWorkGeneration && index < visibleRows.Length then
+                                    scheduleNextFrame (fun () ->
+                                        if workGeneration = chartWorkGeneration then
+                                            let prepared = rowDataStates[index].Value
+                                            let rowDoc, cursorReaders, legendReaders =
+                                                renderRowReactivePreparedLiveWithValueRefresh
+                                                    state
+                                                    ui
+                                                    prepared
+                                                    rowDataStates[index].View
+                                                    visibleTimestamps
+                                                    cursorIndex.View
+                                                    setCursorIndex
+                                                    commitCursorIndex
+                                                    true
+                                                    (document.BaseRowId = Some visibleRows[index].RowId)
+                                                    scheduleVisibleValueRefresh
+                                                    visibleRows[index]
+                                            stagedCursorReaders[index] <- Some cursorReaders
+                                            stagedLegendReaders[index] <- Some legendReaders
+                                            rowDocs[index].Value <- rowDoc
+                                            readyRowCount.Value <- index + 1
+                                            synchronizeReaders ()
+                                            mountRow (index + 1))
+                            mountRow 0
 
                             let visibleStart = if visibleWindow.Count = 0 then 0 else visibleWindow.StartIndex + 1
                             let visibleEnd = visibleWindow.StartIndex + visibleWindow.Count
@@ -2055,13 +2277,13 @@ module TaWorkspaceRenderer =
                                 Attr.Create "data-visible-start" (string visibleStart)
                                 Attr.Create "data-visible-end" (string visibleEnd)
                                 Attr.Create "data-follow-latest" (if ui.FollowLatest then "true" else "false")
+                                Attr.Create "data-row-count" (string visibleRows.Length)
+                                Attr.Dynamic "data-ready-row-count" (readyRowCount.View |> View.Map string)
                                 Attr.Create "data-cursor-index" ""
                                 attr.style "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"
                                 on.afterRender (fun node ->
                                     chartStackElement <- node
                                     latestCursorTimestamps <- visibleTimestamps
-                                    latestCursorReaders <- cursorReaders
-                                    latestLegendReaders <- legendReaders
                                     applyCursorIndex cursorIndex.Value)
                             ] [
                                 yield div [ Attr.Create "data-testid" "ta-cursor-panel"; attr.style "order:1; display:flex; flex-direction:column; align-items:stretch; border-top:1px solid #dce4ef; background:#f8fafc;" ] [
@@ -2081,15 +2303,15 @@ module TaWorkspaceRenderer =
                                     ] [
                                         yield span [ Attr.Create "data-ta-cursor-hint" "true"; attr.style "flex:0 0 auto; font-size:11px; color:#718197;" ] [ text "Move the pointer over any chart row to inspect one shared bar." ]
                                         yield strong [ Attr.Create "data-ta-cursor-time" "true"; Attr.Create "hidden" "hidden"; attr.style "flex:0 0 auto; white-space:nowrap;" ] [ text "" ]
-                                        for index in 0 .. cursorReaders.Length - 1 do
+                                        for index in 0 .. cursorReaderCount - 1 do
                                             yield span [ Attr.Create "data-ta-cursor-value-index" (string index); Attr.Create "hidden" "hidden"; attr.style "flex:0 0 auto; white-space:nowrap;" ] [ text "" ]
                                     ]
                                 ]
                                 if visibleRows.Length = 0 then
                                     yield div [ attr.style "padding:18px; color:#667891;" ] [ text "No visible TA rows." ]
                                 else
-                                    for rowDoc, _, _ in renderedRows do
-                                        yield rowDoc
+                                    for rowDoc in rowDocs do
+                                        yield rowDoc.View |> Doc.EmbedView
                                 yield div [
                                     Attr.Create "data-testid" "ta-viewport-panel"
                                     attr.style "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
@@ -2101,7 +2323,9 @@ module TaWorkspaceRenderer =
                                     div [ Attr.Create "data-testid" "ta-viewport-presets"; attr.style "display:flex; gap:4px; align-items:center;" ] [
                                         compactButton "ta-view-48" "48" "Show latest 48 bars" (fun () -> setWindowCount 48)
                                         compactButton "ta-view-200" "200" "Show latest 200 bars" (fun () -> setWindowCount 200)
-                                        compactButton "ta-view-all" "All" "Show the complete loaded range" (fun () -> setWindowCount referenceLength)
+                                        let capped = min referenceLength options.MaximumVisibleBars
+                                        let label = if referenceLength > options.MaximumVisibleBars then "Max " + string options.MaximumVisibleBars else "All"
+                                        compactButton "ta-view-all" label ("Show up to " + string capped + " loaded bars") (fun () -> setWindowCount capped)
                                     ]
                                     div [ attr.style "grid-column:1 / -1; min-width:0;" ] [
                                         overviewSvg

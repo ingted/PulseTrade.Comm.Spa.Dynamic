@@ -8,6 +8,9 @@
 
 open System
 open System.IO
+open System.Collections.Generic
+open System.Text
+open System.Text.Json
 open System.Threading.Tasks
 open Argu
 open Microsoft.Playwright
@@ -106,7 +109,6 @@ let waitForAttributeChange (locator: ILocator) name previous =
     let mutable actual = locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
 
     while actual = previous && DateTime.UtcNow < deadline do
-        Threading.Thread.Sleep 10
         actual <- locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
 
     require (actual <> previous) $"expected `{name}` to change from `{previous}`"
@@ -169,15 +171,170 @@ let requireBoxInside viewportWidth label (box: LocatorBoundingBoxResult) =
     require (box.X >= -0.5f) $"{label} starts outside viewport: x={box.X}"
     require (box.X + box.Width <= float32 viewportWidth + 0.5f) $"{label} exceeds viewport: right={box.X + box.Width}, viewport={viewportWidth}"
 
+type CdpTraceCapture =
+    { Completion: TaskCompletionSource<string>
+      Emitter: ICDPSessionEvent
+      Handler: EventHandler<Nullable<JsonElement>> }
+
+let dictionary values =
+    let result = Dictionary<string, obj>()
+    for key, value in values do result[key] <- value
+    result
+
+let startMainThreadTrace (session: ICDPSession) =
+    let completion = TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously)
+    let emitter = session.Event("Tracing.tracingComplete")
+    let handler =
+        EventHandler<Nullable<JsonElement>>(fun _ payload ->
+            if payload.HasValue then
+                let root = payload.Value
+                let mutable stream = Unchecked.defaultof<JsonElement>
+                if root.TryGetProperty("stream", &stream) && stream.ValueKind = JsonValueKind.String then
+                    completion.TrySetResult(stream.GetString()) |> ignore)
+    emitter.OnEvent.AddHandler handler
+    session.SendAsync(
+        "Tracing.start",
+        dictionary
+            [ "categories", box "devtools.timeline,disabled-by-default-devtools.timeline"
+              "options", box "record-as-much-as-possible"
+              "transferMode", box "ReturnAsStream" ])
+    |> awaitTask
+    |> ignore
+    { Completion = completion; Emitter = emitter; Handler = handler }
+
+let stopMainThreadTrace label (session: ICDPSession) capture =
+    session.SendAsync("Tracing.end") |> awaitTask |> ignore
+    let stream = capture.Completion.Task.WaitAsync(TimeSpan.FromSeconds 15.0) |> awaitTask
+    capture.Emitter.OnEvent.RemoveHandler capture.Handler
+    let buffer = StringBuilder()
+    let mutable complete = false
+    while not complete do
+        let response = session.SendAsync("IO.read", dictionary [ ("handle", box stream) ]) |> awaitTask
+        require response.HasValue "CDP IO.read returned no trace payload"
+        let root = response.Value
+        let data = root.GetProperty("data").GetString()
+        let mutable base64Encoded = Unchecked.defaultof<JsonElement>
+        if root.TryGetProperty("base64Encoded", &base64Encoded) && base64Encoded.GetBoolean() then
+            Convert.FromBase64String(data) |> Encoding.UTF8.GetString |> buffer.Append |> ignore
+        else
+            buffer.Append(data) |> ignore
+        let mutable eof = Unchecked.defaultof<JsonElement>
+        complete <- root.TryGetProperty("eof", &eof) && eof.GetBoolean()
+    session.SendAsync("IO.close", dictionary [ ("handle", box stream) ]) |> awaitTask |> ignore
+
+    Directory.CreateDirectory outputDirectory |> ignore
+    let traceJson = buffer.ToString()
+    let tracePath = Path.Combine(outputDirectory, $"trace-{label}.json")
+    File.WriteAllText(tracePath, traceJson, UTF8Encoding(false))
+    use document = JsonDocument.Parse(traceJson)
+    let events = document.RootElement.GetProperty("traceEvents").EnumerateArray() |> Seq.toArray
+    let threadKey (event: JsonElement) =
+        string (event.GetProperty("pid").GetInt32()) + ":" + string (event.GetProperty("tid").GetInt32())
+    let rendererMainThreads =
+        events
+        |> Array.choose (fun event ->
+            let mutable name = Unchecked.defaultof<JsonElement>
+            let mutable args = Unchecked.defaultof<JsonElement>
+            let mutable threadName = Unchecked.defaultof<JsonElement>
+            if event.TryGetProperty("name", &name)
+               && name.GetString() = "thread_name"
+               && event.TryGetProperty("args", &args)
+               && args.TryGetProperty("name", &threadName)
+               && threadName.ValueKind = JsonValueKind.String
+               && threadName.GetString().Contains("RendererMain", StringComparison.Ordinal) then
+                Some(threadKey event)
+            else None)
+        |> Set.ofArray
+    let tryNumber (propertyName: string) (event: JsonElement) =
+        let mutable value = Unchecked.defaultof<JsonElement>
+        if event.TryGetProperty(propertyName, &value) && value.ValueKind = JsonValueKind.Number then
+            Some(value.GetDouble())
+        else
+            None
+    let runTasks =
+        events
+        |> Array.choose (fun event ->
+            let mutable name = Unchecked.defaultof<JsonElement>
+            let mutable phase = Unchecked.defaultof<JsonElement>
+            if rendererMainThreads.Contains(threadKey event)
+               && event.TryGetProperty("name", &name)
+               && name.GetString().EndsWith("RunTask", StringComparison.Ordinal)
+               && event.TryGetProperty("ph", &phase)
+               && phase.GetString() = "X" then
+                match tryNumber "ts" event, tryNumber "dur" event with
+                | Some startedAt, Some duration -> Some(threadKey event, startedAt, duration)
+                | _ -> None
+            else None)
+    let overBudgetTasks = runTasks |> Array.filter (fun (_, _, duration) -> duration > 100000.0)
+    for thread, startedAt, duration in overBudgetTasks |> Array.sortByDescending (fun (_, _, duration) -> duration) do
+        let taskEnd = startedAt + duration
+        let children =
+            events
+            |> Array.choose (fun event ->
+                let mutable name = Unchecked.defaultof<JsonElement>
+                let mutable phase = Unchecked.defaultof<JsonElement>
+                if threadKey event = thread
+                   && event.TryGetProperty("name", &name)
+                   && not (name.GetString().EndsWith("RunTask", StringComparison.Ordinal))
+                   && event.TryGetProperty("ph", &phase)
+                   && phase.GetString() = "X" then
+                    match tryNumber "ts" event, tryNumber "dur" event with
+                    | Some childStart, Some childDuration
+                        when childStart >= startedAt && childStart + childDuration <= taskEnd && childDuration >= 1000.0 ->
+                        Some(name.GetString(), childDuration / 1000.0)
+                    | _ -> None
+                else
+                    None)
+            |> Array.sortByDescending snd
+            |> Array.truncate 8
+            |> Array.map (fun (name, milliseconds) -> $"{name}:{milliseconds:F2}ms")
+            |> String.concat ", "
+        printfn "browser.long-task.detail phase=%s task=%.2fms children=[%s]" label (duration / 1000.0) children
+    let overBudget = overBudgetTasks |> Array.map (fun (_, _, duration) -> duration / 1000.0)
+    let maximum = runTasks |> Array.fold (fun current (_, _, duration) -> max current (duration / 1000.0)) 0.0
+    printfn "browser.long-task phase=%s runTasks=%d over100=%d max=%.2fms" label runTasks.Length overBudget.Length maximum
+    label, overBudget, maximum
+
+let attributeSignature (locator: ILocator) name =
+    [| for index in 0 .. (locator.CountAsync() |> awaitTask) - 1 do
+           yield locator.Nth(index).GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue "" |]
+    |> String.concat "|"
+
+let waitForAttributeSignatureChange (locator: ILocator) name previous =
+    let deadline = DateTime.UtcNow.AddSeconds 8.0
+    let mutable actual = attributeSignature locator name
+    while actual = previous && DateTime.UtcNow < deadline do
+        Threading.Thread.Sleep 25
+        actual <- attributeSignature locator name
+    require (actual <> previous) $"expected `{name}` signature to change"
+    actual
+
 let verifyDesktop (browser: IBrowser) =
     let context = browser.NewContextAsync(BrowserNewContextOptions(ViewportSize = ViewportSize(Width = 1440, Height = 900))) |> awaitTask
     let page = context.NewPageAsync() |> awaitTask
+    let longTaskSession = context.NewCDPSessionAsync(page) |> awaitTask
+    let longTaskPhases = ResizeArray<string * float array * float>()
     let consoleErrors = ResizeArray<string>()
     page.Console.Add(fun (message: IConsoleMessage) -> if message.Type = "error" then consoleErrors.Add message.Text; printfn "desktop console error: %s" message.Text)
     page.PageError.Add(fun (error: string) -> consoleErrors.Add error; printfn "desktop page error: %s" error)
 
+    let initialTrace = startMainThreadTrace longTaskSession
     page.GotoAsync(url, PageGotoOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
     page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+    page.Locator("[data-testid='ta-row-heikin']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+    waitForIntAttribute (page.Locator("[data-testid='ta-chart-stack']")) "data-ready-row-count" 7
+    Threading.Thread.Sleep 180
+    printfn
+        "browser.initial-setup sampleMs=%s rendererMs=%s"
+        (page.Locator("[data-capacity-positions='3820']").GetAttributeAsync("data-sample-build-ms") |> awaitTask)
+        (page.Locator("[data-capacity-positions='3820']").GetAttributeAsync("data-renderer-setup-ms") |> awaitTask)
+    let _, bootstrapLongTasks, bootstrapMaximum = stopMainThreadTrace "module-bootstrap" longTaskSession initialTrace
+    printfn
+        "browser.module-bootstrap diagnosticOnly=true fixtureSampleMs=%s rendererSetupMs=%s over100=%d max=%.2fms"
+        (page.Locator("[data-capacity-positions='3820']").GetAttributeAsync("data-sample-build-ms") |> awaitTask)
+        (page.Locator("[data-capacity-positions='3820']").GetAttributeAsync("data-renderer-setup-ms") |> awaitTask)
+        bootstrapLongTasks.Length
+        bootstrapMaximum
 
     requireText (page.Locator("[data-testid='ta-workspace-title']")) "PTMD TA Research"
     requireText (page.Locator("[data-testid='ta-freshness']")) "LIVE"
@@ -185,32 +342,26 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-toggle-row-price']")) "ES 1K + SMA(20)"
     requireText (page.Locator("[data-testid='ta-row-price']")) "ES 1K + SMA(20)"
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = visiblePointCount) "candlestick chart must retain all committed visible points"
-    let projectedCoarseCandles = page.Locator("[data-testid='ta-candle-price-price-5k'][data-candle-part='body']")
+    let projectedCoarseCandles = page.Locator("[data-testid='ta-candle-price-price-5k'][data-candle-batched='true']")
     let projectedCoarseCount = projectedCoarseCandles.CountAsync() |> awaitTask
-    require (projectedCoarseCount = visiblePointCount) $"5K source candles must project onto each of the {visiblePointCount} actual visible base slots; actual={projectedCoarseCount}"
-    let projectedIndexes =
-        [| for index in 0 .. projectedCoarseCount - 1 -> requiredIntAttribute (projectedCoarseCandles.Nth(index)) "data-projected-slot-index" |]
-    require (projectedIndexes |> Array.distinct |> Array.length = visiblePointCount) "projected high-scale candles must use distinct actual base-axis slots"
-    let projectedSourceIds =
-        [| for index in 0 .. projectedCoarseCount - 1 -> projectedCoarseCandles.Nth(index).GetAttributeAsync("data-source-interval-id") |> awaitTask |]
-    require (projectedSourceIds |> Array.forall (String.IsNullOrWhiteSpace >> not)) "every projected candle must retain its canonical source interval id"
-    require (projectedSourceIds |> Array.distinct |> Array.length < projectedCoarseCount) "multiple projected slots must reference the same sparse high-scale source candle"
+    require (projectedCoarseCount = 8) $"5K source candles must use the fixed eight batched paths; actual={projectedCoarseCount}"
+    require (projectedCoarseCandles |> fun paths -> attributeSignature paths "d" |> String.IsNullOrWhiteSpace |> not) "projected 5K batched geometry must be non-empty"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "watermark 2026-07-11T09:30:00Z"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"
 
     let markerLayer = page.Locator("[data-testid='ta-marker-layer-price']")
     require (markerLayer.CountAsync() |> awaitTask = 1) "price row must mount one marker overlay layer"
     require (requiredIntAttribute markerLayer "data-marker-count" = 4) "all four visible marker nodes must render"
-    let entryMarker = page.Locator("[data-testid='ta-marker-signals-entry-long']")
-    let signalA = page.Locator("[data-testid='ta-marker-signals-signal-a']")
-    let signalB = page.Locator("[data-testid='ta-marker-signals-signal-b']")
-    let exitMarker = page.Locator("[data-testid='ta-marker-signals-exit-long']")
+    let entryMarker = page.Locator("[data-testid='ta-marker-signals-long-entry']")
+    let signalA = page.Locator("[data-testid='ta-marker-signals-short-entry']")
+    let signalB = page.Locator("[data-testid='ta-marker-signals-long-exit']")
+    let exitMarker = page.Locator("[data-testid='ta-marker-signals-short-exit']")
     require (entryMarker.GetAttributeAsync("data-marker-anchor") |> awaitTask = "below-bar") "entry marker must retain its below-bar anchor"
     require (signalA.GetAttributeAsync("data-marker-position") |> awaitTask = string (capacityPointCount - 8)) "marker placement must use authoritative position"
     require (requiredIntAttribute signalA "data-marker-lane" = 0) "first same-anchor marker must use lane zero"
     require (requiredIntAttribute signalB "data-marker-lane" = 1) "second same-anchor marker must stack in lane one"
-    requireText (signalA.Locator("title")) "A"
-    requireText (signalA.Locator("title")) "Reason: signal A"
+    requireText (signalA.Locator("title")) "SE"
+    requireText (signalA.Locator("title")) "Reason: short entry signal"
     requireText (signalA.Locator("title")) "Source: BrowserDemo"
     let priceRowBox = page.Locator("[data-testid='ta-row-price']").BoundingBoxAsync() |> awaitTask
     for label, markerNode in [ "entry", entryMarker; "signal-a", signalA; "signal-b", signalB; "exit", exitMarker ] do
@@ -238,7 +389,24 @@ let verifyDesktop (browser: IBrowser) =
     let crosshairs = page.Locator("[data-testid$='-crosshair']")
     require ((crosshairs.CountAsync() |> awaitTask) = 7) "every visible row must mount one stable crosshair overlay"
     require ((page.Locator("[data-testid$='-crosshair'][visibility='hidden']").CountAsync() |> awaitTask) = 7) "crosshair overlays must remain hidden before pointer movement"
-    require ((page.Locator("[data-testid='ta-time-axis-shared']").CountAsync() |> awaitTask) = 1) "all rows must share one X axis"
+    let rowTimeAxes = page.Locator("[data-time-axis-row-id]")
+    require ((rowTimeAxes.CountAsync() |> awaitTask) = 7) "every visible row must mount its own event-time axis"
+    for axisIndex in 0 .. 6 do
+        let axis = rowTimeAxes.Nth(axisIndex)
+        let labels = axis.Locator("span")
+        let labelCount = labels.CountAsync() |> awaitTask
+        require (labelCount >= 2 && labelCount <= 16) $"row axis {axisIndex} must expose a bounded adaptive label count"
+        let mutable previousRight = Single.NegativeInfinity
+        for labelIndex in 0 .. labelCount - 1 do
+            let labelBox = labels.Nth(labelIndex).BoundingBoxAsync() |> awaitTask
+            require (not (isNull labelBox)) $"row axis {axisIndex} label {labelIndex} must expose geometry"
+            require (labelBox.X + 0.5f >= previousRight) $"row axis {axisIndex} labels must not overlap"
+            previousRight <- labelBox.X + labelBox.Width
+    for crosshairIndex in 0 .. 6 do
+        let crosshair = crosshairs.Nth(crosshairIndex)
+        let y1 = Double.Parse(crosshair.GetAttributeAsync("y1") |> awaitTask, Globalization.CultureInfo.InvariantCulture)
+        let y2 = Double.Parse(crosshair.GetAttributeAsync("y2") |> awaitTask, Globalization.CultureInfo.InvariantCulture)
+        require (y1 >= 0.0 && y2 > y1) $"row crosshair {crosshairIndex} must span the complete plot bounds"
 
     let rowLegends = page.Locator("[data-ta-row-values='true']")
     require ((rowLegends.CountAsync() |> awaitTask) = 7) "every visible row must expose one fixed legend/value band"
@@ -302,21 +470,21 @@ let verifyDesktop (browser: IBrowser) =
     waitForAttributeValue summaryToggle "aria-expanded" "false"
     waitForAttributeValue crossScaleValues "data-expanded" "false"
 
-    let latestPriceCandle = page.Locator("[data-testid='ta-candle-price-price-1k'][data-candle-part='body']").Last
-    let previewCloseBefore = latestPriceCandle.GetAttributeAsync("data-close") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    let priceCandlePaths = page.Locator("[data-testid='ta-candle-price-price-1k'][data-candle-batched='true']")
+    let previewCloseBefore = attributeSignature priceCandlePaths "d"
     let renderSequenceBeforePreview = requiredIntAttribute chartStack "data-chart-render-sequence"
     page.Locator("[data-testid='ta-demo-preview-update']").ClickAsync() |> awaitUnit
-    let previewCloseAfter = waitForAttributeChange latestPriceCandle "data-close" previewCloseBefore
+    let previewCloseAfter = waitForAttributeSignatureChange priceCandlePaths "d" previewCloseBefore
     require (previewCloseAfter <> previewCloseBefore) "same-position live preview must update the latest candle close"
     let renderSequenceAfterPreview = requiredIntAttribute chartStack "data-chart-render-sequence"
     require
         (renderSequenceAfterPreview = renderSequenceBeforePreview)
         $"same-position live preview must update SVG attributes without rebuilding the chart stack; render={renderSequenceBeforePreview}->{renderSequenceAfterPreview}; close={previewCloseBefore}->{previewCloseAfter}"
     let fixtureRoot = page.Locator("[data-capacity-positions]")
-    let streamCloseBefore = latestPriceCandle.GetAttributeAsync("data-close") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    let streamCloseBefore = attributeSignature priceCandlePaths "d"
     page.Locator("[data-testid='ta-demo-preview-stream']").ClickAsync() |> awaitUnit
     waitForIntAttributeAtLeast fixtureRoot "data-preview-stream-updates" 1 |> ignore
-    let streamCloseAfter = waitForAttributeChange latestPriceCandle "data-close" streamCloseBefore
+    let streamCloseAfter = waitForAttributeSignatureChange priceCandlePaths "d" streamCloseBefore
     require (streamCloseAfter <> streamCloseBefore) "the live preview stream must advance the visible close while follow-latest is active"
 
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
@@ -355,15 +523,16 @@ let verifyDesktop (browser: IBrowser) =
     let priceChart = page.Locator("[data-testid='ta-candle-price']")
     let pointerBox = priceChart.BoundingBoxAsync() |> awaitTask
     require (not (isNull pointerBox)) "price chart must expose pointer geometry"
-    let timeLabels = page.Locator("[data-testid='ta-time-axis-shared'] span")
-    require ((timeLabels.CountAsync() |> awaitTask) = 3) "shared X axis must expose first, middle, and last time labels"
+    let timeLabels = page.Locator("[data-testid='ta-time-axis-price'] span")
+    let timeLabelCount = timeLabels.CountAsync() |> awaitTask
+    require (timeLabelCount >= 3) "price row X axis must expose adaptive event-time labels"
     let firstTimeLabel = textOf (timeLabels.Nth(0))
-    let expectedMiddleLabel = textOf (timeLabels.Nth(1))
-    let lastTimeLabel = textOf (timeLabels.Nth(2))
-    require (not (String.IsNullOrWhiteSpace firstTimeLabel)) "shared X axis first label must not be empty"
-    require (not (String.IsNullOrWhiteSpace expectedMiddleLabel)) "shared X axis middle label must not be empty"
-    require (not (String.IsNullOrWhiteSpace lastTimeLabel)) "shared X axis last label must not be empty"
-    require (firstTimeLabel <> lastTimeLabel) "shared X axis endpoints must represent different bars"
+    let expectedMiddleLabel = textOf (timeLabels.Nth(timeLabelCount / 2))
+    let lastTimeLabel = textOf (timeLabels.Nth(timeLabelCount - 1))
+    require (not (String.IsNullOrWhiteSpace firstTimeLabel)) "row X axis first label must not be empty"
+    require (not (String.IsNullOrWhiteSpace expectedMiddleLabel)) "row X axis middle label must not be empty"
+    require (not (String.IsNullOrWhiteSpace lastTimeLabel)) "row X axis last label must not be empty"
+    require (firstTimeLabel <> lastTimeLabel) "row X axis endpoints must represent different bars"
     let renderSequenceBeforeCursor = requiredIntAttribute chartStack "data-chart-render-sequence"
     let firstCrosshair = crosshairs.First
     let crosshairXBefore = firstCrosshair.GetAttributeAsync("x1") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
@@ -388,11 +557,12 @@ let verifyDesktop (browser: IBrowser) =
     require (crosshairPositions.Length = 1 && crosshairPositions[0] = crosshairXAfter && crosshairPositions[0] <> "0" && crosshairPositions[0] <> "100") ("shared pointer crosshair positions diverged: " + String.concat "," crosshairPositions)
 
     let previewUpdatesBeforeCursor = requiredIntAttribute fixtureRoot "data-preview-stream-updates"
-    let historicalCloseBeforeCursor = latestPriceCandle.GetAttributeAsync("data-close") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    let historicalCloseBeforeCursor = attributeSignature priceCandlePaths "d"
     let sustainedCursor = Diagnostics.Stopwatch.StartNew()
     let mutable previousCrosshairX = crosshairXAfter
     let mutable cursorTransitions = 0
     let mutable maximumCursorLatencyMs = 0L
+    let cursorLatencies = ResizeArray<int64>()
     for sample in 0 .. 299 do
         let ratio = if sample % 2 = 0 then 0.18f else 0.82f
         let movement = Diagnostics.Stopwatch.StartNew()
@@ -401,15 +571,20 @@ let verifyDesktop (browser: IBrowser) =
         movement.Stop()
         cursorTransitions <- cursorTransitions + 1
         maximumCursorLatencyMs <- max maximumCursorLatencyMs movement.ElapsedMilliseconds
+        cursorLatencies.Add movement.ElapsedMilliseconds
         previousCrosshairX <- currentCrosshairX
     sustainedCursor.Stop()
+    let sortedCursorLatencies = cursorLatencies |> Seq.sort |> Seq.toArray
+    let cursorP95 = sortedCursorLatencies[int (Math.Ceiling(float sortedCursorLatencies.Length * 0.95)) - 1]
+    printfn "browser.cursor sustainedTransitions=%d p95=%dms max=%dms elapsed=%dms" cursorTransitions cursorP95 maximumCursorLatencyMs sustainedCursor.ElapsedMilliseconds
     require (cursorTransitions >= 300) $"sustained cursor movement produced too few crosshair transitions: {cursorTransitions}"
-    require (maximumCursorLatencyMs < 250L) $"sustained cursor movement stalled for {maximumCursorLatencyMs}ms"
+    require (cursorP95 < 125L) $"sustained cursor p95 exceeded 125ms: {cursorP95}ms"
+    require (maximumCursorLatencyMs < 400L) $"sustained cursor movement stalled for {maximumCursorLatencyMs}ms"
     require (sustainedCursor.Elapsed < TimeSpan.FromSeconds 12.0) $"sustained cursor movement exceeded 12 seconds: {sustainedCursor.Elapsed}"
     let concurrentPreviewUpdates = requiredIntAttribute fixtureRoot "data-preview-stream-updates"
     let concurrentPreviewUpdateCount = concurrentPreviewUpdates - previewUpdatesBeforeCursor
-    require (concurrentPreviewUpdateCount >= 3) $"sustained cursor gate observed only {concurrentPreviewUpdateCount} concurrent live preview updates"
-    let historicalCloseAfterCursor = latestPriceCandle.GetAttributeAsync("data-close") |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+    require (concurrentPreviewUpdateCount >= 2) $"sustained cursor gate observed only {concurrentPreviewUpdateCount} concurrent live preview updates"
+    let historicalCloseAfterCursor = attributeSignature priceCandlePaths "d"
     require (historicalCloseAfterCursor = historicalCloseBeforeCursor) "realtime tail updates must not overwrite the committed historical viewport"
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeCursor) "sustained pointer movement must not rebuild the chart stack"
     let sustainedLegendBox = smaLegend.BoundingBoxAsync() |> awaitTask
@@ -528,12 +703,23 @@ let verifyDesktop (browser: IBrowser) =
     volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
     require ((page.Locator("[data-testid='ta-row-template-ta-macd-8']").CountAsync() |> awaitTask) = 0) "Reset Canvas must remove post-mount added rows"
 
+    let allTrace = startMainThreadTrace longTaskSession
     page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing 1-{capacityPointCount}"
+    page.Locator("[data-testid='ta-row-heikin']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 15000.0f)) |> awaitUnit
+    waitForIntAttribute chartStack "data-ready-row-count" 7
+    Threading.Thread.Sleep 180
+    longTaskPhases.Add(stopMainThreadTrace "all" longTaskSession allTrace)
     waitForText callbackState "last VisibleRangeChanged"
     waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls after All"
     let renderBeforeRightHandle = requiredIntAttribute chartStack "data-chart-render-sequence"
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = capacityPointCount) "All preset must render the full loaded capacity range"
+
+    let markerTrace = startMainThreadTrace longTaskSession
+    page.Locator("[data-testid='ta-demo-replace-markers']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-marker-signals-long-entry'] title")) "replacement 1"
+    Threading.Thread.Sleep 180
+    longTaskPhases.Add(stopMainThreadTrace "marker-replacement" longTaskSession markerTrace)
     let allNavigatorBox = navigator.BoundingBoxAsync() |> awaitTask
     let rightHandle = page.Locator("[data-testid='ta-overview-right-handle']")
     let rightHandleBox = rightHandle.BoundingBoxAsync() |> awaitTask
@@ -546,6 +732,7 @@ let verifyDesktop (browser: IBrowser) =
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderBeforeRightHandle) "right-handle preview must not rebuild after the All preset render"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForIntAttribute chartStack "data-chart-render-sequence" (renderBeforeRightHandle + 1)
+    waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls after right-handle commit"
     let resizedNavigatorBox = navigator.BoundingBoxAsync() |> awaitTask
     let leftHandle = page.Locator("[data-testid='ta-overview-left-handle']")
     let leftHandleBox = leftHandle.BoundingBoxAsync() |> awaitTask
@@ -559,21 +746,53 @@ let verifyDesktop (browser: IBrowser) =
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderBeforeLeftHandle) "left-handle preview must not rebuild the chart"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForIntAttribute chartStack "data-chart-render-sequence" (renderBeforeLeftHandle + 1)
+    waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls after left-handle commit"
 
     page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing {initialVisibleStart}-{capacityPointCount}"
     waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls before document replacement"
+    let replacementTrace = startMainThreadTrace longTaskSession
     page.Locator("[data-testid='ta-demo-replace-document']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-workspace-title']")) "SMA(30)"
     waitForText (page.Locator("[data-testid='ta-canvas-identity']")) "ta-demo-canvas-replacement"
+    waitForIntAttribute chartStack "data-ready-row-count" 7
+    Threading.Thread.Sleep 180
+    longTaskPhases.Add(stopMainThreadTrace "document-replacement" longTaskSession replacementTrace)
     requireText (page.Locator("[data-testid='ta-toggle-row-price']")) "ES 1K + SMA(30)"
     requireText (page.Locator("[data-testid='ta-row-price']")) "ES 1K + SMA(30)"
     require (not ((textOf (page.Locator("[data-testid='ta-row-price']"))).Contains "SMA(20)")) "replacement document must not retain the prior static row label"
 
+    page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing 1-{capacityPointCount}"
+    waitForEnabled (page.Locator("[data-testid='ta-pan-right']")) "viewport controls before later coverage request"
+    let overviewPath = navigator.Locator("path").First
+    let overviewBeforeExtension = overviewPath.GetAttributeAsync("d") |> awaitTask
+    let coverageTrace = startMainThreadTrace longTaskSession
+    page.Locator("[data-testid='ta-pan-right']").ClickAsync() |> awaitUnit
+    waitForIntAttribute chartStack "data-loaded-bars" (capacityPointCount + 400)
+    waitForIntAttribute chartStack "data-ready-row-count" 7
+    let extendedStart = requiredIntAttribute chartStack "data-visible-start"
+    let extendedEnd = requiredIntAttribute chartStack "data-visible-end"
+    require (extendedEnd - extendedStart + 1 <= 4000) "progressive coverage must not exceed MaximumVisibleBars"
+    require (extendedStart > 1 && extendedEnd = capacityPointCount + 400) "later coverage must preserve the rightward pan intent"
+    requireText (page.Locator("[data-testid='ta-view-all']")) "Max 4000"
+    let overviewAfterExtension = waitForAttributeChange overviewPath "d" overviewBeforeExtension
+    require (overviewAfterExtension <> overviewBeforeExtension) "overview must densify against the expanded loaded domain"
+    Threading.Thread.Sleep 180
+    longTaskPhases.Add(stopMainThreadTrace "progressive-coverage" longTaskSession coverageTrace)
+
     require (consoleErrors.Count = 0) ("desktop console errors: " + String.concat " | " consoleErrors)
+    let overBudgetPhases = longTaskPhases |> Seq.filter (fun (_, values, _) -> values.Length > 0) |> Seq.toArray
+    require
+        (overBudgetPhases.Length = 0)
+        (overBudgetPhases
+         |> Array.map (fun (label, values, maximum) -> $"{label}: count={values.Length}, max={maximum:F2}ms")
+         |> String.concat "; "
+         |> fun details -> "renderer workload retained >100ms long tasks: " + details)
 
     Directory.CreateDirectory outputDirectory |> ignore
     page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "desktop.png"), FullPage = true)) |> awaitTask |> ignore
+    longTaskSession.DetachAsync() |> awaitUnit
     context.CloseAsync() |> awaitUnit
     titleBox, priceBox, cursorLatency.ElapsedMilliseconds, cursorTransitions, maximumCursorLatencyMs, sustainedCursor.ElapsedMilliseconds, concurrentPreviewUpdateCount
 

@@ -33,10 +33,12 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-019 | 0 | Live preview chart hot path | same-position close/TA原位更新、topology/data view分離、cursor不中斷 | DYN-TA-017/018 + owner live frame | T-077 | 95% | Active；generic exact-package gate完成，等待Daedalus真SPAA browser closure | [@DYN-TA-019](WBS.DYN-TA-019.md) |
 | DYN-TA-020 | 0 | RFC-0026 Renderer owner gate | cache repaint、row legend isolation、3,820x7 bounded All/cursor path | DYN-TA-018/019 | T-079..081 | 100% | Owner completed；consumer真SPAA採版gate已交接 | [RFC-0017](../RFC/RFC-PTCS-DYNAMIC-0017.renderer-cache-row-performance-gate.md) |
 | DYN-TA-021 | 0 | RFC-0026 ChangeQuery viewport | accepted後merged-axis local selection、latest-query-wins queue、explicit no-intersection | DYN-TA-020 + TradeCore query contract | T-082..084 | 100% | Owner completed；consumer真SPAA rerun待Daedalus | [RFC-0018](../RFC/RFC-PTCS-DYNAMIC-0018.change-query-viewport.md) |
+| DYN-TA-022 | 0 | Renderer main-thread scheduling | scheduled prepare、row mount/refresh、generation cancellation、owner long-task trace | DYN-TA-020/021 | T-085,T-090 | 100% | Done；owner interaction phases無 >100ms task | [RFC-0019](../RFC/RFC-PTCS-DYNAMIC-0019.renderer-main-thread-scheduling.md) |
+| DYN-TA-023 | 0 | Row axis／crosshair／progressive coverage | 每列adaptive axis、plot-bounded crosshair、adjacent coverage、event-time reanchor、Max 4000 | DYN-TA-022 + owner coverage provider | T-086..090 | 100% | Owner completed；consumer負責真FSSTL provider merge/E2E | [RFC-0020](../RFC/RFC-PTCS-DYNAMIC-0020.time-axis-crosshair-progressive-coverage.md) |
 
 九月`基於FSSTL的TA Research`第一個production切片`DYN-TA-017/018`已完成；舊`DYN-TA-008`package closure只在後續TA切片需要發布直接dependency時同步處理，不擴張到legacy consumer。
 
-目前RFC-0026 final owner graph為Contracts `0.1.13`、Renderer `0.1.36`、Interactive.Client `0.1.29`與Ptcs.Client `0.1.52`。owner focused suites、package/browser cache、3,820x7 renderer與ChangeQuery one-in-flight/latest-window gate已完成；Daedalus真SPAA採版驗收由`Rfc0026.Spaa.Backtest.playwright.fsx`追蹤，不以owner fixture冒充新版consumer通過。中間graph `0.1.34/0.1.27/0.1.50`不可採用。
+目前RFC-0026 final owner graph為Contracts `0.1.13`、Renderer `0.1.37`、Interactive.Client `0.1.30`與Ptcs.Client `0.1.53`。owner focused suites、package/browser cache、3,820x7 renderer、ChangeQuery、row axes、crosshair、progressive coverage與scheduled renderer gate已完成；Daedalus真SPAA採版驗收由consumer追蹤，不以owner fixture冒充新版consumer通過。中間graph `0.1.34/0.1.27/0.1.50`不可採用。
 
 
 ## 2. Legacy prerequisite policy

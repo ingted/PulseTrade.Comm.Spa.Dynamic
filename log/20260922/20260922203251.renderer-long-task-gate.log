@@ -1,0 +1,21 @@
+# Renderer long-task gate
+
+## Pre-work plan
+
+- 背景：Daedalus 真 SPAA 3,820 bars／7 rows gate 回報 initial max 約 987ms、All 約 682ms、marker replacement 約 280ms，持續出現大於 100ms long task；總耗時低於 2 秒不足以驗收。
+- 目標：以可重複 browser evidence 鎖定 long-task gate，將 chart shell 與昂貴 row geometry／Doc 建構切成 bounded scheduling slices，提供新版 exact package graph。
+- 假設：凍結主要來自Renderer同步prepare與row mount/refresh；consumer fixture建立成本須分開量測，且provider merge仍由Daedalus持有。
+- 不得改變：完整 source/cursor/Y-domain 語意、資料與 document identity/revision、one-in-flight/latest-query、單一 canvas identity、WebSharper-only F# frontend。
+- 範圍：Dynamic Renderer、BrowserDemo／F# Playwright gate、focused tests、TA Research current-state 文件與 package graph；不修改 FSSTL、MDCQ provider 或 Daedalus consumer。
+- 驗收：3,820 bars／7 rows initial、All、marker replacement 不持續產生 >100ms main-thread task；既有 34 Renderer、4 Interactive lifecycle、16 Ptcs.Client 與 ChangeQuery gates不回歸。
+- 風險：分批 mount 可能使 cursor reader／legend registry 暫時不完整或造成 stale render 覆蓋；須以 render generation 丟棄舊工作並只在完整 generation commit registry。
+- 停止條件：owner fixture 與 focused suites通過、package exact graph發布並交付 Daedalus 重跑真 SPAA；若單一 row slice仍 >100ms，須再切 geometry/path 計算而非放寬門檻。
+
+## Operations
+
+- 2026-09-22 20:32 +08:00：確認 canonical repo `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`，branch `20260915_033.ptcs_group_support`，起點 commit `9ec31df268a8099c60edd00ea825ea379163022f`，worktree clean。
+- 2026-09-22 20:32 +08:00：收到 COMM direct `msg-fsi-4894e6a8b86b4be880d96888a6dfce76`；回覆 receipt `msg-fsi-df9dba69e5c040ff9d818764422e0842`。
+- 2026-09-22 23:05 +08:00：完成RFC-0019/0020 owner implementation。Renderer加入scheduled prepare、generation cancellation、per-row axis／plot crosshair、adjacent coverage與event-time reanchor；BrowserDemo提供3820→4220 authoritative fixture。
+- 2026-09-22 23:05 +08:00：Renderer 37/37、Interactive.Client 4/4、Ptcs.Client 16/16通過；F# Playwright量得cursor p95=72ms/max=165ms，All/marker/document/progressive owner phase均over100=0。Playwright MCP確認七列axis、Max 4000、loaded 4220與console 0。
+- 2026-09-22 23:05 +08:00：canonical source-tree WebSharper build以`MSB6006/-532462766`無diagnostic失敗；改用既有可重現的乾淨staging build。Interactive package verifier先抓到manifest 0.1.29 mismatch，修成0.1.30後PASS，未推送錯包。
+- 2026-09-22 23:05 +08:00：NuGet push Created：Renderer 0.1.37、Interactive.Client 0.1.30、Ptcs.Client 0.1.53。SHA-256依序為`9440140AE57DA41A0CE058DE4DF97E56C577A434871810447C02C12A2D6F5931`、`14109B5C85B6A675F37EFD27A102BAE9BCC4E6598991B2AF80FB2D5C98B6890E`、`45B3A6F3E589EA7820FD360255C324EBEA3B674E6BC8A091FB68E8F7179E5625`。

@@ -1467,3 +1467,11 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 收尾code review補上UTC calendar date validation與`2026-02-31`負向測試；因此前一段的`0.1.35/0.1.28/0.1.51`已被取代，不是consumer final graph。
 - final exact packages為Renderer `0.1.36`（SHA-256 `9DCF3DA6B5D9C576B0B0CB701FB7209CC3408ECA9ED76A559AE6B96CD113B03B`）、Interactive.Client `0.1.29`（`26461AD96C5F371DC943CD165CE079AF964E3F896D5CCC5882CB979EA2D1E98F`）、Ptcs.Client `0.1.52`（`442A05388DBD1E4956703C47E65A286CA108DC4F9E26D558C94460571229FD9C`）；三顆NuGet push均回`Created`。
 - final2 clean staging gates：Renderer 34/34、Interactive.Client 4/4、Ptcs.Client 16/16與F# Playwright PASS；All=1,899ms、pointer p95=44.03ms/max=97ms、24 batched paths、query latest-window與identity invariants通過。
+
+## 2026-09-22 - Renderer scheduling、row axis與progressive coverage owner completion
+
+- 完成`RFC-PTCS-DYNAMIC-0019/0020`：Renderer preparation、row mount/refresh改為generation-aware frame scheduling；每列使用adaptive event-time axis與plot-bounded crosshair，loaded coverage與visible cap分離。
+- boundary pan沿用`VisibleRangeChanged`要求document authority內相鄰範圍；3820→4220 merge後以event-time anchor重定位，visible維持不超過4000並顯示`Max 4000`。provider query、source merge/cache與真FSSTL E2E仍由Daedalus consumer持有。
+- Focused gates通過：Renderer 37/37、Interactive.Client 4/4、Ptcs.Client 16/16、Interactive bundle verifier與F# Playwright。owner All/marker/document/progressive phase均無 >100ms task；300次cursor transition p95=72ms/max=165ms；Playwright MCP確認七列axis、coverage擴張與console 0。
+- 發布Renderer `0.1.37`、Interactive.Client `0.1.30`、Ptcs.Client `0.1.53`，NuGet push均回`Created`。SHA-256依序為`9440140AE57DA41A0CE058DE4DF97E56C577A434871810447C02C12A2D6F5931`、`14109B5C85B6A675F37EFD27A102BAE9BCC4E6598991B2AF80FB2D5C98B6890E`、`45B3A6F3E589EA7820FD360255C324EBEA3B674E6BC8A091FB68E8F7179E5625`。
+- Package gate在push前抓到Interactive manifest仍為0.1.29；修正為0.1.30、重打包並再次驗證後才發布。canonical checkout的WebSharper compiler仍無diagnostic崩潰，release採乾淨staging build；source與exact packages均已由focused tests驗證。

@@ -139,3 +139,9 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-061 | `ChangeTaQuery`回`Accepted`後，Renderer須從已合併的base/reference temporal axis依`[FromUtc, ToUtcExclusive)`選local visible window；不得修改document/data identity、authoritative revision或清除loaded cache。 |
 | DYN-TA-REQ-062 | action transport維持one-in-flight；query pending期間的新Apply只保留最新intent，舊generation response可合併authoritative frames但不得覆蓋較新viewport。 |
 | DYN-TA-REQ-063 | query range invalid、時間非UTC、或與loaded observations無交集時須保留current viewport並回明確feedback；不得silent切All、補gap或把Accepted冒充資料更新。 |
+| DYN-TA-REQ-064 | 每個visible TA row必須依自身plot width與reference event-time產生adaptive time axis；60K/4000須可辨識日期、5K/300須可辨識小時，窄viewport減少ticks且labels不得重疊。 |
+| DYN-TA-REQ-065 | shared crosshair在每列只覆蓋該列plot bounds，不可延伸到header/legend；resize、row高度與topology改變後仍須使用current geometry。 |
+| DYN-TA-REQ-066 | loaded temporal coverage可大於visible cap；visible base bars永遠不得超過4000。loaded大於cap時最大preset須明示為Max 4000，不可宣稱All。 |
+| DYN-TA-REQ-067 | 使用者越過loaded左右boundary時，Renderer須以既有VisibleRangeChanged要求相鄰authoritative coverage；範圍只可來自document query boundary與已載入event-time，不得由scale推算分鐘或補gap。 |
+| DYN-TA-REQ-068 | prepend/append coverage merge後須以event-time anchor重定位viewport；只有current generation與符合方向的coverage change可套用pending pan intent，stale/反方向response可擴充cache但不得回捲viewport。 |
+| DYN-TA-REQ-069 | Renderer自有initial prepare、row mount/refresh與document replacement須切成bounded scheduled slices並以generation取消stale work；owner interaction phase不得出現大於100ms main-thread task，cursor transport-observed p95須低於125ms。 |

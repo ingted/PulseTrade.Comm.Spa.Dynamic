@@ -57,6 +57,11 @@ type TaVisibleWindow =
       Count: int }
 
 [<RequireQualifiedAccess>]
+type TaCoverageDirection =
+    | Earlier
+    | Later
+
+[<RequireQualifiedAccess>]
 type TaQueryViewportSelection =
     | NotRequested
     | Selected of TaVisibleWindow
@@ -483,6 +488,59 @@ module RendererModel =
           ResolvedAxes = axes
           ResolvedSeries = resolved }
 
+    let prepareDataScheduled schedule data onCompleted =
+        let entries = data |> Map.toArray
+        let mutable axes = Map.empty
+        let mutable resolved = Map.empty
+
+        let rec prepareSeries index =
+            if index >= entries.Length then
+                onCompleted
+                    { RawData = data
+                      ResolvedAxes = axes
+                      ResolvedSeries = resolved }
+            else
+                schedule (fun () ->
+                    let dataRef, value = entries[index]
+                    let next =
+                        match value with
+                        | SduiValue.Array values ->
+                            values
+                            |> Array.map (fun item ->
+                                let temporal, payload = pointPayload item
+                                { Payload = payload; Temporal = temporal })
+                            |> Some
+                        | _ ->
+                            match tryTemporalSeries value with
+                            | Some(axisRef, axisRevision, points) ->
+                                match Map.tryFind axisRef axes with
+                                | Some axis when axis.Revision = axisRevision ->
+                                    points
+                                    |> Array.choose (fun (position, payload) ->
+                                        Map.tryFind position axis.Points
+                                        |> Option.map (fun temporal -> { Payload = Some payload; Temporal = Some temporal }))
+                                    |> Some
+                                | _ -> Some [||]
+                            | None -> None
+
+                    match next with
+                    | Some points -> resolved <- Map.add dataRef points resolved
+                    | None -> ()
+                    prepareSeries (index + 1))
+
+        let rec prepareAxes index =
+            if index >= entries.Length then
+                prepareSeries 0
+            else
+                schedule (fun () ->
+                    let _, value = entries[index]
+                    match prepareAxis value with
+                    | Some(axisRef, axis) -> axes <- Map.add axisRef axis axes
+                    | None -> ()
+                    prepareAxes (index + 1))
+
+        prepareAxes 0
+
     let prepareDataIncremental previous data =
         let axisUpdates =
             data
@@ -691,6 +749,39 @@ module RendererModel =
                           Temporal = openPoint.Temporal }
                 | _ -> None)
 
+    let sampleResolvedEvenly maximumCount (values: TaResolvedSeriesPoint array) =
+        if maximumCount <= 0 || values.Length = 0 then
+            [||]
+        elif values.Length <= maximumCount then
+            values
+        elif maximumCount = 1 then
+            [| values[values.Length - 1] |]
+        else
+            [| for sampleIndex in 0 .. maximumCount - 1 do
+                   let sourceIndex =
+                       int (Math.Round(float sampleIndex * float (values.Length - 1) / float (maximumCount - 1)))
+                   yield values[sourceIndex] |]
+
+    let candleSeriesForTracePreparedSampled maximumCount (trace: TaTraceSpec) prepared =
+        match trace.CandleDataRefs with
+        | None ->
+            resolvedSeriesPrepared trace.DataRef prepared
+            |> sampleResolvedEvenly maximumCount
+            |> candleSeriesFromResolved
+        | Some _ ->
+            let values = candleSeriesForTracePrepared trace prepared
+            if maximumCount <= 0 || values.Length = 0 then
+                [||]
+            elif values.Length <= maximumCount then
+                values
+            elif maximumCount = 1 then
+                [| values[values.Length - 1] |]
+            else
+                [| for sampleIndex in 0 .. maximumCount - 1 do
+                       let sourceIndex =
+                           int (Math.Round(float sampleIndex * float (values.Length - 1) / float (maximumCount - 1)))
+                       yield values[sourceIndex] |]
+
     let candleSeriesForTrace (trace: TaTraceSpec) data =
         candleSeriesForTracePrepared trace (prepareData data)
 
@@ -800,12 +891,26 @@ module RendererModel =
         | TaTraceKind.Marker -> [||]
 
     let traceTimestampsPrepared (trace: TaTraceSpec) prepared =
-        match trace.Kind with
-        | TaTraceKind.Candlestick
-        | TaTraceKind.Volume -> candleSeriesForTracePrepared trace prepared |> Array.map _.Timestamp
-        | TaTraceKind.Line
-        | TaTraceKind.Histogram -> lineSeriesPrepared trace.DataRef prepared |> Array.map _.Timestamp
-        | TaTraceKind.Marker -> [||]
+        if trace.Kind = TaTraceKind.Marker then
+            [||]
+        else
+            let dataRef =
+                match trace.CandleDataRefs with
+                | Some refs -> refs.OpenRef
+                | None -> trace.DataRef
+            let resolved = resolvedSeriesPrepared dataRef prepared
+            let temporal =
+                resolved
+                |> Array.choose (fun point -> point.Temporal |> Option.map _.IntervalStartUtc)
+            if temporal.Length > 0 then
+                temporal
+            else
+                match trace.Kind with
+                | TaTraceKind.Candlestick
+                | TaTraceKind.Volume -> candleSeriesForTracePrepared trace prepared |> Array.map _.Timestamp
+                | TaTraceKind.Line
+                | TaTraceKind.Histogram -> lineSeriesFromResolved resolved |> Array.map _.Timestamp
+                | TaTraceKind.Marker -> [||]
 
     let traceTopologyTimestampsPrepared (trace: TaTraceSpec) prepared =
         if trace.Kind = TaTraceKind.Marker then
@@ -833,12 +938,35 @@ module RendererModel =
         |> Option.map snd
         |> Option.defaultValue [||]
 
+    let referenceTimelinePrepared (rows: TaRowSpec array) prepared =
+        let traces =
+            rows
+            |> Array.filter _.Visible
+            |> Array.collect effectiveTraces
+            |> Array.filter _.Visible
+
+        traces
+        |> Array.map (fun trace -> trace, traceTimestampsPrepared trace prepared |> Array.distinct)
+        |> Array.filter (fun (_, timestamps) -> timestamps.Length > 0)
+        |> Array.sortByDescending (fun (trace, timestamps) -> timestamps.Length, trace.Kind = TaTraceKind.Candlestick)
+        |> Array.tryHead
+        |> Option.map snd
+        |> Option.defaultValue [||]
+
     let rowTimeline (row: TaRowSpec) data =
         let traces = effectiveTraces row |> Array.filter _.Visible
         traces
         |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
         |> Option.orElseWith (fun () -> traces |> Array.tryHead)
         |> Option.map (fun trace -> traceTimestamps trace data |> Array.distinct)
+        |> Option.defaultValue [||]
+
+    let rowTimelinePrepared (row: TaRowSpec) prepared =
+        let traces = effectiveTraces row |> Array.filter _.Visible
+        traces
+        |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
+        |> Option.orElseWith (fun () -> traces |> Array.tryHead)
+        |> Option.map (fun trace -> traceTimestampsPrepared trace prepared |> Array.distinct)
         |> Option.defaultValue [||]
 
     let referenceTimelineForDocument (document: TaWorkspaceDocument) data =
@@ -849,6 +977,15 @@ module RendererModel =
             |> Option.map (fun row -> rowTimeline row data)
             |> Option.defaultValue [||]
         | None -> referenceTimeline document.Rows data
+
+    let referenceTimelineForDocumentPrepared (document: TaWorkspaceDocument) prepared =
+        match document.BaseRowId with
+        | Some baseRowId ->
+            document.Rows
+            |> Array.tryFind (fun row -> row.Visible && row.RowId = baseRowId)
+            |> Option.map (fun row -> rowTimelinePrepared row prepared)
+            |> Option.defaultValue [||]
+        | None -> referenceTimelinePrepared document.Rows prepared
 
     let traceReferencePoints (trace: TaTraceSpec) data =
         match trace.Kind with
@@ -1031,6 +1168,21 @@ module RendererModel =
                 |> Option.bind _.Temporal
                 |> Option.map _.IntervalEndUtc
             | TaTraceKind.Marker -> None)
+
+    let tryBasePointIntervalEndPrepared row prepared timestamp =
+        effectiveTraces row
+        |> Array.filter _.Visible
+        |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
+        |> Option.bind (fun trace ->
+            let dataRef =
+                match trace.CandleDataRefs with
+                | Some refs -> refs.OpenRef
+                | None -> trace.DataRef
+            resolvedSeriesPrepared dataRef prepared
+            |> Array.tryPick (fun point ->
+                point.Temporal
+                |> Option.filter (fun temporal -> temporal.IntervalStartUtc = timestamp)
+                |> Option.map _.IntervalEndUtc))
 
     let timestampInInterval timestamp (metadata: TaTemporalPointPresentation) =
         compare timestamp metadata.IntervalStartUtc >= 0
@@ -1409,6 +1561,27 @@ module RendererModel =
                       StartEventTimeUtc = startTime
                       EndEventTimeExclusiveUtc = value })
 
+    let visibleEventRangePrepared (document: TaWorkspaceDocument) prepared window =
+        match tryBaseRow document with
+        | None -> None
+        | Some(baseRowId, baseRow) ->
+            let timeline = rowTimelinePrepared baseRow prepared
+            let selected = selectWindow window timeline
+            if selected.Length = 0 then None
+            else
+                let startTime = selected[0]
+                let endIndex = window.StartIndex + selected.Length
+                let endExclusive =
+                    if endIndex < timeline.Length then Some timeline[endIndex]
+                    else tryBasePointIntervalEndPrepared baseRow prepared selected[selected.Length - 1]
+
+                endExclusive
+                |> Option.filter (fun value -> compare value startTime > 0)
+                |> Option.map (fun value ->
+                    { BaseRowId = baseRowId
+                      StartEventTimeUtc = startTime
+                      EndEventTimeExclusiveUtc = value })
+
     let paddedRange fallbackLow fallbackHigh values =
         if Array.isEmpty values then fallbackLow, fallbackHigh
         else
@@ -1431,6 +1604,75 @@ module RendererModel =
             [| 0; timestamps.Length / 2; timestamps.Length - 1 |]
             |> Array.distinct
             |> Array.map (fun index -> index, timestamps[index])
+
+    let adaptiveTimeLabels minimumSpacing width (timestamps: string array) =
+        if timestamps.Length = 0 then
+            [||]
+        elif timestamps.Length = 1 then
+            [| 0, timestamps[0] |]
+        else
+            let spacing = max 48.0 minimumSpacing
+            let targetCount = max 2 (min 16 (int (Math.Floor(max spacing width / spacing))))
+            let count = min timestamps.Length targetCount
+            [| for tickIndex in 0 .. count - 1 do
+                   let sourceIndex =
+                       int (Math.Round(float tickIndex * float (timestamps.Length - 1) / float (count - 1)))
+                   yield sourceIndex, timestamps[sourceIndex] |]
+            |> Array.distinctBy fst
+
+    let coverageExtended direction (oldTimeline: string array) (newTimeline: string array) =
+        if oldTimeline.Length = 0 || newTimeline.Length <= oldTimeline.Length then
+            false
+        else
+            match direction with
+            | TaCoverageDirection.Earlier ->
+                newTimeline |> Array.tryFindIndex ((=) oldTimeline[0]) |> Option.exists (fun index -> index > 0)
+            | TaCoverageDirection.Later ->
+                newTimeline
+                |> Array.tryFindIndex ((=) oldTimeline[oldTimeline.Length - 1])
+                |> Option.exists (fun index -> index < newTimeline.Length - 1)
+
+    let tryReanchorWindow minimumCount maximumCount delta (oldTimeline: string array) (newTimeline: string array) oldWindow =
+        let oldBounded = clampWindow minimumCount maximumCount oldTimeline.Length oldWindow
+        oldTimeline
+        |> Array.tryItem oldBounded.StartIndex
+        |> Option.bind (fun anchor -> newTimeline |> Array.tryFindIndex ((=) anchor))
+        |> Option.map (fun anchorIndex ->
+            clampWindow
+                minimumCount
+                maximumCount
+                newTimeline.Length
+                { StartIndex = anchorIndex + delta
+                  Count = oldBounded.Count })
+
+    let tryAdjacentCoverageRange direction maximumBasePoints (document: TaWorkspaceDocument) prepared =
+        document.BaseRowId
+        |> Option.bind (fun baseRowId ->
+            document.Rows
+            |> Array.tryFind (fun row -> row.RowId = baseRowId)
+            |> Option.bind (fun baseRow ->
+                let timeline = referenceTimelineForDocumentPrepared document prepared
+                let query = queryDraft document.DefaultView
+                let candidate =
+                    match direction, Array.tryHead timeline, Array.tryLast timeline with
+                    | TaCoverageDirection.Earlier, Some loadedFirst, _ ->
+                        Some(query.FromUtc, loadedFirst)
+                    | TaCoverageDirection.Later, _, Some loadedLast ->
+                        match tryBasePointIntervalEndPrepared baseRow prepared loadedLast with
+                        | Some loadedEnd -> Some(loadedEnd, query.ToUtcExclusive)
+                        | _ -> None
+                    | _ -> None
+
+                candidate
+                |> Option.bind (fun (startUtc, endUtc) ->
+                    match tryUtcTimestamp startUtc, tryUtcTimestamp endUtc with
+                    | Some normalizedStart, Some normalizedEnd when normalizedStart.CompareTo(normalizedEnd) < 0 ->
+                        Some
+                            { BaseRowId = baseRowId
+                              StartEventTimeUtc = startUtc
+                              EndEventTimeExclusiveUtc = endUtc
+                              MaximumBasePoints = max 1 maximumBasePoints }
+                    | _ -> None)))
 
     let cursorSnapshotForRows (document: TaWorkspaceDocument) visibleRows data window cursorIndex =
         let timeline = referenceTimelineForDocument document data

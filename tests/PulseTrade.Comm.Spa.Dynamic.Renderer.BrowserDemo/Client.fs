@@ -82,6 +82,29 @@ module Client =
             [| { Key = "reason"; Label = "Reason"; Value = reason }
                { Key = "source"; Label = "Source"; Value = "BrowserDemo" } |] }
 
+    let markerSeries count replacementLabel =
+        let point position markers =
+            SduiValue.Object(
+                Map [ "position", SduiValue.Number(float position)
+                      "value", TaMarkerCodec.encodeBucket markers ])
+        let stackedPosition = count - 8
+        SduiValue.Object(
+            Map [ "_type", SduiValue.Text "temporal-series.v1"
+                  "axisRef", SduiValue.Text "axis.1k"
+                  "axisRevision", SduiValue.Number 1.0
+                  "points",
+                  SduiValue.Array
+                      [| point
+                             (count - 12)
+                             [| marker "long-entry" (timestamp (count - 12)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some("LE" + replacementLabel)) ("long entry signal" + replacementLabel) |]
+                         point
+                             stackedPosition
+                             [| marker "short-entry" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#000000" (Some "SE") "short entry signal"
+                                marker "long-exit" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#dc2626" (Some "LX") "long take-profit fill" |]
+                         point
+                             (count - 2)
+                             [| marker "short-exit" (timestamp (count - 2)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Solid "#16a34a" (Some "SX") "short stop-loss fill" |] |] ])
+
     let sampleSeries count =
         let sharedAxisRef = "axis.1k"
         let sharedAxis =
@@ -118,28 +141,7 @@ module Client =
                                             21820.0
                                             + float seriesIndex * 0.25
                                             + Math.Sin(float index / (6.0 + float (seriesIndex % 5))) * (28.0 + float (seriesIndex % 3))) ]))) ])
-        let markerSeries =
-            let point position markers =
-                SduiValue.Object(
-                    Map [ "position", SduiValue.Number(float position)
-                          "value", TaMarkerCodec.encodeBucket markers ])
-            let stackedPosition = count - 8
-            SduiValue.Object(
-                Map [ "_type", SduiValue.Text "temporal-series.v1"
-                      "axisRef", SduiValue.Text sharedAxisRef
-                      "axisRevision", SduiValue.Number 1.0
-                      "points",
-                      SduiValue.Array
-                          [| point
-                                 (count - 12)
-                                 [| marker "long-entry" (timestamp (count - 12)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some "LE") "long entry signal" |]
-                             point
-                                 stackedPosition
-                                 [| marker "short-entry" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#000000" (Some "SE") "short entry signal"
-                                    marker "long-exit" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#dc2626" (Some "LX") "long take-profit fill" |]
-                             point
-                                 (count - 2)
-                                 [| marker "short-exit" (timestamp (count - 2)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Solid "#16a34a" (Some "SX") "short stop-loss fill" |] |] ])
+        let markers = markerSeries count ""
         let candles =
             Array.init count (fun index ->
                 let baseline = 21800.0 + float index * 1.7 + Math.Sin(float index / 4.0) * 24.0
@@ -224,7 +226,7 @@ module Client =
             yield "series.price-5k", SduiValue.Array fiveMinuteCandles
             yield "series.volume", SduiValue.Array candles
             yield "series.sma", sharedScalarSeries 0
-            yield "series.markers", markerSeries
+            yield "series.markers", markers
             for seriesIndex in 1 .. capacitySeriesCount - 1 do
                 yield "series.capacity-" + string seriesIndex, sharedScalarSeries seriesIndex
             yield "series.sma-5k", SduiValue.Array fiveMinuteSma
@@ -243,6 +245,60 @@ module Client =
                         "quality", SduiValue.Text "complete"
                     ])
         ]
+
+    let appendArrayValue values = function
+        | SduiValue.Array existing -> SduiValue.Array(Array.append existing values)
+        | existing -> existing
+
+    let appendObjectArray propertyName values = function
+        | SduiValue.Object fields ->
+            match fields |> Map.tryFind propertyName with
+            | Some(SduiValue.Array existing) ->
+                SduiValue.Object(fields |> Map.add propertyName (SduiValue.Array(Array.append existing values)))
+            | _ -> SduiValue.Object fields
+        | existing -> existing
+
+    let updateSeries key update data =
+        match data |> Map.tryFind key with
+        | Some existing -> data |> Map.add key (update existing)
+        | None -> data
+
+    let extendCoverageData startIndex endExclusive data =
+        let indexes = [| startIndex .. endExclusive - 1 |]
+        let axisPoints =
+            indexes
+            |> Array.map (fun index ->
+                SduiValue.Object(
+                    Map [ "position", SduiValue.Number(float index)
+                          "sourceIntervalId", SduiValue.Text("es-1k:" + string index)
+                          "scaleKey", SduiValue.Text "1K"
+                          "intervalStartUtc", SduiValue.Text(timestamp index)
+                          "intervalEndUtc", SduiValue.Text(timestamp (index + 1))
+                          "observedThroughUtc", SduiValue.Text(timestamp (index + 1))
+                          "availableAtUtc", SduiValue.Text(timestamp (index + 1))
+                          "finality", SduiValue.Text "final"
+                          "projection", SduiValue.Text "candle-span"
+                          "quality", SduiValue.Text "complete" ]))
+        let candles =
+            indexes
+            |> Array.map (fun index ->
+                let baseline = 21800.0 + float index * 1.7 + Math.Sin(float index / 4.0) * 24.0
+                let closeValue = baseline + Math.Cos(float index / 3.0) * 9.0
+                temporalPoint
+                    ("es-1k:" + string index)
+                    "1K"
+                    (timestamp index)
+                    (timestamp (index + 1))
+                    (timestamp (index + 1))
+                    (Some(timestamp (index + 1)))
+                    "final"
+                    "candle-span"
+                    "complete"
+                    (candlePayload baseline closeValue (900.0 + float ((index * 73) % 520))))
+        data
+        |> updateSeries "axis.1k" (appendObjectArray "points" axisPoints)
+        |> updateSeries "series.price" (appendArrayValue candles)
+        |> updateSeries "series.volume" (appendArrayValue candles)
 
     let row rowId kind dataRef weight =
         { RowId = rowId
@@ -389,7 +445,12 @@ module Client =
                        "change-query"
                        "shared-cursor-changed"
                        "visible-range-changed" |]
-                  DefaultView = Map [ "visibleBars", SduiValue.Number 48.0 ] }
+                  DefaultView =
+                    Map [
+                        "visibleBars", SduiValue.Number 48.0
+                        "query.fromUtc", SduiValue.Text "2026-08-01T00:00:00.0000000+00:00"
+                        "query.toUtcExclusive", SduiValue.Text "2026-10-01T00:00:00.0000000+00:00"
+                    ] }
           Data = sampleSeries capacityPointCount
           DocumentRevision = 1L
           DataRevision = 42L
@@ -424,7 +485,9 @@ module Client =
 
     [<SPAEntryPoint>]
     let Main () =
+        let mainStartedAt = DateTime.UtcNow
         let initialState = sampleState ()
+        let sampleBuildMilliseconds = DateTime.UtcNow.Subtract(mainStartedAt).TotalMilliseconds
         let runtimeState = Var.Create initialState
         let actionCount = Var.Create 0
         let lastAction = Var.Create "none"
@@ -432,6 +495,7 @@ module Client =
         let mutable actionInFlight = false
         let previewStreamGeneration = Var.Create 0
         let previewStreamUpdates = Var.Create 0
+        let markerReplacementCount = Var.Create 0
         let applyAuthoritativeAction action =
             let current = runtimeState.Value
 
@@ -483,6 +547,28 @@ module Client =
                                 { ReasonCode = "demo-action-received"
                                   Message = templateKey + " accepted with " + string values.Length + " editor inputs"
                                   Recoverable = true } }
+            | SduiAction.VisibleRangeChanged(_, change), _ ->
+                let currentCount =
+                    current.Data
+                    |> Map.tryFind "series.price"
+                    |> Option.bind (function SduiValue.Array values -> Some values.Length | _ -> None)
+                    |> Option.defaultValue 0
+                let loadedEnd = timestamp currentCount
+                if change.EndEventTimeExclusiveUtc.CompareTo(loadedEnd) > 0 then
+                    let nextCount = max currentCount (capacityPointCount + 400)
+                    let rec appendNextChunk startIndex =
+                        if startIndex < nextCount then
+                            WebSharper.JavaScript.JS.RequestAnimationFrame(fun _ ->
+                                let latest = runtimeState.Value
+                                let endExclusive = min nextCount (startIndex + 100)
+                                runtimeState.Value <-
+                                    { latest with
+                                        Data = extendCoverageData startIndex endExclusive latest.Data
+                                        DataRevision = latest.DataRevision + 1L
+                                        LastTransportSequence = latest.LastTransportSequence + 1L }
+                                appendNextChunk endExclusive)
+                            |> ignore
+                    appendNextChunk currentCount
             | SduiAction.ResetCanvas _, _ ->
                 runtimeState.Value <-
                     { initialState with
@@ -629,11 +715,32 @@ module Client =
                           CanvasInstanceId = CanvasInstanceId "ta-demo-canvas-replacement" }
                     Document = nextDocument }
 
+        let replaceMarkers () =
+            let replacement = markerReplacementCount.Value + 1
+            markerReplacementCount.Value <- replacement
+            let current = runtimeState.Value
+            runtimeState.Value <-
+                { current with
+                    Data = current.Data |> Map.add "series.markers" (markerSeries capacityPointCount (" replacement " + string replacement))
+                    DataRevision = current.DataRevision + 1L
+                    LastTransportSequence = current.LastTransportSequence + 1L }
+
+        let rendererStartedAt = DateTime.UtcNow
+        let rendererDoc =
+            TaWorkspaceRenderer.render
+                TaWorkspaceRenderer.defaultOptions
+                callbacks
+                runtimeState
+        let rendererSetupMilliseconds = DateTime.UtcNow.Subtract(rendererStartedAt).TotalMilliseconds
+
         div [
             attr.style "max-width:1460px; margin:0 auto; min-width:0;"
             Attr.Create "data-capacity-positions" (string capacityPointCount)
             Attr.Create "data-capacity-shared-series" (string capacitySeriesCount)
+            Attr.Create "data-sample-build-ms" (string sampleBuildMilliseconds)
+            Attr.Create "data-renderer-setup-ms" (string rendererSetupMilliseconds)
             Attr.Dynamic "data-preview-stream-updates" (previewStreamUpdates.View |> View.Map string)
+            Attr.Dynamic "data-marker-replacements" (markerReplacementCount.View |> View.Map string)
         ] [
             let demoButtonStyle = attr.style "min-height:24px; padding:2px 6px; white-space:nowrap;"
             div [ Attr.Create "data-testid" "ta-demo-callback-state"; attr.style "min-height:32px; height:auto; display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:flex-end; padding:4px 12px; background:#182a42; color:#d9e5f3; font-size:11px;" ] [
@@ -646,15 +753,13 @@ module Client =
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-paused"; on.click (fun _ _ -> setPaused ()) ] [ text "Paused" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-stale"; on.click (fun _ _ -> setStale ()) ] [ text "Stale" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-document"; on.click (fun _ _ -> replaceDocumentWithSameRevision ()) ] [ text "Replace document" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-markers"; on.click (fun _ _ -> replaceMarkers ()) ] [ text "Replace markers" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-reject-next"; on.click (fun _ _ -> rejectNext.Value <- true) ] [ text "Reject next" ]
                 text "callback actions "
                 textView (actionCount.View |> View.Map string)
                 text " / last "
                 textView lastAction.View
             ]
-            TaWorkspaceRenderer.render
-                TaWorkspaceRenderer.defaultOptions
-                callbacks
-                runtimeState
+            rendererDoc
         ]
         |> Doc.RunById "app"

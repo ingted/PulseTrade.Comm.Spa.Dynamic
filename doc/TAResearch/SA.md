@@ -308,3 +308,13 @@ generic selection不能依 intervalMinutes 補點，也不能假設base timeline
 client contract同時間只能有一筆pending action。為了讓快速連續的From/To Apply達到latest-query-wins，不能讓Renderer平行呼叫callback；正確做法是 transport外的單槽 replaceable queue。舊response仍可讓其 frames通過canonical reducer，但generation stale時不套local viewport；settled後只送最後一筆queued query。非query remote actions仍維持busy拒絕，避免擴張整個mutation state machine。
 
 這個切片不改OwnerFingerprint、DocumentId、CanvasInstanceId、DocumentRevision、DataRevision或IndexedDB authority。local committed window是presentation state；其更新不得再送`VisibleRangeChanged`，否則會形成 query/action迴圈。Daedalus仍負責server query validation、bounded patch與真MDCQ gate。
+
+## 25. 2026-09-22 Row axis、progressive coverage與main-thread scheduling analysis
+
+時間軸與crosshair是row-local presentation geometry，不是provider calendar。每列只能從authoritative reference observations取event-time，以row width與minimum label spacing選bounded ticks；60K長區間保留日期語意，5K短區間保留小時語意。crosshair同樣從current row plot top/height計算，不能沿用最後一列或舊topology。
+
+`MaximumVisibleBars`限制的是可視base bars，不是loaded cache。把loaded也裁成4000會讓overview失去已載入歷史、pan只能clamp，並迫使consumer重查已持有資料。Renderer在boundary只送既有`VisibleRangeChanged`；查詢上下界取自document query，source identity、event-time去重、provider merge與cache仍由Daedalus持有。
+
+prepend會改變array index，因此viewport不能以index維持。pending intent保存舊event-time anchor、方向、pan delta與generation；資料合併後先驗coverage確實朝要求方向擴張，再以event-time定位。stale或反方向response仍可成為loaded cache，但不得覆蓋較新的viewport intent。
+
+3,820 positions x 7 rows的主要凍結來自Renderer同步prepare與row mount/refresh，不是source數量本身。owner package以frame scheduler切分data entries與rows，generation變更時丟棄舊commit；source完整性、Y-domain、cursor與revision不因排程改變。fixture建資料是consumer/demo成本，與Renderer owner phase分開量測。

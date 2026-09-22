@@ -1094,6 +1094,86 @@ let tests =
             let missingPeriod = moved |> Array.filter (fun value -> value.Path <> "period")
             Expect.isNonEmpty (RendererModel.validateEditorSubmission schema missingPeriod) "Required scalar omission should fail before submit."
 
+        testCase "scheduled preparation preserves synchronous prepared data semantics" <| fun _ ->
+            let values =
+                [| for index in 0 .. 31 do
+                       yield candle $"2026-09-22T00:{index:D2}:00Z" 100.0 104.0 98.0 (100.0 + float index) 50.0 |]
+            let data = Map [ "series.price", SduiValue.Array values ]
+            let expected = RendererModel.prepareData data
+            let queue = Collections.Generic.Queue<unit -> unit>()
+            let mutable actual: TaPreparedRendererData option = None
+            RendererModel.prepareDataScheduled queue.Enqueue data (fun prepared -> actual <- Some prepared)
+            Expect.isNone actual "scheduled preparation must not complete synchronously"
+            while queue.Count > 0 do queue.Dequeue() ()
+            Expect.equal actual (Some expected) "scheduled preparation must preserve the pure prepared-data result"
+
+        testCase "adaptive axes and coverage reanchor preserve event-time intent" <| fun _ ->
+            let hourly = [| for index in 0 .. 3999 -> DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero).AddHours(float index).ToString("O") |]
+            let fiveMinute = [| for index in 0 .. 299 -> DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float index * 5.0).ToString("O") |]
+            let hourlyLabels = RendererModel.adaptiveTimeLabels 92.0 1552.0 hourly
+            let fiveMinuteLabels = RendererModel.adaptiveTimeLabels 92.0 1552.0 fiveMinute
+            Expect.isTrue (hourlyLabels.Length >= 12 && hourlyLabels.Length <= 16) "wide 60K coverage needs bounded day-readable ticks"
+            Expect.isTrue (hourlyLabels |> Array.map snd |> Array.distinctBy (fun value -> value.Substring(0, 10)) |> Array.length > 1) "60K labels must expose multiple dates"
+            Expect.isTrue (fiveMinuteLabels |> Array.map snd |> Array.exists (fun value -> value.Substring(11, 2) <> "00")) "5K labels must retain hour positions"
+
+            let oldTimeline = [| for index in 200 .. 4199 -> $"T{index:D4}" |]
+            let prependedTimeline = [| for index in 0 .. 4199 -> $"T{index:D4}" |]
+            let earlier =
+                RendererModel.tryReanchorWindow 12 4000 -100 oldTimeline prependedTimeline { StartIndex = 0; Count = 4000 }
+                |> Option.get
+            Expect.equal earlier { StartIndex = 100; Count = 4000 } "prepend merge must apply the pending leftward pan relative to the old event-time anchor"
+            Expect.isTrue (RendererModel.coverageExtended TaCoverageDirection.Earlier oldTimeline prependedTimeline) "prepend must be classified as earlier coverage"
+
+            let initialTimeline = [| for index in 0 .. 3999 -> $"T{index:D4}" |]
+            let appendedTimeline = [| for index in 0 .. 4199 -> $"T{index:D4}" |]
+            let later =
+                RendererModel.tryReanchorWindow 12 4000 100 initialTimeline appendedTimeline { StartIndex = 0; Count = 4000 }
+                |> Option.get
+            Expect.equal later { StartIndex = 100; Count = 4000 } "append merge must apply the pending rightward pan without exceeding the visible cap"
+            Expect.isTrue (RendererModel.coverageExtended TaCoverageDirection.Later initialTimeline appendedTimeline) "append must be classified as later coverage"
+            Expect.isFalse (RendererModel.coverageExtended TaCoverageDirection.Later oldTimeline prependedTimeline) "opposite-direction extension must not satisfy a later intent"
+
+        testCase "adjacent coverage uses explicit document authority boundaries" <| fun _ ->
+            let start0 = "2026-09-22T01:00:00Z"
+            let end0 = "2026-09-22T01:01:00Z"
+            let end1 = "2026-09-22T01:02:00Z"
+            let price =
+                SduiValue.Array
+                    [| temporalPoint "p0" "1K" start0 end0 end0 None PointFinality.Final TemporalProjection.CandleSpan None (Some(candle start0 100.0 102.0 99.0 101.0 10.0))
+                       temporalPoint "p1" "1K" end0 end1 end1 None PointFinality.Final TemporalProjection.CandleSpan None (Some(candle end0 101.0 103.0 100.0 102.0 11.0)) |]
+            let row =
+                { RowId = "price"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "series.price"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Traces = [||]
+                  Options = Map.empty }
+            let document =
+                { WorkspaceId = "coverage"
+                  Title = "Coverage"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some row.RowId
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [| "visible-range-changed" |]
+                  DefaultView =
+                    Map [
+                        "query.fromUtc", SduiValue.Text "2026-09-01T00:00:00Z"
+                        "query.toUtcExclusive", SduiValue.Text "2026-10-01T00:00:00Z"
+                    ] }
+            let prepared = RendererModel.prepareData (Map [ row.DataRef, price ])
+            let earlier = RendererModel.tryAdjacentCoverageRange TaCoverageDirection.Earlier 4000 document prepared |> Option.get
+            let later = RendererModel.tryAdjacentCoverageRange TaCoverageDirection.Later 4000 document prepared |> Option.get
+            Expect.equal earlier.StartEventTimeUtc "2026-09-01T00:00:00Z" "earlier request must use the explicit authorized query boundary"
+            Expect.equal (DateTimeOffset.Parse earlier.EndEventTimeExclusiveUtc) (DateTimeOffset.Parse start0) "earlier request must stop at the first loaded event time"
+            Expect.equal (DateTimeOffset.Parse later.StartEventTimeUtc) (DateTimeOffset.Parse end1) "later request must begin at the actual final interval end"
+            Expect.equal later.EndEventTimeExclusiveUtc "2026-10-01T00:00:00Z" "later request must use the explicit authorized query boundary"
+            Expect.equal later.MaximumBasePoints 4000 "coverage request must preserve the visible cap"
+
         testCase "renderer package remains host neutral" <| fun _ ->
             let assembly = typeof<TaRendererOptions>.Assembly
             let dependencies = assembly.GetReferencedAssemblies() |> Array.map _.Name |> Set.ofArray

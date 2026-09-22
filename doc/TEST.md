@@ -680,3 +680,9 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-553 | Cache migration | schema 2 miss/resync；schema 3 rehydrate後paused-for-resync；v1 durable payload可讀 | PASS；PTCS 14/14、Ptcs.Client 16/16、Interactive 4/4 |
 | DYN-T-554 | Runtime invariant | marker-only patch不改candle refs、Y-domain、numeric legend、time slot或cursor hot path | PASS；Renderer model/unit與3,820-bar browser cadence |
 | DYN-T-555 | Owner browser/client/package | desktop/mobile PTCS browser-demo／Interactive Client exact graph與typed minimal runtime v2 frame | PASS；owner 118/118、六包NuGet Created、Host/E2EQ/GW consumers通過；不含Daedalus真FSSTL/TradeCore run |
+| DYN-T-556 | Scheduled renderer | async preparation與sync結果等價；stale generation不commit；row mount/refresh逐frame | PASS；Renderer 37/37 |
+| DYN-T-557 | Per-row adaptive axes | 60K/4000日期、5K/300小時、每列axis、窄viewport無重疊 | PASS；model、F# Playwright與Playwright MCP |
+| DYN-T-558 | Plot-bounded crosshair | 每列crosshair覆蓋current plot bounds，300 transitions不重建chart | PASS；F# Playwright geometry/cadence |
+| DYN-T-559 | Progressive coverage model | query boundary、Earlier/Later、prepend event-time reanchor、stale/反方向intent保護 | PASS；Renderer 37/37 |
+| DYN-T-560 | Progressive coverage browser | 3820→4220、visible<=4000、Max 4000、overview/callback/console gate | PASS；F# Playwright與Playwright MCP |
+| DYN-T-561 | Main-thread/package release | owner phases無 >100ms task，cursor p95<125ms/max<400ms，exact graph一致 | PASS；phase max 62.25/53.78/34.56/70.34ms，cursor p95=72ms/max=165ms |
