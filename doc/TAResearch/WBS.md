@@ -34,11 +34,12 @@ Test ID: `TEST-PTCS-DYNAMIC-TA-0001`
 | DYN-TA-020 | 0 | RFC-0026 Renderer owner gate | cache repaint、row legend isolation、3,820x7 bounded All/cursor path | DYN-TA-018/019 | T-079..081 | 100% | Owner completed；consumer真SPAA採版gate已交接 | [RFC-0017](../RFC/RFC-PTCS-DYNAMIC-0017.renderer-cache-row-performance-gate.md) |
 | DYN-TA-021 | 0 | RFC-0026 ChangeQuery viewport | accepted後merged-axis local selection、latest-query-wins queue、explicit no-intersection | DYN-TA-020 + TradeCore query contract | T-082..084 | 100% | Owner completed；consumer真SPAA rerun待Daedalus | [RFC-0018](../RFC/RFC-PTCS-DYNAMIC-0018.change-query-viewport.md) |
 | DYN-TA-022 | 0 | Renderer main-thread scheduling | scheduled prepare、row mount/refresh、generation cancellation、owner long-task trace | DYN-TA-020/021 | T-085,T-090 | 100% | Done；owner interaction phases無 >100ms task | [RFC-0019](../RFC/RFC-PTCS-DYNAMIC-0019.renderer-main-thread-scheduling.md) |
-| DYN-TA-023 | 0 | Row axis／crosshair／progressive coverage | 每列adaptive axis、plot-bounded crosshair、adjacent coverage、event-time reanchor、Max 4000 | DYN-TA-022 + owner coverage provider | T-086..090 | 100% | Owner completed；consumer負責真FSSTL provider merge/E2E | [RFC-0020](../RFC/RFC-PTCS-DYNAMIC-0020.time-axis-crosshair-progressive-coverage.md) |
+| DYN-TA-023 | 0 | Row axis／crosshair／progressive coverage | 每列adaptive axis、full-row SVG crosshair、adjacent coverage、event-time reanchor、Max 4000 | DYN-TA-022 + owner coverage provider | T-086..090 | 100% | Owner completed；cursor高度於RFC-0021修訂，consumer負責真FSSTL provider merge/E2E | [RFC-0020](../RFC/RFC-PTCS-DYNAMIC-0020.time-axis-crosshair-progressive-coverage.md) |
+| DYN-TA-024 | 0 | Consumer frame ingestion／row geometry | safe-frame allocation-light validation、indexed readers、single-pass candle paths、真consumer CDP closure | DYN-TA-022/023 + consumer host | T-091..093 | 95% | Owner source/package/browser與NuGet exact graph完成；只等Daedalus exact graph consumer CDP重跑 | [RFC-0021](../RFC/RFC-PTCS-DYNAMIC-0021.consumer-frame-ingestion-row-performance.md) |
 
 九月`基於FSSTL的TA Research`第一個production切片`DYN-TA-017/018`已完成；舊`DYN-TA-008`package closure只在後續TA切片需要發布直接dependency時同步處理，不擴張到legacy consumer。
 
-目前RFC-0026 final owner graph為Contracts `0.1.13`、Renderer `0.1.37`、Interactive.Client `0.1.30`與Ptcs.Client `0.1.53`。owner focused suites、package/browser cache、3,820x7 renderer、ChangeQuery、row axes、crosshair、progressive coverage與scheduled renderer gate已完成；Daedalus真SPAA採版驗收由consumer追蹤，不以owner fixture冒充新版consumer通過。中間graph `0.1.34/0.1.27/0.1.50`不可採用。
+RFC-0021 candidate owner graph為Contracts `0.1.14`、Renderer `0.1.38`、Interactive.Client `0.1.31`、Dynamic.Ptcs `0.1.39`與Ptcs.Client `0.1.54`。owner focused suites與3,820x7 browser gate已通過；Daedalus真SPAA exact-graph consumer long-task gate尚待重跑，因此不宣稱本graph final。中間graph `0.1.34/0.1.27/0.1.50`與前一版不得混用。
 
 
 ## 2. Legacy prerequisite policy

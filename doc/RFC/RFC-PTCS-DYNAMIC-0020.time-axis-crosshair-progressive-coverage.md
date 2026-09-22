@@ -42,7 +42,7 @@
 
 ### Cursor bounds
 
-- cursor `y1=plotTop`、`y2=plotTop+plotHeight`；不延伸進 header/legend。
+- 2026-09-23修訂：依stakeholder對cross-row vertical cursor的最新驗收，cursor改為`y1=0`、`y2=row SVG viewBox height`，覆蓋每列完整SVG；不延伸到SVG外的toolbar/editor或其他row。此決策由RFC-PTCS-DYNAMIC-0021取代原plot-only界線。
 - 每次 row Doc重建都從該 row kind/trace topology重新計算，不沿用另一列或舊 row height。
 
 ### Progressive coverage
@@ -74,7 +74,7 @@ loaded count超過 cap後，按鈕顯示 `Max 4000`（實際 cap值），語意�
 ## 驗收
 
 1. 每個 visible row都有 axis；1600px 的 60K/4000 與 5K/300 labels不重疊且分別可辨識日期／小時。
-2. 每列 crosshair覆蓋完整 plot，pointer sweep不重建 geometry。
+2. 每列 crosshair覆蓋完整row SVG高度，pointer sweep不重建 geometry。
 3. 右延伸 fixture由3820增至4220後，overview loaded domain增大、visible<=4000、viewport依pan intent前進；左延伸用純 model test驗 prepend event-time re-anchor。
 4. out-of-order/反方向 extension不套用 stale intent；duplicate/gap ownership仍在 consumer，不由 Renderer造資料。
 5. owner browser interaction phases無 >100ms task。

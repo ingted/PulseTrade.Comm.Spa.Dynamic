@@ -887,3 +887,19 @@ authoritative merge
 `prepareDataScheduled`分entry準備axis與resolved series，每個entry讓出frame。initial shell先render，準備完成後只有current generation可commit。row mount與refresh逐row排程，新的render/data generation使舊work no-op。CDP trace分離module bootstrap diagnostic與owner interaction phases；owner phase嚴格拒絕 >100ms task，cursor 300 transitions另以transport-observed p95 <125ms、max <400ms驗證。
 
 exact release graph更新為Contracts `[0.1.13]`、Renderer `0.1.37`、Interactive.Client `0.1.30`、Ptcs.Client `0.1.53`。
+
+## 2026-09-23 Consumer ingestion／row geometry revision 15
+
+`RuntimeValidation.unsafeValue`採兩階段：`containsUnsafeValue`不傳遞field path、不建error list並在第一個unsafe node停止；只有回true才由`collectUnsafeValue`產生原有`unsafe-key`／`script-forbidden`與精確field。這只優化合法candidate，後續temporal/schema validation不變。
+
+Renderer projection hot path：
+
+```text
+candle point -> candleSlotRange -> append shared projection buffer
+projected line slots -> TaLinePoint option[referenceCount]
+candle trace -> one scan -> 8 ordered path buckets
+```
+
+single-pass buckets的index維持`normal/projected × up/down × wick/body`原順序；path style、source-span判斷、Y-domain與reader語意不得改變。shared crosshair改為`y1=0`、`y2=current row SVG height`，F# Playwright從ancestor `viewBox`取得expected height，不寫死row kind尺寸。
+
+candidate exact graph：Contracts `[0.1.14]`、Renderer `[0.1.38]`、Interactive.Client `[0.1.31]`、Dynamic.Ptcs `[0.1.39]`、Ptcs.Client `[0.1.54]`。只有真consumer採此完整graph並通過CDP gate後才標final。

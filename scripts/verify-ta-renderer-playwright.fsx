@@ -406,7 +406,14 @@ let verifyDesktop (browser: IBrowser) =
         let crosshair = crosshairs.Nth(crosshairIndex)
         let y1 = Double.Parse(crosshair.GetAttributeAsync("y1") |> awaitTask, Globalization.CultureInfo.InvariantCulture)
         let y2 = Double.Parse(crosshair.GetAttributeAsync("y2") |> awaitTask, Globalization.CultureInfo.InvariantCulture)
-        require (y1 >= 0.0 && y2 > y1) $"row crosshair {crosshairIndex} must span the complete plot bounds"
+        let chart = crosshair.Locator("xpath=ancestor::*[local-name()='svg'][1]")
+        let viewBox = chart.GetAttributeAsync("viewBox") |> awaitTask
+        let viewBoxHeight =
+            viewBox.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            |> Array.last
+            |> fun value -> Double.Parse(value, Globalization.CultureInfo.InvariantCulture)
+        require (y1 = 0.0 && abs (y2 - viewBoxHeight) < 0.001)
+            $"row crosshair {crosshairIndex} must span the full SVG row height: y1={y1}, y2={y2}, height={viewBoxHeight}"
 
     let rowLegends = page.Locator("[data-ta-row-values='true']")
     require ((rowLegends.CountAsync() |> awaitTask) = 7) "every visible row must expose one fixed legend/value band"

@@ -17,26 +17,58 @@ module RuntimeValidation =
         else
             []
 
-    let rec unsafeValue field value =
+    let normalizedText (value: string) =
+        if isNull value then "" else value.TrimStart().ToLower()
+
+    let unsafeKey (value: string) =
+        match if isNull value then "" else value.Trim().ToLower() with
+        | "script"
+        | "selector"
+        | "url"
+        | "href" -> true
+        | _ -> false
+
+    let unsafeText (value: string) =
+        let normalized = normalizedText value
+        normalized.StartsWith("javascript:")
+        || normalized.StartsWith("http://")
+        || normalized.StartsWith("https://")
+
+    // Valid market-data snapshots dominate this path. First scan without allocating diagnostic
+    // field paths or empty lists; only the exceptional unsafe subtree pays for exact diagnostics.
+    let rec containsUnsafeValue value =
         match value with
-        | SduiValue.Text text when text.TrimStart().ToLower().StartsWith("javascript:") ->
-            [ error "script-forbidden" field "Script URLs are forbidden." ]
-        | SduiValue.Text text when text.TrimStart().ToLower().StartsWith("http://")
-                                   || text.TrimStart().ToLower().StartsWith("https://") ->
-            [ error "url-forbidden" field "Arbitrary URLs are forbidden in the shared runtime contract." ]
-        | SduiValue.Array values -> values |> Array.toList |> List.collect (unsafeValue field)
+        | SduiValue.Text text -> unsafeText text
+        | SduiValue.Array values -> values |> Array.exists containsUnsafeValue
         | SduiValue.Object values ->
             values
-            |> Map.toList
-            |> List.collect (fun (key, item) ->
-                let keyErrors =
-                    if Set.contains (key.Trim().ToLower()) (Set.ofList [ "script"; "selector"; "url"; "href" ]) then
-                        [ error "unsafe-key" field $"Unsafe option key `{key}` is forbidden." ]
-                    else
-                        []
+            |> Seq.exists (fun (KeyValue(key, item)) -> unsafeKey key || containsUnsafeValue item)
+        | _ -> false
 
-                keyErrors @ unsafeValue ($"{field}.{key}") item)
-        | _ -> []
+    let rec collectUnsafeValue (errors: ResizeArray<DynamicValidationError>) field value =
+        match value with
+        | SduiValue.Text text ->
+            let normalized = normalizedText text
+            if normalized.StartsWith("javascript:") then
+                errors.Add(error "script-forbidden" field "Script URLs are forbidden.")
+            elif normalized.StartsWith("http://") || normalized.StartsWith("https://") then
+                errors.Add(error "url-forbidden" field "Arbitrary URLs are forbidden in the shared runtime contract.")
+        | SduiValue.Array values ->
+            for item in values do collectUnsafeValue errors field item
+        | SduiValue.Object values ->
+            for KeyValue(key, item) in values do
+                if unsafeKey key then
+                    errors.Add(error "unsafe-key" field $"Unsafe option key `{key}` is forbidden.")
+                collectUnsafeValue errors ($"{field}.{key}") item
+        | _ -> ()
+
+    let unsafeValue field value =
+        if not (containsUnsafeValue value) then
+            []
+        else
+            let errors = ResizeArray<DynamicValidationError>()
+            collectUnsafeValue errors field value
+            errors |> Seq.toList
 
     let rowErrors index (row: TaRowSpec) =
         let traces = TaRowSpec.effectiveTraces row

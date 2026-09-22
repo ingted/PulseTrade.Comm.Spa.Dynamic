@@ -318,3 +318,11 @@ client contract同時間只能有一筆pending action。為了讓快速連續的
 prepend會改變array index，因此viewport不能以index維持。pending intent保存舊event-time anchor、方向、pan delta與generation；資料合併後先驗coverage確實朝要求方向擴張，再以event-time定位。stale或反方向response仍可成為loaded cache，但不得覆蓋較新的viewport intent。
 
 3,820 positions x 7 rows的主要凍結來自Renderer同步prepare與row mount/refresh，不是source數量本身。owner package以frame scheduler切分data entries與rows，generation變更時丟棄舊commit；source完整性、Y-domain、cursor與revision不因排程改變。fixture建資料是consumer/demo成本，與Renderer owner phase分開量測。
+
+## 26. 2026-09-23 Consumer frame ingestion 與 row geometry analysis
+
+Daedalus真consumer在RFC-0019 final graph仍量得initial 879ms、48→All 117ms、backtest/accounting 176ms，但owner browser相同容量的scheduled phases無long task。差異證明瓶頸至少分成兩層：initial還包含Interactive.Client decode/reducer validation；All不收新frame，只剩row geometry。不能用單一「Renderer慢」或「consumer慢」概括。
+
+合法large snapshot原本由unsafe validation為每個nested value組field path/list，temporal validation隨後再掃一次。安全資料不需要diagnostic path，因此先做early-exit predicate、命中後才跑精確collector，可移除配置而不降低fail-closed保障。Renderer則保留同一projection語意，但以indexed array和single-pass buckets取代Map與多次全掃。
+
+cross-row cursor的使用意圖是快速比較同一timestamp在所有TA列的位置；只畫plot bounds會在row內形成斷裂。最新驗收因此改成每列完整SVG高度，仍不侵入SVG外的toolbar/editor。此為presentation geometry變更，不影響shared cursor identity或provider contract。

@@ -95,6 +95,29 @@ let tests =
             Expect.isError (RuntimeCodec.decode tinyLimits (RuntimeCodec.encode documentFrame)) "Oversized frame must fail before decode."
             Expect.isError (RuntimeCodec.decode DynamicRuntimeDefaults.limits "{\"protocol\":\"sdui-runtime.v1\",\"kind\":\"Unknown\"}") "Unknown case must fail."
 
+        testCase "DYN-TA-T-002A unsafe snapshot scan keeps fast safe path and exact diagnostics" <| fun _ ->
+            let safePoint position =
+                SduiValue.Object(
+                    Map
+                        [ "position", SduiValue.Number(float position)
+                          "value", SduiValue.Object(Map [ "close", SduiValue.Number(6200.0 + float position) ]) ])
+            let safe = SduiValue.Array(Array.init 4000 safePoint)
+            Expect.isEmpty (RuntimeValidation.unsafeValue "snapshot.series" safe) "A bounded numeric snapshot must stay on the safe path."
+
+            let unsafe =
+                SduiValue.Object(
+                    Map
+                        [ "nested",
+                          SduiValue.Array
+                              [| SduiValue.Object(Map [ "href", SduiValue.Text "ok" ])
+                                 SduiValue.Text "  javascript:alert(1)" |] ])
+            let errors = RuntimeValidation.unsafeValue "snapshot.series" unsafe
+            Expect.sequenceEqual
+                (errors |> List.map (fun error -> error.Code, error.Field))
+                [ "unsafe-key", "snapshot.series.nested"
+                  "script-forbidden", "snapshot.series.nested" ]
+                "Unsafe descendants must retain the existing exact diagnostic codes and paths."
+
         testCase "DYN-T-539 DYN-T-550 marker codec is strict bounded and ordered" <| fun _ ->
             let marker =
                 { MarkerId = "entry-0001"

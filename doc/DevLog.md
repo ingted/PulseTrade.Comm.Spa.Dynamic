@@ -1475,3 +1475,11 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Focused gates通過：Renderer 37/37、Interactive.Client 4/4、Ptcs.Client 16/16、Interactive bundle verifier與F# Playwright。owner All/marker/document/progressive phase均無 >100ms task；300次cursor transition p95=72ms/max=165ms；Playwright MCP確認七列axis、coverage擴張與console 0。
 - 發布Renderer `0.1.37`、Interactive.Client `0.1.30`、Ptcs.Client `0.1.53`，NuGet push均回`Created`。SHA-256依序為`9440140AE57DA41A0CE058DE4DF97E56C577A434871810447C02C12A2D6F5931`、`14109B5C85B6A675F37EFD27A102BAE9BCC4E6598991B2AF80FB2D5C98B6890E`、`45B3A6F3E589EA7820FD360255C324EBEA3B674E6BC8A091FB68E8F7179E5625`。
 - Package gate在push前抓到Interactive manifest仍為0.1.29；修正為0.1.30、重打包並再次驗證後才發布。canonical checkout的WebSharper compiler仍無diagnostic崩潰，release採乾淨staging build；source與exact packages均已由focused tests驗證。
+
+## 2026-09-23 - Consumer frame ingestion / row geometry owner release
+
+- Daedalus真SPAA 3,819 x 7 workload在上一exact graph重現initial 879ms、48→All 117ms、backtest/accounting 176ms；這是consumer long-task evidence，不是owner fixture誤判。
+- Contracts對大型合法snapshot採allocation-light unsafe fast scan，只在命中unsafe subtree時建立精確diagnostic path/list。Renderer以indexed line readers、direct candle slot buffer與single-pass eight-bucket candle paths降低row geometry中間配置；shared crosshair改為覆蓋整列SVG高度。
+- Focused gates通過：Contracts 30/30、Renderer 37/37、Interactive.Client 4/4、Dynamic.Ptcs 14/14、Ptcs.Client 16/16。Owner browser All/marker/document/progressive max=53.07/48.75/29.60/61.02ms，無 >100ms task；cursor 300 transitions p95=89ms/max=305ms，無chart rerender，full-row crosshair geometry通過。
+- 發布exact graph：Contracts `0.1.14`、Renderer `0.1.38`、Interactive.Client `0.1.31`、Dynamic.Ptcs `0.1.39`、Ptcs.Client `0.1.54`，NuGet push均回`Created`。Interactive nupkg gate確認manifest、`client.js`、`client.min.js`與WebSharper Runtime共4 entries，SHA-256 `218A560C66E1C709D7AEFE74C81EA1FC1364D907FF5A9A535BB4C118B0B8AA2E`。
+- 新增`scripts/diagnose-spaa-consumer-long-tasks.fsx`作為真consumer CDP bounded attribution gate。DYN-TA-T-093仍等Daedalus以上述exact graph啟動persistent host重跑；本節不冒稱consumer production gate已關閉。

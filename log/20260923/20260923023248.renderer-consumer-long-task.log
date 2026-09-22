@@ -1,0 +1,26 @@
+# Renderer consumer long-task closure
+
+## Pre-work plan
+
+- 背景：Daedalus以final exact graph在真FSSTL／M13 Chrome gate完成所有功能驗收，但3,819個1K points x 7 rows仍量得initial 893–914ms、48→All 116–119ms、backtest/accounting 135–168ms long task。
+- 目標：定位仍留在PTCS Dynamic Renderer／Interactive.Client主執行緒的同步工作，增加generic bounded phasing，使consumer owner phases不再出現 >100ms task。
+- 假設：0.1.37只把data-entry prepare與row mount排到不同frame，但單一row的geometry／WebSharper Doc materialization或一次RuntimeFrame decode/reducer/render notification仍可在同一task處理整列3,819 points；Backtest/accounting replacement也可能同步建完整document/data projection。
+- 不得改變：source/cursor/Y-domain、marker/accounting/download、document/data revisions、one-in-flight action、provider authority、4000 visible cap與WebSharper-only F# frontend。
+- 範圍：Dynamic Renderer、必要時Interactive.Client generic frame/application scheduling、BrowserDemo／F# Playwright long-task fixture、RFC/current docs、exact packages；不修改FSSTL、MDCQ或Daedalus consumer domain types。
+- 驗收：owner fixture先能重現接近consumer的單列／frame工作，再證initial、All、backtest/accounting owner phases無 >100ms task；focused suites與Daedalus功能契約不回歸。
+- 風險：過細切片可能顯示partial row、讓stale generation commit reader registry或改變action完成時序；必須維持atomic authoritative state與generation cancellation。
+- 停止條件：generic owner package通過long-task gate並發布exact graph，回覆Daedalus重跑真consumer；若trace證明 >100ms完全在consumer formatter／host action callback，提供bounded evidence與owner seam，不在Renderer假修。
+
+## Operations
+
+- 2026-09-23 02:32 +08:00：canonical repo `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`，branch `20260915_033.ptcs_group_support`，起點commit `22522c9`，worktree clean。
+- 2026-09-23 02:32 +08:00：讀取COMM direct `msg-fsi-67349d0a2dc24a07ae084a190b92ab06`與consumer feedback §5；功能GREEN，browser long-task RED，provider 39秒成本另列且不歸Renderer。
+- 2026-09-23 02:40 +08:00：以Daedalus真consumer verifier重現3,819 x 7 workload；initial max 879ms、48→All max 117ms、backtest/accounting max 176ms。pointer與功能契約仍通過，證實不是舊報告噪音。
+- 2026-09-23 02:48 +08:00：真consumer FSI host在第二階段CDP attribution前停止，`127.0.0.1:18883`未監聽；已請Daedalus重啟相同exact graph並保持host運行。新增`scripts/diagnose-spaa-consumer-long-tasks.fsx`，只收CDP `RunTask` child attribution，不以owner fixture代替真consumer。
+- 2026-09-23 03:02 +08:00：靜態定位到initial path的合法大型snapshot會先在`RuntimeValidation.unsafeValue`建立每個nested value的field path/list，再由temporal validation重掃。改為valid-data allocation-light fast scan，只有偵測到unsafe subtree才產生精確diagnostics；Contracts source suite 30/30通過，含4,000-point safe snapshot與nested unsafe path回歸。
+- 2026-09-23 03:08 +08:00：shared crosshair依最新需求改為每列SVG完整高度，而非只覆蓋plot bounds；F# Playwright geometry gate同步改驗`y1=0`與`y2=viewBox height`。Renderer exact-package suite目前37/37，但仍指向0.1.37，須完成新版本封裝後才算新source gate。
+- 2026-09-23 03:31 +08:00：owner exact graph focused gates完成：Contracts 30/30、Renderer 37/37、Interactive 4/4、Dynamic.Ptcs 14/14、Ptcs.Client 16/16。Browser owner phases 53.07/48.75/29.60/61.02ms，over100=0；cursor p95=89ms/max=305ms，full-row crosshair geometry通過。
+- 2026-09-23 03:36 +08:00：依存順序發布Contracts `0.1.14`、Renderer `0.1.38`、Interactive.Client `0.1.31`、Dynamic.Ptcs `0.1.39`、Ptcs.Client `0.1.54`；五包push均回`Created`。
+- 2026-09-23 03:37 +08:00：Interactive package verifier Pass，entries=4，manifest/package exact graph一致，SHA-256 `218A560C66E1C709D7AEFE74C81EA1FC1364D907FF5A9A535BB4C118B0B8AA2E`。
+- 2026-09-23 03:40 +08:00：WBS記owner 95%，保留DYN-TA-T-093為唯一consumer acceptance gate；不以owner BrowserDemo代替真SPAA CDP重跑。
+- 2026-09-23 03:43 +08:00：NuGet flat-container五個exact package HEAD均HTTP 200；已direct通知Daedalus升版、保持consumer host存活並回傳三組long-task與resolved graph（message `msg-fsi-387baf095c82469b849ac5175916728b`）。

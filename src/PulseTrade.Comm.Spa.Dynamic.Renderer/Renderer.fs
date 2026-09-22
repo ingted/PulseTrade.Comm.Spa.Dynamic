@@ -621,13 +621,17 @@ module TaWorkspaceRenderer =
                         traceIndex, trace, [||], [||])
 
             let projectedCandleSeries =
-                preparedTraces
-                |> Array.filter (fun (_, trace, _, _) -> trace.Kind = TaTraceKind.Candlestick)
-                |> Array.collect (fun (traceIndex, trace, candles, _) ->
-                    candles
-                    |> Array.collect (fun point ->
-                        RendererModel.projectedCandleSlots referenceTimestamps point
-                        |> Array.map (fun (slotIndex, sourceSpanCount, projected) -> traceIndex, trace, slotIndex, sourceSpanCount, projected)))
+                let projected = ResizeArray<int * TaTraceSpec * int * int * TaCandlePoint>()
+                for traceIndex, trace, candles, _ in preparedTraces do
+                    if trace.Kind = TaTraceKind.Candlestick then
+                        for point in candles do
+                            match RendererModel.candleSlotRange referenceTimestamps point with
+                            | Some(first, lastExclusive) ->
+                                let sourceSpanCount = lastExclusive - first
+                                for slotIndex in first .. lastExclusive - 1 do
+                                    projected.Add(traceIndex, trace, slotIndex, sourceSpanCount, point)
+                            | None -> ()
+                projected.ToArray()
 
             let candleSeries = compactCandles projectedCandleSeries
 
@@ -694,12 +698,13 @@ module TaWorkspaceRenderer =
                         cursorReader, legendReader
                     | TaTraceKind.Line
                     | TaTraceKind.Histogram ->
-                        let projected =
-                            projectedLinePoints
-                            |> Array.tryFind (fun (index, _, _) -> index = traceIndex)
-                            |> Option.map (fun (_, _, points) -> points |> Map.ofArray)
-                            |> Option.defaultValue Map.empty
-                        let values = referenceTimestamps |> Array.mapi (fun index _ -> Map.tryFind index projected)
+                        let values: TaLinePoint option array = Array.create referenceTimestamps.Length None
+                        projectedLinePoints
+                        |> Array.tryFind (fun (index, _, _) -> index = traceIndex)
+                        |> Option.iter (fun (_, _, points) ->
+                            for index, point in points do
+                                if index >= 0 && index < values.Length then
+                                    values[index] <- Some point)
                         let cursorReader index =
                             values
                             |> Array.tryItem index
@@ -728,39 +733,27 @@ module TaWorkspaceRenderer =
         let svgTestId = if hasCandles then "ta-candle-" + rowId else "ta-composite-" + rowId
 
         let candlePaths traceIndex (_, currentCandles, _, _, _, _, low, high) =
-            let path projected rising body =
-                currentCandles
-                |> Array.choose (fun (currentTraceIndex, _, slotIndex, sourceSpanCount, point) ->
-                    if currentTraceIndex <> traceIndex
-                       || (sourceSpanCount > 1) <> projected
-                       || (point.Close >= point.Open) <> rising then
-                        None
-                    else
-                        let center = xAt slotIndex
-                        let bodyWidth = max 2.0 (slot * 0.64)
-                        let highY = RendererModel.normalize low high top plotHeight point.High
-                        let lowY = RendererModel.normalize low high top plotHeight point.Low
-                        let openY = RendererModel.normalize low high top plotHeight point.Open
-                        let closeY = RendererModel.normalize low high top plotHeight point.Close
-                        if body then
-                            Some(
-                                rectanglePath
-                                    (center - bodyWidth / 2.0)
-                                    (min openY closeY)
-                                    bodyWidth
-                                    (max 1.2 (abs (closeY - openY))))
-                        else
-                            Some($"M {fixedText center} {fixedText highY} L {fixedText center} {fixedText lowY}"))
-                |> String.concat " "
+            let buckets = Array.init 8 (fun _ -> ResizeArray<string>())
+            for currentTraceIndex, _, slotIndex, sourceSpanCount, point in currentCandles do
+                if currentTraceIndex = traceIndex then
+                    let projectedOffset = if sourceSpanCount > 1 then 4 else 0
+                    let directionOffset = if point.Close >= point.Open then 0 else 2
+                    let wickIndex = projectedOffset + directionOffset
+                    let center = xAt slotIndex
+                    let bodyWidth = max 2.0 (slot * 0.64)
+                    let highY = RendererModel.normalize low high top plotHeight point.High
+                    let lowY = RendererModel.normalize low high top plotHeight point.Low
+                    let openY = RendererModel.normalize low high top plotHeight point.Open
+                    let closeY = RendererModel.normalize low high top plotHeight point.Close
+                    buckets[wickIndex].Add($"M {fixedText center} {fixedText highY} L {fixedText center} {fixedText lowY}")
+                    buckets[wickIndex + 1].Add(
+                        rectanglePath
+                            (center - bodyWidth / 2.0)
+                            (min openY closeY)
+                            bodyWidth
+                            (max 1.2 (abs (closeY - openY))))
 
-            [| path false true false
-               path false true true
-               path false false false
-               path false false true
-               path true true false
-               path true true true
-               path true false false
-               path true false true |]
+            buckets |> Array.map (String.concat " ")
 
         let lineGeometry traceIndex (_, _, currentLines, _, _, _, low, high) =
             let _, _, points =
@@ -973,8 +966,8 @@ module TaWorkspaceRenderer =
                     svgAttr "x1" "0"
                     svgAttr "x2" "0"
                     svgAttr "visibility" "hidden"
-                    svgAttr "y1" (fixedText top)
-                    svgAttr "y2" (fixedText (top + plotHeight))
+                    svgAttr "y1" "0"
+                    svgAttr "y2" (fixedText height)
                     svgAttr "stroke" "#1f4f73"
                     svgAttr "stroke-width" "1"
                     svgAttr "stroke-dasharray" "3 3"

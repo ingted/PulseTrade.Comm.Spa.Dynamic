@@ -13,4 +13,4 @@ PTCS-specific adapter for the transport-neutral Dynamic Contracts package.
 - explicit `RequestFullSnapshot`一律回authoritative full wire，供離線JSON export；不得因current/next revision相同退化成空delta。
 - `ta-browser.v5`延續`BaseRowId`，cursor/range action沿用typed PTCS transient channel，不走額外HTTP或history path。
 - `TaTraceKind.Marker`與marker bucket使用`ta-browser.v5`既有typed series envelope傳輸；runtime document宣告`ProtocolVersion = 2`。unknown trace kind在server boundary fail closed，不可降級成candlestick。
-- Current exact package：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.38`；exact依賴Contracts `[0.1.13]`。adapter保留`ta-marker.v2` payload與structured rejection；v1相容解碼、schema 3 cache及last-good規則由Contracts統一擁有，current wire gate須由exact-package suite驗證。
+- Current exact package：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.39`；exact依賴Contracts `[0.1.14]`。adapter保留`ta-marker.v2` payload與structured rejection；v1相容解碼、schema 3 cache及last-good規則由Contracts統一擁有，current wire gate須由exact-package suite驗證。
