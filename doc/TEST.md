@@ -689,4 +689,4 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-562 | RFC/current-state | Inline marker feedback與cursor timestamp feedback合併為owner RFC；domain／presentation boundary、DOM／格式、失敗與performance gate可追溯 | PASS |
 | DYN-T-563 | Marker visible label | BUY/SELL entry/exit文字、相鄰區間collision lane、left/right clamp、row-edge反向展開、blank/long、tooltip/hitbox/Y-domain invariant | PASS：Renderer 39/39。 |
 | DYN-T-564 | Row cursor/data window | 1K/coarse row-local timestamp、兩行cursor label、candle OHLCV與line/hist值同源、missing unavailable | PASS：Playwright MCP已核對日期、時間與O/H/L/C/V。 |
-| DYN-T-565 | Browser/package | desktop/mobile、4,000 bars、300 pointer transitions、無request/rebuild/>100ms owner task、exact package與consumer handoff | PASS（owner）：F# Playwright及三包exact package gates通過；consumer真SPAA rerun由Daedalus持有。 |
+| DYN-T-565 | Browser/package | desktop/mobile、4,000 bars、300 pointer transitions、無request/rebuild/>100ms owner task、exact package與consumer handoff | PASS（owner）：F# Playwright及immutable `Renderer 0.1.40 / Interactive.Client 0.1.33 / Ptcs.Client 0.1.56`官方套件readback與clean nuget.org-only gates通過；consumer真SPAA rerun由Daedalus持有。 |

@@ -1492,3 +1492,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 發布exact graph：Renderer `0.1.39`（SHA-256 `8B09279D34461D5A3C77140984879E15BD6D647F1E9A03B6C3AF4BAF2A8A1CF9`）、Interactive.Client `0.1.32`（`0517155121633E441CEEFEF604469DDACA722917B2BF3852C328FAEB8C5DF657`）、Ptcs.Client `0.1.55`（`89289398AD875664EF0F094C063B03087ED202783F1E143E7E8CF30740D09BA9`）；三包NuGet push均回`Created`。Daedalus須以此graph執行真SPAA Run／Run Backtests consumer gate。
 - Correction／補充：exact graph發布後，Interactive BrowserCacheDemo／LiveDemo與Ptcs.LiveDemo Release build亦通過；Ptcs.LiveDemo保留既有PTCS `0.2.39`對transitive `0.2.46`的NU1605 warning，本owner slice未改寫該legacy demo dependency。
 - Process correction：第一次closeout baseline建立於同一個尚未提交的append batch中，後續補寫該batch文字而觸發append-only checker。實際Git邊界`d20b542..b07cc56`對DevLog只有檔尾新增；後續更正均改以檔尾追加，不再原地補寫。
+
+## 2026-09-24 - Correction: inline marker immutable package graph
+
+- Daedalus consumer gate確認NuGet公開Renderer `0.1.39`缺少final `data-marker-label-lane`，但owner local library-packs內同版DLL含有該contract；這是不可接受的同version不同bytes。舊`Renderer 0.1.39 / Interactive.Client 0.1.32 / Ptcs.Client 0.1.55`雖已發布，不再作final consumer graph。
+- Runtime source行為不變；只升版並exact-lock immutable graph：Renderer `0.1.40`、Interactive.Client `0.1.33`、Ptcs.Client `0.1.56`。三包NuGet push均回`Created`，client nuspec均exact依賴Renderer `[0.1.40]`，Interactive manifest為`0.1.33`。
+- 從official flat-container下載的nupkg SHA-256依序為`DA49DD1FDBBD96EC5C8F17D9EA32C15A8157A32101C6BAF374D5055E0167919B`、`A8E7924E65D20A61D0F59520A45B4A14F1F6889BE68EBE19ACEF60AAB0018ABC`、`858CAF0AFE979927FB7464124814A88CD5A14D2CA7B4DF125378AA829CF2F19D`。公開Renderer DLL SHA-256 `0FAAD35C4B9A96A340353A2CF501EA689E117660CDFF1EE73FB8FCAA41B1E97A`與owner final local DLL完全一致；公開Interactive bundle含`data-marker-label-lane`、`data-ta-row-cursor-date`、`data-ta-row-data-time`。
+- 以三個全新package roots、`--source https://api.nuget.org/v3/index.json --no-cache`完成official-source-only restore/run：Renderer 39/39、Interactive.Client 4/4、Ptcs.Client 16/16。Daedalus真SPAA Run／Run Backtests仍為consumer owner gate。
