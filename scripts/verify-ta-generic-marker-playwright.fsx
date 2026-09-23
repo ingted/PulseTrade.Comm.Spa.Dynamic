@@ -80,10 +80,19 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
     let shortEntry = page.Locator("[data-testid='ta-marker-signals-short-entry']")
     let longExit = page.Locator("[data-testid='ta-marker-signals-long-exit']")
     let shortExit = page.Locator("[data-testid='ta-marker-signals-short-exit']")
+    let longEntryLabel = page.Locator("[data-testid='ta-marker-label-signals-long-entry']")
+    let shortEntryLabel = page.Locator("[data-testid='ta-marker-label-signals-short-entry']")
+    let longExitLabel = page.Locator("[data-testid='ta-marker-label-signals-long-exit']")
+    let shortExitLabel = page.Locator("[data-testid='ta-marker-label-signals-short-exit']")
+    layer.WaitForAsync(LocatorWaitForOptions(Timeout = 30000.0f)) |> awaitUnit
     require (layer.CountAsync() |> awaitTask = 1) "price row must mount one marker layer"
     require (intAttribute layer "data-marker-count" = 4) "four visible markers must render"
     require (page.Locator("[data-testid='ta-row-value-price-signals']").CountAsync() |> awaitTask = 0) "marker event overlays must not create a numeric legend token"
-    require (not ((page.Locator("[data-testid='ta-row-values-price']").InnerTextAsync() |> awaitTask).Contains("Signals Undef", StringComparison.Ordinal))) "marker event overlays leaked an undefined numeric value"
+    require (not ((page.Locator("[data-testid='ta-row-values-price']").InnerTextAsync() |> awaitTask).Contains("Signals Unavailable", StringComparison.Ordinal))) "marker event overlays leaked an undefined numeric value"
+    require (textOf longEntryLabel = "BUY 7588.25") "long entry label is not visible"
+    require (textOf shortEntryLabel = "SELL 7591.00") "short entry label is not visible"
+    require (textOf longExitLabel = "SELL 7603.50 PnL +762.50") "long exit label is not visible"
+    require (textOf shortExitLabel = "BUY 7574.00 PnL +850.00") "short exit label is not visible"
     require (attribute longEntry "data-marker-anchor" = "below-bar" && attribute longEntry "data-marker-shape" = "triangle-up") "long entry mapping changed"
     require (attribute longEntry "data-marker-fill" = "outline" && attribute longEntry "fill" = "none") "long entry must render as a true hollow triangle"
     require (attribute longEntry "stroke" = "#000000" && attribute longEntry "pointer-events" = "all") "hollow marker stroke or hit target changed"
@@ -93,13 +102,21 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
     require (attribute shortEntry "data-marker-position" = "3812") "Position must remain the spatial authority"
     require (intAttribute shortEntry "data-marker-lane" = 0 && intAttribute longExit "data-marker-lane" = 1) "same-position markers must stack deterministically"
     let tooltip = textOf (shortEntry.Locator("title"))
-    require (tooltip.Contains "SE" && tooltip.Contains "Reason: short entry signal" && tooltip.Contains "Source: BrowserDemo") "tooltip order/content changed"
+    require (tooltip.Contains "SELL 7591.00" && tooltip.Contains "Reason: short entry signal" && tooltip.Contains "Source: BrowserDemo") "tooltip order/content changed"
 
     let rowBox = page.Locator("[data-testid='ta-row-price']").BoundingBoxAsync() |> awaitTask
     for label, marker in [ "long-entry", longEntry; "short-entry", shortEntry; "long-exit", longExit; "short-exit", shortExit ] do
         let markerBox = marker.BoundingBoxAsync() |> awaitTask
         require (not (isNull rowBox) && not (isNull markerBox)) (label + " geometry is missing")
         require (markerBox.Y >= rowBox.Y - 0.5f && markerBox.Y + markerBox.Height <= rowBox.Y + rowBox.Height + 0.5f) (label + " escaped its row")
+    for label, markerLabel in [ "long-entry-label", longEntryLabel; "short-entry-label", shortEntryLabel; "long-exit-label", longExitLabel; "short-exit-label", shortExitLabel ] do
+        let labelBox = markerLabel.BoundingBoxAsync() |> awaitTask
+        require (not (isNull labelBox)) (label + " geometry is missing")
+        require (labelBox.X >= rowBox.X - 0.5f && labelBox.X + labelBox.Width <= rowBox.X + rowBox.Width + 0.5f) (label + " escaped the row horizontally")
+        require (labelBox.Y >= rowBox.Y - 0.5f && labelBox.Y + labelBox.Height <= rowBox.Y + rowBox.Height + 0.5f) (label + " escaped the row vertically")
+    let shortEntryLabelBox = shortEntryLabel.BoundingBoxAsync() |> awaitTask
+    let longExitLabelBox = longExitLabel.BoundingBoxAsync() |> awaitTask
+    require (abs (shortEntryLabelBox.Y - longExitLabelBox.Y) >= 4.0f) "same-slot marker labels fully overlap instead of following aggregate lanes"
 
     if runCursorGate then
         let chartStack = page.Locator("[data-testid='ta-chart-stack']")
@@ -118,6 +135,12 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         allWatch.Stop()
         require (attribute chartStack "data-visible-start" = "1" && attribute chartStack "data-visible-end" = string loadedBars)
             "All viewport did not expose the complete loaded range"
+        let allRowsDeadline = DateTime.UtcNow.AddSeconds 5.0
+        while attribute chartStack "data-ready-row-count" <> attribute chartStack "data-row-count"
+              && DateTime.UtcNow < allRowsDeadline do
+            Threading.Thread.Sleep 5
+        require (attribute chartStack "data-ready-row-count" = attribute chartStack "data-row-count")
+            "All viewport shell completed before its row mount generation"
         require (allWatch.ElapsedMilliseconds <= 2000L) $"48-to-All took {allWatch.ElapsedMilliseconds}ms"
 
         let dmiLegendText = textOf (page.Locator("[title='dmi value']"))
@@ -125,16 +148,37 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         | true, value -> require (value >= 0.0 && value <= 100.0) $"DMI legend reused another row reader: {value}"
         | _ -> failwith $"Generic marker Playwright verification failed: DMI legend is not numeric: {dmiLegendText}"
 
-        page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
+        let view48 = page.Locator("[data-testid='ta-view-48']")
+        Threading.Thread.Sleep 1000
+        view48.ClickAsync() |> awaitUnit
+        Threading.Thread.Sleep 250
+        if attribute chartStack "data-visible-start" = "1" then
+            view48.ClickAsync() |> awaitUnit
         let latestDeadline = DateTime.UtcNow.AddSeconds 5.0
-        while attribute chartStack "data-visible-end" <> string loadedBars && DateTime.UtcNow < latestDeadline do
+        let expectedLatestStart = string (loadedBars - 47)
+        while (attribute chartStack "data-visible-start" <> expectedLatestStart || attribute chartStack "data-visible-end" <> string loadedBars)
+              && DateTime.UtcNow < latestDeadline do
             Threading.Thread.Sleep 5
-        require (attribute chartStack "data-visible-end" = string loadedBars) "48 viewport did not return to the loaded tail"
+        let latestStart = attribute chartStack "data-visible-start"
+        let latestEnd = attribute chartStack "data-visible-end"
+        require (latestStart = expectedLatestStart && latestEnd = string loadedBars)
+            ($"48 viewport did not return to the loaded tail: start={latestStart} end={latestEnd}")
 
         let chart = page.Locator("[data-testid='ta-candle-price']")
         let crosshair = page.Locator("[data-testid='ta-candle-price-crosshair']")
         let chartBox = chart.BoundingBoxAsync() |> awaitTask
         require (not (isNull chartBox)) "price chart geometry is missing"
+        page.Mouse.MoveAsync(chartBox.X + chartBox.Width * 0.8f, chartBox.Y + chartBox.Height / 2.0f) |> awaitUnit
+        let rowCursorDate = page.Locator("[data-testid='ta-row-cursor-date-price']")
+        let rowCursorClock = page.Locator("[data-testid='ta-row-cursor-time-price']")
+        let rowDataTime = page.Locator("[data-testid='ta-row-data-time-price']")
+        let rowDataWindow = page.Locator("[data-testid='ta-row-values-price']")
+        require ((textOf rowCursorDate).StartsWith("2026-09-", StringComparison.Ordinal)) "row cursor date is missing"
+        require ((textOf rowCursorClock).Length = 8) "row cursor clock must use HH:mm:ss"
+        require ((textOf rowDataTime).Length = 19) "row data window timestamp must use yyyy-MM-dd HH:mm:ss"
+        let priceWindowText = textOf rowDataWindow
+        for token in [ "O "; " H "; " L "; " C "; " V " ] do
+            require (priceWindowText.Contains(token, StringComparison.Ordinal)) ("candlestick data window is missing " + token.Trim())
         let mutable prior = attribute crosshair "x1"
         let mutable maximumMs = 0L
         let transitionDurations = ResizeArray<float>()

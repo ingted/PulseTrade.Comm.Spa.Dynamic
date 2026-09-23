@@ -1,0 +1,25 @@
+# PTCS Dynamic inline trade marker label renderer
+
+## Pre-work plan
+
+- Background: Daedalus has populated generic `TaMarker` direction, anchor, fill, color, BUY/SELL label, fill price and exit PnL. Renderer currently exposes `Label` only through SVG `<title>`.
+- Goal: render bounded visible marker labels beside their K-bar markers, add the Renderer-owned OHLCV data window and shared cursor top timestamp, and preserve existing generic marker/domain boundaries.
+- Assumption: `TaMarker.Label` is already the canonical bounded presentation string; Renderer must not parse BUY/SELL/PnL semantics.
+- Scope: PTCS Dynamic RFC/current documents, Contracts-compatible Renderer model/view, focused unit tests, browser demo and Playwright visual/interaction gates.
+- Invariants: no TradeCore domain fields or producer formatting in PTCS; labels do not affect Y autoscale; pan/zoom keeps marker/label on the same slot; row height and adjacent-row clipping remain stable; SPAA and DIB use the same Renderer path.
+- Acceptance: four entry/exit examples render visible text with deterministic lane/clamp behavior; cursor top timestamp and OHLCV window reflect the selected base bar; 4000-bar viewport remains bounded without second-scale pointer work; desktop/mobile browser screenshots and geometry checks pass.
+- Risks: label collision/clamping can obscure markers or cross row boundaries; naive per-pointer data scans can regress cursor performance; text measurement must remain deterministic without JavaScript.
+
+## Operations
+
+- 2026-09-24 03:06 +08:00: Read `G:/coldfar_py/coldfar-symbolics/doc_new2/RFC/RFC-TRADECORE-0027.PTCS-InlineTradeMarkerLabel.Feedback.md`; accepted the Renderer-only ownership boundary and existing `TaMarker.Label` contract.
+- 2026-09-24 03:12..04:05 +08:00: Implemented visible marker-label geometry/collision lanes, row-local cursor date/time and row data-window presentation. Added focused model tests and expanded BrowserDemo/F# Playwright gates; no JavaScript was introduced.
+- 2026-09-24 04:05 +08:00: Browser gates passed on desktop/mobile. F# Playwright: 3,820 bars, All=179ms, pointer p95=27.48ms/max=64ms. Playwright MCP confirmed four non-overlapping visible labels, cursor date/time, candlestick O/H/L/C/V and console 0. Evidence: `artifacts/ta-generic-marker-playwright/marker-mobile.png`.
+- 2026-09-24 04:14 +08:00: Initial Renderer Release build failed because this checkout's stale `wsfscservice` exited `-532462766`; process identity was verified by exact command line and only PID 24392 for this Renderer was stopped. Daedalus `wsfsc-daedalus` PID 16684 was not touched. Retry succeeded and produced `0.1.39`.
+- 2026-09-24 04:19 +08:00: Exact-package tests passed from isolated caches: Renderer 39/39, Interactive.Client 4/4, Ptcs.Client 16/16. Interactive package verifier passed and bundle contains the three new DOM contracts.
+- 2026-09-24 04:20 +08:00: Published Renderer `0.1.39`, Interactive.Client `0.1.32`, Ptcs.Client `0.1.55`; all NuGet pushes returned `Created`. SHA-256: `8B09279D34461D5A3C77140984879E15BD6D647F1E9A03B6C3AF4BAF2A8A1CF9`, `0517155121633E441CEEFEF604469DDACA722917B2BF3852C328FAEB8C5DF657`, `89289398AD875664EF0F094C063B03087ED202783F1E143E7E8CF30740D09BA9`.
+- 2026-09-24 04:21 +08:00: Owner WBS/Test/Verification closed. Direct handoff sent to `agent.daedalus`; true SPAA consumer rerun remains downstream and is not claimed by this owner gate.
+- 2026-09-24 04:24 +08:00: Active consumer Release builds passed for Interactive BrowserCacheDemo, Interactive LiveDemo and Ptcs.LiveDemo. Ptcs.LiveDemo retained the pre-existing NU1605 warning caused by its direct PTCS `0.2.39` reference versus Dynamic.Ptcs transitive `0.2.46`; this owner slice did not rewrite that legacy demo dependency.
+- 2026-09-24 04:25 +08:00: Sensitive scan of 29 changed/new files: high=0, medium=0. Root closeout checker against this repo/current TA documents: PASS=36, WARN=2, FAIL=0; warnings were expected pre-commit dirty state and existing global RFC traceability gaps.
+- 2026-09-24 04:26 +08:00: Stopped the temporary Renderer BrowserDemo host on `127.0.0.1:18882`; no task-owned exec session remains running.
+- 2026-09-24 04:27 +08:00: `git diff --cached --check` reported only trailing whitespace emitted by WebSharper in the tracked generated `Ptcs.LiveDemo/wwwroot/js/*.js` bundle. Source/docs scoped diff check remains the gate; generated bundle is retained because the demo's exact package reference changed and was rebuilt, rather than hand-editing generated JavaScript.

@@ -903,3 +903,11 @@ candle trace -> one scan -> 8 ordered path buckets
 single-pass buckets的index維持`normal/projected × up/down × wick/body`原順序；path style、source-span判斷、Y-domain與reader語意不得改變。shared crosshair改為`y1=0`、`y2=current row SVG height`，F# Playwright從ancestor `viewBox`取得expected height，不寫死row kind尺寸。
 
 candidate exact graph：Contracts `[0.1.14]`、Renderer `[0.1.38]`、Interactive.Client `[0.1.31]`、Dynamic.Ptcs `[0.1.39]`、Ptcs.Client `[0.1.54]`。只有真consumer採此完整graph並通過CDP gate後才標final。
+
+## 2026-09-24 visible marker label / row-local data window revision 16
+
+`TaMarker.Label`由marker overlay以同slot／anchor的SVG text呈現；右側優先、空間不足切左側，再限制於row viewBox。marker shape維持aggregate lane；文字依估算可視X區間使用deterministic collision lane，並在首選垂直方向撞row邊界時反向展開。字級依實際viewport補償1000-unit viewBox縮放，desktop/mobile皆可讀；halo與`pointer-events:none`使marker hitbox、tooltip、Y-domain與row高度不變。
+
+每個non-marker indexed reader回`{ Timestamp; Value }`。Candlestick由同一resolved candle組出timestamp與`O/H/L/C/V`，line／histogram由同一resolved point組出timestamp與value。row timestamp取第一個可用reader；全缺時timestamp與values均為`Unavailable`。既有single-rAF callback一次更新full-row crosshair、兩行cursor timestamp與固定高度data window，不新增request、decode、scan或topology rebuild。
+
+DOM contract與格式依`RFC-PTCS-DYNAMIC-0022`：`ta-marker-label-*`、`ta-row-cursor-label-*`、`ta-row-cursor-date-*`、`ta-row-cursor-time-*`、`ta-row-data-time-*`；日期/時間為`yyyy-MM-dd`／`HH:mm:ss`，data window prefix為`yyyy-MM-dd HH:mm:ss`。

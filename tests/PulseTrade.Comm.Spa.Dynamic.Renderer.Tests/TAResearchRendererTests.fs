@@ -936,6 +936,48 @@ let tests =
             Expect.equal down [| 5.5, 15.5; 14.5, 15.5; 10.0, 24.5 |] "TriangleDown must point toward the bottom of the screen."
             Expect.isNone (RendererModel.markerTrianglePoints TaMarkerShape.Circle 10.0 20.0 4.5) "Non-triangle shapes do not use triangle geometry."
 
+        testCase "DYN-T-563 marker label geometry is bounded and deterministic" <| fun _ ->
+            let right = RendererModel.markerLabelGeometry 1000.0 310.0 10.0 100.0 25.0 "BUY 7588.25" |> Option.get
+            Expect.equal right.Text "BUY 7588.25" "The renderer must preserve the producer-authored presentation string."
+            Expect.equal right.TextAnchor "start" "Labels prefer the marker's right side."
+            Expect.equal right.X 108.0 "The marker-to-label gap is deterministic."
+
+            let left = RendererModel.markerLabelGeometry 1000.0 310.0 10.0 990.0 400.0 "SELL 7603.50 PnL +762.50" |> Option.get
+            Expect.equal left.TextAnchor "end" "Right-edge labels move to the marker's left side."
+            Expect.equal left.X 982.0 "Left-side placement preserves the deterministic gap."
+            Expect.equal left.Y 302.0 "Labels clamp vertically inside the row viewBox."
+
+            let longLabel = String.replicate 60 "X" |> RendererModel.markerLabelGeometry 1000.0 310.0 10.0 500.0 100.0 |> Option.get
+            Expect.equal longLabel.Text.Length 48 "Visible labels are bounded without changing the tooltip contract."
+            Expect.stringEnds longLabel.Text "..." "Truncation must be explicit."
+            Expect.isNone (RendererModel.markerLabelGeometry 1000.0 310.0 10.0 100.0 50.0 "  ") "Blank labels do not create SVG text."
+
+            let nearA = RendererModel.markerLabelGeometry 1000.0 310.0 30.0 700.0 60.0 "SELL 7603.50 PnL +762.50" |> Option.get
+            let nearB = RendererModel.markerLabelGeometry 1000.0 310.0 30.0 900.0 64.0 "SELL 7591.00" |> Option.get
+            let far = RendererModel.markerLabelGeometry 1000.0 310.0 30.0 100.0 70.0 "BUY 7588.25" |> Option.get
+            Expect.equal
+                (RendererModel.markerLabelCollisionLanes 6.0 [| TaMarkerAnchor.AboveBar, nearA; TaMarkerAnchor.AboveBar, nearB; TaMarkerAnchor.AboveBar, far |])
+                [| 1; 0; 0 |]
+                "Mobile-size adjacent labels get separate left-edge-ordered lanes while disjoint labels reuse the first lane."
+            Expect.equal
+                (RendererModel.markerLabelCollisionLanes 6.0 [| TaMarkerAnchor.AboveBar, nearA; TaMarkerAnchor.BelowBar, nearB |])
+                [| 0; 1 |]
+                "Above-bar and below-bar labels share collision lanes because their visible text can still overlap."
+            Expect.equal
+                (RendererModel.markerLabelLaneY 310.0 32.0 TaMarkerAnchor.AboveBar 20.0 1)
+                52.0
+                "An above-bar label near the top edge expands downward instead of clamping onto another label."
+            Expect.equal
+                (RendererModel.markerLabelLaneY 310.0 32.0 TaMarkerAnchor.BelowBar 300.0 1)
+                268.0
+                "A below-bar label near the bottom edge expands upward instead of clamping onto another label."
+
+        testCase "DYN-T-564 timestamp presentation is locale-independent" <| fun _ ->
+            let value = "2026-09-24T13:14:15.1234567+00:00"
+            Expect.equal (RendererModel.timestampParts value) (Some("2026-09-24", "13:14:15")) "Cursor labels use fixed date and clock lines."
+            Expect.equal (RendererModel.fullTimestamp value) (Some "2026-09-24 13:14:15") "Data windows use a fixed-width timestamp prefix."
+            Expect.isNone (RendererModel.timestampParts "B1") "Non-canonical timestamps fail closed instead of using browser locale parsing."
+
         testCase "DYN-T-541 DYN-T-551 marker placement uses candle position and aggregate lanes" <| fun _ ->
             let axisRef = "axis.marker.renderer"
             let time minute = DateTimeOffset(2026, 9, 21, 1, minute, 0, TimeSpan.Zero)

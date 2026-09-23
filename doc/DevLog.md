@@ -1483,3 +1483,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Focused gates通過：Contracts 30/30、Renderer 37/37、Interactive.Client 4/4、Dynamic.Ptcs 14/14、Ptcs.Client 16/16。Owner browser All/marker/document/progressive max=53.07/48.75/29.60/61.02ms，無 >100ms task；cursor 300 transitions p95=89ms/max=305ms，無chart rerender，full-row crosshair geometry通過。
 - 發布exact graph：Contracts `0.1.14`、Renderer `0.1.38`、Interactive.Client `0.1.31`、Dynamic.Ptcs `0.1.39`、Ptcs.Client `0.1.54`，NuGet push均回`Created`。Interactive nupkg gate確認manifest、`client.js`、`client.min.js`與WebSharper Runtime共4 entries，SHA-256 `218A560C66E1C709D7AEFE74C81EA1FC1364D907FF5A9A535BB4C118B0B8AA2E`。
 - 新增`scripts/diagnose-spaa-consumer-long-tasks.fsx`作為真consumer CDP bounded attribution gate。DYN-TA-T-093仍等Daedalus以上述exact graph啟動persistent host重跑；本節不冒稱consumer production gate已關閉。
+
+## 2026-09-24 - Inline trade marker label／row cursor data window owner release
+
+- 依Daedalus `RFC-TRADECORE-0027`／`0026` feedback完成`RFC-PTCS-DYNAMIC-0022`：Renderer只呈現producer提供的generic `TaMarker.Label`，不由Order/Fill推論進出場；可見label使用相鄰X區間collision lanes、viewport-aware字級、左右clamp與row-edge反向展開，且不改Y-domain或row height。
+- 每列shared cursor新增兩行日期／時間；data window與row reader同源。Candlestick顯示timestamp及`O/H/L/C/V`，line/histogram顯示timestamp及value，缺值整組顯示`Unavailable`。
+- Focused gates通過：Renderer 39/39、Interactive.Client 4/4、Ptcs.Client 16/16；Interactive BrowserCacheDemo／LiveDemo與Ptcs.LiveDemo Release build通過（後者保留既有PTCS `0.2.39`對transitive `0.2.46`的NU1605 warning）。F# Playwright在3,820 bars量得All=179ms、pointer p95=27.48ms/max=64ms；Playwright MCP desktop/mobile確認四個marker label無重疊、cursor/data window正確、console 0。Interactive nupkg實際包含`data-marker-label-lane`、`data-ta-row-cursor-date`、`data-ta-row-data-time`。
+- 發布exact graph：Renderer `0.1.39`（SHA-256 `8B09279D34461D5A3C77140984879E15BD6D647F1E9A03B6C3AF4BAF2A8A1CF9`）、Interactive.Client `0.1.32`（`0517155121633E441CEEFEF604469DDACA722917B2BF3852C328FAEB8C5DF657`）、Ptcs.Client `0.1.55`（`89289398AD875664EF0F094C063B03087ED202783F1E143E7E8CF30740D09BA9`）；三包NuGet push均回`Created`。Daedalus須以此graph執行真SPAA Run／Run Backtests consumer gate。

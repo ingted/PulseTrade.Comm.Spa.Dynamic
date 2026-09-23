@@ -326,3 +326,9 @@ Daedalus真consumer在RFC-0019 final graph仍量得initial 879ms、48→All 117m
 合法large snapshot原本由unsafe validation為每個nested value組field path/list，temporal validation隨後再掃一次。安全資料不需要diagnostic path，因此先做early-exit predicate、命中後才跑精確collector，可移除配置而不降低fail-closed保障。Renderer則保留同一projection語意，但以indexed array和single-pass buckets取代Map與多次全掃。
 
 cross-row cursor的使用意圖是快速比較同一timestamp在所有TA列的位置；只畫plot bounds會在row內形成斷裂。最新驗收因此改成每列完整SVG高度，仍不侵入SVG外的toolbar/editor。此為presentation geometry變更，不影響shared cursor identity或provider contract。
+
+## 27. 2026-09-24 Marker label 與 row-local cursor presentation
+
+TradeCore 已把成交導向的 BUY／SELL、fill price與exit PnL收斂進generic `TaMarker.Label`。Dynamic不得再解讀其domain語意；只把既有bounded label放在同一marker placement附近，完整資訊仍由tooltip保存。label不是numeric sample，不能改Y-domain或row高度。
+
+shared cursor的X由base共同axis決定，但顯示的timestamp/value屬於各row自身。1K、5K、30K、60K必須分別使用該row實際resolved datapoint，不能複製base row時間。timestamp與OHLCV／indicator value視為同一個row-local presentation；缺值時整組Unavailable，避免跨row借值或timestamp/value tearing。詳見`RFC-PTCS-DYNAMIC-0022`。

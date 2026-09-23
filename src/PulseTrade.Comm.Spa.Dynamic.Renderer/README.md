@@ -19,7 +19,8 @@
 - temporal projection：`TemporalPoint`明確指定source interval與projection；coarse K棒用`CandleSpan`跨base slots，coarse line用`RepeatAcrossBaseBuckets`，只在close後可知的indicator用`StepAfterClose`，避免look-ahead。
 - shared temporal data：`temporal-axis.v1`提供唯一sparse Position/time authority，`temporal-series.v1`以Position join。Renderer不依scale推算缺失點；同一K的preview revision原位替換。candlestick可由`TaCandleDataRefs`指定的O/H/L/C/V五條scalar series合成。
 - multi-candle：同一row可同時畫1K/5K等多個candlestick traces；base candle維持實心，coarse candle以trace色outline/dashed wick呈現並保留source interval metadata。
-- generic marker：`TaTraceKind.Marker`以同row的candlestick trace作target；Position是唯一空間authority，EventTime只進tooltip。marker不參與reference timeline、Y autoscale或cursor value；同position/anchor依bucket順序進固定lane，empty bucket可清除marker。
+- generic marker：`TaTraceKind.Marker`以同row的candlestick trace作target；Position是唯一空間authority，EventTime只進tooltip。marker不參與reference timeline、Y autoscale或cursor value；同position/anchor依bucket順序進固定shape lane，empty bucket可清除marker。非空`Label`另以viewport-aware SVG text呈現；相鄰文字區間使用deterministic collision lane，row邊界不足時反向展開。
+- row-local data window：每列從自身resolved datapoint同時取得timestamp與value；candlestick固定顯示`O/H/L/C/V`，line/histogram顯示value。shared cursor頂端為兩行`yyyy-MM-dd`／`HH:mm:ss`；missing或invalid timestamp明示`Unavailable`，不借用base row。
 - row composition：同一immutable `DataRef`可同時出現在overlay row與一或多個separate rows；Renderer逐row獨立解析與呈現，不依`DataRef`合併row。overlay/分列完全由owner提供的`Rows`/`Traces`決定。
 - cursor/style：K棒、line point與cross-row cursor共用slot-center幾何；indicator line width為1.25，histogram維持1.0。
 - event-time interaction：`BaseRowId`的真實timestamp驅動shared cursor；coarse row只使用finalized containing/as-of point，否則missing。viewport release送半開event-time range，pending期間controls不可重入。
@@ -39,8 +40,8 @@ TaWorkspaceRenderer.render
 
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
-- desktop/mobile F# Playwright：`scripts/verify-ta-renderer-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.38`，exact依賴Contracts `[0.1.14]`與FSharp.Core `[10.1.400]`。Marker使用bounded SVG overlay、document trace order → bucket order的跨trace deterministic lanes與edge clipping；`TriangleUp／TriangleDown`方向不受anchor改寫，`Outline`使用`fill="none"`且保留完整pointer hit target。marker只呈現可視position，不進數值圖例、Y-domain或額外time slot；tooltip與shared cursor可在同一pointer interaction共存。TA row顯示名稱依序採 authored `Options["label"]`、trace labels、typed row kind。line reader採indexed projection，candle source interval不建per-point slot array，八種candle paths由single-pass buckets產生；source/Y-domain/cursor語意不變。mousemove經單一requestAnimationFrame直接更新固定crosshair/value DOM；shared cursor覆蓋current row完整SVG高度，不延伸到其他row或SVG外toolbar。
+- desktop/mobile F# Playwright：`scripts/verify-ta-generic-marker-playwright.fsx`。
+- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.39`，exact依賴Contracts `[0.1.14]`與FSharp.Core `[10.1.400]`。Marker使用bounded SVG overlay、document trace order → bucket order的跨trace deterministic shape lanes、viewport-aware visible label與collision lanes；`TriangleUp／TriangleDown`方向不受anchor改寫，`Outline`使用`fill="none"`且保留完整pointer hit target。marker不進數值圖例、Y-domain或額外time slot；tooltip與shared cursor可在同一pointer interaction共存。row-local cursor/data window由同一resolved point產生timestamp與OHLCV/value。line reader採indexed projection，candle source interval不建per-point slot array，八種candle paths由single-pass buckets產生；source/Y-domain/cursor語意不變。mousemove經單一requestAnimationFrame直接更新固定crosshair、row timestamp與value DOM；shared cursor覆蓋current row完整SVG高度，不延伸到其他row或SVG外toolbar。
 
 RFC-0017之後，cache rehydrate即使保留current identity/revision，只要validated Data object替換仍會重畫。row legend以`rowId + local trace index`隔離；All模式保留完整scale/cursor arrays，但以bounded candle/line paths呈現。non-base candle cursor使用一次range projection，不再對每個base timestamp掃描完整source。
 

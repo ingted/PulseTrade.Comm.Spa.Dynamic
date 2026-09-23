@@ -4393,18 +4393,18 @@ function tryRenderAddKeyWithRegisteredRenderers(pageId, shape, title, setName, k
   if(!(globalThis.PulseTrade&&globalThis.PulseTrade.AddKeyRenderers))return null;
   let renderers=globalThis.PulseTrade.AddKeyRenderers;
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    keyPlaceholder:String(_5||""),
-    defaultKey:String(_6||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    keyPlaceholder:String(_5||""), 
+    defaultKey:String(_6||""), 
     submitKey:(payload) => {
       _7(payload);
-    },
+    }, 
     cancelKey:() => {
       _8();
-    },
+    }, 
     setKeyJson:(payload) => {
       _9(payload);
     }
@@ -4488,26 +4488,26 @@ function tryRenderAppendInputWithRegisteredRenderers(pageId, shape, title, setNa
   let unionCaseNames=keyParts.length>2?keyParts.slice(2).map(String):[];
   unionCaseNames=unionCaseNames.length===1&&unionCaseNames[0].indexOf("2:unionCases:")===0?unionCaseNames[0].substring("2:unionCases:".length).split("|").map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0):unionCaseNames.map((value_1) => value_1.indexOf("2:unionCase:")===0?value_1.substring("2:unionCase:".length):value_1).map((value_1) => String(value_1||"").trim()).filter((value_1) => value_1.length>0);
   let context={
-    pageId:String(_1||""),
-    shape:String(_2||""),
-    title:String(_3||""),
-    setName:String(_4||""),
-    selectedKeyId:String(_5||""),
-    selectedKeyJson:String(_6||""),
-    selectedKeys:keyParts.slice(),
-    keyParts:keyParts.slice(),
-    actorAddress:keyParts.length>0?String(keyParts[0]||""):"",
-    duTypeName:duTypeName,
-    unionCaseNames:unionCaseNames,
-    valuePlaceholder:String(_8||""),
-    valueText:String(_9||""),
+    pageId:String(_1||""), 
+    shape:String(_2||""), 
+    title:String(_3||""), 
+    setName:String(_4||""), 
+    selectedKeyId:String(_5||""), 
+    selectedKeyJson:String(_6||""), 
+    selectedKeys:keyParts.slice(), 
+    keyParts:keyParts.slice(), 
+    actorAddress:keyParts.length>0?String(keyParts[0]||""):"", 
+    duTypeName:duTypeName, 
+    unionCaseNames:unionCaseNames, 
+    valuePlaceholder:String(_8||""), 
+    valueText:String(_9||""), 
     submit:(payload) => {
       _10(payload);
-    },
+    }, 
     setValue:(payload) => {
       _11(payload);
-    },
-    composerMode:String(_12||"plain"),
+    }, 
+    composerMode:String(_12||"plain"), 
     setComposerMode:(mode) => {
       _13(mode);
     }
@@ -5159,8 +5159,8 @@ function initializeClientExtensionGlobals(){
     }
     if(typeof func!=="function")return;
     collection.push({
-      name:String(name||"unnamed"),
-      priority:Number(priority||0),
+      name:String(name||"unnamed"), 
+      priority:Number(priority||0), 
       render:func
     });
     collection.sort((left, right) =>(right.priority||0)-(left.priority||0));
@@ -5613,14 +5613,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
   let socket, requestSequence, lifecycle, pollTimer, timeoutTimer, reconnectTimer, jsonExportRequested, jsonExportBootstrapAttempts, jsonExportBootstrapInFlight, jsonExportInFlight, actionRequestOverride, pendingActionCompletion;
   const identity={DocumentId:{$:0, $0:"pending-"+channelId}, CanvasInstanceId:{$:0, $0:canvasId}};
   const runtimeState=_c_3.Create_1({
-    Identity:identity,
-    Document:null,
-    Data:new FSharpMap("New", []),
-    DocumentRevision:0n,
-    DataRevision:0n,
-    LastTransportSequence:0n,
-    View:{Values:new FSharpMap("New", [])},
-    Poll:{$:0},
+    Identity:identity, 
+    Document:null, 
+    Data:new FSharpMap("New", []), 
+    DocumentRevision:0n, 
+    DataRevision:0n, 
+    LastTransportSequence:0n, 
+    View:{Values:new FSharpMap("New", [])}, 
+    Poll:{$:0}, 
     LastError:null
   });
   socket=null;
@@ -5702,14 +5702,14 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
     lifecycle=next;
     const _1=runtimeState.Get();
     let _2={
-      Identity:_1.Identity,
-      Document:_1.Document,
-      Data:_1.Data,
-      DocumentRevision:_1.DocumentRevision,
-      DataRevision:_1.DataRevision,
-      LastTransportSequence:_1.LastTransportSequence,
-      View:_1.View,
-      Poll:next.Poll,
+      Identity:_1.Identity, 
+      Document:_1.Document, 
+      Data:_1.Data, 
+      DocumentRevision:_1.DocumentRevision, 
+      DataRevision:_1.DataRevision, 
+      LastTransportSequence:_1.LastTransportSequence, 
+      View:_1.View, 
+      Poll:next.Poll, 
       LastError:_1.LastError
     };
     runtimeState.Set(_2);
@@ -5796,17 +5796,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                     const message=m_2.$0;
                     const _4=runtimeState.Get();
                     let _5={
-                      Identity:_4.Identity,
-                      Document:_4.Document,
-                      Data:_4.Data,
-                      DocumentRevision:_4.DocumentRevision,
-                      DataRevision:_4.DataRevision,
-                      LastTransportSequence:_4.LastTransportSequence,
-                      View:_4.View,
-                      Poll:_4.Poll,
+                      Identity:_4.Identity, 
+                      Document:_4.Document, 
+                      Data:_4.Data, 
+                      DocumentRevision:_4.DocumentRevision, 
+                      DataRevision:_4.DataRevision, 
+                      LastTransportSequence:_4.LastTransportSequence, 
+                      View:_4.View, 
+                      Poll:_4.Poll, 
                       LastError:Some({
-                        ReasonCode:"ta-export-download-failed",
-                        Message:message,
+                        ReasonCode:"ta-export-download-failed", 
+                        Message:message, 
                         Recoverable:true
                       })
                     };
@@ -5817,17 +5817,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
                 else {
                   const _6=runtimeState.Get();
                   let _7={
-                    Identity:_6.Identity,
-                    Document:_6.Document,
-                    Data:_6.Data,
-                    DocumentRevision:_6.DocumentRevision,
-                    DataRevision:_6.DataRevision,
-                    LastTransportSequence:_6.LastTransportSequence,
-                    View:_6.View,
-                    Poll:_6.Poll,
+                    Identity:_6.Identity, 
+                    Document:_6.Document, 
+                    Data:_6.Data, 
+                    DocumentRevision:_6.DocumentRevision, 
+                    DataRevision:_6.DataRevision, 
+                    LastTransportSequence:_6.LastTransportSequence, 
+                    View:_6.View, 
+                    Poll:_6.Poll, 
                     LastError:Some({
-                      ReasonCode:"ta-export-full-state-required",
-                      Message:"The TA export response was not a full runtime state.",
+                      ReasonCode:"ta-export-full-state-required", 
+                      Message:"The TA export response was not a full runtime state.", 
                       Recoverable:true
                     })
                   };
@@ -5840,8 +5840,8 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               let _9=StateAccepted(state.DataRevision, _8);
               apply(_9);
               completePendingAction(response.requestId, {
-                $:0,
-                $0:response.requestId,
+                $:0, 
+                $0:response.requestId, 
                 $1:state.DocumentRevision
               });
               return jsonExportCompleted&&disposeAfterJsonExport?void apply(Dispose):tryStartJsonExport();
@@ -5861,36 +5861,36 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
               }
               else _2=false;
               _3=_2?{
-                $:2,
-                $0:response.requestId,
+                $:2, 
+                $0:response.requestId, 
                 $1:BigInt(Math.trunc(m[1]))
               }:{
-                $:1,
-                $0:response.requestId,
-                $1:"transient-command-failed",
+                $:1, 
+                $0:response.requestId, 
+                $1:"transient-command-failed", 
                 $2:responseError
               };
             }
             else _3={
-              $:1,
-              $0:response.requestId,
-              $1:"transient-command-failed",
+              $:1, 
+              $0:response.requestId, 
+              $1:"transient-command-failed", 
               $2:responseError
             };
             completePendingAction(response.requestId, _3);
             const _12=runtimeState.Get();
             let _13={
-              Identity:_12.Identity,
-              Document:_12.Document,
-              Data:_12.Data,
-              DocumentRevision:_12.DocumentRevision,
-              DataRevision:_12.DataRevision,
-              LastTransportSequence:_12.LastTransportSequence,
-              View:_12.View,
-              Poll:_12.Poll,
+              Identity:_12.Identity, 
+              Document:_12.Document, 
+              Data:_12.Data, 
+              DocumentRevision:_12.DocumentRevision, 
+              DataRevision:_12.DataRevision, 
+              LastTransportSequence:_12.LastTransportSequence, 
+              View:_12.View, 
+              Poll:_12.Poll, 
               LastError:Some({
-                ReasonCode:"transient-command-failed",
-                Message:text(response.error),
+                ReasonCode:"transient-command-failed", 
+                Message:text(response.error), 
                 Recoverable:true
               })
             };
@@ -5921,17 +5921,17 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         jsonExportBootstrapInFlight=false;
         const _1=runtimeState.Get();
         let _2={
-          Identity:_1.Identity,
-          Document:_1.Document,
-          Data:_1.Data,
-          DocumentRevision:_1.DocumentRevision,
-          DataRevision:_1.DataRevision,
-          LastTransportSequence:_1.LastTransportSequence,
-          View:_1.View,
-          Poll:_1.Poll,
+          Identity:_1.Identity, 
+          Document:_1.Document, 
+          Data:_1.Data, 
+          DocumentRevision:_1.DocumentRevision, 
+          DataRevision:_1.DataRevision, 
+          LastTransportSequence:_1.LastTransportSequence, 
+          View:_1.View, 
+          Poll:_1.Poll, 
           LastError:Some({
-            ReasonCode:"ta-export-bootstrap-empty",
-            Message:"TA export bootstrap returned no runtime data after three attempts.",
+            ReasonCode:"ta-export-bootstrap-empty", 
+            Message:"TA export bootstrap returned no runtime data after three attempts.", 
             Recoverable:true
           })
         };
@@ -5939,12 +5939,12 @@ function mountCore(mountDocument, extensionId, channelId, canvasId, lifecycleOpt
         if(disposeAfterJsonExport)apply(Dispose);
       }
       else if(exists((a) => a.$==2, apply(StartAction(hasRuntimeData?{
-        $:9,
-        $0:identity.CanvasInstanceId,
+        $:9, 
+        $0:identity.CanvasInstanceId, 
         $1:"json-export"
       }:{
-        $:8,
-        $0:identity.CanvasInstanceId,
+        $:8, 
+        $0:identity.CanvasInstanceId, 
         $1:runtimeState.Get().DataRevision
       }))))if(hasRuntimeData){
         jsonExportRequested=false;
@@ -6033,8 +6033,8 @@ function transition(options, event, state){
       return[New_55(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 4:
       return[New_55(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
-        $:8,
-        $0:state.CanvasInstanceId,
+        $:8, 
+        $0:state.CanvasInstanceId, 
         $1:state.DataRevision
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 5:
@@ -6049,8 +6049,8 @@ function transition(options, event, state){
       return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_55(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_55(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_55(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
     case 9:
       return[New_55(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
-        $:9,
-        $0:state.CanvasInstanceId,
+        $:9, 
+        $0:state.CanvasInstanceId, 
         $1:_1
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 10:
@@ -6078,10 +6078,10 @@ function reconnectDelay(options, attempt){
 }
 function New(PollIntervalMs, RequestTimeoutMs, PollRetryMs, ReconnectBaseMs, ReconnectMaximumMs){
   return{
-    PollIntervalMs:PollIntervalMs,
-    RequestTimeoutMs:RequestTimeoutMs,
-    PollRetryMs:PollRetryMs,
-    ReconnectBaseMs:ReconnectBaseMs,
+    PollIntervalMs:PollIntervalMs, 
+    RequestTimeoutMs:RequestTimeoutMs, 
+    PollRetryMs:PollRetryMs, 
+    ReconnectBaseMs:ReconnectBaseMs, 
     ReconnectMaximumMs:ReconnectMaximumMs
   };
 }
@@ -6115,8 +6115,8 @@ class Attr {
   }
   static A2(Item1, Item2){
     return Create_2(Attr, {
-      $:2,
-      $0:Item1,
+      $:2, 
+      $0:Item1, 
       $1:Item2
     });
   }
@@ -6130,17 +6130,17 @@ function filter(f, o){
 }
 function New_1(RuntimeState, SetActive, RequestJsonExport, Dispose_1){
   return{
-    RuntimeState:RuntimeState,
-    SetActive:SetActive,
-    RequestJsonExport:RequestJsonExport,
+    RuntimeState:RuntimeState, 
+    SetActive:SetActive, 
+    RequestJsonExport:RequestJsonExport, 
     Dispose:Dispose_1
   };
 }
 function New_2(status, count, maxSequence, pages){
   return{
-    status:status,
-    count:count,
-    maxSequence:maxSequence,
+    status:status, 
+    count:count, 
+    maxSequence:maxSequence, 
     pages:pages
   };
 }
@@ -6304,11 +6304,15 @@ function tryItem(i, arr){
 function indexed(ar){
   return mapi((_1, _2) =>[_1, _2], ar);
 }
-function map2(f, arr1, arr2){
-  checkLength(arr1, arr2);
-  const r=new Array(arr2.length);
-  for(let i=0, _1=arr2.length-1;i<=_1;i++)r[i]=f(arr1[i], arr2[i]);
+function create(size, value){
+  const r=new Array(size);
+  for(let i=0, _1=size-1;i<=_1;i++)r[i]=value;
   return r;
+}
+function sumBy(f, arr){
+  let sum=0;
+  for(let i=0;i<arr.length;i++)sum+=f(arr[i]);
+  return sum;
 }
 function concat(xs){
   return Array.prototype.concat.apply([], ofSeq(xs));
@@ -6327,16 +6331,27 @@ function pick(f, arr){
   const m=tryPick(f, arr);
   return m==null?FailWith("KeyNotFoundException"):m.$0;
 }
-function sumBy(f, arr){
-  let sum=0;
-  for(let i=0;i<arr.length;i++)sum+=f(arr[i]);
-  return sum;
-}
 function take(n, ar){
   return n<0?nonNegative():n>ar.length?insufficient():ar.slice(0, n);
 }
 function sortByDescending(f, arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) =>-Compare(_1[1], _2[1])));
+}
+function forall(f, x){
+  let a, i;
+  a=true;
+  i=0;
+  const l=length(x);
+  while(a&&i<l)
+    if(f(x[i]))i=i+1;
+    else a=false;
+  return a;
+}
+function map2(f, arr1, arr2){
+  checkLength(arr1, arr2);
+  const r=new Array(arr2.length);
+  for(let i=0, _1=arr2.length-1;i<=_1;i++)r[i]=f(arr1[i], arr2[i]);
+  return r;
 }
 function find(f, arr){
   const m=tryFind(f, arr);
@@ -6392,23 +6407,8 @@ function max(arr){
   }
   return m;
 }
-function create(size, value){
-  const r=new Array(size);
-  for(let i=0, _1=size-1;i<=_1;i++)r[i]=value;
-  return r;
-}
 function nonEmpty(arr){
   if(arr.length===0)FailWith("The input array was empty.");
-}
-function forall(f, x){
-  let a, i;
-  a=true;
-  i=0;
-  const l=length(x);
-  while(a&&i<l)
-    if(f(x[i]))i=i+1;
-    else a=false;
-  return a;
 }
 function readJson(key, onRead){
   if(isBlank(key))onRead(null);
@@ -6817,16 +6817,16 @@ function tryJson(text_1){
 }
 function New_3(type, requestId, streamKey){
   return{
-    type:type,
-    requestId:requestId,
+    type:type, 
+    requestId:requestId, 
     streamKey:streamKey
   };
 }
 function New_4(type, requestId, streamKey, count){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
     count:count
   };
 }
@@ -7525,8 +7525,8 @@ class FSharpList {
   static Empty=Create_2(FSharpList, {$:0});
   static Cons(Head, Tail){
     return Create_2(FSharpList, {
-      $:1,
-      $0:Head,
+      $:1, 
+      $0:Head, 
       $1:Tail
     });
   }
@@ -7549,21 +7549,24 @@ class FSharpList {
 function TryParse(s, r){
   return TryParse_2(s, -2147483648, 2147483647, r);
 }
+function Parse(s){
+  return Parse_1(s, -2147483648, 2147483647, "Value was either too large or too small for an Int32.");
+}
 function TryParse_1(s, r){
   return TryParseBigInt(s, -9223372036854775808n, 9223372036854775807n, r);
 }
 function New_5(pageId, tabId, path, title, setName, shape, description, keyPlaceholder, valuePlaceholder, defaultKey, tags){
   return{
-    pageId:pageId,
-    tabId:tabId,
-    path:path,
-    title:title,
-    setName:setName,
-    shape:shape,
-    description:description,
-    keyPlaceholder:keyPlaceholder,
-    valuePlaceholder:valuePlaceholder,
-    defaultKey:defaultKey,
+    pageId:pageId, 
+    tabId:tabId, 
+    path:path, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    description:description, 
+    keyPlaceholder:keyPlaceholder, 
+    valuePlaceholder:valuePlaceholder, 
+    defaultKey:defaultKey, 
     tags:tags
   };
 }
@@ -7583,43 +7586,43 @@ function set(arr, n, x){
 }
 function New_6(pageId, mode, setName, keys){
   return{
-    pageId:pageId,
-    mode:mode,
-    setName:setName,
+    pageId:pageId, 
+    mode:mode, 
+    setName:setName, 
     keys:keys
   };
 }
 function New_7(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
     readRepairPolicy:readRepairPolicy
   };
 }
 function New_8(streamPageId, lineageKind, legacyPageIdAlias, readsLegacyPageStreams, readRepairPolicy, candidateValueStreamKeys, candidateValueStreamCount, candidateKeyRegistryStreamKeys, candidateKeyRegistryStreamCount){
   return{
-    streamPageId:streamPageId,
-    lineageKind:lineageKind,
-    legacyPageIdAlias:legacyPageIdAlias,
-    readsLegacyPageStreams:readsLegacyPageStreams,
-    readRepairPolicy:readRepairPolicy,
-    candidateValueStreamKeys:candidateValueStreamKeys,
-    candidateValueStreamCount:candidateValueStreamCount,
-    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys,
+    streamPageId:streamPageId, 
+    lineageKind:lineageKind, 
+    legacyPageIdAlias:legacyPageIdAlias, 
+    readsLegacyPageStreams:readsLegacyPageStreams, 
+    readRepairPolicy:readRepairPolicy, 
+    candidateValueStreamKeys:candidateValueStreamKeys, 
+    candidateValueStreamCount:candidateValueStreamCount, 
+    candidateKeyRegistryStreamKeys:candidateKeyRegistryStreamKeys, 
     candidateKeyRegistryStreamCount:candidateKeyRegistryStreamCount
   };
 }
 function New_9(commandId, serverRealityId, kind, target, url, method, payloadJson, status){
   return{
-    commandId:commandId,
-    serverRealityId:serverRealityId,
-    kind:kind,
-    target:target,
-    url:url,
-    method:method,
-    payloadJson:payloadJson,
+    commandId:commandId, 
+    serverRealityId:serverRealityId, 
+    kind:kind, 
+    target:target, 
+    url:url, 
+    method:method, 
+    payloadJson:payloadJson, 
     status:status
   };
 }
@@ -7728,59 +7731,56 @@ function rev(l){
 function concat_2(s){
   return ofSeq_1(concat_3(s));
 }
-function collect_1(f, l){
-  return ofSeq_1(collect_2(f, l));
-}
 function choose_1(f, l){
   return ofSeq_1(choose_2(f, l));
 }
 function New_10(status, page, bucketCount, maxSequence, keyMaxSequence, lineage, lineageHealth, buckets){
   return{
-    status:status,
-    page:page,
-    bucketCount:bucketCount,
-    maxSequence:maxSequence,
-    keyMaxSequence:keyMaxSequence,
-    lineage:lineage,
-    lineageHealth:lineageHealth,
+    status:status, 
+    page:page, 
+    bucketCount:bucketCount, 
+    maxSequence:maxSequence, 
+    keyMaxSequence:keyMaxSequence, 
+    lineage:lineage, 
+    lineageHealth:lineageHealth, 
     buckets:buckets
   };
 }
 function New_11(keyId, keys, displayName, setName, valueCount, minSequence, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    keys:keys,
-    displayName:displayName,
-    setName:setName,
-    valueCount:valueCount,
-    minSequence:minSequence,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    keys:keys, 
+    displayName:displayName, 
+    setName:setName, 
+    valueCount:valueCount, 
+    minSequence:minSequence, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
 function New_12(pageId, keyJson, valueText, direction, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
     tags:tags
   };
 }
 function New_13(pageId, keyJson, keyMode, displayName){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    keyMode:keyMode,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    keyMode:keyMode, 
     displayName:displayName
   };
 }
 function New_14(pageId, keyJson, rawArgu, tags){
   return{
-    pageId:pageId,
-    keyJson:keyJson,
-    rawArgu:rawArgu,
+    pageId:pageId, 
+    keyJson:keyJson, 
+    rawArgu:rawArgu, 
     tags:tags
   };
 }
@@ -7792,17 +7792,17 @@ function New_16(pageId, keyId){
 }
 function New_17(type, requestId, pageId, title, setName, streamKey, actorAddress, rawArgu, renderMode, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    actorAddress:actorAddress,
-    rawArgu:rawArgu,
-    renderMode:renderMode,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    actorAddress:actorAddress, 
+    rawArgu:rawArgu, 
+    renderMode:renderMode, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
@@ -7888,7 +7888,7 @@ function iter_1(p, s){
     if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
   }
 }
-function collect_2(f, s){
+function collect_1(f, s){
   return concat_3(map_2(f, s));
 }
 function exists_1(p, s){
@@ -8069,51 +8069,51 @@ function seqEmpty(){
   return FailWith("The input sequence was empty.");
 }
 function choose_2(f, s){
-  return collect_2((x) => {
+  return collect_1((x) => {
     const m=f(x);
     return m==null?FSharpList.Empty:ofArray([m.$0]);
   }, s);
 }
 function New_18(type, requestId, pageId, title, setName, streamKey, keyJson, valueText, direction, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    streamKey:streamKey,
-    keyJson:keyJson,
-    valueText:valueText,
-    direction:direction,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    streamKey:streamKey, 
+    keyJson:keyJson, 
+    valueText:valueText, 
+    direction:direction, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_19(type, requestId, streamKey, payload, sourceKind, renderMode, idempotencyKey, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    streamKey:streamKey,
-    payload:payload,
-    sourceKind:sourceKind,
-    renderMode:renderMode,
-    idempotencyKey:idempotencyKey,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    streamKey:streamKey, 
+    payload:payload, 
+    sourceKind:sourceKind, 
+    renderMode:renderMode, 
+    idempotencyKey:idempotencyKey, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_20(keyId, setName, keys, valueCount, maxSequence, updatedAtUtc, values){
   return{
-    keyId:keyId,
-    setName:setName,
-    keys:keys,
-    valueCount:valueCount,
-    maxSequence:maxSequence,
-    updatedAtUtc:updatedAtUtc,
+    keyId:keyId, 
+    setName:setName, 
+    keys:keys, 
+    valueCount:valueCount, 
+    maxSequence:maxSequence, 
+    updatedAtUtc:updatedAtUtc, 
     values:values
   };
 }
@@ -8122,10 +8122,10 @@ function New_21(maxSequence, buckets){
 }
 function New_22(valueId, keys, createdAtUtc, value, tags){
   return{
-    valueId:valueId,
-    keys:keys,
-    createdAtUtc:createdAtUtc,
-    value:value,
+    valueId:valueId, 
+    keys:keys, 
+    createdAtUtc:createdAtUtc, 
+    value:value, 
     tags:tags
   };
 }
@@ -8134,9 +8134,9 @@ function New_23(reason){
 }
 function New_24(nodeCount, actorCount, maxSequence, nodes){
   return{
-    nodeCount:nodeCount,
-    actorCount:actorCount,
-    maxSequence:maxSequence,
+    nodeCount:nodeCount, 
+    actorCount:actorCount, 
+    maxSequence:maxSequence, 
     nodes:nodes
   };
 }
@@ -8260,20 +8260,20 @@ function ToSeq(m){
 }
 function New_25(nodeId, nodeAddress, status, roles, actors){
   return{
-    nodeId:nodeId,
-    nodeAddress:nodeAddress,
-    status:status,
-    roles:roles,
+    nodeId:nodeId, 
+    nodeAddress:nodeAddress, 
+    status:status, 
+    roles:roles, 
     actors:actors
   };
 }
 function New_26(actorId, displayName, kind, keys, status, routees){
   return{
-    actorId:actorId,
-    displayName:displayName,
-    kind:kind,
-    keys:keys,
-    status:status,
+    actorId:actorId, 
+    displayName:displayName, 
+    kind:kind, 
+    keys:keys, 
+    status:status, 
     routees:routees
   };
 }
@@ -8342,13 +8342,13 @@ function New_30(setName, keys){
 }
 function New_31(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
   return{
-    commandId:commandId,
-    groupId:groupId,
-    expectedRevision:expectedRevision,
-    participantId:participantId,
-    displayName:displayName,
-    role:role,
-    historyPolicy:historyPolicy,
+    commandId:commandId, 
+    groupId:groupId, 
+    expectedRevision:expectedRevision, 
+    participantId:participantId, 
+    displayName:displayName, 
+    role:role, 
+    historyPolicy:historyPolicy, 
     includeHistoryBeforeFirstJoin:includeHistoryBeforeFirstJoin
   };
 }
@@ -8360,14 +8360,14 @@ function New_33(participants){
 }
 function New_34(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
   return{
-    participantId:participantId,
-    displayName:displayName,
-    login:login,
-    authenticated:authenticated,
-    provider:provider,
-    logoutPath:logoutPath,
-    authenticatedParticipantId:authenticatedParticipantId,
-    viewAsParticipantId:viewAsParticipantId,
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
+    logoutPath:logoutPath, 
+    authenticatedParticipantId:authenticatedParticipantId, 
+    viewAsParticipantId:viewAsParticipantId, 
     viewAsActive:viewAsActive
   };
 }
@@ -8379,13 +8379,13 @@ function New_36(cursors, unread){
 }
 function New_37(messageId, channelMessageId, streamSequence, fromId, toId, scope, body, createdAtUtc){
   return{
-    messageId:messageId,
-    channelMessageId:channelMessageId,
-    streamSequence:streamSequence,
-    fromId:fromId,
-    toId:toId,
-    scope:scope,
-    body:body,
+    messageId:messageId, 
+    channelMessageId:channelMessageId, 
+    streamSequence:streamSequence, 
+    fromId:fromId, 
+    toId:toId, 
+    scope:scope, 
+    body:body, 
     createdAtUtc:createdAtUtc
   };
 }
@@ -8400,64 +8400,64 @@ function New_40(groupId, channelMessageId){
 }
 function New_41(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
   return{
-    messages:messages,
-    nextAfterMessageId:nextAfterMessageId,
-    oldestSequence:oldestSequence,
+    messages:messages, 
+    nextAfterMessageId:nextAfterMessageId, 
+    oldestSequence:oldestSequence, 
     hasOlderMessages:hasOlderMessages
   };
 }
 function New_42(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
-    streamId:streamId,
-    newestSequence:newestSequence,
-    cachedCount:cachedCount,
-    source:source,
+    streamId:streamId, 
+    newestSequence:newestSequence, 
+    cachedCount:cachedCount, 
+    source:source, 
     touchedAt:touchedAt
   };
 }
 function New_43(commandId, groupId, body, tags){
   return{
-    commandId:commandId,
-    groupId:groupId,
-    body:body,
+    commandId:commandId, 
+    groupId:groupId, 
+    body:body, 
     tags:tags
   };
 }
 function New_44(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
-    type:type,
-    requestId:requestId,
-    fromId:fromId,
-    toId:toId,
-    body:body,
-    tags:tags,
-    browserId:browserId,
+    type:type, 
+    requestId:requestId, 
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
+    tags:tags, 
+    browserId:browserId, 
     tabId:tabId
   };
 }
 function New_45(fromId, toId, body, tags){
   return{
-    fromId:fromId,
-    toId:toId,
-    body:body,
+    fromId:fromId, 
+    toId:toId, 
+    body:body, 
     tags:tags
   };
 }
 function New_46(messageId, speaker, createdAtUtc, body){
   return{
-    messageId:messageId,
-    speaker:speaker,
-    createdAtUtc:createdAtUtc,
+    messageId:messageId, 
+    speaker:speaker, 
+    createdAtUtc:createdAtUtc, 
     body:body
   };
 }
 function New_47(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
   return{
-    commandId:commandId,
-    groupId:groupId,
-    displayName:displayName,
-    initialParticipantIds:initialParticipantIds,
-    historyPolicy:historyPolicy,
+    commandId:commandId, 
+    groupId:groupId, 
+    displayName:displayName, 
+    initialParticipantIds:initialParticipantIds, 
+    historyPolicy:historyPolicy, 
     tags:tags
   };
 }
@@ -8786,8 +8786,8 @@ function UpdateEmbedNode(node, upd){
 }
 function CreateTextNode(){
   return{
-    Text:globalThis.document.createTextNode(""),
-    Dirty:false,
+    Text:globalThis.document.createTextNode(""), 
+    Dirty:false, 
     Value:""
   };
 }
@@ -8870,8 +8870,8 @@ function ElemDoc(Item){
 }
 function AppendDoc(Item1, Item2){
   return{
-    $:0,
-    $0:Item1,
+    $:0, 
+    $0:Item1, 
     $1:Item2
   };
 }
@@ -8883,31 +8883,31 @@ function TextDoc(Item){
 }
 function New_48(shape, label, badge, className){
   return{
-    shape:shape,
-    label:label,
-    badge:badge,
+    shape:shape, 
+    label:label, 
+    badge:badge, 
     className:className
   };
 }
 function New_49(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
-    submitPath:submitPath,
-    sessionPath:sessionPath,
-    logoutPath:logoutPath,
-    returnUrl:returnUrl,
-    protectedRoute:protectedRoute,
-    sessionCookieName:sessionCookieName,
-    title:title,
-    lead:lead,
-    providerLabel:providerLabel,
+    submitPath:submitPath, 
+    sessionPath:sessionPath, 
+    logoutPath:logoutPath, 
+    returnUrl:returnUrl, 
+    protectedRoute:protectedRoute, 
+    sessionCookieName:sessionCookieName, 
+    title:title, 
+    lead:lead, 
+    providerLabel:providerLabel, 
     aclLabel:aclLabel
   };
 }
 function New_50(userName, password, returnUrl, keepSession){
   return{
-    userName:userName,
-    password:password,
-    returnUrl:returnUrl,
+    userName:userName, 
+    password:password, 
+    returnUrl:returnUrl, 
     keepSession:keepSession
   };
 }
@@ -9009,12 +9009,12 @@ class T extends Object_1 {
 }
 function New_51(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
-    PageId:PageId,
-    TabId:TabId,
-    ValueId:ValueId,
-    CreatedAtUtc:CreatedAtUtc,
-    Direction:Direction,
-    Tags:Tags,
+    PageId:PageId, 
+    TabId:TabId, 
+    ValueId:ValueId, 
+    CreatedAtUtc:CreatedAtUtc, 
+    Direction:Direction, 
+    Tags:Tags, 
     Payload:Payload
   };
 }
@@ -9023,13 +9023,13 @@ function New_52(participantId){
 }
 function New_53(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
-    pageId:pageId,
-    title:title,
-    setName:setName,
-    shape:shape,
-    tabId:tabId,
-    tabMode:tabMode,
-    path:path,
+    pageId:pageId, 
+    title:title, 
+    setName:setName, 
+    shape:shape, 
+    tabId:tabId, 
+    tabMode:tabMode, 
+    path:path, 
     description:description
   };
 }
@@ -9066,6 +9066,11 @@ class FSharpMap extends Object_1 {
   }
   Remove_1(k){
     return new FSharpMap("New_1", Remove(Pair.New(k, void 0), this.tree));
+  }
+  get_Item(k){
+    const m=this.TryFind(k);
+    if(m==null)throw new KeyNotFoundException("New");
+    else return m.$0;
   }
   CompareTo0(other){
     return compareWith((_1, _2) => Compare(_1, _2), this, other);
@@ -9316,11 +9321,11 @@ let _c_3=Lazy((_i) => class Var_1 extends Object_1 {
 });
 function New_54(type, requestId, extensionId, channelId, operation, payload){
   return{
-    type:type,
-    requestId:requestId,
-    extensionId:extensionId,
-    channelId:channelId,
-    operation:operation,
+    type:type, 
+    requestId:requestId, 
+    extensionId:extensionId, 
+    channelId:channelId, 
+    operation:operation, 
     payload:payload
   };
 }
@@ -9332,15 +9337,15 @@ function Error_1(ErrorValue){
 }
 function New_55(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
   return{
-    CanvasInstanceId:CanvasInstanceId,
-    Poll:Poll,
-    PollEnabled:PollEnabled,
-    Connected:Connected_1,
-    Active:Active,
-    InFlight:InFlight,
-    DataRevision:DataRevision,
-    ReconnectAttempt:ReconnectAttempt,
-    DisposePending:DisposePending,
+    CanvasInstanceId:CanvasInstanceId, 
+    Poll:Poll, 
+    PollEnabled:PollEnabled, 
+    Connected:Connected_1, 
+    Active:Active, 
+    InFlight:InFlight, 
+    DataRevision:DataRevision, 
+    ReconnectAttempt:ReconnectAttempt, 
+    DisposePending:DisposePending, 
     Disposed:Disposed
   };
 }
@@ -9409,14 +9414,14 @@ function applyWire(current, wire){
     else {
       const mergedSeries=wire.series==null?current.Data:fold((_3, _4) => {
         const p=mergeSeries({
-          Identity:current.Identity,
-          Document:current.Document,
-          Data:_3,
-          DocumentRevision:current.DocumentRevision,
-          DataRevision:current.DataRevision,
-          LastTransportSequence:current.LastTransportSequence,
-          View:current.View,
-          Poll:current.Poll,
+          Identity:current.Identity, 
+          Document:current.Document, 
+          Data:_3, 
+          DocumentRevision:current.DocumentRevision, 
+          DataRevision:current.DataRevision, 
+          LastTransportSequence:current.LastTransportSequence, 
+          View:current.View, 
+          Poll:current.Poll, 
           LastError:current.LastError
         }, wire.timeline, _4);
         return _3.Add_1(p[0], p[1]);
@@ -9428,14 +9433,14 @@ function applyWire(current, wire){
       const m=decoded.Data.TryFind(statusRef);
       let _1=m==null?mergedSharedTemporal:mergedSharedTemporal.Add_1(statusRef, m.$0);
       let _2={
-        Identity:decoded.Identity,
-        Document:decoded.Document,
-        Data:_1,
-        DocumentRevision:decoded.DocumentRevision,
-        DataRevision:decoded.DataRevision,
-        LastTransportSequence:decoded.LastTransportSequence,
-        View:current.View,
-        Poll:decoded.Poll,
+        Identity:decoded.Identity, 
+        Document:decoded.Document, 
+        Data:_1, 
+        DocumentRevision:decoded.DocumentRevision, 
+        DataRevision:decoded.DataRevision, 
+        LastTransportSequence:decoded.LastTransportSequence, 
+        View:current.View, 
+        Poll:decoded.Poll, 
         LastError:decoded.LastError
       };
       return Ok(_2);
@@ -9480,29 +9485,29 @@ function stateFromWire(wire){
       const K=rowKind(row.kind);
       const D=text(row.dataRef);
       const T_1=row.traces==null?[]:map((trace) =>({
-        TraceId:text(trace.traceId),
-        Kind:DefaultWith(InvalidOp, traceKind(trace.kind)),
-        DataRef:text(trace.dataRef),
-        Label:text(trace.label),
-        Color:text(trace.color),
-        Width:trace.width,
-        Visible:trace.visible,
+        TraceId:text(trace.traceId), 
+        Kind:DefaultWith(InvalidOp, traceKind(trace.kind)), 
+        DataRef:text(trace.dataRef), 
+        Label:text(trace.label), 
+        Color:text(trace.color), 
+        Width:trace.width, 
+        Visible:trace.visible, 
         CandleDataRefs:trace.hasCandleDataRefs?Some({
-          OpenRef:text(trace.candleOpenRef),
-          HighRef:text(trace.candleHighRef),
-          LowRef:text(trace.candleLowRef),
-          CloseRef:text(trace.candleCloseRef),
+          OpenRef:text(trace.candleOpenRef), 
+          HighRef:text(trace.candleHighRef), 
+          LowRef:text(trace.candleLowRef), 
+          CloseRef:text(trace.candleCloseRef), 
           VolumeRef:text(trace.candleVolumeRef)
-        }):null,
+        }):null, 
         Options:new FSharpMap("New", [])
       }), row.traces);
       return{
-        RowId:R,
-        Kind:K,
-        DataRef:D,
-        HeightWeight:row.heightWeight,
-        Visible:row.visible,
-        Options:mapFromWire(row.options),
+        RowId:R, 
+        Kind:K, 
+        DataRef:D, 
+        HeightWeight:row.heightWeight, 
+        Visible:row.visible, 
+        Options:mapFromWire(row.options), 
         Traces:T_1
       };
     }, wire.rows);
@@ -9515,8 +9520,8 @@ function stateFromWire(wire){
     const data=Fold((_1, _2, _3) => _1.Add_1(_2, _3), seriesData, sharedTemporalData).Add_1(text(wire.statusRef), status);
     const defaultView=OfArray(ofSeq(ofSeq_1(delay(() => append_2(!IsNullOrWhiteSpace(wire.querySourceId)?[["query.sourceId", {$:3, $0:text(wire.querySourceId)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryInstrument)?[["query.instrument", {$:3, $0:text(wire.queryInstrument)}]]:[], delay(() => append_2(wire.queryIntervalMinutes>0?[["query.intervalMinutes", {$:2, $0:wire.queryIntervalMinutes}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryFromUtc)?[["query.fromUtc", {$:3, $0:text(wire.queryFromUtc)}]]:[], delay(() => append_2(!IsNullOrWhiteSpace(wire.queryToUtcExclusive)?[["query.toUtcExclusive", {$:3, $0:text(wire.queryToUtcExclusive)}]]:[], delay(() =>[["query.includePartial", {$:1, $0:wire.queryIncludePartial}]]))))))))))))));
     const lastError=IsNullOrWhiteSpace(wire.errorCode)&&IsNullOrWhiteSpace(wire.errorMessage)?null:Some({
-      ReasonCode:text(wire.errorCode),
-      Message:text(wire.errorMessage),
+      ReasonCode:text(wire.errorCode), 
+      Message:text(wire.errorMessage), 
       Recoverable:wire.errorRecoverable
     });
     if(wire.editorSchemas==null)editorSchemas=[];
@@ -9525,26 +9530,26 @@ function stateFromWire(wire){
       editorSchemas=choose((x) => ToOption(f(x)), wire.editorSchemas);
     }
     return!(wire.editorSchemas==null)&&length(editorSchemas)!==length(wire.editorSchemas)?Error_1("TA browser editor schema catalog is invalid."):Ok({
-      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}},
+      Identity:{DocumentId:{$:0, $0:text(wire.documentId)}, CanvasInstanceId:{$:0, $0:text(wire.canvasInstanceId)}}, 
       Document:Some({
-        WorkspaceId:text(wire.workspaceId),
-        Title:text(wire.title),
-        RowsRef:text(wire.rowsRef),
-        StatusRef:text(wire.statusRef),
-        SharedTimeAxis:wire.sharedTimeAxis,
-        TemporalAxisRefs:wire.temporalAxisRefs==null?[]:wire.temporalAxisRefs,
-        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)),
-        Rows:rows,
-        EditorSchemas:editorSchemas,
-        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions,
+        WorkspaceId:text(wire.workspaceId), 
+        Title:text(wire.title), 
+        RowsRef:text(wire.rowsRef), 
+        StatusRef:text(wire.statusRef), 
+        SharedTimeAxis:wire.sharedTimeAxis, 
+        TemporalAxisRefs:wire.temporalAxisRefs==null?[]:wire.temporalAxisRefs, 
+        BaseRowId:IsNullOrWhiteSpace(wire.baseRowId)?null:Some(text(wire.baseRowId)), 
+        Rows:rows, 
+        EditorSchemas:editorSchemas, 
+        AllowedActions:wire.allowedActions==null?[]:wire.allowedActions, 
         DefaultView:defaultView
-      }),
-      Data:data,
-      DocumentRevision:wire.documentRevision,
-      DataRevision:wire.dataRevision,
-      LastTransportSequence:wire.transportSequence,
-      View:{Values:new FSharpMap("New", [])},
-      Poll:pollState(wire.pollKind),
+      }), 
+      Data:data, 
+      DocumentRevision:wire.documentRevision, 
+      DataRevision:wire.dataRevision, 
+      LastTransportSequence:wire.transportSequence, 
+      View:{Values:new FSharpMap("New", [])}, 
+      Poll:pollState(wire.pollKind), 
       LastError:lastError
     });
   }
@@ -9643,8 +9648,8 @@ function ResyncRequired(reasonCode){
 }
 function StateAccepted(dataRevision, pollEnabled){
   return{
-    $:1,
-    $0:dataRevision,
+    $:1, 
+    $0:dataRevision, 
     $1:pollEnabled
   };
 }
@@ -9657,7 +9662,8 @@ function ActiveChanged(Item){
   return{$:7, $0:Item};
 }
 function render(options, callbacks, runtimeState){
-  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, editingRowId, pendingEditorMutation, navigatorElement, finishNavigatorDrag, chartRenderSequence, chartStackElement, latestCursorTimestamps, latestCursorReaders, latestLegendReaders, displayedCursorIndex, refreshVisibleValues, visibleValueRefreshScheduled, pendingCursorIndex, cursorFrameScheduled, actionSequence, preparedDataForShell, observedChartTopology, observedDataState;
+  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, editingRowId, pendingEditorMutation, navigatorElement, finishNavigatorDrag, chartRenderSequence, chartStackElement, latestCursorTimestamps, latestCursorReaders, latestLegendReaders, displayedCursorIndex, refreshVisibleValues, visibleValueRefreshScheduled, chartWorkGeneration, dataWorkGeneration, activeRowDataStates, pendingCursorIndex, cursorFrameScheduled, actionSequence, querySelectionGeneration, queryInFlight, queuedQuery, boundaryPanGeneration, pendingBoundaryPan, latestPreparedData, preparedDataForShell, preparedDataReady, preparationGeneration, observedChartTopology, observedDataState;
+  ensureAxisResizeTracking();
   const currentCanvasId=() => runtimeState.Get().Identity.CanvasInstanceId;
   const configuredEditorSchemas=options.EditorSchemas==null?[]:options.EditorSchemas;
   const editorSchemasNow=() => {
@@ -9712,16 +9718,24 @@ function render(options, callbacks, runtimeState){
       });
     }
   };
+  chartWorkGeneration=0;
+  dataWorkGeneration=0;
+  activeRowDataStates=[];
+  const scheduleNextFrame=(work) => {
+    requestAnimationFrame(() => {
+      work();
+    });
+  };
   pendingCursorIndex=null;
   cursorFrameScheduled=false;
   const crossScaleSummaryOpen=_c_3.Create_1(false);
   const uiState=_c_3.Create_1({
-    Window:{StartIndex:0, Count:options.DefaultVisibleBars},
-    FollowLatest:true,
-    HiddenRows:new FSharpSet("New_2", null),
-    AddRowOpen:false,
-    CursorIndex:null,
-    PendingActionId:null,
+    Window:{StartIndex:0, Count:options.DefaultVisibleBars}, 
+    FollowLatest:true, 
+    HiddenRows:new FSharpSet("New_2", null), 
+    AddRowOpen:false, 
+    CursorIndex:null, 
+    PendingActionId:null, 
     Feedback:""
   });
   const chartUiState=_c_3.Create_1(uiState.Get());
@@ -9731,6 +9745,11 @@ function render(options, callbacks, runtimeState){
     if(!(Equals(previousChartState.Window, next.Window)&&previousChartState.FollowLatest==next.FollowLatest&&Equals(previousChartState.HiddenRows, next.HiddenRows)))chartUiState.Set(next);
   };
   actionSequence=0;
+  querySelectionGeneration=0;
+  queryInFlight=false;
+  queuedQuery=null;
+  boundaryPanGeneration=0;
+  pendingBoundaryPan=null;
   const commandsDisabledView=Map2((_3, _4) => remoteDisabled(_3.Poll)||_4.PendingActionId!=null, runtimeState.View, uiState.View);
   const commandsDisabledNow=() => remoteDisabled(runtimeState.Get().Poll)||uiState.Get().PendingActionId!=null;
   const visibleRangeActionAllowed=(state) => {
@@ -9741,39 +9760,135 @@ function render(options, callbacks, runtimeState){
   };
   const viewportCommandsDisabledView=Map2((_3, _4) => visibleRangeActionAllowed(_3)&&(localViewportDisabled(_3.Poll)||_4.PendingActionId!=null), runtimeState.View, uiState.View);
   const viewportCommandsDisabledNow=() => visibleRangeActionAllowed(runtimeState.Get())&&(localViewportDisabled(runtimeState.Get().Poll)||uiState.Get().PendingActionId!=null);
-  const startActionWith=(action, successText, onAccepted, onRejected) => {
+  const startActionWithFeedback=(action, successText, onAccepted, onRejected, afterSettled) => {
     actionSequence=actionSequence+1;
     const request={
-      RequestId:canvasIdText(currentCanvasId())+":ui:"+String(actionSequence),
-      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision),
+      RequestId:canvasIdText(currentCanvasId())+":ui:"+String(actionSequence), 
+      ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision), 
       Action:action
     };
-    return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted, onRejected);
+    return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted, onRejected, afterSettled);
   };
+  const startActionWith=(action, successText, onAccepted, onRejected) => startActionWithFeedback(action, successText, () => {
+    onAccepted();
+    return null;
+  }, onRejected, () => { });
   const startAction=(action, successText, onAccepted) => startActionWith(action, successText, onAccepted, () => { });
   const chartRuntimeState=_c_3.Create_1(runtimeState.Get());
-  const initialPreparedData=prepareData(runtimeState.Get().Data);
-  const runtimeDataState=_c_3.Create_1(initialPreparedData);
+  const initialPreparedData={
+    RawData:new FSharpMap("New", []), 
+    ResolvedAxes:new FSharpMap("New", []), 
+    ResolvedSeries:new FSharpMap("New", [])
+  };
+  latestPreparedData=initialPreparedData;
   preparedDataForShell=initialPreparedData;
+  preparedDataReady=false;
+  preparationGeneration=0;
   observedChartTopology=chartTopologySignaturePrepared(runtimeState.Get(), initialPreparedData);
   observedDataState=runtimeState.Get();
+  const scheduleFullPreparation=() => {
+    preparationGeneration=preparationGeneration+1;
+    const generation=preparationGeneration;
+    preparedDataReady=false;
+    chartRuntimeState.Set(runtimeState.Get());
+    prepareDataScheduled(scheduleNextFrame, runtimeState.Get().Data, (prepared) => {
+      if(generation===preparationGeneration){
+        const current=runtimeState.Get();
+        latestPreparedData=prepared;
+        preparedDataForShell=prepared;
+        observedChartTopology=chartTopologySignaturePrepared(current, prepared);
+        observedDataState=current;
+        preparedDataReady=true;
+        chartRuntimeState.Set(current);
+      }
+    });
+  };
   Sink((next) => {
+    let _3, _4, reanchored, _5;
     const dataChanged=runtimeDataChanged(observedDataState, next);
-    const nextPreparedData=!Equals(next.Identity, observedDataState.Identity)?prepareData(next.Data):dataChanged?prepareDataIncremental(runtimeDataState.Get(), next.Data):runtimeDataState.Get();
-    const nextChartTopology=chartTopologySignaturePrepared(next, nextPreparedData);
-    if(!Equals(next.Identity, chartRuntimeState.Get().Identity)||next.DocumentRevision!==chartRuntimeState.Get().DocumentRevision||!Equals(nextChartTopology, observedChartTopology)){
-      observedChartTopology=nextChartTopology;
-      preparedDataForShell=nextPreparedData;
-      chartRuntimeState.Set(next);
-    }
-    if(dataChanged){
+    if(!Equals(next.Identity, observedDataState.Identity)){
+      pendingBoundaryPan=null;
       observedDataState=next;
-      runtimeDataState.Set(nextPreparedData);
-      scheduleVisibleValueRefresh();
+      scheduleFullPreparation();
+    }
+    else if(!preparedDataReady){
+      if(dataChanged){
+        observedDataState=next;
+        scheduleFullPreparation();
+      }
+      else observedDataState=next;
+    }
+    else {
+      const nextPreparedData=dataChanged?prepareDataIncremental(latestPreparedData, next.Data):latestPreparedData;
+      const nextChartTopology=chartTopologySignaturePrepared(next, nextPreparedData);
+      const topologyChanged=!Equals(next.Identity, chartRuntimeState.Get().Identity)||next.DocumentRevision!==chartRuntimeState.Get().DocumentRevision||!Equals(nextChartTopology, observedChartTopology);
+      if(topologyChanged){
+        observedChartTopology=nextChartTopology;
+        preparedDataForShell=nextPreparedData;
+        const m=next.Document;
+        if(m==null)_3=pendingBoundaryPan=null;
+        else {
+          let _6;
+          const document=m.$0;
+          const nextTimeline=referenceTimelineForDocumentPrepared(document, nextPreparedData);
+          const currentUi=uiState.Get();
+          const generalOldTimeline=referenceTimelineForDocumentPrepared(document, latestPreparedData);
+          const generalOldWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, length(generalOldTimeline), currentUi.FollowLatest, currentUi.Window);
+          if(pendingBoundaryPan!=null&&pendingBoundaryPan.$==1){
+            pendingBoundaryPan.$0[4];
+            const intentTimeline=pendingBoundaryPan.$0[3];
+            const direction=pendingBoundaryPan.$0[1];
+            _6=(pendingBoundaryPan.$0,coverageExtended(direction, intentTimeline, nextTimeline)?(_4=[pendingBoundaryPan.$0[2], pendingBoundaryPan.$0[1], pendingBoundaryPan.$0[3], pendingBoundaryPan.$0[4]],0):!currentUi.FollowLatest&&length(generalOldTimeline)>0&&length(nextTimeline)>length(generalOldTimeline)?1:2);
+          }
+          else _6=!currentUi.FollowLatest&&length(generalOldTimeline)>0&&length(nextTimeline)>length(generalOldTimeline)?1:2;
+          switch(_6){
+            case 0:
+              reanchored=(pendingBoundaryPan=null,tryReanchorWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, _4[0], _4[2], nextTimeline, _4[3]));
+              break;
+            case 1:
+              reanchored=tryReanchorWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, 0, generalOldTimeline, nextTimeline, generalOldWindow);
+              break;
+            case 2:
+              reanchored=null;
+              break;
+          }
+          if(reanchored==null)_3=void 0;
+          else {
+            const window_1=reanchored.$0;
+            _3=(setUiState({
+              Window:window_1, 
+              FollowLatest:window_1.StartIndex===viewportMaximumStart(length(nextTimeline), window_1), 
+              HiddenRows:currentUi.HiddenRows, 
+              AddRowOpen:currentUi.AddRowOpen, 
+              CursorIndex:null, 
+              PendingActionId:currentUi.PendingActionId, 
+              Feedback:currentUi.Feedback
+            }),cursorIndex.Set(null));
+          }
+        }
+        _5=chartRuntimeState.Set(next);
+      }
+      else if(dataChanged){
+        dataWorkGeneration=dataWorkGeneration+1;
+        const generation=dataWorkGeneration;
+        const targets=activeRowDataStates;
+        function update(index){
+          if(generation===dataWorkGeneration&&index<length(targets))scheduleNextFrame(() => {
+            if(generation===dataWorkGeneration){
+              get(targets, index).Set(nextPreparedData);
+              update(index+1);
+            }
+          });
+        }
+        _5=update(0);
+      }
+      else _5=void 0;
+      latestPreparedData=nextPreparedData;
+      observedDataState=next;
     }
   }, runtimeState.View);
+  scheduleFullPreparation();
   const chartRuntimeView=chartRuntimeState.View;
-  const runtimeDataView=runtimeDataState.View;
   const actionAllowed=(actionName) => {
     const o_2=runtimeState.Get().Document;
     const o_3=o_2==null?null:Some(o_2.$0.AllowedActions);
@@ -9782,30 +9897,34 @@ function render(options, callbacks, runtimeState){
   };
   const referenceLength=() => {
     const m=runtimeState.Get().Document;
-    return m!=null&&m.$==1?referenceTimelineForDocument(m.$0, runtimeState.Get().Data).length:0;
+    return m!=null&&m.$==1?referenceTimelineForDocumentPrepared(m.$0, latestPreparedData).length:0;
   };
   const resolvedWindow=(ui) => resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), ui.FollowLatest, ui.Window);
+  const commitLocalWindow=(followLatest, window_1) => {
+    const current=uiState.Get();
+    const bounded=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), followLatest, window_1);
+    const changed=!Equals(bounded, resolvedWindow(current))||followLatest!=current.FollowLatest;
+    setUiState({
+      Window:bounded, 
+      FollowLatest:followLatest, 
+      HiddenRows:current.HiddenRows, 
+      AddRowOpen:current.AddRowOpen, 
+      CursorIndex:null, 
+      PendingActionId:current.PendingActionId, 
+      Feedback:current.Feedback
+    });
+    cursorIndex.Set(null);
+    draftWindow.Set(null);
+    return[changed, bounded];
+  };
   const setWindow=(followLatest, window_1) => {
     if(!viewportCommandsDisabledNow()){
-      const current=uiState.Get();
-      const bounded=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength(), followLatest, window_1);
-      const changed=!Equals(bounded, resolvedWindow(current))||followLatest!=current.FollowLatest;
-      setUiState({
-        Window:bounded,
-        FollowLatest:followLatest,
-        HiddenRows:current.HiddenRows,
-        AddRowOpen:current.AddRowOpen,
-        CursorIndex:null,
-        PendingActionId:current.PendingActionId,
-        Feedback:current.Feedback
-      });
-      cursorIndex.Set(null);
-      draftWindow.Set(null);
-      if(changed&&actionAllowed("visible-range-changed")&&!commandsDisabledNow()){
+      const p=commitLocalWindow(followLatest, window_1);
+      if(p[0]&&actionAllowed("visible-range-changed")&&!commandsDisabledNow()){
         const m=runtimeState.Get().Document;
         if(m==null)return null;
         else {
-          const m_1=visibleEventRange(m.$0, runtimeState.Get().Data, bounded);
+          const m_1=visibleEventRangePrepared(m.$0, latestPreparedData, p[1]);
           if(m_1==null)return null;
           else {
             const range_1=m_1.$0;
@@ -9816,14 +9935,14 @@ function render(options, callbacks, runtimeState){
             const b_1=Compare(a_1, b)===1?a_1:b;
             let _4=Compare(a, b_1)===-1?a:b_1;
             let _5={
-              BaseRowId:range_1.BaseRowId,
-              StartEventTimeUtc:range_1.StartEventTimeUtc,
-              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc,
+              BaseRowId:range_1.BaseRowId, 
+              StartEventTimeUtc:range_1.StartEventTimeUtc, 
+              EndEventTimeExclusiveUtc:range_1.EndEventTimeExclusiveUtc, 
               MaximumBasePoints:_4
             };
             let _6={
-              $:7,
-              $0:_3,
+              $:7, 
+              $0:_3, 
               $1:_5
             };
             return startAction(_6, "Visible range synchronized.", () => { });
@@ -9834,12 +9953,61 @@ function render(options, callbacks, runtimeState){
     }
     else return null;
   };
+  const requestAdjacentCoverage=(direction, delta) => {
+    if(actionAllowed("visible-range-changed")&&!commandsDisabledNow()){
+      const m=runtimeState.Get().Document;
+      if(m==null)return null;
+      else {
+        const document=m.$0;
+        const a=4000;
+        const a_1=1;
+        const b=options.MaximumVisibleBars;
+        const b_1=Compare(a_1, b)===1?a_1:b;
+        let _3=Compare(a, b_1)===-1?a:b_1;
+        const m_1=tryAdjacentCoverageRange(direction, _3, document, latestPreparedData);
+        if(m_1==null){
+          const _4=uiState.Get();
+          let _5={
+            Window:_4.Window, 
+            FollowLatest:_4.FollowLatest, 
+            HiddenRows:_4.HiddenRows, 
+            AddRowOpen:_4.AddRowOpen, 
+            CursorIndex:_4.CursorIndex, 
+            PendingActionId:_4.PendingActionId, 
+            Feedback:Equals(direction, {$:0})?"Earlier coverage is outside the configured query boundary.":"Later coverage is outside the configured query boundary."
+          };
+          return setUiState(_5);
+        }
+        else {
+          const change=m_1.$0;
+          const timeline=referenceTimelineForDocumentPrepared(document, latestPreparedData);
+          const window_1=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, length(timeline), uiState.Get().FollowLatest, uiState.Get().Window);
+          boundaryPanGeneration=boundaryPanGeneration+1;
+          pendingBoundaryPan=Some([boundaryPanGeneration, direction, delta, timeline, window_1]);
+          return startActionWith({
+            $:7, 
+            $0:currentCanvasId(), 
+            $1:change
+          }, Equals(direction, {$:0})?"Earlier coverage requested.":"Later coverage requested.", () => { }, () => {
+            pendingBoundaryPan=null;
+          });
+        }
+      }
+    }
+    else return null;
+  };
   const panWindow=(delta) => {
     const current=uiState.Get();
     const total=referenceLength();
     const visible=resolvedWindow(current);
-    const candidate=clampWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, total, {StartIndex:visible.StartIndex+delta, Count:visible.Count});
-    setWindow(candidate.StartIndex===viewportMaximumStart(total, candidate), candidate);
+    const requestedStart=visible.StartIndex+delta;
+    const maximumStart=viewportMaximumStart(total, visible);
+    if(requestedStart<0)requestAdjacentCoverage({$:0}, delta);
+    else if(requestedStart>maximumStart)requestAdjacentCoverage({$:1}, delta);
+    else {
+      const candidate=clampWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, total, {StartIndex:requestedStart, Count:visible.Count});
+      setWindow(candidate.StartIndex===viewportMaximumStart(total, candidate), candidate);
+    }
   };
   const zoomWindow=(delta) => {
     const current=uiState.Get();
@@ -9850,12 +10018,12 @@ function render(options, callbacks, runtimeState){
     setWindow(true, {StartIndex:0, Count:options.DefaultVisibleBars});
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:_3.AddRowOpen,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:_3.PendingActionId,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:_3.PendingActionId, 
       Feedback:"Local view reset."
     };
     setUiState(_4);
@@ -9883,85 +10051,66 @@ function render(options, callbacks, runtimeState){
     }
   };
   const setElementHidden=(hidden, element_2) => hidden?element_2.setAttribute("hidden", "hidden"):element_2.removeAttribute("hidden");
-  const applyCursorIndex=(value) => {
+  const applyVisibleCursorValues=(bounded) => {
     if(!(chartStackElement==null)){
-      let bounded, _3, _4;
-      if(value==null)bounded=null;
-      else {
-        const index=value.$0;
-        if(length(latestCursorTimestamps)===0)bounded=null;
-        else {
-          const a=0;
-          const b=length(latestCursorTimestamps)-1;
-          const b_1=Compare(index, b)===-1?index:b;
-          let _5=Compare(a, b_1)===1?a:b_1;
-          bounded=Some(_5);
-        }
-      }
-      displayedCursorIndex=bounded;
-      let _6=chartStackElement;
-      const o_2=bounded==null?null:Some(String(bounded.$0));
-      let _7=o_2==null?"":o_2.$0;
-      _6.setAttribute("data-cursor-index", _7);
-      const crosshairs=cursorElements("[data-ta-shared-crosshair='true']");
-      const m=cursorPosition(1000, length(latestCursorTimestamps), bounded);
-      if(m==null){
-        for(let i=0, _8=crosshairs.length-1;i<=_8;i++)get(crosshairs, i).setAttribute("visibility", "hidden");
-        _3=void 0;
-      }
-      else {
-        const x=m.$0;
-        const xText=fixedText(x);
-        for(let i_1=0, _9=crosshairs.length-1;i_1<=_9;i_1++){
-          const line=get(crosshairs, i_1);
-          line.setAttribute("x1", xText);
-          line.setAttribute("x2", xText);
-          line.setAttribute("visibility", "visible");
-        }
-        _3=void 0;
-      }
+      let _3;
       const hint=tryHead(cursorElements("[data-ta-cursor-hint]"));
       const time=tryHead(cursorElements("[data-ta-cursor-time]"));
       const valueNodes=cursorElements("[data-ta-cursor-value-index]");
       const legendValueNodes=cursorElements("[data-ta-row-value-index]");
+      const rowTimeNodes=cursorElements("[data-ta-row-data-time='true']");
       const legendIndex=bounded==null?length(latestCursorTimestamps)>0?Some(length(latestCursorTimestamps)-1):null:Some(bounded.$0);
-      for(let valueIndex=0, _10=length(legendValueNodes)-1;valueIndex<=_10;valueIndex++)((() => {
-        let o_3, o_4;
+      for(let valueIndex=0, _4=length(legendValueNodes)-1;valueIndex<=_4;valueIndex++)((() => {
+        let o_2, o_3;
         const node_1=get(legendValueNodes, valueIndex);
-        const m_1=(o_3=0,[TryParse(node_1.getAttribute("data-ta-row-value-index"), {get:() => o_3, set:(v) => {
-          o_3=v;
-        }}), o_3]);
-        const traceIndex=m_1[0]?m_1[1]:valueIndex;
+        const m=(o_2=0,[TryParse(node_1.getAttribute("data-ta-row-value-index"), {get:() => o_2, set:(v) => {
+          o_2=v;
+        }}), o_2]);
+        const traceIndex=m[0]?m[1]:valueIndex;
         const rowId=node_1.getAttribute("data-ta-row-value-row-id");
-        if(legendIndex==null)o_4=null;
+        if(legendIndex==null)o_3=null;
         else {
           const c=legendIndex.$0;
-          o_4=tryLegendValue(latestLegendReaders, rowId, traceIndex, c);
+          o_3=tryLegendValue(latestLegendReaders, rowId, traceIndex, c);
         }
-        const nextValue=o_4==null?"Undef":o_4.$0;
+        const o_4=o_3==null?null:Some(o_3.$0.Value);
+        const nextValue=o_4==null?"Unavailable":o_4.$0;
         node_1.textContent=nextValue;
-        return node_1.setAttribute("data-value-state", nextValue=="Undef"?"undefined":"defined");
+        return node_1.setAttribute("data-value-state", nextValue=="Unavailable"?"undefined":"defined");
+      })());
+      for(let i=0, _5=rowTimeNodes.length-1;i<=_5;i++)((() => {
+        let o_2;
+        const node_1=get(rowTimeNodes, i);
+        const rowId=node_1.getAttribute("data-ta-row-data-time-row-id");
+        if(legendIndex==null)o_2=null;
+        else {
+          const c=legendIndex.$0;
+          o_2=tryRowPresentation(latestLegendReaders, rowId, c);
+        }
+        const o_3=o_2==null?null:fullTimestamp(o_2.$0.Timestamp);
+        let _6=o_3==null?"Unavailable":o_3.$0;
+        node_1.textContent=_6;
       })());
       if(bounded!=null&&bounded.$==1){
-        const index_1=bounded.$0;
+        const index=bounded.$0;
         if(hint==null){ }
         else setElementHidden(true, hint.$0);
-        if(time==null)_4=void 0;
+        if(time==null)_3=void 0;
         else {
           const node=time.$0;
-          _4=(node.textContent=compactTimestamp(get(latestCursorTimestamps, index_1)),setElementHidden(false, node));
+          _3=(node.textContent=compactTimestamp(get(latestCursorTimestamps, index)),setElementHidden(false, node));
         }
-        for(let valueIndex_1=0, _11=length(valueNodes)-1;valueIndex_1<=_11;valueIndex_1++)(((valueIndex_2) => {
+        for(let valueIndex_1=0, _6=length(valueNodes)-1;valueIndex_1<=_6;valueIndex_1++)(((valueIndex_2) => {
           const node_1=get(valueNodes, valueIndex_1);
-          const o_3=tryItem(valueIndex_2, latestCursorReaders);
-          const m_1=o_3==null?null:o_3.$0(index_1);
-          if(m_1==null){
+          const o_2=tryItem(valueIndex_2, latestCursorReaders);
+          const m=o_2==null?null:o_2.$0(index);
+          if(m==null){
             node_1.textContent="";
             node_1.removeAttribute("data-cursor-row");
             return setElementHidden(true, node_1);
           }
           else {
-            const current=m_1.$0;
+            const current=m.$0;
             node_1.textContent=current.Label+" "+current.Value;
             node_1.setAttribute("data-cursor-row", current.Label);
             return setElementHidden(false, node_1);
@@ -9973,12 +10122,77 @@ function render(options, callbacks, runtimeState){
         else setElementHidden(false, hint.$0);
         if(time==null){ }
         else setElementHidden(true, time.$0);
-        for(let i_2=0, _12=valueNodes.length-1;i_2<=_12;i_2++)setElementHidden(true, get(valueNodes, i_2));
+        for(let i_1=0, _7=valueNodes.length-1;i_1<=_7;i_1++)setElementHidden(true, get(valueNodes, i_1));
       }
     }
   };
   refreshVisibleValues=() => {
-    applyCursorIndex(displayedCursorIndex);
+    applyVisibleCursorValues(displayedCursorIndex);
+  };
+  const applyCursorIndex=(value) => {
+    if(!(chartStackElement==null)){
+      let bounded, _3;
+      if(value==null)bounded=null;
+      else {
+        const index=value.$0;
+        if(length(latestCursorTimestamps)===0)bounded=null;
+        else {
+          const a=0;
+          const b=length(latestCursorTimestamps)-1;
+          const b_1=Compare(index, b)===-1?index:b;
+          let _4=Compare(a, b_1)===1?a:b_1;
+          bounded=Some(_4);
+        }
+      }
+      displayedCursorIndex=bounded;
+      let _5=chartStackElement;
+      const o_2=bounded==null?null:Some(String(bounded.$0));
+      let _6=o_2==null?"":o_2.$0;
+      _5.setAttribute("data-cursor-index", _6);
+      const crosshairs=cursorElements("[data-ta-shared-crosshair='true']");
+      const rowCursorLabels=cursorElements("[data-ta-row-cursor-label='true']");
+      const m=cursorPosition(1000, length(latestCursorTimestamps), bounded);
+      if(m==null){
+        for(let i=0, _8=crosshairs.length-1;i<=_8;i++)get(crosshairs, i).setAttribute("visibility", "hidden");
+        for(let i_1=0, _9=rowCursorLabels.length-1;i_1<=_9;i_1++)get(rowCursorLabels, i_1).setAttribute("visibility", "hidden");
+        _3=void 0;
+      }
+      else {
+        const x=m.$0;
+        const xText=fixedText(x);
+        for(let i_2=0, _10=crosshairs.length-1;i_2<=_10;i_2++){
+          const line=get(crosshairs, i_2);
+          line.setAttribute("x1", xText);
+          line.setAttribute("x2", xText);
+          line.setAttribute("visibility", "visible");
+        }
+        const a_1=48;
+        const a_2=952;
+        const b_2=Compare(a_2, x)===-1?a_2:x;
+        let _7=Compare(a_1, b_2)===1?a_1:b_2;
+        const labelX=fixedText(_7);
+        for(let i_3=0, _11=rowCursorLabels.length-1;i_3<=_11;i_3++)((() => {
+          let o_3;
+          const group=get(rowCursorLabels, i_3);
+          const rowId=group.getAttribute("data-ta-row-cursor-row-id");
+          if(bounded==null)o_3=null;
+          else {
+            const c=bounded.$0;
+            o_3=tryRowPresentation(latestLegendReaders, rowId, c);
+          }
+          const o_4=o_3==null?null:timestampParts(o_3.$0.Timestamp);
+          const p=o_4==null?["Unavailable", "Unavailable"]:o_4.$0;
+          group.setAttribute("transform", "translate("+labelX+" 0)");
+          group.setAttribute("visibility", "visible");
+          const dateNode=group.querySelector("[data-ta-row-cursor-date='true']");
+          const timeNode=group.querySelector("[data-ta-row-cursor-clock='true']");
+          if(!(dateNode==null))dateNode.textContent=p[0];
+          return!(timeNode==null)?void(timeNode.textContent=p[1]):null;
+        })());
+        _3=void 0;
+      }
+      applyVisibleCursorValues(bounded);
+    }
   };
   const setCursorIndex=(value) => {
     pendingCursorIndex=Some(value);
@@ -10008,8 +10222,8 @@ function render(options, callbacks, runtimeState){
           if(index>=0&&index<length(visible)){
             const baseRowId=m_1.$0;
             startAction({
-              $:6,
-              $0:currentCanvasId(),
+              $:6, 
+              $0:currentCanvasId(), 
               $1:{BaseRowId:baseRowId, EventTimeUtc:get(visible, index)}
             }, "Shared cursor synchronized.", () => { });
           }
@@ -10029,12 +10243,12 @@ function render(options, callbacks, runtimeState){
     pendingEditorMutation=null;
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:false,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:_3.PendingActionId,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:false, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:_3.PendingActionId, 
       Feedback:_3.Feedback
     };
     setUiState(_4);
@@ -10062,7 +10276,7 @@ function render(options, callbacks, runtimeState){
         const maximum=kind.$2;
         const itemKind=kind.$0;
         const indexesView=MapCachedBy(Equals, (x) => x, Map((v) => listIndexes(path, v), editorValues.View));
-        return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; gap:5px; min-width:0;")], [Doc.Element("span", [Attr.Create("style", "font-size:10px; color:#60738b;")], [Doc.TextNode(required?labelText+" *":labelText)]), Doc.EmbedView(Map((indexes) => Doc.Element("div", [Attr.Create("data-testid", editorTestId(path)+"-items"), Attr.Create("style", "display:flex; flex-direction:column; gap:5px;")], ofSeq_1(delay(() => collect_2((m_1) => {
+        return Doc.Element("div", [Attr.Create("style", "display:flex; flex-direction:column; gap:5px; min-width:0;")], [Doc.Element("span", [Attr.Create("style", "font-size:10px; color:#60738b;")], [Doc.TextNode(required?labelText+" *":labelText)]), Doc.EmbedView(Map((indexes) => Doc.Element("div", [Attr.Create("data-testid", editorTestId(path)+"-items"), Attr.Create("style", "display:flex; flex-direction:column; gap:5px;")], ofSeq_1(delay(() => collect_1((m_1) => {
           const position=m_1[0];
           const index=m_1[1];
           const itemPath=String(path)+"["+String(index)+"]";
@@ -10079,12 +10293,12 @@ function render(options, callbacks, runtimeState){
           if(maximum!=null&&maximum.$==1&&(count>=maximum.$0&&(_3=maximum.$0,true))){
             const _4=uiState.Get();
             let _5={
-              Window:_4.Window,
-              FollowLatest:_4.FollowLatest,
-              HiddenRows:_4.HiddenRows,
-              AddRowOpen:_4.AddRowOpen,
-              CursorIndex:_4.CursorIndex,
-              PendingActionId:_4.PendingActionId,
+              Window:_4.Window, 
+              FollowLatest:_4.FollowLatest, 
+              HiddenRows:_4.HiddenRows, 
+              AddRowOpen:_4.AddRowOpen, 
+              CursorIndex:_4.CursorIndex, 
+              PendingActionId:_4.PendingActionId, 
               Feedback:String(labelText)+" allows at most "+String(_3)+" item(s)."
             };
             setUiState(_5);
@@ -10164,6 +10378,33 @@ function render(options, callbacks, runtimeState){
       }
     };
   }
+  function submitQuery(query){
+    return(intentGeneration) => {
+      queryInFlight=true;
+      return startActionWithFeedback({
+        $:5, 
+        $0:currentCanvasId(), 
+        $1:query
+      }, "Query accepted.", () => {
+        const m=runtimeState.Get().Document;
+        if(m!=null&&m.$==1){
+          const currentDocument=m.$0;
+          const m_1=queryViewportSelection(querySelectionGeneration, intentGeneration, query, currentDocument, runtimeState.Get().Data);
+          return m_1.$==1?(commitLocalWindow(false, m_1.$0),null):m_1.$==2?Some("Query accepted, but the requested range has no loaded observations; the current viewport was preserved."):m_1.$==3?Some(m_1.$0):m_1.$==4?Some("A newer query superseded this response; the current viewport was preserved."):null;
+        }
+        else return Some("query-viewport-unavailable: the workspace document is not loaded.");
+      }, () => { }, () => {
+        queryInFlight=false;
+        if(queuedQuery==null){ }
+        else {
+          const nextQuery=queuedQuery.$0[0];
+          const nextGeneration=queuedQuery.$0[1];
+          queuedQuery=null;
+          (submitQuery(nextQuery))(nextGeneration);
+        }
+      });
+    };
+  }
   const applyQuery=() => {
     let o_2;
     const m=(o_2=0,[TryParse(intervalDraft, {get:() => o_2, set:(v) => {
@@ -10171,18 +10412,44 @@ function render(options, callbacks, runtimeState){
     }}), o_2]);
     const parsedInterval=m[0]&&m[1]>0?Some(m[1]):null;
     const query={
-      SourceId:null,
-      Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft),
-      IntervalMinutes:parsedInterval,
-      FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft),
-      ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft),
+      SourceId:null, 
+      Instrument:IsNullOrWhiteSpace(instrumentDraft)?null:Some(instrumentDraft), 
+      IntervalMinutes:parsedInterval, 
+      FromUtc:IsNullOrWhiteSpace(fromDateDraft)?null:Some(fromDateDraft), 
+      ToUtcExclusive:IsNullOrWhiteSpace(toDateDraft)?null:Some(toDateDraft), 
       IncludePartial:Some(true)
     };
-    startAction({
-      $:5,
-      $0:currentCanvasId(),
-      $1:query
-    }, "Query accepted.", () => { });
+    if(!remoteDisabled(runtimeState.Get().Poll)){
+      querySelectionGeneration=querySelectionGeneration+1;
+      if(queryInFlight){
+        queuedQuery=Some([query, querySelectionGeneration]);
+        const _3=uiState.Get();
+        let _4={
+          Window:_3.Window, 
+          FollowLatest:_3.FollowLatest, 
+          HiddenRows:_3.HiddenRows, 
+          AddRowOpen:_3.AddRowOpen, 
+          CursorIndex:_3.CursorIndex, 
+          PendingActionId:_3.PendingActionId, 
+          Feedback:"A newer query is queued and will supersede the pending viewport selection."
+        };
+        setUiState(_4);
+      }
+      else if(uiState.Get().PendingActionId!=null){
+        const _5=uiState.Get();
+        let _6={
+          Window:_5.Window, 
+          FollowLatest:_5.FollowLatest, 
+          HiddenRows:_5.HiddenRows, 
+          AddRowOpen:_5.AddRowOpen, 
+          CursorIndex:_5.CursorIndex, 
+          PendingActionId:_5.PendingActionId, 
+          Feedback:"action-in-flight: wait for the pending action result."
+        };
+        setUiState(_6);
+      }
+      else(submitQuery(query))(querySelectionGeneration);
+    }
   };
   const addRow=() => {
     let optionsResult;
@@ -10193,12 +10460,12 @@ function render(options, callbacks, runtimeState){
       if(length(errors_1)>0){
         const _3=uiState.Get();
         let _4={
-          Window:_3.Window,
-          FollowLatest:_3.FollowLatest,
-          HiddenRows:_3.HiddenRows,
-          AddRowOpen:_3.AddRowOpen,
-          CursorIndex:_3.CursorIndex,
-          PendingActionId:_3.PendingActionId,
+          Window:_3.Window, 
+          FollowLatest:_3.FollowLatest, 
+          HiddenRows:_3.HiddenRows, 
+          AddRowOpen:_3.AddRowOpen, 
+          CursorIndex:_3.CursorIndex, 
+          PendingActionId:_3.PendingActionId, 
           Feedback:concat_1(" ", errors_1)
         };
         setUiState(_4);
@@ -10210,10 +10477,10 @@ function render(options, callbacks, runtimeState){
         const binding={TemplateKey:schema.TemplateKey, Values:editorValues.Get().slice()};
         pendingEditorMutation=Some([runtimeState.Get().DocumentRevision, editingRowId, new FSharpSet("New_2", OfSeq(map((a) => a.RowId, currentRows))), binding]);
         startActionWith({
-          $:3,
-          $0:currentCanvasId(),
-          $1:editingRowId,
-          $2:schema.TemplateKey,
+          $:3, 
+          $0:currentCanvasId(), 
+          $1:editingRowId, 
+          $2:schema.TemplateKey, 
           $3:editorValues.Get()
         }, schema.DisplayName+" accepted; awaiting authoritative document.", () => { }, () => {
           pendingEditorMutation=null;
@@ -10266,18 +10533,18 @@ function render(options, callbacks, runtimeState){
         addRowSequence=addRowSequence+1;
         const rowId="row-"+addKind.Get().toLowerCase()+"-"+String(addRowSequence);
         const spec={
-          RowId:rowId,
-          Kind:kind,
-          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()),
-          HeightWeight:1,
-          Visible:true,
-          Options:rowOptions,
+          RowId:rowId, 
+          Kind:kind, 
+          DataRef:IsNullOrWhiteSpace(addDataRef.Get())?"series."+rowId:Trim(addDataRef.Get()), 
+          HeightWeight:1, 
+          Visible:true, 
+          Options:rowOptions, 
           Traces:[]
         };
         pendingAddRowId=Some(rowId);
         startAction({
-          $:2,
-          $0:currentCanvasId(),
+          $:2, 
+          $0:currentCanvasId(), 
           $1:spec
         }, "Row accepted.", () => { });
       }
@@ -10285,12 +10552,12 @@ function render(options, callbacks, runtimeState){
         const message=optionsResult.$0;
         const _12=uiState.Get();
         let _13={
-          Window:_12.Window,
-          FollowLatest:_12.FollowLatest,
-          HiddenRows:_12.HiddenRows,
-          AddRowOpen:_12.AddRowOpen,
-          CursorIndex:_12.CursorIndex,
-          PendingActionId:_12.PendingActionId,
+          Window:_12.Window, 
+          FollowLatest:_12.FollowLatest, 
+          HiddenRows:_12.HiddenRows, 
+          AddRowOpen:_12.AddRowOpen, 
+          CursorIndex:_12.CursorIndex, 
+          PendingActionId:_12.PendingActionId, 
           Feedback:message
         };
         setUiState(_13);
@@ -10321,12 +10588,12 @@ function render(options, callbacks, runtimeState){
             pendingAddRowId=null;
             const _8=uiState.Get();
             let _9={
-              Window:_8.Window,
-              FollowLatest:_8.FollowLatest,
-              HiddenRows:_8.HiddenRows,
-              AddRowOpen:false,
-              CursorIndex:_8.CursorIndex,
-              PendingActionId:_8.PendingActionId,
+              Window:_8.Window, 
+              FollowLatest:_8.FollowLatest, 
+              HiddenRows:_8.HiddenRows, 
+              AddRowOpen:false, 
+              CursorIndex:_8.CursorIndex, 
+              PendingActionId:_8.PendingActionId, 
               Feedback:"Row added."
             };
             _4=setUiState(_9);
@@ -10358,12 +10625,12 @@ function render(options, callbacks, runtimeState){
               forceCloseRowEditor();
               const _10=uiState.Get();
               let _11={
-                Window:_10.Window,
-                FollowLatest:_10.FollowLatest,
-                HiddenRows:_10.HiddenRows,
-                AddRowOpen:_10.AddRowOpen,
-                CursorIndex:_10.CursorIndex,
-                PendingActionId:_10.PendingActionId,
+                Window:_10.Window, 
+                FollowLatest:_10.FollowLatest, 
+                HiddenRows:_10.HiddenRows, 
+                AddRowOpen:_10.AddRowOpen, 
+                CursorIndex:_10.CursorIndex, 
+                PendingActionId:_10.PendingActionId, 
                 Feedback:targetRowId!=null?"Row updated.":"Row added."
               };
               _6=setUiState(_11);
@@ -10405,7 +10672,7 @@ function render(options, callbacks, runtimeState){
         fromDateDraft=value;
       })]), Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("To"), inputText("ta-to", "YYYY-MM-DD", toDateDraft, (value) => {
         toDateDraft=value;
-      })]), primaryButtonView("ta-apply-query", "Load / Apply", commandsDisabledView, commandsDisabledNow, applyQuery)]), Doc.Element("div", [Attr.Create("data-testid", "ta-local-toolbar"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], append_1(ofArray([compactRemoteButton("ta-pan-left", "\u2190", "Pan earlier", viewportCommandsDisabledView, viewportCommandsDisabledNow, () => {
+      })]), primaryButtonView("ta-apply-query", "Load / Apply", Map((state_1) => remoteDisabled(state_1.Poll), runtimeState.View), () => remoteDisabled(runtimeState.Get().Poll), applyQuery)]), Doc.Element("div", [Attr.Create("data-testid", "ta-local-toolbar"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], append_1(ofArray([compactRemoteButton("ta-pan-left", "\u2190", "Pan earlier", viewportCommandsDisabledView, viewportCommandsDisabledNow, () => {
         const a=1;
         const b=resolvedWindow(uiState.Get()).Count/4>>0;
         let _12=-(Compare(a, b)===1?a:b);
@@ -10430,17 +10697,17 @@ function render(options, callbacks, runtimeState){
           else resetEditorFor(m_2.$0.TemplateKey);
           const _12=uiState.Get();
           let _13={
-            Window:_12.Window,
-            FollowLatest:_12.FollowLatest,
-            HiddenRows:_12.HiddenRows,
-            AddRowOpen:true,
-            CursorIndex:_12.CursorIndex,
-            PendingActionId:_12.PendingActionId,
+            Window:_12.Window, 
+            FollowLatest:_12.FollowLatest, 
+            HiddenRows:_12.HiddenRows, 
+            AddRowOpen:true, 
+            CursorIndex:_12.CursorIndex, 
+            PendingActionId:_12.PendingActionId, 
             Feedback:""
           };
           setUiState(_13);
         }
-      })]):FSharpList.Empty, ofArray([Doc.Element("span", [Attr.Create("style", "margin-left:auto; color:#60738b; font-size:11px;")], [Doc.TextNode("viewport changes request the selected event-time range when enabled")])])))), Doc.EmbedView(Map((ui) => Doc.Element("div", [Attr.Create("data-testid", "ta-row-toggles"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], ofSeq_1(delay(() => collect_2((row) => {
+      })]):FSharpList.Empty, ofArray([Doc.Element("span", [Attr.Create("style", "margin-left:auto; color:#60738b; font-size:11px;")], [Doc.TextNode("viewport changes request the selected event-time range when enabled")])])))), Doc.EmbedView(Map((ui) => Doc.Element("div", [Attr.Create("data-testid", "ta-row-toggles"), Attr.Create("style", "display:flex; align-items:center; gap:5px; flex-wrap:wrap;")], ofSeq_1(delay(() => collect_1((row) => {
         let editable;
         const hidden=ui.HiddenRows.Contains(row.RowId);
         const displayLabel=rowDisplayLabel(row);
@@ -10454,12 +10721,12 @@ function render(options, callbacks, runtimeState){
           const nextHidden=hidden?uiState.Get().HiddenRows.Remove_1(row.RowId):uiState.Get().HiddenRows.Add_1(row.RowId);
           const _13=uiState.Get();
           let _14={
-            Window:_13.Window,
-            FollowLatest:_13.FollowLatest,
-            HiddenRows:nextHidden,
-            AddRowOpen:_13.AddRowOpen,
-            CursorIndex:_13.CursorIndex,
-            PendingActionId:_13.PendingActionId,
+            Window:_13.Window, 
+            FollowLatest:_13.FollowLatest, 
+            HiddenRows:nextHidden, 
+            AddRowOpen:_13.AddRowOpen, 
+            CursorIndex:_13.CursorIndex, 
+            PendingActionId:_13.PendingActionId, 
             Feedback:_13.Feedback
           };
           return setUiState(_14);
@@ -10470,12 +10737,12 @@ function render(options, callbacks, runtimeState){
               editingRowId=null;
               const _13=uiState.Get();
               let _14={
-                Window:_13.Window,
-                FollowLatest:_13.FollowLatest,
-                HiddenRows:_13.HiddenRows,
-                AddRowOpen:false,
-                CursorIndex:_13.CursorIndex,
-                PendingActionId:_13.PendingActionId,
+                Window:_13.Window, 
+                FollowLatest:_13.FollowLatest, 
+                HiddenRows:_13.HiddenRows, 
+                AddRowOpen:false, 
+                CursorIndex:_13.CursorIndex, 
+                PendingActionId:_13.PendingActionId, 
                 Feedback:"This row's editor metadata is invalid; the row remains read-only."
               };
               return setUiState(_14);
@@ -10489,12 +10756,12 @@ function render(options, callbacks, runtimeState){
               editorValues.Set(values);
               const _15=uiState.Get();
               let _16={
-                Window:_15.Window,
-                FollowLatest:_15.FollowLatest,
-                HiddenRows:_15.HiddenRows,
-                AddRowOpen:true,
-                CursorIndex:_15.CursorIndex,
-                PendingActionId:_15.PendingActionId,
+                Window:_15.Window, 
+                FollowLatest:_15.FollowLatest, 
+                HiddenRows:_15.HiddenRows, 
+                AddRowOpen:true, 
+                CursorIndex:_15.CursorIndex, 
+                PendingActionId:_15.PendingActionId, 
                 Feedback:""
               };
               return setUiState(_16);
@@ -10502,8 +10769,8 @@ function render(options, callbacks, runtimeState){
           }
           else return null;
         })], [Doc.TextNode("Edit")])]:[], delay(() =>[Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-remove-row-"+row.RowId), Attr.Create("title", "Remove "+displayLabel+" row"), DynamicBool("disabled", commandsDisabledView), Dynamic_1("style", Map((disabled) => disabled?"width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;":"width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;", commandsDisabledView)), Handler("click", () =>() =>!commandsDisabledNow()?startAction({
-          $:4,
-          $0:currentCanvasId(),
+          $:4, 
+          $0:currentCanvasId(), 
           $1:row.RowId
         }, displayLabel+" row removal accepted.", () => { }):null)], [Doc.TextNode("×")])])))))))];
       }, document.Rows)))), uiState.View)), Doc.EmbedView(Map((ui) =>!ui.AddRowOpen?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-add-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;")], [Doc.Element("div", [Attr.Create("data-testid", "ta-generic-row-editor"), Attr.Create("style", "display:flex; flex-direction:column; gap:7px; min-width:0;")], [Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode("Template"), selectInput("ta-editor-template", selectedTemplate.Get(), ofArray(map((schema) =>[schema.TemplateKey, schema.DisplayName], editorSchemasNow())), resetEditorFor)]), Doc.EmbedView(Map((templateKey) => {
@@ -10523,17 +10790,48 @@ function render(options, callbacks, runtimeState){
         return append_2(_12, delay(() => append_2([compactButton("ta-add-row-cancel", "Cancel", "Close without submitting", closeRowEditor)], delay(() =>[primaryButtonView("ta-add-row-submit", editingRowId!=null?"Apply":"Add", commandsDisabledView, commandsDisabledNow, addRow)]))));
       })))]), uiState.View)), Doc.EmbedView(Map((ui) => IsNullOrWhiteSpace(ui.Feedback)?Doc.Empty:Doc.Element("div", [Attr.Create("data-testid", "ta-feedback"), Attr.Create("style", "font-size:11px; color:#40536d; min-height:15px;")], [Doc.TextNode(ui.Feedback)]), uiState.View))]), Doc.EmbedView(Map2((_12, _13) => {
         chartRenderSequence=chartRenderSequence+1;
-        const visibleRows=filter_1((row) => row.Visible&&!_13.HiddenRows.Contains(row.RowId), document.Rows);
-        const referenceTimeline_1=referenceTimelineForDocument(document, _12.Data);
+        chartWorkGeneration=chartWorkGeneration+1;
+        dataWorkGeneration=dataWorkGeneration+1;
+        const workGeneration=chartWorkGeneration;
+        const visibleRows=preparedDataReady?filter_1((row) => row.Visible&&!_13.HiddenRows.Contains(row.RowId), document.Rows):[];
+        const cursorReaderCount=sumBy((row) => filter_1((a) => a.Visible, effectiveTraces(row)).length, visibleRows);
+        const shellPreparedData=preparedDataForShell;
+        const referenceTimeline_1=referenceTimelineForDocumentPrepared(document, shellPreparedData);
         const referenceLength_1=length(referenceTimeline_1);
         const o_4=tryFind((trace) => trace.Visible&&Equals(trace.Kind, {$:0}), collect(effectiveTraces, visibleRows));
-        const o_5=o_4==null?null:Some(candleSeriesForTrace(o_4.$0, _12.Data));
+        const o_5=o_4==null?null:Some(candleSeriesForTracePreparedSampled(280, o_4.$0, shellPreparedData));
         const overviewPoints=o_5==null?[]:o_5.$0;
         const visibleWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength_1, _13.FollowLatest, _13.Window);
         const visibleTimestamps=selectWindow(visibleWindow, referenceTimeline_1);
-        const renderedRows=mapi((_14, _15) => renderRowReactivePreparedLiveWithValueRefresh(_12, _13, preparedDataForShell, runtimeDataView, visibleTimestamps, cursorIndex.View, setCursorIndex, commitCursorIndex, _14===length(visibleRows)-1, Equals(document.BaseRowId, Some(_15.RowId)), scheduleVisibleValueRefresh, _15), visibleRows);
-        const cursorReaders=collect((_14) => _14[1], renderedRows);
-        const legendReaders=OfArray(map2((_14, _15) =>[_14.RowId, _15[2]], visibleRows, renderedRows));
+        const rowDataStates=map(() => _c_3.Create_1(shellPreparedData), visibleRows);
+        const readyRowCount=_c_3.Create_1(0);
+        const rowDocs=mapi((_15, _16) => {
+          const traces=filter_1((a) => a.Visible, effectiveTraces(_16));
+          const reservedHeight=(exists((trace) => Equals(trace.Kind, {$:4}), traces)?322:exists((trace) => Equals(trace.Kind, {$:0}), traces)?262:124)+46;
+          return _c_3.Create_1(Doc.Element("div", [Attr.Create("data-testid", "ta-row-loading-"+_16.RowId), Attr.Create("style", "height:"+String(reservedHeight)+"px; min-height:"+String(reservedHeight)+"px; padding:12px; border-top:1px solid #e1e7ef; box-sizing:border-box; color:#718197; background:#fff;")], [Doc.TextNode("Preparing "+rowDisplayLabel(_16)+"...")]));
+        }, visibleRows);
+        const stagedCursorReaders=create(length(visibleRows), null);
+        const stagedLegendReaders=create(length(visibleRows), null);
+        activeRowDataStates=rowDataStates;
+        latestCursorTimestamps=visibleTimestamps;
+        latestCursorReaders=[];
+        latestLegendReaders=new FSharpMap("New", []);
+        function mountRow(index){
+          if(workGeneration===chartWorkGeneration&&index<length(visibleRows))scheduleNextFrame(() => {
+            if(workGeneration===chartWorkGeneration){
+              const p=renderRowReactivePreparedLiveWithValueRefresh(_12, _13, get(rowDataStates, index).Get(), get(rowDataStates, index).View, visibleTimestamps, cursorIndex.View, setCursorIndex, commitCursorIndex, true, Equals(document.BaseRowId, Some(get(visibleRows, index).RowId)), scheduleVisibleValueRefresh, get(visibleRows, index));
+              set(stagedCursorReaders, index, Some(p[1]));
+              set(stagedLegendReaders, index, Some(p[2]));
+              get(rowDocs, index).Set(p[0]);
+              readyRowCount.Set(index+1);
+              latestCursorReaders=collect((x) => x, choose((x) => x, stagedCursorReaders));
+              latestLegendReaders=OfArray(choose((x) => x, mapi((_15, _16) => _16==null?null:Some([get(visibleRows, _15).RowId, _16.$0]), stagedLegendReaders)));
+              applyCursorIndex(cursorIndex.Get());
+              mountRow(index+1);
+            }
+          });
+        }
+        mountRow(0);
         const visibleStart=visibleWindow.Count===0?0:visibleWindow.StartIndex+1;
         const visibleEnd=visibleWindow.StartIndex+visibleWindow.Count;
         const viewportRangeText=Map((draft) => {
@@ -10543,19 +10841,21 @@ function render(options, callbacks, runtimeState){
           }
           else return"Loaded "+String(referenceLength_1)+" bars · Viewing "+String(visibleStart)+"-"+String(visibleEnd);
         }, draftWindow.View);
-        return Doc.Element("div", [Attr.Create("data-testid", "ta-chart-stack"), Attr.Create("data-chart-render-sequence", String(chartRenderSequence)), Attr.Create("data-loaded-bars", String(referenceLength_1)), Attr.Create("data-visible-start", String(visibleStart)), Attr.Create("data-visible-end", String(visibleEnd)), Attr.Create("data-follow-latest", _13.FollowLatest?"true":"false"), Attr.Create("data-cursor-index", ""), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"), OnAfterRender((node) => {
+        let _14=Doc.Element("div", [Attr.Create("data-testid", "ta-chart-stack"), Attr.Create("data-chart-render-sequence", String(chartRenderSequence)), Attr.Create("data-loaded-bars", String(referenceLength_1)), Attr.Create("data-visible-start", String(visibleStart)), Attr.Create("data-visible-end", String(visibleEnd)), Attr.Create("data-follow-latest", _13.FollowLatest?"true":"false"), Attr.Create("data-row-count", String(length(visibleRows))), Dynamic_1("data-ready-row-count", Map(String, readyRowCount.View)), Attr.Create("data-cursor-index", ""), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"), OnAfterRender((node) => {
           chartStackElement=node;
           latestCursorTimestamps=visibleTimestamps;
-          latestCursorReaders=cursorReaders;
-          latestLegendReaders=legendReaders;
           applyCursorIndex(cursorIndex.Get());
-        })], ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:1; display:flex; flex-direction:column; align-items:stretch; border-top:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() => append_2([Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-cross-scale-values-toggle"), Dynamic_1("aria-expanded", Map((expanded) => expanded?"true":"false", crossScaleSummaryOpen.View)), Attr.Create("style", "height:28px; min-height:28px; padding:0 8px; border:0; background:#f8fafc; color:#40536d; font-size:11px; font-weight:650; text-align:left; cursor:pointer;"), Handler("click", () =>() => crossScaleSummaryOpen.Set(!crossScaleSummaryOpen.Get()))], [Doc.TextView(Map((expanded) => expanded?"Hide cross-scale values":"Show cross-scale values", crossScaleSummaryOpen.View))])], delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-cross-scale-values"), Dynamic_1("data-expanded", Map((expanded) => expanded?"true":"false", crossScaleSummaryOpen.View)), Dynamic_1("style", Map((expanded) => expanded?"display:flex; align-items:center; gap:4px 12px; height:30px; min-height:30px; padding:0 8px; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:#263b55;":"display:none; height:30px; min-height:30px;", crossScaleSummaryOpen.View))], ofSeq_1(delay(() => append_2([Doc.Element("span", [Attr.Create("data-ta-cursor-hint", "true"), Attr.Create("style", "flex:0 0 auto; font-size:11px; color:#718197;")], [Doc.TextNode("Move the pointer over any chart row to inspect one shared bar.")])], delay(() => append_2([Doc.Element("strong", [Attr.Create("data-ta-cursor-time", "true"), Attr.Create("hidden", "hidden"), Attr.Create("style", "flex:0 0 auto; white-space:nowrap;")], [Doc.TextNode("")])], delay(() => map_2((index) => Doc.Element("span", [Attr.Create("data-ta-cursor-value-index", String(index)), Attr.Create("hidden", "hidden"), Attr.Create("style", "flex:0 0 auto; white-space:nowrap;")], [Doc.TextNode("")]), range(0, length(cursorReaders)-1)))))))))])))))], delay(() => append_2(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:collect_2((m_2) =>[m_2[0]], renderedRows), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], [compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
+        })], ofSeq_1(delay(() => append_2([Doc.Element("div", [Attr.Create("data-testid", "ta-cursor-panel"), Attr.Create("style", "order:1; display:flex; flex-direction:column; align-items:stretch; border-top:1px solid #dce4ef; background:#f8fafc;")], ofSeq_1(delay(() => append_2([Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-cross-scale-values-toggle"), Dynamic_1("aria-expanded", Map((expanded) => expanded?"true":"false", crossScaleSummaryOpen.View)), Attr.Create("style", "height:28px; min-height:28px; padding:0 8px; border:0; background:#f8fafc; color:#40536d; font-size:11px; font-weight:650; text-align:left; cursor:pointer;"), Handler("click", () =>() => crossScaleSummaryOpen.Set(!crossScaleSummaryOpen.Get()))], [Doc.TextView(Map((expanded) => expanded?"Hide cross-scale values":"Show cross-scale values", crossScaleSummaryOpen.View))])], delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-cross-scale-values"), Dynamic_1("data-expanded", Map((expanded) => expanded?"true":"false", crossScaleSummaryOpen.View)), Dynamic_1("style", Map((expanded) => expanded?"display:flex; align-items:center; gap:4px 12px; height:30px; min-height:30px; padding:0 8px; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:#263b55;":"display:none; height:30px; min-height:30px;", crossScaleSummaryOpen.View))], ofSeq_1(delay(() => append_2([Doc.Element("span", [Attr.Create("data-ta-cursor-hint", "true"), Attr.Create("style", "flex:0 0 auto; font-size:11px; color:#718197;")], [Doc.TextNode("Move the pointer over any chart row to inspect one shared bar.")])], delay(() => append_2([Doc.Element("strong", [Attr.Create("data-ta-cursor-time", "true"), Attr.Create("hidden", "hidden"), Attr.Create("style", "flex:0 0 auto; white-space:nowrap;")], [Doc.TextNode("")])], delay(() => map_2((index) => Doc.Element("span", [Attr.Create("data-ta-cursor-value-index", String(index)), Attr.Create("hidden", "hidden"), Attr.Create("style", "flex:0 0 auto; white-space:nowrap;")], [Doc.TextNode("")]), range(0, cursorReaderCount-1)))))))))])))))], delay(() => append_2(length(visibleRows)===0?[Doc.Element("div", [Attr.Create("style", "padding:18px; color:#667891;")], [Doc.TextNode("No visible TA rows.")])]:map_2((rowDoc) => Doc.EmbedView(rowDoc.View), rowDocs), delay(() =>[Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-panel"), Attr.Create("style", "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;")], [Doc.Element("span", [Attr.Create("data-testid", "ta-viewport-range"), Attr.Create("style", "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;")], [Doc.TextView(viewportRangeText)]), Doc.Element("div", [Attr.Create("data-testid", "ta-viewport-presets"), Attr.Create("style", "display:flex; gap:4px; align-items:center;")], ofSeq_1(delay(() => append_2([compactButton("ta-view-48", "48", "Show latest 48 bars", () => {
           setWindowCount(48);
-        }), compactButton("ta-view-200", "200", "Show latest 200 bars", () => {
+        })], delay(() => append_2([compactButton("ta-view-200", "200", "Show latest 200 bars", () => {
           setWindowCount(200);
-        }), compactButton("ta-view-all", "All", "Show the complete loaded range", () => {
-          setWindowCount(referenceLength_1);
-        })]), Doc.Element("div", [Attr.Create("style", "grid-column:1 / -1; min-width:0;")], [overviewSvg(overviewPoints, Map((draft) => selectionRatios(referenceLength_1, draft==null?visibleWindow:draft.$0), draftWindow.View), (node) => {
+        })], delay(() => {
+          const b=options.MaximumVisibleBars;
+          const capped=Compare(referenceLength_1, b)===-1?referenceLength_1:b;
+          return[compactButton("ta-view-all", referenceLength_1>options.MaximumVisibleBars?"Max "+String(options.MaximumVisibleBars):"All", "Show up to "+String(capped)+" loaded bars", () => {
+            setWindowCount(capped);
+          })];
+        }))))))), Doc.Element("div", [Attr.Create("style", "grid-column:1 / -1; min-width:0;")], [overviewSvg(overviewPoints, Map((draft) => selectionRatios(referenceLength_1, draft==null?visibleWindow:draft.$0), draftWindow.View), (node) => {
           navigatorElement=node;
         }, (drag, event) => {
           let moveHandler, upHandler, finished;
@@ -10574,8 +10874,8 @@ function render(options, callbacks, runtimeState){
                 finished=true;
                 finishNavigatorDrag=null;
                 const x=draftWindow.Get();
-                let _14=x==null?committed:x.$0;
-                const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _14);
+                let _15=x==null?committed:x.$0;
+                const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _15);
                 const next=p[1];
                 const followLatest=p[0];
                 if(!Equals(next, committed)||followLatest!=uiState.Get().FollowLatest)setWindow(followLatest, next);
@@ -10592,6 +10892,7 @@ function render(options, callbacks, runtimeState){
           }
           else return null;
         }, finishNavigatorDragFromElement)])])])))))));
+        return _14;
       }, chartRuntimeView, chartUiState.View))]);
     }
     else {
@@ -10603,24 +10904,38 @@ function render(options, callbacks, runtimeState){
 function defaultOptions(){
   return _c_5.defaultOptions;
 }
+function ensureAxisResizeTracking(){
+  if(!axisResizeBound()){
+    set_axisResizeBound(true);
+    const refresh=() => {
+      let _1=axisViewportWidth();
+      const a=320;
+      const b=globalThis.innerWidth-48;
+      let _2=Compare(a, b)===1?a:b;
+      _1.Set(_2);
+    };
+    refresh();
+    globalThis.addEventListener("resize", () => refresh());
+  }
+}
 function remoteDisabled(a){
   return a.$==3||(a.$==6||(a.$==0||a.$==7));
 }
 function localViewportDisabled(a){
   return a.$==3||(a.$==0||a.$==7);
 }
-function submit(callbacks, uiState, actualDocumentRevision, request, successText, onAccepted, onRejected){
+function submit(callbacks, uiState, actualDocumentRevision, request, successText, onAccepted, onRejected, afterSettled){
   const m=request.ExpectedDocumentRevision;
   const expectedRevisionMatches=m==null||m.$0===actualDocumentRevision;
   if(uiState.Get().PendingActionId!=null){
     const _1=uiState.Get();
     let _2={
-      Window:_1.Window,
-      FollowLatest:_1.FollowLatest,
-      HiddenRows:_1.HiddenRows,
-      AddRowOpen:_1.AddRowOpen,
-      CursorIndex:_1.CursorIndex,
-      PendingActionId:_1.PendingActionId,
+      Window:_1.Window, 
+      FollowLatest:_1.FollowLatest, 
+      HiddenRows:_1.HiddenRows, 
+      AddRowOpen:_1.AddRowOpen, 
+      CursorIndex:_1.CursorIndex, 
+      PendingActionId:_1.PendingActionId, 
       Feedback:"action-in-flight: wait for the pending action result."
     };
     uiState.Set(_2);
@@ -10629,104 +10944,112 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
     onRejected();
     const _3=uiState.Get();
     let _4={
-      Window:_3.Window,
-      FollowLatest:_3.FollowLatest,
-      HiddenRows:_3.HiddenRows,
-      AddRowOpen:_3.AddRowOpen,
-      CursorIndex:_3.CursorIndex,
-      PendingActionId:null,
+      Window:_3.Window, 
+      FollowLatest:_3.FollowLatest, 
+      HiddenRows:_3.HiddenRows, 
+      AddRowOpen:_3.AddRowOpen, 
+      CursorIndex:_3.CursorIndex, 
+      PendingActionId:null, 
       Feedback:"revision-conflict: workspace is at revision "+String(actualDocumentRevision)+"."
     };
     uiState.Set(_4);
+    afterSettled();
   }
   else {
     const _5=uiState.Get();
     let _6={
-      Window:_5.Window,
-      FollowLatest:_5.FollowLatest,
-      HiddenRows:_5.HiddenRows,
-      AddRowOpen:_5.AddRowOpen,
-      CursorIndex:_5.CursorIndex,
-      PendingActionId:Some(request.RequestId),
+      Window:_5.Window, 
+      FollowLatest:_5.FollowLatest, 
+      HiddenRows:_5.HiddenRows, 
+      AddRowOpen:_5.AddRowOpen, 
+      CursorIndex:_5.CursorIndex, 
+      PendingActionId:Some(request.RequestId), 
       Feedback:"Submitting "+request.RequestId+"..."
     };
     uiState.Set(_6);
     StartImmediate(Delay(() => Bind_1(callbacks.SubmitAction(request), (a) => {
-      let result;
+      let result, _7;
       if(a.$==1){
         const error_3=a.$0;
         result={
-          $:1,
-          $0:request.RequestId,
-          $1:error_3.Code,
+          $:1, 
+          $0:request.RequestId, 
+          $1:error_3.Code, 
           $2:error_3.Message
         };
       }
       else result=a.$0;
-      if((result.$==1?result.$0:result.$==2?result.$0:result.$0)!=request.RequestId){
+      const resultRequestId=result.$==1?result.$0:result.$==2?result.$0:result.$0;
+      if(!Equals(uiState.Get().PendingActionId, Some(request.RequestId)))_7=Zero();
+      else if(resultRequestId!=request.RequestId){
         onRejected();
-        const _7=uiState.Get();
-        let _8={
-          Window:_7.Window,
-          FollowLatest:_7.FollowLatest,
-          HiddenRows:_7.HiddenRows,
-          AddRowOpen:_7.AddRowOpen,
-          CursorIndex:_7.CursorIndex,
-          PendingActionId:null,
+        const _8=uiState.Get();
+        let _9={
+          Window:_8.Window, 
+          FollowLatest:_8.FollowLatest, 
+          HiddenRows:_8.HiddenRows, 
+          AddRowOpen:_8.AddRowOpen, 
+          CursorIndex:_8.CursorIndex, 
+          PendingActionId:null, 
           Feedback:"action-correlation-mismatch: result does not match the pending request."
         };
-        uiState.Set(_8);
-        return Zero();
+        uiState.Set(_9);
+        _7=Zero();
       }
       else if(result.$==1){
         const message=result.$2;
         const code=result.$1;
         onRejected();
-        const _9=uiState.Get();
-        let _10={
-          Window:_9.Window,
-          FollowLatest:_9.FollowLatest,
-          HiddenRows:_9.HiddenRows,
-          AddRowOpen:_9.AddRowOpen,
-          CursorIndex:_9.CursorIndex,
-          PendingActionId:null,
+        const _10=uiState.Get();
+        let _11={
+          Window:_10.Window, 
+          FollowLatest:_10.FollowLatest, 
+          HiddenRows:_10.HiddenRows, 
+          AddRowOpen:_10.AddRowOpen, 
+          CursorIndex:_10.CursorIndex, 
+          PendingActionId:null, 
           Feedback:code+": "+message
         };
-        uiState.Set(_10);
-        return Zero();
+        uiState.Set(_11);
+        _7=Zero();
       }
       else if(result.$==2){
         const actualRevision=result.$1;
         onRejected();
-        const _11=uiState.Get();
-        let _12={
-          Window:_11.Window,
-          FollowLatest:_11.FollowLatest,
-          HiddenRows:_11.HiddenRows,
-          AddRowOpen:_11.AddRowOpen,
-          CursorIndex:_11.CursorIndex,
-          PendingActionId:null,
+        const _12=uiState.Get();
+        let _13={
+          Window:_12.Window, 
+          FollowLatest:_12.FollowLatest, 
+          HiddenRows:_12.HiddenRows, 
+          AddRowOpen:_12.AddRowOpen, 
+          CursorIndex:_12.CursorIndex, 
+          PendingActionId:null, 
           Feedback:"revision-conflict: workspace is at revision "+String(actualRevision)+"."
         };
-        uiState.Set(_12);
-        return Zero();
+        uiState.Set(_13);
+        _7=Zero();
       }
       else {
         const revision=result.$1;
-        onAccepted();
-        const _13=uiState.Get();
-        let _14={
-          Window:_13.Window,
-          FollowLatest:_13.FollowLatest,
-          HiddenRows:_13.HiddenRows,
-          AddRowOpen:_13.AddRowOpen,
-          CursorIndex:_13.CursorIndex,
-          PendingActionId:null,
-          Feedback:successText+" Revision "+String(revision)+"."
+        const feedbackOverride=onAccepted();
+        const _14=uiState.Get();
+        let _15={
+          Window:_14.Window, 
+          FollowLatest:_14.FollowLatest, 
+          HiddenRows:_14.HiddenRows, 
+          AddRowOpen:_14.AddRowOpen, 
+          CursorIndex:_14.CursorIndex, 
+          PendingActionId:null, 
+          Feedback:feedbackOverride==null?successText+" Revision "+String(revision)+".":feedbackOverride.$0
         };
-        uiState.Set(_14);
-        return Zero();
+        uiState.Set(_15);
+        _7=Zero();
       }
+      let _16=_7;
+      return Combine(_16, Delay(() => {
+        afterSettled();
+        return Zero();
+      }));
     })), null);
   }
 }
@@ -10748,19 +11071,23 @@ function chartTopologySignaturePrepared(state, prepared){
 function runtimeDataChanged(left, right){
   return!Equals(left.Identity, right.Identity)||left.DataRevision!==right.DataRevision||!(left.Data===right.Data);
 }
-function cursorPosition(width, pointCount, cursorIndex){
-  return cursorIndex==null?null:slotCenter(width, pointCount, cursorIndex.$0);
-}
-function fixedText(value){
-  return String(value);
-}
 function tryLegendValue(readersByRow, rowId, traceIndex, cursorIndex){
   const o=readersByRow.TryFind(rowId);
   const o_1=o==null?null:tryItem(traceIndex, o.$0);
   return o_1==null?null:o_1.$0(cursorIndex);
 }
+function tryRowPresentation(readersByRow, rowId, cursorIndex){
+  const o=readersByRow.TryFind(rowId);
+  return o==null?null:tryPick((readValue) => readValue(cursorIndex), o.$0);
+}
 function compactTimestamp(value){
   return IsNullOrWhiteSpace(value)?"":value.length>=16&&value[4]==="-"&&value[7]==="-"&&(value[10]==="T"||value[10]===" ")?Substring(value, 5, 5)+" "+Substring(value, 11, 5):value;
+}
+function cursorPosition(width, pointCount, cursorIndex){
+  return cursorIndex==null?null:slotCenter(width, pointCount, cursorIndex.$0);
+}
+function fixedText(value){
+  return String(value);
 }
 function compactButton(testId, label, titleText, onClick){
   return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", testId), Attr.Create("title", titleText), Attr.Create("style", "height:30px; border:1px solid #9fb0c6; border-radius:4px; background:#f8fafc; color:#20344f; padding:3px 9px; font-size:12px; cursor:pointer; white-space:nowrap;"), Handler("click", () =>() => onClick())], [Doc.TextNode(label)]);
@@ -10782,7 +11109,7 @@ function selectInput(testId, initial_1, values, onChanged){
     const input_1=node;
     input_1.value=initial_1;
     input_1.addEventListener("change", () => onChanged(input_1.value));
-  })], ofSeq_1(delay(() => collect_2((m) =>[element_1("option", [Attr.Create("value", m[0])], [Doc.TextNode(m[1])])], values))));
+  })], ofSeq_1(delay(() => collect_1((m) =>[element_1("option", [Attr.Create("value", m[0])], [Doc.TextNode(m[1])])], values))));
 }
 function primaryButtonView(testId, label, disabled, isDisabled, onClick){
   return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", testId), DynamicBool("disabled", disabled), Dynamic_1("style", Map((value) => value?"height:30px; border:1px solid #9aa8b8; border-radius:4px; background:#d8e0e8; color:#667587; padding:3px 11px; font-size:12px; cursor:not-allowed; white-space:nowrap;":"height:30px; border:1px solid #0f766e; border-radius:4px; background:#0f766e; color:#fff; padding:3px 11px; font-size:12px; cursor:pointer; white-space:nowrap;", disabled)), Handler("click", () =>() =>!isDisabled()?onClick():null)], [Doc.TextNode(label)]);
@@ -10803,28 +11130,35 @@ function renderRowReactivePreparedLiveWithValueRefresh(_1, _2, preparedData, dat
   const chart=p[0];
   const title=rowTitle(row, traces);
   const chartHeight=exists((trace) => Equals(trace.Kind, {$:4}), traces)?322:exists((trace) => Equals(trace.Kind, {$:0}), traces)?262:124;
-  const children=showSharedTimeAxis?ofArray([chart, timeAxis("ta-time-axis-shared", timestamps)]):ofArray([chart]);
-  return[chartFrame(title, [Doc.EmbedView(Map((currentData) => Doc.Element("span", [Attr.Create("style", "display:inline-flex; align-items:center; gap:6px 10px; flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap;")], ofSeq_1(delay(() => collect_2((value) => {
+  const children=showSharedTimeAxis?ofArray([chart, timeAxis("ta-time-axis-"+row.RowId, row.RowId, timestamps)]):ofArray([chart]);
+  return[chartFrame(title, [Doc.EmbedView(Map((currentData) => Doc.Element("span", [Attr.Create("style", "display:inline-flex; align-items:center; gap:6px 10px; flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap;")], ofSeq_1(delay(() => collect_1((value) => {
     const o=value.AvailableAtUtc;
     const o_1=o==null?null:Some(compactTimestamp(o.$0));
     const availability=o_1==null?"unknown":o_1.$0;
     const o_2=value.Quality;
     const quality=o_2==null?"unknown":o_2.$0;
     return[Doc.Element("span", [Attr.Create("data-testid", "ta-row-meta-"+row.RowId+"-"+value.ScaleKey), Attr.Create("data-scale-key", value.ScaleKey), Attr.Create("data-finality", value.Finality), Attr.Create("data-quality", quality), Attr.Create("title", temporalDetail(value)), Attr.Create("style", "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;")], [Doc.TextNode(value.ScaleKey+" | "+value.Finality+" | "+quality+" | frontier "+compactTimestamp(value.ObservedThroughUtc)+" | available "+availability)])];
-  }, rowTemporalMetadataPrepared(row, currentData))))), dataView))], Doc.Element("div", [Attr.Create("data-testid", "ta-row-values-"+row.RowId), Attr.Create("data-ta-row-values", "true"), Attr.Create("data-fixed-height", "30"), Attr.Create("style", "box-sizing:border-box; display:flex; align-items:center; gap:6px 14px; height:30px; min-height:30px; padding:0 8px; border-top:1px solid #edf1f6; border-bottom:1px solid #edf1f6; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => collect_2((index) => {
-    let initialValue;
-    const trace=get(traces, index);
-    if(!Equals(trace.Kind, {$:4})){
-      const label=IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label;
-      if(length(timestamps)===0)initialValue="Undef";
-      else {
-        const o=(get(legendReaders, index))(length(timestamps)-1);
-        initialValue=o==null?"Undef":o.$0;
+  }, rowTemporalMetadataPrepared(row, currentData))))), dataView))], Doc.Element("div", [Attr.Create("data-testid", "ta-row-values-"+row.RowId), Attr.Create("data-ta-row-values", "true"), Attr.Create("data-fixed-height", "30"), Attr.Create("style", "box-sizing:border-box; display:flex; align-items:center; gap:6px 14px; height:30px; min-height:30px; padding:0 8px; border-top:1px solid #edf1f6; border-bottom:1px solid #edf1f6; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => {
+    const o=length(timestamps)===0?null:tryPick((readValue) => readValue(length(timestamps)-1), legendReaders);
+    const o_1=o==null?null:fullTimestamp(o.$0.Timestamp);
+    const initialTimestamp=o_1==null?"Unavailable":o_1.$0;
+    return append_2([Doc.Element("span", [Attr.Create("data-testid", "ta-row-data-time-"+row.RowId), Attr.Create("data-ta-row-data-time", "true"), Attr.Create("data-ta-row-data-time-row-id", row.RowId), Attr.Create("style", "display:inline-block; width:19ch; min-width:19ch; max-width:19ch; overflow:hidden; white-space:nowrap; font-variant-numeric:tabular-nums; font-weight:650;")], [Doc.TextNode(initialTimestamp)])], delay(() => collect_1((index) => {
+      let initialValue;
+      const trace=get(traces, index);
+      if(!Equals(trace.Kind, {$:4})){
+        const label=IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label;
+        if(length(timestamps)===0)initialValue="Unavailable";
+        else {
+          const o_2=(get(legendReaders, index))(length(timestamps)-1);
+          const o_3=o_2==null?null:Some(o_2.$0.Value);
+          initialValue=o_3==null?"Unavailable":o_3.$0;
+        }
+        const valueWidth=trace.Kind.$==0?"46ch":"16ch";
+        return[Doc.Element("span", [Attr.Create("data-testid", "ta-row-value-"+row.RowId+"-"+trace.TraceId), Attr.Create("data-ta-row-value-token", "true"), Attr.Create("style", "display:inline-flex; align-items:baseline; gap:4px; flex:0 0 auto; height:20px; line-height:20px; white-space:nowrap;")], [Doc.Element("span", [Attr.Create("data-ta-row-value-label", "true"), Attr.Create("style", "font-weight:650;")], [Doc.TextNode(label)]), Doc.Element("span", [Attr.Create("data-ta-row-value-index", String(index)), Attr.Create("data-ta-row-value-row-id", row.RowId), Attr.Create("data-ta-row-value-text", "true"), Attr.Create("data-value-state", initialValue=="Unavailable"?"undefined":"defined"), Attr.Create("title", label+" value"), Attr.Create("style", "display:inline-block; width:"+valueWidth+"; min-width:"+valueWidth+"; max-width:"+valueWidth+"; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums;")], [Doc.TextNode(initialValue)])])];
       }
-      return[Doc.Element("span", [Attr.Create("data-testid", "ta-row-value-"+row.RowId+"-"+trace.TraceId), Attr.Create("data-ta-row-value-token", "true"), Attr.Create("style", "display:inline-flex; align-items:baseline; gap:4px; flex:0 0 auto; height:20px; line-height:20px; white-space:nowrap;")], [Doc.Element("span", [Attr.Create("data-ta-row-value-label", "true"), Attr.Create("style", "font-weight:650;")], [Doc.TextNode(label)]), Doc.Element("span", [Attr.Create("data-ta-row-value-index", String(index)), Attr.Create("data-ta-row-value-row-id", row.RowId), Attr.Create("data-ta-row-value-text", "true"), Attr.Create("data-value-state", initialValue=="Undef"?"undefined":"defined"), Attr.Create("title", label+" value"), Attr.Create("style", "display:inline-block; width:16ch; min-width:16ch; max-width:16ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums;")], [Doc.TextNode(initialValue)])])];
-    }
-    else return[];
-  }, range(0, length(traces)-1))))), "ta-row-"+row.RowId, chartHeight+30+(showSharedTimeAxis?16:0), children), p[2], legendReaders];
+      else return[];
+    }, range(0, length(traces)-1))));
+  }))), "ta-row-"+row.RowId, chartHeight+30+(showSharedTimeAxis?16:0), children), p[2], legendReaders];
 }
 function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
   const width=1000;
@@ -10871,6 +11205,15 @@ function sameDocumentShell(left, right){
 function element_1(name, attrs, children){
   return Doc.Element(name, attrs, children);
 }
+function axisResizeBound(){
+  return _c_5.axisResizeBound;
+}
+function set_axisResizeBound(_1){
+  _c_5.axisResizeBound=_1;
+}
+function axisViewportWidth(){
+  return _c_5.axisViewportWidth;
+}
 function rowExplicitLabel(row){
   let _1;
   if(row.Options==null)return null;
@@ -10883,6 +11226,7 @@ function rowKindText_1(a){
   return a.$==1?"Volume":a.$==2?"SMA":a.$==3?"DMI":a.$==4?"ADX":a.$==5?"MACD":a.$==6?"Heikin-Ashi":"Candlestick";
 }
 function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, traces, preparedData, dataView, referenceTimestamps, _1, setCursorIndex, commitCursorIndex, scheduleValueRefresh){
+  let observedPreparedData;
   const width=1000;
   const hasCandles=exists((trace) => Equals(trace.Kind, {$:0}), traces);
   const hasMarkers=exists((trace) => Equals(trace.Kind, {$:4}), traces);
@@ -10898,8 +11242,8 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
   const maximumVisualPoints=1000;
   const prepareGeometry=(currentData) => {
     const preparedTraces=mapi((_2, _3) => {
-      const m=_3.Kind;
-      switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:0){
+      const m_1=_3.Kind;
+      switch(m_1.$==1?0:m_1.$==2?1:m_1.$==3?1:m_1.$==4?2:0){
         case 0:
           return[_2, _3, candleSeriesForTracePrepared(_3, currentData), []];
         case 1:
@@ -10908,121 +11252,151 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
           return[_2, _3, [], []];
       }
     }, traces);
-    const projectedCandleSeries=collect((_2) => {
-      const traceIndex=_2[0];
-      const trace=_2[1];
-      return collect((point) => map((_3) =>[traceIndex, trace, _3[0], _3[1], _3[2]], projectedCandleSlots(referenceTimestamps, point)), _2[2]);
-    }, filter_1((_2) => Equals(_2[1].Kind, {$:0}), preparedTraces));
-    const candleSeries=length(referenceTimestamps)<=maximumVisualPoints?projectedCandleSeries:sortBy((_2) =>[_2[0], _2[2]], map((_2) => {
-      const ordered=sortBy((_3) => _3[2], _2[1]);
+    const projected=MarkResizable([]);
+    for(let i=0, _2=preparedTraces.length-1;i<=_2;i++){
+      const f=get(preparedTraces, i);
+      const trace=f[1];
+      const candles=f[2];
+      if(Equals(trace.Kind, {$:0})){
+        for(let i_1=0, _3=candles.length-1;i_1<=_3;i_1++){
+          const point=get(candles, i_1);
+          const m=candleSlotRange(referenceTimestamps, point);
+          if(m==null)void 0;
+          else {
+            const lastExclusive=m.$0[1];
+            const first=m.$0[0];
+            for(let slotIndex=first, _4=lastExclusive-1;slotIndex<=_4;slotIndex++)projected.push([f[0], trace, slotIndex, lastExclusive-first, point]);
+          }
+        }
+      }
+      else void 0;
+    }
+    const projectedCandleSeries=projected.slice();
+    const candleSeries=length(referenceTimestamps)<=maximumVisualPoints?projectedCandleSeries:sortBy((_5) =>[_5[0], _5[2]], map((_5) => {
+      const ordered=sortBy((_6) => _6[2], _5[1]);
       const p_1=get(ordered, 0);
       const p_2=get(ordered, length(ordered)-1);
       const lastPoint=p_2[4];
-      return[p_1[0], p_1[1], (p_1[2]+p_2[2])/2>>0, (maxBy((_3) => _3[3], ordered))[3], {
-        Timestamp:lastPoint.Timestamp,
-        Open:p_1[4].Open,
-        High:(maxBy((_3) => _3[4].High, ordered))[4].High,
-        Low:(minBy((_3) => _3[4].Low, ordered))[4].Low,
-        Close:lastPoint.Close,
-        Volume:sumBy((_3) => _3[4].Volume, ordered),
+      return[p_1[0], p_1[1], (p_1[2]+p_2[2])/2>>0, (maxBy((_6) => _6[3], ordered))[3], {
+        Timestamp:lastPoint.Timestamp, 
+        Open:p_1[4].Open, 
+        High:(maxBy((_6) => _6[4].High, ordered))[4].High, 
+        Low:(minBy((_6) => _6[4].Low, ordered))[4].Low, 
+        Close:lastPoint.Close, 
+        Volume:sumBy((_6) => _6[4].Volume, ordered), 
         Temporal:lastPoint.Temporal
       }];
-    }, groupBy((_2) => {
+    }, groupBy((_5) => {
       const a=maximumVisualPoints-1;
-      const b=_2[2]*maximumVisualPoints/length(referenceTimestamps)>>0;
-      let _3=Compare(a, b)===-1?a:b;
-      return[_2[0], _2[3]>1, _3];
+      const b=_5[2]*maximumVisualPoints/length(referenceTimestamps)>>0;
+      let _6=Compare(a, b)===-1?a:b;
+      return[_5[0], _5[3]>1, _6];
     }, projectedCandleSeries)));
-    const projectedLinePoints_1=map((_2) => {
-      const trace=_2[1];
-      const lines=_2[3];
-      const m=trace.Kind;
-      let _3=m.$==1?map((point) =>({
-        Timestamp:point.Timestamp,
-        Value:point.Volume,
-        Temporal:point.Temporal
-      }), _2[2]):m.$==2?lines:m.$==3?lines:[];
-      let _4=projectedLinePoints(referenceTimestamps, _3);
-      return[_2[0], trace, _4];
+    const projectedLinePoints_1=map((_5) => {
+      const trace_1=_5[1];
+      const lines=_5[3];
+      const m_1=trace_1.Kind;
+      let _6=m_1.$==1?map((point_1) =>({
+        Timestamp:point_1.Timestamp, 
+        Value:point_1.Volume, 
+        Temporal:point_1.Temporal
+      }), _5[2]):m_1.$==2?lines:m_1.$==3?lines:[];
+      let _7=projectedLinePoints(referenceTimestamps, _6);
+      return[_5[0], trace_1, _7];
     }, preparedTraces);
-    const linePoints=map((_2) => {
-      let _3;
-      const points=_2[2];
-      if(length(referenceTimestamps)<=maximumVisualPoints||length(points)<=maximumVisualPoints)_3=points;
+    const linePoints=map((_5) => {
+      let _6;
+      const points=_5[2];
+      if(length(referenceTimestamps)<=maximumVisualPoints||length(points)<=maximumVisualPoints)_6=points;
       else {
         const a=1;
         const b=maximumVisualPoints/2>>0;
         const bucketCount=Compare(a, b)===1?a:b;
-        _3=sortBy((t) => t[0], collect((_4) => {
-          const bucket=_4[1];
-          const minimum=minBy((_5) => _5[1].Value, bucket);
-          const maximum=maxBy((_5) => _5[1].Value, bucket);
+        _6=sortBy((t) => t[0], collect((_7) => {
+          const bucket=_7[1];
+          const minimum=minBy((_8) => _8[1].Value, bucket);
+          const maximum=maxBy((_8) => _8[1].Value, bucket);
           return minimum[0]===maximum[0]?[minimum]:sortBy((t) => t[0], [minimum, maximum]);
-        }, groupBy((_4) => {
+        }, groupBy((_7) => {
           const a_1=bucketCount-1;
-          const b_1=_4[0]*bucketCount/length(referenceTimestamps)>>0;
+          const b_1=_7[0]*bucketCount/length(referenceTimestamps)>>0;
           return Compare(a_1, b_1)===-1?a_1:b_1;
         }, points)));
       }
-      return[_2[0], _2[1], _3];
+      return[_5[0], _5[1], _6];
     }, projectedLinePoints_1);
-    const markerPlacements=assignAggregateMarkerLanes(collect((_2) => {
-      const trace=_2[1];
-      if(!Equals(trace.Kind, {$:4}))return[];
+    const markerPlacements=assignAggregateMarkerLanes(collect((_5) => {
+      const trace_1=_5[1];
+      if(!Equals(trace_1.Kind, {$:4}))return[];
       else {
-        const m=tryDecode(trace.Options);
-        if(m!=null&&m.$==1){
-          const options=m.$0;
+        const m_1=tryDecode(trace_1.Options);
+        if(m_1!=null&&m_1.$==1){
+          const options=m_1.$0;
           const o=tryFind((candidate) => candidate.TraceId==options.TargetTraceId&&Equals(candidate.Kind, {$:0}), traces);
-          const o_1=o==null?null:Some(markerPlacementsPrepared(trace, o.$0, currentData, referenceTimestamps));
+          const o_1=o==null?null:Some(markerPlacementsPrepared(trace_1, o.$0, currentData, referenceTimestamps));
           return o_1==null?[]:o_1.$0;
         }
         else return[];
       }
     }, preparedTraces));
-    const p=paddedRange(0, 1, ofSeq(delay(() => append_2(collect((_2) => {
-      const point=_2[4];
-      return[point.Low, point.High];
-    }, projectedCandleSeries), delay(() => collect((_2) => {
-      const values=map((_3) => _3[1].Value, _2[2]);
-      return Equals(_2[1].Kind, {$:3})?[0].concat(values):values;
+    const p=paddedRange(0, 1, ofSeq(delay(() => append_2(collect((_5) => {
+      const point_1=_5[4];
+      return[point_1.Low, point_1.High];
+    }, projectedCandleSeries), delay(() => collect((_5) => {
+      const values=map((_6) => _6[1].Value, _5[2]);
+      return Equals(_5[1].Kind, {$:3})?[0].concat(values):values;
     }, projectedLinePoints_1))))));
-    const readers=map((_2) => {
-      const traceIndex=_2[0];
-      const trace=_2[1];
-      const label=IsNullOrWhiteSpace(trace.Label)?trace.TraceId:trace.Label;
-      const m=trace.Kind;
-      switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:0){
+    const readers=map((_5) => {
+      const traceIndex=_5[0];
+      const trace_1=_5[1];
+      const label=IsNullOrWhiteSpace(trace_1.Label)?trace_1.TraceId:trace_1.Label;
+      const m_1=trace_1.Kind;
+      switch(m_1.$==1?0:m_1.$==2?1:m_1.$==3?1:m_1.$==4?2:0){
         case 0:
-          const values=projectedCandleCursorValues(isBaseRow, referenceTimestamps, _2[2]);
-          return[(index) => {
-            const o_1=tryItem(index, values);
+          const values=projectedCandleCursorValues(isBaseRow, referenceTimestamps, _5[2]);
+          return[(index_1) => {
+            const o_1=tryItem(index_1, values);
             const o_2=o_1==null?null:o_1.$0;
-            return o_2==null?null:Some(candleCursorPointValue(label, trace.Kind, o_2.$0));
-          }, (index) => {
-            const o_1=tryItem(index, values);
+            return o_2==null?null:Some(candleCursorPointValue(label, trace_1.Kind, o_2.$0));
+          }, (index_1) => {
+            const o_1=tryItem(index_1, values);
             const o_2=o_1==null?null:o_1.$0;
             if(o_2==null)return null;
             else {
-              const point=o_2.$0;
-              let _3=Equals(trace.Kind, {$:1})?fixedText(point.Volume):fixedText(point.Close);
-              return Some(_3);
+              const point_1=o_2.$0;
+              let _8={Timestamp:point_1.Timestamp, Value:Equals(trace_1.Kind, {$:1})?fixedText(point_1.Volume):"O "+fixedText(point_1.Open)+" H "+fixedText(point_1.High)+" L "+fixedText(point_1.Low)+" C "+fixedText(point_1.Close)+" V "+fixedText(point_1.Volume)};
+              return Some(_8);
             }
           }];
         case 1:
-          const o=tryFind((_3) => _3[0]===traceIndex, projectedLinePoints_1);
-          const x=o==null?null:Some((o.$0,o.$0,OfArray(o.$0[2])));
-          const v=new FSharpMap("New", []);
-          const projected=x==null?v:x.$0;
-          const values_1=mapi((_3) => projected.TryFind(_3), referenceTimestamps);
-          return[(index) => {
-            const o_1=tryItem(index, values_1);
+          let _6;
+          const values_1=create(length(referenceTimestamps), null);
+          const o=tryFind((_8) => _8[0]===traceIndex, projectedLinePoints_1);
+          if(o==null)_6=null;
+          else {
+            o.$0[0];
+            o.$0[1];
+            const _7=o.$0[2];
+            for(let i_2=0, _8=_7.length-1;i_2<=_8;i_2++){
+              const f_1=get(_7, i_2);
+              const index=f_1[0];
+              if(index>=0&&index<length(values_1))set(values_1, index, Some(f_1[1]));
+            }
+            _6=void 0;
+          }
+          return[(index_1) => {
+            const o_1=tryItem(index_1, values_1);
             const o_2=o_1==null?null:o_1.$0;
             return o_2==null?null:Some(lineCursorPointValue(label, o_2.$0));
-          }, (index) => {
-            const o_1=tryItem(index, values_1);
+          }, (index_1) => {
+            const o_1=tryItem(index_1, values_1);
             const o_2=o_1==null?null:o_1.$0;
-            return o_2==null?null:Some(fixedText(o_2.$0.Value));
+            if(o_2==null)return null;
+            else {
+              const point_1=o_2.$0;
+              let _9={Timestamp:point_1.Timestamp, Value:fixedText(point_1.Value)};
+              return Some(_9);
+            }
           }];
         case 2:
           return[() => null, () => null];
@@ -11037,31 +11411,42 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
   const slot=length(referenceTimestamps)===0?width:width/length(referenceTimestamps);
   const svgTestId=hasCandles?"ta-candle-"+rowId:"ta-composite-"+rowId;
   const candlePaths=(traceIndex, t) => {
-    const currentCandles=t[1];
+    let _2;
     const low=t[6];
     const high=t[7];
-    const path=(projected, rising, body) => concat_1(" ", choose((_2) => {
-      const point=_2[4];
-      if(!Equals(_2[0], traceIndex)||_2[3]>1!=projected||point.Close>=point.Open!=rising)return null;
-      else {
-        const center=xAt(_2[2]);
-        const a=2;
-        const b=slot*0.64;
-        const bodyWidth=Compare(a, b)===1?a:b;
-        const openY=normalize(low, high, top, plotHeight, point.Open);
-        const closeY=normalize(low, high, top, plotHeight, point.Close);
-        if(body){
-          let _3=Compare(openY, closeY)===-1?openY:closeY;
-          const a_1=1.2;
-          const b_1=Math.abs(closeY-openY);
-          let _4=Compare(a_1, b_1)===1?a_1:b_1;
-          let _5=rectanglePath(center-bodyWidth/2, _3, bodyWidth, _4);
-          return Some(_5);
+    const buckets=init(8, () => MarkResizable([]));
+    const e=Get(t[1]);
+    try {
+      while(e.MoveNext())
+        {
+          const f=e.Current;
+          const point=f[4];
+          if(Equals(f[0], traceIndex)){
+            const wickIndex=(f[3]>1?4:0)+(point.Close>=point.Open?0:2);
+            const center=xAt(f[2]);
+            const a=2;
+            const b=slot*0.64;
+            const bodyWidth=Compare(a, b)===1?a:b;
+            const openY=normalize(low, high, top, plotHeight, point.Open);
+            const closeY=normalize(low, high, top, plotHeight, point.Close);
+            get(buckets, wickIndex).push("M "+String(fixedText(center))+" "+String(fixedText(normalize(low, high, top, plotHeight, point.High)))+" L "+String(fixedText(center))+" "+String(fixedText(normalize(low, high, top, plotHeight, point.Low))));
+            let _3=get(buckets, wickIndex+1);
+            let _4=Compare(openY, closeY)===-1?openY:closeY;
+            const a_1=1.2;
+            const b_1=Math.abs(closeY-openY);
+            let _5=Compare(a_1, b_1)===1?a_1:b_1;
+            let _6=rectanglePath(center-bodyWidth/2, _4, bodyWidth, _5);
+            _3.push(_6);
+          }
+          else void 0;
         }
-        else return Some("M "+String(fixedText(center))+" "+String(fixedText(normalize(low, high, top, plotHeight, point.High)))+" L "+String(fixedText(center))+" "+String(fixedText(normalize(low, high, top, plotHeight, point.Low))));
-      }
-    }, currentCandles));
-    return[path(false, true, false), path(false, true, true), path(false, false, false), path(false, false, true), path(true, true, false), path(true, true, true), path(true, false, false), path(true, false, true)];
+      _2=void 0;
+    }
+    finally {
+      const _7=e;
+      if(typeof _7=="object"&&isIDisposable(_7))e.Dispose();
+    }
+    return map((s) => concat_1(" ", s), buckets);
   };
   const lineGeometry=(traceIndex, t) => {
     const o=tryFind((_4) => _4[0]===traceIndex, t[2]);
@@ -11100,74 +11485,110 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
     const o_1=o==null?null:Some(fixedText(o.$0[1].Value));
     return o_1==null?"":o_1.$0;
   };
-  const markerLayer=Doc.EmbedView(Map((_2) => {
-    const placements=_2[0];
-    const low=_2[1];
-    const high=_2[2];
-    return svgElement("g", [Attr.Create("data-testid", "ta-marker-layer-"+rowId), Attr.Create("data-marker-count", String(length(placements)))], ofSeq_1(delay(() => map_2((placement) => {
+  const markerLayer=Doc.EmbedView(Map2((_2, _3) =>(((_4) => {
+    const placements=_4[0];
+    const low=_4[1];
+    const high=_4[2];
+    return(viewportWidth) => {
       const size=9;
       const half=size/2;
-      const laneStep=size+2;
-      const x=xAt(placement.SlotIndex);
-      const anchorY=placement.Marker.Anchor.$==1?normalize(low, high, top, plotHeight, placement.Target.Low):normalize(low, high, top, plotHeight, placement.Target.High);
-      const a=height-half;
-      const b=placement.Marker.Anchor.$==1?anchorY+4+half+placement.Lane*laneStep:anchorY-4-half-placement.Lane*laneStep;
-      const b_1=Compare(a, b)===-1?a:b;
-      const y=Compare(half, b_1)===1?half:b_1;
-      const p=placement.Marker.Fill.$==1?["none", "1"]:[placement.Marker.Color, "1"];
-      const common=ofArray([Attr.Create("data-testid", "ta-marker-"+placement.TraceId+"-"+placement.Marker.MarkerId), Attr.Create("data-marker-id", placement.Marker.MarkerId), Attr.Create("data-marker-position", fixedText(placement.Position)), Attr.Create("data-marker-slot", String(placement.SlotIndex)), Attr.Create("data-marker-lane", String(placement.Lane)), Attr.Create("data-marker-anchor", Equals(placement.Marker.Anchor, {$:0})?"above-bar":"below-bar"), Attr.Create("data-marker-shape", shapeText(placement.Marker.Shape)), Attr.Create("data-marker-fill", fillText(placement.Marker.Fill)), svgAttr("fill", p[0]), svgAttr("fill-opacity", p[1]), svgAttr("stroke", placement.Marker.Color), svgAttr("stroke-width", "1.4"), svgAttr("pointer-events", "all"), svgAttr("vector-effect", "non-scaling-stroke")]);
-      const title=svgElement("title", [], [Doc.TextNode(markerTooltipText(placement))]);
-      const m=placement.Marker.Shape;
-      switch(m.$==3?1:m.$==4?2:m.$==0?3:m.$==1?3:0){
-        case 0:
-          return svgElement("circle", append_1(common, ofArray([svgAttr("cx", fixedText(x)), svgAttr("cy", fixedText(y)), svgAttr("r", fixedText(half))])), [title]);
-        case 1:
-          return svgElement("rect", append_1(common, ofArray([svgAttr("x", fixedText(x-half)), svgAttr("y", fixedText(y-half)), svgAttr("width", fixedText(size)), svgAttr("height", fixedText(size))])), [title]);
-        case 2:
-          return svgElement("polygon", append_1(common, ofArray([svgAttr("points", String(fixedText(x))+","+String(fixedText(y-half))+" "+String(fixedText(x+half))+","+String(fixedText(y))+" "+String(fixedText(x))+","+String(fixedText(y+half))+" "+String(fixedText(x-half))+","+String(fixedText(y)))])), [title]);
-        case 3:
-          const o=markerTrianglePoints(placement.Marker.Shape, x, y, half);
-          let _3=o==null?[]:o.$0;
-          let _4=map((_9) => fixedText(_9[0])+","+fixedText(_9[1]), _3);
-          let _5=concat_1(" ", _4);
-          let _6=[svgAttr("points", _5)];
-          let _7=ofArray(_6);
-          let _8=append_1(common, _7);
-          return svgElement("polygon", _8, [title]);
-      }
-    }, placements))));
-  }, markerVisualState.View));
+      const a=8;
+      const a_1=30;
+      const a_2=320;
+      let _5=Compare(a_2, viewportWidth)===1?a_2:viewportWidth;
+      const b=10000/_5;
+      const b_1=Compare(a_1, b)===-1?a_1:b;
+      const fontSize=Compare(a, b_1)===1?a:b_1;
+      const shapeLaneStep=size+2;
+      const labelLaneStep=fontSize+2;
+      const labelCandidates=choose((placement) => {
+        const x=xAt(placement.SlotIndex);
+        const anchorY=placement.Marker.Anchor.$==1?normalize(low, high, top, plotHeight, placement.Target.Low):normalize(low, high, top, plotHeight, placement.Target.High);
+        const e=height-half;
+        const e_1=placement.Marker.Anchor.$==1?anchorY+4+half+placement.Lane*shapeLaneStep:anchorY-4-half-placement.Lane*shapeLaneStep;
+        const e_2=Compare(half, e_1)===1?half:e_1;
+        const baseY=Compare(e, e_2)===-1?e:e_2;
+        const o=placement.Marker.Label;
+        const o_1=o==null?null:markerLabelGeometry(width, height, fontSize, x, baseY, o.$0);
+        return o_1==null?null:Some([placement, o_1.$0]);
+      }, placements);
+      const collisionLanes=markerLabelCollisionLanes(6, map((_6) =>[_6[0].Marker.Anchor, _6[1]], labelCandidates));
+      return svgElement("g", [Attr.Create("data-testid", "ta-marker-layer-"+rowId), Attr.Create("data-marker-count", String(length(placements)))], ofSeq_1(delay(() => append_2(map_2((placement) => {
+        const size_1=9;
+        const half_1=size_1/2;
+        const laneStep=size_1+2;
+        const x=xAt(placement.SlotIndex);
+        const anchorY=placement.Marker.Anchor.$==1?normalize(low, high, top, plotHeight, placement.Target.Low):normalize(low, high, top, plotHeight, placement.Target.High);
+        const a_3=height-half_1;
+        const b_2=placement.Marker.Anchor.$==1?anchorY+4+half_1+placement.Lane*laneStep:anchorY-4-half_1-placement.Lane*laneStep;
+        const b_3=Compare(a_3, b_2)===-1?a_3:b_2;
+        const y=Compare(half_1, b_3)===1?half_1:b_3;
+        const p=placement.Marker.Fill.$==1?["none", "1"]:[placement.Marker.Color, "1"];
+        const common=ofArray([Attr.Create("data-testid", "ta-marker-"+placement.TraceId+"-"+placement.Marker.MarkerId), Attr.Create("data-marker-id", placement.Marker.MarkerId), Attr.Create("data-marker-position", fixedText(placement.Position)), Attr.Create("data-marker-slot", String(placement.SlotIndex)), Attr.Create("data-marker-lane", String(placement.Lane)), Attr.Create("data-marker-anchor", Equals(placement.Marker.Anchor, {$:0})?"above-bar":"below-bar"), Attr.Create("data-marker-shape", shapeText(placement.Marker.Shape)), Attr.Create("data-marker-fill", fillText(placement.Marker.Fill)), svgAttr("fill", p[0]), svgAttr("fill-opacity", p[1]), svgAttr("stroke", placement.Marker.Color), svgAttr("stroke-width", "1.4"), svgAttr("pointer-events", "all"), svgAttr("vector-effect", "non-scaling-stroke")]);
+        const title=svgElement("title", [], [Doc.TextNode(markerTooltipText(placement))]);
+        const m=placement.Marker.Shape;
+        switch(m.$==3?1:m.$==4?2:m.$==0?3:m.$==1?3:0){
+          case 0:
+            return svgElement("circle", append_1(common, ofArray([svgAttr("cx", fixedText(x)), svgAttr("cy", fixedText(y)), svgAttr("r", fixedText(half_1))])), [title]);
+          case 1:
+            return svgElement("rect", append_1(common, ofArray([svgAttr("x", fixedText(x-half_1)), svgAttr("y", fixedText(y-half_1)), svgAttr("width", fixedText(size_1)), svgAttr("height", fixedText(size_1))])), [title]);
+          case 2:
+            return svgElement("polygon", append_1(common, ofArray([svgAttr("points", String(fixedText(x))+","+String(fixedText(y-half_1))+" "+String(fixedText(x+half_1))+","+String(fixedText(y))+" "+String(fixedText(x))+","+String(fixedText(y+half_1))+" "+String(fixedText(x-half_1))+","+String(fixedText(y)))])), [title]);
+          case 3:
+            const o=markerTrianglePoints(placement.Marker.Shape, x, y, half_1);
+            let _6=o==null?[]:o.$0;
+            let _7=map((_12) => fixedText(_12[0])+","+fixedText(_12[1]), _6);
+            let _8=concat_1(" ", _7);
+            let _9=[svgAttr("points", _8)];
+            let _10=ofArray(_9);
+            let _11=append_1(common, _10);
+            return svgElement("polygon", _11, [title]);
+        }
+      }, placements), delay(() => collect_1((index) => {
+        const p=get(labelCandidates, index);
+        const placement=p[0];
+        const geometry=p[1];
+        const lane=get(collisionLanes, index);
+        const labelY=markerLabelLaneY(height, labelLaneStep, placement.Marker.Anchor, geometry.Y, lane);
+        return[svgElement("text", [Attr.Create("data-testid", "ta-marker-label-"+placement.TraceId+"-"+placement.Marker.MarkerId), Attr.Create("data-marker-id", placement.Marker.MarkerId), Attr.Create("data-marker-slot", String(placement.SlotIndex)), Attr.Create("data-marker-lane", String(placement.Lane)), Attr.Create("data-marker-label-lane", String(lane)), svgAttr("x", fixedText(geometry.X)), svgAttr("y", fixedText(labelY)), svgAttr("text-anchor", geometry.TextAnchor), svgAttr("dominant-baseline", "middle"), svgAttr("fill", placement.Marker.Color), svgAttr("font-family", "Consolas,monospace"), svgAttr("font-size", fixedText(fontSize)), svgAttr("font-weight", "650"), svgAttr("paint-order", "stroke"), svgAttr("stroke", "#ffffff"), svgAttr("stroke-width", "2.5"), svgAttr("stroke-linejoin", "round"), svgAttr("pointer-events", "none"), svgAttr("vector-effect", "non-scaling-stroke")], [Doc.TextNode(geometry.Text)])];
+      }, range(0, length(labelCandidates)-1)))))));
+    };
+  })(_2))(_3), markerVisualState.View, axisViewportWidth().View));
   const candlePathStates=map((_2) => {
     const traceIndex=_2[0];
-    return[traceIndex, _2[1], map(_c_3.Create_1, candlePaths(traceIndex, initialGeometry))];
+    return[traceIndex, _2[1], map(_c_3.Create_1, candlePaths(traceIndex, [initialGeometry[0], initialGeometry[1], initialGeometry[2], initialGeometry[3], initialGeometry[4], initialGeometry[5], initialGeometry[6], initialGeometry[7]]))];
   }, distinctBy((t) => t[0], map((_2) =>[_2[0], _2[1]], initialGeometry[1])));
   const lineVisualStates=map((_2) => {
     const traceIndex=_2[0];
     const trace=_2[1];
     return[traceIndex, trace, _c_3.Create_1(linePath(traceIndex, trace, initialGeometry)), _c_3.Create_1(lineLastValue(traceIndex, initialGeometry))];
   }, initialLinePoints);
+  observedPreparedData=preparedData;
   Sink((currentData) => {
-    const geometry=prepareGeometry(currentData);
-    const nextMarkerVisual=[geometry[3], geometry[6], geometry[7]];
-    if(!Equals(markerVisualState.Get(), nextMarkerVisual))markerVisualState.Set(nextMarkerVisual);
-    for(let index=0, _2=length(readerStates)-1;index<=_2;index++)(get(readerStates, index))[0]=[get(geometry[4], index), get(geometry[5], index)];
-    for(let i=0, _3=candlePathStates.length-1;i<=_3;i++){
-      const f=get(candlePathStates, i);
-      const pathStates=f[2];
-      const nextPaths=candlePaths(f[0], geometry);
-      for(let index_1=0, _4=length(pathStates)-1;index_1<=_4;index_1++)if(get(pathStates, index_1).Get()!=get(nextPaths, index_1))get(pathStates, index_1).Set(get(nextPaths, index_1));
+    if(!(currentData===observedPreparedData)){
+      observedPreparedData=currentData;
+      const geometry=prepareGeometry(currentData);
+      const nextMarkerVisual=[geometry[3], geometry[6], geometry[7]];
+      if(!Equals(markerVisualState.Get(), nextMarkerVisual))markerVisualState.Set(nextMarkerVisual);
+      for(let index=0, _2=length(readerStates)-1;index<=_2;index++)(get(readerStates, index))[0]=[get(geometry[4], index), get(geometry[5], index)];
+      for(let i=0, _3=candlePathStates.length-1;i<=_3;i++)((() => {
+        const f_1=get(candlePathStates, i);
+        const pathStates=f_1[2];
+        const nextPaths=candlePaths(f_1[0], [geometry[0], geometry[1], geometry[2], geometry[3], geometry[4], geometry[5], geometry[6], geometry[7]]);
+        for(let index_1=0, _4=length(pathStates)-1;index_1<=_4;index_1++)if(get(pathStates, index_1).Get()!=get(nextPaths, index_1))get(pathStates, index_1).Set(get(nextPaths, index_1));
+      })());
+      for(let i_1=0, _4=lineVisualStates.length-1;i_1<=_4;i_1++){
+        const f=get(lineVisualStates, i_1);
+        const traceIndex=f[0];
+        const pathState=f[2];
+        const lastValueState=f[3];
+        const nextPath=linePath(traceIndex, f[1], geometry);
+        const nextLastValue=lineLastValue(traceIndex, geometry);
+        if(pathState.Get()!=nextPath)pathState.Set(nextPath);
+        if(lastValueState.Get()!=nextLastValue)lastValueState.Set(nextLastValue);
+      }
+      scheduleValueRefresh();
     }
-    for(let i_1=0, _5=lineVisualStates.length-1;i_1<=_5;i_1++){
-      const f_1=get(lineVisualStates, i_1);
-      const traceIndex=f_1[0];
-      const pathState=f_1[2];
-      const lastValueState=f_1[3];
-      const nextPath=linePath(traceIndex, f_1[1], geometry);
-      const nextLastValue=lineLastValue(traceIndex, geometry);
-      if(pathState.Get()!=nextPath)pathState.Set(nextPath);
-      if(lastValueState.Get()!=nextLastValue)lastValueState.Set(nextLastValue);
-    }
-    scheduleValueRefresh();
   }, dataView);
   return[svgElement("svg", [svgAttr("viewBox", "0 0 1000 "+fixedText(height)), svgAttr("preserveAspectRatio", "none"), svgAttr("role", "img"), svgAttr("aria-label", "Composite TA row "+rowId), Attr.Create("data-testid", svgTestId), Attr.Create("data-point-count", String(length(referenceTimestamps))), Attr.Create("style", "display:block; width:100%; height:"+fixedText(height)+"px; background:#fbfcfe;"), Handler("mousemove", (element_2) =>(event) => {
     const bounds=element_2.getBoundingClientRect();
@@ -11177,20 +11598,20 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
     const bounds=element_2.getBoundingClientRect();
     const m=cursorIndexFromClientX(length(referenceTimestamps), bounds.left, bounds.width, event.clientX);
     return m==null?null:commitCursorIndex(m.$0);
-  })], ofSeq_1(delay(() => append_2(collect_2((gridIndex) => {
+  })], ofSeq_1(delay(() => append_2(collect_1((gridIndex) => {
     const y=top+plotHeight*gridIndex/4;
     return[svgElement("line", [svgAttr("x1", "0"), svgAttr("x2", "1000"), svgAttr("y1", fixedText(y)), svgAttr("y2", fixedText(y)), svgAttr("stroke", "#e7ecf3"), svgAttr("stroke-width", "1")], [])];
-  }, range(0, 4)), delay(() => append_2(collect_2((m) => {
+  }, range(0, 4)), delay(() => append_2(collect_1((m) => {
     const trace=m[1];
     const pathStates=m[2];
     const traceTestId="ta-candle-"+rowId+"-"+trace.TraceId;
     const projectedColor=color(m[0], trace);
     const styles=[["normal-up-wick", "none", "#0f8a78", "1.2", "1"], ["normal-up-body", "#0f8a78", "none", "0", "1"], ["normal-down-wick", "none", "#c2414b", "1.2", "1"], ["normal-down-body", "#c2414b", "none", "0", "1"], ["projected-up-wick", "none", projectedColor, "1.2", "1"], ["projected-up-body", "#0f8a78", projectedColor, "1", "0.48"], ["projected-down-wick", "none", projectedColor, "1.2", "1"], ["projected-down-body", "#c2414b", projectedColor, "1", "0.48"]];
-    return collect_2((index) => {
+    return collect_1((index) => {
       const p=get(styles, index);
       return[svgElement("path", [Attr.Create("data-testid", traceTestId), Attr.Create("data-candle-part", p[0]), Attr.Create("data-candle-batched", "true"), Dynamic_1("d", get(pathStates, index).View), svgAttr("fill", p[1]), svgAttr("fill-opacity", p[4]), svgAttr("stroke", p[2]), svgAttr("stroke-width", p[3]), svgAttr("vector-effect", "non-scaling-stroke")], [])];
     }, range(0, length(styles)-1));
-  }, candlePathStates), delay(() => append_2(collect_2((m) => {
+  }, candlePathStates), delay(() => append_2(collect_1((m) => {
     const traceIndex=m[0];
     const trace=m[1];
     const traceColor=color(traceIndex, trace);
@@ -11206,14 +11627,22 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
       case 2:
         return[];
     }
-  }, initialLinePoints), delay(() => append_2([markerLayer], delay(() =>[svgElement("line", [Attr.Create("data-testid", svgTestId+"-crosshair"), Attr.Create("data-ta-shared-crosshair", "true"), svgAttr("x1", "0"), svgAttr("x2", "0"), svgAttr("visibility", "hidden"), svgAttr("y1", "0"), svgAttr("y2", fixedText(plotHeight)), svgAttr("stroke", "#1f4f73"), svgAttr("stroke-width", "1"), svgAttr("stroke-dasharray", "3 3"), svgAttr("pointer-events", "none")], [])]))))))))))), referenceTimestamps, mapi((_2) =>(_3) =>(get(readerStates, _2))[0][0](_3), traces), mapi((_2) =>(_3) =>(get(readerStates, _2))[0][1](_3), traces)];
+  }, initialLinePoints), delay(() => append_2([markerLayer], delay(() => append_2([svgElement("line", [Attr.Create("data-testid", svgTestId+"-crosshair"), Attr.Create("data-ta-shared-crosshair", "true"), svgAttr("x1", "0"), svgAttr("x2", "0"), svgAttr("visibility", "hidden"), svgAttr("y1", "0"), svgAttr("y2", fixedText(height)), svgAttr("stroke", "#1f4f73"), svgAttr("stroke-width", "1"), svgAttr("stroke-dasharray", "3 3"), svgAttr("pointer-events", "none")], [])], delay(() =>[svgElement("g", [Attr.Create("data-testid", "ta-row-cursor-label-"+rowId), Attr.Create("data-ta-row-cursor-label", "true"), Attr.Create("data-ta-row-cursor-row-id", rowId), svgAttr("visibility", "hidden"), svgAttr("pointer-events", "none")], [svgElement("rect", [svgAttr("x", "-46"), svgAttr("y", "2"), svgAttr("width", "92"), svgAttr("height", "27"), svgAttr("rx", "2"), svgAttr("fill", "#ffffff"), svgAttr("fill-opacity", "0.92"), svgAttr("stroke", "#8ca0b8"), svgAttr("stroke-width", "0.8")], []), svgElement("text", [Attr.Create("data-testid", "ta-row-cursor-date-"+rowId), Attr.Create("data-ta-row-cursor-date", "true"), svgAttr("x", "0"), svgAttr("y", "12"), svgAttr("text-anchor", "middle"), svgAttr("font-family", "Consolas,monospace"), svgAttr("font-size", "9"), svgAttr("fill", "#263b55")], [Doc.TextNode("Unavailable")]), svgElement("text", [Attr.Create("data-testid", "ta-row-cursor-time-"+rowId), Attr.Create("data-ta-row-cursor-clock", "true"), svgAttr("x", "0"), svgAttr("y", "23"), svgAttr("text-anchor", "middle"), svgAttr("font-family", "Consolas,monospace"), svgAttr("font-size", "9"), svgAttr("fill", "#263b55")], [Doc.TextNode("Unavailable")])])]))))))))))))), referenceTimestamps, mapi((_2) =>(_3) =>(get(readerStates, _2))[0][0](_3), traces), mapi((_2) =>(_3) =>(get(readerStates, _2))[0][1](_3), traces)];
 }
 function chartFrame(titleText, metadata, legend, testId, height, children){
   return Doc.Element("section", [Attr.Create("data-testid", testId), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; min-height:"+String(height)+"px; border-top:1px solid #e1e7ef; background:#fff;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:6px 10px; height:28px; min-height:28px; padding:0 8px; color:#40536d; font-size:11px; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; white-space:nowrap;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "margin-right:auto; flex:0 0 auto;")], [Doc.TextNode(titleText)])], delay(() => metadata))))), legend, element_1("div", [Attr.Create("style", "min-width:0; overflow:hidden;")], children)]);
 }
-function timeAxis(testId, timestamps){
-  const labels=mapi((_1, _2) => Doc.Element("span", [Attr.Create("style", "min-width:0; text-align:"+(_1===0?"left":_1===2?"right":"center")+"; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextNode(compactTimestamp(_2[1]))]), timeLabels(timestamps));
-  return Doc.Element("div", [Attr.Create("data-testid", testId), Attr.Create("style", "display:grid; grid-template-columns:1fr 1fr 1fr; min-width:0; height:16px; padding:0 1px;")], labels);
+function timeAxis(testId, rowId, timestamps){
+  return Doc.EmbedView(Map((width) => {
+    const labels=adaptiveTimeLabels(92, width, timestamps);
+    return Doc.Element("div", [Attr.Create("data-testid", testId), Attr.Create("data-time-axis-row-id", rowId), Attr.Create("data-time-axis-tick-count", String(length(labels))), Attr.Create("style", "position:relative; min-width:0; height:18px; padding:0 1px; overflow:hidden;")], ofSeq_1(delay(() => collect_1((position) => {
+      const p=get(labels, position);
+      const label=p[1];
+      const left=length(timestamps)<=1?50:p[0]/(length(timestamps)-1)*100;
+      const transform=position===0?"none":position===length(labels)-1?"translateX(-100%)":"translateX(-50%)";
+      return[Doc.Element("span", [Attr.Create("data-time-axis-event-time", label), Attr.Create("style", "position:absolute; left:"+fixedText(left)+"%; transform:"+transform+"; max-width:92px; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")], [Doc.TextNode(compactTimestamp(label))])];
+    }, range(0, length(labels)-1)))));
+  }, axisViewportWidth().View));
 }
 function rowTitle(row, traces){
   const m=rowExplicitLabel(row);
@@ -11648,9 +12077,9 @@ class DocElemNode {
   }
   static New(Attr_1, Children_1, Delimiters, El, ElKey, Render){
     const _1={
-      Attr:Attr_1,
-      Children:Children_1,
-      El:El,
+      Attr:Attr_1, 
+      Children:Children_1, 
+      El:El, 
       ElKey:ElKey
     };
     let _2=(SetOptional(_1, "Delimiters", Delimiters),SetOptional(_1, "Render", Render),_1);
@@ -11810,6 +12239,9 @@ function defCTS(){
 function UncaughtAsyncError(e){
   console.log("WebSharper: Uncaught asynchronous exception", e);
 }
+function Combine(a, b){
+  return Bind_1(a, () => b);
+}
 function StartImmediate(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
@@ -11925,33 +12357,33 @@ function ScheduleReconnect(delayMs){
 }
 function New_57(wireVersion, kind, actionKind, canvasInstanceId, rowId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints){
   return{
-    wireVersion:wireVersion,
-    kind:kind,
-    actionKind:actionKind,
-    canvasInstanceId:canvasInstanceId,
-    rowId:rowId,
-    rowKind:rowKind_1,
-    dataRef:dataRef,
-    heightWeight:heightWeight,
-    visible:visible,
-    sourceId:sourceId,
-    instrument:instrument,
-    intervalMinutes:intervalMinutes,
-    fromUtc:fromUtc,
-    toUtcExclusive:toUtcExclusive,
-    includePartial:includePartial,
-    afterDataRevision:afterDataRevision,
-    dataRevision:dataRevision,
-    reasonCode:reasonCode,
-    templateKey:templateKey,
-    hasTemplateRowId:hasTemplateRowId,
-    editorValues:editorValues,
-    expectedDocumentRevision:expectedDocumentRevision,
-    hasExpectedDocumentRevision:hasExpectedDocumentRevision,
-    baseRowId:baseRowId,
-    eventTimeUtc:eventTimeUtc,
-    startEventTimeUtc:startEventTimeUtc,
-    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc,
+    wireVersion:wireVersion, 
+    kind:kind, 
+    actionKind:actionKind, 
+    canvasInstanceId:canvasInstanceId, 
+    rowId:rowId, 
+    rowKind:rowKind_1, 
+    dataRef:dataRef, 
+    heightWeight:heightWeight, 
+    visible:visible, 
+    sourceId:sourceId, 
+    instrument:instrument, 
+    intervalMinutes:intervalMinutes, 
+    fromUtc:fromUtc, 
+    toUtcExclusive:toUtcExclusive, 
+    includePartial:includePartial, 
+    afterDataRevision:afterDataRevision, 
+    dataRevision:dataRevision, 
+    reasonCode:reasonCode, 
+    templateKey:templateKey, 
+    hasTemplateRowId:hasTemplateRowId, 
+    editorValues:editorValues, 
+    expectedDocumentRevision:expectedDocumentRevision, 
+    hasExpectedDocumentRevision:hasExpectedDocumentRevision, 
+    baseRowId:baseRowId, 
+    eventTimeUtc:eventTimeUtc, 
+    startEventTimeUtc:startEventTimeUtc, 
+    endEventTimeExclusiveUtc:endEventTimeExclusiveUtc, 
     maximumBasePoints:maximumBasePoints
   };
 }
@@ -11975,10 +12407,10 @@ function DefaultValue(value, result){
 }
 function New_58(schema, exportedAtUtc, documentRevision, dataRevision, state){
   return{
-    schema:schema,
-    exportedAtUtc:exportedAtUtc,
-    documentRevision:documentRevision,
-    dataRevision:dataRevision,
+    schema:schema, 
+    exportedAtUtc:exportedAtUtc, 
+    documentRevision:documentRevision, 
+    dataRevision:dataRevision, 
     state:state
   };
 }
@@ -11988,7 +12420,7 @@ function validateSchema(limits_1, schema){
 }
 function schemaErrors(limits_1, schema){
   const fields=nonNull(schema.Fields);
-  return ofSeq_1(delay(() => append_2(identifier("schema.templateKey", schema.TemplateKey), delay(() => append_2(identifier("schema.displayName", schema.DisplayName), delay(() => append_2(schema.SchemaRevision<0n?[error_1("invalid-schema-revision", "schema.schemaRevision", "Schema revision must be non-negative.")]:[], delay(() => append_2(length(fields)+sumBy((field_1) => fieldCount(field_1.Kind), fields)>limits_1.MaxFields?[error_1("limit-editor-fields", "schema.fields", "Editor fields exceed hard limit "+String(limits_1.MaxFields)+".")]:[], delay(() => append_2(duplicateKey("schema.fields", (field_1) => field_1.Key, fields), delay(() => collect_2((m) => fieldErrors(limits_1, "schema.fields["+String(m[0])+"]", 1, m[1]), indexed(fields))))))))))))));
+  return ofSeq_1(delay(() => append_2(identifier("schema.templateKey", schema.TemplateKey), delay(() => append_2(identifier("schema.displayName", schema.DisplayName), delay(() => append_2(schema.SchemaRevision<0n?[error_1("invalid-schema-revision", "schema.schemaRevision", "Schema revision must be non-negative.")]:[], delay(() => append_2(length(fields)+sumBy((field_1) => fieldCount(field_1.Kind), fields)>limits_1.MaxFields?[error_1("limit-editor-fields", "schema.fields", "Editor fields exceed hard limit "+String(limits_1.MaxFields)+".")]:[], delay(() => append_2(duplicateKey("schema.fields", (field_1) => field_1.Key, fields), delay(() => collect_1((m) => fieldErrors(limits_1, "schema.fields["+String(m[0])+"]", 1, m[1]), indexed(fields))))))))))))));
 }
 function nonNull(values){
   return values==null?[]:values;
@@ -12026,7 +12458,7 @@ function kindErrors(limits_1, field_1, depth, kind){
     else if(kind.$==2)return rangeErrors(field_1, kind.$0, kind.$1);
     else if(kind.$==4){
       const values=nonNull(kind.$0);
-      return append_2(length(values)===0?[error_1("choice-required", field_1, "Choice editor requires at least one choice.")]:[], delay(() => append_2(length(values)>limits_1.MaxChoicesPerField?[error_1("limit-editor-choices", field_1, "Choices exceed hard limit "+String(limits_1.MaxChoicesPerField)+".")]:[], delay(() => append_2(duplicateKey(field_1, (choice) => choice.Key, values), delay(() => collect_2((m) => {
+      return append_2(length(values)===0?[error_1("choice-required", field_1, "Choice editor requires at least one choice.")]:[], delay(() => append_2(length(values)>limits_1.MaxChoicesPerField?[error_1("limit-editor-choices", field_1, "Choices exceed hard limit "+String(limits_1.MaxChoicesPerField)+".")]:[], delay(() => append_2(duplicateKey(field_1, (choice) => choice.Key, values), delay(() => collect_1((m) => {
         const index=m[0];
         const choice=m[1];
         return append_2(identifier(String(field_1)+".choices["+String(index)+"].key", choice.Key), delay(() => append_2(identifier(String(field_1)+".choices["+String(index)+"].label", choice.Label), delay(() => unsafeValue(String(field_1)+".choices["+String(index)+"].value", choice.Value)))));
@@ -12034,7 +12466,7 @@ function kindErrors(limits_1, field_1, depth, kind){
     }
     else if(kind.$==5){
       const values_1=nonNull(kind.$0);
-      return append_2(length(values_1)===0?[error_1("scale-required", field_1, "Scale editor requires at least one allowed key.")]:[], delay(() => append_2(duplicateKey(field_1, (x) => x, values_1), delay(() => collect_2((m) => identifier(String(field_1)+".scaleKeys["+String(m[0])+"]", m[1]), indexed(values_1))))));
+      return append_2(length(values_1)===0?[error_1("scale-required", field_1, "Scale editor requires at least one allowed key.")]:[], delay(() => append_2(duplicateKey(field_1, (x) => x, values_1), delay(() => collect_1((m) => identifier(String(field_1)+".scaleKeys["+String(m[0])+"]", m[1]), indexed(values_1))))));
     }
     else if(kind.$==6){
       const minimum=kind.$1;
@@ -12044,7 +12476,7 @@ function kindErrors(limits_1, field_1, depth, kind){
     }
     else if(kind.$==7){
       const values_2=nonNull(kind.$0);
-      return append_2(duplicateKey(field_1, (child) => child.Key, values_2), delay(() => collect_2((m) => fieldErrors(limits_1, String(field_1)+".fields["+String(m[0])+"]", depth+1, m[1]), indexed(values_2))));
+      return append_2(duplicateKey(field_1, (child) => child.Key, values_2), delay(() => collect_1((m) => fieldErrors(limits_1, String(field_1)+".fields["+String(m[0])+"]", depth+1, m[1]), indexed(values_2))));
     }
     else return[];
   }))));
@@ -12098,11 +12530,11 @@ function valueErrors(limits_1, field_1, depth, kind, value){
         let _7=m_2!=null&&m_2.$==1&&(length(values)<m_2.$0&&(_6=m_2.$0,true))?[error_1("list-too-short", field_1, field_1+" has fewer than the required items.")]:[];
         return append_2(_7, delay(() => {
           let _8;
-          return append_2(maximum_2!=null&&maximum_2.$==1&&(length(values)>maximum_2.$0&&(_8=maximum_2.$0,true))?[error_1("list-too-long", field_1, field_1+" exceeds its item limit.")]:[], delay(() => append_2(length(values)>limits_1.MaxListItems?[error_1("limit-list-items", field_1, String(field_1)+" exceeds hard limit "+String(limits_1.MaxListItems)+".")]:[], delay(() => collect_2((m_3) => valueErrors(limits_1, String(field_1)+"["+String(m_3[0])+"]", depth+1, itemKind, m_3[1]), indexed(values))))));
+          return append_2(maximum_2!=null&&maximum_2.$==1&&(length(values)>maximum_2.$0&&(_8=maximum_2.$0,true))?[error_1("list-too-long", field_1, field_1+" exceeds its item limit.")]:[], delay(() => append_2(length(values)>limits_1.MaxListItems?[error_1("limit-list-items", field_1, String(field_1)+" exceeds hard limit "+String(limits_1.MaxListItems)+".")]:[], delay(() => collect_1((m_3) => valueErrors(limits_1, String(field_1)+"["+String(m_3[0])+"]", depth+1, itemKind, m_3[1]), indexed(values))))));
         }));
       case 6:
         const values_1=_1[1];
-        return collect_2((child) => {
+        return collect_1((child) => {
           const m_3=values_1.TryFind(child.Key);
           return m_3==null?child.Required?[error_1("required", field_1+"."+child.Key, child.Key+" is required.")]:[]:valueErrors(limits_1, field_1+"."+child.Key, depth+1, child.Kind, m_3.$0);
         }, nonNull(_1[0]));
@@ -12113,7 +12545,7 @@ function valueErrors(limits_1, field_1, depth, kind, value){
 }
 function inputErrors(limits_1, schema, values){
   const inputs=nonNull(values);
-  return ofSeq_1(delay(() => append_2(schemaErrors(limits_1, schema), delay(() => append_2(length(inputs)>limits_1.MaxFields?[error_1("limit-editor-inputs", "editor.values", "Editor inputs exceed hard limit "+String(limits_1.MaxFields)+".")]:[], delay(() => append_2(exists((_1) => _1[1]>1, countBy((a) => a.Path, inputs))?[error_1("duplicate-editor-input", "editor.values", "Editor input paths must be unique.")]:[], delay(() => collect_2((m) => {
+  return ofSeq_1(delay(() => append_2(schemaErrors(limits_1, schema), delay(() => append_2(length(inputs)>limits_1.MaxFields?[error_1("limit-editor-inputs", "editor.values", "Editor inputs exceed hard limit "+String(limits_1.MaxFields)+".")]:[], delay(() => append_2(exists((_1) => _1[1]>1, countBy((a) => a.Path, inputs))?[error_1("duplicate-editor-input", "editor.values", "Editor input paths must be unique.")]:[], delay(() => collect_1((m) => {
     const input_1=m[1];
     const index=m[0];
     return append_2(identifier("editor.values["+String(index)+"].path", input_1.Path), delay(() => {
@@ -12205,42 +12637,68 @@ function initialEditorInputs(schema){
     return m==null?fallbackInputs(field_1.Key, field_1.Kind):flattenEditorValue(field_1.Key, field_1.Kind, m.$0);
   }, schema.Fields);
 }
-function prepareData(data){
-  const axes=OfArray(choose((_1) => prepareAxis(_1[1]), ofSeq(ToSeq(data))));
-  return{
-    RawData:data,
-    ResolvedAxes:axes,
-    ResolvedSeries:OfArray(choose((_1) => {
-      const dataRef=_1[0];
-      const value=_1[1];
-      let _2;
-      if(value.$==4)return Some([dataRef, map((item) => {
-        const p=pointPayload_1(item);
-        return{Payload:p[1], Temporal:p[0]};
-      }, value.$0)]);
+function prepareDataScheduled(schedule, data, onCompleted){
+  let axes, resolved;
+  const entries=ofSeq(ToSeq(data));
+  axes=new FSharpMap("New", []);
+  resolved=new FSharpMap("New", []);
+  function prepareSeries(index){
+    return index>=length(entries)?onCompleted({
+      RawData:data, 
+      ResolvedAxes:axes, 
+      ResolvedSeries:resolved
+    }):schedule(() => {
+      let next, _1, _2;
+      const p=get(entries, index);
+      const value=p[1];
+      if(value.$==4)next=Some(map((item) => {
+        const p_1=pointPayload_1(item);
+        return{Payload:p_1[1], Temporal:p_1[0]};
+      }, value.$0));
       else {
         const m=tryTemporalSeries(value);
-        if(m==null)return null;
+        if(m==null)next=null;
         else {
           const points=m.$0[2];
           const axisRevision=m.$0[1];
-          const m_1=axes.TryFind(m.$0[0]);
-          return m_1!=null&&m_1.$==1&&(m_1.$0.Revision===axisRevision&&(_2=m_1.$0,true))?Some([dataRef, choose((_3) => {
-            const o=_2.Points.TryFind(_3[0]);
+          const k=m.$0[0];
+          const m_1=axes.TryFind(k);
+          next=m_1!=null&&m_1.$==1&&(m_1.$0.Revision===axisRevision&&(_1=m_1.$0,true))?Some(choose((_3) => {
+            const o=_1.Points.TryFind(_3[0]);
             return o==null?null:Some({Payload:Some(_3[1]), Temporal:Some(o.$0)});
-          }, points)]):Some([dataRef, []]);
+          }, points)):Some([]);
         }
       }
-    }, ofSeq(ToSeq(data))))
-  };
+      if(next==null)_2=null;
+      else {
+        const v=next.$0;
+        _2=void(resolved=resolved.Add_1(p[0], v));
+      }
+      return prepareSeries(index+1);
+    });
+  }
+  function prepareAxes(index){
+    return index>=length(entries)?prepareSeries(0):schedule(() => {
+      let _1;
+      const m=prepareAxis((get(entries, index))[1]);
+      if(m==null)_1=null;
+      else {
+        const k=m.$0[0];
+        const v=m.$0[1];
+        _1=void(axes=axes.Add_1(k, v));
+      }
+      return prepareAxes(index+1);
+    });
+  }
+  return prepareAxes(0);
 }
 function prepareDataIncremental(previous, data){
   const axisUpdates=choose((_1) => updateAxis(previous, _1[1]), ofSeq(ToSeq(data)));
   const axes=OfArray(map((_1) =>[_1[0], _1[1]], axisUpdates));
   const axisChanges=OfArray(map((_1) =>[_1[0], _1[2]], axisUpdates));
   return{
-    RawData:data,
-    ResolvedAxes:axes,
+    RawData:data, 
+    ResolvedAxes:axes, 
     ResolvedSeries:OfArray(choose((_1) => {
       let _2, _3, _4, _5;
       const dataRef=_1[0];
@@ -12284,15 +12742,47 @@ function prepareDataIncremental(previous, data){
     }, ofSeq(ToSeq(data))))
   };
 }
-function referenceTimelineForDocument(document, data){
+function referenceTimelineForDocumentPrepared(document, prepared){
   const m=document.BaseRowId;
-  if(m==null)return referenceTimeline(document.Rows, data);
+  if(m==null)return referenceTimelinePrepared(document.Rows, prepared);
   else {
     const baseRowId=m.$0;
     const o=tryFind((row) => row.Visible&&row.RowId==baseRowId, document.Rows);
-    const o_1=o==null?null:Some(rowTimeline(o.$0, data));
+    const o_1=o==null?null:Some(rowTimelinePrepared(o.$0, prepared));
     return o_1==null?[]:o_1.$0;
   }
+}
+function coverageExtended(direction, oldTimeline, newTimeline){
+  if(length(oldTimeline)===0||length(newTimeline)<=length(oldTimeline))return false;
+  else if(direction.$==1){
+    const x=get(oldTimeline, length(oldTimeline)-1);
+    const o=tryFindIndex((y) => x==y, newTimeline);
+    return o==null?false:o.$0<length(newTimeline)-1;
+  }
+  else {
+    const x_1=get(oldTimeline, 0);
+    const o_1=tryFindIndex((y) => x_1==y, newTimeline);
+    return o_1==null?false:o_1.$0>0;
+  }
+}
+function tryReanchorWindow(minimumCount, maximumCount, delta, oldTimeline, newTimeline, oldWindow){
+  let o;
+  const oldBounded=clampWindow(minimumCount, maximumCount, length(oldTimeline), oldWindow);
+  const o_1=tryItem(oldBounded.StartIndex, oldTimeline);
+  if(o_1==null)o=null;
+  else {
+    const anchor=o_1.$0;
+    o=tryFindIndex((y) => anchor==y, newTimeline);
+  }
+  return o==null?null:Some(clampWindow(minimumCount, maximumCount, length(newTimeline), {StartIndex:o.$0+delta, Count:oldBounded.Count}));
+}
+function viewportMaximumStart(total, window_1){
+  const a=0;
+  const a_1=0;
+  const b=window_1.Count;
+  let _1=Compare(a_1, b)===1?a_1:b;
+  const b_1=total-_1;
+  return Compare(a, b_1)===1?a:b_1;
 }
 function resolveWindow(minimumCount, maximumCount, total, followLatest, requested){
   const bounded=clampWindow(minimumCount, maximumCount, total, requested);
@@ -12304,26 +12794,74 @@ function resolveWindow(minimumCount, maximumCount, total, followLatest, requeste
   }
   else return bounded;
 }
-function visibleEventRange(document, data, window_1){
+function visibleEventRangePrepared(document, prepared, window_1){
   const m=tryBaseRow(document);
   if(m!=null&&m.$==1){
     const baseRowId=m.$0[0];
     const baseRow=m.$0[1];
-    const timeline=rowTimeline(baseRow, data);
+    const timeline=rowTimelinePrepared(baseRow, prepared);
     const selected=selectWindow(window_1, timeline);
     if(length(selected)===0)return null;
     else {
       const startTime=get(selected, 0);
       const endIndex=window_1.StartIndex+length(selected);
-      const o=filter((value) => Compare(value, startTime)>0, endIndex<length(timeline)?Some(get(timeline, endIndex)):tryBasePointIntervalEnd(baseRow, data, get(selected, length(selected)-1)));
+      const o=filter((value) => Compare(value, startTime)>0, endIndex<length(timeline)?Some(get(timeline, endIndex)):tryBasePointIntervalEndPrepared(baseRow, prepared, get(selected, length(selected)-1)));
       return o==null?null:Some({
-        BaseRowId:baseRowId,
-        StartEventTimeUtc:startTime,
+        BaseRowId:baseRowId, 
+        StartEventTimeUtc:startTime, 
         EndEventTimeExclusiveUtc:o.$0
       });
     }
   }
   else return null;
+}
+function tryAdjacentCoverageRange(direction, maximumBasePoints, document, prepared){
+  let o, _1;
+  const o_1=document.BaseRowId;
+  if(o_1==null)return null;
+  else {
+    const baseRowId=o_1.$0;
+    const o_2=tryFind((row) => row.RowId==baseRowId, document.Rows);
+    if(o_2==null)return null;
+    else {
+      const baseRow=o_2.$0;
+      const timeline=referenceTimelineForDocumentPrepared(document, prepared);
+      const query=queryDraft(document.DefaultView);
+      const _2=tryHead(timeline);
+      const _3=tryLast(timeline);
+      switch(direction.$==1?_3!=null&&_3.$==1?1:2:_2!=null&&_2.$==1?0:2){
+        case 0:
+          o=Some([query.FromUtc, _2.$0]);
+          break;
+        case 1:
+          const m=tryBasePointIntervalEndPrepared(baseRow, prepared, _3.$0);
+          o=m!=null&&m.$==1?Some([m.$0, query.ToUtcExclusive]):null;
+          break;
+        case 2:
+          o=null;
+          break;
+      }
+      if(o==null)return null;
+      else {
+        const _4=o.$0[0];
+        const _5=o.$0[1];
+        const _6=tryUtcTimestamp(_4);
+        const _7=tryUtcTimestamp(_5);
+        if(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(Compare(_6.$0, _7.$0)<0&&(_1=[_7.$0, _6.$0],true)))){
+          const a=1;
+          let _8=Compare(a, maximumBasePoints)===1?a:maximumBasePoints;
+          let _9={
+            BaseRowId:baseRowId, 
+            StartEventTimeUtc:_4, 
+            EndEventTimeExclusiveUtc:_5, 
+            MaximumBasePoints:_8
+          };
+          return Some(_9);
+        }
+        else return null;
+      }
+    }
+  }
 }
 function clampWindow(minimumCount, maximumCount, total, requested){
   if(total<=0)return{StartIndex:0, Count:0};
@@ -12341,13 +12879,12 @@ function clampWindow(minimumCount, maximumCount, total, requested){
     return{StartIndex:_1, Count:count};
   }
 }
-function viewportMaximumStart(total, window_1){
-  const a=0;
-  const a_1=0;
-  const b=window_1.Count;
-  let _1=Compare(a_1, b)===1?a_1:b;
-  const b_1=total-_1;
-  return Compare(a, b_1)===1?a:b_1;
+function fullTimestamp(value){
+  const o=timestampParts(value);
+  return o==null?null:Some(o.$0[0]+" "+o.$0[1]);
+}
+function timestampParts(value){
+  return IsNullOrWhiteSpace(value)||value.length<19||value[4]!=="-"||value[7]!=="-"||value[10]!=="T"&&value[10]!==" "||value[13]!==":"||value[16]!==":"?null:Some([Substring(value, 0, 10), Substring(value, 11, 8)]);
 }
 function setEditorInput(input_1, values){
   return sortBy((a) => a.Path, [input_1].concat(filter_1((current) => current.Path!=input_1.Path, values)));
@@ -12392,6 +12929,76 @@ function addListItem(listPath, itemKind, values){
 function listIndexes(listPath, values){
   return sort(distinct(choose((value) => tryListIndex(listPath, value.Path), values)));
 }
+function queryViewportSelection(latestGeneration, intentGeneration, query, document, data){
+  let _1;
+  if(!Equals(intentGeneration, latestGeneration))return{$:4};
+  else {
+    const _2=query.FromUtc;
+    const _3=query.ToUtcExclusive;
+    switch(_2!=null&&_2.$==1?_3!=null&&_3.$==1?(_1=[_2.$0, _3.$0],1):2:_3==null?0:2){
+      case 0:
+        return{$:0};
+      case 1:
+        let _4;
+        const _5=tryUtcTimestamp(_1[0]);
+        const _6=tryUtcTimestamp(_1[1]);
+        switch(_5!=null&&_5.$==1?_6!=null&&_6.$==1?_5.$0<_6.$0?(_4=[_5.$0, _6.$0],0):1:2:2){
+          case 0:
+            let low, high;
+            const fromUtc=_4[0];
+            const parsedPoints=map((_7) => {
+              let _8;
+              const temporal=_7[1];
+              if(temporal==null){
+                const o=tryUtcTimestamp(_7[0]);
+                if(o==null)return null;
+                else {
+                  const instant=o.$0;
+                  return Some([instant, instant, false]);
+                }
+              }
+              else {
+                const metadata=temporal.$0;
+                const _9=tryUtcTimestamp(metadata.IntervalStartUtc);
+                const _10=tryUtcTimestamp(metadata.IntervalEndUtc);
+                return _9!=null&&_9.$==1&&(_10!=null&&_10.$==1&&(_9.$0<_10.$0&&(_8=[_10.$0, _9.$0],true)))?Some([_8[1], _8[0], true]):null;
+              }
+            }, referencePointsForDocument(document, data));
+            if(exists((o) => o==null, parsedPoints))return{$:3, $0:"query-axis-invalid: one or more reference timestamps are not valid UTC values."};
+            else {
+              const points=choose((x) => x, parsedPoints);
+              low=0;
+              high=length(points);
+              while(low<high)
+                {
+                  const middle=low+((high-low)/2>>0);
+                  const p=get(points, middle);
+                  if(p[2]?p[1]>fromUtc:p[0]>=fromUtc)high=middle;
+                  else low=middle+1;
+                }
+              const first=low;
+              low=0;
+              high=length(points);
+              while(low<high)
+                {
+                  const middle_1=low+((high-low)/2>>0);
+                  if((get(points, middle_1))[0]>=_4[1])high=middle_1;
+                  else low=middle_1+1;
+                }
+              return first>=low?{$:2}:{$:1, $0:{StartIndex:first, Count:low-first}};
+            }
+            break;
+          case 1:
+            return{$:3, $0:"query-range-invalid: FromUtc must be earlier than ToUtcExclusive."};
+          case 2:
+            return{$:3, $0:"query-range-invalid: FromUtc and ToUtcExclusive must be valid UTC timestamps."};
+        }
+        break;
+      case 2:
+        return{$:3, $0:"query-range-invalid: FromUtc and ToUtcExclusive must be supplied together."};
+    }
+  }
+}
 function queryDraft(values){
   const textValue=(name) => {
     const o_5=values.TryFind(name);
@@ -12406,11 +13013,11 @@ function queryDraft(values){
   const o_4=o_3==null?null:tryBool(o_3.$0);
   const includePartial=o_4==null||o_4.$0;
   return{
-    SourceId:textValue("query.sourceId"),
-    Instrument:textValue("query.instrument"),
-    IntervalMinutes:interval,
-    FromUtc:textValue("query.fromUtc"),
-    ToUtcExclusive:textValue("query.toUtcExclusive"),
+    SourceId:textValue("query.sourceId"), 
+    Instrument:textValue("query.instrument"), 
+    IntervalMinutes:interval, 
+    FromUtc:textValue("query.fromUtc"), 
+    ToUtcExclusive:textValue("query.toUtcExclusive"), 
     IncludePartial:includePartial
   };
 }
@@ -12432,10 +13039,10 @@ function statusPresentation(statusRef, state){
     _1=Some(error_3.ReasonCode+": "+error_3.Message);
   }
   return{
-    Freshness:freshness,
-    Label:_2,
-    Watermark:_3,
-    Quality:_4,
+    Freshness:freshness, 
+    Label:_2, 
+    Watermark:_3, 
+    Quality:_4, 
     Error:_1
   };
 }
@@ -12449,13 +13056,6 @@ function selectWindow(window_1, values){
     let _1=Compare(a, b_1)===1?a:b_1;
     let _2=skip(_1, values);
     return _2.slice(0, window_1.Count);
-  }
-}
-function selectionRatios(total, window_1){
-  if(total<=0||window_1.Count<=0)return[0, 0];
-  else {
-    const bounded=clampWindow(1, 2147483647, total, window_1);
-    return[bounded.StartIndex/total, (bounded.StartIndex+bounded.Count)/total];
   }
 }
 function effectiveTraces(row){
@@ -12475,20 +13075,32 @@ function effectiveTraces(row){
         break;
     }
     return[{
-      TraceId:row.RowId,
-      Kind:_1,
-      DataRef:row.DataRef,
-      Label:row.RowId,
-      Color:"",
-      Width:1.25,
-      Visible:true,
-      CandleDataRefs:null,
+      TraceId:row.RowId, 
+      Kind:_1, 
+      DataRef:row.DataRef, 
+      Label:row.RowId, 
+      Color:"", 
+      Width:1.25, 
+      Visible:true, 
+      CandleDataRefs:null, 
       Options:new FSharpMap("New", [])
     }];
   }
 }
-function candleSeriesForTrace(trace, data){
-  return candleSeriesForTracePrepared(trace, prepareData(data));
+function selectionRatios(total, window_1){
+  if(total<=0||window_1.Count<=0)return[0, 0];
+  else {
+    const bounded=clampWindow(1, 2147483647, total, window_1);
+    return[bounded.StartIndex/total, (bounded.StartIndex+bounded.Count)/total];
+  }
+}
+function candleSeriesForTracePreparedSampled(maximumCount, trace, prepared){
+  const _1=trace.CandleDataRefs;
+  if(_1!=null&&_1.$==1){
+    const values=candleSeriesForTracePrepared(trace, prepared);
+    return maximumCount<=0||length(values)===0?[]:length(values)<=maximumCount?values:maximumCount===1?[get(values, length(values)-1)]:ofSeq(delay(() => collect_1((sampleIndex) =>[get(values, toInt(Math.round(sampleIndex*(length(values)-1)/(maximumCount-1))))], range(0, maximumCount-1))));
+  }
+  else return candleSeriesFromResolved(sampleResolvedEvenly(maximumCount, resolvedSeriesPrepared(trace.DataRef, prepared)));
 }
 function workspaceBootstrapPresentation(state){
   const m=state.LastError;
@@ -12497,44 +13109,44 @@ function workspaceBootstrapPresentation(state){
     switch(m_1.$==1?1:m_1.$==4?2:m_1.$==6?3:m_1.$==7?4:m_1.$==2?5:m_1.$==3?5:m_1.$==5?5:0){
       case 0:
         return{
-          State:"preparing",
-          Title:"Preparing TA workspace",
-          Detail:"Waiting for the workspace channel to mount.",
+          State:"preparing", 
+          Title:"Preparing TA workspace", 
+          Detail:"Waiting for the workspace channel to mount.", 
           IsError:false
         };
       case 1:
         return{
-          State:"connecting",
-          Title:"Connecting TA workspace",
-          Detail:"Waiting for the initial workspace document.",
+          State:"connecting", 
+          Title:"Connecting TA workspace", 
+          Detail:"Waiting for the initial workspace document.", 
           IsError:false
         };
       case 2:
         return{
-          State:"retrying",
-          Title:"Restoring TA workspace",
-          Detail:"A reconnect attempt is scheduled.",
+          State:"retrying", 
+          Title:"Restoring TA workspace", 
+          Detail:"A reconnect attempt is scheduled.", 
           IsError:false
         };
       case 3:
         return{
-          State:"resyncing",
-          Title:"Resynchronizing TA workspace",
-          Detail:"Requesting a full workspace document.",
+          State:"resyncing", 
+          Title:"Resynchronizing TA workspace", 
+          Detail:"Requesting a full workspace document.", 
           IsError:false
         };
       case 4:
         return{
-          State:"closed",
-          Title:"TA workspace closed",
-          Detail:"Open the page again to reconnect.",
+          State:"closed", 
+          Title:"TA workspace closed", 
+          Detail:"Open the page again to reconnect.", 
           IsError:false
         };
       case 5:
         return{
-          State:"loading",
-          Title:"Loading TA workspace",
-          Detail:"Waiting for the workspace document.",
+          State:"loading", 
+          Title:"Loading TA workspace", 
+          Detail:"Waiting for the workspace document.", 
           IsError:false
         };
     }
@@ -12542,18 +13154,18 @@ function workspaceBootstrapPresentation(state){
   else if(!m.$0.Recoverable){
     const error_3=m.$0;
     return{
-      State:"unavailable",
-      Title:"TA workspace unavailable",
-      Detail:error_3.ReasonCode+": "+error_3.Message,
+      State:"unavailable", 
+      Title:"TA workspace unavailable", 
+      Detail:error_3.ReasonCode+": "+error_3.Message, 
       IsError:true
     };
   }
   else {
     const error_4=m.$0;
     return{
-      State:"recovering",
-      Title:"Restoring TA workspace",
-      Detail:error_4.ReasonCode+": "+error_4.Message,
+      State:"recovering", 
+      Title:"Restoring TA workspace", 
+      Detail:error_4.ReasonCode+": "+error_4.Message, 
       IsError:false
     };
   }
@@ -12563,6 +13175,16 @@ function validateEditorSubmission(schema, values){
 }
 function editorScalarEqualsSdui(scalar, value){
   return scalar.$==1?value.$==2&&scalar.$0===value.$0:scalar.$==2?value.$==1&&scalar.$0==value.$0:value.$==3&&scalar.$0==value.$0;
+}
+function referenceTimelineForDocument(document, data){
+  const m=document.BaseRowId;
+  if(m==null)return referenceTimeline(document.Rows, data);
+  else {
+    const baseRowId=m.$0;
+    const o=tryFind((row) => row.Visible&&row.RowId==baseRowId, document.Rows);
+    const o_1=o==null?null:Some(rowTimeline(o.$0, data));
+    return o_1==null?[]:o_1.$0;
+  }
 }
 function commitWindowBounds(minimumCount, maximumCount, total, draft){
   const next=clampWindow(minimumCount, maximumCount, total, draft);
@@ -12670,19 +13292,14 @@ function flattenEditorValue(path, kind, value){
       return[];
   }
 }
-function prepareAxis(value){
-  const o=tryTemporalAxisRaw(value);
-  if(o==null)return null;
+function traceTopologyTimestampsPrepared(trace, prepared){
+  if(Equals(trace.Kind, {$:4}))return[];
   else {
-    const _1=o.$0[0];
-    const _2=o.$0[1];
-    const _3=o.$0[2];
-    const decoded=choose(tryTemporalAxisPoint, _3);
-    return length(decoded)!==length(_3)?null:Some([_1, {
-      Revision:_2,
-      RawPoints:_3,
-      Points:OfArray(decoded)
-    }]);
+    const temporalPositions=choose((point) => {
+      const o=point.Temporal;
+      return o==null?null:Some(o.$0.IntervalStartUtc);
+    }, resolvedSeriesPrepared(trace.DataRef, prepared));
+    return length(temporalPositions)>0?temporalPositions:traceTimestampsPrepared(trace, prepared);
   }
 }
 function pointPayload_1(value){
@@ -12700,14 +13317,19 @@ function tryTemporalSeries(value){
     return length(decoded)!==length(_3)?null:Some([_1, _2, decoded]);
   }
 }
-function traceTopologyTimestampsPrepared(trace, prepared){
-  if(Equals(trace.Kind, {$:4}))return[];
+function prepareAxis(value){
+  const o=tryTemporalAxisRaw(value);
+  if(o==null)return null;
   else {
-    const temporalPositions=choose((point) => {
-      const o=point.Temporal;
-      return o==null?null:Some(o.$0.IntervalStartUtc);
-    }, resolvedSeriesPrepared(trace.DataRef, prepared));
-    return length(temporalPositions)>0?temporalPositions:traceTimestampsPrepared(trace, prepared);
+    const _1=o.$0[0];
+    const _2=o.$0[1];
+    const _3=o.$0[2];
+    const decoded=choose(tryTemporalAxisPoint, _3);
+    return length(decoded)!==length(_3)?null:Some([_1, {
+      Revision:_2, 
+      RawPoints:_3, 
+      Points:OfArray(decoded)
+    }]);
   }
 }
 function updateAxis(previous, value){
@@ -12724,8 +13346,8 @@ function updateAxis(previous, value){
     else if(m_1.$0.RawPoints===rawPoints){
       const oldAxis=m_1.$0;
       return Some([axisRef, {
-        Revision:revision,
-        RawPoints:oldAxis.RawPoints,
+        Revision:revision, 
+        RawPoints:oldAxis.RawPoints, 
         Points:oldAxis.Points
       }, Some(new FSharpSet("New_2", null))]);
     }
@@ -12741,8 +13363,8 @@ function updateAxis(previous, value){
         if(length(oldSuffix)===length(oldAxis_1.RawPoints)-prefix&&length(newSuffix)===length(rawPoints)-prefix){
           const changedPositions=new FSharpSet("New_2", OfSeq(map((t) => t[0], oldSuffix).concat(map((t) => t[0], newSuffix))));
           return Some([axisRef, {
-            Revision:revision,
-            RawPoints:rawPoints,
+            Revision:revision, 
+            RawPoints:rawPoints, 
             Points:fold((_2, _3) => _2.Add_1(_3[0], _3[1]), fold((_2, _3) => _2.Remove_1(_3[0]), oldAxis_1.Points, oldSuffix), newSuffix)
           }, Some(changedPositions)]);
         }
@@ -12845,16 +13467,16 @@ function resolveTemporalPoints(axisPoints, rawPoints){
     }
   }, rawPoints);
 }
-function referenceTimeline(rows, data){
-  const o=tryHead(sortByDescending((_1) =>[length(_1[1]), Equals(_1[0].Kind, {$:0})], filter_1((_1) => length(_1[1])>0, map((trace) =>[trace, distinct(traceTimestamps(trace, data))], filter_1((a) => a.Visible, collect(effectiveTraces, filter_1((a) => a.Visible, rows)))))));
+function referenceTimelinePrepared(rows, prepared){
+  const o=tryHead(sortByDescending((_1) =>[length(_1[1]), Equals(_1[0].Kind, {$:0})], filter_1((_1) => length(_1[1])>0, map((trace) =>[trace, distinct(traceTimestampsPrepared(trace, prepared))], filter_1((a) => a.Visible, collect(effectiveTraces, filter_1((a) => a.Visible, rows)))))));
   const o_1=o==null?null:Some(o.$0[1]);
   return o_1==null?[]:o_1.$0;
 }
-function rowTimeline(row, data){
+function rowTimelinePrepared(row, prepared){
   const traces=filter_1((a) => a.Visible, effectiveTraces(row));
   const o=tryFind((trace) => trace.DataRef==row.DataRef, traces);
   const o_1=o==null?tryHead(traces):(o.$0,o);
-  const o_2=o_1==null?null:Some(distinct(traceTimestamps(o_1.$0, data)));
+  const o_2=o_1==null?null:Some(distinct(traceTimestampsPrepared(o_1.$0, prepared)));
   return o_2==null?[]:o_2.$0;
 }
 function tryBaseRow(document){
@@ -12866,23 +13488,48 @@ function tryBaseRow(document){
     return o_1==null?null:Some([baseRowId, o_1.$0]);
   }
 }
-function tryBasePointIntervalEnd(row, data, timestamp){
+function tryBasePointIntervalEndPrepared(row, prepared, timestamp){
   const o=tryFind((trace_1) => trace_1.DataRef==row.DataRef, filter_1((a) => a.Visible, effectiveTraces(row)));
   if(o==null)return null;
   else {
     const trace=o.$0;
-    const m=trace.Kind;
-    switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:0){
-      case 0:
-        const o_1=tryFind((point) => point.Timestamp==timestamp, candleSeriesForTrace(trace, data));
-        const o_2=o_1==null?null:o_1.$0.Temporal;
-        return o_2==null?null:Some(o_2.$0.IntervalEndUtc);
-      case 1:
-        const o_3=tryFind((point) => point.Timestamp==timestamp, lineSeries(trace.DataRef, data));
-        const o_4=o_3==null?null:o_3.$0.Temporal;
-        return o_4==null?null:Some(o_4.$0.IntervalEndUtc);
-      case 2:
-        return null;
+    const m=trace.CandleDataRefs;
+    let _1=m==null?trace.DataRef:m.$0.OpenRef;
+    let _2=resolvedSeriesPrepared(_1, prepared);
+    return tryPick((point) => {
+      const o_1=filter((temporal) => temporal.IntervalStartUtc==timestamp, point.Temporal);
+      return o_1==null?null:Some(o_1.$0.IntervalEndUtc);
+    }, _2);
+  }
+}
+function tryUtcTimestamp(value){
+  let fractionValid;
+  const trimmed=value==null?"":Trim(value);
+  const candidate=trimmed.length===10&&trimmed[4]==="-"&&trimmed[7]==="-"?trimmed+"T00:00:00Z":trimmed;
+  const suffixStart=EndsWith(candidate, "Z")?candidate.length-1:EndsWith(candidate, "+00:00")?candidate.length-6:-1;
+  const digitsValid=suffixStart>=19&&candidate.length>=20&&candidate[4]==="-"&&candidate[7]==="-"&&(candidate[10]==="T"||candidate[10]==="t")&&candidate[13]===":"&&candidate[16]===":"&&forall((index) => {
+    const character=candidate[index];
+    return character>="0"&&character<="9";
+  }, [0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18]);
+  const fraction=suffixStart===19?Some(""):suffixStart>20&&candidate[19]==="."?Some(Substring(candidate, 20, suffixStart-20)):null;
+  if(fraction==null)fractionValid=false;
+  else {
+    const digits=fraction.$0;
+    fractionValid=digits.length<=7&&forall_2((character) => character>="0"&&character<="9", digits);
+  }
+  if(!digitsValid||!fractionValid)return null;
+  else {
+    const number=(start, count) => Parse(Substring(candidate, start, count));
+    const month=number(5, 2);
+    const day=number(8, 2);
+    const hour=number(11, 2);
+    const minute=number(14, 2);
+    const second=number(17, 2);
+    const year=number(0, 4);
+    if(day<1||day>(month===1?31:month===2?year%400===0||year%4===0&&year%100!==0?29:28:month===3?31:month===4?30:month===5?31:month===6?30:month===7?31:month===8?31:month===9?30:month===10?31:month===11?30:month===12?31:0)||hour>23||minute>59||second>59)return null;
+    else {
+      const normalizedFraction=Substring((fraction==null?"":fraction.$0)+"0000000", 0, 7);
+      return Some(Substring(candidate, 0, 10)+"T"+Substring(candidate, 11, 8)+"."+normalizedFraction);
     }
   }
 }
@@ -12920,6 +13567,20 @@ function replaceListIndex(listPath, oldIndex, newIndex, path){
   const oldPrefix=String(listPath)+"["+String(oldIndex)+"]";
   return StartsWith(path, oldPrefix)?String(listPath)+"["+String(newIndex)+"]"+path.substring(oldPrefix.length):path;
 }
+function referencePointsForDocument(document, data){
+  const m=document.BaseRowId;
+  if(m==null){
+    const o=tryHead(sortByDescending((_1) =>[length(_1[1]), Equals(_1[0].Kind, {$:0})], filter_1((_1) => length(_1[1])>0, map((trace) =>[trace, traceReferencePoints(trace, data)], filter_1((a) => a.Visible, collect(effectiveTraces, filter_1((a) => a.Visible, document.Rows)))))));
+    const o_1=o==null?null:Some(o.$0[1]);
+    return o_1==null?[]:o_1.$0;
+  }
+  else {
+    const baseRowId=m.$0;
+    const o_2=tryFind((row) => row.Visible&&row.RowId==baseRowId, document.Rows);
+    const o_3=o_2==null?null:Some(rowReferencePoints(o_2.$0, data));
+    return o_3==null?[]:o_3.$0;
+  }
+}
 function tryText(a){
   return a.$==3?Some(a.$0):null;
 }
@@ -12942,8 +13603,8 @@ function freshnessFromStatus(status){
   const o_2=objectText("reasonCode", status);
   const reason=o_2==null?kind:o_2.$0;
   return kind=="live"?{$:0}:kind=="delayed"?{$:1, $0:lag}:kind=="stale"?{
-    $:2,
-    $0:lag,
+    $:2, 
+    $0:lag, 
     $1:reason
   }:kind=="backfill"?{$:3, $0:reason}:{$:4, $0:reason};
 }
@@ -12968,7 +13629,7 @@ function rowTemporalMetadataPrepared(row, prepared){
   return distinctBy((value) =>[value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality], choose((trace) => latestTemporalMetadataPrepared(trace, prepared), filter_1((trace) => trace.Visible&&!Equals(trace.Kind, {$:4}), effectiveTraces(row))));
 }
 function sampleEvenly(maximumCount, values){
-  return maximumCount<=0||length(values)===0?[]:length(values)<=maximumCount?values.slice():maximumCount===1?[get(values, length(values)-1)]:ofSeq(delay(() => collect_2((sampleIndex) =>[get(values, toInt(Math.round(sampleIndex*(length(values)-1)/(maximumCount-1))))], range(0, maximumCount-1))));
+  return maximumCount<=0||length(values)===0?[]:length(values)<=maximumCount?values.slice():maximumCount===1?[get(values, length(values)-1)]:ofSeq(delay(() => collect_1((sampleIndex) =>[get(values, toInt(Math.round(sampleIndex*(length(values)-1)/(maximumCount-1))))], range(0, maximumCount-1))));
 }
 function paddedRange(fallbackLow, fallbackHigh, values){
   if(values.length==0)return[fallbackLow, fallbackHigh];
@@ -13004,17 +13665,27 @@ function candleSeriesForTracePrepared(trace, prepared){
       const _4=closes.TryFind(openPoint.Timestamp);
       const _5=volumes.TryFind(openPoint.Timestamp);
       return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_1=[_4.$0, _2.$0, _3.$0, _5.$0],true))))?Some({
-        Timestamp:openPoint.Timestamp,
-        Open:openPoint.Value,
-        High:_1[1].Value,
-        Low:_1[2].Value,
-        Close:_1[0].Value,
-        Volume:_1[3].Value,
+        Timestamp:openPoint.Timestamp, 
+        Open:openPoint.Value, 
+        High:_1[1].Value, 
+        Low:_1[2].Value, 
+        Close:_1[0].Value, 
+        Volume:_1[3].Value, 
         Temporal:openPoint.Temporal
       }):null;
     }, opens);
   }
   else return candleSeriesPrepared(trace.DataRef, prepared);
+}
+function resolvedSeriesPrepared(dataRef, prepared){
+  const o=prepared.ResolvedSeries.TryFind(dataRef);
+  return o==null?[]:o.$0;
+}
+function sampleResolvedEvenly(maximumCount, values){
+  return maximumCount<=0||length(values)===0?[]:length(values)<=maximumCount?values:maximumCount===1?[get(values, length(values)-1)]:ofSeq(delay(() => collect_1((sampleIndex) =>[get(values, toInt(Math.round(sampleIndex*(length(values)-1)/(maximumCount-1))))], range(0, maximumCount-1))));
+}
+function candleSeriesFromResolved(resolved){
+  return choose((point) => parseCandleResolved(point.Temporal, point.Payload), resolved);
 }
 function editorSubmissionErrors(path, required, kind, values){
   let _1;
@@ -13029,7 +13700,7 @@ function editorSubmissionErrors(path, required, kind, values){
       let _2;
       return append_2(minimum!=null&&minimum.$==1&&(length(indexes)<minimum.$0&&(_2=minimum.$0,true))?[String(path)+" requires at least "+String(_2)+" item(s)."]:[], delay(() => {
         let _3;
-        return append_2(maximum!=null&&maximum.$==1&&(length(indexes)>maximum.$0&&(_3=maximum.$0,true))?[String(path)+" allows at most "+String(_3)+" item(s)."]:[], delay(() => collect_2((index) => editorSubmissionErrors(String(path)+"["+String(index)+"]", true, itemKind, values), indexes)));
+        return append_2(maximum!=null&&maximum.$==1&&(length(indexes)>maximum.$0&&(_3=maximum.$0,true))?[String(path)+" allows at most "+String(_3)+" item(s)."]:[], delay(() => collect_1((index) => editorSubmissionErrors(String(path)+"["+String(index)+"]", true, itemKind, values), indexes)));
       }));
     }));
   }
@@ -13075,6 +13746,89 @@ function editorSubmissionErrors(path, required, kind, values){
     else return missing();
   }
 }
+function referenceTimeline(rows, data){
+  const o=tryHead(sortByDescending((_1) =>[length(_1[1]), Equals(_1[0].Kind, {$:0})], filter_1((_1) => length(_1[1])>0, map((trace) =>[trace, distinct(traceTimestamps(trace, data))], filter_1((a) => a.Visible, collect(effectiveTraces, filter_1((a) => a.Visible, rows)))))));
+  const o_1=o==null?null:Some(o.$0[1]);
+  return o_1==null?[]:o_1.$0;
+}
+function rowTimeline(row, data){
+  const traces=filter_1((a) => a.Visible, effectiveTraces(row));
+  const o=tryFind((trace) => trace.DataRef==row.DataRef, traces);
+  const o_1=o==null?tryHead(traces):(o.$0,o);
+  const o_2=o_1==null?null:Some(distinct(traceTimestamps(o_1.$0, data)));
+  return o_2==null?[]:o_2.$0;
+}
+function traceTimestampsPrepared(trace, prepared){
+  if(Equals(trace.Kind, {$:4}))return[];
+  else {
+    const m=trace.CandleDataRefs;
+    const dataRef=m==null?trace.DataRef:m.$0.OpenRef;
+    const resolved=resolvedSeriesPrepared(dataRef, prepared);
+    const temporal=choose((point) => {
+      const o=point.Temporal;
+      return o==null?null:Some(o.$0.IntervalStartUtc);
+    }, resolved);
+    if(length(temporal)>0)return temporal;
+    else {
+      const m_1=trace.Kind;
+      switch(m_1.$==1?0:m_1.$==2?1:m_1.$==3?1:m_1.$==4?2:0){
+        case 0:
+          return map((a) => a.Timestamp, candleSeriesForTracePrepared(trace, prepared));
+        case 1:
+          return map((a) => a.Timestamp, lineSeriesFromResolved(resolved));
+        case 2:
+          return[];
+      }
+    }
+  }
+}
+function tryTemporalPoint(value){
+  let _1, _2;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const fields=o.$0;
+    if(!Equals(objectText("_type", fields), Some("temporal-point.v1")))return null;
+    else {
+      const _3=requiredObjectText("sourceIntervalId", fields);
+      const _4=requiredObjectText("scaleKey", fields);
+      const _5=requiredObjectText("intervalStartUtc", fields);
+      const _6=requiredObjectText("intervalEndUtc", fields);
+      const _7=requiredObjectText("observedThroughUtc", fields);
+      const _8=requiredObjectText("finality", fields);
+      const _9=requiredObjectText("projection", fields);
+      if(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _9.$0, _4.$0, _3.$0],true)))))))){
+        let _10={
+          SourceIntervalId:_1[6], 
+          ScaleKey:_1[5], 
+          IntervalStartUtc:_1[2], 
+          IntervalEndUtc:_1[1], 
+          ObservedThroughUtc:_1[3], 
+          AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
+          Finality:_1[0], 
+          Projection:_1[4], 
+          Quality:requiredObjectText("quality", fields)
+        };
+        const m=fields.TryFind("value");
+        let _11=m==null||(m.$0.$==0||(_2=m.$0,false))?null:Some(_2);
+        let _12=[_10, _11];
+        return Some(_12);
+      }
+      else return null;
+    }
+  }
+}
+function tryTemporalSeriesPoint(value){
+  let _1;
+  const o=tryObject(value);
+  if(o==null)return null;
+  else {
+    const values=o.$0;
+    const _2=nonNegativeInteger("position", values);
+    const _3=values.TryFind("value");
+    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_1=[_3.$0, _2.$0],true))?Some([_1[1], _1[0]]):null;
+  }
+}
 function tryTemporalAxisRaw(value){
   let _1;
   const o=tryObject(value);
@@ -13105,78 +13859,16 @@ function tryTemporalAxisPoint(value){
     const _8=requiredObjectText("finality", fields);
     const _9=requiredObjectText("projection", fields);
     return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _2.$0, _9.$0, _4.$0, _3.$0],true))))))))?Some([_1[4], {
-      SourceIntervalId:_1[7],
-      ScaleKey:_1[6],
-      IntervalStartUtc:_1[2],
-      IntervalEndUtc:_1[1],
-      ObservedThroughUtc:_1[3],
-      AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
-      Finality:_1[0],
-      Projection:_1[5],
+      SourceIntervalId:_1[7], 
+      ScaleKey:_1[6], 
+      IntervalStartUtc:_1[2], 
+      IntervalEndUtc:_1[1], 
+      ObservedThroughUtc:_1[3], 
+      AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
+      Finality:_1[0], 
+      Projection:_1[5], 
       Quality:requiredObjectText("quality", fields)
     }]):null;
-  }
-}
-function tryTemporalPoint(value){
-  let _1, _2;
-  const o=tryObject(value);
-  if(o==null)return null;
-  else {
-    const fields=o.$0;
-    if(!Equals(objectText("_type", fields), Some("temporal-point.v1")))return null;
-    else {
-      const _3=requiredObjectText("sourceIntervalId", fields);
-      const _4=requiredObjectText("scaleKey", fields);
-      const _5=requiredObjectText("intervalStartUtc", fields);
-      const _6=requiredObjectText("intervalEndUtc", fields);
-      const _7=requiredObjectText("observedThroughUtc", fields);
-      const _8=requiredObjectText("finality", fields);
-      const _9=requiredObjectText("projection", fields);
-      if(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_8!=null&&_8.$==1&&(_9!=null&&_9.$==1&&(_1=[_8.$0, _6.$0, _5.$0, _7.$0, _9.$0, _4.$0, _3.$0],true)))))))){
-        let _10={
-          SourceIntervalId:_1[6],
-          ScaleKey:_1[5],
-          IntervalStartUtc:_1[2],
-          IntervalEndUtc:_1[1],
-          ObservedThroughUtc:_1[3],
-          AvailableAtUtc:requiredObjectText("availableAtUtc", fields),
-          Finality:_1[0],
-          Projection:_1[4],
-          Quality:requiredObjectText("quality", fields)
-        };
-        const m=fields.TryFind("value");
-        let _11=m==null||(m.$0.$==0||(_2=m.$0,false))?null:Some(_2);
-        let _12=[_10, _11];
-        return Some(_12);
-      }
-      else return null;
-    }
-  }
-}
-function tryTemporalSeriesPoint(value){
-  let _1;
-  const o=tryObject(value);
-  if(o==null)return null;
-  else {
-    const values=o.$0;
-    const _2=nonNegativeInteger("position", values);
-    const _3=values.TryFind("value");
-    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_1=[_3.$0, _2.$0],true))?Some([_1[1], _1[0]]):null;
-  }
-}
-function resolvedSeriesPrepared(dataRef, prepared){
-  const o=prepared.ResolvedSeries.TryFind(dataRef);
-  return o==null?[]:o.$0;
-}
-function traceTimestampsPrepared(trace, prepared){
-  const m=trace.Kind;
-  switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:0){
-    case 0:
-      return map((a) => a.Timestamp, candleSeriesForTracePrepared(trace, prepared));
-    case 1:
-      return map((a) => a.Timestamp, lineSeriesPrepared(trace.DataRef, prepared));
-    case 2:
-      return[];
   }
 }
 function sharedPrefixLength(left, right){
@@ -13218,19 +13910,28 @@ function tryFindTemporalPointIndex(position, rawPoints){
   }
   return search(0, length(rawPoints)-1);
 }
-function traceTimestamps(trace, data){
+function traceReferencePoints(trace, data){
+  let _1;
   const m=trace.Kind;
   switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:0){
     case 0:
-      return map((a) => a.Timestamp, candleSeriesForTrace(trace, data));
+      _1=map((point) =>[point.Timestamp, point.Temporal], candleSeriesForTrace(trace, data));
+      break;
     case 1:
-      return map((a) => a.Timestamp, lineSeries(trace.DataRef, data));
+      _1=map((point) =>[point.Timestamp, point.Temporal], lineSeries(trace.DataRef, data));
+      break;
     case 2:
-      return[];
+      _1=[];
+      break;
   }
+  return distinctBy((t) => t[0], _1);
 }
-function lineSeries(dataRef, data){
-  return lineSeriesFromResolved(resolvedSeries(dataRef, data));
+function rowReferencePoints(row, data){
+  const traces=filter_1((a) => a.Visible, effectiveTraces(row));
+  const o=tryFind((trace) => trace.DataRef==row.DataRef, traces);
+  const o_1=o==null?tryHead(traces):(o.$0,o);
+  const o_2=o_1==null?null:Some(traceReferencePoints(o_1.$0, data));
+  return o_2==null?[]:o_2.$0;
 }
 function objectNumber(name, value){
   const o=objectField(name, value);
@@ -13242,10 +13943,8 @@ function objectField(name, value){
 function lineSeriesPrepared(dataRef, prepared){
   return lineSeriesFromResolved(resolvedSeriesPrepared(dataRef, prepared));
 }
-function projectedCandleSlots(referenceTimestamps, point){
-  const matchingSlots=matchingReferenceIndexes(referenceTimestamps, point.Timestamp, point.Temporal);
-  const sourceSpanCount=length(matchingSlots);
-  return map((slotIndex) =>[slotIndex, sourceSpanCount, point], matchingSlots);
+function candleSlotRange(referenceTimestamps, point){
+  return matchingReferenceRange(referenceTimestamps, point.Timestamp, point.Temporal);
 }
 function projectedLinePoints(referenceTimestamps, points){
   let sourceIndex;
@@ -13351,12 +14050,12 @@ function markerPlacementsPrepared(trace, target, prepared, referenceTimestamps){
             const slotIndex=_7[0];
             const targetPoint=_7[1];
             return map((marker) =>({
-              TraceId:trace.TraceId,
-              TargetTraceId:target.TraceId,
-              Position:position,
-              SlotIndex:slotIndex,
-              Lane:0,
-              Target:targetPoint,
+              TraceId:trace.TraceId, 
+              TargetTraceId:target.TraceId, 
+              Position:position, 
+              SlotIndex:slotIndex, 
+              Lane:0, 
+              Target:targetPoint, 
               Marker:marker
             }), _6[0]);
           }
@@ -13382,12 +14081,12 @@ function assignAggregateMarkerLanes(placements){
           index=index+1;
           counts=counts.Add_1(key, lane+1);
           assigned=FSharpList.Cons({
-            TraceId:placement.TraceId,
-            TargetTraceId:placement.TargetTraceId,
-            Position:placement.Position,
-            SlotIndex:placement.SlotIndex,
-            Lane:lane,
-            Target:placement.Target,
+            TraceId:placement.TraceId, 
+            TargetTraceId:placement.TargetTraceId, 
+            Position:placement.Position, 
+            SlotIndex:placement.SlotIndex, 
+            Lane:lane, 
+            Target:placement.Target, 
             Marker:placement.Marker
           }, assigned);
         }
@@ -13397,6 +14096,77 @@ function assignAggregateMarkerLanes(placements){
 }
 function cursorIndexFromClientX(visibleCount, left, width, clientX){
   return width<=0?null:cursorIndexFromRatio(visibleCount, (clientX-left)/width);
+}
+function markerLabelGeometry(width, height, fontSize, markerX, markerY, label){
+  if(IsNullOrWhiteSpace(label))return null;
+  else {
+    const trimmed=Trim(label);
+    const bounded=trimmed.length<=48?trimmed:Substring(trimmed, 0, 45)+"...";
+    const a=width-4;
+    const a_1=24;
+    const b=bounded.length*fontSize*0.62;
+    const b_1=Compare(a_1, b)===1?a_1:b;
+    const estimatedWidth=Compare(a, b_1)===-1?a:b_1;
+    const gap=8;
+    const edge=2;
+    const p=markerX+gap+estimatedWidth<=width-edge?[markerX+gap, "start"]:markerX-gap-estimatedWidth>=edge?[markerX-gap, "end"]:[edge, "start"];
+    const a_2=8;
+    const a_3=height-8;
+    const b_2=Compare(a_3, markerY)===-1?a_3:markerY;
+    let _1=Compare(a_2, b_2)===1?a_2:b_2;
+    let _2={
+      Text:bounded, 
+      X:p[0], 
+      Y:_1, 
+      TextAnchor:p[1], 
+      EstimatedWidth:estimatedWidth
+    };
+    return Some(_2);
+  }
+}
+function markerLabelLaneY(height, lineStep, anchor, baseY, lane){
+  const edge=8;
+  const direction=Equals(anchor, {$:0})?-1:1;
+  const offset=lane*lineStep;
+  const preferred=baseY+direction*offset;
+  if(preferred>=edge&&preferred<=height-edge)return preferred;
+  else {
+    const a=height-edge;
+    const b=baseY-direction*offset;
+    const b_1=Compare(a, b)===-1?a:b;
+    return Compare(edge, b_1)===1?edge:b_1;
+  }
+}
+function markerLabelCollisionLanes(padding, candidates){
+  const ordered=sortBy((_1) =>[_1[1], _1[0]], mapi((_1, _2) => {
+    const geometry=_2[1];
+    const p=geometry.TextAnchor=="end"?[geometry.X-geometry.EstimatedWidth, geometry.X]:[geometry.X, geometry.X+geometry.EstimatedWidth];
+    return[_1, p[0], p[1]];
+  }, candidates));
+  function firstAvailable(left, laneEnds, lane){
+    while(true)
+      {
+        if(lane>=length(laneEnds)||left>get(laneEnds, lane)+padding)return lane;
+        else lane=lane+1;
+      }
+  }
+  function assign(index, laneEnds, assigned){
+    while(true)
+      {
+        if(index>=length(ordered))return assigned;
+        else {
+          const p=get(ordered, index);
+          const right=p[2];
+          const lane=firstAvailable(p[1], laneEnds, 0);
+          const revisedLaneEnds=lane>=length(laneEnds)?laneEnds.concat([right]):(((m) =>(a) => mapi((_1, _2) =>(m(_1))(_2), a))(((lane_1, right_1) =>(current) =>(value) => current===lane_1?right_1:value)(lane, right)))(laneEnds);
+          index=index+1;
+          laneEnds=revisedLaneEnds;
+          assigned=assigned.Add_1(p[0], lane);
+        }
+      }
+  }
+  const assignments=assign(0, [], new FSharpMap("New", []));
+  return init(length(candidates), (index) => assignments.get_Item(index));
 }
 function markerTooltipText(placement){
   return concat_1("\n", ofSeq(delay(() => {
@@ -13412,46 +14182,71 @@ function markerTrianglePoints(shape, x, y, half){
 function latestTemporalMetadataPrepared(trace, prepared){
   return tryLast(choose((a) => a.Temporal, resolvedSeriesPrepared(trace.DataRef, prepared)));
 }
-function timeLabels(timestamps){
-  return length(timestamps)===0?[]:length(timestamps)===1?[[0, get(timestamps, 0)]]:map((index) =>[index, get(timestamps, index)], distinct([0, length(timestamps)/2>>0, length(timestamps)-1]));
+function adaptiveTimeLabels(minimumSpacing, width, timestamps){
+  if(length(timestamps)===0)return[];
+  else if(length(timestamps)===1)return[[0, get(timestamps, 0)]];
+  else {
+    const a=48;
+    const spacing=Compare(a, minimumSpacing)===1?a:minimumSpacing;
+    const a_1=length(timestamps);
+    const a_2=2;
+    const a_3=16;
+    const b=toInt(Math.floor((Compare(spacing, width)===1?spacing:width)/spacing));
+    const b_1=Compare(a_3, b)===-1?a_3:b;
+    const b_2=Compare(a_2, b_1)===1?a_2:b_1;
+    const count=Compare(a_1, b_2)===-1?a_1:b_2;
+    return distinctBy((t) => t[0], ofSeq(delay(() => collect_1((tickIndex) => {
+      const sourceIndex=toInt(Math.round(tickIndex*(length(timestamps)-1)/(count-1)));
+      return[[sourceIndex, get(timestamps, sourceIndex)]];
+    }, range(0, count-1)))));
+  }
 }
 function candleSeriesPrepared(dataRef, prepared){
   return candleSeriesFromResolved(resolvedSeriesPrepared(dataRef, prepared));
 }
-function resolvedSeries(dataRef, data){
+function parseCandleResolved(temporal, payload){
   let _1;
-  const m=data.TryFind(dataRef);
-  if(m==null)return[];
-  else if(m.$0.$==4)return map((value) => {
-    const p=pointPayload_1(value);
-    return{Payload:p[1], Temporal:p[0]};
-  }, m.$0.$0);
+  const o=payload==null?null:tryObject(payload.$0);
+  if(o==null)return null;
   else {
-    const m_1=tryTemporalSeries(m.$0);
-    if(m_1==null)return[];
-    else {
-      const points=m_1.$0[2];
-      const axisRevision=m_1.$0[1];
-      const axisRef=m_1.$0[0];
-      const o=data.TryFind(axisRef);
-      const m_2=o==null?null:tryTemporalAxis(o.$0);
-      if(m_2!=null&&m_2.$==1&&((m_2.$0,m_2.$0[0]==axisRef&&m_2.$0[1]===axisRevision)&&(_1=[m_2.$0[2], m_2.$0[0], m_2.$0[1]],true))){
-        const axis=_1[0];
-        return choose((_2) => {
-          const o_1=axis.TryFind(_2[0]);
-          return o_1==null?null:Some({Payload:Some(_2[1]), Temporal:Some(o_1.$0)});
-        }, points);
-      }
-      else return[];
-    }
+    const item=o.$0;
+    const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
+    const _2=o_1==null?objectText("t", item):(o_1.$0,o_1);
+    const _3=objectNumber("o", item);
+    const _4=objectNumber("h", item);
+    const _5=objectNumber("l", item);
+    const _6=objectNumber("c", item);
+    const _7=objectNumber("v", item);
+    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_1=[_6.$0, _4.$0, _5.$0, _3.$0, _2.$0, _7.$0],true))))))?Some({
+      Timestamp:_1[4], 
+      Open:_1[3], 
+      High:_1[1], 
+      Low:_1[2], 
+      Close:_1[0], 
+      Volume:_1[5], 
+      Temporal:temporal
+    }):null;
+  }
+}
+function traceTimestamps(trace, data){
+  const m=trace.Kind;
+  switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:0){
+    case 0:
+      return map((a) => a.Timestamp, candleSeriesForTrace(trace, data));
+    case 1:
+      return map((a) => a.Timestamp, lineSeries(trace.DataRef, data));
+    case 2:
+      return[];
   }
 }
 function lineSeriesFromResolved(resolved){
   return choose((point) => parseLineResolved(point.Temporal, point.Payload), resolved);
 }
-function matchingReferenceIndexes(referenceTimestamps, pointTimestamp, temporal){
-  const m=matchingReferenceRange(referenceTimestamps, pointTimestamp, temporal);
-  return m==null?[]:ofSeq(range(m.$0[0], m.$0[1]-1));
+function candleSeriesForTrace(trace, data){
+  return candleSeriesForTracePrepared(trace, prepareData(data));
+}
+function lineSeries(dataRef, data){
+  return lineSeriesFromResolved(resolvedSeries(dataRef, data));
 }
 function matchingReferenceRange(referenceTimestamps, pointTimestamp, temporal){
   let _1, p, _2;
@@ -13545,25 +14340,11 @@ function cursorIndexFromRatio(visibleCount, ratio){
     return Some(_4);
   }
 }
-function candleSeriesFromResolved(resolved){
-  return choose((point) => parseCandleResolved(point.Temporal, point.Payload), resolved);
-}
-function tryTemporalAxis(value){
-  const o=tryTemporalAxisRaw(value);
-  if(o==null)return null;
-  else {
-    const _1=o.$0[0];
-    const _2=o.$0[1];
-    const _3=o.$0[2];
-    const decoded=choose(tryTemporalAxisPoint, _3);
-    return length(decoded)!==length(_3)?null:Some([_1, _2, OfArray(decoded)]);
-  }
-}
 function parseLineResolved(temporal, payload){
   let _1, _2;
   if(payload!=null&&payload.$==1&&(payload.$0.$==2&&(temporal!=null&&temporal.$==1&&(_1=[payload.$0.$0, temporal.$0],true))))return Some({
-    Timestamp:_1[1].IntervalStartUtc,
-    Value:_1[0],
+    Timestamp:_1[1].IntervalStartUtc, 
+    Value:_1[0], 
     Temporal:temporal
   });
   else {
@@ -13575,10 +14356,67 @@ function parseLineResolved(temporal, payload){
       const _3=o_1==null?objectText("t", item):(o_1.$0,o_1);
       const _4=objectNumber("v", item);
       return _3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_2=[_4.$0, _3.$0],true))?Some({
-        Timestamp:_2[1],
-        Value:_2[0],
+        Timestamp:_2[1], 
+        Value:_2[0], 
         Temporal:temporal
       }):null;
+    }
+  }
+}
+function prepareData(data){
+  const axes=OfArray(choose((_1) => prepareAxis(_1[1]), ofSeq(ToSeq(data))));
+  return{
+    RawData:data, 
+    ResolvedAxes:axes, 
+    ResolvedSeries:OfArray(choose((_1) => {
+      const dataRef=_1[0];
+      const value=_1[1];
+      let _2;
+      if(value.$==4)return Some([dataRef, map((item) => {
+        const p=pointPayload_1(item);
+        return{Payload:p[1], Temporal:p[0]};
+      }, value.$0)]);
+      else {
+        const m=tryTemporalSeries(value);
+        if(m==null)return null;
+        else {
+          const points=m.$0[2];
+          const axisRevision=m.$0[1];
+          const m_1=axes.TryFind(m.$0[0]);
+          return m_1!=null&&m_1.$==1&&(m_1.$0.Revision===axisRevision&&(_2=m_1.$0,true))?Some([dataRef, choose((_3) => {
+            const o=_2.Points.TryFind(_3[0]);
+            return o==null?null:Some({Payload:Some(_3[1]), Temporal:Some(o.$0)});
+          }, points)]):Some([dataRef, []]);
+        }
+      }
+    }, ofSeq(ToSeq(data))))
+  };
+}
+function resolvedSeries(dataRef, data){
+  let _1;
+  const m=data.TryFind(dataRef);
+  if(m==null)return[];
+  else if(m.$0.$==4)return map((value) => {
+    const p=pointPayload_1(value);
+    return{Payload:p[1], Temporal:p[0]};
+  }, m.$0.$0);
+  else {
+    const m_1=tryTemporalSeries(m.$0);
+    if(m_1==null)return[];
+    else {
+      const points=m_1.$0[2];
+      const axisRevision=m_1.$0[1];
+      const axisRef=m_1.$0[0];
+      const o=data.TryFind(axisRef);
+      const m_2=o==null?null:tryTemporalAxis(o.$0);
+      if(m_2!=null&&m_2.$==1&&((m_2.$0,m_2.$0[0]==axisRef&&m_2.$0[1]===axisRevision)&&(_1=[m_2.$0[2], m_2.$0[0], m_2.$0[1]],true))){
+        const axis=_1[0];
+        return choose((_2) => {
+          const o_1=axis.TryFind(_2[0]);
+          return o_1==null?null:Some({Payload:Some(_2[1]), Temporal:Some(o_1.$0)});
+        }, points);
+      }
+      else return[];
     }
   }
 }
@@ -13594,28 +14432,15 @@ function upperTimestampBound(referenceTimestamps, value){
     }
   return low;
 }
-function parseCandleResolved(temporal, payload){
-  let _1;
-  const o=payload==null?null:tryObject(payload.$0);
+function tryTemporalAxis(value){
+  const o=tryTemporalAxisRaw(value);
   if(o==null)return null;
   else {
-    const item=o.$0;
-    const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
-    const _2=o_1==null?objectText("t", item):(o_1.$0,o_1);
-    const _3=objectNumber("o", item);
-    const _4=objectNumber("h", item);
-    const _5=objectNumber("l", item);
-    const _6=objectNumber("c", item);
-    const _7=objectNumber("v", item);
-    return _2!=null&&_2.$==1&&(_3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_5!=null&&_5.$==1&&(_6!=null&&_6.$==1&&(_7!=null&&_7.$==1&&(_1=[_6.$0, _4.$0, _5.$0, _3.$0, _2.$0, _7.$0],true))))))?Some({
-      Timestamp:_1[4],
-      Open:_1[3],
-      High:_1[1],
-      Low:_1[2],
-      Close:_1[0],
-      Volume:_1[5],
-      Temporal:temporal
-    }):null;
+    const _1=o.$0[0];
+    const _2=o.$0[1];
+    const _3=o.$0[2];
+    const decoded=choose(tryTemporalAxisPoint, _3);
+    return length(decoded)!==length(_3)?null:Some([_1, _2, OfArray(decoded)]);
   }
 }
 function tryResolve(schemas, row){
@@ -13676,7 +14501,7 @@ function validate(binding){
 }
 function bindingErrors(binding){
   const values=nonNull(binding.Values);
-  return ofSeq_1(delay(() => append_2(identifier("row.editorBinding.templateKey", binding.TemplateKey), delay(() => append_2(length(values)>limits().MaxFields?[error_1("limit-editor-inputs", "row.editorBinding.values", "Editor binding inputs exceed hard limit "+String(limits().MaxFields)+".")]:[], delay(() => append_2(exists((_1) => _1[1]>1, countBy((a) => a.Path, values))?[error_1("duplicate-editor-input", "row.editorBinding.values", "Editor binding paths must be unique.")]:[], delay(() => collect_2((m) => {
+  return ofSeq_1(delay(() => append_2(identifier("row.editorBinding.templateKey", binding.TemplateKey), delay(() => append_2(length(values)>limits().MaxFields?[error_1("limit-editor-inputs", "row.editorBinding.values", "Editor binding inputs exceed hard limit "+String(limits().MaxFields)+".")]:[], delay(() => append_2(exists((_1) => _1[1]>1, countBy((a) => a.Path, values))?[error_1("duplicate-editor-input", "row.editorBinding.values", "Editor binding paths must be unique.")]:[], delay(() => collect_1((m) => {
     const input_1=m[1];
     const index=m[0];
     return append_2(identifier("row.editorBinding.values["+String(index)+"].path", input_1.Path), delay(() => {
@@ -13704,11 +14529,15 @@ let _c_5=Lazy((_i) => class $StartupCode_Renderer {
     _c_5=_i(this);
   }
   static defaultOptions;
+  static axisResizeBound;
+  static axisViewportWidth;
   static {
+    this.axisViewportWidth=_c_3.Create_1(1440);
+    this.axisResizeBound=false;
     this.defaultOptions={
-      MinimumVisibleBars:12,
-      DefaultVisibleBars:48,
-      MaximumVisibleBars:4000,
+      MinimumVisibleBars:12, 
+      DefaultVisibleBars:48, 
+      MaximumVisibleBars:4000, 
       EditorSchemas:[]
     };
   }
@@ -13794,31 +14623,31 @@ function Forever(Item){
 }
 function Ready(Item1, Item2){
   return{
-    $:2,
-    $0:Item1,
+    $:2, 
+    $0:Item1, 
     $1:Item2
   };
 }
 function Waiting(Item1, Item2){
   return{
-    $:3,
-    $0:Item1,
+    $:3, 
+    $0:Item1, 
     $1:Item2
   };
 }
 function New_59(Node_1, Left, Right, Height, Count){
   return{
-    Node:Node_1,
-    Left:Left,
-    Right:Right,
-    Height:Height,
+    Node:Node_1, 
+    Left:Left, 
+    Right:Right, 
+    Height:Height, 
     Count:Count
   };
 }
 function New_60(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
-    DynElem:DynElem,
-    DynFlags:DynFlags,
+    DynElem:DynElem, 
+    DynFlags:DynFlags, 
     DynNodes:DynNodes
   };
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
@@ -13850,8 +14679,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Animation {
 });
 function Append_1(x, y){
   return x.$==0?y:y.$==0?x:{
-    $:2,
-    $0:x,
+    $:2, 
+    $0:x, 
     $1:y
   };
 }
@@ -13889,10 +14718,10 @@ function fromSeq(s){
 }
 function New_61(path, kind, textValue, numberValue, boolValue){
   return{
-    path:path,
-    kind:kind,
-    textValue:textValue,
-    numberValue:numberValue,
+    path:path, 
+    kind:kind, 
+    textValue:textValue, 
+    numberValue:numberValue, 
     boolValue:boolValue
   };
 }
@@ -13936,9 +14765,9 @@ function fromValue(value){
       const revision_1=_2[2];
       const templateKey=_2[3];
       return Bind_2((decodedFields) => validateSchema(limits(), {
-        TemplateKey:templateKey,
-        DisplayName:displayName,
-        SchemaRevision:BigInt(Math.trunc(revision_1)),
+        TemplateKey:templateKey, 
+        DisplayName:displayName, 
+        SchemaRevision:BigInt(Math.trunc(revision_1)), 
         Fields:decodedFields
       }), sequence(mapi((_7, _8) => fieldFromValue("schema.fields["+String(_7)+"]", _8), nonNull(_2[1]))));
     }
@@ -13959,10 +14788,10 @@ function fieldFromValue(field_1, value){
       const label=_1[2];
       const required=_1[3];
       return Map_2((decodedKind) =>({
-        Key:key,
-        Label:label,
-        Kind:decodedKind,
-        Required:required,
+        Key:key, 
+        Label:label, 
+        Kind:decodedKind, 
+        Required:required, 
         DefaultValue:values.TryFind("defaultValue")
       }), kindFromValue(field_1+".kind", _1[1]));
     }
@@ -13993,8 +14822,8 @@ function kindFromValue(field_1, value){
         switch(_2.$==1?_3.$==1?(_1=[_2.$0, _3.$0],2):(_1=_2.$0,1):_3.$==1?(_1=_3.$0,1):(_1=[_3.$0, _2.$0],0)){
           case 0:
             return Ok({
-              $:1,
-              $0:_1[1],
+              $:1, 
+              $0:_1[1], 
               $1:_1[0]
             });
           case 1:
@@ -14010,8 +14839,8 @@ function kindFromValue(field_1, value){
         switch(_5.$==1?_6.$==1?(_4=[_5.$0, _6.$0],2):(_4=_5.$0,1):_6.$==1?(_4=_6.$0,1):(_4=[_6.$0, _5.$0],0)){
           case 0:
             return Ok({
-              $:2,
-              $0:_4[1],
+              $:2, 
+              $0:_4[1], 
               $1:_4[0]
             });
           case 1:
@@ -14044,9 +14873,9 @@ function kindFromValue(field_1, value){
           }
           else _9=(_10=m_4,false);
           return _9?Ok({
-            $:6,
-            $0:_10[0],
-            $1:_10[2],
+            $:6, 
+            $0:_10[0], 
+            $1:_10[2], 
             $2:_10[1]
           }):Error_1(ofSeq_1(delay(() => {
             const c_3=_10[0];
@@ -14121,8 +14950,8 @@ function choiceFromValue(field_1, value){
     const _3=values.TryFind("label");
     const _4=values.TryFind("value");
     return _2!=null&&_2.$==1&&(_2.$0.$==3&&(_3!=null&&_3.$==1&&(_3.$0.$==3&&(_4!=null&&_4.$==1&&(_1=[_4.$0, _2.$0.$0, _3.$0.$0],true)))))?Ok({
-      Key:_1[1],
-      Label:_1[2],
+      Key:_1[1], 
+      Label:_1[2], 
       Value:_1[0]
     }):error("editor-schema-choice", field_1, "Editor choice requires key, label and value.");
   }
@@ -14164,9 +14993,9 @@ let _c_7=Lazy((_i) => class $StartupCode_EditorAction {
   static limits;
   static {
     this.limits={
-      MaxSchemaDepth:8,
-      MaxFields:128,
-      MaxChoicesPerField:128,
+      MaxSchemaDepth:8, 
+      MaxFields:128, 
+      MaxChoicesPerField:128, 
       MaxListItems:128
     };
     this.Protocol="ptcs-dynamic-action.v1";
@@ -14198,6 +15027,12 @@ function TryParseBigInt(s, min_1, max_2, r){
     return ok;
   }
   else return false;
+}
+function Parse_1(s, min_1, max_2, overflowMsg){
+  const x=+s;
+  if(x!==x-x%1)throw new FormatException("New_1", "Input string was not in a correct format.");
+  else if(x<min_1||x>max_2)throw new OverflowException("New_1", overflowMsg);
+  else return x;
 }
 class FSharpSet extends Object_1 {
   tree;
@@ -14239,8 +15074,8 @@ class FSharpSet extends Object_1 {
 }
 function error_1(code, field_1, message){
   return{
-    Code:code,
-    Field:field_1,
+    Code:code, 
+    Field:field_1, 
     Message:message
   };
 }
@@ -14248,32 +15083,57 @@ function identifier(field_1, value){
   return IsNullOrWhiteSpace(value)?ofArray([error_1("required", field_1, field_1+" is required.")]):value.length>128?ofArray([error_1("too-long", field_1, field_1+" exceeds 128 characters.")]):FSharpList.Empty;
 }
 function unsafeValue(field_1, value){
-  let _1, _2;
+  if(!containsUnsafeValue(value))return FSharpList.Empty;
+  else {
+    const errors_1=MarkResizable([]);
+    collectUnsafeValue(errors_1, field_1, value);
+    return ofSeq_1(errors_1);
+  }
+}
+function containsUnsafeValue(value){
+  return value.$==3?unsafeText(value.$0):value.$==4?exists(containsUnsafeValue, value.$0):value.$==5&&exists_1((a) => {
+    const a_1=KeyValue(a);
+    return unsafeKey(a_1[0])||containsUnsafeValue(a_1[1]);
+  }, value.$0);
+}
+function collectUnsafeValue(errors_1, field_1, value){
   if(value.$==3){
-    if(StartsWith(TrimStart(value.$0, null).toLowerCase(), "javascript:"))_2=(_1=value.$0,0);
-    else {
-      const text_1=value.$0;
-      _2=StartsWith(TrimStart(text_1, null).toLowerCase(), "http://")||StartsWith(TrimStart(text_1, null).toLowerCase(), "https://")?(_1=value.$0,1):4;
+    const normalized=normalizedText(value.$0);
+    if(StartsWith(normalized, "javascript:"))errors_1.push(error_1("script-forbidden", field_1, "Script URLs are forbidden."));
+    else StartsWith(normalized, "http://")||StartsWith(normalized, "https://")?errors_1.push(error_1("url-forbidden", field_1, "Arbitrary URLs are forbidden in the shared runtime contract.")):void 0;
+  }
+  else if(value.$==4){
+    const values=value.$0;
+    for(let i=0, _2=values.length-1;i<=_2;i++)collectUnsafeValue(errors_1, field_1, get(values, i));
+  }
+  else if(value.$==5){
+    const values_1=value.$0;
+    const e=Get(values_1);
+    try {
+      while(e.MoveNext())
+        {
+          const a=KeyValue(e.Current);
+          const key=a[0];
+          if(unsafeKey(key))errors_1.push(error_1("unsafe-key", field_1, "Unsafe option key `"+key+"` is forbidden."));
+          collectUnsafeValue(errors_1, field_1+"."+key, a[1]);
+        }
+    }
+    finally {
+      const _1=e;
+      if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
     }
   }
-  else _2=value.$==4?(_1=value.$0,2):value.$==5?(_1=value.$0,3):4;
-  switch(_2){
-    case 0:
-      return ofArray([error_1("script-forbidden", field_1, "Script URLs are forbidden.")]);
-    case 1:
-      return ofArray([error_1("url-forbidden", field_1, "Arbitrary URLs are forbidden in the shared runtime contract.")]);
-    case 2:
-      return collect_1((v) => unsafeValue(field_1, v), ofArray(_1));
-    case 3:
-      return collect_1((_3) => {
-        const key=_3[0];
-        const v=Trim(key).toLowerCase();
-        let _4=(new FSharpSet("New_2", OfSeq(ofArray(["script", "selector", "url", "href"])))).Contains(v)?ofArray([error_1("unsafe-key", field_1, "Unsafe option key `"+key+"` is forbidden.")]):FSharpList.Empty;
-        return append_1(_4, unsafeValue(field_1+"."+key, _3[1]));
-      }, ofSeq_1(ToSeq(_1)));
-    case 4:
-      return FSharpList.Empty;
-  }
+}
+function unsafeText(value){
+  const normalized=normalizedText(value);
+  return StartsWith(normalized, "javascript:")||StartsWith(normalized, "http://")||StartsWith(normalized, "https://");
+}
+function unsafeKey(value){
+  const m=value==null?"":Trim(value).toLowerCase();
+  return m=="script"||(m=="selector"||(m=="url"||m=="href"));
+}
+function normalizedText(value){
+  return value==null?"":TrimStart(value, null).toLowerCase();
 }
 function New_62(k, ct){
   return{k:k, ct:ct};
@@ -14305,8 +15165,8 @@ class Updates_1 {
   }
   static New(Current, Snap, VarView){
     return Create_2(Updates_1, {
-      c:Current,
-      s:Snap,
+      c:Current, 
+      s:Snap, 
       v:VarView
     });
   }
@@ -14387,7 +15247,7 @@ let _c_9=Lazy((_i) => class Client {
     };
     this.StringListGet=(el) => {
       const selectedOptions=el.selectedOptions;
-      return Some(ofSeq(delay(() => collect_2((i) =>[selectedOptions.item(i).value], range(0, selectedOptions.length-1)))));
+      return Some(ofSeq(delay(() => collect_1((i) =>[selectedOptions.item(i).value], range(0, selectedOptions.length-1)))));
     };
     const g_1=StringListGet();
     const s_1=StringListSet();
@@ -14747,13 +15607,13 @@ function decode(field_1, a){
     }
     const failures_1=append_1(unknown, append_1(errors(ofArray([kind, Map_2(() => { }, markerId), Map_2(() => { }, eventTime), Map_2(() => { }, anchor), Map_2(() => { }, shape), Map_2(() => { }, fill_1), Map_2(() => { }, color), Map_2(() => { }, label)])), tooltip.$==1?tooltip.$0:FSharpList.Empty));
     return failures_1.$==0?Ok({
-      MarkerId:DefaultValue("", markerId),
-      EventTimeUtc:DefaultValue("", eventTime),
-      Anchor:DefaultValue({$:0}, anchor),
-      Shape:DefaultValue({$:2}, shape),
-      Fill:DefaultValue({$:0}, fill_1),
-      Color:DefaultValue("#000000", color),
-      Label:DefaultValue(null, label),
+      MarkerId:DefaultValue("", markerId), 
+      EventTimeUtc:DefaultValue("", eventTime), 
+      Anchor:DefaultValue({$:0}, anchor), 
+      Shape:DefaultValue({$:2}, shape), 
+      Fill:DefaultValue({$:0}, fill_1), 
+      Color:DefaultValue("#000000", color), 
+      Label:DefaultValue(null, label), 
       Tooltip:DefaultValue([], tooltip)
     }):Error_1(failures_1);
   }
@@ -14761,8 +15621,8 @@ function decode(field_1, a){
 }
 function error_2(code, field_1, message){
   return{
-    Code:code,
-    Field:field_1,
+    Code:code, 
+    Field:field_1, 
     Message:message
   };
 }
@@ -14798,8 +15658,8 @@ function decodeTooltipField(field_1, a){
     const value=requiredText(256, field_1+".value", "value", values);
     const m=append_1(unknown, errors(ofArray([key, label, value])));
     return m.$==0?Ok({
-      Key:DefaultValue("", key),
-      Label:DefaultValue("", label),
+      Key:DefaultValue("", key), 
+      Label:DefaultValue("", label), 
       Value:DefaultValue("", value)
     }):Error_1(m);
   }
@@ -14947,8 +15807,8 @@ class CheckedInput {
   }
   static Valid(value, inputText_1){
     return Create_2(CheckedInput, {
-      $:0,
-      $0:value,
+      $:0, 
+      $0:value, 
       $1:inputText_1
     });
   }
@@ -15083,10 +15943,26 @@ let _c_12=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
+class FormatException extends Error {
+  constructor(i, _1){
+    if(i=="New_1"){
+      const message=_1;
+      super(message);
+    }
+  }
+}
+class OverflowException extends Error {
+  constructor(i, _1){
+    if(i=="New_1"){
+      const message=_1;
+      super(message);
+    }
+  }
+}
 function New_64(created, evalOrVal, force){
   return{
-    c:created,
-    v:evalOrVal,
+    c:created, 
+    v:evalOrVal, 
     f:force
   };
 }

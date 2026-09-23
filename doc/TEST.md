@@ -686,3 +686,7 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-559 | Progressive coverage model | query boundary、Earlier/Later、prepend event-time reanchor、stale/反方向intent保護 | PASS；Renderer 37/37 |
 | DYN-T-560 | Progressive coverage browser | 3820→4220、visible<=4000、Max 4000、overview/callback/console gate | PASS；F# Playwright與Playwright MCP |
 | DYN-T-561 | Main-thread/package release | owner phases無 >100ms task，cursor p95<125ms/max<400ms，exact graph一致 | PASS；phase max 62.25/53.78/34.56/70.34ms，cursor p95=72ms/max=165ms |
+| DYN-T-562 | RFC/current-state | Inline marker feedback與cursor timestamp feedback合併為owner RFC；domain／presentation boundary、DOM／格式、失敗與performance gate可追溯 | PASS |
+| DYN-T-563 | Marker visible label | BUY/SELL entry/exit文字、相鄰區間collision lane、left/right clamp、row-edge反向展開、blank/long、tooltip/hitbox/Y-domain invariant | PASS：Renderer 39/39。 |
+| DYN-T-564 | Row cursor/data window | 1K/coarse row-local timestamp、兩行cursor label、candle OHLCV與line/hist值同源、missing unavailable | PASS：Playwright MCP已核對日期、時間與O/H/L/C/V。 |
+| DYN-T-565 | Browser/package | desktop/mobile、4,000 bars、300 pointer transitions、無request/rebuild/>100ms owner task、exact package與consumer handoff | PASS（owner）：F# Playwright及三包exact package gates通過；consumer真SPAA rerun由Daedalus持有。 |

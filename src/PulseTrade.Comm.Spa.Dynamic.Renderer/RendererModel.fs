@@ -38,6 +38,17 @@ type TaMarkerPlacement =
       Target: TaCandlePoint
       Marker: TaMarker }
 
+type TaMarkerLabelGeometry =
+    { Text: string
+      X: float
+      Y: float
+      TextAnchor: string
+      EstimatedWidth: float }
+
+type TaRowValuePresentation =
+    { Timestamp: string
+      Value: string }
+
 type TaResolvedSeriesPoint =
     { Payload: SduiValue option
       Temporal: TaTemporalPointPresentation option }
@@ -852,6 +863,86 @@ module RendererModel =
            for field in placement.Marker.Tooltip do
                yield field.Label + ": " + field.Value |]
         |> String.concat "\n"
+
+    let markerLabelGeometry width height fontSize markerX markerY (label: string) =
+        if String.IsNullOrWhiteSpace label then
+            None
+        else
+            let trimmed = label.Trim()
+            let bounded = if trimmed.Length <= 48 then trimmed else trimmed.Substring(0, 45) + "..."
+            let estimatedWidth = min (width - 4.0) (max 24.0 (float bounded.Length * fontSize * 0.62))
+            let gap = 8.0
+            let edge = 2.0
+            let x, anchor =
+                if markerX + gap + estimatedWidth <= width - edge then markerX + gap, "start"
+                elif markerX - gap - estimatedWidth >= edge then markerX - gap, "end"
+                else edge, "start"
+            let y = max 8.0 (min (height - 8.0) markerY)
+            Some
+                { Text = bounded
+                  X = x
+                  Y = y
+                  TextAnchor = anchor
+                  EstimatedWidth = estimatedWidth }
+
+    let markerLabelCollisionLanes padding (candidates: (TaMarkerAnchor * TaMarkerLabelGeometry) array) =
+        let interval geometry =
+            if geometry.TextAnchor = "end" then
+                geometry.X - geometry.EstimatedWidth, geometry.X
+            else
+                geometry.X, geometry.X + geometry.EstimatedWidth
+
+        let ordered =
+            candidates
+            |> Array.mapi (fun index (_, geometry) ->
+                let left, right = interval geometry
+                index, left, right)
+            |> Array.sortBy (fun (index, left, _) -> left, index)
+
+        let rec firstAvailable (left: float) (laneEnds: float array) (lane: int) =
+            if lane >= laneEnds.Length || left > laneEnds[lane] + padding then lane
+            else firstAvailable left laneEnds (lane + 1)
+
+        let rec assign (index: int) (laneEnds: float array) (assigned: Map<int, int>) =
+            if index >= ordered.Length then assigned
+            else
+                let candidateIndex, left, right = ordered[index]
+                let lane = firstAvailable left laneEnds 0
+                let revisedLaneEnds =
+                    if lane >= laneEnds.Length then Array.append laneEnds [| right |]
+                    else laneEnds |> Array.mapi (fun current value -> if current = lane then right else value)
+                assign
+                    (index + 1)
+                    revisedLaneEnds
+                    (Map.add candidateIndex lane assigned)
+
+        let assignments = assign 0 [||] Map.empty
+        Array.init candidates.Length (fun index -> Map.find index assignments)
+
+    let markerLabelLaneY height lineStep anchor baseY lane =
+        let edge = 8.0
+        let direction = if anchor = TaMarkerAnchor.AboveBar then -1.0 else 1.0
+        let offset = float lane * lineStep
+        let preferred = baseY + direction * offset
+        let alternate = baseY - direction * offset
+        if preferred >= edge && preferred <= height - edge then preferred
+        else max edge (min (height - edge) alternate)
+
+    let timestampParts (value: string) =
+        if String.IsNullOrWhiteSpace value
+           || value.Length < 19
+           || value[4] <> '-'
+           || value[7] <> '-'
+           || (value[10] <> 'T' && value[10] <> ' ')
+           || value[13] <> ':'
+           || value[16] <> ':' then
+            None
+        else
+            Some(value.Substring(0, 10), value.Substring(11, 8))
+
+    let fullTimestamp value =
+        timestampParts value
+        |> Option.map (fun (date, time) -> date + " " + time)
 
     let effectiveTraces (row: TaRowSpec) =
         if not (isNull row.Traces) && row.Traces.Length > 0 then

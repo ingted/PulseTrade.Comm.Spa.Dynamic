@@ -96,14 +96,14 @@ module Client =
                   SduiValue.Array
                       [| point
                              (count - 12)
-                             [| marker "long-entry" (timestamp (count - 12)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some("LE" + replacementLabel)) ("long entry signal" + replacementLabel) |]
+                             [| marker "long-entry" (timestamp (count - 12)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some("BUY 7588.25" + replacementLabel)) ("long entry signal" + replacementLabel) |]
                          point
                              stackedPosition
-                             [| marker "short-entry" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#000000" (Some "SE") "short entry signal"
-                                marker "long-exit" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#dc2626" (Some "LX") "long take-profit fill" |]
+                             [| marker "short-entry" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#000000" (Some "SELL 7591.00") "short entry signal"
+                                marker "long-exit" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#dc2626" (Some "SELL 7603.50 PnL +762.50") "long take-profit fill" |]
                          point
                              (count - 2)
-                             [| marker "short-exit" (timestamp (count - 2)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Solid "#16a34a" (Some "SX") "short stop-loss fill" |] |] ])
+                             [| marker "short-exit" (timestamp (count - 2)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Solid "#16a34a" (Some "BUY 7574.00 PnL +850.00") "short stop-loss fill" |] |] ])
 
     let sampleSeries count =
         let sharedAxisRef = "axis.1k"

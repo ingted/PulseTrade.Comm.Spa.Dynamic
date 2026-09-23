@@ -136,6 +136,11 @@ module TaWorkspaceRenderer =
         |> Option.bind (Array.tryItem traceIndex)
         |> Option.bind (fun readLegend -> readLegend cursorIndex)
 
+    let tryRowPresentation readersByRow rowId cursorIndex =
+        readersByRow
+        |> Map.tryFind rowId
+        |> Option.bind (fun readers -> readers |> Array.tryPick (fun readValue -> readValue cursorIndex))
+
     let freshnessText (freshness: TaFreshness) =
         match freshness with
         | TaFreshness.Live -> "LIVE"
@@ -693,8 +698,15 @@ module TaWorkspaceRenderer =
                             |> Array.tryItem index
                             |> Option.flatten
                             |> Option.map (fun point ->
-                                if trace.Kind = TaTraceKind.Volume then fixedText point.Volume
-                                else fixedText point.Close)
+                                { Timestamp = point.Timestamp
+                                  Value =
+                                    if trace.Kind = TaTraceKind.Volume then fixedText point.Volume
+                                    else
+                                        "O " + fixedText point.Open
+                                        + " H " + fixedText point.High
+                                        + " L " + fixedText point.Low
+                                        + " C " + fixedText point.Close
+                                        + " V " + fixedText point.Volume })
                         cursorReader, legendReader
                     | TaTraceKind.Line
                     | TaTraceKind.Histogram ->
@@ -714,7 +726,7 @@ module TaWorkspaceRenderer =
                             values
                             |> Array.tryItem index
                             |> Option.flatten
-                            |> Option.map (fun point -> fixedText point.Value)
+                            |> Option.map (fun point -> { Timestamp = point.Timestamp; Value = fixedText point.Value })
                         cursorReader, legendReader
                     | TaTraceKind.Marker ->
                         (fun _ -> None), (fun _ -> None))
@@ -841,12 +853,63 @@ module TaWorkspaceRenderer =
                 svgElement "polygon" (common @ [ svgAttr "points" points ]) [ title ]
 
         let markerLayer =
-            markerVisualState.View
-            |> View.Map (fun (placements, low, high) ->
+            View.Map2 (fun (placements, low, high) viewportWidth ->
+                let size = 9.0
+                let half = size / 2.0
+                let fontSize = max 8.0 (min 30.0 (10000.0 / max 320.0 viewportWidth))
+                let shapeLaneStep = size + 2.0
+                let labelLaneStep = fontSize + 2.0
+                let labelCandidates =
+                    placements
+                    |> Array.choose (fun placement ->
+                        let x = xAt placement.SlotIndex
+                        let anchorY =
+                            match placement.Marker.Anchor with
+                            | TaMarkerAnchor.AboveBar -> RendererModel.normalize low high top plotHeight placement.Target.High
+                            | TaMarkerAnchor.BelowBar -> RendererModel.normalize low high top plotHeight placement.Target.Low
+                        let baseY =
+                            match placement.Marker.Anchor with
+                            | TaMarkerAnchor.AboveBar -> anchorY - 4.0 - half - float placement.Lane * shapeLaneStep
+                            | TaMarkerAnchor.BelowBar -> anchorY + 4.0 + half + float placement.Lane * shapeLaneStep
+                            |> max half
+                            |> min (height - half)
+                        placement.Marker.Label
+                        |> Option.bind (RendererModel.markerLabelGeometry width height fontSize x baseY)
+                        |> Option.map (fun geometry -> placement, geometry))
+                let collisionLanes =
+                    labelCandidates
+                    |> Array.map (fun (placement, geometry) -> placement.Marker.Anchor, geometry)
+                    |> RendererModel.markerLabelCollisionLanes 6.0
                 svgElement "g" [ Attr.Create "data-testid" ("ta-marker-layer-" + rowId); Attr.Create "data-marker-count" (string placements.Length) ] [
                     for placement in placements do
                         yield markerShape placement low high
-                ])
+                    for index in 0 .. labelCandidates.Length - 1 do
+                        let placement, geometry = labelCandidates[index]
+                        let lane = collisionLanes[index]
+                        let labelY = RendererModel.markerLabelLaneY height labelLaneStep placement.Marker.Anchor geometry.Y lane
+                        yield
+                            svgElement "text" [
+                                Attr.Create "data-testid" ("ta-marker-label-" + placement.TraceId + "-" + placement.Marker.MarkerId)
+                                Attr.Create "data-marker-id" placement.Marker.MarkerId
+                                Attr.Create "data-marker-slot" (string placement.SlotIndex)
+                                Attr.Create "data-marker-lane" (string placement.Lane)
+                                Attr.Create "data-marker-label-lane" (string lane)
+                                svgAttr "x" (fixedText geometry.X)
+                                svgAttr "y" (fixedText labelY)
+                                svgAttr "text-anchor" geometry.TextAnchor
+                                svgAttr "dominant-baseline" "middle"
+                                svgAttr "fill" placement.Marker.Color
+                                svgAttr "font-family" "Consolas,monospace"
+                                svgAttr "font-size" (fixedText fontSize)
+                                svgAttr "font-weight" "650"
+                                svgAttr "paint-order" "stroke"
+                                svgAttr "stroke" "#ffffff"
+                                svgAttr "stroke-width" "2.5"
+                                svgAttr "stroke-linejoin" "round"
+                                svgAttr "pointer-events" "none"
+                                svgAttr "vector-effect" "non-scaling-stroke"
+                            ] [ text geometry.Text ]
+                ]) markerVisualState.View axisViewportWidth.View
             |> Doc.EmbedView
 
         let candlePathStates =
@@ -973,6 +1036,47 @@ module TaWorkspaceRenderer =
                     svgAttr "stroke-dasharray" "3 3"
                     svgAttr "pointer-events" "none"
                 ] []
+
+            yield
+                svgElement "g" [
+                    Attr.Create "data-testid" ("ta-row-cursor-label-" + rowId)
+                    Attr.Create "data-ta-row-cursor-label" "true"
+                    Attr.Create "data-ta-row-cursor-row-id" rowId
+                    svgAttr "visibility" "hidden"
+                    svgAttr "pointer-events" "none"
+                ] [
+                    svgElement "rect" [
+                        svgAttr "x" "-46"
+                        svgAttr "y" "2"
+                        svgAttr "width" "92"
+                        svgAttr "height" "27"
+                        svgAttr "rx" "2"
+                        svgAttr "fill" "#ffffff"
+                        svgAttr "fill-opacity" "0.92"
+                        svgAttr "stroke" "#8ca0b8"
+                        svgAttr "stroke-width" "0.8"
+                    ] []
+                    svgElement "text" [
+                        Attr.Create "data-testid" ("ta-row-cursor-date-" + rowId)
+                        Attr.Create "data-ta-row-cursor-date" "true"
+                        svgAttr "x" "0"
+                        svgAttr "y" "12"
+                        svgAttr "text-anchor" "middle"
+                        svgAttr "font-family" "Consolas,monospace"
+                        svgAttr "font-size" "9"
+                        svgAttr "fill" "#263b55"
+                    ] [ text "Unavailable" ]
+                    svgElement "text" [
+                        Attr.Create "data-testid" ("ta-row-cursor-time-" + rowId)
+                        Attr.Create "data-ta-row-cursor-clock" "true"
+                        svgAttr "x" "0"
+                        svgAttr "y" "23"
+                        svgAttr "text-anchor" "middle"
+                        svgAttr "font-family" "Consolas,monospace"
+                        svgAttr "font-size" "9"
+                        svgAttr "fill" "#263b55"
+                    ] [ text "Unavailable" ]
+                ]
         ],
         referenceTimestamps,
         (traces
@@ -1038,13 +1142,31 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-fixed-height" "30"
                 attr.style "box-sizing:border-box; display:flex; align-items:center; gap:6px 14px; height:30px; min-height:30px; padding:0 8px; border-top:1px solid #edf1f6; border-bottom:1px solid #edf1f6; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:#263b55;"
             ] [
+                let initialPresentation =
+                    if timestamps.Length = 0 then None
+                    else legendReaders |> Array.tryPick (fun readValue -> readValue (timestamps.Length - 1))
+                let initialTimestamp =
+                    initialPresentation
+                    |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
+                    |> Option.defaultValue "Unavailable"
+                yield
+                    span [
+                        Attr.Create "data-testid" ("ta-row-data-time-" + row.RowId)
+                        Attr.Create "data-ta-row-data-time" "true"
+                        Attr.Create "data-ta-row-data-time-row-id" row.RowId
+                        attr.style "display:inline-block; width:19ch; min-width:19ch; max-width:19ch; overflow:hidden; white-space:nowrap; font-variant-numeric:tabular-nums; font-weight:650;"
+                    ] [ text initialTimestamp ]
                 for index in 0 .. traces.Length - 1 do
                     let trace = traces[index]
                     if trace.Kind <> TaTraceKind.Marker then
                         let label = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
                         let initialValue =
-                            if timestamps.Length = 0 then "Undef"
-                            else legendReaders[index] (timestamps.Length - 1) |> Option.defaultValue "Undef"
+                            if timestamps.Length = 0 then "Unavailable"
+                            else legendReaders[index] (timestamps.Length - 1) |> Option.map _.Value |> Option.defaultValue "Unavailable"
+                        let valueWidth =
+                            match trace.Kind with
+                            | TaTraceKind.Candlestick -> "46ch"
+                            | _ -> "16ch"
                         yield
                             span [
                                 Attr.Create "data-testid" ("ta-row-value-" + row.RowId + "-" + trace.TraceId)
@@ -1056,9 +1178,9 @@ module TaWorkspaceRenderer =
                                     Attr.Create "data-ta-row-value-index" (string index)
                                     Attr.Create "data-ta-row-value-row-id" row.RowId
                                     Attr.Create "data-ta-row-value-text" "true"
-                                    Attr.Create "data-value-state" (if initialValue = "Undef" then "undefined" else "defined")
+                                    Attr.Create "data-value-state" (if initialValue = "Unavailable" then "undefined" else "defined")
                                     attr.title (label + " value")
-                                    attr.style "display:inline-block; width:16ch; min-width:16ch; max-width:16ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums;"
+                                    attr.style ("display:inline-block; width:" + valueWidth + "; min-width:" + valueWidth + "; max-width:" + valueWidth + "; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums;")
                                 ] [ text initialValue ]
                             ]
             ]
@@ -1123,7 +1245,7 @@ module TaWorkspaceRenderer =
         let mutable chartStackElement: Element = null
         let mutable latestCursorTimestamps: string array = [||]
         let mutable latestCursorReaders: (int -> TaCursorValue option) array = [||]
-        let mutable latestLegendReaders: Map<string, (int -> string option) array> = Map.empty
+        let mutable latestLegendReaders: Map<string, (int -> TaRowValuePresentation option) array> = Map.empty
         let mutable displayedCursorIndex: int option = None
         let mutable refreshVisibleValues: (unit -> unit) = ignore
         let mutable visibleValueRefreshScheduled = false
@@ -1508,6 +1630,7 @@ module TaWorkspaceRenderer =
                 let time = cursorElements "[data-ta-cursor-time]" |> Array.tryHead
                 let valueNodes = cursorElements "[data-ta-cursor-value-index]"
                 let legendValueNodes = cursorElements "[data-ta-row-value-index]"
+                let rowTimeNodes = cursorElements "[data-ta-row-data-time='true']"
                 let legendIndex =
                     match bounded with
                     | Some index -> Some index
@@ -1523,9 +1646,18 @@ module TaWorkspaceRenderer =
                     let nextValue =
                         legendIndex
                         |> Option.bind (tryLegendValue latestLegendReaders rowId traceIndex)
-                        |> Option.defaultValue "Undef"
+                        |> Option.map _.Value
+                        |> Option.defaultValue "Unavailable"
                     node.TextContent <- nextValue
-                    node.SetAttribute("data-value-state", if nextValue = "Undef" then "undefined" else "defined")
+                    node.SetAttribute("data-value-state", if nextValue = "Unavailable" then "undefined" else "defined")
+                for node in rowTimeNodes do
+                    let rowId = node.GetAttribute("data-ta-row-data-time-row-id")
+                    let nextTime =
+                        legendIndex
+                        |> Option.bind (tryRowPresentation latestLegendReaders rowId)
+                        |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
+                        |> Option.defaultValue "Unavailable"
+                    node.TextContent <- nextTime
                 match bounded with
                 | None ->
                     hint |> Option.iter (setElementHidden false)
@@ -1562,6 +1694,7 @@ module TaWorkspaceRenderer =
                 chartStackElement.SetAttribute("data-cursor-index", bounded |> Option.map string |> Option.defaultValue "")
 
                 let crosshairs = cursorElements "[data-ta-shared-crosshair='true']"
+                let rowCursorLabels = cursorElements "[data-ta-row-cursor-label='true']"
                 match cursorPosition 1000.0 latestCursorTimestamps.Length bounded with
                 | Some x ->
                     let xText = fixedText x
@@ -1569,8 +1702,23 @@ module TaWorkspaceRenderer =
                         line.SetAttribute("x1", xText)
                         line.SetAttribute("x2", xText)
                         line.SetAttribute("visibility", "visible")
+                    let labelX = max 48.0 (min 952.0 x) |> fixedText
+                    for group in rowCursorLabels do
+                        let rowId = group.GetAttribute("data-ta-row-cursor-row-id")
+                        let presentation = bounded |> Option.bind (tryRowPresentation latestLegendReaders rowId)
+                        let dateText, timeText =
+                            presentation
+                            |> Option.bind (fun value -> RendererModel.timestampParts value.Timestamp)
+                            |> Option.defaultValue ("Unavailable", "Unavailable")
+                        group.SetAttribute("transform", "translate(" + labelX + " 0)")
+                        group.SetAttribute("visibility", "visible")
+                        let dateNode = group.QuerySelector("[data-ta-row-cursor-date='true']")
+                        let timeNode = group.QuerySelector("[data-ta-row-cursor-clock='true']")
+                        if not (isNull dateNode) then dateNode.TextContent <- dateText
+                        if not (isNull timeNode) then timeNode.TextContent <- timeText
                 | None ->
                     for line in crosshairs do line.SetAttribute("visibility", "hidden")
+                    for group in rowCursorLabels do group.SetAttribute("visibility", "hidden")
 
                 applyVisibleCursorValues bounded
 
@@ -2210,7 +2358,7 @@ module TaWorkspaceRenderer =
                                             attr.style ($"height:{reservedHeight}px; min-height:{reservedHeight}px; padding:12px; border-top:1px solid #e1e7ef; box-sizing:border-box; color:#718197; background:#fff;")
                                         ] [ text ("Preparing " + rowDisplayLabel row + "...") ] :> Doc))
                             let stagedCursorReaders: ((int -> TaCursorValue option) array option) array = Array.create visibleRows.Length None
-                            let stagedLegendReaders: ((int -> string option) array option) array = Array.create visibleRows.Length None
+                            let stagedLegendReaders: ((int -> TaRowValuePresentation option) array option) array = Array.create visibleRows.Length None
                             activeRowDataStates <- rowDataStates
                             latestCursorTimestamps <- visibleTimestamps
                             latestCursorReaders <- [||]
