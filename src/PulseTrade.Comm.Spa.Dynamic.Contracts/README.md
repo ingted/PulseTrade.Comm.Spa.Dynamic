@@ -30,7 +30,9 @@ Patch retention以整個ordered operation batch套用後的candidate data為驗�
 
 `TemporalAxis`/`TemporalSeries`是provider-neutral的shared temporal representation。axis point保存唯一`Position`及完整interval/frontier/finality/projection；scalar series只保存`Position + SduiValue`並exact-pin `AxisRevision`。Position只作join key，不依scale推算或補空K；current-K preview以相同Position和新的axis/series revision原位替換。`TaCandleDataRefs`把O/H/L/C/V五條scalar series組成candlestick，避免每個TA scalar重複28份時間metadata。既有`temporal-point.v1`仍可解碼。
 
-Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.19`，exact依賴FSharp.Core `[10.1.400]`。合法大型RuntimeFrame的unsafe validation先走allocation-light scan，只有發現unsafe subtree才建立精確diagnostic path；temporal/schema validation與fail-closed語意不變。current marker encoder只輸出strict/bounded `ta-marker.v2`；public shape為`TriangleUp | TriangleDown | Circle | Square | Diamond`，方向不由`AboveBar／BelowBar`推導。decoder可讀legacy v1，v2 unknown shape fail closed。marker browser cache current schema為3；schema 2一律miss/resync。
+大型Snapshot可用`RuntimeSnapshotTransportCodec.encodeFrames`展開為bounded `start / item / commit` packets；非Snapshot仍輸出單一legacy frame。packet只負責transport framing，完整batch仍須通過count、順序、batch id、generation與canonical reducer後才成為runtime truth；partial或invalid batch不得發布、寫cache或觸發accepted lifecycle。
+
+Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.22`，exact依賴FSharp.Core `[10.1.400]`。合法大型RuntimeFrame的unsafe validation先走allocation-light scan，只有發現unsafe subtree才建立精確diagnostic path；temporal/schema validation與fail-closed語意不變。current marker encoder只輸出strict/bounded `ta-marker.v2`；public shape為`TriangleUp | TriangleDown | Circle | Square | Diamond`，方向不由`AboveBar／BelowBar`推導。decoder可讀legacy v1，v2 unknown shape fail closed。marker browser cache current schema為3；schema 2一律miss/resync。
 
 `RuntimeCache`只接受reducer已確認的bounded projection；OPEN_END projection只保存每條temporal axis的`Final` positions，所有temporal series依其axis position set同步裁切。rehydrate只供display-first並固定為`PausedForResync`，cached revision不可作authoritative delta continuation。`DataRef`是immutable series identity；document內`RowId`唯一，`TraceId`只須在所屬row內唯一。Typed與decoded frame使用同一validation；single patch最多64 operations，另受500 items與16MiB frame限制。
 

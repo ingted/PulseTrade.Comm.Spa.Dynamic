@@ -602,10 +602,72 @@ NoOverride
 
 Local map key為`CanvasInstanceId + RowId`。Default height：candle/composite `clamp 180 720 (round(250 * HeightWeight))`；scalar `clamp 96 480 (round(112 * HeightWeight))`。Scenario data revision不清除override；fresh mount／reload不rehydrateoverride。Pointer move只排一個requestAnimationFrame，data readers與document fingerprint保持不變。
 
-Total row height不再由marker presence決定。Plot height由resolved total扣除header／axis／small padding；scalar plot不留固定空band。Row cursor timestamp在plot外overlay/header，X仍跟shared crosshair並左右clamp。
+Total row height不再由marker presence決定。Plot height由resolved total扣除header／axis／small padding；scalar plot不留固定空band。Row cursor timestamp使用SVG plot外固定32px top gutter中的92×28px兩行HTML tag，字型、font size、line-height、padding、border、width與height都是固定CSS pixels；X跟shared crosshair並左右clamp。Row resize只改plot height及tag的top/left，不得縮放或重排tag。
 
 ### Package closure
 
-Final graph：Contracts `0.1.19` → Renderer `0.1.45` → Interactive.Client `0.1.37`；Dynamic.Ptcs `0.1.41` exact Contracts；Ptcs.Client `0.1.59` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。Interactive.Client的bundle manifest由pack target以`$(Version)`生成，避免nuspec與內嵌bundle版本漂移。不得ProjectReference或partial graph。Navigator使用獨立shell prepared-data signal；same-topology資料patch更新該signal與row data Vars，但不更新chart runtime mount identity。
+RFC-0024 closure：Contracts `0.1.19` → Renderer `0.1.45` → Interactive.Client `0.1.37`；Dynamic.Ptcs `0.1.41` exact Contracts；Ptcs.Client `0.1.59` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。Interactive.Client的bundle manifest由pack target以`$(Version)`生成，避免nuspec與內嵌bundle版本漂移。不得ProjectReference或partial graph。Navigator使用獨立shell prepared-data signal；same-topology資料patch更新該signal與row data Vars，但不更新chart runtime mount identity。
 
 Test seams：strict codec/unknown field/limits；candidate atomicity/last-good；same-X lane/pixel bucket；same-topology empty→non-empty OverviewStripe且chart render sequence不變；marker cluster keyboard/focus；row resize/default/reset/dispose；4,000 slots long-task；exact nupkg/bundle/readback。
+
+## 2026-09-25 Runtime Snapshot Transport Framing
+
+完整決策：`doc/RFC/RFC-PTCS-DYNAMIC-0025.chunked-snapshot-transport.md`。
+
+### Wire shape
+
+Wire使用explicit schema/kind fields，不擴充`RuntimePayload`：
+
+```fsharp
+type RuntimeSnapshotTransportPacket =
+    | Start of batchId: string * itemCount: int * header: RuntimeFrame
+    | Item of batchId: string * itemIndex: int * dataRef: string * value: SduiValue
+    | Commit of batchId: string * itemCount: int
+
+RuntimeSnapshotTransportCodec.encodeFrame : RuntimeFrame -> Result<string array, string>
+```
+
+實際JSON root皆含`schema = "ptcs-dynamic-snapshot-chunk.v1"`與`kind = "start" | "item" | "commit"`。Start的header必須是原frame identity／sequence／revision／freshness，但`Snapshot.Data = Map.empty`。Item依F# Map canonical key order編號0..N-1。Commit重申batch id與count。Batch id由frame identity與transport sequence的deterministic fingerprint產生，不依browser state。
+
+Encoder以structured JSON writer嵌入`Json.Serialize`產生的header/value raw JSON，禁止字串拼接／雙重JSON字串。非Snapshot frame直接回`[| BrowserRuntimeCodec.encode frame |]`，因此host可一律flatten結果。
+
+### Browser state machine
+
+```text
+Idle
+  + legacy RuntimeFrame -> scheduled legacy decode/reduce -> publish or reject
+  + Start(generation,batch,count,header) -> Staging(nextIndex=0, seen={}, items=[])
+
+Staging
+  + Item(same batch,index=nextIndex,unique ref) -> phased decode -> append -> nextIndex+1
+  + Commit(same batch,count=nextIndex=expected) -> assemble canonical Snapshot
+      -> phased canonical reducer validation
+      -> one publish + accepted projection eligible for optional cache write + local SnapshotAccepted lifecycle
+  + wrong/missing/duplicate/interleaved/disconnect/new generation -> discard -> last-good + resync
+```
+
+`OnMessage`只把`socketGeneration + encoded text`加入bounded FIFO並排一個pump task。Pump每次只處理一個envelope；同一item內Array／TemporalSeries points沿用`PointDecodeBatchSize=256`。所有continuation再次比對socket/pump generation；舊callback只回`Superseded`，不得清除新batch或建立第二個timer。
+
+### Limits and failure
+
+- start itemCount必須`0..MaxDataRefsPerSnapshot`；queue與staged item總量同受runtime limits限制。
+- item index必須嚴格遞增，dataRef非空且唯一；batch id/count需exact match。
+- start header需通過frame envelope validation且Snapshot Data為空；item value沿用snapshot value validation。
+- commit後仍完整執行unknown dataRef、axis authority、temporal series、marker/stripe overlay與runtime revision validation。
+- metadata錯誤使用`runtime-snapshot-chunk-*` structured reason；canonical validation沿用既有error code。所有錯誤保留last-good、停止該batch、request resync，且不得觸發accepted lifecycle或讓partial state進入cache。現行wire沒有snapshot ACK frame。
+
+### Producer integration
+
+```fsharp
+let encodedFrames =
+    runtimeFrames
+    |> Array.collect (fun frame ->
+        RuntimeSnapshotTransportCodec.encodeFrame frame
+        |> Result.defaultWith failwith)
+```
+
+SPAA initial `Frames`與reconnect `sendFullSnapshot`都使用同一helper；Document／Patch仍各是一個訊息。Owner tests須直接消費`encodeFrame`輸出，避免測試專用framing與production client分叉。
+
+Test seams：deterministic encoder/legacy singleton；zero-item snapshot；missing/duplicate/out-of-order/mismatch；interleaved legacy；generation/disconnect；invalid SduiValue/canonical reducer failure；commit-only publish/accepted lifecycle/cache eligibility；4,000×28×5 candle target-renderer long-task；legacy/cache regression；exact package graph。
+
+Current exact graph：Contracts `0.1.22` → Renderer `0.1.49` → Interactive.Client `0.1.41`；Dynamic.Ptcs `0.1.44` exact Contracts；Ptcs.Client `0.1.63` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。大型candle projection以固定bucket array單次聚合，不建立per-slot tuple／`groupBy`；source interval、Y-domain與cursor語意不變。

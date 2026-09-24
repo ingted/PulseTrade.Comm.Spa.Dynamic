@@ -1753,6 +1753,22 @@ let tests =
                 RuntimeCacheProjection.tryCreateEntry (sourceTime.AddHours 1.0) cacheIdentity accepted
                 |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
             Expect.equal browserProjection entry "Browser projection and strict server projection must produce the same valid cache entry."
+
+            let fullyFinalAxis = { axis with Points = axis.Points |> Array.take 2 }
+            let fullyFinalSeries = { series with Points = series.Points |> Array.take 2 }
+            let fullyFinalState =
+                { accepted with
+                    Data =
+                        Map
+                            [ axis.AxisRef, TemporalAxisCodec.encode fullyFinalAxis
+                              row.DataRef, TemporalSeriesCodec.encode fullyFinalSeries ] }
+            let _, fullyFinalProjection =
+                RuntimeCacheProjection.tryFinalizedProjection fullyFinalState
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.isTrue
+                (obj.ReferenceEquals(fullyFinalProjection, fullyFinalState.Data))
+                "A validated fully-final historical graph must reuse the accepted data map without copying every series."
+
             Expect.equal
                 (RuntimeCacheEntryValidation.validate DynamicRuntimeDefaults.limits entry)
                 (RuntimeCache.validateEntry DynamicRuntimeDefaults.limits entry)
@@ -1925,4 +1941,80 @@ let tests =
                 | Error values -> values
                 | Ok _ -> failtest "A non-UTC event time must fail validation."
             Expect.isTrue (errors |> List.exists (fun error -> error.Code = "utc-required")) "Canonical event time must use UTC offset zero."
+
+        testCase "DYN-T-583 snapshot transport encoder is deterministic and keeps legacy frames" <| fun _ ->
+            let snapshotFrame =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    7L
+                    (Some 5L)
+                    6L
+                    (RuntimePayload.Snapshot
+                        { Data =
+                            Map [ "series.z", SduiValue.Number 2.0
+                                  "series.a", SduiValue.Text "first" ]
+                          Freshness = TaFreshness.Live })
+
+            let encoded =
+                RuntimeSnapshotTransportCodec.encodeFrame snapshotFrame
+                |> Result.defaultWith failtest
+
+            Expect.equal encoded.Length 4 "Two data refs require start, two ordered items and commit."
+
+            let start = WebSharper.Json.Deserialize<RuntimeSnapshotTransportStart> encoded[0]
+            let first = WebSharper.Json.Deserialize<RuntimeSnapshotTransportItem> encoded[1]
+            let second = WebSharper.Json.Deserialize<RuntimeSnapshotTransportItem> encoded[2]
+            let commit = WebSharper.Json.Deserialize<RuntimeSnapshotTransportCommit> encoded[3]
+
+            Expect.equal start.Schema RuntimeSnapshotTransportDefaults.Schema "Start schema must be explicit."
+            Expect.equal start.Kind RuntimeSnapshotTransportDefaults.StartKind "Start kind must be explicit."
+            Expect.equal start.ItemCount 2 "Start announces the exact item count."
+            Expect.equal first.DataRef "series.a" "Map order is the canonical packet order."
+            Expect.equal first.ItemIndex 0 "First packet uses zero-based index."
+            Expect.equal second.DataRef "series.z" "Second packet follows canonical map order."
+            Expect.equal second.ItemIndex 1 "Second packet increments the item index."
+            Expect.equal first.BatchId start.BatchId "Items belong to the announced batch."
+            Expect.equal commit.BatchId start.BatchId "Commit belongs to the announced batch."
+            Expect.equal commit.ItemCount start.ItemCount "Commit repeats the exact count."
+
+            match start.Header.Payload with
+            | RuntimePayload.Snapshot snapshot -> Expect.isEmpty snapshot.Data "Start header cannot carry partial snapshot data."
+            | _ -> failtest "Start header must remain a canonical Snapshot RuntimeFrame."
+
+            let legacy = RuntimeSnapshotTransportCodec.encodeFrame documentFrame |> Result.defaultWith failtest
+            Expect.equal legacy [| BrowserRuntimeCodec.encode documentFrame |] "Non-Snapshot frames remain legacy singleton messages."
+
+            let flattened =
+                RuntimeSnapshotTransportCodec.encodeFrames [| documentFrame; snapshotFrame |]
+                |> Result.defaultWith failtest
+
+            Expect.equal
+                flattened.Length
+                (1 + encoded.Length)
+                "Producer flattening preserves the legacy document followed by the complete snapshot batch."
+            Expect.equal flattened[0] legacy[0] "Producer flattening retains frame order."
+            Expect.sequenceEqual
+                flattened[1..]
+                encoded
+                "Producer flattening reuses the exact single-frame snapshot encoding."
+
+        testCase "DYN-T-583 snapshot transport encoder enforces the bounded data-ref count" <| fun _ ->
+            let oversizedData =
+                [ 0 .. RuntimeSnapshotTransportDefaults.MaximumItems ]
+                |> List.map (fun index -> $"series.{index:D3}", SduiValue.Number(float index))
+                |> Map.ofList
+
+            let oversizedFrame =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    8L
+                    (Some 5L)
+                    6L
+                    (RuntimePayload.Snapshot
+                        { Data = oversizedData
+                          Freshness = TaFreshness.Live })
+
+            Expect.isError
+                (RuntimeSnapshotTransportCodec.encodeFrame oversizedFrame)
+                "Transport must reject a batch whose data-ref count exceeds the hard limit."
     ]

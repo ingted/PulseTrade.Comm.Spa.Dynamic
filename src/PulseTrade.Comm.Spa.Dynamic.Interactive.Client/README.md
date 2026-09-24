@@ -60,4 +60,32 @@ Host 不得只收到 request 就回 `Accepted`。它必須先檢查 `ExpectedDoc
 
 authoritative document必須同時帶`Rows`與`EditorSchemas`。可修改row帶`ptcs.dynamic.editor.binding.v1`；client由document catalog生成Add/Edit表單，不接受host另外維護一份renderer-local schema registry。Edit request保留stable RowId，Host完成原位resource transition後以同一份new document revision發布row與binding。
 
-Current exact package：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.37`，exact依賴Contracts `[0.1.19]`、Renderer `[0.1.45]`與FSharp.Core `[10.1.400]`；bundle manifest版本須與nuspec一致。runtime frame沿用同一reducer/renderer，unknown kind/version與invalid candidate fail closed並保留last-good；合法大型snapshot使用Contracts allocation-light安全掃描。live preview只更新實際變動的SVG element/trace與row-value band；mousemove由Renderer的單一rAF固定DOM hot path處理。Host需處理`SharedCursorChanged`與`VisibleRangeChanged`；authoritative range/data仍由RuntimeFrame提交。`BrowserRuntimeCache`只作display-first last-good projection。0.1.37 graph加入generic OverviewStripe、64-wire/4-glyph marker cluster、renderer-local row resize及same-topology navigator refresh；SPAA與DIB共用此bundle，不另做consumer overlay。
+## Large initial frame batches
+
+HTTP/Notebook host一次收到多個encoded `RuntimeFrame`時，不應在同一browser callback內同步decode、reduce、cache projection與write。使用frame pump先建立完整candidate，完成前不發布partial state：
+
+```fsharp
+let generation = currentGeneration
+
+BrowserRuntimeFramePump.reduceIsolatedEncodedFrames
+    response.Frames
+    (fun () -> generation = currentGeneration)
+    (function
+        | BrowserRuntimeFramePumpOutcome.Applied candidate ->
+            runtimeState.Value <- candidate
+
+            BrowserRuntimeCache.writeAcceptedStatePhased
+                cacheIdentity
+                candidate
+                (fun () -> generation = currentGeneration)
+                ignore
+        | BrowserRuntimeFramePumpOutcome.Rejected failure ->
+            report failure.Code failure.Message
+        | BrowserRuntimeFramePumpOutcome.Superseded -> ())
+```
+
+`reduceFromEncodedFrames`用於已有authoritative state的batch；`reduceIsolatedEncodedFrames`用於新run。每個frame的decode與reduce分屬不同animation-frame task，全部成功才回`Applied`。generation失效回`Superseded`；decode、resync或structured reducer denial回`Rejected`且保留last-good。`writeAcceptedStatePhased`再把finalized projection與IndexedDB encode/write分成兩個task，並於write開始前再驗generation。既有同步`writeAcceptedState`保留相容性，不適合大型initial state。
+
+Production WebSocket `OnMessage`只enqueue；單一requestAnimationFrame pump依socket generation處理legacy frame或chunked `start / item / commit`。initial與reconnect producer都應先以`RuntimeSnapshotTransportCodec.encodeFrames`展開再flatten；invalid、stale或中斷batch保留last-good並只要求authoritative resync，不建立第二個pump。
+
+Current exact package：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.41`，exact依賴Contracts `[0.1.22]`、Renderer `[0.1.49]`與FSharp.Core `[10.1.400]`；bundle manifest版本須與nuspec一致。runtime frame沿用同一reducer/renderer，unknown kind/version與invalid candidate fail closed並保留last-good；合法大型snapshot使用Contracts allocation-light安全掃描。live preview只更新實際變動的SVG element/trace與row-value band；mousemove由Renderer的單一rAF固定DOM hot path處理。Host需處理`SharedCursorChanged`與`VisibleRangeChanged`；authoritative range/data仍由RuntimeFrame提交。`BrowserRuntimeCache`只作display-first last-good projection且由consumer顯式寫入。SPAA與DIB共用此bundle，不另做consumer overlay。

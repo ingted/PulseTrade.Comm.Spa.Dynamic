@@ -141,6 +141,24 @@ module TaWorkspaceRenderer =
         |> Map.tryFind rowId
         |> Option.bind (fun readers -> readers |> Array.tryPick (fun readValue -> readValue cursorIndex))
 
+    let rec tryReadAtOrBefore readValue index =
+        if index < 0 then None
+        else
+            match readValue index with
+            | Some value -> Some value
+            | None -> tryReadAtOrBefore readValue (index - 1)
+
+    let tryLegendValueAtOrBefore readersByRow rowId traceIndex cursorIndex =
+        readersByRow
+        |> Map.tryFind rowId
+        |> Option.bind (Array.tryItem traceIndex)
+        |> Option.bind (fun readLegend -> tryReadAtOrBefore readLegend cursorIndex)
+
+    let tryRowPresentationAtOrBefore readersByRow rowId cursorIndex =
+        readersByRow
+        |> Map.tryFind rowId
+        |> Option.bind (fun readers -> readers |> Array.tryPick (fun readValue -> tryReadAtOrBefore readValue cursorIndex))
+
     let freshnessText (freshness: TaFreshness) =
         match freshness with
         | TaFreshness.Live -> "LIVE"
@@ -345,6 +363,15 @@ module TaWorkspaceRenderer =
             legend
             element "div" [ attr.style "min-width:0; overflow:hidden;" ] children
         ]
+
+    let rowCursorTagStyle leftPercent visible =
+        "position:absolute; z-index:3; top:2px; left:" + leftPercent
+        + "%; transform:translateX(-50%); box-sizing:border-box; display:grid; grid-template-rows:12px 12px;"
+        + " width:92px; min-width:92px; max-width:92px; height:28px; min-height:28px; max-height:28px;"
+        + " padding:1px 5px; border:1px solid #9eabba; border-radius:2px; background:#f8fafc; color:#263b55;"
+        + " font-family:Consolas,monospace; font-size:10px; font-weight:500; line-height:12px;"
+        + " text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap; pointer-events:none;"
+        + (if visible then " visibility:visible;" else " visibility:hidden;")
 
     let rowResizeHandle rowId (bounds: TaRowHeightBounds) (height: Var<int>) =
         let setHeight value = height.Value <- RendererModel.clamp bounds.Minimum bounds.Maximum value
@@ -687,30 +714,6 @@ module TaWorkspaceRenderer =
 
         let maximumVisualPoints = 1000
 
-        let compactCandles (values: (int * TaTraceSpec * int * int * TaCandlePoint) array) =
-            if referenceTimestamps.Length <= maximumVisualPoints then
-                values
-            else
-                values
-                |> Array.groupBy (fun (traceIndex, _, slotIndex, sourceSpanCount, _) ->
-                    traceIndex,
-                    sourceSpanCount > 1,
-                    min (maximumVisualPoints - 1) (slotIndex * maximumVisualPoints / referenceTimestamps.Length))
-                |> Array.map (fun (_, bucket) ->
-                    let ordered = bucket |> Array.sortBy (fun (_, _, slotIndex, _, _) -> slotIndex)
-                    let traceIndex, trace, firstSlot, _, firstPoint = ordered[0]
-                    let _, _, lastSlot, _, lastPoint = ordered[ordered.Length - 1]
-                    let sourceSpanCount = ordered |> Array.maxBy (fun (_, _, _, span, _) -> span) |> fun (_, _, _, span, _) -> span
-                    let aggregate =
-                        { lastPoint with
-                            Open = firstPoint.Open
-                            High = ordered |> Array.maxBy (fun (_, _, _, _, point) -> point.High) |> fun (_, _, _, _, point) -> point.High
-                            Low = ordered |> Array.minBy (fun (_, _, _, _, point) -> point.Low) |> fun (_, _, _, _, point) -> point.Low
-                            Close = lastPoint.Close
-                            Volume = ordered |> Array.sumBy (fun (_, _, _, _, point) -> point.Volume) }
-                    traceIndex, trace, (firstSlot + lastSlot) / 2, sourceSpanCount, aggregate)
-                |> Array.sortBy (fun (traceIndex, _, slotIndex, _, _) -> traceIndex, slotIndex)
-
         let compactLinePoints (values: (int * TaLinePoint) array) =
             if referenceTimestamps.Length <= maximumVisualPoints || values.Length <= maximumVisualPoints then
                 values
@@ -727,6 +730,21 @@ module TaWorkspaceRenderer =
                 |> Array.sortBy fst
 
         let prepareGeometry currentData =
+            let sourcePresentationTimestamps (trace: TaTraceSpec) =
+                let dataRef =
+                    match trace.CandleDataRefs with
+                    | Some refs -> refs.OpenRef
+                    | None -> trace.DataRef
+                let isUnavailable point =
+                    match trace.Kind with
+                    | TaTraceKind.Candlestick
+                    | TaTraceKind.Volume -> RendererModel.parseCandleResolved point.Temporal point.Payload |> Option.isNone
+                    | TaTraceKind.Line
+                    | TaTraceKind.Histogram -> RendererModel.parseLineResolved point.Temporal point.Payload |> Option.isNone
+                    | TaTraceKind.Marker
+                    | TaTraceKind.OverviewStripe -> false
+                RendererModel.projectedLastSourceTimestampWhere isUnavailable referenceTimestamps dataRef currentData
+
             let preparedTraces: (int * TaTraceSpec * TaCandlePoint array * TaLinePoint array) array =
                 traces
                 |> Array.mapi (fun traceIndex trace ->
@@ -743,20 +761,85 @@ module TaWorkspaceRenderer =
                     | TaTraceKind.OverviewStripe ->
                         traceIndex, trace, [||], [||])
 
-            let projectedCandleSeries =
-                let projected = ResizeArray<int * TaTraceSpec * int * int * TaCandlePoint>()
-                for traceIndex, trace, candles, _ in preparedTraces do
-                    if trace.Kind = TaTraceKind.Candlestick then
-                        for point in candles do
-                            match RendererModel.candleSlotRange referenceTimestamps point with
-                            | Some(first, lastExclusive) ->
-                                let sourceSpanCount = lastExclusive - first
-                                for slotIndex in first .. lastExclusive - 1 do
-                                    projected.Add(traceIndex, trace, slotIndex, sourceSpanCount, point)
-                            | None -> ()
-                projected.ToArray()
+            let candleSeries =
+                if referenceTimestamps.Length <= maximumVisualPoints then
+                    let projected = ResizeArray<int * TaTraceSpec * int * int * TaCandlePoint>()
+                    for traceIndex, trace, candles, _ in preparedTraces do
+                        if trace.Kind = TaTraceKind.Candlestick then
+                            for point in candles do
+                                match RendererModel.candleSlotRange referenceTimestamps point with
+                                | Some(first, lastExclusive) ->
+                                    let sourceSpanCount = lastExclusive - first
+                                    for slotIndex in first .. lastExclusive - 1 do
+                                        projected.Add(traceIndex, trace, slotIndex, sourceSpanCount, point)
+                                | None -> ()
+                    projected.ToArray()
+                else
+                    // Keep the full coarse-candle projection semantics without allocating one
+                    // tuple per repeated base slot and then grouping/sorting those tuples.
+                    let projectionKinds = 2
+                    let bucketCount = maximumVisualPoints
+                    let accumulatorCount = traces.Length * projectionKinds * bucketCount
+                    let firstSlots = Array.create accumulatorCount Int32.MaxValue
+                    let lastSlots = Array.create accumulatorCount -1
+                    let sourceSpans = Array.zeroCreate<int> accumulatorCount
+                    let opens = Array.zeroCreate<float> accumulatorCount
+                    let highs = Array.zeroCreate<float> accumulatorCount
+                    let lows = Array.zeroCreate<float> accumulatorCount
+                    let closes = Array.zeroCreate<float> accumulatorCount
+                    let volumes = Array.zeroCreate<float> accumulatorCount
+                    let lastPoints: TaCandlePoint option array = Array.create accumulatorCount None
 
-            let candleSeries = compactCandles projectedCandleSeries
+                    let accumulatorIndex traceIndex projected bucketIndex =
+                        ((traceIndex * projectionKinds + projected) * bucketCount) + bucketIndex
+
+                    for traceIndex, trace, candles, _ in preparedTraces do
+                        if trace.Kind = TaTraceKind.Candlestick then
+                            for point in candles do
+                                match RendererModel.candleSlotRange referenceTimestamps point with
+                                | Some(first, lastExclusive) ->
+                                    let sourceSpanCount = lastExclusive - first
+                                    let projected = if sourceSpanCount > 1 then 1 else 0
+                                    for slotIndex in first .. lastExclusive - 1 do
+                                        let bucketIndex = min (bucketCount - 1) (slotIndex * bucketCount / referenceTimestamps.Length)
+                                        let index = accumulatorIndex traceIndex projected bucketIndex
+                                        if slotIndex < firstSlots[index] then
+                                            firstSlots[index] <- slotIndex
+                                            opens[index] <- point.Open
+                                        if slotIndex >= lastSlots[index] then
+                                            lastSlots[index] <- slotIndex
+                                            closes[index] <- point.Close
+                                            lastPoints[index] <- Some point
+                                        if sourceSpans[index] = 0 then
+                                            highs[index] <- point.High
+                                            lows[index] <- point.Low
+                                        else
+                                            highs[index] <- max highs[index] point.High
+                                            lows[index] <- min lows[index] point.Low
+                                        sourceSpans[index] <- max sourceSpans[index] sourceSpanCount
+                                        volumes[index] <- volumes[index] + point.Volume
+                                | None -> ()
+
+                    [| for traceIndex in 0 .. traces.Length - 1 do
+                           for projected in 0 .. projectionKinds - 1 do
+                               for bucketIndex in 0 .. bucketCount - 1 do
+                                   let index = accumulatorIndex traceIndex projected bucketIndex
+                                   match lastPoints[index] with
+                                   | Some lastPoint ->
+                                       let aggregate =
+                                           { lastPoint with
+                                               Open = opens[index]
+                                               High = highs[index]
+                                               Low = lows[index]
+                                               Close = closes[index]
+                                               Volume = volumes[index] }
+                                       yield
+                                           traceIndex,
+                                           traces[traceIndex],
+                                           (firstSlots[index] + lastSlots[index]) / 2,
+                                           sourceSpans[index],
+                                           aggregate
+                                   | None -> () |]
 
             let projectedLinePoints =
                 preparedTraces
@@ -792,7 +875,11 @@ module TaWorkspaceRenderer =
                 |> RendererModel.assignAggregateMarkerLanes
 
             let scaleValues =
-                [| yield! projectedCandleSeries |> Array.collect (fun (_, _, _, _, point) -> [| point.Low; point.High |])
+                [| yield! preparedTraces |> Array.collect (fun (_, trace, candles, _) ->
+                       if trace.Kind = TaTraceKind.Candlestick then
+                           candles |> Array.collect (fun point -> [| point.Low; point.High |])
+                       else
+                           [||])
                    yield! projectedLinePoints |> Array.collect (fun (_, trace, points) ->
                        let values = points |> Array.map (fun (_, point: TaLinePoint) -> point.Value)
                        if trace.Kind = TaTraceKind.Histogram then Array.append [| 0.0 |] values else values) |]
@@ -801,6 +888,12 @@ module TaWorkspaceRenderer =
                 preparedTraces
                 |> Array.map (fun (traceIndex, trace, candles, _) ->
                     let label = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
+                    let sourceTimestamps = sourcePresentationTimestamps trace
+                    let unavailablePresentation index =
+                        sourceTimestamps
+                        |> Array.tryItem index
+                        |> Option.flatten
+                        |> Option.map (fun timestamp -> { Timestamp = timestamp; Value = "Unavailable" })
                     match trace.Kind with
                     | TaTraceKind.Candlestick
                     | TaTraceKind.Volume ->
@@ -825,6 +918,7 @@ module TaWorkspaceRenderer =
                                         + " L " + fixedText point.Low
                                         + " C " + fixedText point.Close
                                         + " V " + fixedText point.Volume })
+                            |> Option.orElseWith (fun () -> unavailablePresentation index)
                         cursorReader, legendReader
                     | TaTraceKind.Line
                     | TaTraceKind.Histogram ->
@@ -845,6 +939,7 @@ module TaWorkspaceRenderer =
                             |> Array.tryItem index
                             |> Option.flatten
                             |> Option.map (fun point -> { Timestamp = point.Timestamp; Value = fixedText point.Value })
+                            |> Option.orElseWith (fun () -> unavailablePresentation index)
                         cursorReader, legendReader
                     | TaTraceKind.Marker
                     | TaTraceKind.OverviewStripe ->
@@ -1262,46 +1357,6 @@ module TaWorkspaceRenderer =
                     svgAttr "pointer-events" "none"
                 ] []
 
-            yield
-                svgElement "g" [
-                    Attr.Create "data-testid" ("ta-row-cursor-label-" + rowId)
-                    Attr.Create "data-ta-row-cursor-label" "true"
-                    Attr.Create "data-ta-row-cursor-row-id" rowId
-                    svgAttr "visibility" "hidden"
-                    svgAttr "pointer-events" "none"
-                ] [
-                    svgElement "rect" [
-                        svgAttr "x" "-46"
-                        svgAttr "y" "2"
-                        svgAttr "width" "92"
-                        svgAttr "height" "27"
-                        svgAttr "rx" "2"
-                        svgAttr "fill" "#ffffff"
-                        svgAttr "fill-opacity" "0.92"
-                        svgAttr "stroke" "#8ca0b8"
-                        svgAttr "stroke-width" "0.8"
-                    ] []
-                    svgElement "text" [
-                        Attr.Create "data-testid" ("ta-row-cursor-date-" + rowId)
-                        Attr.Create "data-ta-row-cursor-date" "true"
-                        svgAttr "x" "0"
-                        svgAttr "y" "12"
-                        svgAttr "text-anchor" "middle"
-                        svgAttr "font-family" "Consolas,monospace"
-                        svgAttr "font-size" "9"
-                        svgAttr "fill" "#263b55"
-                    ] [ text "Unavailable" ]
-                    svgElement "text" [
-                        Attr.Create "data-testid" ("ta-row-cursor-time-" + rowId)
-                        Attr.Create "data-ta-row-cursor-clock" "true"
-                        svgAttr "x" "0"
-                        svgAttr "y" "23"
-                        svgAttr "text-anchor" "middle"
-                        svgAttr "font-family" "Consolas,monospace"
-                        svgAttr "font-size" "9"
-                        svgAttr "fill" "#263b55"
-                    ] [ text "Unavailable" ]
-                ]
         ],
         referenceTimestamps,
         (traces
@@ -1341,9 +1396,41 @@ module TaWorkspaceRenderer =
         let chart, timestamps, cursorReaders, legendReaders = compositeSvgReactivePreparedLiveWithHeight row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight.View scheduleValueRefresh
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
-        let children =
-            if showSharedTimeAxis then [ chart; timeAxis ("ta-time-axis-" + row.RowId) row.RowId timestamps ]
-            else [ chart ]
+        let cursorTag =
+            div [
+                Attr.Create "data-testid" ("ta-row-cursor-label-" + row.RowId)
+                Attr.Create "data-ta-row-cursor-label" "true"
+                Attr.Create "data-ta-row-cursor-row-id" row.RowId
+                Attr.Create "data-fixed-css-overlay" "true"
+                attr.style (rowCursorTagStyle "50" false)
+            ] [
+                span [
+                    Attr.Create "data-testid" ("ta-row-cursor-date-" + row.RowId)
+                    Attr.Create "data-ta-row-cursor-date" "true"
+                    attr.style "display:block; width:80px; height:12px; line-height:12px; overflow:hidden;"
+                ] [ text "Unavailable" ]
+                span [
+                    Attr.Create "data-testid" ("ta-row-cursor-time-" + row.RowId)
+                    Attr.Create "data-ta-row-cursor-clock" "true"
+                    attr.style "display:block; width:80px; height:12px; line-height:12px; overflow:hidden;"
+                ] [ text "Unavailable" ]
+            ]
+        let rowPlot =
+            div [
+                Attr.Create "data-testid" ("ta-row-plot-shell-" + row.RowId)
+                attr.style "position:relative; display:flex; flex-direction:column; min-width:0; overflow:hidden;"
+            ] [
+                yield div [
+                    Attr.Create "data-testid" ("ta-row-cursor-gutter-" + row.RowId)
+                    Attr.Create "data-fixed-height" "32"
+                    attr.style "height:32px; min-height:32px; max-height:32px; flex:0 0 32px; border-bottom:1px solid #edf1f6; background:#f8fafc;"
+                ] []
+                yield cursorTag
+                yield chart
+                if showSharedTimeAxis then
+                    yield timeAxis ("ta-time-axis-" + row.RowId) row.RowId timestamps
+            ]
+        let children = [ rowPlot :> Doc ]
         let metadata =
             dataView
             |> View.Map (fun currentData ->
@@ -1371,7 +1458,7 @@ module TaWorkspaceRenderer =
             ] [
                 let initialPresentation =
                     if timestamps.Length = 0 then None
-                    else legendReaders |> Array.tryPick (fun readValue -> readValue (timestamps.Length - 1))
+                    else legendReaders |> Array.tryPick (fun readValue -> tryReadAtOrBefore readValue (timestamps.Length - 1))
                 let initialTimestamp =
                     initialPresentation
                     |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
@@ -1389,7 +1476,7 @@ module TaWorkspaceRenderer =
                         let label = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
                         let initialValue =
                             if timestamps.Length = 0 then "Unavailable"
-                            else legendReaders[index] (timestamps.Length - 1) |> Option.map _.Value |> Option.defaultValue "Unavailable"
+                            else tryReadAtOrBefore legendReaders[index] (timestamps.Length - 1) |> Option.map _.Value |> Option.defaultValue "Unavailable"
                         let valueWidth =
                             match trace.Kind with
                             | TaTraceKind.Candlestick -> "46ch"
@@ -1411,7 +1498,7 @@ module TaWorkspaceRenderer =
                                 ] [ text initialValue ]
                             ]
             ]
-        let frameHeight = rowHeight.View |> View.Map (fun value -> value + 58 + if showSharedTimeAxis then 16 else 0)
+        let frameHeight = rowHeight.View |> View.Map (fun value -> value + 90 + if showSharedTimeAxis then 16 else 0)
         div [ Attr.Create "data-testid" ("ta-row-shell-" + row.RowId); attr.style "display:flex; flex-direction:column; min-width:0;" ] [
             chartFrame title [ metadata ] legend ("ta-row-" + row.RowId) frameHeight children
             rowResizeHandle row.RowId heightBounds rowHeight
@@ -1486,6 +1573,7 @@ module TaWorkspaceRenderer =
         let mutable navigatorElement: Element = null
         let mutable finishNavigatorDrag: (unit -> unit) option = None
         let mutable chartRenderSequence = 0
+        let mutable chartRenderReason = "initial"
         let cursorIndex = Var.Create<int option> None
         let mutable chartStackElement: Element = null
         let mutable latestCursorTimestamps: string array = [||]
@@ -1537,7 +1625,9 @@ module TaWorkspaceRenderer =
         let setUiState next =
             let previousChartState = chartUiState.Value
             uiState.Value <- next
-            if not (sameChartUiState previousChartState next) then chartUiState.Value <- next
+            if not (sameChartUiState previousChartState next) then
+                chartRenderReason <- "ui-state"
+                chartUiState.Value <- next
         let mutable actionSequence = 0
         let mutable querySelectionGeneration = 0
         let mutable queryInFlight = false
@@ -1589,6 +1679,72 @@ module TaWorkspaceRenderer =
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
         let mutable observedDataState = runtimeState.Value
 
+        let acceptPreparedData refreshRows next nextPreparedData =
+            let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
+            let topologyChanged =
+                next.Identity <> chartRuntimeState.Value.Identity
+                || next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision
+                || nextChartTopology <> observedChartTopology
+            if topologyChanged then
+                chartRenderReason <-
+                    if next.Identity <> chartRuntimeState.Value.Identity then "identity"
+                    elif next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision then "document-revision"
+                    else "topology-signature"
+                observedChartTopology <- nextChartTopology
+                shellPreparedData.Value <- nextPreparedData
+                match next.Document with
+                | Some document ->
+                    let nextTimeline = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData
+                    let currentUi = uiState.Value
+                    let generalOldTimeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
+                    let generalOldWindow =
+                        RendererModel.resolveWindow
+                            options.MinimumVisibleBars
+                            options.MaximumVisibleBars
+                            generalOldTimeline.Length
+                            currentUi.FollowLatest
+                            currentUi.Window
+                    let reanchored =
+                        match pendingBoundaryPan with
+                        | Some(_, direction, delta, intentTimeline, intentWindow)
+                            when RendererModel.coverageExtended direction intentTimeline nextTimeline ->
+                            pendingBoundaryPan <- None
+                            RendererModel.tryReanchorWindow
+                                options.MinimumVisibleBars
+                                options.MaximumVisibleBars
+                                delta
+                                intentTimeline
+                                nextTimeline
+                                intentWindow
+                        | _ when not currentUi.FollowLatest
+                                 && generalOldTimeline.Length > 0
+                                 && nextTimeline.Length > generalOldTimeline.Length ->
+                            RendererModel.tryReanchorWindow
+                                options.MinimumVisibleBars
+                                options.MaximumVisibleBars
+                                0
+                                generalOldTimeline
+                                nextTimeline
+                                generalOldWindow
+                        | _ -> None
+                    match reanchored with
+                    | Some window ->
+                        let followLatest = window.StartIndex = RendererModel.viewportMaximumStart nextTimeline.Length window
+                        setUiState
+                            { currentUi with
+                                Window = window
+                                FollowLatest = followLatest
+                                CursorIndex = None }
+                        cursorIndex.Value <- None
+                    | None -> ()
+                | None -> pendingBoundaryPan <- None
+                chartRuntimeState.Value <- next
+            elif refreshRows then
+                shellPreparedData.Value <- nextPreparedData
+                scheduleRowDataRefresh nextPreparedData
+            latestPreparedData <- nextPreparedData
+            observedDataState <- next
+
         let scheduleFullPreparation () =
             preparationGeneration <- preparationGeneration + 1
             let generation = preparationGeneration
@@ -1608,6 +1764,28 @@ module TaWorkspaceRenderer =
                         preparedDataReady <- true
                         chartRuntimeState.Value <- current)
 
+        let scheduleIncrementalPreparation next =
+            preparationGeneration <- preparationGeneration + 1
+            let generation = preparationGeneration
+            let previous = latestPreparedData
+            observedDataState <- next
+            if next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision then
+                // The outer document shell observes DocumentRevision immediately. Keep the chart
+                // envelope aligned before asynchronous data preparation so a following data patch
+                // cannot expose a stale revision and force an unrelated topology rebuild.
+                observedChartTopology <- chartTopologySignaturePrepared next previous
+                chartRuntimeState.Value <- next
+            RendererModel.prepareDataIncrementalScheduled
+                scheduleNextFrame
+                previous
+                next.Data
+                (fun prepared ->
+                    if generation = preparationGeneration then
+                        // Document/view metadata may advance without scheduling another data preparation.
+                        // Pair the completed candidate with the latest runtime envelope so an older
+                        // incremental callback cannot regress DocumentRevision or canvas identity.
+                        acceptPreparedData true runtimeState.Value prepared)
+
         runtimeState.View
         |> View.Sink (fun next ->
             let dataChanged = runtimeDataChanged observedDataState next
@@ -1622,69 +1800,10 @@ module TaWorkspaceRenderer =
                 else
                     observedDataState <- next
             else
-                let nextPreparedData =
-                    if dataChanged then RendererModel.prepareDataIncremental latestPreparedData next.Data
-                    else latestPreparedData
-                let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
-                let topologyChanged =
-                    next.Identity <> chartRuntimeState.Value.Identity
-                    || next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision
-                    || nextChartTopology <> observedChartTopology
-                if topologyChanged then
-                    observedChartTopology <- nextChartTopology
-                    shellPreparedData.Value <- nextPreparedData
-                    match next.Document with
-                    | Some document ->
-                        let nextTimeline = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData
-                        let currentUi = uiState.Value
-                        let generalOldTimeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
-                        let generalOldWindow =
-                            RendererModel.resolveWindow
-                                options.MinimumVisibleBars
-                                options.MaximumVisibleBars
-                                generalOldTimeline.Length
-                                currentUi.FollowLatest
-                                currentUi.Window
-                        let reanchored =
-                            match pendingBoundaryPan with
-                            | Some(_, direction, delta, intentTimeline, intentWindow)
-                                when RendererModel.coverageExtended direction intentTimeline nextTimeline ->
-                                pendingBoundaryPan <- None
-                                RendererModel.tryReanchorWindow
-                                    options.MinimumVisibleBars
-                                    options.MaximumVisibleBars
-                                    delta
-                                    intentTimeline
-                                    nextTimeline
-                                    intentWindow
-                            | _ when not currentUi.FollowLatest
-                                     && generalOldTimeline.Length > 0
-                                     && nextTimeline.Length > generalOldTimeline.Length ->
-                                RendererModel.tryReanchorWindow
-                                    options.MinimumVisibleBars
-                                    options.MaximumVisibleBars
-                                    0
-                                    generalOldTimeline
-                                    nextTimeline
-                                    generalOldWindow
-                            | _ -> None
-                        match reanchored with
-                        | Some window ->
-                            let followLatest = window.StartIndex = RendererModel.viewportMaximumStart nextTimeline.Length window
-                            setUiState
-                                { currentUi with
-                                    Window = window
-                                    FollowLatest = followLatest
-                                    CursorIndex = None }
-                            cursorIndex.Value <- None
-                        | None -> ()
-                    | None -> pendingBoundaryPan <- None
-                    chartRuntimeState.Value <- next
-                elif dataChanged then
-                    shellPreparedData.Value <- nextPreparedData
-                    scheduleRowDataRefresh nextPreparedData
-                latestPreparedData <- nextPreparedData
-                observedDataState <- next)
+                if dataChanged then
+                    scheduleIncrementalPreparation next
+                else
+                    acceptPreparedData false next latestPreparedData)
         scheduleFullPreparation ()
         let chartRuntimeView: View<RuntimeState> = chartRuntimeState.View
 
@@ -1891,7 +2010,10 @@ module TaWorkspaceRenderer =
                     let rowId = node.GetAttribute("data-ta-row-value-row-id")
                     let nextValue =
                         legendIndex
-                        |> Option.bind (tryLegendValue latestLegendReaders rowId traceIndex)
+                        |> Option.bind (fun index ->
+                            match bounded with
+                            | Some _ -> tryLegendValue latestLegendReaders rowId traceIndex index
+                            | None -> tryLegendValueAtOrBefore latestLegendReaders rowId traceIndex index)
                         |> Option.map _.Value
                         |> Option.defaultValue "Unavailable"
                     node.TextContent <- nextValue
@@ -1900,7 +2022,10 @@ module TaWorkspaceRenderer =
                     let rowId = node.GetAttribute("data-ta-row-data-time-row-id")
                     let nextTime =
                         legendIndex
-                        |> Option.bind (tryRowPresentation latestLegendReaders rowId)
+                        |> Option.bind (fun index ->
+                            match bounded with
+                            | Some _ -> tryRowPresentation latestLegendReaders rowId index
+                            | None -> tryRowPresentationAtOrBefore latestLegendReaders rowId index)
                         |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
                         |> Option.defaultValue "Unavailable"
                     node.TextContent <- nextTime
@@ -1948,7 +2073,7 @@ module TaWorkspaceRenderer =
                         line.SetAttribute("x1", xText)
                         line.SetAttribute("x2", xText)
                         line.SetAttribute("visibility", "visible")
-                    let labelX = max 48.0 (min 952.0 x) |> fixedText
+                    let labelLeftPercent = max 48.0 (min 952.0 x) / 10.0 |> fixedText
                     for group in rowCursorLabels do
                         let rowId = group.GetAttribute("data-ta-row-cursor-row-id")
                         let presentation = bounded |> Option.bind (tryRowPresentation latestLegendReaders rowId)
@@ -1956,15 +2081,14 @@ module TaWorkspaceRenderer =
                             presentation
                             |> Option.bind (fun value -> RendererModel.timestampParts value.Timestamp)
                             |> Option.defaultValue ("Unavailable", "Unavailable")
-                        group.SetAttribute("transform", "translate(" + labelX + " 0)")
-                        group.SetAttribute("visibility", "visible")
+                        group.SetAttribute("style", rowCursorTagStyle labelLeftPercent true)
                         let dateNode = group.QuerySelector("[data-ta-row-cursor-date='true']")
                         let timeNode = group.QuerySelector("[data-ta-row-cursor-clock='true']")
                         if not (isNull dateNode) then dateNode.TextContent <- dateText
                         if not (isNull timeNode) then timeNode.TextContent <- timeText
                 | None ->
                     for line in crosshairs do line.SetAttribute("visibility", "hidden")
-                    for group in rowCursorLabels do group.SetAttribute("visibility", "hidden")
+                    for group in rowCursorLabels do group.SetAttribute("style", rowCursorTagStyle "50" false)
 
                 applyVisibleCursorValues bounded
 
@@ -2655,6 +2779,10 @@ module TaWorkspaceRenderer =
                             div [
                                 Attr.Create "data-testid" "ta-chart-stack"
                                 Attr.Create "data-chart-render-sequence" (string renderSequence)
+                                Attr.Create "data-chart-render-reason" chartRenderReason
+                                Attr.Create "data-chart-document-revision" (string state.DocumentRevision)
+                                Attr.Create "data-chart-data-revision" (string state.DataRevision)
+                                Attr.Create "data-chart-transport-sequence" (string state.LastTransportSequence)
                                 Attr.Create "data-loaded-bars" (string referenceLength)
                                 Attr.Create "data-visible-start" (string visibleStart)
                                 Attr.Create "data-visible-end" (string visibleEnd)

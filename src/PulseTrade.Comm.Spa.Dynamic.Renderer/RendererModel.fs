@@ -659,6 +659,69 @@ module RendererModel =
           ResolvedAxes = axes
           ResolvedSeries = resolved }
 
+    let prepareDataIncrementalScheduled schedule previous data onCompleted =
+        let entries = data |> Map.toArray
+        let mutable axes = Map.empty
+        let mutable axisChanges = Map.empty
+        let mutable resolved = Map.empty
+
+        let rec prepareSeries index =
+            if index >= entries.Length then
+                onCompleted
+                    { RawData = data
+                      ResolvedAxes = axes
+                      ResolvedSeries = resolved }
+            else
+                schedule (fun () ->
+                    let dataRef, value = entries[index]
+                    let next =
+                        match value with
+                        | SduiValue.Array rawPoints ->
+                            match Map.tryFind dataRef previous.RawData, Map.tryFind dataRef previous.ResolvedSeries with
+                            | Some(SduiValue.Array previousRaw), Some previousResolved ->
+                                Some(updateInlineSeries previousRaw previousResolved rawPoints)
+                            | _ ->
+                                rawPoints
+                                |> Array.map (fun item ->
+                                    let temporal, payload = pointPayload item
+                                    { Payload = payload; Temporal = temporal })
+                                |> Some
+                        | _ ->
+                            match tryTemporalSeriesRaw value with
+                            | Some(axisRef, axisRevision, rawPoints) ->
+                                match Map.tryFind axisRef axes with
+                                | Some axis when axis.Revision = axisRevision ->
+                                    match Map.tryFind dataRef previous.RawData, Map.tryFind dataRef previous.ResolvedSeries with
+                                    | Some previousValue, Some previousResolved ->
+                                        match tryTemporalSeriesRaw previousValue with
+                                        | Some(previousAxisRef, _, previousRaw) when previousAxisRef = axisRef ->
+                                            let changedAxisPositions = Map.tryFind axisRef axisChanges |> Option.defaultValue None
+                                            Some(updateTemporalSeries previousRaw previousResolved rawPoints axis.Points changedAxisPositions)
+                                        | _ -> Some(resolveTemporalPoints axis.Points rawPoints)
+                                    | _ -> Some(resolveTemporalPoints axis.Points rawPoints)
+                                | _ -> Some [||]
+                            | None -> None
+
+                    match next with
+                    | Some points -> resolved <- Map.add dataRef points resolved
+                    | None -> ()
+                    prepareSeries (index + 1))
+
+        let rec prepareAxes index =
+            if index >= entries.Length then
+                prepareSeries 0
+            else
+                schedule (fun () ->
+                    let _, value = entries[index]
+                    match updateAxis previous value with
+                    | Some(axisRef, axis, changedPositions) ->
+                        axes <- Map.add axisRef axis axes
+                        axisChanges <- Map.add axisRef changedPositions axisChanges
+                    | None -> ()
+                    prepareAxes (index + 1))
+
+        prepareAxes 0
+
     let resolvedSeriesPrepared dataRef prepared =
         prepared.ResolvedSeries
         |> Map.tryFind dataRef
@@ -1559,6 +1622,50 @@ module RendererModel =
         match matchingReferenceRange referenceTimestamps pointTimestamp temporal with
         | Some(first, lastExclusive) -> [| first .. lastExclusive - 1 |]
         | None -> [||]
+
+    let projectedSourceTimestampsWhere includePoint (referenceTimestamps: string array) dataRef prepared =
+        let projected: string option array = Array.create referenceTimestamps.Length None
+        resolvedSeriesPrepared dataRef prepared
+        |> Array.iteri (fun sourceIndex point ->
+            if includePoint point then
+                let sourceTimestamp = point.Temporal |> Option.map presentationTimestamp
+                let range =
+                    match sourceTimestamp, point.Temporal with
+                    | Some timestamp, temporal -> matchingReferenceRange referenceTimestamps timestamp temporal
+                    | None, _ when sourceIndex < referenceTimestamps.Length -> Some(sourceIndex, sourceIndex + 1)
+                    | _ -> None
+
+                match range with
+                | Some(first, lastExclusive) ->
+                    let timestamp = sourceTimestamp |> Option.defaultValue referenceTimestamps[first]
+                    for index in first .. lastExclusive - 1 do
+                        projected[index] <- Some timestamp
+                | None -> ())
+        projected
+
+    let projectedSourceTimestamps referenceTimestamps dataRef prepared =
+        projectedSourceTimestampsWhere (fun _ -> true) referenceTimestamps dataRef prepared
+
+    let projectedLastSourceTimestampWhere includePoint (referenceTimestamps: string array) dataRef prepared =
+        let projected: string option array = Array.create referenceTimestamps.Length None
+        resolvedSeriesPrepared dataRef prepared
+        |> Array.tryLast
+        |> Option.filter includePoint
+        |> Option.iter (fun point ->
+            let sourceTimestamp = point.Temporal |> Option.map presentationTimestamp
+            let range =
+                match sourceTimestamp, point.Temporal with
+                | Some timestamp, temporal -> matchingReferenceRange referenceTimestamps timestamp temporal
+                | None, _ when referenceTimestamps.Length > 0 -> Some(referenceTimestamps.Length - 1, referenceTimestamps.Length)
+                | _ -> None
+
+            match range with
+            | Some(first, lastExclusive) ->
+                let timestamp = sourceTimestamp |> Option.defaultValue referenceTimestamps[first]
+                for index in first .. lastExclusive - 1 do
+                    projected[index] <- Some timestamp
+            | None -> ())
+        projected
 
     let projectedLinePoints (referenceTimestamps: string array) (points: TaLinePoint array) =
         let projected: TaLinePoint option array = Array.create referenceTimestamps.Length None

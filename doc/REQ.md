@@ -120,3 +120,14 @@
 8. PTCS SHALL不擁有scenario generation、summary／trades／timeline／download manifest candidate。Daedalus consumer SHALL提供monotonic selection generation與完整prepare／commit，PTCS只保證runtime frame atomicity與stale render generation suppression。
 9. Owner browser gate SHALL覆蓋desktop/mobile、navigator drag、cluster accessibility、row resize、4,000 slots與>100ms long-task denial；package SHALL按RFC exact graph發布並full WebSharper rebuild。
 10. 真Signal／Order／Fill projection、scenario dropdown與SPAA／fresh-kernel `.dib` parity屬Daedalus consumer gate，不得由PTCS另造backtest renderer。
+11. Row-local cursor timestamp SHALL位於SVG plot外的固定CSS-pixel top gutter；row resize只可改plot height及tag的top/left定位，不得改tag font、line-height、padding、border、width或height。
+
+## 2026-09-25 Chunked Snapshot Transport
+
+權威變更：`doc/RFC/RFC-PTCS-DYNAMIC-0025.chunked-snapshot-transport.md`。
+
+1. Large Snapshot producer SHALL使用Contracts提供的`ptcs-dynamic-snapshot-chunk.v1` encoder，依start／ordered dataRef items／commit輸出；不得手刻consumer-specific JSON。
+2. Interactive.Client SHALL只在完整batch通過metadata、generation與canonical reducer validation後atomic publish並觸發client-local `SnapshotAccepted` lifecycle；partial或invalid batch不得推進revision、取得cache write eligibility或觸發accepted lifecycle。現行wire沒有snapshot ACK frame。
+3. WebSocket callback SHALL只enqueue encoded messages；packet parse、SduiValue decode與reducer SHALL分成bounded scheduled tasks。
+4. Legacy完整RuntimeFrame SHALL維持相容；`RuntimeFrame`／`RuntimePayload`、cache schema與provider authority不得因transport framing改變。
+5. 4,000 slots／28 refs／5 candlestick rows的production packet pump cold ingest與replacement SHALL無大於100ms target-renderer task。

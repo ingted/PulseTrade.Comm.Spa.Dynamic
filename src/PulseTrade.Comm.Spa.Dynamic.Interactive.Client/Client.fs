@@ -57,6 +57,33 @@ module Client =
         let mutable rendererMounted = false
         let mutable pendingAction: (string * (Result<DynamicActionResult, DynamicHostError> -> unit) * JS.Handle) option = None
         let mutable removeUnloadHandler = fun () -> ()
+        let messageQueue = ResizeArray<int * string>()
+        let mutable messagePumpRunning = false
+        let mutable activeBatchMetadata: BrowserRuntimeSnapshotBatchMetadata option = None
+        let mutable activeBatchHeader: RuntimeFrame option = None
+        let activeBatchValues = ResizeArray<string * SduiValue>()
+
+        let resetActiveBatch () =
+            activeBatchMetadata <- None
+            activeBatchHeader <- None
+            activeBatchValues.Clear()
+
+        let resetMessagePump () =
+            messageQueue.Clear()
+            messagePumpRunning <- false
+            resetActiveBatch ()
+
+        let tryStringField name value =
+            let field = JS.Get<obj> name value
+            if BrowserRuntimeFramePump.isMissing field then None
+            else
+                let text = As<string> field
+                if System.String.IsNullOrWhiteSpace text then None else Some text
+
+        let tryIntField name value =
+            let field = JS.Get<obj> name value
+            if BrowserRuntimeFramePump.isMissing field then None
+            else Some(As<int> field)
 
         let clearPendingAction () =
             pendingAction
@@ -122,6 +149,7 @@ module Client =
         let closeTransport () =
             cancelSnapshotTimer ()
             transportGeneration <- transportGeneration + 1
+            resetMessagePump ()
 
             socket
             |> Option.iter (fun value ->
@@ -183,6 +211,233 @@ module Client =
                                 setStatus options.StatusElementId "RECONNECTING")
                         options.ActionTimeoutMs)
 
+        and requestSnapshotAfterFrameFailure code message =
+            resetActiveBatch ()
+            setStatus options.StatusElementId ("FRAME REJECTED: " + code + " - " + message)
+
+            if requestFullSnapshot code then
+                scheduleSnapshotTimeout transportGeneration
+
+        and abortTransport code message =
+            cancelSnapshotTimer ()
+            failPendingAction code message
+            transportGeneration <- transportGeneration + 1
+            let staleSocket = socket
+            socket <- None
+            resetMessagePump ()
+
+            staleSocket
+            |> Option.iter (fun value ->
+                if value.ReadyState = WebSocketReadyState.Open || value.ReadyState = WebSocketReadyState.Connecting then
+                    value.Close())
+
+            applyLifecycle InteractiveClientLifecycleEvent.TransportClosed
+            setStatus options.StatusElementId "RECONNECTING"
+
+        and scheduleMessagePump () =
+            if not messagePumpRunning && messageQueue.Count > 0 && not lifecycle.Disposed then
+                messagePumpRunning <- true
+                let generation, text = messageQueue[0]
+                messageQueue.RemoveAt 0
+
+                JS.RequestAnimationFrame(fun _ ->
+                    if generation <> transportGeneration || lifecycle.Disposed then
+                        messagePumpRunning <- false
+                        scheduleMessagePump ()
+                    else
+                        processQueuedMessage generation text (fun () ->
+                            messagePumpRunning <- false
+                            scheduleMessagePump ()))
+                |> ignore
+
+        and enqueueMessage generation text =
+            if messageQueue.Count >= RuntimeSnapshotTransportDefaults.MaximumItems + 16 then
+                abortTransport
+                    "interactive-frame-queue-overflow"
+                    "The interactive frame queue exceeded its bounded capacity."
+            else
+                messageQueue.Add(generation, text)
+                scheduleMessagePump ()
+
+        and processQueuedMessage generation text completed =
+            let isCurrent () = generation = transportGeneration && not lifecycle.Disposed
+            let schedule _ work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+
+            let reject code message =
+                requestSnapshotAfterFrameFailure code message
+                completed ()
+
+            try
+                let raw = JSON.Parse text
+                let schema = tryStringField "Schema" raw
+                let protocol = tryStringField "Protocol" raw
+
+                match schema, protocol with
+                | Some value, _ when value = RuntimeSnapshotTransportDefaults.Schema ->
+                    processSnapshotPacket generation raw completed
+                | _, Some value when value = DynamicActionWireDefaults.Protocol ->
+                    match BrowserRuntimeCodec.decodeActionResult text with
+                    | Ok result ->
+                        match completePendingAction result with
+                        | Ok _ -> setStatus options.StatusElementId (if awaitingSnapshot then "RESYNCING" else "READY")
+                        | Error message -> setStatus options.StatusElementId message
+                    | Error message -> setStatus options.StatusElementId ("ACTION ERROR: " + message)
+
+                    completed ()
+                | _ when activeBatchHeader.IsSome ->
+                    reject
+                        "runtime-snapshot-chunk-interleaved"
+                        "A canonical runtime frame interrupted an incomplete snapshot batch."
+                | _ ->
+                    let rawPayload = JS.Get<obj> "Payload" raw
+                    let isSnapshot =
+                        not (BrowserRuntimeFramePump.isMissing rawPayload)
+                        && JS.Get<int> "$" rawPayload = 1
+
+                    if isSnapshot then
+                        BrowserRuntimeFramePump.reduceParsedFrameWith
+                            schedule
+                            (runtimeState |> Option.map _.Value)
+                            raw
+                            isCurrent
+                            (function
+                                | BrowserRuntimeFramePumpOutcome.Applied candidate ->
+                                    publishSnapshotCandidate candidate
+                                    completed ()
+                                | BrowserRuntimeFramePumpOutcome.Rejected failure ->
+                                    reject failure.Code failure.Message
+                                | BrowserRuntimeFramePumpOutcome.Superseded -> completed ())
+                    else
+                        match BrowserRuntimeCodec.decode text with
+                        | Ok frame ->
+                            let accepted = applyFrame frame
+                            if accepted then setStatus options.StatusElementId (if awaitingSnapshot then "RESYNCING" else "READY")
+                        | Error message -> setStatus options.StatusElementId ("FRAME ERROR: " + message)
+
+                        completed ()
+            with error ->
+                reject "runtime-frame-decode-failed" error.Message
+
+        and processSnapshotPacket generation raw completed =
+            let kind = tryStringField "Kind" raw
+
+            let reject code message =
+                requestSnapshotAfterFrameFailure code message
+                completed ()
+
+            match kind with
+            | Some value when value = RuntimeSnapshotTransportDefaults.StartKind ->
+                match tryStringField "BatchId" raw, tryIntField "ItemCount" raw with
+                | Some batchId, Some itemCount ->
+                    match BrowserRuntimeSnapshotBatch.create generation batchId itemCount with
+                    | Error(code, message) -> reject code message
+                    | Ok metadata ->
+                        let rawHeader = JS.Get<obj> "Header" raw
+
+                        if BrowserRuntimeFramePump.isMissing rawHeader then
+                            reject "runtime-snapshot-chunk-header-required" "Snapshot start requires a header."
+                        else
+                            match BrowserRuntimeCodec.decode (JSON.Stringify rawHeader) with
+                            | Ok header ->
+                                match header.Kind, header.Payload with
+                                | RuntimeFrameKind.Snapshot, RuntimePayload.Snapshot snapshot when snapshot.Data.IsEmpty ->
+                                    resetActiveBatch ()
+                                    activeBatchMetadata <- Some metadata
+                                    activeBatchHeader <- Some header
+                                    completed ()
+                                | _ ->
+                                    reject
+                                        "runtime-snapshot-chunk-header-invalid"
+                                        "Snapshot start header must contain an empty canonical Snapshot payload."
+                            | Error message -> reject "runtime-snapshot-chunk-header-invalid" message
+                | _ ->
+                    reject
+                        "runtime-snapshot-chunk-start-invalid"
+                        "Snapshot start batch id or item count is invalid."
+
+            | Some value when value = RuntimeSnapshotTransportDefaults.ItemKind ->
+                match tryStringField "BatchId" raw, tryIntField "ItemIndex" raw, tryStringField "DataRef" raw, activeBatchMetadata, activeBatchHeader with
+                | Some batchId, Some itemIndex, Some dataRef, Some metadata, Some _ ->
+                    match BrowserRuntimeSnapshotBatch.validateItem generation batchId itemIndex dataRef metadata with
+                    | Error(code, message) -> reject code message
+                    | Ok _ ->
+                        let rawValue = JS.Get<obj> "Value" raw
+
+                        if BrowserRuntimeFramePump.isMissing rawValue then
+                            reject "runtime-snapshot-chunk-value-required" "Snapshot item requires a value."
+                        else
+                            let schedule _ work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+                            let isCurrent () =
+                                generation = transportGeneration
+                                && (activeBatchMetadata
+                                    |> Option.exists (fun current ->
+                                        current.Generation = generation && current.BatchId = batchId))
+                                && not lifecycle.Disposed
+
+                            BrowserRuntimeFramePump.decodeSnapshotValueWith
+                                schedule
+                                dataRef
+                                rawValue
+                                isCurrent
+                                (fun decoded ->
+                                    activeBatchValues.Add(dataRef, decoded)
+                                    activeBatchMetadata <- Some(BrowserRuntimeSnapshotBatch.acceptItem dataRef metadata)
+                                    completed ())
+                                reject
+                                completed
+                | _ ->
+                    reject
+                        "runtime-snapshot-chunk-item-invalid"
+                        "Snapshot item is missing, duplicate, out of order or belongs to another batch."
+
+            | Some value when value = RuntimeSnapshotTransportDefaults.CommitKind ->
+                match tryStringField "BatchId" raw, tryIntField "ItemCount" raw, activeBatchMetadata, activeBatchHeader with
+                | Some batchId, Some itemCount, Some metadata, Some header ->
+                    match BrowserRuntimeSnapshotBatch.validateCommit generation batchId itemCount metadata with
+                    | Error(code, message) -> reject code message
+                    | Ok _ ->
+                        let frame =
+                            match header.Payload with
+                            | RuntimePayload.Snapshot snapshot ->
+                                { header with
+                                    Payload =
+                                        RuntimePayload.Snapshot
+                                            { snapshot with
+                                                Data = activeBatchValues.ToArray() |> Map.ofArray } }
+                            | _ -> header
+
+                        resetActiveBatch ()
+                        let schedule _ work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+                        let isCurrent () = generation = transportGeneration && not lifecycle.Disposed
+                        let current =
+                            runtimeState
+                            |> Option.map _.Value
+                            |> Option.defaultWith (fun () ->
+                                RuntimeReducer.initial
+                                    { DocumentId = frame.DocumentId
+                                      CanvasInstanceId = frame.CanvasInstanceId })
+
+                        BrowserRuntimeFramePump.reduceFrameWith
+                            schedule
+                            current
+                            frame
+                            isCurrent
+                            0
+                            (function
+                                | BrowserRuntimeFramePumpOutcome.Applied candidate ->
+                                    publishSnapshotCandidate candidate
+                                    completed ()
+                                | BrowserRuntimeFramePumpOutcome.Rejected failure ->
+                                    reject failure.Code failure.Message
+                                | BrowserRuntimeFramePumpOutcome.Superseded -> completed ())
+                | _ ->
+                    reject
+                        "runtime-snapshot-chunk-commit-invalid"
+                        "Snapshot commit does not match a complete active batch."
+
+            | _ ->
+                reject "runtime-snapshot-chunk-kind-invalid" "Snapshot chunk kind is unsupported."
+
         and connect () =
             if not lifecycle.Disposed && socket.IsNone then
                 transportGeneration <- transportGeneration + 1
@@ -204,21 +459,7 @@ module Client =
                 value.OnMessage <-
                     fun event ->
                         if generation = transportGeneration && not lifecycle.Disposed then
-                            let text = string event.Data
-
-                            match BrowserRuntimeCodec.decodeActionResult text with
-                            | Ok result ->
-                                match completePendingAction result with
-                                | Ok _ -> setStatus options.StatusElementId (if awaitingSnapshot then "RESYNCING" else "READY")
-                                | Error message -> setStatus options.StatusElementId message
-                            | Error _ ->
-                                match BrowserRuntimeCodec.decode text with
-                                | Ok frame ->
-                                    let accepted = applyFrame frame
-
-                                    if accepted then
-                                        setStatus options.StatusElementId (if awaitingSnapshot then "RESYNCING" else "READY")
-                                | Error message -> setStatus options.StatusElementId ("FRAME ERROR: " + message)
+                            enqueueMessage generation (string event.Data)
 
                 value.OnError <-
                     fun () ->
@@ -287,6 +528,33 @@ module Client =
             TaWorkspaceRenderer.render TaWorkspaceRenderer.defaultOptions callbacks state
             |> Doc.RunById options.RootElementId
 
+        and publishRuntimeState next =
+            match runtimeState with
+            | None ->
+                let state = Var.Create next
+                runtimeState <- Some state
+
+                match next.Document with
+                | Some _ ->
+                    mount state
+                    rendererMounted <- true
+                    sendMounted ()
+                | None -> ()
+            | Some state ->
+                state.Value <- next
+
+                if not rendererMounted && next.Document.IsSome then
+                    mount state
+                    rendererMounted <- true
+                    sendMounted ()
+
+        and publishSnapshotCandidate candidate =
+            publishRuntimeState candidate
+            awaitingSnapshot <- false
+            cancelSnapshotTimer ()
+            applyLifecycle InteractiveClientLifecycleEvent.SnapshotAccepted
+            setStatus options.StatusElementId "READY"
+
         and applyFrame frame =
             let next, effect =
                 match runtimeState with
@@ -304,31 +572,12 @@ module Client =
                 | RuntimeEffect.RejectFrame _ -> false
                 | _ -> true
 
-            match runtimeState with
-            | None ->
-                let state = Var.Create next
-                runtimeState <- Some state
-                interpretRuntime effect
-
-                match next.Document with
-                | Some _ ->
-                    mount state
-                    rendererMounted <- true
-                    sendMounted ()
-                | None -> ()
-            | Some state ->
-                state.Value <- next
-                interpretRuntime effect
-
-                if not rendererMounted && next.Document.IsSome then
-                    mount state
-                    rendererMounted <- true
-                    sendMounted ()
-
             if accepted && frame.Kind = RuntimeFrameKind.Snapshot then
-                awaitingSnapshot <- false
-                cancelSnapshotTimer ()
-                applyLifecycle InteractiveClientLifecycleEvent.SnapshotAccepted
+                publishSnapshotCandidate next
+            else
+                publishRuntimeState next
+
+            interpretRuntime effect
 
             accepted
 

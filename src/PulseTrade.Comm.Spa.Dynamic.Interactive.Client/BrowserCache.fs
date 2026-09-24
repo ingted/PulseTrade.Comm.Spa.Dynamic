@@ -5,9 +5,16 @@ open WebSharper
 open WebSharper.JavaScript
 
 [<JavaScript>]
+type BrowserRuntimeCacheDataItem =
+    { DataRef: string
+      ValueJson: string }
+
+[<JavaScript>]
 type BrowserRuntimeCacheRecord =
     { Key: string
-      EntryJson: string
+      LookupKey: string
+      EntryHeaderJson: string
+      DataItems: BrowserRuntimeCacheDataItem array
       TouchedAtTicks: string }
 
 [<JavaScript; RequireQualifiedAccess>]
@@ -27,6 +34,19 @@ type BrowserRuntimeCacheAcceptedStateWriteResult =
     | Rejected of errors: DynamicValidationError list
     | Unavailable of reasonCode: string
 
+[<JavaScript; RequireQualifiedAccess>]
+type BrowserRuntimeCachePhasedWriteOutcome =
+    | Completed of BrowserRuntimeCacheAcceptedStateWriteResult
+    | CancelledBeforeWrite
+
+[<JavaScript; RequireQualifiedAccess>]
+type BrowserRuntimeCachePhasedRehydrateOutcome =
+    | Rehydrated of RuntimeState
+    | Miss
+    | Rejected of errors: DynamicValidationError list
+    | Unavailable of reasonCode: string
+    | Superseded
+
 /// Bounded, non-authoritative browser persistence for accepted Dynamic runtime projections.
 /// Every returned entry still has to pass the runtime reducer before it may be rendered.
 [<JavaScript; RequireQualifiedAccess>]
@@ -38,7 +58,13 @@ module BrowserRuntimeCache =
     let StoreName = "runtimeSnapshots"
 
     [<Literal>]
-    let DatabaseVersion = 1
+    let DatabaseVersion = 3
+
+    [<Literal>]
+    let LookupIndexName = "lookupKey"
+
+    [<Literal>]
+    let TouchedAtIndexName = "touchedAtTicks"
 
     let isMissing (value: obj) =
         isNull value || JS.TypeOf value = JS.Kind.Undefined
@@ -55,7 +81,7 @@ module BrowserRuntimeCache =
                 completed <- true
                 callback value
 
-    let ensureStore (db: obj) =
+    let recreateStore (db: obj) =
         let names = JS.Get<obj> "objectStoreNames" db
 
         let exists =
@@ -67,8 +93,13 @@ module BrowserRuntimeCache =
                 with _ ->
                     false
 
-        if not exists then
-            JS.Apply<obj> db "createObjectStore" [| box StoreName |] |> ignore
+        if exists then
+            JS.Apply<obj> db "deleteObjectStore" [| box StoreName |] |> ignore
+
+        let options = New [ "keyPath" => box "Key" ]
+        let store = JS.Apply<obj> db "createObjectStore" [| box StoreName; box options |]
+        JS.Apply<obj> store "createIndex" [| box LookupIndexName; box "LookupKey" |] |> ignore
+        JS.Apply<obj> store "createIndex" [| box TouchedAtIndexName; box "TouchedAtTicks" |] |> ignore
 
     let openDb onReady onUnavailable =
         let unavailable = once onUnavailable
@@ -86,7 +117,7 @@ module BrowserRuntimeCache =
                     "onupgradeneeded"
                     (System.Action<obj>(fun event ->
                         let db = eventResult event
-                        if not (isMissing db) then ensureStore db))
+                        if not (isMissing db) then recreateStore db))
 
                 JS.Set
                     request
@@ -111,16 +142,24 @@ module BrowserRuntimeCache =
                     onUnavailable "indexeddb-transaction-failed")
             onUnavailable
 
-    let decodeRecord text =
-        try
-            let record: BrowserRuntimeCacheRecord = Json.Deserialize text
+    let validateRecord (record: BrowserRuntimeCacheRecord) =
+        if isNull (box record)
+           || System.String.IsNullOrWhiteSpace record.Key
+           || System.String.IsNullOrWhiteSpace record.LookupKey
+           || System.String.IsNullOrWhiteSpace record.EntryHeaderJson
+           || isNull record.DataItems then
+            None
+        else
+            Some record
 
-            if isNull (box record)
-               || System.String.IsNullOrWhiteSpace record.Key
-               || System.String.IsNullOrWhiteSpace record.EntryJson then
-                None
+    let decodeRecordValue (value: obj) =
+        try
+            if isMissing value then None
+            elif JS.TypeOf value = JS.Kind.String then
+                let record: BrowserRuntimeCacheRecord = Json.Deserialize(As<string> value)
+                validateRecord record
             else
-                Some record
+                value |> As<BrowserRuntimeCacheRecord> |> validateRecord
         with _ ->
             None
 
@@ -149,8 +188,8 @@ module BrowserRuntimeCache =
                             else
                                 try
                                     value
-                                    |> As<string[]>
-                                    |> Array.choose decodeRecord
+                                    |> As<obj[]>
+                                    |> Array.choose decodeRecordValue
                                     |> complete
                                 with _ ->
                                     complete [||]))
@@ -182,60 +221,125 @@ module BrowserRuntimeCache =
                 (fun _ -> complete ())
 
     let compact onCompleted =
-        readAll
-            (fun records ->
-                let overflow = records.Length - RuntimeCache.MaximumEntries
+        let complete = once (fun _ -> onCompleted ())
 
-                if overflow <= 0 then
-                    onCompleted ()
-                else
-                    records
-                    |> Array.sortBy touchedAt
-                    |> Array.truncate overflow
-                    |> Array.map _.Key
-                    |> fun keys -> deleteKeys keys onCompleted)
-            (fun _ -> onCompleted ())
+        withStore
+            "readwrite"
+            (fun tx store ->
+                JS.Set tx "oncomplete" (System.Action<obj>(fun _ -> complete ()))
+                JS.Set tx "onabort" (System.Action<obj>(fun _ -> complete ()))
+                JS.Set tx "onerror" (System.Action<obj>(fun _ -> complete ()))
+
+                try
+                    let index = JS.Apply<obj> store "index" [| box TouchedAtIndexName |]
+                    let request = JS.Apply<obj> index "openCursor" [| null; box "prev" |]
+                    let mutable retained = 0
+
+                    JS.Set
+                        request
+                        "onsuccess"
+                        (System.Action<obj>(fun event ->
+                            let cursor = eventResult event
+
+                            if not (isMissing cursor) then
+                                if retained < RuntimeCache.MaximumEntries then
+                                    retained <- retained + 1
+                                else
+                                    JS.Apply<obj> cursor "delete" [||] |> ignore
+
+                                JS.Apply<obj> cursor "continue" [||] |> ignore))
+
+                    JS.Set request "onerror" (System.Action<obj>(fun _ -> complete ()))
+                with _ ->
+                    complete ())
+            (fun _ -> complete ())
+
+    let lookupKeyFor cacheIdentity workspaceId =
+        System.String.Concat(
+            cacheIdentity.OwnerFingerprint,
+            "|",
+            string cacheIdentity.SchemaRevision,
+            "|",
+            workspaceId)
 
     let keyFor entry nowTicks =
         System.String.Concat(
-            entry.CacheIdentity.OwnerFingerprint,
-            "|",
-            string entry.CacheIdentity.SchemaRevision,
-            "|",
-            entry.WorkspaceId,
+            lookupKeyFor entry.CacheIdentity entry.WorkspaceId,
             "|",
             nowTicks)
+
+    let recordForEntry key touchedAtTicks (entry: RuntimeCacheEntry) =
+        let header =
+            { entry with
+                Snapshot =
+                    { entry.Snapshot with
+                        Data = Map.empty } }
+
+        { Key = key
+          LookupKey = lookupKeyFor entry.CacheIdentity entry.WorkspaceId
+          EntryHeaderJson = BrowserRuntimeCodec.encodeCacheEntry header
+          DataItems =
+            entry.Snapshot.Data
+            |> Map.toArray
+            |> Array.map (fun (dataRef, value) ->
+                { DataRef = dataRef
+                  ValueJson = Json.Serialize value })
+          TouchedAtTicks = touchedAtTicks }
+
+    let decodeDataItemsPhased schedule (record: BrowserRuntimeCacheRecord) (header: RuntimeCacheEntry) continuation =
+        let values = ResizeArray<string * SduiValue>()
+        let seen = System.Collections.Generic.HashSet<string>()
+
+        let rec decode index =
+            if index >= record.DataItems.Length then
+                let snapshot =
+                    { header.Snapshot with
+                        Data = values.ToArray() |> Map.ofArray }
+
+                continuation (Result.Ok { header with Snapshot = snapshot })
+            else
+                schedule (fun () ->
+                    try
+                        let item = record.DataItems[index]
+
+                        if isNull (box item)
+                           || System.String.IsNullOrWhiteSpace item.DataRef
+                           || System.String.IsNullOrWhiteSpace item.ValueJson
+                           || not (seen.Add item.DataRef) then
+                            continuation (Result.Error "cache-data-item-invalid")
+                        else
+                            let value: SduiValue = Json.Deserialize item.ValueJson
+                            values.Add(item.DataRef, value)
+                            decode (index + 1)
+                    with _ ->
+                        continuation (Result.Error "cache-data-item-decode-failed"))
+
+        decode 0
 
     let write entry continuation =
         let complete = once continuation
 
-        match BrowserRuntimeCodec.encodeCacheEntry entry with
-        | null -> complete (BrowserRuntimeCacheWriteResult.Unavailable "cache-encode-empty")
-        | entryJson ->
-            let nowTicks = string System.DateTime.UtcNow.Ticks
-            let key = keyFor entry nowTicks
-            let record =
-                { Key = key
-                  EntryJson = entryJson
-                  TouchedAtTicks = nowTicks }
+        let nowTicks = string System.DateTime.UtcNow.Ticks
+        let key = keyFor entry nowTicks
+        let record = recordForEntry key nowTicks entry
 
-            withStore
-                "readwrite"
-                (fun tx store ->
-                    JS.Set
-                        tx
-                        "oncomplete"
-                        (System.Action<obj>(fun _ ->
-                            compact (fun () -> complete BrowserRuntimeCacheWriteResult.Written)))
+        withStore
+            "readwrite"
+            (fun tx store ->
+                JS.Set
+                    tx
+                    "oncomplete"
+                    (System.Action<obj>(fun _ ->
+                        compact (fun () -> complete BrowserRuntimeCacheWriteResult.Written)))
 
-                    JS.Set tx "onabort" (System.Action<obj>(fun _ -> complete (BrowserRuntimeCacheWriteResult.Unavailable "indexeddb-write-aborted")))
-                    JS.Set tx "onerror" (System.Action<obj>(fun _ -> complete (BrowserRuntimeCacheWriteResult.Unavailable "indexeddb-write-failed")))
+                JS.Set tx "onabort" (System.Action<obj>(fun _ -> complete (BrowserRuntimeCacheWriteResult.Unavailable "indexeddb-write-aborted")))
+                JS.Set tx "onerror" (System.Action<obj>(fun _ -> complete (BrowserRuntimeCacheWriteResult.Unavailable "indexeddb-write-failed")))
 
-                    try
-                        JS.Apply<obj> store "put" [| box (Json.Serialize record); box key |] |> ignore
-                    with _ ->
-                        complete (BrowserRuntimeCacheWriteResult.Unavailable "indexeddb-write-exception"))
-                (fun reason -> complete (BrowserRuntimeCacheWriteResult.Unavailable reason))
+                try
+                    JS.Apply<obj> store "put" [| box record |] |> ignore
+                with _ ->
+                    complete (BrowserRuntimeCacheWriteResult.Unavailable "indexeddb-write-exception"))
+            (fun reason -> complete (BrowserRuntimeCacheWriteResult.Unavailable reason))
 
     /// Validate and persist one accepted runtime projection without making browser storage authoritative.
     /// Rejected contains canonical contract validation failures; Unavailable is limited to IndexedDB failures.
@@ -249,47 +353,123 @@ module BrowserRuntimeCache =
                     | BrowserRuntimeCacheWriteResult.Written -> continuation BrowserRuntimeCacheAcceptedStateWriteResult.Written
                     | BrowserRuntimeCacheWriteResult.Unavailable reason -> continuation (BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason))
 
+    /// Project and persist an accepted state in separate browser tasks. The supplied generation
+    /// guard is checked before projection and again before IndexedDB encoding/write begins.
+    let writeAcceptedStatePhased cacheIdentity runtimeState isCurrent continuation =
+        let complete = once continuation
+        let schedule work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+
+        schedule (fun () ->
+            if not (isCurrent ()) then
+                complete BrowserRuntimeCachePhasedWriteOutcome.CancelledBeforeWrite
+            else
+                match RuntimeCacheProjection.tryCreateEntry System.DateTimeOffset.UtcNow cacheIdentity runtimeState with
+                | Error errors ->
+                    complete(
+                        BrowserRuntimeCachePhasedWriteOutcome.Completed(
+                            BrowserRuntimeCacheAcceptedStateWriteResult.Rejected errors))
+                | Ok entry ->
+                    schedule (fun () ->
+                        if not (isCurrent ()) then
+                            complete BrowserRuntimeCachePhasedWriteOutcome.CancelledBeforeWrite
+                        else
+                            write
+                                entry
+                                (fun result ->
+                                    let acceptedResult =
+                                        match result with
+                                        | BrowserRuntimeCacheWriteResult.Written -> BrowserRuntimeCacheAcceptedStateWriteResult.Written
+                                        | BrowserRuntimeCacheWriteResult.Unavailable reason ->
+                                            BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason
+
+                                    complete (BrowserRuntimeCachePhasedWriteOutcome.Completed acceptedResult))))
+
     /// Rebase a validated cache entry onto the current authoritative document and pause remote commands until resync.
     let tryRehydrate cacheIdentity currentState entry =
         RuntimeCacheProjection.tryRehydrate DynamicRuntimeDefaults.limits cacheIdentity currentState entry
 
     let readMatching identityMatches cacheIdentity workspaceId (requestedCoverage: RuntimeCacheCoverage option) continuation =
         let complete = once continuation
+        let lookupKey = lookupKeyFor cacheIdentity workspaceId
+        let invalidKeys = ResizeArray<string>()
+        let candidates = ResizeArray<BrowserRuntimeCacheRecord>()
+        let schedule work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
 
-        readAll
-            (fun records ->
-                let invalidKeys = ResizeArray<string>()
+        let finish result =
+            deleteKeys (invalidKeys.ToArray()) (fun () -> complete result)
 
-                let matches =
-                    records
-                    |> Array.choose (fun record ->
-                        match BrowserRuntimeCodec.decodeCacheEntry record.EntryJson with
-                        | Error _ ->
-                            invalidKeys.Add record.Key
-                            None
-                        | Ok entry ->
-                            match RuntimeCacheEntryValidation.validate DynamicRuntimeDefaults.limits entry with
-                            | Error _ ->
-                                invalidKeys.Add record.Key
-                                None
-                            | Ok valid when identityMatches valid.CacheIdentity cacheIdentity && valid.WorkspaceId = workspaceId ->
-                                let covers =
-                                    match requestedCoverage with
-                                    | None -> true
-                                    | Some requested ->
-                                        valid.Coverage.StartEventTimeUtc <= requested.StartEventTimeUtc
-                                        && valid.Coverage.EndEventTimeExclusiveUtc >= requested.EndEventTimeExclusiveUtc
+        let rec inspectCandidate candidateIndex =
+            if candidateIndex >= candidates.Count then
+                finish BrowserRuntimeCacheReadResult.Miss
+            else
+                let record = candidates[candidateIndex]
 
-                                if covers then Some(record, valid) else None
-                            | Ok _ -> None)
-                    |> Array.sortByDescending (fst >> touchedAt)
+                match BrowserRuntimeCodec.decodeCacheEntry record.EntryHeaderJson with
+                | Error _ ->
+                    invalidKeys.Add record.Key
+                    inspectCandidate (candidateIndex + 1)
+                | Ok header ->
+                    match RuntimeCacheEntryValidation.validateHeader header with
+                    | Error _ ->
+                        invalidKeys.Add record.Key
+                        inspectCandidate (candidateIndex + 1)
+                    | Ok valid when identityMatches valid.CacheIdentity cacheIdentity && valid.WorkspaceId = workspaceId ->
+                        let covers =
+                            match requestedCoverage with
+                            | None -> true
+                            | Some requested ->
+                                valid.Coverage.StartEventTimeUtc <= requested.StartEventTimeUtc
+                                && valid.Coverage.EndEventTimeExclusiveUtc >= requested.EndEventTimeExclusiveUtc
 
-                let result =
-                    match Array.tryHead matches with
-                    | Some(_, entry) -> BrowserRuntimeCacheReadResult.Hit entry
-                    | None -> BrowserRuntimeCacheReadResult.Miss
+                        if covers then
+                            decodeDataItemsPhased
+                                schedule
+                                record
+                                valid
+                                (function
+                                    | Ok entry -> finish (BrowserRuntimeCacheReadResult.Hit entry)
+                                    | Error _ ->
+                                        invalidKeys.Add record.Key
+                                        inspectCandidate (candidateIndex + 1))
+                        else
+                            inspectCandidate (candidateIndex + 1)
+                    | Ok _ ->
+                        inspectCandidate (candidateIndex + 1)
 
-                deleteKeys (invalidKeys.ToArray()) (fun () -> complete result))
+        withStore
+            "readonly"
+            (fun _ store ->
+                try
+                    let index = JS.Apply<obj> store "index" [| box LookupIndexName |]
+                    let keyRangeFactory = JS.Get<obj> "IDBKeyRange" JS.Window
+                    let range = JS.Apply<obj> keyRangeFactory "only" [| box lookupKey |]
+                    let request = JS.Apply<obj> index "openCursor" [| box range; box "prev" |]
+
+                    let continueCursor cursor = JS.Apply<obj> cursor "continue" [||] |> ignore
+
+                    JS.Set
+                        request
+                        "onsuccess"
+                        (System.Action<obj>(fun event ->
+                            let cursor = eventResult event
+
+                            if isMissing cursor then
+                                inspectCandidate 0
+                            else
+                                let key = JS.Get<obj> "primaryKey" cursor |> As<string>
+                                let value = JS.Get<obj> "value" cursor
+
+                                match decodeRecordValue value with
+                                | None ->
+                                    invalidKeys.Add key
+                                | Some record ->
+                                    candidates.Add record
+
+                                continueCursor cursor))
+
+                    JS.Set request "onerror" (System.Action<obj>(fun _ -> complete (BrowserRuntimeCacheReadResult.Unavailable "indexeddb-cursor-failed")))
+                with _ ->
+                    complete (BrowserRuntimeCacheReadResult.Unavailable "indexeddb-cursor-exception"))
             (fun reason -> complete (BrowserRuntimeCacheReadResult.Unavailable reason))
 
     let readLatest cacheIdentity workspaceId requestedCoverage continuation =
@@ -297,6 +477,72 @@ module BrowserRuntimeCache =
 
     let readCovering cacheIdentity workspaceId requestedCoverage continuation =
         readMatching (=) cacheIdentity workspaceId (Some requestedCoverage) continuation
+
+    let rehydratePhased
+        read
+        cacheIdentity
+        (currentState: unit -> RuntimeState)
+        isCurrent
+        continuation
+        =
+        let complete = once continuation
+        let schedule work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+
+        if not (isCurrent ()) then
+            complete BrowserRuntimeCachePhasedRehydrateOutcome.Superseded
+        else
+            read (function
+                | _ when not (isCurrent ()) ->
+                    complete BrowserRuntimeCachePhasedRehydrateOutcome.Superseded
+                | BrowserRuntimeCacheReadResult.Miss ->
+                    complete BrowserRuntimeCachePhasedRehydrateOutcome.Miss
+                | BrowserRuntimeCacheReadResult.Unavailable reason ->
+                    complete (BrowserRuntimeCachePhasedRehydrateOutcome.Unavailable reason)
+                | BrowserRuntimeCacheReadResult.Hit entry ->
+                    schedule (fun () ->
+                        if not (isCurrent ()) then
+                            complete BrowserRuntimeCachePhasedRehydrateOutcome.Superseded
+                        else
+                            let current = currentState ()
+
+                            match RuntimeCacheProjection.tryCreateRehydrateFrame cacheIdentity current entry with
+                            | Error errors ->
+                                complete (BrowserRuntimeCachePhasedRehydrateOutcome.Rejected errors)
+                            | Ok frame ->
+                                BrowserRuntimeFramePump.reduceFrameWith
+                                    (fun _ work -> schedule work)
+                                    current
+                                    frame
+                                    isCurrent
+                                    0
+                                    (function
+                                        | BrowserRuntimeFramePumpOutcome.Applied candidate ->
+                                            candidate
+                                            |> RuntimeCacheProjection.completeRehydrate current
+                                            |> BrowserRuntimeCachePhasedRehydrateOutcome.Rehydrated
+                                            |> complete
+                                        | BrowserRuntimeFramePumpOutcome.Rejected failure ->
+                                            [ RuntimeValidation.error failure.Code "cache.snapshot" failure.Message ]
+                                            |> BrowserRuntimeCachePhasedRehydrateOutcome.Rejected
+                                            |> complete
+                                        | BrowserRuntimeFramePumpOutcome.Superseded ->
+                                            complete BrowserRuntimeCachePhasedRehydrateOutcome.Superseded)))
+
+    let rehydrateLatestPhased cacheIdentity workspaceId currentState isCurrent continuation =
+        rehydratePhased
+            (fun next -> readLatest cacheIdentity workspaceId None next)
+            cacheIdentity
+            currentState
+            isCurrent
+            continuation
+
+    let rehydrateCoveringPhased cacheIdentity workspaceId requestedCoverage currentState isCurrent continuation =
+        rehydratePhased
+            (fun next -> readCovering cacheIdentity workspaceId requestedCoverage next)
+            cacheIdentity
+            currentState
+            isCurrent
+            continuation
 
     let clear continuation =
         let complete = once continuation

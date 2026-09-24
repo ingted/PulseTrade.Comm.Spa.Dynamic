@@ -1,0 +1,30 @@
+# RFC-0024 five-candle-row performance parity
+
+## Pre-work Plan
+
+- 背景：Daedalus以Renderer `0.1.45`關閉OverviewStripe blocker，但真SPAA initial-run三次有兩次約220–226ms long task；owner 7-row／4,000-slot fixture無>100ms。
+- 目標：以真SPAA等價的五個candlestick rows與4,000 slots重現並定位owner／consumer performance boundary。
+- 假設：現有owner fixture只有price與Heikin candlestick-heavy rows，低估五列candlestick SVG mount／refresh成本。
+- 步驟：盤點fixture與phase instrumentation；先擴owner fixture/gate；重跑F# Playwright；只有重現owner long task才修改Renderer bounded scheduling。
+- 範圍：Renderer BrowserDemo、F# Playwright verifier、必要的Renderer scheduling與focused docs/tests；不改wire contract、consumer scenario semantics或效能門檻。
+- 驗收：五個4,000-slot candlestick rows下initial/all/replacement各phase無>100ms，pointer p95<=50ms；若owner不重現，輸出可操作的consumer commit boundary evidence。
+- 風險：單純複製row可能因dataRef共用而低估prepare成本；fixture須使用不同series/data refs並維持真SPAA row topology。
+
+## Operations
+
+- 2026-09-25 01:35 +08:00：baseline clean at `4f2fbac`；收到Daedalus direct `msg-fsi-342de0d4127042518cc1d3097d013e7e`並回覆`msg-fsi-23589671547b48979efc6dceb9e17228`，確認不放寬gate並接手owner parity investigation。
+
+- 2026-09-25 05:14:26 +08:00 - DYN-T-577 production lifecycle gate: LiveDemo initial/reconnect snapshots flattened to chunk packets (document=1, snapshot=4 for two data refs). Initial Playwright failure was an oracle race: verifier asserted before requestAnimationFrame-based chunk commit. Added explicit LAST GOOD V1 wait; lifecycle PASS with one active transport, reconnect full snapshot request=1, last-good preservation, resync V2, and unmounted=1. No product decode rejection occurred.
+
+- 2026-09-25 05:15:13 +08:00 - DYN-T-578 browser cache gate PASS after chunk/cache changes: persisted bounded count=8, latest revision=10, oldest eviction, covering hit/miss, corrupt and semantic-invalid removal, finalized-prefix handling, accepted-state write, paused-state rejection, paused rehydrate, and clear-to-zero all verified in real browser.
+
+- 2026-09-25 05:20:14 +08:00 - DYN-T-585..587 production path: extended lifecycle fixture injects start plus out-of-order item into an established V1. Browser kept V1, emitted one RequestFullSnapshot, switched only after chunked V2 commit, then preserved V2 across forced disconnect until chunked V3 commit. PASS: invalidBatch=1, requests=2 (invalid+reconnect), logical frames=4, active/max transport=1, unmounted=1.
+
+- 2026-09-25 06:04 +08:00 - Correction：先前Operations把lifecycle/cache誤標為DYN-T-577/578；RFC-0025正確對應為DYN-T-584..587及DYN-T-588。DYN-T-577/578屬RFC-0024 consumer/same-topology stripe追蹤。
+- 2026-09-25 06:17 +08:00 - Five-candle root cause：large candle projection先展開每個base slot，再以tuple allocation、`Array.groupBy`及多次掃描聚合coarse candles；busy/GC條件下造成>100ms。改為固定trace/projection/bucket arrays單次累積first-open、last-close、high、low、volume；<=1000 slots保留既有projection，source/Y-domain/cursor語意不變。
+- 2026-09-25 06:21 +08:00 - Daedalus要求row timestamp tag為SVG外fixed-CSS-pixel overlay。Renderer改成每row固定32px top gutter與92×28兩行HTML tag；F# Playwright透過CDP computed style及bounding box驗row resize前後除top/left外不變。Pointer drag oracle另修為等待`aria-valuenow`穩定，避免讀到WebSharper中間step。
+- 2026-09-25 06:23 +08:00 - Source browser gate PASS：five-candle replacement max87.17ms、cursor main-thread max38.04ms、All/marker/document/progressive max47.97/74.18/39.88/53.90ms，over100=0。單次Playwright RPC latency降為diagnostic；browser CDP main-thread trace仍維持硬性>100ms deny。
+- 2026-09-25 06:36 +08:00 - Final exact graph發布：Contracts 0.1.22、Renderer 0.1.49、Interactive.Client 0.1.41、Dynamic.Ptcs 0.1.44、Ptcs.Client 0.1.63。NuGet.org official readback repository signatures及exact dependencies通過；official DLL與local release DLL相同，Interactive manifest/client.js/minified entries相同。
+- 2026-09-25 06:36 +08:00 - Fresh official-cache focused suites PASS 34/45/12/14/16。Final Renderer Playwright PASS：five-candle max92.04ms、cursor main-thread max74.73ms、All/marker/document/progressive max49.30/79.15/40.12/57.14ms，over100=0。Lifecycle與cache browser gates PASS；test hosts 18882/18884/18885已停，外部SPAA 18883 PID17004保持運行。
+- 2026-09-25 06:42 +08:00 - Closeout gate：第一次changed-path scanner呼叫因PowerShell nested array把多個路徑串成單一路徑而失敗；改為flat array後掃描44個changed/new/log檔，High=0、Medium=0。strict UTF-8無NUL/U+FFFD；五個package `.fsproj` 的UTF-8 BOM與`HEAD`一致，沒有encoding drift。
+- 2026-09-25 06:44 +08:00 - Repo-scoped `check.fsx` PASS=30/WARN=2/FAIL=0。WARN為commit前預期的git dirty，以及既有跨歷史文件RFC traceability缺口；本輪WBS/Test缺口皆為0，非本輪衝突。

@@ -186,20 +186,26 @@ module Client =
                         | BrowserRuntimeCacheReadResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason)
 
         let seedCorrupt () =
-            let key = "browser-cache-corrupt"
-            let record =
-                { Key = key
-                  EntryJson = "{not-json"
-                  TouchedAtTicks = string System.DateTime.UtcNow.Ticks }
+            if entries.Length <= 9 then
+                status.Value <- "FIXTURE-MISSING"
+            else
+                let source = entries[9]
+                let key = "browser-cache-corrupt"
+                let record =
+                    { Key = key
+                      LookupKey = BrowserRuntimeCache.lookupKeyFor source.CacheIdentity source.WorkspaceId
+                      EntryHeaderJson = "{not-json"
+                      DataItems = [||]
+                      TouchedAtTicks = string System.DateTime.UtcNow.Ticks }
 
-            BrowserRuntimeCache.withStore
-                "readwrite"
-                (fun tx store ->
-                    JS.Set tx "oncomplete" (System.Action<obj>(fun _ -> status.Value <- "CORRUPT:SEEDED"))
-                    JS.Set tx "onabort" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-corrupt-seed-aborted"))
-                    JS.Set tx "onerror" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-corrupt-seed-failed"))
-                    JS.Apply<obj> store "put" [| box (Json.Serialize record); box key |] |> ignore)
-                (fun reason -> status.Value <- "UNAVAILABLE:" + reason)
+                BrowserRuntimeCache.withStore
+                    "readwrite"
+                    (fun tx store ->
+                        JS.Set tx "oncomplete" (System.Action<obj>(fun _ -> status.Value <- "CORRUPT:SEEDED"))
+                        JS.Set tx "onabort" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-corrupt-seed-aborted"))
+                        JS.Set tx "onerror" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-corrupt-seed-failed"))
+                        JS.Apply<obj> store "put" [| box record |] |> ignore)
+                    (fun reason -> status.Value <- "UNAVAILABLE:" + reason)
 
         let seedSemanticInvalid () =
             if entries.Length <= 9 then
@@ -212,10 +218,10 @@ module Client =
                             { source.Document with
                                 WorkspaceId = source.WorkspaceId + "-mismatch" } }
                 let key = "browser-cache-semantic-invalid"
+                let record = BrowserRuntimeCache.recordForEntry key (string System.DateTime.UtcNow.Ticks) invalid
                 let record =
-                    { Key = key
-                      EntryJson = BrowserRuntimeCodec.encodeCacheEntry invalid
-                      TouchedAtTicks = string System.DateTime.UtcNow.Ticks }
+                    { record with
+                        LookupKey = BrowserRuntimeCache.lookupKeyFor source.CacheIdentity source.WorkspaceId }
 
                 BrowserRuntimeCache.withStore
                     "readwrite"
@@ -223,7 +229,7 @@ module Client =
                         JS.Set tx "oncomplete" (System.Action<obj>(fun _ -> status.Value <- "SEMANTIC-INVALID:SEEDED"))
                         JS.Set tx "onabort" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-semantic-seed-aborted"))
                         JS.Set tx "onerror" (System.Action<obj>(fun _ -> status.Value <- "UNAVAILABLE:indexeddb-semantic-seed-failed"))
-                        JS.Apply<obj> store "put" [| box (Json.Serialize record); box key |] |> ignore)
+                        JS.Apply<obj> store "put" [| box record |] |> ignore)
                     (fun reason -> status.Value <- "UNAVAILABLE:" + reason)
 
         let buttonStyle = attr.style "min-height:32px; padding:4px 10px; border:1px solid #8795a6; background:#fff; cursor:pointer;"

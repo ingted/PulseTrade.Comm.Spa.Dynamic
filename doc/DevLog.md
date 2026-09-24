@@ -1537,3 +1537,11 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus真SPAA證明Order／Fill row glyph正常，但同topology scenario data replacement不會更新navigator Signal／Fill stripe。根因是Renderer `0.1.44`只在full preparation／topology change更新shell prepared data；row-only refresh無法觸發navigator閉包重算。
 - Renderer改用獨立reactive shell prepared-data authority；same-topology patch同步更新shell與row Vars，不更新chart runtime mount state。F# Playwright驗OverviewStripe path `2→0→2`，chart render sequence與ready-row count不變，並重跑4,000-slot、300 cursor transitions及replacement performance gates；全部通過，renderer各phase無>100ms task。
 - Hotfix exact graph為Contracts `0.1.19`、Renderer `0.1.45`、Interactive.Client `0.1.37`、Dynamic.Ptcs `0.1.41`、Ptcs.Client `0.1.59`。三顆變更package push均回`Created`；nuget.org fresh-cache Renderer 43/43、Interactive 4/4、Ptcs.Client 16/16及repository signature驗證通過。Daedalus真SPAA重跑仍屬DYN-WBS-555／DYN-T-577 consumer gate。
+
+## 2026-09-25 - RFC-PTCS-DYNAMIC-0025 chunked Snapshot transport release
+
+- Contracts新增deterministic `ptcs-dynamic-snapshot-chunk.v1` start／ordered item／commit encoder；Interactive.Client新增generation-safe bounded queue、packet staging、phased value decode與commit-only canonical publish。Partial／duplicate／out-of-order／invalid／stale batch保留last-good並要求resync，不觸發accepted lifecycle或cache eligibility。
+- Production lifecycle與cache fixture改走同一encoder／pump；initial/reconnect皆在完整commit後切換，invalid batch與disconnect保留last-good，max active transport為1。Browser cache驗8-entry LRU、coverage、invalid removal、accepted write、paused reject/rehydrate及clear。
+- 五列4,000-slot candle fixture重現舊projection的allocation/GC尖峰；Renderer改為固定bucket array single-pass OHLCV聚合，不建立per-slot tuple／`groupBy`。Row cursor timestamp移至SVG外固定32px gutter的92×28固定CSS-pixel兩行tag，row resize前後geometry/computed style invariant已納入F# Playwright。
+- Final exact graph已發布：Contracts `0.1.22`、Renderer `0.1.49`、Interactive.Client `0.1.41`、Dynamic.Ptcs `0.1.44`、Ptcs.Client `0.1.63`。Fresh NuGet.org caches通過34/45/12/14/16 focused tests與Renderer/lifecycle/cache三組browser gates；official package signatures、exact nuspec dependencies、DLL及Interactive bundle entry parity均通過。
+- Official Renderer browser結果：five-candle replacement max92.04ms、cursor main-thread max74.73ms、All/marker/document/progressive max49.30/79.15/40.12/57.14ms，所有受驗phase皆無大於100ms task。外部SPAA `127.0.0.1:18883`／PID 17004全程保留，未重啟或覆蓋。

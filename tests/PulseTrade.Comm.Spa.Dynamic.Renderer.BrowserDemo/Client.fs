@@ -2,6 +2,7 @@ namespace PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo
 
 open System
 open PulseTrade.Comm.Spa.Dynamic.Contracts
+open PulseTrade.Comm.Spa.Dynamic.Interactive.Client
 open PulseTrade.Comm.Spa.Dynamic.Renderer
 open WebSharper
 open WebSharper.UI
@@ -90,14 +91,14 @@ module Client =
         let stackedPosition = count - 8
         let stackedMarkers =
             Array.append
-                [| marker "short-entry" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#000000" (Some "SELL 7591.00") "short entry signal"
-                   marker "long-exit" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#dc2626" (Some "SELL 7603.50 PnL +762.50") "long take-profit fill"
-                   marker "order-replace" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.Circle TaMarkerFill.Outline "#2563eb" (Some "REPLACE 7590.75") "replace limit order"
-                   marker "order-cancel" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.Circle TaMarkerFill.Outline "#64748b" (Some "CANCEL 7590.75") "cancel limit order" |]
+                [| marker "short-entry" (timestamp (stackedPosition + 1)) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#000000" (Some "SELL 7591.00") "short entry signal"
+                   marker "long-exit" (timestamp (stackedPosition + 1)) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#dc2626" (Some "SELL 7603.50 PnL +762.50") "long take-profit fill"
+                   marker "order-replace" (timestamp (stackedPosition + 1)) TaMarkerAnchor.AboveBar TaMarkerShape.Circle TaMarkerFill.Outline "#2563eb" (Some "REPLACE 7590.75") "replace limit order"
+                   marker "order-cancel" (timestamp (stackedPosition + 1)) TaMarkerAnchor.AboveBar TaMarkerShape.Circle TaMarkerFill.Outline "#64748b" (Some "CANCEL 7590.75") "cancel limit order" |]
                 (Array.init 60 (fun index ->
                     marker
                         ($"overflow-{index + 1}")
-                        (timestamp stackedPosition)
+                        (timestamp (stackedPosition + 1))
                         TaMarkerAnchor.AboveBar
                         TaMarkerShape.Circle
                         TaMarkerFill.Outline
@@ -112,13 +113,13 @@ module Client =
                   SduiValue.Array
                       [| point
                              (count - 12)
-                             [| marker "long-entry" (timestamp (count - 12)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some("BUY 7588.25" + replacementLabel)) ("long entry signal" + replacementLabel) |]
+                             [| marker "long-entry" (timestamp (count - 11)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some("BUY 7588.25" + replacementLabel)) ("long entry signal" + replacementLabel) |]
                          point
                              stackedPosition
                              stackedMarkers
                          point
                              (count - 2)
-                             [| marker "short-exit" (timestamp (count - 2)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Solid "#16a34a" (Some "BUY 7574.00 PnL +850.00") "short stop-loss fill" |] |] ])
+                             [| marker "short-exit" (timestamp (count - 1)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Solid "#16a34a" (Some "BUY 7574.00 PnL +850.00") "short stop-loss fill" |] |] ])
 
     let sampleSeries count =
         let sharedAxisRef = "axis.1k"
@@ -161,7 +162,7 @@ module Client =
         let overviewStripeSeries dataRef color position label =
             let stripe =
                 { StripeId = dataRef + ":" + string position
-                  EventTimeUtc = timestamp position
+                  EventTimeUtc = timestamp (position + 1)
                   Color = color
                   StrokeWidthCssPixels = 1.0
                   Label = Some label
@@ -190,6 +191,36 @@ module Client =
                     "candle-span"
                     "complete"
                     (candlePayload baseline closeValue (900.0 + float ((index * 73) % 520))))
+
+        let sharedCandleSeries =
+            SduiValue.Object(
+                Map [ "_type", SduiValue.Text "temporal-series.v1"
+                      "axisRef", SduiValue.Text sharedAxisRef
+                      "axisRevision", SduiValue.Number 1.0
+                      "points",
+                      SduiValue.Array(
+                          candles
+                          |> Array.mapi (fun index point ->
+                              match point with
+                              | SduiValue.Object fields ->
+                                  SduiValue.Object(fields |> Map.add "position" (SduiValue.Number(float index)))
+                              | value -> value)) ])
+
+        let scaledCandles scaleKey sourcePrefix priceOffset phase volumeOffset =
+            Array.init count (fun index ->
+                let baseline = 21800.0 + priceOffset + float index * 1.65 + Math.Sin(float index / phase) * 21.0
+                let closeValue = baseline + Math.Cos(float index / (phase - 0.75)) * 8.0
+                temporalPoint
+                    (sourcePrefix + ":" + string index)
+                    scaleKey
+                    (timestamp index)
+                    (timestamp (index + 1))
+                    (timestamp (index + 1))
+                    (Some(timestamp (index + 1)))
+                    "final"
+                    "repeat-across-base-buckets"
+                    "complete"
+                    (candlePayload baseline closeValue (volumeOffset + float ((index * 47) % 610))))
 
         let heikin =
             Array.init count (fun index ->
@@ -255,8 +286,11 @@ module Client =
 
         Map [
             yield sharedAxisRef, sharedAxis
-            yield "series.price", SduiValue.Array candles
+            yield "series.price", sharedCandleSeries
             yield "series.price-5k", SduiValue.Array fiveMinuteCandles
+            yield "series.price-5k-heavy", SduiValue.Array(scaledCandles "5K" "es-5k-heavy" 12.0 5.5 1800.0)
+            yield "series.price-30k-heavy", SduiValue.Array(scaledCandles "30K" "es-30k-heavy" 28.0 7.5 3200.0)
+            yield "series.price-60k-heavy", SduiValue.Array(scaledCandles "60K" "es-60k-heavy" 44.0 9.5 4800.0)
             yield "series.volume", SduiValue.Array candles
             yield "series.sma", sharedScalarSeries 0
             yield "series.markers", markers
@@ -320,21 +354,13 @@ module Client =
             |> Array.map (fun index ->
                 let baseline = 21800.0 + float index * 1.7 + Math.Sin(float index / 4.0) * 24.0
                 let closeValue = baseline + Math.Cos(float index / 3.0) * 9.0
-                temporalPoint
-                    ("es-1k:" + string index)
-                    "1K"
-                    (timestamp index)
-                    (timestamp (index + 1))
-                    (timestamp (index + 1))
-                    (Some(timestamp (index + 1)))
-                    "final"
-                    "candle-span"
-                    "complete"
-                    (candlePayload baseline closeValue (900.0 + float ((index * 73) % 520))))
+                SduiValue.Object(
+                    Map [ "position", SduiValue.Number(float index)
+                          "value", candlePayload baseline closeValue (900.0 + float ((index * 73) % 520)) ]))
         data
         |> updateSeries "axis.1k" (appendObjectArray "points" axisPoints)
-        |> updateSeries "series.price" (appendArrayValue candles)
-        |> updateSeries "series.volume" (appendArrayValue candles)
+        |> updateSeries "series.price" (appendObjectArray "points" candles)
+        |> updateSeries "series.volume" (appendArrayValue (candles |> Array.map (function SduiValue.Object fields -> Map.find "value" fields | value -> value)))
 
     let row rowId kind dataRef weight =
         { RowId = rowId
@@ -458,7 +484,8 @@ module Client =
                                { trace "overview-fill" TaTraceKind.OverviewStripe "series.overview.fill" "Fill stripe" "#dc2626" 1.0 with
                                     Options = TaOverviewStripeTraceOptionsCodec.encode { TargetTraceId = "price-1k"; CollisionGroup = "backtest-events"; LayerOrder = 1 } } |]
                         |> withRowLabel "ES 1K + SMA(20)")
-                       row "volume" TaRowKind.Volume "series.volume" 1.0
+                       row "volume" TaRowKind.Candlestick "series.price-5k-heavy" 1.0
+                       |> withRowLabel "ES 5K K Bar"
                        compositeRow
                            "sma"
                            TaRowKind.Sma
@@ -467,8 +494,10 @@ module Client =
                            [| trace "sma-1k" TaTraceKind.Line "series.sma" "1K SMA" "#2563eb" 1.3
                               trace "sma-5k" TaTraceKind.Line "series.sma-5k" "5K SMA" "#b45309" 1.8 |]
                        |> bindEditor "ta.sma" (DynamicEditorValidation.defaultInputs sampleEditorSchemas[0])
-                       row "dmi" TaRowKind.Dmi "series.dmi" 1.0
-                       row "adx" TaRowKind.Adx "series.adx" 1.0
+                       row "dmi" TaRowKind.Candlestick "series.price-30k-heavy" 1.0
+                       |> withRowLabel "ES 30K K Bar"
+                       row "adx" TaRowKind.Candlestick "series.price-60k-heavy" 1.0
+                       |> withRowLabel "ES 60K K Bar"
                        compositeRow
                            "macd"
                            TaRowKind.Macd
@@ -527,6 +556,65 @@ module Client =
     let Main () =
         let mainStartedAt = DateTime.UtcNow
         let initialState = sampleState ()
+        let candleDataRefs =
+            [| "series.price"
+               "series.price-5k-heavy"
+               "series.price-30k-heavy"
+               "series.price-60k-heavy"
+               "series.heikin" |]
+
+        let replaceCandleData replacement data =
+            let incrementClose fields =
+                match fields |> Map.tryFind "c" with
+                | Some(SduiValue.Number currentClose) ->
+                    fields |> Map.add "c" (SduiValue.Number(currentClose + float replacement * 0.125))
+                | _ -> fields
+
+            let updateCandle = function
+                | SduiValue.Object fields ->
+                    match fields |> Map.tryFind "value" with
+                    | Some(SduiValue.Object candleFields) ->
+                        SduiValue.Object(fields |> Map.add "value" (SduiValue.Object(incrementClose candleFields)))
+                    | _ -> SduiValue.Object(incrementClose fields)
+                | value -> value
+
+            candleDataRefs
+            |> Array.fold (fun currentData dataRef ->
+                currentData
+                |> Map.change dataRef (Option.map (function
+                    | SduiValue.Array values -> SduiValue.Array(values |> Array.map updateCandle)
+                    | SduiValue.Object fields ->
+                        match fields |> Map.tryFind "points" with
+                        | Some(SduiValue.Array values) ->
+                            SduiValue.Object(fields |> Map.add "points" (SduiValue.Array(values |> Array.map updateCandle)))
+                        | _ -> SduiValue.Object fields
+                    | value -> value))) data
+
+        let candleReplacementPacketsFor (state: RuntimeState) =
+            let knownDataRefs = RuntimeReducer.knownDataRefs state
+            let replacementData =
+                replaceCandleData 1 state.Data
+                |> Map.filter (fun dataRef _ -> Set.contains dataRef knownDataRefs)
+
+            { Protocol = DynamicRuntimeDefaults.markerProtocol
+              Kind = RuntimeFrameKind.Snapshot
+              DocumentId = state.Identity.DocumentId
+              CanvasInstanceId = state.Identity.CanvasInstanceId
+              DocumentRevision = state.DocumentRevision
+              BaseDataRevision = None
+              DataRevision = state.DataRevision + 1L
+              TransportSequence = state.LastTransportSequence + 1L
+              Payload =
+                RuntimePayload.Snapshot
+                    { Data = replacementData
+                      Freshness = TaFreshness.Live } }
+            |> RuntimeSnapshotTransportCodec.encodeFrame
+            |> function
+                | Ok packets -> packets
+                | Error message -> failwith message
+
+        let candleReplacementPackets = candleReplacementPacketsFor initialState
+        let candleReplacementWireChars = candleReplacementPackets |> Array.sumBy _.Length
         let sampleBuildMilliseconds = DateTime.UtcNow.Subtract(mainStartedAt).TotalMilliseconds
         let runtimeState = Var.Create initialState
         let actionCount = Var.Create 0
@@ -536,6 +624,11 @@ module Client =
         let previewStreamGeneration = Var.Create 0
         let previewStreamUpdates = Var.Create 0
         let markerReplacementCount = Var.Create 0
+        let candleWorkloadReplacementCount = Var.Create 0
+        let candleWorkloadOutcome = Var.Create "idle"
+        let candleWorkloadError = Var.Create ""
+        let candleWorkloadStageDiagnostics = Var.Create ""
+        let mutable candleWorkloadGeneration = 0
         let applyAuthoritativeAction action =
             let current = runtimeState.Value
 
@@ -591,7 +684,13 @@ module Client =
                 let currentCount =
                     current.Data
                     |> Map.tryFind "series.price"
-                    |> Option.bind (function SduiValue.Array values -> Some values.Length | _ -> None)
+                    |> Option.bind (function
+                        | SduiValue.Array values -> Some values.Length
+                        | SduiValue.Object fields ->
+                            fields
+                            |> Map.tryFind "points"
+                            |> Option.bind (function SduiValue.Array values -> Some values.Length | _ -> None)
+                        | _ -> None)
                     |> Option.defaultValue 0
                 let loadedEnd = timestamp currentCount
                 if change.EndEventTimeExclusiveUtc.CompareTo(loadedEnd) > 0 then
@@ -664,11 +763,19 @@ module Client =
             let nextPrice =
                 current.Data
                 |> Map.tryFind "series.price"
-                |> Option.bind (function SduiValue.Array values -> Some values | _ -> None)
-                |> Option.map (fun values ->
-                    values
-                    |> Array.mapi (fun index value -> if index = values.Length - 1 then updateCandleValue value else value)
-                    |> SduiValue.Array)
+                |> Option.bind (function
+                    | SduiValue.Object fields ->
+                        fields
+                        |> Map.tryFind "points"
+                        |> Option.bind (function
+                            | SduiValue.Array values ->
+                                values
+                                |> Array.mapi (fun index value -> if index = values.Length - 1 then updateCandleValue value else value)
+                                |> SduiValue.Array
+                                |> fun points -> SduiValue.Object(fields |> Map.add "points" points)
+                                |> Some
+                            | _ -> None)
+                    | _ -> None)
 
             match nextPrice with
             | Some price ->
@@ -678,6 +785,68 @@ module Client =
                         DataRevision = current.DataRevision + 1L
                         LastTransportSequence = current.LastTransportSequence + 1L }
             | None -> ()
+
+        let replaceFiveCandleRows () =
+            candleWorkloadGeneration <- candleWorkloadGeneration + 1
+            let generation = candleWorkloadGeneration
+            candleWorkloadOutcome.Value <- "pending"
+            candleWorkloadError.Value <- ""
+            candleWorkloadStageDiagnostics.Value <- ""
+            let current = runtimeState.Value
+
+            let maxima = System.Collections.Generic.Dictionary<string, float>()
+
+            let stageKey = function
+                | BrowserRuntimeFramePumpStage.PrepareFrame frameIndex -> $"prepare-frame:{frameIndex}"
+                | BrowserRuntimeFramePumpStage.ParseTransportPacket packetIndex -> $"parse-packet:{packetIndex}"
+                | BrowserRuntimeFramePumpStage.DecodeSnapshotValue dataRef -> "decode-value:" + dataRef
+                | BrowserRuntimeFramePumpStage.DecodeArrayBatch dataRef -> "decode-array-batch:" + dataRef
+                | BrowserRuntimeFramePumpStage.ReduceFrame frameIndex -> $"reduce-frame:{frameIndex}"
+                | BrowserRuntimeFramePumpStage.BuildAxisAuthority dataRef -> "build-axis:" + dataRef
+                | BrowserRuntimeFramePumpStage.ValidateTemporalItem dataRef -> "validate-temporal:" + dataRef
+                | BrowserRuntimeFramePumpStage.ApplyOverlays -> "apply-overlays"
+
+            let observeStage stage elapsedMilliseconds =
+                let key = stageKey stage
+                match maxima.TryGetValue key with
+                | true, currentMaximum when currentMaximum >= elapsedMilliseconds -> ()
+                | _ -> maxima[key] <- elapsedMilliseconds
+
+            let publishStageDiagnostics () =
+                candleWorkloadStageDiagnostics.Value <-
+                    maxima
+                    |> Seq.map (fun pair -> pair.Key, pair.Value)
+                    |> Seq.sortByDescending snd
+                    |> Seq.truncate 12
+                    |> Seq.map (fun (key, milliseconds) -> key + "=" + sprintf "%.2f" milliseconds)
+                    |> String.concat ";"
+
+            BrowserRuntimeFramePump.reduceChunkedSnapshotPacketsObserved
+                current
+                candleReplacementPackets
+                (fun () -> generation = candleWorkloadGeneration)
+                observeStage
+                (function
+                    | BrowserRuntimeFramePumpOutcome.Applied candidate ->
+                        publishStageDiagnostics ()
+                        runtimeState.Value <- candidate
+                        candleWorkloadReplacementCount.Value <- candleWorkloadReplacementCount.Value + 1
+                        candleWorkloadOutcome.Value <- "applied"
+                    | BrowserRuntimeFramePumpOutcome.Rejected failure ->
+                        publishStageDiagnostics ()
+                        candleWorkloadOutcome.Value <- "rejected:" + failure.Code
+                        candleWorkloadError.Value <- failure.Message
+                        let current = runtimeState.Value
+                        runtimeState.Value <-
+                            { current with
+                                LastError =
+                                    Some
+                                        { ReasonCode = failure.Code
+                                          Message = failure.Message
+                                          Recoverable = false } }
+                    | BrowserRuntimeFramePumpOutcome.Superseded ->
+                        publishStageDiagnostics ()
+                        candleWorkloadOutcome.Value <- "superseded")
 
         let updateLatestSmaValue nextValue =
             let updatePoint = function
@@ -810,14 +979,27 @@ module Client =
             Attr.Create "data-capacity-shared-series" (string capacitySeriesCount)
             Attr.Create "data-sample-build-ms" (string sampleBuildMilliseconds)
             Attr.Create "data-renderer-setup-ms" (string rendererSetupMilliseconds)
+            Attr.Create "data-candle-workload-wire-chars" (string candleReplacementWireChars)
+            Attr.Create "data-candle-workload-packets" (string candleReplacementPackets.Length)
             Attr.Dynamic "data-preview-stream-updates" (previewStreamUpdates.View |> View.Map string)
             Attr.Dynamic "data-marker-replacements" (markerReplacementCount.View |> View.Map string)
+            Attr.Dynamic "data-candle-workload-replacements" (candleWorkloadReplacementCount.View |> View.Map string)
+            Attr.Dynamic "data-candle-workload-outcome" candleWorkloadOutcome.View
+            Attr.Dynamic "data-candle-workload-error" candleWorkloadError.View
+            Attr.Dynamic "data-candle-workload-stage-diagnostics" candleWorkloadStageDiagnostics.View
         ] [
             let demoButtonStyle = attr.style "min-height:24px; padding:2px 6px; white-space:nowrap;"
-            div [ Attr.Create "data-testid" "ta-demo-callback-state"; attr.style "min-height:32px; height:auto; display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:flex-end; padding:4px 12px; background:#182a42; color:#d9e5f3; font-size:11px;" ] [
+            div [
+                Attr.Create "data-testid" "ta-demo-callback-state"
+                Attr.Dynamic "data-callback-count" (actionCount.View |> View.Map string)
+                Attr.Dynamic "data-last-action" lastAction.View
+                attr.style "min-height:32px; height:auto; display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:flex-end; padding:4px 12px; background:#182a42; color:#d9e5f3; font-size:11px;"
+            ] [
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-live"; on.click (fun _ _ -> setLive ()) ] [ text "Live" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-preview-update"; on.click (fun _ _ -> updateLatestPreview ()) ] [ text "Update preview" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-preview-stream"; on.click (fun _ _ -> startPreviewStream ()) ] [ text "Stream preview" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-five-candle-rows"; on.click (fun _ _ -> replaceFiveCandleRows ()) ] [ text "Replace 5 candle rows" ]
+                span [ Attr.Create "data-testid" "ta-demo-candle-workload-outcome" ] [ textView candleWorkloadOutcome.View ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-legend-undef"; on.click (fun _ _ -> updateLatestSmaValue SduiValue.Null) ] [ text "Legend Undef" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-legend-long"; on.click (fun _ _ -> updateLatestSmaValue (SduiValue.Number 123456789.123456)) ] [ text "Legend long" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-inflight"; on.click (fun _ _ -> setInFlight ()) ] [ text "In-flight" ]

@@ -4,6 +4,8 @@ open System
 open System.IO
 open System.Net.WebSockets
 open System.Text
+open System.Text.Json
+open System.Text.Json.Nodes
 open System.Threading
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Builder
@@ -21,6 +23,7 @@ module Program =
     let mutable fullSnapshotRequestCount = 0
     let mutable unmountedCount = 0
     let mutable frameCount = 0
+    let mutable invalidBatchCount = 0
 
     let canvasId = CanvasInstanceId "interactive-lifecycle-canvas"
     let documentId = DocumentId "interactive-lifecycle-document"
@@ -109,8 +112,63 @@ module Program =
 
     let sendFrame socket runtimeFrame =
         task {
-            do! sendText socket (BrowserRuntimeCodec.encode runtimeFrame)
+            let packets =
+                RuntimeSnapshotTransportCodec.encodeFrames [| runtimeFrame |]
+                |> Result.defaultWith invalidOp
+
+            packets
+            |> Array.iteri (fun index packet ->
+                use document = JsonDocument.Parse packet
+                let root = document.RootElement
+                let tryText (name: string) =
+                    match root.TryGetProperty name with
+                    | true, property when property.ValueKind = JsonValueKind.String ->
+                        property.GetString() |> Option.ofObj |> Option.defaultValue ""
+                    | false, _ -> ""
+                    | _ -> "<non-string>"
+
+                printfn
+                    "interactive lifecycle packet index=%d/%d schema=%s kind=%s bytes=%d"
+                    index
+                    packets.Length
+                    (tryText "Schema")
+                    (tryText "Kind")
+                    (Encoding.UTF8.GetByteCount packet))
+
+            for packet in packets do
+                do! sendText socket packet
+
             lock gate (fun () -> frameCount <- frameCount + 1)
+        }
+
+    let sendOutOfOrderBatch socket =
+        task {
+            let packets =
+                RuntimeSnapshotTransportCodec.encodeFrame (snapshotFrame 99L 99L "INVALID PARTIAL")
+                |> Result.defaultWith invalidOp
+
+            if packets.Length < 3 then
+                invalidOp "The invalid-batch fixture requires a start packet and at least two item packets."
+
+            do! sendText socket packets[0]
+            do! sendText socket packets[2]
+            lock gate (fun () -> invalidBatchCount <- invalidBatchCount + 1)
+        }
+
+    let sendMalformedValueBatch socket =
+        task {
+            let packets =
+                RuntimeSnapshotTransportCodec.encodeFrame (snapshotFrame 100L 100L "INVALID VALUE")
+                |> Result.defaultWith invalidOp
+
+            if packets.Length < 2 then
+                invalidOp "The invalid-value fixture requires a start packet and one item packet."
+
+            let malformedItem = JsonNode.Parse packets[1] :?> JsonObject
+            malformedItem["Value"] <- JsonNode.Parse """{"$":4,"Item":null}"""
+            do! sendText socket packets[0]
+            do! sendText socket (malformedItem.ToJsonString())
+            lock gate (fun () -> invalidBatchCount <- invalidBatchCount + 1)
         }
 
     let readText (socket: WebSocket) =
@@ -151,13 +209,22 @@ module Program =
                         | Ok(RuntimeClientFrame.Unmounted _) ->
                             lock gate (fun () -> unmountedCount <- unmountedCount + 1)
                             running <- false
-                        | Ok(RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot _)) ->
-                            lock gate (fun () -> fullSnapshotRequestCount <- fullSnapshotRequestCount + 1)
+                        | Ok(RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot _ as action)) ->
+                            printfn "interactive lifecycle full-snapshot request ordinal=%d action=%A" connectionOrdinal action
+                            let requestOrdinal =
+                                lock gate (fun () ->
+                                    fullSnapshotRequestCount <- fullSnapshotRequestCount + 1
+                                    fullSnapshotRequestCount)
                             do! Task.Delay 1200
 
                             if socket.State = WebSocketState.Open then
-                                do! sendFrame socket (snapshotFrame 2L 3L "RESYNCED V2")
-                        | _ -> ()
+                                let revision = int64 (requestOrdinal + 1)
+                                let sequence = int64 (requestOrdinal + 2)
+                                do! sendFrame socket (snapshotFrame revision sequence $"RESYNCED V{revision}")
+                        | Ok frame ->
+                            printfn "interactive lifecycle client frame ordinal=%d frame=%A" connectionOrdinal frame
+                        | Error error ->
+                            printfn "interactive lifecycle client decode error ordinal=%d error=%s" connectionOrdinal error
                 with
                 | :? WebSocketException -> running <- false
                 | :? OperationCanceledException -> running <- false
@@ -260,7 +327,8 @@ module Program =
                            mountedCount = mountedCount
                            fullSnapshotRequestCount = fullSnapshotRequestCount
                            unmountedCount = unmountedCount
-                           frameCount = frameCount |})
+                           frameCount = frameCount
+                           invalidBatchCount = invalidBatchCount |})
 
                 do! context.Response.WriteAsJsonAsync state
             | "POST", "/test/drop" ->
@@ -275,6 +343,28 @@ module Program =
 
                 context.Response.StatusCode <- if dropped then StatusCodes.Status202Accepted else StatusCodes.Status409Conflict
                 do! context.Response.WriteAsJsonAsync {| dropped = dropped |}
+            | "POST", "/test/inject-invalid" ->
+                let target = lock gate (fun () -> currentSocket)
+
+                match target with
+                | Some socket when socket.State = WebSocketState.Open ->
+                    do! sendOutOfOrderBatch socket
+                    context.Response.StatusCode <- StatusCodes.Status202Accepted
+                    do! context.Response.WriteAsJsonAsync {| injected = true |}
+                | _ ->
+                    context.Response.StatusCode <- StatusCodes.Status409Conflict
+                    do! context.Response.WriteAsJsonAsync {| injected = false |}
+            | "POST", "/test/inject-invalid-value" ->
+                let target = lock gate (fun () -> currentSocket)
+
+                match target with
+                | Some socket when socket.State = WebSocketState.Open ->
+                    do! sendMalformedValueBatch socket
+                    context.Response.StatusCode <- StatusCodes.Status202Accepted
+                    do! context.Response.WriteAsJsonAsync {| injected = true |}
+                | _ ->
+                    context.Response.StatusCode <- StatusCodes.Status409Conflict
+                    do! context.Response.WriteAsJsonAsync {| injected = false |}
             | _ -> context.Response.StatusCode <- StatusCodes.Status404NotFound
         }
 

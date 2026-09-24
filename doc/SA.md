@@ -188,6 +188,14 @@ Marker現有4筆限制把wire truth與DOM budget混在一起。新模型以64作
 
 Row height是local presentation state，不是document mutation。`HeightWeight`只提供deterministic authored default；canvas-local override不進fingerprint、cache、provider command或scenario revision。這避免多人／多kernel preference同步問題，也讓fresh reload可回到canonical document。
 
+## Chunked Snapshot transport boundary
+
+4,000-slot owner fixture的完整Snapshot wire約17.3MB；即使point decode已分批，browser仍須先在單一task做完整`JSON.Parse`。具名stage量測顯示parse約74ms並在busy/GC條件越過100ms，故繼續拆reducer無法解除根因。選擇在transport boundary增加向後相容chunk framing，而不是改canonical RuntimeFrame或降低驗證。
+
+Contracts擁有唯一packet schema/encoder；Interactive.Client擁有generation-safe staging與atomic commit；Renderer只接收accepted RuntimeState。Producer host可把既有`string array` frame輸出經encoder展開，不需要理解staging state。Browser cache仍只保存accepted projection，不保存partial packet。
+
+此邊界保留legacy replay與舊producer，但production large Snapshot必須走chunk path。失敗策略為last-good + resync：item缺漏、重複、亂序、batch/count mismatch、socket generation切換或invalid candidate都丟棄整批，不得partial publish或提前ACK。
+
 主要風險：
 
 - `TaTraceKind`新增case會要求active consumers同步compile；以exact package graph與full WebSharper build關閉。

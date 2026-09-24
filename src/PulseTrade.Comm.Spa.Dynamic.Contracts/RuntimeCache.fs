@@ -32,78 +32,88 @@ module RuntimeCacheEntryValidation =
               if coverage.EndEventTimeExclusiveUtc <= coverage.StartEventTimeUtc then
                   yield RuntimeValidation.error "invalid-cache-coverage" field "Cache coverage end must be later than its start." ]
 
-    let validate limits (entry: RuntimeCacheEntry) =
+    let headerErrors (entry: RuntimeCacheEntry) =
         if isNull (box entry) then
-            Error [ RuntimeValidation.error "cache-entry-required" "cache" "Runtime cache entry is required." ]
+            [ RuntimeValidation.error "cache-entry-required" "cache" "Runtime cache entry is required." ]
         else
-            let errors =
-                [ yield! identityErrors "cache.cacheIdentity" entry.CacheIdentity
-                  yield! RuntimeValidation.identifier "cache.workspaceId" entry.WorkspaceId
-                  yield! coverageErrors "cache.coverage" entry.Coverage
+            [ yield! identityErrors "cache.cacheIdentity" entry.CacheIdentity
+              yield! RuntimeValidation.identifier "cache.workspaceId" entry.WorkspaceId
+              yield! coverageErrors "cache.coverage" entry.Coverage
 
-                  if entry.DocumentRevision < 0L then
-                      yield RuntimeValidation.error "invalid-document-revision" "cache.documentRevision" "Document revision must be non-negative."
+              if entry.DocumentRevision < 0L then
+                  yield RuntimeValidation.error "invalid-document-revision" "cache.documentRevision" "Document revision must be non-negative."
 
-                  if entry.DataRevision < 0L then
-                      yield RuntimeValidation.error "invalid-data-revision" "cache.dataRevision" "Data revision must be non-negative."
+              if entry.DataRevision < 0L then
+                  yield RuntimeValidation.error "invalid-data-revision" "cache.dataRevision" "Data revision must be non-negative."
 
-                  if entry.CapturedAtUtc.Offset <> TimeSpan.Zero then
-                      yield RuntimeValidation.error "utc-required" "cache.capturedAtUtc" "Cache capture time must use UTC."
+              if entry.CapturedAtUtc.Offset <> TimeSpan.Zero then
+                  yield RuntimeValidation.error "utc-required" "cache.capturedAtUtc" "Cache capture time must use UTC."
 
-                  if isNull (box entry.Document) then
-                      yield RuntimeValidation.error "cache-document-required" "cache.document" "Cache document is required."
-                  else
+              if isNull (box entry.Document) then
+                  yield RuntimeValidation.error "cache-document-required" "cache.document" "Cache document is required."
+              elif entry.Document.WorkspaceId <> entry.WorkspaceId then
+                  yield RuntimeValidation.error "cache-workspace-mismatch" "cache.workspaceId" "Cache workspace does not match its document."
+
+              if isNull (box entry.Snapshot) then
+                  yield RuntimeValidation.error "cache-snapshot-required" "cache.snapshot" "Cache snapshot is required." ]
+
+    let validateHeader entry =
+        match headerErrors entry with
+        | [] -> Ok entry
+        | errors -> Error errors
+
+    let validate limits (entry: RuntimeCacheEntry) =
+        let errors =
+            [ yield! headerErrors entry
+
+              if not (isNull (box entry)) then
+                  if not (isNull (box entry.Document)) then
                       yield! RuntimeValidation.documentErrors limits entry.Document
 
-                      if entry.Document.WorkspaceId <> entry.WorkspaceId then
-                          yield RuntimeValidation.error "cache-workspace-mismatch" "cache.workspaceId" "Cache workspace does not match its document."
-
-                  if isNull (box entry.Snapshot) then
-                      yield RuntimeValidation.error "cache-snapshot-required" "cache.snapshot" "Cache snapshot is required."
-                  else
+                  if not (isNull (box entry.Snapshot)) then
                       yield! RuntimeValidation.snapshotErrors limits entry.Snapshot ]
 
-            match errors with
-            | _ :: _ -> Error errors
-            | [] ->
-                let validationIdentity =
-                    { DocumentId = DocumentId "cache-validation-document"
-                      CanvasInstanceId = CanvasInstanceId "cache-validation-canvas" }
+        match errors with
+        | _ :: _ -> Error errors
+        | [] ->
+            let validationIdentity =
+                { DocumentId = DocumentId "cache-validation-document"
+                  CanvasInstanceId = CanvasInstanceId "cache-validation-canvas" }
 
-                let documentFrame =
-                    { Protocol =
-                        if TaOverviewStripeContract.hasRuntimeV2Overlays entry.Document then
-                            DynamicRuntimeDefaults.markerProtocol
-                        else
-                            DynamicRuntimeDefaults.protocol
-                      Kind = RuntimeFrameKind.Document
-                      DocumentId = validationIdentity.DocumentId
-                      CanvasInstanceId = validationIdentity.CanvasInstanceId
-                      DocumentRevision = entry.DocumentRevision
-                      BaseDataRevision = None
-                      DataRevision = 0L
-                      TransportSequence = 1L
-                      Payload = RuntimePayload.Document entry.Document }
+            let documentFrame =
+                { Protocol =
+                    if TaOverviewStripeContract.hasRuntimeV2Overlays entry.Document then
+                        DynamicRuntimeDefaults.markerProtocol
+                    else
+                        DynamicRuntimeDefaults.protocol
+                  Kind = RuntimeFrameKind.Document
+                  DocumentId = validationIdentity.DocumentId
+                  CanvasInstanceId = validationIdentity.CanvasInstanceId
+                  DocumentRevision = entry.DocumentRevision
+                  BaseDataRevision = None
+                  DataRevision = 0L
+                  TransportSequence = 1L
+                  Payload = RuntimePayload.Document entry.Document }
 
-                let afterDocument, documentEffect = RuntimeReducer.reduce (RuntimeReducer.initial validationIdentity) documentFrame
+            let afterDocument, documentEffect = RuntimeReducer.reduce (RuntimeReducer.initial validationIdentity) documentFrame
 
-                match documentEffect with
+            match documentEffect with
+            | RuntimeEffect.RequestResync _ ->
+                Error [ RuntimeValidation.error "cache-document-invalid" "cache.document" "Cache document cannot seed a valid runtime state." ]
+            | _ ->
+                let snapshotFrame =
+                    { documentFrame with
+                        Kind = RuntimeFrameKind.Snapshot
+                        DataRevision = entry.DataRevision
+                        TransportSequence = 2L
+                        Payload = RuntimePayload.Snapshot entry.Snapshot }
+
+                let _, snapshotEffect = RuntimeReducer.reduce afterDocument snapshotFrame
+
+                match snapshotEffect with
                 | RuntimeEffect.RequestResync _ ->
-                    Error [ RuntimeValidation.error "cache-document-invalid" "cache.document" "Cache document cannot seed a valid runtime state." ]
-                | _ ->
-                    let snapshotFrame =
-                        { documentFrame with
-                            Kind = RuntimeFrameKind.Snapshot
-                            DataRevision = entry.DataRevision
-                            TransportSequence = 2L
-                            Payload = RuntimePayload.Snapshot entry.Snapshot }
-
-                    let _, snapshotEffect = RuntimeReducer.reduce afterDocument snapshotFrame
-
-                    match snapshotEffect with
-                    | RuntimeEffect.RequestResync _ ->
-                        Error [ RuntimeValidation.error "cache-snapshot-invalid" "cache.snapshot" "Cache snapshot is incompatible with its document." ]
-                    | _ -> Ok entry
+                    Error [ RuntimeValidation.error "cache-snapshot-invalid" "cache.snapshot" "Cache snapshot is incompatible with its document." ]
+                | _ -> Ok entry
 
 [<WebSharper.JavaScript; RequireQualifiedAccess>]
 module RuntimeCacheBrowserCoverage =
@@ -250,10 +260,13 @@ module RuntimeCacheProjection =
                         | _ -> None)
                     |> Set.ofArray
 
-                let projected = SduiValue.Object(Map.add "points" (SduiValue.Array finalized) fields)
+                let allFinal = finalized.Length = points.Length
+                let projected =
+                    if allFinal then value
+                    else SduiValue.Object(Map.add "points" (SduiValue.Array finalized) fields)
 
                 match RuntimeCacheBrowserCoverage.decodeAxis projected with
-                | Ok coverage -> Ok(axisRef, positions, coverage, projected)
+                | Ok coverage -> Ok(axisRef, positions, coverage, projected, allFinal)
                 | Error errors -> Error errors
             | Some encodedAxisRef, _ when encodedAxisRef <> axisRef ->
                 Error
@@ -276,7 +289,7 @@ module RuntimeCacheProjection =
             | Some axisRef, Some(SduiValue.Array points) ->
                 match Map.tryFind axisRef finalizedPositions with
                 | None -> value
-                | Some allowed ->
+                | Some(_, allowed) ->
                     let finalized =
                         points
                         |> Array.filter (function
@@ -325,8 +338,8 @@ module RuntimeCacheProjection =
 
                 let coverageAxis =
                     axes
-                    |> Array.filter (fun (_, _, coverage, _) -> coverage.Length > 0)
-                    |> Array.sortByDescending (fun (_, _, coverage, _) -> coverage.Length)
+                    |> Array.filter (fun (_, _, coverage, _, _) -> coverage.Length > 0)
+                    |> Array.sortByDescending (fun (_, _, coverage, _, _) -> coverage.Length)
                     |> Array.tryHead
 
                 match coverageAxis with
@@ -336,19 +349,19 @@ module RuntimeCacheProjection =
                               "cache-finalized-coverage-unavailable"
                               "cache.coverage"
                               "Accepted runtime data has no finalized temporal axis interval to cache." ]
-                | Some(_, _, coveragePoints, _) ->
+                | Some(_, _, coveragePoints, _, _) ->
                     let finalizedPositions =
                         axes
-                        |> Array.map (fun (axisRef, positions, _, _) -> axisRef, positions)
+                        |> Array.map (fun (axisRef, positions, _, _, allFinal) -> axisRef, (allFinal, positions))
                         |> Map.ofArray
 
-                    let withProjectedAxes =
-                        axes
-                        |> Array.fold (fun data (axisRef, _, _, value) -> Map.add axisRef value data) state.Data
-
                     let projectedData =
-                        withProjectedAxes
-                        |> Map.map (fun _ value -> projectTemporalSeries finalizedPositions value)
+                        if axes |> Array.forall (fun (_, _, _, _, allFinal) -> allFinal) then
+                            state.Data
+                        else
+                            axes
+                            |> Array.fold (fun data (axisRef, _, _, value, _) -> Map.add axisRef value data) state.Data
+                            |> Map.map (fun _ value -> projectTemporalSeries finalizedPositions value)
 
                     let coverage =
                         { StartEventTimeUtc = coveragePoints |> Array.minBy fst |> fst
@@ -421,8 +434,8 @@ module RuntimeCacheProjection =
 
     let validateEntry limits entry = RuntimeCacheEntryValidation.validate limits entry
 
-    let tryRehydrate limits expectedCacheIdentity (current: RuntimeState) entry =
-        validateEntry limits entry
+    let tryCreateRehydrateFrame expectedCacheIdentity (current: RuntimeState) entry =
+        RuntimeCacheEntryValidation.validateHeader entry
         |> Result.bind (fun valid ->
             if valid.CacheIdentity <> expectedCacheIdentity then
                 Error [ RuntimeValidation.error "cache-identity-mismatch" "cache.cacheIdentity" "Cache identity does not match the current owner fingerprint." ]
@@ -448,20 +461,26 @@ module RuntimeCacheProjection =
                           TransportSequence = current.LastTransportSequence + 1L
                           Payload = RuntimePayload.Snapshot valid.Snapshot }
 
-                    let candidate, effect = RuntimeReducer.reduce current snapshotFrame
+                    Ok snapshotFrame)
 
-                    match effect with
-                    | RuntimeEffect.RequestResync _
-                    | RuntimeEffect.RejectFrame _ ->
-                        Error [ RuntimeValidation.error "cache-rehydrate-invalid" "cache.snapshot" "Cache snapshot is incompatible with the current authoritative document." ]
-                    | _ ->
-                        Ok
-                            { candidate with
-                                DocumentRevision = current.DocumentRevision
-                                DataRevision = current.DataRevision
-                                LastTransportSequence = current.LastTransportSequence
-                                Poll = RuntimePollState.PausedForResync
-                                LastError = None })
+    let completeRehydrate (current: RuntimeState) candidate =
+        { candidate with
+            DocumentRevision = current.DocumentRevision
+            DataRevision = current.DataRevision
+            LastTransportSequence = current.LastTransportSequence
+            Poll = RuntimePollState.PausedForResync
+            LastError = None }
+
+    let tryRehydrate limits expectedCacheIdentity (current: RuntimeState) entry =
+        tryCreateRehydrateFrame expectedCacheIdentity current entry
+        |> Result.bind (fun snapshotFrame ->
+            let candidate, effect = RuntimeReducer.reduce current snapshotFrame
+
+            match effect with
+            | RuntimeEffect.RequestResync _
+            | RuntimeEffect.RejectFrame _ ->
+                Error [ RuntimeValidation.error "cache-rehydrate-invalid" "cache.snapshot" "Cache snapshot is incompatible with the current authoritative document." ]
+            | _ -> Ok(completeRehydrate current candidate))
 
 [<RequireQualifiedAccess>]
 module RuntimeCache =
@@ -488,6 +507,12 @@ module RuntimeCache =
         RuntimeCacheProjection.tryCreateEntry capturedAtUtc cacheIdentity state
 
     let validateEntry limits entry = RuntimeCacheProjection.validateEntry limits entry
+
+    let tryCreateRehydrateFrame expectedCacheIdentity current entry =
+        RuntimeCacheProjection.tryCreateRehydrateFrame expectedCacheIdentity current entry
+
+    let completeRehydrate current candidate =
+        RuntimeCacheProjection.completeRehydrate current candidate
 
     let tryRehydrate limits expectedCacheIdentity current entry =
         RuntimeCacheProjection.tryRehydrate limits expectedCacheIdentity current entry

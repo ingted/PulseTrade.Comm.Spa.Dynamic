@@ -69,9 +69,23 @@ let awaitUnit (task: Task) = task.GetAwaiter().GetResult()
 let require condition message =
     if not condition then failwith ("Interactive.Client lifecycle verification failed: " + message)
 
+let consoleErrors = ResizeArray<string>()
+
 let requireBodyContains (page: IPage) (expected: string) =
     let body = page.Locator("body").InnerTextAsync() |> awaitTask
-    require (body.Contains expected) $"expected `{expected}` in browser body"
+    if not (body.Contains expected) then
+        let status =
+            page.Locator("#sdui-runtime-status").TextContentAsync()
+            |> awaitTask
+            |> Option.ofObj
+            |> Option.defaultValue "<missing>"
+
+        let errors =
+            if consoleErrors.Count = 0 then "<none>"
+            else String.concat " | " consoleErrors
+
+        failwith
+            $"Interactive.Client lifecycle verification failed: expected `{expected}` in browser body; status={status}; console={errors}; body={body}"
 
 type FixtureState =
     { ConnectionCount: int
@@ -80,7 +94,8 @@ type FixtureState =
       MountedCount: int
       FullSnapshotRequestCount: int
       UnmountedCount: int
-      FrameCount: int }
+      FrameCount: int
+      InvalidBatchCount: int }
 
 let http = new HttpClient()
 
@@ -95,7 +110,8 @@ let readState () =
       MountedCount = integer "mountedCount"
       FullSnapshotRequestCount = integer "fullSnapshotRequestCount"
       UnmountedCount = integer "unmountedCount"
-      FrameCount = integer "frameCount" }
+      FrameCount = integer "frameCount"
+      InvalidBatchCount = integer "invalidBatchCount" }
 
 let waitForState timeout predicate description =
     let deadline = DateTime.UtcNow.Add timeout
@@ -116,17 +132,47 @@ let launchOptions = BrowserTypeLaunchOptions(Headless = not headed, ExecutablePa
 let browser = playwright.Chromium.LaunchAsync(launchOptions) |> awaitTask
 let context = browser.NewContextAsync(BrowserNewContextOptions(ViewportSize = ViewportSize(Width = 1440, Height = 900))) |> awaitTask
 let page = context.NewPageAsync() |> awaitTask
-let consoleErrors = ResizeArray<string>()
 page.Console.Add(fun message -> if message.Type = "error" then consoleErrors.Add message.Text)
 page.PageError.Add(fun error -> consoleErrors.Add error)
 
 page.GotoAsync(url, PageGotoOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
 page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 10000.0f)) |> awaitUnit
 requireBodyContains page "Interactive lifecycle workspace"
+page.GetByText("LAST GOOD V1", PageGetByTextOptions(Exact = true)).WaitForAsync(LocatorWaitForOptions(Timeout = 10000.0f)) |> awaitUnit
 requireBodyContains page "LAST GOOD V1"
 
 let initial = waitForState (TimeSpan.FromSeconds 5.0) (fun state -> state.ConnectionCount = 1 && state.ActiveConnections = 1 && state.MountedCount = 1) "initial mount"
 require (initial.MaximumActiveConnections = 1) $"initial transport overlap: {initial}"
+
+let invalidResponse = http.PostAsync(controlBaseUrl + "/test/inject-invalid", new StringContent("")) |> awaitTask
+require (int invalidResponse.StatusCode = 202) $"fixture invalid batch returned HTTP {int invalidResponse.StatusCode}"
+
+let recoveringInvalidBatch =
+    waitForState
+        (TimeSpan.FromSeconds 5.0)
+        (fun state -> state.InvalidBatchCount = 1 && state.FullSnapshotRequestCount = 1)
+        "out-of-order packet rejection"
+
+requireBodyContains page "LAST GOOD V1"
+require (recoveringInvalidBatch.FrameCount = 2) $"invalid packet batch must not count as a committed frame: {recoveringInvalidBatch}"
+page.GetByText("RESYNCED V2", PageGetByTextOptions(Exact = true)).WaitForAsync(LocatorWaitForOptions(Timeout = 10000.0f)) |> awaitUnit
+let recoveredInvalidBatch = waitForState (TimeSpan.FromSeconds 5.0) (fun state -> state.FrameCount = 3) "invalid-batch authoritative replacement snapshot"
+require (recoveredInvalidBatch.FullSnapshotRequestCount = 1) $"invalid batch emitted duplicate full-snapshot requests: {recoveredInvalidBatch}"
+
+let invalidValueResponse = http.PostAsync(controlBaseUrl + "/test/inject-invalid-value", new StringContent("")) |> awaitTask
+require (int invalidValueResponse.StatusCode = 202) $"fixture malformed item returned HTTP {int invalidValueResponse.StatusCode}"
+
+let recoveringInvalidValue =
+    waitForState
+        (TimeSpan.FromSeconds 5.0)
+        (fun state -> state.InvalidBatchCount = 2 && state.FullSnapshotRequestCount = 2)
+        "malformed snapshot item rejection"
+
+requireBodyContains page "RESYNCED V2"
+require (recoveringInvalidValue.FrameCount = 3) $"malformed item must not count as a committed frame: {recoveringInvalidValue}"
+page.GetByText("RESYNCED V3", PageGetByTextOptions(Exact = true)).WaitForAsync(LocatorWaitForOptions(Timeout = 10000.0f)) |> awaitUnit
+let recoveredInvalidValue = waitForState (TimeSpan.FromSeconds 5.0) (fun state -> state.FrameCount = 4) "malformed-item authoritative replacement snapshot"
+require (recoveredInvalidValue.FullSnapshotRequestCount = 2) $"malformed item emitted duplicate full-snapshot requests: {recoveredInvalidValue}"
 
 let dropResponse = http.PostAsync(controlBaseUrl + "/test/drop", new StringContent("")) |> awaitTask
 require (int dropResponse.StatusCode = 202) $"fixture drop returned HTTP {int dropResponse.StatusCode}"
@@ -134,16 +180,16 @@ require (int dropResponse.StatusCode = 202) $"fixture drop returned HTTP {int dr
 let synchronizing =
     waitForState
         (TimeSpan.FromSeconds 5.0)
-        (fun state -> state.ConnectionCount = 2 && state.FullSnapshotRequestCount = 1)
+        (fun state -> state.ConnectionCount = 2 && state.FullSnapshotRequestCount = 3)
         "replacement transport full-snapshot request"
 
-requireBodyContains page "LAST GOOD V1"
+requireBodyContains page "RESYNCED V3"
 require (synchronizing.ActiveConnections = 1) $"replacement transport should be singular: {synchronizing}"
 require (synchronizing.MaximumActiveConnections = 1) $"old and replacement transports overlapped: {synchronizing}"
 
-page.GetByText("RESYNCED V2", PageGetByTextOptions(Exact = true)).WaitForAsync(LocatorWaitForOptions(Timeout = 10000.0f)) |> awaitUnit
-let resynced = waitForState (TimeSpan.FromSeconds 5.0) (fun state -> state.FrameCount = 3 && state.MountedCount = 2) "authoritative replacement snapshot"
-require (resynced.FullSnapshotRequestCount = 1) $"reconnect emitted duplicate full-snapshot requests: {resynced}"
+page.GetByText("RESYNCED V4", PageGetByTextOptions(Exact = true)).WaitForAsync(LocatorWaitForOptions(Timeout = 10000.0f)) |> awaitUnit
+let resynced = waitForState (TimeSpan.FromSeconds 5.0) (fun state -> state.FrameCount = 5 && state.MountedCount = 2) "authoritative replacement snapshot"
+require (resynced.FullSnapshotRequestCount = 3) $"reconnect emitted duplicate full-snapshot requests: {resynced}"
 
 page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "interactive-client-resynced.png"), FullPage = true)) |> awaitTask |> ignore
 page.GotoAsync("about:blank") |> awaitTask |> ignore
@@ -156,6 +202,8 @@ require (disposed.UnmountedCount = 1) $"terminal dispose should send one unmount
 require (consoleErrors.Count = 0) ("browser console/page errors: " + String.concat " | " consoleErrors)
 
 dropResponse.Dispose()
+invalidResponse.Dispose()
+invalidValueResponse.Dispose()
 context.CloseAsync() |> awaitUnit
 browser.CloseAsync() |> awaitUnit
 playwright.Dispose()

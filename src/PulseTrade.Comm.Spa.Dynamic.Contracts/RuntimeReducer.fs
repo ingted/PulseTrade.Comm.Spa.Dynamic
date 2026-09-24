@@ -42,6 +42,16 @@ type RuntimeEffect =
     | CancelPoll
     | ReportDiagnostic of DynamicDiagnostic
 
+[<RequireQualifiedAccess>]
+type RuntimeFramePreflight =
+    | RequiresValidation
+    | Complete of RuntimeState * RuntimeEffect
+
+[<JavaScript>]
+type RuntimeSnapshotAuthority =
+    { AxisRefs: Set<string>
+      Axes: Map<string, float * Set<float>> }
+
 [<JavaScript; RequireQualifiedAccess>]
 module RuntimeReducer =
     [<Inline "($left < $right ? -1 : ($left > $right ? 1 : 0))">]
@@ -333,44 +343,67 @@ module RuntimeReducer =
                 Some("limit-retained-bars", $"Temporal axis `{axisRef}` exceeds retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
             | _ -> Some("invalid-temporal-axis", $"Temporal axis `{axisRef}` is malformed.")
 
+    let snapshotUnknownDataRef state data =
+        let refs = knownDataRefs state
+        data
+        |> Map.toSeq
+        |> Seq.map fst
+        |> Seq.tryFind (fun dataRef -> not (Set.contains dataRef refs))
+
+    let addSnapshotAxisAuthority data axisRef axes =
+        match Map.tryFind axisRef data with
+        | None -> Error("missing-temporal-axis", $"Temporal axis `{axisRef}` is missing.")
+        | Some value ->
+            match temporalAxisError axisRef value with
+            | Some error -> Error error
+            | None ->
+                match temporalObject "temporal-axis.v1" value with
+                | Some fields ->
+                    match temporalNumber "revision" fields, temporalPositions fields with
+                    | Some revision, Some positions -> Ok(Map.add axisRef (revision, Set.ofArray positions) axes)
+                    | _ -> Error("invalid-temporal-axis", $"Temporal axis `{axisRef}` is malformed.")
+                | None -> Error("temporal-axis-required", $"Temporal axis `{axisRef}` must contain temporal-axis.v1 data.")
+
+    let temporalSeriesError authority dataRef value =
+        match temporalObject "temporal-series.v1" value with
+        | None -> None
+        | Some fields ->
+            match temporalText "axisRef" fields, temporalNumber "axisRevision" fields, rawTemporalPoints fields, temporalPositions fields with
+            | Some axisRef, Some axisRevision, Some rawPoints, Some positions when not (Set.contains axisRef authority.AxisRefs) ->
+                Some("unknown-temporal-axis", $"Temporal series `{dataRef}` references undeclared axis `{axisRef}`.")
+            | Some axisRef, Some axisRevision, Some rawPoints, Some positions ->
+                match Map.tryFind axisRef authority.Axes with
+                | None -> Some("missing-temporal-axis", $"Temporal series `{dataRef}` references missing axis `{axisRef}`.")
+                | Some(revision, axisPositions) ->
+                    let unknownPosition = positions |> Array.tryFind (fun position -> not (Set.contains position axisPositions))
+                    match unknownPosition with
+                    | _ when revision <> axisRevision ->
+                        Some("temporal-axis-revision-mismatch", $"Temporal series `{dataRef}` expects axis revision {axisRevision}, but `{axisRef}` is {revision}.")
+                    | Some position ->
+                        Some("unknown-temporal-position", $"Temporal series `{dataRef}` position {position} is absent from axis `{axisRef}`.")
+                    | _ when rawPoints.Length <> positions.Length || not (positionsStrictlyIncrease positions) ->
+                        Some("invalid-temporal-series", $"Temporal series `{dataRef}` positions must be complete and strictly increasing.")
+                    | _ when positions.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
+                        Some("limit-retained-bars", $"Temporal series `{dataRef}` exceeds retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
+                    | _ -> None
+            | _ -> Some("invalid-temporal-series", $"Temporal series `{dataRef}` is malformed.")
+
     let temporalDataError state data =
         let axisRefs = documentAxisRefs state
-        let axisError =
+        let authorityResult =
             axisRefs
-            |> Seq.tryPick (fun axisRef ->
-                Map.tryFind axisRef data
-                |> Option.map (temporalAxisError axisRef)
-                |> Option.defaultValue (Some("missing-temporal-axis", $"Temporal axis `{axisRef}` is missing.")))
+            |> Seq.fold (fun current axisRef ->
+                match current with
+                | Error _ -> current
+                | Ok axes -> addSnapshotAxisAuthority data axisRef axes) (Ok Map.empty)
 
-        match axisError with
-        | Some error -> Some error
-        | None ->
+        match authorityResult with
+        | Error error -> Some error
+        | Ok axes ->
+            let authority = { AxisRefs = axisRefs; Axes = axes }
             data
             |> Map.toSeq
-            |> Seq.tryPick (fun (dataRef, value) ->
-                match temporalObject "temporal-series.v1" value with
-                | None -> None
-                | Some fields ->
-                    match temporalText "axisRef" fields, temporalNumber "axisRevision" fields, rawTemporalPoints fields, temporalPositions fields with
-                    | Some axisRef, Some axisRevision, Some rawPoints, Some positions when not (Set.contains axisRef axisRefs) ->
-                        Some("unknown-temporal-axis", $"Temporal series `{dataRef}` references undeclared axis `{axisRef}`.")
-                    | Some axisRef, Some axisRevision, Some rawPoints, Some positions ->
-                        match Map.tryFind axisRef data |> Option.bind (temporalObject "temporal-axis.v1") with
-                        | None -> Some("missing-temporal-axis", $"Temporal series `{dataRef}` references missing axis `{axisRef}`.")
-                        | Some axisFields ->
-                            let axisPositions = temporalPositions axisFields |> Option.defaultValue [||] |> Set.ofArray
-                            let unknownPosition = positions |> Array.tryFind (fun position -> not (Set.contains position axisPositions))
-                            match temporalNumber "revision" axisFields, unknownPosition with
-                            | Some revision, _ when revision <> axisRevision ->
-                                Some("temporal-axis-revision-mismatch", $"Temporal series `{dataRef}` expects axis revision {axisRevision}, but `{axisRef}` is {revision}.")
-                            | _, Some position ->
-                                Some("unknown-temporal-position", $"Temporal series `{dataRef}` position {position} is absent from axis `{axisRef}`.")
-                            | _ when rawPoints.Length <> positions.Length || not (positionsStrictlyIncrease positions) ->
-                                Some("invalid-temporal-series", $"Temporal series `{dataRef}` positions must be complete and strictly increasing.")
-                            | _ when positions.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
-                                Some("limit-retained-bars", $"Temporal series `{dataRef}` exceeds retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
-                            | _ -> None
-                    | _ -> Some("invalid-temporal-series", $"Temporal series `{dataRef}` is malformed."))
+            |> Seq.tryPick (fun (dataRef, value) -> temporalSeriesError authority dataRef value)
 
     let temporalOperationError refs axisRefs targets data operation =
         let unknownDataRef dataRef =
@@ -589,14 +622,7 @@ module RuntimeReducer =
             | _ -> current) state
 
     let snapshotRuntimeError state (snapshot: RuntimeSnapshot) =
-        let refs = knownDataRefs state
-        let unknownRef =
-            snapshot.Data
-            |> Map.toSeq
-            |> Seq.map fst
-            |> Seq.tryFind (fun dataRef -> not (Set.contains dataRef refs))
-
-        match unknownRef with
+        match snapshotUnknownDataRef state snapshot.Data with
         | Some dataRef -> Some("unknown-data-ref", $"Snapshot dataRef `{dataRef}` is not registered by the document.")
         | None -> temporalDataError state snapshot.Data
 
@@ -646,6 +672,17 @@ module RuntimeReducer =
                           Recoverable = true } },
             RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
 
+    /// Commits a snapshot only after the caller has completed envelope, structural,
+    /// temporal-authority, and overlay validation for this exact frame.
+    let applyPrevalidatedSnapshot (state: RuntimeState) (frame: RuntimeFrame) (snapshot: RuntimeSnapshot) =
+        { state with
+            Data = snapshot.Data
+            DocumentRevision = frame.DocumentRevision
+            DataRevision = frame.DataRevision
+            LastTransportSequence = frame.TransportSequence
+            Poll = RuntimePollState.Ready
+            LastError = None }, RuntimeEffect.NoEffect
+
     let applyValidatedFrame (state: RuntimeState) (frame: RuntimeFrame) =
         match frame.Payload with
         | RuntimePayload.Document document ->
@@ -667,14 +704,7 @@ module RuntimeReducer =
             | None ->
                 match overlayCandidateError state snapshot.Data with
                 | Some value -> overlayFailure state frame value
-                | None ->
-                    { state with
-                        Data = snapshot.Data
-                        DocumentRevision = frame.DocumentRevision
-                        DataRevision = frame.DataRevision
-                        LastTransportSequence = frame.TransportSequence
-                        Poll = RuntimePollState.Ready
-                        LastError = None }, RuntimeEffect.NoEffect
+                | None -> applyPrevalidatedSnapshot state frame snapshot
         | RuntimePayload.Patch patch ->
             match patchCandidate state patch with
             | Error(reasonCode, message) ->
@@ -701,17 +731,21 @@ module RuntimeReducer =
         | RuntimePayload.Heartbeat _ ->
             { state with LastTransportSequence = frame.TransportSequence }, RuntimeEffect.NoEffect
 
-    let reduce (state: RuntimeState) (frame: RuntimeFrame) =
+    let preflight (state: RuntimeState) (frame: RuntimeFrame) =
         if frame.CanvasInstanceId <> state.Identity.CanvasInstanceId || frame.DocumentId <> state.Identity.DocumentId then
-            state, RuntimeEffect.RequestResync(state.Identity.CanvasInstanceId, state.DataRevision)
+            RuntimeFramePreflight.Complete(state, RuntimeEffect.RequestResync(state.Identity.CanvasInstanceId, state.DataRevision))
         elif frame.TransportSequence <= state.LastTransportSequence then
-            state, RuntimeEffect.NoEffect
+            RuntimeFramePreflight.Complete(state, RuntimeEffect.NoEffect)
         elif frame.TransportSequence <> state.LastTransportSequence + 1L then
-            { state with Poll = RuntimePollState.PausedForResync }, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
+            RuntimeFramePreflight.Complete(
+                { state with Poll = RuntimePollState.PausedForResync },
+                RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision))
         elif frame.Kind = RuntimeFrameKind.Patch && frame.BaseDataRevision <> Some state.DataRevision then
-            { state with Poll = RuntimePollState.PausedForResync }, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
+            RuntimeFramePreflight.Complete(
+                { state with Poll = RuntimePollState.PausedForResync },
+                RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision))
         elif frame.Kind <> RuntimeFrameKind.Document && state.Document.IsNone then
-            state, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
+            RuntimeFramePreflight.Complete(state, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision))
         elif
             frame.Kind <> RuntimeFrameKind.Document
             && (state.Document |> Option.exists TaOverviewStripeContract.hasRuntimeV2Overlays)
@@ -722,11 +756,15 @@ module RuntimeReducer =
                     "marker-requires-runtime-v2", $"Marker runtime requires `{DynamicRuntimeDefaults.markerProtocol}`."
                 else
                     "overview-stripe-requires-runtime-v2", $"Overview stripe runtime requires `{DynamicRuntimeDefaults.markerProtocol}`."
-            overlayFailure
-                state
-                frame
-                (RuntimeValidation.error reasonCode "protocol" message)
+            overlayFailure state frame (RuntimeValidation.error reasonCode "protocol" message)
+            |> RuntimeFramePreflight.Complete
         else
+            RuntimeFramePreflight.RequiresValidation
+
+    let reduce (state: RuntimeState) (frame: RuntimeFrame) =
+        match preflight state frame with
+        | RuntimeFramePreflight.Complete(next, effect) -> next, effect
+        | RuntimeFramePreflight.RequiresValidation ->
             match RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits frame with
             | Ok _ -> applyValidatedFrame state frame
             | Error (error :: _) -> frameValidationFailure state frame error

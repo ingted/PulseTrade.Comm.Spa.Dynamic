@@ -643,6 +643,61 @@ let tests =
             Expect.isFalse (TaWorkspaceRenderer.sameDocumentShell first replacement) "A replacement run must rebuild the shell even when both revisions start at zero."
             Expect.isFalse (TaWorkspaceRenderer.sameDocumentShell first { same with DocumentRevision = 1L }) "A newer document revision must rebuild the shell."
 
+        testCase "latest row legend falls back to the last available presentation slot" <| fun _ ->
+            let read index =
+                if index = 3 then
+                    Some
+                        { Timestamp = "2026-09-03T13:03:00Z"
+                          Value = "101.25" }
+                else
+                    None
+            Expect.equal
+                (TaWorkspaceRenderer.tryReadAtOrBefore read 4 |> Option.map _.Value)
+                (Some "101.25")
+                "No-cursor legend state must retain the latest available value when the final presentation slot is sparse."
+            Expect.isNone (read 4) "Exact cursor reads must remain sparse instead of silently moving to another slot."
+
+        testCase "incremental temporal null retains an explicit projected source slot" <| fun _ ->
+            let axisRef = "axis.legend-null"
+            let axis =
+                { AxisRef = axisRef
+                  Revision = 1L
+                  Points =
+                    [| for position in 0L .. 2L do
+                           let startUtc = DateTimeOffset(2026, 9, 25, 1, int position, 0, TimeSpan.Zero)
+                           yield
+                               { Position = position
+                                 SourceIntervalId = $"legend-null:{position}"
+                                 ScaleKey = "1K"
+                                 IntervalStartUtc = startUtc
+                                 IntervalEndUtc = startUtc.AddMinutes 1.0
+                                 EventTimeUtc = Some(startUtc.AddMinutes 1.0)
+                                 ObservedThroughUtc = startUtc.AddMinutes 1.0
+                                 AvailableAtUtc = Some(startUtc.AddMinutes 1.0)
+                                 Finality = PointFinality.Final
+                                 Projection = TemporalProjection.CandleSpan
+                                 Quality = Some "complete" } |] }
+            let series values =
+                { AxisRef = axisRef
+                  AxisRevision = 1L
+                  Points = values |> Array.mapi (fun index value -> { Position = int64 index; Value = value }) }
+            let data values =
+                Map [ axisRef, TemporalAxisCodec.encode axis; "series.sma", TemporalSeriesCodec.encode (series values) ]
+            let initial = RendererModel.prepareData (data [| SduiValue.Number 10.0; SduiValue.Number 11.0; SduiValue.Number 12.0 |])
+            let revised = RendererModel.prepareDataIncremental initial (data [| SduiValue.Number 10.0; SduiValue.Number 11.0; SduiValue.Null |])
+            let reference = axis.Points |> Array.map (fun point -> point.EventTimeUtc.Value.ToString("O"))
+            let projected = RendererModel.projectedSourceTimestamps reference "series.sma" revised
+            let projectedUnavailable =
+                RendererModel.projectedLastSourceTimestampWhere
+                    (fun point -> RendererModel.parseLineResolved point.Temporal point.Payload |> Option.isNone)
+                    reference
+                    "series.sma"
+                    revised
+            Expect.equal projected[1] (Some reference[2]) "The explicit null point must retain its source interval at the projected slot."
+            Expect.equal projectedUnavailable[1] (Some reference[2]) "The bounded last-source path must retain the explicit null slot without rescanning the series."
+            let revisedSeries = revised.ResolvedSeries |> Map.find "series.sma"
+            Expect.equal revisedSeries[2].Payload (Some SduiValue.Null) "Incremental preparation must preserve the explicit null payload."
+
         testCase "multi-scale temporal projection aligns candle spans repeated lines and causal step values" <| fun _ ->
             let timestamps =
                 [| for minute in 0 .. 9 -> sprintf "2026-09-03T13:%02d:00.0000000+00:00" minute |]
