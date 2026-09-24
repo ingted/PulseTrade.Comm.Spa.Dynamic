@@ -28,3 +28,4 @@
 - 2026-09-25 06:36 +08:00 - Fresh official-cache focused suites PASS 34/45/12/14/16。Final Renderer Playwright PASS：five-candle max92.04ms、cursor main-thread max74.73ms、All/marker/document/progressive max49.30/79.15/40.12/57.14ms，over100=0。Lifecycle與cache browser gates PASS；test hosts 18882/18884/18885已停，外部SPAA 18883 PID17004保持運行。
 - 2026-09-25 06:42 +08:00 - Closeout gate：第一次changed-path scanner呼叫因PowerShell nested array把多個路徑串成單一路徑而失敗；改為flat array後掃描44個changed/new/log檔，High=0、Medium=0。strict UTF-8無NUL/U+FFFD；五個package `.fsproj` 的UTF-8 BOM與`HEAD`一致，沒有encoding drift。
 - 2026-09-25 06:44 +08:00 - Repo-scoped `check.fsx` PASS=30/WARN=2/FAIL=0。WARN為commit前預期的git dirty，以及既有跨歷史文件RFC traceability缺口；本輪WBS/Test缺口皆為0，非本輪衝突。
+- 2026-09-25 06:46 +08:00 - Main implementation/docs/tests committed and pushed：`fb4ec22 Implement chunked snapshot transport and renderer gates`，branch `20260915_033.ptcs_group_support`。外部SPAA仍由PID 17004監聽18883，未被owner gates停止或重啟。
