@@ -827,6 +827,7 @@ let tests =
                   ScaleKey = "1K"
                   IntervalStartUtc = time minute
                   IntervalEndUtc = (time minute).AddMinutes 1.0
+                  EventTimeUtc = Some((time minute).AddMinutes 1.0)
                   ObservedThroughUtc = (time minute).AddMinutes 1.0
                   AvailableAtUtc = Some((time minute).AddMinutes 1.0)
                   Finality = PointFinality.Final
@@ -881,7 +882,7 @@ let tests =
                 (RendererModel.lineSeriesPrepared refs.CloseRef prepared)
                 (RendererModel.lineSeries refs.CloseRef data)
                 "Prepared shared-axis line projection must preserve raw-path semantics."
-            Expect.equal (candles |> Array.map _.Timestamp) [| "2026-09-08T01:00:00.0000000+00:00"; "2026-09-08T01:05:00.0000000+00:00" |] "Irregular gap must stay irregular; renderer must not infer 01:01..01:04."
+            Expect.equal (candles |> Array.map _.Timestamp) [| "2026-09-08T01:01:00.0000000+00:00"; "2026-09-08T01:06:00.0000000+00:00" |] "Candle presentation must use the owner-authored event time without filling the irregular gap."
             Expect.equal candles[1].Open 105.0 "Open component should join by axis position."
             Expect.equal candles[1].High 115.0 "High component should join by axis position."
             Expect.equal candles[1].Low 101.0 "Low component should join by axis position."
@@ -928,6 +929,66 @@ let tests =
             Expect.isFalse
                 (Object.ReferenceEquals(prepared.ResolvedSeries[refs.OpenRef][1], revisedPrepared.ResolvedSeries[refs.OpenRef][1]))
                 "A changed axis position must refresh dependent temporal metadata."
+
+        testCase "DYN-TA-T-099 canonical event time drives presentation without changing topology identity" <| fun _ ->
+            let axisRef = "axis.event-time.5k"
+            let intervalStart minute = DateTimeOffset(2026, 9, 24, 3, minute, 0, TimeSpan.Zero)
+            let point position startMinute eventMinute finality =
+                let startUtc = intervalStart startMinute
+                { Position = position
+                  SourceIntervalId = $"5k:{startMinute}"
+                  ScaleKey = "5K"
+                  IntervalStartUtc = startUtc
+                  IntervalEndUtc = startUtc.AddMinutes 1.0
+                  EventTimeUtc = Some(intervalStart eventMinute)
+                  ObservedThroughUtc = intervalStart eventMinute
+                  AvailableAtUtc = if finality = PointFinality.Final then Some(intervalStart eventMinute) else None
+                  Finality = finality
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "authoritative" }
+            let lineTrace =
+                { TraceId = "sma-5k"
+                  Kind = TaTraceKind.Line
+                  DataRef = "series.event-time.sma"
+                  Label = "SMA 5K"
+                  Color = "#2563eb"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let data eventMinute revision =
+                let axis =
+                    { AxisRef = axisRef
+                      Revision = revision
+                      Points =
+                        [| point 0L 4 5 PointFinality.Final
+                           point 1L 5 eventMinute PointFinality.Preview |] }
+                let series =
+                    { AxisRef = axisRef
+                      AxisRevision = revision
+                      Points =
+                        [| { Position = 0L; Value = SduiValue.Number 100.0 }
+                           { Position = 1L; Value = SduiValue.Number 101.0 } |] }
+                Map [ axisRef, TemporalAxisCodec.encode axis; lineTrace.DataRef, TemporalSeriesCodec.encode series ]
+
+            let initial = RendererModel.prepareData (data 6 1L)
+            let revised = RendererModel.prepareData (data 7 2L)
+            Expect.sequenceEqual
+                (RendererModel.traceTimestampsPrepared lineTrace initial)
+                [| "2026-09-24T03:05:00.0000000+00:00"; "2026-09-24T03:06:00.0000000+00:00" |]
+                "Completed and forming points must expose the owner-authored presentation time."
+            Expect.sequenceEqual
+                (RendererModel.traceTimestampsPrepared lineTrace revised)
+                [| "2026-09-24T03:05:00.0000000+00:00"; "2026-09-24T03:07:00.0000000+00:00" |]
+                "A forming preview may advance its presentation time in-place."
+            Expect.sequenceEqual
+                (RendererModel.traceTopologyTimestampsPrepared lineTrace initial)
+                (RendererModel.traceTopologyTimestampsPrepared lineTrace revised)
+                "Same-position preview event-time updates must not change chart topology identity."
+            Expect.equal
+                ((RendererModel.lineSeriesPrepared lineTrace.DataRef revised |> Array.item 1).Timestamp)
+                "2026-09-24T03:07:00.0000000+00:00"
+                "The row value and cursor reader must receive the revised canonical event time."
 
         testCase "DYN-T-548 triangle direction is independent from anchor" <| fun _ ->
             let up = RendererModel.markerTrianglePoints TaMarkerShape.TriangleUp 10.0 20.0 4.5 |> Option.get
@@ -987,6 +1048,7 @@ let tests =
                   ScaleKey = "1K"
                   IntervalStartUtc = time minute
                   IntervalEndUtc = (time minute).AddMinutes 1.0
+                  EventTimeUtc = Some((time minute).AddMinutes 1.0)
                   ObservedThroughUtc = (time minute).AddMinutes 1.0
                   AvailableAtUtc = Some((time minute).AddMinutes 1.0)
                   Finality = PointFinality.Final

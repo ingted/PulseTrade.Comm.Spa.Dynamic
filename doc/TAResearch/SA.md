@@ -332,3 +332,11 @@ cross-row cursor的使用意圖是快速比較同一timestamp在所有TA列的�
 TradeCore 已把成交導向的 BUY／SELL、fill price與exit PnL收斂進generic `TaMarker.Label`。Dynamic不得再解讀其domain語意；只把既有bounded label放在同一marker placement附近，完整資訊仍由tooltip保存。label不是numeric sample，不能改Y-domain或row高度。
 
 shared cursor的X由base共同axis決定，但顯示的timestamp/value屬於各row自身。1K、5K、30K、60K必須分別使用該row實際resolved datapoint，不能複製base row時間。timestamp與OHLCV／indicator value視為同一個row-local presentation；缺值時整組Unavailable，避免跨row借值或timestamp/value tearing。詳見`RFC-PTCS-DYNAMIC-0022`。
+
+## 28. 2026-09-24 Shared axis canonical event-time analysis
+
+SPAA legacy row的top-level `t`在shared-axis壓縮時遺失；現有axis只有interval start/end/frontier，任何generic推導都無法同時正確表達completed bar close與forming preview latest event。把時間複製回每條series則會退回本來要消除的metadata duplication。
+
+因此canonical presentation time屬於`TemporalAxisPoint`，由owner按Position寫一次。`TemporalSeriesPoint`維持Position＋Value。Dynamic只驗optional UTC timestamp並搬運；同Position來源是否一致由SPAA在壓縮前驗證。Renderer將顯示point/timeline切到EventTimeUtc，但`chartTopologySignature`維持Position／IntervalStartUtc，避免forming preview每次event-time前進都重建chart。range projection、availability、query與coverage仍使用interval fields，避免把顯示時間誤作資料涵蓋區間。
+
+legacy `temporal-axis.v1`仍可缺欄位；fallback interval start只是視覺相容，不能被上游或下游當成canonical時間。詳見`RFC-PTCS-DYNAMIC-0023`。

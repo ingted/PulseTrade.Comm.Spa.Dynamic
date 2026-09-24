@@ -121,6 +121,7 @@ module Client =
                                         "scaleKey", SduiValue.Text "1K"
                                         "intervalStartUtc", SduiValue.Text(timestamp index)
                                         "intervalEndUtc", SduiValue.Text(timestamp (index + 1))
+                                        "eventTimeUtc", SduiValue.Text(timestamp (index + 1))
                                         "observedThroughUtc", SduiValue.Text(timestamp (index + 1))
                                         "availableAtUtc", SduiValue.Text(timestamp (index + 1))
                                         "finality", SduiValue.Text "final"
@@ -274,6 +275,7 @@ module Client =
                           "scaleKey", SduiValue.Text "1K"
                           "intervalStartUtc", SduiValue.Text(timestamp index)
                           "intervalEndUtc", SduiValue.Text(timestamp (index + 1))
+                          "eventTimeUtc", SduiValue.Text(timestamp (index + 1))
                           "observedThroughUtc", SduiValue.Text(timestamp (index + 1))
                           "availableAtUtc", SduiValue.Text(timestamp (index + 1))
                           "finality", SduiValue.Text "final"

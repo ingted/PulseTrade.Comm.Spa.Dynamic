@@ -201,6 +201,9 @@ module TemporalAxisCodec =
             match point.AvailableAtUtc with
             | Some value -> "availableAtUtc", SduiValue.Text(TemporalPointCodec.timestampText value)
             | None -> ()
+            match point.EventTimeUtc with
+            | Some value -> "eventTimeUtc", SduiValue.Text(TemporalPointCodec.timestampText value)
+            | None -> ()
             match point.Quality with
             | Some value -> "quality", SduiValue.Text value
             | None -> ()
@@ -220,7 +223,11 @@ module TemporalAxisCodec =
           Quality = point.Quality
           Value = None }
         |> TemporalPointCodec.validate
-        |> Result.map (fun _ -> point)
+        |> Result.bind (fun _ ->
+            match point.EventTimeUtc with
+            | Some value when value.Offset <> TimeSpan.Zero ->
+                Error [ RuntimeValidation.error "utc-required" "temporalAxisPoint.eventTimeUtc" "temporalAxisPoint.eventTimeUtc must use UTC offset zero." ]
+            | _ -> Ok point)
 
     let decodePointFields field values =
         let positionValue = position (field + ".position") values
@@ -228,6 +235,7 @@ module TemporalAxisCodec =
         let scaleKey = TemporalPointCodec.requiredText "scaleKey" (field + ".scaleKey") values
         let intervalStart = TemporalPointCodec.timestamp "intervalStartUtc" (field + ".intervalStartUtc") values
         let intervalEnd = TemporalPointCodec.timestamp "intervalEndUtc" (field + ".intervalEndUtc") values
+        let eventTime = TemporalPointCodec.optionalTimestamp "eventTimeUtc" (field + ".eventTimeUtc") values
         let observedThrough = TemporalPointCodec.timestamp "observedThroughUtc" (field + ".observedThroughUtc") values
         let availableAt = TemporalPointCodec.optionalTimestamp "availableAtUtc" (field + ".availableAtUtc") values
         let finality = TemporalPointCodec.pointFinality "finality" (field + ".finality") values
@@ -240,6 +248,7 @@ module TemporalAxisCodec =
                   scaleKey |> Result.map ignore
                   intervalStart |> Result.map ignore
                   intervalEnd |> Result.map ignore
+                  eventTime |> Result.map ignore
                   observedThrough |> Result.map ignore
                   availableAt |> Result.map ignore
                   finality |> Result.map ignore
@@ -252,6 +261,7 @@ module TemporalAxisCodec =
               ScaleKey = Result.defaultValue "" scaleKey
               IntervalStartUtc = Result.defaultValue DateTimeOffset.MinValue intervalStart
               IntervalEndUtc = Result.defaultValue DateTimeOffset.MinValue intervalEnd
+              EventTimeUtc = Result.defaultValue None eventTime
               ObservedThroughUtc = Result.defaultValue DateTimeOffset.MinValue observedThrough
               AvailableAtUtc = Result.defaultValue None availableAt
               Finality = Result.defaultValue PointFinality.Preview finality

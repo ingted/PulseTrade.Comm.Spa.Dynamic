@@ -690,3 +690,7 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-563 | Marker visible label | BUY/SELL entry/exit文字、相鄰區間collision lane、left/right clamp、row-edge反向展開、blank/long、tooltip/hitbox/Y-domain invariant | PASS：Renderer 39/39。 |
 | DYN-T-564 | Row cursor/data window | 1K/coarse row-local timestamp、兩行cursor label、candle OHLCV與line/hist值同源、missing unavailable | PASS：Playwright MCP已核對日期、時間與O/H/L/C/V。 |
 | DYN-T-565 | Browser/package | desktop/mobile、4,000 bars、300 pointer transitions、無request/rebuild/>100ms owner task、exact package與consumer handoff | PASS（owner）：F# Playwright及immutable `Renderer 0.1.40 / Interactive.Client 0.1.33 / Ptcs.Client 0.1.56`官方套件readback與clean nuget.org-only gates通過；consumer真SPAA rerun由Daedalus持有。 |
+| DYN-T-566 | Canonical event-time RFC/current-state | axis-vs-series ownership、legacy compatibility、renderer/interval邊界及package graph可追溯 | PASS：RFC-0023與TA current docs完成。 |
+| DYN-T-567 | Contracts event-time codec | optional UTC round-trip、legacy missing、invalid/non-UTC rejection | PASS：Contracts 31/31。 |
+| DYN-T-568 | Renderer event-time presentation | candle/line/timeline/marker/cursor與completed/forming例子 | PASS：Renderer 40/40；same-position preview event-time更新不改topology signature。 |
+| DYN-T-569 | Regression/package/consumer | interval semantics不變、exact graph、browser與SPAA handoff | PASS（owner）／consumer pending：exact graph、package readback、fresh-cache與browser gates通過；Daedalus真SPAA gate待final graph重跑。 |

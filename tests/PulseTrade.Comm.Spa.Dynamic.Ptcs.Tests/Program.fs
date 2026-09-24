@@ -499,6 +499,7 @@ let tests =
                     ScaleKey = "5K"
                     IntervalStartUtc = DateTimeOffset.Parse "2026-09-03T13:00:00Z"
                     IntervalEndUtc = DateTimeOffset.Parse "2026-09-03T13:05:00Z"
+                    EventTimeUtc = Some(DateTimeOffset.Parse "2026-09-03T13:04:00Z")
                     ObservedThroughUtc = DateTimeOffset.Parse observedThroughUtc
                     AvailableAtUtc = None
                     Finality = finality

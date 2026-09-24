@@ -9,6 +9,7 @@ type TaTemporalPointPresentation =
       ScaleKey: string
       IntervalStartUtc: string
       IntervalEndUtc: string
+      EventTimeUtc: string option
       ObservedThroughUtc: string
       AvailableAtUtc: string option
       Finality: string
@@ -238,6 +239,7 @@ module RendererModel =
                           ScaleKey = scaleKey
                           IntervalStartUtc = intervalStartUtc
                           IntervalEndUtc = intervalEndUtc
+                          EventTimeUtc = None
                           ObservedThroughUtc = observedThroughUtc
                           AvailableAtUtc = requiredObjectText "availableAtUtc" fields
                           Finality = finality
@@ -281,6 +283,7 @@ module RendererModel =
                       ScaleKey = scaleKey
                       IntervalStartUtc = intervalStartUtc
                       IntervalEndUtc = intervalEndUtc
+                      EventTimeUtc = requiredObjectText "eventTimeUtc" fields
                       ObservedThroughUtc = observedThroughUtc
                       AvailableAtUtc = requiredObjectText "availableAtUtc" fields
                       Finality = finality
@@ -659,12 +662,15 @@ module RendererModel =
     let fixedNumber (value: float) =
         string value
 
+    let presentationTimestamp (metadata: TaTemporalPointPresentation) =
+        metadata.EventTimeUtc |> Option.defaultValue metadata.IntervalStartUtc
+
     let parseCandleResolved temporal payload =
         payload
         |> Option.bind tryObject
         |> Option.bind (fun item ->
             match
-                (temporal |> Option.map _.IntervalStartUtc |> Option.orElseWith (fun () -> objectText "t" item)),
+                (temporal |> Option.map presentationTimestamp |> Option.orElseWith (fun () -> objectText "t" item)),
                 objectNumber "o" item,
                 objectNumber "h" item,
                 objectNumber "l" item,
@@ -689,12 +695,12 @@ module RendererModel =
     let parseLineResolved temporal payload =
         match payload, temporal with
         | Some(SduiValue.Number lineValue), Some metadata ->
-            Some { Timestamp = metadata.IntervalStartUtc; Value = lineValue; Temporal = temporal }
+            Some { Timestamp = presentationTimestamp metadata; Value = lineValue; Temporal = temporal }
         | _ ->
             payload
             |> Option.bind tryObject
             |> Option.bind (fun item ->
-                match temporal |> Option.map _.IntervalStartUtc |> Option.orElseWith (fun () -> objectText "t" item), objectNumber "v" item with
+                match temporal |> Option.map presentationTimestamp |> Option.orElseWith (fun () -> objectText "t" item), objectNumber "v" item with
                 | Some timestamp, Some lineValue -> Some { Timestamp = timestamp; Value = lineValue; Temporal = temporal }
                 | _ -> None)
 
@@ -814,9 +820,10 @@ module RendererModel =
                 |> Array.collect (fun (position, payload) ->
                     match Map.tryFind position axis.Points, TaMarkerCodec.decodeBucket trace.DataRef payload with
                     | Some temporal, Ok markers ->
+                        let timestamp = presentationTimestamp temporal
                         match
-                            referenceTimestamps |> Array.tryFindIndex ((=) temporal.IntervalStartUtc),
-                            Map.tryFind temporal.IntervalStartUtc targetByTimestamp
+                            referenceTimestamps |> Array.tryFindIndex ((=) timestamp),
+                            Map.tryFind timestamp targetByTimestamp
                         with
                         | Some slotIndex, Some targetPoint ->
                             markers
@@ -992,7 +999,7 @@ module RendererModel =
             let resolved = resolvedSeriesPrepared dataRef prepared
             let temporal =
                 resolved
-                |> Array.choose (fun point -> point.Temporal |> Option.map _.IntervalStartUtc)
+                |> Array.choose (fun point -> point.Temporal |> Option.map presentationTimestamp)
             if temporal.Length > 0 then
                 temporal
             else
@@ -1272,7 +1279,7 @@ module RendererModel =
             resolvedSeriesPrepared dataRef prepared
             |> Array.tryPick (fun point ->
                 point.Temporal
-                |> Option.filter (fun temporal -> temporal.IntervalStartUtc = timestamp)
+                |> Option.filter (fun temporal -> presentationTimestamp temporal = timestamp)
                 |> Option.map _.IntervalEndUtc))
 
     let timestampInInterval timestamp (metadata: TaTemporalPointPresentation) =

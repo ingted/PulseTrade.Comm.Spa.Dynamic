@@ -911,3 +911,21 @@ candidate exact graph：Contracts `[0.1.14]`、Renderer `[0.1.38]`、Interactive
 每個non-marker indexed reader回`{ Timestamp; Value }`。Candlestick由同一resolved candle組出timestamp與`O/H/L/C/V`，line／histogram由同一resolved point組出timestamp與value。row timestamp取第一個可用reader；全缺時timestamp與values均為`Unavailable`。既有single-rAF callback一次更新full-row crosshair、兩行cursor timestamp與固定高度data window，不新增request、decode、scan或topology rebuild。
 
 DOM contract與格式依`RFC-PTCS-DYNAMIC-0022`：`ta-marker-label-*`、`ta-row-cursor-label-*`、`ta-row-cursor-date-*`、`ta-row-cursor-time-*`、`ta-row-data-time-*`；日期/時間為`yyyy-MM-dd`／`HH:mm:ss`，data window prefix為`yyyy-MM-dd HH:mm:ss`。
+
+## 2026-09-24 shared axis canonical event time revision 17
+
+`TemporalAxisPoint`新增`EventTimeUtc: DateTimeOffset option`，wire field為optional `eventTimeUtc`。`TemporalAxisCodec` encode只在Some時寫入，decode缺欄位回None，並以既有UTC validation style拒絕non-zero offset。`TemporalSeriesPoint`不變。
+
+```text
+owner row EventTimeUtc
+  -> validate same Position agrees
+  -> TemporalAxisPoint.EventTimeUtc
+  -> temporal-axis.v1 optional eventTimeUtc
+  -> TaTemporalPointPresentation.EventTimeUtc
+  -> presentationTimestamp = EventTimeUtc | legacy IntervalStartUtc
+  -> point timestamp / timeline / marker attachment / cursor reader
+```
+
+`presentationTimestamp`不得用IntervalEndUtc、ObservedThroughUtc或AvailableAtUtc補值。`timestampInInterval`、`matchingReferenceRange`、query range、coverage與`tryBasePointIntervalEnd`維持start/end語意；只把代表可見point identity的`IntervalStartUtc` lookup改成presentation timestamp。`traceTopologyTimestampsPrepared`刻意保留IntervalStartUtc／Position語意，同Position preview只改EventTimeUtc時不得使`chartTopologySignature`改變。
+
+Package gate須同步Contracts、Renderer、Interactive.Client、Dynamic.Ptcs及Ptcs.Client exact references。測試表見`DYN-TA-T-098..101`。

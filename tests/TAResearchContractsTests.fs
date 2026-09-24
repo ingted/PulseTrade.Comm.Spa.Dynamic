@@ -258,6 +258,7 @@ let tests =
                   ScaleKey = "1K"
                   IntervalStartUtc = intervalStart
                   IntervalEndUtc = intervalEnd
+                  EventTimeUtc = None
                   ObservedThroughUtc = intervalEnd
                   AvailableAtUtc = Some intervalEnd
                   Finality = PointFinality.Final
@@ -476,6 +477,7 @@ let tests =
                   ScaleKey = "1K"
                   IntervalStartUtc = DateTimeOffset.Parse "2026-09-21T01:10:00Z"
                   IntervalEndUtc = DateTimeOffset.Parse "2026-09-21T01:11:00Z"
+                  EventTimeUtc = None
                   ObservedThroughUtc = DateTimeOffset.Parse "2026-09-21T01:11:00Z"
                   AvailableAtUtc = Some(DateTimeOffset.Parse "2026-09-21T01:11:00Z")
                   Finality = PointFinality.Final
@@ -681,6 +683,7 @@ let tests =
                   ScaleKey = "1k"
                   IntervalStartUtc = startTime
                   IntervalEndUtc = endTime
+                  EventTimeUtc = None
                   ObservedThroughUtc = startTime.AddSeconds(float observedOffset)
                   AvailableAtUtc = if finality = PointFinality.Final then Some endTime else None
                   Finality = finality
@@ -877,6 +880,7 @@ let tests =
                       ScaleKey = "1k"
                       IntervalStartUtc = intervalStart
                       IntervalEndUtc = intervalEnd
+                      EventTimeUtc = None
                       ObservedThroughUtc = intervalEnd
                       AvailableAtUtc = Some intervalEnd
                       Finality = PointFinality.Final
@@ -922,6 +926,7 @@ let tests =
                   ScaleKey = "1k"
                   IntervalStartUtc = intervalStart
                   IntervalEndUtc = intervalStart.AddMinutes 1.0
+                  EventTimeUtc = None
                   ObservedThroughUtc = intervalStart.AddMinutes 1.0
                   AvailableAtUtc = Some(intervalStart.AddMinutes 1.0)
                   Finality = PointFinality.Final
@@ -967,6 +972,7 @@ let tests =
                       ScaleKey = "1k"
                       IntervalStartUtc = intervalStart
                       IntervalEndUtc = intervalEnd
+                      EventTimeUtc = None
                       ObservedThroughUtc = intervalEnd
                       AvailableAtUtc = Some intervalEnd
                       Finality = PointFinality.Final
@@ -1487,6 +1493,7 @@ let tests =
                   ScaleKey = "1K"
                   IntervalStartUtc = intervalStart
                   IntervalEndUtc = intervalEnd
+                  EventTimeUtc = None
                   ObservedThroughUtc = if finality = PointFinality.Final then intervalEnd else intervalStart.AddSeconds 20.0
                   AvailableAtUtc = if finality = PointFinality.Final then Some intervalEnd else None
                   Finality = finality
@@ -1629,6 +1636,7 @@ let tests =
                          ScaleKey = "1K"
                          IntervalStartUtc = startUtc
                          IntervalEndUtc = startUtc.AddMinutes 1.0
+                         EventTimeUtc = None
                          ObservedThroughUtc = startUtc.AddMinutes 1.0
                          AvailableAtUtc = Some(startUtc.AddMinutes 1.0)
                          Finality = PointFinality.Final
@@ -1729,4 +1737,43 @@ let tests =
                     currentDocumentState
                     entry)
                 "A different query fingerprint must not hydrate cached data."
+
+        testCase "DYN-TA-T-098 shared axis event time is optional, UTC and round-trippable" <| fun _ ->
+            let intervalStart = DateTimeOffset.Parse "2026-09-24T03:04:00Z"
+            let eventTime = DateTimeOffset.Parse "2026-09-24T03:05:00Z"
+            let point : TemporalAxisPoint =
+                { Position = 7L
+                  SourceIntervalId = "mdcq:1k:20260924T0304Z"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = intervalStart
+                  IntervalEndUtc = eventTime
+                  EventTimeUtc = Some eventTime
+                  ObservedThroughUtc = eventTime
+                  AvailableAtUtc = Some eventTime
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+
+            let decoded =
+                TemporalAxisCodec.encodePoint point
+                |> TemporalAxisCodec.decodePoint "axis.points[0]"
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal decoded.EventTimeUtc (Some eventTime) "Canonical event time must survive the shared-axis codec."
+
+            let legacy =
+                TemporalAxisCodec.encodePointFields point
+                |> Map.remove "eventTimeUtc"
+                |> SduiValue.Object
+                |> TemporalAxisCodec.decodePoint "axis.points[0]"
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal legacy.EventTimeUtc None "Legacy temporal-axis.v1 points remain decodable without invented event time."
+
+            let invalid = { point with EventTimeUtc = Some(eventTime.ToOffset(TimeSpan.FromHours 8.0)) }
+            let errors =
+                match TemporalAxisCodec.validatePoint invalid with
+                | Error values -> values
+                | Ok _ -> failtest "A non-UTC event time must fail validation."
+            Expect.isTrue (errors |> List.exists (fun error -> error.Code = "utc-required")) "Canonical event time must use UTC offset zero."
     ]

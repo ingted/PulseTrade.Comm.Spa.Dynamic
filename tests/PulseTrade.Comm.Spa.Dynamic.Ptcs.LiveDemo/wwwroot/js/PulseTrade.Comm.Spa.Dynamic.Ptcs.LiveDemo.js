@@ -13497,7 +13497,7 @@ function tryBasePointIntervalEndPrepared(row, prepared, timestamp){
     let _1=m==null?trace.DataRef:m.$0.OpenRef;
     let _2=resolvedSeriesPrepared(_1, prepared);
     return tryPick((point) => {
-      const o_1=filter((temporal) => temporal.IntervalStartUtc==timestamp, point.Temporal);
+      const o_1=filter((temporal) => presentationTimestamp(temporal)==timestamp, point.Temporal);
       return o_1==null?null:Some(o_1.$0.IntervalEndUtc);
     }, _2);
   }
@@ -13766,7 +13766,7 @@ function traceTimestampsPrepared(trace, prepared){
     const resolved=resolvedSeriesPrepared(dataRef, prepared);
     const temporal=choose((point) => {
       const o=point.Temporal;
-      return o==null?null:Some(o.$0.IntervalStartUtc);
+      return o==null?null:Some(presentationTimestamp(o.$0));
     }, resolved);
     if(length(temporal)>0)return temporal;
     else {
@@ -13803,6 +13803,7 @@ function tryTemporalPoint(value){
           ScaleKey:_1[5], 
           IntervalStartUtc:_1[2], 
           IntervalEndUtc:_1[1], 
+          EventTimeUtc:null, 
           ObservedThroughUtc:_1[3], 
           AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
           Finality:_1[0], 
@@ -13863,6 +13864,7 @@ function tryTemporalAxisPoint(value){
       ScaleKey:_1[6], 
       IntervalStartUtc:_1[2], 
       IntervalEndUtc:_1[1], 
+      EventTimeUtc:requiredObjectText("eventTimeUtc", fields), 
       ObservedThroughUtc:_1[3], 
       AvailableAtUtc:requiredObjectText("availableAtUtc", fields), 
       Finality:_1[0], 
@@ -13909,6 +13911,10 @@ function tryFindTemporalPointIndex(position, rawPoints){
       }
   }
   return search(0, length(rawPoints)-1);
+}
+function presentationTimestamp(metadata){
+  const o=metadata.EventTimeUtc;
+  return o==null?metadata.IntervalStartUtc:o.$0;
 }
 function traceReferencePoints(trace, data){
   let _1;
@@ -14042,10 +14048,9 @@ function markerPlacementsPrepared(trace, target, prepared, referenceTimestamps){
         const _8=axis.Points.TryFind(position);
         const _9=decodeBucket(trace.DataRef, _5[1]);
         if(_8!=null&&_8.$==1&&(_9.$==0&&(_6=[_9.$0, _8.$0],true))){
-          const temporal=_6[1];
-          const x=temporal.IntervalStartUtc;
-          const _10=tryFindIndex((y) => x==y, referenceTimestamps);
-          const _11=targetByTimestamp.TryFind(temporal.IntervalStartUtc);
+          const timestamp=presentationTimestamp(_6[1]);
+          const _10=tryFindIndex((y) => timestamp==y, referenceTimestamps);
+          const _11=targetByTimestamp.TryFind(timestamp);
           if(_10!=null&&_10.$==1&&(_11!=null&&_11.$==1&&(_7=[_10.$0, _11.$0],true))){
             const slotIndex=_7[0];
             const targetPoint=_7[1];
@@ -14210,7 +14215,7 @@ function parseCandleResolved(temporal, payload){
   if(o==null)return null;
   else {
     const item=o.$0;
-    const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
+    const o_1=temporal==null?null:Some(presentationTimestamp(temporal.$0));
     const _2=o_1==null?objectText("t", item):(o_1.$0,o_1);
     const _3=objectNumber("o", item);
     const _4=objectNumber("h", item);
@@ -14343,7 +14348,7 @@ function cursorIndexFromRatio(visibleCount, ratio){
 function parseLineResolved(temporal, payload){
   let _1, _2;
   if(payload!=null&&payload.$==1&&(payload.$0.$==2&&(temporal!=null&&temporal.$==1&&(_1=[payload.$0.$0, temporal.$0],true))))return Some({
-    Timestamp:_1[1].IntervalStartUtc, 
+    Timestamp:presentationTimestamp(_1[1]), 
     Value:_1[0], 
     Temporal:temporal
   });
@@ -14352,7 +14357,7 @@ function parseLineResolved(temporal, payload){
     if(o==null)return null;
     else {
       const item=o.$0;
-      const o_1=temporal==null?null:Some(temporal.$0.IntervalStartUtc);
+      const o_1=temporal==null?null:Some(presentationTimestamp(temporal.$0));
       const _3=o_1==null?objectText("t", item):(o_1.$0,o_1);
       const _4=objectNumber("v", item);
       return _3!=null&&_3.$==1&&(_4!=null&&_4.$==1&&(_2=[_4.$0, _3.$0],true))?Some({

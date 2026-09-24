@@ -172,6 +172,7 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         let rowCursorDate = page.Locator("[data-testid='ta-row-cursor-date-price']")
         let rowCursorClock = page.Locator("[data-testid='ta-row-cursor-time-price']")
         let rowDataTime = page.Locator("[data-testid='ta-row-data-time-price']")
+        let sharedAxisDataTime = page.Locator("[data-testid='ta-row-data-time-sma']")
         let rowDataWindow = page.Locator("[data-testid='ta-row-values-price']")
         require ((textOf rowCursorDate).StartsWith("2026-09-", StringComparison.Ordinal)) "row cursor date is missing"
         require ((textOf rowCursorClock).Length = 8) "row cursor clock must use HH:mm:ss"
@@ -201,6 +202,14 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         let pointerP95 = transitionDurations.ToArray() |> percentile95
         require (pointerP95 < 50.0) $"pointer transition p95 was {pointerP95:F2}ms"
         require (total.Elapsed < TimeSpan.FromSeconds 8.0) $"200 cursor transitions took {total.Elapsed}"
+
+        page.Mouse.MoveAsync(chartBox.X + chartBox.Width - 1.0f, chartBox.Y + chartBox.Height / 2.0f) |> awaitUnit
+        let canonicalTimeDeadline = DateTime.UtcNow.AddSeconds 2.0
+        while textOf sharedAxisDataTime <> "2026-09-03 15:40:00" && DateTime.UtcNow < canonicalTimeDeadline do
+            Threading.Thread.Sleep 5
+        let canonicalTime = textOf sharedAxisDataTime
+        require (canonicalTime = "2026-09-03 15:40:00")
+            ($"shared-axis cursor must display authored EventTimeUtc instead of the final interval start; actual={canonicalTime}")
         printfn "renderer gate bars=%d paths=%d allMs=%d pointerP95Ms=%.2f maxMs=%d" loadedBars batchedCandlePaths allWatch.ElapsedMilliseconds pointerP95 maximumMs
 
         let beforeHollowHover = attribute crosshair "x1"

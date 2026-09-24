@@ -148,3 +148,5 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-070 | 合法大型RuntimeFrame安全掃描不得為每個nested value建立diagnostic path/list；unsafe candidate仍須回相同精確code/path，且不得略過temporal/schema validation。 |
 | DYN-TA-REQ-071 | candle/line row geometry須避免per-bar slot array、per-row Map projection與同一candle trace八次全掃；不得改變source interval、Y-domain、path順序或cursor values。 |
 | DYN-TA-REQ-072 | 3,819個1K points x 7 rows的真consumer initial、48→All與backtest/accounting replacement須以CDP量測；owner package完成不得由generic fixture單獨宣告，任何大於100ms task須有phase/child attribution。 |
+| DYN-TA-REQ-073 | shared temporal axis須以optional owner-authored `EventTimeUtc`保存Position的canonical presentation time；Renderer不得由interval end／observed-through／availability推導。legacy missing可相容顯示interval start，但不得視為canonical authority。 |
+| DYN-TA-REQ-074 | candle、line、marker attachment、row/reference timeline與cursor/data window須共用axis `EventTimeUtc`；interval projection、query intersection、coverage與availability仍只使用interval/frontier欄位。 |

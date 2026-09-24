@@ -47,6 +47,7 @@ type TemporalAxisPoint =
       ScaleKey: string
       IntervalStartUtc: DateTimeOffset
       IntervalEndUtc: DateTimeOffset
+      EventTimeUtc: DateTimeOffset option
       ObservedThroughUtc: DateTimeOffset
       AvailableAtUtc: DateTimeOffset option
       Finality: PointFinality
