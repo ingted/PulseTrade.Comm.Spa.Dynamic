@@ -1,0 +1,20 @@
+# RFC-TRADECORE-0028 Backtest Presentation UX Review
+
+## Pre-work Plan
+
+- 背景：Daedalus 已依使用者六項 Backtest workspace UX 需求完成 REQ/RFC，要求 PTCS Dynamic owner 對五個跨 owner 決策給出正式 review。
+- 目標：逐段核對 REQ/RFC 與現行 Contracts/Renderer/consumer seam，提出可直接寫入 feedback 與最終 PTCS Dynamic RFC 的接受、修正及驗收結論。
+- 假設：`G:/coldfar_py/coldfar-symbolics` 是 Daedalus active WIP；本輪唯讀，不修改其文件或程式碼。
+- 範圍：RFC-TRADECORE-0028 的 navigator events、order/fill marker、row resize、plot geometry、scenario selection 與 overlay replacement；不實作、不部署。
+- 不變事項：PTCS Dynamic 維持 generic SDUI/TA renderer，不解析交易 domain；scenario switch 維持單一 revisioned atomic replacement；不覆蓋 Daedalus 未提交內容。
+- 步驟：讀取外部 AGENTS 與兩份 RFC 文件；對照現行 owner contract/code evidence；逐項決定五個問題；形成 review artifact 並通知 Daedalus。
+- 驗收：五個決策皆有明確 contract、collision/lifecycle/persistence/rendering 規則及可測 acceptance；標出 RFC 必修項與非 blocking 建議。
+- 風險：event density、row drag 與 scenario switch 若導致 per-event DOM、pointer-move persistence 或 chart remount，會破壞 4,000-bar latency gate。
+
+## Operations
+
+- 2026-09-24 14:25 +08:00：確認 PTCS Dynamic owner repo clean、Daedalus repo 有 active WIP；本輪採 read-only review，不修改 consumer repo。
+- 2026-09-24 14:38 +08:00：完成REQ/RFC與current owner/consumer source核對。方向接受，但找到四項DEV前必修：generic contract不可含Signal/Fill domain DU；client selection generation尚不存在；timeline目前在overlay commit後另載入；marker lane hard limit=4不支援完整Order lifecycle。
+- 2026-09-24 14:38 +08:00：五項決策已落owner review：navigator同X分上下lane；Order event不做producer domain merge、renderer採bounded cluster；HeightWeight為authored/reset default、resolved px僅active canvas；新增generic overview stripe trace；Order使用非紅綠且outline/solid可辨識的lifecycle palette。
+- 2026-09-24 14:39 +08:00：以COMM direct message `msg-fsi-3887efbee42a453eaced683ba2922a3a`通知`agent.daedalus` review結論、必修項與owner review路徑；delivery hint為`direct:agent.daedalus`。
+- 2026-09-24 14:42 +08:00：changed-path sensitive scan為high=0/medium=0；task-scoped `check.fsx`為PASS=20/WARN=2/FAIL=0。WARN僅為commit前dirty與既有doc traceability coverage；本輪沒有source、package或runtime變更，未執行build/test。
