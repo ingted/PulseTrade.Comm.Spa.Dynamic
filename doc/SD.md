@@ -531,3 +531,81 @@ candidate marker traces
 `Outline` visible glyph使用`fill=none`及`stroke=marker.Color`。若SVG原生paint hit testing不足，renderer增加同geometry透明interaction target；該target只提供pointer/tooltip命中，不得阻止shared cursor依x slot更新，不進Y-domain/numeric legend/time axis，也不得造成candle series rebuild。
 
 Owner release gate以PTCS browser-demo／Interactive Client的desktop/mobile F# Playwright驗direction、fill、tooltip、cursor parity及exact graph。Daedalus升級SPAA／Interactive Extension、真`BacktestPresentationEvent`映射與Notebook `.dib` parity是發布後consumer gate。
+
+## 2026-09-24 Backtest Presentation UX Design
+
+完整決策：`doc/RFC/RFC-PTCS-DYNAMIC-0024.backtest-presentation-ux.md`。
+
+### Contract and codec
+
+```fsharp
+type TaOverviewStripe =
+    { StripeId: string
+      EventTimeUtc: string
+      Color: string
+      StrokeWidthCssPixels: float
+      Label: string option
+      Tooltip: TaMarkerTooltipField array }
+
+type TaOverviewStripeTraceOptions =
+    { TargetTraceId: string
+      CollisionGroup: string
+      LayerOrder: int }
+```
+
+`TaTraceKind.OverviewStripe`的data ref沿用`TemporalSeries`：每個`TemporalSeriesPoint.Position` value是`TaOverviewStripeCodec.encodeBucket`產生的array；item `_type=ta-overview-stripe.v1`。`EventTimeUtc`須與該position的canonical axis event time一致，target須為同row candlestick。Options keys固定為`overviewStripe.targetTraceId`、`overviewStripe.collisionGroup`、`overviewStripe.layerOrder`。
+
+`TaOverviewStripeContract.documentErrors/candidateErrors`只掃stripe refs、target candle refs及axis，不掃全部TA values。Limits為bucket 64、dataRef 10,000、frame 20,000；id 128、label 64、collision group 64、tooltip 16、layer 0..63、stroke width 0.5..4.0。Marker bucket/lane hard limit同步由4升為64，dataRef/frame維持10,000/20,000。
+
+### Candidate flow
+
+```text
+RuntimePatch [ReplaceDataRef stripes; ReplaceDataRef orders; ReplaceDataRef fills]
+  -> validate patch operation shape/reference
+  -> fold every operation into private candidate map
+  -> validate temporal axis/series
+  -> validate marker candidate across traces
+  -> validate overview stripe candidate across traces
+  -> commit revision/data once OR retain last-good
+```
+
+Malformed／duplicate／hard-limit使用`RejectFrame Recoverable=false`；missing authoritative axis/data與revision gap使用`RequestResync`。Validation不得修改state、DOM或先發布任何單一dataRef。
+
+### Overview prepared renderer
+
+```text
+stripe EventTimeUtc
+  -> target canonical axis position
+  -> active visible-window slot
+  -> navigator X pixel
+  -> group(targetTraceId, collisionGroup, xPixel)
+  -> order distinct traces by LayerOrder/document order
+  -> equal vertical lanes; same-trace ids remain in pixel bucket
+  -> batch SVG paths by trace/lane/color/width
+```
+
+Stripe path為`pointer-events:none`。Navigator共用interaction layer查prepared pixel bucket並提供count／tooltip，不在pointer move掃全資料。Z-order為close path、stripe path、selection mask／handle。Close path sampling與stripe index各自處理，禁止拿sampled close index當event位置。
+
+### Dense marker presentation
+
+Candidate以document trace order＋bucket order保留最多64筆。Renderer直接layout前4筆；remaining markers建立單一cluster model：`Count`、ordered marker references、active index。Cluster button支援Enter／Space toggle、ArrowUp／Down選擇、Escape close，detail逐筆復用既有label／tooltip。Cluster與glyph總數是bounded DOM，不改Y-domain、candle prepared data或shared cursor listener。
+
+### Row resize state machine
+
+```text
+NoOverride
+  -> pointer/keyboard resize -> Preview(resolvedPx)
+  -> pointer-up/keyup commit -> Override(resolvedPx)
+  -> Reset/Home/double-click -> NoOverride
+  -> row removed/unmount -> dispose
+```
+
+Local map key為`CanvasInstanceId + RowId`。Default height：candle/composite `clamp 180 720 (round(250 * HeightWeight))`；scalar `clamp 96 480 (round(112 * HeightWeight))`。Scenario data revision不清除override；fresh mount／reload不rehydrateoverride。Pointer move只排一個requestAnimationFrame，data readers與document fingerprint保持不變。
+
+Total row height不再由marker presence決定。Plot height由resolved total扣除header／axis／small padding；scalar plot不留固定空band。Row cursor timestamp在plot外overlay/header，X仍跟shared crosshair並左右clamp。
+
+### Package closure
+
+Planned graph：Contracts `0.1.16` → Renderer `0.1.42` → Interactive.Client `0.1.36`；Dynamic.Ptcs `0.1.41` exact Contracts；Ptcs.Client `0.1.58` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。若版本已被占用只可整體向前並同步RFC/DevLog，不得ProjectReference或partial graph。
+
+Test seams：strict codec/unknown field/limits；candidate atomicity/last-good；same-X lane/pixel bucket；marker cluster keyboard/focus；row resize/default/reset/dispose；4,000 slots long-task；exact nupkg/bundle/readback。

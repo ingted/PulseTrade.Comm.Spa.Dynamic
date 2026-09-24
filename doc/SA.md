@@ -167,3 +167,31 @@ Marker 是 TA presentation primitive，不是交易domain event。Daedalus擁有
 `RFC-PTCS-DYNAMIC-0016`修正presentation contract而不改架構。Anchor是相對candle的空間位置，triangle direction是glyph語意；兩者不可互相推導。Current wire升為`ta-marker.v2`，v1只由compatibility decoder依舊renderer方向映射，browser cache schema升至3並讓schema 2 marker cache miss/resync。`Outline`使用透明內部，但interaction hit target必須與shared cursor同時作用。
 
 數量限制分成wire與visual兩層：每個DataRef/Position bucket跨anchor總量最多4；跨marker traces共享同row/target/Position/anchor時，candidate aggregate亦最多4。後者避免各trace lane從0開始造成重疊，仍由document trace order與bucket order產生唯一順序。Aster擁有package/browser contract；Daedalus擁有DMI event mapping、SPAA transaction與Notebook真路徑，兩者以exact-package deployment closure銜接而非跨repo同commit。
+
+## 2026-09-24 Backtest Presentation UX System Analysis
+
+`RFC-PTCS-DYNAMIC-0024`延伸既有TA runtime，不建立backtest-specific renderer。系統責任如下：
+
+| Layer | Owner | Responsibility |
+| --- | --- | --- |
+| Backtest domain truth | TradeCore／Daedalus | Signal、Order、Fill、scenario/result identity、PnL與stable domain ids。 |
+| Consumer projection | DIExt／SPAA／Daedalus | 將domain event轉generic stripe／marker；準備summary、trades、timeline、downloads及monotonic selection generation。 |
+| Runtime contracts | PTCS.Dynamic Contracts／Aster | OverviewStripe wire、marker capacity、strict validation、multi-operation candidate atomicity及last-good。 |
+| Presentation renderer | PTCS.Dynamic Renderer／Aster | Navigator lanes、marker cluster、row resize、shared cursor及bounded prepared geometry。 |
+| Host adapters | Interactive／PTCS clients／Aster | Exact package/bundle closure與既有runtime transport；不理解backtest domain。 |
+
+採獨立OverviewStripe而非Marker變體，因為navigator line沒有bar anchor／shape／fill，且需要close sampling之外的event-time index。共用只會讓wire欄位失真。Stripe與Marker仍共用`TaMarkerTooltipField`，避免重造bounded tooltip vocabulary。
+
+Atomicity分兩層：PTCS reducer保證單一RuntimeFrame內所有`ReplaceDataRef`先形成candidate、全驗證後才commit；Daedalus consumer保證同scenario的runtime、summary、trades、timeline與download manifest都完成prepare後才一次publish。前者不能取代`selectionGeneration`，後者也不能繞過PTCS candidate validation。
+
+Marker現有4筆限制把wire truth與DOM budget混在一起。新模型以64作transport/candidate hard limit、4作direct glyph budget；`+N` cluster只壓縮presentation，不壓縮identity。這會增加decode/candidate成本，但仍受dataRef/frame limits與prepared index約束，且避免consumer自行丟事件。
+
+Row height是local presentation state，不是document mutation。`HeightWeight`只提供deterministic authored default；canvas-local override不進fingerprint、cache、provider command或scenario revision。這避免多人／多kernel preference同步問題，也讓fresh reload可回到canonical document。
+
+主要風險：
+
+- `TaTraceKind`新增case會要求active consumers同步compile；以exact package graph與full WebSharper build關閉。
+- marker 4→64若直接建立64個SVG group會放大DOM；renderer必須以4 glyph＋cluster維持bounded nodes。
+- overview stripe若跟close path一起sampling會時間錯位；prepared model必須先走canonical axis lookup。
+- drag resize若每pointer event重建rows/data readers會卡頓；只准rAF local geometry preview及pointer-up單次state commit。
+- consumer若分批更新timeline/downloads，即使runtime patch原子仍會出現混合revision；這是Daedalus acceptance gate，不得被owner package PASS掩蓋。

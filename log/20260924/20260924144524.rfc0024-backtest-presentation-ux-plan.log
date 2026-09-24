@@ -1,0 +1,20 @@
+# RFC-PTCS-DYNAMIC-0024 Backtest Presentation UX Planning
+
+## Pre-work Plan
+
+- 背景：Daedalus 已以commit `818d2e70`修訂RFC-TRADECORE-0028並提交OwnerReview feedback，確認五項owner決策及責任邊界，授權進入PTCS Dynamic正式RFC文件流程。
+- 目標：建立PTCS Dynamic owner RFC，並同步current Requirement／SA／SD／WBS／Test，使OverviewStripe、marker cluster、row resize/layout與atomic replacement可直接進後續DEV。
+- 假設：本輪先完成RFC→REQ→SA→SD→WBS→Test；不在current-state文件與package contract尚未閉合前修改renderer或發布NuGet。
+- 範圍：`PulseTrade.Comm.Spa.Dynamic.Contracts`、Renderer、Interactive.Client及直接package tests；Daedalus repo維持唯讀，只引用`818d2e70`。
+- 不變事項：PTCS不含Signal／Order／Fill domain type；event-time authority沿用shared temporal axis；scenario selection consumer orchestration仍由Daedalus擁有；不修改consumer active WIP。
+- 步驟：核對feedback與修訂RFC；盤點current文件可插入位置；撰寫RFC-0024與package/data-flow snippets；追加REQ/SA/SD/WBS/Test及Verification連結；執行文件一致性與checker；commit/push。
+- 驗收：五項owner決策與三項必修缺口均能由WBS/Test追蹤；contract列出型別、limits、failure path、atomicity及package graph；不冒稱DEV完成。
+- 風險：若把browser state寫入wire、把domain kind放入generic contract、或把multi-dataRef replacement拆成多frame，會破壞責任邊界與last-good atomicity。
+
+## Operations
+
+- 2026-09-24 14:45 +08:00：確認owner repo clean at `3b50205`；Daedalus commit `818d2e70`已push，consumer repo仍有其active WIP，本輪唯讀。
+- 2026-09-24 15:03 +08:00：讀取Daedalus revised RFC/feedback與owner current REQ/SA/SD/WBS/Test/Verification；核對現行Contracts/Renderer types、marker limits、RuntimePatch candidate seam及exact package versions。
+- 2026-09-24 15:18 +08:00：建立RFC-PTCS-DYNAMIC-0024並同步REQ/SA/SD/WBS/Test/Verification。鎖定generic OverviewStripe、64-wire/4-glyph、row-local height、single-patch atomicity及owner/consumer boundary；未修改source或package version。
+- 2026-09-24 15:27 +08:00：changed-path sensitive scan為high=0/medium=0；9份文件strict UTF-8／NUL／U+FFFD gate通過。第一次checker因owner repo沒有`MCP.KM.md`且顯式empty path不被checker接受而FAIL；改用canonical root `G:/PulseTrade.fs/MCP.KM.md`作未變更watch後重跑，結果PASS=32/WARN=10/FAIL=0。WARN僅dirty-before-commit、同baseline unchanged及既有global traceability缺口。
+- 2026-09-24 15:29 +08:00：文件slice DYN-WBS-549／DYN-T-570完成；DYN-WBS-550..554與DYN-T-571..576維持Planned，DYN-WBS-555／DYN-T-577明標Daedalus external owner。本輪停止於formal owner RFC gate，不冒稱DEV或package完成。

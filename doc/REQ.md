@@ -105,3 +105,18 @@
 10. `Outline` SHALL有透明內部；完整hit target SHALL與marker tooltip、shared cursor共存，且不得改變Y-domain、time slot、numeric legend或重建candle series。
 11. 單一DataRef/Position wire bucket跨anchor合計最多4；同row/target/Position/anchor跨marker traces合計最多4，lane依document trace order再bucket order配置。
 12. Aster owner gate SHALL止於Contracts/Renderer/PTCS/Interactive client與browser-demo；SPAA、真Backtest event mapping與Notebook `.dib` parity是Daedalus-owned consumer handoff，不阻擋owner package發布。
+
+## 2026-09-24 Backtest Presentation UX
+
+權威變更：`doc/RFC/RFC-PTCS-DYNAMIC-0024.backtest-presentation-ux.md`。
+
+1. Dynamic Contracts SHALL 提供 domain-neutral `TaOverviewStripe` trace，以stable id、UTC event time、target trace、collision group與layer order呈現navigator事件；不得出現Signal／Order／Fill domain DU或consumer SVG座標。
+2. Overview stripe SHALL以canonical temporal axis定位。Close path sampling不得改變stripe X；同X單trace佔滿高度，多trace依layer order垂直分lane，同trace多事件保留全部ids／count。
+3. Marker wire bucket與aggregate lane SHALL各接受最多64筆；renderer直接展開最多4筆，其餘用可focus／keyboard逐筆存取的`+N` cluster。Consumer不得截斷stable identities。
+4. Wire hard limit、malformed stripe／marker或duplicate id SHALL structured reject完整candidate並保留last-good；sequence／revision／authoritative axis gap才要求resync。
+5. `HeightWeight` SHALL作authored default；resolved row height SHALL是`CanvasInstanceId + RowId`的renderer-local state。Drag不得查provider、重建data readers或改document fingerprint；Reset／reload回到default。
+6. Marker presence SHALL不再切換固定250／310px兩套row geometry。Line／hist row不得保留無資料用途的永久上下band；timestamp SHALL移到plot外overlay/header。
+7. 單一scenario overlay replacement SHALL使用同一`RuntimePatch`／revision內的multi-`ReplaceDataRef`，經完整candidate validation後一次commit；任一ref失敗不得發布partial state。
+8. PTCS SHALL不擁有scenario generation、summary／trades／timeline／download manifest candidate。Daedalus consumer SHALL提供monotonic selection generation與完整prepare／commit，PTCS只保證runtime frame atomicity與stale render generation suppression。
+9. Owner browser gate SHALL覆蓋desktop/mobile、navigator drag、cluster accessibility、row resize、4,000 slots與>100ms long-task denial；package SHALL按RFC exact graph發布並full WebSharper rebuild。
+10. 真Signal／Order／Fill projection、scenario dropdown與SPAA／fresh-kernel `.dib` parity屬Daedalus consumer gate，不得由PTCS另造backtest renderer。

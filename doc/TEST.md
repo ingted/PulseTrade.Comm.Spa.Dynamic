@@ -694,3 +694,16 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-567 | Contracts event-time codec | optional UTC round-trip、legacy missing、invalid/non-UTC rejection | PASS：Contracts 31/31。 |
 | DYN-T-568 | Renderer event-time presentation | candle/line/timeline/marker/cursor與completed/forming例子 | PASS：Renderer 40/40；same-position preview event-time更新不改topology signature。 |
 | DYN-T-569 | Regression/package/consumer | interval semantics不變、exact graph、browser與SPAA handoff | PASS（owner）／consumer pending：exact graph、package readback、fresh-cache與browser gates通過；Daedalus真SPAA gate待final graph重跑。 |
+
+## 2026-09-24 Backtest Presentation UX
+
+| Test ID | Scope | Required cases | Status |
+| --- | --- | --- | --- |
+| DYN-T-570 | RFC/traceability | generic/domain boundary、public names、wire/options、limits、failure、atomic boundary、package graph及consumer handoff | PASS：RFC-0024與current docs完成。 |
+| DYN-T-571 | OverviewStripe codec/contract | strict round-trip、unknown/missing fields、UTC、color/width/label/tooltip、options、target kind、axis/position、duplicate id及bucket/dataRef/frame limits | Planned |
+| DYN-T-572 | Runtime candidate atomicity | 單patch三個ReplaceDataRef全commit；第二／第三ref invalid時全不變；RejectFrame vs RequestResync、revision/last-good不變 | Planned |
+| DYN-T-573 | Marker wire/glyph split | 4、5、64 accepted；65 structured denial；前4 glyph＋`+N`、stable order、Enter/Space/Arrow/Escape、focus與完整逐筆tooltip | Planned |
+| DYN-T-574 | Navigator renderer | single trace full-height、same-X multi-trace vertical lanes、same-trace多id/count、exact event-time X、close sampling隔離、drag handles不被攔截 | Planned |
+| DYN-T-575 | Row resize/layout | candle/scalar default、min/max、pointer capture、rAF preview、keyboard、reset/double-click、scenario retain、reload reset、unmount cleanup、無marker高度特例／空band | Planned |
+| DYN-T-576 | Browser/performance/package | desktop/mobile、4,000 slots＋dense bounded events、selection/render無>100ms task、pointer不全掃／不request、exact graph、bundle及official package readback | Planned |
+| DYN-T-577 | Consumer integration | Signal/Order/Fill mapping、A→B→A及out-of-order、完整candidate single publish、failure保留A、真SPAA與fresh `.dib` parity | External／Daedalus owner |

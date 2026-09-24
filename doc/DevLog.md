@@ -1513,3 +1513,12 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Review接受navigator事件摘要、Signal／Order／Fill分離、row resize、plot overlay、scenario dropdown與atomic overlay replacement的產品方向；正式review為`doc/RFC/RFC-TRADECORE-0028.PTCS-BacktestPresentationUX.OwnerReview.md`，目前狀態`Changes required before DEV`。
 - Owner決策：同X不同navigator traces以垂直lane同時呈現；Order events保留stable identity並由generic bounded cluster處理碰撞；`HeightWeight`維持authored/reset default、resolved px只屬active canvas；新增generic OverviewStripe contract但不允許`Signal|Fill` domain DU；Order lifecycle使用非PnL紅綠的outline/solid palette。
 - DEV前必修：consumer RFC須將client monotonic selection generation列為新功能；timeline／summary／downloads須與multi-dataRef overlay先完整prepare再以同revision publish；marker wire hard limit與visual glyph budget須分離。Review已透過COMM direct message `msg-fsi-3887efbee42a453eaced683ba2922a3a`交付Daedalus。
+
+## 2026-09-24 - RFC-PTCS-DYNAMIC-0024 Backtest Presentation UX owner contract
+
+- Daedalus以commit `818d2e70`接受owner review並修訂`RFC-TRADECORE-0028`。本repo建立正式`doc/RFC/RFC-PTCS-DYNAMIC-0024.backtest-presentation-ux.md`，狀態Accepted／DEV尚未開始，並同步REQ／SA／SD／WBS／TEST／Verification。
+- Public contract定案為domain-neutral `TaOverviewStripe`、`TaOverviewStripeTraceOptions`、strict codec/options/limits/candidate validation及`TaTraceKind.OverviewStripe`。Stripe以canonical event time定位；same-X traces垂直分lane，同trace保留全部stable ids/count，PTCS不理解Signal／Order／Fill。
+- Marker wire bucket/lane hard limit由4規劃提升為64，direct glyph budget維持4，其餘使用可keyboard/focus逐筆存取的generic `+N` cluster；wire overflow structured reject完整candidate並保留last-good，不允許consumer截斷identity。
+- Row height採`HeightWeight` authored default＋`CanvasInstanceId + RowId` local resolved px；scenario切換保留override，Reset/reload回default。Marker presence不再切250/310px固定geometry，scalar plot移除無資料空band。
+- Atomic boundary沿用單一`RuntimePatch.Operations` multi-`ReplaceDataRef` candidate-before-commit。PTCS不新增scenario service；`selectionGeneration`與summary/trades/timeline/download manifest complete candidate仍由Daedalus consumer擁有。
+- Planned exact graph：Contracts `0.1.16`、Renderer `0.1.42`、Interactive.Client `0.1.36`、Dynamic.Ptcs `0.1.41`、Ptcs.Client `0.1.58`；root aggregate無runtime dependency，本輪不為湊包升版。實作與package push尚未開始。

@@ -215,3 +215,11 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - `Milestone13.TaProductDemo.AllES.dib`以`SDUI_M13_FIXED_HISTORY_ONLY=true`接真MDCQ dev provider，得到3,820 committed bars、4 scales、76 TA series、28 visible dataRefs。Playwright MCP驗desktop/mobile、48/200 viewport、DMI hide/show與shared hover；同一1K event-time可讀到5K containing bucket。TA runtime console為0；formatter host缺favicon的404已回報Daedalus，不列為Dynamic renderer failure。
 - SPAA `18883` independent cache gate：第一次double-click Run最後為`READY / endUtc=2026-07-10T14:34:00Z`，network為兩次inspect、一次runs，證明stale generation未建立第二個provider run；reload後Run顯示`CACHE READY`，network只有一次inspect、零runs，console error/warning為0。
 - 本revision只關閉fixed-history cache/reload與generation race。OPEN_END live cache的source revision是否可續接delta尚未定案；在owner contract前不得把preview投影假裝成authoritative resume point，也不得以fixed-history結果宣稱History-to-Live完成。
+
+## DYN-VFY-025 Backtest Presentation UX（planned）
+
+- 缺口：現有`DYN-VFY-011/012/013/014/017`沒有OverviewStripe、64-wire/4-glyph cluster、row resize或single-patch三overlay atomicity的deterministic gate。
+- 範圍：擴充既有Contracts/Renderer unit suites與Renderer BrowserDemo/F# Playwright；優先修訂既有verifier，不另造重複host。
+- Mutating effects：DEV階段會build/pack本repo；NuGet push只在WBS-554 release gate明確執行。Unit/browser fixtures不得寫正式PCSL、SQL或外部service。
+- Planned revision 17：Contracts驗codec/limits/atomic last-good；Renderer驗same-X lanes、cluster accessibility、resize lifecycle與4,000-slot long-task；package verifier驗RFC-0024 exact graph及bundle manifest。
+- Consumer evidence：Daedalus真SPAA／`.dib`另由其repo verifier產生，回鏈DYN-T-577；不得以owner BrowserDemo冒充產品E2E。
