@@ -235,6 +235,7 @@ module RuntimeValidation =
           yield! document.Rows |> Array.toList |> List.mapi rowErrors |> List.concat
 
           yield! TaMarkerContract.documentErrors document
+          yield! TaOverviewStripeContract.documentErrors document
 
           let duplicateIds =
               document.Rows
@@ -377,6 +378,8 @@ module RuntimeValidation =
               yield! documentErrors limits document
               if TaMarkerContract.hasMarkers document && frame.Protocol <> DynamicRuntimeDefaults.markerProtocol then
                   yield error "marker-requires-runtime-v2" "protocol" $"Marker documents require `{DynamicRuntimeDefaults.markerProtocol}`."
+              if TaOverviewStripeContract.hasOverviewStripes document && frame.Protocol <> DynamicRuntimeDefaults.markerProtocol then
+                  yield error "overview-stripe-requires-runtime-v2" "protocol" $"Overview stripe documents require `{DynamicRuntimeDefaults.markerProtocol}`."
           | RuntimePayload.Snapshot snapshot -> yield! snapshotErrors limits snapshot
           | RuntimePayload.Patch patch -> yield! patchErrors limits patch
           | RuntimePayload.Error value ->

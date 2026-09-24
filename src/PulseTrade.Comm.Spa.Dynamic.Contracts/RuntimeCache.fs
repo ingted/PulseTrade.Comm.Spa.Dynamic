@@ -72,7 +72,7 @@ module RuntimeCacheEntryValidation =
 
                 let documentFrame =
                     { Protocol =
-                        if TaMarkerContract.hasMarkers entry.Document then
+                        if TaOverviewStripeContract.hasRuntimeV2Overlays entry.Document then
                             DynamicRuntimeDefaults.markerProtocol
                         else
                             DynamicRuntimeDefaults.protocol
@@ -435,7 +435,7 @@ module RuntimeCacheProjection =
                 | Some document ->
                     let snapshotFrame =
                         { Protocol =
-                            if TaMarkerContract.hasMarkers document then
+                            if TaOverviewStripeContract.hasRuntimeV2Overlays document then
                                 DynamicRuntimeDefaults.markerProtocol
                             else
                                 DynamicRuntimeDefaults.protocol

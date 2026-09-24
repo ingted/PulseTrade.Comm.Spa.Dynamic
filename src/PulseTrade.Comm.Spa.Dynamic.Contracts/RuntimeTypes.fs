@@ -93,6 +93,7 @@ type TaTraceKind =
     | Line
     | Histogram
     | Marker
+    | OverviewStripe
 
 [<RequireQualifiedAccess>]
 type TaMarkerAnchor =
@@ -129,6 +130,19 @@ type TaMarker =
 
 type TaMarkerTraceOptions =
     { TargetTraceId: string }
+
+type TaOverviewStripe =
+    { StripeId: string
+      EventTimeUtc: string
+      Color: string
+      StrokeWidthCssPixels: float
+      Label: string option
+      Tooltip: TaMarkerTooltipField array }
+
+type TaOverviewStripeTraceOptions =
+    { TargetTraceId: string
+      CollisionGroup: string
+      LayerOrder: int }
 
 type TaCandleDataRefs =
     { OpenRef: string
@@ -418,10 +432,10 @@ module TaMarkerLimits =
     let MaxTooltipValueLength = 256
 
     [<Literal>]
-    let MaxMarkersPerBucket = 4
+    let MaxMarkersPerBucket = 64
 
     [<Literal>]
-    let MaxMarkersPerLane = 4
+    let MaxMarkersPerLane = 64
 
     [<Literal>]
     let MaxMarkersPerDataRef = 10000
@@ -434,9 +448,9 @@ module TaMarkerTraceOptionsCodec =
     [<Literal>]
     let TargetTraceIdKey = "marker.targetTraceId"
 
-    let encode value = Map [ TargetTraceIdKey, SduiValue.Text value.TargetTraceId ]
+    let encode (value: TaMarkerTraceOptions) = Map [ TargetTraceIdKey, SduiValue.Text value.TargetTraceId ]
 
-    let tryDecode (options: Map<string, SduiValue>) =
+    let tryDecode (options: Map<string, SduiValue>) : TaMarkerTraceOptions option =
         match Map.tryFind TargetTraceIdKey options with
         | Some(SduiValue.Text value) when not (String.IsNullOrWhiteSpace value) -> Some { TargetTraceId = value }
         | _ -> None
@@ -601,4 +615,229 @@ module TaMarkerContract =
                 | None -> [ TaMarkerCodec.error "marker-target-not-found" $"document.rows.{row.RowId}.traces.{trace.TraceId}.options" $"Marker target trace `{options.TargetTraceId}` was not found in the same row." ]
                 | Some target when target.TraceId = trace.TraceId -> [ TaMarkerCodec.error "marker-self-target" $"document.rows.{row.RowId}.traces.{trace.TraceId}.options" "Marker trace cannot target itself." ]
                 | Some target when target.Kind <> TaTraceKind.Candlestick -> [ TaMarkerCodec.error "marker-target-not-candlestick" $"document.rows.{row.RowId}.traces.{trace.TraceId}.options" "Marker target trace must be Candlestick." ]
+                | Some _ -> [])
+
+[<JavaScript; RequireQualifiedAccess>]
+module TaOverviewStripeLimits =
+    [<Literal>]
+    let MaxStripeIdLength = 128
+
+    [<Literal>]
+    let MaxLabelLength = 64
+
+    [<Literal>]
+    let MaxCollisionGroupLength = 64
+
+    [<Literal>]
+    let MaxTooltipFields = 16
+
+    [<Literal>]
+    let MaxStripesPerBucket = 64
+
+    [<Literal>]
+    let MaxStripesPerDataRef = 10000
+
+    [<Literal>]
+    let MaxStripesPerFrame = 20000
+
+    [<Literal>]
+    let MinimumLayerOrder = 0
+
+    [<Literal>]
+    let MaximumLayerOrder = 63
+
+    let MinimumStrokeWidthCssPixels = 0.5
+    let MaximumStrokeWidthCssPixels = 4.0
+
+[<JavaScript; RequireQualifiedAccess>]
+module TaOverviewStripeTraceOptionsCodec =
+    [<Literal>]
+    let TargetTraceIdKey = "overviewStripe.targetTraceId"
+
+    [<Literal>]
+    let CollisionGroupKey = "overviewStripe.collisionGroup"
+
+    [<Literal>]
+    let LayerOrderKey = "overviewStripe.layerOrder"
+
+    let encode value =
+        Map
+            [ TargetTraceIdKey, SduiValue.Text value.TargetTraceId
+              CollisionGroupKey, SduiValue.Text value.CollisionGroup
+              LayerOrderKey, SduiValue.Number(float value.LayerOrder) ]
+
+    let tryDecode (options: Map<string, SduiValue>) =
+        match Map.tryFind TargetTraceIdKey options, Map.tryFind CollisionGroupKey options, Map.tryFind LayerOrderKey options with
+        | Some(SduiValue.Text targetTraceId), Some(SduiValue.Text collisionGroup), Some(SduiValue.Number layerOrder)
+            when not (String.IsNullOrWhiteSpace targetTraceId)
+                 && not (String.IsNullOrWhiteSpace collisionGroup)
+                 && collisionGroup.Length <= TaOverviewStripeLimits.MaxCollisionGroupLength
+                 && not (Double.IsNaN layerOrder)
+                 && not (Double.IsInfinity layerOrder)
+                 && layerOrder = Math.Truncate layerOrder
+                 && layerOrder >= float TaOverviewStripeLimits.MinimumLayerOrder
+                 && layerOrder <= float TaOverviewStripeLimits.MaximumLayerOrder ->
+            Some
+                { TargetTraceId = targetTraceId
+                  CollisionGroup = collisionGroup
+                  LayerOrder = int layerOrder }
+        | _ -> None
+
+[<JavaScript; RequireQualifiedAccess>]
+module TaOverviewStripeCodec =
+    [<Literal>]
+    let TypeKey = "_type"
+
+    [<Literal>]
+    let TypeValue = "ta-overview-stripe.v1"
+
+    let error code field message =
+        { Code = code; Field = field; Message = message }
+
+    let objectText key values =
+        match Map.tryFind key values with Some(SduiValue.Text value) -> Some value | _ -> None
+
+    let requiredText code maximum field key values =
+        match objectText key values with
+        | Some value when not (String.IsNullOrWhiteSpace value) && value.Length <= maximum -> Ok value
+        | _ -> Error(error code field $"{key} must be nonblank and at most {maximum} characters.")
+
+    let encodeTooltip (field: TaMarkerTooltipField) =
+        SduiValue.Object(Map [ "key", SduiValue.Text field.Key; "label", SduiValue.Text field.Label; "value", SduiValue.Text field.Value ])
+
+    let encode (stripe: TaOverviewStripe) =
+        SduiValue.Object(
+            Map
+                [ TypeKey, SduiValue.Text TypeValue
+                  "stripeId", SduiValue.Text stripe.StripeId
+                  "eventTimeUtc", SduiValue.Text stripe.EventTimeUtc
+                  "color", SduiValue.Text stripe.Color
+                  "strokeWidthCssPixels", SduiValue.Number stripe.StrokeWidthCssPixels
+                  "tooltip", SduiValue.Array(stripe.Tooltip |> Array.map encodeTooltip)
+                  match stripe.Label with Some value -> "label", SduiValue.Text value | None -> () ])
+
+    let encodeBucket stripes = stripes |> Array.map encode |> SduiValue.Array
+
+    let decodeTooltipField field = function
+        | SduiValue.Object values ->
+            let expected = Set.ofList [ "key"; "label"; "value" ]
+            let unknown =
+                values
+                |> Map.toList
+                |> List.choose (fun (key, _) ->
+                    if Set.contains key expected then None
+                    else Some(error "unknown-overview-stripe-field" (field + "." + key) $"Unknown overview stripe tooltip field `{key}`."))
+            let key = requiredText "invalid-overview-stripe-tooltip" TaMarkerLimits.MaxTooltipKeyLength (field + ".key") "key" values
+            let label = requiredText "invalid-overview-stripe-tooltip" TaMarkerLimits.MaxTooltipLabelLength (field + ".label") "label" values
+            let value = requiredText "invalid-overview-stripe-tooltip" TaMarkerLimits.MaxTooltipValueLength (field + ".value") "value" values
+            let failures =
+                unknown
+                @ ([ key; label; value ] |> List.choose (function Error item -> Some item | _ -> None))
+            match failures with
+            | [] ->
+                Ok
+                    ({ Key = Result.defaultValue "" key
+                       Label = Result.defaultValue "" label
+                       Value = Result.defaultValue "" value }: TaMarkerTooltipField)
+            | items -> Error items
+        | _ -> Error [ error "overview-stripe-tooltip-object-required" field "Overview stripe tooltip item must be an object." ]
+
+    let decode field = function
+        | SduiValue.Object values ->
+            let expected = Set.ofList [ TypeKey; "stripeId"; "eventTimeUtc"; "color"; "strokeWidthCssPixels"; "label"; "tooltip" ]
+            let unknown =
+                values
+                |> Map.toList
+                |> List.choose (fun (key, _) ->
+                    if Set.contains key expected then None
+                    else Some(error "unknown-overview-stripe-field" (field + "." + key) $"Unknown overview stripe field `{key}`."))
+            let kind =
+                match objectText TypeKey values with
+                | Some value when value = TypeValue -> Ok()
+                | _ -> Error(error "overview-stripe-type-required" (field + "." + TypeKey) $"Expected `{TypeValue}`.")
+            let stripeId = requiredText "invalid-overview-stripe-id" TaOverviewStripeLimits.MaxStripeIdLength (field + ".stripeId") "stripeId" values
+            let eventTime =
+                match objectText "eventTimeUtc" values with
+                | Some value when TaMarkerCodec.validUtcTimestamp value -> Ok value
+                | _ -> Error(error "invalid-overview-stripe-timestamp" (field + ".eventTimeUtc") "eventTimeUtc must be a bounded ISO-8601 UTC timestamp ending in Z or +00:00.")
+            let color =
+                match objectText "color" values with
+                | Some value when TaMarkerCodec.validColor value -> Ok value
+                | _ -> Error(error "invalid-overview-stripe-color" (field + ".color") "color must be #RGB, #RRGGBB or #RRGGBBAA.")
+            let width =
+                match Map.tryFind "strokeWidthCssPixels" values with
+                | Some(SduiValue.Number value)
+                    when not (Double.IsNaN value)
+                         && not (Double.IsInfinity value)
+                         && value >= TaOverviewStripeLimits.MinimumStrokeWidthCssPixels
+                         && value <= TaOverviewStripeLimits.MaximumStrokeWidthCssPixels -> Ok value
+                | _ -> Error(error "invalid-overview-stripe-width" (field + ".strokeWidthCssPixels") "strokeWidthCssPixels must be between 0.5 and 4.0.")
+            let label =
+                match Map.tryFind "label" values with
+                | None
+                | Some SduiValue.Null -> Ok None
+                | Some(SduiValue.Text value) when value.Length <= TaOverviewStripeLimits.MaxLabelLength -> Ok(Some value)
+                | _ -> Error(error "invalid-overview-stripe-label" (field + ".label") $"label must be at most {TaOverviewStripeLimits.MaxLabelLength} characters.")
+            let tooltip =
+                match Map.tryFind "tooltip" values with
+                | Some(SduiValue.Array items) when items.Length <= TaOverviewStripeLimits.MaxTooltipFields ->
+                    let decoded = items |> Array.indexed |> Array.map (fun (index, item) -> decodeTooltipField $"{field}.tooltip[{index}]" item)
+                    let failures = decoded |> Array.choose (function Error items -> Some items | _ -> None) |> Array.toList |> List.concat
+                    if List.isEmpty failures then Ok(decoded |> Array.choose (function Ok item -> Some item | _ -> None)) else Error failures
+                | Some(SduiValue.Array _) -> Error [ error "limit-overview-stripe-tooltip" (field + ".tooltip") $"tooltip exceeds {TaOverviewStripeLimits.MaxTooltipFields} fields." ]
+                | _ -> Error [ error "overview-stripe-tooltip-required" (field + ".tooltip") "tooltip must be an array." ]
+            let failures =
+                unknown
+                @ ([ kind |> Result.map ignore
+                     stripeId |> Result.map ignore
+                     eventTime |> Result.map ignore
+                     color |> Result.map ignore
+                     width |> Result.map ignore
+                     label |> Result.map ignore ]
+                   |> List.choose (function Error item -> Some item | _ -> None))
+                @ (match tooltip with Error items -> items | _ -> [])
+            match failures with
+            | [] ->
+                Ok
+                    ({ StripeId = Result.defaultValue "" stripeId
+                       EventTimeUtc = Result.defaultValue "" eventTime
+                       Color = Result.defaultValue "#000000" color
+                       StrokeWidthCssPixels = Result.defaultValue 1.0 width
+                       Label = Result.defaultValue None label
+                       Tooltip = Result.defaultValue [||] tooltip }: TaOverviewStripe)
+            | items -> Error items
+        | _ -> Error [ error "overview-stripe-object-required" field "Overview stripe must be an object." ]
+
+    let decodeBucket field = function
+        | SduiValue.Array items when items.Length <= TaOverviewStripeLimits.MaxStripesPerBucket ->
+            let decoded = items |> Array.indexed |> Array.map (fun (index, item) -> decode $"{field}[{index}]" item)
+            let failures = decoded |> Array.choose (function Error items -> Some items | _ -> None) |> Array.toList |> List.concat
+            if List.isEmpty failures then Ok(decoded |> Array.choose (function Ok item -> Some item | _ -> None)) else Error failures
+        | SduiValue.Array _ -> Error [ error "limit-overview-stripe-bucket" field $"Overview stripe bucket exceeds {TaOverviewStripeLimits.MaxStripesPerBucket} items." ]
+        | _ -> Error [ error "overview-stripe-bucket-required" field "Overview stripe bucket must be an array." ]
+
+[<JavaScript; RequireQualifiedAccess>]
+module TaOverviewStripeContract =
+    let stripeTraces (document: TaWorkspaceDocument) =
+        document.Rows
+        |> Array.collect (fun row ->
+            TaRowSpec.effectiveTraces row
+            |> Array.filter (fun trace -> trace.Kind = TaTraceKind.OverviewStripe)
+            |> Array.map (fun trace -> row, trace))
+
+    let hasOverviewStripes document = stripeTraces document |> Array.isEmpty |> not
+
+    let hasRuntimeV2Overlays document = TaMarkerContract.hasMarkers document || hasOverviewStripes document
+
+    let documentErrors (document: TaWorkspaceDocument) =
+        stripeTraces document
+        |> Array.toList
+        |> List.collect (fun (row, trace) ->
+            let field = $"document.rows.{row.RowId}.traces.{trace.TraceId}.options"
+            match TaOverviewStripeTraceOptionsCodec.tryDecode trace.Options with
+            | None -> [ TaOverviewStripeCodec.error "overview-stripe-target-required" field "Overview stripe trace requires valid targetTraceId, collisionGroup and layerOrder options." ]
+            | Some options ->
+                match TaRowSpec.effectiveTraces row |> Array.tryFind (fun candidate -> candidate.TraceId = options.TargetTraceId) with
+                | None -> [ TaOverviewStripeCodec.error "overview-stripe-target-missing" field $"Overview stripe target trace `{options.TargetTraceId}` was not found in the same row." ]
+                | Some target when target.Kind <> TaTraceKind.Candlestick -> [ TaOverviewStripeCodec.error "overview-stripe-target-kind" field "Overview stripe target trace must be Candlestick." ]
                 | Some _ -> [])

@@ -580,3 +580,139 @@ module MarkerValidation =
               yield issue "limit-marker-frame" "marker" $"Marker frame exceeds {TaMarkerLimits.MaxMarkersPerFrame} markers." ]
 
     let firstCandidateError document data = candidateErrors document data |> List.tryHead
+
+[<WebSharper.JavaScript; RequireQualifiedAccess>]
+module OverviewStripeValidation =
+    let issue code field message = RuntimeValidation.error code field message
+
+    let trySeries dataRef data = MarkerValidation.trySeries dataRef data
+
+    let objectText key fields =
+        match Map.tryFind key fields with
+        | Some(SduiValue.Text value) when not (String.IsNullOrWhiteSpace value) -> Some value
+        | _ -> None
+
+    let tryAxisPoint = function
+        | SduiValue.Object fields ->
+            match Map.tryFind "position" fields |> Option.bind MarkerValidation.finiteInteger, objectText "intervalStartUtc" fields with
+            | Some position, Some intervalStartUtc ->
+                let eventTimeUtc = objectText "eventTimeUtc" fields |> Option.defaultValue intervalStartUtc
+                Some(position, eventTimeUtc)
+            | _ -> None
+        | _ -> None
+
+    let tryAxis axisRef data =
+        Map.tryFind axisRef data
+        |> Option.bind (function
+            | SduiValue.Object fields
+                when Map.tryFind TemporalPointCodec.TypeKey fields = Some(SduiValue.Text TemporalAxisCodec.TypeValue)
+                     && objectText "axisRef" fields = Some axisRef ->
+                match Map.tryFind "revision" fields |> Option.bind MarkerValidation.finiteInteger, Map.tryFind "points" fields with
+                | Some revision, Some(SduiValue.Array points) ->
+                    let decoded = points |> Array.map tryAxisPoint
+                    if decoded |> Array.exists Option.isNone then None
+                    else Some(revision, decoded |> Array.choose id |> Map.ofArray)
+                | _ -> None
+            | _ -> None)
+
+    let normalizeUtcTimestamp (value: string) =
+        let trimmed = value.Trim()
+        let utc =
+            if trimmed.EndsWith("+00:00") then trimmed.Substring(0, trimmed.Length - 6) + "Z"
+            else trimmed
+        let dotIndex = utc.IndexOf(".")
+        let zIndex = utc.Length - 1
+        if dotIndex < 0 || zIndex <= dotIndex || utc[zIndex] <> 'Z' then utc
+        else
+            let mutable fractionEnd = zIndex
+            while fractionEnd > dotIndex + 1 && utc[fractionEnd - 1] = '0' do
+                fractionEnd <- fractionEnd - 1
+            if fractionEnd = dotIndex + 1 then utc.Substring(0, dotIndex) + "Z"
+            else utc.Substring(0, fractionEnd) + "Z"
+
+    let equivalentTimestamp expected actual =
+        normalizeUtcTimestamp expected = normalizeUtcTimestamp actual
+
+    let traceErrors data (row: TaRowSpec) (trace: TaTraceSpec) =
+        let field = $"overviewStripe.{trace.DataRef}"
+        match TaOverviewStripeTraceOptionsCodec.tryDecode trace.Options with
+        | None -> [ issue "overview-stripe-target-required" field "Overview stripe trace requires valid targetTraceId, collisionGroup and layerOrder options." ]
+        | Some options ->
+            match TaRowSpec.effectiveTraces row |> Array.tryFind (fun candidate -> candidate.TraceId = options.TargetTraceId) with
+            | None -> [ issue "overview-stripe-target-missing" field $"Overview stripe target trace `{options.TargetTraceId}` is absent." ]
+            | Some target when target.Kind <> TaTraceKind.Candlestick ->
+                [ issue "overview-stripe-target-kind" field "Overview stripe target trace must be Candlestick." ]
+            | Some target ->
+                match trySeries trace.DataRef data with
+                | None -> [ issue "missing-overview-stripe-series" field $"Overview stripe DataRef `{trace.DataRef}` is missing or not temporal-series.v1." ]
+                | Some series ->
+                    match tryAxis series.AxisRef data with
+                    | None -> [ issue "overview-stripe-axis-mismatch" field $"Temporal axis `{series.AxisRef}` is missing." ]
+                    | Some(axisRevision, _) when axisRevision <> series.AxisRevision ->
+                        [ issue "overview-stripe-axis-mismatch" field $"Overview stripe axis revision {series.AxisRevision} does not match authoritative revision {axisRevision}." ]
+                    | Some(_, axisByPosition) ->
+                        let decoded =
+                            series.Points
+                            |> Array.map (fun point -> point, TaOverviewStripeCodec.decodeBucket $"{field}[{point.Position}]" point.Value)
+                        let shapeErrors =
+                            decoded
+                            |> Array.toList
+                            |> List.collect (fun (_, result) -> match result with Ok _ -> [] | Error errors -> errors)
+                        let validBuckets =
+                            decoded
+                            |> Array.choose (fun (point, result) -> match result with Ok stripes -> Some(point, stripes) | Error _ -> None)
+                        let stripeCount = validBuckets |> Array.sumBy (snd >> Array.length)
+                        let countErrors =
+                            [ if stripeCount > TaOverviewStripeLimits.MaxStripesPerDataRef then
+                                  yield issue "limit-overview-stripe-series" field $"Overview stripe DataRef exceeds {TaOverviewStripeLimits.MaxStripesPerDataRef} stripes." ]
+                        let duplicateErrors =
+                            validBuckets
+                            |> Array.collect (fun (point, stripes) -> stripes |> Array.map (fun stripe -> stripe.StripeId, point.Position))
+                            |> Array.groupBy fst
+                            |> Array.toList
+                            |> List.choose (fun (stripeId, occurrences) ->
+                                if occurrences.Length > 1 then Some(issue "duplicate-overview-stripe-id" field $"StripeId `{stripeId}` is duplicated within DataRef `{trace.DataRef}`.")
+                                else None)
+                        let authorityErrors =
+                            validBuckets
+                            |> Array.toList
+                            |> List.collect (fun (point, stripes) ->
+                                if stripes.Length = 0 then []
+                                else
+                                    match Map.tryFind point.Position axisByPosition with
+                                    | None -> [ issue "overview-stripe-position-missing" $"{field}[{point.Position}]" $"Authoritative axis cannot resolve position {point.Position}." ]
+                                    | Some _ when not (MarkerValidation.targetAtPosition point.Position series target data) ->
+                                        [ issue "overview-stripe-position-missing" $"{field}[{point.Position}]" $"Target candle `{target.TraceId}` cannot resolve position {point.Position}." ]
+                                    | Some expected ->
+                                        stripes
+                                        |> Array.toList
+                                        |> List.choose (fun stripe ->
+                                            if equivalentTimestamp expected stripe.EventTimeUtc then None
+                                            else
+                                                Some(
+                                                    issue
+                                                        "overview-stripe-axis-mismatch"
+                                                        $"{field}[{point.Position}].eventTimeUtc"
+                                                        $"Stripe `{stripe.StripeId}` eventTimeUtc does not match authoritative axis position {point.Position}.")))
+                        shapeErrors @ countErrors @ duplicateErrors @ authorityErrors
+
+    let candidateErrors document data =
+        let traceResults =
+            TaOverviewStripeContract.stripeTraces document
+            |> Array.map (fun (row, trace) -> trace, traceErrors data row trace)
+        let stripeTotal =
+            traceResults
+            |> Array.sumBy (fun (trace, _) ->
+                match trySeries trace.DataRef data with
+                | None -> 0
+                | Some series ->
+                    series.Points
+                    |> Array.sumBy (fun point ->
+                        match TaOverviewStripeCodec.decodeBucket "overviewStripe" point.Value with
+                        | Ok stripes -> stripes.Length
+                        | Error _ -> 0))
+        [ for _, errors in traceResults do yield! errors
+          if stripeTotal > TaOverviewStripeLimits.MaxStripesPerFrame then
+              yield issue "limit-overview-stripe-frame" "overviewStripe" $"Overview stripe frame exceeds {TaOverviewStripeLimits.MaxStripesPerFrame} stripes." ]
+
+    let firstCandidateError document data = candidateErrors document data |> List.tryHead

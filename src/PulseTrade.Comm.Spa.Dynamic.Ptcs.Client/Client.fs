@@ -463,6 +463,7 @@ module TaResearchClientWire =
         | "line" -> Result.Ok TaTraceKind.Line
         | "histogram" -> Result.Ok TaTraceKind.Histogram
         | "marker" -> Result.Ok TaTraceKind.Marker
+        | "overview-stripe" -> Result.Ok TaTraceKind.OverviewStripe
         | value -> Result.Error $"Unsupported TA browser trace kind `{value}`."
 
     let pollState value =

@@ -11,7 +11,7 @@ open WebSharper.UI.Client
 [<JavaScript>]
 module Client =
     [<Literal>]
-    let capacityPointCount = 3820
+    let capacityPointCount = 4000
 
     [<Literal>]
     let capacitySeriesCount = 28
@@ -88,6 +88,22 @@ module Client =
                 Map [ "position", SduiValue.Number(float position)
                       "value", TaMarkerCodec.encodeBucket markers ])
         let stackedPosition = count - 8
+        let stackedMarkers =
+            Array.append
+                [| marker "short-entry" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#000000" (Some "SELL 7591.00") "short entry signal"
+                   marker "long-exit" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#dc2626" (Some "SELL 7603.50 PnL +762.50") "long take-profit fill"
+                   marker "order-replace" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.Circle TaMarkerFill.Outline "#2563eb" (Some "REPLACE 7590.75") "replace limit order"
+                   marker "order-cancel" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.Circle TaMarkerFill.Outline "#64748b" (Some "CANCEL 7590.75") "cancel limit order" |]
+                (Array.init 60 (fun index ->
+                    marker
+                        ($"overflow-{index + 1}")
+                        (timestamp stackedPosition)
+                        TaMarkerAnchor.AboveBar
+                        TaMarkerShape.Circle
+                        TaMarkerFill.Outline
+                        "#475569"
+                        (Some($"ORDER {index + 1}"))
+                        "overflow marker detail"))
         SduiValue.Object(
             Map [ "_type", SduiValue.Text "temporal-series.v1"
                   "axisRef", SduiValue.Text "axis.1k"
@@ -99,8 +115,7 @@ module Client =
                              [| marker "long-entry" (timestamp (count - 12)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some("BUY 7588.25" + replacementLabel)) ("long entry signal" + replacementLabel) |]
                          point
                              stackedPosition
-                             [| marker "short-entry" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#000000" (Some "SELL 7591.00") "short entry signal"
-                                marker "long-exit" (timestamp stackedPosition) TaMarkerAnchor.AboveBar TaMarkerShape.TriangleDown TaMarkerFill.Solid "#dc2626" (Some "SELL 7603.50 PnL +762.50") "long take-profit fill" |]
+                             stackedMarkers
                          point
                              (count - 2)
                              [| marker "short-exit" (timestamp (count - 2)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Solid "#16a34a" (Some "BUY 7574.00 PnL +850.00") "short stop-loss fill" |] |] ])
@@ -143,6 +158,23 @@ module Client =
                                             + float seriesIndex * 0.25
                                             + Math.Sin(float index / (6.0 + float (seriesIndex % 5))) * (28.0 + float (seriesIndex % 3))) ]))) ])
         let markers = markerSeries count ""
+        let overviewStripeSeries dataRef color position label =
+            let stripe =
+                { StripeId = dataRef + ":" + string position
+                  EventTimeUtc = timestamp position
+                  Color = color
+                  StrokeWidthCssPixels = 1.0
+                  Label = Some label
+                  Tooltip = [| { Key = "source"; Label = "Source"; Value = "BrowserDemo" } |] }
+            SduiValue.Object(
+                Map [ "_type", SduiValue.Text "temporal-series.v1"
+                      "axisRef", SduiValue.Text sharedAxisRef
+                      "axisRevision", SduiValue.Number 1.0
+                      "points",
+                      SduiValue.Array(
+                          [| SduiValue.Object(
+                                 Map [ "position", SduiValue.Number(float position)
+                                       "value", TaOverviewStripeCodec.encodeBucket [| stripe |] ]) |]) ])
         let candles =
             Array.init count (fun index ->
                 let baseline = 21800.0 + float index * 1.7 + Math.Sin(float index / 4.0) * 24.0
@@ -228,6 +260,8 @@ module Client =
             yield "series.volume", SduiValue.Array candles
             yield "series.sma", sharedScalarSeries 0
             yield "series.markers", markers
+            yield "series.overview.signal", overviewStripeSeries "series.overview.signal" "#2563eb" (count - 8) "Signal"
+            yield "series.overview.fill", overviewStripeSeries "series.overview.fill" "#dc2626" (count - 8) "Fill"
             for seriesIndex in 1 .. capacitySeriesCount - 1 do
                 yield "series.capacity-" + string seriesIndex, sharedScalarSeries seriesIndex
             yield "series.sma-5k", SduiValue.Array fiveMinuteSma
@@ -418,7 +452,11 @@ module Client =
                             [| trace "price-1k" TaTraceKind.Candlestick "series.price" "1K K Bar" "" 1.0
                                trace "price-5k" TaTraceKind.Candlestick "series.price-5k" "5K K Bar" "#7c3aed" 1.8
                                { trace "signals" TaTraceKind.Marker "series.markers" "Signals" "#dc2626" 1.0 with
-                                   Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = "price-1k" } } |]
+                                    Options = TaMarkerTraceOptionsCodec.encode ({ TargetTraceId = "price-1k" }: TaMarkerTraceOptions) }
+                               { trace "overview-signal" TaTraceKind.OverviewStripe "series.overview.signal" "Signal stripe" "#2563eb" 1.0 with
+                                    Options = TaOverviewStripeTraceOptionsCodec.encode { TargetTraceId = "price-1k"; CollisionGroup = "backtest-events"; LayerOrder = 0 } }
+                               { trace "overview-fill" TaTraceKind.OverviewStripe "series.overview.fill" "Fill stripe" "#dc2626" 1.0 with
+                                    Options = TaOverviewStripeTraceOptionsCodec.encode { TargetTraceId = "price-1k"; CollisionGroup = "backtest-events"; LayerOrder = 1 } } |]
                         |> withRowLabel "ES 1K + SMA(20)")
                        row "volume" TaRowKind.Volume "series.volume" 1.0
                        compositeRow

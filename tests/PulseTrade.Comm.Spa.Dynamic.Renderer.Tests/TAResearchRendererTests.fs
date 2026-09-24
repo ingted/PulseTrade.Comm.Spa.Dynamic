@@ -1033,6 +1033,95 @@ let tests =
                 268.0
                 "A below-bar label near the bottom edge expands upward instead of clamping onto another label."
 
+        testCase "DYN-T-573 marker budget is four direct glyphs plus one deterministic overflow cluster" <| fun _ ->
+            let target =
+                { Timestamp = "2026-09-24T01:00:00Z"
+                  Open = 100.0
+                  High = 102.0
+                  Low = 99.0
+                  Close = 101.0
+                  Volume = 10.0
+                  Temporal = None }
+            let placement index =
+                { TraceId = if index % 2 = 0 then "orders-a" else "orders-b"
+                  TargetTraceId = "price"
+                  Position = 10.0
+                  SlotIndex = 7
+                  Lane = index
+                  Target = target
+                  Marker =
+                    { MarkerId = $"order-{index}"
+                      EventTimeUtc = "2026-09-24T01:00:00Z"
+                      Anchor = TaMarkerAnchor.AboveBar
+                      Shape = TaMarkerShape.Circle
+                      Fill = TaMarkerFill.Outline
+                      Color = "#2563eb"
+                      Label = Some $"Order {index}"
+                      Tooltip = [||] } }
+            let direct, overflow = Array.init 7 placement |> RendererModel.markerPresentation
+            Expect.equal direct.Length 4 "Only four marker glyphs render directly in one aggregate lane."
+            Expect.sequenceEqual (direct |> Array.map (fun value -> value.Marker.MarkerId)) [| "order-0"; "order-1"; "order-2"; "order-3" |] "Direct glyph order is deterministic."
+            Expect.equal overflow.Length 1 "Overflow collapses into one cluster control."
+            Expect.equal overflow[0].Markers.Length 3 "The cluster preserves every hidden marker."
+            Expect.equal overflow[0].Lane 4 "The cluster occupies the fixed lane after the direct budget."
+
+        testCase "DYN-T-572 overview stripes collapse same trace and assign cross-trace lanes" <| fun _ ->
+            let stripe id color =
+                { StripeId = id
+                  EventTimeUtc = "2026-09-24T01:00:00Z"
+                  Color = color
+                  StrokeWidthCssPixels = 1.0
+                  Label = None
+                  Tooltip = [||] }
+            let placement traceId order stripeValue =
+                { TraceId = traceId
+                  TargetTraceId = "price"
+                  CollisionGroup = "trade-events"
+                  LayerOrder = order
+                  Position = 10.0
+                  SlotIndex = 7
+                  Stripe = stripeValue }
+            let visuals =
+                [| placement "signals" 2 (stripe "signal-a" "#2563eb")
+                   placement "signals" 2 (stripe "signal-b" "#2563eb")
+                   placement "fills" 1 (stripe "fill-a" "#dc2626") |]
+                |> RendererModel.overviewStripeVisuals
+            Expect.equal visuals.Length 2 "Same trace and pixel collapse into one stripe visual."
+            Expect.equal visuals[0].TraceId "fills" "LayerOrder determines the first collision lane."
+            Expect.equal visuals[0].Lane 0 "Lowest LayerOrder owns lane zero."
+            Expect.equal visuals[1].Lane 1 "The next trace receives the next deterministic lane."
+            Expect.equal visuals[1].Stripes.Length 2 "Collapsed stripe ids remain available to the interaction bucket."
+
+        testCase "DYN-T-576 row height policy is marker-independent and bounded" <| fun _ ->
+            let baseRow =
+                { RowId = "price"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "price"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let candle =
+                { TraceId = "price"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = "price"
+                  Label = "Price"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let marker = { candle with TraceId = "markers"; Kind = TaTraceKind.Marker; DataRef = "markers" }
+            let candleBounds = RendererModel.rowHeightBounds baseRow [| candle |]
+            let markerBounds = RendererModel.rowHeightBounds baseRow [| candle; marker |]
+            let tallBounds = RendererModel.rowHeightBounds { baseRow with HeightWeight = 9.0 } [| candle; marker |]
+            let scalarBounds = RendererModel.rowHeightBounds baseRow [| { candle with Kind = TaTraceKind.Line } |]
+            Expect.equal candleBounds.DefaultHeight 250 "Candle default follows HeightWeight."
+            Expect.equal markerBounds.DefaultHeight candleBounds.DefaultHeight "Markers do not inflate row height."
+            Expect.equal tallBounds.DefaultHeight 720 "Candle height clamps at 720px."
+            Expect.equal scalarBounds.DefaultHeight 112 "Scalar rows use the compact baseline."
+            Expect.equal (RendererModel.rowHeightStorageKey (CanvasInstanceId "canvas-a") "price") "canvas-a:price" "Local row height state is isolated by canvas and row."
+
         testCase "DYN-T-564 timestamp presentation is locale-independent" <| fun _ ->
             let value = "2026-09-24T13:14:15.1234567+00:00"
             Expect.equal (RendererModel.timestampParts value) (Some("2026-09-24", "13:14:15")) "Cursor labels use fixed date and clock lines."

@@ -1522,3 +1522,12 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Row height採`HeightWeight` authored default＋`CanvasInstanceId + RowId` local resolved px；scenario切換保留override，Reset/reload回default。Marker presence不再切250/310px固定geometry，scalar plot移除無資料空band。
 - Atomic boundary沿用單一`RuntimePatch.Operations` multi-`ReplaceDataRef` candidate-before-commit。PTCS不新增scenario service；`selectionGeneration`與summary/trades/timeline/download manifest complete candidate仍由Daedalus consumer擁有。
 - Planned exact graph：Contracts `0.1.16`、Renderer `0.1.42`、Interactive.Client `0.1.36`、Dynamic.Ptcs `0.1.41`、Ptcs.Client `0.1.58`；root aggregate無runtime dependency，本輪不為湊包升版。實作與package push尚未開始。
+
+## 2026-09-24 - RFC-PTCS-DYNAMIC-0024 owner implementation and release
+
+- 完成generic `TaTraceKind.OverviewStripe`、typed stripe/options codecs、limits、canonical axis/target/identity validation與multi-operation candidate-before-commit；marker wire bucket上限提升為64，Renderer維持前4個direct glyph並提供可focus／Enter／Arrow／Escape操作的`+N` cluster。
+- Renderer新增navigator batched overview stripe paths、same-X deterministic lanes與bounded hover lookup；row height改為`CanvasInstanceId + RowId` local override，支援pointer、8/32px keyboard、Home／double-click reset，同canvas replacement保留，canvas identity替換／reload清除。Marker presence不再改row baseline。
+- Focused runner通過Contracts 32/32、Renderer 43/43、Interactive.Client 4/4、Dynamic.Ptcs 14/14、Ptcs.Client 16/16。4,000-slot F# Playwright驗66 wire markers／`+60`、兩條same-X stripes、row resize lifecycle、desktop/mobile與console 0；300 cursor transitions最大104ms，All/marker/document/progressive renderer phases皆無>100ms task。
+- 初始Contracts `0.1.16/0.1.17`及Renderer `0.1.42/0.1.43`候選在full build/package gate前淘汰且未push。Final exact graph為Contracts `0.1.19`、Renderer `0.1.44`、Interactive.Client `0.1.36`、Dynamic.Ptcs `0.1.41`、Ptcs.Client `0.1.58`。
+- Package verifier發現Interactive.Client source manifest仍標`0.1.35`；修正為pack前由MSBuild以`$(Version)`生成manifest，避免再發布nuspec／bundle版本漂移。五包push均回`Created`；fresh cache只走nuget.org完成43/4/14/16 tests，public nupkg hashes與owner local完全一致。Daedalus真SPAA／fresh `.dib` consumer adoption仍由DYN-WBS-555／DYN-T-577追蹤。
+- Traceability correction：補入RFC-0024 reading/map、DYN-WBS-550..555與DYN-T-571..577 owner／consumer索引；owner release證據集中於`DYN-VFY-025`，未把Daedalus external gate誤列為本repo PASS。

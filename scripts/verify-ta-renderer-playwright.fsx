@@ -65,7 +65,7 @@ let awaitUnit (task: Task) = task.GetAwaiter().GetResult()
 let require condition message =
     if not condition then failwith ("TA renderer Playwright verification failed: " + message)
 
-let capacityPointCount = 3820
+let capacityPointCount = 4000
 let capacitySeriesCount = 28
 let visiblePointCount = 48
 let initialVisibleStart = capacityPointCount - visiblePointCount + 1
@@ -326,13 +326,13 @@ let verifyDesktop (browser: IBrowser) =
     Threading.Thread.Sleep 180
     printfn
         "browser.initial-setup sampleMs=%s rendererMs=%s"
-        (page.Locator("[data-capacity-positions='3820']").GetAttributeAsync("data-sample-build-ms") |> awaitTask)
-        (page.Locator("[data-capacity-positions='3820']").GetAttributeAsync("data-renderer-setup-ms") |> awaitTask)
+        (page.Locator("[data-capacity-positions='4000']").GetAttributeAsync("data-sample-build-ms") |> awaitTask)
+        (page.Locator("[data-capacity-positions='4000']").GetAttributeAsync("data-renderer-setup-ms") |> awaitTask)
     let _, bootstrapLongTasks, bootstrapMaximum = stopMainThreadTrace "module-bootstrap" longTaskSession initialTrace
     printfn
         "browser.module-bootstrap diagnosticOnly=true fixtureSampleMs=%s rendererSetupMs=%s over100=%d max=%.2fms"
-        (page.Locator("[data-capacity-positions='3820']").GetAttributeAsync("data-sample-build-ms") |> awaitTask)
-        (page.Locator("[data-capacity-positions='3820']").GetAttributeAsync("data-renderer-setup-ms") |> awaitTask)
+        (page.Locator("[data-capacity-positions='4000']").GetAttributeAsync("data-sample-build-ms") |> awaitTask)
+        (page.Locator("[data-capacity-positions='4000']").GetAttributeAsync("data-renderer-setup-ms") |> awaitTask)
         bootstrapLongTasks.Length
         bootstrapMaximum
 
@@ -351,7 +351,9 @@ let verifyDesktop (browser: IBrowser) =
 
     let markerLayer = page.Locator("[data-testid='ta-marker-layer-price']")
     require (markerLayer.CountAsync() |> awaitTask = 1) "price row must mount one marker overlay layer"
-    require (requiredIntAttribute markerLayer "data-marker-count" = 4) "all four visible marker nodes must render"
+    require (requiredIntAttribute markerLayer "data-marker-count" = 66) "all 66 wire markers must remain represented"
+    require (requiredIntAttribute markerLayer "data-direct-marker-count" = 6) "only six direct glyphs must render across the three visible buckets"
+    require (requiredIntAttribute markerLayer "data-marker-overflow-count" = 1) "the dense bucket must produce one overflow cluster"
     let entryMarker = page.Locator("[data-testid='ta-marker-signals-long-entry']")
     let signalA = page.Locator("[data-testid='ta-marker-signals-short-entry']")
     let signalB = page.Locator("[data-testid='ta-marker-signals-long-exit']")
@@ -363,6 +365,20 @@ let verifyDesktop (browser: IBrowser) =
     requireText (signalA.Locator("title")) "SE"
     requireText (signalA.Locator("title")) "Reason: short entry signal"
     requireText (signalA.Locator("title")) "Source: BrowserDemo"
+    let markerCluster = page.Locator("g[role='button'][data-marker-overflow-count]")
+    require (markerCluster.CountAsync() |> awaitTask = 1) "the dense marker bucket must expose one +N control"
+    requireText markerCluster "+60"
+    markerCluster.FocusAsync() |> awaitUnit
+    markerCluster.PressAsync("Enter") |> awaitUnit
+    let markerClusterDetail = page.Locator("[data-testid='ta-marker-overflow-detail']")
+    markerClusterDetail.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
+    require (requiredIntAttribute markerClusterDetail "data-cluster-selected-index" = 0) "Enter must open the first hidden marker"
+    requireText markerClusterDetail "1/60"
+    markerCluster.PressAsync("ArrowDown") |> awaitUnit
+    waitForAttributeValue markerClusterDetail "data-cluster-selected-index" "1"
+    requireText markerClusterDetail "2/60"
+    markerCluster.PressAsync("Escape") |> awaitUnit
+    markerClusterDetail.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Detached, Timeout = 3000.0f)) |> awaitUnit
     let priceRowBox = page.Locator("[data-testid='ta-row-price']").BoundingBoxAsync() |> awaitTask
     for label, markerNode in [ "entry", entryMarker; "signal-a", signalA; "signal-b", signalB; "exit", exitMarker ] do
         let markerBox = markerNode.BoundingBoxAsync() |> awaitTask
@@ -373,7 +389,7 @@ let verifyDesktop (browser: IBrowser) =
     require (chartStack.GetAttributeAsync("data-loaded-bars") |> awaitTask = string capacityPointCount) "loaded-range metadata must report the full capacity fixture"
     require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = string initialVisibleStart) "follow-latest viewport must begin at the expected capacity position"
     require (chartStack.GetAttributeAsync("data-visible-end") |> awaitTask = string capacityPointCount) "follow-latest viewport must end at the capacity tail"
-    require (page.Locator("[data-capacity-positions='3820']").CountAsync() |> awaitTask = 1) "browser fixture must declare 3,820 positions"
+    require (page.Locator("[data-capacity-positions='4000']").CountAsync() |> awaitTask = 1) "browser fixture must declare 4,000 positions"
     require (page.Locator("[data-capacity-shared-series='28']").CountAsync() |> awaitTask = 1) "browser fixture must declare 28 shared scalar series"
     requireText (page.Locator("[data-testid='ta-viewport-range']")) $"Loaded {capacityPointCount} bars"
     requireText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing {initialVisibleStart}-{capacityPointCount}"
@@ -386,6 +402,26 @@ let verifyDesktop (browser: IBrowser) =
     let initialPriceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
     require (not (isNull viewportBox) && not (isNull initialPriceBox)) "viewport navigator and first chart row must expose geometry"
     require (viewportBox.Y + viewportBox.Height <= initialPriceBox.Y + 1.0f) "viewport navigator must be visible before the first chart row"
+    let priceResize = page.Locator("[data-testid='ta-row-resize-price']")
+    require (requiredIntAttribute priceResize "aria-valuenow" = 720) "HeightWeight must resolve the authored candle-row default"
+    priceResize.FocusAsync() |> awaitUnit
+    priceResize.PressAsync("Shift+ArrowUp") |> awaitUnit
+    waitForAttributeValue priceResize "aria-valuenow" "688"
+    let resizedPriceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
+    require (not (isNull resizedPriceBox) && resizedPriceBox.Height < initialPriceBox.Height - 20.0f) "keyboard resize must reduce only the price chart height"
+    let resizeHandleBox = priceResize.BoundingBoxAsync() |> awaitTask
+    require (not (isNull resizeHandleBox)) "row resize separator must expose pointer geometry"
+    page.Mouse.MoveAsync(resizeHandleBox.X + resizeHandleBox.Width / 2.0f, resizeHandleBox.Y + resizeHandleBox.Height / 2.0f) |> awaitUnit
+    page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+    page.Mouse.MoveAsync(resizeHandleBox.X + resizeHandleBox.Width / 2.0f, resizeHandleBox.Y - 48.0f, MouseMoveOptions(Steps = 6)) |> awaitUnit
+    page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+    let pointerHeight = waitForAttributeChange priceResize "aria-valuenow" "688" |> Int32.Parse
+    require (pointerHeight >= 632 && pointerHeight <= 648) $"pointer resize must apply the requested 48px reduction within handle geometry tolerance, actual={pointerHeight}"
+    page.Locator("[data-testid='ta-demo-replace-markers']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-marker-signals-long-entry'] title")) "replacement 1"
+    require (requiredIntAttribute priceResize "aria-valuenow" = pointerHeight) "same-canvas authoritative data replacement must retain the local row-height override"
+    priceResize.DblClickAsync() |> awaitUnit
+    waitForAttributeValue priceResize "aria-valuenow" "720"
     let crosshairs = page.Locator("[data-testid$='-crosshair']")
     require ((crosshairs.CountAsync() |> awaitTask) = 7) "every visible row must mount one stable crosshair overlay"
     require ((page.Locator("[data-testid$='-crosshair'][visibility='hidden']").CountAsync() |> awaitTask) = 7) "crosshair overlays must remain hidden before pointer movement"
@@ -438,11 +474,11 @@ let verifyDesktop (browser: IBrowser) =
     let renderSequenceBeforeLegendValues = requiredIntAttribute chartStack "data-chart-render-sequence"
     page.Locator("[data-testid='ta-demo-legend-undef']").ClickAsync() |> awaitUnit
     waitForAttributeValue smaLegendValue "data-value-state" "undefined"
-    require (textOf smaLegendValue = "Undef") "an unavailable TA value must render as Undef in the existing value node"
+    requireText smaLegendValue "Unavailable"
     let undefLegendBox = smaLegend.BoundingBoxAsync() |> awaitTask
     let undefValueBox = smaLegendValue.BoundingBoxAsync() |> awaitTask
     let undefRowBox = page.Locator("[data-testid='ta-row-sma']").BoundingBoxAsync() |> awaitTask
-    require (abs (undefLegendBox.Height - initialLegendHeights[2]) <= 0.5f && abs (undefValueBox.Width - initialValueBox.Width) <= 0.5f && abs (undefRowBox.Height - smaRowBox.Height) <= 0.5f) "Undef must not change legend/value/row geometry"
+    require (abs (undefLegendBox.Height - initialLegendHeights[2]) <= 0.5f && abs (undefValueBox.Width - initialValueBox.Width) <= 0.5f && abs (undefRowBox.Height - smaRowBox.Height) <= 0.5f) "Unavailable must not change legend/value/row geometry"
     page.Locator("[data-testid='ta-demo-legend-long']").ClickAsync() |> awaitUnit
     waitForAttributeValue smaLegendValue "data-value-state" "defined"
     waitForText smaLegendValue "123456789"
@@ -495,11 +531,23 @@ let verifyDesktop (browser: IBrowser) =
     require (streamCloseAfter <> streamCloseBefore) "the live preview stream must advance the visible close while follow-latest is active"
 
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
+    let overviewStripePaths = page.Locator("[data-testid='ta-overview-stripe-path']")
+    require (overviewStripePaths.CountAsync() |> awaitTask = 2) "signal and fill overview stripes must render as two batched paths"
+    require (requiredIntAttribute (overviewStripePaths.Nth(0)) "data-stripe-count" = 1) "signal stripe path must retain its item count"
+    require (requiredIntAttribute (overviewStripePaths.Nth(1)) "data-stripe-count" = 1) "fill stripe path must retain its item count"
+    let signalStripePath = overviewStripePaths.Nth(0).GetAttributeAsync("d") |> awaitTask
+    let fillStripePath = overviewStripePaths.Nth(1).GetAttributeAsync("d") |> awaitTask
+    require (not (String.IsNullOrWhiteSpace signalStripePath) && not (String.IsNullOrWhiteSpace fillStripePath) && signalStripePath <> fillStripePath) "same-time cross-trace stripes must occupy deterministic adjacent lanes"
     let navigatorBox = navigator.BoundingBoxAsync() |> awaitTask
     let selectionBox = page.Locator("[data-testid='ta-overview-selection']").BoundingBoxAsync() |> awaitTask
     require (not (isNull navigatorBox) && not (isNull selectionBox)) "overview navigator and selection must expose pointer geometry"
     require (page.Locator("[data-testid='ta-overview-left-handle']").IsVisibleAsync() |> awaitTask) "overview must expose a left resize handle"
     require (page.Locator("[data-testid='ta-overview-right-handle']").IsVisibleAsync() |> awaitTask) "overview must expose a right resize handle"
+    let stripeXMatch = Text.RegularExpressions.Regex.Match(signalStripePath, "M ([0-9.]+) 0")
+    require stripeXMatch.Success ("overview stripe path did not expose canonical X: " + signalStripePath)
+    let stripeX = Single.Parse(stripeXMatch.Groups[1].Value, Globalization.CultureInfo.InvariantCulture)
+    page.Mouse.MoveAsync(navigatorBox.X + navigatorBox.Width * stripeX / 1000.0f, navigatorBox.Y + 8.0f) |> awaitUnit
+    page.Locator("[data-testid='ta-overview-stripe-tooltip']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
     let callbackState = page.Locator("[data-testid='ta-demo-callback-state']")
     let renderSequenceBeforeDrag = requiredIntAttribute chartStack "data-chart-render-sequence"
     let navigatorY = navigatorBox.Y + navigatorBox.Height / 2.0f
@@ -724,7 +772,7 @@ let verifyDesktop (browser: IBrowser) =
 
     let markerTrace = startMainThreadTrace longTaskSession
     page.Locator("[data-testid='ta-demo-replace-markers']").ClickAsync() |> awaitUnit
-    waitForText (page.Locator("[data-testid='ta-marker-signals-long-entry'] title")) "replacement 1"
+    waitForText (page.Locator("[data-testid='ta-marker-signals-long-entry'] title")) "replacement 2"
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "marker-replacement" longTaskSession markerTrace)
     let allNavigatorBox = navigator.BoundingBoxAsync() |> awaitTask
@@ -796,6 +844,15 @@ let verifyDesktop (browser: IBrowser) =
          |> Array.map (fun (label, values, maximum) -> $"{label}: count={values.Length}, max={maximum:F2}ms")
          |> String.concat "; "
          |> fun details -> "renderer workload retained >100ms long tasks: " + details)
+
+    let reloadResize = page.Locator("[data-testid='ta-row-resize-price']")
+    reloadResize.FocusAsync() |> awaitUnit
+    reloadResize.PressAsync("Shift+ArrowUp") |> awaitUnit
+    waitForAttributeValue reloadResize "aria-valuenow" "688"
+    page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+    page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+    require (requiredIntAttribute (page.Locator("[data-testid='ta-row-resize-price']")) "aria-valuenow" = 720) "browser reload must discard renderer-local row-height overrides"
+    require (consoleErrors.Count = 0) ("desktop console errors after reload: " + String.concat " | " consoleErrors)
 
     Directory.CreateDirectory outputDirectory |> ignore
     page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "desktop.png"), FullPage = true)) |> awaitTask |> ignore

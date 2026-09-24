@@ -700,10 +700,10 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | Test ID | Scope | Required cases | Status |
 | --- | --- | --- | --- |
 | DYN-T-570 | RFC/traceability | generic/domain boundary、public names、wire/options、limits、failure、atomic boundary、package graph及consumer handoff | PASS：RFC-0024與current docs完成。 |
-| DYN-T-571 | OverviewStripe codec/contract | strict round-trip、unknown/missing fields、UTC、color/width/label/tooltip、options、target kind、axis/position、duplicate id及bucket/dataRef/frame limits | Planned |
-| DYN-T-572 | Runtime candidate atomicity | 單patch三個ReplaceDataRef全commit；第二／第三ref invalid時全不變；RejectFrame vs RequestResync、revision/last-good不變 | Planned |
-| DYN-T-573 | Marker wire/glyph split | 4、5、64 accepted；65 structured denial；前4 glyph＋`+N`、stable order、Enter/Space/Arrow/Escape、focus與完整逐筆tooltip | Planned |
-| DYN-T-574 | Navigator renderer | single trace full-height、same-X multi-trace vertical lanes、same-trace多id/count、exact event-time X、close sampling隔離、drag handles不被攔截 | Planned |
-| DYN-T-575 | Row resize/layout | candle/scalar default、min/max、pointer capture、rAF preview、keyboard、reset/double-click、scenario retain、reload reset、unmount cleanup、無marker高度特例／空band | Planned |
-| DYN-T-576 | Browser/performance/package | desktop/mobile、4,000 slots＋dense bounded events、selection/render無>100ms task、pointer不全掃／不request、exact graph、bundle及official package readback | Planned |
+| DYN-T-571 | OverviewStripe codec/contract | strict round-trip、unknown/missing fields、UTC、color/width/label/tooltip、options、target kind、axis/position、duplicate id及bucket/dataRef/frame limits | PASS：Contracts 32/32；WebSharper full build通過。 |
+| DYN-T-572 | Runtime candidate atomicity | 單patch三個ReplaceDataRef全commit；第二／第三ref invalid時全不變；RejectFrame vs RequestResync、revision/last-good不變 | PASS：Contracts 32/32覆蓋invalid stripe candidate保留revision/last-good；single candidate commit。 |
+| DYN-T-573 | Marker wire/glyph split | 4、5、64 accepted；65 structured denial；前4 glyph＋`+N`、stable order、Enter/Space/Arrow/Escape、focus與完整逐筆tooltip | PASS：Renderer 43/43；browser以66 wire markers驗三個bucket、dense bucket前4＋`+60`、Enter/Arrow/Escape。 |
+| DYN-T-574 | Navigator renderer | single trace full-height、same-X multi-trace vertical lanes、same-trace多id/count、exact event-time X、close sampling隔離、drag handles不被攔截 | PASS：unit驗collapse/lane，browser驗signal/fill兩條batched path、same-X不同lane、canonical X、tooltip及drag coexistence。 |
+| DYN-T-575 | Row resize/layout | candle/scalar default、min/max、pointer capture、rAF preview、keyboard、reset/double-click、scenario retain、reload reset、unmount cleanup、無marker高度特例／空band | PASS：unit驗height policy；browser驗keyboard/pointer/double-click、same-canvas replacement retain、canvas replacement/reload reset及console 0。 |
+| DYN-T-576 | Browser/performance/package | desktop/mobile、4,000 slots＋dense bounded events、selection/render無>100ms task、pointer不全掃／不request、exact graph、bundle及official package readback | PASS（owner）：4,000-slot F# Playwright PASS；renderer phases >100ms=0，300 cursor transitions max104ms；five-package exact graph、manifest/nuspec readback及NuGet push完成。 |
 | DYN-T-577 | Consumer integration | Signal/Order/Fill mapping、A→B→A及out-of-order、完整candidate single publish、failure保留A、真SPAA與fresh `.dib` parity | External／Daedalus owner |

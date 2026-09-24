@@ -600,18 +600,23 @@ module RuntimeReducer =
         | Some dataRef -> Some("unknown-data-ref", $"Snapshot dataRef `{dataRef}` is not registered by the document.")
         | None -> temporalDataError state snapshot.Data
 
-    let markerCandidateError state data =
+    let overlayCandidateError state data =
         state.Document
-        |> Option.bind (fun document -> MarkerValidation.firstCandidateError document data)
+        |> Option.bind (fun document ->
+            MarkerValidation.firstCandidateError document data
+            |> Option.orElseWith (fun () -> OverviewStripeValidation.firstCandidateError document data))
 
-    let markerErrorIsRecoverable (value: DynamicValidationError) =
+    let overlayErrorIsRecoverable (value: DynamicValidationError) =
         value.Code = "missing-marker-series"
+        || value.Code = "missing-overview-stripe-series"
+        || value.Code = "overview-stripe-axis-mismatch"
+        || value.Code = "overview-stripe-position-missing"
 
-    let markerFailure state (frame: RuntimeFrame) (value: DynamicValidationError) =
+    let overlayFailure state (frame: RuntimeFrame) (value: DynamicValidationError) =
         let runtimeError =
             { ReasonCode = value.Code
               Message = value.Message
-              Recoverable = markerErrorIsRecoverable value }
+              Recoverable = overlayErrorIsRecoverable value }
 
         if runtimeError.Recoverable then
             { state with Poll = RuntimePollState.PausedForResync; LastError = Some runtimeError },
@@ -624,10 +629,13 @@ module RuntimeReducer =
         value.Code.StartsWith("marker-")
         || value.Code.StartsWith("limit-marker-")
         || value.Code = "duplicate-marker-id"
+        || value.Code.StartsWith("overview-stripe-")
+        || value.Code.StartsWith("limit-overview-stripe-")
+        || value.Code = "duplicate-overview-stripe-id"
 
     let frameValidationFailure state frame (value: DynamicValidationError) =
         if validationErrorIsNonRecoverable value then
-            markerFailure state frame value
+            overlayFailure state frame value
         else
             { state with
                 Poll = RuntimePollState.PausedForResync
@@ -657,8 +665,8 @@ module RuntimeReducer =
                     LastError = Some { ReasonCode = reasonCode; Message = message; Recoverable = true } },
                 RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
             | None ->
-                match markerCandidateError state snapshot.Data with
-                | Some value -> markerFailure state frame value
+                match overlayCandidateError state snapshot.Data with
+                | Some value -> overlayFailure state frame value
                 | None ->
                     { state with
                         Data = snapshot.Data
@@ -675,8 +683,8 @@ module RuntimeReducer =
                     LastError = Some { ReasonCode = reasonCode; Message = message; Recoverable = true } },
                 RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
             | Ok data ->
-                match markerCandidateError state data with
-                | Some value -> markerFailure state frame value
+                match overlayCandidateError state data with
+                | Some value -> overlayFailure state frame value
                 | None ->
                     { state with
                         Data = data
@@ -706,13 +714,18 @@ module RuntimeReducer =
             state, RuntimeEffect.RequestResync(frame.CanvasInstanceId, state.DataRevision)
         elif
             frame.Kind <> RuntimeFrameKind.Document
-            && (state.Document |> Option.exists TaMarkerContract.hasMarkers)
+            && (state.Document |> Option.exists TaOverviewStripeContract.hasRuntimeV2Overlays)
             && frame.Protocol <> DynamicRuntimeDefaults.markerProtocol
         then
-            markerFailure
+            let reasonCode, message =
+                if state.Document |> Option.exists TaMarkerContract.hasMarkers then
+                    "marker-requires-runtime-v2", $"Marker runtime requires `{DynamicRuntimeDefaults.markerProtocol}`."
+                else
+                    "overview-stripe-requires-runtime-v2", $"Overview stripe runtime requires `{DynamicRuntimeDefaults.markerProtocol}`."
+            overlayFailure
                 state
                 frame
-                (RuntimeValidation.error "marker-requires-runtime-v2" "protocol" $"Marker runtime requires `{DynamicRuntimeDefaults.markerProtocol}`.")
+                (RuntimeValidation.error reasonCode "protocol" message)
         else
             match RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits frame with
             | Ok _ -> applyValidatedFrame state frame

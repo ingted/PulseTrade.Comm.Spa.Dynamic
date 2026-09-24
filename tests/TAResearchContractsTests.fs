@@ -226,7 +226,7 @@ let tests =
                   Width = 1.0
                   Visible = true
                   CandleDataRefs = None
-                  Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = candle.TraceId } }
+                  Options = TaMarkerTraceOptionsCodec.encode ({ TargetTraceId = candle.TraceId }: TaMarkerTraceOptions) }
             let markerDocument =
                 { document with
                     Rows = [| { row with Traces = [| candle; markerTrace |] } |] }
@@ -244,6 +244,155 @@ let tests =
                 (RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits missingTarget |> List.map _.Code)
                 "marker-target-required"
                 "Marker target is an explicit document contract."
+
+        testCase "DYN-T-571 DYN-T-572 DYN-T-574 overview stripe contract is bounded and candidate-atomic" <| fun _ ->
+            let startUtc = DateTimeOffset.Parse("2026-09-24T01:00:00Z")
+            let axisRef = "axis.overview.1k"
+            let candleRef = "series.overview.price"
+            let stripeRef = "series.overview.stripes"
+            let axisPoint position minute =
+                let intervalStart = startUtc.AddMinutes(float minute)
+                let intervalEnd = intervalStart.AddMinutes 1.0
+                { Position = position
+                  SourceIntervalId = $"overview-{position}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = intervalStart
+                  IntervalEndUtc = intervalEnd
+                  EventTimeUtc = Some intervalEnd
+                  ObservedThroughUtc = intervalEnd
+                  AvailableAtUtc = Some intervalEnd
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "authoritative" }
+            let candleValue value =
+                SduiValue.Object(
+                    Map
+                        [ "o", SduiValue.Number value
+                          "h", SduiValue.Number(value + 2.0)
+                          "l", SduiValue.Number(value - 2.0)
+                          "c", SduiValue.Number(value + 1.0)
+                          "v", SduiValue.Number 100.0 ])
+            let stripe stripeId eventTime =
+                { StripeId = stripeId
+                  EventTimeUtc = TemporalPointCodec.timestampText eventTime
+                  Color = "#2563eb"
+                  StrokeWidthCssPixels = 1.0
+                  Label = Some "Signal"
+                  Tooltip = [| { Key = "kind"; Label = "Kind"; Value = "Signal" } |] }
+            let candleTrace =
+                { TraceId = "price-1k"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = candleRef
+                  Label = "1K"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let stripeTrace =
+                { TraceId = "signal-overview"
+                  Kind = TaTraceKind.OverviewStripe
+                  DataRef = stripeRef
+                  Label = "Signals"
+                  Color = "#2563eb"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options =
+                    TaOverviewStripeTraceOptionsCodec.encode
+                        { TargetTraceId = candleTrace.TraceId
+                          CollisionGroup = "trade-events"
+                          LayerOrder = 2 } }
+            let stripeDocument =
+                { document with
+                    TemporalAxisRefs = [| axisRef |]
+                    Rows = [| { row with DataRef = candleRef; Traces = [| candleTrace; stripeTrace |] } |] }
+            let stripeFrame kind sequence baseRevision dataRevision payload =
+                { frame kind sequence baseRevision dataRevision payload with
+                    Protocol = DynamicRuntimeDefaults.markerProtocol }
+            let firstAxis = { AxisRef = axisRef; Revision = 1L; Points = [| axisPoint 0L 0 |] }
+            let firstCandle =
+                { AxisRef = axisRef
+                  AxisRevision = 1L
+                  Points = [| { Position = 0L; Value = candleValue 100.0 } |] }
+            let firstStripe = stripe "stripe-1" (startUtc.AddMinutes 1.0)
+            let firstStripeSeries =
+                { AxisRef = axisRef
+                  AxisRevision = 1L
+                  Points = [| { Position = 0L; Value = TaOverviewStripeCodec.encodeBucket [| firstStripe |] } |] }
+            let initialData =
+                Map
+                    [ axisRef, TemporalAxisCodec.encode firstAxis
+                      candleRef, TemporalSeriesCodec.encode firstCandle
+                      stripeRef, TemporalSeriesCodec.encode firstStripeSeries ]
+
+            let roundtrip =
+                TaOverviewStripeCodec.encode firstStripe
+                |> TaOverviewStripeCodec.decode "stripe"
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+            Expect.equal roundtrip firstStripe "Overview stripe codec must preserve authored presentation data."
+            Expect.isOk
+                (TaOverviewStripeCodec.decodeBucket "stripes" (TaOverviewStripeCodec.encodeBucket (Array.init 64 (fun index -> stripe $"wire-{index}" (startUtc.AddMinutes 1.0)))))
+                "The transport contract accepts 64 stripes in one bucket."
+            Expect.isError
+                (TaOverviewStripeCodec.decodeBucket "stripes" (TaOverviewStripeCodec.encodeBucket (Array.init 65 (fun index -> stripe $"wire-{index}" (startUtc.AddMinutes 1.0)))))
+                "The transport contract rejects the 65th stripe in one bucket."
+            Expect.isEmpty
+                (RuntimeValidation.frameErrors DynamicRuntimeDefaults.limits
+                    (stripeFrame RuntimeFrameKind.Document 1L None 0L (RuntimePayload.Document stripeDocument)))
+                "A valid same-row overview stripe document must enter runtime v2."
+
+            let afterDocument, _ =
+                RuntimeReducer.reduce
+                    (RuntimeReducer.initial identity)
+                    (stripeFrame RuntimeFrameKind.Document 1L None 0L (RuntimePayload.Document stripeDocument))
+            let accepted, acceptedEffect =
+                RuntimeReducer.reduce afterDocument
+                    (stripeFrame RuntimeFrameKind.Snapshot 2L None 1L
+                        (RuntimePayload.Snapshot { Data = initialData; Freshness = TaFreshness.Live }))
+            Expect.equal acceptedEffect RuntimeEffect.NoEffect "A valid stripe snapshot must be accepted."
+
+            let secondAxis = { AxisRef = axisRef; Revision = 2L; Points = [| axisPoint 0L 0; axisPoint 1L 1 |] }
+            let secondCandle =
+                { AxisRef = axisRef
+                  AxisRevision = 2L
+                  Points =
+                    [| { Position = 0L; Value = candleValue 100.0 }
+                       { Position = 1L; Value = candleValue 101.0 } |] }
+            let movedStripe = stripe "stripe-1" (startUtc.AddMinutes 2.0)
+            let secondStripeSeries =
+                { AxisRef = axisRef
+                  AxisRevision = 2L
+                  Points =
+                    [| { Position = 0L; Value = TaOverviewStripeCodec.encodeBucket [||] }
+                       { Position = 1L; Value = TaOverviewStripeCodec.encodeBucket [| movedStripe |] } |] }
+            let moved, movedEffect =
+                RuntimeReducer.reduce accepted
+                    (stripeFrame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                        (RuntimePayload.Patch
+                            { Operations =
+                                [| PatchOperation.ReplaceDataRef(axisRef, TemporalAxisCodec.encode secondAxis)
+                                   PatchOperation.ReplaceDataRef(candleRef, TemporalSeriesCodec.encode secondCandle)
+                                   PatchOperation.ReplaceDataRef(stripeRef, TemporalSeriesCodec.encode secondStripeSeries) |] }))
+            Expect.equal movedEffect RuntimeEffect.NoEffect "Axis, candle and stripe replacements must commit atomically."
+            Expect.equal moved.DataRevision 2L "The accepted atomic candidate advances one revision."
+
+            let invalidStripeSeries =
+                { secondStripeSeries with
+                    Points =
+                        [| { Position = 0L; Value = TaOverviewStripeCodec.encodeBucket [||] }
+                           { Position = 1L; Value = TaOverviewStripeCodec.encodeBucket [| { movedStripe with EventTimeUtc = TemporalPointCodec.timestampText (startUtc.AddMinutes 1.0) } |] } |] }
+            let rejected, rejectedEffect =
+                RuntimeReducer.reduce moved
+                    (stripeFrame RuntimeFrameKind.Patch 4L (Some 2L) 3L
+                        (RuntimePayload.Patch
+                            { Operations = [| PatchOperation.ReplaceDataRef(stripeRef, TemporalSeriesCodec.encode invalidStripeSeries) |] }))
+            Expect.equal rejected.Data moved.Data "Rejected stripe candidates preserve the last-good graph."
+            Expect.equal rejected.DataRevision moved.DataRevision "Rejected stripe candidates do not advance revision."
+            match rejectedEffect with
+            | RuntimeEffect.RequestResync(_, revision) ->
+                Expect.equal revision 2L "Authoritative axis mismatch requests one resync from the committed revision."
+            | effect -> failtest $"Expected RequestResync for authority mismatch, got {effect}."
 
         testCase "DYN-T-540 marker snapshot and patch validation preserve last-good atomically" <| fun _ ->
             let axisRef = "axis.marker.1k"
@@ -311,7 +460,7 @@ let tests =
                   Width = 1.0
                   Visible = true
                   CandleDataRefs = None
-                  Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = candleTrace.TraceId } }
+                  Options = TaMarkerTraceOptionsCodec.encode ({ TargetTraceId = candleTrace.TraceId }: TaMarkerTraceOptions) }
             let markerDocument =
                 { document with
                     TemporalAxisRefs = [| axisRef |]
@@ -406,7 +555,7 @@ let tests =
                     DataRef = "split.markers"
                     Label = "Signals"
                     CandleDataRefs = None
-                    Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = candle.TraceId } }
+                    Options = TaMarkerTraceOptionsCodec.encode ({ TargetTraceId = candle.TraceId }: TaMarkerTraceOptions) }
             let splitDocument =
                 { document with
                     TemporalAxisRefs = [| axisRef |]
@@ -439,7 +588,7 @@ let tests =
                 |> Map.ofList
             Expect.isEmpty (MarkerValidation.candidateErrors splitDocument data) "Split candle refs resolve the same marker position contract."
 
-        testCase "DYN-T-552 cross-trace marker lane limit rejects atomically" <| fun _ ->
+        testCase "DYN-T-552 cross-trace marker wire limit rejects atomically" <| fun _ ->
             let axisRef = "axis.marker.aggregate"
             let candleRef = "series.marker.aggregate.price"
             let markerRefA = "series.marker.aggregate.a"
@@ -461,7 +610,7 @@ let tests =
                     DataRef = dataRef
                     Label = traceId
                     CandleDataRefs = None
-                    Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = target.TraceId } }
+                    Options = TaMarkerTraceOptionsCodec.encode ({ TargetTraceId = target.TraceId }: TaMarkerTraceOptions) }
             let markerA = markerTrace "aggregate-a" markerRefA
             let markerB = markerTrace "aggregate-b" markerRefB
             let aggregateRow = { row with RowId = "aggregate-row"; DataRef = candleRef; Traces = [| target; markerA; markerB |] }
@@ -507,13 +656,13 @@ let tests =
                             Points =
                                 [| { Position = 10L
                                      Value = SduiValue.Object(Map [ "o", SduiValue.Number 100.0; "h", SduiValue.Number 103.0; "l", SduiValue.Number 98.0; "c", SduiValue.Number 101.0; "v", SduiValue.Number 20.0 ]) } |] }
-                      series markerRefA [| marker "a-1"; marker "a-2" |]
-                      series markerRefB [| marker "b-1"; marker "b-2" |] ]
-            Expect.isEmpty (MarkerValidation.candidateErrors aggregateDocument commonData) "Four markers across traces must fit one aggregate lane."
+                      series markerRefA (Array.init 32 (fun index -> marker ($"a-{index + 1}")))
+                      series markerRefB (Array.init 32 (fun index -> marker ($"b-{index + 1}"))) ]
+            Expect.isEmpty (MarkerValidation.candidateErrors aggregateDocument commonData) "Sixty-four markers across traces must fit the aggregate wire budget."
 
-            let invalidData = commonData |> Map.add markerRefB (snd (series markerRefB [| marker "b-1"; marker "b-2"; marker "b-3" |]))
+            let invalidData = commonData |> Map.add markerRefB (snd (series markerRefB (Array.init 33 (fun index -> marker ($"b-{index + 1}")))))
             let errors = MarkerValidation.candidateErrors aggregateDocument invalidData
-            Expect.isTrue (errors |> List.exists (fun error -> error.Code = "limit-marker-lane")) "The fifth marker across traces must fail the aggregate lane gate."
+            Expect.isTrue (errors |> List.exists (fun error -> error.Code = "limit-marker-lane")) "The sixty-fifth marker across traces must fail the aggregate wire gate."
 
             let markerFrame kind sequence baseRevision dataRevision payload =
                 { frame kind sequence baseRevision dataRevision payload with Protocol = DynamicRuntimeDefaults.markerProtocol }
@@ -526,7 +675,7 @@ let tests =
                 RuntimeReducer.reduce
                     afterDocument
                     (markerFrame RuntimeFrameKind.Snapshot 2L None 1L (RuntimePayload.Snapshot { Data = commonData; Freshness = TaFreshness.Backfill "aggregate" }))
-            Expect.equal accepted.Data commonData $"Four-marker snapshot must establish last-good state; error={accepted.LastError}."
+            Expect.equal accepted.Data commonData $"Sixty-four-marker snapshot must establish last-good state; error={accepted.LastError}."
             let rejected, effect =
                 RuntimeReducer.reduce
                     accepted

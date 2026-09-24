@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0024：Backtest Presentation UX Generic Contracts
 
 - ID：RFC-PTCS-DYNAMIC-0024
-- 狀態：Accepted／DEV 尚未開始
+- 狀態：Implemented／owner release complete；consumer adoption pending
 - 日期：2026-09-24
 - Owner：Aster／PTCS Dynamic
 - Consumer owner：Daedalus／TradeCore、DIExt、SPAA
@@ -219,15 +219,17 @@ Daedalus另行擁有：monotonic `selectionGeneration`、完整candidate identit
 
 ### 5.9 Exact package graph
 
-本RFC implementation release預定使用下列 immutable graph；若開工前已有其他合法版本占用，numeric version只可整體向前，不可回退或改用ProjectReference：
+本RFC implementation release使用下列 immutable graph：
 
-| Package | Planned version | Exact dependencies |
+| Package | Final version | Exact dependencies |
 | --- | --- | --- |
-| `PulseTrade.Comm.Spa.Dynamic.Contracts` | `0.1.16` | `FSharp.Core [10.1.400]` |
-| `PulseTrade.Comm.Spa.Dynamic.Renderer` | `0.1.42` | Contracts `[0.1.16]` |
-| `PulseTrade.Comm.Spa.Dynamic.Interactive.Client` | `0.1.36` | Contracts `[0.1.16]`, Renderer `[0.1.42]` |
-| `PulseTrade.Comm.Spa.Dynamic.Ptcs` | `0.1.41` | Contracts `[0.1.16]`, PTCS `[0.2.46]` |
-| `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` | `0.1.58` | Contracts `[0.1.16]`, Renderer `[0.1.42]`, PTCS `[0.2.46]` |
+| `PulseTrade.Comm.Spa.Dynamic.Contracts` | `0.1.19` | `FSharp.Core [10.1.400]` |
+| `PulseTrade.Comm.Spa.Dynamic.Renderer` | `0.1.44` | Contracts `[0.1.19]` |
+| `PulseTrade.Comm.Spa.Dynamic.Interactive.Client` | `0.1.36` | Contracts `[0.1.19]`, Renderer `[0.1.44]` |
+| `PulseTrade.Comm.Spa.Dynamic.Ptcs` | `0.1.41` | Contracts `[0.1.19]`, PTCS `[0.2.46]` |
+| `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` | `0.1.58` | Contracts `[0.1.19]`, Renderer `[0.1.44]`, PTCS `[0.2.46]` |
+
+原預定Contracts `0.1.16`／Renderer `0.1.42`在本機pack-before-full-build階段即淘汰；`0.1.17`暴露marker codec型別推斷錯誤，Renderer `0.1.43`亦未通過full WebSharper bundle gate。上述候選均未push；最終immutable graph使用表列版本。
 
 Aggregate `PulseTrade.Comm.Spa.Dynamic 0.1.25`不依賴上述runtime packages，本輪不為湊齊「六包」無意義升版。若實作證明root bundle需要新contract，須先修訂本RFC package graph。
 

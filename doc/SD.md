@@ -606,6 +606,6 @@ Total row height不再由marker presence決定。Plot height由resolved total扣
 
 ### Package closure
 
-Planned graph：Contracts `0.1.16` → Renderer `0.1.42` → Interactive.Client `0.1.36`；Dynamic.Ptcs `0.1.41` exact Contracts；Ptcs.Client `0.1.58` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。若版本已被占用只可整體向前並同步RFC/DevLog，不得ProjectReference或partial graph。
+Final graph：Contracts `0.1.19` → Renderer `0.1.44` → Interactive.Client `0.1.36`；Dynamic.Ptcs `0.1.41` exact Contracts；Ptcs.Client `0.1.58` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。Interactive.Client的bundle manifest由pack target以`$(Version)`生成，避免nuspec與內嵌bundle版本漂移。不得ProjectReference或partial graph。
 
 Test seams：strict codec/unknown field/limits；candidate atomicity/last-good；same-X lane/pixel bucket；marker cluster keyboard/focus；row resize/default/reset/dispose；4,000 slots long-task；exact nupkg/bundle/readback。

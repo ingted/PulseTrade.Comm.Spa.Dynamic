@@ -346,6 +346,7 @@ module TaResearchTransientWire =
         | TaTraceKind.Line -> "line"
         | TaTraceKind.Histogram -> "histogram"
         | TaTraceKind.Marker -> "marker"
+        | TaTraceKind.OverviewStripe -> "overview-stripe"
 
     let traceKind value =
         match text value |> fun item -> item.Trim().ToLowerInvariant() with
@@ -354,6 +355,7 @@ module TaResearchTransientWire =
         | "line" -> TaTraceKind.Line
         | "histogram" -> TaTraceKind.Histogram
         | "marker" -> TaTraceKind.Marker
+        | "overview-stripe" -> TaTraceKind.OverviewStripe
         | value -> invalidArg "value" $"Unsupported TA transient trace kind `{value}`."
 
     let traceToWire (trace: TaTraceSpec) : TaTransientTraceWire =
