@@ -325,7 +325,7 @@ function defaultCacheLimit(){
 function getJson(url, onOk, onError){
   const options=requestOptions();
   options.cache="no-store";
-  (globalThis.fetch(url, options).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank(body)?"{}":body)):onError(isBlank(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error_3) => onError(errorMessage(error_3)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((body) => response.ok?onOk(json(isBlank(body)?"{}":body)):onError(isBlank(body)?"GET "+String(url)+" "+String(response.status):body))))["catch"]((error_4) => onError(errorMessage(error_4)));
 }
 function set_currentAclSnapshotJson(_1){
   _c_1.currentAclSnapshotJson=_1;
@@ -839,8 +839,8 @@ function mountAppendPage(page, definition){
         }
         else setStatus(status, "Cached data is current");
       }
-    }, (error_3) => {
-      if(generation===loadGeneration)setStatus(status, "Cached data loaded; tail sync failed: "+error_3);
+    }, (error_4) => {
+      if(generation===loadGeneration)setStatus(status, "Cached data loaded; tail sync failed: "+error_4);
     });
   };
   const applySnapshot=(source, data) => {
@@ -926,10 +926,10 @@ function mountAppendPage(page, definition){
           writeAppendPageKeyWatermark(data);
           applySnapshot("backend", data);
         }
-      }, (error_3) => {
+      }, (error_4) => {
         if(generation===loadGeneration){
-          setStatus(status, error_3);
-          setStatus(workState, error_3);
+          setStatus(status, error_4);
+          setStatus(workState, error_4);
           onFailure();
         }
       });
@@ -1252,8 +1252,8 @@ function mountAppendPage(page, definition){
               return null;
           }
         }
-        catch(error_3){
-          return setStatus(status, "WebSocket sync parse failed: "+errorMessage(error_3));
+        catch(error_4){
+          return setStatus(status, "WebSocket sync parse failed: "+errorMessage(error_4));
         }
       };
       socket_1.onerror=() => {
@@ -1355,8 +1355,8 @@ function mountAppendPage(page, definition){
           refreshPendingState();
           load();
         });
-      }, (error_3) => {
-        setStatus(status, pendingFailure("Add key", error_3));
+      }, (error_4) => {
+        setStatus(status, pendingFailure("Add key", error_4));
         refreshPendingState();
       });
     }
@@ -1611,8 +1611,8 @@ function mountAppendPage(page, definition){
           setStatus(status, "Key removed");
           refreshPendingState();
         });
-      }, (error_3) => {
-        setStatus(status, pendingFailure("Remove key", error_3));
+      }, (error_4) => {
+        setStatus(status, pendingFailure("Remove key", error_4));
         refreshPendingState();
       });
     }
@@ -1627,8 +1627,8 @@ function mountAppendPage(page, definition){
         setStatus(status, "Page removed");
         globalThis.location.assign("/chat");
       });
-    }, (error_3) => {
-      setStatus(status, pendingFailure("Remove page", error_3));
+    }, (error_4) => {
+      setStatus(status, pendingFailure("Remove page", error_4));
       refreshPendingState();
     });
   }),reload.addEventListener("click", load),keyFilter.addEventListener("input", load),appendButton.addEventListener("click", appendValue),load(),subscribeKeyRegistry(),refreshPendingState());
@@ -1665,10 +1665,10 @@ function renderNav(nav, activePath, pages){
       return postJson("/pages/api/remove-page", New_15(page.pageId), (reply) => {
         writeAppendPagesDefinitions(reply);
         isCurrentPage(activePath, href)?globalThis.location.assign("/chat"):renderNav(nav, activePath, reply.pages);
-      }, (error_3) => {
+      }, (error_4) => {
         closeButton.removeAttribute("disabled");
         closeButton.textContent="!";
-        closeButton.setAttribute("title", "Remove page failed: "+error_3);
+        closeButton.setAttribute("title", "Remove page failed: "+error_4);
       });
     });
     append(link, [badge, element("span", "nav-title", pageTitle(page)), closeButton]);
@@ -1883,8 +1883,8 @@ function mountSets(page){
         writeSnapshotWithWatermark(cacheKey_1, data, data.maxSequence, setValueCount(data.buckets), "sets-state-v2");
         applySnapshot("backend", data);
       }
-    }, (error_3) => {
-      if(generation===loadGeneration)setStatus(status, error_3);
+    }, (error_4) => {
+      if(generation===loadGeneration)setStatus(status, error_4);
     });
   };
   const closeActionPool=() => {
@@ -2138,8 +2138,8 @@ function mountSets(page){
           break;
       }
     }
-    catch(error_3){
-      setStatus(status, "WebSocket sets sync parse failed: "+errorMessage(error_3));
+    catch(error_4){
+      setStatus(status, "WebSocket sets sync parse failed: "+errorMessage(error_4));
     }
   }
   ensureSetsSubscriptions=() => {
@@ -2167,8 +2167,8 @@ function mountSets(page){
         setStatus(status, "Cleaned "+String(reply.hiddenCount)+" no-show actor stream(s)");
         load();
       });
-    }, (error_3) => {
-      setStatus(status, "CleanAllNoShow Actors failed: "+error_3);
+    }, (error_4) => {
+      setStatus(status, "CleanAllNoShow Actors failed: "+error_4);
     });
   });
   cleanParticipantsAction.addEventListener("click", () => {
@@ -2183,8 +2183,8 @@ function mountSets(page){
         setStatus(status, "Cleaned "+String(reply.cleanedParticipantCount)+" inactive participant(s); hidden "+String(reply.hiddenCount)+" stream(s)");
         load();
       });
-    }, (error_3) => {
-      setStatus(status, "Clean Inactive Participant Collections failed: "+error_3);
+    }, (error_4) => {
+      setStatus(status, "Clean Inactive Participant Collections failed: "+error_4);
     });
   });
   keyFilter.addEventListener("input", load);
@@ -2371,9 +2371,9 @@ function mountActors(page){
     });
     getJson("/actors/api/tree", (data) => {
       renderActorTree("backend", data);
-    }, (error_3) => {
+    }, (error_4) => {
       clear(treePanel);
-      treePanel.appendChild(element("div", "empty", "ActorTree unavailable: "+error_3));
+      treePanel.appendChild(element("div", "empty", "ActorTree unavailable: "+error_4));
     });
   };
   const setWsState=(value) => {
@@ -2514,8 +2514,8 @@ function mountActors(page){
           break;
       }
     }
-    catch(error_3){
-      setStatus(status, "WebSocket actors sync parse failed: "+errorMessage(error_3));
+    catch(error_4){
+      setStatus(status, "WebSocket actors sync parse failed: "+errorMessage(error_4));
     }
   }
   reload.addEventListener("click", load);
@@ -2776,8 +2776,8 @@ function mountManagement(page){
       writeAppendPagesDefinitions(definitions);
       const nav=doc().getElementById("ptc-nav");
       if(!(nav==null))renderNav(nav, "/management", arrayOrEmpty(definitions.pages));
-    }, (error_3) => {
-      setStatus(pageCount, "Navigation refresh failed: "+error_3);
+    }, (error_4) => {
+      setStatus(pageCount, "Navigation refresh failed: "+error_4);
     });
   };
   function loadPages(){
@@ -2788,8 +2788,8 @@ function mountManagement(page){
       selectedPageKeys=filter_1((selected) => exists((available) => available==selected, availableKeys), selectedPageKeys);
       updatePageSelectionControl();
       applyPageProjection();
-    }, (error_3) => {
-      setStatus(pageCount, "Load failed: "+error_3);
+    }, (error_4) => {
+      setStatus(pageCount, "Load failed: "+error_4);
     });
   }
   function mutatePage(endpoint){
@@ -2799,8 +2799,8 @@ function mountManagement(page){
         destructive?selectedPageKeys=filter_1((selected) => selected!=pageRowKey(row), selectedPageKeys):void 0;
         loadPages();
         refreshManagementNav();
-      }, (error_3) => {
-        setStatus(pageCount, action+" failed: "+error_3);
+      }, (error_4) => {
+        setStatus(pageCount, action+" failed: "+error_4);
       })):null;
     };
   }
@@ -2813,8 +2813,8 @@ function mountManagement(page){
       return length(rows)>0?(setStatus(pageCount, action+" "+String(length(rows))+" selected pages..."),postJson(endpoint, New_28(map((row) => New_27(row.pageId, row.tabId), rows)), () => {
         loadPages();
         refreshManagementNav();
-      }, (error_3) => {
-        setStatus(pageCount, action+" selected failed: "+error_3);
+      }, (error_4) => {
+        setStatus(pageCount, action+" selected failed: "+error_4);
       })):null;
     };
   }
@@ -2830,8 +2830,8 @@ function mountManagement(page){
         updatePageSelectionControl();
         loadPages();
         refreshManagementNav();
-      }, (error_3) => {
-        setStatus(pageCount, "Delete selected failed: "+error_3);
+      }, (error_4) => {
+        setStatus(pageCount, "Delete selected failed: "+error_4);
       });
     }
   }
@@ -2843,8 +2843,8 @@ function mountManagement(page){
       selectedSetKeys=filter_1((selected) => exists((available) => available==selected, availableKeys), selectedSetKeys);
       updateSetSelectionControl();
       applySetProjection();
-    }, (error_3) => {
-      setStatus(setCount, "Load failed: "+error_3);
+    }, (error_4) => {
+      setStatus(setCount, "Load failed: "+error_4);
     });
   }
   function deleteSelectedSets(){
@@ -2858,8 +2858,8 @@ function mountManagement(page){
         selectedSetKeys=[];
         updateSetSelectionControl();
         loadSets();
-      }, (error_3) => {
-        setStatus(setCount, "Delete selected failed: "+error_3);
+      }, (error_4) => {
+        setStatus(setCount, "Delete selected failed: "+error_4);
       });
     }
   }
@@ -2868,8 +2868,8 @@ function mountManagement(page){
     getJson("/management/api/groups", (reply) => {
       allGroups=arrayOrEmpty(reply.groups);
       applyGroupProjection();
-    }, (error_3) => {
-      setStatus(groupCount, "Load failed: "+error_3);
+    }, (error_4) => {
+      setStatus(groupCount, "Load failed: "+error_4);
     });
   }
   function deleteGroup(row){
@@ -2877,8 +2877,8 @@ function mountManagement(page){
       setStatus(groupCount, "Deleting "+row.groupId+"...");
       postJson("/chat/api/groups/delete", New_31(newRequestId("management-group-delete"), row.groupId, row.revision, "", "", "", "", null), () => {
         loadGroups();
-      }, (error_3) => {
-        setStatus(groupCount, "Delete failed: "+error_3);
+      }, (error_4) => {
+        setStatus(groupCount, "Delete failed: "+error_4);
       });
     }
   }
@@ -2889,8 +2889,8 @@ function mountManagement(page){
       const availableKeys=map((a) => a.participantId, allParticipants);
       selectedParticipantKeys=filter_1((selected) => exists((y) => selected==y, availableKeys), selectedParticipantKeys);
       applyParticipantProjection();
-    }, (error_3) => {
-      setStatus(participantCount, "Load failed: "+error_3);
+    }, (error_4) => {
+      setStatus(participantCount, "Load failed: "+error_4);
     });
   }
   function mutateParticipant(endpoint){
@@ -2905,8 +2905,8 @@ function mountManagement(page){
         }
         else _1=void 0;
         loadParticipants();
-      }, (error_3) => {
-        setStatus(participantCount, action+" failed: "+error_3);
+      }, (error_4) => {
+        setStatus(participantCount, action+" failed: "+error_4);
       })):null;
     };
   }
@@ -2918,8 +2918,8 @@ function mountManagement(page){
       }, allParticipants));
       return length(rows)>0?(setStatus(participantCount, action+" "+String(length(rows))+" selected participants..."),postJson(endpoint, New_33(map((row) => New_32(row.participantId), rows)), () => {
         loadParticipants();
-      }, (error_3) => {
-        setStatus(participantCount, action+" selected failed: "+error_3);
+      }, (error_4) => {
+        setStatus(participantCount, action+" selected failed: "+error_4);
       })):null;
     };
   }
@@ -2935,8 +2935,8 @@ function mountManagement(page){
         updateParticipantSelectionControl();
         loadParticipants();
         loadSets();
-      }, (error_3) => {
-        setStatus(participantCount, "Delete selected failed: "+error_3);
+      }, (error_4) => {
+        setStatus(participantCount, "Delete selected failed: "+error_4);
       });
     }
   }
@@ -3429,8 +3429,8 @@ function mountChat(page){
         renderGroupManagement();
         loadParticipants(false);
         onOk(reply.group);
-      }, (error_3) => {
-        setStatus(state, error_3);
+      }, (error_4) => {
+        setStatus(state, error_4);
       });
     }
     else return setStatus(state, "Group details are not loaded");
@@ -3547,10 +3547,10 @@ function mountChat(page){
           renderGroupManagement();
           renderParticipants();
         }
-      }, (error_3) => {
+      }, (error_4) => {
         selectedGroup=null;
         setHidden(true, groupManagement);
-        setStatus(state, error_3);
+        setStatus(state, error_4);
       });
     }
   }
@@ -3684,8 +3684,8 @@ function mountChat(page){
           setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
           if(force&&selected==requestedPeer)clearReadTarget(requestedPeer);
           polling=false;
-        }, (error_3) => {
-          setStatus(state, error_3);
+        }, (error_4) => {
+          setStatus(state, error_4);
           polling=false;
         });
       };
@@ -3716,9 +3716,9 @@ function mountChat(page){
       getJson(url, (data) => {
         selected==requestedPeer?(prependMessages(data.messages),oldestSequence=data.oldestSequence,hasOlderMessages=data.hasOlderMessages,setData("has-older", hasOlderMessages?"true":"false", thread),setStatus(state, "Loaded "+String(length(data.messages))+" older message(s)")):void 0;
         loadingOlderMessages=false;
-      }, (error_3) => {
+      }, (error_4) => {
         loadingOlderMessages=false;
-        setStatus(state, "Load older messages failed: "+error_3);
+        setStatus(state, "Load older messages failed: "+error_4);
       });
     }
   }
@@ -3826,8 +3826,8 @@ function mountChat(page){
       }
       else responseStatus=="error"?exists((id) => id==requestId, pendingWsChatIds)?(setStatus(state, pendingFailure("WebSocket chat send", asText(response.error))),refreshChatPendingState()):setStatus(state, "WebSocket chat error: "+asText(response.error)):null;
     }
-    catch(error_3){
-      setStatus(state, "WebSocket chat parse failed: "+errorMessage(error_3));
+    catch(error_4){
+      setStatus(state, "WebSocket chat parse failed: "+errorMessage(error_4));
     }
   }
   function flushChatSyncFrames(socket){
@@ -3900,10 +3900,10 @@ function mountChat(page){
           refreshChatPendingState();
           setStatus(state, "Sent "+compactMessageId(reply.message.messageId)+" "+asText(reply.deliveryHint));
         });
-      }, (error_3) => {
+      }, (error_4) => {
         deletePendingThen(pendingId, () => {
           refreshChatPendingState();
-          setStatus(state, error_3);
+          setStatus(state, error_4);
         });
       });
     }
@@ -3941,8 +3941,8 @@ function mountChat(page){
         }, 5000);
         setStatus(state, "Exported "+String(length(rows))+" message(s)");
       }
-      catch(error_3){
-        setStatus(state, "Chat export failed: "+errorMessage(error_3));
+      catch(error_4){
+        setStatus(state, "Chat export failed: "+errorMessage(error_4));
       }
     }
   }
@@ -4106,10 +4106,10 @@ function mountLoginFallback(root){
       postJson(config.submitPath, request, (reply) => {
         const target=textOr(config.returnUrl, reply.returnUrl);
         globalThis.location.assign(target);
-      }, (error_3) => {
+      }, (error_4) => {
         submit_1.removeAttribute("disabled");
         submit_1.textContent="\u767b\u5165\u4e26\u8fd4\u56de PTCS";
-        setError(isBlank(error_3)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error_3);
+        setError(isBlank(error_4)?"\u767b\u5165\u5931\u6557\u3002\u8acb\u78ba\u8a8d\u5e33\u865f\u6216\u5bc6\u78bc\u3002":error_4);
       });
     }
   };
@@ -4165,8 +4165,8 @@ function requestSeq(){
 function requestOptions(){
   return{credentials:"same-origin"};
 }
-function errorMessage(error_3){
-  return error_3==null?"request failed":String(error_3);
+function errorMessage(error_4){
+  return error_4==null?"request failed":String(error_4);
 }
 function isCurrentPage(activePath, href){
   return TrimEnd(activePath, ["/"])==TrimEnd(href, ["/"]);
@@ -4365,10 +4365,10 @@ function postAppendPageKey(url, body, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_3) => onError(errorMessage(error_3)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_4) => onError(errorMessage(error_4)));
 }
-function pendingFailure(action, error_3){
-  return String(action)+" failed; pending command kept in browser DB: "+String(asText(error_3));
+function pendingFailure(action, error_4){
+  return String(action)+" failed; pending command kept in browser DB: "+String(asText(error_4));
 }
 function rememberPending(kind, target, url, body){
   const payloadJson=JSON.stringify(body);
@@ -4549,7 +4549,7 @@ function postJsonText(url, payloadJson, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=textOr("{}", payloadJson);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_3) => onError(errorMessage(error_3)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(responseBody):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_4) => onError(errorMessage(error_4)));
 }
 function postJson(url, body, onOk, onError){
   const headers=new Headers();
@@ -4558,7 +4558,7 @@ function postJson(url, body, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_3) => onError(errorMessage(error_3)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_4) => onError(errorMessage(error_4)));
 }
 function postRemoveAppendPageKey(url, body, onOk, onError){
   const headers=new Headers();
@@ -4567,7 +4567,7 @@ function postRemoveAppendPageKey(url, body, onOk, onError){
   options.method="POST";
   options.headers=headers;
   options.body=JSON.stringify(body);
-  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_3) => onError(errorMessage(error_3)));
+  (globalThis.fetch(url, options).then((response) => response.text().then((responseBody) => response.ok?onOk(json(isBlank(responseBody)?"{}":responseBody)):onError(isBlank(responseBody)?"POST "+String(url)+" "+String(response.status):responseBody))))["catch"]((error_4) => onError(errorMessage(error_4)));
 }
 function renderAppendValue(definition, value){
   let mounted, savedScrollTop, modeBeforeFullscreen, focusBeforeFullscreen, presentationRendered, _1, _2;
@@ -4615,9 +4615,9 @@ function renderAppendValue(definition, value){
             return;
           }
         }
-        catch(error_3){
+        catch(error_4){
           actionFeedback.className="reply-presentation-action-feedback error";
-          actionFeedback.textContent=textOr("Action failed", errorMessage(error_3));
+          actionFeedback.textContent=textOr("Action failed", errorMessage(error_4));
           return;
         }
       });
@@ -4649,8 +4649,8 @@ function renderAppendValue(definition, value){
           mounted=true;
           setData("mount-state", "mounted", shell_1);
         }
-        catch(error_3){
-          inlineHost.appendChild(element("div", "reply-presentation-error", textOr("Reply presentation failed.", errorMessage(error_3))));
+        catch(error_4){
+          inlineHost.appendChild(element("div", "reply-presentation-error", textOr("Reply presentation failed.", errorMessage(error_4))));
           setData("mount-state", "error", shell_1);
         }
       }
@@ -4861,8 +4861,8 @@ function renderViewAsControl(){
       }, arrayOrEmpty(reply.participants));
       chooser.value=reply.viewAsParticipantId;
       setStatus(status, "Read-only conversation view");
-    }, (error_3) => {
-      setStatus(status, "Unable to load participants: "+error_3);
+    }, (error_4) => {
+      setStatus(status, "Unable to load participants: "+error_4);
     })):null;
   });
   cancel_1.addEventListener("click", () => {
@@ -4872,9 +4872,9 @@ function renderViewAsControl(){
     apply.setAttribute("disabled", "disabled");
     return postJson("/management/api/view-as", New_52(asText(chooser.value)), () => {
       globalThis.location.reload();
-    }, (error_3) => {
+    }, (error_4) => {
       apply.removeAttribute("disabled");
-      setStatus(status, "View as failed: "+error_3);
+      setStatus(status, "View as failed: "+error_4);
     });
   });
   const actions=element("div", "view-as-panel-actions", null);
@@ -4940,9 +4940,9 @@ function renderPageCreator(nav, activePath, pages){
         candidatesLoaded=true;
         binding.setAttribute("data-candidate-count", String(length(candidates)));
         onDone();
-      }, (error_3) => {
+      }, (error_4) => {
         resetBinding();
-        setStatus(status, error_3);
+        setStatus(status, error_4);
         onDone();
       }));
     }
@@ -4963,8 +4963,8 @@ function renderPageCreator(nav, activePath, pages){
           refresh(reply.pages);
           reply.page==null?setStatus(status, "Saved"):(setStatus(status, "Saved "+pageTitle(reply.page)),globalThis.location.assign(navigationPathForCreatedPage(reply.page)));
         });
-      }, (error_3) => {
-        setStatus(status, pendingFailure("Create page", error_3));
+      }, (error_4) => {
+        setStatus(status, pendingFailure("Create page", error_4));
       });
     }
   };
@@ -5007,12 +5007,12 @@ function renderPageCreator(nav, activePath, pages){
                 finishOne();
               });
             }
-            catch(error_3){
-              setStatus(status, "Replay create page parse failed: "+errorMessage(error_3));
+            catch(error_4){
+              setStatus(status, "Replay create page parse failed: "+errorMessage(error_4));
               finishOne();
             }
-          }, (error_3) => {
-            setStatus(status, pendingFailure("Replay create page", error_3));
+          }, (error_4) => {
+            setStatus(status, pendingFailure("Replay create page", error_4));
             finishOne();
           });
         }, mine);
@@ -5984,8 +5984,8 @@ function downloadJsonExport(wire){
     }, 250);
     return Ok("TA Research JSON download started.");
   }
-  catch(error_3){
-    return Error_1(error_3.message);
+  catch(error_4){
+    return Error_1(error_4.message);
   }
 }
 function exportFileName(){
@@ -7714,6 +7714,9 @@ function head(l){
 function tail(l){
   return l.$==1?l.$1:listEmpty();
 }
+function concat_2(s){
+  return ofSeq_1(concat_3(s));
+}
 function listEmpty(){
   return FailWith("The input list was empty.");
 }
@@ -7727,9 +7730,6 @@ function rev(l){
       r=r.$1;
     }
   return res;
-}
-function concat_2(s){
-  return ofSeq_1(concat_3(s));
 }
 function choose_1(f, l){
   return ofSeq_1(choose_2(f, l));
@@ -9574,7 +9574,7 @@ function mergeSeries(current, timeline, wire){
 }
 function traceKind(value){
   const m=Trim(text(value)).toLowerCase();
-  return m=="candlestick"?Ok({$:0}):m=="volume"?Ok({$:1}):m=="line"?Ok({$:2}):m=="histogram"?Ok({$:3}):m=="marker"?Ok({$:4}):Error_1("Unsupported TA browser trace kind `"+m+"`.");
+  return m=="candlestick"?Ok({$:0}):m=="volume"?Ok({$:1}):m=="line"?Ok({$:2}):m=="histogram"?Ok({$:3}):m=="marker"?Ok({$:4}):m=="overview-stripe"?Ok({$:5}):Error_1("Unsupported TA browser trace kind `"+m+"`.");
 }
 function temporalSeriesMetadataIsValid(count, series){
   return!series.hasTemporal||!(series.sourceIntervalIds==null)&&length(series.sourceIntervalIds)===count&&!(series.scaleKeys==null)&&length(series.scaleKeys)===count&&!(series.intervalStartUtc==null)&&length(series.intervalStartUtc)===count&&!(series.intervalEndUtc==null)&&length(series.intervalEndUtc)===count&&!(series.observedThroughUtc==null)&&length(series.observedThroughUtc)===count&&!(series.availableAtUtc==null)&&length(series.availableAtUtc)===count&&!(series.hasAvailableAtUtc==null)&&length(series.hasAvailableAtUtc)===count&&!(series.finality==null)&&length(series.finality)===count&&!(series.projections==null)&&length(series.projections)===count&&!(series.qualities==null)&&length(series.qualities)===count;
@@ -9662,9 +9662,10 @@ function ActiveChanged(Item){
   return{$:7, $0:Item};
 }
 function render(options, callbacks, runtimeState){
-  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, editingRowId, pendingEditorMutation, navigatorElement, finishNavigatorDrag, chartRenderSequence, chartStackElement, latestCursorTimestamps, latestCursorReaders, latestLegendReaders, displayedCursorIndex, refreshVisibleValues, visibleValueRefreshScheduled, chartWorkGeneration, dataWorkGeneration, activeRowDataStates, pendingCursorIndex, cursorFrameScheduled, actionSequence, querySelectionGeneration, queryInFlight, queuedQuery, boundaryPanGeneration, pendingBoundaryPan, latestPreparedData, preparedDataForShell, preparedDataReady, preparationGeneration, observedChartTopology, observedDataState;
+  let instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentRevision, addRowSequence, pendingAddRowId, editingRowId, pendingEditorMutation, navigatorElement, finishNavigatorDrag, chartRenderSequence, chartStackElement, latestCursorTimestamps, latestCursorReaders, latestLegendReaders, displayedCursorIndex, refreshVisibleValues, visibleValueRefreshScheduled, chartWorkGeneration, dataWorkGeneration, activeRowDataStates, pendingCursorIndex, cursorFrameScheduled, actionSequence, querySelectionGeneration, queryInFlight, queuedQuery, boundaryPanGeneration, pendingBoundaryPan, latestPreparedData, preparedDataReady, preparationGeneration, observedChartTopology, observedDataState;
   ensureAxisResizeTracking();
   const currentCanvasId=() => runtimeState.Get().Identity.CanvasInstanceId;
+  const rowHeightStates=new Dictionary("New_5");
   const configuredEditorSchemas=options.EditorSchemas==null?[]:options.EditorSchemas;
   const editorSchemasNow=() => {
     const o_2=runtimeState.Get().Document;
@@ -9781,7 +9782,7 @@ function render(options, callbacks, runtimeState){
     ResolvedSeries:new FSharpMap("New", [])
   };
   latestPreparedData=initialPreparedData;
-  preparedDataForShell=initialPreparedData;
+  const shellPreparedData=_c_3.Create_1(initialPreparedData);
   preparedDataReady=false;
   preparationGeneration=0;
   observedChartTopology=chartTopologySignaturePrepared(runtimeState.Get(), initialPreparedData);
@@ -9795,7 +9796,7 @@ function render(options, callbacks, runtimeState){
       if(generation===preparationGeneration){
         const current=runtimeState.Get();
         latestPreparedData=prepared;
-        preparedDataForShell=prepared;
+        shellPreparedData.Set(prepared);
         observedChartTopology=chartTopologySignaturePrepared(current, prepared);
         observedDataState=current;
         preparedDataReady=true;
@@ -9824,7 +9825,7 @@ function render(options, callbacks, runtimeState){
       const topologyChanged=!Equals(next.Identity, chartRuntimeState.Get().Identity)||next.DocumentRevision!==chartRuntimeState.Get().DocumentRevision||!Equals(nextChartTopology, observedChartTopology);
       if(topologyChanged){
         observedChartTopology=nextChartTopology;
-        preparedDataForShell=nextPreparedData;
+        shellPreparedData.Set(nextPreparedData);
         const m=next.Document;
         if(m==null)_3=pendingBoundaryPan=null;
         else {
@@ -9869,6 +9870,7 @@ function render(options, callbacks, runtimeState){
         _5=chartRuntimeState.Set(next);
       }
       else if(dataChanged){
+        shellPreparedData.Set(nextPreparedData);
         dataWorkGeneration=dataWorkGeneration+1;
         const generation=dataWorkGeneration;
         const targets=activeRowDataStates;
@@ -10795,19 +10797,29 @@ function render(options, callbacks, runtimeState){
         const workGeneration=chartWorkGeneration;
         const visibleRows=preparedDataReady?filter_1((row) => row.Visible&&!_13.HiddenRows.Contains(row.RowId), document.Rows):[];
         const cursorReaderCount=sumBy((row) => filter_1((a) => a.Visible, effectiveTraces(row)).length, visibleRows);
-        const shellPreparedData=preparedDataForShell;
-        const referenceTimeline_1=referenceTimelineForDocumentPrepared(document, shellPreparedData);
+        const preparedDataForShell=shellPreparedData.Get();
+        const referenceTimeline_1=referenceTimelineForDocumentPrepared(document, preparedDataForShell);
         const referenceLength_1=length(referenceTimeline_1);
-        const o_4=tryFind((trace) => trace.Visible&&Equals(trace.Kind, {$:0}), collect(effectiveTraces, visibleRows));
-        const o_5=o_4==null?null:Some(candleSeriesForTracePreparedSampled(280, o_4.$0, shellPreparedData));
-        const overviewPoints=o_5==null?[]:o_5.$0;
         const visibleWindow=resolveWindow(options.MinimumVisibleBars, options.MaximumVisibleBars, referenceLength_1, _13.FollowLatest, _13.Window);
         const visibleTimestamps=selectWindow(visibleWindow, referenceTimeline_1);
-        const rowDataStates=map(() => _c_3.Create_1(shellPreparedData), visibleRows);
+        const rowDataStates=map(() => _c_3.Create_1(preparedDataForShell), visibleRows);
+        const rowHeights=map((row) => {
+          const traces=filter_1((a) => a.Visible, effectiveTraces(row));
+          let o_4;
+          const key=rowHeightStorageKey(currentCanvasId(), row.RowId);
+          const m_2=(o_4=null,[rowHeightStates.TryGetValue(key, {get:() => o_4, set:(v) => {
+            o_4=v;
+          }}), o_4]);
+          if(m_2[0])return m_2[1];
+          else {
+            const value=_c_3.Create_1(rowHeightBounds(row, traces).DefaultHeight);
+            rowHeightStates.set_Item(key, value);
+            return value;
+          }
+        }, visibleRows);
         const readyRowCount=_c_3.Create_1(0);
         const rowDocs=mapi((_15, _16) => {
-          const traces=filter_1((a) => a.Visible, effectiveTraces(_16));
-          const reservedHeight=(exists((trace) => Equals(trace.Kind, {$:4}), traces)?322:exists((trace) => Equals(trace.Kind, {$:0}), traces)?262:124)+46;
+          const reservedHeight=get(rowHeights, _15).Get()+82;
           return _c_3.Create_1(Doc.Element("div", [Attr.Create("data-testid", "ta-row-loading-"+_16.RowId), Attr.Create("style", "height:"+String(reservedHeight)+"px; min-height:"+String(reservedHeight)+"px; padding:12px; border-top:1px solid #e1e7ef; box-sizing:border-box; color:#718197; background:#fff;")], [Doc.TextNode("Preparing "+rowDisplayLabel(_16)+"...")]));
         }, visibleRows);
         const stagedCursorReaders=create(length(visibleRows), null);
@@ -10819,7 +10831,7 @@ function render(options, callbacks, runtimeState){
         function mountRow(index){
           if(workGeneration===chartWorkGeneration&&index<length(visibleRows))scheduleNextFrame(() => {
             if(workGeneration===chartWorkGeneration){
-              const p=renderRowReactivePreparedLiveWithValueRefresh(_12, _13, get(rowDataStates, index).Get(), get(rowDataStates, index).View, visibleTimestamps, cursorIndex.View, setCursorIndex, commitCursorIndex, true, Equals(document.BaseRowId, Some(get(visibleRows, index).RowId)), scheduleVisibleValueRefresh, get(visibleRows, index));
+              const p=renderRowReactivePreparedLiveWithHeight(_12, _13, get(rowDataStates, index).Get(), get(rowDataStates, index).View, visibleTimestamps, cursorIndex.View, setCursorIndex, commitCursorIndex, true, Equals(document.BaseRowId, Some(get(visibleRows, index).RowId)), get(rowHeights, index), scheduleVisibleValueRefresh, get(visibleRows, index));
               set(stagedCursorReaders, index, Some(p[1]));
               set(stagedLegendReaders, index, Some(p[2]));
               get(rowDocs, index).Set(p[0]);
@@ -10855,43 +10867,50 @@ function render(options, callbacks, runtimeState){
           return[compactButton("ta-view-all", referenceLength_1>options.MaximumVisibleBars?"Max "+String(options.MaximumVisibleBars):"All", "Show up to "+String(capped)+" loaded bars", () => {
             setWindowCount(capped);
           })];
-        }))))))), Doc.Element("div", [Attr.Create("style", "grid-column:1 / -1; min-width:0;")], [overviewSvg(overviewPoints, Map((draft) => selectionRatios(referenceLength_1, draft==null?visibleWindow:draft.$0), draftWindow.View), (node) => {
-          navigatorElement=node;
-        }, (drag, event) => {
-          let moveHandler, upHandler, finished;
-          if(!viewportCommandsDisabledNow()&&!(navigatorElement==null)){
-            event.preventDefault();
-            event.stopPropagation();
-            const bounds=navigatorElement.getBoundingClientRect();
-            const total=referenceLength();
-            const committed=resolvedWindow(uiState.Get());
-            const startClientX=event.clientX;
-            moveHandler=null;
-            upHandler=null;
-            finished=false;
-            const finish=() => {
-              if(!finished){
-                finished=true;
-                finishNavigatorDrag=null;
-                const x=draftWindow.Get();
-                let _15=x==null?committed:x.$0;
-                const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _15);
-                const next=p[1];
-                const followLatest=p[0];
-                if(!Equals(next, committed)||followLatest!=uiState.Get().FollowLatest)setWindow(followLatest, next);
-                else draftWindow.Set(null);
-                if(!(moveHandler==null))globalThis.document.removeEventListener("mousemove", moveHandler);
-                if(!(upHandler==null))globalThis.document.removeEventListener("mouseup", upHandler);
-              }
-            };
-            moveHandler=(rawEvent) => draftWindow.Set(Some(previewWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, committed, drag, bounds.width<=0||total<=0?0:toInt(Math.round((rawEvent.clientX-startClientX)/bounds.width*total)))));
-            upHandler=() => finish();
-            finishNavigatorDrag=Some(finish);
-            globalThis.document.addEventListener("mousemove", moveHandler);
-            return globalThis.document.addEventListener("mouseup", upHandler);
-          }
-          else return null;
-        }, finishNavigatorDragFromElement)])])])))))));
+        }))))))), Doc.Element("div", [Attr.Create("style", "grid-column:1 / -1; min-width:0;")], [Doc.EmbedView(Map((currentPreparedData) => {
+          const currentReferenceTimeline=referenceTimelineForDocumentPrepared(document, currentPreparedData);
+          const currentReferenceLength=length(currentReferenceTimeline);
+          const o_4=tryFind((trace) => trace.Visible&&Equals(trace.Kind, {$:0}), collect(effectiveTraces, visibleRows));
+          const o_5=o_4==null?null:Some(candleSeriesForTracePreparedSampled(280, o_4.$0, currentPreparedData));
+          let _15=o_5==null?[]:o_5.$0;
+          return overviewSvg(_15, overviewStripeVisuals(collect((trace) => overviewStripePlacementsPrepared(trace, currentPreparedData, currentReferenceTimeline), filter_1((trace) => trace.Visible&&Equals(trace.Kind, {$:5}), collect(effectiveTraces, visibleRows)))), currentReferenceLength, Map((draft) => selectionRatios(currentReferenceLength, draft==null?visibleWindow:draft.$0), draftWindow.View), (node) => {
+            navigatorElement=node;
+          }, (drag, event) => {
+            let moveHandler, upHandler, finished;
+            if(!viewportCommandsDisabledNow()&&!(navigatorElement==null)){
+              event.preventDefault();
+              event.stopPropagation();
+              const bounds=navigatorElement.getBoundingClientRect();
+              const total=referenceLength();
+              const committed=resolvedWindow(uiState.Get());
+              const startClientX=event.clientX;
+              moveHandler=null;
+              upHandler=null;
+              finished=false;
+              const finish=() => {
+                if(!finished){
+                  finished=true;
+                  finishNavigatorDrag=null;
+                  const x=draftWindow.Get();
+                  let _16=x==null?committed:x.$0;
+                  const p=commitWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, _16);
+                  const next=p[1];
+                  const followLatest=p[0];
+                  if(!Equals(next, committed)||followLatest!=uiState.Get().FollowLatest)setWindow(followLatest, next);
+                  else draftWindow.Set(null);
+                  if(!(moveHandler==null))globalThis.document.removeEventListener("mousemove", moveHandler);
+                  if(!(upHandler==null))globalThis.document.removeEventListener("mouseup", upHandler);
+                }
+              };
+              moveHandler=(rawEvent) => draftWindow.Set(Some(previewWindowBounds(options.MinimumVisibleBars, options.MaximumVisibleBars, total, committed, drag, bounds.width<=0||total<=0?0:toInt(Math.round((rawEvent.clientX-startClientX)/bounds.width*total)))));
+              upHandler=() => finish();
+              finishNavigatorDrag=Some(finish);
+              globalThis.document.addEventListener("mousemove", moveHandler);
+              return globalThis.document.addEventListener("mouseup", upHandler);
+            }
+            else return null;
+          }, finishNavigatorDragFromElement);
+        }, shellPreparedData.View))])])])))))));
         return _14;
       }, chartRuntimeView, chartUiState.View))]);
     }
@@ -10970,12 +10989,12 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
     StartImmediate(Delay(() => Bind_1(callbacks.SubmitAction(request), (a) => {
       let result, _7;
       if(a.$==1){
-        const error_3=a.$0;
+        const error_4=a.$0;
         result={
           $:1, 
           $0:request.RequestId, 
-          $1:error_3.Code, 
-          $2:error_3.Message
+          $1:error_4.Code,
+          $2:error_4.Message
         };
       }
       else result=a.$0;
@@ -11122,23 +11141,24 @@ function rowDisplayLabel(row){
   const v=rowKindText_1(row.Kind);
   return x==null?v:x.$0;
 }
-function renderRowReactivePreparedLiveWithValueRefresh(_1, _2, preparedData, dataView, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex, showSharedTimeAxis, isBaseRow, scheduleValueRefresh, row){
+function renderRowReactivePreparedLiveWithHeight(_1, _2, preparedData, dataView, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex, showSharedTimeAxis, isBaseRow, rowHeight, scheduleValueRefresh, row){
   const traces=filter_1((a) => a.Visible, effectiveTraces(row));
-  const p=compositeSvgReactivePreparedLiveWithValueRefresh(row.RowId, isBaseRow, traces, preparedData, dataView, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex, scheduleValueRefresh);
+  const p=compositeSvgReactivePreparedLiveWithHeight(row.RowId, isBaseRow, traces, preparedData, dataView, visibleTimestamps, cursorIndex, setCursorIndex, commitCursorIndex, rowHeight.View, scheduleValueRefresh);
   const timestamps=p[1];
   const legendReaders=p[3];
   const chart=p[0];
   const title=rowTitle(row, traces);
-  const chartHeight=exists((trace) => Equals(trace.Kind, {$:4}), traces)?322:exists((trace) => Equals(trace.Kind, {$:0}), traces)?262:124;
+  const heightBounds=rowHeightBounds(row, traces);
   const children=showSharedTimeAxis?ofArray([chart, timeAxis("ta-time-axis-"+row.RowId, row.RowId, timestamps)]):ofArray([chart]);
-  return[chartFrame(title, [Doc.EmbedView(Map((currentData) => Doc.Element("span", [Attr.Create("style", "display:inline-flex; align-items:center; gap:6px 10px; flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap;")], ofSeq_1(delay(() => collect_1((value) => {
+  const metadata=Doc.EmbedView(Map((currentData) => Doc.Element("span", [Attr.Create("style", "display:inline-flex; align-items:center; gap:6px 10px; flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap;")], ofSeq_1(delay(() => collect_1((value) => {
     const o=value.AvailableAtUtc;
     const o_1=o==null?null:Some(compactTimestamp(o.$0));
     const availability=o_1==null?"unknown":o_1.$0;
     const o_2=value.Quality;
     const quality=o_2==null?"unknown":o_2.$0;
     return[Doc.Element("span", [Attr.Create("data-testid", "ta-row-meta-"+row.RowId+"-"+value.ScaleKey), Attr.Create("data-scale-key", value.ScaleKey), Attr.Create("data-finality", value.Finality), Attr.Create("data-quality", quality), Attr.Create("title", temporalDetail(value)), Attr.Create("style", "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;")], [Doc.TextNode(value.ScaleKey+" | "+value.Finality+" | "+quality+" | frontier "+compactTimestamp(value.ObservedThroughUtc)+" | available "+availability)])];
-  }, rowTemporalMetadataPrepared(row, currentData))))), dataView))], Doc.Element("div", [Attr.Create("data-testid", "ta-row-values-"+row.RowId), Attr.Create("data-ta-row-values", "true"), Attr.Create("data-fixed-height", "30"), Attr.Create("style", "box-sizing:border-box; display:flex; align-items:center; gap:6px 14px; height:30px; min-height:30px; padding:0 8px; border-top:1px solid #edf1f6; border-bottom:1px solid #edf1f6; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => {
+  }, rowTemporalMetadataPrepared(row, currentData))))), dataView));
+  const legend=Doc.Element("div", [Attr.Create("data-testid", "ta-row-values-"+row.RowId), Attr.Create("data-ta-row-values", "true"), Attr.Create("data-fixed-height", "30"), Attr.Create("style", "box-sizing:border-box; display:flex; align-items:center; gap:6px 14px; height:30px; min-height:30px; padding:0 8px; border-top:1px solid #edf1f6; border-bottom:1px solid #edf1f6; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:#263b55;")], ofSeq_1(delay(() => {
     const o=length(timestamps)===0?null:tryPick((readValue) => readValue(length(timestamps)-1), legendReaders);
     const o_1=o==null?null:fullTimestamp(o.$0.Timestamp);
     const initialTimestamp=o_1==null?"Unavailable":o_1.$0;
@@ -11158,26 +11178,29 @@ function renderRowReactivePreparedLiveWithValueRefresh(_1, _2, preparedData, dat
       }
       else return[];
     }, range(0, length(traces)-1))));
-  }))), "ta-row-"+row.RowId, chartHeight+30+(showSharedTimeAxis?16:0), children), p[2], legendReaders];
+  })));
+  const frameHeight=Map((value) => value+58+(showSharedTimeAxis?16:0), rowHeight.View);
+  return[Doc.Element("div", [Attr.Create("data-testid", "ta-row-shell-"+row.RowId), Attr.Create("style", "display:flex; flex-direction:column; min-width:0;")], [chartFrame(title, [metadata], legend, "ta-row-"+row.RowId, frameHeight, children), rowResizeHandle(row.RowId, heightBounds, rowHeight)]), p[2], legendReaders];
 }
-function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
+function overviewSvg(points, stripeVisuals, referenceLength, selectionWindow, onReady, onDragStart, onDragEnd){
   const width=1000;
+  const stripeTooltip=_c_3.Create_1(null);
   const sampled=sampleEvenly(280, points);
   const p=paddedRange(0, 1, collect((point) =>[point.Low, point.High], sampled));
   const low=p[0];
   const high=p[1];
-  const closePath=concat_1(" ", mapi((_1, _2) =>(_1===0?"M ":"L ")+fixedText(length(sampled)<=1?width/2:width*_1/(length(sampled)-1))+" "+fixedText(normalize(low, high, 8, 62, _2.Close)), sampled));
+  const closePath=concat_1(" ", mapi((_2, _3) =>(_2===0?"M ":"L ")+fixedText(length(sampled)<=1?width/2:width*_2/(length(sampled)-1))+" "+fixedText(normalize(low, high, 8, 62, _3.Close)), sampled));
   const geometryText=(projection) => {
-    const f=(_1, _2) => {
+    const f_1=(_2, _3) => {
       const a=24;
       const a_1=0;
-      const b=(_2-_1)*width;
+      const b=(_3-_2)*width;
       const b_1=Compare(a_1, b)===1?a_1:b;
       const b_2=Compare(a, b_1)===1?a:b_1;
       const displayedWidth=Compare(width, b_2)===-1?width:b_2;
       const a_2=0;
       const a_3=width-displayedWidth;
-      const b_3=_1*width;
+      const b_3=_2*width;
       const b_4=Compare(a_3, b_3)===-1?a_3:b_3;
       const displayedX=Compare(a_2, b_4)===1?a_2:b_4;
       const a_4=8;
@@ -11185,8 +11208,8 @@ function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
       const handleWidth_1=Compare(a_4, b_5)===-1?a_4:b_5;
       return[displayedX, displayedWidth, handleWidth_1, displayedX+handleWidth_1, displayedWidth-handleWidth_1*2];
     };
-    const f_1=(x) => projection(f.apply(null, x));
-    return Map((x) => fixedText(f_1(x)), selectionWindow);
+    const f_2=(x) => projection(f_1.apply(null, x));
+    return Map((x) => fixedText(f_2(x)), selectionWindow);
   };
   const selectionX=geometryText((t) => t[0]);
   const selectionWidth=geometryText((t) => t[1]);
@@ -11194,7 +11217,61 @@ function overviewSvg(points, selectionWindow, onReady, onDragStart, onDragEnd){
   const rightHandleX=geometryText((t) => t[0]+t[1]-t[2]);
   const moveHitX=geometryText((t) => t[3]);
   const moveHitWidth=geometryText((t) => t[4]);
-  return svgElement("svg", [Attr.Create("data-testid", "ta-overview-navigator"), Attr.Create("data-loaded-sample-count", String(length(sampled))), svgAttr("viewBox", "0 0 1000 82"), svgAttr("preserveAspectRatio", "none"), Attr.Create("style", "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"), OnAfterRender(onReady), Handler("mouseup", () => onDragEnd)], [svgElement("path", [svgAttr("d", closePath), svgAttr("fill", "none"), svgAttr("stroke", "#3d718e"), svgAttr("stroke-width", "1.5")], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-selection"), Dynamic_1("x", selectionX), svgAttr("y", "1"), Dynamic_1("width", selectionWidth), svgAttr("height", "80"), svgAttr("fill", "rgba(15,118,110,.10)"), svgAttr("stroke", "#0f766e"), svgAttr("stroke-width", "2"), svgAttr("pointer-events", "none")], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-left-handle"), Dynamic_1("x", selectionX), svgAttr("y", "0"), Dynamic_1("width", handleWidth), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-left", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-right-handle"), Dynamic_1("x", rightHandleX), svgAttr("y", "0"), Dynamic_1("width", handleWidth), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-right", event))], []), svgElement("rect", [Attr.Create("data-testid", "ta-overview-move-hit"), Dynamic_1("x", moveHitX), svgAttr("y", "0"), Dynamic_1("width", moveHitWidth), svgAttr("height", "82"), svgAttr("fill", "transparent"), svgAttr("style", "cursor:grab;"), Handler("mousedown", () =>(event) => onDragStart("move", event))], [])]);
+  const stripeX=(visual) => {
+    const o=slotCenter(width, referenceLength, visual.SlotIndex);
+    const value=o==null?width/2:o.$0;
+    const a=0;
+    const b=value+visual.Lane*1.5;
+    const b_1=Compare(width, b)===-1?width:b;
+    return Compare(a, b_1)===1?a:b_1;
+  };
+  const stripePaths=map((_2) => {
+    const a=_2[0];
+    const visuals=_2[1];
+    const path=concat_1(" ", map((visual) => {
+      const x=fixedText(stripeX(visual));
+      return"M "+x+" 0 L "+x+" 82";
+    }, visuals));
+    return[a[0], a[1], sumBy((visual) => length(visual.Stripes), visuals), path];
+  }, groupBy((visual) => {
+    const first=get(visual.Stripes, 0);
+    return[first.Color, first.StrokeWidthCssPixels];
+  }, stripeVisuals));
+  const f=(x) => Math.round(stripeX(x));
+  let _1=groupBy((x) => toInt(f(x)), stripeVisuals);
+  const stripeBuckets=OfArray(_1);
+  return svgElement("svg", [Attr.Create("data-testid", "ta-overview-navigator"), Attr.Create("data-loaded-sample-count", String(length(sampled))), svgAttr("viewBox", "0 0 1000 82"), svgAttr("preserveAspectRatio", "none"), Attr.Create("style", "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"), OnAfterRender(onReady), Handler("mouseup", () => onDragEnd), Handler("mousemove", (element_2) =>(event) => {
+    const bounds=element_2.getBoundingClientRect();
+    if(bounds.width>0){
+      const a=0;
+      const b=(event.clientX-bounds.left)/bounds.width*width;
+      const b_1=Compare(width, b)===-1?width:b;
+      const x=Compare(a, b_1)===1?a:b_1;
+      const pixel=toInt(Math.round(x));
+      const o=tryPick((key) => stripeBuckets.TryFind(key), [pixel, pixel-1, pixel+1, pixel-2, pixel+2]);
+      let _2=o==null?null:Some([x, concat_1(" | ", collect((visual) => map((stripe) => {
+        const o_1=stripe.Label;
+        let _3=o_1==null?stripe.StripeId:o_1.$0;
+        let _4=_3+" · ";
+        return _4+stripe.EventTimeUtc;
+      }, visual.Stripes), o.$0).slice(0, 8))]);
+      return stripeTooltip.Set(_2);
+    }
+    else return null;
+  }), Handler("mouseleave", () =>() => stripeTooltip.Set(null))], ofSeq_1(delay(() => append_2([svgElement("path", [svgAttr("d", closePath), svgAttr("fill", "none"), svgAttr("stroke", "#3d718e"), svgAttr("stroke-width", "1.5")], [])], delay(() => append_2(collect_1((m) =>[svgElement("path", [Attr.Create("data-testid", "ta-overview-stripe-path"), Attr.Create("data-stripe-count", String(m[2])), svgAttr("d", m[3]), svgAttr("fill", "none"), svgAttr("stroke", m[0]), svgAttr("stroke-width", fixedText(m[1])), svgAttr("vector-effect", "non-scaling-stroke"), svgAttr("pointer-events", "none")], [])], stripePaths), delay(() => append_2([svgElement("rect", [Attr.Create("data-testid", "ta-overview-selection"), Dynamic_1("x", selectionX), svgAttr("y", "1"), Dynamic_1("width", selectionWidth), svgAttr("height", "80"), svgAttr("fill", "rgba(15,118,110,.10)"), svgAttr("stroke", "#0f766e"), svgAttr("stroke-width", "2"), svgAttr("pointer-events", "none")], [])], delay(() => append_2([svgElement("rect", [Attr.Create("data-testid", "ta-overview-left-handle"), Dynamic_1("x", selectionX), svgAttr("y", "0"), Dynamic_1("width", handleWidth), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-left", event))], [])], delay(() => append_2([svgElement("rect", [Attr.Create("data-testid", "ta-overview-right-handle"), Dynamic_1("x", rightHandleX), svgAttr("y", "0"), Dynamic_1("width", handleWidth), svgAttr("height", "82"), svgAttr("fill", "#155f73"), svgAttr("fill-opacity", "0.82"), svgAttr("style", "cursor:ew-resize;"), Handler("mousedown", () =>(event) => onDragStart("resize-right", event))], [])], delay(() => append_2([svgElement("rect", [Attr.Create("data-testid", "ta-overview-move-hit"), Dynamic_1("x", moveHitX), svgAttr("y", "0"), Dynamic_1("width", moveHitWidth), svgAttr("height", "82"), svgAttr("fill", "transparent"), svgAttr("style", "cursor:grab;"), Handler("mousedown", () =>(event) => onDragStart("move", event))], [])], delay(() =>[Doc.EmbedView(Map((a) => {
+    if(a!=null&&a.$==1){
+      const x=a.$0[0];
+      const value=a.$0[1];
+      const bounded=value.length<=180?value:Substring(value, 0, 177)+"...";
+      const a_1=4;
+      const a_2=716;
+      const b=x+6;
+      const b_1=Compare(a_2, b)===-1?a_2:b;
+      const boxX=Compare(a_1, b_1)===1?a_1:b_1;
+      return svgElement("g", [Attr.Create("data-testid", "ta-overview-stripe-tooltip"), svgAttr("pointer-events", "none")], [svgElement("rect", [svgAttr("x", fixedText(boxX)), svgAttr("y", "3"), svgAttr("width", "280"), svgAttr("height", "18"), svgAttr("rx", "2"), svgAttr("fill", "#ffffff"), svgAttr("fill-opacity", "0.95"), svgAttr("stroke", "#8ca0b8"), svgAttr("stroke-width", "0.7")], []), svgElement("text", [svgAttr("x", fixedText(boxX+5)), svgAttr("y", "15"), svgAttr("fill", "#263b55"), svgAttr("font-family", "Consolas,monospace"), svgAttr("font-size", "9")], [Doc.TextNode(bounded)])]);
+    }
+    else return Doc.Empty;
+  }, stripeTooltip.View))])))))))))))))));
 }
 function sameDocumentShell(left, right){
   const _1=left.Document;
@@ -11225,14 +11302,13 @@ function rowExplicitLabel(row){
 function rowKindText_1(a){
   return a.$==1?"Volume":a.$==2?"SMA":a.$==3?"DMI":a.$==4?"ADX":a.$==5?"MACD":a.$==6?"Heikin-Ashi":"Candlestick";
 }
-function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, traces, preparedData, dataView, referenceTimestamps, _1, setCursorIndex, commitCursorIndex, scheduleValueRefresh){
+function compositeSvgReactivePreparedLiveWithHeight(rowId, isBaseRow, traces, preparedData, dataView, referenceTimestamps, _1, setCursorIndex, commitCursorIndex, chartPixelHeight, scheduleValueRefresh){
   let observedPreparedData;
   const width=1000;
   const hasCandles=exists((trace) => Equals(trace.Kind, {$:0}), traces);
-  const hasMarkers=exists((trace) => Equals(trace.Kind, {$:4}), traces);
-  const height=hasCandles?hasMarkers?310:250:112;
-  const top=hasMarkers?48:10;
-  const plotHeight=hasCandles?214:82;
+  const height=hasCandles?250:112;
+  const top=10;
+  const plotHeight=hasCandles?230:92;
   const palette=["#2764b0", "#9b5b24", "#6a4ca3", "#0f766e", "#b45309", "#be185d", "#475569", "#0891b2"];
   const color=(index, trace) => IsNullOrWhiteSpace(trace.Color)?get(palette, index%length(palette)):trace.Color;
   const xAt=(index) => {
@@ -11243,7 +11319,7 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
   const prepareGeometry=(currentData) => {
     const preparedTraces=mapi((_2, _3) => {
       const m_1=_3.Kind;
-      switch(m_1.$==1?0:m_1.$==2?1:m_1.$==3?1:m_1.$==4?2:0){
+      switch(m_1.$==1?0:m_1.$==2?1:m_1.$==3?1:m_1.$==4?2:m_1.$==5?2:0){
         case 0:
           return[_2, _3, candleSeriesForTracePrepared(_3, currentData), []];
         case 1:
@@ -11329,7 +11405,7 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
       const trace_1=_5[1];
       if(!Equals(trace_1.Kind, {$:4}))return[];
       else {
-        const m_1=tryDecode(trace_1.Options);
+        const m_1=tryDecode_1(trace_1.Options);
         if(m_1!=null&&m_1.$==1){
           const options=m_1.$0;
           const o=tryFind((candidate) => candidate.TraceId==options.TargetTraceId&&Equals(candidate.Kind, {$:0}), traces);
@@ -11351,7 +11427,7 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
       const trace_1=_5[1];
       const label=IsNullOrWhiteSpace(trace_1.Label)?trace_1.TraceId:trace_1.Label;
       const m_1=trace_1.Kind;
-      switch(m_1.$==1?0:m_1.$==2?1:m_1.$==3?1:m_1.$==4?2:0){
+      switch(m_1.$==1?0:m_1.$==2?1:m_1.$==3?1:m_1.$==4?2:m_1.$==5?2:0){
         case 0:
           const values=projectedCandleCursorValues(isBaseRow, referenceTimestamps, _5[2]);
           return[(index_1) => {
@@ -11485,11 +11561,29 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
     const o_1=o==null?null:Some(fixedText(o.$0[1].Value));
     return o_1==null?"":o_1.$0;
   };
+  const markerClusterSelection=_c_3.Create_1(null);
+  const markerClusterPosition=(low, high, cluster) => {
+    const size=9;
+    const half=size/2;
+    const laneStep=size+2;
+    const target=get(cluster.Markers, 0).Target;
+    const anchorY=cluster.Anchor.$==1?normalize(low, high, top, plotHeight, target.Low):normalize(low, high, top, plotHeight, target.High);
+    let _2=xAt(cluster.SlotIndex);
+    const a=8;
+    const a_1=height-8;
+    const b=cluster.Anchor.$==1?anchorY+4+half+cluster.Lane*laneStep:anchorY-4-half-cluster.Lane*laneStep;
+    const b_1=Compare(a_1, b)===-1?a_1:b;
+    let _3=Compare(a, b_1)===1?a:b_1;
+    return[_2, _3];
+  };
   const markerLayer=Doc.EmbedView(Map2((_2, _3) =>(((_4) => {
     const placements=_4[0];
     const low=_4[1];
     const high=_4[2];
     return(viewportWidth) => {
+      const p=markerPresentation(placements);
+      const overflowClusters=p[1];
+      const directPlacements=p[0];
       const size=9;
       const half=size/2;
       const a=8;
@@ -11511,9 +11605,9 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
         const o=placement.Marker.Label;
         const o_1=o==null?null:markerLabelGeometry(width, height, fontSize, x, baseY, o.$0);
         return o_1==null?null:Some([placement, o_1.$0]);
-      }, placements);
+      }, directPlacements);
       const collisionLanes=markerLabelCollisionLanes(6, map((_6) =>[_6[0].Marker.Anchor, _6[1]], labelCandidates));
-      return svgElement("g", [Attr.Create("data-testid", "ta-marker-layer-"+rowId), Attr.Create("data-marker-count", String(length(placements)))], ofSeq_1(delay(() => append_2(map_2((placement) => {
+      return svgElement("g", [Attr.Create("data-testid", "ta-marker-layer-"+rowId), Attr.Create("data-marker-count", String(length(placements))), Attr.Create("data-direct-marker-count", String(length(directPlacements))), Attr.Create("data-marker-overflow-count", String(length(overflowClusters)))], ofSeq_1(delay(() => append_2(map_2((placement) => {
         const size_1=9;
         const half_1=size_1/2;
         const laneStep=size_1+2;
@@ -11523,8 +11617,8 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
         const b_2=placement.Marker.Anchor.$==1?anchorY+4+half_1+placement.Lane*laneStep:anchorY-4-half_1-placement.Lane*laneStep;
         const b_3=Compare(a_3, b_2)===-1?a_3:b_2;
         const y=Compare(half_1, b_3)===1?half_1:b_3;
-        const p=placement.Marker.Fill.$==1?["none", "1"]:[placement.Marker.Color, "1"];
-        const common=ofArray([Attr.Create("data-testid", "ta-marker-"+placement.TraceId+"-"+placement.Marker.MarkerId), Attr.Create("data-marker-id", placement.Marker.MarkerId), Attr.Create("data-marker-position", fixedText(placement.Position)), Attr.Create("data-marker-slot", String(placement.SlotIndex)), Attr.Create("data-marker-lane", String(placement.Lane)), Attr.Create("data-marker-anchor", Equals(placement.Marker.Anchor, {$:0})?"above-bar":"below-bar"), Attr.Create("data-marker-shape", shapeText(placement.Marker.Shape)), Attr.Create("data-marker-fill", fillText(placement.Marker.Fill)), svgAttr("fill", p[0]), svgAttr("fill-opacity", p[1]), svgAttr("stroke", placement.Marker.Color), svgAttr("stroke-width", "1.4"), svgAttr("pointer-events", "all"), svgAttr("vector-effect", "non-scaling-stroke")]);
+        const p_1=placement.Marker.Fill.$==1?["none", "1"]:[placement.Marker.Color, "1"];
+        const common=ofArray([Attr.Create("data-testid", "ta-marker-"+placement.TraceId+"-"+placement.Marker.MarkerId), Attr.Create("data-marker-id", placement.Marker.MarkerId), Attr.Create("data-marker-position", fixedText(placement.Position)), Attr.Create("data-marker-slot", String(placement.SlotIndex)), Attr.Create("data-marker-lane", String(placement.Lane)), Attr.Create("data-marker-anchor", Equals(placement.Marker.Anchor, {$:0})?"above-bar":"below-bar"), Attr.Create("data-marker-shape", shapeText(placement.Marker.Shape)), Attr.Create("data-marker-fill", fillText(placement.Marker.Fill)), svgAttr("fill", p_1[0]), svgAttr("fill-opacity", p_1[1]), svgAttr("stroke", placement.Marker.Color), svgAttr("stroke-width", "1.4"), svgAttr("pointer-events", "all"), svgAttr("vector-effect", "non-scaling-stroke")]);
         const title=svgElement("title", [], [Doc.TextNode(markerTooltipText(placement))]);
         const m=placement.Marker.Shape;
         switch(m.$==3?1:m.$==4?2:m.$==0?3:m.$==1?3:0){
@@ -11544,14 +11638,89 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
             let _11=append_1(common, _10);
             return svgElement("polygon", _11, [title]);
         }
-      }, placements), delay(() => collect_1((index) => {
-        const p=get(labelCandidates, index);
-        const placement=p[0];
-        const geometry=p[1];
+      }, directPlacements), delay(() => append_2(collect_1((cluster) => {
+        const p_1=markerClusterPosition(low, high, cluster);
+        const y=p_1[1];
+        const x=p_1[0];
+        const hiddenCount=length(cluster.Markers);
+        const selectCluster=(index) => {
+          const a_3=0;
+          const a_4=hiddenCount-1;
+          const b_2=Compare(a_4, index)===-1?a_4:index;
+          let _6=Compare(a_3, b_2)===1?a_3:b_2;
+          let _7=[cluster.ClusterId, _6];
+          let _8=Some(_7);
+          markerClusterSelection.Set(_8);
+        };
+        const toggleCluster=() => {
+          let _6;
+          const m=markerClusterSelection.Get();
+          if(m!=null&&m.$==1&&(m.$0[0]==cluster.ClusterId&&(_6=m.$0[0],true)))markerClusterSelection.Set(null);
+          else selectCluster(0);
+        };
+        return[svgElement("g", [Attr.Create("data-testid", "ta-marker-overflow-"+cluster.ClusterId), Attr.Create("data-marker-overflow-count", String(hiddenCount)), Attr.Create("role", "button"), Attr.Create("tabindex", "0"), Attr.Create("aria-label", String(hiddenCount)+" additional markers. Activate to inspect."), svgAttr("style", "cursor:pointer;"), Handler("click", () =>() => toggleCluster()), Handler("keydown", () =>(event) => {
+          const m=event.key;
+          switch(m){
+            case" ":
+            case"Enter":
+              event.preventDefault();
+              return toggleCluster();
+            case"ArrowRight":
+            case"ArrowDown":
+              let _6;
+              event.preventDefault();
+              const m_1=markerClusterSelection.Get();
+              return m_1!=null&&m_1.$==1&&(m_1.$0,m_1.$0[0]==cluster.ClusterId&&(_6=[m_1.$0[0], m_1.$0[1]],true))?selectCluster(_6[1]+1):selectCluster(0);
+            case"ArrowLeft":
+            case"ArrowUp":
+              let _7;
+              event.preventDefault();
+              const m_2=markerClusterSelection.Get();
+              return m_2!=null&&m_2.$==1&&(m_2.$0,m_2.$0[0]==cluster.ClusterId&&(_7=[m_2.$0[0], m_2.$0[1]],true))?selectCluster(_7[1]-1):selectCluster(hiddenCount-1);
+            case"Escape":
+              event.preventDefault();
+              return markerClusterSelection.Set(null);
+            default:
+              return null;
+          }
+        })], [svgElement("rect", [svgAttr("x", fixedText(x-10)), svgAttr("y", fixedText(y-7)), svgAttr("width", "20"), svgAttr("height", "14"), svgAttr("rx", "3"), svgAttr("fill", "#ffffff"), svgAttr("stroke", "#40536d"), svgAttr("stroke-width", "1.2"), svgAttr("vector-effect", "non-scaling-stroke")], []), svgElement("text", [svgAttr("x", fixedText(x)), svgAttr("y", fixedText(y+0.5)), svgAttr("text-anchor", "middle"), svgAttr("dominant-baseline", "middle"), svgAttr("font-family", "Consolas,monospace"), svgAttr("font-size", "8"), svgAttr("font-weight", "700"), svgAttr("fill", "#263b55"), svgAttr("pointer-events", "none")], [Doc.TextNode("+"+String(hiddenCount))]), svgElement("title", [], [Doc.TextNode(String(hiddenCount)+" additional markers")])])];
+      }, overflowClusters), delay(() => append_2(collect_1((index) => {
+        const p_1=get(labelCandidates, index);
+        const placement=p_1[0];
+        const geometry=p_1[1];
         const lane=get(collisionLanes, index);
         const labelY=markerLabelLaneY(height, labelLaneStep, placement.Marker.Anchor, geometry.Y, lane);
         return[svgElement("text", [Attr.Create("data-testid", "ta-marker-label-"+placement.TraceId+"-"+placement.Marker.MarkerId), Attr.Create("data-marker-id", placement.Marker.MarkerId), Attr.Create("data-marker-slot", String(placement.SlotIndex)), Attr.Create("data-marker-lane", String(placement.Lane)), Attr.Create("data-marker-label-lane", String(lane)), svgAttr("x", fixedText(geometry.X)), svgAttr("y", fixedText(labelY)), svgAttr("text-anchor", geometry.TextAnchor), svgAttr("dominant-baseline", "middle"), svgAttr("fill", placement.Marker.Color), svgAttr("font-family", "Consolas,monospace"), svgAttr("font-size", fixedText(fontSize)), svgAttr("font-weight", "650"), svgAttr("paint-order", "stroke"), svgAttr("stroke", "#ffffff"), svgAttr("stroke-width", "2.5"), svgAttr("stroke-linejoin", "round"), svgAttr("pointer-events", "none"), svgAttr("vector-effect", "non-scaling-stroke")], [Doc.TextNode(geometry.Text)])];
-      }, range(0, length(labelCandidates)-1)))))));
+      }, range(0, length(labelCandidates)-1)), delay(() =>[Doc.EmbedView(Map((a_3) => {
+        if(a_3!=null&&a_3.$==1){
+          const selectedIndex=a_3.$0[1];
+          const clusterId=a_3.$0[0];
+          const m=tryFind((cluster_1) => cluster_1.ClusterId==clusterId, overflowClusters);
+          if(m!=null&&m.$==1){
+            const cluster=m.$0;
+            const a_4=0;
+            const a_5=length(cluster.Markers)-1;
+            const b_2=Compare(a_5, selectedIndex)===-1?a_5:selectedIndex;
+            const index=Compare(a_4, b_2)===1?a_4:b_2;
+            const p_1=markerClusterPosition(low, high, cluster);
+            const textValue=markerTooltipText(get(cluster.Markers, index));
+            const bounded=textValue.length<=160?textValue:Substring(textValue, 0, 157)+"...";
+            const a_6=6;
+            const a_7=684;
+            const b_3=p_1[0]+12;
+            const b_4=Compare(a_7, b_3)===-1?a_7:b_3;
+            const boxX=Compare(a_6, b_4)===1?a_6:b_4;
+            const a_8=4;
+            const a_9=height-28;
+            const b_5=p_1[1]-12;
+            const b_6=Compare(a_9, b_5)===-1?a_9:b_5;
+            const boxY=Compare(a_8, b_6)===1?a_8:b_6;
+            return svgElement("g", [Attr.Create("data-testid", "ta-marker-overflow-detail"), Attr.Create("data-cluster-id", cluster.ClusterId), Attr.Create("data-cluster-selected-index", String(index)), Attr.Create("aria-live", "polite"), svgAttr("pointer-events", "none")], [svgElement("rect", [svgAttr("x", fixedText(boxX)), svgAttr("y", fixedText(boxY)), svgAttr("width", "304"), svgAttr("height", "24"), svgAttr("rx", "3"), svgAttr("fill", "#ffffff"), svgAttr("fill-opacity", "0.97"), svgAttr("stroke", "#8ca0b8"), svgAttr("stroke-width", "0.8")], []), svgElement("text", [svgAttr("x", fixedText(boxX+6)), svgAttr("y", fixedText(boxY+15)), svgAttr("fill", "#263b55"), svgAttr("font-family", "Consolas,monospace"), svgAttr("font-size", "9")], [Doc.TextNode(String(index+1)+"/"+String(length(cluster.Markers))+" "+String(bounded))])]);
+          }
+          else return Doc.Empty;
+        }
+        else return Doc.Empty;
+      }, markerClusterSelection.View))])))))))));
     };
   })(_2))(_3), markerVisualState.View, axisViewportWidth().View));
   const candlePathStates=map((_2) => {
@@ -11590,7 +11759,7 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
       scheduleValueRefresh();
     }
   }, dataView);
-  return[svgElement("svg", [svgAttr("viewBox", "0 0 1000 "+fixedText(height)), svgAttr("preserveAspectRatio", "none"), svgAttr("role", "img"), svgAttr("aria-label", "Composite TA row "+rowId), Attr.Create("data-testid", svgTestId), Attr.Create("data-point-count", String(length(referenceTimestamps))), Attr.Create("style", "display:block; width:100%; height:"+fixedText(height)+"px; background:#fbfcfe;"), Handler("mousemove", (element_2) =>(event) => {
+  return[svgElement("svg", [svgAttr("viewBox", "0 0 1000 "+fixedText(height)), svgAttr("preserveAspectRatio", "none"), svgAttr("role", "img"), svgAttr("aria-label", "Composite TA row "+rowId), Attr.Create("data-testid", svgTestId), Attr.Create("data-point-count", String(length(referenceTimestamps))), Dynamic_1("style", Map((value) =>"display:block; width:100%; height:"+String(value)+"px; background:#fbfcfe;", chartPixelHeight)), Handler("mousemove", (element_2) =>(event) => {
     const bounds=element_2.getBoundingClientRect();
     const m=cursorIndexFromClientX(length(referenceTimestamps), bounds.left, bounds.width, event.clientX);
     return m==null?null:setCursorIndex(Some(m.$0));
@@ -11630,7 +11799,46 @@ function compositeSvgReactivePreparedLiveWithValueRefresh(rowId, isBaseRow, trac
   }, initialLinePoints), delay(() => append_2([markerLayer], delay(() => append_2([svgElement("line", [Attr.Create("data-testid", svgTestId+"-crosshair"), Attr.Create("data-ta-shared-crosshair", "true"), svgAttr("x1", "0"), svgAttr("x2", "0"), svgAttr("visibility", "hidden"), svgAttr("y1", "0"), svgAttr("y2", fixedText(height)), svgAttr("stroke", "#1f4f73"), svgAttr("stroke-width", "1"), svgAttr("stroke-dasharray", "3 3"), svgAttr("pointer-events", "none")], [])], delay(() =>[svgElement("g", [Attr.Create("data-testid", "ta-row-cursor-label-"+rowId), Attr.Create("data-ta-row-cursor-label", "true"), Attr.Create("data-ta-row-cursor-row-id", rowId), svgAttr("visibility", "hidden"), svgAttr("pointer-events", "none")], [svgElement("rect", [svgAttr("x", "-46"), svgAttr("y", "2"), svgAttr("width", "92"), svgAttr("height", "27"), svgAttr("rx", "2"), svgAttr("fill", "#ffffff"), svgAttr("fill-opacity", "0.92"), svgAttr("stroke", "#8ca0b8"), svgAttr("stroke-width", "0.8")], []), svgElement("text", [Attr.Create("data-testid", "ta-row-cursor-date-"+rowId), Attr.Create("data-ta-row-cursor-date", "true"), svgAttr("x", "0"), svgAttr("y", "12"), svgAttr("text-anchor", "middle"), svgAttr("font-family", "Consolas,monospace"), svgAttr("font-size", "9"), svgAttr("fill", "#263b55")], [Doc.TextNode("Unavailable")]), svgElement("text", [Attr.Create("data-testid", "ta-row-cursor-time-"+rowId), Attr.Create("data-ta-row-cursor-clock", "true"), svgAttr("x", "0"), svgAttr("y", "23"), svgAttr("text-anchor", "middle"), svgAttr("font-family", "Consolas,monospace"), svgAttr("font-size", "9"), svgAttr("fill", "#263b55")], [Doc.TextNode("Unavailable")])])]))))))))))))), referenceTimestamps, mapi((_2) =>(_3) =>(get(readerStates, _2))[0][0](_3), traces), mapi((_2) =>(_3) =>(get(readerStates, _2))[0][1](_3), traces)];
 }
 function chartFrame(titleText, metadata, legend, testId, height, children){
-  return Doc.Element("section", [Attr.Create("data-testid", testId), Attr.Create("style", "display:flex; flex-direction:column; min-width:0; min-height:"+String(height)+"px; border-top:1px solid #e1e7ef; background:#fff;")], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:6px 10px; height:28px; min-height:28px; padding:0 8px; color:#40536d; font-size:11px; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; white-space:nowrap;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "margin-right:auto; flex:0 0 auto;")], [Doc.TextNode(titleText)])], delay(() => metadata))))), legend, element_1("div", [Attr.Create("style", "min-width:0; overflow:hidden;")], children)]);
+  return Doc.Element("section", [Attr.Create("data-testid", testId), Dynamic_1("data-row-frame-height", Map(String, height)), Dynamic_1("style", Map((value) =>"display:flex; flex-direction:column; min-width:0; min-height:"+String(value)+"px; border-top:1px solid #e1e7ef; background:#fff;", height))], [Doc.Element("div", [Attr.Create("style", "display:flex; align-items:center; gap:6px 10px; height:28px; min-height:28px; padding:0 8px; color:#40536d; font-size:11px; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; white-space:nowrap;")], ofSeq_1(delay(() => append_2([Doc.Element("strong", [Attr.Create("style", "margin-right:auto; flex:0 0 auto;")], [Doc.TextNode(titleText)])], delay(() => metadata))))), legend, element_1("div", [Attr.Create("style", "min-width:0; overflow:hidden;")], children)]);
+}
+function rowResizeHandle(rowId, bounds, height){
+  const setHeight=(value) => {
+    height.Set(clamp(bounds.Minimum, bounds.Maximum, value));
+  };
+  const resetHeight=() => {
+    setHeight(bounds.DefaultHeight);
+  };
+  return Doc.Element("button", [Attr.Create("type", "button"), Attr.Create("data-testid", "ta-row-resize-"+rowId), Attr.Create("role", "separator"), Attr.Create("aria-orientation", "horizontal"), Attr.Create("aria-label", "Resize "+rowId+" chart height"), Attr.Create("aria-valuemin", String(bounds.Minimum)), Attr.Create("aria-valuemax", String(bounds.Maximum)), Dynamic_1("aria-valuenow", Map(String, height.View)), Attr.Create("title", "Drag to resize. Arrow keys resize; Home or double-click resets."), Attr.Create("style", "display:block; width:100%; height:8px; min-height:8px; padding:0; border:0; border-top:1px solid #d6e0eb; border-bottom:1px solid #edf1f6; background:#f5f8fb; cursor:ns-resize;"), Handler("mousedown", () =>(event) => {
+    let pendingHeight, framePending, moveHandler, upHandler;
+    event.preventDefault();
+    const startClientY=event.clientY;
+    const startHeight=height.Get();
+    pendingHeight=startHeight;
+    framePending=false;
+    moveHandler=null;
+    upHandler=null;
+    const flush=() => {
+      framePending=false;
+      setHeight(pendingHeight);
+    };
+    moveHandler=(rawEvent) => {
+      pendingHeight=startHeight+rawEvent.clientY-startClientY;
+      return!framePending?(framePending=true,void requestAnimationFrame(() => {
+        flush();
+      })):null;
+    };
+    upHandler=() => {
+      !(moveHandler==null)?globalThis.document.removeEventListener("mousemove", moveHandler):void 0;
+      !(upHandler==null)?globalThis.document.removeEventListener("mouseup", upHandler):void 0;
+      return framePending?flush():null;
+    };
+    globalThis.document.addEventListener("mousemove", moveHandler);
+    globalThis.document.addEventListener("mouseup", upHandler);
+  }), Handler("click", () =>(event) => event.detail>=2?resetHeight():null), Handler("keydown", () =>(event) => {
+    const step=event.shiftKey?32:8;
+    const m=event.key;
+    return m=="ArrowUp"?(event.preventDefault(),setHeight(height.Get()-step)):m=="ArrowDown"?(event.preventDefault(),setHeight(height.Get()+step)):m=="Home"?(event.preventDefault(),resetHeight()):null;
+  })], []);
 }
 function timeAxis(testId, rowId, timestamps){
   return Doc.EmbedView(Map((width) => {
@@ -13035,8 +13243,8 @@ function statusPresentation(statusRef, state){
   const o_2=state.LastError;
   if(o_2==null)_1=null;
   else {
-    const error_3=o_2.$0;
-    _1=Some(error_3.ReasonCode+": "+error_3.Message);
+    const error_4=o_2.$0;
+    _1=Some(error_4.ReasonCode+": "+error_4.Message);
   }
   return{
     Freshness:freshness, 
@@ -13093,6 +13301,67 @@ function selectionRatios(total, window_1){
     const bounded=clampWindow(1, 2147483647, total, window_1);
     return[bounded.StartIndex/total, (bounded.StartIndex+bounded.Count)/total];
   }
+}
+function overviewStripePlacementsPrepared(trace, prepared, referenceTimestamps){
+  let o;
+  const m=tryDecode(trace.Options);
+  if(m!=null&&m.$==1){
+    const options=m.$0;
+    const o_1=prepared.RawData.TryFind(trace.DataRef);
+    const o_2=o_1==null?null:tryTemporalSeries(o_1.$0);
+    if(o_2==null)o=null;
+    else {
+      const _1=o_2.$0[0];
+      const _2=o_2.$0[1];
+      const _3=o_2.$0[2];
+      const o_3=filter((axis_1) => axis_1.Revision===_2, prepared.ResolvedAxes.TryFind(_1));
+      if(o_3==null)o=null;
+      else {
+        const axis=o_3.$0;
+        let _4=collect((_5) => {
+          let _6;
+          const position=_5[0];
+          const _7=axis.Points.TryFind(position);
+          const _8=decodeBucket(trace.DataRef, _5[1]);
+          if(_7!=null&&_7.$==1&&(_8.$==0&&(_6=[_8.$0, _7.$0],true))){
+            const timestamp=presentationTimestamp(_6[1]);
+            const m_1=tryFindIndex((y) => timestamp==y, referenceTimestamps);
+            if(m_1==null)return[];
+            else {
+              const slotIndex=m_1.$0;
+              return map((stripe) =>({
+                TraceId:trace.TraceId,
+                TargetTraceId:options.TargetTraceId,
+                CollisionGroup:options.CollisionGroup,
+                LayerOrder:options.LayerOrder,
+                Position:position,
+                SlotIndex:slotIndex,
+                Stripe:stripe
+              }), _6[0]);
+            }
+          }
+          else return[];
+        }, _3);
+        o=Some(_4);
+      }
+    }
+    return o==null?[]:o.$0;
+  }
+  else return[];
+}
+function overviewStripeVisuals(placements){
+  return sortBy((value) =>[value.SlotIndex, value.LayerOrder, value.TraceId], collect((_1) => mapi((_2, _3) =>({
+    TraceId:_3[3],
+    TargetTraceId:_3[0],
+    CollisionGroup:_3[1],
+    LayerOrder:_3[4],
+    Lane:_2,
+    SlotIndex:_3[2],
+    Stripes:_3[5]
+  }), sortBy((_2) =>[_2[4], _2[3]], _1[1])), groupBy((_1) =>[_1[0], _1[1], _1[2]], map((_1) => {
+    const a=_1[0];
+    return[a[0], a[1], a[2], a[3], a[4], map((a_1) => a_1.Stripe, _1[1])];
+  }, groupBy((placement) =>[placement.TargetTraceId, placement.CollisionGroup, placement.SlotIndex, placement.TraceId, placement.LayerOrder], placements)))));
 }
 function candleSeriesForTracePreparedSampled(maximumCount, trace, prepared){
   const _1=trace.CandleDataRefs;
@@ -13152,20 +13421,20 @@ function workspaceBootstrapPresentation(state){
     }
   }
   else if(!m.$0.Recoverable){
-    const error_3=m.$0;
+    const error_4=m.$0;
     return{
       State:"unavailable", 
       Title:"TA workspace unavailable", 
-      Detail:error_3.ReasonCode+": "+error_3.Message, 
+      Detail:error_4.ReasonCode+": "+error_4.Message,
       IsError:true
     };
   }
   else {
-    const error_4=m.$0;
+    const error_5=m.$0;
     return{
       State:"recovering", 
       Title:"Restoring TA workspace", 
-      Detail:error_4.ReasonCode+": "+error_4.Message, 
+      Detail:error_5.ReasonCode+": "+error_5.Message,
       IsError:false
     };
   }
@@ -13227,6 +13496,20 @@ function previewWindowBounds(minimumCount, maximumCount, total, committed, drag,
       return clampWindow(minimumCount, maximumCount, total, _6);
     }
   }
+}
+function rowHeightStorageKey(a, rowId){
+  return a.$0+":"+rowId;
+}
+function rowHeightBounds(row, traces){
+  return exists((trace) => Equals(trace.Kind, {$:0}), traces)?{
+    Minimum:180,
+    Maximum:720,
+    DefaultHeight:clamp(180, 720, toInt(Math.round(250*row.HeightWeight)))
+  }:{
+    Minimum:96,
+    Maximum:480,
+    DefaultHeight:clamp(96, 480, toInt(Math.round(112*row.HeightWeight)))
+  };
 }
 function fallbackInputs(path, kind){
   let o;
@@ -13293,7 +13576,7 @@ function flattenEditorValue(path, kind, value){
   }
 }
 function traceTopologyTimestampsPrepared(trace, prepared){
-  if(Equals(trace.Kind, {$:4}))return[];
+  if(isOverlayTraceKind(trace.Kind))return[];
   else {
     const temporalPositions=choose((point) => {
       const o=point.Temporal;
@@ -13626,7 +13909,7 @@ function temporalDetail(metadata){
   return _6+_8;
 }
 function rowTemporalMetadataPrepared(row, prepared){
-  return distinctBy((value) =>[value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality], choose((trace) => latestTemporalMetadataPrepared(trace, prepared), filter_1((trace) => trace.Visible&&!Equals(trace.Kind, {$:4}), effectiveTraces(row))));
+  return distinctBy((value) =>[value.ScaleKey, value.Finality, value.ObservedThroughUtc, value.Quality], choose((trace) => latestTemporalMetadataPrepared(trace, prepared), filter_1((trace) => trace.Visible&&!isOverlayTraceKind(trace.Kind), effectiveTraces(row))));
 }
 function sampleEvenly(maximumCount, values){
   return maximumCount<=0||length(values)===0?[]:length(values)<=maximumCount?values.slice():maximumCount===1?[get(values, length(values)-1)]:ofSeq(delay(() => collect_1((sampleIndex) =>[get(values, toInt(Math.round(sampleIndex*(length(values)-1)/(maximumCount-1))))], range(0, maximumCount-1))));
@@ -13647,6 +13930,10 @@ function paddedRange(fallbackLow, fallbackHigh, values){
 }
 function normalize(low, high, top, height, value){
   return low===high?top+height/2:top+height-(value-low)/(high-low)*height;
+}
+function presentationTimestamp(metadata){
+  const o=metadata.EventTimeUtc;
+  return o==null?metadata.IntervalStartUtc:o.$0;
 }
 function candleSeriesForTracePrepared(trace, prepared){
   const m=trace.CandleDataRefs;
@@ -13758,8 +14045,15 @@ function rowTimeline(row, data){
   const o_2=o_1==null?null:Some(distinct(traceTimestamps(o_1.$0, data)));
   return o_2==null?[]:o_2.$0;
 }
+function clamp(minimum, maximum, value){
+  const b=Compare(maximum, value)===-1?maximum:value;
+  return Compare(minimum, b)===1?minimum:b;
+}
+function isOverlayTraceKind(a){
+  return a.$==4||a.$==5;
+}
 function traceTimestampsPrepared(trace, prepared){
-  if(Equals(trace.Kind, {$:4}))return[];
+  if(isOverlayTraceKind(trace.Kind))return[];
   else {
     const m=trace.CandleDataRefs;
     const dataRef=m==null?trace.DataRef:m.$0.OpenRef;
@@ -13771,7 +14065,7 @@ function traceTimestampsPrepared(trace, prepared){
     if(length(temporal)>0)return temporal;
     else {
       const m_1=trace.Kind;
-      switch(m_1.$==1?0:m_1.$==2?1:m_1.$==3?1:m_1.$==4?2:0){
+      switch(m_1.$==1?0:m_1.$==2?1:m_1.$==3?1:m_1.$==4?2:m_1.$==5?2:0){
         case 0:
           return map((a) => a.Timestamp, candleSeriesForTracePrepared(trace, prepared));
         case 1:
@@ -13912,14 +14206,10 @@ function tryFindTemporalPointIndex(position, rawPoints){
   }
   return search(0, length(rawPoints)-1);
 }
-function presentationTimestamp(metadata){
-  const o=metadata.EventTimeUtc;
-  return o==null?metadata.IntervalStartUtc:o.$0;
-}
 function traceReferencePoints(trace, data){
   let _1;
   const m=trace.Kind;
-  switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:0){
+  switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:m.$==5?2:0){
     case 0:
       _1=map((point) =>[point.Timestamp, point.Temporal], candleSeriesForTrace(trace, data));
       break;
@@ -14046,7 +14336,7 @@ function markerPlacementsPrepared(trace, target, prepared, referenceTimestamps){
         let _6, _7;
         const position=_5[0];
         const _8=axis.Points.TryFind(position);
-        const _9=decodeBucket(trace.DataRef, _5[1]);
+        const _9=decodeBucket_1(trace.DataRef, _5[1]);
         if(_8!=null&&_8.$==1&&(_9.$==0&&(_6=[_9.$0, _8.$0],true))){
           const timestamp=presentationTimestamp(_6[1]);
           const _10=tryFindIndex((y) => timestamp==y, referenceTimestamps);
@@ -14102,6 +14392,25 @@ function assignAggregateMarkerLanes(placements){
 function cursorIndexFromClientX(visibleCount, left, width, clientX){
   return width<=0?null:cursorIndexFromRatio(visibleCount, (clientX-left)/width);
 }
+function markerPresentation(placements){
+  const groups=groupBy((placement) =>[placement.TargetTraceId, placement.Position, placement.Marker.Anchor], placements);
+  return[sortBy((placement) =>[placement.SlotIndex, placement.Lane, placement.TraceId, placement.Marker.MarkerId], collect((_1) => sortBy((a) => a.Lane, _1[1]).slice(0, 4), groups)), sortBy((cluster) =>[cluster.SlotIndex, cluster.Lane, cluster.TargetTraceId], choose((_1) => {
+    const a=_1[0];
+    const targetTraceId=a[0];
+    const position=a[1];
+    const anchor=a[2];
+    const ordered=sortBy((a_1) => a_1.Lane, _1[1]);
+    return length(ordered)<=4?null:Some({
+      ClusterId:targetTraceId+":"+String(position)+":"+anchorText(anchor),
+      TargetTraceId:targetTraceId,
+      Position:position,
+      SlotIndex:get(ordered, 0).SlotIndex,
+      Anchor:anchor,
+      Lane:4,
+      Markers:skip(4, ordered)
+    });
+  }, groups))];
+}
 function markerLabelGeometry(width, height, fontSize, markerX, markerY, label){
   if(IsNullOrWhiteSpace(label))return null;
   else {
@@ -14142,6 +14451,14 @@ function markerLabelLaneY(height, lineStep, anchor, baseY, lane){
     return Compare(edge, b_1)===1?edge:b_1;
   }
 }
+function markerTooltipText(placement){
+  return concat_1("\n", ofSeq(delay(() => {
+    let _1;
+    const m=placement.Marker.Label;
+    let _2=m!=null&&m.$==1&&(!IsNullOrWhiteSpace(m.$0)&&(_1=m.$0,true))?[_1]:[];
+    return append_2(_2, delay(() => append_2(["Event time: "+placement.Marker.EventTimeUtc], delay(() => map_2((field_1) => field_1.Label+": "+field_1.Value, placement.Marker.Tooltip)))));
+  })));
+}
 function markerLabelCollisionLanes(padding, candidates){
   const ordered=sortBy((_1) =>[_1[1], _1[0]], mapi((_1, _2) => {
     const geometry=_2[1];
@@ -14172,14 +14489,6 @@ function markerLabelCollisionLanes(padding, candidates){
   }
   const assignments=assign(0, [], new FSharpMap("New", []));
   return init(length(candidates), (index) => assignments.get_Item(index));
-}
-function markerTooltipText(placement){
-  return concat_1("\n", ofSeq(delay(() => {
-    let _1;
-    const m=placement.Marker.Label;
-    let _2=m!=null&&m.$==1&&(!IsNullOrWhiteSpace(m.$0)&&(_1=m.$0,true))?[_1]:[];
-    return append_2(_2, delay(() => append_2(["Event time: "+placement.Marker.EventTimeUtc], delay(() => map_2((field_1) => field_1.Label+": "+field_1.Value, placement.Marker.Tooltip)))));
-  })));
 }
 function markerTrianglePoints(shape, x, y, half){
   return shape.$==0?Some([[x-half, y+half], [x+half, y+half], [x, y-half]]):shape.$==1?Some([[x-half, y-half], [x+half, y-half], [x, y+half]]):null;
@@ -14235,7 +14544,7 @@ function parseCandleResolved(temporal, payload){
 }
 function traceTimestamps(trace, data){
   const m=trace.Kind;
-  switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:0){
+  switch(m.$==1?0:m.$==2?1:m.$==3?1:m.$==4?2:m.$==5?2:0){
     case 0:
       return map((a) => a.Timestamp, candleSeriesForTrace(trace, data));
     case 1:
@@ -15140,6 +15449,156 @@ function unsafeKey(value){
 function normalizedText(value){
   return value==null?"":TrimStart(value, null).toLowerCase();
 }
+function tryDecode(options){
+  let _1, _2;
+  const _3=options.TryFind("overviewStripe.targetTraceId");
+  const _4=options.TryFind("overviewStripe.collisionGroup");
+  const _5=options.TryFind("overviewStripe.layerOrder");
+  if(_3!=null&&_3.$==1){
+    if(_3.$0.$==3){
+      if(_4!=null&&_4.$==1){
+        if(_4.$0.$==3){
+          if(_5!=null&&_5.$==1){
+            if(_5.$0.$==2){
+              const targetTraceId=_3.$0.$0;
+              const layerOrder=_5.$0.$0;
+              const collisionGroup=_4.$0.$0;
+              _1=!IsNullOrWhiteSpace(targetTraceId)&&!IsNullOrWhiteSpace(collisionGroup)&&collisionGroup.length<=64&&!isNaN(layerOrder)&&!(Math.abs(layerOrder)===Infinity)&&layerOrder===(layerOrder<0?Math.ceil(layerOrder):Math.floor(layerOrder))&&layerOrder>=0&&layerOrder<=63&&(_2=[_4.$0.$0, _5.$0.$0, _3.$0.$0],true);
+            }
+            else _1=false;
+          }
+          else _1=false;
+        }
+        else _1=false;
+      }
+      else _1=false;
+    }
+    else _1=false;
+  }
+  else _1=false;
+  return _1?Some({
+    TargetTraceId:_2[2],
+    CollisionGroup:_2[0],
+    LayerOrder:toInt(_2[1])
+  }):null;
+}
+function decodeBucket(field_1, a){
+  if(a.$==4){
+    if(length(a.$0)<=64){
+      const decoded=map((_1) => decode(String(field_1)+"["+String(_1[0])+"]", _1[1]), indexed(a.$0));
+      const failures=concat_2(ofArray(choose((a_1) => a_1.$==1?Some(a_1.$0):null, decoded)));
+      return failures.$==0?Ok(choose((a_1) => a_1.$==0?Some(a_1.$0):null, decoded)):Error_1(failures);
+    }
+    else return Error_1(ofArray([error_2("limit-overview-stripe-bucket", field_1, "Overview stripe bucket exceeds "+String(64)+" items.")]));
+  }
+  else return Error_1(ofArray([error_2("overview-stripe-bucket-required", field_1, "Overview stripe bucket must be an array.")]));
+}
+function decode(field_1, a){
+  let _1, _2, _3, _4, _5, width, _6, label, _7, tooltip;
+  if(a.$==5){
+    const values=a.$0;
+    const expected=new FSharpSet("New_2", OfSeq(ofArray(["_type", "stripeId", "eventTimeUtc", "color", "strokeWidthCssPixels", "label", "tooltip"])));
+    const unknown=choose_1((_8) => {
+      const key=_8[0];
+      return expected.Contains(key)?null:Some(error_2("unknown-overview-stripe-field", field_1+"."+key, "Unknown overview stripe field `"+key+"`."));
+    }, ofSeq_1(ToSeq(values)));
+    const m=objectText_1("_type", values);
+    const kind=m!=null&&m.$==1&&(m.$0=="ta-overview-stripe.v1"&&(_1=m.$0,true))?Ok(null):Error_1(error_2("overview-stripe-type-required", field_1+"."+"_type", "Expected `ta-overview-stripe.v1`."));
+    const stripeId=requiredText("invalid-overview-stripe-id", 128, field_1+".stripeId", "stripeId", values);
+    const m_1=objectText_1("eventTimeUtc", values);
+    const eventTime=m_1!=null&&m_1.$==1&&(validUtcTimestamp(m_1.$0)&&(_2=m_1.$0,true))?Ok(_2):Error_1(error_2("invalid-overview-stripe-timestamp", field_1+".eventTimeUtc", "eventTimeUtc must be a bounded ISO-8601 UTC timestamp ending in Z or +00:00."));
+    const m_2=objectText_1("color", values);
+    const color=m_2!=null&&m_2.$==1&&(validColor(m_2.$0)&&(_3=m_2.$0,true))?Ok(_3):Error_1(error_2("invalid-overview-stripe-color", field_1+".color", "color must be #RGB, #RRGGBB or #RRGGBBAA."));
+    const m_3=values.TryFind("strokeWidthCssPixels");
+    if(m_3!=null&&m_3.$==1){
+      if(m_3.$0.$==2){
+        const value=m_3.$0.$0;
+        _4=!isNaN(value)&&!(Math.abs(value)===Infinity)&&value>=MinimumStrokeWidthCssPixels()&&value<=MaximumStrokeWidthCssPixels()&&(_5=m_3.$0.$0,true);
+      }
+      else _4=false;
+    }
+    else _4=false;
+    width=_4?Ok(_5):Error_1(error_2("invalid-overview-stripe-width", field_1+".strokeWidthCssPixels", "strokeWidthCssPixels must be between 0.5 and 4.0."));
+    const m_4=values.TryFind("label");
+    switch(m_4!=null&&m_4.$==1?m_4.$0.$==0?0:m_4.$0.$==3?m_4.$0.$0.length<=64?(_6=m_4.$0.$0,1):2:2:0){
+      case 0:
+        label=Ok(null);
+        break;
+      case 1:
+        label=Ok(Some(_6));
+        break;
+      case 2:
+        label=Error_1(error_2("invalid-overview-stripe-label", field_1+".label", "label must be at most "+String(64)+" characters."));
+        break;
+    }
+    const m_5=values.TryFind("tooltip");
+    switch(m_5!=null&&m_5.$==1?m_5.$0.$==4?length(m_5.$0.$0)<=16?(_7=m_5.$0.$0,0):1:2:2){
+      case 0:
+        const decoded=map((_8) => decodeTooltipField(String(field_1)+".tooltip["+String(_8[0])+"]", _8[1]), indexed(_7));
+        const failures=concat_2(ofArray(choose((a_1) => a_1.$==1?Some(a_1.$0):null, decoded)));
+        tooltip=failures.$==0?Ok(choose((a_1) => a_1.$==0?Some(a_1.$0):null, decoded)):Error_1(failures);
+        break;
+      case 1:
+        tooltip=Error_1(ofArray([error_2("limit-overview-stripe-tooltip", field_1+".tooltip", "tooltip exceeds "+String(16)+" fields.")]));
+        break;
+      case 2:
+        tooltip=Error_1(ofArray([error_2("overview-stripe-tooltip-required", field_1+".tooltip", "tooltip must be an array.")]));
+        break;
+    }
+    const failures_1=append_1(unknown, append_1(choose_1((a_1) => a_1.$==1?Some(a_1.$0):null, ofArray([Map_2(() => { }, kind), Map_2(() => { }, stripeId), Map_2(() => { }, eventTime), Map_2(() => { }, color), Map_2(() => { }, width), Map_2(() => { }, label)])), tooltip.$==1?tooltip.$0:FSharpList.Empty));
+    return failures_1.$==0?Ok({
+      StripeId:DefaultValue("", stripeId),
+      EventTimeUtc:DefaultValue("", eventTime),
+      Color:DefaultValue("#000000", color),
+      StrokeWidthCssPixels:DefaultValue(1, width),
+      Label:DefaultValue(null, label),
+      Tooltip:DefaultValue([], tooltip)
+    }):Error_1(failures_1);
+  }
+  else return Error_1(ofArray([error_2("overview-stripe-object-required", field_1, "Overview stripe must be an object.")]));
+}
+function error_2(code, field_1, message){
+  return{
+    Code:code,
+    Field:field_1,
+    Message:message
+  };
+}
+function requiredText(code, maximum, field_1, key, values){
+  let _1, _2;
+  const m=objectText_1(key, values);
+  if(m!=null&&m.$==1){
+    const value=m.$0;
+    _1=!IsNullOrWhiteSpace(value)&&value.length<=maximum&&(_2=m.$0,true);
+  }
+  else _1=false;
+  return _1?Ok(_2):Error_1(error_2(code, field_1, String(key)+" must be nonblank and at most "+String(maximum)+" characters."));
+}
+function objectText_1(key, values){
+  let _1;
+  const m=values.TryFind(key);
+  return m!=null&&m.$==1&&(m.$0.$==3&&(_1=m.$0.$0,true))?Some(_1):null;
+}
+function decodeTooltipField(field_1, a){
+  if(a.$==5){
+    const values=a.$0;
+    const expected=new FSharpSet("New_2", OfSeq(ofArray(["key", "label", "value"])));
+    const unknown=choose_1((_1) => {
+      const key_1=_1[0];
+      return expected.Contains(key_1)?null:Some(error_2("unknown-overview-stripe-field", field_1+"."+key_1, "Unknown overview stripe tooltip field `"+key_1+"`."));
+    }, ofSeq_1(ToSeq(values)));
+    const key=requiredText("invalid-overview-stripe-tooltip", 64, field_1+".key", "key", values);
+    const label=requiredText("invalid-overview-stripe-tooltip", 64, field_1+".label", "label", values);
+    const value=requiredText("invalid-overview-stripe-tooltip", 256, field_1+".value", "value", values);
+    const failures=append_1(unknown, choose_1((a_1) => a_1.$==1?Some(a_1.$0):null, ofArray([key, label, value])));
+    return failures.$==0?Ok({
+      Key:DefaultValue("", key),
+      Label:DefaultValue("", label),
+      Value:DefaultValue("", value)
+    }):Error_1(failures);
+  }
+  else return Error_1(ofArray([error_2("overview-stripe-tooltip-object-required", field_1, "Overview stripe tooltip item must be an object.")]));
+}
 function New_62(k, ct){
   return{k:k, ct:ct};
 }
@@ -15481,7 +15940,7 @@ class DynamicAttrNode extends Object_1 {
     }, view);
   }
 }
-function tryDecode(options){
+function tryDecode_1(options){
   let _1;
   const m=options.TryFind("marker.targetTraceId");
   return m!=null&&m.$==1&&(m.$0.$==3&&(!IsNullOrWhiteSpace(m.$0.$0)&&(_1=m.$0.$0,true)))?Some({TargetTraceId:_1}):null;
@@ -15492,37 +15951,46 @@ function shapeText(a){
 function fillText(a){
   return a.$==1?"outline":"solid";
 }
-function decodeBucket(field_1, a){
+function decodeBucket_1(field_1, a){
   if(a.$==4){
-    if(length(a.$0)<=4){
-      const decoded=map((_1) => decode(String(field_1)+"["+String(_1[0])+"]", _1[1]), indexed(a.$0));
+    if(length(a.$0)<=64){
+      const decoded=map((_1) => decode_1(String(field_1)+"["+String(_1[0])+"]", _1[1]), indexed(a.$0));
       const failures=concat_2(ofArray(choose((a_1) => a_1.$==1?Some(a_1.$0):null, decoded)));
       return failures.$==0?Ok(choose((a_1) => a_1.$==0?Some(a_1.$0):null, decoded)):Error_1(failures);
     }
-    else return Error_1(ofArray([error_2("limit-marker-bucket", field_1, "Marker bucket exceeds "+String(4)+" items.")]));
+    else return Error_1(ofArray([error_3("limit-marker-bucket", field_1, "Marker bucket exceeds "+String(64)+" items.")]));
   }
-  else return Error_1(ofArray([error_2("marker-bucket-required", field_1, "Marker bucket must be an array.")]));
+  else return Error_1(ofArray([error_3("marker-bucket-required", field_1, "Marker bucket must be an array.")]));
 }
-function decode(field_1, a){
+function anchorText(a){
+  return a.$==1?"below-bar":"above-bar";
+}
+function validUtcTimestamp(value){
+  return!(value==null)&&(EndsWith(value, "Z")||EndsWith(value, "+00:00"))&&(!(value==null)&&value.length>=20&&value.length<=35&&value[4]==="-"&&value[7]==="-"&&(value[10]==="T"||value[10]==="t")&&value[13]===":"&&value[16]===":")&&(!(value==null)&&forall((index) => index<value.length&&isDigit(value[index]), [0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18]));
+}
+function validColor(value){
+  return!(value==null)&&(value.length===4||value.length===7||value.length===9)&&value[0]==="#"&&forall(isHex, ToCharArray(value.substring(1)));
+}
+function decode_1(field_1, a){
   let _1, _2, kind, anchor, _3, shape, fill_1, _4, _5, label, _6, tooltip;
   if(a.$==5){
     const values=a.$0;
     const expected=new FSharpSet("New_2", OfSeq(ofArray(["_type", "markerId", "eventTimeUtc", "anchor", "shape", "fill", "color", "label", "tooltip"])));
     const unknown=choose_1((_8) => {
       const key=_8[0];
-      return expected.Contains(key)?null:Some(error_2("unknown-marker-field", field_1+"."+key, "Unknown marker field `"+key+"`."));
+      return expected.Contains(key)?null:Some(error_3("unknown-marker-field", field_1+"."+key, "Unknown marker field `"+key+"`."));
     }, ofSeq_1(ToSeq(values)));
-    const markerType=objectText_1("_type", values);
+    const markerType=objectText_2("_type", values);
     if(markerType!=null&&markerType.$==1){
       const value=markerType.$0;
       _1=(value=="ta-marker.v2"||value=="ta-marker.v1")&&(_2=markerType.$0,true);
     }
     else _1=false;
-    kind=_1?Ok(null):Error_1(error_2("marker-type-required", field_1+"."+"_type", "Expected `ta-marker.v2` or legacy `ta-marker.v1`."));
-    const markerId=requiredText(128, field_1+".markerId", "markerId", values);
-    const m=objectText_1("eventTimeUtc", values);
-    const eventTime=m==null?Error_1(error_2("required", field_1+".eventTimeUtc", "eventTimeUtc is required.")):validUtcTimestamp(m.$0)?Ok(m.$0):Error_1(error_2("invalid-timestamp", field_1+".eventTimeUtc", "eventTimeUtc must be a bounded ISO-8601 UTC timestamp ending in Z or +00:00."));
-    const anchorTextValue=objectText_1("anchor", values);
+    kind=_1?Ok(null):Error_1(error_3("marker-type-required", field_1+"."+"_type", "Expected `ta-marker.v2` or legacy `ta-marker.v1`."));
+    const markerId=requiredText_1(128, field_1+".markerId", "markerId", values);
+    const m=objectText_2("eventTimeUtc", values);
+    const eventTime=m==null?Error_1(error_3("required", field_1+".eventTimeUtc", "eventTimeUtc is required.")):validUtcTimestamp(m.$0)?Ok(m.$0):Error_1(error_3("invalid-timestamp", field_1+".eventTimeUtc", "eventTimeUtc must be a bounded ISO-8601 UTC timestamp ending in Z or +00:00."));
+    const anchorTextValue=objectText_2("anchor", values);
     switch(anchorTextValue!=null&&anchorTextValue.$==1?anchorTextValue.$0=="above-bar"?0:anchorTextValue.$0=="below-bar"?1:2:2){
       case 0:
         anchor=Ok({$:0});
@@ -15531,10 +15999,10 @@ function decode(field_1, a){
         anchor=Ok({$:1});
         break;
       case 2:
-        anchor=Error_1(error_2("invalid-marker-anchor", field_1+".anchor", "anchor must be above-bar or below-bar."));
+        anchor=Error_1(error_3("invalid-marker-anchor", field_1+".anchor", "anchor must be above-bar or below-bar."));
         break;
     }
-    const _7=objectText_1("shape", values);
+    const _7=objectText_2("shape", values);
     switch(markerType!=null&&markerType.$==1?_7!=null&&_7.$==1?_7.$0=="triangle-up"?markerType.$0=="ta-marker.v2"?(_3=markerType.$0,0):10:_7.$0=="triangle-down"?markerType.$0=="ta-marker.v2"?(_3=markerType.$0,1):10:_7.$0=="circle"?markerType.$0=="ta-marker.v2"?(_3=markerType.$0,2):markerType.$0=="ta-marker.v1"?(_3=markerType.$0,7):10:_7.$0=="square"?markerType.$0=="ta-marker.v2"?(_3=markerType.$0,3):markerType.$0=="ta-marker.v1"?(_3=markerType.$0,8):10:_7.$0=="diamond"?markerType.$0=="ta-marker.v2"?(_3=markerType.$0,4):markerType.$0=="ta-marker.v1"?(_3=markerType.$0,9):10:_7.$0=="arrow"?anchorTextValue!=null&&anchorTextValue.$==1?anchorTextValue.$0=="above-bar"?markerType.$0=="ta-marker.v1"?(_3=markerType.$0,5):10:anchorTextValue.$0=="below-bar"?markerType.$0=="ta-marker.v1"?(_3=markerType.$0,6):10:10:10:10:10:10){
       case 0:
         shape=Ok({$:0});
@@ -15567,10 +16035,10 @@ function decode(field_1, a){
         shape=Ok({$:4});
         break;
       case 10:
-        shape=Error_1(error_2("invalid-marker-shape", field_1+".shape", "shape is not supported by the declared marker version."));
+        shape=Error_1(error_3("invalid-marker-shape", field_1+".shape", "shape is not supported by the declared marker version."));
         break;
     }
-    const m_1=objectText_1("fill", values);
+    const m_1=objectText_2("fill", values);
     switch(m_1!=null&&m_1.$==1?m_1.$0=="solid"?0:m_1.$0=="outline"?1:2:2){
       case 0:
         fill_1=Ok({$:0});
@@ -15579,11 +16047,11 @@ function decode(field_1, a){
         fill_1=Ok({$:1});
         break;
       case 2:
-        fill_1=Error_1(error_2("invalid-marker-fill", field_1+".fill", "fill must be solid or outline."));
+        fill_1=Error_1(error_3("invalid-marker-fill", field_1+".fill", "fill must be solid or outline."));
         break;
     }
-    const m_2=objectText_1("color", values);
-    const color=m_2!=null&&m_2.$==1&&(validColor(m_2.$0)&&(_4=m_2.$0,true))?Ok(_4):Error_1(error_2("invalid-marker-color", field_1+".color", "color must be #RGB, #RRGGBB or #RRGGBBAA."));
+    const m_2=objectText_2("color", values);
+    const color=m_2!=null&&m_2.$==1&&(validColor(m_2.$0)&&(_4=m_2.$0,true))?Ok(_4):Error_1(error_3("invalid-marker-color", field_1+".color", "color must be #RGB, #RRGGBB or #RRGGBBAA."));
     const m_3=values.TryFind("label");
     switch(m_3!=null&&m_3.$==1?m_3.$0.$==0?0:m_3.$0.$==3?m_3.$0.$0.length<=64?(_5=m_3.$0.$0,1):2:2:0){
       case 0:
@@ -15593,21 +16061,21 @@ function decode(field_1, a){
         label=Ok(Some(_5));
         break;
       case 2:
-        label=Error_1(error_2("invalid-marker-label", field_1+".label", "label must be at most "+String(64)+" characters."));
+        label=Error_1(error_3("invalid-marker-label", field_1+".label", "label must be at most "+String(64)+" characters."));
         break;
     }
     const m_4=values.TryFind("tooltip");
     switch(m_4!=null&&m_4.$==1?m_4.$0.$==4?length(m_4.$0.$0)<=16?(_6=m_4.$0.$0,0):1:2:2){
       case 0:
-        const decoded=map((_8) => decodeTooltipField(String(field_1)+".tooltip["+String(_8[0])+"]", _8[1]), indexed(_6));
+        const decoded=map((_8) => decodeTooltipField_1(String(field_1)+".tooltip["+String(_8[0])+"]", _8[1]), indexed(_6));
         const failures=concat_2(ofArray(choose((a_1) => a_1.$==1?Some(a_1.$0):null, decoded)));
         tooltip=failures.$==0?Ok(choose((a_1) => a_1.$==0?Some(a_1.$0):null, decoded)):Error_1(failures);
         break;
       case 1:
-        tooltip=Error_1(ofArray([error_2("limit-marker-tooltip", field_1+".tooltip", "tooltip exceeds "+String(16)+" fields.")]));
+        tooltip=Error_1(ofArray([error_3("limit-marker-tooltip", field_1+".tooltip", "tooltip exceeds "+String(16)+" fields.")]));
         break;
       case 2:
-        tooltip=Error_1(ofArray([error_2("marker-tooltip-required", field_1+".tooltip", "tooltip must be an array.")]));
+        tooltip=Error_1(ofArray([error_3("marker-tooltip-required", field_1+".tooltip", "tooltip must be an array.")]));
         break;
     }
     const failures_1=append_1(unknown, append_1(errors(ofArray([kind, Map_2(() => { }, markerId), Map_2(() => { }, eventTime), Map_2(() => { }, anchor), Map_2(() => { }, shape), Map_2(() => { }, fill_1), Map_2(() => { }, color), Map_2(() => { }, label)])), tooltip.$==1?tooltip.$0:FSharpList.Empty));
@@ -15622,45 +16090,45 @@ function decode(field_1, a){
       Tooltip:DefaultValue([], tooltip)
     }):Error_1(failures_1);
   }
-  else return Error_1(ofArray([error_2("marker-object-required", field_1, "Marker must be an object.")]));
+  else return Error_1(ofArray([error_3("marker-object-required", field_1, "Marker must be an object.")]));
 }
-function error_2(code, field_1, message){
+function error_3(code, field_1, message){
   return{
     Code:code, 
     Field:field_1, 
     Message:message
   };
 }
-function objectText_1(key, values){
+function isDigit(value){
+  return value>="0"&&value<="9";
+}
+function isHex(value){
+  return value>="0"&&value<="9"||value>="a"&&value<="f"||value>="A"&&value<="F";
+}
+function objectText_2(key, values){
   let _1;
   const m=values.TryFind(key);
   return m!=null&&m.$==1&&(m.$0.$==3&&(_1=m.$0.$0,true))?Some(_1):null;
 }
-function requiredText(maximum, field_1, key, values){
-  const m=objectText_1(key, values);
-  if(m==null)return Error_1(error_2("required", field_1, field_1+" is required."));
+function requiredText_1(maximum, field_1, key, values){
+  const m=objectText_2(key, values);
+  if(m==null)return Error_1(error_3("required", field_1, field_1+" is required."));
   else {
     const value=m.$0;
-    return!IsNullOrWhiteSpace(value)&&value.length<=maximum?Ok(m.$0):Error_1(error_2("invalid-text", field_1, String(field_1)+" must be nonblank and at most "+String(maximum)+" characters."));
+    return!IsNullOrWhiteSpace(value)&&value.length<=maximum?Ok(m.$0):Error_1(error_3("invalid-text", field_1, String(field_1)+" must be nonblank and at most "+String(maximum)+" characters."));
   }
 }
-function validUtcTimestamp(value){
-  return!(value==null)&&(EndsWith(value, "Z")||EndsWith(value, "+00:00"))&&(!(value==null)&&value.length>=20&&value.length<=35&&value[4]==="-"&&value[7]==="-"&&(value[10]==="T"||value[10]==="t")&&value[13]===":"&&value[16]===":")&&(!(value==null)&&forall((index) => index<value.length&&isDigit(value[index]), [0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18]));
-}
-function validColor(value){
-  return!(value==null)&&(value.length===4||value.length===7||value.length===9)&&value[0]==="#"&&forall(isHex, ToCharArray(value.substring(1)));
-}
-function decodeTooltipField(field_1, a){
+function decodeTooltipField_1(field_1, a){
   if(a.$==5){
     const values=a.$0;
     const expected=new FSharpSet("New_2", OfSeq(ofArray(["key", "label", "value"])));
     const unknown=choose_1((_1) => {
       const key_1=_1[0];
-      return expected.Contains(key_1)?null:Some(error_2("unknown-marker-field", field_1+"."+key_1, "Unknown marker tooltip field `"+key_1+"`."));
+      return expected.Contains(key_1)?null:Some(error_3("unknown-marker-field", field_1+"."+key_1, "Unknown marker tooltip field `"+key_1+"`."));
     }, ofSeq_1(ToSeq(values)));
-    const key=requiredText(64, field_1+".key", "key", values);
-    const label=requiredText(64, field_1+".label", "label", values);
-    const value=requiredText(256, field_1+".value", "value", values);
+    const key=requiredText_1(64, field_1+".key", "key", values);
+    const label=requiredText_1(64, field_1+".label", "label", values);
+    const value=requiredText_1(256, field_1+".value", "value", values);
     const m=append_1(unknown, errors(ofArray([key, label, value])));
     return m.$==0?Ok({
       Key:DefaultValue("", key), 
@@ -15668,16 +16136,10 @@ function decodeTooltipField(field_1, a){
       Value:DefaultValue("", value)
     }):Error_1(m);
   }
-  else return Error_1(ofArray([error_2("marker-tooltip-object-required", field_1, "Marker tooltip item must be an object.")]));
+  else return Error_1(ofArray([error_3("marker-tooltip-object-required", field_1, "Marker tooltip item must be an object.")]));
 }
 function errors(values){
   return choose_1((a) => a.$==1?Some(a.$0):null, values);
-}
-function isDigit(value){
-  return value>="0"&&value<="9";
-}
-function isHex(value){
-  return value>="0"&&value<="9"||value>="a"&&value<="f"||value>="A"&&value<="F";
 }
 class KeyNotFoundException extends Error {
   constructor(i, _1){
@@ -15898,6 +16360,12 @@ function DocChildren(node){
 function DomNodes(Item){
   return{$:0, $0:Item};
 }
+function MinimumStrokeWidthCssPixels(){
+  return _c_13.MinimumStrokeWidthCssPixels;
+}
+function MaximumStrokeWidthCssPixels(){
+  return _c_13.MaximumStrokeWidthCssPixels;
+}
 class OperationCanceledException extends Error {
   ct;
   constructor(i, _1, _2, _3){
@@ -15964,6 +16432,91 @@ class OverflowException extends Error {
     }
   }
 }
+let _c_13=Lazy((_i) => class $StartupCode_RuntimeTypes {
+  static {
+    _c_13=_i(this);
+  }
+  static TypeValue_1;
+  static TypeKey_1;
+  static LayerOrderKey;
+  static CollisionGroupKey;
+  static TargetTraceIdKey_1;
+  static MaximumStrokeWidthCssPixels;
+  static MinimumStrokeWidthCssPixels;
+  static MaximumLayerOrder;
+  static MinimumLayerOrder;
+  static MaxStripesPerFrame;
+  static MaxStripesPerDataRef;
+  static MaxStripesPerBucket;
+  static MaxTooltipFields_1;
+  static MaxCollisionGroupLength;
+  static MaxLabelLength_1;
+  static MaxStripeIdLength;
+  static LegacyTypeValue;
+  static TypeValue;
+  static TypeKey;
+  static TargetTraceIdKey;
+  static MaxMarkersPerFrame;
+  static MaxMarkersPerDataRef;
+  static MaxMarkersPerLane;
+  static MaxMarkersPerBucket;
+  static MaxTooltipValueLength;
+  static MaxTooltipLabelLength;
+  static MaxTooltipKeyLength;
+  static MaxTooltipFields;
+  static MaxLabelLength;
+  static MaxMarkerIdLength;
+  static limits;
+  static MaximumVisibleRangeBasePoints;
+  static markerProtocol;
+  static protocol;
+  static {
+    this.protocol="sdui-runtime.v1";
+    this.markerProtocol="sdui-runtime.v2";
+    this.MaximumVisibleRangeBasePoints=4000;
+    this.limits={
+      MaxRowsPerCanvas:8,
+      MaxTracesPerRow:32,
+      MaxTotalTraces:64,
+      MaxInitialBarsPerSeries:5000,
+      MaxRetainedBarsPerSeries:4000,
+      MaxPatchOperations:64,
+      MaxPatchItems:500,
+      MaxFrameBytes:16*1024*1024,
+      MinimumPollInterval:5*1E3
+    };
+    this.MaxMarkerIdLength=128;
+    this.MaxLabelLength=64;
+    this.MaxTooltipFields=16;
+    this.MaxTooltipKeyLength=64;
+    this.MaxTooltipLabelLength=64;
+    this.MaxTooltipValueLength=256;
+    this.MaxMarkersPerBucket=64;
+    this.MaxMarkersPerLane=64;
+    this.MaxMarkersPerDataRef=10000;
+    this.MaxMarkersPerFrame=20000;
+    this.TargetTraceIdKey="marker.targetTraceId";
+    this.TypeKey="_type";
+    this.TypeValue="ta-marker.v2";
+    this.LegacyTypeValue="ta-marker.v1";
+    this.MaxStripeIdLength=128;
+    this.MaxLabelLength_1=64;
+    this.MaxCollisionGroupLength=64;
+    this.MaxTooltipFields_1=16;
+    this.MaxStripesPerBucket=64;
+    this.MaxStripesPerDataRef=10000;
+    this.MaxStripesPerFrame=20000;
+    this.MinimumLayerOrder=0;
+    this.MaximumLayerOrder=63;
+    this.MinimumStrokeWidthCssPixels=0.5;
+    this.MaximumStrokeWidthCssPixels=4;
+    this.TargetTraceIdKey_1="overviewStripe.targetTraceId";
+    this.CollisionGroupKey="overviewStripe.collisionGroup";
+    this.LayerOrderKey="overviewStripe.layerOrder";
+    this.TypeKey_1="_type";
+    this.TypeValue_1="ta-overview-stripe.v1";
+  }
+});
 function New_64(created, evalOrVal, force){
   return{
     c:created, 

@@ -1,0 +1,25 @@
+# RFC-0024 OverviewStripe same-topology refresh
+
+## Pre-work Plan
+
+- 背景：Daedalus 真 SPAA 證明 scenario marker 與 row glyph 已更新，但 navigator Signal／Fill OverviewStripe 仍為空；evidence 為 `C:\Windows\Temp\rfc0028-spaa-stripe-blocked.png` 與 direct messages `msg-fsi-f7e830ffbf4e4a02b96aa1ff4bcf8c82`、`msg-fsi-e9580975bc064da7ad462c68b29c50d8`。
+- 目標：同 topology 的 `ReplaceDataRef(OverviewStripe)` 必須使 navigator 由 empty 變 non-empty，同時只刷新 shell/navigator，不 remount 或重畫所有 candle rows。
+- 不變事項：runtime candidate atomicity、row-local refresh、cursor performance、canvas-local resize state、consumer selection generation 與五個 candle row geometry均不改。
+- 範圍：Renderer shell prepared-data signal、focused Renderer tests、BrowserDemo／F# Playwright regression、exact package graph及consumer handoff。
+- 實作估計：production 非型別宣告約15–30行；若超過60行，先在issue hypothesis追加原因再繼續。
+- 驗收：same-topology empty→non-empty stripe DOM regression；row mount identity不變；既有focused suites與4,000-slot browser performance gate通過；發布immutable exact packages並通知Daedalus。
+
+## Operations
+
+- 2026-09-24 19:52 +08:00：baseline clean at `97b4c43`。註冊`agent.aster`並讀取8筆durable inbox訊息；已回覆Daedalus message `msg-fsi-81c7c9c018b948c48914120edff2eb8c`，確認接手owner fix。
+- 2026-09-24 20:12 +08:00：舊Renderer `0.1.44` BrowserDemo重現same-topology clear後stripe仍為2；根因確認為navigator閉包讀取未被更新的shell prepared data。
+- 2026-09-24 20:28 +08:00：Renderer改用獨立reactive shell authority；same-topology patch只更新shell與row Vars。Renderer 43/43、Interactive 4/4、Ptcs Client 16/16、WebSharper demos及F# Playwright皆通過；stripe `2→0→2`且chartRerender=false。
+- 2026-09-24 20:31 +08:00：hotfix exact graph確立為Contracts `0.1.19`、Renderer `0.1.45`、Interactive.Client `0.1.37`、Dynamic.Ptcs `0.1.41`、Ptcs.Client `0.1.59`；開始同步current docs與正式package gate。
+- 2026-09-24 20:36 +08:00：Renderer／Interactive.Client／Ptcs.Client push均回`Created`；等待NuGet dependency validation與flat-container indexing，未重推immutable版本。
+- 2026-09-24 20:48 +08:00：三顆package均可由nuget.org fresh cache restore；official-source-only Renderer 43/43、Interactive 4/4、Ptcs.Client 16/16通過，三顆NuGet repository signatures有效。Public signed nupkg SHA-256依序為`58FB129D31C5DF5FA7B4B5054830CDF12EE5CA528C4CC15F4EA0CC7B55338C09`、`F8F8A7127AE5A1E2A721AACC77F2BEDB315CD711769AF04A42ABD591822C44D4`、`85F82C11C0D1B7F1BD0DE06C34AD261FCDD50892FDF598ED7ADAA2AB024533C3`。
+- 2026-09-24 20:53 +08:00：首次closeout checker為PASS=45/WARN=6/FAIL=1；唯一FAIL是上一輪active log在前次checker後合法append並進入新HEAD，該檔目前tracked clean且本輪未修改。保留FAIL evidence並以checker已保存的新HEAD baseline重跑，不更動歷史log。
+- 2026-09-24 20:55 +08:00：假設為SPAA傳入的OverviewStripe candidate已通過Contracts validation，缺陷位於Renderer same-topology shell refresh，不改consumer mapping或wire contract。風險為shell signal連帶重建chart runtime；已以render sequence、ready-row count及4,000-slot browser phase gate阻擋。流程修正：假設／風險必須在開工前寫入plan；本次漏記只能於Operations追加，不得回填plan中段。
+- 假設：SPAA傳入的OverviewStripe candidate已通過Contracts validation；缺陷位於Renderer same-topology shell refresh，不改consumer mapping或wire contract。
+- 風險：shell signal若連帶重建chart runtime會重畫五列K bar；以render sequence、ready-row count及4,000-slot browser phase gate阻擋。
+- 2026-09-24 21:01 +08:00：closeout checker最終PASS=34/WARN=12/FAIL=0；active log append-only與version graph同步通過。WARN為本輪已記錄的plan欄位漏記、commit前dirty、未變更的不相關current docs及既有global RFC索引缺口。
+- 2026-09-24 21:04 +08:00：Ptcs.LiveDemo以Rebuild重新產生tracked WebSharper bundle；只清除本次新增行的44處generator trailing whitespace，`git diff --check`通過，未整檔格式化既有bundle。

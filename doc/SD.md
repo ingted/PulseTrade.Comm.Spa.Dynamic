@@ -606,6 +606,6 @@ Total row height不再由marker presence決定。Plot height由resolved total扣
 
 ### Package closure
 
-Final graph：Contracts `0.1.19` → Renderer `0.1.44` → Interactive.Client `0.1.36`；Dynamic.Ptcs `0.1.41` exact Contracts；Ptcs.Client `0.1.58` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。Interactive.Client的bundle manifest由pack target以`$(Version)`生成，避免nuspec與內嵌bundle版本漂移。不得ProjectReference或partial graph。
+Final graph：Contracts `0.1.19` → Renderer `0.1.45` → Interactive.Client `0.1.37`；Dynamic.Ptcs `0.1.41` exact Contracts；Ptcs.Client `0.1.59` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。Interactive.Client的bundle manifest由pack target以`$(Version)`生成，避免nuspec與內嵌bundle版本漂移。不得ProjectReference或partial graph。Navigator使用獨立shell prepared-data signal；same-topology資料patch更新該signal與row data Vars，但不更新chart runtime mount identity。
 
-Test seams：strict codec/unknown field/limits；candidate atomicity/last-good；same-X lane/pixel bucket；marker cluster keyboard/focus；row resize/default/reset/dispose；4,000 slots long-task；exact nupkg/bundle/readback。
+Test seams：strict codec/unknown field/limits；candidate atomicity/last-good；same-X lane/pixel bucket；same-topology empty→non-empty OverviewStripe且chart render sequence不變；marker cluster keyboard/focus；row resize/default/reset/dispose；4,000 slots long-task；exact nupkg/bundle/readback。

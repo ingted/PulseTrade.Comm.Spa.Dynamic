@@ -134,3 +134,4 @@ Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target F
 | DYN-WBS-553 | Renderer-local row resize／layout correction | Done | 100 | DYN-T-575 | canvas-local pointer/keyboard/reset完成；same-canvas replacement保留，identity replacement/reload清除，marker高度特例已移除。 |
 | DYN-WBS-554 | Owner browser/performance/package release | Done | 100 | DYN-T-576 | 4,000-slot desktop/mobile F# Playwright、full WebSharper builds、exact five-package graph及local/public package readback完成；consumer真SPAA仍在DYN-WBS-555。 |
 | DYN-WBS-555 | Scenario complete candidate consumer adoption | External owner | 0 | DYN-T-577 | Daedalus實作selectionGeneration、summary/trades/timeline/download同identityprepare/commit及真SPAA／`.dib`。 |
+| DYN-WBS-556 | Same-topology OverviewStripe shell refresh | Done | 100 | DYN-T-578 | Renderer `0.1.45`以獨立shell prepared-data signal刷新navigator；Interactive `0.1.37`／Ptcs.Client `0.1.59` exact closure完成，不重掛chart stack。 |

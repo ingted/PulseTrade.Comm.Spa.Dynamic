@@ -124,6 +124,16 @@ let waitForAttributeValue (locator: ILocator) name expected =
 
     require (actual = expected) $"expected `{name}`={expected}, actual={actual}"
 
+let waitForCount (locator: ILocator) expected =
+    let deadline = DateTime.UtcNow.AddSeconds 8.0
+    let mutable actual = locator.CountAsync() |> awaitTask
+
+    while actual <> expected && DateTime.UtcNow < deadline do
+        Threading.Thread.Sleep 25
+        actual <- locator.CountAsync() |> awaitTask
+
+    require (actual = expected) $"expected locator count={expected}, actual={actual}"
+
 let waitForText (locator: ILocator) (expected: string) =
     let deadline = DateTime.UtcNow.AddSeconds 8.0
     let mutable matched = false
@@ -538,6 +548,23 @@ let verifyDesktop (browser: IBrowser) =
     let signalStripePath = overviewStripePaths.Nth(0).GetAttributeAsync("d") |> awaitTask
     let fillStripePath = overviewStripePaths.Nth(1).GetAttributeAsync("d") |> awaitTask
     require (not (String.IsNullOrWhiteSpace signalStripePath) && not (String.IsNullOrWhiteSpace fillStripePath) && signalStripePath <> fillStripePath) "same-time cross-trace stripes must occupy deterministic adjacent lanes"
+    let renderSequenceBeforeStripeRefresh = requiredIntAttribute chartStack "data-chart-render-sequence"
+    let readyRowsBeforeStripeRefresh = requiredIntAttribute chartStack "data-ready-row-count"
+    page.Locator("[data-testid='ta-demo-clear-overview-stripes']").ClickAsync() |> awaitUnit
+    waitForCount overviewStripePaths 0
+    require
+        (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeStripeRefresh
+         && requiredIntAttribute chartStack "data-ready-row-count" = readyRowsBeforeStripeRefresh)
+        "clearing same-topology OverviewStripe data must refresh only the navigator without remounting the chart stack"
+    page.Locator("[data-testid='ta-demo-populate-overview-stripes']").ClickAsync() |> awaitUnit
+    waitForCount overviewStripePaths 2
+    waitForAttributeValue (overviewStripePaths.Nth(0)) "data-stripe-count" "1"
+    waitForAttributeValue (overviewStripePaths.Nth(1)) "data-stripe-count" "1"
+    require
+        (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeStripeRefresh
+         && requiredIntAttribute chartStack "data-ready-row-count" = readyRowsBeforeStripeRefresh)
+        "populating same-topology OverviewStripe data must refresh only the navigator without remounting the chart stack"
+    let signalStripePath = overviewStripePaths.Nth(0).GetAttributeAsync("d") |> awaitTask
     let navigatorBox = navigator.BoundingBoxAsync() |> awaitTask
     let selectionBox = page.Locator("[data-testid='ta-overview-selection']").BoundingBoxAsync() |> awaitTask
     require (not (isNull navigatorBox) && not (isNull selectionBox)) "overview navigator and selection must expose pointer geometry"

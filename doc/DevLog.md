@@ -1531,3 +1531,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 初始Contracts `0.1.16/0.1.17`及Renderer `0.1.42/0.1.43`候選在full build/package gate前淘汰且未push。Final exact graph為Contracts `0.1.19`、Renderer `0.1.44`、Interactive.Client `0.1.36`、Dynamic.Ptcs `0.1.41`、Ptcs.Client `0.1.58`。
 - Package verifier發現Interactive.Client source manifest仍標`0.1.35`；修正為pack前由MSBuild以`$(Version)`生成manifest，避免再發布nuspec／bundle版本漂移。五包push均回`Created`；fresh cache只走nuget.org完成43/4/14/16 tests，public nupkg hashes與owner local完全一致。Daedalus真SPAA／fresh `.dib` consumer adoption仍由DYN-WBS-555／DYN-T-577追蹤。
 - Traceability correction：補入RFC-0024 reading/map、DYN-WBS-550..555與DYN-T-571..577 owner／consumer索引；owner release證據集中於`DYN-VFY-025`，未把Daedalus external gate誤列為本repo PASS。
+
+## 2026-09-24 - RFC-PTCS-DYNAMIC-0024 same-topology OverviewStripe refresh correction
+
+- Daedalus真SPAA證明Order／Fill row glyph正常，但同topology scenario data replacement不會更新navigator Signal／Fill stripe。根因是Renderer `0.1.44`只在full preparation／topology change更新shell prepared data；row-only refresh無法觸發navigator閉包重算。
+- Renderer改用獨立reactive shell prepared-data authority；same-topology patch同步更新shell與row Vars，不更新chart runtime mount state。F# Playwright驗OverviewStripe path `2→0→2`，chart render sequence與ready-row count不變，並重跑4,000-slot、300 cursor transitions及replacement performance gates；全部通過，renderer各phase無>100ms task。
+- Hotfix exact graph為Contracts `0.1.19`、Renderer `0.1.45`、Interactive.Client `0.1.37`、Dynamic.Ptcs `0.1.41`、Ptcs.Client `0.1.59`。三顆變更package push均回`Created`；nuget.org fresh-cache Renderer 43/43、Interactive 4/4、Ptcs.Client 16/16及repository signature驗證通過。Daedalus真SPAA重跑仍屬DYN-WBS-555／DYN-T-577 consumer gate。

@@ -1583,7 +1583,7 @@ module TaWorkspaceRenderer =
               ResolvedAxes = Map.empty
               ResolvedSeries = Map.empty }
         let mutable latestPreparedData = initialPreparedData
-        let mutable preparedDataForShell = initialPreparedData
+        let shellPreparedData = Var.Create initialPreparedData
         let mutable preparedDataReady = false
         let mutable preparationGeneration = 0
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
@@ -1602,7 +1602,7 @@ module TaWorkspaceRenderer =
                     if generation = preparationGeneration then
                         let current = runtimeState.Value
                         latestPreparedData <- prepared
-                        preparedDataForShell <- prepared
+                        shellPreparedData.Value <- prepared
                         observedChartTopology <- chartTopologySignaturePrepared current prepared
                         observedDataState <- current
                         preparedDataReady <- true
@@ -1632,7 +1632,7 @@ module TaWorkspaceRenderer =
                     || nextChartTopology <> observedChartTopology
                 if topologyChanged then
                     observedChartTopology <- nextChartTopology
-                    preparedDataForShell <- nextPreparedData
+                    shellPreparedData.Value <- nextPreparedData
                     match next.Document with
                     | Some document ->
                         let nextTimeline = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData
@@ -1681,6 +1681,7 @@ module TaWorkspaceRenderer =
                     | None -> pendingBoundaryPan <- None
                     chartRuntimeState.Value <- next
                 elif dataChanged then
+                    shellPreparedData.Value <- nextPreparedData
                     scheduleRowDataRefresh nextPreparedData
                 latestPreparedData <- nextPreparedData
                 observedDataState <- next)
@@ -2569,21 +2570,9 @@ module TaWorkspaceRenderer =
                             let cursorReaderCount =
                                 visibleRows
                                 |> Array.sumBy (fun row -> RendererModel.effectiveTraces row |> Array.filter _.Visible |> Array.length)
-                            let shellPreparedData = preparedDataForShell
-                            let referenceTimeline = RendererModel.referenceTimelineForDocumentPrepared document shellPreparedData
+                            let preparedDataForShell = shellPreparedData.Value
+                            let referenceTimeline = RendererModel.referenceTimelineForDocumentPrepared document preparedDataForShell
                             let referenceLength = referenceTimeline.Length
-                            let overviewPoints =
-                                visibleRows
-                                |> Array.collect RendererModel.effectiveTraces
-                                |> Array.tryFind (fun trace -> trace.Visible && trace.Kind = TaTraceKind.Candlestick)
-                                |> Option.map (fun trace -> RendererModel.candleSeriesForTracePreparedSampled 280 trace shellPreparedData)
-                                |> Option.defaultValue [||]
-                            let overviewStripeVisuals =
-                                visibleRows
-                                |> Array.collect RendererModel.effectiveTraces
-                                |> Array.filter (fun trace -> trace.Visible && trace.Kind = TaTraceKind.OverviewStripe)
-                                |> Array.collect (fun trace -> RendererModel.overviewStripePlacementsPrepared trace shellPreparedData referenceTimeline)
-                                |> RendererModel.overviewStripeVisuals
                             let visibleWindow =
                                 RendererModel.resolveWindow
                                     options.MinimumVisibleBars
@@ -2592,7 +2581,7 @@ module TaWorkspaceRenderer =
                                     ui.FollowLatest
                                     ui.Window
                             let visibleTimestamps = RendererModel.selectWindow visibleWindow referenceTimeline
-                            let rowDataStates = visibleRows |> Array.map (fun _ -> Var.Create shellPreparedData)
+                            let rowDataStates = visibleRows |> Array.map (fun _ -> Var.Create preparedDataForShell)
                             let rowHeights =
                                 visibleRows
                                 |> Array.map (fun row ->
@@ -2721,17 +2710,39 @@ module TaWorkspaceRenderer =
                                         compactButton "ta-view-all" label ("Show up to " + string capped + " loaded bars") (fun () -> setWindowCount capped)
                                     ]
                                     div [ attr.style "grid-column:1 / -1; min-width:0;" ] [
-                                        overviewSvg
-                                            overviewPoints
-                                            overviewStripeVisuals
-                                            referenceLength
-                                            (draftWindow.View
-                                             |> View.Map (fun draft ->
-                                             let selection = defaultArg draft visibleWindow
-                                             RendererModel.selectionRatios referenceLength selection))
-                                            (fun node -> navigatorElement <- node |> As<Element>)
-                                            startNavigatorDrag
-                                            finishNavigatorDragFromElement
+                                        shellPreparedData.View
+                                        |> View.Map (fun currentPreparedData ->
+                                            let currentReferenceTimeline =
+                                                RendererModel.referenceTimelineForDocumentPrepared document currentPreparedData
+                                            let currentReferenceLength = currentReferenceTimeline.Length
+                                            let overviewPoints =
+                                                visibleRows
+                                                |> Array.collect RendererModel.effectiveTraces
+                                                |> Array.tryFind (fun trace -> trace.Visible && trace.Kind = TaTraceKind.Candlestick)
+                                                |> Option.map (fun trace -> RendererModel.candleSeriesForTracePreparedSampled 280 trace currentPreparedData)
+                                                |> Option.defaultValue [||]
+                                            let overviewStripeVisuals =
+                                                visibleRows
+                                                |> Array.collect RendererModel.effectiveTraces
+                                                |> Array.filter (fun trace -> trace.Visible && trace.Kind = TaTraceKind.OverviewStripe)
+                                                |> Array.collect (fun trace ->
+                                                    RendererModel.overviewStripePlacementsPrepared
+                                                        trace
+                                                        currentPreparedData
+                                                        currentReferenceTimeline)
+                                                |> RendererModel.overviewStripeVisuals
+                                            overviewSvg
+                                                overviewPoints
+                                                overviewStripeVisuals
+                                                currentReferenceLength
+                                                (draftWindow.View
+                                                 |> View.Map (fun draft ->
+                                                     let selection = defaultArg draft visibleWindow
+                                                     RendererModel.selectionRatios currentReferenceLength selection))
+                                                (fun node -> navigatorElement <- node |> As<Element>)
+                                                startNavigatorDrag
+                                                finishNavigatorDragFromElement)
+                                        |> Doc.EmbedView
                                     ]
                                 ]
                             ] :> Doc) chartRuntimeView chartUiState.View

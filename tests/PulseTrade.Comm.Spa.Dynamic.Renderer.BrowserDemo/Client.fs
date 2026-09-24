@@ -765,6 +765,37 @@ module Client =
                     DataRevision = current.DataRevision + 1L
                     LastTransportSequence = current.LastTransportSequence + 1L }
 
+        let overviewDataRefs = [| "series.overview.signal"; "series.overview.fill" |]
+        let clearOverviewStripes () =
+            let current = runtimeState.Value
+            let clearedData =
+                overviewDataRefs
+                |> Array.fold (fun data dataRef ->
+                    data
+                    |> Map.change dataRef (Option.map (function
+                        | SduiValue.Object fields ->
+                            SduiValue.Object(fields |> Map.add "points" (SduiValue.Array [||]))
+                        | value -> value))) current.Data
+            runtimeState.Value <-
+                { current with
+                    Data = clearedData
+                    DataRevision = current.DataRevision + 1L
+                    LastTransportSequence = current.LastTransportSequence + 1L }
+
+        let populateOverviewStripes () =
+            let current = runtimeState.Value
+            let populatedData =
+                overviewDataRefs
+                |> Array.fold (fun data dataRef ->
+                    match Map.tryFind dataRef initialState.Data with
+                    | Some value -> Map.add dataRef value data
+                    | None -> data) current.Data
+            runtimeState.Value <-
+                { current with
+                    Data = populatedData
+                    DataRevision = current.DataRevision + 1L
+                    LastTransportSequence = current.LastTransportSequence + 1L }
+
         let rendererStartedAt = DateTime.UtcNow
         let rendererDoc =
             TaWorkspaceRenderer.render
@@ -794,6 +825,8 @@ module Client =
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-stale"; on.click (fun _ _ -> setStale ()) ] [ text "Stale" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-document"; on.click (fun _ _ -> replaceDocumentWithSameRevision ()) ] [ text "Replace document" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-markers"; on.click (fun _ _ -> replaceMarkers ()) ] [ text "Replace markers" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-clear-overview-stripes"; on.click (fun _ _ -> clearOverviewStripes ()) ] [ text "Clear stripes" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-populate-overview-stripes"; on.click (fun _ _ -> populateOverviewStripes ()) ] [ text "Populate stripes" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-reject-next"; on.click (fun _ _ -> rejectNext.Value <- true) ] [ text "Reject next" ]
                 text "callback actions "
                 textView (actionCount.View |> View.Map string)

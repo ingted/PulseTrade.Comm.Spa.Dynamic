@@ -224,12 +224,14 @@ Daedalus另行擁有：monotonic `selectionGeneration`、完整candidate identit
 | Package | Final version | Exact dependencies |
 | --- | --- | --- |
 | `PulseTrade.Comm.Spa.Dynamic.Contracts` | `0.1.19` | `FSharp.Core [10.1.400]` |
-| `PulseTrade.Comm.Spa.Dynamic.Renderer` | `0.1.44` | Contracts `[0.1.19]` |
-| `PulseTrade.Comm.Spa.Dynamic.Interactive.Client` | `0.1.36` | Contracts `[0.1.19]`, Renderer `[0.1.44]` |
+| `PulseTrade.Comm.Spa.Dynamic.Renderer` | `0.1.45` | Contracts `[0.1.19]` |
+| `PulseTrade.Comm.Spa.Dynamic.Interactive.Client` | `0.1.37` | Contracts `[0.1.19]`, Renderer `[0.1.45]` |
 | `PulseTrade.Comm.Spa.Dynamic.Ptcs` | `0.1.41` | Contracts `[0.1.19]`, PTCS `[0.2.46]` |
-| `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` | `0.1.58` | Contracts `[0.1.19]`, Renderer `[0.1.44]`, PTCS `[0.2.46]` |
+| `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client` | `0.1.59` | Contracts `[0.1.19]`, Renderer `[0.1.45]`, PTCS `[0.2.46]` |
 
 原預定Contracts `0.1.16`／Renderer `0.1.42`在本機pack-before-full-build階段即淘汰；`0.1.17`暴露marker codec型別推斷錯誤，Renderer `0.1.43`亦未通過full WebSharper bundle gate。上述候選均未push；最終immutable graph使用表列版本。
+
+Implementation correction：真SPAA揭露`0.1.44`只在full preparation／topology change更新navigator shell authority；same-topology `ReplaceDataRef(OverviewStripe)`只刷新row data，因此Signal／Fill stripe不呈現。`0.1.45`改用獨立shell prepared-data signal；same-topology patch只刷新navigator及既有row Vars，不重掛chart stack。對應Interactive／Ptcs client immutable closure為`0.1.37`／`0.1.59`。
 
 Aggregate `PulseTrade.Comm.Spa.Dynamic 0.1.25`不依賴上述runtime packages，本輪不為湊齊「六包」無意義升版。若實作證明root bundle需要新contract，須先修訂本RFC package graph。
 
@@ -262,7 +264,7 @@ Aggregate `PulseTrade.Comm.Spa.Dynamic 0.1.25`不依賴上述runtime packages，
 
 ## 9. 關聯工項與測試
 
-- WBS：`DYN-WBS-549..555`
-- Tests：`DYN-T-570..577`
+- WBS：`DYN-WBS-549..556`
+- Tests：`DYN-T-570..578`
 - Verification：`DYN-VFY-025`
 - Consumer RFC：`RFC-TRADECORE-0028`
