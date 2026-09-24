@@ -1,0 +1,27 @@
+# TA Workspace Marker / Layout Cross-owner Review
+
+## Pre-work Plan
+
+- 背景：使用者要求先 code review Daedalus 提出的 navigator signal/fill 刻線、order/fill marker 語意、K-bar 高度調整、TA row 垂直空間、backtest scenario selector 與切換效能需求；本輪不實作。
+- 目標：對照 PTCS Dynamic owner contract/renderer 與 cold far consumer workspace，指出現況、缺口、owner、最小 RFC seam 與效能驗收。
+- 假設：Daedalus 的 consumer repo 是 active WIP；source 可作現況證據，但本輪不修改，也不把尚未提交的行為宣稱為已交付。
+- 範圍：只審查 PTCS Dynamic contracts/renderer 與 ColdFar Notebook backtest workspace 的交界；不撰寫 RFC、不改碼、不部署。
+- 不變事項：不修改 Daedalus 正在工作的 `G:/coldfar_py/coldfar-symbolics`；不把 order/limit/stop domain 語意硬編入 generic renderer；不破壞 shared-axis `EventTimeUtc` presentation authority 與 Position-based topology identity。
+- 步驟：定位 marker/navigator/cursor/row layout 程式碼；定位 backtest selector/action/state 程式碼；核對既有 RFC/測試；整理逐項 findings 與跨 owner contract。
+- 驗收：六項需求各有目前行為、責任邊界、建議資料流與可重現驗收；標出需要 Daedalus RFC 的部分與 Aster 最終 RFC 的部分。
+- 風險：consumer repo 有未提交工作，僅讀取；大量 marker 若以 DOM node 個別繪製或 scenario switch 全量 remount，可能造成 4,000-bar UI latency/GC regression。
+
+## Operations
+
+- 2026-09-24 14:11 +08:00：確認 Dynamic owner repo clean；consumer repo 有 Daedalus active WIP，採 read-only review。COMM background listener `agent.aster` 正常執行。
+- 2026-09-24 14:20 +08:00：完成 owner/consumer static review。主要 findings：
+  - Navigator 目前只接 candlestick close overview，最多取樣 280 點；完全未讀 marker/event。若增加事件刻線，需基於 loaded-domain position 做 pixel-column aggregation，批次成少量 SVG path，禁止一事件一 DOM node。
+  - Generic marker 已支援 Circle、Triangle、bounded Tooltip 與 authored Color；order dot 不需 PTCS trading-domain type。但 consumer `BacktestChartEventKind` 目前只有 EntrySignal/EntryFill/ExitFill，且 EntrySignal 實際由 AcceptedOrders 產生、未攜帶 order kind/limit/stop。Daedalus RFC 須先拆清 signal/order/fill phase，producer 再投影 generic circle/triangle/tooltip。
+  - `TaRowSpec.HeightWeight` 已存在且 validation 接受 0..20，但 Renderer 未使用；高度由 marker/candle/other 三種 hard-code 310/250/112 SVG 決定。拖曳高度應補 generic row resize seam：drag 僅 local/rAF preview，pointer-up 送一次 typed action/commit，不在 pointer move 重建資料或送 request。
+  - 含 marker 的 candle row 固定 `height=310, top=48, plotHeight=214`，上下各約 48px；cursor timestamp SVG group 位於 y=2..29。使用者看到的六區是四個 plot grid bands 加上下 reserved zones。應將 cursor tooltip 移成 plot 上方 overlay/sibling，plot 只保留小 margin；marker label overlay 不得參與 Y-domain。
+  - SPAA scenario selector 已有 click handler、active style及 `/api/backtest/selections`；server 使用 gate + expected presentation revision，以單一 `ReplaceDataRef` frame commit marker，再由 client apply frame成功後切 selection/summary/timeline。atomic replacement seam 正確，不應改成 clear-then-add。
+  - 現有正式 E2E 只驗 Run 後第一個 scenario 自動選取，未驗 scenario A→B、selected/focused state、summary/form差異、stale response與 marker replacement。因此「按了無反應」仍是有效缺口，需 Daedalus browser repro；建議以 dropdown 取代橫向長 ID buttons，full ScenarioId 作 value/title，短 human label 作文字，in-flight disabled/aria-busy並呈現 failure。
+  - Scenario A→B gate 應驗：一個 selection request、一個 committed presentation revision；marker layer替換、舊 marker 不殘留；candle paths與 chart topology/render sequence不重建（同 temporal topology時）；summary/trades/accounting只在 matching revision後一起切換；4,000 bars owner phase不得有 >100ms long task。
+- 2026-09-24 14:20 +08:00：責任邊界：Daedalus 擁有 signal/order/fill domain phase、scenario options/state/action、order tooltip資料與 consumer browser repro/RFC；Aster 擁有 generic overview marker surface/aggregation、HeightWeight/resize action、plot/overlay geometry與 renderer performance gate。兩方共用 immutable revisioned marker replacement，不在 renderer 解析 BUY/SELL/limit/stop。
+- 2026-09-24 14:31 +08:00：第一次 closeout checker 使用了其他 repo 的 default DevLog 與既有 session state，因而誤報本 repo 已記錄的 package bump 缺 DevLog，並把 Git HEAD 內容完全相同的歷史 log 判為 readonly modify。已用 `git hash-object` 與 `git rev-parse HEAD:<path>` 證明該歷史 log byte hash 同為 `6a585f55b39c64ed3dc5c2e2d221a28a5d3f80d0`；後續改以 task-scoped session、canonical `doc/DevLog.md` 重跑，不修改歷史 log。
+- 2026-09-24 14:34 +08:00：bounded sensitive scan 為 high=0/medium=0；task-scoped `check.fsx` 為 PASS=20/WARN=2/FAIL=0。WARN 為本輪 commit 前 dirty 與既有文件追溯 coverage，不影響只讀 review 交付。
