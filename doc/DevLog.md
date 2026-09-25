@@ -1688,3 +1688,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 因高密度fixture加入後不得替換已凍結`0.1.75/0.1.66` bytes，最終immutable local graph為Contracts `0.1.29 / 7A59...`、Renderer `0.1.76`、Interactive.Client `0.1.67`。Focused suites `48/48、12/12`、package verifier與4,000-slot F# Playwright通過；回歸先證明marker與相鄰slot同CSS pixel，再以真實SVG hit-testing驗exact slot／OFI。
 - Renderer／Interactive nupkg SHA-256為`F7A27C19BD48732B82B291BFB285C2F6AA573873418448AB8A8B203348F23AB0`／`45052F853CEBFAE0711595D62463F2CD51D998A1DD656AECAD421D95E4D7D9FC`。five-candle/scenario/All/marker/document/progressive max=`72.54/79.73/36.53/41.93/38.27/40.59ms`，acceptance phases over100=0；真SPAA consumer GREEN前不public push。
 - Daedalus以同語意的`0.1.75/0.1.66`真SPAA 3,563-point先驗證修法：fixed strategy為marker/band slot `1119/1119`、SMA scenario為`2123/2123`，兩者OFI count=2；consumer端non-finite StrategyValue JSON 500亦已修復。最終`0.1.76/0.1.67`仍須consumer同步後再跑final gate。
+
+## 2026-09-26 - RFC-0028 final consumer acceptance and public release
+
+- Daedalus使用final exact graph `Contracts 0.1.29 / Renderer 0.1.76 / Interactive.Client 0.1.67`完成真SPAA 3,563-point gate：fixed strategy marker/band=`1119/1119` count=2，SMA scenario=`2123/2123` count=2；兩策略selector／marker／OFI、fresh 4,000、overview style/stripe、dark/TA colors全部通過。
+- Renderer與Interactive.Client public push均回`Created`。Official NuGet nupkg SHA-256為`96B9D779411E115FC1A0DFCCD2EACA2F22676133165C190A671DC1EC28164376`／`90C070B7D0142EE2D9F0EA1F1744CB410ABFE36B24A3ABAC7C5A41E77D89657E`；兩包repository signature有效。
+- 排除`.signature.p7s`後local／official entries皆`Different=0`。Official Renderer依賴Contracts `[0.1.29]`；Interactive.Client依賴Contracts `[0.1.29]`與Renderer `[0.1.76]`，RFC-0028 closure完成。

@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0028：Default Viewport 與 Marker OFI Band
 
 - ID：`RFC-PTCS-DYNAMIC-0028`
-- 狀態：Owner Implemented / Consumer Gate Pending
+- 狀態：Released
 - Owner：PTCS Dynamic Renderer／Interactive.Client（Aster）
 - Consumer：PulseTrade.Comm.Spa.Dynamic.Interactive.Extension／SPAA（Daedalus）
 - 關聯：`RFC-PTCS-DYNAMIC-0022`、`RFC-PTCS-DYNAMIC-0024`、`RFC-PTCS-DYNAMIC-0027`、`DYN-WBS-568`、`DYN-T-615..618`、Daedalus message `msg-fsi-55dcc87ce84f4ba88405201207acbf92`
@@ -88,7 +88,8 @@ markerCursorItems slotIndex placements
 - F# Playwright：fresh viewport 4,000；相鄰 slot 同 CSS pixel 的 direct marker exact-slot、single/dense/empty OFI及overview contract通過；five-candle/scenario/All/marker/document/progressive max=`72.54/79.73/36.53/41.93/38.27/40.59ms`，acceptance phases `over100=0`。
 - Interactive package verifier通過，bundle manifest與nuspec版本一致。
 - Release SHA-256：沿用已凍結且未變更contract的Contracts `7A59C0A671E5E995B88D1BCD23F074D2ADC0280D6DFD9EC09C354208D51FFC9E`、Renderer `F7A27C19BD48732B82B291BFB285C2F6AA573873418448AB8A8B203348F23AB0`、Interactive.Client `45052F853CEBFAE0711595D62463F2CD51D998A1DD656AECAD421D95E4D7D9FC`。Contracts同版後重打包的`A93F...`不得交付；中間`0.1.75/0.1.66`不得交付。
-- Playwright MCP live screenshot驗視覺無 overlap/layout shift；真 SPAA consumer gate與public push仍 pending。
+- Daedalus final exact-identity真SPAA 3,563-point gate通過：fixed strategy marker/band=`1119/1119`、SMA scenario=`2123/2123`，兩者OFI count=2；fresh 4,000、overview、dark/TA colors皆通。
+- Renderer `0.1.76`／Interactive.Client `0.1.67` public push均回`Created`。Official signed nupkg SHA-256為`96B9D779411E115FC1A0DFCCD2EACA2F22676133165C190A671DC1EC28164376`／`90C070B7D0142EE2D9F0EA1F1744CB410ABFE36B24A3ABAC7C5A41E77D89657E`；排除repository signature後local／official entries `Different=0`。
 
 ## High-density Consumer Correction（2026-09-26）
 
