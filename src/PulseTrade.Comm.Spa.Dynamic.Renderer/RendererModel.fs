@@ -96,6 +96,68 @@ type TaVisibleWindow =
     { StartIndex: int
       Count: int }
 
+type TaProjectionCommitKey =
+    { Identity: RuntimeIdentity
+      DocumentRevision: int64
+      DataRevision: int64
+      LastTransportSequence: int64 }
+
+type TaProjectionCommitCandidate =
+    { Generation: int
+      State: RuntimeState }
+
+type TaProjectionCommitGateState =
+    { Generation: int
+      Pending: TaProjectionCommitCandidate option
+      LastCommitted: TaProjectionCommitKey option }
+
+[<JavaScript; RequireQualifiedAccess>]
+module ProjectionCommitGate =
+    let key (state: RuntimeState) =
+        { Identity = state.Identity
+          DocumentRevision = state.DocumentRevision
+          DataRevision = state.DataRevision
+          LastTransportSequence = state.LastTransportSequence }
+
+    let initial =
+        { Generation = 0
+          Pending = None
+          LastCommitted = None }
+
+    let beginCandidate (state: RuntimeState) (gate: TaProjectionCommitGateState) =
+        let generation = gate.Generation + 1
+        { gate with
+            Generation = generation
+            Pending = Some { Generation = generation; State = state } },
+        generation
+
+    let pendingGenerationFor (state: RuntimeState) (gate: TaProjectionCommitGateState) =
+        match gate.Pending with
+        | Some candidate when key candidate.State = key state -> Some candidate.Generation
+        | _ -> None
+
+    let tryCommit
+        (currentRuntimeState: RuntimeState)
+        generation
+        (candidateState: RuntimeState)
+        (gate: TaProjectionCommitGateState)
+        =
+        match gate.Pending with
+        | Some candidate
+            when generation = candidate.Generation
+                 && generation = gate.Generation
+                 && key candidate.State = key candidateState
+                 && key currentRuntimeState = key candidateState ->
+            let candidateKey = key candidateState
+            let committed =
+                if gate.LastCommitted = Some candidateKey then None
+                else Some candidateState
+            { gate with
+                Pending = None
+                LastCommitted = Some candidateKey },
+            committed
+        | _ -> gate, None
+
 type TaRowHeightBounds =
     { Minimum: int
       Maximum: int

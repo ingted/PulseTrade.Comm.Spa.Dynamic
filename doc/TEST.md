@@ -725,3 +725,15 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-597 | Global stream negative | partial、interleaved legacy與orphan item回整條wire的global index | PASS：Contracts 41/41。 |
 | DYN-T-598 | Active-batch error priority | wrong schema、wrong kind、malformed JSON在legacy fallback也失敗時保留原chunk error | PASS：Contracts 41/41。 |
 | DYN-T-599 | Framing／canonical validation boundary | incremental commit產生candidate；machine `finish`仍拒絕invalid canonical frame並定位commit packet；browser不在commit RAF重複full validation | OWNER PASS：Contracts 41/41；4,000-bar browser five-candle/scenario/All=`67.28/79.81/42.76ms`，all acceptance phases over100=0。 |
+
+## 2026-09-25 Runtime Projection Commit
+
+| Test ID | Scope | Required cases | Status |
+| --- | --- | --- | --- |
+| DYN-T-600 | RFC/current-state | action ACK、reducer acceptance、projection與paint邊界；generic/domain owner；public names、failure與package gate可追溯 | READY：RFC-0026及TA current docs已建立。 |
+| DYN-T-601 | Contracts | receipt create/validation；identity match/mismatch；revision threshold；positive monotonic sequences | PASS：Contracts `42/42`，含invalid sequence/revision、identity及revision threshold。 |
+| DYN-T-602 | Renderer model | same-topology及full mount全部rows完成後只commit一次；zero-row；tuple dedupe | PARTIAL PASS：pure gate驗current candidate與tuple dedupe；Renderer `47/47`。rows-complete/zero-row browser evidence待DYN-T-605。 |
+| DYN-T-603 | Renderer lifecycle negative | rapid A->B、stale generation、reject/resync、cancelled row work、dispose不發布 | PARTIAL PASS：pure gate驗superseded、stale與current-state mismatch；dispose/browser negative待DYN-T-605。 |
+| DYN-T-604 | Interactive client | stable root attrs、typed current/subscription、bubbling event detail相同；late subscriber；new application清舊watermark | IMPLEMENTED／browser pending：full WebSharper build通過；typed handle與root edge＋level已編入bundle。 |
+| DYN-T-605 | Browser/performance | 4,000 slots replacement、full mount、same-topology、rapid replacement、dispose；event在下一paint boundary；console/page error 0且owner phases無>100ms | Pending |
+| DYN-T-606 | Package/consumer | exact local graph、fresh-cache owner gates、Daedalus fresh-kernel identity/revision wait；通過後才public push/readback | PARTIAL：local exact graph `0.1.28 / 0.1.65 / 0.1.56`完成；未public push，consumer gate pending。 |

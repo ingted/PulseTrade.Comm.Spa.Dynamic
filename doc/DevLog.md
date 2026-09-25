@@ -1600,3 +1600,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 3,820 standard-trace 48→All為59.41ms、over100=0；visible scheduler global max1ms。Initial cold phase兩個>100ms事件是V8 module parse/eval，非renderer interaction。4,000×12 backtest在600秒未完成列TradeCore/SPAA backend throughput blocker，不阻擋owner transport/renderer release。
 - Public push Contracts `0.1.26`、Renderer `0.1.62`、Interactive.Client `0.1.54`、Dynamic.Ptcs `0.1.49`、Ptcs.Client `0.1.76`均回`Created`，並同步exact nupkg至`lib-packs.txt`指定路徑。NuGet索引完成後，五包repository signature均有效；official nuspec／DLL／bundle functional entries與local immutable artifact逐項相同。Official nupkg SHA-256依序為`826396B910E49231B422D1D53595666D2F2B01C7EB6549D87C0825104A52518C`、`FE8164579FA6EA08AC0DF0C28DD500B79F6D4A8918691E891FF71E2513AC1D3C`、`7FD459973839AE12F7ADAA66B25DF656E7761BB0068EF3338D49BA20F6AAC175`、`4B9E59CD3ACD890280250231BBB6EB9083A18C9E2AA51A75F757BAF0A9265045`、`B2294405407B55D33A818DB1B55FED2C21C9768AB3AC39BCE144FF81ED86F8BD`。
 - 下游`PulseTrade.Comm.Spa.Dynamic.Interactive.Extension 0.1.0-alpha33`已完成正式發布與official readback：flat-container HTTP 200、772,643 bytes，12個產品entries排除`.signature.p7s`後official／source／local `Different=0`。至此owner exact graph到DIExt consumer的發布鏈完整關閉；4,000×12 backtest throughput另列TradeCore/SPAA owner blocker。
+
+## 2026-09-25 Runtime projection commit owner slice
+
+- RFC：`doc/RFC/RFC-PTCS-DYNAMIC-0026.runtime-projection-commit.md`。新增generic `RuntimeProjectionCommitReceiptV1`，明確區分action ACK、reducer acceptance與browser projection/paint completion。
+- 實作：Contracts提供create/validate/satisfies與stable DOM contract names；Renderer新增`renderWithProjectionCommit`及generation-safe completion gate；Interactive.Client在application root發布edge event＋level watermark，並提供typed current/subscription API。
+- 驗證：local exact candidates `Contracts 0.1.28 / Renderer 0.1.65 / Interactive.Client 0.1.56` full build通過；focused suites `42/47/12`全綠。未public push；browser lifecycle/performance及Daedalus fresh-kernel consumer acceptance仍待完成。
+- Evidence：`log/20260925/20260925225250.runtime-projection-commit.log`、`DYN-VFY-028`。

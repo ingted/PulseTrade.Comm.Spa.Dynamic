@@ -340,3 +340,13 @@ SPAA legacy row的top-level `t`在shared-axis壓縮時遺失；現有axis只有i
 因此canonical presentation time屬於`TemporalAxisPoint`，由owner按Position寫一次。`TemporalSeriesPoint`維持Position＋Value。Dynamic只驗optional UTC timestamp並搬運；同Position來源是否一致由SPAA在壓縮前驗證。Renderer將顯示point/timeline切到EventTimeUtc，但`chartTopologySignature`維持Position／IntervalStartUtc，避免forming preview每次event-time前進都重建chart。range projection、availability、query與coverage仍使用interval fields，避免把顯示時間誤作資料涵蓋區間。
 
 legacy `temporal-axis.v1`仍可缺欄位；fallback interval start只是視覺相容，不能被上游或下游當成canonical時間。詳見`RFC-PTCS-DYNAMIC-0023`。
+
+## 29. 2026-09-25 Runtime projection commit analysis
+
+Action處理完成、reducer接受candidate、row projection排程完成與browser paint可觀察是四個不同時點。DIB companion若在action ACK後立刻切summary/trades，會讓附屬資訊先於圖形；若監看chart revision attribute，same-topology refresh又可能永遠看不到更新。故commit authority必須位於Renderer row lifecycle與Interactive application stable root之間，而不是host transport或consumer domain。
+
+Receipt只證明某個accepted RuntimeState已完成current-generation visible projection，不證明provider transaction、cache durability或使用者已閱讀。Identity與revision沿用Contracts authority；application-local ProjectionSequence只解決edge ordering。Consumer仍須先比identity，再比revision，不能以sequence跨canvas推論新舊。
+
+Edge event解決低延遲通知，level watermark解決listener建立晚於event的競態；兩者由同一Interactive.Client authority發布，不是兩套狀態。Renderer只回報rows-complete＋paint boundary，不接觸DOM root或consumer callback registry。這保持Contracts -> Renderer -> Interactive.Client單向依賴，也讓非Interactive PTCS render caller可沿用舊入口。
+
+最大風險是rapid replacement：舊row callback在新generation後完成。generation與pending candidate必須在每次row completion及final frame重新檢查；Dispose則使全部callback失效。這些negative path比happy-path attribute更新更重要，並須由unit與browser兩層鎖定。

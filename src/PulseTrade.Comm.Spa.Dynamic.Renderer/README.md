@@ -34,16 +34,22 @@ TaWorkspaceRenderer.render
     TaWorkspaceRenderer.defaultOptions
     callbacks
     runtimeState
+
+TaWorkspaceRenderer.renderWithProjectionCommit
+    TaWorkspaceRenderer.defaultOptions
+    callbacks
+    (fun committedState -> publishReceipt committedState)
+    runtimeState
 ```
 
-`runtimeState`是`Var<RuntimeState>`；host adapter負責strict frame decode/reducer與更新Var。正式runtime從current document讀editor catalog；`TaRendererOptions.EditorSchemas`只作standalone/test fallback。`callbacks.SubmitAction`接收含RequestId/revision的`DynamicActionRequest`並回`DynamicActionResult`；Add使用`ApplyTemplate(None, ...)`，Edit使用`ApplyTemplate(Some rowId, ...)`，不提供arbitrary URL、SQL或raw credential。
+`render`維持相容；需要browser completion contract的host使用`renderWithProjectionCommit`。callback只在current generation的full mount或same-topology visible-row refresh完成，並跨下一個animation-frame boundary後觸發；stale、superseded、current-state mismatch與相同tuple重複候選不觸發。`runtimeState`是`Var<RuntimeState>`；host adapter負責strict frame decode/reducer與更新Var。正式runtime從current document讀editor catalog；`TaRendererOptions.EditorSchemas`只作standalone/test fallback。`callbacks.SubmitAction`接收含RequestId/revision的`DynamicActionRequest`並回`DynamicActionResult`；Add使用`ApplyTemplate(None, ...)`，Edit使用`ApplyTemplate(Some rowId, ...)`，不提供arbitrary URL、SQL或raw credential。
 
 ## Verification
 
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-generic-marker-playwright.fsx`。
-- current exact package：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.62`，exact依賴Contracts `[0.1.26]`與FSharp.Core `[10.1.400]`。`0.1.39`曾出現同版號不同bytes，禁止採用。Renderer保留Backtest Presentation UX的same-topology navigator refresh，並以document/data/transport diagnostics區分render原因；chunked transport只在完整candidate commit後進入Renderer。Marker使用bounded SVG overlay、document trace order → bucket order的跨trace deterministic shape lanes、viewport-aware visible label與collision lanes；`TriangleUp／TriangleDown`方向不受anchor改寫，`Outline`使用`fill="none"`且保留完整pointer hit target。marker不進數值圖例、Y-domain或額外time slot；tooltip與shared cursor可在同一pointer interaction共存。row-local cursor timestamp使用SVG外固定32px gutter及固定CSS-pixel兩行tag；row resize只改plot height與tag位置，不縮放tag字型、padding、border或尺寸。line reader採indexed projection；大型candle projection以固定bucket array單次聚合first-open／last-close／high／low／volume，不建立per-slot tuple/groupBy，八種candle paths由single-pass buckets產生；source/Y-domain/cursor語意不變。同topology資料patch會更新shell prepared-data signal及navigator stripe，不重掛chart stack。mousemove經單一requestAnimationFrame直接更新固定crosshair、row timestamp與value DOM；shared cursor覆蓋current row完整SVG高度，不延伸到其他row或SVG外toolbar。
+- current local candidate：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.65`，exact依賴Contracts `[0.1.28]`與FSharp.Core `[10.1.400]`；consumer acceptance前不public push。`0.1.39`曾出現同版號不同bytes，禁止採用。Renderer保留Backtest Presentation UX的same-topology navigator refresh，並以document/data/transport diagnostics區分render原因；chunked transport只在完整candidate commit後進入Renderer。Marker使用bounded SVG overlay、document trace order → bucket order的跨trace deterministic shape lanes、viewport-aware visible label與collision lanes；`TriangleUp／TriangleDown`方向不受anchor改寫，`Outline`使用`fill="none"`且保留完整pointer hit target。marker不進數值圖例、Y-domain或額外time slot；tooltip與shared cursor可在同一pointer interaction共存。row-local cursor timestamp使用SVG外固定32px gutter及固定CSS-pixel兩行tag；row resize只改plot height與tag位置，不縮放tag字型、padding、border或尺寸。line reader採indexed projection；大型candle projection以固定bucket array單次聚合first-open／last-close／high／low／volume，不建立per-slot tuple/groupBy，八種candle paths由single-pass buckets產生；source/Y-domain/cursor語意不變。同topology資料patch會更新shell prepared-data signal及navigator stripe，不重掛chart stack。mousemove經單一requestAnimationFrame直接更新固定crosshair、row timestamp與value DOM；shared cursor覆蓋current row完整SVG高度，不延伸到其他row或SVG外toolbar。
 
 RFC-0017之後，cache rehydrate即使保留current identity/revision，只要validated Data object替換仍會重畫。row legend以`rowId + local trace index`隔離；All模式保留完整scale/cursor arrays，但以bounded candle/line paths呈現。non-base candle cursor使用一次range projection，不再對每個base timestamp掃描完整source。
 

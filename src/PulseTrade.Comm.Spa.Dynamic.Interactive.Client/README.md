@@ -35,9 +35,14 @@ let handle =
 // idempotent；不會建立第二條WebSocket
 handle.Start()
 
+let latest = handle.GetLastProjectionCommit()
+let unsubscribe = handle.SubscribeProjectionCommitted(fun receipt -> consume receipt)
+
 // terminal；送Unmounted、取消timer、關閉transport且不再重連
 handle.Dispose()
 ```
+
+每次current projection完成時，client同時更新application root的`data-ptcs-runtime-commit-*`level watermark，並dispatch bubbling `ptcs-dynamic-runtime-committed-v1`edge event；兩者內容同源。晚加入的consumer讀level，已先訂閱者讀edge或typed subscription。application重建／dispose不沿用舊canvas watermark，consumer必須以identity及`DataRevision >= expected`判斷完成。
 
 client只從目前page的`/view/`推導same-origin`/frames/` WebSocket，不接受remote URL、header或credential。transport close會保留原`RuntimeState`與renderer，以1秒起、30秒封頂的bounded backoff重連。replacement transport有既有runtime identity時只送一次Mounted與`RequestFullSnapshot`；valid Snapshot前畫面維持last-good。snapshot逾時會淘汰該socket generation並重連；舊generation callback不得排第二個timer或覆蓋新state。
 
@@ -88,4 +93,4 @@ BrowserRuntimeFramePump.reduceIsolatedEncodedFrames
 
 Production WebSocket `OnMessage`只enqueue；單一requestAnimationFrame pump依socket generation處理legacy frame或chunked `start / item / commit`。chunk framing與ordered batch transition由Contracts的`RuntimeSnapshotTransportAssembler`唯一決定；Interactive.Client只保留requestAnimationFrame分段`SduiValue` decode、canonical reducer與commit後publish，避免browser與machine consumer分叉協議。initial與reconnect producer都應先以`RuntimeSnapshotTransportCodec.encodeFrames`展開再flatten；invalid、stale或中斷batch保留last-good並只要求authoritative resync，不建立第二個pump。
 
-Current exact package：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.54`，exact依賴Contracts `[0.1.26]`、Renderer `[0.1.62]`與FSharp.Core `[10.1.400]`；bundle manifest版本須與nuspec一致。runtime frame沿用同一reducer/renderer，unknown kind/version與invalid candidate fail closed並保留last-good；合法大型snapshot使用Contracts allocation-light安全掃描。live preview只更新實際變動的SVG element/trace與row-value band；mousemove由Renderer的單一rAF固定DOM hot path處理。Host需處理`SharedCursorChanged`與`VisibleRangeChanged`；authoritative range/data仍由RuntimeFrame提交。`BrowserRuntimeCache`只作display-first last-good projection且由consumer顯式寫入。SPAA與DIB共用此bundle，不另做consumer overlay。
+Current local candidate：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.56`，exact依賴Contracts `[0.1.28]`、Renderer `[0.1.65]`與FSharp.Core `[10.1.400]`；consumer acceptance前不public push，bundle manifest版本須與nuspec一致。runtime frame沿用同一reducer/renderer，unknown kind/version與invalid candidate fail closed並保留last-good；合法大型snapshot使用Contracts allocation-light安全掃描。live preview只更新實際變動的SVG element/trace與row-value band；mousemove由Renderer的單一rAF固定DOM hot path處理。Host需處理`SharedCursorChanged`與`VisibleRangeChanged`；authoritative range/data仍由RuntimeFrame提交。`BrowserRuntimeCache`只作display-first last-good projection且由consumer顯式寫入。SPAA與DIB共用此bundle，不另做consumer overlay。

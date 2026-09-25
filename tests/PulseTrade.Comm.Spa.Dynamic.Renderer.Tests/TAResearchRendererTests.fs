@@ -31,6 +31,47 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
 
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-602 projection commit gate rejects stale superseded and duplicate candidates" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "projection-commit"
+                  CanvasInstanceId = CanvasInstanceId "projection-canvas" }
+            let state revision =
+                { RuntimeReducer.initial identity with
+                    DocumentRevision = 1L
+                    DataRevision = revision
+                    LastTransportSequence = revision }
+
+            let revision1 = state 1L
+            let revision2 = state 2L
+            let gate1, generation1 = ProjectionCommitGate.beginCandidate revision1 ProjectionCommitGate.initial
+            let gate2, generation2 = ProjectionCommitGate.beginCandidate revision2 gate1
+
+            Expect.equal
+                (ProjectionCommitGate.pendingGenerationFor revision2 gate2)
+                (Some generation2)
+                "the newest candidate must own the pending generation"
+
+            let staleGate, staleCommit = ProjectionCommitGate.tryCommit revision2 generation1 revision1 gate2
+            Expect.isNone staleCommit "a superseded candidate must not commit"
+            Expect.equal staleGate gate2 "a stale completion must not mutate the active gate"
+
+            let mismatchGate, mismatchCommit = ProjectionCommitGate.tryCommit revision1 generation2 revision2 gate2
+            Expect.isNone mismatchCommit "a candidate that is no longer the current runtime state must not commit"
+            Expect.equal mismatchGate gate2 "a current-state mismatch must preserve the pending candidate"
+
+            let committedGate, committed = ProjectionCommitGate.tryCommit revision2 generation2 revision2 gate2
+            Expect.equal committed (Some revision2) "the current candidate must commit exactly once"
+            Expect.isNone committedGate.Pending "a successful commit must clear the pending candidate"
+
+            let duplicateGate, duplicateGeneration = ProjectionCommitGate.beginCandidate revision2 committedGate
+            let duplicateCommittedGate, duplicateCommit =
+                ProjectionCommitGate.tryCommit revision2 duplicateGeneration revision2 duplicateGate
+            Expect.isNone duplicateCommit "the same projected revision must not publish a duplicate receipt"
+            Expect.equal
+                duplicateCommittedGate.LastCommitted
+                committedGate.LastCommitted
+                "deduplication must preserve the committed watermark"
+
         testCase "workspace bootstrap distinguishes lifecycle progress from terminal failure" <| fun _ ->
             let identity = { DocumentId = DocumentId "pending"; CanvasInstanceId = CanvasInstanceId "canvas" }
             let initial = RuntimeReducer.initial identity

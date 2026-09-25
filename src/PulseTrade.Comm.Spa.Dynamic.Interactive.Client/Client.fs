@@ -4,6 +4,7 @@ open PulseTrade.Comm.Spa.Dynamic.Contracts
 open PulseTrade.Comm.Spa.Dynamic.Renderer
 open WebSharper
 open WebSharper.JavaScript
+open WebSharper.JavaScript.Dom
 open WebSharper.UI
 open WebSharper.UI.Client
 
@@ -19,7 +20,9 @@ type InteractiveApplicationHandle =
     { Start: unit -> unit
       Dispose: unit -> unit
       IsDisposed: unit -> bool
-      IsConnected: unit -> bool }
+      IsConnected: unit -> bool
+      GetLastProjectionCommit: unit -> RuntimeProjectionCommitReceiptV1 option
+      SubscribeProjectionCommitted: (RuntimeProjectionCommitReceiptV1 -> unit) -> (unit -> unit) }
 
 /// Interactive notebook iframe browser application.
 ///
@@ -60,6 +63,57 @@ module Client =
         let messageQueue = ResizeArray<int * string>()
         let mutable messagePumpRunning = false
         let mutable activeBatch: RuntimeSnapshotTransportAssemblyState option = None
+        let projectionSubscribers = System.Collections.Generic.Dictionary<int, RuntimeProjectionCommitReceiptV1 -> unit>()
+        let mutable projectionSubscriberSequence = 0
+        let mutable projectionSequence = 0L
+        let mutable lastProjectionCommit: RuntimeProjectionCommitReceiptV1 option = None
+
+        let projectionRoot () = JS.Document.GetElementById options.RootElementId
+
+        let clearProjectionWatermark () =
+            match projectionRoot () with
+            | null -> ()
+            | root ->
+                RuntimeProjectionCommit.attributeNames
+                |> Array.iter root.RemoveAttribute
+
+        let publishProjectionCommit (state: RuntimeState) =
+            if not lifecycle.Disposed then
+                projectionSequence <- projectionSequence + 1L
+                match RuntimeProjectionCommit.create projectionSequence state with
+                | Error _ -> ()
+                | Ok receipt ->
+                    match projectionRoot () with
+                    | null -> ()
+                    | root ->
+                        let (DocumentId documentId) = receipt.Identity.DocumentId
+                        let (CanvasInstanceId canvasInstanceId) = receipt.Identity.CanvasInstanceId
+                        root.SetAttribute(RuntimeProjectionCommit.SchemaAttribute, RuntimeProjectionCommit.Schema)
+                        root.SetAttribute(RuntimeProjectionCommit.DocumentIdAttribute, documentId)
+                        root.SetAttribute(RuntimeProjectionCommit.CanvasInstanceIdAttribute, canvasInstanceId)
+                        root.SetAttribute(RuntimeProjectionCommit.DocumentRevisionAttribute, string receipt.DocumentRevision)
+                        root.SetAttribute(RuntimeProjectionCommit.DataRevisionAttribute, string receipt.DataRevision)
+                        root.SetAttribute(RuntimeProjectionCommit.TransportSequenceAttribute, string receipt.LastTransportSequence)
+                        root.SetAttribute(RuntimeProjectionCommit.ProjectionSequenceAttribute, string receipt.ProjectionSequence)
+                        lastProjectionCommit <- Some receipt
+                        projectionSubscribers.Values
+                        |> Seq.toArray
+                        |> Array.iter (fun subscriber -> subscriber receipt)
+                        let commitEvent = As<CustomEvent>(JS.Document.CreateEvent("CustomEvent"))
+                        commitEvent.InitCustomEvent(RuntimeProjectionCommit.EventName, true, false, box receipt)
+                        root.DispatchEvent(As<Event> commitEvent) |> ignore
+
+        let subscribeProjectionCommitted subscriber =
+            projectionSubscriberSequence <- projectionSubscriberSequence + 1
+            let subscriptionId = projectionSubscriberSequence
+            projectionSubscribers[subscriptionId] <- subscriber
+            let mutable subscribed = true
+            fun () ->
+                if subscribed then
+                    subscribed <- false
+                    projectionSubscribers.Remove subscriptionId |> ignore
+
+        clearProjectionWatermark ()
 
         let resetActiveBatch () =
             activeBatch <- None
@@ -544,7 +598,11 @@ module Client =
                                         "interactive-channel-not-open"
                                         "The interactive action channel is not open.") }
 
-            TaWorkspaceRenderer.render TaWorkspaceRenderer.defaultOptions callbacks state
+            TaWorkspaceRenderer.renderWithProjectionCommit
+                TaWorkspaceRenderer.defaultOptions
+                callbacks
+                publishProjectionCommit
+                state
             |> Doc.RunById options.RootElementId
 
         and publishRuntimeState next =
@@ -604,6 +662,7 @@ module Client =
             if not lifecycle.Disposed then
                 failPendingAction "interactive-channel-disposed" "The interactive action channel was disposed."
                 removeUnloadHandler ()
+                projectionSubscribers.Clear()
                 applyLifecycle InteractiveClientLifecycleEvent.Dispose
                 setStatus options.StatusElementId "DISPOSED"
 
@@ -617,7 +676,9 @@ module Client =
             { Start = fun () -> applyLifecycle InteractiveClientLifecycleEvent.Start
               Dispose = dispose
               IsDisposed = fun () -> lifecycle.Disposed
-              IsConnected = fun () -> lifecycle.Connected }
+              IsConnected = fun () -> lifecycle.Connected
+              GetLastProjectionCommit = fun () -> lastProjectionCommit
+              SubscribeProjectionCommitted = subscribeProjectionCommitted }
 
         handle.Start()
         handle

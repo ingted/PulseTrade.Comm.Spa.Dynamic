@@ -150,3 +150,8 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-072 | 3,819個1K points x 7 rows的真consumer initial、48→All與backtest/accounting replacement須以CDP量測；owner package完成不得由generic fixture單獨宣告，任何大於100ms task須有phase/child attribution。 |
 | DYN-TA-REQ-073 | shared temporal axis須以optional owner-authored `EventTimeUtc`保存Position的canonical presentation time；Renderer不得由interval end／observed-through／availability推導。legacy missing可相容顯示interval start，但不得視為canonical authority。 |
 | DYN-TA-REQ-074 | candle、line、marker attachment、row/reference timeline與cursor/data window須共用axis `EventTimeUtc`；interval projection、query intersection、coverage與availability仍只使用interval/frontier欄位。 |
+| DYN-TA-REQ-075 | Browser projection commit須為generic typed receipt，至少包含runtime identity、DocumentRevision、DataRevision、LastTransportSequence與application-local monotonic ProjectionSequence；不得含Backtest／TradeCore domain。 |
+| DYN-TA-REQ-076 | Receipt只有在current render generation全部visible rows完成mount／refresh，並再跨一個animation-frame boundary後發布；排程開始、action ACK或第一列完成均不得冒充commit。 |
+| DYN-TA-REQ-077 | reject、resync、stale socket/render generation、cancelled row work、disconnect中斷candidate及Dispose後callback不得發布receipt或提高watermark。 |
+| DYN-TA-REQ-078 | Interactive application須在stable root同時提供versioned edge event與level watermark，並由typed handle提供current/subscription API；chart revision attrs只供diagnostic。 |
+| DYN-TA-REQ-079 | Consumer須先subscribe再送action，且只以相同canvas identity及committed revision達expected完成等待；late subscriber可讀level，不得以固定delay或action ACK替代。 |

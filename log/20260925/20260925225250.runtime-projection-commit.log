@@ -1,0 +1,58 @@
+# Runtime projection commit protocol
+
+## Background
+
+Daedalus 的 RFC-0028 DIB companion 在送出 atomic overlay patch 後，必須等 browser reducer 與 Renderer 真正發布指定 revision，才能同步切換 summary／trades／timeline。現有 `data-chart-document-revision`／`data-chart-data-revision` 是 chart diagnostic，same-topology row refresh不保證更新，action ACK也早於browser projection完成。
+
+## Goal
+
+新增不含Backtest domain的generic runtime projection commit contract：typed receipt、current-generation rows-complete、paint-observable publish，以及stable iframe root上的edge event＋level watermark。consumer可在送action前訂閱，並以canvas identity與committed revision判斷完成。
+
+## Invariants
+
+- Reject／resync／stale generation／cancelled row work不得publish commit receipt。
+- 同一canvas內`ProjectionSequence`單調；新canvas identity不得沿用舊watermark。
+- Receipt只描述browser projection，不取代host action ACK、revision authority或domain transaction。
+- 現有chart revision attrs維持diagnostic，不升格成machine contract。
+- 不修改或重啟Daedalus SPAA `127.0.0.1:18883`。
+
+## Planned steps
+
+1. 撰寫 RFC-PTCS-DYNAMIC-0026，並同步TA REQ／SA／SD／WBS／Test。
+2. 在Contracts定義bounded、WebSharper-safe commit receipt與validation／codec需要的最小surface。
+3. Renderer在full mount與same-topology incremental rows完成後，僅對current generation於paint boundary回報receipt。
+4. Interactive.Client在stable app root保存latest watermark並發布generic bubbling event；必要時擴充handle observer，但不建立第二套authority。
+5. 補unit、browser與negative lifecycle tests；build/pack exact local graph，交Daedalus fresh-kernel E2E。
+6. consumer acceptance前維持local-only；通過後才public push並完成official readback。
+
+## Scope / owner
+
+Owner repo：`C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`，branch `20260915_033.ptcs_group_support`。Aster擁有Contracts／Renderer／Interactive.Client；Daedalus擁有DIExt／SPAA shared workspace controller與fresh-kernel consumer gate。
+
+## 假設
+
+- 本slice只發布owner三包local candidates；Dynamic.Ptcs／Ptcs.Client exact graph、browser gate與consumer acceptance排入DYN-WBS-564，不在缺乏驗收時public push。
+- Daedalus的SPAA `127.0.0.1:18883`保持運行且不由本slice修改、停止或重啟。
+
+## Acceptance
+
+- same-topology data patch不重掛chart stack，但仍在所有visible row projection完成後發布一次receipt。
+- topology／document change在完整rows可觀察後發布，不提前於async preparation。
+- rapid A→B或generation replacement只發布latest current candidate；rejected frame與dispose後不發布。
+- late subscriber可從stable root讀latest watermark；early subscriber可由event取得同一receipt。
+- consumer以同canvas且`DataRevision >= expected`完成等待，不依賴action ACK或舊chart attrs。
+
+## Risks
+
+- WebSharper DOM event interop與record shape需維持public ABI、避免inline JavaScript。
+- row `Var`更新後的DOM publication時點需用下一個RAF／可觀察gate鎖定，不能把排程完成誤當paint完成。
+- 多次快速frame可能取消舊row work；receipt generation必須跟data work generation一致。
+
+## Operations
+
+- 2026-09-25 22:52 +08:00：確認repo clean、RFC下一號為0026；Daedalus以COMM `msg-fsi-e2e9fe6e54e74c93845f1073a47bdee8`授權owner RFC／實作，Aster以`msg-fsi-0e68ea6a89fa4b89a9cc622031650d9c`接受。
+- 2026-09-25 23:08 +08:00：完成RFC-0026與TA REQ-075..079、SA/SD/WBS/Test追溯；通知Daedalus correlation `rfc-tradecore-0028-runtime-projection-commit-20260925`。
+- 2026-09-25 23:16 +08:00：完成Contracts typed receipt、Renderer generation-safe rows completion callback、Interactive.Client typed handle與stable root edge＋level watermark；Contracts、Renderer、Interactive.Client full build通過。
+- 2026-09-25 23:22 +08:00：focused suites Contracts `42/42`、Renderer `47/47`、Interactive.Client `12/12`通過；新增DYN-T-602驗stale/superseded/current mismatch與tuple dedupe。local exact graph為`0.1.28 / 0.1.65 / 0.1.56`，未public push。
+- 2026-09-25 23:25 +08:00：依user指示盡快收尾；browser lifecycle/performance與Daedalus fresh-kernel consumer gate保留pending，不以build/unit誤宣稱完成。
+- 2026-09-25 23:26 +08:00：收到Daedalus generic Renderer visible-domain高優先bug；已回覆確認owner責任與修正不變量，待本slice commit後立即進行。closeout checker以task-scoped session重跑為PASS=34／WARN=2／FAIL=0；changed-path sensitive scan high=0／medium=0。

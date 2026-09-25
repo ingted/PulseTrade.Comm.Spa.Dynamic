@@ -1579,7 +1579,11 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create ui.CursorIndex
         renderRowReactive state ui visibleTimestamps cursor.View setCursorIndex commitCursorIndex showSharedTimeAxis row
 
-    let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
+    let renderWithProjectionCommit
+        (options: TaRendererOptions)
+        (callbacks: TaRendererCallbacks)
+        (onProjectionCommitted: RuntimeState -> unit)
+        (runtimeState: Var<RuntimeState>) =
         ensureAxisResizeTracking ()
         let rendererTelemetryInstanceId = nextRendererTelemetryInstanceId ()
         let currentCanvasId () = runtimeState.Value.Identity.CanvasInstanceId
@@ -1680,16 +1684,32 @@ module TaWorkspaceRenderer =
         let mutable activeRowDataStates: Var<TaPreparedRendererData> array = [||]
         let scheduleNextFrame work =
             JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
-        let scheduleRowDataRefresh prepared =
+        let mutable projectionCommitGate = ProjectionCommitGate.initial
+        let beginProjection state =
+            let nextGate, generation = ProjectionCommitGate.beginCandidate state projectionCommitGate
+            projectionCommitGate <- nextGate
+            generation
+        let pendingProjectionFor state =
+            ProjectionCommitGate.pendingGenerationFor state projectionCommitGate
+        let completeProjection generation state =
+            scheduleNextFrame (fun () ->
+                let nextGate, committed =
+                    ProjectionCommitGate.tryCommit runtimeState.Value generation state projectionCommitGate
+                projectionCommitGate <- nextGate
+                committed |> Option.iter onProjectionCommitted)
+        let scheduleRowDataRefresh projectionCandidateGeneration candidateState prepared =
             dataWorkGeneration <- dataWorkGeneration + 1
             let generation = dataWorkGeneration
             let targets = activeRowDataStates
             let rec update index =
-                if generation = dataWorkGeneration && index < targets.Length then
-                    scheduleNextFrame (fun () ->
-                        if generation = dataWorkGeneration then
-                            targets[index].Value <- prepared
-                            update (index + 1))
+                if generation = dataWorkGeneration then
+                    if index < targets.Length then
+                        scheduleNextFrame (fun () ->
+                            if generation = dataWorkGeneration then
+                                targets[index].Value <- prepared
+                                update (index + 1))
+                    else
+                        completeProjection projectionCandidateGeneration candidateState
             update 0
         let mutable pendingCursorIndex: int option option = None
         let mutable cursorFrameScheduled = false
@@ -1772,6 +1792,7 @@ module TaWorkspaceRenderer =
                 || next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision
                 || nextChartTopology <> observedChartTopology
             if topologyChanged then
+                beginProjection next |> ignore
                 chartRenderReason <-
                     if next.Identity <> chartRuntimeState.Value.Identity then "identity"
                     elif next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision then "document-revision"
@@ -1826,8 +1847,9 @@ module TaWorkspaceRenderer =
                 | None -> pendingBoundaryPan <- None
                 chartRuntimeState.Value <- next
             elif refreshRows then
+                let projectionCandidateGeneration = beginProjection next
                 shellPreparedData.Value <- nextPreparedData
-                scheduleRowDataRefresh nextPreparedData
+                scheduleRowDataRefresh projectionCandidateGeneration next nextPreparedData
             latestPreparedData <- nextPreparedData
             observedDataState <- next
 
@@ -1848,6 +1870,7 @@ module TaWorkspaceRenderer =
                         observedChartTopology <- chartTopologySignaturePrepared current prepared
                         observedDataState <- current
                         preparedDataReady <- true
+                        beginProjection current |> ignore
                         chartRuntimeState.Value <- current)
 
         let scheduleIncrementalPreparation next =
@@ -2866,6 +2889,7 @@ module TaWorkspaceRenderer =
                             chartWorkGeneration <- chartWorkGeneration + 1
                             dataWorkGeneration <- dataWorkGeneration + 1
                             let workGeneration = chartWorkGeneration
+                            let projectionCandidateGeneration = pendingProjectionFor state
                             chartStackElement <- null
                             cursorPanelElement <- null
                             let visibleRows =
@@ -2930,35 +2954,39 @@ module TaWorkspaceRenderer =
                                 applyCursorIndex cursorIndex.Value
 
                             let rec mountRow index =
-                                if workGeneration = chartWorkGeneration && index < visibleRows.Length then
-                                    scheduleNextFrame (fun () ->
-                                        if workGeneration = chartWorkGeneration then
-                                            let prepared = rowDataStates[index].Value
-                                            let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow =
-                                                renderRowReactivePreparedLiveWithHeight
-                                                    state
-                                                    ui
-                                                    prepared
-                                                    rowDataStates[index].View
-                                                    visibleTimestamps
-                                                    cursorIndex.View
-                                                    setCursorIndex
-                                                    commitCursorIndex
-                                                    true
-                                                    (document.BaseRowId = Some visibleRows[index].RowId)
-                                                    rowHeights[index]
-                                                    scheduleVisibleValueRefresh
-                                                    (fun node ->
-                                                        currentRowLegendElements[index] <- node
-                                                        scheduleVisibleValueRefresh ())
-                                                    visibleRows[index]
-                                            stagedCursorReaders[index] <- Some cursorReaders
-                                            stagedLegendReaders[index] <- Some legendReaders
-                                            stagedLegendValueReaders[index] <- Some latestLegendReadersForRow
-                                            rowDocs[index].Value <- rowDoc
-                                            readyRowCount.Value <- index + 1
-                                            synchronizeReaders ()
-                                            mountRow (index + 1))
+                                if workGeneration = chartWorkGeneration then
+                                    if index < visibleRows.Length then
+                                        scheduleNextFrame (fun () ->
+                                            if workGeneration = chartWorkGeneration then
+                                                let prepared = rowDataStates[index].Value
+                                                let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow =
+                                                    renderRowReactivePreparedLiveWithHeight
+                                                        state
+                                                        ui
+                                                        prepared
+                                                        rowDataStates[index].View
+                                                        visibleTimestamps
+                                                        cursorIndex.View
+                                                        setCursorIndex
+                                                        commitCursorIndex
+                                                        true
+                                                        (document.BaseRowId = Some visibleRows[index].RowId)
+                                                        rowHeights[index]
+                                                        scheduleVisibleValueRefresh
+                                                        (fun node ->
+                                                            currentRowLegendElements[index] <- node
+                                                            scheduleVisibleValueRefresh ())
+                                                        visibleRows[index]
+                                                stagedCursorReaders[index] <- Some cursorReaders
+                                                stagedLegendReaders[index] <- Some legendReaders
+                                                stagedLegendValueReaders[index] <- Some latestLegendReadersForRow
+                                                rowDocs[index].Value <- rowDoc
+                                                readyRowCount.Value <- index + 1
+                                                synchronizeReaders ()
+                                                mountRow (index + 1))
+                                    else
+                                        projectionCandidateGeneration
+                                        |> Option.iter (fun generation -> completeProjection generation state)
                             mountRow 0
 
                             let visibleStart = if visibleWindow.Count = 0 then 0 else visibleWindow.StartIndex + 1
@@ -3081,3 +3109,6 @@ module TaWorkspaceRenderer =
                     ] :> Doc)
             |> Doc.EmbedView
         ]
+
+    let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
+        renderWithProjectionCommit options callbacks ignore runtimeState

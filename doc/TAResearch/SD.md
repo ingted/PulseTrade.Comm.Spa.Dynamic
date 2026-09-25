@@ -929,3 +929,40 @@ owner row EventTimeUtc
 `presentationTimestamp`不得用IntervalEndUtc、ObservedThroughUtc或AvailableAtUtc補值。`timestampInInterval`、`matchingReferenceRange`、query range、coverage與`tryBasePointIntervalEnd`維持start/end語意；只把代表可見point identity的`IntervalStartUtc` lookup改成presentation timestamp。`traceTopologyTimestampsPrepared`刻意保留IntervalStartUtc／Position語意，同Position preview只改EventTimeUtc時不得使`chartTopologySignature`改變。
 
 Package gate須同步Contracts、Renderer、Interactive.Client、Dynamic.Ptcs及Ptcs.Client exact references。測試表見`DYN-TA-T-098..101`。
+
+## 2026-09-25 Runtime projection commit revision 18
+
+Contracts新增：
+
+```fsharp
+type RuntimeProjectionCommitReceiptV1 = {
+    Identity: RuntimeIdentity
+    DocumentRevision: int64
+    DataRevision: int64
+    LastTransportSequence: int64
+    ProjectionSequence: int64
+}
+
+module RuntimeProjectionCommit =
+    val create: projectionSequence:int64 -> RuntimeState -> Result<RuntimeProjectionCommitReceiptV1, string>
+    val satisfies: expectedIdentity:RuntimeIdentity -> expectedDataRevision:int64 -> RuntimeProjectionCommitReceiptV1 -> bool
+```
+
+Renderer保留`render options callbacks runtimeState`，新增`renderWithProjectionCommit options callbacks onCommitted runtimeState`。每次accepted data/document candidate取得generation；full mount與same-topology refresh共用pending row barrier。每個visible row只可完成一次；全部完成後再排一個`requestAnimationFrame`，重新檢查generation、candidate tuple及dispose狀態後callback。相同tuple去重，zero-row shell走同一final frame。
+
+Interactive.Client收到Renderer completion後增加application-local ProjectionSequence，產生typed receipt，依序更新stable root attributes、保存latest、通知typed subscribers、dispatch bubbling custom event。固定DOM contract：
+
+```text
+event = ptcs-dynamic-runtime-committed-v1
+data-ptcs-runtime-commit-schema = runtime-projection-commit.v1
+data-ptcs-runtime-commit-document-id
+data-ptcs-runtime-commit-canvas-instance-id
+data-ptcs-runtime-commit-document-revision
+data-ptcs-runtime-commit-data-revision
+data-ptcs-runtime-commit-transport-sequence
+data-ptcs-runtime-commit-projection-sequence
+```
+
+`InteractiveApplicationHandle`新增`GetLastProjectionCommit`與`SubscribeProjectionCommitted`；unsubscribe idempotent。Application Start先移除舊root attributes；Dispose清subscriber並阻止後續publish，但保留最後attributes供診斷。CustomEvent以`Document.CreateEvent("CustomEvent")`、`InitCustomEvent(..., true, false, box receipt)`與`DispatchEvent`建立，禁止inline JavaScript。
+
+測試切點：Contracts pure helper；Renderer row barrier／generation／dedupe model tests；Interactive handle subscription；F# Playwright驗event-detail與root level相同、late subscribe、same-topology、full mount、rapid replacement及dispose negative；4,000-slot performance regression沿用owner gate。

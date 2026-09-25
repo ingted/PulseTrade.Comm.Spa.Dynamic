@@ -32,6 +32,75 @@ type RuntimeState =
       Poll: RuntimePollState
       LastError: RuntimeError option }
 
+type RuntimeProjectionCommitReceiptV1 =
+    { Identity: RuntimeIdentity
+      DocumentRevision: int64
+      DataRevision: int64
+      LastTransportSequence: int64
+      ProjectionSequence: int64 }
+
+[<JavaScript; RequireQualifiedAccess>]
+module RuntimeProjectionCommit =
+    [<Literal>]
+    let Schema = "runtime-projection-commit.v1"
+
+    [<Literal>]
+    let EventName = "ptcs-dynamic-runtime-committed-v1"
+
+    [<Literal>]
+    let SchemaAttribute = "data-ptcs-runtime-commit-schema"
+
+    [<Literal>]
+    let DocumentIdAttribute = "data-ptcs-runtime-commit-document-id"
+
+    [<Literal>]
+    let CanvasInstanceIdAttribute = "data-ptcs-runtime-commit-canvas-instance-id"
+
+    [<Literal>]
+    let DocumentRevisionAttribute = "data-ptcs-runtime-commit-document-revision"
+
+    [<Literal>]
+    let DataRevisionAttribute = "data-ptcs-runtime-commit-data-revision"
+
+    [<Literal>]
+    let TransportSequenceAttribute = "data-ptcs-runtime-commit-transport-sequence"
+
+    [<Literal>]
+    let ProjectionSequenceAttribute = "data-ptcs-runtime-commit-projection-sequence"
+
+    let attributeNames =
+        [| SchemaAttribute
+           DocumentIdAttribute
+           CanvasInstanceIdAttribute
+           DocumentRevisionAttribute
+           DataRevisionAttribute
+           TransportSequenceAttribute
+           ProjectionSequenceAttribute |]
+
+    let validate (receipt: RuntimeProjectionCommitReceiptV1) =
+        let (DocumentId documentId) = receipt.Identity.DocumentId
+        let (CanvasInstanceId canvasInstanceId) = receipt.Identity.CanvasInstanceId
+        if String.IsNullOrWhiteSpace documentId then Error "runtime-projection-document-id-required"
+        elif String.IsNullOrWhiteSpace canvasInstanceId then Error "runtime-projection-canvas-id-required"
+        elif receipt.DocumentRevision < 0L then Error "runtime-projection-document-revision-invalid"
+        elif receipt.DataRevision < 0L then Error "runtime-projection-data-revision-invalid"
+        elif receipt.LastTransportSequence < 0L then Error "runtime-projection-transport-sequence-invalid"
+        elif receipt.ProjectionSequence <= 0L then Error "runtime-projection-sequence-invalid"
+        else Ok receipt
+
+    let create projectionSequence (state: RuntimeState) =
+        { Identity = state.Identity
+          DocumentRevision = state.DocumentRevision
+          DataRevision = state.DataRevision
+          LastTransportSequence = state.LastTransportSequence
+          ProjectionSequence = projectionSequence }
+        |> validate
+
+    let satisfies expectedIdentity expectedDataRevision (receipt: RuntimeProjectionCommitReceiptV1) =
+        receipt.Identity = expectedIdentity
+        && receipt.DataRevision >= expectedDataRevision
+        && validate receipt |> Result.isOk
+
 [<RequireQualifiedAccess>]
 type RuntimeEffect =
     | NoEffect
@@ -873,7 +942,7 @@ module RuntimeReducer =
         | None -> state, RuntimeEffect.NoEffect
         | Some document -> { state with View = { Values = document.DefaultView } }, RuntimeEffect.NoEffect
 
-    let resetCanvas state =
+    let resetCanvas (state: RuntimeState) =
         state, RuntimeEffect.SubmitAction(SduiAction.ResetCanvas state.Identity.CanvasInstanceId)
 
 [<RequireQualifiedAccess>]

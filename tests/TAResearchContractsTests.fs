@@ -2382,4 +2382,36 @@ let tests =
                 Expect.equal issue.Code "required" "Machine consumers must still receive canonical validation errors."
                 Expect.equal issue.PacketIndex 1 "Deferred validation must still identify the commit packet."
             | Result.Ok _ -> failtest "Machine finish must reject an invalid assembled frame."
+
+        testCase "DYN-T-601 runtime projection receipt validates authority and expected revision" <| fun _ ->
+            let state =
+                { RuntimeReducer.initial identity with
+                    DocumentRevision = 7L
+                    DataRevision = 11L
+                    LastTransportSequence = 19L }
+
+            let receipt =
+                RuntimeProjectionCommit.create 3L state
+                |> Result.defaultWith failtest
+
+            Expect.equal receipt.Identity identity "The receipt must retain the accepted runtime identity."
+            Expect.equal receipt.DocumentRevision 7L "The receipt must retain the document revision."
+            Expect.equal receipt.DataRevision 11L "The receipt must retain the data revision."
+            Expect.equal receipt.LastTransportSequence 19L "The receipt must retain the transport sequence."
+            Expect.equal receipt.ProjectionSequence 3L "The receipt must retain the application projection sequence."
+            Expect.isTrue (RuntimeProjectionCommit.satisfies identity 11L receipt) "The same identity and reached revision must satisfy."
+            Expect.isTrue (RuntimeProjectionCommit.satisfies identity 10L receipt) "A later committed revision must satisfy an older expectation."
+            Expect.isFalse (RuntimeProjectionCommit.satisfies identity 12L receipt) "An unreached revision must not satisfy."
+            Expect.isFalse
+                (RuntimeProjectionCommit.satisfies { identity with CanvasInstanceId = CanvasInstanceId "other" } 11L receipt)
+                "A different canvas must not satisfy even at the same revision."
+
+            Expect.isError
+                (RuntimeProjectionCommit.create 0L state)
+                "Projection sequence zero must fail closed."
+
+            Expect.isError
+                ({ receipt with DataRevision = -1L }
+                 |> RuntimeProjectionCommit.validate)
+                "Negative authority revisions must fail closed."
     ]
