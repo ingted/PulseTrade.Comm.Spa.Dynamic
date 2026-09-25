@@ -262,6 +262,21 @@ let computedStyleProperties (session: ICDPSession) selector propertyNames =
         if selected.Contains name then Some(name, entry.GetProperty("value").GetString()) else None)
     |> Map.ofSeq
 
+let requireFixedCssStroke (session: ICDPSession) selector (locator: ILocator) minimum maximum =
+    let widthText = attributeOrEmpty locator "data-stroke-width-css-pixels"
+    let mutable width = 0.0
+    require
+        (Double.TryParse(widthText, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture, &width))
+        $"{selector} must publish numeric data-stroke-width-css-pixels, actual={widthText}"
+    require (width >= minimum && width <= maximum) $"{selector} stroke width must stay within {minimum}-{maximum} CSS px, actual={width}"
+    require (attributeOrEmpty locator "vector-effect" = "non-scaling-stroke") $"{selector} must use non-scaling-stroke"
+    let computed = computedStyleProperties session selector [| "stroke-width" |]
+    let expected = widthText + "px"
+    require
+        (Map.tryFind "stroke-width" computed = Some expected)
+        $"{selector} computed stroke width must be {expected}, actual={computed}"
+    computed
+
 let startMainThreadTrace (session: ICDPSession) =
     let completion = TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously)
     let emitter = session.Event("Tracing.tracingComplete")
@@ -568,6 +583,28 @@ let verifyDesktop (browser: IBrowser) =
     require
         (sharedSma.GetAttributeAsync("d") |> awaitTask |> Option.ofObj |> Option.exists (String.IsNullOrWhiteSpace >> not))
         "shared-axis SMA trace path must be non-empty"
+    let defaultChartSvgs = page.Locator("svg[role='img'][data-testid^='ta-candle-'], svg[role='img'][data-testid^='ta-composite-']")
+    let defaultChartSvgCount = defaultChartSvgs.CountAsync() |> awaitTask
+    require (defaultChartSvgCount > 0) "renderer must expose chart SVGs before row resize"
+    for index in 0 .. defaultChartSvgCount - 1 do
+        let chart = defaultChartSvgs.Nth(index)
+        let testId = chart.GetAttributeAsync("data-testid") |> awaitTask |> Option.ofObj |> Option.defaultValue $"chart-{index}"
+        let box = chart.BoundingBoxAsync() |> awaitTask
+        require (not (isNull box)) $"default chart SVG {testId} must expose geometry"
+        require (box.Height <= 250.1f) $"default chart SVG {testId} must be <=250 CSS px before resize; actual={box.Height}"
+    let sharedSmaSelector = "[data-testid='ta-trace-sma-sma-1k']"
+    let sharedSmaStrokeBeforeResize = requireFixedCssStroke longTaskSession sharedSmaSelector sharedSma 1.0 2.0
+    let smaResize = page.Locator("[data-testid='ta-row-resize-sma']")
+    let smaHeightBeforeResize = requiredIntAttribute smaResize "aria-valuenow"
+    smaResize.FocusAsync() |> awaitUnit
+    smaResize.PressAsync("Shift+ArrowUp") |> awaitUnit
+    waitForAttributeChange smaResize "aria-valuenow" (string smaHeightBeforeResize) |> ignore
+    let sharedSmaStrokeAfterResize = requireFixedCssStroke longTaskSession sharedSmaSelector sharedSma 1.0 2.0
+    require
+        (sharedSmaStrokeAfterResize = sharedSmaStrokeBeforeResize)
+        $"SMA line CSS-pixel stroke changed after row resize: before={sharedSmaStrokeBeforeResize}; after={sharedSmaStrokeAfterResize}"
+    smaResize.DblClickAsync() |> awaitUnit
+    waitForAttributeValue smaResize "aria-valuenow" (string smaHeightBeforeResize)
     let priceCandlePaths = page.Locator("[data-testid='ta-candle-price-price-1k'][data-candle-batched='true']")
     let candleRows = [| "price"; "volume"; "dmi"; "adx"; "heikin" |]
     let candlePathLocators =
@@ -651,10 +688,17 @@ let verifyDesktop (browser: IBrowser) =
         "fixed cursor gutter must remain outside and above the SVG plot"
     let cursorTagStyleBeforeResize = computedStyleProperties longTaskSession priceCursorTagSelector cursorTagStyleProperties
     let priceResize = page.Locator("[data-testid='ta-row-resize-price']")
-    require (requiredIntAttribute priceResize "aria-valuenow" = 720) "HeightWeight must resolve the authored candle-row default"
+    require (requiredIntAttribute priceResize "aria-valuenow" = 250) "Authored candle-row default must cap at 250 CSS pixels"
+    priceResize.FocusAsync() |> awaitUnit
+    priceResize.PressAsync("Shift+ArrowDown") |> awaitUnit
+    waitForAttributeValue priceResize "aria-valuenow" "282"
+    let manuallyExpandedPriceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
+    require (not (isNull manuallyExpandedPriceBox) && manuallyExpandedPriceBox.Height > 250.0f) "Trader manual resize must remain able to exceed the authored 250px cap"
+    priceResize.DblClickAsync() |> awaitUnit
+    waitForAttributeValue priceResize "aria-valuenow" "250"
     priceResize.FocusAsync() |> awaitUnit
     priceResize.PressAsync("Shift+ArrowUp") |> awaitUnit
-    waitForAttributeValue priceResize "aria-valuenow" "688"
+    waitForAttributeValue priceResize "aria-valuenow" "218"
     let resizedPriceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
     require (not (isNull resizedPriceBox) && resizedPriceBox.Height < initialPriceBox.Height - 20.0f) "keyboard resize must reduce only the price chart height"
     let resizeHandleBox = priceResize.BoundingBoxAsync() |> awaitTask
@@ -663,9 +707,9 @@ let verifyDesktop (browser: IBrowser) =
     page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
     page.Mouse.MoveAsync(resizeHandleBox.X + resizeHandleBox.Width / 2.0f, resizeHandleBox.Y - 48.0f, MouseMoveOptions(Steps = 6)) |> awaitUnit
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
-    waitForAttributeChange priceResize "aria-valuenow" "688" |> ignore
+    waitForAttributeChange priceResize "aria-valuenow" "218" |> ignore
     let pointerHeight = waitForStableIntAttribute priceResize "aria-valuenow"
-    require (pointerHeight >= 632 && pointerHeight <= 648) $"pointer resize must apply the requested 48px reduction within handle geometry tolerance, actual={pointerHeight}"
+    require (pointerHeight >= 180 && pointerHeight <= 186) $"pointer resize must apply the requested reduction down to the 180px candle minimum within handle geometry tolerance, actual={pointerHeight}"
     Threading.Thread.Sleep 50
     requireCandleEdgePadding
         "pointer-resize"
@@ -697,7 +741,7 @@ let verifyDesktop (browser: IBrowser) =
         (cursorTagStyleAfterResize = cursorTagStyleBeforeResize)
         $"row resize changed fixed cursor tag computed style: before={cursorTagStyleBeforeResize}; after={cursorTagStyleAfterResize}"
     priceResize.DblClickAsync() |> awaitUnit
-    waitForAttributeValue priceResize "aria-valuenow" "720"
+    waitForAttributeValue priceResize "aria-valuenow" "250"
     requireCandleEdgePadding
         "resize-reset"
         15.0
@@ -840,6 +884,20 @@ let verifyDesktop (browser: IBrowser) =
     require (not (isNull navigatorBox) && not (isNull selectionBox)) "overview navigator and selection must expose pointer geometry"
     require (page.Locator("[data-testid='ta-overview-left-handle']").IsVisibleAsync() |> awaitTask) "overview must expose a left resize handle"
     require (page.Locator("[data-testid='ta-overview-right-handle']").IsVisibleAsync() |> awaitTask) "overview must expose a right resize handle"
+    let leftVisibleHandleSelector = "[data-testid='ta-overview-left-handle-visual']"
+    let rightVisibleHandleSelector = "[data-testid='ta-overview-right-handle-visual']"
+    let leftVisibleHandle = page.Locator(leftVisibleHandleSelector)
+    let rightVisibleHandle = page.Locator(rightVisibleHandleSelector)
+    let leftHandleStroke = requireFixedCssStroke longTaskSession leftVisibleHandleSelector leftVisibleHandle 2.0 2.0
+    let rightHandleStroke = requireFixedCssStroke longTaskSession rightVisibleHandleSelector rightVisibleHandle 2.0 2.0
+    require (attributeOrEmpty leftVisibleHandle "stroke" = "#155f73") "left overview boundary must use the owner color"
+    require (attributeOrEmpty rightVisibleHandle "stroke" = "#155f73") "right overview boundary must use the owner color"
+    let leftHandleHit = page.Locator("rect[data-testid='ta-overview-left-handle']")
+    let rightHandleHit = page.Locator("rect[data-testid='ta-overview-right-handle']")
+    require (attributeOrEmpty leftHandleHit "fill" = "transparent") "left overview drag hit target must remain transparent"
+    require (attributeOrEmpty rightHandleHit "fill" = "transparent") "right overview drag hit target must remain transparent"
+    require (attributeOrEmpty leftHandleHit "width" = "8") "left overview drag hit target must retain the existing width"
+    require (attributeOrEmpty rightHandleHit "width" = "8") "right overview drag hit target must retain the existing width"
     let stripeXMatch = Text.RegularExpressions.Regex.Match(signalStripePath, "M ([0-9.]+) 0")
     require stripeXMatch.Success ("overview stripe path did not expose canonical X: " + signalStripePath)
     let stripeX = Single.Parse(stripeXMatch.Groups[1].Value, Globalization.CultureInfo.InvariantCulture)
@@ -1102,7 +1160,7 @@ let verifyDesktop (browser: IBrowser) =
         (renderAfterMarkerReplacement = renderBeforeRightHandle)
         "same-topology marker replacement must refresh overlay row data without rebuilding the chart stack"
     let allNavigatorBox = navigator.BoundingBoxAsync() |> awaitTask
-    let rightHandle = page.Locator("[data-testid='ta-overview-right-handle']")
+    let rightHandle = rightHandleHit
     let rightHandleBox = rightHandle.BoundingBoxAsync() |> awaitTask
     require (not (isNull rightHandleBox)) "right overview handle must expose geometry"
     rightHandle.HoverAsync() |> awaitUnit
@@ -1117,7 +1175,7 @@ let verifyDesktop (browser: IBrowser) =
     waitForIntAttribute chartStack "data-chart-render-sequence" (renderAfterMarkerReplacement + 1)
     waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls after right-handle commit"
     let resizedNavigatorBox = navigator.BoundingBoxAsync() |> awaitTask
-    let leftHandle = page.Locator("[data-testid='ta-overview-left-handle']")
+    let leftHandle = leftHandleHit
     let leftHandleBox = leftHandle.BoundingBoxAsync() |> awaitTask
     let renderBeforeLeftHandle = requiredIntAttribute chartStack "data-chart-render-sequence"
     require (not (isNull leftHandleBox)) "left overview handle must expose geometry"
@@ -1130,6 +1188,10 @@ let verifyDesktop (browser: IBrowser) =
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForIntAttribute chartStack "data-chart-render-sequence" (renderBeforeLeftHandle + 1)
     waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls after left-handle commit"
+    require
+        (requireFixedCssStroke longTaskSession leftVisibleHandleSelector leftVisibleHandle 2.0 2.0 = leftHandleStroke
+         && requireFixedCssStroke longTaskSession rightVisibleHandleSelector rightVisibleHandle 2.0 2.0 = rightHandleStroke)
+        "overview visible boundary CSS-pixel strokes must survive viewport resize commits"
 
     page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing {initialVisibleStart}-{capacityPointCount}"
@@ -1178,10 +1240,10 @@ let verifyDesktop (browser: IBrowser) =
     let reloadResize = page.Locator("[data-testid='ta-row-resize-price']")
     reloadResize.FocusAsync() |> awaitUnit
     reloadResize.PressAsync("Shift+ArrowUp") |> awaitUnit
-    waitForAttributeValue reloadResize "aria-valuenow" "688"
+    waitForAttributeValue reloadResize "aria-valuenow" "218"
     page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
     page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
-    require (requiredIntAttribute (page.Locator("[data-testid='ta-row-resize-price']")) "aria-valuenow" = 720) "browser reload must discard renderer-local row-height overrides"
+    require (requiredIntAttribute (page.Locator("[data-testid='ta-row-resize-price']")) "aria-valuenow" = 250) "browser reload must discard renderer-local row-height overrides and restore the capped authored default"
     require (consoleErrors.Count = 0) ("desktop console errors after reload: " + String.concat " | " consoleErrors)
 
     Directory.CreateDirectory outputDirectory |> ignore

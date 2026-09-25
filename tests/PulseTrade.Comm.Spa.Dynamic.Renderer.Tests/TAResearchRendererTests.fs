@@ -1276,10 +1276,14 @@ let tests =
             let markerBounds = RendererModel.rowHeightBounds baseRow [| candle; marker |]
             let tallBounds = RendererModel.rowHeightBounds { baseRow with HeightWeight = 9.0 } [| candle; marker |]
             let scalarBounds = RendererModel.rowHeightBounds baseRow [| { candle with Kind = TaTraceKind.Line } |]
+            let tallScalarBounds = RendererModel.rowHeightBounds { baseRow with HeightWeight = 9.0 } [| { candle with Kind = TaTraceKind.Line } |]
             Expect.equal candleBounds.DefaultHeight 250 "Candle default follows HeightWeight."
             Expect.equal markerBounds.DefaultHeight candleBounds.DefaultHeight "Markers do not inflate row height."
-            Expect.equal tallBounds.DefaultHeight 720 "Candle height clamps at 720px."
+            Expect.equal tallBounds.DefaultHeight 250 "Authored candle defaults cap at 250px."
+            Expect.equal tallBounds.Maximum 720 "Manual candle resizing remains available above the authored default cap."
             Expect.equal scalarBounds.DefaultHeight 112 "Scalar rows use the compact baseline."
+            Expect.equal tallScalarBounds.DefaultHeight 250 "Authored scalar defaults cap at 250px."
+            Expect.equal tallScalarBounds.Maximum 480 "Manual scalar resizing remains available above the authored default cap."
             Expect.equal (RendererModel.rowHeightStorageKey (CanvasInstanceId "canvas-a") "price") "canvas-a:price" "Local row height state is isolated by canvas and row."
 
         testCase "DYN-T-564 timestamp presentation is locale-independent" <| fun _ ->

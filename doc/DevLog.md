@@ -1623,3 +1623,21 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Consumer closure：Daedalus以真SPAA完成narrowed／48／200／All／resize逐row驗收，visible-domain gates全數通過。該輪另量得pointer p95=82.69ms，高於consumer 50ms門檻；此項不推翻Y-domain修正，但在第二輪與focused root-cause完成前仍阻擋`0.1.68/0.1.59` public push。
 - Consumer release correction：停止同機owner BrowserDemo後，診斷run pointer p95=28.78ms；正式50ms hard gate為42.20ms，cold/cache無>100ms task，證實82.69/78.28ms為資源競爭而非產品regression。Daedalus正式放行`0.1.68/0.1.59`公開發布。
 - Public release：Renderer `0.1.68`與Interactive.Client `0.1.59` push均回`Created`。首次在Renderer current directory呼叫Interactive通用PostBuildEvent找不到nupkg，已改於Interactive project directory重跑成功，未重推Renderer。Flat-container HTTP 200後，official nupkg SHA-256分別為`920AA2C04E86982C01685127EE2A7B9B206FBBCB384903D02A23CDB867D1FF10`／`95100DDE9528D70C1ED743B49B5AE3871659E1747E1A2B4F2C40656EC255AE7F`；repository signatures通過，排除`.signature.p7s`後與owner Release candidate逐entry `Different=0`。
+
+## 2026-09-26 Fixed CSS-pixel line and overview boundary candidate
+
+- Daedalus要求SMA／一般line不隨SVG viewBox或row resize變粗，並要求overview左右可見邊界固定2 CSS px且與較寬transparent drag hit target分離。Renderer對line width夾1–2並加`non-scaling-stroke`；overview新增`ta-overview-left/right-handle-visual`，既有handle testid維持transparent rect。
+- Local exact graph為Contracts `0.1.28`、Renderer `0.1.69`、Interactive.Client `0.1.60`。Canonical generated `websharper.log` ACL仍拒絕存取，故完整WebSharper builds使用source-identical disposable staging；沒有停用compiler或沿用舊bundle。
+- Owner gates通過：Renderer 48/48、Interactive.Client 12/12、package verifier及4,000-slot F# Playwright。Browser gate驗computed stroke、row resize、左右navigator drag及既有interaction/performance；acceptance phases無>100ms task。Local SHA-256為`5A5D72E2494185385CA35E08311FF404625BC799E9694F7480691004C1C02006`／`30F534D3E9E5B95C10399B3E12FDC235354EB8C7E3733E656C18201C3BF3941B`。
+- Candidate與stable DOM testids已透過COMM交Daedalus執行真SPAA geometry／截圖／效能 gate。Consumer放行前不public push。
+
+### Correction 2026-09-26 - Capped authored/default chart height
+
+- Daedalus以舊真SPAA重現1140 bars／48 viewport時price chart預設720 CSS px。此為Renderer將`HeightWeight=3`直接映射到candle maximum所致；同一未發布candidate改為所有chart row初始化／reset／reload default封頂250px，但保留candlestick 720與scalar 480的manual上限。
+- Owner package gates重新執行：Renderer 48/48、Interactive.Client 12/12、package verifier及4,000-slot F# Playwright全部通過。Browser在任何resize前逐一量測chart SVG `<=250px`，price row為default 250、manual 282、reset/reload 250；five-candle／scenario／All／marker／document／progressive max=`81.49/88.24/53.26/62.34/35.00/54.25ms`且無>100ms task，cursor p95=61ms/max143ms。
+- 前述candidate SHA作廢且未發布。新的Renderer／Interactive.Client nupkg SHA-256為`E36BDD64F0D3CD391B115787D5D244BBF48AB5F6DFAADFF982DF42A19C9F6A78`／`6522E035921017ADF905C005CA6E75DF80A0D49A9822960ACFEA8ACCA85A8AAF`；仍等待真SPAA consumer gate，不public push。
+
+### Correction 2026-09-26 - Immutable final candidate identity
+
+- 因`0.1.69/0.1.60`的舊SHA已交給consumer，後續default-height補丁不得以相同版本替換bytes。該組版本完整作廢且未public push；immutable final local graph改為Contracts `0.1.28`、Renderer `0.1.70`、Interactive.Client `0.1.61`。
+- Final package SHA-256為`F2293616A5C619150BF08DD67FC0CB64C983A5ADC0DF6962D5C7278BC6833107`／`2E142CA3300C90F453C40F141CFCA9809143740989322EB0E010A9ED4A33931B`；focused 48/48、12/12與package verifier通過。Final identity browser功能斷言通過，但正式performance run受同機Chrome／系統負載影響，scenario 106.75ms、cursor 13.86s而正確fail；安靜環境重跑前不宣稱final owner browser PASS、不public push。

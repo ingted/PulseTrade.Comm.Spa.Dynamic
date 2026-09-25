@@ -515,6 +515,7 @@ module TaWorkspaceRenderer =
         let geometryText projection = selectionWindow |> View.Map (selectionGeometry >> projection >> fixedText)
         let selectionX = geometryText (fun (selectionX, _, _, _, _) -> selectionX)
         let selectionWidth = geometryText (fun (_, selectionWidth, _, _, _) -> selectionWidth)
+        let selectionRightX = geometryText (fun (selectionX, selectionWidth, _, _, _) -> selectionX + selectionWidth)
         let handleWidth = geometryText (fun (_, _, handleWidth, _, _) -> handleWidth)
         let leftHandleX = selectionX
         let rightHandleX = geometryText (fun (selectionX, selectionWidth, handleWidth, _, _) -> selectionX + selectionWidth - handleWidth)
@@ -570,7 +571,16 @@ module TaWorkspaceRenderer =
                     stripeTooltip.Value <- candidates |> Option.map (fun values -> x, stripeTooltipText values))
             on.mouseLeave (fun _ _ -> stripeTooltip.Value <- None)
         ] [
-            yield svgElement "path" [ svgAttr "d" closePath; svgAttr "fill" "none"; svgAttr "stroke" "#3d718e"; svgAttr "stroke-width" "1.5" ] []
+            yield svgElement "path" [
+                Attr.Create "data-testid" "ta-overview-price-line"
+                Attr.Create "data-stroke-width-css-pixels" "1.5"
+                svgAttr "d" closePath
+                svgAttr "fill" "none"
+                svgAttr "stroke" "#3d718e"
+                svgAttr "stroke-width" "1.5"
+                svgAttr "vector-effect" "non-scaling-stroke"
+                svgAttr "pointer-events" "none"
+            ] []
             for color, strokeWidth, stripeCount, path in stripePaths do
                 yield
                     svgElement "path" [
@@ -586,18 +596,34 @@ module TaWorkspaceRenderer =
             yield svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-selection"
                 Attr.Dynamic "x" selectionX; svgAttr "y" "1"; Attr.Dynamic "width" selectionWidth; svgAttr "height" "80"
-                svgAttr "fill" "rgba(15,118,110,.10)"; svgAttr "stroke" "#0f766e"; svgAttr "stroke-width" "2"; svgAttr "pointer-events" "none"
+                svgAttr "fill" "rgba(15,118,110,.10)"; svgAttr "stroke" "none"; svgAttr "pointer-events" "none"
+            ] []
+            yield svgElement "line" [
+                Attr.Create "data-testid" "ta-overview-left-handle-visual"
+                Attr.Create "data-stroke-width-css-pixels" "2"
+                Attr.Dynamic "x1" selectionX; Attr.Dynamic "x2" selectionX
+                svgAttr "y1" "1"; svgAttr "y2" "81"
+                svgAttr "stroke" "#155f73"; svgAttr "stroke-width" "2"
+                svgAttr "vector-effect" "non-scaling-stroke"; svgAttr "pointer-events" "none"
             ] []
             yield svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-left-handle"
                 Attr.Dynamic "x" leftHandleX; svgAttr "y" "0"; Attr.Dynamic "width" handleWidth; svgAttr "height" "82"
-                svgAttr "fill" "#155f73"; svgAttr "fill-opacity" "0.82"; svgAttr "style" "cursor:ew-resize;"
+                svgAttr "fill" "transparent"; svgAttr "style" "cursor:ew-resize;"
                 on.mouseDown (fun _ event -> onDragStart TaWindowDrag.ResizeLeft event)
+            ] []
+            yield svgElement "line" [
+                Attr.Create "data-testid" "ta-overview-right-handle-visual"
+                Attr.Create "data-stroke-width-css-pixels" "2"
+                Attr.Dynamic "x1" selectionRightX; Attr.Dynamic "x2" selectionRightX
+                svgAttr "y1" "1"; svgAttr "y2" "81"
+                svgAttr "stroke" "#155f73"; svgAttr "stroke-width" "2"
+                svgAttr "vector-effect" "non-scaling-stroke"; svgAttr "pointer-events" "none"
             ] []
             yield svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-right-handle"
                 Attr.Dynamic "x" rightHandleX; svgAttr "y" "0"; Attr.Dynamic "width" handleWidth; svgAttr "height" "82"
-                svgAttr "fill" "#155f73"; svgAttr "fill-opacity" "0.82"; svgAttr "style" "cursor:ew-resize;"
+                svgAttr "fill" "transparent"; svgAttr "style" "cursor:ew-resize;"
                 on.mouseDown (fun _ event -> onDragStart TaWindowDrag.ResizeRight event)
             ] []
             yield svgElement "rect" [
@@ -685,7 +711,7 @@ module TaWorkspaceRenderer =
             attr.style "display:block; width:100%; height:112px; background:#fbfcfe;"
         ] [
             yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" "51"; svgAttr "y2" "51"; svgAttr "stroke" "#e7ecf3"; svgAttr "stroke-width" "1" ] []
-            yield svgElement "path" [ svgAttr "d" path; svgAttr "fill" "none"; svgAttr "stroke" color; svgAttr "stroke-width" "2"; svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
+            yield svgElement "path" [ svgAttr "d" path; svgAttr "fill" "none"; svgAttr "stroke" color; svgAttr "stroke-width" "2"; svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round"; svgAttr "vector-effect" "non-scaling-stroke" ] []
             match cursorPosition width points.Length cursorIndex with
             | Some x -> yield svgElement "line" [ Attr.Create "data-testid" (testId + "-crosshair"); svgAttr "x1" (fixedText x); svgAttr "x2" (fixedText x); svgAttr "y1" "0"; svgAttr "y2" "92"; svgAttr "stroke" "#1f4f73"; svgAttr "stroke-width" "1"; svgAttr "stroke-dasharray" "3 3" ] []
             | None -> ()
@@ -1401,7 +1427,19 @@ module TaWorkspaceRenderer =
                 | TaTraceKind.Volume ->
                     yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); Attr.Dynamic "d" path; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" traceColor; svgAttr "fill-opacity" "0.62" ] []
                 | TaTraceKind.Line ->
-                    yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); Attr.Dynamic "d" path; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" "none"; svgAttr "stroke" traceColor; svgAttr "stroke-width" (fixedText trace.Width); svgAttr "stroke-linejoin" "round"; svgAttr "stroke-linecap" "round" ] []
+                    let strokeWidthCssPixels = max 1.0 (min 2.0 trace.Width) |> fixedText
+                    yield svgElement "path" [
+                        Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId)
+                        Attr.Create "data-stroke-width-css-pixels" strokeWidthCssPixels
+                        Attr.Dynamic "d" path
+                        Attr.Dynamic "data-last-value" lastValue
+                        svgAttr "fill" "none"
+                        svgAttr "stroke" traceColor
+                        svgAttr "stroke-width" strokeWidthCssPixels
+                        svgAttr "stroke-linejoin" "round"
+                        svgAttr "stroke-linecap" "round"
+                        svgAttr "vector-effect" "non-scaling-stroke"
+                    ] []
                 | _ -> ()
 
             yield markerLayer

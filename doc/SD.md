@@ -692,3 +692,11 @@ Current released exact graph：Contracts `0.1.26` → Renderer `0.1.62` → Inte
 每個含candlestick的row以該row當前viewport投影後的candles與同row projected line/histogram points建立獨立bounds。完整source中viewport外的extrema、其他row及不可見point不得進入bounds；scalar-only row維持既有8% data padding。
 
 Candlestick row使用完整SVG viewBox高度，SVG edge到visible extrema的centerline padding固定為15 CSS px，而不是另留固定plot inset再加data range百分比。Renderer以viewBox height與目前`rowHeight: Var<int>`反算value padding；row keyboard/pointer resize時同一reactive geometry重新計算，但不重掛row/SVG topology。實際path外緣可因stroke向外擴張而略小於15px；空bounds回fallback，single-value維持既有`value +/- 1`語意。測試切點為遠端extrema隔離、250/720px centerline padding、真DOM path外緣、48/200/All、pan/zoom、resize與真SPAA逐row geometry。
+
+### Fixed CSS-pixel line / navigator boundary
+
+一般`TaTraceKind.Line`與SMA path沿用`ta-trace-{rowId}-{traceId}`，authored width在render邊界夾為1–2 CSS px，並同時輸出`data-stroke-width-css-pixels`與`vector-effect="non-scaling-stroke"`。因此SVG viewBox、viewport與row resize只改幾何，不縮放線寬；histogram/volume仍走fill path，不套此契約。
+
+Overview selection rect只負責半透明選取填色。左右可見邊界為`ta-overview-left-handle-visual`／`ta-overview-right-handle-visual` line，固定`#155f73`、2 CSS px、`non-scaling-stroke`及`pointer-events=none`。既有`ta-overview-left-handle`／`ta-overview-right-handle`保留為transparent rect drag hit target，避免把可操作寬度誤當畫面線寬或破壞既有操作。Owner browser gate須在default、row resize及navigator viewport commit後分別驗computed stroke與DOM contract；真SPAA consumer另量實際geometry、截圖與互動效能。
+
+所有chart row的authored/default plot height在Renderer初始化、reset與browser reload時封頂250 CSS px；此限制不改寫文件中的`HeightWeight`，也不縮小resize handle的manual range。Candlestick與scalar row的手動上限仍分別為720／480px，trader操作後可超過250px；同canvas、同row的local override在authoritative data replacement時保留。Owner gate必須先在任何resize前量測全部chart SVG，再驗manual `>250`、reset/reload回到capped default及cursor垂直幾何同步。

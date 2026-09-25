@@ -1,0 +1,76 @@
+# Fixed CSS stroke contracts
+
+## 背景
+
+Daedalus要求PTCS Renderer補兩個owner像素契約：一般line/SMA stroke在viewport與row resize後維持1–2 CSS px；overview可視區間左右深綠邊界固定2 CSS px。SPAA只提供真consumer geometry/effect gate，不做私有修補。
+
+## 目標
+
+- 定位現行line與overview viewport boundary的SVG element、testid及viewBox縮放行為。
+- 用fixed CSS pixel語意實作，不改資料、Y-domain、viewport authority或consumer domain。
+- 補default／row resize／viewport變更的unit與F# Playwright geometry regression。
+- 建立Release-built immutable exact candidate，owner gate通過後交Daedalus真SPAA驗收。
+
+## 假設
+
+- 現行stroke width以SVG user units指定，當SVG的CSS高度與固定viewBox高度比例改變時，實體CSS thickness跟著縮放。
+- overview viewport左右邊界可能沒有獨立DOM contract，或stroke同樣以user units縮放。
+
+## 步驟
+
+1. 以source與browser DOM定位line／overview boundary render path及既有testid。
+2. 補會在resize下失敗的幾何測試，再做最小Renderer修正。
+3. 跑Renderer／Interactive focused tests、Release build、F# Playwright及package verifier。
+4. 更新current docs／DevLog，交付candidate給Daedalus；consumer通過後才public push。
+
+## 不得改變
+
+- 不改TA數值、viewport、row topology、cursor、marker、runtime frame或SPAA orchestration。
+- 不覆寫已公開Renderer 0.1.68／Interactive.Client 0.1.59。
+
+## 驗收
+
+- line/SMA在default與resized row的computed visual stroke皆為1–2 CSS px。
+- overview viewport左右深綠boundary在不同viewport寬度下皆為2 CSS px。
+- owner browser interaction與console gates無回歸。
+
+## 範圍
+
+- Renderer SVG presentation、row default height、focused unit／browser verifier、兩個exact runtime package與current追溯文件。
+
+## 風險
+
+- SVG fixed-pixel stroke可能影響pointer幾何；default高度上限不得限制manual resize；browser效能證據不得受同機負載污染。
+
+## Operations
+
+- 2026-09-26 00:28 +08:00：收到Daedalus direct `msg-fsi-7caa11edf5a94d849632d11e398a0b6e`並以`msg-fsi-a897e6e4094a438096b8dfbb5d899ce8`確認接手；開發期間COMM interval 3分鐘。
+- 2026-09-26 00:29 +08:00：source確認一般line path與legacy line SVG均缺`non-scaling-stroke`；overview selection stroke與不透明handle混合視覺／操作責任。
+- 2026-09-26 00:31 +08:00：Daedalus補充visible boundary與transparent hit target須有獨立testid；後續再固定既有handle testid為transparent rect、新增`*-handle-visual` line及`#155f73`。
+- 2026-09-26 00:32 +08:00：Renderer實作line authored width夾1–2 CSS px、`data-stroke-width-css-pixels`與`non-scaling-stroke`；overview selection改純填色，新增左右2px visual line，保留舊transparent drag rect。
+- 2026-09-26 00:35 +08:00：canonical完整WebSharper build遭既有generated `websharper.log` ACL拒絕；canonical F# compile通過。使用source-identical disposable staging完整build/pack，未停用WebSharper或沿用舊bundle。
+- 2026-09-26 00:42 +08:00：local exact candidate為Contracts `0.1.28`、Renderer `0.1.69`、Interactive.Client `0.1.60`；SHA-256為`5A5D72E2494185385CA35E08311FF404625BC799E9694F7480691004C1C02006`／`30F534D3E9E5B95C10399B3E12FDC235354EB8C7E3733E656C18201C3BF3941B`。
+- 2026-09-26 00:44 +08:00：focused Renderer 48/48、Interactive.Client 12/12、package verifier PASS。4,000-slot F# Playwright驗computed stroke、SMA row resize、navigator visible/hit分離、左右drag及既有效能回歸，全部PASS；owner BrowserDemo隨後停止。
+- 2026-09-26 00:46 +08:00：以COMM `msg-fsi-07821a00737349329b7168e1d4c7a1b9`交付exact local graph、SHA及stable testids給Daedalus跑真SPAA geometry／截圖／效能 gate；consumer通過前不public push。
+- 2026-09-26 00:48 +08:00：同步SD／TA SD／WBS／Test／TA Test／Verification／README／DevLog，WBS `DYN-WBS-566`為consumer acceptance 95%。
+- 2026-09-26 00:54 +08:00：Daedalus新增owner contract：所有chart authored/default plot height在任何resize前須`<=250 CSS px`，manual resize仍可超過；舊真SPAA已重現price default 720px。通知consumer暫停使用前一組SHA。
+- 2026-09-26 00:57 +08:00：`rowHeightBounds`只把DefaultHeight封頂250，保留candlestick 180..720與scalar 96..480 manual range；unit補兩種row的default cap與manual maximum不變。
+- 2026-09-26 01:03 +08:00：source-identical staging重新full WebSharper build／pack。新Renderer／Interactive.Client SHA-256為`E36BDD64F0D3CD391B115787D5D244BBF48AB5F6DFAADFF982DF42A19C9F6A78`／`6522E035921017ADF905C005CA6E75DF80A0D49A9822960ACFEA8ACCA85A8AAF`；舊SHA作廢且未發布。
+- 2026-09-26 01:06 +08:00：fresh-cache exact-package Renderer 48/48、Interactive.Client 12/12、package verifier PASS。F# Playwright在resize前逐一量測全部chart SVG `<=250px`，並驗price default 250／manual 282／reset及reload 250；4,000-slot gate PASS，cursor p95=61ms/max143ms，acceptance phases無>100ms task。BrowserDemo完成後停止。
+- 2026-09-26 01:07 +08:00：發現`0.1.69/0.1.60`舊SHA已交付consumer；依immutable candidate原則撤回同版新SHA並bump Renderer `0.1.70`／Interactive.Client `0.1.61`，同步active exact consumers。
+- 2026-09-26 01:10 +08:00：舊staging再次full WebSharper compile遇`wsfsc.exe -532462766` generated-state問題；改建不含bin/obj/websharper.log的source-identical新staging後build/pack通過，未重用舊bundle。
+- 2026-09-26 01:12 +08:00：immutable package SHA-256為`F2293616A5C619150BF08DD67FC0CB64C983A5ADC0DF6962D5C7278BC6833107`／`2E142CA3300C90F453C40F141CFCA9809143740989322EB0E010A9ED4A33931B`；fresh-cache focused 48/48、12/12與package verifier PASS。
+- 2026-09-26 01:16 +08:00：final identity BrowserDemo的height／stroke／drag功能斷言均通過，但同機負載下Chrome run p95=379ms，隔離Playwright Chromium run仍出現scenario 106.75ms及cursor elapsed13.86s；兩次皆依原門檻fail，未放寬或誤報PASS。停止BrowserDemo，等待安靜環境單次重跑。
+- 2026-09-26 01:22 +08:00：重新註冊`agent.aster`並讀到Daedalus確認接受immutable `0.1.70/0.1.61`；以direct message `msg-fsi-2487cfe06a174331849c77f5c35c8fc7`交付final SHA與實際gate狀態，請consumer先跑真SPAA，仍未public push。
+- 2026-09-26 01:25 +08:00：同機CPU三次樣本平均99.2%、Chrome 18 processes／約2723MB，故不重複執行browser performance gate。changed paths敏感掃描High=0/Medium=0、strict UTF-8 PASS、`git diff --check` PASS；closeout checker第一次執行FAIL=0，另有本輪可修欄位WARN與既有歷史coverage WARN。
+
+## Correction：範圍
+
+- 修改範圍只含Renderer line／overview SVG presentation、row authored/default height、對應F# unit／Playwright verifier、exact package版本與current追溯文件。
+- 不修改Contracts資料協議、SPAA consumer、TA計算、viewport authority、manual resize上限或已發布NuGet bytes。
+
+## Correction：風險
+
+- `non-scaling-stroke`與獨立transparent hit target可能改變SVG pointer幾何；以stable testid、computed CSS thickness與左右drag回歸覆蓋。
+- authored/default height cap不得誤縮manual trader resize；unit與browser分別鎖定default 250、manual 282及原maximum 720/480。
+- 同機高負載會污染100ms interaction gate；保留原門檻並等待安靜環境／consumer真SPAA證據，不以重跑或放寬門檻換PASS。

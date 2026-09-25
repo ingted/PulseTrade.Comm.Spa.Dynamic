@@ -248,11 +248,11 @@ module RendererModel =
         if hasCandles then
             { Minimum = 180
               Maximum = 720
-              DefaultHeight = clamp 180 720 (int (Math.Round(250.0 * row.HeightWeight))) }
+              DefaultHeight = clamp 180 250 (int (Math.Round(250.0 * row.HeightWeight))) }
         else
             { Minimum = 96
               Maximum = 480
-              DefaultHeight = clamp 96 480 (int (Math.Round(112.0 * row.HeightWeight))) }
+              DefaultHeight = clamp 96 250 (int (Math.Round(112.0 * row.HeightWeight))) }
 
     let rowHeightStorageKey (CanvasInstanceId canvasInstanceId) rowId = canvasInstanceId + ":" + rowId
 
