@@ -224,3 +224,10 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Mutating effects：DEV階段會build/pack本repo；NuGet push只在WBS-554 release gate明確執行。Unit/browser fixtures不得寫正式PCSL、SQL或外部service。
 - Revision 18 evidence：Contracts驗codec/limits/atomic last-good；Renderer驗same-X lanes、cluster accessibility、resize lifecycle、same-topology stripe 2→0→2不remount及4,000-slot long-task；package verifier驗RFC-0024 exact graph與由pack target生成的version-aligned bundle manifest。Fresh package cache只走nuget.org完成43/4/16 tests，三顆public packages通過repository signature驗證；server-signed nupkg hash記於總表。
 - Consumer evidence：Daedalus真SPAA／`.dib`另由其repo verifier產生，回鏈DYN-T-577；不得以owner BrowserDemo冒充產品E2E。
+
+## DYN-VFY-027 Renderer prepared-geometry hotfix（owner PASS revision 1）
+
+- Commands：Renderer／Interactive.Client／Ptcs.Client exact-package Expecto runners；啟動Renderer BrowserDemo後執行`dotnet fsi --exec .\scripts\verify-ta-renderer-playwright.fsx`。
+- Scope：4,000 bars、28 refs、5 candle rows；驗physical 32px cursor gutter、resize invariant、line extrema compaction、finite Y-domain、prepared shared-cursor click、cold replacement、All、marker/selection、document、progressive、desktop/mobile及console。
+- Result：Renderer 46/46、Interactive.Client 12/12、Ptcs.Client 16/16。Five-candle/click/All/selection/document/progressive max=`78.56/8.49/49.05/58.30/27.23/40.63ms`，全部over100=0；cursor movement max24.93ms，無NaN或page error。
+- Release：Contracts `[0.1.22]`、Renderer `[0.1.50]`、Interactive.Client `[0.1.42]`、Dynamic.Ptcs `[0.1.44]`、Ptcs.Client `[0.1.64]`。三顆新package push均回`Created`；官方flat-container nupkg SHA-256依序為`D10881675090C4355B79B3C73F0B510C89FCF79F4DF11901C97096AD68771361`、`519C66C822E613BC121464D1CEA4A315C3B2458A22A04350AC9130AD1F3245F6`、`B6BD3BAC7A2A6F878A33C7744E0E0499C47CABD886D9B3AD3D78806DE30F6877`；三包repository signature存在且official DLL與owner local final DLL相同。真3,820-bar SPAA gate由Daedalus持有DYN-T-590。

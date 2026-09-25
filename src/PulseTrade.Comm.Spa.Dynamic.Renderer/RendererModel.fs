@@ -1698,6 +1698,49 @@ module RendererModel =
         |> Array.mapi (fun index point -> point |> Option.map (fun value -> index, value))
         |> Array.choose id
 
+    let compactProjectedLinePoints maximumVisualPoints referenceLength (values: (int * TaLinePoint) array) =
+        if referenceLength <= maximumVisualPoints || values.Length <= maximumVisualPoints then
+            values
+        else
+            let bucketCount = max 1 (maximumVisualPoints / 2)
+            let occupied = Array.create bucketCount false
+            let minimumSlots = Array.zeroCreate<int> bucketCount
+            let minimumPoints = Array.zeroCreate<TaLinePoint> bucketCount
+            let maximumSlots = Array.zeroCreate<int> bucketCount
+            let maximumPoints = Array.zeroCreate<TaLinePoint> bucketCount
+
+            for slotIndex, point in values do
+                let bucketIndex = min (bucketCount - 1) (slotIndex * bucketCount / referenceLength)
+                if not occupied[bucketIndex] then
+                    occupied[bucketIndex] <- true
+                    minimumSlots[bucketIndex] <- slotIndex
+                    minimumPoints[bucketIndex] <- point
+                    maximumSlots[bucketIndex] <- slotIndex
+                    maximumPoints[bucketIndex] <- point
+                else
+                    if point.Value < minimumPoints[bucketIndex].Value then
+                        minimumSlots[bucketIndex] <- slotIndex
+                        minimumPoints[bucketIndex] <- point
+                    if point.Value > maximumPoints[bucketIndex].Value then
+                        maximumSlots[bucketIndex] <- slotIndex
+                        maximumPoints[bucketIndex] <- point
+
+            let compacted = ResizeArray<int * TaLinePoint>(maximumVisualPoints)
+            for bucketIndex in 0 .. bucketCount - 1 do
+                if occupied[bucketIndex] then
+                    let minimum = minimumSlots[bucketIndex], minimumPoints[bucketIndex]
+                    let maximum = maximumSlots[bucketIndex], maximumPoints[bucketIndex]
+                    if fst minimum = fst maximum then
+                        compacted.Add minimum
+                    elif fst minimum < fst maximum then
+                        compacted.Add minimum
+                        compacted.Add maximum
+                    else
+                        compacted.Add maximum
+                        compacted.Add minimum
+
+            compacted.ToArray()
+
     let candleSlotRange (referenceTimestamps: string array) (point: TaCandlePoint) =
         matchingReferenceRange referenceTimestamps point.Timestamp point.Temporal
 

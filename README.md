@@ -2,6 +2,10 @@
 
 This project is a dynamic SDUI (Server-Driven UI) and Actor extension for `PulseTrade.Comm.Spa`, built with WebSharper.
 
+## Current TA release graph
+
+The current exact TA graph is Contracts `[0.1.22]` -> Renderer `[0.1.50]` -> Interactive.Client `[0.1.42]`; Dynamic.Ptcs remains `[0.1.44]`, and Ptcs.Client `[0.1.64]` exact-pins Contracts and Renderer. Renderer 0.1.50 keeps the cursor gutter at a physical 32 CSS pixels, commits shared-cursor clicks from prepared timeline data, and uses bounded single-pass line compaction and Y-domain accumulation. The 4,000-bar browser gate covers cold replacement, cursor movement and click/commit, All, marker/selection, document replacement, progressive coverage, row resize, desktop/mobile geometry, and console errors. Daedalus owns the final 3,820-bar SPAA consumer E2E; owner BrowserDemo PASS does not replace that product gate.
+
 ## Actor Dynamic / Actor Argu modes
 
 `PulseTrade.Comm.Spa.Dynamic` owns Dynamic rendering and Dynamic target binding; `PulseTrade.Comm.Spa` owns the append page shell, key registry, pending replay, and actor-argu command path.

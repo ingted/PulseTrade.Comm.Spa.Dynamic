@@ -715,19 +715,7 @@ module TaWorkspaceRenderer =
         let maximumVisualPoints = 1000
 
         let compactLinePoints (values: (int * TaLinePoint) array) =
-            if referenceTimestamps.Length <= maximumVisualPoints || values.Length <= maximumVisualPoints then
-                values
-            else
-                let bucketCount = max 1 (maximumVisualPoints / 2)
-                values
-                |> Array.groupBy (fun (slotIndex, _) ->
-                    min (bucketCount - 1) (slotIndex * bucketCount / referenceTimestamps.Length))
-                |> Array.collect (fun (_, bucket) ->
-                    let minimum = bucket |> Array.minBy (fun (_, point) -> point.Value)
-                    let maximum = bucket |> Array.maxBy (fun (_, point) -> point.Value)
-                    if fst minimum = fst maximum then [| minimum |]
-                    else [| minimum; maximum |] |> Array.sortBy fst)
-                |> Array.sortBy fst
+            RendererModel.compactProjectedLinePoints maximumVisualPoints referenceTimestamps.Length values
 
         let prepareGeometry currentData =
             let sourcePresentationTimestamps (trace: TaTraceSpec) =
@@ -874,16 +862,38 @@ module TaWorkspaceRenderer =
                             |> Option.defaultValue [||])
                 |> RendererModel.assignAggregateMarkerLanes
 
-            let scaleValues =
-                [| yield! preparedTraces |> Array.collect (fun (_, trace, candles, _) ->
-                       if trace.Kind = TaTraceKind.Candlestick then
-                           candles |> Array.collect (fun point -> [| point.Low; point.High |])
-                       else
-                           [||])
-                   yield! projectedLinePoints |> Array.collect (fun (_, trace, points) ->
-                       let values = points |> Array.map (fun (_, point: TaLinePoint) -> point.Value)
-                       if trace.Kind = TaTraceKind.Histogram then Array.append [| 0.0 |] values else values) |]
-            let low, high = RendererModel.paddedRange 0.0 1.0 scaleValues
+            let mutable hasScaleValue = false
+            let mutable scaleLow = 0.0
+            let mutable scaleHigh = 0.0
+            let includeScaleValue value =
+                if hasScaleValue then
+                    scaleLow <- min scaleLow value
+                    scaleHigh <- max scaleHigh value
+                else
+                    hasScaleValue <- true
+                    scaleLow <- value
+                    scaleHigh <- value
+
+            for _, trace, candles, _ in preparedTraces do
+                if trace.Kind = TaTraceKind.Candlestick then
+                    for point in candles do
+                        includeScaleValue point.Low
+                        includeScaleValue point.High
+
+            for _, trace, points in projectedLinePoints do
+                if trace.Kind = TaTraceKind.Histogram then
+                    includeScaleValue 0.0
+                for _, point in points do
+                    includeScaleValue point.Value
+
+            let low, high =
+                if not hasScaleValue then
+                    0.0, 1.0
+                elif scaleLow = scaleHigh then
+                    scaleLow - 1.0, scaleHigh + 1.0
+                else
+                    let padding = max ((scaleHigh - scaleLow) * 0.08) 0.0001
+                    scaleLow - padding, scaleHigh + padding
             let readers =
                 preparedTraces
                 |> Array.map (fun (traceIndex, trace, candles, _) ->
@@ -1423,7 +1433,7 @@ module TaWorkspaceRenderer =
                 yield div [
                     Attr.Create "data-testid" ("ta-row-cursor-gutter-" + row.RowId)
                     Attr.Create "data-fixed-height" "32"
-                    attr.style "height:32px; min-height:32px; max-height:32px; flex:0 0 32px; border-bottom:1px solid #edf1f6; background:#f8fafc;"
+                    attr.style "box-sizing:border-box; height:32px; min-height:32px; max-height:32px; flex:0 0 32px; border-bottom:1px solid #edf1f6; background:#f8fafc;"
                 ] []
                 yield cursorTag
                 yield chart
@@ -2112,7 +2122,7 @@ module TaWorkspaceRenderer =
             if actionAllowed "shared-cursor-changed" && not (commandsDisabledNow ()) then
                 match runtimeState.Value.Document with
                 | Some document ->
-                    let timeline = RendererModel.referenceTimelineForDocument document runtimeState.Value.Data
+                    let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
                     let visible = resolvedWindow uiState.Value |> fun window -> RendererModel.selectWindow window timeline
                     match document.BaseRowId with
                     | Some baseRowId when index >= 0 && index < visible.Length ->

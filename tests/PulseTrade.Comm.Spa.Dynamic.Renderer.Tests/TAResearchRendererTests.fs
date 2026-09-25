@@ -333,6 +333,32 @@ let tests =
             Expect.equal sampled[sampled.Length - 1] 1999 "sampling preserves the loaded tail"
             Expect.sequenceEqual (RendererModel.sampleEvenly 8 [| 1; 2; 3 |]) [| 1; 2; 3 |] "short inputs remain exact"
 
+        testCase "projected line compaction preserves ordered bucket extrema without group allocations" <| fun _ ->
+            let point index value =
+                index,
+                { Timestamp = "T" + string index
+                  Value = value
+                  Temporal = None }
+            let values =
+                [| point 0 4.0
+                   point 1 1.0
+                   point 2 9.0
+                   point 3 3.0
+                   point 4 8.0
+                   point 5 2.0
+                   point 6 7.0
+                   point 7 5.0 |]
+
+            let compacted = RendererModel.compactProjectedLinePoints 4 8 values
+            Expect.sequenceEqual
+                (compacted |> Array.map (fun (slotIndex, point) -> slotIndex, point.Value))
+                [| 1, 1.0; 2, 9.0; 4, 8.0; 5, 2.0 |]
+                "each bucket must retain its first min/max points in chronological order"
+            Expect.sequenceEqual
+                (RendererModel.compactProjectedLinePoints 8 8 values)
+                values
+                "a viewport within the visual budget must remain exact"
+
         testCase "pointer ratio maps deterministically to a visible bar" <| fun _ ->
             Expect.equal (RendererModel.cursorIndexFromRatio 48 0.0) (Some 0) "left edge should select the first visible bar"
             Expect.equal (RendererModel.cursorIndexFromRatio 48 0.5) (Some 24) "middle should select the nearest visible bar"

@@ -196,6 +196,12 @@ Contracts擁有唯一packet schema/encoder；Interactive.Client擁有generation-
 
 此邊界保留legacy replay與舊producer，但production large Snapshot必須走chunk path。失敗策略為last-good + resync：item缺漏、重複、亂序、batch/count mismatch、socket generation切換或invalid candidate都丟棄整批，不得partial publish或提前ACK。
 
+## 2026-09-25 Renderer prepared-geometry hot path correction
+
+真SPAA的shared-cursor click反證consumer accounting coalescing假設：click不收新frame，仍可形成超過100ms的EventDispatch，因此責任在owner renderer。舊click path從raw `RuntimeState.Data`重建reference timeline；新path改讀已接受且與畫面同revision的prepared data。大型line geometry原本以`groupBy`建立bucket arrays，Y-domain再以多層`Array.collect/map/append`重建暫存陣列；兩者改為固定bucket extrema arrays與單次bounds accumulator，保持slot順序、bucket min/max、histogram zero baseline及padding語意。
+
+這些修正不改wire、canonical reducer、cursor action、scenario identity或consumer projection。Interactive.Client必須重包，因WebSharper package metadata會帶入其建置時的Renderer graph；只替換transitive Renderer DLL不足以證明browser bundle已更新。Owner gate因此直接檢查生成bundle、console、click/commit long task與resize前後32px gutter；consumer仍須在真3,820-bar SPAA上重跑。
+
 主要風險：
 
 - `TaTraceKind`新增case會要求active consumers同步compile；以exact package graph與full WebSharper build關閉。

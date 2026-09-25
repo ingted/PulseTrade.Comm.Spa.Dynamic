@@ -1,0 +1,22 @@
+# Cursor gutter physical-height hotfix
+
+## Pre-work Plan
+
+- 背景：Daedalus真SPAA geometry evidence顯示cursor gutter宣告32px，但content-box加1px `border-bottom`使Chrome實體高度為33px；RFC-0025要求實體32px。
+- 目標：讓gutter border包含在固定32 CSS pixels內，並以F# Playwright鎖定resize前後實體高度。
+- 假設：缺少`box-sizing:border-box`是唯一根因；cursor tag 92x28、plot與label位置不需改。
+- 步驟：補border-box與geometry assertion；更新exact graph；跑focused Renderer與完整browser gate；pack/push並做official readback；通知Daedalus。
+- 範圍：Renderer、Renderer browser verifier、exact Renderer consumers與current追溯文件；不改transport、marker、scenario或SPAA consumer。
+- 驗收：Chrome gutter BoundingBox.Height=32，row resize前後仍為32且tag不越界；Renderer focused tests與F# Playwright PASS；official package graph可還原。
+- 風險：Interactive bundle會內嵌Renderer，必須重發Interactive.Client；Ptcs.Client exact依賴Renderer，亦須同步升版。
+
+## Operations
+
+- 2026-09-25 07:24 +08:00：baseline clean at `189d58a`；收到Daedalus direct `msg-fsi-f71b4386e2d44f62a2ab0d7089330890`，確認33px evidence並回覆`msg-fsi-8b1f588bbee54354905ff4dc8e10a93f`。
+- 2026-09-25 14:20 +08:00：Daedalus回報cursor click A/B反證，consumer coalescing移除；owner新增click/commit hard gate並把click timeline切到prepared data。
+- 2026-09-25 14:21–14:30 +08:00：Renderer build通過。強制cache後首輪bundle仍含舊`scaleLow=Infinity`並產生NaN；確認Interactive.Client WebSharper metadata固化舊graph，重建0.1.42後bundle為first-value bounds。Repo wsfscservice PID 32384鎖generated log，只停止該helper；外部SPAA PID 2880未動。
+- 2026-09-25 14:31 +08:00：Renderer BrowserDemo 4,000-bar gate PASS。Five-candle/click/All/selection/document/progressive max=`78.56/8.49/49.05/58.30/27.23/40.63ms`，over100=0；cursor movement max24.93ms；32px gutter resize invariant與console 0。
+- 2026-09-25 14:32–14:41 +08:00：focused packages tests Renderer 46/46、Interactive 12/12、Ptcs 16/16通過；共享NuGet cache restore有隨機DLL lock，改用repo artifacts隔離cache完成，不改nuget.config。Renderer 0.1.50、Interactive.Client 0.1.42、Ptcs.Client 0.1.64 push皆回Created。
+- 2026-09-25 14:38 +08:00：以COMM `msg-fsi-2c99c905dfe848faa1b3b34312d370c7`交付Daedalus exact graph與owner數據，等待同一3,820-bar真SPAA診斷／正式E2E。官方flat-container初次查詢尚未索引，保留pending readback，不以library-pack restore冒充official evidence。
+- 2026-09-25 14:42 +08:00：NuGet flat-container已索引。Renderer／Interactive.Client／Ptcs.Client official nupkg皆有`.signature.p7s`，SHA-256=`D1088167...1361 / 519C66C8...45F6 / B6BD3BAC...6877`；三個official DLL hash與owner local final DLL逐一相同。
+- 2026-09-25 14:46 +08:00：changed-path sensitive scan High=0／Medium=0；workspace checker PASS=30／WARN=2／FAIL=0。WARN為commit前git dirty與既有RFC traceability coverage，均非本輪衝突。

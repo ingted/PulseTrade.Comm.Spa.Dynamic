@@ -576,6 +576,9 @@ let verifyDesktop (browser: IBrowser) =
     let cursorGutterBox = priceCursorGutter.BoundingBoxAsync() |> awaitTask
     require (not (isNull cursorTagBoxBeforeResize) && not (isNull cursorGutterBox)) "row cursor tag and fixed gutter must expose geometry while hidden"
     require
+        (abs (cursorGutterBox.Height - 32.0f) <= 0.1f)
+        $"fixed cursor gutter must occupy exactly 32 CSS pixels; actual={cursorGutterBox.Height}"
+    require
         (cursorTagBoxBeforeResize.Y >= cursorGutterBox.Y - 0.5f
          && cursorTagBoxBeforeResize.Y + cursorTagBoxBeforeResize.Height <= cursorGutterBox.Y + cursorGutterBox.Height + 0.5f)
         "row cursor tag must remain completely inside the fixed top gutter"
@@ -607,7 +610,14 @@ let verifyDesktop (browser: IBrowser) =
         (heightAfterMarkerReplacement = pointerHeight)
         $"same-canvas authoritative data replacement must retain the local row-height override; expected={pointerHeight}; actual={heightAfterMarkerReplacement}"
     let cursorTagBoxAfterResize = priceCursorTag.BoundingBoxAsync() |> awaitTask
-    require (not (isNull cursorTagBoxAfterResize)) "row cursor tag must retain geometry after row resize"
+    let cursorGutterBoxAfterResize = priceCursorGutter.BoundingBoxAsync() |> awaitTask
+    require
+        (not (isNull cursorTagBoxAfterResize) && not (isNull cursorGutterBoxAfterResize))
+        "row cursor tag and gutter must retain geometry after row resize"
+    require
+        (abs (cursorGutterBoxAfterResize.Height - 32.0f) <= 0.1f
+         && abs (cursorGutterBoxAfterResize.Height - cursorGutterBox.Height) <= 0.1f)
+        $"row resize must retain the exact 32px cursor gutter; before={cursorGutterBox.Height}; after={cursorGutterBoxAfterResize.Height}"
     require
         (abs (cursorTagBoxAfterResize.Width - cursorTagBoxBeforeResize.Width) <= 0.5f
          && abs (cursorTagBoxAfterResize.Height - cursorTagBoxBeforeResize.Height) <= 0.5f)
@@ -860,8 +870,11 @@ let verifyDesktop (browser: IBrowser) =
     let sustainedRowBox = page.Locator("[data-testid='ta-row-sma']").BoundingBoxAsync() |> awaitTask
     require (abs (sustainedLegendBox.Height - initialLegendHeights[2]) <= 0.5f && abs (sustainedValueBox.Width - initialValueBox.Width) <= 0.5f && abs (sustainedRowBox.Height - smaRowBox.Height) <= 0.5f) "cursor and concurrent live revisions must not change row legend geometry"
 
+    let cursorCommitTrace = startMainThreadTrace longTaskSession
     priceChart.ClickAsync() |> awaitUnit
     waitForText callbackState "callback actions 2 / last SharedCursorChanged"
+    Threading.Thread.Sleep 180
+    longTaskPhases.Add(stopMainThreadTrace "cursor-commit" longTaskSession cursorCommitTrace)
     Directory.CreateDirectory outputDirectory |> ignore
     page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "desktop-crossrow-cursor.png"), FullPage = true)) |> awaitTask |> ignore
 
