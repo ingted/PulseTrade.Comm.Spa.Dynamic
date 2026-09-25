@@ -32,7 +32,18 @@ Patch retention以整個ordered operation batch套用後的candidate data為驗�
 
 大型Snapshot可用`RuntimeSnapshotTransportCodec.encodeFrames`展開為bounded `start / item / commit` packets；非Snapshot仍輸出單一legacy frame。packet只負責transport framing，完整batch仍須通過count、順序、batch id、generation與canonical reducer後才成為runtime truth；partial或invalid batch不得發布、寫cache或觸發accepted lifecycle。
 
-Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.22`，exact依賴FSharp.Core `[10.1.400]`。合法大型RuntimeFrame的unsafe validation先走allocation-light scan，只有發現unsafe subtree才建立精確diagnostic path；temporal/schema validation與fail-closed語意不變。current marker encoder只輸出strict/bounded `ta-marker.v2`；public shape為`TriangleUp | TriangleDown | Circle | Square | Diamond`，方向不由`AboveBar／BelowBar`推導。decoder可讀legacy v1，v2 unknown shape fail closed。marker browser cache current schema為3；schema 2一律miss/resync。
+純.NET、WebSharper與machine E2E應直接以owner API消費完整ordered wire stream，不可自行辨識或切割chunk batches：
+
+```fsharp
+match RuntimeSnapshotTransportAssembler.decodeFrames transportGeneration wireMessages with
+| Ok frames -> frames |> Array.iter consumeCanonicalFrame
+| Error issue ->
+    printfn "snapshot wire rejected code=%s packet=%d message=%s" issue.Code issue.PacketIndex issue.Message
+```
+
+`decodeFrames`保序接受legacy `RuntimeFrame`與零或多個完整chunk batches，並拒絕partial、orphan、duplicate、out-of-order、interleaved、trailing、錯誤schema/kind及invalid value。`PacketIndex`是整條wire stream的global zero-based index。需要逐packet接收時使用`create/createAt`、`decodePacket`、`acceptPacket/acceptEncoded`與`finish`；同一batch的每次呼叫必須傳入相同transport generation，generation不符不得接續舊batch。`acceptPacket/acceptEncoded`只完成framing與item-local validation，`CompletedFrame`是尚待canonical validation的candidate；machine consumer必須呼叫`finish`，browser則把candidate交給既有phased reducer，避免commit task同步重複掃描整個snapshot。
+
+Current exact package：`PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.26`，exact依賴FSharp.Core `[10.1.400]`。合法大型RuntimeFrame的unsafe validation先走allocation-light scan，只有發現unsafe subtree才建立精確diagnostic path；temporal/schema validation與fail-closed語意不變。current marker encoder只輸出strict/bounded `ta-marker.v2`；public shape為`TriangleUp | TriangleDown | Circle | Square | Diamond`，方向不由`AboveBar／BelowBar`推導。decoder可讀legacy v1，v2 unknown shape fail closed。marker browser cache current schema為3；schema 2一律miss/resync。
 
 `RuntimeCache`只接受reducer已確認的bounded projection；OPEN_END projection只保存每條temporal axis的`Final` positions，所有temporal series依其axis position set同步裁切。rehydrate只供display-first並固定為`PausedForResync`，cached revision不可作authoritative delta continuation。`DataRef`是immutable series identity；document內`RowId`唯一，`TraceId`只須在所屬row內唯一。Typed與decoded frame使用同一validation；single patch最多64 operations，另受500 items與16MiB frame限制。
 

@@ -70,7 +70,7 @@ module BrowserRuntimeSnapshotBatch =
         else
             Result.Ok()
 
-    let acceptItem dataRef batch =
+    let acceptItem dataRef (batch: BrowserRuntimeSnapshotBatchMetadata) =
         { batch with
             NextItemIndex = batch.NextItemIndex + 1
             DataRefs = Set.add dataRef batch.DataRefs }
@@ -583,9 +583,7 @@ module BrowserRuntimeFramePump =
         (continuation: BrowserRuntimeFramePumpOutcome -> unit)
         =
         let mutable completed = false
-        let mutable metadata: BrowserRuntimeSnapshotBatchMetadata option = None
-        let mutable header: RuntimeFrame option = None
-        let values = ResizeArray<string * SduiValue>()
+        let mutable assembly = RuntimeSnapshotTransportAssembler.create 1
 
         let complete outcome =
             if not completed then
@@ -610,11 +608,18 @@ module BrowserRuntimeFramePump =
             let field = JS.Get<obj> name raw
             if isMissing field then None else Some(As<int> field)
 
+        let reduceAssembled frameIndex frame =
+            reduceFrameWith schedule initialState frame isCurrent frameIndex complete
+
         let rec processPacket packetIndex =
             if not (isCurrent ()) then
                 complete BrowserRuntimeFramePumpOutcome.Superseded
+            elif assembly.CompletedFrame.IsSome then
+                reject packetIndex "runtime-snapshot-chunk-trailing-packet" "Snapshot commit must be the final packet."
             elif packetIndex >= packets.Length then
-                reject packetIndex "runtime-snapshot-chunk-commit-required" "Snapshot packet sequence ended before commit."
+                match RuntimeSnapshotTransportAssembler.finish assembly with
+                | Result.Ok frame -> reduceAssembled (max 0 (packetIndex - 1)) frame
+                | Result.Error issue -> reject issue.PacketIndex issue.Code issue.Message
             else
                 schedule (BrowserRuntimeFramePumpStage.ParseTransportPacket packetIndex) (fun () ->
                     if not (isCurrent ()) then
@@ -628,30 +633,33 @@ module BrowserRuntimeFramePump =
                                 if kind = RuntimeSnapshotTransportDefaults.StartKind then
                                     match tryStringField "BatchId" raw, tryIntField "ItemCount" raw with
                                     | Some batchId, Some itemCount ->
-                                        match BrowserRuntimeSnapshotBatch.create 1 batchId itemCount with
-                                        | Error(code, message) -> reject packetIndex code message
-                                        | Ok batch ->
-                                            let rawHeader = JS.Get<obj> "Header" raw
-                                            if isMissing rawHeader then
-                                                reject packetIndex "runtime-snapshot-chunk-header-required" "Snapshot start requires a header."
-                                            else
-                                                match BrowserRuntimeCodec.decode (JSON.Stringify rawHeader) with
-                                                | Ok frame ->
-                                                    match frame.Kind, frame.Payload with
-                                                    | RuntimeFrameKind.Snapshot, RuntimePayload.Snapshot snapshot when snapshot.Data.IsEmpty ->
-                                                        metadata <- Some batch
-                                                        header <- Some frame
-                                                        processPacket (packetIndex + 1)
-                                                    | _ ->
-                                                        reject packetIndex "runtime-snapshot-chunk-header-invalid" "Snapshot start header is invalid."
-                                                | Error message -> reject packetIndex "runtime-snapshot-chunk-header-invalid" message
+                                        let rawHeader = JS.Get<obj> "Header" raw
+                                        if isMissing rawHeader then
+                                            reject packetIndex "runtime-snapshot-chunk-header-required" "Snapshot start requires a header."
+                                        else
+                                            match BrowserRuntimeCodec.decode (JSON.Stringify rawHeader) with
+                                            | Error message -> reject packetIndex "runtime-snapshot-chunk-header-invalid" message
+                                            | Ok frame ->
+                                                let packet =
+                                                    RuntimeSnapshotTransportPacket.Start
+                                                        { Schema = RuntimeSnapshotTransportDefaults.Schema
+                                                          Kind = RuntimeSnapshotTransportDefaults.StartKind
+                                                          BatchId = batchId
+                                                          ItemCount = itemCount
+                                                          Header = frame }
+
+                                                match RuntimeSnapshotTransportAssembler.acceptPacket 1 packet assembly with
+                                                | Result.Error issue -> reject issue.PacketIndex issue.Code issue.Message
+                                                | Result.Ok next ->
+                                                    assembly <- next
+                                                    processPacket (packetIndex + 1)
                                     | _ -> reject packetIndex "runtime-snapshot-chunk-start-invalid" "Snapshot start metadata is invalid."
                                 elif kind = RuntimeSnapshotTransportDefaults.ItemKind then
-                                    match tryStringField "BatchId" raw, tryIntField "ItemIndex" raw, tryStringField "DataRef" raw, metadata with
-                                    | Some batchId, Some itemIndex, Some dataRef, Some batch ->
-                                        match BrowserRuntimeSnapshotBatch.validateItem 1 batchId itemIndex dataRef batch with
-                                        | Error(code, message) -> reject packetIndex code message
-                                        | Ok _ ->
+                                    match tryStringField "BatchId" raw, tryIntField "ItemIndex" raw, tryStringField "DataRef" raw with
+                                    | Some batchId, Some itemIndex, Some dataRef ->
+                                        match RuntimeSnapshotTransportAssembler.validateItemMetadata 1 batchId itemIndex dataRef assembly with
+                                        | Result.Error issue -> reject issue.PacketIndex issue.Code issue.Message
+                                        | Result.Ok _ ->
                                             let rawValue = JS.Get<obj> "Value" raw
                                             if isMissing rawValue then
                                                 reject packetIndex "runtime-snapshot-chunk-value-required" "Snapshot item requires a value."
@@ -662,31 +670,43 @@ module BrowserRuntimeFramePump =
                                                     rawValue
                                                     isCurrent
                                                     (fun decoded ->
-                                                        values.Add(dataRef, decoded)
-                                                        metadata <- Some(BrowserRuntimeSnapshotBatch.acceptItem dataRef batch)
-                                                        processPacket (packetIndex + 1))
+                                                        let packet =
+                                                            RuntimeSnapshotTransportPacket.Item
+                                                                { Schema = RuntimeSnapshotTransportDefaults.Schema
+                                                                  Kind = RuntimeSnapshotTransportDefaults.ItemKind
+                                                                  BatchId = batchId
+                                                                  ItemIndex = itemIndex
+                                                                  DataRef = dataRef
+                                                                  Value = decoded }
+
+                                                        match RuntimeSnapshotTransportAssembler.acceptPacket 1 packet assembly with
+                                                        | Result.Error issue -> reject issue.PacketIndex issue.Code issue.Message
+                                                        | Result.Ok next ->
+                                                            assembly <- next
+                                                            processPacket (packetIndex + 1))
                                                     (reject packetIndex)
                                                     (fun () -> complete BrowserRuntimeFramePumpOutcome.Superseded)
                                     | _ -> reject packetIndex "runtime-snapshot-chunk-item-invalid" "Snapshot item metadata is invalid."
                                 elif kind = RuntimeSnapshotTransportDefaults.CommitKind then
-                                    match tryStringField "BatchId" raw, tryIntField "ItemCount" raw, metadata, header with
-                                    | Some batchId, Some itemCount, Some batch, Some frame ->
-                                        match BrowserRuntimeSnapshotBatch.validateCommit 1 batchId itemCount batch with
-                                        | Error(code, message) -> reject packetIndex code message
-                                        | Ok _ when packetIndex <> packets.Length - 1 ->
-                                            reject packetIndex "runtime-snapshot-chunk-trailing-packet" "Snapshot commit must be the final packet."
-                                        | Ok _ ->
-                                            let assembled =
-                                                match frame.Payload with
-                                                | RuntimePayload.Snapshot snapshot ->
-                                                    { frame with
-                                                        Payload =
-                                                            RuntimePayload.Snapshot
-                                                                { snapshot with
-                                                                    Data = values.ToArray() |> Map.ofArray } }
-                                                | _ -> frame
+                                    match tryStringField "BatchId" raw, tryIntField "ItemCount" raw with
+                                    | Some batchId, Some itemCount ->
+                                        let packet =
+                                            RuntimeSnapshotTransportPacket.Commit
+                                                { Schema = RuntimeSnapshotTransportDefaults.Schema
+                                                  Kind = RuntimeSnapshotTransportDefaults.CommitKind
+                                                  BatchId = batchId
+                                                  ItemCount = itemCount }
 
-                                            reduceFrameWith schedule initialState assembled isCurrent packetIndex complete
+                                        match RuntimeSnapshotTransportAssembler.acceptPacket 1 packet assembly with
+                                        | Result.Error issue -> reject issue.PacketIndex issue.Code issue.Message
+                                        | Result.Ok next ->
+                                            assembly <- next
+                                            if packetIndex <> packets.Length - 1 then
+                                                processPacket (packetIndex + 1)
+                                            else
+                                                match next.CompletedFrame with
+                                                | Some frame -> reduceAssembled packetIndex frame
+                                                | None -> reject packetIndex "runtime-snapshot-chunk-commit-invalid" "Snapshot commit did not complete the active batch."
                                     | _ -> reject packetIndex "runtime-snapshot-chunk-commit-invalid" "Snapshot commit metadata is invalid."
                                 else
                                     reject packetIndex "runtime-snapshot-chunk-kind-invalid" "Snapshot chunk kind is unsupported."

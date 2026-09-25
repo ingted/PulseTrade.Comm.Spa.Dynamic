@@ -2110,4 +2110,276 @@ let tests =
             Expect.isError
                 (RuntimeSnapshotTransportCodec.encodeFrame oversizedFrame)
                 "Transport must reject a batch whose data-ref count exceeds the hard limit."
+
+        testCase "DYN-T-593 pure snapshot assembler round-trips encoded frames including empty data" <| fun _ ->
+            let snapshotFrame =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    9L
+                    (Some 6L)
+                    7L
+                    (RuntimePayload.Snapshot
+                        { Data =
+                            Map [ "series.a", SduiValue.Array [| SduiValue.Number 1.0; SduiValue.Number 2.0 |]
+                                  "status", SduiValue.Text "machine-consumer" ]
+                          Freshness = TaFreshness.Live })
+
+            let packets =
+                RuntimeSnapshotTransportCodec.encodeFrame snapshotFrame
+                |> Result.defaultWith failtest
+
+            let assembled =
+                RuntimeSnapshotTransportAssembler.reassemble 17 packets
+                |> Result.defaultWith (fun issue -> failtestf "%s[%d]: %s" issue.Code issue.PacketIndex issue.Message)
+
+            Expect.equal assembled snapshotFrame "The Contracts owner API must recover the exact canonical RuntimeFrame."
+
+            let emptyFrame =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    10L
+                    (Some 6L)
+                    8L
+                    (RuntimePayload.Snapshot
+                        { Data = Map.empty
+                          Freshness = TaFreshness.Backfill "machine-consumer" })
+
+            let emptyPackets =
+                RuntimeSnapshotTransportCodec.encodeFrame emptyFrame
+                |> Result.defaultWith failtest
+
+            Expect.equal emptyPackets.Length 2 "An empty snapshot still has start and commit packets."
+
+            RuntimeSnapshotTransportAssembler.reassemble 18 emptyPackets
+            |> Result.defaultWith (fun issue -> failtestf "%s[%d]: %s" issue.Code issue.PacketIndex issue.Message)
+            |> fun actual -> Expect.equal actual emptyFrame "An empty snapshot must round-trip without a special consumer path."
+
+        testCase "DYN-T-594 pure snapshot assembler rejects partial duplicate out-of-order and trailing packets" <| fun _ ->
+            let snapshotFrame =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    11L
+                    (Some 7L)
+                    9L
+                    (RuntimePayload.Snapshot
+                        { Data = Map [ "series.a", SduiValue.Number 1.0; "series.b", SduiValue.Number 2.0 ]
+                          Freshness = TaFreshness.Live })
+
+            let packets =
+                RuntimeSnapshotTransportCodec.encodeFrame snapshotFrame
+                |> Result.defaultWith failtest
+
+            let expectError code packetIndex message (result: Result<RuntimeFrame, RuntimeSnapshotTransportAssemblyError>) =
+                match result with
+                | Result.Error(issue: RuntimeSnapshotTransportAssemblyError) ->
+                    Expect.equal issue.Code code message
+                    Expect.equal issue.PacketIndex packetIndex (message + " Packet index must locate the failing envelope.")
+                | Result.Ok _ -> failtest message
+
+            RuntimeSnapshotTransportAssembler.reassemble 21 packets[.. packets.Length - 2]
+            |> expectError "runtime-snapshot-chunk-commit-required" 3 "A partial batch must not publish."
+
+            [| packets[0]; packets[1]; packets[1]; packets[3] |]
+            |> RuntimeSnapshotTransportAssembler.reassemble 21
+            |> expectError "runtime-snapshot-chunk-item-invalid" 2 "A duplicate packet must fail."
+
+            [| packets[0]; packets[2]; packets[1]; packets[3] |]
+            |> RuntimeSnapshotTransportAssembler.reassemble 21
+            |> expectError "runtime-snapshot-chunk-item-invalid" 1 "An out-of-order packet must fail."
+
+            Array.append packets [| packets[3] |]
+            |> RuntimeSnapshotTransportAssembler.reassemble 21
+            |> expectError "runtime-snapshot-chunk-trailing-packet" 4 "A commit must terminate the batch."
+
+        testCase "DYN-T-595 incremental snapshot assembler rejects another transport generation" <| fun _ ->
+            let snapshotFrame =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    12L
+                    (Some 8L)
+                    10L
+                    (RuntimePayload.Snapshot
+                        { Data = Map [ "series.a", SduiValue.Number 1.0 ]
+                          Freshness = TaFreshness.Live })
+
+            let packets =
+                RuntimeSnapshotTransportCodec.encodeFrame snapshotFrame
+                |> Result.defaultWith failtest
+
+            let started =
+                RuntimeSnapshotTransportAssembler.create 31
+                |> RuntimeSnapshotTransportAssembler.acceptEncoded 31 packets[0]
+                |> Result.defaultWith (fun issue -> failtestf "%s[%d]: %s" issue.Code issue.PacketIndex issue.Message)
+
+            match RuntimeSnapshotTransportAssembler.acceptEncoded 32 packets[1] started with
+            | Result.Error issue ->
+                Expect.equal issue.Code "runtime-snapshot-chunk-item-invalid" "A new transport generation cannot append to the old batch."
+                Expect.equal issue.PacketIndex 1 "The stale-generation failure must identify the first item packet."
+            | Result.Ok _ -> failtest "A packet from another transport generation must fail."
+
+        testCase "DYN-T-596 stream decoder preserves mixed legacy and multiple chunk batches" <| fun _ ->
+            let firstSnapshot =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    13L
+                    (Some 9L)
+                    11L
+                    (RuntimePayload.Snapshot
+                        { Data = Map [ "series.a", SduiValue.Number 1.0 ]
+                          Freshness = TaFreshness.Live })
+
+            let secondSnapshot =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    14L
+                    (Some 9L)
+                    12L
+                    (RuntimePayload.Snapshot
+                        { Data = Map.empty
+                          Freshness = TaFreshness.Backfill "mixed-wire" })
+
+            let firstPackets =
+                RuntimeSnapshotTransportCodec.encodeFrame firstSnapshot
+                |> Result.defaultWith failtest
+
+            let secondPackets =
+                RuntimeSnapshotTransportCodec.encodeFrame secondSnapshot
+                |> Result.defaultWith failtest
+
+            let legacy = BrowserRuntimeCodec.encode documentFrame
+            let wire = Array.concat [ [| legacy |]; firstPackets; [| legacy |]; secondPackets ]
+
+            let decoded =
+                RuntimeSnapshotTransportAssembler.decodeFrames 41 wire
+                |> Result.defaultWith (fun issue -> failtestf "%s[%d]: %s" issue.Code issue.PacketIndex issue.Message)
+
+            Expect.sequenceEqual
+                decoded
+                [| documentFrame; firstSnapshot; documentFrame; secondSnapshot |]
+                "Machine consumers must not segment the ordered legacy/chunk wire stream themselves."
+
+        testCase "DYN-T-597 stream decoder rejects partial interleaved and orphan packets with global indexes" <| fun _ ->
+            let snapshotFrame =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    15L
+                    (Some 10L)
+                    13L
+                    (RuntimePayload.Snapshot
+                        { Data = Map [ "series.a", SduiValue.Number 1.0 ]
+                          Freshness = TaFreshness.Live })
+
+            let packets =
+                RuntimeSnapshotTransportCodec.encodeFrame snapshotFrame
+                |> Result.defaultWith failtest
+
+            let legacy = BrowserRuntimeCodec.encode documentFrame
+
+            let expectStreamError code packetIndex (result: Result<RuntimeFrame array, RuntimeSnapshotTransportAssemblyError>) =
+                match result with
+                | Result.Error issue ->
+                    Expect.equal issue.Code code "The stream must return the canonical structured reason."
+                    Expect.equal issue.PacketIndex packetIndex "The stream must return a global packet index."
+                | Result.Ok _ -> failtestf "Expected stream failure `%s`." code
+
+            Array.concat [ [| legacy |]; packets[.. packets.Length - 2] ]
+            |> RuntimeSnapshotTransportAssembler.decodeFrames 51
+            |> expectStreamError "runtime-snapshot-chunk-commit-required" 3
+
+            [| legacy; packets[0]; legacy |]
+            |> RuntimeSnapshotTransportAssembler.decodeFrames 51
+            |> expectStreamError "runtime-snapshot-chunk-interleaved" 2
+
+            [| packets[1] |]
+            |> RuntimeSnapshotTransportAssembler.decodeFrames 51
+            |> expectStreamError "runtime-snapshot-chunk-start-required" 0
+
+        testCase "DYN-T-598 active stream preserves precise chunk decode errors and global indexes" <| fun _ ->
+            let snapshotFrame =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    16L
+                    (Some 11L)
+                    14L
+                    (RuntimePayload.Snapshot
+                        { Data = Map [ "series.a", SduiValue.Number 1.0 ]
+                          Freshness = TaFreshness.Live })
+
+            let packets =
+                RuntimeSnapshotTransportCodec.encodeFrame snapshotFrame
+                |> Result.defaultWith failtest
+
+            let item = WebSharper.Json.Deserialize<RuntimeSnapshotTransportItem> packets[1]
+
+            let expectStreamError code packetIndex (result: Result<RuntimeFrame array, RuntimeSnapshotTransportAssemblyError>) =
+                match result with
+                | Result.Error issue ->
+                    Expect.equal issue.Code code "The active batch must preserve the precise chunk decode reason."
+                    Expect.equal issue.PacketIndex packetIndex "The active batch error must use the global packet index."
+                | Result.Ok _ -> failtestf "Expected stream failure `%s`." code
+
+            let wrongSchema =
+                WebSharper.Json.Serialize
+                    { item with
+                        Schema = "ptcs-dynamic-snapshot-chunk.invalid" }
+
+            [| BrowserRuntimeCodec.encode documentFrame; packets[0]; wrongSchema |]
+            |> RuntimeSnapshotTransportAssembler.decodeFrames 61
+            |> expectStreamError "runtime-snapshot-chunk-schema-invalid" 2
+
+            let wrongKind =
+                WebSharper.Json.Serialize
+                    { item with
+                        Kind = "unsupported" }
+
+            [| BrowserRuntimeCodec.encode documentFrame; packets[0]; wrongKind |]
+            |> RuntimeSnapshotTransportAssembler.decodeFrames 61
+            |> expectStreamError "runtime-snapshot-chunk-kind-invalid" 2
+
+            [| BrowserRuntimeCodec.encode documentFrame; packets[0]; "{not-json" |]
+            |> RuntimeSnapshotTransportAssembler.decodeFrames 61
+            |> expectStreamError "runtime-snapshot-chunk-decode-failed" 2
+
+        testCase "DYN-T-599 incremental framing defers canonical frame validation to finish" <| fun _ ->
+            let invalidHeader =
+                frame
+                    RuntimeFrameKind.Snapshot
+                    17L
+                    (Some 12L)
+                    15L
+                    (RuntimePayload.Snapshot
+                        { Data = Map.empty
+                          Freshness = TaFreshness.Live })
+                |> fun value -> { value with DocumentId = DocumentId "" }
+
+            let start =
+                RuntimeSnapshotTransportPacket.Start
+                    { Schema = RuntimeSnapshotTransportDefaults.Schema
+                      Kind = RuntimeSnapshotTransportDefaults.StartKind
+                      BatchId = "deferred-validation"
+                      ItemCount = 0
+                      Header = invalidHeader }
+
+            let commit =
+                RuntimeSnapshotTransportPacket.Commit
+                    { Schema = RuntimeSnapshotTransportDefaults.Schema
+                      Kind = RuntimeSnapshotTransportDefaults.CommitKind
+                      BatchId = "deferred-validation"
+                      ItemCount = 0 }
+
+            let completed =
+                RuntimeSnapshotTransportAssembler.create 71
+                |> RuntimeSnapshotTransportAssembler.acceptPacket 71 start
+                |> Result.bind (RuntimeSnapshotTransportAssembler.acceptPacket 71 commit)
+                |> Result.defaultWith (fun issue -> failtestf "%s[%d]: %s" issue.Code issue.PacketIndex issue.Message)
+
+            Expect.isSome
+                completed.CompletedFrame
+                "Browser framing must expose the assembled candidate before phased reducer validation."
+
+            match RuntimeSnapshotTransportAssembler.finish completed with
+            | Result.Error issue ->
+                Expect.equal issue.Code "required" "Machine consumers must still receive canonical validation errors."
+                Expect.equal issue.PacketIndex 1 "Deferred validation must still identify the commit packet."
+            | Result.Ok _ -> failtest "Machine finish must reject an invalid assembled frame."
     ]

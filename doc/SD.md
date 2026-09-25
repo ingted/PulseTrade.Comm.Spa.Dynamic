@@ -668,6 +668,21 @@ let encodedFrames =
 
 SPAA initial `Frames`與reconnect `sendFullSnapshot`都使用同一helper；Document／Patch仍各是一個訊息。Owner tests須直接消費`encodeFrame`輸出，避免測試專用framing與production client分叉。
 
-Test seams：deterministic encoder/legacy singleton；zero-item snapshot；missing/duplicate/out-of-order/mismatch；interleaved legacy；generation/disconnect；invalid SduiValue/canonical reducer failure；commit-only publish/accepted lifecycle/cache eligibility；4,000×28×5 candle target-renderer long-task；legacy/cache regression；exact package graph。
+### Owner decoder / assembler
 
-Current exact graph：Contracts `0.1.22` → Renderer `0.1.51` → Interactive.Client `0.1.43`；Dynamic.Ptcs `0.1.44` exact Contracts；Ptcs.Client `0.1.65` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。大型candle projection以固定bucket array單次聚合；line projection以固定bucket min/max arrays保留chronological extrema；Y-domain以first-value initialized accumulator單次掃描，避免WebSharper對Infinity sentinel的錯誤轉譯。Shared-cursor click只查accepted prepared timeline，不再從raw data重做projection。Prepared geometry同時保存每條trace的latest presentation；當shared cursor未固定時，visible-value refresh直接讀此cache，不再對missing/sparse higher-scale trace逐條自tail反向掃描。Source interval、cursor action payload、bounded cursor lookup與Y-domain padding語意不變。
+Contracts提供純.NET與WebSharper共用的ordered stream API：
+
+```fsharp
+RuntimeSnapshotTransportAssembler.decodeFrames
+    transportGeneration
+    orderedWireMessages
+// Result<RuntimeFrame array, RuntimeSnapshotTransportAssemblyError>
+```
+
+`decodeFrames`接受legacy frame與零或多個`start/item/commit` batch混合的單一ordered stream；`PacketIndex`永遠是整條stream的zero-based global index。逐packet consumer使用`create/createAt -> decodePacket -> acceptPacket/acceptEncoded -> finish`，不可自行切batch或複製schema判斷。`acceptPacket/acceptEncoded`只完成framing、generation、順序、count、duplicate ref與item-local validation；commit後的`CompletedFrame`是candidate。純.NET machine consumer必須呼叫`finish`做完整canonical frame validation；browser將candidate交給既有phased reducer做同等validation與atomic publish，避免commit RAF同步重複掃描完整snapshot。
+
+錯誤優先序固定：active batch中的packet若無法decode為chunk，只有同一wire item可成功decode且validate為legacy frame時才回`runtime-snapshot-chunk-interleaved`；兩者都失敗時保留原chunk schema/kind/decode error。這使machine E2E與browser對malformed envelope取得相同reason code與global packet index。
+
+Test seams：deterministic encoder/legacy singleton；zero-item snapshot；mixed legacy＋multi-batch stream；missing/duplicate/out-of-order/orphan/trailing/mismatch；interleaved legacy；global packet index；generation/disconnect；wrong schema/kind/malformed envelope；invalid SduiValue/canonical reducer failure；commit candidate與machine `finish` validation boundary；commit-only publish/accepted lifecycle/cache eligibility；4,000×28×5 candle target-renderer long-task；legacy/cache regression；exact package graph。
+
+Current local exact graph：Contracts `0.1.26` → Renderer `0.1.62` → Interactive.Client `0.1.54`；Dynamic.Ptcs `0.1.49` exact Contracts；Ptcs.Client `0.1.76` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。本graph尚未public push，須先通過Daedalus fresh-cache machine consumer與真SPAA gate。大型candle projection以固定bucket array單次聚合；line projection以固定bucket min/max arrays保留chronological extrema；Y-domain以first-value initialized accumulator單次掃描，避免WebSharper對Infinity sentinel的錯誤轉譯。Shared-cursor click只查accepted prepared timeline，不再從raw data重做projection。Prepared geometry同時保存每條trace的latest presentation；當shared cursor未固定時，visible-value refresh直接讀此cache，不再對missing/sparse higher-scale trace逐條自tail反向掃描。Source interval、cursor action payload、bounded cursor lookup與Y-domain padding語意不變。
