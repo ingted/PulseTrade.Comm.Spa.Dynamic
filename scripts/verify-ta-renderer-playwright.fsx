@@ -505,6 +505,7 @@ let verifyDesktop (browser: IBrowser) =
     require (chartStack.GetAttributeAsync("data-visible-end") |> awaitTask = string capacityPointCount) "follow-latest viewport must end at the capacity tail"
     require (page.Locator("[data-capacity-positions='4000']").CountAsync() |> awaitTask = 1) "browser fixture must declare 4,000 positions"
     require (page.Locator("[data-capacity-shared-series='28']").CountAsync() |> awaitTask = 1) "browser fixture must declare 28 shared scalar series"
+    require (page.Locator("[data-sparse-empty-traces='20']").CountAsync() |> awaitTask = 1) "browser fixture must retain 20 sparse empty traces"
     requireText (page.Locator("[data-testid='ta-viewport-range']")) $"Loaded {capacityPointCount} bars"
     requireText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing {initialVisibleStart}-{capacityPointCount}"
     let sharedSma = page.Locator("[data-testid='ta-trace-sma-sma-1k']")

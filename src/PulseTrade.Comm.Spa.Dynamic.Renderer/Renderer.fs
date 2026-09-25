@@ -159,6 +159,17 @@ module TaWorkspaceRenderer =
         |> Map.tryFind rowId
         |> Option.bind (fun readers -> readers |> Array.tryPick (fun readValue -> tryReadAtOrBefore readValue cursorIndex))
 
+    let tryLatestLegendValue readersByRow rowId traceIndex =
+        readersByRow
+        |> Map.tryFind rowId
+        |> Option.bind (Array.tryItem traceIndex)
+        |> Option.bind (fun readLatest -> readLatest ())
+
+    let tryLatestRowPresentation readersByRow rowId =
+        readersByRow
+        |> Map.tryFind rowId
+        |> Option.bind (Array.tryPick (fun readLatest -> readLatest ()))
+
     let freshnessText (freshness: TaFreshness) =
         match freshness with
         | TaFreshness.Live -> "LIVE"
@@ -929,7 +940,8 @@ module TaWorkspaceRenderer =
                                         + " C " + fixedText point.Close
                                         + " V " + fixedText point.Volume })
                             |> Option.orElseWith (fun () -> unavailablePresentation index)
-                        cursorReader, legendReader
+                        let latestLegend = tryReadAtOrBefore legendReader (referenceTimestamps.Length - 1)
+                        cursorReader, legendReader, latestLegend
                     | TaTraceKind.Line
                     | TaTraceKind.Histogram ->
                         let values: TaLinePoint option array = Array.create referenceTimestamps.Length None
@@ -950,25 +962,31 @@ module TaWorkspaceRenderer =
                             |> Option.flatten
                             |> Option.map (fun point -> { Timestamp = point.Timestamp; Value = fixedText point.Value })
                             |> Option.orElseWith (fun () -> unavailablePresentation index)
-                        cursorReader, legendReader
+                        let latestLegend = tryReadAtOrBefore legendReader (referenceTimestamps.Length - 1)
+                        cursorReader, legendReader, latestLegend
                     | TaTraceKind.Marker
                     | TaTraceKind.OverviewStripe ->
-                        (fun _ -> None), (fun _ -> None))
-            let cursorReaders = readers |> Array.map fst
-            let legendReaders = readers |> Array.map snd
+                        (fun _ -> None), (fun _ -> None), None)
+            let cursorReaders = readers |> Array.map (fun (cursorReader, _, _) -> cursorReader)
+            let legendReaders = readers |> Array.map (fun (_, legendReader, _) -> legendReader)
+            let latestLegendValues = readers |> Array.map (fun (_, _, latestLegend) -> latestLegend)
 
-            preparedTraces, candleSeries, linePoints, markerPlacements, cursorReaders, legendReaders, low, high
+            preparedTraces, candleSeries, linePoints, markerPlacements, cursorReaders, legendReaders, latestLegendValues, low, high
 
         let initialGeometry = prepareGeometry preparedData
-        let _, initialCandleSeries, initialLinePoints, initialMarkerPlacements, initialCursorReaders, initialLegendReaders, initialLow, initialHigh = initialGeometry
+        let _, initialCandleSeries, initialLinePoints, initialMarkerPlacements, initialCursorReaders, initialLegendReaders, initialLatestLegendValues, initialLow, initialHigh = initialGeometry
         let markerVisualState = Var.Create(initialMarkerPlacements, initialLow, initialHigh)
         let readerStates =
-            Array.map2 (fun cursorReader legendReader -> ref (cursorReader, legendReader)) initialCursorReaders initialLegendReaders
+            Array.map3
+                (fun cursorReader legendReader latestLegend -> ref (cursorReader, legendReader, latestLegend))
+                initialCursorReaders
+                initialLegendReaders
+                initialLatestLegendValues
 
         let slot = if referenceTimestamps.Length = 0 then width else width / float referenceTimestamps.Length
         let svgTestId = if hasCandles then "ta-candle-" + rowId else "ta-composite-" + rowId
 
-        let candlePaths traceIndex (_, currentCandles, _, _, _, _, low, high) =
+        let candlePaths traceIndex (_, currentCandles, _, _, _, _, _, low, high) =
             let buckets = Array.init 8 (fun _ -> ResizeArray<string>())
             for currentTraceIndex, _, slotIndex, sourceSpanCount, point in currentCandles do
                 if currentTraceIndex = traceIndex then
@@ -991,7 +1009,7 @@ module TaWorkspaceRenderer =
 
             buckets |> Array.map (String.concat " ")
 
-        let lineGeometry traceIndex (_, _, currentLines, _, _, _, low, high) =
+        let lineGeometry traceIndex (_, _, currentLines, _, _, _, _, low, high) =
             let _, _, points =
                 currentLines
                 |> Array.tryFind (fun (index, _, _) -> index = traceIndex)
@@ -1265,13 +1283,13 @@ module TaWorkspaceRenderer =
             if not (Object.ReferenceEquals(currentData, observedPreparedData)) then
                 observedPreparedData <- currentData
                 let geometry = prepareGeometry currentData
-                let _, _, _, currentMarkerPlacements, currentCursorReaders, currentLegendReaders, currentLow, currentHigh = geometry
+                let _, _, _, currentMarkerPlacements, currentCursorReaders, currentLegendReaders, currentLatestLegendValues, currentLow, currentHigh = geometry
 
                 let nextMarkerVisual = currentMarkerPlacements, currentLow, currentHigh
                 if markerVisualState.Value <> nextMarkerVisual then markerVisualState.Value <- nextMarkerVisual
 
                 for index in 0 .. readerStates.Length - 1 do
-                    readerStates[index].Value <- currentCursorReaders[index], currentLegendReaders[index]
+                    readerStates[index].Value <- currentCursorReaders[index], currentLegendReaders[index], currentLatestLegendValues[index]
 
                 for traceIndex, _, pathStates in candlePathStates do
                     let nextPaths = candlePaths traceIndex geometry
@@ -1372,13 +1390,18 @@ module TaWorkspaceRenderer =
         (traces
          |> Array.mapi (fun index _ ->
              fun cursorIndex ->
-                 let currentReader, _ = readerStates[index].Value
-                 currentReader cursorIndex)),
+                  let currentReader, _, _ = readerStates[index].Value
+                  currentReader cursorIndex)),
         (traces
          |> Array.mapi (fun index _ ->
              fun cursorIndex ->
-                 let _, currentReader = readerStates[index].Value
-                 currentReader cursorIndex))
+                  let _, currentReader, _ = readerStates[index].Value
+                  currentReader cursorIndex)),
+        (traces
+         |> Array.mapi (fun index _ ->
+             fun () ->
+                 let _, _, current = readerStates[index].Value
+                 current))
 
     let compositeSvgReactivePreparedLiveWithValueRefresh rowId isBaseRow (traces: TaTraceSpec array) preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex scheduleValueRefresh =
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
@@ -1394,7 +1417,7 @@ module TaWorkspaceRenderer =
         compositeSvgReactivePreparedLive rowId isBaseRow traces preparedData dataState.View referenceTimestamps cursorIndex setCursorIndex commitCursorIndex
 
     let compositeSvgReactive rowId traces data referenceTimestamps cursorIndex setCursorIndex commitCursorIndex =
-        let chart, timestamps, _, _ = compositeSvgReactivePrepared rowId false traces data referenceTimestamps cursorIndex setCursorIndex commitCursorIndex
+        let chart, timestamps, _, _, _ = compositeSvgReactivePrepared rowId false traces data referenceTimestamps cursorIndex setCursorIndex commitCursorIndex
         chart, timestamps
 
     let compositeSvg rowId traces data referenceTimestamps cursorIndex setCursorIndex commitCursorIndex =
@@ -1403,7 +1426,7 @@ module TaWorkspaceRenderer =
 
     let renderRowReactivePreparedLiveWithHeight (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
-        let chart, timestamps, cursorReaders, legendReaders = compositeSvgReactivePreparedLiveWithHeight row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight.View scheduleValueRefresh
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders = compositeSvgReactivePreparedLiveWithHeight row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight.View scheduleValueRefresh
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =
@@ -1468,7 +1491,7 @@ module TaWorkspaceRenderer =
             ] [
                 let initialPresentation =
                     if timestamps.Length = 0 then None
-                    else legendReaders |> Array.tryPick (fun readValue -> tryReadAtOrBefore readValue (timestamps.Length - 1))
+                    else latestLegendReaders |> Array.tryPick (fun readLatest -> readLatest ())
                 let initialTimestamp =
                     initialPresentation
                     |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
@@ -1486,7 +1509,7 @@ module TaWorkspaceRenderer =
                         let label = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
                         let initialValue =
                             if timestamps.Length = 0 then "Unavailable"
-                            else tryReadAtOrBefore legendReaders[index] (timestamps.Length - 1) |> Option.map _.Value |> Option.defaultValue "Unavailable"
+                            else latestLegendReaders[index] () |> Option.map _.Value |> Option.defaultValue "Unavailable"
                         let valueWidth =
                             match trace.Kind with
                             | TaTraceKind.Candlestick -> "46ch"
@@ -1512,7 +1535,7 @@ module TaWorkspaceRenderer =
         div [ Attr.Create "data-testid" ("ta-row-shell-" + row.RowId); attr.style "display:flex; flex-direction:column; min-width:0;" ] [
             chartFrame title [ metadata ] legend ("ta-row-" + row.RowId) frameHeight children
             rowResizeHandle row.RowId heightBounds rowHeight
-        ], cursorReaders, legendReaders
+        ], cursorReaders, legendReaders, latestLegendReaders
 
     let renderRowReactivePreparedLiveWithValueRefresh (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow scheduleValueRefresh (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
@@ -1528,7 +1551,7 @@ module TaWorkspaceRenderer =
 
     let renderRowReactive (state: RuntimeState) (ui: TaRendererUiState) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis (row: TaRowSpec) =
         renderRowReactivePrepared state ui visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis false row
-        |> fun (rowDoc, _, _) -> rowDoc
+        |> fun (rowDoc, _, _, _) -> rowDoc
 
     let renderRow state ui visibleTimestamps setCursorIndex commitCursorIndex showSharedTimeAxis row =
         let cursor = Var.Create ui.CursorIndex
@@ -1589,6 +1612,7 @@ module TaWorkspaceRenderer =
         let mutable latestCursorTimestamps: string array = [||]
         let mutable latestCursorReaders: (int -> TaCursorValue option) array = [||]
         let mutable latestLegendReaders: Map<string, (int -> TaRowValuePresentation option) array> = Map.empty
+        let mutable latestLegendValueReaders: Map<string, (unit -> TaRowValuePresentation option) array> = Map.empty
         let mutable displayedCursorIndex: int option = None
         let mutable refreshVisibleValues: (unit -> unit) = ignore
         let mutable visibleValueRefreshScheduled = false
@@ -2023,7 +2047,7 @@ module TaWorkspaceRenderer =
                         |> Option.bind (fun index ->
                             match bounded with
                             | Some _ -> tryLegendValue latestLegendReaders rowId traceIndex index
-                            | None -> tryLegendValueAtOrBefore latestLegendReaders rowId traceIndex index)
+                            | None -> tryLatestLegendValue latestLegendValueReaders rowId traceIndex)
                         |> Option.map _.Value
                         |> Option.defaultValue "Unavailable"
                     node.TextContent <- nextValue
@@ -2035,7 +2059,7 @@ module TaWorkspaceRenderer =
                         |> Option.bind (fun index ->
                             match bounded with
                             | Some _ -> tryRowPresentation latestLegendReaders rowId index
-                            | None -> tryRowPresentationAtOrBefore latestLegendReaders rowId index)
+                            | None -> tryLatestRowPresentation latestLegendValueReaders rowId)
                         |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
                         |> Option.defaultValue "Unavailable"
                     node.TextContent <- nextTime
@@ -2733,15 +2757,22 @@ module TaWorkspaceRenderer =
                                         ] [ text ("Preparing " + rowDisplayLabel row + "...") ] :> Doc))
                             let stagedCursorReaders: ((int -> TaCursorValue option) array option) array = Array.create visibleRows.Length None
                             let stagedLegendReaders: ((int -> TaRowValuePresentation option) array option) array = Array.create visibleRows.Length None
+                            let stagedLegendValueReaders: ((unit -> TaRowValuePresentation option) array option) array = Array.create visibleRows.Length None
                             activeRowDataStates <- rowDataStates
                             latestCursorTimestamps <- visibleTimestamps
                             latestCursorReaders <- [||]
                             latestLegendReaders <- Map.empty
+                            latestLegendValueReaders <- Map.empty
 
                             let synchronizeReaders () =
                                 latestCursorReaders <- stagedCursorReaders |> Array.choose id |> Array.collect id
                                 latestLegendReaders <-
                                     stagedLegendReaders
+                                    |> Array.mapi (fun index readers -> readers |> Option.map (fun values -> visibleRows[index].RowId, values))
+                                    |> Array.choose id
+                                    |> Map.ofArray
+                                latestLegendValueReaders <-
+                                    stagedLegendValueReaders
                                     |> Array.mapi (fun index readers -> readers |> Option.map (fun values -> visibleRows[index].RowId, values))
                                     |> Array.choose id
                                     |> Map.ofArray
@@ -2752,7 +2783,7 @@ module TaWorkspaceRenderer =
                                     scheduleNextFrame (fun () ->
                                         if workGeneration = chartWorkGeneration then
                                             let prepared = rowDataStates[index].Value
-                                            let rowDoc, cursorReaders, legendReaders =
+                                            let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow =
                                                 renderRowReactivePreparedLiveWithHeight
                                                     state
                                                     ui
@@ -2769,6 +2800,7 @@ module TaWorkspaceRenderer =
                                                     visibleRows[index]
                                             stagedCursorReaders[index] <- Some cursorReaders
                                             stagedLegendReaders[index] <- Some legendReaders
+                                            stagedLegendValueReaders[index] <- Some latestLegendReadersForRow
                                             rowDocs[index].Value <- rowDoc
                                             readyRowCount.Value <- index + 1
                                             synchronizeReaders ()

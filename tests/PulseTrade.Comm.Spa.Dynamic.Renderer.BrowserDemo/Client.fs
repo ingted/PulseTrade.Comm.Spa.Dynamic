@@ -458,6 +458,15 @@ module Client =
         let identity =
             { DocumentId = DocumentId "ta-demo-document"
               CanvasInstanceId = CanvasInstanceId "ta-demo-canvas" }
+        let sparseMissingTraces =
+            Array.init 20 (fun index ->
+                trace
+                    ("sparse-empty-" + string (index + 1))
+                    TaTraceKind.Line
+                    ("series.sparse-empty-" + string (index + 1))
+                    ("Sparse empty " + string (index + 1))
+                    "#94a3b8"
+                    1.0)
 
         { Identity = identity
           Document =
@@ -503,8 +512,10 @@ module Client =
                            TaRowKind.Macd
                            "series.macd"
                            1.0
-                           [| trace "macd-1k" TaTraceKind.Line "series.macd" "1K MACD" "#0f766e" 1.3
-                              trace "macd-30k" TaTraceKind.Line "series.macd-30k" "30K MACD causal" "#be185d" 1.8 |]
+                           (Array.append
+                               [| trace "macd-1k" TaTraceKind.Line "series.macd" "1K MACD" "#0f766e" 1.3
+                                  trace "macd-30k" TaTraceKind.Line "series.macd-30k" "30K MACD causal" "#be185d" 1.8 |]
+                               sparseMissingTraces)
                        row "heikin" TaRowKind.HeikinAshi "series.heikin" 2.0 |]
                   EditorSchemas = sampleEditorSchemas
                   AllowedActions =
@@ -977,6 +988,7 @@ module Client =
             attr.style "max-width:1460px; margin:0 auto; min-width:0;"
             Attr.Create "data-capacity-positions" (string capacityPointCount)
             Attr.Create "data-capacity-shared-series" (string capacitySeriesCount)
+            Attr.Create "data-sparse-empty-traces" "20"
             Attr.Create "data-sample-build-ms" (string sampleBuildMilliseconds)
             Attr.Create "data-renderer-setup-ms" (string rendererSetupMilliseconds)
             Attr.Create "data-candle-workload-wire-chars" (string candleReplacementWireChars)

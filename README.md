@@ -4,7 +4,7 @@ This project is a dynamic SDUI (Server-Driven UI) and Actor extension for `Pulse
 
 ## Current TA release graph
 
-The current exact TA graph is Contracts `[0.1.22]` -> Renderer `[0.1.50]` -> Interactive.Client `[0.1.42]`; Dynamic.Ptcs remains `[0.1.44]`, and Ptcs.Client `[0.1.64]` exact-pins Contracts and Renderer. Renderer 0.1.50 keeps the cursor gutter at a physical 32 CSS pixels, commits shared-cursor clicks from prepared timeline data, and uses bounded single-pass line compaction and Y-domain accumulation. The 4,000-bar browser gate covers cold replacement, cursor movement and click/commit, All, marker/selection, document replacement, progressive coverage, row resize, desktop/mobile geometry, and console errors. Daedalus owns the final 3,820-bar SPAA consumer E2E; owner BrowserDemo PASS does not replace that product gate.
+The current exact TA graph is Contracts `[0.1.22]` -> Renderer `[0.1.51]` -> Interactive.Client `[0.1.43]`; Dynamic.Ptcs remains `[0.1.44]`, and Ptcs.Client `[0.1.65]` exact-pins Contracts and Renderer. Renderer 0.1.51 keeps the cursor gutter at a physical 32 CSS pixels, commits shared-cursor clicks from prepared timeline data, uses bounded single-pass line compaction and Y-domain accumulation, and caches the latest prepared presentation so an unfixed cursor does not reverse-scan every missing or sparse higher-scale trace. The 4,000-bar browser gate includes 20 explicit sparse empty traces and covers cold replacement, cursor movement and click/commit, All, marker/selection, document replacement, progressive coverage, row resize, desktop/mobile geometry, and console errors. Daedalus owns the final 3,820-bar SPAA consumer E2E; owner BrowserDemo PASS does not replace that product gate.
 
 ## Actor Dynamic / Actor Argu modes
 
