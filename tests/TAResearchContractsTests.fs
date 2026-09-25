@@ -2414,4 +2414,82 @@ let tests =
                 ({ receipt with DataRevision = -1L }
                  |> RuntimeProjectionCommit.validate)
                 "Negative authority revisions must fail closed."
+
+        testCase "DYN-T-610 plot surface theme is typed optional and fail closed" <| fun _ ->
+            let dark = { Theme = TaPlotSurfaceTheme.Dark }
+            let encoded = TaPlotSurfacePresentationCodec.encode dark
+
+            Expect.equal
+                (TaPlotSurfacePresentationCodec.tryDecode encoded)
+                (Some dark)
+                "Dark plot presentation must round-trip through DefaultView."
+            Expect.equal
+                (TaPlotSurfacePresentationCodec.resolve Map.empty)
+                { Theme = TaPlotSurfaceTheme.Light }
+                "Missing presentation must preserve the legacy light theme."
+
+            let invalidDocument =
+                { document with
+                    DefaultView = Map [ TaPlotSurfacePresentationCodec.ThemeKey, SduiValue.Text "midnight" ] }
+            let invalidFrame = { documentFrame with Payload = RuntimePayload.Document invalidDocument }
+            match RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits invalidFrame with
+            | Error errors ->
+                Expect.contains
+                    (errors |> List.map _.Code)
+                    "invalid-plot-surface-theme"
+                    "Unknown themes must return a structured validation error."
+            | Ok _ -> failtest "Unknown plot surface themes must fail closed."
+
+        testCase "DYN-T-611 histogram polarity options are paired typed colors" <| fun _ ->
+            let style =
+                { PositiveColor = "#dc2626"
+                  NegativeColor = "#16a34a" }
+            let options = TaHistogramTraceOptionsCodec.encode style
+            let histogramTrace =
+                { TraceId = "macd-histogram"
+                  Kind = TaTraceKind.Histogram
+                  DataRef = "series.macd.histogram"
+                  Label = "MACD histogram"
+                  Color = "#64748b"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = options }
+
+            Expect.equal
+                (TaHistogramTraceOptionsCodec.tryDecode options)
+                (Some style)
+                "Positive and negative histogram colors must round-trip."
+
+            let validate trace =
+                let candidate =
+                    { document with
+                        Rows = [| { row with Traces = [| trace |] } |] }
+                let candidateFrame = { documentFrame with Payload = RuntimePayload.Document candidate }
+                RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits candidateFrame
+
+            Expect.isOk (validate histogramTrace) "A complete histogram polarity style must validate."
+            Expect.isOk
+                (validate { histogramTrace with Options = Map.empty })
+                "A histogram without polarity options must retain legacy single-color behavior."
+
+            let partial =
+                { histogramTrace with
+                    Options = Map [ TaHistogramTraceOptionsCodec.PositiveColorKey, SduiValue.Text "#dc2626" ] }
+            match validate partial with
+            | Error errors ->
+                Expect.contains
+                    (errors |> List.map _.Code)
+                    "invalid-histogram-colors"
+                    "Partial histogram styles must fail closed."
+            | Ok _ -> failtest "Partial histogram styles must not validate."
+
+            let wrongKind = { histogramTrace with Kind = TaTraceKind.Line }
+            match validate wrongKind with
+            | Error errors ->
+                Expect.contains
+                    (errors |> List.map _.Code)
+                    "histogram-options-kind-mismatch"
+                    "Histogram style keys on a non-histogram trace must fail closed."
+            | Ok _ -> failtest "Histogram style keys must not apply to line traces."
     ]

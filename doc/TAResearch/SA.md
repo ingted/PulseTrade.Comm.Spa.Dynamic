@@ -350,3 +350,11 @@ Receipt只證明某個accepted RuntimeState已完成current-generation visible p
 Edge event解決低延遲通知，level watermark解決listener建立晚於event的競態；兩者由同一Interactive.Client authority發布，不是兩套狀態。Renderer只回報rows-complete＋paint boundary，不接觸DOM root或consumer callback registry。這保持Contracts -> Renderer -> Interactive.Client單向依賴，也讓非Interactive PTCS render caller可沿用舊入口。
 
 最大風險是rapid replacement：舊row callback在新generation後完成。generation與pending candidate必須在每次row completion及final frame重新檢查；Dispose則使全部callback失效。這些negative path比happy-path attribute更新更重要，並須由unit與browser兩層鎖定。
+
+## 30. 2026-09-26 Dark plot 與 histogram polarity analysis
+
+Plot theme是同一份authoritative workspace的presentation選擇，不是新的domain payload。放在`DefaultView`可保持document wire與row topology不變，也讓Standalone、Interactive及PTCS consumers走同一renderer；Contracts提供typed codec，consumer不手刻key。未指定採Light，避免既有document被環境色彩偏好改變。
+
+Histogram polarity是trace-level style，且只有Histogram需要。把正負色放進`TaTraceSpec.Options`可避免擴充共用record造成所有adapter升版，同時可由validation拒絕partial pair、invalid color及kind mismatch。Renderer只依value符號切兩個batched path，`TaTraceSpec.Color`仍是legacy fallback；不得從MACD、label或trace name推論交易語意。
+
+Overview edge clipping是paint geometry，不是viewport selection錯誤。只在visual line位於0／1000邊界時以CSS pixel向內平移半個2px stroke；selection、hit rect與drag calculation均保持原值。使用CSS pixel而非viewBox unit，確保resize前後physical width一致。

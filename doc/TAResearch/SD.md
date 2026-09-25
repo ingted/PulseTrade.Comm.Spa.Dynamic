@@ -979,3 +979,30 @@ Candlestick row不再使用8% data padding，也不保留固定的上下plot ins
 - Overview selection fill不再承擔可見stroke。`ta-overview-left-handle-visual`與`ta-overview-right-handle-visual`是2 CSS px、`#155f73`、pointer-inert line；既有`ta-overview-left-handle/right-handle`仍是transparent rect drag targets。
 - `HeightWeight`只決定authored preference；所有chart row的初始化／reset／reload default plot height封頂250 CSS px。Manual resize仍使用candlestick 180..720、scalar 96..480範圍，因此trader可主動拉到250以上；same-canvas data replacement保留local override。
 - Owner gate驗source-identical完整WebSharper bundle、computed style、row resize、navigator左右drag、4,000 bars與既有long-task/cursor回歸；consumer以真SPAA驗geometry、截圖及效能。Consumer通過前兩包只算local candidate，不public push。
+
+## 2026-09-26 Dark plot／histogram polarity revision 21
+
+`TaPlotSurfacePresentationCodec`擁有`ta.plotSurface.theme`，typed值為`TaPlotSurfaceTheme.Light | Dark`；`resolve Map.empty`回Light，未知／non-text由RuntimeValidation回`invalid-plot-surface-theme`。Consumer建立或更新default view時只使用：
+
+```fsharp
+let nextDefaultView =
+    TaPlotSurfacePresentationCodec.apply
+        { Theme = TaPlotSurfaceTheme.Dark }
+        currentDefaultView
+```
+
+Renderer於每次document render只解析一次palette，再將同一palette傳給candle/composite SVG、overview、time axis、row-local value legend、cursor、grid與tooltip。Dark palette的plot/overview surface為`#000000`；axis/legend另用`#0b1017`，文字、grid與cursor使用高對比色。theme不改runtime identity、row topology、DataRevision或cache key。
+
+`TaHistogramTraceOptionsCodec`擁有`histogram.positiveColor`及`histogram.negativeColor`，兩鍵必須同時存在且通過既有color validator。使用方式：
+
+```fsharp
+let nextOptions =
+    TaHistogramTraceOptionsCodec.apply
+        { PositiveColor = "#dc2626"
+          NegativeColor = "#16a34a" }
+        currentOptions
+```
+
+Histogram projection對同一indexed line points做一次正值與一次負值bounded path assembly，`value >= 0`進positive path、`value < 0`進negative path；兩個path共享既有geometry／last-value state，不建立per-bar DOM。無typed options時兩色皆回退`TaTraceSpec.Color`。
+
+Overview visual line仍使用`x1=x2=selection boundary`與2 CSS px non-scaling stroke；僅在left x接近0時加`translateX(1px)`，right x接近1000時加`translateX(-1px)`。`ta-overview-left/right-handle` transparent rect及全部drag/range calculations不讀此style。

@@ -37,6 +37,56 @@ module TaWorkspaceRenderer =
     let mutable axisResizeBound = false
     let mutable rendererTelemetryInstanceSequence = 0
 
+    type TaPlotPalette =
+        { ThemeName: string
+          Surface: string
+          OverviewSurface: string
+          Grid: string
+          Cursor: string
+          AxisSurface: string
+          AxisText: string
+          LegendText: string
+          Border: string
+          OverviewPrice: string
+          TooltipSurface: string
+          TooltipText: string
+          TooltipBorder: string }
+
+    let lightPlotPalette =
+        { ThemeName = "light"
+          Surface = "#fbfcfe"
+          OverviewSurface = "#eef3f8"
+          Grid = "#e7ecf3"
+          Cursor = "#1f4f73"
+          AxisSurface = "#f8fafc"
+          AxisText = "#708198"
+          LegendText = "#263b55"
+          Border = "#c7d3e2"
+          OverviewPrice = "#3d718e"
+          TooltipSurface = "#ffffff"
+          TooltipText = "#263b55"
+          TooltipBorder = "#8ca0b8" }
+
+    let darkPlotPalette =
+        { ThemeName = "dark"
+          Surface = "#000000"
+          OverviewSurface = "#000000"
+          Grid = "#334155"
+          Cursor = "#7dd3fc"
+          AxisSurface = "#0b1017"
+          AxisText = "#cbd5e1"
+          LegendText = "#e2e8f0"
+          Border = "#475569"
+          OverviewPrice = "#60a5fa"
+          TooltipSurface = "#111827"
+          TooltipText = "#e2e8f0"
+          TooltipBorder = "#64748b" }
+
+    let plotPalette defaultView =
+        match (TaPlotSurfacePresentationCodec.resolve defaultView).Theme with
+        | TaPlotSurfaceTheme.Dark -> darkPlotPalette
+        | TaPlotSurfaceTheme.Light -> lightPlotPalette
+
     let nextRendererTelemetryInstanceId () =
         rendererTelemetryInstanceSequence <- rendererTelemetryInstanceSequence + 1
         string rendererTelemetryInstanceSequence
@@ -452,7 +502,7 @@ module TaWorkspaceRenderer =
         else
             value
 
-    let timeAxis testId rowId (timestamps: string array) =
+    let timeAxisWithPalette palette testId rowId (timestamps: string array) =
         axisViewportWidth.View
         |> View.Map (fun width ->
             let labels = RendererModel.adaptiveTimeLabels 92.0 width timestamps
@@ -460,7 +510,8 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-testid" testId
                 Attr.Create "data-time-axis-row-id" rowId
                 Attr.Create "data-time-axis-tick-count" (string labels.Length)
-                attr.style "position:relative; min-width:0; height:18px; padding:0 1px; overflow:hidden;"
+                Attr.Create "data-plot-surface-theme" palette.ThemeName
+                attr.style ("position:relative; min-width:0; height:18px; padding:0 1px; overflow:hidden; background:" + palette.AxisSurface + ";")
             ] [
                 for position in 0 .. labels.Length - 1 do
                     let index, label = labels[position]
@@ -471,10 +522,13 @@ module TaWorkspaceRenderer =
                             Attr.Create "data-time-axis-event-time" label
                             attr.style (
                                 "position:absolute; left:" + fixedText left + "%; transform:" + transform
-                                + "; max-width:92px; color:#708198; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")
+                                + "; max-width:92px; color:" + palette.AxisText + "; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")
                         ] [ text (compactTimestamp label) ]
             ] :> Doc)
         |> Doc.EmbedView
+
+    let timeAxis testId rowId timestamps =
+        timeAxisWithPalette lightPlotPalette testId rowId timestamps
 
     let rectanglePath x y width height =
         "M " + fixedText x + " " + fixedText y
@@ -483,7 +537,7 @@ module TaWorkspaceRenderer =
         + " h " + fixedText (-width)
         + " Z"
 
-    let overviewSvg points (stripeVisuals: TaOverviewStripeVisual array) referenceLength selectionWindow onReady onDragStart onDragEnd =
+    let overviewSvgWithPalette palette points (stripeVisuals: TaOverviewStripeVisual array) referenceLength selectionWindow onReady onDragStart onDragEnd =
         let width = 1000.0
         let height = 82.0
         let stripeTooltip = Var.Create<Option<float * string>>(None)
@@ -521,6 +575,16 @@ module TaWorkspaceRenderer =
         let rightHandleX = geometryText (fun (selectionX, selectionWidth, handleWidth, _, _) -> selectionX + selectionWidth - handleWidth)
         let moveHitX = geometryText (fun (_, _, _, moveHitX, _) -> moveHitX)
         let moveHitWidth = geometryText (fun (_, _, _, _, moveHitWidth) -> moveHitWidth)
+        let leftVisualStyle =
+            selectionWindow
+            |> View.Map (fun ratios ->
+                let selectionX, _, _, _, _ = selectionGeometry ratios
+                if selectionX <= 0.0001 then "transform:translateX(1px);" else "")
+        let rightVisualStyle =
+            selectionWindow
+            |> View.Map (fun ratios ->
+                let selectionX, selectionWidth, _, _, _ = selectionGeometry ratios
+                if selectionX + selectionWidth >= width - 0.0001 then "transform:translateX(-1px);" else "")
         let stripeX visual =
             RendererModel.slotCenter width referenceLength visual.SlotIndex
             |> Option.defaultValue (width / 2.0)
@@ -554,10 +618,11 @@ module TaWorkspaceRenderer =
 
         svgElement "svg" [
             Attr.Create "data-testid" "ta-overview-navigator"
+            Attr.Create "data-plot-surface-theme" palette.ThemeName
             Attr.Create "data-loaded-sample-count" (string sampled.Length)
             svgAttr "viewBox" "0 0 1000 82"
             svgAttr "preserveAspectRatio" "none"
-            attr.style "display:block; width:100%; height:82px; min-width:0; background:#eef3f8; border:1px solid #c7d3e2; border-radius:4px; box-sizing:border-box; touch-action:none;"
+            attr.style ("display:block; width:100%; height:82px; min-width:0; background:" + palette.OverviewSurface + "; border:1px solid " + palette.Border + "; border-radius:4px; box-sizing:border-box; touch-action:none;")
             on.afterRender onReady
             on.mouseUp (fun _ event -> onDragEnd event)
             on.mouseMove (fun element event ->
@@ -576,7 +641,7 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-stroke-width-css-pixels" "1.5"
                 svgAttr "d" closePath
                 svgAttr "fill" "none"
-                svgAttr "stroke" "#3d718e"
+                svgAttr "stroke" palette.OverviewPrice
                 svgAttr "stroke-width" "1.5"
                 svgAttr "vector-effect" "non-scaling-stroke"
                 svgAttr "pointer-events" "none"
@@ -601,6 +666,7 @@ module TaWorkspaceRenderer =
             yield svgElement "line" [
                 Attr.Create "data-testid" "ta-overview-left-handle-visual"
                 Attr.Create "data-stroke-width-css-pixels" "2"
+                Attr.Dynamic "style" leftVisualStyle
                 Attr.Dynamic "x1" selectionX; Attr.Dynamic "x2" selectionX
                 svgAttr "y1" "1"; svgAttr "y2" "81"
                 svgAttr "stroke" "#155f73"; svgAttr "stroke-width" "2"
@@ -615,6 +681,7 @@ module TaWorkspaceRenderer =
             yield svgElement "line" [
                 Attr.Create "data-testid" "ta-overview-right-handle-visual"
                 Attr.Create "data-stroke-width-css-pixels" "2"
+                Attr.Dynamic "style" rightVisualStyle
                 Attr.Dynamic "x1" selectionRightX; Attr.Dynamic "x2" selectionRightX
                 svgAttr "y1" "1"; svgAttr "y2" "81"
                 svgAttr "stroke" "#155f73"; svgAttr "stroke-width" "2"
@@ -640,11 +707,14 @@ module TaWorkspaceRenderer =
                         let bounded = if value.Length <= 180 then value else value.Substring(0, 177) + "..."
                         let boxX = max 4.0 (min 716.0 (x + 6.0))
                         svgElement "g" [ Attr.Create "data-testid" "ta-overview-stripe-tooltip"; svgAttr "pointer-events" "none" ] [
-                            svgElement "rect" [ svgAttr "x" (fixedText boxX); svgAttr "y" "3"; svgAttr "width" "280"; svgAttr "height" "18"; svgAttr "rx" "2"; svgAttr "fill" "#ffffff"; svgAttr "fill-opacity" "0.95"; svgAttr "stroke" "#8ca0b8"; svgAttr "stroke-width" "0.7" ] []
-                            svgElement "text" [ svgAttr "x" (fixedText (boxX + 5.0)); svgAttr "y" "15"; svgAttr "fill" "#263b55"; svgAttr "font-family" "Consolas,monospace"; svgAttr "font-size" "9" ] [ text bounded ]
+                            svgElement "rect" [ svgAttr "x" (fixedText boxX); svgAttr "y" "3"; svgAttr "width" "280"; svgAttr "height" "18"; svgAttr "rx" "2"; svgAttr "fill" palette.TooltipSurface; svgAttr "fill-opacity" "0.95"; svgAttr "stroke" palette.TooltipBorder; svgAttr "stroke-width" "0.7" ] []
+                            svgElement "text" [ svgAttr "x" (fixedText (boxX + 5.0)); svgAttr "y" "15"; svgAttr "fill" palette.TooltipText; svgAttr "font-family" "Consolas,monospace"; svgAttr "font-size" "9" ] [ text bounded ]
                         ] :> Doc)
                 |> Doc.EmbedView
         ]
+
+    let overviewSvg points stripeVisuals referenceLength selectionWindow onReady onDragStart onDragEnd =
+        overviewSvgWithPalette lightPlotPalette points stripeVisuals referenceLength selectionWindow onReady onDragStart onDragEnd
 
     let candleSvg testId (points: TaCandlePoint array) cursorIndex =
         let width = 1000.0
@@ -740,15 +810,15 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh =
+    let compositeSvgReactivePreparedLiveWithHeightPalette palette rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
         let top = if hasCandles then 0.0 else 10.0
         let plotHeight = if hasCandles then height else 92.0
-        let palette = [| "#2764b0"; "#9b5b24"; "#6a4ca3"; "#0f766e"; "#b45309"; "#be185d"; "#475569"; "#0891b2" |]
+        let tracePalette = [| "#2764b0"; "#9b5b24"; "#6a4ca3"; "#0f766e"; "#b45309"; "#be185d"; "#475569"; "#0891b2" |]
         let color index (trace: TaTraceSpec) =
-            if String.IsNullOrWhiteSpace trace.Color then palette[index % palette.Length] else trace.Color
+            if String.IsNullOrWhiteSpace trace.Color then tracePalette[index % tracePalette.Length] else trace.Color
 
         let xAt index =
             RendererModel.slotCenter width referenceTimestamps.Length index
@@ -1075,25 +1145,38 @@ module TaWorkspaceRenderer =
                 |> Option.defaultWith (fun () -> initialLinePoints |> Array.find (fun (index, _, _) -> index = traceIndex))
             points, low, high
 
-        let linePath traceIndex (trace: TaTraceSpec) geometry =
+        let linePaths traceIndex (trace: TaTraceSpec) geometry =
             let points, low, high = lineGeometry traceIndex geometry
             match trace.Kind with
-            | TaTraceKind.Histogram
+            | TaTraceKind.Histogram ->
+                let zeroY = RendererModel.normalize low high top plotHeight 0.0
+                let barWidth = max 1.0 (slot * 0.64)
+                let path predicate =
+                    points
+                    |> Array.choose (fun (index, point: TaLinePoint) ->
+                        if predicate point.Value then
+                            let x = slot * (float index + 0.18)
+                            let valueY = RendererModel.normalize low high top plotHeight point.Value
+                            Some(rectanglePath x (min zeroY valueY) barWidth (max 1.0 (abs (zeroY - valueY))))
+                        else
+                            None)
+                    |> String.concat " "
+                path (fun value -> value >= 0.0), path (fun value -> value < 0.0)
             | TaTraceKind.Volume ->
                 let zeroY = RendererModel.normalize low high top plotHeight 0.0
                 let barWidth = max 1.0 (slot * 0.64)
-                points
-                |> Array.map (fun (index, point: TaLinePoint) ->
-                    let x = slot * (float index + 0.18)
-                    let valueY = RendererModel.normalize low high top plotHeight point.Value
-                    rectanglePath x (min zeroY valueY) barWidth (max 1.0 (abs (zeroY - valueY))))
-                |> String.concat " "
+                (points
+                 |> Array.map (fun (index, point: TaLinePoint) ->
+                     let x = slot * (float index + 0.18)
+                     let valueY = RendererModel.normalize low high top plotHeight point.Value
+                     rectanglePath x (min zeroY valueY) barWidth (max 1.0 (abs (zeroY - valueY))))
+                 |> String.concat " "), ""
             | TaTraceKind.Line ->
-                points
-                |> Array.map (fun (index, point: TaLinePoint) -> xAt index, RendererModel.normalize low high top plotHeight point.Value)
-                |> Array.mapi (fun index (x, y) -> (if index = 0 then "M" else "L") + " " + fixedText x + " " + fixedText y)
-                |> String.concat " "
-            | _ -> ""
+                (points
+                 |> Array.map (fun (index, point: TaLinePoint) -> xAt index, RendererModel.normalize low high top plotHeight point.Value)
+                 |> Array.mapi (fun index (x, y) -> (if index = 0 then "M" else "L") + " " + fixedText x + " " + fixedText y)
+                 |> String.concat " "), ""
+            | _ -> "", ""
 
         let lineLastValue traceIndex geometry =
             let points, _, _ = lineGeometry traceIndex geometry
@@ -1252,14 +1335,14 @@ module TaWorkspaceRenderer =
                                 svgElement "rect" [
                                     svgAttr "x" (fixedText (x - 10.0)); svgAttr "y" (fixedText (y - 7.0))
                                     svgAttr "width" "20"; svgAttr "height" "14"; svgAttr "rx" "3"
-                                    svgAttr "fill" "#ffffff"; svgAttr "stroke" "#40536d"; svgAttr "stroke-width" "1.2"
+                                    svgAttr "fill" palette.TooltipSurface; svgAttr "stroke" palette.TooltipBorder; svgAttr "stroke-width" "1.2"
                                     svgAttr "vector-effect" "non-scaling-stroke"
                                 ] []
                                 svgElement "text" [
                                     svgAttr "x" (fixedText x); svgAttr "y" (fixedText (y + 0.5))
                                     svgAttr "text-anchor" "middle"; svgAttr "dominant-baseline" "middle"
                                     svgAttr "font-family" "Consolas,monospace"; svgAttr "font-size" "8"
-                                    svgAttr "font-weight" "700"; svgAttr "fill" "#263b55"
+                                    svgAttr "font-weight" "700"; svgAttr "fill" palette.TooltipText
                                     svgAttr "pointer-events" "none"
                                 ] [ text ("+" + string hiddenCount) ]
                                 svgElement "title" [] [ text ($"{hiddenCount} additional markers") ]
@@ -1284,7 +1367,7 @@ module TaWorkspaceRenderer =
                                 svgAttr "font-size" (fixedText fontSize)
                                 svgAttr "font-weight" "650"
                                 svgAttr "paint-order" "stroke"
-                                svgAttr "stroke" "#ffffff"
+                                svgAttr "stroke" palette.Surface
                                 svgAttr "stroke-width" "2.5"
                                 svgAttr "stroke-linejoin" "round"
                                 svgAttr "pointer-events" "none"
@@ -1312,8 +1395,8 @@ module TaWorkspaceRenderer =
                                         Attr.Create "aria-live" "polite"
                                         svgAttr "pointer-events" "none"
                                     ] [
-                                        svgElement "rect" [ svgAttr "x" (fixedText boxX); svgAttr "y" (fixedText boxY); svgAttr "width" "304"; svgAttr "height" "24"; svgAttr "rx" "3"; svgAttr "fill" "#ffffff"; svgAttr "fill-opacity" "0.97"; svgAttr "stroke" "#8ca0b8"; svgAttr "stroke-width" "0.8" ] []
-                                        svgElement "text" [ svgAttr "x" (fixedText (boxX + 6.0)); svgAttr "y" (fixedText (boxY + 15.0)); svgAttr "fill" "#263b55"; svgAttr "font-family" "Consolas,monospace"; svgAttr "font-size" "9" ] [ text ($"{index + 1}/{cluster.Markers.Length} {bounded}") ]
+                                        svgElement "rect" [ svgAttr "x" (fixedText boxX); svgAttr "y" (fixedText boxY); svgAttr "width" "304"; svgAttr "height" "24"; svgAttr "rx" "3"; svgAttr "fill" palette.TooltipSurface; svgAttr "fill-opacity" "0.97"; svgAttr "stroke" palette.TooltipBorder; svgAttr "stroke-width" "0.8" ] []
+                                        svgElement "text" [ svgAttr "x" (fixedText (boxX + 6.0)); svgAttr "y" (fixedText (boxY + 15.0)); svgAttr "fill" palette.TooltipText; svgAttr "font-family" "Consolas,monospace"; svgAttr "font-size" "9" ] [ text ($"{index + 1}/{cluster.Markers.Length} {bounded}") ]
                                     ] :> Doc)
                         |> Doc.EmbedView
                 ]) markerVisualState.View axisViewportWidth.View
@@ -1331,9 +1414,11 @@ module TaWorkspaceRenderer =
         let lineVisualStates =
             initialLinePoints
             |> Array.map (fun (traceIndex, trace, _) ->
+                let positivePath, negativePath = linePaths traceIndex trace initialGeometry
                 traceIndex,
                 trace,
-                Var.Create(linePath traceIndex trace initialGeometry),
+                Var.Create positivePath,
+                Var.Create negativePath,
                 Var.Create(lineLastValue traceIndex initialGeometry))
 
         let mutable observedPreparedData = preparedData
@@ -1359,10 +1444,11 @@ module TaWorkspaceRenderer =
                         if pathStates[index].Value <> nextPaths[index] then
                             pathStates[index].Value <- nextPaths[index]
 
-                for traceIndex, trace, pathState, lastValueState in lineVisualStates do
-                    let nextPath = linePath traceIndex trace geometry
+                for traceIndex, trace, positivePathState, negativePathState, lastValueState in lineVisualStates do
+                    let nextPositivePath, nextNegativePath = linePaths traceIndex trace geometry
                     let nextLastValue = lineLastValue traceIndex geometry
-                    if pathState.Value <> nextPath then pathState.Value <- nextPath
+                    if positivePathState.Value <> nextPositivePath then positivePathState.Value <- nextPositivePath
+                    if negativePathState.Value <> nextNegativePath then negativePathState.Value <- nextNegativePath
                     if lastValueState.Value <> nextLastValue then lastValueState.Value <- nextLastValue
 
                 scheduleValueRefresh ())
@@ -1373,8 +1459,9 @@ module TaWorkspaceRenderer =
             svgAttr "role" "img"
             svgAttr "aria-label" ("Composite TA row " + rowId)
             Attr.Create "data-testid" svgTestId
+            Attr.Create "data-plot-surface-theme" palette.ThemeName
             Attr.Create "data-point-count" (string referenceTimestamps.Length)
-            Attr.Dynamic "style" (chartPixelHeight.View |> View.Map (fun value -> "display:block; width:100%; height:" + string value + "px; background:#fbfcfe;"))
+            Attr.Dynamic "style" (chartPixelHeight.View |> View.Map (fun value -> "display:block; width:100%; height:" + string value + "px; background:" + palette.Surface + ";"))
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
                 match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
@@ -1388,7 +1475,7 @@ module TaWorkspaceRenderer =
         ] [
             for gridIndex in 0 .. 4 do
                 let y = top + plotHeight * float gridIndex / 4.0
-                yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" (fixedText y); svgAttr "y2" (fixedText y); svgAttr "stroke" "#e7ecf3"; svgAttr "stroke-width" "1" ] []
+                yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" (fixedText y); svgAttr "y2" (fixedText y); svgAttr "stroke" palette.Grid; svgAttr "stroke-width" "1" ] []
 
             for traceIndex, trace, pathStates in candlePathStates do
                 let traceTestId = "ta-candle-" + rowId + "-" + trace.TraceId
@@ -1419,19 +1506,28 @@ module TaWorkspaceRenderer =
 
             for traceIndex, trace, _ in initialLinePoints do
                 let traceColor = color traceIndex trace
-                let _, _, pathState, lastValueState = lineVisualStates |> Array.find (fun (index, _, _, _) -> index = traceIndex)
-                let path = pathState.View
+                let _, _, positivePathState, negativePathState, lastValueState = lineVisualStates |> Array.find (fun (index, _, _, _, _) -> index = traceIndex)
+                let positivePath = positivePathState.View
+                let negativePath = negativePathState.View
                 let lastValue = lastValueState.View
                 match trace.Kind with
-                | TaTraceKind.Histogram
+                | TaTraceKind.Histogram ->
+                    let histogramStyle =
+                        TaHistogramTraceOptionsCodec.tryDecode trace.Options
+                        |> Option.defaultValue
+                            { PositiveColor = traceColor
+                              NegativeColor = traceColor }
+                    let traceTestId = "ta-trace-" + rowId + "-" + trace.TraceId
+                    yield svgElement "path" [ Attr.Create "data-testid" traceTestId; Attr.Create "data-histogram-polarity" "positive"; Attr.Dynamic "d" positivePath; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" histogramStyle.PositiveColor; svgAttr "fill-opacity" "0.74" ] []
+                    yield svgElement "path" [ Attr.Create "data-testid" (traceTestId + "-negative"); Attr.Create "data-histogram-polarity" "negative"; Attr.Dynamic "d" negativePath; svgAttr "fill" histogramStyle.NegativeColor; svgAttr "fill-opacity" "0.74" ] []
                 | TaTraceKind.Volume ->
-                    yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); Attr.Dynamic "d" path; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" traceColor; svgAttr "fill-opacity" "0.62" ] []
+                    yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); Attr.Dynamic "d" positivePath; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" traceColor; svgAttr "fill-opacity" "0.62" ] []
                 | TaTraceKind.Line ->
                     let strokeWidthCssPixels = max 1.0 (min 2.0 trace.Width) |> fixedText
                     yield svgElement "path" [
                         Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId)
                         Attr.Create "data-stroke-width-css-pixels" strokeWidthCssPixels
-                        Attr.Dynamic "d" path
+                        Attr.Dynamic "d" positivePath
                         Attr.Dynamic "data-last-value" lastValue
                         svgAttr "fill" "none"
                         svgAttr "stroke" traceColor
@@ -1453,7 +1549,7 @@ module TaWorkspaceRenderer =
                     svgAttr "visibility" "hidden"
                     svgAttr "y1" "0"
                     svgAttr "y2" (fixedText height)
-                    svgAttr "stroke" "#1f4f73"
+                    svgAttr "stroke" palette.Cursor
                     svgAttr "stroke-width" "1"
                     svgAttr "stroke-dasharray" "3 3"
                     svgAttr "pointer-events" "none"
@@ -1477,6 +1573,9 @@ module TaWorkspaceRenderer =
                  let _, _, current = readerStates[index].Value
                  current))
 
+    let compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh =
+        compositeSvgReactivePreparedLiveWithHeightPalette lightPlotPalette rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh
+
     let compositeSvgReactivePreparedLiveWithValueRefresh rowId isBaseRow (traces: TaTraceSpec array) preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex scheduleValueRefresh =
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = Var.Create(if hasCandles then 250 else 112)
@@ -1498,9 +1597,9 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create cursorIndex
         compositeSvgReactive rowId traces data referenceTimestamps cursor.View setCursorIndex commitCursorIndex
 
-    let renderRowReactivePreparedLiveWithHeight (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement (row: TaRowSpec) =
+    let renderRowReactivePreparedLiveWithHeightPalette palette (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
-        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders = compositeSvgReactivePreparedLiveWithHeight row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders = compositeSvgReactivePreparedLiveWithHeightPalette palette row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =
@@ -1530,12 +1629,13 @@ module TaWorkspaceRenderer =
                 yield div [
                     Attr.Create "data-testid" ("ta-row-cursor-gutter-" + row.RowId)
                     Attr.Create "data-fixed-height" "32"
-                    attr.style "box-sizing:border-box; height:32px; min-height:32px; max-height:32px; flex:0 0 32px; border-bottom:1px solid #edf1f6; background:#f8fafc;"
+                    Attr.Create "data-plot-surface-theme" palette.ThemeName
+                    attr.style ("box-sizing:border-box; height:32px; min-height:32px; max-height:32px; flex:0 0 32px; border-bottom:1px solid " + palette.Grid + "; background:" + palette.AxisSurface + ";")
                 ] []
                 yield cursorTag
                 yield chart
                 if showSharedTimeAxis then
-                    yield timeAxis ("ta-time-axis-" + row.RowId) row.RowId timestamps
+                    yield timeAxisWithPalette palette ("ta-time-axis-" + row.RowId) row.RowId timestamps
             ]
         let children = [ rowPlot :> Doc ]
         let metadata =
@@ -1561,7 +1661,8 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-testid" ("ta-row-values-" + row.RowId)
                 Attr.Create "data-ta-row-values" "true"
                 Attr.Create "data-fixed-height" "30"
-                attr.style "box-sizing:border-box; display:flex; align-items:center; gap:6px 14px; height:30px; min-height:30px; padding:0 8px; border-top:1px solid #edf1f6; border-bottom:1px solid #edf1f6; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:#263b55;"
+                Attr.Create "data-plot-surface-theme" palette.ThemeName
+                attr.style ("box-sizing:border-box; display:flex; align-items:center; gap:6px 14px; height:30px; min-height:30px; padding:0 8px; border-top:1px solid " + palette.Grid + "; border-bottom:1px solid " + palette.Grid + "; background:" + palette.AxisSurface + "; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:" + palette.LegendText + ";")
                 on.afterRender registerLegendElement
             ] [
                 let initialPresentation =
@@ -1611,6 +1712,9 @@ module TaWorkspaceRenderer =
             chartFrame title [ metadata ] legend ("ta-row-" + row.RowId) frameHeight children
             rowResizeHandle row.RowId heightBounds rowHeight
         ], cursorReaders, legendReaders, latestLegendReaders
+
+    let renderRowReactivePreparedLiveWithHeight state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row =
+        renderRowReactivePreparedLiveWithHeightPalette lightPlotPalette state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row
 
     let renderRowReactivePreparedLiveWithValueRefresh (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow scheduleValueRefresh (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
@@ -2779,6 +2883,7 @@ module TaWorkspaceRenderer =
                         span [ attr.style "font-size:12px;" ] [ text pending.Detail ]
                     ] :> Doc
                 | Some document ->
+                    let currentPlotPalette = plotPalette document.DefaultView
                     if state.DocumentRevision <> synchronizedDocumentRevision then
                         let query = RendererModel.queryDraft document.DefaultView
                         instrumentDraft <- query.Instrument
@@ -3013,7 +3118,8 @@ module TaWorkspaceRenderer =
                                             if workGeneration = chartWorkGeneration then
                                                 let prepared = rowDataStates[index].Value
                                                 let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow =
-                                                    renderRowReactivePreparedLiveWithHeight
+                                                    renderRowReactivePreparedLiveWithHeightPalette
+                                                        currentPlotPalette
                                                         state
                                                         ui
                                                         prepared
@@ -3143,7 +3249,8 @@ module TaWorkspaceRenderer =
                                                         currentPreparedData
                                                         currentReferenceTimeline)
                                                 |> RendererModel.overviewStripeVisuals
-                                            overviewSvg
+                                            overviewSvgWithPalette
+                                                currentPlotPalette
                                                 overviewPoints
                                                 overviewStripeVisuals
                                                 currentReferenceLength

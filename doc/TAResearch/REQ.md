@@ -155,3 +155,6 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-077 | reject、resync、stale socket/render generation、cancelled row work、disconnect中斷candidate及Dispose後callback不得發布receipt或提高watermark。 |
 | DYN-TA-REQ-078 | Interactive application須在stable root同時提供versioned edge event與level watermark，並由typed handle提供current/subscription API；chart revision attrs只供diagnostic。 |
 | DYN-TA-REQ-079 | Consumer須先subscribe再送action，且只以相同canvas identity及committed revision達expected完成等待；late subscriber可讀level，不得以固定delay或action ACK替代。 |
+| DYN-TA-REQ-080 | Overview左右2 CSS px visual boundary位於SVG edge時須向內補償半個stroke，完整可見寬度必須與移動到內部後相同；transparent 8-unit drag target、selection range與pointer語意不得改變。 |
+| DYN-TA-REQ-081 | `TaWorkspaceDocument.DefaultView`須能以generic typed contract選擇light/dark plot surface。Dark模式的candle、TA與overview SVG為黑底，grid、cursor、axis、legend及tooltip維持可讀；未指定時相容light，不由browser preference或consumer CSS暗中覆蓋。 |
+| DYN-TA-REQ-082 | Histogram正／負值顏色由`TaTraceSpec.Options`的paired typed options指定；不得由TraceId、Label或MACD名稱推論。兩鍵皆缺維持`TaTraceSpec.Color` legacy單色；partial、invalid color或非Histogram使用該keys須fail closed。 |

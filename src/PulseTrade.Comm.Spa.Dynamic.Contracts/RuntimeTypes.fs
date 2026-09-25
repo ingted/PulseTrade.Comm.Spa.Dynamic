@@ -131,6 +131,18 @@ type TaMarker =
 type TaMarkerTraceOptions =
     { TargetTraceId: string }
 
+[<RequireQualifiedAccess>]
+type TaPlotSurfaceTheme =
+    | Light
+    | Dark
+
+type TaPlotSurfacePresentation =
+    { Theme: TaPlotSurfaceTheme }
+
+type TaHistogramTraceOptions =
+    { PositiveColor: string
+      NegativeColor: string }
+
 type TaOverviewStripe =
     { StripeId: string
       EventTimeUtc: string
@@ -616,6 +628,61 @@ module TaMarkerContract =
                 | Some target when target.TraceId = trace.TraceId -> [ TaMarkerCodec.error "marker-self-target" $"document.rows.{row.RowId}.traces.{trace.TraceId}.options" "Marker trace cannot target itself." ]
                 | Some target when target.Kind <> TaTraceKind.Candlestick -> [ TaMarkerCodec.error "marker-target-not-candlestick" $"document.rows.{row.RowId}.traces.{trace.TraceId}.options" "Marker target trace must be Candlestick." ]
                 | Some _ -> [])
+
+[<JavaScript; RequireQualifiedAccess>]
+module TaPlotSurfacePresentationCodec =
+    [<Literal>]
+    let ThemeKey = "ta.plotSurface.theme"
+
+    let themeText = function
+        | TaPlotSurfaceTheme.Light -> "light"
+        | TaPlotSurfaceTheme.Dark -> "dark"
+
+    let encode value = Map [ ThemeKey, SduiValue.Text(themeText value.Theme) ]
+
+    let apply value defaultView =
+        Map.add ThemeKey (SduiValue.Text(themeText value.Theme)) defaultView
+
+    let tryDecode (defaultView: Map<string, SduiValue>) =
+        match Map.tryFind ThemeKey defaultView with
+        | Some(SduiValue.Text "light") -> Some { Theme = TaPlotSurfaceTheme.Light }
+        | Some(SduiValue.Text "dark") -> Some { Theme = TaPlotSurfaceTheme.Dark }
+        | _ -> None
+
+    let resolve defaultView =
+        tryDecode defaultView
+        |> Option.defaultValue { Theme = TaPlotSurfaceTheme.Light }
+
+[<JavaScript; RequireQualifiedAccess>]
+module TaHistogramTraceOptionsCodec =
+    [<Literal>]
+    let PositiveColorKey = "histogram.positiveColor"
+
+    [<Literal>]
+    let NegativeColorKey = "histogram.negativeColor"
+
+    let encode value =
+        Map
+            [ PositiveColorKey, SduiValue.Text value.PositiveColor
+              NegativeColorKey, SduiValue.Text value.NegativeColor ]
+
+    let apply value options =
+        options
+        |> Map.add PositiveColorKey (SduiValue.Text value.PositiveColor)
+        |> Map.add NegativeColorKey (SduiValue.Text value.NegativeColor)
+
+    let hasAny options =
+        Map.containsKey PositiveColorKey options
+        || Map.containsKey NegativeColorKey options
+
+    let tryDecode (options: Map<string, SduiValue>) =
+        match Map.tryFind PositiveColorKey options, Map.tryFind NegativeColorKey options with
+        | Some(SduiValue.Text positive), Some(SduiValue.Text negative)
+            when TaMarkerCodec.validColor positive && TaMarkerCodec.validColor negative ->
+            Some
+                { PositiveColor = positive
+                  NegativeColor = negative }
+        | _ -> None
 
 [<JavaScript; RequireQualifiedAccess>]
 module TaOverviewStripeLimits =

@@ -26,6 +26,8 @@
 - row composition：同一immutable `DataRef`可同時出現在overlay row與一或多個separate rows；Renderer逐row獨立解析與呈現，不依`DataRef`合併row。overlay/分列完全由owner提供的`Rows`/`Traces`決定。
 - cursor/style：K棒、line point與cross-row cursor共用slot-center幾何；indicator line width為1.25，histogram維持1.0。
 - event-time interaction：`BaseRowId`的真實timestamp驅動shared cursor；coarse row只使用finalized containing/as-of point，否則missing。viewport release送半開event-time range，pending期間controls不可重入。
+- plot surface theme：consumer以`TaPlotSurfacePresentationCodec.apply`在`DefaultView`選Light／Dark；Renderer用同一palette繪製candle、TA、overview、grid、cursor、axis、legend與tooltip。未指定維持Light，不讀browser preference或consumer CSS作authority。
+- histogram polarity：consumer以`TaHistogramTraceOptionsCodec.apply`設定正／負色；Renderer依value符號產生兩個batched paths。未指定則兩色皆沿用`TaTraceSpec.Color`，不從trace name／label推論MACD或交易語意。
 
 ## API
 
@@ -50,6 +52,8 @@ TaWorkspaceRenderer.renderWithProjectionCommit
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-generic-marker-playwright.fsx`。
 - current public release：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.70`，exact依賴Contracts `[0.1.28]`與FSharp.Core `[10.1.400]`；`0.1.69`已作廢。K-bar row的Y-domain只取current viewport projected candles與same-row projected lines，並把自SVG edge起算的上下15 CSS px反算成viewBox/data padding，row resize不放大留白。所有chart row的authored/default plot height封頂250 CSS px，但manual candle/scalar resize仍可到720/480px；reset/reload回capped default。一般line／SMA寬度夾在1–2 CSS px並使用`non-scaling-stroke`；overview左右可見邊界`ta-overview-left/right-handle-visual`各為2 CSS px `#155f73`線，既有`ta-overview-left/right-handle`維持transparent drag rect。`0.1.39`曾出現同版號不同bytes，禁止採用。Renderer保留Backtest Presentation UX的same-topology navigator refresh，並以document/data/transport diagnostics區分render原因；chunked transport只在完整candidate commit後進入Renderer。Marker使用bounded SVG overlay、document trace order → bucket order的跨trace deterministic shape lanes、viewport-aware visible label與collision lanes；`TriangleUp／TriangleDown`方向不受anchor改寫，`Outline`使用`fill="none"`且保留完整pointer hit target。marker不進數值圖例、Y-domain或額外time slot；tooltip與shared cursor可在同一pointer interaction共存。row-local cursor timestamp使用SVG外固定32px gutter及固定CSS-pixel兩行tag；row resize只改plot height與tag位置，不縮放tag字型、padding、border或尺寸。line reader採indexed projection；大型candle projection以固定bucket array單次聚合first-open／last-close／high／low／volume，不建立per-slot tuple/groupBy，八種candle paths由single-pass buckets產生；source/Y-domain/cursor語意不變。同topology資料patch會更新shell prepared-data signal及navigator stripe，不重掛chart stack。mousemove經單一requestAnimationFrame直接更新固定crosshair、row timestamp與value DOM；shared cursor覆蓋current row完整SVG高度，不延伸到其他row或SVG外toolbar。
+
+RFC-0027 local candidate為Renderer `0.1.71`、Contracts `[0.1.29]`、Interactive.Client `0.1.62`。它新增typed dark plot palette、typed histogram positive/negative colors，並在Overview visual boundary位於SVG edge時只平移visual stroke半寬；hit target與selection geometry不變。此graph尚待Daedalus真SPAA GREEN，未取代上述public release。
 
 RFC-0017之後，cache rehydrate即使保留current identity/revision，只要validated Data object替換仍會重畫。row legend以`rowId + local trace index`隔離；All模式保留完整scale/cursor arrays，但以bounded candle/line paths呈現。non-base candle cursor使用一次range projection，不再對每個base timestamp掃描完整source。
 

@@ -1646,3 +1646,11 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Daedalus以真SPAA驗收immutable graph Contracts `0.1.28`／Renderer `0.1.70`／Interactive.Client `0.1.61`：1,140 bars、5 markers；line/SMA 1–2 CSS px、overview visible boundaries exact 2px且drag rect透明、全部初始candle/composite SVG <=250px均GREEN。All=285ms、pointer p95=28.18ms、cold/cache long tasks=0，Release builds 0 errors。
 - Renderer與Interactive.Client public push均回`Created`。Official nupkg SHA-256為`7B6A570D1333EE7E15F596737A08E55EA4C47035A3DA500405F2E889293EA675`／`1F668DB14F75D7B3C00BEB9684A0453B494E07558783CB525CDF9E789E45CB1D`；repository signatures有效。排除`.signature.p7s`後local／official entries均`Different=0`，Interactive nuspec exact依賴Contracts `[0.1.28]`與Renderer `[0.1.70]`。
+
+## 2026-09-26 - Dark plot surface and typed histogram polarity candidate
+
+- RFC-0027新增generic `TaPlotSurfacePresentation` light/dark contract與`TaHistogramTraceOptions`正負色彩contract；Renderer集中解析palette，將candle／TA／overview surface切為黑底且維持grid、cursor、axis與legend可讀。Histogram依typed positive／negative colors建立兩個bounded batched paths，不由trace名稱推論domain。
+- Overview左右visible line仍為2 CSS px與既有transparent 8-unit drag hit rect分離；初始貼SVG edge時只將可見線向內平移1px，drag後移除transform，未改hit target或selection語意。
+- Release exact graph為Contracts `0.1.29`、Renderer `0.1.71`、Interactive.Client `0.1.62`。一般incremental Release build曾產出缺少`WebSharper.meta`的Contracts DLL；改以Release `Rebuild`後確認151個manifest resources，再用獨立restore cache重建下游與驗證package，沒有停用WebSharper。
+- Owner gates通過：獨立cache focused `44/44、48/48、12/12`、Interactive nupkg verifier、Release exact graph 4,000-bar F# Playwright與Playwright MCP。Release正式update phases max為`72.92/83.35/40.34/59.85/24.19/42.93ms`且over100=0，console/page error為0。
+- Release nupkg SHA-256依序為`7A59C0A671E5E995B88D1BCD23F074D2ADC0280D6DFD9EC09C354208D51FFC9E`、`2D68D4CAF1234634090B5417B2ED7FEEED0B26ABF18DAE613130B8699AB5A98F`、`3B5997F91F32150949402A8E57D9DDDA1012A4F4D98C5206D1F19319CD3A417B`。Daedalus已完成DIExt typed adoption、signature smoke與SPAA Release build；真SPAA visual/performance gate前不public push。

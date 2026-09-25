@@ -95,6 +95,17 @@ module RuntimeValidation =
               | None -> ()
               if trace.Width <= 0.0 || trace.Width > 12.0 then
                   yield error "invalid-trace-width" $"rows[{index}].traces[{traceIndex}].width" "Trace width must be greater than 0 and at most 12."
+
+              let hasHistogramStyle = TaHistogramTraceOptionsCodec.hasAny trace.Options
+              match trace.Kind, hasHistogramStyle with
+              | TaTraceKind.Histogram, false -> ()
+              | TaTraceKind.Histogram, true when TaHistogramTraceOptionsCodec.tryDecode trace.Options |> Option.isSome -> ()
+              | TaTraceKind.Histogram, true ->
+                  yield error "invalid-histogram-colors" $"rows[{index}].traces[{traceIndex}].options" "Histogram positive and negative colors must both be valid #RGB, #RRGGBB or #RRGGBBAA values."
+              | _, true ->
+                  yield error "histogram-options-kind-mismatch" $"rows[{index}].traces[{traceIndex}].options" "Histogram polarity options are only valid for Histogram traces."
+              | _, false -> ()
+
               for KeyValue(key, value) in trace.Options do
                   yield! unsafeValue $"rows[{index}].traces[{traceIndex}].options.{key}" value
 
@@ -256,7 +267,13 @@ module RuntimeValidation =
                   yield error "unknown-action" "document.allowedActions" $"Unknown action `{action}`."
 
           for KeyValue(key, value) in document.DefaultView do
-              yield! unsafeValue $"document.defaultView.{key}" value ]
+              yield! unsafeValue $"document.defaultView.{key}" value
+
+          match Map.tryFind TaPlotSurfacePresentationCodec.ThemeKey document.DefaultView with
+          | None -> ()
+          | Some _ when TaPlotSurfacePresentationCodec.tryDecode document.DefaultView |> Option.isSome -> ()
+          | Some _ ->
+              yield error "invalid-plot-surface-theme" $"document.defaultView.{TaPlotSurfacePresentationCodec.ThemeKey}" "Plot surface theme must be `light` or `dark`." ]
 
     let patchErrors limits (patch: RuntimePatch) =
         [ if patch.Operations.Length > limits.MaxPatchOperations then

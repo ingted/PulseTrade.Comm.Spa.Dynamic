@@ -1,0 +1,55 @@
+# Dark plot surface and typed histogram polarity style
+
+## 背景
+
+Daedalus真SPAA整合後提出三個PTCS owner缺口：overview初始邊界貼SVG edge時2px stroke被clip；TA／candle／overview需generic dark plot surface；histogram需typed positive/negative colors，不可依series name推論。
+
+## 目標
+
+- 提出並實作最小generic contract/API，保持SPAA只負責FSSTL/domain mapping。
+- 修正overview visible line在edge與drag後皆精確2 CSS px，不改hit target/range。
+- dark plot surface涵蓋所有plot SVG，保持grid/cursor/axis/legend可讀。
+- histogram正負色由typed Options/style指定，未指定時維持相容default。
+
+## 假設
+
+- overview clip只需把visual line center夾在1 CSS px等效的viewBox inset；selection/hit rect保持原座標。
+- 現有`TaTraceSpec.Options`可承載通用typed style，無需新增專案或renderer-only旁路。
+- dark surface應是document/renderer presentation選項或stable default，不應由SPAA注入CSS。
+
+## 步驟
+
+1. 盤點Contracts Options、Renderer plot SVG與overview geometry。
+2. 回覆Daedalus minimal API與exact package graph。
+3. 先補contract/model/browser regression，再做最小實作。
+4. 跑focused/package/browser/consumer gates，public release前取得真SPAA GREEN。
+
+## 範圍
+
+- Contracts／Renderer／Interactive.Client及其active exact consumers；不修改TradeCore計算、FSSTL parser或SPAA私有CSS。
+
+## 驗收
+
+- edge／drag後左右visible boundary computed width皆2px，transparent handles語意不變。
+- 所有TA/candle/overview plot surface為黑色，grid/cursor/axis/legend通過可讀性與console gate。
+- typed histogram positive/negative colors生效；不做name inference；legacy trace仍可render。
+
+## 風險
+
+- theme若散落硬編色彩會造成部分surface不可讀，需集中resolved palette。
+- 新Options若破壞codec/backward compatibility會阻擋consumer，須涵蓋legacy decode與unknown option策略。
+- visual inset必須從CSS pixel換算viewBox，不能固定1 user unit。
+
+## Operations
+
+- 2026-09-26 02:28 +08:00：收到Daedalus `msg-fsi-591297270dc141f68bf42f96afd40064`並以`msg-fsi-0fd0e850db074fe299fe45488917c32d`確認接手；協作interval恢復3分鐘。
+- 2026-09-26 02:33 +08:00：確認DIExt direct exact references只有Contracts `[0.1.28]`與Interactive.Client `[0.1.61]`；以`msg-fsi-9af0ab93aa7c423295361615ccc9d9ca`回覆typed keys與目標graph `0.1.29/0.1.71/0.1.62`。
+- 2026-09-26 02:36 +08:00：Contracts／Renderer Debug baseline build通過；Renderer僅既有23個F# warning。建立RFC-0027、DYN-WBS-567、DYN-T-610..614與DYN-VFY-032。
+- 2026-09-26 02:38–02:56 +08:00：完成typed theme／histogram contract、集中palette、正負batched paths與overview edge visual inset。Contracts 44/44、Renderer 48/48、Interactive.Client 12/12；完整WebSharper builds通過。
+- 2026-09-26 02:57–03:01 +08:00：F# Playwright 4,000-bar gate與Playwright MCP人工檢視通過；dark surfaces、axis／legend／cursor、正紅負綠Histogram、initial/moved 2px handles及transparent hit rect均符合，console/page errors為0。
+- 2026-09-26 03:02 +08:00：以COMM `msg-fsi-94b4ad9a494445b8956c5827faf94ee3`先交付Debug provisional hashes；後續Release artifact形成後明確作廢此組hash。
+- 2026-09-26 03:03–03:07 +08:00：一般incremental Contracts Release build產出缺少`WebSharper.meta`的DLL，造成Renderer `WS9001`。Release `Rebuild`後確認Contracts DLL含151個resources，另以全新restore cache重建Renderer／Interactive.Client並通過Interactive nupkg verifier。
+- 2026-09-26 03:08–03:11 +08:00：Release exact graph用乾淨cache重跑focused suites，結果44/44、48/48、12/12。Release SHA依序為`7A59C0A...FFC9E`、`2D68D4C...5A98F`、`3B5997F...A417B`。
+- 2026-09-26 03:08 +08:00：Daedalus回報DIExt typed adoption／signature smoke及SPAA Release build GREEN；以COMM `msg-fsi-24ad39d9518e4d689548939dbe299014`交付唯一有效Release hashes並要求真SPAA visual/performance E2E。Public push仍受consumer GREEN gate約束。
+- 2026-09-26 03:13–03:15 +08:00：以Release exact package graph `Rebuild` BrowserDemo並重跑F# Playwright。five-candle／scenario／All／marker／document／progressive max=`72.92/83.35/40.34/59.85/24.19/42.93ms`，全部over100=0；功能gate與300次cursor transition通過。
+- 2026-09-26 03:16–03:18 +08:00：changed-path sensitive scan為high=0／medium=0；strict UTF-8 28 files通過。`check.fsx`首次因repo原無`MCP.KM.md`而FAIL，新增本輪確有價值的WebSharper Release artifact知識後重跑PASS=30／FAIL=0。既有traceability及pending Dynamic.Ptcs exact-graph WARN不阻擋本slice，後者已修正WBS-564目標版號與責任邊界。

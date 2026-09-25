@@ -512,10 +512,15 @@ module Client =
                            TaRowKind.Macd
                            "series.macd"
                            1.0
-                           (Array.append
-                               [| trace "macd-1k" TaTraceKind.Line "series.macd" "1K MACD" "#0f766e" 1.3
-                                  trace "macd-30k" TaTraceKind.Line "series.macd-30k" "30K MACD causal" "#be185d" 1.8 |]
-                               sparseMissingTraces)
+                            (Array.append
+                                [| trace "macd-1k" TaTraceKind.Line "series.macd" "1K MACD" "#0f766e" 1.3
+                                   trace "macd-30k" TaTraceKind.Line "series.macd-30k" "30K MACD causal" "#be185d" 1.8
+                                   { trace "macd-histogram" TaTraceKind.Histogram "series.macd" "MACD histogram" "#64748b" 1.0 with
+                                       Options =
+                                           TaHistogramTraceOptionsCodec.encode
+                                               { PositiveColor = "#dc2626"
+                                                 NegativeColor = "#16a34a" } } |]
+                                sparseMissingTraces)
                        row "heikin" TaRowKind.HeikinAshi "series.heikin" 2.0 |]
                   EditorSchemas = sampleEditorSchemas
                   AllowedActions =
@@ -530,7 +535,8 @@ module Client =
                         "visibleBars", SduiValue.Number 48.0
                         "query.fromUtc", SduiValue.Text "2026-08-01T00:00:00.0000000+00:00"
                         "query.toUtcExclusive", SduiValue.Text "2026-10-01T00:00:00.0000000+00:00"
-                    ] }
+                    ]
+                    |> TaPlotSurfacePresentationCodec.apply { Theme = TaPlotSurfaceTheme.Dark } }
           Data = sampleSeries capacityPointCount
           DocumentRevision = 1L
           DataRevision = 42L

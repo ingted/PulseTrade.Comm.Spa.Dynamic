@@ -516,6 +516,30 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-workspace-title']")) "PTMD TA Research"
     requireText (page.Locator("[data-testid='ta-freshness']")) "LIVE"
     require ((page.Locator("[data-testid='ta-chart-stack'] section").CountAsync() |> awaitTask) = 7) "all seven configured TA rows must render"
+    let plotSurfaces = page.Locator("svg[role='img'][data-testid^='ta-candle-'], svg[role='img'][data-testid^='ta-composite-']")
+    require (plotSurfaces.CountAsync() |> awaitTask = 7) "all chart surfaces must expose the generic plot contract"
+    for index in 0 .. (plotSurfaces.CountAsync() |> awaitTask) - 1 do
+        require (attributeOrEmpty (plotSurfaces.Nth(index)) "data-plot-surface-theme" = "dark") "every candle and TA surface must use the selected dark theme"
+    let priceSurfaceStyle = computedStyleProperties longTaskSession "[data-testid='ta-candle-price']" [| "background-color" |]
+    require (Map.tryFind "background-color" priceSurfaceStyle = Some "rgb(0, 0, 0)") $"dark candle surface must be black, actual={priceSurfaceStyle}"
+    let timeAxisStyle = computedStyleProperties longTaskSession "[data-testid='ta-time-axis-price']" [| "background-color" |]
+    require (Map.tryFind "background-color" timeAxisStyle = Some "rgb(11, 16, 23)") $"dark time axis must retain a readable surface, actual={timeAxisStyle}"
+    let timeAxisTextStyle = computedStyleProperties longTaskSession "[data-testid='ta-time-axis-price'] span" [| "color" |]
+    require (Map.tryFind "color" timeAxisTextStyle = Some "rgb(203, 213, 225)") $"dark time axis text must remain readable, actual={timeAxisTextStyle}"
+    let legendStyle = computedStyleProperties longTaskSession "[data-testid='ta-row-values-price']" [| "background-color"; "color" |]
+    require
+        (Map.tryFind "background-color" legendStyle = Some "rgb(11, 16, 23)"
+         && Map.tryFind "color" legendStyle = Some "rgb(226, 232, 240)")
+        $"dark legend must retain readable surface and text, actual={legendStyle}"
+    let histogramPositive = page.Locator("[data-testid='ta-trace-macd-macd-histogram']")
+    let histogramNegative = page.Locator("[data-testid='ta-trace-macd-macd-histogram-negative']")
+    require (attributeOrEmpty histogramPositive "data-histogram-polarity" = "positive") "histogram positive path must expose typed polarity"
+    require (attributeOrEmpty histogramNegative "data-histogram-polarity" = "negative") "histogram negative path must expose typed polarity"
+    require (attributeOrEmpty histogramPositive "fill" = "#dc2626") "positive histogram bars must use the typed red color"
+    require (attributeOrEmpty histogramNegative "fill" = "#16a34a") "negative histogram bars must use the typed green color"
+    require (not (String.IsNullOrWhiteSpace(attributeOrEmpty histogramPositive "d"))) "positive histogram geometry must be non-empty"
+    require (not (String.IsNullOrWhiteSpace(attributeOrEmpty histogramNegative "d"))) "negative histogram geometry must be non-empty"
+    require (attributeOrEmpty (page.Locator("[data-testid='ta-candle-price-crosshair']")) "stroke" = "#7dd3fc") "dark shared cursor must remain readable"
     requireText (page.Locator("[data-testid='ta-toggle-row-price']")) "ES 1K + SMA(20)"
     requireText (page.Locator("[data-testid='ta-row-price']")) "ES 1K + SMA(20)"
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = visiblePointCount) "candlestick chart must retain all committed visible points"
@@ -855,6 +879,10 @@ let verifyDesktop (browser: IBrowser) =
     require (streamCloseAfter <> streamCloseBefore) "the live preview stream must advance the visible close while follow-latest is active"
 
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
+    require (attributeOrEmpty navigator "data-plot-surface-theme" = "dark") "overview must use the selected generic dark theme"
+    let overviewStyle = computedStyleProperties longTaskSession "[data-testid='ta-overview-navigator']" [| "background-color" |]
+    require (Map.tryFind "background-color" overviewStyle = Some "rgb(0, 0, 0)") $"dark overview surface must be black, actual={overviewStyle}"
+    require (attributeOrEmpty (page.Locator("[data-testid='ta-overview-price-line']")) "stroke" = "#60a5fa") "dark overview price trace must remain readable"
     let overviewStripePaths = page.Locator("[data-testid='ta-overview-stripe-path']")
     require (overviewStripePaths.CountAsync() |> awaitTask = 2) "signal and fill overview stripes must render as two batched paths"
     require (requiredIntAttribute (overviewStripePaths.Nth(0)) "data-stripe-count" = 1) "signal stripe path must retain its item count"
@@ -892,6 +920,8 @@ let verifyDesktop (browser: IBrowser) =
     let rightHandleStroke = requireFixedCssStroke longTaskSession rightVisibleHandleSelector rightVisibleHandle 2.0 2.0
     require (attributeOrEmpty leftVisibleHandle "stroke" = "#155f73") "left overview boundary must use the owner color"
     require (attributeOrEmpty rightVisibleHandle "stroke" = "#155f73") "right overview boundary must use the owner color"
+    require (not ((attributeOrEmpty leftVisibleHandle "style").Contains "translateX")) "non-edge left overview boundary must not be shifted"
+    require ((attributeOrEmpty rightVisibleHandle "style").Contains "translateX(-1px)") "right-edge overview boundary must shift inward by half its two-pixel stroke"
     let leftHandleHit = page.Locator("rect[data-testid='ta-overview-left-handle']")
     let rightHandleHit = page.Locator("rect[data-testid='ta-overview-right-handle']")
     require (attributeOrEmpty leftHandleHit "fill" = "transparent") "left overview drag hit target must remain transparent"
@@ -928,6 +958,10 @@ let verifyDesktop (browser: IBrowser) =
         ("move release must commit one historical 48-bar window: " + committedText)
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeDrag + 1) "release must commit exactly one chart render"
     require (chartStack.GetAttributeAsync("data-follow-latest") |> awaitTask = "false") "historical viewport navigation must leave follow-latest mode"
+    requireFixedCssStroke longTaskSession leftVisibleHandleSelector leftVisibleHandle 2.0 2.0 |> ignore
+    requireFixedCssStroke longTaskSession rightVisibleHandleSelector rightVisibleHandle 2.0 2.0 |> ignore
+    require (not ((attributeOrEmpty leftVisibleHandle "style").Contains "translateX")) "moved left overview boundary must use its unshifted two-pixel visual"
+    require (not ((attributeOrEmpty rightVisibleHandle "style").Contains "translateX")) "moved right overview boundary must use its unshifted two-pixel visual"
     waitForText callbackState "callback actions 1 / last VisibleRangeChanged"
 
     let priceChart = page.Locator("[data-testid='ta-candle-price']")
