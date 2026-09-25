@@ -1700,3 +1700,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - `DYN-WBS-564`同步已發布owner graph：Dynamic.Ptcs升`0.1.49 -> 0.1.50`並exact依賴PTCS `[0.2.46]`／Contracts `[0.1.29]`；Dynamic.Ptcs.Client升`0.1.76 -> 0.1.77`並另exact依賴Renderer `[0.1.76]`。LiveDemo direct PTCS由`[0.2.39]`同步`[0.2.46]`。
 - Dynamic.Ptcs focused suite `14/14`、Ptcs.Client `16/16`，LiveDemo完整WebSharper Release build 0 errors（僅既有WS9002 warning）；兩包Release pack與package/AssemblyVersion/dependency readback通過。
 - Local nupkg SHA-256為Dynamic.Ptcs `BFF5920ABFCE072EAE6242A46E36F9D1DB293887E643830BED3C8479C777F378`、Ptcs.Client `BB4C2D9EC28E0ABE63555E56FFDD15ACCA040A85C6CA103EEB5AC3590739F745`；public push/readback待candidate closeout後進行。
+
+## 2026-09-26 - Dynamic PTCS adapter exact graph release
+
+- Dynamic.Ptcs `0.1.50`與Ptcs.Client `0.1.77` public push均回`Created`。Official signed nupkg SHA-256為`B228418E317C8532290E2EC79C515DD86A8CBD8A6BDFA52590CEE29F833D673D`／`85B9BBF86429466C8B4431FD388DD89BDDD43E3154096635E320ECC49A4C60B6`。
+- `dotnet nuget verify --all`確認兩包NuGet.org repository signatures有效；排除`.signature.p7s`後local／official entries均`Different=0`。Official exact dependencies分別為PTCS `[0.2.46]`＋Contracts `[0.1.29]`，以及再加Renderer `[0.1.76]`；`DYN-WBS-564`結案。
