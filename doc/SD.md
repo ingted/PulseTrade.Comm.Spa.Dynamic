@@ -705,8 +705,8 @@ Overview selection rect只負責半透明選取填色。左右可見邊界為`ta
 
 `RendererModel.initialViewportWindow`讀取`DefaultView["visibleBars"]`，只接受finite positive integral number；resolved count夾於loaded count與renderer maximum，否則fallback 48。`renderWithProjectionCommit`只在新canvas application套用一次，same-application patch、navigator drag與user selection不重設。
 
-`RendererModel.markerCursorItems`從prepared placements依slot取出`TaMarkerCursorItem`，排序固定為trace order／lane／marker id，保留原始EventTimeUtc、Label、Color與Tooltip。每列建立固定24px `ta-row-ofi-band-{rowId}`，位於32px cursor gutter與SVG plot之間；single-rAF cursor callback直接更新四個預建item slots與overflow `+N`，無事件清空內容但不改高度。plot marker仍保留glyph與`<title>`，不再建立`ta-marker-label-*` inline SVG text。glyph／overflow pointer直接選accepted placement slot並阻止外層plot依X座標二次snap；一般plot hover仍走row axis。stale generation/dispose沿用renderer lifecycle gate，不得持有可更新的舊DOM reader。
+`RendererModel.markerCursorItems`從prepared placements依slot取出`TaMarkerCursorItem`，排序固定為trace order／lane／marker id，保留Label、Color、Tooltip與EventTimeUtc。每列建立固定24px `ta-row-ofi-band-{rowId}`，位於32px cursor gutter與SVG plot之間；single-rAF cursor callback直接更新四個預建item slots與overflow `+N`，無事件清空內容但不改高度。plot marker仍保留glyph與`<title>`，不再建立`ta-marker-label-*` inline SVG text。一般plot `mousemove`以row axis解析slot；marker glyph／overflow item的`mousemove`與click直接以accepted `TaMarkerPlacement.SlotIndex`更新同一cursor state並停止冒泡，防止高密度同CSS pixel二次snap到相鄰slot。stale generation/dispose沿用renderer lifecycle gate，不得持有可更新的舊DOM reader。
 
 Overview selection填色為`rgba(203,213,225,.20)`；左右可見boundary為`#4ade80`、2 CSS px、non-scaling stroke。transparent 8-unit hit rect與drag geometry維持原contract。
 
-Test seams：fresh 4,000 visibleBars、fallback/clamp；single／dense64／empty OFI；coarse bar內非axis-aligned marker直接hover與原始event-time DOM；24px固定高度與DOM順序；inline label absent；cursor不重掛chart；overview initial/drag palette與2px；exact package bundle manifest。
+Test seams：fresh 4,000 visibleBars、fallback/clamp；single／dense64／empty OFI；24px固定高度與DOM順序；inline label absent；超過3,000 points且marker／相鄰slot同CSS pixel時，直接hover glyph仍精確選marker slot與EventTimeUtc；一般plot axis snap不變；cursor不重掛chart；overview initial/drag palette與2px；exact package bundle manifest。

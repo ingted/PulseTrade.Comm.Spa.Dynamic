@@ -38,23 +38,20 @@ Renderer 從已接受的 marker placements 建立 slot-indexed reader。Pointer 
 ```fsharp
 type TaMarkerCursorItem =
     { MarkerId: string
-      EventTimeUtc: string
       Label: string
       Color: string
-      Tooltip: string }
+      Tooltip: string
+      EventTimeUtc: string }
 
 markerCursorItems slotIndex placements
 ```
 
-排序固定為 trace order、lane、marker id；空白 label 不產生 item。前四筆以 compact item 呈現，總數超過四筆時另外顯示 `+N`。完整 bounded Tooltip 留在 item title；plot marker `<title>`仍保留。
-
-Marker glyph 的 pointer event 不再交給外層 plot 依滑鼠 X 二次推算 slot。glyph／overflow cluster 直接選擇已驗證的 `TaMarkerPlacement.SlotIndex`，並停止事件向外層 plot 傳播；一般 plot hover 仍依 row axis 選 slot。OFI item 另以 `data-marker-event-time`保留 marker 原始 `EventTimeUtc`，避免 coarse candle 內事件被誤認成 candle axis timestamp。
+排序固定為 trace order、lane、marker id；空白 label 不產生 item。前四筆以 compact item 呈現，總數超過四筆時另外顯示 `+N`。完整 bounded Tooltip 留在 item title；plot marker `<title>`仍保留。一般 plot hover 依 row axis 解析 slot；直接命中 marker glyph 或 overflow item 時，Renderer 以 accepted `TaMarkerPlacement.SlotIndex` 作 exact authority、更新 shared cursor 並停止事件冒泡，避免高密度下多個 reference slots 落在同一 CSS pixel 後再由滑鼠 X 反推到相鄰 slot。
 
 ### DOM contract
 
 - OFI band：`ta-row-ofi-band-{rowId}`，`data-fixed-height="24"`。
 - compact item：`data-ta-row-ofi-item-index="0..3"`。
-- marker glyph及compact item：`data-marker-event-time="<canonical marker EventTimeUtc>"`。
 - overflow：`data-ta-row-ofi-overflow="true"`。
 - inline plot label：不得存在 `[data-testid^='ta-marker-label-']`。
 - overview visual boundaries：`ta-overview-left-handle-visual`／`ta-overview-right-handle-visual`，`#4ade80`、2 CSS px。
@@ -71,24 +68,28 @@ Marker glyph 的 pointer event 不再交給外層 plot 依滑鼠 X 二次推算 
 ## Package Graph
 
 - `PulseTrade.Comm.Spa.Dynamic.Contracts 0.1.29`
-- `PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.75` exact `Contracts [0.1.29]`
-- `PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.66` exact `Contracts [0.1.29]`、`Renderer [0.1.75]`
+- `PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.76` exact `Contracts [0.1.29]`
+- `PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.67` exact `Contracts [0.1.29]`、`Renderer [0.1.76]`
 
 ## 驗收
 
 1. Pure tests 驗合法／缺少／錯誤／超量 visibleBars，以及 marker slot deterministic items、空 slot 與大於四筆。
 2. F# Playwright fresh canvas 驗 4,000 loaded bars 初始 `Viewing 1-4000`，再切 48 進行既有 regression。
-3. Playwright 驗 OFI 固定 24px、位於 cursor gutter 與 plot 之間；單筆、64筆 `+60`、空 slot及無 inline marker label；coarse bar內非axis-aligned marker由glyph hover直接選accepted placement，OFI保留原始event time。
-4. Overview initial／drag 後 selection與2px boundary contract通過，hit target維持transparent／width 8。
-5. 4,000-bar browser acceptance phases無 >100ms owner long task，console/page error為零。
-6. Daedalus 以真 SPAA clean cache驗 initial visibleBars、OFI內容、marker glyph/tooltip與overview palette；GREEN 後才 public push/readback。
+3. Playwright 驗 OFI 固定 24px、位於 cursor gutter 與 plot 之間；單筆、64筆 `+60`、空 slot及無 inline marker label。
+4. 高密度回歸使用超過3,000個 reference points，先證明 marker slot 與相鄰 slot 落在同一 CSS pixel，再以真實 glyph hover 驗 shared cursor／OFI 精確選回 marker slot與事件。
+5. Overview initial／drag 後 selection與2px boundary contract通過，hit target維持transparent／width 8。
+6. 4,000-bar browser acceptance phases無 >100ms owner long task，console/page error為零。
+7. Daedalus 以真 SPAA clean cache驗 initial visibleBars、OFI內容、marker glyph/tooltip與overview palette；GREEN 後才 public push/readback。
 
 ## Owner Evidence（2026-09-26）
 
 - Renderer focused suite `48/48`；Interactive.Client focused suite `12/12`。
-- Consumer反證：`0.1.74/0.1.65`未覆蓋coarse bar內非axis-aligned marker hover，真SPAA OFI維持0；兩版已退休且不得public push。
-- fresh source-identical WebSharper Release builds：Renderer `0.1.75`、Interactive.Client `0.1.66`、BrowserDemo全部成功。
-- F# Playwright：fresh viewport 4,000；single/dense/empty OFI、`:30` intra-bar marker直接hover與overview contract通過；five-candle/scenario/All/marker/document/progressive max=`69.04/81.48/38.36/57.35/45.51/48.07ms`，acceptance phases `over100=0`。
+- fresh source-identical WebSharper Release builds：Renderer `0.1.76`、Interactive.Client `0.1.67`、BrowserDemo全部成功。
+- F# Playwright：fresh viewport 4,000；相鄰 slot 同 CSS pixel 的 direct marker exact-slot、single/dense/empty OFI及overview contract通過；five-candle/scenario/All/marker/document/progressive max=`72.54/79.73/36.53/41.93/38.27/40.59ms`，acceptance phases `over100=0`。
 - Interactive package verifier通過，bundle manifest與nuspec版本一致。
-- Release SHA-256：沿用已凍結且未變更contract的Contracts `7A59C0A671E5E995B88D1BCD23F074D2ADC0280D6DFD9EC09C354208D51FFC9E`、Renderer `A8F771EF212166AB85883CEADB9D5CFD896932083C6DC449A7DAC6705D42CE44`、Interactive.Client `778F3261C178CC06BFD73E37537EE0501BF2DD4B547B336276FE72EC33599D1E`。Contracts同版後重打包的`A93F...`不得交付。
+- Release SHA-256：沿用已凍結且未變更contract的Contracts `7A59C0A671E5E995B88D1BCD23F074D2ADC0280D6DFD9EC09C354208D51FFC9E`、Renderer `F7A27C19BD48732B82B291BFB285C2F6AA573873418448AB8A8B203348F23AB0`、Interactive.Client `45052F853CEBFAE0711595D62463F2CD51D998A1DD656AECAD421D95E4D7D9FC`。Contracts同版後重打包的`A93F...`不得交付；中間`0.1.75/0.1.66`不得交付。
 - Playwright MCP live screenshot驗視覺無 overlap/layout shift；真 SPAA consumer gate與public push仍 pending。
+
+## High-density Consumer Correction（2026-09-26）
+
+第二次真SPAA證據使用3,563 points，實際glyph為slot 1119，但瀏覽器X座標經plot snap落到slot 1118，OFI count=0；相鄰reference slots可共享同一CSS pixel，因此只靠X座標不能還原已命中的marker identity。先前「consumer測法錯誤」的forward correction未提交且由此反證取代。Renderer保留單一shared cursor state，但直接glyph／cluster hit以accepted placement exact slot優先；一般plot區仍走axis snap。中間Renderer `0.1.75`／Interactive.Client `0.1.66`已凍結後又新增高密度fixture，故退休而不換同號bytes；canonical candidate升為`0.1.76/0.1.67`，等待真SPAA gate。

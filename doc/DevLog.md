@@ -1674,3 +1674,17 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Renderer glyph與overflow cluster改為直接選已驗證`TaMarkerPlacement.SlotIndex`並停止冒泡；一般plot hover仍依row axis。`TaMarkerCursorItem`、glyph與OFI DOM保留原始`EventTimeUtc`，不改marker wire或交易domain contract。
 - 新immutable local graph為Contracts `0.1.29 / 7A59...`、Renderer `0.1.75`、Interactive.Client `0.1.66`。Focused suites `48/48、12/12`，Interactive package verifier與`:30` intra-bar direct-hover F# Playwright通過；five-candle/scenario/All/marker/document/progressive max=`69.04/81.48/38.36/57.35/45.51/48.07ms`，acceptance phases over100=0。
 - Renderer／Interactive nupkg SHA-256為`A8F771EF212166AB85883CEADB9D5CFD896932083C6DC449A7DAC6705D42CE44`／`778F3261C178CC06BFD73E37537EE0501BF2DD4B547B336276FE72EC33599D1E`，AssemblyVersion分別為`0.1.75.0`／`0.1.66.0`。待Daedalus真SPAA clean-cache重驗後才public push。
+
+### Correction 2026-09-26 - Consumer marker gate used the wrong interaction contract
+
+- Daedalus隨即確認前一個真SPAA失敗是gate誤用`entries.First.HoverAsync()`：正式契約一直是讀glyph的`data-marker-slot`，再把real pointer移到chart slot，由plot shared-cursor path更新OFI。直接hover glyph不是產品互動契約，故不存在已證實的Renderer root cause。
+- Commit `746f6e8`在durable inbox讀到更正前已建立，但未public push；其中新增的glyph direct-hover seam與`0.1.75/0.1.66`已以forward correction完整撤除，不供consumer採版。Source與exact references恢復`0.1.74/0.1.65`。
+- Canonical local candidate仍為Contracts `0.1.29 / 7A59...`、Renderer `0.1.74 / 863A...`、Interactive.Client `0.1.65 / 4DA2...`。等待Daedalus以`data-marker-slot` real-pointer流程重跑真SPAA，再決定public push。
+
+### Correction 2026-09-26 - High-density marker hit requires exact placement slot
+
+- Daedalus後續真SPAA 3,563-point證據反證上一個Correction：glyph `data-marker-slot=1119`，但實際pointer event經plot X snap後為`data-cursor-slot=1118`且OFI count=0；多個reference slots落在同一CSS pixel時，X座標無法還原已命中的marker identity。
+- 上一個forward correction未commit。Renderer保留單一shared cursor state，但直接glyph／overflow hit以accepted placement exact slot優先並停止冒泡；一般plot hover仍依row axis。`TaMarkerCursorItem`、glyph與OFI DOM保留原始`EventTimeUtc`。
+- 因高密度fixture加入後不得替換已凍結`0.1.75/0.1.66` bytes，最終immutable local graph為Contracts `0.1.29 / 7A59...`、Renderer `0.1.76`、Interactive.Client `0.1.67`。Focused suites `48/48、12/12`、package verifier與4,000-slot F# Playwright通過；回歸先證明marker與相鄰slot同CSS pixel，再以真實SVG hit-testing驗exact slot／OFI。
+- Renderer／Interactive nupkg SHA-256為`F7A27C19BD48732B82B291BFB285C2F6AA573873418448AB8A8B203348F23AB0`／`45052F853CEBFAE0711595D62463F2CD51D998A1DD656AECAD421D95E4D7D9FC`。five-candle/scenario/All/marker/document/progressive max=`72.54/79.73/36.53/41.93/38.27/40.59ms`，acceptance phases over100=0；真SPAA consumer GREEN前不public push。
+- Daedalus以同語意的`0.1.75/0.1.66`真SPAA 3,563-point先驗證修法：fixed strategy為marker/band slot `1119/1119`、SMA scenario為`2123/2123`，兩者OFI count=2；consumer端non-finite StrategyValue JSON 500亦已修復。最終`0.1.76/0.1.67`仍須consumer同步後再跑final gate。

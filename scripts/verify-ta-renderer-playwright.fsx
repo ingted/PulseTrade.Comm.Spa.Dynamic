@@ -517,6 +517,20 @@ let verifyDesktop (browser: IBrowser) =
     require (requiredIntAttribute freshChartStack "data-visible-start" = 1) "fresh renderer must honor document visibleBars=4000 instead of the local 48-bar fallback"
     require (requiredIntAttribute freshChartStack "data-visible-end" = capacityPointCount) "fresh document viewport must include the loaded tail"
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = capacityPointCount) "fresh document viewport must render the document-requested 4,000 points"
+    // Use the topmost marker in the dense fixture so Playwright exercises real SVG hit testing.
+    let highDensityMarker = page.Locator("[data-testid='ta-marker-signals-short-exit']")
+    let highDensityBand = page.Locator("[data-testid='ta-row-ofi-band-price']")
+    let highDensityChart = page.Locator("[data-testid='ta-candle-price']")
+    let highDensitySlot = requiredIntAttribute highDensityMarker "data-marker-slot"
+    let highDensityChartBox = highDensityChart.BoundingBoxAsync() |> awaitTask
+    require (not (isNull highDensityChartBox)) "4,000-point chart must expose geometry for marker hit testing"
+    require (highDensityChartBox.Width / float32 capacityPointCount < 1.0f) "high-density regression requires multiple reference slots per CSS pixel"
+    let markerPixel = Math.Floor(float highDensityChartBox.X + float highDensityChartBox.Width * ((float highDensitySlot + 0.5) / float capacityPointCount))
+    let adjacentPixel = Math.Floor(float highDensityChartBox.X + float highDensityChartBox.Width * ((float highDensitySlot - 0.5) / float capacityPointCount))
+    require (markerPixel = adjacentPixel) $"high-density fixture must place marker slot {highDensitySlot} and its preceding slot in the same CSS pixel"
+    highDensityMarker.HoverAsync() |> awaitUnit
+    waitForIntAttribute highDensityBand "data-cursor-slot" highDensitySlot
+    waitForIntAttribute highDensityBand "data-marker-event-count" 1
     page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
     waitForIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" visiblePointCount
     waitForCount (page.Locator("[data-testid='ta-chart-stack'] section")) 7
