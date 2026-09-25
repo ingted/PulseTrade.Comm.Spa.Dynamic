@@ -1641,3 +1641,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - 因`0.1.69/0.1.60`的舊SHA已交給consumer，後續default-height補丁不得以相同版本替換bytes。該組版本完整作廢且未public push；immutable final local graph改為Contracts `0.1.28`、Renderer `0.1.70`、Interactive.Client `0.1.61`。
 - Final package SHA-256為`F2293616A5C619150BF08DD67FC0CB64C983A5ADC0DF6962D5C7278BC6833107`／`2E142CA3300C90F453C40F141CFCA9809143740989322EB0E010A9ED4A33931B`；focused 48/48、12/12與package verifier通過。Final identity browser功能斷言通過，但正式performance run受同機Chrome／系統負載影響，scenario 106.75ms、cursor 13.86s而正確fail；安靜環境重跑前不宣稱final owner browser PASS、不public push。
+
+## 2026-09-26 - Fixed CSS-pixel stroke and default row-height release closure
+
+- Daedalus以真SPAA驗收immutable graph Contracts `0.1.28`／Renderer `0.1.70`／Interactive.Client `0.1.61`：1,140 bars、5 markers；line/SMA 1–2 CSS px、overview visible boundaries exact 2px且drag rect透明、全部初始candle/composite SVG <=250px均GREEN。All=285ms、pointer p95=28.18ms、cold/cache long tasks=0，Release builds 0 errors。
+- Renderer與Interactive.Client public push均回`Created`。Official nupkg SHA-256為`7B6A570D1333EE7E15F596737A08E55EA4C47035A3DA500405F2E889293EA675`／`1F668DB14F75D7B3C00BEB9684A0453B494E07558783CB525CDF9E789E45CB1D`；repository signatures有效。排除`.signature.p7s`後local／official entries均`Different=0`，Interactive nuspec exact依賴Contracts `[0.1.28]`與Renderer `[0.1.70]`。

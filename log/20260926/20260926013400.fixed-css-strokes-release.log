@@ -1,0 +1,47 @@
+# Fixed CSS stroke immutable release closure
+
+## 背景
+
+Daedalus以真SPAA完成Contracts `0.1.28`／Renderer `0.1.70`／Interactive.Client `0.1.61` consumer gate；三個新增presentation contract與既有效能gate均GREEN，可進入public release。
+
+## 目標
+
+- 發布已通過驗收且SHA鎖定的Renderer與Interactive.Client nupkg，不重新產生bytes。
+- 讀回official package的SHA、repository signature、nuspec exact dependencies與functional entries。
+- 同步WBS／Test／Verification／DevLog並通知Daedalus可發布DIExt consumer。
+
+## 假設
+
+- 本機global NuGet credential已具備核准的push權限；命令不得輸出API key。
+- public flat-container propagation可能短暫延遲，但不得以local package冒充official readback。
+
+## 步驟
+
+1. 核對待發布nupkg SHA與public version目前不存在。
+2. 依相依順序push Renderer `0.1.70`，再push Interactive.Client `0.1.61`。
+3. 下載official nupkg，驗SHA／signature／nuspec／bundle entries。
+4. 更新current docs、commit/push並通知consumer owner。
+
+## 範圍
+
+- 只發布兩個已驗收package及更新本RFC slice追溯文件；不重建、不修改source、不升其他package。
+
+## 驗收
+
+- NuGet push回Created；official nupkg可下載且repository signature有效。
+- official functional payload與local immutable candidate一致，Interactive exact依賴Contracts `[0.1.28]`與Renderer `[0.1.70]`。
+- repo clean、check.fsx FAIL=0、Daedalus收到official closure。
+
+## 風險
+
+- 重建或同版不同bytes會破壞immutable release；本輪只push既有鎖定nupkg。
+- NuGet propagation延遲不得誤判失敗或重推不同artifact。
+
+## Operations
+
+- 2026-09-26 01:33 +08:00：收到Daedalus `msg-fsi-50100a2509bd4714b1724ae9b797db4e`：真SPAA 1,140 bars／5 markers GREEN；line/SMA 1–2 CSS px、overview boundaries 2px＋transparent drag rect、全部初始candle/composite SVG <=250px；pointer p95=28.18ms、cold/cache long tasks=0。
+- 2026-09-26 01:35 +08:00：重新核對待發布local SHA：Renderer `F2293616A5C619150BF08DD67FC0CB64C983A5ADC0DF6962D5C7278BC6833107`、Interactive.Client `2E142CA3300C90F453C40F141CFCA9809143740989322EB0E010A9ED4A33931B`；兩個public flat-container URL發布前皆404。
+- 2026-09-26 01:36 +08:00：依相依順序呼叫既有PostBuildEvent release publisher；Renderer `0.1.70`、Interactive.Client `0.1.61`的NuGet push均回`Created`／`Your package was pushed`，命令輸出未包含API key。
+- 2026-09-26 01:38 +08:00：flat-container連續12次／10秒bounded HEAD仍404；停止密集輪詢並保留`propagation pending`，不重推或重建package。
+- 2026-09-26 01:42 +08:00：等待3分鐘後兩個flat-container URL皆HTTP 200；下載official nupkg。Official SHA-256為Renderer `7B6A570D1333EE7E15F596737A08E55EA4C47035A3DA500405F2E889293EA675`、Interactive.Client `1F668DB14F75D7B3C00BEB9684A0453B494E07558783CB525CDF9E789E45CB1D`。
+- 2026-09-26 01:43 +08:00：`dotnet nuget verify --all`兩包均通過NuGet.org Repository signature；排除`.signature.p7s`後Renderer local/official entries 7/7、Interactive 10/10且`Different=0`。Official nuspec確認Interactive.Client `0.1.61` exact依賴Contracts `[0.1.28]`及Renderer `[0.1.70]`。
