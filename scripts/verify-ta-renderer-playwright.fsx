@@ -910,10 +910,13 @@ let verifyDesktop (browser: IBrowser) =
         require (not (isNull currentBox)) "price chart must retain geometry for OFI cursor projection"
         let ratio = (float32 slotIndex + 0.5f) / float32 visiblePointCount
         page.Mouse.MoveAsync(currentBox.X + currentBox.Width * ratio, currentBox.Y + currentBox.Height / 2.0f) |> awaitUnit
-    moveToMarkerSlot (requiredIntAttribute entryMarker "data-marker-slot")
+    let entryMarkerEventTime = attributeOrEmpty entryMarker "data-marker-event-time"
+    require (entryMarkerEventTime.EndsWith(":30.0000000+00:00")) "entry marker fixture must use an intra-bar event time that differs from the row axis timestamp"
+    entryMarker.HoverAsync() |> awaitUnit
     waitForIntAttribute priceOfiBand "data-marker-event-count" 1
     let firstOfiItem = priceOfiBand.Locator("[data-ta-row-ofi-item-index='0']")
     requireText firstOfiItem "BUY 7588.25"
+    require (attributeOrEmpty firstOfiItem "data-marker-event-time" = entryMarkerEventTime) "marker hover must project the exact marker event time into OFI without row-axis reconstruction"
     require ((attributeOrEmpty firstOfiItem "title").Contains "Reason: long entry signal") "OFI item must retain the marker tooltip payload"
     moveToMarkerSlot (requiredIntAttribute signalA "data-marker-slot")
     waitForIntAttribute priceOfiBand "data-marker-event-count" 64

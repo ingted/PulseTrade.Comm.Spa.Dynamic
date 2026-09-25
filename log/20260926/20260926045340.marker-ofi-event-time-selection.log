@@ -1,0 +1,19 @@
+# Marker OFI event-time selection
+
+## Pre-work Plan
+
+- Background: Daedalus true SPAA on final local graph reports entry marker exists, but hovering its 22:01 event inside a 60K candle leaves `ta-row-ofi-band-price-60k` at `data-marker-event-count=0` until timeout.
+- Goal: Make marker interaction select the marker's accepted canonical placement/event-time for OFI without a second row-axis snap.
+- Assumptions: Marker placement is already validated against its target candle/position; the renderer owns interaction projection, while marker Label/Tooltip remain the existing generic payload.
+- Scope: Renderer marker interaction/cursor projection, focused model tests, BrowserDemo fixture, F# Playwright and immutable Renderer/Interactive package closure. No wire/domain/provider changes.
+- Acceptance: A marker at 22:01 inside a 60K bar directly populates the 60K OFI band on hover; normal plot hover still follows row axis; shared cursor callback uses marker event time; existing 4,000-bar/OFI/performance gates pass.
+- Risk: Forcing row-wide cursor state from a marker may update unrelated rows inconsistently or trigger provider actions; event handling must remain bounded and generation-safe.
+- Stop condition: New immutable candidate passes owner gates and Daedalus true SPAA clean-cache gate.
+
+## Operations
+
+- 2026-09-26 04:53 +08:00: Received consumer blocker `msg-fsi-26d7086352db408abdeff09288966e33`, acknowledged owner responsibility, and paused adoption of Renderer `0.1.74` / Interactive.Client `0.1.65`.
+- 2026-09-26 04:59 +08:00: Implemented direct marker/overflow-cluster interaction: stop plot bubbling, select accepted placement slot, and retain exact marker `EventTimeUtc` on glyph/OFI DOM. Added a `:30` intra-bar fixture and direct `HoverAsync` assertion.
+- 2026-09-26 05:01 +08:00: Built source-identical Release packages Renderer `0.1.75` and Interactive.Client `0.1.66`; exact-package focused suites passed `48/48` and `12/12`. Package assembly versions are `0.1.75.0` and `0.1.66.0`.
+- 2026-09-26 05:03 +08:00: F# Playwright passed the 4,000-bar browser gate including direct intra-bar marker hover and exact OFI event time. Acceptance phase maxima five-candle/scenario/All/marker/document/progressive=`69.04/81.48/38.36/57.35/45.51/48.07ms`, all `over100=0`; screenshot geometry remained coherent.
+- 2026-09-26 05:04 +08:00: Interactive package verifier passed. Local nupkg SHA-256 Renderer=`A8F771EF212166AB85883CEADB9D5CFD896932083C6DC449A7DAC6705D42CE44`, Interactive.Client=`778F3261C178CC06BFD73E37537EE0501BF2DD4B547B336276FE72EC33599D1E`. Public push remains gated by Daedalus true-SPAA re-acceptance.

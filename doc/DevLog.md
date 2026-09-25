@@ -1667,3 +1667,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - 上一筆將canonical `bin/Release`後重打包的Contracts `0.1.29 / A93F...`誤列為final nupkg。Contracts本輪source/API未變；已凍結且交付consumer的正確package identity為`0.1.29 / 7A59C0A671E5E995B88D1BCD23F074D2ADC0280D6DFD9EC09C354208D51FFC9E`。
 - `7A59...`與`A93F...`內部contract DLL SHA-256同為`D3BF2F29F53FC98B4547827EC244F0BD40CD75B6D666A60C9179E6A1AD4CEFB4`，不需bump Contracts；canonical bin已恢復凍結nupkg，`A93F...`禁止交付。Renderer `0.1.74 / 863A...`與Interactive.Client `0.1.65 / 4DA2...`不變。
+
+### Correction 2026-09-26 - Marker hover selects accepted placement
+
+- Daedalus真SPAA反證Renderer `0.1.74`／Interactive.Client `0.1.65`：marker glyph存在，但`HoverAsync`事件冒泡至plot後依滑鼠X／row axis二次推算slot，coarse candle內22:01 marker無法命中60K row OFI，180秒後仍為0。兩版退休且禁止public push。
+- Renderer glyph與overflow cluster改為直接選已驗證`TaMarkerPlacement.SlotIndex`並停止冒泡；一般plot hover仍依row axis。`TaMarkerCursorItem`、glyph與OFI DOM保留原始`EventTimeUtc`，不改marker wire或交易domain contract。
+- 新immutable local graph為Contracts `0.1.29 / 7A59...`、Renderer `0.1.75`、Interactive.Client `0.1.66`。Focused suites `48/48、12/12`，Interactive package verifier與`:30` intra-bar direct-hover F# Playwright通過；five-candle/scenario/All/marker/document/progressive max=`69.04/81.48/38.36/57.35/45.51/48.07ms`，acceptance phases over100=0。
+- Renderer／Interactive nupkg SHA-256為`A8F771EF212166AB85883CEADB9D5CFD896932083C6DC449A7DAC6705D42CE44`／`778F3261C178CC06BFD73E37537EE0501BF2DD4B547B336276FE72EC33599D1E`，AssemblyVersion分別為`0.1.75.0`／`0.1.66.0`。待Daedalus真SPAA clean-cache重驗後才public push。

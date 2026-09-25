@@ -188,6 +188,8 @@ Marker 是 TA presentation primitive，不是交易domain event。Daedalus擁有
 
 OFI reader由accepted prepared marker placements建立slot index，pointer只更新固定DOM。此邊界保留Daedalus對BUY/SELL、價格與PnL文字的ownership，同時讓PTCS負責bounded layout、排序、overflow與generation safety。真SPAA clean-cache視覺／效能驗收仍屬consumer gate。
 
+Consumer反證顯示，讓marker pointer事件冒泡到plot會以滑鼠X／row axis重算slot，coarse candle內事件可能因此無法命中accepted placement。Renderer應把glyph視為已解析placement的interaction authority：marker hover直接選該placement slot並保留原始event time；只有非marker plot hover才做axis snap。這不改wire或domain ownership，也不需要consumer重送資料。
+
 Atomicity分兩層：PTCS reducer保證單一RuntimeFrame內所有`ReplaceDataRef`先形成candidate、全驗證後才commit；Daedalus consumer保證同scenario的runtime、summary、trades、timeline與download manifest都完成prepare後才一次publish。前者不能取代`selectionGeneration`，後者也不能繞過PTCS candidate validation。
 
 Marker現有4筆限制把wire truth與DOM budget混在一起。新模型以64作transport/candidate hard limit、4作direct glyph budget；`+N` cluster只壓縮presentation，不壓縮identity。這會增加decode/candidate成本，但仍受dataRef/frame limits與prepared index約束，且避免consumer自行丟事件。

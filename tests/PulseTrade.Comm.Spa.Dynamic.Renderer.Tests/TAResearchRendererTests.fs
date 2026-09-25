@@ -1247,6 +1247,7 @@ let tests =
                 (cursorItems |> Array.map _.MarkerId)
                 [| "order-0"; "order-2"; "order-4"; "order-6"; "order-1"; "order-3"; "order-5" |]
                 "OFI compact items are deterministic across marker traces."
+            Expect.isTrue (cursorItems |> Array.forall (fun item -> item.EventTimeUtc = "2026-09-24T01:00:00Z")) "OFI items retain the marker's exact event time rather than reconstructing it from the row axis."
             Expect.isTrue (cursorItems |> Array.forall (fun item -> item.Tooltip.Contains "Event time:")) "OFI items retain the glyph tooltip payload."
             Expect.isEmpty (Array.init 7 placement |> RendererModel.markerCursorItems 6) "A cursor slot without events keeps an empty OFI band."
 

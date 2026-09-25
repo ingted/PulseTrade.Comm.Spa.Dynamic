@@ -42,6 +42,7 @@ type TaMarkerPlacement =
 
 type TaMarkerCursorItem =
     { MarkerId: string
+      EventTimeUtc: string
       Label: string
       Color: string
       Tooltip: string }
@@ -1201,6 +1202,7 @@ module RendererModel =
             |> Option.filter (String.IsNullOrWhiteSpace >> not)
             |> Option.map (fun label ->
                 { MarkerId = placement.Marker.MarkerId
+                  EventTimeUtc = placement.Marker.EventTimeUtc
                   Label = label
                   Color = placement.Marker.Color
                   Tooltip = markerTooltipText placement }))

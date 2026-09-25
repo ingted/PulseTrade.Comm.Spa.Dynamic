@@ -41,6 +41,9 @@ module Client =
         let pad2 value = if value < 10 then "0" + string value else string value
         "2026-09-" + pad2 day + "T" + pad2 hour + ":" + pad2 minute + ":00.0000000+00:00"
 
+    let intraBarTimestamp index =
+        (timestamp index).Replace(":00.0000000+00:00", ":30.0000000+00:00")
+
     let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc availableAt finality projection quality payload =
         SduiValue.Object(
             Map [
@@ -113,7 +116,7 @@ module Client =
                   SduiValue.Array
                       [| point
                              (count - 12)
-                             [| marker "long-entry" (timestamp (count - 11)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some("BUY 7588.25" + replacementLabel)) ("long entry signal" + replacementLabel) |]
+                             [| marker "long-entry" (intraBarTimestamp (count - 11)) TaMarkerAnchor.BelowBar TaMarkerShape.TriangleUp TaMarkerFill.Outline "#000000" (Some("BUY 7588.25" + replacementLabel)) ("long entry signal" + replacementLabel) |]
                          point
                              stackedPosition
                              stackedMarkers

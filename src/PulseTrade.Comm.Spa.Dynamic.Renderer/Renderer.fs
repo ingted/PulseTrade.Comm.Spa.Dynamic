@@ -1214,6 +1214,7 @@ module TaWorkspaceRenderer =
                   Attr.Create "data-marker-id" placement.Marker.MarkerId
                   Attr.Create "data-marker-position" (fixedText placement.Position)
                   Attr.Create "data-marker-slot" (string placement.SlotIndex)
+                  Attr.Create "data-marker-event-time" placement.Marker.EventTimeUtc
                   Attr.Create "data-marker-lane" (string placement.Lane)
                   Attr.Create "data-marker-anchor" (if placement.Marker.Anchor = TaMarkerAnchor.AboveBar then "above-bar" else "below-bar")
                   Attr.Create "data-marker-shape" (TaMarkerCodec.shapeText placement.Marker.Shape)
@@ -1223,7 +1224,13 @@ module TaWorkspaceRenderer =
                   svgAttr "stroke" placement.Marker.Color
                   svgAttr "stroke-width" "1.4"
                   svgAttr "pointer-events" "all"
-                  svgAttr "vector-effect" "non-scaling-stroke" ]
+                  svgAttr "vector-effect" "non-scaling-stroke"
+                  on.mouseMove (fun _ event ->
+                      event.StopPropagation()
+                      setCursorIndex (Some placement.SlotIndex))
+                  on.click (fun _ event ->
+                      event.StopPropagation()
+                      commitCursorIndex placement.SlotIndex) ]
             let title = svgElement "title" [] [ text (RendererModel.markerTooltipText placement) ]
             match placement.Marker.Shape with
             | TaMarkerShape.Circle ->
@@ -1288,7 +1295,13 @@ module TaWorkspaceRenderer =
                                 Attr.Create "tabindex" "0"
                                 Attr.Create "aria-label" ($"{hiddenCount} additional markers. Activate to inspect.")
                                 svgAttr "style" "cursor:pointer;"
-                                on.click (fun _ _ -> toggleCluster ())
+                                on.mouseMove (fun _ event ->
+                                    event.StopPropagation()
+                                    setCursorIndex (Some cluster.SlotIndex))
+                                on.click (fun _ event ->
+                                    event.StopPropagation()
+                                    commitCursorIndex cluster.SlotIndex
+                                    toggleCluster ())
                                 on.keyDown (fun _ event ->
                                     let key = event :?> KeyboardEvent
                                     match key.Key with
@@ -2410,11 +2423,13 @@ module TaWorkspaceRenderer =
                             if setElementTextIfChanged item.Label node then textWrites <- textWrites + 1
                             if setElementAttributeIfChanged "title" item.Tooltip node then attributeWrites <- attributeWrites + 1
                             if setElementAttributeIfChanged "data-marker-id" item.MarkerId node then attributeWrites <- attributeWrites + 1
+                            if setElementAttributeIfChanged "data-marker-event-time" item.EventTimeUtc node then attributeWrites <- attributeWrites + 1
                             if setElementAttributeIfChanged "data-marker-color" item.Color node then attributeWrites <- attributeWrites + 1
                         | None ->
                             if setElementTextIfChanged "" node then textWrites <- textWrites + 1
                             if removeElementAttributeIfPresent "title" node then attributeWrites <- attributeWrites + 1
                             if removeElementAttributeIfPresent "data-marker-id" node then attributeWrites <- attributeWrites + 1
+                            if removeElementAttributeIfPresent "data-marker-event-time" node then attributeWrites <- attributeWrites + 1
                             if removeElementAttributeIfPresent "data-marker-color" node then attributeWrites <- attributeWrites + 1
 
                     let overflowNode = scopedElements band "[data-ta-row-ofi-overflow='true']" |> Array.tryHead
