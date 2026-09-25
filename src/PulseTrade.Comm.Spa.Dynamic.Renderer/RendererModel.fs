@@ -40,6 +40,12 @@ type TaMarkerPlacement =
       Target: TaCandlePoint
       Marker: TaMarker }
 
+type TaMarkerCursorItem =
+    { MarkerId: string
+      Label: string
+      Color: string
+      Tooltip: string }
+
 type TaMarkerOverflowCluster =
     { ClusterId: string
       TargetTraceId: string
@@ -1182,6 +1188,23 @@ module RendererModel =
                yield field.Label + ": " + field.Value |]
         |> String.concat "\n"
 
+    [<Literal>]
+    let MarkerCursorItemBudget = 4
+
+    let markerCursorItems slotIndex (placements: TaMarkerPlacement array) =
+        placements
+        |> Array.filter (fun placement -> placement.SlotIndex = slotIndex)
+        |> Array.sortBy (fun placement -> placement.TraceId, placement.Lane, placement.Marker.MarkerId)
+        |> Array.choose (fun placement ->
+            placement.Marker.Label
+            |> Option.map _.Trim()
+            |> Option.filter (String.IsNullOrWhiteSpace >> not)
+            |> Option.map (fun label ->
+                { MarkerId = placement.Marker.MarkerId
+                  Label = label
+                  Color = placement.Marker.Color
+                  Tooltip = markerTooltipText placement }))
+
     let markerLabelGeometry width height fontSize markerX markerY (label: string) =
         if String.IsNullOrWhiteSpace label then
             None
@@ -1957,6 +1980,25 @@ module RendererModel =
             { bounded with StartIndex = max 0 (total - bounded.Count) }
         else
             bounded
+
+    let initialViewportWindow minimumCount fallbackCount maximumCount total (defaultView: Map<string, SduiValue>) =
+        let requestedCount =
+            match Map.tryFind "visibleBars" defaultView with
+            | Some(SduiValue.Number value)
+                when not (Double.IsNaN value || Double.IsInfinity value)
+                     && value >= 1.0
+                     && value <= float Int32.MaxValue
+                     && Math.Floor value = value ->
+                int value
+            | _ -> fallbackCount
+
+        resolveWindow
+            minimumCount
+            maximumCount
+            total
+            true
+            { StartIndex = 0
+              Count = requestedCount }
 
     let viewportMaximumStart total window =
         max 0 (total - max 0 window.Count)

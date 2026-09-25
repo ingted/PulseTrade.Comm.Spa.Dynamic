@@ -700,3 +700,13 @@ Candlestick row使用完整SVG viewBox高度，SVG edge到visible extrema的cent
 Overview selection rect只負責半透明選取填色。左右可見邊界為`ta-overview-left-handle-visual`／`ta-overview-right-handle-visual` line，固定`#155f73`、2 CSS px、`non-scaling-stroke`及`pointer-events=none`。既有`ta-overview-left-handle`／`ta-overview-right-handle`保留為transparent rect drag hit target，避免把可操作寬度誤當畫面線寬或破壞既有操作。Owner browser gate須在default、row resize及navigator viewport commit後分別驗computed stroke與DOM contract；真SPAA consumer另量實際geometry、截圖與互動效能。
 
 所有chart row的authored/default plot height在Renderer初始化、reset與browser reload時封頂250 CSS px；此限制不改寫文件中的`HeightWeight`，也不縮小resize handle的manual range。Candlestick與scalar row的手動上限仍分別為720／480px，trader操作後可超過250px；同canvas、同row的local override在authoritative data replacement時保留。Owner gate必須先在任何resize前量測全部chart SVG，再驗manual `>250`、reset/reload回到capped default及cursor垂直幾何同步。
+
+### Default viewport / marker OFI band
+
+`RendererModel.initialViewportWindow`讀取`DefaultView["visibleBars"]`，只接受finite positive integral number；resolved count夾於loaded count與renderer maximum，否則fallback 48。`renderWithProjectionCommit`只在新canvas application套用一次，same-application patch、navigator drag與user selection不重設。
+
+`RendererModel.markerCursorItems`從prepared placements依slot取出`TaMarkerCursorItem`，排序固定為trace order／lane／marker id，保留Label、Color與Tooltip。每列建立固定24px `ta-row-ofi-band-{rowId}`，位於32px cursor gutter與SVG plot之間；single-rAF cursor callback直接更新四個預建item slots與overflow `+N`，無事件清空內容但不改高度。plot marker仍保留glyph與`<title>`，不再建立`ta-marker-label-*` inline SVG text。stale generation/dispose沿用renderer lifecycle gate，不得持有可更新的舊DOM reader。
+
+Overview selection填色為`rgba(203,213,225,.20)`；左右可見boundary為`#4ade80`、2 CSS px、non-scaling stroke。transparent 8-unit hit rect與drag geometry維持原contract。
+
+Test seams：fresh 4,000 visibleBars、fallback/clamp；single／dense64／empty OFI；24px固定高度與DOM順序；inline label absent；cursor不重掛chart；overview initial/drag palette與2px；exact package bundle manifest。

@@ -122,6 +122,16 @@
 10. 真Signal／Order／Fill projection、scenario dropdown與SPAA／fresh-kernel `.dib` parity屬Daedalus consumer gate，不得由PTCS另造backtest renderer。
 11. Row-local cursor timestamp SHALL位於SVG plot外的固定CSS-pixel top gutter；row resize只可改plot height及tag的top/left定位，不得改tag font、line-height、padding、border、width或height。
 
+## 2026-09-26 Default Viewport 與 Marker OFI Band
+
+權威變更：`doc/RFC/RFC-PTCS-DYNAMIC-0028.default-viewport-marker-ofi-band.md`。
+
+1. 新 canvas application SHALL以合法正整數`DefaultView.visibleBars`初始化可視bars，並依loaded/max clamp；缺少或不合法時fallback 48。後續user viewport不得被default覆蓋。
+2. Marker plot SHALL只呈現glyph與tooltip，不得在plot內呈現inline label。
+3. 每列 SHALL在cursor gutter與plot間保留固定24 CSS px OFI band。Shared cursor SHALL投影該slot的marker labels；最多四筆compact items，其餘顯示`+N`，無事件維持空白固定高度。
+4. OFI SHALL只讀accepted prepared marker placements，不得在pointer hot path decode、掃描wire、重建chart或發provider action。
+5. Overview selection SHALL為淺灰；左右visual boundaries SHALL為亮綠且精確2 CSS px，既有transparent drag hit targets與range語意不得改變。
+
 ## 2026-09-25 Chunked Snapshot Transport
 
 權威變更：`doc/RFC/RFC-PTCS-DYNAMIC-0025.chunked-snapshot-transport.md`。

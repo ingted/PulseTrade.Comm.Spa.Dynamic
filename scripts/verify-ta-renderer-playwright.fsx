@@ -513,6 +513,19 @@ let verifyDesktop (browser: IBrowser) =
         bootstrapLongTasks.Length
         bootstrapMaximum
 
+    let freshChartStack = page.Locator("[data-testid='ta-chart-stack']")
+    require (requiredIntAttribute freshChartStack "data-visible-start" = 1) "fresh renderer must honor document visibleBars=4000 instead of the local 48-bar fallback"
+    require (requiredIntAttribute freshChartStack "data-visible-end" = capacityPointCount) "fresh document viewport must include the loaded tail"
+    require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = capacityPointCount) "fresh document viewport must render the document-requested 4,000 points"
+    page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
+    waitForIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" visiblePointCount
+    waitForCount (page.Locator("[data-testid='ta-chart-stack'] section")) 7
+    let setupCallbackState = page.Locator("[data-testid='ta-demo-callback-state']")
+    waitForIntAttribute setupCallbackState "data-callback-count" 1
+    let setupCallbackCount = requiredIntAttribute setupCallbackState "data-callback-count"
+    let callbackText relativeCount actionName =
+        $"callback actions {setupCallbackCount + relativeCount} / last {actionName}"
+
     requireText (page.Locator("[data-testid='ta-workspace-title']")) "PTMD TA Research"
     requireText (page.Locator("[data-testid='ta-freshness']")) "LIVE"
     require ((page.Locator("[data-testid='ta-chart-stack'] section").CountAsync() |> awaitTask) = 7) "all seven configured TA rows must render"
@@ -572,6 +585,20 @@ let verifyDesktop (browser: IBrowser) =
     requireText (signalA.Locator("title")) "SE"
     requireText (signalA.Locator("title")) "Reason: short entry signal"
     requireText (signalA.Locator("title")) "Source: BrowserDemo"
+    require (page.Locator("[data-testid^='ta-marker-label-']").CountAsync() |> awaitTask = 0) "plot glyphs must not render marker Label as inline SVG text"
+    let priceOfiBand = page.Locator("[data-testid='ta-row-ofi-band-price']")
+    let priceOfiBandBox = priceOfiBand.BoundingBoxAsync() |> awaitTask
+    require (not (isNull priceOfiBandBox) && abs (priceOfiBandBox.Height - 24.0f) <= 0.1f) "price OFI band must reserve exactly 24 CSS pixels"
+    require (requiredIntAttribute priceOfiBand "data-marker-event-count" = 0) "OFI band starts empty before shared-cursor selection"
+    let markerChart = page.Locator("[data-testid='ta-candle-price']")
+    let markerChartBox = markerChart.BoundingBoxAsync() |> awaitTask
+    require (not (isNull markerChartBox)) "price chart must expose geometry for OFI cursor projection"
+    let markerCursorGutterBox = page.Locator("[data-testid='ta-row-cursor-gutter-price']").BoundingBoxAsync() |> awaitTask
+    require
+        (not (isNull markerCursorGutterBox)
+         && markerCursorGutterBox.Y + markerCursorGutterBox.Height <= priceOfiBandBox.Y + 0.5f
+         && priceOfiBandBox.Y + priceOfiBandBox.Height <= markerChartBox.Y + 0.5f)
+        "row order must be cursor date-time strip, fixed-height OFI band, then plot"
     let markerCluster = page.Locator("g[role='button'][data-marker-overflow-count]")
     require (markerCluster.CountAsync() |> awaitTask = 1) "the dense marker bucket must expose one +N control"
     requireText markerCluster "+60"
@@ -878,11 +905,29 @@ let verifyDesktop (browser: IBrowser) =
     let streamCloseAfter = waitForAttributeSignatureChange priceCandlePaths "d" streamCloseBefore
     require (streamCloseAfter <> streamCloseBefore) "the live preview stream must advance the visible close while follow-latest is active"
 
+    let moveToMarkerSlot slotIndex =
+        let currentBox = markerChart.BoundingBoxAsync() |> awaitTask
+        require (not (isNull currentBox)) "price chart must retain geometry for OFI cursor projection"
+        let ratio = (float32 slotIndex + 0.5f) / float32 visiblePointCount
+        page.Mouse.MoveAsync(currentBox.X + currentBox.Width * ratio, currentBox.Y + currentBox.Height / 2.0f) |> awaitUnit
+    moveToMarkerSlot (requiredIntAttribute entryMarker "data-marker-slot")
+    waitForIntAttribute priceOfiBand "data-marker-event-count" 1
+    let firstOfiItem = priceOfiBand.Locator("[data-ta-row-ofi-item-index='0']")
+    requireText firstOfiItem "BUY 7588.25"
+    require ((attributeOrEmpty firstOfiItem "title").Contains "Reason: long entry signal") "OFI item must retain the marker tooltip payload"
+    moveToMarkerSlot (requiredIntAttribute signalA "data-marker-slot")
+    waitForIntAttribute priceOfiBand "data-marker-event-count" 64
+    requireText (priceOfiBand.Locator("[data-ta-row-ofi-overflow='true']")) "+60"
+    moveToMarkerSlot 0
+    waitForIntAttribute priceOfiBand "data-marker-event-count" 0
+    require (textOf priceOfiBand = "") "cursor slot without events keeps the fixed-height OFI band blank"
+
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
     require (attributeOrEmpty navigator "data-plot-surface-theme" = "dark") "overview must use the selected generic dark theme"
     let overviewStyle = computedStyleProperties longTaskSession "[data-testid='ta-overview-navigator']" [| "background-color" |]
     require (Map.tryFind "background-color" overviewStyle = Some "rgb(0, 0, 0)") $"dark overview surface must be black, actual={overviewStyle}"
     require (attributeOrEmpty (page.Locator("[data-testid='ta-overview-price-line']")) "stroke" = "#60a5fa") "dark overview price trace must remain readable"
+    require (attributeOrEmpty (page.Locator("[data-testid='ta-overview-selection']")) "fill" = "rgba(203,213,225,.20)") "overview selection must use the agreed light-gray fill"
     let overviewStripePaths = page.Locator("[data-testid='ta-overview-stripe-path']")
     require (overviewStripePaths.CountAsync() |> awaitTask = 2) "signal and fill overview stripes must render as two batched paths"
     require (requiredIntAttribute (overviewStripePaths.Nth(0)) "data-stripe-count" = 1) "signal stripe path must retain its item count"
@@ -916,10 +961,10 @@ let verifyDesktop (browser: IBrowser) =
     let rightVisibleHandleSelector = "[data-testid='ta-overview-right-handle-visual']"
     let leftVisibleHandle = page.Locator(leftVisibleHandleSelector)
     let rightVisibleHandle = page.Locator(rightVisibleHandleSelector)
+    require (attributeOrEmpty leftVisibleHandle "stroke" = "#4ade80") "initial left overview boundary must use the agreed bright-green color"
+    require (attributeOrEmpty rightVisibleHandle "stroke" = "#4ade80") "initial right overview boundary must use the agreed bright-green color"
     let leftHandleStroke = requireFixedCssStroke longTaskSession leftVisibleHandleSelector leftVisibleHandle 2.0 2.0
     let rightHandleStroke = requireFixedCssStroke longTaskSession rightVisibleHandleSelector rightVisibleHandle 2.0 2.0
-    require (attributeOrEmpty leftVisibleHandle "stroke" = "#155f73") "left overview boundary must use the owner color"
-    require (attributeOrEmpty rightVisibleHandle "stroke" = "#155f73") "right overview boundary must use the owner color"
     require (not ((attributeOrEmpty leftVisibleHandle "style").Contains "translateX")) "non-edge left overview boundary must not be shifted"
     require ((attributeOrEmpty rightVisibleHandle "style").Contains "translateX(-1px)") "right-edge overview boundary must shift inward by half its two-pixel stroke"
     let leftHandleHit = page.Locator("rect[data-testid='ta-overview-left-handle']")
@@ -933,7 +978,7 @@ let verifyDesktop (browser: IBrowser) =
     let stripeX = Single.Parse(stripeXMatch.Groups[1].Value, Globalization.CultureInfo.InvariantCulture)
     page.Mouse.MoveAsync(navigatorBox.X + navigatorBox.Width * stripeX / 1000.0f, navigatorBox.Y + 8.0f) |> awaitUnit
     page.Locator("[data-testid='ta-overview-stripe-tooltip']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
-    let callbackState = page.Locator("[data-testid='ta-demo-callback-state']")
+    let callbackState = setupCallbackState
     let renderSequenceBeforeDrag = requiredIntAttribute chartStack "data-chart-render-sequence"
     let navigatorY = navigatorBox.Y + navigatorBox.Height / 2.0f
     page.Mouse.MoveAsync(selectionBox.X + selectionBox.Width / 2.0f, navigatorY) |> awaitUnit
@@ -962,7 +1007,8 @@ let verifyDesktop (browser: IBrowser) =
     requireFixedCssStroke longTaskSession rightVisibleHandleSelector rightVisibleHandle 2.0 2.0 |> ignore
     require (not ((attributeOrEmpty leftVisibleHandle "style").Contains "translateX")) "moved left overview boundary must use its unshifted two-pixel visual"
     require (not ((attributeOrEmpty rightVisibleHandle "style").Contains "translateX")) "moved right overview boundary must use its unshifted two-pixel visual"
-    waitForText callbackState "callback actions 1 / last VisibleRangeChanged"
+    require (attributeOrEmpty leftVisibleHandle "stroke" = "#4ade80" && attributeOrEmpty rightVisibleHandle "stroke" = "#4ade80") "moved overview boundaries must retain the agreed bright-green color"
+    waitForText callbackState (callbackText 1 "VisibleRangeChanged")
 
     let priceChart = page.Locator("[data-testid='ta-candle-price']")
     let pointerBox = priceChart.BoundingBoxAsync() |> awaitTask
@@ -1040,7 +1086,7 @@ let verifyDesktop (browser: IBrowser) =
 
     let cursorCommitTrace = startMainThreadTrace longTaskSession
     priceChart.ClickAsync() |> awaitUnit
-    waitForText callbackState "callback actions 2 / last SharedCursorChanged"
+    waitForText callbackState (callbackText 2 "SharedCursorChanged")
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "cursor-commit" longTaskSession cursorCommitTrace)
     Directory.CreateDirectory outputDirectory |> ignore
@@ -1058,7 +1104,7 @@ let verifyDesktop (browser: IBrowser) =
     require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 7) "paused cache must retain local hover/crosshair"
     priceChart.ClickAsync() |> awaitUnit
     System.Threading.Thread.Sleep 250
-    requireText callbackState "callback actions 2 / last SharedCursorChanged"
+    requireText callbackState (callbackText 2 "SharedCursorChanged")
 
     let chartPointsBeforeStatusChange = requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count"
     page.Locator("[data-testid='ta-demo-inflight']").ClickAsync() |> awaitUnit
@@ -1084,21 +1130,21 @@ let verifyDesktop (browser: IBrowser) =
     require (priceBox.Y < 900.0f) $"primary price chart must enter first viewport, y={priceBox.Y}"
     require (priceBox.Width > 1100.0f) $"desktop chart should use available width, width={priceBox.Width}"
 
-    requireText callbackState "callback actions 2"
+    requireText callbackState $"callback actions {setupCallbackCount + 2}"
     page.Locator("[data-testid='ta-pan-right']").ClickAsync() |> awaitUnit
-    waitForText callbackState "callback actions 3 / last VisibleRangeChanged"
+    waitForText callbackState (callbackText 3 "VisibleRangeChanged")
     page.Locator("[data-testid='ta-zoom-in']").ClickAsync() |> awaitUnit
-    waitForText callbackState "callback actions 4 / last VisibleRangeChanged"
+    waitForText callbackState (callbackText 4 "VisibleRangeChanged")
 
     page.Locator("[data-testid='ta-reset-view']").ClickAsync() |> awaitUnit
     waitForAttributeValue (page.Locator("[data-testid='ta-chart-stack']")) "data-follow-latest" "true"
-    waitForText callbackState "callback actions 5 / last VisibleRangeChanged"
+    waitForText callbackState (callbackText 5 "VisibleRangeChanged")
 
     let volumeRow = page.Locator("[data-testid='ta-row-volume']")
     require (volumeRow.IsVisibleAsync() |> awaitTask) "volume row must begin visible"
     page.Locator("[data-testid='ta-toggle-row-volume']").ClickAsync() |> awaitUnit
     volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Hidden, Timeout = 3000.0f)) |> awaitUnit
-    requireText callbackState "callback actions 5"
+    requireText callbackState $"callback actions {setupCallbackCount + 5}"
     page.Locator("[data-testid='ta-toggle-row-volume']").ClickAsync() |> awaitUnit
     volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
 

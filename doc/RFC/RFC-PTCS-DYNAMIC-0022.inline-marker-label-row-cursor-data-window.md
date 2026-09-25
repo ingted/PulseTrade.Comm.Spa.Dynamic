@@ -99,3 +99,7 @@ prepare／refresh 時建立 indexed reader；pointer event只換算 bounded visi
 4. candlestick data window固定順序顯示 timestamp＋OHLCV；line/histogram顯示timestamp＋value。
 5. 300次 pointer sweep不送HTTP、不重建chart；p95 <125ms、max <400ms；owner phase無 >100ms task。
 6. 4,000 bars bounded；desktop/mobile與SPAA/DIB exact-package DOM contract一致。
+
+## Presentation Correction（2026-09-26）
+
+`RFC-PTCS-DYNAMIC-0028`取代本RFC的inline plot marker label：plot只保留glyph與`<title>` tooltip，Label在shared cursor落點時投影到每列固定24px OFI band，密集事件以4筆＋`+N`呈現。row-local cursor timestamp與OHLCV／TA data window仍維持本RFC契約。

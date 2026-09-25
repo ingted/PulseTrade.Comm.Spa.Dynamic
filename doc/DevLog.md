@@ -1654,3 +1654,16 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Release exact graph為Contracts `0.1.29`、Renderer `0.1.71`、Interactive.Client `0.1.62`。一般incremental Release build曾產出缺少`WebSharper.meta`的Contracts DLL；改以Release `Rebuild`後確認151個manifest resources，再用獨立restore cache重建下游與驗證package，沒有停用WebSharper。
 - Owner gates通過：獨立cache focused `44/44、48/48、12/12`、Interactive nupkg verifier、Release exact graph 4,000-bar F# Playwright與Playwright MCP。Release正式update phases max為`72.92/83.35/40.34/59.85/24.19/42.93ms`且over100=0，console/page error為0。
 - Release nupkg SHA-256依序為`7A59C0A671E5E995B88D1BCD23F074D2ADC0280D6DFD9EC09C354208D51FFC9E`、`2D68D4CAF1234634090B5417B2ED7FEEED0B26ABF18DAE613130B8699AB5A98F`、`3B5997F91F32150949402A8E57D9DDDA1012A4F4D98C5206D1F19319CD3A417B`。Daedalus已完成DIExt typed adoption、signature smoke與SPAA Release build；真SPAA visual/performance gate前不public push。
+
+## 2026-09-26 - Default viewport and marker OFI owner candidate
+
+- RFC-0028修正fresh canvas presentation：合法`DefaultView.visibleBars`成為initial viewport authority並依loaded/max clamp，缺值／不合法維持48；同canvas後續user viewport不被default重設。Overview selection改淺灰，左右visual boundaries改亮綠2 CSS px，transparent hit targets與drag math不變。
+- 依Daedalus `msg-fsi-55dcc87ce84f4ba88405201207acbf92`，marker plot移除inline label，只留glyph＋tooltip；每列在cursor gutter與plot之間加入固定24px OFI band，shared cursor投影該slot的Label/Tooltip，最多4筆＋`+N`，無事件維持空白高度。未新增Signal／Order／Fill domain contract。
+- `0.1.72/0.1.63`與`0.1.73/0.1.64`均為未交付、未public push的退休bytes。Immutable local graph為Contracts `0.1.29`、Renderer `0.1.74`、Interactive.Client `0.1.65`；fresh full WebSharper Release builds、focused `48/48、12/12`及Interactive package verifier通過。
+- F# Playwright fresh 4,000 viewport、single/dense/empty OFI、inline-label absent、overview geometry及既有regressions全通過；five-candle/scenario/All/marker/document/progressive max=`69.27/81.02/39.91/31.39/56.03/43.75ms`，acceptance phases over100=0。Playwright MCP live inspection無overlap/layout shift。
+- Final local nupkg SHA-256：Contracts `A93FCEBA298DAC3A17CFE291119BA742B199D4258A355CA31B3E06A3B5DF9087`、Renderer `863A56E5404EF9E4586191C0FD6B23EC30A759FC5896E6090C19E98A3AAF9BEC`、Interactive.Client `4DA2B1908DBE9B7CFBF850294B63E3774E1A6E64CB81C00E1BCB205F7E372CDC`。已回覆Daedalus；真SPAA clean-cache GREEN前不public push。
+
+### Correction 2026-09-26 - Frozen Contracts package identity
+
+- 上一筆將canonical `bin/Release`後重打包的Contracts `0.1.29 / A93F...`誤列為final nupkg。Contracts本輪source/API未變；已凍結且交付consumer的正確package identity為`0.1.29 / 7A59C0A671E5E995B88D1BCD23F074D2ADC0280D6DFD9EC09C354208D51FFC9E`。
+- `7A59...`與`A93F...`內部contract DLL SHA-256同為`D3BF2F29F53FC98B4547827EC244F0BD40CD75B6D666A60C9179E6A1AD4CEFB4`，不需bump Contracts；canonical bin已恢復凍結nupkg，`A93F...`禁止交付。Renderer `0.1.74 / 863A...`與Interactive.Client `0.1.65 / 4DA2...`不變。

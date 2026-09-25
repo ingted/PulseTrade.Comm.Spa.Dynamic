@@ -532,7 +532,7 @@ module Client =
                        "visible-range-changed" |]
                   DefaultView =
                     Map [
-                        "visibleBars", SduiValue.Number 48.0
+                        "visibleBars", SduiValue.Number 4000.0
                         "query.fromUtc", SduiValue.Text "2026-08-01T00:00:00.0000000+00:00"
                         "query.toUtcExclusive", SduiValue.Text "2026-10-01T00:00:00.0000000+00:00"
                     ]

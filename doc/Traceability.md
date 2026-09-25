@@ -98,3 +98,4 @@
 | `DYN-T-571..576` | `DYN-WBS-550..554` | RFC-0024 owner gate：OverviewStripe strict codec/candidate atomicity、64-wire/4-glyph marker cluster、navigator renderer、row resize、4,000-slot desktop/mobile F# Playwright、exact five-package graph與official package readback；總證據入口為`DYN-VFY-025`。 |
 | `DYN-T-577` | `DYN-WBS-555` | Daedalus external consumer gate：selectionGeneration與summary/trades/timeline/download同identity prepare/commit、A→B→A/out-of-order及真SPAA／fresh `.dib` parity。 |
 | `DYN-T-578` | `DYN-WBS-556` | 真SPAA發現的same-topology navigator refresh regression：empty→non-empty OverviewStripe即時更新且chart stack不remount；exact hotfix graph及證據歸入`DYN-VFY-025` revision 18。 |
+| `DYN-T-615..618` | `DYN-WBS-568` | RFC-0028 owner gate：document-authored initial visibleBars、plot glyph/tooltip與固定OFI band分工、4-item＋`+N`、overview淺灰／亮綠2px及exact `0.1.29 / 0.1.74 / 0.1.65` package/browser evidence；總證據入口為`DYN-VFY-033`。 |

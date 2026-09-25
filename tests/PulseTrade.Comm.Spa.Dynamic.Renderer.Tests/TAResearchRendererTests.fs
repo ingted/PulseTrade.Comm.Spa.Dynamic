@@ -1043,6 +1043,23 @@ let tests =
             Expect.equal (RendererModel.referenceTimeline [| row |] data).Length 2 "Shared timeline should expose only actual axis positions."
             Expect.equal TaWorkspaceRenderer.defaultOptions.MaximumVisibleBars 4000 "Default renderer viewport must accept the stakeholder 4,000-bar gate."
 
+            Expect.equal
+                (RendererModel.initialViewportWindow 12 48 4000 3563 (Map [ "visibleBars", SduiValue.Number 4000.0 ]))
+                { StartIndex = 0; Count = 3563 }
+                "A fresh renderer must honor document visibleBars and clamp it to the reference length."
+            Expect.equal
+                (RendererModel.initialViewportWindow 12 48 4000 5000 (Map [ "visibleBars", SduiValue.Number 9000.0 ]))
+                { StartIndex = 1000; Count = 4000 }
+                "Document visibleBars must remain bounded by the renderer maximum."
+            Expect.equal
+                (RendererModel.initialViewportWindow 12 48 4000 3563 Map.empty)
+                { StartIndex = 3515; Count = 48 }
+                "A missing document visibleBars value must retain the renderer fallback."
+            Expect.equal
+                (RendererModel.initialViewportWindow 12 48 4000 3563 (Map [ "visibleBars", SduiValue.Number 12.5 ]))
+                { StartIndex = 3515; Count = 48 }
+                "A non-integral document visibleBars value must not corrupt the viewport."
+
             let missingCloseData = data |> Map.add refs.CloseRef (series [| 108.0 |])
             let missingCloseCandles =
                 missingCloseData
@@ -1224,6 +1241,14 @@ let tests =
             Expect.equal overflow.Length 1 "Overflow collapses into one cluster control."
             Expect.equal overflow[0].Markers.Length 3 "The cluster preserves every hidden marker."
             Expect.equal overflow[0].Lane 4 "The cluster occupies the fixed lane after the direct budget."
+            let cursorItems = Array.init 7 placement |> RendererModel.markerCursorItems 7
+            Expect.equal cursorItems.Length 7 "The fixed-height OFI band retains every labeled marker at the selected slot."
+            Expect.sequenceEqual
+                (cursorItems |> Array.map _.MarkerId)
+                [| "order-0"; "order-2"; "order-4"; "order-6"; "order-1"; "order-3"; "order-5" |]
+                "OFI compact items are deterministic across marker traces."
+            Expect.isTrue (cursorItems |> Array.forall (fun item -> item.Tooltip.Contains "Event time:")) "OFI items retain the glyph tooltip payload."
+            Expect.isEmpty (Array.init 7 placement |> RendererModel.markerCursorItems 6) "A cursor slot without events keeps an empty OFI band."
 
         testCase "DYN-T-572 overview stripes collapse same trace and assign cross-trace lanes" <| fun _ ->
             let stripe id color =

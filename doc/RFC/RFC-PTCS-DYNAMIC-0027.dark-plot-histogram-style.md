@@ -100,3 +100,7 @@ Daedalus DIExt 目前只有 direct exact references `Contracts` 與 `Interactive
 - Playwright MCP桌面檢視及console gate通過，warnings/errors為0。
 - Release nupkg SHA-256：Contracts `7A59C0A671E5E995B88D1BCD23F074D2ADC0280D6DFD9EC09C354208D51FFC9E`、Renderer `2D68D4CAF1234634090B5417B2ED7FEEED0B26ABF18DAE613130B8699AB5A98F`、Interactive.Client `3B5997F91F32150949402A8E57D9DDDA1012A4F4D98C5206D1F19319CD3A417B`。
 - Release candidate已由COMM `msg-fsi-24ad39d9518e4d689548939dbe299014`更正交付Daedalus；前一則Debug provisional hashes作廢，尚未public push。
+
+## 後續修訂
+
+此candidate未public push。Daedalus後續確認initial viewport、overview palette及marker label presentation後，由`RFC-PTCS-DYNAMIC-0028`以immutable graph `Contracts 0.1.29 / Renderer 0.1.74 / Interactive.Client 0.1.65`取代。RFC-0027的typed dark surface與Histogram polarity contract維持有效並包含於新graph。
