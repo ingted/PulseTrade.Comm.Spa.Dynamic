@@ -1694,3 +1694,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus使用final exact graph `Contracts 0.1.29 / Renderer 0.1.76 / Interactive.Client 0.1.67`完成真SPAA 3,563-point gate：fixed strategy marker/band=`1119/1119` count=2，SMA scenario=`2123/2123` count=2；兩策略selector／marker／OFI、fresh 4,000、overview style/stripe、dark/TA colors全部通過。
 - Renderer與Interactive.Client public push均回`Created`。Official NuGet nupkg SHA-256為`96B9D779411E115FC1A0DFCCD2EACA2F22676133165C190A671DC1EC28164376`／`90C070B7D0142EE2D9F0EA1F1744CB410ABFE36B24A3ABAC7C5A41E77D89657E`；兩包repository signature有效。
 - 排除`.signature.p7s`後local／official entries皆`Different=0`。Official Renderer依賴Contracts `[0.1.29]`；Interactive.Client依賴Contracts `[0.1.29]`與Renderer `[0.1.76]`，RFC-0028 closure完成。
+
+## 2026-09-26 - Dynamic PTCS adapter exact graph candidate
+
+- `DYN-WBS-564`同步已發布owner graph：Dynamic.Ptcs升`0.1.49 -> 0.1.50`並exact依賴PTCS `[0.2.46]`／Contracts `[0.1.29]`；Dynamic.Ptcs.Client升`0.1.76 -> 0.1.77`並另exact依賴Renderer `[0.1.76]`。LiveDemo direct PTCS由`[0.2.39]`同步`[0.2.46]`。
+- Dynamic.Ptcs focused suite `14/14`、Ptcs.Client `16/16`，LiveDemo完整WebSharper Release build 0 errors（僅既有WS9002 warning）；兩包Release pack與package/AssemblyVersion/dependency readback通過。
+- Local nupkg SHA-256為Dynamic.Ptcs `BFF5920ABFCE072EAE6242A46E36F9D1DB293887E643830BED3C8479C777F378`、Ptcs.Client `BB4C2D9EC28E0ABE63555E56FFDD15ACCA040A85C6CA103EEB5AC3590739F745`；public push/readback待candidate closeout後進行。

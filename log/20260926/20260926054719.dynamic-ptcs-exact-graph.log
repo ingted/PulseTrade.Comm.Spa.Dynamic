@@ -1,0 +1,19 @@
+# Dynamic PTCS exact graph alignment
+
+## Pre-work Plan
+
+- Background: RFC-0028 owner graph `Contracts 0.1.29 / Renderer 0.1.76 / Interactive.Client 0.1.67` is publicly released and final SPAA consumer acceptance is green. `DYN-WBS-564` identifies Dynamic.Ptcs, Dynamic.Ptcs.Client and their active tests/live demo as the remaining old exact-package graph.
+- Goal: Publish dependency-aligned Dynamic.Ptcs and Dynamic.Ptcs.Client packages and verify active package consumers without changing adapter behavior.
+- Assumptions: PTCS `0.2.46` remains the adapter authority; this slice only changes exact package identities/dependencies and evidence.
+- Steps: bump package/dependency versions; update active test/live consumers; build and run focused tests/live build; verify local package identity; update WBS/Test/Verification/DevLog; sensitive scan/checker; commit/push; publish/read back only after gates pass.
+- Scope: `src/PulseTrade.Comm.Spa.Dynamic.Ptcs`, `src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`, `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests`, `tests/PtcsTaClient.Tests`, `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo`, and traceability docs. No Renderer/Contracts/runtime behavior changes.
+- Acceptance: exact Contracts `[0.1.29]`, Renderer `[0.1.76]`, PTCS `[0.2.46]`; focused tests discovered and pass; LiveDemo Release build passes; nupkg dependencies and versions match; public artifacts are signed and entry-identical after consumer-independent gates.
+- Risks: stale direct refs may cause NU1605 downgrade; WebSharper generated-file ACL may require source-identical staging, which must be documented rather than bypassing compiler work.
+- Stop condition: adapters are published/read back with active consumers green, or a reproducible external/package blocker prevents further progress.
+
+## Operations
+
+- 2026-09-26 05:47 +08:00: Audited active package graph. Dynamic.Ptcs `0.1.49` references Contracts `[0.1.26]`; Dynamic.Ptcs.Client `0.1.76` references Contracts `[0.1.26]` and Renderer `[0.1.62]`; LiveDemo also pins PTCS `[0.2.39]` and old adapter identities.
+- 2026-09-26 05:48 +08:00: Bumped Dynamic.Ptcs to `0.1.50` and Ptcs.Client to `0.1.77`; aligned exact PTCS/Contracts/Renderer dependencies and all active test/live consumer identities. Copied generated nupkgs to the `lib-packs.txt` SDK source for exact local restore.
+- 2026-09-26 05:49 +08:00: Dynamic.Ptcs tests passed `14/14`, Ptcs.Client tests `16/16`, and PTCS LiveDemo full WebSharper Release build completed with 0 errors and only the existing WS9002 warning.
+- 2026-09-26 05:50 +08:00: Local package identity readback passed. Dynamic.Ptcs nupkg SHA-256=`BFF5920ABFCE072EAE6242A46E36F9D1DB293887E643830BED3C8479C777F378`; Ptcs.Client=`BB4C2D9EC28E0ABE63555E56FFDD15ACCA040A85C6CA103EEB5AC3590739F745`; package and assembly versions match and exact dependencies are current.
