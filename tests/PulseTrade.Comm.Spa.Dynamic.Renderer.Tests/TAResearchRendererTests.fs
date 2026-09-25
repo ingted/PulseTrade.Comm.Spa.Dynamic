@@ -72,6 +72,36 @@ let tests =
                 committedGate.LastCommitted
                 "deduplication must preserve the committed watermark"
 
+        testCase "visible K-bar domain ignores remote extrema and keeps fixed CSS padding after resize" <| fun _ ->
+            let fullSourceBounds = Some(5.0, 104.0)
+            let visibleBounds = Some(100.0, 104.0)
+            let assertPadding chartPixelHeight =
+                let low, high =
+                    RendererModel.paddedBoundsForCssPixels
+                        0.0
+                        1.0
+                        250.0
+                        250.0
+                        chartPixelHeight
+                        15.0
+                        visibleBounds
+                let highY = RendererModel.normalize low high 0.0 250.0 104.0
+                let lowY = RendererModel.normalize low high 0.0 250.0 100.0
+                let scale = chartPixelHeight / 250.0
+                let topPaddingFromSvgEdge = highY * scale
+                let bottomPaddingFromSvgEdge = (250.0 - lowY) * scale
+                Expect.floatClose Accuracy.high topPaddingFromSvgEdge 15.0 "top padding is measured from the SVG edge"
+                Expect.floatClose Accuracy.high bottomPaddingFromSvgEdge 15.0 "bottom padding is measured from the SVG edge"
+                low, high
+
+            let defaultLow, _ = assertPadding 250.0
+            let resizedLow, _ = assertPadding 720.0
+            let fullSourceLow, _ =
+                RendererModel.paddedBoundsForCssPixels 0.0 1.0 250.0 250.0 250.0 15.0 fullSourceBounds
+            Expect.isGreaterThan defaultLow 90.0 "the visible-domain result must exclude the remote source low"
+            Expect.isLessThan fullSourceLow 5.0 "the control result confirms that including the full source would compress the viewport"
+            Expect.isGreaterThan resizedLow defaultLow "resizing must reduce data padding while preserving CSS padding"
+
         testCase "workspace bootstrap distinguishes lifecycle progress from terminal failure" <| fun _ ->
             let identity = { DocumentId = DocumentId "pending"; CanvasInstanceId = CanvasInstanceId "canvas" }
             let initial = RuntimeReducer.initial identity

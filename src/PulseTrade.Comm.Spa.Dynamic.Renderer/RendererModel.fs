@@ -2093,6 +2093,30 @@ module RendererModel =
                 let padding = max ((high - low) * 0.08) 0.0001
                 low - padding, high + padding
 
+    let paddedBoundsForCssPixels
+        fallbackLow
+        fallbackHigh
+        viewBoxHeight
+        plotHeight
+        chartPixelHeight
+        desiredCssPadding
+        bounds
+        =
+        match bounds with
+        | None -> fallbackLow, fallbackHigh
+        | Some(low, high) when low = high -> low - 1.0, high + 1.0
+        | Some(low, high) ->
+            let effectiveViewBoxHeight = max 1.0 viewBoxHeight
+            let effectivePlotHeight = max 1.0 plotHeight
+            let effectiveChartPixelHeight = max 1.0 chartPixelHeight
+            let requestedViewBoxPadding =
+                max 0.0 desiredCssPadding * effectiveViewBoxHeight / effectiveChartPixelHeight
+            let viewBoxPadding = min (effectivePlotHeight * 0.45) requestedViewBoxPadding
+            let valueRange = high - low
+            let denominator = max 0.0001 (effectivePlotHeight - 2.0 * viewBoxPadding)
+            let valuePadding = max 0.0001 (valueRange * viewBoxPadding / denominator)
+            low - valuePadding, high + valuePadding
+
     let normalize low high top height value =
         if low = high then top + height / 2.0
         else top + height - ((value - low) / (high - low)) * height

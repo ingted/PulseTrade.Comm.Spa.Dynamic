@@ -1,0 +1,59 @@
+# Visible-row Y-domain hotfix
+
+## 背景
+
+Daedalus 以 `msg-fsi-b12493675d984cbab22ff43b5c2be01a` 與 `msg-fsi-e46140f708884b8cba77c5651a6b8ea7` 回報所有 K-bar row 使用完整 source candle 計算 Y-domain，造成目前 viewport 價格被遠端極值壓縮，且比例 padding 會隨 row resize 放大。
+
+## 目標
+
+- 每個 composite K-bar row 僅以 current viewport projected candles Low/High 與 same-row projected TA lines 計算 domain。
+- 48/200/All、pan/zoom與row resize後重新計算，不跨row共享。
+- 上下 padding維持約15 CSS px，row resize後不按比例放大。
+- 補純model regression、Renderer focused suite及必要browser gate；交付exact package/commit給Daedalus真SPAA驗收。
+
+## 假設
+
+- 根因位於`compositeSvgReactivePreparedLiveWithHeight/prepareGeometry`：candlestick domain掃描`preparedTraces`完整series，而line已採visible projection。
+- viewBox固定高度、CSS row height可變；固定CSS padding須先換算成viewBox unit，而不能使用固定資料比例。
+- 不修改或重啟Daedalus SPAA `127.0.0.1:18883`。
+
+## Planned steps
+
+1. 以現有geometry helper建立遠端極值＋集中viewport與default/resized height失敗測試。
+2. 最小修改per-row visible domain與CSS-pixel padding換算。
+3. 跑Renderer/Interactive focused gates，建立local exact candidate。
+4. 更新WBS/Test/Verification/DevLog，check、commit/push並回覆Daedalus。
+
+## 範圍與風險
+
+- Owner：Aster；repo `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic` branch `20260915_033.ptcs_group_support`。
+- 不改SPAA domain資料、timeline、marker、cursor或authoritative runtime state。
+- 風險：fixed CSS px換算若用錯實際plot/viewBox高度，resize仍會漂移；需default與resized regression。
+
+## 驗收
+
+- source遠端極值不影響目前visible Y-domain。
+- visible low/high及same-row projected line落在plot內，實際上下padding約15 CSS px。
+- 不同row、viewport與height各自獨立。
+
+## Operations
+
+- 2026-09-25 23:33 +08:00：確認真SPAA舊graph的K-bar viewport上下只佔約16px，根因候選為full-source Y-domain與8% data padding隨row高度縮放。
+- 2026-09-25 23:38 +08:00：Renderer改採current projected candleSeries＋same-row projected lines；新增依row CSS height反算15px padding helper與250/720px回歸。
+- 2026-09-25 23:44 +08:00：Renderer 48/48、Interactive.Client 12/12、full WebSharper builds及Interactive package verifier通過；local exact graph為Contracts 0.1.28 / Renderer 0.1.66 / Interactive.Client 0.1.57。
+- 2026-09-25 23:55 +08:00：F# Playwright首輪cursor p95=193ms超過既有125ms門檻，但main-thread over100=0；受控重跑完整PASS，p95=67ms/max147ms，five-candle、resize、All、marker、document、progressive與desktop/mobile皆通過。
+- 2026-09-26 00:01 +08:00：以COMM回報Daedalus local candidate與owner evidence；等待真SPAA逐row 48/200/All/resize <=18px gate後才public push。
+
+### Correction 2026-09-25 23:44 +08:00
+
+前兩筆`23:55`／`2026-09-26 00:01`是追加Operations時誤寫的未來時間；兩項操作實際都已在`2026-09-25 23:44 +08:00`前完成。內容與操作順序不變，後續只記實際wall-clock time。
+
+- 2026-09-25 23:33 +08:00：收到Daedalus consumer gate確認並開始root-cause investigation；COMM輪詢間隔3分鐘。
+- 2026-09-25 23:45 +08:00：Daedalus以真SPAA量得第一版上下各43.80px，證明owner oracle只驗data padding、漏算SVG edge到plot的固定10 viewBox inset；`0.1.66/0.1.57`作廢不發布。
+- 2026-09-25 23:53 +08:00：K-bar row改用完整SVG高度；pure regression直接驗edge到extrema centerline，F# Playwright新增真DOM path外緣default／pointer resize／reset gate。Debug `0.1.67/0.1.58`功能PASS但不作為public candidate。
+- 2026-09-25 23:57 +08:00：完成Release-built immutable `Contracts 0.1.28 / Renderer 0.1.68 / Interactive.Client 0.1.59`；Renderer 48/48、Interactive 12/12、package verifier與完整4,000-slot browser gate PASS。DOM edge上下皆12.60px，cursor p95=65ms/max129ms，interaction over100=0。
+- 2026-09-25 23:58 +08:00：以COMM `msg-fsi-65b53250837f4d638fbeeda217e981e2`交付Daedalus唯一可驗candidate與SHA-256；等待真SPAA逐row48/200/All/resize gate，consumer通過前不public push。
+- 2026-09-26 00:00 +08:00：Daedalus回報68/59真SPAA narrowed／48／200／All／resize所有新增per-row Y-domain gates全數PASS；同輪pointer p95=82.69ms超過consumer 50ms門檻，先重跑排除冷抖動。Y-domain功能工項關閉，public release由獨立pointer gate暫停；已以COMM `msg-fsi-860e2821011d4c4194b9499a27a8e93c`回覆責任切分。
+- 2026-09-26 00:04 +08:00：首次closeout check為37 PASS／4 WARN／3 FAIL。PackageReference優先工項因WBS沿用舊Renderer/Interactive版本且未出現checker所需`PackageReference`字樣，已更新DYN-WBS-564至0.1.28/0.1.68/0.1.59並明標最高優先；另兩項readonly finding來自checker baseline記錄之外的既有runtime-projection log與notes mtime/content變更，Git working tree無該兩檔diff，未回退或覆蓋，依同一session重跑確認穩定baseline。
+- 2026-09-26 00:06 +08:00：第二次check剩1 FAIL；DYN-WBS-564雖有版本與優先字樣，但package名稱用了短名，未滿足deterministic checker的full PackageId比對。已改為三個完整PackageId，不調降gate。
+- 2026-09-26 00:07 +08:00：第三次check為33 PASS／9既有或可解釋WARN／0 FAIL。Daedalus正式consumer gate亦GREEN：bars=1140、markers=5、All=103ms、pointer p95=42.20ms、cold/cache無>100ms long task；前兩輪pointer高值由同機owner BrowserDemo競爭造成。解除release hold，進入source checkpoint及public package readback。

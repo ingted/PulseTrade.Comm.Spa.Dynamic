@@ -714,12 +714,12 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: View<int>) scheduleValueRefresh =
+    let compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
-        let top = 10.0
-        let plotHeight = if hasCandles then 230.0 else 92.0
+        let top = if hasCandles then 0.0 else 10.0
+        let plotHeight = if hasCandles then height else 92.0
         let palette = [| "#2764b0"; "#9b5b24"; "#6a4ca3"; "#0f766e"; "#b45309"; "#be185d"; "#475569"; "#0891b2" |]
         let color index (trace: TaTraceSpec) =
             if String.IsNullOrWhiteSpace trace.Color then palette[index % palette.Length] else trace.Color
@@ -734,7 +734,7 @@ module TaWorkspaceRenderer =
         let compactLinePoints (values: (int * TaLinePoint) array) =
             RendererModel.compactProjectedLinePoints maximumVisualPoints referenceTimestamps.Length values
 
-        let prepareGeometry currentData =
+        let prepareGeometry currentPixelHeight currentData =
             let sourcePresentationTimestamps (trace: TaTraceSpec) =
                 let dataRef =
                     match trace.CandleDataRefs with
@@ -906,11 +906,9 @@ module TaWorkspaceRenderer =
                     scaleLow <- value
                     scaleHigh <- value
 
-            for _, trace, candles, _ in preparedTraces do
-                if trace.Kind = TaTraceKind.Candlestick then
-                    for point in candles do
-                        includeScaleValue point.Low
-                        includeScaleValue point.High
+            for _, _, _, _, point in candleSeries do
+                includeScaleValue point.Low
+                includeScaleValue point.High
 
             for _, trace, points in projectedLinePoints do
                 if trace.Kind = TaTraceKind.Histogram then
@@ -918,8 +916,22 @@ module TaWorkspaceRenderer =
                 for _, point in points do
                     includeScaleValue point.Value
 
-            let low, high =
+            let bounds =
                 if not hasScaleValue then
+                    None
+                else
+                    Some(scaleLow, scaleHigh)
+            let low, high =
+                if hasCandles then
+                    RendererModel.paddedBoundsForCssPixels
+                        0.0
+                        1.0
+                        height
+                        plotHeight
+                        (float currentPixelHeight)
+                        15.0
+                        bounds
+                elif not hasScaleValue then
                     0.0, 1.0
                 elif scaleLow = scaleHigh then
                     scaleLow - 1.0, scaleHigh + 1.0
@@ -994,7 +1006,7 @@ module TaWorkspaceRenderer =
 
             preparedTraces, candleSeries, linePoints, markerPlacements, cursorReaders, legendReaders, latestLegendValues, low, high
 
-        let initialGeometry = prepareGeometry preparedData
+        let initialGeometry = prepareGeometry chartPixelHeight.Value preparedData
         let _, initialCandleSeries, initialLinePoints, initialMarkerPlacements, initialCursorReaders, initialLegendReaders, initialLatestLegendValues, initialLow, initialHigh = initialGeometry
         let markerVisualState = Var.Create(initialMarkerPlacements, initialLow, initialHigh)
         let readerStates =
@@ -1299,11 +1311,14 @@ module TaWorkspaceRenderer =
                 Var.Create(lineLastValue traceIndex initialGeometry))
 
         let mutable observedPreparedData = preparedData
-        dataView
-        |> View.Sink (fun currentData ->
-            if not (Object.ReferenceEquals(currentData, observedPreparedData)) then
+        let mutable observedChartPixelHeight = chartPixelHeight.Value
+        View.Map2 (fun currentData currentPixelHeight -> currentData, currentPixelHeight) dataView chartPixelHeight.View
+        |> View.Sink (fun (currentData, currentPixelHeight) ->
+            if not (Object.ReferenceEquals(currentData, observedPreparedData))
+               || currentPixelHeight <> observedChartPixelHeight then
                 observedPreparedData <- currentData
-                let geometry = prepareGeometry currentData
+                observedChartPixelHeight <- currentPixelHeight
+                let geometry = prepareGeometry currentPixelHeight currentData
                 let _, _, _, currentMarkerPlacements, currentCursorReaders, currentLegendReaders, currentLatestLegendValues, currentLow, currentHigh = geometry
 
                 let nextMarkerVisual = currentMarkerPlacements, currentLow, currentHigh
@@ -1333,7 +1348,7 @@ module TaWorkspaceRenderer =
             svgAttr "aria-label" ("Composite TA row " + rowId)
             Attr.Create "data-testid" svgTestId
             Attr.Create "data-point-count" (string referenceTimestamps.Length)
-            Attr.Dynamic "style" (chartPixelHeight |> View.Map (fun value -> "display:block; width:100%; height:" + string value + "px; background:#fbfcfe;"))
+            Attr.Dynamic "style" (chartPixelHeight.View |> View.Map (fun value -> "display:block; width:100%; height:" + string value + "px; background:#fbfcfe;"))
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
                 match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
@@ -1427,7 +1442,7 @@ module TaWorkspaceRenderer =
     let compositeSvgReactivePreparedLiveWithValueRefresh rowId isBaseRow (traces: TaTraceSpec array) preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex scheduleValueRefresh =
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = Var.Create(if hasCandles then 250 else 112)
-        compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex height.View scheduleValueRefresh
+        compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex height scheduleValueRefresh
 
     let compositeSvgReactivePreparedLive rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex =
         compositeSvgReactivePreparedLiveWithValueRefresh rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex ignore
@@ -1447,7 +1462,7 @@ module TaWorkspaceRenderer =
 
     let renderRowReactivePreparedLiveWithHeight (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
-        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders = compositeSvgReactivePreparedLiveWithHeight row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight.View scheduleValueRefresh
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders = compositeSvgReactivePreparedLiveWithHeight row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =

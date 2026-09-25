@@ -452,6 +452,23 @@ let waitForAttributeSignatureChange (locator: ILocator) name previous =
     require (actual <> previous) $"expected `{name}` signature to change"
     actual
 
+let requireCandleEdgePadding label expected tolerance (chart: ILocator) (paths: ILocator) =
+    let chartBox = chart.BoundingBoxAsync() |> awaitTask
+    require (not (isNull chartBox)) (label + " chart must expose geometry")
+    let pathBoxes =
+        [| for index in 0 .. (paths.CountAsync() |> awaitTask) - 1 do
+               let pathBox = paths.Nth(index).BoundingBoxAsync() |> awaitTask
+               if not (isNull pathBox) && pathBox.Height > 0.0f then
+                   yield pathBox |]
+    require (pathBoxes.Length > 0) (label + " must expose non-empty candle geometry")
+    let candleTop = pathBoxes |> Array.minBy (fun box -> box.Y) |> fun box -> box.Y
+    let candleBottom = pathBoxes |> Array.maxBy (fun box -> box.Y + box.Height) |> fun box -> box.Y + box.Height
+    let topGap = float (candleTop - chartBox.Y)
+    let bottomGap = float ((chartBox.Y + chartBox.Height) - candleBottom)
+    printfn "browser.candle-edge-padding phase=%s top=%.2fpx bottom=%.2fpx" label topGap bottomGap
+    require (abs (topGap - expected) <= tolerance) $"{label} top edge padding expected {expected}+/-{tolerance}px, actual={topGap:F2}px"
+    require (abs (bottomGap - expected) <= tolerance) $"{label} bottom edge padding expected {expected}+/-{tolerance}px, actual={bottomGap:F2}px"
+
 let verifyDesktop (browser: IBrowser) =
     let context = browser.NewContextAsync(BrowserNewContextOptions(ViewportSize = ViewportSize(Width = 1440, Height = 900))) |> awaitTask
     let page = context.NewPageAsync() |> awaitTask
@@ -491,6 +508,12 @@ let verifyDesktop (browser: IBrowser) =
     let projectedCoarseCount = projectedCoarseCandles.CountAsync() |> awaitTask
     require (projectedCoarseCount = 8) $"5K source candles must use the fixed eight batched paths; actual={projectedCoarseCount}"
     require (projectedCoarseCandles |> fun paths -> attributeSignature paths "d" |> String.IsNullOrWhiteSpace |> not) "projected 5K batched geometry must be non-empty"
+    requireCandleEdgePadding
+        "initial"
+        15.0
+        3.0
+        (page.Locator("[data-testid='ta-candle-price']"))
+        (page.Locator("[data-testid='ta-candle-price'] [data-candle-batched='true']"))
     requireText (page.Locator("[data-testid='ta-status-detail']")) "watermark 2026-07-11T09:30:00Z"
     requireText (page.Locator("[data-testid='ta-status-detail']")) "quality complete"
 
@@ -644,6 +667,12 @@ let verifyDesktop (browser: IBrowser) =
     let pointerHeight = waitForStableIntAttribute priceResize "aria-valuenow"
     require (pointerHeight >= 632 && pointerHeight <= 648) $"pointer resize must apply the requested 48px reduction within handle geometry tolerance, actual={pointerHeight}"
     Threading.Thread.Sleep 50
+    requireCandleEdgePadding
+        "pointer-resize"
+        15.0
+        3.0
+        (page.Locator("[data-testid='ta-candle-price']"))
+        (page.Locator("[data-testid='ta-candle-price'] [data-candle-batched='true']"))
     page.Locator("[data-testid='ta-demo-replace-markers']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-marker-signals-long-entry'] title")) "replacement 1"
     let heightAfterMarkerReplacement = requiredIntAttribute priceResize "aria-valuenow"
@@ -669,6 +698,12 @@ let verifyDesktop (browser: IBrowser) =
         $"row resize changed fixed cursor tag computed style: before={cursorTagStyleBeforeResize}; after={cursorTagStyleAfterResize}"
     priceResize.DblClickAsync() |> awaitUnit
     waitForAttributeValue priceResize "aria-valuenow" "720"
+    requireCandleEdgePadding
+        "resize-reset"
+        15.0
+        3.0
+        (page.Locator("[data-testid='ta-candle-price']"))
+        (page.Locator("[data-testid='ta-candle-price'] [data-candle-batched='true']"))
     let crosshairs = page.Locator("[data-testid$='-crosshair']")
     require ((crosshairs.CountAsync() |> awaitTask) = 7) "every visible row must mount one stable crosshair overlay"
     require ((page.Locator("[data-testid$='-crosshair'][visibility='hidden']").CountAsync() |> awaitTask) = 7) "crosshair overlays must remain hidden before pointer movement"

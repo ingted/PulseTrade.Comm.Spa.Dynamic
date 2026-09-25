@@ -1607,3 +1607,18 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 實作：Contracts提供create/validate/satisfies與stable DOM contract names；Renderer新增`renderWithProjectionCommit`及generation-safe completion gate；Interactive.Client在application root發布edge event＋level watermark，並提供typed current/subscription API。
 - 驗證：local exact candidates `Contracts 0.1.28 / Renderer 0.1.65 / Interactive.Client 0.1.56` full build通過；focused suites `42/47/12`全綠。未public push；browser lifecycle/performance及Daedalus fresh-kernel consumer acceptance仍待完成。
 - Evidence：`log/20260925/20260925225250.runtime-projection-commit.log`、`DYN-VFY-028`。
+
+## 2026-09-25 Visible K-bar row Y-domain hotfix
+
+- Daedalus真SPAA發現所有K-bar rows以完整source candles計算Y-domain，current viewport的candles因此被遠端extrema壓縮；既有8% data padding又會隨row resize放大為過多CSS空白。
+- Renderer改為每row只掃current projected candle Low/High與same-row projected TA lines，並依實際row pixel height反算固定15 CSS px padding；其他row、viewport外資料與marker不參與domain。
+- Local candidate為Renderer `0.1.66`、Interactive.Client `0.1.57`（Contracts維持`0.1.28`）。Renderer 48/48、Interactive 12/12、package verifier及4,000-slot F# Playwright完整PASS；steady cursor p95=67ms/max147ms，互動phase over100=0。真SPAA逐row 48/200/All/resize consumer gate尚待Daedalus回報，未public push。
+- Evidence：`log/20260925/20260925233300.visible-row-y-domain.log`、`log/20260925/20260925233300_issue_visible_row_y_domain.hypothesis.md`、`DYN-VFY-030`。
+
+### Correction 2026-09-26 - Release-built edge-padding candidate
+
+- `0.1.66/0.1.57`的第一版雖通過owner gate，但真SPAA指出它漏算既有SVG edge到plot的固定10 viewBox inset，實際edge gap仍約43.8px，因此作廢且不發布。後續Debug `0.1.67/0.1.58`只用於驗證修法，也不作為public candidate。
+- 最終Release-built immutable candidate為Contracts `0.1.28`、Renderer `0.1.68`、Interactive.Client `0.1.59`。K-bar row改用完整SVG高度，15 CSS px定義為SVG edge到visible extrema centerline的總padding；真DOM path外緣因1.8 viewBox stroke向外擴張，在default、pointer resize與reset皆量得12.60px。
+- Focused gates為Renderer 48/48、Interactive 12/12、package verifier PASS；4,000-slot browser gate完整PASS，cursor p95=65ms/max129ms且interaction over100=0。Renderer／Interactive Release nupkg SHA-256為`56C2004058A6BE21F5782E152EF25564D5EFB8B4EA6890B5B15A5FD1C7EA0229`／`FD09F0D88C017F0594989B0BB340AEDFED1CD3AB6D004B2CE04E8E9B18BD8451`；public push仍等待Daedalus真SPAA consumer gate。
+- Consumer closure：Daedalus以真SPAA完成narrowed／48／200／All／resize逐row驗收，visible-domain gates全數通過。該輪另量得pointer p95=82.69ms，高於consumer 50ms門檻；此項不推翻Y-domain修正，但在第二輪與focused root-cause完成前仍阻擋`0.1.68/0.1.59` public push。
+- Consumer release correction：停止同機owner BrowserDemo後，診斷run pointer p95=28.78ms；正式50ms hard gate為42.20ms，cold/cache無>100ms task，證實82.69/78.28ms為資源競爭而非產品regression。Daedalus正式放行`0.1.68/0.1.59`公開發布。

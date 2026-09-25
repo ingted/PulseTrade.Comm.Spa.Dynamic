@@ -966,3 +966,9 @@ data-ptcs-runtime-commit-projection-sequence
 `InteractiveApplicationHandle`新增`GetLastProjectionCommit`與`SubscribeProjectionCommitted`；unsubscribe idempotent。Application Start先移除舊root attributes；Dispose清subscriber並阻止後續publish，但保留最後attributes供診斷。CustomEvent以`Document.CreateEvent("CustomEvent")`、`InitCustomEvent(..., true, false, box receipt)`與`DispatchEvent`建立，禁止inline JavaScript。
 
 測試切點：Contracts pure helper；Renderer row barrier／generation／dedupe model tests；Interactive handle subscription；F# Playwright驗event-detail與root level相同、late subscribe、same-topology、full mount、rapid replacement及dispose negative；4,000-slot performance regression沿用owner gate。
+
+## 2026-09-25 Visible K-bar row Y-domain revision 19
+
+K-bar row的Y-domain只掃`candleSeries`已投影到current reference viewport的Low/High，以及同row的`projectedLinePoints`。不得回頭掃該trace完整source candles，也不得共享其他row的scale accumulator。這使48/200/All、pan/zoom與不同scale K-bar row各自依目前可見資料填滿plot。
+
+Candlestick row不再使用8% data padding，也不保留固定的上下plot inset；其plot使用完整SVG viewBox高度。Renderer以`desiredCssPadding=15`與目前`rowHeight`反算viewBox/value padding，並限制padding不超過plot height 45%。`rowHeight`必須是可觀察Var；resize只重新計算current generation geometry與paths，不重建chart stack。Scalar-only row維持原padding。Pure gate驗250px與720px高度的centerline皆為15 CSS px；browser gate另以真DOM path bounding box量測stroke後的外緣，真SPAA gate逐row驗candles與same-row TA union在48/200/All與resize後的上下margin，容許量測誤差上限18px。
