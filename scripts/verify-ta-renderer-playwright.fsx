@@ -594,6 +594,13 @@ let verifyDesktop (browser: IBrowser) =
     require
         (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeCandleReplacement)
         "same-topology five-candle replacement must update row Vars without rebuilding the chart stack"
+    let scenarioReplacementTrace = startMainThreadTrace longTaskSession
+    page.Locator("[data-testid='ta-demo-replace-scenario-overlays']").ClickAsync() |> awaitUnit
+    waitForAttributeValue fixtureRoot "data-scenario-replacement-outcome" "applied"
+    waitForAttributeValue fixtureRoot "data-scenario-replacements" "1"
+    waitForText (page.Locator("[data-testid='ta-marker-signals-long-entry'] title")) "scenario 1"
+    Threading.Thread.Sleep 180
+    longTaskPhases.Add(stopMainThreadTrace "scenario-overlay-replacement" longTaskSession scenarioReplacementTrace)
     let viewportBox = page.Locator("[data-testid='ta-viewport-panel']").BoundingBoxAsync() |> awaitTask
     let initialPriceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
     require (not (isNull viewportBox) && not (isNull initialPriceBox)) "viewport navigator and first chart row must expose geometry"

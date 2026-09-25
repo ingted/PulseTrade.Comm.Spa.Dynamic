@@ -639,6 +639,8 @@ module Client =
         let candleWorkloadOutcome = Var.Create "idle"
         let candleWorkloadError = Var.Create ""
         let candleWorkloadStageDiagnostics = Var.Create ""
+        let scenarioReplacementCount = Var.Create 0
+        let scenarioReplacementOutcome = Var.Create "idle"
         let mutable candleWorkloadGeneration = 0
         let applyAuthoritativeAction action =
             let current = runtimeState.Value
@@ -976,6 +978,39 @@ module Client =
                     DataRevision = current.DataRevision + 1L
                     LastTransportSequence = current.LastTransportSequence + 1L }
 
+        let replaceScenarioOverlays () =
+            let replacement = scenarioReplacementCount.Value + 1
+            let current = runtimeState.Value
+            let overlayValues =
+                [| yield "series.markers", markerSeries capacityPointCount (" scenario " + string replacement)
+                   for dataRef in overviewDataRefs do
+                       match Map.tryFind dataRef current.Data with
+                       | Some value -> yield dataRef, value
+                       | None -> () |]
+            let frame =
+                { Protocol = DynamicRuntimeDefaults.markerProtocol
+                  Kind = RuntimeFrameKind.Patch
+                  DocumentId = current.Identity.DocumentId
+                  CanvasInstanceId = current.Identity.CanvasInstanceId
+                  DocumentRevision = current.DocumentRevision
+                  BaseDataRevision = Some current.DataRevision
+                  DataRevision = current.DataRevision + 1L
+                  TransportSequence = current.LastTransportSequence + 1L
+                  Payload =
+                    RuntimePayload.Patch
+                        { Operations =
+                            overlayValues
+                            |> Array.map (fun (dataRef, value) -> PatchOperation.ReplaceDataRef(dataRef, value)) } }
+            let candidate, effect = RuntimeReducer.reduce current frame
+            match effect with
+            | RuntimeEffect.NoEffect when candidate.DataRevision = frame.DataRevision ->
+                runtimeState.Value <- candidate
+                scenarioReplacementCount.Value <- replacement
+                scenarioReplacementOutcome.Value <- "applied"
+            | RuntimeEffect.RequestResync _ -> scenarioReplacementOutcome.Value <- "resync"
+            | RuntimeEffect.RejectFrame _ -> scenarioReplacementOutcome.Value <- "rejected"
+            | _ -> scenarioReplacementOutcome.Value <- "unexpected-effect"
+
         let rendererStartedAt = DateTime.UtcNow
         let rendererDoc =
             TaWorkspaceRenderer.render
@@ -999,6 +1034,8 @@ module Client =
             Attr.Dynamic "data-candle-workload-outcome" candleWorkloadOutcome.View
             Attr.Dynamic "data-candle-workload-error" candleWorkloadError.View
             Attr.Dynamic "data-candle-workload-stage-diagnostics" candleWorkloadStageDiagnostics.View
+            Attr.Dynamic "data-scenario-replacements" (scenarioReplacementCount.View |> View.Map string)
+            Attr.Dynamic "data-scenario-replacement-outcome" scenarioReplacementOutcome.View
         ] [
             let demoButtonStyle = attr.style "min-height:24px; padding:2px 6px; white-space:nowrap;"
             div [
@@ -1019,6 +1056,7 @@ module Client =
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-stale"; on.click (fun _ _ -> setStale ()) ] [ text "Stale" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-document"; on.click (fun _ _ -> replaceDocumentWithSameRevision ()) ] [ text "Replace document" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-markers"; on.click (fun _ _ -> replaceMarkers ()) ] [ text "Replace markers" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-scenario-overlays"; on.click (fun _ _ -> replaceScenarioOverlays ()) ] [ text "Replace scenario overlays" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-clear-overview-stripes"; on.click (fun _ _ -> clearOverviewStripes ()) ] [ text "Clear stripes" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-populate-overview-stripes"; on.click (fun _ _ -> populateOverviewStripes ()) ] [ text "Populate stripes" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-reject-next"; on.click (fun _ _ -> rejectNext.Value <- true) ] [ text "Reject next" ]

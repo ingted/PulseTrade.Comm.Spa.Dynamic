@@ -973,6 +973,25 @@ let tests =
             Expect.isTrue (Object.ReferenceEquals(beforePricePoints[0], afterPricePoints[0])) "Tail replacement must retain the unchanged series prefix by reference."
             Expect.isTrue (Object.ReferenceEquals(beforeSmaPoints, afterSmaPoints)) "Revision-only series updates must retain the complete points array by reference."
 
+            let mixedReplacementSeries =
+                { initialSeries with
+                    AxisRevision = 2L
+                    Points =
+                        initialSeries.Points
+                        |> Array.map (fun point ->
+                            if point.Position = 11L then { point with Value = SduiValue.Number 102.0 }
+                            else point) }
+            let mixedPatchFrame =
+                frame RuntimeFrameKind.Patch 3L (Some 1L) 2L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.UpsertTemporalAxisPoints(axisRef, 1L, 2L, [| TemporalAxisCodec.encodePointFields revisedPreview |])
+                               PatchOperation.ReplaceDataRef("series.price", TemporalSeriesCodec.encode mixedReplacementSeries)
+                               PatchOperation.UpsertTemporalSeriesPoints("series.sma", axisRef, 2L, [||]) |] })
+            let mixedState, mixedEffect = RuntimeReducer.reduce state2 mixedPatchFrame
+            Expect.equal mixedEffect RuntimeEffect.NoEffect "A mixed axis update and dependent replacement must validate against candidate authority."
+            Expect.equal mixedState.DataRevision 2L "A valid mixed replacement commits one atomic revision."
+
             let appendedFinal = axisPoint 12L 6 60 PointFinality.Final
             let retentionPatch =
                 frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
@@ -1013,6 +1032,80 @@ let tests =
             Expect.equal rejectedPosition.Data state3.Data "Unknown axis position must retain last-good data."
             Expect.equal rejectedPosition.LastError.Value.ReasonCode "unknown-temporal-position" "Unknown position must be explicit."
             Expect.equal positionEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 2L)) "Unknown position requests resync."
+
+            let replacementWithUnknownPosition =
+                { revisedSeries with
+                    Points =
+                        Array.append
+                            revisedSeries.Points
+                            [| { Position = 12L; Value = SduiValue.Number 103.0 } |] }
+            let badReplacementFrame =
+                frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.ReplaceDataRef(
+                                   "series.price",
+                                   TemporalSeriesCodec.encode replacementWithUnknownPosition) |] })
+            let rejectedReplacement, replacementEffect = RuntimeReducer.reduce state3 badReplacementFrame
+            Expect.equal rejectedReplacement.Data state3.Data "A replaced temporal series with an unknown position must retain last-good data."
+            Expect.equal rejectedReplacement.LastError.Value.ReasonCode "unknown-temporal-position" "Selective replacement validation must retain temporal authority checks."
+            Expect.equal replacementEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 2L)) "Invalid temporal replacement requests resync."
+
+            let malformedReplacement reason points =
+                let malformed = { revisedSeries with Points = points }
+                let malformedFrame =
+                    frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
+                        (RuntimePayload.Patch
+                            { Operations = [| PatchOperation.ReplaceDataRef("series.price", TemporalSeriesCodec.encode malformed) |] })
+                let malformedState, malformedEffect = RuntimeReducer.reduce state3 malformedFrame
+                Expect.equal malformedState.Data state3.Data $"{reason} replacement must preserve last-good data."
+                Expect.equal malformedState.LastError.Value.ReasonCode "invalid-temporal-series" $"{reason} must retain the legacy reason-code priority."
+                Expect.equal malformedEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 2L)) $"{reason} replacement requests resync."
+
+            malformedReplacement "descending"
+                [| { Position = 11L; Value = SduiValue.Number 102.0 }
+                   { Position = 10L; Value = SduiValue.Number 100.0 } |]
+            malformedReplacement "duplicate"
+                [| { Position = 10L; Value = SduiValue.Number 100.0 }
+                   { Position = 10L; Value = SduiValue.Number 101.0 } |]
+
+            let replacementWithKnownPositions =
+                { revisedSeries with
+                    Points =
+                        revisedSeries.Points
+                        |> Array.map (fun point ->
+                            if point.Position = 11L then { point with Value = SduiValue.Number 104.0 }
+                            else point) }
+            let validReplacementFrame =
+                frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.ReplaceDataRef(
+                                   "series.price",
+                                   TemporalSeriesCodec.encode replacementWithKnownPositions) |] })
+            let acceptedReplacement, replacementAcceptedEffect = RuntimeReducer.reduce state3 validReplacementFrame
+            Expect.equal replacementAcceptedEffect RuntimeEffect.NoEffect "A valid selective temporal replacement should commit."
+            Expect.equal acceptedReplacement.DataRevision 3L "A valid selective replacement advances one atomic revision."
+
+            let authorityOnlyReplacementFrame =
+                frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
+                    (RuntimePayload.Patch
+                        { Operations =
+                            [| PatchOperation.ReplaceDataRef(
+                                   axisRef,
+                                   TemporalAxisCodec.encode { revisedAxis with Revision = 3L }) |] })
+            let rejectedAuthorityReplacement, authorityEffect = RuntimeReducer.reduce state3 authorityOnlyReplacementFrame
+            Expect.equal rejectedAuthorityReplacement.Data state3.Data "Replacing axis authority without dependent revisions must remain atomic."
+            Expect.equal rejectedAuthorityReplacement.LastError.Value.ReasonCode "temporal-axis-revision-mismatch" "Axis replacement must still validate the complete dependent graph."
+            Expect.equal authorityEffect (RuntimeEffect.RequestResync(identity.CanvasInstanceId, 2L)) "Incomplete authority replacement requests resync."
+
+            let statusReplacementFrame =
+                frame RuntimeFrameKind.Patch 4L (Some 2L) 3L
+                    (RuntimePayload.Patch
+                        { Operations = [| PatchOperation.ReplaceDataRef(sharedDocument.StatusRef, SduiValue.Text "scenario-b") |] })
+            let acceptedStatus, statusEffect = RuntimeReducer.reduce state3 statusReplacementFrame
+            Expect.equal statusEffect RuntimeEffect.NoEffect "A non-temporal replacement must not force a full temporal graph scan."
+            Expect.equal acceptedStatus.Data[sharedDocument.StatusRef] (SduiValue.Text "scenario-b") "The non-temporal replacement must commit unchanged."
 
         testCase "DYN-TA-T-078 max retention append and trim is one atomic revision" <| fun _ ->
             let limit = DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries

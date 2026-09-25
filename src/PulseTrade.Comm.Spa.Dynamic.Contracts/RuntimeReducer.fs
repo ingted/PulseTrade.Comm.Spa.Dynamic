@@ -364,6 +364,36 @@ module RuntimeReducer =
                     | _ -> Error("invalid-temporal-axis", $"Temporal axis `{axisRef}` is malformed.")
                 | None -> Error("temporal-axis-required", $"Temporal axis `{axisRef}` must contain temporal-axis.v1 data.")
 
+    let retainedAxisAuthority axisRefs data =
+        axisRefs
+        |> Seq.fold (fun current axisRef ->
+            match current, Map.tryFind axisRef data with
+            | Error _, _ -> current
+            | Ok _, None -> Error("missing-temporal-axis", $"Temporal axis `{axisRef}` is missing.")
+            | Ok axes, Some value ->
+                match temporalObject "temporal-axis.v1" value with
+                | Some fields ->
+                    match temporalNumber "revision" fields, rawTemporalPoints fields with
+                    | Some revision, Some points -> Ok(Map.add axisRef (revision, points) axes)
+                    | _ -> Error("invalid-temporal-axis", $"Temporal axis `{axisRef}` is malformed.")
+                | None -> Error("temporal-axis-required", $"Temporal axis `{axisRef}` must contain temporal-axis.v1 data.")) (Ok Map.empty)
+
+    let axisContainsPosition (axisPoints: SduiValue array) position =
+        let rec search low high =
+            if low > high then
+                false
+            else
+                let middle = low + ((high - low) / 2)
+                match axisPoints[middle] with
+                | SduiValue.Object point ->
+                    match temporalPosition point with
+                    | Some candidate when candidate = position -> true
+                    | Some candidate when candidate < position -> search (middle + 1) high
+                    | Some _ -> search low (middle - 1)
+                    | None -> false
+                | _ -> false
+        search 0 (axisPoints.Length - 1)
+
     let temporalSeriesError authority dataRef value =
         match temporalObject "temporal-series.v1" value with
         | None -> None
@@ -382,6 +412,56 @@ module RuntimeReducer =
                     | Some position ->
                         Some("unknown-temporal-position", $"Temporal series `{dataRef}` position {position} is absent from axis `{axisRef}`.")
                     | _ when rawPoints.Length <> positions.Length || not (positionsStrictlyIncrease positions) ->
+                        Some("invalid-temporal-series", $"Temporal series `{dataRef}` positions must be complete and strictly increasing.")
+                    | _ when positions.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
+                        Some("limit-retained-bars", $"Temporal series `{dataRef}` exceeds retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
+                    | _ -> None
+            | _ -> Some("invalid-temporal-series", $"Temporal series `{dataRef}` is malformed.")
+
+    let temporalSeriesReplacementError axisRefs axes dataRef value =
+        match temporalObject "temporal-series.v1" value with
+        | None -> None
+        | Some fields ->
+            match temporalText "axisRef" fields, temporalNumber "axisRevision" fields, rawTemporalPoints fields, temporalPositions fields with
+            | Some axisRef, Some axisRevision, Some rawPoints, Some positions when not (Set.contains axisRef axisRefs) ->
+                Some("unknown-temporal-axis", $"Temporal series `{dataRef}` references undeclared axis `{axisRef}`.")
+            | Some axisRef, Some axisRevision, Some rawPoints, Some positions ->
+                match Map.tryFind axisRef axes with
+                | None -> Some("missing-temporal-axis", $"Temporal series `{dataRef}` references missing axis `{axisRef}`.")
+                | Some(revision, axisPoints) ->
+                    let positionsValid =
+                        rawPoints.Length = positions.Length
+                        && positionsStrictlyIncrease positions
+                    let unknownPosition =
+                        if not positionsValid then
+                            positions
+                            |> Array.tryFind (axisContainsPosition axisPoints >> not)
+                        else
+                            let mutable axisIndex = 0
+                            let mutable seriesIndex = 0
+                            let mutable unknown = None
+                            while seriesIndex < positions.Length && Option.isNone unknown do
+                                let position = positions[seriesIndex]
+                                let mutable candidate = None
+                                while axisIndex < axisPoints.Length && Option.isNone candidate do
+                                    match axisPoints[axisIndex] with
+                                    | SduiValue.Object point ->
+                                        match temporalPosition point with
+                                        | Some axisPosition when axisPosition < position -> axisIndex <- axisIndex + 1
+                                        | Some axisPosition -> candidate <- Some axisPosition
+                                        | None -> axisIndex <- axisPoints.Length
+                                    | _ -> axisIndex <- axisPoints.Length
+                                if candidate <> Some position then
+                                    unknown <- Some position
+                                else
+                                    seriesIndex <- seriesIndex + 1
+                            unknown
+                    match unknownPosition with
+                    | _ when revision <> axisRevision ->
+                        Some("temporal-axis-revision-mismatch", $"Temporal series `{dataRef}` expects axis revision {axisRevision}, but `{axisRef}` is {revision}.")
+                    | Some position ->
+                        Some("unknown-temporal-position", $"Temporal series `{dataRef}` position {position} is absent from axis `{axisRef}`.")
+                    | _ when not positionsValid ->
                         Some("invalid-temporal-series", $"Temporal series `{dataRef}` positions must be complete and strictly increasing.")
                     | _ when positions.Length > DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries ->
                         Some("limit-retained-bars", $"Temporal series `{dataRef}` exceeds retained hard limit {DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries}.")
@@ -486,9 +566,25 @@ module RuntimeReducer =
                 | _ -> None)
             |> Set.ofArray
 
-        let requiresFullValidation =
+        let replacedRefs =
             patch.Operations
-            |> Array.exists (function PatchOperation.ReplaceDataRef _ -> true | _ -> false)
+            |> Array.choose (function PatchOperation.ReplaceDataRef(dataRef, _) -> Some dataRef | _ -> None)
+
+        let requiresFullValidation =
+            replacedRefs
+            |> Array.exists (fun dataRef -> Set.contains dataRef axisRefs)
+
+        let replacementLocalError candidateData =
+            if replacedRefs.Length = 0 || requiresFullValidation then
+                None
+            else
+                match retainedAxisAuthority axisRefs candidateData with
+                | Error error -> Some error
+                | Ok axes ->
+                    replacedRefs
+                    |> Array.tryPick (fun dataRef ->
+                        Map.tryFind dataRef candidateData
+                        |> Option.bind (temporalSeriesReplacementError axisRefs axes dataRef))
 
         let operationLocalError candidateData =
             patch.Operations
@@ -574,6 +670,7 @@ module RuntimeReducer =
                 retainedError
                 |> Option.orElseWith (fun () -> operationLocalError candidateData)
                 |> Option.orElseWith (fun () -> dependencyError candidateData)
+                |> Option.orElseWith (fun () -> replacementLocalError candidateData)
                 |> Option.orElseWith (fun () -> if requiresFullValidation then temporalDataError state candidateData else None)
 
             match error with
