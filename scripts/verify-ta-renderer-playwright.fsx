@@ -83,6 +83,37 @@ let requiredIntAttribute (locator: ILocator) name =
     | true, parsed -> parsed
     | _ -> failwith $"TA renderer Playwright verification failed: `{name}` is not an integer: `{value}`"
 
+let attributeOrEmpty (locator: ILocator) name =
+    locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
+
+let printVisibleValueTelemetry label (page: IPage) (chartStack: ILocator) =
+    let root = page.Locator("html")
+    printfn
+        "browser.visible-values phase=%s instance=%s sequence=%s queryMs=%s resolveMs=%s writeMs=%s visibilityMs=%s totalMs=%s publicationMs=%s schedulerMs=%s maxTotalMs=%s textWrites=%s attributeWrites=%s visibilityWrites=%s nodes=%s globalLastMs=%s globalMaxMs=%s globalLastInstance=%s globalMaxInstance=%s globalLastRender=%s globalMaxRender=%s globalLastScheduler=%s globalMaxScheduler=%s"
+        label
+        (attributeOrEmpty chartStack "data-visible-value-renderer-instance")
+        (attributeOrEmpty chartStack "data-visible-value-telemetry-sequence")
+        (attributeOrEmpty chartStack "data-visible-value-query-ms")
+        (attributeOrEmpty chartStack "data-visible-value-resolve-ms")
+        (attributeOrEmpty chartStack "data-visible-value-write-ms")
+        (attributeOrEmpty chartStack "data-visible-value-visibility-ms")
+        (attributeOrEmpty chartStack "data-visible-value-total-ms")
+        (attributeOrEmpty chartStack "data-visible-value-publication-ms")
+        (attributeOrEmpty chartStack "data-visible-value-scheduler-ms")
+        (attributeOrEmpty chartStack "data-visible-value-max-total-ms")
+        (attributeOrEmpty chartStack "data-visible-value-text-writes")
+        (attributeOrEmpty chartStack "data-visible-value-attribute-writes")
+        (attributeOrEmpty chartStack "data-visible-value-visibility-writes")
+        (attributeOrEmpty chartStack "data-visible-value-node-count")
+        (attributeOrEmpty root "data-visible-value-global-last-scheduler-ms")
+        (attributeOrEmpty root "data-visible-value-global-max-scheduler-ms")
+        (attributeOrEmpty root "data-visible-value-global-last-instance")
+        (attributeOrEmpty root "data-visible-value-global-max-instance")
+        (attributeOrEmpty root "data-visible-value-global-last-render-sequence")
+        (attributeOrEmpty root "data-visible-value-global-max-render-sequence")
+        (attributeOrEmpty root "data-visible-value-global-last-scheduler-sequence")
+        (attributeOrEmpty root "data-visible-value-global-max-scheduler-sequence")
+
 let waitForIntAttribute (locator: ILocator) name expected =
     let deadline = DateTime.UtcNow.AddSeconds 8.0
     let mutable actual = requiredIntAttribute locator name
@@ -503,6 +534,7 @@ let verifyDesktop (browser: IBrowser) =
     require (chartStack.GetAttributeAsync("data-loaded-bars") |> awaitTask = string capacityPointCount) "loaded-range metadata must report the full capacity fixture"
     require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = string initialVisibleStart) "follow-latest viewport must begin at the expected capacity position"
     require (chartStack.GetAttributeAsync("data-visible-end") |> awaitTask = string capacityPointCount) "follow-latest viewport must end at the capacity tail"
+    require (chartStack.GetAttributeAsync("data-visible-value-query-scope") |> awaitTask = "cursor-panel+row-legends") "visible-value refresh must stay scoped away from the full SVG chart tree"
     require (page.Locator("[data-capacity-positions='4000']").CountAsync() |> awaitTask = 1) "browser fixture must declare 4,000 positions"
     require (page.Locator("[data-capacity-shared-series='28']").CountAsync() |> awaitTask = 1) "browser fixture must declare 28 shared scalar series"
     require (page.Locator("[data-sparse-empty-traces='20']").CountAsync() |> awaitTask = 1) "browser fixture must retain 20 sparse empty traces"
@@ -555,6 +587,7 @@ let verifyDesktop (browser: IBrowser) =
             waitForAttributeSignatureChange locator "d" candlePathSignaturesBefore[index])
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "five-candle-replacement" longTaskSession candleReplacementTrace)
+    printVisibleValueTelemetry "five-candle-replacement" page chartStack
     Array.zip3 candleRows candlePathSignaturesBefore candlePathSignaturesAfter
     |> Array.iter (fun (rowId, before, after) ->
         require (after <> before) $"{rowId} candle row must render the replacement payload")
@@ -996,6 +1029,7 @@ let verifyDesktop (browser: IBrowser) =
     waitForIntAttribute chartStack "data-ready-row-count" 7
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "all" longTaskSession allTrace)
+    printVisibleValueTelemetry "all" page chartStack
     waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeAll + 1)
     waitForAttributeValue callbackState "data-last-action" "VisibleRangeChanged"
     waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls after All"
@@ -1009,6 +1043,7 @@ let verifyDesktop (browser: IBrowser) =
     waitForText (page.Locator("[data-testid='ta-marker-signals-long-entry'] title")) "replacement 2"
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "marker-replacement" longTaskSession markerTrace)
+    printVisibleValueTelemetry "marker-replacement" page chartStack
     let renderAfterMarkerReplacement = requiredIntAttribute chartStack "data-chart-render-sequence"
     let renderReasonAfterMarkerReplacement = chartStack.GetAttributeAsync("data-chart-render-reason") |> awaitTask
     printfn
@@ -1064,6 +1099,7 @@ let verifyDesktop (browser: IBrowser) =
     waitForIntAttribute chartStack "data-ready-row-count" 7
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "document-replacement" longTaskSession replacementTrace)
+    printVisibleValueTelemetry "document-replacement" page chartStack
     requireText (page.Locator("[data-testid='ta-toggle-row-price']")) "ES 1K + SMA(30)"
     requireText (page.Locator("[data-testid='ta-row-price']")) "ES 1K + SMA(30)"
     require (not ((textOf (page.Locator("[data-testid='ta-row-price']"))).Contains "SMA(20)")) "replacement document must not retain the prior static row label"
@@ -1086,6 +1122,7 @@ let verifyDesktop (browser: IBrowser) =
     require (overviewAfterExtension <> overviewBeforeExtension) "overview must densify against the expanded loaded domain"
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "progressive-coverage" longTaskSession coverageTrace)
+    printVisibleValueTelemetry "progressive-coverage" page chartStack
 
     require (consoleErrors.Count = 0) ("desktop console errors: " + String.concat " | " consoleErrors)
     let overBudgetPhases = longTaskPhases |> Seq.filter (fun (_, values, _) -> values.Length > 0) |> Seq.toArray

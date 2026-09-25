@@ -1,6 +1,7 @@
 namespace PulseTrade.Comm.Spa.Dynamic.Renderer
 
 open System
+open System.Collections.Generic
 open PulseTrade.Comm.Spa.Dynamic.Contracts
 open WebSharper
 
@@ -847,14 +848,47 @@ module RendererModel =
     let lineSeriesPrepared dataRef prepared =
         resolvedSeriesPrepared dataRef prepared |> lineSeriesFromResolved
 
+    let linePointsByTimestamp (values: TaLinePoint array) =
+        let lookup = Dictionary<string, TaLinePoint>()
+        for point in values do
+            lookup[point.Timestamp] <- point
+        lookup
+
+    let candlePointsByTimestamp (values: TaCandlePoint array) =
+        let lookup = Dictionary<string, TaCandlePoint>()
+        for point in values do
+            lookup[point.Timestamp] <- point
+        lookup
+
+    let referenceSlotsByTimestamp (timestamps: string array) =
+        let lookup = Dictionary<string, int>()
+        for index in 0 .. timestamps.Length - 1 do
+            if not (lookup.ContainsKey timestamps[index]) then
+                lookup[timestamps[index]] <- index
+        lookup
+
+    let tryFindLinePoint key (lookup: Dictionary<string, TaLinePoint>) =
+        match lookup.TryGetValue key with
+        | true, value -> Some value
+        | _ -> None
+
+    let tryFindCandlePoint key (lookup: Dictionary<string, TaCandlePoint>) =
+        match lookup.TryGetValue key with
+        | true, value -> Some value
+        | _ -> None
+
+    let tryFindReferenceSlot key (lookup: Dictionary<string, int>) =
+        match lookup.TryGetValue key with
+        | true, value -> Some value
+        | _ -> None
+
     let candleSeriesForTracePrepared (trace: TaTraceSpec) prepared =
         match trace.CandleDataRefs with
         | None -> candleSeriesPrepared trace.DataRef prepared
         | Some refs ->
             let valuesByTimestamp dataRef =
                 lineSeriesPrepared dataRef prepared
-                |> Array.map (fun point -> point.Timestamp, point)
-                |> Map.ofArray
+                |> linePointsByTimestamp
 
             let opens = lineSeriesPrepared refs.OpenRef prepared
             let highs = valuesByTimestamp refs.HighRef
@@ -865,10 +899,10 @@ module RendererModel =
             opens
             |> Array.choose (fun openPoint ->
                 match
-                    Map.tryFind openPoint.Timestamp highs,
-                    Map.tryFind openPoint.Timestamp lows,
-                    Map.tryFind openPoint.Timestamp closes,
-                    Map.tryFind openPoint.Timestamp volumes
+                    tryFindLinePoint openPoint.Timestamp highs,
+                    tryFindLinePoint openPoint.Timestamp lows,
+                    tryFindLinePoint openPoint.Timestamp closes,
+                    tryFindLinePoint openPoint.Timestamp volumes
                 with
                 | Some high, Some low, Some close, Some volume ->
                     Some
@@ -917,12 +951,13 @@ module RendererModel =
     let candleSeriesForTrace (trace: TaTraceSpec) data =
         candleSeriesForTracePrepared trace (prepareData data)
 
-    let markerPlacementsPrepared (trace: TaTraceSpec) (target: TaTraceSpec) prepared referenceTimestamps =
-        let targetByTimestamp =
-            candleSeriesForTracePrepared target prepared
-            |> Array.map (fun point -> point.Timestamp, point)
-            |> Map.ofArray
-
+    let markerPlacementsPreparedWithIndexes
+        (trace: TaTraceSpec)
+        targetTraceId
+        (targetByTimestamp: Dictionary<string, TaCandlePoint>)
+        prepared
+        (referenceSlots: Dictionary<string, int>)
+        =
         prepared.RawData
         |> Map.tryFind trace.DataRef
         |> Option.bind tryTemporalSeries
@@ -937,14 +972,14 @@ module RendererModel =
                     | Some temporal, Ok markers ->
                         let timestamp = presentationTimestamp temporal
                         match
-                            referenceTimestamps |> Array.tryFindIndex ((=) timestamp),
-                            Map.tryFind timestamp targetByTimestamp
+                            tryFindReferenceSlot timestamp referenceSlots,
+                            tryFindCandlePoint timestamp targetByTimestamp
                         with
                         | Some slotIndex, Some targetPoint ->
                             markers
                             |> Array.map (fun marker ->
                                 { TraceId = trace.TraceId
-                                  TargetTraceId = target.TraceId
+                                  TargetTraceId = targetTraceId
                                   Position = position
                                   SlotIndex = slotIndex
                                   Lane = 0
@@ -953,6 +988,13 @@ module RendererModel =
                         | _ -> [||]
                     | _ -> [||])))
         |> Option.defaultValue [||]
+
+    let markerPlacementsPrepared (trace: TaTraceSpec) (target: TaTraceSpec) prepared referenceTimestamps =
+        let targetByTimestamp =
+            candleSeriesForTracePrepared target prepared
+            |> candlePointsByTimestamp
+        let referenceSlots = referenceSlotsByTimestamp referenceTimestamps
+        markerPlacementsPreparedWithIndexes trace target.TraceId targetByTimestamp prepared referenceSlots
 
     let assignAggregateMarkerLanes (placements: TaMarkerPlacement array) =
         let rec assign index counts assigned =

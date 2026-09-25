@@ -35,6 +35,11 @@ type TaRendererUiState =
 module TaWorkspaceRenderer =
     let axisViewportWidth = Var.Create 1440.0
     let mutable axisResizeBound = false
+    let mutable rendererTelemetryInstanceSequence = 0
+
+    let nextRendererTelemetryInstanceId () =
+        rendererTelemetryInstanceSequence <- rendererTelemetryInstanceSequence + 1
+        string rendererTelemetryInstanceSequence
 
     let ensureAxisResizeTracking () =
         if not axisResizeBound then
@@ -724,6 +729,7 @@ module TaWorkspaceRenderer =
             |> Option.defaultValue (width / 2.0)
 
         let maximumVisualPoints = 1000
+        let referenceSlots = RendererModel.referenceSlotsByTimestamp referenceTimestamps
 
         let compactLinePoints (values: (int * TaLinePoint) array) =
             RendererModel.compactProjectedLinePoints maximumVisualPoints referenceTimestamps.Length values
@@ -759,6 +765,11 @@ module TaWorkspaceRenderer =
                     | TaTraceKind.Marker
                     | TaTraceKind.OverviewStripe ->
                         traceIndex, trace, [||], [||])
+
+            let candleTargets = System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, TaCandlePoint>>()
+            for _, trace, candles, _ in preparedTraces do
+                if trace.Kind = TaTraceKind.Candlestick then
+                    candleTargets[trace.TraceId] <- RendererModel.candlePointsByTimestamp candles
 
             let candleSeries =
                 if referenceTimestamps.Length <= maximumVisualPoints then
@@ -869,7 +880,17 @@ module TaWorkspaceRenderer =
                         | Some options ->
                             traces
                             |> Array.tryFind (fun candidate -> candidate.TraceId = options.TargetTraceId && candidate.Kind = TaTraceKind.Candlestick)
-                            |> Option.map (fun target -> RendererModel.markerPlacementsPrepared trace target currentData referenceTimestamps)
+                            |> Option.bind (fun target ->
+                                match candleTargets.TryGetValue target.TraceId with
+                                | true, targetByTimestamp ->
+                                    Some(
+                                        RendererModel.markerPlacementsPreparedWithIndexes
+                                            trace
+                                            target.TraceId
+                                            targetByTimestamp
+                                            currentData
+                                            referenceSlots)
+                                | _ -> None)
                             |> Option.defaultValue [||])
                 |> RendererModel.assignAggregateMarkerLanes
 
@@ -1424,7 +1445,7 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create cursorIndex
         compositeSvgReactive rowId traces data referenceTimestamps cursor.View setCursorIndex commitCursorIndex
 
-    let renderRowReactivePreparedLiveWithHeight (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh (row: TaRowSpec) =
+    let renderRowReactivePreparedLiveWithHeight (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
         let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders = compositeSvgReactivePreparedLiveWithHeight row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight.View scheduleValueRefresh
         let title = rowTitle row traces
@@ -1488,6 +1509,7 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-ta-row-values" "true"
                 Attr.Create "data-fixed-height" "30"
                 attr.style "box-sizing:border-box; display:flex; align-items:center; gap:6px 14px; height:30px; min-height:30px; padding:0 8px; border-top:1px solid #edf1f6; border-bottom:1px solid #edf1f6; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:#263b55;"
+                on.afterRender registerLegendElement
             ] [
                 let initialPresentation =
                     if timestamps.Length = 0 then None
@@ -1540,7 +1562,7 @@ module TaWorkspaceRenderer =
     let renderRowReactivePreparedLiveWithValueRefresh (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow scheduleValueRefresh (row: TaRowSpec) =
         let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
         let height = Var.Create((RendererModel.rowHeightBounds row traces).DefaultHeight)
-        renderRowReactivePreparedLiveWithHeight state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow height scheduleValueRefresh row
+        renderRowReactivePreparedLiveWithHeight state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow height scheduleValueRefresh ignore row
 
     let renderRowReactivePreparedLive state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow row =
         renderRowReactivePreparedLiveWithValueRefresh state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow ignore row
@@ -1559,6 +1581,7 @@ module TaWorkspaceRenderer =
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
         ensureAxisResizeTracking ()
+        let rendererTelemetryInstanceId = nextRendererTelemetryInstanceId ()
         let currentCanvasId () = runtimeState.Value.Identity.CanvasInstanceId
         let rowHeightStates = System.Collections.Generic.Dictionary<string, Var<int>>()
         let rowHeightStateFor (row: TaRowSpec) (traces: TaTraceSpec array) =
@@ -1613,15 +1636,44 @@ module TaWorkspaceRenderer =
         let mutable latestCursorReaders: (int -> TaCursorValue option) array = [||]
         let mutable latestLegendReaders: Map<string, (int -> TaRowValuePresentation option) array> = Map.empty
         let mutable latestLegendValueReaders: Map<string, (unit -> TaRowValuePresentation option) array> = Map.empty
+        let mutable cursorPanelElement: Element = null
+        let mutable latestRowLegendElements: Element array = [||]
         let mutable displayedCursorIndex: int option = None
         let mutable refreshVisibleValues: (unit -> unit) = ignore
         let mutable visibleValueRefreshScheduled = false
+        let mutable visibleValueSchedulerSequence = 0
+        let mutable visibleValueTelemetrySequence = 0
+        let mutable visibleValueTelemetryMaxTotalMs = 0.0
+        let publishGlobalSchedulerTelemetry elapsedMs =
+            let root = JS.Document.DocumentElement
+            if not (isNull root) then
+                visibleValueSchedulerSequence <- visibleValueSchedulerSequence + 1
+                let previousMax =
+                    match Double.TryParse(root.GetAttribute("data-visible-value-global-max-scheduler-ms")) with
+                    | true, value -> value
+                    | _ -> 0.0
+                root.SetAttribute("data-visible-value-global-last-scheduler-ms", fixedText elapsedMs)
+                root.SetAttribute("data-visible-value-global-last-instance", rendererTelemetryInstanceId)
+                root.SetAttribute("data-visible-value-global-last-render-sequence", string chartRenderSequence)
+                root.SetAttribute("data-visible-value-global-last-scheduler-sequence", string visibleValueSchedulerSequence)
+                if elapsedMs > previousMax then
+                    root.SetAttribute("data-visible-value-global-max-scheduler-ms", fixedText elapsedMs)
+                    root.SetAttribute("data-visible-value-global-max-instance", rendererTelemetryInstanceId)
+                    root.SetAttribute("data-visible-value-global-max-render-sequence", string chartRenderSequence)
+                    root.SetAttribute("data-visible-value-global-max-scheduler-sequence", string visibleValueSchedulerSequence)
         let scheduleVisibleValueRefresh () =
             if not visibleValueRefreshScheduled then
                 visibleValueRefreshScheduled <- true
                 JS.RequestAnimationFrame(fun _ ->
+                    let schedulerStarted = float (Date.Now())
                     visibleValueRefreshScheduled <- false
-                    refreshVisibleValues ())
+                    refreshVisibleValues ()
+                    let schedulerCompleted = float (Date.Now())
+                    let schedulerElapsed = schedulerCompleted - schedulerStarted
+                    publishGlobalSchedulerTelemetry schedulerElapsed
+                    if not (isNull chartStackElement) then
+                        chartStackElement.SetAttribute("data-visible-value-scheduler-ms", fixedText schedulerElapsed)
+                        chartStackElement.SetAttribute("data-visible-value-renderer-instance", rendererTelemetryInstanceId))
                 |> ignore
         let mutable chartWorkGeneration = 0
         let mutable dataWorkGeneration = 0
@@ -2019,72 +2071,167 @@ module TaWorkspaceRenderer =
                 [| for index in 0 .. int nodes.Length - 1 do
                        yield nodes.Item(index) |> As<Element> |]
 
-        let setElementHidden hidden (element: Element) =
-            if hidden then element.SetAttribute("hidden", "hidden")
-            else element.RemoveAttribute("hidden")
+        let scopedElements (root: Element) selector =
+            if isNull root then [||]
+            else
+                let nodes = root.QuerySelectorAll(selector)
+                [| for index in 0 .. int nodes.Length - 1 do
+                       yield nodes.Item(index) |> As<Element> |]
+
+        let cursorPanelElements selector = scopedElements cursorPanelElement selector
+
+        let rowLegendElements selector =
+            latestRowLegendElements
+            |> Array.collect (fun root -> scopedElements root selector)
+
+        let setElementTextIfChanged value (element: Element) =
+            if element.TextContent <> value then
+                element.TextContent <- value
+                true
+            else
+                false
+
+        let setElementAttributeIfChanged name value (element: Element) =
+            if element.GetAttribute(name) <> value then
+                element.SetAttribute(name, value)
+                true
+            else
+                false
+
+        let removeElementAttributeIfPresent name (element: Element) =
+            if element.HasAttribute(name) then
+                element.RemoveAttribute(name)
+                true
+            else
+                false
+
+        let setElementHiddenIfChanged hidden (element: Element) =
+            if hidden then
+                if not (element.HasAttribute("hidden")) then
+                    element.SetAttribute("hidden", "hidden")
+                    true
+                else
+                    false
+            else
+                removeElementAttributeIfPresent "hidden" element
+
+        let setElementHidden hidden element = setElementHiddenIfChanged hidden element |> ignore
+
+        let browserNowMs () = float (Date.Now())
 
         let applyVisibleCursorValues bounded =
             if not (isNull chartStackElement) then
-                let hint = cursorElements "[data-ta-cursor-hint]" |> Array.tryHead
-                let time = cursorElements "[data-ta-cursor-time]" |> Array.tryHead
-                let valueNodes = cursorElements "[data-ta-cursor-value-index]"
-                let legendValueNodes = cursorElements "[data-ta-row-value-index]"
-                let rowTimeNodes = cursorElements "[data-ta-row-data-time='true']"
+                let totalStarted = browserNowMs ()
+                let hint = cursorPanelElements "[data-ta-cursor-hint]" |> Array.tryHead
+                let time = cursorPanelElements "[data-ta-cursor-time]" |> Array.tryHead
+                let valueNodes = cursorPanelElements "[data-ta-cursor-value-index]"
+                let legendValueNodes = rowLegendElements "[data-ta-row-value-index]"
+                let rowTimeNodes = rowLegendElements "[data-ta-row-data-time='true']"
+                let queryCompleted = browserNowMs ()
                 let legendIndex =
                     match bounded with
                     | Some index -> Some index
                     | None when latestCursorTimestamps.Length > 0 -> Some(latestCursorTimestamps.Length - 1)
                     | None -> None
-                for valueIndex in 0 .. legendValueNodes.Length - 1 do
-                    let node = legendValueNodes[valueIndex]
-                    let traceIndex =
-                        match Int32.TryParse(node.GetAttribute("data-ta-row-value-index")) with
-                        | true, parsed -> parsed
-                        | _ -> valueIndex
-                    let rowId = node.GetAttribute("data-ta-row-value-row-id")
-                    let nextValue =
-                        legendIndex
-                        |> Option.bind (fun index ->
-                            match bounded with
-                            | Some _ -> tryLegendValue latestLegendReaders rowId traceIndex index
-                            | None -> tryLatestLegendValue latestLegendValueReaders rowId traceIndex)
-                        |> Option.map _.Value
-                        |> Option.defaultValue "Unavailable"
-                    node.TextContent <- nextValue
-                    node.SetAttribute("data-value-state", if nextValue = "Unavailable" then "undefined" else "defined")
-                for node in rowTimeNodes do
-                    let rowId = node.GetAttribute("data-ta-row-data-time-row-id")
-                    let nextTime =
-                        legendIndex
-                        |> Option.bind (fun index ->
-                            match bounded with
-                            | Some _ -> tryRowPresentation latestLegendReaders rowId index
-                            | None -> tryLatestRowPresentation latestLegendValueReaders rowId)
-                        |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
-                        |> Option.defaultValue "Unavailable"
-                    node.TextContent <- nextTime
+
+                let legendUpdates =
+                    legendValueNodes
+                    |> Array.mapi (fun valueIndex node ->
+                        let traceIndex =
+                            match Int32.TryParse(node.GetAttribute("data-ta-row-value-index")) with
+                            | true, parsed -> parsed
+                            | _ -> valueIndex
+                        let rowId = node.GetAttribute("data-ta-row-value-row-id")
+                        let nextValue =
+                            legendIndex
+                            |> Option.bind (fun index ->
+                                match bounded with
+                                | Some _ -> tryLegendValue latestLegendReaders rowId traceIndex index
+                                | None -> tryLatestLegendValue latestLegendValueReaders rowId traceIndex)
+                            |> Option.map _.Value
+                            |> Option.defaultValue "Unavailable"
+                        node, nextValue, if nextValue = "Unavailable" then "undefined" else "defined")
+
+                let rowTimeUpdates =
+                    rowTimeNodes
+                    |> Array.map (fun node ->
+                        let rowId = node.GetAttribute("data-ta-row-data-time-row-id")
+                        let nextTime =
+                            legendIndex
+                            |> Option.bind (fun index ->
+                                match bounded with
+                                | Some _ -> tryRowPresentation latestLegendReaders rowId index
+                                | None -> tryLatestRowPresentation latestLegendValueReaders rowId)
+                            |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
+                            |> Option.defaultValue "Unavailable"
+                        node, nextTime)
+
+                let cursorTimeUpdate = bounded |> Option.map (fun index -> compactTimestamp latestCursorTimestamps[index])
+                let cursorValueUpdates =
+                    match bounded with
+                    | None -> [||]
+                    | Some index ->
+                        valueNodes
+                        |> Array.mapi (fun valueIndex node ->
+                            let current = latestCursorReaders |> Array.tryItem valueIndex |> Option.bind (fun readCursor -> readCursor index)
+                            node, current)
+                let resolveCompleted = browserNowMs ()
+
+                let mutable textWrites = 0
+                let mutable attributeWrites = 0
+                for node, nextValue, nextState in legendUpdates do
+                    if setElementTextIfChanged nextValue node then textWrites <- textWrites + 1
+                    if setElementAttributeIfChanged "data-value-state" nextState node then attributeWrites <- attributeWrites + 1
+                for node, nextTime in rowTimeUpdates do
+                    if setElementTextIfChanged nextTime node then textWrites <- textWrites + 1
+                match cursorTimeUpdate, time with
+                | Some nextTime, Some node ->
+                    if setElementTextIfChanged nextTime node then textWrites <- textWrites + 1
+                | _ -> ()
+                for node, current in cursorValueUpdates do
+                    match current with
+                    | Some value ->
+                        if setElementTextIfChanged (value.Label + " " + value.Value) node then textWrites <- textWrites + 1
+                        if setElementAttributeIfChanged "data-cursor-row" value.Label node then attributeWrites <- attributeWrites + 1
+                    | None ->
+                        if setElementTextIfChanged "" node then textWrites <- textWrites + 1
+                        if removeElementAttributeIfPresent "data-cursor-row" node then attributeWrites <- attributeWrites + 1
+                let writeCompleted = browserNowMs ()
+
+                let mutable visibilityWrites = 0
                 match bounded with
                 | None ->
-                    hint |> Option.iter (setElementHidden false)
-                    time |> Option.iter (setElementHidden true)
-                    for node in valueNodes do setElementHidden true node
-                | Some index ->
-                    hint |> Option.iter (setElementHidden true)
-                    time
-                    |> Option.iter (fun node ->
-                        node.TextContent <- compactTimestamp latestCursorTimestamps[index]
-                        setElementHidden false node)
-                    for valueIndex in 0 .. valueNodes.Length - 1 do
-                        let node = valueNodes[valueIndex]
-                        match latestCursorReaders |> Array.tryItem valueIndex |> Option.bind (fun readCursor -> readCursor index) with
-                        | Some current ->
-                            node.TextContent <- current.Label + " " + current.Value
-                            node.SetAttribute("data-cursor-row", current.Label)
-                            setElementHidden false node
-                        | None ->
-                            node.TextContent <- ""
-                            node.RemoveAttribute("data-cursor-row")
-                            setElementHidden true node
+                    hint |> Option.iter (fun node -> if setElementHiddenIfChanged false node then visibilityWrites <- visibilityWrites + 1)
+                    time |> Option.iter (fun node -> if setElementHiddenIfChanged true node then visibilityWrites <- visibilityWrites + 1)
+                    for node in valueNodes do
+                        if setElementHiddenIfChanged true node then visibilityWrites <- visibilityWrites + 1
+                | Some _ ->
+                    hint |> Option.iter (fun node -> if setElementHiddenIfChanged true node then visibilityWrites <- visibilityWrites + 1)
+                    time |> Option.iter (fun node -> if setElementHiddenIfChanged false node then visibilityWrites <- visibilityWrites + 1)
+                    for node, current in cursorValueUpdates do
+                        if setElementHiddenIfChanged current.IsNone node then visibilityWrites <- visibilityWrites + 1
+
+                let visibilityCompleted = browserNowMs ()
+                let queryMs = queryCompleted - totalStarted
+                let resolveMs = resolveCompleted - queryCompleted
+                let writeMs = writeCompleted - resolveCompleted
+                let visibilityMs = visibilityCompleted - writeCompleted
+                let totalMs = visibilityCompleted - totalStarted
+                visibleValueTelemetrySequence <- visibleValueTelemetrySequence + 1
+                visibleValueTelemetryMaxTotalMs <- max visibleValueTelemetryMaxTotalMs totalMs
+                setElementAttributeIfChanged "data-visible-value-telemetry-sequence" (string visibleValueTelemetrySequence) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-query-ms" (fixedText queryMs) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-resolve-ms" (fixedText resolveMs) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-write-ms" (fixedText writeMs) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-visibility-ms" (fixedText visibilityMs) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-total-ms" (fixedText totalMs) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-max-total-ms" (fixedText visibleValueTelemetryMaxTotalMs) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-text-writes" (string textWrites) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-attribute-writes" (string attributeWrites) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-visibility-writes" (string visibilityWrites) chartStackElement |> ignore
+                setElementAttributeIfChanged "data-visible-value-node-count" (string (valueNodes.Length + legendValueNodes.Length + rowTimeNodes.Length + hint.IsSome.GetHashCode() + time.IsSome.GetHashCode())) chartStackElement |> ignore
+                let publicationCompleted = browserNowMs ()
+                setElementAttributeIfChanged "data-visible-value-publication-ms" (fixedText (publicationCompleted - visibilityCompleted)) chartStackElement |> ignore
 
         refreshVisibleValues <- fun () -> applyVisibleCursorValues displayedCursorIndex
 
@@ -2719,6 +2866,8 @@ module TaWorkspaceRenderer =
                             chartWorkGeneration <- chartWorkGeneration + 1
                             dataWorkGeneration <- dataWorkGeneration + 1
                             let workGeneration = chartWorkGeneration
+                            chartStackElement <- null
+                            cursorPanelElement <- null
                             let visibleRows =
                                 if preparedDataReady then
                                     document.Rows
@@ -2746,6 +2895,8 @@ module TaWorkspaceRenderer =
                                     let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
                                     rowHeightStateFor row traces)
                             let readyRowCount = Var.Create 0
+                            let currentRowLegendElements: Element array = Array.create visibleRows.Length null
+                            latestRowLegendElements <- currentRowLegendElements
                             let rowDocs =
                                 visibleRows
                                 |> Array.mapi (fun index row ->
@@ -2797,6 +2948,9 @@ module TaWorkspaceRenderer =
                                                     (document.BaseRowId = Some visibleRows[index].RowId)
                                                     rowHeights[index]
                                                     scheduleVisibleValueRefresh
+                                                    (fun node ->
+                                                        currentRowLegendElements[index] <- node
+                                                        scheduleVisibleValueRefresh ())
                                                     visibleRows[index]
                                             stagedCursorReaders[index] <- Some cursorReaders
                                             stagedLegendReaders[index] <- Some legendReaders
@@ -2830,6 +2984,7 @@ module TaWorkspaceRenderer =
                                 Attr.Create "data-visible-end" (string visibleEnd)
                                 Attr.Create "data-follow-latest" (if ui.FollowLatest then "true" else "false")
                                 Attr.Create "data-row-count" (string visibleRows.Length)
+                                Attr.Create "data-visible-value-query-scope" "cursor-panel+row-legends"
                                 Attr.Dynamic "data-ready-row-count" (readyRowCount.View |> View.Map string)
                                 Attr.Create "data-cursor-index" ""
                                 attr.style "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"
@@ -2838,7 +2993,13 @@ module TaWorkspaceRenderer =
                                     latestCursorTimestamps <- visibleTimestamps
                                     applyCursorIndex cursorIndex.Value)
                             ] [
-                                yield div [ Attr.Create "data-testid" "ta-cursor-panel"; attr.style "order:1; display:flex; flex-direction:column; align-items:stretch; border-top:1px solid #dce4ef; background:#f8fafc;" ] [
+                                yield div [
+                                    Attr.Create "data-testid" "ta-cursor-panel"
+                                    attr.style "order:1; display:flex; flex-direction:column; align-items:stretch; border-top:1px solid #dce4ef; background:#f8fafc;"
+                                    on.afterRender (fun node ->
+                                        cursorPanelElement <- node
+                                        scheduleVisibleValueRefresh ())
+                                ] [
                                     yield button [
                                         attr.``type`` "button"
                                         Attr.Create "data-testid" "ta-cross-scale-values-toggle"

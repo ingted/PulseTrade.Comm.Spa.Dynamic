@@ -972,6 +972,14 @@ let tests =
             Expect.equal (RendererModel.referenceTimeline [| row |] data).Length 2 "Shared timeline should expose only actual axis positions."
             Expect.equal TaWorkspaceRenderer.defaultOptions.MaximumVisibleBars 4000 "Default renderer viewport must accept the stakeholder 4,000-bar gate."
 
+            let missingCloseData = data |> Map.add refs.CloseRef (series [| 108.0 |])
+            let missingCloseCandles =
+                missingCloseData
+                |> RendererModel.prepareData
+                |> RendererModel.candleSeriesForTracePrepared trace
+            Expect.equal missingCloseCandles.Length 1 "A missing close component must omit the incomplete candle instead of filling the gap."
+            Expect.equal missingCloseCandles[0].Timestamp candles[0].Timestamp "The retained candle must preserve the authored temporal presentation."
+
             let replaceTemporalTail revisionKey revision replacement value =
                 match value with
                 | SduiValue.Object fields ->
@@ -1288,8 +1296,22 @@ let tests =
             let placements =
                 RendererModel.markerPlacementsPrepared markerTrace candleTrace prepared timeline
                 |> RendererModel.assignAggregateMarkerLanes
+            let targetByTimestamp =
+                RendererModel.candleSeriesForTracePrepared candleTrace prepared
+                |> RendererModel.candlePointsByTimestamp
+            let duplicatedTimeline = Array.append [| timeline[0] |] timeline
+            let indexedPlacements =
+                RendererModel.markerPlacementsPreparedWithIndexes
+                    markerTrace
+                    candleTrace.TraceId
+                    targetByTimestamp
+                    prepared
+                    (RendererModel.referenceSlotsByTimestamp duplicatedTimeline)
+                |> RendererModel.assignAggregateMarkerLanes
             Expect.equal placements.Length 3 "Every accepted marker receives one placement."
+            Expect.sequenceEqual indexedPlacements placements "The reusable indexed marker seam must preserve legacy placement and lane semantics."
             Expect.sequenceEqual (placements |> Array.map _.SlotIndex) [| 0; 0; 0 |] "Position 10 maps to the first candle slot regardless of EventTime evidence."
+            Expect.sequenceEqual (indexedPlacements |> Array.map _.SlotIndex) [| 0; 0; 0 |] "Duplicate reference timestamps must retain the first visible slot."
             Expect.sequenceEqual (placements |> Array.map _.Lane) [| 0; 0; 1 |] "Above and below anchors own deterministic independent lanes."
             Expect.isTrue (placements |> Array.forall (fun placement -> placement.TargetTraceId = candleTrace.TraceId)) "Every placement retains its target trace identity."
             Expect.isTrue (placements |> Array.forall (fun placement -> placement.Target.High = 103.0 && placement.Target.Low = 98.0)) "Marker anchors use the target candle at the same position."
