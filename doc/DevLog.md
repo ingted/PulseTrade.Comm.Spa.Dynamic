@@ -1745,3 +1745,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `5bdc13c6214ccf3c4a0b5e31c0f777b8c7eb00ca`已push。Contracts `0.1.31`、Renderer `0.1.83`、Interactive.Client `0.1.74`、Dynamic.Ptcs `0.1.52`、Ptcs.Client `0.1.84` public push全回`Created`。
 - NuGet.org official SHA-256依序為`CEB70E74EC1143646261DD43079F26177B01D428A726CBDD129356ED91CEA086 / 211031F700E7F6DA24A766D05DF4FC11D015B074ED32C251776BBC2E6D5C7B9D / 1F4EA667DA2997DE90A1E556284EC2DC7ADF88C964A1C2D06668C8B7B4F65517 / D3C7A0D8DBEA6E93D5867B4A1A9A1CBBDAA9D3017D3453A75E620BD3FFC13478 / 6E2D1271F0BA0BC101209F8A57AC731C73A6B591CFF55181765E4969F5F1A325`。
 - 五包`dotnet nuget verify --all`均確認NuGet.org Repository signature有效；排除`.signature.p7s`後，local/official package entry名稱與內容hash差異全為0。Owner release gate完成；Daedalus真SPAA no-fetch/no-run/no-revision-drift仍是consumer acceptance gate。
+
+## 2026-09-28 - RFC-0031 consumer acceptance
+
+- Daedalus consumer commit `G:\coldfar_py\coldfar-symbolics@02d3432e`整合Contracts `0.1.31`、Renderer `0.1.83`、Interactive.Client `0.1.74`；canonical evidence為`doc_new2/DevLog.md`及`doc_new2/RFC/RFC-TRADECORE-0029.page-display-time-zone.md`。
+- 真SPAA Playwright使用3,563根ES 1K、兩個Backtest scenarios及固定成交`2026-06-17T22:01:00Z`，UTC→CT/CDT→ET/EDT→UTC+8全頁投影GREEN。切換期間API request count、document/data revision、loaded bars、viewport、marker slot、selected scenario及End K query zone全部不變，最終`SMA13X34_DMI_SPAA=GREEN`。DYN-WBS-571完成。

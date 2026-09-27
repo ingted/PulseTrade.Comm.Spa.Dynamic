@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0031：Page-scoped Display Time Zone
 
 - ID：`RFC-PTCS-DYNAMIC-0031`
-- 狀態：Accepted / owner official release PASS / consumer validation pending
+- 狀態：Completed / owner official release PASS / consumer SPAA PASS
 - Owner：PTCS Dynamic Contracts／Renderer（Aster）
 - Consumer：PulseTrade.Comm.Spa.Dynamic.Interactive.Extension／SPAA／DIB（Daedalus）
 - 上游需求：`G:\coldfar_py\coldfar-symbolics\doc_new2\RFC\RFC-TRADECORE-0029.page-display-time-zone.md`
