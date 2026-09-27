@@ -1,0 +1,24 @@
+# Composite candlestick trace restore blocker
+
+## Pre-work plan
+
+- 背景/上下文：Daedalus真SPAA exact `0.1.30 / 0.1.81 / 0.1.72`在3,563-point composite row重現candlestick hide後show控制狀態恢復、SVG trace永久缺失；六條SMA仍存在。其他RFC-0029 gates已綠。
+- 目標：以owner BrowserDemo重現並修復composite candlestick逐tracehide/show，使DOM與committed local state一致。
+- 假設：candlestick topology在hidden state被prepared/render path排除，show只更新control state而未重新建立candle DOM；或staged row refresh generation把舊hide結果覆蓋show。
+- 計畫步驟：補3563-point Candlestick+6 Line回歸；觀察prepared/topology/DOM sequence；做最小Renderer修正；重跑focused與兩套browser gates；依immutable規則升Renderer/Interactive及active consumers；consumer再驗。
+- 範圍：Renderer、BrowserDemo、F# Playwright、必要exact package references與追溯文件；不改TradeCore/SPAA projection。
+- 驗收：hide完成後candle count=0；show完成後同trace path恢復且controls/state一致；六條line不受影響；4,000-bar既有gate無>100ms regression。
+- 風險：強制remount可能放大main-thread成本；不得以consumer workaround或整row重建掩蓋缺陷。
+
+## Operations
+
+- 2026-09-27 22:42 +08:00: accepted Daedalus evidence as Renderer blocker. Froze `0.1.81/0.1.72` as unpublished retired candidates and acknowledged no consumer workaround.
+- Correction：owner最小fixture證明`0.1.81/0.1.72`可正確恢復8條batched candle paths；先前凍結判斷撤回，兩版仍是正式candidate。Consumer selector誤用`ta-trace-*`，正確為`ta-candle-*`；多node locator須等待`.First`。
+- Owner新增4,000-point composite candle hide/show regression；`verify-ta-generic-marker-playwright.fsx` PASS（48 paths、all=53ms、pointer p95=30.93ms/max71ms），`verify-ta-renderer-playwright.fsx` PASS（300 transitions max117ms、正式phases over100=0）。
+- Daedalus修正gate後真SPAA 3,563-point完整GREEN：fixed strategy order/fill、OFI、halo、forced expiry、scenario switch、K/SMA獨立hide/show/remove與Reset Canvas均通過。
+- 五包依dependency order public push皆回`Created`。Official SHA-256：Contracts `726F4E1E75F162B129502CEE604C6D5FEA7D9792FEA3CFDEC186E44B289D1B57`；Renderer `8FAC1159B9F7DCA8C068FFEBDF4C6DC7DD87126BB9A3AFD721F89B7F6382D163`；Interactive.Client `79767D28985A4E6DF1645A513118C9BFDE9AB47FEF3B1863B1AB9582AFFBC9CE`；Dynamic.Ptcs `7445F84C73B488B36D54653313AD35B322963D2879086E8E07E8C8036FB0A1C5`；Ptcs.Client `7B68ECB032806E7343525E96081FA60064D9921C8C74E09C1141C8DE6ED88873`。
+- 五包`dotnet nuget verify --all`通過；排除`.signature.p7s`後local/official ZIP entries皆`Different=0`，official nuspec exact dependencies符合RFC graph。
+- BrowserDemo Release build曾被同repo stale `wsfscservice` PID 13884阻擋；精確確認其command line指向本repo Renderer log後停止該helper，重建通過。產品host不受影響。
+- 測試host已停止，port 18882無listener；`git diff --check`與changed-path strict UTF-8/NUL/U+FFFD檢查通過。
+- Changed-path sensitive scan：files=8，High=0、Medium=0；Info為既有版本／路徑文字。
+- `check.fsx`：PASS=28、WARN=2、FAIL=0。WARN為commit前`git_dirty`及既有全repo traceability coverage，不屬本輪衝突。

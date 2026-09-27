@@ -1714,3 +1714,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 修正WebSharper list computation漏`yield`造成trace/row controls未進DOM，以及inline authored display覆蓋hidden attribute的visibility問題；已補BrowserDemo regression。
 - Focused suites實際執行/通過：Contracts `44/44`、Renderer `49/49`、Dynamic.Ptcs `15/15`、Ptcs.Client `17/17`、Interactive.Client `12/12`。兩套F# Playwright PASS；generic gate all=75ms、pointer p95=19.92ms/max35ms，renderer gate cursor p95=35ms/max59ms且正式phases全低於100ms；package verifier PASS。
 - Immutable local candidate graph：Contracts `0.1.30 / E1F046A2...E747`、Renderer `0.1.81 / 5C726F3B...D623`、Interactive.Client `0.1.72 / 6B368E92...6187`、Dynamic.Ptcs `0.1.51 / 71ECA1CB...4CF2`、Ptcs.Client `0.1.82 / 51537CA6...D8D4`。Retired versions不得採用；Daedalus真SPAA consumer gate與public push/readback尚待完成。
+
+## 2026-09-27 - RFC-0029 consumer acceptance and public release
+
+- Daedalus回報composite candlestick hide後show為0；owner最小回歸證明正式Renderer可恢復8條batched candle paths。根因是consumer gate誤用line selector`ta-trace-*`，candlestick應使用`ta-candle-*`；修正後的batched locator再改為等待`.First`後驗count。此項未修改Renderer source或升版，並把正確行為固化於`verify-ta-generic-marker-playwright.fsx`。
+- 修正consumer gate後，真SPAA 3,563-point完整GREEN：fixed strategy order/fill、OFI、halo、forced expiry、scenario切換、K/SMA獨立hide/show/remove與Reset Canvas均通過。Owner generic gate為4,000 bars／48 paths／all=53ms／pointer p95=30.93ms/max71ms；renderer正式phases over100=0。
+- Exact graph Contracts `0.1.30`、Renderer `0.1.81`、Interactive.Client `0.1.72`、Dynamic.Ptcs `0.1.51`、Ptcs.Client `0.1.82`已public push。Official SHA-256依序為`726F4E1E...1B57 / 8FAC1159...163 / 79767D28...9CE / 7445F84C...1C5 / 7B68ECB0...873`；五包repository signature有效，official exact dependencies符合RFC，排除`.signature.p7s`後local/official entries皆`Different=0`。

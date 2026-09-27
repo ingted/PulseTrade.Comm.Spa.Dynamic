@@ -262,6 +262,25 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         require (intAttribute cursorEvents "data-marker-event-count" = 0) "empty cursor slot retained stale marker events"
         require (emptyCursorEvent.IsVisibleAsync() |> awaitTask && textOf emptyCursorEvent = "None") "available cursor event capability must show None for an empty slot"
 
+        let priceCandleToggle = page.Locator("[data-testid='ta-toggle-trace-price-price-1k']")
+        let priceCandleTrace = page.Locator("[data-testid='ta-candle-price-price-1k']")
+        let siblingPriceCandleTrace = page.Locator("[data-testid='ta-candle-price-price-5k']")
+        require (priceCandleToggle.CountAsync() |> awaitTask = 1) "the high-density composite row is missing its candlestick toggle"
+        require (priceCandleTrace.CountAsync() |> awaitTask = 8) "the high-density composite row did not start with all eight batched candlestick paths"
+        require (siblingPriceCandleTrace.CountAsync() |> awaitTask = 8) "the high-density composite row is missing its sibling candlestick trace"
+        priceCandleToggle.ClickAsync() |> awaitUnit
+        page.Locator("[data-testid='ta-toggle-trace-price-price-1k'][aria-pressed='false']").WaitForAsync(LocatorWaitForOptions(Timeout = 5000.0f)) |> awaitUnit
+        require (priceCandleTrace.CountAsync() |> awaitTask = 0 && siblingPriceCandleTrace.CountAsync() |> awaitTask = 8) "hiding one composite candlestick changed its sibling trace"
+        page.Locator("[data-testid='ta-toggle-trace-price-price-1k']").ClickAsync() |> awaitUnit
+        page.Locator("[data-testid='ta-toggle-trace-price-price-1k'][aria-pressed='true']").WaitForAsync(LocatorWaitForOptions(Timeout = 5000.0f)) |> awaitUnit
+        let restoredReadyDeadline = DateTime.UtcNow.AddSeconds 5.0
+        while attribute chartStack "data-ready-row-count" <> attribute chartStack "data-row-count"
+              && DateTime.UtcNow < restoredReadyDeadline do
+            Threading.Thread.Sleep 10
+        require (attribute chartStack "data-ready-row-count" = attribute chartStack "data-row-count") "the high-density composite chart did not become ready after showing its candlestick"
+        priceCandleTrace.First.WaitForAsync(LocatorWaitForOptions(Timeout = 5000.0f)) |> awaitUnit
+        require (priceCandleTrace.CountAsync() |> awaitTask = 8 && siblingPriceCandleTrace.CountAsync() |> awaitTask = 8) "showing the high-density composite candlestick did not restore all candle paths"
+
         let sma1Toggle = page.Locator("[data-testid='ta-toggle-trace-sma-sma-1k']")
         let sma1Trace = page.Locator("[data-testid='ta-trace-sma-sma-1k']")
         let sma5Trace = page.Locator("[data-testid='ta-trace-sma-sma-5k']")

@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0029：Trace Lifecycle、Cursor Events 與 Marker Contrast
 
 - ID：`RFC-PTCS-DYNAMIC-0029`
-- 狀態：Owner implemented / consumer acceptance pending
+- 狀態：Released / owner and consumer verified
 - Owner：PTCS Dynamic Contracts／Renderer／Interactive.Client／PTCS adapters（Aster）
 - Consumer：PulseTrade.Comm.Spa.Dynamic.Interactive.Extension／SPAA（Daedalus）
 - 關聯：`RFC-PTCS-DYNAMIC-0024`、`RFC-PTCS-DYNAMIC-0028`、`DYN-WBS-569`、`DYN-T-620..625`
@@ -99,4 +99,6 @@ Retired且禁止採用：Renderer `0.1.79/0.1.80`、Interactive.Client `0.1.70/0
 - `verify-ta-renderer-playwright.fsx` PASS：300 cursor transitions p95 `35ms`、max `59ms`；正式 phases max `58.76ms`、全部低於100ms。
 - Interactive package verifier PASS；desktop/mobile screenshots為`artifacts/ta-generic-marker-playwright/marker-desktop.png`與`marker-mobile.png`。
 - Owner local nupkg SHA-256：Contracts `E1F046A2598A80F208D88873152D6917F5F49BECC41EFA8CC011B5342B21E747`、Renderer `5C726F3B71F6E434B1DA5D24A3F8B1774034D5808907A5377540FCA80A5DD623`、Interactive.Client `6B368E92C5A0FB741E161F42E222A29C4B41F19076B3B2F02856112492986187`、Dynamic.Ptcs `71ECA1CBF590673DE99F4E6AE6C9F52138F56C7E970ABD95B6279A32EC5F4CF2`、Ptcs.Client `51537CA62D50E4671EA85CDD4FCAE6D7FE0798FB29E43EE44D5906B0607D8D4D`。
-- Consumer exact-graph gate記於`DYN-VFY-035`；此RFC尚不宣稱public release或真SPAA consumer acceptance。
+- Consumer exact-graph gate記於`DYN-VFY-035`。Daedalus真SPAA 3,563-point gate已通過fixed strategy order/fill、OFI、halo、forced expiry、scenario switch、K/SMA獨立hide/show/remove與Reset Canvas。
+- Candlestick hide/show blocker經owner獨立重現後確認為consumer gate selector錯誤：candlestick須使用`ta-candle-*`，不是line trace的`ta-trace-*`；batched path locator須等待`.First`再驗完整count。真SPAA恢復8條candlestick paths，Renderer source不需修補或升版。
+- 五包已public push且official readback完成。Official SHA-256依序為Contracts `726F4E1E75F162B129502CEE604C6D5FEA7D9792FEA3CFDEC186E44B289D1B57`、Renderer `8FAC1159B9F7DCA8C068FFEBDF4C6DC7DD87126BB9A3AFD721F89B7F6382D163`、Interactive.Client `79767D28985A4E6DF1645A513118C9BFDE9AB47FEF3B1863B1AB9582AFFBC9CE`、Dynamic.Ptcs `7445F84C73B488B36D54653313AD35B322963D2879086E8E07E8C8036FB0A1C5`、Ptcs.Client `7B68ECB032806E7343525E96081FA60064D9921C8C74E09C1141C8DE6ED88873`。五包repository signature有效，排除`.signature.p7s`後local/official entries皆`Different=0`。
