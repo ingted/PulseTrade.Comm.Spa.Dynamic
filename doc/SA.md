@@ -192,6 +192,14 @@ OFI reader由accepted prepared marker placements建立slot index，pointer只更
 
 Atomicity分兩層：PTCS reducer保證單一RuntimeFrame內所有`ReplaceDataRef`先形成candidate、全驗證後才commit；Daedalus consumer保證同scenario的runtime、summary、trades、timeline與download manifest都完成prepare後才一次publish。前者不能取代`selectionGeneration`，後者也不能繞過PTCS candidate validation。
 
+## Trace Lifecycle／Cursor Event Analysis（RFC-0029）
+
+逐trace可見性是renderer-local preference，逐trace移除則會改變authoritative workspace intent，兩者不可共用一個local toggle。hide/show因此只進`CanvasInstanceId + RowId + TraceId` local state；remove必須是correlated typed action，host accepted後再由RuntimeFrame完成真實document mutation。為避免accepted/no-frame期間按鈕看似無效，current application可暫時把trace放入removed set，但Reset／identity replacement／unmount必須清除，且stale generation不可回寫。
+
+Marker與OverviewStripe是system overlays，不是trader管理的numeric/candle trace；它們不出現在controls，也不能單獨維持空row。OFI則是generic cursor-event projection：兩種overlay共享stable event id時，Marker含有較完整的label/tooltip，故作chip authority；OverviewStripe仍保留navigator線。Round-robin authored trace ordering防止單一dense source壟斷四格，wire identity與`+N`仍全部保留。
+
+Contrast halo屬presentation，不得把黑色semantic marker改成白色。plot文字仍依RFC-0028為零；`RFC-0022/DYN-T-563`的visible plot label只作歷史紀錄，不再是current requirement。Data window的固定高度/內scrollbar同樣不是資料boundedness手段；boundedness由欄位與文字limits保證，layout改為wrap/auto height。
+
 Marker現有4筆限制把wire truth與DOM budget混在一起。新模型以64作transport/candidate hard limit、4作direct glyph budget；`+N` cluster只壓縮presentation，不壓縮identity。這會增加decode/candidate成本，但仍受dataRef/frame limits與prepared index約束，且避免consumer自行丟事件。
 
 Row height是local presentation state，不是document mutation。`HeightWeight`只提供deterministic authored default；canvas-local override不進fingerprint、cache、provider command或scenario revision。這避免多人／多kernel preference同步問題，也讓fresh reload可回到canonical document。

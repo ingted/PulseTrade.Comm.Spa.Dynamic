@@ -1174,42 +1174,6 @@ let tests =
             Expect.equal down [| 5.5, 15.5; 14.5, 15.5; 10.0, 24.5 |] "TriangleDown must point toward the bottom of the screen."
             Expect.isNone (RendererModel.markerTrianglePoints TaMarkerShape.Circle 10.0 20.0 4.5) "Non-triangle shapes do not use triangle geometry."
 
-        testCase "DYN-T-563 marker label geometry is bounded and deterministic" <| fun _ ->
-            let right = RendererModel.markerLabelGeometry 1000.0 310.0 10.0 100.0 25.0 "BUY 7588.25" |> Option.get
-            Expect.equal right.Text "BUY 7588.25" "The renderer must preserve the producer-authored presentation string."
-            Expect.equal right.TextAnchor "start" "Labels prefer the marker's right side."
-            Expect.equal right.X 108.0 "The marker-to-label gap is deterministic."
-
-            let left = RendererModel.markerLabelGeometry 1000.0 310.0 10.0 990.0 400.0 "SELL 7603.50 PnL +762.50" |> Option.get
-            Expect.equal left.TextAnchor "end" "Right-edge labels move to the marker's left side."
-            Expect.equal left.X 982.0 "Left-side placement preserves the deterministic gap."
-            Expect.equal left.Y 302.0 "Labels clamp vertically inside the row viewBox."
-
-            let longLabel = String.replicate 60 "X" |> RendererModel.markerLabelGeometry 1000.0 310.0 10.0 500.0 100.0 |> Option.get
-            Expect.equal longLabel.Text.Length 48 "Visible labels are bounded without changing the tooltip contract."
-            Expect.stringEnds longLabel.Text "..." "Truncation must be explicit."
-            Expect.isNone (RendererModel.markerLabelGeometry 1000.0 310.0 10.0 100.0 50.0 "  ") "Blank labels do not create SVG text."
-
-            let nearA = RendererModel.markerLabelGeometry 1000.0 310.0 30.0 700.0 60.0 "SELL 7603.50 PnL +762.50" |> Option.get
-            let nearB = RendererModel.markerLabelGeometry 1000.0 310.0 30.0 900.0 64.0 "SELL 7591.00" |> Option.get
-            let far = RendererModel.markerLabelGeometry 1000.0 310.0 30.0 100.0 70.0 "BUY 7588.25" |> Option.get
-            Expect.equal
-                (RendererModel.markerLabelCollisionLanes 6.0 [| TaMarkerAnchor.AboveBar, nearA; TaMarkerAnchor.AboveBar, nearB; TaMarkerAnchor.AboveBar, far |])
-                [| 1; 0; 0 |]
-                "Mobile-size adjacent labels get separate left-edge-ordered lanes while disjoint labels reuse the first lane."
-            Expect.equal
-                (RendererModel.markerLabelCollisionLanes 6.0 [| TaMarkerAnchor.AboveBar, nearA; TaMarkerAnchor.BelowBar, nearB |])
-                [| 0; 1 |]
-                "Above-bar and below-bar labels share collision lanes because their visible text can still overlap."
-            Expect.equal
-                (RendererModel.markerLabelLaneY 310.0 32.0 TaMarkerAnchor.AboveBar 20.0 1)
-                52.0
-                "An above-bar label near the top edge expands downward instead of clamping onto another label."
-            Expect.equal
-                (RendererModel.markerLabelLaneY 310.0 32.0 TaMarkerAnchor.BelowBar 300.0 1)
-                268.0
-                "A below-bar label near the bottom edge expands upward instead of clamping onto another label."
-
         testCase "DYN-T-573 marker budget is four direct glyphs plus one deterministic overflow cluster" <| fun _ ->
             let target =
                 { Timestamp = "2026-09-24T01:00:00Z"
@@ -1277,6 +1241,134 @@ let tests =
             Expect.equal visuals[0].Lane 0 "Lowest LayerOrder owns lane zero."
             Expect.equal visuals[1].Lane 1 "The next trace receives the next deterministic lane."
             Expect.equal visuals[1].Stripes.Length 2 "Collapsed stripe ids remain available to the interaction bucket."
+
+        testCase "DYN-T-620 cursor events merge marker and stripe sources without duplicate event ids" <| fun _ ->
+            let trace traceId kind label =
+                { TraceId = traceId
+                  Kind = kind
+                  DataRef = traceId
+                  Label = label
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let target =
+                { Timestamp = "2026-09-24T01:00:00Z"
+                  Open = 10.0
+                  High = 12.0
+                  Low = 9.0
+                  Close = 11.0
+                  Volume = 10.0
+                  Temporal = None }
+            let marker =
+                { TraceId = "fills"
+                  TargetTraceId = "price"
+                  Position = 10.0
+                  SlotIndex = 7
+                  Lane = 0
+                  Target = target
+                  Marker =
+                    { MarkerId = "fill-1"
+                      EventTimeUtc = target.Timestamp
+                      Anchor = TaMarkerAnchor.AboveBar
+                      Shape = TaMarkerShape.TriangleDown
+                      Fill = TaMarkerFill.Solid
+                      Color = "#dc2626"
+                      Label = Some "SELL 11"
+                      Tooltip = [||] } }
+            let stripe traceId stripeId label layer =
+                { TraceId = traceId
+                  TargetTraceId = "price"
+                  CollisionGroup = "trade-events"
+                  LayerOrder = layer
+                  Position = 10.0
+                  SlotIndex = 7
+                  Stripe =
+                    { StripeId = stripeId
+                      EventTimeUtc = target.Timestamp
+                      Color = if traceId = "signals" then "#2563eb" else "#dc2626"
+                      StrokeWidthCssPixels = 1.0
+                      Label = Some label
+                      Tooltip = [||] } }
+            let events =
+                RendererModel.cursorEventItems
+                    7
+                    [| trace "signals" TaTraceKind.OverviewStripe "Signal"
+                       trace "fills" TaTraceKind.Marker "Fill"
+                       trace "fill-overview" TaTraceKind.OverviewStripe "Fill stripe" |]
+                    [| marker |]
+                    [| stripe "signals" "signal-1" "Signal A" 0
+                       stripe "fill-overview" "fill-1" "Fill stripe" 1 |]
+            Expect.equal events.Length 2 "A marker-backed event appears once while an independent stripe-only event remains visible."
+            Expect.sequenceEqual (events |> Array.map _.MarkerId |> Array.sort) [| "fill-1"; "signal-1" |] "Generic event id dedupe must not depend on TradeCore labels."
+            Expect.equal (events |> Array.find (fun item -> item.MarkerId = "fill-1") |> _.SourceKind) "marker" "Marker owns the richer duplicate event presentation."
+            Expect.equal (events |> Array.find (fun item -> item.MarkerId = "signal-1") |> _.SourceKind) "overview-stripe" "A stripe-only signal remains in the event band."
+            let denseMarkers =
+                Array.init 6 (fun index ->
+                    { marker with
+                        Lane = index
+                        Marker = { marker.Marker with MarkerId = $"fill-{index}"; Label = Some $"Fill {index}" } })
+            let fairEvents =
+                RendererModel.cursorEventItems
+                    7
+                    [| trace "signals" TaTraceKind.OverviewStripe "Signal"
+                       trace "fills" TaTraceKind.Marker "Fill" |]
+                    denseMarkers
+                    [| stripe "signals" "signal-1" "Signal A" 0 |]
+            Expect.sequenceEqual
+                (fairEvents |> Array.take 2 |> Array.map _.MarkerId)
+                [| "signal-1"; "fill-0" |]
+                "Dense events are round-robin ordered by authored trace so one source cannot consume the complete visible chip budget."
+
+        testCase "DYN-T-623 encoded overview stripes resolve onto the visible temporal axis" <| fun _ ->
+            let axisRef = "axis.overview.cursor"
+            let at minute = DateTimeOffset(2026, 9, 27, 1, minute, 0, TimeSpan.Zero)
+            let axisPoint position minute =
+                { Position = position
+                  SourceIntervalId = $"overview-{position}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = at minute
+                  IntervalEndUtc = (at minute).AddMinutes 1.0
+                  EventTimeUtc = Some((at minute).AddMinutes 1.0)
+                  ObservedThroughUtc = (at minute).AddMinutes 1.0
+                  AvailableAtUtc = Some((at minute).AddMinutes 1.0)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+            let axis =
+                { AxisRef = axisRef
+                  Revision = 1L
+                  Points = [| axisPoint 10L 0; axisPoint 11L 1 |] }
+            let stripe =
+                { StripeId = "signal-10"
+                  EventTimeUtc = "2026-09-27T01:01:00Z"
+                  Color = "#2563eb"
+                  StrokeWidthCssPixels = 1.0
+                  Label = Some "Signal"
+                  Tooltip = [||] }
+            let trace =
+                { TraceId = "overview-signal"
+                  Kind = TaTraceKind.OverviewStripe
+                  DataRef = "series.overview.signal"
+                  Label = "Signal stripe"
+                  Color = "#2563eb"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = TaOverviewStripeTraceOptionsCodec.encode { TargetTraceId = "price"; CollisionGroup = "events"; LayerOrder = 0 } }
+            let data =
+                Map [ axisRef, TemporalAxisCodec.encode axis
+                      trace.DataRef,
+                      TemporalSeriesCodec.encode
+                          { AxisRef = axisRef
+                            AxisRevision = axis.Revision
+                            Points = [| { Position = 10L; Value = TaOverviewStripeCodec.encodeBucket [| stripe |] } |] } ]
+            let timeline = axis.Points |> Array.map (fun point -> point.EventTimeUtc.Value.ToString("O"))
+            let placements = RendererModel.overviewStripePlacementsPrepared trace (RendererModel.prepareData data) timeline
+            Expect.equal placements.Length 1 "The encoded stripe must resolve from its temporal-series position."
+            Expect.equal placements[0].SlotIndex 0 "The stripe event time maps to the first visible axis slot."
+            Expect.equal placements[0].Stripe.StripeId stripe.StripeId "The generic event id survives decode and placement."
 
         testCase "DYN-T-576 row height policy is marker-independent and bounded" <| fun _ ->
             let baseRow =

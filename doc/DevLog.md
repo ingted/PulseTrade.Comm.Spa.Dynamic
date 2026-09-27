@@ -1705,3 +1705,12 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Dynamic.Ptcs `0.1.50`與Ptcs.Client `0.1.77` public push均回`Created`。Official signed nupkg SHA-256為`B228418E317C8532290E2EC79C515DD86A8CBD8A6BDFA52590CEE29F833D673D`／`85B9BBF86429466C8B4431FD388DD89BDDD43E3154096635E320ECC49A4C60B6`。
 - `dotnet nuget verify --all`確認兩包NuGet.org repository signatures有效；排除`.signature.p7s`後local／official entries均`Different=0`。Official exact dependencies分別為PTCS `[0.2.46]`＋Contracts `[0.1.29]`，以及再加Renderer `[0.1.76]`；`DYN-WBS-564`結案。
+
+## 2026-09-27 - RFC-0029 owner candidate
+
+- 新增`RFC-PTCS-DYNAMIC-0029`並完成owner slice：dark hollow marker保留semantic stroke，另畫pointer-inert contrast halo；plot visible marker label維持0，Label/Tooltip由SVG title與row-local OFI承接。
+- OFI改為合併Marker與OverviewStripe的generic cursor events；stable event id重複時Marker rich chip優先，跨authored traces round-robin分配4個visible slots，其餘`+N`。capability存在但slot無event顯示`None`，缺capability顯示`Unavailable`。
+- 新增typed`RemoveTaTrace`／wire `remove-trace`與PTCS adapters；non-system trace支援local hide/show及remote remove。same-canvas patch保留state，Reset Canvas／identity replacement清除；最後一條non-system trace被remove後收合row。Data window改wrap/auto height、無內部scrollbar。
+- 修正WebSharper list computation漏`yield`造成trace/row controls未進DOM，以及inline authored display覆蓋hidden attribute的visibility問題；已補BrowserDemo regression。
+- Focused suites實際執行/通過：Contracts `44/44`、Renderer `49/49`、Dynamic.Ptcs `15/15`、Ptcs.Client `17/17`、Interactive.Client `12/12`。兩套F# Playwright PASS；generic gate all=75ms、pointer p95=19.92ms/max35ms，renderer gate cursor p95=35ms/max59ms且正式phases全低於100ms；package verifier PASS。
+- Immutable local candidate graph：Contracts `0.1.30 / E1F046A2...E747`、Renderer `0.1.81 / 5C726F3B...D623`、Interactive.Client `0.1.72 / 6B368E92...6187`、Dynamic.Ptcs `0.1.51 / 71ECA1CB...4CF2`、Ptcs.Client `0.1.82 / 51537CA6...D8D4`。Retired versions不得採用；Daedalus真SPAA consumer gate與public push/readback尚待完成。

@@ -112,6 +112,7 @@ type TaTransientClientFrameWire =
       canvasInstanceId: string
       row: TaTransientRowWire
       rowId: string
+      traceId: string
       query: TaTransientQueryWire
       afterDataRevision: int64
       dataRevision: int64
@@ -253,6 +254,7 @@ type TaBrowserClientFrameWire =
       actionKind: string
       canvasInstanceId: string
       rowId: string
+      traceId: string
       rowKind: string
       dataRef: string
       heightWeight: float
@@ -545,6 +547,7 @@ module TaResearchTransientWire =
           canvasInstanceId = canvasId
           row = emptyRow ()
           rowId = ""
+          traceId = ""
           query = emptyQuery ()
           afterDataRevision = 0L
           dataRevision = 0L
@@ -608,6 +611,7 @@ module TaResearchTransientWire =
                     hasTemplateRowId = rowId.IsSome
                     editorValues = (if isNull values then [||] else values) |> Array.map editorInputToWire }
             | SduiAction.RemoveTaRow(CanvasInstanceId canvasId, rowId) -> { emptyClientFrame "action" canvasId with actionKind = "remove-row"; rowId = rowId }
+            | SduiAction.RemoveTaTrace(CanvasInstanceId canvasId, rowId, traceId) -> { emptyClientFrame "action" canvasId with actionKind = "remove-trace"; rowId = rowId; traceId = traceId }
             | SduiAction.ChangeTaQuery(CanvasInstanceId canvasId, query) -> { emptyClientFrame "action" canvasId with actionKind = "change-query"; query = queryToWire query }
             | SduiAction.SharedCursorChanged(CanvasInstanceId canvasId, change) ->
                 { emptyClientFrame "action" canvasId with
@@ -644,6 +648,7 @@ module TaResearchTransientWire =
                         text wire.templateKey,
                         values)))
         | "action", "remove-row" -> Ok(RuntimeClientFrame.Action(SduiAction.RemoveTaRow(canvas, text wire.rowId)))
+        | "action", "remove-trace" -> Ok(RuntimeClientFrame.Action(SduiAction.RemoveTaTrace(canvas, text wire.rowId, text wire.traceId)))
         | "action", "change-query" -> Ok(RuntimeClientFrame.Action(SduiAction.ChangeTaQuery(canvas, queryFromWire wire.query)))
         | "action", "shared-cursor-changed" ->
             Ok(
@@ -1102,6 +1107,7 @@ module TaResearchBrowserWire =
                             text wire.templateKey,
                             values)))
             | "action", "remove-row" -> Ok(RuntimeClientFrame.Action(SduiAction.RemoveTaRow(canvas, text wire.rowId)))
+            | "action", "remove-trace" -> Ok(RuntimeClientFrame.Action(SduiAction.RemoveTaTrace(canvas, text wire.rowId, text wire.traceId)))
             | "action", "change-query" ->
                 Ok(
                     RuntimeClientFrame.Action(

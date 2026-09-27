@@ -843,19 +843,24 @@ let verifyDesktop (browser: IBrowser) =
             $"row crosshair {crosshairIndex} must span the full SVG row height: y1={y1}, y2={y2}, height={viewBoxHeight}"
 
     let rowLegends = page.Locator("[data-ta-row-values='true']")
-    require ((rowLegends.CountAsync() |> awaitTask) = 7) "every visible row must expose one fixed legend/value band"
+    require ((rowLegends.CountAsync() |> awaitTask) = 7) "every visible row must expose one legend/value band"
     let initialLegendHeights =
         [| for index in 0 .. 6 do
-               let box = rowLegends.Nth(index).BoundingBoxAsync() |> awaitTask
+               let legend = rowLegends.Nth(index)
+               let box = legend.BoundingBoxAsync() |> awaitTask
                require (not (isNull box)) $"row legend {index} must expose geometry"
+               let style = legend.GetAttributeAsync("style") |> awaitTask
+               require (legend.GetAttributeAsync("data-auto-height") |> awaitTask = "true") $"row legend {index} must publish its auto-height contract"
+               require (style.Contains("flex-wrap:wrap") && style.Contains("overflow:visible")) $"row legend {index} must wrap without an internal scrollbar"
                yield box.Height |]
-    require (initialLegendHeights |> Array.forall (fun height -> abs (height - 30.0f) <= 0.5f)) ("row legend heights must remain fixed at 30px: " + String.concat "," (initialLegendHeights |> Array.map string))
+    require (initialLegendHeights |> Array.forall (fun height -> height >= 29.5f)) ("row legend height fell below its 30px minimum: " + String.concat "," (initialLegendHeights |> Array.map string))
+    require (initialLegendHeights |> Array.exists (fun height -> height > 30.5f)) ("long data-window content did not expand its row: " + String.concat "," (initialLegendHeights |> Array.map string))
 
     let smaLegend = page.Locator("[data-testid='ta-row-values-sma']")
     let smaLegendToken = page.Locator("[data-testid='ta-row-value-sma-sma-1k']")
     let smaLegendLabel = smaLegendToken.Locator("[data-ta-row-value-label='true']")
     let smaLegendValue = smaLegendToken.Locator("[data-ta-row-value-text='true']")
-    require (smaLegend.GetAttributeAsync("data-fixed-height") |> awaitTask = "30") "the SMA row value band must publish its fixed-height contract"
+    require (smaLegend.GetAttributeAsync("data-auto-height") |> awaitTask = "true") "the SMA row value band must publish its auto-height contract"
     waitForAttributeValue smaLegendValue "data-value-state" "defined"
     let labelBox = smaLegendLabel.BoundingBoxAsync() |> awaitTask
     let initialValueBox = smaLegendValue.BoundingBoxAsync() |> awaitTask
@@ -933,11 +938,15 @@ let verifyDesktop (browser: IBrowser) =
     require (attributeOrEmpty firstOfiItem "data-marker-event-time" = entryMarkerEventTime) "marker hover must project the exact marker event time into OFI without row-axis reconstruction"
     require ((attributeOrEmpty firstOfiItem "title").Contains "Reason: long entry signal") "OFI item must retain the marker tooltip payload"
     moveToMarkerSlot (requiredIntAttribute signalA "data-marker-slot")
-    waitForIntAttribute priceOfiBand "data-marker-event-count" 64
-    requireText (priceOfiBand.Locator("[data-ta-row-ofi-overflow='true']")) "+60"
+    waitForIntAttribute priceOfiBand "data-marker-event-count" 66
+    require (priceOfiBand.Locator("[data-cursor-event-source-kind='overview-stripe']").CountAsync() |> awaitTask = 2)
+        "dense cursor slot must merge both OverviewStripe events with marker events"
+    require (priceOfiBand.Locator("[data-cursor-event-source-kind='marker']").CountAsync() |> awaitTask = 2)
+        "round-robin event budget must retain marker details alongside OverviewStripe events"
+    requireText (priceOfiBand.Locator("[data-ta-row-ofi-overflow='true']")) "+62"
     moveToMarkerSlot 0
     waitForIntAttribute priceOfiBand "data-marker-event-count" 0
-    require (textOf priceOfiBand = "") "cursor slot without events keeps the fixed-height OFI band blank"
+    require (textOf priceOfiBand = "None") "cursor slot without events must retain the fixed-height event band and show None"
 
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
     require (attributeOrEmpty navigator "data-plot-surface-theme" = "dark") "overview must use the selected generic dark theme"
@@ -1205,7 +1214,7 @@ let verifyDesktop (browser: IBrowser) =
     require ((page.Locator("[data-testid='ta-editor-periods-0']").InputValueAsync() |> awaitTask) = "34") "accepted Edit must retain the new binding for the same row"
     page.Locator("[data-testid='ta-add-row-cancel']").ClickAsync() |> awaitUnit
 
-    page.Locator("[data-testid='ta-remove-row-volume']").ClickAsync() |> awaitUnit
+    page.Locator("[data-testid='ta-remove-trace-volume-volume']").ClickAsync() |> awaitUnit
     volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Hidden, Timeout = 3000.0f)) |> awaitUnit
 
     page.Locator("[data-testid='ta-apply-query']").ClickAsync() |> awaitUnit

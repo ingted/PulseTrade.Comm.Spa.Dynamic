@@ -195,6 +195,7 @@ module RuntimeValidation =
                   "reset-canvas"
                   "add-row"
                   "remove-row"
+                  "remove-trace"
                   "change-query"
                   "shared-cursor-changed"
                   "visible-range-changed"

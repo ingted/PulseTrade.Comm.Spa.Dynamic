@@ -1667,6 +1667,21 @@ let tests =
             Expect.isError (DynamicActionValidation.clientFrameErrors badProtocol |> function [] -> Ok() | errors -> Error errors) "Unsupported action protocol must fail closed."
             Expect.isError (BrowserRuntimeCodec.decodeActionRequest (WebSharper.Json.Serialize badProtocol)) "Browser codec must reject unsupported action protocol."
 
+            let removeTrace =
+                { request with
+                    RequestId = "remove-trace:sma-20"
+                    Action = SduiAction.RemoveTaTrace(identity.CanvasInstanceId, "price", "sma-20") }
+            Expect.isEmpty (DynamicActionValidation.requestErrors removeTrace) "A fully identified trace removal must validate."
+            Expect.equal
+                (removeTrace |> BrowserRuntimeCodec.encodeActionRequest |> BrowserRuntimeCodec.decodeActionRequest)
+                (Ok removeTrace)
+                "RemoveTaTrace must round-trip through the canonical browser action codec."
+            let invalidRemoveTrace =
+                SduiAction.RemoveTaTrace(identity.CanvasInstanceId, "", "")
+                |> DynamicActionValidation.actionErrors
+            Expect.isTrue (invalidRemoveTrace |> List.exists (fun error -> error.Code = "required" && error.Field = "action.rowId")) "Trace removal without row identity must fail closed."
+            Expect.isTrue (invalidRemoveTrace |> List.exists (fun error -> error.Code = "required" && error.Field = "action.traceId")) "Trace removal without trace identity must fail closed."
+
             let missingRequestId =
                 { request with RequestId = "" }
 

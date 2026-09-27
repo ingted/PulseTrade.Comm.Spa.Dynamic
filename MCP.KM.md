@@ -16,3 +16,11 @@
 - Wire/candidate hard limit與presentation budget分離：現行marker bucket最多64，OFI直接顯示4筆並以`+N`表達其餘；不得因DOM budget丟失stable identities。
 
 關聯：`doc/RFC/RFC-PTCS-DYNAMIC-0028.default-viewport-marker-ofi-band.md`、`DYN-VFY-033`。
+
+## WebSharper reactive list 與 authored display
+
+- F# list computation中用條件式加入Doc時必須明確`yield`；只有expression而未yield可能產生`FS3221`並讓row/trace controls在WebSharper輸出中被丟棄，純model測試不一定能發現。
+- 只設HTML `hidden`不足以隱藏帶inline `display`的renderer node。local visibility helper需保存authored display，hidden時設`display:none`，解除時恢復原值；不可一律恢復空字串破壞grid/flex layout。
+- 這兩項必須由真BrowserDemo DOM gate驗 controls存在、點擊後geometry/visibility改變，再以Reset/identity replacement驗state lifecycle。
+
+關聯：`doc/RFC/RFC-PTCS-DYNAMIC-0029.trace-lifecycle-cursor-events-marker-contrast.md`、`DYN-VFY-035`。

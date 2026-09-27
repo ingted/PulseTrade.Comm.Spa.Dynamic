@@ -26,6 +26,8 @@ type TaRendererUiState =
     { Window: TaVisibleWindow
       FollowLatest: bool
       HiddenRows: Set<string>
+      HiddenTraces: Set<string * string>
+      RemovedTraces: Set<string * string>
       AddRowOpen: bool
       CursorIndex: int option
       PendingActionId: string option
@@ -996,6 +998,14 @@ module TaWorkspaceRenderer =
                             |> Option.defaultValue [||])
                 |> RendererModel.assignAggregateMarkerLanes
 
+            let overviewStripePlacements =
+                preparedTraces
+                |> Array.collect (fun (_, trace, _, _) ->
+                    if trace.Kind = TaTraceKind.OverviewStripe then
+                        RendererModel.overviewStripePlacementsPrepared trace currentData referenceTimestamps
+                    else
+                        [||])
+
             let mutable hasScaleValue = false
             let mutable scaleLow = 0.0
             let mutable scaleHigh = 0.0
@@ -1106,11 +1116,11 @@ module TaWorkspaceRenderer =
             let legendReaders = readers |> Array.map (fun (_, legendReader, _) -> legendReader)
             let latestLegendValues = readers |> Array.map (fun (_, _, latestLegend) -> latestLegend)
 
-            preparedTraces, candleSeries, linePoints, markerPlacements, cursorReaders, legendReaders, latestLegendValues, low, high
+            preparedTraces, candleSeries, linePoints, markerPlacements, overviewStripePlacements, cursorReaders, legendReaders, latestLegendValues, low, high
 
         let initialGeometry = prepareGeometry chartPixelHeight.Value preparedData
-        let _, initialCandleSeries, initialLinePoints, initialMarkerPlacements, initialCursorReaders, initialLegendReaders, initialLatestLegendValues, initialLow, initialHigh = initialGeometry
-        let markerVisualState = Var.Create(initialMarkerPlacements, initialLow, initialHigh)
+        let _, initialCandleSeries, initialLinePoints, initialMarkerPlacements, initialOverviewStripePlacements, initialCursorReaders, initialLegendReaders, initialLatestLegendValues, initialLow, initialHigh = initialGeometry
+        let markerVisualState = Var.Create(initialMarkerPlacements, initialOverviewStripePlacements, initialLow, initialHigh)
         let readerStates =
             Array.map3
                 (fun cursorReader legendReader latestLegend -> ref (cursorReader, legendReader, latestLegend))
@@ -1121,7 +1131,7 @@ module TaWorkspaceRenderer =
         let slot = if referenceTimestamps.Length = 0 then width else width / float referenceTimestamps.Length
         let svgTestId = if hasCandles then "ta-candle-" + rowId else "ta-composite-" + rowId
 
-        let candlePaths traceIndex (_, currentCandles, _, _, _, _, _, low, high) =
+        let candlePaths traceIndex (_, currentCandles, _, _, _, _, _, _, low, high) =
             let buckets = Array.init 8 (fun _ -> ResizeArray<string>())
             for currentTraceIndex, _, slotIndex, sourceSpanCount, point in currentCandles do
                 if currentTraceIndex = traceIndex then
@@ -1144,7 +1154,7 @@ module TaWorkspaceRenderer =
 
             buckets |> Array.map (String.concat " ")
 
-        let lineGeometry traceIndex (_, _, currentLines, _, _, _, _, low, high) =
+        let lineGeometry traceIndex (_, _, currentLines, _, _, _, _, _, low, high) =
             let _, _, points =
                 currentLines
                 |> Array.tryFind (fun (index, _, _) -> index = traceIndex)
@@ -1191,7 +1201,7 @@ module TaWorkspaceRenderer =
             |> Option.map (snd >> _.Value >> fixedText)
             |> Option.defaultValue ""
 
-        let markerShape (placement: TaMarkerPlacement) low high =
+        let markerCenter (placement: TaMarkerPlacement) low high =
             let size = 9.0
             let half = size / 2.0
             let laneStep = size + 2.0
@@ -1205,6 +1215,12 @@ module TaWorkspaceRenderer =
                 | TaMarkerAnchor.AboveBar -> anchorY - 4.0 - half - float placement.Lane * laneStep
                 | TaMarkerAnchor.BelowBar -> anchorY + 4.0 + half + float placement.Lane * laneStep
             let y = max half (min (height - half) proposedY)
+            x, y
+
+        let markerShape (placement: TaMarkerPlacement) low high =
+            let size = 9.0
+            let half = size / 2.0
+            let x, y = markerCenter placement low high
             let fill, fillOpacity =
                 match placement.Marker.Fill with
                 | TaMarkerFill.Solid -> placement.Marker.Color, "1"
@@ -1232,22 +1248,37 @@ module TaWorkspaceRenderer =
                       event.StopPropagation()
                       commitCursorIndex placement.SlotIndex) ]
             let title = svgElement "title" [] [ text (RendererModel.markerTooltipText placement) ]
-            match placement.Marker.Shape with
-            | TaMarkerShape.Circle ->
-                svgElement "circle" (common @ [ svgAttr "cx" (fixedText x); svgAttr "cy" (fixedText y); svgAttr "r" (fixedText half) ]) [ title ]
-            | TaMarkerShape.Square ->
-                svgElement "rect" (common @ [ svgAttr "x" (fixedText (x - half)); svgAttr "y" (fixedText (y - half)); svgAttr "width" (fixedText size); svgAttr "height" (fixedText size) ]) [ title ]
-            | TaMarkerShape.Diamond ->
-                let points = $"{fixedText x},{fixedText (y - half)} {fixedText (x + half)},{fixedText y} {fixedText x},{fixedText (y + half)} {fixedText (x - half)},{fixedText y}"
-                svgElement "polygon" (common @ [ svgAttr "points" points ]) [ title ]
-            | TaMarkerShape.TriangleUp
-            | TaMarkerShape.TriangleDown ->
-                let points =
-                    RendererModel.markerTrianglePoints placement.Marker.Shape x y half
-                    |> Option.defaultValue [||]
-                    |> Array.map (fun (pointX, pointY) -> $"{fixedText pointX},{fixedText pointY}")
-                    |> String.concat " "
-                svgElement "polygon" (common @ [ svgAttr "points" points ]) [ title ]
+            let elementName, geometry =
+                match placement.Marker.Shape with
+                | TaMarkerShape.Circle ->
+                    "circle", [ svgAttr "cx" (fixedText x); svgAttr "cy" (fixedText y); svgAttr "r" (fixedText half) ]
+                | TaMarkerShape.Square ->
+                    "rect", [ svgAttr "x" (fixedText (x - half)); svgAttr "y" (fixedText (y - half)); svgAttr "width" (fixedText size); svgAttr "height" (fixedText size) ]
+                | TaMarkerShape.Diamond ->
+                    let points = $"{fixedText x},{fixedText (y - half)} {fixedText (x + half)},{fixedText y} {fixedText x},{fixedText (y + half)} {fixedText (x - half)},{fixedText y}"
+                    "polygon", [ svgAttr "points" points ]
+                | TaMarkerShape.TriangleUp
+                | TaMarkerShape.TriangleDown ->
+                    let points =
+                        RendererModel.markerTrianglePoints placement.Marker.Shape x y half
+                        |> Option.defaultValue [||]
+                        |> Array.map (fun (pointX, pointY) -> $"{fixedText pointX},{fixedText pointY}")
+                        |> String.concat " "
+                    "polygon", [ svgAttr "points" points ]
+            let contrastStroke = if palette.ThemeName = "dark" then "#f8fafc" else "#0f172a"
+            let halo =
+                svgElement elementName
+                    ([ Attr.Create "data-marker-contrast-halo" "true"
+                       Attr.Create "data-marker-halo-for" placement.Marker.MarkerId
+                       svgAttr "fill" "none"
+                       svgAttr "stroke" contrastStroke
+                       svgAttr "stroke-width" "4.4"
+                       svgAttr "stroke-opacity" "0.95"
+                       svgAttr "pointer-events" "none"
+                       svgAttr "vector-effect" "non-scaling-stroke" ] @ geometry)
+                    []
+            let semanticShape = svgElement elementName (common @ geometry) [ title ]
+            svgElement "g" [ Attr.Create "data-marker-visual" placement.Marker.MarkerId ] [ halo; semanticShape ]
 
         let markerClusterSelection = Var.Create<Option<string * int>>(None)
 
@@ -1268,7 +1299,7 @@ module TaWorkspaceRenderer =
 
         let markerLayer =
             markerVisualState.View
-            |> View.Map (fun ((placements: TaMarkerPlacement array), low, high) ->
+            |> View.Map (fun ((placements: TaMarkerPlacement array), _, low, high) ->
                 let directPlacements, overflowClusters = RendererModel.markerPresentation placements
                 svgElement "g" [
                     Attr.Create "data-testid" ("ta-marker-layer-" + rowId)
@@ -1398,9 +1429,9 @@ module TaWorkspaceRenderer =
                 observedPreparedData <- currentData
                 observedChartPixelHeight <- currentPixelHeight
                 let geometry = prepareGeometry currentPixelHeight currentData
-                let _, _, _, currentMarkerPlacements, currentCursorReaders, currentLegendReaders, currentLatestLegendValues, currentLow, currentHigh = geometry
+                let _, _, _, currentMarkerPlacements, currentOverviewStripePlacements, currentCursorReaders, currentLegendReaders, currentLatestLegendValues, currentLow, currentHigh = geometry
 
-                let nextMarkerVisual = currentMarkerPlacements, currentLow, currentHigh
+                let nextMarkerVisual = currentMarkerPlacements, currentOverviewStripePlacements, currentLow, currentHigh
                 if markerVisualState.Value <> nextMarkerVisual then markerVisualState.Value <- nextMarkerVisual
 
                 for index in 0 .. readerStates.Length - 1 do
@@ -1541,8 +1572,8 @@ module TaWorkspaceRenderer =
                   let _, _, current = readerStates[index].Value
                   current)),
         (fun cursorIndex ->
-            let placements, _, _ = markerVisualState.Value
-            RendererModel.markerCursorItems cursorIndex placements)
+            let placements, stripes, _, _ = markerVisualState.Value
+            RendererModel.cursorEventItems cursorIndex traces placements stripes)
 
     let compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh =
         compositeSvgReactivePreparedLiveWithHeightPalette lightPlotPalette rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh
@@ -1569,7 +1600,14 @@ module TaWorkspaceRenderer =
         compositeSvgReactive rowId traces data referenceTimestamps cursor.View setCursorIndex commitCursorIndex
 
     let renderRowReactivePreparedLiveWithHeightPalette palette (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement (row: TaRowSpec) =
-        let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
+        let traces =
+            RendererModel.effectiveTraces row
+            |> Array.filter (fun trace ->
+                let key = row.RowId, trace.TraceId
+                trace.Visible && not (Set.contains key ui.HiddenTraces) && not (Set.contains key ui.RemovedTraces))
+        let hasCursorEventCapability =
+            traces
+            |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Marker || trace.Kind = TaTraceKind.OverviewStripe)
         let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithHeightPalette palette row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
@@ -1608,10 +1646,17 @@ module TaWorkspaceRenderer =
                     Attr.Create "data-testid" ("ta-row-ofi-band-" + row.RowId)
                     Attr.Create "data-ta-row-ofi-band" "true"
                     Attr.Create "data-ta-row-ofi-row-id" row.RowId
+                    Attr.Create "data-ta-row-cursor-events" "true"
+                    Attr.Create "data-cursor-event-capability" (if hasCursorEventCapability then "available" else "unavailable")
                     Attr.Create "data-marker-event-count" "0"
                     Attr.Create "data-fixed-height" "24"
                     attr.style ("box-sizing:border-box; display:flex; align-items:center; gap:4px; height:24px; min-height:24px; max-height:24px; flex:0 0 24px; padding:2px 8px; border-bottom:1px solid " + palette.Grid + "; background:" + palette.AxisSurface + "; overflow:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:10px; color:" + palette.LegendText + ";")
                 ] [
+                    yield span [
+                        Attr.Create "data-ta-row-ofi-empty" "true"
+                        Attr.Create "data-cursor-event-state" (if hasCursorEventCapability then "none" else "unavailable")
+                        attr.style "display:inline-flex; align-items:center; height:18px; color:#708198;"
+                    ] [ text (if hasCursorEventCapability then "None" else "Unavailable") ]
                     for index in 0 .. RendererModel.MarkerCursorItemBudget - 1 do
                         yield span [
                             Attr.Create "data-ta-row-ofi-item-index" (string index)
@@ -1651,9 +1696,9 @@ module TaWorkspaceRenderer =
             div [
                 Attr.Create "data-testid" ("ta-row-values-" + row.RowId)
                 Attr.Create "data-ta-row-values" "true"
-                Attr.Create "data-fixed-height" "30"
+                Attr.Create "data-auto-height" "true"
                 Attr.Create "data-plot-surface-theme" palette.ThemeName
-                attr.style ("box-sizing:border-box; display:flex; align-items:center; gap:6px 14px; height:30px; min-height:30px; padding:0 8px; border-top:1px solid " + palette.Grid + "; border-bottom:1px solid " + palette.Grid + "; background:" + palette.AxisSurface + "; overflow-x:auto; overflow-y:hidden; white-space:nowrap; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:" + palette.LegendText + ";")
+                attr.style ("box-sizing:border-box; display:flex; align-items:center; align-content:center; gap:4px 14px; min-height:30px; padding:4px 8px; border-top:1px solid " + palette.Grid + "; border-bottom:1px solid " + palette.Grid + "; background:" + palette.AxisSurface + "; overflow:visible; flex-wrap:wrap; white-space:normal; font-family:Consolas,monospace; font-size:11px; line-height:16px; color:" + palette.LegendText + ";")
                 on.afterRender registerLegendElement
             ] [
                 let initialPresentation =
@@ -1672,7 +1717,7 @@ module TaWorkspaceRenderer =
                     ] [ text initialTimestamp ]
                 for index in 0 .. traces.Length - 1 do
                     let trace = traces[index]
-                    if trace.Kind <> TaTraceKind.Marker then
+                    if trace.Kind <> TaTraceKind.Marker && trace.Kind <> TaTraceKind.OverviewStripe then
                         let label = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
                         let initialValue =
                             if timestamps.Length = 0 then "Unavailable"
@@ -1708,7 +1753,11 @@ module TaWorkspaceRenderer =
         renderRowReactivePreparedLiveWithHeightPalette lightPlotPalette state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row
 
     let renderRowReactivePreparedLiveWithValueRefresh (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow scheduleValueRefresh (row: TaRowSpec) =
-        let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
+        let traces =
+            RendererModel.effectiveTraces row
+            |> Array.filter (fun trace ->
+                let key = row.RowId, trace.TraceId
+                trace.Visible && not (Set.contains key ui.HiddenTraces) && not (Set.contains key ui.RemovedTraces))
         let height = Var.Create((RendererModel.rowHeightBounds row traces).DefaultHeight)
         renderRowReactivePreparedLiveWithHeight state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow height scheduleValueRefresh ignore row
 
@@ -1868,6 +1917,8 @@ module TaWorkspaceRenderer =
                 { Window = { StartIndex = 0; Count = options.DefaultVisibleBars }
                   FollowLatest = true
                   HiddenRows = Set.empty
+                  HiddenTraces = Set.empty
+                  RemovedTraces = Set.empty
                   AddRowOpen = false
                   CursorIndex = None
                   PendingActionId = None
@@ -1876,6 +1927,8 @@ module TaWorkspaceRenderer =
             left.Window = right.Window
             && left.FollowLatest = right.FollowLatest
             && left.HiddenRows = right.HiddenRows
+            && left.HiddenTraces = right.HiddenTraces
+            && left.RemovedTraces = right.RemovedTraces
         let chartUiState = Var.Create uiState.Value
         let setUiState next =
             let previousChartState = chartUiState.Value
@@ -2073,6 +2126,13 @@ module TaWorkspaceRenderer =
             let dataChanged = runtimeDataChanged observedDataState next
             if next.Identity <> observedDataState.Identity then
                 pendingBoundaryPan <- None
+                setUiState
+                    { uiState.Value with
+                        HiddenRows = Set.empty
+                        HiddenTraces = Set.empty
+                        RemovedTraces = Set.empty
+                        CursorIndex = None }
+                cursorIndex.Value <- None
                 observedDataState <- next
                 scheduleFullPreparation ()
             elif not preparedDataReady then
@@ -2302,14 +2362,29 @@ module TaWorkspaceRenderer =
                 false
 
         let setElementHiddenIfChanged hidden (element: Element) =
+            let html = element |> As<HTMLElement>
+            let authoredDisplayAttribute = "data-ptcs-authored-display"
+            let mutable styleChanged = false
+            if hidden then
+                if not (element.HasAttribute(authoredDisplayAttribute)) then
+                    element.SetAttribute(authoredDisplayAttribute, html.Style.GetProperty("display"))
+                if html.Style.GetProperty("display") <> "none" then
+                    html.Style.SetProperty("display", "none")
+                    styleChanged <- true
+            elif element.HasAttribute(authoredDisplayAttribute) then
+                let authoredDisplay = element.GetAttribute(authoredDisplayAttribute)
+                if html.Style.GetProperty("display") <> authoredDisplay then
+                    html.Style.SetProperty("display", authoredDisplay)
+                    styleChanged <- true
+                element.RemoveAttribute(authoredDisplayAttribute)
             if hidden then
                 if not (element.HasAttribute("hidden")) then
                     element.SetAttribute("hidden", "hidden")
                     true
                 else
-                    false
+                    styleChanged
             else
-                removeElementAttributeIfPresent "hidden" element
+                removeElementAttributeIfPresent "hidden" element || styleChanged
 
         let setElementHidden hidden element = setElementHiddenIfChanged hidden element |> ignore
 
@@ -2404,6 +2479,13 @@ module TaWorkspaceRenderer =
                         if removeElementAttributeIfPresent "data-cursor-row" node then attributeWrites <- attributeWrites + 1
                 for band, items in ofiUpdates do
                     if setElementAttributeIfChanged "data-marker-event-count" (string items.Length) band then attributeWrites <- attributeWrites + 1
+                    match scopedElements band "[data-ta-row-ofi-empty='true']" |> Array.tryHead with
+                    | Some node ->
+                        let capabilityAvailable = band.GetAttribute("data-cursor-event-capability") = "available"
+                        let nextState, nextText = if capabilityAvailable then "none", "None" else "unavailable", "Unavailable"
+                        if setElementTextIfChanged nextText node then textWrites <- textWrites + 1
+                        if setElementAttributeIfChanged "data-cursor-event-state" nextState node then attributeWrites <- attributeWrites + 1
+                    | None -> ()
                     match bounded with
                     | Some index ->
                         if setElementAttributeIfChanged "data-cursor-slot" (string index) band then attributeWrites <- attributeWrites + 1
@@ -2420,17 +2502,28 @@ module TaWorkspaceRenderer =
                             | _ -> -1
                         match items |> Array.tryItem index with
                         | Some item ->
-                            if setElementTextIfChanged item.Label node then textWrites <- textWrites + 1
+                            let displayText = if item.Label = item.Category then item.Category else item.Category + ": " + item.Label
+                            if setElementTextIfChanged displayText node then textWrites <- textWrites + 1
                             if setElementAttributeIfChanged "title" item.Tooltip node then attributeWrites <- attributeWrites + 1
                             if setElementAttributeIfChanged "data-marker-id" item.MarkerId node then attributeWrites <- attributeWrites + 1
                             if setElementAttributeIfChanged "data-marker-event-time" item.EventTimeUtc node then attributeWrites <- attributeWrites + 1
                             if setElementAttributeIfChanged "data-marker-color" item.Color node then attributeWrites <- attributeWrites + 1
+                            if setElementAttributeIfChanged "data-cursor-event-id" item.MarkerId node then attributeWrites <- attributeWrites + 1
+                            if setElementAttributeIfChanged "data-cursor-event-time" item.EventTimeUtc node then attributeWrites <- attributeWrites + 1
+                            if setElementAttributeIfChanged "data-cursor-event-category" item.Category node then attributeWrites <- attributeWrites + 1
+                            if setElementAttributeIfChanged "data-cursor-event-source-kind" item.SourceKind node then attributeWrites <- attributeWrites + 1
+                            if setElementAttributeIfChanged "data-cursor-event-color" item.Color node then attributeWrites <- attributeWrites + 1
                         | None ->
                             if setElementTextIfChanged "" node then textWrites <- textWrites + 1
                             if removeElementAttributeIfPresent "title" node then attributeWrites <- attributeWrites + 1
                             if removeElementAttributeIfPresent "data-marker-id" node then attributeWrites <- attributeWrites + 1
                             if removeElementAttributeIfPresent "data-marker-event-time" node then attributeWrites <- attributeWrites + 1
                             if removeElementAttributeIfPresent "data-marker-color" node then attributeWrites <- attributeWrites + 1
+                            if removeElementAttributeIfPresent "data-cursor-event-id" node then attributeWrites <- attributeWrites + 1
+                            if removeElementAttributeIfPresent "data-cursor-event-time" node then attributeWrites <- attributeWrites + 1
+                            if removeElementAttributeIfPresent "data-cursor-event-category" node then attributeWrites <- attributeWrites + 1
+                            if removeElementAttributeIfPresent "data-cursor-event-source-kind" node then attributeWrites <- attributeWrites + 1
+                            if removeElementAttributeIfPresent "data-cursor-event-color" node then attributeWrites <- attributeWrites + 1
 
                     let overflowNode = scopedElements band "[data-ta-row-ofi-overflow='true']" |> Array.tryHead
                     match overflowNode with
@@ -2458,6 +2551,10 @@ module TaWorkspaceRenderer =
                     for node, current in cursorValueUpdates do
                         if setElementHiddenIfChanged current.IsNone node then visibilityWrites <- visibilityWrites + 1
                 for band, items in ofiUpdates do
+                    match scopedElements band "[data-ta-row-ofi-empty='true']" |> Array.tryHead with
+                    | Some node ->
+                        if setElementHiddenIfChanged (items.Length > 0) node then visibilityWrites <- visibilityWrites + 1
+                    | None -> ()
                     let itemNodes = scopedElements band "[data-ta-row-ofi-item-index]"
                     for node in itemNodes do
                         let index =
@@ -3039,7 +3136,16 @@ module TaWorkspaceRenderer =
                                    compactRemoteButton "ta-zoom-in" "+" "Show fewer bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow -8)
                                    compactRemoteButton "ta-zoom-out" "−" "Show more bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow 8)
                                    compactRemoteButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" viewportCommandsDisabledView viewportCommandsDisabledNow resetWindow
-                                   compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () -> startAction (SduiAction.ResetCanvas(currentCanvasId ())) "Canvas reset accepted." ignore) ]
+                                   compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () ->
+                                       startAction
+                                           (SduiAction.ResetCanvas(currentCanvasId ()))
+                                           "Canvas reset accepted."
+                                           (fun () ->
+                                               setUiState
+                                                   { uiState.Value with
+                                                       HiddenRows = Set.empty
+                                                       HiddenTraces = Set.empty
+                                                       RemovedTraces = Set.empty })) ]
                                  @ (if (editorSchemasNow ()).Length > 0 then
                                         [ compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () ->
                                               if uiState.Value.AddRowOpen then closeRowEditor ()
@@ -3059,7 +3165,7 @@ module TaWorkspaceRenderer =
                                             | _ -> false
                                         yield
                                             div [ attr.style "display:inline-flex; align-items:stretch; height:26px;" ] [
-                                                button [
+                                                yield button [
                                                     attr.``type`` "button"
                                                     Attr.Create "data-testid" ("ta-toggle-row-" + row.RowId)
                                                     Attr.Create "aria-pressed" (if hidden then "false" else "true")
@@ -3072,7 +3178,7 @@ module TaWorkspaceRenderer =
                                                         setUiState { uiState.Value with HiddenRows = nextHidden })
                                                 ] [ text displayLabel ]
                                                 if editable then
-                                                    button [
+                                                    yield button [
                                                         attr.``type`` "button"
                                                         Attr.Create "data-testid" ("ta-edit-row-" + row.RowId)
                                                         attr.title ("Edit " + displayLabel + " parameters")
@@ -3083,18 +3189,73 @@ module TaWorkspaceRenderer =
                                                         on.click (fun _ _ ->
                                                             if not (commandsDisabledNow ()) then openRowEditor row)
                                                     ] [ text "Edit" ]
-                                                button [
-                                                    attr.``type`` "button"
-                                                    Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
-                                                    attr.title ("Remove " + displayLabel + " row")
-                                                    attr.disabledBool commandsDisabledView
-                                                    Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
-                                                        if disabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;"
-                                                        else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
-                                                    on.click (fun _ _ ->
-                                                        if not (commandsDisabledNow ()) then
-                                                            startAction (SduiAction.RemoveTaRow(currentCanvasId (), row.RowId)) (displayLabel + " row removal accepted.") ignore)
-                                                ] [ text "×" ]
+                                                if not (actionAllowed "remove-trace") then
+                                                    yield button [
+                                                        attr.``type`` "button"
+                                                        Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
+                                                        attr.title ("Remove " + displayLabel + " row")
+                                                        attr.disabledBool commandsDisabledView
+                                                        Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                            if disabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;"
+                                                            else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
+                                                        on.click (fun _ _ ->
+                                                            if not (commandsDisabledNow ()) then
+                                                                startAction (SduiAction.RemoveTaRow(currentCanvasId (), row.RowId)) (displayLabel + " row removal accepted.") ignore)
+                                                    ] [ text "×" ]
+                                            ]
+                                        let controllableTraces =
+                                            RendererModel.effectiveTraces row
+                                            |> Array.filter (fun trace ->
+                                                trace.Visible
+                                                && trace.Kind <> TaTraceKind.Marker
+                                                && trace.Kind <> TaTraceKind.OverviewStripe
+                                                && not (Set.contains (row.RowId, trace.TraceId) ui.RemovedTraces))
+                                        if controllableTraces.Length > 0 then
+                                            yield div [
+                                                Attr.Create "data-testid" ("ta-trace-toggles-" + row.RowId)
+                                                attr.style "display:inline-flex; align-items:center; gap:3px; padding-left:3px; border-left:1px solid #d7e0eb;"
+                                            ] [
+                                                for trace in controllableTraces do
+                                                    let traceHidden = Set.contains (row.RowId, trace.TraceId) ui.HiddenTraces
+                                                    let traceLabel = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
+                                                    yield div [ attr.style "display:inline-flex; align-items:stretch; height:24px;" ] [
+                                                        yield button [
+                                                            attr.``type`` "button"
+                                                            Attr.Create "data-testid" ("ta-toggle-trace-" + row.RowId + "-" + trace.TraceId)
+                                                            Attr.Create "data-row-id" row.RowId
+                                                            Attr.Create "data-trace-id" trace.TraceId
+                                                            Attr.Create "aria-pressed" (if traceHidden then "false" else "true")
+                                                            attr.title ((if traceHidden then "Show " else "Hide ") + traceLabel + " trace")
+                                                            attr.style (if traceHidden then "height:24px; border:1px solid #c8d2df; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:10px; cursor:pointer;" else "height:24px; border:1px solid #9cb3cc; border-radius:4px 0 0 4px; background:#f4f8fc; color:#315d88; padding:2px 7px; font-size:10px; cursor:pointer;")
+                                                            on.click (fun _ _ ->
+                                                                let key = row.RowId, trace.TraceId
+                                                                let nextHidden =
+                                                                    if traceHidden then Set.remove key uiState.Value.HiddenTraces
+                                                                    else Set.add key uiState.Value.HiddenTraces
+                                                                setUiState { uiState.Value with HiddenTraces = nextHidden })
+                                                        ] [ text traceLabel ]
+                                                        if actionAllowed "remove-trace" then
+                                                            yield button [
+                                                                attr.``type`` "button"
+                                                                Attr.Create "data-testid" ("ta-remove-trace-" + row.RowId + "-" + trace.TraceId)
+                                                                attr.title ("Remove " + traceLabel + " trace until Reset Canvas")
+                                                                attr.disabledBool commandsDisabledView
+                                                                Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                                    if disabled then "width:24px; height:24px; border:1px solid #c8d2df; border-left:0; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:13px; cursor:not-allowed;"
+                                                                    else "width:24px; height:24px; border:1px solid #c8a7ab; border-left:0; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:13px; cursor:pointer;"))
+                                                                on.click (fun _ _ ->
+                                                                    if not (commandsDisabledNow ()) then
+                                                                        let key = row.RowId, trace.TraceId
+                                                                        startAction
+                                                                            (SduiAction.RemoveTaTrace(currentCanvasId (), row.RowId, trace.TraceId))
+                                                                            (traceLabel + " trace removal accepted.")
+                                                                            (fun () ->
+                                                                                setUiState
+                                                                                    { uiState.Value with
+                                                                                        HiddenTraces = Set.remove key uiState.Value.HiddenTraces
+                                                                                        RemovedTraces = Set.add key uiState.Value.RemovedTraces }))
+                                                            ] [ text "×" ]
+                                                    ]
                                             ]
                                 ] :> Doc)
                             |> Doc.EmbedView
@@ -3132,12 +3293,25 @@ module TaWorkspaceRenderer =
                             let visibleRows =
                                 if preparedDataReady then
                                     document.Rows
-                                    |> Array.filter (fun row -> row.Visible && not (Set.contains row.RowId ui.HiddenRows))
+                                    |> Array.filter (fun row ->
+                                        row.Visible
+                                        && not (Set.contains row.RowId ui.HiddenRows)
+                                        && (RendererModel.effectiveTraces row
+                                            |> Array.exists (fun trace ->
+                                                trace.Visible
+                                                && trace.Kind <> TaTraceKind.Marker
+                                                && trace.Kind <> TaTraceKind.OverviewStripe
+                                                && not (Set.contains (row.RowId, trace.TraceId) ui.RemovedTraces))))
                                 else
                                     [||]
                             let cursorReaderCount =
                                 visibleRows
-                                |> Array.sumBy (fun row -> RendererModel.effectiveTraces row |> Array.filter _.Visible |> Array.length)
+                                |> Array.sumBy (fun row ->
+                                    RendererModel.effectiveTraces row
+                                    |> Array.filter (fun trace ->
+                                        let key = row.RowId, trace.TraceId
+                                        trace.Visible && not (Set.contains key ui.HiddenTraces) && not (Set.contains key ui.RemovedTraces))
+                                    |> Array.length)
                             let preparedDataForShell = shellPreparedData.Value
                             let referenceTimeline = RendererModel.referenceTimelineForDocumentPrepared document preparedDataForShell
                             let referenceLength = referenceTimeline.Length
@@ -3153,7 +3327,11 @@ module TaWorkspaceRenderer =
                             let rowHeights =
                                 visibleRows
                                 |> Array.map (fun row ->
-                                    let traces = RendererModel.effectiveTraces row |> Array.filter _.Visible
+                                    let traces =
+                                        RendererModel.effectiveTraces row
+                                        |> Array.filter (fun trace ->
+                                            let key = row.RowId, trace.TraceId
+                                            trace.Visible && not (Set.contains key ui.HiddenTraces) && not (Set.contains key ui.RemovedTraces))
                                     rowHeightStateFor row traces)
                             let readyRowCount = Var.Create 0
                             let currentRowLegendElements: Element array = Array.create visibleRows.Length null

@@ -364,6 +364,7 @@ type SduiAction =
     | AddTaRow of CanvasInstanceId * TaRowSpec
     | ApplyTemplate of CanvasInstanceId * rowId: string option * templateKey: string * values: EditorInputValue array
     | RemoveTaRow of CanvasInstanceId * rowId: string
+    | RemoveTaTrace of CanvasInstanceId * rowId: string * traceId: string
     | ChangeTaQuery of CanvasInstanceId * TaQueryChange
     | SharedCursorChanged of CanvasInstanceId * SharedCursorChange
     | VisibleRangeChanged of CanvasInstanceId * VisibleRangeChange

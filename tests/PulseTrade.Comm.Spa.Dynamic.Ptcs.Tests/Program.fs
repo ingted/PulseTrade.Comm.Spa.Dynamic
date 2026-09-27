@@ -140,6 +140,7 @@ let browserPayload kind actionKind =
       actionKind = actionKind
       canvasInstanceId = "canvas-main"
       rowId = ""
+      traceId = ""
       rowKind = ""
       dataRef = ""
       heightWeight = 0.0
@@ -270,6 +271,22 @@ let tests =
                   |> TaResearchBrowserWire.clientFrameFromWire
 
               Expect.equal browser (Ok expected) "browser wire must preserve the same typed editor action without recursive JSON." )
+
+          testCase "DYN-T-622 remove trace survives transient and flat browser wires" (fun _ ->
+              let expected =
+                  RuntimeClientFrame.Action(
+                      SduiAction.RemoveTaTrace(CanvasInstanceId "canvas", "price", "sma-20"))
+              let transient =
+                  expected
+                  |> TaResearchTransientWire.clientFrameToWire
+                  |> TaResearchTransientWire.clientFrameFromWire
+              let browser =
+                  browserPayload "action" "remove-trace"
+                  |> fun text -> JsonSerializer.Deserialize<TaBrowserClientFrameWire>(text, TaResearchTransientServer.jsonOptions)
+                  |> fun wire -> { wire with canvasInstanceId = "canvas"; rowId = "price"; traceId = "sma-20" }
+                  |> TaResearchBrowserWire.clientFrameFromWire
+              Expect.equal transient (Ok expected) "Transient wire must preserve row and trace identity."
+              Expect.equal browser (Ok expected) "Browser wire must preserve row and trace identity." )
 
           testCase "event-time cursor and visible range survive transient and browser wires" (fun _ ->
               let cursor =

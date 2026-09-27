@@ -141,3 +141,15 @@
 3. WebSocket callback SHALL只enqueue encoded messages；packet parse、SduiValue decode與reducer SHALL分成bounded scheduled tasks。
 4. Legacy完整RuntimeFrame SHALL維持相容；`RuntimeFrame`／`RuntimePayload`、cache schema與provider authority不得因transport framing改變。
 5. 4,000 slots／28 refs／5 candlestick rows的production packet pump cold ingest與replacement SHALL無大於100ms target-renderer task。
+
+## 2026-09-27 Trace Lifecycle／Cursor Events／Marker Contrast
+
+權威變更：`doc/RFC/RFC-PTCS-DYNAMIC-0029.trace-lifecycle-cursor-events-marker-contrast.md`。
+
+1. Dark surface上的hollow marker SHALL保留authored semantic stroke/fill，另以pointer-inert contrast halo確保可辨識；halo不得改hit target、Y-domain或event identity。
+2. Marker plot SHALL維持零個visible text label；Label/Tooltip SHALL保留在metadata、SVG title與row-local OFI event band。
+3. OFI SHALL合併Marker與OverviewStripe events，以stable event id去重，Marker優先作rich chip；四個visible slots SHALL跨authored traces公平分配，其餘顯示`+N`。
+4. Capability存在但cursor slot無event SHALL顯示`None`；capability不存在 SHALL顯示`Unavailable`。
+5. 每個non-system trace SHALL提供local hide/show與typed remote remove。remove wire discriminator SHALL為`remove-trace`；Marker／OverviewStripe SHALL不顯示trace controls。
+6. same-canvas patch SHALL保留local hidden/removed state；Reset Canvas、canvas identity替換與unmount SHALL清除。最後一條non-system trace移除後row SHALL收合。
+7. Row data window SHALL wrap並自動增高，不得使用固定高度內部scrollbar。

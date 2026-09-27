@@ -429,6 +429,14 @@ let tests =
               Expect.sequenceEqual (actual.editorValues |> Array.map _.kind) [| "text"; "number"; "bool" |] "editor scalar kinds must remain explicit and non-recursive."
               Expect.equal actual.editorValues[1].numberValue 13.0 "numeric editor value must survive browser encoding.")
 
+          testCase "DYN-T-621 remove trace emits explicit row and trace identity" (fun _ ->
+              let actual =
+                  SduiAction.RemoveTaTrace(CanvasInstanceId "canvas", "price", "sma-20")
+                  |> TaResearchClientWire.actionToWire
+              Expect.equal actual.actionKind "remove-trace" "RemoveTaTrace must use the stable action discriminator."
+              Expect.equal actual.rowId "price" "RemoveTaTrace must retain the owning row identity."
+              Expect.equal actual.traceId "sma-20" "RemoveTaTrace must retain the exact trace identity.")
+
           testCase "correlated action request carries its optimistic document revision" (fun _ ->
               let request =
                   { RequestId = "canvas:ui:1"

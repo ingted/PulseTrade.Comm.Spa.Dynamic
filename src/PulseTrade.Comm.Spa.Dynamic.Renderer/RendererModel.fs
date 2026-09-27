@@ -43,6 +43,8 @@ type TaMarkerPlacement =
 type TaMarkerCursorItem =
     { MarkerId: string
       EventTimeUtc: string
+      Category: string
+      SourceKind: string
       Label: string
       Color: string
       Tooltip: string }
@@ -73,13 +75,6 @@ type TaOverviewStripeVisual =
       Lane: int
       SlotIndex: int
       Stripes: TaOverviewStripe array }
-
-type TaMarkerLabelGeometry =
-    { Text: string
-      X: float
-      Y: float
-      TextAnchor: string
-      EstimatedWidth: float }
 
 type TaRowValuePresentation =
     { Timestamp: string
@@ -1203,73 +1198,91 @@ module RendererModel =
             |> Option.map (fun label ->
                 { MarkerId = placement.Marker.MarkerId
                   EventTimeUtc = placement.Marker.EventTimeUtc
+                  Category = placement.TraceId
+                  SourceKind = "marker"
                   Label = label
                   Color = placement.Marker.Color
                   Tooltip = markerTooltipText placement }))
 
-    let markerLabelGeometry width height fontSize markerX markerY (label: string) =
-        if String.IsNullOrWhiteSpace label then
-            None
-        else
-            let trimmed = label.Trim()
-            let bounded = if trimmed.Length <= 48 then trimmed else trimmed.Substring(0, 45) + "..."
-            let estimatedWidth = min (width - 4.0) (max 24.0 (float bounded.Length * fontSize * 0.62))
-            let gap = 8.0
-            let edge = 2.0
-            let x, anchor =
-                if markerX + gap + estimatedWidth <= width - edge then markerX + gap, "start"
-                elif markerX - gap - estimatedWidth >= edge then markerX - gap, "end"
-                else edge, "start"
-            let y = max 8.0 (min (height - 8.0) markerY)
-            Some
-                { Text = bounded
-                  X = x
-                  Y = y
-                  TextAnchor = anchor
-                  EstimatedWidth = estimatedWidth }
+    let overviewStripeTooltipText (category: string) (stripe: TaOverviewStripe) =
+        [| match stripe.Label with
+           | Some label when not (String.IsNullOrWhiteSpace label) -> yield label
+           | _ -> yield category
+           yield "Event time: " + stripe.EventTimeUtc
+           for field in stripe.Tooltip do
+               yield field.Label + ": " + field.Value |]
+        |> String.concat "\n"
 
-    let markerLabelCollisionLanes padding (candidates: (TaMarkerAnchor * TaMarkerLabelGeometry) array) =
-        let interval geometry =
-            if geometry.TextAnchor = "end" then
-                geometry.X - geometry.EstimatedWidth, geometry.X
-            else
-                geometry.X, geometry.X + geometry.EstimatedWidth
-
-        let ordered =
-            candidates
-            |> Array.mapi (fun index (_, geometry) ->
-                let left, right = interval geometry
-                index, left, right)
-            |> Array.sortBy (fun (index, left, _) -> left, index)
-
-        let rec firstAvailable (left: float) (laneEnds: float array) (lane: int) =
-            if lane >= laneEnds.Length || left > laneEnds[lane] + padding then lane
-            else firstAvailable left laneEnds (lane + 1)
-
-        let rec assign (index: int) (laneEnds: float array) (assigned: Map<int, int>) =
-            if index >= ordered.Length then assigned
-            else
-                let candidateIndex, left, right = ordered[index]
-                let lane = firstAvailable left laneEnds 0
-                let revisedLaneEnds =
-                    if lane >= laneEnds.Length then Array.append laneEnds [| right |]
-                    else laneEnds |> Array.mapi (fun current value -> if current = lane then right else value)
-                assign
-                    (index + 1)
-                    revisedLaneEnds
-                    (Map.add candidateIndex lane assigned)
-
-        let assignments = assign 0 [||] Map.empty
-        Array.init candidates.Length (fun index -> Map.find index assignments)
-
-    let markerLabelLaneY height lineStep anchor baseY lane =
-        let edge = 8.0
-        let direction = if anchor = TaMarkerAnchor.AboveBar then -1.0 else 1.0
-        let offset = float lane * lineStep
-        let preferred = baseY + direction * offset
-        let alternate = baseY - direction * offset
-        if preferred >= edge && preferred <= height - edge then preferred
-        else max edge (min (height - edge) alternate)
+    let cursorEventItems slotIndex (traces: TaTraceSpec array) (markers: TaMarkerPlacement array) (stripes: TaOverviewStripePlacement array) =
+        let traceOrder = traces |> Array.mapi (fun index trace -> trace.TraceId, index) |> Map.ofArray
+        let traceCategory =
+            traces
+            |> Array.map (fun trace -> trace.TraceId, if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label.Trim())
+            |> Map.ofArray
+        let order traceId = Map.tryFind traceId traceOrder |> Option.defaultValue Int32.MaxValue
+        let category traceId = Map.tryFind traceId traceCategory |> Option.defaultValue traceId
+        let markerItems =
+            markers
+            |> Array.filter (fun placement -> placement.SlotIndex = slotIndex)
+            |> Array.map (fun placement ->
+                let categoryValue = category placement.TraceId
+                let label =
+                    placement.Marker.Label
+                    |> Option.map _.Trim()
+                    |> Option.filter (String.IsNullOrWhiteSpace >> not)
+                    |> Option.defaultValue categoryValue
+                placement.TraceId,
+                (placement.Lane, placement.Marker.MarkerId),
+                { MarkerId = placement.Marker.MarkerId
+                  EventTimeUtc = placement.Marker.EventTimeUtc
+                  Category = categoryValue
+                  SourceKind = "marker"
+                  Label = label
+                  Color = placement.Marker.Color
+                  Tooltip = markerTooltipText placement })
+        let markerEventIds =
+            markerItems
+            |> Array.map (fun (_, _, item) -> item.MarkerId)
+            |> Set.ofArray
+        let stripeItems =
+            stripes
+            |> Array.filter (fun placement ->
+                placement.SlotIndex = slotIndex
+                && not (Set.contains placement.Stripe.StripeId markerEventIds))
+            |> Array.map (fun placement ->
+                let categoryValue = category placement.TraceId
+                let label =
+                    placement.Stripe.Label
+                    |> Option.map _.Trim()
+                    |> Option.filter (String.IsNullOrWhiteSpace >> not)
+                    |> Option.defaultValue categoryValue
+                placement.TraceId,
+                (placement.LayerOrder, placement.Stripe.StripeId),
+                { MarkerId = placement.Stripe.StripeId
+                  EventTimeUtc = placement.Stripe.EventTimeUtc
+                  Category = categoryValue
+                  SourceKind = "overview-stripe"
+                  Label = label
+                  Color = placement.Stripe.Color
+                  Tooltip = overviewStripeTooltipText categoryValue placement.Stripe })
+        let byTrace =
+            Array.append markerItems stripeItems
+            |> Array.groupBy (fun (traceId, _, _) -> traceId)
+            |> Array.sortBy (fst >> order)
+            |> Array.map (fun (traceId, items) ->
+                traceId,
+                (items
+                 |> Array.sortBy (fun (_, withinTraceOrder, item) -> withinTraceOrder, item.MarkerId)))
+        let maximumItemsPerTrace =
+            byTrace
+            |> Array.map (snd >> Array.length)
+            |> Array.append [| 0 |]
+            |> Array.max
+        [| for itemIndex in 0 .. maximumItemsPerTrace - 1 do
+               for _, items in byTrace do
+                   match Array.tryItem itemIndex items with
+                   | Some(_, _, item) -> yield item
+                   | None -> () |]
 
     let timestampParts (value: string) =
         if String.IsNullOrWhiteSpace value

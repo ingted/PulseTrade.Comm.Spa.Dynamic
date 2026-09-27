@@ -755,6 +755,10 @@ module DynamicActionValidation =
                   | _ -> () ]
         | SduiAction.RemoveTaRow(canvas, rowId) ->
             canvasErrors "action.canvasInstanceId" canvas @ RuntimeValidation.identifier "action.rowId" rowId
+        | SduiAction.RemoveTaTrace(canvas, rowId, traceId) ->
+            [ yield! canvasErrors "action.canvasInstanceId" canvas
+              yield! RuntimeValidation.identifier "action.rowId" rowId
+              yield! RuntimeValidation.identifier "action.traceId" traceId ]
         | SduiAction.ChangeTaQuery(canvas, query) ->
             canvasErrors "action.canvasInstanceId" canvas @ queryErrors query
         | SduiAction.SharedCursorChanged(canvas, change) ->

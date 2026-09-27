@@ -80,26 +80,30 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
     let shortEntry = page.Locator("[data-testid='ta-marker-signals-short-entry']")
     let longExit = page.Locator("[data-testid='ta-marker-signals-long-exit']")
     let shortExit = page.Locator("[data-testid='ta-marker-signals-short-exit']")
-    let longEntryLabel = page.Locator("[data-testid='ta-marker-label-signals-long-entry']")
-    let shortEntryLabel = page.Locator("[data-testid='ta-marker-label-signals-short-entry']")
-    let longExitLabel = page.Locator("[data-testid='ta-marker-label-signals-long-exit']")
-    let shortExitLabel = page.Locator("[data-testid='ta-marker-label-signals-short-exit']")
     layer.WaitForAsync(LocatorWaitForOptions(Timeout = 30000.0f)) |> awaitUnit
     require (layer.CountAsync() |> awaitTask = 1) "price row must mount one marker layer"
-    require (intAttribute layer "data-marker-count" = 4) "four visible markers must render"
+    let acceptedMarkerCount = intAttribute layer "data-marker-count"
+    let directMarkerCount = intAttribute layer "data-direct-marker-count"
+    require (acceptedMarkerCount = 66) $"all named and dense-fixture markers must remain accepted; actual={acceptedMarkerCount}"
+    require (directMarkerCount = 6) $"the per-slot glyph budget must render six direct markers across three occupied slots; actual={directMarkerCount}"
+    require (longEntry.CountAsync() |> awaitTask = 1 && shortEntry.CountAsync() |> awaitTask = 1 && longExit.CountAsync() |> awaitTask = 1 && shortExit.CountAsync() |> awaitTask = 1) "the four authored trade markers must remain visible"
     require (page.Locator("[data-testid='ta-row-value-price-signals']").CountAsync() |> awaitTask = 0) "marker event overlays must not create a numeric legend token"
+    require (page.Locator("[data-testid='ta-row-value-price-overview-signal']").CountAsync() |> awaitTask = 0) "overview signal event overlays must not create a numeric legend token"
+    require (page.Locator("[data-testid='ta-row-value-price-overview-fill']").CountAsync() |> awaitTask = 0) "overview fill event overlays must not create a numeric legend token"
     require (not ((page.Locator("[data-testid='ta-row-values-price']").InnerTextAsync() |> awaitTask).Contains("Signals Unavailable", StringComparison.Ordinal))) "marker event overlays leaked an undefined numeric value"
-    require (textOf longEntryLabel = "BUY 7588.25") "long entry label is not visible"
-    require (textOf shortEntryLabel = "SELL 7591.00") "short entry label is not visible"
-    require (textOf longExitLabel = "SELL 7603.50 PnL +762.50") "long exit label is not visible"
-    require (textOf shortExitLabel = "BUY 7574.00 PnL +850.00") "short exit label is not visible"
+    require (page.Locator("[data-testid^='ta-marker-label-']").CountAsync() |> awaitTask = 0) "marker text must remain in the OFI event band, not inside the K-bar plot"
     require (attribute longEntry "data-marker-anchor" = "below-bar" && attribute longEntry "data-marker-shape" = "triangle-up") "long entry mapping changed"
     require (attribute longEntry "data-marker-fill" = "outline" && attribute longEntry "fill" = "none") "long entry must render as a true hollow triangle"
     require (attribute longEntry "stroke" = "#000000" && attribute longEntry "pointer-events" = "all") "hollow marker stroke or hit target changed"
+    let longEntryHalo = page.Locator("[data-marker-halo-for='long-entry']")
+    require (longEntryHalo.CountAsync() |> awaitTask = 1) "hollow marker is missing its contrast halo"
+    require (attribute longEntryHalo "stroke" <> attribute longEntry "stroke") "contrast halo must differ from the authored semantic stroke"
+    require (attribute longEntryHalo "stroke-width" = "4.4" && attribute longEntryHalo "pointer-events" = "none") "contrast halo geometry or hit-testing changed"
     require (attribute shortEntry "data-marker-anchor" = "above-bar" && attribute shortEntry "data-marker-shape" = "triangle-down") "short entry mapping changed"
     require (attribute longExit "data-marker-shape" = "triangle-down" && attribute longExit "data-marker-fill" = "solid") "long exit mapping changed"
     require (attribute shortExit "data-marker-anchor" = "below-bar" && attribute shortExit "data-marker-shape" = "triangle-up") "short exit mapping changed"
-    require (attribute shortEntry "data-marker-position" = "3812") "Position must remain the spatial authority"
+    let shortEntryPosition = attribute shortEntry "data-marker-position"
+    require (shortEntryPosition = "3992") $"Position must remain the spatial authority; actual={shortEntryPosition}"
     require (intAttribute shortEntry "data-marker-lane" = 0 && intAttribute longExit "data-marker-lane" = 1) "same-position markers must stack deterministically"
     let tooltip = textOf (shortEntry.Locator("title"))
     require (tooltip.Contains "SELL 7591.00" && tooltip.Contains "Reason: short entry signal" && tooltip.Contains "Source: BrowserDemo") "tooltip order/content changed"
@@ -109,23 +113,19 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         let markerBox = marker.BoundingBoxAsync() |> awaitTask
         require (not (isNull rowBox) && not (isNull markerBox)) (label + " geometry is missing")
         require (markerBox.Y >= rowBox.Y - 0.5f && markerBox.Y + markerBox.Height <= rowBox.Y + rowBox.Height + 0.5f) (label + " escaped its row")
-    for label, markerLabel in [ "long-entry-label", longEntryLabel; "short-entry-label", shortEntryLabel; "long-exit-label", longExitLabel; "short-exit-label", shortExitLabel ] do
-        let labelBox = markerLabel.BoundingBoxAsync() |> awaitTask
-        require (not (isNull labelBox)) (label + " geometry is missing")
-        require (labelBox.X >= rowBox.X - 0.5f && labelBox.X + labelBox.Width <= rowBox.X + rowBox.Width + 0.5f) (label + " escaped the row horizontally")
-        require (labelBox.Y >= rowBox.Y - 0.5f && labelBox.Y + labelBox.Height <= rowBox.Y + rowBox.Height + 0.5f) (label + " escaped the row vertically")
-    let shortEntryLabelBox = shortEntryLabel.BoundingBoxAsync() |> awaitTask
-    let longExitLabelBox = longExitLabel.BoundingBoxAsync() |> awaitTask
-    require (abs (shortEntryLabelBox.Y - longExitLabelBox.Y) >= 4.0f) "same-slot marker labels fully overlap instead of following aggregate lanes"
-
     if runCursorGate then
         let chartStack = page.Locator("[data-testid='ta-chart-stack']")
         let loadedBars = intAttribute chartStack "data-loaded-bars"
-        require (loadedBars = 3820) $"capacity fixture loaded {loadedBars} bars instead of 3820"
+        require (loadedBars = 4000) $"capacity fixture loaded {loadedBars} bars instead of 4000"
         let batchedCandlePaths = page.Locator("path[data-candle-batched='true']").CountAsync() |> awaitTask
-        require (batchedCandlePaths <= 32) $"candles expanded into {batchedCandlePaths} DOM paths instead of a bounded row/trace batch"
+        require (batchedCandlePaths = 48) $"six candle traces must remain bounded to eight batched paths each; actual={batchedCandlePaths}"
 
-        page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
+        let pollState = page.Locator("[data-testid='ta-poll-state']")
+        let readyDeadline = DateTime.UtcNow.AddSeconds 5.0
+        while attribute pollState "data-poll-state" <> "READY" && DateTime.UtcNow < readyDeadline do
+            Threading.Thread.Sleep 5
+        require (attribute pollState "data-poll-state" = "READY") "viewport gate did not reach READY before user interaction"
+
         let allWatch = Diagnostics.Stopwatch.StartNew()
         page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
         let allDeadline = DateTime.UtcNow.AddSeconds 5.0
@@ -133,8 +133,11 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
               && DateTime.UtcNow < allDeadline do
             Threading.Thread.Sleep 5
         allWatch.Stop()
-        require (attribute chartStack "data-visible-start" = "1" && attribute chartStack "data-visible-end" = string loadedBars)
-            "All viewport did not expose the complete loaded range"
+        let allVisibleStart = attribute chartStack "data-visible-start"
+        let allVisibleEnd = attribute chartStack "data-visible-end"
+        let pollStateText = attribute pollState "data-poll-state"
+        require (allVisibleStart = "1" && allVisibleEnd = string loadedBars)
+            ($"All viewport did not expose the complete loaded range: start={allVisibleStart} end={allVisibleEnd} loaded={loadedBars} poll={pollStateText}")
         let allRowsDeadline = DateTime.UtcNow.AddSeconds 5.0
         while attribute chartStack "data-ready-row-count" <> attribute chartStack "data-row-count"
               && DateTime.UtcNow < allRowsDeadline do
@@ -143,10 +146,10 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
             "All viewport shell completed before its row mount generation"
         require (allWatch.ElapsedMilliseconds <= 2000L) $"48-to-All took {allWatch.ElapsedMilliseconds}ms"
 
-        let dmiLegendText = textOf (page.Locator("[title='dmi value']"))
-        match Double.TryParse(dmiLegendText, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
-        | true, value -> require (value >= 0.0 && value <= 100.0) $"DMI legend reused another row reader: {value}"
-        | _ -> failwith $"Generic marker Playwright verification failed: DMI legend is not numeric: {dmiLegendText}"
+        let smaLegendText = textOf (page.Locator("[title='1K SMA value']"))
+        match Double.TryParse(smaLegendText, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
+        | true, value -> require (value > 0.0) $"SMA legend reused another row reader: {value}"
+        | _ -> failwith $"Generic marker Playwright verification failed: SMA legend is not numeric: {smaLegendText}"
 
         let view48 = page.Locator("[data-testid='ta-view-48']")
         Threading.Thread.Sleep 1000
@@ -174,9 +177,15 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         let rowDataTime = page.Locator("[data-testid='ta-row-data-time-price']")
         let sharedAxisDataTime = page.Locator("[data-testid='ta-row-data-time-sma']")
         let rowDataWindow = page.Locator("[data-testid='ta-row-values-price']")
+        require (attribute rowDataWindow "data-auto-height" = "true") "row data window must use auto height"
+        require (not ((attribute rowDataWindow "style").Contains("overflow-x:auto", StringComparison.Ordinal))) "row data window must not use an internal horizontal scrollbar"
+        require ((attribute rowDataWindow "style").Contains("flex-wrap:wrap", StringComparison.Ordinal)) "row data window must wrap value tokens"
         require ((textOf rowCursorDate).StartsWith("2026-09-", StringComparison.Ordinal)) "row cursor date is missing"
         require ((textOf rowCursorClock).Length = 8) "row cursor clock must use HH:mm:ss"
         require ((textOf rowDataTime).Length = 19) "row data window timestamp must use yyyy-MM-dd HH:mm:ss"
+        let initialSharedAxisTime = textOf sharedAxisDataTime
+        require (initialSharedAxisTime = "2026-09-03 18:32:00")
+            ($"shared-axis cursor must display authored EventTimeUtc instead of interval start; actual={initialSharedAxisTime}")
         let priceWindowText = textOf rowDataWindow
         for token in [ "O "; " H "; " L "; " C "; " V " ] do
             require (priceWindowText.Contains(token, StringComparison.Ordinal)) ("candlestick data window is missing " + token.Trim())
@@ -203,14 +212,35 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
         require (pointerP95 < 50.0) $"pointer transition p95 was {pointerP95:F2}ms"
         require (total.Elapsed < TimeSpan.FromSeconds 8.0) $"200 cursor transitions took {total.Elapsed}"
 
-        page.Mouse.MoveAsync(chartBox.X + chartBox.Width - 1.0f, chartBox.Y + chartBox.Height / 2.0f) |> awaitUnit
-        let canonicalTimeDeadline = DateTime.UtcNow.AddSeconds 2.0
-        while textOf sharedAxisDataTime <> "2026-09-03 15:40:00" && DateTime.UtcNow < canonicalTimeDeadline do
-            Threading.Thread.Sleep 5
-        let canonicalTime = textOf sharedAxisDataTime
-        require (canonicalTime = "2026-09-03 15:40:00")
-            ($"shared-axis cursor must display authored EventTimeUtc instead of the final interval start; actual={canonicalTime}")
         printfn "renderer gate bars=%d paths=%d allMs=%d pointerP95Ms=%.2f maxMs=%d" loadedBars batchedCandlePaths allWatch.ElapsedMilliseconds pointerP95 maximumMs
+
+        let cursorEvents = page.Locator("[data-testid='ta-row-ofi-band-price']")
+        let visibleStartZero = int (attribute chartStack "data-visible-start") - 1
+        let overviewAbsoluteSlot = loadedBars - 8
+        let overviewLocalSlot = overviewAbsoluteSlot - visibleStartZero
+        page.Mouse.MoveAsync(chartBox.X + chartBox.Width * ((float32 overviewLocalSlot + 0.5f) / 48.0f), chartBox.Y + chartBox.Height / 2.0f) |> awaitUnit
+        let overviewEventDeadline = DateTime.UtcNow.AddSeconds 2.0
+        let overviewEvents = cursorEvents.Locator("[data-cursor-event-source-kind='overview-stripe']")
+        while ((overviewEvents.CountAsync() |> awaitTask) < 2 || attribute chartStack "data-cursor-index" <> string overviewLocalSlot)
+              && DateTime.UtcNow < overviewEventDeadline do
+            Threading.Thread.Sleep 5
+        let overviewEventCount = overviewEvents.CountAsync() |> awaitTask
+        let overviewCursorIndex = attribute chartStack "data-cursor-index"
+        let overviewPathCount = page.Locator("[data-testid='ta-overview-stripe-path']").CountAsync() |> awaitTask
+        let probe = ResizeArray<string>()
+        if overviewEventCount <> 2 then
+            for slot in max 0 (overviewLocalSlot - 2) .. min 47 (overviewLocalSlot + 2) do
+                page.Mouse.MoveAsync(chartBox.X + chartBox.Width * ((float32 slot + 0.5f) / 48.0f), chartBox.Y + chartBox.Height / 2.0f) |> awaitUnit
+                Threading.Thread.Sleep 80
+                let currentCount = overviewEvents.CountAsync() |> awaitTask
+                let currentCursor = attribute chartStack "data-cursor-index"
+                probe.Add($"{slot}:{currentCount}:{currentCursor}")
+        let probeText = String.concat "," probe
+        require (overviewEventCount = 2)
+            ($"OverviewStripe signal/fill events were not merged into the cursor event band: count={overviewEventCount} cursor={overviewCursorIndex} expectedCursor={overviewLocalSlot} navigatorPaths={overviewPathCount} probe={probeText}")
+        let overviewCategories =
+            [| for index in 0 .. 1 -> attribute (overviewEvents.Nth(index)) "data-cursor-event-category" |]
+        require (overviewCategories |> Array.contains "Signal stripe" && overviewCategories |> Array.contains "Fill stripe") "OverviewStripe cursor events lost their authored categories"
 
         let beforeHollowHover = attribute crosshair "x1"
         longEntry.HoverAsync() |> awaitUnit
@@ -221,6 +251,43 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
             afterHollowHover <- attribute crosshair "x1"
         require (afterHollowHover <> beforeHollowHover) "hollow marker hit target blocked the shared cursor"
         require ((textOf (longEntry.Locator("title"))).Contains "long entry signal") "hollow marker tooltip disappeared during cursor interaction"
+        let emptyCursorEvent = cursorEvents.Locator("[data-ta-row-ofi-empty='true']")
+        require (intAttribute cursorEvents "data-marker-event-count" > 0) "marker hover did not publish cursor events"
+        require (not (emptyCursorEvent.IsVisibleAsync() |> awaitTask)) "None placeholder remained visible while cursor events existed"
+
+        page.Mouse.MoveAsync(chartBox.X + chartBox.Width * 0.1f, chartBox.Y + chartBox.Height / 2.0f) |> awaitUnit
+        let emptyEventDeadline = DateTime.UtcNow.AddSeconds 2.0
+        while intAttribute cursorEvents "data-marker-event-count" <> 0 && DateTime.UtcNow < emptyEventDeadline do
+            Threading.Thread.Sleep 5
+        require (intAttribute cursorEvents "data-marker-event-count" = 0) "empty cursor slot retained stale marker events"
+        require (emptyCursorEvent.IsVisibleAsync() |> awaitTask && textOf emptyCursorEvent = "None") "available cursor event capability must show None for an empty slot"
+
+        let sma1Toggle = page.Locator("[data-testid='ta-toggle-trace-sma-sma-1k']")
+        let sma1Trace = page.Locator("[data-testid='ta-trace-sma-sma-1k']")
+        let sma5Trace = page.Locator("[data-testid='ta-trace-sma-sma-5k']")
+        require (sma1Toggle.CountAsync() |> awaitTask = 1 && sma1Trace.CountAsync() |> awaitTask > 0 && sma5Trace.CountAsync() |> awaitTask > 0) "per-trace controls or initial SMA traces are missing"
+        sma1Toggle.ClickAsync() |> awaitUnit
+        page.Locator("[data-testid='ta-toggle-trace-sma-sma-1k'][aria-pressed='false']").WaitForAsync(LocatorWaitForOptions(Timeout = 5000.0f)) |> awaitUnit
+        require (sma1Trace.CountAsync() |> awaitTask = 0 && sma5Trace.CountAsync() |> awaitTask > 0) "hiding one trace changed the wrong row/trace set"
+        page.Locator("[data-testid='ta-toggle-trace-sma-sma-1k']").ClickAsync() |> awaitUnit
+        page.Locator("[data-testid='ta-trace-sma-sma-1k']").WaitForAsync(LocatorWaitForOptions(Timeout = 5000.0f)) |> awaitUnit
+        let removeSma1 = page.Locator("[data-testid='ta-remove-trace-sma-sma-1k']")
+        require (removeSma1.CountAsync() |> awaitTask = 1) "allowed remove-trace action did not expose the trace remove control"
+        removeSma1.ClickAsync() |> awaitUnit
+        page.Locator("[data-testid='ta-toggle-trace-sma-sma-1k']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Detached, Timeout = 5000.0f)) |> awaitUnit
+        require (sma1Trace.CountAsync() |> awaitTask = 0 && sma5Trace.CountAsync() |> awaitTask > 0) "accepted trace removal removed the wrong trace or entire row"
+        let removeSma5 = page.Locator("[data-testid='ta-remove-trace-sma-sma-5k']")
+        require (removeSma5.CountAsync() |> awaitTask = 1) "the remaining SMA trace is missing its remove control"
+        removeSma5.ClickAsync() |> awaitUnit
+        page.Locator("[data-testid='ta-row-sma']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Detached, Timeout = 5000.0f)) |> awaitUnit
+        require (page.Locator("[data-testid='ta-row-sma']").CountAsync() |> awaitTask = 0) "a row without unremoved non-system traces remained visible"
+        page.Locator("[data-testid='ta-reset-canvas']").ClickAsync() |> awaitUnit
+        page.Locator("[data-testid='ta-trace-sma-sma-1k']").WaitForAsync(LocatorWaitForOptions(Timeout = 5000.0f)) |> awaitUnit
+        require (
+            page.Locator("[data-testid='ta-toggle-trace-sma-sma-1k']").CountAsync() |> awaitTask = 1
+            && page.Locator("[data-testid='ta-toggle-trace-sma-sma-5k']").CountAsync() |> awaitTask = 1
+            && page.Locator("[data-testid='ta-row-sma']").CountAsync() |> awaitTask = 1)
+            "Reset Canvas did not restore the removed traces and their row"
 
         let identityBeforeQuery = textOf (page.Locator("[data-testid='ta-canvas-identity']"))
         let fromInput = page.Locator("[data-testid='ta-from']")

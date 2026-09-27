@@ -166,6 +166,7 @@ type TaBrowserClientFrameWire =
       actionKind: string
       canvasInstanceId: string
       rowId: string
+      traceId: string
       rowKind: string
       dataRef: string
       heightWeight: float
@@ -759,6 +760,7 @@ module TaResearchClientWire =
           actionKind = actionKind
           canvasInstanceId = canvasId
           rowId = ""
+          traceId = ""
           rowKind = ""
           dataRef = ""
           heightWeight = 0.0
@@ -816,6 +818,8 @@ module TaResearchClientWire =
                 editorValues = (if isNull values then [||] else values) |> Array.map editorInputToWire }
         | SduiAction.RemoveTaRow(canvas, rowId) ->
             { emptyFrame "action" "remove-row" (canvasText canvas) with rowId = rowId }
+        | SduiAction.RemoveTaTrace(canvas, rowId, traceId) ->
+            { emptyFrame "action" "remove-trace" (canvasText canvas) with rowId = rowId; traceId = traceId }
         | SduiAction.ChangeTaQuery(canvas, query) ->
             { emptyFrame "action" "change-query" (canvasText canvas) with
                 sourceId = optionText query.SourceId

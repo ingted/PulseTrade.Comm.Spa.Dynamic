@@ -530,6 +530,7 @@ module Client =
                     [| "reset-view"
                        "reset-canvas"
                        "add-row"
+                       "remove-trace"
                        "change-query"
                        "shared-cursor-changed"
                        "visible-range-changed" |]
@@ -555,6 +556,7 @@ module Client =
         | SduiAction.ApplyTemplate(_, _, templateKey, values) ->
             "ApplyTemplate " + templateKey + " / " + string values.Length + " inputs"
         | SduiAction.RemoveTaRow _ -> "RemoveTaRow"
+        | SduiAction.RemoveTaTrace _ -> "RemoveTaTrace"
         | SduiAction.ChangeTaQuery _ -> "ChangeTaQuery"
         | SduiAction.SharedCursorChanged _ -> "SharedCursorChanged"
         | SduiAction.VisibleRangeChanged _ -> "VisibleRangeChanged"

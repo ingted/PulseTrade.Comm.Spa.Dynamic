@@ -1,0 +1,22 @@
+# PTCS Dynamic renderer owner UX fixes
+
+## Pre-work plan
+
+- Background: Daedalus reported that an outlined black Fill marker is present in DOM/hit-testing but invisible on a dark plot, data-window tokens are constrained to a fixed scrolling strip, cursor event rows conflate absent events with unavailable capability, and trace controls remain row-scoped.
+- Goal: deliver the smallest owner-side contract/renderer/test slice that restores visible marker contrast and correct generic presentation semantics without moving SPAA projection logic into PTCS Dynamic.
+- Invariants: preserve semantic marker color and overview 1px stripe behavior; do not mutate Daedalus scenario/projection data; no JavaScript implementation; keep existing exact package graph.
+- Scope: Dynamic Contracts/Renderer/Interactive.Client and focused F# verifiers only where required.
+- Acceptance: dark-surface outline marker has a contrast under-stroke and visible-pixel regression; data window wraps with auto height and no internal scroll; cursor events distinguish None from Unavailable; any per-trace contract change has focused tests and explicit owner boundary.
+- Risk: per-trace removal can alter durable workspace intent; do not implement it until existing contracts and scenario-generation semantics are verified.
+- Stop condition: focused builds/tests and browser gate pass, package/dependency graph is verified, docs/log are updated, commit/push completes, or a genuine upstream contract blocker is reported to Daedalus.
+
+## Operations
+
+- 2026-09-27 20:26 +08:00: registered `agent.aster`, read three Daedalus owner requests, acknowledged direct ownership, and selected a 3-minute background communication interval while development is active.
+- 2026-09-27 20:26 +08:00: confirmed canonical repo branch `20260915_033.ptcs_group_support` is clean and synchronized before edits.
+- 2026-09-27 20:35-21:20 +08:00: implemented RFC-0029 owner behavior across Contracts, Renderer, Interactive.Client and PTCS adapters. Added typed `RemoveTaTrace`, Marker/OverviewStripe cursor-event merge, stable-id dedupe and authored-trace round-robin, marker contrast halo, per-trace lifecycle, data-window auto layout and browser fixtures.
+- 2026-09-27 21:20-21:43 +08:00: found browser controls missing despite source implementation. Root cause was three conditional WebSharper list items without `yield` (`FS3221`); a second defect let authored inline `display` override `hidden`. Fixed both and added deterministic DOM assertions.
+- 2026-09-27 21:43-21:50 +08:00: focused suites passed Contracts/Renderer/Dynamic.Ptcs/Ptcs.Client/Interactive=`44/49/15/17/12`. Generic F# Playwright passed 4,000 bars, 48 paths, all=75ms, pointer p95=19.92ms/max35ms. Renderer F# Playwright passed 300 cursor transitions p95=35ms/max59ms and all formal phases below100ms. Package verifier passed.
+- 2026-09-27 21:52-22:00 +08:00: added RFC-0029 and synchronized REQ/SA/SD/WBS/TEST/Verification/Traceability/README/KM/DevLog. Verified exact local graph `0.1.30 / 0.1.81 / 0.1.72 / 0.1.51 / 0.1.82` and nupkg SHA-256 values. Consumer E2E and public push remain explicitly pending.
+- 假設：Daedalus consumer只在收到immutable graph/SHA/commit後升版；本batch不以owner BrowserDemo取代真SPAA，也不在consumer GREEN前public push。
+- 2026-09-27 22:00 +08:00: root checker first scoped run completed `PASS=27 WARN=3 FAIL=0`. Current warning was the missing explicit假設 label and is corrected above; `git_dirty` is expected before commit. Existing global traceability gaps come from historical/artifact documents and are not introduced by RFC-0029. Stopped the owner BrowserDemo on port 18882; Daedalus SPAA on 18883 was not touched.

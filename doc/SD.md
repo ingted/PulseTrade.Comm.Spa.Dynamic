@@ -687,6 +687,18 @@ Test seams：deterministic encoder/legacy singleton；zero-item snapshot；mixed
 
 Current released exact graph：Contracts `0.1.26` → Renderer `0.1.62` → Interactive.Client `0.1.54`；Dynamic.Ptcs `0.1.49` exact Contracts；Ptcs.Client `0.1.76` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。Daedalus fresh-cache machine consumer已用owner `decodeFrames`解出4,000 workspace，1,140 functional E2E與3,820 standard trace皆PASS；48→All為59.41ms／over100=0。五包public push回`Created`；NuGet repository signatures有效，official nuspec／DLL／bundle functional entries與local immutable artifact相同。大型candle projection以固定bucket array單次聚合；line projection以固定bucket min/max arrays保留chronological extrema；Y-domain以first-value initialized accumulator單次掃描，避免WebSharper對Infinity sentinel的錯誤轉譯。Shared-cursor click只查accepted prepared timeline，不再從raw data重做projection。Prepared geometry同時保存每條trace的latest presentation；當shared cursor未固定時，visible-value refresh直接讀此cache，不再對missing/sparse higher-scale trace逐條自tail反向掃描。Source interval、cursor action payload、bounded cursor lookup與Y-domain padding語意不變。
 
+### Trace lifecycle／cursor event／contrast contract
+
+`SduiAction.RemoveTaTrace(CanvasInstanceId,rowId,traceId)`編碼為`remove-trace`，PTCS transient DTO另帶`traceId`。Renderer維護`HiddenTraces`與`RemovedTraces`兩個set；hide不送action，remove走既有single-in-flight callback。accepted/no-frame先更新removed set；Rejected／RevisionConflict不改local state。same-canvas patch保留set，Reset Canvas／identity replacement／dispose清空。
+
+Row controls只列non-system traces。`Marker`與`OverviewStripe`排除；最後一條未remove的non-system trace移除後整列hidden，hidden trace仍算存在。DOM visibility helper先保存`data-ptcs-authored-display`，解除hidden時恢復 authored display，避免inline `display`覆蓋hidden attribute。
+
+Cursor event reader將Marker placements與OverviewStripe events映射為`TaMarkerCursorItem`。stable id重複時Marker勝出；排序先依authored trace，再round-robin取item，visible budget為4，其餘顯示`+N`。capability存在但slot空白為`None`，缺capability為`Unavailable`。OverviewStripe event time先由canonical temporal axis解position，不從pixel或sampled close path反推。
+
+Hollow marker先畫`data-marker-contrast-halo` path，再畫semantic marker；halo帶`data-marker-halo-for`且`pointer-events:none`。Plot不得建立`ta-marker-label-*`。Data window使用wrap／auto height／visible overflow，無固定30px或內部vertical scroll。
+
+Test seams：remove-trace contract/adapter round-trip；accepted/reject/stale generation；hide/remove/reset/identity；last non-system trace row collapse；Marker/Stripe stable-id dedupe與round-robin；None/Unavailable；dark halo visible pixels且semantic stroke不變；plot label count 0；data window geometry；4,000-bar long-task與exact package graph。
+
 ### Visible K-bar row Y-domain
 
 每個含candlestick的row以該row當前viewport投影後的candles與同row projected line/histogram points建立獨立bounds。完整source中viewport外的extrema、其他row及不可見point不得進入bounds；scalar-only row維持既有8% data padding。
