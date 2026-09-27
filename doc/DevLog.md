@@ -1732,3 +1732,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Correction：consumer要求先取得official immutable artifact與readback，以免相同版本在local feed被覆寫；因此發布順序由「consumer GREEN後push」改為「唯一official版本先發布、consumer只驗該artifact」。產品驗收仍pending，沒有以push成功取代真SPAA gate。
 - Source commit `15b1f8b`已push。Renderer `0.1.82`、Interactive.Client `0.1.73`、Ptcs.Client `0.1.83` public push均回`Created`；官方SHA-256依序為`20D89407F1588618E88E297EB86E5DC4C658ED7510D581519EE29AC76515A073`、`21CC8DDA7DAE5C1D3C8D6C16668AAC02C0E67CC7161F248A017627DB37407C8B`、`5EE7C03DC3308E26BD58063BC51D0831F95F4349F89CDB5BF71C6A47F95F36CB`。
 - 三包`dotnet nuget verify --all`均確認NuGet.org repository signature有效；official nuspec exact dependencies符合RFC：Renderer→Contracts `[0.1.30]`，Interactive→Contracts `[0.1.30]`＋Renderer `[0.1.82]`，Ptcs.Client→PTCS `[0.2.46]`＋Contracts `[0.1.30]`＋Renderer `[0.1.82]`。Daedalus已收到source commit、official hashes與consumer gate請求。
+
+## 2026-09-28 - RFC-0031 page-scoped display time zone owner candidate
+
+- 依TradeCore RFC-0029新增generic `SduiDisplayTimeZone`，stable ids為`UTC`、`America/Chicago`、`America/New_York`、`UTC+08:00`。Renderer集中提供純F# formatter，依event instant處理CST／CDT、EST／EDT與UTC+8跨日；invalid timestamp fail closed，不使用browser local timezone。
+- `TaWorkspaceRenderer`新增reactive display-time overload，axis、row cursor、data window、temporal metadata、marker／stripe／OFI tooltip及status watermark共用同一selection；canonical UTC DOM attribute、query/cache/wire、viewport與revision不變。Interactive與PTCS clients新增typed `View<SduiDisplayTimeZone>`入口，既有API維持UTC。
+- Exact local graph為Contracts `0.1.31`、Renderer `0.1.83`、Interactive.Client `0.1.74`、Dynamic.Ptcs `0.1.52`、Ptcs.Client `0.1.84`。Focused suites`45/51/12/15/17`、五包build、Interactive package verifier與4,000-bar F# Playwright snapshot→patch gate通過；切換未送action且canonical/viewport/loaded bars不漂移。
+- Canonical checkout的既有`websharper.log` ACL會使compiler process crash；依既有流程使用source-identical disposable staging完整編譯，未停用WebSharper作release evidence。Local nupkg SHA依序為`75CDE97F...D427 / B56A6277...1110 / E9521B20...B1DA / 2C3BEDA2...E8C9 / 2A938D58...F82`；public release/readback與Daedalus真SPAA gate待後續完成。

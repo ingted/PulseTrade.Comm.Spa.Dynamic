@@ -763,3 +763,13 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-626 | Renderer DOM ownership | OWNER PASS：7個authored rows各恰有一條`ta-row-control-line-{rowId}`；row/trace controls只存在於同row line；Marker/OverviewStripe不出現在controls。 |
 | DYN-T-627 | Desktop/narrow geometry | OWNER PASS：1440px與390px line固定40px、同row controls同Y band、跨row Y band分離；390px MACD region nowrap且內容只在自身水平overflow。 |
 | DYN-T-628 | Lifecycle/package regression | OWNER/RELEASE PASS：focused `49/12/17`、兩套F# Playwright、console/page errors=0、full WebSharper bundle、package verifier、official repository signature及exact dependency readback全綠。CONSUMER PENDING：Daedalus以官方graph執行真SPAA 8-row desktop/640px gate。 |
+
+## RFC-PTCS-DYNAMIC-0031 page display time-zone gates
+
+| ID | Scope | Acceptance |
+| --- | --- | --- |
+| DYN-T-629 | Contracts codec | OWNER PASS：四種typed zone stable id／label round-trip、unknown拒絕；legacy renderer API固定UTC。Contracts suite `45/45`。 |
+| DYN-T-630 | Formatter | OWNER PASS：Summer／winter、DST start/end boundary、UTC+8跨日、invalid canonical timestamp fail-closed。Renderer suite `51/51`。 |
+| DYN-T-631 | Renderer projection | OWNER PASS：Axis、row cursor、data window、metadata、Marker／Stripe／OFI tooltip由同一reactive selection切換；canonical attributes不變。 |
+| DYN-T-632 | Snapshot→patch/lifecycle | OWNER PASS：4,000-bar browser fixture在CT patch後selection維持；切換不送action、不改loaded bars／viewport／canonical cursor，console/page error 0。 |
+| DYN-T-633 | Package/consumer | OWNER PASS / CONSUMER PENDING：exact graph、五包build、Interactive package verifier通過；待immutable public readback與Daedalus真SPAA Backtest times及no-fetch/no-run/no-drift。 |

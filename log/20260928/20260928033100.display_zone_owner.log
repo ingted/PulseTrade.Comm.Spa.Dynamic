@@ -1,0 +1,22 @@
+# PTCS Dynamic page display zone owner slice
+
+## Pre-work plan
+
+- 背景：Daedalus以`RFC-TRADECORE-0029.page-display-time-zone.md`要求page-scoped UTC／CT／ET／UTC+8 display projection；canonical UTC identity、query、cache、slot與revision不得改變。
+- 目標：提供generic reactive display-zone contract、唯一DST-aware formatter與TA renderer wiring，讓snapshot及live patch共用selection。
+- 不變事項：wire/cache/DOM canonical UTC attributes、provider fetch、FSSTL/backtest execution、scenario/viewport/cursor identity、CSV canonical UTC欄位。
+- Scope：Dynamic.Contracts、Dynamic.Renderer、active client package exact graph、owner RFC/current TA Research docs、tests與package release。
+- 假設：consumer傳入的timestamp仍是RFC-0020定義的canonical ISO-8601 UTC；page-level selection由host持有，owner renderer只投影顯示，不回寫canonical payload。
+- 驗收：summer/winter DST、fixed UTC+8、invalid timestamp fail-closed、axis/cursor/data-window/metadata/marker/stripe/OFI visible time與snapshot→patch同zone；consumer真SPAA no-refetch/no-revision-drift另由Daedalus驗。
+- 風險：WebSharper前端可用的timezone API與Windows/IANA ID差異；不可退成固定CT/ET offset，也不可用browser local timezone。
+- 停止條件：owner packages正式發布且consumer gate取得exact graph，或發現WebSharper runtime無DST-capable API而需跨owner選定timezone database。
+
+## Operations
+
+- 2026-09-28 03:31 +08:00：讀取consumer RFC-TRADECORE-0029；確認PTCS/Dynamic目前沒有generic display-zone contract，只有PTCS Server固定GMT+8管理時間與RFC-0020的canonical axis原則。
+- 2026-09-28 03:44 +08:00：新增RFC-0031、REQ／SA／SD／WBS／Test回鏈，實作Contracts typed zone與Renderer唯一formatter/reactive wiring；Contracts完整WebSharper staging build成功。
+- 2026-09-28 03:53 +08:00：Renderer首次full compiler拒絕一般函式讀`View.V`；改以UTC deterministic初值＋`View.Sink`更新。Focused test另抓到短字串越界，於共用number parser加入bounds check；Renderer `51/51`、Contracts `45/45`通過。
+- 2026-09-28 04:04 +08:00：Interactive／Ptcs clients新增typed zone入口，legacy APIs維持UTC；exact graph升為`0.1.31 / 0.1.83 / 0.1.74 / 0.1.52 / 0.1.84`。Interactive `12/12`、Dynamic.Ptcs `15/15`、Ptcs.Client `17/17`通過，四個WebSharper owner packages與server package build成功。
+- 2026-09-28 04:08 +08:00：新增4,000-bar BrowserDemo selector與`verify-ta-display-time-zone-playwright.fsx`。Browser gate驗UTC→CT→ET→UTC+8、CT patch selection、canonical axis/cursor、viewport、loaded bars、action count與console 0，全數PASS；evidence screenshot為`artifacts/ta-display-time-zone-playwright/display-time-zone.png`。
+- 2026-09-28 04:12 +08:00：Interactive package manifest/nuspec/bundle verifier PASS。Local五包SHA記入DYN-VFY-037；回覆Daedalus owner gates已綠、public immutable release前勿consume local candidate。
+- 2026-09-28 04:16 +08:00：已將source bin替換為source-identical full WebSharper staging nupkg，並核對exact graph：Interactive.Client `0.1.74 -> Contracts [0.1.31] + Renderer [0.1.83]`、Ptcs.Client `0.1.84 -> PTCS [0.2.46] + Contracts [0.1.31] + Renderer [0.1.83]`、Dynamic.Ptcs `0.1.52 -> PTCS [0.2.46] + Contracts [0.1.31]`。Local package `dotnet nuget verify --all` 因未經NuGet.org repository signing回`NU3004 package is not signed`，屬預期；official readback才是signature authority gate。

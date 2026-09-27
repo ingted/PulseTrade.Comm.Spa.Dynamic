@@ -699,6 +699,25 @@ let tests =
             Expect.equal (TaWorkspaceRenderer.compactTimestamp "2026-07-01T03:55:00.0000000+00:00") "07-01 03:55" "TA labels should not expose the full transport timestamp."
             Expect.equal (TaWorkspaceRenderer.compactTimestamp "B1") "B1" "Non-ISO labels should remain unchanged."
 
+        testCase "DYN-T-630 display formatter handles summer winter and UTC+8 rollover" <| fun _ ->
+            let summer = "2026-06-17T22:01:00Z"
+            let winter = "2026-01-02T15:00:00Z"
+            let formatted zone value = TaDisplayTimeFormatter.tryFormat zone value |> Option.get
+            Expect.equal (formatted SduiDisplayTimeZone.Utc summer).FullText "2026-06-17 22:01:00 UTC" "UTC is unchanged."
+            Expect.equal (formatted SduiDisplayTimeZone.AmericaChicago summer).FullText "2026-06-17 17:01:00 CDT" "Chicago summer uses CDT."
+            Expect.equal (formatted SduiDisplayTimeZone.AmericaNewYork summer).FullText "2026-06-17 18:01:00 EDT" "New York summer uses EDT."
+            Expect.equal (formatted SduiDisplayTimeZone.FixedUtcPlus8 summer).FullText "2026-06-18 06:01:00 UTC+8" "UTC+8 rolls to the next day."
+            Expect.equal (formatted SduiDisplayTimeZone.AmericaChicago winter).FullText "2026-01-02 09:00:00 CST" "Chicago winter uses CST."
+            Expect.equal (formatted SduiDisplayTimeZone.AmericaNewYork winter).FullText "2026-01-02 10:00:00 EST" "New York winter uses EST."
+
+        testCase "DYN-T-630 display formatter changes offset at US DST boundaries" <| fun _ ->
+            let compact zone value = TaDisplayTimeFormatter.tryFormat zone value |> Option.map _.FullText
+            Expect.equal (compact SduiDisplayTimeZone.AmericaChicago "2026-03-08T07:59:59Z") (Some "2026-03-08 01:59:59 CST") "Chicago remains standard before 08:00Z."
+            Expect.equal (compact SduiDisplayTimeZone.AmericaChicago "2026-03-08T08:00:00Z") (Some "2026-03-08 03:00:00 CDT") "Chicago springs forward at 08:00Z."
+            Expect.equal (compact SduiDisplayTimeZone.AmericaNewYork "2026-11-01T05:59:59Z") (Some "2026-11-01 01:59:59 EDT") "New York remains daylight before 06:00Z."
+            Expect.equal (compact SduiDisplayTimeZone.AmericaNewYork "2026-11-01T06:00:00Z") (Some "2026-11-01 01:00:00 EST") "New York falls back at 06:00Z."
+            Expect.equal (TaDisplayTimeFormatter.tryFormat SduiDisplayTimeZone.Utc "not-a-time") None "Invalid canonical values fail closed."
+
         testCase "authored row label is the shared card and toolbar display name" <| fun _ ->
             let trace =
                 { TraceId = "es-1k"

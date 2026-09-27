@@ -358,3 +358,8 @@ Plot theme是同一份authoritative workspace的presentation選擇，不是新�
 Histogram polarity是trace-level style，且只有Histogram需要。把正負色放進`TaTraceSpec.Options`可避免擴充共用record造成所有adapter升版，同時可由validation拒絕partial pair、invalid color及kind mismatch。Renderer只依value符號切兩個batched path，`TaTraceSpec.Color`仍是legacy fallback；不得從MACD、label或trace name推論交易語意。
 
 Overview edge clipping是paint geometry，不是viewport selection錯誤。只在visual line位於0／1000邊界時以CSS pixel向內平移半個2px stroke；selection、hit rect與drag calculation均保持原值。使用CSS pixel而非viewBox unit，確保resize前後physical width一致。
+## Page display time-zone ownership（RFC-PTCS-DYNAMIC-0031）
+
+Canonical UTC是transport、lookup、patch correlation與persistence truth；display zone只是page-local projection。`Dynamic.Contracts`擁有四種stable zone value，`Dynamic.Renderer`擁有唯一UTC parser／DST formatter與TA visible-time wiring，SPAA／DIB擁有page switch及Backtest workspace wiring。此分層避免把display preference寫進document/cache，也避免Renderer依商品或session推論時區。
+
+既有renderer API固定UTC並維持相容；新版overload接受`View<SduiDisplayTimeZone>`。每個renderer instance自行跟隨該View，禁止global mutable zone。Zone切換不得進action callback，因此不會觸發provider、FSSTL、Backtest或revision變更。Canonical DOM attributes與visible text分離，讓consumer E2E可同時驗instant不變及投影更新。

@@ -158,3 +158,9 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-080 | Overview左右2 CSS px visual boundary位於SVG edge時須向內補償半個stroke，完整可見寬度必須與移動到內部後相同；transparent 8-unit drag target、selection range與pointer語意不得改變。 |
 | DYN-TA-REQ-081 | `TaWorkspaceDocument.DefaultView`須能以generic typed contract選擇light/dark plot surface。Dark模式的candle、TA與overview SVG為黑底，grid、cursor、axis、legend及tooltip維持可讀；未指定時相容light，不由browser preference或consumer CSS暗中覆蓋。 |
 | DYN-TA-REQ-082 | Histogram正／負值顏色由`TaTraceSpec.Options`的paired typed options指定；不得由TraceId、Label或MACD名稱推論。兩鍵皆缺維持`TaTraceSpec.Color` legacy單色；partial、invalid color或非Histogram使用該keys須fail closed。 |
+## Page-scoped display time zone（RFC-PTCS-DYNAMIC-0031）
+
+- `DYN-REQ-121`：TA／Backtest page須能以單一reactive selection顯示`UTC`、`America/Chicago`、`America/New_York`與固定`UTC+08:00`；CT／ET須依event instant套用DST。
+- `DYN-REQ-122`：Axis、cursor/data window、temporal metadata、Marker／OverviewStripe／OFI可見時間及tooltip須使用同一selection；snapshot後live patch不得回到UTC。
+- `DYN-REQ-123`：切換只改visible projection；canonical UTC document／patch／DOM identity、query instant、cache、revision、viewport、cursor、scenario與download不得改變，也不得發出provider／FSSTL／Backtest request。
+- `DYN-REQ-124`：Contracts須提供stable typed zone；Renderer須提供唯一formatter及reactive input。Consumer不得複製timestamp parser、DST邏輯或使用browser local timezone。

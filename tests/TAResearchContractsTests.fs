@@ -67,6 +67,20 @@ let sourceEvent sequence baseRevision newRevision payload : SourceEventEnvelope 
 
 let tests =
     testList "Dynamic TA Contracts" [
+        testCase "DYN-T-629 display time-zone ids are stable and reject unknown values" <| fun _ ->
+            let expected =
+                [| SduiDisplayTimeZone.Utc, "UTC", "UTC"
+                   SduiDisplayTimeZone.AmericaChicago, "America/Chicago", "CT"
+                   SduiDisplayTimeZone.AmericaNewYork, "America/New_York", "ET"
+                   SduiDisplayTimeZone.FixedUtcPlus8, "UTC+08:00", "UTC+8" |]
+            Expect.equal SduiDisplayTimeZone.values (expected |> Array.map (fun (zone, _, _) -> zone)) "The public selection order is stable."
+            for zone, id, label in expected do
+                Expect.equal (SduiDisplayTimeZone.id zone) id "The wire id is stable."
+                Expect.equal (SduiDisplayTimeZone.label zone) label "The UI label is stable."
+                Expect.equal (SduiDisplayTimeZone.tryParse id) (Some zone) "The canonical id round-trips."
+            Expect.equal (SduiDisplayTimeZone.tryParse "CT") (Some SduiDisplayTimeZone.AmericaChicago) "The UI CT label is accepted."
+            Expect.equal (SduiDisplayTimeZone.tryParse "browser-local") None "Unknown zones fail closed."
+
         testCase "DYN-TA-T-001 all frame kinds strict roundtrip" <| fun _ ->
             let frames =
                 [| documentFrame

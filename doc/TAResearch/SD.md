@@ -1006,3 +1006,19 @@ let nextOptions =
 Histogram projection對同一indexed line points做一次正值與一次負值bounded path assembly，`value >= 0`進positive path、`value < 0`進negative path；兩個path共享既有geometry／last-value state，不建立per-bar DOM。無typed options時兩色皆回退`TaTraceSpec.Color`。
 
 Overview visual line仍使用`x1=x2=selection boundary`與2 CSS px non-scaling stroke；僅在left x接近0時加`translateX(1px)`，right x接近1000時加`translateX(-1px)`。`ta-overview-left/right-handle` transparent rect及全部drag/range calculations不讀此style。
+## Page display time-zone data flow（RFC-PTCS-DYNAMIC-0031）
+
+```text
+SPAA／DIB page Var<SduiDisplayTimeZone>
+  -> View<SduiDisplayTimeZone>
+  -> TaWorkspaceRenderer render overload
+  -> TaDisplayTimeFormatter(canonical UTC string, selected zone)
+  -> axis / cursor / data window / temporal metadata / marker-stripe-OFI tooltip
+
+RuntimeFrame / RuntimeState / lookup / data-* canonical attributes
+  -> remain UTC and never enter the preference write path
+```
+
+`SduiDisplayTimeZone`由Contracts提供stable id codec。Renderer formatter回傳canonical、zone id、abbreviation及full/compact/date/clock fields；invalid canonical string回`None`。Renderer以instance-local reactive state驅動dynamic text，imperative cursor fast-path在zone變更時重跑既有bounded visible-value refresh，不重建data projection或送action。
+
+Stable selectors／attributes：workspace與visible time node提供`data-display-time-zone`；axis、cursor、row data window及event items保留canonical UTC attribute。CT／ET依canonical event instant判定DST，固定UTC+8不採DST。既有`render`／`renderWithProjectionCommit`以UTC constant View委派新版overload。

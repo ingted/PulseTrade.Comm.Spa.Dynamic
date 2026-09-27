@@ -139,6 +139,44 @@ type TaPlotSurfaceTheme =
 type TaPlotSurfacePresentation =
     { Theme: TaPlotSurfaceTheme }
 
+[<RequireQualifiedAccess>]
+type SduiDisplayTimeZone =
+    | Utc
+    | AmericaChicago
+    | AmericaNewYork
+    | FixedUtcPlus8
+
+[<JavaScript; RequireQualifiedAccess>]
+module SduiDisplayTimeZone =
+    let values =
+        [| SduiDisplayTimeZone.Utc
+           SduiDisplayTimeZone.AmericaChicago
+           SduiDisplayTimeZone.AmericaNewYork
+           SduiDisplayTimeZone.FixedUtcPlus8 |]
+
+    let id = function
+        | SduiDisplayTimeZone.Utc -> "UTC"
+        | SduiDisplayTimeZone.AmericaChicago -> "America/Chicago"
+        | SduiDisplayTimeZone.AmericaNewYork -> "America/New_York"
+        | SduiDisplayTimeZone.FixedUtcPlus8 -> "UTC+08:00"
+
+    let label = function
+        | SduiDisplayTimeZone.Utc -> "UTC"
+        | SduiDisplayTimeZone.AmericaChicago -> "CT"
+        | SduiDisplayTimeZone.AmericaNewYork -> "ET"
+        | SduiDisplayTimeZone.FixedUtcPlus8 -> "UTC+8"
+
+    let tryParse (value: string) =
+        match if isNull value then "" else value.Trim() with
+        | "UTC" -> Some SduiDisplayTimeZone.Utc
+        | "America/Chicago"
+        | "CT" -> Some SduiDisplayTimeZone.AmericaChicago
+        | "America/New_York"
+        | "ET" -> Some SduiDisplayTimeZone.AmericaNewYork
+        | "UTC+08:00"
+        | "UTC+8" -> Some SduiDisplayTimeZone.FixedUtcPlus8
+        | _ -> None
+
 type TaHistogramTraceOptions =
     { PositiveColor: string
       NegativeColor: string }

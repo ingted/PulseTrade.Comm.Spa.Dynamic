@@ -913,7 +913,7 @@ module TaResearchTransientClient =
             with error ->
                 Result.Error error.Message
 
-    let mountCore (mountDocument: Doc -> unit) extensionId channelId canvasId lifecycleOptions disposeAfterJsonExport =
+    let mountCoreWithDisplayTimeZone (mountDocument: Doc -> unit) extensionId channelId canvasId lifecycleOptions (displayTimeZone: View<SduiDisplayTimeZone>) disposeAfterJsonExport =
         let identity =
             { DocumentId = DocumentId("pending-" + channelId)
               CanvasInstanceId = CanvasInstanceId canvasId }
@@ -1234,7 +1234,7 @@ module TaResearchTransientClient =
                                         { Code = if lifecycle.Connected then "transient-command-busy" else "transient-channel-not-open"
                                           Message = if lifecycle.Connected then "A TA transient command is already in flight." else "TA transient channel is not open." })) }
 
-        TaWorkspaceRenderer.render TaWorkspaceRenderer.defaultOptions callbacks runtimeState
+        TaWorkspaceRenderer.renderWithDisplayTimeZone TaWorkspaceRenderer.defaultOptions callbacks displayTimeZone runtimeState
         |> mountDocument
 
         connect ()
@@ -1256,15 +1256,26 @@ module TaResearchTransientClient =
           Dispose =
              fun () -> apply TaClientLifecycleEvent.Dispose |> ignore }
 
+    let mountWithOptionsAndDisplayTimeZone (mountDocument: Doc -> unit) extensionId channelId canvasId lifecycleOptions displayTimeZone =
+        mountCoreWithDisplayTimeZone mountDocument extensionId channelId canvasId lifecycleOptions displayTimeZone false
+
     let mountWithOptions (mountDocument: Doc -> unit) extensionId channelId canvasId lifecycleOptions =
-        mountCore mountDocument extensionId channelId canvasId lifecycleOptions false
+        let displayTimeZone = Var.Create SduiDisplayTimeZone.Utc
+        mountWithOptionsAndDisplayTimeZone mountDocument extensionId channelId canvasId lifecycleOptions displayTimeZone.View
 
     let requestJsonExportOnce extensionId channelId canvasId lifecycleOptions =
-        let handle = mountCore ignore extensionId channelId canvasId lifecycleOptions true
+        let displayTimeZone = Var.Create SduiDisplayTimeZone.Utc
+        let handle = mountCoreWithDisplayTimeZone ignore extensionId channelId canvasId lifecycleOptions displayTimeZone.View true
         handle.RequestJsonExport()
+
+    let mountOnElementWithOptionsAndDisplayTimeZone (root: Element) extensionId channelId canvasId lifecycleOptions displayTimeZone =
+        mountWithOptionsAndDisplayTimeZone (Doc.Run root) extensionId channelId canvasId lifecycleOptions displayTimeZone
 
     let mountOnElementWithOptions (root: Element) extensionId channelId canvasId lifecycleOptions =
         mountWithOptions (Doc.Run root) extensionId channelId canvasId lifecycleOptions
+
+    let mountByIdWithOptionsAndDisplayTimeZone rootId extensionId channelId canvasId lifecycleOptions displayTimeZone =
+        mountWithOptionsAndDisplayTimeZone (Doc.RunById rootId) extensionId channelId canvasId lifecycleOptions displayTimeZone
 
     let mountByIdWithOptions rootId extensionId channelId canvasId lifecycleOptions =
         mountWithOptions (Doc.RunById rootId) extensionId channelId canvasId lifecycleOptions

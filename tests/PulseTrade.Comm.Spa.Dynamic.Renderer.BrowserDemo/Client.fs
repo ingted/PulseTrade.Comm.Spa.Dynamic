@@ -5,6 +5,8 @@ open PulseTrade.Comm.Spa.Dynamic.Contracts
 open PulseTrade.Comm.Spa.Dynamic.Interactive.Client
 open PulseTrade.Comm.Spa.Dynamic.Renderer
 open WebSharper
+open WebSharper.JavaScript
+open WebSharper.JavaScript.Dom
 open WebSharper.UI
 open WebSharper.UI.Html
 open WebSharper.UI.Client
@@ -632,13 +634,14 @@ module Client =
                       Freshness = TaFreshness.Live } }
             |> RuntimeSnapshotTransportCodec.encodeFrame
             |> function
-                | Ok packets -> packets
-                | Error message -> failwith message
+                | Result.Ok packets -> packets
+                | Result.Error message -> failwith message
 
         let candleReplacementPackets = candleReplacementPacketsFor initialState
         let candleReplacementWireChars = candleReplacementPackets |> Array.sumBy _.Length
         let sampleBuildMilliseconds = DateTime.UtcNow.Subtract(mainStartedAt).TotalMilliseconds
         let runtimeState = Var.Create initialState
+        let displayTimeZone = Var.Create SduiDisplayTimeZone.Utc
         let actionCount = Var.Create 0
         let lastAction = Var.Create "none"
         let rejectNext = Var.Create false
@@ -745,7 +748,7 @@ module Client =
                 fun request ->
                     async {
                         if actionInFlight then
-                            return Error { Code = "demo-action-in-flight"; Message = "The demo accepts only one remote action at a time." }
+                            return Result.Error { Code = "demo-action-in-flight"; Message = "The demo accepts only one remote action at a time." }
                         else
                             actionInFlight <- true
                             try
@@ -754,10 +757,10 @@ module Client =
                                 lastAction.Value <- actionName request.Action
                                 if rejectNext.Value then
                                     rejectNext.Value <- false
-                                    return Ok(DynamicActionResult.Rejected(request.RequestId, "demo-rejected", "The demo rejected this action without changing the canvas."))
+                                    return Result.Ok(DynamicActionResult.Rejected(request.RequestId, "demo-rejected", "The demo rejected this action without changing the canvas."))
                                 else
                                     applyAuthoritativeAction request.Action
-                                    return Ok(DynamicActionResult.Accepted(request.RequestId, runtimeState.Value.DocumentRevision))
+                                    return Result.Ok(DynamicActionResult.Accepted(request.RequestId, runtimeState.Value.DocumentRevision))
                             finally
                                 actionInFlight <- false
                     } }
@@ -1024,9 +1027,10 @@ module Client =
 
         let rendererStartedAt = DateTime.UtcNow
         let rendererDoc =
-            TaWorkspaceRenderer.render
+            TaWorkspaceRenderer.renderWithDisplayTimeZone
                 TaWorkspaceRenderer.defaultOptions
                 callbacks
+                displayTimeZone.View
                 runtimeState
         let rendererSetupMilliseconds = DateTime.UtcNow.Subtract(rendererStartedAt).TotalMilliseconds
 
@@ -1055,6 +1059,20 @@ module Client =
                 Attr.Dynamic "data-last-action" lastAction.View
                 attr.style "min-height:32px; height:auto; display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:flex-end; padding:4px 12px; background:#182a42; color:#d9e5f3; font-size:11px;"
             ] [
+                Doc.Element "select" [
+                    Attr.Create "data-testid" "ta-demo-display-time-zone"
+                    attr.style "height:24px; min-width:92px; padding:2px 5px;"
+                    on.afterRender (fun node ->
+                        let input = node |> As<HTMLInputElement>
+                        input.Value <- SduiDisplayTimeZone.id displayTimeZone.Value
+                        input.AddEventListener("change", fun () ->
+                            match SduiDisplayTimeZone.tryParse input.Value with
+                            | Some zone -> displayTimeZone.Value <- zone
+                            | None -> input.Value <- SduiDisplayTimeZone.id displayTimeZone.Value))
+                ] [
+                    for zone in SduiDisplayTimeZone.values do
+                        yield Doc.Element "option" [ attr.value (SduiDisplayTimeZone.id zone) ] [ text (SduiDisplayTimeZone.label zone) ] :> Doc
+                ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-live"; on.click (fun _ _ -> setLive ()) ] [ text "Live" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-preview-update"; on.click (fun _ _ -> updateLatestPreview ()) ] [ text "Update preview" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-preview-stream"; on.click (fun _ _ -> startPreviewStream ()) ] [ text "Stream preview" ]

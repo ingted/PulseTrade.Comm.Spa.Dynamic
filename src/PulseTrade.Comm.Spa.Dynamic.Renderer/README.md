@@ -42,16 +42,29 @@ TaWorkspaceRenderer.renderWithProjectionCommit
     callbacks
     (fun committedState -> publishReceipt committedState)
     runtimeState
+
+TaWorkspaceRenderer.renderWithProjectionCommitAndDisplayTimeZone
+    TaWorkspaceRenderer.defaultOptions
+    callbacks
+    (fun committedState -> publishReceipt committedState)
+    displayTimeZone.View
+    runtimeState
+
+TaWorkspaceRenderer.renderWithDisplayTimeZone
+    TaWorkspaceRenderer.defaultOptions
+    callbacks
+    displayTimeZone.View
+    runtimeState
 ```
 
-`render`維持相容；需要browser completion contract的host使用`renderWithProjectionCommit`。callback只在current generation的full mount或same-topology visible-row refresh完成，並跨下一個animation-frame boundary後觸發；stale、superseded、current-state mismatch與相同tuple重複候選不觸發。`runtimeState`是`Var<RuntimeState>`；host adapter負責strict frame decode/reducer與更新Var。正式runtime從current document讀editor catalog；`TaRendererOptions.EditorSchemas`只作standalone/test fallback。`callbacks.SubmitAction`接收含RequestId/revision的`DynamicActionRequest`並回`DynamicActionResult`；Add使用`ApplyTemplate(None, ...)`，Edit使用`ApplyTemplate(Some rowId, ...)`，不提供arbitrary URL、SQL或raw credential。
+`render`與`renderWithProjectionCommit`維持UTC相容；page owner以typed `Var<SduiDisplayTimeZone>.View`呼叫display-time overload。切換只更新visible axis、cursor、row data window、metadata、marker／stripe／OFI tooltip，canonical UTC attributes、loaded data、viewport、revision及action channel皆不變。CT／ET由唯一formatter依event instant套用CST／CDT或EST／EDT；consumer不得複製formatter。callback只在current generation的full mount或same-topology visible-row refresh完成，並跨下一個animation-frame boundary後觸發；stale、superseded、current-state mismatch與相同tuple重複候選不觸發。`runtimeState`是`Var<RuntimeState>`；host adapter負責strict frame decode/reducer與更新Var。正式runtime從current document讀editor catalog；`TaRendererOptions.EditorSchemas`只作standalone/test fallback。`callbacks.SubmitAction`接收含RequestId/revision的`DynamicActionRequest`並回`DynamicActionResult`；Add使用`ApplyTemplate(None, ...)`，Edit使用`ApplyTemplate(Some rowId, ...)`，不提供arbitrary URL、SQL或raw credential。
 
 ## Verification
 
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-generic-marker-playwright.fsx`。
-- current owner candidate：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.82`，exact依賴Contracts `[0.1.30]`與FSharp.Core `[10.1.400]`。RFC-0030把每個authored row的row/trace controls收進獨立`ta-row-control-line-{rowId}`；control line與trace region皆nowrap，窄版只在row-local trace region水平捲動。RFC-0029的system trace排除、hide/show/remove/reset與cursor/marker語意不變。這是owner-gated candidate，Daedalus真SPAA驗收及public push仍待完成。
+- current owner candidate：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.83`，exact依賴Contracts `[0.1.31]`與FSharp.Core `[10.1.400]`。RFC-0031新增page-scoped reactive display time zone；owner 4,000-bar browser gate驗證UTC／CT／ET／UTC+8切換、snapshot→patch selection與canonical/viewport/action no-drift。Daedalus真SPAA驗收及public push仍待完成。
 
 RFC-0028 release為Renderer `0.1.76`、Contracts `[0.1.29]`、Interactive.Client `0.1.67`。它包含RFC-0027 typed dark plot／Histogram polarity，並以`DefaultView.visibleBars`初始化fresh canvas；plot marker只保留glyph/tooltip，每列在cursor gutter與plot間提供固定24px OFI band，最多4筆＋`+N`。一般plot hover依axis snap；直接marker／cluster hit以accepted placement exact slot更新同一shared cursor並停止冒泡，避免高密度同CSS pixel時偏至鄰slot。Overview selection為淺灰，visual boundaries為亮綠2 CSS px且不改transparent hit targets。
 

@@ -49,7 +49,7 @@ module Client =
 
     let mutable currentApplication: InteractiveApplicationHandle option = None
 
-    let createApplication options =
+    let createApplicationWithDisplayTimeZone options (displayTimeZone: View<SduiDisplayTimeZone>) =
         let mutable socket: WebSocket option = None
         let mutable transportGeneration = 0
         let mutable lifecycle = InteractiveClientLifecycle.initial
@@ -598,10 +598,11 @@ module Client =
                                         "interactive-channel-not-open"
                                         "The interactive action channel is not open.") }
 
-            TaWorkspaceRenderer.renderWithProjectionCommit
+            TaWorkspaceRenderer.renderWithProjectionCommitAndDisplayTimeZone
                 TaWorkspaceRenderer.defaultOptions
                 callbacks
                 publishProjectionCommit
+                displayTimeZone
                 state
             |> Doc.RunById options.RootElementId
 
@@ -683,15 +684,23 @@ module Client =
         handle.Start()
         handle
 
+    let createApplication options =
+        let displayTimeZone = Var.Create SduiDisplayTimeZone.Utc
+        createApplicationWithDisplayTimeZone options displayTimeZone.View
+
     [<RequireQualifiedAccess>]
     module Application =
-        let startWithOptions options =
+        let startWithOptionsAndDisplayTimeZone options displayTimeZone =
             match currentApplication with
             | Some handle when not (handle.IsDisposed()) -> handle
             | _ ->
-                let handle = createApplication options
+                let handle = createApplicationWithDisplayTimeZone options displayTimeZone
                 currentApplication <- Some handle
                 handle
+
+        let startWithOptions options =
+            let displayTimeZone = Var.Create SduiDisplayTimeZone.Utc
+            startWithOptionsAndDisplayTimeZone options displayTimeZone.View
 
         let start () = startWithOptions defaultOptions
 

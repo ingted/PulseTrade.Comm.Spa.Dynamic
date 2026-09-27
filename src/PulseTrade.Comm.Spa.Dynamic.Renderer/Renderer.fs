@@ -33,6 +33,10 @@ type TaRendererUiState =
       PendingActionId: string option
       Feedback: string }
 
+type TaRendererDisplayTime =
+    { Zone: View<SduiDisplayTimeZone>
+      Current: unit -> SduiDisplayTimeZone }
+
 [<JavaScript>]
 module TaWorkspaceRenderer =
     let axisViewportWidth = Var.Create 1440.0
@@ -510,14 +514,15 @@ module TaWorkspaceRenderer =
         else
             value
 
-    let timeAxisWithPalette palette testId rowId (timestamps: string array) =
-        axisViewportWidth.View
-        |> View.Map (fun width ->
+    let timeAxisWithPalette palette (displayTime: TaRendererDisplayTime) testId rowId (timestamps: string array) =
+        View.Map2 (fun width zone -> width, zone) axisViewportWidth.View displayTime.Zone
+        |> View.Map (fun (width, zone) ->
             let labels = RendererModel.adaptiveTimeLabels 92.0 width timestamps
             div [
                 Attr.Create "data-testid" testId
                 Attr.Create "data-time-axis-row-id" rowId
                 Attr.Create "data-time-axis-tick-count" (string labels.Length)
+                Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone)
                 Attr.Create "data-plot-surface-theme" palette.ThemeName
                 attr.style ("position:relative; min-width:0; height:18px; padding:0 1px; overflow:hidden; background:" + palette.AxisSurface + ";")
             ] [
@@ -528,15 +533,18 @@ module TaWorkspaceRenderer =
                     yield
                         span [
                             Attr.Create "data-time-axis-event-time" label
+                            Attr.Create "data-canonical-event-time" label
+                            Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone)
                             attr.style (
                                 "position:absolute; left:" + fixedText left + "%; transform:" + transform
                                 + "; max-width:92px; color:" + palette.AxisText + "; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")
-                        ] [ text (compactTimestamp label) ]
+                        ] [ text (TaDisplayTimeFormatter.compactOrOriginal zone label) ]
             ] :> Doc)
         |> Doc.EmbedView
 
     let timeAxis testId rowId timestamps =
-        timeAxisWithPalette lightPlotPalette testId rowId timestamps
+        let zone = Var.Create SduiDisplayTimeZone.Utc
+        timeAxisWithPalette lightPlotPalette { Zone = zone.View; Current = fun () -> zone.Value } testId rowId timestamps
 
     let rectanglePath x y width height =
         "M " + fixedText x + " " + fixedText y
@@ -818,7 +826,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvgReactivePreparedLiveWithHeightPalette palette rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh =
+    let compositeSvgReactivePreparedLiveWithHeightPalette palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -1217,7 +1225,7 @@ module TaWorkspaceRenderer =
             let y = max half (min (height - half) proposedY)
             x, y
 
-        let markerShape (placement: TaMarkerPlacement) low high =
+        let markerShape zone (placement: TaMarkerPlacement) low high =
             let size = 9.0
             let half = size / 2.0
             let x, y = markerCenter placement low high
@@ -1247,7 +1255,10 @@ module TaWorkspaceRenderer =
                   on.click (fun _ event ->
                       event.StopPropagation()
                       commitCursorIndex placement.SlotIndex) ]
-            let title = svgElement "title" [] [ text (RendererModel.markerTooltipText placement) ]
+            let title =
+                svgElement "title" [] [
+                    text (RendererModel.markerTooltipTextWith (TaDisplayTimeFormatter.fullOrOriginal zone) placement)
+                ]
             let elementName, geometry =
                 match placement.Marker.Shape with
                 | TaMarkerShape.Circle ->
@@ -1298,8 +1309,8 @@ module TaWorkspaceRenderer =
             xAt cluster.SlotIndex, max 8.0 (min (height - 8.0) proposedY)
 
         let markerLayer =
-            markerVisualState.View
-            |> View.Map (fun ((placements: TaMarkerPlacement array), _, low, high) ->
+            View.Map2 (fun markerVisual zone -> markerVisual, zone) markerVisualState.View displayTime.Zone
+            |> View.Map (fun (((placements: TaMarkerPlacement array), _, low, high), zone) ->
                 let directPlacements, overflowClusters = RendererModel.markerPresentation placements
                 svgElement "g" [
                     Attr.Create "data-testid" ("ta-marker-layer-" + rowId)
@@ -1308,7 +1319,7 @@ module TaWorkspaceRenderer =
                     Attr.Create "data-marker-overflow-count" (string overflowClusters.Length)
                 ] [
                     for placement in directPlacements do
-                        yield markerShape placement low high
+                        yield markerShape zone placement low high
                     for cluster in overflowClusters do
                         let x, y = markerClusterPosition low high cluster
                         let hiddenCount = cluster.Markers.Length
@@ -1383,7 +1394,7 @@ module TaWorkspaceRenderer =
                                     let index = max 0 (min (cluster.Markers.Length - 1) selectedIndex)
                                     let selected = cluster.Markers[index]
                                     let x, y = markerClusterPosition low high cluster
-                                    let textValue = RendererModel.markerTooltipText selected
+                                    let textValue = RendererModel.markerTooltipTextWith (TaDisplayTimeFormatter.fullOrOriginal zone) selected
                                     let bounded = if textValue.Length <= 160 then textValue else textValue.Substring(0, 157) + "..."
                                     let boxX = max 6.0 (min 684.0 (x + 12.0))
                                     let boxY = max 4.0 (min (height - 28.0) (y - 12.0))
@@ -1573,10 +1584,16 @@ module TaWorkspaceRenderer =
                   current)),
         (fun cursorIndex ->
             let placements, stripes, _, _ = markerVisualState.Value
-            RendererModel.cursorEventItems cursorIndex traces placements stripes)
+            RendererModel.cursorEventItemsWith
+                (TaDisplayTimeFormatter.fullOrOriginal (displayTime.Current ()))
+                cursorIndex
+                traces
+                placements
+                stripes)
 
     let compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh =
-        compositeSvgReactivePreparedLiveWithHeightPalette lightPlotPalette rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh
+        let zone = Var.Create SduiDisplayTimeZone.Utc
+        compositeSvgReactivePreparedLiveWithHeightPalette lightPlotPalette { Zone = zone.View; Current = fun () -> zone.Value } rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh
 
     let compositeSvgReactivePreparedLiveWithValueRefresh rowId isBaseRow (traces: TaTraceSpec array) preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex scheduleValueRefresh =
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
@@ -1599,7 +1616,7 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create cursorIndex
         compositeSvgReactive rowId traces data referenceTimestamps cursor.View setCursorIndex commitCursorIndex
 
-    let renderRowReactivePreparedLiveWithHeightPalette palette (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement (row: TaRowSpec) =
+    let renderRowReactivePreparedLiveWithHeightPalette palette (displayTime: TaRendererDisplayTime) (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement (row: TaRowSpec) =
         let traces =
             RendererModel.effectiveTraces row
             |> Array.filter (fun trace ->
@@ -1608,7 +1625,7 @@ module TaWorkspaceRenderer =
         let hasCursorEventCapability =
             traces
             |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Marker || trace.Kind = TaTraceKind.OverviewStripe)
-        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithHeightPalette palette row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithHeightPalette palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =
@@ -1671,15 +1688,15 @@ module TaWorkspaceRenderer =
                 ]
                 yield chart
                 if showSharedTimeAxis then
-                    yield timeAxisWithPalette palette ("ta-time-axis-" + row.RowId) row.RowId timestamps
+                    yield timeAxisWithPalette palette displayTime ("ta-time-axis-" + row.RowId) row.RowId timestamps
             ]
         let children = [ rowPlot :> Doc ]
         let metadata =
-            dataView
-            |> View.Map (fun currentData ->
+            View.Map2 (fun currentData zone -> currentData, zone) dataView displayTime.Zone
+            |> View.Map (fun (currentData, zone) ->
                 span [ attr.style "display:inline-flex; align-items:center; gap:6px 10px; flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap;" ] [
                     for value in RendererModel.rowTemporalMetadataPrepared row currentData do
-                        let availability = value.AvailableAtUtc |> Option.map compactTimestamp |> Option.defaultValue "unknown"
+                        let availability = value.AvailableAtUtc |> Option.map (TaDisplayTimeFormatter.compactOrOriginal zone) |> Option.defaultValue "unknown"
                         let quality = value.Quality |> Option.defaultValue "unknown"
                         yield
                             span [
@@ -1687,9 +1704,10 @@ module TaWorkspaceRenderer =
                                 Attr.Create "data-scale-key" value.ScaleKey
                                 Attr.Create "data-finality" value.Finality
                                 Attr.Create "data-quality" quality
-                                attr.title (RendererModel.temporalDetail value)
+                                Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone)
+                                attr.title (RendererModel.temporalDetailWith (TaDisplayTimeFormatter.fullOrOriginal zone) value)
                                 attr.style "display:inline-flex; align-items:center; min-height:20px; padding:1px 6px; border:1px solid #bcc9d8; border-radius:4px; background:#f7fafc; color:#465b74; font-family:Consolas,monospace; font-size:10px; white-space:nowrap;"
-                            ] [ text (value.ScaleKey + " | " + value.Finality + " | " + quality + " | frontier " + compactTimestamp value.ObservedThroughUtc + " | available " + availability) ]
+                            ] [ text (value.ScaleKey + " | " + value.Finality + " | " + quality + " | frontier " + TaDisplayTimeFormatter.compactOrOriginal zone value.ObservedThroughUtc + " | available " + availability) ]
                 ] :> Doc)
             |> Doc.EmbedView
         let legend =
@@ -1706,13 +1724,14 @@ module TaWorkspaceRenderer =
                     else latestLegendReaders |> Array.tryPick (fun readLatest -> readLatest ())
                 let initialTimestamp =
                     initialPresentation
-                    |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
+                    |> Option.map (fun value -> TaDisplayTimeFormatter.fullOrOriginal (displayTime.Current ()) value.Timestamp)
                     |> Option.defaultValue "Unavailable"
                 yield
                     span [
                         Attr.Create "data-testid" ("ta-row-data-time-" + row.RowId)
                         Attr.Create "data-ta-row-data-time" "true"
                         Attr.Create "data-ta-row-data-time-row-id" row.RowId
+                        Attr.Dynamic "data-display-time-zone" (displayTime.Zone |> View.Map SduiDisplayTimeZone.id)
                         attr.style "display:inline-block; width:19ch; min-width:19ch; max-width:19ch; overflow:hidden; white-space:nowrap; font-variant-numeric:tabular-nums; font-weight:650;"
                     ] [ text initialTimestamp ]
                 for index in 0 .. traces.Length - 1 do
@@ -1750,7 +1769,8 @@ module TaWorkspaceRenderer =
         ], cursorReaders, legendReaders, latestLegendReaders, markerCursorReader
 
     let renderRowReactivePreparedLiveWithHeight state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row =
-        renderRowReactivePreparedLiveWithHeightPalette lightPlotPalette state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row
+        let zone = Var.Create SduiDisplayTimeZone.Utc
+        renderRowReactivePreparedLiveWithHeightPalette lightPlotPalette { Zone = zone.View; Current = fun () -> zone.Value } state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row
 
     let renderRowReactivePreparedLiveWithValueRefresh (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow scheduleValueRefresh (row: TaRowSpec) =
         let traces =
@@ -1776,12 +1796,18 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create ui.CursorIndex
         renderRowReactive state ui visibleTimestamps cursor.View setCursorIndex commitCursorIndex showSharedTimeAxis row
 
-    let renderWithProjectionCommit
+    let renderWithProjectionCommitAndDisplayTimeZone
         (options: TaRendererOptions)
         (callbacks: TaRendererCallbacks)
         (onProjectionCommitted: RuntimeState -> unit)
+        (displayTimeZone: View<SduiDisplayTimeZone>)
         (runtimeState: Var<RuntimeState>) =
         ensureAxisResizeTracking ()
+        let mutable currentDisplayTimeZone = SduiDisplayTimeZone.Utc
+        let displayTime =
+            { Zone = displayTimeZone
+              Current = fun () -> currentDisplayTimeZone }
+        let mutable refreshDisplayTime: (unit -> unit) = ignore
         let rendererTelemetryInstanceId = nextRendererTelemetryInstanceId ()
         let currentCanvasId () = runtimeState.Value.Identity.CanvasInstanceId
         let rowHeightStates = System.Collections.Generic.Dictionary<string, Var<int>>()
@@ -1877,6 +1903,10 @@ module TaWorkspaceRenderer =
                         chartStackElement.SetAttribute("data-visible-value-scheduler-ms", fixedText schedulerElapsed)
                         chartStackElement.SetAttribute("data-visible-value-renderer-instance", rendererTelemetryInstanceId))
                 |> ignore
+        displayTimeZone
+        |> View.Sink (fun zone ->
+            currentDisplayTimeZone <- zone
+            refreshDisplayTime ())
         let mutable chartWorkGeneration = 0
         let mutable dataWorkGeneration = 0
         let mutable activeRowDataStates: Var<TaPreparedRendererData> array = [||]
@@ -2434,11 +2464,13 @@ module TaWorkspaceRenderer =
                                 match bounded with
                                 | Some _ -> tryRowPresentation latestLegendReaders rowId index
                                 | None -> tryLatestRowPresentation latestLegendValueReaders rowId)
-                            |> Option.bind (fun value -> RendererModel.fullTimestamp value.Timestamp)
+                            |> Option.map (fun value -> TaDisplayTimeFormatter.fullOrOriginal (displayTime.Current ()) value.Timestamp)
                             |> Option.defaultValue "Unavailable"
                         node, nextTime)
 
-                let cursorTimeUpdate = bounded |> Option.map (fun index -> compactTimestamp latestCursorTimestamps[index])
+                let cursorTimeUpdate =
+                    bounded
+                    |> Option.map (fun index -> TaDisplayTimeFormatter.compactOrOriginal (displayTime.Current ()) latestCursorTimestamps[index])
                 let cursorValueUpdates =
                     match bounded with
                     | None -> [||]
@@ -2468,6 +2500,11 @@ module TaWorkspaceRenderer =
                 match cursorTimeUpdate, time with
                 | Some nextTime, Some node ->
                     if setElementTextIfChanged nextTime node then textWrites <- textWrites + 1
+                    if setElementAttributeIfChanged "data-display-time-zone" (SduiDisplayTimeZone.id (displayTime.Current ())) node then attributeWrites <- attributeWrites + 1
+                    match bounded with
+                    | Some index ->
+                        if setElementAttributeIfChanged "data-canonical-event-time" latestCursorTimestamps[index] node then attributeWrites <- attributeWrites + 1
+                    | None -> ()
                 | _ -> ()
                 for node, current in cursorValueUpdates do
                     match current with
@@ -2478,6 +2515,7 @@ module TaWorkspaceRenderer =
                         if setElementTextIfChanged "" node then textWrites <- textWrites + 1
                         if removeElementAttributeIfPresent "data-cursor-row" node then attributeWrites <- attributeWrites + 1
                 for band, items in ofiUpdates do
+                    if setElementAttributeIfChanged "data-display-time-zone" (SduiDisplayTimeZone.id (displayTime.Current ())) band then attributeWrites <- attributeWrites + 1
                     if setElementAttributeIfChanged "data-marker-event-count" (string items.Length) band then attributeWrites <- attributeWrites + 1
                     match scopedElements band "[data-ta-row-ofi-empty='true']" |> Array.tryHead with
                     | Some node ->
@@ -2616,9 +2654,12 @@ module TaWorkspaceRenderer =
                         let presentation = bounded |> Option.bind (tryRowPresentation latestLegendReaders rowId)
                         let dateText, timeText =
                             presentation
-                            |> Option.bind (fun value -> RendererModel.timestampParts value.Timestamp)
+                            |> Option.map (fun value -> TaDisplayTimeFormatter.dateAndClockOrUnavailable (displayTime.Current ()) value.Timestamp)
                             |> Option.defaultValue ("Unavailable", "Unavailable")
+                        let canonicalEventTime = presentation |> Option.map _.Timestamp |> Option.defaultValue ""
                         group.SetAttribute("style", rowCursorTagStyle labelLeftPercent true)
+                        group.SetAttribute("data-display-time-zone", SduiDisplayTimeZone.id (displayTime.Current ()))
+                        group.SetAttribute("data-canonical-event-time", canonicalEventTime)
                         let dateNode = group.QuerySelector("[data-ta-row-cursor-date='true']")
                         let timeNode = group.QuerySelector("[data-ta-row-cursor-clock='true']")
                         if not (isNull dateNode) then dateNode.TextContent <- dateText
@@ -2628,6 +2669,8 @@ module TaWorkspaceRenderer =
                     for group in rowCursorLabels do group.SetAttribute("style", rowCursorTagStyle "50" false)
 
                 applyVisibleCursorValues bounded
+
+        refreshDisplayTime <- fun () -> applyCursorIndex displayedCursorIndex
 
         let flushCursorFrame () =
             cursorFrameScheduled <- false
@@ -3041,6 +3084,7 @@ module TaWorkspaceRenderer =
         div [
             attr.``class`` "ptcs-ta-workspace"
             Attr.Create "data-testid" "ta-workspace"
+            Attr.Dynamic "data-display-time-zone" (displayTime.Zone |> View.Map SduiDisplayTimeZone.id)
             attr.style "display:flex; flex-direction:column; min-width:0; width:100%; min-height:640px; color:#142033; background:#f4f7fb; font-family:Segoe UI, Arial, sans-serif; letter-spacing:0;"
         ] [
             runtimeState.View
@@ -3090,8 +3134,8 @@ module TaWorkspaceRenderer =
                                         |> textView
                                     ]
                                 ]
-                                runtimeState.View
-                                |> View.Map (fun current ->
+                                View.Map2 (fun current zone -> current, zone) runtimeState.View displayTime.Zone
+                                |> View.Map (fun (current, zone) ->
                                     let status = RendererModel.statusPresentation document.StatusRef current
                                     div [ attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;" ] [
                                         div [ Attr.Create "data-testid" "ta-freshness"; Attr.Create "data-freshness" (freshnessClass status.Freshness); attr.style "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;" ] [ text status.Label ]
@@ -3099,12 +3143,12 @@ module TaWorkspaceRenderer =
                                     ] :> Doc)
                                 |> Doc.EmbedView
                             ]
-                            runtimeState.View
-                            |> View.Map (fun current ->
+                            View.Map2 (fun current zone -> current, zone) runtimeState.View displayTime.Zone
+                            |> View.Map (fun (current, zone) ->
                                 let status = RendererModel.statusPresentation document.StatusRef current
-                                div [ Attr.Create "data-testid" "ta-status-detail"; attr.style "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;" ] [
+                                div [ Attr.Create "data-testid" "ta-status-detail"; Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone); attr.style "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;" ] [
                                     match status.Watermark with
-                                    | Some value -> yield span [] [ text ("watermark " + value) ]
+                                    | Some value -> yield span [ Attr.Create "data-canonical-event-time" value ] [ text ("watermark " + TaDisplayTimeFormatter.fullOrOriginal zone value) ]
                                     | None -> ()
                                     match status.Quality with
                                     | Some value -> yield span [] [ text ("quality " + value) ]
@@ -3393,6 +3437,7 @@ module TaWorkspaceRenderer =
                                                 let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow, markerCursorReader =
                                                     renderRowReactivePreparedLiveWithHeightPalette
                                                         currentPlotPalette
+                                                        displayTime
                                                         state
                                                         ui
                                                         prepared
@@ -3543,6 +3588,21 @@ module TaWorkspaceRenderer =
                     ] :> Doc)
             |> Doc.EmbedView
         ]
+
+    let renderWithProjectionCommit
+        (options: TaRendererOptions)
+        (callbacks: TaRendererCallbacks)
+        (onProjectionCommitted: RuntimeState -> unit)
+        (runtimeState: Var<RuntimeState>) =
+        let zone = Var.Create SduiDisplayTimeZone.Utc
+        renderWithProjectionCommitAndDisplayTimeZone options callbacks onProjectionCommitted zone.View runtimeState
+
+    let renderWithDisplayTimeZone
+        (options: TaRendererOptions)
+        (callbacks: TaRendererCallbacks)
+        (displayTimeZone: View<SduiDisplayTimeZone>)
+        (runtimeState: Var<RuntimeState>) =
+        renderWithProjectionCommitAndDisplayTimeZone options callbacks ignore displayTimeZone runtimeState
 
     let render (options: TaRendererOptions) (callbacks: TaRendererCallbacks) (runtimeState: Var<RuntimeState>) =
         renderWithProjectionCommit options callbacks ignore runtimeState

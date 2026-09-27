@@ -1175,14 +1175,16 @@ module RendererModel =
             Some [| x - half, y - half; x + half, y - half; x, y + half |]
         | _ -> None
 
-    let markerTooltipText (placement: TaMarkerPlacement) =
+    let markerTooltipTextWith formatEventTime (placement: TaMarkerPlacement) =
         [| match placement.Marker.Label with
            | Some label when not (String.IsNullOrWhiteSpace label) -> yield label
            | _ -> ()
-           yield "Event time: " + placement.Marker.EventTimeUtc
+           yield "Event time: " + formatEventTime placement.Marker.EventTimeUtc
            for field in placement.Marker.Tooltip do
                yield field.Label + ": " + field.Value |]
         |> String.concat "\n"
+
+    let markerTooltipText placement = markerTooltipTextWith id placement
 
     [<Literal>]
     let MarkerCursorItemBudget = 4
@@ -1204,16 +1206,18 @@ module RendererModel =
                   Color = placement.Marker.Color
                   Tooltip = markerTooltipText placement }))
 
-    let overviewStripeTooltipText (category: string) (stripe: TaOverviewStripe) =
+    let overviewStripeTooltipTextWith formatEventTime (category: string) (stripe: TaOverviewStripe) =
         [| match stripe.Label with
            | Some label when not (String.IsNullOrWhiteSpace label) -> yield label
            | _ -> yield category
-           yield "Event time: " + stripe.EventTimeUtc
+           yield "Event time: " + formatEventTime stripe.EventTimeUtc
            for field in stripe.Tooltip do
                yield field.Label + ": " + field.Value |]
         |> String.concat "\n"
 
-    let cursorEventItems slotIndex (traces: TaTraceSpec array) (markers: TaMarkerPlacement array) (stripes: TaOverviewStripePlacement array) =
+    let overviewStripeTooltipText category stripe = overviewStripeTooltipTextWith id category stripe
+
+    let cursorEventItemsWith formatEventTime slotIndex (traces: TaTraceSpec array) (markers: TaMarkerPlacement array) (stripes: TaOverviewStripePlacement array) =
         let traceOrder = traces |> Array.mapi (fun index trace -> trace.TraceId, index) |> Map.ofArray
         let traceCategory =
             traces
@@ -1239,7 +1243,7 @@ module RendererModel =
                   SourceKind = "marker"
                   Label = label
                   Color = placement.Marker.Color
-                  Tooltip = markerTooltipText placement })
+                  Tooltip = markerTooltipTextWith formatEventTime placement })
         let markerEventIds =
             markerItems
             |> Array.map (fun (_, _, item) -> item.MarkerId)
@@ -1264,7 +1268,7 @@ module RendererModel =
                   SourceKind = "overview-stripe"
                   Label = label
                   Color = placement.Stripe.Color
-                  Tooltip = overviewStripeTooltipText categoryValue placement.Stripe })
+                  Tooltip = overviewStripeTooltipTextWith formatEventTime categoryValue placement.Stripe })
         let byTrace =
             Array.append markerItems stripeItems
             |> Array.groupBy (fun (traceId, _, _) -> traceId)
@@ -1283,6 +1287,9 @@ module RendererModel =
                    match Array.tryItem itemIndex items with
                    | Some(_, _, item) -> yield item
                    | None -> () |]
+
+    let cursorEventItems slotIndex traces markers stripes =
+        cursorEventItemsWith id slotIndex traces markers stripes
 
     let timestampParts (value: string) =
         if String.IsNullOrWhiteSpace value
@@ -1951,10 +1958,12 @@ module RendererModel =
 
             Array.map2 (fun direct prior -> direct |> Option.orElse prior) primary fallback
 
-    let temporalDetail (metadata: TaTemporalPointPresentation) =
-        let availability = metadata.AvailableAtUtc |> Option.defaultValue "unknown"
+    let temporalDetailWith formatEventTime (metadata: TaTemporalPointPresentation) =
+        let availability = metadata.AvailableAtUtc |> Option.map formatEventTime |> Option.defaultValue "unknown"
         let quality = metadata.Quality |> Option.defaultValue "unknown"
-        $"{metadata.ScaleKey} | {metadata.Finality} | quality {quality} | frontier {metadata.ObservedThroughUtc} | available {availability}"
+        $"{metadata.ScaleKey} | {metadata.Finality} | quality {quality} | frontier {formatEventTime metadata.ObservedThroughUtc} | available {availability}"
+
+    let temporalDetail metadata = temporalDetailWith id metadata
 
     let latestTemporalMetadata (trace: TaTraceSpec) data =
         resolvedSeries trace.DataRef data
