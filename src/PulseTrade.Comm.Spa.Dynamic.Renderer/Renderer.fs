@@ -3155,7 +3155,7 @@ module TaWorkspaceRenderer =
                                   @ [ span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "viewport changes request the selected event-time range when enabled" ] ])
                             uiState.View
                             |> View.Map (fun ui ->
-                                div [ Attr.Create "data-testid" "ta-row-toggles"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ] [
+                                div [ Attr.Create "data-testid" "ta-row-toggles"; attr.style "display:flex; flex-direction:column; align-items:stretch; gap:4px; width:100%; min-width:0;" ] [
                                     for row in document.Rows do
                                         let hidden = Set.contains row.RowId ui.HiddenRows
                                         let displayLabel = rowDisplayLabel row
@@ -3163,46 +3163,6 @@ module TaWorkspaceRenderer =
                                             match TaRowEditorBinding.tryResolve (editorSchemasNow ()) row with
                                             | Ok(Some _) -> true
                                             | _ -> false
-                                        yield
-                                            div [ attr.style "display:inline-flex; align-items:stretch; height:26px;" ] [
-                                                yield button [
-                                                    attr.``type`` "button"
-                                                    Attr.Create "data-testid" ("ta-toggle-row-" + row.RowId)
-                                                    Attr.Create "aria-pressed" (if hidden then "false" else "true")
-                                                    attr.style (if hidden then "height:26px; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;" else "height:26px; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;")
-                                                    on.click (fun _ _ ->
-                                                        let nextHidden =
-                                                            if hidden then Set.remove row.RowId uiState.Value.HiddenRows
-                                                            else Set.add row.RowId uiState.Value.HiddenRows
-
-                                                        setUiState { uiState.Value with HiddenRows = nextHidden })
-                                                ] [ text displayLabel ]
-                                                if editable then
-                                                    yield button [
-                                                        attr.``type`` "button"
-                                                        Attr.Create "data-testid" ("ta-edit-row-" + row.RowId)
-                                                        attr.title ("Edit " + displayLabel + " parameters")
-                                                        attr.disabledBool commandsDisabledView
-                                                        Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
-                                                            if disabled then "height:26px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; cursor:not-allowed;"
-                                                            else "height:26px; border:1px solid #9cb3cc; border-right:0; background:#fff; color:#315d88; padding:2px 7px; font-size:11px; cursor:pointer;"))
-                                                        on.click (fun _ _ ->
-                                                            if not (commandsDisabledNow ()) then openRowEditor row)
-                                                    ] [ text "Edit" ]
-                                                if not (actionAllowed "remove-trace") then
-                                                    yield button [
-                                                        attr.``type`` "button"
-                                                        Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
-                                                        attr.title ("Remove " + displayLabel + " row")
-                                                        attr.disabledBool commandsDisabledView
-                                                        Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
-                                                            if disabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;"
-                                                            else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
-                                                        on.click (fun _ _ ->
-                                                            if not (commandsDisabledNow ()) then
-                                                                startAction (SduiAction.RemoveTaRow(currentCanvasId (), row.RowId)) (displayLabel + " row removal accepted.") ignore)
-                                                    ] [ text "×" ]
-                                            ]
                                         let controllableTraces =
                                             RendererModel.effectiveTraces row
                                             |> Array.filter (fun trace ->
@@ -3210,51 +3170,100 @@ module TaWorkspaceRenderer =
                                                 && trace.Kind <> TaTraceKind.Marker
                                                 && trace.Kind <> TaTraceKind.OverviewStripe
                                                 && not (Set.contains (row.RowId, trace.TraceId) ui.RemovedTraces))
-                                        if controllableTraces.Length > 0 then
-                                            yield div [
-                                                Attr.Create "data-testid" ("ta-trace-toggles-" + row.RowId)
-                                                attr.style "display:inline-flex; align-items:center; gap:3px; padding-left:3px; border-left:1px solid #d7e0eb;"
+                                        yield
+                                            div [
+                                                Attr.Create "data-testid" ("ta-row-control-line-" + row.RowId)
+                                                Attr.Create "data-row-id" row.RowId
+                                                attr.style "display:flex; align-items:center; gap:5px; width:100%; min-width:0; height:40px; max-height:40px; overflow:hidden; box-sizing:border-box;"
                                             ] [
-                                                for trace in controllableTraces do
-                                                    let traceHidden = Set.contains (row.RowId, trace.TraceId) ui.HiddenTraces
-                                                    let traceLabel = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
-                                                    yield div [ attr.style "display:inline-flex; align-items:stretch; height:24px;" ] [
+                                                yield div [
+                                                    Attr.Create "data-testid" ("ta-row-controls-" + row.RowId)
+                                                    attr.style "display:inline-flex; align-items:stretch; flex:0 0 auto; height:26px; white-space:nowrap;"
+                                                ] [
+                                                    yield button [
+                                                        attr.``type`` "button"
+                                                        Attr.Create "data-testid" ("ta-toggle-row-" + row.RowId)
+                                                        Attr.Create "aria-pressed" (if hidden then "false" else "true")
+                                                        attr.style (if hidden then "height:26px; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;" else "height:26px; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;")
+                                                        on.click (fun _ _ ->
+                                                            let nextHidden =
+                                                                if hidden then Set.remove row.RowId uiState.Value.HiddenRows
+                                                                else Set.add row.RowId uiState.Value.HiddenRows
+
+                                                            setUiState { uiState.Value with HiddenRows = nextHidden })
+                                                    ] [ text displayLabel ]
+                                                    if editable then
                                                         yield button [
                                                             attr.``type`` "button"
-                                                            Attr.Create "data-testid" ("ta-toggle-trace-" + row.RowId + "-" + trace.TraceId)
-                                                            Attr.Create "data-row-id" row.RowId
-                                                            Attr.Create "data-trace-id" trace.TraceId
-                                                            Attr.Create "aria-pressed" (if traceHidden then "false" else "true")
-                                                            attr.title ((if traceHidden then "Show " else "Hide ") + traceLabel + " trace")
-                                                            attr.style (if traceHidden then "height:24px; border:1px solid #c8d2df; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:10px; cursor:pointer;" else "height:24px; border:1px solid #9cb3cc; border-radius:4px 0 0 4px; background:#f4f8fc; color:#315d88; padding:2px 7px; font-size:10px; cursor:pointer;")
+                                                            Attr.Create "data-testid" ("ta-edit-row-" + row.RowId)
+                                                            attr.title ("Edit " + displayLabel + " parameters")
+                                                            attr.disabledBool commandsDisabledView
+                                                            Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                                if disabled then "height:26px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; cursor:not-allowed;"
+                                                                else "height:26px; border:1px solid #9cb3cc; border-right:0; background:#fff; color:#315d88; padding:2px 7px; font-size:11px; cursor:pointer;"))
                                                             on.click (fun _ _ ->
-                                                                let key = row.RowId, trace.TraceId
-                                                                let nextHidden =
-                                                                    if traceHidden then Set.remove key uiState.Value.HiddenTraces
-                                                                    else Set.add key uiState.Value.HiddenTraces
-                                                                setUiState { uiState.Value with HiddenTraces = nextHidden })
-                                                        ] [ text traceLabel ]
-                                                        if actionAllowed "remove-trace" then
-                                                            yield button [
-                                                                attr.``type`` "button"
-                                                                Attr.Create "data-testid" ("ta-remove-trace-" + row.RowId + "-" + trace.TraceId)
-                                                                attr.title ("Remove " + traceLabel + " trace until Reset Canvas")
-                                                                attr.disabledBool commandsDisabledView
-                                                                Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
-                                                                    if disabled then "width:24px; height:24px; border:1px solid #c8d2df; border-left:0; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:13px; cursor:not-allowed;"
-                                                                    else "width:24px; height:24px; border:1px solid #c8a7ab; border-left:0; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:13px; cursor:pointer;"))
-                                                                on.click (fun _ _ ->
-                                                                    if not (commandsDisabledNow ()) then
+                                                                if not (commandsDisabledNow ()) then openRowEditor row)
+                                                        ] [ text "Edit" ]
+                                                    if not (actionAllowed "remove-trace") then
+                                                        yield button [
+                                                            attr.``type`` "button"
+                                                            Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
+                                                            attr.title ("Remove " + displayLabel + " row")
+                                                            attr.disabledBool commandsDisabledView
+                                                            Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                                if disabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;"
+                                                                else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
+                                                            on.click (fun _ _ ->
+                                                                if not (commandsDisabledNow ()) then
+                                                                    startAction (SduiAction.RemoveTaRow(currentCanvasId (), row.RowId)) (displayLabel + " row removal accepted.") ignore)
+                                                        ] [ text "×" ]
+                                                ]
+                                                if controllableTraces.Length > 0 then
+                                                    yield div [
+                                                        Attr.Create "data-testid" ("ta-trace-toggles-" + row.RowId)
+                                                        attr.style "display:flex; align-items:center; flex:1 1 auto; min-width:0; height:38px; gap:3px; padding:0 0 2px 3px; border-left:1px solid #d7e0eb; box-sizing:border-box; overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; white-space:nowrap;"
+                                                    ] [
+                                                        for trace in controllableTraces do
+                                                            let traceHidden = Set.contains (row.RowId, trace.TraceId) ui.HiddenTraces
+                                                            let traceLabel = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
+                                                            yield div [ attr.style "display:inline-flex; align-items:stretch; flex:0 0 auto; height:24px;" ] [
+                                                                yield button [
+                                                                    attr.``type`` "button"
+                                                                    Attr.Create "data-testid" ("ta-toggle-trace-" + row.RowId + "-" + trace.TraceId)
+                                                                    Attr.Create "data-row-id" row.RowId
+                                                                    Attr.Create "data-trace-id" trace.TraceId
+                                                                    Attr.Create "aria-pressed" (if traceHidden then "false" else "true")
+                                                                    attr.title ((if traceHidden then "Show " else "Hide ") + traceLabel + " trace")
+                                                                    attr.style (if traceHidden then "height:24px; border:1px solid #c8d2df; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:10px; cursor:pointer;" else "height:24px; border:1px solid #9cb3cc; border-radius:4px 0 0 4px; background:#f4f8fc; color:#315d88; padding:2px 7px; font-size:10px; cursor:pointer;")
+                                                                    on.click (fun _ _ ->
                                                                         let key = row.RowId, trace.TraceId
-                                                                        startAction
-                                                                            (SduiAction.RemoveTaTrace(currentCanvasId (), row.RowId, trace.TraceId))
-                                                                            (traceLabel + " trace removal accepted.")
-                                                                            (fun () ->
-                                                                                setUiState
-                                                                                    { uiState.Value with
-                                                                                        HiddenTraces = Set.remove key uiState.Value.HiddenTraces
-                                                                                        RemovedTraces = Set.add key uiState.Value.RemovedTraces }))
-                                                            ] [ text "×" ]
+                                                                        let nextHidden =
+                                                                            if traceHidden then Set.remove key uiState.Value.HiddenTraces
+                                                                            else Set.add key uiState.Value.HiddenTraces
+                                                                        setUiState { uiState.Value with HiddenTraces = nextHidden })
+                                                                ] [ text traceLabel ]
+                                                                if actionAllowed "remove-trace" then
+                                                                    yield button [
+                                                                        attr.``type`` "button"
+                                                                        Attr.Create "data-testid" ("ta-remove-trace-" + row.RowId + "-" + trace.TraceId)
+                                                                        attr.title ("Remove " + traceLabel + " trace until Reset Canvas")
+                                                                        attr.disabledBool commandsDisabledView
+                                                                        Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                                            if disabled then "width:24px; height:24px; border:1px solid #c8d2df; border-left:0; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:13px; cursor:not-allowed;"
+                                                                            else "width:24px; height:24px; border:1px solid #c8a7ab; border-left:0; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:13px; cursor:pointer;"))
+                                                                        on.click (fun _ _ ->
+                                                                            if not (commandsDisabledNow ()) then
+                                                                                let key = row.RowId, trace.TraceId
+                                                                                startAction
+                                                                                    (SduiAction.RemoveTaTrace(currentCanvasId (), row.RowId, trace.TraceId))
+                                                                                    (traceLabel + " trace removal accepted.")
+                                                                                    (fun () ->
+                                                                                        setUiState
+                                                                                            { uiState.Value with
+                                                                                                HiddenTraces = Set.remove key uiState.Value.HiddenTraces
+                                                                                                RemovedTraces = Set.add key uiState.Value.RemovedTraces }))
+                                                                    ] [ text "×" ]
+                                                            ]
                                                     ]
                                             ]
                                 ] :> Doc)

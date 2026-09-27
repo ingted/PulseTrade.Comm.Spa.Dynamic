@@ -225,3 +225,8 @@ Contracts擁有唯一packet schema/encoder；Interactive.Client擁有generation-
 - overview stripe若跟close path一起sampling會時間錯位；prepared model必須先走canonical axis lookup。
 - drag resize若每pointer event重建rows/data readers會卡頓；只准rAF local geometry preview及pointer-up單次state commit。
 - consumer若分批更新timeline/downloads，即使runtime patch原子仍會出現混合revision；這是Daedalus acceptance gate，不得被owner package PASS掩蓋。
+## TA Row Control Line Analysis（RFC-0030）
+
+現有控制區的問題是 DOM ownership 缺失，不是資料或 action contract 缺口：row control與trace control作為同層flex children，瀏覽器換行後會破壞視覺上的row歸屬。正確責任在generic Renderer建立一個row-local layout boundary；Contracts、producer與SPAA不應增加presentation metadata來補救。
+
+每個 authored row不論是否有controllable trace都建立一條固定single-line container。左側row controls不可縮小或換行；右側trace region可縮小且只在自身水平overflow。System overlays仍由trace kind排除，action與local state沿用RFC-0029。此設計新增穩定selector但不新增wire/API，故只需重包Renderer與攜帶其bundle／exact reference的clients。

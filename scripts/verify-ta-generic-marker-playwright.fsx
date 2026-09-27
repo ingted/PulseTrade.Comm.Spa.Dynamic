@@ -169,6 +169,7 @@ let verify viewportWidth viewportHeight screenshotName runCursorGate (browser: I
 
         let chart = page.Locator("[data-testid='ta-candle-price']")
         let crosshair = page.Locator("[data-testid='ta-candle-price-crosshair']")
+        chart.HoverAsync() |> awaitUnit
         let chartBox = chart.BoundingBoxAsync() |> awaitTask
         require (not (isNull chartBox)) "price chart geometry is missing"
         page.Mouse.MoveAsync(chartBox.X + chartBox.Width * 0.8f, chartBox.Y + chartBox.Height / 2.0f) |> awaitUnit

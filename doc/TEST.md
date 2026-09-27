@@ -756,3 +756,10 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-623 | OverviewStripe temporal resolution | canonical axis position解析、missing/invalid item、同id marker precedence與stripe navigator保留 | PASS：Contracts `44/44`、Renderer `49/49`。 |
 | DYN-T-624 | Browser presentation/lifecycle | dark hollow halo且semantic stroke不變；plot labels=0；data window wrap/no scroll；trace hide/show/remove；last trace收合；Reset復原；desktop/mobile console 0 | PASS：`verify-ta-generic-marker-playwright.fsx` 4,000 bars、48 paths、all=53ms、pointer p95=30.93ms/max71ms；新增composite candle回歸，hide單一trace不影響sibling，show後等待`.First`並恢復全部8條batched candle paths。 |
 | DYN-T-625 | Exact graph/performance/consumer | 五包exact graph、bundle manifest、兩套4,000-bar gates；Daedalus真SPAA同步後才public push | PASS：focused `44/49/15/17/12`；renderer verifier 300 cursor transitions max117ms，正式phases over100=0；Daedalus真SPAA 3,563-point全綠。Consumer gate須以`ta-candle-*`選candlestick，batched locator以`.First.WaitForAsync()`後再驗count；五包public push、official signature／dependency／entry parity均通過。 |
+## RFC-PTCS-DYNAMIC-0030 row control line gates
+
+| ID | Scope | Acceptance |
+| --- | --- | --- |
+| DYN-T-626 | Renderer DOM ownership | OWNER PASS：7個authored rows各恰有一條`ta-row-control-line-{rowId}`；row/trace controls只存在於同row line；Marker/OverviewStripe不出現在controls。 |
+| DYN-T-627 | Desktop/narrow geometry | OWNER PASS：1440px與390px line固定40px、同row controls同Y band、跨row Y band分離；390px MACD region nowrap且內容只在自身水平overflow。 |
+| DYN-T-628 | Lifecycle/package regression | OWNER PASS：focused `49/12/17`、兩套F# Playwright、console/page errors=0、full WebSharper bundle與package verifier全綠。CONSUMER PENDING：真SPAA 8-row desktop/640px gate後才public push。 |

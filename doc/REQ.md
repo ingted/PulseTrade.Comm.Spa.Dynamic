@@ -153,3 +153,8 @@
 5. 每個non-system trace SHALL提供local hide/show與typed remote remove。remove wire discriminator SHALL為`remove-trace`；Marker／OverviewStripe SHALL不顯示trace controls。
 6. same-canvas patch SHALL保留local hidden/removed state；Reset Canvas、canvas identity替換與unmount SHALL清除。最後一條non-system trace移除後row SHALL收合。
 7. Row data window SHALL wrap並自動增高，不得使用固定高度內部scrollbar。
+## TA row control ownership（RFC-PTCS-DYNAMIC-0030）
+
+- 每個 TA row 必須有獨立、固定單列的控制列；row 與 trace controls 不得和其他 row 共用 wrapping flow。
+- 同 row trace controls 不換行。寬度不足時只在該 row 的 trace region水平捲動，不增加 control line高度。
+- Marker／OverviewStripe為system trace，不出現在可移除controls；既有hide/show/remove/reset行為不得改變。

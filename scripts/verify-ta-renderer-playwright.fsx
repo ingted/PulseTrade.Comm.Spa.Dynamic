@@ -277,6 +277,61 @@ let requireFixedCssStroke (session: ICDPSession) selector (locator: ILocator) mi
         $"{selector} computed stroke width must be {expected}, actual={computed}"
     computed
 
+let rowControlIds = [| "price"; "volume"; "sma"; "dmi"; "adx"; "macd"; "heikin" |]
+
+let verifyRowControlLines viewportLabel viewportWidth (session: ICDPSession) (page: IPage) =
+    let lines = page.Locator("[data-testid^='ta-row-control-line-']")
+    require (lines.CountAsync() |> awaitTask = rowControlIds.Length) $"{viewportLabel} must render one control line per authored row"
+
+    let mutable previousBottom = -1.0f
+    for rowId in rowControlIds do
+        let line = page.Locator($"[data-testid='ta-row-control-line-{rowId}']")
+        let rowControls = line.Locator($":scope > [data-testid='ta-row-controls-{rowId}']")
+        let traceRegion = line.Locator($":scope > [data-testid='ta-trace-toggles-{rowId}']")
+        require (line.CountAsync() |> awaitTask = 1) $"{viewportLabel} row {rowId} must have exactly one stable control line"
+        require (rowControls.CountAsync() |> awaitTask = 1) $"{viewportLabel} row {rowId} controls must be owned by its line"
+        require (traceRegion.CountAsync() |> awaitTask = 1) $"{viewportLabel} row {rowId} trace controls must be owned by its line"
+        require (rowControls.Locator($"[data-testid='ta-toggle-row-{rowId}']").CountAsync() |> awaitTask = 1) $"{viewportLabel} row {rowId} visibility control escaped its line"
+
+        let lineBox = line.BoundingBoxAsync() |> awaitTask
+        requireBoxInside viewportWidth ($"{viewportLabel} row control line {rowId}") lineBox
+        require (abs (lineBox.Height - 40.0f) <= 0.5f) $"{viewportLabel} row {rowId} control line must remain fixed at 40px, actual={lineBox.Height}"
+        require (lineBox.Y > previousBottom + 0.5f) $"{viewportLabel} row {rowId} must occupy a separate Y band"
+        previousBottom <- lineBox.Y + lineBox.Height
+
+        let traceButtons = traceRegion.Locator("[data-testid^='ta-toggle-trace-']")
+        require (traceButtons.CountAsync() |> awaitTask > 0) $"{viewportLabel} fixture row {rowId} must expose a controllable trace"
+        let firstTraceBox = traceButtons.First.BoundingBoxAsync() |> awaitTask
+        require (not (isNull firstTraceBox)) $"{viewportLabel} row {rowId} first trace control must expose geometry"
+        for traceIndex in 1 .. (traceButtons.CountAsync() |> awaitTask) - 1 do
+            let traceBox = traceButtons.Nth(traceIndex).BoundingBoxAsync() |> awaitTask
+            require (not (isNull traceBox)) $"{viewportLabel} row {rowId} trace {traceIndex} must expose geometry"
+            require (abs (traceBox.Y - firstTraceBox.Y) <= 0.5f) $"{viewportLabel} row {rowId} trace controls must share one Y band"
+
+    require (page.Locator("[data-testid='ta-toggle-trace-price-signals']").CountAsync() |> awaitTask = 0) $"{viewportLabel} Marker system trace must not enter controls"
+    require (page.Locator("[data-testid='ta-toggle-trace-price-overview-signal']").CountAsync() |> awaitTask = 0) $"{viewportLabel} OverviewStripe system trace must not enter controls"
+    require (page.Locator("[data-testid='ta-toggle-trace-price-overview-fill']").CountAsync() |> awaitTask = 0) $"{viewportLabel} OverviewStripe system trace must not enter controls"
+
+    let traceStyle =
+        computedStyleProperties
+            session
+            "[data-testid='ta-trace-toggles-macd']"
+            [| "display"; "flex-wrap"; "overflow-x"; "overflow-y" |]
+    require (Map.tryFind "display" traceStyle = Some "flex") $"{viewportLabel} trace region must remain flex, actual={traceStyle}"
+    require (Map.tryFind "flex-wrap" traceStyle = Some "nowrap") $"{viewportLabel} trace region must not wrap, actual={traceStyle}"
+    require (Map.tryFind "overflow-x" traceStyle = Some "auto") $"{viewportLabel} trace region must own horizontal overflow, actual={traceStyle}"
+    require (Map.tryFind "overflow-y" traceStyle = Some "hidden") $"{viewportLabel} trace region must not create vertical overflow, actual={traceStyle}"
+    let traceStyleAttribute = attributeOrEmpty (page.Locator("[data-testid='ta-trace-toggles-macd']")) "style"
+    require (traceStyleAttribute.Replace(" ", "").Contains("white-space:nowrap", StringComparison.OrdinalIgnoreCase)) $"{viewportLabel} trace text must stay on one line, actual={traceStyleAttribute}"
+
+    if viewportWidth <= 390 then
+        let macdRegion = page.Locator("[data-testid='ta-trace-toggles-macd']")
+        let macdButtons = macdRegion.Locator("[data-testid^='ta-toggle-trace-']")
+        let regionBox = macdRegion.BoundingBoxAsync() |> awaitTask
+        let lastBox = macdButtons.Last.BoundingBoxAsync() |> awaitTask
+        require (not (isNull regionBox) && not (isNull lastBox)) "narrow MACD trace controls must expose geometry"
+        require (lastBox.X + lastBox.Width > regionBox.X + regionBox.Width + 1.0f) "narrow MACD controls must overflow only inside their row-local scroll region"
+
 let startMainThreadTrace (session: ICDPSession) =
     let completion = TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously)
     let emitter = session.Event("Tracing.tracingComplete")
@@ -543,6 +598,7 @@ let verifyDesktop (browser: IBrowser) =
     requireText (page.Locator("[data-testid='ta-workspace-title']")) "PTMD TA Research"
     requireText (page.Locator("[data-testid='ta-freshness']")) "LIVE"
     require ((page.Locator("[data-testid='ta-chart-stack'] section").CountAsync() |> awaitTask) = 7) "all seven configured TA rows must render"
+    verifyRowControlLines "desktop" 1440 longTaskSession page
     let plotSurfaces = page.Locator("svg[role='img'][data-testid^='ta-candle-'], svg[role='img'][data-testid^='ta-composite-']")
     require (plotSurfaces.CountAsync() |> awaitTask = 7) "all chart surfaces must expose the generic plot contract"
     for index in 0 .. (plotSurfaces.CountAsync() |> awaitTask) - 1 do
@@ -1056,6 +1112,8 @@ let verifyDesktop (browser: IBrowser) =
     let cursorLatency = Diagnostics.Stopwatch.StartNew()
     priceChart.HoverAsync() |> awaitUnit
     let crosshairXAfter = waitForAttributeChange firstCrosshair "x1" crosshairXBefore
+    let activePointerBox = priceChart.BoundingBoxAsync() |> awaitTask
+    require (not (isNull activePointerBox)) "price chart must retain pointer geometry after Playwright scrolls it into view"
     let smaLegendValueAfterCursor = waitForTextChange smaLegendValue smaLegendValueBeforeCursor
     cursorLatency.Stop()
     let cursorValues = page.Locator("[data-testid='ta-cross-scale-values']")
@@ -1081,9 +1139,11 @@ let verifyDesktop (browser: IBrowser) =
     let mutable maximumCursorLatencyMs = 0L
     let cursorLatencies = ResizeArray<int64>()
     for sample in 0 .. 299 do
-        let ratio = if sample % 2 = 0 then 0.18f else 0.82f
+        // Playwright may choose the left actionable point for the initial SVG hover.
+        // Start the sustained alternation at the opposite edge so the first sample is a real transition.
+        let ratio = if sample % 2 = 0 then 0.82f else 0.18f
         let movement = Diagnostics.Stopwatch.StartNew()
-        page.Mouse.MoveAsync(pointerBox.X + pointerBox.Width * ratio, pointerBox.Y + pointerBox.Height / 2.0f) |> awaitUnit
+        page.Mouse.MoveAsync(activePointerBox.X + activePointerBox.Width * ratio, activePointerBox.Y + activePointerBox.Height / 2.0f) |> awaitUnit
         let currentCrosshairX = waitForAttributeChange firstCrosshair "x1" previousCrosshairX
         movement.Stop()
         cursorTransitions <- cursorTransitions + 1
@@ -1362,6 +1422,9 @@ let verifyMobile (browser: IBrowser) =
     let viewportWidth = 390
     let context = browser.NewContextAsync(BrowserNewContextOptions(ViewportSize = ViewportSize(Width = viewportWidth, Height = 844), IsMobile = true)) |> awaitTask
     let page = context.NewPageAsync() |> awaitTask
+    let styleSession = context.NewCDPSessionAsync(page) |> awaitTask
+    styleSession.SendAsync("DOM.enable") |> awaitTask |> ignore
+    styleSession.SendAsync("CSS.enable") |> awaitTask |> ignore
     let consoleErrors = ResizeArray<string>()
     page.Console.Add(fun (message: IConsoleMessage) -> if message.Type = "error" then consoleErrors.Add message.Text; printfn "mobile console error: %s" message.Text)
     page.PageError.Add(fun (error: string) -> consoleErrors.Add error; printfn "mobile page error: %s" error)
@@ -1377,6 +1440,7 @@ let verifyMobile (browser: IBrowser) =
     require (page.Locator("[data-testid='ta-apply-query']").IsVisibleAsync() |> awaitTask) "mobile Load / Apply must remain visible"
     require (page.Locator("[data-testid='ta-add-row-toggle']").IsVisibleAsync() |> awaitTask) "mobile Add Row must remain visible"
     require (page.Locator("[data-testid='ta-edit-row-sma']").IsVisibleAsync() |> awaitTask) "mobile bound row Edit must remain visible"
+    verifyRowControlLines "mobile" viewportWidth styleSession page
 
     page.Locator("[data-testid='ta-add-row-toggle']").ClickAsync() |> awaitUnit
     requireBoxInside viewportWidth "mobile Add Row editor" (page.Locator("[data-testid='ta-add-row-editor']").BoundingBoxAsync() |> awaitTask)
@@ -1384,6 +1448,7 @@ let verifyMobile (browser: IBrowser) =
 
     Directory.CreateDirectory outputDirectory |> ignore
     page.ScreenshotAsync(PageScreenshotOptions(Path = Path.Combine(outputDirectory, "mobile.png"), FullPage = true)) |> awaitTask |> ignore
+    styleSession.DetachAsync() |> awaitUnit
     context.CloseAsync() |> awaitUnit
 
 let playwright = Playwright.CreateAsync() |> awaitTask

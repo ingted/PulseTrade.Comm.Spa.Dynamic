@@ -1,0 +1,25 @@
+# PTCS Dynamic row control line layout
+
+## Pre-work plan
+
+- 背景：Daedalus 的真 SPAA 多 row UI 顯示 `ta-row-toggles` 將所有 row 與 trace controls 放在同一 flex-wrap flow，跨 row 換行後無法辨識 ownership。
+- 目標：每個 `document.Rows` item 產生一條 stable `ta-row-control-line-{rowId}`；左側只含 row controls，右側只含該 row controllable traces。
+- 不變事項：Marker／OverviewStripe 維持 system trace；hide/show/remove/reset action、document contract、data flow 與 row lifecycle semantics 不變。
+- Narrow invariant：row line 與 trace region 均 single-line/nowrap；寬度不足只允許 row-local horizontal overflow，line 高度不得增加，也不得與下一個 row 共用 flow。
+- 範圍：Dynamic Renderer F#、owner browser regressions、RFC/current docs、immutable exact package candidate graph；不改 Daedalus SPAA private code。
+- 驗收：desktop/narrow Playwright 驗每 row 一 line、trace descendant ownership、同 row Y band、跨 row Y band 分離、窄版高度不增、局部 overflow，以及既有 lifecycle regression。
+- 風險：WebSharper bundle 產物與 package graph 必須由 source 重建；不得直接編輯 generated JavaScript。
+- 停止條件：owner source/tests/build/immutable candidate 完成並回報 Daedalus；public push 仍以 consumer 真 SPAA gate 為準。
+
+## 假設
+
+- Daedalus 提供的真 SPAA document row ids 是 authoritative opaque keys；Renderer只依 authored `RowId`建立stable selector，不推論命名格式。
+- 此 slice 不改wire/action，因此Contracts與Dynamic.Ptcs版本保持不變。
+
+## Operations
+
+- 2026-09-28 02:23 +08:00：建立工作紀錄；COMM 已確認 single-line/nowrap 更正契約。
+- 2026-09-28 02:25 +08:00：Renderer baseline focused suite 49/49 PASS。新增RFC-0030及REQ/SA/SD/WBS/Test追溯鏈；package變更限定Renderer與兩個direct renderer clients。
+- 2026-09-28 02:42 +08:00：完成row-local F# DOM wrapper與active consumer version alignment。Source-built focused suitesRenderer 49/49、Interactive 12/12、Ptcs.Client 17/17 PASS。
+- 2026-09-28 02:46 +08:00：desktop/390px完整Renderer Playwright及generic marker gate PASS；新增geometry gate驗唯一line、固定40px、single Y band、system trace排除與row-local overflow。既有cursor verifier因Hover自動捲動後沿用stale box而失敗，改為scroll後重取geometry並完整通過。
+- 2026-09-28 02:47 +08:00：Interactive package verifier PASS。Local candidate hashes已寫入RFC/Verification/DevLog；public push等待Daedalus consumer gate。

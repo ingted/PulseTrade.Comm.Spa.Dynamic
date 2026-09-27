@@ -722,3 +722,18 @@ Overview selection rect只負責半透明選取填色。左右可見邊界為`ta
 Overview selection填色為`rgba(203,213,225,.20)`；左右可見boundary為`#4ade80`、2 CSS px、non-scaling stroke。transparent 8-unit hit rect與drag geometry維持原contract。
 
 Test seams：fresh 4,000 visibleBars、fallback/clamp；single／dense64／empty OFI；24px固定高度與DOM順序；inline label absent；超過3,000 points且marker／相鄰slot同CSS pixel時，直接hover glyph仍精確選marker slot與EventTimeUtc；一般plot axis snap不變；cursor不重掛chart；overview initial/drag palette與2px；exact package bundle manifest。
+## TA row-local control layout（RFC-0030）
+
+Renderer依 `document.Rows` 順序建立：
+
+```fsharp
+div [ dataTestId $"ta-row-control-line-{row.RowId}"; fixedSingleLine ] [
+    div [ dataTestId $"ta-row-controls-{row.RowId}"; noWrap ] rowControls
+    if controllableTraces.Length > 0 then
+        div [ dataTestId $"ta-trace-toggles-{row.RowId}"; noWrap; rowLocalOverflowX ] traceControls
+]
+```
+
+Outer `ta-row-toggles` 使用column layout；line固定高度／`overflow:hidden`。Trace region使用`flex:1 1 auto; min-width:0; overflow-x:auto; overflow-y:hidden; white-space:nowrap; flex-wrap:nowrap`，因此窄版只產生row-local水平scroll。Filter仍排除`Marker`與`OverviewStripe`，所有click/action handler保持既有實作。
+
+測試以F# Playwright locator/BoundingBox量測：line count、descendant ownership、desktop/narrow相同高度、同row controls Y band、跨row Y band分離及narrow `scrollWidth > clientWidth`。不得用inline JavaScript或直接改generated bundle。

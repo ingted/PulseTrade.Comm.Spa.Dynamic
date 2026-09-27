@@ -51,11 +51,11 @@ TaWorkspaceRenderer.renderWithProjectionCommit
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-generic-marker-playwright.fsx`。
-- current owner candidate：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.81`，exact依賴Contracts `[0.1.30]`與FSharp.Core `[10.1.400]`。除既有RFC-0028 geometry外，RFC-0029把Marker與OverviewStripe合併至同一cursor event band，以stable id去重及authored-trace round-robin分配四個visible chips；逐trace hide/show是local state，remove走typed `remove-trace` action，最後一條non-system trace移除後收合row。Row data window採wrap/auto height且無內部scrollbar。這是owner-gated candidate，Daedalus真SPAA驗收及public push仍待完成。
+- current owner candidate：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.82`，exact依賴Contracts `[0.1.30]`與FSharp.Core `[10.1.400]`。RFC-0030把每個authored row的row/trace controls收進獨立`ta-row-control-line-{rowId}`；control line與trace region皆nowrap，窄版只在row-local trace region水平捲動。RFC-0029的system trace排除、hide/show/remove/reset與cursor/marker語意不變。這是owner-gated candidate，Daedalus真SPAA驗收及public push仍待完成。
 
 RFC-0028 release為Renderer `0.1.76`、Contracts `[0.1.29]`、Interactive.Client `0.1.67`。它包含RFC-0027 typed dark plot／Histogram polarity，並以`DefaultView.visibleBars`初始化fresh canvas；plot marker只保留glyph/tooltip，每列在cursor gutter與plot間提供固定24px OFI band，最多4筆＋`+N`。一般plot hover依axis snap；直接marker／cluster hit以accepted placement exact slot更新同一shared cursor並停止冒泡，避免高密度同CSS pixel時偏至鄰slot。Overview selection為淺灰，visual boundaries為亮綠2 CSS px且不改transparent hit targets。
 
-RFC-0029 candidate為Renderer `0.1.81`、Contracts `[0.1.30]`、Interactive.Client `0.1.72`。Marker semantic color不因dark mode改寫；contrast halo只作背景分離。OFI的`None`表示capability存在但slot無event，`Unavailable`表示缺capability。Marker／OverviewStripe不出現在trace controls，Reset Canvas與canvas identity replacement會清除local hidden/removed state。
+RFC-0030 candidate為Renderer `0.1.82`、Contracts `[0.1.30]`、Interactive.Client `0.1.73`。每個row control line固定single-line Y band；右側trace region使用nowrap與row-local overflow。Marker／OverviewStripe不出現在trace controls，Reset Canvas與canvas identity replacement仍清除local hidden/removed state。
 
 RFC-0017之後，cache rehydrate即使保留current identity/revision，只要validated Data object替換仍會重畫。row legend以`rowId + local trace index`隔離；All模式保留完整scale/cursor arrays，但以bounded candle/line paths呈現。non-base candle cursor使用一次range projection，不再對每個base timestamp掃描完整source。
 
