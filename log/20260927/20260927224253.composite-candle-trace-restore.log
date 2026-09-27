@@ -22,3 +22,4 @@
 - 測試host已停止，port 18882無listener；`git diff --check`與changed-path strict UTF-8/NUL/U+FFFD檢查通過。
 - Changed-path sensitive scan：files=8，High=0、Medium=0；Info為既有版本／路徑文字。
 - `check.fsx`：PASS=28、WARN=2、FAIL=0。WARN為commit前`git_dirty`及既有全repo traceability coverage，不屬本輪衝突。
+- Milestone commit/push完成：`41c3ff5 Close RFC-0029 consumer release`已推至`origin/20260915_033.ptcs_group_support`。
