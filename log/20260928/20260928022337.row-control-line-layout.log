@@ -23,3 +23,5 @@
 - 2026-09-28 02:42 +08:00：完成row-local F# DOM wrapper與active consumer version alignment。Source-built focused suitesRenderer 49/49、Interactive 12/12、Ptcs.Client 17/17 PASS。
 - 2026-09-28 02:46 +08:00：desktop/390px完整Renderer Playwright及generic marker gate PASS；新增geometry gate驗唯一line、固定40px、single Y band、system trace排除與row-local overflow。既有cursor verifier因Hover自動捲動後沿用stale box而失敗，改為scroll後重取geometry並完整通過。
 - 2026-09-28 02:47 +08:00：Interactive package verifier PASS。Local candidate hashes已寫入RFC/Verification/DevLog；public push等待Daedalus consumer gate。
+- 2026-09-28 02:54 +08:00：source commit `15b1f8b`已push。Consumer明確要求official immutable artifact後才consume，故修正發布順序，不再等待consumer使用可覆寫local feed。
+- 2026-09-28 03:00 +08:00：Renderer `0.1.82`、Interactive.Client `0.1.73`、Ptcs.Client `0.1.83` push均回`Created`。NuGet flat-container索引完成後重新下載，official SHA-256依序為`20D89407...15A073`、`21CC8DDA...407C8B`、`5EE7C03D...5F36CB`；三包repository signature與exact dependency readback PASS。已通知Daedalus以official graph執行真SPAA gate。

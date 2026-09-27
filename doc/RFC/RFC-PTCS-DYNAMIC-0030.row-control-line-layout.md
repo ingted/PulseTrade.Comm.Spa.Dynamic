@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0030：TA Row Control Line Layout
 
 - ID：`RFC-PTCS-DYNAMIC-0030`
-- 狀態：Owner verified / consumer acceptance pending
+- 狀態：Official immutable candidate published / consumer acceptance pending
 - Owner：PTCS Dynamic Renderer（Aster）
 - Consumer：PulseTrade.Comm.Spa.Dynamic.Interactive.Extension／SPAA（Daedalus）
 - 關聯：`RFC-PTCS-DYNAMIC-0029`、`DYN-WBS-570`、`DYN-T-626..628`
@@ -56,7 +56,7 @@ Trace region 必須有 `min-width:0`，讓 flex item 能在剩餘寬度內縮小
 - `PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.51`（不變）
 - `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.83` exact Contracts `[0.1.30]`、Renderer `[0.1.82]`
 
-Public push前先交付 local immutable nupkg SHA-256與 exact dependency readback，待 Daedalus 真 SPAA 8-row geometry/functional gate通過後再發布。
+原決策是先以 local immutable nupkg 取得 consumer GREEN 再 public push；consumer 明確要求以 official immutable readback 避免同版覆寫風險，因此 release gate 改為先發布唯一版本，再由 Daedalus 以該官方 artifact 執行真 SPAA gate。Consumer acceptance仍是RFC結案條件，發布成功不等同產品驗收完成。
 
 ## 驗收
 
@@ -65,7 +65,7 @@ Public push前先交付 local immutable nupkg SHA-256與 exact dependency readba
 3. 不同 row control line 的Y band分離；窄版長trace列顯示row-local horizontal overflow。
 4. Marker／OverviewStripe不出現在trace controls；既有 hide/show/remove/reset regressions全綠。
 5. Browser console/page error為零；source test、full WebSharper build、package manifest/exact dependency驗證通過。
-6. Daedalus以真 SPAA 8-row workspace驗證geometry與功能後，才允許 public push。
+6. Daedalus只以 official immutable package graph執行真 SPAA 8-row workspace geometry／functional gate；consumer GREEN後才結案。
 
 ## Owner Evidence（2026-09-28）
 
@@ -73,5 +73,6 @@ Public push前先交付 local immutable nupkg SHA-256與 exact dependency readba
 - `verify-ta-renderer-playwright.fsx` PASS：desktop／390px皆為7條唯一40px control line；同row trace Y band一致，MACD窄版只在row-local region overflow。既有4,000-bar、300 cursor transitions與lifecycle/performance gates全綠，正式phase皆無>100ms task。
 - `verify-ta-generic-marker-playwright.fsx` PASS：4,000 bars、48 candle paths、all=64ms、pointer p95=19.89ms/max42ms；system trace與hide/show/remove/reset regressions維持。
 - `verify-interactive-client-package.fsx` PASS，manifest為Interactive.Client `0.1.73`，exact Renderer `[0.1.82]`。
-- Immutable local nupkg SHA-256：Renderer `4AC9E21A53854C3A01A7FBCFA3F1AFC470C52FD691BE9118104AD2B89C2B02A3`；Interactive.Client `A5B5B0BF942FCD86D6E00D7523995813C306D43B9BA92D71C7D08AB7A8137CAD`；Ptcs.Client `D294C63E35D595407F5197D3C2FB35CEDF6B7797E55D3C5E2A23028DED161D95`。
-- Public push尚未執行；等待Daedalus真SPAA 8-row desktop/640px gate。
+- Source commit `15b1f8b` 已push。Renderer `0.1.82`、Interactive.Client `0.1.73`、Ptcs.Client `0.1.83` public push均回`Created`。
+- Official signed nupkg SHA-256：Renderer `20D89407F1588618E88E297EB86E5DC4C658ED7510D581519EE29AC76515A073`；Interactive.Client `21CC8DDA7DAE5C1D3C8D6C16668AAC02C0E67CC7161F248A017627DB37407C8B`；Ptcs.Client `5EE7C03DC3308E26BD58063BC51D0831F95F4349F89CDB5BF71C6A47F95F36CB`。三包`dotnet nuget verify --all`均確認有效NuGet.org repository signature，official nuspec exact dependencies符合Package Graph。
+- Daedalus真SPAA 8-row desktop/640px consumer gate仍待回覆，不因public artifact存在而宣稱GREEN。

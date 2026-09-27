@@ -1726,3 +1726,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 新增DYN-T-626..628與F# Playwright geometry gate。七個BrowserDemo rows在1440／390px皆唯一、40px高且Y band分離；同row trace buttons同Y band，390px MACD long trace region證明row-local overflow。因控制區增高會觸發Playwright auto-scroll，兩套既有verifier改為scroll後重取chart geometry，避免使用stale bounding box。
 - Source-built focused suites`49/12/17`、完整renderer Playwright、generic marker Playwright及Interactive package verifier通過；正式performance phases皆無>100ms task。Local exact graph為Contracts `0.1.30`（不變）、Renderer `0.1.82`、Interactive.Client `0.1.73`、Dynamic.Ptcs `0.1.51`（不變）、Ptcs.Client `0.1.83`。
 - Local nupkg SHA-256依序為Renderer `4AC9E21A53854C3A01A7FBCFA3F1AFC470C52FD691BE9118104AD2B89C2B02A3`、Interactive.Client `A5B5B0BF942FCD86D6E00D7523995813C306D43B9BA92D71C7D08AB7A8137CAD`、Ptcs.Client `D294C63E35D595407F5197D3C2FB35CEDF6B7797E55D3C5E2A23028DED161D95`。等待Daedalus真SPAA desktop/640px consumer GREEN後才public push。
+
+## 2026-09-28 - RFC-0030 official immutable candidate release
+
+- Correction：consumer要求先取得official immutable artifact與readback，以免相同版本在local feed被覆寫；因此發布順序由「consumer GREEN後push」改為「唯一official版本先發布、consumer只驗該artifact」。產品驗收仍pending，沒有以push成功取代真SPAA gate。
+- Source commit `15b1f8b`已push。Renderer `0.1.82`、Interactive.Client `0.1.73`、Ptcs.Client `0.1.83` public push均回`Created`；官方SHA-256依序為`20D89407F1588618E88E297EB86E5DC4C658ED7510D581519EE29AC76515A073`、`21CC8DDA7DAE5C1D3C8D6C16668AAC02C0E67CC7161F248A017627DB37407C8B`、`5EE7C03DC3308E26BD58063BC51D0831F95F4349F89CDB5BF71C6A47F95F36CB`。
+- 三包`dotnet nuget verify --all`均確認NuGet.org repository signature有效；official nuspec exact dependencies符合RFC：Renderer→Contracts `[0.1.30]`，Interactive→Contracts `[0.1.30]`＋Renderer `[0.1.82]`，Ptcs.Client→PTCS `[0.2.46]`＋Contracts `[0.1.30]`＋Renderer `[0.1.82]`。Daedalus已收到source commit、official hashes與consumer gate請求。

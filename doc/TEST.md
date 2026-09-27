@@ -762,4 +762,4 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | --- | --- | --- |
 | DYN-T-626 | Renderer DOM ownership | OWNER PASS：7個authored rows各恰有一條`ta-row-control-line-{rowId}`；row/trace controls只存在於同row line；Marker/OverviewStripe不出現在controls。 |
 | DYN-T-627 | Desktop/narrow geometry | OWNER PASS：1440px與390px line固定40px、同row controls同Y band、跨row Y band分離；390px MACD region nowrap且內容只在自身水平overflow。 |
-| DYN-T-628 | Lifecycle/package regression | OWNER PASS：focused `49/12/17`、兩套F# Playwright、console/page errors=0、full WebSharper bundle與package verifier全綠。CONSUMER PENDING：真SPAA 8-row desktop/640px gate後才public push。 |
+| DYN-T-628 | Lifecycle/package regression | OWNER/RELEASE PASS：focused `49/12/17`、兩套F# Playwright、console/page errors=0、full WebSharper bundle、package verifier、official repository signature及exact dependency readback全綠。CONSUMER PENDING：Daedalus以官方graph執行真SPAA 8-row desktop/640px gate。 |
