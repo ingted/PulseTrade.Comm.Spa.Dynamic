@@ -1739,3 +1739,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - `TaWorkspaceRenderer`新增reactive display-time overload，axis、row cursor、data window、temporal metadata、marker／stripe／OFI tooltip及status watermark共用同一selection；canonical UTC DOM attribute、query/cache/wire、viewport與revision不變。Interactive與PTCS clients新增typed `View<SduiDisplayTimeZone>`入口，既有API維持UTC。
 - Exact local graph為Contracts `0.1.31`、Renderer `0.1.83`、Interactive.Client `0.1.74`、Dynamic.Ptcs `0.1.52`、Ptcs.Client `0.1.84`。Focused suites`45/51/12/15/17`、五包build、Interactive package verifier與4,000-bar F# Playwright snapshot→patch gate通過；切換未送action且canonical/viewport/loaded bars不漂移。
 - Canonical checkout的既有`websharper.log` ACL會使compiler process crash；依既有流程使用source-identical disposable staging完整編譯，未停用WebSharper作release evidence。Local nupkg SHA依序為`75CDE97F...D427 / B56A6277...1110 / E9521B20...B1DA / 2C3BEDA2...E8C9 / 2A938D58...F82`；public release/readback與Daedalus真SPAA gate待後續完成。
+
+## 2026-09-28 - RFC-0031 official immutable release
+
+- Source commit `5bdc13c6214ccf3c4a0b5e31c0f777b8c7eb00ca`已push。Contracts `0.1.31`、Renderer `0.1.83`、Interactive.Client `0.1.74`、Dynamic.Ptcs `0.1.52`、Ptcs.Client `0.1.84` public push全回`Created`。
+- NuGet.org official SHA-256依序為`CEB70E74EC1143646261DD43079F26177B01D428A726CBDD129356ED91CEA086 / 211031F700E7F6DA24A766D05DF4FC11D015B074ED32C251776BBC2E6D5C7B9D / 1F4EA667DA2997DE90A1E556284EC2DC7ADF88C964A1C2D06668C8B7B4F65517 / D3C7A0D8DBEA6E93D5867B4A1A9A1CBBDAA9D3017D3453A75E620BD3FFC13478 / 6E2D1271F0BA0BC101209F8A57AC731C73A6B591CFF55181765E4969F5F1A325`。
+- 五包`dotnet nuget verify --all`均確認NuGet.org Repository signature有效；排除`.signature.p7s`後，local/official package entry名稱與內容hash差異全為0。Owner release gate完成；Daedalus真SPAA no-fetch/no-run/no-revision-drift仍是consumer acceptance gate。
