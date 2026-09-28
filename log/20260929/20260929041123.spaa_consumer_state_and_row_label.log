@@ -54,3 +54,4 @@ Viewport queue若使用過期revision可能污染authority；overview若由Rende
 - 05:47 流程偏差：第一次baseline後為滿足required fields曾把假設／風險插入plan，後續又錯移至Operations尾端，導致兩次readonly gate。現將active log一次整理成正確plan結構；未刪改產品／測試／release evidence。此後只允許檔尾append。
 - 05:49 以修正後的同一baseline重跑append-only與required-fields gate；本次僅在檔尾追加操作紀錄。
 - 05:51 `check.fsx`通過：PASS=31、WARN=10、FAIL=0；`active_log_append_only`與`latest_log_required_fields`均PASS。WARN為既有文件追溯與commit前dirty狀態，不阻擋本批release文件提交。
+- 05:53 Sensitive scan為high=0、medium=0，`git diff --check`無錯誤。Release readback文件以commit `df32193` push；active log受既有ignore規則排除，改以精確單檔force-add完成追溯提交。
