@@ -313,6 +313,191 @@ let tests =
               scheduled.Dequeue() ()
               Expect.equal outcome (Some BrowserRuntimeFramePumpOutcome.Superseded) "superseded snapshot work must publish no candidate")
 
+          testCase "DYN-T-648 adjacent cache selection uses temporal proximity and preserves known-empty spans" (fun _ ->
+              let projection startOrdinal observationCount segments =
+                  { CoverageIdentity = "coverage:es-1k"
+                    CoverageRevision = 7L
+                    QueryGeneration = 3L
+                    Completeness = TaCoverageCompleteness.Partial
+                    TotalObservationCount = None
+                    Segments = segments
+                    OverviewAnchors = [||]
+                    ActiveDetail =
+                      { StartObservationOrdinal = startOrdinal
+                        ObservationCount = observationCount
+                        BaseAxisRef = "axis.1k" } }
+              let entry startUtc endUtc capturedAt coverageProjection =
+                  { CacheIdentity = { OwnerFingerprint = "owner"; SchemaRevision = 1L }
+                    WorkspaceId = framePumpDocument.WorkspaceId
+                    Document =
+                      { framePumpDocument with
+                          DefaultView = Map.empty |> TaLoadedCoverageCodec.apply coverageProjection }
+                    Snapshot = { Data = Map.empty; Freshness = TaFreshness.Live }
+                    DocumentRevision = 1L
+                    DataRevision = 1L
+                    Coverage =
+                      { StartEventTimeUtc = DateTimeOffset.Parse startUtc
+                        EndEventTimeExclusiveUtc = DateTimeOffset.Parse endUtc }
+                    CapturedAtUtc = DateTimeOffset.Parse capturedAt }
+
+              let far =
+                  entry
+                      "2026-08-01T00:00:00Z"
+                      "2026-08-02T00:00:00Z"
+                      "2026-09-10T00:00:00Z"
+                      (projection 0L 250 [||])
+              let nearest =
+                  entry
+                      "2026-09-01T00:00:00Z"
+                      "2026-09-02T00:00:00Z"
+                      "2026-09-01T00:00:00Z"
+                      (projection 250L 250 [||])
+              let query =
+                  { AcceptedProjection =
+                      projection
+                          500L
+                          250
+                          [| { SegmentId = "loaded"
+                               StartEventTimeUtc = "2026-08-01T00:00:00Z"
+                               EndEventTimeExclusiveUtc = "2026-09-03T00:00:00Z"
+                               StartObservationOrdinal = 0L
+                               ObservationCount = 750L } |]
+                    Direction = TaCoverageDirection.Earlier
+                    MaximumObservations = 250 }
+
+              match BrowserRuntimeCache.selectAdjacent query [| far; nearest |] with
+              | BrowserRuntimeCacheAdjacentSelection.Hit hit ->
+                  Expect.equal hit.SourceEntry nearest "Adjacent selection must choose temporal proximity instead of the newest captured record."
+                  match TaLoadedCoverageCodec.tryDecode hit.RebasedEntry.Document.DefaultView with
+                  | Ok(Some projection) ->
+                      Expect.equal projection.ActiveDetail.StartObservationOrdinal 250L "Rebase must retain the selected page."
+                      Expect.equal projection.Segments query.AcceptedProjection.Segments "Rebase must carry current coverage metadata."
+                  | result -> failtestf "Expected a rebased adjacent projection, got %A" result
+              | result -> failtestf "Expected adjacent cache hit, got %A" result
+
+              let emptySegment =
+                  { SegmentId = "holiday"
+                    StartEventTimeUtc = "2026-09-04T00:00:00Z"
+                    EndEventTimeExclusiveUtc = "2026-09-05T00:00:00Z"
+                    StartObservationOrdinal = 750L
+                    ObservationCount = 0L }
+              let emptyEntry =
+                  entry
+                      "2026-09-01T00:00:00Z"
+                      "2026-09-02T00:00:00Z"
+                      "2026-09-02T00:00:00Z"
+                      (projection 250L 251 [| emptySegment |])
+              let laterQuery =
+                  { query with
+                      AcceptedProjection =
+                        { query.AcceptedProjection with
+                            Segments = [| emptySegment |] }
+                      Direction = TaCoverageDirection.Later }
+              match BrowserRuntimeCache.selectAdjacent laterQuery [| emptyEntry |] with
+              | BrowserRuntimeCacheAdjacentSelection.KnownEmpty span ->
+                  Expect.equal span.StartEventTimeUtc "2026-09-04T00:00:00Z" "Known-empty retains its exact UTC start."
+                  Expect.equal span.EndEventTimeExclusiveUtc "2026-09-05T00:00:00Z" "Known-empty retains its exact UTC end."
+              | result -> failtestf "Expected KnownEmpty, got %A" result)
+
+          testCase "DYN-T-648B adjacent cache rebase preserves valid old pages without weakening revision gates" (fun _ ->
+              let projection revision startOrdinal observationCount segments =
+                  { CoverageIdentity = "coverage:es-1k"
+                    CoverageRevision = revision
+                    QueryGeneration = revision
+                    Completeness = TaCoverageCompleteness.Partial
+                    TotalObservationCount = None
+                    Segments = segments
+                    OverviewAnchors = [||]
+                    ActiveDetail =
+                      { StartObservationOrdinal = startOrdinal
+                        ObservationCount = observationCount
+                        BaseAxisRef = "axis.1k" } }
+              let initialA =
+                  { SegmentId = "page-a-initial"
+                    StartEventTimeUtc = "2026-09-01T00:00:00Z"
+                    EndEventTimeExclusiveUtc = "2026-09-02T00:00:00Z"
+                    StartObservationOrdinal = 0L
+                    ObservationCount = 250L }
+              let prependedB =
+                  { SegmentId = "page-b"
+                    StartEventTimeUtc = "2026-08-01T00:00:00Z"
+                    EndEventTimeExclusiveUtc = "2026-09-01T00:00:00Z"
+                    StartObservationOrdinal = 0L
+                    ObservationCount = 250L }
+              let relocatedA =
+                  { initialA with
+                      SegmentId = "page-a-relocated"
+                      StartObservationOrdinal = 250L }
+              let cachedProjection = projection 1L 0L 250 [| initialA |]
+              let acceptedProjection = projection 2L 0L 250 [| prependedB; relocatedA |]
+              let cachedEntry =
+                  { CacheIdentity = { OwnerFingerprint = "owner"; SchemaRevision = 1L }
+                    WorkspaceId = framePumpDocument.WorkspaceId
+                    Document =
+                      { framePumpDocument with
+                          DefaultView = Map.empty |> TaLoadedCoverageCodec.apply cachedProjection }
+                    Snapshot = { Data = Map.empty; Freshness = TaFreshness.Live }
+                    DocumentRevision = 1L
+                    DataRevision = 1L
+                    Coverage =
+                      { StartEventTimeUtc = DateTimeOffset.Parse "2026-09-01T00:00:00Z"
+                        EndEventTimeExclusiveUtc = DateTimeOffset.Parse "2026-09-02T00:00:00Z" }
+                    CapturedAtUtc = DateTimeOffset.Parse "2026-09-02T00:00:00Z" }
+              let query =
+                  { AcceptedProjection = acceptedProjection
+                    Direction = TaCoverageDirection.Earlier
+                    MaximumObservations = 250 }
+
+              let rebased =
+                  BrowserRuntimeCache.tryRebaseAdjacentEntry query cachedEntry
+                  |> Option.defaultWith (fun () -> failtest "A page still covered by the accepted projection must be reusable.")
+              match TaLoadedCoverageCodec.tryDecode rebased.Document.DefaultView with
+              | Ok(Some value) ->
+                  Expect.equal value.CoverageRevision 2L "The cache hit must carry the latest accepted coverage revision."
+                  Expect.equal value.QueryGeneration 2L "The cache hit must carry the latest accepted query generation."
+                  Expect.equal value.ActiveDetail.StartObservationOrdinal 250L "Prepending B must relocate cached page A from ordinal 0 to 250."
+                  Expect.equal value.ActiveDetail.ObservationCount 250 "Rebase must retain cached page A's observation count."
+              | result -> failtestf "Expected rebased loaded coverage, got %A" result
+
+              let coalescedAccepted =
+                  { acceptedProjection with
+                      Segments =
+                        [| { SegmentId = "b-plus-a"
+                             StartEventTimeUtc = prependedB.StartEventTimeUtc
+                             EndEventTimeExclusiveUtc = relocatedA.EndEventTimeExclusiveUtc
+                             StartObservationOrdinal = 0L
+                             ObservationCount = 500L } |] }
+              Expect.isNone
+                  (BrowserRuntimeCache.tryRebaseAdjacentEntry { query with AcceptedProjection = coalescedAccepted } cachedEntry)
+                  "A coalesced segment cannot uniquely relocate cached page A and must remain a miss."
+
+              let ambiguousAccepted =
+                  { acceptedProjection with
+                      Segments =
+                        [| relocatedA
+                           { relocatedA with SegmentId = "duplicate-a"; StartObservationOrdinal = 500L } |] }
+              Expect.isNone
+                  (BrowserRuntimeCache.tryRebaseAdjacentEntry { query with AcceptedProjection = ambiguousAccepted } cachedEntry)
+                  "Multiple temporal matches must not guess a page ordinal."
+
+              let foreign =
+                  { acceptedProjection with
+                      CoverageIdentity = "coverage:nq-1k" }
+              Expect.isNone
+                  (BrowserRuntimeCache.tryRebaseAdjacentEntry { query with AcceptedProjection = foreign } cachedEntry)
+                  "A different coverage identity must never be rebased."
+
+              let futureEntry =
+                  { cachedEntry with
+                      Document =
+                        { cachedEntry.Document with
+                            DefaultView =
+                              Map.empty
+                              |> TaLoadedCoverageCodec.apply (projection 3L 0L 250 [| initialA |]) } }
+              Expect.isNone
+                  (BrowserRuntimeCache.tryRebaseAdjacentEntry query futureEntry)
+                  "A future cache revision must not be accepted by an older projection.")
+
           testCase "DYN-T-584 snapshot batch commits only after every ordered item" (fun _ ->
               let initial =
                   BrowserRuntimeSnapshotBatch.create 7 "batch-7" 2

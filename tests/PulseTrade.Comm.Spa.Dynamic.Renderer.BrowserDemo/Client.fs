@@ -320,6 +320,56 @@ module Client =
                     ])
         ]
 
+    let slicePositionedSeries startIndex count = function
+        | SduiValue.Object fields as original ->
+            match fields |> Map.tryFind "points" with
+            | Some(SduiValue.Array points) ->
+                let endExclusive = startIndex + count
+                let selected =
+                    points
+                    |> Array.choose (function
+                        | SduiValue.Object pointFields ->
+                            match pointFields |> Map.tryFind "position" with
+                            | Some(SduiValue.Number position)
+                                when position >= float startIndex && position < float endExclusive ->
+                                Some(
+                                    SduiValue.Object(
+                                        pointFields
+                                        |> Map.add "position" (SduiValue.Number(position - float startIndex))))
+                            | _ -> None
+                        | _ -> None)
+                SduiValue.Object(fields |> Map.add "points" (SduiValue.Array selected))
+            | _ -> original
+        | value -> value
+
+    let coverageFixtureData startIndex count =
+        sampleSeries 500
+        |> Map.map (fun _ value -> slicePositionedSeries startIndex count value)
+
+    let coverageProjection coverageRevision queryGeneration startIndex count =
+        { CoverageIdentity = "browser-demo:loaded-coverage"
+          CoverageRevision = coverageRevision
+          QueryGeneration = queryGeneration
+          Completeness = TaCoverageCompleteness.Complete
+          TotalObservationCount = Some 500L
+          Segments =
+            [| { SegmentId = "browser-demo:complete"
+                 StartEventTimeUtc = timestamp 0
+                 EndEventTimeExclusiveUtc = timestamp 500
+                 StartObservationOrdinal = 0L
+                 ObservationCount = 500L } |]
+          OverviewAnchors =
+            [| { ObservationOrdinal = 0L
+                 EventTimeUtc = timestamp 0
+                 Value = SduiValue.Number 21800.0 }
+               { ObservationOrdinal = 499L
+                 EventTimeUtc = timestamp 499
+                 Value = SduiValue.Number 22648.0 } |]
+          ActiveDetail =
+            { StartObservationOrdinal = int64 startIndex
+              ObservationCount = count
+              BaseAxisRef = "axis.1k" } }
+
     let appendArrayValue values = function
         | SduiValue.Array existing -> SduiValue.Array(Array.append existing values)
         | existing -> existing
@@ -708,33 +758,59 @@ module Client =
                                   Message = templateKey + " accepted with " + string values.Length + " editor inputs"
                                   Recoverable = true } }
             | SduiAction.VisibleRangeChanged(_, change), _ ->
-                let currentCount =
-                    current.Data
-                    |> Map.tryFind "series.price"
-                    |> Option.bind (function
-                        | SduiValue.Array values -> Some values.Length
-                        | SduiValue.Object fields ->
-                            fields
-                            |> Map.tryFind "points"
-                            |> Option.bind (function SduiValue.Array values -> Some values.Length | _ -> None)
-                        | _ -> None)
-                    |> Option.defaultValue 0
-                let loadedEnd = timestamp currentCount
-                if change.EndEventTimeExclusiveUtc.CompareTo(loadedEnd) > 0 then
-                    let nextCount = max currentCount (capacityPointCount + 400)
-                    let rec appendNextChunk startIndex =
-                        if startIndex < nextCount then
-                            WebSharper.JavaScript.JS.RequestAnimationFrame(fun _ ->
-                                let latest = runtimeState.Value
-                                let endExclusive = min nextCount (startIndex + 100)
-                                runtimeState.Value <-
-                                    { latest with
-                                        Data = extendCoverageData startIndex endExclusive latest.Data
-                                        DataRevision = latest.DataRevision + 1L
-                                        LastTransportSequence = latest.LastTransportSequence + 1L }
-                                appendNextChunk endExclusive)
-                            |> ignore
-                    appendNextChunk currentCount
+                match change.CoverageIntent, current.Document with
+                | Some intent, Some document ->
+                    let startIndex = intent.StartObservationOrdinal |> Option.defaultValue 0L |> int
+                    let count = intent.ObservationCount
+                    let currentProjection =
+                        RendererModel.tryLoadedCoverage document.DefaultView
+                        |> Option.defaultValue (coverageProjection 0L 0L startIndex count)
+                    let nextProjection =
+                        { currentProjection with
+                            CoverageRevision = currentProjection.CoverageRevision + 1L
+                            QueryGeneration = intent.QueryGeneration
+                            ActiveDetail =
+                                { currentProjection.ActiveDetail with
+                                    StartObservationOrdinal = int64 startIndex
+                                    ObservationCount = count } }
+                    runtimeState.Value <-
+                        { current with
+                            Document =
+                                Some
+                                    { document with
+                                        DefaultView = document.DefaultView |> TaLoadedCoverageCodec.apply nextProjection }
+                            Data = coverageFixtureData startIndex count
+                            DocumentRevision = current.DocumentRevision + 1L
+                            DataRevision = current.DataRevision + 1L
+                            LastTransportSequence = current.LastTransportSequence + 1L }
+                | _ ->
+                    let currentCount =
+                        current.Data
+                        |> Map.tryFind "series.price"
+                        |> Option.bind (function
+                            | SduiValue.Array values -> Some values.Length
+                            | SduiValue.Object fields ->
+                                fields
+                                |> Map.tryFind "points"
+                                |> Option.bind (function SduiValue.Array values -> Some values.Length | _ -> None)
+                            | _ -> None)
+                        |> Option.defaultValue 0
+                    let loadedEnd = timestamp currentCount
+                    if change.EndEventTimeExclusiveUtc.CompareTo(loadedEnd) > 0 then
+                        let nextCount = max currentCount (capacityPointCount + 400)
+                        let rec appendNextChunk startIndex =
+                            if startIndex < nextCount then
+                                WebSharper.JavaScript.JS.RequestAnimationFrame(fun _ ->
+                                    let latest = runtimeState.Value
+                                    let endExclusive = min nextCount (startIndex + 100)
+                                    runtimeState.Value <-
+                                        { latest with
+                                            Data = extendCoverageData startIndex endExclusive latest.Data
+                                            DataRevision = latest.DataRevision + 1L
+                                            LastTransportSequence = latest.LastTransportSequence + 1L }
+                                    appendNextChunk endExclusive)
+                                |> ignore
+                        appendNextChunk currentCount
             | SduiAction.ResetCanvas _, _ ->
                 runtimeState.Value <-
                     { initialState with
@@ -758,6 +834,15 @@ module Client =
                                 if rejectNext.Value then
                                     rejectNext.Value <- false
                                     return Result.Ok(DynamicActionResult.Rejected(request.RequestId, "demo-rejected", "The demo rejected this action without changing the canvas."))
+                                elif
+                                    request.ExpectedDocumentRevision
+                                    |> Option.exists ((<>) runtimeState.Value.DocumentRevision)
+                                then
+                                    return
+                                        Result.Ok(
+                                            DynamicActionResult.RevisionConflict(
+                                                request.RequestId,
+                                                runtimeState.Value.DocumentRevision))
                                 else
                                     applyAuthoritativeAction request.Action
                                     return Result.Ok(DynamicActionResult.Accepted(request.RequestId, runtimeState.Value.DocumentRevision))
@@ -771,6 +856,26 @@ module Client =
                     Data = runtimeState.Value.Data |> Map.add "ta.status" (statusData "live" "LIVE / revision 42" 0.0 "within-live-threshold" "complete")
                     Poll = RuntimePollState.Ready
                     LastError = None }
+
+        let loadCoverageFixture () =
+            let current = runtimeState.Value
+            match current.Document with
+            | Some document ->
+                let projection = coverageProjection 1L 1L 250 250
+                runtimeState.Value <-
+                    { current with
+                        Document =
+                            Some
+                                { document with
+                                    DefaultView =
+                                        document.DefaultView
+                                        |> TaLoadedCoverageCodec.applyMaximumVisibleBars 250
+                                        |> TaLoadedCoverageCodec.apply projection }
+                        Data = coverageFixtureData 250 250
+                        DocumentRevision = current.DocumentRevision + 1L
+                        DataRevision = current.DataRevision + 1L
+                        LastTransportSequence = current.LastTransportSequence + 1L }
+            | None -> ()
 
         let updateLatestPreview () =
             let updateCandleValue = function
@@ -1088,6 +1193,7 @@ module Client =
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-scenario-overlays"; on.click (fun _ _ -> replaceScenarioOverlays ()) ] [ text "Replace scenario overlays" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-clear-overview-stripes"; on.click (fun _ _ -> clearOverviewStripes ()) ] [ text "Clear stripes" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-populate-overview-stripes"; on.click (fun _ _ -> populateOverviewStripes ()) ] [ text "Populate stripes" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-loaded-coverage"; on.click (fun _ _ -> loadCoverageFixture ()) ] [ text "Loaded coverage" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-reject-next"; on.click (fun _ _ -> rejectNext.Value <- true) ] [ text "Reject next" ]
                 text "callback actions "
                 textView (actionCount.View |> View.Map string)

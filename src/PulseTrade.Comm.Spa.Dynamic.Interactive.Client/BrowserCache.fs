@@ -1,5 +1,6 @@
 namespace PulseTrade.Comm.Spa.Dynamic.Interactive.Client
 
+open System
 open PulseTrade.Comm.Spa.Dynamic.Contracts
 open WebSharper
 open WebSharper.JavaScript
@@ -20,6 +21,35 @@ type BrowserRuntimeCacheRecord =
 [<JavaScript; RequireQualifiedAccess>]
 type BrowserRuntimeCacheReadResult =
     | Hit of RuntimeCacheEntry
+    | Miss
+    | Unavailable of reasonCode: string
+
+[<JavaScript>]
+type BrowserRuntimeCacheAdjacentQuery =
+    { AcceptedProjection: TaLoadedCoverageProjection
+      Direction: TaCoverageDirection
+      MaximumObservations: int }
+
+[<JavaScript>]
+type BrowserRuntimeCacheAdjacentHit =
+    { SourceEntry: RuntimeCacheEntry
+      RebasedEntry: RuntimeCacheEntry }
+
+[<JavaScript>]
+type BrowserRuntimeCacheKnownEmptySpan =
+    { StartEventTimeUtc: string
+      EndEventTimeExclusiveUtc: string }
+
+[<JavaScript; RequireQualifiedAccess>]
+type BrowserRuntimeCacheAdjacentSelection =
+    | Hit of BrowserRuntimeCacheAdjacentHit
+    | KnownEmpty of BrowserRuntimeCacheKnownEmptySpan
+    | Miss
+
+[<JavaScript; RequireQualifiedAccess>]
+type BrowserRuntimeCacheAdjacentReadResult =
+    | Hit of RuntimeCacheEntry
+    | KnownEmpty of BrowserRuntimeCacheKnownEmptySpan
     | Miss
     | Unavailable of reasonCode: string
 
@@ -167,6 +197,159 @@ module BrowserRuntimeCache =
         match System.Int64.TryParse record.TouchedAtTicks with
         | true, value -> value
         | false, _ -> 0L
+
+    let intervalCoveredBySegments
+        (startOrdinal: int64)
+        (observationCount: int)
+        (segments: TaLoadedCoverageSegment array)
+        =
+        if startOrdinal < 0L || observationCount <= 0 then
+            false
+        else
+            let endOrdinal = startOrdinal + int64 observationCount
+
+            if endOrdinal <= startOrdinal then
+                false
+            else
+                segments
+                |> Array.filter (fun segment -> segment.ObservationCount > 0L)
+                |> Array.sortBy _.StartObservationOrdinal
+                |> Array.fold
+                    (fun (coveredUntil, hasGap) segment ->
+                        if hasGap || coveredUntil >= endOrdinal then
+                            coveredUntil, hasGap
+                        else
+                            let segmentStart = segment.StartObservationOrdinal
+                            let segmentEnd = segmentStart + segment.ObservationCount
+
+                            if segmentEnd <= coveredUntil || segmentEnd <= startOrdinal then
+                                coveredUntil, false
+                            elif segmentStart > coveredUntil then
+                                coveredUntil, true
+                            else
+                                max coveredUntil segmentEnd, false)
+                    (startOrdinal, false)
+                |> fun (coveredUntil, hasGap) -> not hasGap && coveredUntil >= endOrdinal
+
+    let tryRebaseAdjacentEntry (query: BrowserRuntimeCacheAdjacentQuery) (entry: RuntimeCacheEntry) =
+        let accepted = query.AcceptedProjection
+
+        if
+            query.MaximumObservations <= 0
+            || query.MaximumObservations > TaLoadedCoverageCodec.MaximumActiveDetailBars
+            || not (TaLoadedCoverageCodec.validationErrors accepted |> List.isEmpty)
+        then
+            None
+        else
+            match TaLoadedCoverageCodec.tryDecode entry.Document.DefaultView with
+            | Ok(Some cached)
+                when cached.CoverageIdentity = accepted.CoverageIdentity
+                     && cached.CoverageRevision <= accepted.CoverageRevision
+                     && cached.ActiveDetail.ObservationCount <= query.MaximumObservations ->
+                let rebasedDetail =
+                    if cached.CoverageRevision = accepted.CoverageRevision then
+                        if
+                            intervalCoveredBySegments
+                                cached.ActiveDetail.StartObservationOrdinal
+                                cached.ActiveDetail.ObservationCount
+                                accepted.Segments
+                        then
+                            Some cached.ActiveDetail
+                        else
+                            None
+                    else
+                        let cachedPageSegments =
+                            cached.Segments
+                            |> Array.filter (fun segment ->
+                                segment.StartObservationOrdinal = cached.ActiveDetail.StartObservationOrdinal
+                                && segment.ObservationCount = int64 cached.ActiveDetail.ObservationCount)
+                            |> Array.distinctBy (fun segment -> segment.StartObservationOrdinal, segment.ObservationCount)
+
+                        if cachedPageSegments.Length = 1 then
+                            let cachedPage = cachedPageSegments[0]
+                            let exactTemporalSegments =
+                                accepted.Segments
+                                |> Array.filter (fun segment ->
+                                    segment.ObservationCount = cachedPage.ObservationCount
+                                    && segment.StartEventTimeUtc = cachedPage.StartEventTimeUtc
+                                    && segment.EndEventTimeExclusiveUtc = cachedPage.EndEventTimeExclusiveUtc)
+                                |> Array.distinctBy (fun segment -> segment.StartObservationOrdinal, segment.ObservationCount)
+
+                            if exactTemporalSegments.Length = 1 then
+                                Some
+                                    { cached.ActiveDetail with
+                                        StartObservationOrdinal = exactTemporalSegments[0].StartObservationOrdinal }
+                            else
+                                None
+                        else
+                            None
+
+                rebasedDetail
+                |> Option.map (fun activeDetail ->
+                    let rebased =
+                        { accepted with
+                            ActiveDetail = activeDetail }
+
+                    { entry with
+                        Document =
+                            { entry.Document with
+                                DefaultView = entry.Document.DefaultView |> TaLoadedCoverageCodec.apply rebased } })
+            | _ -> None
+
+    let selectAdjacent query (entries: RuntimeCacheEntry array) =
+        let ordinalDistance projection =
+            let current = query.AcceptedProjection.ActiveDetail
+            let candidate = projection.ActiveDetail
+            match query.Direction with
+            | TaCoverageDirection.Earlier -> current.StartObservationOrdinal - (candidate.StartObservationOrdinal + int64 candidate.ObservationCount)
+            | TaCoverageDirection.Later -> candidate.StartObservationOrdinal - (current.StartObservationOrdinal + int64 current.ObservationCount)
+
+        let directionCompatible projection =
+            let current = query.AcceptedProjection.ActiveDetail
+            let candidate = projection.ActiveDetail
+            match query.Direction with
+            | TaCoverageDirection.Earlier ->
+                candidate.StartObservationOrdinal + int64 candidate.ObservationCount <= current.StartObservationOrdinal
+            | TaCoverageDirection.Later ->
+                candidate.StartObservationOrdinal >= current.StartObservationOrdinal + int64 current.ObservationCount
+
+        let hit =
+            entries
+            |> Array.choose (fun entry -> tryRebaseAdjacentEntry query entry |> Option.map (fun rebased -> entry, rebased))
+            |> Array.choose (fun (entry, rebased) ->
+                match TaLoadedCoverageCodec.tryDecode rebased.Document.DefaultView with
+                | Ok(Some projection)
+                    when projection.ActiveDetail.ObservationCount > 0
+                         && directionCompatible projection -> Some(entry, rebased, projection)
+                | _ -> None)
+            |> Array.sortBy (fun (_, _, projection) -> ordinalDistance projection)
+            |> Array.tryHead
+            |> Option.map (fun (source, rebased, _) ->
+                { SourceEntry = source
+                  RebasedEntry = rebased })
+
+        match hit with
+        | Some hit -> BrowserRuntimeCacheAdjacentSelection.Hit hit
+        | None ->
+            let knownEmpty =
+                query.AcceptedProjection.Segments
+                |> Array.filter (fun segment -> segment.ObservationCount = 0L)
+                |> Array.filter (fun segment ->
+                    match query.Direction with
+                    | TaCoverageDirection.Earlier -> segment.StartObservationOrdinal <= query.AcceptedProjection.ActiveDetail.StartObservationOrdinal
+                    | TaCoverageDirection.Later ->
+                        segment.StartObservationOrdinal
+                        >= query.AcceptedProjection.ActiveDetail.StartObservationOrdinal
+                           + int64 query.AcceptedProjection.ActiveDetail.ObservationCount)
+                |> Array.sortBy (fun segment -> abs (segment.StartObservationOrdinal - query.AcceptedProjection.ActiveDetail.StartObservationOrdinal))
+                |> Array.tryHead
+                |> Option.map (fun segment ->
+                    { StartEventTimeUtc = segment.StartEventTimeUtc
+                      EndEventTimeExclusiveUtc = segment.EndEventTimeExclusiveUtc })
+
+            knownEmpty
+            |> Option.map BrowserRuntimeCacheAdjacentSelection.KnownEmpty
+            |> Option.defaultValue BrowserRuntimeCacheAdjacentSelection.Miss
 
     let readAll onRead onUnavailable =
         let complete = once onRead
@@ -477,6 +660,60 @@ module BrowserRuntimeCache =
 
     let readCovering cacheIdentity workspaceId requestedCoverage continuation =
         readMatching (=) cacheIdentity workspaceId (Some requestedCoverage) continuation
+
+    let readAdjacent cacheIdentity workspaceId query continuation =
+        let complete = once continuation
+        let invalidKeys = ResizeArray<string>()
+        let schedule work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+
+        readAll
+            (fun records ->
+                let candidates =
+                    records
+                    |> Array.choose (fun record ->
+                        match BrowserRuntimeCodec.decodeCacheEntry record.EntryHeaderJson with
+                        | Error _ ->
+                            invalidKeys.Add record.Key
+                            None
+                        | Ok header ->
+                            match RuntimeCacheEntryValidation.validateHeader header with
+                            | Ok valid when valid.CacheIdentity = cacheIdentity && valid.WorkspaceId = workspaceId -> Some(record, valid)
+                            | Ok _ -> None
+                            | Error _ ->
+                                invalidKeys.Add record.Key
+                                None)
+
+                let finish result = deleteKeys (invalidKeys.ToArray()) (fun () -> complete result)
+
+                let rec select remaining =
+                    match remaining |> Array.map snd |> selectAdjacent query with
+                    | BrowserRuntimeCacheAdjacentSelection.Miss -> finish BrowserRuntimeCacheAdjacentReadResult.Miss
+                    | BrowserRuntimeCacheAdjacentSelection.KnownEmpty span ->
+                        finish (BrowserRuntimeCacheAdjacentReadResult.KnownEmpty span)
+                    | BrowserRuntimeCacheAdjacentSelection.Hit hit ->
+                        match remaining |> Array.tryFind (fun (_, header) -> header = hit.SourceEntry) with
+                        | None -> finish BrowserRuntimeCacheAdjacentReadResult.Miss
+                        | Some(record, header) ->
+                            decodeDataItemsPhased
+                                schedule
+                                record
+                                header
+                                (function
+                                    | Ok entry ->
+                                        match tryRebaseAdjacentEntry query entry with
+                                        | Some rebased -> finish (BrowserRuntimeCacheAdjacentReadResult.Hit rebased)
+                                        | None ->
+                                            remaining
+                                            |> Array.filter (fun (candidate, _) -> candidate.Key <> record.Key)
+                                            |> select
+                                    | Error _ ->
+                                        invalidKeys.Add record.Key
+                                        remaining
+                                        |> Array.filter (fun (candidate, _) -> candidate.Key <> record.Key)
+                                        |> select)
+
+                select candidates)
+            (fun reason -> complete (BrowserRuntimeCacheAdjacentReadResult.Unavailable reason))
 
     let rehydratePhased
         read

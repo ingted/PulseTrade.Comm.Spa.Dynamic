@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Contracts</PackageId>
-    <Version>0.1.31</Version>
+    <Version>0.1.32</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Transport-neutral SDUI runtime contracts and reducer for PulseTrade.Comm.Spa.Dynamic.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <Compile Include="RuntimeTypes.fs" />
+    <Compile Include="LoadedCoverage.fs" />
     <Compile Include="RuntimeValidation.fs" />
     <Compile Include="TemporalSeries.fs" />
     <Compile Include="RuntimeCodec.fs" />

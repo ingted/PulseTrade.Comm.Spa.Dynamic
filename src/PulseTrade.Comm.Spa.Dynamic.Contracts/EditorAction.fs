@@ -778,7 +778,25 @@ module DynamicActionValidation =
                   yield RuntimeValidation.error
                       "invalid-maximum-base-points"
                       "action.range.maximumBasePoints"
-                      $"MaximumBasePoints must be between 1 and {DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints}." ]
+                      $"MaximumBasePoints must be between 1 and {DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints}."
+              match change.CoverageIntent with
+              | None -> ()
+              | Some intent ->
+                  if intent.QueryGeneration < 0L then
+                      yield RuntimeValidation.error "invalid-query-generation" "action.range.coverageIntent.queryGeneration" "QueryGeneration cannot be negative."
+                  match intent.ExpectedCoverageRevision with
+                  | Some revision when revision < 0L ->
+                      yield RuntimeValidation.error "invalid-coverage-revision" "action.range.coverageIntent.expectedCoverageRevision" "ExpectedCoverageRevision cannot be negative."
+                  | _ -> ()
+                  match intent.StartObservationOrdinal with
+                  | Some ordinal when ordinal < 0L ->
+                      yield RuntimeValidation.error "invalid-observation-ordinal" "action.range.coverageIntent.startObservationOrdinal" "StartObservationOrdinal cannot be negative."
+                  | _ -> ()
+                  if intent.ObservationCount <= 0 || intent.ObservationCount > DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints then
+                      yield RuntimeValidation.error
+                          "invalid-observation-count"
+                          "action.range.coverageIntent.observationCount"
+                          $"ObservationCount must be between 1 and {DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints}." ]
         | SduiAction.PollDelta(canvas, revision) ->
             [ yield! canvasErrors "action.canvasInstanceId" canvas
               if revision < 0L then

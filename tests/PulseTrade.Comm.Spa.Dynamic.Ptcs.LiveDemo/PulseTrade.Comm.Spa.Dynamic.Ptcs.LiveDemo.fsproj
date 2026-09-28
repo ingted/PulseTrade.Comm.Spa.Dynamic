@@ -17,9 +17,9 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
     <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.46]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.31]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs" Version="[0.1.52]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs.Client" Version="[0.1.84]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.32]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs" Version="[0.1.53]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs.Client" Version="[0.1.86]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.6.676" />
     <PackageReference Include="WebSharper.UI" Version="10.1.5.676" />
   </ItemGroup>

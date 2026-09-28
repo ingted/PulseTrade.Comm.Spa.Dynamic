@@ -476,12 +476,19 @@ let tests =
                         EventTimeUtc = "2026-09-08T01:23:00Z" })
                   |> TaResearchClientWire.actionToWire
               let range =
+                  let intent =
+                      { ExpectedCoverageRevision = Some 17L
+                        QueryGeneration = 4L
+                        StartObservationOrdinal = Some 250L
+                        ObservationCount = 250
+                        Direction = Some TaCoverageDirection.Earlier }
                   SduiAction.VisibleRangeChanged(
                       CanvasInstanceId "canvas",
                       { BaseRowId = "price-1k"
                         StartEventTimeUtc = "2026-09-08T01:00:00Z"
                         EndEventTimeExclusiveUtc = "2026-09-08T02:00:00Z"
-                        MaximumBasePoints = 4000 })
+                        MaximumBasePoints = 250
+                        CoverageIntent = Some intent })
                   |> TaResearchClientWire.actionToWire
 
               Expect.equal cursor.actionKind "shared-cursor-changed" "cursor action uses the stable discriminator."
@@ -490,7 +497,13 @@ let tests =
               Expect.equal range.actionKind "visible-range-changed" "range action uses the stable discriminator."
               Expect.equal range.startEventTimeUtc "2026-09-08T01:00:00Z" "range carries its inclusive start."
               Expect.equal range.endEventTimeExclusiveUtc "2026-09-08T02:00:00Z" "range carries its exclusive end."
-              Expect.equal range.maximumBasePoints 4000 "range carries the hard base-point cap.")
+              Expect.equal range.maximumBasePoints 250 "range carries the per-document base-point cap."
+              Expect.equal range.coverageIntentVersion TaLoadedCoverageCodec.WindowIntentSchema "range carries the versioned ordinal contract."
+              Expect.equal range.expectedCoverageRevision "17" "coverage revisions stay exact Int64 text on JavaScript wire."
+              Expect.equal range.queryGeneration "4" "query generations stay exact Int64 text on JavaScript wire."
+              Expect.equal range.startObservationOrdinal "250" "global observation ordinals stay exact Int64 text on JavaScript wire."
+              Expect.equal range.coverageObservationCount 250 "fixed-width page count survives browser mapping."
+              Expect.equal range.coverageDirection "earlier" "adjacent direction survives browser mapping.")
 
           testCase "delta wire upserts points, trims rolling prefixes and rejects revision gaps" (fun _ ->
               let initial = TaResearchClientWire.stateFromWire wire |> Result.defaultWith failtest

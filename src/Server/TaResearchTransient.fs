@@ -124,7 +124,16 @@ type TaTransientClientFrameWire =
       eventTimeUtc: string
       startEventTimeUtc: string
       endEventTimeExclusiveUtc: string
-      maximumBasePoints: int }
+      maximumBasePoints: int
+      coverageIntentVersion: string
+      hasCoverageIntent: bool
+      expectedCoverageRevision: string
+      hasExpectedCoverageRevision: bool
+      queryGeneration: string
+      startObservationOrdinal: string
+      hasStartObservationOrdinal: bool
+      coverageObservationCount: int
+      coverageDirection: string }
 
 [<CLIMutable>]
 type TaBrowserPointWire =
@@ -277,11 +286,57 @@ type TaBrowserClientFrameWire =
       eventTimeUtc: string
       startEventTimeUtc: string
       endEventTimeExclusiveUtc: string
-      maximumBasePoints: int }
+      maximumBasePoints: int
+      coverageIntentVersion: string
+      hasCoverageIntent: bool
+      expectedCoverageRevision: string
+      hasExpectedCoverageRevision: bool
+      queryGeneration: string
+      startObservationOrdinal: string
+      hasStartObservationOrdinal: bool
+      coverageObservationCount: int
+      coverageDirection: string }
 
 [<RequireQualifiedAccess>]
 module TaResearchTransientWire =
     let text value = if isNull value then "" else value
+
+    let coverageDirectionText = function
+        | Some TaCoverageDirection.Earlier -> "earlier"
+        | Some TaCoverageDirection.Later -> "later"
+        | None -> ""
+
+    let coverageIntentFromWire version hasIntent expectedRevision hasExpected queryGeneration startOrdinal hasStart observationCount direction =
+        if not hasIntent then Ok None
+        elif text version <> TaLoadedCoverageCodec.WindowIntentSchema then Error "Unsupported TA coverage window intent version."
+        else
+            let parse field value =
+                match Int64.TryParse(text value) with
+                | true, parsed -> Ok parsed
+                | _ -> Error($"TA coverage window {field} must be an Int64 string.")
+            let parseOptional field hasValue value =
+                if hasValue then parse field value |> Result.map Some else Ok None
+            match
+                parseOptional "expectedCoverageRevision" hasExpected expectedRevision,
+                parse "queryGeneration" queryGeneration,
+                parseOptional "startObservationOrdinal" hasStart startOrdinal
+            with
+            | Ok expected, Ok generation, Ok start ->
+                let parsedDirection =
+                    match text direction with
+                    | "" -> Ok None
+                    | "earlier" -> Ok(Some TaCoverageDirection.Earlier)
+                    | "later" -> Ok(Some TaCoverageDirection.Later)
+                    | _ -> Error "TA coverage window direction is invalid."
+                match parsedDirection with
+                | Error error -> Error error
+                | Ok directionValue ->
+                    match TaLoadedCoverageCodec.tryWindowIntent directionValue expected generation start observationCount with
+                    | Some intent -> Ok(Some intent)
+                    | None -> Error "TA coverage window intent bounds are invalid."
+            | Error error, _, _
+            | _, Error error, _
+            | _, _, Error error -> Error error
 
     let emptyValue () =
         { kind = "null"
@@ -559,7 +614,16 @@ module TaResearchTransientWire =
           eventTimeUtc = ""
           startEventTimeUtc = ""
           endEventTimeExclusiveUtc = ""
-          maximumBasePoints = 0 }
+          maximumBasePoints = 0
+          coverageIntentVersion = ""
+          hasCoverageIntent = false
+          expectedCoverageRevision = ""
+          hasExpectedCoverageRevision = false
+          queryGeneration = ""
+          startObservationOrdinal = ""
+          hasStartObservationOrdinal = false
+          coverageObservationCount = 0
+          coverageDirection = "" }
 
     let editorInputToWire input =
         match input.Value with
@@ -619,12 +683,26 @@ module TaResearchTransientWire =
                     baseRowId = change.BaseRowId
                     eventTimeUtc = change.EventTimeUtc }
             | SduiAction.VisibleRangeChanged(CanvasInstanceId canvasId, change) ->
-                { emptyClientFrame "action" canvasId with
-                    actionKind = "visible-range-changed"
-                    baseRowId = change.BaseRowId
-                    startEventTimeUtc = change.StartEventTimeUtc
-                    endEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
-                    maximumBasePoints = change.MaximumBasePoints }
+                let frame =
+                    { emptyClientFrame "action" canvasId with
+                        actionKind = "visible-range-changed"
+                        baseRowId = change.BaseRowId
+                        startEventTimeUtc = change.StartEventTimeUtc
+                        endEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
+                        maximumBasePoints = change.MaximumBasePoints }
+                match change.CoverageIntent with
+                | None -> frame
+                | Some intent ->
+                    { frame with
+                        coverageIntentVersion = TaLoadedCoverageCodec.WindowIntentSchema
+                        hasCoverageIntent = true
+                        expectedCoverageRevision = intent.ExpectedCoverageRevision |> Option.map string |> Option.defaultValue ""
+                        hasExpectedCoverageRevision = intent.ExpectedCoverageRevision.IsSome
+                        queryGeneration = string intent.QueryGeneration
+                        startObservationOrdinal = intent.StartObservationOrdinal |> Option.map string |> Option.defaultValue ""
+                        hasStartObservationOrdinal = intent.StartObservationOrdinal.IsSome
+                        coverageObservationCount = intent.ObservationCount
+                        coverageDirection = coverageDirectionText intent.Direction }
             | SduiAction.PollDelta(CanvasInstanceId canvasId, revision) -> { emptyClientFrame "action" canvasId with actionKind = "poll-delta"; afterDataRevision = revision }
             | SduiAction.RequestFullSnapshot(CanvasInstanceId canvasId, reason) -> { emptyClientFrame "action" canvasId with actionKind = "full-snapshot"; reasonCode = reason }
 
@@ -658,14 +736,25 @@ module TaResearchTransientWire =
                         { BaseRowId = text wire.baseRowId
                           EventTimeUtc = text wire.eventTimeUtc })))
         | "action", "visible-range-changed" ->
-            Ok(
+            coverageIntentFromWire
+                wire.coverageIntentVersion
+                wire.hasCoverageIntent
+                wire.expectedCoverageRevision
+                wire.hasExpectedCoverageRevision
+                wire.queryGeneration
+                wire.startObservationOrdinal
+                wire.hasStartObservationOrdinal
+                wire.coverageObservationCount
+                wire.coverageDirection
+            |> Result.map (fun coverageIntent ->
                 RuntimeClientFrame.Action(
                     SduiAction.VisibleRangeChanged(
                         canvas,
                         { BaseRowId = text wire.baseRowId
                           StartEventTimeUtc = text wire.startEventTimeUtc
                           EndEventTimeExclusiveUtc = text wire.endEventTimeExclusiveUtc
-                          MaximumBasePoints = wire.maximumBasePoints })))
+                          MaximumBasePoints = wire.maximumBasePoints
+                          CoverageIntent = coverageIntent })))
         | "action", "poll-delta" -> Ok(RuntimeClientFrame.Action(SduiAction.PollDelta(canvas, wire.afterDataRevision)))
         | "action", "full-snapshot" -> Ok(RuntimeClientFrame.Action(SduiAction.RequestFullSnapshot(canvas, text wire.reasonCode)))
         | _ -> Error "Unsupported TA transient client frame."
@@ -1127,14 +1216,25 @@ module TaResearchBrowserWire =
                             { BaseRowId = text wire.baseRowId
                               EventTimeUtc = text wire.eventTimeUtc })))
             | "action", "visible-range-changed" ->
-                Ok(
+                TaResearchTransientWire.coverageIntentFromWire
+                    wire.coverageIntentVersion
+                    wire.hasCoverageIntent
+                    wire.expectedCoverageRevision
+                    wire.hasExpectedCoverageRevision
+                    wire.queryGeneration
+                    wire.startObservationOrdinal
+                    wire.hasStartObservationOrdinal
+                    wire.coverageObservationCount
+                    wire.coverageDirection
+                |> Result.map (fun coverageIntent ->
                     RuntimeClientFrame.Action(
                         SduiAction.VisibleRangeChanged(
                             canvas,
                             { BaseRowId = text wire.baseRowId
                               StartEventTimeUtc = text wire.startEventTimeUtc
                               EndEventTimeExclusiveUtc = text wire.endEventTimeExclusiveUtc
-                              MaximumBasePoints = wire.maximumBasePoints })))
+                              MaximumBasePoints = wire.maximumBasePoints
+                              CoverageIntent = coverageIntent })))
             | "action", "poll-delta" ->
                 revisionFromBrowser "after-data" wire.afterDataRevision
                 |> Result.map (fun revision -> RuntimeClientFrame.Action(SduiAction.PollDelta(canvas, revision)))

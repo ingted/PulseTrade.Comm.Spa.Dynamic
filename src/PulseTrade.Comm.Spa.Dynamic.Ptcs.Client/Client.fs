@@ -189,7 +189,16 @@ type TaBrowserClientFrameWire =
       eventTimeUtc: string
       startEventTimeUtc: string
       endEventTimeExclusiveUtc: string
-      maximumBasePoints: int }
+      maximumBasePoints: int
+      coverageIntentVersion: string
+      hasCoverageIntent: bool
+      expectedCoverageRevision: string
+      hasExpectedCoverageRevision: bool
+      queryGeneration: string
+      startObservationOrdinal: string
+      hasStartObservationOrdinal: bool
+      coverageObservationCount: int
+      coverageDirection: string }
 
 [<JavaScript; CLIMutable>]
 type ExtensionTransientRequestWire =
@@ -783,7 +792,16 @@ module TaResearchClientWire =
           eventTimeUtc = ""
           startEventTimeUtc = ""
           endEventTimeExclusiveUtc = ""
-          maximumBasePoints = 0 }
+          maximumBasePoints = 0
+          coverageIntentVersion = ""
+          hasCoverageIntent = false
+          expectedCoverageRevision = ""
+          hasExpectedCoverageRevision = false
+          queryGeneration = ""
+          startObservationOrdinal = ""
+          hasStartObservationOrdinal = false
+          coverageObservationCount = 0
+          coverageDirection = "" }
 
     let optionText value = value |> Option.defaultValue ""
     let optionInt value = value |> Option.defaultValue 0
@@ -833,11 +851,29 @@ module TaResearchClientWire =
                 baseRowId = change.BaseRowId
                 eventTimeUtc = change.EventTimeUtc }
         | SduiAction.VisibleRangeChanged(canvas, change) ->
-            { emptyFrame "action" "visible-range-changed" (canvasText canvas) with
-                baseRowId = change.BaseRowId
-                startEventTimeUtc = change.StartEventTimeUtc
-                endEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
-                maximumBasePoints = change.MaximumBasePoints }
+            let frame =
+                { emptyFrame "action" "visible-range-changed" (canvasText canvas) with
+                    baseRowId = change.BaseRowId
+                    startEventTimeUtc = change.StartEventTimeUtc
+                    endEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
+                    maximumBasePoints = change.MaximumBasePoints }
+            match change.CoverageIntent with
+            | None -> frame
+            | Some intent ->
+                { frame with
+                    coverageIntentVersion = TaLoadedCoverageCodec.WindowIntentSchema
+                    hasCoverageIntent = true
+                    expectedCoverageRevision = intent.ExpectedCoverageRevision |> Option.map string |> Option.defaultValue ""
+                    hasExpectedCoverageRevision = intent.ExpectedCoverageRevision.IsSome
+                    queryGeneration = string intent.QueryGeneration
+                    startObservationOrdinal = intent.StartObservationOrdinal |> Option.map string |> Option.defaultValue ""
+                    hasStartObservationOrdinal = intent.StartObservationOrdinal.IsSome
+                    coverageObservationCount = intent.ObservationCount
+                    coverageDirection =
+                        match intent.Direction with
+                        | Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier -> "earlier"
+                        | Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later -> "later"
+                        | None -> "" }
         | SduiAction.PollDelta(canvas, revision) ->
             { emptyFrame "action" "poll-delta" (canvasText canvas) with afterDataRevision = float revision }
         | SduiAction.RequestFullSnapshot(canvas, reason) ->

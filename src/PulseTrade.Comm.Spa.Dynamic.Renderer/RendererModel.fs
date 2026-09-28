@@ -2061,6 +2061,95 @@ module RendererModel =
         let next = clampWindow minimumCount maximumCount total draft
         next.StartIndex = viewportMaximumStart total next, next
 
+    let documentMaximumVisibleBars fallbackMaximum (defaultView: Map<string, SduiValue>) =
+        TaLoadedCoverageCodec.tryMaximumVisibleBars defaultView
+        |> Option.defaultValue fallbackMaximum
+        |> clamp 1 TaLoadedCoverageCodec.MaximumActiveDetailBars
+
+    let tryLoadedCoverage defaultView =
+        match TaLoadedCoverageCodec.tryDecode defaultView with
+        | Ok(Some projection) -> Some projection
+        | _ -> None
+
+    let isStaleCoverageCandidate pendingQueryGeneration defaultView =
+        tryLoadedCoverage defaultView
+        |> Option.exists (fun projection -> projection.QueryGeneration < pendingQueryGeneration)
+
+    let tryCoverageNavigatorWindow activeReferenceLength activeWindow defaultView =
+        tryLoadedCoverage defaultView
+        |> Option.bind (fun projection ->
+            let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+            if domainCount <= 0L || domainCount > int64 Int32.MaxValue then
+                None
+            else
+                let local = clampWindow 1 TaLoadedCoverageCodec.MaximumActiveDetailBars activeReferenceLength activeWindow
+                let globalStart = projection.ActiveDetail.StartObservationOrdinal + int64 local.StartIndex
+                if globalStart < 0L || globalStart > int64 Int32.MaxValue then
+                    None
+                else
+                    Some(
+                        projection,
+                        int domainCount,
+                        { StartIndex = int globalStart
+                          Count = local.Count }))
+
+    let tryAdjacentCoverageIntent (direction: TaCoverageDirection) maximumVisibleBars activeReferenceLength activeWindow projection =
+        let local = clampWindow 1 maximumVisibleBars activeReferenceLength activeWindow
+        let count = max 1 (min maximumVisibleBars local.Count)
+        let currentStart = projection.ActiveDetail.StartObservationOrdinal + int64 local.StartIndex
+        let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+        let targetStart =
+            match direction with
+            | TaCoverageDirection.Earlier -> max 0L (currentStart - int64 count)
+            | TaCoverageDirection.Later -> min (max 0L (domainCount - int64 count)) (currentStart + int64 count)
+
+        let contractDirection =
+            match direction with
+            | TaCoverageDirection.Earlier -> PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier
+            | TaCoverageDirection.Later -> PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later
+
+        TaLoadedCoverageCodec.tryWindowIntent
+            (Some contractDirection)
+            (Some projection.CoverageRevision)
+            (projection.QueryGeneration + 1L)
+            (Some targetStart)
+            count
+
+    let overviewPointsForCoverage projection =
+        let scalar field fields =
+            fields |> Map.tryFind field |> Option.bind (function SduiValue.Number value -> Some value | _ -> None)
+
+        projection.OverviewAnchors
+        |> Array.choose (fun anchor ->
+            match anchor.Value with
+            | SduiValue.Number value when not (Double.IsNaN value || Double.IsInfinity value) ->
+                Some
+                    { Timestamp = anchor.EventTimeUtc
+                      Open = value
+                      High = value
+                      Low = value
+                      Close = value
+                      Volume = 0.0
+                      Temporal = None }
+            | SduiValue.Object fields ->
+                scalar "close" fields
+                |> Option.bind (fun closeValue ->
+                    if Double.IsNaN closeValue || Double.IsInfinity closeValue then None
+                    else
+                        let openValue = scalar "open" fields |> Option.defaultValue closeValue
+                        let highValue = scalar "high" fields |> Option.defaultValue (max openValue closeValue)
+                        let lowValue = scalar "low" fields |> Option.defaultValue (min openValue closeValue)
+                        let volumeValue = scalar "volume" fields |> Option.defaultValue 0.0
+                        Some
+                            { Timestamp = anchor.EventTimeUtc
+                              Open = openValue
+                              High = highValue
+                              Low = lowValue
+                              Close = closeValue
+                              Volume = volumeValue
+                              Temporal = None })
+            | _ -> None)
+
     let selectionRatios total window =
         if total <= 0 || window.Count <= 0 then
             0.0, 0.0
@@ -2068,6 +2157,44 @@ module RendererModel =
             let bounded = clampWindow 1 Int32.MaxValue total window
             float bounded.StartIndex / float total,
             float (bounded.StartIndex + bounded.Count) / float total
+
+    let navigatorSelectionBounds trackWidth (leftRatio, rightRatio) =
+        let width = max 0.0 trackWidth
+        let left = max 0.0 (min 1.0 leftRatio) * width
+        let right = max left (max 0.0 (min 1.0 rightRatio) * width)
+        left, right - left
+
+    let navigatorDragMode trackWidth hitTargetWidth (leftRatio, rightRatio) pointerX =
+        if trackWidth <= 0.0 || hitTargetWidth <= 0.0 then
+            None
+        else
+            let left, selectionWidth = navigatorSelectionBounds trackWidth (leftRatio, rightRatio)
+            let right = left + selectionWidth
+            let radius = min (trackWidth / 2.0) (hitTargetWidth / 2.0)
+            let interactionLeft = max 0.0 (left - radius)
+            let interactionRight = min trackWidth (right + radius)
+
+            if pointerX < interactionLeft || pointerX > interactionRight then
+                None
+            elif selectionWidth < radius * 2.0 then
+                // Tiny selections need stable pointer zones; overlapping DOM hit targets
+                // must not decide whether the gesture moves or resizes the window.
+                // Split around the true selection center so clipping at either track edge
+                // cannot turn the visible center into a resize gesture.
+                let center = left + selectionWidth / 2.0
+                let leftEnd = (interactionLeft + center) / 2.0
+                let rightStart = (center + interactionRight) / 2.0
+                if pointerX < leftEnd then Some TaWindowDrag.ResizeLeft
+                elif pointerX > rightStart then Some TaWindowDrag.ResizeRight
+                else Some TaWindowDrag.Move
+            elif abs (pointerX - left) <= radius then
+                Some TaWindowDrag.ResizeLeft
+            elif abs (pointerX - right) <= radius then
+                Some TaWindowDrag.ResizeRight
+            elif pointerX >= left && pointerX <= right then
+                Some TaWindowDrag.Move
+            else
+                None
 
     let sampleEvenly maximumCount (values: 'T array) =
         if maximumCount <= 0 || values.Length = 0 then
@@ -2261,7 +2388,8 @@ module RendererModel =
                             { BaseRowId = baseRowId
                               StartEventTimeUtc = startUtc
                               EndEventTimeExclusiveUtc = endUtc
-                              MaximumBasePoints = max 1 maximumBasePoints }
+                              MaximumBasePoints = max 1 maximumBasePoints
+                              CoverageIntent = None }
                     | _ -> None)))
 
     let cursorSnapshotForRows (document: TaWorkspaceDocument) visibleRows data window cursorIndex =

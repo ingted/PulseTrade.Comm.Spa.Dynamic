@@ -396,6 +396,89 @@ let tests =
             Expect.isTrue followLatest "a full-range window still ends at the loaded tail"
             Expect.equal (RendererModel.selectionRatios 2000 committedFull) (0.0, 1.0) "full range occupies the complete overview"
 
+        testCase "navigator visual geometry preserves the exact resolved-window ratio" <| fun _ ->
+            let total = 1_000_000
+            let minimumWindow = { StartIndex = total - 12; Count = 12 }
+            let ratios = RendererModel.selectionRatios total minimumWindow
+            let selectionX, selectionWidth = RendererModel.navigatorSelectionBounds 1000.0 ratios
+
+            Expect.floatClose Accuracy.high selectionX 999.988 "the tail selection starts at its true loaded-domain ratio"
+            Expect.floatClose Accuracy.high selectionWidth 0.012 "visual width must not be inflated to a fixed pixel or viewBox floor"
+
+        testCase "navigator hit resolver keeps resize and move deterministic for tiny selections" <| fun _ ->
+            let ratios = 0.5, 0.5001
+            let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
+
+            Expect.equal (mode 490.0) (Some TaWindowDrag.ResizeLeft) "the left outer zone resizes the left boundary"
+            Expect.equal (mode 500.05) (Some TaWindowDrag.Move) "the middle overlap zone moves the tiny selection"
+            Expect.equal (mode 510.0) (Some TaWindowDrag.ResizeRight) "the right outer zone resizes the right boundary"
+            Expect.equal (mode 450.0) None "a pointer outside the transparent interaction union does nothing"
+
+            let tailMode pointer = RendererModel.navigatorDragMode 1000.0 24.0 (0.997, 1.0) pointer
+            Expect.equal (tailMode 988.0) (Some TaWindowDrag.ResizeLeft) "a clipped tail union retains its left resize zone"
+            Expect.equal (tailMode 998.5) (Some TaWindowDrag.Move) "the visible tail selection center remains a move zone"
+            Expect.equal (tailMode 1000.0) (Some TaWindowDrag.ResizeRight) "the track edge retains the right resize zone"
+
+        testCase "document viewport cap and loaded coverage projection remain independent" <| fun _ ->
+            let projection =
+                { CoverageIdentity = "coverage:es-1k"
+                  CoverageRevision = 7L
+                  QueryGeneration = 11L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 1_000_000L
+                  Segments =
+                    [| { SegmentId = "history"
+                         StartEventTimeUtc = "2020-01-01T00:00:00Z"
+                         EndEventTimeExclusiveUtc = "2026-09-28T00:00:00Z"
+                         StartObservationOrdinal = 0L
+                         ObservationCount = 1_000_000L } |]
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 999_750L
+                      ObservationCount = 250
+                      BaseAxisRef = "axis.1k" } }
+            let defaultView =
+                Map.empty
+                |> TaLoadedCoverageCodec.applyMaximumVisibleBars 250
+                |> TaLoadedCoverageCodec.apply projection
+
+            Expect.equal (RendererModel.documentMaximumVisibleBars 4000 defaultView) 250 "A validated per-document cap must override the host fallback."
+            Expect.isTrue
+                (RendererModel.isStaleCoverageCandidate 12L defaultView)
+                "A candidate from an older query generation must not replace the committed viewport."
+            Expect.isFalse
+                (RendererModel.isStaleCoverageCandidate 11L defaultView)
+                "The current query generation remains eligible for commit."
+            match RendererModel.tryCoverageNavigatorWindow 250 { StartIndex = 202; Count = 48 } defaultView with
+            | Some(decoded, domainCount, window) ->
+                Expect.equal decoded.CoverageRevision 7L "The navigator must retain the accepted coverage revision."
+                Expect.equal domainCount 1_000_000 "The navigator domain must use complete coverage observations, not active detail length."
+                Expect.equal window { StartIndex = 999_952; Count = 48 } "The visible window must project onto global observation ordinals."
+            | None -> failtest "Valid loaded coverage projection must resolve a navigator window."
+
+            let earlier =
+                RendererModel.tryAdjacentCoverageIntent
+                    TaCoverageDirection.Earlier
+                    250
+                    250
+                    { StartIndex = 0; Count = 250 }
+                    { projection with
+                        TotalObservationCount = Some 500L
+                        ActiveDetail = { projection.ActiveDetail with StartObservationOrdinal = 250L; ObservationCount = 250 } }
+            Expect.equal
+                (earlier |> Option.bind _.StartObservationOrdinal, earlier |> Option.map _.ObservationCount)
+                (Some 0L, Some 250)
+                "Earlier must request one fixed-width adjacent page, not one quarter of the current window."
+
+        testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
+            let ratios = 0.2, 0.4
+            let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
+
+            Expect.equal (mode 200.0) (Some TaWindowDrag.ResizeLeft) "the exact left boundary resizes left"
+            Expect.equal (mode 400.0) (Some TaWindowDrag.ResizeRight) "the exact right boundary resizes right"
+            Expect.equal (mode 300.0) (Some TaWindowDrag.Move) "the selection interior moves the window"
+            Expect.equal (mode 100.0) None "unrelated overview clicks must not start a drag"
+
         testCase "overview sampling is deterministic and bounded" <| fun _ ->
             let values = [| 0 .. 1999 |]
             let sampled = RendererModel.sampleEvenly 250 values

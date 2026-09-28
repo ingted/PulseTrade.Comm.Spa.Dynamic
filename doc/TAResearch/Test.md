@@ -202,3 +202,13 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-114 | REQ-082 | Contracts/browser | paired colors round-trip；legacy、partial、invalid、kind mismatch；正負path non-empty、red/green且DOM bounded。 | OWNER PASS：typed negative gates與BrowserDemo正紅／負綠batched paths通過。 |
 | DYN-TA-T-115 | REQ-080..082 | Performance/package | exact local graph、4,000-bar既有owner phases無>100ms、focused suites與bundle build。 | OWNER PASS：`0.1.29 / 0.1.71 / 0.1.62`；44/44、48/48、12/12；five-candle/scenario/All/marker/document/progressive max=`70.86/80.18/50.63/59.11/25.82/50.49ms`。 |
 | DYN-TA-T-116 | REQ-080..082 | Real consumer/release | Daedalus真SPAA explicit theme／histogram colors／edge screenshot與效能GREEN後public push及official readback。 | PENDING：owner candidate與SHA已交付Daedalus。 |
+
+## DYN-TA-027 Loaded coverage／navigator coherence
+
+| Test ID | Requirements | Level | Expected | Status |
+| --- | --- | --- | --- | --- |
+| DYN-TA-T-117 | REQ-083/085 | Renderer pure | 1,000,000 observations＋12-bar tail window在1000-unit track投影寬0.012；沒有24-unit floor。 | PASS：Renderer exact-package suite 55/55。 |
+| DYN-TA-T-118 | REQ-084 | Renderer pure | ordinary與tiny overlap selection的left／move／right／outside決策deterministic。 | PASS：CSS-pixel resolver pure cases與root pointer route通過。 |
+| DYN-TA-T-119 | REQ-083..085 | F# Playwright | 4,000+ reference、48／12／minimum bars、左右resize／move、browser resize；selection ratio與visible count一致，2px boundaries及24px resolver不漂移。 | OWNER PASS：4,000 bars tiny selection width 3.813/1400，move/left/right resize與既有drag gate全綠。 |
+| DYN-TA-T-120 | REQ-086/087 | Contracts／reducer／browser | bounded overview＋>4000 coverage metadata、gap、active detail offset、generation／stale negative；不提高retained detail cap。 | OWNER PASS：Contracts 47/47、Interactive 14/14；500 coverage／250 active detail顯示251-500，stale action回revision conflict。 |
+| DYN-TA-T-121 | REQ-083..087 | Package／real consumer | official exact graph；真SPAA Earlier From、query race、main<=4000、overview比例與fresh-kernel DIB parity。 | OWNER candidate PASS；official push與Daedalus真SPAA／fresh-kernel DIB pending。 |

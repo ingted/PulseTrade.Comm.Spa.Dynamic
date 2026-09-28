@@ -274,7 +274,31 @@ module RuntimeValidation =
           | None -> ()
           | Some _ when TaPlotSurfacePresentationCodec.tryDecode document.DefaultView |> Option.isSome -> ()
           | Some _ ->
-              yield error "invalid-plot-surface-theme" $"document.defaultView.{TaPlotSurfacePresentationCodec.ThemeKey}" "Plot surface theme must be `light` or `dark`." ]
+              yield error "invalid-plot-surface-theme" $"document.defaultView.{TaPlotSurfacePresentationCodec.ThemeKey}" "Plot surface theme must be `light` or `dark`."
+
+          match Map.tryFind TaLoadedCoverageCodec.MaximumVisibleBarsKey document.DefaultView with
+          | None -> ()
+          | Some _ when TaLoadedCoverageCodec.tryMaximumVisibleBars document.DefaultView |> Option.isSome -> ()
+          | Some _ ->
+              yield error
+                  "invalid-maximum-visible-bars"
+                  $"document.defaultView.{TaLoadedCoverageCodec.MaximumVisibleBarsKey}"
+                  $"MaximumVisibleBars must be an integer between 1 and {TaLoadedCoverageCodec.MaximumActiveDetailBars}."
+
+          match Map.tryFind TaLoadedCoverageCodec.DefaultViewKey document.DefaultView with
+          | None -> ()
+          | Some _ ->
+              match TaLoadedCoverageCodec.tryDecode document.DefaultView with
+              | Ok(Some projection) ->
+                  match TaLoadedCoverageCodec.tryMaximumVisibleBars document.DefaultView with
+                  | Some maximumVisibleBars when projection.ActiveDetail.ObservationCount > maximumVisibleBars ->
+                      yield error
+                          "active-detail-exceeds-document-cap"
+                          $"document.defaultView.{TaLoadedCoverageCodec.DefaultViewKey}.activeDetail.observationCount"
+                          $"Active detail exceeds the document MaximumVisibleBars value {maximumVisibleBars}."
+                  | _ -> ()
+              | Ok None -> ()
+              | Error errors -> yield! errors ]
 
     let patchErrors limits (patch: RuntimePatch) =
         [ if patch.Operations.Length > limits.MaxPatchOperations then

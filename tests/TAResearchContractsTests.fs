@@ -67,6 +67,99 @@ let sourceEvent sequence baseRevision newRevision payload : SourceEventEnvelope 
 
 let tests =
     testList "Dynamic TA Contracts" [
+        testCase "DYN-T-646 loaded coverage preserves global ordinals, gaps and per-document cap" <| fun _ ->
+            let projection =
+                { CoverageIdentity = "ES|1K|2026"
+                  CoverageRevision = 7L
+                  QueryGeneration = 3L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 1_000_000L
+                  Segments =
+                    [| { SegmentId = "earlier"
+                         StartEventTimeUtc = "2026-01-01T00:00:00Z"
+                         EndEventTimeExclusiveUtc = "2026-03-01T00:00:00Z"
+                         StartObservationOrdinal = 0L
+                         ObservationCount = 400_000L }
+                       { SegmentId = "later"
+                         StartEventTimeUtc = "2026-04-01T00:00:00Z"
+                         EndEventTimeExclusiveUtc = "2026-09-01T00:00:00Z"
+                         StartObservationOrdinal = 400_000L
+                         ObservationCount = 600_000L } |]
+                  OverviewAnchors =
+                    [| { ObservationOrdinal = 0L
+                         EventTimeUtc = "2026-01-01T00:00:00Z"
+                         Value = SduiValue.Number 100.0 }
+                       { ObservationOrdinal = 999_999L
+                         EventTimeUtc = "2026-08-31T23:59:00Z"
+                         Value = SduiValue.Number 110.0 } |]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 999_750L
+                      ObservationCount = 250
+                      BaseAxisRef = "axis.1k" } }
+            let defaultView =
+                Map.empty
+                |> TaLoadedCoverageCodec.applyMaximumVisibleBars 250
+                |> TaLoadedCoverageCodec.apply projection
+
+            Expect.equal
+                (TaLoadedCoverageCodec.tryDecode defaultView)
+                (Ok(Some projection))
+                "The validated codec must preserve the independent coverage domain and its unloaded time gap."
+            Expect.equal
+                (TaLoadedCoverageCodec.observationDomainCount projection)
+                1_000_000L
+                "Overview sample count must not replace the observation domain."
+
+            let candidate = { document with DefaultView = defaultView }
+            Expect.isOk
+                (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document candidate })
+                "An active detail equal to the per-document cap must validate."
+
+            let overCap =
+                { projection with
+                    ActiveDetail =
+                        { projection.ActiveDetail with
+                            StartObservationOrdinal = 999_749L
+                            ObservationCount = 251 } }
+            let invalid =
+                { document with
+                    DefaultView =
+                        Map.empty
+                        |> TaLoadedCoverageCodec.applyMaximumVisibleBars 250
+                        |> TaLoadedCoverageCodec.apply overCap }
+            match RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document invalid } with
+            | Error errors ->
+                let codes = errors |> List.map _.Code
+                let details = errors |> List.map (fun error -> error.Field + ":" + error.Message)
+                Expect.isTrue
+                    (codes |> List.contains "active-detail-exceeds-document-cap")
+                    $"The document cap must fail closed before the renderer receives an oversized detail slice. Codes={codes}; Details={details}"
+            | Ok _ -> failtest "An active detail larger than the document cap must not validate."
+
+        testCase "DYN-T-647 coverage window intent is versioned and rejects stale-shaped bounds" <| fun _ ->
+            Expect.equal TaLoadedCoverageCodec.WindowIntentSchema "ta-coverage-window.v1" "The adjacent-page intent has a stable version."
+            let intent = TaLoadedCoverageCodec.tryWindowIntent (Some TaCoverageDirection.Earlier) (Some 7L) 4L (Some 999_500L) 250
+            Expect.isSome intent "A bounded versioned adjacent-page intent must be constructible."
+
+            let request =
+                { RequestId = "coverage-earlier"
+                  ExpectedDocumentRevision = Some 1L
+                  Action =
+                    SduiAction.VisibleRangeChanged(
+                        identity.CanvasInstanceId,
+                        { BaseRowId = "price"
+                          StartEventTimeUtc = "2026-08-31T19:50:00Z"
+                          EndEventTimeExclusiveUtc = "2026-08-31T23:59:00Z"
+                          MaximumBasePoints = 250
+                          CoverageIntent = intent }) }
+            Expect.isEmpty (DynamicActionValidation.requestErrors request) "A valid ordinal window intent must pass action validation."
+            Expect.isNone
+                (TaLoadedCoverageCodec.tryWindowIntent None (Some -1L) 4L (Some 0L) 250)
+                "A negative expected coverage revision must fail closed."
+            Expect.isNone
+                (TaLoadedCoverageCodec.tryWindowIntent None (Some 7L) 4L (Some -1L) 250)
+                "A negative observation ordinal must fail closed."
+
         testCase "DYN-T-629 display time-zone ids are stable and reject unknown values" <| fun _ ->
             let expected =
                 [| SduiDisplayTimeZone.Utc, "UTC", "UTC"
@@ -1307,7 +1400,8 @@ let tests =
                     { BaseRowId = "price"
                       StartEventTimeUtc = "2026-09-08T01:00:00Z"
                       EndEventTimeExclusiveUtc = "2026-09-08T02:00:00Z"
-                      MaximumBasePoints = 4000 })
+                      MaximumBasePoints = 4000
+                      CoverageIntent = None })
 
             for index, action in [| cursor; range |] |> Array.indexed do
                 let request =
@@ -1333,7 +1427,8 @@ let tests =
                     { BaseRowId = "price"
                       StartEventTimeUtc = "2026-09-08T02:00:00Z"
                       EndEventTimeExclusiveUtc = "2026-09-08T01:00:00Z"
-                      MaximumBasePoints = 4001 })
+                      MaximumBasePoints = 4001
+                      CoverageIntent = None })
             let errors = DynamicActionValidation.actionErrors oversizedRange
             Expect.isTrue (errors |> List.exists (fun error -> error.Code = "invalid-visible-range")) "Reverse range must fail."
             Expect.isTrue (errors |> List.exists (fun error -> error.Code = "invalid-maximum-base-points")) "Range over 4000 base points must fail."

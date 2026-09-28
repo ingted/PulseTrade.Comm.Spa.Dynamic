@@ -1,0 +1,20 @@
+# RFC-0030 generic navigator coherence owner slice
+
+## Pre-work plan
+
+- 背景：TradeCore RFC-0030將AuthorityRange、LoadedCoverage與VisibleWindow分離；現行Renderer的24 viewBox-unit visual floor會使selection與真實window比例分歧。
+- 目標：完成Aster W030-3，讓navigator visual selection、2 CSS px boundaries、transparent hit targets、preview/commit與main chart共用同一resolved window。
+- 假設：consumer會提供大於4000 observations的bounded overview/reference domain與`VisibleWindow`；PTCS不成為FSSTL authority、provider cache或Backtest owner。
+- 不變事項：`VisibleWindow.Count <= MaximumVisibleBars <= 4000`；不補gap、不新增交易domain型別、不觸發provider fetch/Backtest rerun；marker/stripe/cursor/time-zone semantics不變。
+- Scope：Dynamic.Renderer model/DOM，owner RFC/current docs，focused unit/F# Playwright，必要的exact package release。
+- 驗收：long coverage下4000/200/48/minimum bars的selection geometry與model一致；selection可小於hit target；overlap hit deterministic；resize/pointer <100ms；consumer真SPAA及DIB由Daedalus驗。
+- 風險：過早擴wire contract會把TradeCore coverage責任洩漏進Renderer；必須先確認現行`referenceLength + TaVisibleWindow`已足以表達比例。
+- 停止條件：owner packages正式發布並交付exact graph，或確認現行wire無法分離coverage/window而需回RFC決策最小generic contract。
+
+## Operations
+
+- 2026-09-28 05:46 +08:00：讀取TradeCore RFC-0030，確認owner責任與非目標；已請Daedalus交付W030-1兩條RED exact evidence。
+- 2026-09-28 07:35 +08:00：Daedalus交付shape B與250→500 RED後，建立loaded coverage hypothesis；確認現行base axis無法同時擔任bounded active detail及完整coverage authority。
+- 2026-09-28 08:00-10:05 +08:00：完成typed loaded coverage／window intent、document cap、exact navigator geometry、single root CSS-pixel hit resolver、cache adjacent/rebase及page replacement full-prepare。修正BrowserDemo延遲舊action未檢查ExpectedDocumentRevision而污染新page的fixture authority bug。
+- 2026-09-28 10:14 +08:00：fresh exact candidate suites全綠：Contracts/Renderer/Interactive/PTCS/Ptcs.Client=`47/55/14/15/17`。Release BrowserDemo F# Playwright PASS：active reference=250、global visible=251-500、tiny selection=3.813/1400；正式performance phases無大於100ms task，cursor p95=37ms/max85ms。
+- 2026-09-28 10:15 +08:00：candidate graph為Contracts `0.1.32`、Renderer `0.1.85`、Interactive.Client `0.1.76`、Dynamic.Ptcs `0.1.53`、Ptcs.Client `0.1.86`；bundle verifier PASS。local SHA依序為`DF5131C5...DCB1 / D3D7645C...5FA6 / DD17D07E...2D41 / 7836FEE9...4683 / 6BF6DEC3...9DAE`。official push/readback及consumer gate待後續。

@@ -363,3 +363,11 @@ Overview edge clipping是paint geometry，不是viewport selection錯誤。只�
 Canonical UTC是transport、lookup、patch correlation與persistence truth；display zone只是page-local projection。`Dynamic.Contracts`擁有四種stable zone value，`Dynamic.Renderer`擁有唯一UTC parser／DST formatter與TA visible-time wiring，SPAA／DIB擁有page switch及Backtest workspace wiring。此分層避免把display preference寫進document/cache，也避免Renderer依商品或session推論時區。
 
 既有renderer API固定UTC並維持相容；新版overload接受`View<SduiDisplayTimeZone>`。每個renderer instance自行跟隨該View，禁止global mutable zone。Zone切換不得進action callback，因此不會觸發provider、FSSTL、Backtest或revision變更。Canonical DOM attributes與visible text分離，讓consumer E2E可同時驗instant不變及投影更新。
+
+## 31. Loaded coverage／navigator coherence analysis
+
+現行Renderer已把overview price sample限制為280點，但selection比例的`referenceLength`仍取自base-row temporal axis。這代表sample與比例authority沒有混用；真正缺口是RuntimeReducer仍把axis／series retention限制為4,000。若consumer只送active 4,000 detail，Renderer就看不到更長coverage；若直接放寬hard limit，則多年detail會進active browser state，違反bounded設計。
+
+因此本變更先修正與資料shape無關的必然錯誤：visual bounds直接由resolved window ratio產生，沒有24-unit floor；pointer使用CSS pixel resolver。selection小於左右hit target總寬時，interaction union切成左／中／右三區，保證resize／move皆可達且不依DOM target。
+
+長coverage另需generic projection邊界。PTCS不擁有provider cache，但需要接收足以投影的coverage observation domain、gap segments、bounded overview anchors、active detail offset/window與generation。此shape須由Daedalus的W030-2真consumer輸出反證後定案；在此前不得將現有4,000-axis能力描述成多年coverage完成。

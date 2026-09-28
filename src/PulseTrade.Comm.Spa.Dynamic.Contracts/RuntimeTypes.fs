@@ -282,6 +282,38 @@ type DynamicTemplateSchema =
       SchemaRevision: int64
       Fields: EditorFieldSchema array }
 
+[<RequireQualifiedAccess>]
+type TaCoverageCompleteness =
+    | Complete
+    | Partial
+
+type TaLoadedCoverageSegment =
+    { SegmentId: string
+      StartEventTimeUtc: string
+      EndEventTimeExclusiveUtc: string
+      StartObservationOrdinal: int64
+      ObservationCount: int64 }
+
+type TaOverviewAnchor =
+    { ObservationOrdinal: int64
+      EventTimeUtc: string
+      Value: SduiValue }
+
+type TaActiveDetailProjection =
+    { StartObservationOrdinal: int64
+      ObservationCount: int
+      BaseAxisRef: string }
+
+type TaLoadedCoverageProjection =
+    { CoverageIdentity: string
+      CoverageRevision: int64
+      QueryGeneration: int64
+      Completeness: TaCoverageCompleteness
+      TotalObservationCount: int64 option
+      Segments: TaLoadedCoverageSegment array
+      OverviewAnchors: TaOverviewAnchor array
+      ActiveDetail: TaActiveDetailProjection }
+
 type TaWorkspaceDocument =
     { WorkspaceId: string
       Title: string
@@ -379,11 +411,24 @@ type SharedCursorChange =
     { BaseRowId: string
       EventTimeUtc: string }
 
+[<RequireQualifiedAccess>]
+type TaCoverageDirection =
+    | Earlier
+    | Later
+
+type TaCoverageWindowIntent =
+    { ExpectedCoverageRevision: int64 option
+      QueryGeneration: int64
+      StartObservationOrdinal: int64 option
+      ObservationCount: int
+      Direction: TaCoverageDirection option }
+
 type VisibleRangeChange =
     { BaseRowId: string
       StartEventTimeUtc: string
       EndEventTimeExclusiveUtc: string
-      MaximumBasePoints: int }
+      MaximumBasePoints: int
+      CoverageIntent: TaCoverageWindowIntent option }
 
 [<RequireQualifiedAccess>]
 type EditorScalarValue =

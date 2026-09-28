@@ -1750,3 +1750,11 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Daedalus consumer commit `G:\coldfar_py\coldfar-symbolics@02d3432e`整合Contracts `0.1.31`、Renderer `0.1.83`、Interactive.Client `0.1.74`；canonical evidence為`doc_new2/DevLog.md`及`doc_new2/RFC/RFC-TRADECORE-0029.page-display-time-zone.md`。
 - 真SPAA Playwright使用3,563根ES 1K、兩個Backtest scenarios及固定成交`2026-06-17T22:01:00Z`，UTC→CT/CDT→ET/EDT→UTC+8全頁投影GREEN。切換期間API request count、document/data revision、loaded bars、viewport、marker slot、selected scenario及End K query zone全部不變，最終`SMA13X34_DMI_SPAA=GREEN`。DYN-WBS-571完成。
+
+## 2026-09-28 - RFC-0032 loaded coverage／navigator coherence owner candidate
+
+- Renderer selection移除24 viewBox-unit visual floor；2 CSS px visual boundaries與24 CSS px transparent interaction resolver分離，tiny selection的left／move／right gesture由single root route deterministic解析。
+- Contracts新增validated `ta-loaded-coverage.v1`與`ta-coverage-window.v1`，分離完整ordinal/gap/overview authority及<=4000 active detail。Interactive cache以temporal adjacency選頁；revision advance只在唯一segment仍精確對應舊page時rebase，ambiguous/coalesced/future revision fail closed。
+- active-detail page替換改走full scheduled preparation，同projection live patch才incremental。BrowserDemo修正延遲舊action缺少optimistic revision檢查的fixture bug，過期`ExpectedDocumentRevision`現在回`RevisionConflict`，不再污染新page。
+- Fresh exact candidate suites為`47/55/14/15/17`。F# Playwright在4,000 bars驗tiny selection 3.813/1400、move/雙側resize、500 loaded／250 active detail與Earlier/Later；正式phase全無>100ms task，cursor p95=37ms/max85ms。
+- Candidate graph為Contracts `0.1.32`、Renderer `0.1.85`、Interactive.Client `0.1.76`、Dynamic.Ptcs `0.1.53`、Ptcs.Client `0.1.86`；Interactive bundle verifier PASS。official immutable push/readback與Daedalus真SPAA／fresh-kernel DIB仍pending，不以owner gate代替consumer acceptance。

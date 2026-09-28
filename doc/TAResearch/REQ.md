@@ -158,6 +158,16 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-080 | Overview左右2 CSS px visual boundary位於SVG edge時須向內補償半個stroke，完整可見寬度必須與移動到內部後相同；transparent 8-unit drag target、selection range與pointer語意不得改變。 |
 | DYN-TA-REQ-081 | `TaWorkspaceDocument.DefaultView`須能以generic typed contract選擇light/dark plot surface。Dark模式的candle、TA與overview SVG為黑底，grid、cursor、axis、legend及tooltip維持可讀；未指定時相容light，不由browser preference或consumer CSS暗中覆蓋。 |
 | DYN-TA-REQ-082 | Histogram正／負值顏色由`TaTraceSpec.Options`的paired typed options指定；不得由TraceId、Label或MACD名稱推論。兩鍵皆缺維持`TaTraceSpec.Color` legacy單色；partial、invalid color或非Histogram使用該keys須fail closed。 |
+
+## Loaded coverage／navigator coherence（RFC-PTCS-DYNAMIC-0032）
+
+| ID | Requirement |
+| --- | --- |
+| DYN-TA-REQ-083 | Navigator selection fill與左右visual boundaries必須精確投影resolved VisibleWindow相對完整reference domain的比例；不得有固定pixel／viewBox visual width floor。 |
+| DYN-TA-REQ-084 | 2 CSS px visual boundary、selection fill與透明hit target須分離；小selection的left resize／move／right resize重疊須由deterministic resolver決定，不得依DOM疊放順序。 |
+| DYN-TA-REQ-085 | Drag preview、commit、viewport buttons與query response須共用同一window resolver；到MinimumVisibleBars時visual與main chart同步停止。 |
+| DYN-TA-REQ-086 | LoadedCoverage可大於4,000且保留gap；active detail／VisibleWindow不超過4,000。overview projection與DOM須bounded，sample count不得冒充coverage count。 |
+| DYN-TA-REQ-087 | 多年coverage不得以提高active retained-series hard limit達成；若base axis未完整載入，須以versioned generic coverage projection表達coverage ordinal／segments／bounded anchors／active detail offset與generation。 |
 ## Page-scoped display time zone（RFC-PTCS-DYNAMIC-0031）
 
 - `DYN-REQ-121`：TA／Backtest page須能以單一reactive selection顯示`UTC`、`America/Chicago`、`America/New_York`與固定`UTC+08:00`；CT／ET須依event instant套用DST。

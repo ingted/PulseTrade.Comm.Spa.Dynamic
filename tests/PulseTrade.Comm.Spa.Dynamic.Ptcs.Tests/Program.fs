@@ -163,7 +163,16 @@ let browserPayload kind actionKind =
       eventTimeUtc = ""
       startEventTimeUtc = ""
       endEventTimeExclusiveUtc = ""
-      maximumBasePoints = 0 }
+      maximumBasePoints = 0
+      coverageIntentVersion = ""
+      hasCoverageIntent = false
+      expectedCoverageRevision = ""
+      hasExpectedCoverageRevision = false
+      queryGeneration = ""
+      startObservationOrdinal = ""
+      hasStartObservationOrdinal = false
+      coverageObservationCount = 0
+      coverageDirection = "" }
     |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
 
 let browserContext sessionId operation requestId payloadText =
@@ -296,13 +305,20 @@ let tests =
                           { BaseRowId = "price-1k"
                             EventTimeUtc = "2026-09-08T01:23:00Z" }))
               let range =
+                  let intent =
+                      { ExpectedCoverageRevision = Some 17L
+                        QueryGeneration = 4L
+                        StartObservationOrdinal = Some 250L
+                        ObservationCount = 250
+                        Direction = Some TaCoverageDirection.Earlier }
                   RuntimeClientFrame.Action(
                       SduiAction.VisibleRangeChanged(
                           canvasId,
                           { BaseRowId = "price-1k"
                             StartEventTimeUtc = "2026-09-08T01:00:00Z"
                             EndEventTimeExclusiveUtc = "2026-09-08T02:00:00Z"
-                            MaximumBasePoints = 4000 }))
+                            MaximumBasePoints = 250
+                            CoverageIntent = Some intent }))
 
               let transient value =
                   value
@@ -310,7 +326,7 @@ let tests =
                   |> TaResearchTransientWire.clientFrameFromWire
 
               Expect.equal (transient cursor) (Ok cursor) "transient cursor wire must preserve base identity and UTC event-time."
-              Expect.equal (transient range) (Ok range) "transient range wire must preserve the bounded base-point request."
+              Expect.equal (transient range) (Ok range) "transient range wire must preserve the versioned ordinal request."
 
               let browserCursor =
                   browserPayload "action" "shared-cursor-changed"
@@ -325,11 +341,20 @@ let tests =
                           baseRowId = "price-1k"
                           startEventTimeUtc = "2026-09-08T01:00:00Z"
                           endEventTimeExclusiveUtc = "2026-09-08T02:00:00Z"
-                          maximumBasePoints = 4000 }
+                          maximumBasePoints = 250
+                          coverageIntentVersion = TaLoadedCoverageCodec.WindowIntentSchema
+                          hasCoverageIntent = true
+                          expectedCoverageRevision = "17"
+                          hasExpectedCoverageRevision = true
+                          queryGeneration = "4"
+                          startObservationOrdinal = "250"
+                          hasStartObservationOrdinal = true
+                          coverageObservationCount = 250
+                          coverageDirection = "earlier" }
                   |> TaResearchBrowserWire.clientFrameFromWire
 
               Expect.equal browserCursor (Ok cursor) "browser cursor wire must preserve base identity and UTC event-time."
-              Expect.equal browserRange (Ok range) "browser range wire must preserve the bounded base-point request.")
+              Expect.equal browserRange (Ok range) "browser range wire must preserve the versioned ordinal request.")
 
           testCase "browser point wire accepts canonical compact keys and legacy aliases" (fun _ ->
               let compactCandle =

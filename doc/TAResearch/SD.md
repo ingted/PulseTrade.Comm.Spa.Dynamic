@@ -1021,4 +1021,23 @@ RuntimeFrame / RuntimeState / lookup / data-* canonical attributes
 
 `SduiDisplayTimeZone`由Contracts提供stable id codec。Renderer formatter回傳canonical、zone id、abbreviation及full/compact/date/clock fields；invalid canonical string回`None`。Renderer以instance-local reactive state驅動dynamic text，imperative cursor fast-path在zone變更時重跑既有bounded visible-value refresh，不重建data projection或送action。
 
+## Loaded coverage／navigator coherence（RFC-PTCS-DYNAMIC-0032）
+
+```text
+resolveWindow total committed/draft
+  -> selectionRatios total window
+  -> navigatorSelectionBounds SVG viewBox ratios
+  -> selection fill + 2 CSS px visual boundaries
+
+pointer clientX + navigator CSS width + 24 CSS px target
+  -> navigatorDragMode
+  -> fixed drag mode + committed window
+  -> previewWindowBounds on move
+  -> commitWindowBounds once on release
+```
+
+`navigatorDragMode`在一般selection以boundary radius／interior分流；當selection寬度小於兩個radius時，把clamped interaction union等分為left／move／right。SVG root是唯一mousedown route；透明handle／move rect不擁有mode。`data-selection-left-ratio`、`data-selection-right-ratio`與`data-drag-hit-target-css-pixels`只供診斷／E2E，不成為第二份state。
+
+現階段`referenceLength = base-row temporal axis length`，overview sample固定bounded且不參與ratio。W030-3B若採active detail＋獨立coverage，新增contract須versioned且至少攜帶coverage identity/revision、actual observation count、gap segments、bounded ordinal/time anchors、active detail offset/count與query generation；Renderer不得由From/To或scale推算缺少ordinal。
+
 Stable selectors／attributes：workspace與visible time node提供`data-display-time-zone`；axis、cursor、row data window及event items保留canonical UTC attribute。CT／ET依canonical event instant判定DST，固定UTC+8不採DST。既有`render`／`renderWithProjectionCommit`以UTC constant View委派新版overload。

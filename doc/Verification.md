@@ -263,3 +263,9 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Owner result：desktop／390px均為7條唯一40px row control lines；同row controls/traces同Y band，不同row分離，390px MACD trace region只在自身水平overflow；system traces不進controls。4,000 bars、300 cursor transitions與既有lifecycle/performance gates全綠，正式phase無>100ms task。
 - Official graph：Renderer `0.1.82` SHA-256 `20D89407F1588618E88E297EB86E5DC4C658ED7510D581519EE29AC76515A073`；Interactive.Client `0.1.73` SHA-256 `21CC8DDA7DAE5C1D3C8D6C16668AAC02C0E67CC7161F248A017627DB37407C8B`；Ptcs.Client `0.1.83` SHA-256 `5EE7C03DC3308E26BD58063BC51D0831F95F4349F89CDB5BF71C6A47F95F36CB`。三包NuGet.org repository signatures有效，exact dependencies為Contracts `[0.1.30]`／Renderer `[0.1.82]`／PTCS `[0.2.46]`。
 - Consumer gate：Daedalus須以此official graph執行真SPAA 8-row desktop/640px驗收；尚未回覆GREEN。
+# RFC-0032 Loaded coverage／navigator coherence（owner PASS revision 2）
+
+- `DYN-VFY-032A`：focused executable suites PASS `47/55/14/15/17`，涵蓋T-117/T-120、cache unique-segment rebase、stale/future revision fail-closed與既有window/query race。
+- `DYN-VFY-032B`：fresh exact-package BrowserDemo＋`scripts/verify-ta-renderer-playwright.fsx` PASS；4,000 bars tiny selection為3.813/1400，move/left/right resize與browser resize一致，2px visual／24px resolver不漂移。
+- `DYN-VFY-032C`：500 loaded coverage／250 active detail顯示global `251-500`，active reference=250；page replacement full prepare、same-projection live patch incremental，延遲舊action回revision conflict。正式phasefive-candle/scenario/All/marker/document/progressive最大`72.11/83.49/39.89/59.67/55.76/43.21ms`，全部over100=0；cursor p95=37ms/max85ms。
+- `DYN-VFY-032D`：owner candidate graphContracts `0.1.32`、Renderer `0.1.85`、Interactive.Client `0.1.76`、Dynamic.Ptcs `0.1.53`、Ptcs.Client `0.1.86`；Interactive bundle verifier PASS。official push與Daedalus真SPAA／fresh-kernel DIB pending。

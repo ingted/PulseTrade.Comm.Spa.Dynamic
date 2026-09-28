@@ -12,7 +12,7 @@
 - status：保留freshness、watermark、quality與recoverable last-good error；remote in-flight只禁用remote submit，不凍結local view。cache rehydrate進入`PausedForResync`時仍允許local pan/zoom/hover/cursor，但不送`VisibleRangeChanged`或`SharedCursorChanged`，直到authoritative resync完成。
 - query draft：只從`TaWorkspaceDocument.DefaultView`的`query.*` metadata初始化；document revision不變的poll不覆蓋使用者輸入，metadata缺失時保持空白，禁止回退到demo symbol/interval/date。
 - Apply boundary：instrument/interval/range只更新local draft；選擇interval不送action、不改authoritative query、不重render。按`Load / Apply`送`ChangeTaQuery`；accepted後依merged base/reference temporal axis選`[FromUtc, ToUtcExclusive)` local window，不改authoritative data/revision或清cache。pending期間的新query取代queue中的舊intent，transport仍維持one-in-flight。
-- loaded range：shared-axis working set可保留最多4000 positions；overview以bounded bucket呈現全range，左右handle可resize，中段可move，48/200/All可切換。drag只更新draft，pointer release/`change`才commit一次render，local navigation不送server action；All模式把完整working set壓縮成bounded SVG primitives觀察長趨勢。
+- loaded range：active shared-axis detail目前最多4000 positions；overview以bounded bucket呈現reference domain，左右handle可resize，中段可move，48/200/All可切換。selection依resolved window真實比例繪製，沒有固定visual寬度下限；24 CSS px hit resolver在小selection重疊時仍明確區分left／move／right。drag只更新draft，pointer release才commit一次render。多年coverage＋bounded active detail仍需RFC-0032的versioned generic coverage projection，不得以提高retained detail cap冒充完成。
 - Add/Edit Row：由`TaWorkspaceDocument.EditorSchemas`生成generic Text/Integer/Decimal/Boolean/Choice/Scale/List/Group表單；同template可建立多個參數實例。帶`ptcs.dynamic.editor.binding.v1`的row可預填並以stable RowId重新設定；legacy無binding row保持read-only。editor draft不會被poll覆蓋。
 - Reset Canvas：送remote typed action恢復mount時initial ordered rows/query；Reset View只恢復local viewport。
 - timeline：各trace依timestamp對齊reference timeline；SMA/ADX/MACD warm-up縮短不會用array index錯位或造成sequence failure。
@@ -64,7 +64,7 @@ TaWorkspaceRenderer.renderWithDisplayTimeZone
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-generic-marker-playwright.fsx`。
-- current owner candidate：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.83`，exact依賴Contracts `[0.1.31]`與FSharp.Core `[10.1.400]`。RFC-0031新增page-scoped reactive display time zone；owner 4,000-bar browser gate驗證UTC／CT／ET／UTC+8切換、snapshot→patch selection與canonical/viewport/action no-drift。Daedalus真SPAA驗收及public push仍待完成。
+- current owner candidate：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.85`，exact依賴Contracts `[0.1.32]`與FSharp.Core `[10.1.400]`。RFC-0032移除navigator 24-unit visual floor，以24 CSS px deterministic resolver處理tiny-selection hit overlap，並使用validated loaded-coverage projection分離完整ordinal domain與bounded active detail。active-detail page替換必須full prepare；同projection live patch才incremental，stale action不得污染新page。
 
 RFC-0028 release為Renderer `0.1.76`、Contracts `[0.1.29]`、Interactive.Client `0.1.67`。它包含RFC-0027 typed dark plot／Histogram polarity，並以`DefaultView.visibleBars`初始化fresh canvas；plot marker只保留glyph/tooltip，每列在cursor gutter與plot間提供固定24px OFI band，最多4筆＋`+N`。一般plot hover依axis snap；直接marker／cluster hit以accepted placement exact slot更新同一shared cursor並停止冒泡，避免高密度同CSS pixel時偏至鄰slot。Overview selection為淺灰，visual boundaries為亮綠2 CSS px且不改transparent hit targets。
 
