@@ -1,0 +1,38 @@
+# SPAA true-consumer scheduler jitter
+
+## Pre-work plan
+
+- 背景：official Renderer `0.1.88`／Interactive.Client `0.1.79`／Ptcs.Client `0.1.89`
+  的 owner gate為435.30ms，但Daedalus真SPAA 960 bars／8 rows一次卡在48-bar local render
+  10秒 timeout，另一次200→All為2240ms。
+- 目標：以相同真SPAA E2E重現，分離consumer frame preparation、Renderer row scheduling、reactive
+  DOM settle與geometry成本，修到連續consumer passes。
+- 不得改變：visible-window semantics、single accepted action只增加一次render sequence、cursor identity、
+  row ordering、loaded data completeness、public contract shape與consumer-owned scenario lifecycle。
+- 假設：相同consumer、package graph與資料量下，替換單一等待locator即可區分產品render成本與verifier observer cost。
+- 風險：若只提高timeout或縮小資料量會掩蓋真stall；若直接修改consumer repo則會越過owner邊界並污染A/B。
+- 範圍：PTCS Dynamic Renderer／Interactive Client及其owner/browser tests；consumer repo只讀驗證。
+- 驗收：真SPAA 960 bars／8 rows連續通過48、200→All <=2000ms、resize cursor與既有E2E；再發
+  immutable exact package graph交Daedalus重跑。
+- 停止條件：若profile證明stall完全發生於consumer呼叫owner前，保留owner evidence並以exact phase
+  boundary交回Daedalus，不跨owner修改其程式。
+
+## Operations
+
+- 14:10 收到Daedalus真consumer RED：run#1 48-bar local render 10秒 timeout；run#2 200→All
+  2240ms。已direct回覆並暫停ProcSupervisor final deploy。
+- 14:18 在同一`http://127.0.0.1:18883/`載入真consumer 2,444 bars／8 rows；同步完成
+  48與200後，以Chrome Performance錄200→All，interaction INP為17ms，畫面約1秒到
+  `Viewing 1-2444`。
+- 14:27 建立不進Git的formal gate副本，只把loaded-range觀測從全頁`GetByText(Regex)`改為
+  既有`data-testid=ta-viewport-range`，initial barrier另等非零Loaded；原consumer source未修改。
+  真960 bars／8 rows結果：click48=119ms、click200=318ms、clickAll=144ms、200→All total=1315ms。
+  正式2秒門檻未放寬。副本後段在unrelated marker wait timeout，未誤宣稱完整E2E通過，並已刪除副本。
+- 14:30 根因邊界：owner product interaction在同一真consumer負載下低於門檻；2153/2240ms超額主要由
+  consumer verifier每50ms對大型DOM重做全頁Regex text locator造成。已將exact evidence與formal gate
+  修正方式direct交付Daedalus，等待其用direct locator連續重跑；本輪不製造無行為差異的package版號。
+- 14:35 原封不動重跑formal consumer gate，960 bars再次在200→All量到2115ms而失敗；同時段direct
+  test-id副本為1315ms。此A/B使用相同服務、package graph、資料量與row count，進一步排除package
+  identity與Renderer interaction本身，定位為verifier locator observer effect。
+- 14:26 Correction：前四筆Operations中的14:27／14:30／14:35是誤用估計時間形成的future label；
+  其操作順序與證據內容不變，均已在本筆Correction前完成，authoritative completion time為14:26。

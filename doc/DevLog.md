@@ -1794,3 +1794,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Source commit `1a508e4`已push；Renderer `0.1.88`、Interactive.Client `0.1.79`、Ptcs.Client `0.1.89` public push均回`Created`。Interactive首次並行pack因project-scoped `wsfscservice`持有受保護log失敗；停止該明確helper後單獨full WebSharper pack成功，未停用compiler或沿用舊bundle。
 - NuGet.org official SHA-256依序為`3426477273FFF51A466441DDE860E25236767025E7326BB7278E81247F37E194 / B88AA9511EC928549E21A1B7C02C7AFBC115979992CCF540704688FA56E617B1 / D372E85227A2EDA6500167BECA6073D4AF1D6C69FBA8E114F0F711DD6C8F9C9E`；三包repository signature有效、exact dependencies正確，排除`.signature.p7s`後local/official entry differences均為0。剩Daedalus真SPAA consumer gate。
+
+## 2026-09-28 - True-consumer viewport verifier observer effect
+
+- Daedalus以official graph在真SPAA 960 bars／8 rows回報48 preset偶發10秒timeout，以及200→All為2153–2240ms。相同服務與graph下，Chrome 2,444 bars interaction INP為17ms；把formal gate從whole-page `GetByText(Regex)`改讀既有`data-testid=ta-viewport-range`後，960 bars的48/200/All click為119/318/144ms，200→All總計1315ms。
+- 原formal locator每50ms重掃大型DOM全文，observer cost被算入2秒產品門檻；同時段原locator仍量得2115ms，形成可區分的A/B。Renderer contract與package graph不變，不為測試觀測器差異發布空版本。
+- Consumer gate仍維持2秒且需由Daedalus正式重跑：使用direct test-id locator，initial barrier明確等待非零Loaded。Diagnostic副本後段在unrelated marker wait失敗，故本輪不宣稱完整真SPAA E2E PASS。
