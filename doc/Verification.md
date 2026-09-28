@@ -281,9 +281,10 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Second release：source `1a508e4`；三包push均回`Created`。NuGet.org official SHA-256依序為Renderer `3426477273FFF51A466441DDE860E25236767025E7326BB7278E81247F37E194`、Interactive.Client `B88AA9511EC928549E21A1B7C02C7AFBC115979992CCF540704688FA56E617B1`、Ptcs.Client `D372E85227A2EDA6500167BECA6073D4AF1D6C69FBA8E114F0F711DD6C8F9C9E`；repository signature有效、exact dependencies正確且排除`.signature.p7s`後entry differences全為0。真SPAA gate pending。
 - Consumer diagnostic：同一960-bar／8-row服務與official graph，whole-page Regex locator量得200→All 2115–2240ms；direct `ta-viewport-range` locator量得1315ms（click48/200/All=119/318/144ms）。產品2秒門檻不變；由consumer owner以direct locator與non-zero Loaded barrier正式重跑後才能關閉gate。
 
-## DYN-VFY-039 Committed viewport state barrier（ACTIVE revision 1）
+## DYN-VFY-039 Committed viewport state barrier（ACTIVE revision 2）
 
 - Gap：真SPAA以direct `ta-viewport-range`量得200→All 2,072／2,137ms，click僅40ms；現行full verifier把state與rows-ready合併，無法單獨防止range/status被chart stack replacement阻塞。
 - Verifier：`scripts/verify-ta-viewport-state-commit-playwright.fsx`；使用4,000-bar BrowserDemo依序切200／All，分別量測committed state與rows-ready，並驗single render、range attributes與console/page error。
 - Gate：committed state `<=750ms`、rows-ready `<=1500ms`；不放寬consumer 2,000ms門檻。
-- Owner result：4,000-bar BrowserDemo由200切All，committed state `170.88ms`、rows-ready total `369.95ms`、render sequence `3->4`，visible attributes=`1..4000`且console/page error=0。Focused suites維持Renderer `55/55`、Interactive.Client `15/15`、Ptcs.Client `17/17`；candidate graph為Contracts `0.1.33`／Renderer `0.1.89`／Interactive.Client `0.1.80`／Dynamic.Ptcs `0.1.54`／Ptcs.Client `0.1.90`。Official readback與真SPAA結果pending。
+- Owner result：4,000-bar BrowserDemo由200切All，committed state `170.88ms`、rows-ready total `369.95ms`、render sequence `3->4`，visible attributes=`1..4000`且console/page error=0。Focused suites維持Renderer `55/55`、Interactive.Client `15/15`、Ptcs.Client `17/17`。
+- Official graph：Contracts `0.1.33`／Renderer `0.1.89`／Interactive.Client `0.1.80`／Dynamic.Ptcs `0.1.54`／Ptcs.Client `0.1.90`。新三包official SHA-256依序為`94FAC37832CC1AD94FE0B355F7DB2FA4E452F2EDC5016DA75D88037F8121B1F6 / 4E97D7FE0FFE0E001ADB7C1B7A5A7113A5FC99B5838CB703FFFB413E68BFCCDE / 39E6C62BE773D7D85D84291C0D9F24445A9086E9087AF6BB1FB104E5792C14FF`；repository signature、exact dependencies、bundle manifest `0.1.80`及排除`.signature.p7s`後entryDiff=0皆PASS。真SPAA結果pending。

@@ -1807,3 +1807,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Renderer `0.1.89`讓range文字直接訂閱committed `uiState`與draft，不再等待整棵chart stack replacement；scheduled rows仍由既有ready barrier表示完成，public API、generation與single-render contract不變。
 - 新增`verify-ta-viewport-state-commit-playwright.fsx`。4,000-bar owner gate量得committed state `170.88ms`、rows-ready total `369.95ms`、render sequence `3->4`、visible `1..4000`、console/page error=0；focused suites維持`55/15/17`。
 - Candidate exact graph為Contracts `0.1.33`、Renderer `0.1.89`、Interactive.Client `0.1.80`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.90`。Official publication/readback與Daedalus真SPAA consumer gate尚未完成，不宣稱產品驗收。
+
+## 2026-09-28 - Committed viewport state official release
+
+- Source commit `d7d04e8`已push；Renderer `0.1.89`、Interactive.Client `0.1.80`、Ptcs.Client `0.1.90` public push均回`Created`。
+- NuGet.org official SHA-256依序為`94FAC37832CC1AD94FE0B355F7DB2FA4E452F2EDC5016DA75D88037F8121B1F6 / 4E97D7FE0FFE0E001ADB7C1B7A5A7113A5FC99B5838CB703FFFB413E68BFCCDE / 39E6C62BE773D7D85D84291C0D9F24445A9086E9087AF6BB1FB104E5792C14FF`。
+- 三包NuGet.org repository signature有效、exact dependencies正確，排除`.signature.p7s`後local/official entry differences皆為0；Interactive bundle manifest明列packageVersion `0.1.80`。Exact graph已交Daedalus跑真SPAA，consumer結果pending。

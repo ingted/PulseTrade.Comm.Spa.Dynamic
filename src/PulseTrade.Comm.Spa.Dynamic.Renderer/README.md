@@ -64,7 +64,7 @@ TaWorkspaceRenderer.renderWithDisplayTimeZone
 - exact-package model/dependency/source tests：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests`。
 - exact-package live bundle：`tests/PulseTrade.Comm.Spa.Dynamic.Renderer.BrowserDemo`。
 - desktop/mobile F# Playwright：`scripts/verify-ta-generic-marker-playwright.fsx`。
-- current owner candidate：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.89`，exact依賴Contracts `[0.1.33]`與FSharp.Core `[10.1.400]`。committed viewport range直接訂閱local UI state，不再等待整棵chart stack replacement；row generation、ready barrier與single-render contract不變。RFC-0032的loaded-coverage、tiny-selection resolver與revision gates不變。
+- current owner release：`PulseTrade.Comm.Spa.Dynamic.Renderer 0.1.89`，exact依賴Contracts `[0.1.33]`與FSharp.Core `[10.1.400]`。committed viewport range直接訂閱local UI state，不再等待整棵chart stack replacement；row generation、ready barrier與single-render contract不變。RFC-0032的loaded-coverage、tiny-selection resolver與revision gates不變。
 
 RFC-0028 release為Renderer `0.1.76`、Contracts `[0.1.29]`、Interactive.Client `0.1.67`。它包含RFC-0027 typed dark plot／Histogram polarity，並以`DefaultView.visibleBars`初始化fresh canvas；plot marker只保留glyph/tooltip，每列在cursor gutter與plot間提供固定24px OFI band，最多4筆＋`+N`。一般plot hover依axis snap；直接marker／cluster hit以accepted placement exact slot更新同一shared cursor並停止冒泡，避免高密度同CSS pixel時偏至鄰slot。Overview selection為淺灰，visual boundaries為亮綠2 CSS px且不改transparent hit targets。
 

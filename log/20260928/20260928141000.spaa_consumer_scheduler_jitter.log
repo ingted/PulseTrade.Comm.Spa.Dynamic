@@ -42,3 +42,6 @@
 - 15:42 Renderer range文字改為直接訂閱committed `uiState`與draft，不再等待chart stack replacement；row ready authority不變。
   新focused F# Playwright PASS：4,000 bars的200→All state=170.88ms、rows-ready total=369.95ms、render `3->4`、
   range attributes=`1..4000`，console/page error=0。Candidate graph為`0.1.33/0.1.89/0.1.80/0.1.54/0.1.90`。
+- 15:51 Source commit `d7d04e8`已push；Renderer `0.1.89`、Interactive.Client `0.1.80`、Ptcs.Client `0.1.90`
+  push均回`Created`。NuGet.org official SHA依序為`94FAC378...21B1F6 / 4E97D7FE...BFCCDE / 39E6C62B...2C14FF`；
+  repository signature、exact dependencies、Interactive manifest `0.1.80`及entry parity均PASS。Exact graph已direct交Daedalus跑真SPAA。

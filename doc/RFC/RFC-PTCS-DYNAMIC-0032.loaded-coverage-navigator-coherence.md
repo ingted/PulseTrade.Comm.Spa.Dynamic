@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0032：Loaded Coverage／Navigator Coherence
 
 - ID：`RFC-PTCS-DYNAMIC-0032`
-- 狀態：`Accepted / owner implementation verified / immutable publication pending / consumer gate pending`
+- 狀態：`Accepted / owner implementation and immutable publication verified / consumer gate pending`
 - 日期：`2026-09-28`
 - Owner：Aster（PTCS Dynamic Contracts／Renderer／Clients）
 - Consumer owner：Daedalus（TradeCore／SPAA／DIB）
@@ -116,3 +116,5 @@ Owner已完成W030-3A/3B source與fresh exact-package gate。`ta-loaded-coverage
 真SPAA以direct `ta-viewport-range`仍量到200→All `2,072/2,137ms`，證明whole-page locator雖有observer cost，卻不是完整根因。range文字原本在chart stack computation內捕捉static resolved window；接受`uiState`後仍要等整棵SVG subtree replacement才可觀察。
 
 Renderer改以`View.Map2 uiState.View draftWindow.View`直接解析range文字。這個文字表示「viewport state已接受」，不冒充rows已繪完；`data-ready-row-count`仍是scheduled row completion authority。public renderer API、action、generation、single-render與loaded-coverage contract不變。Owner gate分別限制committed state `<=750ms`及rows-ready total `<=1500ms`，consumer既有2秒產品門檻不得放寬。
+
+Exact graph為Contracts `0.1.33`、Renderer `0.1.89`、Interactive.Client `0.1.80`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.90`。三顆新package已完成NuGet.org repository signature、exact dependency、bundle manifest與entry parity readback；真SPAA同一2秒gate仍由Daedalus驗收。
