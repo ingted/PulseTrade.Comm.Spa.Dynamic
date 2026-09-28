@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0032：Loaded Coverage／Navigator Coherence
 
 - ID：`RFC-PTCS-DYNAMIC-0032`
-- 狀態：`Accepted / owner implementation complete / consumer gate pending`
+- 狀態：`Accepted / owner implementation verified / immutable publication pending / consumer gate pending`
 - 日期：`2026-09-28`
 - Owner：Aster（PTCS Dynamic Contracts／Renderer／Clients）
 - Consumer owner：Daedalus（TradeCore／SPAA／DIB）
@@ -68,6 +68,12 @@ toolbar Earlier／Later每次位移完整visible count，不再使用`Count/4`�
 
 Interactive.Client提供`readAdjacent`，依cache identity、workspace、coverage identity/revision、direction與boundary選最近的temporal adjacent snapshot，結果為`Hit | KnownEmpty | Miss | Unavailable`。TouchedAt只可作淘汰順序，不可作adjacency。corrupt entry刪除後視為miss；cache unavailable不得卡住remote fallback。
 
+### D7. Cache entry atomic presentation commit
+
+`readAdjacent`命中的cache entry是一個不可拆分的presentation candidate：cached `Document`、`View`與snapshot data必須先經完整entry validation，再由同一個rehydrate commit發布。不得把cached A data套入current B document，也不得在frame pump尚未完成時發布partial state。
+
+rehydrate完成後保留current authoritative document/data revisions、transport sequence與cache identity，並固定進入`PausedForResync`；cached revisions不得成為delta continuation authority。相鄰頁rebase後的loaded-coverage segments、query generation與active-detail ordinal必須跟cached document一同發布，Renderer只能看到單一一致狀態。
+
 ## 5. 資料流
 
 ```text
@@ -99,7 +105,8 @@ AuthorityRange (consumer)
 6. Consumer：Daedalus以真SPAA驗Earlier From擴coverage、main chart<=4000、selection變窄、query race及DIB parity。
 7. Pure/Browser：document cap 250在loaded 250→500後仍顯示250；Earlier得到1-250，Later對稱。
 8. Cache：active hit、IndexedDB adjacent hit、KnownEmpty、Miss與Unavailable各有deterministic gate。
+9. Cache atomicity：B active時命中cached A，A的實際temporal/data identity、最新coverage segments/query generation及rebased ordinal 250須一次發布；Renderer同一publish顯示`Viewing 251-500`，不得出現A data＋B document。
 
 ## 8. 驗收與停止條件
 
-Owner已完成W030-3A/3B source與immutable candidate gate。`ta-loaded-coverage.v1`保留完整ordinal/gap truth與bounded overview，active detail page replacement走full prepare；同projection live patch才走incremental prepare。延遲回來且`ExpectedDocumentRevision`過期的action必須回`RevisionConflict`，不得污染新page。W030-3整體完成仍需official exact packages、真SPAA與fresh-kernel DIB gate；任何一項缺失都須標示owner/consumer pending，不得以unit綠燈或NuGet push代替。
+Owner已完成W030-3A/3B source與fresh exact-package gate。`ta-loaded-coverage.v1`保留完整ordinal/gap truth與bounded overview，active detail page replacement走full prepare；同projection live patch才走incremental prepare。cache entry的Document/View/data亦須完整prepare後atomic commit。延遲回來且`ExpectedDocumentRevision`過期的action必須回`RevisionConflict`，不得污染新page。先前candidate graph `0.1.32/0.1.85/0.1.76/0.1.53/0.1.86`因缺少D7而retired；W030-3整體完成仍需新graph official publication、真SPAA與fresh-kernel DIB gate，任何一項缺失都須標示owner/consumer pending，不得以unit綠燈或NuGet push代替。

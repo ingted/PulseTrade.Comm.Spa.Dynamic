@@ -2087,6 +2087,8 @@ let tests =
 
             Expect.equal hydrated.Identity currentIdentity "Cache data must be rebased onto the current session identity."
             Expect.equal browserHydrated hydrated "Browser and server rehydration must share one canonical reducer result."
+            Expect.equal hydrated.Document (Some entry.Document) "Cache hydration must restore the document captured with the snapshot as one atomic presentation commit."
+            Expect.equal hydrated.View.Values entry.Document.DefaultView "Cache hydration must restore the cached document view with its snapshot."
             Expect.equal hydrated.DocumentRevision currentDocumentState.DocumentRevision "Cache data must not override the current authoritative document revision."
             Expect.equal hydrated.LastTransportSequence currentDocumentState.LastTransportSequence "Cache hydration must not consume a server transport sequence."
             Expect.equal hydrated.DataRevision currentDocumentState.DataRevision "Cached data revision must not become an authoritative delta continuation hint."

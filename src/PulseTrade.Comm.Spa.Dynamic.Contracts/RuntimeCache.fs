@@ -463,6 +463,23 @@ module RuntimeCacheProjection =
 
                     Ok snapshotFrame)
 
+    let tryPrepareRehydrate limits expectedCacheIdentity (current: RuntimeState) entry =
+        RuntimeCacheEntryValidation.validate limits entry
+        |> Result.bind (fun valid ->
+            match current.Document with
+            | None ->
+                Error [ RuntimeValidation.error "cache-document-required" "runtimeState.document" "The current authoritative document must be accepted before cache rehydration." ]
+            | Some document when document.WorkspaceId <> valid.WorkspaceId ->
+                Error [ RuntimeValidation.error "cache-workspace-mismatch" "cache.workspaceId" "Cache workspace does not match the current document." ]
+            | Some _ ->
+                let prepared =
+                    { current with
+                        Document = Some valid.Document
+                        View = { Values = valid.Document.DefaultView } }
+
+                tryCreateRehydrateFrame expectedCacheIdentity prepared valid
+                |> Result.map (fun frame -> prepared, frame))
+
     let completeRehydrate (current: RuntimeState) candidate =
         { candidate with
             DocumentRevision = current.DocumentRevision
@@ -471,16 +488,21 @@ module RuntimeCacheProjection =
             Poll = RuntimePollState.PausedForResync
             LastError = None }
 
+    let completeRehydrateEntry (current: RuntimeState) (entry: RuntimeCacheEntry) candidate =
+        { completeRehydrate current candidate with
+            Document = Some entry.Document
+            View = { Values = entry.Document.DefaultView } }
+
     let tryRehydrate limits expectedCacheIdentity (current: RuntimeState) entry =
-        tryCreateRehydrateFrame expectedCacheIdentity current entry
-        |> Result.bind (fun snapshotFrame ->
-            let candidate, effect = RuntimeReducer.reduce current snapshotFrame
+        tryPrepareRehydrate limits expectedCacheIdentity current entry
+        |> Result.bind (fun (prepared, snapshotFrame) ->
+            let candidate, effect = RuntimeReducer.reduce prepared snapshotFrame
 
             match effect with
             | RuntimeEffect.RequestResync _
             | RuntimeEffect.RejectFrame _ ->
                 Error [ RuntimeValidation.error "cache-rehydrate-invalid" "cache.snapshot" "Cache snapshot is incompatible with the current authoritative document." ]
-            | _ -> Ok(completeRehydrate current candidate))
+            | _ -> Ok(completeRehydrateEntry current entry candidate))
 
 [<RequireQualifiedAccess>]
 module RuntimeCache =
@@ -511,8 +533,14 @@ module RuntimeCache =
     let tryCreateRehydrateFrame expectedCacheIdentity current entry =
         RuntimeCacheProjection.tryCreateRehydrateFrame expectedCacheIdentity current entry
 
+    let tryPrepareRehydrate limits expectedCacheIdentity current entry =
+        RuntimeCacheProjection.tryPrepareRehydrate limits expectedCacheIdentity current entry
+
     let completeRehydrate current candidate =
         RuntimeCacheProjection.completeRehydrate current candidate
+
+    let completeRehydrateEntry current entry candidate =
+        RuntimeCacheProjection.completeRehydrateEntry current entry candidate
 
     let tryRehydrate limits expectedCacheIdentity current entry =
         RuntimeCacheProjection.tryRehydrate limits expectedCacheIdentity current entry

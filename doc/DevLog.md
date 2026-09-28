@@ -1758,3 +1758,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - active-detail page替換改走full scheduled preparation，同projection live patch才incremental。BrowserDemo修正延遲舊action缺少optimistic revision檢查的fixture bug，過期`ExpectedDocumentRevision`現在回`RevisionConflict`，不再污染新page。
 - Fresh exact candidate suites為`47/55/14/15/17`。F# Playwright在4,000 bars驗tiny selection 3.813/1400、move/雙側resize、500 loaded／250 active detail與Earlier/Later；正式phase全無>100ms task，cursor p95=37ms/max85ms。
 - Candidate graph為Contracts `0.1.32`、Renderer `0.1.85`、Interactive.Client `0.1.76`、Dynamic.Ptcs `0.1.53`、Ptcs.Client `0.1.86`；Interactive bundle verifier PASS。official immutable push/readback與Daedalus真SPAA／fresh-kernel DIB仍pending，不以owner gate代替consumer acceptance。
+
+## 2026-09-28 - Correction：RFC-0032 adjacent cache atomicity
+
+- Daedalus在candidate handoff前指出adjacent cache必須同時證明cached A的實際temporal/data identity與rebased document。調查確認舊phased rehydrate只從entry套用snapshot、完成時卻保留current B document，可能形成A data＋B `activeDetail/queryGeneration`；前一節candidate graph因此retired，不得供consumer採用。
+- Contracts新增entry-level prepare/completion：完整驗證cached entry，以cached Document/View/data建立candidate，保留current authoritative revisions、transport envelope與cache identity，再由單一presentation commit發布並進入`PausedForResync`。既有API維持相容。
+- DYN-T-648C模擬B prepend後cached A由ordinal 0 rebase到250，使用250筆實際A temporal data驗identity、latest segments/query generation，並驗同一Renderer publish顯示`Viewing 251-500`。Fresh exact-package suites為`47/55/15/15/17`；BrowserCache與Renderer F# Playwright通過，正式renderer phases皆無>100ms main-thread task。
+- Final staging graph為Contracts `0.1.33`、Renderer `0.1.86`、Interactive.Client `0.1.77`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.87`；local SHA-256依序為`553C62AF6D03D4DFE2360E82D3D17C43C349BD4605233AF5CDB1D6DC803131A0 / 2A8A3D41559FC53D9C011ABD551A7BAF63D9E2013ABA506187ACBD95B14351BB / 637D0D93FE682689F894D9A6A7A4B53B524638D6081476306A3D92144367DFC8 / 5C04F89D75FC1C934E204AA2239E6460A45F9A1411F483BC02992DF7564908D6 / 3EC126F7466C914AF65DD6BE51AB22079713B40648D08E0181B5730EE9D96C1A`。official push/readback與consumer真SPAA／fresh-kernel DIB仍pending。

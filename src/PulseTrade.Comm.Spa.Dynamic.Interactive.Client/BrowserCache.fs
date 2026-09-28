@@ -742,20 +742,20 @@ module BrowserRuntimeCache =
                         else
                             let current = currentState ()
 
-                            match RuntimeCacheProjection.tryCreateRehydrateFrame cacheIdentity current entry with
+                            match RuntimeCacheProjection.tryPrepareRehydrate DynamicRuntimeDefaults.limits cacheIdentity current entry with
                             | Error errors ->
                                 complete (BrowserRuntimeCachePhasedRehydrateOutcome.Rejected errors)
-                            | Ok frame ->
+                            | Ok(prepared, frame) ->
                                 BrowserRuntimeFramePump.reduceFrameWith
                                     (fun _ work -> schedule work)
-                                    current
+                                    prepared
                                     frame
                                     isCurrent
                                     0
                                     (function
                                         | BrowserRuntimeFramePumpOutcome.Applied candidate ->
                                             candidate
-                                            |> RuntimeCacheProjection.completeRehydrate current
+                                            |> RuntimeCacheProjection.completeRehydrateEntry current entry
                                             |> BrowserRuntimeCachePhasedRehydrateOutcome.Rehydrated
                                             |> complete
                                         | BrowserRuntimeFramePumpOutcome.Rejected failure ->

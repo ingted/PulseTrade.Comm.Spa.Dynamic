@@ -498,6 +498,129 @@ let tests =
                   (BrowserRuntimeCache.tryRebaseAdjacentEntry query futureEntry)
                   "A future cache revision must not be accepted by an older projection.")
 
+          testCase "DYN-T-648C cached A rehydrate commits A data and rebased coverage atomically after B" (fun _ ->
+              let cachedPageA =
+                  { SegmentId = "page-a-cached"
+                    StartEventTimeUtc = "2026-09-01T00:00:00Z"
+                    EndEventTimeExclusiveUtc = "2026-09-02T00:00:00Z"
+                    StartObservationOrdinal = 0L
+                    ObservationCount = 250L }
+              let prependedPageB =
+                  { SegmentId = "page-b-prepended"
+                    StartEventTimeUtc = "2026-08-01T00:00:00Z"
+                    EndEventTimeExclusiveUtc = "2026-09-01T00:00:00Z"
+                    StartObservationOrdinal = 0L
+                    ObservationCount = 250L }
+              let relocatedPageA =
+                  { cachedPageA with
+                      SegmentId = "page-a-relocated"
+                      StartObservationOrdinal = 250L }
+              let projection revision generation startOrdinal segments =
+                  { CoverageIdentity = "coverage:es-1k"
+                    CoverageRevision = revision
+                    QueryGeneration = generation
+                    Completeness = TaCoverageCompleteness.Partial
+                    TotalObservationCount = None
+                    Segments = segments
+                    OverviewAnchors = [||]
+                    ActiveDetail =
+                      { StartObservationOrdinal = startOrdinal
+                        ObservationCount = 250
+                        BaseAxisRef = "axis.1k" } }
+
+              let cacheIdentity =
+                  { OwnerFingerprint = "owner"
+                    SchemaRevision = RuntimeCache.CurrentSchemaRevision }
+              let acceptedB = projection 9L 12L 0L [| prependedPageB; relocatedPageA |]
+              let cachedA = projection 8L 11L 0L [| cachedPageA |]
+              let currentDocument =
+                  { framePumpDocument with
+                      TemporalAxisRefs = [| "axis.1k" |]
+                      DefaultView = Map.empty |> TaLoadedCoverageCodec.apply acceptedB }
+              let currentFrame =
+                  { documentFrame with
+                      DocumentRevision = 27L
+                      TransportSequence = 1L
+                      Payload = RuntimePayload.Document currentDocument }
+              let current, _ = RuntimeReducer.reduce (RuntimeReducer.initial framePumpIdentity) currentFrame
+              let axisStart = DateTimeOffset.Parse "2026-09-01T00:00:00Z"
+              let cachedAxis =
+                  { AxisRef = "axis.1k"
+                    Revision = 14L
+                    Points =
+                      Array.init 250 (fun index ->
+                          let intervalStart = axisStart.AddMinutes(float index)
+                          let intervalEnd = intervalStart.AddMinutes 1.0
+                          { Position = int64 index
+                            SourceIntervalId = $"cached-a-{index}"
+                            ScaleKey = "1K"
+                            IntervalStartUtc = intervalStart
+                            IntervalEndUtc = intervalEnd
+                            EventTimeUtc = Some intervalEnd
+                            ObservedThroughUtc = intervalEnd
+                            AvailableAtUtc = Some intervalEnd
+                            Finality = PointFinality.Final
+                            Projection = TemporalProjection.CandleSpan
+                            Quality = Some "complete" }) }
+              let sourceEntry =
+                  { CacheIdentity = cacheIdentity
+                    WorkspaceId = framePumpDocument.WorkspaceId
+                    Document =
+                      { framePumpDocument with
+                          TemporalAxisRefs = [| "axis.1k" |]
+                          DefaultView = Map.empty |> TaLoadedCoverageCodec.apply cachedA }
+                    Snapshot =
+                      { Data =
+                          Map [ "ta.rows", SduiValue.Array [||]
+                                "ta.status", SduiValue.Array [| SduiValue.Text "A" |]
+                                "axis.1k", TemporalAxisCodec.encode cachedAxis ]
+                        Freshness = TaFreshness.Live }
+                    DocumentRevision = 8L
+                    DataRevision = 14L
+                    Coverage =
+                      { StartEventTimeUtc = DateTimeOffset.Parse "2026-09-01T00:00:00Z"
+                        EndEventTimeExclusiveUtc = DateTimeOffset.Parse "2026-09-02T00:00:00Z" }
+                    CapturedAtUtc = DateTimeOffset.Parse "2026-09-02T00:00:00Z" }
+              let query =
+                  { AcceptedProjection = acceptedB
+                    Direction = PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later
+                    MaximumObservations = 250 }
+              let rebased =
+                  BrowserRuntimeCache.tryRebaseAdjacentEntry query sourceEntry
+                  |> Option.defaultWith (fun () -> failtest "Expected cached A to rebase against accepted B coverage.")
+              let hydrated =
+                  RuntimeCacheProjection.tryRehydrate DynamicRuntimeDefaults.limits cacheIdentity current rebased
+                  |> Result.defaultWith (fun errors -> failtestf "Expected atomic cache rehydrate, got %A" errors)
+
+              let hydratedAxis =
+                  hydrated.Data.["axis.1k"]
+                  |> TemporalAxisCodec.decode
+                  |> Result.defaultWith (fun errors -> failtestf "Expected cached A temporal identity, got %A" errors)
+              Expect.equal hydratedAxis.Points.Length 250 "The hydrated temporal data must be cached page A's complete active detail."
+              Expect.equal hydratedAxis.Points[0].SourceIntervalId "cached-a-0" "The hydrated temporal identity must come from cached page A."
+              match hydrated.Document |> Option.bind (fun document -> TaLoadedCoverageCodec.tryDecode document.DefaultView |> function Ok value -> value | Error _ -> None) with
+              | Some coverage ->
+                  Expect.equal coverage.ActiveDetail.StartObservationOrdinal 250L "The hydrated document must select relocated cached page A."
+                  Expect.equal coverage.QueryGeneration 12L "The rebased document must retain the latest accepted query generation."
+                  Expect.equal coverage.CoverageRevision 9L "The rebased document must retain the latest accepted coverage revision."
+                  Expect.equal coverage.Segments acceptedB.Segments "The hydrated page must retain the latest accepted loaded segments."
+              | None -> failtest "Expected hydrated loaded coverage metadata."
+              let hydratedDocument = hydrated.Document |> Option.defaultWith (fun () -> failtest "Expected hydrated document.")
+              match
+                  PulseTrade.Comm.Spa.Dynamic.Renderer.RendererModel.tryCoverageNavigatorWindow
+                      hydratedAxis.Points.Length
+                      { StartIndex = 0; Count = hydratedAxis.Points.Length }
+                      hydratedDocument.DefaultView
+              with
+              | Some(_, _, window) ->
+                  let viewingStart = window.StartIndex + 1
+                  let viewingEnd = window.StartIndex + window.Count
+                  Expect.equal (viewingStart, viewingEnd) (251, 500) "One atomic publish must render Viewing 251-500 for relocated cached page A."
+              | None -> failtest "Expected renderer coverage projection after cached A publish."
+              Expect.equal hydrated.DocumentRevision current.DocumentRevision "Cache presentation must not replace authoritative document revision."
+              Expect.equal hydrated.LastTransportSequence current.LastTransportSequence "Cache presentation must not consume transport sequence."
+              Expect.equal hydrated.Poll RuntimePollState.PausedForResync "Cache presentation remains non-authoritative until server resync.")
+
           testCase "DYN-T-584 snapshot batch commits only after every ordered item" (fun _ ->
               let initial =
                   BrowserRuntimeSnapshotBatch.create 7 "batch-7" 2

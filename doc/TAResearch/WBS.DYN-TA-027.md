@@ -8,8 +8,8 @@
 | --- | --- | --- | ---: | --- |
 | DYN-TA-027A | 移除24-unit visual floor；selection依resolved ratio投影 | T-117 | 100% | Owner PASS |
 | DYN-TA-027B | CSS-pixel deterministic overlap resolver；single root pointer route | T-118/T-119 | 100% | Owner PASS；tiny move/left/right resize與browser resize全綠 |
-| DYN-TA-027C | 長coverage generic projection與active detail分離 | T-120 | 100% | Owner PASS；validated projection、page replacement、cache rebase與revision conflict完成 |
-| DYN-TA-027D | Exact packages與真SPAA/DIB integration | T-121 | 70% | Exact candidate與owner browser gate PASS；official push／consumer SPAA/DIB pending |
+| DYN-TA-027C | 長coverage generic projection、active detail分離與cache atomic presentation commit | T-120/T-122 | 100% | Owner PASS；validated projection、page replacement、entry-level cache rehydrate、rebase與revision conflict完成 |
+| DYN-TA-027D | Exact packages與真SPAA/DIB integration | T-121 | 80% | Fresh final candidate與owner browser gate PASS；official push／consumer SPAA/DIB pending |
 
 ## Invariants
 
@@ -22,6 +22,7 @@
 ## Current evidence
 
 - Baseline Renderer `0.1.83`：51/51。
-- Fresh exact graph：Contracts `0.1.32`、Renderer `0.1.85`、Interactive.Client `0.1.76`、Dynamic.Ptcs `0.1.53`、Ptcs.Client `0.1.86`。
-- Focused suites `47/55/14/15/17`；F# Playwright以4,000 bars驗tiny navigator、500 coverage／250 active detail、Earlier/Later及stale action revision conflict，正式phase無大於100ms task。
+- Retired graph：Contracts `0.1.32`、Renderer `0.1.85`、Interactive.Client `0.1.76`、Dynamic.Ptcs `0.1.53`、Ptcs.Client `0.1.86`；缺少cached Document/View/data atomic commit，不得供consumer採用。
+- Fresh final candidate graph：Contracts `0.1.33`、Renderer `0.1.86`、Interactive.Client `0.1.77`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.87`。
+- Focused suites `47/55/15/15/17`；DYN-T-648C驗cached A真實temporal/data identity、rebase ordinal 250、latest segments/query generation及單次Renderer publish顯示`Viewing 251-500`。F# Playwright另以4,000 bars驗tiny navigator、500 coverage／250 active detail、Earlier/Later及stale action revision conflict，正式phase無大於100ms task。
 - Daedalus真SPAA／fresh-kernel DIB仍是consumer gate，不以owner BrowserDemo代替。
