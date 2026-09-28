@@ -13,6 +13,8 @@
 
 ## Operations
 
+- 2026-09-28 11:18 +08:00：NuGet.org flat-container已可下載final exact graph `0.1.33/0.1.86/0.1.77/0.1.54/0.1.87`；五包`dotnet nuget verify --all`均確認repository signature有效，official SHA已寫入Verification與DevLog。consumer真SPAA／fresh-kernel DIB維持Daedalus gate。
+
 - 2026-09-28 05:46 +08:00：讀取TradeCore RFC-0030，確認owner責任與非目標；已請Daedalus交付W030-1兩條RED exact evidence。
 - 2026-09-28 07:35 +08:00：Daedalus交付shape B與250→500 RED後，建立loaded coverage hypothesis；確認現行base axis無法同時擔任bounded active detail及完整coverage authority。
 - 2026-09-28 08:00-10:05 +08:00：完成typed loaded coverage／window intent、document cap、exact navigator geometry、single root CSS-pixel hit resolver、cache adjacent/rebase及page replacement full-prepare。修正BrowserDemo延遲舊action未檢查ExpectedDocumentRevision而污染新page的fixture authority bug。

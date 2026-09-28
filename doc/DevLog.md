@@ -1765,3 +1765,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Contracts新增entry-level prepare/completion：完整驗證cached entry，以cached Document/View/data建立candidate，保留current authoritative revisions、transport envelope與cache identity，再由單一presentation commit發布並進入`PausedForResync`。既有API維持相容。
 - DYN-T-648C模擬B prepend後cached A由ordinal 0 rebase到250，使用250筆實際A temporal data驗identity、latest segments/query generation，並驗同一Renderer publish顯示`Viewing 251-500`。Fresh exact-package suites為`47/55/15/15/17`；BrowserCache與Renderer F# Playwright通過，正式renderer phases皆無>100ms main-thread task。
 - Final staging graph為Contracts `0.1.33`、Renderer `0.1.86`、Interactive.Client `0.1.77`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.87`；local SHA-256依序為`553C62AF6D03D4DFE2360E82D3D17C43C349BD4605233AF5CDB1D6DC803131A0 / 2A8A3D41559FC53D9C011ABD551A7BAF63D9E2013ABA506187ACBD95B14351BB / 637D0D93FE682689F894D9A6A7A4B53B524638D6081476306A3D92144367DFC8 / 5C04F89D75FC1C934E204AA2239E6460A45F9A1411F483BC02992DF7564908D6 / 3EC126F7466C914AF65DD6BE51AB22079713B40648D08E0181B5730EE9D96C1A`。official push/readback與consumer真SPAA／fresh-kernel DIB仍pending。
+
+## 2026-09-28 - RFC-0032 official immutable release
+
+- Source commit `9e0e1a3`已push；Contracts `0.1.33`、Renderer `0.1.86`、Interactive.Client `0.1.77`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.87` public push全回`Created`。
+- NuGet.org official SHA-256依序為`F4CA05493F016B36B91614433363AACC4E235D8E995B8D89C3E17BB234C9DD4B / 5D11632F5A8E6EE67B0379104B6FBADF676831E5BBEDC9F9254B2B249143E7E2 / 2940618380EA00ED746FBD3D0083F0624F24C82A0355937B5427B8510FDB0D38 / ECB53E7812A42E81CFCD1E0C960F797B63D3DEB7E2EAFC8F5965BDA25D0BAD3C / C5310581C08CB07397A1472FC3538D0F06410D5F62E279691EE3252277DFA6D7`。
+- 五包`dotnet nuget verify --all`均確認NuGet.org repository signature有效。Owner release gate完成；Daedalus真SPAA／fresh-kernel DIB仍是consumer acceptance gate，不以package發布取代產品驗收。
