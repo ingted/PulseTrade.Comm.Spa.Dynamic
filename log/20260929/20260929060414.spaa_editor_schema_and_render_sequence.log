@@ -46,3 +46,5 @@ Daedalus以official exact graph驗證真SPAA：OHLC micro-candles、A→B→A與
 
 - In：Renderer semantic shell/topology判斷、BrowserDemo accepted callback fixture、focused/browser verifier、exact package references、RFC-0032與TA current docs。
 - Out：consumer document authoring的EditorSchemas、SPAA consumer package bump／真E2E、provider/FSSTL/MDCQ邏輯。
+- 06:54 source commit `2c7bf76`已push；三顆package push均回Created。
+- 06:57 official flat-container readback完成：Renderer 0.1.94 SHA `DB3565D8...68AD`、Interactive.Client 0.1.85 SHA `63E1AEEC...86C4`、Ptcs.Client 0.1.95 SHA `3C01541A...5009`；repository signatures與exact deps有效、entryDiff=0、Interactive manifest=0.1.85。Exact graph已direct交付Daedalus跑真SPAA。

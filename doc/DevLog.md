@@ -1843,3 +1843,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus真SPAA重現200→All有時render `+2`：local viewport已提交後，accepted callback只提高Document/Coverage/Query/transport counters，Renderer仍將counter當presentation replacement再畫一次。`EditorSchemas=[]`則是consumer document未author capability，不由Renderer合成。
 - Renderer新增semantic document comparison，只正規化LoadedCoverage的CoverageRevision/QueryGeneration；CoverageIdentity、segments、overview anchors、active detail、rows、schemas、actions與其餘DefaultView仍是authority。stable shell的revision diagnostics改為reactive attributes，另移除preparation前置chart-state寫入。
 - Focused suites為Renderer／Interactive.Client／Ptcs.Client `55/15/17`。Callback-settled 200→All state／rows=`175.88/378.52ms`、render=`3->4`；完整browser gate五列資料替換、cursor與正式phase效能全綠。Candidate graph為Renderer `0.1.94`、Interactive.Client `0.1.85`、Ptcs.Client `0.1.95`；official publication/readback及Daedalus真SPAA pending。
+
+## 2026-09-29 - Accepted semantic-equivalence official release
+
+- Source commit `2c7bf76`已push；Renderer `0.1.94`、Interactive.Client `0.1.85`、Ptcs.Client `0.1.95` push均回`Created`。
+- NuGet.org official SHA-256依序為`DB3565D8CC8A39C8DD35961B5D812AC550071EA9E4DCBC8A92CDC01ABAEB68AD / 63E1AEECE6DFE2431B62007A85A771B92D20980D17626FE4509CDAD9113086C4 / 3C01541AFCC1FA72E576F794D60B6314104BE9928B70D0537A36C69C85275009`。三包repository signature、exact dependencies與排除signature後entry parity全綠；Interactive bundle manifest明列packageVersion `0.1.85`。
+- Official graph已direct交付Daedalus；其consumer bump與真SPAA T-123/T-124 gate待執行，尚未宣稱產品驗收。
