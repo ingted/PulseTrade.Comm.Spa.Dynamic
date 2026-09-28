@@ -174,16 +174,28 @@ module TaWorkspaceRenderer =
             |> String.concat " / "
             |> fun value -> if String.IsNullOrWhiteSpace value then rowKindText row.Kind else value
 
-    let sameDocumentShell (left: RuntimeState) (right: RuntimeState) =
-        let samePresence =
-            match left.Document, right.Document with
-            | None, None -> true
-            | Some leftDocument, Some rightDocument -> leftDocument.WorkspaceId = rightDocument.WorkspaceId
-            | _ -> false
+    let normalizeDocumentPresentation (document: TaWorkspaceDocument) =
+        let defaultView =
+            match TaLoadedCoverageCodec.tryDecode document.DefaultView with
+            | Ok(Some projection) ->
+                document.DefaultView
+                |> TaLoadedCoverageCodec.apply
+                    { projection with
+                        CoverageRevision = 0L
+                        QueryGeneration = 0L }
+            | _ -> document.DefaultView
 
-        left.Identity = right.Identity
-        && samePresence
-        && left.DocumentRevision = right.DocumentRevision
+        { document with DefaultView = defaultView }
+
+    let sameDocumentPresentation (left: RuntimeState) (right: RuntimeState) =
+        match left.Document, right.Document with
+        | None, None -> true
+        | Some leftDocument, Some rightDocument ->
+            normalizeDocumentPresentation leftDocument = normalizeDocumentPresentation rightDocument
+        | _ -> false
+
+    let sameDocumentShell (left: RuntimeState) (right: RuntimeState) =
+        left.Identity = right.Identity && sameDocumentPresentation left right
 
     let chartTopologySignaturePrepared (state: RuntimeState) prepared =
         match state.Document with
@@ -204,7 +216,7 @@ module TaWorkspaceRenderer =
 
     let sameChartTopology (left: RuntimeState) (right: RuntimeState) =
         left.Identity = right.Identity
-        && left.DocumentRevision = right.DocumentRevision
+        && sameDocumentPresentation left right
         && chartTopologySignature left = chartTopologySignature right
 
     let runtimeDataChanged (left: RuntimeState) (right: RuntimeState) =
@@ -2140,7 +2152,7 @@ module TaWorkspaceRenderer =
             let coverageIdentityChanged = previousCoverageIdentity <> nextCoverageIdentity
             let topologyChanged =
                 next.Identity <> chartRuntimeState.Value.Identity
-                || next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision
+                || not (sameDocumentPresentation chartRuntimeState.Value next)
                 || nextChartTopology <> observedChartTopology
             if topologyChanged then
                 beginProjection next |> ignore
@@ -2268,12 +2280,6 @@ module TaWorkspaceRenderer =
             let previous = latestPreparedData
             observedDataState <- next
             let coverageChanged = coverageProjection chartRuntimeState.Value <> coverageProjection next
-            if next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision && not coverageChanged then
-                // The outer document shell observes DocumentRevision immediately. Keep the chart
-                // envelope aligned before asynchronous data preparation so a following data patch
-                // cannot expose a stale revision and force an unrelated topology rebuild.
-                observedChartTopology <- chartTopologySignaturePrepared next previous
-                chartRuntimeState.Value <- next
             let accept prepared =
                 if generation = preparationGeneration then
                     // Document/view metadata may advance without scheduling another data preparation.
@@ -3748,9 +3754,9 @@ module TaWorkspaceRenderer =
                                 Attr.Create "data-testid" "ta-chart-stack"
                                 Attr.Create "data-chart-render-sequence" (string renderSequence)
                                 Attr.Create "data-chart-render-reason" chartRenderReason
-                                Attr.Create "data-chart-document-revision" (string state.DocumentRevision)
-                                Attr.Create "data-chart-data-revision" (string state.DataRevision)
-                                Attr.Create "data-chart-transport-sequence" (string state.LastTransportSequence)
+                                Attr.Dynamic "data-chart-document-revision" (runtimeState.View |> View.Map (fun current -> string current.DocumentRevision))
+                                Attr.Dynamic "data-chart-data-revision" (runtimeState.View |> View.Map (fun current -> string current.DataRevision))
+                                Attr.Dynamic "data-chart-transport-sequence" (runtimeState.View |> View.Map (fun current -> string current.LastTransportSequence))
                                 Attr.Create "data-loaded-bars" (string loadedObservationCount)
                                 Attr.Create "data-active-reference-bars" (string referenceLength)
                                 Attr.Create "data-local-visible-start" (string visibleWindow.StartIndex)
@@ -3761,8 +3767,8 @@ module TaWorkspaceRenderer =
                                 Attr.Create "data-visible-end" (string visibleEnd)
                                 Attr.Create "data-maximum-visible-bars" (string maximumVisibleBars)
                                 Attr.Create "data-coverage-identity" (coverageProjection |> Option.map _.CoverageIdentity |> Option.defaultValue "")
-                                Attr.Create "data-coverage-revision" (coverageProjection |> Option.map (fun value -> string value.CoverageRevision) |> Option.defaultValue "")
-                                Attr.Create "data-query-generation" (coverageProjection |> Option.map (fun value -> string value.QueryGeneration) |> Option.defaultValue "")
+                                Attr.Dynamic "data-coverage-revision" (runtimeState.View |> View.Map (fun current -> current.Document |> Option.bind (fun value -> RendererModel.tryLoadedCoverage value.DefaultView) |> Option.map (fun value -> string value.CoverageRevision) |> Option.defaultValue ""))
+                                Attr.Dynamic "data-query-generation" (runtimeState.View |> View.Map (fun current -> current.Document |> Option.bind (fun value -> RendererModel.tryLoadedCoverage value.DefaultView) |> Option.map (fun value -> string value.QueryGeneration) |> Option.defaultValue ""))
                                 Attr.Create "data-follow-latest" (if ui.FollowLatest then "true" else "false")
                                 Attr.Create "data-row-count" (string visibleRows.Length)
                                 Attr.Create "data-visible-value-query-scope" "cursor-panel+row-legends"

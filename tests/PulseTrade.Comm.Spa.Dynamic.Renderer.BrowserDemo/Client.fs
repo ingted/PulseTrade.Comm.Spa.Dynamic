@@ -836,6 +836,13 @@ module Client =
                                     appendNextChunk endExclusive)
                                 |> ignore
                         appendNextChunk currentCount
+                    else
+                        // Model a host that publishes an accepted revision even when the selected
+                        // range is already loaded and its authoritative document is unchanged.
+                        runtimeState.Value <-
+                            { currentAfterCoverageRefresh with
+                                DocumentRevision = currentAfterCoverageRefresh.DocumentRevision + 1L
+                                LastTransportSequence = currentAfterCoverageRefresh.LastTransportSequence + 1L }
             | SduiAction.ResetCanvas _, _ ->
                 runtimeState.Value <-
                     { initialState with
@@ -979,14 +986,19 @@ module Client =
                     |> String.concat ";"
 
             BrowserRuntimeFramePump.reduceChunkedSnapshotPacketsObserved
-                current
+                initialState
                 candleReplacementPackets
                 (fun () -> generation = candleWorkloadGeneration)
                 observeStage
                 (function
                     | BrowserRuntimeFramePumpOutcome.Applied candidate ->
                         publishStageDiagnostics ()
-                        runtimeState.Value <- candidate
+                        let current = runtimeState.Value
+                        runtimeState.Value <-
+                            { current with
+                                Data = candidate.Data
+                                DataRevision = current.DataRevision + 1L
+                                LastTransportSequence = current.LastTransportSequence + 1L }
                         candleWorkloadReplacementCount.Value <- candleWorkloadReplacementCount.Value + 1
                         candleWorkloadOutcome.Value <- "applied"
                     | BrowserRuntimeFramePumpOutcome.Rejected failure ->
@@ -1173,6 +1185,9 @@ module Client =
             Attr.Create "data-renderer-setup-ms" (string rendererSetupMilliseconds)
             Attr.Create "data-candle-workload-wire-chars" (string candleReplacementWireChars)
             Attr.Create "data-candle-workload-packets" (string candleReplacementPackets.Length)
+            Attr.Dynamic "data-runtime-document-revision" (runtimeState.View |> View.Map (fun state -> string state.DocumentRevision))
+            Attr.Dynamic "data-runtime-data-revision" (runtimeState.View |> View.Map (fun state -> string state.DataRevision))
+            Attr.Dynamic "data-runtime-transport-sequence" (runtimeState.View |> View.Map (fun state -> string state.LastTransportSequence))
             Attr.Dynamic "data-preview-stream-updates" (previewStreamUpdates.View |> View.Map string)
             Attr.Dynamic "data-marker-replacements" (markerReplacementCount.View |> View.Map string)
             Attr.Dynamic "data-candle-workload-replacements" (candleWorkloadReplacementCount.View |> View.Map string)

@@ -1,0 +1,48 @@
+# SPAA EditorSchemas 與 viewport render sequence consumer acceptance
+
+## 背景／上下文
+
+Daedalus以official exact graph驗證真SPAA：OHLC micro-candles、A→B→A與Order/Fill-only均通過。剩餘差異為document `EditorSchemas`為空而無Edit capability，以及200→All從local immediate到server accepted造成render sequence `10 -> 12`，與既有consumer no-frame invariant衝突。
+
+## 目標
+
+1. 釐清EditorSchemas的authoritative owner及無capability時Renderer行為。
+2. 判斷同identity accepted response的第二次render是必要commit、可短路的等價ack，或regression。
+3. 若屬owner regression，以最小修正與回歸測試發布exact packages；否則提供可追溯contract依據給Daedalus。
+
+## 假設
+
+- `EditorSchemas`屬consumer/document authoring capability，Renderer不得自行合成schema。
+- local immediate已提交相同viewport時，server accepted若只確認等價intent，不應再觸發chart redraw；若包含新coverage/revision/data則仍須render。
+
+## 風險
+
+- 過度短路accepted response可能漏掉authority correction或新coverage。
+- Renderer自行建立EditorSchemas會越過owner邊界並讓無編輯能力的document誤顯Edit。
+
+## Planned steps
+
+1. 查REQ/SD/RFC/Test與Renderer/Interactive client的schema、viewport accepted路徑。
+2. 以既有fixture重現render sequence delta，新增等價ack與authority correction對照測試。
+3. 最小修正、focused/browser gates、文件與package release；即時回覆Daedalus。
+
+## Acceptance / Stop
+
+- EditorSchemas ownership有source/doc evidence且不靠推測。
+- local immediate後等價accepted ack不多一次chart render；實際authority/data change仍render。
+- focused與真SPAA consumer gate均通過，或有明確外部blocker。
+
+## Operations
+
+- 06:04 收到Daedalus真SPAA結果並direct回覆接手；未要求其放寬gate或偽造schema。
+- 06:45 根因確認：revision-only accepted callback被DocumentRevision counter誤判為presentation replacement，另有preparation前置寫入chart state使後續資料投影觸發不必要topology rebuild。Renderer改以semantic document presentation判斷shell/topology，只正規化coverage/query counters；diagnostic revisions改為reactive attributes。
+- 06:45 回歸結果：Renderer 55/55、Interactive.Client 15/15、Ptcs.Client 17/17；callback-settled 200→All state/rows=175.88/378.52ms、render 3->4。完整browser gate五列資料替換與cursor/perf全綠，正式phase無>100ms task。
+- 06:45 final candidate graph staged：Contracts 0.1.33、Renderer 0.1.94、Interactive.Client 0.1.85、Dynamic.Ptcs 0.1.54、Ptcs.Client 0.1.95；尚未宣稱official release或consumer PASS。
+- 06:48 final exact refs focused rerun PASS：Renderer 55/55、Interactive.Client 15/15、Ptcs.Client 17/17，failed/errored/skipped皆0。
+- 06:49 changed paths＋兩個本輪log敏感掃描：high=0、medium=0；strict UTF-8／NUL／U+FFFD檢查通過。
+- 06:51 `check.fsx`結果PASS=37/WARN=3/FAIL=0；本輪可處理WARN為log缺少「範圍」欄位及預期中的dirty，既有跨repo文件追溯WARN不屬本slice。
+
+## 範圍
+
+- In：Renderer semantic shell/topology判斷、BrowserDemo accepted callback fixture、focused/browser verifier、exact package references、RFC-0032與TA current docs。
+- Out：consumer document authoring的EditorSchemas、SPAA consumer package bump／真E2E、provider/FSSTL/MDCQ邏輯。

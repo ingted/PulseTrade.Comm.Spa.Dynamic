@@ -132,3 +132,11 @@ Owner regression同時驗direct state barrier與same-identity accepted callback�
 真操作允許前一個viewport command尚在flight時再選新preset。新intent必須立即更新local committed viewport；remote callback以一個in-flight加一個latest queued intent序列化，後來intent覆蓋尚未送出的舊queued intent。當前action完成後以當下revision送出latest intent；stale completion不得覆蓋local window。這不改public action或wire shape。
 
 Owner gate快速執行`200 -> All`，要求local state `<=750ms`、rows-ready `<=1500ms`且remote callback只保留latest intent。正式browser量得state `655.91ms`、rows-ready `734.35ms`；真SPAA仍須用同一exact graph驗產品2秒門檻。
+
+## 12. Accepted semantic-equivalence correction
+
+真SPAA進一步重現同一`CoverageIdentity`、相同active detail與rows/data的accepted callback只提高`DocumentRevision`、`CoverageRevision`、`QueryGeneration`及transport sequence，卻再增加一次chart render。這不是authority correction，而是transport acknowledgement；若把revision counter本身當presentation identity，會讓一次local viewport intent產生兩次重畫。
+
+決策：Renderer以runtime identity加semantic document presentation判斷shell/topology。比較時只忽略loaded-coverage的`CoverageRevision`與`QueryGeneration`；`CoverageIdentity`、segments、overview anchors、active detail、rows、schemas、actions、query/default view其餘內容仍是authority。revision-only accepted ack重用stable shell，diagnostic revision/sequence attributes以reactive binding更新；active detail、document capability、row topology或data變更仍走既有prepare／render。不得以此短路真正page replacement或放寬T-123 single-render gate。
+
+Owner regression包含三組對照：純`DocumentRevision`前進重用shell、coverage/query counter-only前進重用shell、active-detail ordinal改變必須replacement。BrowserDemo在200→All callback settlement後要求render sequence恰好`+1`；five-candle資料替換仍更新五列且不得因semantic shell reuse漏畫。

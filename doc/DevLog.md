@@ -1837,3 +1837,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `ee7e77e`已push；Renderer `0.1.92`、Interactive.Client `0.1.83`、Ptcs.Client `0.1.93` push均回`Created`。完整exact graph為Contracts `0.1.33`／Renderer `0.1.92`／Interactive.Client `0.1.83`／Dynamic.Ptcs `0.1.54`／Ptcs.Client `0.1.93`。
 - NuGet.org official SHA-256依序為`524DF633CD3D185D44AD74ECD401300958AE0DC8D9817AC4564571301E56C58F / BEC14B98569220941967F1A24B95154FDBDE15460DCCB26A4BB517F5B3A9CA80 / 7F539F22755FAC321BD39C05C62816400146833488A21C7BAB625AC7DDFEE643`；三包repository signature、exact dependencies、Interactive manifest `0.1.83`與排除`.signature.p7s`後local/official entry parity全綠。
 - Exact graph與owner gates已direct交付Daedalus。Scenario atomic switch仍屬consumer complete-candidate prepare/commit；generic cursor-event-only trace本輪不存在，已列為後續contract gap而未擴 scope。
+
+## 2026-09-29 - Accepted semantic-equivalence owner candidate
+
+- Daedalus真SPAA重現200→All有時render `+2`：local viewport已提交後，accepted callback只提高Document/Coverage/Query/transport counters，Renderer仍將counter當presentation replacement再畫一次。`EditorSchemas=[]`則是consumer document未author capability，不由Renderer合成。
+- Renderer新增semantic document comparison，只正規化LoadedCoverage的CoverageRevision/QueryGeneration；CoverageIdentity、segments、overview anchors、active detail、rows、schemas、actions與其餘DefaultView仍是authority。stable shell的revision diagnostics改為reactive attributes，另移除preparation前置chart-state寫入。
+- Focused suites為Renderer／Interactive.Client／Ptcs.Client `55/15/17`。Callback-settled 200→All state／rows=`175.88/378.52ms`、render=`3->4`；完整browser gate五列資料替換、cursor與正式phase效能全綠。Candidate graph為Renderer `0.1.94`、Interactive.Client `0.1.85`、Ptcs.Client `0.1.95`；official publication/readback及Daedalus真SPAA pending。

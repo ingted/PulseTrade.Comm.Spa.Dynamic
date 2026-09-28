@@ -840,7 +840,48 @@ let tests =
 
             Expect.isTrue (TaWorkspaceRenderer.sameDocumentShell first same) "The same runtime identity and revision should reuse its shell."
             Expect.isFalse (TaWorkspaceRenderer.sameDocumentShell first replacement) "A replacement run must rebuild the shell even when both revisions start at zero."
-            Expect.isFalse (TaWorkspaceRenderer.sameDocumentShell first { same with DocumentRevision = 1L }) "A newer document revision must rebuild the shell."
+            Expect.isTrue
+                (TaWorkspaceRenderer.sameDocumentShell first { same with DocumentRevision = 1L })
+                "A revision-only accepted acknowledgement must reuse the semantic shell."
+
+            let projection revision generation activeStart =
+                { CoverageIdentity = "coverage:semantic-shell"
+                  CoverageRevision = revision
+                  QueryGeneration = generation
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 500L
+                  Segments = [||]
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = activeStart
+                      ObservationCount = 250
+                      BaseAxisRef = "axis.1k" } }
+            let document coverage =
+                { WorkspaceId = "semantic-shell"
+                  Title = "Semantic shell"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = None
+                  Rows = [||]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty |> TaLoadedCoverageCodec.apply coverage }
+            let withDocument revision coverage =
+                { first with
+                    Document = Some(document coverage)
+                    DocumentRevision = revision }
+            let coverageA = projection 1L 1L 0L
+            let coverageAck = projection 2L 2L 0L
+            let coveragePage = projection 2L 2L 250L
+
+            Expect.isTrue
+                (TaWorkspaceRenderer.sameDocumentShell (withDocument 1L coverageA) (withDocument 2L coverageAck))
+                "Coverage/query counters alone must not replace the semantic shell."
+            Expect.isFalse
+                (TaWorkspaceRenderer.sameDocumentShell (withDocument 1L coverageA) (withDocument 2L coveragePage))
+                "A different active detail page must replace the semantic shell."
 
         testCase "latest row legend falls back to the last available presentation slot" <| fun _ ->
             let read index =

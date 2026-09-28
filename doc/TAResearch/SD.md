@@ -1040,4 +1040,10 @@ pointer clientX + navigator CSS width + 24 CSS px target
 
 現階段`referenceLength = base-row temporal axis length`，overview sample固定bounded且不參與ratio。W030-3B若採active detail＋獨立coverage，新增contract須versioned且至少攜帶coverage identity/revision、actual observation count、gap segments、bounded ordinal/time anchors、active detail offset/count與query generation；Renderer不得由From/To或scale推算缺少ordinal。
 
+### Accepted semantic-equivalence gate
+
+`sameDocumentPresentation`先要求runtime identity一致，再比較完整document；比較loaded coverage時只將`CoverageRevision`與`QueryGeneration`正規化為零。`DocumentRevision`與transport sequence不屬presentation identity，故revision-only accepted ack不觸發shell/topology replacement。`CoverageIdentity`、segments、overview anchors、active detail、rows、EditorSchemas、AllowedActions及其餘DefaultView仍逐值比較，任一差異都保留原full prepare路徑。
+
+Stable chart shell內的`data-chart-document-revision`、`data-chart-data-revision`、`data-chart-transport-sequence`、`data-coverage-revision`與`data-query-generation`改由current runtime state reactive更新。這些attributes是diagnostic observation，不可回頭成為render trigger。Browser gate必須等待accepted callback settled後才比較render sequence，避免只量到local immediate中間狀態。
+
 Stable selectors／attributes：workspace與visible time node提供`data-display-time-zone`；axis、cursor、row data window及event items保留canonical UTC attribute。CT／ET依canonical event instant判定DST，固定UTC+8不採DST。既有`render`／`renderWithProjectionCommit`以UTC constant View委派新版overload。

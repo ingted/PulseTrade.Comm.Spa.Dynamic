@@ -106,6 +106,7 @@ waitUntil 10.0 "200 preset callback settlement" (fun () ->
     Int32.Parse(attribute callbackState "data-callback-count") = callbackCountBefore200 + 1)
 waitUntil 10.0 "All preset enabled" (fun () -> viewAll.IsEnabledAsync() |> awaitTask)
 let renderBeforeAll = Int32.Parse(attribute chartStack "data-chart-render-sequence")
+let callbackCountBeforeAll = Int32.Parse(attribute callbackState "data-callback-count")
 
 let stateWatch = Stopwatch.StartNew()
 viewAll.ClickAsync() |> awaitUnit
@@ -115,6 +116,9 @@ stateWatch.Stop()
 let rowsWatch = Stopwatch.StartNew()
 waitForRows chartStack
 rowsWatch.Stop()
+waitUntil 10.0 "All preset callback settlement" (fun () ->
+    Int32.Parse(attribute callbackState "data-callback-count") = callbackCountBeforeAll + 1)
+waitForRows chartStack
 let totalMilliseconds = stateWatch.Elapsed.TotalMilliseconds + rowsWatch.Elapsed.TotalMilliseconds
 let renderAfterAll = Int32.Parse(attribute chartStack "data-chart-render-sequence")
 

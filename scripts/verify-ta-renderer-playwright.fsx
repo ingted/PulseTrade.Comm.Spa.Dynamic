@@ -763,6 +763,8 @@ let verifyDesktop (browser: IBrowser) =
         "all five candle-heavy rows must expose non-empty batched paths before replacement"
     let fixtureRoot = page.Locator("[data-capacity-positions]")
     let renderSequenceBeforeCandleReplacement = requiredIntAttribute chartStack "data-chart-render-sequence"
+    let runtimeDataRevisionBeforeCandleReplacement = requiredIntAttribute fixtureRoot "data-runtime-data-revision"
+    let runtimeTransportSequenceBeforeCandleReplacement = requiredIntAttribute fixtureRoot "data-runtime-transport-sequence"
     printfn
         "browser.five-candle-fixture wireChars=%s packets=%s dataRefs=%d positions=%d"
         (fixtureRoot.GetAttributeAsync("data-candle-workload-wire-chars") |> awaitTask)
@@ -785,11 +787,19 @@ let verifyDesktop (browser: IBrowser) =
     require (workloadOutcome = "applied") $"five-candle workload must apply, actual={workloadOutcome}"
     waitForAttributeValue fixtureRoot "data-candle-workload-replacements" "1"
     printfn
-        "browser.five-candle-stages %s"
+        "browser.five-candle-stages %s runtimeData=%d->%d runtimeTransport=%d->%d chartData=%s chartTransport=%s render=%d"
         (fixtureRoot.GetAttributeAsync("data-candle-workload-stage-diagnostics") |> awaitTask)
+        runtimeDataRevisionBeforeCandleReplacement
+        (requiredIntAttribute fixtureRoot "data-runtime-data-revision")
+        runtimeTransportSequenceBeforeCandleReplacement
+        (requiredIntAttribute fixtureRoot "data-runtime-transport-sequence")
+        (chartStack.GetAttributeAsync("data-chart-data-revision") |> awaitTask)
+        (chartStack.GetAttributeAsync("data-chart-transport-sequence") |> awaitTask)
+        (requiredIntAttribute chartStack "data-chart-render-sequence")
     let candlePathSignaturesAfter =
         candlePathLocators
         |> Array.mapi (fun index locator ->
+            printfn "browser.five-candle-await row=%s" candleRows[index]
             waitForAttributeSignatureChange locator "d" candlePathSignaturesBefore[index])
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "five-candle-replacement" longTaskSession candleReplacementTrace)
