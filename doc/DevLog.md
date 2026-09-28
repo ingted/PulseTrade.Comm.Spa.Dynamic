@@ -1825,3 +1825,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `83df45b`已push；Renderer `0.1.91`、Interactive.Client `0.1.82`、Ptcs.Client `0.1.92`已public push。Interactive首次pack遇到殘留project-scoped `wsfscservice` CLR exception；停止該明確compiler helper後，同一source完整WebSharper build成功，保留既有`WSB9002` standalone fallback，未停用compiler或沿用舊bundle。
 - NuGet.org official SHA-256依序為`FC4A84D8635F33EC8537AC20E24C55EDB6A79612D722C5F2B8A9BDF6B159ED83 / 564F1544CDABEE10A1E53B213703E4E0108B09823DC22B3C1812B07892953F2E / 63040D116859EA08DA4E6196A136F6620D83837389F3B550CA218C8FB7350A88`。
 - 三包repository signature有效；official nuspec exact依賴Contracts `[0.1.33]`、Renderer `[0.1.91]`及PTCS `[0.2.46]`，Interactive manifest為`0.1.82`；排除`.signature.p7s`後local／official entries皆`Different=0`。Daedalus真SPAA consumer gate仍pending。
+
+## 2026-09-29 - Latest viewport／row Edit／overview OHLC owner candidate
+
+- 真SPAA回饋揭露pending remote action可能吞掉後續viewport intent、長label會遮蔽Edit；另需以OHLC micro-candles取代overview close-only線，且generic renderer不得推論Signal／Order／Fill。
+- Renderer完成local immediate＋single latest queued viewport、52px Edit、bounded wick/up/down overview paths與browser event-to-render telemetry。BrowserDemo增加versioned bundle URL及no-store，避免人工驗收黏到舊bundle。
+- Focused Renderer／Interactive.Client／Ptcs.Client為`55/15/17`；完整browser gate的200→All state／rows為`655.91/734.35ms`，cursor event-to-render p95/max=`2/26ms`，正式phase無>100ms task。Candidate graph為`0.1.92/0.1.83/0.1.93`；official release/readback及Daedalus consumer gate待完成。

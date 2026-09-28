@@ -268,3 +268,10 @@ Aggregate `PulseTrade.Comm.Spa.Dynamic 0.1.25`不依賴上述runtime packages，
 - Tests：`DYN-T-570..578`
 - Verification：`DYN-VFY-025`
 - Consumer RFC：`RFC-TRADECORE-0028`
+
+## 10. 2026-09-29 owner correction
+
+1. Navigator基底必須保留真OHLC形狀；bounded overview以最多280個sample產生wick、up body、down body三條batched path，不得退化為close-only折線或建立逐K DOM。
+2. `OverviewStripe`維持domain-neutral。Renderer只畫consumer明確提供的trace，不從label或domain name推論Signal／Order／Fill；Daedalus consumer僅將Order與Fill投影為overview stripe，Signal保留domain result但不進navigator。
+3. 長row label使用ellipsis與完整title；可編輯row的`Edit`固定52 CSS px、不得被label或窄viewport擠出control line。沒有editor binding的legacy row仍保持read-only。
+4. Owner BrowserDemo必須用versioned bundle URL與`no-store`回應，避免人工驗收讀到舊bundle；此設定僅屬demo evidence，不改production cache contract。

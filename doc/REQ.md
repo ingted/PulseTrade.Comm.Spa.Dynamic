@@ -142,6 +142,13 @@
 4. Legacy完整RuntimeFrame SHALL維持相容；`RuntimeFrame`／`RuntimePayload`、cache schema與provider authority不得因transport framing改變。
 5. 4,000 slots／28 refs／5 candlestick rows的production packet pump cold ingest與replacement SHALL無大於100ms target-renderer task。
 
+### 2026-09-29 Backtest presentation correction
+
+1. Navigator SHALL以bounded batched geometry保留OHLC wick/body形狀，不得用close-only折線冒充K線概觀。
+2. Renderer SHALL只呈現authoritative `OverviewStripe`；不得依名稱推論交易domain。Signal不進overview，Order／Fill是否投影由consumer決定。
+3. 有editor binding的row SHALL在長label與窄viewport下維持完整可見、至少52 CSS px的`Edit`控制；legacy無binding row SHALL維持read-only。
+4. Pending viewport action期間的新local intent SHALL立即生效；remote delivery SHALL保留in-flight加latest queued intent，不得吞掉最後選擇。
+
 ## 2026-09-27 Trace Lifecycle／Cursor Events／Marker Contrast
 
 權威變更：`doc/RFC/RFC-PTCS-DYNAMIC-0029.trace-lifecycle-cursor-events-marker-contrast.md`。

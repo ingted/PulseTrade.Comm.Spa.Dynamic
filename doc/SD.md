@@ -685,6 +685,13 @@ RuntimeSnapshotTransportAssembler.decodeFrames
 
 Test seams：deterministic encoder/legacy singleton；zero-item snapshot；mixed legacy＋multi-batch stream；missing/duplicate/out-of-order/orphan/trailing/mismatch；interleaved legacy；global packet index；generation/disconnect；wrong schema/kind/malformed envelope；invalid SduiValue/canonical reducer failure；commit candidate與machine `finish` validation boundary；commit-only publish/accepted lifecycle/cache eligibility；4,000×28×5 candle target-renderer long-task；legacy/cache regression；exact package graph。
 
+### 2026-09-29 Renderer correction
+
+- Overview candle geometry對當前reference domain做bounded等距取樣，最多280筆；一次建立wick／up-body／down-body三條path，顏色取plot palette。OverviewStripe維持獨立batched paths，沒有trace就不猜domain、不補線。
+- Row control的label區為`flex:1 1 auto; min-width:0`並ellipsis；`Edit`為`flex:0 0 52px`。完整label放title，binding lookup仍是唯一可編輯authority。
+- Viewport local reducer不再因`PendingActionId`停用；`queuedVisibleRangeAction`只保存latest intent。settlement後若runtime可送，使用current revision flush；dispose/generation change清queue。
+- Cursor效能authority為browser event handler記錄request time，shared crosshair／labels／visible value完成後記event-to-render latency。Playwright host round-trip只作driver診斷，不作UI gate。
+
 Current released exact graph：Contracts `0.1.26` → Renderer `0.1.62` → Interactive.Client `0.1.54`；Dynamic.Ptcs `0.1.49` exact Contracts；Ptcs.Client `0.1.76` exact Contracts/Renderer；兩個PTCS adapters維持PTCS `[0.2.46]`。Daedalus fresh-cache machine consumer已用owner `decodeFrames`解出4,000 workspace，1,140 functional E2E與3,820 standard trace皆PASS；48→All為59.41ms／over100=0。五包public push回`Created`；NuGet repository signatures有效，official nuspec／DLL／bundle functional entries與local immutable artifact相同。大型candle projection以固定bucket array單次聚合；line projection以固定bucket min/max arrays保留chronological extrema；Y-domain以first-value initialized accumulator單次掃描，避免WebSharper對Infinity sentinel的錯誤轉譯。Shared-cursor click只查accepted prepared timeline，不再從raw data重做projection。Prepared geometry同時保存每條trace的latest presentation；當shared cursor未固定時，visible-value refresh直接讀此cache，不再對missing/sparse higher-scale trace逐條自tail反向掃描。Source interval、cursor action payload、bounded cursor lookup與Y-domain padding語意不變。
 
 ### Trace lifecycle／cursor event／contrast contract

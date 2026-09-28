@@ -317,6 +317,15 @@ let verifyRowControlLines viewportLabel viewportWidth (session: ICDPSession) (pa
 
         let traceButtons = traceRegion.Locator("[data-testid^='ta-toggle-trace-']")
         require (traceButtons.CountAsync() |> awaitTask > 0) $"{viewportLabel} fixture row {rowId} must expose a controllable trace"
+        let editButtons = rowControls.Locator("[data-testid^='ta-edit-row-']")
+        if editButtons.CountAsync() |> awaitTask > 0 then
+            let editBox = editButtons.First.BoundingBoxAsync() |> awaitTask
+            require (not (isNull editBox)) $"{viewportLabel} row {rowId} Edit control must expose geometry"
+            require (editBox.Width >= 51.0f) $"{viewportLabel} row {rowId} Edit control must retain its fixed visible width"
+            require (editBox.X >= lineBox.X - 0.5f) $"{viewportLabel} row {rowId} Edit control begins outside its row line"
+            require (editBox.X + editBox.Width <= lineBox.X + lineBox.Width + 0.5f) $"{viewportLabel} row {rowId} Edit control is clipped by its row line"
+            let labelControl = rowControls.Locator($"[data-testid='ta-toggle-row-{rowId}']")
+            require (not (String.IsNullOrWhiteSpace(attributeOrEmpty labelControl "title"))) $"{viewportLabel} row {rowId} truncated label must retain a full title"
         let firstTraceBox = traceButtons.First.BoundingBoxAsync() |> awaitTask
         require (not (isNull firstTraceBox)) $"{viewportLabel} row {rowId} first trace control must expose geometry"
         for traceIndex in 1 .. (traceButtons.CountAsync() |> awaitTask) - 1 do
@@ -325,7 +334,7 @@ let verifyRowControlLines viewportLabel viewportWidth (session: ICDPSession) (pa
             require (abs (traceBox.Y - firstTraceBox.Y) <= 0.5f) $"{viewportLabel} row {rowId} trace controls must share one Y band"
 
     require (page.Locator("[data-testid='ta-toggle-trace-price-signals']").CountAsync() |> awaitTask = 0) $"{viewportLabel} Marker system trace must not enter controls"
-    require (page.Locator("[data-testid='ta-toggle-trace-price-overview-signal']").CountAsync() |> awaitTask = 0) $"{viewportLabel} OverviewStripe system trace must not enter controls"
+    require (page.Locator("[data-testid='ta-toggle-trace-price-overview-order']").CountAsync() |> awaitTask = 0) $"{viewportLabel} OverviewStripe system trace must not enter controls"
     require (page.Locator("[data-testid='ta-toggle-trace-price-overview-fill']").CountAsync() |> awaitTask = 0) $"{viewportLabel} OverviewStripe system trace must not enter controls"
 
     let traceStyle =
@@ -1026,15 +1035,25 @@ let verifyDesktop (browser: IBrowser) =
     require (attributeOrEmpty navigator "data-plot-surface-theme" = "dark") "overview must use the selected generic dark theme"
     let overviewStyle = computedStyleProperties longTaskSession "[data-testid='ta-overview-navigator']" [| "background-color" |]
     require (Map.tryFind "background-color" overviewStyle = Some "rgb(0, 0, 0)") $"dark overview surface must be black, actual={overviewStyle}"
-    require (attributeOrEmpty (page.Locator("[data-testid='ta-overview-price-line']")) "stroke" = "#60a5fa") "dark overview price trace must remain readable"
+    let overviewWicks = page.Locator("[data-testid='ta-overview-candle-wicks']")
+    let overviewUpBodies = page.Locator("[data-testid='ta-overview-candle-up-bodies']")
+    let overviewDownBodies = page.Locator("[data-testid='ta-overview-candle-down-bodies']")
+    require (attributeOrEmpty overviewWicks "stroke" = "#60a5fa") "dark overview candle wicks must remain readable"
+    require (requiredIntAttribute overviewWicks "data-candle-sample-count" <= 280) "overview candlesticks must retain the bounded sample budget"
+    require (not (String.IsNullOrWhiteSpace(attributeOrEmpty overviewWicks "d"))) "overview candlestick wicks must retain OHLC geometry"
+    require (attributeOrEmpty overviewUpBodies "fill" = "#4ade80") "dark overview up candles must remain readable"
+    require (attributeOrEmpty overviewDownBodies "fill" = "#f87171") "dark overview down candles must remain readable"
+    require (not (String.IsNullOrWhiteSpace(attributeOrEmpty overviewUpBodies "d"))) "overview must retain up candle bodies"
+    require (not (String.IsNullOrWhiteSpace(attributeOrEmpty overviewDownBodies "d"))) "overview must retain down candle bodies"
+    require (page.Locator("[data-testid='ta-overview-price-line']").CountAsync() |> awaitTask = 0) "overview must not regress to a close-only polyline"
     require (attributeOrEmpty (page.Locator("[data-testid='ta-overview-selection']")) "fill" = "rgba(203,213,225,.20)") "overview selection must use the agreed light-gray fill"
     let overviewStripePaths = page.Locator("[data-testid='ta-overview-stripe-path']")
-    require (overviewStripePaths.CountAsync() |> awaitTask = 2) "signal and fill overview stripes must render as two batched paths"
-    require (requiredIntAttribute (overviewStripePaths.Nth(0)) "data-stripe-count" = 1) "signal stripe path must retain its item count"
+    require (overviewStripePaths.CountAsync() |> awaitTask = 2) "order and fill overview stripes must render as two batched paths"
+    require (requiredIntAttribute (overviewStripePaths.Nth(0)) "data-stripe-count" = 1) "order stripe path must retain its item count"
     require (requiredIntAttribute (overviewStripePaths.Nth(1)) "data-stripe-count" = 1) "fill stripe path must retain its item count"
-    let signalStripePath = overviewStripePaths.Nth(0).GetAttributeAsync("d") |> awaitTask
+    let orderStripePath = overviewStripePaths.Nth(0).GetAttributeAsync("d") |> awaitTask
     let fillStripePath = overviewStripePaths.Nth(1).GetAttributeAsync("d") |> awaitTask
-    require (not (String.IsNullOrWhiteSpace signalStripePath) && not (String.IsNullOrWhiteSpace fillStripePath) && signalStripePath <> fillStripePath) "same-time cross-trace stripes must occupy deterministic adjacent lanes"
+    require (not (String.IsNullOrWhiteSpace orderStripePath) && not (String.IsNullOrWhiteSpace fillStripePath) && orderStripePath <> fillStripePath) "same-time cross-trace stripes must occupy deterministic adjacent lanes"
     let renderSequenceBeforeStripeRefresh = requiredIntAttribute chartStack "data-chart-render-sequence"
     let readyRowsBeforeStripeRefresh = requiredIntAttribute chartStack "data-ready-row-count"
     page.Locator("[data-testid='ta-demo-clear-overview-stripes']").ClickAsync() |> awaitUnit
@@ -1051,9 +1070,12 @@ let verifyDesktop (browser: IBrowser) =
         (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeStripeRefresh
          && requiredIntAttribute chartStack "data-ready-row-count" = readyRowsBeforeStripeRefresh)
         "populating same-topology OverviewStripe data must refresh only the navigator without remounting the chart stack"
-    let signalStripePath = overviewStripePaths.Nth(0).GetAttributeAsync("d") |> awaitTask
+    let orderStripePath = overviewStripePaths.Nth(0).GetAttributeAsync("d") |> awaitTask
+    navigator.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
+    let overviewSelection = page.Locator("[data-testid='ta-overview-selection']")
+    overviewSelection.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
     let navigatorBox = navigator.BoundingBoxAsync() |> awaitTask
-    let selectionBox = page.Locator("[data-testid='ta-overview-selection']").BoundingBoxAsync() |> awaitTask
+    let selectionBox = overviewSelection.BoundingBoxAsync() |> awaitTask
     require (not (isNull navigatorBox) && not (isNull selectionBox)) "overview navigator and selection must expose pointer geometry"
     require (page.Locator("[data-testid='ta-overview-left-handle']").IsVisibleAsync() |> awaitTask) "overview must expose a left resize handle"
     require (page.Locator("[data-testid='ta-overview-right-handle']").IsVisibleAsync() |> awaitTask) "overview must expose a right resize handle"
@@ -1076,8 +1098,8 @@ let verifyDesktop (browser: IBrowser) =
     require (attributeOrEmpty (page.Locator("[data-testid='ta-overview-move-hit']")) "pointer-events" = "none") "move cursor hint must not bypass the root drag resolver"
     require (attributeOrEmpty leftHandleHit "width" = "8") "left overview drag hit target must retain the existing width"
     require (attributeOrEmpty rightHandleHit "width" = "8") "right overview drag hit target must retain the existing width"
-    let stripeXMatch = Text.RegularExpressions.Regex.Match(signalStripePath, "M ([0-9.]+) 0")
-    require stripeXMatch.Success ("overview stripe path did not expose canonical X: " + signalStripePath)
+    let stripeXMatch = Text.RegularExpressions.Regex.Match(orderStripePath, "M ([0-9.]+) 0")
+    require stripeXMatch.Success ("overview stripe path did not expose canonical X: " + orderStripePath)
     let stripeX = Single.Parse(stripeXMatch.Groups[1].Value, Globalization.CultureInfo.InvariantCulture)
     page.Mouse.MoveAsync(navigatorBox.X + navigatorBox.Width * stripeX / 1000.0f, navigatorBox.Y + 8.0f) |> awaitUnit
     page.Locator("[data-testid='ta-overview-stripe-tooltip']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
@@ -1179,9 +1201,10 @@ let verifyDesktop (browser: IBrowser) =
     require (attributeOrEmpty chartStack "data-cursor-index" = visibleCursorIndexBeforeResize) "row resize settle must preserve the displayed cursor index"
     priceResize.PressAsync("Home") |> awaitUnit
     waitForAttributeValue priceResize "aria-valuenow" "250"
-    priceChart.ScrollIntoViewIfNeededAsync() |> awaitUnit
-    let sustainedPointerBox = priceChart.BoundingBoxAsync() |> awaitTask
-    require (not (isNull sustainedPointerBox)) "price chart must expose fresh pointer geometry after row height reset"
+    let sustainedCursorSurface = page.Locator("svg:has([data-testid='ta-trace-sma-sma-1k'])")
+    sustainedCursorSurface.ScrollIntoViewIfNeededAsync() |> awaitUnit
+    let sustainedPointerBox = sustainedCursorSurface.BoundingBoxAsync() |> awaitTask
+    require (not (isNull sustainedPointerBox)) "marker-free SMA chart must expose fresh pointer geometry for sustained cursor measurement"
 
     let previewUpdatesBeforeCursor = requiredIntAttribute fixtureRoot "data-preview-stream-updates"
     let historicalCloseBeforeCursor = attributeSignature priceCandlePaths "d"
@@ -1191,14 +1214,49 @@ let verifyDesktop (browser: IBrowser) =
     let mutable cursorTransitions = 0
     let mutable maximumCursorLatencyMs = 0L
     let cursorLatencies = ResizeArray<int64>()
+    let browserCursorLatencies = ResizeArray<float>()
+    let waitForCrosshairSide rightSide =
+        let deadline = DateTime.UtcNow.AddSeconds 3.0
+        let mutable observed = attributeOrEmpty firstCrosshair "x1"
+        let mutable reached = false
+        while not reached && DateTime.UtcNow < deadline do
+            match Double.TryParse(observed, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
+            | true, value -> reached <- if rightSide then value >= 600.0 else value <= 400.0
+            | _ -> ()
+            if not reached then
+                Threading.Thread.Sleep 10
+                observed <- attributeOrEmpty firstCrosshair "x1"
+        let sideLabel = if rightSide then "right" else "left"
+        require reached $"crosshair did not reach the expected {sideLabel} region; x1={observed}"
+        observed
+    let dispatchCursorMove ratio =
+        sustainedCursorSurface.HoverAsync(
+            LocatorHoverOptions(
+                Force = true,
+                Position = Position(X = sustainedPointerBox.Width * ratio, Y = sustainedPointerBox.Height / 2.0f)))
+        |> awaitUnit
+    dispatchCursorMove 0.18f
+    previousCrosshairX <- waitForCrosshairSide false
+    let mutable browserCursorLatencySequence = requiredIntAttribute chartStack "data-cursor-render-latency-sequence"
     for sample in 0 .. 299 do
-        // Playwright may choose the left actionable point for the initial SVG hover.
-        // Start the sustained alternation at the opposite edge so the first sample is a real transition.
-        let ratio = if sample % 2 = 0 then 0.82f else 0.18f
+        let rightSide = sample % 2 = 0
+        let ratio = if rightSide then 0.82f else 0.18f
         let movement = Diagnostics.Stopwatch.StartNew()
-        page.Mouse.MoveAsync(sustainedPointerBox.X + sustainedPointerBox.Width * ratio, sustainedPointerBox.Y + sustainedPointerBox.Height / 2.0f) |> awaitUnit
+        dispatchCursorMove ratio
         let currentCrosshairX = waitForAttributeChange firstCrosshair "x1" previousCrosshairX
+        browserCursorLatencySequence <-
+            waitForIntAttributeAtLeast
+                chartStack
+                "data-cursor-render-latency-sequence"
+                (browserCursorLatencySequence + 1)
+        browserCursorLatencies.Add(requiredFloatAttribute chartStack "data-cursor-render-latency-ms")
         movement.Stop()
+        match Double.TryParse(currentCrosshairX, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
+        | true, value ->
+            let reachedExpectedSide = if rightSide then value >= 600.0 else value <= 400.0
+            let sideLabel = if rightSide then "right" else "left"
+            require reachedExpectedSide $"crosshair did not reach the expected {sideLabel} region; x1={currentCrosshairX}"
+        | _ -> require false $"crosshair x1 is not numeric: {currentCrosshairX}"
         cursorTransitions <- cursorTransitions + 1
         maximumCursorLatencyMs <- max maximumCursorLatencyMs movement.ElapsedMilliseconds
         cursorLatencies.Add movement.ElapsedMilliseconds
@@ -1208,11 +1266,14 @@ let verifyDesktop (browser: IBrowser) =
     longTaskPhases.Add(stopMainThreadTrace "cursor-movement" longTaskSession cursorTrace)
     let sortedCursorLatencies = cursorLatencies |> Seq.sort |> Seq.toArray
     let cursorP95 = sortedCursorLatencies[int (Math.Ceiling(float sortedCursorLatencies.Length * 0.95)) - 1]
-    printfn "browser.cursor sustainedTransitions=%d hostRoundTripP95=%dms hostRoundTripMax=%dms elapsed=%dms" cursorTransitions cursorP95 maximumCursorLatencyMs sustainedCursor.ElapsedMilliseconds
+    let sortedBrowserCursorLatencies = browserCursorLatencies |> Seq.sort |> Seq.toArray
+    let browserCursorP95 = sortedBrowserCursorLatencies[int (Math.Ceiling(float sortedBrowserCursorLatencies.Length * 0.95)) - 1]
+    let browserCursorMax = sortedBrowserCursorLatencies |> Array.max
+    printfn "browser.cursor sustainedTransitions=%d eventToRenderP95=%.2fms eventToRenderMax=%.2fms hostRoundTripP95=%dms hostRoundTripMax=%dms elapsed=%dms" cursorTransitions browserCursorP95 browserCursorMax cursorP95 maximumCursorLatencyMs sustainedCursor.ElapsedMilliseconds
     require (cursorTransitions >= 300) $"sustained cursor movement produced too few crosshair transitions: {cursorTransitions}"
     if not skipPerformanceGates then
-        require (cursorP95 < 125L) $"sustained cursor p95 exceeded 125ms: {cursorP95}ms"
-        require (sustainedCursor.Elapsed < TimeSpan.FromSeconds 12.0) $"sustained cursor movement exceeded 12 seconds: {sustainedCursor.Elapsed}"
+        require (browserCursorP95 < 125.0) $"sustained cursor browser event-to-render p95 exceeded 125ms: {browserCursorP95:F2}ms"
+        require (browserCursorMax < 400.0) $"sustained cursor browser event-to-render max exceeded 400ms: {browserCursorMax:F2}ms"
     let concurrentPreviewUpdates = requiredIntAttribute fixtureRoot "data-preview-stream-updates"
     let concurrentPreviewUpdateCount = concurrentPreviewUpdates - previewUpdatesBeforeCursor
     require (concurrentPreviewUpdateCount >= 2) $"sustained cursor gate observed only {concurrentPreviewUpdateCount} concurrent live preview updates"
@@ -1370,6 +1431,19 @@ let verifyDesktop (browser: IBrowser) =
     waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeAll + 1)
     waitForAttributeValue callbackState "data-last-action" "VisibleRangeChanged"
     waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls after All"
+
+    let callbackCountBeforeRapidPresets = requiredIntAttribute callbackState "data-callback-count"
+    page.Locator("[data-testid='ta-view-200']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 3801-4000"
+    require (requiredIntAttribute callbackState "data-callback-count" = callbackCountBeforeRapidPresets) "200 action must still be pending before the rapid All intent"
+    let rapidAllState = Diagnostics.Stopwatch.StartNew()
+    page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing 1-{capacityPointCount}"
+    rapidAllState.Stop()
+    require (rapidAllState.Elapsed.TotalMilliseconds <= 750.0) $"rapid pending 200-to-All local commit exceeded 750ms: {rapidAllState.Elapsed.TotalMilliseconds:F2}ms"
+    waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeRapidPresets + 2)
+    waitForAttributeValue callbackState "data-last-action" "VisibleRangeChanged"
+
     let renderBeforeRightHandle = requiredIntAttribute chartStack "data-chart-render-sequence"
     let renderReasonBeforeRightHandle = chartStack.GetAttributeAsync("data-chart-render-reason") |> awaitTask
     let documentRevisionBeforeRightHandle = chartStack.GetAttributeAsync("data-chart-document-revision") |> awaitTask

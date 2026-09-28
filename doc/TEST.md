@@ -740,6 +740,7 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-607 | Visible per-row Y-domain | 每個K-bar row只取當前viewport projected candlesticks與同row projected TA lines；遠端source extrema、其他row及不可見points不得壓縮可見K棒 | OWNER PASS：Renderer 48/48；pure regression以遠端low control證明visible domain不受完整source污染。 |
 | DYN-T-608 | Fixed CSS padding / browser regression | default及resize後SVG edge到visible candle/TA extrema維持15 CSS px centerline；48/200/All、pan/zoom、resize、same-topology replacement不remount且owner phase無>100ms | PASS：Release-built `Renderer 0.1.68 / Interactive.Client 0.1.59`；250/720px pure geometry centerline皆15px，真DOM path外緣因1.8 viewBox stroke為12.60px，default／pointer resize／reset一致。Owner 4,000-slot gate PASS；Daedalus真SPAA narrowed／48／200／All／resize逐row全綠，正式consumer pointer p95=42.20ms且cold/cache無>100ms task。早先82.69/78.28ms由同機owner BrowserDemo競爭造成，停掉後診斷28.78ms、正式42.20ms。 |
 | DYN-T-609 | Fixed CSS-pixel strokes／default row height | line/SMA authored width夾1–2 CSS px且default／row resize／viewport commit不變；overview左右visual line固定2 CSS px、`#155f73`、pointer-inert；既有handle為transparent rect且drag仍可用；任何resize前全部chart SVG `<=250px`，manual可超過250，reset/reload回capped default | PASS：immutable Renderer `0.1.70` 48/48、Interactive.Client `0.1.61` 12/12與package verifier通過；owner功能gate驗price default=250、manual=282、reset/reload=250。Daedalus真SPAA 1,140 bars驗三項新contract全綠，pointer p95=28.18ms、cold/cache long tasks=0；official package readback通過。 |
+
 | DYN-T-610 | Contracts theme | `ta.plotSurface.theme` light/dark round-trip；absent=light相容；unknown/non-text reject | PASS：Contracts 44/44。 |
 | DYN-T-611 | Contracts histogram polarity | positive/negative typed round-trip；兩鍵皆缺legacy；partial/invalid/kind-mismatch reject；不做name inference | PASS：Contracts 44/44。 |
 | DYN-T-612 | Renderer geometry | Histogram value>=0與value<0分成兩個batched paths；legacy單色、same-topology update與DOM bounded | PASS：Renderer 48/48；BrowserDemo正負path non-empty。 |
@@ -780,3 +781,12 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | --- | --- | --- |
 | DYN-T-649 | Renderer cursor/row barrier | OWNER PASS／consumer pending：shared hover cursor visible後keyboard resize，7個row label及crosshair在reactive DOM settle 220ms後仍visible、displayed cursor index不變、chart render sequence不變；reader maps只在rows-complete barrier發布一次。舊official graph在真SPAA resize後hidden，須以新graph重跑。 |
 | DYN-T-650 | Performance/package/consumer | OWNER/RELEASE PASS／consumer pending：Renderer/Interactive/Ptcs focused `55/15/17`；4,000-bar F# Playwright明確200→All 435.30ms，正式phases無>100ms，300 cursor p95=41ms/max120ms；Interactive package verifier與三包official signature/dependencies/entry parityPASS。Daedalus須以真SPAA 960 bars／8 rows重跑200→All `<=2,000ms`及visible cursor resize；舊official graph 2,065–2,075ms不得視為通過。 |
+
+## 2026-09-29 Latest viewport／row Edit／overview OHLC
+
+| Test ID | Scope | Required cases | Status |
+| --- | --- | --- | --- |
+| DYN-T-651 | Pending viewport latest-wins | 快速`200 -> All`時local state立即更新；remote最多in-flight＋latest queued；stale completion不覆蓋最後intent | OWNER PASS：state `655.91ms`、rows-ready `734.35ms`，callback只保留latest。 |
+| DYN-T-652 | Row Edit geometry | desktop／768／375px長label；label ellipsis＋title；Edit完整位於line內且寬度>=51px | OWNER PASS：375px截圖與geometry gate通過。 |
+| DYN-T-653 | Overview OHLC／stripe responsibility | bounded wick/up/down paths、sample<=280；沒有close-only line；只有authored Order／Fill stripes，Signal不進overview | OWNER PASS：BrowserDemo fixture與DOM/path gate通過；consumer真資料待Daedalus。 |
+| DYN-T-654 | Cursor event-to-render | 300 transitions；以browser event request到shared render完成量測；host round-trip僅診斷；console/page error 0 | OWNER PASS：p95 `2.00ms`、max `26.00ms`，CDP max task `28.95ms`。 |

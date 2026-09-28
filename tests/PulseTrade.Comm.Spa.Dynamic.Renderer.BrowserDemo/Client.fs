@@ -299,7 +299,7 @@ module Client =
             yield "series.volume", SduiValue.Array candles
             yield "series.sma", sharedScalarSeries 0
             yield "series.markers", markers
-            yield "series.overview.signal", overviewStripeSeries "series.overview.signal" "#2563eb" (count - 8) "Signal"
+            yield "series.overview.order", overviewStripeSeries "series.overview.order" "#2563eb" (count - 8) "Order"
             yield "series.overview.fill", overviewStripeSeries "series.overview.fill" "#dc2626" (count - 8) "Fill"
             for seriesIndex in 1 .. capacitySeriesCount - 1 do
                 yield "series.capacity-" + string seriesIndex, sharedScalarSeries seriesIndex
@@ -543,7 +543,7 @@ module Client =
                                trace "price-5k" TaTraceKind.Candlestick "series.price-5k" "5K K Bar" "#7c3aed" 1.8
                                { trace "signals" TaTraceKind.Marker "series.markers" "Signals" "#dc2626" 1.0 with
                                     Options = TaMarkerTraceOptionsCodec.encode ({ TargetTraceId = "price-1k" }: TaMarkerTraceOptions) }
-                               { trace "overview-signal" TaTraceKind.OverviewStripe "series.overview.signal" "Signal stripe" "#2563eb" 1.0 with
+                               { trace "overview-order" TaTraceKind.OverviewStripe "series.overview.order" "Order stripe" "#2563eb" 1.0 with
                                     Options = TaOverviewStripeTraceOptionsCodec.encode { TargetTraceId = "price-1k"; CollisionGroup = "backtest-events"; LayerOrder = 0 } }
                                { trace "overview-fill" TaTraceKind.OverviewStripe "series.overview.fill" "Fill stripe" "#dc2626" 1.0 with
                                     Options = TaOverviewStripeTraceOptionsCodec.encode { TargetTraceId = "price-1k"; CollisionGroup = "backtest-events"; LayerOrder = 1 } } |]
@@ -557,6 +557,7 @@ module Client =
                            1.0
                            [| trace "sma-1k" TaTraceKind.Line "series.sma" "1K SMA" "#2563eb" 1.3
                               trace "sma-5k" TaTraceKind.Line "series.sma-5k" "5K SMA" "#b45309" 1.8 |]
+                       |> withRowLabel "DMI_BASELINE_BACKTESTS / DMI_FULL_RANGE : SHORT : NUMERATOR_HIGH : 2SIGMA"
                        |> bindEditor "ta.sma" (DynamicEditorValidation.defaultInputs sampleEditorSchemas[0])
                        row "dmi" TaRowKind.Candlestick "series.price-30k-heavy" 1.0
                        |> withRowLabel "ES 30K K Bar"
@@ -1090,7 +1091,7 @@ module Client =
                     DataRevision = current.DataRevision + 1L
                     LastTransportSequence = current.LastTransportSequence + 1L }
 
-        let overviewDataRefs = [| "series.overview.signal"; "series.overview.fill" |]
+        let overviewDataRefs = [| "series.overview.order"; "series.overview.fill" |]
         let clearOverviewStripes () =
             let current = runtimeState.Value
             let clearedData =

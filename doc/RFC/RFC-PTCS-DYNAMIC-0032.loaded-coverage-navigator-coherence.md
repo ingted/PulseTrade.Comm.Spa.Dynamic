@@ -126,3 +126,9 @@ Exact graph為Contracts `0.1.33`、Renderer `0.1.89`、Interactive.Client `0.1.8
 決策：range與preset controls移到document stable shell，chart rows/navigator仍走原scheduled subtree。LoadedCoverage projection變更只決定是否full prepare；只有真正`CoverageIdentity`改變才建立新viewport scope。same-identity revision、active-detail refresh與accepted response均須保留最新local viewport intent。Public API、wire shape、action與generation不變。
 
 Owner regression同時驗direct state barrier與same-identity accepted callback：4,000 bars focused state/rows為`160.21/373.24ms`，完整gate為`586.83/690.59ms`且正式phase無>100ms task；500 coverage／250 detail由48提交global `453-500`後，revision refresh仍保持相同window。Exact graph `0.1.33/0.1.91/0.1.82/0.1.54/0.1.92`已由source commit `83df45b`發布並完成NuGet.org簽章、dependency及entry parity回讀；真SPAA仍為consumer acceptance停止條件。
+
+## 11. Pending action latest-wins correction
+
+真操作允許前一個viewport command尚在flight時再選新preset。新intent必須立即更新local committed viewport；remote callback以一個in-flight加一個latest queued intent序列化，後來intent覆蓋尚未送出的舊queued intent。當前action完成後以當下revision送出latest intent；stale completion不得覆蓋local window。這不改public action或wire shape。
+
+Owner gate快速執行`200 -> All`，要求local state `<=750ms`、rows-ready `<=1500ms`且remote callback只保留latest intent。正式browser量得state `655.91ms`、rows-ready `734.35ms`；真SPAA仍須用同一exact graph驗產品2秒門檻。

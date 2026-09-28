@@ -1,0 +1,50 @@
+# SPAA consumer committed state / row label
+
+## Background
+
+Daedalus以official exact graph `0.1.33/0.1.91/0.1.82/0.1.54/0.1.92`在真SPAA 18883重現兩次200->All committed state `2093/2024ms`，browser long task為0；另有長row label裁切DMI/MACD/HA控制的視覺缺口。
+
+## Goal
+
+- 定位accepted到committed state的非long-task等待來源，維持2秒硬上限。
+- 修正長row label時row header控制裁切，不改wire/action contract。
+- 通過owner focused tests、真SPAA consumer gate、必要Playwright視覺與package readback。
+
+## Invariants
+
+- 不放寬2秒門檻，不以丟資料或略過accepted state換效能。
+- 保留same-identity viewport intent、progressive coverage與完整Backtest行為。
+- 純WebSharper F#；不新增JavaScript。
+
+## Scope / Owner
+
+Owner repo：`C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`，branch `20260915_033.ptcs_group_support`。Daedalus擁有真SPAA consumer fixture；Aster擁有Renderer/Interactive client修正與package release。
+
+## 假設
+
+延遲不是browser long task，而是pending action吞掉較新的local viewport intent；Edit消失則由長label侵占固定control空間造成。兩者均須以browser state／geometry gate反證或確認。
+
+## 風險
+
+Viewport queue若使用過期revision可能污染authority；overview若由Renderer推論domain會越過owner邊界；demo cache可能讓人工驗收讀到舊bundle。修正不得改public wire，真SPAA仍由consumer驗收。
+
+## Planned steps
+
+1. 以18883真服務與既有verifier重現，分解click、accepted、committed state及rows-ready。
+2. 讀最小scheduler/state barrier與row header layout路徑，建立回歸測試。
+3. 最小修正後執行focused suites、Playwright真SPAA及package verifier。
+4. 同步RFC/WBS/Test/Verification/DevLog、release exact packages，請Daedalus重跑consumer gate。
+
+## Acceptance / Stop
+
+- 200->All committed state連續測量均`<2000ms`，long-task資訊獨立呈現。
+- accepted same-identity response後48 viewport保留。
+- 長label下所有row controls可見、可操作、無不合理重疊。
+- 僅在consumer gate通過或有外部blocking evidence時停止。
+
+## Operations
+
+- 04:11 `agent.aster`重新註冊並讀取durable inbox；收到Daedalus consumer RED與row-label clipping evidence，已direct回覆接手。18883 TCP可達，Dynamic repo起點clean。
+- 04:15-05:14 完成latest viewport queue、row control geometry、bounded overview OHLC及cursor event telemetry；focused suites `55/15/17`，完整browser gate通過。200→All state／rows=`655.91/734.35ms`，cursor event-to-render p95/max=`2/26ms`，正式phase over100=0。
+- 05:14-05:25 人工驗收指出18882未見Edit。確認server bundle已含52px Edit，但demo固定script URL可黏舊bundle；第一次build因PID 15424鎖定apphost失敗，停止該明確BrowserDemo後重建。Demo現使用versioned URL與no-store，18882回傳新bundle並持續監聽；未碰Daedalus service。
+- 05:27 COMM讀到Daedalus已完成TradeCore sparse/session-gap與same-bucket contract切換修正，並確認consumer只author Order／Fill overview stripes；已回覆候選graph與owner gate，等待official readback後交付不可變SHA。

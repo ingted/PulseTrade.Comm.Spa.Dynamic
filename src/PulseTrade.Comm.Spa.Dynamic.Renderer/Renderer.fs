@@ -63,6 +63,8 @@ module TaWorkspaceRenderer =
           LegendText: string
           Border: string
           OverviewPrice: string
+          OverviewCandleUp: string
+          OverviewCandleDown: string
           OverviewSelection: string
           OverviewBoundary: string
           TooltipSurface: string
@@ -80,6 +82,8 @@ module TaWorkspaceRenderer =
           LegendText = "#263b55"
           Border = "#c7d3e2"
           OverviewPrice = "#3d718e"
+          OverviewCandleUp = "#138a59"
+          OverviewCandleDown = "#c53d3d"
           OverviewSelection = "rgba(203,213,225,.20)"
           OverviewBoundary = "#4ade80"
           TooltipSurface = "#ffffff"
@@ -97,6 +101,8 @@ module TaWorkspaceRenderer =
           LegendText = "#e2e8f0"
           Border = "#475569"
           OverviewPrice = "#60a5fa"
+          OverviewCandleUp = "#4ade80"
+          OverviewCandleDown = "#f87171"
           OverviewSelection = "rgba(203,213,225,.20)"
           OverviewBoundary = "#4ade80"
           TooltipSurface = "#111827"
@@ -573,16 +579,31 @@ module TaWorkspaceRenderer =
             sampled
             |> Array.collect (fun point -> [| point.Low; point.High |])
             |> RendererModel.paddedRange 0.0 1.0
-        let xAt index =
-            if sampled.Length <= 1 then width / 2.0
-            else width * float index / float (sampled.Length - 1)
-        let closePath =
+        let candleSlot = if sampled.Length = 0 then width else width / float sampled.Length
+        let candleBodyWidth = max 1.0 (min 3.2 (candleSlot * 0.58))
+        let xAt index = candleSlot * (float index + 0.5)
+        let yAt value = RendererModel.normalize low high 8.0 62.0 value
+        let wickPath =
             sampled
             |> Array.mapi (fun index point ->
-                (if index = 0 then "M " else "L ")
-                + fixedText (xAt index) + " "
-                + fixedText (RendererModel.normalize low high 8.0 62.0 point.Close))
+                let x = fixedText (xAt index)
+                "M " + x + " " + fixedText (yAt point.High) + " L " + x + " " + fixedText (yAt point.Low))
             |> String.concat " "
+        let bodyPath keep =
+            sampled
+            |> Array.mapi (fun index point -> index, point)
+            |> Array.filter (snd >> keep)
+            |> Array.map (fun (index, point) ->
+                let openY = yAt point.Open
+                let closeY = yAt point.Close
+                rectanglePath
+                    (xAt index - candleBodyWidth / 2.0)
+                    (min openY closeY)
+                    candleBodyWidth
+                    (max 0.8 (abs (closeY - openY))))
+            |> String.concat " "
+        let upBodyPath = bodyPath (fun point -> point.Close >= point.Open)
+        let downBodyPath = bodyPath (fun point -> point.Close < point.Open)
         let handleWidth = 8.0
         let selectionGeometry ratios = RendererModel.navigatorSelectionBounds width ratios
         let geometryText projection = selectionWindow |> View.Map (selectionGeometry >> projection >> fixedText)
@@ -670,13 +691,27 @@ module TaWorkspaceRenderer =
                 svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"
             ] []
             yield svgElement "path" [
-                Attr.Create "data-testid" "ta-overview-price-line"
-                Attr.Create "data-stroke-width-css-pixels" "1.5"
-                svgAttr "d" closePath
+                Attr.Create "data-testid" "ta-overview-candle-wicks"
+                Attr.Create "data-candle-sample-count" (string sampled.Length)
+                svgAttr "d" wickPath
                 svgAttr "fill" "none"
                 svgAttr "stroke" palette.OverviewPrice
-                svgAttr "stroke-width" "1.5"
+                svgAttr "stroke-width" "0.8"
                 svgAttr "vector-effect" "non-scaling-stroke"
+                svgAttr "pointer-events" "none"
+            ] []
+            yield svgElement "path" [
+                Attr.Create "data-testid" "ta-overview-candle-up-bodies"
+                svgAttr "d" upBodyPath
+                svgAttr "fill" palette.OverviewCandleUp
+                svgAttr "stroke" "none"
+                svgAttr "pointer-events" "none"
+            ] []
+            yield svgElement "path" [
+                Attr.Create "data-testid" "ta-overview-candle-down-bodies"
+                svgAttr "d" downBodyPath
+                svgAttr "fill" palette.OverviewCandleDown
+                svgAttr "stroke" "none"
                 svgAttr "pointer-events" "none"
             ] []
             for color, strokeWidth, stripeCount, path in stripePaths do
@@ -1955,6 +1990,8 @@ module TaWorkspaceRenderer =
             update 0
         let mutable pendingCursorIndex: int option option = None
         let mutable cursorFrameScheduled = false
+        let mutable pendingCursorRequestedAtMs = 0.0
+        let mutable cursorRenderLatencySequence = 0
         let crossScaleSummaryOpen = Var.Create false
         let uiState =
             Var.Create
@@ -2024,6 +2061,8 @@ module TaWorkspaceRenderer =
         let mutable queryInFlight = false
         let mutable queuedQuery: (TaQueryChange * int) option = None
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
+        let mutable queuedVisibleRangeAction: SduiAction option = None
+        let mutable flushQueuedVisibleRangeAction = ignore
         let commandsDisabledView =
             View.Map2
                 (fun state ui -> remoteDisabled state.Poll || ui.PendingActionId.IsSome)
@@ -2052,11 +2091,32 @@ module TaWorkspaceRenderer =
                 { RequestId = canvasIdText (currentCanvasId ()) + ":ui:" + string actionSequence
                   ExpectedDocumentRevision = Some runtimeState.Value.DocumentRevision
                   Action = action }
-            submit callbacks uiState runtimeState.Value.DocumentRevision request successText onAccepted onRejected afterSettled
+            submit
+                callbacks
+                uiState
+                runtimeState.Value.DocumentRevision
+                request
+                successText
+                onAccepted
+                onRejected
+                (fun () ->
+                    afterSettled ()
+                    scheduleNextFrame flushQueuedVisibleRangeAction)
         let startActionWith action successText onAccepted onRejected =
             startActionWithFeedback action successText (fun () -> onAccepted (); None) onRejected ignore
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
+        let sendOrQueueVisibleRangeAction action =
+            if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
+                queuedVisibleRangeAction <- Some action
+            else
+                startAction action "Visible range synchronized." ignore
+        flushQueuedVisibleRangeAction <- fun () ->
+            match queuedVisibleRangeAction with
+            | Some action when uiState.Value.PendingActionId.IsNone && not (remoteDisabled runtimeState.Value.Poll) ->
+                queuedVisibleRangeAction <- None
+                startAction action "Visible range synchronized." ignore
+            | _ -> ()
         let chartRuntimeState = Var.Create runtimeState.Value
         let initialPreparedData =
             { RawData = Map.empty
@@ -2234,6 +2294,7 @@ module TaWorkspaceRenderer =
             let dataChanged = runtimeDataChanged observedDataState next
             if next.Identity <> observedDataState.Identity then
                 pendingBoundaryPan <- None
+                queuedVisibleRangeAction <- None
                 setUiState
                     { uiState.Value with
                         HiddenRows = Set.empty
@@ -2253,7 +2314,8 @@ module TaWorkspaceRenderer =
                 if dataChanged then
                     scheduleIncrementalPreparation next
                 else
-                    acceptPreparedData false next latestPreparedData)
+                    acceptPreparedData false next latestPreparedData
+            flushQueuedVisibleRangeAction ())
         scheduleFullPreparation ()
         let chartRuntimeView: View<RuntimeState> = chartRuntimeState.View
 
@@ -2296,14 +2358,14 @@ module TaWorkspaceRenderer =
             changed, bounded
 
         let setWindow followLatest window =
-            if not (viewportCommandsDisabledNow ()) then
+            if not (localViewportDisabled runtimeState.Value.Poll) then
                 let changed, bounded = commitLocalWindow followLatest window
-                if changed && actionAllowed "visible-range-changed" && not (commandsDisabledNow ()) then
+                if changed && actionAllowed "visible-range-changed" then
                     match runtimeState.Value.Document with
                     | Some document ->
                         match RendererModel.visibleEventRangePrepared document latestPreparedData bounded with
                         | Some range ->
-                            startAction
+                            sendOrQueueVisibleRangeAction
                                 (SduiAction.VisibleRangeChanged(
                                     currentCanvasId (),
                                     { BaseRowId = range.BaseRowId
@@ -2311,8 +2373,6 @@ module TaWorkspaceRenderer =
                                       EndEventTimeExclusiveUtc = range.EndEventTimeExclusiveUtc
                                       MaximumBasePoints = min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 (maximumVisibleBarsFor document))
                                       CoverageIntent = None }))
-                                "Visible range synchronized."
-                                ignore
                         | None -> ()
                     | None -> ()
 
@@ -2802,12 +2862,18 @@ module TaWorkspaceRenderer =
             cursorFrameScheduled <- false
             match pendingCursorIndex with
             | Some value ->
+                let requestedAtMs = pendingCursorRequestedAtMs
                 pendingCursorIndex <- None
                 applyCursorIndex value
+                cursorRenderLatencySequence <- cursorRenderLatencySequence + 1
+                if not (isNull chartStackElement) then
+                    chartStackElement.SetAttribute("data-cursor-render-latency-sequence", string cursorRenderLatencySequence)
+                    chartStackElement.SetAttribute("data-cursor-render-latency-ms", fixedText (max 0.0 (browserNowMs () - requestedAtMs)))
             | None -> ()
 
         let setCursorIndex value =
             pendingCursorIndex <- Some value
+            pendingCursorRequestedAtMs <- browserNowMs ()
             if not cursorFrameScheduled then
                 cursorFrameScheduled <- true
                 JS.RequestAnimationFrame(fun _ -> flushCursorFrame ()) |> ignore
@@ -3413,13 +3479,14 @@ module TaWorkspaceRenderer =
                                             ] [
                                                 yield div [
                                                     Attr.Create "data-testid" ("ta-row-controls-" + row.RowId)
-                                                    attr.style "display:inline-flex; align-items:stretch; flex:0 0 auto; height:26px; white-space:nowrap;"
+                                                    attr.style "display:inline-flex; align-items:stretch; flex:0 1 auto; min-width:0; max-width:100%; height:26px; white-space:nowrap;"
                                                 ] [
                                                     yield button [
                                                         attr.``type`` "button"
                                                         Attr.Create "data-testid" ("ta-toggle-row-" + row.RowId)
                                                         Attr.Create "aria-pressed" (if hidden then "false" else "true")
-                                                        attr.style (if hidden then "height:26px; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;" else "height:26px; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;")
+                                                        attr.title displayLabel
+                                                        attr.style (if hidden then "height:26px; min-width:0; max-width:360px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;" else "height:26px; min-width:0; max-width:360px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;")
                                                         on.click (fun _ _ ->
                                                             let nextHidden =
                                                                 if hidden then Set.remove row.RowId uiState.Value.HiddenRows
@@ -3434,8 +3501,8 @@ module TaWorkspaceRenderer =
                                                             attr.title ("Edit " + displayLabel + " parameters")
                                                             attr.disabledBool commandsDisabledView
                                                             Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
-                                                                if disabled then "height:26px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; cursor:not-allowed;"
-                                                                else "height:26px; border:1px solid #9cb3cc; border-right:0; background:#fff; color:#315d88; padding:2px 7px; font-size:11px; cursor:pointer;"))
+                                                                if disabled then "width:52px; min-width:52px; height:26px; flex:0 0 52px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; font-weight:600; cursor:not-allowed;"
+                                                                else "width:52px; min-width:52px; height:26px; flex:0 0 52px; border:1px solid #7f9fbe; border-right:0; background:#e8f2ff; color:#174f82; padding:2px 7px; font-size:11px; font-weight:600; cursor:pointer;"))
                                                             on.click (fun _ _ ->
                                                                 if not (commandsDisabledNow ()) then openRowEditor row)
                                                         ] [ text "Edit" ]
