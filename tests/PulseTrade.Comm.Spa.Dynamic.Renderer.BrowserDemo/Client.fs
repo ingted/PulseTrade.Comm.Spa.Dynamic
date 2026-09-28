@@ -695,6 +695,7 @@ module Client =
         let actionCount = Var.Create 0
         let lastAction = Var.Create "none"
         let rejectNext = Var.Create false
+        let refreshCoverageOnNextVisibleRange = Var.Create false
         let mutable actionInFlight = false
         let previewStreamGeneration = Var.Create 0
         let previewStreamUpdates = Var.Create 0
@@ -784,8 +785,31 @@ module Client =
                             DataRevision = current.DataRevision + 1L
                             LastTransportSequence = current.LastTransportSequence + 1L }
                 | _ ->
+                    let currentAfterCoverageRefresh =
+                        if refreshCoverageOnNextVisibleRange.Value then
+                            refreshCoverageOnNextVisibleRange.Value <- false
+                            match current.Document |> Option.bind (fun value -> RendererModel.tryLoadedCoverage value.DefaultView) with
+                            | Some projection ->
+                                let nextProjection =
+                                    { projection with
+                                        CoverageRevision = projection.CoverageRevision + 1L }
+                                let next =
+                                    { current with
+                                        Document =
+                                            current.Document
+                                            |> Option.map (fun value ->
+                                                { value with
+                                                    DefaultView = value.DefaultView |> TaLoadedCoverageCodec.apply nextProjection })
+                                        DocumentRevision = current.DocumentRevision + 1L
+                                        DataRevision = current.DataRevision + 1L
+                                        LastTransportSequence = current.LastTransportSequence + 1L }
+                                runtimeState.Value <- next
+                                next
+                            | None -> current
+                        else
+                            current
                     let currentCount =
-                        current.Data
+                        currentAfterCoverageRefresh.Data
                         |> Map.tryFind "series.price"
                         |> Option.bind (function
                             | SduiValue.Array values -> Some values.Length
@@ -1194,6 +1218,7 @@ module Client =
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-clear-overview-stripes"; on.click (fun _ _ -> clearOverviewStripes ()) ] [ text "Clear stripes" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-populate-overview-stripes"; on.click (fun _ _ -> populateOverviewStripes ()) ] [ text "Populate stripes" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-loaded-coverage"; on.click (fun _ _ -> loadCoverageFixture ()) ] [ text "Loaded coverage" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-refresh-coverage-next-visible-range"; on.click (fun _ _ -> refreshCoverageOnNextVisibleRange.Value <- true) ] [ text "Refresh coverage on next range" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-reject-next"; on.click (fun _ _ -> rejectNext.Value <- true) ] [ text "Reject next" ]
                 text "callback actions "
                 textView (actionCount.View |> View.Map string)

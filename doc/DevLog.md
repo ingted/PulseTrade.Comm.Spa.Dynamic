@@ -1813,3 +1813,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `d7d04e8`已push；Renderer `0.1.89`、Interactive.Client `0.1.80`、Ptcs.Client `0.1.90` public push均回`Created`。
 - NuGet.org official SHA-256依序為`94FAC37832CC1AD94FE0B355F7DB2FA4E452F2EDC5016DA75D88037F8121B1F6 / 4E97D7FE0FFE0E001ADB7C1B7A5A7113A5FC99B5838CB703FFFB413E68BFCCDE / 39E6C62BE773D7D85D84291C0D9F24445A9086E9087AF6BB1FB104E5792C14FF`。
 - 三包NuGet.org repository signature有效、exact dependencies正確，排除`.signature.p7s`後local/official entry differences皆為0；Interactive bundle manifest明列packageVersion `0.1.80`。Exact graph已交Daedalus跑真SPAA，consumer結果pending。
+
+## 2026-09-28 - Stable viewport controls／coverage refresh correction candidate
+
+- Daedalus以official `0.1.89/0.1.80/0.1.90`四次量得direct committed state `1788..2012ms`，並重現48 intent被accepted same-identity coverage refresh覆蓋回All；前版owner pass不足以關閉consumer RED。
+- Renderer將range/presets移出`chartRuntimeView × chartUiState` replacement subtree；LoadedCoverage projection change仍可選full preparation，但不再冒充`CoverageIdentity` replacement套用default viewport。API／wire／action contract不變。
+- 新local graph為Renderer `0.1.91`、Interactive.Client `0.1.82`、Ptcs.Client `0.1.92`。Focused `55/15/17`；4,000-bar focused state/rows=`160.21/373.24ms`，完整gate=`586.83/690.59ms`且正式phases over100=0；same-identity revision accepted callback後保留48 bars。Official release/readback與真SPAA pending。

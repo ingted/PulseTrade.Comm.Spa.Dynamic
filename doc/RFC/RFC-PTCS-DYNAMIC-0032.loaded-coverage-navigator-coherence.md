@@ -118,3 +118,11 @@ Owner已完成W030-3A/3B source與fresh exact-package gate。`ta-loaded-coverage
 Renderer改以`View.Map2 uiState.View draftWindow.View`直接解析range文字。這個文字表示「viewport state已接受」，不冒充rows已繪完；`data-ready-row-count`仍是scheduled row completion authority。public renderer API、action、generation、single-render與loaded-coverage contract不變。Owner gate分別限制committed state `<=750ms`及rows-ready total `<=1500ms`，consumer既有2秒產品門檻不得放寬。
 
 Exact graph為Contracts `0.1.33`、Renderer `0.1.89`、Interactive.Client `0.1.80`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.90`。三顆新package已完成NuGet.org repository signature、exact dependency、bundle manifest與entry parity readback；真SPAA同一2秒gate仍由Daedalus驗收。
+
+## 10. Stable controls與projection refresh correction
+
+真SPAA使用direct locator仍有四次`1788..2012ms` committed-state延遲，且在render quiescence後按48，accepted response仍會把viewport覆蓋回All。`View.Map2 uiState`不足以解決前者，因range/presets節點本身仍由`chartRuntimeView × chartUiState`整棵替換；後者則是`coverageProjection`任一revision/detail變更被當成`CoverageIdentity`改變而重套document default。
+
+決策：range與preset controls移到document stable shell，chart rows/navigator仍走原scheduled subtree。LoadedCoverage projection變更只決定是否full prepare；只有真正`CoverageIdentity`改變才建立新viewport scope。same-identity revision、active-detail refresh與accepted response均須保留最新local viewport intent。Public API、wire shape、action與generation不變。
+
+Owner regression同時驗direct state barrier與same-identity accepted callback：4,000 bars focused state/rows為`160.21/373.24ms`，完整gate為`586.83/690.59ms`且正式phase無>100ms task；500 coverage／250 detail由48提交global `453-500`後，revision refresh仍保持相同window。候選graph為`0.1.33/0.1.91/0.1.82/0.1.54/0.1.92`，official release與真SPAA仍為停止條件。

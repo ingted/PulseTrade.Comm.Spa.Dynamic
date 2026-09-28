@@ -2069,7 +2069,7 @@ module TaWorkspaceRenderer =
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
         let mutable observedDataState = runtimeState.Value
 
-        let acceptPreparedDataCore refreshRows forceCoverageViewportReset (next: RuntimeState) nextPreparedData =
+        let acceptPreparedDataCore refreshRows (next: RuntimeState) nextPreparedData =
             let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
             let previousCoverageIdentity =
                 chartRuntimeState.Value.Document
@@ -2077,7 +2077,7 @@ module TaWorkspaceRenderer =
             let nextCoverageIdentity =
                 next.Document
                 |> Option.bind coverageIdentity
-            let coverageIdentityChanged = forceCoverageViewportReset || previousCoverageIdentity <> nextCoverageIdentity
+            let coverageIdentityChanged = previousCoverageIdentity <> nextCoverageIdentity
             let topologyChanged =
                 next.Identity <> chartRuntimeState.Value.Identity
                 || next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision
@@ -2171,7 +2171,7 @@ module TaWorkspaceRenderer =
             latestPreparedData <- nextPreparedData
             observedDataState <- next
 
-        let acceptPreparedData refreshRows forceCoverageViewportReset (next: RuntimeState) nextPreparedData =
+        let acceptPreparedData refreshRows (next: RuntimeState) nextPreparedData =
             let staleCoverageCandidate =
                 match pendingBoundaryPan, next.Document with
                 | Some pending, Some document ->
@@ -2179,7 +2179,7 @@ module TaWorkspaceRenderer =
                 | _ -> false
 
             if not staleCoverageCandidate then
-                acceptPreparedDataCore refreshRows forceCoverageViewportReset next nextPreparedData
+                acceptPreparedDataCore refreshRows next nextPreparedData
 
         let scheduleFullPreparation () =
             preparationGeneration <- preparationGeneration + 1
@@ -2219,7 +2219,9 @@ module TaWorkspaceRenderer =
                     // Document/view metadata may advance without scheduling another data preparation.
                     // Pair the completed candidate with the latest runtime envelope so an older
                     // incremental callback cannot regress DocumentRevision or canvas identity.
-                    acceptPreparedData true coverageChanged runtimeState.Value prepared
+                    // Projection revision/detail changes require full data preparation, but they do
+                    // not create a new viewport scope. Only CoverageIdentity may apply a new default.
+                    acceptPreparedData true runtimeState.Value prepared
             if coverageChanged then
                 // An active-detail page is a replacement, not an append-only patch. Reusing the
                 // previous prepared map would retain observations absent from the accepted page.
@@ -2251,7 +2253,7 @@ module TaWorkspaceRenderer =
                 if dataChanged then
                     scheduleIncrementalPreparation next
                 else
-                    acceptPreparedData false false next latestPreparedData)
+                    acceptPreparedData false next latestPreparedData)
         scheduleFullPreparation ()
         let chartRuntimeView: View<RuntimeState> = chartRuntimeState.View
 
@@ -3208,6 +3210,68 @@ module TaWorkspaceRenderer =
                         ignore
                         (fun () -> pendingEditorMutation <- None)
 
+        let viewportControls (document: TaWorkspaceDocument) =
+            let currentViewport =
+                View.Map2
+                    (fun ui prepared ->
+                        let referenceLength =
+                            RendererModel.referenceTimelineForDocumentPrepared document prepared
+                            |> Array.length
+                        let maximumVisibleBars = maximumVisibleBarsFor document
+                        let currentWindow =
+                            RendererModel.resolveWindow
+                                options.MinimumVisibleBars
+                                maximumVisibleBars
+                                referenceLength
+                                ui.FollowLatest
+                                ui.Window
+                        let loadedObservationCount, globalCurrentWindow =
+                            RendererModel.tryCoverageNavigatorWindow referenceLength currentWindow document.DefaultView
+                            |> Option.map (fun (_, total, globalWindow) -> total, globalWindow)
+                            |> Option.defaultValue (referenceLength, currentWindow)
+                        referenceLength, maximumVisibleBars, loadedObservationCount, globalCurrentWindow)
+                    uiState.View
+                    shellPreparedData.View
+
+            div [
+                Attr.Create "data-testid" "ta-viewport-panel"
+                attr.style "display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; margin:0 12px; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
+            ] [
+                span [
+                    Attr.Create "data-testid" "ta-viewport-range"
+                    attr.style "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;"
+                ] [
+                    View.Map2
+                        (fun (currentReferenceLength, _, loadedObservationCount, globalCurrentWindow) draft ->
+                            let rangeText prefix window =
+                                let startIndex = if window.Count = 0 then 0 else window.StartIndex + 1
+                                let endIndex = window.StartIndex + window.Count
+                                $"Loaded {loadedObservationCount} bars · {prefix} {startIndex}-{endIndex}"
+                            match draft with
+                            | None -> rangeText "Viewing" globalCurrentWindow
+                            | Some preview ->
+                                let _, globalPreview =
+                                    RendererModel.tryCoverageNavigatorWindow currentReferenceLength preview document.DefaultView
+                                    |> Option.map (fun (_, total, globalWindow) -> total, globalWindow)
+                                    |> Option.defaultValue (currentReferenceLength, preview)
+                                rangeText "Preview" globalPreview + " · release to render")
+                        currentViewport
+                        draftWindow.View
+                    |> textView
+                ]
+                currentViewport
+                |> View.Map (fun (currentReferenceLength, maximumVisibleBars, _, _) ->
+                    let capped = min currentReferenceLength maximumVisibleBars
+                    let label = if currentReferenceLength > maximumVisibleBars then "Max " + string maximumVisibleBars else "All"
+                    div [ Attr.Create "data-testid" "ta-viewport-presets"; attr.style "display:flex; gap:4px; align-items:center;" ] [
+                        compactButton "ta-view-48" "48" "Show latest 48 bars" (fun () -> setWindowCount 48)
+                        compactButton "ta-view-200" "200" "Show latest 200 bars" (fun () -> setWindowCount 200)
+                        compactButton "ta-view-all" label ("Show up to " + string capped + " loaded bars") (fun () ->
+                            setWindowCount (min (referenceLength ()) (maximumVisibleBarsNow ())))
+                    ] :> Doc)
+                |> Doc.EmbedView
+            ]
+
         div [
             attr.``class`` "ptcs-ta-workspace"
             Attr.Create "data-testid" "ta-workspace"
@@ -3461,6 +3525,7 @@ module TaWorkspaceRenderer =
                                 else div [ Attr.Create "data-testid" "ta-feedback"; attr.style "font-size:11px; color:#40536d; min-height:15px;" ] [ text ui.Feedback ] :> Doc)
                             |> Doc.EmbedView
                         ]
+                        viewportControls document
                         View.Map2 (fun (state: RuntimeState) ui ->
                             chartRenderSequence <- chartRenderSequence + 1
                             let renderSequence = chartRenderSequence
@@ -3612,27 +3677,6 @@ module TaWorkspaceRenderer =
 
                             let visibleStart = if globalVisibleWindow.Count = 0 then 0 else globalVisibleWindow.StartIndex + 1
                             let visibleEnd = globalVisibleWindow.StartIndex + globalVisibleWindow.Count
-                            let viewportRangeText =
-                                View.Map2 (fun currentUi draft ->
-                                    let currentWindow =
-                                        RendererModel.resolveWindow
-                                            options.MinimumVisibleBars
-                                            maximumVisibleBars
-                                            referenceLength
-                                            currentUi.FollowLatest
-                                            currentUi.Window
-                                    let _, globalCurrentWindow = navigatorWindow currentWindow
-                                    let visibleStart = if globalCurrentWindow.Count = 0 then 0 else globalCurrentWindow.StartIndex + 1
-                                    let visibleEnd = globalCurrentWindow.StartIndex + globalCurrentWindow.Count
-                                    match draft with
-                                    | None -> $"Loaded {loadedObservationCount} bars · Viewing {visibleStart}-{visibleEnd}"
-                                    | Some preview ->
-                                        let _, globalPreview = navigatorWindow preview
-                                        let previewStart = if globalPreview.Count = 0 then 0 else globalPreview.StartIndex + 1
-                                        let previewEnd = globalPreview.StartIndex + globalPreview.Count
-                                        $"Loaded {loadedObservationCount} bars · Preview {previewStart}-{previewEnd} · release to render")
-                                    uiState.View
-                                    draftWindow.View
                             div [
                                 Attr.Create "data-testid" "ta-chart-stack"
                                 Attr.Create "data-chart-render-sequence" (string renderSequence)
@@ -3696,21 +3740,10 @@ module TaWorkspaceRenderer =
                                     for rowDoc in rowDocs do
                                         yield rowDoc.View |> Doc.EmbedView
                                 yield div [
-                                    Attr.Create "data-testid" "ta-viewport-panel"
-                                    attr.style "order:-1; display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
+                                    Attr.Create "data-testid" "ta-viewport-navigator"
+                                    attr.style "order:-1; min-width:0; padding:0 8px 8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
                                 ] [
-                                    span [
-                                        Attr.Create "data-testid" "ta-viewport-range"
-                                        attr.style "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;"
-                                    ] [ textView viewportRangeText ]
-                                    div [ Attr.Create "data-testid" "ta-viewport-presets"; attr.style "display:flex; gap:4px; align-items:center;" ] [
-                                        compactButton "ta-view-48" "48" "Show latest 48 bars" (fun () -> setWindowCount 48)
-                                        compactButton "ta-view-200" "200" "Show latest 200 bars" (fun () -> setWindowCount 200)
-                                        let capped = min referenceLength maximumVisibleBars
-                                        let label = if referenceLength > maximumVisibleBars then "Max " + string maximumVisibleBars else "All"
-                                        compactButton "ta-view-all" label ("Show up to " + string capped + " loaded bars") (fun () -> setWindowCount capped)
-                                    ]
-                                    div [ attr.style "grid-column:1 / -1; min-width:0;" ] [
+                                    div [ attr.style "min-width:0;" ] [
                                         shellPreparedData.View
                                         |> View.Map (fun currentPreparedData ->
                                             let currentReferenceTimeline =

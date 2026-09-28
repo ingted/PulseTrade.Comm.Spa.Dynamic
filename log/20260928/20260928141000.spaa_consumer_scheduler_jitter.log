@@ -45,3 +45,7 @@
 - 15:51 Source commit `d7d04e8`已push；Renderer `0.1.89`、Interactive.Client `0.1.80`、Ptcs.Client `0.1.90`
   push均回`Created`。NuGet.org official SHA依序為`94FAC378...21B1F6 / 4E97D7FE...BFCCDE / 39E6C62B...2C14FF`；
   repository signature、exact dependencies、Interactive manifest `0.1.80`及entry parity均PASS。Exact graph已direct交Daedalus跑真SPAA。
+- 16:14 Daedalus四次official consumer run回報direct state `1788..2012ms`，並重現48 intent在same-identity accepted response後被覆蓋回All。source review確認range/presets仍在chart subtree，且projection refresh誤走identity reset。
+- 16:32 Renderer把controls移至stable shell，並分離projection full prepare與`CoverageIdentity` scope reset。新增BrowserDemo same-identity revision回覆fixture與Playwright regression；修正full verifier在row height reset後沿用stale pointer box的測試假設。
+- 16:32 Local candidate graph `0.1.33/0.1.91/0.1.82/0.1.54/0.1.92`：focused `55/15/17`；focused state/rows=`160.21/373.24ms`、render `3->4`；完整gate state/rows=`586.83/690.59ms`、300 cursor transitions、正式phases over100=0、same-identity 48保留、console/page error=0。已direct通知Daedalus，等待source commit與official release。
+- 16:55 closeout checker首次以舊scoped snapshot報一筆歷史log readonly差異；該檔不在`git status`、目前bytes與tracked HEAD及更新後state hash一致，因此未修改checker、未刪state、未改歷史log。以相同scope重查為`PASS=30/WARN=9/FAIL=0`；WARN僅本輪dirty／未變watch及既有traceability缺口。

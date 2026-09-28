@@ -1179,6 +1179,9 @@ let verifyDesktop (browser: IBrowser) =
     require (attributeOrEmpty chartStack "data-cursor-index" = visibleCursorIndexBeforeResize) "row resize settle must preserve the displayed cursor index"
     priceResize.PressAsync("Home") |> awaitUnit
     waitForAttributeValue priceResize "aria-valuenow" "250"
+    priceChart.ScrollIntoViewIfNeededAsync() |> awaitUnit
+    let sustainedPointerBox = priceChart.BoundingBoxAsync() |> awaitTask
+    require (not (isNull sustainedPointerBox)) "price chart must expose fresh pointer geometry after row height reset"
 
     let previewUpdatesBeforeCursor = requiredIntAttribute fixtureRoot "data-preview-stream-updates"
     let historicalCloseBeforeCursor = attributeSignature priceCandlePaths "d"
@@ -1193,7 +1196,7 @@ let verifyDesktop (browser: IBrowser) =
         // Start the sustained alternation at the opposite edge so the first sample is a real transition.
         let ratio = if sample % 2 = 0 then 0.82f else 0.18f
         let movement = Diagnostics.Stopwatch.StartNew()
-        page.Mouse.MoveAsync(activePointerBox.X + activePointerBox.Width * ratio, activePointerBox.Y + activePointerBox.Height / 2.0f) |> awaitUnit
+        page.Mouse.MoveAsync(sustainedPointerBox.X + sustainedPointerBox.Width * ratio, sustainedPointerBox.Y + sustainedPointerBox.Height / 2.0f) |> awaitUnit
         let currentCrosshairX = waitForAttributeChange firstCrosshair "x1" previousCrosshairX
         movement.Stop()
         cursorTransitions <- cursorTransitions + 1
@@ -1539,12 +1542,28 @@ let verifyDesktop (browser: IBrowser) =
     let coverageSelection = page.Locator("[data-testid='ta-overview-selection']")
     require (abs (requiredFloatAttribute coverageSelection "width" - 500.0) < 0.002) "250 of 500 loaded bars must occupy exactly half of the navigator"
 
+    let callbackCountBeforeCoverageRefresh = requiredIntAttribute callbackState "data-callback-count"
+    page.Locator("[data-testid='ta-demo-refresh-coverage-next-visible-range']").ClickAsync() |> awaitUnit
+    page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
+    waitForIntAttribute chartStack "data-visible-start" 453
+    waitForIntAttribute chartStack "data-visible-end" 500
+    waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeCoverageRefresh + 1)
+    waitForIntAttribute chartStack "data-coverage-revision" 2
+    Threading.Thread.Sleep 500
+    require (requiredIntAttribute chartStack "data-visible-start" = 453) "same-identity coverage revision must not overwrite the accepted 48-bar viewport"
+    require (requiredIntAttribute chartStack "data-visible-end" = 500) "same-identity coverage revision must preserve the accepted viewport end"
+    waitForEnabled (page.Locator("[data-testid='ta-view-all']")) "All preset after same-identity coverage refresh"
+    page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
+    waitForIntAttribute chartStack "data-visible-start" 251
+    waitForIntAttribute chartStack "data-visible-end" 500
+    waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "earlier coverage after restoring active page"
+
     page.Locator("[data-testid='ta-pan-left']").ClickAsync() |> awaitUnit
     waitForIntAttribute chartStack "data-query-generation" 2
     waitForIntAttribute chartStack "data-visible-start" 1
     waitForIntAttribute chartStack "data-visible-end" 250
     require (requiredIntAttribute chartStack "data-loaded-bars" = 500) "adjacent page switch must preserve full loaded coverage"
-    require (requiredIntAttribute chartStack "data-coverage-revision" = 2) "accepted adjacent page must atomically advance coverage revision"
+    require (requiredIntAttribute chartStack "data-coverage-revision" = 3) "accepted adjacent page must atomically advance coverage revision"
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = 250) "adjacent page switch must not widen active detail"
 
     page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore

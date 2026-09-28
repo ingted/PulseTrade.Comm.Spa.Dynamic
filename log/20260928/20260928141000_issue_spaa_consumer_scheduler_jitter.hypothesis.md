@@ -45,3 +45,10 @@ Renderer public contract與package graph維持不變。consumer gate應保留2�
 - 根因是range文字在chart stack computation內捕捉static window，committed `uiState`須等舊SVG subtree replacement後才可觀察。這不是row scheduler generation錯亂。
 - 最小修正讓range文字直接訂閱`uiState`／draft；row generation、ready barrier與single-render不變。Focused 4,000-bar結果為state `170.88ms`、rows-ready total `369.95ms`、render `3->4`。
 - Official artifact與真SPAA consumer gate完成前，此issue維持consumer acceptance pending。
+
+## Correction 2026-09-28 16:32 +08:00
+
+- Daedalus在同一official graph四次量得direct state `1788..2012ms`，且500ms render quiescence後按48仍被accepted response覆蓋回All；因此前一修正只改View來源，未脫離chart replacement lifecycle。
+- Source確認兩個剩餘根因：range/presets節點仍位於`chartRuntimeView × chartUiState`subtree；`coverageProjection`任一revision/detail變更透過`forceCoverageViewportReset`誤當identity replacement。
+- 修正把controls移到stable document shell，並將full preparation與viewport scope reset分離。same `CoverageIdentity`只更新revision/detail時保留local intent，真正identity replacement才套新scope default。
+- Focused owner gate為state `160.21ms`／rows `373.24ms`；完整gate為`586.83/690.59ms`、正式phases over100=0，且same-identity accepted callback後48 bars維持。候選等待official與真SPAA。
