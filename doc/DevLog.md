@@ -1831,3 +1831,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 真SPAA回饋揭露pending remote action可能吞掉後續viewport intent、長label會遮蔽Edit；另需以OHLC micro-candles取代overview close-only線，且generic renderer不得推論Signal／Order／Fill。
 - Renderer完成local immediate＋single latest queued viewport、52px Edit、bounded wick/up/down overview paths與browser event-to-render telemetry。BrowserDemo增加versioned bundle URL及no-store，避免人工驗收黏到舊bundle。
 - Focused Renderer／Interactive.Client／Ptcs.Client為`55/15/17`；完整browser gate的200→All state／rows為`655.91/734.35ms`，cursor event-to-render p95/max=`2/26ms`，正式phase無>100ms task。Candidate graph為`0.1.92/0.1.83/0.1.93`；official release/readback及Daedalus consumer gate待完成。
+
+## 2026-09-29 - Latest viewport／row Edit／overview OHLC official release
+
+- Source commit `ee7e77e`已push；Renderer `0.1.92`、Interactive.Client `0.1.83`、Ptcs.Client `0.1.93` push均回`Created`。完整exact graph為Contracts `0.1.33`／Renderer `0.1.92`／Interactive.Client `0.1.83`／Dynamic.Ptcs `0.1.54`／Ptcs.Client `0.1.93`。
+- NuGet.org official SHA-256依序為`524DF633CD3D185D44AD74ECD401300958AE0DC8D9817AC4564571301E56C58F / BEC14B98569220941967F1A24B95154FDBDE15460DCCB26A4BB517F5B3A9CA80 / 7F539F22755FAC321BD39C05C62816400146833488A21C7BAB625AC7DDFEE643`；三包repository signature、exact dependencies、Interactive manifest `0.1.83`與排除`.signature.p7s`後local/official entry parity全綠。
+- Exact graph與owner gates已direct交付Daedalus。Scenario atomic switch仍屬consumer complete-candidate prepare/commit；generic cursor-event-only trace本輪不存在，已列為後續contract gap而未擴 scope。

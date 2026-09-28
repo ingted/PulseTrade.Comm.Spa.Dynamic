@@ -48,3 +48,9 @@ Viewport queue若使用過期revision可能污染authority；overview若由Rende
 - 04:15-05:14 完成latest viewport queue、row control geometry、bounded overview OHLC及cursor event telemetry；focused suites `55/15/17`，完整browser gate通過。200→All state／rows=`655.91/734.35ms`，cursor event-to-render p95/max=`2/26ms`，正式phase over100=0。
 - 05:14-05:25 人工驗收指出18882未見Edit。確認server bundle已含52px Edit，但demo固定script URL可黏舊bundle；第一次build因PID 15424鎖定apphost失敗，停止該明確BrowserDemo後重建。Demo現使用versioned URL與no-store，18882回傳新bundle並持續監聽；未碰Daedalus service。
 - 05:27 COMM讀到Daedalus已完成TradeCore sparse/session-gap與same-bucket contract切換修正，並確認consumer只author Order／Fill overview stripes；已回覆候選graph與owner gate，等待official readback後交付不可變SHA。
+- 05:30 source/docs commit `ee7e77e`已push。重新以該source Release build/pack；三包NuGet push均回`Created`。
+- 05:35-05:44 NuGet flat-container分批完成索引；Renderer／Interactive.Client／Ptcs.Client official SHA依序為`524DF633CD3D185D44AD74ECD401300958AE0DC8D9817AC4564571301E56C58F / BEC14B98569220941967F1A24B95154FDBDE15460DCCB26A4BB517F5B3A9CA80 / 7F539F22755FAC321BD39C05C62816400146833488A21C7BAB625AC7DDFEE643`。三包signature、exact dependency及entry parity均PASS；Interactive manifest=`0.1.83`。
+- 05:44 exact graph與SHA已direct交Daedalus跑真SPAA。其詢問generic cursor-event-only capability；確認本輪沒有，未臨時擴 scope。
+- 05:47 流程偏差：第一次baseline後為滿足required fields曾把假設／風險插入plan，後續又錯移至Operations尾端，導致兩次readonly gate。現將active log一次整理成正確plan結構；未刪改產品／測試／release evidence。此後只允許檔尾append。
+- 05:49 以修正後的同一baseline重跑append-only與required-fields gate；本次僅在檔尾追加操作紀錄。
+- 05:51 `check.fsx`通過：PASS=31、WARN=10、FAIL=0；`active_log_append_only`與`latest_log_required_fields`均PASS。WARN為既有文件追溯與commit前dirty狀態，不阻擋本批release文件提交。
