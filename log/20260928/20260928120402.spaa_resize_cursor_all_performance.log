@@ -39,3 +39,7 @@
 - 新candidate `0.1.88/0.1.79/0.1.89` focused `55/15/17`與full BrowserDemo通過。F# Playwright
   明確等待200 callback完成後量200→All為435.30ms；正式phases無>100ms，300 cursor p95=41ms/max120ms，
   resize後等待220ms仍維持7 labels/crosshairs及相同index。package verifierPASS；official發布與consumer重跑待續。
+- Source `1a508e4`已push；三包public push均回`Created`。Interactive並行pack曾因project-scoped
+  `wsfscservice`持有受保護log失敗，停止該helper後單獨full compiler pack成功。
+- NuGet.org official SHA依序為`34264772...E194 / B88AA951...17B1 / D372E852...9C9E`；三包
+  repository signature、exact dependencies及排除signature後entry parity全PASS。已交Daedalus真SPAA重跑。
