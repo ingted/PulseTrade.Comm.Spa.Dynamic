@@ -27,3 +27,7 @@
   All max40.11ms；正式phases無>100ms；300 cursor p95=38ms/max99ms。package verifier PASS。
 - 發版前checker唯一FAIL來自`G:\PulseTrade.fs\notes_new\20260928\00211.PTC.Dynamic.txt`的既有
   readonly mtime；該檔不在Dynamic repo與本輪diff，未修改或回復。改以獨立session baseline重跑本repo gate。
+- 12:20 source commit `75c7d98`已push；Renderer `0.1.87`、Interactive `0.1.78`、Ptcs.Client
+  `0.1.88` public push均回`Created`。
+- Official SHA-256依序為`933629F0...1FAC / B8ECD9E2...4816 / BE24CFCE...F3A6`；三包repository
+  signature、exact dependencies與排除signature後entry parity通過。剩Daedalus真SPAA consumer gate。

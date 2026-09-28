@@ -1777,3 +1777,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus以official `0.1.33/0.1.86/0.1.77`在真SPAA重現1,124 bars／8 rows的200→All 2,042–2,067ms，以及shared cursor visible後keyboard row resize使label回hidden。
 - Renderer把reader maps與global cursor publication從每列mount後重掃改為rows-complete barrier一次；row-height geometry refresh改重套`displayedCursorIndex`。既有API、viewport、chart order與cursor identity不變。
 - Local exact candidate為Contracts `0.1.33`、Renderer `0.1.87`、Interactive.Client `0.1.78`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.88`。Focused `55/15/17`、完整WebSharper BrowserDemo、F# Playwright及Interactive package verifier通過；official release與真SPAA consumer gate待續。
+
+## 2026-09-28 - Row barrier／visible cursor resize official release
+
+- Source commit `75c7d98`已push；Renderer `0.1.87`、Interactive.Client `0.1.78`、Ptcs.Client `0.1.88` public push全回`Created`。
+- NuGet.org official SHA-256依序為`933629F07247B840A6EB069CE2F567FE530101FE1D7F469610A7CC79B0681FAC / B8ECD9E242441EE42478AF7062E6A0C3017DDA2DA61766D7F7EC08D2AB114816 / BE24CFCECD47B14F60D3E33DC049EB0F5F7D1B86F58511BAEF23BAB40B89F3A6`。
+- 三包`dotnet nuget verify --all`均確認NuGet.org repository signature有效；exact dependency正確，排除`.signature.p7s`後local/official entry differences均為0。剩Daedalus真SPAA consumer gate。

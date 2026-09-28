@@ -779,4 +779,4 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | ID | Scope | Acceptance |
 | --- | --- | --- |
 | DYN-T-649 | Renderer cursor/row barrier | PASS：shared cursor visible後keyboard resize，7個row label及crosshair保持visible、displayed cursor index不變、chart render sequence不變；reader maps只在rows-complete barrier發布一次。 |
-| DYN-T-650 | Performance/package/consumer | OWNER PASS／consumer pending：Renderer/Interactive/Ptcs focused `55/15/17`；4,000-bar F# Playwright All max40.11ms，正式phases無>100ms，300 cursor p95=38ms/max99ms；Interactive package verifier PASS。Daedalus須以真SPAA 1,124 bars／8 rows重跑200→All `<=2,000ms`及visible cursor resize。 |
+| DYN-T-650 | Performance/package/consumer | OWNER/RELEASE PASS／consumer pending：Renderer/Interactive/Ptcs focused `55/15/17`；4,000-bar F# Playwright All max40.11ms，正式phases無>100ms，300 cursor p95=38ms/max99ms；Interactive package verifier、三包official repository signature、exact dependencies與entry parity PASS。Daedalus須以真SPAA 1,124 bars／8 rows重跑200→All `<=2,000ms`及visible cursor resize。 |
