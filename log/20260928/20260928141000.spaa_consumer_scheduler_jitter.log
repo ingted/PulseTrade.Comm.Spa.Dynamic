@@ -49,3 +49,7 @@
 - 16:32 Renderer把controls移至stable shell，並分離projection full prepare與`CoverageIdentity` scope reset。新增BrowserDemo same-identity revision回覆fixture與Playwright regression；修正full verifier在row height reset後沿用stale pointer box的測試假設。
 - 16:32 Local candidate graph `0.1.33/0.1.91/0.1.82/0.1.54/0.1.92`：focused `55/15/17`；focused state/rows=`160.21/373.24ms`、render `3->4`；完整gate state/rows=`586.83/690.59ms`、300 cursor transitions、正式phases over100=0、same-identity 48保留、console/page error=0。已direct通知Daedalus，等待source commit與official release。
 - 16:55 closeout checker首次以舊scoped snapshot報一筆歷史log readonly差異；該檔不在`git status`、目前bytes與tracked HEAD及更新後state hash一致，因此未修改checker、未刪state、未改歷史log。以相同scope重查為`PASS=30/WARN=9/FAIL=0`；WARN僅本輪dirty／未變watch及既有traceability缺口。
+- 16:46 Source commit `83df45b`已push。三包public push完成；Interactive首次Release pack因殘留project-scoped `wsfscservice`以CLR exception終止，停止該compiler helper後同一source full WebSharper build成功，未停用compiler或沿用舊bundle。
+- 16:51 NuGet.org official SHA依序為`FC4A84D8...59ED83 / 564F1544...953F2E / 63040D11...350A88`；三包repository signature、exact dependency、Interactive manifest `0.1.82`與排除signature後entry parity全部PASS。
+- 16:53 Renderer `0.1.91`、Interactive.Client `0.1.82`與Ptcs.Client `0.1.92`的v3 flat-container皆回HTTP 200；official readback完成，可交付Daedalus執行真SPAA gate。
+- 16:55 Release-evidence closeout：changed-path sensitive scan `High=0/Medium=0`，checker `PASS=41/WARN=4/FAIL=0`；WARN為本輪未改KM/Test、commit前dirty與既有traceability inventory，無本輪blocking finding。

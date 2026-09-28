@@ -125,4 +125,4 @@ Exact graph為Contracts `0.1.33`、Renderer `0.1.89`、Interactive.Client `0.1.8
 
 決策：range與preset controls移到document stable shell，chart rows/navigator仍走原scheduled subtree。LoadedCoverage projection變更只決定是否full prepare；只有真正`CoverageIdentity`改變才建立新viewport scope。same-identity revision、active-detail refresh與accepted response均須保留最新local viewport intent。Public API、wire shape、action與generation不變。
 
-Owner regression同時驗direct state barrier與same-identity accepted callback：4,000 bars focused state/rows為`160.21/373.24ms`，完整gate為`586.83/690.59ms`且正式phase無>100ms task；500 coverage／250 detail由48提交global `453-500`後，revision refresh仍保持相同window。候選graph為`0.1.33/0.1.91/0.1.82/0.1.54/0.1.92`，official release與真SPAA仍為停止條件。
+Owner regression同時驗direct state barrier與same-identity accepted callback：4,000 bars focused state/rows為`160.21/373.24ms`，完整gate為`586.83/690.59ms`且正式phase無>100ms task；500 coverage／250 detail由48提交global `453-500`後，revision refresh仍保持相同window。Exact graph `0.1.33/0.1.91/0.1.82/0.1.54/0.1.92`已由source commit `83df45b`發布並完成NuGet.org簽章、dependency及entry parity回讀；真SPAA仍為consumer acceptance停止條件。

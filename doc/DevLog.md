@@ -1819,3 +1819,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus以official `0.1.89/0.1.80/0.1.90`四次量得direct committed state `1788..2012ms`，並重現48 intent被accepted same-identity coverage refresh覆蓋回All；前版owner pass不足以關閉consumer RED。
 - Renderer將range/presets移出`chartRuntimeView × chartUiState` replacement subtree；LoadedCoverage projection change仍可選full preparation，但不再冒充`CoverageIdentity` replacement套用default viewport。API／wire／action contract不變。
 - 新local graph為Renderer `0.1.91`、Interactive.Client `0.1.82`、Ptcs.Client `0.1.92`。Focused `55/15/17`；4,000-bar focused state/rows=`160.21/373.24ms`，完整gate=`586.83/690.59ms`且正式phases over100=0；same-identity revision accepted callback後保留48 bars。Official release/readback與真SPAA pending。
+
+## 2026-09-28 - Stable viewport controls／coverage refresh official release
+
+- Source commit `83df45b`已push；Renderer `0.1.91`、Interactive.Client `0.1.82`、Ptcs.Client `0.1.92`已public push。Interactive首次pack遇到殘留project-scoped `wsfscservice` CLR exception；停止該明確compiler helper後，同一source完整WebSharper build成功，保留既有`WSB9002` standalone fallback，未停用compiler或沿用舊bundle。
+- NuGet.org official SHA-256依序為`FC4A84D8635F33EC8537AC20E24C55EDB6A79612D722C5F2B8A9BDF6B159ED83 / 564F1544CDABEE10A1E53B213703E4E0108B09823DC22B3C1812B07892953F2E / 63040D116859EA08DA4E6196A136F6620D83837389F3B550CA218C8FB7350A88`。
+- 三包repository signature有效；official nuspec exact依賴Contracts `[0.1.33]`、Renderer `[0.1.91]`及PTCS `[0.2.46]`，Interactive manifest為`0.1.82`；排除`.signature.p7s`後local／official entries皆`Different=0`。Daedalus真SPAA consumer gate仍pending。
