@@ -249,27 +249,34 @@ let dictionary values =
     result
 
 let computedStyleProperties (session: ICDPSession) selector propertyNames =
-    let document = session.SendAsync("DOM.getDocument") |> awaitTask
-    require document.HasValue "CDP DOM.getDocument returned no payload"
-    let rootNodeId = document.Value.GetProperty("root").GetProperty("nodeId").GetInt32()
-    let query =
-        session.SendAsync(
-            "DOM.querySelector",
-            dictionary [ "nodeId", box rootNodeId; "selector", box selector ])
-        |> awaitTask
-    require query.HasValue $"CDP DOM.querySelector returned no payload for {selector}"
-    let nodeId = query.Value.GetProperty("nodeId").GetInt32()
-    require (nodeId > 0) $"CDP DOM.querySelector did not find {selector}"
-    let response =
-        session.SendAsync("CSS.getComputedStyleForNode", dictionary (List.singleton ("nodeId", box nodeId)))
-        |> awaitTask
-    require response.HasValue $"CDP CSS.getComputedStyleForNode returned no payload for {selector}"
-    let selected = propertyNames |> Set.ofArray
-    response.Value.GetProperty("computedStyle").EnumerateArray()
-    |> Seq.choose (fun entry ->
-        let name = entry.GetProperty("name").GetString()
-        if selected.Contains name then Some(name, entry.GetProperty("value").GetString()) else None)
-    |> Map.ofSeq
+    let rec read attempt =
+        try
+            let document = session.SendAsync("DOM.getDocument") |> awaitTask
+            require document.HasValue "CDP DOM.getDocument returned no payload"
+            let rootNodeId = document.Value.GetProperty("root").GetProperty("nodeId").GetInt32()
+            let query =
+                session.SendAsync(
+                    "DOM.querySelector",
+                    dictionary [ "nodeId", box rootNodeId; "selector", box selector ])
+                |> awaitTask
+            require query.HasValue $"CDP DOM.querySelector returned no payload for {selector}"
+            let nodeId = query.Value.GetProperty("nodeId").GetInt32()
+            require (nodeId > 0) $"CDP DOM.querySelector did not find {selector}"
+            let response =
+                session.SendAsync("CSS.getComputedStyleForNode", dictionary (List.singleton ("nodeId", box nodeId)))
+                |> awaitTask
+            require response.HasValue $"CDP CSS.getComputedStyleForNode returned no payload for {selector}"
+            let selected = propertyNames |> Set.ofArray
+            response.Value.GetProperty("computedStyle").EnumerateArray()
+            |> Seq.choose (fun entry ->
+                let name = entry.GetProperty("name").GetString()
+                if selected.Contains name then Some(name, entry.GetProperty("value").GetString()) else None)
+            |> Map.ofSeq
+        with
+        | :? PlaywrightException when attempt < 3 ->
+            Threading.Thread.Sleep 25
+            read (attempt + 1)
+    read 1
 
 let requireFixedCssStroke (session: ICDPSession) selector (locator: ILocator) minimum maximum =
     let widthText = attributeOrEmpty locator "data-stroke-width-css-pixels"
@@ -1143,6 +1150,30 @@ let verifyDesktop (browser: IBrowser) =
         |> Seq.distinct
         |> Seq.toArray
     require (crosshairPositions.Length = 1 && crosshairPositions[0] = crosshairXAfter && crosshairPositions[0] <> "0" && crosshairPositions[0] <> "100") ("shared pointer crosshair positions diverged: " + String.concat "," crosshairPositions)
+
+    let visibleCursorLabels = page.Locator("[data-ta-row-cursor-label='true']")
+    let cursorLabelsAreVisible () =
+        visibleCursorLabels.AllAsync()
+        |> awaitTask
+        |> Seq.forall (fun locator -> locator.IsVisibleAsync() |> awaitTask)
+    require (visibleCursorLabels.CountAsync() |> awaitTask = 7) "every visible row must expose one cursor label before resize"
+    require (cursorLabelsAreVisible ()) "all row cursor labels must be visible before resize"
+    let visibleCursorIndexBeforeResize = attributeOrEmpty chartStack "data-cursor-index"
+    let renderSequenceBeforeVisibleCursorResize = requiredIntAttribute chartStack "data-chart-render-sequence"
+    let visibleCursorBoxBeforeResize = visibleCursorLabels.First.BoundingBoxAsync() |> awaitTask
+    require (not (isNull visibleCursorBoxBeforeResize)) "visible cursor label must expose geometry before resize"
+    let visibleCursorResizeHeight = requiredIntAttribute priceResize "aria-valuenow"
+    priceResize.FocusAsync() |> awaitUnit
+    priceResize.PressAsync("Shift+ArrowUp") |> awaitUnit
+    waitForAttributeChange priceResize "aria-valuenow" (string visibleCursorResizeHeight) |> ignore
+    let visibleCursorBoxAfterResize = visibleCursorLabels.First.BoundingBoxAsync() |> awaitTask
+    require (not (isNull visibleCursorBoxAfterResize)) "row resize must preserve visible cursor label geometry"
+    require (cursorLabelsAreVisible ()) "row resize must preserve every visible cursor label"
+    require ((page.Locator("[data-testid$='-crosshair'][visibility='visible']").CountAsync() |> awaitTask) = 7) "row resize must preserve every visible shared crosshair"
+    require (attributeOrEmpty chartStack "data-cursor-index" = visibleCursorIndexBeforeResize) "row resize must preserve the displayed cursor index"
+    require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeVisibleCursorResize) "row resize must not rebuild the chart stack while preserving the cursor"
+    priceResize.PressAsync("Home") |> awaitUnit
+    waitForAttributeValue priceResize "aria-valuenow" "250"
 
     let previewUpdatesBeforeCursor = requiredIntAttribute fixtureRoot "data-preview-stream-updates"
     let historicalCloseBeforeCursor = attributeSignature priceCandlePaths "d"

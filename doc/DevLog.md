@@ -1771,3 +1771,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `9e0e1a3`已push；Contracts `0.1.33`、Renderer `0.1.86`、Interactive.Client `0.1.77`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.87` public push全回`Created`。
 - NuGet.org official SHA-256依序為`F4CA05493F016B36B91614433363AACC4E235D8E995B8D89C3E17BB234C9DD4B / 5D11632F5A8E6EE67B0379104B6FBADF676831E5BBEDC9F9254B2B249143E7E2 / 2940618380EA00ED746FBD3D0083F0624F24C82A0355937B5427B8510FDB0D38 / ECB53E7812A42E81CFCD1E0C960F797B63D3DEB7E2EAFC8F5965BDA25D0BAD3C / C5310581C08CB07397A1472FC3538D0F06410D5F62E279691EE3252277DFA6D7`。
 - 五包`dotnet nuget verify --all`均確認NuGet.org repository signature有效。Owner release gate完成；Daedalus真SPAA／fresh-kernel DIB仍是consumer acceptance gate，不以package發布取代產品驗收。
+
+## 2026-09-28 - Row barrier／visible cursor resize owner hotfix
+
+- Daedalus以official `0.1.33/0.1.86/0.1.77`在真SPAA重現1,124 bars／8 rows的200→All 2,042–2,067ms，以及shared cursor visible後keyboard row resize使label回hidden。
+- Renderer把reader maps與global cursor publication從每列mount後重掃改為rows-complete barrier一次；row-height geometry refresh改重套`displayedCursorIndex`。既有API、viewport、chart order與cursor identity不變。
+- Local exact candidate為Contracts `0.1.33`、Renderer `0.1.87`、Interactive.Client `0.1.78`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.88`。Focused `55/15/17`、完整WebSharper BrowserDemo、F# Playwright及Interactive package verifier通過；official release與真SPAA consumer gate待續。

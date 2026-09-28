@@ -2810,6 +2810,9 @@ module TaWorkspaceRenderer =
                 cursorFrameScheduled <- true
                 JS.RequestAnimationFrame(fun _ -> flushCursorFrame ()) |> ignore
 
+        let scheduleCursorGeometryRefresh () =
+            setCursorIndex displayedCursorIndex
+
         let commitCursorIndex index =
             setCursorIndex (Some index)
             if cursorIndex.Value <> Some index then cursorIndex.Value <- Some index
@@ -3588,7 +3591,7 @@ module TaWorkspaceRenderer =
                                                         true
                                                         (document.BaseRowId = Some visibleRows[index].RowId)
                                                         rowHeights[index]
-                                                        scheduleVisibleValueRefresh
+                                                        scheduleCursorGeometryRefresh
                                                         (fun node ->
                                                             currentRowLegendElements[index] <- node
                                                             scheduleVisibleValueRefresh ())
@@ -3599,9 +3602,9 @@ module TaWorkspaceRenderer =
                                                 stagedMarkerCursorReaders[index] <- Some markerCursorReader
                                                 rowDocs[index].Value <- rowDoc
                                                 readyRowCount.Value <- index + 1
-                                                synchronizeReaders ()
                                                 mountRow (index + 1))
                                     else
+                                        synchronizeReaders ()
                                         projectionCandidateGeneration
                                         |> Option.iter (fun generation -> completeProjection generation state)
                             mountRow 0

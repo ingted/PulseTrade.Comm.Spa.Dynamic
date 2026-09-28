@@ -1,0 +1,29 @@
+# SPAA resize cursor / All performance hotfix
+
+## Pre-work plan
+
+- 背景：Daedalus以 exact Contracts 0.1.33 / Renderer 0.1.86 / Interactive.Client 0.1.77
+  在真 SPAA 重現兩個 owner blocker。
+- 目標：row resize保留已顯示shared cursor；1,124 bars / 8 rows的200 -> All低於2,000ms。
+- 不得改變：shared cursor index/time、chart graph order、viewport語意、data completeness與既有
+  API/package dependency direction。
+- 範圍：Renderer source、focused unit/browser verifier及必要exact downstream package bump。
+- 假設：owner BrowserDemo 的4,000-bar fixture足以先隔離Renderer排程與cursor geometry；真SPAA
+  1,124-bar/8-row整合仍由Daedalus作為最終consumer gate。
+- 風險：rows-complete barrier若漏掉後續同projection row replacement，可能留下stale reader；因此保留
+  snapshot/patch、scenario、marker、progressive與300次cursor既有回歸，不以單一resize案例替代。
+- 驗收：先以最小owner regression重現；修後focused suite與browser gate通過；發布immutable exact
+  package後提供Daedalus official readback。
+- 停止條件：若證據指向consumer host而非owner，保留owner test並交付bounded evidence，不跨owner代改。
+
+## Operations
+
+- 12:04 開始。Dynamic repo clean；收到Daedalus direct evidence：All 2042/2067ms；visible cursor
+  在keyboard row resize後label BoundingBox變null。
+- 12:12 根因與修正：逐row mount原本每列重建全reader maps並重套全域cursor/legend；改rows-complete
+  barrier一次發布。row height refresh原只更新values；改於單一rAF重套displayed cursor。
+- Focused exact-package suites：Renderer 55/55、Interactive 15/15、Ptcs 17/17。
+- Browser gate：新增cursor-visible resize regression；7 labels/crosshairs、cursor index及render sequence皆保持。
+  All max40.11ms；正式phases無>100ms；300 cursor p95=38ms/max99ms。package verifier PASS。
+- 發版前checker唯一FAIL來自`G:\PulseTrade.fs\notes_new\20260928\00211.PTC.Dynamic.txt`的既有
+  readonly mtime；該檔不在Dynamic repo與本輪diff，未修改或回復。改以獨立session baseline重跑本repo gate。

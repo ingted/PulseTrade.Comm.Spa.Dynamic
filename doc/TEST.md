@@ -773,3 +773,10 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-631 | Renderer projection | OWNER PASS：Axis、row cursor、data window、metadata、Marker／Stripe／OFI tooltip由同一reactive selection切換；canonical attributes不變。 |
 | DYN-T-632 | Snapshot→patch/lifecycle | OWNER PASS：4,000-bar browser fixture在CT patch後selection維持；切換不送action、不改loaded bars／viewport／canonical cursor，console/page error 0。 |
 | DYN-T-633 | Package/consumer | PASS：exact graph五包已public release，official repository signature及排除`.signature.p7s`後local/official entries parity通過。Daedalus commit `02d3432e`真SPAA驗Backtest全頁time projection與no-fetch/no-run/no-revision/viewport/selection drift，輸出`SMA13X34_DMI_SPAA=GREEN`。 |
+
+## Row barrier／visible cursor resize hotfix
+
+| ID | Scope | Acceptance |
+| --- | --- | --- |
+| DYN-T-649 | Renderer cursor/row barrier | PASS：shared cursor visible後keyboard resize，7個row label及crosshair保持visible、displayed cursor index不變、chart render sequence不變；reader maps只在rows-complete barrier發布一次。 |
+| DYN-T-650 | Performance/package/consumer | OWNER PASS／consumer pending：Renderer/Interactive/Ptcs focused `55/15/17`；4,000-bar F# Playwright All max40.11ms，正式phases無>100ms，300 cursor p95=38ms/max99ms；Interactive package verifier PASS。Daedalus須以真SPAA 1,124 bars／8 rows重跑200→All `<=2,000ms`及visible cursor resize。 |
