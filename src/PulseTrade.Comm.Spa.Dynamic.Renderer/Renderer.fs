@@ -3613,8 +3613,17 @@ module TaWorkspaceRenderer =
                             let visibleStart = if globalVisibleWindow.Count = 0 then 0 else globalVisibleWindow.StartIndex + 1
                             let visibleEnd = globalVisibleWindow.StartIndex + globalVisibleWindow.Count
                             let viewportRangeText =
-                                draftWindow.View
-                                |> View.Map (fun draft ->
+                                View.Map2 (fun currentUi draft ->
+                                    let currentWindow =
+                                        RendererModel.resolveWindow
+                                            options.MinimumVisibleBars
+                                            maximumVisibleBars
+                                            referenceLength
+                                            currentUi.FollowLatest
+                                            currentUi.Window
+                                    let _, globalCurrentWindow = navigatorWindow currentWindow
+                                    let visibleStart = if globalCurrentWindow.Count = 0 then 0 else globalCurrentWindow.StartIndex + 1
+                                    let visibleEnd = globalCurrentWindow.StartIndex + globalCurrentWindow.Count
                                     match draft with
                                     | None -> $"Loaded {loadedObservationCount} bars · Viewing {visibleStart}-{visibleEnd}"
                                     | Some preview ->
@@ -3622,6 +3631,8 @@ module TaWorkspaceRenderer =
                                         let previewStart = if globalPreview.Count = 0 then 0 else globalPreview.StartIndex + 1
                                         let previewEnd = globalPreview.StartIndex + globalPreview.Count
                                         $"Loaded {loadedObservationCount} bars · Preview {previewStart}-{previewEnd} · release to render")
+                                    uiState.View
+                                    draftWindow.View
                             div [
                                 Attr.Create "data-testid" "ta-chart-stack"
                                 Attr.Create "data-chart-render-sequence" (string renderSequence)

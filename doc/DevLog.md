@@ -1800,3 +1800,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus以official graph在真SPAA 960 bars／8 rows回報48 preset偶發10秒timeout，以及200→All為2153–2240ms。相同服務與graph下，Chrome 2,444 bars interaction INP為17ms；把formal gate從whole-page `GetByText(Regex)`改讀既有`data-testid=ta-viewport-range`後，960 bars的48/200/All click為119/318/144ms，200→All總計1315ms。
 - 原formal locator每50ms重掃大型DOM全文，observer cost被算入2秒產品門檻；同時段原locator仍量得2115ms，形成可區分的A/B。Renderer contract與package graph不變，不為測試觀測器差異發布空版本。
 - Consumer gate仍維持2秒且需由Daedalus正式重跑：使用direct test-id locator，initial barrier明確等待非零Loaded。Diagnostic副本後段在unrelated marker wait失敗，故本輪不宣稱完整真SPAA E2E PASS。
+
+## 2026-09-28 - Committed viewport state barrier candidate
+
+- Correction：Daedalus以direct `ta-viewport-range`與non-zero Loaded barrier仍連續量得200→All `2072/2137ms`、click約40ms；先前「主要是whole-page locator observer effect」不足以解釋真consumer RED。
+- Renderer `0.1.89`讓range文字直接訂閱committed `uiState`與draft，不再等待整棵chart stack replacement；scheduled rows仍由既有ready barrier表示完成，public API、generation與single-render contract不變。
+- 新增`verify-ta-viewport-state-commit-playwright.fsx`。4,000-bar owner gate量得committed state `170.88ms`、rows-ready total `369.95ms`、render sequence `3->4`、visible `1..4000`、console/page error=0；focused suites維持`55/15/17`。
+- Candidate exact graph為Contracts `0.1.33`、Renderer `0.1.89`、Interactive.Client `0.1.80`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.90`。Official publication/readback與Daedalus真SPAA consumer gate尚未完成，不宣稱產品驗收。

@@ -36,3 +36,9 @@
   identity與Renderer interaction本身，定位為verifier locator observer effect。
 - 14:26 Correction：前四筆Operations中的14:27／14:30／14:35是誤用估計時間形成的future label；
   其操作順序與證據內容不變，均已在本筆Correction前完成，authoritative completion time為14:26。
+- 15:05 Correction：Daedalus已用direct `ta-viewport-range`與non-zero initial barrier連續重現2072/2137ms，
+  click僅40ms、direct state wait 2097ms。先前「主要為verifier observer effect」只能解釋部分差異，不能關閉
+  owner issue；重新進入true-consumer scheduler/commit調查，續記既有`20260928141000_issue_spaa_consumer_scheduler_jitter.hypothesis.md`。
+- 15:42 Renderer range文字改為直接訂閱committed `uiState`與draft，不再等待chart stack replacement；row ready authority不變。
+  新focused F# Playwright PASS：4,000 bars的200→All state=170.88ms、rows-ready total=369.95ms、render `3->4`、
+  range attributes=`1..4000`，console/page error=0。Candidate graph為`0.1.33/0.1.89/0.1.80/0.1.54/0.1.90`。

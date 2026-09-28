@@ -38,3 +38,10 @@
 Renderer public contract與package graph維持不變。consumer gate應保留2秒門檻，改以既有
 `data-testid=ta-viewport-range`觀測，並在initial state明確等待非零Loaded；由consumer owner連續重跑後
 再關閉此issue。
+
+## Correction 2026-09-28 15:42 +08:00
+
+- Daedalus使用上述direct locator與non-zero barrier後仍連續量得`2072/2137ms`，click僅40ms；因此「只修consumer locator即可關閉」已被反證。
+- 根因是range文字在chart stack computation內捕捉static window，committed `uiState`須等舊SVG subtree replacement後才可觀察。這不是row scheduler generation錯亂。
+- 最小修正讓range文字直接訂閱`uiState`／draft；row generation、ready barrier與single-render不變。Focused 4,000-bar結果為state `170.88ms`、rows-ready total `369.95ms`、render `3->4`。
+- Official artifact與真SPAA consumer gate完成前，此issue維持consumer acceptance pending。

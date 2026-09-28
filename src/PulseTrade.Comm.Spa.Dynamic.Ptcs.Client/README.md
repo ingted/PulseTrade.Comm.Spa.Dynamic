@@ -44,4 +44,4 @@ TA durable reply只保存compact layout/query descriptor，不含OHLCV或indicat
 
 The PTCS host must register the same `extensionId` with `PulseTrade.Comm.Spa.Dynamic.Ptcs.TaResearchTransientServer.register`.
 
-Current owner candidate is `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.89`, consuming PTCS `[0.2.46]`、Contracts `[0.1.33]` and Renderer `[0.1.88]`。本版帶入zero-delay cooperative row mount與reactive-settle visible-cursor修正；RFC-0032 loaded coverage、cache atomicity、display-time與既有mount APIs不變。
+Current owner candidate is `PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.90`, consuming PTCS `[0.2.46]`、Contracts `[0.1.33]` and Renderer `[0.1.89]`。本版帶入committed viewport state快速呈現；RFC-0032 loaded coverage、cache atomicity、display-time與既有mount APIs不變。

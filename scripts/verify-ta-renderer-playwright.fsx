@@ -1350,13 +1350,16 @@ let verifyDesktop (browser: IBrowser) =
     waitForEnabled (page.Locator("[data-testid='ta-view-all']")) "All preset after 200"
     let callbackCountBeforeAll = requiredIntAttribute callbackState "data-callback-count"
     let allTransition = Diagnostics.Stopwatch.StartNew()
+    let allStateTransition = Diagnostics.Stopwatch.StartNew()
     let allTrace = startMainThreadTrace longTaskSession
     page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing 1-{capacityPointCount}"
+    allStateTransition.Stop()
     page.Locator("[data-testid='ta-row-heikin']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 15000.0f)) |> awaitUnit
     waitForIntAttribute chartStack "data-ready-row-count" 7
     allTransition.Stop()
-    printfn "browser.200-to-all elapsedMs=%.2f" allTransition.Elapsed.TotalMilliseconds
+    printfn "browser.200-to-all stateMs=%.2f rowsReadyMs=%.2f" allStateTransition.Elapsed.TotalMilliseconds allTransition.Elapsed.TotalMilliseconds
+    require (allStateTransition.Elapsed.TotalMilliseconds <= 750.0) $"owner 200-to-All committed state exceeded 750ms: {allStateTransition.Elapsed.TotalMilliseconds:F2}ms"
     require (allTransition.Elapsed.TotalMilliseconds <= 1500.0) $"owner 200-to-All transition exceeded 1500ms: {allTransition.Elapsed.TotalMilliseconds:F2}ms"
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "all" longTaskSession allTrace)

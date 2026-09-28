@@ -110,3 +110,9 @@ AuthorityRange (consumer)
 ## 8. 驗收與停止條件
 
 Owner已完成W030-3A/3B source與fresh exact-package gate。`ta-loaded-coverage.v1`保留完整ordinal/gap truth與bounded overview，active detail page replacement走full prepare；同projection live patch才走incremental prepare。cache entry的Document/View/data亦須完整prepare後atomic commit。延遲回來且`ExpectedDocumentRevision`過期的action必須回`RevisionConflict`，不得污染新page。先前candidate graph `0.1.32/0.1.85/0.1.76/0.1.53/0.1.86`因缺少D7而retired；W030-3整體完成仍需新graph official publication、真SPAA與fresh-kernel DIB gate，任何一項缺失都須標示owner/consumer pending，不得以unit綠燈或NuGet push代替。
+
+## 9. Committed viewport state hotfix
+
+真SPAA以direct `ta-viewport-range`仍量到200→All `2,072/2,137ms`，證明whole-page locator雖有observer cost，卻不是完整根因。range文字原本在chart stack computation內捕捉static resolved window；接受`uiState`後仍要等整棵SVG subtree replacement才可觀察。
+
+Renderer改以`View.Map2 uiState.View draftWindow.View`直接解析range文字。這個文字表示「viewport state已接受」，不冒充rows已繪完；`data-ready-row-count`仍是scheduled row completion authority。public renderer API、action、generation、single-render與loaded-coverage contract不變。Owner gate分別限制committed state `<=750ms`及rows-ready total `<=1500ms`，consumer既有2秒產品門檻不得放寬。
