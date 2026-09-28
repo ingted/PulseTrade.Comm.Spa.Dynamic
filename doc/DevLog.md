@@ -1783,3 +1783,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `75c7d98`已push；Renderer `0.1.87`、Interactive.Client `0.1.78`、Ptcs.Client `0.1.88` public push全回`Created`。
 - NuGet.org official SHA-256依序為`933629F07247B840A6EB069CE2F567FE530101FE1D7F469610A7CC79B0681FAC / B8ECD9E242441EE42478AF7062E6A0C3017DDA2DA61766D7F7EC08D2AB114816 / BE24CFCECD47B14F60D3E33DC049EB0F5F7D1B86F58511BAEF23BAB40B89F3A6`。
 - 三包`dotnet nuget verify --all`均確認NuGet.org repository signature有效；exact dependency正確，排除`.signature.p7s`後local/official entry differences均為0。剩Daedalus真SPAA consumer gate。
+
+## 2026-09-28 - Row mount／reactive cursor consumer correction
+
+- Daedalus以official `0.1.87/0.1.78/0.1.88`在真SPAA 960 bars／8 rows重跑，200→All仍為2,065–2,075ms；visible hover cursor在keyboard resize後由left 64.90%變為hidden。前一版因此只保留release integrity，不標consumer PASS。
+- Renderer `0.1.88`移除每列一個animation-frame的mount等待，改zero-delay cooperative scheduling；reader同步以`displayedCursorIndex`優先，row-height更新再於下一個animation frame重套geometry，避免reactive DOM rebuild清掉hover-only cursor。
+- 新local graph為Renderer `0.1.88`、Interactive.Client `0.1.79`、Ptcs.Client `0.1.89`。Focused `55/15/17`、full WebSharper BrowserDemo與package verifierPASS；4,000-bar F# Playwright量得200→All 435.30ms、正式phases無>100ms，resize後等待220ms仍保持7個cursor labels/crosshairs。等official release/readback及Daedalus真SPAA重跑。

@@ -2811,7 +2811,7 @@ module TaWorkspaceRenderer =
                 JS.RequestAnimationFrame(fun _ -> flushCursorFrame ()) |> ignore
 
         let scheduleCursorGeometryRefresh () =
-            setCursorIndex displayedCursorIndex
+            JS.RequestAnimationFrame(fun _ -> setCursorIndex displayedCursorIndex) |> ignore
 
         let commitCursorIndex index =
             setCursorIndex (Some index)
@@ -3568,12 +3568,12 @@ module TaWorkspaceRenderer =
                                     |> Array.mapi (fun index reader -> reader |> Option.map (fun value -> visibleRows[index].RowId, value))
                                     |> Array.choose id
                                     |> Map.ofArray
-                                applyCursorIndex cursorIndex.Value
+                                applyCursorIndex (displayedCursorIndex |> Option.orElse cursorIndex.Value)
 
                             let rec mountRow index =
                                 if workGeneration = chartWorkGeneration then
                                     if index < visibleRows.Length then
-                                        scheduleNextFrame (fun () ->
+                                        JS.SetTimeout (fun () ->
                                             if workGeneration = chartWorkGeneration then
                                                 let prepared = rowDataStates[index].Value
                                                 let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow, markerCursorReader =
@@ -3602,7 +3602,8 @@ module TaWorkspaceRenderer =
                                                 stagedMarkerCursorReaders[index] <- Some markerCursorReader
                                                 rowDocs[index].Value <- rowDoc
                                                 readyRowCount.Value <- index + 1
-                                                mountRow (index + 1))
+                                                mountRow (index + 1)) 0
+                                        |> ignore
                                     else
                                         synchronizeReaders ()
                                         projectionCandidateGeneration

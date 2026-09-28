@@ -31,3 +31,11 @@
   `0.1.88` public push均回`Created`。
 - Official SHA-256依序為`933629F0...1FAC / B8ECD9E2...4816 / BE24CFCE...F3A6`；三包repository
   signature、exact dependencies與排除signature後entry parity通過。剩Daedalus真SPAA consumer gate。
+- 12:47 Daedalus真SPAA consumer gate回報official graph仍為200→All 2,065–2,075ms，且resize後hover
+  cursor hidden；release integrity保留，consumer acceptance改FAIL。
+- 第二次根因：逐row `requestAnimationFrame`對8 rows固定增加約7 frames；reactive DOM rebuild同步reader時又以
+  committed cursor覆蓋hover-only displayed cursor。改zero-delay cooperative row mount、displayed-cursor優先同步，
+  row-height更新於下一frame恢復geometry。
+- 新candidate `0.1.88/0.1.79/0.1.89` focused `55/15/17`與full BrowserDemo通過。F# Playwright
+  明確等待200 callback完成後量200→All為435.30ms；正式phases無>100ms，300 cursor p95=41ms/max120ms，
+  resize後等待220ms仍維持7 labels/crosshairs及相同index。package verifierPASS；official發布與consumer重跑待續。

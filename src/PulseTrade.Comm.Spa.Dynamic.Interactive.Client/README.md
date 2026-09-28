@@ -94,7 +94,7 @@ BrowserRuntimeFramePump.reduceIsolatedEncodedFrames
 
 Production WebSocket `OnMessage`只enqueue；單一requestAnimationFrame pump依socket generation處理legacy frame或chunked `start / item / commit`。chunk framing與ordered batch transition由Contracts的`RuntimeSnapshotTransportAssembler`唯一決定；Interactive.Client只保留requestAnimationFrame分段`SduiValue` decode、canonical reducer與commit後publish，避免browser與machine consumer分叉協議。initial與reconnect producer都應先以`RuntimeSnapshotTransportCodec.encodeFrames`展開再flatten；invalid、stale或中斷batch保留last-good並只要求authoritative resync，不建立第二個pump。
 
-Current owner candidate：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.78`，exact依賴Contracts `[0.1.33]`、Renderer `[0.1.87]`與FSharp.Core `[10.1.400]`；bundle manifest版本須與nuspec一致。本版帶入rows-complete reader publication與visible-cursor resize修正。RFC-0032 cache rebase、atomic candidate及display-time API不變。
+Current owner candidate：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.79`，exact依賴Contracts `[0.1.33]`、Renderer `[0.1.88]`與FSharp.Core `[10.1.400]`；bundle manifest版本須與nuspec一致。本版帶入zero-delay cooperative row mount與reactive-settle visible-cursor修正。RFC-0032 cache rebase、atomic candidate及display-time API不變。
 
 RFC-0028 release為Interactive.Client `0.1.67`，exact依賴Contracts `[0.1.29]`與Renderer `[0.1.76]`。bundle包含typed dark plot／Histogram polarity、fresh `visibleBars` initial viewport、固定24px marker OFI band、direct marker exact-slot precedence及overview淺灰／亮綠2px presentation。consumer只需升Contracts與Interactive.Client direct references，不新增Renderer direct reference。
 

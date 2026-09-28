@@ -1172,6 +1172,11 @@ let verifyDesktop (browser: IBrowser) =
     require ((page.Locator("[data-testid$='-crosshair'][visibility='visible']").CountAsync() |> awaitTask) = 7) "row resize must preserve every visible shared crosshair"
     require (attributeOrEmpty chartStack "data-cursor-index" = visibleCursorIndexBeforeResize) "row resize must preserve the displayed cursor index"
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderSequenceBeforeVisibleCursorResize) "row resize must not rebuild the chart stack while preserving the cursor"
+    Threading.Thread.Sleep 220
+    let settledVisibleCursorBoxAfterResize = visibleCursorLabels.First.BoundingBoxAsync() |> awaitTask
+    require (not (isNull settledVisibleCursorBoxAfterResize)) "row resize must preserve visible cursor label after reactive DOM settles"
+    require (cursorLabelsAreVisible ()) "row resize must preserve every visible cursor label after reactive DOM settles"
+    require (attributeOrEmpty chartStack "data-cursor-index" = visibleCursorIndexBeforeResize) "row resize settle must preserve the displayed cursor index"
     priceResize.PressAsync("Home") |> awaitUnit
     waitForAttributeValue priceResize "aria-valuenow" "250"
 
@@ -1337,12 +1342,22 @@ let verifyDesktop (browser: IBrowser) =
     volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
     require ((page.Locator("[data-testid='ta-row-template-ta-macd-8']").CountAsync() |> awaitTask) = 0) "Reset Canvas must remove post-mount added rows"
 
+    let callbackCountBeforePreset200 = requiredIntAttribute callbackState "data-callback-count"
+    page.Locator("[data-testid='ta-view-200']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 3801-4000"
+    waitForIntAttribute chartStack "data-ready-row-count" 7
+    waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforePreset200 + 1)
+    waitForEnabled (page.Locator("[data-testid='ta-view-all']")) "All preset after 200"
     let callbackCountBeforeAll = requiredIntAttribute callbackState "data-callback-count"
+    let allTransition = Diagnostics.Stopwatch.StartNew()
     let allTrace = startMainThreadTrace longTaskSession
     page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing 1-{capacityPointCount}"
     page.Locator("[data-testid='ta-row-heikin']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 15000.0f)) |> awaitUnit
     waitForIntAttribute chartStack "data-ready-row-count" 7
+    allTransition.Stop()
+    printfn "browser.200-to-all elapsedMs=%.2f" allTransition.Elapsed.TotalMilliseconds
+    require (allTransition.Elapsed.TotalMilliseconds <= 1500.0) $"owner 200-to-All transition exceeded 1500ms: {allTransition.Elapsed.TotalMilliseconds:F2}ms"
     Threading.Thread.Sleep 180
     longTaskPhases.Add(stopMainThreadTrace "all" longTaskSession allTrace)
     printVisibleValueTelemetry "all" page chartStack
