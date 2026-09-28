@@ -303,3 +303,9 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Contract：同identity的revision/counter-only accepted ack不得重建chart；active detail、semantic document或data變更仍依原路徑render。診斷revision attributes在stable shell內reactive前進。
 - Owner result：focused `55/15/17`。callback-settled 200→All state／rows=`175.88/378.52ms`、render=`3->4`。完整renderer gate的five-candle DataRevision `42->43`、transport `3->4`，五列皆變更且chart render sequence維持3；300 cursor transitions event-to-render p95=`2ms`、max=`27ms`，host round-trip p95=`71ms`、max=`219ms`；正式phase無>100ms task。
 - Official graph：source `2c7bf76`；Contracts `0.1.33`、Renderer `0.1.94`、Interactive.Client `0.1.85`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.95`。NuGet.org official SHA-256依序為Renderer `DB3565D8CC8A39C8DD35961B5D812AC550071EA9E4DCBC8A92CDC01ABAEB68AD`、Interactive.Client `63E1AEECE6DFE2431B62007A85A771B92D20980D17626FE4509CDAD9113086C4`、Ptcs.Client `3C01541AFCC1FA72E576F794D60B6314104BE9928B70D0537A36C69C85275009`。三包repository signature有效、exact dependencies正確、排除`.signature.p7s`後local/official entryDiff=0，Interactive bundle manifest為`0.1.85`。Daedalus真SPAA pending。
+
+## DYN-VFY-042 Pending boundary latest-intent gate（ACTIVE revision 1）
+
+- Gap：真SPAA在一個viewport action pending時把navigator whole selection拖出loaded coverage左界，舊Renderer因`PendingActionId`直接忽略mousedown，action count維持不變。
+- Verifier：先啟動既有Renderer BrowserDemo，再零參數執行`dotnet fsi --exec .\scripts\verify-ta-pending-boundary-playwright.fsx`。腳本使用750ms真async callback：先送48-bar visible range，在pending期間拖出左界，驗callback count `N -> N+2`、queue feedback、`QueryGeneration=2`、相鄰前頁`405-452`及最後action=`VisibleRangeChanged`；輸出截圖至`artifacts/ta-pending-boundary-playwright/`。僅操作BrowserDemo，不連production服務。
+- Full regression：同一行為亦納入`verify-ta-renderer-playwright.fsx`；完整gate仍負責既有4,000 bars、cursor、row、coverage與performance範圍，focused verifier不得取代完整release regression。

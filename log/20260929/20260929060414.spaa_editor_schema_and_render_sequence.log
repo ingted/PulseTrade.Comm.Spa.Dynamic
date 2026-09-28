@@ -48,3 +48,10 @@ Daedalus以official exact graph驗證真SPAA：OHLC micro-candles、A→B→A與
 - Out：consumer document authoring的EditorSchemas、SPAA consumer package bump／真E2E、provider/FSSTL/MDCQ邏輯。
 - 06:54 source commit `2c7bf76`已push；三顆package push均回Created。
 - 06:57 official flat-container readback完成：Renderer 0.1.94 SHA `DB3565D8...68AD`、Interactive.Client 0.1.85 SHA `63E1AEEC...86C4`、Ptcs.Client 0.1.95 SHA `3C01541A...5009`；repository signatures與exact deps有效、entryDiff=0、Interactive manifest=0.1.85。Exact graph已direct交付Daedalus跑真SPAA。
+- 07:09 Daedalus fresh official graph真SPAA 2/2重現rapid intent race：200→All render 10→12；stale ui:4（48-bar VisibleRange）在較新local 200/All後才accepted，diagnostic coverage/data未變，render reason為document-revision。Owner contract明確不要求等待callback-settled；T-123維持strict single-render。
+- 07:10 開始補rapid 48→200→All fixture並要求consumer回 bounded semantic document diff；不得以放寬gate或操作節流處理。
+- 07:27 本機重跑 Daedalus 真 SPAA gate，重現 `render 10 -> 12`、All約1017ms、long task 0。bounded action evidence顯示最後兩個request為`ui:3 ChangeQuery`與`ui:4 48-bar VisibleRangeChanged`，ui:4 response為`frames=0`；200/All仍在renderer local latest-wins路徑。
+- 07:30 修正判讀：多出的render是ui:3 runtime revision 3的scheduled projection晚於consumer的500ms render-quiescence heuristic完成，不是ui:4 ACK republish。SPAA目前呼叫`renderWithDisplayTimeZone`丟棄projection callback；consumer須改用typed projection commit seam並在viewport基準前等待query revision完成。不得以owner comparator壓掉必要的新query資料render。
+- 07:33 Daedalus更正progressive gate：先前Document+Snapshot屬toolbar pan-left成功response；真正失敗是緊接著selection boundary drag完全未送action。定位為navigator start/release誤把`PendingActionId`當local hard disable，開始改為與preset共用latest-wins viewport intent queue。
+- 07:40 Renderer完成single in-flight＋latest queued viewport intent；pending期間navigator可preview/release，boundary intent於settled後依最新runtime重算。Exact candidate graph為`0.1.95/0.1.86/0.1.96`。
+- 07:41 focused suites PASS `55/15/17`；focused F# Playwright兩次PASS `callback 0->2 / queryGeneration 2 / visible 405-452`。完整BrowserDemo gate最終PASS；既有preview stream與synthetic hover verifier race已修為phase前重啟及bounded同位置重送，不放寬效能門檻。

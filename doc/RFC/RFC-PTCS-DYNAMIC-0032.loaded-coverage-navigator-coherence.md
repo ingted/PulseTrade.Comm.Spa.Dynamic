@@ -142,3 +142,11 @@ Owner gate快速執行`200 -> All`，要求local state `<=750ms`、rows-ready `<
 Owner regression包含三組對照：純`DocumentRevision`前進重用shell、coverage/query counter-only前進重用shell、active-detail ordinal改變必須replacement。BrowserDemo在200→All callback settlement後要求render sequence恰好`+1`；five-candle資料替換仍更新五列且不得因semantic shell reuse漏畫。
 
 Official exact graph為Contracts `0.1.33`、Renderer `0.1.94`、Interactive.Client `0.1.85`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.95`；source commit `2c7bf76`。三顆新package已完成NuGet.org repository signature、exact dependency、bundle manifest與排除`.signature.p7s`後entry parity readback。真SPAA T-123/T-124仍由Daedalus驗收。
+
+## 13. Pending boundary drag correction
+
+真SPAA證明toolbar Earlier完成後若前一個remote action仍在settlement window，使用者把navigator whole selection拖越左界，舊Renderer會因`PendingActionId`拒絕mousedown，action count維持不變。這不是provider或coverage response問題，而是local intent誤用remote-disabled gate。
+
+決策：poll/resync仍控制local interaction availability；`PendingActionId`只控制remote submission。Navigator draft/release在pending期間可繼續，越界intent與48/200/All preset共用單一latest-wins slot。當前request settled後依最新runtime重算adjacent coverage，確保不平行送request、不使用stale revision，也不丟掉trader最後操作。Identity replacement清除queue。Public contract與wire shape不變。
+
+Owner gate以BrowserDemo 750ms callback建立race：先送48，再於pending期間向左越界拖曳，要求callback count `N->N+2`、queue feedback、`QueryGeneration=2`及相鄰前頁`405-452`。正式package發布後仍須由Daedalus真SPAA progressive gate確認。

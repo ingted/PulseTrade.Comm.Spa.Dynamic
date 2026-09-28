@@ -170,6 +170,7 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-087 | 多年coverage不得以提高active retained-series hard limit達成；若base axis未完整載入，須以versioned generic coverage projection表達coverage ordinal／segments／bounded anchors／active detail offset與generation。 |
 | DYN-TA-REQ-088 | 同runtime identity下，accepted callback若只提高DocumentRevision、CoverageRevision、QueryGeneration或transport sequence，而document presentation、active detail、row topology與data語意不變，不得重建chart shell或增加render sequence；診斷revision attributes仍須更新。 |
 | DYN-TA-REQ-089 | Semantic-equivalence不得忽略CoverageIdentity、segments、overview anchors、active detail、rows、schemas、actions或其他default-view/query內容；任一authority/presentation變更仍須走既有prepare／render。 |
+| DYN-TA-REQ-090 | Navigator whole-selection drag是local viewport intent；remote viewport action pending時仍須接受preview/release，越過loaded boundary則與preset共用單一latest-wins queue，settled後以最新runtime重算並送出adjacent coverage，不得靜默丟棄或平行送出第二個request。 |
 ## Page-scoped display time zone（RFC-PTCS-DYNAMIC-0031）
 
 - `DYN-REQ-121`：TA／Backtest page須能以單一reactive selection顯示`UTC`、`America/Chicago`、`America/New_York`與固定`UTC+08:00`；CT／ET須依event instant套用DST。

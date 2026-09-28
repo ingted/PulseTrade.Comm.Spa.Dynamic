@@ -2073,8 +2073,9 @@ module TaWorkspaceRenderer =
         let mutable queryInFlight = false
         let mutable queuedQuery: (TaQueryChange * int) option = None
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
-        let mutable queuedVisibleRangeAction: SduiAction option = None
-        let mutable flushQueuedVisibleRangeAction = ignore
+        let mutable queuedViewportIntent: Choice<SduiAction, PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int> option = None
+        let mutable flushQueuedViewportIntent = ignore
+        let mutable dispatchAdjacentCoverage = fun (_: PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection) (_: int) -> ()
         let commandsDisabledView =
             View.Map2
                 (fun state ui -> remoteDisabled state.Poll || ui.PendingActionId.IsSome)
@@ -2113,21 +2114,25 @@ module TaWorkspaceRenderer =
                 onRejected
                 (fun () ->
                     afterSettled ()
-                    scheduleNextFrame flushQueuedVisibleRangeAction)
+                    scheduleNextFrame flushQueuedViewportIntent)
         let startActionWith action successText onAccepted onRejected =
             startActionWithFeedback action successText (fun () -> onAccepted (); None) onRejected ignore
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
         let sendOrQueueVisibleRangeAction action =
             if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
-                queuedVisibleRangeAction <- Some action
+                queuedViewportIntent <- Some(Choice1Of2 action)
             else
                 startAction action "Visible range synchronized." ignore
-        flushQueuedVisibleRangeAction <- fun () ->
-            match queuedVisibleRangeAction with
-            | Some action when uiState.Value.PendingActionId.IsNone && not (remoteDisabled runtimeState.Value.Poll) ->
-                queuedVisibleRangeAction <- None
-                startAction action "Visible range synchronized." ignore
+        flushQueuedViewportIntent <- fun () ->
+            match queuedViewportIntent with
+            | Some intent when uiState.Value.PendingActionId.IsNone && not (remoteDisabled runtimeState.Value.Poll) ->
+                queuedViewportIntent <- None
+                match intent with
+                | Choice1Of2 action ->
+                    startAction action "Visible range synchronized." ignore
+                | Choice2Of2(direction, delta) ->
+                    dispatchAdjacentCoverage direction delta
             | _ -> ()
         let chartRuntimeState = Var.Create runtimeState.Value
         let initialPreparedData =
@@ -2300,7 +2305,7 @@ module TaWorkspaceRenderer =
             let dataChanged = runtimeDataChanged observedDataState next
             if next.Identity <> observedDataState.Identity then
                 pendingBoundaryPan <- None
-                queuedVisibleRangeAction <- None
+                queuedViewportIntent <- None
                 setUiState
                     { uiState.Value with
                         HiddenRows = Set.empty
@@ -2321,7 +2326,7 @@ module TaWorkspaceRenderer =
                     scheduleIncrementalPreparation next
                 else
                     acceptPreparedData false next latestPreparedData
-            flushQueuedVisibleRangeAction ())
+            flushQueuedViewportIntent ())
         scheduleFullPreparation ()
         let chartRuntimeView: View<RuntimeState> = chartRuntimeState.View
 
@@ -2382,8 +2387,8 @@ module TaWorkspaceRenderer =
                         | None -> ()
                     | None -> ()
 
-        let requestAdjacentCoverage direction delta =
-            if actionAllowed "visible-range-changed" && not (commandsDisabledNow ()) then
+        let dispatchAdjacentCoverageNow direction delta =
+            if actionAllowed "visible-range-changed" && not (localViewportDisabled runtimeState.Value.Poll) then
                 match runtimeState.Value.Document with
                 | Some document ->
                     match
@@ -2439,6 +2444,22 @@ module TaWorkspaceRenderer =
                                         "Later coverage is outside the configured query boundary." }
                 | None -> ()
 
+        dispatchAdjacentCoverage <- dispatchAdjacentCoverageNow
+
+        let requestAdjacentCoverage direction delta =
+            if actionAllowed "visible-range-changed" && not (localViewportDisabled runtimeState.Value.Poll) then
+                if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
+                    queuedViewportIntent <- Some(Choice2Of2(direction, delta))
+                    setUiState
+                        { uiState.Value with
+                            Feedback =
+                                if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then
+                                    "Earlier coverage queued."
+                                else
+                                    "Later coverage queued." }
+                else
+                    dispatchAdjacentCoverage direction delta
+
         let panWindow delta =
             let current = uiState.Value
             let total = referenceLength ()
@@ -2480,7 +2501,7 @@ module TaWorkspaceRenderer =
             setWindow true { StartIndex = max 0 (total - boundedCount); Count = boundedCount }
 
         let startNavigatorDrag (event: MouseEvent) =
-            if not (viewportCommandsDisabledNow ()) && not (isNull navigatorElement) then
+            if not (localViewportDisabled runtimeState.Value.Poll) && not (isNull navigatorElement) then
                 let bounds = navigatorElement.GetBoundingClientRect()
                 let total = referenceLength ()
                 let committed = resolvedWindow uiState.Value

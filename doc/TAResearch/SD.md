@@ -1047,3 +1047,7 @@ pointer clientX + navigator CSS width + 24 CSS px target
 Stable chart shell內的`data-chart-document-revision`、`data-chart-data-revision`、`data-chart-transport-sequence`、`data-coverage-revision`與`data-query-generation`改由current runtime state reactive更新。這些attributes是diagnostic observation，不可回頭成為render trigger。Browser gate必須等待accepted callback settled後才比較render sequence，避免只量到local immediate中間狀態。
 
 Stable selectors／attributes：workspace與visible time node提供`data-display-time-zone`；axis、cursor、row data window及event items保留canonical UTC attribute。CT／ET依canonical event instant判定DST，固定UTC+8不採DST。既有`render`／`renderWithProjectionCommit`以UTC constant View委派新版overload。
+
+### Pending boundary drag serialization
+
+`PendingActionId`只序列化remote submission，不是local pointer hard-disable。Navigator在poll可本地互動時照常建立draft；release若越過coverage boundary，將`direction + legacy delta`寫入與preset共用的單一queued viewport intent。後來的preset或boundary覆蓋尚未送出的舊intent。Current request settled後，Renderer以最新document、active detail、window與revision重新建立`CoverageIntent`，再送唯一下一個`VisibleRangeChanged`；identity replacement則清除queue。remote disabled／resync仍fail closed，任何時刻不得有兩個remote viewport request並行。

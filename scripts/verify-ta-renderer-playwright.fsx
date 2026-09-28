@@ -1216,6 +1216,8 @@ let verifyDesktop (browser: IBrowser) =
     let sustainedPointerBox = sustainedCursorSurface.BoundingBoxAsync() |> awaitTask
     require (not (isNull sustainedPointerBox)) "marker-free SMA chart must expose fresh pointer geometry for sustained cursor measurement"
 
+    page.Locator("[data-testid='ta-demo-preview-stream']").ClickAsync() |> awaitUnit
+    waitForIntAttributeAtLeast fixtureRoot "data-preview-stream-updates" 1 |> ignore
     let previewUpdatesBeforeCursor = requiredIntAttribute fixtureRoot "data-preview-stream-updates"
     let historicalCloseBeforeCursor = attributeSignature priceCandlePaths "d"
     let cursorTrace = startMainThreadTrace longTaskSession
@@ -1245,6 +1247,18 @@ let verifyDesktop (browser: IBrowser) =
                 Force = true,
                 Position = Position(X = sustainedPointerBox.Width * ratio, Y = sustainedPointerBox.Height / 2.0f)))
         |> awaitUnit
+    let waitForCursorAttributeChange previous ratio =
+        let deadline = DateTime.UtcNow.AddSeconds 3.0
+        let mutable retryAt = DateTime.UtcNow.AddMilliseconds 250.0
+        let mutable current = attributeOrEmpty firstCrosshair "x1"
+        while current = previous && DateTime.UtcNow < deadline do
+            Threading.Thread.Sleep 10
+            if DateTime.UtcNow >= retryAt then
+                dispatchCursorMove ratio
+                retryAt <- DateTime.UtcNow.AddMilliseconds 250.0
+            current <- attributeOrEmpty firstCrosshair "x1"
+        require (current <> previous) $"expected `x1` to change from `{previous}`"
+        current
     dispatchCursorMove 0.18f
     previousCrosshairX <- waitForCrosshairSide false
     let mutable browserCursorLatencySequence = requiredIntAttribute chartStack "data-cursor-render-latency-sequence"
@@ -1253,7 +1267,7 @@ let verifyDesktop (browser: IBrowser) =
         let ratio = if rightSide then 0.82f else 0.18f
         let movement = Diagnostics.Stopwatch.StartNew()
         dispatchCursorMove ratio
-        let currentCrosshairX = waitForAttributeChange firstCrosshair "x1" previousCrosshairX
+        let currentCrosshairX = waitForCursorAttributeChange previousCrosshairX ratio
         browserCursorLatencySequence <-
             waitForIntAttributeAtLeast
                 chartStack
@@ -1672,6 +1686,35 @@ let verifyDesktop (browser: IBrowser) =
     waitForIntAttribute reloadedChartStack "data-visible-start" 1
     waitForIntAttribute reloadedChartStack "data-visible-end" 250
     require (requiredIntAttribute reloadedChartStack "data-loaded-bars" = 500) "drag and toolbar must resolve against the same loaded coverage"
+
+    page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+    page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+    page.Locator("[data-testid='ta-demo-loaded-coverage']").ClickAsync() |> awaitUnit
+    let queuedDragChartStack = page.Locator("[data-testid='ta-chart-stack']")
+    waitForIntAttribute queuedDragChartStack "data-visible-start" 251
+    waitForIntAttribute queuedDragChartStack "data-visible-end" 500
+    let queuedDragCallbackState = page.Locator("[data-testid='ta-demo-callback-state']")
+    let callbackCountBeforeQueuedDrag = requiredIntAttribute queuedDragCallbackState "data-callback-count"
+    page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
+    waitForIntAttribute queuedDragChartStack "data-visible-start" 453
+    waitForIntAttribute queuedDragChartStack "data-visible-end" 500
+    let queuedDragNavigator = page.Locator("[data-testid='ta-overview-navigator']")
+    let queuedDragNavigatorBox = queuedDragNavigator.BoundingBoxAsync() |> awaitTask
+    require (not (isNull queuedDragNavigatorBox)) "pending-action navigator geometry must be measurable"
+    let queuedDragY = queuedDragNavigatorBox.Y + queuedDragNavigatorBox.Height / 2.0f
+    let queuedDragFromX = queuedDragNavigatorBox.X + queuedDragNavigatorBox.Width * 0.95f
+    let queuedDragToX = queuedDragNavigatorBox.X
+    page.Mouse.MoveAsync(queuedDragFromX, queuedDragY) |> awaitUnit
+    page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+    page.Mouse.MoveAsync(queuedDragToX, queuedDragY, MouseMoveOptions(Steps = 8)) |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Preview"
+    page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
+    waitForIntAttribute queuedDragCallbackState "data-callback-count" (callbackCountBeforeQueuedDrag + 2)
+    waitForIntAttribute queuedDragChartStack "data-query-generation" 2
+    waitForIntAttribute queuedDragChartStack "data-visible-start" 405
+    waitForIntAttribute queuedDragChartStack "data-visible-end" 452
+    require (attributeOrEmpty queuedDragCallbackState "data-last-action" = "VisibleRangeChanged") "queued boundary drag must dispatch after the pending visible-range action settles"
 
     require (consoleErrors.Count = 0) ("desktop console errors: " + String.concat " | " consoleErrors)
     let overBudgetPhases = longTaskPhases |> Seq.filter (fun (_, values, _) -> values.Length > 0) |> Seq.toArray
