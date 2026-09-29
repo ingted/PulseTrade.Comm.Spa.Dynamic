@@ -173,6 +173,7 @@ PTCS path仍需要core提供authenticated duplex/transient lifecycle seam；這�
 | DYN-TA-REQ-090 | Navigator whole-selection drag是local viewport intent；`PollInFlight`或`PausedForResync`時仍須接受preview/release，越過loaded boundary則與preset共用單一latest-wins queue。pending action settled或runtime轉回可dispatch狀態後，須以最新runtime重算並送出唯一adjacent coverage，不得靜默丟棄或平行送出第二個request。 |
 | DYN-TA-REQ-091 | 大型accepted browser cache rehydrate須分段驗證data/frame並atomic publish；同一callback不得在phased frame pump前重複完整snapshot semantic scan。header、document、workspace與current authority仍須先fail closed，superseded generation不得commit。 |
 | DYN-TA-REQ-094 | View All／Max preset須以`min(LoadedCoverage observation domain, MaximumVisibleBars)`決定target，不得以current active-detail／mount width代替。target超出active detail時須送versioned ordinal `CoverageIntent`並等待authoritative replacement；已在active detail內才可local commit。 |
+| DYN-TA-REQ-095 | Browser cache的`KnownEmpty`只可證明requested adjacent boundary本身為空。若loaded observation domain在該方向仍有target ordinal，cache不得因方向上其他位置的零長segment短路provider；無cache hit時須回`Miss`。 |
 ## Page-scoped display time zone（RFC-PTCS-DYNAMIC-0031）
 
 - `DYN-REQ-121`：TA／Backtest page須能以單一reactive selection顯示`UTC`、`America/Chicago`、`America/New_York`與固定`UTC+08:00`；CT／ET須依event instant套用DST。

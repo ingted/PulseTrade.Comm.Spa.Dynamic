@@ -144,6 +144,53 @@ module Program =
               EndEventTimeExclusiveUtc = startUtc.AddMinutes(float pointCount) }
           CapturedAtUtc = startUtc }
 
+    let adjacentBoundaryEntry () =
+        let startUtc = DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.Zero)
+        let endUtc = DateTimeOffset(2026, 9, 4, 0, 0, 0, TimeSpan.Zero)
+        let projection =
+            { CoverageIdentity = "browser-cache-adjacent-coverage"
+              CoverageRevision = 9L
+              QueryGeneration = 4L
+              Completeness = TaCoverageCompleteness.Partial
+              TotalObservationCount = None
+              Segments =
+                [| { SegmentId = "loaded-domain"
+                     StartEventTimeUtc = startUtc.ToString("O")
+                     EndEventTimeExclusiveUtc = endUtc.ToString("O")
+                     StartObservationOrdinal = 0L
+                     ObservationCount = 4724L }
+                   { SegmentId = "remote-empty"
+                     StartEventTimeUtc = endUtc.ToString("O")
+                     EndEventTimeExclusiveUtc = endUtc.AddDays(1.0).ToString("O")
+                     StartObservationOrdinal = 4724L
+                     ObservationCount = 0L } |]
+              OverviewAxisRef = "axis.1k"
+              OverviewAnchors = [||]
+              ActiveDetail =
+                { StartObservationOrdinal = 0L
+                  ObservationCount = 724
+                  BaseAxisRef = "axis.1k" } }
+        let adjacentDocument =
+            { document with
+                WorkspaceId = "browser-cache-adjacent-fixture"
+                Title = "Browser cache adjacent fixture"
+                DefaultView = Map.empty |> TaLoadedCoverageCodec.apply projection }
+
+        { CacheIdentity =
+            { OwnerFingerprint = "browser-cache-adjacent-query"
+              SchemaRevision = RuntimeCache.CurrentSchemaRevision }
+          WorkspaceId = adjacentDocument.WorkspaceId
+          Document = adjacentDocument
+          Snapshot =
+            { Data = Map.empty
+              Freshness = TaFreshness.Stale(TimeSpan.Zero, "adjacent-fixture") }
+          DocumentRevision = 1L
+          DataRevision = 1L
+          Coverage =
+            { StartEventTimeUtc = startUtc
+              EndEventTimeExclusiveUtc = endUtc }
+          CapturedAtUtc = endUtc }
+
     let html () =
         let fixtures =
             [| 0..9 |]
@@ -157,10 +204,15 @@ module Program =
             |> BrowserRuntimeCodec.encodeCacheEntry
             |> WebUtility.HtmlEncode
 
+        let adjacentBoundaryFixture =
+            adjacentBoundaryEntry ()
+            |> BrowserRuntimeCodec.encodeCacheEntry
+            |> WebUtility.HtmlEncode
+
         $"""<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Browser cache gate</title></head>
-<body><main id="app"></main>{fixtures}<textarea hidden id="cache-large-entry">{largeFixture}</textarea><script type="module" src="/js/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.BrowserCacheDemo.js"></script></body>
+<body><main id="app"></main>{fixtures}<textarea hidden id="cache-large-entry">{largeFixture}</textarea><textarea hidden id="cache-adjacent-boundary-entry">{adjacentBoundaryFixture}</textarea><script type="module" src="/js/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.BrowserCacheDemo.js"></script></body>
 </html>"""
 
     [<EntryPoint>]

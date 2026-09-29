@@ -337,21 +337,29 @@ module BrowserRuntimeCache =
         match hit with
         | Some hit -> BrowserRuntimeCacheAdjacentSelection.Hit hit
         | None ->
+            let active = query.AcceptedProjection.ActiveDetail
+            let activeEnd = active.StartObservationOrdinal + int64 active.ObservationCount
+            let domainCount = TaLoadedCoverageCodec.observationDomainCount query.AcceptedProjection
+            let hasTargetOrdinal =
+                match query.Direction with
+                | TaCoverageDirection.Earlier -> active.StartObservationOrdinal > 0L
+                | TaCoverageDirection.Later -> activeEnd < domainCount
+            let boundaryOrdinal =
+                match query.Direction with
+                | TaCoverageDirection.Earlier -> active.StartObservationOrdinal
+                | TaCoverageDirection.Later -> activeEnd
             let knownEmpty =
-                query.AcceptedProjection.Segments
-                |> Array.filter (fun segment -> segment.ObservationCount = 0L)
-                |> Array.filter (fun segment ->
-                    match query.Direction with
-                    | TaCoverageDirection.Earlier -> segment.StartObservationOrdinal <= query.AcceptedProjection.ActiveDetail.StartObservationOrdinal
-                    | TaCoverageDirection.Later ->
-                        segment.StartObservationOrdinal
-                        >= query.AcceptedProjection.ActiveDetail.StartObservationOrdinal
-                           + int64 query.AcceptedProjection.ActiveDetail.ObservationCount)
-                |> Array.sortBy (fun segment -> abs (segment.StartObservationOrdinal - query.AcceptedProjection.ActiveDetail.StartObservationOrdinal))
-                |> Array.tryHead
-                |> Option.map (fun segment ->
-                    { StartEventTimeUtc = segment.StartEventTimeUtc
-                      EndEventTimeExclusiveUtc = segment.EndEventTimeExclusiveUtc })
+                if hasTargetOrdinal then
+                    None
+                else
+                    query.AcceptedProjection.Segments
+                    |> Array.filter (fun segment ->
+                        segment.ObservationCount = 0L
+                        && segment.StartObservationOrdinal = boundaryOrdinal)
+                    |> Array.tryHead
+                    |> Option.map (fun segment ->
+                        { StartEventTimeUtc = segment.StartEventTimeUtc
+                          EndEventTimeExclusiveUtc = segment.EndEventTimeExclusiveUtc })
 
             knownEmpty
             |> Option.map BrowserRuntimeCacheAdjacentSelection.KnownEmpty

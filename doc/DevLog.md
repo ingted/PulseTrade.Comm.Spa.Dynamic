@@ -1952,3 +1952,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 真SPAA的`Loaded 3022 · Viewing 789-1512`暴露View All仍以724根active detail計算。Renderer新增pure loaded-domain intent，target為`min(loaded total, MaximumVisibleBars)`；超出active detail時沿用`VisibleRangeChanged + ta-coverage-window.v1`，並以generation-aware latest queue等待authoritative replacement。
 - BrowserDemo新增3022/724 regression：按All後唯一callback使generation前進至2、active detail變為`0+3022`、range=`1-3022`、runtime axis/price=`3022`且navigator selection滿寬。完整Playwright PASS，focused suites=`49/58/15/15/17`。
 - Candidate graph為Contracts `0.1.35`、Renderer `0.1.121`、Interactive.Client `0.1.112`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.121`；official provenance build/readback與Daedalus真SPAA pending。
+
+## 2026-09-30 - Adjacent cache KnownEmpty authority correction
+
+- Daedalus真persistent cache gate證明`.112`在active=`0+724`、loaded domain=`4724`時，會因Later遠端零長segment誤回KnownEmpty，導致provider follow page被Accepted no-op短路。
+- `BrowserRuntimeCache.selectAdjacent`改為先判direction target ordinal；domain內仍有target時回Miss，只有沒有target且零長segment緊貼active boundary時才KnownEmpty。Public API／wire不變。
+- 舊`.112` unit穩定RED；`.113` unit `15/15`、IndexedDB seed→reload→Later read=`MISS`、large cache既有gate及package verifierPASS。`.112`雖已push但標為中間版本，final consumer graph改用Interactive.Client `.113`。
+- Package version：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.113`（前版`0.1.112`）；原因為adjacent cache KnownEmpty authority correction，exact依賴維持Contracts `[0.1.35]`與Renderer `[0.1.121]`。

@@ -89,6 +89,11 @@ page.Console.Add(fun message -> if message.Type = "error" then errors.Add messag
 page.PageError.Add(fun error -> errors.Add error)
 
 page.GotoAsync(url, PageGotoOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+page.GetByTestId("cache-seed-adjacent-boundary").ClickAsync() |> awaitUnit
+waitStatus page "ADJACENT:SEEDED"
+page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+page.GetByTestId("cache-read-adjacent-boundary").ClickAsync() |> awaitUnit
+waitStatus page "ADJACENT:LATER:MISS"
 page.GetByTestId("cache-seed").ClickAsync() |> awaitUnit
 waitStatus page "SEEDED:8"
 page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
@@ -170,7 +175,7 @@ browser.CloseAsync() |> awaitUnit
 playwright.Dispose()
 
 printfn "PASS interactive-client-browser-cache-playwright"
-printfn "persisted-count=8 latest-revision=10 evicted-oldest=true covering-hit=true coverage-miss=true corrupt-removed=true semantic-invalid-removed=true finalized-prefix=1 preview-count=0 accepted-state-write=true paused-state-rejected=true rehydrate=paused revision-continuation=false cleared-count=0"
+printfn "persisted-adjacent-boundary=miss persisted-count=8 latest-revision=10 evicted-oldest=true covering-hit=true coverage-miss=true corrupt-removed=true semantic-invalid-removed=true finalized-prefix=1 preview-count=0 accepted-state-write=true paused-state-rejected=true rehydrate=paused revision-continuation=false cleared-count=0"
 printfn "large-read=dataRefs:%d maxCallbackGapMs:%d elapsedMs:%d" largeReadDataRefs largeReadMaximumCallbackGapMs largeReadElapsedMs
 printfn "large-rehydrate=dataRefs:%d points:%d maxCallbackGapMs:%d elapsedMs:%d" largeDataRefs largePointCount largeMaximumCallbackGapMs largeElapsedMs
 printfn "evidence=%s" (Path.Combine(outputDirectory, "browser-cache-persisted.png"))

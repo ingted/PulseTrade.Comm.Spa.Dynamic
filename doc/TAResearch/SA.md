@@ -381,3 +381,7 @@ Browser cache phased rehydrate原先先同步執行完整`tryPrepareRehydrate`�
 ## 33. Loaded-domain View All
 
 View All是coverage intent，不是active-detail local zoom。若完整loaded domain可容納於`MaximumVisibleBars`，target為整個domain；若超過cap，target為以loaded右界為anchor的最後`MaximumVisibleBars` observations。只有target完整落在current active detail內時才能直接改local window；否則Renderer沿用`VisibleRangeChanged + ta-coverage-window.v1`要求owner以新generation原子替換active detail。這保留provider／cache authority於consumer，亦避免把724根mount誤稱為3,022根loaded truth。
+
+## 34. Adjacent cache empty authority
+
+零長coverage segment描述event-time gap，不佔observation ordinal。它不能因位於Earlier／Later任意遠端位置，就證明current adjacent request沒有資料。Interactive.Client先以`observationDomainCount`判斷該方向是否仍有target ordinal；有則cache miss並交由provider。只有方向上已無target ordinal，且零長segment恰位於current active-detail boundary時，才可回`KnownEmpty`。這保留cache的negative knowledge，同時避免persistent cache rerun後把合法follow page變成Accepted no-op。

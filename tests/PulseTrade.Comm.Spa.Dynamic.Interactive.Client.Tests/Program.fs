@@ -398,7 +398,35 @@ let tests =
               | BrowserRuntimeCacheAdjacentSelection.KnownEmpty span ->
                   Expect.equal span.StartEventTimeUtc "2026-09-04T00:00:00Z" "Known-empty retains its exact UTC start."
                   Expect.equal span.EndEventTimeExclusiveUtc "2026-09-05T00:00:00Z" "Known-empty retains its exact UTC end."
-              | result -> failtestf "Expected KnownEmpty, got %A" result)
+              | result -> failtestf "Expected KnownEmpty, got %A" result
+
+              let loadedDomain =
+                  { SegmentId = "loaded-domain"
+                    StartEventTimeUtc = "2026-08-01T00:00:00Z"
+                    EndEventTimeExclusiveUtc = "2026-09-04T00:00:00Z"
+                    StartObservationOrdinal = 0L
+                    ObservationCount = 4724L }
+              let remoteEmpty =
+                  { emptySegment with
+                      SegmentId = "remote-holiday"
+                      StartObservationOrdinal = 4724L }
+              let attachedLeftProjection = projection 0L 724 [| loadedDomain; remoteEmpty |]
+              let attachedLeftEntry =
+                  entry
+                      "2026-08-01T00:00:00Z"
+                      "2026-09-04T00:00:00Z"
+                      "2026-09-04T00:00:00Z"
+                      attachedLeftProjection
+              let followRightQuery =
+                  { query with
+                      AcceptedProjection = attachedLeftProjection
+                      Direction = TaCoverageDirection.Later
+                      MaximumObservations = 724 }
+
+              Expect.equal
+                  (BrowserRuntimeCache.selectAdjacent followRightQuery [| attachedLeftEntry |])
+                  BrowserRuntimeCacheAdjacentSelection.Miss
+                  "A remote empty span must not short-circuit a requested adjacent window that still has ordinals in the loaded domain.")
 
           testCase "DYN-T-648B adjacent cache rebase preserves valid old pages without weakening revision gates" (fun _ ->
               let projection revision startOrdinal observationCount segments =

@@ -190,3 +190,9 @@ Owner gate要求draft在250ms內可見、pointermove callback不增加、pending
 決策：View All target固定為`min(observationDomainCount, MaximumVisibleBars)`；domain超過cap時選右界最後一段。target完整位於current active detail才local commit，否則沿用`VisibleRangeChanged`附explicit ordinal `CoverageIntent`，並以current revision／next generation進single latest-wins queue。authoritative replacement的generation與start吻合後才commit local window；identity替換清除pending/queue。Public wire不變，consumer仍擁有provider/cache與active-detail replacement。
 
 Owner gate以3022/724 fixture驗title、callback唯一增量、generation=`2`、active detail=`0+3022`、runtime axis/price=`3022`、range=`1-3022`及selection滿寬。Candidate exact graph為Contracts `0.1.35`、Renderer `0.1.121`、Interactive.Client `0.1.112`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.121`；focused `49/58/15/15/17`與完整Playwright PASS，official publish/readback及真SPAA pending。
+
+## 19. Adjacent cache KnownEmpty correction
+
+Persistent cache rerun後可出現active detail位於loaded domain左端、右側仍有observations，但accepted segments另含遠端零長gap。舊`selectAdjacent`只按direction篩任意empty segment，會把Later誤回KnownEmpty，consumer遂Accepted no-op而不呼叫provider。
+
+決策：先計算accepted observation domain與requested方向是否仍有target ordinal；有則無cache hit固定為Miss。無target ordinal時，只有零長segment的start ordinal恰等於active boundary才可KnownEmpty。API與wire不變。Owner acceptance包含pure unit的舊版RED／新版GREEN，以及IndexedDB seed→reload→Later read的`MISS` browser gate。Interactive.Client final candidate升為`.113`；`.112`不得交consumer。

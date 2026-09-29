@@ -24,6 +24,10 @@
 
 View All/pan 可能被 pending/canonical state 回寫、no-op 判斷或 boundary request path 吃掉本地可見變更；overview SVG 本身未配置 event-time axis label geometry。驗證方式：讀 `setVisibleWindow`、`moveWindow`、`showLatestCount`、overview render tree，加入 DOM geometry/data attributes 與 callback assertions，區分 local update、remote dispatch及 boundary request。
 
+### H3：adjacent cache KnownEmpty scope 過寬
+
+`BrowserRuntimeCache.selectAdjacent` 在沒有cache hit時，只要方向上任意位置存在零長segment就回`KnownEmpty`。這沒有先判斷requested adjacent ordinal是否仍位於loaded domain，也沒有要求empty span緊貼active boundary；因此`active=0+724 / loaded domain=4724 / remote empty=4724`會錯誤短路provider。驗證方式：單元測試先固定上述projection必須回`Miss`，並以IndexedDB seed、reload、`readAdjacent Later`驗persistent browser path不再回`KnownEmpty`。
+
 ## 不變事項
 
 - `VisibleRangeChanged` 仍只在 interaction commit 時送出，pointermove 不送 remote action。
@@ -40,3 +44,5 @@ View All/pan 可能被 pending/canonical state 回寫、no-op 判斷或 boundary
 ## 結論
 
 H1成立：直接寫reactive draft會放大pointer event工作；latest draft＋單一rAF恢復下一frame更新，pointerup同步flush避免stale commit。H2部分成立：View All geometry需要直接依current UI state投影；pan失效的直接根因是chart remount把`preparedRowsReady`暫時歸零並誤作local toolbar gate。修正為accepted data readiness控制local toolbar，row-ready只保護需要完整geometry的路徑。Overview原先確實沒有時間軸，已以generic canonical timeline補上。
+
+H3成立：舊`.112`在domain內仍有target ordinal時回KnownEmpty。收緊為ordinal-domain-first與exact boundary empty後，pure unit與persistent IndexedDB reload gate皆回Miss，true boundary empty相容測試仍通過。

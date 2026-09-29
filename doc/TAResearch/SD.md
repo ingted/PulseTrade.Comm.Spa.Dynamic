@@ -1059,3 +1059,7 @@ Interactive cache的`tryPreparePhasedRehydrate`只同步執行entry header、doc
 ### Loaded-domain View All request
 
 `RendererModel.tryViewAllCoverageIntent`以`TaLoadedCoverageCodec.observationDomainCount`及document `MaximumVisibleBars`建立explicit ordinal window：`count=min(domain, cap)`、`start=max(0, domain-count)`、`ExpectedCoverageRevision=current`、`QueryGeneration=current+1`。Renderer若無法在current active detail內滿足target，使用既有query boundary建立`VisibleRangeChanged`，附上該intent並把target start/count放入generation-aware pending reanchor；remote busy時進同一latest-wins viewport queue。authoritative response的generation與active-detail start吻合後，local window才切到完整replacement。Coverage identity替換會清除queue/pending，stale response不得擴張新fixture。
+
+### Adjacent cache KnownEmpty decision
+
+`BrowserRuntimeCache.selectAdjacent`先尋找可依current coverage revision／segments rebase的direction-compatible hit。無hit時令`activeEnd=start+count`、`domain=observationDomainCount accepted`：Earlier在`start>0`、Later在`activeEnd<domain`時仍有target ordinal，固定回`Miss`。只有不存在target ordinal時，再尋找`ObservationCount=0`且`StartObservationOrdinal`等於Earlier的`active.start`或Later的`activeEnd`之segment；命中才回`KnownEmpty`。IndexedDB `readAdjacent`沿用此pure decision，不新增wire/API。

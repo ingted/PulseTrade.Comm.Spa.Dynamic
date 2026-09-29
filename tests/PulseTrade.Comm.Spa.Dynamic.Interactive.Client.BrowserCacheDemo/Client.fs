@@ -138,6 +138,41 @@ module Client =
                             | BrowserRuntimeCacheWriteResult.Written -> status.Value <- "LARGE:SEEDED"
                             | BrowserRuntimeCacheWriteResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason))
 
+        let seedAdjacentBoundary () =
+            status.Value <- "ADJACENT:SEEDING"
+
+            match fixtureEntry "cache-adjacent-boundary-entry" with
+            | None -> status.Value <- "ADJACENT:FIXTURE-MISSING"
+            | Some entry ->
+                BrowserRuntimeCache.clear (fun _ ->
+                    BrowserRuntimeCache.write
+                        entry
+                        (function
+                            | BrowserRuntimeCacheWriteResult.Written -> status.Value <- "ADJACENT:SEEDED"
+                            | BrowserRuntimeCacheWriteResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason))
+
+        let readAdjacentBoundary () =
+            match fixtureEntry "cache-adjacent-boundary-entry" with
+            | None -> status.Value <- "ADJACENT:FIXTURE-MISSING"
+            | Some entry ->
+                match TaLoadedCoverageCodec.tryDecodeResolved entry.Document.DefaultView entry.Snapshot.Data with
+                | Ok(Some projection) ->
+                    let query =
+                        { AcceptedProjection = projection
+                          Direction = TaCoverageDirection.Later
+                          MaximumObservations = 724 }
+
+                    BrowserRuntimeCache.readAdjacent
+                        entry.CacheIdentity
+                        entry.WorkspaceId
+                        query
+                        (function
+                            | BrowserRuntimeCacheAdjacentReadResult.Hit _ -> status.Value <- "ADJACENT:LATER:HIT"
+                            | BrowserRuntimeCacheAdjacentReadResult.KnownEmpty _ -> status.Value <- "ADJACENT:LATER:KNOWN-EMPTY"
+                            | BrowserRuntimeCacheAdjacentReadResult.Miss -> status.Value <- "ADJACENT:LATER:MISS"
+                            | BrowserRuntimeCacheAdjacentReadResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason)
+                | _ -> status.Value <- "ADJACENT:PROJECTION-INVALID"
+
         let readLarge () =
             match fixtureEntry "cache-large-entry" with
             | None -> status.Value <- "LARGE:FIXTURE-MISSING"
@@ -368,6 +403,8 @@ module Client =
                 button [ buttonStyle; Attr.Create "data-testid" "cache-coverage-miss"; on.click (fun _ _ -> readCovering 9 0) ] [ text "Coverage miss" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-clear"; on.click (fun _ _ -> clear ()) ] [ text "Clear" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-seed-large"; on.click (fun _ _ -> seedLarge ()) ] [ text "Seed large" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-seed-adjacent-boundary"; on.click (fun _ _ -> seedAdjacentBoundary ()) ] [ text "Seed adjacent boundary" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-read-adjacent-boundary"; on.click (fun _ _ -> readAdjacentBoundary ()) ] [ text "Read adjacent boundary" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-read-large"; on.click (fun _ _ -> readLarge ()) ] [ text "Read large" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-rehydrate-large"; on.click (fun _ _ -> rehydrateLarge ()) ] [ text "Rehydrate large" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-supersede-large"; on.click (fun _ _ -> supersedeLargeRehydrate ()) ] [ text "Supersede large" ]

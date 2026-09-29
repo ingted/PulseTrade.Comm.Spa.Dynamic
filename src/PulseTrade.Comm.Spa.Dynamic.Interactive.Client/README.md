@@ -103,3 +103,5 @@ RFC-0030 candidate為Interactive.Client `0.1.73`，exact依賴Contracts `[0.1.30
 RFC-0032最新candidate Interactive.Client `0.1.95`，exact依賴Contracts `[0.1.33]`與Renderer `[0.1.103]`。大型cache rehydrate先同步驗header/document/workspace/current authority，再由既有frame pump分段驗nested data並atomic publish；bundle帶入navigator live outer SVG event／geometry authority修正，manifest packageVersion=`0.1.95`。不得在pump前重複同步掃完整snapshot；source commit `651ecc5`的NuGet.org artifact已驗證，真SPAA progressive/cache-hit仍待consumer驗收。
 
 Current owner candidate Interactive.Client `0.1.112` exact依賴Contracts `[0.1.35]`與Renderer `[0.1.121]`，帶入loaded-domain View All及既有local-first navigator修正。bundle manifest須為`.112`；official readback與真SPAA pending。
+
+Interactive.Client `0.1.113`收緊adjacent cache `KnownEmpty` authority：loaded domain在方向上仍有target ordinal時，無hit必須回`Miss`讓provider處理；只有無target ordinal且empty span緊貼active boundary才可KnownEmpty。`.112`是已push但不得交consumer的中間版本；final graph使用`.113`，unit、persistent IndexedDB reload Playwright與package verifier均通過。
