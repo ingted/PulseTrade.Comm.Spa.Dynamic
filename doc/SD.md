@@ -718,6 +718,8 @@ Candlestick row使用完整SVG viewBox高度，SVG edge到visible extrema的cent
 
 Overview selection rect只負責半透明選取填色。左右可見邊界為`ta-overview-left-handle-visual`／`ta-overview-right-handle-visual` line，固定`#155f73`、2 CSS px、`non-scaling-stroke`及`pointer-events=none`。既有`ta-overview-left-handle`／`ta-overview-right-handle`保留為transparent rect drag hit target，避免把可操作寬度誤當畫面線寬或破壞既有操作。Owner browser gate須在default、row resize及navigator viewport commit後分別驗computed stroke與DOM contract；真SPAA consumer另量實際geometry、截圖與互動效能。
 
+Navigator drag以live outer SVG currentTarget同時作bounds與event owner。`pointerdown`取得pointer id後必須呼叫`setPointerCapture`，後續`pointermove`／`pointerup`／`pointercancel`皆綁同一root；release即使落在SVG或嵌入iframe之外，仍完成一次commit／adjacent coverage request。capture不可用時才退回child document pointer listeners。`pointercancel`只清draft與handlers，不送remote action；cleanup必須release capture並移除三種listener。Owner gate除同document root外12px release外，另以iframe fixture驗child browsing-context外release及callback唯一增量。
+
 所有chart row的authored/default plot height在Renderer初始化、reset與browser reload時封頂250 CSS px；此限制不改寫文件中的`HeightWeight`，也不縮小resize handle的manual range。Candlestick與scalar row的手動上限仍分別為720／480px，trader操作後可超過250px；同canvas、同row的local override在authoritative data replacement時保留。Owner gate必須先在任何resize前量測全部chart SVG，再驗manual `>250`、reset/reload回到capped default及cursor垂直幾何同步。
 
 ### Default viewport / marker OFI band

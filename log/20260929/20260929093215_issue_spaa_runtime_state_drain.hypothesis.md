@@ -30,3 +30,7 @@ Daedalus以READY-before-drag與RESYNC-to-READY兩組A/B證明action皆`3 -> 3`�
 ## Correction 3
 
 Direct interaction-surface不是最終修法。真SPAA用official `.100/.92/.101`仍維持action `3 -> 3`；owner完整4,000-bar gate亦反證inner rect bounds會因outer SVG一像素border產生比例差：48-bar selection原應提交start 0，實際得到delta `-3954`／requestedStart `-2`，誤判為adjacent Earlier。最終authority改為interaction surface只負責hit，mousedown bubble到live outer SVG；handler直接以currentTarget outer SVG取得bounds，不再依賴可能過期的mutable onReady reference。這同時保留精確outer geometry與真DOM生命週期。
+
+## Correction 4
+
+Daedalus以official `.103/.95/.104`再次在真SPAA驗出RED：navigator root為x=82，pointer release落在x=70，action仍`3 -> 3`。bundle稽核確認`.95`確實包含`document mousemove/mouseup` listener，因此「正式bundle缺少global end handler」不成立。SPAA canvas位於child browsing context；pointer離開iframe後，child document不保證收到後續mouse event。根因收斂為drag ownership未跨browsing-context邊界。修正改採Pointer Events與`setPointerCapture`，並以iframe fixture驗證root外／frame外release仍完成唯一一次action；同document document-listener不再作主要正確性機制。

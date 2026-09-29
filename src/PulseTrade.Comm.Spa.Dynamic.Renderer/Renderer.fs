@@ -685,8 +685,8 @@ module TaWorkspaceRenderer =
             on.afterRender onReady
             Attr.Create "data-drag-event-binding" "navigator-root"
             Attr.Create "data-drag-bounds-source" "navigator-root"
-            on.mouseDown (fun element event -> onPointerDown (element |> As<Element>) event)
-            on.mouseUp (fun _ event -> onDragEnd event)
+            Attr.Handler "pointerdown" (fun element event -> onPointerDown (element |> As<Element>) event)
+            Attr.Handler "pointerup" (fun _ event -> onDragEnd event)
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
                 if bounds.Width > 0.0 then
@@ -2509,8 +2509,9 @@ module TaWorkspaceRenderer =
             let boundedCount = max options.MinimumVisibleBars (min total count)
             setWindow true { StartIndex = max 0 (total - boundedCount); Count = boundedCount }
 
-        let startNavigatorDrag (navigatorRoot: Element) (event: MouseEvent) =
+        let startNavigatorDrag (navigatorRoot: Element) (rawEvent: Event) =
             if not (isNull navigatorRoot) then
+                let event = rawEvent :?> MouseEvent
                 let setDragDiagnostic name value =
                     navigatorRoot.SetAttribute(name, value)
                     if not (isNull chartStackElement) then chartStackElement.SetAttribute(name, value)
@@ -2541,11 +2542,21 @@ module TaWorkspaceRenderer =
                         let mutable latestRawDelta = 0
                         let mutable moveHandler: Action<Event> = null
                         let mutable upHandler: Action<Event> = null
+                        let mutable cancelHandler: Action<Event> = null
                         let mutable finished = false
+                        let pointerId: int = JS.Get "pointerId" rawEvent
+                        let mutable documentFallback = false
 
                         let cleanup () =
-                            if not (isNull moveHandler) then JS.Document.RemoveEventListener("mousemove", moveHandler)
-                            if not (isNull upHandler) then JS.Document.RemoveEventListener("mouseup", upHandler)
+                            if documentFallback then
+                                if not (isNull moveHandler) then JS.Document.RemoveEventListener("pointermove", moveHandler)
+                                if not (isNull upHandler) then JS.Document.RemoveEventListener("pointerup", upHandler)
+                                if not (isNull cancelHandler) then JS.Document.RemoveEventListener("pointercancel", cancelHandler)
+                            else
+                                if not (isNull moveHandler) then navigatorRoot.RemoveEventListener("pointermove", moveHandler)
+                                if not (isNull upHandler) then navigatorRoot.RemoveEventListener("pointerup", upHandler)
+                                if not (isNull cancelHandler) then navigatorRoot.RemoveEventListener("pointercancel", cancelHandler)
+                                try navigatorRoot.ReleasePointerCapture(pointerId) with _ -> ()
 
                         let finish () =
                             if not finished then
@@ -2590,11 +2601,30 @@ module TaWorkspaceRenderer =
                         upHandler <-
                             Action<Event>(fun _ -> finish ())
 
-                        finishNavigatorDrag <- Some finish
-                        JS.Document.AddEventListener("mousemove", moveHandler)
-                        JS.Document.AddEventListener("mouseup", upHandler)
+                        cancelHandler <-
+                            Action<Event>(fun _ ->
+                                if not finished then
+                                    finished <- true
+                                    finishNavigatorDrag <- None
+                                    draftWindow.Value <- None
+                                    setDragDiagnostic "data-drag-outcome" "cancelled"
+                                    cleanup ())
 
-        let finishNavigatorDragFromElement (event: MouseEvent) =
+                        finishNavigatorDrag <- Some finish
+                        try
+                            navigatorRoot.SetPointerCapture(pointerId)
+                            setDragDiagnostic "data-drag-capture" "pointer"
+                            navigatorRoot.AddEventListener("pointermove", moveHandler)
+                            navigatorRoot.AddEventListener("pointerup", upHandler)
+                            navigatorRoot.AddEventListener("pointercancel", cancelHandler)
+                        with _ ->
+                            documentFallback <- true
+                            setDragDiagnostic "data-drag-capture" "document-fallback"
+                            JS.Document.AddEventListener("pointermove", moveHandler)
+                            JS.Document.AddEventListener("pointerup", upHandler)
+                            JS.Document.AddEventListener("pointercancel", cancelHandler)
+
+        let finishNavigatorDragFromElement (event: Event) =
             event.PreventDefault()
             finishNavigatorDrag |> Option.iter (fun finish -> finish ())
 

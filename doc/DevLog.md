@@ -1906,3 +1906,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Source commit `651ecc5`已push；Renderer `0.1.103`、Interactive.Client `0.1.95`、Ptcs.Client `0.1.104`依序push並由NuGet.org flat-container重新下載。
 - Official SHA-256依序為`EACCEAB5485514FC2052190BBF0CE5060069DCA060948F17A9B9334D46E68FC8 / 317AADCE892318CFE02E02D2F9C98F51B8B4426C109936B7C51492E0CFC8E32E / 3FA87B12ABE2958F1B3BA5AAD6F92F10BA4C1243977F629C71C2C11BCFDADE09`。Repository signatures、source commit、exact dependencies、Interactive manifest `0.1.95`與排除signature後entry parity皆PASS；真SPAA formal gate交由Daedalus執行。
+
+## 2026-09-29 - Navigator cross-frame pointer capture candidate
+
+- Daedalus以official `.103/.95/.104`真SPAA驗出root x=82、release x=70時action仍`3->3`。bundle已含child document mouse handlers，故根因是pointer離開child browsing context後release未回到該document。
+- Renderer `.104`改以pointerdown取得live outer SVG capture，move/up/cancel由同一root處理；capture不可用才退回document pointer listeners。新增iframe fixture與F# Playwright，frame x=80、navigator x=101、release x=68仍callback `1->2`、outcome=`request-earlier`。
+- Local exact graph為Renderer `.104`、Interactive.Client `.96`、Ptcs.Client `.105`。Focused suites `55/15/17`、同document四條boundary、跨iframe及完整非效能功能／幾何gatePASS，Interactive package verifierPASS。第一次strict完整gate僅既有200→All state `808.45ms`超750ms，acceptance phases無>100ms task；official publish/readback與真SPAA closure pending。

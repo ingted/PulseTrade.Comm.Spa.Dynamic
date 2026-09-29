@@ -135,6 +135,9 @@ let dragSelectionToEarlierBoundary scenario =
     require
         (stringAttribute navigator "data-drag-mode" = "move")
         $"{scenario}: navigator drag was not classified as move"
+    require
+        (stringAttribute navigator "data-drag-capture" = "pointer")
+        $"{scenario}: navigator did not acquire pointer capture"
     page.Mouse.MoveAsync(beyondLeftX, y) |> awaitUnit
     require
         (stringAttribute navigator "data-drag-outcome" = "moving")
@@ -245,6 +248,59 @@ require (stringAttribute callbackState "data-last-action" = "VisibleRangeChanged
 let wideScreenshotPath = Path.Combine(outputDirectory, "wide-selection-resync-boundary-latest-intent.png")
 page.ScreenshotAsync(PageScreenshotOptions(Path = wideScreenshotPath, FullPage = true)) |> awaitTask |> ignore
 printfn "wide-selection-resync.pass callbacks=%d->%d screenshot=%s" wideCallbacksBefore (wideCallbacksBefore + 1) wideScreenshotPath
+
+let embeddedUri = Uri(Uri(url), "embedded.html").AbsoluteUri
+page.GotoAsync(embeddedUri, PageGotoOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+let rendererFrameElement = page.Locator("#renderer-frame")
+rendererFrameElement.WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+let rendererFrame = page.FrameLocator("#renderer-frame")
+rendererFrame.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+rendererFrame.Locator("[data-testid='ta-demo-loaded-coverage']").ClickAsync() |> awaitUnit
+let embeddedChartStack = rendererFrame.Locator("[data-testid='ta-chart-stack']")
+let embeddedCallbackState = rendererFrame.Locator("[data-testid='ta-demo-callback-state']")
+waitInt embeddedChartStack "data-loaded-bars" 500
+waitInt embeddedChartStack "data-visible-start" 251
+waitInt embeddedChartStack "data-visible-end" 500
+let embeddedPanLeft = rendererFrame.Locator("[data-testid='ta-pan-left']")
+waitUntil "embedded pan-left enabled" (fun () -> embeddedPanLeft.IsEnabledAsync() |> awaitTask) id |> ignore
+embeddedPanLeft.ClickAsync() |> awaitUnit
+waitInt embeddedChartStack "data-visible-start" 1
+waitInt embeddedChartStack "data-visible-end" 250
+waitText (rendererFrame.Locator("[data-testid='ta-poll-state']")) "READY"
+
+let embeddedNavigator = rendererFrame.Locator("[data-testid='ta-overview-navigator']")
+let embeddedSelection = rendererFrame.Locator("[data-testid='ta-overview-selection']")
+let embeddedNavigatorBounds = embeddedNavigator.BoundingBoxAsync() |> awaitTask
+let embeddedSelectionBounds = embeddedSelection.BoundingBoxAsync() |> awaitTask
+let rendererFrameBounds = rendererFrameElement.BoundingBoxAsync() |> awaitTask
+require
+    (not (isNull embeddedNavigatorBounds) && not (isNull embeddedSelectionBounds) && not (isNull rendererFrameBounds))
+    "embedded navigator, selection and iframe must expose pointer geometry"
+let embeddedY = embeddedSelectionBounds.Y + embeddedSelectionBounds.Height / 2.0f
+let embeddedSelectionCenterX = embeddedSelectionBounds.X + embeddedSelectionBounds.Width / 2.0f
+let beyondFrameLeftX = max 1.0f (rendererFrameBounds.X - 12.0f)
+let embeddedCallbacksBefore = intAttribute embeddedCallbackState "data-callback-count"
+printfn
+    "embedded-frame.geometry frame=(%.1f,%.1f %.1fx%.1f) navigator=(%.1f,%.1f %.1fx%.1f) drag=(%.1f,%.1f)->(%.1f,%.1f)"
+    rendererFrameBounds.X rendererFrameBounds.Y rendererFrameBounds.Width rendererFrameBounds.Height
+    embeddedNavigatorBounds.X embeddedNavigatorBounds.Y embeddedNavigatorBounds.Width embeddedNavigatorBounds.Height
+    embeddedSelectionCenterX embeddedY beyondFrameLeftX embeddedY
+page.Mouse.MoveAsync(embeddedSelectionCenterX, embeddedY) |> awaitUnit
+page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+require (stringAttribute embeddedNavigator "data-drag-mode" = "move") "embedded navigator drag was not classified as move"
+require (stringAttribute embeddedNavigator "data-drag-capture" = "pointer") "embedded navigator did not acquire pointer capture"
+page.Mouse.MoveAsync(beyondFrameLeftX, embeddedY, MouseMoveOptions(Steps = 4)) |> awaitUnit
+require (stringAttribute embeddedNavigator "data-drag-outcome" = "moving") "embedded navigator did not retain the pointer outside its iframe"
+waitText (rendererFrame.Locator("[data-testid='ta-viewport-range']")) "Preview"
+page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+waitInt embeddedCallbackState "data-callback-count" (embeddedCallbacksBefore + 1)
+require (stringAttribute embeddedCallbackState "data-last-action" = "VisibleRangeChanged") "embedded iframe boundary release did not dispatch the viewport action"
+require (stringAttribute embeddedNavigator "data-drag-outcome" = "request-earlier") "embedded iframe boundary release did not request earlier coverage"
+let embeddedScreenshotPath = Path.Combine(outputDirectory, "embedded-frame-outside-release.png")
+page.ScreenshotAsync(PageScreenshotOptions(Path = embeddedScreenshotPath, FullPage = true)) |> awaitTask |> ignore
+printfn "embedded-frame.pass callbacks=%d->%d screenshot=%s" embeddedCallbacksBefore (embeddedCallbacksBefore + 1) embeddedScreenshotPath
+
+require (consoleErrors.Count = 0) ("browser errors: " + String.concat " | " consoleErrors)
 
 browser.CloseAsync() |> awaitUnit
 playwright.Dispose()
