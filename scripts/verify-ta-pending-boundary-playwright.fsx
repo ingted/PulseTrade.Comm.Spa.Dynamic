@@ -111,8 +111,14 @@ let dragSelectionToEarlierBoundary scenario =
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
     let interactionSurface = page.Locator("[data-testid='ta-overview-interaction-surface']")
     require
-        (stringAttribute interactionSurface "data-drag-event-binding" = "interaction-surface")
-        "navigator drag start is not bound to the canonical interaction surface"
+        (stringAttribute navigator "data-drag-event-binding" = "navigator-root")
+        "navigator drag start is not bound to the live navigator root"
+    require
+        (stringAttribute navigator "data-drag-bounds-source" = "navigator-root")
+        "navigator drag geometry is not sourced from the live navigator root"
+    require
+        (stringAttribute interactionSurface "data-drag-event-binding" = "bubbles-to-navigator-root")
+        "navigator interaction surface does not bubble to the live navigator root"
     let bounds = navigator.BoundingBoxAsync() |> awaitTask
     require (not (isNull bounds)) "navigator geometry is unavailable"
     let selectionBounds = page.Locator("[data-testid='ta-overview-selection']").BoundingBoxAsync() |> awaitTask
@@ -123,7 +129,19 @@ let dragSelectionToEarlierBoundary scenario =
     printfn "%s.geometry navigator=(%.1f,%.1f %.1fx%.1f) selection=(%.1f,%.1f %.1fx%.1f) drag=(%.1f,%.1f)->(%.1f,%.1f)" scenario bounds.X bounds.Y bounds.Width bounds.Height selectionBounds.X selectionBounds.Y selectionBounds.Width selectionBounds.Height selectionCenterX y beyondLeftX y
     page.Mouse.MoveAsync(selectionCenterX, y) |> awaitUnit
     page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+    require
+        (stringAttribute navigator "data-drag-handler-invoked" = "true")
+        $"{scenario}: live navigator root did not receive mousedown"
+    require
+        (stringAttribute navigator "data-drag-mode" = "move")
+        $"{scenario}: navigator drag was not classified as move"
     page.Mouse.MoveAsync(beyondLeftX, y) |> awaitUnit
+    require
+        (stringAttribute navigator "data-drag-outcome" = "moving")
+        $"{scenario}: live navigator root did not receive mousemove"
+    require
+        (stringAttribute navigator "data-drag-last-delta" <> "0")
+        $"{scenario}: navigator mousemove produced zero delta"
     printfn "%s.after-move range=%s" scenario (page.Locator("[data-testid='ta-viewport-range']").TextContentAsync() |> awaitTask |> Option.ofObj |> Option.defaultValue "")
     waitText (page.Locator("[data-testid='ta-viewport-range']")) "Preview"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
@@ -200,6 +218,33 @@ waitInt chartStack "data-visible-end" 452
 let interleavedScreenshotPath = Path.Combine(outputDirectory, "pending-action-resync-boundary-latest-intent.png")
 page.ScreenshotAsync(PageScreenshotOptions(Path = interleavedScreenshotPath, FullPage = true)) |> awaitTask |> ignore
 printfn "pending-action-resync.pass callbacks=%d->%d queryGeneration=2 visible=405-452 screenshot=%s" interleavedCallbacksBefore (interleavedCallbacksBefore + 2) interleavedScreenshotPath
+
+page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+page.Locator("[data-testid='ta-demo-loaded-coverage']").ClickAsync() |> awaitUnit
+waitInt chartStack "data-loaded-bars" 500
+waitInt chartStack "data-ready-row-count" 7
+waitInt chartStack "data-visible-start" 251
+waitInt chartStack "data-visible-end" 500
+let widePanLeft = page.Locator("[data-testid='ta-pan-left']")
+waitUntil "wide-selection pan-left enabled" (fun () -> widePanLeft.IsEnabledAsync() |> awaitTask) id |> ignore
+widePanLeft.ClickAsync() |> awaitUnit
+waitInt chartStack "data-visible-start" 1
+waitInt chartStack "data-visible-end" 250
+waitText (page.Locator("[data-testid='ta-poll-state']")) "READY"
+let wideCallbacksBefore = intAttribute callbackState "data-callback-count"
+page.Locator("[data-testid='ta-demo-paused']").ClickAsync() |> awaitUnit
+waitText (page.Locator("[data-testid='ta-poll-state']")) "RESYNC"
+dragSelectionToEarlierBoundary "wide-selection-resync"
+waitText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
+require (intAttribute callbackState "data-callback-count" = wideCallbacksBefore) "wide PausedForResync queue must not dispatch before Ready"
+page.Locator("[data-testid='ta-demo-live']").ClickAsync() |> awaitUnit
+waitText (page.Locator("[data-testid='ta-poll-state']")) "READY"
+waitInt callbackState "data-callback-count" (wideCallbacksBefore + 1)
+require (stringAttribute callbackState "data-last-action" = "VisibleRangeChanged") "the wide-selection boundary action was not dispatched last"
+let wideScreenshotPath = Path.Combine(outputDirectory, "wide-selection-resync-boundary-latest-intent.png")
+page.ScreenshotAsync(PageScreenshotOptions(Path = wideScreenshotPath, FullPage = true)) |> awaitTask |> ignore
+printfn "wide-selection-resync.pass callbacks=%d->%d screenshot=%s" wideCallbacksBefore (wideCallbacksBefore + 1) wideScreenshotPath
 
 browser.CloseAsync() |> awaitUnit
 playwright.Dispose()

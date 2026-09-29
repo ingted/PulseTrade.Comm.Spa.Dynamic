@@ -1874,6 +1874,12 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - NuGet.org official SHA-256依序為`4792432C548E2B62E9C1F73FAA77D49EF7ED00326507BF604900DA6CD002EE41 / BF9B06EA76660CB1F27AC774E00A5CD9999A283624284B898528A14BD8087CC3 / 00863B675F01162070076F71FB5C9B25B5D43AF8A26F81781AADBA3525414D3D`。三包repository signatures、exact dependencies與排除`.signature.p7s`後entry parity全綠；Interactive bundle manifest=`0.1.90`。
 - Official graph已可供Daedalus升版重跑真SPAA progressive／cache-hit／Edit gates；consumer回覆前DYN-TA-027D/E仍不結案。
 
+## 2026-09-29 - Live navigator-root geometry candidate
+
+- Daedalus以official Renderer `0.1.100`／Interactive.Client `0.1.92`真SPAA證明direct interaction-surface仍未送出boundary action；package與bundle皆為新版本，非stale asset。
+- 完整owner gate定位inner rect與outer bordered SVG geometry不同：48-bar drag出現delta `-3954`、requestedStart `-2`，誤走adjacent Earlier。Renderer改由transparent surface bubble到live outer SVG，直接以currentTarget作event與bounds authority，移除mutable DOM reference；action/wire與queue contract不變。
+- Candidate graph為Renderer `0.1.102`、Interactive.Client `0.1.94`、Ptcs.Client `0.1.103`。Focused suites `55/15/17`；focused四條boundary及完整Renderer F# Playwright均PASS，Interactive package verifierPASS。Official publication/readback與真SPAA consumer gate pending。
+
 ## 2026-09-29 - SPAA RESYNC/action settlement joint drain candidate
 
 - 真SPAA以official `0.1.98/0.1.90`重現：navigator boundary drag發生於`RESYNC`且前一個HTTP action仍pending；該action完成revision 4並回到`READY`後，action count仍`3 -> 3`。正式SPAA直接將Renderer綁至HTTP/cache callback，非Interactive WebSocket remount問題。

@@ -683,6 +683,9 @@ module TaWorkspaceRenderer =
             svgAttr "preserveAspectRatio" "none"
             attr.style ("display:block; width:100%; height:82px; min-width:0; background:" + palette.OverviewSurface + "; border:1px solid " + palette.Border + "; border-radius:4px; box-sizing:border-box; touch-action:none; cursor:grab;")
             on.afterRender onReady
+            Attr.Create "data-drag-event-binding" "navigator-root"
+            Attr.Create "data-drag-bounds-source" "navigator-root"
+            on.mouseDown (fun element event -> onPointerDown (element |> As<Element>) event)
             on.mouseUp (fun _ event -> onDragEnd event)
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
@@ -697,10 +700,10 @@ module TaWorkspaceRenderer =
         ] [
             yield svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-interaction-surface"
-                Attr.Create "data-drag-event-binding" "interaction-surface"
+                Attr.Create "data-drag-event-binding" "bubbles-to-navigator-root"
+                Attr.Create "data-drag-bounds-source" "navigator-root"
                 svgAttr "x" "0"; svgAttr "y" "0"; svgAttr "width" "1000"; svgAttr "height" "82"
                 svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"
-                on.mouseDown (fun _ event -> onPointerDown event)
             ] []
             yield svgElement "path" [
                 Attr.Create "data-testid" "ta-overview-candle-wicks"
@@ -1914,7 +1917,6 @@ module TaWorkspaceRenderer =
         let mutable pendingAddRowId: string option = None
         let mutable editingRowId: string option = None
         let mutable pendingEditorMutation: (int64 * string option * Set<string> * TaRowEditorBinding) option = None
-        let mutable navigatorElement: Element = null
         let mutable finishNavigatorDrag: (unit -> unit) option = None
         let mutable chartRenderSequence = 0
         let mutable chartRenderReason = "initial"
@@ -2507,64 +2509,90 @@ module TaWorkspaceRenderer =
             let boundedCount = max options.MinimumVisibleBars (min total count)
             setWindow true { StartIndex = max 0 (total - boundedCount); Count = boundedCount }
 
-        let startNavigatorDrag (event: MouseEvent) =
-            if not (localViewportDisabled runtimeState.Value.Poll) && not (isNull navigatorElement) then
-                let bounds = navigatorElement.GetBoundingClientRect()
-                let total = referenceLength ()
-                let committed = resolvedWindow uiState.Value
-                let pointerX = float event.ClientX - bounds.Left
-                let ratios = RendererModel.selectionRatios total (defaultArg draftWindow.Value committed)
+        let startNavigatorDrag (navigatorRoot: Element) (event: MouseEvent) =
+            if not (isNull navigatorRoot) then
+                let setDragDiagnostic name value =
+                    navigatorRoot.SetAttribute(name, value)
+                    if not (isNull chartStackElement) then chartStackElement.SetAttribute(name, value)
+                setDragDiagnostic "data-drag-handler-invoked" "true"
+                setDragDiagnostic "data-drag-mode" "pending"
+                setDragDiagnostic "data-drag-last-delta" "0"
+                setDragDiagnostic "data-drag-outcome" "started"
 
-                match RendererModel.navigatorDragMode bounds.Width 24.0 ratios pointerX with
-                | None -> ()
-                | Some drag ->
-                    event.PreventDefault()
-                    event.StopPropagation()
-                    let startClientX = event.ClientX
-                    let mutable latestRawDelta = 0
-                    let mutable moveHandler: Action<Event> = null
-                    let mutable upHandler: Action<Event> = null
-                    let mutable finished = false
+                if localViewportDisabled runtimeState.Value.Poll then
+                    setDragDiagnostic "data-drag-outcome" "disabled"
+                else
+                    let bounds = navigatorRoot.GetBoundingClientRect()
+                    let total = referenceLength ()
+                    let committed = resolvedWindow uiState.Value
+                    let pointerX = float event.ClientX - bounds.Left
+                    let ratios = RendererModel.selectionRatios total (defaultArg draftWindow.Value committed)
 
-                    let cleanup () =
-                        if not (isNull moveHandler) then JS.Document.RemoveEventListener("mousemove", moveHandler)
-                        if not (isNull upHandler) then JS.Document.RemoveEventListener("mouseup", upHandler)
+                    match RendererModel.navigatorDragMode bounds.Width 24.0 ratios pointerX with
+                    | None ->
+                        setDragDiagnostic "data-drag-mode" "none"
+                        setDragDiagnostic "data-drag-outcome" "outside-selection"
+                    | Some drag ->
+                        setDragDiagnostic "data-drag-mode" drag
+                        setDragDiagnostic "data-drag-outcome" "tracking"
+                        event.PreventDefault()
+                        event.StopPropagation()
+                        let startClientX = event.ClientX
+                        let mutable latestRawDelta = 0
+                        let mutable moveHandler: Action<Event> = null
+                        let mutable upHandler: Action<Event> = null
+                        let mutable finished = false
 
-                    let finish () =
-                        if not finished then
-                            finished <- true
-                            finishNavigatorDrag <- None
-                            let draft = defaultArg draftWindow.Value committed
-                            let requestedStart = committed.StartIndex + latestRawDelta
-                            if drag = TaWindowDrag.Move && requestedStart < 0 then
-                                draftWindow.Value <- None
-                                requestAdjacentCoverage PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier (-committed.Count)
-                            elif drag = TaWindowDrag.Move && requestedStart > RendererModel.viewportMaximumStart total committed then
-                                draftWindow.Value <- None
-                                requestAdjacentCoverage PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Later committed.Count
-                            else
-                                let followLatest, next =
-                                    RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
-                                if next <> committed || followLatest <> uiState.Value.FollowLatest then setWindow followLatest next
-                                else draftWindow.Value <- None
-                            cleanup ()
+                        let cleanup () =
+                            if not (isNull moveHandler) then JS.Document.RemoveEventListener("mousemove", moveHandler)
+                            if not (isNull upHandler) then JS.Document.RemoveEventListener("mouseup", upHandler)
 
-                    moveHandler <-
-                        Action<Event>(fun rawEvent ->
-                            let mouse = rawEvent :?> MouseEvent
-                            let delta =
-                                if bounds.Width <= 0.0 || total <= 0 then 0
-                                else int (Math.Round(float (mouse.ClientX - startClientX) / bounds.Width * float total))
-                            latestRawDelta <- delta
-                            draftWindow.Value <-
-                                Some(RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta))
+                        let finish () =
+                            if not finished then
+                                finished <- true
+                                finishNavigatorDrag <- None
+                                let draft = defaultArg draftWindow.Value committed
+                                let requestedStart = committed.StartIndex + latestRawDelta
+                                setDragDiagnostic "data-drag-committed-start" (string committed.StartIndex)
+                                setDragDiagnostic "data-drag-draft-start" (string draft.StartIndex)
+                                setDragDiagnostic "data-drag-requested-start" (string requestedStart)
+                                if drag = TaWindowDrag.Move && requestedStart < 0 then
+                                    setDragDiagnostic "data-drag-outcome" "request-earlier"
+                                    draftWindow.Value <- None
+                                    requestAdjacentCoverage PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier (-committed.Count)
+                                elif drag = TaWindowDrag.Move && requestedStart > RendererModel.viewportMaximumStart total committed then
+                                    setDragDiagnostic "data-drag-outcome" "request-later"
+                                    draftWindow.Value <- None
+                                    requestAdjacentCoverage PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Later committed.Count
+                                else
+                                    let followLatest, next =
+                                        RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
+                                    if next <> committed || followLatest <> uiState.Value.FollowLatest then
+                                        setDragDiagnostic "data-drag-outcome" "commit-local"
+                                        setWindow followLatest next
+                                    else
+                                        setDragDiagnostic "data-drag-outcome" "no-change"
+                                        draftWindow.Value <- None
+                                cleanup ()
 
-                    upHandler <-
-                        Action<Event>(fun _ -> finish ())
+                        moveHandler <-
+                            Action<Event>(fun rawEvent ->
+                                let mouse = rawEvent :?> MouseEvent
+                                let delta =
+                                    if bounds.Width <= 0.0 || total <= 0 then 0
+                                    else int (Math.Round(float (mouse.ClientX - startClientX) / bounds.Width * float total))
+                                latestRawDelta <- delta
+                                setDragDiagnostic "data-drag-last-delta" (string delta)
+                                setDragDiagnostic "data-drag-outcome" "moving"
+                                draftWindow.Value <-
+                                    Some(RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta))
 
-                    finishNavigatorDrag <- Some finish
-                    JS.Document.AddEventListener("mousemove", moveHandler)
-                    JS.Document.AddEventListener("mouseup", upHandler)
+                        upHandler <-
+                            Action<Event>(fun _ -> finish ())
+
+                        finishNavigatorDrag <- Some finish
+                        JS.Document.AddEventListener("mousemove", moveHandler)
+                        JS.Document.AddEventListener("mouseup", upHandler)
 
         let finishNavigatorDragFromElement (event: MouseEvent) =
             event.PreventDefault()
@@ -3882,7 +3910,7 @@ module TaWorkspaceRenderer =
                                                      let selection = defaultArg draft visibleWindow
                                                      let total, globalSelection = navigatorWindow selection
                                                      RendererModel.selectionRatios total globalSelection))
-                                                (fun node -> navigatorElement <- node |> As<Element>)
+                                                ignore
                                                 startNavigatorDrag
                                                 finishNavigatorDragFromElement)
                                         |> Doc.EmbedView

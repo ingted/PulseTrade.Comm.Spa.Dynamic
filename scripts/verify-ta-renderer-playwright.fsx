@@ -1133,6 +1133,16 @@ let verifyDesktop (browser: IBrowser) =
     require committedMatch.Success ("release did not publish committed bounds: " + committedText)
     let committedStart = Int32.Parse committedMatch.Groups[1].Value
     let committedEnd = Int32.Parse committedMatch.Groups[2].Value
+    printfn
+        "browser.navigator-drag mode=%s delta=%s outcome=%s committedStart=%s draftStart=%s requestedStart=%s preview=%s committed=%s"
+        (attributeOrEmpty chartStack "data-drag-mode")
+        (attributeOrEmpty chartStack "data-drag-last-delta")
+        (attributeOrEmpty chartStack "data-drag-outcome")
+        (attributeOrEmpty chartStack "data-drag-committed-start")
+        (attributeOrEmpty chartStack "data-drag-draft-start")
+        (attributeOrEmpty chartStack "data-drag-requested-start")
+        previewText
+        committedText
     require
         (committedEnd - committedStart + 1 = visiblePointCount && committedStart < initialVisibleStart)
         ("move release must commit one historical 48-bar window: " + committedText)

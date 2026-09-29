@@ -26,3 +26,7 @@
 ## Correction 2
 
 Daedalus以READY-before-drag與RESYNC-to-READY兩組A/B證明action皆`3 -> 3`，且feedback從未進入`Earlier coverage queued.`；因此queue甚至沒有建立，聯合gate不是此failure的根因。Owner gate改用相同的一次性框外座標後仍通過，排除document mouseup。剩餘可區分差異是consumer頁面的事件target／bubble路徑；最小實驗把mousedown authority直接綁到既有`ta-overview-interaction-surface`，不改gesture model、coverage request或provider。
+
+## Correction 3
+
+Direct interaction-surface不是最終修法。真SPAA用official `.100/.92/.101`仍維持action `3 -> 3`；owner完整4,000-bar gate亦反證inner rect bounds會因outer SVG一像素border產生比例差：48-bar selection原應提交start 0，實際得到delta `-3954`／requestedStart `-2`，誤判為adjacent Earlier。最終authority改為interaction surface只負責hit，mousedown bubble到live outer SVG；handler直接以currentTarget outer SVG取得bounds，不再依賴可能過期的mutable onReady reference。這同時保留精確outer geometry與真DOM生命週期。
