@@ -1885,3 +1885,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus A/B證明真SPAA即使先等READY，selection-center drag仍action `3->3`且feedback未進queue；`.99/.91/.100`的joint drain保留為state-race hardening，但不是gesture miss closure。
 - Owner focused gate改用相同的一次性框外12px座標後仍通過，排除負座標／document mouseup。Renderer將drag start由SVG root bubble移至canonical透明interaction surface direct handler；document move/up、24 CSS px hit resolver及coverage contract不變。
 - Candidate exact graph為Renderer `0.1.100`、Interactive.Client `0.1.92`、Ptcs.Client `0.1.101`。Focused suites `55/15/17`，focused browser最終三情境`0->2 / 0->1 / 0->2`；完整Renderer正式phases無>100ms，package verifier PASS。第一次Paused focused run受前一action settlement競態失敗，立即重跑通過；consumer formal progressive仍是最終gate。
+
+## 2026-09-29 - Navigator interaction-surface official package handoff
+
+- Source commit `7458f3a`已push；Renderer `0.1.100`、Interactive.Client `0.1.92`、Ptcs.Client `0.1.101`三包push均回`Created`。
+- NuGet.org official SHA-256依序為`759432FCE6029F0011D6BEB5D6A6141C8A1B2AD9B0468A40273345A828D7A3F / 66F93800F42094FEC82889C389C19B9CA6F760AD286EC1648BEFA2014F0B0899 / 535FE654ACCB9E412AEF1686238CAA4EAB81ABC0B1EF76F15B69A67B651698B3`。Repository signatures、exact dependencies、Interactive manifest `0.1.92`及排除`.signature.p7s`後entry parity均PASS；真SPAA formal progressive仍由consumer驗收。

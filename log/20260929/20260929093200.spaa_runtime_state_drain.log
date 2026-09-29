@@ -55,3 +55,6 @@ Daedalus以official Renderer `0.1.98`／Interactive.Client `0.1.90`重建真SPAA
 - 10:45 完整Renderer browser gate PASS；five-candle/scenario/All/marker/document/progressive正式phases均無>100ms task。Interactive package verifier PASS，local SHA=`AE92F3A3...A797 / 17E34BE6...4ADF / 99907EE5...5BD3`。
 - 10:51 changed-path敏感掃描為High=0／Medium=0。首次closeout checker因其舊state尚未吸收兩份已提交的同日歷史log append而報`log_readonly_modify`；`git show 91f2302`證實本輪前一commit未修改該兩檔。此為checker baseline時序偏差，不影響candidate source/package；保存finding後以更新baseline重驗。
 - 10:53 更新baseline後task-scoped checker通過：PASS=33、WARN=10、FAIL=0。WARN為未改動current文件、commit前dirty與既有全repo traceability inventory，無本輪衝突。
+- 10:54 source commit `7458f3a`已push；Renderer `0.1.100`、Interactive.Client `0.1.92`、Ptcs.Client `0.1.101`三包NuGet push均回`Created`。
+- 11:01 NuGet.org official readback完成：SHA-256依序為`759432FC...A3F7 / 66F93800...B0899 / 535FE654...98B3`；三包repository signature有效，exact dependencies／Interactive manifest正確，排除`.signature.p7s`後local／official entry differences全為0。
+- 11:03 official evidence docs changed-path敏感掃描High=0／Medium=0；task-scoped checker PASS=39、WARN=7、FAIL=0。WARN為未改動current文件、commit前dirty與既有traceability inventory。
