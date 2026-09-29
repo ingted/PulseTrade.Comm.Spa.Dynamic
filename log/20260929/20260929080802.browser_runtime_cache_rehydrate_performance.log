@@ -51,3 +51,4 @@ Daedalus真SPAA official `Renderer 0.1.94 / Interactive.Client 0.1.85`在Indexed
 ## Correction 2026-09-29 09:14 +08:00
 
 - 第二次checker的`log_readonly_modify`不是checker缺陷；本輪為補齊風險欄位，曾把內容插入既有log中段，違反append-only。此後本檔只在尾端追加；不修改checker，也不以新session規避。
+- 09:20 三包NuGet push均回`Created`並完成official readback。Repository signatures有效；official SHA-256依序為Renderer `4792432C...EE41`、Interactive.Client `BF9B06EA...7CC3`、Ptcs.Client `00863B67...4D3D`；exact dependencies、Interactive manifest `0.1.90`及排除signature後entryDiff=0。

@@ -161,4 +161,4 @@ Official correction graph為Renderer `0.1.95`、Interactive.Client `0.1.86`、Pt
 
 同輪cache-hit performance調查確認phased rehydrate在frame pump前仍同步執行完整snapshot semantic validation，等同掃兩次大型data。Interactive.Client改為同步驗header/document/workspace/current authority並建立frame，nested data只由phased pump驗證；generation、atomic publish與fail-closed語意不變。
 
-Owner candidate graph為Renderer `0.1.98`、Interactive.Client `0.1.90`、Ptcs.Client `0.1.99`。Focused `55/15/17`、真PollInFlight、`PausedForResync -> Ready`、3820x28 cache rehydrate及完整Renderer browser gate均PASS；official NuGet readback與Daedalus真SPAA progressive/cache-hit仍是停止條件。
+Official correction graph為Renderer `0.1.98`、Interactive.Client `0.1.90`、Ptcs.Client `0.1.99`，source commit `16dd825`。Focused `55/15/17`、真PollInFlight、`PausedForResync -> Ready`、3820x28 cache rehydrate及完整Renderer browser gate均PASS。三包NuGet.org repository signatures、exact dependencies、Interactive manifest及排除`.signature.p7s`後entry parity皆PASS；Daedalus真SPAA progressive/cache-hit仍是停止條件。

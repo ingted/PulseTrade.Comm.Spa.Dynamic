@@ -1867,3 +1867,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 真SPAA揭露前一版仍有兩個owner缺口：實際artifact把`PollInFlight`列入local hard-disable；`PausedForResync -> Ready`若沒有local action settlement，queued boundary intent不會排出。另大型BrowserRuntimeCache cache hit在phased pump前重複同步掃完整snapshot，造成155ms long task。
 - Renderer將local hard-disable限縮為`Unmounted/Disposed`，並由runtime state transition與action settlement共同drain single latest queue。Interactive.Client先驗header/document/workspace/current authority，再以既有frame pump分段驗nested data並atomic publish；fail-closed、generation supersede與public API不變。
 - Candidate graph為Renderer `0.1.98`、Interactive.Client `0.1.90`、Ptcs.Client `0.1.99`。Focused `55/15/17`；PollInFlight與PausedForResync兩條boundary gate、3820x28 cache gate、Edit geometry及完整Renderer Playwright皆PASS。Official publication/readback與Daedalus真SPAA progressive/cache-hit gates pending。
+
+## 2026-09-29 - Poll-state drain／browser cache phased rehydrate official release
+
+- Source commit `16dd825`已push；Renderer `0.1.98`、Interactive.Client `0.1.90`、Ptcs.Client `0.1.99` push均回`Created`。
+- NuGet.org official SHA-256依序為`4792432C548E2B62E9C1F73FAA77D49EF7ED00326507BF604900DA6CD002EE41 / BF9B06EA76660CB1F27AC774E00A5CD9999A283624284B898528A14BD8087CC3 / 00863B675F01162070076F71FB5C9B25B5D43AF8A26F81781AADBA3525414D3D`。三包repository signatures、exact dependencies與排除`.signature.p7s`後entry parity全綠；Interactive bundle manifest=`0.1.90`。
+- Official graph已可供Daedalus升版重跑真SPAA progressive／cache-hit／Edit gates；consumer回覆前DYN-TA-027D/E仍不結案。
