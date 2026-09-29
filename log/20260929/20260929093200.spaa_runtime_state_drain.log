@@ -77,3 +77,8 @@ Daedalus以official Renderer `0.1.98`／Interactive.Client `0.1.90`重建真SPAA
 - 12:57 三包NuGet push均回Created並完成official readback；repository signatures有效，official SHA依序為`BDA12686...B64C / C9947000...204F / 4E85B0FC...43A3`，entries=`7/10/7`且entryDiff=0。準備交Daedalus執行保留的18883 formal gate。
 - 13:00 closeout checker首次FAIL僅因DevLog用`Ptcs.Client .105`縮寫，未被版本追溯規則辨識；以檔尾Correction補三個完整package ID與舊→新版後重驗，不改舊紀錄或弱化gate。
 - 13:02 checker重驗PASS=32／WARN=8／FAIL=0；WARN為未改動KM/SA等current文件、commit前dirty與既有traceability inventory，無本輪blocking finding。
+- 13:09 Daedalus以official `.104/.96`回報formal RED action `3->3`，開始一次bounded immediate-attrs diagnostic；owner暫不發布新package。
+- 13:18 diagnostic確認`pointerTargetBeforeDown=<none>`且handler/capture/mode/delta全空。projection後navigator已離開viewport，舊gate沿用stale raw mouse座標，故前述RED不是owner package failure。
+- 13:22 consumer gate加入scroll、geometry重算與drag-start hit-test後，18883正式重跑GREEN：action `3->4`；initial=250、merged=500、authorityLoaded=1000、visible=1-250、selectionWidth=250、prependMs=47090、axes=8、runPosts=2、actions=5。
+- 13:23 撤回尚未commit/push的`.105/.97/.106` local candidate並恢復source workspace clean；`.104/.96/.105`即為consumer-accepted正式graph。工具政策拒絕刪除SDK library-packs內三個本輪暫存包，未繞過政策；它們未發布且不被current exact refs使用。
+- 13:26 closure文件changed-path敏感掃描High=0／Medium=0；task-scoped checkerPASS=28／WARN=2／FAIL=0。WARN僅commit前dirty與既有全repo RFC traceability inventory，無本輪blocking finding。

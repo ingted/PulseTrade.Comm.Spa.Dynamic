@@ -1921,3 +1921,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 ### Correction：完整package版本追溯
 
 - `PulseTrade.Comm.Spa.Dynamic.Renderer`由`0.1.103`升至`0.1.104`；`PulseTrade.Comm.Spa.Dynamic.Interactive.Client`由`0.1.95`升至`0.1.96`；`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`由`0.1.104`升至`0.1.105`。原因皆為navigator跨browsing-context Pointer Capture修正及exact downstream closure。
+
+## 2026-09-29 - Navigator cross-frame consumer closure
+
+- Daedalus對official Renderer `0.1.104`／Interactive.Client `0.1.96`的首次RED diagnostic顯示drag start `elementFromPoint`為空，且handler／capture／mode／delta attrs皆未出現。projection後navigator已離開viewport，consumer verifier沿用stale raw page mouse座標；這不是owner bundle failure。
+- Consumer gate加入`ScrollIntoViewIfNeeded`、重新取得navigator／selection geometry及drag-start overview hit-test後，18883正式SPAA action由`3`增至`4`，最終initial=250、merged=500、authorityLoaded=1000、visible=1-250、selectionWidth=250、axes=8、runPosts=2、actions=5。DYN-WBS-575與DYN-T-656完成；不發布額外package。

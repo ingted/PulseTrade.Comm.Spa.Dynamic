@@ -34,3 +34,7 @@ Direct interaction-surface不是最終修法。真SPAA用official `.100/.92/.101
 ## Correction 4
 
 Daedalus以official `.103/.95/.104`再次在真SPAA驗出RED：navigator root為x=82，pointer release落在x=70，action仍`3 -> 3`。bundle稽核確認`.95`確實包含`document mousemove/mouseup` listener，因此「正式bundle缺少global end handler」不成立。SPAA canvas位於child browsing context；pointer離開iframe後，child document不保證收到後續mouse event。根因收斂為drag ownership未跨browsing-context邊界。修正改採Pointer Events與`setPointerCapture`，並以iframe fixture驗證root外／frame外release仍完成唯一一次action；同document document-listener不再作主要正確性機制。
+
+## Correction 5
+
+Official `.104/.96`首次consumer RED並非pointer capture失效。bounded diagnostic在pointerdown後立即讀取時得到`pointerTargetBeforeDown=<none>`，handler／capture／mode／delta attrs全空；projection後navigator已離開viewport，但consumer gate沿用先前的raw page mouse座標。修正gate先`ScrollIntoViewIfNeeded`、重新取得geometry，且以`elementFromPoint`確認drag start命中overview。有效正式重跑action `3->4`並完成authorityLoaded=1000／visible=1-250，證明owner `.104`正確；不再發新package。
