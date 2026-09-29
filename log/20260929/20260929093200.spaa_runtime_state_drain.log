@@ -82,3 +82,4 @@ Daedalus以official Renderer `0.1.98`／Interactive.Client `0.1.90`重建真SPAA
 - 13:22 consumer gate加入scroll、geometry重算與drag-start hit-test後，18883正式重跑GREEN：action `3->4`；initial=250、merged=500、authorityLoaded=1000、visible=1-250、selectionWidth=250、prependMs=47090、axes=8、runPosts=2、actions=5。
 - 13:23 撤回尚未commit/push的`.105/.97/.106` local candidate並恢復source workspace clean；`.104/.96/.105`即為consumer-accepted正式graph。工具政策拒絕刪除SDK library-packs內三個本輪暫存包，未繞過政策；它們未發布且不被current exact refs使用。
 - 13:26 closure文件changed-path敏感掃描High=0／Medium=0；task-scoped checkerPASS=28／WARN=2／FAIL=0。WARN僅commit前dirty與既有全repo RFC traceability inventory，無本輪blocking finding。
+- 13:28 consumer closure commit `10ae8c4`（Close navigator consumer acceptance）已push至`20260915_033.ptcs_group_support`；本筆以evidence-only commit同步，完成後source/docs不留dirty。
