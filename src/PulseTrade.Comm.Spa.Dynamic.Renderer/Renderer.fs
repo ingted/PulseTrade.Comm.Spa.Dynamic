@@ -2036,12 +2036,41 @@ module TaWorkspaceRenderer =
             && left.HiddenTraces = right.HiddenTraces
             && left.RemovedTraces = right.RemovedTraces
         let chartUiState = Var.Create uiState.Value
+        let mutable pendingViewportChartState: TaRendererUiState option = None
+        let mutable viewportChartFrameScheduled = false
+        let scheduleViewportChartState next =
+            pendingViewportChartState <- Some next
+            if not viewportChartFrameScheduled then
+                viewportChartFrameScheduled <- true
+                // Keep the lightweight controls/navigator responsive for one paint before
+                // rebuilding the chart stack for the committed viewport.
+                JS.RequestAnimationFrame(fun _ ->
+                    JS.RequestAnimationFrame(fun _ ->
+                        viewportChartFrameScheduled <- false
+                        match pendingViewportChartState with
+                        | Some pending ->
+                            pendingViewportChartState <- None
+                            if not (sameChartUiState chartUiState.Value pending) then
+                                chartRenderReason <- "viewport"
+                                chartUiState.Value <- pending
+                        | None -> ())
+                    |> ignore)
+                |> ignore
+        let setViewportUiState next =
+            uiState.Value <- next
+            if not (sameChartUiState chartUiState.Value next) then
+                scheduleViewportChartState next
         let setUiState next =
             let previousChartState = chartUiState.Value
             uiState.Value <- next
-            if not (sameChartUiState previousChartState next) then
-                chartRenderReason <- "ui-state"
-                chartUiState.Value <- next
+            match pendingViewportChartState with
+            | Some pending when sameChartUiState pending next ->
+                pendingViewportChartState <- Some next
+            | _ ->
+                pendingViewportChartState <- None
+                if not (sameChartUiState previousChartState next) then
+                    chartRenderReason <- "ui-state"
+                    chartUiState.Value <- next
         let mutable defaultViewportAppliedToCanvas: string option = None
         let maximumVisibleBarsFor document =
             RendererModel.documentMaximumVisibleBars options.MaximumVisibleBars document.DefaultView
@@ -2090,6 +2119,7 @@ module TaWorkspaceRenderer =
         let mutable flushQueuedViewportIntent = ignore
         let mutable dispatchAdjacentCoverage = fun (_: PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection) (_: int) -> ()
         let preparedRowsReady = Var.Create false
+        let viewportDataReady = Var.Create false
         let commandsDisabledView =
             View.Map2
                 (fun state ui -> remoteDisabled state.Poll || ui.PendingActionId.IsSome)
@@ -2105,17 +2135,11 @@ module TaWorkspaceRenderer =
         let viewportCommandsDisabledView =
             View.Map2
                 (fun disabled ready -> disabled || not ready)
-                (View.Map2
-                    (fun state ui ->
-                        visibleRangeActionAllowed state
-                        && (localViewportDisabled state.Poll || ui.PendingActionId.IsSome))
-                    runtimeState.View
-                    uiState.View)
-                preparedRowsReady.View
+                (runtimeState.View |> View.Map (fun state -> localViewportDisabled state.Poll))
+                viewportDataReady.View
         let viewportCommandsDisabledNow () =
-            not preparedRowsReady.Value
-            || (visibleRangeActionAllowed runtimeState.Value
-                && (localViewportDisabled runtimeState.Value.Poll || uiState.Value.PendingActionId.IsSome))
+            not viewportDataReady.Value
+            || localViewportDisabled runtimeState.Value.Poll
         let startActionWithFeedback action successText onAccepted onRejected afterSettled =
             actionSequence <- actionSequence + 1
             let request =
@@ -2287,6 +2311,7 @@ module TaWorkspaceRenderer =
             preparationGeneration <- preparationGeneration + 1
             let generation = preparationGeneration
             preparedDataReady <- false
+            viewportDataReady.Value <- false
             chartRuntimeState.Value <- runtimeState.Value
             let data = runtimeState.Value.Data
             RendererModel.prepareDataScheduled
@@ -2300,6 +2325,7 @@ module TaWorkspaceRenderer =
                         observedChartTopology <- chartTopologySignaturePrepared current prepared
                         observedDataState <- current
                         preparedDataReady <- true
+                        viewportDataReady.Value <- true
                         applyDocumentDefaultViewport current prepared
                         beginProjection current |> ignore
                         chartRuntimeState.Value <- current)
@@ -2398,7 +2424,7 @@ module TaWorkspaceRenderer =
             let total = referenceLength ()
             let bounded = RendererModel.resolveWindow options.MinimumVisibleBars (maximumVisibleBarsNow ()) total followLatest window
             let changed = bounded <> resolvedWindow current || followLatest <> current.FollowLatest
-            setUiState
+            setViewportUiState
                 { current with
                     Window = bounded
                     FollowLatest = followLatest
@@ -2517,12 +2543,12 @@ module TaWorkspaceRenderer =
             let requestedStart = visible.StartIndex + delta
             let maximumStart = RendererModel.viewportMaximumStart total visible
             if requestedStart < 0 then
-                if commandsDisabledNow () then
+                if remoteDisabled runtimeState.Value.Poll then
                     setWindow false { visible with StartIndex = 0 }
                 else
                     requestAdjacentCoverage PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier delta
             elif requestedStart > maximumStart then
-                if commandsDisabledNow () then
+                if remoteDisabled runtimeState.Value.Poll then
                     setWindow true { visible with StartIndex = maximumStart }
                 else
                     requestAdjacentCoverage PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Later delta
@@ -2585,8 +2611,23 @@ module TaWorkspaceRenderer =
                         let mutable upHandler: Action<Event> = null
                         let mutable cancelHandler: Action<Event> = null
                         let mutable finished = false
+                        let mutable pendingDraft: TaVisibleWindow option = None
+                        let mutable draftFrameScheduled = false
                         let pointerId: int = JS.Get "pointerId" rawEvent
                         let mutable documentFallback = false
+
+                        let publishDraftOnFrame () =
+                            if not finished then
+                                draftFrameScheduled <- false
+                                match pendingDraft with
+                                | Some draft -> draftWindow.Value <- Some draft
+                                | None -> ()
+
+                        let scheduleDraft draft =
+                            pendingDraft <- Some draft
+                            if not draftFrameScheduled then
+                                draftFrameScheduled <- true
+                                JS.RequestAnimationFrame(fun _ -> publishDraftOnFrame ()) |> ignore
 
                         let cleanup () =
                             if documentFallback then
@@ -2603,7 +2644,7 @@ module TaWorkspaceRenderer =
                             if not finished then
                                 finished <- true
                                 finishNavigatorDrag <- None
-                                let draft = defaultArg draftWindow.Value committed
+                                let draft = pendingDraft |> Option.orElse draftWindow.Value |> Option.defaultValue committed
                                 let requestedStart = committed.StartIndex + latestRawDelta
                                 setDragDiagnostic "data-drag-committed-start" (string committed.StartIndex)
                                 setDragDiagnostic "data-drag-draft-start" (string draft.StartIndex)
@@ -2637,8 +2678,8 @@ module TaWorkspaceRenderer =
                                 latestRawDelta <- delta
                                 setDragDiagnostic "data-drag-last-delta" (string delta)
                                 setDragDiagnostic "data-drag-outcome" "moving"
-                                draftWindow.Value <-
-                                    Some(RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta))
+                                RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
+                                |> scheduleDraft)
 
                         upHandler <-
                             Action<Event>(fun _ -> finish ())
@@ -3981,25 +4022,44 @@ module TaWorkspaceRenderer =
                                                         currentPreparedData
                                                         overviewReferenceTimeline)
                                                 |> RendererModel.overviewStripeVisuals
-                                            overviewSvgWithPalette
-                                                currentPlotPalette
-                                                overviewPoints
-                                                overviewStripeVisuals
-                                                overviewReferenceTimeline.Length
-                                                (draftWindow.View
-                                                 |> View.Map (fun draft ->
-                                                     let selection = defaultArg draft visibleWindow
-                                                     currentCoverageProjection
-                                                     |> Option.bind (fun projection ->
-                                                         RendererModel.overviewSelectionRatios projection currentReferenceTimeline selection)
-                                                     |> Option.defaultWith (fun () ->
-                                                         currentCoverageProjection
-                                                         |> Option.bind (RendererModel.coverageNavigatorWindow currentReferenceLength selection)
-                                                         |> Option.map (fun (_, total, globalSelection) -> RendererModel.selectionRatios total globalSelection)
-                                                         |> Option.defaultValue (RendererModel.selectionRatios currentReferenceLength selection))))
-                                                ignore
-                                                startNavigatorDrag
-                                                finishNavigatorDragFromElement)
+                                            let selectionWindow =
+                                                View.Map2
+                                                    (fun draft currentUi ->
+                                                        let currentVisibleWindow =
+                                                            RendererModel.resolveWindow
+                                                                options.MinimumVisibleBars
+                                                                (maximumVisibleBarsFor document)
+                                                                currentReferenceLength
+                                                                currentUi.FollowLatest
+                                                                currentUi.Window
+                                                        let selection = defaultArg draft currentVisibleWindow
+                                                        currentCoverageProjection
+                                                        |> Option.bind (fun projection ->
+                                                            RendererModel.overviewSelectionRatios projection currentReferenceTimeline selection)
+                                                        |> Option.defaultWith (fun () ->
+                                                            currentCoverageProjection
+                                                            |> Option.bind (RendererModel.coverageNavigatorWindow currentReferenceLength selection)
+                                                            |> Option.map (fun (_, total, globalSelection) -> RendererModel.selectionRatios total globalSelection)
+                                                            |> Option.defaultValue (RendererModel.selectionRatios currentReferenceLength selection)))
+                                                    draftWindow.View
+                                                    uiState.View
+                                            div [ Attr.Create "data-testid" "ta-overview-with-axis"; attr.style "min-width:0;" ] [
+                                                overviewSvgWithPalette
+                                                    currentPlotPalette
+                                                    overviewPoints
+                                                    overviewStripeVisuals
+                                                    overviewReferenceTimeline.Length
+                                                    selectionWindow
+                                                    ignore
+                                                    startNavigatorDrag
+                                                    finishNavigatorDragFromElement
+                                                timeAxisWithPalette
+                                                    currentPlotPalette
+                                                    displayTime
+                                                    "ta-overview-time-axis"
+                                                    "overview"
+                                                    overviewReferenceTimeline
+                                            ] :> Doc)
                                         |> Doc.EmbedView
                                     ]
                                 ]

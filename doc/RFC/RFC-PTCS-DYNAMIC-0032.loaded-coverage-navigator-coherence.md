@@ -174,3 +174,11 @@ Official correction graph為Renderer `0.1.98`、Interactive.Client `0.1.90`、Pt
 range-less BARS代表provider authority可向更早資料開放，不能以`DateTime.UnixEpoch`或任意日期冒充已知起點。`ta-coverage-window.v1`因此以additive `RangeAuthority`區分explicit bounds與`ProviderOpenEarlier`；後者只允許Earlier、首尾為相同current loaded-head anchor且不帶global start ordinal。Server/client flat wire使用`provider-open-earlier`，缺欄位的舊wire維持`explicit-bounds`。
 
 Renderer只有在current document generation的prepared row count等於authored row count後，才允許toolbar或navigator產生相鄰coverage outcome。這個barrier只阻止使用舊row geometry發remote intent，不改pending/latest-wins queue；已準備完成後的合法連續操作仍可排隊。Pure tests涵蓋`0/2/3/4` rows，browser gate驗document replacement與progressive coverage。
+
+## 17. Navigator local-first responsiveness correction
+
+真SPAA回報drag preview延遲、View All／pan沒有立即可見反應及overview缺少時間軸。根因是每個pointermove直接寫reactive draft，且local toolbar錯把chart row remount barrier當成資料不可操作；remote pending與local presentation因此被不必要地耦合。
+
+決策：pointermove只覆寫單一pending draft，至多每個animation frame發布一次；pointerup必須同步取最後pending draft且只送一次`VisibleRangeChanged`。Committed viewport先更新stable shell與navigator，chart stack延後一個paint再重建。`viewportDataReady`控制local pan／zoom，`preparedRowsReady`只保護需要完整row geometry的boundary／drag path；pending remote action不得停用已載入範圍內的local pan。View All在loaded bars不超過maximum時立即覆蓋overview全寬。Overview另以canonical event-time timeline輸出generic adaptive time axis，不新增domain contract。
+
+Owner gate要求draft在250ms內可見、pointermove callback不增加、pending 200 action期間pan由`3801-4000`立即移至`3601-3800`且只排隊remote intent、All selection width為100%，overview至少三個不同時間label。Candidate graph為Contracts `0.1.35`、Renderer `0.1.109`、Interactive.Client `0.1.100`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.109`；中間本機`.107/.98/.107`與`.108/.99/.108`不得發布或採用。

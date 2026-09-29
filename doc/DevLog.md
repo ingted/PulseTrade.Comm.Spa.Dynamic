@@ -1940,3 +1940,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `f0cd0d3`已push；五包Release build及NuGet push均成功。NuGet.org official repository signatures、repository commit、exact dependencies與排除`.signature.p7s`後local/official entry parity全綠。
 - Official SHA-256依序為Contracts `383164BBDFEC6A75581320F85029D6DC75439BB5F829D164EC7DE284B85A7387`、Renderer `615209F243D619943B30AD98048AAE3494559BC16FB0ABF966DA83F7E17B18AD`、Interactive.Client `E9EDEA509C7117F93ACCC13DBC63E5B2411C22D2ADC15CA53FE2B8F29CA2EDB9`、Dynamic.Ptcs `63B20745E8ACE165102CA27950C5E1E702A478068685EA36B134455A1209187C`、Ptcs.Client `69EC25D9E8726FC8C503DCAB9F9407DFE20ED5A85FE50A2F7FE5749F53B5F4EA`。
 - nuget.org-only fresh cache focused suites為Renderer／Interactive／Dynamic.Ptcs／Ptcs.Client=`58/15/15/17`；Contracts source suite=`49/49`。Final graph已direct交付Daedalus；真SPAA與fresh DIB仍是consumer pending。
+
+## 2026-09-30 - Navigator local-first responsiveness owner candidate
+
+- 真SPAA回報drag preview、View All／pan可見更新與overview時間軸缺口。Renderer改為rAF latest-draft、pointerup同步flush、stable shell先更新而chart延後一個paint；另將`viewportDataReady`與`preparedRowsReady`分離，remote pending／row remount不再停用loaded-range local pan。
+- Overview新增canonical event-time adaptive axis；View All在loaded<=maximum時selection立即滿寬。完整F# Playwright與focused `49/58/15/15/17`通過；200→All=`373.16/752.64ms`，正式phases over100=0。
+- Candidate graph為Contracts `0.1.35`、Renderer `0.1.109`、Interactive.Client `0.1.100`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.109`。先前本機中間graph不可發布；official provenance build/readback與Daedalus真SPAA pending。

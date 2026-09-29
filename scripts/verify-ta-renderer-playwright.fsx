@@ -144,6 +144,17 @@ let waitForIntAttributeAtLeast (locator: ILocator) name minimum =
     require (actual >= minimum) $"expected `{name}` >= {minimum}, actual={actual}"
     actual
 
+let waitForFloatAttributeNear (locator: ILocator) name expected tolerance =
+    let deadline = DateTime.UtcNow.AddSeconds 8.0
+    let mutable actual = requiredFloatAttribute locator name
+
+    while abs (actual - expected) > tolerance && DateTime.UtcNow < deadline do
+        Threading.Thread.Sleep 16
+        actual <- requiredFloatAttribute locator name
+
+    require (abs (actual - expected) <= tolerance) $"expected `{name}` near {expected}, actual={actual}"
+    actual
+
 let waitForStableIntAttribute (locator: ILocator) name =
     let deadline = DateTime.UtcNow.AddSeconds 8.0
     let mutable actual = requiredIntAttribute locator name
@@ -907,7 +918,7 @@ let verifyDesktop (browser: IBrowser) =
     let crosshairs = page.Locator("[data-testid$='-crosshair']")
     require ((crosshairs.CountAsync() |> awaitTask) = 7) "every visible row must mount one stable crosshair overlay"
     require ((page.Locator("[data-testid$='-crosshair'][visibility='hidden']").CountAsync() |> awaitTask) = 7) "crosshair overlays must remain hidden before pointer movement"
-    let rowTimeAxes = page.Locator("[data-time-axis-row-id]")
+    let rowTimeAxes = page.Locator("[data-time-axis-row-id]:not([data-time-axis-row-id='overview'])")
     require ((rowTimeAxes.CountAsync() |> awaitTask) = 7) "every visible row must mount its own event-time axis"
     for axisIndex in 0 .. 6 do
         let axis = rowTimeAxes.Nth(axisIndex)
@@ -1057,6 +1068,12 @@ let verifyDesktop (browser: IBrowser) =
     require (not (String.IsNullOrWhiteSpace(attributeOrEmpty overviewDownBodies "d"))) "overview must retain down candle bodies"
     require (page.Locator("[data-testid='ta-overview-price-line']").CountAsync() |> awaitTask = 0) "overview must not regress to a close-only polyline"
     require (attributeOrEmpty (page.Locator("[data-testid='ta-overview-selection']")) "fill" = "rgba(203,213,225,.20)") "overview selection must use the agreed light-gray fill"
+    let overviewTimeAxis = page.Locator("[data-testid='ta-overview-time-axis']")
+    let overviewTimeTicks = overviewTimeAxis.Locator("span")
+    require (overviewTimeTicks.CountAsync() |> awaitTask >= 3) "overview must expose adaptive event-time/date labels"
+    require (attributeOrEmpty overviewTimeAxis "data-time-axis-row-id" = "overview") "overview time axis must retain its generic row identity"
+    require (not (String.IsNullOrWhiteSpace(textOf overviewTimeTicks.First))) "overview first event-time label must be visible"
+    require (textOf overviewTimeTicks.First <> textOf overviewTimeTicks.Last) "overview event-time axis endpoints must differ"
     let overviewStripePaths = page.Locator("[data-testid='ta-overview-stripe-path']")
     require (overviewStripePaths.CountAsync() |> awaitTask = 2) "order and fill overview stripes must render as two batched paths"
     require (requiredIntAttribute (overviewStripePaths.Nth(0)) "data-stripe-count" = 1) "order stripe path must retain its item count"
@@ -1114,13 +1131,18 @@ let verifyDesktop (browser: IBrowser) =
     page.Mouse.MoveAsync(navigatorBox.X + navigatorBox.Width * stripeX / 1000.0f, navigatorBox.Y + 8.0f) |> awaitUnit
     page.Locator("[data-testid='ta-overview-stripe-tooltip']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
     let callbackState = setupCallbackState
+    let callbackCountBeforeDrag = requiredIntAttribute callbackState "data-callback-count"
     let renderSequenceBeforeDrag = requiredIntAttribute chartStack "data-chart-render-sequence"
     let navigatorY = navigatorBox.Y + navigatorBox.Height / 2.0f
     page.Mouse.MoveAsync(selectionBox.X + selectionBox.Width / 2.0f, navigatorY) |> awaitUnit
     page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
-    page.Mouse.MoveAsync(navigatorBox.X + selectionBox.Width / 2.0f, navigatorY, MouseMoveOptions(Steps = 12)) |> awaitUnit
+    let draftLatency = Diagnostics.Stopwatch.StartNew()
+    page.Mouse.MoveAsync(navigatorBox.X + selectionBox.Width / 2.0f, navigatorY, MouseMoveOptions(Steps = 1)) |> awaitUnit
     let viewportRange = page.Locator("[data-testid='ta-viewport-range']")
     waitForText viewportRange "Preview"
+    draftLatency.Stop()
+    require (draftLatency.Elapsed.TotalMilliseconds <= 250.0) $"navigator draft missed the next-frame responsiveness budget: {draftLatency.Elapsed.TotalMilliseconds:F2}ms"
+    require (requiredIntAttribute callbackState "data-callback-count" = callbackCountBeforeDrag) "pointermove must not submit VisibleRangeChanged before pointerup"
     let previewText = textOf viewportRange
     let previewMatch = Text.RegularExpressions.Regex.Match(previewText, "Preview ([0-9]+-[0-9]+)")
     require previewMatch.Success ("move drag did not expose bounded preview range: " + previewText)
@@ -1459,12 +1481,14 @@ let verifyDesktop (browser: IBrowser) =
     let allStateTransition = Diagnostics.Stopwatch.StartNew()
     let allTrace = startMainThreadTrace longTaskSession
     page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
+    let fullSelectionWidth = waitForFloatAttributeNear overviewSelection "width" 1000.0 0.002
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing 1-{capacityPointCount}"
     allStateTransition.Stop()
     page.Locator("[data-testid='ta-row-heikin']").WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 15000.0f)) |> awaitUnit
     waitForIntAttribute chartStack "data-ready-row-count" 7
     allTransition.Stop()
     printfn "browser.200-to-all stateMs=%.2f rowsReadyMs=%.2f" allStateTransition.Elapsed.TotalMilliseconds allTransition.Elapsed.TotalMilliseconds
+    require (abs (fullSelectionWidth - 1000.0) <= 0.002) "All with loaded bars within MaximumVisibleBars must cover the full overview width"
     require (allStateTransition.Elapsed.TotalMilliseconds <= 750.0) $"owner 200-to-All committed state exceeded 750ms: {allStateTransition.Elapsed.TotalMilliseconds:F2}ms"
     require (allTransition.Elapsed.TotalMilliseconds <= 1500.0) $"owner 200-to-All transition exceeded 1500ms: {allTransition.Elapsed.TotalMilliseconds:F2}ms"
     Threading.Thread.Sleep 180
@@ -1478,6 +1502,10 @@ let verifyDesktop (browser: IBrowser) =
     page.Locator("[data-testid='ta-view-200']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 3801-4000"
     require (requiredIntAttribute callbackState "data-callback-count" = callbackCountBeforeRapidPresets) "200 action must still be pending before the rapid All intent"
+    require (not (page.Locator("[data-testid='ta-pan-left']").IsDisabledAsync() |> awaitTask)) "local pan must remain enabled while a viewport action is pending"
+    page.Locator("[data-testid='ta-pan-left']").ClickAsync() |> awaitUnit
+    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Viewing 3601-3800"
+    require (requiredIntAttribute callbackState "data-callback-count" = callbackCountBeforeRapidPresets) "pending local pan must queue rather than dispatch a parallel callback"
     let rapidAllState = Diagnostics.Stopwatch.StartNew()
     page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) $"Viewing 1-{capacityPointCount}"

@@ -746,3 +746,7 @@ div [ dataTestId $"ta-row-control-line-{row.RowId}"; fixedSingleLine ] [
 Outer `ta-row-toggles` 使用column layout；line固定高度／`overflow:hidden`。Trace region使用`flex:1 1 auto; min-width:0; overflow-x:auto; overflow-y:hidden; white-space:nowrap; flex-wrap:nowrap`，因此窄版只產生row-local水平scroll。Filter仍排除`Marker`與`OverviewStripe`，所有click/action handler保持既有實作。
 
 測試以F# Playwright locator/BoundingBox量測：line count、descendant ownership、desktop/narrow相同高度、同row controls Y band、跨row Y band分離及narrow `scrollWidth > clientWidth`。不得用inline JavaScript或直接改generated bundle。
+
+### Navigator local-first state flow
+
+`pointermove -> pendingDraft <- latest -> requestAnimationFrame -> draftWindow`；`pointerup`直接讀`pendingDraft |> fallback draftWindow |> fallback committed`，清理capture後只提交一次。Preset／pan先寫`uiState`，再以nested animation frame把相同chart fields交給`chartUiState`；非chart feedback更新不得取消pending viewport render。`viewportDataReady`在full preparation開始時false、accepted prepared data完成後true，後續單純row remount不歸零；`preparedRowsReady`仍在每次chart mount前false並於所有authored rows完成後true。Overview time axis使用overview reference timeline與page display-time formatter。

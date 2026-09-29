@@ -165,3 +165,9 @@
 - 每個 TA row 必須有獨立、固定單列的控制列；row 與 trace controls 不得和其他 row 共用 wrapping flow。
 - 同 row trace controls 不換行。寬度不足時只在該 row 的 trace region水平捲動，不增加 control line高度。
 - Marker／OverviewStripe為system trace，不出現在可移除controls；既有hide/show/remove/reset行為不得改變。
+
+## 2026-09-30 Navigator local-first responsiveness
+
+1. Navigator pointermove SHALL至多每animation frame發布一次local draft；pointerup SHALL使用最後draft且pointermove不得送remote action。
+2. 已有accepted viewport data時，chart row remount或remote action pending不得停用loaded範圍內的pan／zoom／preset；boundary remote intent仍須通過prepared-row barrier與latest-wins queue。
+3. Loaded bars不超過maximum時，View All SHALL立即把selection填滿overview；overview SHALL以canonical event time呈現adaptive date/time axis。

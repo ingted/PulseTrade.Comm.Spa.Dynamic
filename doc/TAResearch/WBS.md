@@ -65,3 +65,9 @@ Public OAuth human confirmation、production RN service proof與ACL service rede
 6. E2EQ parity, then PTCS adapter, then package release。
 
 每個milestone都需要F# Playwright test case與人類視角review，不以source marker或build取代。
+
+## 4. Navigator responsiveness correction
+
+| ID | Priority | Slice | Scope | Dependency | Tests | Progress | Status | RFC |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| DYN-TA-028 | 90 | Navigator local-first responsiveness | rAF draft、immediate viewport geometry、pending local pan、overview time axis | DYN-TA-027 | T-127..129 | 90% | Owner candidate與完整browser gate通過；待official package readback及Daedalus真SPAA | [RFC-0032](../RFC/RFC-PTCS-DYNAMIC-0032.loaded-coverage-navigator-coherence.md) |

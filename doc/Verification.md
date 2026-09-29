@@ -341,3 +341,9 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Owner result：Contracts／Renderer／Interactive／Dynamic.Ptcs／Ptcs.Client=`49/58/15/15/17`。完整browser gate PASS；500 coverage／250 detail顯示`251-500`，tiny selection為3.813/1400；progressive phase max=`45.37ms`，正式phase over100=`0`。
 - Official graph：Contracts `0.1.34`、Renderer `0.1.106`、Interactive.Client `0.1.97`、Dynamic.Ptcs `0.1.55`、Ptcs.Client `0.1.106`，repository commit=`f0cd0d3500b2cfdb81a2a58584f19d6fb79b6906`。五包NuGet.org repository signatures有效，exact dependencies正確，排除`.signature.p7s`後entryDiff全為0；nuget.org-only fresh cache focused=`58/15/15/17`。Daedalus真SPAA／fresh DIB pending。
 - Official SHA-256依序為Contracts `383164BBDFEC6A75581320F85029D6DC75439BB5F829D164EC7DE284B85A7387`、Renderer `615209F243D619943B30AD98048AAE3494559BC16FB0ABF966DA83F7E17B18AD`、Interactive.Client `E9EDEA509C7117F93ACCC13DBC63E5B2411C22D2ADC15CA53FE2B8F29CA2EDB9`、Dynamic.Ptcs `63B20745E8ACE165102CA27950C5E1E702A478068685EA36B134455A1209187C`、Ptcs.Client `69EC25D9E8726FC8C503DCAB9F9407DFE20ED5A85FE50A2F7FE5749F53B5F4EA`。
+
+## DYN-VFY-046 Navigator local-first responsiveness（OWNER PASS revision 1；release/consumer pending）
+
+- Commands：五個exact-package Expecto runners；Renderer／Interactive.Client／Ptcs.Client Release builds；BrowserDemo後執行`scripts/verify-ta-renderer-playwright.fsx`。
+- Owner result：focused `49/58/15/15/17`；完整Playwright PASS。Draft下一frame可見且move不送callback；pending 200 action期間local pan立即`3801-4000 -> 3601-3800`；All selection滿寬；overview adaptive event-time axis可見。200→All state／rows-ready=`373.16/752.64ms`，300 cursor p95/max=`7/26ms`，正式phases over100=`0`。
+- Candidate graph：Contracts `0.1.35`、Renderer `0.1.109`、Interactive.Client `0.1.100`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.109`。`.107/.98/.107`與`.108/.99/.108`為未發布中間本機bytes，不可採用。Official publish/readback與Daedalus真SPAA gate pending。

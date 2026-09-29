@@ -230,3 +230,7 @@ Contracts擁有唯一packet schema/encoder；Interactive.Client擁有generation-
 現有控制區的問題是 DOM ownership 缺失，不是資料或 action contract 缺口：row control與trace control作為同層flex children，瀏覽器換行後會破壞視覺上的row歸屬。正確責任在generic Renderer建立一個row-local layout boundary；Contracts、producer與SPAA不應增加presentation metadata來補救。
 
 每個 authored row不論是否有controllable trace都建立一條固定single-line container。左側row controls不可縮小或換行；右側trace region可縮小且只在自身水平overflow。System overlays仍由trace kind排除，action與local state沿用RFC-0029。此設計新增穩定selector但不新增wire/API，故只需重包Renderer與攜帶其bundle／exact reference的clients。
+
+## Navigator local-first responsiveness
+
+Local viewport presentation、remote action serialization與chart row mount是三個不同生命週期。把三者共用`PendingActionId`或`preparedRowsReady`會讓server round-trip與DOM重掛阻塞本地操作；反之完全移除barrier會容許舊row geometry產生錯誤boundary request。故local toolbar以accepted data readiness為authority，boundary／drag仍驗current-generation prepared rows，remote只維持single in-flight＋latest queued intent。Chart rebuild延後一個paint，stable shell與overview geometry先回應人類操作。
