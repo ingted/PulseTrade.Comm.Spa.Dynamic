@@ -1339,7 +1339,7 @@ let verifyDesktop (browser: IBrowser) =
     page.Locator("[data-testid='ta-demo-inflight']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-poll-state']")) "UPDATING"
     require (page.Locator("[data-testid='ta-apply-query']").IsDisabledAsync() |> awaitTask) "remote query must be disabled while a poll is in flight"
-    require (page.Locator("[data-testid='ta-pan-left']").IsDisabledAsync() |> awaitTask) "event-range viewport controls must be disabled while a poll is in flight"
+    require (not (page.Locator("[data-testid='ta-pan-left']").IsDisabledAsync() |> awaitTask)) "local viewport controls must remain available while a poll is in flight"
     page.Locator("[data-testid='ta-add-row-toggle']").ClickAsync() |> awaitUnit
     require (page.Locator("[data-testid='ta-add-row-submit']").IsDisabledAsync() |> awaitTask) "remote Add Row submit must be disabled while a poll is in flight"
     page.Locator("[data-testid='ta-add-row-cancel']").ClickAsync() |> awaitUnit
@@ -1654,7 +1654,8 @@ let verifyDesktop (browser: IBrowser) =
     page.Locator("[data-testid='ta-view-all']").ClickAsync() |> awaitUnit
     waitForIntAttribute chartStack "data-visible-start" 251
     waitForIntAttribute chartStack "data-visible-end" 500
-    waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "earlier coverage after restoring active page"
+    waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeCoverageRefresh + 2)
+    waitForText (page.Locator("[data-testid='ta-poll-state']")) "READY"
 
     page.Locator("[data-testid='ta-pan-left']").ClickAsync() |> awaitUnit
     waitForIntAttribute chartStack "data-query-generation" 2

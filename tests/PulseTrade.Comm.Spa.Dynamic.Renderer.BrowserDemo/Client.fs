@@ -697,6 +697,7 @@ module Client =
         let lastAction = Var.Create "none"
         let rejectNext = Var.Create false
         let refreshCoverageOnNextVisibleRange = Var.Create false
+        let modelPollInFlight = Var.Create false
         let mutable actionInFlight = false
         let previewStreamGeneration = Var.Create 0
         let previewStreamUpdates = Var.Create 0
@@ -860,7 +861,10 @@ module Client =
                         else
                             actionInFlight <- true
                             try
-                                do! Async.Sleep 750
+                                if modelPollInFlight.Value then
+                                    runtimeState.Value <- { runtimeState.Value with Poll = RuntimePollState.PollInFlight }
+
+                                do! Async.Sleep (if modelPollInFlight.Value then 2500 else 750)
                                 actionCount.Value <- actionCount.Value + 1
                                 lastAction.Value <- actionName request.Action
                                 if rejectNext.Value then
@@ -880,6 +884,9 @@ module Client =
                                     return Result.Ok(DynamicActionResult.Accepted(request.RequestId, runtimeState.Value.DocumentRevision))
                             finally
                                 actionInFlight <- false
+
+                                if modelPollInFlight.Value then
+                                    runtimeState.Value <- { runtimeState.Value with Poll = RuntimePollState.Ready }
                     } }
 
         let setLive () =
@@ -1219,6 +1226,7 @@ module Client =
                         yield Doc.Element "option" [ attr.value (SduiDisplayTimeZone.id zone) ] [ text (SduiDisplayTimeZone.label zone) ] :> Doc
                 ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-live"; on.click (fun _ _ -> setLive ()) ] [ text "Live" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-model-poll-in-flight"; on.click (fun _ _ -> modelPollInFlight.Value <- not modelPollInFlight.Value) ] [ textView (modelPollInFlight.View |> View.Map (fun enabled -> if enabled then "Poll in flight: on" else "Poll in flight: off")) ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-preview-update"; on.click (fun _ _ -> updateLatestPreview ()) ] [ text "Update preview" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-preview-stream"; on.click (fun _ _ -> startPreviewStream ()) ] [ text "Stream preview" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-replace-five-candle-rows"; on.click (fun _ _ -> replaceFiveCandleRows ()) ] [ text "Replace 5 candle rows" ]

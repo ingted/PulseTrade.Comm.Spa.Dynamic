@@ -715,6 +715,36 @@ module BrowserRuntimeCache =
                 select candidates)
             (fun reason -> complete (BrowserRuntimeCacheAdjacentReadResult.Unavailable reason))
 
+    let tryPreparePhasedRehydrate cacheIdentity (current: RuntimeState) entry =
+        RuntimeCacheEntryValidation.validateHeader entry
+        |> Result.bind (fun valid ->
+            let documentErrors = RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits valid.Document
+
+            if not (List.isEmpty documentErrors) then
+                Result.Error documentErrors
+            else
+                match current.Document with
+                | None ->
+                    Result.Error
+                        [ RuntimeValidation.error
+                              "cache-document-required"
+                              "runtimeState.document"
+                              "The current authoritative document must be accepted before cache rehydration." ]
+                | Some document when document.WorkspaceId <> valid.WorkspaceId ->
+                    Result.Error
+                        [ RuntimeValidation.error
+                              "cache-workspace-mismatch"
+                              "cache.workspaceId"
+                              "Cache workspace does not match the current document." ]
+                | Some _ ->
+                    let prepared =
+                        { current with
+                            Document = Some valid.Document
+                            View = { Values = valid.Document.DefaultView } }
+
+                    RuntimeCacheProjection.tryCreateRehydrateFrame cacheIdentity prepared valid
+                    |> Result.map (fun frame -> prepared, frame))
+
     let rehydratePhased
         read
         cacheIdentity
@@ -742,7 +772,7 @@ module BrowserRuntimeCache =
                         else
                             let current = currentState ()
 
-                            match RuntimeCacheProjection.tryPrepareRehydrate DynamicRuntimeDefaults.limits cacheIdentity current entry with
+                            match tryPreparePhasedRehydrate cacheIdentity current entry with
                             | Error errors ->
                                 complete (BrowserRuntimeCachePhasedRehydrateOutcome.Rejected errors)
                             | Ok(prepared, frame) ->

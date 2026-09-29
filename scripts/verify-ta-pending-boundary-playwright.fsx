@@ -103,9 +103,27 @@ page.PageError.Add(fun message -> consoleErrors.Add message)
 page.GotoAsync(url, PageGotoOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
 page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
 page.Locator("[data-testid='ta-demo-loaded-coverage']").ClickAsync() |> awaitUnit
+page.Locator("[data-testid='ta-demo-model-poll-in-flight']").ClickAsync() |> awaitUnit
 
 let chartStack = page.Locator("[data-testid='ta-chart-stack']")
 let callbackState = page.Locator("[data-testid='ta-demo-callback-state']")
+let dragSelectionToEarlierBoundary scenario =
+    let navigator = page.Locator("[data-testid='ta-overview-navigator']")
+    let bounds = navigator.BoundingBoxAsync() |> awaitTask
+    require (not (isNull bounds)) "navigator geometry is unavailable"
+    let selectionBounds = page.Locator("[data-testid='ta-overview-selection']").BoundingBoxAsync() |> awaitTask
+    require (not (isNull selectionBounds)) "navigator selection geometry is unavailable"
+    let y = selectionBounds.Y + selectionBounds.Height / 2.0f
+    let selectionCenterX = selectionBounds.X + selectionBounds.Width / 2.0f
+    let beyondLeftX = bounds.X + 2.0f
+    printfn "%s.geometry navigator=(%.1f,%.1f %.1fx%.1f) selection=(%.1f,%.1f %.1fx%.1f) drag=(%.1f,%.1f)->(%.1f,%.1f)" scenario bounds.X bounds.Y bounds.Width bounds.Height selectionBounds.X selectionBounds.Y selectionBounds.Width selectionBounds.Height selectionCenterX y beyondLeftX y
+    page.Mouse.MoveAsync(selectionCenterX, y) |> awaitUnit
+    page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+    page.Mouse.MoveAsync(beyondLeftX, y, MouseMoveOptions(Steps = 8)) |> awaitUnit
+    printfn "%s.after-move range=%s" scenario (page.Locator("[data-testid='ta-viewport-range']").TextContentAsync() |> awaitTask |> Option.ofObj |> Option.defaultValue "")
+    waitText (page.Locator("[data-testid='ta-viewport-range']")) "Preview"
+    page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+
 waitInt chartStack "data-loaded-bars" 500
 waitInt chartStack "data-visible-start" 251
 waitInt chartStack "data-visible-end" 500
@@ -114,16 +132,9 @@ let callbacksBefore = intAttribute callbackState "data-callback-count"
 page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
 waitInt chartStack "data-visible-start" 453
 waitInt chartStack "data-visible-end" 500
+waitText (page.Locator("[data-testid='ta-poll-state']")) "UPDATING"
 
-let navigator = page.Locator("[data-testid='ta-overview-navigator']")
-let bounds = navigator.BoundingBoxAsync() |> awaitTask
-require (not (isNull bounds)) "navigator geometry is unavailable"
-let y = bounds.Y + bounds.Height / 2.0f
-page.Mouse.MoveAsync(bounds.X + bounds.Width * 0.95f, y) |> awaitUnit
-page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
-page.Mouse.MoveAsync(bounds.X, y, MouseMoveOptions(Steps = 8)) |> awaitUnit
-waitText (page.Locator("[data-testid='ta-viewport-range']")) "Preview"
-page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+dragSelectionToEarlierBoundary "poll-in-flight"
 
 waitText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
 waitInt callbackState "data-callback-count" (callbacksBefore + 2)
@@ -136,5 +147,33 @@ require (consoleErrors.Count = 0) ("browser errors: " + String.concat " | " cons
 let screenshotPath = Path.Combine(outputDirectory, "pending-boundary-latest-intent.png")
 page.ScreenshotAsync(PageScreenshotOptions(Path = screenshotPath, FullPage = true)) |> awaitTask |> ignore
 printfn "pending-boundary.pass callbacks=%d->%d queryGeneration=2 visible=405-452 screenshot=%s" callbacksBefore (callbacksBefore + 2) screenshotPath
+
+page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+page.Locator("[data-testid='ta-demo-loaded-coverage']").ClickAsync() |> awaitUnit
+waitInt chartStack "data-loaded-bars" 500
+waitInt chartStack "data-ready-row-count" 7
+let resyncView48 = page.Locator("[data-testid='ta-view-48']")
+waitUntil "resync view-48 enabled" (fun () -> resyncView48.IsEnabledAsync() |> awaitTask) id |> ignore
+resyncView48.ClickAsync() |> awaitUnit
+waitInt chartStack "data-visible-start" 453
+waitInt chartStack "data-visible-end" 500
+waitText (page.Locator("[data-testid='ta-poll-state']")) "READY"
+let callbacksBeforeResync = intAttribute callbackState "data-callback-count"
+page.Locator("[data-testid='ta-demo-paused']").ClickAsync() |> awaitUnit
+waitText (page.Locator("[data-testid='ta-poll-state']")) "RESYNC"
+dragSelectionToEarlierBoundary "paused-for-resync"
+waitText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
+require (intAttribute callbackState "data-callback-count" = callbacksBeforeResync) "PausedForResync queue must not dispatch before Ready"
+page.Locator("[data-testid='ta-demo-live']").ClickAsync() |> awaitUnit
+waitText (page.Locator("[data-testid='ta-poll-state']")) "READY"
+waitInt callbackState "data-callback-count" (callbacksBeforeResync + 1)
+waitInt chartStack "data-query-generation" 2
+waitInt chartStack "data-visible-start" 405
+waitInt chartStack "data-visible-end" 452
+let resyncScreenshotPath = Path.Combine(outputDirectory, "paused-for-resync-boundary-latest-intent.png")
+page.ScreenshotAsync(PageScreenshotOptions(Path = resyncScreenshotPath, FullPage = true)) |> awaitTask |> ignore
+printfn "paused-for-resync.pass callbacks=%d->%d queryGeneration=2 visible=405-452 screenshot=%s" callbacksBeforeResync (callbacksBeforeResync + 1) resyncScreenshotPath
+
 browser.CloseAsync() |> awaitUnit
 playwright.Dispose()

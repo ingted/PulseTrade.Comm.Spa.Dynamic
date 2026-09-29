@@ -66,6 +66,17 @@ let waitStatus (page: IPage) (expected: string) =
         let actual = page.GetByTestId("cache-status").TextContentAsync() |> awaitTask
         failwith $"Expected cache status `{expected}`, actual `{actual}`: {error.Message}"
 
+let waitStatusPrefix (page: IPage) (prefix: string) =
+    let deadline = DateTime.UtcNow.AddSeconds 45.0
+    let mutable actual = ""
+
+    while DateTime.UtcNow < deadline && not (actual.StartsWith(prefix, StringComparison.Ordinal)) do
+        actual <- page.GetByTestId("cache-status").TextContentAsync() |> awaitTask
+        if not (actual.StartsWith(prefix, StringComparison.Ordinal)) then Threading.Thread.Sleep 100
+
+    require (actual.StartsWith(prefix, StringComparison.Ordinal)) $"Expected cache status prefix `{prefix}`, actual `{actual}`"
+    actual
+
 Directory.CreateDirectory outputDirectory |> ignore
 require (not (String.IsNullOrWhiteSpace browserExecutablePath) && File.Exists browserExecutablePath) "Chrome or Edge executable is unavailable"
 
@@ -96,6 +107,34 @@ page.GetByTestId("cache-clear").ClickAsync() |> awaitUnit
 waitStatus page "CLEARED"
 page.GetByTestId("cache-count").ClickAsync() |> awaitUnit
 waitStatus page "COUNT:0"
+page.GetByTestId("cache-seed-large").ClickAsync() |> awaitUnit
+waitStatus page "LARGE:SEEDED"
+page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+page.GetByTestId("cache-read-large").ClickAsync() |> awaitUnit
+let largeReadStatus = waitStatusPrefix page "LARGE:READ:"
+let largeReadParts = largeReadStatus.Split ':'
+require (largeReadParts.Length = 5) ("unexpected large read status: " + largeReadStatus)
+let largeReadDataRefs = Int32.Parse largeReadParts[2]
+let largeReadMaximumCallbackGapMs = Int32.Parse largeReadParts[3]
+let largeReadElapsedMs = Int32.Parse largeReadParts[4]
+require (largeReadDataRefs = 29) $"large read dataRef count mismatch: {largeReadDataRefs}"
+page.GetByTestId("cache-rehydrate-large").ClickAsync() |> awaitUnit
+let largeStatus = waitStatusPrefix page "LARGE:REHYDRATED:"
+let largeParts = largeStatus.Split ':'
+require (largeParts.Length = 6) ("unexpected large rehydrate status: " + largeStatus)
+let largeDataRefs = Int32.Parse largeParts[2]
+let largePointCount = Int32.Parse largeParts[3]
+let largeMaximumCallbackGapMs = Int32.Parse largeParts[4]
+let largeElapsedMs = Int32.Parse largeParts[5]
+require (largeDataRefs = 29) $"large rehydrate dataRef count mismatch: {largeDataRefs}"
+require (largePointCount = 3820) $"large rehydrate point count mismatch: {largePointCount}"
+require
+    (largeMaximumCallbackGapMs < 110)
+    $"large rehydrate event-loop callback gap exceeded 100ms task budget: read={largeReadMaximumCallbackGapMs}ms/{largeReadElapsedMs}ms rehydrate={largeMaximumCallbackGapMs}ms/{largeElapsedMs}ms"
+page.GetByTestId("cache-supersede-large").ClickAsync() |> awaitUnit
+waitStatus page "LARGE:SUPERSEDED:1"
+page.GetByTestId("cache-clear").ClickAsync() |> awaitUnit
+waitStatus page "CLEARED"
 page.GetByTestId("cache-seed-corrupt").ClickAsync() |> awaitUnit
 waitStatus page "CORRUPT:SEEDED"
 page.GetByTestId("cache-read-corrupt").ClickAsync() |> awaitUnit
@@ -132,4 +171,6 @@ playwright.Dispose()
 
 printfn "PASS interactive-client-browser-cache-playwright"
 printfn "persisted-count=8 latest-revision=10 evicted-oldest=true covering-hit=true coverage-miss=true corrupt-removed=true semantic-invalid-removed=true finalized-prefix=1 preview-count=0 accepted-state-write=true paused-state-rejected=true rehydrate=paused revision-continuation=false cleared-count=0"
+printfn "large-read=dataRefs:%d maxCallbackGapMs:%d elapsedMs:%d" largeReadDataRefs largeReadMaximumCallbackGapMs largeReadElapsedMs
+printfn "large-rehydrate=dataRefs:%d points:%d maxCallbackGapMs:%d elapsedMs:%d" largeDataRefs largePointCount largeMaximumCallbackGapMs largeElapsedMs
 printfn "evidence=%s" (Path.Combine(outputDirectory, "browser-cache-persisted.png"))

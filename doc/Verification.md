@@ -311,3 +311,10 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Full regression：同一行為亦納入`verify-ta-renderer-playwright.fsx`；完整gate仍負責既有4,000 bars、cursor、row、coverage與performance範圍，focused verifier不得取代完整release regression。
 - Owner result：focused verifier連續兩次PASS `callbacks 0->2 / QueryGeneration=2 / visible 405-452`；完整BrowserDemo gate PASS，300 cursor transitions完成，five-candle/scenario/All/marker/document/progressive正式phases皆無>100ms task。Focused suites `55/15/17`。
 - Official graph：source `67d8ea2`；Renderer `0.1.95` SHA-256 `B57E548F2B3E0BABB01F3B687DAE587078AB09236F924CB7EBF739187D553978`、Interactive.Client `0.1.86` SHA-256 `751A0A9A1D4A45EAFE7761B80B5848F1DB5B25AC46F4D802BE6E5859889A8DFF`、Ptcs.Client `0.1.96` SHA-256 `3E7BFB0C122336742C03EF0D88F168EBFFF96102C552D4C520B9E51E94914DB6`。三包NuGet.org repository signatures有效、exact dependencies正確、排除`.signature.p7s`後entryDiff=0；Interactive manifest=`0.1.86`。Daedalus真SPAA progressive gate pending。
+
+## DYN-VFY-043 Poll-state drain／large cache rehydrate（OWNER PASS；release/consumer pending）
+
+- Commands：Renderer／Interactive.Client／Ptcs.Client exact-package runners；Renderer及BrowserCache demos Release rebuild；`scripts/verify-ta-pending-boundary-playwright.fsx`、`scripts/verify-interactive-client-browser-cache-playwright.fsx`、`scripts/verify-ta-edit-playwright.fsx`、完整`scripts/verify-ta-renderer-playwright.fsx -- --skip-performance-gates`。
+- Poll gates：真`PollInFlight`期間whole-selection drag顯示preview，settled後callbacks `0->2`；純`PausedForResync`期間release只排隊，切READY後callbacks `0->1`。兩者皆`QueryGeneration=2`、visible `405-452`，無平行remote request。
+- Cache gate：3820 points x 28 scalar series rehydrate為29 data refs／3820 points，read／rehydrate max callback gap=`37/52ms`，elapsed=`563/1102ms`；完整性與supersede once通過。Focused suites `55/15/17`，完整Renderer Playwright PASS且正式phase over100=0。
+- Candidate graph：Renderer `0.1.98`、Interactive.Client `0.1.90`、Ptcs.Client `0.1.99`；official publication/readback及Daedalus真SPAA progressive/cache-hit gates pending。

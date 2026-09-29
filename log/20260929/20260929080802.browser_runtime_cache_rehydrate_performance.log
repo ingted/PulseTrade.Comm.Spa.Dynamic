@@ -1,0 +1,53 @@
+# BrowserRuntimeCache phased rehydrate long-task
+
+## 背景
+
+Daedalus真SPAA official `Renderer 0.1.94 / Interactive.Client 0.1.85`在IndexedDB cache hit量到`BrowserRuntimeCache.rehydrateLatestPhased` read/rehydrateCore約2944ms，單一browser long task 155ms；consumer已補projection receipt wait，仍超過RFC-0028／0030的100ms上限。
+
+## 目標
+
+- 以Interactive.Client owner focused fixture重現大accepted projection的cache rehydrate long task。
+- 找出單次main-thread slice來源並做bounded phased work，不降低100ms gate。
+- 維持cache identity、supersede、validation與atomic publish語意。
+- 發布exact package graph並交Daedalus跑真SPAA cache-hit gate。
+
+## 假設
+
+- IndexedDB read本身非主要long task；record decode、RuntimeCache validation或accepted-state reconstruction仍在單一callback同步完成。
+- 現有`decodeDataItemsPhased`雖分批，但每批的item數固定，未依payload成本或時間budget yield；80個大型frames可在單批超過100ms。
+
+## 步驟
+
+1. 讀`BrowserCache.fs` phased decode/rehydrate與既有BrowserCache demo/verifier，建立可量測focused RED。
+2. 用最小時間／batch budget切片，補supersede與atomic publish回歸。
+3. 跑Interactive.Client unit/browser gates與必要Renderer/SPAA相鄰回歸。
+4. 更新RFC/current docs/Verification/DevLog，bump exact graph，push與official readback。
+
+## 範圍
+
+- In：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client` browser cache phased rehydrate、focused verifier、active package graph與文件。
+- Out：Daedalus consumer query/provider、IndexedDB ownership以外的SPAA backtest邏輯、放寬long-task門檻。
+
+## 驗收
+
+- 大projection cache hit仍完整rehydrate，無partial publish，superseded結果不得commit。
+- owner focused browser gate無超過100ms long task；真SPAA cache-hit由Daedalus驗收。
+
+## 風險
+
+- WebSharper incremental output可能與source不一致；release必須使用全新版本、force rebuild及nupkg內bundle marker驗證。
+- Owner fixture不能取代Daedalus真SPAA cache-hit／progressive consumer gate，consumer回覆前維持pending。
+
+## Operations
+
+- 08:08 收到Daedalus證據：cold body 3,821,570 chars／80 frames，cache rehydrateCore 2944ms、long task 155ms；已direct確認`0.1.86`未涵蓋並接手owner修正。
+- 08:27 owner cache RED/GREEN：official-old fixture `read=38ms / rehydrate=390ms`；移除phased path重複同步full-snapshot validation後為`read=37ms / rehydrate=54ms`，29 refs／3820 points完整，supersede callback once。Interactive lifecycle 15/15 PASS。
+- 08:28 Daedalus真SPAA指出progressive仍被`PollInFlight` local hard-disable擋住。契約決策採連續操作：poll-in-flight仍可local drag，release queue latest adjacent intent；新增真poll fixture，不要求consumer等待idle。
+- 09:08 18882 focused Edit gate證明`ta-edit-row-sma`可見且為52x26；修正BrowserDemo固定舊bundle query revision，重建後以新cache key提供artifact。
+- 09:31 找到local package provenance問題：先前incremental pack未重編Renderer，0.1.96 bundle仍把`PollInFlight`列入`localViewportDisabled`。改採新exact graph並強制Rebuild；bundle確認local禁用只剩`Unmounted/Disposed`，runtime sink包含queue flush。
+- 09:47 focused browser gates通過：真`PollInFlight`drag preview後callback 0->2、query generation 2、visible 405-452；`PausedForResync -> Ready`在RESYNC只排隊，READY transition callback 0->1並exactly-once前移到405-452。
+- 09:10 Interactive package verifier對staging產生的`0.1.90` nupkg通過，manifest／四個bundle entries／exact dependencies一致；SHA-256=`550A1A5CEE84A811FF13EA524F653678F84AAAC6D6A74AB38BD59EC127E45583`。準備執行source checker與immutable release。
+
+## Correction 2026-09-29 09:14 +08:00
+
+- 第二次checker的`log_readonly_modify`不是checker缺陷；本輪為補齊風險欄位，曾把內容插入既有log中段，違反append-only。此後本檔只在尾端追加；不修改checker，也不以新session規避。

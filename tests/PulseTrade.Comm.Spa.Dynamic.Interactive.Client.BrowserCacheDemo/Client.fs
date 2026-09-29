@@ -10,17 +10,20 @@ open WebSharper.UI.Html
 
 [<JavaScript>]
 module Client =
+    let fixtureEntry elementId =
+        let node = JS.Document.GetElementById elementId
+
+        if isNull node then
+            None
+        else
+            match BrowserRuntimeCodec.decodeCacheEntry node.TextContent with
+            | Ok entry -> Some entry
+            | Error _ -> None
+
     let fixtureEntries () =
         [| 0..9 |]
         |> Array.choose (fun index ->
-            let node = JS.Document.GetElementById("cache-entry-" + string index)
-
-            if isNull node then
-                None
-            else
-                match BrowserRuntimeCodec.decodeCacheEntry node.TextContent with
-                | Ok entry -> Some entry
-                | Error _ -> None)
+            fixtureEntry ("cache-entry-" + string index))
 
     let rec writeSequentially (entries: RuntimeCacheEntry array) (index: int) (completed: unit -> unit) =
         if index >= entries.Length then
@@ -98,6 +101,126 @@ module Client =
             BrowserRuntimeCache.clear (function
             | Ok _ -> status.Value <- "CLEARED"
             | Error reason -> status.Value <- "UNAVAILABLE:" + reason)
+
+        let measureEventLoop completed =
+            let intervalMs = 10.0
+            let startedAt = float (Date.Now())
+            let mutable previousTick = startedAt
+            let mutable maximumCallbackGapMs = 0.0
+            let intervalHandle =
+                JS.Window.SetInterval(
+                    (fun () ->
+                        let now = float (Date.Now())
+                        maximumCallbackGapMs <- max maximumCallbackGapMs (now - previousTick)
+                        previousTick <- now),
+                    int intervalMs)
+
+            fun outcome ->
+                JS.SetTimeout
+                    (fun () ->
+                        JS.Window.ClearInterval intervalHandle
+                        let elapsedMs = int (System.Math.Ceiling(float (Date.Now()) - startedAt))
+                        let maximumGapMs = int (System.Math.Ceiling maximumCallbackGapMs)
+                        completed outcome maximumGapMs elapsedMs)
+                    25
+                |> ignore
+
+        let seedLarge () =
+            status.Value <- "LARGE:SEEDING"
+
+            match fixtureEntry "cache-large-entry" with
+            | None -> status.Value <- "LARGE:FIXTURE-MISSING"
+            | Some entry ->
+                BrowserRuntimeCache.clear (fun _ ->
+                    BrowserRuntimeCache.write
+                        entry
+                        (function
+                            | BrowserRuntimeCacheWriteResult.Written -> status.Value <- "LARGE:SEEDED"
+                            | BrowserRuntimeCacheWriteResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason))
+
+        let readLarge () =
+            match fixtureEntry "cache-large-entry" with
+            | None -> status.Value <- "LARGE:FIXTURE-MISSING"
+            | Some entry ->
+                status.Value <- "LARGE:READING"
+                BrowserRuntimeCache.readLatest
+                    entry.CacheIdentity
+                    entry.WorkspaceId
+                    None
+                    (measureEventLoop (fun outcome maximumGapMs elapsedMs ->
+                        match outcome with
+                        | BrowserRuntimeCacheReadResult.Hit cached ->
+                            status.Value <- $"LARGE:READ:{cached.Snapshot.Data.Count}:{maximumGapMs}:{elapsedMs}"
+                        | BrowserRuntimeCacheReadResult.Miss -> status.Value <- "LARGE:MISS"
+                        | BrowserRuntimeCacheReadResult.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason))
+
+        let rehydrateLarge () =
+            match fixtureEntry "cache-large-entry" with
+            | None -> status.Value <- "LARGE:FIXTURE-MISSING"
+            | Some entry ->
+                let current =
+                    { runtimeState RuntimePollState.MountedIdle entry with
+                        Data = Map.empty
+                        DataRevision = 0L
+                        LastTransportSequence = 19L }
+                let finish =
+                    measureEventLoop (fun outcome maximumGapMs elapsedMs ->
+                        match outcome with
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Rehydrated hydrated ->
+                            let pointCount =
+                                match Map.tryFind entry.Document.TemporalAxisRefs[0] hydrated.Data with
+                                | Some(SduiValue.Object fields) ->
+                                    match Map.tryFind "points" fields with
+                                    | Some(SduiValue.Array points) -> points.Length
+                                    | _ -> 0
+                                | _ -> 0
+
+                            status.Value <-
+                                $"LARGE:REHYDRATED:{hydrated.Data.Count}:{pointCount}:{maximumGapMs}:{elapsedMs}"
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Superseded -> status.Value <- "LARGE:SUPERSEDED"
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Miss -> status.Value <- "LARGE:MISS"
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Rejected errors -> status.Value <- $"LARGE:REJECTED:{errors.Length}"
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason)
+
+                status.Value <- "LARGE:REHYDRATING"
+                BrowserRuntimeCache.rehydrateLatestPhased
+                    entry.CacheIdentity
+                    entry.WorkspaceId
+                    (fun () -> current)
+                    (fun () -> true)
+                    finish
+
+        let supersedeLargeRehydrate () =
+            match fixtureEntry "cache-large-entry" with
+            | None -> status.Value <- "LARGE:FIXTURE-MISSING"
+            | Some entry ->
+                let current =
+                    { runtimeState RuntimePollState.MountedIdle entry with
+                        Data = Map.empty
+                        DataRevision = 0L
+                        LastTransportSequence = 19L }
+                let mutable currentGeneration = true
+                let mutable callbackCount = 0
+
+                status.Value <- "LARGE:SUPERSEDING"
+                BrowserRuntimeCache.rehydrateLatestPhased
+                    entry.CacheIdentity
+                    entry.WorkspaceId
+                    (fun () -> current)
+                    (fun () -> currentGeneration)
+                    (fun outcome ->
+                        callbackCount <- callbackCount + 1
+
+                        match outcome with
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Superseded ->
+                            status.Value <- $"LARGE:SUPERSEDED:{callbackCount}"
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Rehydrated _ ->
+                            status.Value <- $"LARGE:UNEXPECTED-REHYDRATED:{callbackCount}"
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Miss -> status.Value <- "LARGE:MISS"
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Rejected errors -> status.Value <- $"LARGE:REJECTED:{errors.Length}"
+                        | BrowserRuntimeCachePhasedRehydrateOutcome.Unavailable reason -> status.Value <- "UNAVAILABLE:" + reason)
+
+                JS.SetTimeout (fun () -> currentGeneration <- false) 25 |> ignore
 
         let writeAccepted () =
             if entries.Length <= 9 then
@@ -244,6 +367,10 @@ module Client =
                 button [ buttonStyle; Attr.Create "data-testid" "cache-covering-hit"; on.click (fun _ _ -> readCovering 9 9) ] [ text "Covering hit" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-coverage-miss"; on.click (fun _ _ -> readCovering 9 0) ] [ text "Coverage miss" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-clear"; on.click (fun _ _ -> clear ()) ] [ text "Clear" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-seed-large"; on.click (fun _ _ -> seedLarge ()) ] [ text "Seed large" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-read-large"; on.click (fun _ _ -> readLarge ()) ] [ text "Read large" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-rehydrate-large"; on.click (fun _ _ -> rehydrateLarge ()) ] [ text "Rehydrate large" ]
+                button [ buttonStyle; Attr.Create "data-testid" "cache-supersede-large"; on.click (fun _ _ -> supersedeLargeRehydrate ()) ] [ text "Supersede large" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-write-accepted"; on.click (fun _ _ -> writeAccepted ()) ] [ text "Write accepted state" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-read-accepted-projection"; on.click (fun _ _ -> readAcceptedProjection ()) ] [ text "Read accepted projection" ]
                 button [ buttonStyle; Attr.Create "data-testid" "cache-reject-paused"; on.click (fun _ _ -> rejectPausedState ()) ] [ text "Reject paused state" ]

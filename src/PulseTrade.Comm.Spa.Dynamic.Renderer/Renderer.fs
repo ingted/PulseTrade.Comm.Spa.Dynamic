@@ -298,7 +298,6 @@ module TaWorkspaceRenderer =
         | _ -> false
 
     let localViewportDisabled = function
-        | RuntimePollState.PollInFlight
         | RuntimePollState.Unmounted
         | RuntimePollState.Disposed -> true
         | _ -> false

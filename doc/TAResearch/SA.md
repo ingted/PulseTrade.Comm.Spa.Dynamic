@@ -371,3 +371,9 @@ Canonical UTC是transport、lookup、patch correlation與persistence truth；dis
 因此本變更先修正與資料shape無關的必然錯誤：visual bounds直接由resolved window ratio產生，沒有24-unit floor；pointer使用CSS pixel resolver。selection小於左右hit target總寬時，interaction union切成左／中／右三區，保證resize／move皆可達且不依DOM target。
 
 長coverage另需generic projection邊界。PTCS不擁有provider cache，但需要接收足以投影的coverage observation domain、gap segments、bounded overview anchors、active detail offset/window與generation。此shape須由Daedalus的W030-2真consumer輸出反證後定案；在此前不得將現有4,000-axis能力描述成多年coverage完成。
+
+## 32. Poll-state local intent與cache rehydrate scheduling
+
+`PollInFlight`／`PausedForResync`描述remote transport authority，不代表browser local viewport失效。若它們阻止mousedown，使用者在前一個request或resync期間的最後操作會直接遺失；若立即再送remote request，又破壞single-in-flight。因此local preview/release維持可用，remote boundary intent進單一latest-wins slot，並由action settlement或runtime轉回可dispatch狀態共同觸發drain。`Unmounted`／`Disposed`才是local gesture的硬停止狀態。
+
+Browser cache phased rehydrate原先先同步執行完整`tryPrepareRehydrate`，再由frame pump逐段重驗同一份大型data，cache hit因此仍產生main-thread long task。正確邊界是先同步驗header、document、workspace與current authority，建立prepared candidate/frame；nested data semantic validation由既有phased frame pump唯一完成，全部成功後才atomic publish。這不是降低驗證，而是移除同一資料在同一路徑的重複同步掃描。

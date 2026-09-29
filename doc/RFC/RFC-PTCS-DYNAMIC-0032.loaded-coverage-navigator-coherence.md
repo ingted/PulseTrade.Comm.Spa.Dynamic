@@ -152,3 +152,13 @@ Official exact graph為Contracts `0.1.33`、Renderer `0.1.94`、Interactive.Clie
 Owner gate以BrowserDemo 750ms callback建立race：先送48，再於pending期間向左越界拖曳，要求callback count `N->N+2`、queue feedback、`QueryGeneration=2`及相鄰前頁`405-452`。正式package發布後仍須由Daedalus真SPAA progressive gate確認。
 
 Official correction graph為Renderer `0.1.95`、Interactive.Client `0.1.86`、Ptcs.Client `0.1.96`，source commit `67d8ea2`。三包已完成NuGet.org repository signature、exact dependencies、bundle manifest與entry parity readback；真SPAA progressive gate仍是停止條件。
+
+## 14. Poll-state drain與cache rehydrate correction
+
+真SPAA進一步證明失敗不只存在於`PendingActionId`：mouse-down前runtime可為`PollInFlight`或`PausedForResync`。前者若被local gate阻擋，gesture完全消失；後者即使gesture可排隊，若queue只由local action settlement觸發，純`RESYNC -> READY`也永遠不會drain。
+
+決策：`PollInFlight`／`PausedForResync`只阻止remote dispatch，不阻止navigator local preview/release；`Unmounted`／`Disposed`才禁止local gesture。Queue同時由action settlement與runtime轉回可dispatch狀態觸發，並在dispatch前再次檢查無pending action，以single-slot latest-wins保證exactly once。
+
+同輪cache-hit performance調查確認phased rehydrate在frame pump前仍同步執行完整snapshot semantic validation，等同掃兩次大型data。Interactive.Client改為同步驗header/document/workspace/current authority並建立frame，nested data只由phased pump驗證；generation、atomic publish與fail-closed語意不變。
+
+Owner candidate graph為Renderer `0.1.98`、Interactive.Client `0.1.90`、Ptcs.Client `0.1.99`。Focused `55/15/17`、真PollInFlight、`PausedForResync -> Ready`、3820x28 cache rehydrate及完整Renderer browser gate均PASS；official NuGet readback與Daedalus真SPAA progressive/cache-hit仍是停止條件。

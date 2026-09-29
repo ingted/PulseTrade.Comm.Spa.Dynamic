@@ -1050,4 +1050,8 @@ Stable selectors／attributes：workspace與visible time node提供`data-display
 
 ### Pending boundary drag serialization
 
-`PendingActionId`只序列化remote submission，不是local pointer hard-disable。Navigator在poll可本地互動時照常建立draft；release若越過coverage boundary，將`direction + legacy delta`寫入與preset共用的單一queued viewport intent。後來的preset或boundary覆蓋尚未送出的舊intent。Current request settled後，Renderer以最新document、active detail、window與revision重新建立`CoverageIntent`，再送唯一下一個`VisibleRangeChanged`；identity replacement則清除queue。remote disabled／resync仍fail closed，任何時刻不得有兩個remote viewport request並行。
+`PendingActionId`只序列化remote submission，不是local pointer hard-disable。Navigator在poll可本地互動時照常建立draft；release若越過coverage boundary，將`direction + legacy delta`寫入與preset共用的單一queued viewport intent。後來的preset或boundary覆蓋尚未送出的舊intent。Current request settled後，Renderer以最新document、active detail、window與revision重新建立`CoverageIntent`，再送唯一下一個`VisibleRangeChanged`；identity replacement則清除queue。remote dispatch在disabled／resync期間仍fail closed，但local preview保持可用；任何時刻不得有兩個remote viewport request並行。
+
+`localViewportDisabled`只涵蓋`Unmounted`與`Disposed`。`PollInFlight`及`PausedForResync`允許local drag/preview，但`remoteDisabled`仍使mouseup只更新`queuedViewportIntent`。Queue有兩個drain trigger：`startActionWithFeedback.afterSettled`與`runtimeState.View`轉為非remote-disabled；兩者都先驗`PendingActionId=None`，所以同一intent只能dispatch一次。純`PausedForResync -> Ready`不得依賴不存在的local action settlement。
+
+Interactive cache的`tryPreparePhasedRehydrate`只同步執行entry header、document validation、current document/workspace authority及rehydrate frame建立。frame內data由`BrowserRuntimeFramePump`的phased decode/reducer驗證；完成前不更新runtime state，generation失效回`Superseded`。不得先呼叫同步full-snapshot prepare再把同一frame送入phased pump。
