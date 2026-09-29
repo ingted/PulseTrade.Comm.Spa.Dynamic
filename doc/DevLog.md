@@ -1896,3 +1896,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Source commit `7458f3a`已push；Renderer `0.1.100`、Interactive.Client `0.1.92`、Ptcs.Client `0.1.101`三包push均回`Created`。
 - NuGet.org official SHA-256依序為`759432FCE6029F0011D6BEB5D6A6141C8A1B2AD9B0468A40273345A828D7A3F / 66F93800F42094FEC82889C389C19B9CA6F760AD286EC1648BEFA2014F0B0899 / 535FE654ACCB9E412AEF1686238CAA4EAB81ABC0B1EF76F15B69A67B651698B3`。Repository signatures、exact dependencies、Interactive manifest `0.1.92`及排除`.signature.p7s`後entry parity均PASS；真SPAA formal progressive仍由consumer驗收。
+
+## 2026-09-29 - Navigator live-root package provenance correction
+
+- Renderer `0.1.102`、Interactive.Client `0.1.94`、Ptcs.Client `0.1.103` 的功能驗證與NuGet.org驗簽通過，但其nuspec repository commit仍指向打包前HEAD `d50f180`，不交付consumer。
+- 只升版重建graph為PulseTrade.Comm.Spa.Dynamic.Renderer `0.1.103`、PulseTrade.Comm.Spa.Dynamic.Interactive.Client `0.1.95`、PulseTrade.Comm.Spa.Dynamic.Ptcs.Client `0.1.104`；兩個client exact依賴Renderer `[0.1.103]`。此段提交後才由該HEAD重建，以使package provenance對應實際source。
