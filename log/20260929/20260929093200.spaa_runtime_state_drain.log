@@ -1,0 +1,49 @@
+# SPAA runtime-state drain integration
+
+## 背景
+
+Daedalus以official Renderer `0.1.98`／Interactive.Client `0.1.90`重建真SPAA後，`RESYNC -> READY`已成功commit revision 4，但adjacent left drag仍未dispatch：actionCount `3 -> 3`，range停在Loaded 500／Viewing 1-250。Owner BrowserDemo focused gate為PASS，顯示兩條integration path可能缺少同一runtime-state sink。
+
+## 目標
+
+- 定位BrowserDemo與正式Interactive/PTCS client接線差異。
+- 以package consumer路徑重現`RESYNC -> READY`後queued viewport intent未drain。
+- 在不改wire shape與single-in-flight invariant下修正owner package或明確consumer wiring。
+
+## 假設
+
+- Renderer內部drain依賴runtime state sink，但正式client只更新document/view，未呼叫或未綁定該sink。
+- 或正式consumer在commit時以replacement identity清除queue，使READY transition到達前intent已消失。
+
+## 步驟
+
+1. 對照BrowserDemo、Interactive.Client、Ptcs.Client及SPAA test line 400附近的runtime update路徑。
+2. 建package-consumer focused RED，驗action count、runtime state transition、queue retention及single dispatch。
+3. 最小修正後跑focused/full owner gates，發布全新exact graph並交Daedalus重跑。
+
+## 範圍
+
+- In：Renderer runtime state sink、Interactive/Ptcs client integration、focused tests與release docs。
+- Out：Daedalus provider/coverage authority、EditorSchemas authoring、交易domain邏輯。
+
+## 驗收
+
+- 正式package-consumer path在`PausedForResync -> Ready`時dispatch唯一queued adjacent intent。
+- Identity replacement仍清queue；不得平行remote request或重複dispatch。
+- 真SPAA actionCount前進且range移至adjacent page。
+
+## 風險
+
+- 不能只補BrowserDemo callback；必須驗正式package consumer wiring。
+- 不得把Edit consumer authoring缺口混入本修正或替Daedalus發明EditorSchemas。
+
+## Operations
+
+- 09:31 收到真SPAA反證；已direct回覆Daedalus並停止要求重跑，開始比對owner demo與consumer wiring。
+- 09:33 以正式 `Rfc0026.Spaa.ProgressiveCoverage.playwright.fsx` 重現：boundary drag 時 `pollStateBefore=RESYNC`，既有 action 接受 revision 4 後 `pollStateAfter=READY`，但 action count 維持 `3 -> 3`。證明 provider 已 commit，缺口是 renderer queued intent drain。
+- 09:48 比對正式 SPAA 與 owner demo。SPAA 直接把 Renderer 綁到 HTTP/cache callback；正式 `Interactive.Client` WebSocket mount 並非此 failure path。Renderer 原本分別靠 runtime sink 與 action-settlement 的單次排程 drain，改為額外訂閱 `(Poll, PendingActionId)` 聯合 gate，任一 gate 變動都重新嘗試 drain。
+- 09:48 新增 browser regression：pending action 期間切入 RESYNC，再拖曳 earlier boundary，最後 READY 後必須只送出 latest queued intent。
+- 09:54 Renderer Release build通過；BrowserDemo重建於`127.0.0.1:18882`。focused browser gate三情境全通過：PollInFlight `0 -> 2`、PausedForResync `0 -> 1`、pending-action + RESYNC `0 -> 2`，均落在query generation 2／visible 405-452。
+- 09:55 準備新exact graph：Renderer `0.1.99`、Interactive.Client `0.1.91`、Ptcs.Client `0.1.100`；兩個consumer exact-pin Renderer `[0.1.99]`。
+- 10:02 校正：第一次focused browser執行仍消費舊`0.1.90 -> 0.1.98`，不可作為candidate證據。建立local exact graph並同步所有active owner tests後重建。
+- 10:05 新exact graph focused suites `55/15/17`；三條boundary browser情境全綠。完整Renderer browser PASS，five-candle/scenario/All/marker/document/progressive正式phase皆無>100ms task；Interactive package verifier PASS，manifest `0.1.91`且exact依Renderer `[0.1.99]`。

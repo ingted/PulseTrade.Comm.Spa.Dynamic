@@ -175,5 +175,27 @@ let resyncScreenshotPath = Path.Combine(outputDirectory, "paused-for-resync-boun
 page.ScreenshotAsync(PageScreenshotOptions(Path = resyncScreenshotPath, FullPage = true)) |> awaitTask |> ignore
 printfn "paused-for-resync.pass callbacks=%d->%d queryGeneration=2 visible=405-452 screenshot=%s" callbacksBeforeResync (callbacksBeforeResync + 1) resyncScreenshotPath
 
+page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+page.Locator("[data-testid='ta-demo-loaded-coverage']").ClickAsync() |> awaitUnit
+waitInt chartStack "data-loaded-bars" 500
+waitInt chartStack "data-ready-row-count" 7
+let interleavedCallbacksBefore = intAttribute callbackState "data-callback-count"
+page.Locator("[data-testid='ta-demo-model-poll-in-flight']").ClickAsync() |> awaitUnit
+page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
+waitText (page.Locator("[data-testid='ta-poll-state']")) "UPDATING"
+page.Locator("[data-testid='ta-demo-paused']").ClickAsync() |> awaitUnit
+waitText (page.Locator("[data-testid='ta-poll-state']")) "RESYNC"
+dragSelectionToEarlierBoundary "pending-action-resync"
+waitText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
+waitInt callbackState "data-callback-count" (interleavedCallbacksBefore + 2)
+waitText (page.Locator("[data-testid='ta-poll-state']")) "READY"
+waitInt chartStack "data-query-generation" 2
+waitInt chartStack "data-visible-start" 405
+waitInt chartStack "data-visible-end" 452
+let interleavedScreenshotPath = Path.Combine(outputDirectory, "pending-action-resync-boundary-latest-intent.png")
+page.ScreenshotAsync(PageScreenshotOptions(Path = interleavedScreenshotPath, FullPage = true)) |> awaitTask |> ignore
+printfn "pending-action-resync.pass callbacks=%d->%d queryGeneration=2 visible=405-452 screenshot=%s" interleavedCallbacksBefore (interleavedCallbacksBefore + 2) interleavedScreenshotPath
+
 browser.CloseAsync() |> awaitUnit
 playwright.Dispose()

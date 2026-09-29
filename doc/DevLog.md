@@ -1873,3 +1873,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `16dd825`已push；Renderer `0.1.98`、Interactive.Client `0.1.90`、Ptcs.Client `0.1.99` push均回`Created`。
 - NuGet.org official SHA-256依序為`4792432C548E2B62E9C1F73FAA77D49EF7ED00326507BF604900DA6CD002EE41 / BF9B06EA76660CB1F27AC774E00A5CD9999A283624284B898528A14BD8087CC3 / 00863B675F01162070076F71FB5C9B25B5D43AF8A26F81781AADBA3525414D3D`。三包repository signatures、exact dependencies與排除`.signature.p7s`後entry parity全綠；Interactive bundle manifest=`0.1.90`。
 - Official graph已可供Daedalus升版重跑真SPAA progressive／cache-hit／Edit gates；consumer回覆前DYN-TA-027D/E仍不結案。
+
+## 2026-09-29 - SPAA RESYNC/action settlement joint drain candidate
+
+- 真SPAA以official `0.1.98/0.1.90`重現：navigator boundary drag發生於`RESYNC`且前一個HTTP action仍pending；該action完成revision 4並回到`READY`後，action count仍`3 -> 3`。正式SPAA直接將Renderer綁至HTTP/cache callback，非Interactive WebSocket remount問題。
+- Renderer新增`(RuntimePollState, PendingActionId)`聯合reactive gate，任一gate轉換均重新嘗試single-latest queued viewport intent；identity replacement清queue、single remote in-flight與wire shape不變。F# Playwright新增pending-action期間轉RESYNC、拖boundary、READY後唯一重送的交錯情境。
+- Candidate graph為Renderer `0.1.99`、Interactive.Client `0.1.91`、Ptcs.Client `0.1.100`。Focused suites `55/15/17`；三條boundary gate為`0->2 / 0->1 / 0->2`，完整Renderer browser正式phase無>100ms task，Interactive package manifest/exact dependency gate通過。Official publication/readback與真SPAA rerun pending。

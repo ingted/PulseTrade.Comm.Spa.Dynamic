@@ -2133,6 +2133,13 @@ module TaWorkspaceRenderer =
                 | Choice2Of2(direction, delta) ->
                     dispatchAdjacentCoverage direction delta
             | _ -> ()
+
+        View.Map2
+            (fun state ui -> state.Poll, ui.PendingActionId)
+            runtimeState.View
+            uiState.View
+        |> View.Sink (fun _ -> scheduleNextFrame flushQueuedViewportIntent)
+
         let chartRuntimeState = Var.Create runtimeState.Value
         let initialPreparedData =
             { RawData = Map.empty
