@@ -1855,3 +1855,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus更正progressive gate證據：前一個toolbar Earlier已成功，後續whole-selection越左界時action count `3->3`，並非response payload未套用。根因是Renderer以`PendingActionId`拒絕navigator mousedown/release，把remote serialization誤當local pointer hard-disable。
 - Renderer讓boundary drag與preset共用單一latest-wins viewport queue；pending期間保留local preview，settled後以最新runtime重算adjacent intent，identity replacement清除queue。Public action/wire/API不變。
 - Candidate exact graph為Renderer `0.1.95`、Interactive.Client `0.1.86`、Ptcs.Client `0.1.96`。Focused suites `55/15/17`；focused F# Playwright兩次PASS `callbacks 0->2 / queryGeneration 2 / visible 405-452`；完整BrowserDemo gate PASS，正式phase無>100ms task。Official publication/readback與真SPAA progressive gate pending。
+
+## 2026-09-29 - Pending navigator boundary official release
+
+- Source commit `67d8ea2`已push；Renderer `0.1.95`、Interactive.Client `0.1.86`、Ptcs.Client `0.1.96` push均回`Created`。
+- NuGet.org official SHA-256依序為`B57E548F2B3E0BABB01F3B687DAE587078AB09236F924CB7EBF739187D553978 / 751A0A9A1D4A45EAFE7761B80B5848F1DB5B25AC46F4D802BE6E5859889A8DFF / 3E7BFB0C122336742C03EF0D88F168EBFFF96102C552D4C520B9E51E94914DB6`。三包repository signatures、exact dependencies與排除signature後entry parity全綠；Interactive bundle manifest=`0.1.86`。
+- Official graph已可供Daedalus升版重跑ProgressiveCoverage；consumer gate未回覆前仍標示pending。

@@ -55,3 +55,6 @@ Daedalus以official exact graph驗證真SPAA：OHLC micro-candles、A→B→A與
 - 07:33 Daedalus更正progressive gate：先前Document+Snapshot屬toolbar pan-left成功response；真正失敗是緊接著selection boundary drag完全未送action。定位為navigator start/release誤把`PendingActionId`當local hard disable，開始改為與preset共用latest-wins viewport intent queue。
 - 07:40 Renderer完成single in-flight＋latest queued viewport intent；pending期間navigator可preview/release，boundary intent於settled後依最新runtime重算。Exact candidate graph為`0.1.95/0.1.86/0.1.96`。
 - 07:41 focused suites PASS `55/15/17`；focused F# Playwright兩次PASS `callback 0->2 / queryGeneration 2 / visible 405-452`。完整BrowserDemo gate最終PASS；既有preview stream與synthetic hover verifier race已修為phase前重啟及bounded同位置重送，不放寬效能門檻。
+- 07:48 source commit `67d8ea2`已push；Renderer `0.1.95`、Interactive.Client `0.1.86`、Ptcs.Client `0.1.96` public push均回Created。
+- 07:52 NuGet.org official readback PASS：SHA依序`B57E548F...3978 / 751A0A9A...8DFF / 3E7BFB0C...DB6`；三包repository signatures、exact dependency、Interactive manifest與entry parity均通過。待Daedalus真SPAA progressive驗收。
+- 08:03 closeout checker以`log_readonly_modify`阻擋：progressive結果誤追加至較早hypothesis。已還原舊檔並建立`20260929080300_issue_pending_boundary_drag.hypothesis.md`；程式與package內容不受影響。

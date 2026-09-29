@@ -150,3 +150,5 @@ Official exact graph為Contracts `0.1.33`、Renderer `0.1.94`、Interactive.Clie
 決策：poll/resync仍控制local interaction availability；`PendingActionId`只控制remote submission。Navigator draft/release在pending期間可繼續，越界intent與48/200/All preset共用單一latest-wins slot。當前request settled後依最新runtime重算adjacent coverage，確保不平行送request、不使用stale revision，也不丟掉trader最後操作。Identity replacement清除queue。Public contract與wire shape不變。
 
 Owner gate以BrowserDemo 750ms callback建立race：先送48，再於pending期間向左越界拖曳，要求callback count `N->N+2`、queue feedback、`QueryGeneration=2`及相鄰前頁`405-452`。正式package發布後仍須由Daedalus真SPAA progressive gate確認。
+
+Official correction graph為Renderer `0.1.95`、Interactive.Client `0.1.86`、Ptcs.Client `0.1.96`，source commit `67d8ea2`。三包已完成NuGet.org repository signature、exact dependencies、bundle manifest與entry parity readback；真SPAA progressive gate仍是停止條件。
