@@ -1901,3 +1901,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Renderer `0.1.102`、Interactive.Client `0.1.94`、Ptcs.Client `0.1.103` 的功能驗證與NuGet.org驗簽通過，但其nuspec repository commit仍指向打包前HEAD `d50f180`，不交付consumer。
 - 只升版重建graph為PulseTrade.Comm.Spa.Dynamic.Renderer `0.1.103`、PulseTrade.Comm.Spa.Dynamic.Interactive.Client `0.1.95`、PulseTrade.Comm.Spa.Dynamic.Ptcs.Client `0.1.104`；兩個client exact依賴Renderer `[0.1.103]`。此段提交後才由該HEAD重建，以使package provenance對應實際source。
+
+## 2026-09-29 - Navigator live-root official immutable handoff
+
+- Source commit `651ecc5`已push；Renderer `0.1.103`、Interactive.Client `0.1.95`、Ptcs.Client `0.1.104`依序push並由NuGet.org flat-container重新下載。
+- Official SHA-256依序為`EACCEAB5485514FC2052190BBF0CE5060069DCA060948F17A9B9334D46E68FC8 / 317AADCE892318CFE02E02D2F9C98F51B8B4426C109936B7C51492E0CFC8E32E / 3FA87B12ABE2958F1B3BA5AAD6F92F10BA4C1243977F629C71C2C11BCFDADE09`。Repository signatures、source commit、exact dependencies、Interactive manifest `0.1.95`與排除signature後entry parity皆PASS；真SPAA formal gate交由Daedalus執行。
