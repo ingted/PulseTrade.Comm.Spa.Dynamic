@@ -58,3 +58,4 @@ Daedalus以official exact graph驗證真SPAA：OHLC micro-candles、A→B→A與
 - 07:48 source commit `67d8ea2`已push；Renderer `0.1.95`、Interactive.Client `0.1.86`、Ptcs.Client `0.1.96` public push均回Created。
 - 07:52 NuGet.org official readback PASS：SHA依序`B57E548F...3978 / 751A0A9A...8DFF / 3E7BFB0C...DB6`；三包repository signatures、exact dependency、Interactive manifest與entry parity均通過。待Daedalus真SPAA progressive驗收。
 - 08:03 closeout checker以`log_readonly_modify`阻擋：progressive結果誤追加至較早hypothesis。已還原舊檔並建立`20260929080300_issue_pending_boundary_drag.hypothesis.md`；程式與package內容不受影響。
+- 08:08 post-restore checker首次仍以state中舊hash回報同一`log_readonly_modify`；工作樹為clean且舊hypothesis已與source commit前內容一致。保留FAIL並讓checker記錄恢復後baseline，追加本證據後重跑，不弱化gate。
