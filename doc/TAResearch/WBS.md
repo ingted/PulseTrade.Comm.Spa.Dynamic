@@ -70,4 +70,4 @@ Public OAuth human confirmation、production RN service proof與ACL service rede
 
 | ID | Priority | Slice | Scope | Dependency | Tests | Progress | Status | RFC |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| DYN-TA-028 | 90 | Navigator local-first responsiveness | rAF draft、immediate viewport geometry、pending local pan、overview time axis | DYN-TA-027 | T-127..129 | 90% | Owner candidate與完整browser gate通過；待official package readback及Daedalus真SPAA | [RFC-0032](../RFC/RFC-PTCS-DYNAMIC-0032.loaded-coverage-navigator-coherence.md) |
+| DYN-TA-028 | 90 | Navigator local-first responsiveness／loaded View All | rAF draft、immediate viewport geometry、pending local pan、overview time axis、loaded-domain preset | DYN-TA-027 | T-127..129 | 95% | Owner source與完整browser gate通過；待official package readback及Daedalus真SPAA | [RFC-0032](../RFC/RFC-PTCS-DYNAMIC-0032.loaded-coverage-navigator-coherence.md) |

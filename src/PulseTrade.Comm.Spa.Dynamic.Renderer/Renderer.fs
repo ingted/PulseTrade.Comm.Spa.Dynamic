@@ -42,6 +42,12 @@ type TaPendingBoundaryPan =
       ObservationCount: int
       QueryGeneration: int64 }
 
+[<RequireQualifiedAccess>]
+type TaQueuedViewportIntent =
+    | LocalRange of SduiAction
+    | AdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int
+    | CoverageWindow of SduiAction * TaPendingBoundaryPan * string
+
 type TaRendererDisplayTime =
     { Zone: View<SduiDisplayTimeZone>
       Current: unit -> SduiDisplayTimeZone }
@@ -1748,7 +1754,7 @@ module TaWorkspaceRenderer =
                         Attr.Create "data-ta-row-ofi-empty" "true"
                         Attr.Create "data-cursor-event-state" (if hasCursorEventCapability then "none" else "unavailable")
                         attr.style "display:inline-flex; align-items:center; height:18px; color:#708198;"
-                    ] [ text (if hasCursorEventCapability then "None" else "Unavailable") ]
+                    ] [ text "" ]
                     for index in 0 .. RendererModel.MarkerCursorItemBudget - 1 do
                         yield span [
                             Attr.Create "data-ta-row-ofi-item-index" (string index)
@@ -2115,7 +2121,7 @@ module TaWorkspaceRenderer =
         let mutable queryInFlight = false
         let mutable queuedQuery: (TaQueryChange * int) option = None
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
-        let mutable queuedViewportIntent: Choice<SduiAction, PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int> option = None
+        let mutable queuedViewportIntent: TaQueuedViewportIntent option = None
         let mutable flushQueuedViewportIntent = ignore
         let mutable dispatchAdjacentCoverage = fun (_: PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection) (_: int) -> ()
         let preparedRowsReady = Var.Create false
@@ -2161,20 +2167,35 @@ module TaWorkspaceRenderer =
             startActionWithFeedback action successText (fun () -> onAccepted (); None) onRejected ignore
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
+        let startCoverageWindowAction action pending successText =
+            pendingBoundaryPan <- Some pending
+            startActionWith
+                action
+                successText
+                ignore
+                (fun () -> pendingBoundaryPan <- None)
         let sendOrQueueVisibleRangeAction action =
             if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
-                queuedViewportIntent <- Some(Choice1Of2 action)
+                queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange action)
             else
                 startAction action "Visible range synchronized." ignore
+        let sendOrQueueCoverageWindowAction action pending successText =
+            if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
+                queuedViewportIntent <- Some(TaQueuedViewportIntent.CoverageWindow(action, pending, successText))
+                setUiState { uiState.Value with Feedback = "Loaded coverage request queued." }
+            else
+                startCoverageWindowAction action pending successText
         flushQueuedViewportIntent <- fun () ->
             match queuedViewportIntent with
             | Some intent when uiState.Value.PendingActionId.IsNone && not (remoteDisabled runtimeState.Value.Poll) ->
                 queuedViewportIntent <- None
                 match intent with
-                | Choice1Of2 action ->
+                | TaQueuedViewportIntent.LocalRange action ->
                     startAction action "Visible range synchronized." ignore
-                | Choice2Of2(direction, delta) ->
+                | TaQueuedViewportIntent.AdjacentCoverage(direction, delta) ->
                     dispatchAdjacentCoverage direction delta
+                | TaQueuedViewportIntent.CoverageWindow(action, pending, successText) ->
+                    startCoverageWindowAction action pending successText
             | _ -> ()
 
         View.Map2
@@ -2190,6 +2211,7 @@ module TaWorkspaceRenderer =
               ResolvedSeries = Map.empty }
         let mutable latestPreparedData = initialPreparedData
         let shellPreparedData = Var.Create initialPreparedData
+        let chartShellPreparedData = Var.Create initialPreparedData
         let mutable preparedDataReady = false
         let mutable preparationGeneration = 0
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
@@ -2197,13 +2219,10 @@ module TaWorkspaceRenderer =
 
         let acceptPreparedDataCore refreshRows (next: RuntimeState) nextPreparedData =
             let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
-            let previousCoverageIdentity =
-                chartRuntimeState.Value.Document
-                |> Option.bind (coverageIdentity chartRuntimeState.Value)
-            let nextCoverageIdentity =
+            let viewportScopeChanged =
                 next.Document
-                |> Option.bind (coverageIdentity next)
-            let coverageIdentityChanged = previousCoverageIdentity <> nextCoverageIdentity
+                |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
+                |> Option.defaultValue false
             let topologyChanged =
                 next.Identity <> chartRuntimeState.Value.Identity
                 || not (sameDocumentPresentation chartRuntimeState.Value next)
@@ -2216,6 +2235,7 @@ module TaWorkspaceRenderer =
                     else "topology-signature"
                 observedChartTopology <- nextChartTopology
                 shellPreparedData.Value <- nextPreparedData
+                chartShellPreparedData.Value <- nextPreparedData
                 match next.Document with
                 | Some document ->
                     let maximumVisibleBars = maximumVisibleBarsFor document
@@ -2230,7 +2250,7 @@ module TaWorkspaceRenderer =
                             currentUi.FollowLatest
                             currentUi.Window
                     let reanchored =
-                        if coverageIdentityChanged then
+                        if viewportScopeChanged then
                             pendingBoundaryPan <- None
                             Some(
                                 RendererModel.initialViewportWindow
@@ -2285,7 +2305,7 @@ module TaWorkspaceRenderer =
                                 FollowLatest = followLatest
                                 CursorIndex = None }
                         cursorIndex.Value <- None
-                        if coverageIdentityChanged then
+                        if viewportScopeChanged then
                             defaultViewportAppliedToCanvas <- Some(viewportScopeKey next document)
                     | None -> ()
                 | None -> pendingBoundaryPan <- None
@@ -2312,38 +2332,49 @@ module TaWorkspaceRenderer =
             let generation = preparationGeneration
             preparedDataReady <- false
             viewportDataReady.Value <- false
-            chartRuntimeState.Value <- runtimeState.Value
-            let data = runtimeState.Value.Data
+            let candidate = runtimeState.Value
+            chartRuntimeState.Value <- candidate
+            let data = candidate.Data
             RendererModel.prepareDataScheduled
                 scheduleNextFrame
                 data
                 (fun prepared ->
                     if generation = preparationGeneration then
                         let current = runtimeState.Value
-                        latestPreparedData <- prepared
-                        shellPreparedData.Value <- prepared
-                        observedChartTopology <- chartTopologySignaturePrepared current prepared
-                        observedDataState <- current
-                        preparedDataReady <- true
-                        viewportDataReady.Value <- true
-                        applyDocumentDefaultViewport current prepared
-                        beginProjection current |> ignore
-                        chartRuntimeState.Value <- current)
+                        // A scheduled candidate belongs to the exact data snapshot it decoded.
+                        // Never pair stale prepared rows with a newer runtime envelope.
+                        if not (runtimeDataChanged candidate current) then
+                            latestPreparedData <- prepared
+                            shellPreparedData.Value <- prepared
+                            chartShellPreparedData.Value <- prepared
+                            observedChartTopology <- chartTopologySignaturePrepared current prepared
+                            observedDataState <- current
+                            preparedDataReady <- true
+                            viewportDataReady.Value <- true
+                            applyDocumentDefaultViewport current prepared
+                            beginProjection current |> ignore
+                            chartRuntimeState.Value <- current)
 
         let scheduleIncrementalPreparation next =
             preparationGeneration <- preparationGeneration + 1
             let generation = preparationGeneration
             let previous = latestPreparedData
+            let previousCoverageProjection =
+                observedDataState.Document
+                |> Option.bind (fun document ->
+                    RendererModel.tryLoadedCoverageResolved document.DefaultView previous.RawData)
             observedDataState <- next
-            let coverageChanged = coverageProjection chartRuntimeState.Value <> coverageProjection next
+            let coverageChanged = previousCoverageProjection <> coverageProjection next
             let accept prepared =
                 if generation = preparationGeneration then
-                    // Document/view metadata may advance without scheduling another data preparation.
-                    // Pair the completed candidate with the latest runtime envelope so an older
-                    // incremental callback cannot regress DocumentRevision or canvas identity.
-                    // Projection revision/detail changes require full data preparation, but they do
-                    // not create a new viewport scope. Only CoverageIdentity may apply a new default.
-                    acceptPreparedData true runtimeState.Value prepared
+                    let current = runtimeState.Value
+                    if not (runtimeDataChanged next current) then
+                        // Document/view metadata may advance without scheduling another data preparation.
+                        // Pair the completed candidate with the latest compatible runtime envelope so
+                        // metadata can advance without attaching stale decoded data.
+                        acceptPreparedData true current prepared
+                        if coverageChanged then
+                            chartShellPreparedData.Value <- prepared
             if coverageChanged then
                 // An active-detail page is a replacement, not an append-only patch. Reusing the
                 // previous prepared map would retain observations absent from the accepted page.
@@ -2354,6 +2385,10 @@ module TaWorkspaceRenderer =
         runtimeState.View
         |> View.Sink (fun next ->
             let dataChanged = runtimeDataChanged observedDataState next
+            let viewportScopeChanged =
+                next.Document
+                |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
+                |> Option.defaultValue false
             if next.Identity <> observedDataState.Identity then
                 pendingBoundaryPan <- None
                 queuedViewportIntent <- None
@@ -2374,7 +2409,13 @@ module TaWorkspaceRenderer =
                     observedDataState <- next
             else
                 if dataChanged then
-                    scheduleIncrementalPreparation next
+                    if viewportScopeChanged then
+                        queuedViewportIntent <- None
+                        pendingBoundaryPan <- None
+                        observedDataState <- next
+                        scheduleFullPreparation ()
+                    else
+                        scheduleIncrementalPreparation next
                 else
                     acceptPreparedData false next latestPreparedData
             flushQueuedViewportIntent ())
@@ -2525,7 +2566,7 @@ module TaWorkspaceRenderer =
         let requestAdjacentCoverage direction delta =
             if actionAllowed "visible-range-changed" && preparedRowsReady.Value && not (localViewportDisabled runtimeState.Value.Poll) then
                 if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
-                    queuedViewportIntent <- Some(Choice2Of2(direction, delta))
+                    queuedViewportIntent <- Some(TaQueuedViewportIntent.AdjacentCoverage(direction, delta))
                     setUiState
                         { uiState.Value with
                             Feedback =
@@ -2575,6 +2616,54 @@ module TaWorkspaceRenderer =
             let total = referenceLength ()
             let boundedCount = max options.MinimumVisibleBars (min total count)
             setWindow true { StartIndex = max 0 (total - boundedCount); Count = boundedCount }
+
+        let showLoadedCoverage () =
+            match runtimeState.Value.Document with
+            | Some document ->
+                let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
+                let currentWindow = resolvedWindow uiState.Value
+                match RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
+                | Some projection ->
+                    match RendererModel.tryViewAllCoverageIntent (maximumVisibleBarsFor document) projection with
+                    | Some intent ->
+                        let targetStart = intent.StartObservationOrdinal |> Option.defaultValue 0L
+                        let activeStart = projection.ActiveDetail.StartObservationOrdinal
+                        let activeEnd = activeStart + int64 timeline.Length
+                        let targetEnd = targetStart + int64 intent.ObservationCount
+                        if targetStart >= activeStart && targetEnd <= activeEnd then
+                            setWindow
+                                (targetEnd = TaLoadedCoverageCodec.observationDomainCount projection)
+                                { StartIndex = int (targetStart - activeStart)
+                                  Count = intent.ObservationCount }
+                        else
+                            let currentGlobalStart = activeStart + int64 currentWindow.StartIndex
+                            let direction =
+                                if targetStart < currentGlobalStart then
+                                    PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier
+                                else
+                                    PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Later
+                            match RendererModel.tryAdjacentCoverageRange direction intent.ObservationCount document latestPreparedData with
+                            | Some range ->
+                                let pending =
+                                    { Direction = direction
+                                      LegacyDelta = if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then -currentWindow.Count else currentWindow.Count
+                                      IntentTimeline = timeline
+                                      IntentWindow = currentWindow
+                                      TargetStartObservationOrdinal = intent.StartObservationOrdinal
+                                      ObservationCount = intent.ObservationCount
+                                      QueryGeneration = intent.QueryGeneration }
+                                let action =
+                                    SduiAction.VisibleRangeChanged(
+                                        currentCanvasId (),
+                                        { range with
+                                            MaximumBasePoints = intent.ObservationCount
+                                            CoverageIntent = Some intent })
+                                sendOrQueueCoverageWindowAction action pending "Loaded coverage requested."
+                            | None ->
+                                setUiState { uiState.Value with Feedback = "Loaded coverage is outside the configured query boundary." }
+                    | None -> setWindowCount (maximumVisibleBarsFor document)
+                | None -> setWindowCount (maximumVisibleBarsFor document)
+            | None -> ()
 
         let startNavigatorDrag (navigatorRoot: Element) (rawEvent: Event) =
             if not (isNull navigatorRoot) then
@@ -2881,7 +2970,7 @@ module TaWorkspaceRenderer =
                     match scopedElements band "[data-ta-row-ofi-empty='true']" |> Array.tryHead with
                     | Some node ->
                         let capabilityAvailable = band.GetAttribute("data-cursor-event-capability") = "available"
-                        let nextState, nextText = if capabilityAvailable then "none", "None" else "unavailable", "Unavailable"
+                        let nextState, nextText = if capabilityAvailable then "none", "" else "unavailable", ""
                         if setElementTextIfChanged nextText node then textWrites <- textWrites + 1
                         if setElementAttributeIfChanged "data-cursor-event-state" nextState node then attributeWrites <- attributeWrites + 1
                     | None -> ()
@@ -3501,14 +3590,13 @@ module TaWorkspaceRenderer =
                     |> textView
                 ]
                 currentViewport
-                |> View.Map (fun (currentReferenceLength, maximumVisibleBars, _, _) ->
-                    let capped = min currentReferenceLength maximumVisibleBars
-                    let label = if currentReferenceLength > maximumVisibleBars then "Max " + string maximumVisibleBars else "All"
+                |> View.Map (fun (_, maximumVisibleBars, loadedObservationCount, _) ->
+                    let capped = min loadedObservationCount maximumVisibleBars
+                    let label = if loadedObservationCount > maximumVisibleBars then "Max " + string maximumVisibleBars else "All"
                     div [ Attr.Create "data-testid" "ta-viewport-presets"; attr.style "display:flex; gap:4px; align-items:center;" ] [
                         compactButton "ta-view-48" "48" "Show latest 48 bars" (fun () -> setWindowCount 48)
                         compactButton "ta-view-200" "200" "Show latest 200 bars" (fun () -> setWindowCount 200)
-                        compactButton "ta-view-all" label ("Show up to " + string capped + " loaded bars") (fun () ->
-                            setWindowCount (min (referenceLength ()) (maximumVisibleBarsNow ())))
+                        compactButton "ta-view-all" label ("Show up to " + string capped + " loaded bars") showLoadedCoverage
                     ] :> Doc)
                 |> Doc.EmbedView
             ]
@@ -3768,7 +3856,7 @@ module TaWorkspaceRenderer =
                             |> Doc.EmbedView
                         ]
                         viewportControls document
-                        View.Map2 (fun (state: RuntimeState) ui ->
+                        View.Map3 (fun (state: RuntimeState) ui preparedDataForShell ->
                             chartRenderSequence <- chartRenderSequence + 1
                             let renderSequence = chartRenderSequence
                             chartWorkGeneration <- chartWorkGeneration + 1
@@ -3800,7 +3888,6 @@ module TaWorkspaceRenderer =
                                         let key = row.RowId, trace.TraceId
                                         trace.Visible && not (Set.contains key ui.HiddenTraces) && not (Set.contains key ui.RemovedTraces))
                                     |> Array.length)
-                            let preparedDataForShell = shellPreparedData.Value
                             let referenceTimeline = RendererModel.referenceTimelineForDocumentPrepared document preparedDataForShell
                             let referenceLength = referenceTimeline.Length
                             let maximumVisibleBars = maximumVisibleBarsFor document
@@ -3925,6 +4012,7 @@ module TaWorkspaceRenderer =
                             div [
                                 Attr.Create "data-testid" "ta-chart-stack"
                                 Attr.Create "data-chart-render-sequence" (string renderSequence)
+                                Attr.Create "data-chart-preparation-generation" (string preparationGeneration)
                                 Attr.Create "data-chart-render-reason" chartRenderReason
                                 Attr.Dynamic "data-chart-document-revision" (runtimeState.View |> View.Map (fun current -> string current.DocumentRevision))
                                 Attr.Dynamic "data-chart-data-revision" (runtimeState.View |> View.Map (fun current -> string current.DataRevision))
@@ -4063,7 +4151,7 @@ module TaWorkspaceRenderer =
                                         |> Doc.EmbedView
                                     ]
                                 ]
-                            ] :> Doc) chartRuntimeView chartUiState.View
+                            ] :> Doc) chartRuntimeView chartUiState.View chartShellPreparedData.View
                         |> Doc.EmbedView
                     ] :> Doc)
             |> Doc.EmbedView

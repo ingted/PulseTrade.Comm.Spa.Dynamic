@@ -182,3 +182,11 @@ Renderer只有在current document generation的prepared row count等於authored 
 決策：pointermove只覆寫單一pending draft，至多每個animation frame發布一次；pointerup必須同步取最後pending draft且只送一次`VisibleRangeChanged`。Committed viewport先更新stable shell與navigator，chart stack延後一個paint再重建。`viewportDataReady`控制local pan／zoom，`preparedRowsReady`只保護需要完整row geometry的boundary／drag path；pending remote action不得停用已載入範圍內的local pan。View All在loaded bars不超過maximum時立即覆蓋overview全寬。Overview另以canonical event-time timeline輸出generic adaptive time axis，不新增domain contract。
 
 Owner gate要求draft在250ms內可見、pointermove callback不增加、pending 200 action期間pan由`3801-4000`立即移至`3601-3800`且只排隊remote intent、All selection width為100%，overview至少三個不同時間label。Candidate graph為Contracts `0.1.35`、Renderer `0.1.109`、Interactive.Client `0.1.100`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.109`；中間本機`.107/.98/.107`與`.108/.99/.108`不得發布或採用。
+
+## 18. Loaded-domain View All correction
+
+真SPAA以`Loaded 3022 · Viewing 789-1512`重現View All仍顯示`Show up to 724 loaded bars`且不動。根因是preset直接呼叫active-detail `setWindowCount`，把mount width當成loaded coverage authority。
+
+決策：View All target固定為`min(observationDomainCount, MaximumVisibleBars)`；domain超過cap時選右界最後一段。target完整位於current active detail才local commit，否則沿用`VisibleRangeChanged`附explicit ordinal `CoverageIntent`，並以current revision／next generation進single latest-wins queue。authoritative replacement的generation與start吻合後才commit local window；identity替換清除pending/queue。Public wire不變，consumer仍擁有provider/cache與active-detail replacement。
+
+Owner gate以3022/724 fixture驗title、callback唯一增量、generation=`2`、active detail=`0+3022`、runtime axis/price=`3022`、range=`1-3022`及selection滿寬。Candidate exact graph為Contracts `0.1.35`、Renderer `0.1.121`、Interactive.Client `0.1.112`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.121`；focused `49/58/15/15/17`與完整Playwright PASS，official publish/readback及真SPAA pending。

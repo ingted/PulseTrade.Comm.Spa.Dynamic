@@ -696,6 +696,13 @@ let verifyDesktop (browser: IBrowser) =
     let priceOfiBandBox = priceOfiBand.BoundingBoxAsync() |> awaitTask
     require (not (isNull priceOfiBandBox) && abs (priceOfiBandBox.Height - 24.0f) <= 0.1f) "price OFI band must reserve exactly 24 CSS pixels"
     require (requiredIntAttribute priceOfiBand "data-marker-event-count" = 0) "OFI band starts empty before shared-cursor selection"
+    let priceOfiEmpty = priceOfiBand.Locator("[data-ta-row-ofi-empty='true']")
+    require (attributeOrEmpty priceOfiEmpty "data-cursor-event-state" = "none") "event-capable empty OFI must retain its machine-readable none state"
+    require (textOf priceOfiBand = "") "event-capable empty OFI must not expose an internal None label to traders"
+    let dmiOfiBand = page.Locator("[data-testid='ta-row-ofi-band-dmi']")
+    let dmiOfiEmpty = dmiOfiBand.Locator("[data-ta-row-ofi-empty='true']")
+    require (attributeOrEmpty dmiOfiEmpty "data-cursor-event-state" = "unavailable") "non-event row must retain its machine-readable unavailable state"
+    require (textOf dmiOfiBand = "") "non-event row must not expose an internal Unavailable label to traders"
     let markerChart = page.Locator("[data-testid='ta-candle-price']")
     let markerChartBox = markerChart.BoundingBoxAsync() |> awaitTask
     require (not (isNull markerChartBox)) "price chart must expose geometry for OFI cursor projection"
@@ -1050,7 +1057,7 @@ let verifyDesktop (browser: IBrowser) =
     requireText (priceOfiBand.Locator("[data-ta-row-ofi-overflow='true']")) "+62"
     moveToMarkerSlot 0
     waitForIntAttribute priceOfiBand "data-marker-event-count" 0
-    require (textOf priceOfiBand = "None") "cursor slot without events must retain the fixed-height event band and show None"
+    require (textOf priceOfiBand = "") "cursor slot without events must retain the fixed-height event band without an internal placeholder label"
 
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
     require (attributeOrEmpty navigator "data-plot-surface-theme" = "dark") "overview must use the selected generic dark theme"
@@ -1559,6 +1566,8 @@ let verifyDesktop (browser: IBrowser) =
     let leftHandle = leftHandleHit
     let leftHandleBox = leftHandle.BoundingBoxAsync() |> awaitTask
     let renderBeforeLeftHandle = requiredIntAttribute chartStack "data-chart-render-sequence"
+    let callbackState = page.Locator("[data-testid='ta-demo-callback-state']")
+    let callbackCountBeforeLeftHandle = requiredIntAttribute callbackState "data-callback-count"
     require (not (isNull leftHandleBox)) "left overview handle must expose geometry"
     page.Mouse.MoveAsync(leftHandleBox.X + leftHandleBox.Width / 2.0f, leftHandleBox.Y + leftHandleBox.Height / 2.0f) |> awaitUnit
     page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
@@ -1568,6 +1577,7 @@ let verifyDesktop (browser: IBrowser) =
     require (requiredIntAttribute chartStack "data-chart-render-sequence" = renderBeforeLeftHandle) "left-handle preview must not rebuild the chart"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForIntAttribute chartStack "data-chart-render-sequence" (renderBeforeLeftHandle + 1)
+    waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeLeftHandle + 1)
     waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls after left-handle commit"
     require
         (requireFixedCssStroke longTaskSession leftVisibleHandleSelector leftVisibleHandle 2.0 2.0 = leftHandleStroke
@@ -1665,9 +1675,34 @@ let verifyDesktop (browser: IBrowser) =
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForAttributeChange chartStack "data-visible-start" (string startBeforeLeftResize) |> ignore
     require (requiredIntAttribute chartStack "data-visible-end" - requiredIntAttribute chartStack "data-visible-start" + 1 > 12) "tiny-selection left zone must resize instead of moving"
+    waitForEnabled (page.Locator("[data-testid='ta-pan-left']")) "viewport controls before loaded-coverage host replacement"
 
+    printfn
+        "browser.loaded-coverage-before identity=%s loaded=%s activeStart=%s activeCount=%s localStart=%s localCount=%s globalStart=%s globalEnd=%s"
+        (attributeOrEmpty chartStack "data-coverage-identity")
+        (attributeOrEmpty chartStack "data-loaded-bars")
+        (attributeOrEmpty chartStack "data-active-detail-start")
+        (attributeOrEmpty chartStack "data-active-detail-count")
+        (attributeOrEmpty chartStack "data-local-visible-start")
+        (attributeOrEmpty chartStack "data-local-visible-count")
+        (attributeOrEmpty chartStack "data-visible-start")
+        (attributeOrEmpty chartStack "data-visible-end")
     page.Locator("[data-testid='ta-demo-loaded-coverage']").ClickAsync() |> awaitUnit
     waitForIntAttribute chartStack "data-loaded-bars" 500
+    printfn
+        "browser.loaded-coverage-after identity=%s loaded=%s activeReference=%s activeStart=%s activeCount=%s localStart=%s localCount=%s globalStart=%s globalEnd=%s preparation=%s runtimeAxis=%s runtimePrice=%s"
+        (attributeOrEmpty chartStack "data-coverage-identity")
+        (attributeOrEmpty chartStack "data-loaded-bars")
+        (attributeOrEmpty chartStack "data-active-reference-bars")
+        (attributeOrEmpty chartStack "data-active-detail-start")
+        (attributeOrEmpty chartStack "data-active-detail-count")
+        (attributeOrEmpty chartStack "data-local-visible-start")
+        (attributeOrEmpty chartStack "data-local-visible-count")
+        (attributeOrEmpty chartStack "data-visible-start")
+        (attributeOrEmpty chartStack "data-visible-end")
+        (attributeOrEmpty chartStack "data-chart-preparation-generation")
+        (attributeOrEmpty callbackState "data-runtime-axis-count")
+        (attributeOrEmpty callbackState "data-runtime-price-count")
     waitForIntAttribute chartStack "data-visible-start" 251
     waitForIntAttribute chartStack "data-visible-end" 500
     printfn
@@ -1767,6 +1802,31 @@ let verifyDesktop (browser: IBrowser) =
     waitForIntAttribute queuedDragChartStack "data-visible-start" 405
     waitForIntAttribute queuedDragChartStack "data-visible-end" 452
     require (attributeOrEmpty queuedDragCallbackState "data-last-action" = "VisibleRangeChanged") "queued boundary drag must dispatch after the pending visible-range action settles"
+
+    page.Locator("[data-testid='ta-demo-loaded-coverage-view-all']").ClickAsync() |> awaitUnit
+    waitForAttributeValue queuedDragChartStack "data-coverage-identity" "browser-demo:view-all-coverage"
+    waitForIntAttribute queuedDragChartStack "data-loaded-bars" 3022
+    waitForIntAttribute queuedDragChartStack "data-visible-start" 789
+    waitForIntAttribute queuedDragChartStack "data-visible-end" 1512
+    waitForIntAttribute queuedDragCallbackState "data-runtime-axis-count" 724
+    let loadedViewAll = page.Locator("[data-testid='ta-view-all']")
+    requireText loadedViewAll "All"
+    require
+        (attributeOrEmpty loadedViewAll "title" = "Show up to 3022 loaded bars")
+        "View All title must use loaded coverage total rather than active-detail length"
+    let callbackCountBeforeLoadedViewAll = requiredIntAttribute queuedDragCallbackState "data-callback-count"
+    loadedViewAll.ClickAsync() |> awaitUnit
+    waitForIntAttribute queuedDragCallbackState "data-callback-count" (callbackCountBeforeLoadedViewAll + 1)
+    waitForIntAttribute queuedDragChartStack "data-query-generation" 2
+    waitForIntAttribute queuedDragChartStack "data-active-detail-start" 0
+    waitForIntAttribute queuedDragChartStack "data-active-detail-count" 3022
+    waitForIntAttribute queuedDragChartStack "data-visible-start" 1
+    waitForIntAttribute queuedDragChartStack "data-visible-end" 3022
+    waitForIntAttribute queuedDragCallbackState "data-runtime-axis-count" 3022
+    waitForIntAttribute queuedDragCallbackState "data-runtime-price-count" 3022
+    require
+        (abs (requiredFloatAttribute (page.Locator("[data-testid='ta-overview-selection']")) "width" - 1000.0) < 0.002)
+        "View All must expand the navigator selection across the complete loaded domain"
 
     require (consoleErrors.Count = 0) ("desktop console errors: " + String.concat " | " consoleErrors)
     let overBudgetPhases = longTaskPhases |> Seq.filter (fun (_, values, _) -> values.Length > 0) |> Seq.toArray

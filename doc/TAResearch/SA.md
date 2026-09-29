@@ -377,3 +377,7 @@ Canonical UTC是transport、lookup、patch correlation與persistence truth；dis
 `PollInFlight`／`PausedForResync`描述remote transport authority，不代表browser local viewport失效。若它們阻止mousedown，使用者在前一個request或resync期間的最後操作會直接遺失；若立即再送remote request，又破壞single-in-flight。因此local preview/release維持可用，remote boundary intent進單一latest-wins slot，並由action settlement或runtime轉回可dispatch狀態共同觸發drain。`Unmounted`／`Disposed`才是local gesture的硬停止狀態。
 
 Browser cache phased rehydrate原先先同步執行完整`tryPrepareRehydrate`，再由frame pump逐段重驗同一份大型data，cache hit因此仍產生main-thread long task。正確邊界是先同步驗header、document、workspace與current authority，建立prepared candidate/frame；nested data semantic validation由既有phased frame pump唯一完成，全部成功後才atomic publish。這不是降低驗證，而是移除同一資料在同一路徑的重複同步掃描。
+
+## 33. Loaded-domain View All
+
+View All是coverage intent，不是active-detail local zoom。若完整loaded domain可容納於`MaximumVisibleBars`，target為整個domain；若超過cap，target為以loaded右界為anchor的最後`MaximumVisibleBars` observations。只有target完整落在current active detail內時才能直接改local window；否則Renderer沿用`VisibleRangeChanged + ta-coverage-window.v1`要求owner以新generation原子替換active detail。這保留provider／cache authority於consumer，亦避免把724根mount誤稱為3,022根loaded truth。

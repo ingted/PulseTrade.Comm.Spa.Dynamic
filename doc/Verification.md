@@ -346,4 +346,5 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 
 - Commands：五個exact-package Expecto runners；Renderer／Interactive.Client／Ptcs.Client Release builds；BrowserDemo後執行`scripts/verify-ta-renderer-playwright.fsx`。
 - Owner result：focused `49/58/15/15/17`；完整Playwright PASS。Draft下一frame可見且move不送callback；pending 200 action期間local pan立即`3801-4000 -> 3601-3800`；All selection滿寬；overview adaptive event-time axis可見。200→All state／rows-ready=`373.16/752.64ms`，300 cursor p95/max=`7/26ms`，正式phases over100=`0`。
-- Candidate graph：Contracts `0.1.35`、Renderer `0.1.109`、Interactive.Client `0.1.100`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.109`。`.107/.98/.107`與`.108/.99/.108`為未發布中間本機bytes，不可採用。Official publish/readback與Daedalus真SPAA gate pending。
+- Revision 2 owner result：加入loaded-domain View All gate。BrowserDemo從`Loaded 3022 · Viewing 789-1512`點All後，唯一callback使`QueryGeneration=2`、active detail=`0+3022`、range=`1-3022`、runtime axis/price=`3022`且selection滿寬；active detail不再冒充loaded total。完整Playwright PASS，正式phase over100=`0`。
+- Candidate graph：Contracts `0.1.35`、Renderer `0.1.121`、Interactive.Client `0.1.112`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.121`。`.107..120/.98..111/.107..120`為未發布中間本機bytes，不可採用。Official publish/readback與Daedalus真SPAA gate pending。

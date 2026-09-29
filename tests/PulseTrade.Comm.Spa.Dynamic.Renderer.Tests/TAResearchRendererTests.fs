@@ -552,6 +552,23 @@ let tests =
                 (Some 0L, Some 250)
                 "Earlier must request one fixed-width adjacent page, not one quarter of the current window."
 
+            let allLoaded =
+                RendererModel.tryViewAllCoverageIntent
+                    4000
+                    { projection with
+                        TotalObservationCount = Some 3022L
+                        ActiveDetail = { projection.ActiveDetail with StartObservationOrdinal = 788L; ObservationCount = 724 } }
+            Expect.equal
+                (allLoaded |> Option.bind _.StartObservationOrdinal, allLoaded |> Option.map _.ObservationCount)
+                (Some 0L, Some 3022)
+                "View All must request the complete loaded domain when it is below the document cap."
+
+            let cappedLoaded = RendererModel.tryViewAllCoverageIntent 4000 projection
+            Expect.equal
+                (cappedLoaded |> Option.bind _.StartObservationOrdinal, cappedLoaded |> Option.map _.ObservationCount)
+                (Some 996_000L, Some 4000)
+                "View All must request the loaded-domain tail when coverage exceeds the document cap."
+
         testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
             let ratios = 0.2, 0.4
             let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer

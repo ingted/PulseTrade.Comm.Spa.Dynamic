@@ -81,3 +81,5 @@ RFC-0017之後，cache rehydrate即使保留current identity/revision，只要va
 RFC-0018之後，accepted `ChangeTaQuery`在host frames已合併後選local viewport。invalid/no-intersection/stale query保留原window並顯示feedback；local selection不送第二個range action。中間Renderer `0.1.34`不可使用，因其callback concurrency與正式client one-in-flight不一致。
 
 RFC-0019/0020之後，每列依自身event-time與plot width產生adaptive axis，crosshair只覆蓋該列plot。loaded coverage可大於visible cap；越過boundary時以`VisibleRangeChanged`要求document query範圍內的相鄰coverage，merge後依event-time anchor重定位。Renderer prepare與row mount/refresh使用generation-aware frame scheduling；consumer仍負責provider query、source merge與cache authority。
+
+RFC-0032 owner candidate Renderer `0.1.121`：View All以`min(loaded observation domain, MaximumVisibleBars)`決定target；超出active detail時送既有versioned ordinal coverage intent，authoritative replacement後才commit，不再把current mount長度當loaded truth。Exact candidate graph為Contracts `[0.1.35]`、Renderer `.121`、Interactive.Client `.112`、Dynamic.Ptcs `.56`、Ptcs.Client `.121`；owner focused與完整Playwright全綠，official readback／真SPAA pending。

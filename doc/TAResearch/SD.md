@@ -1055,3 +1055,7 @@ Stable selectors／attributes：workspace與visible time node提供`data-display
 `localViewportDisabled`只涵蓋`Unmounted`與`Disposed`。`PollInFlight`及`PausedForResync`允許local drag/preview，但`remoteDisabled`仍使mouseup只更新`queuedViewportIntent`。Queue有兩個drain trigger：`startActionWithFeedback.afterSettled`與`runtimeState.View`轉為非remote-disabled；兩者都先驗`PendingActionId=None`，所以同一intent只能dispatch一次。純`PausedForResync -> Ready`不得依賴不存在的local action settlement。
 
 Interactive cache的`tryPreparePhasedRehydrate`只同步執行entry header、document validation、current document/workspace authority及rehydrate frame建立。frame內data由`BrowserRuntimeFramePump`的phased decode/reducer驗證；完成前不更新runtime state，generation失效回`Superseded`。不得先呼叫同步full-snapshot prepare再把同一frame送入phased pump。
+
+### Loaded-domain View All request
+
+`RendererModel.tryViewAllCoverageIntent`以`TaLoadedCoverageCodec.observationDomainCount`及document `MaximumVisibleBars`建立explicit ordinal window：`count=min(domain, cap)`、`start=max(0, domain-count)`、`ExpectedCoverageRevision=current`、`QueryGeneration=current+1`。Renderer若無法在current active detail內滿足target，使用既有query boundary建立`VisibleRangeChanged`，附上該intent並把target start/count放入generation-aware pending reanchor；remote busy時進同一latest-wins viewport queue。authoritative response的generation與active-detail start吻合後，local window才切到完整replacement。Coverage identity替換會清除queue/pending，stale response不得擴張新fixture。

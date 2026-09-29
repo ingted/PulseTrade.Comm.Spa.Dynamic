@@ -1946,3 +1946,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 真SPAA回報drag preview、View All／pan可見更新與overview時間軸缺口。Renderer改為rAF latest-draft、pointerup同步flush、stable shell先更新而chart延後一個paint；另將`viewportDataReady`與`preparedRowsReady`分離，remote pending／row remount不再停用loaded-range local pan。
 - Overview新增canonical event-time adaptive axis；View All在loaded<=maximum時selection立即滿寬。完整F# Playwright與focused `49/58/15/15/17`通過；200→All=`373.16/752.64ms`，正式phases over100=0。
 - Candidate graph為Contracts `0.1.35`、Renderer `0.1.109`、Interactive.Client `0.1.100`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.109`。先前本機中間graph不可發布；official provenance build/readback與Daedalus真SPAA pending。
+
+## 2026-09-30 - Loaded-domain View All owner correction
+
+- 真SPAA的`Loaded 3022 · Viewing 789-1512`暴露View All仍以724根active detail計算。Renderer新增pure loaded-domain intent，target為`min(loaded total, MaximumVisibleBars)`；超出active detail時沿用`VisibleRangeChanged + ta-coverage-window.v1`，並以generation-aware latest queue等待authoritative replacement。
+- BrowserDemo新增3022/724 regression：按All後唯一callback使generation前進至2、active detail變為`0+3022`、range=`1-3022`、runtime axis/price=`3022`且navigator selection滿寬。完整Playwright PASS，focused suites=`49/58/15/15/17`。
+- Candidate graph為Contracts `0.1.35`、Renderer `0.1.121`、Interactive.Client `0.1.112`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.121`；official provenance build/readback與Daedalus真SPAA pending。

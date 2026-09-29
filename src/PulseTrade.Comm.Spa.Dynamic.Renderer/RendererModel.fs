@@ -2141,6 +2141,21 @@ module RendererModel =
             (Some targetStart)
             count
 
+    let tryViewAllCoverageIntent maximumVisibleBars projection =
+        let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+        let boundedMaximum = max 1 (min TaLoadedCoverageCodec.MaximumActiveDetailBars maximumVisibleBars)
+        if domainCount <= 0L then
+            None
+        else
+            let count = int (min domainCount (int64 boundedMaximum))
+            let targetStart = max 0L (domainCount - int64 count)
+            TaLoadedCoverageCodec.tryWindowIntent
+                None
+                (Some projection.CoverageRevision)
+                (projection.QueryGeneration + 1L)
+                (Some targetStart)
+                count
+
     let overviewPointsForCoverage projection =
         let scalar field fields =
             fields |> Map.tryFind field |> Option.bind (function SduiValue.Number value -> Some value | _ -> None)
