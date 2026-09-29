@@ -241,7 +241,7 @@ module BrowserRuntimeCache =
         then
             None
         else
-            match TaLoadedCoverageCodec.tryDecode entry.Document.DefaultView with
+            match TaLoadedCoverageCodec.tryDecodeResolved entry.Document.DefaultView entry.Snapshot.Data with
             | Ok(Some cached)
                 when cached.CoverageIdentity = accepted.CoverageIdentity
                      && cached.CoverageRevision <= accepted.CoverageRevision
@@ -289,11 +289,17 @@ module BrowserRuntimeCache =
                     let rebased =
                         { accepted with
                             ActiveDetail = activeDetail }
-
-                    { entry with
-                        Document =
-                            { entry.Document with
-                                DefaultView = entry.Document.DefaultView |> TaLoadedCoverageCodec.apply rebased } })
+                    match TaLoadedCoverageCodec.tryDataRef entry.Document.DefaultView with
+                    | Ok(Some dataRef) ->
+                        { entry with
+                            Snapshot =
+                                { entry.Snapshot with
+                                    Data = entry.Snapshot.Data |> Map.add dataRef (TaLoadedCoverageCodec.encode rebased) } }
+                    | _ ->
+                        { entry with
+                            Document =
+                                { entry.Document with
+                                    DefaultView = entry.Document.DefaultView |> TaLoadedCoverageCodec.apply rebased } })
             | _ -> None
 
     let selectAdjacent query (entries: RuntimeCacheEntry array) =
@@ -317,7 +323,7 @@ module BrowserRuntimeCache =
             entries
             |> Array.choose (fun entry -> tryRebaseAdjacentEntry query entry |> Option.map (fun rebased -> entry, rebased))
             |> Array.choose (fun (entry, rebased) ->
-                match TaLoadedCoverageCodec.tryDecode rebased.Document.DefaultView with
+                match TaLoadedCoverageCodec.tryDecodeResolved rebased.Document.DefaultView rebased.Snapshot.Data with
                 | Ok(Some projection)
                     when projection.ActiveDetail.ObservationCount > 0
                          && directionCompatible projection -> Some(entry, rebased, projection)

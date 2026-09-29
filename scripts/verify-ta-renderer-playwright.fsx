@@ -1370,20 +1370,28 @@ let verifyDesktop (browser: IBrowser) =
     require (priceBox.Width > 1100.0f) $"desktop chart should use available width, width={priceBox.Width}"
 
     requireText callbackState $"callback actions {setupCallbackCount + 2}"
-    page.Locator("[data-testid='ta-pan-right']").ClickAsync() |> awaitUnit
-    waitForText callbackState (callbackText 3 "VisibleRangeChanged")
-    page.Locator("[data-testid='ta-zoom-in']").ClickAsync() |> awaitUnit
-    waitForText callbackState (callbackText 4 "VisibleRangeChanged")
+    let waitForViewportCommand (control: ILocator) label =
+        let before = requiredIntAttribute callbackState "data-callback-count"
+        control.ClickAsync() |> awaitUnit
+        waitForIntAttribute callbackState "data-callback-count" (before + 1)
+        waitForEnabled control label
 
-    page.Locator("[data-testid='ta-reset-view']").ClickAsync() |> awaitUnit
+    waitForViewportCommand (page.Locator("[data-testid='ta-pan-right']")) "Pan after serialized viewport callback"
+    waitForViewportCommand (page.Locator("[data-testid='ta-zoom-in']")) "Zoom after serialized viewport callback"
+
+    waitForViewportCommand (page.Locator("[data-testid='ta-reset-view']")) "Reset after serialized viewport callback"
     waitForAttributeValue (page.Locator("[data-testid='ta-chart-stack']")) "data-follow-latest" "true"
-    waitForText callbackState (callbackText 5 "VisibleRangeChanged")
+    Threading.Thread.Sleep 250
 
     let volumeRow = page.Locator("[data-testid='ta-row-volume']")
     require (volumeRow.IsVisibleAsync() |> awaitTask) "volume row must begin visible"
+    let callbackCountBeforeLocalRowToggle = requiredIntAttribute callbackState "data-callback-count"
     page.Locator("[data-testid='ta-toggle-row-volume']").ClickAsync() |> awaitUnit
     volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Hidden, Timeout = 3000.0f)) |> awaitUnit
-    requireText callbackState $"callback actions {setupCallbackCount + 5}"
+    Threading.Thread.Sleep 150
+    require
+        (requiredIntAttribute callbackState "data-callback-count" = callbackCountBeforeLocalRowToggle)
+        "A local row visibility toggle must not emit a remote callback."
     page.Locator("[data-testid='ta-toggle-row-volume']").ClickAsync() |> awaitUnit
     volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Visible, Timeout = 3000.0f)) |> awaitUnit
 
@@ -1649,6 +1657,11 @@ let verifyDesktop (browser: IBrowser) =
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = 250) "active detail must remain bounded to the document cap"
     let coverageSelection = page.Locator("[data-testid='ta-overview-selection']")
     require (abs (requiredFloatAttribute coverageSelection "width" - 500.0) < 0.002) "250 of 500 loaded bars must occupy exactly half of the navigator"
+    let overviewWicks = page.Locator("[data-testid='ta-overview-candle-wicks']")
+    require (requiredIntAttribute overviewWicks "data-candle-sample-count" = 100) "independent 5K overview must retain its 100 authored candles instead of reusing the 250-bar detail slice"
+    require (not (String.IsNullOrWhiteSpace(attributeOrEmpty (page.Locator("[data-testid='ta-overview-candle-up-bodies']")) "d"))) "overview up candles must render as a batched path"
+    require (not (String.IsNullOrWhiteSpace(attributeOrEmpty (page.Locator("[data-testid='ta-overview-candle-down-bodies']")) "d"))) "overview down candles must render as a batched path"
+    require (not (String.IsNullOrWhiteSpace(attributeOrEmpty (page.Locator("[data-testid='ta-overview-candle-flat-bodies']")) "d"))) "overview flat candles must render as a neutral batched path"
 
     let callbackCountBeforeCoverageRefresh = requiredIntAttribute callbackState "data-callback-count"
     page.Locator("[data-testid='ta-demo-refresh-coverage-next-visible-range']").ClickAsync() |> awaitUnit

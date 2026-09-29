@@ -12,13 +12,16 @@ module TaLoadedCoverageCodec =
     let DefaultViewKey = "viewport.loadedCoverage"
 
     [<Literal>]
+    let DataRefKey = "viewport.loadedCoverageDataRef"
+
+    [<Literal>]
     let MaximumVisibleBarsKey = "viewport.maximumVisibleBars"
 
     [<Literal>]
     let MaximumActiveDetailBars = 4000
 
     [<Literal>]
-    let MaximumOverviewAnchors = 1024
+    let MaximumOverviewAnchors = 8000
 
     [<Literal>]
     let WindowIntentSchema = "ta-coverage-window.v1"
@@ -69,6 +72,7 @@ module TaLoadedCoverageCodec =
                     |> Option.map invariantInt64
                     |> Option.defaultValue SduiValue.Null
                 "segments", projection.Segments |> Array.map encodeSegment |> SduiValue.Array
+                "overviewAxisRef", SduiValue.Text projection.OverviewAxisRef
                 "overviewAnchors", projection.OverviewAnchors |> Array.map encodeAnchor |> SduiValue.Array
                 "activeDetail",
                     SduiValue.Object(
@@ -80,6 +84,14 @@ module TaLoadedCoverageCodec =
             ])
 
     let apply projection values = values |> Map.add DefaultViewKey (encode projection)
+
+    let applyDataRef dataRef values = values |> Map.add DataRefKey (SduiValue.Text dataRef)
+
+    let tryDataRef values =
+        match Map.tryFind DataRefKey values with
+        | None -> Ok None
+        | Some(SduiValue.Text value) when not (String.IsNullOrWhiteSpace value) -> Ok(Some value)
+        | Some _ -> Error [ error "invalid-loaded-coverage-data-ref" DataRefKey "A non-empty text dataRef is required." ]
 
     let applyMaximumVisibleBars maximumVisibleBars values =
         values |> Map.add MaximumVisibleBarsKey (SduiValue.Number(float maximumVisibleBars))
@@ -194,6 +206,8 @@ module TaLoadedCoverageCodec =
               yield error "invalid-loaded-coverage" "coverageRevision" "CoverageRevision cannot be negative."
           if projection.QueryGeneration < 0L then
               yield error "invalid-loaded-coverage" "queryGeneration" "QueryGeneration cannot be negative."
+          if String.IsNullOrWhiteSpace projection.OverviewAxisRef then
+              yield error "invalid-loaded-coverage" "overviewAxisRef" "OverviewAxisRef is required."
           if projection.OverviewAnchors.Length > MaximumOverviewAnchors then
               yield error "limit-loaded-coverage" "overviewAnchors" $"At most {MaximumOverviewAnchors} anchors are allowed."
           if projection.ActiveDetail.StartObservationOrdinal < 0L then
@@ -229,6 +243,8 @@ module TaLoadedCoverageCodec =
           for index in 1 .. projection.OverviewAnchors.Length - 1 do
               if projection.OverviewAnchors[index].ObservationOrdinal <= projection.OverviewAnchors[index - 1].ObservationOrdinal then
                   yield error "invalid-loaded-coverage" $"overviewAnchors[{index}]" "Overview anchor ordinals must increase."
+              if projection.OverviewAnchors[index].EventTimeUtc.CompareTo(projection.OverviewAnchors[index - 1].EventTimeUtc) <= 0 then
+                  yield error "invalid-loaded-coverage" $"overviewAnchors[{index}].eventTimeUtc" "Overview anchor event times must increase."
           match projection.TotalObservationCount with
           | Some total when projection.ActiveDetail.StartObservationOrdinal + int64 projection.ActiveDetail.ObservationCount > total ->
               yield error "invalid-loaded-coverage" "activeDetail" "Active detail exceeds the complete observation domain."
@@ -236,9 +252,6 @@ module TaLoadedCoverageCodec =
               for index, segment in projection.Segments |> Array.indexed do
                   if segment.StartObservationOrdinal + segment.ObservationCount > total then
                       yield error "invalid-loaded-coverage" $"segments[{index}]" "Segment exceeds the complete observation domain."
-              for index, anchor in projection.OverviewAnchors |> Array.indexed do
-                  if anchor.ObservationOrdinal >= total then
-                      yield error "invalid-loaded-coverage" $"overviewAnchors[{index}]" "Overview anchor exceeds the complete observation domain."
           | None -> () ]
 
     let tryDecode values =
@@ -272,8 +285,13 @@ module TaLoadedCoverageCodec =
                             | true, parsed -> Ok(Some parsed)
                             | _ -> Error(error "invalid-loaded-coverage" "totalObservationCount" "An invariant Int64 text value is required.")
                         | _ -> Error(error "invalid-loaded-coverage" "totalObservationCount" "An invariant Int64 text value or null is required.")
-                    match completenessValue, totalValue with
-                    | Ok completenessKind, Ok total ->
+                    let overviewAxisRefValue =
+                        match Map.tryFind "overviewAxisRef" fields with
+                        | None -> Ok baseAxisRef
+                        | Some(SduiValue.Text value) when not (String.IsNullOrWhiteSpace value) -> Ok value
+                        | _ -> Error(error "invalid-loaded-coverage" "overviewAxisRef" "A non-empty text value is required.")
+                    match completenessValue, totalValue, overviewAxisRefValue with
+                    | Ok completenessKind, Ok total, Ok overviewAxisRef ->
                         let projection =
                             { CoverageIdentity = identity
                               CoverageRevision = revision
@@ -281,6 +299,7 @@ module TaLoadedCoverageCodec =
                               Completeness = completenessKind
                               TotalObservationCount = total
                               Segments = segments
+                              OverviewAxisRef = overviewAxisRef
                               OverviewAnchors = anchors
                               ActiveDetail =
                                 { StartObservationOrdinal = startOrdinal
@@ -289,20 +308,29 @@ module TaLoadedCoverageCodec =
                         match validationErrors projection with
                         | [] -> Ok(Some projection)
                         | errors -> Error errors
-                    | Error completenessError, _ -> Error [ completenessError ]
-                    | _, Error totalError -> Error [ totalError ]
+                    | Error completenessError, _, _ -> Error [ completenessError ]
+                    | _, Error totalError, _ -> Error [ totalError ]
+                    | _, _, Error overviewAxisRefError -> Error [ overviewAxisRefError ]
                 | _ -> Error [ error "invalid-loaded-coverage" "activeDetail" "A valid active-detail object is required." ]
             | Ok schema, _, _, _, _, _, _, _ when schema <> Schema ->
                 Error [ error "unsupported-loaded-coverage" "schema" $"Unsupported loaded coverage schema `{schema}`." ]
             | _ -> Error [ error "invalid-loaded-coverage" DefaultViewKey "The loaded coverage projection is malformed." ]
         | Some _ -> Error [ error "invalid-loaded-coverage" DefaultViewKey "The loaded coverage projection must be an object." ]
 
+    let tryDecodeResolved defaultView data =
+        match tryDataRef defaultView with
+        | Error errors -> Error errors
+        | Ok(Some dataRef) ->
+            match Map.tryFind dataRef data with
+            | Some value -> Map.empty |> Map.add DefaultViewKey value |> tryDecode
+            | None -> Error [ error "missing-loaded-coverage-data-ref" dataRef $"Loaded coverage dataRef `{dataRef}` is missing." ]
+        | Ok None -> tryDecode defaultView
+
     let observationDomainCount projection =
         match projection.TotalObservationCount with
         | Some total -> total
         | None ->
             let segmentEnd = projection.Segments |> Array.fold (fun value segment -> max value (segment.StartObservationOrdinal + segment.ObservationCount)) 0L
-            let anchorEnd = projection.OverviewAnchors |> Array.fold (fun value anchor -> max value (anchor.ObservationOrdinal + 1L)) 0L
             max segmentEnd (projection.ActiveDetail.StartObservationOrdinal + int64 projection.ActiveDetail.ObservationCount)
 
     let tryWindowIntent direction expectedRevision queryGeneration startOrdinal observationCount =
@@ -318,4 +346,16 @@ module TaLoadedCoverageCodec =
                   QueryGeneration = queryGeneration
                   StartObservationOrdinal = startOrdinal
                   ObservationCount = observationCount
-                  Direction = direction }
+                  Direction = direction
+                  RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds }
+
+    let tryProviderOpenEarlierWindowIntent expectedRevision queryGeneration observationCount =
+        tryWindowIntent
+            (Some TaCoverageDirection.Earlier)
+            expectedRevision
+            queryGeneration
+            None
+            observationCount
+        |> Option.map (fun intent ->
+            { intent with
+                RangeAuthority = TaCoverageRangeAuthority.ProviderOpenEarlier })

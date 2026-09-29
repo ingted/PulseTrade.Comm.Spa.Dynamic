@@ -298,7 +298,18 @@ module RuntimeValidation =
                           $"Active detail exceeds the document MaximumVisibleBars value {maximumVisibleBars}."
                   | _ -> ()
               | Ok None -> ()
-              | Error errors -> yield! errors ]
+              | Error errors -> yield! errors
+
+          match TaLoadedCoverageCodec.tryDataRef document.DefaultView with
+          | Error errors -> yield! errors
+          | Ok(Some dataRef) ->
+              yield! identifier $"document.defaultView.{TaLoadedCoverageCodec.DataRefKey}" dataRef
+              if Map.containsKey TaLoadedCoverageCodec.DefaultViewKey document.DefaultView then
+                  yield error
+                      "ambiguous-loaded-coverage-authority"
+                      $"document.defaultView.{TaLoadedCoverageCodec.DataRefKey}"
+                      "Use either inline loaded coverage or a loaded coverage dataRef, not both."
+          | Ok None -> () ]
 
     let patchErrors limits (patch: RuntimePatch) =
         [ if patch.Operations.Length > limits.MaxPatchOperations then

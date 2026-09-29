@@ -1,0 +1,22 @@
+# RFC-TRADECORE-0031 DECIDE_ON Overview Owner Work
+
+## Plan
+
+- 背景：consumer handoff要求overview最多8,000 anchors、detail最多4,000、overview/detail axis分離、event-time alignment、OHLC/OC candlestick與scenario atomic presentation；另有navigator selection越coverage boundary未發adjacent intent的回歸。
+- 目標：建立generic PTCS Dynamic owner contract並完成最小實作／測試，不引入TradeCore scenario DU或第二套navigator。
+- 假設：consumer可用既有完整`RuntimeSnapshot` candidate一次提交Document＋Data，並以runtime projection commit receipt等待畫面完成；若consumer只能分離Document/Patch，需另行決策。
+- 步驟：1) baseline build/test；2) RFC-0033與RFC-0032 correction；3) Contracts 8,000 cap、explicit overview axis與validation；4) Renderer event-time overview mapping與boundary gesture correction；5) focused unit/browser gates；6) docs/version/package/consumer handoff；7) commit/push。
+- 範圍：Contracts、Renderer及必要exact downstream；consumer repo唯讀。未經需求不改SPAA/TradeCore。
+- 驗收：8,000接受／8,001拒絕；1K detail＋60K overview selection/stripe用event time；OHLC/OC且up綠/down紅；scenario candidate不partial publish；任何gesture越左右界各只送一個adjacent intent並暴露mode/outcome；focused suites與必要browser gate通過。
+- 風險：overview/detail ordinal混用、snapshot與patch atomicity誤判、8,000資料造成main-thread regression、record field新增影響所有constructors。
+- 停止條件：generic owner packages與Daedalus handoff可驗，或consumer atomic submission能力不成立而成為blocking決策。
+
+## Operations
+
+- 2026-09-29 21:50 +08:00：完成handoff/current owner contract初步inventory；owner repo clean，branch `20260915_033.ptcs_group_support`。
+- 2026-09-29 21:56 +08:00：baseline Contracts `47/47`、Renderer `55/55`通過。確認單加OverviewAxisRef不足；跨軸selection/stripe須event-time mapping，scenario atomicity復用完整RuntimeSnapshot＋projection receipt。
+- 2026-09-29 21:58 +08:00：建立RFC-PTCS-DYNAMIC-0033，並於RFC-0032追加任何selection gesture越coverage boundary皆產生adjacent intent的correction。
+- 2026-09-29 22:45 +08:00：完成Contracts／Renderer／Interactive／Dynamic.Ptcs／Ptcs.Client additive contract：8,000 overview、explicit overview axis、event-time alignment、`ProviderOpenEarlier` flat wire與prepared-row barrier。Focused suites依序`49/58/15/15/17`。
+- 2026-09-29 22:52 +08:00：Renderer完整F# Playwright PASS；500 coverage／250 detail顯示global `251-500`，tiny selection 3.813/1400，progressive max45.37ms，正式phase over100=0。停止本輪BrowserDemo listener。
+- 2026-09-29 23:01 +08:00：Interactive.Client首次build命中global-cache內同版舊Renderer metadata而失敗；只停止command line明確指向本project `websharper.log`的PID 18980，未停止Daedalus SPAA compiler PID 28472。改用fresh package cache重建成功，15/15與package verifier PASS，candidate SHA-256=`3ABFA6351C3D8FFEA90CECD960B93820D34EC873C3ECAB227C3DC0F09ECBB2A8`。
+- 2026-09-29 23:06 +08:00：同步RFC-0032/0033、WBS、Test、Verification與DevLog candidate狀態；下一步先commit/push source固定repository provenance，再建Release package及official readback。

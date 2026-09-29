@@ -133,7 +133,8 @@ type TaTransientClientFrameWire =
       startObservationOrdinal: string
       hasStartObservationOrdinal: bool
       coverageObservationCount: int
-      coverageDirection: string }
+      coverageDirection: string
+      coverageRangeAuthority: string }
 
 [<CLIMutable>]
 type TaBrowserPointWire =
@@ -295,7 +296,8 @@ type TaBrowserClientFrameWire =
       startObservationOrdinal: string
       hasStartObservationOrdinal: bool
       coverageObservationCount: int
-      coverageDirection: string }
+      coverageDirection: string
+      coverageRangeAuthority: string }
 
 [<RequireQualifiedAccess>]
 module TaResearchTransientWire =
@@ -306,7 +308,11 @@ module TaResearchTransientWire =
         | Some TaCoverageDirection.Later -> "later"
         | None -> ""
 
-    let coverageIntentFromWire version hasIntent expectedRevision hasExpected queryGeneration startOrdinal hasStart observationCount direction =
+    let coverageRangeAuthorityText = function
+        | TaCoverageRangeAuthority.ExplicitBounds -> "explicit-bounds"
+        | TaCoverageRangeAuthority.ProviderOpenEarlier -> "provider-open-earlier"
+
+    let coverageIntentFromWire version hasIntent expectedRevision hasExpected queryGeneration startOrdinal hasStart observationCount direction rangeAuthority =
         if not hasIntent then Ok None
         elif text version <> TaLoadedCoverageCodec.WindowIntentSchema then Error "Unsupported TA coverage window intent version."
         else
@@ -328,9 +334,23 @@ module TaResearchTransientWire =
                     | "earlier" -> Ok(Some TaCoverageDirection.Earlier)
                     | "later" -> Ok(Some TaCoverageDirection.Later)
                     | _ -> Error "TA coverage window direction is invalid."
-                match parsedDirection with
-                | Error error -> Error error
-                | Ok directionValue ->
+                let parsedAuthority =
+                    match text rangeAuthority with
+                    | ""
+                    | "explicit-bounds" -> Ok TaCoverageRangeAuthority.ExplicitBounds
+                    | "provider-open-earlier" -> Ok TaCoverageRangeAuthority.ProviderOpenEarlier
+                    | _ -> Error "TA coverage window range authority is invalid."
+                match parsedDirection, parsedAuthority with
+                | Error error, _
+                | _, Error error -> Error error
+                | Ok directionValue, Ok TaCoverageRangeAuthority.ProviderOpenEarlier ->
+                    if directionValue <> Some TaCoverageDirection.Earlier || start.IsSome then
+                        Error "Provider-open Earlier coverage requires Earlier direction and no start observation ordinal."
+                    else
+                        match TaLoadedCoverageCodec.tryProviderOpenEarlierWindowIntent expected generation observationCount with
+                        | Some intent -> Ok(Some intent)
+                        | None -> Error "TA coverage window intent bounds are invalid."
+                | Ok directionValue, Ok TaCoverageRangeAuthority.ExplicitBounds ->
                     match TaLoadedCoverageCodec.tryWindowIntent directionValue expected generation start observationCount with
                     | Some intent -> Ok(Some intent)
                     | None -> Error "TA coverage window intent bounds are invalid."
@@ -623,7 +643,8 @@ module TaResearchTransientWire =
           startObservationOrdinal = ""
           hasStartObservationOrdinal = false
           coverageObservationCount = 0
-          coverageDirection = "" }
+          coverageDirection = ""
+          coverageRangeAuthority = "" }
 
     let editorInputToWire input =
         match input.Value with
@@ -702,7 +723,8 @@ module TaResearchTransientWire =
                         startObservationOrdinal = intent.StartObservationOrdinal |> Option.map string |> Option.defaultValue ""
                         hasStartObservationOrdinal = intent.StartObservationOrdinal.IsSome
                         coverageObservationCount = intent.ObservationCount
-                        coverageDirection = coverageDirectionText intent.Direction }
+                        coverageDirection = coverageDirectionText intent.Direction
+                        coverageRangeAuthority = coverageRangeAuthorityText intent.RangeAuthority }
             | SduiAction.PollDelta(CanvasInstanceId canvasId, revision) -> { emptyClientFrame "action" canvasId with actionKind = "poll-delta"; afterDataRevision = revision }
             | SduiAction.RequestFullSnapshot(CanvasInstanceId canvasId, reason) -> { emptyClientFrame "action" canvasId with actionKind = "full-snapshot"; reasonCode = reason }
 
@@ -746,6 +768,7 @@ module TaResearchTransientWire =
                 wire.hasStartObservationOrdinal
                 wire.coverageObservationCount
                 wire.coverageDirection
+                wire.coverageRangeAuthority
             |> Result.map (fun coverageIntent ->
                 RuntimeClientFrame.Action(
                     SduiAction.VisibleRangeChanged(
@@ -1226,6 +1249,7 @@ module TaResearchBrowserWire =
                     wire.hasStartObservationOrdinal
                     wire.coverageObservationCount
                     wire.coverageDirection
+                    wire.coverageRangeAuthority
                 |> Result.map (fun coverageIntent ->
                     RuntimeClientFrame.Action(
                         SduiAction.VisibleRangeChanged(

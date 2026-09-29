@@ -396,6 +396,87 @@ let tests =
             Expect.isTrue followLatest "a full-range window still ends at the loaded tail"
             Expect.equal (RendererModel.selectionRatios 2000 committedFull) (0.0, 1.0) "full range occupies the complete overview"
 
+        testCase "RFC-0031 cross-axis overview uses event time and all gestures emit boundary intent" <| fun _ ->
+            let start = DateTimeOffset(2026, 9, 29, 0, 0, 0, TimeSpan.Zero)
+            let time minutes = start.AddMinutes(float minutes).ToString("O")
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "ES|1K-detail|60K-overview"
+                  CoverageRevision = 1L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.60k"
+                  OverviewAnchors =
+                    [| for index, minute in [| 0, 0; 1, 60; 2, 120; 3, 180 |] do
+                           yield
+                               { ObservationOrdinal = int64 index
+                                 EventTimeUtc = time minute
+                                 Value = SduiValue.Number(float index) } |]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 0L
+                      ObservationCount = 10
+                      BaseAxisRef = "axis.1k" } }
+            let detailTimeline = [| for minute in 70 .. 79 -> time minute |]
+
+            match RendererModel.overviewSelectionRatios projection detailTimeline { StartIndex = 0; Count = 10 } with
+            | Some(left, right) ->
+                Expect.floatClose Accuracy.high left 0.25 "The 1K detail head maps to its preceding 60K overview candle."
+                Expect.floatClose Accuracy.high right 0.5 "The visible 1K interval occupies exactly one 60K overview candle."
+            | None -> failtest "Cross-axis selection must resolve by canonical event time."
+            Expect.equal
+                (RendererModel.eventTimeSlot (RendererModel.tryOverviewTimeline projection |> Option.defaultValue [||]) (time 130))
+                (Some 2)
+                "A stripe between overview anchors maps to the preceding authoritative slot."
+
+            let head = { StartIndex = 0; Count = 20 }
+            let tail = { StartIndex = 80; Count = 20 }
+            let earlierMove = RendererModel.navigatorBoundaryDirection 100 head TaWindowDrag.Move -1
+            let laterMove = RendererModel.navigatorBoundaryDirection 100 tail TaWindowDrag.Move 1
+            Expect.equal
+                (RendererModel.navigatorBoundaryDirection 100 head TaWindowDrag.ResizeLeft -1)
+                earlierMove
+                "ResizeLeft crossing the loaded head must emit the same earlier intent as Move."
+            Expect.equal
+                (RendererModel.navigatorBoundaryDirection 100 tail TaWindowDrag.ResizeRight 1)
+                laterMove
+                "ResizeRight crossing the loaded tail must emit the same later intent as Move."
+            Expect.isSome earlierMove "Move crossing the loaded head requests earlier coverage."
+            Expect.isSome laterMove "Move crossing the loaded tail requests later coverage."
+            Expect.isNone
+                (RendererModel.navigatorBoundaryDirection 100 { StartIndex = 20; Count = 20 } TaWindowDrag.ResizeLeft 1)
+                "An in-range resize remains local."
+
+        testCase "RFC-0031 overview anchors preserve OHLC OC and degenerate scalar candles" <| fun _ ->
+            let objectValue values = SduiValue.Object(Map values)
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "overview-shapes"
+                  CoverageRevision = 1L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.60k"
+                  OverviewAnchors =
+                    [| { ObservationOrdinal = 0L
+                         EventTimeUtc = "2026-09-29T00:00:00Z"
+                         Value = objectValue [ "open", SduiValue.Number 100.0; "high", SduiValue.Number 104.0; "low", SduiValue.Number 98.0; "close", SduiValue.Number 103.0 ] }
+                       { ObservationOrdinal = 1L
+                         EventTimeUtc = "2026-09-29T01:00:00Z"
+                         Value = objectValue [ "open", SduiValue.Number 103.0; "close", SduiValue.Number 101.0 ] }
+                       { ObservationOrdinal = 2L
+                         EventTimeUtc = "2026-09-29T02:00:00Z"
+                         Value = SduiValue.Number 101.0 } |]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 0L
+                      ObservationCount = 3
+                      BaseAxisRef = "axis.1k" } }
+            let points = RendererModel.overviewPointsForCoverage projection
+            Expect.equal points.Length 3 "OHLC, OC and scalar anchors all remain candlesticks."
+            Expect.equal (points[0].Open, points[0].High, points[0].Low, points[0].Close) (100.0, 104.0, 98.0, 103.0) "OHLC remains exact."
+            Expect.equal (points[1].High, points[1].Low) (103.0, 101.0) "OC derives only its missing wick bounds."
+            Expect.equal (points[2].Open, points[2].High, points[2].Low, points[2].Close) (101.0, 101.0, 101.0, 101.0) "A scalar becomes a flat candle, not a line fallback."
+
         testCase "navigator visual geometry preserves the exact resolved-window ratio" <| fun _ ->
             let total = 1_000_000
             let minimumWindow = { StartIndex = total - 12; Count = 12 }
@@ -432,6 +513,7 @@ let tests =
                          EndEventTimeExclusiveUtc = "2026-09-28T00:00:00Z"
                          StartObservationOrdinal = 0L
                          ObservationCount = 1_000_000L } |]
+                  OverviewAxisRef = "axis.1k"
                   OverviewAnchors = [||]
                   ActiveDetail =
                     { StartObservationOrdinal = 999_750L
@@ -851,6 +933,7 @@ let tests =
                   Completeness = TaCoverageCompleteness.Complete
                   TotalObservationCount = Some 500L
                   Segments = [||]
+                  OverviewAxisRef = "axis.1k"
                   OverviewAnchors = [||]
                   ActiveDetail =
                     { StartObservationOrdinal = activeStart
@@ -1512,6 +1595,14 @@ let tests =
             Expect.equal placements.Length 1 "The encoded stripe must resolve from its temporal-series position."
             Expect.equal placements[0].SlotIndex 0 "The stripe event time maps to the first visible axis slot."
             Expect.equal placements[0].Stripe.StripeId stripe.StripeId "The generic event id survives decode and placement."
+            Expect.equal
+                (RendererModel.overviewEventTimeSlot timeline "2026-09-27T01:01:30Z")
+                (Some 0)
+                "An event between overview anchors maps to the preceding anchor rather than the detail-series position."
+            Expect.equal
+                (RendererModel.overviewEventTimeSlot timeline "2026-09-27T01:02:00Z")
+                (Some 1)
+                "An event exactly on an overview anchor maps to that anchor."
 
         testCase "DYN-T-576 row height policy is marker-independent and bounded" <| fun _ ->
             let baseRow =
@@ -1805,6 +1896,27 @@ let tests =
             Expect.equal (DateTimeOffset.Parse later.StartEventTimeUtc) (DateTimeOffset.Parse end1) "later request must begin at the actual final interval end"
             Expect.equal later.EndEventTimeExclusiveUtc "2026-10-01T00:00:00Z" "later request must use the explicit authorized query boundary"
             Expect.equal later.MaximumBasePoints 4000 "coverage request must preserve the visible cap"
+
+            let openLeftDocument =
+                { document with
+                    DefaultView = Map [ "query.toUtcExclusive", SduiValue.Text "2026-10-01T00:00:00Z" ] }
+            let openEarlier =
+                RendererModel.tryAdjacentCoverageRange TaCoverageDirection.Earlier 4000 openLeftDocument prepared
+                |> Option.get
+            Expect.equal
+                openEarlier.StartEventTimeUtc
+                openEarlier.EndEventTimeExclusiveUtc
+                "An unknown earliest boundary must be represented by the loaded-head anchor, not UnixEpoch."
+            Expect.equal
+                (openEarlier.CoverageIntent |> Option.map _.RangeAuthority)
+                (Some TaCoverageRangeAuthority.ProviderOpenEarlier)
+                "An open-left request must explicitly delegate the earlier boundary to the provider."
+
+        testCase "prepared row gate requires the current generation row count" <| fun _ ->
+            Expect.isFalse (RendererModel.arePreparedRowsReady 3 0) "No row from the new generation is not ready."
+            Expect.isFalse (RendererModel.arePreparedRowsReady 3 2) "A partially mounted row set is not ready."
+            Expect.isTrue (RendererModel.arePreparedRowsReady 3 3) "All current generation rows are ready."
+            Expect.isFalse (RendererModel.arePreparedRowsReady 3 4) "A stale or mismatched generation cannot report ready."
 
         testCase "renderer package remains host neutral" <| fun _ ->
             let assembly = typeof<TaRendererOptions>.Assembly

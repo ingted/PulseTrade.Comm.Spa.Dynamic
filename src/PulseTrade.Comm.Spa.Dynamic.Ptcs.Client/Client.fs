@@ -198,7 +198,8 @@ type TaBrowserClientFrameWire =
       startObservationOrdinal: string
       hasStartObservationOrdinal: bool
       coverageObservationCount: int
-      coverageDirection: string }
+      coverageDirection: string
+      coverageRangeAuthority: string }
 
 [<JavaScript; CLIMutable>]
 type ExtensionTransientRequestWire =
@@ -801,7 +802,8 @@ module TaResearchClientWire =
           startObservationOrdinal = ""
           hasStartObservationOrdinal = false
           coverageObservationCount = 0
-          coverageDirection = "" }
+          coverageDirection = ""
+          coverageRangeAuthority = "" }
 
     let optionText value = value |> Option.defaultValue ""
     let optionInt value = value |> Option.defaultValue 0
@@ -873,7 +875,11 @@ module TaResearchClientWire =
                         match intent.Direction with
                         | Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier -> "earlier"
                         | Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later -> "later"
-                        | None -> "" }
+                        | None -> ""
+                    coverageRangeAuthority =
+                        match intent.RangeAuthority with
+                        | TaCoverageRangeAuthority.ExplicitBounds -> "explicit-bounds"
+                        | TaCoverageRangeAuthority.ProviderOpenEarlier -> "provider-open-earlier" }
         | SduiAction.PollDelta(canvas, revision) ->
             { emptyFrame "action" "poll-delta" (canvasText canvas) with afterDataRevision = float revision }
         | SduiAction.RequestFullSnapshot(canvas, reason) ->

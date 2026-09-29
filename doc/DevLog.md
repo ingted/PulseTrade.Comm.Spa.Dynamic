@@ -1926,3 +1926,11 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Daedalus對official Renderer `0.1.104`／Interactive.Client `0.1.96`的首次RED diagnostic顯示drag start `elementFromPoint`為空，且handler／capture／mode／delta attrs皆未出現。projection後navigator已離開viewport，consumer verifier沿用stale raw page mouse座標；這不是owner bundle failure。
 - Consumer gate加入`ScrollIntoViewIfNeeded`、重新取得navigator／selection geometry及drag-start overview hit-test後，18883正式SPAA action由`3`增至`4`，最終initial=250、merged=500、authorityLoaded=1000、visible=1-250、selectionWidth=250、axes=8、runPosts=2、actions=5。DYN-WBS-575與DYN-T-656完成；不發布額外package。
+
+## 2026-09-29 - DECIDE_ON overview／provider-open-earlier owner candidate
+
+- RFC-PTCS-DYNAMIC-0033實作8,000 bounded overview、explicit overview/detail axis、跨軸event-time selection/stripe alignment與stable `viewport.loadedCoverageDataRef`。LoadedCoverage observation domain不再由overview ordinal延長。
+- `TaCoverageWindowIntent`新增additive `RangeAuthority`；range-less Earlier以`ProviderOpenEarlier`及loaded-head anchor表達，不產生UnixEpoch假起點。PTCS flat wire使用`provider-open-earlier`，舊wire缺欄位維持`explicit-bounds`。
+- Renderer在current generation prepared rows追上authored rows前停用toolbar／navigator adjacent outcome，避免document replacement race；完成後保留既有pending latest-wins。
+- Owner focused suites為`49/58/15/15/17`。完整Renderer Playwright PASS：500 coverage／250 detail、tiny selection、8,000 bounded overview與既有interaction均通過；progressive max45.37ms，正式phase over100=0。Interactive.Client使用fresh package cache重建bundle並通過package verifier；global-cache stale Renderer同版號未作release evidence。
+- Candidate exact graph為Contracts `0.1.34`、Renderer `0.1.106`、Interactive.Client `0.1.97`、Dynamic.Ptcs `0.1.55`、Ptcs.Client `0.1.106`。本段先提交source以固定package provenance；official push/readback及Daedalus consumer gate待後續。

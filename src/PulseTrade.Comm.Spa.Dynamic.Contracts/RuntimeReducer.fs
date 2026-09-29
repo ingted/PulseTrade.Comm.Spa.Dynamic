@@ -146,6 +146,9 @@ module RuntimeReducer =
               yield document.StatusRef
               if not (isNull document.TemporalAxisRefs) then
                   yield! document.TemporalAxisRefs
+              match TaLoadedCoverageCodec.tryDataRef document.DefaultView with
+              | Ok(Some dataRef) -> yield dataRef
+              | _ -> ()
               for row in document.Rows do
                   yield! TaRowSpec.dataRefs row ]
             |> Set.ofList
@@ -790,7 +793,22 @@ module RuntimeReducer =
     let snapshotRuntimeError state (snapshot: RuntimeSnapshot) =
         match snapshotUnknownDataRef state snapshot.Data with
         | Some dataRef -> Some("unknown-data-ref", $"Snapshot dataRef `{dataRef}` is not registered by the document.")
-        | None -> temporalDataError state snapshot.Data
+        | None ->
+            temporalDataError state snapshot.Data
+            |> Option.orElseWith (fun () ->
+                state.Document
+                |> Option.bind (fun document ->
+                    match TaLoadedCoverageCodec.tryDecodeResolved document.DefaultView snapshot.Data with
+                    | Ok(Some projection) ->
+                        match TaLoadedCoverageCodec.tryMaximumVisibleBars document.DefaultView with
+                        | Some maximumVisibleBars when projection.ActiveDetail.ObservationCount > maximumVisibleBars ->
+                            Some("active-detail-exceeds-document-cap", $"Active detail exceeds the document MaximumVisibleBars value {maximumVisibleBars}.")
+                        | _ -> None
+                    | Ok None -> None
+                    | Error errors ->
+                        errors
+                        |> List.tryHead
+                        |> Option.map (fun error -> error.Code, error.Message)))
 
     let overlayCandidateError state data =
         state.Document

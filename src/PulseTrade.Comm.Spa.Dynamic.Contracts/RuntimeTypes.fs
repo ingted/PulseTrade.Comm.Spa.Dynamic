@@ -311,6 +311,7 @@ type TaLoadedCoverageProjection =
       Completeness: TaCoverageCompleteness
       TotalObservationCount: int64 option
       Segments: TaLoadedCoverageSegment array
+      OverviewAxisRef: string
       OverviewAnchors: TaOverviewAnchor array
       ActiveDetail: TaActiveDetailProjection }
 
@@ -416,12 +417,18 @@ type TaCoverageDirection =
     | Earlier
     | Later
 
+[<RequireQualifiedAccess>]
+type TaCoverageRangeAuthority =
+    | ExplicitBounds
+    | ProviderOpenEarlier
+
 type TaCoverageWindowIntent =
     { ExpectedCoverageRevision: int64 option
       QueryGeneration: int64
       StartObservationOrdinal: int64 option
       ObservationCount: int
-      Direction: TaCoverageDirection option }
+      Direction: TaCoverageDirection option
+      RangeAuthority: TaCoverageRangeAuthority }
 
 type VisibleRangeChange =
     { BaseRowId: string

@@ -346,7 +346,25 @@ module Client =
         sampleSeries 500
         |> Map.map (fun _ value -> slicePositionedSeries startIndex count value)
 
+    let coverageProjectionDataRef = "viewport.loadedCoverage.browser-demo"
+
     let coverageProjection coverageRevision queryGeneration startIndex count =
+        let overviewAnchors =
+            Array.init 100 (fun index ->
+                let openValue = 21800.0 + float index * 8.0
+                let closeValue =
+                    match index % 3 with
+                    | 0 -> openValue + 5.0
+                    | 1 -> openValue - 4.0
+                    | _ -> openValue
+                { ObservationOrdinal = int64 index
+                  EventTimeUtc = timestamp (index * 5)
+                  Value =
+                    SduiValue.Object(
+                        Map [ "open", SduiValue.Number openValue
+                              "high", SduiValue.Number(max openValue closeValue + 2.0)
+                              "low", SduiValue.Number(min openValue closeValue - 2.0)
+                              "close", SduiValue.Number closeValue ]) })
         { CoverageIdentity = "browser-demo:loaded-coverage"
           CoverageRevision = coverageRevision
           QueryGeneration = queryGeneration
@@ -358,13 +376,8 @@ module Client =
                  EndEventTimeExclusiveUtc = timestamp 500
                  StartObservationOrdinal = 0L
                  ObservationCount = 500L } |]
-          OverviewAnchors =
-            [| { ObservationOrdinal = 0L
-                 EventTimeUtc = timestamp 0
-                 Value = SduiValue.Number 21800.0 }
-               { ObservationOrdinal = 499L
-                 EventTimeUtc = timestamp 499
-                 Value = SduiValue.Number 22648.0 } |]
+          OverviewAxisRef = "axis.overview.5k"
+          OverviewAnchors = overviewAnchors
           ActiveDetail =
             { StartObservationOrdinal = int64 startIndex
               ObservationCount = count
@@ -766,7 +779,7 @@ module Client =
                     let startIndex = intent.StartObservationOrdinal |> Option.defaultValue 0L |> int
                     let count = intent.ObservationCount
                     let currentProjection =
-                        RendererModel.tryLoadedCoverage document.DefaultView
+                        RendererModel.tryLoadedCoverageResolved document.DefaultView current.Data
                         |> Option.defaultValue (coverageProjection 0L 0L startIndex count)
                     let nextProjection =
                         { currentProjection with
@@ -776,35 +789,61 @@ module Client =
                                 { currentProjection.ActiveDetail with
                                     StartObservationOrdinal = int64 startIndex
                                     ObservationCount = count } }
+                    let projectionDataRef =
+                        match TaLoadedCoverageCodec.tryDataRef document.DefaultView with
+                        | Ok value -> value
+                        | Error _ -> None
+                    let nextDocument, nextDocumentRevision, nextData =
+                        match projectionDataRef with
+                        | Some dataRef ->
+                            document,
+                            current.DocumentRevision,
+                            coverageFixtureData startIndex count
+                            |> Map.add dataRef (TaLoadedCoverageCodec.encode nextProjection)
+                        | None ->
+                            { document with
+                                DefaultView = document.DefaultView |> TaLoadedCoverageCodec.apply nextProjection },
+                            current.DocumentRevision + 1L,
+                            coverageFixtureData startIndex count
                     runtimeState.Value <-
                         { current with
-                            Document =
-                                Some
-                                    { document with
-                                        DefaultView = document.DefaultView |> TaLoadedCoverageCodec.apply nextProjection }
-                            Data = coverageFixtureData startIndex count
-                            DocumentRevision = current.DocumentRevision + 1L
+                            Document = Some nextDocument
+                            Data = nextData
+                            DocumentRevision = nextDocumentRevision
                             DataRevision = current.DataRevision + 1L
                             LastTransportSequence = current.LastTransportSequence + 1L }
                 | _ ->
                     let currentAfterCoverageRefresh =
                         if refreshCoverageOnNextVisibleRange.Value then
                             refreshCoverageOnNextVisibleRange.Value <- false
-                            match current.Document |> Option.bind (fun value -> RendererModel.tryLoadedCoverage value.DefaultView) with
+                            match current.Document |> Option.bind (fun value -> RendererModel.tryLoadedCoverageResolved value.DefaultView current.Data) with
                             | Some projection ->
                                 let nextProjection =
                                     { projection with
                                         CoverageRevision = projection.CoverageRevision + 1L }
+                                let projectionDataRef =
+                                    current.Document
+                                    |> Option.bind (fun value ->
+                                        match TaLoadedCoverageCodec.tryDataRef value.DefaultView with
+                                        | Ok dataRef -> dataRef
+                                        | Error _ -> None)
                                 let next =
-                                    { current with
-                                        Document =
-                                            current.Document
-                                            |> Option.map (fun value ->
-                                                { value with
-                                                    DefaultView = value.DefaultView |> TaLoadedCoverageCodec.apply nextProjection })
-                                        DocumentRevision = current.DocumentRevision + 1L
-                                        DataRevision = current.DataRevision + 1L
-                                        LastTransportSequence = current.LastTransportSequence + 1L }
+                                    match projectionDataRef with
+                                    | Some dataRef ->
+                                        { current with
+                                            Data = current.Data |> Map.add dataRef (TaLoadedCoverageCodec.encode nextProjection)
+                                            DataRevision = current.DataRevision + 1L
+                                            LastTransportSequence = current.LastTransportSequence + 1L }
+                                    | None ->
+                                        { current with
+                                            Document =
+                                                current.Document
+                                                |> Option.map (fun value ->
+                                                    { value with
+                                                        DefaultView = value.DefaultView |> TaLoadedCoverageCodec.apply nextProjection })
+                                            DocumentRevision = current.DocumentRevision + 1L
+                                            DataRevision = current.DataRevision + 1L
+                                            LastTransportSequence = current.LastTransportSequence + 1L }
                                 runtimeState.Value <- next
                                 next
                             | None -> current
@@ -909,8 +948,10 @@ module Client =
                                     DefaultView =
                                         document.DefaultView
                                         |> TaLoadedCoverageCodec.applyMaximumVisibleBars 250
-                                        |> TaLoadedCoverageCodec.apply projection }
-                        Data = coverageFixtureData 250 250
+                                        |> TaLoadedCoverageCodec.applyDataRef coverageProjectionDataRef }
+                        Data =
+                            coverageFixtureData 250 250
+                            |> Map.add coverageProjectionDataRef (TaLoadedCoverageCodec.encode projection)
                         DocumentRevision = current.DocumentRevision + 1L
                         DataRevision = current.DataRevision + 1L
                         LastTransportSequence = current.LastTransportSequence + 1L }

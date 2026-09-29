@@ -481,7 +481,8 @@ let tests =
                         QueryGeneration = 4L
                         StartObservationOrdinal = Some 250L
                         ObservationCount = 250
-                        Direction = Some TaCoverageDirection.Earlier }
+                        Direction = Some TaCoverageDirection.Earlier
+                        RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds }
                   SduiAction.VisibleRangeChanged(
                       CanvasInstanceId "canvas",
                       { BaseRowId = "price-1k"

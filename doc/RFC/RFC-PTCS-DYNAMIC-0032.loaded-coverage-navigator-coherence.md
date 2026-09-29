@@ -162,3 +162,15 @@ Official correction graph為Renderer `0.1.95`、Interactive.Client `0.1.86`、Pt
 同輪cache-hit performance調查確認phased rehydrate在frame pump前仍同步執行完整snapshot semantic validation，等同掃兩次大型data。Interactive.Client改為同步驗header/document/workspace/current authority並建立frame，nested data只由phased pump驗證；generation、atomic publish與fail-closed語意不變。
 
 Official correction graph為Renderer `0.1.98`、Interactive.Client `0.1.90`、Ptcs.Client `0.1.99`，source commit `16dd825`。Focused `55/15/17`、真PollInFlight、`PausedForResync -> Ready`、3820x28 cache rehydrate及完整Renderer browser gate均PASS。三包NuGet.org repository signatures、exact dependencies、Interactive manifest及排除`.signature.p7s`後entry parity皆PASS；Daedalus真SPAA progressive/cache-hit仍是停止條件。
+
+## 15. Selection gesture boundary correction
+
+真SPAA再次證明ResizeLeft把selection拖過coverage左界時，舊Renderer只對`Move`判斷adjacent-page intent，因此diagnostic呈現`ResizeLeft / no-change`且action count不增加。RFC-TRADECORE-0030 §7.2(10)要求的是任何selection gesture越界，不限Move。
+
+決策：Move越左／右界、ResizeLeft越左界、ResizeRight越右界，mouseup各發布恰好一個Earlier／Later intent；preview只保存draft。Renderer root與chart stack持續暴露`data-drag-mode`與`data-drag-outcome=request-earlier|request-later`。未越界的resize仍走local commit；對向handle交叉只依minimum-bars clamp，不誤發相鄰頁。pure helper與browser gate須覆蓋三種gesture及左右界。
+
+## 16. Open-left authority與prepared-row barrier
+
+range-less BARS代表provider authority可向更早資料開放，不能以`DateTime.UnixEpoch`或任意日期冒充已知起點。`ta-coverage-window.v1`因此以additive `RangeAuthority`區分explicit bounds與`ProviderOpenEarlier`；後者只允許Earlier、首尾為相同current loaded-head anchor且不帶global start ordinal。Server/client flat wire使用`provider-open-earlier`，缺欄位的舊wire維持`explicit-bounds`。
+
+Renderer只有在current document generation的prepared row count等於authored row count後，才允許toolbar或navigator產生相鄰coverage outcome。這個barrier只阻止使用舊row geometry發remote intent，不改pending/latest-wins queue；已準備完成後的合法連續操作仍可排隊。Pure tests涵蓋`0/2/3/4` rows，browser gate驗document replacement與progressive coverage。

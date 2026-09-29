@@ -792,3 +792,14 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-654 | Cursor event-to-render | 300 transitions；以browser event request到shared render完成量測；host round-trip僅診斷；console/page error 0 | OWNER PASS：p95 `2.00ms`、max `26.00ms`，CDP max task `28.95ms`。 |
 | DYN-T-655 | Navigator pointer ownership | `pointerdown`取得capture；SVG root外與iframe外的move/up仍保有preview並只完成一次action；`pointercancel`清draft且不dispatch；fallback不改bounds authority | OWNER PASS：focused F# Playwright四個同document情境為`0->2 / 0->1 / 0->2 / 1->2`；iframe x=80、navigator x=101、release x=68時callback `1->2`、outcome=`request-earlier`、console 0。 |
 | DYN-T-656 | Exact graph／consumer closure | Renderer／Interactive／Ptcs focused、完整Renderer gate、package bundle、official signature/dependency/provenance/entry parity；真SPAA須先scroll並重算geometry，drag start hit-test命中overview後，root外release action必須唯一增量 | PASS：official `.104/.96/.105` signature有效、commit=`237236b7...`、exact deps／manifest／entries `7/10/7` diff=0。Focused `55/15/17`、package verifier及功能／幾何全回歸PASS。真SPAA action `3->4`且最終authorityLoaded=1000、visible=1-250、actions=5；先前RED是consumer以off-viewport stale raw coordinates點到空白，不是owner failure。 |
+
+## RFC-PTCS-DYNAMIC-0033 DECIDE_ON overview／open-left gates
+
+| ID | Scope | Acceptance |
+| --- | --- | --- |
+| DYN-T-657 | Contracts overview authority | 8,000 anchors接受、8,001拒絕；explicit OverviewAxisRef round-trip；coverage observation domain不受overview ordinal延長 | OWNER PASS：Contracts `49/49`。 |
+| DYN-T-658 | Cross-axis renderer | 1K detail＋60K overview時selection／stripe依canonical event time；OHLC／OC up綠、down紅、flat neutral；DOM bounded | OWNER PASS：Renderer `58/58`與完整BrowserDemo gate通過。 |
+| DYN-T-659 | Provider open-left | range-less Earlier不產生UnixEpoch；wire明列`provider-open-earlier`；非法方向／ordinal／非零寬拒絕，舊缺欄位解`explicit-bounds` | OWNER PASS：Contracts、Dynamic.Ptcs `15/15`、Ptcs.Client `17/17`。 |
+| DYN-T-660 | Prepared-row barrier | ready row count未等於authored row count前toolbar／navigator不送boundary outcome；完成後恢復，pending latest-wins不退化 | OWNER PASS：pure `0/2/3/4` rows及browser progressive/document replacement通過。 |
+| DYN-T-661 | Browser／performance | 8,000 bounded overview、500 coverage／250 detail、tiny selection、existing pointer/cursor/viewport regressions；正式phase無>100ms task | OWNER PASS：`verify-ta-renderer-playwright.fsx`，progressive max `45.37ms`、over100=`0`。 |
+| DYN-T-662 | Exact graph／consumer | 五包source commit、Release build/push、official signature/dependency/manifest/SHA readback；Daedalus真SPAA與fresh DIB | OWNER candidate PASS；official release與consumer gate pending。 |

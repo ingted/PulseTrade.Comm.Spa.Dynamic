@@ -1108,7 +1108,24 @@ module RendererModel =
 
         direct, overflow
 
+    let overviewEventTimeSlot (timeline: string array) eventTime =
+        if timeline.Length = 0 || String.IsNullOrWhiteSpace eventTime then
+            None
+        else
+            let target = OverviewStripeValidation.normalizeUtcTimestamp eventTime
+            let mutable low = 0
+            let mutable high = timeline.Length
+            while low < high do
+                let middle = low + (high - low) / 2
+                if compare timeline[middle] target <= 0 then low <- middle + 1
+                else high <- middle
+            let index = low - 1
+            if index < 0 then None else Some(min (timeline.Length - 1) index)
+
     let overviewStripePlacementsPrepared (trace: TaTraceSpec) prepared referenceTimestamps =
+        let normalizedReferenceTimestamps =
+            referenceTimestamps
+            |> Array.map OverviewStripeValidation.normalizeUtcTimestamp
         match TaOverviewStripeTraceOptionsCodec.tryDecode trace.Options with
         | None -> [||]
         | Some options ->
@@ -1124,19 +1141,17 @@ module RendererModel =
                     |> Array.collect (fun (position, payload) ->
                         match Map.tryFind position axis.Points, TaOverviewStripeCodec.decodeBucket trace.DataRef payload with
                         | Some temporal, Ok stripes ->
-                            let timestamp = presentationTimestamp temporal
-                            match referenceTimestamps |> Array.tryFindIndex ((=) timestamp) with
-                            | Some slotIndex ->
-                                stripes
-                                |> Array.map (fun stripe ->
+                            stripes
+                            |> Array.choose (fun stripe ->
+                                overviewEventTimeSlot normalizedReferenceTimestamps stripe.EventTimeUtc
+                                |> Option.map (fun slotIndex ->
                                     { TraceId = trace.TraceId
                                       TargetTraceId = options.TargetTraceId
                                       CollisionGroup = options.CollisionGroup
                                       LayerOrder = options.LayerOrder
                                       Position = position
                                       SlotIndex = slotIndex
-                                      Stripe = stripe })
-                            | None -> [||]
+                                      Stripe = stripe }))
                         | _ -> [||])))
             |> Option.defaultValue [||]
 
@@ -2071,13 +2086,16 @@ module RendererModel =
         | Ok(Some projection) -> Some projection
         | _ -> None
 
+    let tryLoadedCoverageResolved defaultView data =
+        match TaLoadedCoverageCodec.tryDecodeResolved defaultView data with
+        | Ok(Some projection) -> Some projection
+        | _ -> None
+
     let isStaleCoverageCandidate pendingQueryGeneration defaultView =
         tryLoadedCoverage defaultView
         |> Option.exists (fun projection -> projection.QueryGeneration < pendingQueryGeneration)
 
-    let tryCoverageNavigatorWindow activeReferenceLength activeWindow defaultView =
-        tryLoadedCoverage defaultView
-        |> Option.bind (fun projection ->
+    let coverageNavigatorWindow activeReferenceLength activeWindow projection =
             let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
             if domainCount <= 0L || domainCount > int64 Int32.MaxValue then
                 None
@@ -2091,7 +2109,15 @@ module RendererModel =
                         projection,
                         int domainCount,
                         { StartIndex = int globalStart
-                          Count = local.Count }))
+                          Count = local.Count })
+
+    let tryCoverageNavigatorWindow activeReferenceLength activeWindow defaultView =
+        tryLoadedCoverage defaultView
+        |> Option.bind (coverageNavigatorWindow activeReferenceLength activeWindow)
+
+    let tryCoverageNavigatorWindowResolved activeReferenceLength activeWindow defaultView data =
+        tryLoadedCoverageResolved defaultView data
+        |> Option.bind (coverageNavigatorWindow activeReferenceLength activeWindow)
 
     let tryAdjacentCoverageIntent (direction: TaCoverageDirection) maximumVisibleBars activeReferenceLength activeWindow projection =
         let local = clampWindow 1 maximumVisibleBars activeReferenceLength activeWindow
@@ -2150,6 +2176,48 @@ module RendererModel =
                               Temporal = None })
             | _ -> None)
 
+    let tryOverviewTimeline projection =
+        let parsed = projection.OverviewAnchors |> Array.map (fun anchor -> tryUtcTimestamp anchor.EventTimeUtc)
+        if parsed |> Array.exists Option.isNone then
+            None
+        else
+            let timeline = parsed |> Array.choose id
+            if timeline |> Array.pairwise |> Array.exists (fun (left, right) -> left >= right) then None
+            else Some timeline
+
+    let eventTimeSlot (timeline: string array) eventTime =
+        match tryUtcTimestamp eventTime with
+        | None -> None
+        | Some target ->
+            if timeline.Length = 0 then
+                None
+            else
+                let index = upperTimestampBound timeline target - 1
+                if index < 0 then None else Some(min (timeline.Length - 1) index)
+
+    let overviewSelectionRatios projection (activeReferenceTimeline: string array) activeWindow =
+        if projection.OverviewAxisRef = projection.ActiveDetail.BaseAxisRef then
+            None
+        else
+            match tryOverviewTimeline projection with
+            | None -> None
+            | Some overviewTimeline when overviewTimeline.Length = 0 || activeReferenceTimeline.Length = 0 -> None
+            | Some overviewTimeline ->
+                let detail = clampWindow 1 TaLoadedCoverageCodec.MaximumActiveDetailBars activeReferenceTimeline.Length activeWindow
+                if detail.Count <= 0 then
+                    None
+                else
+                    let first = activeReferenceTimeline[detail.StartIndex]
+                    let last = activeReferenceTimeline[detail.StartIndex + detail.Count - 1]
+                    match tryUtcTimestamp first, tryUtcTimestamp last with
+                    | Some _, Some _ ->
+                        match eventTimeSlot overviewTimeline first, eventTimeSlot overviewTimeline last with
+                        | Some firstSlot, Some lastSlot ->
+                            let lastExclusive = min overviewTimeline.Length (max (firstSlot + 1) (lastSlot + 1))
+                            Some(float firstSlot / float overviewTimeline.Length, float lastExclusive / float overviewTimeline.Length)
+                        | _ -> None
+                    | _ -> None
+
     let selectionRatios total window =
         if total <= 0 || window.Count <= 0 then
             0.0, 0.0
@@ -2157,6 +2225,22 @@ module RendererModel =
             let bounded = clampWindow 1 Int32.MaxValue total window
             float bounded.StartIndex / float total,
             float (bounded.StartIndex + bounded.Count) / float total
+
+    let navigatorBoundaryDirection total committed drag rawDelta : TaCoverageDirection option =
+        if total <= 0 || committed.Count <= 0 then
+            None
+        else
+            let startIndex = committed.StartIndex
+            let endExclusive = startIndex + committed.Count
+            let requestedStart, requestedEnd =
+                match drag with
+                | TaWindowDrag.Move -> startIndex + rawDelta, endExclusive + rawDelta
+                | TaWindowDrag.ResizeLeft -> startIndex + rawDelta, endExclusive
+                | TaWindowDrag.ResizeRight -> startIndex, endExclusive + rawDelta
+                | _ -> startIndex, endExclusive
+            if requestedStart < 0 then Some TaCoverageDirection.Earlier
+            elif requestedEnd > total then Some TaCoverageDirection.Later
+            else None
 
     let navigatorSelectionBounds trackWidth (leftRatio, rightRatio) =
         let width = max 0.0 trackWidth
@@ -2372,25 +2456,36 @@ module RendererModel =
                 let query = queryDraft document.DefaultView
                 let candidate =
                     match direction, Array.tryHead timeline, Array.tryLast timeline with
+                    | TaCoverageDirection.Earlier, Some loadedFirst, _ when String.IsNullOrWhiteSpace query.FromUtc ->
+                        Some(loadedFirst, loadedFirst, true)
                     | TaCoverageDirection.Earlier, Some loadedFirst, _ ->
-                        Some(query.FromUtc, loadedFirst)
+                        Some(query.FromUtc, loadedFirst, false)
                     | TaCoverageDirection.Later, _, Some loadedLast ->
                         match tryBasePointIntervalEndPrepared baseRow prepared loadedLast with
-                        | Some loadedEnd -> Some(loadedEnd, query.ToUtcExclusive)
+                        | Some loadedEnd -> Some(loadedEnd, query.ToUtcExclusive, false)
                         | _ -> None
                     | _ -> None
 
                 candidate
-                |> Option.bind (fun (startUtc, endUtc) ->
+                |> Option.bind (fun (startUtc, endUtc, providerOpenEarlier) ->
                     match tryUtcTimestamp startUtc, tryUtcTimestamp endUtc with
-                    | Some normalizedStart, Some normalizedEnd when normalizedStart.CompareTo(normalizedEnd) < 0 ->
+                    | Some normalizedStart, Some normalizedEnd
+                        when normalizedStart.CompareTo(normalizedEnd) < 0
+                             || (providerOpenEarlier && normalizedStart = normalizedEnd) ->
                         Some
                             { BaseRowId = baseRowId
                               StartEventTimeUtc = startUtc
                               EndEventTimeExclusiveUtc = endUtc
                               MaximumBasePoints = max 1 maximumBasePoints
-                              CoverageIntent = None }
+                              CoverageIntent =
+                                  if providerOpenEarlier then
+                                      TaLoadedCoverageCodec.tryProviderOpenEarlierWindowIntent None 0L (max 1 maximumBasePoints)
+                                  else
+                                      None }
                     | _ -> None)))
+
+    let arePreparedRowsReady expectedRowCount readyRowCount =
+        expectedRowCount >= 0 && readyRowCount = expectedRowCount
 
     let cursorSnapshotForRows (document: TaWorkspaceDocument) visibleRows data window cursorIndex =
         let timeline = referenceTimelineForDocument document data

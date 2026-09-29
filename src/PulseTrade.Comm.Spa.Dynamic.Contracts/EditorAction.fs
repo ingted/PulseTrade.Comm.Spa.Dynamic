@@ -770,7 +770,11 @@ module DynamicActionValidation =
               yield! RuntimeValidation.identifier "action.range.baseRowId" change.BaseRowId
               yield! utcEventTimeErrors "action.range.startEventTimeUtc" change.StartEventTimeUtc
               yield! utcEventTimeErrors "action.range.endEventTimeExclusiveUtc" change.EndEventTimeExclusiveUtc
+              let providerOpenEarlier =
+                  change.CoverageIntent
+                  |> Option.exists (fun intent -> intent.RangeAuthority = TaCoverageRangeAuthority.ProviderOpenEarlier)
               match DateTimeOffset.TryParse change.StartEventTimeUtc, DateTimeOffset.TryParse change.EndEventTimeExclusiveUtc with
+              | (true, startTime), (true, endTime) when providerOpenEarlier && endTime = startTime -> ()
               | (true, startTime), (true, endTime) when endTime <= startTime ->
                   yield RuntimeValidation.error "invalid-visible-range" "action.range" "Visible range end must be later than its start."
               | _ -> ()
@@ -792,6 +796,23 @@ module DynamicActionValidation =
                   | Some ordinal when ordinal < 0L ->
                       yield RuntimeValidation.error "invalid-observation-ordinal" "action.range.coverageIntent.startObservationOrdinal" "StartObservationOrdinal cannot be negative."
                   | _ -> ()
+                  match intent.RangeAuthority with
+                  | TaCoverageRangeAuthority.ProviderOpenEarlier
+                      when intent.Direction <> Some TaCoverageDirection.Earlier
+                           || intent.StartObservationOrdinal.IsSome ->
+                      yield RuntimeValidation.error
+                          "invalid-provider-open-earlier"
+                          "action.range.coverageIntent.rangeAuthority"
+                          "ProviderOpenEarlier requires Earlier direction and no start observation ordinal."
+                  | TaCoverageRangeAuthority.ProviderOpenEarlier ->
+                      match DateTimeOffset.TryParse change.StartEventTimeUtc, DateTimeOffset.TryParse change.EndEventTimeExclusiveUtc with
+                      | (true, startTime), (true, endTime) when startTime <> endTime ->
+                          yield RuntimeValidation.error
+                              "invalid-provider-open-earlier"
+                              "action.range"
+                              "ProviderOpenEarlier must use the loaded-head event time as both range anchors."
+                      | _ -> ()
+                  | TaCoverageRangeAuthority.ExplicitBounds -> ()
                   if intent.ObservationCount <= 0 || intent.ObservationCount > DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints then
                       yield RuntimeValidation.error
                           "invalid-observation-count"

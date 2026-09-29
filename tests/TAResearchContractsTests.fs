@@ -85,6 +85,7 @@ let tests =
                          EndEventTimeExclusiveUtc = "2026-09-01T00:00:00Z"
                          StartObservationOrdinal = 400_000L
                          ObservationCount = 600_000L } |]
+                  OverviewAxisRef = "axis.1k"
                   OverviewAnchors =
                     [| { ObservationOrdinal = 0L
                          EventTimeUtc = "2026-01-01T00:00:00Z"
@@ -136,6 +137,210 @@ let tests =
                     $"The document cap must fail closed before the renderer receives an oversized detail slice. Codes={codes}; Details={details}"
             | Ok _ -> failtest "An active detail larger than the document cap must not validate."
 
+        testCase "DYN-T-648 loaded coverage dataRef atomically carries an independent 8000-anchor overview" <| fun _ ->
+            let anchors count =
+                Array.init count (fun index ->
+                    { ObservationOrdinal = int64 index
+                      EventTimeUtc = sourceTime.AddMinutes(float index).ToString("O")
+                      Value = SduiValue.Number(float index) })
+            let projection count =
+                { CoverageIdentity = "ES|1K-detail|60K-overview"
+                  CoverageRevision = 8L
+                  QueryGeneration = 4L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments =
+                    [| { SegmentId = "detail"
+                         StartEventTimeUtc = sourceTime.ToString("O")
+                         EndEventTimeExclusiveUtc = sourceTime.AddMinutes(250.0).ToString("O")
+                         StartObservationOrdinal = 0L
+                         ObservationCount = 250L } |]
+                  OverviewAxisRef = "axis.60k"
+                  OverviewAnchors = anchors count
+                  ActiveDetail =
+                    { StartObservationOrdinal = 0L
+                      ObservationCount = 250
+                      BaseAxisRef = "axis.1k" } }
+            let dataRef = "coverage.presentation"
+            let dataRefView =
+                Map.empty
+                |> TaLoadedCoverageCodec.applyMaximumVisibleBars 250
+                |> TaLoadedCoverageCodec.applyDataRef dataRef
+            let projection8000 = projection TaLoadedCoverageCodec.MaximumOverviewAnchors
+
+            Expect.equal
+                (TaLoadedCoverageCodec.tryDecodeResolved dataRefView (Map [ dataRef, TaLoadedCoverageCodec.encode projection8000 ]))
+                (Ok(Some projection8000))
+                "One snapshot dataRef must carry the complete scenario-varying overview projection."
+            Expect.equal
+                (TaLoadedCoverageCodec.observationDomainCount projection8000)
+                250L
+                "Overview-axis ordinals must not extend the independent detail observation domain."
+
+            let registeredDocument = { document with DefaultView = dataRefView }
+            let afterDocument, _ =
+                RuntimeReducer.reduce
+                    (RuntimeReducer.initial identity)
+                    { documentFrame with Payload = RuntimePayload.Document registeredDocument }
+            let accepted, effect =
+                RuntimeReducer.reduce afterDocument
+                    (frame RuntimeFrameKind.Snapshot 2L None 1L
+                        (RuntimePayload.Snapshot
+                            { Data = Map [ dataRef, TaLoadedCoverageCodec.encode projection8000 ]
+                              Freshness = TaFreshness.Backfill "scenario" }))
+            Expect.equal effect RuntimeEffect.NoEffect "A valid 8000-anchor projection must commit in one snapshot."
+            Expect.equal
+                (accepted.Document |> Option.bind (fun value -> TaLoadedCoverageCodec.tryDecodeResolved value.DefaultView accepted.Data |> Result.defaultValue None))
+                (Some projection8000)
+                "The accepted runtime state must resolve the same snapshot authority."
+
+            let rejected = projection (TaLoadedCoverageCodec.MaximumOverviewAnchors + 1)
+            match RuntimeReducer.snapshotRuntimeError afterDocument { Data = Map [ dataRef, TaLoadedCoverageCodec.encode rejected ]; Freshness = TaFreshness.Backfill "scenario" } with
+            | Some(code, _) -> Expect.equal code "limit-loaded-coverage" "The 8001st overview anchor must fail explicitly."
+            | None -> failtest "An 8001-anchor projection must not enter the runtime."
+
+            let legacyValue =
+                match TaLoadedCoverageCodec.encode { projection8000 with OverviewAnchors = anchors 2 } with
+                | SduiValue.Object fields -> SduiValue.Object(Map.remove "overviewAxisRef" fields)
+                | value -> value
+            match TaLoadedCoverageCodec.tryDecode (Map [ TaLoadedCoverageCodec.DefaultViewKey, legacyValue ]) with
+            | Ok(Some legacy) -> Expect.equal legacy.OverviewAxisRef legacy.ActiveDetail.BaseAxisRef "Old wire data falls back to the detail axis."
+            | value -> failtestf "Old wire coverage must remain readable, got %A" value
+
+            let ambiguousDocument =
+                { registeredDocument with
+                    DefaultView = registeredDocument.DefaultView |> TaLoadedCoverageCodec.apply { projection8000 with OverviewAnchors = [||] } }
+            match RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document ambiguousDocument } with
+            | Error errors ->
+                Expect.isTrue
+                    (errors |> List.exists (fun error -> error.Code = "ambiguous-loaded-coverage-authority"))
+                    "Inline and dataRef authorities must fail closed instead of racing."
+            | Ok _ -> failtest "Ambiguous loaded coverage authorities must not validate."
+
+        testCase "DYN-T-649 cross-axis overview stripes bind by event time rather than detail position" <| fun _ ->
+            let at minute = sourceTime.AddMinutes(float minute)
+            let axisPoint position minute =
+                { Position = position
+                  SourceIntervalId = $"axis-{position}"
+                  ScaleKey = "60K"
+                  IntervalStartUtc = at minute
+                  IntervalEndUtc = at minute + TimeSpan.FromMinutes 1.0
+                  EventTimeUtc = Some(at minute)
+                  ObservedThroughUtc = at minute
+                  AvailableAtUtc = Some(at minute)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+            let candleValue value =
+                SduiValue.Object(
+                    Map [ "open", SduiValue.Number value
+                          "high", SduiValue.Number(value + 1.0)
+                          "low", SduiValue.Number(value - 1.0)
+                          "close", SduiValue.Number value ])
+            let detailAxisRef = "axis.detail.1k"
+            let overviewAxisRef = "axis.overview.60k"
+            let candleRef = "series.detail.price"
+            let stripeRef = "series.overview.signal"
+            let coverageRef = "coverage.presentation"
+            let detailAxis =
+                { AxisRef = detailAxisRef
+                  Revision = 1L
+                  Points = [| axisPoint 100L 60; axisPoint 101L 61 |] }
+            let overviewAxis =
+                { AxisRef = overviewAxisRef
+                  Revision = 1L
+                  Points = [| axisPoint 7L 0; axisPoint 8L 120 |] }
+            let candleTrace =
+                { TraceId = "detail-price"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = candleRef
+                  Label = "1K"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let stripeTrace =
+                { TraceId = "overview-signal"
+                  Kind = TaTraceKind.OverviewStripe
+                  DataRef = stripeRef
+                  Label = "Signal"
+                  Color = "#2563eb"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options =
+                    TaOverviewStripeTraceOptionsCodec.encode
+                        { TargetTraceId = candleTrace.TraceId
+                          CollisionGroup = "signals"
+                          LayerOrder = 0 } }
+            let projection =
+                { CoverageIdentity = "ES|1K-detail|60K-overview"
+                  CoverageRevision = 1L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments =
+                    [| { SegmentId = "detail"
+                         StartEventTimeUtc = (at 60).ToString("O")
+                         EndEventTimeExclusiveUtc = (at 62).ToString("O")
+                         StartObservationOrdinal = 100L
+                         ObservationCount = 2L } |]
+                  OverviewAxisRef = overviewAxisRef
+                  OverviewAnchors =
+                    [| { ObservationOrdinal = 7L; EventTimeUtc = (at 0).ToString("O"); Value = SduiValue.Number 100.0 }
+                       { ObservationOrdinal = 8L; EventTimeUtc = (at 120).ToString("O"); Value = SduiValue.Number 102.0 } |]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 100L
+                      ObservationCount = 2
+                      BaseAxisRef = detailAxisRef } }
+            let stripe eventTime =
+                { StripeId = "signal-7"
+                  EventTimeUtc = eventTime
+                  Color = "#2563eb"
+                  StrokeWidthCssPixels = 1.0
+                  Label = Some "Signal"
+                  Tooltip = [||] }
+            let stripeSeries eventTime =
+                { AxisRef = overviewAxisRef
+                  AxisRevision = overviewAxis.Revision
+                  Points =
+                    [| { Position = 7L
+                         Value = TaOverviewStripeCodec.encodeBucket [| stripe eventTime |] } |] }
+            let candidateDocument =
+                { document with
+                    TemporalAxisRefs = [| detailAxisRef; overviewAxisRef |]
+                    Rows = [| { row with DataRef = candleRef; Traces = [| candleTrace; stripeTrace |] } |]
+                    DefaultView = Map.empty |> TaLoadedCoverageCodec.applyDataRef coverageRef }
+            let data eventTime =
+                Map [ detailAxisRef, TemporalAxisCodec.encode detailAxis
+                      overviewAxisRef, TemporalAxisCodec.encode overviewAxis
+                      candleRef,
+                      TemporalSeriesCodec.encode
+                          { AxisRef = detailAxisRef
+                            AxisRevision = detailAxis.Revision
+                            Points =
+                                [| { Position = 100L; Value = candleValue 100.0 }
+                                   { Position = 101L; Value = candleValue 101.0 } |] }
+                      stripeRef, TemporalSeriesCodec.encode (stripeSeries eventTime)
+                      coverageRef, TaLoadedCoverageCodec.encode projection ]
+
+            Expect.isEmpty
+                (OverviewStripeValidation.candidateErrors candidateDocument (data ((at 0).ToString("O"))))
+                "An independent overview position must not be rejected because the detail candle positions differ."
+
+            let outsideTime = (at (-60)).ToString("O")
+            let outsideAxis =
+                { overviewAxis with
+                    Points = [| axisPoint 7L (-60); axisPoint 8L 120 |] }
+            let outsideData =
+                data outsideTime
+                |> Map.add overviewAxisRef (TemporalAxisCodec.encode outsideAxis)
+            Expect.isTrue
+                (OverviewStripeValidation.candidateErrors candidateDocument outsideData
+                 |> List.exists (fun error -> error.Code = "overview-stripe-outside-overview"))
+                "A stripe outside the authoritative overview timeline must fail with an explicit code."
+
         testCase "DYN-T-647 coverage window intent is versioned and rejects stale-shaped bounds" <| fun _ ->
             Expect.equal TaLoadedCoverageCodec.WindowIntentSchema "ta-coverage-window.v1" "The adjacent-page intent has a stable version."
             let intent = TaLoadedCoverageCodec.tryWindowIntent (Some TaCoverageDirection.Earlier) (Some 7L) 4L (Some 999_500L) 250
@@ -159,6 +364,46 @@ let tests =
             Expect.isNone
                 (TaLoadedCoverageCodec.tryWindowIntent None (Some 7L) 4L (Some -1L) 250)
                 "A negative observation ordinal must fail closed."
+
+            let openEarlier =
+                TaLoadedCoverageCodec.tryProviderOpenEarlierWindowIntent (Some 7L) 5L 250
+                |> Option.get
+            let openEarlierRequest =
+                { RequestId = "coverage-provider-open-earlier"
+                  ExpectedDocumentRevision = Some 1L
+                  Action =
+                    SduiAction.VisibleRangeChanged(
+                        identity.CanvasInstanceId,
+                        { BaseRowId = "price"
+                          StartEventTimeUtc = "2026-08-31T23:59:00Z"
+                          EndEventTimeExclusiveUtc = "2026-08-31T23:59:00Z"
+                          MaximumBasePoints = 250
+                          CoverageIntent = Some openEarlier }) }
+            Expect.equal
+                openEarlier.RangeAuthority
+                TaCoverageRangeAuthority.ProviderOpenEarlier
+                "Range-less BARS must use an explicit provider-authoritative open-left intent."
+            Expect.isEmpty
+                (DynamicActionValidation.requestErrors openEarlierRequest)
+                "A provider-open Earlier anchor request must pass without inventing an earliest timestamp."
+
+            let invalidOpenEarlier =
+                { openEarlier with
+                    Direction = Some TaCoverageDirection.Later }
+            let invalidOpenEarlierRequest =
+                { openEarlierRequest with
+                    Action =
+                        SduiAction.VisibleRangeChanged(
+                            identity.CanvasInstanceId,
+                            { BaseRowId = "price"
+                              StartEventTimeUtc = "2026-08-31T23:59:00Z"
+                              EndEventTimeExclusiveUtc = "2026-08-31T23:59:00Z"
+                              MaximumBasePoints = 250
+                              CoverageIntent = Some invalidOpenEarlier }) }
+            Expect.isTrue
+                (DynamicActionValidation.requestErrors invalidOpenEarlierRequest
+                 |> List.exists (fun error -> error.Code = "invalid-provider-open-earlier"))
+                "Provider-open authority must fail closed for any direction other than Earlier."
 
         testCase "DYN-T-629 display time-zone ids are stable and reject unknown values" <| fun _ ->
             let expected =

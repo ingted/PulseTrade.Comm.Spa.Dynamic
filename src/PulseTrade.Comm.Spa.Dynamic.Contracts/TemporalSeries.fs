@@ -633,8 +633,24 @@ module OverviewStripeValidation =
     let equivalentTimestamp expected actual =
         normalizeUtcTimestamp expected = normalizeUtcTimestamp actual
 
-    let traceErrors data (row: TaRowSpec) (trace: TaTraceSpec) =
+    let crossAxisOverviewProjection (document: TaWorkspaceDocument) data =
+        match TaLoadedCoverageCodec.tryDecodeResolved document.DefaultView data with
+        | Ok(Some projection) when projection.OverviewAxisRef <> projection.ActiveDetail.BaseAxisRef -> Some projection
+        | _ -> None
+
+    let insideOverviewTimeline projection eventTimeUtc =
+        let anchors = projection.OverviewAnchors
+        if anchors.Length = 0 then
+            false
+        else
+            let target = normalizeUtcTimestamp eventTimeUtc
+            let first = normalizeUtcTimestamp anchors[0].EventTimeUtc
+            let last = normalizeUtcTimestamp anchors[anchors.Length - 1].EventTimeUtc
+            target >= first && target <= last
+
+    let traceErrors document data (row: TaRowSpec) (trace: TaTraceSpec) =
         let field = $"overviewStripe.{trace.DataRef}"
+        let crossAxisProjection = crossAxisOverviewProjection document data
         match TaOverviewStripeTraceOptionsCodec.tryDecode trace.Options with
         | None -> [ issue "overview-stripe-target-required" field "Overview stripe trace requires valid targetTraceId, collisionGroup and layerOrder options." ]
         | Some options ->
@@ -681,25 +697,32 @@ module OverviewStripeValidation =
                                 else
                                     match Map.tryFind point.Position axisByPosition with
                                     | None -> [ issue "overview-stripe-position-missing" $"{field}[{point.Position}]" $"Authoritative axis cannot resolve position {point.Position}." ]
-                                    | Some _ when not (MarkerValidation.targetAtPosition point.Position series target data) ->
+                                    | Some _ when crossAxisProjection.IsNone && not (MarkerValidation.targetAtPosition point.Position series target data) ->
                                         [ issue "overview-stripe-position-missing" $"{field}[{point.Position}]" $"Target candle `{target.TraceId}` cannot resolve position {point.Position}." ]
                                     | Some expected ->
                                         stripes
                                         |> Array.toList
                                         |> List.choose (fun stripe ->
-                                            if equivalentTimestamp expected stripe.EventTimeUtc then None
-                                            else
+                                            if not (equivalentTimestamp expected stripe.EventTimeUtc) then
                                                 Some(
                                                     issue
                                                         "overview-stripe-axis-mismatch"
                                                         $"{field}[{point.Position}].eventTimeUtc"
-                                                        $"Stripe `{stripe.StripeId}` eventTimeUtc does not match authoritative axis position {point.Position}.")))
+                                                        $"Stripe `{stripe.StripeId}` eventTimeUtc does not match authoritative axis position {point.Position}.")
+                                            elif crossAxisProjection |> Option.exists (fun projection -> not (insideOverviewTimeline projection stripe.EventTimeUtc)) then
+                                                Some(
+                                                    issue
+                                                        "overview-stripe-outside-overview"
+                                                        $"{field}[{point.Position}].eventTimeUtc"
+                                                        $"Stripe `{stripe.StripeId}` falls outside the authoritative overview timeline.")
+                                            else None
+                                            ))
                         shapeErrors @ countErrors @ duplicateErrors @ authorityErrors
 
     let candidateErrors document data =
         let traceResults =
             TaOverviewStripeContract.stripeTraces document
-            |> Array.map (fun (row, trace) -> trace, traceErrors data row trace)
+            |> Array.map (fun (row, trace) -> trace, traceErrors document data row trace)
         let stripeTotal =
             traceResults
             |> Array.sumBy (fun (trace, _) ->

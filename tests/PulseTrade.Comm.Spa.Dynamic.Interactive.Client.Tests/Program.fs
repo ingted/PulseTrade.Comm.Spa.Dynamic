@@ -321,6 +321,7 @@ let tests =
                     Completeness = TaCoverageCompleteness.Partial
                     TotalObservationCount = None
                     Segments = segments
+                    OverviewAxisRef = "axis.1k"
                     OverviewAnchors = [||]
                     ActiveDetail =
                       { StartObservationOrdinal = startOrdinal
@@ -407,6 +408,7 @@ let tests =
                     Completeness = TaCoverageCompleteness.Partial
                     TotalObservationCount = None
                     Segments = segments
+                    OverviewAxisRef = "axis.1k"
                     OverviewAnchors = [||]
                     ActiveDetail =
                       { StartObservationOrdinal = startOrdinal
@@ -458,6 +460,28 @@ let tests =
                   Expect.equal value.ActiveDetail.StartObservationOrdinal 250L "Prepending B must relocate cached page A from ordinal 0 to 250."
                   Expect.equal value.ActiveDetail.ObservationCount 250 "Rebase must retain cached page A's observation count."
               | result -> failtestf "Expected rebased loaded coverage, got %A" result
+
+              let coverageDataRef = "viewport.loadedCoverage.cache"
+              let dataRefEntry =
+                  { cachedEntry with
+                      Document =
+                        { cachedEntry.Document with
+                            DefaultView = Map.empty |> TaLoadedCoverageCodec.applyDataRef coverageDataRef }
+                      Snapshot =
+                        { cachedEntry.Snapshot with
+                            Data = Map [ coverageDataRef, TaLoadedCoverageCodec.encode cachedProjection ] } }
+              let rebasedDataRef =
+                  BrowserRuntimeCache.tryRebaseAdjacentEntry query dataRefEntry
+                  |> Option.defaultWith (fun () -> failtest "A dataRef-backed cached page must remain reusable.")
+              Expect.equal
+                  (TaLoadedCoverageCodec.tryDataRef rebasedDataRef.Document.DefaultView)
+                  (Ok(Some coverageDataRef))
+                  "Adjacent rebase must preserve the stable document dataRef authority."
+              match TaLoadedCoverageCodec.tryDecodeResolved rebasedDataRef.Document.DefaultView rebasedDataRef.Snapshot.Data with
+              | Ok(Some value) ->
+                  Expect.equal value.CoverageRevision 2L "The dataRef cache hit carries the latest accepted coverage revision."
+                  Expect.equal value.ActiveDetail.StartObservationOrdinal 250L "The dataRef cache hit carries the relocated page ordinal."
+              | result -> failtestf "Expected a dataRef-backed rebased loaded coverage projection, got %A" result
 
               let coalescedAccepted =
                   { acceptedProjection with
@@ -522,6 +546,7 @@ let tests =
                     Completeness = TaCoverageCompleteness.Partial
                     TotalObservationCount = None
                     Segments = segments
+                    OverviewAxisRef = "axis.1k"
                     OverviewAnchors = [||]
                     ActiveDetail =
                       { StartObservationOrdinal = startOrdinal

@@ -172,7 +172,8 @@ let browserPayload kind actionKind =
       startObservationOrdinal = ""
       hasStartObservationOrdinal = false
       coverageObservationCount = 0
-      coverageDirection = "" }
+      coverageDirection = ""
+      coverageRangeAuthority = "" }
     |> fun wire -> JsonSerializer.Serialize(wire, TaResearchTransientServer.jsonOptions)
 
 let browserContext sessionId operation requestId payloadText =
@@ -310,7 +311,8 @@ let tests =
                         QueryGeneration = 4L
                         StartObservationOrdinal = Some 250L
                         ObservationCount = 250
-                        Direction = Some TaCoverageDirection.Earlier }
+                        Direction = Some TaCoverageDirection.Earlier
+                        RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds }
                   RuntimeClientFrame.Action(
                       SduiAction.VisibleRangeChanged(
                           canvasId,
@@ -350,7 +352,8 @@ let tests =
                           startObservationOrdinal = "250"
                           hasStartObservationOrdinal = true
                           coverageObservationCount = 250
-                          coverageDirection = "earlier" }
+                          coverageDirection = "earlier"
+                          coverageRangeAuthority = "explicit-bounds" }
                   |> TaResearchBrowserWire.clientFrameFromWire
 
               Expect.equal browserCursor (Ok cursor) "browser cursor wire must preserve base identity and UTC event-time."
