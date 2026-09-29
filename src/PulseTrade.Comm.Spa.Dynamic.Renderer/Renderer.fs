@@ -683,7 +683,6 @@ module TaWorkspaceRenderer =
             svgAttr "preserveAspectRatio" "none"
             attr.style ("display:block; width:100%; height:82px; min-width:0; background:" + palette.OverviewSurface + "; border:1px solid " + palette.Border + "; border-radius:4px; box-sizing:border-box; touch-action:none; cursor:grab;")
             on.afterRender onReady
-            on.mouseDown (fun _ event -> onPointerDown event)
             on.mouseUp (fun _ event -> onDragEnd event)
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
@@ -698,8 +697,10 @@ module TaWorkspaceRenderer =
         ] [
             yield svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-interaction-surface"
+                Attr.Create "data-drag-event-binding" "interaction-surface"
                 svgAttr "x" "0"; svgAttr "y" "0"; svgAttr "width" "1000"; svgAttr "height" "82"
                 svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"
+                on.mouseDown (fun _ event -> onPointerDown event)
             ] []
             yield svgElement "path" [
                 Attr.Create "data-testid" "ta-overview-candle-wicks"

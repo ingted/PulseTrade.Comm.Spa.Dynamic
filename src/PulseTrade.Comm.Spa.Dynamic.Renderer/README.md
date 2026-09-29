@@ -72,7 +72,7 @@ RFC-0030 candidate為Renderer `0.1.82`、Contracts `[0.1.30]`、Interactive.Clie
 
 2026-09-29 release：exact graph為Contracts `0.1.33`、Renderer `0.1.92`、Interactive.Client `0.1.83`、Dynamic.Ptcs `0.1.54`、Ptcs.Client `0.1.93`。長label下`Edit`固定52px；navigator以bounded wick/up/down paths保留OHLC micro-candles，OverviewStripe仍完全由consumer authoring；pending viewport採local immediate＋single latest queue。Cursor gate使用browser event-to-render telemetry，driver round-trip僅診斷。Official signatures/dependencies/manifest/entry parity已通過；真SPAA consumer通過前不宣稱產品驗收。
 
-RFC-0032最新candidate Renderer `0.1.98`：`PollInFlight`與`PausedForResync`期間navigator仍可local preview/release，boundary intent進single latest queue；action settled或runtime回READY時依最新authority排出一次。`Unmounted`／`Disposed`仍禁止local操作。Consumer真SPAA通過前維持candidate狀態。
+RFC-0032最新candidate Renderer `0.1.100`：`PollInFlight`與`PausedForResync`期間navigator仍可local preview/release，boundary intent進single latest queue；action settled或runtime回READY時依最新authority排出一次。Drag start直接綁定canonical透明interaction surface，不依賴consumer頁面的SVG root bubble；document move/up與24 CSS px hit resolver不變。`Unmounted`／`Disposed`仍禁止local操作。Consumer真SPAA通過前維持candidate狀態。
 
 RFC-0017之後，cache rehydrate即使保留current identity/revision，只要validated Data object替換仍會重畫。row legend以`rowId + local trace index`隔離；All模式保留完整scale/cursor arrays，但以bounded candle/line paths呈現。non-base candle cursor使用一次range projection，不再對每個base timestamp掃描完整source。
 

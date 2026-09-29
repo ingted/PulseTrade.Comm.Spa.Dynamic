@@ -1879,3 +1879,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 真SPAA以official `0.1.98/0.1.90`重現：navigator boundary drag發生於`RESYNC`且前一個HTTP action仍pending；該action完成revision 4並回到`READY`後，action count仍`3 -> 3`。正式SPAA直接將Renderer綁至HTTP/cache callback，非Interactive WebSocket remount問題。
 - Renderer新增`(RuntimePollState, PendingActionId)`聯合reactive gate，任一gate轉換均重新嘗試single-latest queued viewport intent；identity replacement清queue、single remote in-flight與wire shape不變。F# Playwright新增pending-action期間轉RESYNC、拖boundary、READY後唯一重送的交錯情境。
 - Candidate graph為Renderer `0.1.99`、Interactive.Client `0.1.91`、Ptcs.Client `0.1.100`。Focused suites `55/15/17`；三條boundary gate為`0->2 / 0->1 / 0->2`，完整Renderer browser正式phase無>100ms task，Interactive package manifest/exact dependency gate通過。Official publication/readback與真SPAA rerun pending。
+
+## 2026-09-29 - Navigator interaction-surface direct binding candidate
+
+- Daedalus A/B證明真SPAA即使先等READY，selection-center drag仍action `3->3`且feedback未進queue；`.99/.91/.100`的joint drain保留為state-race hardening，但不是gesture miss closure。
+- Owner focused gate改用相同的一次性框外12px座標後仍通過，排除負座標／document mouseup。Renderer將drag start由SVG root bubble移至canonical透明interaction surface direct handler；document move/up、24 CSS px hit resolver及coverage contract不變。
+- Candidate exact graph為Renderer `0.1.100`、Interactive.Client `0.1.92`、Ptcs.Client `0.1.101`。Focused suites `55/15/17`，focused browser最終三情境`0->2 / 0->1 / 0->2`；完整Renderer正式phases無>100ms，package verifier PASS。第一次Paused focused run受前一action settlement競態失敗，立即重跑通過；consumer formal progressive仍是最終gate。

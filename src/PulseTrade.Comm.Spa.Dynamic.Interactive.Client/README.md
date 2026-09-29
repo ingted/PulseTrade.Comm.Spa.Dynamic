@@ -100,4 +100,4 @@ RFC-0028 release為Interactive.Client `0.1.67`，exact依賴Contracts `[0.1.29]`
 
 RFC-0030 candidate為Interactive.Client `0.1.73`，exact依賴Contracts `[0.1.30]`與Renderer `[0.1.82]`。Consumer只需升exact package graph，不應自行重排row controls或建立private CSS workaround。
 
-RFC-0032最新candidate Interactive.Client `0.1.90`，exact依賴Contracts `[0.1.33]`與Renderer `[0.1.98]`。大型cache rehydrate先同步驗header/document/workspace/current authority，再由既有frame pump分段驗nested data並atomic publish；不得在pump前重複同步掃完整snapshot。3820 points x 28 scalar series owner browser gate的read/rehydrate max callback gap為`37/52ms`，真SPAA cache-hit仍待consumer驗收。
+RFC-0032最新candidate Interactive.Client `0.1.92`，exact依賴Contracts `[0.1.33]`與Renderer `[0.1.100]`。大型cache rehydrate先同步驗header/document/workspace/current authority，再由既有frame pump分段驗nested data並atomic publish；bundle亦帶入navigator canonical interaction-surface direct drag binding。不得在pump前重複同步掃完整snapshot；真SPAA progressive/cache-hit仍待consumer驗收。

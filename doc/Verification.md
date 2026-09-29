@@ -318,3 +318,10 @@ RFC-PTCS-DYNAMIC-0005 first slice 另外確認：
 - Poll gates：真`PollInFlight`期間whole-selection drag顯示preview，settled後callbacks `0->2`；純`PausedForResync`期間release只排隊，切READY後callbacks `0->1`。兩者皆`QueryGeneration=2`、visible `405-452`，無平行remote request。
 - Cache gate：3820 points x 28 scalar series rehydrate為29 data refs／3820 points，read／rehydrate max callback gap=`37/52ms`，elapsed=`563/1102ms`；完整性與supersede once通過。Focused suites `55/15/17`，完整Renderer Playwright PASS且正式phase over100=0。
 - Official graph：source `16dd825`；Renderer `0.1.98` SHA-256 `4792432C548E2B62E9C1F73FAA77D49EF7ED00326507BF604900DA6CD002EE41`、Interactive.Client `0.1.90` SHA-256 `BF9B06EA76660CB1F27AC774E00A5CD9999A283624284B898528A14BD8087CC3`、Ptcs.Client `0.1.99` SHA-256 `00863B675F01162070076F71FB5C9B25B5D43AF8A26F81781AADBA3525414D3D`。三包NuGet.org repository signatures有效、exact dependencies正確、排除`.signature.p7s`後entryDiff=0；Interactive manifest=`0.1.90`。Daedalus真SPAA progressive/cache-hit gates pending。
+
+## DYN-VFY-044 Navigator interaction-surface direct binding（OWNER PASS revision 1；consumer pending）
+
+- Consumer RED：official `.98/.90`真SPAA不論`RESYNC -> READY`或先等READY，合法selection-center drag皆action `3 -> 3`，feedback未進`Earlier coverage queued.`；故queue/drain不是gesture miss根因。
+- Owner differential：focused F# Playwright改成與真SPAA一致的一次性移到navigator左界外12px；原root-bubble版本三情境仍PASS，排除負座標與document mouseup。Renderer把mousedown authority移至`ta-overview-interaction-surface` direct handler，root不再重複綁定；document move/up、24 CSS px hit resolver與coverage request不變。
+- Owner result：exact graphRenderer `0.1.100`／Interactive.Client `0.1.92`／Ptcs.Client `0.1.101` focused=`55/15/17`。focused browser三情境最終PASS `0->2 / 0->1 / 0->2`；第一次Paused run曾受前一action settlement競態失敗，重跑全綠。完整Renderer gate正式phases皆無>100ms task，package verifier PASS。
+- Local nupkg SHA-256依序為`AE92F3A3B1268B9BF66A8ADD232535F9A38824E450224C8FE9C63AAD8B56A797 / 17E34BE62414B2EA78FBF7C065C1DAD1D1D6CD91FAA455BAC248517114EA4ADF / 99907EE57808C4845BD45C334135612D376A4AB522C5C3B0BD9C8492EE045BD3`。Official push/readback與Daedalus formal progressive gate pending。

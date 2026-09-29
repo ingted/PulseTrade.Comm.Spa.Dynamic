@@ -22,3 +22,7 @@
 ## Correction
 
 原假設中「正式Interactive/PTCS consumer missing binding」不成立：真SPAA直接將Renderer綁到自己的HTTP/cache callback，且維持同一runtime `Var`。保留的根因候選是Poll-ready與PendingActionId-settled分屬兩個通知來源，舊版僅靠各自單次排程，正式交錯時漏掉queue drain；聯合gate讓兩者成為同一reactive authority。
+
+## Correction 2
+
+Daedalus以READY-before-drag與RESYNC-to-READY兩組A/B證明action皆`3 -> 3`，且feedback從未進入`Earlier coverage queued.`；因此queue甚至沒有建立，聯合gate不是此failure的根因。Owner gate改用相同的一次性框外座標後仍通過，排除document mouseup。剩餘可區分差異是consumer頁面的事件target／bubble路徑；最小實驗把mousedown authority直接綁到既有`ta-overview-interaction-surface`，不改gesture model、coverage request或provider。

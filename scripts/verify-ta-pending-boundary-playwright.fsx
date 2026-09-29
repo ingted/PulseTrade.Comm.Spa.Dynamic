@@ -109,17 +109,21 @@ let chartStack = page.Locator("[data-testid='ta-chart-stack']")
 let callbackState = page.Locator("[data-testid='ta-demo-callback-state']")
 let dragSelectionToEarlierBoundary scenario =
     let navigator = page.Locator("[data-testid='ta-overview-navigator']")
+    let interactionSurface = page.Locator("[data-testid='ta-overview-interaction-surface']")
+    require
+        (stringAttribute interactionSurface "data-drag-event-binding" = "interaction-surface")
+        "navigator drag start is not bound to the canonical interaction surface"
     let bounds = navigator.BoundingBoxAsync() |> awaitTask
     require (not (isNull bounds)) "navigator geometry is unavailable"
     let selectionBounds = page.Locator("[data-testid='ta-overview-selection']").BoundingBoxAsync() |> awaitTask
     require (not (isNull selectionBounds)) "navigator selection geometry is unavailable"
     let y = selectionBounds.Y + selectionBounds.Height / 2.0f
     let selectionCenterX = selectionBounds.X + selectionBounds.Width / 2.0f
-    let beyondLeftX = bounds.X + 2.0f
+    let beyondLeftX = max 1.0f (bounds.X - 12.0f)
     printfn "%s.geometry navigator=(%.1f,%.1f %.1fx%.1f) selection=(%.1f,%.1f %.1fx%.1f) drag=(%.1f,%.1f)->(%.1f,%.1f)" scenario bounds.X bounds.Y bounds.Width bounds.Height selectionBounds.X selectionBounds.Y selectionBounds.Width selectionBounds.Height selectionCenterX y beyondLeftX y
     page.Mouse.MoveAsync(selectionCenterX, y) |> awaitUnit
     page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
-    page.Mouse.MoveAsync(beyondLeftX, y, MouseMoveOptions(Steps = 8)) |> awaitUnit
+    page.Mouse.MoveAsync(beyondLeftX, y) |> awaitUnit
     printfn "%s.after-move range=%s" scenario (page.Locator("[data-testid='ta-viewport-range']").TextContentAsync() |> awaitTask |> Option.ofObj |> Option.defaultValue "")
     waitText (page.Locator("[data-testid='ta-viewport-range']")) "Preview"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit

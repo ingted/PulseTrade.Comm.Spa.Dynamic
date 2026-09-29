@@ -47,3 +47,11 @@ Daedalus以official Renderer `0.1.98`／Interactive.Client `0.1.90`重建真SPAA
 - 09:55 準備新exact graph：Renderer `0.1.99`、Interactive.Client `0.1.91`、Ptcs.Client `0.1.100`；兩個consumer exact-pin Renderer `[0.1.99]`。
 - 10:02 校正：第一次focused browser執行仍消費舊`0.1.90 -> 0.1.98`，不可作為candidate證據。建立local exact graph並同步所有active owner tests後重建。
 - 10:05 新exact graph focused suites `55/15/17`；三條boundary browser情境全綠。完整Renderer browser PASS，five-candle/scenario/All/marker/document/progressive正式phase皆無>100ms task；Interactive package verifier PASS，manifest `0.1.91`且exact依Renderer `[0.1.99]`。
+- 10:18 Daedalus補充A/B：先等READY再以合法viewport座標做同一selection-center drag，action仍`3 -> 3`且feedback未進`Earlier coverage queued.`。故`.99/.91/.100`聯合drain修正保留為state-race hardening，但不構成本次真SPAA gesture根因 closure。
+- 10:24 owner F# Playwright改用與真SPAA相同的一次性框外12px mouse move；PollInFlight、PausedForResync與pending-action+RESYNC三情境仍全綠，排除document mouseup及負clientX。差異縮至consumer DOM event target。
+- 10:29 修正navigator drag start綁定：由SVG root bubble移至canonical透明interaction surface direct handler；document move/up、24 CSS px hit resolver及coverage contract不變。新增binding attribute回歸斷言，準備exact graph`.100/.92/.101`。
+- 10:38 Daedalus確認無WebSharper build後，只停止其授權的殘留`wsfscservice` PID 11376；SPAA 18883／provider PID 10692持續在線。Renderer／Interactive／Ptcs三包完整WebSharper/Release graph建置成功。
+- 10:42 exact graph focused suites`55/15/17`。focused browser第一次Paused情境受前一action settlement競態失敗，第二次完整三情境PASS`0->2 / 0->1 / 0->2`；真SPAA formal gate仍是consumer closure。
+- 10:45 完整Renderer browser gate PASS；five-candle/scenario/All/marker/document/progressive正式phases均無>100ms task。Interactive package verifier PASS，local SHA=`AE92F3A3...A797 / 17E34BE6...4ADF / 99907EE5...5BD3`。
+- 10:51 changed-path敏感掃描為High=0／Medium=0。首次closeout checker因其舊state尚未吸收兩份已提交的同日歷史log append而報`log_readonly_modify`；`git show 91f2302`證實本輪前一commit未修改該兩檔。此為checker baseline時序偏差，不影響candidate source/package；保存finding後以更新baseline重驗。
+- 10:53 更新baseline後task-scoped checker通過：PASS=33、WARN=10、FAIL=0。WARN為未改動current文件、commit前dirty與既有全repo traceability inventory，無本輪衝突。
