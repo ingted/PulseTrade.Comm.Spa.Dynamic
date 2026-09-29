@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0033：DECIDE_ON Overview Axis／8,000 Anchors
 
 - ID：`RFC-PTCS-DYNAMIC-0033`
-- 狀態：`Accepted / owner implementation verified / official release pending`
+- 狀態：`Accepted / owner implementation and official release verified / consumer gate pending`
 - 日期：`2026-09-29`
 - Owner：Aster（PTCS Dynamic Contracts／Renderer）
 - Consumer：Daedalus（TradeCore SPAA／DIB）
@@ -81,4 +81,4 @@ Daedalus提供exact `OverviewAxisRef`、canonical anchors與OverviewStripe data�
 - `TaCoverageWindowIntent`新增`RangeAuthority = ExplicitBounds | ProviderOpenEarlier`。range-less BARS在Earlier boundary以`ProviderOpenEarlier`及相同首端anchor表達open-left request；不產生UnixEpoch假起點，舊wire缺欄位仍解為`ExplicitBounds`。
 - Renderer在current generation的`data-ready-row-count`追上`data-row-count`前，停用toolbar與navigator boundary outcome。row replacement尚未完成時不會送出基於舊geometry的相鄰頁請求。
 - Owner tests通過Contracts `49/49`、Renderer `58/58`、Interactive lifecycle `15/15`、Dynamic.Ptcs `15/15`、Ptcs.Client `17/17`。完整F# Playwright通過8,000-bounded overview、跨軸OHLC／selection／stripe、progressive 500 coverage／250 detail、tiny selection及既有interaction gates；正式phase無大於100ms long task。
-- Candidate exact graph為Contracts `0.1.34`、Renderer `0.1.106`、Interactive.Client `0.1.97`、Dynamic.Ptcs `0.1.55`、Ptcs.Client `0.1.106`。Official NuGet readback與Daedalus真SPAA／fresh DIB仍是未完成停止條件。
+- Final exact graph為Contracts `0.1.34`、Renderer `0.1.106`、Interactive.Client `0.1.97`、Dynamic.Ptcs `0.1.55`、Ptcs.Client `0.1.106`，source/repository commit=`f0cd0d3500b2cfdb81a2a58584f19d6fb79b6906`。五包NuGet.org repository signature、exact dependency、provenance及entry parity readback均通過；Daedalus真SPAA／fresh DIB仍是未完成停止條件。

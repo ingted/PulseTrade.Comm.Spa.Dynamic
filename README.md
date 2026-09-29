@@ -4,7 +4,7 @@ This project is a dynamic SDUI (Server-Driven UI) and Actor extension for `Pulse
 
 ## Current TA release graph
 
-The current public TA graph is Contracts `[0.1.33]` -> Renderer `[0.1.91]` -> Interactive.Client `[0.1.82]`; Dynamic.Ptcs `[0.1.54]`, and Ptcs.Client `[0.1.92]` exact-pins Contracts and Renderer. RFC-0032 keeps viewport controls in a stable shell, separates LoadedCoverage projection refresh from identity replacement, and preserves an accepted local viewport across same-identity coverage revisions. Focused suites, the 4,000-bar owner browser gate, and official NuGet signature/dependency/entry-parity readback pass; Daedalus still owns the final SPAA consumer E2E, so public package availability alone does not close consumer acceptance.
+The current public TA graph is Contracts `[0.1.34]` -> Renderer `[0.1.106]` -> Interactive.Client `[0.1.97]`; Dynamic.Ptcs `[0.1.55]`, and Ptcs.Client `[0.1.106]` exact-pins Contracts and Renderer. RFC-0032/0033 provide independent overview/detail axes, 8,000 bounded overview anchors, event-time selection/stripe alignment, provider-open-earlier range authority, stable loaded-coverage data refs, and a prepared-row interaction barrier. Focused suites, the complete owner browser gate, and official NuGet signature/dependency/provenance/entry-parity readback pass; Daedalus still owns the final SPAA/fresh-DIB consumer E2E, so public package availability alone does not close consumer acceptance.
 
 ## Actor Dynamic / Actor Argu modes
 

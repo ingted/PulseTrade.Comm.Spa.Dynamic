@@ -1934,3 +1934,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Renderer在current generation prepared rows追上authored rows前停用toolbar／navigator adjacent outcome，避免document replacement race；完成後保留既有pending latest-wins。
 - Owner focused suites為`49/58/15/15/17`。完整Renderer Playwright PASS：500 coverage／250 detail、tiny selection、8,000 bounded overview與既有interaction均通過；progressive max45.37ms，正式phase over100=0。Interactive.Client使用fresh package cache重建bundle並通過package verifier；global-cache stale Renderer同版號未作release evidence。
 - Candidate exact graph為Contracts `0.1.34`、Renderer `0.1.106`、Interactive.Client `0.1.97`、Dynamic.Ptcs `0.1.55`、Ptcs.Client `0.1.106`。本段先提交source以固定package provenance；official push/readback及Daedalus consumer gate待後續。
+
+## 2026-09-29 - DECIDE_ON overview official immutable handoff
+
+- Source commit `f0cd0d3`已push；五包Release build及NuGet push均成功。NuGet.org official repository signatures、repository commit、exact dependencies與排除`.signature.p7s`後local/official entry parity全綠。
+- Official SHA-256依序為Contracts `383164BBDFEC6A75581320F85029D6DC75439BB5F829D164EC7DE284B85A7387`、Renderer `615209F243D619943B30AD98048AAE3494559BC16FB0ABF966DA83F7E17B18AD`、Interactive.Client `E9EDEA509C7117F93ACCC13DBC63E5B2411C22D2ADC15CA53FE2B8F29CA2EDB9`、Dynamic.Ptcs `63B20745E8ACE165102CA27950C5E1E702A478068685EA36B134455A1209187C`、Ptcs.Client `69EC25D9E8726FC8C503DCAB9F9407DFE20ED5A85FE50A2F7FE5749F53B5F4EA`。
+- nuget.org-only fresh cache focused suites為Renderer／Interactive／Dynamic.Ptcs／Ptcs.Client=`58/15/15/17`；Contracts source suite=`49/49`。Final graph已direct交付Daedalus；真SPAA與fresh DIB仍是consumer pending。
