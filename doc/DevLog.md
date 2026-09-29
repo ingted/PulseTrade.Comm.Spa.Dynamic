@@ -1912,3 +1912,12 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus以official `.103/.95/.104`真SPAA驗出root x=82、release x=70時action仍`3->3`。bundle已含child document mouse handlers，故根因是pointer離開child browsing context後release未回到該document。
 - Renderer `.104`改以pointerdown取得live outer SVG capture，move/up/cancel由同一root處理；capture不可用才退回document pointer listeners。新增iframe fixture與F# Playwright，frame x=80、navigator x=101、release x=68仍callback `1->2`、outcome=`request-earlier`。
 - Local exact graph為Renderer `.104`、Interactive.Client `.96`、Ptcs.Client `.105`。Focused suites `55/15/17`、同document四條boundary、跨iframe及完整非效能功能／幾何gatePASS，Interactive package verifierPASS。第一次strict完整gate僅既有200→All state `808.45ms`超750ms，acceptance phases無>100ms task；official publish/readback與真SPAA closure pending。
+
+## 2026-09-29 - Navigator cross-frame official immutable handoff
+
+- Source commit `237236b`已push；Renderer `.104`、Interactive.Client `.96`、Ptcs.Client `.105`依序push並由NuGet.org flat-container重新下載。
+- Official SHA-256依序為`BDA12686932E40C5C89C0D9BB6E28E36BDCE5A217449DC51A493ED6DBB9DB64C / C994700042F0E556B367200AF7312A56B23735C4062052A4BCD5F43927A6204F / 4E85B0FC3FF2BE962401CDB015BE36B9E9A8BF5D73FFFAF3E9DB4F3421A643A3`。Repository signatures、source commit、exact dependencies、Interactive manifest `.96`、official bundle pointer-capture code與排除signature後entry parity皆PASS；真SPAA formal gate交由Daedalus執行。
+
+### Correction：完整package版本追溯
+
+- `PulseTrade.Comm.Spa.Dynamic.Renderer`由`0.1.103`升至`0.1.104`；`PulseTrade.Comm.Spa.Dynamic.Interactive.Client`由`0.1.95`升至`0.1.96`；`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client`由`0.1.104`升至`0.1.105`。原因皆為navigator跨browsing-context Pointer Capture修正及exact downstream closure。

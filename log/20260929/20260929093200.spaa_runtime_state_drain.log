@@ -73,3 +73,7 @@ Daedalus以official Renderer `0.1.98`／Interactive.Client `0.1.90`重建真SPAA
 - 12:34 Renderer `.104`完成Pointer Capture實作並通過WebSharper Release build。focused F# Playwright既有四情境全綠；新增iframe gate在frame x=80、navigator x=101、release x=68時仍callback `1->2`且outcome=`request-earlier`。
 - 12:35 local exact graph `.104/.96/.105` focused suites=`55/15/17`；Interactive package verifierPASS。完整strict browser gate僅既有200→All state `808.45ms`超750ms，正式phases無>100ms；使用既有`--skip-performance-gates`完成一次功能／幾何全回歸，未以重跑或soak掩蓋timing finding。
 - 12:41 changed-path敏感掃描High=0；兩個Medium為執行中WebSharper lock file無法讀取，非tracked內容。Task-scoped checker PASS=28／WARN=2／FAIL=0；WARN為commit前dirty與既有跨repo traceability inventory。
+- 12:43 source commit `237236b`已push；由該HEAD fresh-cache重建Renderer `.104`、Interactive.Client `.96`、Ptcs.Client `.105`，nuspec repository commit均為`237236b7ce24ea5e5c83d68d755890c0e67a0c8d`，兩client exact依Renderer `[0.1.104]`且bundle含`setPointerCapture`。
+- 12:57 三包NuGet push均回Created並完成official readback；repository signatures有效，official SHA依序為`BDA12686...B64C / C9947000...204F / 4E85B0FC...43A3`，entries=`7/10/7`且entryDiff=0。準備交Daedalus執行保留的18883 formal gate。
+- 13:00 closeout checker首次FAIL僅因DevLog用`Ptcs.Client .105`縮寫，未被版本追溯規則辨識；以檔尾Correction補三個完整package ID與舊→新版後重驗，不改舊紀錄或弱化gate。
+- 13:02 checker重驗PASS=32／WARN=8／FAIL=0；WARN為未改動KM/SA等current文件、commit前dirty與既有traceability inventory，無本輪blocking finding。
