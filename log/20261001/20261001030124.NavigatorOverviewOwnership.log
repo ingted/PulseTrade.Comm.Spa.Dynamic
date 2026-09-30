@@ -67,3 +67,10 @@ OHLC/OC overview、local rAF navigator draft與單次commit/cursor、loaded-over
 - Verifier過程發現兩個舊絕對oracle：edge Start/Latest已合法推進coverage revision與query generation，後續refresh/pan不得仍期待固定2/3。改為逐intent驗相對`+1`，產品未重複發布。
 - NuGet.org flat-container查詢三個candidate版本皆404；下一步先commit/push source固定provenance，再重建、單次push及official readback。
 - 流程偏差：第一次check後為補最低欄位，把假設／範圍插入Operations前方，屬於非append修改，checker正確回`log_readonly_modify`。未弱化checker；保留FAIL證據，後續僅在檔尾append。
+
+### 2026-10-01 07:13 +08:00
+
+- Source commit `97cb2244e239192b55bb3ef37c0347974823f9ef`已push；由該commit重建並成功發布Renderer `0.1.123`、Interactive.Client `0.1.115`、Ptcs.Client `0.1.123`。
+- NuGet.org official readback三包repository signature、commit provenance、exact dependency、Interactive manifest與排除signature後entry parity均PASS；official SHA-256依序為`9CD49C793D5A5BA5B596A187859D695BC2484B16886B38404AD98D24CE8947D8`、`628CCC9BB8E0005AA60DE5F18F3B4461ED872519DADEF0F75131EB42EDDAD761`、`B9ECA910CFD36EE7EC918EC46D1C59A706293F54AC2B8DD3526194AAFDF31D03`。
+- nuget.org-only fresh-cache exact-package suites通過：Renderer `63/63`、Interactive.Client `15/15`、Ptcs.Client `17/17`。Owner／release gates完成；僅Daedalus真SPAA consumer gate pending。
+- Changed-path sensitive scan為High=0／Medium=0；canonical checker為PASS=28／WARN=2／FAIL=0，WARN僅既有traceability coverage與pre-commit dirty狀態。RFC-0034專用BrowserDemo PID 20448已停止。

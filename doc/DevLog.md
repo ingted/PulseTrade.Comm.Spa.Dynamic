@@ -1976,3 +1976,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Exact candidate graph為Renderer `0.1.123`、Interactive.Client `0.1.115`、Ptcs.Client `0.1.123`；focused tests=`63/15/17`，Interactive package manifest gate PASS。
 - 完整Renderer F# Playwright gate通過：300 cursor transitions、chart rerender=`false`，正式five-candle／scenario／All／marker／document／progressive phases均無>100ms task。Verifier改以相對revision／generation驗每個accepted intent恰前進一次，避免edge jumps後沿用過時絕對值。
 - NuGet.org尚無上述三個版本。先提交source固定package provenance，再重建、push及official readback；Daedalus真SPAA consumer gate仍待執行。
+
+## 2026-10-01 - RFC-0034 official immutable handoff
+
+- Source commit `97cb2244e239192b55bb3ef37c0347974823f9ef`已push；exact graph為Renderer `0.1.123`、Interactive.Client `0.1.115`、Ptcs.Client `0.1.123`，兩client exact依Renderer `[0.1.123]`。
+- 三包已由該commit重建並push。NuGet.org official SHA-256依序為`9CD49C793D5A5BA5B596A187859D695BC2484B16886B38404AD98D24CE8947D8`、`628CCC9BB8E0005AA60DE5F18F3B4461ED872519DADEF0F75131EB42EDDAD761`、`B9ECA910CFD36EE7EC918EC46D1C59A706293F54AC2B8DD3526194AAFDF31D03`。
+- Official repository signatures、repository commit、exact dependencies與Interactive manifest `0.1.115`均正確；排除`.signature.p7s`後local／official entries=`7/10/7`且differences皆0。nuget.org-only fresh-cache focused suites=`63/15/17`。Owner／release gates完成，Daedalus真SPAA consumer gate待完成。

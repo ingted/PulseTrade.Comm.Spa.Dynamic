@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0034 Navigator Overview Integrity
 
 - ID: RFC-PTCS-DYNAMIC-0034
-- Status: Owner verified / release and consumer acceptance pending
+- Status: Released / consumer acceptance pending
 - Date: 2026-10-01
 - Owner: PTCS.Dynamic Renderer / Aster
 - Related: RFC-PTCS-DYNAMIC-0032, RFC-PTCS-DYNAMIC-0033, RFC-TRADECORE-0030
@@ -70,3 +70,11 @@ or invalid loaded coverage yields no action.
    maximum clamp.
 6. Full WebSharper/browser tests have no console errors and no formal phase over 100 ms.
 7. Exact packages, official signatures/dependencies and Daedalus SPAA consumer gate complete before closure.
+
+## Release evidence
+
+- Source commit: `97cb2244e239192b55bb3ef37c0347974823f9ef`.
+- Exact graph: Renderer `0.1.123`, Interactive.Client `0.1.115`, Ptcs.Client `0.1.123`; both clients depend on Renderer `[0.1.123]`.
+- NuGet.org SHA-256: Renderer `9CD49C793D5A5BA5B596A187859D695BC2484B16886B38404AD98D24CE8947D8`, Interactive.Client `628CCC9BB8E0005AA60DE5F18F3B4461ED872519DADEF0F75131EB42EDDAD761`, Ptcs.Client `B9ECA910CFD36EE7EC918EC46D1C59A706293F54AC2B8DD3526194AAFDF31D03`.
+- All three official packages have valid NuGet.org repository signatures, matching repository commits and exact dependencies. Excluding `.signature.p7s`, local and official package entries are byte-identical.
+- NuGet.org-only fresh-cache suites pass `63/63`, `15/15`, and `17/17`. Daedalus still owns the true SPAA consumer gate required for closure.
