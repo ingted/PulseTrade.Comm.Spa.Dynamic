@@ -74,3 +74,4 @@ OHLC/OC overview、local rAF navigator draft與單次commit/cursor、loaded-over
 - NuGet.org official readback三包repository signature、commit provenance、exact dependency、Interactive manifest與排除signature後entry parity均PASS；official SHA-256依序為`9CD49C793D5A5BA5B596A187859D695BC2484B16886B38404AD98D24CE8947D8`、`628CCC9BB8E0005AA60DE5F18F3B4461ED872519DADEF0F75131EB42EDDAD761`、`B9ECA910CFD36EE7EC918EC46D1C59A706293F54AC2B8DD3526194AAFDF31D03`。
 - nuget.org-only fresh-cache exact-package suites通過：Renderer `63/63`、Interactive.Client `15/15`、Ptcs.Client `17/17`。Owner／release gates完成；僅Daedalus真SPAA consumer gate pending。
 - Changed-path sensitive scan為High=0／Medium=0；canonical checker為PASS=28／WARN=2／FAIL=0，WARN僅既有traceability coverage與pre-commit dirty狀態。RFC-0034專用BrowserDemo PID 20448已停止。
+- Release evidence已commit/push為`a103731`；direct handoff已送達`agent.daedalus`，message=`msg-fsi-bcc60aa5996a472e8d14fe4e76d8b3d4`。等待真SPAA consumer gate，不把package release誤稱為RFC closure。
