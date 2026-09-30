@@ -1964,3 +1964,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Final graph為Contracts `0.1.35`、Renderer `0.1.121`、Interactive.Client `0.1.113`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.121`。Renderer／Ptcs.Client source commit=`c2510e71e8b517bb203efa7ea3e34d42c78ce901`；Interactive.Client source commit=`1cee2206db26c4cb85f9b38a7036f23b61f2d540`。
 - NuGet.org official SHA-256為Renderer `06C1D94A3906AFB725E0AD029A2381E78355296C90715AF8E2407A03B52A5CE9`、Interactive.Client `7594E172BF9E8F50B601419FA85CDB21EB7FE7C3A3D8A4AE40954E0B3ACF2DEF`、Ptcs.Client `D7D7767B8EB811AA9F7404CB137349D9485F938B2A8274D2D93DA2F2E470B674`。三包repository signatures、exact dependencies、provenance與排除`.signature.p7s`後entry parity通過；Interactive manifest=`0.1.113`。真SPAA gate交由Daedalus完成。
+
+## 2026-09-30 - Navigator responsiveness consumer closure
+
+- Daedalus以final graph完成兩次max4000 persistent SPAA完整run，area／left／right／retained為`477/362/418/409ms`及`612/478/470/440ms`；4000→8000、View All、persistent rerun、provider left/right與overview axis同輪PASS，consumer alpha47已push。
+- 先前一次cold left `1499ms`未在連續run重現，保留為observation，不宣稱已修產品bug也不列owner blocker。DYN-WBS-577／DYN-TA-028關閉為100%。
