@@ -369,8 +369,9 @@ module Client =
                   Value =
                     SduiValue.Object(
                         Map [ "open", SduiValue.Number openValue
-                              "high", SduiValue.Number(max openValue closeValue + 2.0)
-                              "low", SduiValue.Number(min openValue closeValue - 2.0)
+                              if index <> 17 then
+                                  "high", SduiValue.Number(max openValue closeValue + 2.0)
+                                  "low", SduiValue.Number(min openValue closeValue - 2.0)
                               "close", SduiValue.Number closeValue ]) })
         { CoverageIdentity = "browser-demo:loaded-coverage"
           CoverageRevision = coverageRevision
@@ -744,6 +745,7 @@ module Client =
         let scenarioReplacementCount = Var.Create 0
         let scenarioReplacementOutcome = Var.Create "idle"
         let mutable candleWorkloadGeneration = 0
+        let mutable editorDocumentGeneration = 0
         let applyAuthoritativeAction action =
             let current = runtimeState.Value
 
@@ -782,13 +784,22 @@ module Client =
                                 { existing with Kind = kind }
                                 |> TaRowEditorBinding.attach binding
                                 |> Result.defaultWith (fun errors -> failwith (errors |> List.map _.Message |> String.concat "; ")))
+                let nextIdentity, nextDocumentRevision =
+                    match requestedRowId with
+                    | Some _ ->
+                        editorDocumentGeneration <- editorDocumentGeneration + 1
+                        { DocumentId = DocumentId("ta-demo-editor-document-" + string editorDocumentGeneration)
+                          CanvasInstanceId = CanvasInstanceId("ta-demo-editor-canvas-" + string editorDocumentGeneration) },
+                        1L
+                    | None -> current.Identity, current.DocumentRevision + 1L
                 runtimeState.Value <-
                     { current with
+                        Identity = nextIdentity
                         Document =
                             Some
                                 { document with
                                     Rows = nextRows }
-                        DocumentRevision = current.DocumentRevision + 1L
+                        DocumentRevision = nextDocumentRevision
                         LastTransportSequence = current.LastTransportSequence + 1L
                         LastError =
                             Some

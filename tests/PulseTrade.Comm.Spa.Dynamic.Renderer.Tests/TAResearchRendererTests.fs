@@ -447,7 +447,7 @@ let tests =
                 (RendererModel.navigatorBoundaryDirection 100 { StartIndex = 20; Count = 20 } TaWindowDrag.ResizeLeft 1)
                 "An in-range resize remains local."
 
-        testCase "RFC-0031 overview anchors preserve OHLC OC and degenerate scalar candles" <| fun _ ->
+        testCase "RFC-0031 overview anchors preserve authored OHLC without inventing OC wicks" <| fun _ ->
             let objectValue values = SduiValue.Object(Map values)
             let projection : TaLoadedCoverageProjection =
                 { CoverageIdentity = "overview-shapes"
@@ -473,9 +473,58 @@ let tests =
                       BaseAxisRef = "axis.1k" } }
             let points = RendererModel.overviewPointsForCoverage projection
             Expect.equal points.Length 3 "OHLC, OC and scalar anchors all remain candlesticks."
-            Expect.equal (points[0].Open, points[0].High, points[0].Low, points[0].Close) (100.0, 104.0, 98.0, 103.0) "OHLC remains exact."
-            Expect.equal (points[1].High, points[1].Low) (103.0, 101.0) "OC derives only its missing wick bounds."
-            Expect.equal (points[2].Open, points[2].High, points[2].Low, points[2].Close) (101.0, 101.0, 101.0, 101.0) "A scalar becomes a flat candle, not a line fallback."
+            Expect.equal (points[0].Open, points[0].High, points[0].Low, points[0].Close) (100.0, Some 104.0, Some 98.0, 103.0) "OHLC remains exact."
+            Expect.equal (points[1].High, points[1].Low) (None, None) "OC remains body-only and must not invent wick bounds."
+            Expect.equal (points[2].Open, points[2].High, points[2].Low, points[2].Close) (101.0, None, None, 101.0) "A scalar remains a flat body without invented wicks."
+
+        testCase "overview compaction aggregates contiguous OHLC buckets and preserves source coverage" <| fun _ ->
+            let point index high low =
+                { Timestamp = $"T{index}"
+                  Open = float index
+                  High = high
+                  Low = low
+                  Close = float index + 0.5
+                  Volume = 1.0
+                  SourceStartIndex = index
+                  SourceEndExclusive = index + 1 }
+            let source =
+                Array.init 8000 (fun index ->
+                    point index (Some(if index = 4321 then 99_999.0 else float index + 1.0)) (Some(float index - 1.0)))
+            let compacted = RendererModel.compactOverviewCandles 280 source
+            Expect.equal compacted.Length 280 "Visual output remains bounded."
+            Expect.equal compacted[0].SourceStartIndex 0 "The first bucket starts at the loaded head."
+            Expect.equal compacted[compacted.Length - 1].SourceEndExclusive 8000 "The final bucket reaches the loaded tail."
+            Expect.isTrue (compacted |> Array.pairwise |> Array.forall (fun (left, right) -> left.SourceEndExclusive = right.SourceStartIndex)) "Buckets cover the source contiguously without point-drop gaps."
+            Expect.isTrue (compacted |> Array.exists (fun value -> value.High = Some 99_999.0)) "A source high between uniform sample indexes survives aggregation."
+
+            let bodyOnly = source |> Array.map (fun value -> { value with High = None; Low = None })
+            let compactedBodyOnly = RendererModel.compactOverviewCandles 280 bodyOnly
+            Expect.isTrue (compactedBodyOnly |> Array.forall (fun value -> value.High.IsNone && value.Low.IsNone)) "OC-only buckets must not invent high or low values."
+
+        testCase "overview geometry excludes non-finite prices instead of poisoning every SVG coordinate" <| fun _ ->
+            let point index openValue high low closeValue =
+                { Timestamp = $"T{index}"
+                  Open = openValue
+                  High = high
+                  Low = low
+                  Close = closeValue
+                  Volume = 1.0
+                  SourceStartIndex = index
+                  SourceEndExclusive = index + 1 }
+
+            let cleaned =
+                [| point 0 100.0 (Some 104.0) (Some 98.0) 103.0
+                   point 1 Double.NaN (Some 105.0) (Some 99.0) 102.0
+                   point 2 102.0 (Some Double.PositiveInfinity) (Some 100.0) 101.0 |]
+                |> RendererModel.compactOverviewCandles 10
+
+            Expect.equal cleaned.Length 2 "A candle with a non-finite body is excluded."
+            Expect.equal (cleaned[1].High, cleaned[1].Low) (None, None) "A non-finite authored wick becomes body-only instead of poisoning the chart range."
+
+            let low, high =
+                RendererModel.paddedRange 0.0 1.0 [| Double.NaN; 10.0; Double.NegativeInfinity; 20.0 |]
+            Expect.floatClose Accuracy.high low 9.2 "Finite values determine the padded lower bound."
+            Expect.floatClose Accuracy.high high 20.8 "Finite values determine the padded upper bound."
 
         testCase "navigator visual geometry preserves the exact resolved-window ratio" <| fun _ ->
             let total = 1_000_000
@@ -569,6 +618,17 @@ let tests =
                 (Some 996_000L, Some 4000)
                 "View All must request the loaded-domain tail when coverage exceeds the document cap."
 
+            let loadedStart = RendererModel.tryLoadedCoverageEdgeIntent TaLoadedCoverageEdge.Start 48 4000 projection
+            let loadedEnd = RendererModel.tryLoadedCoverageEdgeIntent TaLoadedCoverageEdge.End 48 4000 projection
+            Expect.equal
+                (loadedStart |> Option.bind _.StartObservationOrdinal, loadedStart |> Option.bind _.Direction)
+                (Some 0L, Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier)
+                "The typed start-edge intent targets the loaded head."
+            Expect.equal
+                (loadedEnd |> Option.bind _.StartObservationOrdinal, loadedEnd |> Option.bind _.Direction)
+                (Some 999_952L, Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later)
+                "The typed end-edge intent targets the loaded tail."
+
         testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
             let ratios = 0.2, 0.4
             let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
@@ -577,6 +637,15 @@ let tests =
             Expect.equal (mode 400.0) (Some TaWindowDrag.ResizeRight) "the exact right boundary resizes right"
             Expect.equal (mode 300.0) (Some TaWindowDrag.Move) "the selection interior moves the window"
             Expect.equal (mode 100.0) None "unrelated overview clicks must not start a drag"
+
+        testCase "navigator hit resolver preserves visible edge resize zones for a tiny clipped selection" <| fun _ ->
+            let ratios = 0.988, 1.0
+            let mode pointer = RendererModel.navigatorDragMode 1400.0 24.0 ratios pointer
+
+            Expect.equal (mode 1384.0) (Some TaWindowDrag.ResizeLeft) "one CSS pixel inside the visible left edge resizes left"
+            Expect.equal (mode 1391.6) (Some TaWindowDrag.Move) "the true center remains a move zone"
+            Expect.equal (mode 1399.0) (Some TaWindowDrag.ResizeRight) "one CSS pixel inside the clipped right edge resizes right"
+            Expect.equal (mode 1370.0) None "points outside the bounded hit target remain unrelated"
 
         testCase "overview sampling is deterministic and bounded" <| fun _ ->
             let values = [| 0 .. 1999 |]
@@ -925,6 +994,62 @@ let tests =
             let unlabeled = { row with Options = Map.empty }
             Expect.equal (TaWorkspaceRenderer.rowDisplayLabel unlabeled) "Candlestick" "Toolbar fallback should remain the typed row kind."
             Expect.equal (TaWorkspaceRenderer.rowTitle unlabeled unlabeled.Traces) "ES_1K / 1K" "Card fallback should retain the trace label."
+
+        testCase "DYN-T-671 bound row display keeps custom label and reports authoritative editor values" <| fun _ ->
+            let schema =
+                { TemplateKey = "ta.sma"
+                  DisplayName = "SMA overlay"
+                  SchemaRevision = 1L
+                  Fields =
+                    [| { Key = "periods"
+                         Label = "Periods"
+                         Kind = EditorValueKind.List(EditorValueKind.Integer(Some 1L, Some 500L), Some 1, Some 8)
+                         Required = true
+                         DefaultValue = None } |] }
+            let row =
+                { RowId = "sma"
+                  Kind = TaRowKind.Sma
+                  DataRef = "series.sma"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map [ "label", SduiValue.Text "Custom strategy label" ]
+                  Traces = [||] }
+                |> TaRowEditorBinding.attach
+                    { TemplateKey = schema.TemplateKey
+                      Values =
+                        [| { Path = "periods[0]"; Value = EditorScalarValue.Number 17.0 }
+                           { Path = "periods[1]"; Value = EditorScalarValue.Number 21.0 }
+                           { Path = "periods[2]"; Value = EditorScalarValue.Number 34.0 } |] }
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal
+                (TaWorkspaceRenderer.rowDisplayLabelWithEditor [| schema |] row)
+                "Custom strategy label · SMA overlay · Periods 17, 21, 34"
+                "The custom label remains visible while the schema-bound values provide the authoritative parameter summary."
+
+        testCase "DYN-T-672 editor mutation accepts matching replacement identity and rejects stale documents" <| fun _ ->
+            let first =
+                { DocumentId = DocumentId "editor-document-a"
+                  CanvasInstanceId = CanvasInstanceId "editor-canvas-a" }
+            let replacement =
+                { DocumentId = DocumentId "editor-document-b"
+                  CanvasInstanceId = CanvasInstanceId "editor-canvas-b" }
+
+            Expect.isFalse
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L first 7L true)
+                "The unchanged base document cannot complete a mutation."
+            Expect.isFalse
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L first 6L true)
+                "A stale revision of the same document cannot complete a mutation."
+            Expect.isFalse
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L replacement 1L false)
+                "A replacement identity with the wrong binding cannot complete a mutation."
+            Expect.isTrue
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L first 8L true)
+                "A matching newer revision of the same document completes the mutation."
+            Expect.isTrue
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L replacement 1L true)
+                "A matching authoritative replacement identity completes even when its revision restarts at one."
 
         testCase "document shell cache key includes runtime document and canvas identity" <| fun _ ->
             let first =

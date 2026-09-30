@@ -48,7 +48,7 @@ same-axis文件沿用global ordinal selection。axis不同時：
 
 ### D4. Candlestick
 
-anchor value接受既有number、OHLC或OC object。缺high/low時以`max(open,close)`／`min(open,close)`補足；缺open時才以close作degenerate candle。up/down/flat各自batched path，flat使用neutral palette。
+anchor value接受既有number、OHLC或OC object。OHLC只使用authoritative high/low；OC與number維持body-only，不得以open/close補造wick。缺open時才以close作degenerate body。up/down/flat各自batched path，flat使用neutral palette。跨多筆的visual reduction依RFC-0034採連續bucket聚合。
 
 ### D5. Scenario atomic candidate
 
@@ -67,7 +67,7 @@ Legacy inline `viewport.loadedCoverage`仍可讀；同一Document同時宣告inl
 1. 8,000 anchors encode/decode/validation通過；8,001明確拒絕。
 2. 1K detail＋60K overview時selection與stripe依event time定位，不使用跨軸ordinal。
 3. 3,000 observations保留3,000；12,000 consumer summary為8,000且首尾一致。
-4. OHLC、OC及up/down/flat三色path通過pure/browser tests，禁止close-line fallback。
+4. OHLC、OC及up/down/flat三色path通過pure/browser tests；OC不得產生wick，並禁止close-line fallback。
 5. 60K→1K→60K完整snapshot切換，candles/stripes/selection/status同candidate；stale candidate不發布projection receipt。
 6. 8,000 anchors下正式browser main-thread phase不得超過100ms。
 

@@ -1969,3 +1969,10 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 
 - Daedalus以final graph完成兩次max4000 persistent SPAA完整run，area／left／right／retained為`477/362/418/409ms`及`612/478/470/440ms`；4000→8000、View All、persistent rerun、provider left/right與overview axis同輪PASS，consumer alpha47已push。
 - 先前一次cold left `1499ms`未在連續run重現，保留為observation，不宣稱已修產品bug也不列owner blocker。DYN-WBS-577／DYN-TA-028關閉為100%。
+
+## 2026-10-01 - RFC-0034 navigator overview integrity owner gate
+
+- Renderer新增contiguous OHLC aggregation，保留完整source coverage與bucket extrema；OC／scalar及mixed-authority bucket維持body-only。Navigator補齊`ew-resize`／`grab`／`grabbing` affordance及typed loaded Start／Latest controls，不新增wire contract。
+- Exact candidate graph為Renderer `0.1.123`、Interactive.Client `0.1.115`、Ptcs.Client `0.1.123`；focused tests=`63/15/17`，Interactive package manifest gate PASS。
+- 完整Renderer F# Playwright gate通過：300 cursor transitions、chart rerender=`false`，正式five-candle／scenario／All／marker／document／progressive phases均無>100ms task。Verifier改以相對revision／generation驗每個accepted intent恰前進一次，避免edge jumps後沿用過時絕對值。
+- NuGet.org尚無上述三個版本。先提交source固定package provenance，再重建、push及official readback；Daedalus真SPAA consumer gate仍待執行。

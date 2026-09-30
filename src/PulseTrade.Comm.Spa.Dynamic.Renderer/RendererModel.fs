@@ -26,6 +26,16 @@ type TaCandlePoint =
       Volume: float
       Temporal: TaTemporalPointPresentation option }
 
+type TaOverviewCandlePoint =
+    { Timestamp: string
+      Open: float
+      High: float option
+      Low: float option
+      Close: float
+      Volume: float
+      SourceStartIndex: int
+      SourceEndExclusive: int }
+
 type TaLinePoint =
     { Timestamp: string
       Value: float
@@ -160,6 +170,17 @@ module ProjectionCommitGate =
             committed
         | _ -> gate, None
 
+[<JavaScript; RequireQualifiedAccess>]
+module EditorMutationGate =
+    let authoritativeDocumentAdvanced
+        (baseIdentity: RuntimeIdentity)
+        baseDocumentRevision
+        (currentIdentity: RuntimeIdentity)
+        currentDocumentRevision
+        bindingMatches =
+        bindingMatches
+        && (currentIdentity <> baseIdentity || currentDocumentRevision > baseDocumentRevision)
+
 type TaRowHeightBounds =
     { Minimum: int
       Maximum: int
@@ -169,6 +190,11 @@ type TaRowHeightBounds =
 type TaCoverageDirection =
     | Earlier
     | Later
+
+[<RequireQualifiedAccess>]
+type TaLoadedCoverageEdge =
+    | Start
+    | End
 
 [<RequireQualifiedAccess>]
 type TaQueryViewportSelection =
@@ -842,6 +868,9 @@ module RendererModel =
     let fixedNumber (value: float) =
         string value
 
+    let finiteNumber value =
+        not (Double.IsNaN value || Double.IsInfinity value)
+
     let presentationTimestamp (metadata: TaTemporalPointPresentation) =
         metadata.EventTimeUtc |> Option.defaultValue metadata.IntervalStartUtc
 
@@ -857,7 +886,12 @@ module RendererModel =
                 objectNumber "c" item,
                 objectNumber "v" item
             with
-            | Some timestamp, Some openValue, Some high, Some low, Some close, Some volume ->
+            | Some timestamp, Some openValue, Some high, Some low, Some close, Some volume
+                when finiteNumber openValue
+                     && finiteNumber high
+                     && finiteNumber low
+                     && finiteNumber close
+                     && finiteNumber volume ->
                 Some
                     { Timestamp = timestamp
                       Open = openValue
@@ -874,14 +908,15 @@ module RendererModel =
 
     let parseLineResolved temporal payload =
         match payload, temporal with
-        | Some(SduiValue.Number lineValue), Some metadata ->
+        | Some(SduiValue.Number lineValue), Some metadata when finiteNumber lineValue ->
             Some { Timestamp = presentationTimestamp metadata; Value = lineValue; Temporal = temporal }
         | _ ->
             payload
             |> Option.bind tryObject
             |> Option.bind (fun item ->
                 match temporal |> Option.map presentationTimestamp |> Option.orElseWith (fun () -> objectText "t" item), objectNumber "v" item with
-                | Some timestamp, Some lineValue -> Some { Timestamp = timestamp; Value = lineValue; Temporal = temporal }
+                | Some timestamp, Some lineValue when finiteNumber lineValue ->
+                    Some { Timestamp = timestamp; Value = lineValue; Temporal = temporal }
                 | _ -> None)
 
     let parseLine value =
@@ -2156,39 +2191,134 @@ module RendererModel =
                 (Some targetStart)
                 count
 
+    let tryLoadedCoverageEdgeIntent edge requestedCount maximumVisibleBars projection =
+        let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+        let boundedMaximum = max 1 (min TaLoadedCoverageCodec.MaximumActiveDetailBars maximumVisibleBars)
+        if domainCount <= 0L then
+            None
+        else
+            let count = int (min domainCount (int64 (max 1 (min boundedMaximum requestedCount))))
+            let startOrdinal, direction =
+                match edge with
+                | TaLoadedCoverageEdge.Start -> 0L, PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier
+                | TaLoadedCoverageEdge.End -> max 0L (domainCount - int64 count), PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later
+            TaLoadedCoverageCodec.tryWindowIntent
+                (Some direction)
+                (Some projection.CoverageRevision)
+                (projection.QueryGeneration + 1L)
+                (Some startOrdinal)
+                count
+
+    let overviewPointsFromCandles (points: TaCandlePoint array) =
+        points
+        |> Array.mapi (fun index point -> index, point)
+        |> Array.choose (fun (index, point) ->
+            if
+                finiteNumber point.Open
+                && finiteNumber point.High
+                && finiteNumber point.Low
+                && finiteNumber point.Close
+                && finiteNumber point.Volume
+            then
+                Some
+                    { Timestamp = point.Timestamp
+                      Open = point.Open
+                      High = Some point.High
+                      Low = Some point.Low
+                      Close = point.Close
+                      Volume = point.Volume
+                      SourceStartIndex = index
+                      SourceEndExclusive = index + 1 }
+            else
+                None)
+
+    let compactOverviewCandles maximumCount (values: TaOverviewCandlePoint array) =
+        let finiteValues =
+            values
+            |> Array.choose (fun value ->
+                if finiteNumber value.Open && finiteNumber value.Close && finiteNumber value.Volume then
+                    let authoredWick =
+                        match value.High, value.Low with
+                        | Some high, Some low when finiteNumber high && finiteNumber low -> Some(high, low)
+                        | _ -> None
+                    Some
+                        { value with
+                            High = authoredWick |> Option.map fst
+                            Low = authoredWick |> Option.map snd }
+                else
+                    None)
+
+        if maximumCount <= 0 || finiteValues.Length = 0 then
+            [||]
+        elif finiteValues.Length <= maximumCount then
+            Array.copy finiteValues
+        else
+            Array.init maximumCount (fun bucketIndex ->
+                let startIndex = bucketIndex * finiteValues.Length / maximumCount
+                let endExclusive = (bucketIndex + 1) * finiteValues.Length / maximumCount
+                let first = finiteValues[startIndex]
+                let last = finiteValues[endExclusive - 1]
+                let mutable allHaveWicks = true
+                let mutable high: float option = None
+                let mutable low: float option = None
+                let mutable volume = 0.0
+                for index in startIndex .. endExclusive - 1 do
+                    let point = finiteValues[index]
+                    volume <- volume + point.Volume
+                    match point.High, point.Low with
+                    | Some pointHigh, Some pointLow ->
+                        high <- Some(high |> Option.map (fun current -> max current pointHigh) |> Option.defaultValue pointHigh)
+                        low <- Some(low |> Option.map (fun current -> min current pointLow) |> Option.defaultValue pointLow)
+                    | _ -> allHaveWicks <- false
+                { Timestamp = last.Timestamp
+                  Open = first.Open
+                  High = if allHaveWicks then high else None
+                  Low = if allHaveWicks then low else None
+                  Close = last.Close
+                  Volume = volume
+                  SourceStartIndex = first.SourceStartIndex
+                  SourceEndExclusive = last.SourceEndExclusive })
+
     let overviewPointsForCoverage projection =
         let scalar field fields =
             fields |> Map.tryFind field |> Option.bind (function SduiValue.Number value -> Some value | _ -> None)
 
         projection.OverviewAnchors
-        |> Array.choose (fun anchor ->
+        |> Array.mapi (fun index anchor -> index, anchor)
+        |> Array.choose (fun (index, anchor) ->
             match anchor.Value with
-            | SduiValue.Number value when not (Double.IsNaN value || Double.IsInfinity value) ->
+            | SduiValue.Number value when finiteNumber value ->
                 Some
                     { Timestamp = anchor.EventTimeUtc
                       Open = value
-                      High = value
-                      Low = value
+                      High = None
+                      Low = None
                       Close = value
                       Volume = 0.0
-                      Temporal = None }
+                      SourceStartIndex = index
+                      SourceEndExclusive = index + 1 }
             | SduiValue.Object fields ->
                 scalar "close" fields
                 |> Option.bind (fun closeValue ->
-                    if Double.IsNaN closeValue || Double.IsInfinity closeValue then None
+                    if not (finiteNumber closeValue) then None
                     else
                         let openValue = scalar "open" fields |> Option.defaultValue closeValue
-                        let highValue = scalar "high" fields |> Option.defaultValue (max openValue closeValue)
-                        let lowValue = scalar "low" fields |> Option.defaultValue (min openValue closeValue)
+                        let explicitWick =
+                            match scalar "high" fields, scalar "low" fields with
+                            | Some highValue, Some lowValue when finiteNumber highValue && finiteNumber lowValue -> Some(highValue, lowValue)
+                            | _ -> None
                         let volumeValue = scalar "volume" fields |> Option.defaultValue 0.0
-                        Some
-                            { Timestamp = anchor.EventTimeUtc
-                              Open = openValue
-                              High = highValue
-                              Low = lowValue
-                              Close = closeValue
-                              Volume = volumeValue
-                              Temporal = None })
+                        if not (finiteNumber openValue) || not (finiteNumber volumeValue) then None
+                        else
+                            Some
+                                { Timestamp = anchor.EventTimeUtc
+                                  Open = openValue
+                                  High = explicitWick |> Option.map fst
+                                  Low = explicitWick |> Option.map snd
+                                  Close = closeValue
+                                  Volume = volumeValue
+                                  SourceStartIndex = index
+                                  SourceEndExclusive = index + 1 })
             | _ -> None)
 
     let tryOverviewTimeline projection =
@@ -2276,15 +2406,13 @@ module RendererModel =
             if pointerX < interactionLeft || pointerX > interactionRight then
                 None
             elif selectionWidth < radius * 2.0 then
-                // Tiny selections need stable pointer zones; overlapping DOM hit targets
-                // must not decide whether the gesture moves or resizes the window.
-                // Split around the true selection center so clipping at either track edge
-                // cannot turn the visible center into a resize gesture.
-                let center = left + selectionWidth / 2.0
-                let leftEnd = (interactionLeft + center) / 2.0
-                let rightStart = (center + interactionRight) / 2.0
-                if pointerX < leftEnd then Some TaWindowDrag.ResizeLeft
-                elif pointerX > rightStart then Some TaWindowDrag.ResizeRight
+                // Keep an interior move zone while preserving both visible edges as
+                // resize targets, including when the selection touches a track edge.
+                let edgeZone = selectionWidth / 3.0
+                let leftEnd = left + edgeZone
+                let rightStart = right - edgeZone
+                if pointerX <= leftEnd then Some TaWindowDrag.ResizeLeft
+                elif pointerX >= rightStart then Some TaWindowDrag.ResizeRight
                 else Some TaWindowDrag.Move
             elif abs (pointerX - left) <= radius then
                 Some TaWindowDrag.ResizeLeft
@@ -2375,15 +2503,25 @@ module RendererModel =
                       EndEventTimeExclusiveUtc = value })
 
     let paddedRange fallbackLow fallbackHigh values =
-        if Array.isEmpty values then fallbackLow, fallbackHigh
-        else
-            let low = Array.min values
-            let high = Array.max values
+        let mutable found = false
+        let mutable low = fallbackLow
+        let mutable high = fallbackHigh
 
-            if low = high then low - 1.0, high + 1.0
-            else
-                let padding = max ((high - low) * 0.08) 0.0001
-                low - padding, high + padding
+        for value in values do
+            if finiteNumber value then
+                if found then
+                    if value < low then low <- value
+                    if value > high then high <- value
+                else
+                    found <- true
+                    low <- value
+                    high <- value
+
+        if not found then fallbackLow, fallbackHigh
+        elif low = high then low - 1.0, high + 1.0
+        else
+            let padding = max ((high - low) * 0.08) 0.0001
+            low - padding, high + padding
 
     let paddedBoundsForCssPixels
         fallbackLow

@@ -1,0 +1,69 @@
+# Navigator overview ownership closure
+
+## prompt/上下文摘要
+
+Daedalus要求PTCS Dynamic owner補齊RFC-TRADECORE-0030的三項generic能力：coverage-preserving
+OHLC/OC overview、local rAF navigator draft與單次commit/cursor、loaded-overview edge jump typed intent。
+
+## 背景
+
+現有版本已完成loaded coverage、pointer capture、pending latest-wins與真SPAA consumer acceptance；本輪不得
+重建既有資料authority、改變consumer provider語意，或產生同版本異bytes。
+
+## 目標
+
+- overview downsample保留source coverage與K棒OHLC形狀；只有OC時不補造H/L。
+- handle與move使用正確cursor；pointermove只更新local draft/rAF，pointerup最多送一次action。
+- 提供domain-neutral typed edge-jump intent，供consumer按鈕直接請求loaded overview左右邊界。
+- 以focused unit/browser與完整release regression驗證，發布exact package graph並交付Daedalus。
+
+## 不得改變事項
+
+- `VisibleRangeChanged`仍是remote viewport action authority；不得新增交易domain DU。
+- pointermove不得送remote action、重建chart或改document revision。
+- loaded coverage、visible window、overview與consumer provider責任邊界不變。
+
+## 計畫步驟
+
+1. 對照RFC與current source/test，定位真缺口並補owner RFC/REQ/SA/SD/WBS/Test回鏈。
+2. 先加失敗測試：OHLC/OC aggregation、cursor/local draft single commit、Earlier/Latest edge jump。
+3. 最小實作contract/model/renderer，跑focused及完整browser/performance gates。
+4. 版本升級、source commit後single pack/push，驗official package graph並通知Daedalus。
+
+## 驗收
+
+- true OHLC bucket為first O/max H/min L/last C；OC bucket只輸出O/C。
+- pointer gesture多次move只形成local preview，release只送一次typed action。
+- edge jump可由generic API產生合法Earlier/Latest loaded-boundary intent。
+- 既有coverage/pointer/cursor/4,000 bars regressions與performance gate維持GREEN。
+
+## 風險
+
+- navigator shell closure若誤讀active detail代替loaded overview，會使edge jump或selection比例錯誤。
+- 新增wire case會牽動exact Contracts/Renderer/Interactive/Ptcs client package graph。
+
+## 假設
+
+- Consumer持續提供ordered authoritative overview anchors；Renderer只負責bounded visual compaction，不回填provider資料。
+- 既有`VisibleRangeChanged`與`TaCoverageWindowIntent`足以表達Start／Latest，不新增wire discriminator。
+
+## 範圍
+
+- 修改Renderer model／WebSharper renderer、BrowserDemo、focused tests、exact client package refs及RFC-0034追溯文件。
+- 不修改Contracts wire schema、Dynamic.Ptcs server adapter、TradeCore provider或正式SPAA consumer。
+
+## Operations
+
+### 2026-10-01 03:01 +08:00
+
+- Dynamic repo branch=`20260915_033.ptcs_group_support`、HEAD=`80193de`、working tree clean。
+- MdcQuoteAgent的ProcSupervisor win12 test handoff已完成；本輪開始處理Daedalus navigator owner缺口。
+
+### 2026-10-01 06:54 +08:00
+
+- 完成RFC-0034 source與exact candidate graph：Renderer `0.1.123`、Interactive.Client `0.1.115`、Ptcs.Client `0.1.123`；兩client exact依Renderer `[0.1.123]`。
+- Full WebSharper Release builds與focused exact-package tests通過：Renderer `63/63`、Interactive.Client `15/15`、Ptcs.Client `17/17`；Interactive package verifier PASS。
+- 完整`verify-ta-renderer-playwright.fsx`最終exit 0。300 cursor transitions、chart rerender=false；正式five-candle/scenario/All/marker/document/progressive皆無>100ms task。
+- Verifier過程發現兩個舊絕對oracle：edge Start/Latest已合法推進coverage revision與query generation，後續refresh/pan不得仍期待固定2/3。改為逐intent驗相對`+1`，產品未重複發布。
+- NuGet.org flat-container查詢三個candidate版本皆404；下一步先commit/push source固定provenance，再重建、單次push及official readback。
+- 流程偏差：第一次check後為補最低欄位，把假設／範圍插入Operations前方，屬於非append修改，checker正確回`log_readonly_modify`。未弱化checker；保留FAIL證據，後續僅在檔尾append。

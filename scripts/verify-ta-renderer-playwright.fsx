@@ -605,6 +605,15 @@ let verifyDesktop (browser: IBrowser) =
         bootstrapMaximum
 
     let freshChartStack = page.Locator("[data-testid='ta-chart-stack']")
+    let invalidSvgPaths = page.Locator("path[d*='NaN'], path[d*='Infinity']")
+    let invalidSvgPathDetails =
+        [| for index in 0 .. (invalidSvgPaths.CountAsync() |> awaitTask) - 1 do
+               let path = invalidSvgPaths.Nth(index)
+               let testId = attributeOrEmpty path "data-testid"
+               let rawPathData = attributeOrEmpty path "d"
+               let pathData = if rawPathData.Length <= 180 then rawPathData else rawPathData.Substring(0, 180) + "..."
+               yield $"testid={testId}; d={pathData}" |]
+    require (invalidSvgPathDetails.Length = 0) ("SVG path data must contain only finite coordinates: " + String.concat " | " invalidSvgPathDetails)
     require (requiredIntAttribute freshChartStack "data-visible-start" = 1) "fresh renderer must honor document visibleBars=4000 instead of the local 48-bar fallback"
     require (requiredIntAttribute freshChartStack "data-visible-end" = capacityPointCount) "fresh document viewport must include the loaded tail"
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = capacityPointCount) "fresh document viewport must render the document-requested 4,000 points"
@@ -1066,8 +1075,11 @@ let verifyDesktop (browser: IBrowser) =
     let overviewWicks = page.Locator("[data-testid='ta-overview-candle-wicks']")
     let overviewUpBodies = page.Locator("[data-testid='ta-overview-candle-up-bodies']")
     let overviewDownBodies = page.Locator("[data-testid='ta-overview-candle-down-bodies']")
+    let overviewSourceCount = requiredIntAttribute navigator "data-overview-source-count"
+    let overviewSampleCount = requiredIntAttribute overviewWicks "data-candle-sample-count"
     require (attributeOrEmpty overviewWicks "stroke" = "#60a5fa") "dark overview candle wicks must remain readable"
-    require (requiredIntAttribute overviewWicks "data-candle-sample-count" <= 280) "overview candlesticks must retain the bounded sample budget"
+    require (overviewSampleCount <= 280) "overview candlesticks must retain the bounded sample budget"
+    require (overviewSourceCount > overviewSampleCount) "overview compaction must expose that the complete source domain is larger than the bounded visual output"
     require (not (String.IsNullOrWhiteSpace(attributeOrEmpty overviewWicks "d"))) "overview candlestick wicks must retain OHLC geometry"
     require (attributeOrEmpty overviewUpBodies "fill" = "#4ade80") "dark overview up candles must remain readable"
     require (attributeOrEmpty overviewDownBodies "fill" = "#f87171") "dark overview down candles must remain readable"
@@ -1132,6 +1144,28 @@ let verifyDesktop (browser: IBrowser) =
     require (attributeOrEmpty (page.Locator("[data-testid='ta-overview-move-hit']")) "pointer-events" = "none") "move cursor hint must not bypass the root drag resolver"
     require (attributeOrEmpty leftHandleHit "width" = "8") "left overview drag hit target must retain the existing width"
     require (attributeOrEmpty rightHandleHit "width" = "8") "right overview drag hit target must retain the existing width"
+    let navigatorCursor () =
+        computedStyleProperties longTaskSession "[data-testid='ta-overview-navigator']" [| "cursor" |]
+        |> Map.tryFind "cursor"
+        |> Option.defaultValue ""
+    let waitForNavigatorCursor expected =
+        let deadline = DateTime.UtcNow.AddMilliseconds 500.0
+        let mutable actual = navigatorCursor ()
+        while actual <> expected && DateTime.UtcNow < deadline do
+            Threading.Thread.Sleep 16
+            actual <- navigatorCursor ()
+        require (actual = expected) $"expected overview cursor={expected}, actual={actual}"
+    page.Mouse.MoveAsync(selectionBox.X + 1.0f, navigatorBox.Y + navigatorBox.Height / 2.0f) |> awaitUnit
+    Threading.Thread.Sleep 50
+    let edgeCursor = navigatorCursor ()
+    let leftRatio = attributeOrEmpty navigator "data-selection-left-ratio"
+    let rightRatio = attributeOrEmpty navigator "data-selection-right-ratio"
+    require
+        (edgeCursor = "ew-resize")
+        ($"overview edge hover must expose ew-resize: actual={edgeCursor}; selection=({selectionBox.X},{selectionBox.Width}); navigator=({navigatorBox.X},{navigatorBox.Width}); ratios={leftRatio},{rightRatio}")
+    page.Mouse.MoveAsync(selectionBox.X + selectionBox.Width / 2.0f, navigatorBox.Y + navigatorBox.Height / 2.0f) |> awaitUnit
+    Threading.Thread.Sleep 50
+    require (navigatorCursor () = "grab") "overview selection hover must expose grab"
     let stripeXMatch = Text.RegularExpressions.Regex.Match(orderStripePath, "M ([0-9.]+) 0")
     require stripeXMatch.Success ("overview stripe path did not expose canonical X: " + orderStripePath)
     let stripeX = Single.Parse(stripeXMatch.Groups[1].Value, Globalization.CultureInfo.InvariantCulture)
@@ -1150,6 +1184,7 @@ let verifyDesktop (browser: IBrowser) =
     draftLatency.Stop()
     require (draftLatency.Elapsed.TotalMilliseconds <= 250.0) $"navigator draft missed the next-frame responsiveness budget: {draftLatency.Elapsed.TotalMilliseconds:F2}ms"
     require (requiredIntAttribute callbackState "data-callback-count" = callbackCountBeforeDrag) "pointermove must not submit VisibleRangeChanged before pointerup"
+    require (navigatorCursor () = "grabbing") "active overview move must expose grabbing"
     let previewText = textOf viewportRange
     let previewMatch = Text.RegularExpressions.Regex.Match(previewText, "Preview ([0-9]+-[0-9]+)")
     require previewMatch.Success ("move drag did not expose bounded preview range: " + previewText)
@@ -1157,6 +1192,7 @@ let verifyDesktop (browser: IBrowser) =
     require (chartStack.GetAttributeAsync("data-visible-start") |> awaitTask = string initialVisibleStart) "committed viewport must remain stable before release"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForText viewportRange "Viewing"
+    waitForNavigatorCursor "grab"
     let committedText = textOf viewportRange
     let committedMatch = Text.RegularExpressions.Regex.Match(committedText, "Viewing ([0-9]+)-([0-9]+)")
     require committedMatch.Success ("release did not publish committed bounds: " + committedText)
@@ -1266,20 +1302,6 @@ let verifyDesktop (browser: IBrowser) =
     let mutable maximumCursorLatencyMs = 0L
     let cursorLatencies = ResizeArray<int64>()
     let browserCursorLatencies = ResizeArray<float>()
-    let waitForCrosshairSide rightSide =
-        let deadline = DateTime.UtcNow.AddSeconds 3.0
-        let mutable observed = attributeOrEmpty firstCrosshair "x1"
-        let mutable reached = false
-        while not reached && DateTime.UtcNow < deadline do
-            match Double.TryParse(observed, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
-            | true, value -> reached <- if rightSide then value >= 600.0 else value <= 400.0
-            | _ -> ()
-            if not reached then
-                Threading.Thread.Sleep 10
-                observed <- attributeOrEmpty firstCrosshair "x1"
-        let sideLabel = if rightSide then "right" else "left"
-        require reached $"crosshair did not reach the expected {sideLabel} region; x1={observed}"
-        observed
     let dispatchCursorMove ratio =
         sustainedCursorSurface.HoverAsync(
             LocatorHoverOptions(
@@ -1299,7 +1321,7 @@ let verifyDesktop (browser: IBrowser) =
         require (current <> previous) $"expected `x1` to change from `{previous}`"
         current
     dispatchCursorMove 0.18f
-    previousCrosshairX <- waitForCrosshairSide false
+    previousCrosshairX <- waitForCursorAttributeChange previousCrosshairX 0.18f
     let mutable browserCursorLatencySequence = requiredIntAttribute chartStack "data-cursor-render-latency-sequence"
     for sample in 0 .. 299 do
         let rightSide = sample % 2 = 0
@@ -1314,12 +1336,15 @@ let verifyDesktop (browser: IBrowser) =
                 (browserCursorLatencySequence + 1)
         browserCursorLatencies.Add(requiredFloatAttribute chartStack "data-cursor-render-latency-ms")
         movement.Stop()
-        match Double.TryParse(currentCrosshairX, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
-        | true, value ->
-            let reachedExpectedSide = if rightSide then value >= 600.0 else value <= 400.0
+        match
+            Double.TryParse(currentCrosshairX, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture),
+            Double.TryParse(previousCrosshairX, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture)
+        with
+        | (true, value), (true, previousValue) ->
+            let reachedExpectedSide = if rightSide then value > previousValue else value < previousValue
             let sideLabel = if rightSide then "right" else "left"
-            require reachedExpectedSide $"crosshair did not reach the expected {sideLabel} region; x1={currentCrosshairX}"
-        | _ -> require false $"crosshair x1 is not numeric: {currentCrosshairX}"
+            require reachedExpectedSide $"crosshair did not move {sideLabel}; previous={previousCrosshairX} current={currentCrosshairX}"
+        | _ -> require false $"crosshair x1 is not numeric: previous={previousCrosshairX} current={currentCrosshairX}"
         cursorTransitions <- cursorTransitions + 1
         maximumCursorLatencyMs <- max maximumCursorLatencyMs movement.ElapsedMilliseconds
         cursorLatencies.Add movement.ElapsedMilliseconds
@@ -1369,7 +1394,7 @@ let verifyDesktop (browser: IBrowser) =
     waitForAttributeChange chartStack "data-visible-start" (string pausedVisibleStartBefore) |> ignore
     require (textOf viewportRange <> pausedViewportBefore) "paused local pan must update the visible viewport"
     priceChart.HoverAsync() |> awaitUnit
-    require ((page.Locator("[data-testid$='-crosshair']").CountAsync() |> awaitTask) = 7) "paused cache must retain local hover/crosshair"
+    waitForCount (page.Locator("[data-testid$='-crosshair']")) 7
     priceChart.ClickAsync() |> awaitUnit
     System.Threading.Thread.Sleep 250
     requireText callbackState (callbackText 2 "SharedCursorChanged")
@@ -1389,7 +1414,7 @@ let verifyDesktop (browser: IBrowser) =
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = chartPointsBeforeStatusChange) "stale transport status must retain the last-good canvas"
     page.Locator("[data-testid='ta-demo-live']").ClickAsync() |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-poll-state']")) "READY"
-    require (not (page.Locator("[data-testid='ta-apply-query']").IsDisabledAsync() |> awaitTask)) "remote query must recover after the runtime returns to ready"
+    waitForEnabled (page.Locator("[data-testid='ta-apply-query']")) "remote query after queued viewport action settles"
 
     let titleBox = page.Locator("[data-testid='ta-workspace-title']").BoundingBoxAsync() |> awaitTask
     let priceBox = page.Locator("[data-testid='ta-candle-price']").BoundingBoxAsync() |> awaitTask
@@ -1398,7 +1423,8 @@ let verifyDesktop (browser: IBrowser) =
     require (priceBox.Y < 900.0f) $"primary price chart must enter first viewport, y={priceBox.Y}"
     require (priceBox.Width > 1100.0f) $"desktop chart should use available width, width={priceBox.Width}"
 
-    requireText callbackState $"callback actions {setupCallbackCount + 2}"
+    waitForIntAttribute callbackState "data-callback-count" (setupCallbackCount + 3)
+    requireText callbackState (callbackText 3 "VisibleRangeChanged")
     let waitForViewportCommand (control: ILocator) label =
         let before = requiredIntAttribute callbackState "data-callback-count"
         control.ClickAsync() |> awaitUnit
@@ -1459,6 +1485,8 @@ let verifyDesktop (browser: IBrowser) =
     page.Locator("[data-testid='ta-add-row-submit']").ClickAsync() |> awaitUnit
     editor.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Hidden, Timeout = 8000.0f)) |> awaitUnit
     require ((page.Locator("[data-testid^='ta-toggle-row-']").CountAsync() |> awaitTask) = rowCountBeforeEdit) "accepted Edit must preserve row count"
+    let editedSmaLabel = page.Locator("[data-testid='ta-toggle-row-sma']").InnerTextAsync() |> awaitTask
+    require (editedSmaLabel.Contains("34") && editedSmaLabel.Contains("21")) "accepted Edit must render authoritative editor binding values in the row label"
     waitForEnabled editSma "SMA Edit after accepted Edit"
     editSma.ClickAsync() |> awaitUnit
     require ((page.Locator("[data-testid='ta-editor-periods-0']").InputValueAsync() |> awaitTask) = "34") "accepted Edit must retain the new binding for the same row"
@@ -1467,7 +1495,9 @@ let verifyDesktop (browser: IBrowser) =
     page.Locator("[data-testid='ta-remove-trace-volume-volume']").ClickAsync() |> awaitUnit
     volumeRow.WaitForAsync(LocatorWaitForOptions(State = WaitForSelectorState.Hidden, Timeout = 3000.0f)) |> awaitUnit
 
-    page.Locator("[data-testid='ta-apply-query']").ClickAsync() |> awaitUnit
+    let applyQueryButton = page.Locator("[data-testid='ta-apply-query']")
+    waitForEnabled applyQueryButton "query apply after Remove Trace settles"
+    applyQueryButton.ClickAsync() |> awaitUnit
     waitForText callbackState "last ChangeTaQuery"
     let renderBeforeResetCanvas = requiredIntAttribute chartStack "data-chart-render-sequence"
     page.Locator("[data-testid='ta-reset-canvas']").ClickAsync() |> awaitUnit
@@ -1643,7 +1673,9 @@ let verifyDesktop (browser: IBrowser) =
     let tinyLeftRatioText = attributeOrEmpty navigator "data-selection-left-ratio"
     let tinyLeftRatio = requiredFloatAttribute navigator "data-selection-left-ratio"
     let tinyRightRatio = requiredFloatAttribute navigator "data-selection-right-ratio"
-    let tinyCenterX = tinySelectionBox.X + tinySelectionBox.Width / 2.0f
+    let tinyCenterX =
+        tinyNavigatorBox.X
+        + tinyNavigatorBox.Width * float32 ((tinyLeftRatio + tinyRightRatio) / 2.0)
     printfn
         "browser.navigator-tiny navX=%.3f navWidth=%.3f selectionX=%.3f selectionWidth=%.3f leftRatio=%.9f rightRatio=%.9f centerX=%.3f"
         tinyNavigatorBox.X
@@ -1722,17 +1754,39 @@ let verifyDesktop (browser: IBrowser) =
     require (abs (requiredFloatAttribute coverageSelection "width" - 500.0) < 0.002) "250 of 500 loaded bars must occupy exactly half of the navigator"
     let overviewWicks = page.Locator("[data-testid='ta-overview-candle-wicks']")
     require (requiredIntAttribute overviewWicks "data-candle-sample-count" = 100) "independent 5K overview must retain its 100 authored candles instead of reusing the 250-bar detail slice"
+    require (requiredIntAttribute overviewWicks "data-authored-wick-count" = 99) "the authored OHLC anchors must retain exactly 99 wick geometries"
+    require (requiredIntAttribute overviewWicks "data-body-only-count" = 1) "the OC anchor must remain body-only instead of receiving an invented wick"
     require (not (String.IsNullOrWhiteSpace(attributeOrEmpty (page.Locator("[data-testid='ta-overview-candle-up-bodies']")) "d"))) "overview up candles must render as a batched path"
     require (not (String.IsNullOrWhiteSpace(attributeOrEmpty (page.Locator("[data-testid='ta-overview-candle-down-bodies']")) "d"))) "overview down candles must render as a batched path"
     require (not (String.IsNullOrWhiteSpace(attributeOrEmpty (page.Locator("[data-testid='ta-overview-candle-flat-bodies']")) "d"))) "overview flat candles must render as a neutral batched path"
 
+    let loadedStart = page.Locator("[data-testid='ta-jump-loaded-start']")
+    let loadedEnd = page.Locator("[data-testid='ta-jump-loaded-end']")
+    require (textOf loadedStart = "|←") "loaded-start control must use the compact outer-edge label"
+    require (textOf loadedEnd = "→|") "loaded-end control must use the compact outer-edge label"
+    require (attributeOrEmpty loadedStart "title" = "Jump to the first loaded bars") "loaded-start control must retain its accessible tooltip"
+    require (attributeOrEmpty loadedEnd "title" = "Jump to the latest loaded bars") "loaded-end control must retain its accessible tooltip"
+    let callbackCountBeforeEdgeJump = requiredIntAttribute callbackState "data-callback-count"
+    let coverageRevisionBeforeEdgeJump = requiredIntAttribute chartStack "data-coverage-revision"
+    loadedStart.ClickAsync() |> awaitUnit
+    waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeEdgeJump + 1)
+    waitForIntAttribute chartStack "data-visible-start" 1
+    waitForIntAttribute chartStack "data-visible-end" 250
+    waitForIntAttribute chartStack "data-coverage-revision" (coverageRevisionBeforeEdgeJump + 1)
+    loadedEnd.ClickAsync() |> awaitUnit
+    waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeEdgeJump + 2)
+    waitForIntAttribute chartStack "data-visible-start" 251
+    waitForIntAttribute chartStack "data-visible-end" 500
+    waitForIntAttribute chartStack "data-coverage-revision" (coverageRevisionBeforeEdgeJump + 2)
+
     let callbackCountBeforeCoverageRefresh = requiredIntAttribute callbackState "data-callback-count"
+    let coverageRevisionBeforeRefresh = requiredIntAttribute chartStack "data-coverage-revision"
     page.Locator("[data-testid='ta-demo-refresh-coverage-next-visible-range']").ClickAsync() |> awaitUnit
     page.Locator("[data-testid='ta-view-48']").ClickAsync() |> awaitUnit
     waitForIntAttribute chartStack "data-visible-start" 453
     waitForIntAttribute chartStack "data-visible-end" 500
     waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeCoverageRefresh + 1)
-    waitForIntAttribute chartStack "data-coverage-revision" 2
+    waitForIntAttribute chartStack "data-coverage-revision" (coverageRevisionBeforeRefresh + 1)
     Threading.Thread.Sleep 500
     require (requiredIntAttribute chartStack "data-visible-start" = 453) "same-identity coverage revision must not overwrite the accepted 48-bar viewport"
     require (requiredIntAttribute chartStack "data-visible-end" = 500) "same-identity coverage revision must preserve the accepted viewport end"
@@ -1743,12 +1797,14 @@ let verifyDesktop (browser: IBrowser) =
     waitForIntAttribute callbackState "data-callback-count" (callbackCountBeforeCoverageRefresh + 2)
     waitForText (page.Locator("[data-testid='ta-poll-state']")) "READY"
 
+    let coverageRevisionBeforeAdjacentPage = requiredIntAttribute chartStack "data-coverage-revision"
+    let queryGenerationBeforeAdjacentPage = requiredIntAttribute chartStack "data-query-generation"
     page.Locator("[data-testid='ta-pan-left']").ClickAsync() |> awaitUnit
-    waitForIntAttribute chartStack "data-query-generation" 2
+    waitForIntAttribute chartStack "data-query-generation" (queryGenerationBeforeAdjacentPage + 1)
     waitForIntAttribute chartStack "data-visible-start" 1
     waitForIntAttribute chartStack "data-visible-end" 250
     require (requiredIntAttribute chartStack "data-loaded-bars" = 500) "adjacent page switch must preserve full loaded coverage"
-    require (requiredIntAttribute chartStack "data-coverage-revision" = 3) "accepted adjacent page must atomically advance coverage revision"
+    require (requiredIntAttribute chartStack "data-coverage-revision" = coverageRevisionBeforeAdjacentPage + 1) "accepted adjacent page must atomically advance coverage revision once"
     require (requiredIntAttribute (page.Locator("[data-testid='ta-candle-price']")) "data-point-count" = 250) "adjacent page switch must not widen active detail"
 
     page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore

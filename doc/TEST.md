@@ -807,3 +807,12 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 | DYN-T-664 | Local viewport／overview axis／loaded View All | pending 200 action期間pan可用且立即`3801-4000 -> 3601-3800`；remote不平行送；overview至少三個event-time labels。另以loaded=3022、active=724重現，All title須為3022並以ordinal intent替換為1-3022／selection 100%。 | OWNER PASS：完整F# Playwright通過；3022 fixture的generation=`2`、active detail=`0+3022`、runtime axis/price=`3022`，正式phases over100=`0`。 |
 | DYN-T-665 | Exact graph／consumer | 五包exact tests、full WebSharper/browser、official signature/dependency/provenance/entry parity及真SPAA | PASS：owner `49/58/15/15/17`、完整browser、official graph integrity及兩次max4000 persistent SPAA完整run全綠；consumer alpha47已push。 |
 | DYN-T-666 | Adjacent cache empty scope | active=`0+724`、domain=`4724`且遠端零長segment=`4724`時，Later在無hit下必須Miss；true boundary empty仍KnownEmpty。IndexedDB seed後reload再readAdjacent亦須Miss。 | OWNER PASS：舊`.112`單元穩定RED為KnownEmpty；`.113` unit `15/15`，persistent BrowserCache Playwright=`ADJACENT:LATER:MISS`，既有large rehydrate/LRU gates全綠。 |
+
+## RFC-PTCS-DYNAMIC-0034 Navigator overview integrity
+
+| ID | Scope | Acceptance |
+| --- | --- | --- |
+| DYN-T-667 | Contiguous overview aggregation | 8,000 source points compact至<=280 contiguous buckets，source range無gap/overlap且首尾完整；bucket保留first O/max H/min L/last C與volume sum；單點spike不得消失。 | OWNER PASS：Renderer exact-package suite `63/63`。 |
+| DYN-T-668 | OC/body-only authority | OC／scalar point與任何mixed-authority bucket的High/Low皆為None；SVG wick只含authoritative OHLC bucket，body polarity與Y-domain仍正確。 | OWNER PASS：pure aggregation及BrowserDemo驗99 authored wicks＋1 body-only anchor。 |
+| DYN-T-669 | Pointer and edge interaction | left/right=`ew-resize`、selection=`grab`、active move=`grabbing`；pointerup一次commit。Start/Latest以既有typed intent切exact loaded head/tail，invalid projection不送action。 | OWNER PASS：完整F# Playwright驗cursor、single commit、Start/Latest及revision/generation逐intent單調前進。 |
+| DYN-T-670 | Browser/performance/package/consumer | 完整WebSharper與F# Playwright無console/page error，正式phase無>100ms；Renderer/Interactive/Ptcs exact package與official readback通過，再由Daedalus真SPAA驗overview extrema、drag及edge controls。 | OWNER PASS／RELEASE PENDING：local graph `.123/.115/.123` focused=`63/15/17`，browser與package manifest gate PASS；official readback及consumer待完成。 |

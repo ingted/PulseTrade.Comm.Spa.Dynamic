@@ -171,3 +171,10 @@
 1. Navigator pointermove SHALL至多每animation frame發布一次local draft；pointerup SHALL使用最後draft且pointermove不得送remote action。
 2. 已有accepted viewport data時，chart row remount或remote action pending不得停用loaded範圍內的pan／zoom／preset；boundary remote intent仍須通過prepared-row barrier與latest-wins queue。
 3. Loaded bars不超過maximum時，View All SHALL立即把selection填滿overview；overview SHALL以canonical event time呈現adaptive date/time axis。
+
+## 2026-10-01 Navigator overview integrity
+
+1. Navigator SHALL以最多280個連續bucket涵蓋完整accepted overview sequence；OHLC bucket使用first open／max high／min low／last close，不得用uniform point-drop遺失中間extrema。
+2. OC／scalar observation SHALL維持body-only；Renderer不得從open/close虛構high/low。任一bucket含非authoritative wick時，該bucket不得畫wick。
+3. Handle／selection／active-drag cursor SHALL分別為`ew-resize`／`grab`／`grabbing`；pointermove只更新rAF local draft，pointerup最多送一次typed viewport action。
+4. Loaded Start／Latest SHALL以current loaded coverage計算exact head／tail ordinal window，並重用既有visible-range action；不得新增第二套wire或繞過maximum clamp。

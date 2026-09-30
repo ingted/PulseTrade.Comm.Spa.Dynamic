@@ -750,3 +750,9 @@ Outer `ta-row-toggles` 使用column layout；line固定高度／`overflow:hidden
 ### Navigator local-first state flow
 
 `pointermove -> pendingDraft <- latest -> requestAnimationFrame -> draftWindow`；`pointerup`直接讀`pendingDraft |> fallback draftWindow |> fallback committed`，清理capture後只提交一次。Preset／pan先寫`uiState`，再以nested animation frame把相同chart fields交給`chartUiState`；非chart feedback更新不得取消pending viewport render。`viewportDataReady`在full preparation開始時false、accepted prepared data完成後true，後續單純row remount不歸零；`preparedRowsReady`仍在每次chart mount前false並於所有authored rows完成後true。Overview time axis使用overview reference timeline與page display-time formatter。
+
+### Navigator overview compaction and loaded edges
+
+`overviewPointsForCoverage`保留`High/Low option`與source range；OC／scalar為`None`。`compactOverviewCandles maximum`把ordered source切成contiguous ranges，輸出first open、last close、volume sum；只有range內全部point都有wick時才輸出max high/min low。SVG Y-domain對body-only使用open/close，wick path只讀`Some high, Some low`。
+
+`tryLoadedCoverageEdgeIntent Start|End requested maximum projection`先驗loaded/maximum，再回既有`TaCoverageWindowIntent`。Start固定`0..count`，End固定`loaded-count..loaded`；controls共用既有`applyLoadedCoverageIntent`，因此local state、prepared-row barrier與remote latest-wins沒有分叉。
