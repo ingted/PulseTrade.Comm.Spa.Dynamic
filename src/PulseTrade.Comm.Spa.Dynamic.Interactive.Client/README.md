@@ -105,3 +105,5 @@ RFC-0032最新candidate Interactive.Client `0.1.95`，exact依賴Contracts `[0.1
 Current owner candidate Interactive.Client `0.1.112` exact依賴Contracts `[0.1.35]`與Renderer `[0.1.121]`，帶入loaded-domain View All及既有local-first navigator修正。bundle manifest須為`.112`；official readback與真SPAA pending。
 
 Interactive.Client `0.1.113`收緊adjacent cache `KnownEmpty` authority：loaded domain在方向上仍有target ordinal時，無hit必須回`Miss`讓provider處理；只有無target ordinal且empty span緊貼active boundary才可KnownEmpty。`.112`是已push但不得交consumer的中間版本；final graph使用`.113`，unit、persistent IndexedDB reload Playwright與package verifier均通過。
+
+Official `0.1.113`已由NuGet.org讀回：repository commit=`1cee2206db26c4cb85f9b38a7036f23b61f2d540`、SHA-256=`7594E172BF9E8F50B601419FA85CDB21EB7FE7C3A3D8A4AE40954E0B3ACF2DEF`、repository signature有效，exact依賴Contracts `[0.1.35]`與Renderer `[0.1.121]`，manifest=`0.1.113`，排除`.signature.p7s`後與owner local package逐entry相同。

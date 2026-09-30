@@ -1959,3 +1959,8 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - `BrowserRuntimeCache.selectAdjacent`改為先判direction target ordinal；domain內仍有target時回Miss，只有沒有target且零長segment緊貼active boundary時才KnownEmpty。Public API／wire不變。
 - 舊`.112` unit穩定RED；`.113` unit `15/15`、IndexedDB seed→reload→Later read=`MISS`、large cache既有gate及package verifierPASS。`.112`雖已push但標為中間版本，final consumer graph改用Interactive.Client `.113`。
 - Package version：`PulseTrade.Comm.Spa.Dynamic.Interactive.Client 0.1.113`（前版`0.1.112`）；原因為adjacent cache KnownEmpty authority correction，exact依賴維持Contracts `[0.1.35]`與Renderer `[0.1.121]`。
+
+## 2026-09-30 - Navigator responsiveness official immutable handoff
+
+- Final graph為Contracts `0.1.35`、Renderer `0.1.121`、Interactive.Client `0.1.113`、Dynamic.Ptcs `0.1.56`、Ptcs.Client `0.1.121`。Renderer／Ptcs.Client source commit=`c2510e71e8b517bb203efa7ea3e34d42c78ce901`；Interactive.Client source commit=`1cee2206db26c4cb85f9b38a7036f23b61f2d540`。
+- NuGet.org official SHA-256為Renderer `06C1D94A3906AFB725E0AD029A2381E78355296C90715AF8E2407A03B52A5CE9`、Interactive.Client `7594E172BF9E8F50B601419FA85CDB21EB7FE7C3A3D8A4AE40954E0B3ACF2DEF`、Ptcs.Client `D7D7767B8EB811AA9F7404CB137349D9485F938B2A8274D2D93DA2F2E470B674`。三包repository signatures、exact dependencies、provenance與排除`.signature.p7s`後entry parity通過；Interactive manifest=`0.1.113`。真SPAA gate交由Daedalus完成。
