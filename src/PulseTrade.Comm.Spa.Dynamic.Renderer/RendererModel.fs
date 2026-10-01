@@ -2085,6 +2085,18 @@ module RendererModel =
         let next = previewWindow total window candidateStart
         next.StartIndex = viewportMaximumStart total next, next
 
+    let releaseNavigatorDraft committed preferPendingBoundary renderedDraft publishedDraft pendingDraft =
+        if preferPendingBoundary then
+            pendingDraft
+            |> Option.orElse renderedDraft
+            |> Option.orElse publishedDraft
+            |> Option.defaultValue committed
+        else
+            renderedDraft
+            |> Option.orElse publishedDraft
+            |> Option.orElse pendingDraft
+            |> Option.defaultValue committed
+
     let previewWindowBounds minimumCount maximumCount total committed drag delta =
         let committed = clampWindow minimumCount maximumCount total committed
 

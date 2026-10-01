@@ -2006,3 +2006,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `f27b43bc634e7458bb2818b76ae0475b78268db0`已push；official graph為Renderer `0.1.127`、Interactive.Client `0.1.119`、Ptcs.Client `0.1.128`，兩client exact依Renderer `[0.1.127]`。
 - NuGet.org official SHA-256依序為`CFA4B9C843AC459A312380B8981FA5E8F73CD118F850B90BBE33D232D4B88DC8`、`D705CA283E4C022CF3D6A0BB0AE661D7E795089272E2309E68921C268E7A7522`、`C41669E240827E660E6C05DC90A526E8196176F8D925D4774F885E30EA586E72`。
 - 三包repository signatures、repository commit、exact dependencies與Interactive manifest `0.1.119`正確；排除`.signature.p7s`後local／official entries=`7/10/7`且differences皆0。NuGet.org-only fresh-cache suites=`64/15/17`。Owner／release gates完成，Daedalus真SPAA 900/200 consumer gate待完成。
+
+## 2026-10-01 - Navigator rendered-preview release receipt candidate
+
+- Daedalus真SPAA exact equality gate在official `.127/.119/.128`穩定重現Preview start=`678`、wire/final start=`676`；BrowserDemo 900/200 deterministic fixture亦以Preview=`677`、wire ordinal=`674`重現。根因是WebSharper reactive `Var`可先於可見DOM前進，pointerup讀published state仍可能提交人類尚未看到的下一sample。
+- Renderer以viewport range `afterRender`保存exact visible receipt；普通release優先該receipt，只有pointer明確跨出loaded boundary時才優先final clamped pending intent。Wire、consumer contract、pointermove zero-action與pointerup single-action不變。
+- Local candidate graph為Renderer `0.1.130`、Interactive.Client `0.1.122`、Ptcs.Client `0.1.131`。Focused suites=`65/15/17`；exact parity、pending/resync/iframe及完整F# Playwright全綠，正式phase無>100ms task。Playwright MCP因`G:`零可用空間回`ENOSPC`，不列PASS；official push/readback與真SPAA consumer gate待source commit後執行。

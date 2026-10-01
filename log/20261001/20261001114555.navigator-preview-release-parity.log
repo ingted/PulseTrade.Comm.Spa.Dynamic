@@ -1,0 +1,27 @@
+# Navigator preview/release parity
+
+## Pre-work plan
+
+- 背景：Daedalus 真 SPAA 900/200 gate 在 official graph Renderer `0.1.127` / Interactive.Client `0.1.119` / Ptcs.Client `0.1.128` 重現固定 2-bar 差異：local preview `678-877/900`，release wire ordinal `675` 對應 authoritative `676-875/900`。
+- 目標：讓 local rAF preview、pointerup release target、authoritative final 使用同一個 frozen gesture target，逐 bar 完全一致。
+- 假設：WebSharper reactive draft state可早於browser paint前進，pointerup若讀到未顯示sample便會使Preview與wire/final固定偏移；以render lifecycle保存可見receipt可區分並修正此race。
+- 不得改變：pointermove 不送 remote action；pointerup 最多送一次 action；target 在 active detail 外仍走既有 typed coverage intent；不放寬 consumer equality；不修改 `G:/PulseTrade.fs/Libs/PulseTrade.Comm/doc.20261001`。
+- 範圍：`src/PulseTrade.Comm.Spa.Dynamic.Renderer`、renderer focused tests、browser verifier與對應 current docs/version graph。
+- 驗收：900/200 retained-domain drag 的 preview start/count 等於 release wire start/count；authoritative final 一致；既有 latency、single-action、pending/resync gates 全綠。
+- 風險：pointerup 重新讀座標或不同 round/quantization 產生 drift；queued release 若未保存最新 draft target可能 rebase 成另一窗口。
+- 停止條件：根因未能由 focused deterministic regression 區分，或修正需要改 public contract／consumer authority。
+
+## Operations
+
+- 2026-10-01 11:45 +08:00：確認 branch `20260915_033.ptcs_group_support` 與 origin 同步；來源碼 clean，僅既有 `.pcsl/nuget-rfc0034*` cache untracked。
+- 2026-10-01 11:45 +08:00：COMM bounded read 追到 Daedalus 最新 deterministic mismatch；已 direct ACK，active 討論收訊間隔改為 5 分鐘。
+- 2026-10-01 11:58 +08:00：新增900/200 BrowserDemo deterministic fixture與F# Playwright verifier；舊graph穩定RED為Preview `677`、wire ordinal `674`。
+- 2026-10-01 12:02 +08:00：第一版published-before-pending仍RED，bundle確認含新helper；釐清reactive Var早於可見DOM，不是stale package或單純option順序。
+- 2026-10-01 12:06 +08:00：改以viewport range `afterRender` exact receipt作普通release authority；focused parity轉綠為Preview `677`／wire ordinal `676`／count `200`。
+- 2026-10-01 12:10 +08:00：完整gate驗出pending boundary落到37而非1；補明確跨loaded boundary時final clamped pending intent優先，普通drag仍採rendered receipt。
+- 2026-10-01 12:14 +08:00：focused parity、pending/resync/iframe五情境通過。Renderer／Interactive／Ptcs.Client suites=`65/15/17`；Interactive package verifierPASS。
+- 2026-10-01 12:18 +08:00：完整browser gate第一次在既有rapid 200→All 750ms gate偶發1256.92ms，正式phases無>100ms；同artifact立即重跑PASS，正式five-candle/scenario/All/marker/document/progressive phases仍無>100ms。
+- 2026-10-01 12:20 +08:00：Playwright MCP因`G:` free bytes=0回`ENOSPC`；不宣稱MCP PASS。Repo純F# Playwright真Chromium操作與截圖已完成。
+- 2026-10-01 12:34 +08:00：確認source工作樹僅包含本切片的renderer、exact package graph、focused tests、browser verifier與RFC/current-state文件；`.pcsl/nuget-rfc0034*`為本機cache，排除提交與發布。
+- 2026-10-01 12:36 +08:00：發布目標鎖定Renderer `0.1.130`、Interactive.Client `0.1.122`、Ptcs.Client `0.1.131`；先source commit，再從該commit重建、push與NuGet.org immutable readback，先前未提交candidate不發布。
+- 2026-10-01 12:39 +08:00：changed-path strict UTF-8與sensitive scan通過（High=0／Medium=0）；root checker首次套用本repo路徑為FAIL=0，並指出pre-work log缺顯式「假設」欄位，已補入本段上方。其餘WARN為預期dirty與既有RFC追溯缺口。

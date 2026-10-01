@@ -381,6 +381,29 @@ let tests =
             Expect.equal committedAtTail committed "tail release clamps to the maximum start"
             Expect.isTrue followLatestAtTail "tail release restores follow-latest mode"
 
+        testCase "navigator release commits the last published preview instead of an unpainted pending frame" <| fun _ ->
+            let committed = { StartIndex = 700; Count = 200 }
+            let published = { StartIndex = 676; Count = 200 }
+            let pending = { StartIndex = 674; Count = 200 }
+
+            Expect.equal
+                (RendererModel.releaseNavigatorDraft committed false (Some published) (Some pending) (Some pending))
+                published
+                "pointerup must commit exactly the draft the user can see"
+            Expect.equal
+                (RendererModel.releaseNavigatorDraft committed false None None (Some pending))
+                pending
+                "a pointer gesture completed before its first paint may still use its only candidate"
+            Expect.equal
+                (RendererModel.releaseNavigatorDraft committed false None None None)
+                committed
+                "a gesture without movement preserves the committed window"
+
+            Expect.equal
+                (RendererModel.releaseNavigatorDraft committed true (Some published) (Some published) (Some { StartIndex = 0; Count = 200 }))
+                { StartIndex = 0; Count = 200 }
+                "an explicit loaded-boundary crossing must preserve its final clamped intent"
+
         testCase "dual-bound navigator previews move and both resize handles" <| fun _ ->
             let committed = { StartIndex = 1952; Count = 48 }
             let moved = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.Move -952

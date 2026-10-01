@@ -237,6 +237,8 @@ Local viewport presentation、remote action serialization與chart row mount是�
 
 Loaded coverage存在時，navigator gesture的唯一座標系是完整observation domain；active detail只負責判斷release能否local commit。跨active-detail的draft保存global start/count，queue不保存已序列化action，避免pending action改變coverage revision後送出stale intent。flush以最新projection重建相同global target；若target已不在新domain則明確拒絕，不以clamp改成其他window。
 
+Reactive state publication與browser可見DOM不是同一個時間點。普通pointerup須以WebSharper `afterRender`回報的exact preview window作release receipt，不能直接採用已進`Var`但尚未呈現的下一個sample；否則Preview與wire/final會固定偏移數根K棒。唯一例外是pointer已明確越過loaded domain boundary，此時final clamped pending window代表人類的邊界意圖，須優先於中途rendered receipt。兩條路徑仍共用同一typed coverage intent與single-action限制。
+
 ## Navigator overview integrity
 
 Overview visual reduction是Renderer presentation責任，不是consumer summary authority。輸入仍是accepted ordered anchors；Renderer以連續bucket單次掃描保留coverage與extrema，輸出bounded geometry。這比uniform point-drop多保存一個source range，但避免短暫高低點被取樣掉。OHLC／OC authority不可混淆：只有整個bucket都有authoritative high/low才畫wick，否則只畫body。

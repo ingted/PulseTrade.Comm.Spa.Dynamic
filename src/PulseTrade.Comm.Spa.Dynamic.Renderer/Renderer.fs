@@ -2006,6 +2006,7 @@ module TaWorkspaceRenderer =
         let addSlowPeriod = Var.Create "26"
         let addSignalPeriod = Var.Create "9"
         let draftWindow = Var.Create<TaVisibleWindow option> None
+        let mutable renderedNavigatorDraft: TaVisibleWindow option = None
         let mutable addRowSequence = 0
         let mutable pendingAddRowId: string option = None
         let mutable editingRowId: string option = None
@@ -2827,6 +2828,7 @@ module TaWorkspaceRenderer =
                         |> Option.defaultValue (localTotal, localCommitted)
                     let pointerX = float event.ClientX - bounds.Left
                     let ratios = navigatorRatios localCommitted
+                    renderedNavigatorDraft <- None
                     draftWindow.Value <- None
                     setDragDiagnostic "data-drag-domain" (if loadedDragDomain.IsSome then "global-loaded" else "active-detail")
                     setDragDiagnostic "data-drag-domain-count" (string total)
@@ -2892,7 +2894,16 @@ module TaWorkspaceRenderer =
                                 finished <- true
                                 finishNavigatorDrag <- None
                                 activeNavigatorCursor <- None
-                                let draft = pendingDraft |> Option.orElse draftWindow.Value |> Option.defaultValue committed
+                                let preferPendingBoundary =
+                                    loadedDragDomain.IsSome
+                                    && (RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta |> Option.isSome)
+                                let draft =
+                                    RendererModel.releaseNavigatorDraft
+                                        committed
+                                        preferPendingBoundary
+                                        renderedNavigatorDraft
+                                        draftWindow.Value
+                                        pendingDraft
                                 let requestedStart = committed.StartIndex + latestRawDelta
                                 setDragDiagnostic "data-drag-committed-start" (string committed.StartIndex)
                                 setDragDiagnostic "data-drag-draft-start" (string draft.StartIndex)
@@ -3783,10 +3794,16 @@ module TaWorkspaceRenderer =
                             match draft with
                             | None -> rangeText "Viewing" globalCurrentWindow
                             | Some preview ->
-                                rangeText "Preview" preview + " · release to render")
+                                rangeText "Preview" preview + " · release to render"
+                            |> fun value ->
+                                span [
+                                    Attr.Create "data-rendered-preview-start" (draft |> Option.map _.StartIndex |> Option.map string |> Option.defaultValue "")
+                                    Attr.Create "data-rendered-preview-count" (draft |> Option.map _.Count |> Option.map string |> Option.defaultValue "")
+                                    on.afterRender (fun _ -> renderedNavigatorDraft <- draft)
+                                ] [ text value ] :> Doc)
                         currentViewport
                         draftWindow.View
-                    |> textView
+                    |> Doc.EmbedView
                 ]
                 currentViewport
                 |> View.Map (fun (_, maximumVisibleBars, loadedObservationCount, _) ->

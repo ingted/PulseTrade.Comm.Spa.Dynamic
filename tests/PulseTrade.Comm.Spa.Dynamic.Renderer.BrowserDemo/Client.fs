@@ -730,6 +730,8 @@ module Client =
         let displayTimeZone = Var.Create SduiDisplayTimeZone.Utc
         let actionCount = Var.Create 0
         let lastAction = Var.Create "none"
+        let lastCoverageStart = Var.Create ""
+        let lastCoverageCount = Var.Create 0
         let rejectNext = Var.Create false
         let refreshCoverageOnNextVisibleRange = Var.Create false
         let modelPollInFlight = Var.Create false
@@ -937,6 +939,17 @@ module Client =
                             actionInFlight <- true
                             let submittedGeneration = authoritativeGeneration
                             try
+                                match request.Action with
+                                | SduiAction.VisibleRangeChanged(_, change) ->
+                                    match change.CoverageIntent with
+                                    | Some intent ->
+                                        lastCoverageStart.Value <- intent.StartObservationOrdinal |> Option.map string |> Option.defaultValue ""
+                                        lastCoverageCount.Value <- intent.ObservationCount
+                                    | None ->
+                                        lastCoverageStart.Value <- ""
+                                        lastCoverageCount.Value <- 0
+                                | _ -> ()
+
                                 if modelPollInFlight.Value then
                                     runtimeState.Value <- { runtimeState.Value with Poll = RuntimePollState.PollInFlight }
 
@@ -995,6 +1008,34 @@ module Client =
                                         |> TaLoadedCoverageCodec.applyDataRef coverageProjectionDataRef }
                         Data =
                             coverageFixtureData 250 250
+                            |> Map.add coverageProjectionDataRef (TaLoadedCoverageCodec.encode projection)
+                        DocumentRevision = current.DocumentRevision + 1L
+                        DataRevision = current.DataRevision + 1L
+                        LastTransportSequence = current.LastTransportSequence + 1L }
+            | None -> ()
+
+        let loadCoverageParityFixture () =
+            let current = runtimeState.Value
+            match current.Document with
+            | Some document ->
+                authoritativeGeneration <- authoritativeGeneration + 1L
+                let totalCount = 900
+                let startIndex = 700
+                let count = 200
+                let projection =
+                    { coverageProjectionFor totalCount 1L 1L startIndex count with
+                        CoverageIdentity = "browser-demo:preview-release-parity" }
+                runtimeState.Value <-
+                    { current with
+                        Document =
+                            Some
+                                { document with
+                                    DefaultView =
+                                        document.DefaultView
+                                        |> TaLoadedCoverageCodec.applyMaximumVisibleBars count
+                                        |> TaLoadedCoverageCodec.applyDataRef coverageProjectionDataRef }
+                        Data =
+                            coverageFixtureDataFor totalCount startIndex count
                             |> Map.add coverageProjectionDataRef (TaLoadedCoverageCodec.encode projection)
                         DocumentRevision = current.DocumentRevision + 1L
                         DataRevision = current.DataRevision + 1L
@@ -1322,6 +1363,8 @@ module Client =
                 Attr.Create "data-testid" "ta-demo-callback-state"
                 Attr.Dynamic "data-callback-count" (actionCount.View |> View.Map string)
                 Attr.Dynamic "data-last-action" lastAction.View
+                Attr.Dynamic "data-last-coverage-start" lastCoverageStart.View
+                Attr.Dynamic "data-last-coverage-count" (lastCoverageCount.View |> View.Map string)
                 Attr.Dynamic "data-runtime-axis-count" (runtimeState.View |> View.Map (pointCount "axis.1k" >> string))
                 Attr.Dynamic "data-runtime-price-count" (runtimeState.View |> View.Map (pointCount "series.price" >> string))
                 attr.style "min-height:32px; height:auto; display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:flex-end; padding:4px 12px; background:#182a42; color:#d9e5f3; font-size:11px;"
@@ -1357,6 +1400,7 @@ module Client =
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-clear-overview-stripes"; on.click (fun _ _ -> clearOverviewStripes ()) ] [ text "Clear stripes" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-populate-overview-stripes"; on.click (fun _ _ -> populateOverviewStripes ()) ] [ text "Populate stripes" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-loaded-coverage"; on.click (fun _ _ -> loadCoverageFixture ()) ] [ text "Loaded coverage" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-loaded-coverage-parity"; on.click (fun _ _ -> loadCoverageParityFixture ()) ] [ text "Loaded coverage parity" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-loaded-coverage-view-all"; on.click (fun _ _ -> loadCoverageViewAllFixture ()) ] [ text "Loaded coverage View All" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-refresh-coverage-next-visible-range"; on.click (fun _ _ -> refreshCoverageOnNextVisibleRange.Value <- true) ] [ text "Refresh coverage on next range" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-reject-next"; on.click (fun _ _ -> rejectNext.Value <- true) ] [ text "Reject next" ]
