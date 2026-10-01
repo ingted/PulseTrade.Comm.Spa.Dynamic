@@ -4,7 +4,6 @@
 
 - 背景：Daedalus 真 SPAA 900/200 gate 在 official graph Renderer `0.1.127` / Interactive.Client `0.1.119` / Ptcs.Client `0.1.128` 重現固定 2-bar 差異：local preview `678-877/900`，release wire ordinal `675` 對應 authoritative `676-875/900`。
 - 目標：讓 local rAF preview、pointerup release target、authoritative final 使用同一個 frozen gesture target，逐 bar 完全一致。
-- 假設：WebSharper reactive draft state可早於browser paint前進，pointerup若讀到未顯示sample便會使Preview與wire/final固定偏移；以render lifecycle保存可見receipt可區分並修正此race。
 - 不得改變：pointermove 不送 remote action；pointerup 最多送一次 action；target 在 active detail 外仍走既有 typed coverage intent；不放寬 consumer equality；不修改 `G:/PulseTrade.fs/Libs/PulseTrade.Comm/doc.20261001`。
 - 範圍：`src/PulseTrade.Comm.Spa.Dynamic.Renderer`、renderer focused tests、browser verifier與對應 current docs/version graph。
 - 驗收：900/200 retained-domain drag 的 preview start/count 等於 release wire start/count；authoritative final 一致；既有 latency、single-action、pending/resync gates 全綠。
@@ -24,9 +23,10 @@
 - 2026-10-01 12:20 +08:00：Playwright MCP因`G:` free bytes=0回`ENOSPC`；不宣稱MCP PASS。Repo純F# Playwright真Chromium操作與截圖已完成。
 - 2026-10-01 12:34 +08:00：確認source工作樹僅包含本切片的renderer、exact package graph、focused tests、browser verifier與RFC/current-state文件；`.pcsl/nuget-rfc0034*`為本機cache，排除提交與發布。
 - 2026-10-01 12:36 +08:00：發布目標鎖定Renderer `0.1.130`、Interactive.Client `0.1.122`、Ptcs.Client `0.1.131`；先source commit，再從該commit重建、push與NuGet.org immutable readback，先前未提交candidate不發布。
-- 2026-10-01 12:39 +08:00：changed-path strict UTF-8與sensitive scan通過（High=0／Medium=0）；root checker首次套用本repo路徑為FAIL=0，並指出pre-work log缺顯式「假設」欄位，已補入本段上方。其餘WARN為預期dirty與既有RFC追溯缺口。
+- 2026-10-01 12:39 +08:00：changed-path strict UTF-8與sensitive scan通過（High=0／Medium=0）；root checker首次套用本repo路徑為FAIL=0，並指出pre-work log缺顯式「假設」欄位。Correction：不回寫plan；本輪假設為WebSharper reactive draft state可早於browser paint前進，pointerup若讀到未顯示sample便會使Preview與wire/final固定偏移，以render lifecycle保存可見receipt可區分並修正此race。其餘WARN為預期dirty與既有RFC追溯缺口。
 - 2026-10-01 12:42 +08:00：source commit `510345f`已push。Renderer `0.1.130`首次PostBuild push被NuGet.org接受後，本機nuspec回讀發現增量Pack仍帶baseline repository commit `667e963`；立即停止Interactive/Ptcs兩包發布，retire `.130`，correction graph升為`.131/.123/.132`並要求commit後clean rebuild。
 - 2026-10-01 12:44 +08:00：correction source commit `4812e6e`後clean build；三包push前本機nuspec均指向該commit。NuGet.org已接受`.131/.123/.132`，official signatures、exact dependencies、Interactive manifest、entry parity及fresh-cache suites=`65/15/17`均PASS。
 - 2026-10-01 12:45 +08:00：final BrowserDemo首次focused parity gate在沒有250ms settle的情況抓到第一個intermediate Preview `677`，之後pointer steps/rAF仍前進至wire ordinal `674`；這不符合RFC驗收採樣時點。Verifier補成move後等待250ms再讀最後可見Preview並release，避免把第一個intermediate frame誤判為release當下畫面。
 - 2026-10-01 12:46 +08:00：official graph focused parity PASS（Preview=`675`／wire ordinal=`674`／count=`200`）；pending/resync/iframe五情境與完整browser gate PASS，正式phases over100=0。COMM direct handoff兩次因GW `task-store-pcsl-save-failed`未送達，package graph本身不受影響；須以可用通道通知Daedalus。
 - 2026-10-01 12:49 +08:00：pre-commit checker為FAIL=1，唯一finding是本active task log在先前source commit後繼續append，被`log_readonly_modify`視為歷史修改；內容實際為§6要求的同一task Operations追加，無覆寫歷史。將本release evidence commit後再跑post-commit checker，僅後者PASS才closeout。
+- 2026-10-01 13:17 +08:00：由session transcript還原首次checker snapshot，確認12:39曾把假設插回plan而非append；已移除該回寫並改成Operations Correction。原snapshot UTF-8 LF prefix size=`3406`、SHA=`c0dd0dfe...c91723`精確恢復；post-correction checker=`PASS 38 / WARN 6 / FAIL 0`，`active_log_append_only`通過。
