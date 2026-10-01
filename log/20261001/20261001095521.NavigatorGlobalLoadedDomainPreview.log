@@ -66,3 +66,11 @@ Daedalus true-SPAA acceptance found a remaining RFC-0034 defect: loaded coverage
 - Versions advanced to a fresh exact graph to avoid stale local NuGet cache: Renderer `0.1.127`, Interactive.Client `0.1.119`, Ptcs.Client `0.1.128`.
 - Final local verification passed: focused `64/15/17`; Interactive package verifier; complete Renderer F# Playwright with formal phases over100=`0`; pending/resync/iframe five scenarios with callback counts `0->2 / 0->1 / 0->2 / 0->1 / 0->1`; Playwright MCP loaded fixture `500`, visible `251-500`, console error=`0`.
 - Visual evidence: `artifacts/ta-renderer-playwright-mcp/final-global-loaded-domain.png`. BrowserDemo remains test-only and will be stopped after closeout.
+
+### 2026-10-01 10:59 +08:00
+
+- Source provenance commit `f27b43bc634e7458bb2818b76ae0475b78268db0` committed and pushed before package publication.
+- Official packages pushed and downloaded from NuGet.org: Renderer `0.1.127`, Interactive.Client `0.1.119`, Ptcs.Client `0.1.128`.
+- Official SHA-256: Renderer `CFA4B9C843AC459A312380B8981FA5E8F73CD118F850B90BBE33D232D4B88DC8`; Interactive.Client `D705CA283E4C022CF3D6A0BB0AE661D7E795089272E2309E68921C268E7A7522`; Ptcs.Client `C41669E240827E660E6C05DC90A526E8196176F8D925D4774F885E30EA586E72`.
+- Repository signatures, source commit, exact dependencies, Interactive manifest `0.1.119`, and local/official entry parity `7/10/7` with zero differences passed.
+- NuGet.org-only independent caches restored and executed focused suites `64/15/17`, all passed. Remaining gate is Daedalus true-SPAA 900/200 consumer acceptance.

@@ -2000,3 +2000,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - 前一candidate在final browser gate重現global draft latency `283.08ms`，超過`<=250ms`契約。根因是pointermove每一步仍同步改寫navigator與chart-stack diagnostics；draft本身雖已rAF合併，diagnostics未合併。
 - Renderer把draft與diagnostics收斂到同一local rAF，pointermove不dispatch callback、不重建chart rows。為避免本機NuGet cache誤吃已建過的candidate，final graph順延為Renderer `0.1.127`、Interactive.Client `0.1.119`、Ptcs.Client `0.1.128`。
 - Final owner gates：focused=`64/15/17`；完整Renderer Playwright、pending/resync/iframe五情境、Interactive package verifier與Playwright MCP loaded fixture均PASS；正式phase over100=`0`、console error=`0`。Source provenance commit、official push/readback與Daedalus真SPAA仍待完成。
+
+## 2026-10-01 - Global loaded-domain navigator official immutable handoff
+
+- Source commit `f27b43bc634e7458bb2818b76ae0475b78268db0`已push；official graph為Renderer `0.1.127`、Interactive.Client `0.1.119`、Ptcs.Client `0.1.128`，兩client exact依Renderer `[0.1.127]`。
+- NuGet.org official SHA-256依序為`CFA4B9C843AC459A312380B8981FA5E8F73CD118F850B90BBE33D232D4B88DC8`、`D705CA283E4C022CF3D6A0BB0AE661D7E795089272E2309E68921C268E7A7522`、`C41669E240827E660E6C05DC90A526E8196176F8D925D4774F885E30EA586E72`。
+- 三包repository signatures、repository commit、exact dependencies與Interactive manifest `0.1.119`正確；排除`.signature.p7s`後local／official entries=`7/10/7`且differences皆0。NuGet.org-only fresh-cache suites=`64/15/17`。Owner／release gates完成，Daedalus真SPAA 900/200 consumer gate待完成。

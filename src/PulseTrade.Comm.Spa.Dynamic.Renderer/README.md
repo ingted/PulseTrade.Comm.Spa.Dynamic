@@ -85,4 +85,4 @@ RFC-0019/0020之後，每列依自身event-time與plot width產生adaptive axis�
 
 RFC-0032 owner candidate Renderer `0.1.121`：View All以`min(loaded observation domain, MaximumVisibleBars)`決定target；超出active detail時送既有versioned ordinal coverage intent，authoritative replacement後才commit，不再把current mount長度當loaded truth。Exact candidate graph為Contracts `[0.1.35]`、Renderer `.121`、Interactive.Client `.112`、Dynamic.Ptcs `.56`、Ptcs.Client `.121`；owner focused與完整Playwright全綠，official readback／真SPAA pending。
 
-RFC-0034 correction candidate Renderer `0.1.127`：global loaded-domain drag與selection共用同一ordinal scale；int64 release target在pending/resync後會以最新projection重建typed intent；pointermove draft與diagnostics由同一local rAF合併。Owner focused/browser/MCP gates PASS，official release與真SPAA 900/200 consumer gate pending。
+RFC-0034 correction Renderer `0.1.127`：global loaded-domain drag與selection共用同一ordinal scale；int64 release target在pending/resync後會以最新projection重建typed intent；pointermove draft與diagnostics由同一local rAF合併。Official signature／exact dependency／fresh-cache及owner browser gates PASS；真SPAA 900/200 consumer gate pending。
