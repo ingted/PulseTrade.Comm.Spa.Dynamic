@@ -629,6 +629,66 @@ let tests =
                 (Some 999_952L, Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later)
                 "The typed end-edge intent targets the loaded tail."
 
+        testCase "navigator drag previews and commits in the global loaded domain" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:global-drag"
+                  CoverageRevision = 17L
+                  QueryGeneration = 23L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 900L
+                  Segments =
+                    [| { SegmentId = "loaded"
+                         StartEventTimeUtc = "2026-09-01T00:00:00Z"
+                         EndEventTimeExclusiveUtc = "2026-10-01T00:00:00Z"
+                         StartObservationOrdinal = 0L
+                         ObservationCount = 900L } |]
+                  OverviewAxisRef = "axis.overview"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 700L
+                      ObservationCount = 200
+                      BaseAxisRef = "axis.detail" } }
+
+            let _, globalCount, committed =
+                RendererModel.coverageNavigatorWindow 200 { StartIndex = 0; Count = 200 } projection
+                |> Option.defaultWith (fun () -> failtest "A valid projection must establish the drag domain.")
+            let draft =
+                RendererModel.previewWindowBounds 12 4000 globalCount committed TaWindowDrag.Move -26
+
+            Expect.equal globalCount 900 "Pointer delta must be scaled by the complete loaded observation domain."
+            Expect.equal committed { StartIndex = 700; Count = 200 } "The active page window must project to global ordinals before dragging."
+            Expect.equal draft { StartIndex = 674; Count = 200 } "The local draft must move immediately across the active-page boundary."
+            Expect.isNone
+                (RendererModel.tryLocalWindowForLoadedCoverage 200 projection draft)
+                "A draft crossing the active page must not be silently clamped into a different local window."
+
+            match RendererModel.tryLoadedCoverageWindowIntent projection draft with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some 674L) "Release must preserve the drafted global start ordinal."
+                Expect.equal intent.ObservationCount 200 "Release must preserve the drafted width."
+                Expect.equal intent.ExpectedCoverageRevision (Some 17L) "Release remains revision guarded."
+                Expect.equal intent.QueryGeneration 24L "Release advances the query generation exactly once."
+            | None -> failtest "A bounded global draft must produce the existing typed coverage intent."
+
+            let localDraft = { StartIndex = 725; Count = 48 }
+            Expect.equal
+                (RendererModel.tryLocalWindowForLoadedCoverage 200 projection localDraft)
+                (Some { StartIndex = 25; Count = 48 })
+                "A global draft fully contained by active detail maps back to one local window."
+
+            let largeDomainCount = int64 Int32.MaxValue + 10_000L
+            let largeProjection =
+                { projection with
+                    TotalObservationCount = Some largeDomainCount
+                    Segments =
+                        [| { projection.Segments[0] with
+                               ObservationCount = largeDomainCount } |] }
+            let largeStart = int64 Int32.MaxValue + 1_000L
+            match RendererModel.tryLoadedCoverageWindowIntentAt largeProjection largeStart 48 with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some largeStart) "Loaded edge targets must retain int64 ordinals."
+            | None -> failtest "A valid int64 loaded ordinal must not be narrowed to an Int32 window."
+
         testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
             let ratios = 0.2, 0.4
             let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer

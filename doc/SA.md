@@ -235,6 +235,8 @@ Contracts擁有唯一packet schema/encoder；Interactive.Client擁有generation-
 
 Local viewport presentation、remote action serialization與chart row mount是三個不同生命週期。把三者共用`PendingActionId`或`preparedRowsReady`會讓server round-trip與DOM重掛阻塞本地操作；反之完全移除barrier會容許舊row geometry產生錯誤boundary request。故local toolbar以accepted data readiness為authority，boundary／drag仍驗current-generation prepared rows，remote只維持single in-flight＋latest queued intent。Chart rebuild延後一個paint，stable shell與overview geometry先回應人類操作。
 
+Loaded coverage存在時，navigator gesture的唯一座標系是完整observation domain；active detail只負責判斷release能否local commit。跨active-detail的draft保存global start/count，queue不保存已序列化action，避免pending action改變coverage revision後送出stale intent。flush以最新projection重建相同global target；若target已不在新domain則明確拒絕，不以clamp改成其他window。
+
 ## Navigator overview integrity
 
 Overview visual reduction是Renderer presentation責任，不是consumer summary authority。輸入仍是accepted ordered anchors；Renderer以連續bucket單次掃描保留coverage與extrema，輸出bounded geometry。這比uniform point-drop多保存一個source range，但避免短暫高低點被取樣掉。OHLC／OC authority不可混淆：只有整個bucket都有authoritative high/low才畫wick，否則只畫body。

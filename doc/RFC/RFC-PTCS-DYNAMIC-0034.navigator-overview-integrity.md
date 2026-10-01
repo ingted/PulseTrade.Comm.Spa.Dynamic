@@ -78,3 +78,9 @@ or invalid loaded coverage yields no action.
 - NuGet.org SHA-256: Renderer `9CD49C793D5A5BA5B596A187859D695BC2484B16886B38404AD98D24CE8947D8`, Interactive.Client `628CCC9BB8E0005AA60DE5F18F3B4461ED872519DADEF0F75131EB42EDDAD761`, Ptcs.Client `B9ECA910CFD36EE7EC918EC46D1C59A706293F54AC2B8DD3526194AAFDF31D03`.
 - All three official packages have valid NuGet.org repository signatures, matching repository commits and exact dependencies. Excluding `.signature.p7s`, local and official package entries are byte-identical.
 - NuGet.org-only fresh-cache suites pass `63/63`, `15/15`, and `17/17`. Daedalus still owns the true SPAA consumer gate required for closure.
+
+## 2026-10-01 correction: one loaded-domain drag coordinate system
+
+True SPAA invalidated the release acceptance when loaded coverage had 900 observations and active detail had 200. The selection ratio used the loaded domain, while pointer delta and draft clamp used active-detail length. The renderer now freezes the complete loaded observation domain and global committed window for each gesture. Pointer movement updates only the global draft through the existing animation-frame path. Release maps a fully contained target back to local detail; any other valid target uses one existing `TaCoverageWindowIntent`.
+
+The latest-wins queue stores only int64 global start/count and reconstructs the typed intent from the current projection after an in-flight action settles. It no longer stores an action carrying stale coverage revision or query generation. Pointermove diagnostics and draft publication share one local rAF, avoiding synchronous DOM writes per input step. No wire schema or consumer-private navigator was added. Final owner candidate packages are Renderer `0.1.127`, Interactive.Client `0.1.119`, and Ptcs.Client `0.1.128`; owner focused/browser/MCP gates pass, while official release/readback and true-SPAA consumer acceptance remain pending.

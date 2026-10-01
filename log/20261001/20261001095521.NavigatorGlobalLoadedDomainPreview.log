@@ -1,0 +1,68 @@
+# Navigator global loaded-domain preview correction
+
+## Background
+
+Daedalus true-SPAA acceptance found a remaining RFC-0034 defect: loaded coverage has 900 observations while the active detail page has 200. The navigator selection is rendered against the 900-observation global domain, but a 40px interior drag is converted and clamped against the 200-observation active page. No local draft movement is visible within 250ms; pointer release then emits an Earlier request with `delta=-6`.
+
+## Goal
+
+- Use one global observation domain for navigator gesture geometry and local draft preview.
+- Keep pointer movement local, frame-bounded and free of remote callbacks.
+- On release, commit locally when the global draft remains inside active detail; otherwise emit one existing coverage-window intent for the drafted global start/count.
+- Preserve active chart rendering, latest-wins remote sequencing, pointer capture and existing wire contracts.
+
+## Scope / ownership
+
+- Canonical repo: `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`
+- Branch: `20260915_033.ptcs_group_support`
+- Owner modules: Renderer model, WebSharper renderer, focused/browser tests, RFC/current-state docs and exact renderer client package graph.
+- Do not modify TradeCore/SPAA provider logic or `G:\PulseTrade.fs\Libs\PulseTrade.Comm\doc.20261001`, which Baster owns concurrently.
+
+## Assumptions / 假設
+
+- Existing `ta-coverage-window.v1` can represent the drafted global ordinal/count without a wire change.
+- The active detail page remains the only chart-row working set; loaded coverage is navigator authority, not a request to render every loaded observation.
+
+## Planned steps / 計畫步驟
+
+1. Reproduce the mixed-domain behavior in pure model and BrowserDemo tests.
+2. Unify selection, pointer delta and draft in the loaded observation domain while keeping pointermove local-rAF only.
+3. Verify local commit, remote typed intent, pending/resync/iframe sequencing and performance.
+4. Rebuild the exact package graph, publish only after source provenance commit, perform official readback, then notify Daedalus.
+
+## Acceptance
+
+1. With global loaded count 900 and active detail `700+200`, an interior drag derives its delta from 900 and publishes a changed global draft by the next animation frame.
+2. The preview label and navigator selection show the same global draft; chart rows and remote callback count remain unchanged during pointer movement.
+3. Release inside active detail maps the global draft back to a local window and commits once.
+4. Release outside active detail emits exactly one existing typed coverage intent with the drafted global ordinal/count.
+5. Existing focused suites, full renderer browser/performance gates and exact package tests remain green.
+
+## Risk / stop condition
+
+- Converting a global draft back to local detail must reject partial/out-of-page windows rather than silently clamp to a different window.
+- If the existing `TaCoverageWindowIntent` cannot represent an arbitrary drafted global window, stop before changing the public wire contract and revise RFC/Contracts explicitly.
+
+## Operations
+
+### 2026-10-01 09:55 +08:00
+
+- Dynamic tracked tree is clean; only existing untracked `.pcsl/nuget-rfc0034-*` caches are present and will not be committed.
+- Root cause evidence: `RFC-TRADECORE-0031.PTCS-DecideOnOverview8000.Handoff.md` records loaded=900, active=200, 40px/12-step drag, no draft ratio update within 250ms, release=`request-earlier`, mode=`move`, delta=`-6`.
+- Current source confirms the mismatch: `navigatorRatios` projects through global coverage, while `startNavigatorDrag` uses active `referenceLength()` for delta, draft clamp and boundary detection.
+
+### 2026-10-01 10:25 +08:00
+
+- Added pure global-domain mapping/intent tests and changed drag geometry to freeze loaded domain/count at pointerdown. Pointermove remains local rAF state only.
+- First full browser run reached the new global preview but exposed an old pending-action gate expecting active-page adjacent `405-452`. Review against RFC-0031/0032 found a real queue issue: serialized coverage actions retained stale revision across pending settlement.
+- Queue now stores only global target window and reconstructs the existing typed intent from current projection when flushed. Focused pending/resync/iframe expectations now verify global `1-48`/`1-250` targets.
+- Verification: Renderer `64/64`, Interactive `15/15`, Ptcs Client `17/17`; complete renderer F# Playwright PASS with formal phases over100=0; pending/resync/iframe F# Playwright five scenarios PASS; Playwright MCP loaded 500 fixture moved `251-500 -> 1-250`, console errors=0.
+- Concurrent Baster path `G:\PulseTrade.fs\Libs\PulseTrade.Comm\doc.20261001` was not read or modified.
+
+### 2026-10-01 10:47 +08:00
+
+- Final candidate `.126/.118/.127` focused suites passed, but the complete browser gate measured the first global draft at `283.08ms`, exceeding the `<=250ms` contract.
+- Root cause was synchronous diagnostic attribute mutation on both navigator and chart stack for every pointermove step. Diagnostics now publish with the already-coalesced local rAF draft; no callback, chart rebuild or wire change was added.
+- Versions advanced to a fresh exact graph to avoid stale local NuGet cache: Renderer `0.1.127`, Interactive.Client `0.1.119`, Ptcs.Client `0.1.128`.
+- Final local verification passed: focused `64/15/17`; Interactive package verifier; complete Renderer F# Playwright with formal phases over100=`0`; pending/resync/iframe five scenarios with callback counts `0->2 / 0->1 / 0->2 / 0->1 / 0->1`; Playwright MCP loaded fixture `500`, visible `251-500`, console error=`0`.
+- Visual evidence: `artifacts/ta-renderer-playwright-mcp/final-global-loaded-domain.png`. BrowserDemo remains test-only and will be stopped after closeout.

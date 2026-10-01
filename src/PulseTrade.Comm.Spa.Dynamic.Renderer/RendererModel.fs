@@ -2154,6 +2154,52 @@ module RendererModel =
         tryLoadedCoverageResolved defaultView data
         |> Option.bind (coverageNavigatorWindow activeReferenceLength activeWindow)
 
+    let tryLocalWindowForLoadedCoverage activeReferenceLength projection globalWindow =
+        let activeStart = projection.ActiveDetail.StartObservationOrdinal
+        let activeCount = max 0 (min activeReferenceLength projection.ActiveDetail.ObservationCount)
+        let activeEnd = activeStart + int64 activeCount
+        let targetStart = int64 globalWindow.StartIndex
+        let targetEnd = targetStart + int64 globalWindow.Count
+
+        if
+            activeReferenceLength <= 0
+            || globalWindow.Count <= 0
+            || targetStart < activeStart
+            || targetEnd > activeEnd
+        then
+            None
+        else
+            let localStart = targetStart - activeStart
+            if localStart < 0L || localStart > int64 Int32.MaxValue then
+                None
+            else
+                Some
+                    { StartIndex = int localStart
+                      Count = globalWindow.Count }
+
+    let tryLoadedCoverageWindowIntentAt projection targetStart targetCount =
+        let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+        let targetEnd = targetStart + int64 targetCount
+
+        if
+            domainCount <= 0L
+            || targetCount <= 0
+            || targetCount > TaLoadedCoverageCodec.MaximumActiveDetailBars
+            || targetStart < 0L
+            || targetEnd > domainCount
+        then
+            None
+        else
+            TaLoadedCoverageCodec.tryWindowIntent
+                None
+                (Some projection.CoverageRevision)
+                (projection.QueryGeneration + 1L)
+                (Some targetStart)
+                targetCount
+
+    let tryLoadedCoverageWindowIntent projection globalWindow =
+        tryLoadedCoverageWindowIntentAt projection (int64 globalWindow.StartIndex) globalWindow.Count
+
     let tryAdjacentCoverageIntent (direction: TaCoverageDirection) maximumVisibleBars activeReferenceLength activeWindow projection =
         let local = clampWindow 1 maximumVisibleBars activeReferenceLength activeWindow
         let count = max 1 (min maximumVisibleBars local.Count)

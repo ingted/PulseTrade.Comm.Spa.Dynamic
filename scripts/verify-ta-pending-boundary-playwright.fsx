@@ -161,17 +161,16 @@ waitText (page.Locator("[data-testid='ta-poll-state']")) "UPDATING"
 
 dragSelectionToEarlierBoundary "poll-in-flight"
 
-waitText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
 waitInt callbackState "data-callback-count" (callbacksBefore + 2)
 waitInt chartStack "data-query-generation" 2
-waitInt chartStack "data-visible-start" 405
-waitInt chartStack "data-visible-end" 452
-require (stringAttribute callbackState "data-last-action" = "VisibleRangeChanged") "the queued boundary action was not dispatched last"
+waitInt chartStack "data-visible-start" 1
+waitInt chartStack "data-visible-end" 48
+require (stringAttribute callbackState "data-last-action" = "VisibleRangeChanged") "the queued global window action was not dispatched last"
 require (consoleErrors.Count = 0) ("browser errors: " + String.concat " | " consoleErrors)
 
 let screenshotPath = Path.Combine(outputDirectory, "pending-boundary-latest-intent.png")
 page.ScreenshotAsync(PageScreenshotOptions(Path = screenshotPath, FullPage = true)) |> awaitTask |> ignore
-printfn "pending-boundary.pass callbacks=%d->%d queryGeneration=2 visible=405-452 screenshot=%s" callbacksBefore (callbacksBefore + 2) screenshotPath
+printfn "pending-boundary.pass callbacks=%d->%d queryGeneration=2 visible=1-48 screenshot=%s" callbacksBefore (callbacksBefore + 2) screenshotPath
 
 page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
 page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
@@ -188,17 +187,16 @@ let callbacksBeforeResync = intAttribute callbackState "data-callback-count"
 page.Locator("[data-testid='ta-demo-paused']").ClickAsync() |> awaitUnit
 waitText (page.Locator("[data-testid='ta-poll-state']")) "RESYNC"
 dragSelectionToEarlierBoundary "paused-for-resync"
-waitText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
 require (intAttribute callbackState "data-callback-count" = callbacksBeforeResync) "PausedForResync queue must not dispatch before Ready"
 page.Locator("[data-testid='ta-demo-live']").ClickAsync() |> awaitUnit
 waitText (page.Locator("[data-testid='ta-poll-state']")) "READY"
 waitInt callbackState "data-callback-count" (callbacksBeforeResync + 1)
 waitInt chartStack "data-query-generation" 2
-waitInt chartStack "data-visible-start" 405
-waitInt chartStack "data-visible-end" 452
+waitInt chartStack "data-visible-start" 1
+waitInt chartStack "data-visible-end" 48
 let resyncScreenshotPath = Path.Combine(outputDirectory, "paused-for-resync-boundary-latest-intent.png")
 page.ScreenshotAsync(PageScreenshotOptions(Path = resyncScreenshotPath, FullPage = true)) |> awaitTask |> ignore
-printfn "paused-for-resync.pass callbacks=%d->%d queryGeneration=2 visible=405-452 screenshot=%s" callbacksBeforeResync (callbacksBeforeResync + 1) resyncScreenshotPath
+printfn "paused-for-resync.pass callbacks=%d->%d queryGeneration=2 visible=1-48 screenshot=%s" callbacksBeforeResync (callbacksBeforeResync + 1) resyncScreenshotPath
 
 page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
 page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
@@ -212,15 +210,14 @@ waitText (page.Locator("[data-testid='ta-poll-state']")) "UPDATING"
 page.Locator("[data-testid='ta-demo-paused']").ClickAsync() |> awaitUnit
 waitText (page.Locator("[data-testid='ta-poll-state']")) "RESYNC"
 dragSelectionToEarlierBoundary "pending-action-resync"
-waitText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
 waitInt callbackState "data-callback-count" (interleavedCallbacksBefore + 2)
 waitText (page.Locator("[data-testid='ta-poll-state']")) "READY"
 waitInt chartStack "data-query-generation" 2
-waitInt chartStack "data-visible-start" 405
-waitInt chartStack "data-visible-end" 452
+waitInt chartStack "data-visible-start" 1
+waitInt chartStack "data-visible-end" 48
 let interleavedScreenshotPath = Path.Combine(outputDirectory, "pending-action-resync-boundary-latest-intent.png")
 page.ScreenshotAsync(PageScreenshotOptions(Path = interleavedScreenshotPath, FullPage = true)) |> awaitTask |> ignore
-printfn "pending-action-resync.pass callbacks=%d->%d queryGeneration=2 visible=405-452 screenshot=%s" interleavedCallbacksBefore (interleavedCallbacksBefore + 2) interleavedScreenshotPath
+printfn "pending-action-resync.pass callbacks=%d->%d queryGeneration=2 visible=1-48 screenshot=%s" interleavedCallbacksBefore (interleavedCallbacksBefore + 2) interleavedScreenshotPath
 
 page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
 page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
@@ -229,21 +226,17 @@ waitInt chartStack "data-loaded-bars" 500
 waitInt chartStack "data-ready-row-count" 7
 waitInt chartStack "data-visible-start" 251
 waitInt chartStack "data-visible-end" 500
-let widePanLeft = page.Locator("[data-testid='ta-pan-left']")
-waitUntil "wide-selection pan-left enabled" (fun () -> widePanLeft.IsEnabledAsync() |> awaitTask) id |> ignore
-widePanLeft.ClickAsync() |> awaitUnit
-waitInt chartStack "data-visible-start" 1
-waitInt chartStack "data-visible-end" 250
 waitText (page.Locator("[data-testid='ta-poll-state']")) "READY"
 let wideCallbacksBefore = intAttribute callbackState "data-callback-count"
 page.Locator("[data-testid='ta-demo-paused']").ClickAsync() |> awaitUnit
 waitText (page.Locator("[data-testid='ta-poll-state']")) "RESYNC"
 dragSelectionToEarlierBoundary "wide-selection-resync"
-waitText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
 require (intAttribute callbackState "data-callback-count" = wideCallbacksBefore) "wide PausedForResync queue must not dispatch before Ready"
 page.Locator("[data-testid='ta-demo-live']").ClickAsync() |> awaitUnit
 waitText (page.Locator("[data-testid='ta-poll-state']")) "READY"
 waitInt callbackState "data-callback-count" (wideCallbacksBefore + 1)
+waitInt chartStack "data-visible-start" 1
+waitInt chartStack "data-visible-end" 250
 require (stringAttribute callbackState "data-last-action" = "VisibleRangeChanged") "the wide-selection boundary action was not dispatched last"
 let wideScreenshotPath = Path.Combine(outputDirectory, "wide-selection-resync-boundary-latest-intent.png")
 page.ScreenshotAsync(PageScreenshotOptions(Path = wideScreenshotPath, FullPage = true)) |> awaitTask |> ignore
@@ -261,11 +254,6 @@ let embeddedCallbackState = rendererFrame.Locator("[data-testid='ta-demo-callbac
 waitInt embeddedChartStack "data-loaded-bars" 500
 waitInt embeddedChartStack "data-visible-start" 251
 waitInt embeddedChartStack "data-visible-end" 500
-let embeddedPanLeft = rendererFrame.Locator("[data-testid='ta-pan-left']")
-waitUntil "embedded pan-left enabled" (fun () -> embeddedPanLeft.IsEnabledAsync() |> awaitTask) id |> ignore
-embeddedPanLeft.ClickAsync() |> awaitUnit
-waitInt embeddedChartStack "data-visible-start" 1
-waitInt embeddedChartStack "data-visible-end" 250
 waitText (rendererFrame.Locator("[data-testid='ta-poll-state']")) "READY"
 
 let embeddedNavigator = rendererFrame.Locator("[data-testid='ta-overview-navigator']")
@@ -293,9 +281,12 @@ page.Mouse.MoveAsync(beyondFrameLeftX, embeddedY, MouseMoveOptions(Steps = 4)) |
 require (stringAttribute embeddedNavigator "data-drag-outcome" = "moving") "embedded navigator did not retain the pointer outside its iframe"
 waitText (rendererFrame.Locator("[data-testid='ta-viewport-range']")) "Preview"
 page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+let embeddedReleaseOutcome = stringAttribute embeddedNavigator "data-drag-outcome"
 waitInt embeddedCallbackState "data-callback-count" (embeddedCallbacksBefore + 1)
+waitInt embeddedChartStack "data-visible-start" 1
+waitInt embeddedChartStack "data-visible-end" 250
 require (stringAttribute embeddedCallbackState "data-last-action" = "VisibleRangeChanged") "embedded iframe boundary release did not dispatch the viewport action"
-require (stringAttribute embeddedNavigator "data-drag-outcome" = "request-earlier") "embedded iframe boundary release did not request earlier coverage"
+require (embeddedReleaseOutcome = "request-earlier") "embedded iframe boundary release did not request the earlier loaded window"
 let embeddedScreenshotPath = Path.Combine(outputDirectory, "embedded-frame-outside-release.png")
 page.ScreenshotAsync(PageScreenshotOptions(Path = embeddedScreenshotPath, FullPage = true)) |> awaitTask |> ignore
 printfn "embedded-frame.pass callbacks=%d->%d screenshot=%s" embeddedCallbacksBefore (embeddedCallbacksBefore + 1) embeddedScreenshotPath

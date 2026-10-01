@@ -1988,3 +1988,15 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - PTCS新增agent inbox snapshot chunk authority後，三個direct consumers改為exact `PulseTrade.Comm.Spa [0.2.47]`：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.57`、`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.124`、`PulseTrade.Comm.Spa.Dynamic 0.1.26`。
 - 這是package dependency/provenance alignment；未改Dynamic renderer、WebSharper bundle source或runtime行為。
 - `Dynamic.Ptcs`與`Ptcs.Client` Debug build/pack皆為0 warnings / 0 errors；主Dynamic Debug compile為0 errors，僅既有WebSharper project-type warning。正式發布需在source commit後執行。
+
+## 2026-10-01 - Navigator global loaded-domain drag correction candidate
+
+- Daedalus真SPAA驗出loaded=900／active=200時selection與pointer delta使用不同domain。Renderer改以完整loaded observation domain產生rAF local draft；active detail只作release local mapping，跨頁沿用`ta-coverage-window.v1`。
+- latest-wins coverage queue不再保存已序列化action；只保存global target，settle／READY後以最新projection重建coverage revision與query generation，避免stale intent。
+- 未發布中間graph `.124/.116/.125`與`.125/.117/.126`均不交付；int64 loaded ordinal regression後final candidate為Renderer `0.1.126`、Interactive.Client `0.1.118`、Ptcs.Client `0.1.127`。前一candidate focused=`64/15/17`且完整Renderer、pending/resync/iframe與Playwright MCP gates全綠；final graph須重建重驗。Source provenance commit、official push/readback與Daedalus真SPAA待完成。
+
+## 2026-10-01 - Correction: navigator final owner graph and performance gate
+
+- 前一candidate在final browser gate重現global draft latency `283.08ms`，超過`<=250ms`契約。根因是pointermove每一步仍同步改寫navigator與chart-stack diagnostics；draft本身雖已rAF合併，diagnostics未合併。
+- Renderer把draft與diagnostics收斂到同一local rAF，pointermove不dispatch callback、不重建chart rows。為避免本機NuGet cache誤吃已建過的candidate，final graph順延為Renderer `0.1.127`、Interactive.Client `0.1.119`、Ptcs.Client `0.1.128`。
+- Final owner gates：focused=`64/15/17`；完整Renderer Playwright、pending/resync/iframe五情境、Interactive package verifier與Playwright MCP loaded fixture均PASS；正式phase over100=`0`、console error=`0`。Source provenance commit、official push/readback與Daedalus真SPAA仍待完成。

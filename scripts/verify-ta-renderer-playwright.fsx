@@ -1819,11 +1819,26 @@ let verifyDesktop (browser: IBrowser) =
     let reloadedY = reloadedNavigatorBox.Y + reloadedNavigatorBox.Height / 2.0f
     let dragFromX = reloadedNavigatorBox.X + reloadedNavigatorBox.Width * 0.75f
     let dragToX = reloadedNavigatorBox.X + reloadedNavigatorBox.Width * 0.25f
+    let loadedRange = page.Locator("[data-testid='ta-viewport-range']")
+    let loadedCallbackState = page.Locator("[data-testid='ta-demo-callback-state']")
+    let loadedCallbackCountBeforeDrag = requiredIntAttribute loadedCallbackState "data-callback-count"
+    let loadedRenderSequenceBeforeDrag = requiredIntAttribute reloadedChartStack "data-chart-render-sequence"
     page.Mouse.MoveAsync(dragFromX, reloadedY) |> awaitUnit
     Threading.Thread.Sleep 50
     page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+    let loadedDraftLatency = Diagnostics.Stopwatch.StartNew()
+    page.Mouse.MoveAsync(dragFromX - 40.0f, reloadedY, MouseMoveOptions(Steps = 12)) |> awaitUnit
+    waitForText loadedRange "Preview"
+    loadedDraftLatency.Stop()
+    let firstGlobalPreview = textOf loadedRange
+    require (loadedDraftLatency.Elapsed.TotalMilliseconds <= 250.0) $"global loaded-domain preview exceeded 250ms: {loadedDraftLatency.Elapsed.TotalMilliseconds:F2}ms"
+    require (firstGlobalPreview <> "Loaded 500 bars · Preview 251-500 · release to render") ("global loaded-domain preview remained clamped to active detail: " + firstGlobalPreview)
+    require (attributeOrEmpty reloadedNavigator "data-drag-domain" = "global-loaded") "navigator drag must identify the global loaded domain"
+    require (attributeOrEmpty reloadedNavigator "data-drag-domain-count" = "500") "navigator drag must scale pointer delta by all 500 loaded observations"
+    require (requiredIntAttribute loadedCallbackState "data-callback-count" = loadedCallbackCountBeforeDrag) "global preview must not dispatch a remote callback"
+    require (requiredIntAttribute reloadedChartStack "data-chart-render-sequence" = loadedRenderSequenceBeforeDrag) "global preview must not rebuild chart rows"
     page.Mouse.MoveAsync(dragToX, reloadedY, MouseMoveOptions(Steps = 8)) |> awaitUnit
-    waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Preview"
+    waitForText loadedRange "Preview 1-250"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
     waitForIntAttribute reloadedChartStack "data-query-generation" 2
     waitForIntAttribute reloadedChartStack "data-visible-start" 1
@@ -1852,12 +1867,11 @@ let verifyDesktop (browser: IBrowser) =
     page.Mouse.MoveAsync(queuedDragToX, queuedDragY, MouseMoveOptions(Steps = 8)) |> awaitUnit
     waitForText (page.Locator("[data-testid='ta-viewport-range']")) "Preview"
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
-    waitForText (page.Locator("[data-testid='ta-feedback']")) "Earlier coverage queued."
     waitForIntAttribute queuedDragCallbackState "data-callback-count" (callbackCountBeforeQueuedDrag + 2)
     waitForIntAttribute queuedDragChartStack "data-query-generation" 2
-    waitForIntAttribute queuedDragChartStack "data-visible-start" 405
-    waitForIntAttribute queuedDragChartStack "data-visible-end" 452
-    require (attributeOrEmpty queuedDragCallbackState "data-last-action" = "VisibleRangeChanged") "queued boundary drag must dispatch after the pending visible-range action settles"
+    waitForIntAttribute queuedDragChartStack "data-visible-start" 1
+    waitForIntAttribute queuedDragChartStack "data-visible-end" 48
+    require (attributeOrEmpty queuedDragCallbackState "data-last-action" = "VisibleRangeChanged") "queued global drag must dispatch after the pending visible-range action settles"
 
     page.Locator("[data-testid='ta-demo-loaded-coverage-view-all']").ClickAsync() |> awaitUnit
     waitForAttributeValue queuedDragChartStack "data-coverage-identity" "browser-demo:view-all-coverage"

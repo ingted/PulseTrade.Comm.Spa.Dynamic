@@ -46,7 +46,7 @@ type TaPendingBoundaryPan =
 type TaQueuedViewportIntent =
     | LocalRange of SduiAction
     | AdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int
-    | CoverageWindow of SduiAction * TaPendingBoundaryPan * string
+    | CoverageWindow of int64 * int * string
 
 type TaRendererDisplayTime =
     { Zone: View<SduiDisplayTimeZone>
@@ -2202,6 +2202,7 @@ module TaWorkspaceRenderer =
         let mutable queuedViewportIntent: TaQueuedViewportIntent option = None
         let mutable flushQueuedViewportIntent = ignore
         let mutable dispatchAdjacentCoverage = fun (_: PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection) (_: int) -> ()
+        let mutable dispatchCoverageWindow = fun (_: int64) (_: int) (_: string) -> ()
         let preparedRowsReady = Var.Create false
         let viewportDataReady = Var.Create false
         let commandsDisabledView =
@@ -2257,12 +2258,12 @@ module TaWorkspaceRenderer =
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange action)
             else
                 startAction action "Visible range synchronized." ignore
-        let sendOrQueueCoverageWindowAction action pending successText =
+        let sendOrQueueCoverageWindowAction targetStart targetCount successText =
             if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
-                queuedViewportIntent <- Some(TaQueuedViewportIntent.CoverageWindow(action, pending, successText))
+                queuedViewportIntent <- Some(TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText))
                 setUiState { uiState.Value with Feedback = "Loaded coverage request queued." }
             else
-                startCoverageWindowAction action pending successText
+                dispatchCoverageWindow targetStart targetCount successText
         flushQueuedViewportIntent <- fun () ->
             match queuedViewportIntent with
             | Some intent when uiState.Value.PendingActionId.IsNone && not (remoteDisabled runtimeState.Value.Poll) ->
@@ -2272,8 +2273,8 @@ module TaWorkspaceRenderer =
                     startAction action "Visible range synchronized." ignore
                 | TaQueuedViewportIntent.AdjacentCoverage(direction, delta) ->
                     dispatchAdjacentCoverage direction delta
-                | TaQueuedViewportIntent.CoverageWindow(action, pending, successText) ->
-                    startCoverageWindowAction action pending successText
+                | TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText) ->
+                    dispatchCoverageWindow targetStart targetCount successText
             | _ -> ()
 
         View.Map2
@@ -2734,9 +2735,25 @@ module TaWorkspaceRenderer =
                             { range with
                                 MaximumBasePoints = intent.ObservationCount
                                 CoverageIntent = Some intent })
-                    sendOrQueueCoverageWindowAction action pending successText
+                    startCoverageWindowAction action pending successText
                 | None ->
                     setUiState { uiState.Value with Feedback = "Loaded coverage is outside the configured query boundary." }
+
+        dispatchCoverageWindow <- fun targetStart targetCount successText ->
+            match runtimeState.Value.Document with
+            | Some document ->
+                let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
+                let currentWindow = resolvedWindow uiState.Value
+                match RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
+                | Some projection ->
+                    match RendererModel.tryLoadedCoverageWindowIntentAt projection targetStart targetCount with
+                    | Some intent ->
+                        applyLoadedCoverageIntent document timeline currentWindow projection intent successText
+                    | None ->
+                        setUiState { uiState.Value with Feedback = "Loaded coverage target is no longer available." }
+                | None ->
+                    setUiState { uiState.Value with Feedback = "Loaded coverage is unavailable." }
+            | None -> ()
 
         let withLoadedCoverage operation =
             match runtimeState.Value.Document with
@@ -2752,7 +2769,12 @@ module TaWorkspaceRenderer =
             withLoadedCoverage (fun document timeline currentWindow projection ->
                     match RendererModel.tryViewAllCoverageIntent (maximumVisibleBarsFor document) projection with
                     | Some intent ->
-                        applyLoadedCoverageIntent document timeline currentWindow projection intent "Loaded coverage requested."
+                        intent.StartObservationOrdinal
+                        |> Option.iter (fun start ->
+                            sendOrQueueCoverageWindowAction
+                                start
+                                intent.ObservationCount
+                                "Loaded coverage requested.")
                     | None -> setWindowCount (maximumVisibleBarsFor document)
                 )
 
@@ -2766,13 +2788,12 @@ module TaWorkspaceRenderer =
                         projection
                 with
                 | Some intent ->
-                    applyLoadedCoverageIntent
-                        document
-                        timeline
-                        currentWindow
-                        projection
-                        intent
-                        (if edge = TaLoadedCoverageEdge.Start then "Loaded start requested." else "Loaded end requested.")
+                    intent.StartObservationOrdinal
+                    |> Option.iter (fun start ->
+                        sendOrQueueCoverageWindowAction
+                            start
+                            intent.ObservationCount
+                            (if edge = TaLoadedCoverageEdge.Start then "Loaded start requested." else "Loaded end requested."))
                 | None -> setUiState { uiState.Value with Feedback = "Loaded coverage is unavailable." })
 
         let startNavigatorDrag (navigatorRoot: Element) (rawEvent: Event) =
@@ -2790,10 +2811,25 @@ module TaWorkspaceRenderer =
                     setDragDiagnostic "data-drag-outcome" "disabled"
                 else
                     let bounds = navigatorRoot.GetBoundingClientRect()
-                    let total = referenceLength ()
-                    let committed = resolvedWindow uiState.Value
+                    let localTotal = referenceLength ()
+                    let localCommitted = resolvedWindow uiState.Value
+                    let loadedDragDomain =
+                        match runtimeState.Value.Document with
+                        | Some document ->
+                            RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
+                            |> Option.bind (fun projection ->
+                                RendererModel.coverageNavigatorWindow localTotal localCommitted projection
+                                |> Option.map (fun (_, total, committed) -> document, projection, total, committed))
+                        | None -> None
+                    let total, committed =
+                        loadedDragDomain
+                        |> Option.map (fun (_, _, total, committed) -> total, committed)
+                        |> Option.defaultValue (localTotal, localCommitted)
                     let pointerX = float event.ClientX - bounds.Left
-                    let ratios = navigatorRatios (defaultArg draftWindow.Value committed)
+                    let ratios = navigatorRatios localCommitted
+                    draftWindow.Value <- None
+                    setDragDiagnostic "data-drag-domain" (if loadedDragDomain.IsSome then "global-loaded" else "active-detail")
+                    setDragDiagnostic "data-drag-domain-count" (string total)
 
                     match RendererModel.navigatorDragMode bounds.Width 24.0 ratios pointerX with
                     | None ->
@@ -2820,6 +2856,8 @@ module TaWorkspaceRenderer =
                         let publishDraftOnFrame () =
                             if not finished then
                                 draftFrameScheduled <- false
+                                setDragDiagnostic "data-drag-last-delta" (string latestRawDelta)
+                                setDragDiagnostic "data-drag-outcome" "moving"
                                 match pendingDraft with
                                 | Some draft -> draftWindow.Value <- Some draft
                                 | None -> ()
@@ -2859,25 +2897,61 @@ module TaWorkspaceRenderer =
                                 setDragDiagnostic "data-drag-committed-start" (string committed.StartIndex)
                                 setDragDiagnostic "data-drag-draft-start" (string draft.StartIndex)
                                 setDragDiagnostic "data-drag-requested-start" (string requestedStart)
-                                match RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta with
-                                | Some direction ->
-                                    setDragDiagnostic
-                                        "data-drag-outcome"
-                                        (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
-                                    draftWindow.Value <- None
-                                    requestAdjacentCoverage
-                                        direction
-                                        (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then -committed.Count else committed.Count)
-                                | None ->
-                                    let followLatest, next =
-                                        RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
-                                    if next <> committed || followLatest <> uiState.Value.FollowLatest then
+                                match loadedDragDomain with
+                                | Some(document, projection, _, _) when draft <> committed ->
+                                    match RendererModel.tryLocalWindowForLoadedCoverage localTotal projection draft with
+                                    | Some localDraft ->
+                                        let followLatest, next =
+                                            RendererModel.commitWindowBounds
+                                                options.MinimumVisibleBars
+                                                (maximumVisibleBarsNow ())
+                                                localTotal
+                                                localDraft
                                         setDragDiagnostic "data-drag-outcome" "commit-local"
                                         navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
                                         setWindow followLatest next
-                                    else
-                                        setDragDiagnostic "data-drag-outcome" "no-change"
+                                    | None ->
+                                        match RendererModel.tryLoadedCoverageWindowIntent projection draft with
+                                        | Some intent ->
+                                            let direction =
+                                                if draft.StartIndex < committed.StartIndex then
+                                                    PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier
+                                                else
+                                                    PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Later
+                                            setDragDiagnostic
+                                                "data-drag-outcome"
+                                                (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
+                                            draftWindow.Value <- None
+                                            sendOrQueueCoverageWindowAction
+                                                (intent.StartObservationOrdinal |> Option.defaultValue 0L)
+                                                intent.ObservationCount
+                                                "Loaded coverage requested."
+                                        | None ->
+                                            setDragDiagnostic "data-drag-outcome" "invalid-loaded-draft"
+                                            draftWindow.Value <- None
+                                | Some _ ->
+                                    setDragDiagnostic "data-drag-outcome" "no-change"
+                                    draftWindow.Value <- None
+                                | None ->
+                                    match RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta with
+                                    | Some direction ->
+                                        setDragDiagnostic
+                                            "data-drag-outcome"
+                                            (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
                                         draftWindow.Value <- None
+                                        requestAdjacentCoverage
+                                            direction
+                                            (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then -committed.Count else committed.Count)
+                                    | None ->
+                                        let followLatest, next =
+                                            RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
+                                        if next <> committed || followLatest <> uiState.Value.FollowLatest then
+                                            setDragDiagnostic "data-drag-outcome" "commit-local"
+                                            navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
+                                            setWindow followLatest next
+                                        else
+                                            setDragDiagnostic "data-drag-outcome" "no-change"
+                                            draftWindow.Value <- None
                                 cleanup ()
 
                         moveHandler <-
@@ -2887,8 +2961,6 @@ module TaWorkspaceRenderer =
                                     if bounds.Width <= 0.0 || total <= 0 then 0
                                     else int (Math.Round(float (mouse.ClientX - startClientX) / bounds.Width * float total))
                                 latestRawDelta <- delta
-                                setDragDiagnostic "data-drag-last-delta" (string delta)
-                                setDragDiagnostic "data-drag-outcome" "moving"
                                 RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
                                 |> scheduleDraft)
 
@@ -3711,11 +3783,7 @@ module TaWorkspaceRenderer =
                             match draft with
                             | None -> rangeText "Viewing" globalCurrentWindow
                             | Some preview ->
-                                let _, globalPreview =
-                                    RendererModel.tryCoverageNavigatorWindowResolved currentReferenceLength preview document.DefaultView shellPreparedData.Value.RawData
-                                    |> Option.map (fun (_, total, globalWindow) -> total, globalWindow)
-                                    |> Option.defaultValue (currentReferenceLength, preview)
-                                rangeText "Preview" globalPreview + " · release to render")
+                                rangeText "Preview" preview + " · release to render")
                         currentViewport
                         draftWindow.View
                     |> textView
@@ -4256,15 +4324,22 @@ module TaWorkspaceRenderer =
                                                                 currentReferenceLength
                                                                 currentUi.FollowLatest
                                                                 currentUi.Window
-                                                        let selection = defaultArg draft currentVisibleWindow
-                                                        currentCoverageProjection
-                                                        |> Option.bind (fun projection ->
-                                                            RendererModel.overviewSelectionRatios projection currentReferenceTimeline selection)
-                                                        |> Option.defaultWith (fun () ->
+                                                        match draft, currentCoverageProjection with
+                                                        | Some globalDraft, Some projection ->
+                                                            let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+                                                            if domainCount > 0L && domainCount <= int64 Int32.MaxValue then
+                                                                RendererModel.selectionRatios (int domainCount) globalDraft
+                                                            else
+                                                                RendererModel.selectionRatios currentReferenceLength currentVisibleWindow
+                                                        | _ ->
                                                             currentCoverageProjection
-                                                            |> Option.bind (RendererModel.coverageNavigatorWindow currentReferenceLength selection)
-                                                            |> Option.map (fun (_, total, globalSelection) -> RendererModel.selectionRatios total globalSelection)
-                                                            |> Option.defaultValue (RendererModel.selectionRatios currentReferenceLength selection)))
+                                                            |> Option.bind (fun projection ->
+                                                                RendererModel.overviewSelectionRatios projection currentReferenceTimeline currentVisibleWindow)
+                                                            |> Option.defaultWith (fun () ->
+                                                                currentCoverageProjection
+                                                                |> Option.bind (RendererModel.coverageNavigatorWindow currentReferenceLength currentVisibleWindow)
+                                                                |> Option.map (fun (_, total, globalSelection) -> RendererModel.selectionRatios total globalSelection)
+                                                                |> Option.defaultValue (RendererModel.selectionRatios currentReferenceLength currentVisibleWindow)))
                                                     draftWindow.View
                                                     uiState.View
                                             div [ Attr.Create "data-testid" "ta-overview-with-axis"; attr.style "min-width:0;" ] [

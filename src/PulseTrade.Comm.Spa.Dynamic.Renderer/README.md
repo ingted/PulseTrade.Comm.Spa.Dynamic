@@ -13,6 +13,7 @@
 - query draft：只從`TaWorkspaceDocument.DefaultView`的`query.*` metadata初始化；document revision不變的poll不覆蓋使用者輸入，metadata缺失時保持空白，禁止回退到demo symbol/interval/date。
 - Apply boundary：instrument/interval/range只更新local draft；選擇interval不送action、不改authoritative query、不重render。按`Load / Apply`送`ChangeTaQuery`；accepted後依merged base/reference temporal axis選`[FromUtc, ToUtcExclusive)` local window，不改authoritative data/revision或清cache。pending期間的新query取代queue中的舊intent，transport仍維持one-in-flight。
 - loaded range：active shared-axis detail目前最多4000 positions；overview以bounded bucket呈現reference domain，左右handle可resize，中段可move，48/200/All可切換。selection依resolved window真實比例繪製，沒有固定visual寬度下限；24 CSS px hit resolver在小selection重疊時仍明確區分left／move／right。drag只更新draft，pointer release才commit一次render。多年coverage＋bounded active detail仍需RFC-0032的versioned generic coverage projection，不得以提高retained detail cap冒充完成。
+- loaded drag：loaded projection存在時，selection ratio、pointer delta與draft一律使用完整observation domain。跨active detail的release以既有coverage-window intent取得target page；remote pending時queue只保存global start/count，settle後以最新projection revision/generation重建intent。pointermove不送remote callback、不重建chart rows。
 - Add/Edit Row：由`TaWorkspaceDocument.EditorSchemas`生成generic Text/Integer/Decimal/Boolean/Choice/Scale/List/Group表單；同template可建立多個參數實例。帶`ptcs.dynamic.editor.binding.v1`的row可預填並以stable RowId重新設定；legacy無binding row保持read-only。editor draft不會被poll覆蓋。
 - Reset Canvas：送remote typed action恢復mount時initial ordered rows/query；Reset View只恢復local viewport。
 - timeline：各trace依timestamp對齊reference timeline；SMA/ADX/MACD warm-up縮短不會用array index錯位或造成sequence failure。
@@ -83,3 +84,5 @@ RFC-0018之後，accepted `ChangeTaQuery`在host frames已合併後選local view
 RFC-0019/0020之後，每列依自身event-time與plot width產生adaptive axis，crosshair只覆蓋該列plot。loaded coverage可大於visible cap；越過boundary時以`VisibleRangeChanged`要求document query範圍內的相鄰coverage，merge後依event-time anchor重定位。Renderer prepare與row mount/refresh使用generation-aware frame scheduling；consumer仍負責provider query、source merge與cache authority。
 
 RFC-0032 owner candidate Renderer `0.1.121`：View All以`min(loaded observation domain, MaximumVisibleBars)`決定target；超出active detail時送既有versioned ordinal coverage intent，authoritative replacement後才commit，不再把current mount長度當loaded truth。Exact candidate graph為Contracts `[0.1.35]`、Renderer `.121`、Interactive.Client `.112`、Dynamic.Ptcs `.56`、Ptcs.Client `.121`；owner focused與完整Playwright全綠，official readback／真SPAA pending。
+
+RFC-0034 correction candidate Renderer `0.1.127`：global loaded-domain drag與selection共用同一ordinal scale；int64 release target在pending/resync後會以最新projection重建typed intent；pointermove draft與diagnostics由同一local rAF合併。Owner focused/browser/MCP gates PASS，official release與真SPAA 900/200 consumer gate pending。
