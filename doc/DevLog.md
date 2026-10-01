@@ -1982,3 +1982,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Source commit `97cb2244e239192b55bb3ef37c0347974823f9ef`已push；exact graph為Renderer `0.1.123`、Interactive.Client `0.1.115`、Ptcs.Client `0.1.123`，兩client exact依Renderer `[0.1.123]`。
 - 三包已由該commit重建並push。NuGet.org official SHA-256依序為`9CD49C793D5A5BA5B596A187859D695BC2484B16886B38404AD98D24CE8947D8`、`628CCC9BB8E0005AA60DE5F18F3B4461ED872519DADEF0F75131EB42EDDAD761`、`B9ECA910CFD36EE7EC918EC46D1C59A706293F54AC2B8DD3526194AAFDF31D03`。
 - Official repository signatures、repository commit、exact dependencies與Interactive manifest `0.1.115`均正確；排除`.signature.p7s`後local／official entries=`7/10/7`且differences皆0。nuget.org-only fresh-cache focused suites=`63/15/17`。Owner／release gates完成，Daedalus真SPAA consumer gate待完成。
+
+## 2026-10-01 - PTCS bounded inbox chunk dependency alignment
+
+- PTCS新增agent inbox snapshot chunk authority後，三個direct consumers改為exact `PulseTrade.Comm.Spa [0.2.47]`：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.57`、`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.124`、`PulseTrade.Comm.Spa.Dynamic 0.1.26`。
+- 這是package dependency/provenance alignment；未改Dynamic renderer、WebSharper bundle source或runtime行為。
+- `Dynamic.Ptcs`與`Ptcs.Client` Debug build/pack皆為0 warnings / 0 errors；主Dynamic Debug compile為0 errors，僅既有WebSharper project-type warning。正式發布需在source commit後執行。

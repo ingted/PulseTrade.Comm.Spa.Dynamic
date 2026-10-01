@@ -1,0 +1,24 @@
+# PTCS 0.2.47 dependency alignment
+
+## 背景
+
+PTCS新增bounded snapshot chunk read API並升版0.2.47。Dynamic active packages仍exact引用0.2.46，若不升版會讓正式Host產生NU1608且package metadata不一致。
+
+## 目標
+
+- 僅更新三個直接引用PTCS的Dynamic packages至0.2.47並升numeric version。
+- 不改Dynamic renderer、bundle或runtime行為。
+- build/pack/push後供PTCS Host exact消費。
+
+## 不得改變事項
+
+- 不碰既有`.pcsl`驗證資料。
+- 不重新產生或修改WebSharper client內容，除非dependency build明確要求。
+
+## Operations
+
+- 08:35：確認 PTCS `0.2.47` authority package 已完成 source/test commit；正式 NuGet push 連線卡住，保留 nupkg 並中止無限等待，未將未發布狀態誤記為完成。
+- 08:53：`PulseTrade.Comm.Spa.Dynamic.Ptcs 0.1.57` Debug build/pack PASS，0 warnings / 0 errors。
+- 08:54：`PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.1.124` Debug build/pack PASS，0 warnings / 0 errors。
+- 08:55：`PulseTrade.Comm.Spa.Dynamic 0.1.26` 以 `GeneratePackageOnBuild=false` 完成 Debug compile；僅既有 WebSharper project-type warning，0 errors。停用 pack 是避免舊 PostBuild script 在未 commit 前自動 push。
+- 版本調整僅包含三個 direct PTCS consumers 的 exact dependency `0.2.46 -> 0.2.47` 與 numeric package bump；未變更 renderer、bundle source 或 runtime contract。
