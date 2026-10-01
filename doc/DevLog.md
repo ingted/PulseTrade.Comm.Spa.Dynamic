@@ -2012,3 +2012,5 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Daedalus真SPAA exact equality gate在official `.127/.119/.128`穩定重現Preview start=`678`、wire/final start=`676`；BrowserDemo 900/200 deterministic fixture亦以Preview=`677`、wire ordinal=`674`重現。根因是WebSharper reactive `Var`可先於可見DOM前進，pointerup讀published state仍可能提交人類尚未看到的下一sample。
 - Renderer以viewport range `afterRender`保存exact visible receipt；普通release優先該receipt，只有pointer明確跨出loaded boundary時才優先final clamped pending intent。Wire、consumer contract、pointermove zero-action與pointerup single-action不變。
 - Local candidate graph為Renderer `0.1.130`、Interactive.Client `0.1.122`、Ptcs.Client `0.1.131`。Focused suites=`65/15/17`；exact parity、pending/resync/iframe及完整F# Playwright全綠，正式phase無>100ms task。Playwright MCP因`G:`零可用空間回`ENOSPC`，不列PASS；official push/readback與真SPAA consumer gate待source commit後執行。
+
+Correction：Renderer `0.1.130`首次push雖被NuGet.org接受，但增量Pack沿用舊nuspec，repository commit仍為`667e963`，故該版retired且不得納入graph。正式correction graph升為Renderer `0.1.131`、Interactive.Client `0.1.123`、Ptcs.Client `0.1.132`，須由version commit後clean rebuild並在push前驗repository commit。

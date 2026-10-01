@@ -25,3 +25,4 @@
 - 2026-10-01 12:34 +08:00：確認source工作樹僅包含本切片的renderer、exact package graph、focused tests、browser verifier與RFC/current-state文件；`.pcsl/nuget-rfc0034*`為本機cache，排除提交與發布。
 - 2026-10-01 12:36 +08:00：發布目標鎖定Renderer `0.1.130`、Interactive.Client `0.1.122`、Ptcs.Client `0.1.131`；先source commit，再從該commit重建、push與NuGet.org immutable readback，先前未提交candidate不發布。
 - 2026-10-01 12:39 +08:00：changed-path strict UTF-8與sensitive scan通過（High=0／Medium=0）；root checker首次套用本repo路徑為FAIL=0，並指出pre-work log缺顯式「假設」欄位，已補入本段上方。其餘WARN為預期dirty與既有RFC追溯缺口。
+- 2026-10-01 12:42 +08:00：source commit `510345f`已push。Renderer `0.1.130`首次PostBuild push被NuGet.org接受後，本機nuspec回讀發現增量Pack仍帶baseline repository commit `667e963`；立即停止Interactive/Ptcs兩包發布，retire `.130`，correction graph升為`.131/.123/.132`並要求commit後clean rebuild。
