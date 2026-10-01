@@ -109,7 +109,10 @@ try
     page.Mouse.MoveAsync(startX, y) |> awaitUnit
     page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
     page.Mouse.MoveAsync(startX - 40.0f, y, MouseMoveOptions(Steps = 12)) |> awaitUnit
-    let previewText = waitUntil "preview must become visible" (fun () -> textOf range) (fun value -> value.Contains "Preview")
+    waitUntil "preview must become visible" (fun () -> textOf range) (fun value -> value.Contains "Preview") |> ignore
+    Thread.Sleep 250
+    let previewText = textOf range
+    require (previewText.Contains "Preview") ("settled preview range is missing: " + previewText)
     let previewStart = parsePreviewStart previewText
     page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
 

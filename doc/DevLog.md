@@ -2014,3 +2014,9 @@ Correction：0.1.1 consumer exact-reference alignment尚未完成；既有`DYN-T
 - Local candidate graph為Renderer `0.1.130`、Interactive.Client `0.1.122`、Ptcs.Client `0.1.131`。Focused suites=`65/15/17`；exact parity、pending/resync/iframe及完整F# Playwright全綠，正式phase無>100ms task。Playwright MCP因`G:`零可用空間回`ENOSPC`，不列PASS；official push/readback與真SPAA consumer gate待source commit後執行。
 
 Correction：Renderer `0.1.130`首次push雖被NuGet.org接受，但增量Pack沿用舊nuspec，repository commit仍為`667e963`，故該版retired且不得納入graph。正式correction graph升為Renderer `0.1.131`、Interactive.Client `0.1.123`、Ptcs.Client `0.1.132`，須由version commit後clean rebuild並在push前驗repository commit。
+
+## 2026-10-01 - Navigator exact parity official correction release
+
+- Source `4812e6efa99631183f889fefb7d2036f7849c62e` clean rebuild並發布Renderer `0.1.131`、Interactive.Client `0.1.123`、Ptcs.Client `0.1.132`。三包push前本機nuspec已驗repository commit；NuGet.org readback signatures、exact dependencies、Interactive manifest與排除signature後entry parity均PASS。
+- Official SHA-256依序為`E63806A5F898B297601D6F9FC1BC6DDAA7C988A5C9E8CDACF9D81FD9B842E332`、`2D0C1D09D49C699AC41142A3D4F64ECF075F288870A63FC0919AE0616AE231BA`、`597235E485659CB3EA38BF839E4D897E9EA404832770125BA5E392C4438F5CE1`；NuGet.org-only fresh-cache suites=`65/15/17`。
+- Final official BrowserDemo在40px／12-step move後等待250ms，Preview=`675`、wire ordinal=`674`、count=`200`且authoritative final exact；pending/resync/iframe及完整browser gate PASS，正式phases無>100ms task。Daedalus真SPAA exact equality仍為consumer closure。
