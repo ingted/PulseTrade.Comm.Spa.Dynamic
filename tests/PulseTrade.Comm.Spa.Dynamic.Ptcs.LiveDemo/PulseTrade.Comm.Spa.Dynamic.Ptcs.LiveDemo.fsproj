@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.37\contentFiles\any\any\build\**\*">
+    <Content Update="$(NuGetPackageRoot)pulsetrade.comm.spa\0.2.48\contentFiles\any\any\build\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

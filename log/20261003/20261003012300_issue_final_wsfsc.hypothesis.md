@@ -1,0 +1,12 @@
+# Final source292 WebSharper compiler crash
+Precommit exactSpa48 threeproducer builds passed; sourcecheckpoint2927953 only refs/metadata/generated bundle/docs. Final builds Client/umbrella failed within3s with CLRexit-532462766; plain Ptcs in flight. No failed-output package/publish/deploy.
+
+1. Host memory/commit pressure: both independent WebSharper versions crash at startup and COMM tool calls degraded while HTTPhealth200. Distinguish OScommit/free/topprivateprocess metadata and application-event exception types, then serialownedbuild with no otherbuilder.
+2. Compiler daemon/cache/identity behavior: explicit source292/fullRepositoryCommit plusnewOutputPath differs frompriorbuild. Read trueexception type/owneddiagnosticstderr, compare successfulbaselineflags withoutchangingpackage version/sourcebody. Never interpret stale DLL asfinalsourceproof.
+
+Minimal experiment: no sourceedit, collectboundedmetrics/crashmetadata; serialsamefinalsourcebuild after concurrentownbuilders end, diagnostic output C. Watchdog/timeout, preservefailedoutputs. Do notstop SQL/production/MDCQ/unknownprocesses or weakengate. New package must actualbuild0errors/source/DLL/depsmatch.
+## Experiment 2026-10-03T01:36:27.1246120+08:00
+OS commit64percent andavailable18GB do not support OOM. Event1026 true exception UnauthorizedAccessException on the two ignored WebSharper timing logs src/websharper.log and src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client/websharper.log. Attributes Archive/no ReadOnly; metadata readable, Get-Acl andicacls access denied even z170-pg/administrator. No source/private/package boundary issue established. Narrow experiment: disable optional WebSharperTimingLog output only; compiler, source292 identity andpackage proof remain enabled. Do not reset ACL/delete files or stop unknown compiler helpers.
+
+### Narrowed root cause
+Upstream Program.fs deletes projectdir/websharper.log unconditionally before parsingStandalone branch; Event1026 matches thatpath/Program frame. TimingLog=falseexperimentfailed2.26s/sameexception, so no timingoverride solution. Reversible single-file rename ofonly two own ignoredcompilerlogs is nextminimalexperiment; verifyresolvedabsolute files/directories, preservefilebytes/ACL(no deletion/ACLreset/otherhelperkill). If OSdeniesrename, retainoriginal andstagehash-identical immutable ownproducerinputs toC buildartifactfolder; do not createGitworktree or editnoncanonicalsource.

@@ -824,3 +824,7 @@ Canonical matrix：`doc/TAResearch/Test.md`。DYN-TA-T-056..061與066已完成RF
 Baseline三producer0errors/umbrella既有WS9002warning；newexactSpa48 versions finalbuild/DLLsourcehash/localnuspec consumer/fullHost與officialsignature/readback未執行。Existingupstream typed6及realHTTP-PCSL/browser不是Dynamic新package PASS；維持Renderer131/Interactive123，不宣稱TA兩RED已修。
 
 Active local package test/demo closure: Ptcs.Tests old[0.1.56]→[0.1.58], PtcsTaClient.Tests old[0.1.132]→[0.1.133], Ptcs.LiveDemo oldSpa46/Ptcs56/Client132→Spa48/Ptcs58/Client133. These known active clients must restore/build against final candidate before PASS; no source test expectations change. No Run of LiveDemo/automatic hostspawn asbuild gate. Legacy sourceACL/Login18 remain excluded.
+
+DYN-T-676 更新：三finalproducer DLL versions58/133/27+292 PASS；三unsignedlocalnupkg metadata/DLLhash/exactSpa48 depsPASS（3/6/5），umbrella4JSassetentriesbytes一致。既有Expecto兩個runner實際15/15與17/17，0ignored/failed/errored，0.372346/0.364855s，sourcebin未使用，consumeroutputDLLhash證pack292及Spa48+83。LiveDemo修assetpath前baseline0errors/1既有WS9002/7.49s；修後build未執行。FormalHost/official/browser整合未宣稱PASS。
+
+DYN-T-676 更新：LiveDemo asset path37→48修正後 fullWebSharper build6.93s/0errors/1existingWS9002 PASS；loadedSpa48+83/hashAF43及7buildassets rawSHA/copy PASS，report C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/dynamic-livedemo48.asset-proof.json。未啟demoHost；local unsigned candidate的build/assetproof，不是正式部署/browser/TA semanticfix。

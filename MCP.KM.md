@@ -27,3 +27,5 @@
 
 ## 2026-10-03 Spa exact adapter cascade
 ExactSpa version consumers must migrate producerpackages before formalHostrestore can be accepted. Metadataonly Ptcs58/Client133/umbrella27 plannedagainstSpa48 whileusingofficialRenderer131; do notcompile renderer diagnosticWIP intoapackage accidentally. DYN-WBS581/T676/VFY050 andsourcecheckpointlog trace finalsource/DLL/local/official distinctions.
+
+Frozenproducer292 localpackages58/133/27與32typedunitconsumer已驗；NuGetRepoCommit/ProductVersion/embeddedDLLhash/actualconsumerDLL都要核對。WebSharper先刪projectdir/websharper.log，TimingLog/Standalone不繞過delete；原ACL受阻時可用有raw/Gitblobmanifest的immutablebuildartifact，不改canonicalsource或停sharedhelper。ExactPackageRef進版同步ContentUpdate/copyassets路徑（LiveDemo37→48）。回鏈DYN581/T676/VFY050及20261003005800log。

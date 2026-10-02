@@ -2025,3 +2025,12 @@ Correction：Renderer `0.1.130`首次push雖被NuGet.org接受，但增量Pack�
 Package compatibility: Ptcs0.1.57→0.1.58, Ptcs.Client0.1.132→0.1.133, umbrella0.1.26→0.1.27 exactSpa0.2.48. NuGet push pending; mainHost/GWTests/TAClient downstream highest priority; Contracts35/Renderer131/Interactive123 unchanged。Baseline0errors，新version finalbuild/package/official仍pending；不是TA semanticfix。REQ/SA/SD/UPSTREAM_RFC/WBS581/TEST676/Verification050 updated；preworklog20261003/20261003005800.aster_spa48_adapter_cascade.log。Renderer existing11diagnosticattrs另WIP保留，不stage。
 
 Active local package test/demo closure: Ptcs.Tests old[0.1.56]→[0.1.58], PtcsTaClient.Tests old[0.1.132]→[0.1.133], Ptcs.LiveDemo oldSpa46/Ptcs56/Client132→Spa48/Ptcs58/Client133. These known active clients must restore/build against final candidate before PASS; no source test expectations change. No Run of LiveDemo/automatic hostspawn asbuild gate. Legacy sourceACL/Login18 remain excluded.
+
+## 2026-10-03 Aster Spa48 local package compatibility checkpoint
+- Dynamic Ptcs58/Client133/umbrella27 finalproduct identity2927953，local3nupkg zip/DLL/deps/generatedbundle PASS；NuGetpush未執行。兩existingexactpackage consumers15＋17=32/32PASS，0ignoredfailedErrored；loadeddependencySpa48source83/hash相符，不混source/RendererWIP。
+- WebSharper failedfinalbuild為unconditionaldeleteignoredlog ACLdenial，與memory無關；兩file rename被OS拒絕且原檔保留。FrozenGitblob/rawSHA immutablebuildstage862inputs成功，無Gitcheckout/sourceedit/daemonkill/productionmutation。TimingLog=false無效，失敗證據保留。
+- 第三activeLiveDemo baseline0errors；發現ContentUpdate staleSpa37，同步48（PackageRef已48），修後build待驗。WBS58140/Test676/Verification050 updated；official/mainHostcascade仍pending，不宣稱TAfirst200/SMA bugfix。
+
+## 2026-10-03 Aster Spa48 LiveDemo consumer asset closure
+- LiveDemo asset path37→48修正後 fullWebSharper build6.93s/0errors/1existingWS9002 PASS；loadedSpa48+83/hashAF43及7buildassets rawSHA/copy PASS，report C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/dynamic-livedemo48.asset-proof.json。未啟demoHost；local unsigned candidate的build/assetproof，不是正式部署/browser/TA semanticfix。
+- Compiler regenerated existing tracked LiveDemo JS/min bytes；按既有 generated delivery例外入本批，非手寫JS。Producer package input/hash仍 frozen292，Renderer11attrs WIP不stage。NuGetpush、main13/正式TestHost closure pending。
