@@ -1,0 +1,32 @@
+# Aster Spa48 adapter package cascade
+
+## 背景／上下文
+Canonical C:/Users/Administrator/test_gemini/PulseTrade.Comm.Spa.Dynamic, branch20260915_033.ptcs_group_support, HEADfb93c51, origin。Main G:/PulseTrade.fs64c565d65, upstreamG:/PulseTrade2.fs83bd67d/package0.2.48/docsf8fd231，RFC-PTC-SPA-0039accepted release design。原aggregate2026-10-02 11:49不重置；mainlog20261003/20261003005100.aster_ptcs_consumer_cascade.log/upstreampackage log20261003/20261003000410.aster_ptcs_package.log。User原三項優先；此為ActorRegistry/report package必需exactdependency閉包，不新增renderer產品需求。
+
+## 目標／假設
+Ptcs/Client/umbrella目前exactSpa47→48，同時immutableversions57→58/132→133/26→27。SameofficialRenderer131＋Contracts35，dirtyRenderer.fs不compile/stage，不將pendingSPAA geometry/bid/wallet工作混入。NoAPI/DTO/domain改動。僅metadata、受影響currentdocs/log，upstreamexactpackage已typed6/realHTTP-PCSL/browserPASS。
+
+## 計畫步驟
+先producerbaseline（GeneratePackageOnBuild=false且查AfterPack），再refs/versionrawsafe修改，SD列exactsnippet及下游mainTAClient/GWTests/SpaHost影響。Sourcecheckpoint固定commit→rebuild/local nonpublishing SDK targets→candidate/DLL/deps/APIconsumer，officialreadback/signature另gate；onlyC temporaryartifact。跨repoeachlog/check/commit/push，mainrefsclosure同步；fullformaltestHost与necessarytestsaftergraphready。
+
+## 範圍／驗收／風險
+nearest/parentAGENTS absent，applysessionmainAGENTS0.3.6及已載skills；rootC有MCP.KM.md/REQ.md/TEST.md。No branch/worktree/reset/restore/amend；knownRenderer WIPownedother工作保留exactbytes。Ownerconsultmsg1f2912bf尚unread，cleanfsproj/compiledPackageReferences且scope既獲original3release授權；不把COMM作新授權/acceptance。LegacyACL/LoginSpa18排除；publictargetversions已readHTTP200absent，禁止overwrite published。No production/SCM/broker/secret，publisherflag關閉，GenerateNuspec prerequisite按upstream實證。
+
+## Operations
+- 2026-10-03T01:00:04.7087240+08:00 prework beforeexternalbuild/sourceedit. OnlyRenderer.fs existingdirty，nofsprojProjectRefs，threeproducersnotcompileRenderer source；baselinefirstcurrentSpa47. Metadataexistingbody/headSHArecorded；no sessionwake becauseknown2Codexprocesses don'tjustifythirdduplicate. Preservesource/API/librarysurface，scopeexactconsumerpackage only.
+
+- 2026-10-03T01:00:55.3983539+08:00 baselineClient＋umbrella independentlybuild，GeneratePackageOnBuild=false/C isolatedoutputs，actualumbrellaAfterTargetsPackunconditionalhook不執行；兩projectcompile各自source/PackageRefs，notdirtyRenderer. NoAPI/source editsbeforebaseline.
+
+- 2026-10-03T01:04:42.5195003+08:00 baselinesPtcs0/0/9.18s, Client0/0/9.09s, umbrella0errors/1existingWS9002Bundlewarning/21.19s. NoPack/key/SCM. CorrectionRenderer11attrs ownership: previousAster diagnostic-onlyslice(logmain20261002line87), preserve separatelypendingE2E/release, nototheragentdiff. ActualDaedalusidlowercase nowreplied/correcthandoff6fc871c7. Metadataonlythreefsprojs clean; useofficialRenderer131 notdirtysource. Newversiontargets allpublicabsent. Nextminimalexactmetadata/currentdocs, notTAsemanticfix.
+
+- 2026-10-03T01:07:07.4433407+08:00 threefsprojs rawUTF8/BOMpreservedexact47→48+selfimmutablebumps afterbaseline; currentREQ/SA/SD/UPSTREAM/WBS581/Test676/Verification050/DevLog/KM synchronized. Sourcebody/Renderer11attrs unchanged, no rebuilddirtyRenderer. SourcecheckpointneededfinalRepositoryCommit; newmetadata builds/pack/consumer pending clearly, no earlyPASS/publish. Nextscanner/check/sourcecommit thenfinalartifactbuild withfixedsourceID.
+
+- 2026-10-03T01:09:44.7442942+08:00 newmetadata exact48 pre-source builds allPASS: Ptcs19.88s0/0，Client21.95s0/0，umbrella28.17s0errors1existingWS9002。PrecommitDLLRepoHashfb93 notfinal; checkpoint後固定newsource重新build/pack必要identity，no unitrepeatwithoutreason。OriginalAster renderer_support log confirmsowns11attrs；staysseparateunreleased. DYNsource13scope freshsensitivity/check beforecheckpoint; maindownstreampending highestpriority explicit.
+
+- 2026-10-03T01:12:52.5152283+08:00 secondclosureaudit found three activepackage test/demo consumers lagPtcs56/Spa46/Client132. Refsnowexact58/48/133, expected/testbodyunchanged；baselinescriticalthreeproducers alreadyPASS. Theseclientsnewrestore/build/17tests arependingcandidatepack, explicitcurrentSD/Test/VFY/DevLog, notallconsumerPASS. Scope16 (6fsproj+9docs+log); firstchecker32/2/0 was firstbaseline notversionbump/globalgraphproof. Sourcecheckpoint next needs rawHEAD/currentXMLoldnew/DevLog deterministic versionproof andno activeoldrefs; legacyACL/Login18 documentedonlyexclusions.
+
+- 2026-10-03T01:14:10.3568324+08:00 newSpa48 umbrellaWebSharperbuild regenerated tracked src/wwwroot/js bundle (expectednewDTO/typegraph). Fullgitdiffcheck reports compiler-generated trailingwhitespace, source/non-generatednone. Do nothand-editgeneratedJS/stripformatter; packaging usesactualcompiledbundle. Existingtrackedgenerateddelivery exception underAGENTS1.6: includeownedcompileroutputs withrawbyte sensitivecopy andactualpackage bundle gate, maintain sourcefiles/doc whitespacecheck; warningexplicitlyretained, notweakcheckerFAIL. Detectactualchangedbundlepaths beforestaging; scope16plusactualtrackedgeneratedoutputs，Renderer11attrs staysout. ActiveclientnewPKG restore stillpendinglocalpack.
+
+- 2026-10-03T01:15:58.4615626+08:00 checker44PASS7WARN0FAIL：versionbumps三producers/DevLog/activePackageRefsSyncPASS (inrepoC only，mainpendinghighestpriority notglobalPASS)。unchangedKM/REQ/SA/WBS/partSD incrementalWBSscope andpreexistingtrace/cacheaudit＋dirty expected；no newcodeAPIchange。Generatedoutputs2 compiler-producedtrackeddelivery exception/sourcewhitespacePASS planned; combined18freshrawscan then explicit18 checkpoint，Renderer11attrs notstage. FinalArtifactsourcehash awaitnewcommit，officialnotpublished. Originalcallbacksupport logs/hypothesis remainownpendingdiagnostic context; do notmixintoSpa48 producer package slice.
+
+- 2026-10-03T01:18:35.4531985+08:00 sourcecheckpointgitadd blockedonlyignoredlog path; no commit/push, indexpartial17ownedpaths. Existingrepo .gitignore log default conflictsrequiredtechnicaltrace; explicitforce-add only thisnewownedlog (notbin/cache/others) as documentedrequiredlog exception. No reset/restore/indexwipe, verifyexact18 includesnoRenderer beforecommit. Freshlogscan0high/mediumrequired afterfailure append.

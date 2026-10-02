@@ -24,3 +24,6 @@
 - 這兩項必須由真BrowserDemo DOM gate驗 controls存在、點擊後geometry/visibility改變，再以Reset/identity replacement驗state lifecycle。
 
 關聯：`doc/RFC/RFC-PTCS-DYNAMIC-0029.trace-lifecycle-cursor-events-marker-contrast.md`、`DYN-VFY-035`。
+
+## 2026-10-03 Spa exact adapter cascade
+ExactSpa version consumers must migrate producerpackages before formalHostrestore can be accepted. Metadataonly Ptcs58/Client133/umbrella27 plannedagainstSpa48 whileusingofficialRenderer131; do notcompile renderer diagnosticWIP intoapackage accidentally. DYN-WBS581/T676/VFY050 andsourcecheckpointlog trace finalsource/DLL/local/official distinctions.

@@ -63,3 +63,7 @@ if not handled then
 ## 4. 影響範圍與相容性
 - **相容性**：前端引入 `RegisterRenderer` 是 Non-breaking change，原先寫死的 SDUI 程式碼可以直接刪除，轉由 Dynamic 擴充載入，或作為核心的 Default Renderer 註冊。
 - **依賴乾淨**：PTCS 核心將不必理解什麼是 `fskynet-sdui`，達到職責分離。
+
+## Spa48 exact adapter release (Aster / upstream RFC-PTC-SPA-0039)
+ActorRegistry/report schedule runtime source83bd67d has exactSpa0.2.48 local typed6/HTTP-PCSL/browser proof. Dynamic active package consumers require exact same Spa version; this is package compatibility, not new TA behavior. Ptcs0.1.57→0.1.58, Ptcs.Client0.1.132→0.1.133, umbrella0.1.26→0.1.27; all change only `<PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.48]"/>`. Contracts0.1.35/Renderer0.1.131/Interactive.Client0.1.123 unchanged. Legacy ACL/Login copies exactSpa18 excluded because canonical active producers are main Libs/PulseTrade.Comm/src.
+Formal downstream main Spa.Host Dynamic.Ptcs58, GW.Tests umbrella27, TAResearch.Client29 with Ptcs.Client133 must cascade together. Build GeneratePackageOnBuild=false, local pack `_GetRestoreProjectStyle;GenerateNuspec` + ContinuePackingAfterGeneratingNuspec=true/NoBuild=true only after new source/DLL identity; no Pack/AfterPack/key read. Source checkpoint precedes final source-commit build; local/official/deployed gates distinct. No renderer source changes in this slice; previous own11 diagnostic attrs stay separate pending validation.

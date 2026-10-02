@@ -380,7 +380,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
       send.addEventListener("click", () => {
         const raw=caseRaw();
         rawPreview.textContent=raw;
-        return context.submit(New_49(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+        return context.submit(New_52(raw, typeName, caseName, keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
       });
       append(caseRow, isDocumentBacked?[heading, fields, rawPreview]:[heading, fields, rawPreview, send]);
       root.appendChild(caseRow);
@@ -394,7 +394,7 @@ function renderSchemaIntoRoot(root, context, typeName, document, schema){
           fullSend.addEventListener("click", () => {
             const raw=fullRaw();
             fullPreview.textContent=raw;
-            return context.submit(New_49(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
+            return context.submit(New_52(raw, typeName, "__document", keyJsonForSubmit(normalizeDynamicTargetKeyParts(context.keyParts))));
           });
           const actions=setTestId("dynamic-argu-composer-actions", element("div", "dynamic-argu-composer-actions", null));
           append(actions, [renderComposerModeControl(context), fullSend]);
@@ -844,7 +844,7 @@ function generateActorReport(outputDirectory, status){
   if(isBlank_1(trimmed))status.Set("Report output directory is required.");
   else {
     status.Set("Generating actor state report...");
-    postJson_1("/actors/api/report", New_50(trimmed), (reply) => {
+    postJson_1("/actors/api/report", New_53(trimmed), (reply) => {
       status.Set("Report written: "+(isBlank_1(reply.filePath)?reply.fileName:reply.filePath));
     }, (message) => {
       status.Set("Report failed: "+asText_1(message));
@@ -3330,7 +3330,7 @@ function mountSets(page){
   load();
 }
 function mountActors(page){
-  let actorSnapshot, syncSocket, queuedSyncFrames, subscribedRegistry, registryTailRequested, dynamicActorsPageAccepted;
+  let reportRequestCount, reportEditVersion, selectedReportStatus, actorSnapshot, syncSocket, queuedSyncFrames, subscribedRegistry, registryTailRequested, dynamicActorsPageAccepted;
   page.className="page actors-page";
   const head_2=element_1("div", "work-head actors-head", null);
   const title=element_1("div", "", null);
@@ -3339,11 +3339,132 @@ function mountActors(page){
   const reload=button_1("", "Reload");
   const nodes=element_1("div", "nodes", null);
   const treePanel=setTestId_1("actor-tree-panel", element_1("section", "actor-tree-panel", null));
+  const reportToolbar=setTestId_1("actors-report-controls", element_1("section", "actor-report-controls", null));
+  reportToolbar.setAttribute("style", "display:flex; flex-direction:column; gap:8px; padding:12px; border:1px solid #d8e1ee; border-radius:8px;");
+  const reportForm=element_1("div", "", null);
+  reportForm.setAttribute("style", "display:flex; flex-wrap:wrap; gap:8px; align-items:end;");
+  const reportDirectory=setTestId_1("actors-report-directory", input_1("G:\\Reports"));
+  reportDirectory.setAttribute("style", "width:100%; min-height:39px; padding:8px; font:inherit; box-sizing:border-box;");
+  const directoryLabel=element_1("label", "", "\u5831\u544a\u76ee\u9304\uff08\u4f3a\u670d\u5668\u672c\u6a5f\uff09");
+  directoryLabel.setAttribute("style", "display:flex; flex-direction:column; gap:4px; margin:0; flex:1 1 360px; min-width:220px;");
+  append_1(directoryLabel, [reportDirectory]);
+  const reportSeconds=setTestId_1("actors-report-interval", input_1("300"));
+  reportSeconds.setAttribute("type", "number");
+  reportSeconds.setAttribute("min", "30");
+  reportSeconds.setAttribute("max", "86400");
+  reportSeconds.value="300";
+  reportSeconds.setAttribute("style", "width:120px; min-height:39px; padding:8px; font:inherit; box-sizing:border-box;");
+  const intervalLabel=element_1("label", "", "\u6392\u7a0b\u9593\u9694\uff08\u79d2\uff09");
+  intervalLabel.setAttribute("style", "display:flex; flex-direction:column; gap:4px; margin:0;");
+  append_1(intervalLabel, [reportSeconds]);
+  const generateReport=setTestId_1("actors-report-generate", button_1("", "\u7522\u751f\u5831\u544a"));
+  const scheduleReport=setTestId_1("actors-report-schedule", button_1("", "\u555f\u7528\uff0f\u66f4\u65b0\u6392\u7a0b"));
+  const cancelReport=setTestId_1("actors-report-cancel", button_1("", "\u53d6\u6d88\u6392\u7a0b"));
+  const readReportStatus=setTestId_1("actors-report-read-status", button_1("", "\u8b80\u53d6\u72c0\u614b"));
+  const reportStatus=setTestId_1("actors-report-status", element_1("div", "state", "\u4f3a\u670d\u5668\u4fdd\u5b58\u6392\u7a0b\uff1b\u95dc\u9589\u6b64\u9801\u9762\u5f8c\u4ecd\u6703\u57f7\u884c\u3002"));
+  reportStatus.setAttribute("style", "overflow-wrap:anywhere; max-width:100%;");
+  append_1(reportForm, [directoryLabel, intervalLabel, generateReport, scheduleReport, cancelReport, readReportStatus]);
+  append_1(reportToolbar, [reportForm, reportStatus]);
+  reportRequestCount=0;
+  reportEditVersion=0;
+  selectedReportStatus=null;
+  const reportEndpoint="/actors/api/report/schedules";
+  const reportReadOnly=currentBrowserUser().viewAsActive;
+  const normalizeReportPath=(value) => TrimEnd(Replace(Trim(asText_2(value)), "\\", "/"), ["/"]).toLowerCase();
+  const setReportDisabled=(disabled, control) => disabled?control.setAttribute("disabled", "disabled"):control.removeAttribute("disabled");
+  const updateReportControls=() => {
+    const busy=reportRequestCount>0;
+    setReportDisabled(busy||reportReadOnly, generateReport);
+    setReportDisabled(busy||reportReadOnly, scheduleReport);
+    setReportDisabled(busy||reportReadOnly||!(selectedReportStatus==null?false:selectedReportStatus.$0.enabled), cancelReport);
+    setReportDisabled(busy, readReportStatus);
+  };
+  const finishReportRequest=() => {
+    const a=0;
+    const b=reportRequestCount-1;
+    reportRequestCount=Compare(a, b)===1?a:b;
+    updateReportControls();
+  };
+  const beginReportRequest=() => {
+    reportRequestCount=reportRequestCount+1;
+    reportEditVersion=reportEditVersion+1;
+    updateReportControls();
+    return reportEditVersion;
+  };
+  const showReportStatus=(version, reply) => version===reportEditVersion&&normalizeReportPath(reportDirectory.value)==normalizeReportPath(reply.configuration.outputDirectory)?(selectedReportStatus=Some(reply),setStatus(reportStatus, (reply.enabled?"\u4f3a\u670d\u5668\u6392\u7a0b\u5df2\u555f\u7528\uff0c\u6bcf "+String(reply.configuration.intervalSeconds)+" \u79d2\uff1b\u8b80\u53d6\u6642\u4e0b\u6b21\u57f7\u884c\u6642\u9593 "+String(asText_2(reply.dueAtUtc)):"\u4f3a\u670d\u5668\u6392\u7a0b\u5df2\u53d6\u6d88")+(!isBlank_2(reply.lastError)?"\uff1b\u932f\u8aa4\uff1a"+reply.lastError:reply.hasPendingReport?"\uff1b\u5831\u544a\u8f38\u51fa\u5f85\u5b8c\u6210\u3002":!isBlank_2(reply.lastFilePath)?"\uff1b\u6700\u8fd1\u5831\u544a\uff1a"+reply.lastFilePath:""))):null;
+  const reportRequestFailed=(version, error) => {
+    version===reportEditVersion?setStatus(reportStatus, error):void 0;
+    return finishReportRequest();
+  };
+  const loadReportSchedules=() => {
+    const version=beginReportRequest();
+    getJson(reportEndpoint, (rows) => {
+      let _1;
+      if(version===reportEditVersion){
+        const selected=tryFind((row) => normalizeReportPath(row.configuration.outputDirectory)==normalizeReportPath(reportDirectory.value), arrayOrEmpty_1(rows));
+        _1=(selectedReportStatus=selected,selected==null?setStatus(reportStatus, "\u6b64\u76ee\u9304\u5c1a\u672a\u8a2d\u5b9a\u4f3a\u670d\u5668\u6392\u7a0b\u3002"):showReportStatus(version, selected.$0));
+      }
+      else _1=void 0;
+      finishReportRequest();
+    }, (_1) => reportRequestFailed(version, _1));
+  };
+  reportDirectory.addEventListener("input", () => {
+    reportEditVersion=reportEditVersion+1;
+    selectedReportStatus=null;
+    setStatus(reportStatus, "\u76ee\u9304\u5df2\u8b8a\u66f4\uff1b\u8acb\u8b80\u53d6\u72c0\u614b\u6216\u555f\u7528\u6392\u7a0b\u3002");
+    return updateReportControls();
+  });
+  generateReport.addEventListener("click", () => {
+    if(isBlank_2(reportDirectory.value))return setStatus(reportStatus, "\u8acb\u8f38\u5165\u4f3a\u670d\u5668\u672c\u6a5f\u5b8c\u6574\u5831\u544a\u76ee\u9304\u3002");
+    else {
+      const version=beginReportRequest();
+      return postJson_2("/actors/api/report", New_27(reportDirectory.value), (reply) => {
+        version===reportEditVersion?setStatus(reportStatus, "\u5831\u544a\u5df2\u5beb\u5165\uff1a"+asText_2(reply.filePath)):void 0;
+        finishReportRequest();
+      }, (_1) => reportRequestFailed(version, _1));
+    }
+  });
+  scheduleReport.addEventListener("click", () => {
+    let o, _1;
+    const m=(o=0,[TryParse(reportSeconds.value, {get:() => o, set:(v) => {
+      o=v;
+    }}), o]);
+    if(m[0]){
+      const seconds=m[1];
+      _1=!isBlank_2(reportDirectory.value)&&seconds>=30&&seconds<=86400;
+    }
+    else _1=false;
+    if(_1){
+      const version=beginReportRequest();
+      return postJson_2(reportEndpoint, New_26(reportDirectory.value, m[1], false), (reply) => {
+        showReportStatus(version, reply);
+        finishReportRequest();
+      }, (_2) => reportRequestFailed(version, _2));
+    }
+    else return setStatus(reportStatus, "\u8acb\u8f38\u5165\u5b8c\u6574\u5831\u544a\u76ee\u9304\uff0c\u9593\u9694\u9700\u70ba 30 \u81f3 86400 \u79d2\u3002");
+  });
+  cancelReport.addEventListener("click", () => {
+    if(selectedReportStatus!=null&&selectedReportStatus.$==1){
+      if(selectedReportStatus.$0.enabled){
+        const selected=selectedReportStatus.$0;
+        const version=beginReportRequest();
+        return postJson_2(reportEndpoint+"/cancel", New_28(selected.scheduleId), (reply) => {
+          showReportStatus(version, reply);
+          finishReportRequest();
+        }, (_1) => reportRequestFailed(version, _1));
+      }
+      else return null;
+    }
+    else return null;
+  });
+  readReportStatus.addEventListener("click", loadReportSchedules);
+  updateReportControls();
+  loadReportSchedules();
   append_1(title, [element_1("label", "", "Actor / Participant Management"), element_1("h1", "", "Actors")]);
   append_1(actions, [status, reload]);
   append_1(head_2, [title, actions]);
-  append_1(page, [head_2, treePanel, nodes]);
-  const emptySnapshot=New_25(0, 0, 0n, []);
+  append_1(page, [head_2, reportToolbar, treePanel, nodes]);
+  const emptySnapshot=New_29(0, 0, 0n, []);
   actorSnapshot=emptySnapshot;
   syncSocket=null;
   queuedSyncFrames=[];
@@ -3603,13 +3724,13 @@ function mountActors(page){
           const o=existingNode==null?null:tryFind((actor_1) => sameText(actor_1.actorId, actorId), arrayOrEmpty_1(existingNode.$0.actors));
           const _2=o==null?null:actorTagValue("generation:", o.$0.keys);
           if(_2!=null&&_2.$==1?incomingGeneration!=null&&incomingGeneration.$==1?!sameText(_2.$0, incomingGeneration.$0)?(_2.$0,incomingGeneration.$0,incomingEventKind==null?false:sameText(incomingEventKind.$0, "Registered")):true:true:true){
-            const actor=New_27(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
-            if(existingNode==null)updatedNode=New_26(nodeId_1, nodeAddress_1, actorStatusLooksOffline(actor.status)?"offline":"up", roles, actorStatusLooksOffline(actor.status)?[]:[actor]);
+            const actor=New_31(actorId, textOr(actorId, _1.displayName), textOr("actor", _1.kind), [nodeId_1, actorId].concat(tags), textOr("running", _1.status), arrayOrEmpty_1(_1.routees));
+            if(existingNode==null)updatedNode=New_30(nodeId_1, nodeAddress_1, actorStatusLooksOffline(actor.status)?"offline":"up", roles, actorStatusLooksOffline(actor.status)?[]:[actor]);
             else {
               const existing=existingNode.$0;
               const retainedActors=filter((row) =>!sameText(row.actorId, actorId), arrayOrEmpty_1(existing.actors));
               const actors=sortBy((row) => asText_2(row.actorId), actorStatusLooksOffline(actor.status)?retainedActors:retainedActors.concat([actor]));
-              updatedNode=New_26(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, length(actors)===0?"offline":"up", length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
+              updatedNode=New_30(existing.nodeId, isBlank_2(nodeAddress_1)?asText_2(existing.nodeAddress):nodeAddress_1, length(actors)===0?"offline":"up", length(roles)===0?arrayOrEmpty_1(existing.roles):roles, actors);
             }
             const nodes_1=sortBy((node) => asText_2(node.nodeId), length(arrayOrEmpty_1(updatedNode.actors))===0?filter((node) =>!sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes)):filter((node) =>!sameText(node.nodeId, nodeId_1), arrayOrEmpty_1(actorSnapshot.nodes)).concat([updatedNode]));
             let _3=length(nodes_1);
@@ -3617,7 +3738,7 @@ function mountActors(page){
             const a=actorSnapshot.maxSequence;
             const b=event.sequence;
             let _5=Compare(a, b)===1?a:b;
-            actorSnapshot=New_25(_3, _4, _5, nodes_1);
+            actorSnapshot=New_29(_3, _4, _5, nodes_1);
             writeSnapshotWithWatermark(cacheKey_1, actorSnapshot, actorSnapshot.maxSequence, actorValueCount(actorSnapshot), "actors-snapshot");
             applySnapshot("synced", actorSnapshot);
             setStatus(status, "Synced actor "+actorId);
@@ -3933,7 +4054,7 @@ function mountManagement(page){
   function mutatePage(endpoint){
     return(action) =>(row) => {
       const destructive=EndsWith(endpoint, "/delete");
-      return!destructive||globalThis.confirm("Delete tab page '"+textOr(row.pageId, row.title)+"'? This cannot be undone for this page lineage.")?(setStatus(pageCount, action+" "+row.pageId+"..."),postJson_2(endpoint, New_28(row.pageId, row.tabId), () => {
+      return!destructive||globalThis.confirm("Delete tab page '"+textOr(row.pageId, row.title)+"'? This cannot be undone for this page lineage.")?(setStatus(pageCount, action+" "+row.pageId+"..."),postJson_2(endpoint, New_32(row.pageId, row.tabId), () => {
         destructive?selectedPageKeys=filter((selected) => selected!=pageRowKey(row), selectedPageKeys):void 0;
         loadPages();
         refreshManagementNav();
@@ -3948,7 +4069,7 @@ function mountManagement(page){
         const x=pageRowKey(row);
         return exists((y) => x==y, selectedPageKeys);
       }, allPages));
-      return length(rows)>0?(setStatus(pageCount, action+" "+String(length(rows))+" selected pages..."),postJson_2(endpoint, New_29(map((row) => New_28(row.pageId, row.tabId), rows)), () => {
+      return length(rows)>0?(setStatus(pageCount, action+" "+String(length(rows))+" selected pages..."),postJson_2(endpoint, New_33(map((row) => New_32(row.pageId, row.tabId), rows)), () => {
         loadPages();
         refreshManagementNav();
       }, (error) => {
@@ -3963,7 +4084,7 @@ function mountManagement(page){
     }, allPages);
     if(length(rows)>0&&globalThis.confirm("Delete "+String(length(rows))+" selected tab page lineages? This cannot be undone.")){
       setStatus(pageCount, "Deleting "+String(length(rows))+" selected pages...");
-      postJson_2("/management/api/pages/delete-many", New_29(map((row) => New_28(row.pageId, row.tabId), rows)), () => {
+      postJson_2("/management/api/pages/delete-many", New_33(map((row) => New_32(row.pageId, row.tabId), rows)), () => {
         selectedPageKeys=[];
         updatePageSelectionControl();
         loadPages();
@@ -3992,7 +4113,7 @@ function mountManagement(page){
     }, allSets);
     if(length(rows)>0&&globalThis.confirm("Delete "+String(length(rows))+" selected set buckets from the current projection?")){
       setStatus(setCount, "Deleting "+String(length(rows))+" selected sets...");
-      postJson_2("/management/api/sets/delete-many", New_30(map((row) => New_31(row.setName, arrayOrEmpty_1(row.keys)), rows)), () => {
+      postJson_2("/management/api/sets/delete-many", New_34(map((row) => New_35(row.setName, arrayOrEmpty_1(row.keys)), rows)), () => {
         selectedSetKeys=[];
         updateSetSelectionControl();
         loadSets();
@@ -4013,7 +4134,7 @@ function mountManagement(page){
   function deleteGroup(row){
     if(row.canDelete&&groupAclAllows(row.groupId, "ptcs.group.delete")&&globalThis.confirm("Delete group '"+textOr(row.groupId, row.displayName)+"'?")){
       setStatus(groupCount, "Deleting "+row.groupId+"...");
-      postJson_2("/chat/api/groups/delete", New_32(newRequestId("management-group-delete"), row.groupId, row.revision, "", "", "", "", null), () => {
+      postJson_2("/chat/api/groups/delete", New_36(newRequestId("management-group-delete"), row.groupId, row.revision, "", "", "", "", null), () => {
         loadGroups();
       }, (error) => {
         setStatus(groupCount, "Delete failed: "+error);
@@ -4034,7 +4155,7 @@ function mountManagement(page){
   function mutateParticipant(endpoint){
     return(action) =>(row) => {
       const destructive=EndsWith(endpoint, "/delete");
-      return!destructive||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson_2(endpoint, New_33(row.participantId), () => {
+      return!destructive||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson_2(endpoint, New_37(row.participantId), () => {
         let _1;
         if(destructive){
           const x=row.participantId;
@@ -4054,7 +4175,7 @@ function mountManagement(page){
         const x=row.participantId;
         return exists((y) => x==y, selectedParticipantKeys);
       }, allParticipants));
-      return length(rows)>0?(setStatus(participantCount, action+" "+String(length(rows))+" selected participants..."),postJson_2(endpoint, New_34(map((row) => New_33(row.participantId), rows)), () => {
+      return length(rows)>0?(setStatus(participantCount, action+" "+String(length(rows))+" selected participants..."),postJson_2(endpoint, New_38(map((row) => New_37(row.participantId), rows)), () => {
         loadParticipants();
       }, (error) => {
         setStatus(participantCount, action+" selected failed: "+error);
@@ -4068,7 +4189,7 @@ function mountManagement(page){
     }, allParticipants));
     if(length(rows)>0&&globalThis.confirm("Delete "+String(length(rows))+" selected participants, their inbound direct messages, and participant-scoped set projections?")){
       setStatus(participantCount, "Deleting "+String(length(rows))+" selected participants...");
-      postJson_2("/management/api/participants/delete-many", New_34(map((row) => New_33(row.participantId), rows)), () => {
+      postJson_2("/management/api/participants/delete-many", New_38(map((row) => New_37(row.participantId), rows)), () => {
         selectedParticipantKeys=[];
         updateParticipantSelectionControl();
         loadParticipants();
@@ -4348,7 +4469,7 @@ function mountChat(page){
   const isAnnouncementGroup=(groupId) => sameText(groupId, "organization-announcements");
   const unreadFor=(target) => tryFind((row) => sameText(row.target, target), unreadMessages);
   const persistActivity=() => {
-    writeJson(activityCacheKey, New_37(activityCursors, unreadMessages));
+    writeJson(activityCacheKey, New_40(activityCursors, unreadMessages));
   };
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
@@ -4508,7 +4629,7 @@ function mountChat(page){
     if(activityReady&&!activityPolling){
       activityPolling=true;
       setData("activity-busy", "true", work);
-      postJson_2("/chat/api/activity", New_39(activityCursors), (reply) => {
+      postJson_2("/chat/api/activity", New_42(activityCursors), (reply) => {
         let changed, hasMore, selectedHasNewMessage, _1;
         activityPolling=false;
         setData("activity-busy", "false", work);
@@ -4522,7 +4643,7 @@ function mountChat(page){
             const o=tryFind((row) => sameText(row.target, stream.target), activityCursors);
             let _2=o==null?null:Some(o.$0.sequence);
             if(!Equals(_2, Some(stream.nextSequence))){
-              activityCursors=filter((row) =>!sameText(row.target, stream.target), activityCursors).concat([New_40(stream.target, stream.nextSequence)]);
+              activityCursors=filter((row) =>!sameText(row.target, stream.target), activityCursors).concat([New_43(stream.target, stream.nextSequence)]);
               changed=true;
             }
             iter((event) => {
@@ -4530,7 +4651,7 @@ function mountChat(page){
                 const o_1=unreadFor(event.target);
                 let _3=o_1==null?null:Some(o_1.$0.messageId);
                 if(!Equals(_3, Some(event.messageId))){
-                  unreadMessages=filter((row) =>!sameText(row.target, event.target), unreadMessages).concat([New_36(event.target, event.messageId)]);
+                  unreadMessages=filter((row) =>!sameText(row.target, event.target), unreadMessages).concat([New_39(event.target, event.messageId)]);
                   changed=true;
                   selectedHasNewMessage=selectedHasNewMessage||sameText(selected, event.target);
                 }
@@ -4563,7 +4684,7 @@ function mountChat(page){
   function mutateSelectedGroup(url, participantId_1, displayName, role, historyPolicy, includeHistory, onOk){
     if(selectedGroup!=null&&selectedGroup.$==1){
       const group_1=selectedGroup.$0;
-      return postJson_2(url, New_32(newRequestId("group-mutation"), group_1.groupId, group_1.revision, asText_2(participantId_1), asText_2(displayName), asText_2(role), asText_2(historyPolicy), includeHistory), (reply) => {
+      return postJson_2(url, New_36(newRequestId("group-mutation"), group_1.groupId, group_1.revision, asText_2(participantId_1), asText_2(displayName), asText_2(role), asText_2(historyPolicy), includeHistory), (reply) => {
         selectedGroup=Some(reply.group);
         renderGroupManagement();
         loadParticipants(false);
@@ -4593,7 +4714,7 @@ function mountChat(page){
         const markRead=setTestId_1("announcement-mark-read", button_1("", "Mark read"));
         _1=(markRead.addEventListener("click", () => {
           const latest=tryLast(sortBy((a) => a.streamSequence, filter((message) =>!isBlank_2(message.channelMessageId), selectedThreadMessages)));
-          return latest!=null&&latest.$==1?postJson_2("/chat/api/groups/read/ack", New_41(group_1.groupId, latest.$0.channelMessageId), (reply) => {
+          return latest!=null&&latest.$==1?postJson_2("/chat/api/groups/read/ack", New_44(group_1.groupId, latest.$0.channelMessageId), (reply) => {
             setStatus(state, "Read through #"+String(reply.streamSequence));
           }, (t) => {
             setStatus(state, t);
@@ -4829,7 +4950,7 @@ function mountChat(page){
                 const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
                 const b=maxMessageSequence(merged);
                 let _3=Compare(a, b)===1?a:b;
-                writeSnapshotWithWatermark(cacheKey_1, New_42(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
+                writeSnapshotWithWatermark(cacheKey_1, New_45(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
               });
             });
             setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -4930,7 +5051,7 @@ function mountChat(page){
         let _1=o==null?oldestSequence:o.$0;
         const o_1=cached==null?null:Some(cached.$0.hasOlderMessages);
         let _2=o_1==null?hasOlderMessages:o_1.$0;
-        let _3=New_42(merged, message.messageId, _1, _2);
+        let _3=New_45(merged, message.messageId, _1, _2);
         writeSnapshotWithWatermark(cacheKey_1, _3, newestSequence, length(merged), "chat-thread");
       });
     }
@@ -4963,7 +5084,7 @@ function mountChat(page){
               o=message==null||isBlank_2(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_38(textOr(event_1.eventId, event_1.sourceId), "", 0n, "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
+              o=Some(New_41(textOr(event_1.eventId, event_1.sourceId), "", 0n, "", participantId, "direct", asText_2(event_1.payload), asText_2(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -5041,7 +5162,7 @@ function mountChat(page){
     if(isBlank_2(selected))setStatus(state, "Select a participant first");
     else if(isBlank_2(body))setStatus(state, "Message is empty");
     else if(isGroupTarget(selected)){
-      const request=New_44(newRequestId("group-send"), selectedGroupId(), body, ["web-chat"]);
+      const request=New_47(newRequestId("group-send"), selectedGroupId(), body, ["web-chat"]);
       const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/groups/send", request);
       refreshChatPendingState();
       setStatus(state, "Sending group message; pending command saved in browser DB");
@@ -5062,9 +5183,9 @@ function mountChat(page){
       });
     }
     else {
-      const request_1=New_46(participantId, selected, body, ["web-chat"]);
+      const request_1=New_49(participantId, selected, body, ["web-chat"]);
       const pendingId_1=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request_1);
-      const wsRequest=New_45("chat-send", pendingId_1, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const wsRequest=New_48("chat-send", pendingId_1, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId_1]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -5077,7 +5198,7 @@ function mountChat(page){
     else if(globalThis.document.body==null)setStatus(state, "Document body is unavailable");
     else {
       try {
-        const rows=map((message) => New_47(asText_2(message.messageId), asText_2(message.fromId), asText_2(message.createdAtUtc), asText_2(message.body)), selectedThreadMessages);
+        const rows=map((message) => New_50(asText_2(message.messageId), asText_2(message.fromId), asText_2(message.createdAtUtc), asText_2(message.body)), selectedThreadMessages);
         const url=URL.createObjectURL(new Blob([concat_2("\n", map((v) => JSON.stringify(v), rows))], {type:"application/x-ndjson;charset=utf-8"}));
         const now=new Date();
         const twoDigits=(value) => value<10?"0"+String(value):String(value);
@@ -5123,10 +5244,10 @@ function mountChat(page){
   groupCreateConfirm.addEventListener("click", () => {
     const groupId=Trim(groupIdInput.value);
     const displayName=Trim(groupNameInput.value);
-    return isBlank_2(groupId)?setStatus(state, "Group id is required"):postJson_2("/chat/api/groups/create", New_48(newRequestId("group-create"), groupId, displayName, [], groupHistoryInput.value, ["web-chat"]), (reply) => {
+    return isBlank_2(groupId)?setStatus(state, "Group id is required"):postJson_2("/chat/api/groups/create", New_51(newRequestId("group-create"), groupId, displayName, [], groupHistoryInput.value, ["web-chat"]), (reply) => {
       const createdTarget=groupTarget(reply.group.groupId);
       if(!exists((row) => sameText(row.target, createdTarget), activityCursors)){
-        activityCursors=activityCursors.concat([New_40(createdTarget, "0")]);
+        activityCursors=activityCursors.concat([New_43(createdTarget, "0")]);
         persistActivity();
       }
       selected=groupTarget(reply.group.groupId);
@@ -5258,7 +5379,7 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_55(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    const request=New_58(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
     if(isBlank_2(request.userName)||isBlank_2(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
@@ -5288,7 +5409,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc_1().getElementById("ptcs-login-config");
-  return node==null||isBlank_2(node.textContent)?New_54("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank_2(node.textContent)?New_57("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank_2(value)?fallback:value;
@@ -5739,7 +5860,7 @@ function renderAppendValue(definition, value){
   const head_2=element_1("div", "fcell-head", null);
   append_1(head_2, [element_1("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element_1("span", "muted wrap", asText_2(value.valueId)+" / "+asText_2(value.createdAtUtc))]);
   card.appendChild(head_2);
-  const presentationContext=New_51(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
+  const presentationContext=New_54(asText_2(definition.pageId), asText_2(definition.tabId), asText_2(value.valueId), asText_2(value.createdAtUtc), mode, arrayOrEmpty_1(value.tags), asText_2(value.rawValue));
   const m_1=tryResolveReplyPresentation(presentationContext);
   if(m_1!=null&&m_1.$==1){
     const presentation=m_1.$0;
@@ -6031,7 +6152,7 @@ function renderViewAsControl(){
   });
   apply.addEventListener("click", () => {
     apply.setAttribute("disabled", "disabled");
-    return postJson_2("/management/api/view-as", New_56(asText_2(chooser.value)), () => {
+    return postJson_2("/management/api/view-as", New_59(asText_2(chooser.value)), () => {
       globalThis.location.reload();
     }, (error) => {
       apply.removeAttribute("disabled");
@@ -6115,7 +6236,7 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText_2(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_57(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const request=New_60(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
       const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
       setStatus(status, "Saving");
       postJson_2("/pages/api/register-page", request, (reply) => {
@@ -6185,6 +6306,14 @@ function renderPageCreator(nav, activePath, pages){
 function setValueCount(buckets){
   return fold((_1, _2) => _1+_2, 0, map((bucket) => bucket==null?0:bucket.valueCount, arrayOrEmpty_1(buckets)));
 }
+function currentBrowserUser(){
+  const userNode=doc_1().getElementById("ptc-comm-user");
+  if(userNode==null||isBlank_2(userNode.textContent))return New_25("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
+  else {
+    const user=json(userNode.textContent);
+    return user==null||isBlank_2(user.participantId)?New_25("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
+  }
+}
 function tryRenderWithRegisteredPageRenderers(text){
   let r;
   const content=asText_2(text);
@@ -6251,14 +6380,6 @@ function aclAllows(action, resourceKind, resourceId){
 }
 function groupAclAllows(groupId, action){
   return aclAllows(action, "ptcs.group", groupId)||systemAclAllows("*", action);
-}
-function currentBrowserUser(){
-  const userNode=doc_1().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank_2(userNode.textContent))return New_35("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
-  else {
-    const user=json(userNode.textContent);
-    return user==null||isBlank_2(user.participantId)?New_35("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
-  }
 }
 function compactMessageId(value){
   const text=asText_2(value);
@@ -6584,7 +6705,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label_1, badge, className){
-  return New_53(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_56(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label_1), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc_1().getElementById("ptc-comm-client-extensions");
@@ -6816,7 +6937,7 @@ function tryResolve(context){
     const p=staticCanvasSummary(payload);
     const title=p[0];
     const elementCount=p[1];
-    return Some(New_52("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
+    return Some(New_55("static-sdui", () => renderSummary(title, elementCount), [], () =>(host) => {
       clearHost(host);
       const doc_2=createSduiCanvasBody(content);
       LoadLocalTemplates("");
@@ -7151,7 +7272,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_43(streamId, _3, _4, asText_2(source), nowTicks());
+    let _5=New_46(streamId, _3, _4, asText_2(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -8469,9 +8590,6 @@ function Trim(s){
 function TrimEndWS(s){
   return s.replace(new RegExp("\\s+$"), "");
 }
-function StartsWith(t, s){
-  return t.substring(0, s.length)==s;
-}
 function Replace(subject, search, replace){
   function replaceLoop(subj){
     const index=subj.indexOf(search);
@@ -8483,6 +8601,9 @@ function Replace(subject, search, replace){
     else return subj;
   }
   return replaceLoop(subject);
+}
+function StartsWith(t, s){
+  return t.substring(0, s.length)==s;
 }
 function TrimStart(s, t){
   let i, go;
@@ -8860,7 +8981,33 @@ function New_23(valueId, keys, createdAtUtc, value, tags){
 function New_24(reason){
   return{reason:reason};
 }
-function New_25(nodeCount, actorCount, maxSequence, nodes){
+function New_25(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
+  return{
+    participantId:participantId, 
+    displayName:displayName, 
+    login:login, 
+    authenticated:authenticated, 
+    provider:provider, 
+    logoutPath:logoutPath, 
+    authenticatedParticipantId:authenticatedParticipantId, 
+    viewAsParticipantId:viewAsParticipantId, 
+    viewAsActive:viewAsActive
+  };
+}
+function New_26(outputDirectory, intervalSeconds, includeOffline){
+  return{
+    outputDirectory:outputDirectory, 
+    intervalSeconds:intervalSeconds, 
+    includeOffline:includeOffline
+  };
+}
+function New_27(outputDirectory){
+  return{outputDirectory:outputDirectory};
+}
+function New_28(scheduleId){
+  return{scheduleId:scheduleId};
+}
+function New_29(nodeCount, actorCount, maxSequence, nodes){
   return{
     nodeCount:nodeCount, 
     actorCount:actorCount, 
@@ -8980,7 +9127,7 @@ class HashSet extends Object_1 {
 function OfArray(a){
   return new FSharpMap("New_1", OfSeq(map_1((_1) => Pair.New(_1[0], _1[1]), a)));
 }
-function New_26(nodeId_1, nodeAddress_1, status, roles, actors){
+function New_30(nodeId_1, nodeAddress_1, status, roles, actors){
   return{
     nodeId:nodeId_1, 
     nodeAddress:nodeAddress_1, 
@@ -8989,7 +9136,7 @@ function New_26(nodeId_1, nodeAddress_1, status, roles, actors){
     actors:actors
   };
 }
-function New_27(actorId, displayName, kind, keys, status, routees){
+function New_31(actorId, displayName, kind, keys, status, routees){
   return{
     actorId:actorId, 
     displayName:displayName, 
@@ -9050,19 +9197,19 @@ class ListModel extends Object_1 {
     }
   }
 }
-function New_28(pageId, tabId){
+function New_32(pageId, tabId){
   return{pageId:pageId, tabId:tabId};
 }
-function New_29(pages){
+function New_33(pages){
   return{pages:pages};
 }
-function New_30(sets){
+function New_34(sets){
   return{sets:sets};
 }
-function New_31(setName, keys){
+function New_35(setName, keys){
   return{setName:setName, keys:keys};
 }
-function New_32(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
+function New_36(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
   return{
     commandId:commandId, 
     groupId:groupId, 
@@ -9074,10 +9221,10 @@ function New_32(commandId, groupId, expectedRevision, participantId, displayName
     includeHistoryBeforeFirstJoin:includeHistoryBeforeFirstJoin
   };
 }
-function New_33(participantId){
+function New_37(participantId){
   return{participantId:participantId};
 }
-function New_34(participants){
+function New_38(participants){
   return{participants:participants};
 }
 class Attr {
@@ -9110,26 +9257,13 @@ class Attr {
   $0;
   $1;
 }
-function New_35(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
-  return{
-    participantId:participantId, 
-    displayName:displayName, 
-    login:login, 
-    authenticated:authenticated, 
-    provider:provider, 
-    logoutPath:logoutPath, 
-    authenticatedParticipantId:authenticatedParticipantId, 
-    viewAsParticipantId:viewAsParticipantId, 
-    viewAsActive:viewAsActive
-  };
-}
-function New_36(target, messageId){
+function New_39(target, messageId){
   return{target:target, messageId:messageId};
 }
-function New_37(cursors, unread){
+function New_40(cursors, unread){
   return{cursors:cursors, unread:unread};
 }
-function New_38(messageId, channelMessageId, streamSequence, fromId, toId, scope, body, createdAtUtc){
+function New_41(messageId, channelMessageId, streamSequence, fromId, toId, scope, body, createdAtUtc){
   return{
     messageId:messageId, 
     channelMessageId:channelMessageId, 
@@ -9141,16 +9275,16 @@ function New_38(messageId, channelMessageId, streamSequence, fromId, toId, scope
     createdAtUtc:createdAtUtc
   };
 }
-function New_39(cursors){
+function New_42(cursors){
   return{cursors:cursors};
 }
-function New_40(target, sequence){
+function New_43(target, sequence){
   return{target:target, sequence:sequence};
 }
-function New_41(groupId, channelMessageId){
+function New_44(groupId, channelMessageId){
   return{groupId:groupId, channelMessageId:channelMessageId};
 }
-function New_42(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
+function New_45(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
   return{
     messages:messages, 
     nextAfterMessageId:nextAfterMessageId, 
@@ -9158,7 +9292,7 @@ function New_42(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
     hasOlderMessages:hasOlderMessages
   };
 }
-function New_43(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_46(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
     streamId:streamId, 
     newestSequence:newestSequence, 
@@ -9167,7 +9301,7 @@ function New_43(streamId, newestSequence, cachedCount, source, touchedAt){
     touchedAt:touchedAt
   };
 }
-function New_44(commandId, groupId, body, tags){
+function New_47(commandId, groupId, body, tags){
   return{
     commandId:commandId, 
     groupId:groupId, 
@@ -9175,7 +9309,7 @@ function New_44(commandId, groupId, body, tags){
     tags:tags
   };
 }
-function New_45(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_48(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -9187,7 +9321,7 @@ function New_45(type, requestId, fromId, toId, body, tags, browserId, tabId){
     tabId:tabId
   };
 }
-function New_46(fromId, toId, body, tags){
+function New_49(fromId, toId, body, tags){
   return{
     fromId:fromId, 
     toId:toId, 
@@ -9195,7 +9329,7 @@ function New_46(fromId, toId, body, tags){
     tags:tags
   };
 }
-function New_47(messageId, speaker, createdAtUtc, body){
+function New_50(messageId, speaker, createdAtUtc, body){
   return{
     messageId:messageId, 
     speaker:speaker, 
@@ -9203,7 +9337,7 @@ function New_47(messageId, speaker, createdAtUtc, body){
     body:body
   };
 }
-function New_48(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
+function New_51(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
   return{
     commandId:commandId, 
     groupId:groupId, 
@@ -9272,7 +9406,7 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_49(rawArgu, duTypeName, unionCaseName, keyJson){
+function New_52(rawArgu, duTypeName, unionCaseName, keyJson){
   return{
     rawArgu:rawArgu, 
     duTypeName:duTypeName, 
@@ -9478,7 +9612,7 @@ function Handler(name, callback){
 function Dynamic(name, view){
   return Dynamic_1(view, (el) =>(v) => el.setAttribute(name, v));
 }
-function New_50(outputDirectory){
+function New_53(outputDirectory){
   return{outputDirectory:outputDirectory};
 }
 function ofSeqNonCopying(xs){
@@ -9698,7 +9832,7 @@ function InsertDoc(parent, doc_2, pos){
     }
 }
 function CreateRunState(parent, doc_2){
-  return New_58(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
+  return New_61(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_2));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_2){
   return get_UseAnimations()?Delay(() => {
@@ -9873,7 +10007,7 @@ function DoSyncElement(el){
   let _2=m!=null&&m.$==1?m.$0[1]:null;
   ins(_1, _2);
 }
-function New_51(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+function New_54(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
     PageId:PageId, 
     TabId:TabId, 
@@ -9884,7 +10018,7 @@ function New_51(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
     Payload:Payload
   };
 }
-function New_52(Kind, RenderSummary, Actions_1, Mount){
+function New_55(Kind, RenderSummary, Actions_1, Mount){
   return{
     Kind:Kind, 
     RenderSummary:RenderSummary, 
@@ -9892,7 +10026,7 @@ function New_52(Kind, RenderSummary, Actions_1, Mount){
     Mount:Mount
   };
 }
-function New_53(shape, label_1, badge, className){
+function New_56(shape, label_1, badge, className){
   return{
     shape:shape, 
     label:label_1, 
@@ -9900,7 +10034,7 @@ function New_53(shape, label_1, badge, className){
     className:className
   };
 }
-function New_54(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_57(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
     submitPath:submitPath, 
     sessionPath:sessionPath, 
@@ -9914,7 +10048,7 @@ function New_54(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, 
     aclLabel:aclLabel
   };
 }
-function New_55(userName, password, returnUrl, keepSession){
+function New_58(userName, password, returnUrl, keepSession){
   return{
     userName:userName, 
     password:password, 
@@ -9960,10 +10094,10 @@ function arrContains(item, arr){
     else i=i+1;
   return!c;
 }
-function New_56(participantId){
+function New_59(participantId){
   return{participantId:participantId};
 }
-function New_57(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_60(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
     pageId:pageId, 
     title:title, 
@@ -9974,6 +10108,30 @@ function New_57(pageId, title, setName, shape, tabId, tabMode, path, description
     path:path, 
     description:description
   };
+}
+function TryParse_2(s, min, max_1, r){
+  const x=+s;
+  const ok=x===x-x%1&&x>=min&&x<=max_1;
+  if(ok)r.set(x);
+  return ok;
+}
+function TryParseBigInt(s, min, max_1, r){
+  let o, _1;
+  o=0n;
+  try {
+    _1=(o=BigInt(s),true);
+  }
+  catch(m_1){
+    _1=false;
+  }
+  const m=[_1, o];
+  if(m[0]){
+    const x=m[1];
+    const ok=x===x-x%1n&&x>=min&&x<=max_1;
+    if(ok)r.set(x);
+    return ok;
+  }
+  else return false;
 }
 function notPresent(){
   throw new KeyNotFoundException("New");
@@ -10071,7 +10229,7 @@ function Branch(node, left, right){
   const b=right==null?0:right.Height;
   let _1=Compare(a, b)===1?a:b;
   let _2=1+_1;
-  return New_59(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+  return New_62(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
 }
 function Add(x, t){
   return Put((_1, _2) => _2, x, t);
@@ -10183,7 +10341,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_60(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_63(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -10732,7 +10890,7 @@ class KeyCollection extends Object_1 {
     this.d=d;
   }
 }
-function New_58(PreviousNodes, Top){
+function New_61(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -10810,7 +10968,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_61((a) => {
+    r(New_64((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -10835,7 +10993,7 @@ function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_61((a) => {
+    if(!ct.c)c(New_64((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -10938,7 +11096,7 @@ let _c_4=Lazy((_i) => class Proxy {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_59(Node_1, Left, Right, Height, Count){
+function New_62(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1, 
     Left:Left, 
@@ -10985,7 +11143,7 @@ class Updates_1 {
     });
   }
 }
-function New_60(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+function New_63(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
     DynElem:DynElem, 
     DynFlags:DynFlags, 
@@ -11081,30 +11239,6 @@ function concat_3(o){
   let k;
   for(var k_1 in o)r.push.apply(r, o[k_1]);
   return r;
-}
-function TryParseBigInt(s, min, max_1, r){
-  let o, _1;
-  o=0n;
-  try {
-    _1=(o=BigInt(s),true);
-  }
-  catch(m_1){
-    _1=false;
-  }
-  const m=[_1, o];
-  if(m[0]){
-    const x=m[1];
-    const ok=x===x-x%1n&&x>=min&&x<=max_1;
-    if(ok)r.set(x);
-    return ok;
-  }
-  else return false;
-}
-function TryParse_2(s, min, max_1, r){
-  const x=+s;
-  const ok=x===x-x%1&&x>=min&&x<=max_1;
-  if(ok)r.set(x);
-  return ok;
 }
 function IsWhiteSpace(c){
   return c.match(new RegExp("\\s"))!==null;
@@ -11320,7 +11454,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_61(k, ct){
+function New_64(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -11342,7 +11476,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_62(false, []);
+    this.noneCT=New_65(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -11351,7 +11485,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_62(IsCancellationRequested, Registrations){
+function New_65(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -11608,7 +11742,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create_1(f){
-  return New_63(false, f, forceLazy);
+  return New_66(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -11629,7 +11763,7 @@ let _c_10=Lazy((_i) => class $StartupCode_AppendList {
     this.Empty={$:0};
   }
 });
-function New_63(created, evalOrVal, force){
+function New_66(created, evalOrVal, force){
   return{
     c:created, 
     v:evalOrVal, 
