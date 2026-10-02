@@ -2034,3 +2034,5 @@ Active local package test/demo closure: Ptcs.Tests old[0.1.56]→[0.1.58], PtcsT
 ## 2026-10-03 Aster Spa48 LiveDemo consumer asset closure
 - LiveDemo asset path37→48修正後 fullWebSharper build6.93s/0errors/1existingWS9002 PASS；loadedSpa48+83/hashAF43及7buildassets rawSHA/copy PASS，report C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/dynamic-livedemo48.asset-proof.json。未啟demoHost；local unsigned candidate的build/assetproof，不是正式部署/browser/TA semanticfix。
 - Compiler regenerated existing tracked LiveDemo JS/min bytes；按既有 generated delivery例外入本批，非手寫JS。Producer package input/hash仍 frozen292，Renderer11attrs WIP不stage。NuGetpush、main13/正式TestHost closure pending。
+
+- 2026-10-03T03:57:33.1906521+08:00 Spa48 exactdependency localcandidate83→055必要consumer refresh完成：Ptcs58/Client133 actual32/32，LiveDemo compiler＋7assets/canonical055DLL PASS；source292三producerinputs unchanged，沒有盲目repack。Main13 localcompile完成，newgraphGW/threeTestHosts/official仍pending。Test DYN-T-676r2/VFY050r2回鏈；selector projection failures guard拒絕並修正，不修改product或expected。
