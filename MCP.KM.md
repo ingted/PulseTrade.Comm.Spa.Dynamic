@@ -29,3 +29,6 @@
 ExactSpa version consumers must migrate producerpackages before formalHostrestore can be accepted. Metadataonly Ptcs58/Client133/umbrella27 plannedagainstSpa48 whileusingofficialRenderer131; do notcompile renderer diagnosticWIP intoapackage accidentally. DYN-WBS581/T676/VFY050 andsourcecheckpointlog trace finalsource/DLL/local/official distinctions.
 
 Frozenproducer292 localpackages58/133/27與32typedunitconsumer已驗；NuGetRepoCommit/ProductVersion/embeddedDLLhash/actualconsumerDLL都要核對。WebSharper先刪projectdir/websharper.log，TimingLog/Standalone不繞過delete；原ACL受阻時可用有raw/Gitblobmanifest的immutablebuildartifact，不改canonicalsource或停sharedhelper。ExactPackageRef進版同步ContentUpdate/copyassets路徑（LiveDemo37→48）。回鏈DYN581/T676/VFY050及20261003005800log。
+
+### 2026-10-03T06:21:53.0300588+08:00 Acquisition-only與consumer
+GenericDynamic27沒有既有七consumer packageedge，acquisition-only exactrestore補cache不當功能測試。三包292與Spa055 functionalpayload／既有clientassets一致，signedraw/canonicalhash區分。DYN-VFY-050r3。
