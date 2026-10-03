@@ -254,3 +254,5 @@ Frozenproducer source2927953；因canonical兩份ignoredWebSharperlog ACL拒刪�
 ## Spa49 exact adapter cascade（DYN-WBS-582 / DYN-VFY-050r4）
 Core Spa `0.2.49` source `1a049331bf9f437ff1ed6a21f04ecce31192d2a3` 新增 wallet UI/recovery 與 read-only readiness；Dynamic 此片只更新套件相容性，不改 TA/Renderer 行為。三 producer 為 Dynamic `0.1.28`、Ptcs `0.1.59`、Ptcs.Client `0.1.134`，皆 exact Spa `[0.2.49]`；Contracts `[0.1.35]`、Renderer `[0.1.131]` 沿用既有發布套件，既有 Renderer.fs WIP 不納入編譯或提交。
 Canonical WebSharper timing log ACL 阻擋 baseline；以已驗 current Git blob + raw SHA 的 865 個輸入製作新 TEMP immutable build artifact，不改 ACL/舊 artifacts。完整 WebSharper 編譯輸出另存，必要 generated assets 只由真 compiler 回寫。先 source checkpoint，再固定 RepositoryCommit 重編譯/GenerateNuspec NoBuild；本機包/consumer 與 official publish/正式部署分開驗收。
+
+DYN-WBS-582 本機 package/consumer邊界已完成：固定 source 三 archive、32真unit、LiveDemo full compiler及七資產/DLLidentity PASS，證據見 DYN-VFY-050r4。Public release/main服務驗收/production不在本機PASS內，Renderer WIP仍未納入本片。

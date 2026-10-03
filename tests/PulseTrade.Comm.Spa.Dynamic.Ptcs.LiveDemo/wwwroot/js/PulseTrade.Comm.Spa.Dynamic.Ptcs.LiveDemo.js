@@ -1333,11 +1333,11 @@ function mountAppendPage(page, definition){
       if(length(submittedKeys)>0)pendingSelectKeyId=appendPageKeyId(submittedKeys);
       else null;
       const displayName_1=Trim(asText(displayName));
-      const request=New_13(definition.pageId, keyJson, addKeyMode, displayName_1);
-      const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request);
+      const request_1=New_13(definition.pageId, keyJson, addKeyMode, displayName_1);
+      const pendingId=rememberPending("append-page-add-key", definition.pageId, "/pages/api/add-key", request_1);
       refreshPendingState();
       setStatus(status, "Adding key; pending command saved in browser DB");
-      return postAppendPageKey("/pages/api/add-key", request, (reply) => {
+      return postAppendPageKey("/pages/api/add-key", request_1, (reply) => {
         deletePendingThen(pendingId, () => {
           let _3;
           if(!(reply.key==null)){
@@ -1362,11 +1362,11 @@ function mountAppendPage(page, definition){
     }
   };
   const appendValue=() => {
-    const request=New_12(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
-    if(isBlank(request.keyJson))setStatus(workState, "Select or add a key first");
-    else if(isBlank(request.valueText))setStatus(workState, "Value text is required");
+    const request_1=New_12(definition.pageId, selectedKeyJson, Trim(valueInput.value), Trim(directionInput.value), ["web-append"]);
+    if(isBlank(request_1.keyJson))setStatus(workState, "Select or add a key first");
+    else if(isBlank(request_1.valueText))setStatus(workState, "Value text is required");
     else if(isActorArguPage(definition)){
-      const request_1=New_14(definition.pageId, request.keyJson, request.valueText, ["web-append", "actor-argu"]);
+      const request_2=New_14(definition.pageId, request_1.keyJson, request_1.valueText, ["web-append", "actor-argu"]);
       const m=selectedBucket();
       if(m!=null&&m.$==1){
         const bucket=m.$0;
@@ -1374,8 +1374,8 @@ function mountAppendPage(page, definition){
         const actorAddress=o==null?"":o.$0;
         if(isBlank(actorAddress))setStatus(workState, "Actor address key is required");
         else {
-          const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_1);
-          const wsRequest=New_17("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_1.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request_1.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+          const pendingId=rememberPending("actor-argu-send", definition.pageId, "/pages/api/actor-argu/send", request_2);
+          const wsRequest=New_17("actor-argu", pendingId, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket), actorAddress, request_2.rawArgu, definition.shape, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request_2.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
           pendingWsAppendIds=pendingWsAppendIds.concat([pendingId]);
           refreshPendingState();
           setStatus(workState, "Sending through WebSocket; pending command saved in browser DB");
@@ -1390,8 +1390,8 @@ function mountAppendPage(page, definition){
       const m_1=selectedBucket();
       if(m_1!=null&&m_1.$==1){
         const bucket_1=m_1.$0;
-        const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_1=New_19("append", pendingId_1, streamKeyFor(bucket_1), request.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        const pendingId_1=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request_1);
+        const wsRequest_1=New_19("append", pendingId_1, streamKeyFor(bucket_1), request_1.valueText, "append-page.value", definition.shape, pendingId_1, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request_1.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_1]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -1405,8 +1405,8 @@ function mountAppendPage(page, definition){
       const m_2=selectedBucket();
       if(m_2!=null&&m_2.$==1){
         const bucket_2=m_2.$0;
-        const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request);
-        const wsRequest_2=New_18("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request.keyJson, request.valueText, request.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
+        const pendingId_2=rememberPending("append-page-append-value", definition.pageId, "/pages/api/append", request_1);
+        const wsRequest_2=New_18("append-page", pendingId_2, definition.pageId, definition.title, definition.setName, streamKeyFor(bucket_2), request_1.keyJson, request_1.valueText, request_1.direction, definition.shape, pendingId_2, ofSeq(delay(() => append_2(arrayOrEmpty(definition.tags), delay(() => append_2(arrayOrEmpty(request_1.tags), delay(() => append_2(["page:"+asText(definition.pageId)], delay(() => append_2(["tab:"+asText(definition.tabId)], delay(() =>["shape:"+asText(definition.shape)])))))))))), browserId, definition.tabId);
         pendingWsAppendIds=pendingWsAppendIds.concat([pendingId_2]);
         refreshPendingState();
         setStatus(workState, "Appending through WebSocket; pending command saved in browser DB");
@@ -1595,11 +1595,11 @@ function mountAppendPage(page, definition){
     const removedKeyId=effectiveSelectedKeyId();
     if(isBlank(removedKeyId))setStatus(status, "Select a key first");
     else {
-      const request=New_16(definition.pageId, removedKeyId);
-      const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request);
+      const request_1=New_16(definition.pageId, removedKeyId);
+      const pendingId=rememberPending("append-page-remove-key", definition.pageId, "/pages/api/remove-key", request_1);
       refreshPendingState();
       setStatus(status, "Removing key; pending command saved in browser DB");
-      postRemoveAppendPageKey("/pages/api/remove-key", request, () => {
+      postRemoveAppendPageKey("/pages/api/remove-key", request_1, () => {
         deletePendingThen(pendingId, () => {
           rememberLocallyHiddenKeyId(removedKeyId);
           buckets=filter_1((bucket) =>!sameText(bucket.keyId, removedKeyId), buckets);
@@ -1617,11 +1617,11 @@ function mountAppendPage(page, definition){
       });
     }
   }),removePageButton.addEventListener("click", () => {
-    const request=New_15(definition.pageId);
-    const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request);
+    const request_1=New_15(definition.pageId);
+    const pendingId=rememberPending("append-page-remove-page", definition.pageId, "/pages/api/remove-page", request_1);
     refreshPendingState();
     setStatus(status, "Removing page; pending command saved in browser DB");
-    return postJson("/pages/api/remove-page", request, (reply) => {
+    return postJson("/pages/api/remove-page", request_1, (reply) => {
       deletePendingThen(pendingId, () => {
         writeAppendPagesDefinitions(reply);
         setStatus(status, "Page removed");
@@ -1919,8 +1919,8 @@ function mountSets(page){
           const socket=ensureSyncSocket();
           return Equals(socket.readyState, 1)?socket.send(_1):void(queuedSyncFrames=queuedSyncFrames.concat([_1]));
         case 1:
-          const request=New_4("read-tail", newRequestId("sets-read-tail"), _1, defaultRenderLimit());
-          _1=JSON.stringify(request);
+          const request_1=New_4("read-tail", newRequestId("sets-read-tail"), _1, defaultRenderLimit());
+          _1=JSON.stringify(request_1);
           recI=0;
           break;
         case 2:
@@ -2233,7 +2233,7 @@ function mountActors(page){
   const reportEndpoint="/actors/api/report/schedules";
   const reportReadOnly=currentBrowserUser().viewAsActive;
   const normalizeReportPath=(value) => TrimEnd(Replace(Trim(asText(value)), "\\", "/"), ["/"]).toLowerCase();
-  const setReportDisabled=(disabled, control) => disabled?control.setAttribute("disabled", "disabled"):control.removeAttribute("disabled");
+  const setReportDisabled=(disabled, control_1) => disabled?control_1.setAttribute("disabled", "disabled"):control_1.removeAttribute("disabled");
   const updateReportControls=() => {
     const busy=reportRequestCount>0;
     setReportDisabled(busy||reportReadOnly, generateReport);
@@ -2648,7 +2648,7 @@ function mountActors(page){
   subscribeRegistry();
 }
 function mountManagement(page){
-  let allPages, allSets, allGroups, allParticipants, selectedPageKeys, selectedSetKeys, selectedParticipantKeys, pageIndex, setPageIndex, groupPageIndex, participantPageIndex, pageSize, setPageSize, groupPageSize, participantPageSize;
+  let allPages, allSets, allGroups, allParticipants, selectedPageKeys, selectedSetKeys, selectedParticipantKeys, pageIndex, setPageIndex, groupPageIndex, participantPageIndex, pageSize, setPageSize, groupPageSize, participantPageSize, clearingCache;
   page.className="page management-page";
   const pageRows=Create((row) => asText(row.pageId)+"\u001f"+asText(row.tabId), FSharpList.Empty);
   const setRows=Create((row) => asText(row.keyId), FSharpList.Empty);
@@ -2673,7 +2673,44 @@ function mountManagement(page){
   const title=element("div", "", null);
   append(title, [element("h1", "", "Management")]);
   const reload=setTestId("management-reload", button("", "Reload"));
-  append(heading, [title, reload]);
+  const clearCache=setTestId("management-clear-browser-cache", button("", "\u6e05\u7406\u672c\u6a5f\u5feb\u53d6"));
+  const headingActions=element("div", "management-pager", null);
+  append(headingActions, [clearCache, reload]);
+  append(heading, [title, headingActions]);
+  const cacheStatus=setData("state", "idle", setTestId("management-browser-cache-status", element("p", "state", "\u53ea\u6e05\u9664\u6b64\u700f\u89bd\u5668\u76ee\u524d\u670d\u52d9\u7684\u53ef\u91cd\u5efa\u5feb\u7167\uff1b\u4fdd\u7559\u5f85\u767c\u547d\u4ee4\u3001\u672a\u8b80\u72c0\u614b\u8207\u5176\u4ed6\u670d\u52d9\u8cc7\u6599\u3002")));
+  cacheStatus.setAttribute("role", "status");
+  cacheStatus.setAttribute("aria-live", "polite");
+  clearingCache=false;
+  clearCache.addEventListener("click", () => {
+    if(!clearingCache&&globalThis.confirm("\u6e05\u7406\u6b64\u700f\u89bd\u5668\u76ee\u524d\u670d\u52d9\u7684\u53ef\u91cd\u5efa\u5feb\u7167\uff1f\u5f85\u767c\u547d\u4ee4\u3001\u672a\u8b80\u72c0\u614b\u8207\u5176\u4ed6\u670d\u52d9\u8cc7\u6599\u6703\u4fdd\u7559\u3002\u5176\u4ed6\u5206\u9801\u53ef\u80fd\u91cd\u65b0\u5efa\u7acb\u5feb\u53d6\uff1b\u5b8c\u6210\u5f8c\u53ef\u6309 Reload \u66f4\u65b0\u756b\u9762\u3002")){
+      clearingCache=true;
+      clearCache.setAttribute("disabled", "disabled");
+      setData("state", "clearing", cacheStatus);
+      const a=["removed-snapshots", "removed-watermarks", "retained-snapshots", "retained-watermarks"];
+      for(let i=0, _3=a.length-1;i<=_3;i++)cacheStatus.removeAttribute("data-"+get(a, i));
+      setStatus(cacheStatus, "\u6b63\u5728\u6e05\u7406\u672c\u6a5f\u53ef\u91cd\u5efa\u5feb\u53d6\u2026");
+      return clearRebuildableSnapshots((result) => {
+        clearingCache=false;
+        clearCache.removeAttribute("disabled");
+        if(result.$==1){
+          const message=result.$0;
+          setData("state", "failed", cacheStatus);
+          setStatus(cacheStatus, "\u6e05\u7406\u672a\u5b8c\u6210\uff1a"+message);
+        }
+        else {
+          const summary=result.$0;
+          setData("server-reality-id", summary.ServerRealityId, setData("state", "committed", cacheStatus));
+          const a_1=[["removed-snapshots", summary.RemovedSnapshots], ["removed-watermarks", summary.RemovedWatermarks], ["retained-snapshots", summary.RetainedSnapshots], ["retained-watermarks", summary.RetainedWatermarks]];
+          for(let i_1=0, _4=a_1.length-1;i_1<=_4;i_1++)((() => {
+            const f=get(a_1, i_1);
+            setData(f[0], String(f[1]), cacheStatus);
+          })());
+          setStatus(cacheStatus, "\u672c\u6b21\u5df2\u6e05\u9664 "+String(summary.RemovedSnapshots)+" \u7b46\u5feb\u7167\u8207 "+String(summary.RemovedWatermarks)+" \u7b46\u5feb\u53d6\u9032\u5ea6\uff1b\u4fdd\u7559 "+String(summary.RetainedSnapshots+summary.RetainedWatermarks)+" \u7b46\u5176\u4ed6\u8a18\u9304\u53ca\u5168\u90e8\u5f85\u767c\u547d\u4ee4\u3001\u672a\u8b80\u72c0\u614b\u3002\u540c\u6b65\u4e2d\u7684\u5206\u9801\u53ef\u80fd\u91cd\u65b0\u5efa\u7acb\u5feb\u53d6\uff1b\u53ef\u6309 Reload \u66f4\u65b0\u756b\u9762\u3002");
+        }
+      });
+    }
+    else return null;
+  });
   const pageSection=setTestId("management-pages", element("section", "management-section", null));
   const pageSectionHead=element("div", "management-section-head", null);
   const pageCount=setTestId("management-pages-count", element("span", "state", ""));
@@ -2752,8 +2789,23 @@ function mountManagement(page){
   const participantSizeSelect=setTestId("management-participants-size", select([["10", "10"], ["20", "20"], ["40", "40"], ["0", "All"]]));
   const participantPagerStatus=setTestId("management-participants-page", element("span", "state", ""));
   append(participantPager, [participantPrevious, participantNext, element("span", "management-page-size-label", "Rows"), participantSizeSelect, participantPagerStatus]);
-  append(participantSection, [participantSectionHead, participantSelectionBar, participantTableHost, participantPager]);
-  append(page, [heading, pageSection, setSection, groupSection, participantSection]);
+  const walletHost=element("div", "", null);
+  append(participantSection, [participantSectionHead, participantSelectionBar, walletHost, participantTableHost, participantPager]);
+  append(page, [heading, cacheStatus, pageSection, setSection, groupSection, participantSection]);
+  const walletAllows=(action, participantId) => {
+    const _3=currentAclSnapshot();
+    if(_3!=null&&_3.$==1){
+      const snapshot=currentAclSnapshot().$0;
+      return snapshot.enabled&&snapshot.authenticated&&!isBlank(snapshot.userId)&&snapshot.userId==currentBrowserUser().authenticatedAclUserId&&!(snapshot.resources==null)&&exists((resource) => resource.resourceKind=="ptcs.participant"&&resource.resourceId==participantId&&!(resource.capabilities==null)&&exists((capability) => capability.action==action&&capability.allowed, resource.capabilities), currentAclSnapshot().$0.resources);
+    }
+    else return false;
+  };
+  const _1=readAction();
+  const _2=topUpAction();
+  const walletController=mount(walletHost, New_32(() => {
+    const user=currentBrowserUser();
+    return user.authenticated&&!isBlank(user.authenticatedParticipantId)&&StartsWith(user.authenticatedParticipantId, "user.")&&(user.provider=="github-oauth"||user.provider=="ptcs-login");
+  }, () => currentBrowserUser().authenticatedParticipantId, () => currentBrowserUser().viewAsActive, (_3) => walletAllows(_1, _3), (_3) => walletAllows(_2, _3)));
   const pageCountFor=(total, size) => total===0?1:size===0?1:toInt(Math.ceil(total/size));
   const pageRowKey=(row) => asText(row.pageId)+"\u001f"+asText(row.tabId);
   const pageSelectionElementId=(row) =>"management-page-selection-"+asText(row.pageId)+"-"+asText(row.tabId);
@@ -2765,9 +2817,9 @@ function mountManagement(page){
     else {
       const a=length(rows);
       const b=index*size;
-      let _1=Compare(a, b)===-1?a:b;
-      let _2=skip(_1, rows);
-      return _2.slice(0, size);
+      let _3=Compare(a, b)===-1?a:b;
+      let _4=skip(_3, rows);
+      return _4.slice(0, size);
     }
   };
   const matchesFilter=(filterInput, values) => {
@@ -2781,7 +2833,7 @@ function mountManagement(page){
   const pageCanSelect=(row) => pageResourceAllows(row, "ptcs.management.page.delete");
   const setCanSelect=() => systemAclAllows("sets", "ptcs.set.clean")||systemAclAllows("*", "ptcs.set.clean");
   const participantResourceAllows=(row, action) => aclAllows(action, "ptcs.participant", row.participantId)||systemAclAllows("*", action);
-  const participantCanSelect=(row) => participantResourceAllows(row, "ptcs.management.participant.hide")||participantResourceAllows(row, "ptcs.management.participant.show")||participantResourceAllows(row, "ptcs.management.participant.delete");
+  const participantCanSelect=(row) => participantResourceAllows(row, "ptcs.management.participant.hide")||participantResourceAllows(row, "ptcs.management.participant.show")||participantResourceAllows(row, "ptcs.management.participant.delete")||walletAllows(readAction(), row.participantId)||walletAllows(topUpAction(), row.participantId);
   const currentPageRows=() => {
     const x=filteredPages();
     return sliceRows(pageIndex, pageSize, x);
@@ -2830,6 +2882,7 @@ function mountManagement(page){
       const x=row.participantId;
       return exists((y) => x==y, selectedParticipantKeys);
     }, allParticipants);
+    walletController.SetSelection(map((a) => a.participantId, selectedRows));
     participantSelectionCount.textContent=String(length(selectedRows))+" participant"+(length(selectedRows)===1?"":"s")+" selected";
     setButtonEnabled(participantDeleteSelected, exists((row) => participantResourceAllows(row, "ptcs.management.participant.delete"), selectedRows));
     setButtonEnabled(participantShowSelected, exists((row) =>!row.visible&&participantResourceAllows(row, "ptcs.management.participant.show"), selectedRows));
@@ -2916,7 +2969,7 @@ function mountManagement(page){
   function mutatePage(endpoint){
     return(action) =>(row) => {
       const destructive=EndsWith(endpoint, "/delete");
-      return!destructive||globalThis.confirm("Delete tab page '"+textOr(row.pageId, row.title)+"'? This cannot be undone for this page lineage.")?(setStatus(pageCount, action+" "+row.pageId+"..."),postJson(endpoint, New_31(row.pageId, row.tabId), () => {
+      return!destructive||globalThis.confirm("Delete tab page '"+textOr(row.pageId, row.title)+"'? This cannot be undone for this page lineage.")?(setStatus(pageCount, action+" "+row.pageId+"..."),postJson(endpoint, New_34(row.pageId, row.tabId), () => {
         destructive?selectedPageKeys=filter_1((selected) => selected!=pageRowKey(row), selectedPageKeys):void 0;
         loadPages();
         refreshManagementNav();
@@ -2931,7 +2984,7 @@ function mountManagement(page){
         const x=pageRowKey(row);
         return exists((y) => x==y, selectedPageKeys);
       }, allPages));
-      return length(rows)>0?(setStatus(pageCount, action+" "+String(length(rows))+" selected pages..."),postJson(endpoint, New_32(map((row) => New_31(row.pageId, row.tabId), rows)), () => {
+      return length(rows)>0?(setStatus(pageCount, action+" "+String(length(rows))+" selected pages..."),postJson(endpoint, New_35(map((row) => New_34(row.pageId, row.tabId), rows)), () => {
         loadPages();
         refreshManagementNav();
       }, (error_5) => {
@@ -2946,7 +2999,7 @@ function mountManagement(page){
     }, allPages);
     if(length(rows)>0&&globalThis.confirm("Delete "+String(length(rows))+" selected tab page lineages? This cannot be undone.")){
       setStatus(pageCount, "Deleting "+String(length(rows))+" selected pages...");
-      postJson("/management/api/pages/delete-many", New_32(map((row) => New_31(row.pageId, row.tabId), rows)), () => {
+      postJson("/management/api/pages/delete-many", New_35(map((row) => New_34(row.pageId, row.tabId), rows)), () => {
         selectedPageKeys=[];
         updatePageSelectionControl();
         loadPages();
@@ -2975,7 +3028,7 @@ function mountManagement(page){
     }, allSets);
     if(length(rows)>0&&globalThis.confirm("Delete "+String(length(rows))+" selected set buckets from the current projection?")){
       setStatus(setCount, "Deleting "+String(length(rows))+" selected sets...");
-      postJson("/management/api/sets/delete-many", New_33(map((row) => New_34(row.setName, arrayOrEmpty(row.keys)), rows)), () => {
+      postJson("/management/api/sets/delete-many", New_36(map((row) => New_37(row.setName, arrayOrEmpty(row.keys)), rows)), () => {
         selectedSetKeys=[];
         updateSetSelectionControl();
         loadSets();
@@ -2996,7 +3049,7 @@ function mountManagement(page){
   function deleteGroup(row){
     if(row.canDelete&&groupAclAllows(row.groupId, "ptcs.group.delete")&&globalThis.confirm("Delete group '"+textOr(row.groupId, row.displayName)+"'?")){
       setStatus(groupCount, "Deleting "+row.groupId+"...");
-      postJson("/chat/api/groups/delete", New_35(newRequestId("management-group-delete"), row.groupId, row.revision, "", "", "", "", null), () => {
+      postJson("/chat/api/groups/delete", New_38(newRequestId("management-group-delete"), row.groupId, row.revision, "", "", "", "", null), () => {
         loadGroups();
       }, (error_5) => {
         setStatus(groupCount, "Delete failed: "+error_5);
@@ -3017,14 +3070,14 @@ function mountManagement(page){
   function mutateParticipant(endpoint){
     return(action) =>(row) => {
       const destructive=EndsWith(endpoint, "/delete");
-      return!destructive||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson(endpoint, New_36(row.participantId), () => {
-        let _1;
+      return!destructive||globalThis.confirm("Delete participant '"+row.participantId+"' and existing inbound direct messages?")?(setStatus(participantCount, action+" "+row.participantId+"..."),postJson(endpoint, New_39(row.participantId), () => {
+        let _3;
         if(destructive){
           const x=row.participantId;
           selectedParticipantKeys=filter_1((y) => x!=y, selectedParticipantKeys);
-          _1=loadSets();
+          _3=loadSets();
         }
-        else _1=void 0;
+        else _3=void 0;
         loadParticipants();
       }, (error_5) => {
         setStatus(participantCount, action+" failed: "+error_5);
@@ -3037,7 +3090,7 @@ function mountManagement(page){
         const x=row.participantId;
         return exists((y) => x==y, selectedParticipantKeys);
       }, allParticipants));
-      return length(rows)>0?(setStatus(participantCount, action+" "+String(length(rows))+" selected participants..."),postJson(endpoint, New_37(map((row) => New_36(row.participantId), rows)), () => {
+      return length(rows)>0?(setStatus(participantCount, action+" "+String(length(rows))+" selected participants..."),postJson(endpoint, New_40(map((row) => New_39(row.participantId), rows)), () => {
         loadParticipants();
       }, (error_5) => {
         setStatus(participantCount, action+" selected failed: "+error_5);
@@ -3051,7 +3104,7 @@ function mountManagement(page){
     }, allParticipants));
     if(length(rows)>0&&globalThis.confirm("Delete "+String(length(rows))+" selected participants, their inbound direct messages, and participant-scoped set projections?")){
       setStatus(participantCount, "Deleting "+String(length(rows))+" selected participants...");
-      postJson("/management/api/participants/delete-many", New_37(map((row) => New_36(row.participantId), rows)), () => {
+      postJson("/management/api/participants/delete-many", New_40(map((row) => New_39(row.participantId), rows)), () => {
         selectedParticipantKeys=[];
         updateParticipantSelectionControl();
         loadParticipants();
@@ -3067,8 +3120,8 @@ function mountManagement(page){
       const node=doc().getElementById(pageSelectionElementId(row));
       if(!(node==null)){
         const x=pageRowKey(row);
-        let _1=exists((y) => x==y, selectedPageKeys);
-        node.checked=_1;
+        let _3=exists((y) => x==y, selectedPageKeys);
+        node.checked=_3;
       }
       else void 0;
     }, currentPageRows());
@@ -3080,8 +3133,8 @@ function mountManagement(page){
       const node=doc().getElementById(setSelectionElementId(row));
       if(!(node==null)){
         const x=row.keyId;
-        let _1=exists((y) => x==y, selectedSetKeys);
-        node.checked=_1;
+        let _3=exists((y) => x==y, selectedSetKeys);
+        node.checked=_3;
       }
       else void 0;
     }, currentSetRows());
@@ -3093,8 +3146,8 @@ function mountManagement(page){
       const node=doc().getElementById(participantSelectionElementId(row));
       if(!(node==null)){
         const x=row.participantId;
-        let _1=exists((y) => x==y, selectedParticipantKeys);
-        node.checked=_1;
+        let _3=exists((y) => x==y, selectedParticipantKeys);
+        node.checked=_3;
       }
       else void 0;
     }, currentParticipantRows());
@@ -3117,8 +3170,8 @@ function mountManagement(page){
   const setTable=Doc.Element("table", [Attr.Create("class", "data-table management-table"), Attr.Create("data-testid", "management-sets-table")], [Doc.Element("thead", [], [Doc.Element("tr", [], [Doc.Element("th", [Attr.Create("class", "management-select-cell")], [setHeaderSelector]), Doc.Element("th", [], [Doc.TextNode("Set")]), Doc.Element("th", [], [Doc.TextNode("Values")]), Doc.Element("th", [], [Doc.TextNode("Updated")])])]), Doc.Element("tbody", [], [Doc.Convert((row) => {
     const selectionControl=systemAclAllows("sets", "ptcs.set.clean")||systemAclAllows("*", "ptcs.set.clean")?Doc.Element("input", ofSeq_1(delay(() => append_2([Attr.Create("type", "checkbox")], delay(() => append_2([Attr.Create("class", "management-row-selector")], delay(() => append_2([Attr.Create("id", setSelectionElementId(row))], delay(() => append_2([Attr.Create("aria-label", "Select set "+row.setName)], delay(() => append_2([Attr.Create("data-testid", "management-set-select-"+row.keyId)], delay(() => {
       const x=row.keyId;
-      let _1=exists((y) => x==y, selectedSetKeys)?[Attr.Create("checked", "checked")]:[];
-      return append_2(_1, delay(() =>[Handler("change", (element_2) =>() => {
+      let _3=exists((y) => x==y, selectedSetKeys)?[Attr.Create("checked", "checked")]:[];
+      return append_2(_3, delay(() =>[Handler("change", (element_2) =>() => {
         selectedSetKeys=toggleSelection(row.keyId, element_2.checked, selectedSetKeys);
         return updateSetSelectionControl();
       })]));
@@ -3135,8 +3188,8 @@ function mountManagement(page){
     const resourceAllows=(action) => aclAllows(action, "ptcs.participant", row.participantId)||systemAclAllows("*", action);
     const selectionControl=participantCanSelect(row)?Doc.Element("input", ofSeq_1(delay(() => append_2([Attr.Create("type", "checkbox")], delay(() => append_2([Attr.Create("class", "management-row-selector")], delay(() => append_2([Attr.Create("id", participantSelectionElementId(row))], delay(() => append_2([Attr.Create("aria-label", "Select participant "+row.participantId)], delay(() => append_2([Attr.Create("data-testid", "management-participant-select-"+row.participantId)], delay(() => {
       const x=row.participantId;
-      let _1=exists((y) => x==y, selectedParticipantKeys)?[Attr.Create("checked", "checked")]:[];
-      return append_2(_1, delay(() =>[Handler("change", (element_2) =>() => {
+      let _3=exists((y) => x==y, selectedParticipantKeys)?[Attr.Create("checked", "checked")]:[];
+      return append_2(_3, delay(() =>[Handler("change", (element_2) =>() => {
         selectedParticipantKeys=toggleSelection(row.participantId, element_2.checked, selectedParticipantKeys);
         return updateParticipantSelectionControl();
       })]));
@@ -3241,6 +3294,7 @@ function mountManagement(page){
     loadSets();
     loadGroups();
     loadParticipants();
+    walletController.Refresh();
     return refreshManagementNav();
   });
   loadPages();
@@ -3331,7 +3385,7 @@ function mountChat(page){
   const isAnnouncementGroup=(groupId) => sameText(groupId, "organization-announcements");
   const unreadFor=(target) => tryFind((row) => sameText(row.target, target), unreadMessages);
   const persistActivity=() => {
-    writeJson(activityCacheKey, New_39(activityCursors, unreadMessages));
+    writeJson(activityCacheKey, New_42(activityCursors, unreadMessages));
   };
   const setChatWsState=(value) => {
     setData("ws-state", value, work);
@@ -3491,7 +3545,7 @@ function mountChat(page){
     if(activityReady&&!activityPolling){
       activityPolling=true;
       setData("activity-busy", "true", work);
-      postJson("/chat/api/activity", New_41(activityCursors), (reply) => {
+      postJson("/chat/api/activity", New_44(activityCursors), (reply) => {
         let changed, hasMore, selectedHasNewMessage, _1;
         activityPolling=false;
         setData("activity-busy", "false", work);
@@ -3505,7 +3559,7 @@ function mountChat(page){
             const o=tryFind((row) => sameText(row.target, stream.target), activityCursors);
             let _2=o==null?null:Some(o.$0.sequence);
             if(!Equals(_2, Some(stream.nextSequence))){
-              activityCursors=filter_1((row) =>!sameText(row.target, stream.target), activityCursors).concat([New_42(stream.target, stream.nextSequence)]);
+              activityCursors=filter_1((row) =>!sameText(row.target, stream.target), activityCursors).concat([New_45(stream.target, stream.nextSequence)]);
               changed=true;
             }
             iter((event) => {
@@ -3513,7 +3567,7 @@ function mountChat(page){
                 const o_1=unreadFor(event.target);
                 let _3=o_1==null?null:Some(o_1.$0.messageId);
                 if(!Equals(_3, Some(event.messageId))){
-                  unreadMessages=filter_1((row) =>!sameText(row.target, event.target), unreadMessages).concat([New_38(event.target, event.messageId)]);
+                  unreadMessages=filter_1((row) =>!sameText(row.target, event.target), unreadMessages).concat([New_41(event.target, event.messageId)]);
                   changed=true;
                   selectedHasNewMessage=selectedHasNewMessage||sameText(selected, event.target);
                 }
@@ -3546,7 +3600,7 @@ function mountChat(page){
   function mutateSelectedGroup(url, participantId_1, displayName, role, historyPolicy, includeHistory, onOk){
     if(selectedGroup!=null&&selectedGroup.$==1){
       const group=selectedGroup.$0;
-      return postJson(url, New_35(newRequestId("group-mutation"), group.groupId, group.revision, asText(participantId_1), asText(displayName), asText(role), asText(historyPolicy), includeHistory), (reply) => {
+      return postJson(url, New_38(newRequestId("group-mutation"), group.groupId, group.revision, asText(participantId_1), asText(displayName), asText(role), asText(historyPolicy), includeHistory), (reply) => {
         selectedGroup=Some(reply.group);
         renderGroupManagement();
         loadParticipants(false);
@@ -3576,7 +3630,7 @@ function mountChat(page){
         const markRead=setTestId("announcement-mark-read", button("", "Mark read"));
         _1=(markRead.addEventListener("click", () => {
           const latest=tryLast(sortBy((a) => a.streamSequence, filter_1((message) =>!isBlank(message.channelMessageId), selectedThreadMessages)));
-          return latest!=null&&latest.$==1?postJson("/chat/api/groups/read/ack", New_43(group.groupId, latest.$0.channelMessageId), (reply) => {
+          return latest!=null&&latest.$==1?postJson("/chat/api/groups/read/ack", New_46(group.groupId, latest.$0.channelMessageId), (reply) => {
             setStatus(state, "Read through #"+String(reply.streamSequence));
           }, (t) => {
             setStatus(state, t);
@@ -3812,7 +3866,7 @@ function mountChat(page){
                 const a=watermark==null?0n:int64OrZero(watermark.$0.newestSequence);
                 const b=maxMessageSequence(merged);
                 let _3=Compare(a, b)===1?a:b;
-                writeSnapshotWithWatermark(cacheKey_1, New_44(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
+                writeSnapshotWithWatermark(cacheKey_1, New_47(merged, nextAfterMessageId, storedOldestSequence, storedHasOlderMessages), _3, length(merged), "chat-thread");
               });
             });
             setStatus(state, String(useCursor?"Synced":"Loaded")+" "+String(length(messages))+" backend message(s)");
@@ -3913,7 +3967,7 @@ function mountChat(page){
         let _1=o==null?oldestSequence:o.$0;
         const o_1=cached==null?null:Some(cached.$0.hasOlderMessages);
         let _2=o_1==null?hasOlderMessages:o_1.$0;
-        let _3=New_44(merged, message.messageId, _1, _2);
+        let _3=New_47(merged, message.messageId, _1, _2);
         writeSnapshotWithWatermark(cacheKey_1, _3, newestSequence, length(merged), "chat-thread");
       });
     }
@@ -3946,7 +4000,7 @@ function mountChat(page){
               o=message==null||isBlank(message.messageId)?null:Some(message);
             }
             catch(m){
-              o=Some(New_40(textOr(event_1.eventId, event_1.sourceId), "", 0n, "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
+              o=Some(New_43(textOr(event_1.eventId, event_1.sourceId), "", 0n, "", participantId, "direct", asText(event_1.payload), asText(event_1.createdAtUtc)));
             }
             if(o==null)null;
             else {
@@ -4024,11 +4078,11 @@ function mountChat(page){
     if(isBlank(selected))setStatus(state, "Select a participant first");
     else if(isBlank(body))setStatus(state, "Message is empty");
     else if(isGroupTarget(selected)){
-      const request=New_46(newRequestId("group-send"), selectedGroupId(), body, ["web-chat"]);
-      const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/groups/send", request);
+      const request_1=New_49(newRequestId("group-send"), selectedGroupId(), body, ["web-chat"]);
+      const pendingId=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/groups/send", request_1);
       refreshChatPendingState();
       setStatus(state, "Sending group message; pending command saved in browser DB");
-      postJson("/chat/api/groups/send", request, (reply) => {
+      postJson("/chat/api/groups/send", request_1, (reply) => {
         deletePendingThen(pendingId, () => {
           draft.value="";
           appendMessages([reply.message]);
@@ -4045,9 +4099,9 @@ function mountChat(page){
       });
     }
     else {
-      const request_1=New_48(participantId, selected, body, ["web-chat"]);
-      const pendingId_1=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request_1);
-      const wsRequest=New_47("chat-send", pendingId_1, participantId, selected, body, ["web-chat"], participantId, "chat");
+      const request_2=New_51(participantId, selected, body, ["web-chat"]);
+      const pendingId_1=rememberPending("chat-send", participantId+"->"+selected, "/chat/api/send", request_2);
+      const wsRequest=New_50("chat-send", pendingId_1, participantId, selected, body, ["web-chat"], participantId, "chat");
       pendingWsChatIds=pendingWsChatIds.concat([pendingId_1]);
       refreshChatPendingState();
       setStatus(state, "Sending through WebSocket; pending command saved in browser DB");
@@ -4060,7 +4114,7 @@ function mountChat(page){
     else if(globalThis.document.body==null)setStatus(state, "Document body is unavailable");
     else {
       try {
-        const rows=map((message) => New_49(asText(message.messageId), asText(message.fromId), asText(message.createdAtUtc), asText(message.body)), selectedThreadMessages);
+        const rows=map((message) => New_52(asText(message.messageId), asText(message.fromId), asText(message.createdAtUtc), asText(message.body)), selectedThreadMessages);
         const url=URL.createObjectURL(new Blob([concat_1("\n", map((v) => JSON.stringify(v), rows))], {type:"application/x-ndjson;charset=utf-8"}));
         const now=new Date();
         const twoDigits_1=(value) => value<10?"0"+String(value):String(value);
@@ -4106,10 +4160,10 @@ function mountChat(page){
   groupCreateConfirm.addEventListener("click", () => {
     const groupId=Trim(groupIdInput.value);
     const displayName=Trim(groupNameInput.value);
-    return isBlank(groupId)?setStatus(state, "Group id is required"):postJson("/chat/api/groups/create", New_50(newRequestId("group-create"), groupId, displayName, [], groupHistoryInput.value, ["web-chat"]), (reply) => {
+    return isBlank(groupId)?setStatus(state, "Group id is required"):postJson("/chat/api/groups/create", New_53(newRequestId("group-create"), groupId, displayName, [], groupHistoryInput.value, ["web-chat"]), (reply) => {
       const createdTarget=groupTarget(reply.group.groupId);
       if(!exists((row) => sameText(row.target, createdTarget), activityCursors)){
-        activityCursors=activityCursors.concat([New_42(createdTarget, "0")]);
+        activityCursors=activityCursors.concat([New_45(createdTarget, "0")]);
         persistActivity();
       }
       selected=groupTarget(reply.group.groupId);
@@ -4234,13 +4288,13 @@ function mountLoginFallback(root){
     errorBox.className="error-box visible";
   };
   const submitLogin=() => {
-    const request=New_53(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
-    if(isBlank(request.userName)||isBlank(request.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
+    const request_1=New_56(Trim(userName.value), password.value, config.returnUrl, keepSession.checked);
+    if(isBlank(request_1.userName)||isBlank(request_1.password))setError("\u8acb\u8f38\u5165\u5e33\u865f\u8207\u5bc6\u78bc\u3002");
     else {
       errorBox.className="error-box";
       submit_1.setAttribute("disabled", "disabled");
       submit_1.textContent="\u767b\u5165\u4e2d";
-      postJson(config.submitPath, request, (reply) => {
+      postJson(config.submitPath, request_1, (reply) => {
         const target=textOr(config.returnUrl, reply.returnUrl);
         globalThis.location.assign(target);
       }, (error_5) => {
@@ -4264,7 +4318,7 @@ function mountLoginFallback(root){
 }
 function loginConfig(){
   const node=doc().getElementById("ptcs-login-config");
-  return node==null||isBlank(node.textContent)?New_52("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
+  return node==null||isBlank(node.textContent)?New_55("/login/api/submit", "/login/api/session", "/login/logout", "/actors", "/actors", "ptc_login_session", "\u767b\u5165 PTCS", "\u4f7f\u7528 host \u63d0\u4f9b\u7684\u5e33\u865f\u767b\u5165\u3002\u6b0a\u9650\u7531\u767b\u5165\u5f8c\u53d6\u5f97\u7684 principal \u8207 ACL policy \u6c7a\u5b9a\u3002", "PTCS.Login", "ACL mode"):json(node.textContent);
 }
 function textOr(fallback, value){
   return isBlank(value)?fallback:value;
@@ -4715,7 +4769,7 @@ function renderAppendValue(definition, value){
   const head_2=element("div", "fcell-head", null);
   append(head_2, [element("span", "fcell-pill", fcellValueModeLabel(mode, value.tags)), element("span", "muted wrap", asText(value.valueId)+" / "+asText(value.createdAtUtc))]);
   card.appendChild(head_2);
-  const presentationContext=New_54(asText(definition.pageId), asText(definition.tabId), asText(value.valueId), asText(value.createdAtUtc), mode, arrayOrEmpty(value.tags), asText(value.rawValue));
+  const presentationContext=New_57(asText(definition.pageId), asText(definition.tabId), asText(value.valueId), asText(value.createdAtUtc), mode, arrayOrEmpty(value.tags), asText(value.rawValue));
   const m_1=tryResolveReplyPresentation(presentationContext);
   if(m_1!=null&&m_1.$==1){
     const presentation=m_1.$0;
@@ -5007,7 +5061,7 @@ function renderViewAsControl(){
   });
   apply_1.addEventListener("click", () => {
     apply_1.setAttribute("disabled", "disabled");
-    return postJson("/management/api/view-as", New_55(asText(chooser.value)), () => {
+    return postJson("/management/api/view-as", New_58(asText(chooser.value)), () => {
       globalThis.location.reload();
     }, (error_5) => {
       apply_1.removeAttribute("disabled");
@@ -5091,10 +5145,10 @@ function renderPageCreator(nav, activePath, pages){
     else {
       const bindingValue=asText(binding.value);
       const p=StartsWith(bindingValue, "reuse:")?[bindingValue.substring("reuse:".length), "reuse"]:bindingValue=="new"?["", "new"]:["", ""];
-      const request=New_56(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
-      const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request);
+      const request_1=New_59(pageIdText, titleText, "", shape.value, p[0], p[1], "", "");
+      const pendingId=rememberPending("append-page-register", textOr(titleText, pageIdText), "/pages/api/register-page", request_1);
       setStatus(status, "Saving");
-      postJson("/pages/api/register-page", request, (reply) => {
+      postJson("/pages/api/register-page", request_1, (reply) => {
         deletePendingThen(pendingId, () => {
           writeAppendPagesDefinitions(New_2(reply.status, length(arrayOrEmpty(reply.pages)), reply.maxSequence, reply.pages));
           refresh(reply.pages);
@@ -5163,10 +5217,10 @@ function setValueCount(buckets){
 }
 function currentBrowserUser(){
   const userNode=doc().getElementById("ptc-comm-user");
-  if(userNode==null||isBlank(userNode.textContent))return New_24("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false);
+  if(userNode==null||isBlank(userNode.textContent))return New_24("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", "", false);
   else {
     const user=json(userNode.textContent);
-    return user==null||isBlank(user.participantId)?New_24("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", false):user;
+    return user==null||isBlank(user.participantId)?New_24("user.web", "Web User", "", false, "anonymous", "/chat/logout", "user.web", "", "", false):user;
   }
 }
 function tryRenderWithRegisteredPageRenderers(text_1){
@@ -5225,6 +5279,9 @@ function statusDot(status){
   const node=element("span", isLive(status)?"status-dot online":"status-dot offline", null);
   node.setAttribute("title", asText(status));
   return node;
+}
+function currentAclSnapshot(){
+  return _c_1.currentAclSnapshot;
 }
 function systemAclAllows(resourceId, action){
   return aclAllows(action, "ptcs.system", resourceId);
@@ -5334,11 +5391,11 @@ function routeItem(icon, name, value){
   append(item, [element("span", "route-icon", icon), content]);
   return item;
 }
-function field(labelText, inputId, control){
+function field(labelText, inputId, control_1){
   const wrap=element("div", "field", null);
   const label=element("label", "", labelText);
   label.setAttribute("for", inputId);
-  append(wrap, [label, control]);
+  append(wrap, [label, control_1]);
   return wrap;
 }
 function findAppendPageShape(shape){
@@ -5534,9 +5591,6 @@ function set_replyPresentationModes(_1){
 function replyPresentationModes(){
   return _c_1.replyPresentationModes;
 }
-function currentAclSnapshot(){
-  return _c_1.currentAclSnapshot;
-}
 function aclCapabilityAllowed(action, capabilities){
   const o=tryFind((item) => aclSameText(item.action, action), arrayOrEmpty(capabilities));
   return o==null?null:Some(o.$0.allowed);
@@ -5557,7 +5611,7 @@ function registeredRenderers(){
   return _c_1.registeredRenderers;
 }
 function shapeRegistration(shape, label, badge, className){
-  return New_51(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
+  return New_54(normalizeShapeText(shape), textOr(normalizeShapeText(shape), label), textOr("?", badge), textOr(normalizeShapeText(shape), className));
 }
 function serverClientExtensions(){
   const node=doc().getElementById("ptc-comm-client-extensions");
@@ -5780,7 +5834,7 @@ function mountCoreWithDisplayTimeZone(mountDocument, extensionId, channelId, can
     return channelId+":"+String(requestSequence);
   };
   const sendPayloadWithRequestId=(requestId, operation, payload) => {
-    const text_1=JSON.stringify(New_58("extension-transient", requestId, extensionId, channelId, operation, JSON.stringify(payload)));
+    const text_1=JSON.stringify(New_67("extension-transient", requestId, extensionId, channelId, operation, JSON.stringify(payload)));
     return socket!=null&&socket.$==1&&(Equals(socket.$0.readyState, 1)&&(socket.$0.send(text_1),true));
   };
   const sendPayload=(operation, payload) => sendPayloadWithRequestId(nextRequestId(), operation, payload);
@@ -5865,8 +5919,8 @@ function mountCoreWithDisplayTimeZone(mountDocument, extensionId, channelId, can
         const action=effect.$0;
         if(actionRequestOverride==null)p=[nextRequestId(), actionToWire(action)];
         else {
-          const request=actionRequestOverride.$0;
-          p=(actionRequestOverride=null,[request.RequestId, actionRequestToWire(request)]);
+          const request_1=actionRequestOverride.$0;
+          p=(actionRequestOverride=null,[request_1.RequestId, actionRequestToWire(request_1)]);
         }
         if(!sendPayloadWithRequestId(p[0], "action", p[1]))apply_1(Disconnected);
       }
@@ -6096,7 +6150,7 @@ function mountCoreWithDisplayTimeZone(mountDocument, extensionId, channelId, can
       }
     }
   }
-  mountDocument(renderWithDisplayTimeZone(defaultOptions(), {SubmitAction:(request) => FromContinuations((continuation) => pendingActionCompletion!=null?continuation(Error_1({Code:"transient-command-busy", Message:"A TA transient command is already in flight."})):(pendingActionCompletion=Some([request.RequestId, continuation]),actionRequestOverride=Some(request),!exists((a) => a.$==2, apply_1(StartAction(request.Action)))?(actionRequestOverride=null,pendingActionCompletion=null,continuation(Error_1({Code:lifecycle.Connected?"transient-command-busy":"transient-channel-not-open", Message:lifecycle.Connected?"A TA transient command is already in flight.":"TA transient channel is not open."}))):null))}, displayTimeZone, runtimeState));
+  mountDocument(renderWithDisplayTimeZone(defaultOptions(), {SubmitAction:(request_1) => FromContinuations((continuation) => pendingActionCompletion!=null?continuation(Error_1({Code:"transient-command-busy", Message:"A TA transient command is already in flight."})):(pendingActionCompletion=Some([request_1.RequestId, continuation]),actionRequestOverride=Some(request_1),!exists((a) => a.$==2, apply_1(StartAction(request_1.Action)))?(actionRequestOverride=null,pendingActionCompletion=null,continuation(Error_1({Code:lifecycle.Connected?"transient-command-busy":"transient-channel-not-open", Message:lifecycle.Connected?"A TA transient command is already in flight.":"TA transient channel is not open."}))):null))}, displayTimeZone, runtimeState));
   connect();
   return New_1(runtimeState, (active) => {
     apply_1(ActiveChanged(active));
@@ -6110,7 +6164,7 @@ function syncWebSocketUrl_1(){
 function downloadJsonExport(wire){
   if(globalThis.document.body==null)return Error_1("Document body is unavailable.");
   else try {
-    const url=URL.createObjectURL(new Blob([JSON.stringify(New_63("ptcs-ta-research-export.v1", (new Date()).toISOString(), wire.documentRevision, wire.dataRevision, wire))], {type:"application/json;charset=utf-8"}));
+    const url=URL.createObjectURL(new Blob([JSON.stringify(New_72("ptcs-ta-research-export.v1", (new Date()).toISOString(), wire.documentRevision, wire.dataRevision, wire))], {type:"application/json;charset=utf-8"}));
     const anchor=globalThis.document.createElement("a");
     anchor.setAttribute("href", url);
     anchor.setAttribute("download", exportFileName());
@@ -6146,16 +6200,16 @@ function defaults(){
   return _c.defaults;
 }
 function initial(canvasInstanceId){
-  return New_59(canvasInstanceId, {$:0}, false, false, true, false, 0n, 0, false, false);
+  return New_68(canvasInstanceId, {$:0}, false, false, true, false, 0n, 0, false, false);
 }
 function transition(options, event, state){
   let _1;
   if(state.Disposed&&event.$!==9)return[state, []];
   else if(state.DisposePending)switch(event.$==1?0:event.$==5?1:event.$==6?1:event.$==9?2:3){
     case 0:
-      return[New_59(state.CanvasInstanceId, {$:7}, event.$1, state.Connected, state.Active, true, event.$0, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, SendUnmounted, ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_68(state.CanvasInstanceId, {$:7}, event.$1, state.Connected, state.Active, true, event.$0, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, SendUnmounted, ScheduleTimeout(options.RequestTimeoutMs)]];
     case 1:
-      return[New_59(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, state.Active, false, state.DataRevision, state.ReconnectAttempt, false, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
+      return[New_68(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, state.Active, false, state.DataRevision, state.ReconnectAttempt, false, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
     case 2:
       return[state, []];
     case 3:
@@ -6163,38 +6217,38 @@ function transition(options, event, state){
   }
   else switch(event.$==1?(_1=[event.$1, event.$0],1):event.$==2?state.Connected&&state.InFlight?2:11:event.$==3?(event.$0,state.Connected&&state.Active&&!state.InFlight?(_1=event.$0,3):11):event.$==4?state.Connected&&state.Active&&state.PollEnabled&&!state.InFlight?4:11:event.$==5?state.InFlight?5:11:event.$==6?!state.Connected?6:7:event.$==7?(_1=event.$0,8):event.$==8?(event.$0,state.Connected&&state.Active?(_1=event.$0,9):11):event.$==9?10:0){
     case 0:
-      return[New_59(state.CanvasInstanceId, {$:1}, state.PollEnabled, true, state.Active, true, state.DataRevision, 0, state.DisposePending, state.Disposed), [CancelReconnect, SendMounted, ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_68(state.CanvasInstanceId, {$:1}, state.PollEnabled, true, state.Active, true, state.DataRevision, 0, state.DisposePending, state.Disposed), [CancelReconnect, SendMounted, ScheduleTimeout(options.RequestTimeoutMs)]];
     case 1:
       const pollEnabled=_1[0];
-      return[New_59(state.CanvasInstanceId, state.Active&&pollEnabled?{$:2}:{$:5}, pollEnabled, state.Connected, state.Active, false, _1[1], state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&pollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
+      return[New_68(state.CanvasInstanceId, state.Active&&pollEnabled?{$:2}:{$:5}, pollEnabled, state.Connected, state.Active, false, _1[1], state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&pollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
     case 2:
-      return[New_59(state.CanvasInstanceId, state.Active&&state.PollEnabled?{$:2}:{$:5}, state.PollEnabled, state.Connected, state.Active, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&state.PollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
+      return[New_68(state.CanvasInstanceId, state.Active&&state.PollEnabled?{$:2}:{$:5}, state.PollEnabled, state.Connected, state.Active, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelTimeout].concat(state.Active&&state.PollEnabled?[SchedulePoll(options.PollIntervalMs)]:[])];
     case 3:
-      return[New_59(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
+      return[New_68(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, SendAction(_1), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 4:
-      return[New_59(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
+      return[New_68(state.CanvasInstanceId, {$:3}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SendAction({
         $:9, 
         $0:state.CanvasInstanceId, 
         $1:state.DataRevision
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 5:
       const attempt=state.ReconnectAttempt+1;
-      return[New_59(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport, ScheduleReconnect(reconnectDelay(options, attempt))]];
+      return[New_68(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport, ScheduleReconnect(reconnectDelay(options, attempt))]];
     case 6:
       return[state, []];
     case 7:
       const attempt_1=state.ReconnectAttempt+1;
-      return[New_59(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt_1, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, ScheduleReconnect(reconnectDelay(options, attempt_1))]];
+      return[New_68(state.CanvasInstanceId, {$:5}, state.PollEnabled, false, state.Active, false, state.DataRevision, attempt_1, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, ScheduleReconnect(reconnectDelay(options, attempt_1))]];
     case 8:
-      return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_59(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_59(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_59(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
+      return _1&&state.Connected&&state.PollEnabled&&!state.InFlight?[New_68(state.CanvasInstanceId, {$:2}, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [SchedulePoll(options.PollIntervalMs)]]:_1?[New_68(state.CanvasInstanceId, state.Poll, state.PollEnabled, state.Connected, true, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), []]:[New_68(state.CanvasInstanceId, {$:5}, state.PollEnabled, state.Connected, false, state.InFlight, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll]];
     case 9:
-      return[New_59(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
+      return[New_68(state.CanvasInstanceId, {$:6}, state.PollEnabled, state.Connected, state.Active, true, state.DataRevision, state.ReconnectAttempt, state.DisposePending, state.Disposed), [CancelPoll, CancelTimeout, SendAction({
         $:10, 
         $0:state.CanvasInstanceId, 
         $1:_1
       }), ScheduleTimeout(options.RequestTimeoutMs)]];
     case 10:
-      return state.Connected?[New_59(state.CanvasInstanceId, {$:7}, state.PollEnabled, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_2([CancelPoll], delay(() => append_2([CancelReconnect], delay(() =>!state.InFlight?append_2([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_59(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
+      return state.Connected?[New_68(state.CanvasInstanceId, {$:7}, state.PollEnabled, state.Connected, false, true, state.DataRevision, state.ReconnectAttempt, true, state.Disposed), ofSeq(delay(() => append_2([CancelPoll], delay(() => append_2([CancelReconnect], delay(() =>!state.InFlight?append_2([SendUnmounted], delay(() =>[ScheduleTimeout(options.RequestTimeoutMs)])):[]))))))]:[New_68(state.CanvasInstanceId, {$:7}, state.PollEnabled, false, false, false, state.DataRevision, state.ReconnectAttempt, state.DisposePending, true), [CancelPoll, CancelTimeout, CancelReconnect, CloseTransport]];
     case 11:
       return[state, []];
   }
@@ -6417,6 +6471,10 @@ function ofSeq(xs){
 function checkLength(arr1, arr2){
   if(arr1.length!==arr2.length)FailWith("The arrays have different lengths.");
 }
+function iter2(f, arr1, arr2){
+  checkLength(arr1, arr2);
+  for(let i=0, _1=arr1.length-1;i<=_1;i++)f(arr1[i], arr2[i]);
+}
 function ofList(xs){
   let l;
   const q=[];
@@ -6440,6 +6498,16 @@ function foldBack(f, arr, zero){
 }
 function concat(xs){
   return Array.prototype.concat.apply([], ofSeq(xs));
+}
+function forall(f, x){
+  let a, i;
+  a=true;
+  i=0;
+  const l=length(x);
+  while(a&&i<l)
+    if(f(x[i]))i=i+1;
+    else a=false;
+  return a;
 }
 function pick(f, arr){
   const m=tryPick(f, arr);
@@ -6473,16 +6541,6 @@ function sort(arr){
 }
 function pairwise(a){
   return ofSeq(pairwise_1(a));
-}
-function forall(f, x){
-  let a, i;
-  a=true;
-  i=0;
-  const l=length(x);
-  while(a&&i<l)
-    if(f(x[i]))i=i+1;
-    else a=false;
-  return a;
 }
 function sortByDescending(f, arr){
   return map((t) => t[0], mapi((_1, _2) =>[_2, [f(_2), _1]], arr).sort((_1, _2) =>-Compare(_1[1], _2[1])));
@@ -6524,8 +6582,8 @@ function readJson(key_1, onRead){
   if(isBlank(key_1))onRead(null);
   else withStore(snapshotStore(), "readonly", (store) => {
     try {
-      const request=store.get(key_1);
-      request.onsuccess=(event) => {
+      const request_1=store.get(key_1);
+      request_1.onsuccess=(event) => {
         const value=eventResult(event);
         if(isMissing(value))return onRead(null);
         else try {
@@ -6536,7 +6594,7 @@ function readJson(key_1, onRead){
           return onRead(null);
         }
       };
-      request.onerror=() => onRead(null);
+      request_1.onerror=() => onRead(null);
     }
     catch(m){
       onRead(null);
@@ -6582,7 +6640,7 @@ function writeWatermark(streamId, newestSequence, cachedCount, source){
     let _3=String(_2);
     const a_1=0;
     let _4=Compare(a_1, cachedCount)===1?a_1:cachedCount;
-    let _5=New_45(streamId, _3, _4, asText(source), nowTicks());
+    let _5=New_48(streamId, _3, _4, asText(source), nowTicks());
     writeJsonTo(_1, streamId, _5);
     compactSnapshots();
   }
@@ -6625,6 +6683,108 @@ function deleteSnapshotsByPrefix(prefix, onDeleted){
     })(_1))(_2))(_3), onDeleted);
   });
 }
+function clearRebuildableSnapshots(onFinished){
+  let finished, database, transaction, cancelTimeout, removedSnapshots, removedWatermarks, retainedSnapshots, retainedWatermarks;
+  const reality=currentServerRealityId();
+  finished=false;
+  database=null;
+  transaction=null;
+  cancelTimeout=() => { };
+  removedSnapshots=0;
+  removedWatermarks=0;
+  retainedSnapshots=0;
+  retainedWatermarks=0;
+  const closeDatabase=(db) => {
+    if(!isMissing(db)){
+      try {
+        db.close();
+      }
+      catch(m){
+        null;
+      }
+    }
+  };
+  const finish=(result) => {
+    if(!finished){
+      finished=true;
+      cancelTimeout();
+      closeDatabase(database);
+      onFinished(result);
+    }
+  };
+  const fail=(message) => {
+    if(!finished){
+      let _1;
+      if(!isMissing(transaction))try {
+        _1=void transaction.abort();
+      }
+      catch(m){
+        _1=null;
+      }
+      else _1=void 0;
+      finish(Error_1(message));
+    }
+  };
+  const timeout=setTimeout(() => {
+    fail("\u700f\u89bd\u5668\u8cc7\u6599\u5eab\u5fd9\u788c\u6216\u6e05\u7406\u903e\u6642\uff0c\u8acb\u7a0d\u5f8c\u91cd\u8a66\u3002");
+  }, 30000);
+  cancelTimeout=() => {
+    clearTimeout(timeout);
+  };
+  openDb((db) => {
+    if(finished)closeDatabase(db);
+    else {
+      database=db;
+      try {
+        const a=[[snapshotStore(), watermarkStore()], "readwrite"];
+        transaction=db.transaction.apply(db, a);
+        transaction.onabort=() => fail("\u700f\u89bd\u5668\u5feb\u53d6\u6e05\u7406\u4ea4\u6613\u5df2\u4e2d\u6b62\u3002");
+        transaction.onerror=() => fail("\u700f\u89bd\u5668\u5feb\u53d6\u6e05\u7406\u4ea4\u6613\u5931\u6557\u3002");
+        transaction.oncomplete=() => finish(Ok(New_31(reality, removedSnapshots, removedWatermarks, retainedSnapshots, retainedWatermarks)));
+        const visit=(storeName, removed, retained) => {
+          const store=transaction.objectStore(storeName);
+          const request_1=store.openKeyCursor();
+          request_1.onerror=() => fail("\u7121\u6cd5\u8b80\u53d6\u700f\u89bd\u5668\u5feb\u53d6\u6e05\u55ae\u3002");
+          request_1.onsuccess=(event) => {
+            if(!finished)try {
+              const cursor=eventResult(event);
+              if(!isMissing(cursor)){
+                const key_1=cursor.key;
+                if(Equals(typeof key_1, "string")&&isRebuildableCacheKey(reality, key_1)){
+                  store["delete"](key_1);
+                  removed();
+                }
+                else retained();
+                cursor["continue"]();
+                return;
+              }
+              else return null;
+            }
+            catch(m){
+              return fail("\u7121\u6cd5\u5b8c\u6210\u700f\u89bd\u5668\u5feb\u53d6\u6e05\u7406\uff0c\u4ea4\u6613\u5df2\u53d6\u6d88\u3002");
+            }
+            else return null;
+          };
+        };
+        visit(snapshotStore(), () => {
+          removedSnapshots=removedSnapshots+1;
+        }, () => {
+          retainedSnapshots=retainedSnapshots+1;
+        });
+        visit(watermarkStore(), () => {
+          removedWatermarks=removedWatermarks+1;
+        }, () => {
+          retainedWatermarks=retainedWatermarks+1;
+        });
+      }
+      catch(m){
+        fail("\u7121\u6cd5\u958b\u59cb\u700f\u89bd\u5668\u5feb\u53d6\u6e05\u7406\u4ea4\u6613\u3002");
+      }
+    }
+  }, () => {
+    fail("\u700f\u89bd\u5668\u8cc7\u6599\u5eab\u7121\u6cd5\u4f7f\u7528\uff0c\u5feb\u53d6\u6e05\u7406\u672a\u5b8c\u6210\u3002");
+  });
+}
 function writeJson(key_1, value){
   writeJsonTo(snapshotStore(), key_1, value);
 }
@@ -6632,8 +6792,8 @@ function readWatermark(key_1, onRead){
   if(isBlank(key_1))onRead(null);
   else withStore(watermarkStore(), "readonly", (store) => {
     try {
-      const request=store.get(key_1);
-      request.onsuccess=(event) => {
+      const request_1=store.get(key_1);
+      request_1.onsuccess=(event) => {
         const value=eventResult(event);
         if(isMissing(value))return onRead(null);
         else try {
@@ -6644,7 +6804,7 @@ function readWatermark(key_1, onRead){
           return onRead(null);
         }
       };
-      request.onerror=() => onRead(null);
+      request_1.onerror=() => onRead(null);
     }
     catch(m){
       onRead(null);
@@ -6659,16 +6819,16 @@ function openDb(onReady, onUnavailable){
     if(isMissing(indexedDb))onUnavailable();
     else {
       const a=[databaseName(), databaseVersion()];
-      const request=indexedDb.open.apply(indexedDb, a);
-      request.onupgradeneeded=(event) => {
+      const request_1=indexedDb.open.apply(indexedDb, a);
+      request_1.onupgradeneeded=(event) => {
         const db=eventResult(event);
         return!isMissing(db)?ensureStores(db):null;
       };
-      request.onsuccess=(event) => {
+      request_1.onsuccess=(event) => {
         const db=eventResult(event);
         return!isMissing(db)?onReady(db):onUnavailable();
       };
-      request.onerror=() => onUnavailable();
+      request_1.onerror=() => onUnavailable();
     }
   }
   catch(m){
@@ -6678,8 +6838,8 @@ function openDb(onReady, onUnavailable){
 function readAllPendingRaw(onRead){
   withStore(pendingStore(), "readonly", (store) => {
     try {
-      const request=store.getAll();
-      request.onsuccess=(event) => {
+      const request_1=store.getAll();
+      request_1.onsuccess=(event) => {
         const value=eventResult(event);
         if(isMissing(value))return onRead([]);
         else try {
@@ -6696,7 +6856,7 @@ function readAllPendingRaw(onRead){
           return onRead([]);
         }
       };
-      request.onerror=() => onRead([]);
+      request_1.onerror=() => onRead([]);
     }
     catch(m){
       onRead([]);
@@ -6775,8 +6935,8 @@ function writePending(command){
 function readAllSnapshotKeys(onRead){
   withStore(snapshotStore(), "readonly", (store) => {
     try {
-      const request=store.getAllKeys();
-      request.onsuccess=(event) => {
+      const request_1=store.getAllKeys();
+      request_1.onsuccess=(event) => {
         const value=eventResult(event);
         if(isMissing(value))return onRead([]);
         else try {
@@ -6786,7 +6946,7 @@ function readAllSnapshotKeys(onRead){
           return onRead([]);
         }
       };
-      request.onerror=() => onRead([]);
+      request_1.onerror=() => onRead([]);
     }
     catch(m){
       onRead([]);
@@ -6811,6 +6971,9 @@ function withSnapshotWatermarkStores(mode, onStores, onUnavailable){
     }
   }, onUnavailable);
 }
+function isRebuildableCacheKey(reality, key_1){
+  return!isBlank(reality)&&!isBlank(key_1)&&exists((scope) => StartsWith(key_1, reality+":"+scope+":"), rebuildableCacheScopes());
+}
 function databaseName(){
   return _c_1.databaseName;
 }
@@ -6825,8 +6988,8 @@ function ensureStores(db){
 function readAllWatermarks(onRead){
   withStore(watermarkStore(), "readonly", (store) => {
     try {
-      const request=store.getAll();
-      request.onsuccess=(event) => {
+      const request_1=store.getAll();
+      request_1.onsuccess=(event) => {
         const value=eventResult(event);
         if(isMissing(value))return onRead([]);
         else try {
@@ -6843,7 +7006,7 @@ function readAllWatermarks(onRead){
           return onRead([]);
         }
       };
-      request.onerror=() => onRead([]);
+      request_1.onerror=() => onRead([]);
     }
     catch(m){
       onRead([]);
@@ -6901,6 +7064,9 @@ function withTransactionStore(storeName, mode, onStore, onUnavailable){
       onUnavailable();
     }
   }, onUnavailable);
+}
+function rebuildableCacheScopes(){
+  return _c_1.rebuildableCacheScopes;
 }
 function ensureStore(storeName, db){
   let _1;
@@ -6963,10 +7129,10 @@ function LoadLocalTemplates(baseName){
   LoadedTemplates().set_Item(baseName, LoadedTemplateFile(""));
 }
 function LocalTemplatesLoaded(){
-  return _c_3.LocalTemplatesLoaded;
+  return _c_4.LocalTemplatesLoaded;
 }
 function set_LocalTemplatesLoaded(_1){
-  _c_3.LocalTemplatesLoaded=_1;
+  _c_4.LocalTemplatesLoaded=_1;
 }
 function LoadNestedTemplates(root, baseName){
   const loadedTpls=LoadedTemplateFile(baseName);
@@ -7014,7 +7180,7 @@ function LoadNestedTemplates(root, baseName){
     prepareTemplate(head_1(rawTpls.Keys));
 }
 function LoadedTemplates(){
-  return _c_3.LoadedTemplates;
+  return _c_4.LoadedTemplates;
 }
 function LoadedTemplateFile(name){
   let o;
@@ -7256,7 +7422,7 @@ function PrepareSingleTemplate(baseName, name, el){
   };
 }
 function TextHoleRE(){
-  return _c_3.TextHoleRE;
+  return _c_4.TextHoleRE;
 }
 class Doc extends Object_1 {
   docNode;
@@ -7356,7 +7522,7 @@ function Insert(elem, tree){
   }
   loop(tree);
   const arr=nodes.slice(0);
-  let _1=New_61(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
+  let _1=New_70(elem, Flags(tree), arr, oar.length===0?null:Some((el) => {
     iter_1((f) => {
       f(el);
     }, oar);
@@ -7364,7 +7530,7 @@ function Insert(elem, tree){
   return _1;
 }
 function EmptyAttr(){
-  return _c_8.EmptyAttr;
+  return _c_10.EmptyAttr;
 }
 function HasExitAnim(attr_1){
   const flag=2;
@@ -7446,19 +7612,19 @@ function ParseHTMLIntoFakeRoot(elem){
   }
 }
 function rhtml(){
-  return _c_7.rhtml;
+  return _c_9.rhtml;
 }
 function wrapMap(){
-  return _c_7.wrapMap;
+  return _c_9.wrapMap;
 }
 function defaultWrap(){
-  return _c_7.defaultWrap;
+  return _c_9.defaultWrap;
 }
 function rxhtmlTag(){
-  return _c_7.rxhtmlTag;
+  return _c_9.rxhtmlTag;
 }
 function rtagName(){
-  return _c_7.rtagName;
+  return _c_9.rtagName;
 }
 function IterSelector(el, selector, f){
   const l=el.querySelectorAll(selector);
@@ -7498,6 +7664,7 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
   }
   static requestSeq;
   static pendingCommandSeq;
+  static rebuildableCacheScopes;
   static maxSnapshotRecords;
   static watermarkStore;
   static pendingStore;
@@ -7533,6 +7700,7 @@ let _c_1=Lazy((_i) => class $StartupCode_Client {
     this.pendingStore="pendingCommands";
     this.watermarkStore="streamWatermarks";
     this.maxSnapshotRecords=256;
+    this.rebuildableCacheScopes=["append-pages-definitions", "chat-participants-v2", "chat-thread", "sets-state-v2", "append-page-state", "append-page-keys", "actors-snapshot"];
     this.pendingCommandSeq=0;
     this.requestSeq=0;
   }
@@ -7797,6 +7965,17 @@ function ofSeq_1(s){
       if(typeof _1=="object"&&isIDisposable(_1))e.Dispose();
     }
   }
+}
+function forAll(p, x){
+  let a, l;
+  a=true;
+  l=x;
+  while(a&&l.$==1)
+    {
+      a=p(l.$0);
+      l=l.$1;
+    }
+  return a;
 }
 function head(l){
   return l.$==1?l.$0:listEmpty();
@@ -8116,6 +8295,19 @@ function exists2(p, s1, s2){
 function collect_1(f, s){
   return concat_3(map_2(f, s));
 }
+function unfold(f, s){
+  return{GetEnumerator:() => new T(s, null, (e) => {
+    const m=f(e.s);
+    if(m==null)return false;
+    else {
+      const t=m.$0[0];
+      const s_1=m.$0[1];
+      e.c=t;
+      e.s=s_1;
+      return true;
+    }
+  }, void 0)};
+}
 function max_1(s){
   const e=Get(s);
   try {
@@ -8176,19 +8368,6 @@ function concat_3(ss){
       if(!Equals(x_1, null))x_1.Dispose();
     });
   }};
-}
-function unfold(f, s){
-  return{GetEnumerator:() => new T(s, null, (e) => {
-    const m=f(e.s);
-    if(m==null)return false;
-    else {
-      const t=m.$0[0];
-      const s_1=m.$0[1];
-      e.c=t;
-      e.s=s_1;
-      return true;
-    }
-  }, void 0)};
 }
 function seqEmpty(){
   return FailWith("The input sequence was empty.");
@@ -8298,7 +8477,7 @@ function New_22(valueId, keys, createdAtUtc, value, tags){
 function New_23(reason){
   return{reason:reason};
 }
-function New_24(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, viewAsParticipantId, viewAsActive){
+function New_24(participantId, displayName, login, authenticated, provider, logoutPath, authenticatedParticipantId, authenticatedAclUserId, viewAsParticipantId, viewAsActive){
   return{
     participantId:participantId, 
     displayName:displayName, 
@@ -8307,6 +8486,7 @@ function New_24(participantId, displayName, login, authenticated, provider, logo
     provider:provider, 
     logoutPath:logoutPath, 
     authenticatedParticipantId:authenticatedParticipantId, 
+    authenticatedAclUserId:authenticatedAclUserId, 
     viewAsParticipantId:viewAsParticipantId, 
     viewAsActive:viewAsActive
   };
@@ -8475,6 +8655,577 @@ function Create(key_1, init_2){
 function CreateWithStorage(key_1, storage){
   return new ListModel("New", key_1, storage);
 }
+function New_31(ServerRealityId, RemovedSnapshots, RemovedWatermarks, RetainedSnapshots, RetainedWatermarks){
+  return{
+    ServerRealityId:ServerRealityId, 
+    RemovedSnapshots:RemovedSnapshots, 
+    RemovedWatermarks:RemovedWatermarks, 
+    RetainedSnapshots:RetainedSnapshots, 
+    RetainedWatermarks:RetainedWatermarks
+  };
+}
+function mount(root, access){
+  let disposed, selected, generation, current, knownAuthority, observation, acceptedObservation, stored, rows, storageProblem, busy, resultRequest, refreshRead, refreshPending, recover;
+  const node=(tag, testId, text_1) => {
+    const value=globalThis.document.createElement(tag);
+    value.setAttribute("data-testid", testId);
+    value.textContent=text_1;
+    return value;
+  };
+  const add=(parent, children) => iter((child) => {
+    parent.appendChild(child);
+  }, children);
+  const enabled=(target_1, value) => value?target_1.removeAttribute("disabled"):target_1.setAttribute("disabled", "disabled");
+  const makeButton=(testId, text_1) => {
+    const value=node("button", testId, text_1);
+    value.setAttribute("type", "button");
+    return value;
+  };
+  root.setAttribute("data-testid", "wallet-panel");
+  root.setAttribute("style", "display:grid;gap:10px;min-width:0;border:1px solid #d8dee8;border-radius:6px;padding:12px");
+  const title=node("h3", "wallet-title", "Wallet");
+  title.setAttribute("style", "margin:0");
+  const target=node("div", "wallet-target", "\u8acb\u9078\u53d6\u4e00\u4f4d participant\u3002");
+  const snapshot=node("div", "wallet-snapshot", "");
+  snapshot.setAttribute("style", "display:flex;flex-wrap:wrap;gap:10px 24px");
+  const fields=map((_1) => {
+    const key_1=_1[0];
+    const host=node("div", "wallet-"+key_1+"-field", _1[1]+"\uff1a");
+    const value=node("span", "wallet-"+key_1, "\u2014");
+    ((((a) => {
+      const _2=a;
+      return(_3) => add(_2, _3);
+    })(host))([value]));
+    ((((a) => {
+      const _2=a;
+      return(_3) => add(_2, _3);
+    })(snapshot))([host]));
+    return value;
+  }, [["balance", "\u9918\u984d"], ["available", "\u53ef\u7528"], ["reserved", "\u4fdd\u7559"], ["revision", "Revision"]]);
+  const readButton=makeButton("wallet-refresh", "\u8b80\u53d6\uff0f\u91cd\u65b0\u6574\u7406");
+  const readStatus=node("div", "wallet-read-status", "");
+  readStatus.setAttribute("aria-live", "polite");
+  const form=node("div", "wallet-form", "");
+  form.setAttribute("style", "display:flex;flex-wrap:wrap;align-items:end;gap:10px");
+  const makeInput=(testId, labelText, placeholder) => {
+    const label=node("label", testId+"-label", labelText);
+    label.setAttribute("style", "display:grid;gap:4px;min-width:0;flex:1 1 180px");
+    const value=node("input", testId, "");
+    value.type="text";
+    value.placeholder=placeholder;
+    value.setAttribute("style", "min-width:0;width:100%;box-sizing:border-box;padding:7px;border:1px solid #cfd7e4;border-radius:6px");
+    ((((a) => {
+      const _1=a;
+      return(_2) => add(_1, _2);
+    })(label))([value]));
+    ((((a) => {
+      const _1=a;
+      return(_2) => add(_1, _2);
+    })(form))([label]));
+    return value;
+  };
+  const amount=makeInput("wallet-amount", "\u52a0\u9ede\u6578\u91cf", "\u6b63\u6574\u6578");
+  amount.setAttribute("inputmode", "numeric");
+  amount.setAttribute("maxlength", "19");
+  const reason=makeInput("wallet-reason", "\u539f\u56e0", "\u52a0\u9ede\u539f\u56e0");
+  reason.setAttribute("maxlength", "512");
+  const submit_1=makeButton("wallet-top-up", "\u52a0\u9ede");
+  ((((a) => {
+    const _1=a;
+    return(_2) => add(_1, _2);
+  })(form))([submit_1]));
+  const result=node("div", "wallet-result", "");
+  result.setAttribute("aria-live", "polite");
+  const showResult=(text_1) => {
+    result.textContent=text_1;
+    iter((x) => {
+      result.removeAttribute(x);
+    }, ["data-receipt-id", "data-request-id", "data-receipt-status"]);
+  };
+  const pendingTitle=node("div", "wallet-pending-count", "");
+  const pendingHost=node("div", "wallet-pending", "");
+  pendingHost.setAttribute("style", "display:grid;gap:8px;min-width:0");
+  ((((a) => {
+    const _1=a;
+    return(_2) => add(_1, _2);
+  })(root))([title, target, snapshot, readButton, readStatus, form, result, pendingTitle, pendingHost]));
+  disposed=false;
+  selected=[];
+  generation=0;
+  current=null;
+  knownAuthority=null;
+  observation=0;
+  acceptedObservation=0;
+  stored=[];
+  rows=[];
+  storageProblem="";
+  busy=new FSharpSet("New_2", null);
+  resultRequest="";
+  refreshRead=() => { };
+  refreshPending=() => { };
+  recover=() =>() => null;
+  const nextObservation=() => {
+    observation=observation+1;
+    return observation;
+  };
+  const acceptAuthority=(ticket, read) => {
+    const candidate=Some([read.authorityRealm, read.actorParticipantId]);
+    return ticket<acceptedObservation&&!Equals(knownAuthority, candidate)?false:(ticket>=acceptedObservation?(acceptedObservation=ticket,knownAuthority=candidate):void 0,true);
+  };
+  const context=(read) => New_60(access.IsAuthenticatedHuman(), access.ViewAsActive()||read.viewAsActive, read.authorityRealm, access.ActorHint(), read.wallet.participantId, access.CanRead(read.wallet.participantId), access.CanTopUp(read.wallet.participantId));
+  const hasPending=(read) => exists((item) => item.intent.authorityRealm==read.authorityRealm&&item.intent.actorParticipantId==read.actorParticipantId&&item.intent.payload.participantId==read.wallet.participantId, stored);
+  const updateControls=() => {
+    let canSubmit;
+    enabled(readButton, length(selected)===1&&access.IsAuthenticatedHuman()&&access.CanRead(get(selected, 0)));
+    if(current!=null&&current.$==1){
+      const value=current.$0;
+      if(length(selected)===1&&get(selected, 0)==value.wallet.participantId&&storageProblem==""){
+        const value_1=current.$0;
+        canSubmit=Equals(contextError(context(value_1), value_1.authorityRealm, value_1.actorParticipantId, value_1.wallet.participantId), null)&&!hasPending(value_1);
+      }
+      else canSubmit=false;
+    }
+    else canSubmit=false;
+    enabled(submit_1, canSubmit);
+    for(let i=0, _1=rows.length-1;i<=_1;i++)((() => {
+      const row=get(rows, i);
+      const intent=row.stored.intent;
+      const sameAuthority=knownAuthority==null||Equals([intent.authorityRealm, intent.actorParticipantId], knownAuthority.$0);
+      const canRecover=sameAuthority&&access.IsAuthenticatedHuman()&&access.ActorHint()==intent.actorParticipantId&&access.CanRead(intent.payload.participantId)&&access.CanTopUp(intent.payload.participantId)&&!busy.Contains(row.stored.key);
+      enabled(row.query, canRecover);
+      enabled(row.retry, canRecover&&!access.ViewAsActive());
+      return!sameAuthority||access.ActorHint()!=intent.actorParticipantId?void(row.status.textContent="\u5148\u524d authority\uff0f\u767b\u5165\u8005\u7684\u7d00\u9304\u5df2\u4fdd\u7559\uff1b\u76ee\u524d\u7121\u6cd5\u67e5\u8a62\u6216\u91cd\u8a66\u3002"):null;
+    })());
+  };
+  const rowStatus=(key_1, text_1) => {
+    const o=tryFind((row) => row.stored.key==key_1, rows);
+    return o==null?null:void(o.$0.status.textContent=text_1);
+  };
+  refreshPending=() => {
+    if(!disposed){
+      let _1;
+      storageProblem="";
+      try {
+        const storage=globalThis.localStorage;
+        const found=MarkResizable([]);
+        for(let index=0, _2=storage.length-1;index<=_2;index++){
+          const key_1=storage.key(index);
+          if(!(key_1==null)&&StartsWith(key_1, storagePrefix())){
+            const m=readStored(key_1);
+            if(m==null){ }
+            else {
+              m.$0;
+              if(length(found)<128){
+                const m_1=decodeStored(key_1, m.$0);
+                if(m_1==null)storageProblem="\u672c\u6a5f\u6709\u7121\u6cd5\u8fa8\u8b58\u7684\u5f85\u78ba\u8a8d\u7d00\u9304\uff1b\u4fdd\u7559\u539f\u8cc7\u6599\u4e26\u66ab\u505c\u65b0\u589e\u3002";
+                else found.push(m_1.$0);
+              }
+              else storageProblem="\u5f85\u78ba\u8a8d\u7d00\u9304\u8d85\u904e 128 \u7b46\uff1b\u4fdd\u7559\u5168\u90e8\u7d00\u9304\u4e26\u66ab\u505c\u65b0\u589e\u3002";
+            }
+          }
+        }
+        _1=void(stored=sortBy((a) => a.key, found.slice()));
+      }
+      catch(m_2){
+        _1=void(storageProblem="\u7121\u6cd5\u8b80\u53d6\u672c\u6a5f\u5f85\u78ba\u8a8d\u7d00\u9304\uff1b\u66ab\u505c\u65b0\u589e\u8207\u50b3\u9001\u3002");
+      }
+      const own=filter_1((item) => item.intent.actorParticipantId==access.ActorHint(), stored);
+      const visible=own.slice(0, 50);
+      iter((row) => {
+        if(!exists((item) => item.key==row.stored.key&&item.serialized==row.stored.serialized, visible))pendingHost.removeChild(row.node);
+      }, rows);
+      rows=filter_1((row) => exists((item) => item.key==row.stored.key&&item.serialized==row.stored.serialized, visible), rows);
+      for(let i=0, _3=visible.length-1;i<=_3;i++)((() => {
+        const item=get(visible, i);
+        if(!exists((row) => row.stored.key==item.key, rows)){
+          const host=node("div", "wallet-pending-item", "");
+          host.setAttribute("data-request-id", item.intent.payload.requestId);
+          host.setAttribute("style", "display:grid;gap:6px;min-width:0;overflow-wrap:anywhere;border-top:1px solid #d8dee8;padding-top:8px");
+          const info=node("div", "wallet-pending-info", item.intent.payload.participantId+" · "+item.intent.payload.amountUnits+" · "+item.intent.payload.requestId+" · "+item.intent.actorParticipantId+" · "+item.intent.authorityRealm);
+          const status=node("div", "wallet-pending-status", "\u7d50\u679c\u5c1a\u5f85\u78ba\u8a8d\uff1b\u67e5\u8a62\u56de\u57f7\u6216\u4f7f\u7528\u76f8\u540c request \u91cd\u8a66\u3002");
+          const actions=node("div", "wallet-pending-actions", "");
+          actions.setAttribute("style", "display:flex;flex-wrap:wrap;gap:8px");
+          const query=makeButton("wallet-pending-query", "\u67e5\u8a62\u56de\u57f7");
+          const retry=makeButton("wallet-pending-retry", "\u539f\u6a23\u91cd\u8a66");
+          query.addEventListener("click", () =>(recover(item))(false));
+          retry.addEventListener("click", () =>(recover(item))(true));
+          ((((a) => {
+            const _4=a;
+            return(_5) => add(_4, _5);
+          })(actions))([query, retry]));
+          ((((a) => {
+            const _4=a;
+            return(_5) => add(_4, _5);
+          })(host))([info, status, actions]));
+          ((((a) => {
+            const _4=a;
+            return(_5) => add(_4, _5);
+          })(pendingHost))([host]));
+          rows=rows.concat([New_64(item, host, status, query, retry)]);
+          return;
+        }
+        else return null;
+      })());
+      pendingTitle.textContent="\u5f85\u78ba\u8a8d\uff1a"+String(length(own))+(length(own)>50?"\uff08\u986f\u793a\u524d 50 \u7b46\uff09":"")+(storageProblem==""?"":" · "+storageProblem);
+      updateControls();
+    }
+  };
+  const settle=(item, reply) => {
+    let _1;
+    if(!disposed){
+      busy=busy.Remove_1(item.key);
+      const p=reply.$==1?[Some(reply.$0), ""]:reply.$==2?[null, reply.$0]:[null, "invalid-wallet-response"];
+      const m=classifyReply(item.intent, p[0], p[1]);
+      if(m.$==0){
+        if(access.ActorHint()!=item.intent.actorParticipantId||!Equals(knownAuthority, Some([item.intent.authorityRealm, item.intent.actorParticipantId])))_1=rowStatus(item.key, "\u56de\u57f7\u5df2\u62b5\u9054\uff0c\u4f46 authority\uff0f\u767b\u5165\u8005\u5df2\u6539\u8b8a\uff1b\u4fdd\u7559\u539f\u7d00\u9304\u3002");
+        else {
+          const value=m.$0;
+          try {
+            const m_1=confirmStored(item, item.key, readStored(item.key));
+            _1=m_1.$==1?rowStatus(item.key, "\u56de\u57f7\u5df2\u78ba\u8a8d\uff0c\u672c\u6a5f\u7d00\u9304\u672a\u6e05\u9664\uff1a"+m_1.$0):(globalThis.localStorage.removeItem(item.key),resultRequest==item.key&&access.ActorHint()==item.intent.actorParticipantId?(result.textContent=(value.status=="applied"?"\u5df2\u78ba\u8a8d\u52a0\u9ede":"\u5df2\u78ba\u8a8d\u62d2\u7d55")+"\uff1a"+value.participantId+" · "+value.code+" · "+value.requestId+" · receipt "+value.receiptId,result.setAttribute("data-receipt-id", value.receiptId),result.setAttribute("data-request-id", value.requestId),result.setAttribute("data-receipt-status", value.status)):void 0,refreshPending(),refreshRead());
+          }
+          catch(m_2){
+            _1=rowStatus(item.key, "\u56de\u57f7\u5df2\u78ba\u8a8d\uff0c\u4f46\u672c\u6a5f\u7d00\u9304\u7121\u6cd5\u6e05\u9664\uff1b\u8acb\u518d\u67e5\u8a62\u56de\u57f7\u3002");
+          }
+        }
+      }
+      else _1=rowStatus(item.key, "\u5f85\u78ba\u8a8d\uff1a"+m.$0+"\uff1b\u4fdd\u7559\u76f8\u540c request\uff0c\u52ff\u91cd\u5efa\u64cd\u4f5c\u3002");
+      return updateControls();
+    }
+    else return null;
+  };
+  const send=(item, read) => {
+    try {
+      const m=validateSend(context(read), item, item.key, readStored(item.key));
+      if(m.$==0){
+        const payload=m.$0;
+        rowStatus(item.key, "\u50b3\u9001\u4e2d\uff1b\u95dc\u9589\u9801\u9762\u5f8c\u4ecd\u53ef\u4f7f\u7528\u76f8\u540c request \u67e5\u8a62\u3002");
+        return request("/management/api/wallet/top-ups", Some([item.intent.authorityRealm, item.intent.actorParticipantId]), Some(payload), (_1) => settle(item, _1));
+      }
+      else return settle(item, Failure(m.$0));
+    }
+    catch(m_1){
+      return settle(item, Failure("pending-storage-unavailable"));
+    }
+  };
+  recover=(item) =>(retry) => {
+    if(!disposed&&!busy.Contains(item.key)){
+      resultRequest=item.key;
+      showResult(retry?"\u4f7f\u7528\u539f request \u91cd\u8a66\uff1b\u7d50\u679c\u4ecd\u5f85\u78ba\u8a8d\u3002":"\u67e5\u8a62\u539f request \u56de\u57f7\u2026");
+      try {
+        const m=confirmStored(item, item.key, readStored(item.key));
+        if(m.$==0){
+          if(!access.IsAuthenticatedHuman()||access.ActorHint()!=item.intent.actorParticipantId)return rowStatus(item.key, "\u767b\u5165\u8005\u5df2\u6539\u8b8a\uff1b\u539f\u7d00\u9304\u4fdd\u7559\uff0c\u7121\u6cd5\u5728\u76ee\u524d\u8eab\u5206\u91cd\u8a66\u3002");
+          else if(!(access.CanRead(item.intent.payload.participantId)&&access.CanTopUp(item.intent.payload.participantId)))return rowStatus(item.key, "\u76ee\u524d\u6c92\u6709\u6b64 participant \u7684 wallet \u6b0a\u9650\uff1b\u539f\u7d00\u9304\u4fdd\u7559\u3002");
+          else {
+            busy=busy.Add_1(item.key);
+            updateControls();
+            rowStatus(item.key, "\u78ba\u8a8d\u76ee\u524d authority \u8207\u767b\u5165\u8005\u2026");
+            const expectation=Some([item.intent.authorityRealm, item.intent.actorParticipantId]);
+            const observationTicket=nextObservation();
+            return request("/management/api/wallet?participantId="+encodeURIComponent(item.intent.payload.participantId), expectation, null, (reply) => {
+              if(!disposed)if(reply.$==0){
+                const read=reply.$0;
+                if(read.authorityRealm==item.intent.authorityRealm&&read.actorParticipantId==item.intent.actorParticipantId&&read.wallet.participantId==item.intent.payload.participantId&&access.ActorHint()==read.actorParticipantId&&acceptAuthority(observationTicket, read)){
+                  const read_1=reply.$0;
+                  if(retry)send(item, read_1);
+                  else request("/management/api/wallet/receipts?requestId="+encodeURIComponent(item.intent.payload.requestId), expectation, null, (_1) => settle(item, _1));
+                }
+                else settle(item, Failure("authority-or-caller-mismatch"));
+              }
+              else settle(item, reply);
+            });
+          }
+        }
+        else {
+          rowStatus(item.key, m.$0);
+          return refreshPending();
+        }
+      }
+      catch(m_1){
+        return settle(item, Failure("pending-storage-unavailable"));
+      }
+    }
+    else return null;
+  };
+  refreshRead=() => {
+    generation=generation+1;
+    current=null;
+    iter((field_1) => {
+      field_1.textContent="\u2014";
+    }, fields);
+    updateControls();
+    if(!disposed&&length(selected)===1){
+      const ticket=New_65(generation, get(selected, 0));
+      target.textContent=ticket.participantId;
+      if(access.IsAuthenticatedHuman()&&access.CanRead(ticket.participantId)){
+        readStatus.textContent="\u8b80\u53d6\u4e2d\u2026";
+        const observationTicket=nextObservation();
+        request("/management/api/wallet?participantId="+encodeURIComponent(ticket.participantId), null, null, (reply) => {
+          if(!disposed&&ticket.generation===generation){
+            let _1;
+            if(reply.$==0){
+              const value=reply.$0;
+              const m=acceptRead(ticket, New_65(generation, length(selected)===1?get(selected, 0):""), access.ActorHint(), value);
+              if(m.$==1)_1=readStatus.textContent=m.$0;
+              else if(acceptAuthority(observationTicket, m.$0)){
+                const value_1=m.$0;
+                _1=(current=Some(value_1),iter2((_2, _3) => {
+                  _2.textContent=_3;
+                }, fields, [value_1.wallet.balanceUnits, value_1.wallet.availableUnits, value_1.wallet.reservedUnits, value_1.wallet.revision]),readStatus.textContent=value_1.viewAsActive||access.ViewAsActive()?"ViewAs\uff1a\u552f\u8b80":!access.CanTopUp(ticket.participantId)?"\u552f\u8b80\uff1a\u6c92\u6709\u52a0\u9ede\u6b0a\u9650":hasPending(value_1)?"\u6b64 participant \u6709\u5f85\u78ba\u8a8d\u64cd\u4f5c\uff1b\u8acb\u5148\u67e5\u8a62\u56de\u57f7\u3002":"\u5df2\u8b80\u53d6 wallet\u3002");
+              }
+              else _1=readStatus.textContent="authority\uff0f\u767b\u5165\u8005\u5df2\u6539\u8b8a\uff1b\u8acb\u91cd\u65b0\u8b80\u53d6\u3002";
+            }
+            else _1=reply.$==2?readStatus.textContent="\u7121\u6cd5\u8b80\u53d6\uff1a"+reply.$0:readStatus.textContent="\u7121\u6cd5\u8b80\u53d6\uff1ainvalid-wallet-response";
+            updateControls();
+          }
+        });
+      }
+      else readStatus.textContent="\u9700\u4ee5\u6388\u6b0a\u7684\u4eba\u985e\u5e33\u865f\u767b\u5165\uff0c\u4e26\u5177\u5099\u6b64 participant \u7684 wallet.read \u6b0a\u9650\u3002";
+    }
+    else {
+      target.textContent="\u8acb\u9078\u53d6\u4e00\u4f4d participant\uff08\u76ee\u524d "+String(length(selected))+" \u4f4d\uff09\u3002";
+      readStatus.textContent="";
+    }
+  };
+  submit_1.addEventListener("click", () => {
+    let _1, _2;
+    if(!disposed){
+      resultRequest="";
+      showResult("\u9a57\u8b49\u52a0\u9ede\u8cc7\u6599\u2026");
+      refreshPending();
+      if(current!=null&&current.$==1){
+        const read=current.$0;
+        _1=storageProblem==""&&length(selected)===1&&get(selected, 0)==read.wallet.participantId&&(_2=current.$0,true);
+      }
+      else _1=false;
+      if(_1){
+        const m=freeze(context(_2), _2, ToString(NewGuid(), "N"), amount.value, reason.value, hasPending(_2));
+        if(m.$==0){
+          const intent=m.$0;
+          try {
+            const item=New_62(storageKey(intent), JSON.stringify(intent), intent);
+            if(readStored(item.key)==null){
+              globalThis.localStorage.setItem(item.key, item.serialized);
+              const m_1=confirmStored(item, item.key, readStored(item.key));
+              return m_1.$==0?(resultRequest=item.key,showResult("\u5df2\u4fdd\u5b58\u539f request\uff1b\u7d50\u679c\u5f85 durable receipt \u78ba\u8a8d\u3002"),busy=busy.Add_1(item.key),refreshPending(),send(item, _2)):(showResult("\u672a\u50b3\u9001\uff1a"+m_1.$0),refreshPending());
+            }
+            else return showResult("\u672a\u50b3\u9001\uff1apending-key-collision");
+          }
+          catch(m_2){
+            showResult("\u7121\u6cd5\u4fdd\u5b58\u4e26\u8b80\u56de\u5f85\u78ba\u8a8d\u7d00\u9304\uff1b\u672a\u50b3\u9001\u3002");
+            return refreshPending();
+          }
+        }
+        else return showResult("\u672a\u50b3\u9001\uff1a"+m.$0);
+      }
+      else return showResult("\u672a\u50b3\u9001\uff1a\u8acb\u5148\u8b80\u53d6\u55ae\u4e00 participant \u7684 wallet\uff0c\u4e26\u78ba\u8a8d\u672c\u6a5f\u5132\u5b58\u53ef\u7528\u3002");
+    }
+    else return null;
+  });
+  readButton.addEventListener("click", () => {
+    refreshPending();
+    return refreshRead();
+  });
+  const storageChanged=() => {
+    refreshPending();
+  };
+  const focused=() => {
+    refreshPending();
+    refreshRead();
+  };
+  globalThis.addEventListener("storage", storageChanged);
+  globalThis.addEventListener("focus", focused);
+  refreshPending();
+  updateControls();
+  return New_33((values) => {
+    const next=distinct(values);
+    if(!Equals(next, selected)){
+      selected=next;
+      resultRequest="";
+      refreshRead();
+    }
+    else updateControls();
+  }, () => {
+    refreshPending();
+    refreshRead();
+  }, () => {
+    disposed=true;
+    generation=generation+1;
+    globalThis.removeEventListener("storage", storageChanged);
+    globalThis.removeEventListener("focus", focused);
+  });
+}
+function readStored(key_1){
+  const value=globalThis.localStorage.getItem(key_1);
+  return value==null?null:Some(value);
+}
+function request(url, expectation, payload, onReply){
+  let finished;
+  finished=false;
+  const complete=(value_1) => {
+    if(!finished){
+      finished=true;
+      onReply(value_1);
+    }
+  };
+  const timer=globalThis.setTimeout(() => complete(Failure("outcome-unknown")), 15000);
+  const finish=(value_1) => {
+    globalThis.clearTimeout(timer);
+    complete(value_1);
+  };
+  try {
+    let _1, _2;
+    const headers=new Headers();
+    if(expectation==null)_1=null;
+    else {
+      const _3=expectation.$0[0];
+      const _4=expectation.$0[1];
+      _1=(headers.set("X-PTC-Wallet-Realm", _3),headers.set("X-PTC-Wallet-Actor", _4));
+    }
+    const options={
+      cache:"no-store", 
+      headers:headers, 
+      credentials:"same-origin"
+    };
+    if(payload==null)_2=null;
+    else {
+      const value=payload.$0;
+      _2=(options.method="POST",headers.set("Content-Type", "application/json"),void(options.body=JSON.stringify(value)));
+    }
+    (globalThis.fetch(url, options).then((response) => response.text().then((body) => finish(decodeReply(body)))))["catch"](() => finish(Failure("outcome-unknown")));
+  }
+  catch(m){
+    finish(Failure("outcome-unknown"));
+  }
+}
+function storageKey(intent){
+  return storagePrefix()+concat_1("/", map((u) => encodeURIComponent(u), [intent.authorityRealm, intent.actorParticipantId, intent.payload.requestId]));
+}
+function storagePrefix(){
+  return _c_5.storagePrefix;
+}
+function decodeStored(key_1, serialized){
+  try {
+    const intent=parse(serialized);
+    return stringFields(intent, ["authorityRealm", "actorParticipantId"])&&stringFields(intent.payload, ["contractVersion", "requestId", "participantId", "amountUnits", "reason", "expectedWalletRevision"])&&nonblank(intent.authorityRealm)&&validId(intent.actorParticipantId)&&validPayload(intent.payload)&&storageKey(intent)==key_1?Some(New_62(key_1, serialized, intent)):null;
+  }
+  catch(m){
+    return null;
+  }
+}
+function decodeReply(body){
+  try {
+    const head_2=parse(body);
+    if(!stringFields(head_2, ["contractVersion", "status", "code"])||head_2.contractVersion!="ptc.wallet/1")return Failure("invalid-wallet-response");
+    else if(head_2.status=="ok"){
+      const value=parse(body);
+      return stringFields(value, ["authorityRealm", "actorParticipantId"])&&Equals(typeof value.viewAsActive, "boolean")&&snapshotShape(value.wallet)&&validRead(value)?Read(value):Failure("invalid-wallet-read");
+    }
+    else if(head_2.status=="applied"||head_2.status=="rejected"){
+      const value_1=parse(body);
+      return stringFields(value_1, ["operation", "requestId", "receiptId", "committedAtUtc", "actorParticipantId", "participantId"])&&Equals(typeof value_1.isReplay, "boolean")&&!(value_1.wallets==null)&&forall(snapshotShape, value_1.wallets)&&(value_1.status=="rejected"||exists((wallet) => wallet.participantId==value_1.participantId, value_1.wallets))?Receipt(value_1):Failure("invalid-wallet-receipt");
+    }
+    else return head_2.status=="error"&&nonblank(head_2.code)?Failure(head_2.code):Failure("invalid-wallet-response");
+  }
+  catch(m){
+    return Failure("invalid-wallet-response");
+  }
+}
+function parse(text_1){
+  return JSON.parse(text_1);
+}
+function stringFields(value, fields){
+  return!(value==null)&&forall((field_1) => isString(value[field_1]), fields);
+}
+function snapshotShape(value){
+  return stringFields(value, ["participantId", "balanceUnits", "reservedUnits", "availableUnits", "revision"])&&validId(value.participantId)&&forall((v) => validateUnits(true, v), [value.balanceUnits, value.reservedUnits, value.availableUnits, value.revision]);
+}
+function isString(value){
+  return Equals(typeof value, "string");
+}
+function New_32(IsAuthenticatedHuman, ActorHint, ViewAsActive, CanRead, CanTopUp){
+  return{
+    IsAuthenticatedHuman:IsAuthenticatedHuman, 
+    ActorHint:ActorHint, 
+    ViewAsActive:ViewAsActive, 
+    CanRead:CanRead, 
+    CanTopUp:CanTopUp
+  };
+}
+function readAction(){
+  return _c_3.readAction;
+}
+function topUpAction(){
+  return _c_3.topUpAction;
+}
+function contextError(context, realm, actor, target){
+  return!context.authenticatedHuman||!validId(context.actorParticipantId)||!StartsWith(context.actorParticipantId, "user.")?Some("unauthenticated-human"):!nonblank(context.authorityRealm)||context.authorityRealm!=realm?Some("authority-mismatch"):context.actorParticipantId!=actor?Some("caller-mismatch"):context.participantId!=target?Some("target-mismatch"):context.viewAsActive?Some("view-as-read-only"):!context.canRead||!context.canTopUp?Some("unauthorized"):null;
+}
+function classifyReply(intent, receipt, fallbackCode){
+  if(intent==null||!nonblank(intent.authorityRealm)||!validId(intent.actorParticipantId)||!StartsWith(intent.actorParticipantId, "user.")||!validPayload(intent.payload))return KeepPending("pending-invalid");
+  else if(receipt==null)return KeepPending(nonblank(fallbackCode)?fallbackCode:"outcome-unknown");
+  else {
+    const value=receipt.$0;
+    return!(value==null)&&value.contractVersion=="ptc.wallet/1"&&value.operation=="wallet.top-up"&&value.requestId==intent.payload.requestId&&value.actorParticipantId==intent.actorParticipantId&&value.participantId==intent.payload.participantId&&validId(value.receiptId)&&nonblank(value.committedAtUtc)&&(value.status=="applied"&&value.code=="applied"||value.status=="rejected"&&nonblank(value.code)&&value.code!="applied")?Terminal(receipt.$0):KeepPending("receipt-mismatch");
+  }
+}
+function confirmStored(original, readbackKey, readback){
+  return!nonblank(original.key)||original.key!=readbackKey?Error_1("pending-key-mismatch"):!nonblank(original.serialized)?Error_1("pending-invalid"):readback!=null&&readback.$==1?readback.$0!=original.serialized?(readback.$0,Error_1("pending-changed")):Ok(original):Error_1("pending-missing");
+}
+function validateSend(context, original, readbackKey, readback){
+  const m=confirmStored(original, readbackKey, readback);
+  if(m.$==0){
+    const intent=m.$0.intent;
+    if(intent==null||!validPayload(intent.payload))return Error_1("pending-invalid");
+    else {
+      const m_1=contextError(context, intent.authorityRealm, intent.actorParticipantId, intent.payload.participantId);
+      return m_1==null?Ok(intent.payload):Error_1(m_1.$0);
+    }
+  }
+  else return Error_1(m.$0);
+}
+function acceptRead(requested, current, actualActorId, reply){
+  return!Equals(requested, current)?Error_1("stale-read"):!validRead(reply)?Error_1("invalid-wallet-read"):reply.wallet.participantId!=current.participantId?Error_1("target-mismatch"):reply.actorParticipantId!=actualActorId?Error_1("caller-mismatch"):Ok(reply);
+}
+function freeze(context, read, requestId, amount, reason, hasUnresolvedPending){
+  if(hasUnresolvedPending)return Error_1("pending-unresolved");
+  else if(!validRead(read))return Error_1("invalid-wallet-read");
+  else if(read.viewAsActive)return Error_1("view-as-read-only");
+  else {
+    const m=contextError(context, read.authorityRealm, read.actorParticipantId, read.wallet.participantId);
+    if(m==null){
+      const payload=New_63("ptc.wallet/1", requestId, read.wallet.participantId, amount, reason, read.wallet.revision);
+      return!validPayload(payload)?Error_1("invalid-input"):Ok(New_61(read.authorityRealm, read.actorParticipantId, payload));
+    }
+    else return Error_1(m.$0);
+  }
+}
+function validId(value){
+  return nonblank(value)&&value.length<=128&&value==Trim(value)&&!exists_1(control, value);
+}
+function nonblank(value){
+  return!(value==null)&&Trim(value).length>0;
+}
+function validPayload(payload){
+  return!(payload==null)&&payload.contractVersion=="ptc.wallet/1"&&validId(payload.requestId)&&validId(payload.participantId)&&validateUnits(false, payload.amountUnits)&&validateUnits(true, payload.expectedWalletRevision)&&nonblank(payload.reason)&&Trim(payload.reason).length<=512&&!exists_1(control, payload.reason);
+}
+function validRead(reply){
+  return!(reply==null)&&reply.contractVersion=="ptc.wallet/1"&&reply.status=="ok"&&reply.code=="ok"&&nonblank(reply.authorityRealm)&&validId(reply.actorParticipantId)&&!(reply.wallet==null)&&validId(reply.wallet.participantId)&&forAll((v) => validateUnits(true, v), ofArray([reply.wallet.balanceUnits, reply.wallet.reservedUnits, reply.wallet.availableUnits, reply.wallet.revision]));
+}
+function control(c){
+  return c<" "||c>="\u007f"&&c<="\u009f";
+}
+function validateUnits(allowZero, value){
+  return!(value==null)&&value.length>0&&value.length<=19&&(value.length===1||value[0]!=="0")&&forall_2((c) => c>="0"&&c<="9", value)&&(allowZero||value!="0")&&(value.length<19||Compare(value, "9223372036854775807")<=0);
+}
+function New_33(SetSelection, Refresh, Dispose_1){
+  return{
+    SetSelection:SetSelection, 
+    Refresh:Refresh, 
+    Dispose:Dispose_1
+  };
+}
 class ListModel extends Object_1 {
   key;
   u0076ar;
@@ -8520,19 +9271,19 @@ class ListModel extends Object_1 {
     }
   }
 }
-function New_31(pageId, tabId){
+function New_34(pageId, tabId){
   return{pageId:pageId, tabId:tabId};
 }
-function New_32(pages){
+function New_35(pages){
   return{pages:pages};
 }
-function New_33(sets){
+function New_36(sets){
   return{sets:sets};
 }
-function New_34(setName, keys){
+function New_37(setName, keys){
   return{setName:setName, keys:keys};
 }
-function New_35(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
+function New_38(commandId, groupId, expectedRevision, participantId, displayName, role, historyPolicy, includeHistoryBeforeFirstJoin){
   return{
     commandId:commandId, 
     groupId:groupId, 
@@ -8544,19 +9295,19 @@ function New_35(commandId, groupId, expectedRevision, participantId, displayName
     includeHistoryBeforeFirstJoin:includeHistoryBeforeFirstJoin
   };
 }
-function New_36(participantId){
+function New_39(participantId){
   return{participantId:participantId};
 }
-function New_37(participants){
+function New_40(participants){
   return{participants:participants};
 }
-function New_38(target, messageId){
+function New_41(target, messageId){
   return{target:target, messageId:messageId};
 }
-function New_39(cursors, unread){
+function New_42(cursors, unread){
   return{cursors:cursors, unread:unread};
 }
-function New_40(messageId, channelMessageId, streamSequence, fromId, toId, scope, body, createdAtUtc){
+function New_43(messageId, channelMessageId, streamSequence, fromId, toId, scope, body, createdAtUtc){
   return{
     messageId:messageId, 
     channelMessageId:channelMessageId, 
@@ -8568,16 +9319,16 @@ function New_40(messageId, channelMessageId, streamSequence, fromId, toId, scope
     createdAtUtc:createdAtUtc
   };
 }
-function New_41(cursors){
+function New_44(cursors){
   return{cursors:cursors};
 }
-function New_42(target, sequence_1){
+function New_45(target, sequence_1){
   return{target:target, sequence:sequence_1};
 }
-function New_43(groupId, channelMessageId){
+function New_46(groupId, channelMessageId){
   return{groupId:groupId, channelMessageId:channelMessageId};
 }
-function New_44(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
+function New_47(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
   return{
     messages:messages, 
     nextAfterMessageId:nextAfterMessageId, 
@@ -8585,7 +9336,7 @@ function New_44(messages, nextAfterMessageId, oldestSequence, hasOlderMessages){
     hasOlderMessages:hasOlderMessages
   };
 }
-function New_45(streamId, newestSequence, cachedCount, source, touchedAt){
+function New_48(streamId, newestSequence, cachedCount, source, touchedAt){
   return{
     streamId:streamId, 
     newestSequence:newestSequence, 
@@ -8594,7 +9345,7 @@ function New_45(streamId, newestSequence, cachedCount, source, touchedAt){
     touchedAt:touchedAt
   };
 }
-function New_46(commandId, groupId, body, tags){
+function New_49(commandId, groupId, body, tags){
   return{
     commandId:commandId, 
     groupId:groupId, 
@@ -8602,7 +9353,7 @@ function New_46(commandId, groupId, body, tags){
     tags:tags
   };
 }
-function New_47(type, requestId, fromId, toId, body, tags, browserId, tabId){
+function New_50(type, requestId, fromId, toId, body, tags, browserId, tabId){
   return{
     type:type, 
     requestId:requestId, 
@@ -8614,7 +9365,7 @@ function New_47(type, requestId, fromId, toId, body, tags, browserId, tabId){
     tabId:tabId
   };
 }
-function New_48(fromId, toId, body, tags){
+function New_51(fromId, toId, body, tags){
   return{
     fromId:fromId, 
     toId:toId, 
@@ -8622,7 +9373,7 @@ function New_48(fromId, toId, body, tags){
     tags:tags
   };
 }
-function New_49(messageId, speaker, createdAtUtc, body){
+function New_52(messageId, speaker, createdAtUtc, body){
   return{
     messageId:messageId, 
     speaker:speaker, 
@@ -8630,7 +9381,7 @@ function New_49(messageId, speaker, createdAtUtc, body){
     body:body
   };
 }
-function New_50(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
+function New_53(commandId, groupId, displayName, initialParticipantIds, historyPolicy, tags){
   return{
     commandId:commandId, 
     groupId:groupId, 
@@ -8792,7 +9543,7 @@ function InsertDoc(parent, doc_1, pos){
     }
 }
 function CreateRunState(parent, doc_1){
-  return New_57(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_1));
+  return New_66(get_Empty_1(), CreateElemNode(parent, EmptyAttr(), doc_1));
 }
 function PerformAnimatedUpdate(childrenOnly, st, doc_1){
   return get_UseAnimations()?Delay(() => {
@@ -9072,7 +9823,7 @@ function EmbedDoc(Item){
 function TextDoc(Item){
   return{$:4, $0:Item};
 }
-function New_51(shape, label, badge, className){
+function New_54(shape, label, badge, className){
   return{
     shape:shape, 
     label:label, 
@@ -9080,7 +9831,7 @@ function New_51(shape, label, badge, className){
     className:className
   };
 }
-function New_52(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
+function New_55(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, sessionCookieName, title, lead, providerLabel, aclLabel){
   return{
     submitPath:submitPath, 
     sessionPath:sessionPath, 
@@ -9094,7 +9845,7 @@ function New_52(submitPath, sessionPath, logoutPath, returnUrl, protectedRoute, 
     aclLabel:aclLabel
   };
 }
-function New_53(userName, password, returnUrl, keepSession){
+function New_56(userName, password, returnUrl, keepSession){
   return{
     userName:userName, 
     password:password, 
@@ -9198,7 +9949,7 @@ class T extends Object_1 {
     this.e=0;
   }
 }
-function New_54(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
+function New_57(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
   return{
     PageId:PageId, 
     TabId:TabId, 
@@ -9209,10 +9960,10 @@ function New_54(PageId, TabId, ValueId, CreatedAtUtc, Direction, Tags, Payload){
     Payload:Payload
   };
 }
-function New_55(participantId){
+function New_58(participantId){
   return{participantId:participantId};
 }
-function New_56(pageId, title, setName, shape, tabId, tabMode, path, description){
+function New_59(pageId, title, setName, shape, tabId, tabMode, path, description){
   return{
     pageId:pageId, 
     title:title, 
@@ -9330,6 +10081,25 @@ function TryFind(v, t){
   const x=(Lookup(v, t))[0];
   return x==null?null:Some(x.Node);
 }
+function Contains(v, t){
+  return!((Lookup(v, t))[0]==null);
+}
+function Remove(k, src){
+  const p=Lookup(k, src);
+  const t=p[0];
+  const spine=p[1];
+  if(t==null)return src;
+  else if(t.Right==null)return Rebuild(spine, t.Left);
+  else if(t.Left==null)return Rebuild(spine, t.Right);
+  else {
+    const d=ofSeq(append_2(Enumerate(false, t.Left), Enumerate(false, t.Right)));
+    let _1=Build(d, 0, d.length-1);
+    return Rebuild(spine, _1);
+  }
+}
+function Add(x, t){
+  return Put((_1, _2) => _2, x, t);
+}
 function Lookup(k, t){
   let spine, t_1, loop;
   spine=[];
@@ -9349,64 +10119,6 @@ function Build(data, min, max_2){
   else {
     const center=(min+max_2)/2>>0;
     return Branch(get(data, center), Build(data, min, center-1), Build(data, center+1, max_2));
-  }
-}
-function Branch(node, left, right){
-  const a=left==null?0:left.Height;
-  const b=right==null?0:right.Height;
-  let _1=Compare(a, b)===1?a:b;
-  let _2=1+_1;
-  return New_60(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
-}
-function Enumerate(flip, t){
-  function gen(t_1, spine){
-    let t_2;
-    while(true)
-      {
-        if(t_1==null){
-          if(spine.$==1){
-            const t_3=spine.$0[0];
-            const spine_1=spine.$1;
-            return Some([t_3, [spine.$0[1], spine_1]]);
-          }
-          else return null;
-        }
-        else if(flip){
-          t_2=t_1;
-          t_1=t_2.Right;
-          spine=FSharpList.Cons([t_2.Node, t_2.Left], spine);
-        }
-        else {
-          t_2=t_1;
-          t_1=t_2.Left;
-          spine=FSharpList.Cons([t_2.Node, t_2.Right], spine);
-        }
-      }
-  }
-  return unfold((_1) => gen(_1[0], _1[1]), [t, FSharpList.Empty]);
-}
-function Add(x, t){
-  return Put((_1, _2) => _2, x, t);
-}
-function Put(combine, k, t){
-  const p=Lookup(k, t);
-  const t_1=p[0];
-  return t_1==null?Rebuild(p[1], Branch(k, null, null)):Rebuild(p[1], Branch(combine(t_1.Node, k), t_1.Left, t_1.Right));
-}
-function Contains(v, t){
-  return!((Lookup(v, t))[0]==null);
-}
-function Remove(k, src){
-  const p=Lookup(k, src);
-  const t=p[0];
-  const spine=p[1];
-  if(t==null)return src;
-  else if(t.Right==null)return Rebuild(spine, t.Left);
-  else if(t.Left==null)return Rebuild(spine, t.Right);
-  else {
-    const d=ofSeq(append_2(Enumerate(false, t.Left), Enumerate(false, t.Right)));
-    let _1=Build(d, 0, d.length-1);
-    return Rebuild(spine, _1);
   }
 }
 function Rebuild(spine, t){
@@ -9442,12 +10154,184 @@ function Rebuild(spine, t){
   }
   return t_1;
 }
+function Put(combine, k, t){
+  const p=Lookup(k, t);
+  const t_1=p[0];
+  return t_1==null?Rebuild(p[1], Branch(k, null, null)):Rebuild(p[1], Branch(combine(t_1.Node, k), t_1.Left, t_1.Right));
+}
+function Branch(node, left, right){
+  const a=left==null?0:left.Height;
+  const b=right==null?0:right.Height;
+  let _1=Compare(a, b)===1?a:b;
+  let _2=1+_1;
+  return New_69(node, left, right, _2, 1+(left==null?0:left.Count)+(right==null?0:right.Count));
+}
+function Enumerate(flip, t){
+  function gen(t_1, spine){
+    let t_2;
+    while(true)
+      {
+        if(t_1==null){
+          if(spine.$==1){
+            const t_3=spine.$0[0];
+            const spine_1=spine.$1;
+            return Some([t_3, [spine.$0[1], spine_1]]);
+          }
+          else return null;
+        }
+        else if(flip){
+          t_2=t_1;
+          t_1=t_2.Right;
+          spine=FSharpList.Cons([t_2.Node, t_2.Left], spine);
+        }
+        else {
+          t_2=t_1;
+          t_1=t_2.Left;
+          spine=FSharpList.Cons([t_2.Node, t_2.Right], spine);
+        }
+      }
+  }
+  return unfold((_1) => gen(_1[0], _1[1]), [t, FSharpList.Empty]);
+}
 function InMemory(init_2){
   return new ArrayStorage(init_2);
 }
-let _c_3=Lazy((_i) => class $StartupCode_Templates {
+function Error_1(ErrorValue){
+  return{$:1, $0:ErrorValue};
+}
+function Ok(ResultValue){
+  return{$:0, $0:ResultValue};
+}
+function New_60(authenticatedHuman, viewAsActive, authorityRealm, actorParticipantId, participantId, canRead, canTopUp){
+  return{
+    authenticatedHuman:authenticatedHuman, 
+    viewAsActive:viewAsActive, 
+    authorityRealm:authorityRealm, 
+    actorParticipantId:actorParticipantId, 
+    participantId:participantId, 
+    canRead:canRead, 
+    canTopUp:canTopUp
+  };
+}
+function New_61(authorityRealm, actorParticipantId, payload){
+  return{
+    authorityRealm:authorityRealm, 
+    actorParticipantId:actorParticipantId, 
+    payload:payload
+  };
+}
+function New_62(key_1, serialized, intent){
+  return{
+    key:key_1, 
+    serialized:serialized, 
+    intent:intent
+  };
+}
+function New_63(contractVersion, requestId, participantId, amountUnits, reason, expectedWalletRevision){
+  return{
+    contractVersion:contractVersion, 
+    requestId:requestId, 
+    participantId:participantId, 
+    amountUnits:amountUnits, 
+    reason:reason, 
+    expectedWalletRevision:expectedWalletRevision
+  };
+}
+function New_64(stored, node, status, query, retry){
+  return{
+    stored:stored, 
+    node:node, 
+    status:status, 
+    query:query, 
+    retry:retry
+  };
+}
+class FSharpSet extends Object_1 {
+  tree;
+  Contains(v){
+    return Contains(v, this.tree);
+  }
+  Remove_1(v){
+    return new FSharpSet("New_2", Remove(v, this.tree));
+  }
+  Add_1(x){
+    return new FSharpSet("New_2", Add(x, this.tree));
+  }
+  Equals(other){
+    return this.Count===other.Count&&forall2_1(Equals, this, other);
+  }
+  get Count(){
+    const tree=this.tree;
+    return tree==null?0:tree.Count;
+  }
+  GetEnumerator(){
+    return Get(Enumerate(false, this.tree));
+  }
+  GetHashCode(){
+    return -1741749453+Hash(ofSeq(this));
+  }
+  get IsEmpty(){
+    return this.tree==null;
+  }
+  CompareTo0(other){
+    return compareWith(Compare, this, other);
+  }
+  constructor(i, _1){
+    if(i=="New_2"){
+      const tree=_1;
+      super();
+      this.tree=tree;
+    }
+  }
+}
+function Failure(Item){
+  return{$:2, $0:Item};
+}
+function Read(Item){
+  return{$:0, $0:Item};
+}
+function Receipt(Item){
+  return{$:1, $0:Item};
+}
+function New_65(generation, participantId){
+  return{generation:generation, participantId:participantId};
+}
+function ToString(this_1, format){
+  const m=format.toUpperCase();
+  if(m=="N")return Replace(this_1, "-", "");
+  else if(m=="D")return this_1;
+  else if(m=="B")return"{"+this_1+"}";
+  else if(m=="P")return"("+this_1+")";
+  else if(m=="X"){
+    const s=this_1;
+    return"{0x"+Substring(s, 0, 8)+",0x"+Substring(s, 9, 4)+",0x"+Substring(s, 14, 4)+",{0x"+Substring(s, 19, 2)+",0x"+Substring(s, 21, 2)+",0x"+Substring(s, 24, 2)+",0x"+Substring(s, 26, 2)+",0x"+Substring(s, 28, 2)+",0x"+Substring(s, 30, 2)+",0x"+Substring(s, 32, 2)+",0x"+Substring(s, 34, 2)+"}}";
+  }
+  else return FormatError();
+}
+function NewGuid(){
+  return"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(new RegExp("[xy]", "g"), (c) => {
+    const r=Math.random()*16|0;
+    const v=c=="x"?r:r&3|8;
+    return v.toString(16);
+  });
+}
+function FormatError(){
+  throw new FormatException("New_1", "Format String can be only \"D\", \"d\", \"N\", \"n\", \"P\", \"p\", \"B\", \"b\", \"X\" or \"x\".");
+}
+let _c_3=Lazy((_i) => class $StartupCode_WalletClientState {
   static {
     _c_3=_i(this);
+  }
+  static topUpAction;
+  static readAction;
+  static {
+    this.readAction="ptcs.wallet.read";
+    this.topUpAction="ptcs.wallet.top-up";
+  }
+});
+let _c_4=Lazy((_i) => class $StartupCode_Templates {
+  static {
+    _c_4=_i(this);
   }
   static RenderedFullDocTemplate;
   static TextHoleRE;
@@ -9507,7 +10391,7 @@ function get_Empty(){
   return Anim(Empty());
 }
 function BatchUpdatesEnabled(){
-  return _c_4.BatchUpdatesEnabled;
+  return _c_6.BatchUpdatesEnabled;
 }
 function StartProcessor(procAsync){
   const st=[0];
@@ -9809,6 +10693,21 @@ class ArrayStorage extends Object_1 {
     this.init=init_2;
   }
 }
+function KeepPending(Item){
+  return{$:1, $0:Item};
+}
+function Terminal(Item){
+  return{$:0, $0:Item};
+}
+let _c_5=Lazy((_i) => class $StartupCode_WalletClient {
+  static {
+    _c_5=_i(this);
+  }
+  static storagePrefix;
+  static {
+    this.storagePrefix="ptc.wallet.pending.v1/";
+  }
+});
 function Obsolete(sn){
   let _1;
   const m=sn.s;
@@ -10026,7 +10925,7 @@ class DocElemNode {
     return Create_2(DocElemNode, _2);
   }
 }
-function New_57(PreviousNodes, Top){
+function New_66(PreviousNodes, Top){
   return{PreviousNodes:PreviousNodes, Top:Top};
 }
 function get_Empty_1(){
@@ -10104,7 +11003,7 @@ function Delay(mk){
 }
 function Bind_1(r, f){
   return checkCancel((c) => {
-    r(New_64((a) => {
+    r(New_73((a) => {
       if(a.$==0){
         const x=a.$0;
         scheduler().Fork(() => {
@@ -10123,13 +11022,13 @@ function Bind_1(r, f){
   });
 }
 function Zero(){
-  return _c_9.Zero;
+  return _c_11.Zero;
 }
 function Start(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
   scheduler().Fork(() => {
-    if(!ct.c)c(New_64((a) => {
+    if(!ct.c)c(New_73((a) => {
       if(a.$==1)UncaughtAsyncError(a.$0);
     }, ct));
   });
@@ -10165,7 +11064,7 @@ function FromContinuations(subscribe){
   };
 }
 function scheduler(){
-  return _c_9.scheduler;
+  return _c_11.scheduler;
 }
 function checkCancel(r){
   return(c) => {
@@ -10174,7 +11073,7 @@ function checkCancel(r){
   };
 }
 function defCTS(){
-  return _c_9.defCTS;
+  return _c_11.defCTS;
 }
 function UncaughtAsyncError(e){
   console.log("WebSharper: Uncaught asynchronous exception", e);
@@ -10188,12 +11087,12 @@ function Combine(a, b){
 function StartImmediate(c, ctOpt){
   const d=(defCTS())[0];
   const ct=ctOpt==null?d:ctOpt.$0;
-  if(!ct.c)c(New_64((a) => {
+  if(!ct.c)c(New_73((a) => {
     if(a.$==1)UncaughtAsyncError(a.$0);
   }, ct));
 }
 function UseAnimations(){
-  return _c_5.UseAnimations;
+  return _c_7.UseAnimations;
 }
 function Actions(a){
   return ConcatActions(choose((a_1) => a_1.$==1?Some(a_1.$0):null, ToArray_1(a.$0)));
@@ -10233,16 +11132,16 @@ function Prolong(nextDuration, anim){
   const last=Create_1(() => anim.Compute(anim.Duration));
   return{Compute:(t) => t>=dur?last.f():comp(t), Duration:nextDuration};
 }
-let _c_4=Lazy((_i) => class Proxy {
+let _c_6=Lazy((_i) => class Proxy {
   static {
-    _c_4=_i(this);
+    _c_6=_i(this);
   }
   static BatchUpdatesEnabled;
   static {
     this.BatchUpdatesEnabled=true;
   }
 });
-function New_58(type, requestId, extensionId, channelId, operation, payload){
+function New_67(type, requestId, extensionId, channelId, operation, payload){
   return{
     type:type, 
     requestId:requestId, 
@@ -10252,13 +11151,7 @@ function New_58(type, requestId, extensionId, channelId, operation, payload){
     payload:payload
   };
 }
-function Ok(ResultValue){
-  return{$:0, $0:ResultValue};
-}
-function Error_1(ErrorValue){
-  return{$:1, $0:ErrorValue};
-}
-function New_59(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
+function New_68(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlight, DataRevision, ReconnectAttempt, DisposePending, Disposed){
   return{
     CanvasInstanceId:CanvasInstanceId, 
     Poll:Poll, 
@@ -10273,47 +11166,47 @@ function New_59(CanvasInstanceId, Poll, PollEnabled, Connected_1, Active, InFlig
   };
 }
 function emptyFrame(kind, actionKind, canvasId){
-  return New_62("ta-browser.v1", kind, actionKind, canvasId, "", "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "", "", false, [], 0, false, "", "", "", "", 0, "", false, "", false, "", "", false, 0, "", "");
+  return New_71("ta-browser.v1", kind, actionKind, canvasId, "", "", "", "", 0, false, "", "", 0, "", "", false, 0, 0, "", "", false, [], 0, false, "", "", "", "", 0, "", false, "", false, "", "", false, 0, "", "");
 }
 function actionToWire(action){
   if(action.$==1)return emptyFrame("action", "reset-canvas", canvasText(action.$0));
   else if(action.$==2){
     const row=action.$1;
     const _1=emptyFrame("action", "add-row", canvasText(action.$0));
-    return New_62(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, _1.traceId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _1.expectedDocumentRevision, _1.hasExpectedDocumentRevision, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints, _1.coverageIntentVersion, _1.hasCoverageIntent, _1.expectedCoverageRevision, _1.hasExpectedCoverageRevision, _1.queryGeneration, _1.startObservationOrdinal, _1.hasStartObservationOrdinal, _1.coverageObservationCount, _1.coverageDirection, _1.coverageRangeAuthority);
+    return New_71(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, row.RowId, _1.traceId, rowKindText(row.Kind), row.DataRef, row.HeightWeight, row.Visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _1.expectedDocumentRevision, _1.hasExpectedDocumentRevision, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints, _1.coverageIntentVersion, _1.hasCoverageIntent, _1.expectedCoverageRevision, _1.hasExpectedCoverageRevision, _1.queryGeneration, _1.startObservationOrdinal, _1.hasStartObservationOrdinal, _1.coverageObservationCount, _1.coverageDirection, _1.coverageRangeAuthority);
   }
   else if(action.$==3){
     const values=action.$3;
     const templateKey=action.$2;
     const rowId=action.$1;
     const _2=emptyFrame("action", "apply-template", canvasText(action.$0));
-    return New_62(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId==null?"":rowId.$0, _2.traceId, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode, templateKey, rowId!=null, map(editorInputToWire, values==null?[]:values), _2.expectedDocumentRevision, _2.hasExpectedDocumentRevision, _2.baseRowId, _2.eventTimeUtc, _2.startEventTimeUtc, _2.endEventTimeExclusiveUtc, _2.maximumBasePoints, _2.coverageIntentVersion, _2.hasCoverageIntent, _2.expectedCoverageRevision, _2.hasExpectedCoverageRevision, _2.queryGeneration, _2.startObservationOrdinal, _2.hasStartObservationOrdinal, _2.coverageObservationCount, _2.coverageDirection, _2.coverageRangeAuthority);
+    return New_71(_2.wireVersion, _2.kind, _2.actionKind, _2.canvasInstanceId, rowId==null?"":rowId.$0, _2.traceId, _2.rowKind, _2.dataRef, _2.heightWeight, _2.visible, _2.sourceId, _2.instrument, _2.intervalMinutes, _2.fromUtc, _2.toUtcExclusive, _2.includePartial, _2.afterDataRevision, _2.dataRevision, _2.reasonCode, templateKey, rowId!=null, map(editorInputToWire, values==null?[]:values), _2.expectedDocumentRevision, _2.hasExpectedDocumentRevision, _2.baseRowId, _2.eventTimeUtc, _2.startEventTimeUtc, _2.endEventTimeExclusiveUtc, _2.maximumBasePoints, _2.coverageIntentVersion, _2.hasCoverageIntent, _2.expectedCoverageRevision, _2.hasExpectedCoverageRevision, _2.queryGeneration, _2.startObservationOrdinal, _2.hasStartObservationOrdinal, _2.coverageObservationCount, _2.coverageDirection, _2.coverageRangeAuthority);
   }
   else if(action.$==4){
     const rowId_1=action.$1;
     const _3=emptyFrame("action", "remove-row", canvasText(action.$0));
-    return New_62(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, rowId_1, _3.traceId, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, _3.sourceId, _3.instrument, _3.intervalMinutes, _3.fromUtc, _3.toUtcExclusive, _3.includePartial, _3.afterDataRevision, _3.dataRevision, _3.reasonCode, _3.templateKey, _3.hasTemplateRowId, _3.editorValues, _3.expectedDocumentRevision, _3.hasExpectedDocumentRevision, _3.baseRowId, _3.eventTimeUtc, _3.startEventTimeUtc, _3.endEventTimeExclusiveUtc, _3.maximumBasePoints, _3.coverageIntentVersion, _3.hasCoverageIntent, _3.expectedCoverageRevision, _3.hasExpectedCoverageRevision, _3.queryGeneration, _3.startObservationOrdinal, _3.hasStartObservationOrdinal, _3.coverageObservationCount, _3.coverageDirection, _3.coverageRangeAuthority);
+    return New_71(_3.wireVersion, _3.kind, _3.actionKind, _3.canvasInstanceId, rowId_1, _3.traceId, _3.rowKind, _3.dataRef, _3.heightWeight, _3.visible, _3.sourceId, _3.instrument, _3.intervalMinutes, _3.fromUtc, _3.toUtcExclusive, _3.includePartial, _3.afterDataRevision, _3.dataRevision, _3.reasonCode, _3.templateKey, _3.hasTemplateRowId, _3.editorValues, _3.expectedDocumentRevision, _3.hasExpectedDocumentRevision, _3.baseRowId, _3.eventTimeUtc, _3.startEventTimeUtc, _3.endEventTimeExclusiveUtc, _3.maximumBasePoints, _3.coverageIntentVersion, _3.hasCoverageIntent, _3.expectedCoverageRevision, _3.hasExpectedCoverageRevision, _3.queryGeneration, _3.startObservationOrdinal, _3.hasStartObservationOrdinal, _3.coverageObservationCount, _3.coverageDirection, _3.coverageRangeAuthority);
   }
   else if(action.$==5){
     const traceId=action.$2;
     const rowId_2=action.$1;
     const _4=emptyFrame("action", "remove-trace", canvasText(action.$0));
-    return New_62(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, rowId_2, traceId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, _4.sourceId, _4.instrument, _4.intervalMinutes, _4.fromUtc, _4.toUtcExclusive, _4.includePartial, _4.afterDataRevision, _4.dataRevision, _4.reasonCode, _4.templateKey, _4.hasTemplateRowId, _4.editorValues, _4.expectedDocumentRevision, _4.hasExpectedDocumentRevision, _4.baseRowId, _4.eventTimeUtc, _4.startEventTimeUtc, _4.endEventTimeExclusiveUtc, _4.maximumBasePoints, _4.coverageIntentVersion, _4.hasCoverageIntent, _4.expectedCoverageRevision, _4.hasExpectedCoverageRevision, _4.queryGeneration, _4.startObservationOrdinal, _4.hasStartObservationOrdinal, _4.coverageObservationCount, _4.coverageDirection, _4.coverageRangeAuthority);
+    return New_71(_4.wireVersion, _4.kind, _4.actionKind, _4.canvasInstanceId, rowId_2, traceId, _4.rowKind, _4.dataRef, _4.heightWeight, _4.visible, _4.sourceId, _4.instrument, _4.intervalMinutes, _4.fromUtc, _4.toUtcExclusive, _4.includePartial, _4.afterDataRevision, _4.dataRevision, _4.reasonCode, _4.templateKey, _4.hasTemplateRowId, _4.editorValues, _4.expectedDocumentRevision, _4.hasExpectedDocumentRevision, _4.baseRowId, _4.eventTimeUtc, _4.startEventTimeUtc, _4.endEventTimeExclusiveUtc, _4.maximumBasePoints, _4.coverageIntentVersion, _4.hasCoverageIntent, _4.expectedCoverageRevision, _4.hasExpectedCoverageRevision, _4.queryGeneration, _4.startObservationOrdinal, _4.hasStartObservationOrdinal, _4.coverageObservationCount, _4.coverageDirection, _4.coverageRangeAuthority);
   }
   else if(action.$==6){
     const query=action.$1;
     const _5=emptyFrame("action", "change-query", canvasText(action.$0));
-    return New_62(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.traceId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _5.afterDataRevision, _5.dataRevision, _5.reasonCode, _5.templateKey, _5.hasTemplateRowId, _5.editorValues, _5.expectedDocumentRevision, _5.hasExpectedDocumentRevision, _5.baseRowId, _5.eventTimeUtc, _5.startEventTimeUtc, _5.endEventTimeExclusiveUtc, _5.maximumBasePoints, _5.coverageIntentVersion, _5.hasCoverageIntent, _5.expectedCoverageRevision, _5.hasExpectedCoverageRevision, _5.queryGeneration, _5.startObservationOrdinal, _5.hasStartObservationOrdinal, _5.coverageObservationCount, _5.coverageDirection, _5.coverageRangeAuthority);
+    return New_71(_5.wireVersion, _5.kind, _5.actionKind, _5.canvasInstanceId, _5.rowId, _5.traceId, _5.rowKind, _5.dataRef, _5.heightWeight, _5.visible, optionText(query.SourceId), optionText(query.Instrument), optionInt(query.IntervalMinutes), optionText(query.FromUtc), optionText(query.ToUtcExclusive), optionBool(query.IncludePartial), _5.afterDataRevision, _5.dataRevision, _5.reasonCode, _5.templateKey, _5.hasTemplateRowId, _5.editorValues, _5.expectedDocumentRevision, _5.hasExpectedDocumentRevision, _5.baseRowId, _5.eventTimeUtc, _5.startEventTimeUtc, _5.endEventTimeExclusiveUtc, _5.maximumBasePoints, _5.coverageIntentVersion, _5.hasCoverageIntent, _5.expectedCoverageRevision, _5.hasExpectedCoverageRevision, _5.queryGeneration, _5.startObservationOrdinal, _5.hasStartObservationOrdinal, _5.coverageObservationCount, _5.coverageDirection, _5.coverageRangeAuthority);
   }
   else if(action.$==7){
     const change=action.$1;
     const _6=emptyFrame("action", "shared-cursor-changed", canvasText(action.$0));
-    return New_62(_6.wireVersion, _6.kind, _6.actionKind, _6.canvasInstanceId, _6.rowId, _6.traceId, _6.rowKind, _6.dataRef, _6.heightWeight, _6.visible, _6.sourceId, _6.instrument, _6.intervalMinutes, _6.fromUtc, _6.toUtcExclusive, _6.includePartial, _6.afterDataRevision, _6.dataRevision, _6.reasonCode, _6.templateKey, _6.hasTemplateRowId, _6.editorValues, _6.expectedDocumentRevision, _6.hasExpectedDocumentRevision, change.BaseRowId, change.EventTimeUtc, _6.startEventTimeUtc, _6.endEventTimeExclusiveUtc, _6.maximumBasePoints, _6.coverageIntentVersion, _6.hasCoverageIntent, _6.expectedCoverageRevision, _6.hasExpectedCoverageRevision, _6.queryGeneration, _6.startObservationOrdinal, _6.hasStartObservationOrdinal, _6.coverageObservationCount, _6.coverageDirection, _6.coverageRangeAuthority);
+    return New_71(_6.wireVersion, _6.kind, _6.actionKind, _6.canvasInstanceId, _6.rowId, _6.traceId, _6.rowKind, _6.dataRef, _6.heightWeight, _6.visible, _6.sourceId, _6.instrument, _6.intervalMinutes, _6.fromUtc, _6.toUtcExclusive, _6.includePartial, _6.afterDataRevision, _6.dataRevision, _6.reasonCode, _6.templateKey, _6.hasTemplateRowId, _6.editorValues, _6.expectedDocumentRevision, _6.hasExpectedDocumentRevision, change.BaseRowId, change.EventTimeUtc, _6.startEventTimeUtc, _6.endEventTimeExclusiveUtc, _6.maximumBasePoints, _6.coverageIntentVersion, _6.hasCoverageIntent, _6.expectedCoverageRevision, _6.hasExpectedCoverageRevision, _6.queryGeneration, _6.startObservationOrdinal, _6.hasStartObservationOrdinal, _6.coverageObservationCount, _6.coverageDirection, _6.coverageRangeAuthority);
   }
   else if(action.$==8){
     const change_1=action.$1;
     const _7=emptyFrame("action", "visible-range-changed", canvasText(action.$0));
-    const frame=New_62(_7.wireVersion, _7.kind, _7.actionKind, _7.canvasInstanceId, _7.rowId, _7.traceId, _7.rowKind, _7.dataRef, _7.heightWeight, _7.visible, _7.sourceId, _7.instrument, _7.intervalMinutes, _7.fromUtc, _7.toUtcExclusive, _7.includePartial, _7.afterDataRevision, _7.dataRevision, _7.reasonCode, _7.templateKey, _7.hasTemplateRowId, _7.editorValues, _7.expectedDocumentRevision, _7.hasExpectedDocumentRevision, change_1.BaseRowId, _7.eventTimeUtc, change_1.StartEventTimeUtc, change_1.EndEventTimeExclusiveUtc, change_1.MaximumBasePoints, _7.coverageIntentVersion, _7.hasCoverageIntent, _7.expectedCoverageRevision, _7.hasExpectedCoverageRevision, _7.queryGeneration, _7.startObservationOrdinal, _7.hasStartObservationOrdinal, _7.coverageObservationCount, _7.coverageDirection, _7.coverageRangeAuthority);
+    const frame=New_71(_7.wireVersion, _7.kind, _7.actionKind, _7.canvasInstanceId, _7.rowId, _7.traceId, _7.rowKind, _7.dataRef, _7.heightWeight, _7.visible, _7.sourceId, _7.instrument, _7.intervalMinutes, _7.fromUtc, _7.toUtcExclusive, _7.includePartial, _7.afterDataRevision, _7.dataRevision, _7.reasonCode, _7.templateKey, _7.hasTemplateRowId, _7.editorValues, _7.expectedDocumentRevision, _7.hasExpectedDocumentRevision, change_1.BaseRowId, _7.eventTimeUtc, change_1.StartEventTimeUtc, change_1.EndEventTimeExclusiveUtc, change_1.MaximumBasePoints, _7.coverageIntentVersion, _7.hasCoverageIntent, _7.expectedCoverageRevision, _7.hasExpectedCoverageRevision, _7.queryGeneration, _7.startObservationOrdinal, _7.hasStartObservationOrdinal, _7.coverageObservationCount, _7.coverageDirection, _7.coverageRangeAuthority);
     const m=change_1.CoverageIntent;
     if(m!=null&&m.$==1){
       const intent=m.$0;
@@ -10325,28 +11218,28 @@ function actionToWire(action){
       let _9=o_3==null?"":o_3.$0;
       const m_1=intent.Direction;
       let _10=m_1==null?"":m_1.$0.$==1?"later":"earlier";
-      return New_62(frame.wireVersion, frame.kind, frame.actionKind, frame.canvasInstanceId, frame.rowId, frame.traceId, frame.rowKind, frame.dataRef, frame.heightWeight, frame.visible, frame.sourceId, frame.instrument, frame.intervalMinutes, frame.fromUtc, frame.toUtcExclusive, frame.includePartial, frame.afterDataRevision, frame.dataRevision, frame.reasonCode, frame.templateKey, frame.hasTemplateRowId, frame.editorValues, frame.expectedDocumentRevision, frame.hasExpectedDocumentRevision, frame.baseRowId, frame.eventTimeUtc, frame.startEventTimeUtc, frame.endEventTimeExclusiveUtc, frame.maximumBasePoints, "ta-coverage-window.v1", true, _8, intent.ExpectedCoverageRevision!=null, String(intent.QueryGeneration), _9, intent.StartObservationOrdinal!=null, intent.ObservationCount, _10, intent.RangeAuthority.$==1?"provider-open-earlier":"explicit-bounds");
+      return New_71(frame.wireVersion, frame.kind, frame.actionKind, frame.canvasInstanceId, frame.rowId, frame.traceId, frame.rowKind, frame.dataRef, frame.heightWeight, frame.visible, frame.sourceId, frame.instrument, frame.intervalMinutes, frame.fromUtc, frame.toUtcExclusive, frame.includePartial, frame.afterDataRevision, frame.dataRevision, frame.reasonCode, frame.templateKey, frame.hasTemplateRowId, frame.editorValues, frame.expectedDocumentRevision, frame.hasExpectedDocumentRevision, frame.baseRowId, frame.eventTimeUtc, frame.startEventTimeUtc, frame.endEventTimeExclusiveUtc, frame.maximumBasePoints, "ta-coverage-window.v1", true, _8, intent.ExpectedCoverageRevision!=null, String(intent.QueryGeneration), _9, intent.StartObservationOrdinal!=null, intent.ObservationCount, _10, intent.RangeAuthority.$==1?"provider-open-earlier":"explicit-bounds");
     }
     else return frame;
   }
   else if(action.$==9){
     const revision=action.$1;
     const _11=emptyFrame("action", "poll-delta", canvasText(action.$0));
-    return New_62(_11.wireVersion, _11.kind, _11.actionKind, _11.canvasInstanceId, _11.rowId, _11.traceId, _11.rowKind, _11.dataRef, _11.heightWeight, _11.visible, _11.sourceId, _11.instrument, _11.intervalMinutes, _11.fromUtc, _11.toUtcExclusive, _11.includePartial, Number(revision), _11.dataRevision, _11.reasonCode, _11.templateKey, _11.hasTemplateRowId, _11.editorValues, _11.expectedDocumentRevision, _11.hasExpectedDocumentRevision, _11.baseRowId, _11.eventTimeUtc, _11.startEventTimeUtc, _11.endEventTimeExclusiveUtc, _11.maximumBasePoints, _11.coverageIntentVersion, _11.hasCoverageIntent, _11.expectedCoverageRevision, _11.hasExpectedCoverageRevision, _11.queryGeneration, _11.startObservationOrdinal, _11.hasStartObservationOrdinal, _11.coverageObservationCount, _11.coverageDirection, _11.coverageRangeAuthority);
+    return New_71(_11.wireVersion, _11.kind, _11.actionKind, _11.canvasInstanceId, _11.rowId, _11.traceId, _11.rowKind, _11.dataRef, _11.heightWeight, _11.visible, _11.sourceId, _11.instrument, _11.intervalMinutes, _11.fromUtc, _11.toUtcExclusive, _11.includePartial, Number(revision), _11.dataRevision, _11.reasonCode, _11.templateKey, _11.hasTemplateRowId, _11.editorValues, _11.expectedDocumentRevision, _11.hasExpectedDocumentRevision, _11.baseRowId, _11.eventTimeUtc, _11.startEventTimeUtc, _11.endEventTimeExclusiveUtc, _11.maximumBasePoints, _11.coverageIntentVersion, _11.hasCoverageIntent, _11.expectedCoverageRevision, _11.hasExpectedCoverageRevision, _11.queryGeneration, _11.startObservationOrdinal, _11.hasStartObservationOrdinal, _11.coverageObservationCount, _11.coverageDirection, _11.coverageRangeAuthority);
   }
   else if(action.$==10){
     const reason=action.$1;
     const _12=emptyFrame("action", "full-snapshot", canvasText(action.$0));
-    return New_62(_12.wireVersion, _12.kind, _12.actionKind, _12.canvasInstanceId, _12.rowId, _12.traceId, _12.rowKind, _12.dataRef, _12.heightWeight, _12.visible, _12.sourceId, _12.instrument, _12.intervalMinutes, _12.fromUtc, _12.toUtcExclusive, _12.includePartial, _12.afterDataRevision, _12.dataRevision, reason, _12.templateKey, _12.hasTemplateRowId, _12.editorValues, _12.expectedDocumentRevision, _12.hasExpectedDocumentRevision, _12.baseRowId, _12.eventTimeUtc, _12.startEventTimeUtc, _12.endEventTimeExclusiveUtc, _12.maximumBasePoints, _12.coverageIntentVersion, _12.hasCoverageIntent, _12.expectedCoverageRevision, _12.hasExpectedCoverageRevision, _12.queryGeneration, _12.startObservationOrdinal, _12.hasStartObservationOrdinal, _12.coverageObservationCount, _12.coverageDirection, _12.coverageRangeAuthority);
+    return New_71(_12.wireVersion, _12.kind, _12.actionKind, _12.canvasInstanceId, _12.rowId, _12.traceId, _12.rowKind, _12.dataRef, _12.heightWeight, _12.visible, _12.sourceId, _12.instrument, _12.intervalMinutes, _12.fromUtc, _12.toUtcExclusive, _12.includePartial, _12.afterDataRevision, _12.dataRevision, reason, _12.templateKey, _12.hasTemplateRowId, _12.editorValues, _12.expectedDocumentRevision, _12.hasExpectedDocumentRevision, _12.baseRowId, _12.eventTimeUtc, _12.startEventTimeUtc, _12.endEventTimeExclusiveUtc, _12.maximumBasePoints, _12.coverageIntentVersion, _12.hasCoverageIntent, _12.expectedCoverageRevision, _12.hasExpectedCoverageRevision, _12.queryGeneration, _12.startObservationOrdinal, _12.hasStartObservationOrdinal, _12.coverageObservationCount, _12.coverageDirection, _12.coverageRangeAuthority);
   }
   else return emptyFrame("action", "reset-view", canvasText(action.$0));
 }
-function actionRequestToWire(request){
-  const _1=actionToWire(request.Action);
-  const o=request.ExpectedDocumentRevision;
+function actionRequestToWire(request_1){
+  const _1=actionToWire(request_1.Action);
+  const o=request_1.ExpectedDocumentRevision;
   const o_1=o==null?null:Some(Number(o.$0));
   let _2=o_1==null?0:o_1.$0;
-  return New_62(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, _1.rowId, _1.traceId, _1.rowKind, _1.dataRef, _1.heightWeight, _1.visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _2, request.ExpectedDocumentRevision!=null, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints, _1.coverageIntentVersion, _1.hasCoverageIntent, _1.expectedCoverageRevision, _1.hasExpectedCoverageRevision, _1.queryGeneration, _1.startObservationOrdinal, _1.hasStartObservationOrdinal, _1.coverageObservationCount, _1.coverageDirection, _1.coverageRangeAuthority);
+  return New_71(_1.wireVersion, _1.kind, _1.actionKind, _1.canvasInstanceId, _1.rowId, _1.traceId, _1.rowKind, _1.dataRef, _1.heightWeight, _1.visible, _1.sourceId, _1.instrument, _1.intervalMinutes, _1.fromUtc, _1.toUtcExclusive, _1.includePartial, _1.afterDataRevision, _1.dataRevision, _1.reasonCode, _1.templateKey, _1.hasTemplateRowId, _1.editorValues, _2, request_1.ExpectedDocumentRevision!=null, _1.baseRowId, _1.eventTimeUtc, _1.startEventTimeUtc, _1.endEventTimeExclusiveUtc, _1.maximumBasePoints, _1.coverageIntentVersion, _1.hasCoverageIntent, _1.expectedCoverageRevision, _1.hasExpectedCoverageRevision, _1.queryGeneration, _1.startObservationOrdinal, _1.hasStartObservationOrdinal, _1.coverageObservationCount, _1.coverageDirection, _1.coverageRangeAuthority);
 }
 function applyWire(current, wire){
   return Bind_2((decoded) => {
@@ -10401,7 +11294,7 @@ function rowKindText(a){
 }
 function editorInputToWire(input_1){
   const m=input_1.Value;
-  return m.$==1?New_66(input_1.Path, "number", "", m.$0, false):m.$==2?New_66(input_1.Path, "bool", "", 0, m.$0):New_66(input_1.Path, "text", m.$0, 0, false);
+  return m.$==1?New_75(input_1.Path, "number", "", m.$0, false):m.$==2?New_75(input_1.Path, "bool", "", 0, m.$0):New_75(input_1.Path, "text", m.$0, 0, false);
 }
 function optionBool(value){
   return value==null?false:value.$0;
@@ -10608,7 +11501,7 @@ function renderWithDisplayTimeZone(options, callbacks, displayTimeZone, runtimeS
   return renderWithProjectionCommitAndDisplayTimeZone(options, callbacks, () => { }, displayTimeZone, runtimeState);
 }
 function defaultOptions(){
-  return _c_6.defaultOptions;
+  return _c_8.defaultOptions;
 }
 function renderWithProjectionCommitAndDisplayTimeZone(options, callbacks, onProjectionCommitted, displayTimeZone, runtimeState){
   let currentDisplayTimeZone, refreshDisplayTime, instrumentDraft, intervalDraft, fromDateDraft, toDateDraft, synchronizedDocumentKey, renderedNavigatorDraft, addRowSequence, pendingAddRowId, editingRowId, pendingEditorMutation, finishNavigatorDrag, activeNavigatorCursor, navigatorCursorAfterRender, chartRenderSequence, chartRenderReason, chartStackElement, latestCursorTimestamps, latestCursorReaders, latestLegendReaders, latestLegendValueReaders, latestMarkerCursorReaders, cursorPanelElement, latestRowLegendElements, displayedCursorIndex, refreshVisibleValues, visibleValueRefreshScheduled, visibleValueSchedulerSequence, visibleValueTelemetrySequence, visibleValueTelemetryMaxTotalMs, chartWorkGeneration, dataWorkGeneration, activeRowDataStates, projectionCommitGate, pendingCursorIndex, cursorFrameScheduled, pendingCursorRequestedAtMs, cursorRenderLatencySequence, pendingViewportChartState, viewportChartFrameScheduled, defaultViewportAppliedToCanvas, actionSequence, querySelectionGeneration, queryInFlight, queuedQuery, pendingBoundaryPan, queuedViewportIntent, flushQueuedViewportIntent, dispatchAdjacentCoverage, dispatchCoverageWindow, latestPreparedData, preparedDataReady, preparationGeneration, observedChartTopology, observedDataState;
@@ -10781,12 +11674,12 @@ function renderWithProjectionCommitAndDisplayTimeZone(options, callbacks, onProj
   const viewportCommandsDisabledNow=() =>!viewportDataReady.Get()||localViewportDisabled(runtimeState.Get().Poll);
   const startActionWithFeedback=(action, successText, onAccepted, onRejected, afterSettled) => {
     actionSequence=actionSequence+1;
-    const request={
+    const request_1={
       RequestId:canvasIdText(currentCanvasId())+":ui:"+String(actionSequence), 
       ExpectedDocumentRevision:Some(runtimeState.Get().DocumentRevision), 
       Action:action
     };
-    return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request, successText, onAccepted, onRejected, () => {
+    return submit(callbacks, uiState, runtimeState.Get().DocumentRevision, request_1, successText, onAccepted, onRejected, () => {
       afterSettled();
       scheduleNextFrame(flushQueuedViewportIntent);
     });
@@ -11217,7 +12110,7 @@ function renderWithProjectionCommitAndDisplayTimeZone(options, callbacks, onProj
           const targetStart=coverageIntent==null?null:coverageIntent.$0.StartObservationOrdinal;
           const o_2=coverageIntent==null?null:Some(coverageIntent.$0.QueryGeneration);
           const queryGeneration=o_2==null?0n:o_2.$0;
-          const request={
+          const request_1={
             BaseRowId:change.BaseRowId, 
             StartEventTimeUtc:change.StartEventTimeUtc, 
             EndEventTimeExclusiveUtc:change.EndEventTimeExclusiveUtc, 
@@ -11236,7 +12129,7 @@ function renderWithProjectionCommitAndDisplayTimeZone(options, callbacks, onProj
           return startActionWith({
             $:8, 
             $0:currentCanvasId(), 
-            $1:request
+            $1:request_1
           }, Equals(_3, {$:0})?"Earlier coverage requested.":"Later coverage requested.", () => { }, () => {
             pendingBoundaryPan=null;
           });
@@ -11968,7 +12861,7 @@ function renderWithProjectionCommitAndDisplayTimeZone(options, callbacks, onProj
       }
       else {
         const caption=required?labelText+" *":labelText;
-        const shell_1=(control) => Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:3px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode(caption), control]);
+        const shell_1=(control_1) => Doc.Element("label", [Attr.Create("style", "display:flex; flex-direction:column; gap:3px; min-width:0; font-size:10px; color:#60738b;")], [Doc.TextNode(caption), control_1]);
         if(kind.$==0)return shell_1(inputText(editorTestId(path), labelText, scalarText(path), (value) => {
           setEditorScalar(path, {$:0, $0:value});
         }));
@@ -12983,8 +13876,8 @@ function remoteDisabled(a){
 function localViewportDisabled(a){
   return a.$==0||a.$==7;
 }
-function submit(callbacks, uiState, actualDocumentRevision, request, successText, onAccepted, onRejected, afterSettled){
-  const m=request.ExpectedDocumentRevision;
+function submit(callbacks, uiState, actualDocumentRevision, request_1, successText, onAccepted, onRejected, afterSettled){
+  const m=request_1.ExpectedDocumentRevision;
   const expectedRevisionMatches=m==null||m.$0===actualDocumentRevision;
   if(uiState.Get().PendingActionId!=null){
     const _1=uiState.Get();
@@ -13028,25 +13921,25 @@ function submit(callbacks, uiState, actualDocumentRevision, request, successText
       RemovedTraces:_5.RemovedTraces, 
       AddRowOpen:_5.AddRowOpen, 
       CursorIndex:_5.CursorIndex, 
-      PendingActionId:Some(request.RequestId), 
-      Feedback:"Submitting "+request.RequestId+"..."
+      PendingActionId:Some(request_1.RequestId), 
+      Feedback:"Submitting "+request_1.RequestId+"..."
     };
     uiState.Set(_6);
-    StartImmediate(Delay(() => Bind_1(callbacks.SubmitAction(request), (a) => {
+    StartImmediate(Delay(() => Bind_1(callbacks.SubmitAction(request_1), (a) => {
       let result, _7;
       if(a.$==1){
         const error_5=a.$0;
         result={
           $:1, 
-          $0:request.RequestId, 
+          $0:request_1.RequestId, 
           $1:error_5.Code, 
           $2:error_5.Message
         };
       }
       else result=a.$0;
       const resultRequestId=result.$==1?result.$0:result.$==2?result.$0:result.$0;
-      if(!Equals(uiState.Get().PendingActionId, Some(request.RequestId)))_7=Zero();
-      else if(resultRequestId!=request.RequestId){
+      if(!Equals(uiState.Get().PendingActionId, Some(request_1.RequestId)))_7=Zero();
+      else if(resultRequestId!=request_1.RequestId){
         onRejected();
         const _8=uiState.Get();
         let _9={
@@ -13467,25 +14360,25 @@ function sameDocumentPresentation(left, right){
   else return _2==null;
 }
 function axisResizeBound(){
-  return _c_6.axisResizeBound;
+  return _c_8.axisResizeBound;
 }
 function set_axisResizeBound(_1){
-  _c_6.axisResizeBound=_1;
+  _c_8.axisResizeBound=_1;
 }
 function axisViewportWidth(){
-  return _c_6.axisViewportWidth;
+  return _c_8.axisViewportWidth;
 }
 function set_rendererTelemetryInstanceSequence(_1){
-  _c_6.rendererTelemetryInstanceSequence=_1;
+  _c_8.rendererTelemetryInstanceSequence=_1;
 }
 function rendererTelemetryInstanceSequence(){
-  return _c_6.rendererTelemetryInstanceSequence;
+  return _c_8.rendererTelemetryInstanceSequence;
 }
 function lightPlotPalette(){
-  return _c_6.lightPlotPalette;
+  return _c_8.lightPlotPalette;
 }
 function darkPlotPalette(){
-  return _c_6.darkPlotPalette;
+  return _c_8.darkPlotPalette;
 }
 function rowExplicitLabel(row){
   let _1;
@@ -14273,10 +15166,10 @@ function Int(){
   return counter();
 }
 function set_counter(_1){
-  _c_10.counter=_1;
+  _c_12.counter=_1;
 }
 function counter(){
-  return _c_10.counter;
+  return _c_12.counter;
 }
 function Ready(Item1, Item2){
   return{
@@ -14371,7 +15264,7 @@ function mapInPlace_1(f, arr){
   for(let i=0, _1=arr.length-1;i<=_1;i++)arr[i]=f(arr[i]);
   return arr;
 }
-function New_60(Node_1, Left, Right, Height, Count){
+function New_69(Node_1, Left, Right, Height, Count){
   return{
     Node:Node_1, 
     Left:Left, 
@@ -14380,7 +15273,15 @@ function New_60(Node_1, Left, Right, Height, Count){
     Count:Count
   };
 }
-function New_61(DynElem, DynFlags, DynNodes, OnAfterRender_1){
+class FormatException extends Error {
+  constructor(i, _1){
+    if(i=="New_1"){
+      const message=_1;
+      super(message);
+    }
+  }
+}
+function New_70(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   const _1={
     DynElem:DynElem, 
     DynFlags:DynFlags, 
@@ -14389,9 +15290,9 @@ function New_61(DynElem, DynFlags, DynNodes, OnAfterRender_1){
   SetOptional(_1, "OnAfterRender", OnAfterRender_1);
   return _1;
 }
-let _c_5=Lazy((_i) => class $StartupCode_Animation {
+let _c_7=Lazy((_i) => class $StartupCode_Animation {
   static {
-    _c_5=_i(this);
+    _c_7=_i(this);
   }
   static UseAnimations;
   static CubicInOut;
@@ -14435,7 +15336,7 @@ function Concat_1(xs){
   return TreeReduce(Empty(), Append_1, x);
 }
 function Empty(){
-  return _c_13.Empty;
+  return _c_15.Empty;
 }
 let CancelPoll={$:6};
 let CancelTimeout={$:7};
@@ -14455,7 +15356,7 @@ function SendAction(Item){
 function ScheduleReconnect(delayMs){
   return{$:5, $0:delayMs};
 }
-function New_62(wireVersion, kind, actionKind, canvasInstanceId, rowId, traceId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints, coverageIntentVersion, hasCoverageIntent, expectedCoverageRevision, hasExpectedCoverageRevision, queryGeneration, startObservationOrdinal, hasStartObservationOrdinal, coverageObservationCount, coverageDirection, coverageRangeAuthority){
+function New_71(wireVersion, kind, actionKind, canvasInstanceId, rowId, traceId, rowKind_1, dataRef, heightWeight, visible, sourceId, instrument, intervalMinutes, fromUtc, toUtcExclusive, includePartial, afterDataRevision, dataRevision, reasonCode, templateKey, hasTemplateRowId, editorValues, expectedDocumentRevision, hasExpectedDocumentRevision, baseRowId, eventTimeUtc, startEventTimeUtc, endEventTimeExclusiveUtc, maximumBasePoints, coverageIntentVersion, hasCoverageIntent, expectedCoverageRevision, hasExpectedCoverageRevision, queryGeneration, startObservationOrdinal, hasStartObservationOrdinal, coverageObservationCount, coverageDirection, coverageRangeAuthority){
   return{
     wireVersion:wireVersion, 
     kind:kind, 
@@ -14516,7 +15417,7 @@ function Map_2(f, r){
 function DefaultValue(value, result){
   return result.$==0?result.$0:value;
 }
-function New_63(schema, exportedAtUtc, documentRevision, dataRevision, state){
+function New_72(schema, exportedAtUtc, documentRevision, dataRevision, state){
   return{
     schema:schema, 
     exportedAtUtc:exportedAtUtc, 
@@ -14525,9 +15426,9 @@ function New_63(schema, exportedAtUtc, documentRevision, dataRevision, state){
     state:state
   };
 }
-let _c_6=Lazy((_i) => class $StartupCode_Renderer {
+let _c_8=Lazy((_i) => class $StartupCode_Renderer {
   static {
-    _c_6=_i(this);
+    _c_8=_i(this);
   }
   static defaultOptions;
   static darkPlotPalette;
@@ -14539,8 +15440,8 @@ let _c_6=Lazy((_i) => class $StartupCode_Renderer {
     this.axisViewportWidth=_c_2.Create_1(1440);
     this.axisResizeBound=false;
     this.rendererTelemetryInstanceSequence=0;
-    this.lightPlotPalette=New_67("light", "#fbfcfe", "#eef3f8", "#e7ecf3", "#1f4f73", "#f8fafc", "#708198", "#263b55", "#c7d3e2", "#3d718e", "#138a59", "#c53d3d", "#64748b", "rgba(203,213,225,.20)", "#4ade80", "#ffffff", "#263b55", "#8ca0b8");
-    this.darkPlotPalette=New_67("dark", "#000000", "#000000", "#334155", "#7dd3fc", "#0b1017", "#cbd5e1", "#e2e8f0", "#475569", "#60a5fa", "#4ade80", "#f87171", "#94a3b8", "rgba(203,213,225,.20)", "#4ade80", "#111827", "#e2e8f0", "#64748b");
+    this.lightPlotPalette=New_76("light", "#fbfcfe", "#eef3f8", "#e7ecf3", "#1f4f73", "#f8fafc", "#708198", "#263b55", "#c7d3e2", "#3d718e", "#138a59", "#c53d3d", "#64748b", "rgba(203,213,225,.20)", "#4ade80", "#ffffff", "#263b55", "#8ca0b8");
+    this.darkPlotPalette=New_76("dark", "#000000", "#000000", "#334155", "#7dd3fc", "#0b1017", "#cbd5e1", "#e2e8f0", "#475569", "#60a5fa", "#4ade80", "#f87171", "#94a3b8", "rgba(203,213,225,.20)", "#4ade80", "#111827", "#e2e8f0", "#64748b");
     this.defaultOptions={
       MinimumVisibleBars:12, 
       DefaultVisibleBars:48, 
@@ -14579,9 +15480,9 @@ function concat_4(o){
   for(var k_1 in o)r.push.apply(r, o[k_1]);
   return r;
 }
-let _c_7=Lazy((_i) => class $StartupCode_DomUtility {
+let _c_9=Lazy((_i) => class $StartupCode_DomUtility {
   static {
-    _c_7=_i(this);
+    _c_9=_i(this);
   }
   static defaultWrap;
   static wrapMap;
@@ -14598,9 +15499,9 @@ let _c_7=Lazy((_i) => class $StartupCode_DomUtility {
     this.defaultWrap=[0, "", ""];
   }
 });
-let _c_8=Lazy((_i) => class Client {
+let _c_10=Lazy((_i) => class Client {
   static {
-    _c_8=_i(this);
+    _c_10=_i(this);
   }
   static FloatApplyChecked;
   static FloatGetChecked;
@@ -14787,7 +15688,7 @@ class Easing extends Object_1 {
     this.transformTime=transformTime;
   }
 }
-function New_64(k, ct){
+function New_73(k, ct){
   return{k:k, ct:ct};
 }
 function No(Item){
@@ -14799,9 +15700,9 @@ function Ok_1(Item){
 function Cc(Item){
   return{$:2, $0:Item};
 }
-let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
+let _c_11=Lazy((_i) => class $StartupCode_Concurrency {
   static {
-    _c_9=_i(this);
+    _c_11=_i(this);
   }
   static GetCT;
   static Zero;
@@ -14809,7 +15710,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
   static scheduler;
   static noneCT;
   static {
-    this.noneCT=New_65(false, []);
+    this.noneCT=New_74(false, []);
     this.scheduler=new Scheduler();
     this.defCTS=[new CancellationTokenSource()];
     this.Zero=Return();
@@ -14818,7 +15719,7 @@ let _c_9=Lazy((_i) => class $StartupCode_Concurrency {
     };
   }
 });
-function New_65(IsCancellationRequested, Registrations){
+function New_74(IsCancellationRequested, Registrations){
   return{c:IsCancellationRequested, r:Registrations};
 }
 function Filter_1(ok, set_1){
@@ -14844,7 +15745,7 @@ function fromSeq(s){
   sortInPlace(a);
   return Build(a, 0, a.length-1);
 }
-function New_66(path, kind, textValue, numberValue, boolValue){
+function New_75(path, kind, textValue, numberValue, boolValue){
   return{
     path:path, 
     kind:kind, 
@@ -15325,7 +16226,7 @@ function takeListIndex(limits_1, field_1, text_1){
   }
 }
 function limits(){
-  return _c_11.limits;
+  return _c_13.limits;
 }
 function initialEditorInputs(schema){
   return collect((field_1) => {
@@ -17882,7 +18783,7 @@ function tryTemporalAxis(value){
   }
 }
 function initial_1(){
-  return _c_12.initial;
+  return _c_14.initial;
 }
 function beginCandidate(state, gate){
   const generation=gate.Generation+1;
@@ -18009,7 +18910,7 @@ function tryParseCanonicalUtc(value){
     else _1=false;
   }
   else _1=false;
-  return _1?Some(New_68(_2[5], _2[3], _2[0], _2[1], _2[2], _2[4])):null;
+  return _1?Some(New_77(_2[5], _2[3], _2[0], _2[1], _2[2], _2[4])):null;
 }
 function offsetAndAbbreviation(zone, parts){
   return zone.$==3?[8*60, "UTC+8"]:zone.$==1?isModernUsDaylightTime(zone, parts)?[-5*60, "CDT"]:[-6*60, "CST"]:zone.$==2?isModernUsDaylightTime(zone, parts)?[-4*60, "EDT"]:[-5*60, "EST"]:[0, "UTC"];
@@ -18027,7 +18928,7 @@ function applyOffset(offsetMinutes, parts){
   }
   else p=[parts.Year, parts.Month, parts.Day, totalMinutes];
   const normalizedMinutes=p[3];
-  return New_68(p[0], p[1], p[2], normalizedMinutes/60>>0, normalizedMinutes%60, parts.Second);
+  return New_77(p[0], p[1], p[2], normalizedMinutes/60>>0, normalizedMinutes%60, parts.Second);
 }
 function pad4(value){
   const text_1=String(value);
@@ -18532,7 +19433,7 @@ function encodeAnchor(anchor){
 function authoritativeDocumentAdvanced(baseIdentity, baseDocumentRevision, currentIdentity, currentDocumentRevision, bindingMatches){
   return bindingMatches&&(!Equals(currentIdentity, baseIdentity)||Compare(currentDocumentRevision, baseDocumentRevision)===1);
 }
-function New_67(ThemeName, Surface, OverviewSurface, Grid, Cursor, AxisSurface, AxisText, LegendText, Border, OverviewPrice, OverviewCandleUp, OverviewCandleDown, OverviewCandleFlat, OverviewSelection, OverviewBoundary, TooltipSurface, TooltipText, TooltipBorder){
+function New_76(ThemeName, Surface, OverviewSurface, Grid, Cursor, AxisSurface, AxisText, LegendText, Border, OverviewPrice, OverviewCandleUp, OverviewCandleDown, OverviewCandleFlat, OverviewSelection, OverviewBoundary, TooltipSurface, TooltipText, TooltipBorder){
   return{
     ThemeName:ThemeName, 
     Surface:Surface, 
@@ -18554,9 +19455,9 @@ function New_67(ThemeName, Surface, OverviewSurface, Grid, Cursor, AxisSurface, 
     TooltipBorder:TooltipBorder
   };
 }
-let _c_10=Lazy((_i) => class $StartupCode_Abbrev {
+let _c_12=Lazy((_i) => class $StartupCode_Abbrev {
   static {
-    _c_10=_i(this);
+    _c_12=_i(this);
   }
   static counter;
   static {
@@ -18606,22 +19507,22 @@ function ApplyValue(get_1, set_1, var_1){
   }, var_1.View)];
 }
 function StringSet(){
-  return _c_8.StringSet;
+  return _c_10.StringSet;
 }
 function StringGet(){
-  return _c_8.StringGet;
+  return _c_10.StringGet;
 }
 function StringListSet(){
-  return _c_8.StringListSet;
+  return _c_10.StringListSet;
 }
 function StringListGet(){
-  return _c_8.StringListGet;
+  return _c_10.StringListGet;
 }
 function DateTimeSetUnchecked(){
-  return _c_8.DateTimeSetUnchecked;
+  return _c_10.DateTimeSetUnchecked;
 }
 function DateTimeGetUnchecked(){
-  return _c_8.DateTimeGetUnchecked;
+  return _c_10.DateTimeGetUnchecked;
 }
 function FileApplyValue(get_1, set_1, var_1){
   let expectedValue;
@@ -18643,34 +19544,34 @@ function FileApplyValue(get_1, set_1, var_1){
   }, var_1.View)];
 }
 function FileSetUnchecked(){
-  return _c_8.FileSetUnchecked;
+  return _c_10.FileSetUnchecked;
 }
 function FileGetUnchecked(){
-  return _c_8.FileGetUnchecked;
+  return _c_10.FileGetUnchecked;
 }
 function IntSetUnchecked(){
-  return _c_8.IntSetUnchecked;
+  return _c_10.IntSetUnchecked;
 }
 function IntGetUnchecked(){
-  return _c_8.IntGetUnchecked;
+  return _c_10.IntGetUnchecked;
 }
 function IntSetChecked(){
-  return _c_8.IntSetChecked;
+  return _c_10.IntSetChecked;
 }
 function IntGetChecked(){
-  return _c_8.IntGetChecked;
+  return _c_10.IntGetChecked;
 }
 function FloatSetUnchecked(){
-  return _c_8.FloatSetUnchecked;
+  return _c_10.FloatSetUnchecked;
 }
 function FloatGetUnchecked(){
-  return _c_8.FloatGetUnchecked;
+  return _c_10.FloatGetUnchecked;
 }
 function FloatSetChecked(){
-  return _c_8.FloatSetChecked;
+  return _c_10.FloatSetChecked;
 }
 function FloatGetChecked(){
-  return _c_8.FloatGetChecked;
+  return _c_10.FloatGetChecked;
 }
 function isBlank_1(s){
   return forall_1(IsWhiteSpace, s);
@@ -18790,9 +19691,9 @@ class InvalidOperationException extends Error {
     }
   }
 }
-let _c_11=Lazy((_i) => class $StartupCode_EditorAction {
+let _c_13=Lazy((_i) => class $StartupCode_EditorAction {
   static {
-    _c_11=_i(this);
+    _c_13=_i(this);
   }
   static OptionKey;
   static ResultKind;
@@ -18812,9 +19713,9 @@ let _c_11=Lazy((_i) => class $StartupCode_EditorAction {
     this.OptionKey="ptcs.dynamic.editor.binding.v1";
   }
 });
-let _c_12=Lazy((_i) => class $StartupCode_RendererModel {
+let _c_14=Lazy((_i) => class $StartupCode_RendererModel {
   static {
-    _c_12=_i(this);
+    _c_14=_i(this);
   }
   static MarkerCursorItemBudget;
   static DirectMarkerGlyphBudget;
@@ -18857,44 +19758,6 @@ function tryDecode_1(defaultView){
       return Some({Theme:{$:1}});
     case 2:
       return null;
-  }
-}
-class FSharpSet extends Object_1 {
-  tree;
-  Contains(v){
-    return Contains(v, this.tree);
-  }
-  Remove_1(v){
-    return new FSharpSet("New_2", Remove(v, this.tree));
-  }
-  Add_1(x){
-    return new FSharpSet("New_2", Add(x, this.tree));
-  }
-  get IsEmpty(){
-    return this.tree==null;
-  }
-  Equals(other){
-    return this.Count===other.Count&&forall2_1(Equals, this, other);
-  }
-  GetHashCode(){
-    return -1741749453+Hash(ofSeq(this));
-  }
-  get Count(){
-    const tree=this.tree;
-    return tree==null?0:tree.Count;
-  }
-  GetEnumerator(){
-    return Get(Enumerate(false, this.tree));
-  }
-  CompareTo0(other){
-    return compareWith(Compare, this, other);
-  }
-  constructor(i, _1){
-    if(i=="New_2"){
-      const tree=_1;
-      super();
-      this.tree=tree;
-    }
   }
 }
 function error_2(code, field_1, message){
@@ -19153,7 +20016,7 @@ class OperationCanceledException extends Error {
   }
 }
 function Create_1(f){
-  return New_69(false, f, forceLazy);
+  return New_78(false, f, forceLazy);
 }
 function forceLazy(){
   const v=this.v();
@@ -19165,16 +20028,16 @@ function forceLazy(){
 function cachedLazy(){
   return this.v;
 }
-let _c_13=Lazy((_i) => class $StartupCode_AppendList {
+let _c_15=Lazy((_i) => class $StartupCode_AppendList {
   static {
-    _c_13=_i(this);
+    _c_15=_i(this);
   }
   static Empty;
   static {
     this.Empty={$:0};
   }
 });
-function New_68(Year, Month, Day, Hour, Minute, Second){
+function New_77(Year, Month, Day, Hour, Minute, Second){
   return{
     Year:Year, 
     Month:Month, 
@@ -19440,7 +20303,7 @@ function decodeTooltipField_1(field_1, a){
 function errors(values){
   return choose_1((a) => a.$==1?Some(a.$0):null, values);
 }
-function New_69(created, evalOrVal, force){
+function New_78(created, evalOrVal, force){
   return{
     c:created, 
     v:evalOrVal, 
@@ -19448,18 +20311,10 @@ function New_69(created, evalOrVal, force){
   };
 }
 function MinimumStrokeWidthCssPixels(){
-  return _c_14.MinimumStrokeWidthCssPixels;
+  return _c_16.MinimumStrokeWidthCssPixels;
 }
 function MaximumStrokeWidthCssPixels(){
-  return _c_14.MaximumStrokeWidthCssPixels;
-}
-class FormatException extends Error {
-  constructor(i, _1){
-    if(i=="New_1"){
-      const message=_1;
-      super(message);
-    }
-  }
+  return _c_16.MaximumStrokeWidthCssPixels;
 }
 class OverflowException extends Error {
   constructor(i, _1){
@@ -19519,9 +20374,9 @@ function enumWhile(f, s){
     });
   }};
 }
-let _c_14=Lazy((_i) => class $StartupCode_RuntimeTypes {
+let _c_16=Lazy((_i) => class $StartupCode_RuntimeTypes {
   static {
-    _c_14=_i(this);
+    _c_16=_i(this);
   }
   static TypeValue_1;
   static TypeKey_1;

@@ -35,3 +35,5 @@ GenericDynamic27沒有既有七consumer packageedge，acquisition-only exactrest
 
 ## Spa49 immutable build provenance
 Git autocrlf 的 clean blob 與 working raw bytes可不同；capture 同時驗 HEAD clean blob與raw SHA，拒絕custom clean filter，不normalize canonical檔案。Compiler bundle輸出先另存，再只同步實際變動的tracked generated assets，最後固定sourcecommit重編譯/pack。回鏈 DYN-WBS-582 / DYN-VFY-050r4。
+
+DYN-VFY-050r4：copy asset驗收須由新nupkg manifest定義精確七檔集合再逐檔比 bytes/hash，避免空目錄 foreach 形成假PASS；零 byte CSS/head.html是合法compiler輸出。Local archive固定sourcecommit後，下游generated/docs更新不得盲目重包同版。

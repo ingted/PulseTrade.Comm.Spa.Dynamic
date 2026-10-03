@@ -839,3 +839,5 @@ MaincanonicalG:/PulseTrade.fs source2f7057／四exact builds／GW496／真三Tes
 Spa49 metadata cascade：三 full builds → 固定 source 三 archive identity/dependencies/assets → SDK feed same-version collision guard → exact-package consumer 15+17 actual tests → LiveDemo full WebSharper、Spa49 runtime DLL與七資產 raw hash。Renderer WIP、歷史 log、正式服務及既有 archive 不變；新版本 gates 尚待實測，baseline不代替。
 
 DYN-VFY-050r4 pre-checkpoint 新版三 producer full WebSharper/compiler PASS：Dynamic28 11.04s、Ptcs59 9.70s、Client134 8.71s。TEMP/aster-ptcs-package-0.2.48/dynamic-wallet49-baseline-source-r1 保存 865 raw inputs/舊 HEAD + 三 metadata delta proof；其餘 canonical/captured bytes 與 Renderer WIP 不變。兩份既有 umbrella JS/min 為真 compiler Spa49 輸出，依 generated delivery 例外原樣同步，未手改。此批尚未 localpack/consumer/publish。
+
+DYN-T-677 / DYN-VFY-050r4 完成 local scope：三固定source full builds與archive identity PASS；exact-package actual15+17=32/32，0ignored/failed/errored；LiveDemo fullcompiler/三DLLidentity/七Spa assets集合與hash PASS。完整證據與限制見 `doc/Verification.md` revision4；未啟Host/未public publish，不代替上游服務/browser gates。

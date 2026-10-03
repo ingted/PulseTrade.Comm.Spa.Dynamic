@@ -8,3 +8,6 @@ Planned steps / 計畫步驟：fresh scan/check與scoped source commit → 固�
 ## Operations
 - 新continuation prework在source commit/pack前建立，承接既有 evidence；prework manifest/fullcompiler at TEMP/aster-ptcs-package-0.2.48/dynamic-wallet49-baseline-source-r1；舊log原文不改。不是補造事前紀錄。
 - 2026-10-03T14:27:32.5964302+08:00 Freeze scoped bytes before fresh scan/check; raw outcomes at C:\Users\Administrator\AppData\Local\Temp\aster-ptcs-package-0.2.48\dynamic-wallet49-closeout-source-r4; generated JS compiler whitespace retained, ordinary source/docs diff-check applies; commit/readback evidence will be TEMP. Renderer/pcsl WIP excluded.
+
+- 2026-10-03T14:35:28.831759+08:00 DYN-WBS-582 local completed: source cfb6 exact3 archive/feed verified, actual32/32 zeroignored/failed/errored, LiveDemo fullWeb7.912s +7assets/3consumer Spa49 DLLproof. Copied2 exact compiler LiveDemo assets. Public publish/production=false; Renderer hash preserved. Final fresh scan/check/scoped commit next.
+- 2026-10-03T14:35:29.1220284+08:00 Freeze scoped bytes before fresh scan/check; raw outcomes at C:\Users\Administrator\AppData\Local\Temp\aster-ptcs-package-0.2.48\dynamic-wallet49-closeout-final-r1; generated JS compiler whitespace retained, ordinary source/docs diff-check applies; commit/readback evidence will be TEMP. Renderer/pcsl WIP excluded.
