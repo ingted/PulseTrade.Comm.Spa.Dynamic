@@ -2071,3 +2071,10 @@ DYN-WBS-583 / DYN-T-678 / DYN-VFY-050r5：Dynamic 0.1.29、Ptcs 0.1.60、Client 
 
 ## 2026-10-03T20:42:14.2625586+08:00 — DYN-WBS-584 / publisher hooks
 八個fsproj九個AfterPack gate修正：專屬opt-in實際生效＋PublishNuGetAfterPack=false全域veto；保留VS/defaults/Config/OS/Exec/version/reference與Renderer/五PCSL WIP。RFC0035、DYN-T-679/VFY051r1；hypothesis `log/20261003/20261003203004_issue_publish_hook_guards.hypothesis.md`。真MSBuild isolated marker RED160/34failed後，PS7/PS5各160/160/sourcehashstable；154行共用typed verifier可供main用ProjectPath[]驗targets。r1 harness RemoveProperties失敗與原尾空白修正均保留。無key/原Exec/真Pack/build/restore/push，已發布版本未重包；這是unit gate而非發布E2E。詳細evidence見Verification051r1；本輪log `log/20261003/20261003203004.aster_publish_hook_guards.log`。
+
+
+## 2026-10-04 DEP52 Dynamic metadata checkpoint
+
+Dynamic 0.1.29→0.1.30、Ptcs 0.1.60→0.1.61、Ptcs.Client 0.1.135→0.1.136；7檔14literal同步 active Spa [0.2.50]→[0.2.52]、Actor.Registry [0.1.3]→[0.1.4]，接 core ACT-A2 修正，Contracts/Renderer/Interactive及legacy ACL/Login不動。原a299 source單一umbrella fullWeb baseline12.712s／865 inputs穩定；metadata inverse byte/XML/BOM驗證通過。DYN-WBS-585 / DYN-T-680 / DYN-VFY-050r6 與 ownlog log/20261004/20261004034358.aster_dep52_dynamic_metadata.log 追溯；本 checkpoint 不是新版build/package或NuGet push，root尚未交52/4固定proof，production未動。
+
+同批整合 peer DYN-VFY-051r2：共用 hook verifier嚴格支援main Actor.Registry legacy profile，main10每shell200PASS、Dynamic8每shell160PASS、拒絕7/7各PS5/7。只執行 import-free marker，沒有真Pack/key/上傳；prework/hypothesis log/20261004/20261004034629* 與Verification保留RED與PS5 harness失敗。Renderer.fs/PCSL/Playwright並行WIP不stage。

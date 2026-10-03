@@ -800,3 +800,22 @@ DYN-WBS-583 / DYN-VFY-050r5 本機範圍完成：producer source `636c19b1bb62f9
 DYN-WBS-584 實作量為9條Condition、154行typed PS1 verifier；final PS7/PS5各160/160。XML差異核對與BOM檢查證明 defaults/Exec/version/reference未變；只有核准gate與兩個舊comment移除。證據見DYN-VFY-051r1。
 
 完整追溯：RFC-PTCS-DYNAMIC-0035 / DYN-WBS-584 / DYN-T-679 / DYN-VFY-051r1。
+
+
+## DYN-WBS-585 / DEP52 exact adapter cascade
+
+本輪承接 core ACT-A2 actor projection / bounded maintenance，維持既有 package 邊界及發布流程。精確 metadata 共 7 檔、14 literal；不改 runtime source、Contracts 0.1.35、Renderer 0.1.131、Interactive.Client 0.1.123 或 legacy ACL/Login 0.1.1。Renderer.fs 並行 WIP 與 PCSL/Playwright 資料保留。
+
+| 相對路徑 | old → new |
+| --- | --- |
+| src/PulseTrade.Comm.Spa.Dynamic.fsproj | Version 0.1.29 → 0.1.30；Spa [0.2.50] → [0.2.52]；Actor.Registry [0.1.3] → [0.1.4] |
+| src/PulseTrade.Comm.Spa.Dynamic.Ptcs/PulseTrade.Comm.Spa.Dynamic.Ptcs.fsproj | Version 0.1.60 → 0.1.61；Spa [0.2.50] → [0.2.52] |
+| src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client.fsproj | Version 0.1.135 → 0.1.136；Spa [0.2.50] → [0.2.52] |
+| tests/PulseTrade.Comm.Spa.Dynamic.Tests.fsproj | Actor.Registry [0.1.3] → [0.1.4] |
+| tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests.fsproj | Ptcs [0.1.60] → [0.1.61] |
+| tests/PtcsTaClient.Tests/PtcsTaClient.Tests.fsproj | Client [0.1.135] → [0.1.136] |
+| tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo/PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo.fsproj | Spa/Ptcs/Client exact 新版；Content Update 的 pulsetrade.comm.spa\0.2.50 目錄 → 0.2.52 |
+
+Registry 的 PrivateAssets/ExcludeAssets 與既有 test ProjectReference 均不變。先前長路徑失敗已知，復用 865 個 allowlisted raw inputs 的 SHA/clean Git blob 檢查，將 build 放在 C:/ptc-d52 的隔離短路徑；不複製 dirty Renderer 或既有 bin/obj/cache。GeneratePackageOnBuild=false、PublishNuGetAfterPack=false、BuildingInsideVisualStudio=false；full WebSharper 保留。未有 root 固定 Spa52/Registry4 local proof 與候選放行前不 build/pack 新版；package 僅本機 immutable candidate，不 upload。
+
+依賴風險與驗收：source checkpoint → 固定 inputs / 3 producer full build → exact deps/DLL/assets/RepositoryCommit → 必要 consumers。除原 Ptcs/Client 15+17 與 LiveDemo，直接 Registry 引用異動的 umbrella tests 亦須執行並核實 runner counts。細節及各 gate 實況集中 DYN-T-680 / DYN-VFY-050r6；歷史 Spa50 已公開結果不等於本輪52完成。

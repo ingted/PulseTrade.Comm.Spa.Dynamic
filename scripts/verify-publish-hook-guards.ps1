@@ -71,12 +71,28 @@ try {
         if ($raw -match '<!DOCTYPE') { throw 'source-doctype-forbidden' }
         $source = New-Object Xml.XmlDocument; $source.XmlResolver = $null; $source.LoadXml($raw)
         $flags = @([regex]::Matches($raw, '\$\((\w+PushNuGet)\)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
-        if ($flags.Count -ne 1) { throw 'one-publisher-flag-required' }
-        $flag = $flags[0]
+        $isActorLegacy = [IO.Path]::GetFileName($path) -ceq 'PulseTrade.Comm.Actor.Registry.fsproj'
+        if ($isActorLegacy) {
+            $packageIds = @($source.SelectNodes('/Project/PropertyGroup/PackageId'))
+            $assemblyNames = @($source.SelectNodes('/Project/PropertyGroup/AssemblyName'))
+            if ($packageIds.Count -gt 1 -or $assemblyNames.Count -ne 1 -or $flags.Count -ne 0) { throw 'actor-legacy-identity-required' }
+            $identity = if ($packageIds.Count -eq 1) { $packageIds[0] } else { $assemblyNames[0] }
+            if ($identity.HasAttribute('Condition') -or $identity.ParentNode.HasAttribute('Condition') -or $identity.InnerText -cne 'PulseTrade.Comm.Actor.Registry') { throw 'actor-legacy-identity-required' }
+            $flag = ''
+        } else {
+            if ($flags.Count -ne 1) { throw 'one-publisher-flag-required' }
+            $flag = $flags[0]
+        }
         $isUmbrella = [IO.Path]::GetFileName($path) -eq 'PulseTrade.Comm.Spa.Dynamic.fsproj'
         $targets = @($source.SelectNodes('/Project/Target') | Where-Object { $_.GetAttribute('AfterTargets') -eq 'Pack' -and $_.SelectNodes('.//Exec').Count -gt 0 })
         $expectedNames = if ($isUmbrella) { @('PostBuildD','PostBuildR') } else { @($targets | ForEach-Object { $_.Name }) }
-        if (($isUmbrella -and $targets.Count -ne 2) -or (!$isUmbrella -and ($targets.Count -ne 1 -or $targets[0].Name -notmatch '^Push\w+ReleasePackageToNuGet$'))) { throw 'publisher-target-shape-changed' }
+        if ($isActorLegacy) {
+            if ($targets.Count -ne 1 -or $targets[0].Name -cne 'PostBuildR') { throw 'actor-legacy-target-required' }
+            $condition = [regex]::Replace($targets[0].GetAttribute('Condition'), '\s+', ' ').Trim()
+            $legacyCondition = "'`$(Configuration)' == 'Release'"
+            $vetoCondition = $legacyCondition + " and '`$(PublishNuGetAfterPack)' != 'false'"
+            if ($condition -cne $legacyCondition -and $condition -cne $vetoCondition) { throw 'actor-legacy-condition-required' }
+        } elseif (($isUmbrella -and $targets.Count -ne 2) -or (!$isUmbrella -and ($targets.Count -ne 1 -or $targets[0].Name -notmatch '^Push\w+ReleasePackageToNuGet$'))) { throw 'publisher-target-shape-changed' }
         if ($isUmbrella -and (@($targets | ForEach-Object {$_.Name} | Sort-Object) -join '|') -ne ($expectedNames -join '|')) { throw 'umbrella-target-names-changed' }
         $index = $inputs.Count
         $backup = Join-Path $EvidenceRoot ("source-$index.fsproj")
@@ -105,12 +121,13 @@ try {
             if ($fixture.OuterXml -match '\$\(\[' -or $fixture.SelectNodes('//Exec|//Import|//UsingTask').Count -gt 0) { throw 'unsafe-fixture-shape' }
             [IO.File]::WriteAllText($fixturePath, $fixture.OuterXml, $utf8)
             $propertiesText = "Configuration=$($case.config);OS=$($case.os);BuildingInsideVisualStudio=$($case.vs);PublishNuGetAfterPack=$($case.global)"
-            if ($case.flag -ne '') { $propertiesText += ";$flag=$($case.flag)" }
+            if ($flag -ne '' -and $case.flag -ne '') { $propertiesText += ";$flag=$($case.flag)" }
             [void](AddElement $driver $probe 'MSBuild' @{Projects=$fixturePath; Targets='Pack'; BuildInParallel='false'; Properties=$propertiesText})
-            $allowed = if ($case.allow -is [string]) { !$isUmbrella } else { [bool]$case.allow }
+            $allowed = if ($isActorLegacy) { $case.global -ne 'false' } elseif ($case.allow -is [string]) { !$isUmbrella } else { [bool]$case.allow }
             $expected = @()
             if ($allowed) {
-                if ($isUmbrella -and $case.config -eq 'Release') { $expected = @('PostBuildR') }
+                if ($isActorLegacy -and $case.config -eq 'Release') { $expected = @('PostBuildR') }
+                elseif ($isUmbrella -and $case.config -eq 'Release') { $expected = @('PostBuildR') }
                 elseif ($isUmbrella -and $case.config -eq 'Debug') { $expected = @('PostBuildD') }
                 elseif (!$isUmbrella -and $case.config -eq 'Release' -and $case.os -eq 'Windows_NT') { $expected = @($targets[0].Name) }
             }
@@ -125,7 +142,7 @@ try {
     $start.Arguments = 'msbuild "' + $driverPath + '" /t:Probe /nologo /v:minimal /nr:false /m:1'
     $start.UseShellExecute = $false; $start.CreateNoWindow = $true
     $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
-    foreach ($input in $inputs) { $start.EnvironmentVariables.Remove($input.flag) }
+    foreach ($input in $inputs) { if ($input.flag -ne '') { $start.EnvironmentVariables.Remove($input.flag) } }
     $process = New-Object Diagnostics.Process; $process.StartInfo = $start
     try {
         if (!$process.Start()) { throw 'msbuild-start-failed' }
