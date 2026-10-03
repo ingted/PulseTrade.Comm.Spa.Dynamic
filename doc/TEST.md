@@ -847,3 +847,5 @@ DYN-T-677 / DYN-VFY-050r4 完成 local scope：三固定source full builds與arc
 Spa50新圖必重做三producer fullcompiler、固定commit archive/DLL/exactdeps/assets、SDKfeed same-version collisionguard；兩個exact-package runner須actual15+17且0ignored/failed/errored；LiveDemo fullcompiler、newSpa50 runtimeDLL與七asset精確集合/bytes/hash相符。只copy真compiler輸出，canonical/captured原bytes與Renderer WIP不變。當前gate pending；Spa49歷史localPASS不代替此輪，Host/browser/正式部署另列。
 
 DYN-VFY-050r5 precheckpoint PASS：短路徑 dyn50-pre-r2 三 full WebSharper 為 Dynamic29 9.453s、Ptcs60 8.270s、Client135 9.368s，0 errors；865 canonical/captured raw SHA與clean blob、Renderer hash不變。先前巢狀root r1 MSB3030（10路徑>260）保留，不修ACL/造假assets。兩份umbrella JS/min只從真compiler原bytes同步，固定source checkpoint/final archives/consumer仍pending。
+
+DYN-WBS-583 / DYN-VFY-050r5 本機範圍完成：producer source `636c19b1bb62f9425591c2d2fdb543de1445a9e5`，三fixed fullWeb 10.865/8.550/8.839s；三archive/exactdeps/DLL/assets與SDK401feed逐hash相符。真15+17=32/32（0ignored/failed/errored），LiveDemo fullWeb8.309s、三consumer runtime Spa50 DLL87569E35…與core f217c898匹配、七asset exact集合/bytes/hash與七ownbundle齊全。公開發布、main Host/browser與正式部署仍由upstream另驗。 詳細來源见 `doc/Verification.md` revision5。

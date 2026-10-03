@@ -407,3 +407,17 @@ DYN-WBS-583 / DYN-T-678：core Spa50 startup修正版帶動 Dynamic29/Ptcs60/Cli
 Mutation僅own TEMP build/isolated test資料、canonical六metadata/必要generated/currentdoc/log、scope Git checkpoint、SDKfeed新版本copy；不讀secret、不啟Host/正式服務、不碰Renderer/PCSL WIP。驗865input、fullWeb、固定commit三archive、actual32unit、LiveDemo7asset/DLLidentity；prework `log/20261003/20261003155425.aster_spa50_adapter_cascade.log`。coreproof `C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/wallet-spa50-package/validation.json`，source f217c898，DLL87569E35；新Dynamic gates尚未執行。
 
 DYN-VFY-050r5 precheckpoint PASS：短路徑 dyn50-pre-r2 三 full WebSharper 為 Dynamic29 9.453s、Ptcs60 8.270s、Client135 9.368s，0 errors；865 canonical/captured raw SHA與clean blob、Renderer hash不變。先前巢狀root r1 MSB3030（10路徑>260）保留，不修ACL/造假assets。兩份umbrella JS/min只從真compiler原bytes同步，固定source checkpoint/final archives/consumer仍pending。
+
+
+### DYN-VFY-050r5 local package / consumer PASS（2026-10-03）
+Source checkpoint `636c19b1bb62f9425591c2d2fdb543de1445a9e5` exact16paths commit/push/readback；固定865 current clean blobs/raw SHA與Renderer WIP hash不變。Dynamic29/Ptcs60/Client135 full WebSharper分別10.865/8.550/8.839s（0errors；umbrella既有WS9002保留）。GenerateNuspec NoBuild繞過Pack/AfterPack；三local archiveRepositoryCommit/product/DLL/exactdeps/assets與SDK401feed一致，未public。
+
+| Package | Version | DLL SHA256 | Archive SHA256 |
+|---|---|---|---|
+| PulseTrade.Comm.Spa.Dynamic.Ptcs.Client | 0.1.135 | `ED5434A399FA0A3AF43350DAA45C24745F4F29586ED71A70CAE9B2D920744A14` | `AAA3BF28B4C87CA977A4A70ECAB603DA151F4ABC5715C280EB90A658F7F39925` |
+| PulseTrade.Comm.Spa.Dynamic.Ptcs | 0.1.60 | `89EBF4CBB55A7A485485BC5CA8F4DA9F866BC61A990CA759726465B1286C986F` | `65C3D0543725EE7DBF319F075E494FB95F75E26EB75AA06A85BE6C79352D35BA` |
+| PulseTrade.Comm.Spa.Dynamic | 0.1.29 | `1C77CBA9465D233B240F712B3DC6E5D4B84D39C9F2EC2AAE99FAEDC59EC03F99` | `A70E3391FBCE214324C1B48C11714F11EC5BEA5B7067D0C501EDD10133BD19CC` |
+
+Ptcs.Tests15/15、PtcsTaClient.Tests17/17，全0ignored/failed/errored；build8.031/8.714s。LiveDemo fullWeb8.309s，七Spa50copied assets由corearchive manifest精確集合逐檔比bytes/hash（含合法兩個zero-byte），另七份自身bundle存在。三consumer載入Spa50 DLL `87569E359EECE9F016A4F6BAD979A7E27FCE6874BA0E6F4D8D53AFA682E9CDAC`（core source f217c898），Ptcs60/Client135匹配上表；producer與LiveDemo的tracked JS/min此次真compiler輸出都與canonical原bytes相同，不需手動改檔。
+證據根 `C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/`：`dyn50-final-r1/{result.json,source-input-manifest.json,packages-proof/validation.json}`、`dyn50-consumers-r1/{proof.json,input-manifest.json,generated-copy-proof.json}`；未啟Host、無secret/publicpush/production，consumer/doc後續commit不改三包provenance。
+r1失敗保留於 `dynamic-wallet50-preparation-20261003/build-precheckpoint-r1`：10個missing paths261–278字元；r1與short r2的865input hash完全相同，short全部compiler通過。`longpath-oracle.json`提供max path與一致性量測，僅修TEMP root＋lengthpreflight，不改ACL/弱化資產gate。Source closeout High0/Medium0；r1 latestlog欄位WARN已append Plan Correction，r2 35PASS11WARN0FAIL為重複check的unchanged-doc/dirty及歷史traceability，未捏造測試。

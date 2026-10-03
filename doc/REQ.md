@@ -188,3 +188,5 @@ Formal downstream main Spa.Host Dynamic.Ptcs58, GW.Tests umbrella27, TAResearch.
 
 ## Spa50 startup 修正版相容性（DYN-WBS-583）
 Current target 改為 core Spa `0.2.50`；Spa49 與 Dynamic28/Ptcs59/Client134 保留為未發布 failed candidates，不改寫既有 archives。三 producer 改為 Dynamic29/Ptcs60/Client135，三 active consumer與copy-asset property同步 exact版本。Renderer131/Contracts35、TA行為與既有WIP不變；本機 package/test完成後交 upstream 統籌public與服務驗收。
+
+DYN-WBS-583 的三本機package/feed與active32unit/LiveDemo資產契約已完成；upstream服務與public gate保持獨立。

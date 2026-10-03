@@ -2057,3 +2057,7 @@ Upstream listener startup修正使Spa49鏈維持未public failed-candidate；本
 Spa50 precheckpoint-r1的10個missing script均>260字元；已建立 `log/20261003/20261003160134_issue_dynamic50_longpath.hypothesis.md`，只用short fresh TEMP roots重驗fullcompiler，舊失敗保留，不弱化gate。
 
 DYN-VFY-050r5 precheckpoint PASS：短路徑 dyn50-pre-r2 三 full WebSharper 為 Dynamic29 9.453s、Ptcs60 8.270s、Client135 9.368s，0 errors；865 canonical/captured raw SHA與clean blob、Renderer hash不變。先前巢狀root r1 MSB3030（10路徑>260）保留，不修ACL/造假assets。兩份umbrella JS/min只從真compiler原bytes同步，固定source checkpoint/final archives/consumer仍pending。
+
+## 2026-10-03 Spa50 adapter local completion
+DYN-WBS-583 / DYN-VFY-050r5 本機範圍完成：producer source `636c19b1bb62f9425591c2d2fdb543de1445a9e5`，三fixed fullWeb 10.865/8.550/8.839s；三archive/exactdeps/DLL/assets與SDK401feed逐hash相符。真15+17=32/32（0ignored/failed/errored），LiveDemo fullWeb8.309s、三consumer runtime Spa50 DLL87569E35…與core f217c898匹配、七asset exact集合/bytes/hash與七ownbundle齊全。公開發布、main Host/browser與正式部署仍由upstream另驗。
+PulseTrade.Comm.Spa.Dynamic `0.1.28 -> 0.1.29`、PulseTrade.Comm.Spa.Dynamic.Ptcs `0.1.59 -> 0.1.60`、PulseTrade.Comm.Spa.Dynamic.Ptcs.Client `0.1.134 -> 0.1.135` fixed source636c19b，NuGet push未執行；main TAClient owner已收到新3包feed/proof。Final docs commit不重包同version。
