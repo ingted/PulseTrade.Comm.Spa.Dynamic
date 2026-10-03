@@ -768,3 +768,13 @@ Active local package test/demo closure: Ptcs.Tests old[0.1.56]→[0.1.58], PtcsT
 LiveDemo exactSpa48/Ptcs58/Client133並同步ContentUpdate NuGetassetpath0.2.37→0.2.48；不留compileversion與copyassetsversion不一致。Source292三nupkg finalDLL/RepositoryCommit核對，Clients loadedSpa48+83/hashAF43；Renderer131/Contracts35exact未變。失敗compilerlogs與immutable manifest保留C:artifactroot，不resetACL/停服務。
 
 DYN-WBS-581 consumer metadata closure：LiveDemo asset path37→48修正後 fullWebSharper build6.93s/0errors/1existingWS9002 PASS；loadedSpa48+83/hashAF43及7buildassets rawSHA/copy PASS，report C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/dynamic-livedemo48.asset-proof.json。未啟demoHost；local unsigned candidate的build/assetproof，不是正式部署/browser/TA semanticfix。
+
+## Spa49 exact adapter cascade（DYN-WBS-582 / DYN-VFY-050r4）
+引用位置與 snippet：
+- `src/PulseTrade.Comm.Spa.Dynamic.fsproj`：`<Version>0.1.28</Version>`，Spa `[0.2.48]` → `[0.2.49]`。
+- `src/PulseTrade.Comm.Spa.Dynamic.Ptcs/PulseTrade.Comm.Spa.Dynamic.Ptcs.fsproj`：Version `0.1.58` → `0.1.59`，Spa → `[0.2.49]`。
+- `src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client.fsproj`：Version `0.1.133` → `0.1.134`，Spa → `[0.2.49]`。
+- `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests.fsproj`：Ptcs → `[0.1.59]`。
+- `tests/PtcsTaClient.Tests/PtcsTaClient.Tests.fsproj`：Ptcs.Client → `[0.1.134]`。
+- `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo/PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo.fsproj`：Spa/Ptcs/Client → `[0.2.49]/[0.1.59]/[0.1.134]`；`Content Update` 的 Spa build asset path 同步 `0.2.49`。
+實作只作上述精確字串替換，估 12–18 非型別行；無新 abstraction。沿用 865 input allowlist 與 raw/Git-clean blob/hash manifest；pre-checkpoint 僅允三 producer fsproj 的已記錄差異，final build 必須全數匹配固定 source HEAD。CLI 關閉 GeneratePackageOnBuild/PublishNuGetAfterPack/BuildingInsideVisualStudio，完整 WebSharper 保持啟用。用 `_GetRestoreProjectStyle;GenerateNuspec`、NoBuild=true 繞過所有 Pack/AfterPack publisher hooks。驗 archive DLL/product version/RepositoryCommit/dependencies/assets 後複製 SDK library-packs；同版本不同 bytes 必須拒絕覆蓋。消費者真 runner 須 15+17=32，LiveDemo full compiler、Spa49 DLL/raw asset copy 七檔一致。風險為 stale asset path、autocrlf raw/clean blob差異、未受 flag 保護的 Pack hook；不以 ProjectReference 或假包繞過。

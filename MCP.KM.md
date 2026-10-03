@@ -32,3 +32,6 @@ Frozenproducer292 localpackages58/133/27與32typedunitconsumer已驗；NuGetRepo
 
 ### 2026-10-03T06:21:53.0300588+08:00 Acquisition-only與consumer
 GenericDynamic27沒有既有七consumer packageedge，acquisition-only exactrestore補cache不當功能測試。三包292與Spa055 functionalpayload／既有clientassets一致，signedraw/canonicalhash區分。DYN-VFY-050r3。
+
+## Spa49 immutable build provenance
+Git autocrlf 的 clean blob 與 working raw bytes可不同；capture 同時驗 HEAD clean blob與raw SHA，拒絕custom clean filter，不normalize canonical檔案。Compiler bundle輸出先另存，再只同步實際變動的tracked generated assets，最後固定sourcecommit重編譯/pack。回鏈 DYN-WBS-582 / DYN-VFY-050r4。

@@ -834,3 +834,8 @@ DYN-T-676 revision2 newSpa055 consumer proof：existing exactPtcs58/Ptcs.Client1
 ### 2026-10-03T06:21:53.0300588+08:00 DYN-VFY-050 revision3 official／consumer closure
 Dynamic0.1.27／Ptcs0.1.58／Ptcs.Client0.1.133 producer29279539806118e04f1b563d9cb881aadddf53db unchanged；3包HTTP201、officialsignature/source/payload/canonicalhash/網站Dependencies PASS。Existing packageconsumer15/15＋17/17、LiveDemo fullWebSharper/7assets/latestSpa055已驗；official normalrestore assets/contentHash/runtimeDLL再驗PASS，無需重編譯/重跑semantic tests。
 MaincanonicalG:/PulseTrade.fs source2f7057／四exact builds／GW496／真三TestHostsSDK/resultrestart／active18signedcache/七consumerPASS。Raw C:\Users\Administrator\AppData\Local\Temp\aster-ptcs-package-0.2.48/official12/readback-20261002205627356/result.json、dynamic-consumers055/proof.json、official-active18-promotion/result.json；detail G:/PulseTrade.fs/Libs/PulseTrade.Comm/doc/GW/WBS.PTCS-PACK-REF-001.md。SDK401feed官方bytes，不稱NuGet-only。正式未部署；Renderer diagnostic WIP不compile/stage，無TAsemantic變更。
+
+## DYN-T-677 / DYN-VFY-050r4
+Spa49 metadata cascade：三 full builds → 固定 source 三 archive identity/dependencies/assets → SDK feed same-version collision guard → exact-package consumer 15+17 actual tests → LiveDemo full WebSharper、Spa49 runtime DLL與七資產 raw hash。Renderer WIP、歷史 log、正式服務及既有 archive 不變；新版本 gates 尚待實測，baseline不代替。
+
+DYN-VFY-050r4 pre-checkpoint 新版三 producer full WebSharper/compiler PASS：Dynamic28 11.04s、Ptcs59 9.70s、Client134 8.71s。TEMP/aster-ptcs-package-0.2.48/dynamic-wallet49-baseline-source-r1 保存 865 raw inputs/舊 HEAD + 三 metadata delta proof；其餘 canonical/captured bytes 與 Renderer WIP 不變。兩份既有 umbrella JS/min 為真 compiler Spa49 輸出，依 generated delivery 例外原樣同步，未手改。此批尚未 localpack/consumer/publish。

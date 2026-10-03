@@ -161,3 +161,5 @@ Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target F
 | DYN-WBS-580 | Navigator rendered-preview/release exact parity | Owner/release complete / consumer pending | 98 | DYN-T-675 / DYN-VFY-049 | 普通release採viewport `afterRender` exact receipt，明確跨loaded boundary仍採final clamped pending intent。Official correction graph `.131/.123/.132`由source `4812e6e`clean build；signature/provenance/exact dependency/manifest/entry parity、NuGet.org-only `65/15/17`與完整browser gate全綠，250ms Preview=`675`／wire ordinal=`674`。`.130`因stale repository commit已retired；僅待Daedalus真SPAA exact equality。 |
 
 | DYN-WBS-581 | Spa48 exact adapter package cascade | Done: package/test scope | 100 | DYN-T-676 / DYN-VFY-050r3 | producer292三official／consumer15+17／LiveDemo assets/latest055／main真三testHost／active18-cache/七consumerPASS；formal/Renderer WIP另列。 |
+
+| DYN-WBS-582 | Spa49 exact adapter local cascade | In progress | 20 | DYN-T-677 / DYN-VFY-050r4 | 三 producer baseline PASS；新版本固定 source/package、32 consumer tests、LiveDemo assets pending；official publish/production separate。 |

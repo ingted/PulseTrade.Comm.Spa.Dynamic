@@ -1,0 +1,10 @@
+# Spa49 cascade continuation
+背景/上下文：本輪起點維持 2026-10-03 13:51:16 +08:00，接續 log/20261003/20261003135116.aster_spa49_adapter_cascade.log，不重置 aggregate clock。前三 producer baseline與新版 full compiler已PASS，source checkpoint尚待checker；原log首段缺checker plan標記，FAIL原樣保留。
+目標：Dynamic28/Ptcs59/Client134 exact Spa49 三本機包與三active consumer可用。
+假設：metadata-only compatibility；Contracts35/Renderer131 unchanged。
+Planned steps / 計畫步驟：fresh scan/check與scoped source commit → 固定commit fullcompiler → NoBuild GenerateNuspec bypass hooks → archive/deps/assets/DLL proof → collision-safe SDKfeed → 32actualtests/LiveDemo fullWeb7assets → docs/closeout。
+範圍：canonical六fsproj、必要真compiler generated assets、currentdocs、本輪兩log與hypothesis；Renderer WIP/pcsl/正式服務不變。無NuGetpush。
+驗收：3fixedsourcepackages、15+17tests、LiveDemo loadedSpa49與7assetrawhash。風險：Packhook、sourcecommit錯配、staleassets/collision；任何failed identity停止相依階段。
+## Operations
+- 新continuation prework在source commit/pack前建立，承接既有 evidence；prework manifest/fullcompiler at TEMP/aster-ptcs-package-0.2.48/dynamic-wallet49-baseline-source-r1；舊log原文不改。不是補造事前紀錄。
+- 2026-10-03T14:27:32.5964302+08:00 Freeze scoped bytes before fresh scan/check; raw outcomes at C:\Users\Administrator\AppData\Local\Temp\aster-ptcs-package-0.2.48\dynamic-wallet49-closeout-source-r4; generated JS compiler whitespace retained, ordinary source/docs diff-check applies; commit/readback evidence will be TEMP. Renderer/pcsl WIP excluded.
