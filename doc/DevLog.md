@@ -2082,3 +2082,7 @@ Dynamic 0.1.29→0.1.30、Ptcs 0.1.60→0.1.61、Ptcs.Client 0.1.135→0.1.136�
 ## 2026-10-04 DEP52 generated bundles source checkpoint
 
 三 producer full WebSharper 與865 input freeze通過後，pack前發現兩份 tracked umbrella JS需跟新Spa52相依同步，按 compiler exact bytes更新而非手改JS。先固定新source再重建/pack；consumer與public/host未宣稱完成。證據/限制見 DYN-VFY-050r6、log/20261004/20261004034358.aster_dep52_dynamic_metadata.log。Renderer/PCSL WIP保持。
+
+## 2026-10-04 DEP52 local candidates and required consumers
+
+Dynamic0.1.29→0.1.30、Ptcs0.1.60→0.1.61、Client0.1.135→0.1.136 已以source5267完成三producer、exact本機package/feed、56actualunit、LiveDemo full compiler/7coreassets。依賴Spa52與Registry4；generated2JS先checkpoint再重建，fixedartifact不受後續docs-only commit影響。完整raw/hash與harness反例見DYN-VFY-050r6 actual、DYN-T-680、DYN-WBS-585及log/20261004/20261004034358.aster_dep52_dynamic_metadata.log。NuGet公開/下游Host由root整合，不宣稱prod或real-provider通過；Renderer/PCSL WIP保留。

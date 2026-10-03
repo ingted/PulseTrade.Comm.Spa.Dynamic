@@ -469,3 +469,15 @@ Prework：log/20261004/20261004034358.aster_dep52_dynamic_metadata.log；current
 Root 已固定 Spa52 source189d7792 / DLL4F5AF586 與 Registry4，放行 eedd8713 三 producer。C:/ptc-d52/candidate-final-r1/result.json 實測 full WebSharper 三 build 11.606s / 8.486s / 11.222s；865 input raw/SHA/clean blob、canonical 與 captured bytes、Renderer WIP 一致。此為 producer build，未冒充 consumer/runtime/公開驗收。
 
 必要 pack gate 發現 umbrella 兩份 tracked bundle 應由新相依重產：src/wwwroot/js/PulseTrade.Comm.Spa.Dynamic.js SHA 2953875C → C9F22EA1，min.js 69AACA3E → A27CD64A。根據 root 授權，以 compiler output 原 bytes 同步（UTF8/BOM 保持），完整 SHA/來源/raw backup 在 C:/ptc-d52/bundle-checkpoint-tools/bundles.json。先 checkpoint，下一候選改用新 commit 固定重建；此階段沒有 pack/upload/部署，consumer gates 尚待。
+
+### DYN-VFY-050r6 actual — source5267 local candidate
+
+最終 producer SourceRevision=5267bfa62dfb36632ec925ed8469136228a7a3b0，依賴 Spa52 source189d7792、Registry4 sourceb3d3280e。C:/ptc-d52/candidate-final-r2/result.json：865 raw/cleanblob inputs 與 Renderer WIP 不變，三 producer full WebSharper 11.498s/8.390s/6.855s；生成兩份 umbrella JS 與 checkpoint exact bytes 一致。未因 docs-only 後續 commit 重包。
+
+packages-proof/validation.json 的三候選分別 Dynamic0.1.30 / Ptcs0.1.61 / Client0.1.136；nuspec exact dependencies/RepositoryCommit、DLL productVersion/SHA、archive與 SDK10.0.401 library-packs、846 umbrella content assets 均 deterministic 核對。source5267 bundle checkpoint 已 push/readback；本輪 package 只有本機候選，未 upload/Host/production。
+
+必要 consumers：C:/ptc-d52/consumers-r1/proof.json 實際 Ptcs15/15、Client17/17，discovered=executed=passed、ignored/failed/errored=0；loaded Spa52 與 adapter DLL hashes exact。LiveDemo full WebSharper11.375s、7份 core copiedassets exact bytes、7份 generatedassets 非空，未啟 host。
+
+受 Registry4 compile reference 影響的 umbrella suite：C:/ptc-d52/umbrella-tests-r4/finalized-result.json，actual24 discovered/executed/passed、0ignored/failed/errored，runner1.052s；總56個 unit cases。Registry既有 PrivateAssets=all/ExcludeAssets=runtime保留，以project.assets compile4 exact DLL SHA與runtime `_._`驗收，沒有人工copy DLL。Spa52與Dynamic runtime DLL為候選exacthash。
+
+Correction / harness failures 保留：umbrella r1/r2 測試helper關閉WebSharper時錯找ref DLL，r1另有global AppendTargetFrameworkToOutputPath影響路徑；修helper使用既有輸出與 ProduceReferenceAssembly=false，不重建producer。r3的runtime Registry存在性假設違反既有ExcludeAssets契約，改為compile/runtime分層oracle。r4三stage均exit0，但post-summary strictUTF8解console byteA1失敗；只對原raw解析ASCII counts並移除ANSI，未重跑測試、未改expected。這些是隔離test-harness修正，不是正式provider或UI E2E結果。

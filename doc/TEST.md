@@ -865,3 +865,7 @@ DYN-T-679 完成：真 MSBuild RED160/34failed → final PS7及PS5各160/160；9
 需求 oracle：7 檔恰 14 metadata 替換，反向替換等於原 bytes，BOM/其他 XML 保留；active exact graph 對齊 .30/.61/.136 → Spa [.52]、Registry [.4]，其他 packages/WIP 不變。新版本需 3 producers full WebSharper、exact PackageReference/DLL/RepositoryCommit/assets 與 immutable archive/feed hash；原 Ptcs.Tests/Client.Tests、新增受影響 umbrella suite 必須有實際 discovered/executed/passed/ignored，LiveDemo 須完整 compiler 與 7 個 core content assets exact bytes。零 tests、僅 exit0 或 source baseline 不等於新版 PASS。
 
 現況：原 source a299348c 的單一 umbrella producer baseline restore 1.894s / build12.712s PASS，865 canonical/captured inputs 與 Renderer 不變。7 metadata 檔 inverse bytes/XML/UTF8/BOM PASS；目前未 build/test/pack 新版，待 root 固定52/4 package proof及候選執行 gate。證據與失敗詳見 Verification r6，沒有 host/production 效果。
+
+### DYN-T-680 actual / local package and consumers
+
+source5267：三producer full WebSharper、865 input freeze、2 generated bundle equality、3exact本機package/feed證據 PASS；umbrella24＋Ptcs15＋Client17=56 actual unit tests PASS，0ignored/failed/errored，LiveDemo full compiler及7coreassets exact bytes PASS。候選/package SourceRevision固定5267，後續文件commit不重包；Registry4維持compile-only/runtime exclusion。原harness失敗與raw parse Correction詳見DYN-VFY-050r6 actual。Public release、下游Host/runtime/production均不由這56unit/producer證據代替。
