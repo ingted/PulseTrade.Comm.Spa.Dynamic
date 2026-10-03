@@ -463,3 +463,9 @@ Actual baseline：canonical HEAD a299348c7842b8c65212fb3a29f1c7d68160871a，dotn
 Metadata：exact7/14 inverse原bytes、XML、strict UTF8、3 BOM原樣PASS；C:/ptc-d52/tools/metadata-changes.actual.json 與 metadata-before 保存 preimages。Preparation r1 PowerShell generic SequenceEqual overload ambiguity在任何 canonical edit前失敗；r2用原bytes等值比較完成，這是harness correction，不是產品RED。新版 producer/consumers/package/public/deployed gates全部尚未執行。真pack後將驗 exact dependencies、DLL、RepositoryCommit、content assets、不可變feed collision；仍禁止upload。
 
 Prework：log/20261004/20261004034358.aster_dep52_dynamic_metadata.log；current SD / DYN-WBS-585 / DYN-T-680。既有 publish guard peer r2 仍是 marker unit gate，不當發布 E2E。
+
+### DYN-VFY-050r6 / DEP52 generated asset checkpoint
+
+Root 已固定 Spa52 source189d7792 / DLL4F5AF586 與 Registry4，放行 eedd8713 三 producer。C:/ptc-d52/candidate-final-r1/result.json 實測 full WebSharper 三 build 11.606s / 8.486s / 11.222s；865 input raw/SHA/clean blob、canonical 與 captured bytes、Renderer WIP 一致。此為 producer build，未冒充 consumer/runtime/公開驗收。
+
+必要 pack gate 發現 umbrella 兩份 tracked bundle 應由新相依重產：src/wwwroot/js/PulseTrade.Comm.Spa.Dynamic.js SHA 2953875C → C9F22EA1，min.js 69AACA3E → A27CD64A。根據 root 授權，以 compiler output 原 bytes 同步（UTF8/BOM 保持），完整 SHA/來源/raw backup 在 C:/ptc-d52/bundle-checkpoint-tools/bundles.json。先 checkpoint，下一候選改用新 commit 固定重建；此階段沒有 pack/upload/部署，consumer gates 尚待。

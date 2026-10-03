@@ -2078,3 +2078,7 @@ DYN-WBS-583 / DYN-T-678 / DYN-VFY-050r5：Dynamic 0.1.29、Ptcs 0.1.60、Client 
 Dynamic 0.1.29→0.1.30、Ptcs 0.1.60→0.1.61、Ptcs.Client 0.1.135→0.1.136；7檔14literal同步 active Spa [0.2.50]→[0.2.52]、Actor.Registry [0.1.3]→[0.1.4]，接 core ACT-A2 修正，Contracts/Renderer/Interactive及legacy ACL/Login不動。原a299 source單一umbrella fullWeb baseline12.712s／865 inputs穩定；metadata inverse byte/XML/BOM驗證通過。DYN-WBS-585 / DYN-T-680 / DYN-VFY-050r6 與 ownlog log/20261004/20261004034358.aster_dep52_dynamic_metadata.log 追溯；本 checkpoint 不是新版build/package或NuGet push，root尚未交52/4固定proof，production未動。
 
 同批整合 peer DYN-VFY-051r2：共用 hook verifier嚴格支援main Actor.Registry legacy profile，main10每shell200PASS、Dynamic8每shell160PASS、拒絕7/7各PS5/7。只執行 import-free marker，沒有真Pack/key/上傳；prework/hypothesis log/20261004/20261004034629* 與Verification保留RED與PS5 harness失敗。Renderer.fs/PCSL/Playwright並行WIP不stage。
+
+## 2026-10-04 DEP52 generated bundles source checkpoint
+
+三 producer full WebSharper 與865 input freeze通過後，pack前發現兩份 tracked umbrella JS需跟新Spa52相依同步，按 compiler exact bytes更新而非手改JS。先固定新source再重建/pack；consumer與public/host未宣稱完成。證據/限制見 DYN-VFY-050r6、log/20261004/20261004034358.aster_dep52_dynamic_metadata.log。Renderer/PCSL WIP保持。
