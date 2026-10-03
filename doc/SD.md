@@ -792,3 +792,11 @@ DYN-WBS-582 final local closure：三 producer provenance固定 `cfb6f3b1aef86de
 只改12個metadata token，估12非型別行；無新framework。保留原BOM/mixed newline，逐檔before/after raw SHA。Precheckpoint只允三已記錄producer fsproj差異；source checkpoint後865input全匹配HEAD clean blob，同時raw SHA不得改。Full WebSharper保持；GenerateNuspec使用NoBuild/false publication flags。Archive比對ID/version/RepositoryCommit/product/DLL/deps/assets後才copy SDKfeed，existingdifferentbytes一律拒絕。Consumer由core50archive manifest定義七asset exact集合，合法零byte檔不被nonempty假條件排除。
 
 DYN-WBS-583 / DYN-VFY-050r5 本機範圍完成：producer source `636c19b1bb62f9425591c2d2fdb543de1445a9e5`，三fixed fullWeb 10.865/8.550/8.839s；三archive/exactdeps/DLL/assets與SDK401feed逐hash相符。真15+17=32/32（0ignored/failed/errored），LiveDemo fullWeb8.309s、三consumer runtime Spa50 DLL87569E35…與core f217c898匹配、七asset exact集合/bytes/hash與七ownbundle齊全。公開發布、main Host/browser與正式部署仍由upstream另驗。 詳細來源见 `doc/Verification.md` revision5。
+
+## DYN-WBS-584 / DYN-VFY-051r1: 最小 Pack Condition 修正
+`src/PulseTrade.Comm.Spa.Dynamic.fsproj` 的 PostBuildR/PostBuildD 恢復 `and '$(PulseTradeCommSpaDynamicPushNuGet)' == 'true'`；八個 project 九個 targets 皆 append `and '$(PublishNuGetAfterPack)' != 'false'`。ACL/Contracts/Interactive.Client/Ptcs/Ptcs.Client/Renderer/Login 原 Release/Windows/專屬 true 條件及 VS defaults 保留。預估 9–12 非型別行；不修改版本、PackageReference 或 Exec。
+可重用 `scripts/verify-publish-hook-guards.ps1` 接 typed ProjectPath[]/EvidenceRoot/TimeoutSeconds，零參數安全執行本 repo 八專案。逐 project 從來源複製專屬 properties/target Condition 到無 SDK/import 的 fixture，全部原 task body 換為 WriteLinesToFile marker。單一真 MSBuild driver 評估每案獨立 fixture；20 cases/project 覆蓋 CLI/VS、false/global false、positive true、Debug/non-Windows/other Configuration。保留 source before/after SHA、raw source copies、stdout/stderr/result，任何來源漂移或 engine failure 都不得 finalized。無真 Pack/build/restore/Exec/key/network 行為；main 可重用同 script 驗自己的 targets。
+
+DYN-WBS-584 實作量為9條Condition、154行typed PS1 verifier；final PS7/PS5各160/160。XML差異核對與BOM檢查證明 defaults/Exec/version/reference未變；只有核准gate與兩個舊comment移除。證據見DYN-VFY-051r1。
+
+完整追溯：RFC-PTCS-DYNAMIC-0035 / DYN-WBS-584 / DYN-T-679 / DYN-VFY-051r1。

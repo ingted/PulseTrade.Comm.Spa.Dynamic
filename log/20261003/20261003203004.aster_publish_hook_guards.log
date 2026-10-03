@@ -1,0 +1,38 @@
+# Dynamic AfterPack 專屬旗標與全域 veto
+
+## Pre-work plan
+- 授權：root 指派 AsterHost/delivery owner 限定修復；canonical C:/Users/Administrator/test_gemini/PulseTrade.Comm.Spa.Dynamic，branch 20260915_033.ptcs_group_support，HEAD ce1b26fd991d4a8597225fb02f84a0804940df7a。
+- 背景/假設：umbrella Release/Debug target 的專屬 true 條件被註解；其他七個 target 雖有專屬旗標，均缺 PublishNuGetAfterPack=false 全域否決。
+- 目的：專屬旗標實際生效且 explicit global false 永遠阻擋；保留七個已存在的 Visual Studio auto-true 預設、原 Configuration/OS 條件及所有版本/reference。
+- 範圍：八個 src fsproj 的九個 Pack hooks、單一 typed PowerShell 隔離 marker verifier、受影響 current 文件。root 另負責 main TAClient；Baster 負責 core。
+- 保護：Renderer.fs tracked WIP 與五個 .pcsl untracked 目錄不改；不讀 key、不執行原 Exec/實際 Pack/build/restore/push、不覆寫已發布 archive、不碰服務/正式部署。
+- 步驟：讀 current 設計/檔案狀態 → root 確認最小條件 → 可重用真 MSBuild marker unit RED → 最小條件修正 → 同一 unit GREEN/encoding/diff/check → root scoped closeout。
+- 驗收：CLI/VS 預設、per-flag false、per-flag true、global false 優先、Release/Debug 與原 OS 條件；actual executed/failed counts 與輸入前後 hashes。unit 不聲稱真發布或 E2E。
+- 停止條件：上述限定 slice 完成並 freeze；所有 package/source/runtime 功能及 owner WIP 不變。
+
+## Operations
+- 開始前只讀完成 canonical/branch/status、無 applicable external AGENTS、八個 hooks、SA/SD/RFC/Verification/TEST/WBS current 段落；main fsharp-implementation skill 已讀。未找到 docs 明示 VS auto-true 必須保留；依 root 指示保留 source 既定 UX。
+- metadata read-only 命令第一次 PowerShell foreach 後直接 pipe 造成 parser error，沒有執行或写檔；改以 rows 變數後 strict UTF-8/BOM/newline 檢查完成。此項不是產品/test failure。
+- 本記錄於實作、marker baseline/RED 與測試前建立；先前只讀 audit 由 root 主 log 涵蓋。
+
+- 2026-10-03T20:37:03.3649550+08:00 root 已確認 exact contract：8 project / 9 targets；保留原 defaults/Configuration/OS。Verifier 已落 scripts/verify-publish-hook-guards.ps1，可供 main 八個 active targets 共用。
+- 真 MSBuild isolated baseline r1 發現 harness RemoveProperties 同時移除 Properties 明傳 flag，導致正向 7 cases 假失敗；移除該屬性並僅清 child process 同名 environment。r1 原始 evidence 保留，不作 product RED。
+- RED r2：8 projects / 9 targets / 160 executed / 34 failed，8 個 explicit true 正向皆 PASS；source hash 全不變。證據 C:/Users/Administrator/AppData/Local/Temp/aster-dynamic-publish051-red-r2。未呼叫真 publisher/Pack/build/restore/key。
+
+- 2026-10-03T20:42:14.2625586+08:00 final GREEN PS7/PS5各160/160（來源hash穩定），fresh -green-ps7-r2/-green-ps5-r2；原始RED/harness failures保留。diff--check曾找到umbrella touched line舊尾空白，移除該空白後兩shell重驗最終bytes。XML比較除Condition/comment外相同、BOM保留。產品9條Condition／verifier154行，在預估內。
+- 本slice source/test/current docs已完成，接scoped20paths sensitive/check，commit前依root要求先回報；不讀/改Renderer與PCSL內容，不執行publisher。
+- 2026-10-03T20:43:01.8058905+08:00 Freeze scoped bytes before fresh scan/check; raw outcomes at C:\Users\Administrator\AppData\Local\Temp\aster-dynamic-publish051-closeout\closeout-final-r1; publisher gate unit scope; no generated assets or package build; commit/readback evidence will be TEMP. Renderer/pcsl WIP excluded.
+
+- 2026-10-03T20:45:23.6217529+08:00 scoped first scan：20files High0/Medium0；check49PASS/3WARN/0FAIL。WARN latest_log_required_fields 為本log以目的/保護描述、缺checker要求的目標/風險詞，現補充；git_dirty 是尚未提交與保留WIP，doc_traceability_coverage 是既有跨文件RFC缺口，未擴改歷史。
+- 目標：九個AfterPack target遵守專屬旗標＋global false veto，保留原VS UX，完成可重用MSBuild unit。風險：原publisher讀key/網路發布與同版本archive覆寫；本片以完全移除Exec/import的marker fixture隔離，不進真Pack且不動版本。
+- Root已獨立review main8與共用verifier無blocker，授權Dynamic獨立完成fresh scan/check/scoped20 commit/push；本repo不借main證據。當前verifierSHA FC0CF104F95DA275117DE6F7D688B7AB1BF6513FD5903CBF20F25CE08F056459。
+- 2026-10-03T20:45:24.5731984+08:00 Freeze scoped bytes before fresh scan/check; raw outcomes at C:\Users\Administrator\AppData\Local\Temp\aster-dynamic-publish051-closeout\closeout-final-r2; publisher gate unit scope; no generated assets or package build; commit/readback evidence will be TEMP. Renderer/pcsl WIP excluded.
+
+## Plan Correction
+本段於實際 closeout 時追加，不倒改原 pre-work；原「目的／保護」已描述目標與風險，但既有 checker 只在 pre-Operations 與 exact H2 Plan Correction 取欄位，先前 Operations bullet 補充未被辨識。Root 指示使用既有 correction seam，不以自行例外略過本輪 WARN。
+- 目標：八專案九個 AfterPack target 必須使用專屬 true 與 PublishNuGetAfterPack=false 全域否決，保留 VS/defaults/Configuration/OS/Exec 與版本/reference。
+- 假設：原 umbrella 條件位於註解且所有 targets 缺 global veto，因此明傳 false 仍會進 publisher；真 MSBuild marker RED160/34failed 已區分根因。
+- 風險：真 publisher 可能讀 secret key、push或覆寫已發布版本；本片只用移除原 Exec/imports 的隔離 marker fixture，不呼叫真 Pack/build/restore/publisher，也不碰 Renderer 與五個 PCSL WIP。
+- 驗收：PS7/PS5 各160/160，source before/after SHA相同、XML僅核准gate差異、BOM/version/reference保留；fresh scoped sensitive High0/check FAIL0，消除本輪欄位WARN，再只commit/push owned20 paths。
+- Correction：r2 check40PASS/8WARN/0FAIL 尚不可 closeout；依 root 指示新增此 H2 後重跑 r3，既有 metadata unchanged/dirty/historical trace warnings按實際結果判讀。沒有重跑產品test或修改測試oracle。
+- 2026-10-03T20:48:44.8416887+08:00 Freeze scoped bytes before fresh scan/check; raw outcomes at C:\Users\Administrator\AppData\Local\Temp\aster-dynamic-publish051-closeout\closeout-final-r3; publisher gate unit scope; no generated assets or package build; commit/readback evidence will be TEMP. Renderer/pcsl WIP excluded.

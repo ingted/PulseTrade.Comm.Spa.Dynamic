@@ -263,3 +263,10 @@ Upstream 在 Spa49 雙listener驗證發現 early server completion 導致 startu
 沿用865 current clean-Git/raw-byte雙證據與fresh writable TEMP fullcompiler；不碰canonical websharper.log ACL，不覆写Spa49或舊版本nupkg。先同步真compiler assets並source checkpoint，再固定commit fullbuild/GenerateNuspec NoBuild/SDKfeed，最後exact32unit與LiveDemo7assets。僅新實測可宣稱PASS；public/Host/production由upstream獨立驗收。
 
 DYN-WBS-583 / DYN-VFY-050r5 本機範圍完成：producer source `636c19b1bb62f9425591c2d2fdb543de1445a9e5`，三fixed fullWeb 10.865/8.550/8.839s；三archive/exactdeps/DLL/assets與SDK401feed逐hash相符。真15+17=32/32（0ignored/failed/errored），LiveDemo fullWeb8.309s、三consumer runtime Spa50 DLL87569E35…與core f217c898匹配、七asset exact集合/bytes/hash與七ownbundle齊全。公開發布、main Host/browser與正式部署仍由upstream另驗。 詳細來源见 `doc/Verification.md` revision5。
+
+## DYN-WBS-584 / RFC-0035: 發布 hook 的實際否決邊界
+MSBuild 不會套用 XML comment 內的 opt-in，也不會自動解釋任意 global false 為 target veto。八個 fsproj 九個 Pack hooks 必須在 actual Condition 同時檢查專屬 true 與 PublishNuGetAfterPack != false。保留七個既有 VS auto-true，避免根因修復變成發佈 UX 政策變更；umbrella 原本沒有該 default，本片不新增。所有版本/reference/Exec 內容與 Renderer/PCSL WIP 不變，已發布 bytes 不重包。DYN-VFY-051 是隔離真 MSBuild unit，與實際發布/consumer/runtime gates 分開。
+
+DYN-WBS-584 的隔離 engine gate 已完成：PS7/PS5各160/160；global false 優先於 VS auto-true/explicit true，既有UX與package bytes不變。見 DYN-VFY-051r1；沒有發布/runtime宣稱。
+
+完整追溯：RFC-PTCS-DYNAMIC-0035 / DYN-WBS-584 / DYN-T-679 / DYN-VFY-051r1。

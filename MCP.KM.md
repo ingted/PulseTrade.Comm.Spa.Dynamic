@@ -42,3 +42,6 @@ DYN-VFY-050r4：copy asset驗收須由新nupkg manifest定義精確七檔集合�
 DYN-VFY-050r5：上游新runtime blocker使已驗local候選不能發布時，舊archive與失敗證據不可覆寫；用新exact版本圖重新驗固定source/consumer。Spa49鏈保留未public，Spa50/Dynamic29/Ptcs60/Client135另建provenance；Renderer131/Contracts35不因無關listener修正重建。
 
 DYN-VFY-050r5：raw捕捉本身可成功但WebSharper重新輸出長於260的Scripts路徑後MSBuild copy missing；同865input改短TEMP root即通過。Guard應針對完整artifact path，不只檔名，保留舊RED並比較輸入hash；不可假補檔或關compiler。
+
+
+DYN-VFY-051r1：PostPack 的專屬旗標與 global false 必須在實際 Condition 中共同判斷；XML comment 或CLI只設定未被使用的property均無保護。真 MSBuild 隔離unit須移除所有publisher body/imports再用marker，保留既定VS defaults；MSBuild task RemoveProperties會移除同時明傳的property，不應用它模擬unset。正向explicit true與負向veto須一起驗，避免所有hooks不跑造成假PASS。

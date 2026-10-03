@@ -190,3 +190,7 @@ Formal downstream main Spa.Host Dynamic.Ptcs58, GW.Tests umbrella27, TAResearch.
 Current target 改為 core Spa `0.2.50`；Spa49 與 Dynamic28/Ptcs59/Client134 保留為未發布 failed candidates，不改寫既有 archives。三 producer 改為 Dynamic29/Ptcs60/Client135，三 active consumer與copy-asset property同步 exact版本。Renderer131/Contracts35、TA行為與既有WIP不變；本機 package/test完成後交 upstream 統籌public與服務驗收。
 
 DYN-WBS-583 的三本機package/feed與active32unit/LiveDemo資產契約已完成；upstream服務與public gate保持獨立。
+
+## DYN-WBS-584: 可否決的發布 hook
+既有專屬 PushNuGet 開關必须真正控制 AfterPack target；明傳 PublishNuGetAfterPack=false 必須優先阻擋所有八專案九個 hooks，即使 VS default 或專屬 explicit true。保留原 VS/Configuration/OS 行為與版本/reference，不觸已發布 archives。驗收只做隔離真 MSBuild unit，不執行真 publisher。見 RFC-0035 / DYN-VFY-051r1。
+完整追溯：RFC-PTCS-DYNAMIC-0035 / DYN-WBS-584 / DYN-T-679 / DYN-VFY-051r1。

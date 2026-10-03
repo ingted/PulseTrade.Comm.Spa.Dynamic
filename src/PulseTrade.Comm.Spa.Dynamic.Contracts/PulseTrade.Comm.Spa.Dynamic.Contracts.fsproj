@@ -42,7 +42,7 @@
 
   <Target Name="PushContractsReleasePackageToNuGet"
           AfterTargets="Pack"
-          Condition="'$(Configuration)' == 'Release' and '$(OS)' == 'Windows_NT' and '$(PulseTradeCommSpaDynamicContractsPushNuGet)' == 'true'">
+          Condition="'$(Configuration)' == 'Release' and '$(OS)' == 'Windows_NT' and '$(PulseTradeCommSpaDynamicContractsPushNuGet)' == 'true' and '$(PublishNuGetAfterPack)' != 'false'">
     <Exec WorkingDirectory="$(MSBuildProjectDirectory)"
           Command="$(PowerShellExe) -NoProfile -ExecutionPolicy Bypass -File &quot;G:\PulseTrade.fs\Libs\Akka.Proc.Supervisor\PostBuildEvent.ps1&quot; -assembly &quot;$(PackageId)&quot; -build &quot;$(Configuration)&quot;" />
   </Target>

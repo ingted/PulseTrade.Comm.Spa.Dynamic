@@ -435,3 +435,15 @@ Dynamic 0.1.29、Ptcs 0.1.60、Client 0.1.135 已公開至 NuGet；本節更新�
 
 upstream 已完成隔離真路徑：GW full 525/525（0 failed/errored/ignored，native PID before/after empty）；canonical packaged Host wallet 22/22（SQL/Login/ACL、雙 listener、restart、缺 schema/occupied listener 負向與 owned cleanup）；RN/GW/SPA 健康、MCP/SDK、PCSL restart record/handle 保留，restart 後測試只做查詢、protected service snapshot 相符。這些 gate 未部署 production；三 Host 的 backendRedispatched=false 是只查詢的測試流程界線，未提供獨立 redispatch counter；ingress crash durability 亦未由該 restart oracle證明。
 對應 absolute evidence：`C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/main-wallet50-preparation-20261003/gw-tests-r1/proof.json`；`C:/Users/Administrator/AppData/Local/Temp/ptcs-wallet-canonical-host-verification/run-4bed8fdfe0014b1896537c27b38aa4be/result.json`；`C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/threehosts-wallet50-test-r2/result.json`。本 repo 原 32/32 與 LiveDemo/七 assets 結果不重跑、不變更；歷史失敗與 unsigned archives 保留。
+
+## DYN-VFY-051 revision 1 planned: publisher hook gating
+
+新增 `scripts/verify-publish-hook-guards.ps1`，typed ProjectPath[] / EvidenceRoot / timeout，可由 main TAClient 共用。Gap 為 umbrella 專屬條件被註解及九個 targets 缺 global false veto。marker unit 從真 project 抽 properties/targets、移除原 target body，以無 imports 的 MSBuild fixture 實際評估 Condition；不呼叫真 Pack/build/restore/Exec、不讀 key、不發布。預期覆蓋 CLI/VS defaults、專屬 true/false、global false 優先、既有 Configuration/OS 限制，保留 RED 與 actual counts。已發布 Spa50 closure 不重驗/覆寫，產品及 Renderer/PCSL WIP 不變。
+
+Pre-work: `log/20261003/20261003203004.aster_publish_hook_guards.log`；hypothesis: `log/20261003/20261003203004_issue_publish_hook_guards.hypothesis.md`；RFC: `doc/RFC/RFC-PTCS-DYNAMIC-0035.publish-hook-opt-in-veto.md`。root 確認前不改 project。
+
+## DYN-VFY-051r1 completed: isolated MSBuild unit
+八個 project / 九個 targets 已只修 Condition：umbrella 恢復專屬 true，全部加入 PublishNuGetAfterPack != false；七個 VS auto-true、Configuration/OS、Exec、版本及 references 不變。source XML 去除已核准 gate 差異後完全相同，八個 BOM 保留。verifier 為 154 行（預估140–200內）；產品為九條 Condition，刪兩條已恢復的舊comment，移除一處 touched line 原尾空白。
+真 RED r2＝160 executed/34 failed；最终 PS7 / PS5 各160/160、0failed、sourceUnchanged=true。r1 RemoveProperties 清掉 explicit property 的 harness 失敗保留，已移除該屬性；第一次GREEN後 diff--check 找到原尾空白，修正後 r2 用最終project bytes重驗，不覆蓋舊evidence。
+證據（absolute）：C:/Users/Administrator/AppData/Local/Temp/aster-dynamic-publish051-red-r2、aster-dynamic-publish051-green-ps7-r2、aster-dynamic-publish051-green-ps5-r2（各 result.json/source-before.json/source-after.json/raw source/engine stdout）。Verifier SHA256 FC0CF104F95DA275117DE6F7D688B7AB1BF6513FD5903CBF20F25CE08F056459。
+全部是 import-free marker unit；沒有執行原 Exec、真 Pack/build/restore/key/push，未改 NuGet archive 或 runtime。Renderer.fs 与五个PCSL WIP未操作。main 可用同script之 ProjectPath[] 驗自己的範圍；本repo結果不代替 main/core gate。

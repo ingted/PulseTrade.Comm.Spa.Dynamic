@@ -74,13 +74,11 @@
 		<PowerShellExe Condition="'$(OS)' == 'Windows_NT'">powershell</PowerShellExe>
 		<PowerShellExe Condition="'$(OS)' != 'Windows_NT'">pwsh</PowerShellExe>
 	</PropertyGroup>
-	<Target Name="PostBuildR" AfterTargets="Pack" Condition="'$(Configuration)' == 'Release'"> 
-		<!--and '$(PulseTradeCommSpaDynamicPushNuGet)' == 'true'">-->
+	<Target Name="PostBuildR" AfterTargets="Pack" Condition="'$(Configuration)' == 'Release' and '$(PulseTradeCommSpaDynamicPushNuGet)' == 'true' and '$(PublishNuGetAfterPack)' != 'false'">
 		<Exec Command="$(PowerShellExe) -c &quot;write-host '====== Start Post-Build Event ======'&quot;&#xD;&#xA;$(PowerShellExe) ./PostBuildEvent.ps1 PulseTrade.Comm.Spa.Dynamic Release" />
 	</Target>
 
-	<Target Name="PostBuildD" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug'">
-		<!--and '$(PulseTradeCommSpaDynamicPushNuGet)' == 'true'">-->
+	<Target Name="PostBuildD" AfterTargets="Pack" Condition="'$(Configuration)' == 'Debug' and '$(PulseTradeCommSpaDynamicPushNuGet)' == 'true' and '$(PublishNuGetAfterPack)' != 'false'">
 		<Exec Command="$(PowerShellExe) -c &quot;write-host '====== Start Post-Build Event ======'&quot;&#xD;&#xA;$(PowerShellExe) ./PostBuildEvent.ps1 PulseTrade.Comm.Spa.Dynamic Debug" />
 	</Target>
 </Project>

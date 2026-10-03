@@ -851,3 +851,10 @@ DYN-VFY-050r5 precheckpoint PASS：短路徑 dyn50-pre-r2 三 full WebSharper �
 DYN-WBS-583 / DYN-VFY-050r5 本機範圍完成：producer source `636c19b1bb62f9425591c2d2fdb543de1445a9e5`，三fixed fullWeb 10.865/8.550/8.839s；三archive/exactdeps/DLL/assets與SDK401feed逐hash相符。真15+17=32/32（0ignored/failed/errored），LiveDemo fullWeb8.309s、三consumer runtime Spa50 DLL87569E35…與core f217c898匹配、七asset exact集合/bytes/hash與七ownbundle齊全。公開發布、main Host/browser與正式部署仍由upstream另驗。 詳細來源见 `doc/Verification.md` revision5。
 
 DYN-T-678 / DYN-VFY-050r5 公開收尾（2026-10-03 current）：三 Dynamic 包官方簽章、candidate payload、NuGet 網站 dependency group/ID/exact range 全通過，12 包 closure finalized、pending0。upstream GW525/525、canonical wallet22/22、RN/GW/SPA 隔離 MCP/PCSL restart及native cleanup PASS；本 repo32/32與LiveDemo既有證據不重跑。精確 signed/unsigned hashes及三份upstream結果見 `doc/Verification.md` 公開補充。production未變，producer636c19b不重包。
+
+## DYN-T-679 / DYN-VFY-051r1
+真 MSBuild marker unit 必須覆蓋每個專案 20 cases：CLI/VS defaults、明傳專屬 false、true、global false 優先（含 VS auto-true 與 explicit true）、global true 不取代專屬 opt-in、Debug/non-Windows/other Configuration 保持原限制。umbrella 無 VS default且保留 Release/Debug targets；其餘七個 VS auto-true 保留。原 target bodies 全部移除、fixture 無 imports/Exec，source before/after SHA 必須一致。r2 RED 為 8 projects/9 targets/160 executed/34 failed，positive explicit true 8/8 PASS；r1 harness RemoveProperties 失敗獨立保留，不作產品 RED。測試不讀 key/不發布/不建立實際 nupkg，不冒稱 E2E。
+
+DYN-T-679 完成：真 MSBuild RED160/34failed → final PS7及PS5各160/160；9個target、來源hash不變、VS/defaults/Config/OS/Exec/version/reference保留。沒有真 publisher effect；完整證據與既有harness失敗見 DYN-VFY-051r1。
+
+完整追溯：RFC-PTCS-DYNAMIC-0035 / DYN-WBS-584 / DYN-T-679 / DYN-VFY-051r1。

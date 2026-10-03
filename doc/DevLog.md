@@ -2067,3 +2067,7 @@ PulseTrade.Comm.Spa.Dynamic `0.1.28 -> 0.1.29`、PulseTrade.Comm.Spa.Dynamic.Ptc
 DYN-WBS-583 / DYN-T-678 / DYN-VFY-050r5：Dynamic 0.1.29、Ptcs 0.1.60、Client 0.1.135 已 NuGet 公開，官方12包 closure finalized12/12、pending0；三包 signature、payload/content hash及網站 dependency group/ID/exact range gate皆PASS。原 unsigned archive hashes保留，signed official hashes另列 `doc/Verification.md`，producer636c19b不重包。upstream GW525/525、canonical wallet22/22及三Host隔離MCP/PCSL restart與native cleanup已通過；本repo32/32、LiveDemo七asset proof保持原證據。公開package與隔離測試不表示production已更新，本輪production未動。
 
 本輪只改四文件與既有 `log/20261003/20261003155425.aster_spa50_adapter_cascade.log`；Renderer tracked WIP與五個PCSL目錄保留。fresh掃描/check/scoped commit/push evidence放 `C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/dynamic-wallet50-public-closeout`，原branch/origin不變。
+
+
+## 2026-10-03T20:42:14.2625586+08:00 — DYN-WBS-584 / publisher hooks
+八個fsproj九個AfterPack gate修正：專屬opt-in實際生效＋PublishNuGetAfterPack=false全域veto；保留VS/defaults/Config/OS/Exec/version/reference與Renderer/五PCSL WIP。RFC0035、DYN-T-679/VFY051r1；hypothesis `log/20261003/20261003203004_issue_publish_hook_guards.hypothesis.md`。真MSBuild isolated marker RED160/34failed後，PS7/PS5各160/160/sourcehashstable；154行共用typed verifier可供main用ProjectPath[]驗targets。r1 harness RemoveProperties失敗與原尾空白修正均保留。無key/原Exec/真Pack/build/restore/push，已發布版本未重包；這是unit gate而非發布E2E。詳細evidence見Verification051r1；本輪log `log/20261003/20261003203004.aster_publish_hook_guards.log`。

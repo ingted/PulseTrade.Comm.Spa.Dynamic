@@ -165,3 +165,5 @@ Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target F
 | DYN-WBS-582 | Spa49 exact adapter local cascade | Superseded: unpublished candidate | 100 | DYN-T-677 / DYN-VFY-050r4 | producer cfb6 三本機包/feed、32actualtests、LiveDemo fullWeb/七assets/DLL identity PASS；official publish/main服務/production另由 upstream 驗收，Renderer WIP未動。 |
 
 | DYN-WBS-583 | Spa50 startup fix exact adapter cascade | Done: public / upstream test | 100 | DYN-T-678 / DYN-VFY-050r5 | producer636c19b 不重包；Dynamic29/Ptcs60/Client135 官方簽章、payload、網站依賴 PASS，closure12/12；本機32/32、upstream GW525/525、canonical22/22及三Host隔離restart PASS。production未變，Renderer/PCSL WIP保留。 |
+
+| DYN-WBS-584 | AfterPack 專屬開關與全域 false veto | Done: isolated unit scope | 100 | DYN-T-679 / DYN-VFY-051r1 / RFC-0035 | 8 projects/9 targets；RED160/34failed → PS7及PS5各160/160；VS defaults/Config/OS/Exec/version/reference保留。無真Pack/publish/runtime變更，Renderer/PCSL WIP保留。 |
