@@ -421,3 +421,17 @@ Source checkpoint `636c19b1bb62f9425591c2d2fdb543de1445a9e5` exact16paths commit
 Ptcs.Tests15/15、PtcsTaClient.Tests17/17，全0ignored/failed/errored；build8.031/8.714s。LiveDemo fullWeb8.309s，七Spa50copied assets由corearchive manifest精確集合逐檔比bytes/hash（含合法兩個zero-byte），另七份自身bundle存在。三consumer載入Spa50 DLL `87569E359EECE9F016A4F6BAD979A7E27FCE6874BA0E6F4D8D53AFA682E9CDAC`（core source f217c898），Ptcs60/Client135匹配上表；producer與LiveDemo的tracked JS/min此次真compiler輸出都與canonical原bytes相同，不需手動改檔。
 證據根 `C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/`：`dyn50-final-r1/{result.json,source-input-manifest.json,packages-proof/validation.json}`、`dyn50-consumers-r1/{proof.json,input-manifest.json,generated-copy-proof.json}`；未啟Host、無secret/publicpush/production，consumer/doc後續commit不改三包provenance。
 r1失敗保留於 `dynamic-wallet50-preparation-20261003/build-precheckpoint-r1`：10個missing paths261–278字元；r1與short r2的865input hash完全相同，short全部compiler通過。`longpath-oracle.json`提供max path與一致性量測，僅修TEMP root＋lengthpreflight，不改ACL/弱化資產gate。Source closeout High0/Medium0；r1 latestlog欄位WARN已append Plan Correction，r2 35PASS11WARN0FAIL為重複check的unchanged-doc/dirty及歷史traceability，未捏造測試。
+
+### DYN-VFY-050r5 公開發布與 upstream 隔離驗收補充（2026-10-03 current）
+
+Dynamic 0.1.29、Ptcs 0.1.60、Client 0.1.135 已公開至 NuGet；本節更新前述本機階段的「未 public / upstream 待驗」狀態。producer 固定 `636c19b1bb62f9425591c2d2fdb543de1445a9e5`，本次只更新文件，未重包或改產品。官方 closure `passed=true/finalized=true/12 of 12/pending=0`；三包逐筆通過簽章、候選 content hash、逐 entry payload、nuspec dependency group 與 NuGet 網站 dependency ID/exact range 比對。NuGet 簽章使 archive bytes/hash 不同，原 unsigned 候選 hash 保留且不拿兩種 archive hash 相等作 oracle。
+| Package | Version | 原 unsigned candidate SHA256 | 官方 signed archive SHA256 |
+|---|---|---|---|
+| PulseTrade.Comm.Spa.Dynamic | 0.1.29 | `A70E3391FBCE214324C1B48C11714F11EC5BEA5B7067D0C501EDD10133BD19CC` | `50C32D00E99AC4C2ADFB041DCF1F077B8ED51CB5B84D66D4CAF59068DA28D410` |
+| PulseTrade.Comm.Spa.Dynamic.Ptcs | 0.1.60 | `65C3D0543725EE7DBF319F075E494FB95F75E26EB75AA06A85BE6C79352D35BA` | `747BA8680C2C0CF1983BA405A0CD55BB5A932FF8635C6E359527C62A6B1E287B` |
+| PulseTrade.Comm.Spa.Dynamic.Ptcs.Client | 0.1.135 | `AAA3BF28B4C87CA977A4A70ECAB603DA151F4ABC5715C280EB90A658F7F39925` | `2FE43813F466AFA1559C3747C1C229F1AC644DA8FC83FD15BB1C6CEBF90BC149` |
+
+官方證據（absolute，release readback）：`C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/wallet50-official12/readback-20261003085817918/result.json`、同目錄 `summary.json`；原 unsigned 證據：`C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/dyn50-final-r1/packages-proof/validation.json`。
+
+upstream 已完成隔離真路徑：GW full 525/525（0 failed/errored/ignored，native PID before/after empty）；canonical packaged Host wallet 22/22（SQL/Login/ACL、雙 listener、restart、缺 schema/occupied listener 負向與 owned cleanup）；RN/GW/SPA 健康、MCP/SDK、PCSL restart record/handle 保留，restart 後測試只做查詢、protected service snapshot 相符。這些 gate 未部署 production；三 Host 的 backendRedispatched=false 是只查詢的測試流程界線，未提供獨立 redispatch counter；ingress crash durability 亦未由該 restart oracle證明。
+對應 absolute evidence：`C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/main-wallet50-preparation-20261003/gw-tests-r1/proof.json`；`C:/Users/Administrator/AppData/Local/Temp/ptcs-wallet-canonical-host-verification/run-4bed8fdfe0014b1896537c27b38aa4be/result.json`；`C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/threehosts-wallet50-test-r2/result.json`。本 repo 原 32/32 與 LiveDemo/七 assets 結果不重跑、不變更；歷史失敗與 unsigned archives 保留。

@@ -2061,3 +2061,9 @@ DYN-VFY-050r5 precheckpoint PASS：短路徑 dyn50-pre-r2 三 full WebSharper �
 ## 2026-10-03 Spa50 adapter local completion
 DYN-WBS-583 / DYN-VFY-050r5 本機範圍完成：producer source `636c19b1bb62f9425591c2d2fdb543de1445a9e5`，三fixed fullWeb 10.865/8.550/8.839s；三archive/exactdeps/DLL/assets與SDK401feed逐hash相符。真15+17=32/32（0ignored/failed/errored），LiveDemo fullWeb8.309s、三consumer runtime Spa50 DLL87569E35…與core f217c898匹配、七asset exact集合/bytes/hash與七ownbundle齊全。公開發布、main Host/browser與正式部署仍由upstream另驗。
 PulseTrade.Comm.Spa.Dynamic `0.1.28 -> 0.1.29`、PulseTrade.Comm.Spa.Dynamic.Ptcs `0.1.59 -> 0.1.60`、PulseTrade.Comm.Spa.Dynamic.Ptcs.Client `0.1.134 -> 0.1.135` fixed source636c19b，NuGet push未執行；main TAClient owner已收到新3包feed/proof。Final docs commit不重包同version。
+
+## 2026-10-03 Spa50 adapter 公開發布文件收尾
+
+DYN-WBS-583 / DYN-T-678 / DYN-VFY-050r5：Dynamic 0.1.29、Ptcs 0.1.60、Client 0.1.135 已 NuGet 公開，官方12包 closure finalized12/12、pending0；三包 signature、payload/content hash及網站 dependency group/ID/exact range gate皆PASS。原 unsigned archive hashes保留，signed official hashes另列 `doc/Verification.md`，producer636c19b不重包。upstream GW525/525、canonical wallet22/22及三Host隔離MCP/PCSL restart與native cleanup已通過；本repo32/32、LiveDemo七asset proof保持原證據。公開package與隔離測試不表示production已更新，本輪production未動。
+
+本輪只改四文件與既有 `log/20261003/20261003155425.aster_spa50_adapter_cascade.log`；Renderer tracked WIP與五個PCSL目錄保留。fresh掃描/check/scoped commit/push evidence放 `C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/dynamic-wallet50-public-closeout`，原branch/origin不變。
