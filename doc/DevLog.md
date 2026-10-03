@@ -2049,3 +2049,11 @@ DYN-VFY-050r4 pre-checkpoint 新版三 producer full WebSharper/compiler PASS：
 ## 2026-10-03 Aster Spa49 local cascade completed
 Dynamic `0.1.28` / Ptcs `0.1.59` / Ptcs.Client `0.1.134` 的 source `cfb6f3b1aef86de5f8adbd676284d0d4c06f6532` 已 push並固定重編；三包 exact Spa `0.2.49`、RepositoryCommit/DLL/deps/assets與SDK feed raw bytes PASS，NuGet push未執行。Main TAClient owner已收到Client134可用通知。
 三activeconsumers完成：15+17 actualtests全PASS/0ignoredfailedErrored；LiveDemo fullWeb `7.912s`、新Spa49三consumerDLLidentity與七asset集合/bytes/hash PASS。兩份LiveDemo generated JS/min由compiler原樣同步，這次文件/consumer資產commit不改producer packageprovenance。DYN-WBS-582 local100%，official/main服務/production仍獨立；Renderer既有11diagnosticattrs WIP與.pcsl全保留。詳 DYN-VFY-050r4、原prework與14:25 continuation log。
+
+
+## 2026-10-03 Spa50 adapter cascade prework（DYN-WBS-583）
+Upstream listener startup修正使Spa49鏈維持未public failed-candidate；本片已授權重做exact依賴：PulseTrade.Comm.Spa.Dynamic `0.1.28 -> 0.1.29`、PulseTrade.Comm.Spa.Dynamic.Ptcs `0.1.59 -> 0.1.60`、PulseTrade.Comm.Spa.Dynamic.Ptcs.Client `0.1.134 -> 0.1.135`，共用Spa `[0.2.50]`。Contracts35/Renderer131與既有WIP不動。新fullcompiler/package/consumer尚pending；NuGet push由upstream統籌，本片不public。設計/驗收見SA/SD、DYN-VFY-050r5；prework `log/20261003/20261003155425.aster_spa50_adapter_cascade.log`，新TEMP根 `C:/Users/Administrator/AppData/Local/Temp/aster-ptcs-package-0.2.48/dynamic-wallet50-preparation-20261003`。
+
+Spa50 precheckpoint-r1的10個missing script均>260字元；已建立 `log/20261003/20261003160134_issue_dynamic50_longpath.hypothesis.md`，只用short fresh TEMP roots重驗fullcompiler，舊失敗保留，不弱化gate。
+
+DYN-VFY-050r5 precheckpoint PASS：短路徑 dyn50-pre-r2 三 full WebSharper 為 Dynamic29 9.453s、Ptcs60 8.270s、Client135 9.368s，0 errors；865 canonical/captured raw SHA與clean blob、Renderer hash不變。先前巢狀root r1 MSB3030（10路徑>260）保留，不修ACL/造假assets。兩份umbrella JS/min只從真compiler原bytes同步，固定source checkpoint/final archives/consumer仍pending。

@@ -841,3 +841,9 @@ Spa49 metadata cascade：三 full builds → 固定 source 三 archive identity/
 DYN-VFY-050r4 pre-checkpoint 新版三 producer full WebSharper/compiler PASS：Dynamic28 11.04s、Ptcs59 9.70s、Client134 8.71s。TEMP/aster-ptcs-package-0.2.48/dynamic-wallet49-baseline-source-r1 保存 865 raw inputs/舊 HEAD + 三 metadata delta proof；其餘 canonical/captured bytes 與 Renderer WIP 不變。兩份既有 umbrella JS/min 為真 compiler Spa49 輸出，依 generated delivery 例外原樣同步，未手改。此批尚未 localpack/consumer/publish。
 
 DYN-T-677 / DYN-VFY-050r4 完成 local scope：三固定source full builds與archive identity PASS；exact-package actual15+17=32/32，0ignored/failed/errored；LiveDemo fullcompiler/三DLLidentity/七Spa assets集合與hash PASS。完整證據與限制見 `doc/Verification.md` revision4；未啟Host/未public publish，不代替上游服務/browser gates。
+
+
+## DYN-T-678 / DYN-VFY-050r5
+Spa50新圖必重做三producer fullcompiler、固定commit archive/DLL/exactdeps/assets、SDKfeed same-version collisionguard；兩個exact-package runner須actual15+17且0ignored/failed/errored；LiveDemo fullcompiler、newSpa50 runtimeDLL與七asset精確集合/bytes/hash相符。只copy真compiler輸出，canonical/captured原bytes與Renderer WIP不變。當前gate pending；Spa49歷史localPASS不代替此輪，Host/browser/正式部署另列。
+
+DYN-VFY-050r5 precheckpoint PASS：短路徑 dyn50-pre-r2 三 full WebSharper 為 Dynamic29 9.453s、Ptcs60 8.270s、Client135 9.368s，0 errors；865 canonical/captured raw SHA與clean blob、Renderer hash不變。先前巢狀root r1 MSB3030（10路徑>260）保留，不修ACL/造假assets。兩份umbrella JS/min只從真compiler原bytes同步，固定source checkpoint/final archives/consumer仍pending。

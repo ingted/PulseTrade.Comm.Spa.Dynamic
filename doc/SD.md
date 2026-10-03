@@ -780,3 +780,13 @@ DYN-WBS-581 consumer metadata closure：LiveDemo asset path37→48修正後 full
 實作只作上述精確字串替換，估 12–18 非型別行；無新 abstraction。沿用 865 input allowlist 與 raw/Git-clean blob/hash manifest；pre-checkpoint 僅允三 producer fsproj 的已記錄差異，final build 必須全數匹配固定 source HEAD。CLI 關閉 GeneratePackageOnBuild/PublishNuGetAfterPack/BuildingInsideVisualStudio，完整 WebSharper 保持啟用。用 `_GetRestoreProjectStyle;GenerateNuspec`、NoBuild=true 繞過所有 Pack/AfterPack publisher hooks。驗 archive DLL/product version/RepositoryCommit/dependencies/assets 後複製 SDK library-packs；同版本不同 bytes 必須拒絕覆蓋。消費者真 runner 須 15+17=32，LiveDemo full compiler、Spa49 DLL/raw asset copy 七檔一致。風險為 stale asset path、autocrlf raw/clean blob差異、未受 flag 保護的 Pack hook；不以 ProjectReference 或假包繞過。
 
 DYN-WBS-582 final local closure：三 producer provenance固定 `cfb6f3b1aef86de5f8adbd676284d0d4c06f6532`；Dynamic28/Ptcs59/Client134 GenerateNuspec archives與SDK401feed同bytes，未覆寫同版不同包。865 final inputs與真compiler bundle匹配。Active三consumer使用原exact PackageReference，32tests/LiveDemo fullWeb/七copy assets全PASS；兩consumer generated JS原樣回canonical，不重新pack producer。細項見 DYN-VFY-050r4。
+
+
+## Spa50 exact metadata 與固定archive（DYN-WBS-583 / DYN-VFY-050r5）
+- `src/PulseTrade.Comm.Spa.Dynamic.fsproj`：`<Version>0.1.28</Version>` -> `0.1.29`；Spa `[0.2.49]` -> `[0.2.50]`。
+- `src/PulseTrade.Comm.Spa.Dynamic.Ptcs/PulseTrade.Comm.Spa.Dynamic.Ptcs.fsproj`：Version `0.1.59` -> `0.1.60`；Spa -> `[0.2.50]`。
+- `src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client.fsproj`：Version `0.1.134` -> `0.1.135`；Spa -> `[0.2.50]`。
+- `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests.fsproj`：Ptcs `[0.1.59]` -> `[0.1.60]`。
+- `tests/PtcsTaClient.Tests/PtcsTaClient.Tests.fsproj`：Ptcs.Client `[0.1.134]` -> `[0.1.135]`。
+- `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo/PulseTrade.Comm.Spa.Dynamic.Ptcs.LiveDemo.fsproj`：Spa/Ptcs/Client -> `[0.2.50]/[0.1.60]/[0.1.135]`；`Content Update` 的 `pulsetrade.comm.spa\0.2.49` -> `0.2.50`。
+只改12個metadata token，估12非型別行；無新framework。保留原BOM/mixed newline，逐檔before/after raw SHA。Precheckpoint只允三已記錄producer fsproj差異；source checkpoint後865input全匹配HEAD clean blob，同時raw SHA不得改。Full WebSharper保持；GenerateNuspec使用NoBuild/false publication flags。Archive比對ID/version/RepositoryCommit/product/DLL/deps/assets後才copy SDKfeed，existingdifferentbytes一律拒絕。Consumer由core50archive manifest定義七asset exact集合，合法零byte檔不被nonempty假條件排除。

@@ -256,3 +256,8 @@ Core Spa `0.2.49` source `1a049331bf9f437ff1ed6a21f04ecce31192d2a3` 新增 walle
 Canonical WebSharper timing log ACL 阻擋 baseline；以已驗 current Git blob + raw SHA 的 865 個輸入製作新 TEMP immutable build artifact，不改 ACL/舊 artifacts。完整 WebSharper 編譯輸出另存，必要 generated assets 只由真 compiler 回寫。先 source checkpoint，再固定 RepositoryCommit 重編譯/GenerateNuspec NoBuild；本機包/consumer 與 official publish/正式部署分開驗收。
 
 DYN-WBS-582 本機 package/consumer邊界已完成：固定 source 三 archive、32真unit、LiveDemo full compiler及七資產/DLLidentity PASS，證據見 DYN-VFY-050r4。Public release/main服務驗收/production不在本機PASS內，Renderer WIP仍未納入本片。
+
+
+## Spa50 listener startup 相容性 cascade（DYN-WBS-583 / DYN-VFY-050r5）
+Upstream 在 Spa49 雙listener驗證發現 early server completion 導致 startup hang，故停止發布舊candidate；Spa50 source `f217c8981184f6d3b66426b4211a03bd205f06a3` 修正 readiness/server/cancel/deadline競速與失敗cleanup。此repo只同步exact依賴，不複製listener邏輯。Dynamic `0.1.28 -> 0.1.29`、Ptcs `0.1.59 -> 0.1.60`、Ptcs.Client `0.1.134 -> 0.1.135`，全依 Spa `[0.2.50]`；Contracts35/Renderer131沿用發布版，Renderer WIP不納入。
+沿用865 current clean-Git/raw-byte雙證據與fresh writable TEMP fullcompiler；不碰canonical websharper.log ACL，不覆写Spa49或舊版本nupkg。先同步真compiler assets並source checkpoint，再固定commit fullbuild/GenerateNuspec NoBuild/SDKfeed，最後exact32unit與LiveDemo7assets。僅新實測可宣稱PASS；public/Host/production由upstream獨立驗收。

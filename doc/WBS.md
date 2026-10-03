@@ -163,3 +163,5 @@ Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target F
 | DYN-WBS-581 | Spa48 exact adapter package cascade | Done: package/test scope | 100 | DYN-T-676 / DYN-VFY-050r3 | producer292三official／consumer15+17／LiveDemo assets/latest055／main真三testHost／active18-cache/七consumerPASS；formal/Renderer WIP另列。 |
 
 | DYN-WBS-582 | Spa49 exact adapter local cascade | Done: local package/test | 100 | DYN-T-677 / DYN-VFY-050r4 | producer cfb6 三本機包/feed、32actualtests、LiveDemo fullWeb/七assets/DLL identity PASS；official publish/main服務/production另由 upstream 驗收，Renderer WIP未動。 |
+
+| DYN-WBS-583 | Spa50 startup fix exact adapter cascade | Source checkpoint ready / package-consumer pending | 35 | DYN-T-678 / DYN-VFY-050r5 | Dynamic29/Ptcs60/Client135，六metadata/865inputs/fixedsource三包/32unit/LiveDemo七assets；core50feed已驗，新Dynamic gates待執行，public/服務另驗。 |
