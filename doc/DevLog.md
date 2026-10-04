@@ -2086,3 +2086,7 @@ Dynamic 0.1.29→0.1.30、Ptcs 0.1.60→0.1.61、Ptcs.Client 0.1.135→0.1.136�
 ## 2026-10-04 DEP52 local candidates and required consumers
 
 Dynamic0.1.29→0.1.30、Ptcs0.1.60→0.1.61、Client0.1.135→0.1.136 已以source5267完成三producer、exact本機package/feed、56actualunit、LiveDemo full compiler/7coreassets。依賴Spa52與Registry4；generated2JS先checkpoint再重建，fixedartifact不受後續docs-only commit影響。完整raw/hash與harness反例見DYN-VFY-050r6 actual、DYN-T-680、DYN-WBS-585及log/20261004/20261004034358.aster_dep52_dynamic_metadata.log。NuGet公開/下游Host由root整合，不宣稱prod或real-provider通過；Renderer/PCSL WIP保留。
+
+## 2026-10-05 06:50 +08:00 REL-01 source metadata checkpoint
+- PulseTrade.Comm.Spa.Dynamic0.1.30→0.1.31，PulseTrade.Comm.Spa.Dynamic.Ptcs0.1.61→0.1.62，PulseTrade.Comm.Spa.Dynamic.Ptcs.Client0.1.136→0.1.137；7project/10exactrefs。Core53/Registry6要求，Renderer131 unchangedpublished；LegacySpa18/Renderer.fs foreignWIP untouched。
+- Main03b1b80a／Coref60767a producer metadata已pushed；Native401/Registry6/WSwin5/IFS401固定localSDK包已verified，Core1374full正在跑，Dynamicnewcandidatefull/unit/Browser/三Hostpending。本metadata只sourcecheckpoint，沒有formalpush/deploy/prod。

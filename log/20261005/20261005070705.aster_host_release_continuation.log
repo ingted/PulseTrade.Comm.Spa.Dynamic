@@ -1,0 +1,29 @@
+# REL-01 Dynamic fixed producer continuation
+
+## 背景/上下文
+0519同任務pre-work prose先於任何metadata mutation，卻缺checker識別plannedsteps。其後append correction在Operations後，validator只允許原plan保有steps，r3 FAIL保留。現在不改舊段、不backdate，用本刻新log記下一段固定producer/test真plan。Host aggregate20261004163636／RELactual202610050512／Dynamic actual0519完全不重置。
+
+## 目標
+完成3producer metadata checkpoint與不可變local packages/newHost驗證；不把source/unit包裝成production。
+
+## 假設
+Core53 full1374已PASS但browser清理positive count新FAIL待Aster定位；Dynamic只metadata新candidate仍須build/full/unit。Renderer131 immutable dependency，foreignRenderer源碼不觸及。
+
+## Planned steps / 計畫步驟
+1. 保留原log/check FAIL，freshscan/check本14paths＋本log15scope，commit/push完成metadata checkpoint。
+2. 用實際Dynamiccommit凍結各producer Compile/resources/parentprops，消費Core53 exact、disablePack/publish，fullWebSharper compile。
+3. 安全GenerateNuspecNoBuild核對id/version/commit/各TFM DLL/WSassets與exactdependencies再SDKcopy，目的既有不一致則停止。
+4. 依Verification existingunit/browser與Main testHost gates完成actualcounts/hash，未跑/失敗分別標示，source/package/deployed/real-path分欄。
+
+## 範圍/owner
+Aster只本7fsproj/5deltaDocs/原ownlog/reviewinsight與本log；MainHost共用檔仍Aster保留，BasterTAQuery維持已release範圍。
+
+## 驗收
+strictUTF8/BOM、scanner無High、freshcheck無非許可FAIL，來源commit/payload/deps/hash不混舊包；實際newhost/actor/ACK/browser等有獨立證據。
+
+## 風險
+unintendedAfterPack/publicsecret/prodservice、foreignRenderer overwrite、newkernel未驗/worker先回收造成UIfixturepositive assertionFAIL。全程隔離TEMP與fixed package，不寫secrets環境變數，不重置clock/改assertion換PASS。Prod ProcSupervisor/LINE/wallet不動。
+
+## Operations
+Current continuation starts now; original missed headings and failed verification retained.
+2026-10-05T07:11:57.7659956+08:00 r4 actualscanH0M0/check30P2knownW0F sourceStable。Commitguard stoppedprecommitindex14/15：actualGittracked doc/TEST.md uppercase，Windowsdoc/Test.md讀寫同檔但Gitadd未stage。保持14ownstage不reset/restore，不改foreignRenderer；r5 scope/readwatch回canonicalTEST.md，freshcheck後補actualcanonicalpath staging，原filename不rename。

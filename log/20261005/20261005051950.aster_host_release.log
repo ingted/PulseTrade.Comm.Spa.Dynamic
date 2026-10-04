@@ -1,0 +1,50 @@
+# REL-01 Dynamic package alignment
+
+Root C:/Users/Administrator/test_gemini/PulseTrade.Comm.Spa.Dynamic；branch20260915_033.ptcs_group_support／baselineacec9fbec9a7c76545545ca8819ba87edc7dae12。Main task Host optimization source/package/test Host alignment authorized，aggregate20261004163636 unchanged。Scope metadataonly：Dynamic0.1.30→31、Ptcs0.1.61→62、Client0.1.136→137，exact Spa52→53／Registry4→new6。Renderer.fs foreignWIP untouched/notstage/notbuild-source：consumer already exact package Renderer131，immutablepublished dependency reused。Deprecated local ACL/Login0.1.1→Spa18 projects excluded (Main active adapters35/34 authoritative)。No newbranch/worktree/resume/publish/prod/secret. Build copyownTEMP with falsePack/publish flags；sourcehashes & loadedDLL identities then immutableNoBuildnuspec/localpack，正式push/deployed分欄。Read currentSA/SD/WBS/Test/Verification with review insight before source changes，appendlogOperations/DevLog/KM/strictUTF8/scanner/check/exactcommit/push required. Productrenderer/LINE/wallet noedit.
+
+## Operations
+
+2026-10-05T06:50:45.3182546+08:00 REL-01 pre-work exact closure metadata: 3producer versions/10refs/7projects. PlanPath=C:/ptc-host-h3-20261004/dynamic-closure-plan.json; raw encoding/BOM/newline and foreign WIP preserved. Metadata only, no build/publish/prod effects. Registry6 fixed118595bytes/package56637C/DLLAA2E529 verified commit45bfa4d; Native401 fixedSDKcopy prior. Core depends WSwin5 so WS/IFS precede Core53, otherTFMs retained. Sinopac active E2E source WS/shared exact pins included; legacy Native301 and DynamicSpa18 untouched.
+
+2026-10-05T06:50:45.4299696+08:00 source3producer/10refs7projects metadata已更新；SD exactfiles/pseudocode，SA/WBS/Test/DevLog只currentdelta。Nextrootchecker scan/check exactscope preservingRendererforeignWIP，newfixedCore fullbusy notduplicatebrowserload。NoAfterPack/publicpush/prod service。
+
+2026-10-05T06:53:41.0339693+08:00 Dynamic closeoutr1 copiedCorehelper retainedhardcodedCoreproject rawscanpath outsidecanonical, failedbefore scanner/check/commit (no repo mutation). r2 actualown14scope/7projectcopies＋canonicalSA/SD/WBS/Test/DevLog/Verification/no nonexistentstockwatch corrected; originalfailedtoolretained。
+
+## Correction: pre-work plan field headings
+
+202610050658：0519 pre-work paragraph在任何metadata mutation前已存在，已記root/owner/scope/步驟/安全與source/package gate，但未採checker可識別的最低欄位標題，r2 latest_log_has_plan FAIL。保留原段與FAIL，不回填時間、不宣稱原checkerPASS；現在停止擴張，補清楚current plan供後續固定producer/test。Source只metadata、沒有production secret/service/data effect，沒有遺失foreign WIP。
+
+## 背景/上下文
+
+Host優化REL20套件圖要求Dynamic三producer以新identity消費Core53/Registry6；舊public包不覆寫，Renderer131採既有immutablepackage。
+
+## 目標
+
+對齊版本/active consumers，產出來源commit與實際DLL/WSasset可追溯的fixed packages及test Host新closure；本sourcecheckpoint不當成部署或real-path PASS。
+
+## 假設
+
+只有metadata變動，Core新1374/fullWS剛PASS；newDynamicbuild/unit/browser仍須驗，不沿用舊candidate結果。
+
+## Planned steps / 計畫步驟
+
+1. Exact3producer/10reference metadata manifest（已完成），strict BOM/UTF8檢查與foreignRenderer保護。
+2. RootcanonicalSA/SD/WBS/Test/DevLog回鏈MainRelease.Closure、freshscanner/check修正最低log欄位gate。
+3. Exact14scope sourcecheckpoint commit/push，固定SourceRevisionId用實際Dynamiccommit，Core53 fixedlocal可用後隔離build/pack三producer。
+4. 依canonicalVerification執行實際unit/必要browser/newHost完整closure；actualcounts、payload/deps/hash/readback；失敗留raw並修本scope，不弱化assertions。
+
+## 範圍/owner
+
+Aster：本次7fsproj、5currentdoc、ownpre-worklog與metadatareview insight，共14paths。Renderer.fs foreignWIP、legacyACL/Login->Spa18保持；不提交來源不明內容。
+
+## 驗收
+
+Sourcecheck/scan noHigh；新包exactid/version/commit/deps與producer DLL/7WSassets一致；realtestHosts health/ports/actor/disposed/recovery有獨立新candidate證據，source/unit/package/deployed狀態分開。
+
+## 風險
+
+多repo版本圖不一致、誤收foreignsource、implicitAfterPack publish、舊compilerassets混入、parallelbrowser503。逐個固定依賴/NoBuild安全target/hash fence；不使用secret環境變數/不動prodSupervisor/不新增branch或worktree。
+
+## Operations
+
+Continuation after correction: fresh r3 source checkpoint, no clock reset; original aggregate163636/REL0512 retained.

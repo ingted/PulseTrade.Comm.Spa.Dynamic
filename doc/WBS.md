@@ -170,3 +170,6 @@ Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target F
 
 
 | DYN-WBS-585 | Spa52 / Registry4 exact adapter cascade | Local candidates and required consumers verified | 80 | DYN-T-680 / DYN-VFY-050r6 | source5267三producer/fullWS/865freeze、3exact本機package/feed、56actualunit、LiveDemo7assets已驗；公開/下游Host交root，未部署production；Renderer/PCSL WIP保持。 |
+
+## REL-01／最高優先更新 PackageReference與immutable producers
+202610050650 InProgress／Actualstart202610050519／原Hostaggregate163636、RELactual0512、MainETA0707 conditional。PulseTrade.Comm.Spa.Dynamic0.1.31／PulseTrade.Comm.Spa.Dynamic.Ptcs0.1.62／PulseTrade.Comm.Spa.Dynamic.Ptcs.Client0.1.137 metadata+10refs7projects已同步；Core53 newkernelfull待驗，Dynamicproducer/unit/Browser/新Host未驗。SourceRendererforeignWIP與legacySpa18保留，無變更授權；先新包/full/真Host再prod。

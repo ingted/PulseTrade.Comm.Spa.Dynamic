@@ -270,3 +270,6 @@ MSBuild 不會套用 XML comment 內的 opt-in，也不會自動解釋任意 glo
 DYN-WBS-584 的隔離 engine gate 已完成：PS7/PS5各160/160；global false 優先於 VS auto-true/explicit true，既有UX與package bytes不變。見 DYN-VFY-051r1；沒有發布/runtime宣稱。
 
 完整追溯：RFC-PTCS-DYNAMIC-0035 / DYN-WBS-584 / DYN-T-679 / DYN-VFY-051r1。
+
+## REL-01／當前Host package閉包變更
+202610050650：Dynamic0.1.31／Ptcs0.1.62／Client0.1.137 consumes exactCore0.2.53／Registry0.1.6。只版本/依賴metadata，Renderer131 immutable保持，Renderer.fs foreignWIP不捕獲/修改。Core新kernelfull待完成，不把oldpackage跑過的browser當newcandidate證據。LegacySpaACL/Login0.1.1->Spa18保留，非Mainactive35/34。No formalpublish/prod effects。

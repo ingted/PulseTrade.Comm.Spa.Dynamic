@@ -869,3 +869,6 @@ DYN-T-679 完成：真 MSBuild RED160/34failed → final PS7及PS5各160/160；9
 ### DYN-T-680 actual / local package and consumers
 
 source5267：三producer full WebSharper、865 input freeze、2 generated bundle equality、3exact本機package/feed證據 PASS；umbrella24＋Ptcs15＋Client17=56 actual unit tests PASS，0ignored/failed/errored，LiveDemo full compiler及7coreassets exact bytes PASS。候選/package SourceRevision固定5267，後續文件commit不重包；Registry4維持compile-only/runtime exclusion。原harness失敗與raw parse Correction詳見DYN-VFY-050r6 actual。Public release、下游Host/runtime/production均不由這56unit/producer證據代替。
+
+## REL-01／fixed package新驗收
+本輪metadata3producer/10refs不宣稱任何新compile/unit/browserPASS。使用doc/Verification.md既有package/TAclient/browser gates及Main3Hostintegration；須fixedCore53/Registry6/Native401同閉包，actualdiscovered/executed/passed/failed/skipped，三producerWebSharperDLL/WSassetpayloadhash和Host有效載入identity。Renderer131 exactpublished消費，不捕獲其foreignsource，不刪或改assertions。Native/Registry/WS/IFS localartifact已驗不等於本DynamicREADY；publisher/prod不動。
