@@ -2090,3 +2090,6 @@ Dynamic0.1.29→0.1.30、Ptcs0.1.60→0.1.61、Client0.1.135→0.1.136 已以sou
 ## 2026-10-05 06:50 +08:00 REL-01 source metadata checkpoint
 - PulseTrade.Comm.Spa.Dynamic0.1.30→0.1.31，PulseTrade.Comm.Spa.Dynamic.Ptcs0.1.61→0.1.62，PulseTrade.Comm.Spa.Dynamic.Ptcs.Client0.1.136→0.1.137；7project/10exactrefs。Core53/Registry6要求，Renderer131 unchangedpublished；LegacySpa18/Renderer.fs foreignWIP untouched。
 - Main03b1b80a／Coref60767a producer metadata已pushed；Native401/Registry6/WSwin5/IFS401固定localSDK包已verified，Core1374full正在跑，Dynamicnewcandidatefull/unit/Browser/三Hostpending。本metadata只sourcecheckpoint，沒有formalpush/deploy/prod。
+
+### 2026-10-05T08:04:56.3963436+08:00 REL three fixed local producers
+Dynamic0.1.31/Ptcs0.1.62/Client0.1.137 source29b3bcd固定build/pack/SDKcopy與Root20closure匹配。InitialDynamic packNU5019漏canvasContent保留FAIL，新增trackedContentcapture（869inputs/845wwwroot）於shortfreshC:/ptc-rel20261005/dynamic-r2完成，既有None/README/Content保留、不改default或foreignRenderer.fs。Package SHA2C18D781/5752E4F5/689EE6C5，完整deterministicProof各root/package-proof.json；localHostbaseline实际MCP通过，正式NuGet/新TA功能/prod另gate。Continuation log/20261005/20261005070705.aster_host_release_continuation.log。

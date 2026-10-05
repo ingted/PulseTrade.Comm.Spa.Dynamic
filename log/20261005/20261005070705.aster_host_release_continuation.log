@@ -27,3 +27,7 @@ unintendedAfterPack/publicsecret/prodservice、foreignRenderer overwrite、newke
 ## Operations
 Current continuation starts now; original missed headings and failed verification retained.
 2026-10-05T07:11:57.7659956+08:00 r4 actualscanH0M0/check30P2knownW0F sourceStable。Commitguard stoppedprecommitindex14/15：actualGittracked doc/TEST.md uppercase，Windowsdoc/Test.md讀寫同檔但Gitadd未stage。保持14ownstage不reset/restore，不改foreignRenderer；r5 scope/readwatch回canonicalTEST.md，freshcheck後補actualcanonicalpath staging，原filename不rename。
+
+2026-10-05T07:19:43.1679074+08:00 sourcecheckpoint29b3bcdcf36c1e4c93a914745487863a8d3f462b pushed/readback15paths；r5scan15H0M0/check33P10knownunchangedstockW0F/sourceStable。canonicalTEST.md case guard fixedwithoutreset/filename change，14partialownindex completedplusactualTEST. NowfixedDynamic31/Ptcs62/Client137 fullWebSharper build→safeGenerateNuspecNoBuild→SDKcopy each，actualSourceCommit29b/KernelSpa53，Renderer131 publishedexactnocapturedforeignSource。No publicpush/prod/no sourceproductchanges，CoreBrowserr1FAIL/r2PASS unresolvedmanual-vs-auto ordering retained。
+
+2026-10-05T08:04:18.5824683+08:00 Dynamic31/Ptcs62/Client137fixedbuildpackSDKcopy3PASS，Source29bcommit/869trackedContent/3and4inputs; initialpackcanvasContentNU5019FAILretained。ShortfreshC:/ptc-rel20261005/dynamic-r2/ correctContentcapture includes845trackedwwwroot/explicitcanvas, noRendererforeignWIP; DLL985F/C4C2/D76C payload hashes，Root20closure3HostbaselineMCP/liveSDKpasses。NoformalNuGet/prod. Pre-closeoutonlycontinuationlog; currentRenderer.fsforeigndirty remainsunstaged.
