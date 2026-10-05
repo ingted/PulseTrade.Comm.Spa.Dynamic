@@ -743,7 +743,7 @@ module ActorDynamicTab =
             on.afterRender (fun node ->
                 node.SetAttribute("data-testid", "dynamic-actors-page")
                 logActorsTreeDsl "RENDER" rawContent)
-            attr.style "display:flex; flex-direction:column; gap:12px; color:#142033; min-width:0;"
+            attr.style "display:flex; flex-direction:column; gap:12px; color:#142033; min-width:0; width:100%; contain:inline-size;"
         ] [
             div [
                 attr.style "display:flex; justify-content:space-between; gap:12px; align-items:flex-start; border-bottom:1px solid #d8e1ee; padding-bottom:10px; flex-wrap:wrap;"
@@ -754,12 +754,12 @@ module ActorDynamicTab =
                         text ("projection " + projectionId + " / v" + projectionVersion)
                     ]
                 ]
-                div [ attr.style "display:grid; grid-template-columns:minmax(260px,460px) auto auto auto; gap:6px; align-items:start;" ] [
-                    div [ attr.style "display:flex; flex-direction:column; gap:4px; min-width:260px;" ] [
+                div [ attr.style "display:flex; flex-wrap:wrap; gap:6px; align-items:start; max-width:100%; min-width:0;" ] [
+                    div [ attr.style "display:flex; flex-direction:column; gap:4px; flex:1 1 260px; max-width:460px; min-width:0;" ] [
                         V "input" [
                             attr.``type`` "text"
                             attr.placeholder "Server-local report output directory"
-                            attr.style "border:1px solid #b8c7dc; border-radius:5px; padding:5px 8px; font-size:12px; min-width:260px; width:100%; box-sizing:border-box;"
+                            attr.style "border:1px solid #b8c7dc; border-radius:5px; padding:5px 8px; font-size:12px; min-width:0; width:100%; box-sizing:border-box;"
                             on.afterRender (fun node ->
                                 node.SetAttribute("data-testid", "dynamic-actors-report-output-directory")
                                 let input = node |> As<HTMLInputElement>
@@ -812,7 +812,7 @@ module ActorDynamicTab =
                 ]
             ]
             div [
-                attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px;"
+                attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr)); gap:10px;"
             ] [
                 renderCountCard "Renderer" "ActorsPage"
                 renderCountCard "Node groups" (string groups.Length)

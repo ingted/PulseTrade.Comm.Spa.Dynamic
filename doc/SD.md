@@ -1,5 +1,9 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## RF-12（20261006）：局部修改
+
+`createActorsPageDocument`: root追加`contain:inline-size;width:100%`→外層grid依可用寬分配；report controls改flex-wrap，input flex-basis260/min-width0；統計卡minmax下限不超父容器。內層actor tree/grid保留水平scroll與完整identity。五行style修改，只有umbrella Dynamic0.1.32→0.1.33需進版；Ptcs/Client adapters未依賴umbrella，維持版本。Main SPAHost與GW.Tests的exact reference及asset version同步0.1.33；Renderer.fs WIP保持。正式封包從committed source fullWebSharper生成，禁手改JS。真瀏覽器寬/窄/長path geometry、controls可見、focus及截圖作驗收。
+
 ## 1. 專案結構設計
 ```text
 C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic

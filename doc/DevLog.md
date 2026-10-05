@@ -2101,3 +2101,7 @@ Core57a24a5已完成完整WebSharper及1378/1378真native/unit回歸；本repo�
 ## 2026-10-06 RF-09 package／unit evidence
 
 Source70f5e22：Dynamic0.1.32／Ptcs0.1.63／Ptcs.Client0.1.138完整compiler、pack、nuspec RepositoryCommit、exact Core0.2.54依賴與主DLL hash均PASS；Dynamic bundle7個asset與fresh output逐檔相同。既有PTCS adapter15/15、TA client17/17，共32 executed/passed、0ignored/failed/errored；消費本次本機immutable packages。Core DLL DAF4EB482A15ACB44C237D430512B4229F544A3AE308FEBC4DCE50E365CA1BFE，Mainclosure共12套件仍未publicpublish。Host建置在G:0bytes時中止；RNlocalpublish完成，SPA copy失敗，GW尚未build，正式三Host沒有切換。Renderer WIP保持。使用者自行在https://my-ai.co.in:81/chat登入；工具無可連線visiblebrowser，UI未驗。Evidence：各producer bin/net10.0/agent.aster/core54-20261006/receipt.json、Main temp/agent.aster/20261006-refactor/package-closure-proof.json（28freshassets），主要追溯RF-09 Release.Closure.md。
+
+## 20261006 RF-12 Actors 長路徑 UI slice
+
+Status=InProgress，Progress=20%，開始202610060631，已耗4分鐘，尚需Dev20–35/Test20–30，ETA202610060800(+08)。已在Core54真Host重現1682px內容超出1600viewport；Dynamic五行style與0.1.32→0.1.33 metadata修改完成，尚未build/pack/public/Host驗收。沿Main doc/20261006.REFACTOR/SA.md、SD.md及hypothesis RF12，實測長/短actor地址、窄/寬viewport、controls/focus/scroll；不以source/style文字測試冒充UI。Renderer WIP保持；MainHost單獨Runtime404修正unit87/87，不算本DynamicbrowserPASS。

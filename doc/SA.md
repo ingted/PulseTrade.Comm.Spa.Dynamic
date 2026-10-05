@@ -1,5 +1,9 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## RF-12（20261006）：Actors 長路徑布局
+
+Core54隔離真Host中，長Akka地址造成Dynamic Actors的min-content寬1682px超出1600pxviewport，外層grid隱藏右側controls；短正式地址1527px不重現。此slice只限制renderer intrinsic inline size並讓report controls換行，不截短actor identity、不改投影/生命週期。詳Main `G:/PulseTrade.fs/doc/20261006.REFACTOR/SA.md` RF-12。
+
 ## 1. 系統架構概念 (Architectural Concept)
 本系統作為 `PulseTrade.Comm.Spa` 的 NuGet 擴充套件，採用 **外掛架構 (Plugin Architecture)**：
 - 宿主 (Host) 為 `PulseTrade.Comm.Spa` (PTCS) 0.2.4-beta7 核心。
