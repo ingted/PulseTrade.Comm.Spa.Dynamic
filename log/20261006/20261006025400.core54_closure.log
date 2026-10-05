@@ -1,0 +1,11 @@
+# Core54 exact consumer closure
+Background/context: user authorizes PTC Host recovery and canonical build/deployment paths; Core ordered-key fix requires exact downstream packages.
+Goal: update active Dynamic three package references and consumers, preserve all Renderer.fs foreign WIP.
+Assumptions: canonical branch 20260915_033.ptcs_group_support HEAD96706fb; no root/ancestor AGENTS found. Main current doc/20261006.REFACTOR owns SA/SD/WBS/Test.
+Planned steps: inventory metadata and baseline build -> reserve unpublished versions -> exact version overlays -> immutable packages and dependency validation -> actual tests -> check/commit/push -> Host closure.
+Scope: Dynamic0.1.31, Ptcs0.1.62, Ptcs.Client0.1.137 and active consuming test/demo refs. Legacy local ACL/Login0.1.1/Core18 excluded; authoritative current ACL/Login live in G:/PulseTrade.fs. No Renderer implementation, wallet, services or secret modifications here.
+Acceptance: all exact pins coherent, real compiler outputs only own project bin/net10.0/agent.aster, own absolute obj; generated assets match package. No build publishes to NuGet automatically.
+Risk: package version collision, source WIP accidentally packed, stale JS, absolute obj applied across ProjectReference. Preserve foreign source bytes and explicit producer paths; no global repository output.
+## Operations
+- 2026-10-06 02:54 +08: metadata first; review insight in G:/PulseTrade.fs/log/20261006/20261006025100.dynamic.review_insight.md. Build not yet run; source not modified. Runtime handoff owner Aster confirmed by human; no additional agent/process launched.
+- 2026-10-06T03:05:30.4310588+08:00: Exact6fsproj metadata overlay prepared fromHEAD; preserve Renderer WIP. Current SA/SD/WBS/DevLog linked to mainRF09 source/package/Host gates. Sourcecheckpoint beforebuild prevents foreignWIP mixing. No extra bundle output properties: stagingunderownbin includes generatedwwwroot. NoNuGetpublish.

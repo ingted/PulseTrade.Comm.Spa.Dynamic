@@ -273,3 +273,7 @@ DYN-WBS-584 的隔離 engine gate 已完成：PS7/PS5各160/160；global false �
 
 ## REL-01／當前Host package閉包變更
 202610050650：Dynamic0.1.31／Ptcs0.1.62／Client0.1.137 consumes exactCore0.2.53／Registry0.1.6。只版本/依賴metadata，Renderer131 immutable保持，Renderer.fs foreignWIP不捕獲/修改。Core新kernelfull待完成，不把oldpackage跑過的browser當newcandidate證據。LegacySpaACL/Login0.1.1->Spa18保留，非Mainactive35/34。No formalpublish/prod effects。
+
+## 2026-10-06 RF-09 Core54 相依整合 checkpoint
+
+Core57a24a5已完成完整WebSharper及1378/1378真native/unit回歸；本repo僅metadata更新Dynamic0.1.31→0.1.32、Ptcs0.1.62→0.1.63、Ptcs.Client0.1.137→0.1.138與三個tests/demo references，Renderer source WIP保留。全域SA/SD/版本影響/pseudocode/驗收由G:/PulseTrade.fs/doc/20261006.REFACTOR/Release.Closure.md與RF-09持有；本repo尚未build/pack/publish/deploy，不宣稱完成。來源checkpoint後從各專案bin/net10.0/agent.aster內固定Git來源建置；bundle的wwwroot仍在該bin內，保持原封裝路徑。

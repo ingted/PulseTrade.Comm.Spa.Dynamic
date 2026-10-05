@@ -2093,3 +2093,7 @@ Dynamic0.1.29→0.1.30、Ptcs0.1.60→0.1.61、Client0.1.135→0.1.136 已以sou
 
 ### 2026-10-05T08:04:56.3963436+08:00 REL three fixed local producers
 Dynamic0.1.31/Ptcs0.1.62/Client0.1.137 source29b3bcd固定build/pack/SDKcopy與Root20closure匹配。InitialDynamic packNU5019漏canvasContent保留FAIL，新增trackedContentcapture（869inputs/845wwwroot）於shortfreshC:/ptc-rel20261005/dynamic-r2完成，既有None/README/Content保留、不改default或foreignRenderer.fs。Package SHA2C18D781/5752E4F5/689EE6C5，完整deterministicProof各root/package-proof.json；localHostbaseline实际MCP通过，正式NuGet/新TA功能/prod另gate。Continuation log/20261005/20261005070705.aster_host_release_continuation.log。
+
+## 2026-10-06 RF-09 Core54 相依整合 checkpoint
+
+Core57a24a5已完成完整WebSharper及1378/1378真native/unit回歸；本repo僅metadata更新Dynamic0.1.31→0.1.32、Ptcs0.1.62→0.1.63、Ptcs.Client0.1.137→0.1.138與三個tests/demo references，Renderer source WIP保留。全域SA/SD/版本影響/pseudocode/驗收由G:/PulseTrade.fs/doc/20261006.REFACTOR/Release.Closure.md與RF-09持有；本repo尚未build/pack/publish/deploy，不宣稱完成。來源checkpoint後從各專案bin/net10.0/agent.aster內固定Git來源建置；bundle的wwwroot仍在該bin內，保持原封裝路徑。

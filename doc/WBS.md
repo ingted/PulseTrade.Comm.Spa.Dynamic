@@ -173,3 +173,7 @@ Readiness evidence：`DYN-WBS-506/512`的direct actor Canvas與explicit target F
 
 ## REL-01／最高優先更新 PackageReference與immutable producers
 202610050650 InProgress／Actualstart202610050519／原Hostaggregate163636、RELactual0512、MainETA0707 conditional。PulseTrade.Comm.Spa.Dynamic0.1.31／PulseTrade.Comm.Spa.Dynamic.Ptcs0.1.62／PulseTrade.Comm.Spa.Dynamic.Ptcs.Client0.1.137 metadata+10refs7projects已同步；Core53 newkernelfull待驗，Dynamicproducer/unit/Browser/新Host未驗。SourceRendererforeignWIP與legacySpa18保留，無變更授權；先新包/full/真Host再prod。
+
+## 2026-10-06 RF-09 Core54 相依整合 checkpoint
+
+Core57a24a5已完成完整WebSharper及1378/1378真native/unit回歸；本repo僅metadata更新Dynamic0.1.31→0.1.32、Ptcs0.1.62→0.1.63、Ptcs.Client0.1.137→0.1.138與三個tests/demo references，Renderer source WIP保留。全域SA/SD/版本影響/pseudocode/驗收由G:/PulseTrade.fs/doc/20261006.REFACTOR/Release.Closure.md與RF-09持有；本repo尚未build/pack/publish/deploy，不宣稱完成。來源checkpoint後從各專案bin/net10.0/agent.aster內固定Git來源建置；bundle的wwwroot仍在該bin內，保持原封裝路徑。
