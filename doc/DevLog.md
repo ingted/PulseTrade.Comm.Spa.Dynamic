@@ -2097,3 +2097,7 @@ Dynamic0.1.31/Ptcs0.1.62/Client0.1.137 source29b3bcd固定build/pack/SDKcopy與R
 ## 2026-10-06 RF-09 Core54 相依整合 checkpoint
 
 Core57a24a5已完成完整WebSharper及1378/1378真native/unit回歸；本repo僅metadata更新Dynamic0.1.31→0.1.32、Ptcs0.1.62→0.1.63、Ptcs.Client0.1.137→0.1.138與三個tests/demo references，Renderer source WIP保留。全域SA/SD/版本影響/pseudocode/驗收由G:/PulseTrade.fs/doc/20261006.REFACTOR/Release.Closure.md與RF-09持有；本repo尚未build/pack/publish/deploy，不宣稱完成。來源checkpoint後從各專案bin/net10.0/agent.aster內固定Git來源建置；bundle的wwwroot仍在該bin內，保持原封裝路徑。
+
+## 2026-10-06 RF-09 package／unit evidence
+
+Source70f5e22：Dynamic0.1.32／Ptcs0.1.63／Ptcs.Client0.1.138完整compiler、pack、nuspec RepositoryCommit、exact Core0.2.54依賴與主DLL hash均PASS；Dynamic bundle7個asset與fresh output逐檔相同。既有PTCS adapter15/15、TA client17/17，共32 executed/passed、0ignored/failed/errored；消費本次本機immutable packages。Core DLL DAF4EB482A15ACB44C237D430512B4229F544A3AE308FEBC4DCE50E365CA1BFE，Mainclosure共12套件仍未publicpublish。Host建置在G:0bytes時中止；RNlocalpublish完成，SPA copy失敗，GW尚未build，正式三Host沒有切換。Renderer WIP保持。使用者自行在https://my-ai.co.in:81/chat登入；工具無可連線visiblebrowser，UI未驗。Evidence：各producer bin/net10.0/agent.aster/core54-20261006/receipt.json、Main temp/agent.aster/20261006-refactor/package-closure-proof.json（28freshassets），主要追溯RF-09 Release.Closure.md。

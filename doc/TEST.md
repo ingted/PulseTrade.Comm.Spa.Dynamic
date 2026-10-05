@@ -872,3 +872,7 @@ source5267：三producer full WebSharper、865 input freeze、2 generated bundle
 
 ## REL-01／fixed package新驗收
 本輪metadata3producer/10refs不宣稱任何新compile/unit/browserPASS。使用doc/Verification.md既有package/TAclient/browser gates及Main3Hostintegration；須fixedCore53/Registry6/Native401同閉包，actualdiscovered/executed/passed/failed/skipped，三producerWebSharperDLL/WSassetpayloadhash和Host有效載入identity。Renderer131 exactpublished消費，不捕獲其foreignsource，不刪或改assertions。Native/Registry/WS/IFS localartifact已驗不等於本DynamicREADY；publisher/prod不動。
+
+## 2026-10-06 RF-09 package／unit evidence
+
+Source70f5e22：Dynamic0.1.32／Ptcs0.1.63／Ptcs.Client0.1.138完整compiler、pack、nuspec RepositoryCommit、exact Core0.2.54依賴與主DLL hash均PASS；Dynamic bundle7個asset與fresh output逐檔相同。既有PTCS adapter15/15、TA client17/17，共32 executed/passed、0ignored/failed/errored；消費本次本機immutable packages。Core DLL DAF4EB482A15ACB44C237D430512B4229F544A3AE308FEBC4DCE50E365CA1BFE，Mainclosure共12套件仍未publicpublish。Host建置在G:0bytes時中止；RNlocalpublish完成，SPA copy失敗，GW尚未build，正式三Host沒有切換。Renderer WIP保持。使用者自行在https://my-ai.co.in:81/chat登入；工具無可連線visiblebrowser，UI未驗。Evidence：各producer bin/net10.0/agent.aster/core54-20261006/receipt.json、Main temp/agent.aster/20261006-refactor/package-closure-proof.json（28freshassets），主要追溯RF-09 Release.Closure.md。
