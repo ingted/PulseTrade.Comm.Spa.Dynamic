@@ -2131,3 +2131,5 @@ RF10 package versions（shutdown physical retirement closure；目前僅Core57 l
 | PulseTrade.Comm.Spa.Dynamic.Ptcs.Client | 0.1.140 | 0.1.141 |
 | PulseTrade.Comm.Spa.Host.TAResearch.Client | 0.1.36 | 0.1.37 |
 | PulseTrade.Comm.Spa.Login | 0.1.38 | 0.1.39 |
+
+2026-10-06T11:36:27.9574454+08:00 Core57完整WebSharper同DLL1393/1393，7assets，public12closure與三Host534files已驗；Main exactHost37、Dynamic32、realUI liveadd/remove且finalStop physicalempty/recoveryrecord不變。test原task SPA19912→29240/payload與recordhash不變。正式仍56，SDKHTTP/SSE命令被工具啟動前拒絕（僅blocked by policy），待人類結果；其餘RF11續作。不宣稱57正式部署。Main證據doc/20261006.REFACTOR/Core57/。
