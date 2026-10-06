@@ -494,7 +494,7 @@ module ActorDynamicTab =
         |> Array.sortBy (fun (rank, key, _, groupNodes) ->
             string (groupOfflineRank groupNodes) + ":" + string rank + ":" + key)
 
-    let renderTree (groupNodes: obj[]) =
+    let renderTree (groupNodes: View<obj[]>) =
         let collapsedIds = Var.Create [||]
 
         let containsId id (ids: string[]) =
@@ -508,101 +508,101 @@ module ActorDynamicTab =
                 else
                     Array.append current [| id |]
 
-        let nodeExists id =
-            groupNodes |> Array.exists (fun node -> nodeId node = id)
+        let treeRows (groupNodes: obj[]) collapsed =
+            let nodeExists id =
+                groupNodes |> Array.exists (fun node -> nodeId node = id)
 
-        let childrenOf parentId =
-            groupNodes
-            |> Array.filter (fun node -> nodeParentId node = parentId)
-            |> Array.sortBy nodeLabel
+            let childrenOf parentId =
+                groupNodes
+                |> Array.filter (fun node -> nodeParentId node = parentId)
+                |> Array.sortBy nodeLabel
 
-        let roots =
-            groupNodes
-            |> Array.filter (fun node ->
+            let roots =
+                groupNodes
+                |> Array.filter (fun node ->
+                    let parentId = nodeParentId node
+                    isBlank parentId || not (nodeExists parentId))
+                |> Array.sortBy nodeLabel
+
+            let rec renderNode collapsed depth (node: obj) =
+                let id = nodeId node
+                let children = childrenOf id
+                let depthValue = min 12 (max 0 depth)
+                let margin = string (depthValue * 18)
+                let address = nodeAddress node
+                let fullPath = nodeFullPath node
+                let kind = nodeKind node
                 let parentId = nodeParentId node
-                isBlank parentId || not (nodeExists parentId))
-            |> Array.sortBy nodeLabel
-
-        let rec renderNode collapsed depth (node: obj) =
-            let id = nodeId node
-            let children = childrenOf id
-            let depthValue = min 12 (max 0 depth)
-            let margin = string (depthValue * 18)
-            let address = nodeAddress node
-            let fullPath = nodeFullPath node
-            let kind = nodeKind node
-            let parentId = nodeParentId node
-            let displayAddress =
-                if kind = "virtual-path" then
-                    nodeLabel node
-                elif isBlank address then
-                    fullPath
-                else
-                    address
-            let isCollapsed = containsId id collapsed
-
-            let row =
-                div [
-                    attr.``class`` "dynamic-actor-tree-row"
-                    attr.style ("position:relative; display:grid; grid-template-columns:20px 10px max-content max-content max-content; gap:8px; align-items:center; width:max-content; min-width:100%; padding:4px 10px 4px 6px; border-radius:5px; font-size:12px; line-height:1.35; margin-left:" + margin + "px;")
-                    on.afterRender (fun node ->
-                        node.SetAttribute("data-testid", "dynamic-actor-tree-row")
-                        node.SetAttribute("data-node-id", id)
-                        node.SetAttribute("data-parent-id", parentId)
-                        node.SetAttribute("data-depth", string depthValue)
-                        node.SetAttribute("data-node-kind", kind)
-                        node.SetAttribute("data-display-address", displayAddress))
-                ] [
-                    if depthValue > 0 then
-                        span [
-                            attr.``class`` "dynamic-actor-tree-connector-h"
-                            attr.style "position:absolute; left:-12px; top:50%; width:12px; border-top:1px solid #aeb8c8;"
-                            on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-connector"))
-                        ] []
-                        span [
-                            attr.``class`` "dynamic-actor-tree-connector-v"
-                            attr.style "position:absolute; left:-12px; top:-5px; height:calc(100% + 5px); border-left:1px solid #aeb8c8;"
-                        ] []
-                    if children.Length > 0 then
-                        button [
-                            attr.``type`` "button"
-                            attr.title (if isCollapsed then "Expand actor node" else "Collapse actor node")
-                            attr.style "display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid #7d92ad; background:#fff; color:#21354f; font-size:12px; line-height:16px; padding:0; margin-top:3px; cursor:pointer; font-family:Consolas, 'Cascadia Mono', monospace;"
-                            on.click (fun _ _ -> toggleId id)
-                            on.afterRender (fun node ->
-                                node.SetAttribute("data-testid", "dynamic-actor-tree-toggle")
-                                node.SetAttribute("aria-expanded", if isCollapsed then "false" else "true"))
-                        ] [
-                            text (if isCollapsed then "+" else "-")
-                        ]
+                let displayAddress =
+                    if kind = "virtual-path" then
+                        nodeLabel node
+                    elif isBlank address then
+                        fullPath
                     else
-                        span [
-                            attr.style "display:inline-flex; width:18px; height:18px; margin-top:3px;"
-                            on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-toggle-placeholder"))
-                        ] []
-                    renderStatusDot (nodeStatus node)
-                    span [
-                        attr.``class`` "dynamic-actor-tree-label"
-                        attr.title (if isBlank fullPath then displayAddress else fullPath)
-                        attr.style "white-space:nowrap; color:#172033; font-weight:600; overflow:visible; text-overflow:clip; font-family:Consolas, 'Cascadia Mono', monospace;"
+                        address
+                let isCollapsed = containsId id collapsed
+
+                let row =
+                    div [
+                        attr.``class`` "dynamic-actor-tree-row"
+                        attr.style ("position:relative; display:grid; grid-template-columns:20px 10px max-content max-content max-content; gap:8px; align-items:center; width:max-content; min-width:100%; padding:4px 10px 4px 6px; border-radius:5px; font-size:12px; line-height:1.35; margin-left:" + margin + "px;")
+                        on.afterRender (fun node ->
+                            node.SetAttribute("data-testid", "dynamic-actor-tree-row")
+                            node.SetAttribute("data-node-id", id)
+                            node.SetAttribute("data-parent-id", parentId)
+                            node.SetAttribute("data-depth", string depthValue)
+                            node.SetAttribute("data-node-kind", kind)
+                            node.SetAttribute("data-display-address", displayAddress))
                     ] [
-                        text displayAddress
+                        if depthValue > 0 then
+                            span [
+                                attr.``class`` "dynamic-actor-tree-connector-h"
+                                attr.style "position:absolute; left:-12px; top:50%; width:12px; border-top:1px solid #aeb8c8;"
+                                on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-connector"))
+                            ] []
+                            span [
+                                attr.``class`` "dynamic-actor-tree-connector-v"
+                                attr.style "position:absolute; left:-12px; top:-5px; height:calc(100% + 5px); border-left:1px solid #aeb8c8;"
+                            ] []
+                        if children.Length > 0 then
+                            button [
+                                attr.``type`` "button"
+                                attr.title (if isCollapsed then "Expand actor node" else "Collapse actor node")
+                                attr.style "display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border:1px solid #7d92ad; background:#fff; color:#21354f; font-size:12px; line-height:16px; padding:0; margin-top:3px; cursor:pointer; font-family:Consolas, 'Cascadia Mono', monospace;"
+                                on.click (fun _ _ -> toggleId id)
+                                on.afterRender (fun node ->
+                                    node.SetAttribute("data-testid", "dynamic-actor-tree-toggle")
+                                    node.SetAttribute("aria-expanded", if isCollapsed then "false" else "true"))
+                            ] [
+                                text (if isCollapsed then "+" else "-")
+                            ]
+                        else
+                            span [
+                                attr.style "display:inline-flex; width:18px; height:18px; margin-top:3px;"
+                                on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-toggle-placeholder"))
+                            ] []
+                        renderStatusDot (nodeStatus node)
+                        span [
+                            attr.``class`` "dynamic-actor-tree-label"
+                            attr.title (if isBlank fullPath then displayAddress else fullPath)
+                            attr.style "white-space:nowrap; color:#172033; font-weight:600; overflow:visible; text-overflow:clip; font-family:Consolas, 'Cascadia Mono', monospace;"
+                        ] [
+                            text displayAddress
+                        ]
+                        renderSmallPill kind
+                        renderStatusChip (nodeStatus node)
                     ]
-                    renderSmallPill kind
-                    renderStatusChip (nodeStatus node)
-                ]
 
-            let childDocs =
-                if isCollapsed || depth >= 24 then
-                    []
-                else
-                    children
-                    |> Array.toList
-                    |> List.collect (renderNode collapsed (depth + 1))
+                let childDocs =
+                    if isCollapsed || depth >= 24 then
+                        []
+                    else
+                        children
+                        |> Array.toList
+                        |> List.collect (renderNode collapsed (depth + 1))
 
-            row :: childDocs
+                row :: childDocs
 
-        let treeRows collapsed =
             roots
             |> Array.toList
             |> List.collect (renderNode collapsed 0)
@@ -611,17 +611,16 @@ module ActorDynamicTab =
             attr.style "border:1px solid #d8e2ef; background:#f8fafc; border-radius:6px; padding:8px 10px; overflow-x:scroll; overflow-y:auto; scrollbar-gutter:stable; max-height:430px;"
             on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-tree-viewport"))
         ] [
-            collapsedIds.View
-            |> View.Map (fun collapsed ->
-                let rows = treeRows collapsed
+            View.Map2 (fun nodes collapsed ->
+                let rows = treeRows nodes collapsed
                 if rows.IsEmpty then
                     div [ attr.style "color:#667891; font-size:12px;" ] [ text "No actor tree rows." ]
                 else
-                    Doc.Concat rows)
+                    Doc.Concat rows) groupNodes collapsedIds.View
             |> Doc.EmbedView
         ]
 
-    let renderGrid (groupNodes: obj[]) =
+    let renderGrid (groupNodes: View<obj[]>) =
         let headerCell label =
             E "th" [ attr.style "text-align:left; padding:8px 10px; border-bottom:1px solid #d7e2ef; color:#53677f; font-size:11px; white-space:nowrap;" ] [ text label ]
 
@@ -646,28 +645,28 @@ module ActorDynamicTab =
                         headerCell "Full path"
                     ]
                 ]
-                E "tbody" [] (groupNodes |> Array.map bodyRow |> Array.toList)
+                E "tbody" [] [
+                    groupNodes
+                    |> View.Map (fun nodes -> nodes |> Array.map bodyRow |> Doc.Concat)
+                    |> Doc.EmbedView
+                ]
             ]
         ]
 
-    let renderNodeBlock (key: string) (roleLabel: string) (groupNodes: obj[]) =
+    let renderNodeBlock (key: string) (roleLabel: View<string>) (groupNodes: View<obj[]>) =
         let statuses =
-            groupNodes
-            |> Array.map nodeStatus
-            |> distinctValues
-            |> Array.map displayStatus
-            |> distinctValues
-            |> String.concat ", "
+            groupNodes |> View.Map (fun nodes ->
+                nodes |> Array.map nodeStatus |> distinctValues
+                |> Array.map displayStatus |> distinctValues |> String.concat ", ")
 
         section [
             attr.style "display:flex; flex-direction:column; gap:10px; border:1px solid #cfdcec; background:#fff; border-radius:7px; padding:12px;"
-            on.afterRender (fun node ->
-                node.SetAttribute("data-testid", "dynamic-actor-node-block")
-                node.SetAttribute("data-offline-rank", string (groupOfflineRank groupNodes)))
+            Attr.Create "data-testid" "dynamic-actor-node-block"
+            Attr.Dynamic "data-offline-rank" (groupNodes |> View.Map (groupOfflineRank >> string))
         ] [
             div [ attr.style "display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;" ] [
                 div [ attr.style "min-width:0;" ] [
-                    div [ attr.style "font-size:11px; color:#667891;" ] [ text roleLabel ]
+                    div [ attr.style "font-size:11px; color:#667891;" ] [ textView roleLabel ]
                     h3 [
                         attr.style "margin:2px 0 0 0; font-size:15px; font-weight:700; color:#16263c; font-family:Consolas, 'Cascadia Mono', monospace; white-space:nowrap; overflow-x:auto;"
                     ] [
@@ -675,27 +674,31 @@ module ActorDynamicTab =
                     ]
                 ]
                 div [ attr.style "font-size:12px; color:#53677f; white-space:nowrap;" ] [
-                    let concreteCount =
-                        groupNodes
-                        |> Array.filter (fun node -> not (isBlank (nodeRawAddress node)))
-                        |> Array.length
-
-                    text (string concreteCount + " actor node(s)")
+                    groupNodes
+                    |> View.Map (fun nodes ->
+                        let count = nodes |> Array.filter (fun node -> not (isBlank (nodeRawAddress node))) |> Array.length
+                        string count + " actor node(s)")
+                    |> textView
                 ]
             ]
             div [ attr.style "display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:#53677f;" ] [
                 span [ attr.style "font-weight:650;" ] [ text "Status" ]
-                span [] [ text (if isBlank statuses then "unknown" else statuses) ]
+                span [] [ textView (statuses |> View.Map (fun value -> if isBlank value then "unknown" else value)) ]
             ]
             renderTree groupNodes
             renderGrid groupNodes
         ]
 
-    let createActorsPageDocument (rawContent: string) =
-        let nodes: obj[] = actorNodes rawContent
-        let projectionId = projectionText rawContent "projectionId" "ptcs-actors"
-        let projectionVersion = projectionText rawContent "projectionVersion" "0"
-        let groups = createNodeGroups nodes
+    let createActorsPageDocument (rawContent: Var<string>) (isMounted: unit -> bool) =
+        // Version-only updates leave the topology and its viewports untouched.
+        let nodes =
+            rawContent.View
+            |> View.Map (actorNodes >> JSON.Stringify)
+            |> View.MapCached (decodeJson<obj[]>)
+        let projection = rawContent.View |> View.Map (fun raw ->
+            "projection " + projectionText raw "projectionId" "ptcs-actors"
+            + " / v" + projectionText raw "projectionVersion" "0")
+        let groups = nodes |> View.Map createNodeGroups
         let reportOutputDirectory = Var.Create ""
         let reportStatus = Var.Create ""
         let reportScheduleRunning = Var.Create false
@@ -722,27 +725,24 @@ module ActorDynamicTab =
                 generateActorReport outputDirectory reportStatus
                 reportScheduleHandle <-
                     JS.Window.SetInterval(
-                        (fun () -> generateActorReport reportOutputDirectory.Value reportStatus),
+                        (fun () -> if isMounted () then generateActorReport reportOutputDirectory.Value reportStatus else stopReportSchedule ()),
                         60000)
                     |> Some
 
-        let activeCount =
-            nodes
-            |> Array.filter (fun node ->
+        let activeCount = nodes |> View.Map (fun values ->
+            values |> Array.filter (fun node ->
                 let status = lower (nodeStatus node)
                 status.IndexOf("active") >= 0 || status.IndexOf("running") >= 0)
-            |> Array.length
+            |> Array.length)
 
-        let offlineCount =
-            nodes
-            |> Array.filter (fun node -> statusLooksOffline (nodeStatus node))
-            |> Array.length
+        let offlineCount = nodes |> View.Map (Array.filter (fun node -> statusLooksOffline (nodeStatus node)) >> Array.length)
+        let countCard label values = values |> View.Map (string >> renderCountCard label) |> Doc.EmbedView
 
         div [
             attr.``class`` "ptcs-dynamic-actors-page"
             on.afterRender (fun node ->
                 node.SetAttribute("data-testid", "dynamic-actors-page")
-                logActorsTreeDsl "RENDER" rawContent)
+                logActorsTreeDsl "RENDER" rawContent.Value)
             attr.style "display:flex; flex-direction:column; gap:12px; color:#142033; min-width:0; width:100%; contain:inline-size;"
         ] [
             div [
@@ -751,7 +751,7 @@ module ActorDynamicTab =
                 div [] [
                     h2 [ attr.style "margin:0; font-size:18px; font-weight:700;" ] [ text "Actors / Dynamic" ]
                     div [ attr.style "color:#50627a; font-size:12px;" ] [
-                        text ("projection " + projectionId + " / v" + projectionVersion)
+                        textView projection
                     ]
                 ]
                 div [ attr.style "display:flex; flex-wrap:wrap; gap:6px; align-items:start; max-width:100%; min-width:0;" ] [
@@ -780,7 +780,7 @@ module ActorDynamicTab =
                         attr.style "border:1px solid #b8c7dc; background:#fff; color:#22344d; border-radius:5px; padding:5px 9px; font-size:12px; cursor:pointer;"
                         on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actors-reload"))
                         on.click (fun _ _ ->
-                            logActorsTreeDsl "RELOAD" rawContent
+                            logActorsTreeDsl "RELOAD" rawContent.Value
                             JS.Window.Location.Reload())
                     ] [
                         text "Reload"
@@ -815,36 +815,48 @@ module ActorDynamicTab =
                 attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr)); gap:10px;"
             ] [
                 renderCountCard "Renderer" "ActorsPage"
-                renderCountCard "Node groups" (string groups.Length)
-                renderCountCard "Actor tree rows" (string nodes.Length)
-                renderCountCard "Active" (string activeCount)
-                renderCountCard "Offline" (string offlineCount)
+                countCard "Node groups" (groups |> View.Map Array.length)
+                countCard "Actor tree rows" (nodes |> View.Map Array.length)
+                countCard "Active" activeCount
+                countCard "Offline" offlineCount
             ]
-            if nodes.Length = 0 then
-                div [
-                    attr.style "border:1px solid #c9d7e8; border-radius:6px; background:#fff; padding:12px; color:#4b5e76; font-size:12px;"
-                ] [
-                    text "No actor topology rows are available in this projection."
-                ]
-            else
-                div [
-                    attr.style "display:flex; flex-direction:column; gap:12px;"
-                    on.afterRender (fun node -> node.SetAttribute("data-testid", "dynamic-actor-node-blocks"))
-                ] [
-                    groups
-                    |> Array.map (fun (_, key, label, groupNodes) -> renderNodeBlock key label groupNodes)
-                    |> Array.toList
-                    |> Doc.Concat
-                ]
+            div [
+                attr.styleDyn (nodes |> View.Map (fun values ->
+                    if values.Length = 0 then "padding:12px; color:#4b5e76; font-size:12px;" else "display:none;"))
+            ] [ text "No actor topology rows are available in this projection." ]
+            div [
+                attr.style "display:flex; flex-direction:column; gap:12px;"
+                Attr.Create "data-testid" "dynamic-actor-node-blocks"
+            ] [
+                groups
+                |> View.MapSeqCachedViewBy (fun (_, key, _, _) -> key) (fun key group ->
+                    let label = group |> View.Map (fun (_, _, label, _) -> label)
+                    let values =
+                        group |> View.Map (fun (_, _, _, values) -> JSON.Stringify values)
+                        |> View.MapCached (decodeJson<obj[]>)
+                    renderNodeBlock key label values)
+                |> View.Map Doc.Concat
+                |> Doc.EmbedView
+            ]
         ]
 
     let registerActorsPageRenderer () =
+        // Bounded to one mounted page; detached routes never regain old drafts.
+        let mutable mountedPage: (string * Element * Var<string>) option = None
         let renderer (rawContent: string) =
             try
                 if isActorsPagePayload rawContent then
-                    let container = JS.Document.CreateElement("div")
-                    Doc.Run container (createActorsPageDocument rawContent)
-                    Some (container :> WebSharper.JavaScript.Dom.Node)
+                    let id = projectionText rawContent "projectionId" "ptcs-actors"
+                    match mountedPage with
+                    | Some (currentId, container, content) when currentId = id && JS.Document.Body.Contains(container) ->
+                        content.Value <- rawContent
+                        Some (container :> WebSharper.JavaScript.Dom.Node)
+                    | _ ->
+                        let container = JS.Document.CreateElement("div")
+                        let content = Var.Create rawContent
+                        Doc.Run container (createActorsPageDocument content (fun () -> JS.Document.Body.Contains(container)))
+                        mountedPage <- Some (id, container, content)
+                        Some (container :> WebSharper.JavaScript.Dom.Node)
                 else
                     None
             with e ->
@@ -896,16 +908,16 @@ module ActorDynamicTab =
         let renderer (text: string) =
             try
                 JS.Global?console?log("Inside fskynet-sdui renderer wrapper! Text length:", text.Length)
+                let container = JS.Document.CreateElement("div")
                 let docOpt =
                     if isActorsPagePayload text then
-                        Some (createActorsPageDocument text)
+                        Some (createActorsPageDocument (Var.Create text) (fun () -> JS.Document.Body.Contains(container)))
                     else
                         DynamicRenderer.TryRender text
 
                 match docOpt with
                 | Some doc ->
                     JS.Global?console?log("Got Some doc! Creating container...")
-                    let container = JS.Document.CreateElement("div")
                     WebSharper.UI.Client.Doc.Run container doc
                     JS.Global?console?log("Rendered doc to container!")
                     Some (container :> WebSharper.JavaScript.Dom.Node)

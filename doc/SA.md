@@ -281,3 +281,7 @@ DYN-WBS-584 的隔離 engine gate 已完成：PS7/PS5各160/160；global false �
 ## 2026-10-06 RF-09 Core54 相依整合 checkpoint
 
 Core57a24a5已完成完整WebSharper及1378/1378真native/unit回歸；本repo僅metadata更新Dynamic0.1.31→0.1.32、Ptcs0.1.62→0.1.63、Ptcs.Client0.1.137→0.1.138與三個tests/demo references，Renderer source WIP保留。全域SA/SD/版本影響/pseudocode/驗收由G:/PulseTrade.fs/doc/20261006.REFACTOR/Release.Closure.md與RF-09持有；本repo尚未build/pack/publish/deploy，不宣稱完成。來源checkpoint後從各專案bin/net10.0/agent.aster內固定Git來源建置；bundle的wwwroot仍在該bin內，保持原封裝路徑。
+
+## RF12 current: stable Actors projection controls
+Live Core55 projection279->280 loses report draft/focus because Core clears treePanel before Dynamic recreates all controls. Core now retains a renderer's already-mounted node; Dynamic caches one attached projection ID/container and raw Var, keeps report controls and keyed node groups, suppresses equivalent topology updates, and retains tree/grid viewport elements plus collapse state. Detached route is not reused; existing report timer stops before work if detached. Pure F#/WebSharper, no new JS, storage, process or polling.
+Canonical pseudocode/acceptance: G:/PulseTrade.fs/doc/20261006.REFACTOR/SD.md RF12 stable mounted projection. Source fullWS7assets PASS; actualnewUI stillpending. Own ActorDynamicTab only; unrelated Renderer/Renderer.fs WIP preserved. Dynamic0.1.34->0.1.35, Ptcs0.1.64->0.1.65, Ptcs.Client0.1.139->0.1.140 exactCore0.2.56. No public packages yet.

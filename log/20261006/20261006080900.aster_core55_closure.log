@@ -6,3 +6,11 @@ Plan: update only six existing fsproj version/reference values from map; preserv
 - 2026-10-06T08:19:45.0844088+08:00: Updated6 exact producer/consumer metadata files and DevLog; retained Renderer/other WIP. Initial updater BOM/regex error repaired against raw HEAD metadata before any build; all6 XML/UTF8/ref-count/exact-version checks PASS. Scope scanner High0/Medium0. First checker27PASS2WARN1FAIL identified missing Operations content, now append actual evidence; source checkpoint only, build/package/public/UI pending. Existing historical traceability and dirty-owner WARN acknowledged.
 
 - 2026-10-06T08:21:06.8497726+08:00: Recheck28PASS2WARN0FAIL. Exact8 files source metadata checkpoint, no build/public claim; renderer WIP remains.
+
+- 2026-10-06T08:25:11.1451830+08:00: Local threepackages build/pack/nuspec/DLL hash PASS; Dynamic7 browserassets. Run existing15 adapter and17 TA client tests against exact packages; no new feature/Renderer change, no public push yet.
+
+- 2026-10-06T09:00:35.1352256+08:00: RF12 new realfailure draft/focus lost perprojection. Plan reuse single mounted ActorsPage and keyed reactive topology/scrollcontainers; preserve other Renderer.fs WIP; existing8caa exactpackage is baseline. Corehypothesis G:/PulseTrade2.fs/log/20261006/20261006090100_issue_ActorsProjectionRemount.hypothesis.md. Newproductpatch firstsourcebuild thenrealtest andimmutablepackage; no overwrite0.1.34.
+
+- 2026-10-06T09:07:13.7358660+08:00: RF12 firstatomictextrewrite refused mismatchedconcrete-count snippet beforefilewrite; applied boundedpatch preserving originalrawaddresscount. CoreClient/Dynamic source nowreactive stableDOM, no publishedpackageoverwrite. First DynamicWS compilerexited -532462766 with no diagnostics; inspectwebsharperlog and retrycorrectprojectobj (firstcommand mistakenlyplacedintermediatesundercanonicaltemp; correct immediately), notruntimefailure. CoreWS buildstillrunning. No Native operation.
+
+- 2026-10-06T09:21:59.6507716+08:00: SourceUIfullWS7assets builtfrom8caa capturedinputs plus singleActorDynamicTab overlay. Exactproduceroutput andknownBundlewarning retained. Nextclosure metadata sixprojects bumped56/35/65/140 afterHEAD404 andsemanticXML/BOM/Compilechecks; currentSrcRendererWIPunchanged. Scan/check exactown12paths thencommit beforeimmutableproducerbuild.
