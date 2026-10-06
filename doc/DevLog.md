@@ -2105,3 +2105,5 @@ Source70f5e22：Dynamic0.1.32／Ptcs0.1.63／Ptcs.Client0.1.138完整compiler、
 ## 20261006 RF-12 Actors 長路徑 UI slice
 
 Status=InProgress，Progress=20%，開始202610060631，已耗4分鐘，尚需Dev20–35/Test20–30，ETA202610060800(+08)。已在Core54真Host重現1682px內容超出1600viewport；Dynamic五行style與0.1.32→0.1.33 metadata修改完成，尚未build/pack/public/Host驗收。沿Main doc/20261006.REFACTOR/SA.md、SD.md及hypothesis RF12，實測長/短actor地址、窄/寬viewport、controls/focus/scroll；不以source/style文字測試冒充UI。Renderer WIP保持；MainHost單獨Runtime404修正unit87/87，不算本DynamicbrowserPASS。
+## 20261006 RF-14 Core55 closure metadata
+Dynamic0.1.33→0.1.34、Ptcs0.1.63→0.1.64、Ptcs.Client0.1.138→0.1.139及6個active references改exact Core55閉包。保留a5ada160 Actors layout與Renderer WIP；僅版本變動，global SA/SD/WBS/Test在G:/PulseTrade.fs/doc/20261006.REFACTOR（RF-14）。Core exactWS1391/1391已驗；本批Dynamic/consumer build/package/UI未驗，不宣稱完成。版本更新腳本BOM/regex錯誤已按HEAD metadata精確修正，全6 XML/UTF8/ownVersion/exactrefs/count PASS，未build錯誤來源。
