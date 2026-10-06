@@ -2152,3 +2152,20 @@ RF10 package versions（shutdown physical retirement closure；目前僅Core57 l
 | PulseTrade.Comm.Spa.Dynamic.Ptcs.Client | 0.1.141 | 0.1.142 |
 | PulseTrade.Comm.Spa.Host.TAResearch.Client | 0.1.37 | 0.1.38 |
 | PulseTrade.Comm.Spa.Login | 0.1.39 | 0.1.40 |
+
+2026-10-07T07:49:40.2374080+08:00 Core59 closure metadataonly6fsproj；舊版32consumertests完成不重跑舊DLL，待新版exactpackages建成後跑同32。RendererWIP不變；新公開package/Hosts尚未完成，ownerAster。Main canonical doc/20261006.REFACTOR/evidence/Core59/Metadata.Plan.json列exactpaths/snippet Version與PackageReference value唯一變動。
+
+| Package | 原版 | 新版 |
+|---|---|---|
+| PulseTrade.Comm.GW.PTCS | 1.0.39 | 1.0.40 |
+| PulseTrade.Comm.Login.Pcsl | 0.1.41 | 0.1.42 |
+| PulseTrade.Comm.ResourceNode.DurableProxy | 0.1.41 | 0.1.42 |
+| PulseTrade.Comm.ResourceNode.Pcsl | 0.1.42 | 0.1.43 |
+| PulseTrade.Comm.ResourceNode.SqlServer | 0.1.32 | 0.1.33 |
+| PulseTrade.Comm.Spa | 0.2.58 | 0.2.59 |
+| PulseTrade.Comm.Spa.ACL | 0.1.41 | 0.1.42 |
+| PulseTrade.Comm.Spa.Dynamic | 0.1.37 | 0.1.38 |
+| PulseTrade.Comm.Spa.Dynamic.Ptcs | 0.1.67 | 0.1.68 |
+| PulseTrade.Comm.Spa.Dynamic.Ptcs.Client | 0.1.142 | 0.1.143 |
+| PulseTrade.Comm.Spa.Host.TAResearch.Client | 0.1.38 | 0.1.39 |
+| PulseTrade.Comm.Spa.Login | 0.1.40 | 0.1.41 |
