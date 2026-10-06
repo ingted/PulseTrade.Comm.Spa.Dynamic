@@ -2110,3 +2110,5 @@ Dynamic0.1.33→0.1.34、Ptcs0.1.63→0.1.64、Ptcs.Client0.1.138→0.1.139及6�
 
 ## 20261006 RF12 stable Actors projection
 Dynamic ActorDynamicTab preserves mounted reportcontrols/keyed topology/scroll containers. Baselinelive55draft/focusFAIL; plain/fullWScompilePASS7assets. Corecandidate1391passed doesnotreplacebrowsergate. PulseTrade.Comm.Spa.Dynamic0.1.34->0.1.35 / PulseTrade.Comm.Spa.Dynamic.Ptcs0.1.64->0.1.65 / PulseTrade.Comm.Spa.Dynamic.Ptcs.Client0.1.139->0.1.140, sixprojectexactrefs to Core0.2.56. AllcandidateHEAD404, noNuGetpublic/deployyet. CanonicalSD/mainGoal updated; Renderer.fs foreignWIPuntouched.
+
+2026-10-06T09:57:03.2788831+08:00：Dynamic0.1.35/Ptcs0.1.65/Client0.1.140 public payload/Dependencies已驗；exactpackage15+17tests全PASS；MainCore56正式Actors981→983draft/focus不再清空，寬窄版面與route卸載再掛載已驗。新增移除actor topology合MainRF10；Renderer WIP未修改。證據G:/PulseTrade.fs/doc/20261006.REFACTOR/Core56/。

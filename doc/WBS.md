@@ -180,4 +180,4 @@ Core57a24a5已完成完整WebSharper及1378/1378真native/unit回歸；本repo�
 
 ## 20261006 RF-12 Actors 長路徑 UI slice
 
-Status=InProgress，Progress=65%，開始202610060631，已耗50分鐘，尚需Dev10–20/Test30–45，ETA202610061015(+08)。09:18更新：34已正式部署，寬窄版面PASS；真projection仍清除draft/focus，穩定DOM修正fullWS已編譯，35/package/Host/UI未驗。下列為早期版面修正起點：已在Core54真Host重現1682px內容超出1600viewport；Dynamic五行style與0.1.32→0.1.33 metadata修改完成，尚未build/pack/public/Host驗收。沿Main doc/20261006.REFACTOR/SA.md、SD.md及hypothesis RF12，實測長/短actor地址、窄/寬viewport、controls/focus/scroll；不以source/style文字測試冒充UI。Renderer WIP保持；MainHost單獨Runtime404修正unit87/87，不算本DynamicbrowserPASS。
+Status=InProgress，Progress=90%，開始202610060631，已耗82分鐘，尚需Dev0–5/Test10–15，ETA202610061015(+08)。09:57更新：35完整WebSharper、exactpackages32tests、public及Main正式Core56已部署；真projection保留draft/focus/collapse/scroll、820/1600版面PASS；新增移除actor topology待MainRF10合驗。下列為早期版面修正起點：已在Core54真Host重現1682px內容超出1600viewport；Dynamic五行style與0.1.32→0.1.33 metadata修改完成，尚未build/pack/public/Host驗收。沿Main doc/20261006.REFACTOR/SA.md、SD.md及hypothesis RF12，實測長/短actor地址、窄/寬viewport、controls/focus/scroll；不以source/style文字測試冒充UI。Renderer WIP保持；MainHost單獨Runtime404修正unit87/87，不算本DynamicbrowserPASS。
