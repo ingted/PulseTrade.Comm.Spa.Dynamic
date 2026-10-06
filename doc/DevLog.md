@@ -2112,3 +2112,22 @@ Dynamic0.1.33→0.1.34、Ptcs0.1.63→0.1.64、Ptcs.Client0.1.138→0.1.139及6�
 Dynamic ActorDynamicTab preserves mounted reportcontrols/keyed topology/scroll containers. Baselinelive55draft/focusFAIL; plain/fullWScompilePASS7assets. Corecandidate1391passed doesnotreplacebrowsergate. PulseTrade.Comm.Spa.Dynamic0.1.34->0.1.35 / PulseTrade.Comm.Spa.Dynamic.Ptcs0.1.64->0.1.65 / PulseTrade.Comm.Spa.Dynamic.Ptcs.Client0.1.139->0.1.140, sixprojectexactrefs to Core0.2.56. AllcandidateHEAD404, noNuGetpublic/deployyet. CanonicalSD/mainGoal updated; Renderer.fs foreignWIPuntouched.
 
 2026-10-06T09:57:03.2788831+08:00：Dynamic0.1.35/Ptcs0.1.65/Client0.1.140 public payload/Dependencies已驗；exactpackage15+17tests全PASS；MainCore56正式Actors981→983draft/focus不再清空，寬窄版面與route卸載再掛載已驗。新增移除actor topology合MainRF10；Renderer WIP未修改。證據G:/PulseTrade.fs/doc/20261006.REFACTOR/Core56/。
+
+2026-10-06T10:52:12.1991224+08:00 RF10 closure：12個next package HEAD404；Main14／Dynamic6 active metadata同步Core57，僅Version/exact refs/assetproperties，foreignCompile與Renderer保持。完整Core57 WS建置7assets已完成，exactDLL1393回歸進行中；新package/public/Hosts未驗，正式仍56。版本差異ActorRetirement.Release.Versions.json；source1393+Main37證據既已提交。
+
+RF10 package versions（shutdown physical retirement closure；目前僅Core57 local package，NuGet push未做，正式Hosts仍56）：
+
+| Package | 舊版 | 新版 |
+|---|---|---|
+| PulseTrade.Comm.GW.PTCS | 1.0.37 | 1.0.38 |
+| PulseTrade.Comm.Login.Pcsl | 0.1.39 | 0.1.40 |
+| PulseTrade.Comm.ResourceNode.DurableProxy | 0.1.39 | 0.1.40 |
+| PulseTrade.Comm.ResourceNode.Pcsl | 0.1.40 | 0.1.41 |
+| PulseTrade.Comm.ResourceNode.SqlServer | 0.1.30 | 0.1.31 |
+| PulseTrade.Comm.Spa | 0.2.56 | 0.2.57 |
+| PulseTrade.Comm.Spa.ACL | 0.1.39 | 0.1.40 |
+| PulseTrade.Comm.Spa.Dynamic | 0.1.35 | 0.1.36 |
+| PulseTrade.Comm.Spa.Dynamic.Ptcs | 0.1.65 | 0.1.66 |
+| PulseTrade.Comm.Spa.Dynamic.Ptcs.Client | 0.1.140 | 0.1.141 |
+| PulseTrade.Comm.Spa.Host.TAResearch.Client | 0.1.36 | 0.1.37 |
+| PulseTrade.Comm.Spa.Login | 0.1.38 | 0.1.39 |
