@@ -8,3 +8,9 @@ Acceptance: exact dependencies/SourceLink/DLL/assets with no foreignWIP; no smok
 Risks: no duplicated Host outputs, no C drive root artifact, no native code/build or protectedservice effects.
 ## Operations
 - 2026-10-07T04:18:53.5507144+08:00: Core58 configured fullWS80.58s7assets, exactDLL365C5F174F06BE5024F273A4A4ED7BB228EAF27AE645CA9A56165AD03CA3998C. SameDLL1398executed/passed0failed/error/skipped171.52s2workers. Package58no-build7assets/hash/sourcecommit85d772 verified; copiedlocalfeed only, notNuGetpublished/notdeployed. Consumers20metadata14Main6Dynamicupdated BOMpreserved; foreignWIP untouched. Sourcecheckpoint beforecanonicalclosure. PriorXMLinspection mistakenly treatedsinglelineXML asboundedtext andtooltruncated; subsequentresults useXMLparseronly.
+
+- 2026-10-07T04:56:19.0825001+08:00: Exact Core58 official12verified inMain, existing Dynamic15+17consumer tests run againstupdatedreleasedpackages; noRenderer/sourceedits, noHost/SQLeffects. Outputs pertestproject bin/net10.0/agent.aster/core58-consumer andobj/agent.aster/core58-consumer; TEMP/TMP isolatedroot temp/agent.aster/core58-consumer. Baselineexpected32actualcases, countXML not exitonly.
+
+- 2026-10-07T05:21:22.7163839+08:00: CompletedexistingexactCore58consumer tests: Dynamic.Ptcs15/15 andPtcsTaClient17/17, total32/32zero fail/error/skip. Results+XMLin temp/agent.aster/core58-consumer/results.json. NoRenderer/sourceWIPmodified. MainRF19Host-onlypageflag doesnotchangepackages. Logcloseoutonly, no retest.
+
+- 2026-10-07T05:24:34.7811302+08:00: Maincanonicalchecker executedagainstDynamicrepo,19PASS3WARN0FAIL; warningsmissinglegacyplanlabels/parallelRendererWIP/historicaltraceability nonblocking. SensitiveHigh0Medium0. Exactlogonlycommit/push; no source orbinary staged.
