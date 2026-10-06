@@ -1,0 +1,10 @@
+# Core58 current-health dependency closure
+Session: aster-ptc-refactor-20261006; same aggregate clock, canonical existing Dynamic checkout.
+## Plan
+Background: Core57 health route captured startup epoch; real purge rotates identity. Core58 source5RED/5GREEN and1398fullPASS, fullWS7assets; exactDLL tests running.
+Goal: update only existing6active Dynamic metadata files to same exact package closure; retain Renderer.fs WIP and all domain behavior.
+Steps: preserve rawbytes/BOM; apply Version/exactref overlay; scan/check/sourcecheckpoint; build/pack from committed snapshot into eachproject bin/net10.0/agent.aster; public packages and threeHosts gates tracked in Main.
+Acceptance: exact dependencies/SourceLink/DLL/assets with no foreignWIP; no smoke substitution; formal deployment remains pending.
+Risks: no duplicated Host outputs, no C drive root artifact, no native code/build or protectedservice effects.
+## Operations
+- 2026-10-07T04:18:53.5507144+08:00: Core58 configured fullWS80.58s7assets, exactDLL365C5F174F06BE5024F273A4A4ED7BB228EAF27AE645CA9A56165AD03CA3998C. SameDLL1398executed/passed0failed/error/skipped171.52s2workers. Package58no-build7assets/hash/sourcecommit85d772 verified; copiedlocalfeed only, notNuGetpublished/notdeployed. Consumers20metadata14Main6Dynamicupdated BOMpreserved; foreignWIP untouched. Sourcecheckpoint beforecanonicalclosure. PriorXMLinspection mistakenly treatedsinglelineXML asboundedtext andtooltruncated; subsequentresults useXMLparseronly.

@@ -2133,3 +2133,22 @@ RF10 package versions（shutdown physical retirement closure；目前僅Core57 l
 | PulseTrade.Comm.Spa.Login | 0.1.38 | 0.1.39 |
 
 2026-10-06T11:36:27.9574454+08:00 Core57完整WebSharper同DLL1393/1393，7assets，public12closure與三Host534files已驗；Main exactHost37、Dynamic32、realUI liveadd/remove且finalStop physicalempty/recoveryrecord不變。test原task SPA19912→29240/payload與recordhash不變。正式仍56，SDKHTTP/SSE命令被工具啟動前拒絕（僅blocked by policy），待人類結果；其餘RF11續作。不宣稱57正式部署。Main證據doc/20261006.REFACTOR/Core57/。
+
+202610070414 Core58 closure：Core57->58修正health request-time epoch，source1398PASS；本repo只overlay既有6active project metadata，Renderer WIP原bytes保留。Main doc/20261006.REFACTOR/SD.md與Release.Closure.md持有SA/SD與exactconsumer清單；版本map evidence/CurrentHealth.Release.Versions.json。12個next版本HEAD404已確認；NuGet與Host尚未發布/部署。
+
+202610070422 RF10 current-health package closure：Core source及同WS DLL1398/1398、7assets已驗；下表只Core本機pack完成，public與consumers/Host仍Pending。由即時health修正帶動exact dependencies整體進版；業務程式與foreignWIP不變。
+
+| Package | 舊版 | 新版 |
+|---|---|---|
+| PulseTrade.Comm.GW.PTCS | 1.0.38 | 1.0.39 |
+| PulseTrade.Comm.Login.Pcsl | 0.1.40 | 0.1.41 |
+| PulseTrade.Comm.ResourceNode.DurableProxy | 0.1.40 | 0.1.41 |
+| PulseTrade.Comm.ResourceNode.Pcsl | 0.1.41 | 0.1.42 |
+| PulseTrade.Comm.ResourceNode.SqlServer | 0.1.31 | 0.1.32 |
+| PulseTrade.Comm.Spa | 0.2.57 | 0.2.58 |
+| PulseTrade.Comm.Spa.ACL | 0.1.40 | 0.1.41 |
+| PulseTrade.Comm.Spa.Dynamic | 0.1.36 | 0.1.37 |
+| PulseTrade.Comm.Spa.Dynamic.Ptcs | 0.1.66 | 0.1.67 |
+| PulseTrade.Comm.Spa.Dynamic.Ptcs.Client | 0.1.141 | 0.1.142 |
+| PulseTrade.Comm.Spa.Host.TAResearch.Client | 0.1.37 | 0.1.38 |
+| PulseTrade.Comm.Spa.Login | 0.1.39 | 0.1.40 |
