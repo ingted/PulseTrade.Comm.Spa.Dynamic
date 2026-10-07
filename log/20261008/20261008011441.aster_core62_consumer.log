@@ -5,3 +5,7 @@
 2026-10-08T01:26:24.7714996+08:00 Exactlocalconsumer15/15+17/17+finalDynamic33/33PASS,0failed/skipped; actualNUnitsha inMain evidence/Core62/Dynamic.Consumer.Tests.json. Newbuildoutputsowncore62-consumer; finalignoredrunnerpin0.1.41only. NoRenderer/sourceWIPchange, publicuploadseparatelypending. Originalconsumerwarningsnotweakened.
 
 2026-10-08T02:06:27.4437129+08:00 Closeout: sensitive2files High0/Medium0; check PASS27/WARN3/FAIL0. Warnings: original prose pre-work field labels (actual scope/acceptance in pre-work + linkedMainlog), known foreign dirty Renderer/WIP, historical RFC cross-repo references; no gate weakened. Exact commit/push scope only thislog anddoc/DevLog.md; consumerbinary/local65PASS evidence alreadyinMain Core62 receipt. No source/package/deploymentmutation inthischeckpoint.
+
+2026-10-08T05:12:08.0852104+08:00 RF10 release63 pre-workplan: only exact packageconsumer/producerversion closure, no Renderer/LINE/sourceWIP edits. Spa0.2.63 needs Dynamic0.1.42/Ptcs0.1.72/Client0.1.147, existing65consumer tests after new immutablepackage. Stageonlyownedfsproj/docs/log. MainSA/SD/WBS RF10 canonical; no newpublic behavior here.
+
+2026-10-08T05:22:38.2774221+08:00 Exact8paths scannerHigh0/Medium0, checker27PASS3WARN0FAIL. Ownversionreferencescheckpoint only; 65newpackageconsumertests pending, Renderer untouched. Commit/push pin forimmutablebuilder.
