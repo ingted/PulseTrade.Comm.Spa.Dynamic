@@ -2179,3 +2179,7 @@ RF10 package versions（shutdown physical retirement closure；目前僅Core57 l
 - PulseTrade.Comm.Spa.Dynamic: 0.1.39 -> 0.1.40；Core exact[0.2.61]，待WS/package/public/Host/UI。
 - PulseTrade.Comm.Spa.Dynamic.Ptcs: 0.1.69 -> 0.1.70；Core exact[0.2.61]，待WS/package/public/Host/UI。
 - PulseTrade.Comm.Spa.Dynamic.Ptcs.Client: 0.1.144 -> 0.1.145；Core exact[0.2.61]，待WS/package/public/Host/UI。
+
+2026-10-07T20:02:53.2751699+08:00 RF20-Form61 package/isolated驗收PASS：c9626c5原33assertions消費正式0.1.40與Core0.2.61，33/33；兩consumers15＋17PASS。首次將DLL換入舊Core60testclosure的2ERROR保留temp/agent.aster/core61-consumer/Dynamic.FinalPackage.xml；完整PackageReference r2修正closure後通過，未改assertions。真269xx Form90064→Plain→Form90064、Plain90065→Form90065、native280→360px與模式回復360、820x900 Sendbottom872且真echo90066通過；invalid草稿保留且Form不顯示Send。Main evidence/Core61/Composer.Browser.json；正式切換執行中。
+
+2026-10-07T20:09:16.8792902+08:00 RF20正式Done：PulseTrade.Comm.Spa0.2.61 producer6e05ac13 finalWS1681/1681；公開NuGet12依賴閉合、Host45、Dynamic65PASS。Main release20261007-core61-9c8d9743e三Host已上線；actualTab/echo、nativeText160->90/Form280->360、mode草稿、invalid保留、窄Sendbottom872/900(test)及741/769(public)通過。原task/ACL/protected不變；RF18非零清除與RF10mixed/Vault另追Main。Evidence G:/PulseTrade.fs/doc/20261006.REFACTOR/evidence/Core61/。

@@ -189,4 +189,4 @@ Core59-closure：InProgress85%，開始202610070748，已耗10分，剩餘Dev0/T
 
 | RF18-04-CORE60 | InProgress | 15% | exact6project metadata同步；包/32consumer/Form/Hosts待驗，Renderer WIP不變 | 202610071759 | 2分 | 5–10／10–20分 | 202610071830（consumer；Hosts另Main） |
 
-RF20-Form61：InProgress source33/33PASS (含9新增)，開始202610071912，已耗12分，WS／package／真browser待驗。既有Core60 mode90062→90000 RED保留，測試新label修正empty/null重名。RAW temp/agent.aster/rf20-draft/{build-r2.log,tests-r2.xml}；ETA202610072025整體Main。
+RF20-Form61：Done100%，開始202610071912，已耗56分；source33、最終WS/package33及下游32PASS。正式Core61 public頁面Form90067→Plain→Form90067及真echo/reload通過；269xx native拖曳/invalid拒絕與草稿保留PASS，Main evidence/Core61/{Composer.Browser,Formal.Rollout}.json。Dev/Test剩0，完成202610072008。Core60兩RED保留。

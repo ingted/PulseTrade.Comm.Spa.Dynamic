@@ -883,3 +883,7 @@ Status=InProgress，Progress=20%，開始202610060631，已耗4分鐘，尚需De
 Core60 consumer32cases planned；此處尚未執行、不標PASS。證據由Main evidence/Core60彙整，來源沿既有兩測試專案。
 
 RF20-Form61：InProgress source33/33PASS (含9新增)，開始202610071912，已耗12分，WS／package／真browser待驗。既有Core60 mode90062→90000 RED保留，測試新label修正empty/null重名。RAW temp/agent.aster/rf20-draft/{build-r2.log,tests-r2.xml}；ETA202610072025整體Main。
+
+2026-10-07T20:02:53.2751699+08:00 RF20-Form61 package/isolated驗收PASS：c9626c5原33assertions消費正式0.1.40與Core0.2.61，33/33；兩consumers15＋17PASS。首次將DLL換入舊Core60testclosure的2ERROR保留temp/agent.aster/core61-consumer/Dynamic.FinalPackage.xml；完整PackageReference r2修正closure後通過，未改assertions。真269xx Form90064→Plain→Form90064、Plain90065→Form90065、native280→360px與模式回復360、820x900 Sendbottom872且真echo90066通過；invalid草稿保留且Form不顯示Send。Main evidence/Core61/Composer.Browser.json；正式切換執行中。
+
+2026-10-07T20:09:16.8792902+08:00 RF20正式Done：PulseTrade.Comm.Spa0.2.61 producer6e05ac13 finalWS1681/1681；公開NuGet12依賴閉合、Host45、Dynamic65PASS。Main release20261007-core61-9c8d9743e三Host已上線；actualTab/echo、nativeText160->90/Form280->360、mode草稿、invalid保留、窄Sendbottom872/900(test)及741/769(public)通過。原task/ACL/protected不變；RF18非零清除與RF10mixed/Vault另追Main。Evidence G:/PulseTrade.fs/doc/20261006.REFACTOR/evidence/Core61/。
