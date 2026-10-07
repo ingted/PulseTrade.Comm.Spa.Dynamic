@@ -857,3 +857,13 @@ RF10 Core57 closure：Dynamic35→36、Ptcs65→66、Client140→141；六個act
 | PulseTrade.Comm.Spa.Login | 0.1.40 | 0.1.41 |
 
 202610071800 Core60 consumer planned：sourceMain doc/20261006.REFACTOR/Release.Closure.md列6fsproj exact metadata；Dynamic0.1.38→39、Ptcs0.1.68→69、Ptcs.Client0.1.143→144，Core59→60，其他package refs依Main12map同步。Renderer／actor／Line程式未改；只有metadata，新版本全HEAD404。Source checkpoint不代表tests/package/Hosts，既有15+17 consumer測試與實際Form沿原gate重驗，Main RF18-04/20仍InProgress。
+
+## RF20 browser correction 202610071914
+Core60 isolated browser proved Tab/native resize and real replies; two failures remain: narrow820x900 Send bottom1001.8 is clipped; Form90062 is reset on Plain/Form switch. Formal remains59. Reuse existing contracts; no new API/parser and no change to Baster Renderer.fs.
+
+Pseudo code:
+- Core append-work = flex column; fixed head/status, history flex1/min0, composer flex0/shrink1. Narrow sidebar clamp140/22svh/220; work vertical overflow fallback. Native resize bounds retained. Assert Send bottom<=viewport and key/value editable at1600 and820.
+- Dynamic context reads existing valueText and setValue. resolveKeys([actor,template,default], draft) substitutes only read-request canonicalArgString when draft is nonempty; submitted target keys stay unchanged. Backend's existing typed resolver parses actual current draft.
+- During render, initializing=true; construct defaults/previews; initializing=false. On user input refresh preview then setValue(current raw command) without submit. Mode rebuild therefore sees current draft. If nonempty draft cannot resolve, show error and Plain control, retain draft bytes, no fallback overwrite/dispatch.
+- Tests: quote/Unicode/newline/whitespace/empty/null, unchanged actor/template/input array; actual browser Form->Plain->Form, editedPlain->Form, invalidPlain recovery, real echo, resize/focus and narrow Send.
+Core61 supersedes unpublished-to-host60; reuse per-project outputs, new immutable versions and exact20consumer closure. Retain60 package/browser failure evidence. Source estimate20-30min, integration/browser30-45min; RF20 final ETA202610072025. Original20:10 integration ETA may shift within measured adjacent repair, not a new task clock.

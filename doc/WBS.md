@@ -188,3 +188,5 @@ RF10 dependency slice：InProgress／10%，開始202610061050，已耗2m，剩�
 Core59-closure：InProgress85%，開始202610070748，已耗10分，剩餘Dev0/Test35–55分，ETA202610070900（需解除G空間門檻）；6metadata、FullWS/packages與exact32/32tests、public12closure已完成，三Host/正式UI仍待；Main b9ff30465，正式仍Core58。
 
 | RF18-04-CORE60 | InProgress | 15% | exact6project metadata同步；包/32consumer/Form/Hosts待驗，Renderer WIP不變 | 202610071759 | 2分 | 5–10／10–20分 | 202610071830（consumer；Hosts另Main） |
+
+RF20-Form61：InProgress source33/33PASS (含9新增)，開始202610071912，已耗12分，WS／package／真browser待驗。既有Core60 mode90062→90000 RED保留，測試新label修正empty/null重名。RAW temp/agent.aster/rf20-draft/{build-r2.log,tests-r2.xml}；ETA202610072025整體Main。

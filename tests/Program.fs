@@ -893,4 +893,20 @@ let tests =
 
 [<EntryPoint>]
 let main argv =
-    runTestsWithCLIArgs [] argv tests
+    let drafts =
+        testList "RF20 composer draft resolution" [
+            for draft in [ "--to 90062"; " --to 90062\n"; "--text \"中文 a b\""; "--item a --item b"; "--not-a-valid-option"; "   " ] do
+                testCase ("current draft preserved: " + draft) (fun () ->
+                    let keys = [| "akka://target"; "PFCF"; "--to 90000" |]
+                    let resolved = ArguComposerDraft.resolveKeys keys draft
+                    Expect.sequenceEqual resolved [| "akka://target"; "PFCF"; draft |] "Resolve the actual authored draft; the server owns validation."
+                    Expect.equal keys[2] "--to 90000" "Resolving a draft must not mutate the selected target identity.")
+            for label, draft in [ "empty", ""; "null", null ] do
+                testCase ("empty draft keeps target defaults: " + label) (fun () ->
+                    let keys = [| "akka://target"; "PFCF"; "--to 90000" |]
+                    Expect.sequenceEqual (ArguComposerDraft.resolveKeys keys draft) keys "Empty editor uses the existing target defaults.")
+            testCase "schema-only targets keep their key shape" (fun () ->
+                let keys = [| "akka://target"; "RegisteredSchema" |]
+                Expect.sequenceEqual (ArguComposerDraft.resolveKeys keys "--to 90062") keys "Do not invent a backend target contract for another key shape.")
+        ]
+    runTestsWithCLIArgs [] argv (testList "Dynamic and composer" [tests; drafts])

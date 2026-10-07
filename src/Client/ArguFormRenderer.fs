@@ -87,6 +87,8 @@ type AppendInputContextDto =
       actorAddress: string
       duTypeName: string
       unionCaseNames: string[]
+      valueText: string
+      setValue: obj -> unit
       submit: obj -> unit
       composerMode: string
       setComposerMode: obj -> unit }
@@ -179,6 +181,14 @@ module ClientRawArguCodec =
         |> Array.iter (fun (field, values) -> appendFieldParts parts field values)
 
         String.Join(" ", parts)
+
+[<JavaScript>]
+module ArguComposerDraft =
+    let resolveKeys (keys: string[]) (draft: string) =
+        match keys with
+        | [| actor; template; _ |] when not (String.IsNullOrEmpty draft) ->
+            [| actor; template; draft |]
+        | _ -> Array.copy keys
 
 [<JavaScript>]
 module ArguFormDefaultOccurrences =
@@ -935,6 +945,7 @@ module ArguFormRenderer =
 
     let renderSchemaIntoRoot (root: Element) (context: AppendInputContextDto) typeName document (schema: ArguFormSchemaDto) =
         root.TextContent <- ""
+        let mutable initializing = true
         let defaultMap = defaultsFromDocument document
         let readDefaults = defaultValuesReader defaultMap
         let isDocumentBacked = Option.isSome document
@@ -1011,6 +1022,13 @@ module ArguFormRenderer =
                 let refreshPreview () =
                     rawPreview.TextContent <- caseRaw ()
                     refreshFullPreview()
+                    if not initializing then
+                        let payload: AppendSubmitPayloadDto =
+                            { rawArgu = if isDocumentBacked then fullRaw () else caseRaw ()
+                              duTypeName = typeName
+                              unionCaseName = if isDocumentBacked then "__document" else caseName
+                              keyJson = context.selectedKeyJson }
+                        context.setValue(box payload)
 
                 fieldGetters <-
                     unionCase.fields
@@ -1065,6 +1083,8 @@ module ArguFormRenderer =
                     refreshFullPreview()
                 | _ -> ()
 
+            initializing <- false
+
     let renderFallbackSchemaWithWarning (root: Element) (context: AppendInputContextDto) typeName message =
         let document = tryFindDocument typeName
         let fallbackContext =
@@ -1108,7 +1128,8 @@ module ArguFormRenderer =
             else
                 fromKey
 
-        let resolveKeyParts = resolveKeyPartsFromSelectedKey keyParts
+        let draft = asText context.valueText
+        let resolveKeyParts = resolveKeyPartsFromSelectedKey keyParts |> fun keys -> ArguComposerDraft.resolveKeys keys draft
         let isBackendTarget =
             resolveKeyParts.Length = 3 && not (isBlank resolveKeyParts[2])
 
@@ -1116,6 +1137,13 @@ module ArguFormRenderer =
             None
         else
             let root = element "div" "dynamic-argu-form" "Loading Dynamic Argu form..." |> setTestId "dynamic-argu-form"
+            let showResolutionFailure message =
+                if String.IsNullOrEmpty draft then
+                    renderFallbackSchemaWithWarning root context typeName message
+                else
+                    root.TextContent <- ""
+                    append root [| errorNode "目前草稿無法轉成 Form；請切回 Plain 修正，原文字已保留。" :> Node
+                                   renderComposerModeControl context :> Node |] |> ignore
 
             if isBackendTarget then
                 let request: ResolveTargetRequestDto = { keys = resolveKeyParts }
@@ -1127,9 +1155,9 @@ module ArguFormRenderer =
                         if reply.ok && not (isNull (box reply.document)) && not (isNull (box reply.document.arguFormSchema)) then
                             renderSchemaIntoRoot root context (asText reply.templateKey) (Some reply.document) reply.document.arguFormSchema
                         else
-                            renderFallbackSchemaWithWarning root context typeName (if isBlank reply.error then "Dynamic Argu target resolution failed." else reply.error))
+                            showResolutionFailure (if isBlank reply.error then "Dynamic Argu target resolution failed." else reply.error))
                     (fun error ->
-                        renderFallbackSchemaWithWarning root context typeName error)
+                        showResolutionFailure error)
 
                 Some(root :> Node)
             else
