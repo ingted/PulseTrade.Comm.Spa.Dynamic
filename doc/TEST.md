@@ -880,3 +880,4 @@ Source70f5e22：Dynamic0.1.32／Ptcs0.1.63／Ptcs.Client0.1.138完整compiler、
 ## 20261006 RF-12 Actors 長路徑 UI slice
 
 Status=InProgress，Progress=20%，開始202610060631，已耗4分鐘，尚需Dev20–35/Test20–30，ETA202610060800(+08)。已在Core54真Host重現1682px內容超出1600viewport；Dynamic五行style與0.1.32→0.1.33 metadata修改完成，尚未build/pack/public/Host驗收。沿Main doc/20261006.REFACTOR/SA.md、SD.md及hypothesis RF12，實測長/短actor地址、窄/寬viewport、controls/focus/scroll；不以source/style文字測試冒充UI。Renderer WIP保持；MainHost單獨Runtime404修正unit87/87，不算本DynamicbrowserPASS。
+Core60 consumer32cases planned；此處尚未執行、不標PASS。證據由Main evidence/Core60彙整，來源沿既有兩測試專案。

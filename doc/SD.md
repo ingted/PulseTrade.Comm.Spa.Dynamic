@@ -855,3 +855,5 @@ RF10 Core57 closure：Dynamic35→36、Ptcs65→66、Client140→141；六個act
 | PulseTrade.Comm.Spa.Dynamic.Ptcs.Client | 0.1.142 | 0.1.143 |
 | PulseTrade.Comm.Spa.Host.TAResearch.Client | 0.1.38 | 0.1.39 |
 | PulseTrade.Comm.Spa.Login | 0.1.40 | 0.1.41 |
+
+202610071800 Core60 consumer planned：sourceMain doc/20261006.REFACTOR/Release.Closure.md列6fsproj exact metadata；Dynamic0.1.38→39、Ptcs0.1.68→69、Ptcs.Client0.1.143→144，Core59→60，其他package refs依Main12map同步。Renderer／actor／Line程式未改；只有metadata，新版本全HEAD404。Source checkpoint不代表tests/package/Hosts，既有15+17 consumer測試與實際Form沿原gate重驗，Main RF18-04/20仍InProgress。
