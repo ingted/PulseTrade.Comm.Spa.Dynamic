@@ -1,5 +1,5 @@
 open Expecto
-open PulseTrade.Comm.Spa.Dynamic.Ptcs.Client
+open PulseTrade.Comm.Spa.Dynamic.Tagging.Client
 
 let target space kind targetId label =
     { SpaceId=space;TargetKind=kind;TargetId=targetId;ContextLabel=label }

@@ -1,4 +1,4 @@
-namespace PulseTrade.Comm.Spa.Dynamic.Ptcs.Client
+namespace PulseTrade.Comm.Spa.Dynamic.Tagging.Client
 
 open System
 open System.Collections.Generic

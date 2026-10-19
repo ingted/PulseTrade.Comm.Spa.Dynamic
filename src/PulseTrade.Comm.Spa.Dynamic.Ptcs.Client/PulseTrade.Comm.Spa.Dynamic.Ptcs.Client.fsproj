@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Ptcs.Client</PackageId>
-    <Version>0.1.148</Version>
+    <Version>0.1.149</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Pure WebSharper same-origin PTCS transient client adapter for Dynamic TA Research.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -21,7 +21,6 @@
   <ItemGroup>
     <Compile Include="Client.fs" />
     <Compile Include="ReplyPresentation.fs" />
-    <Compile Include="TaggingEditorPlugin.fs" />
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
   <ItemGroup>

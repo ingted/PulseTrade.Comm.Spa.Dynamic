@@ -6,5 +6,6 @@
   <Project Path="src/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client/PulseTrade.Comm.Spa.Dynamic.Ptcs.Client.fsproj" />
   <Project Path="src/PulseTrade.Comm.Spa.Dynamic.Ptcs/PulseTrade.Comm.Spa.Dynamic.Ptcs.fsproj" />
   <Project Path="src/PulseTrade.Comm.Spa.Dynamic.Renderer/PulseTrade.Comm.Spa.Dynamic.Renderer.fsproj" />
+  <Project Path="src/PulseTrade.Comm.Spa.Dynamic.Tagging.Client/PulseTrade.Comm.Spa.Dynamic.Tagging.Client.fsproj" />
   <Project Path="src/PulseTrade.Comm.Spa.Login/PulseTrade.Comm.Spa.Login.fsproj" />
 </Solution>
