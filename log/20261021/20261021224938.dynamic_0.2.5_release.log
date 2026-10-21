@@ -1,0 +1,17 @@
+## Pre-work plan
+
+- Background: authoritative-frame-during-drag fix is committed and pushed at `f40abdc38ad191008bce592373788706d6ac603a`; Renderer 0.2.5 was published through the project canonical Pack/PostBuild hook.
+- Goal: verify the official Renderer package, then build, pack, publish, and verify Interactive.Client 0.2.5 against exact Renderer `[0.2.5]`.
+- Scope: Renderer and Interactive.Client package release evidence plus current release documentation. No service lifecycle changes and no operation on Daedalus port 18884.
+- Acceptance: official packages are signed, carry repository commit `f40abdc38ad191008bce592373788706d6ac603a`, retain exact internal dependencies, and contain the same DLL bytes as the committed-head local packages.
+- Risk: NuGet indexing delay; retry only with a bounded lookup and do not rebuild from a different source state.
+
+## Operations
+
+- 2026-10-21 22:49 +08:00: `PulseTrade.Comm.Spa.Dynamic.Renderer 0.2.5` push completed successfully through `PulseTradeCommSpaDynamicRendererPushNuGet=true`.
+- 2026-10-21 22:50 +08:00: NuGet.org accepted the push but the flat-container endpoint remained HTTP 404 during two bounded indexing checks; the package was not pushed again.
+- 2026-10-21 22:52 +08:00: committed-head Interactive.Client 0.2.5 rebuild and pack completed with 0 errors and one existing deprecation warning. Package repository commit is `f40abdc38ad191008bce592373788706d6ac603a`, Renderer dependency is exact `[0.2.5]`, and the packaged Client DLL SHA-256 is `43DC5EE32CB849DE60AA4909FAF75E36CC898F0386F9CC12B239D331C2E507B9`. Client publication remains gated on official Renderer availability.
+- 2026-10-21 22:54 +08:00: official Renderer 0.2.5 downloaded through NuGet.org v2 after its package page became visible. `dotnet nuget verify --all` returned exit 0; repository commit and dependencies match the candidate, and official/local DLL SHA-256 parity is `DECB522734C69A2334DD1129CEE241AEA09307F8B800D9A481946E1C3E77B4A7`.
+- 2026-10-21 22:55 +08:00: Interactive.Client 0.2.5 push completed through `PulseTradeCommSpaDynamicInteractiveClientPushNuGet=true`. The package page/redirect appeared, while the redirected CDN blob still returned `BlobNotFound`; no duplicate push was attempted and release completion remains pending official download verification.
+- 2026-10-21 23:02 +08:00: NuGet flat index and CDN now expose Interactive.Client 0.2.5. `dotnet nuget verify --all` returned exit 0; repository commit is `f40abdc38ad191008bce592373788706d6ac603a`, Renderer dependency is exact `[0.2.5]`, and official/local Client DLL SHA-256 parity is `43DC5EE32CB849DE60AA4909FAF75E36CC898F0386F9CC12B239D331C2E507B9`.
+- 2026-10-21 23:02 +08:00: package release gate is complete. Remaining DYN-WBS-587 work is the Daedalus-owned formal 18884 12-gesture consumer run; DYN-WBS-586 compatibility-line audit remains separate and open.
