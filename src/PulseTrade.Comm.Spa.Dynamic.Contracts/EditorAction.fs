@@ -818,6 +818,25 @@ module DynamicActionValidation =
                           "invalid-observation-count"
                           "action.range.coverageIntent.observationCount"
                           $"ObservationCount must be between 1 and {DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints}." ]
+        | SduiAction.ResidentCoverageChanged(canvas, baseRowId, relocation) ->
+            [ yield! canvasErrors "action.canvasInstanceId" canvas
+              yield! RuntimeValidation.identifier "action.residentCoverage.baseRowId" baseRowId
+              if relocation.QueryGeneration < 0L then
+                  yield RuntimeValidation.error "invalid-query-generation" "action.residentCoverage.relocation.queryGeneration" "QueryGeneration cannot be negative."
+              match relocation.ExpectedCoverageRevision with
+              | Some revision when revision < 0L ->
+                  yield RuntimeValidation.error "invalid-coverage-revision" "action.residentCoverage.relocation.expectedCoverageRevision" "ExpectedCoverageRevision cannot be negative."
+              | _ -> ()
+              match relocation.StartObservationOrdinal with
+              | None ->
+                  yield RuntimeValidation.error "missing-observation-ordinal" "action.residentCoverage.relocation.startObservationOrdinal" "Resident relocation requires an explicit start ordinal."
+              | Some ordinal when ordinal < 0L ->
+                  yield RuntimeValidation.error "invalid-observation-ordinal" "action.residentCoverage.relocation.startObservationOrdinal" "StartObservationOrdinal cannot be negative."
+              | _ -> ()
+              if relocation.ObservationCount <= 0 then
+                  yield RuntimeValidation.error "invalid-observation-count" "action.residentCoverage.relocation.observationCount" "ObservationCount must be positive."
+              if relocation.Direction.IsSome || relocation.RangeAuthority <> TaCoverageRangeAuthority.ExplicitBounds then
+                  yield RuntimeValidation.error "invalid-resident-relocation" "action.residentCoverage.relocation" "Resident relocation requires explicit bounds without a direction hint." ]
         | SduiAction.PollDelta(canvas, revision) ->
             [ yield! canvasErrors "action.canvasInstanceId" canvas
               if revision < 0L then

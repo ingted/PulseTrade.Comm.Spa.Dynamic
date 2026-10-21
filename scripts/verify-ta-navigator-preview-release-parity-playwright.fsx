@@ -2,6 +2,7 @@
 
 #i @"nuget: C:\Program Files\dotnet\sdk\10.0.401\FSharp\library-packs"
 #r "nuget: FAkka.Argu, [10.1.301]"
+#r "nuget: Expecto, [11.1.0]"
 #r "nuget: Microsoft.Playwright, 1.52.0"
 
 #load "ParseLine.fsx"
@@ -12,6 +13,7 @@ open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
 open Argu
+open Expecto
 open Microsoft.Playwright
 
 type CliArgs =
@@ -62,6 +64,10 @@ let intAttribute locator name =
     match Int32.TryParse(attributeOf locator name) with
     | true, value -> value
     | _ -> failwith $"Navigator preview/release parity failed: `{name}` is not an integer."
+let floatAttribute locator name =
+    match Single.TryParse(attributeOf locator name, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
+    | true, value -> value
+    | _ -> failwith $"Navigator preview/release parity failed: `{name}` is not a floating-point number."
 let waitUntil label probe predicate =
     let deadline = DateTime.UtcNow.AddSeconds 12.0
     let mutable value = probe ()
@@ -76,58 +82,146 @@ let parsePreviewStart text =
     require matched.Success ("preview range is missing: " + text)
     Int32.Parse matched.Groups[1].Value
 
-require (File.Exists browserExecutablePath) $"browser executable not found: {browserExecutablePath}"
-Directory.CreateDirectory outputDirectory |> ignore
+let boundingBox (locator: ILocator) =
+    let bounds = locator.BoundingBoxAsync() |> awaitTask
+    require (not (isNull bounds)) "navigator geometry is unavailable"
+    bounds
 
-let playwright = Playwright.CreateAsync() |> awaitTask
-let browser = playwright.Chromium.LaunchAsync(BrowserTypeLaunchOptions(Headless = not headed, ExecutablePath = browserExecutablePath)) |> awaitTask
-let page = browser.NewPageAsync(BrowserNewPageOptions(ViewportSize = ViewportSize(Width = 1440, Height = 980))) |> awaitTask
-let consoleErrors = ResizeArray<string>()
-page.Console.Add(fun message -> if message.Type = "error" then consoleErrors.Add message.Text)
-page.PageError.Add(fun message -> consoleErrors.Add message)
+let approximately tolerance left right = abs (float left - float right) <= tolerance
 
-try
-    page.GotoAsync(url, PageGotoOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
-    page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
-    page.Locator("[data-testid='ta-demo-loaded-coverage-parity']").ClickAsync() |> awaitUnit
+let tests =
+    testCase "semantic navigator gesture ownership survives reactive rerender" <| fun _ ->
+        require (File.Exists browserExecutablePath) $"browser executable not found: {browserExecutablePath}"
+        Directory.CreateDirectory outputDirectory |> ignore
 
-    let chartStack = page.Locator("[data-testid='ta-chart-stack']")
-    let callbackState = page.Locator("[data-testid='ta-demo-callback-state']")
-    let navigator = page.Locator("[data-testid='ta-overview-navigator']")
-    let selection = page.Locator("[data-testid='ta-overview-selection']")
-    let range = page.Locator("[data-testid='ta-viewport-range']")
-    waitInt chartStack "data-loaded-bars" 900
-    waitInt chartStack "data-visible-start" 701
-    waitInt chartStack "data-visible-end" 900
+        let playwright = Playwright.CreateAsync() |> awaitTask
+        let browser = playwright.Chromium.LaunchAsync(BrowserTypeLaunchOptions(Headless = not headed, ExecutablePath = browserExecutablePath)) |> awaitTask
+        let page = browser.NewPageAsync(BrowserNewPageOptions(ViewportSize = ViewportSize(Width = 1440, Height = 980))) |> awaitTask
+        let consoleErrors = ResizeArray<string>()
+        page.Console.Add(fun message -> if message.Type = "error" then consoleErrors.Add message.Text)
+        page.PageError.Add(fun message -> consoleErrors.Add message)
 
-    let navigatorBox = navigator.BoundingBoxAsync() |> awaitTask
-    let selectionBox = selection.BoundingBoxAsync() |> awaitTask
-    require (not (isNull navigatorBox) && not (isNull selectionBox)) "navigator geometry is unavailable"
-    let y = selectionBox.Y + selectionBox.Height / 2.0f
-    let startX = selectionBox.X + selectionBox.Width / 2.0f
+        try
+            page.GotoAsync(url, PageGotoOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+            page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
 
-    page.Mouse.MoveAsync(startX, y) |> awaitUnit
-    page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
-    page.Mouse.MoveAsync(startX - 40.0f, y, MouseMoveOptions(Steps = 12)) |> awaitUnit
-    waitUntil "preview must become visible" (fun () -> textOf range) (fun value -> value.Contains "Preview") |> ignore
-    Thread.Sleep 250
-    let previewText = textOf range
-    require (previewText.Contains "Preview") ("settled preview range is missing: " + previewText)
-    let previewStart = parsePreviewStart previewText
-    page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+            let fixture = page.Locator("[data-testid='ta-demo-loaded-coverage-parity']")
+            let chartStack = page.Locator("[data-testid='ta-chart-stack']:visible")
+            let callbackState = page.Locator("[data-testid='ta-demo-callback-state']")
+            let navigator = chartStack.Locator("[data-testid='ta-overview-navigator']")
+            let selection = navigator.Locator("[data-testid='ta-overview-selection']")
+            let range = page.Locator("[data-testid='ta-viewport-range']")
 
-    let wireStartText = waitUntil "wire coverage target" (fun () -> attributeOf callbackState "data-last-coverage-start") (String.IsNullOrWhiteSpace >> not)
-    let wireStart = Int64.Parse wireStartText
-    let wireCount = intAttribute callbackState "data-last-coverage-count"
-    require (wireStart = int64 (previewStart - 1)) $"preview/wire start mismatch: preview={previewStart}, wireOrdinal={wireStart}"
-    require (wireCount = 200) $"wire count changed: {wireCount}"
-    waitInt chartStack "data-visible-start" previewStart
-    waitInt chartStack "data-visible-end" (previewStart + wireCount - 1)
-    require (consoleErrors.Count = 0) ("browser console errors: " + String.concat " | " consoleErrors)
+            let resetFixture () =
+                page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
+                page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+                fixture.ClickAsync() |> awaitUnit
+                waitInt chartStack "data-loaded-bars" 900
+                waitInt chartStack "data-visible-start" 701
+                waitInt chartStack "data-visible-end" 900
+                waitUntil
+                    "coverage identity must settle"
+                    (fun () -> attributeOf chartStack "data-coverage-identity")
+                    ((=) "browser-demo:preview-release-parity")
+                |> ignore
+                waitUntil
+                    "overview source must be populated"
+                    (fun () -> intAttribute navigator "data-overview-source-count")
+                    (fun count -> count > 0)
+                |> ignore
+                waitUntil
+                    "navigator selection ratios must be non-empty"
+                    (fun () -> floatAttribute navigator "data-selection-right-ratio" - floatAttribute navigator "data-selection-left-ratio")
+                    (fun width -> width > 0.01f)
+                |> ignore
+                waitUntil
+                    "navigator selection rect must have body width"
+                    (fun () -> floatAttribute selection "width")
+                    (fun width -> width > 48.0f)
+                |> ignore
 
-    let screenshotPath = Path.Combine(outputDirectory, "preview-release-parity.png")
-    page.ScreenshotAsync(PageScreenshotOptions(Path = screenshotPath, FullPage = true)) |> awaitTask |> ignore
-    printfn "navigator-preview-release-parity PASS preview=%d wireOrdinal=%d count=%d screenshot=%s" previewStart wireStart wireCount screenshotPath
-finally
-    browser.CloseAsync() |> awaitUnit
-    playwright.Dispose()
+            let refreshDuringGesture () =
+                fixture.EvaluateAsync("element => element.click()") |> awaitTask |> ignore
+                waitInt chartStack "data-loaded-bars" 900
+                Thread.Sleep 100
+
+            let selectionGeometry () =
+                floatAttribute selection "x", floatAttribute selection "width"
+
+            let dragWithRerender targetTestId expectedMode firstDelta finalDelta =
+                resetFixture ()
+                let initial = selectionGeometry ()
+                let targetLocator = navigator.Locator($"[data-testid='{targetTestId}']")
+                waitUntil
+                    "semantic hit target must have width"
+                    (fun () ->
+                        let bounds = targetLocator.BoundingBoxAsync() |> awaitTask
+                        if isNull bounds then 0.0f else bounds.Width)
+                    (fun width -> width > 4.0f)
+                |> ignore
+                let target = boundingBox targetLocator
+                let startX = target.X + target.Width / 2.0f
+                let y = target.Y + target.Height / 2.0f
+                let hitInfo =
+                    targetLocator
+                        .EvaluateAsync<string>("element => { const bounds = element.getBoundingClientRect(); const hit = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2); return JSON.stringify({ targetX: bounds.left, targetWidth: bounds.width, targetMode: element.getAttribute('data-window-drag-mode') || '', targetPointerEvents: getComputedStyle(element).pointerEvents, hitTag: hit ? hit.tagName : '', hitTestId: hit ? (hit.getAttribute('data-testid') || '') : '', hitMode: hit ? (hit.getAttribute('data-window-drag-mode') || '') : '' }); }")
+                    |> awaitTask
+                require (hitInfo.Contains($"\"hitMode\":\"{expectedMode}\"")) $"semantic target is covered: expected={expectedMode}, info={hitInfo}"
+                page.Mouse.MoveAsync(startX, y) |> awaitUnit
+                page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+                waitUntil "semantic drag mode after pointerdown" (fun () -> attributeOf chartStack "data-drag-mode") ((=) expectedMode) |> ignore
+                page.Mouse.MoveAsync(startX + firstDelta, y, MouseMoveOptions(Steps = 6)) |> awaitUnit
+                waitUntil "preview must become visible" (fun () -> textOf range) (fun value -> value.Contains "Preview") |> ignore
+                refreshDuringGesture ()
+                let actualModeAfterRerender = attributeOf chartStack "data-drag-mode"
+                require (actualModeAfterRerender = expectedMode) $"drag mode changed after rerender: expected={expectedMode}, actual={actualModeAfterRerender}"
+                page.Mouse.MoveAsync(startX + finalDelta, y, MouseMoveOptions(Steps = 6)) |> awaitUnit
+                waitUntil "semantic drag mode after rerender move" (fun () -> attributeOf chartStack "data-drag-mode") ((=) expectedMode) |> ignore
+                Thread.Sleep 100
+                initial, selectionGeometry ()
+
+            let (leftInitialX, leftInitialWidth), (leftDraftX, leftDraftWidth) =
+                dragWithRerender "ta-overview-left-handle" "resize-left" 12.0f 28.0f
+            require (leftDraftX > leftInitialX + 1.0f) "left handle did not move the left boundary"
+            require (approximately 2.0 (leftDraftX + leftDraftWidth) (leftInitialX + leftInitialWidth)) "left handle changed the right boundary"
+            page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+
+            let (rightInitialX, rightInitialWidth), (rightDraftX, rightDraftWidth) =
+                dragWithRerender "ta-overview-right-handle" "resize-right" -12.0f -28.0f
+            require
+                (approximately 2.0 rightDraftX rightInitialX)
+                $"right handle changed the left boundary: initialX={rightInitialX}, draftX={rightDraftX}, initialWidth={rightInitialWidth}, draftWidth={rightDraftWidth}"
+            require (rightDraftX + rightDraftWidth < rightInitialX + rightInitialWidth - 1.0f) "right handle did not move the right boundary"
+            page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+
+            let (moveInitialX, moveInitialWidth), (moveDraftX, moveDraftWidth) =
+                dragWithRerender "ta-overview-move-hit" "move" -20.0f -40.0f
+            require (moveDraftX < moveInitialX - 1.0f) "body drag did not move the selection"
+            require (approximately 2.0 moveDraftWidth moveInitialWidth) "body drag changed the selection width"
+            page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+
+            let _, _ = dragWithRerender "ta-overview-move-hit" "move" -160.0f -420.0f
+            let previewText = textOf range
+            require (previewText.Contains "Preview") ("settled preview range is missing: " + previewText)
+            let previewStart = parsePreviewStart previewText
+            let actionCountBefore = intAttribute callbackState "data-callback-count"
+            page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+
+            let wireStartText = waitUntil "wire coverage target" (fun () -> attributeOf callbackState "data-last-coverage-start") (String.IsNullOrWhiteSpace >> not)
+            let wireStart = Int64.Parse wireStartText
+            let wireCount = intAttribute callbackState "data-last-coverage-count"
+            waitUntil "exactly one body action" (fun () -> intAttribute callbackState "data-callback-count") ((=) (actionCountBefore + 1)) |> ignore
+            require (wireStart = int64 (previewStart - 1)) $"preview/wire start mismatch: preview={previewStart}, wireOrdinal={wireStart}"
+            require (wireCount = 200) $"wire count changed: {wireCount}"
+            waitInt chartStack "data-visible-start" previewStart
+            waitInt chartStack "data-visible-end" (previewStart + wireCount - 1)
+            require (consoleErrors.Count = 0) ("browser console errors: " + String.concat " | " consoleErrors)
+
+            let screenshotPath = Path.Combine(outputDirectory, "preview-release-parity.png")
+            page.ScreenshotAsync(PageScreenshotOptions(Path = screenshotPath, FullPage = true)) |> awaitTask |> ignore
+            printfn "navigator-preview-release-parity PASS preview=%d wireOrdinal=%d count=%d actionCount=%d screenshot=%s" previewStart wireStart wireCount (actionCountBefore + 1) screenshotPath
+        finally
+            browser.CloseAsync() |> awaitUnit
+            playwright.Dispose()
+
+runTestsWithCLIArgs [] [||] tests |> exit

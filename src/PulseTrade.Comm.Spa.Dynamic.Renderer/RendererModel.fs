@@ -108,6 +108,10 @@ type TaVisibleWindow =
     { StartIndex: int
       Count: int }
 
+type TaResidentCoverageWindow =
+    { StartObservationOrdinal: int64
+      ObservationCount: int }
+
 type TaProjectionCommitKey =
     { Identity: RuntimeIdentity
       DocumentRevision: int64
@@ -2123,6 +2127,73 @@ module RendererModel =
         let next = clampWindow minimumCount maximumCount total draft
         next.StartIndex = viewportMaximumStart total next, next
 
+    let tryGlobalResidentWindow projection =
+        projection.GlobalOverview
+        |> Option.bind (fun overview ->
+            let residentEnd = overview.ResidentStartObservationOrdinal + int64 overview.ResidentObservationCount
+            if
+                overview.TotalObservationCount <= 0L
+                || overview.ResidentStartObservationOrdinal < 0L
+                || overview.ResidentObservationCount <= 0
+                || residentEnd > overview.TotalObservationCount
+            then
+                None
+            else
+                Some
+                    { StartObservationOrdinal = overview.ResidentStartObservationOrdinal
+                      ObservationCount = overview.ResidentObservationCount })
+
+    let globalResidentSelectionRatios (overview: TaGlobalCoverageOverview) window =
+        if overview.TotalObservationCount <= 0L || window.ObservationCount <= 0 then
+            0.0, 0.0
+        else
+            let total = float overview.TotalObservationCount
+            let left = float window.StartObservationOrdinal / total
+            let right = float (window.StartObservationOrdinal + int64 window.ObservationCount) / total
+            clamp 0.0 1.0 left, clamp 0.0 1.0 right
+
+    let previewGlobalResidentWindow totalObservationCount committed delta =
+        let count = max 0 committed.ObservationCount
+        let maximumStart = max 0L (totalObservationCount - int64 count)
+        { committed with
+            StartObservationOrdinal = max 0L (min maximumStart (committed.StartObservationOrdinal + delta)) }
+
+    let globalResidentDragDelta totalObservationCount trackWidth pointerStart pointerCurrent =
+        if totalObservationCount <= 0L || trackWidth <= 0.0 then
+            0L
+        else
+            Math.Round((pointerCurrent - pointerStart) / trackWidth * float totalObservationCount)
+            |> int64
+
+    let tryGlobalResidentRelocationIntent projection window =
+        projection.GlobalOverview
+        |> Option.bind (fun overview ->
+            let targetEnd = window.StartObservationOrdinal + int64 window.ObservationCount
+            if
+                window.ObservationCount <> overview.ResidentObservationCount
+                || window.StartObservationOrdinal < 0L
+                || targetEnd > overview.TotalObservationCount
+            then
+                None
+            else
+                TaLoadedCoverageCodec.tryResidentRelocationIntent
+                    (Some projection.CoverageRevision)
+                    (projection.QueryGeneration + 1L)
+                    window.StartObservationOrdinal
+                    window.ObservationCount)
+
+    let globalResidentProjectionMatches intent projection =
+        match intent.ExpectedCoverageRevision, intent.StartObservationOrdinal, projection.GlobalOverview with
+        | Some expectedRevision, Some targetStart, Some overview ->
+            projection.CoverageRevision > expectedRevision
+            && projection.QueryGeneration = intent.QueryGeneration
+            && overview.ResidentStartObservationOrdinal = targetStart
+            && overview.ResidentObservationCount = intent.ObservationCount
+        | _ -> false
+
+    let innerViewportAfterResidentRelocation residentObservationCount innerWindow =
+        clampWindow 1 Int32.MaxValue residentObservationCount innerWindow
+
     let documentMaximumVisibleBars fallbackMaximum (defaultView: Map<string, SduiValue>) =
         TaLoadedCoverageCodec.tryMaximumVisibleBars defaultView
         |> Option.defaultValue fallbackMaximum
@@ -2337,11 +2408,11 @@ module RendererModel =
                   SourceStartIndex = first.SourceStartIndex
                   SourceEndExclusive = last.SourceEndExclusive })
 
-    let overviewPointsForCoverage projection =
+    let overviewPointsForAnchors (anchors: TaOverviewAnchor array) =
         let scalar field fields =
             fields |> Map.tryFind field |> Option.bind (function SduiValue.Number value -> Some value | _ -> None)
 
-        projection.OverviewAnchors
+        anchors
         |> Array.mapi (fun index anchor -> index, anchor)
         |> Array.choose (fun (index, anchor) ->
             match anchor.Value with
@@ -2378,6 +2449,9 @@ module RendererModel =
                                   SourceStartIndex = index
                                   SourceEndExclusive = index + 1 })
             | _ -> None)
+
+    let overviewPointsForCoverage projection =
+        overviewPointsForAnchors projection.OverviewAnchors
 
     let tryOverviewTimeline projection =
         let parsed = projection.OverviewAnchors |> Array.map (fun anchor -> tryUtcTimestamp anchor.EventTimeUtc)
@@ -2420,6 +2494,10 @@ module RendererModel =
                             Some(float firstSlot / float overviewTimeline.Length, float lastExclusive / float overviewTimeline.Length)
                         | _ -> None
                     | _ -> None
+
+    let overviewSelectionRatiosForGlobalWindow projection (activeReferenceTimeline: string array) globalWindow =
+        tryLocalWindowForLoadedCoverage activeReferenceTimeline.Length projection globalWindow
+        |> Option.bind (overviewSelectionRatios projection activeReferenceTimeline)
 
     let selectionRatios total window =
         if total <= 0 || window.Count <= 0 then

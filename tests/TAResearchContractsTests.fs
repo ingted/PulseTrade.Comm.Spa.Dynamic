@@ -96,7 +96,8 @@ let tests =
                   ActiveDetail =
                     { StartObservationOrdinal = 999_750L
                       ObservationCount = 250
-                      BaseAxisRef = "axis.1k" } }
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
             let defaultView =
                 Map.empty
                 |> TaLoadedCoverageCodec.applyMaximumVisibleBars 250
@@ -137,6 +138,73 @@ let tests =
                     $"The document cap must fail closed before the renderer receives an oversized detail slice. Codes={codes}; Details={details}"
             | Ok _ -> failtest "An active detail larger than the document cap must not validate."
 
+        testCase "DYN-T-656 global overview and 4500 resident relocation are additive" <| fun _ ->
+            let legacyProjection =
+                { CoverageIdentity = "ES|1K|whole-series"
+                  CoverageRevision = 11L
+                  QueryGeneration = 9L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 3_000L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.1k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 1_500L
+                      ObservationCount = 700
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
+            let encodedLegacy = TaLoadedCoverageCodec.encode legacyProjection
+            let withoutGlobalOverview =
+                match encodedLegacy with
+                | SduiValue.Object fields -> SduiValue.Object(Map.remove "globalOverview" fields)
+                | _ -> failtest "Loaded coverage must encode as an object."
+            Expect.equal
+                (TaLoadedCoverageCodec.tryDecode (Map [ TaLoadedCoverageCodec.DefaultViewKey, withoutGlobalOverview ]))
+                (Ok(Some legacyProjection))
+                "A 0.2.2 payload without the additive field must decode to GlobalOverview=None."
+
+            let globalProjection =
+                { legacyProjection with
+                    TotalObservationCount = Some 20_000L
+                    GlobalOverview =
+                        Some
+                            { TotalObservationCount = 20_000L
+                              AxisRef = "axis.1k"
+                              Anchors =
+                                [| { ObservationOrdinal = 0L
+                                     EventTimeUtc = "2018-01-01T00:00:00Z"
+                                     Value = SduiValue.Number 100.0 }
+                                   { ObservationOrdinal = 19_999L
+                                     EventTimeUtc = "2026-12-31T23:59:00Z"
+                                     Value = SduiValue.Number 200.0 } |]
+                              ResidentStartObservationOrdinal = 10_000L
+                              ResidentObservationCount = 4_500 } }
+            Expect.equal
+                (TaLoadedCoverageCodec.tryDecode (TaLoadedCoverageCodec.apply globalProjection Map.empty))
+                (Ok(Some globalProjection))
+                "The complete-series overview and resident interval must round-trip."
+
+            let relocation =
+                TaLoadedCoverageCodec.tryResidentRelocationIntent (Some 11L) 10L 12_000L 4_500
+                |> Option.defaultWith (fun () -> failtest "A 4,500-observation resident relocation must be constructible.")
+            let request =
+                { RequestId = "resident-relocation"
+                  ExpectedDocumentRevision = Some 7L
+                  Action = SduiAction.ResidentCoverageChanged(identity.CanvasInstanceId, "price", relocation) }
+            Expect.isEmpty
+                (DynamicActionValidation.requestErrors request)
+                "Resident relocation must not inherit the 4,000-detail limit."
+            Expect.equal
+                (request |> BrowserRuntimeCodec.encodeActionRequest |> BrowserRuntimeCodec.decodeActionRequest)
+                (Ok request)
+                "The additive resident action must round-trip through the typed browser codec."
+            Expect.isNone
+                (TaLoadedCoverageCodec.tryResidentRelocationIntent (Some 11L) 10L -1L 4_500)
+                "A negative resident start must fail closed."
+            Expect.isNone
+                (TaLoadedCoverageCodec.tryResidentRelocationIntent (Some 11L) 10L 0L 0)
+                "A non-positive resident count must fail closed."
+
         testCase "DYN-T-648 loaded coverage dataRef atomically carries an independent 8000-anchor overview" <| fun _ ->
             let anchors count =
                 Array.init count (fun index ->
@@ -160,7 +228,8 @@ let tests =
                   ActiveDetail =
                     { StartObservationOrdinal = 0L
                       ObservationCount = 250
-                      BaseAxisRef = "axis.1k" } }
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
             let dataRef = "coverage.presentation"
             let dataRefView =
                 Map.empty
@@ -293,7 +362,8 @@ let tests =
                   ActiveDetail =
                     { StartObservationOrdinal = 100L
                       ObservationCount = 2
-                      BaseAxisRef = detailAxisRef } }
+                      BaseAxisRef = detailAxisRef }
+                  GlobalOverview = None }
             let stripe eventTime =
                 { StripeId = "signal-7"
                   EventTimeUtc = eventTime

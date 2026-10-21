@@ -59,6 +59,16 @@ module TaLoadedCoverageCodec =
                 "value", anchor.Value
             ])
 
+    let encodeGlobalOverview (overview: TaGlobalCoverageOverview) =
+        SduiValue.Object(
+            Map [
+                "totalObservationCount", invariantInt64 overview.TotalObservationCount
+                "axisRef", SduiValue.Text overview.AxisRef
+                "anchors", overview.Anchors |> Array.map encodeAnchor |> SduiValue.Array
+                "residentStartObservationOrdinal", invariantInt64 overview.ResidentStartObservationOrdinal
+                "residentObservationCount", SduiValue.Number(float overview.ResidentObservationCount)
+            ])
+
     let encode projection =
         SduiValue.Object(
             Map [
@@ -81,6 +91,10 @@ module TaLoadedCoverageCodec =
                             "observationCount", SduiValue.Number(float projection.ActiveDetail.ObservationCount)
                             "baseAxisRef", SduiValue.Text projection.ActiveDetail.BaseAxisRef
                         ])
+                "globalOverview",
+                    projection.GlobalOverview
+                    |> Option.map encodeGlobalOverview
+                    |> Option.defaultValue SduiValue.Null
             ])
 
     let apply projection values = values |> Map.add DefaultViewKey (encode projection)
@@ -199,6 +213,29 @@ module TaLoadedCoverageCodec =
         | Some(SduiValue.Array values) -> values |> Array.mapi decoder |> sequenceResults
         | _ -> Error [ error "invalid-loaded-coverage" field "An array is required." ]
 
+    let decodeGlobalOverview fields =
+        match Map.tryFind "globalOverview" fields with
+        | None
+        | Some SduiValue.Null -> Ok None
+        | Some(SduiValue.Object overview) ->
+            match
+                requiredInt64 "totalObservationCount" overview,
+                requiredText "axisRef" overview,
+                decodeArray "anchors" decodeAnchor overview,
+                requiredInt64 "residentStartObservationOrdinal" overview,
+                requiredInt "residentObservationCount" overview
+            with
+            | Ok total, Ok axisRef, Ok anchors, Ok residentStart, Ok residentCount ->
+                Ok(
+                    Some
+                        { TotalObservationCount = total
+                          AxisRef = axisRef
+                          Anchors = anchors
+                          ResidentStartObservationOrdinal = residentStart
+                          ResidentObservationCount = residentCount })
+            | _ -> Error [ error "invalid-loaded-coverage" "globalOverview" "A valid global overview object is required." ]
+        | Some _ -> Error [ error "invalid-loaded-coverage" "globalOverview" "A global overview object or null is required." ]
+
     let validationErrors projection =
         [ if String.IsNullOrWhiteSpace projection.CoverageIdentity then
               yield error "invalid-loaded-coverage" "coverageIdentity" "CoverageIdentity is required."
@@ -216,6 +253,27 @@ module TaLoadedCoverageCodec =
               yield error "invalid-loaded-coverage" "activeDetail.observationCount" $"Active detail must contain 1..{MaximumActiveDetailBars} observations."
           if String.IsNullOrWhiteSpace projection.ActiveDetail.BaseAxisRef then
               yield error "invalid-loaded-coverage" "activeDetail.baseAxisRef" "BaseAxisRef is required."
+          match projection.GlobalOverview with
+          | None -> ()
+          | Some overview ->
+              if overview.TotalObservationCount <= 0L then
+                  yield error "invalid-global-overview" "globalOverview.totalObservationCount" "The complete observation count must be positive."
+              if String.IsNullOrWhiteSpace overview.AxisRef then
+                  yield error "invalid-global-overview" "globalOverview.axisRef" "AxisRef is required."
+              if overview.Anchors.Length > MaximumOverviewAnchors then
+                  yield error "limit-global-overview" "globalOverview.anchors" $"At most {MaximumOverviewAnchors} anchors are allowed."
+              if overview.ResidentStartObservationOrdinal < 0L || overview.ResidentObservationCount <= 0 then
+                  yield error "invalid-global-overview" "globalOverview.resident" "The resident interval requires a non-negative start and positive count."
+              if overview.ResidentStartObservationOrdinal + int64 overview.ResidentObservationCount > overview.TotalObservationCount then
+                  yield error "invalid-global-overview" "globalOverview.resident" "The resident interval exceeds the complete observation domain."
+              for index, anchor in overview.Anchors |> Array.indexed do
+                  if anchor.ObservationOrdinal < 0L || anchor.ObservationOrdinal >= overview.TotalObservationCount || String.IsNullOrWhiteSpace anchor.EventTimeUtc then
+                      yield error "invalid-global-overview" $"globalOverview.anchors[{index}]" "Global anchors require an in-range ordinal and UTC event time."
+              for index in 1 .. overview.Anchors.Length - 1 do
+                  if overview.Anchors[index].ObservationOrdinal <= overview.Anchors[index - 1].ObservationOrdinal then
+                      yield error "invalid-global-overview" $"globalOverview.anchors[{index}]" "Global anchor ordinals must increase."
+                  if overview.Anchors[index].EventTimeUtc.CompareTo(overview.Anchors[index - 1].EventTimeUtc) <= 0 then
+                      yield error "invalid-global-overview" $"globalOverview.anchors[{index}].eventTimeUtc" "Global anchor event times must increase."
           match projection.Completeness, projection.TotalObservationCount with
           | TaCoverageCompleteness.Complete, Some total when total > 0L -> ()
           | TaCoverageCompleteness.Complete, _ ->
@@ -266,9 +324,10 @@ module TaLoadedCoverageCodec =
                 requiredText "completeness" fields,
                 decodeArray "segments" decodeSegment fields,
                 decodeArray "overviewAnchors" decodeAnchor fields,
+                decodeGlobalOverview fields,
                 Map.tryFind "activeDetail" fields
             with
-            | Ok schema, Ok identity, Ok revision, Ok generation, Ok completeness, Ok segments, Ok anchors, Some(SduiValue.Object active) when schema = Schema ->
+            | Ok schema, Ok identity, Ok revision, Ok generation, Ok completeness, Ok segments, Ok anchors, Ok globalOverview, Some(SduiValue.Object active) when schema = Schema ->
                 match requiredInt64 "startObservationOrdinal" active, requiredInt "observationCount" active, requiredText "baseAxisRef" active with
                 | Ok startOrdinal, Ok count, Ok baseAxisRef ->
                     let completenessValue =
@@ -304,7 +363,8 @@ module TaLoadedCoverageCodec =
                               ActiveDetail =
                                 { StartObservationOrdinal = startOrdinal
                                   ObservationCount = count
-                                  BaseAxisRef = baseAxisRef } }
+                                  BaseAxisRef = baseAxisRef }
+                              GlobalOverview = globalOverview }
                         match validationErrors projection with
                         | [] -> Ok(Some projection)
                         | errors -> Error errors
@@ -312,7 +372,7 @@ module TaLoadedCoverageCodec =
                     | _, Error totalError, _ -> Error [ totalError ]
                     | _, _, Error overviewAxisRefError -> Error [ overviewAxisRefError ]
                 | _ -> Error [ error "invalid-loaded-coverage" "activeDetail" "A valid active-detail object is required." ]
-            | Ok schema, _, _, _, _, _, _, _ when schema <> Schema ->
+            | Ok schema, _, _, _, _, _, _, _, _ when schema <> Schema ->
                 Error [ error "unsupported-loaded-coverage" "schema" $"Unsupported loaded coverage schema `{schema}`." ]
             | _ -> Error [ error "invalid-loaded-coverage" DefaultViewKey "The loaded coverage projection is malformed." ]
         | Some _ -> Error [ error "invalid-loaded-coverage" DefaultViewKey "The loaded coverage projection must be an object." ]
@@ -347,6 +407,21 @@ module TaLoadedCoverageCodec =
                   StartObservationOrdinal = startOrdinal
                   ObservationCount = observationCount
                   Direction = direction
+                  RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds }
+
+    let tryResidentRelocationIntent expectedRevision queryGeneration startOrdinal observationCount =
+        if queryGeneration < 0L
+           || (expectedRevision |> Option.exists (fun value -> value < 0L))
+           || startOrdinal < 0L
+           || observationCount <= 0 then
+            None
+        else
+            Some
+                { ExpectedCoverageRevision = expectedRevision
+                  QueryGeneration = queryGeneration
+                  StartObservationOrdinal = Some startOrdinal
+                  ObservationCount = observationCount
+                  Direction = None
                   RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds }
 
     let tryProviderOpenEarlierWindowIntent expectedRevision queryGeneration observationCount =

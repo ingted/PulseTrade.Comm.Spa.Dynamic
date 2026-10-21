@@ -389,7 +389,8 @@ module Client =
           ActiveDetail =
             { StartObservationOrdinal = int64 startIndex
               ObservationCount = count
-              BaseAxisRef = "axis.1k" } }
+              BaseAxisRef = "axis.1k" }
+          GlobalOverview = None }
 
     let coverageProjection coverageRevision queryGeneration startIndex count =
         coverageProjectionFor 500 coverageRevision queryGeneration startIndex count
@@ -1020,10 +1021,11 @@ module Client =
             | Some document ->
                 authoritativeGeneration <- authoritativeGeneration + 1L
                 let totalCount = 900
-                let startIndex = 700
-                let count = 200
+                let residentStartIndex = 500
+                let residentCount = 400
+                let visibleCount = 200
                 let projection =
-                    { coverageProjectionFor totalCount 1L 1L startIndex count with
+                    { coverageProjectionFor totalCount 1L 1L residentStartIndex residentCount with
                         CoverageIdentity = "browser-demo:preview-release-parity" }
                 runtimeState.Value <-
                     { current with
@@ -1032,10 +1034,10 @@ module Client =
                                 { document with
                                     DefaultView =
                                         document.DefaultView
-                                        |> TaLoadedCoverageCodec.applyMaximumVisibleBars count
+                                        |> TaLoadedCoverageCodec.applyMaximumVisibleBars visibleCount
                                         |> TaLoadedCoverageCodec.applyDataRef coverageProjectionDataRef }
                         Data =
-                            coverageFixtureDataFor totalCount startIndex count
+                            coverageFixtureDataFor totalCount residentStartIndex residentCount
                             |> Map.add coverageProjectionDataRef (TaLoadedCoverageCodec.encode projection)
                         DocumentRevision = current.DocumentRevision + 1L
                         DataRevision = current.DataRevision + 1L

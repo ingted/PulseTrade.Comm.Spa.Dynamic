@@ -684,12 +684,6 @@ module TaWorkspaceRenderer =
         let selectionRightX = geometryText (fun (selectionX, selectionWidth) -> selectionX + selectionWidth)
         let leftHandleX = geometryText (fun (selectionX, _) -> max 0.0 (min (width - handleWidth) (selectionX - handleWidth / 2.0)))
         let rightHandleX = geometryText (fun (selectionX, selectionWidth) -> max 0.0 (min (width - handleWidth) (selectionX + selectionWidth - handleWidth / 2.0)))
-        let moveHitGeometry ratios =
-            let selectionX, selectionWidth = selectionGeometry ratios
-            let inset = min handleWidth (selectionWidth / 2.0)
-            selectionX + inset, max 0.0 (selectionWidth - inset * 2.0)
-        let moveHitX = geometryText (moveHitGeometry >> fst)
-        let moveHitWidth = geometryText (moveHitGeometry >> snd)
         let mutable latestSelectionRatios = 0.0, 0.0
         let observedSelectionWindow =
             selectionWindow
@@ -839,6 +833,12 @@ module TaWorkspaceRenderer =
                 Attr.Dynamic "x" selectionX; svgAttr "y" "1"; Attr.Dynamic "width" selectionWidth; svgAttr "height" "80"
                 svgAttr "fill" palette.OverviewSelection; svgAttr "stroke" "none"; svgAttr "pointer-events" "none"
             ] []
+            yield svgElement "rect" [
+                Attr.Create "data-testid" "ta-overview-move-hit"
+                Attr.Create "data-window-drag-mode" TaWindowDrag.Move
+                Attr.Dynamic "x" selectionX; svgAttr "y" "0"; Attr.Dynamic "width" selectionWidth; svgAttr "height" "82"
+                svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"; svgAttr "style" "cursor:grab;"
+            ] []
             yield svgElement "line" [
                 Attr.Create "data-testid" "ta-overview-left-handle-visual"
                 Attr.Create "data-stroke-width-css-pixels" "2"
@@ -850,8 +850,9 @@ module TaWorkspaceRenderer =
             ] []
             yield svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-left-handle"
+                Attr.Create "data-window-drag-mode" TaWindowDrag.ResizeLeft
                 Attr.Dynamic "x" leftHandleX; svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
-                svgAttr "fill" "transparent"; svgAttr "pointer-events" "none"; svgAttr "style" "cursor:ew-resize;"
+                svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"; svgAttr "style" "cursor:ew-resize;"
             ] []
             yield svgElement "line" [
                 Attr.Create "data-testid" "ta-overview-right-handle-visual"
@@ -864,13 +865,9 @@ module TaWorkspaceRenderer =
             ] []
             yield svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-right-handle"
+                Attr.Create "data-window-drag-mode" TaWindowDrag.ResizeRight
                 Attr.Dynamic "x" rightHandleX; svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
-                svgAttr "fill" "transparent"; svgAttr "pointer-events" "none"; svgAttr "style" "cursor:ew-resize;"
-            ] []
-            yield svgElement "rect" [
-                Attr.Create "data-testid" "ta-overview-move-hit"
-                Attr.Dynamic "x" moveHitX; svgAttr "y" "0"; Attr.Dynamic "width" moveHitWidth; svgAttr "height" "82"
-                svgAttr "fill" "transparent"; svgAttr "pointer-events" "none"; svgAttr "style" "cursor:grab;"
+                svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"; svgAttr "style" "cursor:ew-resize;"
             ] []
             yield
                 stripeTooltip.View
@@ -2833,7 +2830,9 @@ module TaWorkspaceRenderer =
                 setDragDiagnostic "data-drag-last-delta" "0"
                 setDragDiagnostic "data-drag-outcome" "started"
 
-                if not preparedRowsReady.Value || localViewportDisabled runtimeState.Value.Poll then
+                if finishNavigatorDrag.IsSome then
+                    setDragDiagnostic "data-drag-outcome" "already-active"
+                elif not preparedRowsReady.Value || localViewportDisabled runtimeState.Value.Poll then
                     setDragDiagnostic "data-drag-outcome" "disabled"
                 else
                     let bounds = navigatorRoot.GetBoundingClientRect()
@@ -2853,6 +2852,18 @@ module TaWorkspaceRenderer =
                         |> Option.defaultValue (localTotal, localCommitted)
                     let pointerX = float event.ClientX - bounds.Left
                     let ratios = navigatorRatios localCommitted
+                    let eventTarget: Element = JS.Get "target" rawEvent
+                    let semanticDrag =
+                        if isNull eventTarget then None
+                        else
+                            match eventTarget.GetAttribute("data-window-drag-mode") with
+                            | TaWindowDrag.Move -> Some TaWindowDrag.Move
+                            | TaWindowDrag.ResizeLeft -> Some TaWindowDrag.ResizeLeft
+                            | TaWindowDrag.ResizeRight -> Some TaWindowDrag.ResizeRight
+                            | _ -> None
+                    let resolvedDrag =
+                        semanticDrag
+                        |> Option.orElseWith (fun () -> RendererModel.navigatorDragMode bounds.Width 24.0 ratios pointerX)
                     setDragDiagnostic "data-drag-runtime-document-revision" (string runtimeState.Value.DocumentRevision)
                     setDragDiagnostic "data-drag-runtime-data-revision" (string runtimeState.Value.DataRevision)
                     setDragDiagnostic "data-drag-prepared-reference-count" (string localTotal)
@@ -2864,12 +2875,13 @@ module TaWorkspaceRenderer =
                     setDragDiagnostic "data-drag-pointer-x" (string pointerX)
                     setDragDiagnostic "data-drag-ratio-left" (string (fst ratios))
                     setDragDiagnostic "data-drag-ratio-right" (string (snd ratios))
+                    setDragDiagnostic "data-drag-hit-source" (if semanticDrag.IsSome then "semantic-target" else "geometry-fallback")
                     renderedNavigatorDraft <- None
                     draftWindow.Value <- None
                     setDragDiagnostic "data-drag-domain" (if loadedDragDomain.IsSome then "global-loaded" else "active-detail")
                     setDragDiagnostic "data-drag-domain-count" (string total)
 
-                    match RendererModel.navigatorDragMode bounds.Width 24.0 ratios pointerX with
+                    match resolvedDrag with
                     | None ->
                         setDragDiagnostic "data-drag-mode" "none"
                         setDragDiagnostic "data-drag-outcome" "outside-selection"
@@ -2888,8 +2900,6 @@ module TaWorkspaceRenderer =
                         let mutable finished = false
                         let mutable pendingDraft: TaVisibleWindow option = None
                         let mutable draftFrameScheduled = false
-                        let pointerId: int = JS.Get "pointerId" rawEvent
-                        let mutable documentFallback = false
 
                         let publishDraftOnFrame () =
                             if not finished then
@@ -2907,15 +2917,9 @@ module TaWorkspaceRenderer =
                                 JS.RequestAnimationFrame(fun _ -> publishDraftOnFrame ()) |> ignore
 
                         let cleanup () =
-                            if documentFallback then
-                                if not (isNull moveHandler) then JS.Document.RemoveEventListener("pointermove", moveHandler)
-                                if not (isNull upHandler) then JS.Document.RemoveEventListener("pointerup", upHandler)
-                                if not (isNull cancelHandler) then JS.Document.RemoveEventListener("pointercancel", cancelHandler)
-                            else
-                                if not (isNull moveHandler) then navigatorRoot.RemoveEventListener("pointermove", moveHandler)
-                                if not (isNull upHandler) then navigatorRoot.RemoveEventListener("pointerup", upHandler)
-                                if not (isNull cancelHandler) then navigatorRoot.RemoveEventListener("pointercancel", cancelHandler)
-                                try navigatorRoot.ReleasePointerCapture(pointerId) with _ -> ()
+                            if not (isNull moveHandler) then JS.Document.RemoveEventListener("pointermove", moveHandler)
+                            if not (isNull upHandler) then JS.Document.RemoveEventListener("pointerup", upHandler)
+                            if not (isNull cancelHandler) then JS.Document.RemoveEventListener("pointercancel", cancelHandler)
                             let restoredCursor = if drag = TaWindowDrag.Move then "grab" else "ew-resize"
                             (navigatorRoot |> As<HTMLElement>).Style.SetProperty("cursor", restoredCursor)
                             JS.RequestAnimationFrame(fun _ ->
@@ -3025,18 +3029,10 @@ module TaWorkspaceRenderer =
                                     cleanup ())
 
                         finishNavigatorDrag <- Some finish
-                        try
-                            navigatorRoot.SetPointerCapture(pointerId)
-                            setDragDiagnostic "data-drag-capture" "pointer"
-                            navigatorRoot.AddEventListener("pointermove", moveHandler)
-                            navigatorRoot.AddEventListener("pointerup", upHandler)
-                            navigatorRoot.AddEventListener("pointercancel", cancelHandler)
-                        with _ ->
-                            documentFallback <- true
-                            setDragDiagnostic "data-drag-capture" "document-fallback"
-                            JS.Document.AddEventListener("pointermove", moveHandler)
-                            JS.Document.AddEventListener("pointerup", upHandler)
-                            JS.Document.AddEventListener("pointercancel", cancelHandler)
+                        setDragDiagnostic "data-drag-capture" "document"
+                        JS.Document.AddEventListener("pointermove", moveHandler)
+                        JS.Document.AddEventListener("pointerup", upHandler)
+                        JS.Document.AddEventListener("pointercancel", cancelHandler)
 
         let finishNavigatorDragFromElement (event: Event) =
             event.PreventDefault()
@@ -4381,7 +4377,11 @@ module TaWorkspaceRenderer =
                                                         | Some globalDraft, Some projection ->
                                                             let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
                                                             if domainCount > 0L && domainCount <= int64 Int32.MaxValue then
-                                                                RendererModel.selectionRatios (int domainCount) globalDraft
+                                                                RendererModel.overviewSelectionRatiosForGlobalWindow
+                                                                    projection
+                                                                    currentReferenceTimeline
+                                                                    globalDraft
+                                                                |> Option.defaultValue (RendererModel.selectionRatios (int domainCount) globalDraft)
                                                             else
                                                                 RendererModel.selectionRatios currentReferenceLength currentVisibleWindow
                                                         | _ ->

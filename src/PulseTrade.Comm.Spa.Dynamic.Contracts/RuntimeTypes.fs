@@ -304,6 +304,13 @@ type TaActiveDetailProjection =
       ObservationCount: int
       BaseAxisRef: string }
 
+type TaGlobalCoverageOverview =
+    { TotalObservationCount: int64
+      AxisRef: string
+      Anchors: TaOverviewAnchor array
+      ResidentStartObservationOrdinal: int64
+      ResidentObservationCount: int }
+
 type TaLoadedCoverageProjection =
     { CoverageIdentity: string
       CoverageRevision: int64
@@ -313,7 +320,8 @@ type TaLoadedCoverageProjection =
       Segments: TaLoadedCoverageSegment array
       OverviewAxisRef: string
       OverviewAnchors: TaOverviewAnchor array
-      ActiveDetail: TaActiveDetailProjection }
+      ActiveDetail: TaActiveDetailProjection
+      GlobalOverview: TaGlobalCoverageOverview option }
 
 type TaWorkspaceDocument =
     { WorkspaceId: string
@@ -458,6 +466,7 @@ type SduiAction =
     | ChangeTaQuery of CanvasInstanceId * TaQueryChange
     | SharedCursorChanged of CanvasInstanceId * SharedCursorChange
     | VisibleRangeChanged of CanvasInstanceId * VisibleRangeChange
+    | ResidentCoverageChanged of CanvasInstanceId * baseRowId: string * relocation: TaCoverageWindowIntent
     | PollDelta of CanvasInstanceId * afterDataRevision: int64
     | RequestFullSnapshot of CanvasInstanceId * reasonCode: string
 

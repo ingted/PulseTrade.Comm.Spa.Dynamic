@@ -419,6 +419,16 @@ let tests =
             Expect.isTrue followLatest "a full-range window still ends at the loaded tail"
             Expect.equal (RendererModel.selectionRatios 2000 committedFull) (0.0, 1.0) "full range occupies the complete overview"
 
+        testCase "navigator gesture ownership remains stable across a 4500-observation resident domain" <| fun _ ->
+            let committed = { StartIndex = 1700; Count = 1000 }
+            let left = RendererModel.previewWindowBounds 12 4500 4500 committed TaWindowDrag.ResizeLeft -300
+            let right = RendererModel.previewWindowBounds 12 4500 4500 committed TaWindowDrag.ResizeRight 300
+            let moved = RendererModel.previewWindowBounds 12 4500 4500 committed TaWindowDrag.Move 300
+
+            Expect.equal left { StartIndex = 1400; Count = 1300 } "Left ownership changes only the left bound."
+            Expect.equal right { StartIndex = 1700; Count = 1300 } "Right ownership changes only the right bound."
+            Expect.equal moved { StartIndex = 2000; Count = 1000 } "Body ownership moves the selection without changing width."
+
         testCase "RFC-0031 cross-axis overview uses event time and all gestures emit boundary intent" <| fun _ ->
             let start = DateTimeOffset(2026, 9, 29, 0, 0, 0, TimeSpan.Zero)
             let time minutes = start.AddMinutes(float minutes).ToString("O")
@@ -439,7 +449,8 @@ let tests =
                   ActiveDetail =
                     { StartObservationOrdinal = 0L
                       ObservationCount = 10
-                      BaseAxisRef = "axis.1k" } }
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
             let detailTimeline = [| for minute in 70 .. 79 -> time minute |]
 
             match RendererModel.overviewSelectionRatios projection detailTimeline { StartIndex = 0; Count = 10 } with
@@ -447,6 +458,21 @@ let tests =
                 Expect.floatClose Accuracy.high left 0.25 "The 1K detail head maps to its preceding 60K overview candle."
                 Expect.floatClose Accuracy.high right 0.5 "The visible 1K interval occupies exactly one 60K overview candle."
             | None -> failtest "Cross-axis selection must resolve by canonical event time."
+            let residentProjection =
+                { projection with
+                    TotalObservationCount = Some 900L
+                    ActiveDetail =
+                        { projection.ActiveDetail with
+                            StartObservationOrdinal = 700L } }
+            match
+                RendererModel.overviewSelectionRatiosForGlobalWindow
+                    residentProjection
+                    detailTimeline
+                    { StartIndex = 700; Count = 5 }
+            with
+            | Some(left, _) ->
+                Expect.floatClose Accuracy.high left 0.25 "A right-handle draft must keep the committed timestamp-mapped left boundary."
+            | None -> failtest "A resident global draft must map through the canonical overview timeline."
             Expect.equal
                 (RendererModel.eventTimeSlot (RendererModel.tryOverviewTimeline projection |> Option.defaultValue [||]) (time 130))
                 (Some 2)
@@ -516,7 +542,8 @@ let tests =
                   ActiveDetail =
                     { StartObservationOrdinal = 0L
                       ObservationCount = 3
-                      BaseAxisRef = "axis.1k" } }
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
             let points = RendererModel.overviewPointsForCoverage projection
             Expect.equal points.Length 3 "OHLC, OC and scalar anchors all remain candlesticks."
             Expect.equal (points[0].Open, points[0].High, points[0].Low, points[0].Close) (100.0, Some 104.0, Some 98.0, 103.0) "OHLC remains exact."
@@ -613,7 +640,8 @@ let tests =
                   ActiveDetail =
                     { StartObservationOrdinal = 999_750L
                       ObservationCount = 250
-                      BaseAxisRef = "axis.1k" } }
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
             let defaultView =
                 Map.empty
                 |> TaLoadedCoverageCodec.applyMaximumVisibleBars 250
@@ -693,7 +721,8 @@ let tests =
                   ActiveDetail =
                     { StartObservationOrdinal = 700L
                       ObservationCount = 200
-                      BaseAxisRef = "axis.detail" } }
+                      BaseAxisRef = "axis.detail" }
+                  GlobalOverview = None }
 
             let _, globalCount, committed =
                 RendererModel.coverageNavigatorWindow 200 { StartIndex = 0; Count = 200 } projection
@@ -1186,7 +1215,8 @@ let tests =
                   ActiveDetail =
                     { StartObservationOrdinal = activeStart
                       ObservationCount = 250
-                      BaseAxisRef = "axis.1k" } }
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
             let document coverage =
                 { WorkspaceId = "semantic-shell"
                   Title = "Semantic shell"
@@ -2178,6 +2208,32 @@ let tests =
 
             for forbidden in [ "JS.Inline"; "JavaScriptExport"; "<script"; "eval(" ] do
                 Expect.isFalse (source.Contains(forbidden, StringComparison.Ordinal)) ("forbidden source escape hatch: " + forbidden)
+
+        testCase "navigator semantic hit targets survive reactive SVG replacement" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+
+            for required in
+                [ "Attr.Create \"data-window-drag-mode\" TaWindowDrag.ResizeLeft"
+                  "Attr.Create \"data-window-drag-mode\" TaWindowDrag.ResizeRight"
+                  "Attr.Create \"data-window-drag-mode\" TaWindowDrag.Move"
+                  "Attr.Dynamic \"x\" selectionX; svgAttr \"y\" \"0\"; Attr.Dynamic \"width\" selectionWidth"
+                  "if finishNavigatorDrag.IsSome then"
+                  "JS.Document.AddEventListener(\"pointermove\", moveHandler)"
+                  "JS.Document.AddEventListener(\"pointerup\", upHandler)"
+                  "JS.Document.AddEventListener(\"pointercancel\", cancelHandler)" ] do
+                Expect.stringContains source required ("missing navigator lifetime contract: " + required)
+
+            let moveHitIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-move-hit\"", StringComparison.Ordinal)
+            let leftHandleIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-left-handle\"", StringComparison.Ordinal)
+            let rightHandleIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-right-handle\"", StringComparison.Ordinal)
+            Expect.isGreaterThan moveHitIndex -1 "The move hit target must exist."
+            Expect.isLessThan moveHitIndex leftHandleIndex "The left handle must win SVG hit-test z-order."
+            Expect.isLessThan moveHitIndex rightHandleIndex "The right handle must win SVG hit-test z-order."
+
+            Expect.isFalse
+                (source.Contains("navigatorRoot.AddEventListener(\"pointermove\", moveHandler)", StringComparison.Ordinal))
+                "An active gesture must not depend on the replaceable SVG root."
     ]
 
 [<EntryPoint>]

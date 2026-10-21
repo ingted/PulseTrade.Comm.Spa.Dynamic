@@ -1,0 +1,28 @@
+# RFC-PTCS-DYNAMIC-0036 global resident navigator
+
+## Pre-work plan
+
+- Background: Daedalus and Aster accepted an additive whole-series navigator contract after Renderer/Client 0.2.2 acceptance.
+- Goal: add generic whole-series projection and resident relocation action without changing existing behavior when `GlobalOverview=None`.
+- Facts: BaseRowId stays on the action; relocation intent carries only revision, generation, start ordinal, and count; inner viewport preserves width and resident-relative offset.
+- 假設：reactive SVG replacement 是 active gesture ownership 丟失的共同原因；semantic hit target 與 document-level listeners 可讓 ownership 跨 replacement 維持到唯一 terminal event。
+- Scope: owner Contracts, Renderer, Interactive.Client, focused Expecto tests, RFC/current SA/SD/WBS/Test, README/DevLog, package publication after commit.
+- Owner boundary: do not modify Research host, port 18884, or Daedalus deployment.
+- Acceptance: `GlobalOverview=None` remains byte/behavior compatible; drag updates only global draft; one drop emits one action; matching revision/generation settles; stale/conflict rolls back exactly once; 4500 resident count is not clamped by the 4000 detail limit.
+- Risk: wire compatibility and accidental coupling to inner viewport limits.
+- Stop condition: contract ambiguity, failing baseline unrelated to this slice, or Daedalus revises the accepted cross-owner contract.
+
+## Operations
+
+- Contract alignment received through COMM message `msg-fsi-62144c700c9f4c2a91e7544905b60392`; acknowledgement sent as `msg-fsi-eceff933a38346c882e56c84853317bb`.
+- Added accepted RFC doc/RFC/RFC-PTCS-DYNAMIC-0036.global-resident-navigator.md; source remains unchanged.
+
+- Priority insertion: Daedalus P0 msg-fsi-7abd98ca16ef47b7ad0f131c22f441ce; paused RFC-0036 Renderer/UI after Contracts 50/50. Memo: AgentPlanMemo/memo.20261021205022-01.md.
+
+- Began P0 hypothesis: log/20261021/20261021205500_issue_navigator_gesture_ownership.hypothesis.md.
+
+- P0 source correction completed before resuming RFC-0036 UI: semantic SVG hit targets, document-scoped active listeners, resident global-draft timestamp mapping, and selection-owned body hit geometry with edge-handle z-order.
+- Contracts additive work remains at Expecto 50/50; Renderer focused suite passed 68/68 after the P0 corrections.
+- Full local WebSharper package chain was rebuilt with isolated feed/cache. Ordinary same-version build reused stale JavaScript metadata, so canonical local verification used `Rebuild` for Renderer, Interactive.Client, and BrowserDemo.
+- Browser owner gate passed 1/1: left/right/body ownership survived reactive refresh; resident body width stayed fixed; boundary Preview=431 matched wire ordinal=430/count=200; actionCount=1; console errors=0. Evidence screenshot is temporary at temp/agent.aster/global-navigator/playwright/preview-release-parity.png.
+- Source commit/push, official package publication, and Daedalus formal consumer acceptance remain pending.
