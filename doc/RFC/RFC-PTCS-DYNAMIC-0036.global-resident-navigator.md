@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0036 Global Resident Navigator
 
 - ID: RFC-PTCS-DYNAMIC-0036
-- Status: Accepted / owner replacement verified; consumer validation pending
+- Status: Accepted / owner implementation in progress; package and browser validation blocked
 - Date: 2026-10-21
 - Owners: PTCS.Dynamic Renderer / Aster; Research host consumer / Daedalus
 - Related: RFC-PTCS-DYNAMIC-0032, RFC-PTCS-DYNAMIC-0033, RFC-PTCS-DYNAMIC-0034
@@ -72,6 +72,13 @@ While a remote coverage action awaits its response or matching projection, the r
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.
 - Research host owns whole-series anchors, durable relocation authority, resident materialization, and derived-series shared-axis updates.
+
+## Current owner state (2026-10-22)
+
+- Contracts and renderer source now contain the additive action allowlist, independent move-only global strip, local draft/pending settlement, and a BrowserDemo 10,000-total/1,500-resident fixture. Contracts Expecto passes 51/51 and Renderer model/source-contract Expecto passes 71/71.
+- The first attempted `0.1.37 -> 0.2.9 -> 0.2.9` artifacts are retired: `GeneratePackageOnBuild=true` caused direct `dotnet pack` to reuse an older Release DLL, so those packages do not contain this UI.
+- Source candidates are Contracts `0.1.38`, Renderer `0.2.10`, and Interactive.Client `0.2.10`. Contracts `0.1.38` fresh-build/local-first/publish passed. Renderer fresh build currently stops before package creation because an abnormal, unreadable `src/PulseTrade.Comm.Spa.Dynamic.Renderer/websharper.log` causes `wsfsc` to exit with `-532462766`; the file requires an elevated exact-path deletion. Browser E2E and consumer handoff remain pending until that blocker is removed.
+- Existing `0.2.8` remains the valid chained-gesture release and does not contain the global strip.
 
 ## Acceptance
 

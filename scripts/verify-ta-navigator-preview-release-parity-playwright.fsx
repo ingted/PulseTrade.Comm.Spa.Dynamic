@@ -305,6 +305,73 @@ let tests =
             let screenshotPath = Path.Combine(outputDirectory, "preview-release-parity.png")
             page.ScreenshotAsync(PageScreenshotOptions(Path = screenshotPath, FullPage = true)) |> awaitTask |> ignore
             printfn "navigator-preview-release-parity PASS preview=%d wireOrdinal=%d count=%d actionCount=%d screenshot=%s" previewStart wireStart wireCount (actionCountBefore + 1) screenshotPath
+
+            let globalFixture = page.Locator("[data-testid='ta-demo-global-coverage']")
+            globalFixture.ClickAsync() |> awaitUnit
+            let globalWrapper = chartStack.Locator("[data-testid='ta-global-overview-with-axis']")
+            let globalNavigator = globalWrapper.Locator("[data-testid='ta-global-overview-navigator']")
+            let globalSelection = globalNavigator.Locator("[data-testid='ta-global-overview-selection']")
+            let globalMoveTarget = globalNavigator.Locator("[data-testid='ta-global-overview-move-hit']")
+            let innerSelection = chartStack.Locator("[data-testid='ta-overview-selection']")
+            globalWrapper.WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit
+            waitInt globalWrapper "data-total-observation-count" 10000
+            waitInt globalWrapper "data-resident-start-observation-ordinal" 3000
+            waitInt globalWrapper "data-resident-observation-count" 1500
+            require (globalNavigator.Locator("[data-testid='ta-global-overview-left-handle']").CountAsync() |> awaitTask = 0) "global navigator unexpectedly exposes a left resize handle"
+            require (globalNavigator.Locator("[data-testid='ta-global-overview-right-handle']").CountAsync() |> awaitTask = 0) "global navigator unexpectedly exposes a right resize handle"
+
+            let initialGlobalX = floatAttribute globalSelection "x"
+            let initialGlobalWidth = floatAttribute globalSelection "width"
+            let initialInnerWidth = floatAttribute innerSelection "width"
+            let globalActionCountBefore = intAttribute callbackState "data-callback-count"
+            let globalMoveBounds = boundingBox globalMoveTarget
+            let globalStartX = globalMoveBounds.X + globalMoveBounds.Width / 2.0f
+            let globalY = globalMoveBounds.Y + globalMoveBounds.Height / 2.0f
+            page.Mouse.MoveAsync(globalStartX, globalY) |> awaitUnit
+            page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+            page.Mouse.MoveAsync(globalStartX + 80.0f, globalY, MouseMoveOptions(Steps = 8)) |> awaitUnit
+            waitUntil
+                "global resident preview must move"
+                (fun () -> floatAttribute globalSelection "x")
+                (fun current -> current > initialGlobalX + 1.0f)
+            |> ignore
+            require
+                (approximately 0.5 initialGlobalWidth (floatAttribute globalSelection "width"))
+                "global move changed resident selection width"
+            require
+                (intAttribute callbackState "data-callback-count" = globalActionCountBefore)
+                "global pointermove emitted an action before drop"
+
+            page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+            waitUntil
+                "global drop must produce exactly one action"
+                (fun () -> intAttribute callbackState "data-callback-count")
+                ((=) (globalActionCountBefore + 1))
+            |> ignore
+            waitUntil
+                "global drop action kind"
+                (fun () -> attributeOf callbackState "data-last-action")
+                ((=) "ResidentCoverageChanged")
+            |> ignore
+            let globalWireStart =
+                waitUntil
+                    "global resident wire start"
+                    (fun () -> attributeOf callbackState "data-last-coverage-start")
+                    (String.IsNullOrWhiteSpace >> not)
+                |> Int64.Parse
+            waitUntil
+                "global resident authoritative projection"
+                (fun () -> int64 (intAttribute globalWrapper "data-resident-start-observation-ordinal"))
+                ((=) globalWireStart)
+            |> ignore
+            require
+                (approximately 0.5 initialInnerWidth (floatAttribute innerSelection "width"))
+                "global resident move changed the inner viewport width"
+            require (consoleErrors.Count = 0) ("browser console errors: " + String.concat " | " consoleErrors)
+
+            let globalScreenshotPath = Path.Combine(outputDirectory, "global-resident-navigator.png")
+            page.ScreenshotAsync(PageScreenshotOptions(Path = globalScreenshotPath, FullPage = true)) |> awaitTask |> ignore
+            printfn "global-resident-navigator PASS start=%d count=1500 actionCount=%d screenshot=%s" globalWireStart (globalActionCountBefore + 1) globalScreenshotPath
         finally
             browser.CloseAsync() |> awaitUnit
             playwright.Dispose()

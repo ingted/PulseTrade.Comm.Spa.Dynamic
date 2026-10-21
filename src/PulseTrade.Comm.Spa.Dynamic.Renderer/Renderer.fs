@@ -886,6 +886,99 @@ module TaWorkspaceRenderer =
     let overviewSvg points stripeVisuals referenceLength selectionWindow onReady onPointerDown onDragEnd =
         overviewSvgWithPalette lightPlotPalette points stripeVisuals referenceLength selectionWindow onReady onPointerDown onDragEnd
 
+    let globalOverviewSvgWithPalette palette (points: TaOverviewCandlePoint array) selectionWindow onReady onPointerDown onDragEnd =
+        let width = 1000.0
+        let height = 58.0
+        let sampled = RendererModel.compactOverviewCandles 280 points
+        let low, high =
+            sampled
+            |> Array.collect (fun point ->
+                let bodyLow = min point.Open point.Close
+                let bodyHigh = max point.Open point.Close
+                [| point.Low |> Option.defaultValue bodyLow
+                   point.High |> Option.defaultValue bodyHigh |])
+            |> RendererModel.paddedRange 0.0 1.0
+        let xAt index =
+            if sampled.Length <= 1 then width / 2.0
+            else float index / float (sampled.Length - 1) * width
+        let yAt value = RendererModel.normalize low high 6.0 50.0 value
+        let pricePath =
+            sampled
+            |> Array.mapi (fun index point ->
+                (if index = 0 then "M " else "L ")
+                + fixedText (xAt index)
+                + " "
+                + fixedText (yAt point.Close))
+            |> String.concat " "
+        let selectionGeometry ratios = RendererModel.navigatorSelectionBounds width ratios
+        let geometryText projection = selectionWindow |> View.Map (selectionGeometry >> projection >> fixedText)
+        let selectionX = geometryText fst
+        let selectionWidth = geometryText snd
+        let mutable latestSelectionRatios = 0.0, 0.0
+        let observedSelectionWindow =
+            selectionWindow
+            |> View.Map (fun ratios ->
+                latestSelectionRatios <- ratios
+                ratios)
+        let leftRatioText = observedSelectionWindow |> View.Map (fst >> fixedText)
+        let rightRatioText = observedSelectionWindow |> View.Map (snd >> fixedText)
+
+        svgElement "svg" [
+            Attr.Create "data-testid" "ta-global-overview-navigator"
+            Attr.Create "data-plot-surface-theme" palette.ThemeName
+            Attr.Create "data-global-source-count" (string points.Length)
+            Attr.Dynamic "data-selection-left-ratio" leftRatioText
+            Attr.Dynamic "data-selection-right-ratio" rightRatioText
+            svgAttr "viewBox" "0 0 1000 58"
+            svgAttr "preserveAspectRatio" "none"
+            attr.style ("display:block; width:100%; height:58px; min-width:0; background:" + palette.OverviewSurface + "; border:1px solid " + palette.Border + "; border-radius:4px; box-sizing:border-box; touch-action:none; cursor:default;")
+            on.afterRender onReady
+            Attr.Handler "pointerdown" (fun element event -> onPointerDown (element |> As<Element>) event)
+            Attr.Handler "pointerup" (fun _ event -> onDragEnd event)
+            on.mouseMove (fun element event ->
+                let bounds = element.GetBoundingClientRect()
+                if bounds.Width > 0.0 then
+                    let pointerRatio = (float event.ClientX - bounds.Left) / bounds.Width
+                    let left, right = latestSelectionRatios
+                    let outcome = element.GetAttribute("data-drag-outcome")
+                    let cursor =
+                        if outcome = "tracking" || outcome = "moving" then "grabbing"
+                        elif pointerRatio >= left && pointerRatio <= right then "grab"
+                        else "default"
+                    (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor))
+            on.mouseLeave (fun element _ ->
+                let outcome = element.GetAttribute("data-drag-outcome")
+                if outcome <> "tracking" && outcome <> "moving" then
+                    (element |> As<HTMLElement>).Style.SetProperty("cursor", "default"))
+        ] [
+            svgElement "rect" [
+                Attr.Create "data-testid" "ta-global-overview-interaction-surface"
+                svgAttr "x" "0"; svgAttr "y" "0"; svgAttr "width" "1000"; svgAttr "height" (fixedText height)
+                svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"
+            ] []
+            svgElement "path" [
+                Attr.Create "data-testid" "ta-global-overview-price"
+                svgAttr "d" pricePath
+                svgAttr "fill" "none"
+                svgAttr "stroke" palette.OverviewPrice
+                svgAttr "stroke-width" "1"
+                svgAttr "vector-effect" "non-scaling-stroke"
+                svgAttr "pointer-events" "none"
+            ] []
+            svgElement "rect" [
+                Attr.Create "data-testid" "ta-global-overview-selection"
+                Attr.Dynamic "x" selectionX; svgAttr "y" "1"; Attr.Dynamic "width" selectionWidth; svgAttr "height" "56"
+                svgAttr "fill" palette.OverviewSelection; svgAttr "stroke" palette.OverviewBoundary; svgAttr "stroke-width" "1"
+                svgAttr "vector-effect" "non-scaling-stroke"; svgAttr "pointer-events" "none"
+            ] []
+            svgElement "rect" [
+                Attr.Create "data-testid" "ta-global-overview-move-hit"
+                Attr.Create "data-window-drag-mode" TaWindowDrag.Move
+                Attr.Dynamic "x" selectionX; svgAttr "y" "0"; Attr.Dynamic "width" selectionWidth; svgAttr "height" "58"
+                svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"; svgAttr "style" "cursor:grab;"
+            ] []
+        ]
+
     let candleSvg testId (points: TaCandlePoint array) cursorIndex =
         let width = 1000.0
         let height = 250.0
@@ -2005,12 +2098,17 @@ module TaWorkspaceRenderer =
         let draftWindow = Var.Create<TaVisibleWindow option> None
         let navigatorSelectionRatiosOverride = Var.Create<Option<float * float>> None
         let mutable renderedNavigatorDraft: TaVisibleWindow option = None
+        let globalResidentDraft = Var.Create<TaResidentCoverageWindow option> None
+        let mutable pendingGlobalResidentIntent: TaCoverageWindowIntent option = None
         let mutable addRowSequence = 0
         let mutable pendingAddRowId: string option = None
         let mutable editingRowId: string option = None
         let mutable pendingEditorMutation: (RuntimeIdentity * int64 * string option * Set<string> * TaRowEditorBinding) option = None
         let mutable finishNavigatorDrag: (unit -> unit) option = None
         let mutable activeNavigatorDragMode: string option = None
+        let mutable finishGlobalResidentDrag: (unit -> unit) option = None
+        let mutable cancelGlobalResidentDrag: (unit -> unit) option = None
+        let mutable activeGlobalResidentCursor: string option = None
         draftWindow.View
         |> View.Sink (fun draft ->
             if draft.IsNone && finishNavigatorDrag.IsNone then
@@ -2490,6 +2588,24 @@ module TaWorkspaceRenderer =
             else
                 RendererModel.prepareDataIncrementalScheduled scheduleNextFrame previous next.Data accept
 
+        let clearGlobalResidentIntent intent =
+            if pendingGlobalResidentIntent = Some intent then
+                pendingGlobalResidentIntent <- None
+                globalResidentDraft.Value <- None
+
+        let settleGlobalResidentProjection (next: RuntimeState) =
+            match pendingGlobalResidentIntent, next.Document with
+            | Some intent, Some document ->
+                match RendererModel.tryLoadedCoverageResolved document.DefaultView next.Data with
+                | Some projection when RendererModel.globalResidentProjectionMatches intent projection ->
+                    clearGlobalResidentIntent intent
+                | Some projection ->
+                    let expectedRevision = intent.ExpectedCoverageRevision |> Option.defaultValue -1L
+                    if projection.QueryGeneration >= intent.QueryGeneration && projection.CoverageRevision > expectedRevision then
+                        clearGlobalResidentIntent intent
+                | None -> ()
+            | _ -> ()
+
         runtimeState.View
         |> View.Sink (fun next ->
             let dataChanged = runtimeDataChanged observedDataState next
@@ -2498,6 +2614,9 @@ module TaWorkspaceRenderer =
                 |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
                 |> Option.defaultValue false
             if next.Identity <> observedDataState.Identity then
+                cancelGlobalResidentDrag |> Option.iter (fun cancel -> cancel ())
+                pendingGlobalResidentIntent <- None
+                globalResidentDraft.Value <- None
                 pendingBoundaryPan <- None
                 queuedViewportIntent <- None
                 draftWindow.Value <- None
@@ -2518,6 +2637,7 @@ module TaWorkspaceRenderer =
                 else
                     observedDataState <- next
             else
+                settleGlobalResidentProjection next
                 if dataChanged then
                     if viewportScopeChanged then
                         queuedViewportIntent <- None
@@ -3091,6 +3211,135 @@ module TaWorkspaceRenderer =
         let finishNavigatorDragFromElement (event: Event) =
             event.PreventDefault()
             finishNavigatorDrag |> Option.iter (fun finish -> finish ())
+
+        let startGlobalResidentDrag (navigatorRoot: Element) (rawEvent: Event) =
+            if not (isNull navigatorRoot) then
+                let event = rawEvent :?> MouseEvent
+                navigatorRoot.SetAttribute("data-drag-outcome", "started")
+                navigatorRoot.SetAttribute("data-drag-last-delta", "0")
+                if
+                    finishGlobalResidentDrag.IsSome
+                    || pendingGlobalResidentIntent.IsSome
+                    || commandsDisabledNow ()
+                    || not preparedRowsReady.Value
+                then
+                    navigatorRoot.SetAttribute("data-drag-outcome", "disabled")
+                else
+                    let eventTarget: Element = JS.Get "target" rawEvent
+                    let isMoveTarget =
+                        not (isNull eventTarget)
+                        && eventTarget.GetAttribute("data-window-drag-mode") = TaWindowDrag.Move
+                    match runtimeState.Value.Document with
+                    | Some document when isMoveTarget && actionAllowed "resident-coverage-changed" ->
+                        match document.BaseRowId, RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
+                        | Some baseRowId, Some projection ->
+                            match projection.GlobalOverview, RendererModel.tryGlobalResidentWindow projection with
+                            | Some overview, Some authoritativeCommitted ->
+                                let bounds = navigatorRoot.GetBoundingClientRect()
+                                if bounds.Width > 0.0 then
+                                    let committed = globalResidentDraft.Value |> Option.defaultValue authoritativeCommitted
+                                    event.PreventDefault()
+                                    event.StopPropagation()
+                                    navigatorRoot.SetAttribute("data-drag-outcome", "tracking")
+                                    activeGlobalResidentCursor <- Some "grabbing"
+                                    (navigatorRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
+                                    let startClientX = event.ClientX
+                                    let mutable latestDelta = 0L
+                                    let mutable pendingDraft: TaResidentCoverageWindow option = None
+                                    let mutable moveHandler: Action<Event> = null
+                                    let mutable upHandler: Action<Event> = null
+                                    let mutable cancelHandler: Action<Event> = null
+                                    let mutable frameScheduled = false
+                                    let mutable finished = false
+
+                                    let publishDraft () =
+                                        if not finished then
+                                            frameScheduled <- false
+                                            match pendingDraft with
+                                            | Some draft ->
+                                                globalResidentDraft.Value <- Some draft
+                                                navigatorRoot.SetAttribute("data-drag-last-delta", string latestDelta)
+                                                navigatorRoot.SetAttribute("data-drag-outcome", "moving")
+                                            | None -> ()
+
+                                    let scheduleDraft draft =
+                                        pendingDraft <- Some draft
+                                        if not frameScheduled then
+                                            frameScheduled <- true
+                                            JS.RequestAnimationFrame(fun _ -> publishDraft ()) |> ignore
+
+                                    let cleanup () =
+                                        if not (isNull moveHandler) then JS.Document.RemoveEventListener("pointermove", moveHandler)
+                                        if not (isNull upHandler) then JS.Document.RemoveEventListener("pointerup", upHandler)
+                                        if not (isNull cancelHandler) then JS.Document.RemoveEventListener("pointercancel", cancelHandler)
+                                        finishGlobalResidentDrag <- None
+                                        cancelGlobalResidentDrag <- None
+                                        activeGlobalResidentCursor <- None
+                                        (navigatorRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grab")
+
+                                    let cancel () =
+                                        if not finished then
+                                            finished <- true
+                                            globalResidentDraft.Value <- None
+                                            navigatorRoot.SetAttribute("data-drag-outcome", "cancelled")
+                                            cleanup ()
+
+                                    let finish () =
+                                        if not finished then
+                                            finished <- true
+                                            let draft =
+                                                pendingDraft
+                                                |> Option.orElse globalResidentDraft.Value
+                                                |> Option.defaultValue committed
+                                            if draft = committed then
+                                                globalResidentDraft.Value <- None
+                                                navigatorRoot.SetAttribute("data-drag-outcome", "no-change")
+                                            else
+                                                match RendererModel.tryGlobalResidentRelocationIntent projection draft with
+                                                | Some intent ->
+                                                    globalResidentDraft.Value <- Some draft
+                                                    pendingGlobalResidentIntent <- Some intent
+                                                    navigatorRoot.SetAttribute("data-drag-outcome", "request-resident-relocation")
+                                                    startActionWith
+                                                        (SduiAction.ResidentCoverageChanged(currentCanvasId (), baseRowId, intent))
+                                                        "Resident coverage relocation requested."
+                                                        ignore
+                                                        (fun () -> clearGlobalResidentIntent intent)
+                                                | None ->
+                                                    globalResidentDraft.Value <- None
+                                                    navigatorRoot.SetAttribute("data-drag-outcome", "invalid-resident-draft")
+                                            cleanup ()
+
+                                    moveHandler <-
+                                        Action<Event>(fun rawEvent ->
+                                            let mouse = rawEvent :?> MouseEvent
+                                            latestDelta <-
+                                                RendererModel.globalResidentDragDelta
+                                                    overview.TotalObservationCount
+                                                    bounds.Width
+                                                    (float startClientX)
+                                                    (float mouse.ClientX)
+                                            RendererModel.previewGlobalResidentWindow
+                                                overview.TotalObservationCount
+                                                committed
+                                                latestDelta
+                                            |> scheduleDraft)
+                                    upHandler <- Action<Event>(fun _ -> finish ())
+                                    cancelHandler <- Action<Event>(fun _ -> cancel ())
+                                    finishGlobalResidentDrag <- Some finish
+                                    cancelGlobalResidentDrag <- Some cancel
+                                    JS.Document.AddEventListener("pointermove", moveHandler)
+                                    JS.Document.AddEventListener("pointerup", upHandler)
+                                    JS.Document.AddEventListener("pointercancel", cancelHandler)
+                                else
+                                    navigatorRoot.SetAttribute("data-drag-outcome", "invalid-bounds")
+                            | _ -> navigatorRoot.SetAttribute("data-drag-outcome", "missing-global-overview")
+                        | _ -> navigatorRoot.SetAttribute("data-drag-outcome", "missing-global-authority")
+                    | _ -> navigatorRoot.SetAttribute("data-drag-outcome", "outside-selection")
+
+        let finishGlobalResidentDragFromElement (event: Event) =
+            event.PreventDefault()
+            finishGlobalResidentDrag |> Option.iter (fun finish -> finish ())
 
         let cursorElements selector =
             if isNull chartStackElement then [||]
@@ -4438,34 +4687,77 @@ module TaWorkspaceRenderer =
                                                     draftWindow.View
                                                     uiState.View
                                                     navigatorSelectionRatiosOverride.View
-                                            div [ Attr.Create "data-testid" "ta-overview-with-axis"; attr.style "min-width:0;" ] [
-                                                overviewSvgWithPalette
-                                                    currentPlotPalette
-                                                    overviewPoints
-                                                    overviewStripeVisuals
-                                                    overviewReferenceTimeline.Length
-                                                    selectionWindow
-                                                    (fun element ->
-                                                        activeNavigatorDragMode
-                                                        |> Option.iter (fun drag -> element.SetAttribute("data-drag-mode", drag))
-                                                        match activeNavigatorCursor with
-                                                        | Some cursor ->
-                                                            (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)
-                                                        | None ->
-                                                            match navigatorCursorAfterRender with
+                                            let residentOverview =
+                                                div [ Attr.Create "data-testid" "ta-overview-with-axis"; attr.style "min-width:0;" ] [
+                                                    overviewSvgWithPalette
+                                                        currentPlotPalette
+                                                        overviewPoints
+                                                        overviewStripeVisuals
+                                                        overviewReferenceTimeline.Length
+                                                        selectionWindow
+                                                        (fun element ->
+                                                            activeNavigatorDragMode
+                                                            |> Option.iter (fun drag -> element.SetAttribute("data-drag-mode", drag))
+                                                            match activeNavigatorCursor with
                                                             | Some cursor ->
-                                                                navigatorCursorAfterRender <- None
                                                                 (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)
-                                                            | None -> ())
-                                                    startNavigatorDrag
-                                                    finishNavigatorDragFromElement
-                                                timeAxisWithPalette
-                                                    currentPlotPalette
-                                                    displayTime
-                                                    "ta-overview-time-axis"
-                                                    "overview"
-                                                    overviewReferenceTimeline
-                                            ] :> Doc)
+                                                            | None ->
+                                                                match navigatorCursorAfterRender with
+                                                                | Some cursor ->
+                                                                    navigatorCursorAfterRender <- None
+                                                                    (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)
+                                                                | None -> ())
+                                                        startNavigatorDrag
+                                                        finishNavigatorDragFromElement
+                                                    timeAxisWithPalette
+                                                        currentPlotPalette
+                                                        displayTime
+                                                        "ta-overview-time-axis"
+                                                        "overview"
+                                                        overviewReferenceTimeline
+                                                ]
+                                            match currentCoverageProjection |> Option.bind _.GlobalOverview with
+                                            | None -> residentOverview :> Doc
+                                            | Some globalOverview ->
+                                                let authoritativeResident: TaResidentCoverageWindow =
+                                                    { StartObservationOrdinal = globalOverview.ResidentStartObservationOrdinal
+                                                      ObservationCount = globalOverview.ResidentObservationCount }
+                                                let globalSelectionWindow =
+                                                    globalResidentDraft.View
+                                                    |> View.Map (fun draft ->
+                                                        draft
+                                                        |> Option.defaultValue authoritativeResident
+                                                        |> RendererModel.globalResidentSelectionRatios globalOverview)
+                                                let globalPoints = RendererModel.overviewPointsForAnchors globalOverview.Anchors
+                                                let globalTimeline = globalOverview.Anchors |> Array.map _.EventTimeUtc
+                                                div [ Attr.Create "data-testid" "ta-overview-stack"; attr.style "display:grid; gap:8px; min-width:0;" ] [
+                                                    div [
+                                                        Attr.Create "data-testid" "ta-global-overview-with-axis"
+                                                        Attr.Create "data-total-observation-count" (string globalOverview.TotalObservationCount)
+                                                        Attr.Create "data-resident-start-observation-ordinal" (string globalOverview.ResidentStartObservationOrdinal)
+                                                        Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
+                                                        attr.style "min-width:0;"
+                                                    ] [
+                                                        globalOverviewSvgWithPalette
+                                                            currentPlotPalette
+                                                            globalPoints
+                                                            globalSelectionWindow
+                                                            (fun element ->
+                                                                activeGlobalResidentCursor
+                                                                |> Option.iter (fun cursor ->
+                                                                    element.SetAttribute("data-drag-outcome", "tracking")
+                                                                    (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)))
+                                                            startGlobalResidentDrag
+                                                            finishGlobalResidentDragFromElement
+                                                        timeAxisWithPalette
+                                                            currentPlotPalette
+                                                            displayTime
+                                                            "ta-global-overview-time-axis"
+                                                            "global-overview"
+                                                            globalTimeline
+                                                    ]
+                                                    residentOverview
+                                                ] :> Doc)
                                         |> Doc.EmbedView
                                     ]
                                 ]

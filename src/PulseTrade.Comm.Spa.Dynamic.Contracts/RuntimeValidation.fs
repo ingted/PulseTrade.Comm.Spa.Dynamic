@@ -199,6 +199,7 @@ module RuntimeValidation =
                   "change-query"
                   "shared-cursor-changed"
                   "visible-range-changed"
+                  "resident-coverage-changed"
                   "poll-delta"
                   "request-full-snapshot" ]
         let editorSchemas = if isNull document.EditorSchemas then [||] else document.EditorSchemas

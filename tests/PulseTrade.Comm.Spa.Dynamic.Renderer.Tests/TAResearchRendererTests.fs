@@ -801,6 +801,62 @@ let tests =
                 Expect.equal intent.StartObservationOrdinal (Some largeStart) "Loaded edge targets must retain int64 ordinals."
             | None -> failtest "A valid int64 loaded ordinal must not be narrowed to an Int32 window."
 
+        testCase "DYN-T-684 global resident draft moves one fixed-width window across the whole series" <| fun _ ->
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 1_000_000L
+                  ResidentObservationCount = 4500 }
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:global-resident"
+                  CoverageRevision = 41L
+                  QueryGeneration = 8L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some overview.TotalObservationCount
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = overview.ResidentStartObservationOrdinal + 1500L
+                      ObservationCount = 700
+                      BaseAxisRef = "axis.detail" }
+                  GlobalOverview = Some overview }
+
+            let committed =
+                RendererModel.tryGlobalResidentWindow projection
+                |> Option.defaultWith (fun () -> failtest "The valid global overview must expose one resident window.")
+            let draft = RendererModel.previewGlobalResidentWindow overview.TotalObservationCount committed 250_000L
+            let left, right = RendererModel.globalResidentSelectionRatios overview draft
+            Expect.equal draft.ObservationCount 4500 "Global drag must preserve the advertised resident width."
+            Expect.equal draft.StartObservationOrdinal 1_250_000L "Global drag moves in the whole-series ordinal domain."
+            Expect.floatClose Accuracy.high left (1_250_000.0 / 2_996_994.0) "The visible left ratio follows the drafted resident start."
+            Expect.floatClose Accuracy.high right (1_254_500.0 / 2_996_994.0) "The visible right ratio preserves resident width."
+
+            match RendererModel.tryGlobalResidentRelocationIntent projection draft with
+            | Some intent ->
+                Expect.equal intent.ExpectedCoverageRevision (Some 41L) "Global drop remains revision guarded."
+                Expect.equal intent.QueryGeneration 9L "Global drop advances one generation."
+                Expect.equal intent.StartObservationOrdinal (Some 1_250_000L) "Global drop keeps the drafted ordinal."
+                Expect.equal intent.ObservationCount 4500 "Global drop is not clamped to the inner 4000-detail policy."
+                let acceptedProjection =
+                    { projection with
+                        CoverageRevision = 42L
+                        QueryGeneration = 9L
+                        GlobalOverview =
+                            Some
+                                { overview with
+                                    ResidentStartObservationOrdinal = 1_250_000L } }
+                Expect.isTrue
+                    (RendererModel.globalResidentProjectionMatches intent acceptedProjection)
+                    "Only the matching revision/generation and resident interval settle the optimistic draft."
+            | None -> failtest "A bounded global resident draft must produce one relocation intent."
+
+            Expect.equal
+                (RendererModel.innerViewportAfterResidentRelocation 4500 { StartIndex = 1500; Count = 700 })
+                { StartIndex = 1500; Count = 700 }
+                "Relocating the resident window keeps the inner viewport width and resident-relative offset."
+
         testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
             let ratios = 0.2, 0.4
             let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
@@ -2271,6 +2327,29 @@ let tests =
             Expect.isFalse
                 (source.Contains("navigatorRoot.AddEventListener(\"pointermove\", moveHandler)", StringComparison.Ordinal))
                 "An active gesture must not depend on the replaceable SVG root."
+
+        testCase "DYN-T-684 renderer wires a separate move-only global resident strip" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+
+            for required in
+                [ "\"ta-global-overview-with-axis\""
+                  "\"ta-global-overview-navigator\""
+                  "\"ta-global-overview-selection\""
+                  "startGlobalResidentDrag"
+                  "RendererModel.previewGlobalResidentWindow"
+                  "RendererModel.tryGlobalResidentRelocationIntent"
+                  "SduiAction.ResidentCoverageChanged" ] do
+                Expect.isTrue
+                    (source.Contains(required, StringComparison.Ordinal))
+                    ("missing global resident renderer contract: " + required)
+
+            Expect.isFalse
+                (source.Contains("\"ta-global-overview-left-handle\"", StringComparison.Ordinal))
+                "The fixed-width resident strip must not expose a resize handle."
+            Expect.isFalse
+                (source.Contains("\"ta-global-overview-right-handle\"", StringComparison.Ordinal))
+                "The fixed-width resident strip must not expose a resize handle."
     ]
 
 [<EntryPoint>]

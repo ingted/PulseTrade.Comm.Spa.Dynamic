@@ -67,6 +67,15 @@ let sourceEvent sequence baseRevision newRevision payload : SourceEventEnvelope 
 
 let tests =
     testList "Dynamic TA Contracts" [
+        testCase "DYN-T-684 document accepts the global resident relocation capability" <| fun _ ->
+            let candidate =
+                { document with
+                    AllowedActions = Array.append document.AllowedActions [| "resident-coverage-changed" |] }
+
+            Expect.isEmpty
+                (RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits candidate)
+                "The additive global resident action must be a valid document capability."
+
         testCase "DYN-T-646 loaded coverage preserves global ordinals, gaps and per-document cap" <| fun _ ->
             let projection =
                 { CoverageIdentity = "ES|1K|2026"

@@ -395,6 +395,18 @@ module Client =
     let coverageProjection coverageRevision queryGeneration startIndex count =
         coverageProjectionFor 500 coverageRevision queryGeneration startIndex count
 
+    let globalCoverageProjectionFor totalCount coverageRevision queryGeneration residentStartIndex residentCount =
+        let projection = coverageProjectionFor totalCount coverageRevision queryGeneration residentStartIndex residentCount
+        { projection with
+            CoverageIdentity = "browser-demo:global-resident"
+            GlobalOverview =
+                Some
+                    { TotalObservationCount = int64 totalCount
+                      AxisRef = "axis.global"
+                      Anchors = projection.OverviewAnchors
+                      ResidentStartObservationOrdinal = int64 residentStartIndex
+                      ResidentObservationCount = residentCount } }
+
     let appendArrayValue values = function
         | SduiValue.Array existing -> SduiValue.Array(Array.append existing values)
         | existing -> existing
@@ -611,7 +623,8 @@ module Client =
                        "remove-trace"
                        "change-query"
                        "shared-cursor-changed"
-                       "visible-range-changed" |]
+                       "visible-range-changed"
+                       "resident-coverage-changed" |]
                   DefaultView =
                     Map [
                         "visibleBars", SduiValue.Number 4000.0
@@ -638,6 +651,7 @@ module Client =
         | SduiAction.ChangeTaQuery _ -> "ChangeTaQuery"
         | SduiAction.SharedCursorChanged _ -> "SharedCursorChanged"
         | SduiAction.VisibleRangeChanged _ -> "VisibleRangeChanged"
+        | SduiAction.ResidentCoverageChanged _ -> "ResidentCoverageChanged"
         | SduiAction.PollDelta _ -> "PollDelta"
         | SduiAction.RequestFullSnapshot _ -> "RequestFullSnapshot"
 
@@ -809,6 +823,46 @@ module Client =
                                 { ReasonCode = "demo-action-received"
                                   Message = templateKey + " accepted with " + string values.Length + " editor inputs"
                                   Recoverable = true } }
+            | SduiAction.ResidentCoverageChanged(_, baseRowId, intent), Some document
+                when document.BaseRowId = Some baseRowId ->
+                match
+                    intent.StartObservationOrdinal,
+                    RendererModel.tryLoadedCoverageResolved document.DefaultView current.Data
+                with
+                | Some targetStart, Some projection ->
+                    match projection.GlobalOverview with
+                    | Some overview when intent.ObservationCount = overview.ResidentObservationCount ->
+                        let relativeOffset =
+                            max 0L (projection.ActiveDetail.StartObservationOrdinal - overview.ResidentStartObservationOrdinal)
+                        let maximumRelativeStart =
+                            max 0L (int64 overview.ResidentObservationCount - int64 projection.ActiveDetail.ObservationCount)
+                        let nextActiveStart = targetStart + min maximumRelativeStart relativeOffset
+                        let nextProjection =
+                            { projection with
+                                CoverageRevision = projection.CoverageRevision + 1L
+                                QueryGeneration = intent.QueryGeneration
+                                ActiveDetail =
+                                    { projection.ActiveDetail with
+                                        StartObservationOrdinal = nextActiveStart }
+                                GlobalOverview =
+                                    Some
+                                        { overview with
+                                            ResidentStartObservationOrdinal = targetStart } }
+                        match TaLoadedCoverageCodec.tryDataRef document.DefaultView with
+                        | Ok(Some dataRef) ->
+                            runtimeState.Value <-
+                                { current with
+                                    Data =
+                                        coverageFixtureDataFor
+                                            (int overview.TotalObservationCount)
+                                            (int targetStart)
+                                            overview.ResidentObservationCount
+                                        |> Map.add dataRef (TaLoadedCoverageCodec.encode nextProjection)
+                                    DataRevision = current.DataRevision + 1L
+                                    LastTransportSequence = current.LastTransportSequence + 1L }
+                        | _ -> ()
+                    | _ -> ()
+                | _ -> ()
             | SduiAction.VisibleRangeChanged(_, change), _ ->
                 match change.CoverageIntent, current.Document with
                 | Some intent, Some document ->
@@ -949,6 +1003,9 @@ module Client =
                                     | None ->
                                         lastCoverageStart.Value <- ""
                                         lastCoverageCount.Value <- 0
+                                | SduiAction.ResidentCoverageChanged(_, _, intent) ->
+                                    lastCoverageStart.Value <- intent.StartObservationOrdinal |> Option.map string |> Option.defaultValue ""
+                                    lastCoverageCount.Value <- intent.ObservationCount
                                 | _ -> ()
 
                                 if modelPollInFlight.Value then
@@ -1070,6 +1127,36 @@ module Client =
                                         |> TaLoadedCoverageCodec.applyDataRef coverageProjectionDataRef }
                         Data =
                             coverageFixtureDataFor totalCount startIndex count
+                            |> Map.add coverageProjectionDataRef (TaLoadedCoverageCodec.encode projection)
+                        DocumentRevision = current.DocumentRevision + 1L
+                        DataRevision = current.DataRevision + 1L
+                        LastTransportSequence = current.LastTransportSequence + 1L }
+            | None -> ()
+
+        let loadGlobalCoverageFixture () =
+            let current = runtimeState.Value
+            match current.Document with
+            | Some document ->
+                authoritativeGeneration <- authoritativeGeneration + 1L
+                let totalCount = 10_000
+                let residentStartIndex = 3000
+                let residentCount = 1500
+                let projection = globalCoverageProjectionFor totalCount 1L 1L residentStartIndex residentCount
+                runtimeState.Value <-
+                    { current with
+                        Document =
+                            Some
+                                { document with
+                                    TemporalAxisRefs =
+                                        document.TemporalAxisRefs
+                                        |> Array.append [| "axis.global" |]
+                                        |> Array.distinct
+                                    DefaultView =
+                                        document.DefaultView
+                                        |> TaLoadedCoverageCodec.applyMaximumVisibleBars 700
+                                        |> TaLoadedCoverageCodec.applyDataRef coverageProjectionDataRef }
+                        Data =
+                            coverageFixtureDataFor totalCount residentStartIndex residentCount
                             |> Map.add coverageProjectionDataRef (TaLoadedCoverageCodec.encode projection)
                         DocumentRevision = current.DocumentRevision + 1L
                         DataRevision = current.DataRevision + 1L
@@ -1408,6 +1495,7 @@ module Client =
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-loaded-coverage"; on.click (fun _ _ -> loadCoverageFixture ()) ] [ text "Loaded coverage" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-loaded-coverage-parity"; on.click (fun _ _ -> loadCoverageParityFixture ()) ] [ text "Loaded coverage parity" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-loaded-coverage-view-all"; on.click (fun _ _ -> loadCoverageViewAllFixture ()) ] [ text "Loaded coverage View All" ]
+                button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-global-coverage"; on.click (fun _ _ -> loadGlobalCoverageFixture ()) ] [ text "Global resident coverage" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-refresh-coverage-next-visible-range"; on.click (fun _ _ -> refreshCoverageOnNextVisibleRange.Value <- true) ] [ text "Refresh coverage on next range" ]
                 button [ demoButtonStyle; Attr.Create "data-testid" "ta-demo-reject-next"; on.click (fun _ _ -> rejectNext.Value <- true) ] [ text "Reject next" ]
                 text "callback actions "

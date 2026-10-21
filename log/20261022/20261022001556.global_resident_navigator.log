@@ -1,0 +1,20 @@
+## Pre-work plan
+
+- Background: RFC-PTCS-DYNAMIC-0036 defines a global resident navigator, but released 0.2.8 wires only model helpers and the ResidentCoverageChanged contract. Renderer DOM/gesture/action binding and active client/server wire paths are absent.
+- Goal: complete the additive owner path without changing existing inner navigator behavior when GlobalOverview=None.
+- Assumptions: Daedalus owns whole-series provider/materialization and 18884 consumer validation; owner packages own generic rendering, action transport, and deterministic tests.
+- Steps: add RED owner tests for DOM/order/drop-only/action wire; complete allowlist and active wire cases; add independent global draft/drag settlement and global strip above the inner navigator; run focused and full owner suites; bump packages only after green source commit.
+- Scope: Contracts, Renderer, Interactive/Ptcs client transport as required, Server transient compatibility, RFC/WBS/Test/README/DevLog. No Daedalus source or 18884 lifecycle mutation.
+- Acceptance: RFC-0036 acceptance 1-7 and 9-10 pass owner tests; global pointermove emits no remote action; one pointerup emits one ResidentCoverageChanged; inner visible width stays unchanged; GlobalOverview=None preserves existing DOM/action behavior.
+- Risk: reusing inner draft/action state could clear the wrong gesture. Keep global draft and pending intent independent while sharing the existing single action submission authority.
+
+## Operations
+
+- 2026-10-22 00:20 +08:00：新增Contracts action allowlist RED、Renderer model/source-contract RED與BrowserDemo global fixture。Contracts初始50/51、Renderer70/71，分別只缺`resident-coverage-changed` allowlist與global DOM call site。
+- 2026-10-22 00:27 +08:00：實作move-only global strip、獨立global draft/pending settlement、drop-only dispatch與BrowserDemo authoritative projection。Contracts Expecto 51/51、Renderer Expecto 71/71；BrowserDemo source build成功。
+- 2026-10-22 00:32 +08:00：focused Playwright既有local navigator case通過；global wrapper timeout。bundle marker audit證實fixture/action存在但global DOM不存在，BrowserDemo仍消費舊Renderer 0.2.8 package。
+- 2026-10-22 00:38 +08:00：升Contracts0.1.37、Renderer/Client0.2.9並透過canonical PostBuild local-first/push；provenance audit發現0.2.9 package不含global DOM，Renderer Release DLL timestamp早於source。
+- 2026-10-22 00:41 +08:00：根因為Contracts/Renderer同時設定`GeneratePackageOnBuild=true`；direct `dotnet pack`為避免Build→Pack循環封裝既有Release DLL。0.1.37/0.2.9 retired；移除該property，升0.1.38/0.2.10。Contracts0.1.38 fresh build、10.0.402 local SHA readback與NuGet push成功。
+- 2026-10-22 00:44 +08:00：Renderer fresh compile先揭露settlement helper record inference錯誤；補`RuntimeState` annotation後F#錯誤消失。隨後WebSharper native compiler因`src/PulseTrade.Comm.Spa.Dynamic.Renderer/websharper.log`不可讀而exit -532462766。
+- 2026-10-22 00:47 +08:00：確認該generated log無Renderer wsfsc process引用；ReadAllText/Get-Acl/icacls/takeown/rm均Access denied。headless agy未能完成後已終止；只停止command line精確屬於本Dynamic repo且parent已消失的compiler booster PID10432，保留cold-symbolics booster，log仍不可刪。
+- 2026-10-22 00:55 +08:00：RFC/WBS/Test/README/DevLog同步為in-progress。解除條件：elevated exact-path刪除Renderer `websharper.log`後，fresh pack Renderer/Client 0.2.10、重建BrowserDemo並通過global drop-only Playwright；在此之前不宣稱package/browser/consumer完成。
