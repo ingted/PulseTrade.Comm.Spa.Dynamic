@@ -4,7 +4,7 @@ This project is a dynamic SDUI (Server-Driven UI) and Actor extension for `Pulse
 
 ## Current TA release graph
 
-The current public TA graph is Contracts `[0.1.35]` -> Renderer `[0.2.2]` -> Interactive.Client `[0.2.2]`; Dynamic.Ptcs `[0.1.57]`, and Ptcs.Client `[0.1.132]` exact-pins Contracts and Renderer. RFC-0032/0033/0034 provide independent overview/detail axes, bounded overview anchors, event-time selection/stripe alignment, provider-open-earlier range authority, stable loaded-coverage data refs, pending/resync rebase, exact rendered-preview/release parity, and optimistic viewport continuity while a coverage action awaits both its response and matching projection. Focused source suites pass; Daedalus owns the final true-SPAA/fresh-DIB consumer E2E, so package availability alone does not close consumer acceptance. Renderer `0.1.130` and `0.2.1` are retired because their package provenance is stale and they must not be consumed.
+The current public TA graph is Contracts `[0.1.35]` -> Renderer `[0.2.2]` -> Interactive.Client `[0.2.2]`; Dynamic.Ptcs `[0.1.57]`, and Ptcs.Client `[0.1.132]` exact-pins Contracts and Renderer. RFC-0032/0033/0034 provide independent overview/detail axes, bounded overview anchors, event-time selection/stripe alignment, provider-open-earlier range authority, stable loaded-coverage data refs, pending/resync rebase, exact rendered-preview/release parity, and optimistic viewport continuity while a coverage action awaits both its response and matching projection. Focused source suites and the Daedalus-owned true-SPAA/fresh-DIB delayed-200/503 consumer gate pass. Renderer `0.1.130` and `0.2.1` are retired because their package provenance is stale and they must not be consumed.
 
 ## Actor Dynamic / Actor Argu modes
 
