@@ -1,0 +1,18 @@
+# Navigator semantic gesture ownership package release
+
+## Pre-work plan
+
+- 背景：P0 source checkpoint `10b3fe99ad729f6b1045d422e8e2dd624bde2315` 已推送，owner tests已通過，需完成canonical package發佈、官方readback與consumer handoff。
+- 目標：發布Contracts 0.1.36、Renderer 0.2.3、Interactive.Client 0.2.3並交付可驗證的commit/hash給Daedalus。
+- 假設：三包由committed HEAD rebuild後，nuspec repository commit、exact dependencies與official/local DLL hash應一致。
+- 範圍：三個package、owner final-package tests、README/RFC/Test/DevLog/WBS與Daedalus handoff；不碰Research host或18884。
+- 驗收：canonical PostBuild push成功；NuGet.org repository signature、commit/dependencies/DLL parity通過；Daedalus取得authority並開始正式consumer gate。
+- 風險：NuGet indexing延遲與WebSharper compiler log環境狀態；不以push accepted冒充public readback。
+- 停止條件：官方包commit/hash不一致、exact dependency錯誤、owner final-package tests失敗或Daedalus回報contract drift。
+
+## Operations
+
+- Contracts 0.1.36、Renderer 0.2.3、Interactive.Client 0.2.3均從committed HEAD rebuild，並由各fsproj canonical PostBuild target push accepted。
+- NuGet.org repository signature、repository commit、exact dependency與official/local DLL parity通過。Official nupkg SHA-256：Contracts `38AF164415B23501CC2D64A30A30A4C1EFC79294908D2CA2564517F667AA8E52`；Renderer `B73FCBBA932E73AECC8EEF243B1745388C6392C62C383C5613AFEF5DFAF428C3`；Interactive.Client `832E485451A8C398C0542FA766676A13A7AD6E4D450E961C1B6AE0D28DF6630A`。
+- Renderer final-package Expecto通過68/68。Owner BrowserDemo rebuild受ignored且無法讀刪的`websharper.log`阻擋；未改ACL、未停止不相關compiler service，正式browser gate由Daedalus在18884執行。
+- Daedalus已收到source commit與官方hash，package等待解除。
