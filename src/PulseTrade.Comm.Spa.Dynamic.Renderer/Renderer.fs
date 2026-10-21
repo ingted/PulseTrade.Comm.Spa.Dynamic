@@ -2003,12 +2003,18 @@ module TaWorkspaceRenderer =
         let addSlowPeriod = Var.Create "26"
         let addSignalPeriod = Var.Create "9"
         let draftWindow = Var.Create<TaVisibleWindow option> None
+        let navigatorSelectionRatiosOverride = Var.Create<Option<float * float>> None
         let mutable renderedNavigatorDraft: TaVisibleWindow option = None
         let mutable addRowSequence = 0
         let mutable pendingAddRowId: string option = None
         let mutable editingRowId: string option = None
         let mutable pendingEditorMutation: (RuntimeIdentity * int64 * string option * Set<string> * TaRowEditorBinding) option = None
         let mutable finishNavigatorDrag: (unit -> unit) option = None
+        let mutable activeNavigatorDragMode: string option = None
+        draftWindow.View
+        |> View.Sink (fun draft ->
+            if draft.IsNone && finishNavigatorDrag.IsNone then
+                navigatorSelectionRatiosOverride.Value <- None)
         let mutable activeNavigatorCursor: string option = None
         let mutable navigatorCursorAfterRender: string option = None
         let mutable chartRenderSequence = 0
@@ -2224,10 +2230,11 @@ module TaWorkspaceRenderer =
             not viewportDataReady.Value
             || localViewportDisabled runtimeState.Value.Poll
         let settleVisibleRangeDraft () =
-            draftWindow.Value <-
-                RendererModel.optimisticViewportAfterActionSettlement
-                    queuedViewportIntent.IsSome
-                    draftWindow.Value
+            if finishNavigatorDrag.IsNone then
+                draftWindow.Value <-
+                    RendererModel.optimisticViewportAfterActionSettlement
+                        queuedViewportIntent.IsSome
+                        draftWindow.Value
         let startActionWithFeedback action successText onAccepted onRejected afterSettled =
             actionSequence <- actionSequence + 1
             let request =
@@ -2398,7 +2405,9 @@ module TaWorkspaceRenderer =
                                 FollowLatest = followLatest
                                 CursorIndex = None }
                         cursorIndex.Value <- None
-                        if pendingBoundaryPanBeforeReanchor.IsSome && pendingBoundaryPan.IsNone then
+                        if pendingBoundaryPanBeforeReanchor.IsSome
+                           && pendingBoundaryPan.IsNone
+                           && finishNavigatorDrag.IsNone then
                             draftWindow.Value <-
                                 RendererModel.optimisticCoverageViewportAfterProjection
                                     uiState.Value.PendingActionId.IsSome
@@ -2492,6 +2501,7 @@ module TaWorkspaceRenderer =
                 pendingBoundaryPan <- None
                 queuedViewportIntent <- None
                 draftWindow.Value <- None
+                navigatorSelectionRatiosOverride.Value <- None
                 setUiState
                     { uiState.Value with
                         HiddenRows = Set.empty
@@ -2512,7 +2522,8 @@ module TaWorkspaceRenderer =
                     if viewportScopeChanged then
                         queuedViewportIntent <- None
                         pendingBoundaryPan <- None
-                        draftWindow.Value <- None
+                        if finishNavigatorDrag.IsNone then
+                            draftWindow.Value <- None
                         observedDataState <- next
                         scheduleFullPreparation ()
                     else
@@ -2888,9 +2899,21 @@ module TaWorkspaceRenderer =
                     | Some drag ->
                         setDragDiagnostic "data-drag-mode" drag
                         setDragDiagnostic "data-drag-outcome" "tracking"
+                        activeNavigatorDragMode <- Some drag
                         event.PreventDefault()
                         event.StopPropagation()
                         activeNavigatorCursor <- Some "grabbing"
+                        let frozenStartRatios = ratios
+                        let frozenRatiosForDraft draft =
+                            let ratioDelta delta =
+                                if total <= 0 then 0.0
+                                else float delta / float total
+                            let committedEnd = committed.StartIndex + committed.Count
+                            let draftEnd = draft.StartIndex + draft.Count
+                            let clampRatio value = max 0.0 (min 1.0 value)
+                            clampRatio (fst frozenStartRatios + ratioDelta (draft.StartIndex - committed.StartIndex)),
+                            clampRatio (snd frozenStartRatios + ratioDelta (draftEnd - committedEnd))
+                        navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft committed)
                         (navigatorRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
                         let startClientX = event.ClientX
                         let mutable latestRawDelta = 0
@@ -2907,7 +2930,9 @@ module TaWorkspaceRenderer =
                                 setDragDiagnostic "data-drag-last-delta" (string latestRawDelta)
                                 setDragDiagnostic "data-drag-outcome" "moving"
                                 match pendingDraft with
-                                | Some draft -> draftWindow.Value <- Some draft
+                                | Some draft ->
+                                    navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)
+                                    draftWindow.Value <- Some draft
                                 | None -> ()
 
                         let scheduleDraft draft =
@@ -2933,6 +2958,7 @@ module TaWorkspaceRenderer =
                             if not finished then
                                 finished <- true
                                 finishNavigatorDrag <- None
+                                activeNavigatorDragMode <- None
                                 activeNavigatorCursor <- None
                                 let preferPendingBoundary =
                                     loadedDragDomain.IsSome
@@ -3003,6 +3029,8 @@ module TaWorkspaceRenderer =
                                         else
                                             setDragDiagnostic "data-drag-outcome" "no-change"
                                             draftWindow.Value <- None
+                                if draftWindow.Value.IsNone then
+                                    navigatorSelectionRatiosOverride.Value <- None
                                 cleanup ()
 
                         moveHandler <-
@@ -3023,8 +3051,10 @@ module TaWorkspaceRenderer =
                                 if not finished then
                                     finished <- true
                                     finishNavigatorDrag <- None
+                                    activeNavigatorDragMode <- None
                                     activeNavigatorCursor <- None
                                     draftWindow.Value <- None
+                                    navigatorSelectionRatiosOverride.Value <- None
                                     setDragDiagnostic "data-drag-outcome" "cancelled"
                                     cleanup ())
 
@@ -4288,6 +4318,8 @@ module TaWorkspaceRenderer =
                                 attr.style "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"
                                 on.afterRender (fun node ->
                                     chartStackElement <- node
+                                    activeNavigatorDragMode
+                                    |> Option.iter (fun drag -> node.SetAttribute("data-drag-mode", drag))
                                     latestCursorTimestamps <- visibleTimestamps
                                     applyCursorIndex cursorIndex.Value)
                             ] [
@@ -4364,8 +4396,8 @@ module TaWorkspaceRenderer =
                                                         overviewReferenceTimeline)
                                                 |> RendererModel.overviewStripeVisuals
                                             let selectionWindow =
-                                                View.Map2
-                                                    (fun draft currentUi ->
+                                                View.Map3
+                                                    (fun draft currentUi activeGestureOverride ->
                                                         let currentVisibleWindow =
                                                             RendererModel.resolveWindow
                                                                 options.MinimumVisibleBars
@@ -4373,28 +4405,15 @@ module TaWorkspaceRenderer =
                                                                 currentReferenceLength
                                                                 currentUi.FollowLatest
                                                                 currentUi.Window
-                                                        match draft, currentCoverageProjection with
-                                                        | Some globalDraft, Some projection ->
-                                                            let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
-                                                            if domainCount > 0L && domainCount <= int64 Int32.MaxValue then
-                                                                RendererModel.overviewSelectionRatiosForGlobalWindow
-                                                                    projection
-                                                                    currentReferenceTimeline
-                                                                    globalDraft
-                                                                |> Option.defaultValue (RendererModel.selectionRatios (int domainCount) globalDraft)
-                                                            else
-                                                                RendererModel.selectionRatios currentReferenceLength currentVisibleWindow
-                                                        | _ ->
+                                                        RendererModel.navigatorSelectionRatiosForRender
+                                                            activeGestureOverride
                                                             currentCoverageProjection
-                                                            |> Option.bind (fun projection ->
-                                                                RendererModel.overviewSelectionRatios projection currentReferenceTimeline currentVisibleWindow)
-                                                            |> Option.defaultWith (fun () ->
-                                                                currentCoverageProjection
-                                                                |> Option.bind (RendererModel.coverageNavigatorWindow currentReferenceLength currentVisibleWindow)
-                                                                |> Option.map (fun (_, total, globalSelection) -> RendererModel.selectionRatios total globalSelection)
-                                                                |> Option.defaultValue (RendererModel.selectionRatios currentReferenceLength currentVisibleWindow)))
+                                                            currentReferenceTimeline
+                                                            currentVisibleWindow
+                                                            draft)
                                                     draftWindow.View
                                                     uiState.View
+                                                    navigatorSelectionRatiosOverride.View
                                             div [ Attr.Create "data-testid" "ta-overview-with-axis"; attr.style "min-width:0;" ] [
                                                 overviewSvgWithPalette
                                                     currentPlotPalette

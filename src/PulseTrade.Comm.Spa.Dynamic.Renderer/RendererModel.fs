@@ -2507,6 +2507,33 @@ module RendererModel =
             float bounded.StartIndex / float total,
             float (bounded.StartIndex + bounded.Count) / float total
 
+    let navigatorSelectionRatiosForRender
+        activeGestureOverride
+        (projection: TaLoadedCoverageProjection option)
+        (activeReferenceTimeline: string array)
+        activeWindow
+        globalDraft
+        =
+        match activeGestureOverride with
+        | Some ratios -> ratios
+        | None ->
+            match globalDraft, projection with
+            | Some draft, Some loaded ->
+                let domainCount = TaLoadedCoverageCodec.observationDomainCount loaded
+                if domainCount > 0L && domainCount <= int64 Int32.MaxValue then
+                    overviewSelectionRatiosForGlobalWindow loaded activeReferenceTimeline draft
+                    |> Option.defaultValue (selectionRatios (int domainCount) draft)
+                else
+                    selectionRatios activeReferenceTimeline.Length activeWindow
+            | _ ->
+                projection
+                |> Option.bind (fun loaded -> overviewSelectionRatios loaded activeReferenceTimeline activeWindow)
+                |> Option.defaultWith (fun () ->
+                    projection
+                    |> Option.bind (coverageNavigatorWindow activeReferenceTimeline.Length activeWindow)
+                    |> Option.map (fun (_, total, globalSelection) -> selectionRatios total globalSelection)
+                    |> Option.defaultValue (selectionRatios activeReferenceTimeline.Length activeWindow))
+
     let navigatorBoundaryDirection total committed drag rawDelta : TaCoverageDirection option =
         if total <= 0 || committed.Count <= 0 then
             None

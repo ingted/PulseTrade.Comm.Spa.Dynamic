@@ -1020,12 +1020,16 @@ module Client =
             match current.Document with
             | Some document ->
                 authoritativeGeneration <- authoritativeGeneration + 1L
-                let totalCount = 900
-                let residentStartIndex = 500
-                let residentCount = 400
+                let isAuthoritativeRefresh =
+                    RendererModel.tryLoadedCoverageResolved document.DefaultView current.Data
+                    |> Option.exists (fun projection ->
+                        projection.CoverageIdentity = "browser-demo:preview-release-parity")
+                let totalCount, residentStartIndex, residentCount, revision, generation =
+                    if isAuthoritativeRefresh then 1000, 450, 500, 2L, 2L
+                    else 900, 500, 400, 1L, 1L
                 let visibleCount = 200
                 let projection =
-                    { coverageProjectionFor totalCount 1L 1L residentStartIndex residentCount with
+                    { coverageProjectionFor totalCount revision generation residentStartIndex residentCount with
                         CoverageIdentity = "browser-demo:preview-release-parity" }
                 runtimeState.Value <-
                     { current with

@@ -1,0 +1,19 @@
+# Navigator authoritative-frame gesture fix
+
+## Pre-work plan
+
+- Background: Daedalus formal 18884 consumer found fixed-edge drift when an authoritative frame arrived during an active gesture.
+- Goal: preserve active preview geometry and semantic ownership across shell replacement without changing public wire types or Research host code.
+- Scope: Renderer state/selection binding, owner unit/browser fixtures, RFC/WBS/Test/DevLog, Renderer and Client package metadata.
+- Acceptance: exact-package Expecto 68/68; focused real-browser regression injects a changed projection during left/right/body/boundary gestures and passes 1/1; source committed before immutable publish; Daedalus reruns 18884 afterward.
+- Risk: same-version NuGet global cache can hide new bytes; every changed package uses a new numeric version.
+- Process deviation: this dedicated operation log was created during closeout after session compaction. The issue hypothesis was created before source inspection/modification and holds the original plan; commands/results remain in the tool transcript. Future work continues in this log.
+
+## Operations
+
+- 22:20–22:24: confirmed incoming projection remapped the active draft against a new basis; action/projection settlement lacked an active-gesture guard.
+- 22:24–22:28: added selection-ratio override, active mode preservation, settlement guards, and a pure renderer test. Initial source build exposed a render-local timeline scope mistake; replaced it with the pointerdown rendered-ratio snapshot.
+- 22:28–22:41: introduced fresh Renderer/Interactive.Client 0.2.5 exact dependencies after detecting same-version local package cache pollution. Renderer exact-package Expecto passed 68/68.
+- 22:40–22:41: BrowserDemo changed the same coverage identity from 900 observations/resident 500+400 to 1000/resident 450+500 during active drag. Focused Expecto Playwright passed 1/1; Preview=431, wire ordinal=430, count=200, actionCount=1.
+- 22:41: stopped local 18882 BrowserDemo. No Research host, 18884 service, or production service was modified.
+- Pending: checker, exact-path source commit/push, committed-HEAD rebuild/publish, official package verification, Daedalus formal 18884 rerun.

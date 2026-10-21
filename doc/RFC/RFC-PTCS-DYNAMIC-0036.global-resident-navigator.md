@@ -79,3 +79,4 @@ When the resident interval moves, the inner viewport keeps its width and its off
 6. Settlement is revision/generation-safe and stale results cannot clear a newer draft.
 7. Inner viewport width and resident-relative offset are preserved across relocation, with bounded edge clamping.
 8. Daedalus formal consumer proves whole-series navigation, 2018/2026 relocation, derived-TA shared axis, and existing inner navigator behavior.
+9. Pointerdown freezes the rendered selection ratios and semantic left/right/body ownership. An authoritative projection arriving before pointerup may rebuild the shell but cannot move the active preview, its fixed edge, or body width; pointerup still emits exactly one intent.

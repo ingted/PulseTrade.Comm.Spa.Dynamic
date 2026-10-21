@@ -142,11 +142,29 @@ let tests =
 
             let refreshDuringGesture () =
                 fixture.EvaluateAsync("element => element.click()") |> awaitTask |> ignore
-                waitInt chartStack "data-loaded-bars" 900
+                waitInt chartStack "data-loaded-bars" 1000
                 Thread.Sleep 100
 
             let selectionGeometry () =
                 floatAttribute selection "x", floatAttribute selection "width"
+
+            let stableSelectionGeometry () =
+                let deadline = DateTime.UtcNow.AddSeconds 2.0
+                let mutable previous = selectionGeometry ()
+                Thread.Sleep 50
+                let mutable current = selectionGeometry ()
+                while
+                    (not (approximately 0.25 (fst previous) (fst current)
+                          && approximately 0.25 (snd previous) (snd current)))
+                    && DateTime.UtcNow < deadline do
+                    previous <- current
+                    Thread.Sleep 50
+                    current <- selectionGeometry ()
+                require
+                    (approximately 0.25 (fst previous) (fst current)
+                     && approximately 0.25 (snd previous) (snd current))
+                    $"navigator preview geometry did not settle: previous={previous}, current={current}"
+                current
 
             let dragWithRerender targetTestId expectedMode firstDelta finalDelta =
                 resetFixture ()
@@ -172,9 +190,15 @@ let tests =
                 waitUntil "semantic drag mode after pointerdown" (fun () -> attributeOf chartStack "data-drag-mode") ((=) expectedMode) |> ignore
                 page.Mouse.MoveAsync(startX + firstDelta, y, MouseMoveOptions(Steps = 6)) |> awaitUnit
                 waitUntil "preview must become visible" (fun () -> textOf range) (fun value -> value.Contains "Preview") |> ignore
+                let beforeAuthoritativeFrame = stableSelectionGeometry ()
                 refreshDuringGesture ()
+                let afterAuthoritativeFrame = stableSelectionGeometry ()
                 let actualModeAfterRerender = attributeOf chartStack "data-drag-mode"
                 require (actualModeAfterRerender = expectedMode) $"drag mode changed after rerender: expected={expectedMode}, actual={actualModeAfterRerender}"
+                require
+                    (approximately 0.75 (fst beforeAuthoritativeFrame) (fst afterAuthoritativeFrame)
+                     && approximately 0.75 (snd beforeAuthoritativeFrame) (snd afterAuthoritativeFrame))
+                    $"authoritative frame changed active preview geometry: before={beforeAuthoritativeFrame}, after={afterAuthoritativeFrame}"
                 page.Mouse.MoveAsync(startX + finalDelta, y, MouseMoveOptions(Steps = 6)) |> awaitUnit
                 waitUntil "semantic drag mode after rerender move" (fun () -> attributeOf chartStack "data-drag-mode") ((=) expectedMode) |> ignore
                 Thread.Sleep 100

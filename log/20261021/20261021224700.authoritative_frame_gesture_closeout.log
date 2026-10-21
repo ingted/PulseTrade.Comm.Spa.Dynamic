@@ -1,0 +1,16 @@
+# Navigator authoritative-frame gesture closeout
+
+## Pre-work plan
+
+- Background: continue the verified owner candidate from `20261021224300.authoritative_frame_gesture_fix.log` through deterministic checker, exact-path source checkpoint, immutable package publication, and consumer handoff.
+- Goal: publish Renderer/Interactive.Client 0.2.5 from committed HEAD and give Daedalus one exact authority for the formal 18884 rerun.
+- 假設: document-level listeners still hold the gesture closure, but replacement shells previously recomputed selection ratios from the newest projection; the verified pointerdown ratio override and settlement guard eliminate that drift.
+- Steps: checker -> exact stage audit -> commit/push -> committed-HEAD rebuild -> canonical PostBuild publish -> official signature/dependency/DLL proof -> Daedalus handoff.
+- Scope: current 0.2 owner graph and its docs/tests only. No Research host, 18884 lifecycle, production service, or compatibility-line consumer mutation.
+- Acceptance: checker FAIL=0; source commit pushed; official packages point to that commit and Client exact-depends on Renderer 0.2.5; Daedalus formal result remains separately owned.
+- Risk: generated log/read ACL and same-version NuGet cache; generated logs are removed before build and package versions are never overwritten after publication.
+
+## Operations
+
+- 22:47: checker diagnostic found the prior log changed after baseline and the WBS omitted the full Renderer package ID. Restored the prior log to baseline bytes, created this successor log, and corrected DYN-WBS-586 without changing the verifier.
+- Pending: rerun checker, exact stage/commit/push, committed-HEAD package publication and official proof, Daedalus handoff.

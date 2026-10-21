@@ -473,6 +473,25 @@ let tests =
             | Some(left, _) ->
                 Expect.floatClose Accuracy.high left 0.25 "A right-handle draft must keep the committed timestamp-mapped left boundary."
             | None -> failtest "A resident global draft must map through the canonical overview timeline."
+            let frozenGestureRatios = 0.25, 0.5
+            let shiftedProjection =
+                { residentProjection with
+                    CoverageRevision = 2L
+                    QueryGeneration = 2L
+                    ActiveDetail =
+                        { residentProjection.ActiveDetail with
+                            StartObservationOrdinal = 650L } }
+            let ratiosDuringAuthoritativeFrame =
+                RendererModel.navigatorSelectionRatiosForRender
+                    (Some frozenGestureRatios)
+                    (Some shiftedProjection)
+                    detailTimeline
+                    { StartIndex = 0; Count = 10 }
+                    (Some { StartIndex = 700; Count = 5 })
+            Expect.equal
+                ratiosDuringAuthoritativeFrame
+                frozenGestureRatios
+                "An authoritative frame received before pointerup must not rewrite the active gesture geometry."
             Expect.equal
                 (RendererModel.eventTimeSlot (RendererModel.tryOverviewTimeline projection |> Option.defaultValue [||]) (time 130))
                 (Some 2)
