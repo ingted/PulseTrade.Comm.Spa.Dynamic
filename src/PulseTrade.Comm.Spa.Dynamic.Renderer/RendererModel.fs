@@ -2101,6 +2101,11 @@ module RendererModel =
             |> Option.orElse pendingDraft
             |> Option.defaultValue committed
 
+    let navigatorGestureBaseline committed renderedDraft publishedDraft =
+        renderedDraft
+        |> Option.orElse publishedDraft
+        |> Option.defaultValue committed
+
     let previewWindowBounds minimumCount maximumCount total committed drag delta =
         let committed = clampWindow minimumCount maximumCount total committed
 

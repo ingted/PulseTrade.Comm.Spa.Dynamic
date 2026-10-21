@@ -204,6 +204,67 @@ let tests =
                 Thread.Sleep 100
                 initial, selectionGeometry ()
 
+            let verifyDelayedPreviousResponseOwnership () =
+                resetFixture ()
+                let moveTarget = navigator.Locator("[data-testid='ta-overview-move-hit']")
+                let moveBounds = boundingBox moveTarget
+                let moveStartX = moveBounds.X + moveBounds.Width / 2.0f
+                let moveY = moveBounds.Y + moveBounds.Height / 2.0f
+                let previousActionCount = intAttribute callbackState "data-callback-count"
+
+                page.Mouse.MoveAsync(moveStartX, moveY) |> awaitUnit
+                page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+                page.Mouse.MoveAsync(moveStartX - 420.0f, moveY, MouseMoveOptions(Steps = 8)) |> awaitUnit
+                waitUntil "previous coverage preview" (fun () -> textOf range) (fun value -> value.Contains "Preview") |> ignore
+                page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+                waitUntil
+                    "previous coverage action must enter before its delayed completion"
+                    (fun () -> attributeOf callbackState "data-last-coverage-start")
+                    (String.IsNullOrWhiteSpace >> not)
+                |> ignore
+                require
+                    (intAttribute callbackState "data-callback-count" = previousActionCount)
+                    "previous coverage action completed before the chained gesture started"
+
+                let baselineX, baselineWidth = selectionGeometry ()
+                let baselineRight = baselineX + baselineWidth
+                let leftTarget = navigator.Locator("[data-testid='ta-overview-left-handle']")
+                let leftBounds = boundingBox leftTarget
+                let leftStartX = leftBounds.X + leftBounds.Width / 2.0f
+                let leftY = leftBounds.Y + leftBounds.Height / 2.0f
+                page.Mouse.MoveAsync(leftStartX, leftY) |> awaitUnit
+                page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+                waitUntil "chained left drag mode" (fun () -> attributeOf navigator "data-drag-mode") ((=) "resize-left") |> ignore
+                page.Mouse.MoveAsync(leftStartX + 24.0f, leftY, MouseMoveOptions(Steps = 6)) |> awaitUnit
+                waitUntil "chained left preview" (fun () -> textOf range) (fun value -> value.Contains "Preview") |> ignore
+                let duringX, duringWidth = selectionGeometry ()
+                require
+                    (approximately 0.75 baselineRight (duringX + duringWidth))
+                    $"chained pointerdown reset the optimistic right edge: baseline={baselineRight}, during={duringX + duringWidth}"
+
+                waitUntil
+                    "previous authoritative response must arrive while chained gesture is held"
+                    (fun () -> intAttribute callbackState "data-callback-count")
+                    ((=) (previousActionCount + 1))
+                |> ignore
+                Thread.Sleep 100
+                let afterResponseX, afterResponseWidth = selectionGeometry ()
+                require
+                    (approximately 0.75 baselineRight (afterResponseX + afterResponseWidth))
+                    $"delayed previous response moved the chained gesture right edge: baseline={baselineRight}, after={afterResponseX + afterResponseWidth}"
+                require
+                    (attributeOf navigator "data-drag-mode" = "resize-left")
+                    "delayed previous response cleared the chained navigator drag mode"
+
+                page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+                waitUntil
+                    "chained gesture must produce exactly one later action"
+                    (fun () -> intAttribute callbackState "data-callback-count")
+                    ((=) (previousActionCount + 2))
+                |> ignore
+
+            verifyDelayedPreviousResponseOwnership ()
+
             let (leftInitialX, leftInitialWidth), (leftDraftX, leftDraftWidth) =
                 dragWithRerender "ta-overview-left-handle" "resize-left" 12.0f 28.0f
             require (leftDraftX > leftInitialX + 1.0f) "left handle did not move the left boundary"

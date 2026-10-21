@@ -404,6 +404,24 @@ let tests =
                 { StartIndex = 0; Count = 200 }
                 "an explicit loaded-boundary crossing must preserve its final clamped intent"
 
+        testCase "chained navigator gesture starts from the last visible optimistic draft" <| fun _ ->
+            let authoritative = { StartIndex = 500; Count = 400 }
+            let published = { StartIndex = 430; Count = 200 }
+            let rendered = { StartIndex = 420; Count = 200 }
+
+            Expect.equal
+                (RendererModel.navigatorGestureBaseline authoritative (Some rendered) (Some published))
+                rendered
+                "the pixels already rendered for the user own the next gesture baseline"
+            Expect.equal
+                (RendererModel.navigatorGestureBaseline authoritative None (Some published))
+                published
+                "a published optimistic draft owns the baseline before afterRender records it"
+            Expect.equal
+                (RendererModel.navigatorGestureBaseline authoritative None None)
+                authoritative
+                "without an optimistic draft the authoritative window remains canonical"
+
         testCase "dual-bound navigator previews move and both resize handles" <| fun _ ->
             let committed = { StartIndex = 1952; Count = 48 }
             let moved = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.Move -952

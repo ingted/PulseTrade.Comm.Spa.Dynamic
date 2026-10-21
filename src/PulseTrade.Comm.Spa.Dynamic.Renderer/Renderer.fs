@@ -2849,6 +2849,7 @@ module TaWorkspaceRenderer =
                     let bounds = navigatorRoot.GetBoundingClientRect()
                     let localTotal = referenceLength ()
                     let localCommitted = resolvedWindow uiState.Value
+                    let publishedNavigatorDraft = draftWindow.Value
                     let loadedDragDomain =
                         match runtimeState.Value.Document with
                         | Some document ->
@@ -2857,12 +2858,27 @@ module TaWorkspaceRenderer =
                                 RendererModel.coverageNavigatorWindow localTotal localCommitted projection
                                 |> Option.map (fun (_, total, committed) -> document, projection, total, committed))
                         | None -> None
-                    let total, committed =
+                    let total, authoritativeCommitted =
                         loadedDragDomain
                         |> Option.map (fun (_, _, total, committed) -> total, committed)
                         |> Option.defaultValue (localTotal, localCommitted)
+                    let committed =
+                        RendererModel.navigatorGestureBaseline
+                            authoritativeCommitted
+                            renderedNavigatorDraft
+                            publishedNavigatorDraft
                     let pointerX = float event.ClientX - bounds.Left
-                    let ratios = navigatorRatios localCommitted
+                    let renderedSelectionRatios =
+                        match
+                            Double.TryParse(navigatorRoot.GetAttribute("data-selection-left-ratio")),
+                            Double.TryParse(navigatorRoot.GetAttribute("data-selection-right-ratio"))
+                        with
+                        | (true, left), (true, right) when left >= 0.0 && right >= left && right <= 1.0 -> Some(left, right)
+                        | _ -> None
+                    let ratios =
+                        renderedSelectionRatios
+                        |> Option.orElse navigatorSelectionRatiosOverride.Value
+                        |> Option.defaultValue (RendererModel.selectionRatios total committed)
                     let eventTarget: Element = JS.Get "target" rawEvent
                     let semanticDrag =
                         if isNull eventTarget then None
@@ -2886,9 +2902,17 @@ module TaWorkspaceRenderer =
                     setDragDiagnostic "data-drag-pointer-x" (string pointerX)
                     setDragDiagnostic "data-drag-ratio-left" (string (fst ratios))
                     setDragDiagnostic "data-drag-ratio-right" (string (snd ratios))
+                    setDragDiagnostic
+                        "data-drag-ratio-source"
+                        (if renderedSelectionRatios.IsSome then "rendered-selection"
+                         elif navigatorSelectionRatiosOverride.Value.IsSome then "gesture-override"
+                         else "committed-window")
                     setDragDiagnostic "data-drag-hit-source" (if semanticDrag.IsSome then "semantic-target" else "geometry-fallback")
-                    renderedNavigatorDraft <- None
-                    draftWindow.Value <- None
+                    setDragDiagnostic
+                        "data-drag-baseline-source"
+                        (if renderedNavigatorDraft.IsSome then "rendered-draft"
+                         elif publishedNavigatorDraft.IsSome then "published-draft"
+                         else "authoritative")
                     setDragDiagnostic "data-drag-domain" (if loadedDragDomain.IsSome then "global-loaded" else "active-detail")
                     setDragDiagnostic "data-drag-domain-count" (string total)
 
@@ -4422,6 +4446,8 @@ module TaWorkspaceRenderer =
                                                     overviewReferenceTimeline.Length
                                                     selectionWindow
                                                     (fun element ->
+                                                        activeNavigatorDragMode
+                                                        |> Option.iter (fun drag -> element.SetAttribute("data-drag-mode", drag))
                                                         match activeNavigatorCursor with
                                                         | Some cursor ->
                                                             (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)

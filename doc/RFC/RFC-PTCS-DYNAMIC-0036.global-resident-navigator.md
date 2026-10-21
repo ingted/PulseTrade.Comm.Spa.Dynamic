@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0036 Global Resident Navigator
 
 - ID: RFC-PTCS-DYNAMIC-0036
-- Status: Accepted / development pending
+- Status: Accepted / owner replacement verified; consumer validation pending
 - Date: 2026-10-21
 - Owners: PTCS.Dynamic Renderer / Aster; Research host consumer / Daedalus
 - Related: RFC-PTCS-DYNAMIC-0032, RFC-PTCS-DYNAMIC-0033, RFC-PTCS-DYNAMIC-0034
@@ -62,6 +62,10 @@ Global drag changes only a renderer-local draft. Pointer release emits at most o
 
 When the resident interval moves, the inner viewport keeps its width and its offset relative to the resident start. For resident width 3,000, inner offset 1,500, and viewport width 700, relocation to `newResidentStart` produces `newResidentStart + 1,500` with width 700. Near a boundary, clamp the offset while preserving width; shrink width only when the complete series itself is shorter. The old absolute ordinal is not retained.
 
+### D5. The visible selection owns the next gesture
+
+While a remote coverage action awaits its response or matching projection, the renderer may show a newer optimistic selection than the authoritative projection. A new pointerdown therefore takes its index baseline from the rendered or published draft and its ratio baseline from the navigator's currently rendered `data-selection-left-ratio` / `data-selection-right-ratio`. It must not clear that draft before choosing the baseline. Internal ratio overrides are fallback state only; CSS/SVG bounding-box conversion is not authority because borders and view-box scaling can introduce visible edge drift.
+
 ## Impact
 
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
@@ -80,3 +84,4 @@ When the resident interval moves, the inner viewport keeps its width and its off
 7. Inner viewport width and resident-relative offset are preserved across relocation, with bounded edge clamping.
 8. Daedalus formal consumer proves whole-series navigation, 2018/2026 relocation, derived-TA shared axis, and existing inner navigator behavior.
 9. Pointerdown freezes the rendered selection ratios and semantic left/right/body ownership. An authoritative projection arriving before pointerup may rebuild the shell but cannot move the active preview, its fixed edge, or body width; pointerup still emits exactly one intent.
+10. If a second gesture starts while the first gesture's remote response is still pending, pointerdown keeps the exact rendered edge as its baseline. The first response may arrive while the second gesture is held without moving its fixed edge, changing its body width, clearing its semantic mode, or suppressing its one later intent.
