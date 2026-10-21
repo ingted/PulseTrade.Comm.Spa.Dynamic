@@ -2226,6 +2226,11 @@ module TaWorkspaceRenderer =
         let viewportCommandsDisabledNow () =
             not viewportDataReady.Value
             || localViewportDisabled runtimeState.Value.Poll
+        let settleVisibleRangeDraft () =
+            draftWindow.Value <-
+                RendererModel.optimisticViewportAfterActionSettlement
+                    queuedViewportIntent.IsSome
+                    draftWindow.Value
         let startActionWithFeedback action successText onAccepted onRejected afterSettled =
             actionSequence <- actionSequence + 1
             let request =
@@ -2247,6 +2252,12 @@ module TaWorkspaceRenderer =
             startActionWithFeedback action successText (fun () -> onAccepted (); None) onRejected ignore
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
+        let startVisibleRangeAction action =
+            startActionWith
+                action
+                "Visible range synchronized."
+                settleVisibleRangeDraft
+                settleVisibleRangeDraft
         let startCoverageWindowAction action pending successText =
             pendingBoundaryPan <- Some pending
             startActionWith
@@ -2258,7 +2269,7 @@ module TaWorkspaceRenderer =
             if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange action)
             else
-                startAction action "Visible range synchronized." ignore
+                startVisibleRangeAction action
         let sendOrQueueCoverageWindowAction targetStart targetCount successText =
             if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText))
@@ -2271,7 +2282,7 @@ module TaWorkspaceRenderer =
                 queuedViewportIntent <- None
                 match intent with
                 | TaQueuedViewportIntent.LocalRange action ->
-                    startAction action "Visible range synchronized." ignore
+                    startVisibleRangeAction action
                 | TaQueuedViewportIntent.AdjacentCoverage(direction, delta) ->
                     dispatchAdjacentCoverage direction delta
                 | TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText) ->
@@ -2472,6 +2483,7 @@ module TaWorkspaceRenderer =
             if next.Identity <> observedDataState.Identity then
                 pendingBoundaryPan <- None
                 queuedViewportIntent <- None
+                draftWindow.Value <- None
                 setUiState
                     { uiState.Value with
                         HiddenRows = Set.empty
@@ -2492,6 +2504,7 @@ module TaWorkspaceRenderer =
                     if viewportScopeChanged then
                         queuedViewportIntent <- None
                         pendingBoundaryPan <- None
+                        draftWindow.Value <- None
                         observedDataState <- next
                         scheduleFullPreparation ()
                     else
@@ -2551,7 +2564,6 @@ module TaWorkspaceRenderer =
                     FollowLatest = followLatest
                     CursorIndex = None }
             cursorIndex.Value <- None
-            draftWindow.Value <- None
             changed, bounded
 
         let setWindow followLatest window =
@@ -2570,8 +2582,10 @@ module TaWorkspaceRenderer =
                                       EndEventTimeExclusiveUtc = range.EndEventTimeExclusiveUtc
                                       MaximumBasePoints = min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 (maximumVisibleBarsFor document))
                                       CoverageIntent = None }))
-                        | None -> ()
-                    | None -> ()
+                        | None -> draftWindow.Value <- None
+                    | None -> draftWindow.Value <- None
+                else
+                    draftWindow.Value <- None
 
         let dispatchAdjacentCoverageNow direction delta =
             if actionAllowed "visible-range-changed" && preparedRowsReady.Value && not (localViewportDisabled runtimeState.Value.Poll) then
@@ -2828,6 +2842,17 @@ module TaWorkspaceRenderer =
                         |> Option.defaultValue (localTotal, localCommitted)
                     let pointerX = float event.ClientX - bounds.Left
                     let ratios = navigatorRatios localCommitted
+                    setDragDiagnostic "data-drag-runtime-document-revision" (string runtimeState.Value.DocumentRevision)
+                    setDragDiagnostic "data-drag-runtime-data-revision" (string runtimeState.Value.DataRevision)
+                    setDragDiagnostic "data-drag-prepared-reference-count" (string localTotal)
+                    setDragDiagnostic "data-drag-local-start" (string localCommitted.StartIndex)
+                    setDragDiagnostic "data-drag-local-count" (string localCommitted.Count)
+                    setDragDiagnostic "data-drag-pointer-client-x" (string event.ClientX)
+                    setDragDiagnostic "data-drag-track-left" (string bounds.Left)
+                    setDragDiagnostic "data-drag-track-width" (string bounds.Width)
+                    setDragDiagnostic "data-drag-pointer-x" (string pointerX)
+                    setDragDiagnostic "data-drag-ratio-left" (string (fst ratios))
+                    setDragDiagnostic "data-drag-ratio-right" (string (snd ratios))
                     renderedNavigatorDraft <- None
                     draftWindow.Value <- None
                     setDragDiagnostic "data-drag-domain" (if loadedDragDomain.IsSome then "global-loaded" else "active-detail")

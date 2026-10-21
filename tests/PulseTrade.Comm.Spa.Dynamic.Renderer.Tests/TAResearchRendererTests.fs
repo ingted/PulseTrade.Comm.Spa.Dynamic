@@ -470,6 +470,15 @@ let tests =
                 (RendererModel.navigatorBoundaryDirection 100 { StartIndex = 20; Count = 20 } TaWindowDrag.ResizeLeft 1)
                 "An in-range resize remains local."
 
+            let optimistic = Some { StartIndex = 1498; Count = 1500 }
+            Expect.equal
+                (RendererModel.optimisticViewportAfterActionSettlement true optimistic)
+                optimistic
+                "A queued action retains the latest optimistic viewport when the previous visible-range action settles."
+            Expect.isNone
+                (RendererModel.optimisticViewportAfterActionSettlement false optimistic)
+                "Accepted or rejected visible-range action clears an unqueued optimistic viewport exactly once."
+
         testCase "RFC-0031 overview anchors preserve authored OHLC without inventing OC wicks" <| fun _ ->
             let objectValue values = SduiValue.Object(Map values)
             let projection : TaLoadedCoverageProjection =

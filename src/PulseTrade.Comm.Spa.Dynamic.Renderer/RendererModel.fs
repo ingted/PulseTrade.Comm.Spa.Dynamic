@@ -2445,6 +2445,9 @@ module RendererModel =
             elif requestedEnd > total then Some TaCoverageDirection.Later
             else None
 
+    let optimisticViewportAfterActionSettlement queuedIntent draft =
+        if queuedIntent then draft else None
+
     let navigatorSelectionBounds trackWidth (leftRatio, rightRatio) =
         let width = max 0.0 trackWidth
         let left = max 0.0 (min 1.0 leftRatio) * width
