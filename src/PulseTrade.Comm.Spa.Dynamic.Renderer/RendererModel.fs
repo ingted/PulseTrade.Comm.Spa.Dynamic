@@ -2448,6 +2448,9 @@ module RendererModel =
     let optimisticViewportAfterActionSettlement queuedIntent draft =
         if queuedIntent then draft else None
 
+    let optimisticCoverageViewportAfterProjection actionPending queuedIntent draft =
+        optimisticViewportAfterActionSettlement (actionPending || queuedIntent) draft
+
     let navigatorSelectionBounds trackWidth (leftRatio, rightRatio) =
         let width = max 0.0 trackWidth
         let left = max 0.0 (min 1.0 leftRatio) * width

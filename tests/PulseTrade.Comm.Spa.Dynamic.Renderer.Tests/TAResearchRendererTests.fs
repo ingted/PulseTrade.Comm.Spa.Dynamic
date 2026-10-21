@@ -479,6 +479,20 @@ let tests =
                 (RendererModel.optimisticViewportAfterActionSettlement false optimistic)
                 "Accepted or rejected visible-range action clears an unqueued optimistic viewport exactly once."
 
+        testCase "coverage projection and action settlement preserve the newest optimistic viewport" <| fun _ ->
+            let optimistic = Some { StartIndex = 1423; Count = 1500 }
+            Expect.equal
+                (RendererModel.optimisticCoverageViewportAfterProjection true false optimistic)
+                optimistic
+                "A projection arriving before the Accepted response retains the released viewport until the action settles."
+            Expect.equal
+                (RendererModel.optimisticCoverageViewportAfterProjection false true optimistic)
+                optimistic
+                "A newer queued viewport intent survives the prior coverage projection."
+            Expect.isNone
+                (RendererModel.optimisticCoverageViewportAfterProjection false false optimistic)
+                "A settled coverage action clears its optimistic viewport after the matching projection commits."
+
         testCase "RFC-0031 overview anchors preserve authored OHLC without inventing OC wicks" <| fun _ ->
             let objectValue values = SduiValue.Object(Map values)
             let projection : TaLoadedCoverageProjection =

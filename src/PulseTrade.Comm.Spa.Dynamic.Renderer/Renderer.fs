@@ -2263,8 +2263,12 @@ module TaWorkspaceRenderer =
             startActionWith
                 action
                 successText
-                ignore
-                (fun () -> pendingBoundaryPan <- None)
+                (fun () ->
+                    if pendingBoundaryPan.IsNone then
+                        settleVisibleRangeDraft ())
+                (fun () ->
+                    pendingBoundaryPan <- None
+                    settleVisibleRangeDraft ())
         let sendOrQueueVisibleRangeAction action =
             if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange action)
@@ -2340,6 +2344,7 @@ module TaWorkspaceRenderer =
                             generalOldTimeline.Length
                             currentUi.FollowLatest
                             currentUi.Window
+                    let pendingBoundaryPanBeforeReanchor = pendingBoundaryPan
                     let reanchored =
                         if viewportScopeChanged then
                             pendingBoundaryPan <- None
@@ -2396,6 +2401,12 @@ module TaWorkspaceRenderer =
                                 FollowLatest = followLatest
                                 CursorIndex = None }
                         cursorIndex.Value <- None
+                        if pendingBoundaryPanBeforeReanchor.IsSome && pendingBoundaryPan.IsNone then
+                            draftWindow.Value <-
+                                RendererModel.optimisticCoverageViewportAfterProjection
+                                    uiState.Value.PendingActionId.IsSome
+                                    queuedViewportIntent.IsSome
+                                    draftWindow.Value
                         if viewportScopeChanged then
                             defaultViewportAppliedToCanvas <- Some(viewportScopeKey next document)
                     | None -> ()
@@ -2957,7 +2968,7 @@ module TaWorkspaceRenderer =
                                             setDragDiagnostic
                                                 "data-drag-outcome"
                                                 (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
-                                            draftWindow.Value <- None
+                                            draftWindow.Value <- Some draft
                                             sendOrQueueCoverageWindowAction
                                                 (intent.StartObservationOrdinal |> Option.defaultValue 0L)
                                                 intent.ObservationCount
