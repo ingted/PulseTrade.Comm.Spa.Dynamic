@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0036 Global Resident Navigator
 
 - ID: RFC-PTCS-DYNAMIC-0036
-- Status: Accepted / owner implementation in progress; package and browser validation blocked
+- Status: Accepted / owner package and browser validation passed; formal consumer validation pending
 - Date: 2026-10-21
 - Owners: PTCS.Dynamic Renderer / Aster; Research host consumer / Daedalus
 - Related: RFC-PTCS-DYNAMIC-0032, RFC-PTCS-DYNAMIC-0033, RFC-PTCS-DYNAMIC-0034
@@ -77,7 +77,7 @@ While a remote coverage action awaits its response or matching projection, the r
 
 - Contracts and renderer source now contain the additive action allowlist, independent move-only global strip, local draft/pending settlement, and a BrowserDemo 10,000-total/1,500-resident fixture. Contracts Expecto passes 51/51 and Renderer model/source-contract Expecto passes 71/71.
 - The first attempted `0.1.37 -> 0.2.9 -> 0.2.9` artifacts are retired: `GeneratePackageOnBuild=true` caused direct `dotnet pack` to reuse an older Release DLL, so those packages do not contain this UI.
-- Source candidates are Contracts `0.1.38`, Renderer `0.2.10`, and Interactive.Client `0.2.10`. Contracts `0.1.38` fresh-build/local-first/publish passed. Renderer fresh build currently stops before package creation because an abnormal, unreadable `src/PulseTrade.Comm.Spa.Dynamic.Renderer/websharper.log` causes `wsfsc` to exit with `-532462766`; the file requires an elevated exact-path deletion. Browser E2E and consumer handoff remain pending until that blocker is removed.
+- Owner candidates are Contracts `0.1.38`, Renderer `0.2.10`, and Interactive.Client `0.2.10`. All three passed fresh local-first package publication; Renderer and Interactive.Client local package SHA-256 values are `ECCD46DADDEEAD7AAE3F9BAD488552D84923E658FD4139FC88DA6387FDB6DCE1` and `84BB347B698CDC9BC15791CC842A78C29BBE2804CCA7F2378E5B4EAE72F460AA`. The package-consuming BrowserDemo build passes, and its Expecto Playwright gate passes the existing resident gesture plus the independent global relocation/drop-only action. Daedalus formal 18884 consumer validation remains pending.
 - Existing `0.2.8` remains the valid chained-gesture release and does not contain the global strip.
 
 ## Acceptance
