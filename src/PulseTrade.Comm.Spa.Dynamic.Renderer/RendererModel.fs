@@ -2382,12 +2382,13 @@ module RendererModel =
         |> Option.bind (fun resident ->
             let local = clampWindow 1 maximumVisibleBars resident.ObservationCount residentWindow
             let count = max 1 (min maximumVisibleBars local.Count)
+            let residentPageCount = max count (min maximumVisibleBars resident.ObservationCount)
             let currentStart = resident.StartObservationOrdinal + int64 local.StartIndex
             let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
             let targetStart =
                 match direction with
-                | TaCoverageDirection.Earlier -> max 0L (currentStart - int64 count)
-                | TaCoverageDirection.Later -> min (max 0L (domainCount - int64 count)) (currentStart + int64 count)
+                | TaCoverageDirection.Earlier -> max 0L (currentStart - int64 residentPageCount)
+                | TaCoverageDirection.Later -> min (max 0L (domainCount - int64 count)) (currentStart + int64 residentPageCount)
             let contractDirection =
                 match direction with
                 | TaCoverageDirection.Earlier -> PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier

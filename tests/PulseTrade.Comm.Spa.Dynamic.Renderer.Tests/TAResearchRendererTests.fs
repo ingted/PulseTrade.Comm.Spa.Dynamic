@@ -909,6 +909,18 @@ let tests =
                 Expect.equal window { StartIndex = 0; Count = 1500 } "Global ordinals map to resident-local 0/1500."
             | None -> failtest "A valid accepted GlobalOverview must map into the resident-local navigator domain."
 
+            match
+                RendererModel.tryResidentAdjacentCoverageIntent
+                    TaCoverageDirection.Earlier
+                    1500
+                    { StartIndex = 0; Count = 700 }
+                    acceptedProjection
+            with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some(acceptedOverview.ResidentStartObservationOrdinal - 1500L)) "The first earlier overscroll crosses one 1500-bar resident page."
+                Expect.equal intent.ObservationCount 700 "Resident expansion preserves the 700-bar visible width."
+            | None -> failtest "The accepted resident head must produce one earlier-page coverage intent."
+
             let expandedOverview =
                 { acceptedOverview with
                     ResidentStartObservationOrdinal = 1_000_000L
@@ -950,16 +962,16 @@ let tests =
                 Expect.equal intent.ObservationCount 700 "A resident-local drop preserves visible width."
             | None -> failtest "A bounded resident-local drop must produce one typed coverage intent."
 
-            match RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Earlier 4000 movedToHead expandedProjection with
+            match RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Earlier 1500 movedToHead expandedProjection with
             | Some intent ->
-                Expect.equal intent.StartObservationOrdinal (Some(expandedOverview.ResidentStartObservationOrdinal - 700L)) "Left overscroll requests the adjacent global interval."
+                Expect.equal intent.StartObservationOrdinal (Some(expandedOverview.ResidentStartObservationOrdinal - 1500L)) "Left overscroll crosses one document-sized resident page."
                 Expect.equal intent.ObservationCount 700 "Left overscroll keeps the active visible width."
             | None -> failtest "Left resident overscroll must produce an earlier coverage intent."
 
             let movedToTail = { StartIndex = 3800; Count = 700 }
-            match RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Later 4000 movedToTail expandedProjection with
+            match RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Later 1500 movedToTail expandedProjection with
             | Some intent ->
-                Expect.equal intent.StartObservationOrdinal (Some(expandedOverview.ResidentStartObservationOrdinal + 4500L)) "Right overscroll is symmetric beyond the resident tail."
+                Expect.equal intent.StartObservationOrdinal (Some(expandedOverview.ResidentStartObservationOrdinal + 5300L)) "Right overscroll crosses the symmetric 1500-bar resident page."
                 Expect.equal intent.ObservationCount 700 "Right overscroll keeps the active visible width."
             | None -> failtest "Right resident overscroll must produce a later coverage intent."
 
