@@ -1,0 +1,16 @@
+# Dynamic.Ptcs pack and test dependency closeout
+
+## Pre-work plan
+- Background: Dynamic.Ptcs 0.2.0 referenced the shared root PostBuildEvent.ps1 but still passed obsolete -assembly/-build arguments; the target ran only during public-push opt-in, so normal local packing bypassed the canonical local registry copy.
+- Scope: use the shared script's PackageId/PackageVersion/Configuration/ProjectDirectory/PackageFilePath contract after Pack, keeping public push separately opt-in; upgrade Dynamic.Ptcs.Tests Expecto 11.1.0 to 11.1.1.
+- Invariants: preserve existing UTF-8 BOM and all parallel Program.fs changes; no deployment or public NuGet push.
+- Acceptance: canonical local Pack prints copy/hash evidence; test project restore/build and actual Expecto suite pass.
+- Process deviation: earlier cross-repository edits had no new local pre-work log. This record starts now and does not backdate the earlier main-repo log evidence.
+
+## Operations
+- 2026-10-23 04:48 +08:00: exact diff audit found the obsolete PostBuild argument contract; no staged files; producer project UTF-8 BOM, test project UTF-8 without BOM.
+- 2026-10-23 04:50 +08:00: `dotnet pack src/PulseTrade.Comm.Spa.Dynamic.Ptcs/PulseTrade.Comm.Spa.Dynamic.Ptcs.fsproj -c Release -p:SkipNuGetPush=true -p:PulseTradeCommSpaDynamicPtcsPushNuGet=false -p:PublishNuGetAfterPack=false -v minimal` exited 0. The AfterTargets=Pack target printed LIBRARY_PACK_COPY_OK and NUGET_PUSH_SKIPPED; no public push occurred.
+- Local package and lib-packs.txt destination SHA-256 both D8615733A386045B4EFA1B9583EECBF0DCC0EB67076EEBC6F216625717CA0FB1; package 0.2.0 contains unchanged producer source, with the corrected project Pack wiring.
+- `dotnet build tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests.fsproj -c Release -p:SkipNuGetPush=true -v minimal` restored/built successfully (exit 0); direct Expecto resolved to 11.1.1.
+- `dotnet tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/bin/Release/net10.0/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests.dll --colours 0 --no-spinner` exited 0: 15 executed, 15 passed, 0 ignored/failed/errored, 0.530 seconds. Existing parallel Program.fs changes were preserved and not edited.
+- Restore reported existing transitive System.Security.Cryptography.Pkcs 9.0.18 vulnerability warnings NU1902/NU1903; this narrow Pack contract correction did not change that transitive dependency or suppress the warnings.
