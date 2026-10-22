@@ -5,7 +5,6 @@ open System.Collections.Generic
 open Expecto
 open PulseTrade.Comm.Spa.Dynamic.Contracts
 open PulseTrade.Comm.Spa.Dynamic.Interactive.Client
-open PulseTrade.Comm.Spa.Dynamic.Renderer
 
 let options =
     { InteractiveClientLifecycle.defaults with
@@ -251,7 +250,7 @@ let tests =
                   let mutable current = true
                   let mutable publicationCount = 0
                   let mutable outcome = None
-                  let schedule = RendererModel.createBudgetedWorkScheduler 4.0 2 turns.Enqueue (fun () -> 0.0) ignore
+                  let schedule = PulseTrade.Comm.Spa.Dynamic.Renderer.RendererModel.createBudgetedWorkScheduler 4.0 2 turns.Enqueue (fun () -> 0.0) ignore
                   let frames = [| documentFrame; heartbeat 2L |] |> Array.map BrowserRuntimeCodec.encode
                   BrowserRuntimeFramePump.reduceEncodedFramesWith
                       (fun _ work -> schedule work)
