@@ -2167,6 +2167,35 @@ module RendererModel =
                     { StartObservationOrdinal = overview.ResidentStartObservationOrdinal
                       ObservationCount = overview.ResidentObservationCount })
 
+    let tryResidentNavigatorWindow activeReferenceLength activeWindow projection =
+        tryGlobalResidentWindow projection
+        |> Option.bind (fun resident ->
+            let activeCount =
+                max 0 (min activeReferenceLength projection.ActiveDetail.ObservationCount)
+            let local =
+                clampWindow
+                    1
+                    TaLoadedCoverageCodec.MaximumActiveDetailBars
+                    activeCount
+                    activeWindow
+            let visibleStart =
+                projection.ActiveDetail.StartObservationOrdinal + int64 local.StartIndex
+            let residentOffset = visibleStart - resident.StartObservationOrdinal
+            let residentVisibleEnd = residentOffset + int64 local.Count
+            if
+                local.Count <= 0
+                || residentOffset < 0L
+                || residentOffset > int64 Int32.MaxValue
+                || residentVisibleEnd > int64 resident.ObservationCount
+            then
+                None
+            else
+                Some(
+                    projection,
+                    resident.ObservationCount,
+                    { StartIndex = int residentOffset
+                      Count = local.Count }))
+
     let globalResidentSelectionRatios (overview: TaGlobalCoverageOverview) window =
         if overview.TotalObservationCount <= 0L || window.ObservationCount <= 0 then
             0.0, 0.0
@@ -2238,6 +2267,9 @@ module RendererModel =
         |> Option.exists (fun projection -> projection.QueryGeneration < pendingQueryGeneration)
 
     let coverageNavigatorWindow activeReferenceLength activeWindow projection =
+        match projection.GlobalOverview with
+        | Some _ -> tryResidentNavigatorWindow activeReferenceLength activeWindow projection
+        | None ->
             let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
             if domainCount <= 0L || domainCount > int64 Int32.MaxValue then
                 None
@@ -2307,6 +2339,22 @@ module RendererModel =
     let tryLoadedCoverageWindowIntent projection globalWindow =
         tryLoadedCoverageWindowIntentAt projection (int64 globalWindow.StartIndex) globalWindow.Count
 
+    let tryResidentCoverageWindowIntent projection residentWindow =
+        tryGlobalResidentWindow projection
+        |> Option.bind (fun resident ->
+            let targetEnd = int64 residentWindow.StartIndex + int64 residentWindow.Count
+            if
+                residentWindow.StartIndex < 0
+                || residentWindow.Count <= 0
+                || targetEnd > int64 resident.ObservationCount
+            then
+                None
+            else
+                tryLoadedCoverageWindowIntentAt
+                    projection
+                    (resident.StartObservationOrdinal + int64 residentWindow.StartIndex)
+                    residentWindow.Count)
+
     let tryAdjacentCoverageIntent (direction: TaCoverageDirection) maximumVisibleBars activeReferenceLength activeWindow projection =
         let local = clampWindow 1 maximumVisibleBars activeReferenceLength activeWindow
         let count = max 1 (min maximumVisibleBars local.Count)
@@ -2328,6 +2376,28 @@ module RendererModel =
             (projection.QueryGeneration + 1L)
             (Some targetStart)
             count
+
+    let tryResidentAdjacentCoverageIntent (direction: TaCoverageDirection) maximumVisibleBars residentWindow projection =
+        tryGlobalResidentWindow projection
+        |> Option.bind (fun resident ->
+            let local = clampWindow 1 maximumVisibleBars resident.ObservationCount residentWindow
+            let count = max 1 (min maximumVisibleBars local.Count)
+            let currentStart = resident.StartObservationOrdinal + int64 local.StartIndex
+            let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+            let targetStart =
+                match direction with
+                | TaCoverageDirection.Earlier -> max 0L (currentStart - int64 count)
+                | TaCoverageDirection.Later -> min (max 0L (domainCount - int64 count)) (currentStart + int64 count)
+            let contractDirection =
+                match direction with
+                | TaCoverageDirection.Earlier -> PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier
+                | TaCoverageDirection.Later -> PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later
+            TaLoadedCoverageCodec.tryWindowIntent
+                (Some contractDirection)
+                (Some projection.CoverageRevision)
+                (projection.QueryGeneration + 1L)
+                (Some targetStart)
+                count)
 
     let tryViewAllCoverageIntent maximumVisibleBars projection =
         let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
@@ -2533,7 +2603,7 @@ module RendererModel =
 
     let navigatorSelectionRatiosForRender
         activeGestureOverride
-        (_projection: TaLoadedCoverageProjection option)
+        (projection: TaLoadedCoverageProjection option)
         (activeReferenceTimeline: string array)
         activeWindow
         localDraft
@@ -2541,9 +2611,21 @@ module RendererModel =
         match activeGestureOverride with
         | Some ratios -> ratios
         | None ->
-            localDraft
-            |> Option.defaultValue activeWindow
-            |> selectionRatios activeReferenceTimeline.Length
+            match projection with
+            | Some current when current.GlobalOverview.IsSome ->
+                match localDraft with
+                | Some draft ->
+                    tryGlobalResidentWindow current
+                    |> Option.map (fun resident -> selectionRatios resident.ObservationCount draft)
+                    |> Option.defaultValue (selectionRatios activeReferenceTimeline.Length activeWindow)
+                | None ->
+                    tryResidentNavigatorWindow activeReferenceTimeline.Length activeWindow current
+                    |> Option.map (fun (_, total, window) -> selectionRatios total window)
+                    |> Option.defaultValue (selectionRatios activeReferenceTimeline.Length activeWindow)
+            | _ ->
+                localDraft
+                |> Option.defaultValue activeWindow
+                |> selectionRatios activeReferenceTimeline.Length
 
     let navigatorBoundaryDirection total committed drag rawDelta : TaCoverageDirection option =
         if total <= 0 || committed.Count <= 0 then

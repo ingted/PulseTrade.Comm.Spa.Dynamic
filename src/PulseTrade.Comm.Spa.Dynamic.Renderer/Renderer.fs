@@ -2909,7 +2909,8 @@ module TaWorkspaceRenderer =
             successText =
             let targetStart = intent.StartObservationOrdinal |> Option.defaultValue 0L
             let activeStart = projection.ActiveDetail.StartObservationOrdinal
-            let activeEnd = activeStart + int64 timeline.Length
+            let activeCount = max 0 (min timeline.Length projection.ActiveDetail.ObservationCount)
+            let activeEnd = activeStart + int64 activeCount
             let targetEnd = targetStart + int64 intent.ObservationCount
             if targetStart >= activeStart && targetEnd <= activeEnd then
                 setWindow
@@ -3031,8 +3032,16 @@ module TaWorkspaceRenderer =
                                 projection,
                                 ProjectionCommitGate.key runtimeState.Value)
                         | None -> None
-                    let total = localTotal
-                    let authoritativeCommitted = localCommitted
+                    let total, authoritativeCommitted =
+                        loadedCoverageSnapshot
+                        |> Option.bind (fun (_, _, timeline, projection, _) ->
+                            RendererModel.tryResidentNavigatorWindow
+                                timeline.Length
+                                localCommitted
+                                projection
+                            |> Option.map (fun (_, residentTotal, residentWindow) ->
+                                residentTotal, residentWindow))
+                        |> Option.defaultValue (localTotal, localCommitted)
                     let committed =
                         RendererModel.navigatorGestureBaseline
                             authoritativeCommitted
@@ -3172,10 +3181,51 @@ module TaWorkspaceRenderer =
                                 let commitLocalDraft () =
                                     let followLatest, next =
                                         RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
-                                    if next <> committed || followLatest <> uiState.Value.FollowLatest then
-                                        setDragDiagnostic "data-drag-outcome" "commit-local"
-                                        navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
-                                        setWindow followLatest next
+                                    let usesResidentDomain =
+                                        loadedCoverageSnapshot
+                                        |> Option.exists (fun (_, _, _, projection, _) -> projection.GlobalOverview.IsSome)
+                                    let changed =
+                                        next <> committed
+                                        || (not usesResidentDomain && followLatest <> uiState.Value.FollowLatest)
+                                    if changed then
+                                        match loadedCoverageSnapshot with
+                                        | Some(_, _, timeline, projection, snapshotKey) when projection.GlobalOverview.IsSome ->
+                                            if ProjectionCommitGate.key runtimeState.Value <> snapshotKey then
+                                                setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
+                                                draftWindow.Value <- None
+                                            else
+                                                match RendererModel.tryResidentCoverageWindowIntent projection next with
+                                                | Some intent ->
+                                                    match intent.StartObservationOrdinal with
+                                                    | Some targetStart ->
+                                                        let targetEnd = targetStart + int64 intent.ObservationCount
+                                                        let activeStart = projection.ActiveDetail.StartObservationOrdinal
+                                                        let activeCount = max 0 (min timeline.Length projection.ActiveDetail.ObservationCount)
+                                                        let activeEnd = activeStart + int64 activeCount
+                                                        if
+                                                            (targetStart >= activeStart && targetEnd <= activeEnd)
+                                                            || actionAllowed "visible-range-changed"
+                                                        then
+                                                            setDragDiagnostic "data-drag-outcome" "commit-resident"
+                                                            navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
+                                                            draftWindow.Value <- None
+                                                            sendOrQueueCoverageWindowAction
+                                                                targetStart
+                                                                intent.ObservationCount
+                                                                "Resident viewport requested."
+                                                        else
+                                                            setDragDiagnostic "data-drag-outcome" "resident-action-disabled"
+                                                            draftWindow.Value <- None
+                                                    | None ->
+                                                        setDragDiagnostic "data-drag-outcome" "invalid-resident-target"
+                                                        draftWindow.Value <- None
+                                                | None ->
+                                                    setDragDiagnostic "data-drag-outcome" "invalid-resident-target"
+                                                    draftWindow.Value <- None
+                                        | _ ->
+                                            setDragDiagnostic "data-drag-outcome" "commit-local"
+                                            navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
+                                            setWindow followLatest next
                                     else
                                         setDragDiagnostic "data-drag-outcome" "no-change"
                                         draftWindow.Value <- None
@@ -3186,14 +3236,22 @@ module TaWorkspaceRenderer =
                                          && actionAllowed "visible-range-changed"
                                          && uiState.Value.PendingActionId.IsNone
                                          && not (remoteDisabled runtimeState.Value.Poll) ->
-                                    match
-                                        RendererModel.tryAdjacentCoverageIntent
-                                            direction
-                                            (maximumVisibleBarsNow ())
-                                            total
-                                            committed
-                                            projection
-                                    with
+                                    let adjacentIntent =
+                                        match projection.GlobalOverview with
+                                        | Some _ ->
+                                            RendererModel.tryResidentAdjacentCoverageIntent
+                                                direction
+                                                (maximumVisibleBarsNow ())
+                                                committed
+                                                projection
+                                        | None ->
+                                            RendererModel.tryAdjacentCoverageIntent
+                                                direction
+                                                (maximumVisibleBarsNow ())
+                                                total
+                                                committed
+                                                projection
+                                    match adjacentIntent with
                                     | Some intent ->
                                         setDragDiagnostic
                                             "data-drag-outcome"
@@ -3203,7 +3261,7 @@ module TaWorkspaceRenderer =
                                             document
                                             preparedData
                                             timeline
-                                            committed
+                                            localCommitted
                                             projection
                                             intent
                                             "Loaded coverage requested."
@@ -4780,6 +4838,16 @@ module TaWorkspaceRenderer =
                                                         |> RendererModel.globalResidentSelectionRatios globalOverview)
                                                 let globalPoints = RendererModel.overviewPointsForAnchors globalOverview.Anchors
                                                 let globalTimeline = globalOverview.Anchors |> Array.map _.EventTimeUtc
+                                                let globalRangeText =
+                                                    displayTime.Zone
+                                                    |> View.Map (fun zone ->
+                                                        if globalTimeline.Length = 0 then
+                                                            "range unavailable"
+                                                        else
+                                                            TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[0]
+                                                            + " – "
+                                                            + TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[globalTimeline.Length - 1])
+                                                let visibleObservationCount = visibleWindow.Count
                                                 div [ Attr.Create "data-testid" "ta-overview-stack"; attr.style "display:grid; gap:8px; min-width:0;" ] [
                                                     div [
                                                         Attr.Create "data-testid" "ta-global-overview-with-axis"
@@ -4788,6 +4856,25 @@ module TaWorkspaceRenderer =
                                                         Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
                                                         attr.style "min-width:0;"
                                                     ] [
+                                                        div [
+                                                            Attr.Create "data-testid" "ta-global-overview-label"
+                                                            Attr.Create "data-total-observation-count" (string globalOverview.TotalObservationCount)
+                                                            Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
+                                                            attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
+                                                        ] [
+                                                            strong [] [ text "GLOBAL" ]
+                                                            span [] [
+                                                                textView (
+                                                                    globalRangeText
+                                                                    |> View.Map (fun rangeText ->
+                                                                        rangeText
+                                                                        + " / "
+                                                                        + string globalOverview.TotalObservationCount
+                                                                        + " total / "
+                                                                        + string globalOverview.ResidentObservationCount
+                                                                        + " resident"))
+                                                            ]
+                                                        ]
                                                         globalOverviewSvgWithPalette
                                                             currentPlotPalette
                                                             globalPoints
@@ -4806,7 +4893,18 @@ module TaWorkspaceRenderer =
                                                             "global-overview"
                                                             globalTimeline
                                                     ]
-                                                    residentOverview
+                                                    div [ Attr.Create "data-testid" "ta-resident-overview-shell"; attr.style "min-width:0;" ] [
+                                                        div [
+                                                            Attr.Create "data-testid" "ta-resident-overview-label"
+                                                            Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
+                                                            Attr.Create "data-visible-observation-count" (string visibleObservationCount)
+                                                            attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
+                                                        ] [
+                                                            strong [] [ text "RESIDENT" ]
+                                                            span [] [ text (string globalOverview.ResidentObservationCount + " loaded / " + string visibleObservationCount + " visible") ]
+                                                        ]
+                                                        residentOverview
+                                                    ]
                                                 ] :> Doc)
                                         |> Doc.EmbedView
                                     ]

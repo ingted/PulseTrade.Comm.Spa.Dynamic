@@ -881,6 +881,88 @@ let tests =
                 { StartIndex = 1500; Count = 700 }
                 "Relocating the resident window keeps the inner viewport width and resident-relative offset."
 
+        testCase "accepted global coverage maps active detail into the resident-local navigator domain" <| fun _ ->
+            let acceptedOverview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 2_995_494L
+                  ResidentObservationCount = 1500 }
+            let acceptedProjection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:accepted-resident"
+                  CoverageRevision = 2L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some acceptedOverview.TotalObservationCount
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = acceptedOverview.ResidentStartObservationOrdinal
+                      ObservationCount = 1500
+                      BaseAxisRef = "axis.detail" }
+                  GlobalOverview = Some acceptedOverview }
+
+            match RendererModel.tryResidentNavigatorWindow 1500 { StartIndex = 0; Count = 1500 } acceptedProjection with
+            | Some(_, total, window) ->
+                Expect.equal total 1500 "The accepted auto-open frame exposes only its actual resident count."
+                Expect.equal window { StartIndex = 0; Count = 1500 } "Global ordinals map to resident-local 0/1500."
+            | None -> failtest "A valid accepted GlobalOverview must map into the resident-local navigator domain."
+
+            let expandedOverview =
+                { acceptedOverview with
+                    ResidentStartObservationOrdinal = 1_000_000L
+                    ResidentObservationCount = 4500 }
+            let expandedProjection =
+                { acceptedProjection with
+                    CoverageRevision = 4L
+                    QueryGeneration = 3L
+                    ActiveDetail =
+                        { acceptedProjection.ActiveDetail with
+                            StartObservationOrdinal = expandedOverview.ResidentStartObservationOrdinal + 3000L
+                            ObservationCount = 1500 }
+                    GlobalOverview = Some expandedOverview }
+            let activeWindow = { StartIndex = 0; Count = 700 }
+            let committed = { StartIndex = 3000; Count = 700 }
+
+            match RendererModel.tryResidentNavigatorWindow 1500 activeWindow expandedProjection with
+            | Some(_, total, window) ->
+                Expect.equal total 4500 "The resident thumbnail uses the advertised resident domain."
+                Expect.equal window committed "ActiveDetail.Start minus ResidentStart preserves the resident-local offset."
+            | None -> failtest "Expanded resident coverage must retain its local active-detail offset."
+
+            let renderedRatios =
+                RendererModel.navigatorSelectionRatiosForRender
+                    None
+                    (Some expandedProjection)
+                    (Array.create 1500 "2026-10-23T00:00:00Z")
+                    activeWindow
+                    None
+            Expect.floatClose Accuracy.high (fst renderedRatios) (3000.0 / 4500.0) "The selection begins at the active detail's resident-local offset."
+            Expect.floatClose Accuracy.high (snd renderedRatios) (3700.0 / 4500.0) "The visible width remains 700 inside the resident domain."
+
+            let movedToHead = RendererModel.previewWindowBounds 12 4000 4500 committed TaWindowDrag.Move -3000
+            Expect.equal movedToHead { StartIndex = 0; Count = 700 } "Moving to the resident head preserves the 700-bar grab width."
+
+            match RendererModel.tryResidentCoverageWindowIntent expandedProjection movedToHead with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some expandedOverview.ResidentStartObservationOrdinal) "A resident-local drop maps back to the exact global ordinal."
+                Expect.equal intent.ObservationCount 700 "A resident-local drop preserves visible width."
+            | None -> failtest "A bounded resident-local drop must produce one typed coverage intent."
+
+            match RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Earlier 4000 movedToHead expandedProjection with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some(expandedOverview.ResidentStartObservationOrdinal - 700L)) "Left overscroll requests the adjacent global interval."
+                Expect.equal intent.ObservationCount 700 "Left overscroll keeps the active visible width."
+            | None -> failtest "Left resident overscroll must produce an earlier coverage intent."
+
+            let movedToTail = { StartIndex = 3800; Count = 700 }
+            match RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Later 4000 movedToTail expandedProjection with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some(expandedOverview.ResidentStartObservationOrdinal + 4500L)) "Right overscroll is symmetric beyond the resident tail."
+                Expect.equal intent.ObservationCount 700 "Right overscroll keeps the active visible width."
+            | None -> failtest "Right resident overscroll must produce a later coverage intent."
+
         testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
             let ratios = 0.2, 0.4
             let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
@@ -2379,6 +2461,20 @@ let tests =
                 (source.Contains("\"ta-global-overview-right-handle\"", StringComparison.Ordinal))
                 "The fixed-width resident strip must not expose a resize handle."
 
+            for required in
+                [ "\"ta-global-overview-label\""
+                  "\"ta-resident-overview-label\""
+                  "\"data-total-observation-count\""
+                  "\"data-resident-observation-count\""
+                  "\"data-visible-observation-count\""
+                  "text \"GLOBAL\""
+                  "text \"RESIDENT\""
+                  "TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[0]"
+                  "TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[globalTimeline.Length - 1]" ] do
+                Expect.isTrue
+                    (source.Contains(required, StringComparison.Ordinal))
+                    ("missing explicit overview domain label contract: " + required)
+
         testCase "P0 preparation and resident drag preserve the committed local frame" <| fun _ ->
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
@@ -2399,10 +2495,11 @@ let tests =
             Expect.stringContains preparationBody "not staleCoverageCandidate" "A stale coverage candidate must not replace the committed frame."
             Expect.stringContains preparationBody "ProjectionCommitGate.key candidate = ProjectionCommitGate.key current" "Atomic publication must match document/data/coverage/query generation."
 
-            Expect.stringContains source "let total = localTotal" "Resident drag math must freeze the resident-local domain."
-            Expect.isFalse
-                (source.Contains("let total, authoritativeCommitted =", StringComparison.Ordinal))
-                "Loaded-global coverage must not replace the resident-local gesture baseline."
+            Expect.stringContains source "RendererModel.tryResidentNavigatorWindow" "Resident drag math must freeze the authoritative resident-local domain."
+            Expect.stringContains source "RendererModel.tryResidentCoverageWindowIntent" "A resident-local drop must map back through the typed coverage intent."
+            Expect.stringContains source "let total, authoritativeCommitted =" "Pointer math must snapshot one consistent resident domain and committed window."
+            Expect.stringContains source "not usesResidentDomain && followLatest <> uiState.Value.FollowLatest" "A zero-delta resident drop must not become an action through mismatched follow-latest domains."
+            Expect.stringContains source "min timeline.Length projection.ActiveDetail.ObservationCount" "Active-detail locality must obey contract count even when a wider timeline is cached."
 
             let rowPreparationStart = source.IndexOf("let prepareRows ()", StringComparison.Ordinal)
             let rowPreparationEnd =
