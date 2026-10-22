@@ -2,6 +2,8 @@
 
 ## 2026-10-23 resident gesture交接（DYN-WBS-587 / 588）
 
+0.2.21真3M反例：最後pointermove後立即up，pending local1498卻提交已paint的1423，accepted退75bars；release helper把rendered draft當drop authority是最早偏離。0.2.22以最後pointer座標為intent authority，RAF只控制繪製節奏。右端外拉無新action尚未定位，另留dispatch gate觀測；不能將單次drop/第二黑閃PASS推為整體完成。
+
 `Renderer.fs`在resident drop時清掉draft，再送remote，讓舊位置重現；同時以完整frame key拒絕同resident中途抵達的新revision，造成下一手勢stale。0.2.21依RFC-0036 D5恢復draft ownership及matching frame settlement。另一端點偏離來自body grab offset與page target錯用原visible起點，分別用pointer track bounds與resident edges守住。consumer目前只傳visibleSnapshot；完整4500 resident payload不在既有ActiveDetail4000上限內，保持跨owner契約缺口，不以preview連續性修復宣稱resident全量local。
 
 ## RF-12（20261006）：Actors 長路徑布局

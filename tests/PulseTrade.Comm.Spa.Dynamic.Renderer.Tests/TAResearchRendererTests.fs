@@ -381,15 +381,20 @@ let tests =
             Expect.equal committedAtTail committed "tail release clamps to the maximum start"
             Expect.isTrue followLatestAtTail "tail release restores follow-latest mode"
 
-        testCase "navigator release commits the last published preview instead of an unpainted pending frame" <| fun _ ->
-            let committed = { StartIndex = 700; Count = 200 }
-            let published = { StartIndex = 676; Count = 200 }
-            let pending = { StartIndex = 674; Count = 200 }
+        testCase "navigator release commits the final pointer intent before its scheduled paint" <| fun _ ->
+            let committed = { StartIndex = 0; Count = 1500 }
+            let published = { StartIndex = 1423; Count = 1500 }
+            let pending = { StartIndex = 1498; Count = 1500 }
 
             Expect.equal
                 (RendererModel.releaseNavigatorDraft committed false (Some published) (Some pending) (Some pending))
-                published
-                "pointerup must commit exactly the draft the user can see"
+                pending
+                "The final pointer owns drop: a delayed RAF must not replace local1498 with the already-painted local1423."
+            for boundary in [ false; true ] do
+                Expect.equal
+                    (RendererModel.releaseNavigatorDraft committed boundary (Some published) (Some published) (Some pending))
+                    pending
+                    "Paint cadence cannot change the final drop target, inside or outside the resident edge."
             Expect.equal
                 (RendererModel.releaseNavigatorDraft committed false None None (Some pending))
                 pending
@@ -400,9 +405,26 @@ let tests =
                 "a gesture without movement preserves the committed window"
 
             Expect.equal
+                (RendererModel.releaseNavigatorDraft committed false (Some published) None None)
+                published
+                "Without a new pointer candidate the last rendered gesture baseline remains valid."
+
+            Expect.equal
                 (RendererModel.releaseNavigatorDraft committed true (Some published) (Some published) (Some { StartIndex = 0; Count = 200 }))
                 { StartIndex = 0; Count = 200 }
                 "an explicit loaded-boundary crossing must preserve its final clamped intent"
+
+        testCase "navigator pointerup and its published ratios use the same final pointer" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "pendingDraft <- Some(pointerDraft rawPointerEvent)" "Pointerup must sample its own position before release, not require a final RAF."
+            Expect.stringContains source "Action<Event>(finish)" "The document pointerup path must retain the event coordinates."
+            Expect.stringContains source "finish event" "The element pointerup path must retain the event coordinates too."
+            let startIndex = source.IndexOf("let finish rawPointerEvent =", StringComparison.Ordinal)
+            let dispatchIndex = source.IndexOf("let commitLocalDraft () =", startIndex, StringComparison.Ordinal)
+            let finalPublication = source.Substring(startIndex, dispatchIndex - startIndex)
+            Expect.stringContains finalPublication "navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)" "The held drop geometry must use the same final draft as the action."
+            Expect.stringContains finalPublication "draftWindow.Value <- Some draft" "The final intent is published synchronously before dispatch."
 
         testCase "chained navigator gesture starts from the last visible optimistic draft" <| fun _ ->
             let authoritative = { StartIndex = 500; Count = 400 }

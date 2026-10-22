@@ -2,6 +2,8 @@
 
 ## 2026-10-23 DYN-T-683 / DYN-T-684 regression
 
+- 0.2.22：0.2.21 package修前1 failed，獨立last-pointer oracle expected1498/actual1423；最後move→up無RAF、左右handle/body、boundary與非boundary、取消/連續手勢皆需驗。舊unit的paint優先oracle依75bars真實反例更正，非為換綠；source wiring同驗兩條pointerup入口及ratio/draft同步。
+- consumer local ACK不得以沒有HTTP判FAIL：CoverageIntent=None且time range完全在已載入range可local Accepted，但需驗實際chart window、ready/pending與target containment；remote仍需correlated requestId/response及matching coverage commit。右端outside request-later未送action仍RED，與此local例外無關。
 - 修前RED：resident drop在remote dispatch前清draft；702-bar從local1198越界卻以舊visible起點算page，少載1198。兩個focused Expecto案例已各重現1 failed。
 - 0.2.21候選：package-backed Renderer / Client suites；same-resident revision前進仍可排送且保寬，跨identity/resident與倒退revision/generation拒絕；pointer在track內2px須local clamp，真正越界才左右page；source wiring驗draft ownership與frame settlement。
 - 真3M由daedilus在18884用無額外settled等待的連續resize/move/drop驗無退回、無stale、single action；左右完整page、global與舊兩黑閃分項回歸。完整resident資料local可用性仍是open contract gate，不以focused或preview PASS代替。

@@ -2122,7 +2122,7 @@ module TaWorkspaceRenderer =
         let mutable pendingAddRowId: string option = None
         let mutable editingRowId: string option = None
         let mutable pendingEditorMutation: (RuntimeIdentity * int64 * string option * Set<string> * TaRowEditorBinding) option = None
-        let mutable finishNavigatorDrag: (unit -> unit) option = None
+        let mutable finishNavigatorDrag: (Event -> unit) option = None
         let mutable activeNavigatorDragMode: string option = None
         let mutable finishGlobalResidentDrag: (unit -> unit) option = None
         let mutable cancelGlobalResidentDrag: (unit -> unit) option = None
@@ -2411,6 +2411,13 @@ module TaWorkspaceRenderer =
             else
                 startVisibleRangeAction action
         let sendOrQueueCoverageWindowAction targetStart targetCount successText =
+            if not (isNull chartStackElement) then
+                chartStackElement.SetAttribute("data-viewport-dispatch-target", string targetStart)
+                chartStackElement.SetAttribute("data-viewport-dispatch-count", string targetCount)
+                chartStackElement.SetAttribute("data-viewport-dispatch-pending-action", uiState.Value.PendingActionId |> Option.defaultValue "")
+                chartStackElement.SetAttribute("data-viewport-dispatch-pending-boundary", pendingBoundaryPan |> Option.bind _.TargetStartObservationOrdinal |> Option.map string |> Option.defaultValue "")
+                chartStackElement.SetAttribute("data-viewport-dispatch-committed-ready", string (committedCoverageReady ()))
+                chartStackElement.SetAttribute("data-viewport-dispatch-poll", pollText runtimeState.Value.Poll)
             if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText))
                 setUiState { uiState.Value with Feedback = "Loaded coverage request queued." }
@@ -3162,6 +3169,15 @@ module TaWorkspaceRenderer =
                                 draftFrameScheduled <- true
                                 JS.RequestAnimationFrame(fun _ -> publishDraftOnFrame ()) |> ignore
 
+                        let pointerDraft (rawPointerEvent: Event) =
+                            let mouse = rawPointerEvent :?> MouseEvent
+                            latestPointerX <- float mouse.ClientX - bounds.Left
+                            let delta =
+                                if bounds.Width <= 0.0 || total <= 0 then 0
+                                else int (Math.Round(float (mouse.ClientX - startClientX) / bounds.Width * float total))
+                            latestRawDelta <- delta
+                            RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
+
                         let cleanup () =
                             if not (isNull moveHandler) then JS.Document.RemoveEventListener("pointermove", moveHandler)
                             if not (isNull upHandler) then JS.Document.RemoveEventListener("pointerup", upHandler)
@@ -3175,8 +3191,9 @@ module TaWorkspaceRenderer =
                                         (currentNavigator |> As<HTMLElement>).Style.SetProperty("cursor", restoredCursor))
                             |> ignore
 
-                        let finish () =
+                        let finish rawPointerEvent =
                             if not finished then
+                                pendingDraft <- Some(pointerDraft rawPointerEvent)
                                 finished <- true
                                 finishNavigatorDrag <- None
                                 activeNavigatorDragMode <- None
@@ -3194,7 +3211,10 @@ module TaWorkspaceRenderer =
                                         renderedNavigatorDraft
                                         draftWindow.Value
                                         pendingDraft
+                                navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)
+                                draftWindow.Value <- Some draft
                                 let requestedStart = committed.StartIndex + latestRawDelta
+                                setDragDiagnostic "data-drag-last-delta" (string latestRawDelta)
                                 setDragDiagnostic "data-drag-committed-start" (string committed.StartIndex)
                                 setDragDiagnostic "data-drag-draft-start" (string draft.StartIndex)
                                 setDragDiagnostic "data-drag-requested-start" (string requestedStart)
@@ -3316,18 +3336,10 @@ module TaWorkspaceRenderer =
                                 cleanup ()
 
                         moveHandler <-
-                            Action<Event>(fun rawEvent ->
-                                let mouse = rawEvent :?> MouseEvent
-                                latestPointerX <- float mouse.ClientX - bounds.Left
-                                let delta =
-                                    if bounds.Width <= 0.0 || total <= 0 then 0
-                                    else int (Math.Round(float (mouse.ClientX - startClientX) / bounds.Width * float total))
-                                latestRawDelta <- delta
-                                RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
-                                |> scheduleDraft)
+                            Action<Event>(fun rawEvent -> pointerDraft rawEvent |> scheduleDraft)
 
                         upHandler <-
-                            Action<Event>(fun _ -> finish ())
+                            Action<Event>(finish)
 
                         cancelHandler <-
                             Action<Event>(fun _ ->
@@ -3349,7 +3361,7 @@ module TaWorkspaceRenderer =
 
         let finishNavigatorDragFromElement (event: Event) =
             event.PreventDefault()
-            finishNavigatorDrag |> Option.iter (fun finish -> finish ())
+            finishNavigatorDrag |> Option.iter (fun finish -> finish event)
 
         let startGlobalResidentDrag (navigatorRoot: Element) (rawEvent: Event) =
             if not (isNull navigatorRoot) then

@@ -88,6 +88,8 @@ While a remote coverage action awaits its response or matching projection, the r
 
 ## Acceptance
 
+0.2.22 clarification（DYN-WBS-587）：最後pointer位置而非上一個painted frame為drop intent authority；pointerup必須吸收尚未paint的最後move並同步hold geometry。0.2.21實例local1498→1423的75bars偏差為獨立RED；release不得要求人類等下一RAF再放開。右外拉無action及完整resident payload仍open。
+
 1. Existing 0.2.2 tests remain unchanged and pass with `GlobalOverview=None`.
 2. Projection codec round-trips both absent and present global overview; old payloads decode to `None`.
 3. Action codec round-trips `ResidentCoverageChanged` with `BaseRowId` outside the relocation intent.
