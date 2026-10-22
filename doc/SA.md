@@ -2,6 +2,10 @@
 
 ## 2026-10-23 resident gesture交接（DYN-WBS-587 / 588）
 
+新增DYN-T-685：left先移start再cap width、right固定start再cap width，導致4500 resident/max1500時僅left外拉可平移。保留使用者指定left基準，right在cap後以bounded end回推start作鏡像；內拉仍縮小，wire/paging/cancel不變。GLOBAL latency另案：action實際走Research.applyIncrementalFrames且observe=ignore，舊data-phase-*可能是前次Run，不能當本次action計時；RAF decode/2N prepare/synchronous topology rows僅候選，等待低干擾分段實測。
+
+低干擾證據已把固定約9秒frontend floor與10–28秒backend等待分離：body→prepare5.7–6.2s、prepare→commit3.07–3.14s，CPU多為idle。DYN-T-686 / RFC-0036 D7以共用bounded turn executor消除「一個廉價step必占一個frame」原因；不減少驗證、yield/cancel/atomic保證，也不將後端延遲視為本修復已解。0.2.24候選須package-backed tests與owner同真3M低干擾分段回歸。
+
 右端根因已由0.2.22六欄診斷確認：consumer頂層TotalObservationCount=None、GlobalOverview.Total=2996994；legacy loaded-domain只回resident end1501333，把Later1502131錯clamp為當前active start1500631，後續local no-change不送HTTP。0.2.23在導航與adjacent-cache共用global-first authority；Contracts載入範圍語意與consumer payload不改。global absent保持legacy，不以全域總數冒充已載入資料。
 
 0.2.21真3M反例：最後pointermove後立即up，pending local1498卻提交已paint的1423，accepted退75bars；release helper把rendered draft當drop authority是最早偏離。0.2.22以最後pointer座標為intent authority，RAF只控制繪製節奏。右端外拉無新action尚未定位，另留dispatch gate觀測；不能將單次drop/第二黑閃PASS推為整體完成。

@@ -54,6 +54,18 @@ type TaRendererDisplayTime =
 
 [<JavaScript>]
 module TaWorkspaceRenderer =
+    let publishWorkSchedulingMetrics prefix (element: Element) (metrics: TaWorkSchedulingMetrics) =
+        if not (isNull element) then
+            for name, value in
+                [| "work-count", string metrics.WorkCount
+                   "turn-count", string metrics.TurnCount
+                   "work-ms", string metrics.WorkMilliseconds
+                   "queue-ms", string metrics.QueueMilliseconds
+                   "wall-ms", string metrics.WallMilliseconds
+                   "max-turn-ms", string metrics.MaximumTurnMilliseconds
+                   "pending-count", string metrics.PendingCount |] do
+                element.SetAttribute(prefix + "-" + name, value)
+
     let axisViewportWidth = Var.Create 1440.0
     let mutable axisResizeBound = false
     let mutable rendererTelemetryInstanceSequence = 0
@@ -2452,6 +2464,23 @@ module TaWorkspaceRenderer =
         let mutable preparedDataReady = false
         let preparationPending = Var.Create true
         let mutable preparationGeneration = 0
+        let createPreparationSchedule generation =
+            let publish metrics =
+                if generation = preparationGeneration then
+                    let root = JS.Document.DocumentElement
+                    if not (isNull root) then
+                        root.SetAttribute("data-renderer-prepare-generation", string generation)
+                        root.SetAttribute("data-renderer-prepare-instance", rendererTelemetryInstanceId)
+                        publishWorkSchedulingMetrics "data-renderer-prepare" root metrics
+            publish RendererModel.emptyWorkSchedulingMetrics
+            let schedule =
+                RendererModel.createBudgetedWorkScheduler
+                    RendererModel.ScheduledWorkBudgetMilliseconds
+                    RendererModel.ScheduledWorkMaximumCount
+                    scheduleNextFrame
+                    (fun () -> float (Date.Now()))
+                    publish
+            fun work -> schedule (fun () -> if generation = preparationGeneration then work ())
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
         let mutable observedDataState = runtimeState.Value
 
@@ -2576,7 +2605,7 @@ module TaWorkspaceRenderer =
             let candidate = runtimeState.Value
             let data = candidate.Data
             RendererModel.prepareDataScheduled
-                scheduleNextFrame
+                (createPreparationSchedule generation)
                 data
                 (fun prepared ->
                     if generation = preparationGeneration then
@@ -2647,9 +2676,9 @@ module TaWorkspaceRenderer =
             if coverageChanged then
                 // An active-detail page is a replacement, not an append-only patch. Reusing the
                 // previous prepared map would retain observations absent from the accepted page.
-                RendererModel.prepareDataScheduled scheduleNextFrame next.Data accept
+                RendererModel.prepareDataScheduled (createPreparationSchedule generation) next.Data accept
             else
-                RendererModel.prepareDataIncrementalScheduled scheduleNextFrame previous next.Data accept
+                RendererModel.prepareDataIncrementalScheduled (createPreparationSchedule generation) previous next.Data accept
 
         let clearGlobalResidentIntent intent =
             if pendingGlobalResidentIntent = Some intent then

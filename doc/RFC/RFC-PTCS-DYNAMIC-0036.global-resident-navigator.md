@@ -21,7 +21,7 @@ The existing navigator describes the observations currently resident in the clie
 
 - No Research provider, query, storage, or derived-TA implementation in the owner package.
 - No second coverage authority, polling loop, or per-pointer-move remote action.
-- No change to the existing inner navigator, its visible-range action, or its 4,000-detail policy.
+- No change to the existing visible-range action or its 4,000-detail policy; D6 explicitly corrects capped inner-handle symmetry.
 - No hard-coded 4,500 limit in generic contracts; the consumer advertises the current resident width.
 
 ## Decision
@@ -68,6 +68,18 @@ While a remote coverage action awaits its response or matching projection, the r
 
 ## Impact
 
+### D6. 2026-10-23 capped resident handle mirror
+
+Owner daedilus轉交使用者指定：保留既有left外拉在maximum visible後維持寬度並平移的行為，right作幾何鏡像；內拉仍縮小。4500 resident、start1500/count1500、maximum1500時，left delta-300為start1200/count1500，right delta+300須為start1800/count1500。跨maximum時僅超出部分平移，resident端點仍clamp；不改left、body move、cancel、drop-only action、outside paging或wire。DYN-WBS-587 / DYN-T-685先對0.2.23加失敗回歸，再最小修right計算；package與consumer restart須等待owner完成latency baseline。
+
+GLOBAL更新接近兩分鐘另列latency P0（DYN-WBS-588）：四項functional真3M PASS不代表latency通過。首輪15.096秒含已知probe干擾，非正式基線；須以低干擾drop/request/body/decode/prepare/projection-commit分段定位，不以放大timeout或改queue掩蓋。
+
+### D7. 2026-10-23 bounded browser work turns
+
+低干擾0.2.23實測body→prepare約5.7–6.2秒、prepare→commit約3.07–3.14秒，CPU以idle為主；逐256-point decode及逐entry prepare都強制等一個RAF造成排程下限。0.2.24候選共用既有schedule seam的FIFO executor，每turn以4ms/64 atomic steps雙上限處理廉價工作，達任一上限才再排RAF；保留256-point task、順序、每step generation檢查、last-good及final projection paint barrier。單一atomic step仍不可搶占，4ms是soft budget，並非單task硬上限。沒有新worker、service、action queue或timeout。
+
+`documentElement`的`data-frame-pump-*`及`data-renderer-prepare-*`公開work-count/turn-count/work-ms/queue-ms/wall-ms/max-turn-ms/pending-count；前者sequence識別最後pump batch，後者generation+instance識別prepare，建立新batch時清零，舊generation不覆寫。這是per-batch觀測，不冒充整個HTTP action；原onStageCompleted仍只表示該atomic task執行時間，signature不改。FramePump四條browser wrappers、WebSocket decode/reduce入口及Renderer full/incremental preparation用同一executor；action settlement、row refresh與最終paint barrier維持原路徑。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.
@@ -102,3 +114,5 @@ While a remote coverage action awaits its response or matching projection, the r
 8. Daedalus formal consumer proves whole-series navigation, 2018/2026 relocation, derived-TA shared axis, and existing inner navigator behavior.
 9. Pointerdown freezes the rendered selection ratios and semantic left/right/body ownership. An authoritative projection arriving before pointerup may rebuild the shell but cannot move the active preview, its fixed edge, or body width; pointerup still emits exactly one intent.
 10. If a second gesture starts while the first gesture's remote response is still pending, pointerdown keeps the exact rendered edge as its baseline. The first response may arrive while the second gesture is held without moving its fixed edge, changing its body width, clearing its semantic mode, or suppressing its one later intent.
+11. At and across the advertised maximum visible width, right resize mirrors the existing left resize, including inward shrink, minimum width, empty/short domains and both resident boundaries. Unit geometry and real 4500/1500 consumer gestures are separate gates.
+12. GLOBAL latency acceptance records low-overhead drop-to-ready phases and probe overhead; functional frame continuity alone does not close this performance gate.

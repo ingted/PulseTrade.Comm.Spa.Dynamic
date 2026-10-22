@@ -104,6 +104,15 @@ type TaPreparedRendererData =
       ResolvedAxes: Map<string, TaPreparedTemporalAxis>
       ResolvedSeries: Map<string, TaResolvedSeriesPoint array> }
 
+type TaWorkSchedulingMetrics =
+    { WorkCount: int
+      TurnCount: int
+      WorkMilliseconds: float
+      QueueMilliseconds: float
+      WallMilliseconds: float
+      MaximumTurnMilliseconds: float
+      PendingCount: int }
+
 type TaVisibleWindow =
     { StartIndex: int
       Count: int }
@@ -275,6 +284,79 @@ type TaWorkspaceBootstrapPresentation =
 
 [<JavaScript; RequireQualifiedAccess>]
 module RendererModel =
+    [<Literal>]
+    let ScheduledWorkBudgetMilliseconds = 4.0
+
+    [<Literal>]
+    let ScheduledWorkMaximumCount = 64
+
+    let emptyWorkSchedulingMetrics =
+        { WorkCount = 0; TurnCount = 0
+          WorkMilliseconds = 0.0; QueueMilliseconds = 0.0; WallMilliseconds = 0.0
+          MaximumTurnMilliseconds = 0.0; PendingCount = 0 }
+
+    /// Keeps existing atomic work units ordered while yielding by both elapsed work and count.
+    let createBudgetedWorkScheduler
+        (maximumMilliseconds: float)
+        (maximumWorkCount: int)
+        (requestTurn: (unit -> unit) -> unit)
+        (now: unit -> float)
+        (onTurnCompleted: TaWorkSchedulingMetrics -> unit)
+        =
+        if maximumMilliseconds <= 0.0 || Double.IsNaN maximumMilliseconds || Double.IsInfinity maximumMilliseconds then
+            invalidArg "maximumMilliseconds" "The work budget must be positive and finite."
+        if maximumWorkCount <= 0 then
+            invalidArg "maximumWorkCount" "The work count budget must be positive."
+        let pending = ResizeArray<float * (unit -> unit)>()
+        let mutable scheduled = false
+        let mutable startedAt: float option = None
+        let mutable workCount = 0
+        let mutable turnCount = 0
+        let mutable workMilliseconds = 0.0
+        let mutable queueMilliseconds = 0.0
+        let mutable maximumTurnMilliseconds = 0.0
+        let rec requestIfNeeded () =
+            if not scheduled && pending.Count > 0 then
+                scheduled <- true
+                requestTurn flush
+        and flush () =
+            let turnStarted = now ()
+            let mutable completed = 0
+            turnCount <- turnCount + 1
+            try
+                while pending.Count > 0
+                      && completed < maximumWorkCount
+                      && (completed = 0 || now () - turnStarted < maximumMilliseconds) do
+                    let queuedAt, work = pending[0]
+                    pending.RemoveAt 0
+                    let workStarted = now ()
+                    queueMilliseconds <- queueMilliseconds + max 0.0 (workStarted - queuedAt)
+                    work ()
+                    workMilliseconds <- workMilliseconds + max 0.0 (now () - workStarted)
+                    completed <- completed + 1
+                    workCount <- workCount + 1
+                let finishedAt = now ()
+                maximumTurnMilliseconds <- max maximumTurnMilliseconds (max 0.0 (finishedAt - turnStarted))
+                onTurnCompleted
+                    { WorkCount = workCount
+                      TurnCount = turnCount
+                      WorkMilliseconds = workMilliseconds
+                      QueueMilliseconds = queueMilliseconds
+                      WallMilliseconds = max 0.0 (finishedAt - Option.defaultValue finishedAt startedAt)
+                      MaximumTurnMilliseconds = maximumTurnMilliseconds
+                      PendingCount = pending.Count }
+                scheduled <- false
+                requestIfNeeded ()
+            with _ ->
+                pending.Clear()
+                scheduled <- false
+                reraise ()
+        fun work ->
+            let queuedAt = now ()
+            if startedAt.IsNone then startedAt <- Some queuedAt
+            pending.Add(queuedAt, work)
+            requestIfNeeded ()
+
     [<Literal>]
     let TemporalPointTypeKey = "_type"
 
@@ -2139,7 +2221,8 @@ module RendererModel =
             | _ ->
                 let minimumEnd = startIndex + min minimumCount (max 1 total)
                 let nextEnd = max minimumEnd (min total (endExclusive + delta))
-                clampWindow minimumCount maximumCount total { StartIndex = startIndex; Count = nextEnd - startIndex }
+                let nextCount = min (min maximumCount total) (nextEnd - startIndex)
+                clampWindow minimumCount maximumCount total { StartIndex = nextEnd - nextCount; Count = nextCount }
 
     let commitWindowBounds minimumCount maximumCount total draft =
         let next = clampWindow minimumCount maximumCount total draft

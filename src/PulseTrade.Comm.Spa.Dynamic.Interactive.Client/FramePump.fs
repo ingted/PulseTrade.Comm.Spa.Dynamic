@@ -1,6 +1,7 @@
 namespace PulseTrade.Comm.Spa.Dynamic.Interactive.Client
 
 open PulseTrade.Comm.Spa.Dynamic.Contracts
+open PulseTrade.Comm.Spa.Dynamic.Renderer
 open WebSharper
 open WebSharper.JavaScript
 
@@ -93,12 +94,37 @@ type BrowserRuntimeFrameDecodePlan =
     | Snapshot of header: RuntimeFrame * dataItems: (string * obj) array
 
 /// Reduces encoded RuntimeFrames into one candidate without publishing partial state.
-/// Decode and reduce are intentionally scheduled as separate browser tasks so a large
-/// accepted snapshot cannot combine both costs into one main-thread long task.
+/// Atomic decode/reduce steps share bounded browser turns; cheap steps do not each
+/// impose an entire animation-frame delay, and partial candidates remain unpublished.
 [<JavaScript; RequireQualifiedAccess>]
 module BrowserRuntimeFramePump =
     [<Literal>]
     let PointDecodeBatchSize = 256
+
+    let mutable browserScheduleSequence = 0
+
+    let scheduleBrowserStages onStageCompleted =
+        browserScheduleSequence <- browserScheduleSequence + 1
+        let sequence = string browserScheduleSequence
+        let root = JS.Document.DocumentElement
+        if not (isNull root) then
+            root.SetAttribute("data-frame-pump-sequence", sequence)
+            TaWorkspaceRenderer.publishWorkSchedulingMetrics "data-frame-pump" root RendererModel.emptyWorkSchedulingMetrics
+        let now () = float (Date.Now())
+        let schedule =
+            RendererModel.createBudgetedWorkScheduler
+                RendererModel.ScheduledWorkBudgetMilliseconds
+                RendererModel.ScheduledWorkMaximumCount
+                (fun work -> JS.RequestAnimationFrame(fun _ -> work ()) |> ignore)
+                now
+                (fun metrics ->
+                    if not (isNull root) && root.GetAttribute("data-frame-pump-sequence") = sequence then
+                        TaWorkspaceRenderer.publishWorkSchedulingMetrics "data-frame-pump" root metrics)
+        fun stage work ->
+            schedule (fun () ->
+                let startedAt = now ()
+                work ()
+                onStageCompleted stage (max 0.0 (now () - startedAt)))
 
     let isMissing value =
         isNull value || JS.TypeOf value = JS.Kind.Undefined
@@ -547,7 +573,7 @@ module BrowserRuntimeFramePump =
 
     let reduceIsolatedEncodedFrames frames isCurrent continuation =
         reduceEncodedFramesWith
-            (fun _ work -> JS.RequestAnimationFrame(fun _ -> work ()) |> ignore)
+            (scheduleBrowserStages (fun _ _ -> ()))
             None
             frames
             isCurrent
@@ -555,24 +581,14 @@ module BrowserRuntimeFramePump =
 
     let reduceFromEncodedFrames initialState frames isCurrent continuation =
         reduceEncodedFramesWith
-            (fun _ work -> JS.RequestAnimationFrame(fun _ -> work ()) |> ignore)
+            (scheduleBrowserStages (fun _ _ -> ()))
             (Some initialState)
             frames
             isCurrent
             continuation
 
     let reduceFromEncodedFramesObserved initialState frames isCurrent onStageCompleted continuation =
-        let schedule stage work =
-            JS.RequestAnimationFrame(fun _ ->
-                let startedAt = System.DateTime.UtcNow.Ticks
-                work ()
-                let elapsedMilliseconds =
-                    float (System.DateTime.UtcNow.Ticks - startedAt)
-                    / float System.TimeSpan.TicksPerMillisecond
-
-                onStageCompleted stage elapsedMilliseconds)
-            |> ignore
-
+        let schedule = scheduleBrowserStages onStageCompleted
         reduceEncodedFramesWith schedule (Some initialState) frames isCurrent continuation
 
     let reduceChunkedSnapshotPacketsWith
@@ -721,15 +737,5 @@ module BrowserRuntimeFramePump =
             processPacket 0
 
     let reduceChunkedSnapshotPacketsObserved initialState packets isCurrent onStageCompleted continuation =
-        let schedule stage work =
-            JS.RequestAnimationFrame(fun _ ->
-                let startedAt = System.DateTime.UtcNow.Ticks
-                work ()
-                let elapsedMilliseconds =
-                    float (System.DateTime.UtcNow.Ticks - startedAt)
-                    / float System.TimeSpan.TicksPerMillisecond
-
-                onStageCompleted stage elapsedMilliseconds)
-            |> ignore
-
+        let schedule = scheduleBrowserStages onStageCompleted
         reduceChunkedSnapshotPacketsWith schedule initialState packets isCurrent continuation

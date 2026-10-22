@@ -5,6 +5,7 @@ open System.Collections.Generic
 open Expecto
 open PulseTrade.Comm.Spa.Dynamic.Contracts
 open PulseTrade.Comm.Spa.Dynamic.Interactive.Client
+open PulseTrade.Comm.Spa.Dynamic.Renderer
 
 let options =
     { InteractiveClientLifecycle.defaults with
@@ -243,6 +244,31 @@ let tests =
                   Expect.equal failure.Code "runtime-frame-decode-failed" "decode failures need a stable reason code"
                   Expect.equal failure.FrameIndex 0 "decode failure should identify the source frame"
               | other -> failtest $"Expected a rejected outcome, got {other}.")
+
+          testCase "budgeted frame pump keeps atomic publication and cancels between turns" (fun _ ->
+              for cancelAfterFirstTurn in [ false; true ] do
+                  let turns = Queue<unit -> unit>()
+                  let mutable current = true
+                  let mutable publicationCount = 0
+                  let mutable outcome = None
+                  let schedule = RendererModel.createBudgetedWorkScheduler 4.0 2 turns.Enqueue (fun () -> 0.0) ignore
+                  let frames = [| documentFrame; heartbeat 2L |] |> Array.map BrowserRuntimeCodec.encode
+                  BrowserRuntimeFramePump.reduceEncodedFramesWith
+                      (fun _ work -> schedule work)
+                      (Some(RuntimeReducer.initial framePumpIdentity))
+                      frames
+                      (fun () -> current)
+                      (fun value -> publicationCount <- publicationCount + 1; outcome <- Some value)
+                  turns.Dequeue() ()
+                  Expect.isNone outcome "A two-step turn must not publish the intermediate document candidate."
+                  if cancelAfterFirstTurn then current <- false
+                  while turns.Count > 0 do turns.Dequeue() ()
+                  Expect.equal publicationCount 1 "Completion or supersession is reported exactly once."
+                  match cancelAfterFirstTurn, outcome with
+                  | true, Some BrowserRuntimeFramePumpOutcome.Superseded -> ()
+                  | false, Some(BrowserRuntimeFramePumpOutcome.Applied state) ->
+                      Expect.equal state.LastTransportSequence 2L "Only the complete ordered candidate is published."
+                  | other -> failtest $"Unexpected budgeted-pump outcome: {other}.")
 
           testCase "frame pump cancels stale generation before publishing" (fun _ ->
               let scheduled = Queue<unit -> unit>()

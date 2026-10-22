@@ -469,6 +469,112 @@ let tests =
             Expect.equal right { StartIndex = 1700; Count = 1300 } "Right ownership changes only the right bound."
             Expect.equal moved { StartIndex = 2000; Count = 1000 } "Body ownership moves the selection without changing width."
 
+        testCase "capped navigator right resize preserves the existing left handle behavior" <| fun _ ->
+            let atCap = { StartIndex = 1500; Count = 1500 }
+            Expect.equal
+                (RendererModel.previewWindowBounds 12 1500 4500 atCap TaWindowDrag.ResizeLeft -300)
+                { StartIndex = 1200; Count = 1500 }
+                "The existing left outward translation remains the user-approved baseline."
+            Expect.equal
+                (RendererModel.previewWindowBounds 12 1500 4500 atCap TaWindowDrag.ResizeLeft 300)
+                { StartIndex = 1800; Count = 1200 }
+                "The existing left inward gesture still shrinks the window."
+            let cases : (string * TaVisibleWindow * int * TaVisibleWindow) list =
+                [ "at cap", atCap, 300, { StartIndex = 1800; Count = 1500 }
+                  "inward", atCap, -300, { StartIndex = 1500; Count = 1200 }
+                  "minimum", atCap, -9999, { StartIndex = 1500; Count = 12 }
+                  "below cap", { StartIndex = 1500; Count = 700 }, 300, { StartIndex = 1500; Count = 1000 }
+                  "cross cap", { StartIndex = 1500; Count = 1200 }, 600, { StartIndex = 1800; Count = 1500 }
+                  "resident tail", { StartIndex = 2700; Count = 1500 }, 600, { StartIndex = 3000; Count = 1500 } ]
+            for label, committed, delta, expected in cases do
+                Expect.equal
+                    (RendererModel.previewWindowBounds 12 1500 4500 committed TaWindowDrag.ResizeRight delta)
+                    expected
+                    ("Right resize follows the independent interval example: " + label)
+
+        testCase "capped navigator resize is reflection symmetric across resident boundaries" <| fun _ ->
+            let reflect total (window: TaVisibleWindow) =
+                { window with StartIndex = total - window.StartIndex - window.Count }
+            let windows : (int * TaVisibleWindow) list =
+                [ 0, { StartIndex = 0; Count = 0 }
+                  8, { StartIndex = 0; Count = 8 }
+                  1500, { StartIndex = 0; Count = 1500 }
+                  4500, { StartIndex = 0; Count = 1500 }
+                  4500, { StartIndex = 1500; Count = 1500 }
+                  4500, { StartIndex = 3000; Count = 1500 }
+                  4500, { StartIndex = 1700; Count = 700 } ]
+            for total, committed in windows do
+                for delta in [ -9999; -4500; -1500; -300; -1; 0; 1; 300; 1500; 4500; 9999 ] do
+                    let right = RendererModel.previewWindowBounds 12 1500 total committed TaWindowDrag.ResizeRight delta
+                    let left =
+                        RendererModel.previewWindowBounds 12 1500 total (reflect total committed) TaWindowDrag.ResizeLeft (-delta)
+                    Expect.equal right (reflect total left) "Reflecting the domain and pointer delta exchanges left and right."
+                    Expect.isTrue (right.StartIndex >= 0 && right.StartIndex + right.Count <= total) "Resizing stays within the resident domain."
+                    Expect.isTrue (right.Count <= min 1500 total) "The visible width remains bounded by the advertised maximum."
+
+        testCase "budgeted work coalesces cheap recursive tasks with FIFO and count bounds" <| fun _ ->
+            let turns = Collections.Generic.Queue<unit -> unit>()
+            let observed = ResizeArray<int>()
+            let metrics = ResizeArray<TaWorkSchedulingMetrics>()
+            let mutable now = 0.0
+            let schedule = RendererModel.createBudgetedWorkScheduler 4.0 64 turns.Enqueue (fun () -> now) metrics.Add
+            let rec enqueue index =
+                schedule (fun () ->
+                    observed.Add index
+                    if index < 999 then enqueue (index + 1))
+            enqueue 0
+            Expect.isEmpty observed "Work does not run in the scheduling caller."
+            while turns.Count > 0 do
+                Expect.equal turns.Count 1 "Reentrant scheduling retains a single browser turn."
+                now <- now + 16.0
+                turns.Dequeue() ()
+            Expect.sequenceEqual observed [ 0 .. 999 ] "No work is lost, duplicated or reordered."
+            let final = metrics[metrics.Count - 1]
+            Expect.equal final.TurnCount 16 "1000 cheap steps need 16 bounded turns, not 1000 frames."
+            Expect.equal final.WorkCount 1000 "Every atomic step is counted."
+            Expect.equal final.WorkMilliseconds 0.0 "A stationary fake clock still reaches the count budget."
+            Expect.equal final.WallMilliseconds 256.0 "Wall time includes waiting for browser turns."
+            Expect.equal final.QueueMilliseconds 256.0 "Queue wait is distinct from synchronous work."
+            Expect.equal final.PendingCount 0 "A completed batch retains no queued work."
+
+        testCase "budgeted work yields after the time budget without splitting an atomic step" <| fun _ ->
+            let turns = Collections.Generic.Queue<unit -> unit>()
+            let metrics = ResizeArray<TaWorkSchedulingMetrics>()
+            let mutable now = 0.0
+            let mutable completed = 0
+            let schedule = RendererModel.createBudgetedWorkScheduler 4.0 64 turns.Enqueue (fun () -> now) metrics.Add
+            for _ in 1 .. 7 do schedule (fun () -> now <- now + 1.5; completed <- completed + 1)
+            turns.Dequeue() ()
+            Expect.equal completed 3 "The third indivisible step reaches 4.5ms; the fourth must yield."
+            Expect.equal turns.Count 1 "Exactly one continuation is queued."
+            turns.Dequeue() ()
+            Expect.equal completed 6 "The next turn receives a fresh time budget."
+            turns.Dequeue() ()
+            Expect.equal completed 7 "The remaining work completes."
+            let final = metrics[metrics.Count - 1]
+            Expect.equal final.WorkMilliseconds 10.5 "Work measures callback time only."
+            Expect.equal final.MaximumTurnMilliseconds 4.5 "One atomic step may cross the soft elapsed budget."
+
+        testCase "budgeted work clears a failed batch and can accept a new batch" <| fun _ ->
+            let turns = Collections.Generic.Queue<unit -> unit>()
+            let mutable completed = 0
+            let schedule = RendererModel.createBudgetedWorkScheduler 4.0 64 turns.Enqueue (fun () -> 0.0) ignore
+            schedule (fun () -> failwith "expected atomic-work failure")
+            schedule (fun () -> completed <- completed + 100)
+            Expect.throws (fun () -> turns.Dequeue() ()) "Unhandled work failure is not silently accepted."
+            Expect.equal turns.Count 0 "A failed batch must not reschedule old work."
+            schedule (fun () -> completed <- completed + 1)
+            turns.Dequeue() ()
+            Expect.equal completed 1 "Only newly scheduled work runs after failure."
+
+        testCase "budgeted work rejects invalid budgets before scheduling" <| fun _ ->
+            let turns = Collections.Generic.Queue<unit -> unit>()
+            for milliseconds, count in [ 0.0, 64; -1.0, 64; Double.NaN, 64; Double.PositiveInfinity, 64; 4.0, 0; 4.0, -1 ] do
+                Expect.throws
+                    (fun () -> RendererModel.createBudgetedWorkScheduler milliseconds count turns.Enqueue (fun () -> 0.0) ignore |> ignore)
+                    "Both budgets must be positive and elapsed budget finite."
+            Expect.equal turns.Count 0 "Rejected configuration has no scheduled side effect."
+
         testCase "RFC-0031 cross-axis overview uses event time and all gestures emit boundary intent" <| fun _ ->
             let start = DateTimeOffset(2026, 9, 29, 0, 0, 0, TimeSpan.Zero)
             let time minutes = start.AddMinutes(float minutes).ToString("O")

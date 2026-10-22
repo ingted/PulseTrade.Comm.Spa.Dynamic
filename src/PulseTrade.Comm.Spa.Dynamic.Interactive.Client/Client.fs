@@ -311,7 +311,7 @@ module Client =
 
         and processQueuedMessage generation text completed =
             let isCurrent () = generation = transportGeneration && not lifecycle.Disposed
-            let schedule _ work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+            let schedule = BrowserRuntimeFramePump.scheduleBrowserStages (fun _ _ -> ())
 
             let reject code message =
                 requestSnapshotAfterFrameFailure code message
@@ -424,7 +424,7 @@ module Client =
                         if BrowserRuntimeFramePump.isMissing rawValue then
                             reject "runtime-snapshot-chunk-value-required" "Snapshot item requires a value."
                         else
-                            let schedule _ work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+                            let schedule = BrowserRuntimeFramePump.scheduleBrowserStages (fun _ _ -> ())
                             let isCurrent () =
                                 generation = transportGeneration
                                 && (activeBatch
@@ -480,7 +480,7 @@ module Client =
                         | None -> reject "runtime-snapshot-chunk-commit-invalid" "Snapshot commit did not complete the active batch."
                         | Some frame ->
                             resetActiveBatch ()
-                            let schedule _ work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
+                            let schedule = BrowserRuntimeFramePump.scheduleBrowserStages (fun _ _ -> ())
                             let isCurrent () = generation = transportGeneration && not lifecycle.Disposed
                             let current =
                                 runtimeState
