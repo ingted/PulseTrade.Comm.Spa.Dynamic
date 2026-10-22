@@ -2406,7 +2406,7 @@ let tests =
 
             let rowPreparationStart = source.IndexOf("let prepareRows ()", StringComparison.Ordinal)
             let rowPreparationEnd =
-                source.IndexOf(Environment.NewLine + "                            prepareRows ()", rowPreparationStart + 1, StringComparison.Ordinal)
+                source.IndexOf("                            prepareRows ()", rowPreparationStart + 1, StringComparison.Ordinal)
             Expect.isGreaterThan rowPreparationStart -1 "A candidate frame must prepare all row Docs before publication."
             Expect.isGreaterThan rowPreparationEnd rowPreparationStart "The synchronous row preparation range must be bounded."
             let rowPreparationBody = source.Substring(rowPreparationStart, rowPreparationEnd - rowPreparationStart)
