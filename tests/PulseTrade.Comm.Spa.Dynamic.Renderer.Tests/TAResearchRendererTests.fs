@@ -645,6 +645,30 @@ let tests =
             Expect.floatClose Accuracy.high selectionX 999.988 "the tail selection starts at its true loaded-domain ratio"
             Expect.floatClose Accuracy.high selectionWidth 0.012 "visual width must not be inflated to a fixed pixel or viewBox floor"
 
+        testCase "global resident strip expands visual and hit geometry around the exact semantic center" <| fun _ ->
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 1_000_000L
+                  ResidentObservationCount = 1500 }
+            let resident =
+                { StartObservationOrdinal = overview.ResidentStartObservationOrdinal
+                  ObservationCount = overview.ResidentObservationCount }
+            let ratios = RendererModel.globalResidentSelectionRatios overview resident
+            let semanticX, semanticWidth = RendererModel.navigatorSelectionBounds 1000.0 ratios
+            let renderedWidth = 1436.0
+            let visualX, visualWidth = RendererModel.navigatorMinimumCssSelectionBounds 1000.0 renderedWidth 12.0 ratios
+            let hitX, hitWidth = RendererModel.navigatorMinimumCssSelectionBounds 1000.0 renderedWidth 16.0 ratios
+            let center x width = x + width / 2.0
+            let cssWidth viewBoxWidth = viewBoxWidth / 1000.0 * renderedWidth
+
+            Expect.isLessThan semanticWidth 1.0 "The real three-million-point semantic strip is sub-pixel in the SVG domain."
+            Expect.floatClose Accuracy.high (cssWidth visualWidth) 12.0 "The visible strip has a deterministic CSS-pixel minimum width."
+            Expect.floatClose Accuracy.high (cssWidth hitWidth) 16.0 "The move hit target has a deterministic CSS-pixel minimum width."
+            Expect.floatClose Accuracy.high (center visualX visualWidth) (center semanticX semanticWidth) "Visual expansion must not move the resident ordinal center."
+            Expect.floatClose Accuracy.high (center hitX hitWidth) (center semanticX semanticWidth) "Hit expansion must not move the resident ordinal center."
+
         testCase "navigator hit resolver keeps resize and move deterministic for tiny selections" <| fun _ ->
             let ratios = 0.5, 0.5001
             let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
@@ -740,7 +764,7 @@ let tests =
                 (Some 999_952L, Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later)
                 "The typed end-edge intent targets the loaded tail."
 
-        testCase "navigator drag previews and commits in the global loaded domain" <| fun _ ->
+        testCase "resident navigator drag remains local and requests coverage only after explicit overscroll" <| fun _ ->
             let projection : TaLoadedCoverageProjection =
                 { CoverageIdentity = "coverage:global-drag"
                   CoverageRevision = 17L
@@ -761,32 +785,32 @@ let tests =
                       BaseAxisRef = "axis.detail" }
                   GlobalOverview = None }
 
-            let _, globalCount, committed =
-                RendererModel.coverageNavigatorWindow 200 { StartIndex = 0; Count = 200 } projection
-                |> Option.defaultWith (fun () -> failtest "A valid projection must establish the drag domain.")
-            let draft =
-                RendererModel.previewWindowBounds 12 4000 globalCount committed TaWindowDrag.Move -26
+            let localTotal = 200
+            let committed = { StartIndex = 40; Count = 80 }
+            let renderedRatios =
+                RendererModel.navigatorSelectionRatiosForRender None (Some projection) [| for index in 0 .. localTotal - 1 -> string index |] committed None
+            let moved = RendererModel.previewWindowBounds 12 4000 localTotal committed TaWindowDrag.Move -26
+            let resizedToHead = RendererModel.previewWindowBounds 12 4000 localTotal committed TaWindowDrag.ResizeLeft -40
 
-            Expect.equal globalCount 900 "Pointer delta must be scaled by the complete loaded observation domain."
-            Expect.equal committed { StartIndex = 700; Count = 200 } "The active page window must project to global ordinals before dragging."
-            Expect.equal draft { StartIndex = 674; Count = 200 } "The local draft must move immediately across the active-page boundary."
+            Expect.equal renderedRatios (0.2, 0.6) "The resident navigator renders against its 200-point local reference, not the 900-point coverage domain."
+            Expect.equal moved { StartIndex = 14; Count = 80 } "A local move remains in resident-relative indexes."
+            Expect.equal resizedToHead { StartIndex = 0; Count = 120 } "Reaching the resident head is still a local resize."
             Expect.isNone
-                (RendererModel.tryLocalWindowForLoadedCoverage 200 projection draft)
-                "A draft crossing the active page must not be silently clamped into a different local window."
+                (RendererModel.navigatorBoundaryDirection localTotal committed TaWindowDrag.ResizeLeft -40)
+                "Landing exactly on the local head must not request coverage."
+            Expect.equal projection.CoverageRevision 17L "A local-only gesture leaves coverage authority untouched."
 
-            match RendererModel.tryLoadedCoverageWindowIntent projection draft with
+            let explicitOverscroll =
+                RendererModel.navigatorBoundaryDirection localTotal committed TaWindowDrag.ResizeLeft -41
+            Expect.equal explicitOverscroll (Some TaCoverageDirection.Earlier) "Only an explicit release beyond the local edge requests adjacent coverage."
+
+            match RendererModel.tryAdjacentCoverageIntent TaCoverageDirection.Earlier 4000 localTotal committed projection with
             | Some intent ->
-                Expect.equal intent.StartObservationOrdinal (Some 674L) "Release must preserve the drafted global start ordinal."
-                Expect.equal intent.ObservationCount 200 "Release must preserve the drafted width."
+                Expect.equal intent.StartObservationOrdinal (Some 660L) "The explicit earlier request is derived from the frozen resident-local window."
+                Expect.equal intent.ObservationCount 80 "The adjacent request preserves the resident-local visible width."
                 Expect.equal intent.ExpectedCoverageRevision (Some 17L) "Release remains revision guarded."
-                Expect.equal intent.QueryGeneration 24L "Release advances the query generation exactly once."
-            | None -> failtest "A bounded global draft must produce the existing typed coverage intent."
-
-            let localDraft = { StartIndex = 725; Count = 48 }
-            Expect.equal
-                (RendererModel.tryLocalWindowForLoadedCoverage 200 projection localDraft)
-                (Some { StartIndex = 25; Count = 48 })
-                "A global draft fully contained by active detail maps back to one local window."
+                Expect.equal intent.QueryGeneration 24L "Release advances the frozen query generation exactly once."
+            | None -> failtest "An explicit resident-edge overscroll must produce one typed coverage intent."
 
             let largeDomainCount = int64 Int32.MaxValue + 10_000L
             let largeProjection =
@@ -1336,6 +1360,10 @@ let tests =
             Expect.isFalse
                 (TaWorkspaceRenderer.sameDocumentShell (withDocument 1L coverageA) (withDocument 2L coveragePage))
                 "A different active detail page must replace the semantic shell."
+            Expect.notEqual
+                (ProjectionCommitGate.key (withDocument 1L coverageA))
+                (ProjectionCommitGate.key (withDocument 1L coverageAck))
+                "Atomic frame publication must include coverage revision and query generation even if a malformed producer reuses the document revision."
 
         testCase "latest row legend falls back to the last available presentation slot" <| fun _ ->
             let read index =
@@ -2350,6 +2378,43 @@ let tests =
             Expect.isFalse
                 (source.Contains("\"ta-global-overview-right-handle\"", StringComparison.Ordinal))
                 "The fixed-width resident strip must not expose a resize handle."
+
+        testCase "P0 preparation and resident drag preserve the committed local frame" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+
+            let preparationStart = source.IndexOf("let rec scheduleFullPreparation", StringComparison.Ordinal)
+            let preparationEnd = source.IndexOf("let scheduleIncrementalPreparation", StringComparison.Ordinal)
+            Expect.isGreaterThan preparationStart -1 "The full preparation path must be explicit."
+            Expect.isGreaterThan preparationEnd preparationStart "The full preparation path must have a bounded source range."
+            let preparationBody = source.Substring(preparationStart, preparationEnd - preparationStart)
+
+            Expect.isFalse
+                (preparationBody.Contains("preparedDataReady <- false", StringComparison.Ordinal))
+                "A pending candidate must not clear the committed-frame readiness gate."
+            Expect.isFalse
+                (preparationBody.Contains("chartRuntimeState.Value <- candidate", StringComparison.Ordinal))
+                "A pending candidate must not publish an empty runtime shell before its prepared data is ready."
+            Expect.stringContains preparationBody "preparationPending.Value <- true" "Preparation must expose a pending overlay state."
+            Expect.stringContains preparationBody "not staleCoverageCandidate" "A stale coverage candidate must not replace the committed frame."
+            Expect.stringContains preparationBody "ProjectionCommitGate.key candidate = ProjectionCommitGate.key current" "Atomic publication must match document/data/coverage/query generation."
+
+            Expect.stringContains source "let total = localTotal" "Resident drag math must freeze the resident-local domain."
+            Expect.isFalse
+                (source.Contains("let total, authoritativeCommitted =", StringComparison.Ordinal))
+                "Loaded-global coverage must not replace the resident-local gesture baseline."
+
+            let rowPreparationStart = source.IndexOf("let prepareRows ()", StringComparison.Ordinal)
+            let rowPreparationEnd =
+                source.IndexOf(Environment.NewLine + "                            prepareRows ()", rowPreparationStart + 1, StringComparison.Ordinal)
+            Expect.isGreaterThan rowPreparationStart -1 "A candidate frame must prepare all row Docs before publication."
+            Expect.isGreaterThan rowPreparationEnd rowPreparationStart "The synchronous row preparation range must be bounded."
+            let rowPreparationBody = source.Substring(rowPreparationStart, rowPreparationEnd - rowPreparationStart)
+            Expect.isFalse
+                (rowPreparationBody.Contains("JS.SetTimeout", StringComparison.Ordinal))
+                "A candidate frame must not expose one asynchronously mounted row per browser frame."
+            Expect.stringContains rowPreparationBody "synchronizeReaders ()" "Readers become authoritative only after every row Doc is ready."
+            Expect.stringContains rowPreparationBody "preparedRowsReady.Value <-" "The ready gate is published after the complete row set is staged."
     ]
 
 [<EntryPoint>]

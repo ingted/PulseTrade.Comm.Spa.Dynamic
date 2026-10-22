@@ -910,10 +910,21 @@ module TaWorkspaceRenderer =
                 + " "
                 + fixedText (yAt point.Close))
             |> String.concat " "
-        let selectionGeometry ratios = RendererModel.navigatorSelectionBounds width ratios
-        let geometryText projection = selectionWindow |> View.Map (selectionGeometry >> projection >> fixedText)
-        let selectionX = geometryText fst
-        let selectionWidth = geometryText snd
+        let renderedTrackWidth = Var.Create width
+        let semanticGeometry _ ratios = RendererModel.navigatorSelectionBounds width ratios
+        let visualGeometry renderedWidth ratios = RendererModel.navigatorMinimumCssSelectionBounds width renderedWidth 12.0 ratios
+        let hitGeometry renderedWidth ratios = RendererModel.navigatorMinimumCssSelectionBounds width renderedWidth 16.0 ratios
+        let geometryText geometry projection =
+            View.Map2
+                (fun ratios renderedWidth -> geometry renderedWidth ratios |> projection |> fixedText)
+                selectionWindow
+                renderedTrackWidth.View
+        let semanticSelectionX = geometryText semanticGeometry fst
+        let semanticSelectionWidth = geometryText semanticGeometry snd
+        let selectionX = geometryText visualGeometry fst
+        let selectionWidth = geometryText visualGeometry snd
+        let moveHitX = geometryText hitGeometry fst
+        let moveHitWidth = geometryText hitGeometry snd
         let mutable latestSelectionRatios = 0.0, 0.0
         let observedSelectionWindow =
             selectionWindow
@@ -932,7 +943,10 @@ module TaWorkspaceRenderer =
             svgAttr "viewBox" "0 0 1000 58"
             svgAttr "preserveAspectRatio" "none"
             attr.style ("display:block; width:100%; height:58px; min-width:0; background:" + palette.OverviewSurface + "; border:1px solid " + palette.Border + "; border-radius:4px; box-sizing:border-box; touch-action:none; cursor:default;")
-            on.afterRender onReady
+            on.afterRender (fun element ->
+                let bounds = element.GetBoundingClientRect()
+                if bounds.Width > 0.0 then renderedTrackWidth.Value <- bounds.Width
+                onReady element)
             Attr.Handler "pointerdown" (fun element event -> onPointerDown (element |> As<Element>) event)
             Attr.Handler "pointerup" (fun _ event -> onDragEnd event)
             on.mouseMove (fun element event ->
@@ -967,6 +981,8 @@ module TaWorkspaceRenderer =
             ] []
             svgElement "rect" [
                 Attr.Create "data-testid" "ta-global-overview-selection"
+                Attr.Dynamic "data-semantic-x" semanticSelectionX
+                Attr.Dynamic "data-semantic-width" semanticSelectionWidth
                 Attr.Dynamic "x" selectionX; svgAttr "y" "1"; Attr.Dynamic "width" selectionWidth; svgAttr "height" "56"
                 svgAttr "fill" palette.OverviewSelection; svgAttr "stroke" palette.OverviewBoundary; svgAttr "stroke-width" "1"
                 svgAttr "vector-effect" "non-scaling-stroke"; svgAttr "pointer-events" "none"
@@ -974,7 +990,9 @@ module TaWorkspaceRenderer =
             svgElement "rect" [
                 Attr.Create "data-testid" "ta-global-overview-move-hit"
                 Attr.Create "data-window-drag-mode" TaWindowDrag.Move
-                Attr.Dynamic "x" selectionX; svgAttr "y" "0"; Attr.Dynamic "width" selectionWidth; svgAttr "height" "58"
+                Attr.Dynamic "data-semantic-x" semanticSelectionX
+                Attr.Dynamic "data-semantic-width" semanticSelectionWidth
+                Attr.Dynamic "x" moveHitX; svgAttr "y" "0"; Attr.Dynamic "width" moveHitWidth; svgAttr "height" "58"
                 svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"; svgAttr "style" "cursor:grab;"
             ] []
         ]
@@ -2401,38 +2419,37 @@ module TaWorkspaceRenderer =
             uiState.View
         |> View.Sink (fun _ -> scheduleNextFrame flushQueuedViewportIntent)
 
-        let chartRuntimeState = Var.Create runtimeState.Value
         let initialPreparedData =
             { RawData = Map.empty
               ResolvedAxes = Map.empty
               ResolvedSeries = Map.empty }
+        let chartCommittedFrame = Var.Create(runtimeState.Value, initialPreparedData)
         let mutable latestPreparedData = initialPreparedData
         let shellPreparedData = Var.Create initialPreparedData
-        let chartShellPreparedData = Var.Create initialPreparedData
         let mutable preparedDataReady = false
+        let preparationPending = Var.Create true
         let mutable preparationGeneration = 0
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
         let mutable observedDataState = runtimeState.Value
 
         let acceptPreparedDataCore refreshRows (next: RuntimeState) nextPreparedData =
+            let committedState, _ = chartCommittedFrame.Value
             let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
             let viewportScopeChanged =
                 next.Document
                 |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
                 |> Option.defaultValue false
             let topologyChanged =
-                next.Identity <> chartRuntimeState.Value.Identity
-                || not (sameDocumentPresentation chartRuntimeState.Value next)
+                next.Identity <> committedState.Identity
+                || not (sameDocumentPresentation committedState next)
                 || nextChartTopology <> observedChartTopology
             if topologyChanged then
                 beginProjection next |> ignore
                 chartRenderReason <-
-                    if next.Identity <> chartRuntimeState.Value.Identity then "identity"
-                    elif next.DocumentRevision <> chartRuntimeState.Value.DocumentRevision then "document-revision"
+                    if next.Identity <> committedState.Identity then "identity"
+                    elif next.DocumentRevision <> committedState.DocumentRevision then "document-revision"
                     else "topology-signature"
                 observedChartTopology <- nextChartTopology
-                shellPreparedData.Value <- nextPreparedData
-                chartShellPreparedData.Value <- nextPreparedData
                 match next.Document with
                 | Some document ->
                     let maximumVisibleBars = maximumVisibleBarsFor document
@@ -2515,7 +2532,8 @@ module TaWorkspaceRenderer =
                             defaultViewportAppliedToCanvas <- Some(viewportScopeKey next document)
                     | None -> ()
                 | None -> pendingBoundaryPan <- None
-                chartRuntimeState.Value <- next
+                chartCommittedFrame.Value <- next, nextPreparedData
+                shellPreparedData.Value <- nextPreparedData
             elif refreshRows then
                 let projectionCandidateGeneration = beginProjection next
                 shellPreparedData.Value <- nextPreparedData
@@ -2532,14 +2550,16 @@ module TaWorkspaceRenderer =
 
             if not staleCoverageCandidate then
                 acceptPreparedDataCore refreshRows next nextPreparedData
+                true
+            else
+                false
 
-        let scheduleFullPreparation () =
+        let rec scheduleFullPreparation () =
             preparationGeneration <- preparationGeneration + 1
             let generation = preparationGeneration
-            preparedDataReady <- false
+            preparationPending.Value <- true
             viewportDataReady.Value <- false
             let candidate = runtimeState.Value
-            chartRuntimeState.Value <- candidate
             let data = candidate.Data
             RendererModel.prepareDataScheduled
                 scheduleNextFrame
@@ -2547,19 +2567,34 @@ module TaWorkspaceRenderer =
                 (fun prepared ->
                     if generation = preparationGeneration then
                         let current = runtimeState.Value
+                        let staleCoverageCandidate =
+                            match pendingBoundaryPan, current.Document with
+                            | Some pending, Some document ->
+                                RendererModel.isStaleCoverageCandidate pending.QueryGeneration document.DefaultView
+                            | _ -> false
                         // A scheduled candidate belongs to the exact data snapshot it decoded.
                         // Never pair stale prepared rows with a newer runtime envelope.
-                        if not (runtimeDataChanged candidate current) then
+                        if
+                            not staleCoverageCandidate
+                            && not (runtimeDataChanged candidate current)
+                            && sameDocumentPresentation candidate current
+                            && ProjectionCommitGate.key candidate = ProjectionCommitGate.key current
+                        then
                             latestPreparedData <- prepared
-                            shellPreparedData.Value <- prepared
-                            chartShellPreparedData.Value <- prepared
                             observedChartTopology <- chartTopologySignaturePrepared current prepared
                             observedDataState <- current
                             preparedDataReady <- true
-                            viewportDataReady.Value <- true
                             applyDocumentDefaultViewport current prepared
                             beginProjection current |> ignore
-                            chartRuntimeState.Value <- current)
+                            chartCommittedFrame.Value <- current, prepared
+                            shellPreparedData.Value <- prepared
+                            viewportDataReady.Value <- true
+                            preparationPending.Value <- false
+                        elif staleCoverageCandidate then
+                            viewportDataReady.Value <- true
+                            preparationPending.Value <- false
+                        else
+                            scheduleFullPreparation ())
 
         let scheduleIncrementalPreparation next =
             preparationGeneration <- preparationGeneration + 1
@@ -2571,16 +2606,30 @@ module TaWorkspaceRenderer =
                     RendererModel.tryLoadedCoverageResolved document.DefaultView previous.RawData)
             observedDataState <- next
             let coverageChanged = previousCoverageProjection <> coverageProjection next
+            if coverageChanged then
+                preparationPending.Value <- true
+                viewportDataReady.Value <- false
             let accept prepared =
                 if generation = preparationGeneration then
                     let current = runtimeState.Value
-                    if not (runtimeDataChanged next current) then
+                    let currentMatchesCandidate =
+                        not (runtimeDataChanged next current)
+                        && (not coverageChanged
+                            || (sameDocumentPresentation next current
+                                && ProjectionCommitGate.key next = ProjectionCommitGate.key current))
+                    if currentMatchesCandidate then
                         // Document/view metadata may advance without scheduling another data preparation.
                         // Pair the completed candidate with the latest compatible runtime envelope so
                         // metadata can advance without attaching stale decoded data.
-                        acceptPreparedData true current prepared
+                        let accepted = acceptPreparedData true current prepared
                         if coverageChanged then
-                            chartShellPreparedData.Value <- prepared
+                            if accepted then
+                                chartCommittedFrame.Value <- current, prepared
+                            viewportDataReady.Value <- true
+                            preparationPending.Value <- false
+                    elif coverageChanged then
+                        viewportDataReady.Value <- true
+                        preparationPending.Value <- false
             if coverageChanged then
                 // An active-detail page is a replacement, not an append-only patch. Reusing the
                 // previous prepared map would retain observations absent from the accepted page.
@@ -2649,10 +2698,10 @@ module TaWorkspaceRenderer =
                     else
                         scheduleIncrementalPreparation next
                 else
-                    acceptPreparedData false next latestPreparedData
+                    acceptPreparedData false next latestPreparedData |> ignore
             flushQueuedViewportIntent ())
         scheduleFullPreparation ()
-        let chartRuntimeView: View<RuntimeState> = chartRuntimeState.View
+        let chartCommittedFrameView: View<RuntimeState * TaPreparedRendererData> = chartCommittedFrame.View
 
         let actionAllowed actionName =
             runtimeState.Value.Document
@@ -2852,6 +2901,7 @@ module TaWorkspaceRenderer =
 
         let applyLoadedCoverageIntent
             (document: TaWorkspaceDocument)
+            (preparedData: TaPreparedRendererData)
             (timeline: string array)
             (currentWindow: TaVisibleWindow)
             (projection: TaLoadedCoverageProjection)
@@ -2873,7 +2923,7 @@ module TaWorkspaceRenderer =
                         PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier
                     else
                         PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Later
-                match RendererModel.tryAdjacentCoverageRange direction intent.ObservationCount document latestPreparedData with
+                match RendererModel.tryAdjacentCoverageRange direction intent.ObservationCount document preparedData with
                 | Some range ->
                     let pending =
                         { Direction = direction
@@ -2902,7 +2952,7 @@ module TaWorkspaceRenderer =
                 | Some projection ->
                     match RendererModel.tryLoadedCoverageWindowIntentAt projection targetStart targetCount with
                     | Some intent ->
-                        applyLoadedCoverageIntent document timeline currentWindow projection intent successText
+                        applyLoadedCoverageIntent document latestPreparedData timeline currentWindow projection intent successText
                     | None ->
                         setUiState { uiState.Value with Feedback = "Loaded coverage target is no longer available." }
                 | None ->
@@ -2970,18 +3020,19 @@ module TaWorkspaceRenderer =
                     let localTotal = referenceLength ()
                     let localCommitted = resolvedWindow uiState.Value
                     let publishedNavigatorDraft = draftWindow.Value
-                    let loadedDragDomain =
+                    let loadedCoverageSnapshot =
                         match runtimeState.Value.Document with
                         | Some document ->
                             RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
-                            |> Option.bind (fun projection ->
-                                RendererModel.coverageNavigatorWindow localTotal localCommitted projection
-                                |> Option.map (fun (_, total, committed) -> document, projection, total, committed))
+                            |> Option.map (fun projection ->
+                                document,
+                                latestPreparedData,
+                                RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData,
+                                projection,
+                                ProjectionCommitGate.key runtimeState.Value)
                         | None -> None
-                    let total, authoritativeCommitted =
-                        loadedDragDomain
-                        |> Option.map (fun (_, _, total, committed) -> total, committed)
-                        |> Option.defaultValue (localTotal, localCommitted)
+                    let total = localTotal
+                    let authoritativeCommitted = localCommitted
                     let committed =
                         RendererModel.navigatorGestureBaseline
                             authoritativeCommitted
@@ -3033,7 +3084,7 @@ module TaWorkspaceRenderer =
                         (if renderedNavigatorDraft.IsSome then "rendered-draft"
                          elif publishedNavigatorDraft.IsSome then "published-draft"
                          else "authoritative")
-                    setDragDiagnostic "data-drag-domain" (if loadedDragDomain.IsSome then "global-loaded" else "active-detail")
+                    setDragDiagnostic "data-drag-domain" "resident-local"
                     setDragDiagnostic "data-drag-domain-count" (string total)
 
                     match resolvedDrag with
@@ -3104,9 +3155,9 @@ module TaWorkspaceRenderer =
                                 finishNavigatorDrag <- None
                                 activeNavigatorDragMode <- None
                                 activeNavigatorCursor <- None
-                                let preferPendingBoundary =
-                                    loadedDragDomain.IsSome
-                                    && (RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta |> Option.isSome)
+                                let boundaryDirection =
+                                    RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta
+                                let preferPendingBoundary = loadedCoverageSnapshot.IsSome && boundaryDirection.IsSome
                                 let draft =
                                     RendererModel.releaseNavigatorDraft
                                         committed
@@ -3118,61 +3169,51 @@ module TaWorkspaceRenderer =
                                 setDragDiagnostic "data-drag-committed-start" (string committed.StartIndex)
                                 setDragDiagnostic "data-drag-draft-start" (string draft.StartIndex)
                                 setDragDiagnostic "data-drag-requested-start" (string requestedStart)
-                                match loadedDragDomain with
-                                | Some(document, projection, _, _) when draft <> committed ->
-                                    match RendererModel.tryLocalWindowForLoadedCoverage localTotal projection draft with
-                                    | Some localDraft ->
-                                        let followLatest, next =
-                                            RendererModel.commitWindowBounds
-                                                options.MinimumVisibleBars
-                                                (maximumVisibleBarsNow ())
-                                                localTotal
-                                                localDraft
+                                let commitLocalDraft () =
+                                    let followLatest, next =
+                                        RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
+                                    if next <> committed || followLatest <> uiState.Value.FollowLatest then
                                         setDragDiagnostic "data-drag-outcome" "commit-local"
                                         navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
                                         setWindow followLatest next
-                                    | None ->
-                                        match RendererModel.tryLoadedCoverageWindowIntent projection draft with
-                                        | Some intent ->
-                                            let direction =
-                                                if draft.StartIndex < committed.StartIndex then
-                                                    PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier
-                                                else
-                                                    PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Later
-                                            setDragDiagnostic
-                                                "data-drag-outcome"
-                                                (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
-                                            draftWindow.Value <- Some draft
-                                            sendOrQueueCoverageWindowAction
-                                                (intent.StartObservationOrdinal |> Option.defaultValue 0L)
-                                                intent.ObservationCount
-                                                "Loaded coverage requested."
-                                        | None ->
-                                            setDragDiagnostic "data-drag-outcome" "invalid-loaded-draft"
-                                            draftWindow.Value <- None
-                                | Some _ ->
-                                    setDragDiagnostic "data-drag-outcome" "no-change"
-                                    draftWindow.Value <- None
-                                | None ->
-                                    match RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta with
-                                    | Some direction ->
+                                    else
+                                        setDragDiagnostic "data-drag-outcome" "no-change"
+                                        draftWindow.Value <- None
+
+                                match boundaryDirection, loadedCoverageSnapshot with
+                                | Some direction, Some(document, preparedData, timeline, projection, snapshotKey)
+                                    when ProjectionCommitGate.key runtimeState.Value = snapshotKey
+                                         && actionAllowed "visible-range-changed"
+                                         && uiState.Value.PendingActionId.IsNone
+                                         && not (remoteDisabled runtimeState.Value.Poll) ->
+                                    match
+                                        RendererModel.tryAdjacentCoverageIntent
+                                            direction
+                                            (maximumVisibleBarsNow ())
+                                            total
+                                            committed
+                                            projection
+                                    with
+                                    | Some intent ->
                                         setDragDiagnostic
                                             "data-drag-outcome"
                                             (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
                                         draftWindow.Value <- None
-                                        requestAdjacentCoverage
-                                            direction
-                                            (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then -committed.Count else committed.Count)
+                                        applyLoadedCoverageIntent
+                                            document
+                                            preparedData
+                                            timeline
+                                            committed
+                                            projection
+                                            intent
+                                            "Loaded coverage requested."
                                     | None ->
-                                        let followLatest, next =
-                                            RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
-                                        if next <> committed || followLatest <> uiState.Value.FollowLatest then
-                                            setDragDiagnostic "data-drag-outcome" "commit-local"
-                                            navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
-                                            setWindow followLatest next
-                                        else
-                                            setDragDiagnostic "data-drag-outcome" "no-change"
-                                            draftWindow.Value <- None
+                                        setDragDiagnostic "data-drag-outcome" "coverage-boundary"
+                                        draftWindow.Value <- None
+                                | Some _, Some _ ->
+                                    setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
+                                    draftWindow.Value <- None
+                                | _ -> commitLocalDraft ()
                                 if draftWindow.Value.IsNone then
                                     navigatorSelectionRatiosOverride.Value <- None
                                 cleanup ()
@@ -4410,7 +4451,7 @@ module TaWorkspaceRenderer =
                             |> Doc.EmbedView
                         ]
                         viewportControls document
-                        View.Map3 (fun (state: RuntimeState) ui preparedDataForShell ->
+                        View.Map2 (fun ((state, preparedDataForShell): RuntimeState * TaPreparedRendererData) ui ->
                             chartRenderSequence <- chartRenderSequence + 1
                             let renderSequence = chartRenderSequence
                             chartWorkGeneration <- chartWorkGeneration + 1
@@ -4519,47 +4560,42 @@ module TaWorkspaceRenderer =
                                     |> Map.ofArray
                                 applyCursorIndex (displayedCursorIndex |> Option.orElse cursorIndex.Value)
 
-                            let rec mountRow index =
+                            let prepareRows () =
                                 if workGeneration = chartWorkGeneration then
-                                    if index < visibleRows.Length then
-                                        JS.SetTimeout (fun () ->
-                                            if workGeneration = chartWorkGeneration then
-                                                let prepared = rowDataStates[index].Value
-                                                let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow, markerCursorReader =
-                                                    renderRowReactivePreparedLiveWithHeightPalette
-                                                        currentPlotPalette
-                                                        displayTime
-                                                        state
-                                                        ui
-                                                        prepared
-                                                        rowDataStates[index].View
-                                                        visibleTimestamps
-                                                        cursorIndex.View
-                                                        setCursorIndex
-                                                        commitCursorIndex
-                                                        true
-                                                        (document.BaseRowId = Some visibleRows[index].RowId)
-                                                        rowHeights[index]
-                                                        scheduleCursorGeometryRefresh
-                                                        (fun node ->
-                                                            currentRowLegendElements[index] <- node
-                                                            scheduleVisibleValueRefresh ())
-                                                        visibleRows[index]
-                                                stagedCursorReaders[index] <- Some cursorReaders
-                                                stagedLegendReaders[index] <- Some legendReaders
-                                                stagedLegendValueReaders[index] <- Some latestLegendReadersForRow
-                                                stagedMarkerCursorReaders[index] <- Some markerCursorReader
-                                                rowDocs[index].Value <- rowDoc
-                                                readyRowCount.Value <- index + 1
-                                                mountRow (index + 1)) 0
-                                        |> ignore
-                                    else
-                                        synchronizeReaders ()
-                                        preparedRowsReady.Value <-
-                                            RendererModel.arePreparedRowsReady visibleRows.Length readyRowCount.Value
-                                        projectionCandidateGeneration
-                                        |> Option.iter (fun generation -> completeProjection generation state)
-                            mountRow 0
+                                    for index in 0 .. visibleRows.Length - 1 do
+                                        let prepared = rowDataStates[index].Value
+                                        let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow, markerCursorReader =
+                                            renderRowReactivePreparedLiveWithHeightPalette
+                                                currentPlotPalette
+                                                displayTime
+                                                state
+                                                ui
+                                                prepared
+                                                rowDataStates[index].View
+                                                visibleTimestamps
+                                                cursorIndex.View
+                                                setCursorIndex
+                                                commitCursorIndex
+                                                true
+                                                (document.BaseRowId = Some visibleRows[index].RowId)
+                                                rowHeights[index]
+                                                scheduleCursorGeometryRefresh
+                                                (fun node ->
+                                                    currentRowLegendElements[index] <- node
+                                                    scheduleVisibleValueRefresh ())
+                                                visibleRows[index]
+                                        stagedCursorReaders[index] <- Some cursorReaders
+                                        stagedLegendReaders[index] <- Some legendReaders
+                                        stagedLegendValueReaders[index] <- Some latestLegendReadersForRow
+                                        stagedMarkerCursorReaders[index] <- Some markerCursorReader
+                                        rowDocs[index].Value <- rowDoc
+                                        readyRowCount.Value <- index + 1
+                                    synchronizeReaders ()
+                                    preparedRowsReady.Value <-
+                                        RendererModel.arePreparedRowsReady visibleRows.Length readyRowCount.Value
+                                    projectionCandidateGeneration
+                                    |> Option.iter (fun generation -> completeProjection generation state)
+                            prepareRows ()
 
                             let visibleStart = if globalVisibleWindow.Count = 0 then 0 else globalVisibleWindow.StartIndex + 1
                             let visibleEnd = globalVisibleWindow.StartIndex + globalVisibleWindow.Count
@@ -4583,12 +4619,13 @@ module TaWorkspaceRenderer =
                                 Attr.Create "data-coverage-identity" (coverageProjection |> Option.map _.CoverageIdentity |> Option.defaultValue "")
                                 Attr.Dynamic "data-coverage-revision" (runtimeState.View |> View.Map (fun current -> current.Document |> Option.bind (fun value -> RendererModel.tryLoadedCoverageResolved value.DefaultView current.Data) |> Option.map (fun value -> string value.CoverageRevision) |> Option.defaultValue ""))
                                 Attr.Dynamic "data-query-generation" (runtimeState.View |> View.Map (fun current -> current.Document |> Option.bind (fun value -> RendererModel.tryLoadedCoverageResolved value.DefaultView current.Data) |> Option.map (fun value -> string value.QueryGeneration) |> Option.defaultValue ""))
+                                Attr.Dynamic "data-preparation-pending" (preparationPending.View |> View.Map (fun pending -> if pending then "true" else "false"))
                                 Attr.Create "data-follow-latest" (if ui.FollowLatest then "true" else "false")
                                 Attr.Create "data-row-count" (string visibleRows.Length)
                                 Attr.Create "data-visible-value-query-scope" "cursor-panel+row-legends"
                                 Attr.Dynamic "data-ready-row-count" (readyRowCount.View |> View.Map string)
                                 Attr.Create "data-cursor-index" ""
-                                attr.style "display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"
+                                attr.style "position:relative; display:flex; flex-direction:column; min-width:0; padding:0 12px 14px;"
                                 on.afterRender (fun node ->
                                     chartStackElement <- node
                                     activeNavigatorDragMode
@@ -4596,6 +4633,19 @@ module TaWorkspaceRenderer =
                                     latestCursorTimestamps <- visibleTimestamps
                                     applyCursorIndex cursorIndex.Value)
                             ] [
+                                yield
+                                    preparationPending.View
+                                    |> View.Map (fun pending ->
+                                        if pending then
+                                            div [
+                                                Attr.Create "data-testid" "ta-chart-preparation-pending"
+                                                attr.style "position:absolute; inset:0; z-index:20; display:flex; align-items:flex-start; justify-content:flex-end; padding:8px 20px; background:rgba(248,250,252,0.18); pointer-events:none; box-sizing:border-box;"
+                                            ] [
+                                                span [ attr.style "padding:3px 7px; border:1px solid #cbd6e5; border-radius:4px; background:#f8fafc; color:#40536d; font-size:11px;" ] [ text "Preparing coverage…" ]
+                                            ] :> Doc
+                                        else
+                                            Doc.Empty)
+                                    |> Doc.EmbedView
                                 yield div [
                                     Attr.Create "data-testid" "ta-cursor-panel"
                                     attr.style "order:1; display:flex; flex-direction:column; align-items:stretch; border-top:1px solid #dce4ef; background:#f8fafc;"
@@ -4761,7 +4811,7 @@ module TaWorkspaceRenderer =
                                         |> Doc.EmbedView
                                     ]
                                 ]
-                            ] :> Doc) chartRuntimeView chartUiState.View chartShellPreparedData.View
+                            ] :> Doc) chartCommittedFrameView chartUiState.View
                         |> Doc.EmbedView
                     ] :> Doc)
             |> Doc.EmbedView

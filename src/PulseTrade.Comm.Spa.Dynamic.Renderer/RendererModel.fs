@@ -116,7 +116,10 @@ type TaProjectionCommitKey =
     { Identity: RuntimeIdentity
       DocumentRevision: int64
       DataRevision: int64
-      LastTransportSequence: int64 }
+      LastTransportSequence: int64
+      CoverageIdentity: string option
+      CoverageRevision: int64 option
+      QueryGeneration: int64 option }
 
 type TaProjectionCommitCandidate =
     { Generation: int
@@ -129,11 +132,27 @@ type TaProjectionCommitGateState =
 
 [<JavaScript; RequireQualifiedAccess>]
 module ProjectionCommitGate =
+    let coverageKey (state: RuntimeState) =
+        state.Document
+        |> Option.bind (fun document ->
+            match TaLoadedCoverageCodec.tryDecode document.DefaultView with
+            | Ok(Some projection) ->
+                Some(
+                    Some projection.CoverageIdentity,
+                    Some projection.CoverageRevision,
+                    Some projection.QueryGeneration)
+            | _ -> None)
+        |> Option.defaultValue (None, None, None)
+
     let key (state: RuntimeState) =
+        let coverageIdentity, coverageRevision, queryGeneration = coverageKey state
         { Identity = state.Identity
           DocumentRevision = state.DocumentRevision
           DataRevision = state.DataRevision
-          LastTransportSequence = state.LastTransportSequence }
+          LastTransportSequence = state.LastTransportSequence
+          CoverageIdentity = coverageIdentity
+          CoverageRevision = coverageRevision
+          QueryGeneration = queryGeneration }
 
     let initial =
         { Generation = 0
@@ -2514,30 +2533,17 @@ module RendererModel =
 
     let navigatorSelectionRatiosForRender
         activeGestureOverride
-        (projection: TaLoadedCoverageProjection option)
+        (_projection: TaLoadedCoverageProjection option)
         (activeReferenceTimeline: string array)
         activeWindow
-        globalDraft
+        localDraft
         =
         match activeGestureOverride with
         | Some ratios -> ratios
         | None ->
-            match globalDraft, projection with
-            | Some draft, Some loaded ->
-                let domainCount = TaLoadedCoverageCodec.observationDomainCount loaded
-                if domainCount > 0L && domainCount <= int64 Int32.MaxValue then
-                    overviewSelectionRatiosForGlobalWindow loaded activeReferenceTimeline draft
-                    |> Option.defaultValue (selectionRatios (int domainCount) draft)
-                else
-                    selectionRatios activeReferenceTimeline.Length activeWindow
-            | _ ->
-                projection
-                |> Option.bind (fun loaded -> overviewSelectionRatios loaded activeReferenceTimeline activeWindow)
-                |> Option.defaultWith (fun () ->
-                    projection
-                    |> Option.bind (coverageNavigatorWindow activeReferenceTimeline.Length activeWindow)
-                    |> Option.map (fun (_, total, globalSelection) -> selectionRatios total globalSelection)
-                    |> Option.defaultValue (selectionRatios activeReferenceTimeline.Length activeWindow))
+            localDraft
+            |> Option.defaultValue activeWindow
+            |> selectionRatios activeReferenceTimeline.Length
 
     let navigatorBoundaryDirection total committed drag rawDelta : TaCoverageDirection option =
         if total <= 0 || committed.Count <= 0 then
@@ -2566,6 +2572,22 @@ module RendererModel =
         let left = max 0.0 (min 1.0 leftRatio) * width
         let right = max left (max 0.0 (min 1.0 rightRatio) * width)
         left, right - left
+
+    let navigatorMinimumSelectionBounds trackWidth minimumWidth ratios =
+        let trackWidth = max 0.0 trackWidth
+        if trackWidth <= 0.0 then
+            0.0, 0.0
+        else
+            let semanticLeft, semanticWidth = navigatorSelectionBounds trackWidth ratios
+            let center = semanticLeft + semanticWidth / 2.0
+            let visualWidth = max semanticWidth (min trackWidth (max 0.0 minimumWidth))
+            center - visualWidth / 2.0, visualWidth
+
+    let navigatorMinimumCssSelectionBounds viewBoxWidth renderedTrackWidth minimumCssWidth ratios =
+        let minimumViewBoxWidth =
+            if renderedTrackWidth <= 0.0 then 0.0
+            else max 0.0 minimumCssWidth / renderedTrackWidth * max 0.0 viewBoxWidth
+        navigatorMinimumSelectionBounds viewBoxWidth minimumViewBoxWidth ratios
 
     let navigatorDragMode trackWidth hitTargetWidth (leftRatio, rightRatio) pointerX =
         if trackWidth <= 0.0 || hitTargetWidth <= 0.0 then
