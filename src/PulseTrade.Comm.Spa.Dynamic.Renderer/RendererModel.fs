@@ -2329,8 +2329,15 @@ module RendererModel =
         then
             None
         else
+            let direction =
+                match projection.GlobalOverview with
+                | Some resident when targetStart < resident.ResidentStartObservationOrdinal ->
+                    Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier
+                | Some resident when targetEnd > resident.ResidentStartObservationOrdinal + int64 resident.ResidentObservationCount ->
+                    Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later
+                | _ -> None
             TaLoadedCoverageCodec.tryWindowIntent
-                None
+                direction
                 (Some projection.CoverageRevision)
                 (projection.QueryGeneration + 1L)
                 (Some targetStart)
@@ -2354,6 +2361,16 @@ module RendererModel =
                     projection
                     (resident.StartObservationOrdinal + int64 residentWindow.StartIndex)
                     residentWindow.Count)
+
+    let residentGestureScopeMatches (snapshot: TaLoadedCoverageProjection) (current: TaLoadedCoverageProjection) =
+        snapshot.CoverageIdentity = current.CoverageIdentity
+        && current.CoverageRevision >= snapshot.CoverageRevision
+        && current.QueryGeneration >= snapshot.QueryGeneration
+        && match snapshot.GlobalOverview, current.GlobalOverview with
+           | Some before, Some after ->
+               before.ResidentStartObservationOrdinal = after.ResidentStartObservationOrdinal
+               && before.ResidentObservationCount = after.ResidentObservationCount
+           | _ -> false
 
     let tryAdjacentCoverageIntent (direction: TaCoverageDirection) maximumVisibleBars activeReferenceLength activeWindow projection =
         let local = clampWindow 1 maximumVisibleBars activeReferenceLength activeWindow
@@ -2383,12 +2400,12 @@ module RendererModel =
             let local = clampWindow 1 maximumVisibleBars resident.ObservationCount residentWindow
             let count = max 1 (min maximumVisibleBars local.Count)
             let residentPageCount = max count (min maximumVisibleBars resident.ObservationCount)
-            let currentStart = resident.StartObservationOrdinal + int64 local.StartIndex
+            let residentEnd = resident.StartObservationOrdinal + int64 resident.ObservationCount
             let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
             let targetStart =
                 match direction with
-                | TaCoverageDirection.Earlier -> max 0L (currentStart - int64 residentPageCount)
-                | TaCoverageDirection.Later -> min (max 0L (domainCount - int64 count)) (currentStart + int64 residentPageCount)
+                | TaCoverageDirection.Earlier -> max 0L (resident.StartObservationOrdinal - int64 residentPageCount)
+                | TaCoverageDirection.Later -> min (max 0L (domainCount - int64 count)) (residentEnd - int64 count + int64 residentPageCount)
             let contractDirection =
                 match direction with
                 | TaCoverageDirection.Earlier -> PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier
@@ -2643,6 +2660,12 @@ module RendererModel =
             if requestedStart < 0 then Some TaCoverageDirection.Earlier
             elif requestedEnd > total then Some TaCoverageDirection.Later
             else None
+
+    let residentNavigatorBoundaryDirection total committed drag rawDelta pointerX trackWidth =
+        match navigatorBoundaryDirection total committed drag rawDelta with
+        | Some TaCoverageDirection.Earlier when trackWidth > 0.0 && pointerX < 0.0 -> Some TaCoverageDirection.Earlier
+        | Some TaCoverageDirection.Later when trackWidth > 0.0 && pointerX > trackWidth -> Some TaCoverageDirection.Later
+        | _ -> None
 
     let optimisticViewportAfterActionSettlement queuedIntent draft =
         if queuedIntent then draft else None

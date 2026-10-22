@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-23 DYN-T-683 / DYN-T-684 regression
+
+- 修前RED：resident drop在remote dispatch前清draft；702-bar從local1198越界卻以舊visible起點算page，少載1198。兩個focused Expecto案例已各重現1 failed。
+- 0.2.21候選：package-backed Renderer / Client suites；same-resident revision前進仍可排送且保寬，跨identity/resident與倒退revision/generation拒絕；pointer在track內2px須local clamp，真正越界才左右page；source wiring驗draft ownership與frame settlement。
+- 真3M由daedilus在18884用無額外settled等待的連續resize/move/drop驗無退回、無stale、single action；左右完整page、global與舊兩黑閃分項回歸。完整resident資料local可用性仍是open contract gate，不以focused或preview PASS代替。
+
 ## 1. 測試專案規劃
 測試專案位於 `tests/PulseTrade.Comm.Spa.Dynamic.Tests`。
 使用 **Expecto** 框架進行單元測試與整合測試。

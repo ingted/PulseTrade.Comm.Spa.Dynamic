@@ -80,6 +80,12 @@ While a remote coverage action awaits its response or matching projection, the r
 - Owner candidates are Contracts `0.1.38`, Renderer `0.2.10`, and Interactive.Client `0.2.10`. All three passed fresh local-first package publication; Renderer and Interactive.Client local package SHA-256 values are `ECCD46DADDEEAD7AAE3F9BAD488552D84923E658FD4139FC88DA6387FDB6DCE1` and `84BB347B698CDC9BC15791CC842A78C29BBE2804CCA7F2378E5B4EAE72F460AA`. The package-consuming BrowserDemo build passes, and its Expecto Playwright gate passes the existing resident gesture plus the independent global relocation/drop-only action. Daedalus formal 18884 consumer validation remains pending.
 - Existing `0.2.8` remains the valid chained-gesture release and does not contain the global strip.
 
+## 2026-10-23 resident drop correction
+
+- DYN-WBS-587 / DYN-T-683：resident drop保留rendered draft，等action settlement與matching committed coverage兩者滿足才清除；同resident中的較新revision不得取消正在操作的手勢，排送時使用最新revision/generation。
+- DYN-WBS-588 / DYN-T-684：body pointer仍在track內時先clamp至端點；只有pointer真的越出track才要求相鄰頁，目標以resident邊界加減完整page，保持visible width。
+- Renderer / Interactive.Client候選0.2.21沿用既有wire；focused與真3M快速連續drag、舊兩黑閃/global回歸須分開驗。尚無獨立完整resident payload descriptor，不能將ActiveDetail width改4500；此資料契約缺口保持open，consumer owner為daedilus。
+
 ## Acceptance
 
 1. Existing 0.2.2 tests remain unchanged and pass with `GlobalOverview=None`.

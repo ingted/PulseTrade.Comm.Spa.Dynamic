@@ -975,6 +975,56 @@ let tests =
                 Expect.equal intent.ObservationCount 700 "Right overscroll keeps the active visible width."
             | None -> failtest "Right resident overscroll must produce a later coverage intent."
 
+            let middleNarrow = { StartIndex = 1198; Count = 702 }
+            for direction, expected in
+                [ TaCoverageDirection.Earlier, expandedOverview.ResidentStartObservationOrdinal - 1500L
+                  TaCoverageDirection.Later, expandedOverview.ResidentStartObservationOrdinal + 4500L - 702L + 1500L ] do
+                match RendererModel.tryResidentAdjacentCoverageIntent direction 1500 middleNarrow expandedProjection with
+                | Some intent ->
+                    Expect.equal intent.StartObservationOrdinal (Some expected) "An overscroll loads a full page beyond the resident edge, independent of the gesture's starting offset."
+                    Expect.equal intent.ObservationCount 702 "The resident page delta must not change the visible width."
+                    match RendererModel.tryLoadedCoverageWindowIntentAt expandedProjection expected 702 with
+                    | Some dispatched ->
+                        Expect.equal dispatched.Direction intent.Direction "Rebuilding a queued ordinal target must preserve the resident eviction direction at the maximum capacity."
+                    | None -> failtest "The queued resident target must remain dispatchable."
+                | None -> failtest "A resident overscroll must have a bounded target."
+
+            let newerProjection =
+                { expandedProjection with
+                    CoverageRevision = 5L
+                    QueryGeneration = 4L
+                    ActiveDetail =
+                        { expandedProjection.ActiveDetail with
+                            StartObservationOrdinal = expandedOverview.ResidentStartObservationOrdinal + 1198L
+                            ObservationCount = 702 } }
+            Expect.isTrue (RendererModel.residentGestureScopeMatches expandedProjection expandedProjection) "An unchanged resident remains valid."
+            Expect.isTrue (RendererModel.residentGestureScopeMatches expandedProjection newerProjection) "An earlier action's accepted viewport must not invalidate a later gesture in the same resident."
+            for invalid in
+                [ { newerProjection with CoverageIdentity = "coverage:other" }
+                  { newerProjection with CoverageRevision = 3L }
+                  { newerProjection with QueryGeneration = 2L }
+                  { newerProjection with GlobalOverview = None }
+                  { newerProjection with GlobalOverview = Some { expandedOverview with ResidentStartObservationOrdinal = 900_000L } }
+                  { newerProjection with GlobalOverview = Some { expandedOverview with ResidentObservationCount = 3000 } } ] do
+                Expect.isFalse (RendererModel.residentGestureScopeMatches expandedProjection invalid) "A changed scope or stale authority must not receive the old gesture."
+            match RendererModel.tryResidentCoverageWindowIntent newerProjection middleNarrow with
+            | Some intent ->
+                Expect.equal intent.ExpectedCoverageRevision (Some 5L) "Dispatch uses the latest accepted revision."
+                Expect.equal intent.QueryGeneration 5L "The next gesture gets a new generation."
+                Expect.equal intent.StartObservationOrdinal (Some 1_001_198L) "Revision rebasing preserves the user's absolute target."
+                Expect.equal intent.ObservationCount 702 "Revision rebasing preserves width."
+            | None -> failtest "The same-resident gesture must remain dispatchable after an earlier action."
+
+        testCase "resident body reaches an edge before requesting an outside page" <| fun _ ->
+            let middle = { StartIndex = 1198; Count = 702 }
+            let direction delta pointer = RendererModel.residentNavigatorBoundaryDirection 3000 middle TaWindowDrag.Move delta pointer 1000.0
+            Expect.isNone (direction -1500 2.0) "A pointer still inside the left edge clamps locally despite its grab offset."
+            Expect.isNone (direction 2000 998.0) "A pointer still inside the right edge clamps locally despite its grab offset."
+            Expect.equal (direction -1500 -2.0) (Some TaCoverageDirection.Earlier) "Only an actual left track overscroll requests the earlier page."
+            Expect.equal (direction 2000 1002.0) (Some TaCoverageDirection.Later) "Only an actual right track overscroll requests the later page."
+            Expect.isNone (direction -1500 0.0) "Landing exactly on the left track boundary is local."
+            Expect.isNone (direction 2000 1000.0) "Landing exactly on the right track boundary is local."
+
         testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
             let ratios = 0.2, 0.4
             let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
@@ -2486,6 +2536,22 @@ let tests =
                 Expect.isTrue
                     (source.Contains(required, StringComparison.Ordinal))
                     ("missing explicit overview domain label contract: " + required)
+
+        testCase "resident drop retains its preview while the requested payload is pending" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let startIndex = source.IndexOf("setDragDiagnostic \"data-drag-outcome\" \"commit-resident\"", StringComparison.Ordinal)
+            let dispatchIndex = source.IndexOf("sendOrQueueCoverageWindowAction", startIndex, StringComparison.Ordinal)
+            Expect.isGreaterThan startIndex -1 "The resident drop path must be present."
+            Expect.isGreaterThan dispatchIndex startIndex "The drop dispatch must follow its receipt."
+            let beforeDispatch = source.Substring(startIndex, dispatchIndex - startIndex)
+            Expect.isFalse
+                (beforeDispatch.Contains("draftWindow.Value <- None", StringComparison.Ordinal))
+                "A remote drop cannot reveal the old viewport before the matching accepted frame."
+            Expect.stringContains source "settleCommittedViewportDraft ()" "A matching rendered projection must settle the draft, even when the response arrived first."
+            Expect.stringContains source "pendingBoundaryPan.IsNone && committedCoverageReady ()" "The queue cannot dispatch from an uncommitted coverage snapshot."
+            Expect.stringContains source "RendererModel.residentGestureScopeMatches projection" "An accepted earlier gesture must not invalidate a later same-resident gesture."
+            Expect.stringContains source "draftWindow.Value <- publishedNavigatorDraft" "Cancelling a new gesture restores the previous outstanding drop."
 
         testCase "P0 preparation and resident drag preserve the committed local frame" <| fun _ ->
             let source =

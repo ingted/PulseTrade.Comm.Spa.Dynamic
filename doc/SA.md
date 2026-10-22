@@ -1,5 +1,9 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-23 resident gesture交接（DYN-WBS-587 / 588）
+
+`Renderer.fs`在resident drop時清掉draft，再送remote，讓舊位置重現；同時以完整frame key拒絕同resident中途抵達的新revision，造成下一手勢stale。0.2.21依RFC-0036 D5恢復draft ownership及matching frame settlement。另一端點偏離來自body grab offset與page target錯用原visible起點，分別用pointer track bounds與resident edges守住。consumer目前只傳visibleSnapshot；完整4500 resident payload不在既有ActiveDetail4000上限內，保持跨owner契約缺口，不以preview連續性修復宣稱resident全量local。
+
 ## RF-12（20261006）：Actors 長路徑布局
 
 Core54隔離真Host中，長Akka地址造成Dynamic Actors的min-content寬1682px超出1600pxviewport，外層grid隱藏右側controls；短正式地址1527px不重現。此slice只限制renderer intrinsic inline size並讓report controls換行，不截短actor identity、不改投影/生命週期。詳Main `G:/PulseTrade.fs/doc/20261006.REFACTOR/SA.md` RF-12。

@@ -2197,12 +2197,16 @@ module TaWorkspaceRenderer =
             generation
         let pendingProjectionFor state =
             ProjectionCommitGate.pendingGenerationFor state projectionCommitGate
+        let mutable settleCommittedViewportDraft = ignore
         let completeProjection generation state =
             scheduleNextFrame (fun () ->
                 let nextGate, committed =
                     ProjectionCommitGate.tryCommit runtimeState.Value generation state projectionCommitGate
                 projectionCommitGate <- nextGate
-                committed |> Option.iter onProjectionCommitted)
+                committed
+                |> Option.iter (fun committedState ->
+                    onProjectionCommitted committedState
+                    settleCommittedViewportDraft ()))
         let scheduleRowDataRefresh projectionCandidateGeneration candidateState prepared =
             dataWorkGeneration <- dataWorkGeneration + 1
             let generation = dataWorkGeneration
@@ -2345,12 +2349,24 @@ module TaWorkspaceRenderer =
         let viewportCommandsDisabledNow () =
             not viewportDataReady.Value
             || localViewportDisabled runtimeState.Value.Poll
+        let committedCoverageReady () =
+            let current = ProjectionCommitGate.key runtimeState.Value
+            projectionCommitGate.LastCommitted
+            |> Option.exists (fun committed ->
+                committed.Identity = current.Identity
+                && committed.CoverageIdentity = current.CoverageIdentity
+                && committed.CoverageRevision = current.CoverageRevision
+                && committed.QueryGeneration = current.QueryGeneration)
         let settleVisibleRangeDraft () =
-            if finishNavigatorDrag.IsNone then
+            if finishNavigatorDrag.IsNone && pendingBoundaryPan.IsNone && committedCoverageReady () then
                 draftWindow.Value <-
                     RendererModel.optimisticViewportAfterActionSettlement
                         queuedViewportIntent.IsSome
                         draftWindow.Value
+        settleCommittedViewportDraft <- fun () ->
+            if uiState.Value.PendingActionId.IsNone then
+                settleVisibleRangeDraft ()
+            scheduleNextFrame flushQueuedViewportIntent
         let startActionWithFeedback action successText onAccepted onRejected afterSettled =
             actionSequence <- actionSequence + 1
             let request =
@@ -2390,19 +2406,19 @@ module TaWorkspaceRenderer =
                     pendingBoundaryPan <- None
                     settleVisibleRangeDraft ())
         let sendOrQueueVisibleRangeAction action =
-            if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
+            if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange action)
             else
                 startVisibleRangeAction action
         let sendOrQueueCoverageWindowAction targetStart targetCount successText =
-            if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
+            if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText))
                 setUiState { uiState.Value with Feedback = "Loaded coverage request queued." }
             else
                 dispatchCoverageWindow targetStart targetCount successText
         flushQueuedViewportIntent <- fun () ->
             match queuedViewportIntent with
-            | Some intent when uiState.Value.PendingActionId.IsNone && not (remoteDisabled runtimeState.Value.Poll) ->
+            | Some intent when uiState.Value.PendingActionId.IsNone && pendingBoundaryPan.IsNone && committedCoverageReady () && not (remoteDisabled runtimeState.Value.Poll) ->
                 queuedViewportIntent <- None
                 match intent with
                 | TaQueuedViewportIntent.LocalRange action ->
@@ -2463,7 +2479,6 @@ module TaWorkspaceRenderer =
                             generalOldTimeline.Length
                             currentUi.FollowLatest
                             currentUi.Window
-                    let pendingBoundaryPanBeforeReanchor = pendingBoundaryPan
                     let reanchored =
                         if viewportScopeChanged then
                             pendingBoundaryPan <- None
@@ -2520,14 +2535,6 @@ module TaWorkspaceRenderer =
                                 FollowLatest = followLatest
                                 CursorIndex = None }
                         cursorIndex.Value <- None
-                        if pendingBoundaryPanBeforeReanchor.IsSome
-                           && pendingBoundaryPan.IsNone
-                           && finishNavigatorDrag.IsNone then
-                            draftWindow.Value <-
-                                RendererModel.optimisticCoverageViewportAfterProjection
-                                    uiState.Value.PendingActionId.IsSome
-                                    queuedViewportIntent.IsSome
-                                    draftWindow.Value
                         if viewportScopeChanged then
                             defaultViewportAppliedToCanvas <- Some(viewportScopeKey next document)
                     | None -> ()
@@ -2847,7 +2854,7 @@ module TaWorkspaceRenderer =
 
         let requestAdjacentCoverage direction delta =
             if actionAllowed "visible-range-changed" && preparedRowsReady.Value && not (localViewportDisabled runtimeState.Value.Poll) then
-                if uiState.Value.PendingActionId.IsSome || remoteDisabled runtimeState.Value.Poll then
+                if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                     queuedViewportIntent <- Some(TaQueuedViewportIntent.AdjacentCoverage(direction, delta))
                     setUiState
                         { uiState.Value with
@@ -3018,20 +3025,29 @@ module TaWorkspaceRenderer =
                     setDragDiagnostic "data-drag-outcome" "disabled"
                 else
                     let bounds = navigatorRoot.GetBoundingClientRect()
-                    let localTotal = referenceLength ()
-                    let localCommitted = resolvedWindow uiState.Value
+                    let dragState, dragPreparedData = chartCommittedFrame.Value
+                    let localTotal =
+                        dragState.Document
+                        |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document dragPreparedData |> Array.length)
+                        |> Option.defaultValue 0
+                    let localCommitted =
+                        RendererModel.resolveWindow options.MinimumVisibleBars (maximumVisibleBarsNow ()) localTotal uiState.Value.FollowLatest uiState.Value.Window
                     let publishedNavigatorDraft = draftWindow.Value
                     let loadedCoverageSnapshot =
-                        match runtimeState.Value.Document with
+                        match dragState.Document with
                         | Some document ->
-                            RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
+                            RendererModel.tryLoadedCoverageResolved document.DefaultView dragState.Data
                             |> Option.map (fun projection ->
                                 document,
-                                latestPreparedData,
-                                RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData,
+                                dragPreparedData,
+                                RendererModel.referenceTimelineForDocumentPrepared document dragPreparedData,
                                 projection,
-                                ProjectionCommitGate.key runtimeState.Value)
+                                ProjectionCommitGate.key dragState)
                         | None -> None
+                    let residentSnapshotCurrent (snapshotKey: TaProjectionCommitKey) projection =
+                        snapshotKey.Identity = runtimeState.Value.Identity
+                        && (coverageProjection runtimeState.Value
+                            |> Option.exists (RendererModel.residentGestureScopeMatches projection))
                     let total, authoritativeCommitted =
                         loadedCoverageSnapshot
                         |> Option.bind (fun (_, _, timeline, projection, _) ->
@@ -3121,6 +3137,7 @@ module TaWorkspaceRenderer =
                         (navigatorRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
                         let startClientX = event.ClientX
                         let mutable latestRawDelta = 0
+                        let mutable latestPointerX = pointerX
                         let mutable moveHandler: Action<Event> = null
                         let mutable upHandler: Action<Event> = null
                         let mutable cancelHandler: Action<Event> = null
@@ -3165,7 +3182,10 @@ module TaWorkspaceRenderer =
                                 activeNavigatorDragMode <- None
                                 activeNavigatorCursor <- None
                                 let boundaryDirection =
-                                    RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta
+                                    if loadedCoverageSnapshot |> Option.exists (fun (_, _, _, projection, _) -> projection.GlobalOverview.IsSome) then
+                                        RendererModel.residentNavigatorBoundaryDirection total committed drag latestRawDelta latestPointerX bounds.Width
+                                    else
+                                        RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta
                                 let preferPendingBoundary = loadedCoverageSnapshot.IsSome && boundaryDirection.IsSome
                                 let draft =
                                     RendererModel.releaseNavigatorDraft
@@ -3190,7 +3210,7 @@ module TaWorkspaceRenderer =
                                     if changed then
                                         match loadedCoverageSnapshot with
                                         | Some(_, _, timeline, projection, snapshotKey) when projection.GlobalOverview.IsSome ->
-                                            if ProjectionCommitGate.key runtimeState.Value <> snapshotKey then
+                                            if not (residentSnapshotCurrent snapshotKey projection) then
                                                 setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
                                                 draftWindow.Value <- None
                                             else
@@ -3208,7 +3228,7 @@ module TaWorkspaceRenderer =
                                                         then
                                                             setDragDiagnostic "data-drag-outcome" "commit-resident"
                                                             navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
-                                                            draftWindow.Value <- None
+                                                            draftWindow.Value <- Some next
                                                             sendOrQueueCoverageWindowAction
                                                                 targetStart
                                                                 intent.ObservationCount
@@ -3228,9 +3248,28 @@ module TaWorkspaceRenderer =
                                             setWindow followLatest next
                                     else
                                         setDragDiagnostic "data-drag-outcome" "no-change"
-                                        draftWindow.Value <- None
+                                        if uiState.Value.PendingActionId.IsNone then
+                                            settleVisibleRangeDraft ()
 
                                 match boundaryDirection, loadedCoverageSnapshot with
+                                | Some direction, Some(_, _, _, projection, snapshotKey) when projection.GlobalOverview.IsSome ->
+                                    if residentSnapshotCurrent snapshotKey projection && actionAllowed "visible-range-changed" then
+                                        match RendererModel.tryResidentAdjacentCoverageIntent direction (maximumVisibleBarsNow ()) committed projection with
+                                        | Some intent ->
+                                            match intent.StartObservationOrdinal with
+                                            | Some targetStart ->
+                                                setDragDiagnostic
+                                                    "data-drag-outcome"
+                                                    (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
+                                                draftWindow.Value <- Some draft
+                                                sendOrQueueCoverageWindowAction targetStart intent.ObservationCount "Loaded coverage requested."
+                                            | None -> draftWindow.Value <- None
+                                        | None ->
+                                            setDragDiagnostic "data-drag-outcome" "coverage-boundary"
+                                            draftWindow.Value <- None
+                                    else
+                                        setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
+                                        draftWindow.Value <- None
                                 | Some direction, Some(document, preparedData, timeline, projection, snapshotKey)
                                     when ProjectionCommitGate.key runtimeState.Value = snapshotKey
                                          && actionAllowed "visible-range-changed"
@@ -3279,6 +3318,7 @@ module TaWorkspaceRenderer =
                         moveHandler <-
                             Action<Event>(fun rawEvent ->
                                 let mouse = rawEvent :?> MouseEvent
+                                latestPointerX <- float mouse.ClientX - bounds.Left
                                 let delta =
                                     if bounds.Width <= 0.0 || total <= 0 then 0
                                     else int (Math.Round(float (mouse.ClientX - startClientX) / bounds.Width * float total))
@@ -3296,8 +3336,8 @@ module TaWorkspaceRenderer =
                                     finishNavigatorDrag <- None
                                     activeNavigatorDragMode <- None
                                     activeNavigatorCursor <- None
-                                    draftWindow.Value <- None
-                                    navigatorSelectionRatiosOverride.Value <- None
+                                    draftWindow.Value <- publishedNavigatorDraft
+                                    navigatorSelectionRatiosOverride.Value <- publishedNavigatorDraft |> Option.map (fun _ -> ratios)
                                     setDragDiagnostic "data-drag-outcome" "cancelled"
                                     cleanup ())
 
