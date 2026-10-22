@@ -903,6 +903,43 @@ let tests =
                 { StartIndex = 1500; Count = 700 }
                 "Relocating the resident window keeps the inner viewport width and resident-relative offset."
 
+        testCase "global navigator authority survives an unknown loaded total" <| fun _ ->
+            let globalOverview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 1_496_833L
+                  ResidentObservationCount = 4500 }
+            let partial : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:real-right-edge"
+                  CoverageRevision = 7L
+                  QueryGeneration = 6L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 1_500_631L
+                      ObservationCount = 702
+                      BaseAxisRef = "axis.detail" }
+                  GlobalOverview = Some globalOverview }
+            for total in [ None; Some globalOverview.TotalObservationCount ] do
+                let projection = { partial with TotalObservationCount = total }
+                let later =
+                    RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Later 1500 { StartIndex = 3798; Count = 702 } projection
+                    |> Option.get
+                Expect.equal later.StartObservationOrdinal (Some 1_502_131L) "The global domain permits one full page beyond the resident edge; unknown loaded total cannot clamp it back to active start1500631."
+                let queued = RendererModel.tryLoadedCoverageWindowIntentAt projection 1_502_131L 702 |> Option.get
+                Expect.equal queued.Direction (Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later) "Queued rebuilding uses the same domain and eviction direction."
+                let endIntent = RendererModel.tryLoadedCoverageEdgeIntent TaLoadedCoverageEdge.End 702 1500 projection |> Option.get
+                Expect.equal endIntent.StartObservationOrdinal (Some(2_996_994L - 702L)) "The global end is independent of the loaded tail."
+                let allIntent = RendererModel.tryViewAllCoverageIntent 1500 projection |> Option.get
+                Expect.equal allIntent.StartObservationOrdinal (Some(2_996_994L - 1500L)) "Global view-all uses its authority while preserving the visible cap."
+                Expect.isNone (RendererModel.tryLoadedCoverageWindowIntentAt projection (2_996_994L - 701L) 702) "The actual global endpoint still rejects overflow."
+            let legacy = { partial with GlobalOverview = None }
+            Expect.isNone (RendererModel.tryLoadedCoverageWindowIntentAt legacy 1_502_131L 702) "Absent global authority preserves the original loaded-domain bound."
+
         testCase "accepted global coverage maps active detail into the resident-local navigator domain" <| fun _ ->
             let acceptedOverview =
                 { TotalObservationCount = 2_996_994L

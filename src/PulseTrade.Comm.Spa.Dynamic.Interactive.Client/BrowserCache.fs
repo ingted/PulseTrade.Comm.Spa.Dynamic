@@ -339,7 +339,7 @@ module BrowserRuntimeCache =
         | None ->
             let active = query.AcceptedProjection.ActiveDetail
             let activeEnd = active.StartObservationOrdinal + int64 active.ObservationCount
-            let domainCount = TaLoadedCoverageCodec.observationDomainCount query.AcceptedProjection
+            let domainCount = PulseTrade.Comm.Spa.Dynamic.Renderer.RendererModel.navigationDomainCount query.AcceptedProjection
             let hasTargetOrdinal =
                 match query.Direction with
                 | TaCoverageDirection.Earlier -> active.StartObservationOrdinal > 0L

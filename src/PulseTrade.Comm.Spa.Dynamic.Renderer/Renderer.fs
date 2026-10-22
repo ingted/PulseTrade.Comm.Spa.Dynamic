@@ -2928,7 +2928,7 @@ module TaWorkspaceRenderer =
             let targetEnd = targetStart + int64 intent.ObservationCount
             if targetStart >= activeStart && targetEnd <= activeEnd then
                 setWindow
-                    (targetEnd = TaLoadedCoverageCodec.observationDomainCount projection)
+                    (targetEnd = RendererModel.navigationDomainCount projection)
                     { StartIndex = int (targetStart - activeStart)
                       Count = intent.ObservationCount }
             else

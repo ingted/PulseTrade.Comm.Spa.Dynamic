@@ -2,6 +2,8 @@
 
 ## 2026-10-23 resident gesture交接（DYN-WBS-587 / 588）
 
+0.2.23新增既有RendererModel內的`navigationDomainCount`：GlobalOverview存在時取其TotalObservationCount，否則委派Codec.observationDomainCount。resident/legacy adjacent intent、queued absolute validation、edge/view-all與followLatest、Client adjacent cache的known-empty判斷共用同一導航authority；resident selection geometry仍只用resident count，資料payload未擴大。最後pointer修復保留，release helper的歷史bool參數顯式定型維持API。
+
 0.2.22：element與document pointerup均將event交同一finish；move/up共用pointerDraft，up在finished前擷取最後座標。release優先pending draft並同步frozen ratio/draft後dispatch；舊排定RAF因finished而不再寫回。cancel契約不變。chart的`data-viewport-dispatch-*`只記最後一次coverage dispatch前的target/count/pending action/pending boundary/committed-ready/poll，供右端無action問題判斷，無新增輪詢或wire。
 
 沿用`TaQueuedViewportIntent`、`TaPendingBoundaryPan`、`ProjectionCommitGate`：pointerdown快照committed state/data；drop保留draft；同identity/resident允許revision前進，queued absolute ordinal在matching coverage frame完成後用當前projection重建typed intent。action response與projection commit共用settlement gate，active gesture或queue仍存在時不得清draft。resident外拉另以pointer是否越出track判定，Earlier=`residentStart-pageCount`、Later=`residentEnd-visibleCount+pageCount`，再按全域邊界clamp。拒絕identity變更、resident移動/resize、舊revision/generation；不新增timer或wire欄位。對應RFC-0036、Test DYN-T-683/684。

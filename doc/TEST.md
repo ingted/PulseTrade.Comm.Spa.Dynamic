@@ -2,6 +2,7 @@
 
 ## 2026-10-23 DYN-T-683 / DYN-T-684 regression
 
+- 0.2.23修前RED：對0.2.22 package用TotalObservationCount=None＋真實global/resident/active ordinals，Later expected1502131/actual1500631（1 failed）；Client adjacent cache false KnownEmpty expectedMiss（同filter3 executed/2 passed/1 failed）。修後驗None/Some頂層total、同一queued方向、全域end/view-all、global overflow拒絕與GlobalOverview=None的legacy bound，完整suites與真3M仍分開報。
 - 0.2.22：0.2.21 package修前1 failed，獨立last-pointer oracle expected1498/actual1423；最後move→up無RAF、左右handle/body、boundary與非boundary、取消/連續手勢皆需驗。舊unit的paint優先oracle依75bars真實反例更正，非為換綠；source wiring同驗兩條pointerup入口及ratio/draft同步。
 - consumer local ACK不得以沒有HTTP判FAIL：CoverageIntent=None且time range完全在已載入range可local Accepted，但需驗實際chart window、ready/pending與target containment；remote仍需correlated requestId/response及matching coverage commit。右端outside request-later未送action仍RED，與此local例外無關。
 - 修前RED：resident drop在remote dispatch前清draft；702-bar從local1198越界卻以舊visible起點算page，少載1198。兩個focused Expecto案例已各重現1 failed。

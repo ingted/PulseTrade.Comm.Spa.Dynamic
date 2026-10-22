@@ -2,6 +2,8 @@
 
 ## 2026-10-23 resident gesture交接（DYN-WBS-587 / 588）
 
+右端根因已由0.2.22六欄診斷確認：consumer頂層TotalObservationCount=None、GlobalOverview.Total=2996994；legacy loaded-domain只回resident end1501333，把Later1502131錯clamp為當前active start1500631，後續local no-change不送HTTP。0.2.23在導航與adjacent-cache共用global-first authority；Contracts載入範圍語意與consumer payload不改。global absent保持legacy，不以全域總數冒充已載入資料。
+
 0.2.21真3M反例：最後pointermove後立即up，pending local1498卻提交已paint的1423，accepted退75bars；release helper把rendered draft當drop authority是最早偏離。0.2.22以最後pointer座標為intent authority，RAF只控制繪製節奏。右端外拉無新action尚未定位，另留dispatch gate觀測；不能將單次drop/第二黑閃PASS推為整體完成。
 
 `Renderer.fs`在resident drop時清掉draft，再送remote，讓舊位置重現；同時以完整frame key拒絕同resident中途抵達的新revision，造成下一手勢stale。0.2.21依RFC-0036 D5恢復draft ownership及matching frame settlement。另一端點偏離來自body grab offset與page target錯用原visible起點，分別用pointer track bounds與resident edges守住。consumer目前只傳visibleSnapshot；完整4500 resident payload不在既有ActiveDetail4000上限內，保持跨owner契約缺口，不以preview連續性修復宣稱resident全量local。

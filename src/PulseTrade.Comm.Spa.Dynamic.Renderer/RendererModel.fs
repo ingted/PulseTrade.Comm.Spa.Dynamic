@@ -2108,7 +2108,7 @@ module RendererModel =
         let next = previewWindow total window candidateStart
         next.StartIndex = viewportMaximumStart total next, next
 
-    let releaseNavigatorDraft committed _preferPendingBoundary renderedDraft publishedDraft pendingDraft =
+    let releaseNavigatorDraft committed (_preferPendingBoundary: bool) renderedDraft publishedDraft pendingDraft =
         pendingDraft
         |> Option.orElse renderedDraft
         |> Option.orElse publishedDraft
@@ -2260,11 +2260,16 @@ module RendererModel =
         tryLoadedCoverage defaultView
         |> Option.exists (fun projection -> projection.QueryGeneration < pendingQueryGeneration)
 
+    let navigationDomainCount projection =
+        match projection.GlobalOverview with
+        | Some overview -> overview.TotalObservationCount
+        | None -> TaLoadedCoverageCodec.observationDomainCount projection
+
     let coverageNavigatorWindow activeReferenceLength activeWindow projection =
         match projection.GlobalOverview with
         | Some _ -> tryResidentNavigatorWindow activeReferenceLength activeWindow projection
         | None ->
-            let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+            let domainCount = navigationDomainCount projection
             if domainCount <= 0L || domainCount > int64 Int32.MaxValue then
                 None
             else
@@ -2311,7 +2316,7 @@ module RendererModel =
                       Count = globalWindow.Count }
 
     let tryLoadedCoverageWindowIntentAt projection targetStart targetCount =
-        let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+        let domainCount = navigationDomainCount projection
         let targetEnd = targetStart + int64 targetCount
 
         if
@@ -2370,7 +2375,7 @@ module RendererModel =
         let local = clampWindow 1 maximumVisibleBars activeReferenceLength activeWindow
         let count = max 1 (min maximumVisibleBars local.Count)
         let currentStart = projection.ActiveDetail.StartObservationOrdinal + int64 local.StartIndex
-        let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+        let domainCount = navigationDomainCount projection
         let targetStart =
             match direction with
             | TaCoverageDirection.Earlier -> max 0L (currentStart - int64 count)
@@ -2395,7 +2400,7 @@ module RendererModel =
             let count = max 1 (min maximumVisibleBars local.Count)
             let residentPageCount = max count (min maximumVisibleBars resident.ObservationCount)
             let residentEnd = resident.StartObservationOrdinal + int64 resident.ObservationCount
-            let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+            let domainCount = navigationDomainCount projection
             let targetStart =
                 match direction with
                 | TaCoverageDirection.Earlier -> max 0L (resident.StartObservationOrdinal - int64 residentPageCount)
@@ -2412,7 +2417,7 @@ module RendererModel =
                 count)
 
     let tryViewAllCoverageIntent maximumVisibleBars projection =
-        let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+        let domainCount = navigationDomainCount projection
         let boundedMaximum = max 1 (min TaLoadedCoverageCodec.MaximumActiveDetailBars maximumVisibleBars)
         if domainCount <= 0L then
             None
@@ -2427,7 +2432,7 @@ module RendererModel =
                 count
 
     let tryLoadedCoverageEdgeIntent edge requestedCount maximumVisibleBars projection =
-        let domainCount = TaLoadedCoverageCodec.observationDomainCount projection
+        let domainCount = navigationDomainCount projection
         let boundedMaximum = max 1 (min TaLoadedCoverageCodec.MaximumActiveDetailBars maximumVisibleBars)
         if domainCount <= 0L then
             None

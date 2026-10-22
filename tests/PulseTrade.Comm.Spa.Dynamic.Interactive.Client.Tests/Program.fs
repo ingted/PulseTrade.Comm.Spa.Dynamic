@@ -401,6 +401,23 @@ let tests =
                   Expect.equal span.EndEventTimeExclusiveUtc "2026-09-05T00:00:00Z" "Known-empty retains its exact UTC end."
               | result -> failtestf "Expected KnownEmpty, got %A" result
 
+              let globalLaterQuery =
+                  { laterQuery with
+                      AcceptedProjection =
+                        { laterQuery.AcceptedProjection with
+                            TotalObservationCount = None
+                            GlobalOverview =
+                              Some
+                                { TotalObservationCount = 2_996_994L
+                                  AxisRef = "axis.global"
+                                  Anchors = [||]
+                                  ResidentStartObservationOrdinal = 0L
+                                  ResidentObservationCount = 750 } } }
+              Expect.equal
+                  (BrowserRuntimeCache.selectAdjacent globalLaterQuery [| emptyEntry |])
+                  BrowserRuntimeCacheAdjacentSelection.Miss
+                  "A loaded-tail empty span must not suppress a remote fetch when the global authority still has later ordinals."
+
               let loadedDomain =
                   { SegmentId = "loaded-domain"
                     StartEventTimeUtc = "2026-08-01T00:00:00Z"

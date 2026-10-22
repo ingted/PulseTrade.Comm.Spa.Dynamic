@@ -88,6 +88,8 @@ While a remote coverage action awaits its response or matching projection, the r
 
 ## Acceptance
 
+0.2.23 authority clarification（DYN-WBS-588）：GlobalOverview存在時，其TotalObservationCount是導航上限；頂層loaded total未知不能把全域導航clamp到已載入尾端。renderer intent/queue/followLatest與adjacent-cache同用此authority；GlobalOverview=None保留legacy。不因此把未載入ordinal視為local payload。
+
 0.2.22 clarification（DYN-WBS-587）：最後pointer位置而非上一個painted frame為drop intent authority；pointerup必須吸收尚未paint的最後move並同步hold geometry。0.2.21實例local1498→1423的75bars偏差為獨立RED；release不得要求人類等下一RAF再放開。右外拉無action及完整resident payload仍open。
 
 1. Existing 0.2.2 tests remain unchanged and pass with `GlobalOverview=None`.
