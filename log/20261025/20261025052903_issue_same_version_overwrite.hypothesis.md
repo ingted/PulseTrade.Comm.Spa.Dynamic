@@ -17,3 +17,9 @@ Daedilus 的 consumer 已 restore 0.2.31；global NuGet cache 仍保留較早 0.
 ## 變更估算
 
 預計非型別宣告程式邏輯變更 0 行；只有 project metadata/version references 與追溯文件。
+
+## Result
+
+- Renderer／Interactive.Client與兩個owner test project已改用0.2.32；無功能程式碼或wire contract變更。
+- Source commit `f89e5083574c9b131caace522f9a2b59353657ca`已push；兩包RepositoryCommit／DLL ProductVersion與該commit一致，Client exact Renderer `[0.2.32]`。
+- Fresh isolated package cache實選0.2.32，Renderer 94/94、Client 18/18及package verifier全通過；consumer未清shared cache，待Daedilus direct bump後真18884重驗。

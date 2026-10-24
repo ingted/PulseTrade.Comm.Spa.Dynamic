@@ -6,7 +6,9 @@ Owner：agent.asteer
 ## Pre-work plan
 
 - 背景：Daedilus consumer 真驗收證實 0.2.31 曾以相同版本覆寫；其 immutable NuGet cache 仍指向較早的 package bytes，不能靠清共享 cache 掩蓋版本識別錯誤。
+- 目標：建立全新且唯一對應final bytes的Renderer／Interactive.Client 0.2.32 identity，完成owner package gates並交付Daedilus直接bump重驗。
 - 已證實事實：final source commit `6d2f885bf94886d82443ab9ca89cbefbf6c80408`；0.2.31 新舊 package SHA 與 DLL ProductVersion 不同；consumer 已 restore 舊 0.2.31。
+- 假設：功能source與owner tests無需變更；只要新version、exact dependency與source-identical rebuild成立，consumer即可在不清cache下取得final bytes。
 - 預期不變量：每個 semantic package version 對應唯一 package bytes；Interactive.Client 必須 exact dependency Renderer 同版；不修改功能邏輯與 Dynamic wire contract；不清 consumer cache。
 - Source of truth：本 repo canonical source、兩個 project file 的 `<Version>`／exact `PackageReference`、產出 nuspec RepositoryCommit 與 SHA-256、owner test results。
 - 最早偏離點：final functional source 沿用已發佈／已 restore 的 `0.2.31`，造成 same-version overwrite。
@@ -23,3 +25,10 @@ Owner：agent.asteer
 - 2026-10-25 05:30 +08:00：確認 HEAD／upstream 均為 `c03df6bdacb5cf33a6a80afeff7a5ac9703b9aec`；既有 dirty 僅 `lib-packs.txt`、Ptcs test、`.pcsl/`、`temp/`，全部列為保留且不納入本輪。
 - 2026-10-25 05:30 +08:00：將 Renderer、Interactive.Client、兩個 owner test project 的版本／exact direct dependency由 0.2.31 升至 0.2.32；功能程式碼與 wire contract 未變。
 - 2026-10-25 05:31 +08:00：四個 project XML 解析成功；changed-path sensitive scan `high=0 medium=0 info=4`，Info 均為 cache／根因敘述。
+- 2026-10-25 05:31 +08:00：source／metadata commit `f89e5083574c9b131caace522f9a2b59353657ca` 已 push；staged allowlist僅四個 project files與本輪兩個 log files。
+- 2026-10-25 05:32 +08:00：確認canonical bin、SDK 10.0.402 library-packs與global package cache均不存在0.2.32；由`git archive` exact `f89e508`展開source-identical staging，完整啟用WebSharper compiler，公開push properties明確停用。
+- 2026-10-25 05:33 +08:00：Renderer 0.2.32 pack成功；SHA-256 `FDBDDC2F48524372473E2BC8F01A45B3D196DC9E0D891FAC832D4988FB37E33D`，nuspec RepositoryCommit與DLL ProductVersion均對應`f89e508`。Client 0.2.32 pack成功；SHA-256 `24CF20365765A72389AFA41213A70E7FF1A86156E69C752B27E49DEE0338D146`，RepositoryCommit／ProductVersion一致、Renderer exact dependency `[0.2.32]`、required bundle entries=4。
+- 2026-10-25 05:34 +08:00：兩包複製至canonical project `bin/Release`及`C:\Program Files\dotnet\sdk\10.0.402\FSharp\library-packs`，staging／canonical／feed SHA parity。Fresh isolated package cache restore實選Renderer/0.2.32與Client/0.2.32；Expecto Renderer 94/94、Interactive.Client 18/18，均0 ignored/failed/errored；package verifier PASS。
+- 2026-10-25 05:34 +08:00：已回覆Daedilus正式交付 `msg-fsi-5c0c47506e814f0fb440f6cde6460c25`，要求不清shared cache、直接bump 0.2.32並重跑18884三個focused gates；consumer evidence pending。
+- 2026-10-25 05:36 +08:00：current WBS／Verification／TEST與append-only DevLog已記錄0.2.31退役、0.2.32 authority與pending consumer gate。Changed-path sensitive scan `high=0 medium=0`；pre-commit checker `PASS=30 WARN=2 FAIL=0`，兩項WARN為保留既有dirty WIP與歷史RFC traceability缺口。
+- 2026-10-25 05:36 +08:00：本owner release slice收尾並封存此log；後續Daedilus consumer acceptance另開新log，避免修改checker已讀的本檔。
