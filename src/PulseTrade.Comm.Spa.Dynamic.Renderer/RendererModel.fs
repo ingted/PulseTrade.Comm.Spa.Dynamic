@@ -154,7 +154,8 @@ type TaGlobalCalendarTick =
     { AnchorIndex: int
       EventTimeUtc: string
       Label: string
-      IsYearBoundary: bool }
+      IsYearBoundary: bool
+      Lane: int }
 
 type TaProjectionCommitKey =
     { Identity: RuntimeIdentity
@@ -3088,13 +3089,15 @@ module RendererModel =
                             { AnchorIndex = index
                               EventTimeUtc = value
                               Label = value.Substring(0, 4)
-                              IsYearBoundary = true }
+                              IsYearBoundary = true
+                              Lane = 0 }
                     if isFirstQuarterAnchor then
                         candidates.Add
                             { AnchorIndex = index
                               EventTimeUtc = value
                               Label = value.Substring(5, 2)
-                              IsYearBoundary = false }
+                              IsYearBoundary = false
+                              Lane = 0 }
                 | _ -> ()
 
         let spacing = max 24.0 minimumSpacing
@@ -3102,19 +3105,28 @@ module RendererModel =
         let position tick =
             if anchors.Length <= 1 then availableWidth / 2.0
             else float tick.AnchorIndex / float (anchors.Length - 1) * availableWidth
-        let addIfSeparated selected candidate =
-            if selected |> List.forall (fun chosen -> abs (position chosen - position candidate) >= spacing) then
-                candidate :: selected
-            else
-                selected
+        let assignLanes startLane isYearBoundary =
+            let lastPositions = ResizeArray<float>()
+            let assigned =
+                candidates
+                |> Seq.filter (fun candidate -> candidate.IsYearBoundary = isYearBoundary)
+                |> Seq.map (fun candidate ->
+                    let candidatePosition = position candidate
+                    let mutable laneIndex = 0
+                    while laneIndex < lastPositions.Count && candidatePosition - lastPositions[laneIndex] < spacing do
+                        laneIndex <- laneIndex + 1
+                    if laneIndex = lastPositions.Count then
+                        lastPositions.Add(candidatePosition)
+                    else
+                        lastPositions[laneIndex] <- candidatePosition
+                    { candidate with Lane = startLane + laneIndex })
+                |> Seq.toArray
+            assigned, lastPositions.Count
 
-        let selectLane isYearBoundary =
-            candidates
-            |> Seq.filter (fun candidate -> candidate.IsYearBoundary = isYearBoundary)
-            |> Seq.fold addIfSeparated []
-            |> List.toArray
+        let yearTicks, yearLaneCount = assignLanes 0 true
+        let quarterTicks, _ = assignLanes yearLaneCount false
 
-        Array.append (selectLane true) (selectLane false)
+        Array.append yearTicks quarterTicks
         |> Array.sortBy (fun tick -> tick.AnchorIndex, if tick.IsYearBoundary then 0 else 1)
 
     let coverageExtended direction (oldTimeline: string array) (newTimeline: string array) =

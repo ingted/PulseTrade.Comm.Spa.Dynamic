@@ -638,24 +638,28 @@ module TaWorkspaceRenderer =
         axisViewportWidth.View
         |> View.Map (fun width ->
             let ticks = RendererModel.globalCalendarTicks 24.0 width anchors
+            let laneCount = if ticks.Length = 0 then 1 else (ticks |> Array.maxBy _.Lane).Lane + 1
+            let axisHeight = laneCount * 15 + 2
             div [
                 Attr.Create "data-testid" testId
                 Attr.Create "data-time-axis-row-id" rowId
                 Attr.Create "data-time-axis-tick-count" (string ticks.Length)
                 Attr.Create "data-time-axis-kind" "global-calendar"
+                Attr.Create "data-global-calendar-lane-count" (string laneCount)
                 Attr.Create "data-plot-surface-theme" palette.ThemeName
-                attr.style ("position:relative; min-width:0; height:32px; padding:0 1px; overflow:hidden; background:" + palette.AxisSurface + ";")
+                attr.style ("position:relative; min-width:0; height:" + string axisHeight + "px; padding:0 1px; overflow:hidden; background:" + palette.AxisSurface + ";")
             ] [
                 for tick in ticks do
                     let left = if anchors.Length <= 1 then 50.0 else float tick.AnchorIndex / float (anchors.Length - 1) * 100.0
                     let transform = if left <= 0.0 then "none" elif left >= 100.0 then "translateX(-100%)" else "translateX(-50%)"
-                    let lane = if tick.IsYearBoundary then "year" else "quarter"
-                    let top = if tick.IsYearBoundary then "0px" else "15px"
+                    let kind = if tick.IsYearBoundary then "year" else "quarter"
+                    let lane = string tick.Lane
+                    let top = string (tick.Lane * 15) + "px"
                     yield
                         span [
                             Attr.Create "data-time-axis-event-time" tick.EventTimeUtc
                             Attr.Create "data-canonical-event-time" tick.EventTimeUtc
-                            Attr.Create "data-global-calendar-tick-kind" lane
+                            Attr.Create "data-global-calendar-tick-kind" kind
                             Attr.Create "data-global-calendar-tick-lane" lane
                             attr.style (
                                 "position:absolute; top:" + top + "; left:" + fixedText left + "%; transform:" + transform
