@@ -845,7 +845,40 @@ let tests =
                     "bootstrapEvent.InitCustomEvent"
                     "ReadyAttribute"
                     "OfferGlobalOverviewBootstrap" ] do
-                  Expect.isFalse (source.Contains(forbidden, StringComparison.Ordinal)) ("The typed loader seam must not retain DOM transport: " + forbidden)) ]
+                  Expect.isFalse (source.Contains(forbidden, StringComparison.Ordinal)) ("The typed loader seam must not retain DOM transport: " + forbidden))
+
+          testCase "DYN-T-702 authoritative GLOBAL handoff keeps a visible stable host" (fun _ ->
+              let sourcePath =
+                  IO.Path.GetFullPath(
+                      IO.Path.Combine(
+                          __SOURCE_DIRECTORY__,
+                          "..",
+                          "..",
+                          "src",
+                          "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+                          "Client.fs"))
+              let source = IO.File.ReadAllText sourcePath
+
+              for required in
+                  [ "globalOverviewBootstrapHost"
+                    "globalOverviewAuthoritativeHost"
+                    "Doc.Run bootstrapHost"
+                    "Doc.Run authoritativeHost"
+                    "retireGlobalOverviewBootstrapWhenVisible"
+                    "authoritativeHost.QuerySelector(\"[data-testid='ta-global-overview-with-axis']\")"
+                    "GetBoundingClientRect()"
+                    "Doc.Run bootstrapHost Doc.Empty" ] do
+                  Expect.isTrue (source.Contains(required, StringComparison.Ordinal)) ("missing stable GLOBAL handoff contract: " + required)
+
+              let handoffIndex = source.IndexOf("let rec retireGlobalOverviewBootstrapWhenVisible", StringComparison.Ordinal)
+              let visibleIndex = source.IndexOf("GetBoundingClientRect()", handoffIndex, StringComparison.Ordinal)
+              let retireIndex = source.IndexOf("Doc.Run bootstrapHost Doc.Empty", visibleIndex, StringComparison.Ordinal)
+              let mountIndex = source.IndexOf("Doc.Run authoritativeHost renderer", StringComparison.Ordinal)
+              let retireCallIndex = source.IndexOf("retireGlobalOverviewBootstrapWhenVisible ()", mountIndex, StringComparison.Ordinal)
+              Expect.isGreaterThan mountIndex -1 "Authoritative rendering must target its persistent host."
+              Expect.isGreaterThan retireCallIndex mountIndex "The handoff watcher must start only after authoritative rendering is mounted."
+              Expect.isGreaterThan visibleIndex handoffIndex "The handoff must observe authoritative visibility."
+              Expect.isGreaterThan retireIndex visibleIndex "Bootstrap must retire only after authoritative GLOBAL is visible.") ]
 
 [<EntryPoint>]
 let main argv =

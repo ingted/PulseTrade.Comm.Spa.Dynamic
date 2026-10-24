@@ -80,6 +80,8 @@ module Client =
         let mutable projectionSubscriberSequence = 0
         let mutable projectionSequence = 0L
         let mutable lastProjectionCommit: RuntimeProjectionCommitReceiptV1 option = None
+        let mutable globalOverviewBootstrapHost: Element option = None
+        let mutable globalOverviewAuthoritativeHost: Element option = None
 
         let projectionRoot () = JS.Document.GetElementById options.RootElementId
 
@@ -158,15 +160,56 @@ module Client =
 
         globalOverviewBootstrapLoader
         |> Option.iter (fun loader ->
+            let bootstrapHost = JS.Document.CreateElement("div")
+            let authoritativeHost = JS.Document.CreateElement("div")
+            bootstrapHost.Id <- options.RootElementId + "-global-bootstrap-host"
+            authoritativeHost.Id <- options.RootElementId + "-global-authoritative-host"
+            bootstrapHost.SetAttribute("style", "display:contents;")
+            authoritativeHost.SetAttribute("style", "display:contents;")
+            bootstrapHost.SetAttribute("data-global-overview-handoff-host", "bootstrap")
+            authoritativeHost.SetAttribute("data-global-overview-handoff-host", "authoritative")
+
+            match projectionRoot () with
+            | null -> ()
+            | root ->
+                root.TextContent <- ""
+                root.AppendChild bootstrapHost |> ignore
+                root.AppendChild authoritativeHost |> ignore
+                globalOverviewBootstrapHost <- Some bootstrapHost
+                globalOverviewAuthoritativeHost <- Some authoritativeHost
+
             TaWorkspaceRenderer.renderGlobalOverviewBootstrapWithDisplayTimeZone
                 displayTimeZone
                 loader
-            |> Doc.RunById options.RootElementId)
+            |> Doc.Run bootstrapHost)
 
         let authoritativeRendererReady state =
             RendererModel.authoritativeGlobalOverviewReady
                 globalOverviewBootstrapLoader.IsSome
                 state
+
+        let rec retireGlobalOverviewBootstrapWhenVisible () =
+            match globalOverviewBootstrapHost, globalOverviewAuthoritativeHost with
+            | Some bootstrapHost, Some authoritativeHost when not lifecycle.Disposed ->
+                let globalOverview =
+                    authoritativeHost.QuerySelector("[data-testid='ta-global-overview-with-axis']")
+
+                if isNull globalOverview then
+                    JS.RequestAnimationFrame(fun _ -> retireGlobalOverviewBootstrapWhenVisible ()) |> ignore
+                else
+                    let bounds = (globalOverview |> As<Element>).GetBoundingClientRect()
+
+                    if bounds.Width > 0.0 && bounds.Height > 0.0 then
+                        Doc.Run bootstrapHost Doc.Empty
+
+                        match bootstrapHost.ParentNode with
+                        | null -> ()
+                        | parent -> parent.RemoveChild(bootstrapHost) |> ignore
+
+                        globalOverviewBootstrapHost <- None
+                    else
+                        JS.RequestAnimationFrame(fun _ -> retireGlobalOverviewBootstrapWhenVisible ()) |> ignore
+            | _ -> ()
 
         let resetActiveBatch () =
             activeBatch <- None
@@ -669,13 +712,19 @@ module Client =
                                         "interactive-channel-not-open"
                                         "The interactive action channel is not open.") }
 
-            TaWorkspaceRenderer.renderWithProjectionCommitAndDisplayTimeZone
-                TaWorkspaceRenderer.defaultOptions
-                callbacks
-                publishProjectionCommit
-                displayTimeZone
-                state
-            |> Doc.RunById options.RootElementId
+            let renderer =
+                TaWorkspaceRenderer.renderWithProjectionCommitAndDisplayTimeZone
+                    TaWorkspaceRenderer.defaultOptions
+                    callbacks
+                    publishProjectionCommit
+                    displayTimeZone
+                    state
+
+            match globalOverviewAuthoritativeHost with
+            | Some authoritativeHost ->
+                Doc.Run authoritativeHost renderer
+                retireGlobalOverviewBootstrapWhenVisible ()
+            | None -> Doc.RunById options.RootElementId renderer
 
         and publishRuntimeState (next: RuntimeState) =
             let publishedAtMs = browserNowMs ()

@@ -1,0 +1,27 @@
+# Authoritative GLOBAL stable-host continuity
+
+開始時間：2026-10-25 05:37:58 +08:00
+Owner：agent.asteer
+
+## Pre-work plan
+
+- 背景：Daedilus以exact 0.2.32 cold-cache／canonical 18884驗證package identity與final authority均正確，但MutationObserver仍捕捉5個callback batch完全沒有visible GLOBAL node。
+- 目標：消除bootstrap→authoritative DOM replacement的detach/attach可見性空窗，交付全新immutable Renderer／Interactive.Client 0.2.33供同gate重驗。
+- 已證實事實：output ProductVersion=`0.2.32+f89e508...`、global cache SHA等於feed；no-1K最終total=2,996,994、rowCount=7、GLOBAL count=1且mapped drag committed；RED只在handoff lifecycle continuity。
+- 預期不變量：有loader時從bootstrap開始到authoritative接管，任一DOM observer checkpoint至少一個visible GLOBAL node；authoritative最終唯一；無loader lifecycle不變；wire contract不變。
+- Source of truth：Daedilus evidence `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\global-without-1k-row-0.2.32-final\result.json`，Interactive.Client mount/handoff source，Renderer selector contract與owner regression。
+- 最早偏離點：validated authoritative Document已ready後，現行WebSharper Doc replacement先detach bootstrap subtree、後attach authoritative subtree。
+- 假設：若bootstrap與authoritative GLOBAL共用一個長壽命outer host，handoff只切換該host內的內容／可見性，就能避免observer看到零GLOBAL；不需延後authority、改wire或弱化consumer gate。
+- 操作：讀取最小Client mount與Renderer GLOBAL selector路徑；新增失敗回歸；以最小stable-host handoff修復；跑owner suites與必要browser/DOM gate；升0.2.33 exact graph；commit/push→source-identical pack→fresh-cache tests→handoff。
+- 範圍：Renderer、Interactive.Client及其tests與受影響current docs/log；不碰Research backend action latency、consumer repo、wire contract或既有unrelated dirty WIP。
+- 驗收：修前模型／source gate可區分detach gap；修後handoff任何觀測點GLOBAL count>=1、final count=1；Renderer／Client suites全綠；0.2.33 package identity/hash/dependency/feed parity與checker FAIL=0。
+- 風險：單純把兩個Doc放同一Var仍可能由WebSharper逐步replace；必須驗DOM mutation ordering而非只驗最終state。若owner無browser fixture可觀測mutation，新增最小deterministic DOM seam而非mock production authority。
+- 停止條件：0.2.33正式交付Daedilus並等待canonical 18884同gate結果。
+
+## Operations
+
+- 2026-10-25 05:37:58 +08:00：建立pre-work log；尚未修改source。
+- 2026-10-25 05:41 +08:00：新增DYN-T-702 source/ordering regression；修前focused 1/1如預期RED，缺少`globalOverviewBootstrapHost` stable handoff contract。
+- 2026-10-25 05:43 +08:00：Interactive.Client改為在root內一次掛載bootstrap與authoritative兩個`display:contents`長壽命hosts；authoritative Doc先掛載，RAF確認其GLOBAL selector具有非零geometry後才以`Doc.Empty`退役bootstrap並移除舊host。無loader仍走原`Doc.RunById`；wire contract未變。
+- 2026-10-25 05:43 +08:00：focused DYN-T-702 GREEN；Client suite 19/19、0 ignored/failed/errored；Client full WebSharper Release build 0 errors（既有deprecated warning 1）。Generated JS含stable hosts、authoritative visibility check與post-visible retirement。
+- 2026-10-25 05:44 +08:00：確認feed／canonical bin／global cache均無0.2.33；Renderer、Interactive.Client與兩個owner tests升至全新0.2.33 exact graph，功能改動只在Client handoff。
