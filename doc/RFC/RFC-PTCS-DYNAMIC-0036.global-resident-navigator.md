@@ -90,6 +90,8 @@ Candlestick依已render的slot及high/low範圍命中並回傳`BAR`；line、his
 
 GLOBAL overview的長期domain不得沿用一般TA／RESIDENT的`MM-dd HH:mm`軸。專用calendar axis只從`GlobalOverview.Anchors`選tick：每年第一個真anchor標`YYYY`，3／6／9／12月第一個真anchor標兩位月份；同anchor年度優先且不生成假日期。viewport擁擠時先保留年度，再以最小pixel spacing加入季度。DOM tick保留原canonical event time供驗證；此決策不改anchor contract、selection ratio、drag／preview／commit、hit target、一般TA／RESIDENT軸或consumer API。
 
+0.2.27 correction：0.2.26把year與quarter放同lane並互相排除，真3M／1600px使2019–2025每年03／12缺失。year與quarter改為垂直分lane，各lane獨立24px spacing；同anchor可同時顯示`YYYY`與季度，完整年度不得因另一lane標籤而少月份。其他D9邊界不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

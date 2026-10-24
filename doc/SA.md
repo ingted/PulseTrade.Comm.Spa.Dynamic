@@ -2,7 +2,7 @@
 
 ## 2026-10-24 GLOBAL calendar axis（DYN-WBS-591）
 
-0.2.25的GLOBAL overview已預設顯示且使用真`GlobalOverview.Anchors`，但誤共用一般TA／RESIDENT的`timeAxisWithPalette`，所以多年全域域仍顯示`MM-dd HH:mm`。0.2.26只替GLOBAL換成calendar axis：第一個真實年度anchor顯`YYYY`，每年3／6／9／12月的第一個真實anchor顯`03/06/09/12`；同anchor年度優先，viewport不足時年度優先並以最小pixel spacing淘汰次要季度標。canonical event time、global/resident selection geometry、drag／preview／commit、hit target、一般TA與RESIDENT軸及consumer API皆不變。
+0.2.25的GLOBAL overview已預設顯示且使用真`GlobalOverview.Anchors`，但誤共用一般TA／RESIDENT的`timeAxisWithPalette`，所以多年全域域仍顯示`MM-dd HH:mm`。0.2.26雖改calendar labels，卻讓year與quarter共用單lane 40px spacing；真3M／1600px證明2019–2025的03與12都被相鄰`YYYY`淘汰。0.2.27把year／quarter分成垂直lane，各自做水平spacing，因此同anchor可同時保留`YYYY`與月份，完整年度保留`03/06/09/12`。canonical event time、global/resident selection geometry、drag／preview／commit、hit target、一般TA與RESIDENT軸及consumer API皆不變。
 
 ## 2026-10-24 TA datapoint activation（DYN-WBS-589 / 590）
 
