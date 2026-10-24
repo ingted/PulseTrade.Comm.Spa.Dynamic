@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 0.2.29 interaction contract（DYN-WBS-592）
+
+主圖 pointerdown 快照 committed visible window 與 SVG bounds；document-level pointermove 以 `mainPlotPanDelta` 將 CSS displacement 換成 bar delta、RAF coalesce `draftWindow`，pointerup 超過4px才 suppress 隨後 click 並委派既有 `panWindow`，pointercancel／identity change 清掉 listener/draft。未過 threshold 的 pointer sequence仍走原 click cursor與activation。GLOBAL-first phase把當前 runtime raw data先放入空 axes/series的shell，使 `GlobalOverview.Anchors`／resident selection能先渲染；row docs、cursor panel及 RESIDENT overview在相同 full-preparation candidate通過 generation/runtime/projection gates後下一個frame才公開。
+
+`RuntimeBodyTiming`在 body enqueue／pump start建立 correlation，runtime publish按 `LastTransportSequence`暫存；projection commit寫 body→publish／commit，double RAF 寫 commit→paint與 body→paint後移除 bounded timing。Renderer另寫 body→pending、pending→commit；原 `data-frame-pump-*`與`data-renderer-prepare-*`保留，用同一 DOM snapshot判斷45s/35s屬 transport/backend、queue、scheduler或paint。`TaPointActivationReceiptV2`包含 clicked value/scale與同 timestamp series array；candlestick value為OHLCV object，scalar traces為Number，v2/v1各自以獨立 bubbling CustomEvent 發送。
+
 ## 2026-10-24 GLOBAL calendar axis（DYN-WBS-591）
 
 `RendererModel.globalCalendarTicks`只接受`TaOverviewAnchor[]`、viewport寬與最小spacing；按source順序辨識年度及季度月份，不生成日期、不補缺月，輸出保留`AnchorIndex`、原始`EventTimeUtc`、`IsYearBoundary`與numeric `Lane`。year與quarter分組後，各自依anchor換算的pixel位置使用first-fit greedy packing：放入第一個與該lane末筆相距至少24px的lane，無可用lane即新增，因此不以viewport擁擠為由drop mandatory candidate；quarter lanes從year lane count之後起算，同一anchor兩類必定分lane。輸出最後依anchor與year-first排序。`globalCalendarAxisWithPalette`以原anchor index比例定位，axis高度為`laneCount * 15 + 2`，DOM保留`data-canonical-event-time`、numeric `data-global-calendar-tick-lane`及`data-global-calendar-lane-count`；只有`ta-global-overview-time-axis`改用此helper，一般／RESIDENT維持原generic formatter與display-time行為。

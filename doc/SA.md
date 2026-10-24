@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 主圖互動、首屏順序與可歸因延遲（DYN-WBS-592）
+
+0.2.28 的主圖 click 只有 cursor／point activation，水平平移只能操作 navigator；fresh mount 雖把 GLOBAL 寫在 DOM 前方，resident/detail preparation 仍可能在第一個可觀測 paint 一起出現；既有 scheduler metrics 也無法把 WebSocket body、queue、runtime publish、projection pending/commit 與 first paint 串成同一筆。0.2.29 以同一 canonical `panWindow` 增加主圖水平 drag，4 CSS px 以下仍保留 click；fresh identity 先只公開 authoritative raw GLOBAL shell，完整 preparation 下一個 frame 才解除 resident/detail gate；Client 與 Renderer 用 transport sequence/body sequence 產生 receive→queue→publish→pending→commit→double-RAF paint 分段。這些變更不修改 backend action、coverage authority、Research lifecycle 或 full-history cache；DB／IndexedDB bootstrap 仍由 Research owner 處理。
+
+TA activation v2 在既有 committed-key gate 上增加 clicked `ScaleKey`／typed `Value` 與同 row/event-time 的 `SameTimestampSeries`，每筆保留原 `TraceId/DataRef/TraceKind/Component`；先送 v2、再送完全不變的 v1，讓舊 consumer 保持相容。Renderer 不把 `DataRef` 解讀成 numeric `ExecutionSeriesId`，durable series mapping 仍是 Research responsibility。
+
 ## 2026-10-24 GLOBAL calendar axis（DYN-WBS-591）
 
 0.2.25的GLOBAL overview已預設顯示且使用真`GlobalOverview.Anchors`，但誤共用一般TA／RESIDENT的`timeAxisWithPalette`，所以多年全域域仍顯示`MM-dd HH:mm`。0.2.26雖改calendar labels，卻讓year與quarter共用單lane 40px spacing；真3M／1600px證明2019–2025的03與12都被相鄰`YYYY`淘汰。0.2.27把year／quarter分成固定雙lane後，1600px完整，但900px的quarter lane仍因24px suppression缺2019/03、2020/03、2021/03、2023/03。0.2.28保留全部year／03／06／09／12真anchor candidates，依viewport實際pixel位置動態增加lane；各lane仍守24px spacing，同anchor年度與月份分lane，axis高度隨lane count成長。canonical event time、global/resident selection geometry、drag／preview／commit、hit target、一般TA與RESIDENT軸及consumer API皆不變。

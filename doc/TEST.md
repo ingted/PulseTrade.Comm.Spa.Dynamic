@@ -1,5 +1,13 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 DYN-T-692 / 693 / 694 / 695（0.2.29）
+
+- DYN-T-692：Interactive.Client source contract要求 body receive、queue wait、publish、commit、double-RAF first paint 與 transport-sequence correlation；final package-backed 17/17 passed，0 ignored/failed/errored。
+- DYN-T-693：主圖 pan delta驗正負方向、half-away-from-zero、invalid/zero domain與4px click threshold；Renderer browser source另驗 document pointer lifetime、click suppression及 canonical pan delegation。
+- DYN-T-694：activation v2對同 row/event-time聚合 PDI/MDI，排除另一 timestamp，保留 exact DataRef/typed value；source contract要求 v2與legacy v1 dual send。
+- DYN-T-695：fresh mount source gate要求 explicit `initialGlobalPhase`、GLOBAL phase-1 marker、row/RESIDENT hidden與full preparation後下一frame release；Renderer telemetry另驗 receive→pending marker。
+- source commit `5924bc348a9751b780e55c53a2b47f1e5dfb6f37`；isolated final-package Renderer 90/90、Interactive.Client 17/17 passed。Renderer 0.2.29 SHA-256 `406E9F2BA59C8C924531A2D9726C839AF44B3FAD61F53E5AB846184482C5B3B4`；Interactive.Client 0.2.29 SHA-256 `8D9A8F60A497D1526B3BA012628C9A0894658ED7985026F86BF7BEB1046D56A3`，exact Renderer `[0.2.29]`；兩包 nuspec RepositoryCommit皆為上述 source commit，local feed hash parity PASS，未 public push。真3M drag／fresh-paint／latency telemetry與 official tagging consumer仍由 Daedalus 在18884驗收，unit/package不冒充 real UI。
+
 ## 2026-10-24 DYN-T-690 / 691 GLOBAL calendar axis
 
 - DYN-T-690：對0.2.27 package把完整年度fixture縮為900px並要求45筆mandatory ticks，先得到actual 27、88/89的修前RED。0.2.28驗2019–2025每年`YYYY/03/06/09/12`、900px全45筆保留、80px compact viewport不drop、同anchor year＋03占不同numeric lane、同月首anchor dedupe、same-year narrow domain、label無`HH:mm`、canonical timestamp未改，並按numeric lane逐一驗至少24px horizontal spacing。
