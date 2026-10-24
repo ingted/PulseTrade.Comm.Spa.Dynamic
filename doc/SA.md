@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 actual GLOBAL bootstrap ownership（DYN-WBS-593）
+
+真3M證據把0.2.29的限制縮到最早偏離點：`initialGlobalPhase`只能重排已在`RuntimeState`內的overview；Research chart stack約+3.296秒可見，但第一個含`GlobalOverview`的authoritative document約+10.412秒才到，所以phase-1只能先畫loading placeholder。Research已在平行啟動時約271.6ms取得真overview，且自有`SPAEntryPoint`與同一Doc tree；缺口是owner renderer在authoritative frame前沒有consumer-owned typed input，不是再調RAF、queue或製造假frame。
+
+唯一bootstrap輸入定為`unit -> Async<TaGlobalCoverageOverview option>`。Research擁有catalog/default execution、IndexedDB identity、DB GET及latest resident policy；Renderer只呼叫loader一次、重用contracts邊界validation並畫read-only actual GLOBAL。第一個`RuntimeState.Document=Some`單向切換到既有authoritative renderer；bootstrap不產生action、drag、projection receipt、RuntimeState或cache authority。DOM event候選因Research並非由外部default Application啟動而退役，不進final API/package。
+
 ## 2026-10-24 主圖互動、首屏順序與可歸因延遲（DYN-WBS-592）
 
 0.2.28 的主圖 click 只有 cursor／point activation，水平平移只能操作 navigator；fresh mount 雖把 GLOBAL 寫在 DOM 前方，resident/detail preparation 仍可能在第一個可觀測 paint 一起出現；既有 scheduler metrics 也無法把 WebSocket body、queue、runtime publish、projection pending/commit 與 first paint 串成同一筆。0.2.29 以同一 canonical `panWindow` 增加主圖水平 drag，4 CSS px 以下仍保留 click；fresh identity 先只公開 authoritative raw GLOBAL shell，完整 preparation 下一個 frame 才解除 resident/detail gate；Client 與 Renderer 用 transport sequence/body sequence 產生 receive→queue→publish→pending→commit→double-RAF paint 分段。這些變更不修改 backend action、coverage authority、Research lifecycle 或 full-history cache；DB／IndexedDB bootstrap 仍由 Research owner 處理。

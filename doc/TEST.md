@@ -1,5 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 DYN-T-696 / 697 / 698（0.2.30）
+
+- DYN-T-696：合法3,001,148筆whole-series overview通過；resident超total、anchor ordinal/time逆序拒絕，且不建立runtime frame。
+- DYN-T-697：source contract驗actual GLOBAL selector、既有points/selection/calendar axis、read-only／non-authoritative markers、typed loader、validation、Async start及authoritative monotonic原位取代；禁止CustomEvent、listener、fetch、IndexedDB、action與假RuntimeState。
+- DYN-T-698：Interactive.Client只接受optional `unit -> Async<TaGlobalCoverageOverview option>`，在`handle.Start()`前掛載；不保留DOM bootstrap transport，也不發projection receipt。
+- final source `e3fd1c47f8e3476b685aa478da379c433c52b25d`；isolated exact-package Renderer 92/92、Interactive.Client 18/18 passed，均0 ignored/failed/errored；package verifier PASS。Renderer 0.2.30 SHA-256 `EAAEE506C72BF28BAA958F820E909FB10B84325A13C0ECBCBC5C3BB09D634982`；Interactive.Client 0.2.30 SHA-256 `CADA0C80C0FBA645A5DE22BCEA863446EF6BABBD498CDEC33ED5B03F131497A9`，exact Renderer `[0.2.30]`、兩包RepositoryCommit皆為final source。未public push；Research loader／18884真3M actual-before-chart由Daedalus續驗。
+
 ## 2026-10-24 DYN-T-692 / 693 / 694 / 695（0.2.29）
 
 - DYN-T-692：Interactive.Client source contract要求 body receive、queue wait、publish、commit、double-RAF first paint 與 transport-sequence correlation；final package-backed 17/17 passed，0 ignored/failed/errored。

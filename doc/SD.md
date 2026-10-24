@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 typed actual GLOBAL bootstrap（DYN-WBS-593）
+
+`RendererModel.tryGlobalOverviewBootstrap`驗`TotalObservationCount`、axis、anchor上限/範圍/ordinal與time嚴格遞增、resident邊界。`renderGlobalOverviewBootstrapWithDisplayTimeZone`接受consumer loader，立即啟動Async，成功且合法才把overview放入local `Var<option<_>>`；presentation使用既有overview points、resident ratios及GLOBAL calendar axis，root標`data-global-overview-source=bootstrap`／`phase-1-actual`／`data-bootstrap-authoritative=false`且`pointer-events:none`。
+
+`renderWithProjectionCommitAndDisplayTimeZoneAndGlobalOverviewBootstrap`預先建立bootstrap與既有authoritative Docs，以monotonic `authoritativeReady`監看`RuntimeState.Document.IsSome`；第一次true後永久原位切換authoritative Doc，之後loader完成也不能回寫畫面。Interactive.Client另提供`createApplicationWithDisplayTimeZoneAndGlobalOverviewBootstrap`與對應Application start overload；它在transport start前掛bootstrap，既有第一次authoritative `Doc.RunById`自然取代。不含DOM event、HTTP、IndexedDB、Research vocabulary或假runtime。
+
 ## 2026-10-24 0.2.29 interaction contract（DYN-WBS-592）
 
 主圖 pointerdown 快照 committed visible window 與 SVG bounds；document-level pointermove 以 `mainPlotPanDelta` 將 CSS displacement 換成 bar delta、RAF coalesce `draftWindow`，pointerup 超過4px才 suppress 隨後 click 並委派既有 `panWindow`，pointercancel／identity change 清掉 listener/draft。未過 threshold 的 pointer sequence仍走原 click cursor與activation。GLOBAL-first phase把當前 runtime raw data先放入空 axes/series的shell，使 `GlobalOverview.Anchors`／resident selection能先渲染；row docs、cursor panel及 RESIDENT overview在相同 full-preparation candidate通過 generation/runtime/projection gates後下一個frame才公開。

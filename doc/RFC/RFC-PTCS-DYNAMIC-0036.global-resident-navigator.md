@@ -94,6 +94,10 @@ GLOBAL overview的長期domain不得沿用一般TA／RESIDENT的`MM-dd HH:mm`軸
 
 0.2.28 correction：0.2.27固定雙lane在1600px通過，但900px的單一quarter lane仍因24px suppression缺四個03。D9改為不drop candidate的dynamic lane packing，axis高度依lane count成長；viewport不再是省略03／06／09／12的例外。其他D9邊界不變。
 
+### D10. 2026-10-24 consumer-owned actual GLOBAL bootstrap
+
+`initialGlobalPhase`只排程已進入`RuntimeState`的overview，不能讓約271.6ms已由Research取得的真overview早於約+3.296秒chart stack顯示，因authoritative document約+10.412秒才帶入GLOBAL。新增唯一typed input `unit -> Async<TaGlobalCoverageOverview option>`：consumer擁有execution選擇、IDB/DB與resident policy；owner只驗證並render read-only actual GLOBAL。第一個`RuntimeState.Document=Some`是monotonic replacement authority，原位換成既有authoritative renderer；bootstrap不建立action、drag、projection receipt、RuntimeState、HTTP/IDB/cache或第二authority。Research已證實自有SPAEntryPoint與同一Doc tree，故DOM event/ready attribute候選退役。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.
