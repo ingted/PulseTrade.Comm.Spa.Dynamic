@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 TA datapoint activation（DYN-WBS-589 / 590）
+
+0.2.24主圖click只把clientX換成visible index並走`SharedCursorChanged`；batched candle path也沒有per-point DOM selector，因此Research無法取得穩定的row/trace/data-ref/event-time/component。0.2.25新增獨立browser-local typed activation：以最後committed projection key拒絕stale snapshot，從實際rendered geometry選candlestick `BAR`或line/histogram/volume `POINT`，禁止viewport index。Research擁有`RunId + DataRef/EventTimeUtc`到committed PointId及official editor的mapping；Renderer不引入tagging domain。
+
+第一個GLOBAL `ui:1` accepted但畫面偶發維持舊resident/TA，不能由accepted推論Renderer已commit。若沒有新runtime commit receipt，owner在consumer/server publication；若receipt已前進而committed chart仍舊，才回Renderer。DYN-WBS-590維持read-only investigation，未修改initial action path。
+
 ## 2026-10-23 resident gesture交接（DYN-WBS-587 / 588）
 
 新增DYN-T-685：left先移start再cap width、right固定start再cap width，導致4500 resident/max1500時僅left外拉可平移。保留使用者指定left基準，right在cap後以bounded end回推start作鏡像；內拉仍縮小，wire/paging/cancel不變。GLOBAL latency另案：action實際走Research.applyIncrementalFrames且observe=ignore，舊data-phase-*可能是前次Run，不能當本次action計時；RAF decode/2N prepare/synchronous topology rows僅候選，等待低干擾分段實測。

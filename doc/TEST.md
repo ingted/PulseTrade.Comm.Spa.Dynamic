@@ -1,5 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 DYN-T-687 / 688 / 689 datapoint activation
+
+- DYN-T-687：相同canonical x下，以rendered y區分candle `BAR`與line `POINT`；不同x選最近visible datapoint，non-finite browser geometry拒絕。
+- DYN-T-688：只有等於`ProjectionCommitGate.LastCommitted`的runtime／coverage key能建立versioned receipt；較新未commit state及無commit皆拒絕，payload明確不含`VisibleIndex`。
+- DYN-T-689：source contract要求surface selector、rendered hit-test、committed gate、typed CustomEvent及clicked-surface dispatch，且publisher bounded body不得引用`SharedCursorChanged`。
+- final package-backed：Renderer 0.2.25為87/87 passed、Interactive.Client 0.2.25為16/16 passed，均0 ignored/failed/errored；兩個isolated restore的nupkg SHA與final feed逐byte相同。真Research main `ta-candle`／`ta-composite`點擊開official editor仍由daedilus在18884驗，不以unit冒充UI。
+
 ## 2026-10-23 DYN-T-683 / DYN-T-684 regression
 
 - DYN-T-685：against0.2.23已2 executed/2 failed（literal expected start1800/actual1500及reflection）。4500 resident/max1500，left外拉/內拉保持既有literal；right在cap、跨cap、低於cap、內拉到minimum、resident tail有獨立expected。另驗77組domain reflection（empty、短於minimum、full domain、首中尾、未到cap及正負/零/極大delta）。0.2.24修後package-backed Renderer完整suite於2026-10-23 04:42執行84/84 passed、0 ignored/failed/errored；real 4500/1500左右drag、drop與outside paging由daedilus另驗，unit不冒充UI。

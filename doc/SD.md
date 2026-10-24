@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 TA datapoint activation（DYN-WBS-589）
+
+`TaPointHitCandidate`描述row/trace/data-ref/event-time/trace-kind/component及rendered x/y range；`RendererModel.tryNearestPointHit`以x距離加點／range的y距離做deterministic nearest selection。Renderer保留reactive最新prepared geometry：candle使用slot center與high/low normalize；line使用point y；histogram/volume使用zero-to-value range。click把browser座標映射到SVG viewBox，仍執行原cursor commit，再嘗試browser-local activation。
+
+`TaPointActivation.tryCreate`只在`ProjectionCommitGate.LastCommitted = key state`時建立`ta-point-activation.v1` receipt；payload包含完整runtime/coverage key與stable point identity，不含visible index。`ptcs-dynamic-ta-point-activated-v1`由標記`data-ptcs-ta-point-surface=true`的clicked SVG dispatch並bubble；舊public render helpers以no-op callback wrapper保持source surface，`SharedCursorChanged`與wire不變。
+
 ## 2026-10-23 resident gesture交接（DYN-WBS-587 / 588）
 
 DYN-T-685最小設計：只調整previewWindowBounds的right分支；先沿用minimumEnd/nextEnd限制，再以min(maximumCount,total) cap width，start=nextEnd-width，最後走既有clampWindow。不改left/Move、pointer routing、boundary判斷或action queue。測試用獨立區間literal加domain reflection，舊0.2.23先RED；package/restart等consumer latency基線。效能觀測沿既有FramePump stage callback與Research projection receipt，wall time須另量，callback CPU總和不包含RAF queue wait。

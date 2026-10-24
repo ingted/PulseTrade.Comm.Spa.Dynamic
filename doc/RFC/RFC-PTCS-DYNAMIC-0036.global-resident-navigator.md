@@ -80,6 +80,12 @@ GLOBAL更新接近兩分鐘另列latency P0（DYN-WBS-588）：四項functional�
 
 `documentElement`的`data-frame-pump-*`及`data-renderer-prepare-*`公開work-count/turn-count/work-ms/queue-ms/wall-ms/max-turn-ms/pending-count；前者sequence識別最後pump batch，後者generation+instance識別prepare，建立新batch時清零，舊generation不覆寫。這是per-batch觀測，不冒充整個HTTP action；原onStageCompleted仍只表示該atomic task執行時間，signature不改。FramePump四條browser wrappers、WebSocket decode/reduce入口及Renderer full/incremental preparation用同一executor；action settlement、row refresh與最終paint barrier維持原路徑。
 
+### D8. 2026-10-24 committed datapoint activation
+
+Main TA chart click新增獨立browser-local bubbling event `ptcs-dynamic-ta-point-activated-v1`；不得把tagging語意塞入既有`SharedCursorChanged` server action。event detail包含canvas/document runtime identity、document/data/transport revision、coverage identity/revision/query generation、base/row/trace/data-ref、canonical event time、trace kind及component，禁止viewport index。只有payload snapshot等於Renderer最後committed projection key時才能dispatch。
+
+Candlestick依已render的slot及high/low範圍命中並回傳`BAR`；line、histogram、volume依目前rendered x/y geometry選最近visible datapoint並回傳`POINT`。SVG以`[data-ptcs-ta-point-surface='true']`提供穩定surface selector，事件由實際clicked surface發出並向上bubble。Research consumer仍負責以`RunId + DataRef/EventTimeUtc`解析committed `PointId`／component並開official editor；初次GLOBAL accepted後仍顯示舊resident/TA是另一個commit-receipt調查，不由本決策猜修。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.
@@ -116,3 +122,4 @@ GLOBAL更新接近兩分鐘另列latency P0（DYN-WBS-588）：四項functional�
 10. If a second gesture starts while the first gesture's remote response is still pending, pointerdown keeps the exact rendered edge as its baseline. The first response may arrive while the second gesture is held without moving its fixed edge, changing its body width, clearing its semantic mode, or suppressing its one later intent.
 11. At and across the advertised maximum visible width, right resize mirrors the existing left resize, including inward shrink, minimum width, empty/short domains and both resident boundaries. Unit geometry and real 4500/1500 consumer gestures are separate gates.
 12. GLOBAL latency acceptance records low-overhead drop-to-ready phases and probe overhead; functional frame continuity alone does not close this performance gate.
+13. Main TA chart activation is a separate bubbling browser event, carries only committed stable identity, and never uses a viewport index or changes `SharedCursorChanged` semantics.
