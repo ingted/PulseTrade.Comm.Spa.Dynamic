@@ -2192,7 +2192,7 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create ui.CursorIndex
         renderRowReactive state ui visibleTimestamps cursor.View setCursorIndex commitCursorIndex showSharedTimeAxis row
 
-    let renderGlobalOverviewBootstrapWithDisplayTimeZone
+    let renderGlobalOverviewBootstrapStateWithDisplayTimeZone
         (displayTimeZone: View<SduiDisplayTimeZone>)
         (overview: View<TaGlobalCoverageOverview option>) =
         ensureAxisResizeTracking ()
@@ -2279,6 +2279,21 @@ module TaWorkspaceRenderer =
                     ]
                 ] :> Doc)
         |> Doc.EmbedView
+
+    let renderGlobalOverviewBootstrapWithDisplayTimeZone
+        (displayTimeZone: View<SduiDisplayTimeZone>)
+        (loader: unit -> Async<TaGlobalCoverageOverview option>) =
+        let overview = Var.Create(None: TaGlobalCoverageOverview option)
+        async {
+            try
+                let! candidate = loader ()
+                match candidate |> Option.map RendererModel.tryGlobalOverviewBootstrap with
+                | Some(Ok accepted) -> overview.Value <- Some accepted
+                | _ -> ()
+            with _ -> ()
+        }
+        |> Async.StartImmediate
+        renderGlobalOverviewBootstrapStateWithDisplayTimeZone displayTimeZone overview.View
 
     let renderWithProjectionCommitAndDisplayTimeZone
         (options: TaRendererOptions)
@@ -5399,6 +5414,34 @@ module TaWorkspaceRenderer =
                     ] :> Doc)
             |> Doc.EmbedView
         ]
+
+    let renderWithProjectionCommitAndDisplayTimeZoneAndGlobalOverviewBootstrap
+        (options: TaRendererOptions)
+        (callbacks: TaRendererCallbacks)
+        (onProjectionCommitted: RuntimeState -> unit)
+        (displayTimeZone: View<SduiDisplayTimeZone>)
+        (loader: unit -> Async<TaGlobalCoverageOverview option>)
+        (runtimeState: Var<RuntimeState>) =
+        let authoritativeReady = Var.Create runtimeState.Value.Document.IsSome
+        runtimeState.View
+        |> View.Sink (fun state ->
+            if not authoritativeReady.Value && state.Document.IsSome then
+                authoritativeReady.Value <- true)
+        let authoritativeDoc =
+            renderWithProjectionCommitAndDisplayTimeZone
+                options
+                callbacks
+                onProjectionCommitted
+                displayTimeZone
+                runtimeState
+        let bootstrapDoc =
+            if authoritativeReady.Value then
+                Doc.Empty
+            else
+                renderGlobalOverviewBootstrapWithDisplayTimeZone displayTimeZone loader
+        authoritativeReady.View
+        |> View.Map (fun ready -> if ready then authoritativeDoc else bootstrapDoc)
+        |> Doc.EmbedView
 
     let renderWithProjectionCommit
         (options: TaRendererOptions)

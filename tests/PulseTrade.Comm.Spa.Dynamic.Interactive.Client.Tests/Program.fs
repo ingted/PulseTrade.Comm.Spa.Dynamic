@@ -806,7 +806,7 @@ let tests =
                   3
                   "Client must retain the pump frame and a two-frame first-paint boundary.")
 
-          testCase "DYN-T-698 GLOBAL bootstrap is ready-gated and retired by authoritative mount" (fun _ ->
+          testCase "DYN-T-698 typed GLOBAL loader starts before transport and authoritative mount replaces it" (fun _ ->
               let sourcePath =
                   IO.Path.GetFullPath(
                       IO.Path.Combine(
@@ -818,28 +818,31 @@ let tests =
                           "Client.fs"))
               let source = IO.File.ReadAllText sourcePath
               for required in
-                  [ "ptcs-dynamic-ta-global-overview-bootstrap.v1"
-                    "data-ptcs-dynamic-global-overview-bootstrap-ready"
-                    "data-ptcs-dynamic-global-overview-bootstrap-outcome"
-                    "RendererModel.tryGlobalOverviewBootstrap overview"
-                    "bootstrapEvent.InitCustomEvent(EventName, true, false, box envelope)"
-                    "OfferGlobalOverviewBootstrap: TaGlobalCoverageOverview -> bool"
+                  [ "(globalOverviewBootstrapLoader: (unit -> Async<TaGlobalCoverageOverview option>) option)"
+                    "globalOverviewBootstrapLoader"
+                    "|> Option.iter (fun loader ->"
                     "TaWorkspaceRenderer.renderGlobalOverviewBootstrapWithDisplayTimeZone"
-                    "retireGlobalOverviewBootstrap \"authoritative-replaced\"" ] do
+                    "createApplicationWithDisplayTimeZoneCore options displayTimeZone (Some loader)"
+                    "startWithOptionsAndDisplayTimeZoneAndGlobalOverviewBootstrap" ] do
                   Expect.stringContains source required ("missing GLOBAL bootstrap lifecycle contract: " + required)
 
-              let listenerIndex = source.IndexOf("JS.Document.AddEventListener(GlobalOverviewBootstrap.EventName", StringComparison.Ordinal)
-              let readyIndex = source.IndexOf("documentRoot.SetAttribute(GlobalOverviewBootstrap.ReadyAttribute, \"true\")", StringComparison.Ordinal)
+              let clearIndex = source.IndexOf("clearProjectionWatermark ()", StringComparison.Ordinal)
+              let bootstrapIndex = source.IndexOf("globalOverviewBootstrapLoader", clearIndex, StringComparison.Ordinal)
               let startIndex = source.IndexOf("handle.Start()", StringComparison.Ordinal)
-              Expect.isGreaterThan listenerIndex -1 "The versioned event listener must be installed."
-              Expect.isGreaterThan readyIndex listenerIndex "Ready cannot be advertised before the listener is installed."
-              Expect.isGreaterThan startIndex readyIndex "The actual-GLOBAL seam must be ready before the websocket start."
+              Expect.isGreaterThan bootstrapIndex -1 "The typed bootstrap loader must be installed."
+              Expect.isGreaterThan startIndex bootstrapIndex "The actual-GLOBAL loader must start before the websocket transport."
 
-              let bootstrapStateStart = source.IndexOf("let setBootstrapOutcome", StringComparison.Ordinal)
+              let bootstrapStateStart = bootstrapIndex
               let resetStart = source.IndexOf("let resetActiveBatch", bootstrapStateStart, StringComparison.Ordinal)
               let bootstrapStateBody = source.Substring(bootstrapStateStart, resetStart - bootstrapStateStart)
               Expect.isFalse (bootstrapStateBody.Contains("RuntimeReducer", StringComparison.Ordinal)) "Bootstrap cannot fabricate a runtime frame or state."
-              Expect.isFalse (bootstrapStateBody.Contains("publishProjectionCommit", StringComparison.Ordinal)) "Bootstrap cannot publish an authoritative projection receipt.") ]
+              Expect.isFalse (bootstrapStateBody.Contains("publishProjectionCommit", StringComparison.Ordinal)) "Bootstrap cannot publish an authoritative projection receipt."
+              for forbidden in
+                  [ "ptcs-dynamic-ta-global-overview-bootstrap-v1"
+                    "bootstrapEvent.InitCustomEvent"
+                    "ReadyAttribute"
+                    "OfferGlobalOverviewBootstrap" ] do
+                  Expect.isFalse (source.Contains(forbidden, StringComparison.Ordinal)) ("The typed loader seam must not retain DOM transport: " + forbidden)) ]
 
 [<EntryPoint>]
 let main argv =

@@ -2845,11 +2845,13 @@ let tests =
         testCase "DYN-T-697 bootstrap renders actual GLOBAL read-only before authoritative state" <| fun _ ->
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
-            let bootstrapStart = source.IndexOf("let renderGlobalOverviewBootstrapWithDisplayTimeZone", StringComparison.Ordinal)
-            let authoritativeStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZone", bootstrapStart, StringComparison.Ordinal)
-            Expect.isGreaterThan bootstrapStart -1 "The standalone bootstrap renderer must be explicit."
-            Expect.isGreaterThan authoritativeStart bootstrapStart "The bootstrap must remain separate from authoritative RuntimeState rendering."
-            let bootstrapBody = source.Substring(bootstrapStart, authoritativeStart - bootstrapStart)
+            let bootstrapStateStart = source.IndexOf("let renderGlobalOverviewBootstrapStateWithDisplayTimeZone", StringComparison.Ordinal)
+            let loaderStart = source.IndexOf("let renderGlobalOverviewBootstrapWithDisplayTimeZone", bootstrapStateStart, StringComparison.Ordinal)
+            let authoritativeStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZone", loaderStart, StringComparison.Ordinal)
+            Expect.isGreaterThan bootstrapStateStart -1 "The standalone bootstrap renderer must be explicit."
+            Expect.isGreaterThan loaderStart bootstrapStateStart "The typed loader must be separate from the presentation state."
+            Expect.isGreaterThan authoritativeStart loaderStart "The bootstrap must remain separate from authoritative RuntimeState rendering."
+            let bootstrapBody = source.Substring(bootstrapStateStart, loaderStart - bootstrapStateStart)
             for required in
                 [ "\"ta-global-overview-bootstrap\""
                   "\"ta-global-overview-with-axis\""
@@ -2862,6 +2864,23 @@ let tests =
             Expect.stringContains bootstrapBody "pointer-events:none" "Bootstrap GLOBAL must be read-only."
             Expect.isFalse (bootstrapBody.Contains("SubmitAction", StringComparison.Ordinal)) "Bootstrap cannot publish actions."
             Expect.isFalse (bootstrapBody.Contains("RuntimeState", StringComparison.Ordinal)) "Bootstrap cannot create a fake runtime authority."
+
+            let loaderBody = source.Substring(loaderStart, authoritativeStart - loaderStart)
+            Expect.stringContains loaderBody "(loader: unit -> Async<TaGlobalCoverageOverview option>)" "The consumer-owned loader is the only bootstrap input shape."
+            Expect.stringContains loaderBody "let! candidate = loader ()" "The owner package must invoke the typed loader once."
+            Expect.stringContains loaderBody "Option.map RendererModel.tryGlobalOverviewBootstrap" "Loader output must pass the owner validation gate."
+            Expect.stringContains loaderBody "Async.StartImmediate" "The actual GLOBAL load begins before Doc.RunById."
+            for forbidden in [ "CustomEvent"; "AddEventListener"; "fetch("; "IndexedDB" ] do
+                Expect.isFalse (loaderBody.Contains(forbidden, StringComparison.Ordinal)) ("Bootstrap cannot own transport or cache: " + forbidden)
+
+            let replacementStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZoneAndGlobalOverviewBootstrap", authoritativeStart, StringComparison.Ordinal)
+            let replacementEnd = source.IndexOf("let renderWithProjectionCommit", replacementStart + 10, StringComparison.Ordinal)
+            Expect.isGreaterThan replacementStart authoritativeStart "The additive authoritative replacement overload must exist."
+            Expect.isGreaterThan replacementEnd replacementStart "The replacement overload must have a bounded source range."
+            let replacementBody = source.Substring(replacementStart, replacementEnd - replacementStart)
+            Expect.stringContains replacementBody "state.Document.IsSome" "The first authoritative document owns replacement."
+            Expect.stringContains replacementBody "authoritativeReady.Value <- true" "Replacement must be monotonic."
+            Expect.stringContains replacementBody "if ready then authoritativeDoc else bootstrapDoc" "The actual GLOBAL bootstrap must be replaced in place."
 
         testCase "adjacent coverage uses explicit document authority boundaries" <| fun _ ->
             let start0 = "2026-09-22T01:00:00Z"
