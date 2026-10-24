@@ -2,7 +2,7 @@
 
 ## 2026-10-24 GLOBAL calendar axis（DYN-WBS-591）
 
-`RendererModel.globalCalendarTicks`只接受`TaOverviewAnchor[]`、viewport寬與最小spacing；按source順序辨識年度及季度月份，不生成日期、不補缺月，輸出保留`AnchorIndex`與原始`EventTimeUtc`。year與quarter各自執行24px水平spacing後再按anchor排序；同一anchor可輸出兩筆並由`IsYearBoundary`分lane。`globalCalendarAxisWithPalette`以原anchor index比例定位，32px axis把year放top0、quarter放top15，DOM保留`data-canonical-event-time`與`data-global-calendar-tick-lane`；只有`ta-global-overview-time-axis`改用此helper，一般／RESIDENT維持原generic formatter與display-time行為。
+`RendererModel.globalCalendarTicks`只接受`TaOverviewAnchor[]`、viewport寬與最小spacing；按source順序辨識年度及季度月份，不生成日期、不補缺月，輸出保留`AnchorIndex`、原始`EventTimeUtc`、`IsYearBoundary`與numeric `Lane`。year與quarter分組後，各自依anchor換算的pixel位置使用first-fit greedy packing：放入第一個與該lane末筆相距至少24px的lane，無可用lane即新增，因此不以viewport擁擠為由drop mandatory candidate；quarter lanes從year lane count之後起算，同一anchor兩類必定分lane。輸出最後依anchor與year-first排序。`globalCalendarAxisWithPalette`以原anchor index比例定位，axis高度為`laneCount * 15 + 2`，DOM保留`data-canonical-event-time`、numeric `data-global-calendar-tick-lane`及`data-global-calendar-lane-count`；只有`ta-global-overview-time-axis`改用此helper，一般／RESIDENT維持原generic formatter與display-time行為。
 
 ## 2026-10-24 TA datapoint activation（DYN-WBS-589）
 

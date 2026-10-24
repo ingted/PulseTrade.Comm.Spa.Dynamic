@@ -2,9 +2,9 @@
 
 ## 2026-10-24 DYN-T-690 / 691 GLOBAL calendar axis
 
-- DYN-T-690：對0.2.25 package先得到缺少`globalCalendarTicks`的修前RED；0.2.26真3M／1600px再現完整interior years皆缺03／12，package-focused為88/89。0.2.27驗2019–2025每年`YYYY/03/06/09/12`、同anchor year＋03雙lane、同月首anchor dedupe、same-year narrow domain、label無`HH:mm`、canonical timestamp未改及各lane 24px bounded spacing。
-- DYN-T-691：source contract限定GLOBAL使用dedicated calendar axis／`GlobalOverview.Anchors`及year／quarter lane attribute；RESIDENT仍使用generic `timeAxisWithPalette`，避免把全域格式變成一般軸全域規則。
-- committed-source 0.2.27 final package-backed：Renderer 89/89、Interactive.Client 16/16 passed，均0 ignored/failed/errored；兩個isolated NuGet cache nupkg SHA與final source package逐byte相同。Research 18884真3M multi-year／narrow viewport與navigator互動由Daedalus重驗，不以unit冒充UI。
+- DYN-T-690：對0.2.27 package把完整年度fixture縮為900px並要求45筆mandatory ticks，先得到actual 27、88/89的修前RED。0.2.28驗2019–2025每年`YYYY/03/06/09/12`、900px全45筆保留、80px compact viewport不drop、同anchor year＋03占不同numeric lane、同月首anchor dedupe、same-year narrow domain、label無`HH:mm`、canonical timestamp未改，並按numeric lane逐一驗至少24px horizontal spacing。
+- DYN-T-691：source contract限定GLOBAL使用dedicated calendar axis／`GlobalOverview.Anchors`、dynamic tick lane、lane-count metadata與動態axis高度；RESIDENT仍使用generic `timeAxisWithPalette`，避免把全域格式變成一般軸全域規則。
+- committed-source 0.2.28 final package-backed：Renderer 89/89、Interactive.Client 16/16 passed，均0 ignored/failed/errored；兩個isolated NuGet cache nupkg SHA與final source package逐byte相同。Research 18884真3M 900px／1600px、geometry與navigator互動由Daedalus重驗，不以unit冒充UI。
 
 ## 2026-10-24 DYN-T-687 / 688 / 689 datapoint activation
 

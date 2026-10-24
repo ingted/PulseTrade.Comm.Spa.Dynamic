@@ -88,9 +88,11 @@ Candlestick依已render的slot及high/low範圍命中並回傳`BAR`；line、his
 
 ### D9. 2026-10-24 GLOBAL calendar axis
 
-GLOBAL overview的長期domain不得沿用一般TA／RESIDENT的`MM-dd HH:mm`軸。專用calendar axis只從`GlobalOverview.Anchors`選tick：每年第一個真anchor標`YYYY`，3／6／9／12月第一個真anchor標兩位月份；同anchor年度優先且不生成假日期。viewport擁擠時先保留年度，再以最小pixel spacing加入季度。DOM tick保留原canonical event time供驗證；此決策不改anchor contract、selection ratio、drag／preview／commit、hit target、一般TA／RESIDENT軸或consumer API。
+GLOBAL overview的長期domain不得沿用一般TA／RESIDENT的`MM-dd HH:mm`軸。專用calendar axis只從`GlobalOverview.Anchors`選tick：每年第一個真anchor標`YYYY`，3／6／9／12月第一個真anchor標兩位月份，不生成假日期。所有mandatory candidates皆保留；viewport擁擠時按實際pixel spacing動態增加垂直lane，各lane守最小水平間距，同anchor年度與季度分lane。DOM tick保留原canonical event time及numeric lane供驗證；此決策不改anchor contract、selection ratio、drag／preview／commit、hit target、一般TA／RESIDENT軸或consumer API。
 
 0.2.27 correction：0.2.26把year與quarter放同lane並互相排除，真3M／1600px使2019–2025每年03／12缺失。year與quarter改為垂直分lane，各lane獨立24px spacing；同anchor可同時顯示`YYYY`與季度，完整年度不得因另一lane標籤而少月份。其他D9邊界不變。
+
+0.2.28 correction：0.2.27固定雙lane在1600px通過，但900px的單一quarter lane仍因24px suppression缺四個03。D9改為不drop candidate的dynamic lane packing，axis高度依lane count成長；viewport不再是省略03／06／09／12的例外。其他D9邊界不變。
 
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
