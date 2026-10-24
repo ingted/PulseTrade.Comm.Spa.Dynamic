@@ -1137,7 +1137,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh onPointActivated =
+    let compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh onMainPlotPointerDown consumeMainPlotClickSuppression onPointActivated =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -1529,6 +1529,8 @@ module TaWorkspaceRenderer =
                     trace.CandleDataRefs
                     |> Option.map _.OpenRef
                     |> Option.defaultValue ""
+            let scaleKey (temporal: TaTemporalPointPresentation option) =
+                temporal |> Option.map _.ScaleKey |> Option.defaultValue ""
             let candles: TaPointHitCandidate array =
                 currentCandles
                 |> Array.map (fun (_, (trace: TaTraceSpec), slotIndex, _, point: TaCandlePoint) ->
@@ -1538,6 +1540,15 @@ module TaWorkspaceRenderer =
                       EventTimeUtc = point.Timestamp
                       TraceKind = "CANDLESTICK"
                       Component = "BAR"
+                      ScaleKey = scaleKey point.Temporal
+                      Value =
+                        SduiValue.Object(
+                            Map
+                                [ "o", SduiValue.Number point.Open
+                                  "h", SduiValue.Number point.High
+                                  "l", SduiValue.Number point.Low
+                                  "c", SduiValue.Number point.Close
+                                  "v", SduiValue.Number point.Volume ])
                       X = xAt slotIndex
                       MinimumY = RendererModel.normalize low high top plotHeight point.High
                       MaximumY = RendererModel.normalize low high top plotHeight point.Low })
@@ -1569,6 +1580,8 @@ module TaWorkspaceRenderer =
                               EventTimeUtc = point.Timestamp
                               TraceKind = traceKind
                               Component = component
+                              ScaleKey = scaleKey point.Temporal
+                              Value = SduiValue.Number point.Value
                               X = xAt slotIndex
                               MinimumY = minimumY
                               MaximumY = maximumY }))
@@ -1840,22 +1853,25 @@ module TaWorkspaceRenderer =
             Attr.Create "data-plot-surface-theme" palette.ThemeName
             Attr.Create "data-point-count" (string referenceTimestamps.Length)
             Attr.Dynamic "style" (chartPixelHeight.View |> View.Map (fun value -> "display:block; width:100%; height:" + string value + "px; background:" + palette.Surface + ";"))
+            Attr.Handler "pointerdown" (fun element event -> onMainPlotPointerDown (element |> As<Element>) event)
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
                 match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
                 | Some index -> setCursorIndex (Some index)
                 | None -> ())
             on.click (fun element event ->
-                let bounds = element.GetBoundingClientRect()
-                match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
-                | Some index -> commitCursorIndex index
-                | None -> ()
-                if bounds.Width > 0.0 && bounds.Height > 0.0 then
-                    let pointX = (float event.ClientX - float bounds.Left) * width / float bounds.Width
-                    let pointY = (float event.ClientY - float bounds.Top) * height / float bounds.Height
-                    pointHitCandidates latestPointGeometry
-                    |> RendererModel.tryNearestPointHit pointX pointY
-                    |> Option.iter (onPointActivated element))
+                if not (consumeMainPlotClickSuppression ()) then
+                    let bounds = element.GetBoundingClientRect()
+                    match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
+                    | Some index -> commitCursorIndex index
+                    | None -> ()
+                    if bounds.Width > 0.0 && bounds.Height > 0.0 then
+                        let pointX = (float event.ClientX - float bounds.Left) * width / float bounds.Width
+                        let pointY = (float event.ClientY - float bounds.Top) * height / float bounds.Height
+                        let candidates = pointHitCandidates latestPointGeometry
+                        candidates
+                        |> RendererModel.tryNearestPointHit pointX pointY
+                        |> Option.iter (fun hit -> onPointActivated element hit candidates))
         ] [
             for gridIndex in 0 .. 4 do
                 let y = top + plotHeight * float gridIndex / 4.0
@@ -1966,7 +1982,7 @@ module TaWorkspaceRenderer =
                 stripes)
 
     let compositeSvgReactivePreparedLiveWithHeightPalette palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh =
-        compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh (fun _ _ -> ())
+        compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh (fun _ _ -> ()) (fun () -> false) (fun _ _ _ -> ())
 
     let compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh =
         let zone = Var.Create SduiDisplayTimeZone.Utc
@@ -1993,7 +2009,7 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create cursorIndex
         compositeSvgReactive rowId traces data referenceTimestamps cursor.View setCursorIndex commitCursorIndex
 
-    let renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement onPointActivated (row: TaRowSpec) =
+    let renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement onMainPlotPointerDown consumeMainPlotClickSuppression onPointActivated (row: TaRowSpec) =
         let traces =
             RendererModel.effectiveTraces row
             |> Array.filter (fun trace ->
@@ -2002,7 +2018,7 @@ module TaWorkspaceRenderer =
         let hasCursorEventCapability =
             traces
             |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Marker || trace.Kind = TaTraceKind.OverviewStripe)
-        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh onPointActivated
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh onMainPlotPointerDown consumeMainPlotClickSuppression onPointActivated
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =
@@ -2146,7 +2162,7 @@ module TaWorkspaceRenderer =
         ], cursorReaders, legendReaders, latestLegendReaders, markerCursorReader
 
     let renderRowReactivePreparedLiveWithHeightPalette palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row =
-        renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement (fun _ _ -> ()) row
+        renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement (fun _ _ -> ()) (fun () -> false) (fun _ _ _ -> ()) row
 
     let renderRowReactivePreparedLiveWithHeight state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row =
         let zone = Var.Create SduiDisplayTimeZone.Utc
@@ -2242,6 +2258,9 @@ module TaWorkspaceRenderer =
         let mutable finishGlobalResidentDrag: (unit -> unit) option = None
         let mutable cancelGlobalResidentDrag: (unit -> unit) option = None
         let mutable activeGlobalResidentCursor: string option = None
+        let mutable finishMainPlotDrag: (Event -> unit) option = None
+        let mutable cancelMainPlotDrag: (unit -> unit) option = None
+        let mutable suppressNextMainPlotClick = false
         draftWindow.View
         |> View.Sink (fun draft ->
             if draft.IsNone && finishNavigatorDrag.IsNone then
@@ -2306,9 +2325,22 @@ module TaWorkspaceRenderer =
         let scheduleNextFrame work =
             JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
         let mutable projectionCommitGate = ProjectionCommitGate.initial
+        let mutable projectionPendingGeneration = 0
+        let mutable projectionPendingAtMs = 0.0
         let beginProjection state =
             let nextGate, generation = ProjectionCommitGate.beginCandidate state projectionCommitGate
             projectionCommitGate <- nextGate
+            projectionPendingGeneration <- generation
+            projectionPendingAtMs <- float (Date.Now())
+            let root = JS.Document.DocumentElement
+            if not (isNull root) then
+                root.SetAttribute("data-renderer-projection-pending-generation", string generation)
+                root.SetAttribute("data-renderer-projection-pending-at-ms", string projectionPendingAtMs)
+                root.SetAttribute("data-renderer-projection-pending-transport-sequence", string state.LastTransportSequence)
+                match Double.TryParse(root.GetAttribute("data-runtime-body-received-at-ms")) with
+                | true, receivedAtMs ->
+                    root.SetAttribute("data-renderer-body-to-pending-ms", string (projectionPendingAtMs - receivedAtMs))
+                | _ -> ()
             generation
         let pendingProjectionFor state =
             ProjectionCommitGate.pendingGenerationFor state projectionCommitGate
@@ -2320,6 +2352,13 @@ module TaWorkspaceRenderer =
                 projectionCommitGate <- nextGate
                 committed
                 |> Option.iter (fun committedState ->
+                    let committedAtMs = float (Date.Now())
+                    let root = JS.Document.DocumentElement
+                    if not (isNull root) then
+                        root.SetAttribute("data-renderer-projection-committed-generation", string generation)
+                        root.SetAttribute("data-renderer-projection-committed-at-ms", string committedAtMs)
+                        if generation = projectionPendingGeneration then
+                            root.SetAttribute("data-renderer-pending-to-commit-ms", string (committedAtMs - projectionPendingAtMs))
                     onProjectionCommitted committedState
                     settleCommittedViewportDraft ()))
         let scheduleRowDataRefresh projectionCandidateGeneration candidateState prepared =
@@ -2566,6 +2605,7 @@ module TaWorkspaceRenderer =
         let shellPreparedData = Var.Create initialPreparedData
         let mutable preparedDataReady = false
         let preparationPending = Var.Create true
+        let initialGlobalPhase = Var.Create true
         let mutable preparationGeneration = 0
         let createPreparationSchedule generation =
             let publish metrics =
@@ -2707,6 +2747,11 @@ module TaWorkspaceRenderer =
             viewportDataReady.Value <- false
             let candidate = runtimeState.Value
             let data = candidate.Data
+            if initialGlobalPhase.Value then
+                shellPreparedData.Value <-
+                    { RawData = data
+                      ResolvedAxes = Map.empty
+                      ResolvedSeries = Map.empty }
             RendererModel.prepareDataScheduled
                 (createPreparationSchedule generation)
                 data
@@ -2736,6 +2781,9 @@ module TaWorkspaceRenderer =
                             shellPreparedData.Value <- prepared
                             viewportDataReady.Value <- true
                             preparationPending.Value <- false
+                            scheduleNextFrame (fun () ->
+                                if generation = preparationGeneration then
+                                    initialGlobalPhase.Value <- false)
                         elif staleCoverageCandidate then
                             viewportDataReady.Value <- true
                             preparationPending.Value <- false
@@ -2809,7 +2857,10 @@ module TaWorkspaceRenderer =
                 |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
                 |> Option.defaultValue false
             if next.Identity <> observedDataState.Identity then
+                cancelMainPlotDrag |> Option.iter (fun cancel -> cancel ())
                 cancelGlobalResidentDrag |> Option.iter (fun cancel -> cancel ())
+                preparedDataReady <- false
+                initialGlobalPhase.Value <- true
                 pendingGlobalResidentIntent <- None
                 globalResidentDraft.Value <- None
                 pendingBoundaryPan <- None
@@ -3030,6 +3081,110 @@ module TaWorkspaceRenderer =
                         { visible with StartIndex = requestedStart }
                 let followLatest = candidate.StartIndex = RendererModel.viewportMaximumStart total candidate
                 setWindow followLatest candidate
+
+        let consumeMainPlotClickSuppression () =
+            let suppress = suppressNextMainPlotClick
+            suppressNextMainPlotClick <- false
+            suppress
+
+        let startMainPlotDrag (plotRoot: Element) (rawEvent: Event) =
+            let event = rawEvent :?> MouseEvent
+            if
+                event.Button = 0
+                && finishMainPlotDrag.IsNone
+                && finishNavigatorDrag.IsNone
+                && finishGlobalResidentDrag.IsNone
+                && not (viewportCommandsDisabledNow ())
+            then
+                let bounds = plotRoot.GetBoundingClientRect()
+                let committed = resolvedWindow uiState.Value
+                if bounds.Width > 0.0 && committed.Count > 0 then
+                    let startClientX = float event.ClientX
+                    let mutable latestClientX = startClientX
+                    let mutable latestDelta = 0
+                    let mutable moved = false
+                    let mutable pendingDraft: TaVisibleWindow option = None
+                    let mutable draftFrameScheduled = false
+
+                    let flushDraft () =
+                        draftFrameScheduled <- false
+                        match pendingDraft with
+                        | Some draft ->
+                            pendingDraft <- None
+                            draftWindow.Value <- Some draft
+                        | None -> ()
+
+                    let scheduleDraft draft =
+                        pendingDraft <- Some draft
+                        if not draftFrameScheduled then
+                            draftFrameScheduled <- true
+                            JS.RequestAnimationFrame(fun _ -> flushDraft ()) |> ignore
+
+                    let update (pointerEvent: Event) =
+                        let mouse = pointerEvent :?> MouseEvent
+                        latestClientX <- float mouse.ClientX
+                        latestDelta <-
+                            RendererModel.mainPlotPanDelta committed.Count bounds.Width startClientX latestClientX
+                        moved <-
+                            moved
+                            || RendererModel.mainPlotDragExceededThreshold
+                                RendererModel.MainPlotDragThresholdCssPixels
+                                startClientX
+                                latestClientX
+                        if moved then
+                            let total = referenceLength ()
+                            let draft =
+                                RendererModel.clampWindow
+                                    options.MinimumVisibleBars
+                                    (maximumVisibleBarsNow ())
+                                    total
+                                    { committed with StartIndex = committed.StartIndex + latestDelta }
+                            scheduleDraft draft
+                            plotRoot.SetAttribute("data-main-plot-drag-outcome", "moving")
+                            plotRoot.SetAttribute("data-main-plot-drag-delta", string latestDelta)
+
+                    let mutable moveHandler: Action<Event> = null
+                    let mutable upHandler: Action<Event> = null
+                    let mutable cancelHandler: Action<Event> = null
+
+                    let cleanup () =
+                        if not (isNull moveHandler) then JS.Document.RemoveEventListener("pointermove", moveHandler)
+                        if not (isNull upHandler) then JS.Document.RemoveEventListener("pointerup", upHandler)
+                        if not (isNull cancelHandler) then JS.Document.RemoveEventListener("pointercancel", cancelHandler)
+                        finishMainPlotDrag <- None
+                        cancelMainPlotDrag <- None
+                        (plotRoot |> As<HTMLElement>).Style.SetProperty("cursor", "crosshair")
+
+                    let finish pointerEvent =
+                        update pointerEvent
+                        cleanup ()
+                        if moved then
+                            suppressNextMainPlotClick <- true
+                            JS.SetTimeout (fun () -> suppressNextMainPlotClick <- false) 250 |> ignore
+                            plotRoot.SetAttribute("data-main-plot-drag-outcome", "committed")
+                            panWindow latestDelta
+                        else
+                            draftWindow.Value <- None
+                            plotRoot.SetAttribute("data-main-plot-drag-outcome", "click")
+
+                    let cancel () =
+                        cleanup ()
+                        draftWindow.Value <- None
+                        plotRoot.SetAttribute("data-main-plot-drag-outcome", "cancelled")
+
+                    moveHandler <-
+                        Action<Event>(fun pointerEvent ->
+                            update pointerEvent
+                            if moved then pointerEvent.PreventDefault())
+                    upHandler <- Action<Event>(finish)
+                    cancelHandler <- Action<Event>(fun _ -> cancel ())
+                    finishMainPlotDrag <- Some finish
+                    cancelMainPlotDrag <- Some cancel
+                    plotRoot.SetAttribute("data-main-plot-drag-outcome", "tracking")
+                    (plotRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
+                    JS.Document.AddEventListener("pointermove", moveHandler)
+                    JS.Document.AddEventListener("pointerup", upHandler)
+                    JS.Document.AddEventListener("pointercancel", cancelHandler)
 
         let zoomWindow delta =
             let current = uiState.Value
@@ -3989,7 +4144,16 @@ module TaWorkspaceRenderer =
                     | _ -> ()
                 | None -> ()
 
-        let publishPointActivation (target: Element) state baseRowId hit =
+        let publishPointActivation (target: Element) state baseRowId hit candidates =
+            TaPointActivation.tryCreateV2 projectionCommitGate.LastCommitted state baseRowId hit candidates
+            |> Option.iter (fun receipt ->
+                if not (isNull chartStackElement) then
+                    chartStackElement.SetAttribute("data-ptcs-ta-point-schema-v2", receipt.Schema)
+                    chartStackElement.SetAttribute("data-ptcs-ta-point-scale-key", receipt.ScaleKey)
+                    chartStackElement.SetAttribute("data-ptcs-ta-point-same-timestamp-count", string receipt.SameTimestampSeries.Length)
+                let activationEvent = As<CustomEvent>(JS.Document.CreateEvent("CustomEvent"))
+                activationEvent.InitCustomEvent(TaPointActivation.EventNameV2, true, false, box receipt)
+                target.DispatchEvent(As<Event> activationEvent) |> ignore)
             TaPointActivation.tryCreate projectionCommitGate.LastCommitted state baseRowId hit
             |> Option.iter (fun receipt ->
                 if not (isNull chartStackElement) then
@@ -4000,9 +4164,9 @@ module TaWorkspaceRenderer =
                     chartStackElement.SetAttribute("data-ptcs-ta-point-event-time", receipt.EventTimeUtc)
                     chartStackElement.SetAttribute("data-ptcs-ta-point-trace-kind", receipt.TraceKind)
                     chartStackElement.SetAttribute("data-ptcs-ta-point-component", receipt.Component)
-                    let activationEvent = As<CustomEvent>(JS.Document.CreateEvent("CustomEvent"))
-                    activationEvent.InitCustomEvent(TaPointActivation.EventName, true, false, box receipt)
-                    target.DispatchEvent(As<Event> activationEvent) |> ignore)
+                let activationEvent = As<CustomEvent>(JS.Document.CreateEvent("CustomEvent"))
+                activationEvent.InitCustomEvent(TaPointActivation.EventName, true, false, box receipt)
+                target.DispatchEvent(As<Event> activationEvent) |> ignore)
 
         let selectedEditorSchema () =
             editorSchemasNow () |> Array.tryFind (fun schema -> schema.TemplateKey = selectedTemplate.Value)
@@ -4840,9 +5004,11 @@ module TaWorkspaceRenderer =
                                                 (fun node ->
                                                     currentRowLegendElements[index] <- node
                                                     scheduleVisibleValueRefresh ())
-                                                (fun target hit ->
+                                                startMainPlotDrag
+                                                consumeMainPlotClickSuppression
+                                                (fun target hit candidates ->
                                                     document.BaseRowId
-                                                    |> Option.iter (fun baseRowId -> publishPointActivation target state baseRowId hit))
+                                                    |> Option.iter (fun baseRowId -> publishPointActivation target state baseRowId hit candidates))
                                                 visibleRows[index]
                                         stagedCursorReaders[index] <- Some cursorReaders
                                         stagedLegendReaders[index] <- Some legendReaders
@@ -4908,7 +5074,9 @@ module TaWorkspaceRenderer =
                                     |> Doc.EmbedView
                                 yield div [
                                     Attr.Create "data-testid" "ta-cursor-panel"
-                                    attr.style "order:1; display:flex; flex-direction:column; align-items:stretch; border-top:1px solid #dce4ef; background:#f8fafc;"
+                                    Attr.Dynamic "style" (initialGlobalPhase.View |> View.Map (fun phase ->
+                                        if phase then "display:none;"
+                                        else "order:1; display:flex; flex-direction:column; align-items:stretch; border-top:1px solid #dce4ef; background:#f8fafc;"))
                                     on.afterRender (fun node ->
                                         cursorPanelElement <- node
                                         scheduleVisibleValueRefresh ())
@@ -4933,11 +5101,19 @@ module TaWorkspaceRenderer =
                                             yield span [ Attr.Create "data-ta-cursor-value-index" (string index); Attr.Create "hidden" "hidden"; attr.style "flex:0 0 auto; white-space:nowrap;" ] [ text "" ]
                                     ]
                                 ]
-                                if visibleRows.Length = 0 then
-                                    yield div [ attr.style "padding:18px; color:#667891;" ] [ text "No visible TA rows." ]
-                                else
-                                    for rowDoc in rowDocs do
-                                        yield rowDoc.View |> Doc.EmbedView
+                                yield
+                                    initialGlobalPhase.View
+                                    |> View.Map (fun phase ->
+                                        if phase then
+                                            Doc.Empty
+                                        elif visibleRows.Length = 0 then
+                                            div [ attr.style "padding:18px; color:#667891;" ] [ text "No visible TA rows." ] :> Doc
+                                        else
+                                            div [ attr.style "display:contents;" ] [
+                                                for rowDoc in rowDocs do
+                                                    yield rowDoc.View |> Doc.EmbedView
+                                            ] :> Doc)
+                                    |> Doc.EmbedView
                                 yield div [
                                     Attr.Create "data-testid" "ta-viewport-navigator"
                                     attr.style "order:-1; min-width:0; padding:0 8px 8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
@@ -5027,7 +5203,21 @@ module TaWorkspaceRenderer =
                                                         overviewReferenceTimeline
                                                 ]
                                             match currentCoverageProjection |> Option.bind _.GlobalOverview with
-                                            | None -> residentOverview :> Doc
+                                            | None ->
+                                                initialGlobalPhase.View
+                                                |> View.Map (fun isInitialGlobalPhase ->
+                                                    if isInitialGlobalPhase then
+                                                        div [
+                                                            Attr.Create "data-testid" "ta-global-overview-loading"
+                                                            Attr.Create "data-global-phase" "phase-1"
+                                                            attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:40px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
+                                                        ] [
+                                                            strong [] [ text "GLOBAL" ]
+                                                            span [] [ text "Loading authoritative overview…" ]
+                                                        ] :> Doc
+                                                    else
+                                                        residentOverview :> Doc)
+                                                |> Doc.EmbedView
                                             | Some globalOverview ->
                                                 let authoritativeResident: TaResidentCoverageWindow =
                                                     { StartObservationOrdinal = globalOverview.ResidentStartObservationOrdinal
@@ -5094,18 +5284,24 @@ module TaWorkspaceRenderer =
                                                             "global-overview"
                                                             globalOverview.Anchors
                                                     ]
-                                                    div [ Attr.Create "data-testid" "ta-resident-overview-shell"; attr.style "min-width:0;" ] [
-                                                        div [
-                                                            Attr.Create "data-testid" "ta-resident-overview-label"
-                                                            Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
-                                                            Attr.Create "data-visible-observation-count" (string visibleObservationCount)
-                                                            attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
-                                                        ] [
-                                                            strong [] [ text "RESIDENT" ]
-                                                            span [] [ text (string globalOverview.ResidentObservationCount + " loaded / " + string visibleObservationCount + " visible") ]
-                                                        ]
-                                                        residentOverview
-                                                    ]
+                                                    initialGlobalPhase.View
+                                                    |> View.Map (fun isInitialGlobalPhase ->
+                                                        if isInitialGlobalPhase then
+                                                            Doc.Empty
+                                                        else
+                                                            div [ Attr.Create "data-testid" "ta-resident-overview-shell"; attr.style "min-width:0;" ] [
+                                                                div [
+                                                                    Attr.Create "data-testid" "ta-resident-overview-label"
+                                                                    Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
+                                                                    Attr.Create "data-visible-observation-count" (string visibleObservationCount)
+                                                                    attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
+                                                                ] [
+                                                                    strong [] [ text "RESIDENT" ]
+                                                                    span [] [ text (string globalOverview.ResidentObservationCount + " loaded / " + string visibleObservationCount + " visible") ]
+                                                                ]
+                                                                residentOverview
+                                                            ] :> Doc)
+                                                    |> Doc.EmbedView
                                                 ] :> Doc)
                                         |> Doc.EmbedView
                                     ]

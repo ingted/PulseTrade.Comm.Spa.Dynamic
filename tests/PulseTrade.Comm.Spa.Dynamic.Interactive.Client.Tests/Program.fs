@@ -779,7 +779,32 @@ let tests =
 
               Expect.isError
                   (BrowserRuntimeSnapshotBatch.validateCommit 12 "batch-11" 0 batch)
-                  "A stale generation cannot commit even an empty snapshot.") ]
+                  "A stale generation cannot commit even an empty snapshot.")
+
+          testCase "DYN-T-692 browser telemetry correlates receive queue publish commit and first paint" (fun _ ->
+              let sourcePath =
+                  IO.Path.GetFullPath(
+                      IO.Path.Combine(
+                          __SOURCE_DIRECTORY__,
+                          "..",
+                          "..",
+                          "src",
+                          "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+                          "Client.fs"))
+              let source = IO.File.ReadAllText sourcePath
+              [| "data-runtime-body-received-at-ms"
+                 "data-runtime-queue-wait-ms"
+                 "data-runtime-body-to-publish-ms"
+                 "data-runtime-body-to-commit-ms"
+                 "data-runtime-commit-to-paint-ms"
+                 "data-runtime-body-to-paint-ms"
+                 "publishedBodyTimings.Remove receipt.LastTransportSequence" |]
+              |> Array.iter (fun marker ->
+                  Expect.stringContains source marker ("missing correlated telemetry marker: " + marker))
+              Expect.isGreaterThanOrEqual
+                  (source.Split("JS.RequestAnimationFrame").Length - 1)
+                  3
+                  "Client must retain the pump frame and a two-frame first-paint boundary.") ]
 
 [<EntryPoint>]
 let main argv =

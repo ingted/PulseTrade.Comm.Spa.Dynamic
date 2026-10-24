@@ -24,6 +24,12 @@ type InteractiveApplicationHandle =
       GetLastProjectionCommit: unit -> RuntimeProjectionCommitReceiptV1 option
       SubscribeProjectionCommitted: (RuntimeProjectionCommitReceiptV1 -> unit) -> (unit -> unit) }
 
+[<JavaScript>]
+type RuntimeBodyTiming =
+    { BodySequence: int
+      ReceivedAtMs: float
+      PumpStartedAtMs: float }
+
 /// Interactive notebook iframe browser application.
 ///
 /// RuntimeFrame validation and TA calculation stay in the host. The application owns one
@@ -50,6 +56,7 @@ module Client =
     let mutable currentApplication: InteractiveApplicationHandle option = None
 
     let createApplicationWithDisplayTimeZone options (displayTimeZone: View<SduiDisplayTimeZone>) =
+        let browserNowMs () = float (Date.Now())
         let mutable socket: WebSocket option = None
         let mutable transportGeneration = 0
         let mutable lifecycle = InteractiveClientLifecycle.initial
@@ -60,8 +67,11 @@ module Client =
         let mutable rendererMounted = false
         let mutable pendingAction: (string * (Result<DynamicActionResult, DynamicHostError> -> unit) * JS.Handle) option = None
         let mutable removeUnloadHandler = fun () -> ()
-        let messageQueue = ResizeArray<int * string>()
+        let messageQueue = ResizeArray<int * string * RuntimeBodyTiming>()
         let mutable messagePumpRunning = false
+        let mutable bodySequence = 0
+        let mutable activeBodyTiming: RuntimeBodyTiming option = None
+        let publishedBodyTimings = System.Collections.Generic.Dictionary<int64, RuntimeBodyTiming * float>()
         let mutable activeBatch: RuntimeSnapshotTransportAssemblyState option = None
         let projectionSubscribers = System.Collections.Generic.Dictionary<int, RuntimeProjectionCommitReceiptV1 -> unit>()
         let mutable projectionSubscriberSequence = 0
@@ -69,6 +79,14 @@ module Client =
         let mutable lastProjectionCommit: RuntimeProjectionCommitReceiptV1 option = None
 
         let projectionRoot () = JS.Document.GetElementById options.RootElementId
+
+        let setProjectionMetric name value =
+            match projectionRoot () with
+            | null -> ()
+            | root -> root.SetAttribute(name, value)
+            let documentRoot = JS.Document.DocumentElement
+            if not (isNull documentRoot) then
+                documentRoot.SetAttribute(name, value)
 
         let clearProjectionWatermark () =
             match projectionRoot () with
@@ -83,6 +101,7 @@ module Client =
                 match RuntimeProjectionCommit.create projectionSequence state with
                 | Error _ -> ()
                 | Ok receipt ->
+                    let committedAtMs = browserNowMs ()
                     match projectionRoot () with
                     | null -> ()
                     | root ->
@@ -95,6 +114,25 @@ module Client =
                         root.SetAttribute(RuntimeProjectionCommit.DataRevisionAttribute, string receipt.DataRevision)
                         root.SetAttribute(RuntimeProjectionCommit.TransportSequenceAttribute, string receipt.LastTransportSequence)
                         root.SetAttribute(RuntimeProjectionCommit.ProjectionSequenceAttribute, string receipt.ProjectionSequence)
+                        root.SetAttribute("data-runtime-projection-committed-at-ms", string committedAtMs)
+                        match publishedBodyTimings.TryGetValue receipt.LastTransportSequence with
+                        | true, (timing, publishedAtMs) ->
+                            root.SetAttribute("data-runtime-body-sequence", string timing.BodySequence)
+                            root.SetAttribute("data-runtime-body-received-at-ms", string timing.ReceivedAtMs)
+                            root.SetAttribute("data-runtime-queue-wait-ms", string (timing.PumpStartedAtMs - timing.ReceivedAtMs))
+                            root.SetAttribute("data-runtime-published-at-ms", string publishedAtMs)
+                            root.SetAttribute("data-runtime-body-to-publish-ms", string (publishedAtMs - timing.ReceivedAtMs))
+                            root.SetAttribute("data-runtime-body-to-commit-ms", string (committedAtMs - timing.ReceivedAtMs))
+                            JS.RequestAnimationFrame(fun _ ->
+                                JS.RequestAnimationFrame(fun _ ->
+                                    let paintedAtMs = browserNowMs ()
+                                    root.SetAttribute("data-runtime-first-paint-at-ms", string paintedAtMs)
+                                    root.SetAttribute("data-runtime-commit-to-paint-ms", string (paintedAtMs - committedAtMs))
+                                    root.SetAttribute("data-runtime-body-to-paint-ms", string (paintedAtMs - timing.ReceivedAtMs))
+                                    publishedBodyTimings.Remove receipt.LastTransportSequence |> ignore)
+                                |> ignore)
+                            |> ignore
+                        | _ -> ()
                         lastProjectionCommit <- Some receipt
                         projectionSubscribers.Values
                         |> Seq.toArray
@@ -121,6 +159,8 @@ module Client =
         let resetMessagePump () =
             messageQueue.Clear()
             messagePumpRunning <- false
+            activeBodyTiming <- None
+            publishedBodyTimings.Clear()
             resetActiveBatch ()
 
         let tryStringField name value =
@@ -287,7 +327,7 @@ module Client =
         and scheduleMessagePump () =
             if not messagePumpRunning && messageQueue.Count > 0 && not lifecycle.Disposed then
                 messagePumpRunning <- true
-                let generation, text = messageQueue[0]
+                let generation, text, timing = messageQueue[0]
                 messageQueue.RemoveAt 0
 
                 JS.RequestAnimationFrame(fun _ ->
@@ -295,7 +335,14 @@ module Client =
                         messagePumpRunning <- false
                         scheduleMessagePump ()
                     else
+                        let startedTiming = { timing with PumpStartedAtMs = browserNowMs () }
+                        activeBodyTiming <- Some startedTiming
+                        setProjectionMetric "data-runtime-body-sequence" (string startedTiming.BodySequence)
+                        setProjectionMetric "data-runtime-body-received-at-ms" (string startedTiming.ReceivedAtMs)
+                        setProjectionMetric "data-runtime-pump-started-at-ms" (string startedTiming.PumpStartedAtMs)
+                        setProjectionMetric "data-runtime-queue-wait-ms" (string (startedTiming.PumpStartedAtMs - startedTiming.ReceivedAtMs))
                         processQueuedMessage generation text (fun () ->
+                            activeBodyTiming <- None
                             messagePumpRunning <- false
                             scheduleMessagePump ()))
                 |> ignore
@@ -306,7 +353,16 @@ module Client =
                     "interactive-frame-queue-overflow"
                     "The interactive frame queue exceeded its bounded capacity."
             else
-                messageQueue.Add(generation, text)
+                bodySequence <- bodySequence + 1
+                let timing =
+                    { BodySequence = bodySequence
+                      ReceivedAtMs = browserNowMs ()
+                      PumpStartedAtMs = 0.0 }
+                messageQueue.Add(generation, text, timing)
+                setProjectionMetric "data-runtime-body-sequence" (string timing.BodySequence)
+                setProjectionMetric "data-runtime-body-received-at-ms" (string timing.ReceivedAtMs)
+                setProjectionMetric "data-runtime-body-utf16-length" (string text.Length)
+                setProjectionMetric "data-runtime-queue-depth" (string messageQueue.Count)
                 scheduleMessagePump ()
 
         and processQueuedMessage generation text completed =
@@ -606,7 +662,13 @@ module Client =
                 state
             |> Doc.RunById options.RootElementId
 
-        and publishRuntimeState next =
+        and publishRuntimeState (next: RuntimeState) =
+            let publishedAtMs = browserNowMs ()
+            activeBodyTiming
+            |> Option.iter (fun timing ->
+                publishedBodyTimings[next.LastTransportSequence] <- timing, publishedAtMs
+                setProjectionMetric "data-runtime-published-at-ms" (string publishedAtMs)
+                setProjectionMetric "data-runtime-body-to-publish-ms" (string (publishedAtMs - timing.ReceivedAtMs)))
             match runtimeState with
             | None ->
                 let state = Var.Create next

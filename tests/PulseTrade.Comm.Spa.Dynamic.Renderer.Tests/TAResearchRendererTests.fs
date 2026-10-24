@@ -80,6 +80,8 @@ let tests =
                   EventTimeUtc = eventTime
                   TraceKind = traceKind
                   Component = component
+                  ScaleKey = "1m"
+                  Value = SduiValue.Number x
                   X = x
                   MinimumY = minimumY
                   MaximumY = maximumY }
@@ -124,6 +126,8 @@ let tests =
                   EventTimeUtc = "2026-10-24T01:00:00Z"
                   TraceKind = "CANDLESTICK"
                   Component = "BAR"
+                  ScaleKey = "1m"
+                  Value = SduiValue.Number 101.25
                   X = 100.0
                   MinimumY = 30.0
                   MaximumY = 70.0 }
@@ -148,6 +152,61 @@ let tests =
                 "an uncommitted chart cannot publish"
             let fieldNames = typeof<TaPointActivationReceiptV1>.GetProperties() |> Array.map _.Name |> Set.ofArray
             Expect.isFalse (Set.contains "VisibleIndex" fieldNames) "the public receipt must not leak viewport index identity"
+
+            let pdi =
+                { hit with
+                    TraceId = "pdi"
+                    DataRef = "execution-series:101"
+                    TraceKind = "LINE"
+                    Component = "POINT"
+                    ScaleKey = "30m"
+                    Value = SduiValue.Number 22.5 }
+            let mdi =
+                { pdi with
+                    TraceId = "mdi"
+                    DataRef = "execution-series:102"
+                    Value = SduiValue.Number 18.25 }
+            let otherTimestamp =
+                { pdi with
+                    TraceId = "later"
+                    DataRef = "execution-series:103"
+                    EventTimeUtc = "2026-10-24T01:30:00Z" }
+            let grouped =
+                TaPointActivation.tryCreateV2
+                    committedGate.LastCommitted
+                    committedState
+                    "row-main"
+                    pdi
+                    [| pdi; mdi; otherTimestamp |]
+            Expect.isSome grouped "the committed click publishes the additive grouped activation"
+            let groupedValue = grouped.Value
+            Expect.equal groupedValue.Schema TaPointActivation.SchemaV2 "the grouped browser event is explicitly versioned"
+            Expect.equal groupedValue.ScaleKey "30m" "the activated scale is exact"
+            Expect.equal
+                (groupedValue.SameTimestampSeries |> Array.map (fun item -> item.TraceId, item.DataRef, item.Value))
+                [| "pdi", "execution-series:101", SduiValue.Number 22.5
+                   "mdi", "execution-series:102", SduiValue.Number 18.25 |]
+                "same-timestamp peers preserve stable persisted-series data refs and values"
+
+        testCase "DYN-T-689 main plot drag maps CSS movement to viewport bars with a click threshold" <| fun _ ->
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 100 1000.0 500.0 400.0)
+                10
+                "dragging content left commits a later ten-bar window"
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 100 1000.0 500.0 600.0)
+                -10
+                "dragging content right commits an earlier ten-bar window"
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 100 0.0 500.0 400.0)
+                0
+                "invalid geometry cannot manufacture a pan"
+            Expect.isFalse
+                (RendererModel.mainPlotDragExceededThreshold RendererModel.MainPlotDragThresholdCssPixels 100.0 103.9)
+                "sub-threshold motion remains a datapoint click"
+            Expect.isTrue
+                (RendererModel.mainPlotDragExceededThreshold RendererModel.MainPlotDragThresholdCssPixels 100.0 104.0)
+                "threshold motion becomes a drag and suppresses the following click"
 
         testCase "visible K-bar domain ignores remote extrema and keeps fixed CSS padding after resize" <| fun _ ->
             let fullSourceBounds = Some(5.0, 104.0)
@@ -2826,8 +2885,12 @@ let tests =
             for required in
                 [ "Attr.Create TaPointActivation.SurfaceAttribute \"true\""
                   "RendererModel.tryNearestPointHit pointX pointY"
+                  "TaPointActivation.tryCreateV2 projectionCommitGate.LastCommitted state baseRowId hit candidates"
+                  "activationEvent.InitCustomEvent(TaPointActivation.EventNameV2, true, false, box receipt)"
                   "TaPointActivation.tryCreate projectionCommitGate.LastCommitted state baseRowId hit"
                   "activationEvent.InitCustomEvent(TaPointActivation.EventName, true, false, box receipt)"
+                  "startMainPlotDrag"
+                  "consumeMainPlotClickSuppression"
                   "target.DispatchEvent(As<Event> activationEvent)" ] do
                 Expect.stringContains source required ("missing point activation renderer contract: " + required)
 
@@ -2936,8 +2999,12 @@ let tests =
                 (preparationBody.Contains("chartRuntimeState.Value <- candidate", StringComparison.Ordinal))
                 "A pending candidate must not publish an empty runtime shell before its prepared data is ready."
             Expect.stringContains preparationBody "preparationPending.Value <- true" "Preparation must expose a pending overlay state."
+            Expect.stringContains preparationBody "initialGlobalPhase.Value" "Fresh mounting must retain an explicit GLOBAL-first phase."
             Expect.stringContains preparationBody "not staleCoverageCandidate" "A stale coverage candidate must not replace the committed frame."
             Expect.stringContains preparationBody "ProjectionCommitGate.key candidate = ProjectionCommitGate.key current" "Atomic publication must match document/data/coverage/query generation."
+            Expect.stringContains source "data-global-phase\" \"phase-1" "Phase one must expose a stable GLOBAL loading marker."
+            Expect.stringContains source "if isInitialGlobalPhase then" "Resident/detail publication must be gated by the GLOBAL-first phase."
+            Expect.stringContains source "data-renderer-body-to-pending-ms" "Renderer telemetry must measure receive-to-pending latency."
 
             Expect.stringContains source "RendererModel.tryResidentNavigatorWindow" "Resident drag math must freeze the authoritative resident-local domain."
             Expect.stringContains source "RendererModel.tryResidentCoverageWindowIntent" "A resident-local drop must map back through the typed coverage intent."

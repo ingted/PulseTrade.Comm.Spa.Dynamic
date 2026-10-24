@@ -111,6 +111,8 @@ type TaPointHitCandidate =
       EventTimeUtc: string
       TraceKind: string
       Component: string
+      ScaleKey: string
+      Value: SduiValue
       X: float
       MinimumY: float
       MaximumY: float }
@@ -132,6 +134,35 @@ type TaPointActivationReceiptV1 =
       EventTimeUtc: string
       TraceKind: string
       Component: string }
+
+type TaPointActivationSeriesValueV2 =
+    { TraceId: string
+      DataRef: string
+      TraceKind: string
+      Component: string
+      ScaleKey: string
+      Value: SduiValue }
+
+type TaPointActivationReceiptV2 =
+    { Schema: string
+      Identity: RuntimeIdentity
+      CanvasInstanceId: CanvasInstanceId
+      DocumentRevision: int64
+      DataRevision: int64
+      LastTransportSequence: int64
+      CoverageIdentity: string option
+      CoverageRevision: int64 option
+      QueryGeneration: int64 option
+      BaseRowId: string
+      RowId: string
+      TraceId: string
+      DataRef: string
+      EventTimeUtc: string
+      TraceKind: string
+      Component: string
+      ScaleKey: string
+      Value: SduiValue
+      SameTimestampSeries: TaPointActivationSeriesValueV2 array }
 
 type TaWorkSchedulingMetrics =
     { WorkCount: int
@@ -247,6 +278,12 @@ module TaPointActivation =
     let EventName = "ptcs-dynamic-ta-point-activated-v1"
 
     [<Literal>]
+    let SchemaV2 = "ta-point-activation.v2"
+
+    [<Literal>]
+    let EventNameV2 = "ptcs-dynamic-ta-point-activated-v2"
+
+    [<Literal>]
     let SurfaceAttribute = "data-ptcs-ta-point-surface"
 
     [<Literal>]
@@ -283,6 +320,50 @@ module TaPointActivation =
                   EventTimeUtc = hit.EventTimeUtc
                   TraceKind = hit.TraceKind
                   Component = hit.Component }
+
+    let tryCreateV2 lastCommitted (state: RuntimeState) baseRowId (hit: TaPointHitCandidate) (candidates: TaPointHitCandidate array) =
+        tryCreate lastCommitted state baseRowId hit
+        |> Option.bind (fun legacy ->
+            let sameTimestampSeries =
+                candidates
+                |> Array.filter (fun candidate ->
+                    candidate.RowId = hit.RowId
+                    && candidate.EventTimeUtc = hit.EventTimeUtc
+                    && not (String.IsNullOrWhiteSpace candidate.TraceId)
+                    && not (String.IsNullOrWhiteSpace candidate.DataRef)
+                    && not (String.IsNullOrWhiteSpace candidate.TraceKind)
+                    && not (String.IsNullOrWhiteSpace candidate.Component))
+                |> Array.distinctBy (fun candidate -> candidate.TraceId, candidate.DataRef, candidate.Component)
+                |> Array.map (fun candidate ->
+                    { TraceId = candidate.TraceId
+                      DataRef = candidate.DataRef
+                      TraceKind = candidate.TraceKind
+                      Component = candidate.Component
+                      ScaleKey = candidate.ScaleKey
+                      Value = candidate.Value })
+            if sameTimestampSeries.Length = 0 then
+                None
+            else
+                Some
+                    { Schema = SchemaV2
+                      Identity = legacy.Identity
+                      CanvasInstanceId = legacy.CanvasInstanceId
+                      DocumentRevision = legacy.DocumentRevision
+                      DataRevision = legacy.DataRevision
+                      LastTransportSequence = legacy.LastTransportSequence
+                      CoverageIdentity = legacy.CoverageIdentity
+                      CoverageRevision = legacy.CoverageRevision
+                      QueryGeneration = legacy.QueryGeneration
+                      BaseRowId = legacy.BaseRowId
+                      RowId = legacy.RowId
+                      TraceId = legacy.TraceId
+                      DataRef = legacy.DataRef
+                      EventTimeUtc = legacy.EventTimeUtc
+                      TraceKind = legacy.TraceKind
+                      Component = legacy.Component
+                      ScaleKey = hit.ScaleKey
+                      Value = hit.Value
+                      SameTimestampSeries = sameTimestampSeries })
 
 [<JavaScript; RequireQualifiedAccess>]
 module EditorMutationGate =
@@ -371,6 +452,34 @@ module RendererModel =
 
     [<Literal>]
     let ScheduledWorkMaximumCount = 64
+
+    [<Literal>]
+    let MainPlotDragThresholdCssPixels = 4.0
+
+    let mainPlotPanDelta visibleCount trackWidth startClientX currentClientX =
+        if
+            visibleCount <= 0
+            || trackWidth <= 0.0
+            || Double.IsNaN trackWidth
+            || Double.IsInfinity trackWidth
+            || Double.IsNaN startClientX
+            || Double.IsInfinity startClientX
+            || Double.IsNaN currentClientX
+            || Double.IsInfinity currentClientX
+        then
+            0
+        else
+            let delta = (startClientX - currentClientX) * float visibleCount / trackWidth
+            if delta >= 0.0 then
+                int (Math.Floor(delta + 0.5))
+            else
+                int (Math.Ceiling(delta - 0.5))
+
+    let mainPlotDragExceededThreshold threshold startClientX currentClientX =
+        threshold >= 0.0
+        && not (Double.IsNaN startClientX || Double.IsInfinity startClientX)
+        && not (Double.IsNaN currentClientX || Double.IsInfinity currentClientX)
+        && abs (currentClientX - startClientX) >= threshold
 
     let tryNearestPointHit clientX clientY (candidates: TaPointHitCandidate array) =
         let finite value = not (Double.IsNaN value || Double.IsInfinity value)
