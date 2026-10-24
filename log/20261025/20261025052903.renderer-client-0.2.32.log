@@ -1,0 +1,25 @@
+# Renderer / Interactive.Client 0.2.32 immutable release
+
+開始時間：2026-10-25 05:29:03 +08:00
+Owner：agent.asteer
+
+## Pre-work plan
+
+- 背景：Daedilus consumer 真驗收證實 0.2.31 曾以相同版本覆寫；其 immutable NuGet cache 仍指向較早的 package bytes，不能靠清共享 cache 掩蓋版本識別錯誤。
+- 已證實事實：final source commit `6d2f885bf94886d82443ab9ca89cbefbf6c80408`；0.2.31 新舊 package SHA 與 DLL ProductVersion 不同；consumer 已 restore 舊 0.2.31。
+- 預期不變量：每個 semantic package version 對應唯一 package bytes；Interactive.Client 必須 exact dependency Renderer 同版；不修改功能邏輯與 Dynamic wire contract；不清 consumer cache。
+- Source of truth：本 repo canonical source、兩個 project file 的 `<Version>`／exact `PackageReference`、產出 nuspec RepositoryCommit 與 SHA-256、owner test results。
+- 最早偏離點：final functional source 沿用已發佈／已 restore 的 `0.2.31`，造成 same-version overwrite。
+- 根因判定：版本識別未隨 package bytes 變更，違反 immutable package identity；NuGet cache 行為只是揭露該問題。
+- 操作：盤點 dirty/status；只將 Renderer、Interactive.Client 與對應 tests 的版本／direct dependency升至 `0.2.32`；commit/push source；以 source-identical isolated staging 執行 WebSharper Release pack；核對 nuspec、ProductVersion、SHA 與 canonical feed；用 fresh isolated package cache restore/build/test；執行 package verifier與 repo checker；交付 Daedilus。
+- 範圍：只含上述版本／依賴、必要 current docs、DevLog 與本 log；保留既有 `lib-packs.txt`、Ptcs test、`.pcsl/`、`temp/` dirty WIP。
+- 驗收：Renderer/Client package version 0.2.32、Client exact Renderer `[0.2.32]`、RepositoryCommit 指向本輪 source commit、owner tests全數通過、canonical/feed hash一致、checker FAIL=0。
+- 風險：canonical checkout 的 ignored `websharper.log` ACL 可能再次讓 wsfsc crash；若重現，僅採已驗證的 `git archive` source-identical isolated staging，不刪／不清共享 cache。
+- 停止條件：正式 handoff 已回覆，等待 Daedilus 18884 focused E2E；若 GREEN 再另批更新 consumer acceptance docs。
+
+## Operations
+
+- 2026-10-25 05:29:03 +08:00：建立 pre-work log；尚未修改 source/project files。
+- 2026-10-25 05:30 +08:00：確認 HEAD／upstream 均為 `c03df6bdacb5cf33a6a80afeff7a5ac9703b9aec`；既有 dirty 僅 `lib-packs.txt`、Ptcs test、`.pcsl/`、`temp/`，全部列為保留且不納入本輪。
+- 2026-10-25 05:30 +08:00：將 Renderer、Interactive.Client、兩個 owner test project 的版本／exact direct dependency由 0.2.31 升至 0.2.32；功能程式碼與 wire contract 未變。
+- 2026-10-25 05:31 +08:00：四個 project XML 解析成功；changed-path sensitive scan `high=0 medium=0 info=4`，Info 均為 cache／根因敘述。
