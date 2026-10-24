@@ -2504,6 +2504,48 @@ module RendererModel =
             let right = float (window.StartObservationOrdinal + int64 window.ObservationCount) / total
             clamp 0.0 1.0 left, clamp 0.0 1.0 right
 
+    let globalOverviewBootstrapValidationErrors (overview: TaGlobalCoverageOverview) =
+        if isNull (box overview) then
+            [| "overview-required" |]
+        else
+            let anchors = if isNull overview.Anchors then [||] else overview.Anchors
+            [| if overview.TotalObservationCount <= 0L then
+                   yield "total-observation-count-must-be-positive"
+               if String.IsNullOrWhiteSpace overview.AxisRef then
+                   yield "axis-ref-required"
+               if isNull overview.Anchors then
+                   yield "anchors-required"
+               if anchors.Length > TaLoadedCoverageCodec.MaximumOverviewAnchors then
+                   yield "too-many-anchors"
+               if overview.ResidentStartObservationOrdinal < 0L then
+                   yield "resident-start-must-be-non-negative"
+               if overview.ResidentObservationCount <= 0 then
+                   yield "resident-count-must-be-positive"
+               if
+                   overview.TotalObservationCount > 0L
+                   && overview.ResidentObservationCount > 0
+                   && (int64 overview.ResidentObservationCount > overview.TotalObservationCount
+                       || overview.ResidentStartObservationOrdinal
+                          > overview.TotalObservationCount - int64 overview.ResidentObservationCount)
+               then
+                   yield "resident-window-exceeds-total"
+               for index, anchor in anchors |> Array.indexed do
+                   if
+                       anchor.ObservationOrdinal < 0L
+                       || anchor.ObservationOrdinal >= overview.TotalObservationCount
+                       || String.IsNullOrWhiteSpace anchor.EventTimeUtc
+                   then
+                       yield "invalid-anchor-" + string index
+               for index in 1 .. anchors.Length - 1 do
+                   if anchors[index].ObservationOrdinal <= anchors[index - 1].ObservationOrdinal then
+                       yield "anchor-ordinal-must-increase-" + string index
+                   if anchors[index].EventTimeUtc.CompareTo(anchors[index - 1].EventTimeUtc) <= 0 then
+                       yield "anchor-time-must-increase-" + string index |]
+
+    let tryGlobalOverviewBootstrap overview =
+        let errors = globalOverviewBootstrapValidationErrors overview
+        if errors.Length = 0 then Ok overview else Error errors
+
     let previewGlobalResidentWindow totalObservationCount committed delta =
         let count = max 0 committed.ObservationCount
         let maximumStart = max 0L (totalObservationCount - int64 count)

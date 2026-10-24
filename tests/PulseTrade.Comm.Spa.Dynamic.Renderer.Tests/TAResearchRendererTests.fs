@@ -2783,10 +2783,49 @@ let tests =
                 |> Array.pairwise
                 |> Array.iter (fun (left, right) -> Expect.isGreaterThanOrEqual (right - left) 24.0 "Each GLOBAL calendar lane must keep the requested horizontal spacing."))
 
+        testCase "DYN-T-696 bootstrap accepts only a bounded actual global overview" <| fun _ ->
+            let anchor ordinal eventTime =
+                { ObservationOrdinal = ordinal
+                  EventTimeUtc = eventTime
+                  Value = SduiValue.Number(float ordinal) }
+            let valid =
+                { TotalObservationCount = 3001148L
+                  AxisRef = "research:es:1m"
+                  Anchors =
+                    [| anchor 0L "2018-01-02T14:30:00Z"
+                       anchor 1500000L "2022-01-03T14:30:00Z"
+                       anchor 3001147L "2026-10-23T20:59:00Z" |]
+                  ResidentStartObservationOrdinal = 2999648L
+                  ResidentObservationCount = 1500 }
+
+            Expect.equal
+                (RendererModel.tryGlobalOverviewBootstrap valid)
+                (Ok valid)
+                "A current-run whole-series overview must pass without creating a runtime frame."
+
+            let invalidResident =
+                { valid with
+                    ResidentStartObservationOrdinal = 3000000L
+                    ResidentObservationCount = 1500 }
+            Expect.contains
+                (RendererModel.globalOverviewBootstrapValidationErrors invalidResident)
+                "resident-window-exceeds-total"
+                "The bootstrap cannot advertise a resident interval outside the actual total."
+
+            let invalidOrder =
+                { valid with
+                    Anchors =
+                        [| anchor 10L "2026-01-02T14:30:00Z"
+                           anchor 9L "2025-01-02T14:30:00Z" |] }
+            let orderErrors = RendererModel.globalOverviewBootstrapValidationErrors invalidOrder
+            Expect.contains orderErrors "anchor-ordinal-must-increase-1" "Anchor ordinals remain canonical."
+            Expect.contains orderErrors "anchor-time-must-increase-1" "Anchor event times remain canonical."
+
         testCase "DYN-T-691 only the GLOBAL overview uses the dedicated calendar axis" <| fun _ ->
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
-            let globalStart = source.IndexOf("Attr.Create \"data-testid\" \"ta-global-overview-with-axis\"", StringComparison.Ordinal)
+            let authoritativeStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZone", StringComparison.Ordinal)
+            let globalStart = source.IndexOf("Attr.Create \"data-testid\" \"ta-global-overview-with-axis\"", authoritativeStart, StringComparison.Ordinal)
             let globalEnd = source.IndexOf("Attr.Create \"data-testid\" \"ta-resident-overview-shell\"", globalStart, StringComparison.Ordinal)
             Expect.isGreaterThan globalStart -1 "The GLOBAL overview source block must remain explicit."
             Expect.isGreaterThan globalEnd globalStart "The GLOBAL overview source block must remain bounded before RESIDENT."
@@ -2802,6 +2841,27 @@ let tests =
             let residentEnd = source.IndexOf("match currentCoverageProjection", residentStart, StringComparison.Ordinal)
             let residentBody = source.Substring(residentStart, residentEnd - residentStart)
             Expect.stringContains residentBody "timeAxisWithPalette" "RESIDENT must retain the generic event-time axis."
+
+        testCase "DYN-T-697 bootstrap renders actual GLOBAL read-only before authoritative state" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let bootstrapStart = source.IndexOf("let renderGlobalOverviewBootstrapWithDisplayTimeZone", StringComparison.Ordinal)
+            let authoritativeStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZone", bootstrapStart, StringComparison.Ordinal)
+            Expect.isGreaterThan bootstrapStart -1 "The standalone bootstrap renderer must be explicit."
+            Expect.isGreaterThan authoritativeStart bootstrapStart "The bootstrap must remain separate from authoritative RuntimeState rendering."
+            let bootstrapBody = source.Substring(bootstrapStart, authoritativeStart - bootstrapStart)
+            for required in
+                [ "\"ta-global-overview-bootstrap\""
+                  "\"ta-global-overview-with-axis\""
+                  "\"phase-1-actual\""
+                  "\"data-bootstrap-authoritative\" \"false\""
+                  "RendererModel.globalResidentSelectionRatios"
+                  "RendererModel.overviewPointsForAnchors"
+                  "globalCalendarAxisWithPalette" ] do
+                Expect.stringContains bootstrapBody required ("missing actual bootstrap contract: " + required)
+            Expect.stringContains bootstrapBody "pointer-events:none" "Bootstrap GLOBAL must be read-only."
+            Expect.isFalse (bootstrapBody.Contains("SubmitAction", StringComparison.Ordinal)) "Bootstrap cannot publish actions."
+            Expect.isFalse (bootstrapBody.Contains("RuntimeState", StringComparison.Ordinal)) "Bootstrap cannot create a fake runtime authority."
 
         testCase "adjacent coverage uses explicit document authority boundaries" <| fun _ ->
             let start0 = "2026-09-22T01:00:00Z"

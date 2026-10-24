@@ -804,7 +804,42 @@ let tests =
               Expect.isGreaterThanOrEqual
                   (source.Split("JS.RequestAnimationFrame").Length - 1)
                   3
-                  "Client must retain the pump frame and a two-frame first-paint boundary.") ]
+                  "Client must retain the pump frame and a two-frame first-paint boundary.")
+
+          testCase "DYN-T-698 GLOBAL bootstrap is ready-gated and retired by authoritative mount" (fun _ ->
+              let sourcePath =
+                  IO.Path.GetFullPath(
+                      IO.Path.Combine(
+                          __SOURCE_DIRECTORY__,
+                          "..",
+                          "..",
+                          "src",
+                          "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+                          "Client.fs"))
+              let source = IO.File.ReadAllText sourcePath
+              for required in
+                  [ "ptcs-dynamic-ta-global-overview-bootstrap.v1"
+                    "data-ptcs-dynamic-global-overview-bootstrap-ready"
+                    "data-ptcs-dynamic-global-overview-bootstrap-outcome"
+                    "RendererModel.tryGlobalOverviewBootstrap overview"
+                    "bootstrapEvent.InitCustomEvent(EventName, true, false, box envelope)"
+                    "OfferGlobalOverviewBootstrap: TaGlobalCoverageOverview -> bool"
+                    "TaWorkspaceRenderer.renderGlobalOverviewBootstrapWithDisplayTimeZone"
+                    "retireGlobalOverviewBootstrap \"authoritative-replaced\"" ] do
+                  Expect.stringContains source required ("missing GLOBAL bootstrap lifecycle contract: " + required)
+
+              let listenerIndex = source.IndexOf("JS.Document.AddEventListener(GlobalOverviewBootstrap.EventName", StringComparison.Ordinal)
+              let readyIndex = source.IndexOf("documentRoot.SetAttribute(GlobalOverviewBootstrap.ReadyAttribute, \"true\")", StringComparison.Ordinal)
+              let startIndex = source.IndexOf("handle.Start()", StringComparison.Ordinal)
+              Expect.isGreaterThan listenerIndex -1 "The versioned event listener must be installed."
+              Expect.isGreaterThan readyIndex listenerIndex "Ready cannot be advertised before the listener is installed."
+              Expect.isGreaterThan startIndex readyIndex "The actual-GLOBAL seam must be ready before the websocket start."
+
+              let bootstrapStateStart = source.IndexOf("let setBootstrapOutcome", StringComparison.Ordinal)
+              let resetStart = source.IndexOf("let resetActiveBatch", bootstrapStateStart, StringComparison.Ordinal)
+              let bootstrapStateBody = source.Substring(bootstrapStateStart, resetStart - bootstrapStateStart)
+              Expect.isFalse (bootstrapStateBody.Contains("RuntimeReducer", StringComparison.Ordinal)) "Bootstrap cannot fabricate a runtime frame or state."
+              Expect.isFalse (bootstrapStateBody.Contains("publishProjectionCommit", StringComparison.Ordinal)) "Bootstrap cannot publish an authoritative projection receipt.") ]
 
 [<EntryPoint>]
 let main argv =

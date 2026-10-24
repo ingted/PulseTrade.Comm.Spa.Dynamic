@@ -21,8 +21,44 @@ type InteractiveApplicationHandle =
       Dispose: unit -> unit
       IsDisposed: unit -> bool
       IsConnected: unit -> bool
+      OfferGlobalOverviewBootstrap: TaGlobalCoverageOverview -> bool
       GetLastProjectionCommit: unit -> RuntimeProjectionCommitReceiptV1 option
       SubscribeProjectionCommitted: (RuntimeProjectionCommitReceiptV1 -> unit) -> (unit -> unit) }
+
+[<JavaScript>]
+type TaGlobalOverviewBootstrapV1 =
+    { Schema: string
+      Overview: TaGlobalCoverageOverview }
+
+[<JavaScript; RequireQualifiedAccess>]
+module GlobalOverviewBootstrap =
+    [<Literal>]
+    let Schema = "ptcs-dynamic-ta-global-overview-bootstrap.v1"
+
+    [<Literal>]
+    let EventName = "ptcs-dynamic-ta-global-overview-bootstrap-v1"
+
+    [<Literal>]
+    let ReadyAttribute = "data-ptcs-dynamic-global-overview-bootstrap-ready"
+
+    [<Literal>]
+    let OutcomeAttribute = "data-ptcs-dynamic-global-overview-bootstrap-outcome"
+
+    let dispatch overview =
+        match RendererModel.tryGlobalOverviewBootstrap overview with
+        | Error _ -> false
+        | Ok accepted ->
+            let documentRoot = JS.Document.DocumentElement
+            if isNull documentRoot || documentRoot.GetAttribute(ReadyAttribute) <> "true" then
+                false
+            else
+                let envelope =
+                    { Schema = Schema
+                      Overview = accepted }
+                let bootstrapEvent = As<CustomEvent>(JS.Document.CreateEvent("CustomEvent"))
+                bootstrapEvent.InitCustomEvent(EventName, true, false, box envelope)
+                JS.Document.DispatchEvent(As<Event> bootstrapEvent) |> ignore
+                true
 
 [<JavaScript>]
 type RuntimeBodyTiming =
@@ -77,6 +113,9 @@ module Client =
         let mutable projectionSubscriberSequence = 0
         let mutable projectionSequence = 0L
         let mutable lastProjectionCommit: RuntimeProjectionCommitReceiptV1 option = None
+        let bootstrapOverview = Var.Create(None: TaGlobalCoverageOverview option)
+        let mutable bootstrapAccepting = true
+        let mutable removeBootstrapListener = fun () -> ()
 
         let projectionRoot () = JS.Document.GetElementById options.RootElementId
 
@@ -152,6 +191,59 @@ module Client =
                     projectionSubscribers.Remove subscriptionId |> ignore
 
         clearProjectionWatermark ()
+
+        let setBootstrapOutcome outcome =
+            let documentRoot = JS.Document.DocumentElement
+            if not (isNull documentRoot) then
+                documentRoot.SetAttribute(GlobalOverviewBootstrap.OutcomeAttribute, outcome)
+
+        let offerGlobalOverviewBootstrap overview =
+            if lifecycle.Disposed || not bootstrapAccepting then
+                false
+            else
+                match RendererModel.tryGlobalOverviewBootstrap overview with
+                | Error _ ->
+                    setBootstrapOutcome "rejected-invalid"
+                    false
+                | Ok accepted ->
+                    bootstrapOverview.Value <- Some accepted
+                    setBootstrapOutcome "accepted"
+                    true
+
+        let retireGlobalOverviewBootstrap outcome =
+            if bootstrapAccepting then
+                bootstrapAccepting <- false
+                removeBootstrapListener ()
+                let documentRoot = JS.Document.DocumentElement
+                if not (isNull documentRoot) then
+                    documentRoot.RemoveAttribute(GlobalOverviewBootstrap.ReadyAttribute)
+                    documentRoot.SetAttribute(GlobalOverviewBootstrap.OutcomeAttribute, outcome)
+
+        let bootstrapEventHandler =
+            fun (rawEvent: Event) ->
+                try
+                    let customEvent = As<CustomEvent> rawEvent
+                    let envelope = As<TaGlobalOverviewBootstrapV1> customEvent.Detail
+                    if envelope.Schema = GlobalOverviewBootstrap.Schema then
+                        offerGlobalOverviewBootstrap envelope.Overview |> ignore
+                    else
+                        setBootstrapOutcome "rejected-schema"
+                with _ ->
+                    setBootstrapOutcome "rejected-envelope"
+
+        JS.Document.AddEventListener(GlobalOverviewBootstrap.EventName, bootstrapEventHandler)
+        removeBootstrapListener <-
+            fun () -> JS.Document.RemoveEventListener(GlobalOverviewBootstrap.EventName, bootstrapEventHandler)
+
+        TaWorkspaceRenderer.renderGlobalOverviewBootstrapWithDisplayTimeZone
+            displayTimeZone
+            bootstrapOverview.View
+        |> Doc.RunById options.RootElementId
+
+        let documentRoot = JS.Document.DocumentElement
+        if not (isNull documentRoot) then
+            documentRoot.SetAttribute(GlobalOverviewBootstrap.ReadyAttribute, "true")
+            documentRoot.SetAttribute(GlobalOverviewBootstrap.OutcomeAttribute, "waiting")
 
         let resetActiveBatch () =
             activeBatch <- None
@@ -618,6 +710,7 @@ module Client =
             | _ -> ()
 
         and mount state =
+            retireGlobalOverviewBootstrap "authoritative-replaced"
             let callbacks =
                 { SubmitAction =
                     fun request ->
@@ -723,6 +816,7 @@ module Client =
 
         let dispose () =
             if not lifecycle.Disposed then
+                retireGlobalOverviewBootstrap "disposed"
                 failPendingAction "interactive-channel-disposed" "The interactive action channel was disposed."
                 removeUnloadHandler ()
                 projectionSubscribers.Clear()
@@ -740,6 +834,7 @@ module Client =
               Dispose = dispose
               IsDisposed = fun () -> lifecycle.Disposed
               IsConnected = fun () -> lifecycle.Connected
+              OfferGlobalOverviewBootstrap = offerGlobalOverviewBootstrap
               GetLastProjectionCommit = fun () -> lastProjectionCommit
               SubscribeProjectionCommitted = subscribeProjectionCommitted }
 
@@ -768,6 +863,11 @@ module Client =
 
         let dispose () =
             currentApplication |> Option.iter (fun handle -> handle.Dispose())
+
+        let offerGlobalOverviewBootstrap overview =
+            match currentApplication with
+            | Some handle when not (handle.IsDisposed()) -> handle.OfferGlobalOverviewBootstrap overview
+            | _ -> false
 
     [<SPAEntryPoint>]
     let Main () =

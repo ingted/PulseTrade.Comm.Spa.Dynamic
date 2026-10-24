@@ -2192,6 +2192,94 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create ui.CursorIndex
         renderRowReactive state ui visibleTimestamps cursor.View setCursorIndex commitCursorIndex showSharedTimeAxis row
 
+    let renderGlobalOverviewBootstrapWithDisplayTimeZone
+        (displayTimeZone: View<SduiDisplayTimeZone>)
+        (overview: View<TaGlobalCoverageOverview option>) =
+        ensureAxisResizeTracking ()
+        overview
+        |> View.Map (function
+            | None ->
+                div [
+                    Attr.Create "data-testid" "ta-global-overview-bootstrap"
+                    Attr.Create "data-global-overview-source" "bootstrap"
+                    Attr.Create "data-global-phase" "phase-1-loading"
+                    Attr.Create "data-bootstrap-authoritative" "false"
+                    attr.style "display:grid; gap:4px; min-width:0;"
+                ] [
+                    div [
+                        Attr.Create "data-testid" "ta-global-overview-loading"
+                        attr.style "height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px;"
+                    ] [
+                        strong [] [ text "GLOBAL" ]
+                        span [ attr.style "margin-left:8px;" ] [ text "Waiting for actual overview…" ]
+                    ]
+                ] :> Doc
+            | Some globalOverview ->
+                let resident: TaResidentCoverageWindow =
+                    { StartObservationOrdinal = globalOverview.ResidentStartObservationOrdinal
+                      ObservationCount = globalOverview.ResidentObservationCount }
+                let selectionWindow =
+                    Var.Create(RendererModel.globalResidentSelectionRatios globalOverview resident)
+                let globalPoints = RendererModel.overviewPointsForAnchors globalOverview.Anchors
+                let globalTimeline = globalOverview.Anchors |> Array.map _.EventTimeUtc
+                let rangeText =
+                    displayTimeZone
+                    |> View.Map (fun zone ->
+                        if globalTimeline.Length = 0 then
+                            "range unavailable"
+                        else
+                            TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[0]
+                            + " – "
+                            + TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[globalTimeline.Length - 1])
+                div [
+                    Attr.Create "data-testid" "ta-global-overview-bootstrap"
+                    Attr.Create "data-global-overview-source" "bootstrap"
+                    Attr.Create "data-global-phase" "phase-1-actual"
+                    Attr.Create "data-bootstrap-authoritative" "false"
+                    attr.style "display:grid; gap:4px; min-width:0; pointer-events:none;"
+                ] [
+                    div [
+                        Attr.Create "data-testid" "ta-global-overview-with-axis"
+                        Attr.Create "data-global-overview-source" "bootstrap"
+                        Attr.Create "data-bootstrap-authoritative" "false"
+                        Attr.Create "data-total-observation-count" (string globalOverview.TotalObservationCount)
+                        Attr.Create "data-resident-start-observation-ordinal" (string globalOverview.ResidentStartObservationOrdinal)
+                        Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
+                        attr.style "min-width:0;"
+                    ] [
+                        div [
+                            Attr.Create "data-testid" "ta-global-overview-label"
+                            attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; overflow:hidden;"
+                        ] [
+                            strong [] [ text "GLOBAL" ]
+                            span [] [
+                                textView (
+                                    rangeText
+                                    |> View.Map (fun range ->
+                                        range
+                                        + " / "
+                                        + string globalOverview.TotalObservationCount
+                                        + " total / "
+                                        + string globalOverview.ResidentObservationCount
+                                        + " resident"))
+                            ]
+                        ]
+                        globalOverviewSvgWithPalette
+                            lightPlotPalette
+                            globalPoints
+                            selectionWindow.View
+                            (fun _ -> ())
+                            (fun _ _ -> ())
+                            (fun _ -> ())
+                        globalCalendarAxisWithPalette
+                            lightPlotPalette
+                            "ta-global-overview-time-axis"
+                            "global-overview-bootstrap"
+                            globalOverview.Anchors
+                    ]
+                ] :> Doc)
+        |> Doc.EmbedView
+
     let renderWithProjectionCommitAndDisplayTimeZone
         (options: TaRendererOptions)
         (callbacks: TaRendererCallbacks)
