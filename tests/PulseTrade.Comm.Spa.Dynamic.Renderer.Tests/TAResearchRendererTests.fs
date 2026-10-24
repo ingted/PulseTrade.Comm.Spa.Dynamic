@@ -1215,6 +1215,61 @@ let tests =
                 { StartIndex = 1500; Count = 700 }
                 "Relocating the resident window keeps the inner viewport width and resident-relative offset."
 
+        testCase "DYN-T-703 main-plot grab pan relocates the resident while preserving the inner viewport" <| fun _ ->
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 1_000_000L
+                  ResidentObservationCount = 4500 }
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:main-plot-resident"
+                  CoverageRevision = 41L
+                  QueryGeneration = 8L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some overview.TotalObservationCount
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = overview.ResidentStartObservationOrdinal + 1500L
+                      ObservationCount = 700
+                      BaseAxisRef = "axis.detail" }
+                  GlobalOverview = Some overview }
+
+            let visibleCount = 1500
+            let trackLeft = 82.0
+            let trackWidth = 1000.0
+            let startClientX = trackLeft + 500.0666666667
+            let currentClientX = trackLeft + 219.9333333333
+            let anchoredDelta =
+                RendererModel.mainPlotAnchoredPanDelta
+                    visibleCount
+                    trackLeft
+                    trackWidth
+                    startClientX
+                    currentClientX
+            let startSlot = RendererModel.cursorIndexFromClientX visibleCount trackLeft trackWidth startClientX |> Option.get
+            let currentSlot = RendererModel.cursorIndexFromClientX visibleCount trackLeft trackWidth currentClientX |> Option.get
+            Expect.equal anchoredDelta 421 "Discrete slot anchoring must not lose the bar hidden by continuous-pixel rounding."
+            Expect.equal
+                (1_001_500L + int64 startSlot)
+                (1_001_500L + int64 anchoredDelta + int64 currentSlot)
+                "After relocation, the same physical pointer position must resolve to the exact down-time bar."
+
+            match RendererModel.tryMainPlotResidentRelocationIntent 120 projection with
+            | Some(draft, intent) ->
+                Expect.equal draft.StartObservationOrdinal 1_000_120L "The resident window follows the signed main-plot K-bar delta."
+                Expect.equal draft.ObservationCount 4500 "Main-plot pan preserves resident width."
+                Expect.equal intent.StartObservationOrdinal (Some 1_000_120L) "The relocation action carries the exact resident start."
+                Expect.equal intent.ObservationCount 4500 "The relocation action preserves resident width."
+                Expect.equal intent.QueryGeneration 9L "The relocation advances the frozen query generation exactly once."
+                Expect.equal
+                    (RendererModel.innerViewportAfterResidentRelocation draft.ObservationCount { StartIndex = 1500; Count = 700 })
+                    { StartIndex = 1500; Count = 700 }
+                    "The same resident-relative viewport makes the absolute visible window move by the same delta."
+            | None -> failtest "A bounded main-plot pan with GLOBAL authority must produce one resident relocation intent."
+
         testCase "global navigator authority survives an unknown loaded total" <| fun _ ->
             let globalOverview =
                 { TotalObservationCount = 2_996_994L
@@ -3095,6 +3150,10 @@ let tests =
                   "TaPointActivation.tryCreate projectionCommitGate.LastCommitted state baseRowId hit"
                   "activationEvent.InitCustomEvent(TaPointActivation.EventName, true, false, box receipt)"
                   "startMainPlotDrag"
+                  "mainPlotAnchoredPanDelta"
+                  "tryCommitMainPlotResidentPan"
+                  "data-ta-row-horizontal-cursor"
+                  "touch-action:none; user-select:none; cursor:crosshair;"
                   "consumeMainPlotClickSuppression"
                   "target.DispatchEvent(As<Event> activationEvent)" ] do
                 Expect.stringContains source required ("missing point activation renderer contract: " + required)

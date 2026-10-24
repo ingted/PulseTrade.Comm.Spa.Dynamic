@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-25 真 main pointer resident pan 與 row-local horizontal cursor（DYN-WBS-596）
+
+0.2.33 真 mouse 已證 pointerdown／move／up lifecycle 正常；最早 semantic 偏離是 GLOBAL authority 存在時仍只改 inner visible window。結果是 local visible `0->420`，resident `2994894+2100` 不動，違反「content 左移 n 根時 resident 與 absolute visible 同步 `+n`」；正確 authority 已存在於 `ResidentCoverageChanged`，不需要新增 wire。
+
+同一物理 X 的 anchor 另漂一根 5K。原因是 pan 對 continuous pixel distance 四捨五入，hover/cursor 卻對 down/current ratio 各自 floor 成離散 slot；fractional slot 下兩者會差一根。新不變量直接寫成 `oldAbsoluteStart + downSlot = newAbsoluteStart + currentSlot`。水平 cursor 是 row-local pointer presentation，只顯示 hovered row、跟隨該 SVG 的 Y、leave 隱藏；shared vertical cursor、server cursor action與資料 authority不變。
+
 ## 2026-10-25 主圖 exact pan、雙側 Y 軸與 authoritative GLOBAL lifecycle（DYN-WBS-594 / 595）
 
 真 18884 把主圖跳動縮到兩個連續偏離點：`mainPlotPanDelta` 已算出實際跨越的 K-bar 數，但 boundary dispatch 改用整頁 `currentStart +/- visibleCount`；coverage 擴張回傳後又把 local `StartIndex` 固定為 0。0.2.31 改為送 `currentStart + delta`、保持 visible count，並只在回傳 active interval 完整包含 requested window 時，以 `requestedStart - returnedActiveStart` 重定位。這與 navigator resize／page gesture 分離，後者語意不變。

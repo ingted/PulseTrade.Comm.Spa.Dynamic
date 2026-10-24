@@ -934,6 +934,9 @@ let verifyDesktop (browser: IBrowser) =
     let crosshairs = page.Locator("[data-testid$='-crosshair']")
     require ((crosshairs.CountAsync() |> awaitTask) = 7) "every visible row must mount one stable crosshair overlay"
     require ((page.Locator("[data-testid$='-crosshair'][visibility='hidden']").CountAsync() |> awaitTask) = 7) "crosshair overlays must remain hidden before pointer movement"
+    let horizontalCursors = page.Locator("[data-ta-row-horizontal-cursor='true']")
+    require (horizontalCursors.CountAsync() |> awaitTask = 7) "every visible TA row must expose one row-local horizontal cursor"
+    require ((page.Locator("[data-ta-row-horizontal-cursor='true'][visibility='hidden']").CountAsync() |> awaitTask) = 7) "horizontal cursors must remain hidden before pointer movement"
     let rowTimeAxes = page.Locator("[data-time-axis-row-id]:not([data-time-axis-row-id='overview'])")
     require ((rowTimeAxes.CountAsync() |> awaitTask) = 7) "every visible row must mount its own event-time axis"
     for axisIndex in 0 .. 6 do
@@ -1250,6 +1253,16 @@ let verifyDesktop (browser: IBrowser) =
     require (smaLegendValueAfterCursor <> "Undef") "cursor movement must update the existing row legend value node"
     printfn "browser.cursor-first-update hostRoundTrip=%dms diagnosticOnly=true" cursorLatency.ElapsedMilliseconds
     require ((page.Locator("[data-testid$='-crosshair'][visibility='visible']").CountAsync() |> awaitTask) = 7) "pointer movement on one row must reveal one shared crosshair in every visible row"
+    let priceHorizontalCursor = page.Locator("[data-ta-row-horizontal-cursor-row-id='price']")
+    waitForAttributeValue priceHorizontalCursor "visibility" "visible"
+    require ((page.Locator("[data-ta-row-horizontal-cursor='true'][visibility='visible']").CountAsync() |> awaitTask) = 1) "only the hovered TA row may reveal a horizontal cursor"
+    let horizontalYBefore = attributeOrEmpty priceHorizontalCursor "y1"
+    require (horizontalYBefore <> "0" && attributeOrEmpty priceHorizontalCursor "y2" = horizontalYBefore) "row-local horizontal cursor must publish one non-zero Y coordinate"
+    page.Mouse.MoveAsync(activePointerBox.X + activePointerBox.Width / 2.0f, activePointerBox.Y + activePointerBox.Height * 0.75f) |> awaitUnit
+    let horizontalYAfter = waitForAttributeChange priceHorizontalCursor "y1" horizontalYBefore
+    require (attributeOrEmpty priceHorizontalCursor "y2" = horizontalYAfter) "horizontal cursor endpoints must follow the same pointer Y"
+    page.Mouse.MoveAsync(activePointerBox.X - 4.0f, activePointerBox.Y + activePointerBox.Height * 0.75f) |> awaitUnit
+    waitForAttributeValue priceHorizontalCursor "visibility" "hidden"
     let crosshairPositions =
         page.Locator("[data-testid$='-crosshair']").AllAsync()
         |> awaitTask

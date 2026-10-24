@@ -2591,6 +2591,21 @@ module RendererModel =
                     window.StartObservationOrdinal
                     window.ObservationCount)
 
+    let tryMainPlotResidentRelocationIntent delta projection =
+        match projection.GlobalOverview, tryGlobalResidentWindow projection with
+        | Some overview, Some committed ->
+            let draft =
+                previewGlobalResidentWindow
+                    overview.TotalObservationCount
+                    committed
+                    (int64 delta)
+            if draft = committed then
+                None
+            else
+                tryGlobalResidentRelocationIntent projection draft
+                |> Option.map (fun intent -> draft, intent)
+        | _ -> None
+
     let globalResidentProjectionMatches intent projection =
         match intent.ExpectedCoverageRevision, intent.StartObservationOrdinal, projection.GlobalOverview with
         | Some expectedRevision, Some targetStart, Some overview ->
@@ -3180,6 +3195,14 @@ module RendererModel =
     let cursorIndexFromClientX visibleCount left width clientX =
         if width <= 0.0 then None
         else cursorIndexFromRatio visibleCount ((clientX - left) / width)
+
+    let mainPlotAnchoredPanDelta visibleCount trackLeft trackWidth startClientX currentClientX =
+        match
+            cursorIndexFromClientX visibleCount trackLeft trackWidth startClientX,
+            cursorIndexFromClientX visibleCount trackLeft trackWidth currentClientX
+        with
+        | Some startIndex, Some currentIndex -> startIndex - currentIndex
+        | _ -> 0
 
     let selectWindow window (values: 'T array) =
         if window.Count <= 0 || values.Length = 0 then [||]

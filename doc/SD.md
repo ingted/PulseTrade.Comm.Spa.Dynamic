@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-25 0.2.36 resident grab-pan／discrete anchor seam（DYN-WBS-596）
+
+`RendererModel.mainPlotAnchoredPanDelta`用既有`cursorIndexFromClientX`分別解析 down/current slot，再回傳`downSlot-currentSlot`；不再用連續距離 round。`tryMainPlotResidentRelocationIntent`以 signed delta 移動固定寬 resident，沿用 coverage revision/query generation guard。Renderer 的 main-plot release 在 validated GLOBAL 且允許`resident-coverage-changed`時送`ResidentCoverageChanged`並保持 inner viewport resident-relative offset；pending draft維持視覺位置，authoritative projection settle時一起清除。無 GLOBAL／未授權該action時仍走既有 local/adjacent pan，不改 toolbar與navigator語意。
+
+每個 row SVG 有一條`data-ta-row-horizontal-cursor='true'`的`pointer-events:none` line。row mousemove將 client Y換算為該SVG viewBox Y並只顯示自身 line；mouseleave隱藏。主plot宣告`touch-action:none; user-select:none; cursor:crosshair`，gesture down阻止browser default/冒泡，但仍以document listeners持有既有正常的pointer lifecycle。focused browser gate以真Mouse驗resident／absolute visible同delta、inner offset不變、exact anchor與horizontal cursor row isolation。
+
 ## 2026-10-25 0.2.31–0.2.33 exact viewport／axis／lifecycle seams（DYN-WBS-594 / 595）
 
 `RendererModel.tryMainPlotPanCoverageIntent`由 committed active start、local window及 signed drag delta產生 exact `TaCoverageWindowIntent`；`ObservationCount`不變，只有實際 start 改變才送 direction。`tryCoverageIntentReanchorWindow`驗 returned active interval containment，成功時回 `{ StartIndex = requestedStart - returnedActiveStart; Count = requestedCount }`，避免 resident 1500→3000／4500後 viewport落在 index 0；不完整回傳不會 settle pending pan。既有`tryAdjacentCoverageIntent`只留給整頁相鄰導航。

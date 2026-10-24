@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-25 DYN-T-703 / 704（final 0.2.36）
+
+- DYN-T-703：pure model 驗 main plot resident relocation保持4500 resident width、query generation只前進一次；以 fractional CSS positions 造成舊continuous round與slot floor差一根的反例，要求`downSlot-currentSlot=421`並證`oldAbsoluteStart+downSlot = newAbsoluteStart+currentSlot`。
+- DYN-T-704：`scripts/verify-ta-main-plot-grab-pan-playwright.fsx`在GLOBAL 10,000／resident 1,500／visible 700 fixture執行真mouse down/move/up；驗exact-one `ResidentCoverageChanged`、delta=140、resident `3000->3140`、resident-relative visible=801不變、absolute visible `3801->3941`、same physical pointer anchor不漂。另驗所有row初始horizontal cursor hidden、hover僅單row visible、Y跟pointer、leave hidden、console error=0與實際截圖。
+- 0.2.34 development candidate 的水平線testid誤以`-crosshair`結尾，完整renderer gate命中14而非既有7條shared crosshair；0.2.35修正後通過package-backed Renderer 95/95、Interactive.Client 19/19、package verifier與focused真mouse 1/1，但兩版prefinal皆已物化至SDK feed，故一律withdrawn且不得同版覆寫。正式immutable交付改為0.2.36，待source commit後一次性寫入RepositoryCommit並repack。完整renderer gate已通過本輪crosshair-count/horizontal assertions，之後停在既有矛盾：source自2026-10-21要求navigator hit rect `pointer-events=all`，verifier自2026-09-28仍期待`none`；不越界改舊契約。Final 0.2.36 hash與Daedilus真consumer acceptance pending。
+
 ## 2026-10-25 DYN-T-699 / 700 / 701 / 702（0.2.33）
 
 - DYN-T-699：主圖 boundary pan 對 250-visible fixture 驗 signed delta `-10/+10`只移 exact 10 bars且 count 保持250；真例 resident 擴成3000時，requested 2,995,074、returned start 2,993,994 必須重定位 local 1,080／count 1,500；未完整包含requested window則不得settle。

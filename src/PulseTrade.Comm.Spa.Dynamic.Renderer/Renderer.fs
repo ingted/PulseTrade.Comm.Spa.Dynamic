@@ -1842,6 +1842,24 @@ module TaWorkspaceRenderer =
 
                 scheduleValueRefresh ())
 
+        let mutable horizontalCursorElement: Element = null
+
+        let hideHorizontalCursor () =
+            if not (isNull horizontalCursorElement) then
+                horizontalCursorElement.SetAttribute("visibility", "hidden")
+
+        let updateHorizontalCursor (element: Element) (event: MouseEvent) =
+            let bounds = element.GetBoundingClientRect()
+            if bounds.Height > 0.0 && not (isNull horizontalCursorElement) then
+                let pointerY =
+                    (float event.ClientY - float bounds.Top) * height / float bounds.Height
+                    |> max 0.0
+                    |> min height
+                    |> fixedText
+                horizontalCursorElement.SetAttribute("y1", pointerY)
+                horizontalCursorElement.SetAttribute("y2", pointerY)
+                horizontalCursorElement.SetAttribute("visibility", "visible")
+
         let plotSurface =
             (svgElement "svg" [
             svgAttr "viewBox" ("0 0 1000 " + fixedText height)
@@ -1853,13 +1871,15 @@ module TaWorkspaceRenderer =
             Attr.Create "data-ptcs-ta-point-row-id" rowId
             Attr.Create "data-plot-surface-theme" palette.ThemeName
             Attr.Create "data-point-count" (string referenceTimestamps.Length)
-            Attr.Dynamic "style" (chartPixelHeight.View |> View.Map (fun value -> "display:block; width:100%; height:" + string value + "px; background:" + palette.Surface + ";"))
+            Attr.Dynamic "style" (chartPixelHeight.View |> View.Map (fun value -> "display:block; width:100%; height:" + string value + "px; background:" + palette.Surface + "; touch-action:none; user-select:none; cursor:crosshair;"))
             Attr.Handler "pointerdown" (fun element event -> onMainPlotPointerDown (element |> As<Element>) event)
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
+                updateHorizontalCursor (element |> As<Element>) event
                 match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
                 | Some index -> setCursorIndex (Some index)
                 | None -> ())
+            on.mouseLeave (fun _ _ -> hideHorizontalCursor ())
             on.click (fun element event ->
                 if not (consumeMainPlotClickSuppression ()) then
                     let bounds = element.GetBoundingClientRect()
@@ -1954,6 +1974,23 @@ module TaWorkspaceRenderer =
                     svgAttr "stroke-width" "1"
                     svgAttr "stroke-dasharray" "3 3"
                     svgAttr "pointer-events" "none"
+                ] []
+
+            yield
+                svgElement "line" [
+                    Attr.Create "data-testid" (svgTestId + "-horizontal-cursor")
+                    Attr.Create "data-ta-row-horizontal-cursor" "true"
+                    Attr.Create "data-ta-row-horizontal-cursor-row-id" rowId
+                    svgAttr "x1" "0"
+                    svgAttr "x2" "1000"
+                    svgAttr "y1" "0"
+                    svgAttr "y2" "0"
+                    svgAttr "visibility" "hidden"
+                    svgAttr "stroke" palette.Cursor
+                    svgAttr "stroke-width" "1"
+                    svgAttr "stroke-dasharray" "3 3"
+                    svgAttr "pointer-events" "none"
+                    on.afterRender (fun node -> horizontalCursorElement <- node |> As<Element>)
                 ] []
 
             ])
@@ -3017,6 +3054,7 @@ module TaWorkspaceRenderer =
             if pendingGlobalResidentIntent = Some intent then
                 pendingGlobalResidentIntent <- None
                 globalResidentDraft.Value <- None
+                draftWindow.Value <- None
 
         let settleGlobalResidentProjection (next: RuntimeState) =
             match pendingGlobalResidentIntent, next.Document with
@@ -3264,6 +3302,35 @@ module TaWorkspaceRenderer =
                 let followLatest = candidate.StartIndex = RendererModel.viewportMaximumStart total candidate
                 setWindow followLatest candidate
 
+        let tryCommitMainPlotResidentPan delta =
+            match runtimeState.Value.Document with
+            | Some document when actionAllowed "resident-coverage-changed" ->
+                match document.BaseRowId, RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
+                | Some baseRowId, Some projection when projection.GlobalOverview.IsSome ->
+                    if pendingGlobalResidentIntent.IsSome || commandsDisabledNow () || not preparedRowsReady.Value then
+                        draftWindow.Value <- None
+                        setUiState { uiState.Value with Feedback = "Resident coverage relocation is not ready." }
+                    else
+                        match RendererModel.tryMainPlotResidentRelocationIntent delta projection with
+                        | Some(draft, intent) ->
+                            globalResidentDraft.Value <- Some draft
+                            pendingGlobalResidentIntent <- Some intent
+                            startActionWith
+                                (SduiAction.ResidentCoverageChanged(currentCanvasId (), baseRowId, intent))
+                                "Resident coverage relocation requested."
+                                ignore
+                                (fun () -> clearGlobalResidentIntent intent)
+                        | None ->
+                            globalResidentDraft.Value <- None
+                            draftWindow.Value <- None
+                    true
+                | _ -> false
+            | _ -> false
+
+        let commitMainPlotPan delta =
+            if not (tryCommitMainPlotResidentPan delta) then
+                panWindow delta
+
         let consumeMainPlotClickSuppression () =
             let suppress = suppressNextMainPlotClick
             suppressNextMainPlotClick <- false
@@ -3281,6 +3348,8 @@ module TaWorkspaceRenderer =
                 let bounds = plotRoot.GetBoundingClientRect()
                 let committed = resolvedWindow uiState.Value
                 if bounds.Width > 0.0 && committed.Count > 0 then
+                    event.PreventDefault()
+                    event.StopPropagation()
                     let startClientX = float event.ClientX
                     let mutable latestClientX = startClientX
                     let mutable latestDelta = 0
@@ -3306,7 +3375,12 @@ module TaWorkspaceRenderer =
                         let mouse = pointerEvent :?> MouseEvent
                         latestClientX <- float mouse.ClientX
                         latestDelta <-
-                            RendererModel.mainPlotPanDelta committed.Count bounds.Width startClientX latestClientX
+                            RendererModel.mainPlotAnchoredPanDelta
+                                committed.Count
+                                bounds.Left
+                                bounds.Width
+                                startClientX
+                                latestClientX
                         moved <-
                             moved
                             || RendererModel.mainPlotDragExceededThreshold
@@ -3344,7 +3418,7 @@ module TaWorkspaceRenderer =
                             suppressNextMainPlotClick <- true
                             JS.SetTimeout (fun () -> suppressNextMainPlotClick <- false) 250 |> ignore
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "committed")
-                            panWindow latestDelta
+                            commitMainPlotPan latestDelta
                         else
                             draftWindow.Value <- None
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "click")
@@ -3363,6 +3437,7 @@ module TaWorkspaceRenderer =
                     finishMainPlotDrag <- Some finish
                     cancelMainPlotDrag <- Some cancel
                     plotRoot.SetAttribute("data-main-plot-drag-outcome", "tracking")
+                    plotRoot.SetAttribute("data-main-plot-drag-capture", "document")
                     (plotRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
                     JS.Document.AddEventListener("pointermove", moveHandler)
                     JS.Document.AddEventListener("pointerup", upHandler)

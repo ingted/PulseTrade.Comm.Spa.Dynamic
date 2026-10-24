@@ -1,0 +1,28 @@
+# Real pointer pan / row cursor
+
+## Pre-work plan
+
+- 背景：Daedilus 回報 `0.2.33` 真 mouse drag 無法移動主 TA 圖，並要求滑鼠所在 row 顯示跟隨 pointer Y 的水平 cursor line。
+- 已證實：`RendererModel.mainPlotPanDelta` 與 `panWindow` 的符號符合「content 左移、time window 右移」；現有 main plot 只測 pure delta／source seam，未以真 pointer down/move/up 驗收。
+- 不變量：down 錨定資料 T；左移 n 根後 resident 與 visible 都精確 `+n`，重繪後 pointer 下的 data time 仍為 T；垂直 shared cursor、點擊 activation、navigator、wire／loader 不退化。
+- Source of truth：Daedilus 真實 consumer RED；owner source `Renderer.fs`／`RendererModel.fs`；Renderer Expecto 與真 BrowserDemo Playwright。
+- 範圍：Renderer 主 plot pointer lifecycle、row-local horizontal cursor overlay、對應 tests；若需 package，Renderer 與 Interactive.Client 以新的 immutable stable patch version exact 對齊。
+- 排除：consumer 程式、wire contract、loader、既有 unrelated dirty paths。
+- 步驟：取得 exact RED evidence；以最小 browser test 重現；修最早 pointer lifecycle 偏離點；補 row cursor geometry gate；跑 focused/full owner tests、browser gate、exact package consumer tests。
+- 停止條件：owner 與 Daedilus consumer 的真 pointer contract 綠，且 package/hash/版本與文件完成；若 evidence 指向 consumer hit target，回交 consumer owner，不越界改碼。
+- 風險：reactive draft 可能替換 SVG；pointer ownership、default browser drag、click suppression 與 row-local overlay 必須一起驗。
+
+## Operations
+
+- 2026-10-25 06:40 +08:00：啟動 `agent.asteer` 固定 60 秒 background COMM watcher；狀態 `Running=true`、`ContinuousHandoff=true`。
+- 2026-10-25 06:41 +08:00：定位 main plot seam。計算方向正確；pointerdown 後使用 document-level move/up/cancel，但 down 未 PreventDefault、未 pointer capture／pointer-id ownership，SVG 未宣告 `touch-action:none`／`user-select:none`。
+- 2026-10-25 06:41 +08:00：以 `replyToMessageId=msg-fsi-90ec3f83d24c4d558946d6b0c30391de` 回覆 Daedilus preliminary scope，請提供 real-mouse RED 的 geometry、drag attributes 與 viewport/resident start。
+- 2026-10-25 06:42 +08:00：確認 branch HEAD/upstream 均為 `4711c57708e316f5c10c652340c7c23a47ba8705`；既有 unrelated dirty 為 `lib-packs.txt`、Ptcs test `Program.fs`、`.pcsl/`、`temp/`，本輪不碰。
+- 2026-10-25 06:47 +08:00：Daedilus 真 DMI 5K mouse gate 證實 pointer lifecycle 正常；outcome=`committed`、delta=`+420`，resident `2994894+2100` 不動、local visible `0->420`。同 physical pointer X 的 canonical anchor `22:34->22:29`，反證 continuous rounding 與 discrete cursor slot 不一致。
+- 2026-10-25 06:47 +08:00：DYN-T-703 先 RED。Package-backed test compile 明確缺 `tryMainPlotResidentRelocationIntent`；其餘二級型別錯誤源自缺失函式的推斷，不是 baseline failure。
+- 2026-10-25 06:48 +08:00：最小 source 修正進行中：GLOBAL authority 的 main grab-pan 改送 resident relocation並保留 inner offset；delta 改為 down/current discrete slot 差；row SVG 新增 row-local horizontal cursor，mousemove 更新 Y、mouseleave hide。
+- 2026-10-25 06:56 +08:00：0.2.34 focused真browser PASS：delta140、resident3000→3140、absolute visible3801→3941、local801與anchor不變；horizontal單row/Y/leave及console全PASS。完整gate隨即抓到新testid以`-crosshair`結尾，使既有selector命中14而非7；0.2.34 candidate退役且不覆寫。
+- 2026-10-25 07:04 +08:00：0.2.35改用`-horizontal-cursor`。完整WebSharper pack、Renderer95/95、Client19/19、package verifier、focused browser全PASS。完整renderer gate通過本輪selector後停於既有navigator hit rect source=`pointer-events=all`、verifier=`none`矛盾（兩者皆早於本輪），記baseline WARN且不越界修。
+- 2026-10-25 07:06 +08:00：確認0.2.35 development candidate也已物化到SDK feed；為保持package identity immutable，0.2.34／0.2.35皆withdrawn且不覆寫，正式版本改0.2.36。已用exact replyToMessageId告知Daedilus等待source commit後的一次性RepositoryCommit final repack/hash。
+- 2026-10-25 07:08 +08:00：raw BOM檢查的`git cat-file`探針因redirected stream未完整drain而留下本輪process tree（pwsh 40560／git 15340、35808），並鎖住guard capture pair。以Win32_Process核對exact command line後只停止上述三個本輪PID；`Read-CodexStdout`隨後恢復。改用working-tree strict UTF-8 gate並保留兩個既有fsproj BOM，不再沿用該探針。
+- 2026-10-25 07:11 +08:00：pre-commit sensitive scan為High=0／Medium=0；17個owned文字檔strict UTF-8、NUL/U+FFFD皆0，兩個producer fsproj保留HEAD既有UTF-8 BOM。核對後停止本輪0.2.35 staging BrowserDemo exact PIDs 39036／16188，未影響其他process。
