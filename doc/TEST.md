@@ -5,6 +5,7 @@
 - DYN-T-690：對0.2.27 package把完整年度fixture縮為900px並要求45筆mandatory ticks，先得到actual 27、88/89的修前RED。0.2.28驗2019–2025每年`YYYY/03/06/09/12`、900px全45筆保留、80px compact viewport不drop、同anchor year＋03占不同numeric lane、同月首anchor dedupe、same-year narrow domain、label無`HH:mm`、canonical timestamp未改，並按numeric lane逐一驗至少24px horizontal spacing。
 - DYN-T-691：source contract限定GLOBAL使用dedicated calendar axis／`GlobalOverview.Anchors`、dynamic tick lane、lane-count metadata與動態axis高度；RESIDENT仍使用generic `timeAxisWithPalette`，避免把全域格式變成一般軸全域規則。
 - committed-source 0.2.28 final package-backed：Renderer 89/89、Interactive.Client 16/16 passed，均0 ignored/failed/errored；兩個isolated NuGet cache nupkg SHA與final source package逐byte相同。Research 18884真3M 900px／1600px、geometry與navigator互動由Daedalus重驗，不以unit冒充UI。
+- consumer acceptance（Daedalus，2026-10-24）：package SHA與DLL ProductVersion `0.2.28+51fe2b43928901778ecdda6133d3ad77c95441f1`一致；1600px為43 ticks／2 lanes、900px為43 ticks／3 lanes，2019–2025完整`YYYY/03/06/09/12`，missing／invalid／browserErrors空、chronological／per-lane nonOverlap true且視覺無`HH:mm`或overlap。Navigator真2,996,994筆、resident 1500、relocation actions 1、atomicSamples 1358／gaps 0，oldest `0+1500`、latest `2995494+1500`與timestamps exact；TAGGING KBar 1K/5K/30K/60K及SMA/DMI/MACD official editor皆status 200/editor true。外部真路徑證據：`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\global-calendar-axis-0.2.28-1600\`、`global-calendar-axis-0.2.28-900\`、`global-strip-contract-0.2.28\`、`tagging-scale-matrix-0.2.28\`。
 
 ## 2026-10-24 DYN-T-687 / 688 / 689 datapoint activation
 
