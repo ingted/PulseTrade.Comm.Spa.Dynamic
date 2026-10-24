@@ -72,6 +72,83 @@ let tests =
                 committedGate.LastCommitted
                 "deduplication must preserve the committed watermark"
 
+        testCase "DYN-T-687 point hit selection uses rendered x/y geometry and stable trace identity" <| fun _ ->
+            let candidate traceId dataRef eventTime traceKind component x minimumY maximumY =
+                { RowId = "row-main"
+                  TraceId = traceId
+                  DataRef = dataRef
+                  EventTimeUtc = eventTime
+                  TraceKind = traceKind
+                  Component = component
+                  X = x
+                  MinimumY = minimumY
+                  MaximumY = maximumY }
+
+            let candle = candidate "price" "series.price" "2026-10-24T01:00:00Z" "CANDLESTICK" "BAR" 100.0 30.0 70.0
+            let line = candidate "sma" "series.sma" "2026-10-24T01:00:00Z" "LINE" "POINT" 100.0 82.0 82.0
+            let later = candidate "later" "series.later" "2026-10-24T01:01:00Z" "LINE" "POINT" 140.0 50.0 50.0
+
+            Expect.equal
+                (RendererModel.tryNearestPointHit 101.0 50.0 [| candle; line; later |])
+                (Some candle)
+                "a click inside the rendered candle range selects BAR"
+            Expect.equal
+                (RendererModel.tryNearestPointHit 101.0 81.0 [| candle; line; later |])
+                (Some line)
+                "y distance distinguishes a line point at the same canonical x"
+            Expect.equal
+                (RendererModel.tryNearestPointHit 139.0 50.0 [| candle; line; later |])
+                (Some later)
+                "x distance selects the nearest rendered canonical point"
+            Expect.isNone
+                (RendererModel.tryNearestPointHit Double.NaN 50.0 [| candle |])
+                "non-finite browser geometry cannot produce an activation"
+
+        testCase "DYN-T-688 point activation emits only for the committed projection key" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "tagging-document"
+                  CanvasInstanceId = CanvasInstanceId "tagging-canvas" }
+            let state revision =
+                { RuntimeReducer.initial identity with
+                    DocumentRevision = 7L
+                    DataRevision = revision
+                    LastTransportSequence = revision + 10L }
+            let committedState = state 11L
+            let gate, generation = ProjectionCommitGate.beginCandidate committedState ProjectionCommitGate.initial
+            let committedGate, committed = ProjectionCommitGate.tryCommit committedState generation committedState gate
+            Expect.isSome committed "the test projection must commit"
+            let hit =
+                { RowId = "row-main"
+                  TraceId = "price"
+                  DataRef = "series.price"
+                  EventTimeUtc = "2026-10-24T01:00:00Z"
+                  TraceKind = "CANDLESTICK"
+                  Component = "BAR"
+                  X = 100.0
+                  MinimumY = 30.0
+                  MaximumY = 70.0 }
+
+            let receipt = TaPointActivation.tryCreate committedGate.LastCommitted committedState "row-main" hit
+            Expect.isSome receipt "the current committed projection may publish a point activation"
+            let value = receipt.Value
+            Expect.equal value.Schema TaPointActivation.Schema "the browser-local contract is explicitly versioned"
+            Expect.equal value.Identity identity "canvas/document identity comes from the committed snapshot"
+            Expect.equal value.DataRevision 11L "the receipt carries the committed data revision"
+            Expect.equal value.BaseRowId "row-main" "the canonical base row is explicit"
+            Expect.equal value.RowId hit.RowId "the clicked row is explicit"
+            Expect.equal value.TraceId hit.TraceId "trace identity is stable"
+            Expect.equal value.DataRef hit.DataRef "Research resolves the point from stable dataRef/eventTime"
+            Expect.equal value.EventTimeUtc hit.EventTimeUtc "event time is the candidate timestamp, not a viewport index"
+            Expect.equal value.Component "BAR" "candlestick activation has the BAR component"
+            Expect.isNone
+                (TaPointActivation.tryCreate committedGate.LastCommitted (state 12L) "row-main" hit)
+                "a newer uncommitted runtime state cannot reuse the old commit key"
+            Expect.isNone
+                (TaPointActivation.tryCreate None committedState "row-main" hit)
+                "an uncommitted chart cannot publish"
+            let fieldNames = typeof<TaPointActivationReceiptV1>.GetProperties() |> Array.map _.Name |> Set.ofArray
+            Expect.isFalse (Set.contains "VisibleIndex" fieldNames) "the public receipt must not leak viewport index identity"
+
         testCase "visible K-bar domain ignores remote extrema and keeps fixed CSS padding after resize" <| fun _ ->
             let fullSourceBounds = Some(5.0, 104.0)
             let visibleBounds = Some(100.0, 104.0)
@@ -2638,6 +2715,27 @@ let tests =
 
             for forbidden in [ "JS.Inline"; "JavaScriptExport"; "<script"; "eval(" ] do
                 Expect.isFalse (source.Contains(forbidden, StringComparison.Ordinal)) ("forbidden source escape hatch: " + forbidden)
+
+        testCase "DYN-T-689 renderer publishes the separate browser-local point activation contract" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+
+            for required in
+                [ "Attr.Create TaPointActivation.SurfaceAttribute \"true\""
+                  "RendererModel.tryNearestPointHit pointX pointY"
+                  "TaPointActivation.tryCreate projectionCommitGate.LastCommitted state baseRowId hit"
+                  "activationEvent.InitCustomEvent(TaPointActivation.EventName, true, false, box receipt)"
+                  "target.DispatchEvent(As<Event> activationEvent)" ] do
+                Expect.stringContains source required ("missing point activation renderer contract: " + required)
+
+            let activationStart = source.IndexOf("let publishPointActivation", StringComparison.Ordinal)
+            let editorStart = source.IndexOf("let selectedEditorSchema", activationStart, StringComparison.Ordinal)
+            Expect.isGreaterThan activationStart -1 "The browser-local activation publisher must exist."
+            Expect.isGreaterThan editorStart activationStart "The activation publisher must have a bounded source range."
+            let activationBody = source.Substring(activationStart, editorStart - activationStart)
+            Expect.isFalse
+                (activationBody.Contains("SharedCursorChanged", StringComparison.Ordinal))
+                "Tagging activation must not reuse the shared cursor server action."
 
         testCase "navigator semantic hit targets survive reactive SVG replacement" <| fun _ ->
             let source =

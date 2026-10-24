@@ -104,6 +104,35 @@ type TaPreparedRendererData =
       ResolvedAxes: Map<string, TaPreparedTemporalAxis>
       ResolvedSeries: Map<string, TaResolvedSeriesPoint array> }
 
+type TaPointHitCandidate =
+    { RowId: string
+      TraceId: string
+      DataRef: string
+      EventTimeUtc: string
+      TraceKind: string
+      Component: string
+      X: float
+      MinimumY: float
+      MaximumY: float }
+
+type TaPointActivationReceiptV1 =
+    { Schema: string
+      Identity: RuntimeIdentity
+      CanvasInstanceId: CanvasInstanceId
+      DocumentRevision: int64
+      DataRevision: int64
+      LastTransportSequence: int64
+      CoverageIdentity: string option
+      CoverageRevision: int64 option
+      QueryGeneration: int64 option
+      BaseRowId: string
+      RowId: string
+      TraceId: string
+      DataRef: string
+      EventTimeUtc: string
+      TraceKind: string
+      Component: string }
+
 type TaWorkSchedulingMetrics =
     { WorkCount: int
       TurnCount: int
@@ -203,6 +232,52 @@ module ProjectionCommitGate =
         | _ -> gate, None
 
 [<JavaScript; RequireQualifiedAccess>]
+module TaPointActivation =
+    [<Literal>]
+    let Schema = "ta-point-activation.v1"
+
+    [<Literal>]
+    let EventName = "ptcs-dynamic-ta-point-activated-v1"
+
+    [<Literal>]
+    let SurfaceAttribute = "data-ptcs-ta-point-surface"
+
+    [<Literal>]
+    let SurfaceSelector = "[data-ptcs-ta-point-surface='true']"
+
+    let tryCreate lastCommitted (state: RuntimeState) baseRowId (hit: TaPointHitCandidate) =
+        let current = ProjectionCommitGate.key state
+        if
+            lastCommitted <> Some current
+            || String.IsNullOrWhiteSpace baseRowId
+            || String.IsNullOrWhiteSpace hit.RowId
+            || String.IsNullOrWhiteSpace hit.TraceId
+            || String.IsNullOrWhiteSpace hit.DataRef
+            || String.IsNullOrWhiteSpace hit.EventTimeUtc
+            || String.IsNullOrWhiteSpace hit.TraceKind
+            || String.IsNullOrWhiteSpace hit.Component
+        then
+            None
+        else
+            Some
+                { Schema = Schema
+                  Identity = state.Identity
+                  CanvasInstanceId = state.Identity.CanvasInstanceId
+                  DocumentRevision = state.DocumentRevision
+                  DataRevision = state.DataRevision
+                  LastTransportSequence = state.LastTransportSequence
+                  CoverageIdentity = current.CoverageIdentity
+                  CoverageRevision = current.CoverageRevision
+                  QueryGeneration = current.QueryGeneration
+                  BaseRowId = baseRowId
+                  RowId = hit.RowId
+                  TraceId = hit.TraceId
+                  DataRef = hit.DataRef
+                  EventTimeUtc = hit.EventTimeUtc
+                  TraceKind = hit.TraceKind
+                  Component = hit.Component }
+
+[<JavaScript; RequireQualifiedAccess>]
 module EditorMutationGate =
     let authoritativeDocumentAdvanced
         (baseIdentity: RuntimeIdentity)
@@ -289,6 +364,37 @@ module RendererModel =
 
     [<Literal>]
     let ScheduledWorkMaximumCount = 64
+
+    let tryNearestPointHit clientX clientY (candidates: TaPointHitCandidate array) =
+        let finite value = not (Double.IsNaN value || Double.IsInfinity value)
+        if not (finite clientX && finite clientY) then
+            None
+        else
+            candidates
+            |> Array.indexed
+            |> Array.choose (fun (index, candidate) ->
+                let minimumY = min candidate.MinimumY candidate.MaximumY
+                let maximumY = max candidate.MinimumY candidate.MaximumY
+                if
+                    String.IsNullOrWhiteSpace candidate.RowId
+                    || String.IsNullOrWhiteSpace candidate.TraceId
+                    || String.IsNullOrWhiteSpace candidate.DataRef
+                    || String.IsNullOrWhiteSpace candidate.EventTimeUtc
+                    || String.IsNullOrWhiteSpace candidate.TraceKind
+                    || String.IsNullOrWhiteSpace candidate.Component
+                    || not (finite candidate.X && finite minimumY && finite maximumY)
+                then
+                    None
+                else
+                    let deltaX = candidate.X - clientX
+                    let deltaY =
+                        if clientY < minimumY then minimumY - clientY
+                        elif clientY > maximumY then clientY - maximumY
+                        else 0.0
+                    Some(deltaX * deltaX + deltaY * deltaY, index, candidate))
+            |> Array.sortBy (fun (distance, index, _) -> distance, index)
+            |> Array.tryHead
+            |> Option.map (fun (_, _, candidate) -> candidate)
 
     let emptyWorkSchedulingMetrics =
         { WorkCount = 0; TurnCount = 0
@@ -3024,7 +3130,7 @@ module RendererModel =
     let arePreparedRowsReady expectedRowCount readyRowCount =
         expectedRowCount >= 0 && readyRowCount = expectedRowCount
 
-    let cursorSnapshotForRows (document: TaWorkspaceDocument) visibleRows data window cursorIndex =
+    let cursorSnapshotForRows (document: TaWorkspaceDocument) (visibleRows: TaRowSpec array) data window cursorIndex =
         let timeline = referenceTimelineForDocument document data
         let referenceLength = timeline.Length
         let effectiveWindow = clampWindow 1 Int32.MaxValue referenceLength window
