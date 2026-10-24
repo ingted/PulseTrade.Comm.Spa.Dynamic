@@ -2661,8 +2661,8 @@ let tests =
 
             Expect.sequenceEqual
                 (ticks |> Array.map _.Label)
-                [| "2024"; "03"; "06"; "09"; "12"; "2025"; "06"; "12" |]
-                "The first real anchor in each year must win over a quarter label at the same anchor."
+                [| "2024"; "03"; "06"; "09"; "12"; "2025"; "03"; "06"; "12" |]
+                "Year and quarter lanes must retain both labels when they share one real anchor."
             Expect.sequenceEqual
                 (ticks |> Array.map _.EventTimeUtc)
                 [| multiYear[0].EventTimeUtc
@@ -2670,6 +2670,7 @@ let tests =
                    multiYear[3].EventTimeUtc
                    multiYear[4].EventTimeUtc
                    multiYear[5].EventTimeUtc
+                   multiYear[6].EventTimeUtc
                    multiYear[6].EventTimeUtc
                    multiYear[7].EventTimeUtc
                    multiYear[8].EventTimeUtc |]
@@ -2687,13 +2688,30 @@ let tests =
             Expect.sequenceEqual (narrowTicks |> Array.map _.Label) [| "2026"; "03"; "06" |] "A narrow same-year domain must use only its real anchors."
             Expect.sequenceEqual (narrowTicks |> Array.map _.AnchorIndex) [| 0; 1; 3 |] "Repeated anchors in one quarter month must deduplicate at the first real anchor."
 
-            let compact = RendererModel.globalCalendarTicks 40.0 80.0 multiYear
-            let positions =
-                compact
+            let completeYears =
+                [| for year in 2018 .. 2026 do
+                       for month in [| 1; 3; 6; 9; 12 |] do
+                           yield anchor (int64 ((year - 2018) * 5 + month)) $"{year:D4}-{month:D2}-03T14:30:00Z" |]
+            let completeTicks = RendererModel.globalCalendarTicks 24.0 1600.0 completeYears
+            for year in 2019 .. 2025 do
+                let labels =
+                    completeTicks
+                    |> Array.filter (fun tick -> tick.EventTimeUtc.StartsWith(string year, StringComparison.Ordinal))
+                    |> Array.map _.Label
+                Expect.sequenceEqual labels [| string year; "03"; "06"; "09"; "12" |] "Every complete interior year must retain all four quarter labels."
+
+            let sameAnchor = ticks |> Array.filter (fun tick -> tick.AnchorIndex = 6)
+            Expect.sequenceEqual (sameAnchor |> Array.map _.Label) [| "2025"; "03" |] "Separate lanes must allow a year and March label at the same canonical anchor."
+            Expect.sequenceEqual (sameAnchor |> Array.map _.IsYearBoundary) [| true; false |] "Same-anchor labels must identify distinct year and quarter lanes."
+
+            let compact = RendererModel.globalCalendarTicks 24.0 80.0 multiYear
+            compact
+            |> Array.groupBy _.IsYearBoundary
+            |> Array.iter (fun (_, lane) ->
+                lane
                 |> Array.map (fun tick -> float tick.AnchorIndex / float (multiYear.Length - 1) * 80.0)
-            positions
-            |> Array.pairwise
-            |> Array.iter (fun (left, right) -> Expect.isGreaterThanOrEqual (right - left) 40.0 "Adaptive GLOBAL labels must keep the requested minimum spacing.")
+                |> Array.pairwise
+                |> Array.iter (fun (left, right) -> Expect.isGreaterThanOrEqual (right - left) 24.0 "Each GLOBAL calendar lane must keep the requested horizontal spacing."))
 
         testCase "DYN-T-691 only the GLOBAL overview uses the dedicated calendar axis" <| fun _ ->
             let source =
@@ -2705,6 +2723,7 @@ let tests =
             let globalBody = source.Substring(globalStart, globalEnd - globalStart)
             Expect.stringContains globalBody "globalCalendarAxisWithPalette" "GLOBAL must use its calendar-only axis renderer."
             Expect.stringContains globalBody "globalOverview.Anchors" "GLOBAL tick positions must come from authoritative real anchors."
+            Expect.stringContains source "data-global-calendar-tick-lane" "GLOBAL calendar ticks must expose separate year and quarter lanes."
             Expect.isFalse (globalBody.Contains("timeAxisWithPalette", StringComparison.Ordinal)) "GLOBAL must not fall back to the generic MM-dd HH:mm axis."
 
             let residentStart = source.IndexOf("let residentOverview =", StringComparison.Ordinal)

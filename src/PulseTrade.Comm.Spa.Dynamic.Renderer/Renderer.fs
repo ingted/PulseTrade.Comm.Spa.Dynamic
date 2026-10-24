@@ -637,26 +637,29 @@ module TaWorkspaceRenderer =
     let globalCalendarAxisWithPalette palette testId rowId (anchors: TaOverviewAnchor array) =
         axisViewportWidth.View
         |> View.Map (fun width ->
-            let ticks = RendererModel.globalCalendarTicks 40.0 width anchors
+            let ticks = RendererModel.globalCalendarTicks 24.0 width anchors
             div [
                 Attr.Create "data-testid" testId
                 Attr.Create "data-time-axis-row-id" rowId
                 Attr.Create "data-time-axis-tick-count" (string ticks.Length)
                 Attr.Create "data-time-axis-kind" "global-calendar"
                 Attr.Create "data-plot-surface-theme" palette.ThemeName
-                attr.style ("position:relative; min-width:0; height:18px; padding:0 1px; overflow:hidden; background:" + palette.AxisSurface + ";")
+                attr.style ("position:relative; min-width:0; height:32px; padding:0 1px; overflow:hidden; background:" + palette.AxisSurface + ";")
             ] [
                 for tick in ticks do
                     let left = if anchors.Length <= 1 then 50.0 else float tick.AnchorIndex / float (anchors.Length - 1) * 100.0
                     let transform = if left <= 0.0 then "none" elif left >= 100.0 then "translateX(-100%)" else "translateX(-50%)"
+                    let lane = if tick.IsYearBoundary then "year" else "quarter"
+                    let top = if tick.IsYearBoundary then "0px" else "15px"
                     yield
                         span [
                             Attr.Create "data-time-axis-event-time" tick.EventTimeUtc
                             Attr.Create "data-canonical-event-time" tick.EventTimeUtc
-                            Attr.Create "data-global-calendar-tick-kind" (if tick.IsYearBoundary then "year" else "quarter")
+                            Attr.Create "data-global-calendar-tick-kind" lane
+                            Attr.Create "data-global-calendar-tick-lane" lane
                             attr.style (
-                                "position:absolute; left:" + fixedText left + "%; transform:" + transform
-                                + "; max-width:40px; color:" + palette.AxisText + "; font-size:10px; line-height:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")
+                                "position:absolute; top:" + top + "; left:" + fixedText left + "%; transform:" + transform
+                                + "; max-width:40px; color:" + palette.AxisText + "; font-size:10px; line-height:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;")
                         ] [ text tick.Label ]
             ] :> Doc)
         |> Doc.EmbedView

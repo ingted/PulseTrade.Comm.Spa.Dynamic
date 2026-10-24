@@ -3089,7 +3089,7 @@ module RendererModel =
                               EventTimeUtc = value
                               Label = value.Substring(0, 4)
                               IsYearBoundary = true }
-                    elif isFirstQuarterAnchor then
+                    if isFirstQuarterAnchor then
                         candidates.Add
                             { AnchorIndex = index
                               EventTimeUtc = value
@@ -3108,15 +3108,14 @@ module RendererModel =
             else
                 selected
 
-        let yearTicks =
+        let selectLane isYearBoundary =
             candidates
-            |> Seq.filter _.IsYearBoundary
+            |> Seq.filter (fun candidate -> candidate.IsYearBoundary = isYearBoundary)
             |> Seq.fold addIfSeparated []
-        candidates
-        |> Seq.filter (fun candidate -> not candidate.IsYearBoundary)
-        |> Seq.fold addIfSeparated yearTicks
-        |> List.sortBy _.AnchorIndex
-        |> List.toArray
+            |> List.toArray
+
+        Array.append (selectLane true) (selectLane false)
+        |> Array.sortBy (fun tick -> tick.AnchorIndex, if tick.IsYearBoundary then 0 else 1)
 
     let coverageExtended direction (oldTimeline: string array) (newTimeline: string array) =
         if oldTimeline.Length = 0 || newTimeline.Length <= oldTimeline.Length then
