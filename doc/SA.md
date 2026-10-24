@@ -1,5 +1,9 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 GLOBAL calendar axis（DYN-WBS-591）
+
+0.2.25的GLOBAL overview已預設顯示且使用真`GlobalOverview.Anchors`，但誤共用一般TA／RESIDENT的`timeAxisWithPalette`，所以多年全域域仍顯示`MM-dd HH:mm`。0.2.26只替GLOBAL換成calendar axis：第一個真實年度anchor顯`YYYY`，每年3／6／9／12月的第一個真實anchor顯`03/06/09/12`；同anchor年度優先，viewport不足時年度優先並以最小pixel spacing淘汰次要季度標。canonical event time、global/resident selection geometry、drag／preview／commit、hit target、一般TA與RESIDENT軸及consumer API皆不變。
+
 ## 2026-10-24 TA datapoint activation（DYN-WBS-589 / 590）
 
 0.2.24主圖click只把clientX換成visible index並走`SharedCursorChanged`；batched candle path也沒有per-point DOM selector，因此Research無法取得穩定的row/trace/data-ref/event-time/component。0.2.25新增獨立browser-local typed activation：以最後committed projection key拒絕stale snapshot，從實際rendered geometry選candlestick `BAR`或line/histogram/volume `POINT`，禁止viewport index。Research擁有`RunId + DataRef/EventTimeUtc`到committed PointId及official editor的mapping；Renderer不引入tagging domain。

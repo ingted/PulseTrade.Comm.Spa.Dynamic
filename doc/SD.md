@@ -1,5 +1,9 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 GLOBAL calendar axis（DYN-WBS-591）
+
+`RendererModel.globalCalendarTicks`只接受`TaOverviewAnchor[]`、viewport寬與最小spacing；按source順序辨識年度及季度月份，不生成日期、不補缺月，輸出保留`AnchorIndex`與原始`EventTimeUtc`。同一anchor的year label優先於quarter，adaptive pass先放year再放quarter並拒絕距離小於40px者。`globalCalendarAxisWithPalette`以原anchor index比例定位，DOM保留`data-canonical-event-time`並標示year／quarter；只有`ta-global-overview-time-axis`改用此helper，一般／RESIDENT維持原generic formatter與display-time行為。
+
 ## 2026-10-24 TA datapoint activation（DYN-WBS-589）
 
 `TaPointHitCandidate`描述row/trace/data-ref/event-time/trace-kind/component及rendered x/y range；`RendererModel.tryNearestPointHit`以x距離加點／range的y距離做deterministic nearest selection。Renderer保留reactive最新prepared geometry：candle使用slot center與high/low normalize；line使用point y；histogram/volume使用zero-to-value range。click把browser座標映射到SVG viewBox，仍執行原cursor commit，再嘗試browser-local activation。

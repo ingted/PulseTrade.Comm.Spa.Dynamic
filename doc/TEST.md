@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-24 DYN-T-690 / 691 GLOBAL calendar axis
+
+- DYN-T-690：對0.2.25 package先得到缺少`globalCalendarTicks`的修前RED；修後驗multi-year年度／季度、同anchor年度優先、同月首anchor dedupe、same-year narrow domain、label無`HH:mm`、canonical timestamp未改及40px bounded spacing。
+- DYN-T-691：source contract限定GLOBAL使用dedicated calendar axis與`GlobalOverview.Anchors`；RESIDENT仍使用generic `timeAxisWithPalette`，避免把全域格式變成一般軸全域規則。
+- committed-source 0.2.26 final package-backed：Renderer 89/89、Interactive.Client 16/16 passed，均0 ignored/failed/errored；兩個global NuGet cache nupkg SHA與final source package逐byte相同。Research 18884真3M multi-year／narrow viewport與navigator互動由Daedalus驗收，不以unit冒充UI。
+
 ## 2026-10-24 DYN-T-687 / 688 / 689 datapoint activation
 
 - DYN-T-687：相同canonical x下，以rendered y區分candle `BAR`與line `POINT`；不同x選最近visible datapoint，non-finite browser geometry拒絕。

@@ -86,6 +86,10 @@ Main TA chart click新增獨立browser-local bubbling event `ptcs-dynamic-ta-poi
 
 Candlestick依已render的slot及high/low範圍命中並回傳`BAR`；line、histogram、volume依目前rendered x/y geometry選最近visible datapoint並回傳`POINT`。SVG以`[data-ptcs-ta-point-surface='true']`提供穩定surface selector，事件由實際clicked surface發出並向上bubble。Research consumer仍負責以`RunId + DataRef/EventTimeUtc`解析committed `PointId`／component並開official editor；初次GLOBAL accepted後仍顯示舊resident/TA是另一個commit-receipt調查，不由本決策猜修。
 
+### D9. 2026-10-24 GLOBAL calendar axis
+
+GLOBAL overview的長期domain不得沿用一般TA／RESIDENT的`MM-dd HH:mm`軸。專用calendar axis只從`GlobalOverview.Anchors`選tick：每年第一個真anchor標`YYYY`，3／6／9／12月第一個真anchor標兩位月份；同anchor年度優先且不生成假日期。viewport擁擠時先保留年度，再以最小pixel spacing加入季度。DOM tick保留原canonical event time供驗證；此決策不改anchor contract、selection ratio、drag／preview／commit、hit target、一般TA／RESIDENT軸或consumer API。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.
