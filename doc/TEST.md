@@ -6,6 +6,7 @@
 - DYN-T-697：source contract驗actual GLOBAL selector、既有points/selection/calendar axis、read-only／non-authoritative markers、typed loader、validation、Async start及authoritative monotonic原位取代；禁止CustomEvent、listener、fetch、IndexedDB、action與假RuntimeState。
 - DYN-T-698：Interactive.Client只接受optional `unit -> Async<TaGlobalCoverageOverview option>`，在`handle.Start()`前掛載；不保留DOM bootstrap transport，也不發projection receipt。
 - final source `e3fd1c47f8e3476b685aa478da379c433c52b25d`；isolated exact-package Renderer 92/92、Interactive.Client 18/18 passed，均0 ignored/failed/errored；package verifier PASS。Renderer 0.2.30 SHA-256 `EAAEE506C72BF28BAA958F820E909FB10B84325A13C0ECBCBC5C3BB09D634982`；Interactive.Client 0.2.30 SHA-256 `CADA0C80C0FBA645A5DE22BCEA863446EF6BABBD498CDEC33ED5B03F131497A9`，exact Renderer `[0.2.30]`、兩包RepositoryCommit皆為final source。未public push；Research loader／18884真3M actual-before-chart由Daedalus續驗。
+- consumer acceptance（Daedalus，2026-10-24）：真3M default-launcher cold actual GLOBAL 726ms、main 2255ms、authoritative replace 6143ms；warm封鎖catalog/overview API仍536ms，GLOBAL max node=1、console=0。Tagging official matrix 8/8且每次responseDelta=1；main plot drag同步兩個overview且tagging resolve=0。Launcher既有env預設256MiB並尊重override，warm五gesture 3.346–4.998s、0 miss/SQL；Research Release Rebuild 125 warnings/0 errors，18884 PID7480 health OK。
 
 ## 2026-10-24 DYN-T-692 / 693 / 694 / 695（0.2.29）
 

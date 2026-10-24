@@ -1,7 +1,7 @@
 # RFC-PTCS-DYNAMIC-0036 Global Resident Navigator
 
 - ID: RFC-PTCS-DYNAMIC-0036
-- Status: Accepted / owner package and browser validation passed; formal consumer validation pending
+- Status: Accepted / owner package and formal consumer validation passed
 - Date: 2026-10-21
 - Owners: PTCS.Dynamic Renderer / Aster; Research host consumer / Daedalus
 - Related: RFC-PTCS-DYNAMIC-0032, RFC-PTCS-DYNAMIC-0033, RFC-PTCS-DYNAMIC-0034
