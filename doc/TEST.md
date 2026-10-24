@@ -1,11 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-25 DYN-T-699 / 700 / 701（0.2.32）
+## 2026-10-25 DYN-T-699 / 700 / 701 / 702（0.2.33）
 
 - DYN-T-699：主圖 boundary pan 對 250-visible fixture 驗 signed delta `-10/+10`只移 exact 10 bars且 count 保持250；真例 resident 擴成3000時，requested 2,995,074、returned start 2,993,994 必須重定位 local 1,080／count 1,500；未完整包含requested window則不得settle。
 - DYN-T-700：左右 Y 軸共用五點 high→low interpolation；source contract要求每row左右selectors、side／tick index／value metadata與`pointer-events:none`。
 - DYN-T-701：有 actual GLOBAL loader 時，document但`GlobalOverview=None`不得卸bootstrap；resolved validated overview才可monotonic replacement。無loader維持第一個document mount；Client source同驗共用gate。
-- functional source `6d2f885bf94886d82443ab9ca89cbefbf6c80408`；0.2.31因不同bytes共用相同version、consumer immutable cache仍保留較早package而退役，禁止以清shared cache掩蓋。Immutable 0.2.32 package source `f89e5083574c9b131caace522f9a2b59353657ca`；source-identical staging完整啟用WebSharper build，兩個DLL ProductVersion與兩包nuspec RepositoryCommit皆為該commit。Fresh isolated package cache實選Renderer／Client 0.2.32；Renderer 94/94、Interactive.Client 18/18 passed，0 ignored/failed/errored；Interactive package verifier PASS。Renderer 0.2.32 SHA-256 `FDBDDC2F48524372473E2BC8F01A45B3D196DC9E0D891FAC832D4988FB37E33D`；Interactive.Client 0.2.32 SHA-256 `24CF20365765A72389AFA41213A70E7FF1A86156E69C752B27E49DEE0338D146`，exact Renderer `[0.2.32]`；canonical bin／SDK 10.0.402 library-packs／staging hash parity PASS。
+- DYN-T-702：source/ordering gate要求bootstrap與authoritative stable hosts、authoritative host先`Doc.Run`、RAF觀測GLOBAL non-zero geometry、最後才`Doc.Empty`退役bootstrap。修前focused 1/1 RED（缺stable host），修後GREEN；package bundle另核四個markers存在。
+- functional source `6d2f885bf94886d82443ab9ca89cbefbf6c80408`；0.2.31因same-version overwrite退役。0.2.32 exact consumer identity與final no-1K authority均PASS，但MutationObserver仍有5個零visible GLOBAL batch而退役。Immutable 0.2.33 package source `6f13fbcd5fa3b63c86fac244ea62282dc42db111`；source-identical staging完整啟用WebSharper build，兩個DLL ProductVersion與兩包nuspec RepositoryCommit皆為該commit。Fresh isolated package cache實選Renderer／Client 0.2.33；Renderer 94/94、Interactive.Client 19/19 passed，0 ignored/failed/errored；Interactive package verifier PASS。Renderer SHA-256 `8BCF7E4A514B16A1A60C6DC1ACB878E08DBCA211DCE0196280E12CE8644EC1ED`；Interactive.Client SHA-256 `7341C532F3C6194C8709C4D8C044EA75EA2027FEDAC9E2B18C74F17E9319FCE7`，exact Renderer `[0.2.33]`；canonical bin／SDK 10.0.402 library-packs／staging hash parity PASS。
 - consumer gate仍由Daedilus在Research 18884執行：1500-visible主圖drag `delta=-420`須 absolute start exact -420、count不變且不走resize；每row左右各5 ticks且文字/值一致；no-1K期間GLOBAL不得消失且authoritative total保持1K DB domain 2,996,994。Owner tests/package不冒充此real UI acceptance。
 
 ## 2026-10-24 DYN-T-696 / 697 / 698（0.2.30）

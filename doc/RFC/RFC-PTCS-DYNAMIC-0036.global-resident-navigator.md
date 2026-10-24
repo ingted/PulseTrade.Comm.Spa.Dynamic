@@ -106,6 +106,10 @@ GLOBAL overview的長期domain不得沿用一般TA／RESIDENT的`MM-dd HH:mm`軸
 
 D10的「第一個Document」依真no-1K RED修正：若有actual GLOBAL loader，`Document.IsSome`不是replacement authority；只有loaded-coverage decode/validation成功且含`GlobalOverview`才可monotonic卸載bootstrap。無loader client仍以document mount。Research/DB擁有1K GLOBAL total/resident與active 5K間的time/ordinal mapping，已在既有Dynamic contract下證明2,996,994 total、7420-point resident與global drag回映；因此0.2.31不新增axis mapping wire，也不讓Renderer猜跨scale arithmetic。
 
+### D13. 2026-10-25 stable GLOBAL host handoff
+
+0.2.32真no-1K cold-cache驗證證明D12只解決「何時可replace」，未解決WebSharper replacement的DOM ordering；bootstrap detach到authoritative attach間仍有5個MutationObserver callback batch無visible GLOBAL。Client改為先在root內一次掛載bootstrap與authoritative stable hosts，authoritative內容先進入DOM並由RAF確認GLOBAL geometry可見，才清空／移除bootstrap host。期間允許短暫兩者並存，禁止短暫為零；最後仍只留一個authoritative GLOBAL。此決策不改typed loader、RuntimeState／projection authority、no-loader lifecycle、Dynamic wire或consumer cross-scale mapping。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

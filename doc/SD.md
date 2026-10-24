@@ -1,12 +1,14 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-25 0.2.31 exact viewport／axis／lifecycle seams（DYN-WBS-594 / 595）
+## 2026-10-25 0.2.31–0.2.33 exact viewport／axis／lifecycle seams（DYN-WBS-594 / 595）
 
 `RendererModel.tryMainPlotPanCoverageIntent`由 committed active start、local window及 signed drag delta產生 exact `TaCoverageWindowIntent`；`ObservationCount`不變，只有實際 start 改變才送 direction。`tryCoverageIntentReanchorWindow`驗 returned active interval containment，成功時回 `{ StartIndex = requestedStart - returnedActiveStart; Count = requestedCount }`，避免 resident 1500→3000／4500後 viewport落在 index 0；不完整回傳不會 settle pending pan。既有`tryAdjacentCoverageIntent`只留給整頁相鄰導航。
 
 `yAxisTickValues 5 low high`產生 top-to-bottom 共五值；row view以 `68px / chart / 68px` grid包住原SVG。DOM seam為`ta-y-axis-{rowId}-left|right`、`data-ta-y-axis-side`、`data-ta-y-axis-tick-index/value`，兩側來自同一 reactive marker geometry，gutter `pointer-events:none`。
 
 `RendererModel.authoritativeGlobalOverviewReady requiresGlobalOverview state`集中 lifecycle gate。Renderer bootstrap overload與Interactive.Client mount path都呼叫它：有loader時需 resolved validated `GlobalOverview`，無loader時維持 document-ready行為。切換仍monotonic，bootstrap不取得HTTP／IDB／action／projection authority。Research以既有`GlobalOverview`欄位供應獨立1K total/resident並自行把global gesture映回active scale；0.2.31沒有新增或猜測cross-axis wire mapping。
+
+0.2.33把Client handoff改為`globalOverviewBootstrapHost`與`globalOverviewAuthoritativeHost`兩個一次掛載的`display:contents`容器。authoritative renderer只在後者`Doc.Run`；`retireGlobalOverviewBootstrapWhenVisible`以RAF查詢`ta-global-overview-with-axis`並要求`GetBoundingClientRect()`寬高非零，之後才對bootstrap host執行`Doc.Run ... Doc.Empty`及移除host。這使DOM mutation ordering保持「先有新visible GLOBAL，再移除最後一個舊GLOBAL」；final authority、projection root、loader ownership及無loader `Doc.RunById`路徑不變。
 
 ## 2026-10-24 typed actual GLOBAL bootstrap（DYN-WBS-593）
 

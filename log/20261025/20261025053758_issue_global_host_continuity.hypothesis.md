@@ -26,3 +26,9 @@ assert every observable transition has globalNodeCount >= 1 and final count = 1
 ```
 
 預估production非型別宣告變更20–45行、tests 20–60行；若超過2倍，先回此檔記錄原因與新切點。
+
+## Result
+
+- 根因候選1成立：validated-ready gate不等於DOM replacement continuity；0.2.32真consumer仍有5個零visible batch。
+- Client以stable雙host、authoritative-first mount與non-zero geometry retirement gate根治detach/attach空窗；production diff 57 additions／8 deletions，未超過估算2倍。
+- DYN-T-702修前RED／修後GREEN；0.2.33 exact-package Renderer 94/94、Client 19/19與package verifier全通。真18884相同MutationObserver gate由Daedilus重驗中。

@@ -8,6 +8,8 @@
 
 no-1K chart 另證明 `Document.IsSome` 不是卸除 actual GLOBAL bootstrap 的充分 authority：document 可先到但 `GlobalOverview` 尚未到，造成 13 個 DOM mutation samples 期間 GLOBAL 消失。新的 replacement gate 要求 loaded-coverage projection 可 decode/validate 且含 `GlobalOverview`；沒有 bootstrap loader 的既有 client 仍在第一個 document mount。Daedilus 已在 Research backend 以既有 Dynamic contract 保存獨立 1K GLOBAL domain並映回 active 5K，所以本版不新增 ordinal mapping wire；consumer 的 time/ordinal mapping仍由 Research/DB 擁有。
 
+0.2.32 真 cold-cache 反證進一步定位到 DOM lifecycle：即使 authoritative `GlobalOverview` 已ready，`Doc.RunById`仍會在舊bootstrap detach與新renderer attach間留下5個MutationObserver callback batch看不到任何visible GLOBAL。0.2.33不延後authority或放寬gate；Client在root內先固定bootstrap／authoritative兩個長壽命hosts，authoritative先掛載，只有RAF觀測其GLOBAL selector具非零geometry後才退役bootstrap。handoff期間至少一個GLOBAL可見、final仍唯一；無loader與wire contract不變。
+
 ## 2026-10-24 actual GLOBAL bootstrap ownership（DYN-WBS-593）
 
 真3M證據把0.2.29的限制縮到最早偏離點：`initialGlobalPhase`只能重排已在`RuntimeState`內的overview；Research chart stack約+3.296秒可見，但第一個含`GlobalOverview`的authoritative document約+10.412秒才到，所以phase-1只能先畫loading placeholder。Research已在平行啟動時約271.6ms取得真overview，且自有`SPAEntryPoint`與同一Doc tree；缺口是owner renderer在authoritative frame前沒有consumer-owned typed input，不是再調RAF、queue或製造假frame。
