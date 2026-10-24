@@ -3,6 +3,8 @@
 ## Pre-work plan
 
 - 背景：Daedilus 回報 `0.2.33` 真 mouse drag 無法移動主 TA 圖，並要求滑鼠所在 row 顯示跟隨 pointer Y 的水平 cursor line。
+- 目標：以真實 consumer 證明 main grab-pan 同步移動 resident/absolute viewport且same-X anchor不漂，並交付row-local horizontal cursor與immutable package graph。
+- 假設：pointer lifecycle正常；最早偏離點是GLOBAL存在時仍只移inner viewport，以及continuous round與cursor discrete floor使用不同delta authority。
 - 已證實：`RendererModel.mainPlotPanDelta` 與 `panWindow` 的符號符合「content 左移、time window 右移」；現有 main plot 只測 pure delta／source seam，未以真 pointer down/move/up 驗收。
 - 不變量：down 錨定資料 T；左移 n 根後 resident 與 visible 都精確 `+n`，重繪後 pointer 下的 data time 仍為 T；垂直 shared cursor、點擊 activation、navigator、wire／loader 不退化。
 - Source of truth：Daedilus 真實 consumer RED；owner source `Renderer.fs`／`RendererModel.fs`；Renderer Expecto 與真 BrowserDemo Playwright。
@@ -28,3 +30,5 @@
 - 2026-10-25 07:11 +08:00：pre-commit sensitive scan為High=0／Medium=0；17個owned文字檔strict UTF-8、NUL/U+FFFD皆0，兩個producer fsproj保留HEAD既有UTF-8 BOM。核對後停止本輪0.2.35 staging BrowserDemo exact PIDs 39036／16188，未影響其他process。
 - 2026-10-25 07:15 +08:00：source `c38f84628ea3fc0d1291f4803fb7aedafc860bdf`已commit/push。由該commit fresh archive一次性產生0.2.36：Renderer SHA `688C562C6B7D67DD824A0F02F071DD54E3F6BF80FE67ACC7A77BBFBDF9812E25`、Client SHA `3B164E38AF91E3DC17E2EA2A2A509C164694E9A18D2A39FC4354EF9DADAE8030`；canonical bin／SDK feed hash一致，RepositoryCommit、DLL ProductVersion與exact dependency一致。Fresh package-backed Renderer95/95、Client19/19、package verifier PASS；final BrowserDemo full WebSharper build 0 errors，focused真mouse 1/1 PASS（delta140、resident3000→3140、local801、absolute3801→3941、anchor不漂、horizontal/console全綠），截圖人工檢查無重疊／錯位。核對後停止final BrowserDemo exact PIDs 42556／43616。
 - 2026-10-25 07:16 +08:00：以`replyToMessageId=msg-fsi-18ab6981c80948c4bc8435f97bffcda8`向Daedilus送出final immutable交付，message=`msg-fsi-c38f3a13342041beb5991852602742a5`；對方接手三consumer bump與真DMI 5K驗收。
+- 2026-10-25 07:38 +08:00：Daedilus direct `msg-fsi-c3956a012932413bacb8b47891037eaa`回報0.2.36 consumer acceptance GREEN：真DMI 5K left grab exact `+421`、resident/absolute同移、count/local/anchor不變，horizontal row/Y/leave；no-1K GLOBAL、tagging/雙Y軸、Release/health/cache皆PASS。後續`msg-fsi-a94753cf10934b3986ef64e003170a3f`補consumer exact-path commit/push `9f7df5dd4af4bdd03904e3e4992f935542f93bef`（branch `20260928_042.spaa_ui_refinement`），只含三consumer五refs，既存Tagging.Client 0.1.9 pending未混入。已exact reply確認DYN-WBS-596/VFY-052可close。
+- 2026-10-25 07:41 +08:00：closeout `check.fsx`結果PASS=41／WARN=5／FAIL=1。唯一FAIL=`log_readonly_modify`指向`log/20261025/20261025045127.main-pan-y-axis.log`；該檔目前Git-clean，最後只存在於前一已完成工項commit `c03df6b`（本輪pre-work 06:42前），本輪diff/stage未含該檔。依規範不改歷史log、不弱化verifier；保留FAIL與此最小歸因。其他WARN為KM未改、repo既有dependency/WBS與traceability，及本log欄位；本輪補明示目標/假設後再跑一次，預期唯一blocking仍為跨前工項checker state。
