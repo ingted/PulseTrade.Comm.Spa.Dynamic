@@ -98,6 +98,14 @@ GLOBAL overview的長期domain不得沿用一般TA／RESIDENT的`MM-dd HH:mm`軸
 
 `initialGlobalPhase`只排程已進入`RuntimeState`的overview，不能讓約271.6ms已由Research取得的真overview早於約+3.296秒chart stack顯示，因authoritative document約+10.412秒才帶入GLOBAL。新增唯一typed input `unit -> Async<TaGlobalCoverageOverview option>`：consumer擁有execution選擇、IDB/DB與resident policy；owner只驗證並render read-only actual GLOBAL。第一個`RuntimeState.Document=Some`是monotonic replacement authority，原位換成既有authoritative renderer；bootstrap不建立action、drag、projection receipt、RuntimeState、HTTP/IDB/cache或第二authority。Research已證實自有SPAEntryPoint與同一Doc tree，故DOM event/ready attribute候選退役。
 
+### D11. 2026-10-25 exact main-plot boundary pan and bilateral Y axes
+
+主圖drag的authority是`mainPlotPanDelta`算出的實際K-bar delta，不是整頁adjacent gesture。跨local boundary時，intent start=`current absolute start + delta`且visible count不變；provider可擴大resident，但projection回來後必須以requested absolute start相對returned active start補local offset，只有完整containment才settle。整頁navigator gesture沿用既有helper。每row左右各顯示五個由同一committed low/high geometry導出的read-only Y ticks，預留gutter且不得攔pointer或改trace／cursor／navigator資料流。
+
+### D12. 2026-10-25 authoritative GLOBAL replacement and independent consumer domain
+
+D10的「第一個Document」依真no-1K RED修正：若有actual GLOBAL loader，`Document.IsSome`不是replacement authority；只有loaded-coverage decode/validation成功且含`GlobalOverview`才可monotonic卸載bootstrap。無loader client仍以document mount。Research/DB擁有1K GLOBAL total/resident與active 5K間的time/ordinal mapping，已在既有Dynamic contract下證明2,996,994 total、7420-point resident與global drag回映；因此0.2.31不新增axis mapping wire，也不讓Renderer猜跨scale arithmetic。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

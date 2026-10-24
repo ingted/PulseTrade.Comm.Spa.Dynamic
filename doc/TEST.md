@@ -1,5 +1,13 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-25 DYN-T-699 / 700 / 701（0.2.31）
+
+- DYN-T-699：主圖 boundary pan 對 250-visible fixture 驗 signed delta `-10/+10`只移 exact 10 bars且 count 保持250；真例 resident 擴成3000時，requested 2,995,074、returned start 2,993,994 必須重定位 local 1,080／count 1,500；未完整包含requested window則不得settle。
+- DYN-T-700：左右 Y 軸共用五點 high→low interpolation；source contract要求每row左右selectors、side／tick index／value metadata與`pointer-events:none`。
+- DYN-T-701：有 actual GLOBAL loader 時，document但`GlobalOverview=None`不得卸bootstrap；resolved validated overview才可monotonic replacement。無loader維持第一個document mount；Client source同驗共用gate。
+- final source `6d2f885bf94886d82443ab9ca89cbefbf6c80408`；source-identical staging完整啟用WebSharper build，兩個DLL ProductVersion與兩包nuspec RepositoryCommit皆為該commit。Final isolated exact-package Renderer 94/94、Interactive.Client 18/18 passed，0 ignored/failed/errored；Interactive package verifier PASS。Renderer 0.2.31 SHA-256 `956C11FCC4E398DD2BE0158B24B8A2E9D42A38B957B259AFC2D76FB1C2BEDAD2`；Interactive.Client 0.2.31 SHA-256 `386DAF1D6ED3C7D85985B109D22D311E9D998D6FD664474CD4061AB597CF58FB`，exact Renderer `[0.2.31]`；SDK 10.0.402 library-packs hash parity PASS。
+- consumer gate仍由Daedilus在Research 18884執行：1500-visible主圖drag `delta=-420`須 absolute start exact -420、count不變且不走resize；每row左右各5 ticks且文字/值一致；no-1K期間GLOBAL不得消失且authoritative total保持1K DB domain 2,996,994。Owner tests/package不冒充此real UI acceptance。
+
 ## 2026-10-24 DYN-T-696 / 697 / 698（0.2.30）
 
 - DYN-T-696：合法3,001,148筆whole-series overview通過；resident超total、anchor ordinal/time逆序拒絕，且不建立runtime frame。

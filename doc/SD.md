@@ -1,5 +1,13 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-25 0.2.31 exact viewport／axis／lifecycle seams（DYN-WBS-594 / 595）
+
+`RendererModel.tryMainPlotPanCoverageIntent`由 committed active start、local window及 signed drag delta產生 exact `TaCoverageWindowIntent`；`ObservationCount`不變，只有實際 start 改變才送 direction。`tryCoverageIntentReanchorWindow`驗 returned active interval containment，成功時回 `{ StartIndex = requestedStart - returnedActiveStart; Count = requestedCount }`，避免 resident 1500→3000／4500後 viewport落在 index 0；不完整回傳不會 settle pending pan。既有`tryAdjacentCoverageIntent`只留給整頁相鄰導航。
+
+`yAxisTickValues 5 low high`產生 top-to-bottom 共五值；row view以 `68px / chart / 68px` grid包住原SVG。DOM seam為`ta-y-axis-{rowId}-left|right`、`data-ta-y-axis-side`、`data-ta-y-axis-tick-index/value`，兩側來自同一 reactive marker geometry，gutter `pointer-events:none`。
+
+`RendererModel.authoritativeGlobalOverviewReady requiresGlobalOverview state`集中 lifecycle gate。Renderer bootstrap overload與Interactive.Client mount path都呼叫它：有loader時需 resolved validated `GlobalOverview`，無loader時維持 document-ready行為。切換仍monotonic，bootstrap不取得HTTP／IDB／action／projection authority。Research以既有`GlobalOverview`欄位供應獨立1K total/resident並自行把global gesture映回active scale；0.2.31沒有新增或猜測cross-axis wire mapping。
+
 ## 2026-10-24 typed actual GLOBAL bootstrap（DYN-WBS-593）
 
 `RendererModel.tryGlobalOverviewBootstrap`驗`TotalObservationCount`、axis、anchor上限/範圍/ordinal與time嚴格遞增、resident邊界。`renderGlobalOverviewBootstrapWithDisplayTimeZone`接受consumer loader，立即啟動Async，成功且合法才把overview放入local `Var<option<_>>`；presentation使用既有overview points、resident ratios及GLOBAL calendar axis，root標`data-global-overview-source=bootstrap`／`phase-1-actual`／`data-bootstrap-authoritative=false`且`pointer-events:none`。

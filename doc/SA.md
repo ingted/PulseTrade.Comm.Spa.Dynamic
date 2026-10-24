@@ -1,5 +1,13 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-25 主圖 exact pan、雙側 Y 軸與 authoritative GLOBAL lifecycle（DYN-WBS-594 / 595）
+
+真 18884 把主圖跳動縮到兩個連續偏離點：`mainPlotPanDelta` 已算出實際跨越的 K-bar 數，但 boundary dispatch 改用整頁 `currentStart +/- visibleCount`；coverage 擴張回傳後又把 local `StartIndex` 固定為 0。0.2.31 改為送 `currentStart + delta`、保持 visible count，並只在回傳 active interval 完整包含 requested window 時，以 `requestedStart - returnedActiveStart` 重定位。這與 navigator resize／page gesture 分離，後者語意不變。
+
+每個 TA row 原本只有五條水平 grid，沒有可讀座標。雙側 Y 軸現在預留固定 gutter，左右各五個 read-only ticks，共用該 row 已提交 geometry 的 low/high 與同一五等分位置；不攔 pointer，也不改 trace、cursor、navigator 或資料 authority。
+
+no-1K chart 另證明 `Document.IsSome` 不是卸除 actual GLOBAL bootstrap 的充分 authority：document 可先到但 `GlobalOverview` 尚未到，造成 13 個 DOM mutation samples 期間 GLOBAL 消失。新的 replacement gate 要求 loaded-coverage projection 可 decode/validate 且含 `GlobalOverview`；沒有 bootstrap loader 的既有 client 仍在第一個 document mount。Daedilus 已在 Research backend 以既有 Dynamic contract 保存獨立 1K GLOBAL domain並映回 active 5K，所以本版不新增 ordinal mapping wire；consumer 的 time/ordinal mapping仍由 Research/DB 擁有。
+
 ## 2026-10-24 actual GLOBAL bootstrap ownership（DYN-WBS-593）
 
 真3M證據把0.2.29的限制縮到最早偏離點：`initialGlobalPhase`只能重排已在`RuntimeState`內的overview；Research chart stack約+3.296秒可見，但第一個含`GlobalOverview`的authoritative document約+10.412秒才到，所以phase-1只能先畫loading placeholder。Research已在平行啟動時約271.6ms取得真overview，且自有`SPAEntryPoint`與同一Doc tree；缺口是owner renderer在authoritative frame前沒有consumer-owned typed input，不是再調RAF、queue或製造假frame。
