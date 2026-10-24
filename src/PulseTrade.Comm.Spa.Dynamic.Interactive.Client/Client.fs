@@ -163,6 +163,11 @@ module Client =
                 loader
             |> Doc.RunById options.RootElementId)
 
+        let authoritativeRendererReady state =
+            RendererModel.authoritativeGlobalOverviewReady
+                globalOverviewBootstrapLoader.IsSome
+                state
+
         let resetActiveBatch () =
             activeBatch <- None
 
@@ -684,16 +689,14 @@ module Client =
                 let state = Var.Create next
                 runtimeState <- Some state
 
-                match next.Document with
-                | Some _ ->
+                if authoritativeRendererReady next then
                     mount state
                     rendererMounted <- true
                     sendMounted ()
-                | None -> ()
             | Some state ->
                 state.Value <- next
 
-                if not rendererMounted && next.Document.IsSome then
+                if not rendererMounted && authoritativeRendererReady next then
                     mount state
                     rendererMounted <- true
                     sendMounted ()

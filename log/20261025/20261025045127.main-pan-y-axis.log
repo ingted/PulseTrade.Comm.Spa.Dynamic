@@ -1,0 +1,31 @@
+# Dynamic Renderer main-plot pan / bilateral Y axis
+
+## Pre-work plan
+
+- Context: Daedilus direct message `msg-fsi-093703d2c54f410cb67052bd27858870`; Research consumer is on Dynamic Renderer 0.2.30.
+- Goal: every TA row exposes readable left/right Y coordinates; main-plot horizontal drag pans by the actual crossed K-bar count without becoming a navigator resize/page gesture.
+- Confirmed facts:
+  - `RendererModel.mainPlotPanDelta` already maps CSS movement to visible-bar delta.
+  - `Renderer.dispatchAdjacentCoverageNow` discards that delta when crossing local coverage and calls `tryAdjacentCoverageIntent`, whose target is `currentStart +/- visibleCount`.
+  - The row SVG draws five horizontal grid lines but no Y coordinate labels.
+- Invariants:
+  - main-plot pan preserves visible `Count` and navigator resize/move behavior;
+  - boundary requests use the exact clamped global start implied by the drag delta;
+  - both Y axes derive from the same low/high bounds and grid positions used by row geometry;
+  - Research source, base-series/1K lifecycle, port 18884, and deployment remain Daedilus-owned.
+- Scope: Renderer model/view plus focused Renderer tests; package/version consumers only after source tests pass. Existing unrelated dirty paths remain untouched.
+- Intended release: Renderer and Interactive.Client 0.2.31, local package handoff only unless separately authorized.
+- Acceptance: source regression demonstrates exact-delta boundary intent/count preservation and bilateral five-tick axis contract; Release package builds and package-backed test projects pass; Daedilus performs Research/18884 focused acceptance.
+- Stop condition: deliver package hashes/source commit and focused seam, then return to foreground COMM wait after pending handoff is drained.
+
+## Operations
+
+- 2026-10-25 04:51 +08:00: Background watcher started for `agent.asteer` with five-minute Adaptive polling; owner boundary and proposed focused-test seam sent to Daedilus.
+- 2026-10-25 04:57 +08:00: Drained direct RED evidence from Daedilus. Real 18884 drag `delta=-420` moved absolute start by `-1500` and expanded resident 1500 -> 3000 with local start fixed at zero. A separate no-1K run showed the bootstrap disappear before authoritative GLOBAL and the final GLOBAL collapse from the 1K DB domain 2,996,994 to the 5K active domain about 601,102.
+- 2026-10-25 05:00 +08:00: Confirmed a second pan divergence in the authoritative-coverage accept path: a matching boundary response hard-codes `StartIndex = 0`. The corrected invariant is exact target reanchor at `targetStart - returnedActiveStart`, provided the returned active interval contains the requested window.
+- 2026-10-25 05:05 +08:00: Promoted authoritative GLOBAL lifecycle and independent ordinal domains to 0.2.31 delivery gates. Proposed to Daedilus an explicit active-to-global boundary mapping plus `TaCoverageWindowIntent.AxisRef`; awaiting confirmation that Research/DB can emit the mapping. Package remains preliminary, not final.
+- 2026-10-25 05:08 +08:00: Focused Renderer package-backed tests passed 93/93 and Interactive.Client tests passed 18/18 against preliminary 0.2.31 packages. These results cover the first exact-intent/Y-axis slice only and do not satisfy the new real-18884 RED gates.
+- 2026-10-25 05:10 +08:00: Implemented exact coverage-response reanchor. A returned active interval starting at 2,993,994 now places requested start 2,995,074 at local index 1,080 with count 1,500; a response that does not contain the complete requested window does not settle the pending pan.
+- 2026-10-25 05:11 +08:00: Implemented authoritative GLOBAL lifecycle gate shared by Renderer and Interactive.Client. With a bootstrap loader, `Document.IsSome` alone no longer mounts authoritative UI; the decoded/validated loaded-coverage projection must contain `GlobalOverview`. Without a bootstrap loader, existing first-document mounting remains unchanged.
+- 2026-10-25 05:12 +08:00: Daedilus reported the consumer-side 1K GLOBAL mapping complete under the existing Dynamic contract and real no-1K run evidence: authoritative total remained 2,996,994; 1,484 active 5K bars mapped to a 7,420-point 1K resident domain; GLOBAL drag mapped back and committed. The proposed Dynamic mapping/AxisRef extension was therefore not implemented.
+- 2026-10-25 05:12 +08:00: Rebuilt preliminary 0.2.31 packages after lifecycle/reanchor changes. Isolated package-backed suites passed Renderer 94/94 and Interactive.Client 18/18. Final package hashes remain pending the source commit and repository-commit repack.

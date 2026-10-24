@@ -1842,7 +1842,8 @@ module TaWorkspaceRenderer =
 
                 scheduleValueRefresh ())
 
-        svgElement "svg" [
+        let plotSurface =
+            (svgElement "svg" [
             svgAttr "viewBox" ("0 0 1000 " + fixedText height)
             svgAttr "preserveAspectRatio" "none"
             svgAttr "role" "img"
@@ -1955,7 +1956,73 @@ module TaWorkspaceRenderer =
                     svgAttr "pointer-events" "none"
                 ] []
 
-        ],
+            ])
+
+        let yAxis side =
+            let textAlign = if side = "left" then "right" else "left"
+            let padding = if side = "left" then "padding-right:6px;" else "padding-left:6px;"
+            div [
+                Attr.Create "data-testid" ("ta-y-axis-" + rowId + "-" + side)
+                Attr.Create "data-ta-y-axis-side" side
+                Attr.Create "data-ta-y-axis-row-id" rowId
+                Attr.Create "data-ta-y-axis-tick-count" "5"
+                Attr.Dynamic "style" (
+                    chartPixelHeight.View
+                    |> View.Map (fun value ->
+                        "box-sizing:border-box; position:relative; width:68px; min-width:68px; height:"
+                        + string value
+                        + "px; overflow:hidden; pointer-events:none; user-select:none; background:"
+                        + palette.AxisSurface
+                        + "; color:"
+                        + palette.LegendText
+                        + "; font-family:Consolas,monospace; font-size:10px; font-variant-numeric:tabular-nums;"))
+            ] [
+                for index in 0 .. 4 do
+                    let tickValue =
+                        markerVisualState.View
+                        |> View.Map (fun (_, _, low, high) ->
+                            RendererModel.yAxisTickValues 5 low high
+                            |> Array.tryItem index
+                            |> Option.map fixedText
+                            |> Option.defaultValue "")
+                    let y = (top + plotHeight * float index / 4.0) * 100.0 / height
+                    let translate =
+                        if index = 0 then "translateY(0)"
+                        elif index = 4 then "translateY(-100%)"
+                        else "translateY(-50%)"
+                    yield
+                        span [
+                            Attr.Create "data-ta-y-axis-tick-index" (string index)
+                            Attr.Dynamic "data-ta-y-axis-value" tickValue
+                            attr.style (
+                                "box-sizing:border-box; position:absolute; top:"
+                                + fixedText y
+                                + "%; left:0; width:100%; height:14px; line-height:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:"
+                                + textAlign
+                                + "; transform:"
+                                + translate
+                                + "; "
+                                + padding)
+                        ] [ textView tickValue ]
+            ]
+
+        let chart =
+            div [
+                Attr.Create "data-testid" ("ta-chart-with-y-axes-" + rowId)
+                Attr.Create "data-ta-bilateral-y-axis" "true"
+                Attr.Dynamic "style" (
+                    chartPixelHeight.View
+                    |> View.Map (fun value ->
+                        "display:grid; grid-template-columns:68px minmax(0,1fr) 68px; width:100%; height:"
+                        + string value
+                        + "px; min-width:0; overflow:hidden;"))
+            ] [
+                yAxis "left"
+                div [ attr.style "min-width:0; overflow:hidden;" ] [ plotSurface ]
+                yAxis "right"
+            ]
+
+        chart,
         referenceTimestamps,
         (traces
          |> Array.mapi (fun index _ ->
@@ -2776,18 +2843,30 @@ module TaWorkspaceRenderer =
                             | Some pending ->
                                 match RendererModel.tryLoadedCoverageResolved document.DefaultView next.Data with
                                 | Some projection
-                                    when projection.QueryGeneration >= pending.QueryGeneration
-                                         && (pending.TargetStartObservationOrdinal
-                                             |> Option.forall ((=) projection.ActiveDetail.StartObservationOrdinal)) ->
-                                    pendingBoundaryPan <- None
-                                    Some(
-                                        RendererModel.clampWindow
+                                    when projection.QueryGeneration >= pending.QueryGeneration ->
+                                    match pending.TargetStartObservationOrdinal with
+                                    | Some targetStart ->
+                                        RendererModel.tryCoverageIntentReanchorWindow
                                             options.MinimumVisibleBars
                                             maximumVisibleBars
                                             nextTimeline.Length
-                                            { StartIndex = 0
-                                              Count = min pending.ObservationCount nextTimeline.Length })
-                                | _ when RendererModel.coverageExtended pending.Direction pending.IntentTimeline nextTimeline ->
+                                            targetStart
+                                            pending.ObservationCount
+                                            projection
+                                        |> Option.map (fun window ->
+                                            pendingBoundaryPan <- None
+                                            window)
+                                    | None ->
+                                        pendingBoundaryPan <- None
+                                        Some(
+                                            RendererModel.clampWindow
+                                                options.MinimumVisibleBars
+                                                maximumVisibleBars
+                                                nextTimeline.Length
+                                                { StartIndex = 0
+                                                  Count = min pending.ObservationCount nextTimeline.Length })
+                                | _ when pending.TargetStartObservationOrdinal.IsNone
+                                         && RendererModel.coverageExtended pending.Direction pending.IntentTimeline nextTimeline ->
                                     pendingBoundaryPan <- None
                                     RendererModel.tryReanchorWindow
                                         options.MinimumVisibleBars
@@ -3112,7 +3191,7 @@ module TaWorkspaceRenderer =
                             | _ ->
                                 projection
                                 |> Option.bind (fun coverage ->
-                                    RendererModel.tryAdjacentCoverageIntent direction maximumVisibleBars timeline.Length window coverage)
+                                    RendererModel.tryMainPlotPanCoverageIntent maximumVisibleBars timeline.Length window delta coverage)
                         let targetStart = coverageIntent |> Option.bind _.StartObservationOrdinal
                         let queryGeneration = coverageIntent |> Option.map _.QueryGeneration |> Option.defaultValue 0L
                         let request =
@@ -5422,10 +5501,14 @@ module TaWorkspaceRenderer =
         (displayTimeZone: View<SduiDisplayTimeZone>)
         (loader: unit -> Async<TaGlobalCoverageOverview option>)
         (runtimeState: Var<RuntimeState>) =
-        let authoritativeReady = Var.Create runtimeState.Value.Document.IsSome
+        let authoritativeReady =
+            Var.Create(RendererModel.authoritativeGlobalOverviewReady true runtimeState.Value)
         runtimeState.View
         |> View.Sink (fun state ->
-            if not authoritativeReady.Value && state.Document.IsSome then
+            if
+                not authoritativeReady.Value
+                && RendererModel.authoritativeGlobalOverviewReady true state
+            then
                 authoritativeReady.Value <- true)
         let authoritativeDoc =
             renderWithProjectionCommitAndDisplayTimeZone

@@ -456,6 +456,21 @@ module RendererModel =
     [<Literal>]
     let MainPlotDragThresholdCssPixels = 4.0
 
+    let yAxisTickValues tickCount low high =
+        if
+            tickCount < 2
+            || Double.IsNaN low
+            || Double.IsInfinity low
+            || Double.IsNaN high
+            || Double.IsInfinity high
+        then
+            [||]
+        else
+            let lower = min low high
+            let upper = max low high
+            let denominator = float (tickCount - 1)
+            Array.init tickCount (fun index -> upper - (upper - lower) * float index / denominator)
+
     let mainPlotPanDelta visibleCount trackWidth startClientX currentClientX =
         if
             visibleCount <= 0
@@ -2603,6 +2618,15 @@ module RendererModel =
         | Ok(Some projection) -> Some projection
         | _ -> None
 
+    let authoritativeGlobalOverviewReady requiresGlobalOverview (state: RuntimeState) =
+        match state.Document with
+        | None -> false
+        | Some _ when not requiresGlobalOverview -> true
+        | Some document ->
+            tryLoadedCoverageResolved document.DefaultView state.Data
+            |> Option.bind _.GlobalOverview
+            |> Option.isSome
+
     let isStaleCoverageCandidate pendingQueryGeneration defaultView =
         tryLoadedCoverage defaultView
         |> Option.exists (fun projection -> projection.QueryGeneration < pendingQueryGeneration)
@@ -2739,6 +2763,61 @@ module RendererModel =
             (projection.QueryGeneration + 1L)
             (Some targetStart)
             count
+
+    let tryMainPlotPanCoverageIntent maximumVisibleBars activeReferenceLength activeWindow delta projection =
+        let local = clampWindow 1 maximumVisibleBars activeReferenceLength activeWindow
+        let count = max 1 (min maximumVisibleBars local.Count)
+        let currentStart = projection.ActiveDetail.StartObservationOrdinal + int64 local.StartIndex
+        let domainCount = navigationDomainCount projection
+        let maximumStart = max 0L (domainCount - int64 count)
+        let targetStart = max 0L (min maximumStart (currentStart + int64 delta))
+        let contractDirection =
+            if targetStart < currentStart then
+                Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier
+            elif targetStart > currentStart then
+                Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later
+            else
+                None
+
+        contractDirection
+        |> Option.bind (fun direction ->
+            TaLoadedCoverageCodec.tryWindowIntent
+                (Some direction)
+                (Some projection.CoverageRevision)
+                (projection.QueryGeneration + 1L)
+                (Some targetStart)
+                count)
+
+    let tryCoverageIntentReanchorWindow
+        minimumVisibleBars
+        maximumVisibleBars
+        activeReferenceLength
+        targetStartObservationOrdinal
+        observationCount
+        projection =
+        let activeCount = max 0 (min activeReferenceLength projection.ActiveDetail.ObservationCount)
+        let activeStart = projection.ActiveDetail.StartObservationOrdinal
+        let targetEnd = targetStartObservationOrdinal + int64 observationCount
+        let activeEnd = activeStart + int64 activeCount
+
+        if
+            observationCount <= 0
+            || targetStartObservationOrdinal < activeStart
+            || targetEnd > activeEnd
+        then
+            None
+        else
+            let localStart = targetStartObservationOrdinal - activeStart
+            if localStart < 0L || localStart > int64 Int32.MaxValue then
+                None
+            else
+                Some(
+                    clampWindow
+                        minimumVisibleBars
+                        maximumVisibleBars
+                        activeCount
+                        { StartIndex = int localStart
+                          Count = observationCount })
 
     let tryResidentAdjacentCoverageIntent (direction: TaCoverageDirection) maximumVisibleBars residentWindow projection =
         tryGlobalResidentWindow projection

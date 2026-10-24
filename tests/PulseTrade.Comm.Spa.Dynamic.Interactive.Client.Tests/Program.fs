@@ -822,6 +822,9 @@ let tests =
                     "globalOverviewBootstrapLoader"
                     "|> Option.iter (fun loader ->"
                     "TaWorkspaceRenderer.renderGlobalOverviewBootstrapWithDisplayTimeZone"
+                    "RendererModel.authoritativeGlobalOverviewReady"
+                    "globalOverviewBootstrapLoader.IsSome"
+                    "authoritativeRendererReady next"
                     "createApplicationWithDisplayTimeZoneCore options displayTimeZone (Some loader)"
                     "startWithOptionsAndDisplayTimeZoneAndGlobalOverviewBootstrap" ] do
                   Expect.stringContains source required ("missing GLOBAL bootstrap lifecycle contract: " + required)

@@ -208,6 +208,21 @@ let tests =
                 (RendererModel.mainPlotDragExceededThreshold RendererModel.MainPlotDragThresholdCssPixels 100.0 104.0)
                 "threshold motion becomes a drag and suppresses the following click"
 
+        testCase "row Y coordinates mirror the five horizontal grid levels on both sides" <| fun _ ->
+            Expect.sequenceEqual
+                (RendererModel.yAxisTickValues 5 -2.0 6.0)
+                [| 6.0; 4.0; 2.0; 0.0; -2.0 |]
+                "top-to-bottom Y ticks must use the same high/low interpolation as the grid"
+            Expect.isEmpty
+                (RendererModel.yAxisTickValues 1 -2.0 6.0)
+                "a bilateral axis requires at least two finite tick coordinates"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            for required in
+                [ "ta-y-axis-"; "data-ta-y-axis-side"; "data-ta-y-axis-tick-index"; "data-ta-y-axis-value"; "pointer-events:none" ] do
+                Expect.stringContains source required ("missing bilateral Y-axis DOM contract: " + required)
+
         testCase "visible K-bar domain ignores remote extrema and keeps fixed CSS padding after resize" <| fun _ ->
             let fullSourceBounds = Some(5.0, 104.0)
             let visibleBounds = Some(100.0, 104.0)
@@ -999,6 +1014,61 @@ let tests =
                 (earlier |> Option.bind _.StartObservationOrdinal, earlier |> Option.map _.ObservationCount)
                 (Some 0L, Some 250)
                 "Earlier must request one fixed-width adjacent page, not one quarter of the current window."
+
+            let boundaryProjection =
+                { projection with
+                    TotalObservationCount = Some 500L
+                    ActiveDetail = { projection.ActiveDetail with StartObservationOrdinal = 250L; ObservationCount = 250 } }
+            let exactEarlier =
+                RendererModel.tryMainPlotPanCoverageIntent
+                    250
+                    250
+                    { StartIndex = 0; Count = 250 }
+                    -10
+                    boundaryProjection
+            Expect.equal
+                (exactEarlier |> Option.bind _.StartObservationOrdinal, exactEarlier |> Option.map _.ObservationCount)
+                (Some 240L, Some 250)
+                "main-plot boundary pan must preserve count and use the actual ten-bar drag, not jump one page"
+
+            let exactLater =
+                RendererModel.tryMainPlotPanCoverageIntent
+                    250
+                    250
+                    { StartIndex = 0; Count = 250 }
+                    10
+                    { boundaryProjection with ActiveDetail = { boundaryProjection.ActiveDetail with StartObservationOrdinal = 0L } }
+            Expect.equal
+                (exactLater |> Option.bind _.StartObservationOrdinal, exactLater |> Option.map _.ObservationCount)
+                (Some 10L, Some 250)
+                "main-plot pan direction must follow the signed K-bar delta without changing width"
+
+            let expandedProjection =
+                { boundaryProjection with
+                    QueryGeneration = boundaryProjection.QueryGeneration + 1L
+                    ActiveDetail =
+                        { boundaryProjection.ActiveDetail with
+                            StartObservationOrdinal = 2_993_994L
+                            ObservationCount = 3000 } }
+            Expect.equal
+                (RendererModel.tryCoverageIntentReanchorWindow
+                    1
+                    4000
+                    3000
+                    2_995_074L
+                    1500
+                    expandedProjection)
+                (Some { StartIndex = 1080; Count = 1500 })
+                "an expanded resident interval must reanchor the exact requested absolute start instead of fixing local start at zero"
+            Expect.isNone
+                (RendererModel.tryCoverageIntentReanchorWindow
+                    1
+                    4000
+                    3000
+                    2_992_000L
+                    1500
+                    expandedProjection)
+                "a response that does not contain the requested absolute window cannot settle the pending pan"
 
             let allLoaded =
                 RendererModel.tryViewAllCoverageIntent
@@ -2821,6 +2891,62 @@ let tests =
             Expect.contains orderErrors "anchor-ordinal-must-increase-1" "Anchor ordinals remain canonical."
             Expect.contains orderErrors "anchor-time-must-increase-1" "Anchor event times remain canonical."
 
+        testCase "authoritative GLOBAL bootstrap replacement waits for resolved overview authority" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "global-lifecycle"
+                  CanvasInstanceId = CanvasInstanceId "global-lifecycle-canvas" }
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "research:es:1k"
+                  Anchors =
+                    [| { ObservationOrdinal = 0L
+                         EventTimeUtc = "2018-01-02T14:30:00Z"
+                         Value = SduiValue.Number 100.0 }
+                       { ObservationOrdinal = 2_996_993L
+                         EventTimeUtc = "2026-10-23T20:59:00Z"
+                         Value = SduiValue.Number 200.0 } |]
+                  ResidentStartObservationOrdinal = 2_989_574L
+                  ResidentObservationCount = 7420 }
+            let projection globalOverview =
+                { CoverageIdentity = "global-lifecycle"
+                  CoverageRevision = 1L
+                  QueryGeneration = 0L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 601_102L
+                  Segments = [||]
+                  OverviewAxisRef = "research:es:1k"
+                  OverviewAnchors = overview.Anchors
+                  ActiveDetail =
+                    { StartObservationOrdinal = 597_918L
+                      ObservationCount = 1484
+                      BaseAxisRef = "research:es:5k" }
+                  GlobalOverview = globalOverview }
+            let document loadedCoverage =
+                { WorkspaceId = "global-lifecycle"
+                  Title = "GLOBAL lifecycle"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = None
+                  Rows = [||]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = TaLoadedCoverageCodec.apply loadedCoverage Map.empty }
+            let state loadedCoverage =
+                { RuntimeReducer.initial identity with
+                    Document = Some(document loadedCoverage) }
+
+            Expect.isTrue
+                (RendererModel.authoritativeGlobalOverviewReady false (state (projection None)))
+                "without a bootstrap loader the first authoritative document may mount"
+            Expect.isFalse
+                (RendererModel.authoritativeGlobalOverviewReady true (state (projection None)))
+                "a document without resolved GLOBAL authority cannot unmount the actual bootstrap"
+            Expect.isTrue
+                (RendererModel.authoritativeGlobalOverviewReady true (state (projection (Some overview))))
+                "the validated authoritative GLOBAL projection replaces the bootstrap"
+
         testCase "DYN-T-691 only the GLOBAL overview uses the dedicated calendar axis" <| fun _ ->
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
@@ -2878,7 +3004,7 @@ let tests =
             Expect.isGreaterThan replacementStart authoritativeStart "The additive authoritative replacement overload must exist."
             Expect.isGreaterThan replacementEnd replacementStart "The replacement overload must have a bounded source range."
             let replacementBody = source.Substring(replacementStart, replacementEnd - replacementStart)
-            Expect.stringContains replacementBody "state.Document.IsSome" "The first authoritative document owns replacement."
+            Expect.stringContains replacementBody "RendererModel.authoritativeGlobalOverviewReady true state" "Only a resolved authoritative GLOBAL projection owns replacement."
             Expect.stringContains replacementBody "authoritativeReady.Value <- true" "Replacement must be monotonic."
             Expect.stringContains replacementBody "if ready then authoritativeDoc else bootstrapDoc" "The actual GLOBAL bootstrap must be replaced in place."
 
