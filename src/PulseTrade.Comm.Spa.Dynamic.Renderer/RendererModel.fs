@@ -150,6 +150,12 @@ type TaResidentCoverageWindow =
     { StartObservationOrdinal: int64
       ObservationCount: int }
 
+type TaGlobalCalendarTick =
+    { AnchorIndex: int
+      EventTimeUtc: string
+      Label: string
+      IsYearBoundary: bool }
+
 type TaProjectionCommitKey =
     { Identity: RuntimeIdentity
       DocumentRevision: int64
@@ -3063,6 +3069,54 @@ module RendererModel =
                        int (Math.Round(float tickIndex * float (timestamps.Length - 1) / float (count - 1)))
                    yield sourceIndex, timestamps[sourceIndex] |]
             |> Array.distinctBy fst
+
+    let globalCalendarTicks minimumSpacing width (anchors: TaOverviewAnchor array) =
+        let seenYears = HashSet<int>()
+        let seenQuarterMonths = HashSet<int * int>()
+        let candidates = ResizeArray<TaGlobalCalendarTick>()
+
+        for index, anchor in anchors |> Array.indexed do
+            let value = anchor.EventTimeUtc
+            if not (String.IsNullOrWhiteSpace value) && value.Length >= 10 && value[4] = '-' && value[7] = '-' then
+                match Int32.TryParse(value.Substring(0, 4)), Int32.TryParse(value.Substring(5, 2)) with
+                | (true, year), (true, month) when month >= 1 && month <= 12 ->
+                    let isQuarterMonth = month = 3 || month = 6 || month = 9 || month = 12
+                    let isFirstQuarterAnchor = isQuarterMonth && seenQuarterMonths.Add((year, month))
+                    let isFirstYearAnchor = seenYears.Add(year)
+                    if isFirstYearAnchor then
+                        candidates.Add
+                            { AnchorIndex = index
+                              EventTimeUtc = value
+                              Label = value.Substring(0, 4)
+                              IsYearBoundary = true }
+                    elif isFirstQuarterAnchor then
+                        candidates.Add
+                            { AnchorIndex = index
+                              EventTimeUtc = value
+                              Label = value.Substring(5, 2)
+                              IsYearBoundary = false }
+                | _ -> ()
+
+        let spacing = max 24.0 minimumSpacing
+        let availableWidth = max 1.0 width
+        let position tick =
+            if anchors.Length <= 1 then availableWidth / 2.0
+            else float tick.AnchorIndex / float (anchors.Length - 1) * availableWidth
+        let addIfSeparated selected candidate =
+            if selected |> List.forall (fun chosen -> abs (position chosen - position candidate) >= spacing) then
+                candidate :: selected
+            else
+                selected
+
+        let yearTicks =
+            candidates
+            |> Seq.filter _.IsYearBoundary
+            |> Seq.fold addIfSeparated []
+        candidates
+        |> Seq.filter (fun candidate -> not candidate.IsYearBoundary)
+        |> Seq.fold addIfSeparated yearTicks
+        |> List.sortBy _.AnchorIndex
+        |> List.toArray
 
     let coverageExtended direction (oldTimeline: string array) (newTimeline: string array) =
         if oldTimeline.Length = 0 || newTimeline.Length <= oldTimeline.Length then

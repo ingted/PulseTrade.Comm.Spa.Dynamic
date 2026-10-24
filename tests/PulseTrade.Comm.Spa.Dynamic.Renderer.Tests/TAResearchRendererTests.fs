@@ -2641,6 +2641,77 @@ let tests =
             Expect.isTrue (RendererModel.coverageExtended TaCoverageDirection.Later initialTimeline appendedTimeline) "append must be classified as later coverage"
             Expect.isFalse (RendererModel.coverageExtended TaCoverageDirection.Later oldTimeline prependedTimeline) "opposite-direction extension must not satisfy a later intent"
 
+        testCase "DYN-T-690 global calendar ticks use only real anchors without time labels or overlap" <| fun _ ->
+            let anchor ordinal eventTime =
+                { ObservationOrdinal = ordinal
+                  EventTimeUtc = eventTime
+                  Value = SduiValue.Number(float ordinal) }
+
+            let multiYear =
+                [| anchor 0L "2024-01-02T14:30:00Z"
+                   anchor 1L "2024-03-01T14:30:00Z"
+                   anchor 2L "2024-03-15T14:30:00Z"
+                   anchor 3L "2024-06-03T14:30:00Z"
+                   anchor 4L "2024-09-03T14:30:00Z"
+                   anchor 5L "2024-12-02T14:30:00Z"
+                   anchor 6L "2025-03-03T14:30:00Z"
+                   anchor 7L "2025-06-02T14:30:00Z"
+                   anchor 8L "2025-12-01T14:30:00Z" |]
+            let ticks = RendererModel.globalCalendarTicks 40.0 1200.0 multiYear
+
+            Expect.sequenceEqual
+                (ticks |> Array.map _.Label)
+                [| "2024"; "03"; "06"; "09"; "12"; "2025"; "06"; "12" |]
+                "The first real anchor in each year must win over a quarter label at the same anchor."
+            Expect.sequenceEqual
+                (ticks |> Array.map _.EventTimeUtc)
+                [| multiYear[0].EventTimeUtc
+                   multiYear[1].EventTimeUtc
+                   multiYear[3].EventTimeUtc
+                   multiYear[4].EventTimeUtc
+                   multiYear[5].EventTimeUtc
+                   multiYear[6].EventTimeUtc
+                   multiYear[7].EventTimeUtc
+                   multiYear[8].EventTimeUtc |]
+                "Every calendar tick must retain an actual canonical anchor timestamp."
+            Expect.isTrue
+                (ticks |> Array.forall (fun tick -> not (tick.Label.Contains(":"))))
+                "GLOBAL calendar labels must never expose HH:mm."
+
+            let narrow =
+                [| anchor 10L "2026-02-27T14:30:00Z"
+                   anchor 11L "2026-03-02T14:30:00Z"
+                   anchor 12L "2026-03-09T14:30:00Z"
+                   anchor 13L "2026-06-01T14:30:00Z" |]
+            let narrowTicks = RendererModel.globalCalendarTicks 40.0 800.0 narrow
+            Expect.sequenceEqual (narrowTicks |> Array.map _.Label) [| "2026"; "03"; "06" |] "A narrow same-year domain must use only its real anchors."
+            Expect.sequenceEqual (narrowTicks |> Array.map _.AnchorIndex) [| 0; 1; 3 |] "Repeated anchors in one quarter month must deduplicate at the first real anchor."
+
+            let compact = RendererModel.globalCalendarTicks 40.0 80.0 multiYear
+            let positions =
+                compact
+                |> Array.map (fun tick -> float tick.AnchorIndex / float (multiYear.Length - 1) * 80.0)
+            positions
+            |> Array.pairwise
+            |> Array.iter (fun (left, right) -> Expect.isGreaterThanOrEqual (right - left) 40.0 "Adaptive GLOBAL labels must keep the requested minimum spacing.")
+
+        testCase "DYN-T-691 only the GLOBAL overview uses the dedicated calendar axis" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let globalStart = source.IndexOf("Attr.Create \"data-testid\" \"ta-global-overview-with-axis\"", StringComparison.Ordinal)
+            let globalEnd = source.IndexOf("Attr.Create \"data-testid\" \"ta-resident-overview-shell\"", globalStart, StringComparison.Ordinal)
+            Expect.isGreaterThan globalStart -1 "The GLOBAL overview source block must remain explicit."
+            Expect.isGreaterThan globalEnd globalStart "The GLOBAL overview source block must remain bounded before RESIDENT."
+            let globalBody = source.Substring(globalStart, globalEnd - globalStart)
+            Expect.stringContains globalBody "globalCalendarAxisWithPalette" "GLOBAL must use its calendar-only axis renderer."
+            Expect.stringContains globalBody "globalOverview.Anchors" "GLOBAL tick positions must come from authoritative real anchors."
+            Expect.isFalse (globalBody.Contains("timeAxisWithPalette", StringComparison.Ordinal)) "GLOBAL must not fall back to the generic MM-dd HH:mm axis."
+
+            let residentStart = source.IndexOf("let residentOverview =", StringComparison.Ordinal)
+            let residentEnd = source.IndexOf("match currentCoverageProjection", residentStart, StringComparison.Ordinal)
+            let residentBody = source.Substring(residentStart, residentEnd - residentStart)
+            Expect.stringContains residentBody "timeAxisWithPalette" "RESIDENT must retain the generic event-time axis."
+
         testCase "adjacent coverage uses explicit document authority boundaries" <| fun _ ->
             let start0 = "2026-09-22T01:00:00Z"
             let end0 = "2026-09-22T01:01:00Z"
