@@ -1,6 +1,6 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-25 DYN-T-705 / 706（0.2.39 candidate）
+## 2026-10-25 DYN-T-705 / 706（0.2.39 final owner gate）
 
 - DYN-T-705：以真consumer同構projection固定GLOBAL total2,996,994／resident start2,989,574／count7,420、OverviewAnchors1484、active axis5K start600,240／count862。terminal grow accepted target2,989,574後，navigator必保持domain1484/window0-862與selection `0..862/1484`；body-right148後必映為GLOBAL target2,989,722/window148-1010，active-axis601,102必被拒絕。另以source wiring guard要求range、selection、pointer與dispatch使用同一retained authority。
 - DYN-T-706：候選與final皆須完整WebSharper build；fresh exact-package Renderer96/96、Interactive.Client19/19與package manifest verifier；exact-package BrowserDemo完整WebSharper 0 errors。最後由Daedalus以0.2.38 deterministic human-paced sequence（grow terminal後停1秒、再material body-right）驗final `Loaded1484`、非全寬selection、GLOBAL target/generation、pending清除、moveSettled與browser errors；owner package gate不冒充consumer acceptance。
