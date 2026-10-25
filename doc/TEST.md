@@ -1,5 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-26 DYN-T-707 / 708 / 709（0.2.40 candidate）
+
+- DYN-T-707：pure model固定右鍵mode toggle、CURSOR不論pointer half皆為Move、Resize左右half各選對boundary；相同plot width下pointer距離加倍，reverse pan delta亦加倍。另以resident4500/window1000-2000驗左boundary向右只得1100-2000、右boundary向右只得1000-2100。source wiring要求persistent mode、contextmenu、dynamic mode attribute、actual-distance delta、shared preview/commit，並禁止`tryCommitMainPlotResidentPan`。
+- DYN-T-708：重現only-30K/60K formal projection：GLOBAL axis1K與active axis30K同start `2,952,345`，resident count44,649、rendered local count1,491。沒有retained authority時gesture domain必為local1491，left shrink200只成200/1291且不得產生GLOBAL intent；matching typed authority存在時才可明確映至GLOBAL `2,952,545`。queued gesture若authority在settle前消失必fail closed。
+- DYN-T-709：bounded source regression檢查`publishRuntimeState`只以`authoritativeRendererReady next` mount early formal frame，且不得依賴`WorkspaceMaterializationPhase.Completed`、generic Completed或rows非空；既有DYN-T-698/702仍驗bootstrap loader ordering與non-zero authoritative geometry後才retire。
+- Owner gate：source-project Renderer 98-case process與Interactive.Client 20-case process；版本後另跑fresh exact-package兩套、package metadata/hash與BrowserDemo full WebSharper。Daedalus擁有18884真資料gate：formal GLOBAL須在RUN期間原位接手、only-30K/60K四gesture不改GLOBAL resident；真右鍵mode、crosshair、actual-distance pan與左右boundary geometry/action count。
+
 ## 2026-10-25 DYN-T-705 / 706（0.2.39 final owner gate）
 
 - DYN-T-705：以真consumer同構projection固定GLOBAL total2,996,994／resident start2,989,574／count7,420、OverviewAnchors1484、active axis5K start600,240／count862。terminal grow accepted target2,989,574後，navigator必保持domain1484/window0-862與selection `0..862/1484`；body-right148後必映為GLOBAL target2,989,722/window148-1010，active-axis601,102必被拒絕。另以source wiring guard要求range、selection、pointer與dispatch使用同一retained authority。

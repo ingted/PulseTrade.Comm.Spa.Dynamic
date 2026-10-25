@@ -878,7 +878,41 @@ let tests =
               Expect.isGreaterThan mountIndex -1 "Authoritative rendering must target its persistent host."
               Expect.isGreaterThan retireCallIndex mountIndex "The handoff watcher must start only after authoritative rendering is mounted."
               Expect.isGreaterThan visibleIndex handoffIndex "The handoff must observe authoritative visibility."
-              Expect.isGreaterThan retireIndex visibleIndex "Bootstrap must retire only after authoritative GLOBAL is visible.") ]
+              Expect.isGreaterThan retireIndex visibleIndex "Bootstrap must retire only after authoritative GLOBAL is visible.")
+
+          testCase "DYN-T-709 early formal GLOBAL mounts during RUN before derived rows complete" (fun _ ->
+              let sourcePath =
+                  IO.Path.GetFullPath(
+                      IO.Path.Combine(
+                          __SOURCE_DIRECTORY__,
+                          "..",
+                          "..",
+                          "src",
+                          "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+                          "Client.fs"))
+              let source = IO.File.ReadAllText sourcePath
+              let publishStart = source.IndexOf("and publishRuntimeState (next: RuntimeState) =", StringComparison.Ordinal)
+              let publishEnd = source.IndexOf("and publishSnapshotCandidate", publishStart, StringComparison.Ordinal)
+              Expect.isGreaterThan publishStart -1 "The runtime publication boundary must remain explicit."
+              Expect.isGreaterThan publishEnd publishStart "The runtime publication body must remain inspectable."
+
+              let publishBody = source.Substring(publishStart, publishEnd - publishStart)
+              Expect.stringContains
+                  publishBody
+                  "authoritativeRendererReady next"
+                  "Any early formal frame carrying GLOBAL authority must be eligible to mount."
+              Expect.stringContains
+                  publishBody
+                  "mount state"
+                  "The eligible early formal frame must replace the bootstrap in place."
+              for forbidden in
+                  [ "WorkspaceMaterializationPhase.Completed"
+                    "MaterializationPhase.Completed"
+                    "Rows.Length > 0"
+                    "Rows.IsEmpty" ] do
+                  Expect.isFalse
+                      (publishBody.Contains(forbidden, StringComparison.Ordinal))
+                      ("Formal GLOBAL mounting must not wait for derived TA completion: " + forbidden)) ]
 
 [<EntryPoint>]
 let main argv =

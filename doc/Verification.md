@@ -1,10 +1,16 @@
 ---
 status: active
-updated: 2026-10-25
+updated: 2026-10-26
 scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 ---
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
+
+### DYN-VFY-055 no-1K/5K authority與main-plot explicit mode（candidate）
+
+- RED：Daedalus 0.2.39真consumer只留30K/60K，local依序`0/1491 -> 200/1291 -> 200/1091 -> 100/1091`皆正確；bootstrap GLOBAL `2,995,494/1,500`在第一次resize後被formal `2,952,345/44,649`取代，錯送`2,952,445/count1,291/gen1`與`2,952,395/count1,291/gen2`。根因拆成Research RUN早期未發布formal GLOBAL，以及Dynamic跨axis無retained authority仍直接用相同數值start做resident mapping。
+- Owner candidate：DYN-T-707/708新增後Renderer source-project 98-case process exit0；DYN-T-709加入後Interactive.Client test process exit0。Renderer已用axis equality阻擋未授權direct mapping、active-local fallback不產生GLOBAL intent；main plot右鍵切Cursor/Resize、crosshair visibility與actual-distance/boundary drag均完成source wiring，舊plot-body resident relocation移除。版本、immutable package、fresh exact-package與BrowserDemo gates尚待cut；此段不宣告package或consumer PASS。
+- Consumer待驗：Research應在RUN早期發布含formal `GlobalOverview`/resident的state，bootstrap先畫但不等derived TA Completed；18884需驗formal in-place replacement、GLOBAL resident跨四個local gesture不變、action count，以及CURSOR/Resize真pointer geometry與browser errors。
 
 ### DYN-VFY-054 0.2.38 timing RED／0.2.39 retained authority final
 

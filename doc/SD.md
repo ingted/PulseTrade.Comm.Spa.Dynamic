@@ -1,5 +1,13 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-26 axis-bound navigator domain與main-plot mode（DYN-WBS-598）
+
+`tryResidentNavigatorWindow`現在要求`GlobalOverview.AxisRef = ActiveDetail.BaseAxisRef`才走直接ordinal mapping。`resolveNavigatorGestureDomain`把pointerdown snapshot解析成`DomainCount / CommittedWindow / UsesResidentAuthority`；same-axis或matching retained authority才可由`tryNavigatorGestureCoverageIntent`產生GLOBAL coverage intent，cross-axis且無retained authority時使用clamped active-local domain。Renderer的draft、boundary direction、release與queued rebase都沿用同一domain flag；authority在排隊期間失效即reject並清draft，不回退成local-index-plus-GLOBAL-start。
+
+`TaMainPlotInteractionMode = Cursor | Resize`由workspace root `Var`持有，因此row reactive replacement不重置。每個plot surface以dynamic attribute/style公開mode，`contextmenu`阻止browser menu後切換並清cursor。Cursor mode才處理shared vertical/horizontal cursor與point activation；其drag使用`mainPlotPanDelta`，保留「content向左、window向後」的反向語意。Resize mode把pointerdown相對plot midpoint映成`ResizeLeft/ResizeRight`，pointer位移改成boundary同方向delta，再共用`previewWindowBounds`與`commitWindowBounds`。release只以`setWindow`送visible-range action；舊`tryCommitMainPlotResidentPan` wiring移除。
+
+Interactive.Client的`publishRuntimeState`仍以`authoritativeGlobalOverviewReady`作唯一mount gate。DYN-T-709把該bounded body固定為不得出現materialization Completed或rows非空條件，讓Research可在RUN早期先發布formal GLOBAL/4500，derived rows後到而不造成第二套GLOBAL lifecycle。
+
 ## 2026-10-25 0.2.39 retained resident navigator authority（DYN-WBS-597）
 
 `TaResidentNavigatorAuthority`保存CoverageIdentity、GLOBAL resident start/count、`OverviewAnchors.Length` navigation domain及accepted target相對resident start的active-detail base offset。它只由`coverageIntentProjectionSettlement=Reanchor`且GLOBAL／active axis不同時建立；identity change與viewport scope change清除，projection scope不再相符時各resolver fail closed。

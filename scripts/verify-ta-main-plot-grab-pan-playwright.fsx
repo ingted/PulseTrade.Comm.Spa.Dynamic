@@ -1,4 +1,4 @@
-// Focused real-browser verifier for main-plot grab pan and row-local horizontal cursor.
+// Focused real-browser verifier for explicit main-plot Cursor/Resize interaction and row-local cursor visibility.
 
 #i @"nuget: C:\Program Files\dotnet\sdk\10.0.402\FSharp\library-packs"
 #r "nuget: FAkka.Argu, [10.1.301]"
@@ -54,7 +54,7 @@ let headed = automation.Contains Headed || defaults.Contains Headed
 
 let awaitTask (task: Task<'T>) = task.GetAwaiter().GetResult()
 let awaitUnit (task: Task) = task.GetAwaiter().GetResult()
-let require condition message = if not condition then failwith ("Main-plot grab-pan verification failed: " + message)
+let require condition message = if not condition then failwith ("Main-plot interaction verification failed: " + message)
 
 let attributeOf (locator: ILocator) name =
     locator.GetAttributeAsync(name) |> awaitTask |> Option.ofObj |> Option.defaultValue ""
@@ -62,7 +62,7 @@ let attributeOf (locator: ILocator) name =
 let intAttribute (locator: ILocator) name =
     match Int32.TryParse(attributeOf locator name) with
     | true, value -> value
-    | _ -> failwith $"Main-plot grab-pan verification failed: `{name}` is not an integer on `{locator}`."
+    | _ -> failwith $"Main-plot interaction verification failed: `{name}` is not an integer on `{locator}`."
 
 let boundingBox (locator: ILocator) =
     locator.BoundingBoxAsync() |> awaitTask |> Option.ofObj |> Option.defaultWith (fun () -> failwith $"No geometry for `{locator}`.")
@@ -77,8 +77,8 @@ let waitUntil label probe predicate =
     value
 
 let tests =
-    testList "main plot grab pan" [
-        testCase "real mouse relocates resident and preserves pointer anchor" <| fun _ ->
+    testList "main plot explicit interaction" [
+        testCase "real mouse pans visible window and right-click owns both boundary resizes" <| fun _ ->
             Directory.CreateDirectory(outputDirectory) |> ignore
             use playwright = Playwright.CreateAsync() |> awaitTask
             let launch = BrowserTypeLaunchOptions(Headless = not headed)
@@ -99,21 +99,22 @@ let tests =
                 let rowCursor = page.Locator("[data-testid='ta-row-cursor-label-price']")
                 let horizontalCursors = page.Locator("[data-ta-row-horizontal-cursor='true']")
                 let priceHorizontalCursor = page.Locator("[data-ta-row-horizontal-cursor-row-id='price']")
+                let sharedCrosshairs = page.Locator("[data-ta-shared-crosshair='true']")
 
                 waitUntil "GLOBAL total" (fun () -> intAttribute globalWrapper "data-total-observation-count") ((=) 10000) |> ignore
                 waitUntil "resident start" (fun () -> intAttribute globalWrapper "data-resident-start-observation-ordinal") ((=) 3000) |> ignore
                 waitUntil "main plot points" (fun () -> intAttribute mainPlot "data-point-count") (fun value -> value > 0) |> ignore
 
                 let plotBounds = boundingBox mainPlot
-                let mainVisibleCount = intAttribute mainPlot "data-point-count"
                 let downX = plotBounds.X + plotBounds.Width * 0.75f
                 let upX = plotBounds.X + plotBounds.Width * 0.55f
                 let pointerY = plotBounds.Y + plotBounds.Height * 0.45f
-                let slotAt clientX =
-                    let ratio = max 0.0 (min 1.0 ((float clientX - float plotBounds.X) / float plotBounds.Width))
-                    min (mainVisibleCount - 1) (int (Math.Floor(ratio * float mainVisibleCount)))
-                let expectedDelta = slotAt downX - slotAt upX
-                require (expectedDelta > 0) "left drag did not produce a positive discrete slot delta"
+                let pointerDelta visibleCount startX currentX =
+                    let raw = (float startX - float currentX) * float visibleCount / float plotBounds.Width
+                    if raw >= 0.0 then int (Math.Floor(raw + 0.5)) else int (Math.Ceiling(raw - 0.5))
+                let expectedDelta = pointerDelta (intAttribute mainPlot "data-point-count") downX upX
+                require (expectedDelta > 0) "left drag did not produce a positive reverse pan delta"
+                require (attributeOf mainPlot "data-main-plot-interaction-mode" = "cursor") "main plot did not default to CURSOR mode"
 
                 require (horizontalCursors.CountAsync() |> awaitTask > 1) "fixture must expose multiple TA rows"
                 require ((page.Locator("[data-ta-row-horizontal-cursor='true'][visibility='hidden']").CountAsync() |> awaitTask) = (horizontalCursors.CountAsync() |> awaitTask)) "horizontal cursors were visible before hover"
@@ -140,27 +141,62 @@ let tests =
                 require (intAttribute callbackState "data-callback-count" = callbackBefore) "pointermove submitted before pointerup"
                 page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
                 waitUntil "exactly one action" (fun () -> intAttribute callbackState "data-callback-count") ((=) (callbackBefore + 1)) |> ignore
-                waitUntil "resident action kind" (fun () -> attributeOf callbackState "data-last-action") ((=) "ResidentCoverageChanged") |> ignore
+                waitUntil "visible action kind" (fun () -> attributeOf callbackState "data-last-action") ((=) "VisibleRangeChanged") |> ignore
 
-                let expectedResident = residentBefore + expectedDelta
-                waitUntil "resident relocation" (fun () -> intAttribute globalWrapper "data-resident-start-observation-ordinal") ((=) expectedResident) |> ignore
-                waitUntil "resident-relative visible offset" (fun () -> intAttribute chartStack "data-visible-start") ((=) visibleBefore) |> ignore
-                require (intAttribute chartStack "data-local-visible-start" = localBefore) "resident-relative visible offset changed"
-                require (intAttribute callbackState "data-last-coverage-start" = expectedResident) "wire target did not equal resident start"
+                require (intAttribute globalWrapper "data-resident-start-observation-ordinal" = residentBefore) "CURSOR pan relocated the GLOBAL resident"
+                waitUntil "resident-relative visible offset" (fun () -> intAttribute chartStack "data-local-visible-start") ((=) (localBefore + expectedDelta)) |> ignore
                 let visibleAfter = intAttribute chartStack "data-visible-start"
-                require
-                    (expectedResident + visibleAfter = residentBefore + visibleBefore + expectedDelta)
-                    "absolute visible start did not move by the exact resident delta"
+                require (visibleAfter = visibleBefore + expectedDelta) "visible start did not move by the actual pointer distance"
 
                 page.Mouse.MoveAsync(upX + 2.0f, pointerY) |> awaitUnit
                 page.Mouse.MoveAsync(upX, pointerY) |> awaitUnit
-                let anchoredEventTimeAfter = waitUntil "anchor after relocation" (fun () -> attributeOf rowCursor "data-canonical-event-time") ((=) anchoredEventTime)
+                let anchoredEventTimeAfter = waitUntil "anchor after pan" (fun () -> attributeOf rowCursor "data-canonical-event-time") ((=) anchoredEventTime)
                 require (anchoredEventTimeAfter = anchoredEventTime) $"anchor drifted: before={anchoredEventTime}; after={anchoredEventTimeAfter}"
+
+                page.Mouse.ClickAsync(downX, pointerY, MouseClickOptions(Button = MouseButton.Right)) |> awaitUnit
+                waitUntil "Resize mode" (fun () -> attributeOf mainPlot "data-main-plot-interaction-mode") ((=) "resize") |> ignore
+                require ((page.Locator("[data-ta-row-horizontal-cursor='true'][visibility='visible']").CountAsync() |> awaitTask) = 0) "Resize mode retained a horizontal crosshair"
+                require ((page.Locator("[data-ta-shared-crosshair='true'][visibility='visible']").CountAsync() |> awaitTask) = 0) "Resize mode retained a shared vertical crosshair"
+
+                let resizeLeftDownX = plotBounds.X + plotBounds.Width * 0.25f
+                let resizeLeftUpX = plotBounds.X + plotBounds.Width * 0.35f
+                let leftCountBefore = intAttribute chartStack "data-local-visible-count"
+                let leftStartBefore = intAttribute chartStack "data-local-visible-start"
+                let leftDelta = -(pointerDelta leftCountBefore resizeLeftDownX resizeLeftUpX)
+                let leftCallbackBefore = intAttribute callbackState "data-callback-count"
+                page.Mouse.MoveAsync(resizeLeftDownX, pointerY) |> awaitUnit
+                page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+                page.Mouse.MoveAsync(resizeLeftUpX, pointerY, MouseMoveOptions(Steps = 8)) |> awaitUnit
+                page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+                waitUntil "left resize action" (fun () -> intAttribute callbackState "data-callback-count") ((=) (leftCallbackBefore + 1)) |> ignore
+                waitUntil "left resize start" (fun () -> intAttribute chartStack "data-local-visible-start") ((=) (leftStartBefore + leftDelta)) |> ignore
+                require (intAttribute chartStack "data-local-visible-count" = leftCountBefore - leftDelta) "left resize changed the wrong boundary"
+
+                let resizeRightDownX = plotBounds.X + plotBounds.Width * 0.70f
+                let resizeRightUpX = plotBounds.X + plotBounds.Width * 0.80f
+                let rightCountBefore = intAttribute chartStack "data-local-visible-count"
+                let rightStartBefore = intAttribute chartStack "data-local-visible-start"
+                let rightDelta = -(pointerDelta rightCountBefore resizeRightDownX resizeRightUpX)
+                let rightCallbackBefore = intAttribute callbackState "data-callback-count"
+                page.Mouse.MoveAsync(resizeRightDownX, pointerY) |> awaitUnit
+                page.Mouse.DownAsync(MouseDownOptions(Button = MouseButton.Left)) |> awaitUnit
+                page.Mouse.MoveAsync(resizeRightUpX, pointerY, MouseMoveOptions(Steps = 8)) |> awaitUnit
+                page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
+                waitUntil "right resize action" (fun () -> intAttribute callbackState "data-callback-count") ((=) (rightCallbackBefore + 1)) |> ignore
+                require (intAttribute chartStack "data-local-visible-start" = rightStartBefore) "right resize moved the left boundary"
+                waitUntil "right resize count" (fun () -> intAttribute chartStack "data-local-visible-count") ((=) (rightCountBefore + rightDelta)) |> ignore
+                require (intAttribute globalWrapper "data-resident-start-observation-ordinal" = residentBefore) "Resize mode relocated the GLOBAL resident"
+
+                page.Mouse.ClickAsync(resizeRightUpX, pointerY, MouseClickOptions(Button = MouseButton.Right)) |> awaitUnit
+                waitUntil "CURSOR mode restored" (fun () -> attributeOf mainPlot "data-main-plot-interaction-mode") ((=) "cursor") |> ignore
+                page.Mouse.MoveAsync(resizeRightUpX - 2.0f, pointerY) |> awaitUnit
+                page.Mouse.MoveAsync(resizeRightUpX, pointerY) |> awaitUnit
+                waitUntil "crosshair restored" (fun () -> attributeOf priceHorizontalCursor "visibility") ((=) "visible") |> ignore
                 require (consoleErrors.Count = 0) ("browser console errors: " + String.concat " | " consoleErrors)
 
-                let screenshotPath = Path.Combine(outputDirectory, "main-plot-grab-pan.png")
+                let screenshotPath = Path.Combine(outputDirectory, "main-plot-cursor-resize.png")
                 page.ScreenshotAsync(PageScreenshotOptions(Path = screenshotPath, FullPage = true)) |> awaitTask |> ignore
-                printfn "main-plot-grab-pan PASS delta=%d resident=%d->%d localVisible=%d absoluteVisible=%d->%d anchor=%s screenshot=%s" expectedDelta residentBefore expectedResident visibleAfter (residentBefore + visibleBefore) (expectedResident + visibleAfter) anchoredEventTime screenshotPath
+                printfn "main-plot-interaction PASS panDelta=%d resident=%d leftDelta=%d rightDelta=%d anchor=%s screenshot=%s" expectedDelta residentBefore leftDelta rightDelta anchoredEventTime screenshotPath
             finally
                 browser.CloseAsync() |> awaitUnit
     ]

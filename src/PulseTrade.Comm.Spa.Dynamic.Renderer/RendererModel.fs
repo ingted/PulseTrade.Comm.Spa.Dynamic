@@ -194,6 +194,16 @@ type TaResidentNavigatorAuthority =
       NavigationDomainCount: int
       ActiveDetailStartIndex: int }
 
+[<RequireQualifiedAccess>]
+type TaMainPlotInteractionMode =
+    | Cursor
+    | Resize
+
+type TaNavigatorGestureDomain =
+    { DomainCount: int
+      CommittedWindow: TaVisibleWindow
+      UsesResidentAuthority: bool }
+
 type TaGlobalCalendarTick =
     { AnchorIndex: int
       EventTimeUtc: string
@@ -515,6 +525,18 @@ module RendererModel =
                 int (Math.Floor(delta + 0.5))
             else
                 int (Math.Ceiling(delta - 0.5))
+
+    let toggleMainPlotInteractionMode mode =
+        match mode with
+        | TaMainPlotInteractionMode.Cursor -> TaMainPlotInteractionMode.Resize
+        | TaMainPlotInteractionMode.Resize -> TaMainPlotInteractionMode.Cursor
+
+    let mainPlotInteractionDrag mode trackWidth pointerX =
+        match mode with
+        | TaMainPlotInteractionMode.Cursor -> TaWindowDrag.Move
+        | TaMainPlotInteractionMode.Resize when trackWidth > 0.0 && pointerX < trackWidth / 2.0 ->
+            TaWindowDrag.ResizeLeft
+        | TaMainPlotInteractionMode.Resize -> TaWindowDrag.ResizeRight
 
     let mainPlotDragExceededThreshold threshold startClientX currentClientX =
         threshold >= 0.0
@@ -2508,8 +2530,8 @@ module RendererModel =
                       ObservationCount = overview.ResidentObservationCount })
 
     let tryResidentNavigatorWindow activeReferenceLength activeWindow projection =
-        tryGlobalResidentWindow projection
-        |> Option.bind (fun resident ->
+        match projection.GlobalOverview, tryGlobalResidentWindow projection with
+        | Some overview, Some resident when overview.AxisRef = projection.ActiveDetail.BaseAxisRef ->
             let activeCount =
                 max 0 (min activeReferenceLength projection.ActiveDetail.ObservationCount)
             let local =
@@ -2534,7 +2556,8 @@ module RendererModel =
                     projection,
                     resident.ObservationCount,
                     { StartIndex = int residentOffset
-                      Count = local.Count }))
+                      Count = local.Count })
+        | _ -> None
 
     let tryCrossAxisResidentNavigatorAuthority
         targetStartObservationOrdinal
@@ -2603,6 +2626,30 @@ module RendererModel =
                     None
                 else
                     Some(projection, retained.NavigationDomainCount, mapped))
+
+    let resolveNavigatorGestureDomain
+        minimumCount
+        maximumCount
+        activeReferenceLength
+        activeWindow
+        authority
+        projection =
+        match
+            tryResidentNavigatorWindowWithAuthority
+                activeReferenceLength
+                activeWindow
+                authority
+                projection
+        with
+        | Some(_, total, committed) ->
+            { DomainCount = total
+              CommittedWindow = committed
+              UsesResidentAuthority = true }
+        | None ->
+            let total = max 0 activeReferenceLength
+            { DomainCount = total
+              CommittedWindow = clampWindow minimumCount maximumCount total activeWindow
+              UsesResidentAuthority = false }
 
     let globalResidentSelectionRatios (overview: TaGlobalCoverageOverview) window =
         if overview.TotalObservationCount <= 0L || window.ObservationCount <= 0 then
@@ -2854,6 +2901,12 @@ module RendererModel =
                     projection
                     (resident.StartObservationOrdinal + int64 residentWindow.StartIndex)
                     residentWindow.Count)
+
+    let tryNavigatorGestureCoverageIntent domain projection window =
+        if domain.UsesResidentAuthority then
+            tryResidentCoverageWindowIntent projection window
+        else
+            None
 
     let residentGestureScopeMatches (snapshot: TaLoadedCoverageProjection) (current: TaLoadedCoverageProjection) =
         snapshot.CoverageIdentity = current.CoverageIdentity

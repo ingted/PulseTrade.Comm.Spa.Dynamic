@@ -1,5 +1,13 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-26 no-1K/5K axis authority與main-plot explicit mode（DYN-WBS-598）
+
+真consumer只保留30K/60K rows時，local navigator三個gesture皆得到正確`0/1491 -> 200/1291 -> 200/1091 -> 100/1091`，但第一次resize後GLOBAL從bootstrap `start=2,995,494,count=1,500`換成formal `start=2,952,345,count=44,649`，隨後把local index直接加到該GLOBAL start並送出`2,952,445/count1,291`等action。最早偏離不是pointer delta，而是axis authority：formal projection的GLOBAL是1K，active rendered domain是30K；二者即使start ordinal數值碰巧相同，也不能在沒有typed retained authority時視為同一index domain。
+
+不變量是：same-axis可直接把active window映成resident offset；cross-axis只有由accepted GLOBAL intent保存且仍匹配coverage identity、resident scope與navigation-domain count的`TaResidentNavigatorAuthority`才能映射。否則navigator只改active-local window、不得送GLOBAL coverage action；queued gesture在authority消失時fail closed。Research RUN lifecycle另須在derived TA尚未Completed時就把formal `GlobalOverview`/resident authority放進runtime state；Dynamic既有mount gate只要求resolved formal GLOBAL，不要求rows完成，所以bootstrap可先畫，formal GLOBAL到達即原位接手，TA rows再逐步填入。
+
+本輪使用者另以明確interaction contract取代DYN-WBS-596的main-plot resident grab語意：預設CURSOR顯示十字，按住拖曳依實際pointer距離反向pan visible window；右鍵切到Resize後隱藏十字，pointerdown位於可視區左／右半決定調左／右邊界。兩種模式皆只操作已載入resident內的visible window；GLOBAL resident relocation仍由GLOBAL/navigator authority操作，不再由main plot body暗中觸發。
+
 ## 2026-10-25 cross-axis terminal settlement後的navigator authority（DYN-WBS-597）
 
 0.2.38真consumer的兩種時序已把問題縮到terminal settlement：grow尚未完成就接續drag時仍沿用1484 resident domain而GREEN；等grow完整完成一秒後，UI只剩active-local862並把selection畫成全寬，下一個body-right誤送active-axis ordinal `601102`。因此等待、callback先後與host response都不是authority；最早偏離是accepted cross-axis frame只留下local window `0/862`，丟失該request在原resident navigator domain中的offset。

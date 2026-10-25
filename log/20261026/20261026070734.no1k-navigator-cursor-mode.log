@@ -1,0 +1,26 @@
+# no-1K navigator authority / main-plot interaction mode
+
+## Pre-work plan
+
+- Background：daedilus在0.2.39、only-30K/60K真資料重現active-local window正確但GLOBAL resident固定跳`-43149`；另要求main plot以右鍵切換CURSOR pan與boundary resize。
+- 已證實最早偏離：Research RUN初期只提供bootstrap GLOBAL，formal state缺`GlobalOverview`/resident；首次resize後formal projection接手。Dynamic既有mount gate只要求formal GLOBAL，不等待Completed，producer需在RUN早期發布formal authority。
+- Dynamic本輪目標：禁止cross-axis active index被當成GLOBAL resident offset；補early-formal-GLOBAL regression；依確認後的interaction contract實作main-plot mode。
+- Source of truth：typed `TaLoadedCoverageProjection.GlobalOverview`、axis refs、retained `TaResidentNavigatorAuthority`；local UI index不可自行升格為GLOBAL ordinal。
+- 假設：same-axis ordinal可直接映射；cross-axis只有matching retained authority才可映射，否則保持active-local。main-plot新契約只改visible window，GLOBAL resident relocation仍屬GLOBAL/navigator操作。
+- Scope：Renderer model/DOM wiring、Interactive.Client regression、對應tests與current docs；不改Research backend/18884 lifecycle，不碰既有`lib-packs.txt`、PTCS test WIP、`.pcsl/`。
+- Acceptance：source tests先紅後綠；fresh package tests；0.2.40 immutable packages + SHA/provenance；交daedilus做18884真資料gate。
+- Risks：shared dirty checkout、WebSharper compiler crash/stale log；只exact-stage owned paths，不停止未證實orphan process。
+- Stop：完成source/package證據與handoff後，等待daedilus真資料驗收或明確blocker。
+
+## Operations
+
+- 2026-10-26 06:49–07:07：流程偏差：已先建立DEBUG hypothesis並完成首批model/test edits，但預期的同時段pre-work `.log` 未實際存在。影響限於缺少即時Operations載體；hypothesis保留原始背景、假設、pseudocode、size與boundary。現補本檔並明載偏差，後續操作只append。
+- 2026-10-26 06:49–07:05：新增DYN-T-707/708 RED；source harness首跑98 cases為96 passed/2 failed，分別暴露same-axis測例fixture與source marker仍期待舊binding；校正oracle後source harness process exit 0。
+- 2026-10-26 06:49–07:05：RendererModel加入explicit interaction mode helper與typed navigator gesture domain；cross-axis在無retained authority時維持active-local，禁止將local index送成GLOBAL coverage；queued gesture authority遺失時fail closed。
+- 2026-10-26 07:07：新增DYN-T-709 source regression，固定`publishRuntimeState`只以formal GLOBAL readiness mount，不得等待derived rows/materialization Completed。
+- 2026-10-26 07:08–07:15：完成main plot explicit mode wiring。mode以root `Var`跨reactive row replacement保留；右鍵切換並清cursor；Resize mode在mouse/shared cursor path皆強制隱藏crosshair。CURSOR以actual pointer distance反向pan；Resize以pointer half選boundary並沿pointer方向改邊界；兩者只commit loaded resident內的visible window，不再由plot body送`ResidentCoverageChanged`。
+- 2026-10-26 07:10–07:15：source Renderer harness build + 98-case process先因舊source marker exit 1；更新marker與禁止舊GLOBAL-relocation assertion後exit 0。Interactive.Client tests（含DYN-T-709）exit 0。
+- 2026-10-26 07:15：將DYN-T-708 fixture校正為真RED形狀：formal GLOBAL/active detail同start `2,952,345`、resident count `44,649`、active rendered count `1,491`但axis refs不同；無typed retained authority仍只准active-local。source harness再驗exit 0。
+- 2026-10-26 07:16：已回覆daedilus source contract與目前green，請他只在CURSOR應搬GLOBAL resident時於package cut前反證；訊息`msg-fsi-15434b22f5cc47b4bab1d3c2790ab4fe`。
+- 2026-10-26 07:16–07:18：版本與四個direct refs升stable 0.2.40；SA/SD/WBS/TEST/Verification/DevLog建立DYN-WBS-598、DYN-T-707/708/709、DYN-VFY-055追溯。更新既有真browser verifier，改驗CURSOR只移visible window、resident不動、右鍵Resize左右boundary各exact-one action與crosshair hide/restore。syntax probe已進入browser URL timeout，無殘留dotnet process；真正UI gate留給source-identical staging。
+- 2026-10-26 07:18：正式sensitive scanner掃changed scope為High0/Medium0（Info364 historical context）；root `check.fsx` PASS27/WARN3/FAIL0，WARN為dirty工作樹、既有RFC traceability與pre-work log缺`假設`欄位；已補`假設`欄，另兩項屬預期source-commit前／既有baseline。

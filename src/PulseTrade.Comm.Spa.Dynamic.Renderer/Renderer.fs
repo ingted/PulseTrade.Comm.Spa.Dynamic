@@ -1138,7 +1138,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh onMainPlotPointerDown consumeMainPlotClickSuppression onPointActivated =
+    let compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh (mainPlotInteractionMode: View<TaMainPlotInteractionMode>) currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -1895,17 +1895,45 @@ module TaWorkspaceRenderer =
             Attr.Create "data-ptcs-ta-point-row-id" rowId
             Attr.Create "data-plot-surface-theme" palette.ThemeName
             Attr.Create "data-point-count" (string referenceTimestamps.Length)
-            Attr.Dynamic "style" (chartPixelHeight.View |> View.Map (fun value -> "display:block; width:100%; height:" + string value + "px; background:" + palette.Surface + "; touch-action:none; user-select:none; cursor:crosshair;"))
+            Attr.Dynamic
+                "data-main-plot-interaction-mode"
+                (mainPlotInteractionMode
+                 |> View.Map (function
+                     | TaMainPlotInteractionMode.Cursor -> "cursor"
+                     | TaMainPlotInteractionMode.Resize -> "resize"))
+            Attr.Dynamic
+                "style"
+                (View.Map2
+                    (fun value mode ->
+                        let cursor =
+                            match mode with
+                            | TaMainPlotInteractionMode.Cursor -> "crosshair"
+                            | TaMainPlotInteractionMode.Resize -> "ew-resize"
+                        "display:block; width:100%; height:" + string value + "px; background:" + palette.Surface + "; touch-action:none; user-select:none; cursor:" + cursor + ";")
+                    chartPixelHeight.View
+                    mainPlotInteractionMode)
+            Attr.Handler "contextmenu" (fun element event ->
+                event.PreventDefault()
+                event.StopPropagation()
+                hideHorizontalCursor ()
+                setCursorIndex None
+                onMainPlotContextMenu (element |> As<Element>) event)
             Attr.Handler "pointerdown" (fun element event -> onMainPlotPointerDown (element |> As<Element>) event)
             on.mouseMove (fun element event ->
-                let bounds = element.GetBoundingClientRect()
-                updateHorizontalCursor (element |> As<Element>) event
-                match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
-                | Some index -> setCursorIndex (Some index)
-                | None -> ())
+                match currentMainPlotInteractionMode () with
+                | TaMainPlotInteractionMode.Cursor ->
+                    let bounds = element.GetBoundingClientRect()
+                    updateHorizontalCursor (element |> As<Element>) event
+                    match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
+                    | Some index -> setCursorIndex (Some index)
+                    | None -> ()
+                | TaMainPlotInteractionMode.Resize ->
+                    hideHorizontalCursor ()
+                    setCursorIndex None)
             on.mouseLeave (fun _ _ -> hideHorizontalCursor ())
             on.click (fun element event ->
-                if not (consumeMainPlotClickSuppression ()) then
+                if currentMainPlotInteractionMode () = TaMainPlotInteractionMode.Cursor
+                   && not (consumeMainPlotClickSuppression ()) then
                     let bounds = element.GetBoundingClientRect()
                     match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
                     | Some index -> commitCursorIndex index
@@ -2131,7 +2159,8 @@ module TaWorkspaceRenderer =
                 stripes)
 
     let compositeSvgReactivePreparedLiveWithHeightPalette palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh =
-        compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh (fun _ _ -> ()) (fun () -> false) (fun _ _ _ -> ())
+        let interactionMode = Var.Create TaMainPlotInteractionMode.Cursor
+        compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh interactionMode.View (fun () -> interactionMode.Value) (fun _ _ -> ()) (fun _ _ -> interactionMode.Value <- RendererModel.toggleMainPlotInteractionMode interactionMode.Value) (fun () -> false) (fun _ _ _ -> ())
 
     let compositeSvgReactivePreparedLiveWithHeight rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh =
         let zone = Var.Create SduiDisplayTimeZone.Utc
@@ -2158,7 +2187,7 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create cursorIndex
         compositeSvgReactive rowId traces data referenceTimestamps cursor.View setCursorIndex commitCursorIndex
 
-    let renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement onMainPlotPointerDown consumeMainPlotClickSuppression onPointActivated (row: TaRowSpec) =
+    let renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated (row: TaRowSpec) =
         let traces =
             RendererModel.effectiveTraces row
             |> Array.filter (fun trace ->
@@ -2167,7 +2196,7 @@ module TaWorkspaceRenderer =
         let hasCursorEventCapability =
             traces
             |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Marker || trace.Kind = TaTraceKind.OverviewStripe)
-        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh onMainPlotPointerDown consumeMainPlotClickSuppression onPointActivated
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =
@@ -2311,7 +2340,8 @@ module TaWorkspaceRenderer =
         ], cursorReaders, legendReaders, latestLegendReaders, markerCursorReader
 
     let renderRowReactivePreparedLiveWithHeightPalette palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row =
-        renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement (fun _ _ -> ()) (fun () -> false) (fun _ _ _ -> ()) row
+        let interactionMode = Var.Create TaMainPlotInteractionMode.Cursor
+        renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement interactionMode.View (fun () -> interactionMode.Value) (fun _ _ -> ()) (fun _ _ -> interactionMode.Value <- RendererModel.toggleMainPlotInteractionMode interactionMode.Value) (fun () -> false) (fun _ _ _ -> ()) row
 
     let renderRowReactivePreparedLiveWithHeight state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row =
         let zone = Var.Create SduiDisplayTimeZone.Utc
@@ -2522,6 +2552,7 @@ module TaWorkspaceRenderer =
         let mutable chartRenderSequence = 0
         let mutable chartRenderReason = "initial"
         let cursorIndex = Var.Create<int option> None
+        let mainPlotInteractionMode = Var.Create TaMainPlotInteractionMode.Cursor
         let mutable chartStackElement: Element = null
         let mutable lastViewportDispatchKind = ""
         let mutable lastViewportDispatchTarget: int64 option = None
@@ -3433,39 +3464,16 @@ module TaWorkspaceRenderer =
                 let followLatest = candidate.StartIndex = RendererModel.viewportMaximumStart total candidate
                 setWindow followLatest candidate
 
-        let tryCommitMainPlotResidentPan delta =
-            match runtimeState.Value.Document with
-            | Some document when actionAllowed "resident-coverage-changed" ->
-                match document.BaseRowId, RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
-                | Some baseRowId, Some projection when projection.GlobalOverview.IsSome ->
-                    if pendingGlobalResidentIntent.IsSome || commandsDisabledNow () || not preparedRowsReady.Value then
-                        draftWindow.Value <- None
-                        setUiState { uiState.Value with Feedback = "Resident coverage relocation is not ready." }
-                    else
-                        match RendererModel.tryMainPlotResidentRelocationIntent delta projection with
-                        | Some(draft, intent) ->
-                            globalResidentDraft.Value <- Some draft
-                            pendingGlobalResidentIntent <- Some intent
-                            startActionWith
-                                (SduiAction.ResidentCoverageChanged(currentCanvasId (), baseRowId, intent))
-                                "Resident coverage relocation requested."
-                                ignore
-                                (fun () -> clearGlobalResidentIntent intent)
-                        | None ->
-                            globalResidentDraft.Value <- None
-                            draftWindow.Value <- None
-                    true
-                | _ -> false
-            | _ -> false
-
-        let commitMainPlotPan delta =
-            if not (tryCommitMainPlotResidentPan delta) then
-                panWindow delta
-
         let consumeMainPlotClickSuppression () =
             let suppress = suppressNextMainPlotClick
             suppressNextMainPlotClick <- false
             suppress
+
+        let toggleMainPlotMode (_: Element) (_: Event) =
+            cancelMainPlotDrag |> Option.iter (fun cancel -> cancel ())
+            mainPlotInteractionMode.Value <-
+                RendererModel.toggleMainPlotInteractionMode mainPlotInteractionMode.Value
+            cursorIndex.Value <- None
 
         let startMainPlotDrag (plotRoot: Element) (rawEvent: Event) =
             let event = rawEvent :?> MouseEvent
@@ -3482,6 +3490,11 @@ module TaWorkspaceRenderer =
                     event.PreventDefault()
                     event.StopPropagation()
                     let startClientX = float event.ClientX
+                    let drag =
+                        RendererModel.mainPlotInteractionDrag
+                            mainPlotInteractionMode.Value
+                            bounds.Width
+                            (startClientX - bounds.Left)
                     let mutable latestClientX = startClientX
                     let mutable latestDelta = 0
                     let mutable moved = false
@@ -3505,13 +3518,16 @@ module TaWorkspaceRenderer =
                     let update (pointerEvent: Event) =
                         let mouse = pointerEvent :?> MouseEvent
                         latestClientX <- float mouse.ClientX
-                        latestDelta <-
-                            RendererModel.mainPlotAnchoredPanDelta
+                        let panDelta =
+                            RendererModel.mainPlotPanDelta
                                 committed.Count
-                                bounds.Left
                                 bounds.Width
                                 startClientX
                                 latestClientX
+                        latestDelta <-
+                            match drag with
+                            | TaWindowDrag.Move -> panDelta
+                            | _ -> -panDelta
                         moved <-
                             moved
                             || RendererModel.mainPlotDragExceededThreshold
@@ -3521,11 +3537,13 @@ module TaWorkspaceRenderer =
                         if moved then
                             let total = referenceLength ()
                             let draft =
-                                RendererModel.clampWindow
+                                RendererModel.previewWindowBounds
                                     options.MinimumVisibleBars
                                     (maximumVisibleBarsNow ())
                                     total
-                                    { committed with StartIndex = committed.StartIndex + latestDelta }
+                                    committed
+                                    drag
+                                    latestDelta
                             scheduleDraft draft
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "moving")
                             plotRoot.SetAttribute("data-main-plot-drag-delta", string latestDelta)
@@ -3540,7 +3558,11 @@ module TaWorkspaceRenderer =
                         if not (isNull cancelHandler) then JS.Document.RemoveEventListener("pointercancel", cancelHandler)
                         finishMainPlotDrag <- None
                         cancelMainPlotDrag <- None
-                        (plotRoot |> As<HTMLElement>).Style.SetProperty("cursor", "crosshair")
+                        let cursor =
+                            match mainPlotInteractionMode.Value with
+                            | TaMainPlotInteractionMode.Cursor -> "crosshair"
+                            | TaMainPlotInteractionMode.Resize -> "ew-resize"
+                        (plotRoot |> As<HTMLElement>).Style.SetProperty("cursor", cursor)
 
                     let finish pointerEvent =
                         update pointerEvent
@@ -3549,7 +3571,24 @@ module TaWorkspaceRenderer =
                             suppressNextMainPlotClick <- true
                             JS.SetTimeout (fun () -> suppressNextMainPlotClick <- false) 250 |> ignore
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "committed")
-                            commitMainPlotPan latestDelta
+                            let total = referenceLength ()
+                            let draft =
+                                pendingDraft
+                                |> Option.defaultWith (fun () ->
+                                    RendererModel.previewWindowBounds
+                                        options.MinimumVisibleBars
+                                        (maximumVisibleBarsNow ())
+                                        total
+                                        committed
+                                        drag
+                                        latestDelta)
+                            let followLatest, next =
+                                RendererModel.commitWindowBounds
+                                    options.MinimumVisibleBars
+                                    (maximumVisibleBarsNow ())
+                                    total
+                                    draft
+                            setWindow followLatest next
                         else
                             draftWindow.Value <- None
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "click")
@@ -3569,7 +3608,11 @@ module TaWorkspaceRenderer =
                     cancelMainPlotDrag <- Some cancel
                     plotRoot.SetAttribute("data-main-plot-drag-outcome", "tracking")
                     plotRoot.SetAttribute("data-main-plot-drag-capture", "document")
-                    (plotRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
+                    (plotRoot |> As<HTMLElement>).Style.SetProperty(
+                        "cursor",
+                        match drag with
+                        | TaWindowDrag.Move -> "grabbing"
+                        | _ -> "ew-resize")
                     JS.Document.AddEventListener("pointermove", moveHandler)
                     JS.Document.AddEventListener("pointerup", upHandler)
                     JS.Document.AddEventListener("pointercancel", cancelHandler)
@@ -3709,60 +3752,7 @@ module TaWorkspaceRenderer =
                                 | None -> rejectNavigatorDraft "Rebased resident target is unavailable."
                             | None -> rejectNavigatorDraft "Rebased resident gesture is outside the latest projection."
                     | None ->
-                        let total = timeline.Length
-                        let committed =
-                            RendererModel.clampWindow
-                                options.MinimumVisibleBars
-                                (maximumVisibleBarsNow ())
-                                total
-                                currentWindow
-                        let rebasedDelta = RendererModel.navigatorGestureDeltaForDomain total deltaRatio
-                        let rebasedDraft =
-                            RendererModel.previewWindowBounds
-                                options.MinimumVisibleBars
-                                (maximumVisibleBarsNow ())
-                                total
-                                committed
-                                drag
-                                rebasedDelta
-                        navigatorSelectionRatiosOverride.Value <- Some(RendererModel.selectionRatios total rebasedDraft)
-                        draftWindow.Value <- Some rebasedDraft
-                        if not (isNull chartStackElement) then
-                            chartStackElement.SetAttribute("data-drag-rebased-domain", "active-local")
-                            chartStackElement.SetAttribute("data-drag-rebased-domain-count", string total)
-                            chartStackElement.SetAttribute("data-drag-rebased-delta", string rebasedDelta)
-                        match RendererModel.navigatorBoundaryDirection total committed drag rebasedDelta with
-                        | Some _ when actionAllowed "visible-range-changed" ->
-                            match
-                                RendererModel.tryMainPlotPanCoverageIntent
-                                    (maximumVisibleBarsNow ())
-                                    total
-                                    committed
-                                    rebasedDelta
-                                    projection
-                            with
-                            | Some intent ->
-                                match intent.StartObservationOrdinal with
-                                | Some targetStart ->
-                                    if not (isNull chartStackElement) then
-                                        chartStackElement.SetAttribute("data-drag-outcome", "rebase-active-adjacent")
-                                    recordViewportDispatch "rebased-active-adjacent" (Some targetStart) (Some intent.ObservationCount) (Some deltaRatio)
-                                    dispatchCoverageWindow targetStart intent.ObservationCount successText
-                                | None -> rejectNavigatorDraft "Rebased active target is unavailable."
-                            | None -> rejectNavigatorDraft "Rebased active coverage is unavailable."
-                        | Some _ -> rejectNavigatorDraft "Rebased active action is disabled."
-                        | None ->
-                            let targetStart = projection.ActiveDetail.StartObservationOrdinal + int64 rebasedDraft.StartIndex
-                            match RendererModel.tryLoadedCoverageWindowIntentAt projection targetStart rebasedDraft.Count with
-                            | Some intent ->
-                                match intent.StartObservationOrdinal with
-                                | Some start ->
-                                    if not (isNull chartStackElement) then
-                                        chartStackElement.SetAttribute("data-drag-outcome", "rebase-active-local")
-                                    recordViewportDispatch "rebased-active-local" (Some start) (Some intent.ObservationCount) (Some deltaRatio)
-                                    dispatchCoverageWindow start intent.ObservationCount successText
-                                | None -> rejectNavigatorDraft "Rebased active target is unavailable."
-                            | None -> rejectNavigatorDraft "Rebased active gesture is outside the latest projection."
+                        rejectNavigatorDraft "Resident navigator authority changed before the queued gesture could settle."
                 | _ -> rejectNavigatorDraft "Resident navigator projection is unavailable."
             | None -> rejectNavigatorDraft "Resident navigator document is unavailable."
 
@@ -3847,17 +3837,23 @@ module TaWorkspaceRenderer =
                         snapshotKey.Identity = runtimeState.Value.Identity
                         && (coverageProjection runtimeState.Value
                             |> Option.exists (RendererModel.residentGestureScopeMatches projection))
-                    let total, authoritativeCommitted =
+                    let gestureDomain =
                         loadedCoverageSnapshot
                         |> Option.bind (fun (_, _, timeline, projection, _) ->
-                            RendererModel.tryResidentNavigatorWindowWithAuthority
+                            RendererModel.resolveNavigatorGestureDomain
+                                options.MinimumVisibleBars
+                                (maximumVisibleBarsNow ())
                                 timeline.Length
                                 localCommitted
                                 residentNavigatorAuthority.Value
                                 projection
-                            |> Option.map (fun (_, residentTotal, residentWindow) ->
-                                residentTotal, residentWindow))
-                        |> Option.defaultValue (localTotal, localCommitted)
+                            |> Some)
+                        |> Option.defaultValue
+                            { DomainCount = localTotal
+                              CommittedWindow = localCommitted
+                              UsesResidentAuthority = false }
+                    let total = gestureDomain.DomainCount
+                    let authoritativeCommitted = gestureDomain.CommittedWindow
                     let committed =
                         RendererModel.navigatorGestureBaseline
                             authoritativeCommitted
@@ -3996,11 +3992,11 @@ module TaWorkspaceRenderer =
                                 activeNavigatorDragMode <- None
                                 activeNavigatorCursor <- None
                                 let boundaryDirection =
-                                    if loadedCoverageSnapshot |> Option.exists (fun (_, _, _, projection, _) -> projection.GlobalOverview.IsSome) then
+                                    if gestureDomain.UsesResidentAuthority then
                                         RendererModel.residentNavigatorBoundaryDirection total committed drag latestRawDelta latestPointerX bounds.Width
                                     else
                                         RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta
-                                let preferPendingBoundary = loadedCoverageSnapshot.IsSome && boundaryDirection.IsSome
+                                let preferPendingBoundary = gestureDomain.UsesResidentAuthority && boundaryDirection.IsSome
                                 let draft =
                                     RendererModel.releaseNavigatorDraft
                                         committed
@@ -4018,20 +4014,17 @@ module TaWorkspaceRenderer =
                                 let commitLocalDraft () =
                                     let followLatest, next =
                                         RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
-                                    let usesResidentDomain =
-                                        loadedCoverageSnapshot
-                                        |> Option.exists (fun (_, _, _, projection, _) -> projection.GlobalOverview.IsSome)
                                     let changed =
                                         next <> committed
-                                        || (not usesResidentDomain && followLatest <> uiState.Value.FollowLatest)
+                                        || (not gestureDomain.UsesResidentAuthority && followLatest <> uiState.Value.FollowLatest)
                                     if changed then
                                         match loadedCoverageSnapshot with
-                                        | Some(_, _, timeline, projection, snapshotKey) when projection.GlobalOverview.IsSome ->
+                                        | Some(_, _, timeline, projection, snapshotKey) when gestureDomain.UsesResidentAuthority ->
                                             if not (residentSnapshotCurrent snapshotKey projection) then
                                                 setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
                                                 draftWindow.Value <- None
                                             else
-                                                match RendererModel.tryResidentCoverageWindowIntent projection next with
+                                                match RendererModel.tryNavigatorGestureCoverageIntent gestureDomain projection next with
                                                 | Some intent ->
                                                     match intent.StartObservationOrdinal with
                                                     | Some targetStart ->
@@ -4076,7 +4069,7 @@ module TaWorkspaceRenderer =
                                             settleVisibleRangeDraft ()
 
                                 match boundaryDirection, loadedCoverageSnapshot with
-                                | Some direction, Some(_, _, _, projection, snapshotKey) when projection.GlobalOverview.IsSome ->
+                                | Some direction, Some(_, _, _, projection, snapshotKey) when gestureDomain.UsesResidentAuthority ->
                                     if residentSnapshotCurrent snapshotKey projection && actionAllowed "visible-range-changed" then
                                         match RendererModel.tryResidentAdjacentCoverageIntent direction (maximumVisibleBarsNow ()) committed projection with
                                         | Some intent ->
@@ -4108,7 +4101,7 @@ module TaWorkspaceRenderer =
                                          && not (remoteDisabled runtimeState.Value.Poll) ->
                                     let adjacentIntent =
                                         match projection.GlobalOverview with
-                                        | Some _ ->
+                                        | Some _ when gestureDomain.UsesResidentAuthority ->
                                             RendererModel.tryResidentAdjacentCoverageIntent
                                                 direction
                                                 (maximumVisibleBarsNow ())
@@ -4121,6 +4114,7 @@ module TaWorkspaceRenderer =
                                                 total
                                                 committed
                                                 projection
+                                        | Some _ -> None
                                     match adjacentIntent with
                                     | Some intent ->
                                         setDragDiagnostic
@@ -4585,10 +4579,13 @@ module TaWorkspaceRenderer =
         let applyCursorIndex value =
             if not (isNull chartStackElement) then
                 let bounded =
-                    value
-                    |> Option.bind (fun index ->
-                        if latestCursorTimestamps.Length = 0 then None
-                        else Some(max 0 (min index (latestCursorTimestamps.Length - 1))))
+                    match mainPlotInteractionMode.Value with
+                    | TaMainPlotInteractionMode.Resize -> None
+                    | TaMainPlotInteractionMode.Cursor ->
+                        value
+                        |> Option.bind (fun index ->
+                            if latestCursorTimestamps.Length = 0 then None
+                            else Some(max 0 (min index (latestCursorTimestamps.Length - 1))))
                 displayedCursorIndex <- bounded
                 chartStackElement.SetAttribute("data-cursor-index", bounded |> Option.map string |> Option.defaultValue "")
 
@@ -5534,7 +5531,10 @@ module TaWorkspaceRenderer =
                                                 (fun node ->
                                                     currentRowLegendElements[index] <- node
                                                     scheduleVisibleValueRefresh ())
+                                                mainPlotInteractionMode.View
+                                                (fun () -> mainPlotInteractionMode.Value)
                                                 startMainPlotDrag
+                                                toggleMainPlotMode
                                                 consumeMainPlotClickSuppression
                                                 (fun target hit candidates ->
                                                     document.BaseRowId

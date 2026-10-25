@@ -208,6 +208,127 @@ let tests =
                 (RendererModel.mainPlotDragExceededThreshold RendererModel.MainPlotDragThresholdCssPixels 100.0 104.0)
                 "threshold motion becomes a drag and suppresses the following click"
 
+        testCase "DYN-T-707 main plot right-click mode owns pan versus boundary resize" <| fun _ ->
+            Expect.equal
+                (RendererModel.toggleMainPlotInteractionMode TaMainPlotInteractionMode.Cursor)
+                TaMainPlotInteractionMode.Resize
+                "right-click leaves cursor mode for boundary resize"
+            Expect.equal
+                (RendererModel.toggleMainPlotInteractionMode TaMainPlotInteractionMode.Resize)
+                TaMainPlotInteractionMode.Cursor
+                "the next right-click restores cursor mode"
+            Expect.equal
+                (RendererModel.mainPlotInteractionDrag TaMainPlotInteractionMode.Cursor 1000.0 100.0)
+                TaWindowDrag.Move
+                "cursor mode always owns a pan regardless of pointer half"
+            Expect.equal
+                (RendererModel.mainPlotInteractionDrag TaMainPlotInteractionMode.Resize 1000.0 499.0)
+                TaWindowDrag.ResizeLeft
+                "resize mode assigns the visible left half to the left boundary"
+            Expect.equal
+                (RendererModel.mainPlotInteractionDrag TaMainPlotInteractionMode.Resize 1000.0 500.0)
+                TaWindowDrag.ResizeRight
+                "resize mode assigns the midpoint and right half to the right boundary"
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 1000 1000.0 500.0 400.0)
+                100
+                "cursor drag follows the actual pointer distance instead of moving one slot"
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 1000 1000.0 500.0 300.0)
+                200
+                "doubling pointer distance doubles the reverse viewport pan"
+            Expect.equal
+                (RendererModel.previewWindowBounds
+                    1
+                    4500
+                    4500
+                    { StartIndex = 1000; Count = 1000 }
+                    TaWindowDrag.ResizeLeft
+                    100)
+                { StartIndex = 1100; Count = 900 }
+                "dragging the left boundary right shrinks only the visible left side"
+            Expect.equal
+                (RendererModel.previewWindowBounds
+                    1
+                    4500
+                    4500
+                    { StartIndex = 1000; Count = 1000 }
+                    TaWindowDrag.ResizeRight
+                    100)
+                { StartIndex = 1000; Count = 1100 }
+                "dragging the right boundary right expands only the visible right side inside the resident"
+
+        testCase "DYN-T-708 only-coarse-row navigator never reinterprets active indexes as GLOBAL ordinals" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:only-30k-60k"
+                  CoverageRevision = 1L
+                  QueryGeneration = 0L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.30k"
+                  OverviewAnchors =
+                    Array.init 1491 (fun index ->
+                        { ObservationOrdinal = 2_952_345L + int64 index
+                          EventTimeUtc = DateTimeOffset(2024, 9, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float (index * 30)).ToString("O")
+                          Value = SduiValue.Number(float index) })
+                  ActiveDetail =
+                    { StartObservationOrdinal = 2_952_345L
+                      ObservationCount = 44_649
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 2_952_345L
+                          ResidentObservationCount = 44_649 } }
+            let domain =
+                RendererModel.resolveNavigatorGestureDomain
+                    1
+                    4000
+                    1491
+                    { StartIndex = 0; Count = 1491 }
+                    None
+                    projection
+            Expect.equal domain.DomainCount 1491 "the only active row owns the local navigator count"
+            Expect.equal domain.CommittedWindow { StartIndex = 0; Count = 1491 } "the active-local window remains unchanged"
+            Expect.isFalse domain.UsesResidentAuthority "GLOBAL 1K and active 30K ordinals cannot be mixed without retained authority"
+
+            let leftShrink =
+                RendererModel.previewWindowBounds
+                    1
+                    4000
+                    domain.DomainCount
+                    domain.CommittedWindow
+                    TaWindowDrag.ResizeLeft
+                    200
+            Expect.equal leftShrink { StartIndex = 200; Count = 1291 } "the local 200-bar shrink remains exact"
+            Expect.isNone
+                (RendererModel.tryNavigatorGestureCoverageIntent domain projection leftShrink)
+                "an in-resident active-local resize must not dispatch a GLOBAL coverage action"
+
+            let retained =
+                { CoverageIdentity = projection.CoverageIdentity
+                  ResidentStartObservationOrdinal = 2_952_345L
+                  ResidentObservationCount = 44_649
+                  NavigationDomainCount = 1491
+                  ActiveDetailStartIndex = 0 }
+            let residentDomain =
+                RendererModel.resolveNavigatorGestureDomain
+                    1
+                    4000
+                    1491
+                    { StartIndex = 0; Count = 1491 }
+                    (Some retained)
+                    projection
+            Expect.isTrue residentDomain.UsesResidentAuthority "a matching typed authority explicitly opts into GLOBAL resident mapping"
+            Expect.equal
+                (RendererModel.tryNavigatorGestureCoverageIntent residentDomain projection leftShrink
+                 |> Option.bind _.StartObservationOrdinal)
+                (Some 2_952_545L)
+                "the typed resident path alone may add a local index to the GLOBAL resident start"
+
         testCase "row Y coordinates mirror the five horizontal grid levels on both sides" <| fun _ ->
             Expect.sequenceEqual
                 (RendererModel.yAxisTickValues 5 -2.0 6.0)
@@ -655,14 +776,23 @@ let tests =
                       ObservationCount = latestTotal
                       BaseAxisRef = "axis.5k" }
                   GlobalOverview = Some overview }
-            match RendererModel.tryMainPlotPanCoverageIntent 4000 latestTotal latestCommitted rebasedDelta projection with
-            | Some intent ->
-                Expect.equal
-                    intent.StartObservationOrdinal
-                    (Some(overview.ResidentStartObservationOrdinal + int64 rebasedDelta))
-                    "the no-1K active-local fallback requests the exact newer absolute start"
-                Expect.equal intent.ObservationCount latestTotal "the active-local fallback preserves the latest visible count"
-            | None -> failtest "the no-1K active-local rebase must remain dispatchable through typed coverage intent"
+            let activeLocalDomain =
+                RendererModel.resolveNavigatorGestureDomain
+                    1
+                    4000
+                    latestTotal
+                    latestCommitted
+                    None
+                    projection
+            Expect.isFalse
+                activeLocalDomain.UsesResidentAuthority
+                "different axis refs cannot become resident authority merely because their ordinal numbers overlap"
+            Expect.isNone
+                (RendererModel.tryNavigatorGestureCoverageIntent
+                    activeLocalDomain
+                    projection
+                    { latestCommitted with StartIndex = rebasedDelta })
+                "a queued cross-axis gesture fails closed until a typed retained authority exists"
 
         testCase "dual-bound navigator previews move and both resize handles" <| fun _ ->
             let committed = { StartIndex = 1952; Count = 48 }
@@ -1533,7 +1663,7 @@ let tests =
                   ActiveDetail =
                     { StartObservationOrdinal = acceptedOverview.ResidentStartObservationOrdinal
                       ObservationCount = 1500
-                      BaseAxisRef = "axis.detail" }
+                      BaseAxisRef = "axis.global" }
                   GlobalOverview = Some acceptedOverview }
 
             match RendererModel.tryResidentNavigatorWindow 1500 { StartIndex = 0; Count = 1500 } acceptedProjection with
@@ -3357,13 +3487,22 @@ let tests =
                   "TaPointActivation.tryCreate projectionCommitGate.LastCommitted state baseRowId hit"
                   "activationEvent.InitCustomEvent(TaPointActivation.EventName, true, false, box receipt)"
                   "startMainPlotDrag"
-                  "mainPlotAnchoredPanDelta"
-                  "tryCommitMainPlotResidentPan"
+                  "mainPlotInteractionMode"
+                  "Attr.Handler \"contextmenu\""
+                  "data-main-plot-interaction-mode"
+                  "mainPlotPanDelta"
+                  "mainPlotInteractionDrag"
+                  "previewWindowBounds"
+                  "setWindow followLatest next"
                   "data-ta-row-horizontal-cursor"
-                  "touch-action:none; user-select:none; cursor:crosshair;"
+                  "touch-action:none; user-select:none; cursor:"
                   "consumeMainPlotClickSuppression"
                   "target.DispatchEvent(As<Event> activationEvent)" ] do
                 Expect.stringContains source required ("missing point activation renderer contract: " + required)
+
+            Expect.isFalse
+                (source.Contains("let tryCommitMainPlotResidentPan", StringComparison.Ordinal))
+                "Main-plot interaction must not relocate the GLOBAL resident window."
 
             let activationStart = source.IndexOf("let publishPointActivation", StringComparison.Ordinal)
             let editorStart = source.IndexOf("let selectedEditorSchema", activationStart, StringComparison.Ordinal)
@@ -3458,7 +3597,9 @@ let tests =
             Expect.stringContains source "draftWindow.Value <- publishedNavigatorDraft" "Cancelling a new gesture restores the previous outstanding drop."
             Expect.stringContains source "TaQueuedViewportIntent.ResidentGesture" "A gesture queued behind an earlier action must retain semantic displacement rather than a stale absolute window."
             Expect.stringContains source "dispatchResidentGesture" "The queued semantic gesture must rebuild against the latest committed projection."
-            Expect.stringContains source "RendererModel.tryMainPlotPanCoverageIntent" "A no-1K cross-axis frame must rebase through the latest active-local projection."
+            Expect.stringContains source "RendererModel.resolveNavigatorGestureDomain" "The navigator must preserve whether its ordinals are resident or active-local."
+            Expect.stringContains source "RendererModel.tryNavigatorGestureCoverageIntent" "Only a typed resident domain may dispatch a GLOBAL ordinal coverage intent."
+            Expect.stringContains source "Resident navigator authority changed before the queued gesture could settle." "A queued cross-axis gesture without typed authority must fail closed."
             Expect.stringContains source "rejectNavigatorDraft" "A queued gesture rejected by the latest projection must not leave a permanent Preview."
             Expect.stringContains source "publishViewportDispatchDiagnostics node" "A replacement chart stack must receive the current queue diagnostics."
 
@@ -3486,10 +3627,10 @@ let tests =
             Expect.stringContains source "if isInitialGlobalPhase then" "Resident/detail publication must be gated by the GLOBAL-first phase."
             Expect.stringContains source "data-renderer-body-to-pending-ms" "Renderer telemetry must measure receive-to-pending latency."
 
-            Expect.stringContains source "RendererModel.tryResidentNavigatorWindow" "Resident drag math must freeze the authoritative resident-local domain."
-            Expect.stringContains source "RendererModel.tryResidentCoverageWindowIntent" "A resident-local drop must map back through the typed coverage intent."
-            Expect.stringContains source "let total, authoritativeCommitted =" "Pointer math must snapshot one consistent resident domain and committed window."
-            Expect.stringContains source "not usesResidentDomain && followLatest <> uiState.Value.FollowLatest" "A zero-delta resident drop must not become an action through mismatched follow-latest domains."
+            Expect.stringContains source "RendererModel.resolveNavigatorGestureDomain" "Resident drag math must freeze one typed resident or active-local domain."
+            Expect.stringContains source "RendererModel.tryNavigatorGestureCoverageIntent" "Only a typed resident-local drop may map back through a GLOBAL coverage intent."
+            Expect.stringContains source "let gestureDomain =" "Pointer math must snapshot one consistent domain and committed window."
+            Expect.stringContains source "not gestureDomain.UsesResidentAuthority && followLatest <> uiState.Value.FollowLatest" "A zero-delta active-local drop must not become an action through mismatched follow-latest domains."
             Expect.stringContains source "min timeline.Length projection.ActiveDetail.ObservationCount" "Active-detail locality must obey contract count even when a wider timeline is cached."
 
             let rowPreparationStart = source.IndexOf("let prepareRows ()", StringComparison.Ordinal)
