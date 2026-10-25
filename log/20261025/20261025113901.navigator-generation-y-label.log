@@ -1,0 +1,23 @@
+# Navigator generation safety / row-local Y labels
+
+## Pre-work plan
+
+- 背景：Daedilus 在0.2.36真DMI 5K重現 shrink→grow→move-right 後永久停於 Preview；gesture中authoritative VisibleRangeChanged把loaded domain由1484換成862。另要求horizontal cursor在左右Y軸顯示同一row-local浮動值。
+- 目標：讓navigator gesture遇到authoritative frame/domain替換時，以latest projection安全重建或取消，任何release/cancel/settle後都不留stale Preview；補左右Y軸同步value labels。新交付不得覆寫0.2.36。
+- 假設：最早偏離點是gesture closure凍結舊domain/window，authoritative runtime更新時沒有generation/frame一致性檢查；row已具Y→value projection，可復用產生左右label，不新增資料authority。
+- Source of truth：Daedilus direct `msg-fsi-d07c37f159ef4f3487575e6c2eacf1ae`；owner `Renderer.fs`／`RendererModel.fs`；Expecto、source-built BrowserDemo與真consumer 18884。
+- 範圍：Renderer navigator pointer lifecycle／draft清理、row-local Y labels、對應tests/verifier、必要exact Renderer/Interactive.Client stable package。排除Research 30K/60K durable snapshot 503與consumer source。
+- 步驟：盤點HEAD/dirty與gesture closure；建立model regression與browser RED；最小修正generation/domain guard及label seam；跑package-backed suites、focused browser、immutable package與Daedilus真consumer。
+- 不變量：shrink→grow→move-right最終count不變且start增加；release/cancel/action settle後Preview消失；existing main grab-pan、shared vertical cursor、row-local horizontal line、GLOBAL loader/wire與無GLOBAL fallback不退化。
+- 停止條件：owner final source/package/hash及Daedilus真pointer/DOM/action acceptance完成；backend 503另案不混入。
+- 風險：reactive frame替換與document listeners可能競態；不得以延遲、清cache或忽略authoritative frame作workaround。
+
+## Operations
+
+- 2026-10-25 11:39 +08:00：啟動本輪；`agent.asteer` fixed 300秒 background watcher在線。KM F# source cache與`Module:TaWorkspaceRenderer` graph均無現成節點，改以owner source/test作authority。
+- 2026-10-25 12:07 +08:00：檢視Daedilus `result.json`，確認僅送出前一筆`$=8`（count=862）；第三次move完成後仍為`Loaded 862 / Preview 149-1010`且`moveSettled=false`。最小根因收斂為queued gesture保存舊resident absolute draft/target，而最新projection拒絕或無法dispatch時只更新Feedback、未清draft。先新增RED：pointer displacement須依latest resident重算並轉成Later intent；Y cursor須有row-local Y→value模型及左右語意DOM。
+- 2026-10-25 12:28 +08:00：Daedilus v4補證GLOBAL authority維持total 2,996,994／resident 7,420；current chart node的舊dispatch attrs全空，排除GLOBAL authority縮成862。修正設計因此改為queued `ResidentGesture`保存pointer delta ratio，flush時先嘗試latest resident mapping，跨軸無法映射則以latest active-local 862 domain重算delta並用typed pan coverage intent取得較新absolute start；latest projection拒絕時統一清draft。replacement chart node會重掛queue diagnostics。
+- 2026-10-25 12:31 +08:00：新增row-local Y→value純函式與左右axis cursor DOM；同值、同Y語意attrs，pointer leave同步隱藏。新增focused Playwright左右同步/leave gate。source-project Expecto 96/96（含no-1K active-local exact newer start/count與Y interpolation），0 failed/errored/ignored。
+- 2026-10-25 12:32 +08:00：canonical full WebSharper Rebuild仍以`wsfsc.exe -532462766`失敗；沿前一已證實checkout條件，原因是ignored `src/...Renderer/websharper.log` ACL拒刪。`WebSharperRunCompiler=false`僅用來取得純F#編譯（0 errors），不列交付；final full compiler/package將從source-identical task staging執行。
+- 2026-10-25 12:40 +08:00：流程偏差更正：初始hypothesis漏記改前pseudocode行數估計，影響僅traceability，未改變scope/authority；實作未引入新framework，source diff主要為semantic queue/rebase terminal paths、current-node diagnostics與雙Y label。已在同hypothesis追加Experiment，後續改碼前明列估計。
+- 2026-10-25 12:41 +08:00：從`git archive HEAD`建立ignored task staging並只overlay八個exact owned檔，SHA比對0 mismatch；Renderer full WebSharper Release Rebuild成功，39既有warnings、0 errors，證明本輪F#/WebSharper語意可編譯，canonical失敗仍限checkout ignored-log ACL。

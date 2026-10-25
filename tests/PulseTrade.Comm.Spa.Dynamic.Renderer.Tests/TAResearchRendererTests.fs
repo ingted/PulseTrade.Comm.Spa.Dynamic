@@ -217,10 +217,33 @@ let tests =
                 (RendererModel.yAxisTickValues 1 -2.0 6.0)
                 "a bilateral axis requires at least two finite tick coordinates"
 
+            Expect.equal
+                (RendererModel.tryYAxisCursorValue 10.0 92.0 -2.0 6.0 10.0)
+                (Some 6.0)
+                "the floating Y label maps the plot head to the visible high"
+            Expect.equal
+                (RendererModel.tryYAxisCursorValue 10.0 92.0 -2.0 6.0 56.0)
+                (Some 2.0)
+                "the floating Y label uses the same linear interpolation as the grid"
+            Expect.equal
+                (RendererModel.tryYAxisCursorValue 10.0 92.0 -2.0 6.0 112.0)
+                (Some -2.0)
+                "cursor motion below the plot clamps to the visible low"
+            Expect.isNone
+                (RendererModel.tryYAxisCursorValue 10.0 0.0 -2.0 6.0 56.0)
+                "invalid plot geometry cannot publish a floating value"
+
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
             for required in
-                [ "ta-y-axis-"; "data-ta-y-axis-side"; "data-ta-y-axis-tick-index"; "data-ta-y-axis-value"; "pointer-events:none" ] do
+                [ "ta-y-axis-"
+                  "data-ta-y-axis-side"
+                  "data-ta-y-axis-tick-index"
+                  "data-ta-y-axis-value"
+                  "data-ta-y-axis-cursor"
+                  "data-ta-y-axis-cursor-side"
+                  "data-ta-y-axis-cursor-visible"
+                  "pointer-events:none" ] do
                 Expect.stringContains source required ("missing bilateral Y-axis DOM contract: " + required)
 
         testCase "visible K-bar domain ignores remote extrema and keeps fixed CSS padding after resize" <| fun _ ->
@@ -594,6 +617,52 @@ let tests =
                 (RendererModel.navigatorGestureBaseline authoritative None None)
                 authoritative
                 "without an optimistic draft the authoritative window remains canonical"
+
+        testCase "queued navigator gesture rebases its displacement to the latest resident domain" <| fun _ ->
+            let previousTotal = 1484
+            let latestTotal = 862
+            let pointerDeltaRatio = 149.0 / float previousTotal
+            let latestCommitted = { StartIndex = 0; Count = latestTotal }
+            let rebasedDelta = RendererModel.navigatorGestureDeltaForDomain latestTotal pointerDeltaRatio
+
+            Expect.equal rebasedDelta 87 "the pointer displacement is rescaled instead of retaining the stale 1484-bar delta"
+            Expect.equal
+                (RendererModel.navigatorBoundaryDirection latestTotal latestCommitted TaWindowDrag.Move rebasedDelta)
+                (Some TaCoverageDirection.Later)
+                "a full latest resident must turn the rebased right move into a later coverage request"
+            Expect.equal
+                (RendererModel.navigatorGestureDeltaForDomain latestTotal Double.NaN)
+                0
+                "invalid pointer geometry cannot manufacture a rebased gesture"
+
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 2_989_574L
+                  ResidentObservationCount = 7420 }
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:no-1k-rebase"
+                  CoverageRevision = 8L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some overview.TotalObservationCount
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = overview.ResidentStartObservationOrdinal
+                      ObservationCount = latestTotal
+                      BaseAxisRef = "axis.5k" }
+                  GlobalOverview = Some overview }
+            match RendererModel.tryMainPlotPanCoverageIntent 4000 latestTotal latestCommitted rebasedDelta projection with
+            | Some intent ->
+                Expect.equal
+                    intent.StartObservationOrdinal
+                    (Some(overview.ResidentStartObservationOrdinal + int64 rebasedDelta))
+                    "the no-1K active-local fallback requests the exact newer absolute start"
+                Expect.equal intent.ObservationCount latestTotal "the active-local fallback preserves the latest visible count"
+            | None -> failtest "the no-1K active-local rebase must remain dispatchable through typed coverage intent"
 
         testCase "dual-bound navigator previews move and both resize handles" <| fun _ ->
             let committed = { StartIndex = 1952; Count = 48 }
@@ -3245,6 +3314,11 @@ let tests =
             Expect.stringContains source "pendingBoundaryPan.IsNone && committedCoverageReady ()" "The queue cannot dispatch from an uncommitted coverage snapshot."
             Expect.stringContains source "RendererModel.residentGestureScopeMatches projection" "An accepted earlier gesture must not invalidate a later same-resident gesture."
             Expect.stringContains source "draftWindow.Value <- publishedNavigatorDraft" "Cancelling a new gesture restores the previous outstanding drop."
+            Expect.stringContains source "TaQueuedViewportIntent.ResidentGesture" "A gesture queued behind an earlier action must retain semantic displacement rather than a stale absolute window."
+            Expect.stringContains source "dispatchResidentGesture" "The queued semantic gesture must rebuild against the latest committed projection."
+            Expect.stringContains source "RendererModel.tryMainPlotPanCoverageIntent" "A no-1K cross-axis frame must rebase through the latest active-local projection."
+            Expect.stringContains source "rejectNavigatorDraft" "A queued gesture rejected by the latest projection must not leave a permanent Preview."
+            Expect.stringContains source "publishViewportDispatchDiagnostics node" "A replacement chart stack must receive the current queue diagnostics."
 
         testCase "P0 preparation and resident drag preserve the committed local frame" <| fun _ ->
             let source =

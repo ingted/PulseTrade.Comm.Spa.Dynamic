@@ -112,6 +112,29 @@ let tests =
             let selection = navigator.Locator("[data-testid='ta-overview-selection']")
             let range = page.Locator("[data-testid='ta-viewport-range']")
 
+            let verifyBilateralYAxisCursor () =
+                let plot = chartStack.Locator("[data-ptcs-ta-point-row-id]").First
+                let rowId = attributeOf plot "data-ptcs-ta-point-row-id"
+                require (not (String.IsNullOrWhiteSpace rowId)) "row-local cursor plot identity is missing"
+                let left = chartStack.Locator($"[data-testid='ta-y-axis-cursor-{rowId}-left']")
+                let right = chartStack.Locator($"[data-testid='ta-y-axis-cursor-{rowId}-right']")
+                let bounds = boundingBox plot
+                page.Mouse.MoveAsync(bounds.X + bounds.Width * 0.55f, bounds.Y + bounds.Height * 0.42f) |> awaitUnit
+                waitUntil "left Y cursor label visible" (fun () -> attributeOf left "data-ta-y-axis-cursor-visible") ((=) "true") |> ignore
+                waitUntil "right Y cursor label visible" (fun () -> attributeOf right "data-ta-y-axis-cursor-visible") ((=) "true") |> ignore
+                let leftValue = attributeOf left "data-ta-y-axis-cursor-value"
+                let rightValue = attributeOf right "data-ta-y-axis-cursor-value"
+                require (not (String.IsNullOrWhiteSpace leftValue)) "left Y cursor value is empty"
+                require (leftValue = rightValue) $"bilateral Y cursor values diverged: left={leftValue}, right={rightValue}"
+                require
+                    (attributeOf left "data-ta-y-axis-cursor-y" = attributeOf right "data-ta-y-axis-cursor-y")
+                    "bilateral Y cursor labels do not follow the same row-local Y coordinate"
+                page.Mouse.MoveAsync(2.0f, 2.0f) |> awaitUnit
+                waitUntil "left Y cursor label hidden on leave" (fun () -> attributeOf left "data-ta-y-axis-cursor-visible") ((=) "false") |> ignore
+                waitUntil "right Y cursor label hidden on leave" (fun () -> attributeOf right "data-ta-y-axis-cursor-visible") ((=) "false") |> ignore
+
+            verifyBilateralYAxisCursor ()
+
             let resetFixture () =
                 page.ReloadAsync(PageReloadOptions(WaitUntil = WaitUntilState.NetworkIdle)) |> awaitTask |> ignore
                 page.Locator("[data-testid='ta-workspace']").WaitForAsync(LocatorWaitForOptions(Timeout = 15000.0f)) |> awaitUnit

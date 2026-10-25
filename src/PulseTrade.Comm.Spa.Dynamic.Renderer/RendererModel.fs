@@ -471,6 +471,19 @@ module RendererModel =
             let denominator = float (tickCount - 1)
             Array.init tickCount (fun index -> upper - (upper - lower) * float index / denominator)
 
+    let tryYAxisCursorValue top plotHeight low high pointerY =
+        let finite value = not (Double.IsNaN value || Double.IsInfinity value)
+        if
+            plotHeight <= 0.0
+            || not (finite top && finite plotHeight && finite low && finite high && finite pointerY)
+        then
+            None
+        else
+            let lower = min low high
+            let upper = max low high
+            let ratio = (pointerY - top) / plotHeight |> max 0.0 |> min 1.0
+            Some(upper - (upper - lower) * ratio)
+
     let mainPlotPanDelta visibleCount trackWidth startClientX currentClientX =
         if
             visibleCount <= 0
@@ -3100,6 +3113,16 @@ module RendererModel =
             if requestedStart < 0 then Some TaCoverageDirection.Earlier
             elif requestedEnd > total then Some TaCoverageDirection.Later
             else None
+
+    let navigatorGestureDeltaForDomain total deltaRatio =
+        if
+            total <= 0
+            || Double.IsNaN deltaRatio
+            || Double.IsInfinity deltaRatio
+        then
+            0
+        else
+            int (Math.Round(deltaRatio * float total))
 
     let residentNavigatorBoundaryDirection total committed drag rawDelta pointerX trackWidth =
         match navigatorBoundaryDirection total committed drag rawDelta with
