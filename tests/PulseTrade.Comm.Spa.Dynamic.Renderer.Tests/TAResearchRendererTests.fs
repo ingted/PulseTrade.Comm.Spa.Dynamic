@@ -1188,9 +1188,16 @@ let tests =
                 TaCoverageIntentProjectionSettlement.Reject
                 "a matching terminal frame that cannot contain the request rejects instead of retaining Preview forever"
 
+            let residentOverviewAnchors =
+                Array.init 1484 (fun index ->
+                    { ObservationOrdinal = 599_618L + int64 index
+                      EventTimeUtc = DateTimeOffset(2026, 7, 3, 8, 20, 0, TimeSpan.Zero).AddMinutes(float (index * 5)).ToString("O")
+                      Value = SduiValue.Number(float index) })
             let crossAxisProjection : TaLoadedCoverageProjection =
                 { expandedProjection with
                     QueryGeneration = expandedProjection.QueryGeneration + 1L
+                    OverviewAxisRef = "ta-overview-axis"
+                    OverviewAnchors = residentOverviewAnchors
                     ActiveDetail =
                         { StartObservationOrdinal = 600_240L
                           ObservationCount = 862
@@ -1214,6 +1221,61 @@ let tests =
                     crossAxisProjection)
                 (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 0; Count = 862 })
                 "a matching cross-axis frame must settle on its authoritative active-local window instead of comparing unrelated ordinals"
+
+            let residentAuthority =
+                RendererModel.tryCrossAxisResidentNavigatorAuthority
+                    2_989_574L
+                    862
+                    crossAxisProjection
+            Expect.equal
+                residentAuthority
+                (Some
+                    { CoverageIdentity = crossAxisProjection.CoverageIdentity
+                      ResidentStartObservationOrdinal = 2_989_574L
+                      ResidentObservationCount = 7420
+                      NavigationDomainCount = 1484
+                      ActiveDetailStartIndex = 0 })
+                "the accepted cross-axis target retains its position in the pre-settlement 1484-bar navigator domain"
+            Expect.equal
+                (RendererModel.tryResidentNavigatorWindowWithAuthority
+                    862
+                    { StartIndex = 0; Count = 862 }
+                    residentAuthority
+                    crossAxisProjection
+                 |> Option.map (fun (_, total, window) -> total, window))
+                (Some(1484, { StartIndex = 0; Count = 862 }))
+                "the settled active frame must not collapse the navigator domain to a full 862-bar selection"
+            Expect.equal
+                (RendererModel.navigatorSelectionRatiosForRenderWithAuthority
+                    None
+                    (Some crossAxisProjection)
+                    (Array.init 862 string)
+                    { StartIndex = 0; Count = 862 }
+                    None
+                    residentAuthority)
+                (0.0, 862.0 / 1484.0)
+                "render geometry uses the same retained authority as pointer dispatch"
+
+            let movedAuthority =
+                RendererModel.tryCrossAxisResidentNavigatorAuthority
+                    2_989_722L
+                    862
+                    crossAxisProjection
+            Expect.equal
+                (RendererModel.tryResidentNavigatorWindowWithAuthority
+                    862
+                    { StartIndex = 0; Count = 862 }
+                    movedAuthority
+                    crossAxisProjection
+                 |> Option.map (fun (_, total, window) -> total, window))
+                (Some(1484, { StartIndex = 148; Count = 862 }))
+                "a body-right request remains in GLOBAL authority instead of rebasing to active ordinal 601102"
+            Expect.isNone
+                (RendererModel.tryCrossAxisResidentNavigatorAuthority
+                    601_102L
+                    862
+                    crossAxisProjection)
+                "an active-axis ordinal cannot be retained as GLOBAL navigator authority"
 
             let allLoaded =
                 RendererModel.tryViewAllCoverageIntent
@@ -3321,6 +3383,10 @@ let tests =
                   "Attr.Create \"data-window-drag-mode\" TaWindowDrag.ResizeRight"
                   "Attr.Create \"data-window-drag-mode\" TaWindowDrag.Move"
                   "Attr.Dynamic \"x\" selectionX; svgAttr \"y\" \"0\"; Attr.Dynamic \"width\" selectionWidth"
+                  "let residentNavigatorAuthority = Var.Create<TaResidentNavigatorAuthority option> None"
+                  "RendererModel.tryResidentNavigatorWindowWithAuthority"
+                  "RendererModel.coverageNavigatorWindowWithAuthority"
+                  "RendererModel.navigatorSelectionRatiosForRenderWithAuthority"
                   "if finishNavigatorDrag.IsSome then"
                   "JS.Document.AddEventListener(\"pointermove\", moveHandler)"
                   "JS.Document.AddEventListener(\"pointerup\", upHandler)"

@@ -6,6 +6,11 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-054 0.2.38 timing RED／0.2.39 retained authority candidate
+
+- Deterministic RED：0.2.38在grow terminal後停1秒固定變成Loaded862/full selection，143.6px body-right送active-axis target601102/gen2；final rev3仍active600240/count862、pendingBoundary601102、moveSettled=false、browser/bad response=0。快速連續gesture則GREEN，證明callback timing只決定舊domain是否尚存，不是根因。
+- Owner candidate：accepted cross-axis target建立typed resident navigator authority，並由range、selection、pointer baseline與dispatch共用；identity／resident scope／domain mismatch fail closed。source Expecto96/96；source-identical candidate Renderer／Client完整WebSharper 0 errors；fresh exact-package Renderer96/96、Client19/19、package verifier與BrowserDemo full WebSharper 0 errors。Client第一次深staging遇`apphost.exe` MSB3030，改同task短bin/obj後19/19，未改source／expected。Immutable source commit/package hash與真consumer acceptance pending。
+
 本文件記錄 `PulseTrade.Comm.Spa.Dynamic` 的可重複驗證方式。若後續新增 verifier，先更新本表，再同步 `doc/TEST.md`、`doc/WBS.md` 與 `doc/Traceability.md`。
 
 ## Gate 清單

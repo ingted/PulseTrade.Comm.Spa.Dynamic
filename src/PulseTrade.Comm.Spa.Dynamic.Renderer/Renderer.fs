@@ -2733,6 +2733,7 @@ module TaWorkspaceRenderer =
         let mutable queryInFlight = false
         let mutable queuedQuery: (TaQueryChange * int) option = None
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
+        let residentNavigatorAuthority = Var.Create<TaResidentNavigatorAuthority option> None
         let mutable queuedViewportIntent: TaQueuedViewportIntent option = None
         let mutable flushQueuedViewportIntent = ignore
         let mutable dispatchAdjacentCoverage = fun (_: PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection) (_: int) -> ()
@@ -2971,6 +2972,11 @@ module TaWorkspaceRenderer =
                                                 projection
                                         with
                                         | TaCoverageIntentProjectionSettlement.Reanchor window ->
+                                            residentNavigatorAuthority.Value <-
+                                                RendererModel.tryCrossAxisResidentNavigatorAuthority
+                                                    targetStart
+                                                    pending.ObservationCount
+                                                    projection
                                             pendingBoundaryPan <- None
                                             Some window
                                         | TaCoverageIntentProjectionSettlement.Reject ->
@@ -3169,6 +3175,7 @@ module TaWorkspaceRenderer =
                 pendingGlobalResidentIntent <- None
                 globalResidentDraft.Value <- None
                 pendingBoundaryPan <- None
+                residentNavigatorAuthority.Value <- None
                 queuedViewportIntent <- None
                 draftWindow.Value <- None
                 navigatorSelectionRatiosOverride.Value <- None
@@ -3193,6 +3200,7 @@ module TaWorkspaceRenderer =
                     if viewportScopeChanged then
                         queuedViewportIntent <- None
                         pendingBoundaryPan <- None
+                        residentNavigatorAuthority.Value <- None
                         if finishNavigatorDrag.IsNone then
                             draftWindow.Value <- None
                         observedDataState <- next
@@ -3277,6 +3285,11 @@ module TaWorkspaceRenderer =
                             projection
                     with
                     | TaCoverageIntentProjectionSettlement.Reanchor window ->
+                        residentNavigatorAuthority.Value <-
+                            RendererModel.tryCrossAxisResidentNavigatorAuthority
+                                targetStart
+                                pending.ObservationCount
+                                projection
                         pendingBoundaryPan <- None
                         let followLatest = window.StartIndex = RendererModel.viewportMaximumStart timeline.Length window
                         commitLocalWindow followLatest window |> ignore
@@ -3643,7 +3656,13 @@ module TaWorkspaceRenderer =
                 let currentWindow = resolvedWindow uiState.Value
                 match RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
                 | Some projection when projection.GlobalOverview.IsSome ->
-                    match RendererModel.tryResidentNavigatorWindow timeline.Length currentWindow projection with
+                    match
+                        RendererModel.tryResidentNavigatorWindowWithAuthority
+                            timeline.Length
+                            currentWindow
+                            residentNavigatorAuthority.Value
+                            projection
+                    with
                     | Some(_, total, committed) ->
                         let rebasedDelta = RendererModel.navigatorGestureDeltaForDomain total deltaRatio
                         let rebasedDraft =
@@ -3831,9 +3850,10 @@ module TaWorkspaceRenderer =
                     let total, authoritativeCommitted =
                         loadedCoverageSnapshot
                         |> Option.bind (fun (_, _, timeline, projection, _) ->
-                            RendererModel.tryResidentNavigatorWindow
+                            RendererModel.tryResidentNavigatorWindowWithAuthority
                                 timeline.Length
                                 localCommitted
+                                residentNavigatorAuthority.Value
                                 projection
                             |> Option.map (fun (_, residentTotal, residentWindow) ->
                                 residentTotal, residentWindow))
@@ -5057,8 +5077,8 @@ module TaWorkspaceRenderer =
 
         let viewportControls (document: TaWorkspaceDocument) =
             let currentViewport =
-                View.Map2
-                    (fun ui prepared ->
+                View.Map3
+                    (fun ui prepared retainedAuthority ->
                         let referenceLength =
                             RendererModel.referenceTimelineForDocumentPrepared document prepared
                             |> Array.length
@@ -5071,12 +5091,18 @@ module TaWorkspaceRenderer =
                                 ui.FollowLatest
                                 ui.Window
                         let loadedObservationCount, globalCurrentWindow =
-                            RendererModel.tryCoverageNavigatorWindowResolved referenceLength currentWindow document.DefaultView prepared.RawData
+                            RendererModel.tryLoadedCoverageResolved document.DefaultView prepared.RawData
+                            |> Option.bind (
+                                RendererModel.coverageNavigatorWindowWithAuthority
+                                    referenceLength
+                                    currentWindow
+                                    retainedAuthority)
                             |> Option.map (fun (_, total, globalWindow) -> total, globalWindow)
                             |> Option.defaultValue (referenceLength, currentWindow)
                         referenceLength, maximumVisibleBars, loadedObservationCount, globalCurrentWindow)
                     uiState.View
                     shellPreparedData.View
+                    residentNavigatorAuthority.View
 
             div [
                 Attr.Create "data-testid" "ta-viewport-panel"
@@ -5659,9 +5685,16 @@ module TaWorkspaceRenderer =
                                                         currentPreparedData
                                                         overviewReferenceTimeline)
                                                 |> RendererModel.overviewStripeVisuals
-                                            let selectionWindow =
+                                            let selectionWindowInputs =
                                                 View.Map3
                                                     (fun draft currentUi activeGestureOverride ->
+                                                        draft, currentUi, activeGestureOverride)
+                                                    draftWindow.View
+                                                    uiState.View
+                                                    navigatorSelectionRatiosOverride.View
+                                            let selectionWindow =
+                                                View.Map2
+                                                    (fun (draft, currentUi, activeGestureOverride) retainedAuthority ->
                                                         let currentVisibleWindow =
                                                             RendererModel.resolveWindow
                                                                 options.MinimumVisibleBars
@@ -5669,15 +5702,15 @@ module TaWorkspaceRenderer =
                                                                 currentReferenceLength
                                                                 currentUi.FollowLatest
                                                                 currentUi.Window
-                                                        RendererModel.navigatorSelectionRatiosForRender
+                                                        RendererModel.navigatorSelectionRatiosForRenderWithAuthority
                                                             activeGestureOverride
                                                             currentCoverageProjection
                                                             currentReferenceTimeline
                                                             currentVisibleWindow
-                                                            draft)
-                                                    draftWindow.View
-                                                    uiState.View
-                                                    navigatorSelectionRatiosOverride.View
+                                                            draft
+                                                            retainedAuthority)
+                                                    selectionWindowInputs
+                                                    residentNavigatorAuthority.View
                                             let residentOverview =
                                                 div [ Attr.Create "data-testid" "ta-overview-with-axis"; attr.style "min-width:0;" ] [
                                                     overviewSvgWithPalette

@@ -187,6 +187,13 @@ type TaResidentCoverageWindow =
     { StartObservationOrdinal: int64
       ObservationCount: int }
 
+type TaResidentNavigatorAuthority =
+    { CoverageIdentity: string
+      ResidentStartObservationOrdinal: int64
+      ResidentObservationCount: int
+      NavigationDomainCount: int
+      ActiveDetailStartIndex: int }
+
 type TaGlobalCalendarTick =
     { AnchorIndex: int
       EventTimeUtc: string
@@ -2529,6 +2536,74 @@ module RendererModel =
                     { StartIndex = int residentOffset
                       Count = local.Count }))
 
+    let tryCrossAxisResidentNavigatorAuthority
+        targetStartObservationOrdinal
+        observationCount
+        (projection: TaLoadedCoverageProjection) =
+        match projection.GlobalOverview with
+        | Some overview when overview.AxisRef <> projection.ActiveDetail.BaseAxisRef ->
+            let navigationDomainCount = projection.OverviewAnchors.Length
+            let localStart = targetStartObservationOrdinal - overview.ResidentStartObservationOrdinal
+            let localEnd = localStart + int64 observationCount
+            if
+                observationCount <= 0
+                || navigationDomainCount <= 0
+                || localStart < 0L
+                || localStart > int64 Int32.MaxValue
+                || localEnd > int64 navigationDomainCount
+            then
+                None
+            else
+                Some
+                    { CoverageIdentity = projection.CoverageIdentity
+                      ResidentStartObservationOrdinal = overview.ResidentStartObservationOrdinal
+                      ResidentObservationCount = overview.ResidentObservationCount
+                      NavigationDomainCount = navigationDomainCount
+                      ActiveDetailStartIndex = int localStart }
+        | _ -> None
+
+    let residentNavigatorAuthorityMatches
+        (authority: TaResidentNavigatorAuthority)
+        (projection: TaLoadedCoverageProjection) =
+        match projection.GlobalOverview with
+        | Some overview ->
+            overview.AxisRef <> projection.ActiveDetail.BaseAxisRef
+            && authority.CoverageIdentity = projection.CoverageIdentity
+            && authority.ResidentStartObservationOrdinal = overview.ResidentStartObservationOrdinal
+            && authority.ResidentObservationCount = overview.ResidentObservationCount
+            && authority.NavigationDomainCount = projection.OverviewAnchors.Length
+        | None -> false
+
+    let tryResidentNavigatorWindowWithAuthority
+        activeReferenceLength
+        activeWindow
+        authority
+        (projection: TaLoadedCoverageProjection) =
+        match tryResidentNavigatorWindow activeReferenceLength activeWindow projection with
+        | Some resolved -> Some resolved
+        | None ->
+            authority
+            |> Option.filter (fun retained -> residentNavigatorAuthorityMatches retained projection)
+            |> Option.bind (fun retained ->
+                let activeCount = max 0 (min activeReferenceLength projection.ActiveDetail.ObservationCount)
+                let local =
+                    clampWindow
+                        1
+                        TaLoadedCoverageCodec.MaximumActiveDetailBars
+                        activeCount
+                        activeWindow
+                let mapped =
+                    { StartIndex = retained.ActiveDetailStartIndex + local.StartIndex
+                      Count = local.Count }
+                if
+                    mapped.Count <= 0
+                    || mapped.StartIndex < 0
+                    || mapped.StartIndex + mapped.Count > retained.NavigationDomainCount
+                then
+                    None
+                else
+                    Some(projection, retained.NavigationDomainCount, mapped))
+
     let globalResidentSelectionRatios (overview: TaGlobalCoverageOverview) window =
         if overview.TotalObservationCount <= 0L || window.ObservationCount <= 0 then
             0.0, 0.0
@@ -2688,6 +2763,20 @@ module RendererModel =
                         int domainCount,
                         { StartIndex = int globalStart
                           Count = local.Count })
+
+    let coverageNavigatorWindowWithAuthority
+        activeReferenceLength
+        activeWindow
+        authority
+        projection =
+        match projection.GlobalOverview with
+        | Some _ ->
+            tryResidentNavigatorWindowWithAuthority
+                activeReferenceLength
+                activeWindow
+                authority
+                projection
+        | None -> coverageNavigatorWindow activeReferenceLength activeWindow projection
 
     let tryCoverageNavigatorWindow activeReferenceLength activeWindow defaultView =
         tryLoadedCoverage defaultView
@@ -3124,12 +3213,13 @@ module RendererModel =
             float bounded.StartIndex / float total,
             float (bounded.StartIndex + bounded.Count) / float total
 
-    let navigatorSelectionRatiosForRender
+    let navigatorSelectionRatiosForRenderWithAuthority
         activeGestureOverride
         (projection: TaLoadedCoverageProjection option)
         (activeReferenceTimeline: string array)
         activeWindow
         localDraft
+        authority
         =
         match activeGestureOverride with
         | Some ratios -> ratios
@@ -3138,17 +3228,39 @@ module RendererModel =
             | Some current when current.GlobalOverview.IsSome ->
                 match localDraft with
                 | Some draft ->
-                    tryGlobalResidentWindow current
-                    |> Option.map (fun resident -> selectionRatios resident.ObservationCount draft)
+                    authority
+                    |> Option.filter (fun retained -> residentNavigatorAuthorityMatches retained current)
+                    |> Option.map (fun retained -> selectionRatios retained.NavigationDomainCount draft)
+                    |> Option.orElseWith (fun () ->
+                        tryGlobalResidentWindow current
+                        |> Option.map (fun resident -> selectionRatios resident.ObservationCount draft))
                     |> Option.defaultValue (selectionRatios activeReferenceTimeline.Length activeWindow)
                 | None ->
-                    tryResidentNavigatorWindow activeReferenceTimeline.Length activeWindow current
+                    tryResidentNavigatorWindowWithAuthority
+                        activeReferenceTimeline.Length
+                        activeWindow
+                        authority
+                        current
                     |> Option.map (fun (_, total, window) -> selectionRatios total window)
                     |> Option.defaultValue (selectionRatios activeReferenceTimeline.Length activeWindow)
             | _ ->
                 localDraft
                 |> Option.defaultValue activeWindow
                 |> selectionRatios activeReferenceTimeline.Length
+
+    let navigatorSelectionRatiosForRender
+        activeGestureOverride
+        projection
+        activeReferenceTimeline
+        activeWindow
+        localDraft =
+        navigatorSelectionRatiosForRenderWithAuthority
+            activeGestureOverride
+            projection
+            activeReferenceTimeline
+            activeWindow
+            localDraft
+            None
 
     let navigatorBoundaryDirection total committed drag rawDelta : TaCoverageDirection option =
         if total <= 0 || committed.Count <= 0 then

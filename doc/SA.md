@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-25 cross-axis terminal settlement後的navigator authority（DYN-WBS-597）
+
+0.2.38真consumer的兩種時序已把問題縮到terminal settlement：grow尚未完成就接續drag時仍沿用1484 resident domain而GREEN；等grow完整完成一秒後，UI只剩active-local862並把selection畫成全寬，下一個body-right誤送active-axis ordinal `601102`。因此等待、callback先後與host response都不是authority；最早偏離是accepted cross-axis frame只留下local window `0/862`，丟失該request在原resident navigator domain中的offset。
+
+不變量是同一gesture的rendered selection、range text、pointer baseline與dispatch必須使用同一validated domain。跨axis terminal acceptance可由既有GLOBAL resident scope、`OverviewAnchors`與accepted target建立resident-local authority；identity、resident scope或domain不符即失效，不跨scope猜測。active detail仍是實際資料與local viewport authority，retained navigator authority只保存其在當次resident navigation domain的投影，不新增wire、cache或consumer mapping責任。
+
 ## 2026-10-25 真 main pointer resident pan 與 row-local horizontal cursor（DYN-WBS-596）
 
 0.2.33 真 mouse 已證 pointerdown／move／up lifecycle 正常；最早 semantic 偏離是 GLOBAL authority 存在時仍只改 inner visible window。結果是 local visible `0->420`，resident `2994894+2100` 不動，違反「content 左移 n 根時 resident 與 absolute visible 同步 `+n`」；正確 authority 已存在於 `ResidentCoverageChanged`，不需要新增 wire。

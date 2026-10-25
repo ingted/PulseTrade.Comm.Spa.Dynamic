@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-25 0.2.39 retained resident navigator authority（DYN-WBS-597）
+
+`TaResidentNavigatorAuthority`保存CoverageIdentity、GLOBAL resident start/count、`OverviewAnchors.Length` navigation domain及accepted target相對resident start的active-detail base offset。它只由`coverageIntentProjectionSettlement=Reanchor`且GLOBAL／active axis不同時建立；identity change與viewport scope change清除，projection scope不再相符時各resolver fail closed。
+
+`tryResidentNavigatorWindowWithAuthority`先走既有same-axis absolute mapping，只有該mapping失敗才把active-local window加到retained base offset；`coverageNavigatorWindowWithAuthority`、`navigatorSelectionRatiosForRenderWithAuthority`、drag pointerdown與queued semantic dispatch共用此resolver。terminal grow後base0/domain1484仍畫`0..862`；右移148的accepted target把base更新為148，下一輪不得fallback成active start600240+862=`601102`。舊無GLOBAL與same-axis路徑、typed action shape、coverage generation／revision gate都不變。
+
 ## 2026-10-25 0.2.36 resident grab-pan／discrete anchor seam（DYN-WBS-596）
 
 `RendererModel.mainPlotAnchoredPanDelta`用既有`cursorIndexFromClientX`分別解析 down/current slot，再回傳`downSlot-currentSlot`；不再用連續距離 round。`tryMainPlotResidentRelocationIntent`以 signed delta 移動固定寬 resident，沿用 coverage revision/query generation guard。Renderer 的 main-plot release 在 validated GLOBAL 且允許`resident-coverage-changed`時送`ResidentCoverageChanged`並保持 inner viewport resident-relative offset；pending draft維持視覺位置，authoritative projection settle時一起清除。無 GLOBAL／未授權該action時仍走既有 local/adjacent pan，不改 toolbar與navigator語意。
