@@ -492,3 +492,16 @@ PTCS-VFY-ActorsPageDynamic 20261006 revision stable-mount planned: extend realbr
 2026-10-07T08:24:01.5231473+08:00 Core59 release checkpoint: Main b9ff30465 verified all12officialNuGet signature/payload/dependencies, Coreproducer c9918e09bdd419600585e323dddd6578fde0c11f exactWS DLL83FC8284C89037CE6A3CF34BC912D8D8A2F49D123A85085CDE0DE6A58ACACB58 source/fullWS1406eachPASS; Dynamic32/32PASS. Main evidence doc/20261006.REFACTOR/evidence/Core59/{Release.PublicSummary.json,Core.Package.json,Dynamic.Consumer.Tests.json}. Hostbuildnotstarted dueGspaceguard; formal58 remains. No newtestsrepeated; previoussource-onlyoutputsretainedaftertooldeletionrejection. NextHostbuild/managed249xx/restart/formalUI afterspace; Native25MB/Renderer/LINEWIPunchanged.
 
 RF20-Form61：InProgress source33/33PASS (含9新增)，開始202610071912，已耗12分，WS／package／真browser待驗。既有Core60 mode90062→90000 RED保留，測試新label修正empty/null重名。RAW temp/agent.aster/rf20-draft/{build-r2.log,tests-r2.xml}；ETA202610072025整體Main。
+
+## DYN-VFY-053 Navigator latest-frame rebase／bilateral floating Y labels（OWNER PASS；consumer pending）
+
+- RED：0.2.36真no-1K DMI 5K為maximum1484→right shrink595→right grow862→body-right；late authoritative `$=8`後永久`Loaded862 / Preview149-1010`，GLOBAL authority仍total2,996,994／resident7,420，browser/bad response=0。
+- 修復不變量：blocked gesture保存semantic `drag + pointer delta ratio`；flush只以latest committed projection重建，跨軸無resident mapping時以latest active-local domain送typed exact newer coverage start/count；任何reject terminal path清Preview。雙側Y浮標同row、同value、同Y，其他row hidden，leave兩側hidden。
+- Owner 0.2.37：source `30a9cd64e49208a6a952ac88c998e8b97bc497d7`；Renderer／Client SHA-256=`AE723617469CD110885C3D23F663C8B12BC8A0F4491A6960740274049E71C07E`／`8FA764FB74F2FFCF0B167DDC1B9A2C18F63215696092A2CEEA928CCE78E508D8`，RepositoryCommit／ProductVersion／Client exact Renderer `[0.2.37]`與SDK feed parity PASS。Fresh exact-package Renderer96/96、Client19/19、package verifier、source-identical full WebSharper pack PASS。
+- UI evidence：exact-package BrowserDemo的bilateral floating-label gate先通過；combined historical parity verifier其後停在既有delayed-response `data-last-coverage-start`空白gate，不計navigator GREEN。Daedilus已擴充真consumer gate並收到immutable包；同一v4 final count/start/Preview/action及Y/console結果pending。
+
+### DYN-VFY-053 consumer RED／0.2.38 cross-axis settlement candidate
+
+- Consumer RED：0.2.37已送出typed target`2989722`／count862且action terminal，但永久Preview。Daedilus取得final F23：GLOBAL authority為`axis.1k`，ActiveDetail為`axis.5k` start`600240`／count862，DOM local visible0／862；host已回cross-axis target，renderer不能用兩axis ordinal直接containment。
+- Owner 0.2.38 source gate：新增matching cross-axis regression修前95/96；修後matching generation且final GLOBAL resident涵蓋request時，reanchor authoritative active-local0／862；同axisexact containment、older generation Await、terminal invalid Reject不變。Source-project Expecto96/96；full WebSharper、immutable package與Daedilus同一真consumer重驗pending。
+- Candidate package gate：source-identical staging Renderer／Interactive.Client完整WebSharper Rebuild 0 errors；task-local candidate exact-package Renderer96/96、Client19/19，皆0 ignored/failed/errored。這些包未寫SDK feed且不交付；final RepositoryCommit package/hash仍pending。

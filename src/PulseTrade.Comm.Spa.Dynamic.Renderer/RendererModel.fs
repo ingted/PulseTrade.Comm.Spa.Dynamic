@@ -177,6 +177,12 @@ type TaVisibleWindow =
     { StartIndex: int
       Count: int }
 
+[<RequireQualifiedAccess>]
+type TaCoverageIntentProjectionSettlement =
+    | Await
+    | Reanchor of TaVisibleWindow
+    | Reject
+
 type TaResidentCoverageWindow =
     { StartObservationOrdinal: int64
       ObservationCount: int }
@@ -2827,10 +2833,31 @@ module RendererModel =
         let activeStart = projection.ActiveDetail.StartObservationOrdinal
         let targetEnd = targetStartObservationOrdinal + int64 observationCount
         let activeEnd = activeStart + int64 activeCount
+        let targetCoveredByCrossAxisResident =
+            match projection.GlobalOverview with
+            | Some overview when overview.AxisRef <> projection.ActiveDetail.BaseAxisRef ->
+                let residentEnd =
+                    overview.ResidentStartObservationOrdinal
+                    + int64 overview.ResidentObservationCount
+                targetStartObservationOrdinal >= overview.ResidentStartObservationOrdinal
+                && targetEnd <= residentEnd
+            | _ -> false
 
         if
             observationCount <= 0
-            || targetStartObservationOrdinal < activeStart
+            || activeCount <= 0
+        then
+            None
+        elif targetCoveredByCrossAxisResident then
+            Some(
+                clampWindow
+                    minimumVisibleBars
+                    maximumVisibleBars
+                    activeCount
+                    { StartIndex = 0
+                      Count = min observationCount activeCount })
+        elif
+            targetStartObservationOrdinal < activeStart
             || targetEnd > activeEnd
         then
             None
@@ -2846,6 +2873,31 @@ module RendererModel =
                         activeCount
                         { StartIndex = int localStart
                           Count = observationCount })
+
+    let coverageIntentProjectionSettlement
+        minimumVisibleBars
+        maximumVisibleBars
+        activeReferenceLength
+        targetStartObservationOrdinal
+        observationCount
+        (pendingQueryGeneration: int64)
+        actionPending
+        (projection: TaLoadedCoverageProjection) =
+        if projection.QueryGeneration < pendingQueryGeneration then
+            TaCoverageIntentProjectionSettlement.Await
+        else
+            match
+                tryCoverageIntentReanchorWindow
+                    minimumVisibleBars
+                    maximumVisibleBars
+                    activeReferenceLength
+                    targetStartObservationOrdinal
+                    observationCount
+                    projection
+            with
+            | Some window -> TaCoverageIntentProjectionSettlement.Reanchor window
+            | None when actionPending -> TaCoverageIntentProjectionSettlement.Await
+            | None -> TaCoverageIntentProjectionSettlement.Reject
 
     let tryResidentAdjacentCoverageIntent (direction: TaCoverageDirection) maximumVisibleBars residentWindow projection =
         tryGlobalResidentWindow projection

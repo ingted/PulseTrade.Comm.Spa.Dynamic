@@ -2738,6 +2738,7 @@ module TaWorkspaceRenderer =
         let mutable dispatchAdjacentCoverage = fun (_: PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection) (_: int) -> ()
         let mutable dispatchCoverageWindow = fun (_: int64) (_: int) (_: string) -> ()
         let mutable dispatchResidentGesture = fun (_: string) (_: float) (_: string) -> ()
+        let mutable settlePendingCoverageProjection = fun () -> false
         let preparedRowsReady = Var.Create false
         let viewportDataReady = Var.Create false
         let commandsDisabledView =
@@ -2827,15 +2828,16 @@ module TaWorkspaceRenderer =
                 settleVisibleRangeDraft
         let startCoverageWindowAction action pending successText =
             pendingBoundaryPan <- Some pending
-            startActionWith
+            startActionWithFeedback
                 action
                 successText
-                (fun () ->
-                    if pendingBoundaryPan.IsNone then
-                        settleVisibleRangeDraft ())
+                (fun () -> None)
                 (fun () ->
                     pendingBoundaryPan <- None
                     settleVisibleRangeDraft ())
+                (fun () ->
+                    if settlePendingCoverageProjection () || pendingBoundaryPan.IsNone then
+                        settleVisibleRangeDraft ())
         let sendOrQueueVisibleRangeAction action =
             if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange action)
@@ -2957,16 +2959,25 @@ module TaWorkspaceRenderer =
                                     when projection.QueryGeneration >= pending.QueryGeneration ->
                                     match pending.TargetStartObservationOrdinal with
                                     | Some targetStart ->
-                                        RendererModel.tryCoverageIntentReanchorWindow
-                                            options.MinimumVisibleBars
-                                            maximumVisibleBars
-                                            nextTimeline.Length
-                                            targetStart
-                                            pending.ObservationCount
-                                            projection
-                                        |> Option.map (fun window ->
+                                        match
+                                            RendererModel.coverageIntentProjectionSettlement
+                                                options.MinimumVisibleBars
+                                                maximumVisibleBars
+                                                nextTimeline.Length
+                                                targetStart
+                                                pending.ObservationCount
+                                                pending.QueryGeneration
+                                                uiState.Value.PendingActionId.IsSome
+                                                projection
+                                        with
+                                        | TaCoverageIntentProjectionSettlement.Reanchor window ->
                                             pendingBoundaryPan <- None
-                                            window)
+                                            Some window
+                                        | TaCoverageIntentProjectionSettlement.Reject ->
+                                            pendingBoundaryPan <- None
+                                            rejectNavigatorDraft "Accepted coverage frame does not contain the requested viewport."
+                                            None
+                                        | TaCoverageIntentProjectionSettlement.Await -> None
                                     | None ->
                                         pendingBoundaryPan <- None
                                         Some(
@@ -3244,6 +3255,39 @@ module TaWorkspaceRenderer =
                     CursorIndex = None }
             cursorIndex.Value <- None
             changed, bounded
+
+        settlePendingCoverageProjection <- fun () ->
+            match pendingBoundaryPan, runtimeState.Value.Document with
+            | Some pending, Some document ->
+                match
+                    pending.TargetStartObservationOrdinal,
+                    RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
+                with
+                | Some targetStart, Some projection ->
+                    let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
+                    match
+                        RendererModel.coverageIntentProjectionSettlement
+                            options.MinimumVisibleBars
+                            (maximumVisibleBarsFor document)
+                            timeline.Length
+                            targetStart
+                            pending.ObservationCount
+                            pending.QueryGeneration
+                            false
+                            projection
+                    with
+                    | TaCoverageIntentProjectionSettlement.Reanchor window ->
+                        pendingBoundaryPan <- None
+                        let followLatest = window.StartIndex = RendererModel.viewportMaximumStart timeline.Length window
+                        commitLocalWindow followLatest window |> ignore
+                        true
+                    | TaCoverageIntentProjectionSettlement.Reject ->
+                        pendingBoundaryPan <- None
+                        rejectNavigatorDraft "Accepted coverage frame does not contain the requested viewport."
+                        true
+                    | TaCoverageIntentProjectionSettlement.Await -> false
+                | _ -> false
+            | _ -> false
 
         let setWindow followLatest window =
             if not (localViewportDisabled runtimeState.Value.Poll) then

@@ -1139,6 +1139,82 @@ let tests =
                     expandedProjection)
                 "a response that does not contain the requested absolute window cannot settle the pending pan"
 
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    3000
+                    2_995_074L
+                    1500
+                    (expandedProjection.QueryGeneration + 1L)
+                    false
+                    expandedProjection)
+                TaCoverageIntentProjectionSettlement.Await
+                "a projection older than the requested query generation is not terminal"
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    3000
+                    2_995_074L
+                    1500
+                    expandedProjection.QueryGeneration
+                    true
+                    expandedProjection)
+                (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1080; Count = 1500 })
+                "an authoritative frame containing the request may reanchor before the action callback settles"
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    3000
+                    2_992_000L
+                    1500
+                    expandedProjection.QueryGeneration
+                    true
+                    expandedProjection)
+                TaCoverageIntentProjectionSettlement.Await
+                "a non-containing frame remains provisional while the action callback is pending"
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    3000
+                    2_992_000L
+                    1500
+                    expandedProjection.QueryGeneration
+                    false
+                    expandedProjection)
+                TaCoverageIntentProjectionSettlement.Reject
+                "a matching terminal frame that cannot contain the request rejects instead of retaining Preview forever"
+
+            let crossAxisProjection : TaLoadedCoverageProjection =
+                { expandedProjection with
+                    QueryGeneration = expandedProjection.QueryGeneration + 1L
+                    ActiveDetail =
+                        { StartObservationOrdinal = 600_240L
+                          ObservationCount = 862
+                          BaseAxisRef = "axis.5k" }
+                    GlobalOverview =
+                        Some
+                            { TotalObservationCount = 2_996_994L
+                              AxisRef = "axis.1k"
+                              Anchors = [||]
+                              ResidentStartObservationOrdinal = 2_989_574L
+                              ResidentObservationCount = 7420 } }
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    862
+                    2_989_722L
+                    862
+                    crossAxisProjection.QueryGeneration
+                    true
+                    crossAxisProjection)
+                (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 0; Count = 862 })
+                "a matching cross-axis frame must settle on its authoritative active-local window instead of comparing unrelated ordinals"
+
             let allLoaded =
                 RendererModel.tryViewAllCoverageIntent
                     4000

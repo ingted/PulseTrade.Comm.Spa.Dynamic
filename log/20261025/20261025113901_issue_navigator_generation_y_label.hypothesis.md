@@ -32,3 +32,7 @@
 - 每一latest-projection拒絕路徑統一`rejectNavigatorDraft`清除draft與ratio override；replacement chart-stack重掛queue diagnostics，避免只看old DOM node。
 - Y label不新增authority：直接以row既有low/high及同一SVG pointer Y線性插值，單次mousemove同步更新左右label，mouseleave同步隱藏。
 - 驗證：source-project Expecto 96/96；staging full WebSharper Release Rebuild成功（39既有warnings、0 errors）。同一真consumer pointer驗收待0.2.37 immutable package交給Daedilus。
+- 0.2.37真consumer反證：latest semantic rebase確實送出較新typed target，但action callback完成、projection committed ready後，`pendingBoundaryPan`仍存在。原因是projection generation已達pending generation而absolute request無法由該active frame完整reanchor時，現碼把`None`同時表示「尚待frame」與「terminal frame拒絕request」，缺少action-settled狀態區分。
+- 下一實驗：引入純settlement DU（Await／Reanchor／Reject）；generation未達或action仍pending時Await，完整包含時Reanchor，generation已達且action已settled但不包含時Reject。projection先到／action先到兩個順序都須走同一terminal判定；Reject必清pending與Preview，不能假造不存在的visible data。
+- Daedilus final F23再反證單純terminal reject：request authority是GLOBAL `axis.1k` ordinal 2,989,722，而authoritative ActiveDetail已切為`axis.5k` ordinal 600,240；兩者ordinal不可直接比較。final active count與DOM local visible皆862，證明host已交付cross-axis target。
+- 修正settlement不變量：matching generation下，若GLOBAL／active axis不同且final resident涵蓋requested GLOBAL window，Reanchor至final authoritative active-local window；同axis仍走exact ordinal containment；不涵蓋時依action pending判Await／Reject。新增真值同構case修前95/96、修後96/96。
