@@ -4,6 +4,7 @@
 
 - DYN-T-705：以真consumer同構projection固定GLOBAL total2,996,994／resident start2,989,574／count7,420、OverviewAnchors1484、active axis5K start600,240／count862。terminal grow accepted target2,989,574後，navigator必保持domain1484/window0-862與selection `0..862/1484`；body-right148後必映為GLOBAL target2,989,722/window148-1010，active-axis601,102必被拒絕。另以source wiring guard要求range、selection、pointer與dispatch使用同一retained authority。
 - DYN-T-706：候選與final皆須完整WebSharper build；fresh exact-package Renderer96/96、Interactive.Client19/19與package manifest verifier；exact-package BrowserDemo完整WebSharper 0 errors。最後由Daedalus以0.2.38 deterministic human-paced sequence（grow terminal後停1秒、再material body-right）驗final `Loaded1484`、非全寬selection、GLOBAL target/generation、pending清除、moveSettled與browser errors；owner package gate不冒充consumer acceptance。
+- DYN-T-706 result：0.2.39 owner final Renderer96/96、Client19/19、package verifier與BrowserDemo full WebSharper皆PASS。Daedalus真consumer human-paced sequence保持Loaded1484／Viewing149-1010並送GLOBAL target2989722/count862；Research mapping修後active detail 599618→599647、rev1→2。Final UI再驗雙Y cursor同值／leave hidden、main grab delta+421與same-X anchor、GLOBAL close line非黑、同時移除1K/5K row後30K continuityGap0／exactly1 relocation，全部bad/browser0。Consumer `ef6bcee069107f87a9afddd50146381721746408`已push，focused7/7、Release 0 errors、formal checker PASS76/WARN4/FAIL0。
 
 ## 2026-10-25 DYN-T-703 / 704（final 0.2.36）
 

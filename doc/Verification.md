@@ -6,13 +6,15 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-054 0.2.38 timing RED／0.2.39 retained authority candidate
+### DYN-VFY-054 0.2.38 timing RED／0.2.39 retained authority final
 
 - Deterministic RED：0.2.38在grow terminal後停1秒固定變成Loaded862/full selection，143.6px body-right送active-axis target601102/gen2；final rev3仍active600240/count862、pendingBoundary601102、moveSettled=false、browser/bad response=0。快速連續gesture則GREEN，證明callback timing只決定舊domain是否尚存，不是根因。
 - Owner candidate：accepted cross-axis target建立typed resident navigator authority，並由range、selection、pointer baseline與dispatch共用；identity／resident scope／domain mismatch fail closed。source Expecto96/96；source-identical candidate Renderer／Client完整WebSharper 0 errors；fresh exact-package Renderer96/96、Client19/19、package verifier與BrowserDemo full WebSharper 0 errors。Client第一次深staging遇`apphost.exe` MSB3030，改同task短bin/obj後19/19，未改source／expected。Immutable source commit/package hash與真consumer acceptance pending。
 - Owner final：source commit/push`c8f8d82703a36ee4039bb226b5f5b96885894a15`；Renderer／Interactive.Client SHA-256=`1C28C3EF81B23574BF3487172FB8BD33985ED2A7A56CA314D81A0AFC28600606`／`E04170250C42F0138C36AF3D129E6B114BB8169AD710ED7BDC4C544DEB87615C`。RepositoryCommit／DLL ProductVersion皆對應source，Client exact Renderer`[0.2.39]`，SDK10.0.402 feed與canonical bin hash parity PASS；fresh final package Renderer96/96、Client19/19、package verifier及BrowserDemo full WebSharper 0 errors。release staging殘留12:31不可讀寫`websharper.log`造成一次既有`wsfsc -532462766`；無compiler process，同一commit source與final package在無舊log的固定browser-evidence staging立即通過，故不列source RED。Daedilus human-paced consumer acceptance pending。
 - Consumer 0.2.39 partial：deterministic human-paced sequence已保持Loaded1484、Viewing149-1010、selection寬不變，送GLOBAL target2989722/count862/gen2且pending清除、moveSettled=true、browser/bad response=0，故Renderer authority slice GREEN；但final ActiveDetail仍axis.5k start600240/count862，TA內容未移，整體仍RED。`CoverageIntent.ExplicitBounds`才是typed ordinal authority；Research的cross-axis ordinal→event-time→active page mapping由consumer owner續查，不在Renderer猜1K→5K時間。
 - Consumer mapping candidate：Daedilus已把GLOBAL normalized ordinal先經authoritative 1K StartKey映到active-scale ordinal，再建立durable visible action；同一human-paced真browser由active599618移到599647、count862、coverage rev1→2，Loaded1484／Viewing149-1010、target2989722、pending empty、moveSettled與0 errors均GREEN。Consumer source尚未commit，final UI gates進行中，故整體仍不close。
+
+- Consumer final：Research owner commit `ef6bcee069107f87a9afddd50146381721746408`已push且branch/upstream一致；formal checker PASS76/WARN4/FAIL0、sensitive High0/Medium0、focused Expecto7/7、Release 60 warnings/0 errors。Final real-browser證據`main-chart-ycursor-0.2.39-final`、`browser-overview-close-line-0.2.39-final`、`global-range-state-no1k-0.2.39-backend-map-green`、`global-without-1k-5k-row-0.2.39-final`均GREEN；涵蓋雙Y cursor、main grab delta+421／anchor不漂、GLOBAL close polyline及無1K/5K row的30K relocation，bad/browser全0。18884 health/root200、rows3,011,148、stderr0。DYN-WBS-597 source/package/consumer/E2E acceptance完成。
 
 本文件記錄 `PulseTrade.Comm.Spa.Dynamic` 的可重複驗證方式。若後續新增 verifier，先更新本表，再同步 `doc/TEST.md`、`doc/WBS.md` 與 `doc/Traceability.md`。
 
