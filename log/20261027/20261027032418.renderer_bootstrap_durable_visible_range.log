@@ -35,3 +35,5 @@
 
 - 假設：只有同 coverage identity／query generation、revision 前進、ActiveDetail 擴大，且現行 window 仍完整等於 bootstrap 時才屬於可自動擴張的 bootstrap replacement；其餘更新必須保留使用者 viewport。
 - 2026-10-27 03:48 +08:00：第一次 checker 已建立此 active log 的 prefix 基準，之後為補「假設」欄位誤把一行插入 Pre-work plan 中段，造成 `log_readonly_modify` FAIL。現已精確撤銷該次非尾端插入、恢復 checker 基準的完整原 bytes prefix，並只在檔尾追加本 Correction；不刪除或改寫原始操作紀錄，後續只允許尾端追加。
+- 2026-10-27 04:02 +08:00：Daedilus 回傳真 18884 focused consumer acceptance GREEN。Buffer1500 1/1：loaded=4500、ActiveDetail/localVisibleCount=1500、localVisibleStart=3000、label=`Viewing 3001-4500`；GlobalRangeState 1/1：雙 resize、selection-body left move、後續 shrink/grow/right move皆保持 local range，GLOBAL resident start=2862125 不變；第二 RUN sequence 10→13、continuity gap=0、stale receipt=0、bad response/browser error=0。evidence=`temp/agent.daedilus/buffer1500-0.2.45-dom`與`global-range-state-0.2.45-final2`；完整22-scenario gate仍在執行。
+- 2026-10-27 04:47 +08:00：完整gate前的TaggingScaleMatrix真滑鼠檢查另發現SMA path click被解為overlaid KBar；viewport focused evidence維持GREEN，但全案不能關閉。新owner issue已轉入`log/20261027/20261027044830_issue_pointer_hit_precedence.hypothesis.md`，consumer source不動。

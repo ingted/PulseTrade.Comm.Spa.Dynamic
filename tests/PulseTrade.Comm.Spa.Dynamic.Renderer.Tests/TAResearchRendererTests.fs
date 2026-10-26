@@ -106,6 +106,36 @@ let tests =
                 (RendererModel.tryNearestPointHit Double.NaN 50.0 [| candle |])
                 "non-finite browser geometry cannot produce an activation"
 
+        testCase "DYN-T-711 clicked trace identity wins over an overlapping candle fallback" <| fun _ ->
+            let candidate traceId traceKind component x minimumY maximumY =
+                { RowId = "price-30k"
+                  TraceId = traceId
+                  DataRef = "series." + traceId
+                  EventTimeUtc = "2026-03-27T02:30:00Z"
+                  TraceKind = traceKind
+                  Component = component
+                  ScaleKey = "30K"
+                  Value = SduiValue.Number x
+                  X = x
+                  MinimumY = minimumY
+                  MaximumY = maximumY }
+
+            let candle = candidate "fsstl.es-30k" "CANDLESTICK" "BAR" 500.0 20.0 90.0
+            let sma = candidate "fsstl.sma-30k-13" "LINE" "POINT" 496.0 74.0 74.0
+
+            Expect.equal
+                (RendererModel.tryNearestPointHitForTrace "fsstl.sma-30k-13" 500.0 70.0 [| candle; sma |])
+                (Some sma)
+                "the SVG path event target must keep the SMA trace even when candle geometry is nearer"
+            Expect.equal
+                (RendererModel.tryNearestPointHitForTrace "" 500.0 70.0 [| candle; sma |])
+                (Some candle)
+                "surface clicks without a trace target retain the geometric candle fallback"
+            Expect.equal
+                (RendererModel.tryNearestPointHitForTrace "missing" 500.0 70.0 [| candle; sma |])
+                (Some candle)
+                "an unknown DOM trace id must not suppress the canonical geometric fallback"
+
         testCase "DYN-T-688 point activation emits only for the committed projection key" <| fun _ ->
             let identity =
                 { DocumentId = DocumentId "tagging-document"
@@ -3638,7 +3668,8 @@ let tests =
 
             for required in
                 [ "Attr.Create TaPointActivation.SurfaceAttribute \"true\""
-                  "RendererModel.tryNearestPointHit pointX pointY"
+                  "Attr.Create TaPointActivation.TraceAttribute trace.TraceId"
+                  "RendererModel.tryNearestPointHitForTrace preferredTraceId pointX pointY"
                   "TaPointActivation.tryCreateV2 projectionCommitGate.LastCommitted state baseRowId hit candidates"
                   "activationEvent.InitCustomEvent(TaPointActivation.EventNameV2, true, false, box receipt)"
                   "TaPointActivation.tryCreate projectionCommitGate.LastCommitted state baseRowId hit"

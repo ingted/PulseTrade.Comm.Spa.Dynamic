@@ -1942,8 +1942,10 @@ module TaWorkspaceRenderer =
                         let pointX = (float event.ClientX - float bounds.Left) * width / float bounds.Width
                         let pointY = (float event.ClientY - float bounds.Top) * height / float bounds.Height
                         let candidates = pointHitCandidates latestPointGeometry
+                        let preferredTraceId =
+                            (event.Target |> As<Element>).GetAttribute(TaPointActivation.TraceAttribute)
                         candidates
-                        |> RendererModel.tryNearestPointHit pointX pointY
+                        |> RendererModel.tryNearestPointHitForTrace preferredTraceId pointX pointY
                         |> Option.iter (fun hit -> onPointActivated element hit candidates))
         ] [
             for gridIndex in 0 .. 4 do
@@ -1967,6 +1969,7 @@ module TaWorkspaceRenderer =
                     yield
                         svgElement "path" [
                             Attr.Create "data-testid" traceTestId
+                            Attr.Create TaPointActivation.TraceAttribute trace.TraceId
                             Attr.Create "data-candle-part" part
                             Attr.Create "data-candle-batched" "true"
                             Attr.Dynamic "d" pathStates[index].View
@@ -1991,14 +1994,15 @@ module TaWorkspaceRenderer =
                             { PositiveColor = traceColor
                               NegativeColor = traceColor }
                     let traceTestId = "ta-trace-" + rowId + "-" + trace.TraceId
-                    yield svgElement "path" [ Attr.Create "data-testid" traceTestId; Attr.Create "data-histogram-polarity" "positive"; Attr.Dynamic "d" positivePath; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" histogramStyle.PositiveColor; svgAttr "fill-opacity" "0.74" ] []
-                    yield svgElement "path" [ Attr.Create "data-testid" (traceTestId + "-negative"); Attr.Create "data-histogram-polarity" "negative"; Attr.Dynamic "d" negativePath; svgAttr "fill" histogramStyle.NegativeColor; svgAttr "fill-opacity" "0.74" ] []
+                    yield svgElement "path" [ Attr.Create "data-testid" traceTestId; Attr.Create TaPointActivation.TraceAttribute trace.TraceId; Attr.Create "data-histogram-polarity" "positive"; Attr.Dynamic "d" positivePath; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" histogramStyle.PositiveColor; svgAttr "fill-opacity" "0.74" ] []
+                    yield svgElement "path" [ Attr.Create "data-testid" (traceTestId + "-negative"); Attr.Create TaPointActivation.TraceAttribute trace.TraceId; Attr.Create "data-histogram-polarity" "negative"; Attr.Dynamic "d" negativePath; svgAttr "fill" histogramStyle.NegativeColor; svgAttr "fill-opacity" "0.74" ] []
                 | TaTraceKind.Volume ->
-                    yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); Attr.Dynamic "d" positivePath; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" traceColor; svgAttr "fill-opacity" "0.62" ] []
+                    yield svgElement "path" [ Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId); Attr.Create TaPointActivation.TraceAttribute trace.TraceId; Attr.Dynamic "d" positivePath; Attr.Dynamic "data-last-value" lastValue; svgAttr "fill" traceColor; svgAttr "fill-opacity" "0.62" ] []
                 | TaTraceKind.Line ->
                     let strokeWidthCssPixels = max 1.0 (min 2.0 trace.Width) |> fixedText
                     yield svgElement "path" [
                         Attr.Create "data-testid" ("ta-trace-" + rowId + "-" + trace.TraceId)
+                        Attr.Create TaPointActivation.TraceAttribute trace.TraceId
                         Attr.Create "data-stroke-width-css-pixels" strokeWidthCssPixels
                         Attr.Dynamic "d" positivePath
                         Attr.Dynamic "data-last-value" lastValue

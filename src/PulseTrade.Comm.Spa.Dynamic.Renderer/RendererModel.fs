@@ -310,6 +310,9 @@ module TaPointActivation =
     let SurfaceAttribute = "data-ptcs-ta-point-surface"
 
     [<Literal>]
+    let TraceAttribute = "data-ptcs-ta-trace-id"
+
+    [<Literal>]
     let SurfaceSelector = "[data-ptcs-ta-point-surface='true']"
 
     let tryCreate lastCommitted (state: RuntimeState) baseRowId (hit: TaPointHitCandidate) =
@@ -581,6 +584,18 @@ module RendererModel =
             |> Array.sortBy (fun (distance, index, _) -> distance, index)
             |> Array.tryHead
             |> Option.map (fun (_, _, candidate) -> candidate)
+
+    let tryNearestPointHitForTrace preferredTraceId clientX clientY (candidates: TaPointHitCandidate array) =
+        let preferredCandidates =
+            if String.IsNullOrWhiteSpace preferredTraceId then
+                [||]
+            else
+                candidates
+                |> Array.filter (fun candidate -> candidate.TraceId = preferredTraceId)
+
+        match tryNearestPointHit clientX clientY preferredCandidates with
+        | Some hit -> Some hit
+        | None -> tryNearestPointHit clientX clientY candidates
 
     let emptyWorkSchedulingMetrics =
         { WorkCount = 0; TurnCount = 0
