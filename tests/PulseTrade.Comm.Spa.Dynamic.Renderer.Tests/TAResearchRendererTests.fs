@@ -317,6 +317,35 @@ let tests =
                 { StartIndex = 1000; Count = 1100 }
                 "dragging the right boundary right expands only the visible right side inside the resident"
 
+        testCase "DYN-T-714 non-cursor main plot drag normalizes a bounded range preview" <| fun _ ->
+            let forwardLeft, forwardWidth =
+                RendererModel.mainPlotRangePreviewBounds 1000.0 300.0 720.0
+            let reverseLeft, reverseWidth =
+                RendererModel.mainPlotRangePreviewBounds 1000.0 720.0 300.0
+            let clippedLeft, clippedWidth =
+                RendererModel.mainPlotRangePreviewBounds 1000.0 -40.0 1040.0
+            let stationaryLeft, stationaryWidth =
+                RendererModel.mainPlotRangePreviewBounds 1000.0 500.0 500.0
+
+            Expect.equal (forwardLeft, forwardWidth) (300.0, 420.0) "a rightward drag previews the exact pointer span"
+            Expect.equal (reverseLeft, reverseWidth) (300.0, 420.0) "a leftward drag normalizes to the same increasing range"
+            Expect.equal (clippedLeft, clippedWidth) (0.0, 1000.0) "preview geometry remains inside the plot track"
+            Expect.equal (stationaryLeft, stationaryWidth) (500.0, 0.0) "pointerdown alone has no visible preview width"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            for required in
+                [ "data-testid\" \"ta-main-plot-range-preview"
+                  "data-preview-visible"
+                  "data-preview-start-x"
+                  "data-preview-end-x"
+                  "data-preview-width"
+                  "mainPlotRangePreviewBounds"
+                  "let hideRangePreview ()"
+                  "let updateRangePreview currentClientX"
+                  "let cancel () =" ] do
+                Expect.stringContains source required ("missing main-plot range preview contract: " + required)
+
         testCase "DYN-T-713 navigator edge handles anchor resize at the logical selection boundary" <| fun _ ->
             let total = 4500
             let trackLeft = 113.0

@@ -1,0 +1,24 @@
+# Main plot range preview
+
+## Pre-work plan
+
+- Background: user requested a live translucent range preview for non-CURSOR main TA plot drag through Daedilus message `msg-fsi-1bd89346d2a14bbfba8fdbe0682c8219`.
+- Goal: add one browser-local preview overlay and stable DOM diagnostics without changing existing range commit semantics.
+- Scope/owner: Dynamic Renderer source/direct tests, exact package versions, current RFC/WBS/Test/DevLog; Daedilus owns consumer Playwright source and real-browser evidence.
+- Invariants: CURSOR pan unchanged; non-CURSOR pointerup commit unchanged; preview is pointer-inert, normalized, nonzero only after movement, and cleared on up/cancel/lifecycle end; external dirty paths untouched.
+- Steps: RFC -> inspect exact main plot render/gesture seam -> RED focused tests -> minimal implementation -> owner tests/build/package -> package handoff -> consumer real rerun.
+- Acceptance: left/right preview visible during drag with positive width; stable testid/attributes; cleared after up/cancel; existing direct suites green and immutable package evidence supplied.
+- Risk: reactive SVG replacement could orphan preview state or intercept pointer events; use the existing plot SVG and document-level gesture lifetime.
+- Stop condition: no wire/action change; if implementation would require changing non-CURSOR commit semantics, stop and return to design.
+
+## Operations
+
+- 2026-10-27 07:14 +08:00: RED test `DYN-T-714` failed only because package-backed Renderer 0.2.48 does not yet expose `mainPlotRangePreviewBounds`, as intended.
+- 2026-10-27 07:14 +08:00: Added the source helper, SVG preview contract, and pointer-lifecycle update/clear path without changing pointerup commit branches. Direct source build then reproduced `wsfsc.exe -532462766`; Windows Application event 1026 identifies `UnauthorizedAccessException` deleting `src/PulseTrade.Comm.Spa.Dynamic.Renderer/websharper.log`.
+- 2026-10-27 07:15 +08:00: Exact owner evidence is stale `wsfscservice.exe` PID 35132, created 05:50:47, with command line naming that exact generated log. Per `doc/Verification.md` DYN-VFY-001, stop only PID 35132, remove only that generated log, and retry the source build.
+- 2026-10-27 07:18 +08:00: Source build recovered with 0 warnings/0 errors. Renderer 0.2.49 candidate package copied to SDK 10.0.402 library-packs with SHA-256 `FA8EAA49F30AC65F244CD64068F88C3562D72CCFD2434C4FDB2723340AA516F8`; fresh package-backed Renderer tests PASS 105/105.
+- 2026-10-27 07:20 +08:00: Interactive.Client 0.2.49 candidate exact-depends on Renderer 0.2.49; candidate SHA-256 `44155DF20494B2D987AC3654EF3654087A3944AEF585CFA0A04AB7FDC56A209C`. Fresh package-backed Interactive tests PASS 20/20 and package verifier PASS.
+- 2026-10-27 07:23 +08:00: Package-only BrowserDemo staging aligned direct dependencies to FSharp.Core 10.1.402, WebSharper.FSharp 10.1.7.680, WebSharper.UI 10.1.6.680 and built 0 warnings/0 errors. In-app Browser could not initialize because its kernel assets path was missing; no owner-side DOM PASS is claimed. Daedilus keeps the real 18884 left/right drag acceptance gate.
+
+- 2026-10-27 07:08 +08:00: Received and accepted owner scope; receipt `msg-fsi-c9f8c7a2a1cb487eb56c7ebf93901fcd`.
+- 2026-10-27 07:09 +08:00: Created Accepted RFC-PTCS-DYNAMIC-0037 and this pre-work log before source review/change.

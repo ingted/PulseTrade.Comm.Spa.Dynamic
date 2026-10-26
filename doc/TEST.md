@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-714（0.2.49 owner candidate / consumer pending）
+
+- DYN-T-714 main-plot range preview：pure helper以1000px track固定右拖`300->720`、左拖`720->300`皆正規化為`start=300,width=420`；越界`-40->1040`夾為`0/1000`，stationary為`500/0`。source contract要求非CURSOR/Resize pointermove使用同一plot-local座標即時更新`ta-main-plot-range-preview`，發布visible/start/end/width，pointerup/cancel/mode切換清除；既有CURSOR與Resize commit分支不變。
+- RED/GREEN：0.2.48 package-backed test因`mainPlotRangePreviewBounds`不存在而4個FS0039 RED；0.2.49 candidate後Renderer105/105、Interactive.Client20/20、Interactive package verifier PASS。package-only BrowserDemo以同步FSharp.Core10.1.402／WebSharper.FSharp10.1.7.680／WebSharper.UI10.1.6.680 build為0 warnings/0 errors。
+- UI gate：owner端in-app Browser控制層在建立kernel assets前失敗，故不冒充真DOM PASS。Daedilus真18884須各做左、右drag：pointerup前`data-preview-visible=true`且width>0、start/end單調；pointerup後visible=false/width=0，並證正式visible range仍沿既有commit語意更新。
+
 ## 2026-10-27 DYN-T-711 / 712 / 713（0.2.48 owner package / consumer pending）
 
 - DYN-T-711 trace-target precedence：以同x candle Y區間涵蓋click、SMA離散vertex略偏的反例，驗browser event target `fsstl.sma-30k-13`必先限縮候選並回LINE/POINT；空白或unknown DOM trace id仍走既有全體geometry fallback。source contract要求candle/line/histogram/volume SVG path都帶`data-ptcs-ta-trace-id`，不得另造JavaScript activation path。

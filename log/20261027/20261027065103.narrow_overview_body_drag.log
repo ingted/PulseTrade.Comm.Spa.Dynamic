@@ -1,0 +1,19 @@
+# Narrow overview body drag investigation
+
+## Pre-work plan
+
+- Background: Renderer/Interactive.Client 0.2.48 passes package-local tests, and consumer proved 79-bar right-handle resize. A real consumer body drag over a narrow selection moved only 79 bars instead of the requested large distance.
+- Goal: locate the earliest Renderer divergence, reproduce it in a focused test, apply the smallest root-cause fix if source-owned, and obtain package-local plus real consumer evidence.
+- Scope/owner: owner source and tests in `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`; Daedilus owns consumer test source and real-browser execution.
+- Invariants: body move preserves width and follows logical-track pointer delta; handle resize keeps its opposite logical edge fixed; actions remain event-time authoritative; external dirty files remain untouched.
+- Acceptance: RED focused test before fix; Renderer/Interactive focused suites green; immutable next stable packages if source changes; Daedilus real 80-bar/body-drag rerun green.
+- Stop condition: if captured geometry proves the gesture itself moved only one selection width or the failure is consumer-owned, do not change product source and hand back exact evidence.
+- Risk: narrow selection may overlap handle hit regions; changes must not regress 0.2.48 logical-edge anchoring.
+
+## Operations
+
+- 2026-10-27 06:48 +08:00: Received Daedilus real RED `msg-fsi-662b62f8d349448791d3f49ae3fca852`; acknowledged with `msg-fsi-1cefc9c4cc4f48adb5a63a942b5c5adc` and requested pointer geometry.
+- 2026-10-27 06:49 +08:00: Read bounded consumer evidence. Confirmed local start 1201 -> 1122, width 79, accepted action, coverage revision 4 -> 5, no browser/API error.
+- 2026-10-27 06:50 +08:00: Checked dirty state. Preserved pre-existing `lib-packs.txt`, `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/Program.fs`, `.pcsl/**`, and `temp/**`.
+- 2026-10-27 06:57 +08:00: Daedilus supplied exact geometry: semantic move, delta -1202, in-track target, correct `Preview 1-79`, preserved width. Renderer hit/preview math passed.
+- 2026-10-27 07:01 +08:00: Compared ActionWire and axis contract. Action is event-time `$8` with `CoverageIntent=None`, as required for a cross-axis local move; no adjacent/resident intent was emitted. Consumer settlement moved ActiveDetail and retained a 1122 local offset instead of committing local start 0. Sent owner handoff `msg-fsi-bea6c3fbbdcf4188b77f93bcec1605fd`; no product source changed.

@@ -2026,6 +2026,27 @@ module TaWorkspaceRenderer =
             yield markerLayer
 
             yield
+                svgElement "rect" [
+                    Attr.Create "data-testid" "ta-main-plot-range-preview"
+                    Attr.Create "data-preview-row-id" rowId
+                    Attr.Create "data-preview-visible" "false"
+                    Attr.Create "data-preview-start-x" "0"
+                    Attr.Create "data-preview-end-x" "0"
+                    Attr.Create "data-preview-width" "0"
+                    svgAttr "x" "0"
+                    svgAttr "y" (fixedText top)
+                    svgAttr "width" "0"
+                    svgAttr "height" (fixedText plotHeight)
+                    svgAttr "fill" palette.OverviewSelection
+                    svgAttr "fill-opacity" "0.22"
+                    svgAttr "stroke" palette.OverviewBoundary
+                    svgAttr "stroke-width" "1"
+                    svgAttr "vector-effect" "non-scaling-stroke"
+                    svgAttr "visibility" "hidden"
+                    svgAttr "pointer-events" "none"
+                ] []
+
+            yield
                 svgElement "line" [
                     Attr.Create "data-testid" (svgTestId + "-crosshair")
                     Attr.Create "data-ta-shared-crosshair" "true"
@@ -3571,6 +3592,37 @@ module TaWorkspaceRenderer =
                     let mutable moved = false
                     let mutable pendingDraft: TaVisibleWindow option = None
                     let mutable draftFrameScheduled = false
+                    let rangePreview = plotRoot.QuerySelector("[data-testid='ta-main-plot-range-preview']")
+
+                    let hideRangePreview () =
+                        if not (isNull rangePreview) then
+                            rangePreview.SetAttribute("data-preview-visible", "false")
+                            rangePreview.SetAttribute("data-preview-width", "0")
+                            rangePreview.SetAttribute("width", "0")
+                            rangePreview.SetAttribute("visibility", "hidden")
+
+                    let updateRangePreview currentClientX =
+                        match mainPlotInteractionMode.Value with
+                        | TaMainPlotInteractionMode.Cursor -> hideRangePreview ()
+                        | TaMainPlotInteractionMode.Resize when not (isNull rangePreview) ->
+                            let startX, previewWidth =
+                                RendererModel.mainPlotRangePreviewBounds
+                                    bounds.Width
+                                    (startClientX - bounds.Left)
+                                    (currentClientX - bounds.Left)
+                            let endX = startX + previewWidth
+                            let visible = moved && previewWidth > 0.0
+                            let svgScale = 1000.0 / bounds.Width
+                            rangePreview.SetAttribute("data-preview-visible", if visible then "true" else "false")
+                            rangePreview.SetAttribute("data-preview-start-x", fixedText startX)
+                            rangePreview.SetAttribute("data-preview-end-x", fixedText endX)
+                            rangePreview.SetAttribute("data-preview-width", fixedText previewWidth)
+                            rangePreview.SetAttribute("x", fixedText (startX * svgScale))
+                            rangePreview.SetAttribute("width", fixedText (previewWidth * svgScale))
+                            rangePreview.SetAttribute("visibility", if visible then "visible" else "hidden")
+                        | TaMainPlotInteractionMode.Resize -> ()
+
+                    hideRangePreview ()
 
                     let flushDraft () =
                         draftFrameScheduled <- false
@@ -3610,6 +3662,7 @@ module TaWorkspaceRenderer =
                                 RendererModel.MainPlotDragThresholdCssPixels
                                 startClientX
                                 latestClientX
+                        updateRangePreview latestClientX
                         if moved then
                             let total = referenceLength ()
                             let draft =
@@ -3634,6 +3687,7 @@ module TaWorkspaceRenderer =
                         if not (isNull cancelHandler) then JS.Document.RemoveEventListener("pointercancel", cancelHandler)
                         finishMainPlotDrag <- None
                         cancelMainPlotDrag <- None
+                        hideRangePreview ()
                         let cursor =
                             match mainPlotInteractionMode.Value with
                             | TaMainPlotInteractionMode.Cursor -> "crosshair"

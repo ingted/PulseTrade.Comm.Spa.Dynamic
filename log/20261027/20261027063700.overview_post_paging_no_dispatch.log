@@ -1,0 +1,18 @@
+# Overview post-paging no-dispatch
+
+## Pre-work plan
+
+- 背景：0.2.48真consumer在兩次earlier page後，overview body pointerup未進action route；詳見同timestamp hypothesis。
+- 目標：找出pointerup到typed action之間最早拒絕點，以最小owner regression與修正恢復唯一dispatch。
+- 假設：post-paging window rebase使intent被誤判no-op，或queued intent被永不滿足的authority gate擋住。
+- 範圍：Renderer/direct tests/package與current WBS/TEST/DevLog；consumer source唯讀。
+- 風險：GLOBAL/active/local三軸不可混算；shared repo有外部dirty；WebSharper service可能留下精確orphan鎖。
+- 步驟：bounded evidence/source → compact trace → RED → minimal fix → focused/full/package → true consumer gate。
+- 驗收：pointerup後5秒內唯一route/action、revision前進、selection/anchor不漂移；SMA/80-bars/main pan相鄰gate不退化。
+- 停止條件：真consumer與direct gates完成；blocker須有exact evidence與owner。
+
+## Operations
+
+- 2026-10-27 06:37 +08:00：建立正式log並回鏈`20261027063700_issue_overview_post_paging_no_dispatch.hypothesis.md`；尚未改碼。
+- 2026-10-27 06:41 +08:00：最早「無dispatch」由consumer未等前一second-earlier action settle造成；同版加setup gate重跑約385ms dispatch、200、revision3→4。暫不改product。
+- 2026-10-27 06:45 +08:00：stress 12 failures再定位為GLOBAL ordinal／formal active slot混算的consumer oracle；已交Daedilus改用event-time Action$8與accepted viewport commit。等待其修正後80-bars、main drag、Tagging DMI與full22最終結果。

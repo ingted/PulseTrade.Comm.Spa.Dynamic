@@ -536,6 +536,16 @@ module RendererModel =
             else
                 int (Math.Ceiling(delta - 0.5))
 
+    let mainPlotRangePreviewBounds trackWidth startX currentX =
+        let finite value = not (Double.IsNaN value || Double.IsInfinity value)
+        if trackWidth <= 0.0 || not (finite trackWidth && finite startX && finite currentX) then
+            0.0, 0.0
+        else
+            let clampX value = max 0.0 (min trackWidth value)
+            let boundedStart = clampX startX
+            let boundedCurrent = clampX currentX
+            min boundedStart boundedCurrent, abs (boundedCurrent - boundedStart)
+
     let toggleMainPlotInteractionMode mode =
         match mode with
         | TaMainPlotInteractionMode.Cursor -> TaMainPlotInteractionMode.Resize
