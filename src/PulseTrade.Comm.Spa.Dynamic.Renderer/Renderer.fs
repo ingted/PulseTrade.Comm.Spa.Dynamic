@@ -3333,13 +3333,16 @@ module TaWorkspaceRenderer =
                 | _ -> false
             | _ -> false
 
-        let setWindow followLatest window =
+        let setWindowFromPrepared (expectedDocument: TaWorkspaceDocument) prepared coverageIntent followLatest window =
             if not (localViewportDisabled runtimeState.Value.Poll) then
-                let changed, bounded = commitLocalWindow followLatest window
-                if changed && actionAllowed "visible-range-changed" then
-                    match runtimeState.Value.Document with
-                    | Some document ->
-                        match RendererModel.visibleEventRangePrepared document latestPreparedData bounded with
+                match runtimeState.Value.Document with
+                | Some document
+                    when document.WorkspaceId = expectedDocument.WorkspaceId
+                         && document.RowsRef = expectedDocument.RowsRef
+                         && document.BaseRowId = expectedDocument.BaseRowId ->
+                    let changed, bounded = commitLocalWindow followLatest window
+                    if changed && actionAllowed "visible-range-changed" then
+                        match RendererModel.visibleEventRangePrepared expectedDocument prepared bounded with
                         | Some range ->
                             sendOrQueueVisibleRangeAction
                                 (SduiAction.VisibleRangeChanged(
@@ -3348,11 +3351,16 @@ module TaWorkspaceRenderer =
                                       StartEventTimeUtc = range.StartEventTimeUtc
                                       EndEventTimeExclusiveUtc = range.EndEventTimeExclusiveUtc
                                       MaximumBasePoints = min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 (maximumVisibleBarsFor document))
-                                      CoverageIntent = None }))
+                                      CoverageIntent = coverageIntent }))
                         | None -> draftWindow.Value <- None
-                    | None -> draftWindow.Value <- None
-                else
-                    draftWindow.Value <- None
+                    else
+                        draftWindow.Value <- None
+                | _ -> draftWindow.Value <- None
+
+        let setWindow followLatest window =
+            match runtimeState.Value.Document with
+            | Some document -> setWindowFromPrepared document latestPreparedData None followLatest window
+            | None -> draftWindow.Value <- None
 
         let dispatchAdjacentCoverageNow direction delta =
             if actionAllowed "visible-range-changed" && preparedRowsReady.Value && not (localViewportDisabled runtimeState.Value.Poll) then
@@ -3464,34 +3472,17 @@ module TaWorkspaceRenderer =
                 let followLatest = candidate.StartIndex = RendererModel.viewportMaximumStart total candidate
                 setWindow followLatest candidate
 
-        let tryCommitMainPlotResidentPan delta =
-            match runtimeState.Value.Document with
-            | Some document when actionAllowed "resident-coverage-changed" ->
-                match document.BaseRowId, RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
-                | Some baseRowId, Some projection when projection.GlobalOverview.IsSome ->
-                    if pendingGlobalResidentIntent.IsSome || commandsDisabledNow () || not preparedRowsReady.Value then
-                        draftWindow.Value <- None
-                        setUiState { uiState.Value with Feedback = "Resident coverage relocation is not ready." }
-                    else
-                        match RendererModel.tryMainPlotResidentRelocationIntent delta projection with
-                        | Some(draft, intent) ->
-                            globalResidentDraft.Value <- Some draft
-                            pendingGlobalResidentIntent <- Some intent
-                            startActionWith
-                                (SduiAction.ResidentCoverageChanged(currentCanvasId (), baseRowId, intent))
-                                "Resident coverage relocation requested."
-                                ignore
-                                (fun () -> clearGlobalResidentIntent intent)
-                        | None ->
-                            globalResidentDraft.Value <- None
-                            draftWindow.Value <- None
-                    true
-                | _ -> false
-            | _ -> false
-
-        let commitMainPlotPan delta =
-            if not (tryCommitMainPlotResidentPan delta) then
-                panWindow delta
+        let commitMainPlotPan delta document prepared committed projection =
+            let timeline = RendererModel.referenceTimelineForDocumentPrepared document prepared
+            match RendererModel.tryMainPlotPanWindow timeline.Length committed delta with
+            | Some next when preparedRowsReady.Value && not (viewportCommandsDisabledNow ()) ->
+                let followLatest = next.StartIndex = RendererModel.viewportMaximumStart timeline.Length next
+                match RendererModel.tryMainPlotEventRangeIntent projection next with
+                | Some intent -> setWindowFromPrepared document prepared (Some intent) followLatest next
+                | None -> draftWindow.Value <- None
+            | _ ->
+                draftWindow.Value <- None
+                setUiState { uiState.Value with Feedback = "Main-plot pan is outside the captured formal-base range." }
 
         let consumeMainPlotClickSuppression () =
             let suppress = suppressNextMainPlotClick
@@ -3519,6 +3510,12 @@ module TaWorkspaceRenderer =
                     event.PreventDefault()
                     event.StopPropagation()
                     let startClientX = float event.ClientX
+                    let pointerDocument = runtimeState.Value.Document
+                    let pointerPreparedData = latestPreparedData
+                    let pointerProjection =
+                        pointerDocument
+                        |> Option.bind (fun document ->
+                            RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data)
                     let drag =
                         RendererModel.mainPlotInteractionDrag
                             mainPlotInteractionMode.Value
@@ -3607,7 +3604,9 @@ module TaWorkspaceRenderer =
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "committed")
                             match drag with
                             | TaWindowDrag.Move ->
-                                commitMainPlotPan latestDelta
+                                match pointerDocument, pointerProjection with
+                                | Some document, Some projection -> commitMainPlotPan latestDelta document pointerPreparedData committed projection
+                                | _ -> draftWindow.Value <- None
                             | _ ->
                                 let total = referenceLength ()
                                 let draft =

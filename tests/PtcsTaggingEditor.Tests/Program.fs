@@ -16,6 +16,37 @@ let tests =
             let second = target "space" "kind" "42" "new label"
             Expect.equal (TaggingEditorPlugin.targetKey first) (TaggingEditorPlugin.targetKey second) "Display context must not create a second logical editor.")
 
+        testCase "semantic display label never replaces target identity" (fun _ ->
+            let labelled = target "space" "bar" "109" "202607102000-30K-kbar"
+            let fallback = target "space" "bar" "109" "  "
+            Expect.equal (TaggingEditorPlugin.displayLabel labelled) "202607102000-30K-kbar" "The editor title uses the producer-authored semantic label."
+            Expect.equal (TaggingEditorPlugin.displayLabel fallback) "109" "A missing display label falls back to the stable target identity."
+            Expect.equal (TaggingEditorPlugin.targetKey labelled) (TaggingEditorPlugin.targetKey fallback) "Changing presentation metadata must not change dispatch identity.")
+
+        testCase "draft rows precede persisted records and allocate identity only on save" (fun _ ->
+            let value =
+                { Tags=[|"draft"|]
+                  Summary="pending"
+                  TimeFrames=[||] }
+            let persisted =
+                { ExInfoId="918"
+                  Target=target "space" "bar" "109" "202607102000-30K-kbar"
+                  Draft={ value with Summary="saved" }
+                  Revision=7.0
+                  CreatedAtUtc="2026-07-10T20:01:00Z"
+                  UpdatedAtUtc="2026-07-10T20:02:00Z" }
+            match TaggingEditorPlugin.orderedRowSeeds [|value|] [|persisted,persisted.Draft|] with
+            | [| TaggingEditorRowSeed.DraftRow draft; TaggingEditorRowSeed.PersistedRow(row,_) |] ->
+                Expect.equal draft value "The unsaved draft is the first record."
+                Expect.equal row.ExInfoId "918" "The persisted DB identity remains unchanged."
+            | actual -> failtestf "Unexpected row order: %A" actual
+            Expect.equal (TaggingEditorPlugin.saveRequest None value) (TaggingEditorRequest.Create value) "An unsaved draft sends Create without allocating a DB identity."
+            Expect.isNone (TaggingEditorPlugin.deleteRequest None) "Deleting a draft is a local discard."
+            Expect.equal
+                (TaggingEditorPlugin.deleteRequest (Some persisted))
+                (Some(TaggingEditorRequest.Delete("918",7.0)))
+                "Deleting a persisted record carries its DB identity and revision.")
+
         testCase "default SDUI schema exposes generic tagging fields" (fun _ ->
             let fields = TaggingEditorPlugin.defaultSchema.Fields |> Array.map _.Key
             Expect.sequenceEqual fields [|"tags";"summary";"timeFrames"|] "The default schema must stay domain-neutral."

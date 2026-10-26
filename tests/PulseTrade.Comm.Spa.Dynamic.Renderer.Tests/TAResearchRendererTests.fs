@@ -1616,6 +1616,56 @@ let tests =
                     "The same resident-relative viewport makes the absolute visible window move by the same delta."
             | None -> failtest "A bounded main-plot pan with GLOBAL authority must produce one resident relocation intent."
 
+        testCase "DYN-T-704 cross-axis main-plot drop preserves the exact formal-base pointer time" <| fun _ ->
+            let startTime = DateTimeOffset(2026,6,1,0,0,0,TimeSpan.Zero)
+            let formalBaseTimeline =
+                Array.init 40 (fun index -> startTime.AddMinutes(float(index * 30)).ToString("O"))
+            let committed = { StartIndex = 5; Count = 20 }
+            let trackLeft = 82.0
+            let trackWidth = 1000.0
+            let startClientX = trackLeft + 525.0
+            let currentClientX = trackLeft + 325.0
+            let startSlot = RendererModel.cursorIndexFromClientX committed.Count trackLeft trackWidth startClientX |> Option.get
+            let currentSlot = RendererModel.cursorIndexFromClientX committed.Count trackLeft trackWidth currentClientX |> Option.get
+            let activeDelta =
+                RendererModel.mainPlotAnchoredPanDelta committed.Count trackLeft trackWidth startClientX currentClientX
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:formal-base-main-pan"
+                  CoverageRevision = 41L
+                  QueryGeneration = 8L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 250_000L
+                      ObservationCount = formalBaseTimeline.Length
+                      BaseAxisRef = "axis.base.30k" }
+                  GlobalOverview = None }
+            Expect.equal
+                activeDelta
+                4
+                "The physical drag spans four 30K base slots."
+            match RendererModel.tryMainPlotPanWindow formalBaseTimeline.Length committed activeDelta with
+            | Some next ->
+                Expect.equal next { StartIndex = 9; Count = 20 } "The target visible range moves by the formal-base slot delta."
+                Expect.equal
+                    formalBaseTimeline[committed.StartIndex + startSlot]
+                    formalBaseTimeline[next.StartIndex + currentSlot]
+                    "After drop, the same physical pointer resolves to the exact captured formal-base event time."
+                let intent = RendererModel.tryMainPlotEventRangeIntent projection next |> Option.get
+                Expect.equal intent.ExpectedCoverageRevision (Some 41L) "The typed event-range action guards the captured coverage revision."
+                Expect.equal intent.QueryGeneration 9L "The typed event-range action advances the captured query generation once."
+                Expect.isNone intent.StartObservationOrdinal "The consumer must resolve the exact active StartKey from event time."
+                Expect.equal intent.ObservationCount next.Count "The typed event-range action preserves the target visible width."
+                Expect.isNone intent.Direction "Main CURSOR pan is not an adjacent-boundary request."
+                Expect.equal intent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "The typed event range explicitly owns both bounds."
+            | None -> failtest "A bounded formal-base pan must produce one exact target visible window."
+            Expect.isNone
+                (RendererModel.tryMainPlotPanWindow formalBaseTimeline.Length committed -6)
+                "A target outside the captured formal-base range must fail closed instead of using sampled GLOBAL anchors."
+
         testCase "global navigator authority survives an unknown loaded total" <| fun _ ->
             let globalOverview =
                 { TotalObservationCount = 2_996_994L
@@ -3503,7 +3553,14 @@ let tests =
                   "mainPlotPanDelta"
                   "mainPlotInteractionDrag"
                   "previewWindowBounds"
-                  "let tryCommitMainPlotResidentPan"
+                  "let setWindowFromPrepared"
+                  "RendererModel.visibleEventRangePrepared expectedDocument prepared bounded"
+                  "let commitMainPlotPan delta document prepared committed projection"
+                  "RendererModel.tryMainPlotPanWindow"
+                  "RendererModel.tryMainPlotEventRangeIntent projection next"
+                  "pointerPreparedData"
+                  "pointerProjection"
+                  "setWindowFromPrepared document latestPreparedData None"
                   "commitMainPlotPan latestDelta"
                   "setWindow followLatest next"
                   "data-ta-row-horizontal-cursor"
@@ -3513,11 +3570,20 @@ let tests =
                 Expect.stringContains source required ("missing point activation renderer contract: " + required)
 
             let cursorCommit = source.IndexOf("commitMainPlotPan latestDelta", StringComparison.Ordinal)
-            Expect.isGreaterThan cursorCommit -1 "CURSOR release must route through resident relocation."
+            Expect.isGreaterThan cursorCommit -1 "CURSOR release must route through the captured formal-base range commit."
             let resizeCommit = source.IndexOf("let total = referenceLength ()", cursorCommit, StringComparison.Ordinal)
             Expect.isGreaterThan resizeCommit cursorCommit "Resize release must have a separate local-window branch."
             let resizeSetWindow = source.IndexOf("setWindow followLatest next", resizeCommit, StringComparison.Ordinal)
             Expect.isGreaterThan resizeSetWindow resizeCommit "Resize release must commit only the local visible window."
+
+            let mainCommitStart = source.IndexOf("let commitMainPlotPan delta document prepared committed projection", StringComparison.Ordinal)
+            let mainCommitEnd = source.IndexOf("let consumeMainPlotClickSuppression", mainCommitStart, StringComparison.Ordinal)
+            Expect.isGreaterThan mainCommitStart -1 "The main-plot exact event-range commit must exist."
+            Expect.isGreaterThan mainCommitEnd mainCommitStart "The main-plot commit must have a bounded source range."
+            let mainCommitBody = source.Substring(mainCommitStart, mainCommitEnd - mainCommitStart)
+            Expect.stringContains mainCommitBody "setWindowFromPrepared document prepared (Some intent)" "One drop must dispatch a typed captured event-range intent."
+            Expect.isFalse (mainCommitBody.Contains("ResidentCoverageChanged", StringComparison.Ordinal)) "Main-plot CURSOR pan must not dispatch a GLOBAL resident relocation."
+            Expect.isFalse (source.Contains("tryGlobalObservationOrdinalAtEventTime", StringComparison.Ordinal)) "Renderer must not map main-plot event time through sampled GLOBAL anchors."
 
             let activationStart = source.IndexOf("let publishPointActivation", StringComparison.Ordinal)
             let editorStart = source.IndexOf("let selectedEditorSchema", activationStart, StringComparison.Ordinal)

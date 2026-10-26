@@ -11,6 +11,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\PulseTrade.Comm.Spa.Dynamic.Tagging.Client\PulseTrade.Comm.Spa.Dynamic.Tagging.Client.fsproj" />
     <PackageReference Include="Expecto" Version="11.1.0" />
-    <PackageReference Include="FSharp.Core" Version="[10.1.400]" />
+    <PackageReference Include="FSharp.Core" Version="[10.1.402]" />
   </ItemGroup>
 </Project>

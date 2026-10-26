@@ -1210,6 +1210,7 @@ let tests =
                 | _ -> 0
 
             let limit = DynamicRuntimeDefaults.limits.MaxRetainedBarsPerSeries
+            Expect.equal limit 4500 "The universal retained authority must accept the complete 4500-bar resident window."
             let documentState, _ = RuntimeReducer.reduce (RuntimeReducer.initial identity) documentFrame
             let snapshot count =
                 frame RuntimeFrameKind.Snapshot 2L None 1L
@@ -1221,7 +1222,9 @@ let tests =
                 frame RuntimeFrameKind.Patch 3L (Some 1L) 2L
                     (RuntimePayload.Patch { Operations = operations })
 
-            let fullState, _ = RuntimeReducer.reduce documentState (snapshot limit)
+            let fullState, fullEffect = RuntimeReducer.reduce documentState (snapshot limit)
+            Expect.equal fullState.DataRevision 1L "A 4500-point snapshot must be accepted."
+            Expect.equal fullEffect RuntimeEffect.NoEffect "The accepted resident snapshot needs no resync."
             let replaced, replaceEffect =
                 RuntimeReducer.reduce fullState
                     (patch [| PatchOperation.UpsertSeriesPoints("series.price", "timestamp", [| pointMap (limit - 1) -1.0 |]) |])

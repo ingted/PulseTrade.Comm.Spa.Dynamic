@@ -1,5 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-26 DYN-WBS-599（0.2.43 / 0.1.40 / 0.1.8 source candidate）
+
+- P0-1 Tagging：`displayLabel`只讀`ContextLabel`並fallback `TargetId`，target key／dispatch identity不變；dirty draft排在persisted rows前，未儲存draft save為Create無DB id、delete為local discard，persisted delete才帶`ExInfoId/Revision`。actions在fields前、dirty prompt在card頂；`PtcsTaggingEditor.Tests` 7/7 PASS。
+- P0-2 retention：`MaxRetainedBarsPerSeries=4500`；DYN-TA-T-066驗4500 candidate accepted、4501 candidate rejected，Contracts full 51/51 PASS。visible cap仍由consumer 1500 authority持有，generic legacy snapshot不誤套retained-series cap。
+- P0-3 exact pan：30K formal-base fixture以20-slot visible、pointer `downSlot=10/currentSlot=6`得active delta `+4`，target window `5/20 -> 9/20`，證`oldStart+downSlot = newStart+currentSlot`且target越captured range fail closed。main CURSOR action鎖`CoverageIntent=Some`、captured revision、generation+1、no ordinal、count不變、Direction=None、ExplicitBounds；Resize/local navigator仍為None。Renderer source gate要求main commit經`setWindowFromPrepared`／`visibleEventRangePrepared`送single `VisibleRangeChanged`，不得含`ResidentCoverageChanged`或sampled GLOBAL lookup；DYN-T-703 1/1、704 1/1、707 1/1、689 2/2，Renderer full 99/99 PASS；Interactive full 20/20 PASS。
+- Build／package gate：.NET SDK 10.0.402；`-532462766`的最早共同原因為父程序已不存在的`wsfscservice.exe`仍鎖住project `websharper.log`，非ACL本體。只停止已驗parent不存在的exact owners後，canonical WebSharper Release Rebuild依Contracts→Tagging→Renderer→Interactive全通過（0/0、0/0、39/0、1/0 warnings/errors；Interactive唯一warning為本輪無diff的legacy deprecation）。WebSharper-enabled pre-commit packages以fresh cache重驗Contracts 51/51、Tagging 7/7、Renderer 99/99、Interactive 20/20及package verifier PASS；source commit後仍須重建final immutable packages、核RepositoryCommit與重驗SHA，故pre-commit SHA不作delivery evidence。
+
 ## 2026-10-26 DYN-T-707 / 708 / 709 / 710（0.2.42 candidate；0.2.40/0.2.41 withdrawn）
 
 - DYN-T-707：pure model固定右鍵mode toggle、CURSOR不論pointer half皆為Move、Resize左右half各選對boundary；離散anchor delta保留同一physical pointer anchor，Resize delta隨實際pointer距離。另以resident4500/window1000-2000驗左boundary向右只得1100-2000、右boundary向右只得1000-2100。source wiring要求persistent mode、contextmenu、dynamic mode attribute，且CURSOR release必走`tryCommitMainPlotResidentPan`、Resize release只走`setWindow`。

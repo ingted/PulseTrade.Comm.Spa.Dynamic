@@ -36,6 +36,11 @@ type TaggingExtraInfo =
       UpdatedAtUtc: string }
 
 [<JavaScript; RequireQualifiedAccess>]
+type TaggingEditorRowSeed =
+    | DraftRow of TaggingExtraInfoDraft
+    | PersistedRow of row: TaggingExtraInfo * draft: TaggingExtraInfoDraft
+
+[<JavaScript; RequireQualifiedAccess>]
 type TaggingEditorRequest =
     | List
     | Create of TaggingExtraInfoDraft
@@ -158,6 +163,23 @@ module TaggingEditorPlugin =
             string safe.Length + ":" + safe
         segment target.SpaceId + segment target.TargetKind + segment target.TargetId
 
+    let displayLabel target =
+        if String.IsNullOrWhiteSpace target.ContextLabel then target.TargetId else target.ContextLabel.Trim()
+
+    let orderedRowSeeds dirtyDrafts persistedRows =
+        Array.append
+            (dirtyDrafts |> Array.map TaggingEditorRowSeed.DraftRow)
+            (persistedRows |> Array.map TaggingEditorRowSeed.PersistedRow)
+
+    let saveRequest row draft =
+        match row with
+        | None -> TaggingEditorRequest.Create draft
+        | Some current -> TaggingEditorRequest.Update(current.ExInfoId,current.Revision,draft)
+
+    let deleteRequest row =
+        row
+        |> Option.map (fun current -> TaggingEditorRequest.Delete(current.ExInfoId,current.Revision))
+
     let validateOptions options =
         if options.MaxOpenEditors < 1 || options.MaxOpenEditors > 12 then
             Result.Error "tagging-editor-max-open-invalid"
@@ -251,7 +273,7 @@ module TaggingEditorPlugin =
                 openOrder |> List.iter (fun itemKey ->
                     match instances.TryGetValue itemKey with
                     | true, item ->
-                        let button = node "button" item.Binding.Target.TargetId
+                        let button = node "button" (displayLabel item.Binding.Target)
                         button.SetAttribute("type","button")
                         button.SetAttribute("aria-current",if itemKey=key then "true" else "false")
                         button.AddEventListener("click",fun (_:Event) -> focusKey itemKey)
@@ -293,7 +315,7 @@ module TaggingEditorPlugin =
 
         let fillView view row draft =
             view.ExtraInfo <- row
-            view.Heading.TextContent <- row |> Option.map _.ExInfoId |> Option.defaultValue "New ExtraInfo"
+            view.Heading.TextContent <- row |> Option.map _.ExInfoId |> Option.defaultValue "DRAFT RECORD"
             setInputValue (String.concat ", " draft.Tags) view.TagsInput
             setInputValue draft.Summary view.SummaryInput
             clear view.FramesHost
@@ -325,13 +347,19 @@ module TaggingEditorPlugin =
                         instance.ExtraInfos <- if isNull rows then [||] else rows
                         clear instance.RowsHost
                         instance.ExtraInfoViews <- [||]
-                        instance.ExtraInfos |> Array.iter (fun row ->
-                            let draft = match dirtyExisting.TryGetValue row.ExInfoId with true,value -> value | _ -> row.Draft
-                            let view = createRowView instance (Some row) draft
-                            instance.ExtraInfoViews <- Array.append instance.ExtraInfoViews [|view|])
-                        dirtyNew |> Seq.iter (fun draft ->
-                            let view = createRowView instance None draft
-                            instance.ExtraInfoViews <- Array.append instance.ExtraInfoViews [|view|])
+                        let persistedRows =
+                            instance.ExtraInfos
+                            |> Array.map (fun row ->
+                                let draft = match dirtyExisting.TryGetValue row.ExInfoId with true,value -> value | _ -> row.Draft
+                                row,draft)
+                        orderedRowSeeds (dirtyNew.ToArray()) persistedRows
+                        |> Array.iter (function
+                            | TaggingEditorRowSeed.DraftRow draft ->
+                                let view = createRowView instance None draft
+                                instance.ExtraInfoViews <- Array.append instance.ExtraInfoViews [|view|]
+                            | TaggingEditorRowSeed.PersistedRow(row,draft) ->
+                                let view = createRowView instance (Some row) draft
+                                instance.ExtraInfoViews <- Array.append instance.ExtraInfoViews [|view|])
                         instance.Status.TextContent <-
                             if finalStatus<>"" then finalStatus
                             elif instance.ExtraInfoViews.Length=0 then "No ExtraInfo. Use New ExtraInfo to add one."
@@ -377,10 +405,7 @@ module TaggingEditorPlugin =
                     else
                         let view = dirtyViews[index]
                         let draft = draftFromView view
-                        let request =
-                            match view.ExtraInfo with
-                            | None -> TaggingEditorRequest.Create draft
-                            | Some row -> TaggingEditorRequest.Update(row.ExInfoId,row.Revision,draft)
+                        let request = saveRequest view.ExtraInfo draft
                         view.RequestGeneration <- view.RequestGeneration+1
                         let generation = view.RequestGeneration
                         view.Status.TextContent <- "Saving…"
@@ -418,6 +443,14 @@ module TaggingEditorPlugin =
             root.ClassName <- "ptcs-tagging-row"
             let heading = node "h4" ""
             append root heading
+            let actions = node "div" ""
+            actions.ClassName <- "ptcs-tagging-actions";append root actions
+            let action text =
+                let button = node "button" text
+                button.SetAttribute("type","button");append actions button;button
+            let addFrameButton = action "新增時框"
+            let saveButton = action "儲存"
+            let deleteButton = action "刪除"
             append root (node "label" (fieldLabel options "tags" "Tags"))
             let tags = node "input" ""
             tags.SetAttribute("placeholder","tag1, tag2");append root tags
@@ -429,14 +462,6 @@ module TaggingEditorPlugin =
             frames.ClassName <- "ptcs-tagging-frames";append root frames
             let status = node "div" ""
             status.ClassName <- "ptcs-tagging-status";status.SetAttribute("role","status");append root status
-            let actions = node "div" ""
-            actions.ClassName <- "ptcs-tagging-actions";append root actions
-            let action text =
-                let button = node "button" text
-                button.SetAttribute("type","button");append actions button;button
-            let addFrameButton = action "新增時框"
-            let saveButton = action "儲存"
-            let deleteButton = action "刪除"
             let view =
                 { ViewKey=Guid.NewGuid().ToString("N");Root=root;Heading=heading;TagsInput=tags;SummaryInput=summary
                   FramesHost=frames;Status=status;ExtraInfo=row;FrameInputs=[||];InitialFingerprint="";RequestGeneration=0 }
@@ -444,13 +469,11 @@ module TaggingEditorPlugin =
             addFrameButton.AddEventListener("click",fun (_:Event) -> addFrame view "1" "" "")
             saveButton.AddEventListener("click",fun (_:Event) ->
                 let value = draftFromView view
-                match view.ExtraInfo with
-                | None -> dispatchMutation instance view (TaggingEditorRequest.Create value)
-                | Some current -> dispatchMutation instance view (TaggingEditorRequest.Update(current.ExInfoId,current.Revision,value)))
+                dispatchMutation instance view (saveRequest view.ExtraInfo value))
             deleteButton.AddEventListener("click",fun (_:Event) ->
-                match view.ExtraInfo with
+                match deleteRequest view.ExtraInfo with
                 | None -> removeRowView instance view
-                | Some current -> dispatchMutation instance view (TaggingEditorRequest.Delete(current.ExInfoId,current.Revision)))
+                | Some request -> dispatchMutation instance view request)
             append instance.RowsHost root
             view
 
@@ -458,40 +481,42 @@ module TaggingEditorPlugin =
             let key = targetKey binding.Target
             let card = node "article" "" |> testId ("ptcs-tagging-editor-"+string instances.Count)
             card.ClassName <- "ptcs-tagging-card";card.SetAttribute("data-target-id",binding.Target.TargetId);card.SetAttribute("tabindex","-1")
+            let dirtyPrompt = node "div" ""
+            dirtyPrompt.ClassName <- "ptcs-tagging-dirty";dirtyPrompt.SetAttribute("hidden","")
+            append dirtyPrompt (node "strong" "One or more ExtraInfo drafts have not been saved.");append card dirtyPrompt
             let header = node "header" ""
             header.ClassName <- "ptcs-tagging-header";append card header
             let heading = node "div" ""
             heading.ClassName <- "ptcs-tagging-heading"
-            append heading (node "h3" binding.Target.TargetId)
-            let context = node "small" binding.Target.ContextLabel
+            append heading (node "h3" (displayLabel binding.Target))
+            let context = node "small" ("Target ID: "+binding.Target.TargetId)
             context.ClassName <- "ptcs-tagging-context";append heading context;append header heading
             let newButton = node "button" "新增 ExtraInfo"
             newButton.SetAttribute("type","button");append header newButton
             let saveAllButton = node "button" "全部儲存"
             saveAllButton.SetAttribute("type","button");append header saveAllButton
             let closeButton = node "button" "×"
-            closeButton.SetAttribute("type","button");closeButton.SetAttribute("aria-label","Close ExtraInfo editor for "+binding.Target.TargetId);append header closeButton
+            closeButton.SetAttribute("type","button");closeButton.SetAttribute("aria-label","Close ExtraInfo editor for "+displayLabel binding.Target);append header closeButton
             let rowsHost = node "div" ""
             append card rowsHost
             let status = node "div" ""
             status.ClassName <- "ptcs-tagging-status";status.SetAttribute("role","status");append card status
-            let dirtyPrompt = node "div" ""
-            dirtyPrompt.ClassName <- "ptcs-tagging-dirty";dirtyPrompt.SetAttribute("hidden","")
-            append dirtyPrompt (node "strong" "One or more ExtraInfo drafts have not been saved.");append card dirtyPrompt
             let instance =
                 { Key=key;Binding=binding;Card=card;RowsHost=rowsHost;Status=status;DirtyPrompt=dirtyPrompt
                   ExtraInfos=[||];ExtraInfoViews=[||];ListGeneration=0;Left=0.;Top=0.;ZIndex=0 }
             let dirtyAction text (handler: Event -> unit) =
                 let button = node "button" text
                 button.SetAttribute("type","button");button.AddEventListener("click",handler);append dirtyPrompt button
-            dirtyAction "Discard all and close" (fun (_:Event) -> removeInstance key)
-            dirtyAction "Stay" (fun (_:Event) -> dirtyPrompt.SetAttribute("hidden",""))
+            dirtyAction "DISCARD ALL AND CLOSE" (fun (_:Event) -> removeInstance key)
+            dirtyAction "STAY" (fun (_:Event) -> dirtyPrompt.SetAttribute("hidden",""))
             newButton.AddEventListener("mousedown",fun (event:Event) -> event.StopPropagation())
             saveAllButton.AddEventListener("mousedown",fun (event:Event) -> event.StopPropagation())
             closeButton.AddEventListener("mousedown",fun (event:Event) -> event.StopPropagation())
             newButton.AddEventListener("click",fun (_:Event) ->
                 let view = createRowView instance None emptyDraft
-                instance.ExtraInfoViews <- Array.append instance.ExtraInfoViews [|view|]
+                if not (isNull view.Root.PreviousSibling) then
+                    instance.RowsHost.InsertBefore(view.Root,instance.RowsHost.FirstChild) |> ignore
+                instance.ExtraInfoViews <- Array.append [|view|] instance.ExtraInfoViews
                 instance.Status.TextContent <- "")
             saveAllButton.AddEventListener("click",fun (_:Event) -> saveAll instance)
             closeButton.AddEventListener("click",fun (_:Event) ->

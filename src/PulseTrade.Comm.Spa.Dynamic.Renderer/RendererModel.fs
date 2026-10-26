@@ -3388,6 +3388,23 @@ module RendererModel =
         | Some startIndex, Some currentIndex -> startIndex - currentIndex
         | _ -> 0
 
+    let tryMainPlotPanWindow referenceLength activeWindow delta =
+        let bounded = clampWindow 1 Int32.MaxValue referenceLength activeWindow
+        let requestedStart = bounded.StartIndex + delta
+        let maximumStart = viewportMaximumStart referenceLength bounded
+        if referenceLength <= 0 || bounded.Count <= 0 || delta = 0 || requestedStart < 0 || requestedStart > maximumStart then
+            None
+        else
+            Some { bounded with StartIndex = requestedStart }
+
+    let tryMainPlotEventRangeIntent (projection: TaLoadedCoverageProjection) targetWindow =
+        TaLoadedCoverageCodec.tryWindowIntent
+            None
+            (Some projection.CoverageRevision)
+            (projection.QueryGeneration + 1L)
+            None
+            targetWindow.Count
+
     let selectWindow window (values: 'T array) =
         if window.Count <= 0 || values.Length = 0 then [||]
         else
