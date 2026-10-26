@@ -2471,6 +2471,60 @@ module RendererModel =
             { StartIndex = 0
               Count = requestedCount }
 
+    let tryBootstrapCoverageExpansionWindow
+        minimumCount
+        maximumCount
+        previousReferenceLength
+        currentReferenceLength
+        followLatest
+        currentWindow
+        (previous: TaLoadedCoverageProjection)
+        (current: TaLoadedCoverageProjection) =
+        let previousActiveCount =
+            max 0 (min previousReferenceLength previous.ActiveDetail.ObservationCount)
+        let previousActiveWindow =
+            resolveWindow
+                minimumCount
+                maximumCount
+                previousReferenceLength
+                true
+                { StartIndex = 0
+                  Count = previousActiveCount }
+        let currentActiveCount =
+            max 0 (min currentReferenceLength current.ActiveDetail.ObservationCount)
+        let currentWindowCount = min maximumCount currentActiveCount
+        let currentActiveStart =
+            match current.GlobalOverview with
+            | Some overview when overview.AxisRef = current.ActiveDetail.BaseAxisRef ->
+                let offset = current.ActiveDetail.StartObservationOrdinal - overview.ResidentStartObservationOrdinal
+                if offset < 0L || offset > int64 Int32.MaxValue then None else Some(int offset)
+            | _ -> Some(max 0 (currentReferenceLength - currentActiveCount))
+
+        if
+            not followLatest
+            || previous.CoverageIdentity <> current.CoverageIdentity
+            || previous.QueryGeneration <> current.QueryGeneration
+            || current.CoverageRevision <= previous.CoverageRevision
+            || currentActiveCount <= previousActiveCount
+            || currentWindow <> previousActiveWindow
+            || currentWindowCount <= 0
+        then
+            None
+        else
+            currentActiveStart
+            |> Option.bind (fun activeStart ->
+                let activeEnd = activeStart + currentActiveCount
+                if activeStart < 0 || activeEnd > currentReferenceLength then
+                    None
+                else
+                    Some
+                        (clampWindow
+                            minimumCount
+                            maximumCount
+                            currentReferenceLength
+                            { StartIndex = activeEnd - currentWindowCount
+                              Count = currentWindowCount }))
+
     let viewportMaximumStart total window =
         max 0 (total - max 0 window.Count)
 

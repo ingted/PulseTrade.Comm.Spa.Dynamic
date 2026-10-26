@@ -3134,13 +3134,19 @@ module TaWorkspaceRenderer =
         let scheduleIncrementalPreparation next =
             preparationGeneration <- preparationGeneration + 1
             let generation = preparationGeneration
+            let previousState = observedDataState
             let previous = latestPreparedData
             let previousCoverageProjection =
-                observedDataState.Document
+                previousState.Document
                 |> Option.bind (fun document ->
                     RendererModel.tryLoadedCoverageResolved document.DefaultView previous.RawData)
+            let previousReferenceLength =
+                previousState.Document
+                |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document previous |> Array.length)
+                |> Option.defaultValue 0
             observedDataState <- next
-            let coverageChanged = previousCoverageProjection <> coverageProjection next
+            let nextCoverageProjection = coverageProjection next
+            let coverageChanged = previousCoverageProjection <> nextCoverageProjection
             if coverageChanged then
                 preparationPending.Value <- true
                 viewportDataReady.Value <- false
@@ -3153,6 +3159,28 @@ module TaWorkspaceRenderer =
                             || (sameDocumentPresentation next current
                                 && ProjectionCommitGate.key next = ProjectionCommitGate.key current))
                     if currentMatchesCandidate then
+                        match previousCoverageProjection, current.Document, coverageProjection current with
+                        | Some previousProjection, Some document, Some currentProjection when coverageChanged ->
+                            let currentReferenceLength =
+                                RendererModel.referenceTimelineForDocumentPrepared document prepared
+                                |> Array.length
+                            RendererModel.tryBootstrapCoverageExpansionWindow
+                                options.MinimumVisibleBars
+                                (maximumVisibleBarsFor document)
+                                previousReferenceLength
+                                currentReferenceLength
+                                uiState.Value.FollowLatest
+                                uiState.Value.Window
+                                previousProjection
+                                currentProjection
+                            |> Option.iter (fun window ->
+                                setUiState
+                                    { uiState.Value with
+                                        Window = window
+                                        FollowLatest = true
+                                        CursorIndex = None }
+                                cursorIndex.Value <- None)
+                        | _ -> ()
                         // Document/view metadata may advance without scheduling another data preparation.
                         // Pair the completed candidate with the latest compatible runtime envelope so
                         // metadata can advance without attaching stale decoded data.

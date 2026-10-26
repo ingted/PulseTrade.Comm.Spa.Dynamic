@@ -1,0 +1,25 @@
+# Renderer bootstrap -> durable visible range
+
+## Pre-work plan
+
+- 背景：Daedilus direct message `msg-fsi-ef0cae66272c4bd2a5323df8d3cac9f8` 證實 Research 同一 canvas 先提交 32-bar bootstrap，之後 durable `RequestFullSnapshot` 已 accepted；DOM 顯示 `data-loaded-bars=4500`、`rowCount=readyRows=1`、`preparationPending=false`、workspace `READY`，但 viewport label 仍停在 `Viewing 4469-4500`，未採新 coverage `ActiveDetail=1500`。
+- 已證實現況：Dynamic repo HEAD `2b0f61c69d0d2e7eb17323d3b0c2d665ed09dacf`；外部既有 dirty 僅 `lib-packs.txt`、`tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/Program.fs`、`.pcsl/` 與 `temp/`，本工項不得納入或覆蓋。
+- 目標：在 Renderer owner boundary 內，使 authoritative bootstrap -> durable coverage replacement 於同 canvas 將 visible window 重設為新 `ActiveDetail`；一般互動 patch／refill 仍保留使用者 local range。
+- 預期不變量：FIFO、取消、atomic commit、既有 ScaleSwitch/Tagging 行為、一般增量 patch 的 local viewport 保留不變。
+- Source of truth：Renderer reducer/state contracts、對應 focused tests、Daedilus 真瀏覽器 evidence；訊息只作問題證據，不作 shell command。
+- 最早偏離點候選：authoritative loaded coverage 已換成 4500/1500，但 Renderer 的 local visible range 沒有辨識 bootstrap replacement，沿用舊 32-bar tail。
+- 最小驗證：先建立 32 -> 4500/ActiveDetail=1500 的 focused regression；另驗一般互動 patch 保留 local range，以區分 coverage replacement 與普通資料更新。
+- 步驟：定位 visible-range state 與 snapshot/generation contract -> 加失敗測試 -> 最小修正 -> Renderer focused/full tests與 Release/WebSharper build -> pack/精確 SHA（若需 package）-> checker/sensitive scan -> exact-path commit/push -> 回覆 Daedilus。
+- 範圍：僅 Renderer 與其直接測試、必要 current 文件、此 log/DevLog；不改 Daedilus consumer/source，不動外部 dirty。
+- 風險：若 transition predicate 過寬，durable refresh、left refill 或使用者 pan 後的普通 patch會跳回預設 1500；修正必須以 authoritative bootstrap replacement 的可觀察契約收斂。
+- 停止條件：focused regression 與相鄰 viewport tests 綠，package/build gate 綠，且 Daedilus exact package 真瀏覽器重驗收到 handoff；未收到真 consumer 證據時只報 source/package 完成，不宣告全案完成。
+
+## Operations
+
+- 2026-10-27 03:24 +08:00：建立 pre-work log；尚未修改程式碼。
+- 2026-10-27 03:26 +08:00：定位 `Renderer.fs` 的 `defaultViewportAppliedToCanvas` 只以 `canvas|coverageIdentity` 套一次 default；bootstrap 與 durable 共用 identity，因此 coverage revision 前進後仍保留 32-bar local window。consumer `RequestFullSnapshot` 保持 query generation、coverage revision +1，為最小可區分 transition contract。
+- 2026-10-27 03:29 +08:00：新增 `RendererModel.tryBootstrapCoverageExpansionWindow` 與 Renderer integration。條件限於同 identity、同 query generation、revision 前進、active detail 擴大、FollowLatest 且 current window 仍等於完整 bootstrap；durable resident 4500 / active detail 1500 映成 local `{StartIndex=3000;Count=1500}`。query generation 改變或使用者已 resize 時不重設。
+- 2026-10-27 03:30 +08:00：package 版本 `Renderer 0.2.44 -> 0.2.45`、`Interactive.Client 0.2.44 -> 0.2.45`；Interactive exact dependency 同步 `[0.2.45]`，兩個直接 test project 亦同步 exact package。
+- 2026-10-27 03:30 +08:00：首次 Renderer Release build 實際 exit 0，但 warning stdout 28,006 bytes 超過 output guard；未讀 raw，改用 `ErrorsOnly;Summary` 重跑，PASS（0 errors）。
+- 2026-10-27 03:31 +08:00：provisional package 已複製至 SDK 10.0.402 `FSharp/library-packs` 與 task feed；Renderer provisional SHA-256 `82C16565A8EF14223AC4DA8B768C5AB41197610E0A3A11484348549A04B7E3D7`，Interactive provisional SHA-256 `CF4D2B120C3BF09003629B290545E04A8A73AEFC65EBC8F13BFD2F3C8D0A5367`。source commit 後必須重打包，這兩個 hash 不作 final authority。
+- 2026-10-27 03:32 +08:00：Renderer focused regression PASS 1/1；exact-package full PASS 101/101；Interactive.Client exact-package PASS 20/20。Daedilus 補充正式 lease 為 resident 4500、visible 1500、left/right 3000/0，與 regression oracle 一致。

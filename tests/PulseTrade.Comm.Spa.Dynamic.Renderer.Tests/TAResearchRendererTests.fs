@@ -679,6 +679,73 @@ let tests =
             Expect.equal historicalAfterDelta requested "a delta must not force a historical viewport back to the tail"
             Expect.equal (RendererModel.viewportMaximumStart 2000 latest) 1952 "navigator maximum start should expose the full loaded range"
 
+        testCase "bootstrap coverage expansion adopts the durable active detail only before user interaction" <| fun _ ->
+            let previous : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:bootstrap-durable"
+                  CoverageRevision = 0L
+                  QueryGeneration = 0L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "bars"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 4468L
+                      ObservationCount = 32
+                      BaseAxisRef = "bars" }
+                  GlobalOverview = None }
+            let current =
+                { previous with
+                    CoverageRevision = 1L
+                    ActiveDetail =
+                        { StartObservationOrdinal = 3000L
+                          ObservationCount = 1500
+                          BaseAxisRef = "bars" }
+                    GlobalOverview =
+                        Some
+                            { TotalObservationCount = 10_000L
+                              AxisRef = "bars"
+                              Anchors = [||]
+                              ResidentStartObservationOrdinal = 0L
+                              ResidentObservationCount = 4500 } }
+            let bootstrapWindow = { StartIndex = 0; Count = 32 }
+            let expanded =
+                RendererModel.tryBootstrapCoverageExpansionWindow
+                    12
+                    1500
+                    32
+                    4500
+                    true
+                    bootstrapWindow
+                    previous
+                    current
+            Expect.equal expanded (Some { StartIndex = 3000; Count = 1500 }) "the accepted durable page replaces the untouched 32-bar bootstrap viewport"
+
+            let interactivePatch = { current with QueryGeneration = 1L }
+            let afterInteraction =
+                RendererModel.tryBootstrapCoverageExpansionWindow
+                    12
+                    1500
+                    32
+                    4500
+                    true
+                    bootstrapWindow
+                    previous
+                    interactivePatch
+            Expect.isNone afterInteraction "a user-generation coverage patch must preserve the user's local viewport"
+
+            let resizedBootstrap =
+                RendererModel.tryBootstrapCoverageExpansionWindow
+                    12
+                    1500
+                    32
+                    4500
+                    true
+                    { StartIndex = 12; Count = 20 }
+                    previous
+                    current
+            Expect.isNone resizedBootstrap "a resized bootstrap viewport is already user-owned and must not be reset"
+
         testCase "navigator draft clamps without changing committed window until release" <| fun _ ->
             let committed = { StartIndex = 1952; Count = 48 }
             let preview = RendererModel.previewWindow 2000 committed -25
