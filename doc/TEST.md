@@ -1,10 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-711 / 712（0.2.47 owner candidate）
+## 2026-10-27 DYN-T-711 / 712 / 713（0.2.48 owner candidate）
 
 - DYN-T-711 trace-target precedence：以同x candle Y區間涵蓋click、SMA離散vertex略偏的反例，驗browser event target `fsstl.sma-30k-13`必先限縮候選並回LINE/POINT；空白或unknown DOM trace id仍走既有全體geometry fallback。source contract要求candle/line/histogram/volume SVG path都帶`data-ptcs-ta-trace-id`，不得另造JavaScript activation path。
 - DYN-T-712 prompt queued dispatch：以可控callbacks驗action settlement順序固定為`settled -> flush-now -> schedule-fallback`；同一immediate+RAF helper亦須接到`Poll/PendingActionId` readiness View。同步drain仍受pending action、pending boundary、committed coverage、poll與generation/revision gates約束；RAF只處理當下projection尚未ready，不得用低頻poll或paint queue作主要dispatch authority。
-- Owner gate：修前0.2.46 package對DYN-T-712為FS0039 RED；0.2.47 candidate DYN-T-712 1/1、Renderer103/103、Interactive.Client20/20、canonical WebSharper Release分39/0與1/0 warnings/errors。commit後重建RepositoryCommit exact packages與Daedilus真18884兩項gate：30K/60K SMA click回exact SMA target，formal 4500 body drop於5秒內送唯一action且不長停Preview；再跑完整22-scenario。
+- DYN-T-713 logical handle anchor：以4500/478px與right-edge selection `[3000,4500)`固定8px handle被clamp後中心偏logical edge 4px的反例；ResizeRight必須以logical right boundary錨定後精確得到80 bars，ResizeLeft鏡像同驗，Move仍保留raw grab point。
+- Owner gate：修前0.2.47 package對DYN-T-713為FS0039 RED；0.2.48 candidate DYN-T-713 1/1、Renderer104/104、Interactive.Client20/20、Release 0 errors。commit後重建RepositoryCommit exact packages與Daedilus真18884三項gate：30K/60K SMA click回exact SMA target；formal 4500 body drop於5秒內送唯一action；4500 right-handle進入約80 bars。main TA grab-pan coverage revision前進仍是獨立open gate；再跑完整22-scenario。
 
 ## 2026-10-26 DYN-WBS-599（0.2.43 / 0.1.40 / 0.1.8 source candidate）
 

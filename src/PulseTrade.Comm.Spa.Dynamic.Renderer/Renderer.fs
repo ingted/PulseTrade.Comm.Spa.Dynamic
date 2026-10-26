@@ -4013,7 +4013,13 @@ module TaWorkspaceRenderer =
                             clampRatio (snd frozenStartRatios + ratioDelta (draftEnd - committedEnd))
                         navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft committed)
                         (navigatorRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
-                        let startClientX = event.ClientX
+                        let startClientX =
+                            RendererModel.navigatorDragAnchorClientX
+                                bounds.Left
+                                bounds.Width
+                                ratios
+                                drag
+                                (float event.ClientX)
                         let mutable latestRawDelta = 0
                         let mutable latestPointerX = pointerX
                         let mutable moveHandler: Action<Event> = null
@@ -4045,7 +4051,7 @@ module TaWorkspaceRenderer =
                             latestPointerX <- float mouse.ClientX - bounds.Left
                             let delta =
                                 if bounds.Width <= 0.0 || total <= 0 then 0
-                                else int (Math.Round(float (mouse.ClientX - startClientX) / bounds.Width * float total))
+                                else int (Math.Round((float mouse.ClientX - startClientX) / bounds.Width * float total))
                             latestRawDelta <- delta
                             RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
 

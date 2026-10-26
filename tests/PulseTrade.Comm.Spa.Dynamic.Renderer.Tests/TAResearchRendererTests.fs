@@ -317,6 +317,54 @@ let tests =
                 { StartIndex = 1000; Count = 1100 }
                 "dragging the right boundary right expands only the visible right side inside the resident"
 
+        testCase "DYN-T-713 navigator edge handles anchor resize at the logical selection boundary" <| fun _ ->
+            let total = 4500
+            let trackLeft = 113.0
+            let trackWidth = 478.0
+            let targetCount = 80
+
+            let rightCommitted = { StartIndex = 3000; Count = 1500 }
+            let rightRatios = RendererModel.selectionRatios total rightCommitted
+            let rightHitCenter = trackLeft + trackWidth - 4.0
+            let rightTarget =
+                trackLeft
+                + trackWidth * (float rightCommitted.StartIndex + float targetCount) / float total
+            let rightAnchor =
+                RendererModel.navigatorDragAnchorClientX
+                    trackLeft
+                    trackWidth
+                    rightRatios
+                    TaWindowDrag.ResizeRight
+                    rightHitCenter
+            let rightDelta = int (Math.Round((rightTarget - rightAnchor) / trackWidth * float total))
+            let rightDraft =
+                RendererModel.previewWindowBounds 12 4500 total rightCommitted TaWindowDrag.ResizeRight rightDelta
+            Expect.equal rightAnchor (trackLeft + trackWidth) "the clamped right hit box still owns the logical right boundary"
+            Expect.equal rightDraft.Count targetCount "right-edge resize reaches the requested 80-bar width"
+
+            let leftCommitted = { StartIndex = 0; Count = 1500 }
+            let leftRatios = RendererModel.selectionRatios total leftCommitted
+            let leftHitCenter = trackLeft + 4.0
+            let leftTarget = trackLeft + trackWidth * float (leftCommitted.Count - targetCount) / float total
+            let leftAnchor =
+                RendererModel.navigatorDragAnchorClientX
+                    trackLeft
+                    trackWidth
+                    leftRatios
+                    TaWindowDrag.ResizeLeft
+                    leftHitCenter
+            let leftDelta = int (Math.Round((leftTarget - leftAnchor) / trackWidth * float total))
+            let leftDraft =
+                RendererModel.previewWindowBounds 12 4500 total leftCommitted TaWindowDrag.ResizeLeft leftDelta
+            Expect.equal leftAnchor trackLeft "the clamped left hit box still owns the logical left boundary"
+            Expect.equal leftDraft.Count targetCount "left-edge resize mirrors the requested 80-bar width"
+
+            let rawGrab = trackLeft + 221.5
+            Expect.equal
+                (RendererModel.navigatorDragAnchorClientX trackLeft trackWidth rightRatios TaWindowDrag.Move rawGrab)
+                rawGrab
+                "body move preserves the human's exact grab point"
+
         testCase "DYN-T-708 only-coarse-row navigator never reinterprets active indexes as GLOBAL ordinals" <| fun _ ->
             let projection : TaLoadedCoverageProjection =
                 { CoverageIdentity = "coverage:only-30k-60k"

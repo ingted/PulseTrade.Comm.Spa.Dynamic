@@ -3379,6 +3379,16 @@ module RendererModel =
         let right = max left (max 0.0 (min 1.0 rightRatio) * width)
         left, right - left
 
+    let navigatorDragAnchorClientX trackLeft trackWidth ratios drag pointerClientX =
+        if trackWidth <= 0.0 then
+            pointerClientX
+        else
+            let selectionLeft, selectionWidth = navigatorSelectionBounds trackWidth ratios
+            match drag with
+            | TaWindowDrag.ResizeLeft -> trackLeft + selectionLeft
+            | TaWindowDrag.ResizeRight -> trackLeft + selectionLeft + selectionWidth
+            | _ -> pointerClientX
+
     let navigatorMinimumSelectionBounds trackWidth minimumWidth ratios =
         let trackWidth = max 0.0 trackWidth
         if trackWidth <= 0.0 then

@@ -1,0 +1,19 @@
+# Dynamic Renderer 0.2.48 closeout
+
+## Pre-work plan
+
+- 背景：Daedilus 真 18884 回報 resident navigator 貼右界時，目標 80 bars 實得 100；詳細因果與實驗記於 `20261027054000_issue_navigator_edge_handle_anchor.hypothesis.md`。同批另追蹤 overview dispatch latency 與 main plot coverage commit，分別見相鄰 hypothesis。
+- 目標：將 logical handle anchor 修正封裝成 commit 後 immutable 0.2.48 exact packages，完成direct tests、敏感掃描、canonical checker與package-only驗證，再交 Daedilus 真 consumer 重驗。
+- 假設：8px hit-box 在track edge內縮後，其中心被誤當semantic resize boundary；改用rendered selection logical boundary可消除4500/478px的4px放大誤差，且不改Move grab point。
+- 不變事項：不改consumer source；不把active slot當GLOBAL ordinal；不納入`lib-packs.txt`、Ptcs.Tests `Program.fs`、`.pcsl/`或`temp/`等外部dirty；不建立或改寫repo `nuget.config`。
+- 範圍：Renderer model/wiring、Renderer與Interactive.Client exact dependencies、兩個direct test projects、DYN-T-713，以及WBS/TEST/DevLog/本批log；consumer僅讀取與handoff。
+- 風險：edge geometry在4500 bars會放大pixel偏差；WebSharper compiler-service orphan可能鎖log；shared worktree存在外部dirty，故只准exact-path stage；main coverage尚無足夠診斷，不在本修正內猜測wire mapping。
+- 步驟：核對owned diff與encoding → 敏感掃描/checker → exact-path stage/commit/push → commit後重建兩包 → fresh exact-package tests/verifier/BrowserDemo → handoff真18884驗收。
+- 驗收：DYN-T-713與Renderer104/104、Interactive.Client20/20；package RepositoryCommit/SHA exact；真consumer右界約80 bars、overview action小於5秒、SMA exact、main coverage revision前進。
+- 停止條件：owner/source/package gates完成後交付；main coverage與真UI未綠前維持open，不宣告全案完成。
+
+## Operations
+
+- 2026-10-27 06:10 +08:00：流程偏差更正：0.2.48修改前已建立必需的DEBUG hypothesis，但未另建§6要求的`*.log`，致首次canonical checker選到03:24舊log。現在新增本檔並明記偏差；未冒充事前紀錄。先前完整命令/結果保存在三份相鄰hypothesis的Operations。
+- 2026-10-27 06:10 +08:00：owned diff共11個tracked變更與2個ignored新hypothesis；strict UTF-8、無NUL/U+FFFD，fsproj既有BOM狀態保持，`git diff --check`無finding。敏感掃描High=0、Medium=0；首次canonical checker PASS=27/WARN=3/FAIL=0，WARN為舊log必填欄位、dirty worktree與既有RFC追溯缺口。
+- 2026-10-27 06:12 +08:00：新增正式log後canonical checker PASS=29/WARN=11/FAIL=0；本輪version bump與DevLog/WBS priority均PASS。可處理WARN為本log缺「範圍／風險」，已補；其餘為同session文件未再變、預提交dirty、既有RFC追溯及明載DYN-WBS-586的legacy Ptcs.Client 0.1.131未同步。
