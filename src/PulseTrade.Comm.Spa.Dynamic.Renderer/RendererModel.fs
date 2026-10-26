@@ -474,7 +474,14 @@ module RendererModel =
     let ScheduledWorkBudgetMilliseconds = 4.0
 
     [<Literal>]
+    let InitialScheduledWorkBudgetMilliseconds = 16.0
+
+    [<Literal>]
     let ScheduledWorkMaximumCount = 64
+
+    let preparationWorkBudget isInitial =
+        if isInitial then InitialScheduledWorkBudgetMilliseconds
+        else ScheduledWorkBudgetMilliseconds
 
     [<Literal>]
     let MainPlotDragThresholdCssPixels = 4.0

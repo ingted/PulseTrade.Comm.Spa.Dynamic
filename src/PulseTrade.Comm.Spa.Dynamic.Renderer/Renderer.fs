@@ -2922,7 +2922,7 @@ module TaWorkspaceRenderer =
         let preparationPending = Var.Create true
         let initialGlobalPhase = Var.Create true
         let mutable preparationGeneration = 0
-        let createPreparationSchedule generation =
+        let createPreparationSchedule generation workBudget =
             let publish metrics =
                 if generation = preparationGeneration then
                     let root = JS.Document.DocumentElement
@@ -2933,7 +2933,7 @@ module TaWorkspaceRenderer =
             publish RendererModel.emptyWorkSchedulingMetrics
             let schedule =
                 RendererModel.createBudgetedWorkScheduler
-                    RendererModel.ScheduledWorkBudgetMilliseconds
+                    workBudget
                     RendererModel.ScheduledWorkMaximumCount
                     scheduleNextFrame
                     (fun () -> float (Date.Now()))
@@ -3094,7 +3094,7 @@ module TaWorkspaceRenderer =
                       ResolvedAxes = Map.empty
                       ResolvedSeries = Map.empty }
             RendererModel.prepareDataScheduled
-                (createPreparationSchedule generation)
+                (createPreparationSchedule generation (RendererModel.preparationWorkBudget true))
                 data
                 (fun prepared ->
                     if generation = preparationGeneration then
@@ -3168,9 +3168,9 @@ module TaWorkspaceRenderer =
             if coverageChanged then
                 // An active-detail page is a replacement, not an append-only patch. Reusing the
                 // previous prepared map would retain observations absent from the accepted page.
-                RendererModel.prepareDataScheduled (createPreparationSchedule generation) next.Data accept
+                RendererModel.prepareDataScheduled (createPreparationSchedule generation (RendererModel.preparationWorkBudget false)) next.Data accept
             else
-                RendererModel.prepareDataIncrementalScheduled (createPreparationSchedule generation) previous next.Data accept
+                RendererModel.prepareDataIncrementalScheduled (createPreparationSchedule generation (RendererModel.preparationWorkBudget false)) previous next.Data accept
 
         let clearGlobalResidentIntent intent =
             if pendingGlobalResidentIntent = Some intent then

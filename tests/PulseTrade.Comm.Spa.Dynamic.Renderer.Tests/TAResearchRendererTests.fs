@@ -921,6 +921,37 @@ let tests =
             Expect.equal final.WorkMilliseconds 10.5 "Work measures callback time only."
             Expect.equal final.MaximumTurnMilliseconds 4.5 "One atomic step may cross the soft elapsed budget."
 
+        testCase "initial preparation uses a larger bounded turn while incremental work stays responsive" <| fun _ ->
+            let run budget =
+                let turns = Collections.Generic.Queue<unit -> unit>()
+                let metrics = ResizeArray<TaWorkSchedulingMetrics>()
+                let mutable now = 0.0
+                let mutable completed = 0
+                let schedule =
+                    RendererModel.createBudgetedWorkScheduler
+                        budget
+                        RendererModel.ScheduledWorkMaximumCount
+                        turns.Enqueue
+                        (fun () -> now)
+                        metrics.Add
+                for _ in 1 .. 100 do
+                    schedule (fun () ->
+                        now <- now + 3.0
+                        completed <- completed + 1)
+                while turns.Count > 0 do
+                    now <- now + 16.0
+                    turns.Dequeue() ()
+                completed, metrics[metrics.Count - 1]
+
+            let initialCompleted, initial = run (RendererModel.preparationWorkBudget true)
+            let incrementalCompleted, incremental = run (RendererModel.preparationWorkBudget false)
+            Expect.equal initialCompleted 100 "Initial preparation preserves every ordered atomic work item."
+            Expect.equal incrementalCompleted 100 "Incremental preparation preserves every ordered atomic work item."
+            Expect.equal initial.WorkMilliseconds incremental.WorkMilliseconds "Both policies perform identical work."
+            Expect.isLessThanOrEqual initial.TurnCount 17 "A blank first paint needs at most seventeen bounded turns for this workload."
+            Expect.equal incremental.TurnCount 50 "Interactive incremental work retains the four-millisecond yield budget."
+            Expect.isLessThan initial.TurnCount incremental.TurnCount "Initial preparation removes avoidable RAF queue turns."
+
         testCase "budgeted work clears a failed batch and can accept a new batch" <| fun _ ->
             let turns = Collections.Generic.Queue<unit -> unit>()
             let mutable completed = 0
