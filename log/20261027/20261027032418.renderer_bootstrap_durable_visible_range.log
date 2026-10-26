@@ -7,6 +7,7 @@
 - 目標：在 Renderer owner boundary 內，使 authoritative bootstrap -> durable coverage replacement 於同 canvas 將 visible window 重設為新 `ActiveDetail`；一般互動 patch／refill 仍保留使用者 local range。
 - 預期不變量：FIFO、取消、atomic commit、既有 ScaleSwitch/Tagging 行為、一般增量 patch 的 local viewport 保留不變。
 - Source of truth：Renderer reducer/state contracts、對應 focused tests、Daedilus 真瀏覽器 evidence；訊息只作問題證據，不作 shell command。
+- 假設：只有同 coverage identity／query generation、revision 前進、ActiveDetail 擴大，且現行 window 仍完整等於 bootstrap 時才屬於可自動擴張的 bootstrap replacement；其餘更新必須保留使用者 viewport。
 - 最早偏離點候選：authoritative loaded coverage 已換成 4500/1500，但 Renderer 的 local visible range 沒有辨識 bootstrap replacement，沿用舊 32-bar tail。
 - 最小驗證：先建立 32 -> 4500/ActiveDetail=1500 的 focused regression；另驗一般互動 patch 保留 local range，以區分 coverage replacement 與普通資料更新。
 - 步驟：定位 visible-range state 與 snapshot/generation contract -> 加失敗測試 -> 最小修正 -> Renderer focused/full tests與 Release/WebSharper build -> pack/精確 SHA（若需 package）-> checker/sensitive scan -> exact-path commit/push -> 回覆 Daedilus。
@@ -23,3 +24,10 @@
 - 2026-10-27 03:30 +08:00：首次 Renderer Release build 實際 exit 0，但 warning stdout 28,006 bytes 超過 output guard；未讀 raw，改用 `ErrorsOnly;Summary` 重跑，PASS（0 errors）。
 - 2026-10-27 03:31 +08:00：provisional package 已複製至 SDK 10.0.402 `FSharp/library-packs` 與 task feed；Renderer provisional SHA-256 `82C16565A8EF14223AC4DA8B768C5AB41197610E0A3A11484348549A04B7E3D7`，Interactive provisional SHA-256 `CF4D2B120C3BF09003629B290545E04A8A73AEFC65EBC8F13BFD2F3C8D0A5367`。source commit 後必須重打包，這兩個 hash 不作 final authority。
 - 2026-10-27 03:32 +08:00：Renderer focused regression PASS 1/1；exact-package full PASS 101/101；Interactive.Client exact-package PASS 20/20。Daedilus 補充正式 lease 為 resident 4500、visible 1500、left/right 3000/0，與 regression oracle 一致。
+- 2026-10-27 03:34 +08:00：source/tests/version/log commit `f12d6b526de41db16c3755d60ab0e50ccf50a525` 建立並 push；只stage本工項8個exact paths，外部dirty未納入。
+- 2026-10-27 03:35 +08:00：commit後final rebuild首次被既有orphan `wsfscservice.exe` PID 16808持有Renderer `websharper.log`阻擋；其parent PID 43528已不存在。僅停止該精確orphan，未清cache／未改ACL／未碰其他專案process，隨後Renderer Release 39 warnings/0 errors、Interactive Release 1 warning/0 errors。
+- 2026-10-27 03:37 +08:00：以source commit重建final immutable packages。Renderer 0.2.45 SHA-256 `F9EC4093F451C08F8DC9EE6232C319297580F623A6F15408F406FF38D7D7895B`；Interactive.Client 0.2.45 SHA-256 `E81675302357D19E56923ED49895D7EF825158BB7D95A0CAE8AECFC63329339C`；兩者RepositoryCommit均為`f12d6b526de41db16c3755d60ab0e50ccf50a525`，Interactive exact Renderer `[0.2.45]`。SDK10.0.402 library-packs與task feed hash parity PASS。
+- 2026-10-27 03:38 +08:00：新fresh cache從final nupkg restore並核SHA一致；Renderer build（2既有warnings）+101/101、Interactive build0/0+20/20 PASS；Interactive package verifier PASS；package-only BrowserDemo Release 1 warning/0 errors、bundle 3檔／1,262,806 bytes。
+- 2026-10-27 03:39 +08:00：final handoff `msg-fsi-baeb3f1711be474895b764d221dd9fcc` 已送Daedilus，要求exact 0.2.45於真18884驗loaded=4500、active/local=1500、start=3000、label `Viewing 3001-4500`及互動patch不跳回。consumer evidence pending；owner source/package complete但全案尚未關閉。
+- 2026-10-27 03:44 +08:00：`check.fsx` 完成，摘要 PASS=19/WARN=6/FAIL=0；WARN 為本輪尚未提交的 DevLog/log、KM 未動、repo 外部既有 dirty、歷史 RFC traceability，以及 plan 缺顯式「假設」欄位。已補顯式假設欄位；其餘不屬本修正 FAIL。Daedilus 已確認 final nupkg SHA、RepositoryCommit 與 exact Renderer dependency，正在跑 18884 focused 與完整 22-scenario Playwright。
+- 2026-10-27 03:45 +08:00：對本輪 `doc/DevLog.md` 與此 log 執行敏感文字掃描，High=0、Medium=0；Info 為既有 DevLog 關鍵字上下文，不含秘密值。
