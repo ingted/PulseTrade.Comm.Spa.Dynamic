@@ -3259,6 +3259,16 @@ module RendererModel =
             if timeline |> Array.pairwise |> Array.exists (fun (left, right) -> left >= right) then None
             else Some timeline
 
+    let navigatorEventTimeline (activeTimeline: string array) projection =
+        match projection.GlobalOverview, tryOverviewTimeline projection with
+        | Some overview, Some overviewTimeline
+            when overview.AxisRef <> projection.ActiveDetail.BaseAxisRef
+                 && projection.OverviewAxisRef = projection.ActiveDetail.BaseAxisRef
+                 && overviewTimeline.Length = activeTimeline.Length
+                 && overviewTimeline.Length > 0 ->
+            projection.OverviewAnchors |> Array.map _.EventTimeUtc
+        | _ -> activeTimeline
+
     let eventTimeSlot (timeline: string array) eventTime =
         match tryUtcTimestamp eventTime with
         | None -> None
@@ -3528,11 +3538,10 @@ module RendererModel =
                       StartEventTimeUtc = startTime
                       EndEventTimeExclusiveUtc = value })
 
-    let visibleEventRangePrepared (document: TaWorkspaceDocument) prepared window =
+    let visibleEventRangePreparedOnTimeline (document: TaWorkspaceDocument) prepared (timeline: string array) window =
         match tryBaseRow document with
         | None -> None
         | Some(baseRowId, baseRow) ->
-            let timeline = rowTimelinePrepared baseRow prepared
             let selected = selectWindow window timeline
             if selected.Length = 0 then None
             else
@@ -3548,6 +3557,24 @@ module RendererModel =
                     { BaseRowId = baseRowId
                       StartEventTimeUtc = startTime
                       EndEventTimeExclusiveUtc = value })
+
+    let visibleEventRangePrepared (document: TaWorkspaceDocument) prepared window =
+        match tryBaseRow document with
+        | None -> None
+        | Some(_, baseRow) ->
+            visibleEventRangePreparedOnTimeline document prepared (rowTimelinePrepared baseRow prepared) window
+
+    let navigatorVisibleEventRangePrepared
+        (document: TaWorkspaceDocument)
+        prepared
+        (projection: TaLoadedCoverageProjection)
+        window =
+        match tryBaseRow document with
+        | None -> None
+        | Some(_, baseRow) ->
+            let activeTimeline = rowTimelinePrepared baseRow prepared
+            let timeline = navigatorEventTimeline activeTimeline projection
+            visibleEventRangePreparedOnTimeline document prepared timeline window
 
     let paddedRange fallbackLow fallbackHigh values =
         let mutable found = false

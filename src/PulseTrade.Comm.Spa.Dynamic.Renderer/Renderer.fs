@@ -3399,7 +3399,13 @@ module TaWorkspaceRenderer =
                 | _ -> false
             | _ -> false
 
-        let setWindowFromPrepared (expectedDocument: TaWorkspaceDocument) prepared coverageIntent followLatest window =
+        let setWindowFromPreparedRange
+            (expectedDocument: TaWorkspaceDocument)
+            prepared
+            coverageIntent
+            followLatest
+            window
+            (rangeFor: TaWorkspaceDocument -> TaPreparedRendererData -> TaVisibleWindow -> TaVisibleEventRange option) =
             if not (localViewportDisabled runtimeState.Value.Poll) then
                 match runtimeState.Value.Document with
                 | Some document
@@ -3408,7 +3414,7 @@ module TaWorkspaceRenderer =
                          && document.BaseRowId = expectedDocument.BaseRowId ->
                     let changed, bounded = commitLocalWindow followLatest window
                     if changed && actionAllowed "visible-range-changed" then
-                        match RendererModel.visibleEventRangePrepared expectedDocument prepared bounded with
+                        match rangeFor expectedDocument prepared bounded with
                         | Some range ->
                             sendOrQueueVisibleRangeAction
                                 (SduiAction.VisibleRangeChanged(
@@ -3422,6 +3428,34 @@ module TaWorkspaceRenderer =
                     else
                         draftWindow.Value <- None
                 | _ -> draftWindow.Value <- None
+
+        let setWindowFromPrepared (expectedDocument: TaWorkspaceDocument) prepared coverageIntent followLatest window =
+            setWindowFromPreparedRange
+                expectedDocument
+                prepared
+                coverageIntent
+                followLatest
+                window
+                RendererModel.visibleEventRangePrepared
+
+        let setNavigatorWindowFromPrepared
+            (expectedDocument: TaWorkspaceDocument)
+            prepared
+            projection
+            followLatest
+            window =
+            setWindowFromPreparedRange
+                expectedDocument
+                prepared
+                None
+                followLatest
+                window
+                (fun document currentPrepared currentWindow ->
+                    RendererModel.navigatorVisibleEventRangePrepared
+                        document
+                        currentPrepared
+                        projection
+                        currentWindow)
 
         let setWindow followLatest window =
             match runtimeState.Value.Document with
@@ -4201,7 +4235,11 @@ module TaWorkspaceRenderer =
                                                 | None ->
                                                     setDragDiagnostic "data-drag-outcome" "invalid-resident-target"
                                                     draftWindow.Value <- None
-                                        | _ ->
+                                        | Some(document, preparedData, _, projection, _) ->
+                                            setDragDiagnostic "data-drag-outcome" "commit-local"
+                                            navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
+                                            setNavigatorWindowFromPrepared document preparedData projection followLatest next
+                                        | None ->
                                             setDragDiagnostic "data-drag-outcome" "commit-local"
                                             navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
                                             setWindow followLatest next

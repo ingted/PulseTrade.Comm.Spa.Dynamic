@@ -346,6 +346,66 @@ let tests =
                   "let cancel () =" ] do
                 Expect.stringContains source required ("missing main-plot range preview contract: " + required)
 
+        testCase "DYN-T-715 cross-axis navigator drop uses the exact resident overview event-time timeline" <| fun _ ->
+            let activeTimeline =
+                [| "2022-03-15T02:30:00.0000000+00:00"
+                   "2022-03-15T03:00:00.0000000+00:00"
+                   "2022-03-15T03:30:00.0000000+00:00"
+                   "2022-03-15T04:00:00.0000000+00:00" |]
+            let overviewTimeline =
+                [| "2022-03-11T09:30:00.0000000+00:00"
+                   "2022-03-11T10:00:00.0000000+00:00"
+                   "2022-03-11T10:30:00.0000000+00:00"
+                   "2022-03-11T11:00:00.0000000+00:00" |]
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:event-time-authority"
+                  CoverageRevision = 5L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.30k"
+                  OverviewAnchors =
+                    overviewTimeline
+                    |> Array.mapi (fun index eventTime ->
+                        { ObservationOrdinal = 48_445L + int64 index
+                          EventTimeUtc = eventTime
+                          Value = SduiValue.Number(float index) })
+                  ActiveDetail =
+                    { StartObservationOrdinal = 49_567L
+                      ObservationCount = 79
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_433_048L
+                          ResidentObservationCount = 134_885 } }
+
+            Expect.sequenceEqual
+                (RendererModel.navigatorEventTimeline activeTimeline projection)
+                overviewTimeline
+                "cross-axis local zero maps to the resident overview local-zero event time"
+            let sameAxis =
+                { projection with
+                    GlobalOverview =
+                        projection.GlobalOverview
+                        |> Option.map (fun overview -> { overview with AxisRef = projection.ActiveDetail.BaseAxisRef }) }
+            Expect.sequenceEqual
+                (RendererModel.navigatorEventTimeline activeTimeline sameAxis)
+                activeTimeline
+                "same-axis navigation preserves the active prepared timeline"
+            Expect.sequenceEqual
+                (RendererModel.navigatorEventTimeline activeTimeline { projection with OverviewAnchors = projection.OverviewAnchors[..2] })
+                activeTimeline
+                "a non-exact overview length cannot trigger lossy index interpolation"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "setNavigatorWindowFromPrepared" "navigator local commit must use its frozen event-time projection"
+            Expect.stringContains source "RendererModel.navigatorVisibleEventRangePrepared" "navigator action range must use the overview authority selector"
+
         testCase "DYN-T-713 navigator edge handles anchor resize at the logical selection boundary" <| fun _ ->
             let total = 4500
             let trackLeft = 113.0
@@ -3789,7 +3849,7 @@ let tests =
                   "mainPlotInteractionDrag"
                   "previewWindowBounds"
                   "let setWindowFromPrepared"
-                  "RendererModel.visibleEventRangePrepared expectedDocument prepared bounded"
+                  "RendererModel.visibleEventRangePrepared"
                   "let commitMainPlotPan delta document prepared committed projection"
                   "RendererModel.tryMainPlotPanWindow"
                   "RendererModel.tryMainPlotEventRangeIntent projection next"

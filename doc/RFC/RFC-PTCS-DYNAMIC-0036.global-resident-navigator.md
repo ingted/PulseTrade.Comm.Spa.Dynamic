@@ -110,6 +110,10 @@ D10的「第一個Document」依真no-1K RED修正：若有actual GLOBAL loader�
 
 0.2.32真no-1K cold-cache驗證證明D12只解決「何時可replace」，未解決WebSharper replacement的DOM ordering；bootstrap detach到authoritative attach間仍有5個MutationObserver callback batch無visible GLOBAL。Client改為先在root內一次掛載bootstrap與authoritative stable hosts，authoritative內容先進入DOM並由RAF確認GLOBAL geometry可見，才清空／移除bootstrap host。期間允許短暫兩者並存，禁止短暫為零；最後仍只留一個authoritative GLOBAL。此決策不改typed loader、RuntimeState／projection authority、no-loader lifecycle、Dynamic wire或consumer cross-scale mapping。
 
+### D14. 2026-10-27 cross-axis inner navigator event-time authority
+
+跨axis inner navigator仍只送`VisibleRangeChanged` event-time seam，不得將GLOBAL observation ordinal當active/base index。pointer preview與drop action必須使用同一frozen timeline authority：當`GlobalOverview.AxisRef <> ActiveDetail.BaseAxisRef`、`OverviewAxisRef = ActiveDetail.BaseAxisRef`，且validated overview anchors與active prepared timeline為exact one-to-one長度時，drop range取overview anchor的原始UTC timestamp；這使resident overview local0映到同一local0 event time。任一axis／長度／timestamp validation不精確即沿用既有active timeline，禁止比例插值或推測ordinal換算。same-axis resident coverage intent、main CURSOR與consumer mapping責任不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

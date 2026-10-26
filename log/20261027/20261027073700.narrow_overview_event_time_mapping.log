@@ -1,0 +1,22 @@
+# Narrow overview event-time mapping
+
+## Pre-work plan
+
+- 背景：Daedilus 的0.2.48真consumer event-time gate反證先前「consumer-only」判斷；preview到resident overview左緣，但Action$8仍由active prepared timeline取值。
+- 目標：讓cross-axis navigator local drop以同一resident overview event-time authority產生Action$8，維持event-time seam與既有commit語意。
+- 假設：render geometry與action event range分別使用overview/active兩套timeline，是最早共同原因；equal-length exact overview timeline可在不做GLOBAL ordinal換算下根治。
+- 範圍：RendererModel、Renderer navigator local-drop wiring、direct test、0.2.50 exact packages與current WBS/Test/DevLog；consumer唯讀。
+- 不變事項：不加入GLOBAL ordinal、不改consumer、不改same-axis resident intent／CURSOR／handle anchor／0.2.49 live preview contract。
+- 步驟：bounded evidence/source review → DYN-T-715 RED → 最小authority selector/wiring → owner package gates → Daedilus真18884重驗。
+- 驗收：preview local0的Action start取overview local0；same-axis/mismatch fallback不變；Renderer/Interactive direct suites、package verifier、package-only BrowserDemo通過；consumer settlement localStart到0且可續overscroll。
+- 風險：overview anchors可能是downsampled；僅允許equal-length exact mapping，否則fail-safe沿用active timeline，不做推測性插值。
+- 停止條件：若真資料overview與active長度不相等或沒有exact event-time anchor，停止修改並向Daedilus索取authority contract。
+
+## Operations
+
+- 2026-10-27 07:37 +08:00：收到並ack Daedilus反證 `msg-fsi-14291c8d4174417ba587787d3627efba`；formal receipt=`msg-fsi-8d040e745814443b844357949f04ac16`。建立新hypothesis修正先前定責，尚未修改mapping source。
+- 2026-10-27 07:40 +08:00：bounded evidence確認middle drop從3000移到1201，left-edge preview從1201移到0；現行Action$8卻由active prepared local0取`2022-03-11T10:00Z`，settlement只使active/local各前進79到49567/1122。source顯示overview SVG用`tryOverviewTimeline projection`，local drop則經`setWindow`用`visibleEventRangePrepared`，最早偏離為兩套timeline authority。
+- 2026-10-27 07:43 +08:00：新增DYN-T-715，0.2.49 package因`navigatorEventTimeline`不存在而3個FS0039 RED。第一版source build先暴露shared resolver的record type inference歧義，補`TaVisibleEventRange`函式型別後0 errors；focused初次GREEN前發現`tryOverviewTimeline`正規化字串會移除UTC suffix，改為只用其validation/order結果、wire沿用anchor原始UTC timestamp。
+- 2026-10-27 07:47 +08:00：fresh 0.2.50 candidate DYN-T-715 1/1、Renderer full106/106 PASS。第一次full output因既有DYN-T-689 exact source substring未涵蓋shared resolver而1 RED且輸出408900 bytes；guard未讀raw，只投影失敗名。測試更新為仍要求default `visibleEventRangePrepared` resolver，另由DYN-T-715要求navigator resolver，full恢復106/106。
+- 2026-10-27 07:49 +08:00：Interactive.Client exact Renderer0.2.50，fresh20/20與package verifierPASS；package-only BrowserDemo同步direct dependencies後0 warnings/0 errors。candidate hashes僅pre-commit，不交consumer；下一步source commit/push後重建final RepositoryCommit/SHA。
+- 2026-10-27 07:55 +08:00：changed-path敏感掃描High=0、Medium=0；canonical checker PASS=28/WARN=2/FAIL=0。WARN僅本輪預期dirty與既有RFC coverage，無本輪衝突；外部既有`lib-packs.txt`、Ptcs test、`.pcsl/`、`temp/`維持排除。
