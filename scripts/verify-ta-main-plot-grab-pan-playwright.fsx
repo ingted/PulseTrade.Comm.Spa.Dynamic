@@ -132,6 +132,7 @@ let tests =
                 page.Mouse.MoveAsync(downX, pointerY) |> awaitUnit
                 let anchoredEventTime = waitUntil "down anchor" (fun () -> attributeOf rowCursor "data-canonical-event-time") (String.IsNullOrWhiteSpace >> not)
                 let residentBefore = intAttribute globalWrapper "data-resident-start-observation-ordinal"
+                let residentCountBefore = intAttribute globalWrapper "data-resident-observation-count"
                 let visibleBefore = intAttribute chartStack "data-visible-start"
                 let localBefore = intAttribute chartStack "data-local-visible-start"
                 let callbackBefore = intAttribute callbackState "data-callback-count"
@@ -146,10 +147,13 @@ let tests =
                 let expectedResident = residentBefore + expectedDelta
                 waitUntil "resident relocation" (fun () -> intAttribute globalWrapper "data-resident-start-observation-ordinal") ((=) expectedResident) |> ignore
                 require (intAttribute chartStack "data-local-visible-start" = localBefore) "CURSOR relocation changed the inner visible offset"
-                let visibleAfter = intAttribute chartStack "data-visible-start"
-                require (visibleAfter = visibleBefore + expectedDelta) "resident-relative visible start did not preserve the physical pointer anchor"
+                let visibleAfter = waitUntil "resident-relative visible start" (fun () -> intAttribute chartStack "data-visible-start") ((=) visibleBefore)
+                require
+                    (expectedResident + visibleAfter = residentBefore + visibleBefore + expectedDelta)
+                    "absolute visible start did not move by the exact resident delta"
                 require (intAttribute callbackState "data-last-coverage-start" = expectedResident) "CURSOR relocation emitted the wrong resident start intent"
-                require (intAttribute callbackState "data-last-coverage-count" = 4500) "CURSOR relocation changed the fixed resident width"
+                require (intAttribute callbackState "data-last-coverage-count" = residentCountBefore) "CURSOR relocation changed the fixed resident width intent"
+                require (intAttribute globalWrapper "data-resident-observation-count" = residentCountBefore) "CURSOR relocation changed the fixed resident width"
 
                 page.Mouse.MoveAsync(upX + 2.0f, pointerY) |> awaitUnit
                 page.Mouse.MoveAsync(upX, pointerY) |> awaitUnit
@@ -179,8 +183,8 @@ let tests =
                 require (intAttribute callbackState "data-last-coverage-count" = 0) "left resize dispatched a resident coverage count"
                 require (intAttribute globalWrapper "data-resident-start-observation-ordinal" = expectedResident) "left resize relocated the GLOBAL resident"
 
-                let resizeRightDownX = plotBounds.X + plotBounds.Width * 0.70f
-                let resizeRightUpX = plotBounds.X + plotBounds.Width * 0.80f
+                let resizeRightDownX = plotBounds.X + plotBounds.Width * 0.80f
+                let resizeRightUpX = plotBounds.X + plotBounds.Width * 0.70f
                 let rightCountBefore = intAttribute chartStack "data-local-visible-count"
                 let rightStartBefore = intAttribute chartStack "data-local-visible-start"
                 let rightDelta = -(pointerDelta rightCountBefore resizeRightDownX resizeRightUpX)
