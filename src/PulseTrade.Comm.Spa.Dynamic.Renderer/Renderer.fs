@@ -55,6 +55,14 @@ type TaRendererDisplayTime =
 
 [<JavaScript>]
 module TaWorkspaceRenderer =
+    let flushViewportIntentNowAndAfterFrame flush scheduleFallback =
+        flush ()
+        scheduleFallback flush
+
+    let flushViewportIntentAfterActionSettled afterSettled flush scheduleFallback =
+        afterSettled ()
+        flushViewportIntentNowAndAfterFrame flush scheduleFallback
+
     let publishWorkSchedulingMetrics prefix (element: Element) (metrics: TaWorkSchedulingMetrics) =
         if not (isNull element) then
             for name, value in
@@ -2850,8 +2858,10 @@ module TaWorkspaceRenderer =
                 onAccepted
                 onRejected
                 (fun () ->
-                    afterSettled ()
-                    scheduleNextFrame flushQueuedViewportIntent)
+                    flushViewportIntentAfterActionSettled
+                        afterSettled
+                        flushQueuedViewportIntent
+                        scheduleNextFrame)
         let startActionWith action successText onAccepted onRejected =
             startActionWithFeedback action successText (fun () -> onAccepted (); None) onRejected ignore
         let startAction action successText onAccepted =
@@ -2913,7 +2923,10 @@ module TaWorkspaceRenderer =
             (fun state ui -> state.Poll, ui.PendingActionId)
             runtimeState.View
             uiState.View
-        |> View.Sink (fun _ -> scheduleNextFrame flushQueuedViewportIntent)
+        |> View.Sink (fun _ ->
+            flushViewportIntentNowAndAfterFrame
+                flushQueuedViewportIntent
+                scheduleNextFrame)
 
         let initialPreparedData =
             { RawData = Map.empty

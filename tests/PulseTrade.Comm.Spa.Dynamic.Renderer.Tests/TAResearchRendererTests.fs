@@ -136,6 +136,35 @@ let tests =
                 (Some candle)
                 "an unknown DOM trace id must not suppress the canonical geometric fallback"
 
+        testCase "DYN-T-712 queued viewport action drains in the settlement callback before RAF fallback" <| fun _ ->
+            let events = ResizeArray<string>()
+            let mutable scheduled: (unit -> unit) option = None
+
+            TaWorkspaceRenderer.flushViewportIntentAfterActionSettled
+                (fun () -> events.Add "settled")
+                (fun () -> events.Add "flush-now")
+                (fun work ->
+                    events.Add "schedule-fallback"
+                    scheduled <- Some work)
+
+            Expect.sequenceEqual
+                events
+                [ "settled"; "flush-now"; "schedule-fallback" ]
+                "an already-ready queued drop must dispatch in the action settlement callback rather than wait for RAF"
+
+            scheduled |> Option.iter (fun work -> work ())
+            Expect.sequenceEqual
+                events
+                [ "settled"; "flush-now"; "schedule-fallback"; "flush-now" ]
+                "the RAF fallback remains available for a projection that was not ready during immediate drain"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isGreaterThanOrEqual
+                (Text.RegularExpressions.Regex.Matches(source, "flushViewportIntentNowAndAfterFrame").Count)
+                3
+                "the immediate+RAF drain must be shared by both action settlement and Poll/PendingAction readiness transitions"
+
         testCase "DYN-T-688 point activation emits only for the committed projection key" <| fun _ ->
             let identity =
                 { DocumentId = DocumentId "tagging-document"
