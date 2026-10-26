@@ -1,0 +1,19 @@
+# Dynamic Renderer 0.2.48 package evidence
+
+## Pre-work plan
+
+- 背景：`20261027061000.dynamic_renderer_0248_closeout.log`已完成source pre-commit與commit邊界；本檔只承接post-commit immutable package、final direct tests、package-only BrowserDemo與Daedilus handoff證據。
+- 目標：證明0.2.48 nupkg取自已push commit、exact dependency與hash可重現，並交付真consumer驗收。
+- 假設：commit後clean/rebuild會將RepositoryCommit固定為`3649f1ee364fbb88af0567413fc3fd4373575881`；fresh cache只能解析SDK library-packs內的final 0.2.48。
+- 範圍：兩個0.2.48 nupkg、SDK10.0.402 library-packs、兩個direct test projects、ignored temp BrowserDemo與本輪文件；不改consumer source。
+- 風險：WebSharper Booster可fallback並產生warning；runner參數可能被轉送Expecto；真18884四項行為仍須Daedilus驗收。
+- 步驟：commit後pack/hash/metadata → final exact-package tests → package verifier → package-only BrowserDemo → COMM exact handoff → checker/evidence commit。
+- 驗收：RepositoryCommit/hash/dependency exact；Renderer104/104、Interactive20/20；verifier PASS；BrowserDemo exact0.2.48/0.2.48為0 errors；handoff可追溯。
+- 停止條件：owner package證據入版後等待Daedilus；main coverage未前進前不結案。
+
+## Operations
+
+- 2026-10-27 06:10 +08:00：source/docs/tests commit `3649f1ee364fbb88af0567413fc3fd4373575881`已push。commit後clean/rebuild final Renderer SHA-256=`87F7564043BD5D28E93D30048575E067F556DB2A41537200B399E02099672C99`；Interactive fresh restore到final Renderer後SHA-256=`37920AFC4BF7AF6B457A0C1349BB38E5E76DF29EA3C132C841B4618CD2A5EC87`。兩包RepositoryCommit exact、SDK10.0.402 library-packs copy hash parity。
+- 2026-10-27 06:10 +08:00：final exact-package Renderer tests首次因`dotnet run --nologo`把`--nologo`傳給Expecto而exit1；這是runner invocation錯誤，移除該參數後104/104 PASS。Interactive20/20、package verifier PASS；fresh package-only BrowserDemo由已驗0.2.47 staging模式複製到ignored temp並只升exact dependencies，解析為Interactive/Renderer 0.2.48，Release 1 warning/0 errors、bundle7檔/1,454,716 bytes。
+- 2026-10-27 06:11 +08:00：正式handoff `msg-fsi-49a1bb082b744bf89fa7d7161268fbf9`已送Daedilus，要求真18884同輪驗SMA、overview小於5秒、80-bars、main coverage revision及full22；main-drag未有revision前進證據前保持open。
+- 2026-10-27 06:13 +08:00：canonical checker首次post-package跑為PASS=38/WARN=6/FAIL=1，唯一FAIL是對已baseline的06:10 log再append。反向移除僅屬本輪未提交的三行，恢復其committed bytes；post-commit證據移到本檔，未修改歷史commit。
