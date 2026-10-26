@@ -62,12 +62,48 @@ let tests =
                 { Target=targetValue
                   Dispatch=fun request complete ->
                       requests.Add((name,request))
-                      complete (Ok(TaggingEditorReply.Listed [||])) }
+                      complete (Ok(TaggingEditorReply.Listed [||]))
+                  Changed=ignore
+                  InitialDraft=None }
             let messaging = bindingFor "messaging" (target "message-space" "message" "27" "sender")
             let market = bindingFor "market" (target "market-space" "bar" "ES:1m:202610191230" "ES 1m")
             messaging.Dispatch TaggingEditorRequest.List ignore
             market.Dispatch TaggingEditorRequest.List ignore
             Expect.equal (requests |> Seq.map fst |> Seq.toList) ["messaging";"market"] "The public callback must not depend on one target domain.")
+
+        testCase "0.1.9 editor suggestion API remains source compatible" (fun _ ->
+            let suggestionRequest = TaggingEditorRequest.SuggestTags("ord",8)
+            let suggestionReply = TaggingEditorReply.Suggested [|"order";"ordered"|]
+            match suggestionRequest,suggestionReply with
+            | TaggingEditorRequest.SuggestTags(prefix,limit),TaggingEditorReply.Suggested values ->
+                Expect.equal prefix "ord" "The suggestion prefix remains public."
+                Expect.equal limit 8 "The suggestion limit remains public."
+                Expect.sequenceEqual values [|"order";"ordered"|] "Suggested values remain public."
+            | _ -> failtest "The 0.1.9 suggestion union cases must remain available.")
+
+        testCase "0.1.9 search API remains source compatible" (fun _ ->
+            let fields =
+                [| { Field=TaggingSearchField.TagText;Label="Tags";InitiallySelected=true }
+                   { Field=TaggingSearchField.SummaryText;Label="Summary";InitiallySelected=false } |]
+            let query =
+                { Text="order*"
+                  Matcher=TaggingSearchMatcher.Wildcard
+                  CaseSensitive=false
+                  Fields=fields |> Array.map _.Field
+                  Limit=25
+                  Cursor="" }
+            let page = { Items=[||];NextCursor="next";ScanLimited=false }
+            let binding : TaggingSearchBinding =
+                { ScopeLabel="research"
+                  Fields=fields
+                  Dispatch=fun actual complete ->
+                      Expect.equal actual query "The public search query reaches the binding unchanged."
+                      complete (Ok page)
+                  Activate=fun _ complete -> complete (Ok()) }
+            let mutable observed = None
+            binding.Dispatch query (fun result -> observed <- Some result)
+            Expect.equal observed (Some(Ok page)) "The public search binding and page remain usable."
+            Expect.equal TaggingSearchPlugin.defaultOptions.MaxOpenWindows 8 "The search plug-in defaults remain available.")
     ]
 
 [<EntryPoint>]

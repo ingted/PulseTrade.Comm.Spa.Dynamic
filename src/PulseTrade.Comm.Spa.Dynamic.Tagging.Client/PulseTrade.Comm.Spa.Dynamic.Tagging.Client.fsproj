@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Tagging.Client</PackageId>
-    <Version>0.1.10</Version>
+    <Version>0.1.11</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Transport-neutral PTCS Dynamic SDUI ExtraInfo editor Plug-In for WebSharper clients.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -20,6 +20,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="TaggingEditorPlugin.fs" />
+    <Compile Include="TaggingSearchPlugin.fs" />
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
   <ItemGroup>
