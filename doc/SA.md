@@ -6,7 +6,7 @@
 
 不變量是：same-axis可直接把active window映成resident offset；cross-axis只有由accepted GLOBAL intent保存且仍匹配coverage identity、resident scope與navigation-domain count的`TaResidentNavigatorAuthority`才能映射。否則navigator只改active-local window、不得送GLOBAL coverage action；queued gesture在authority消失時fail closed。Research RUN lifecycle另須在derived TA尚未Completed時就把formal `GlobalOverview`/resident authority放進runtime state；Dynamic既有mount gate只要求resolved formal GLOBAL，不要求rows完成，所以bootstrap可先畫，formal GLOBAL到達即原位接手，TA rows再逐步填入。
 
-本輪使用者另以明確interaction contract取代DYN-WBS-596的main-plot resident grab語意：預設CURSOR顯示十字，按住拖曳依實際pointer距離反向pan visible window；右鍵切到Resize後隱藏十字，pointerdown位於可視區左／右半決定調左／右邊界。兩種模式皆只操作已載入resident內的visible window；GLOBAL resident relocation仍由GLOBAL/navigator authority操作，不再由main plot body暗中觸發。
+本輪明確interaction contract保留DYN-WBS-596的main-plot resident grab語意並增加模式邊界：預設CURSOR顯示十字，按住拖曳以離散pointer anchor delta送唯一`ResidentCoverageChanged`，固定4500 resident寬且保持inner visible offset/count；右鍵切到Resize後隱藏十字，pointerdown位於可視區左／右半只調inner visible左／右邊界，送`VisibleRangeChanged`且不得帶coverage intent。0.2.40曾誤把CURSOR降成resident內local pan，該immutable包保留為withdrawn evidence、不覆寫；修正交付自0.2.41起。
 
 ## 2026-10-25 cross-axis terminal settlement後的navigator authority（DYN-WBS-597）
 

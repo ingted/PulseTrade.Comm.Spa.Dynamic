@@ -1,0 +1,27 @@
+# no-1K navigator authority / main-plot interaction closeout
+
+## Pre-work plan
+
+- 背景：source checkpoint `52b4266`已commit/push；本批只做immutable package、fresh package tests、真browser與evidence closeout。
+- 目標：產生一次性0.2.40 Renderer/Client packages，驗exact dependency/hash、package-backed tests、full WebSharper與真mouse Cursor/Resize，再交Daedalus做18884真資料gate。
+- 假設：package source固定為`52b4266`；任何test-only修正不得覆寫已產生的0.2.40 bytes。consumer acceptance仍由Daedalus的Research RUN/formal GLOBAL與only-30K/60K證據決定。
+- Source of truth：nupkg SHA/nuspec RepositoryCommit、fresh exact-package test exits、focused Playwright geometry/action count與screenshot。
+- 範圍：immutable staging、SDK10.0.402 library-packs、canonical package bin、owner docs/test verifier；不改產品source，不public push，不碰既有dirty WIP。
+- 驗收：Renderer98/98、Client20/20、package verifier、BrowserDemo full WebSharper、focused real mouse/visual；sensitive High0與formal checker FAIL0。
+- 風險：initial follow-latest window在resident boundary，gesture direction若指向域外會正確clamp，test oracle必須選域內方向。
+- 停止條件：owner package handoff完成後等待Daedalus consumer evidence；若consumer反證回到owner source再開新debug batch。
+
+## Operations
+
+- 2026-10-26 07:19：source/docs/tests commit `52b4266ce43e435b443476fc8b81f8bbe90ca8d0`已push；staged exact 17 paths，未納入`lib-packs.txt`、PTCS tests、`.pcsl/`及既有temp。
+- 2026-10-26 07:26–07:28：由`git archive 52b4266`固定staging完整WebSharper pack。Renderer 0.2.40 SHA=`B4CF8A798DB4DF33FAFBB739B9C0107BC65AA116F2D79D74B5FDDCD94707AF9A`；Client SHA=`FE30CBA38EDF0218B3137B68A028472770A8EF044F1F4C8535B8CCB0ADB2AA50`。兩包先copy SDK10.0.402 library-packs，再copy canonical bin，三方hash parity；未public push。
+- 2026-10-26 07:28–07:29：fresh exact-package Renderer restore/build/test exit0（98 cases），Client restore/build/test exit0（20 cases）；Client package verifier PASS（4 entries）；nuspec兩包RepositoryCommit=`52b4266...`且Client exact Renderer `[0.2.40]`；exact-package BrowserDemo full WebSharper build exit0。
+- 2026-10-26 07:30：focused真mouse首輪RED（callback 0）保存後定位為verifier oracle錯：fixture initial follow-latest已貼resident右界，向later拖依法clamp，不應送action。產品source/package未改、0.2.40 bytes未覆寫；只把案例改為向resident內部拖。
+- 2026-10-26 07:31：corrected focused真mouse 1/1 PASS（29.77s）：CURSOR panDelta=-140、resident=3000不動、leftDelta70、rightDelta63、anchor不漂；Resize crosshair hide、切回Cursor restore、console0。full-page screenshot人工檢視GLOBAL/RESIDENT navigator、主要plots、雙Y與cursor無空白／錯位／重疊；owner-started PID4940已核command line後停止。
+- 2026-10-26 07:33：以COMM `msg-fsi-0e75c709c4544213be3e217fd4a13d69`交付Daedalus exact source/hash/gates與18884 acceptance contract。
+- 2026-10-26 07:34：流程偏差：source checkpoint後曾續append已commit的pre-work log，formal checker以`log_readonly_modify`阻擋；已把舊log raw bytes恢復至commit版本，post-checkpoint operations移入本closeout log，不修改歷史內容。
+- 2026-10-26 07:35：恢復後第一輪checker仍以先前dirty snapshot作比較而FAIL1；該run已把目前clean historical log與新closeout log寫入state，立即重跑驗證stable state，不改checker或弱化gate。
+- 2026-10-26 07:55：handoff `msg-fsi-0e75...`逾20分鐘仍未進Daedalus durable read watermark（source seq351、latest read336）。canonical `G:\coldfar_py\coldfar-symbolics\resume.bat`不存在，未建立／dirty外部repo；改用現有同repo `resume_backup.0.155.1\resume.bat`內Daedalus session GUID喚起，hidden launcher PID21476。不重複廣播、不代改Research。
+- 2026-10-26 08:05：收到Daedalus權威澄清後撤回0.2.40 handoff：CURSOR須延續0.2.39的fixed-width resident relocation，Resize才是inner visible boundary。0.2.40 immutable bytes保留且不覆寫；版本/direct test refs升0.2.41，恢復`mainPlotAnchoredPanDelta -> tryCommitMainPlotResidentPan`的CURSOR branch，Resize維持`mainPlotPanDelta -> setWindow`，同步SA/SD/WBS/TEST/Verification與append-only DevLog Correction。0.2.41 source gates進行中。
+- 2026-10-26 08:09：0.2.41 source harness build成功（2 warnings/0 errors），Renderer Expecto 98/98 PASS。第一次process為97 passed/1 errored，原因是新增source-order assertion以含CRLF/固定indent的整段literal定位而得`IndexOf=-1`，屬test implementation錯誤；改用三個token的順序assert後98/98，產品source未因此變更。exact owned paths sensitive scan High0/Medium0（Info364，僅bounded 10筆輸出）。
+- 2026-10-26 08:10：source checkpoint前root formal checker以repo/SA/SD/WBS/TEST/DevLog/今日log exact paths驗PASS28/WARN2/FAIL0；WARN為預期dirty worktree與既有RFC traceability缺口，無本輪衝突。

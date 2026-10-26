@@ -3464,6 +3464,35 @@ module TaWorkspaceRenderer =
                 let followLatest = candidate.StartIndex = RendererModel.viewportMaximumStart total candidate
                 setWindow followLatest candidate
 
+        let tryCommitMainPlotResidentPan delta =
+            match runtimeState.Value.Document with
+            | Some document when actionAllowed "resident-coverage-changed" ->
+                match document.BaseRowId, RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
+                | Some baseRowId, Some projection when projection.GlobalOverview.IsSome ->
+                    if pendingGlobalResidentIntent.IsSome || commandsDisabledNow () || not preparedRowsReady.Value then
+                        draftWindow.Value <- None
+                        setUiState { uiState.Value with Feedback = "Resident coverage relocation is not ready." }
+                    else
+                        match RendererModel.tryMainPlotResidentRelocationIntent delta projection with
+                        | Some(draft, intent) ->
+                            globalResidentDraft.Value <- Some draft
+                            pendingGlobalResidentIntent <- Some intent
+                            startActionWith
+                                (SduiAction.ResidentCoverageChanged(currentCanvasId (), baseRowId, intent))
+                                "Resident coverage relocation requested."
+                                ignore
+                                (fun () -> clearGlobalResidentIntent intent)
+                        | None ->
+                            globalResidentDraft.Value <- None
+                            draftWindow.Value <- None
+                    true
+                | _ -> false
+            | _ -> false
+
+        let commitMainPlotPan delta =
+            if not (tryCommitMainPlotResidentPan delta) then
+                panWindow delta
+
         let consumeMainPlotClickSuppression () =
             let suppress = suppressNextMainPlotClick
             suppressNextMainPlotClick <- false
@@ -3518,16 +3547,21 @@ module TaWorkspaceRenderer =
                     let update (pointerEvent: Event) =
                         let mouse = pointerEvent :?> MouseEvent
                         latestClientX <- float mouse.ClientX
-                        let panDelta =
-                            RendererModel.mainPlotPanDelta
-                                committed.Count
-                                bounds.Width
-                                startClientX
-                                latestClientX
                         latestDelta <-
                             match drag with
-                            | TaWindowDrag.Move -> panDelta
-                            | _ -> -panDelta
+                            | TaWindowDrag.Move ->
+                                RendererModel.mainPlotAnchoredPanDelta
+                                    committed.Count
+                                    bounds.Left
+                                    bounds.Width
+                                    startClientX
+                                    latestClientX
+                            | _ ->
+                                -(RendererModel.mainPlotPanDelta
+                                    committed.Count
+                                    bounds.Width
+                                    startClientX
+                                    latestClientX)
                         moved <-
                             moved
                             || RendererModel.mainPlotDragExceededThreshold
@@ -3571,24 +3605,28 @@ module TaWorkspaceRenderer =
                             suppressNextMainPlotClick <- true
                             JS.SetTimeout (fun () -> suppressNextMainPlotClick <- false) 250 |> ignore
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "committed")
-                            let total = referenceLength ()
-                            let draft =
-                                pendingDraft
-                                |> Option.defaultWith (fun () ->
-                                    RendererModel.previewWindowBounds
+                            match drag with
+                            | TaWindowDrag.Move ->
+                                commitMainPlotPan latestDelta
+                            | _ ->
+                                let total = referenceLength ()
+                                let draft =
+                                    pendingDraft
+                                    |> Option.defaultWith (fun () ->
+                                        RendererModel.previewWindowBounds
+                                            options.MinimumVisibleBars
+                                            (maximumVisibleBarsNow ())
+                                            total
+                                            committed
+                                            drag
+                                            latestDelta)
+                                let followLatest, next =
+                                    RendererModel.commitWindowBounds
                                         options.MinimumVisibleBars
                                         (maximumVisibleBarsNow ())
                                         total
-                                        committed
-                                        drag
-                                        latestDelta)
-                            let followLatest, next =
-                                RendererModel.commitWindowBounds
-                                    options.MinimumVisibleBars
-                                    (maximumVisibleBarsNow ())
-                                    total
-                                    draft
-                            setWindow followLatest next
+                                        draft
+                                setWindow followLatest next
                         else
                             draftWindow.Value <- None
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "click")

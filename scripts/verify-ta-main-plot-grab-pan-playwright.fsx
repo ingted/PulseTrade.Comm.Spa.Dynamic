@@ -78,7 +78,7 @@ let waitUntil label probe predicate =
 
 let tests =
     testList "main plot explicit interaction" [
-        testCase "real mouse pans visible window and right-click owns both boundary resizes" <| fun _ ->
+        testCase "real mouse relocates resident in CURSOR and right-click owns local boundary resizes" <| fun _ ->
             Directory.CreateDirectory(outputDirectory) |> ignore
             use playwright = Playwright.CreateAsync() |> awaitTask
             let launch = BrowserTypeLaunchOptions(Headless = not headed)
@@ -106,14 +106,14 @@ let tests =
                 waitUntil "main plot points" (fun () -> intAttribute mainPlot "data-point-count") (fun value -> value > 0) |> ignore
 
                 let plotBounds = boundingBox mainPlot
-                let downX = plotBounds.X + plotBounds.Width * 0.75f
-                let upX = plotBounds.X + plotBounds.Width * 0.55f
+                let downX = plotBounds.X + plotBounds.Width * 0.55f
+                let upX = plotBounds.X + plotBounds.Width * 0.75f
                 let pointerY = plotBounds.Y + plotBounds.Height * 0.45f
                 let pointerDelta visibleCount startX currentX =
                     let raw = (float startX - float currentX) * float visibleCount / float plotBounds.Width
                     if raw >= 0.0 then int (Math.Floor(raw + 0.5)) else int (Math.Ceiling(raw - 0.5))
                 let expectedDelta = pointerDelta (intAttribute mainPlot "data-point-count") downX upX
-                require (expectedDelta > 0) "left drag did not produce a positive reverse pan delta"
+                require (expectedDelta < 0) "right drag did not produce a negative resident relocation delta"
                 require (attributeOf mainPlot "data-main-plot-interaction-mode" = "cursor") "main plot did not default to CURSOR mode"
 
                 require (horizontalCursors.CountAsync() |> awaitTask > 1) "fixture must expose multiple TA rows"
@@ -141,12 +141,15 @@ let tests =
                 require (intAttribute callbackState "data-callback-count" = callbackBefore) "pointermove submitted before pointerup"
                 page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
                 waitUntil "exactly one action" (fun () -> intAttribute callbackState "data-callback-count") ((=) (callbackBefore + 1)) |> ignore
-                waitUntil "visible action kind" (fun () -> attributeOf callbackState "data-last-action") ((=) "VisibleRangeChanged") |> ignore
+                waitUntil "resident action kind" (fun () -> attributeOf callbackState "data-last-action") ((=) "ResidentCoverageChanged") |> ignore
 
-                require (intAttribute globalWrapper "data-resident-start-observation-ordinal" = residentBefore) "CURSOR pan relocated the GLOBAL resident"
-                waitUntil "resident-relative visible offset" (fun () -> intAttribute chartStack "data-local-visible-start") ((=) (localBefore + expectedDelta)) |> ignore
+                let expectedResident = residentBefore + expectedDelta
+                waitUntil "resident relocation" (fun () -> intAttribute globalWrapper "data-resident-start-observation-ordinal") ((=) expectedResident) |> ignore
+                require (intAttribute chartStack "data-local-visible-start" = localBefore) "CURSOR relocation changed the inner visible offset"
                 let visibleAfter = intAttribute chartStack "data-visible-start"
-                require (visibleAfter = visibleBefore + expectedDelta) "visible start did not move by the actual pointer distance"
+                require (visibleAfter = visibleBefore + expectedDelta) "resident-relative visible start did not preserve the physical pointer anchor"
+                require (intAttribute callbackState "data-last-coverage-start" = expectedResident) "CURSOR relocation emitted the wrong resident start intent"
+                require (intAttribute callbackState "data-last-coverage-count" = 4500) "CURSOR relocation changed the fixed resident width"
 
                 page.Mouse.MoveAsync(upX + 2.0f, pointerY) |> awaitUnit
                 page.Mouse.MoveAsync(upX, pointerY) |> awaitUnit
@@ -169,8 +172,12 @@ let tests =
                 page.Mouse.MoveAsync(resizeLeftUpX, pointerY, MouseMoveOptions(Steps = 8)) |> awaitUnit
                 page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
                 waitUntil "left resize action" (fun () -> intAttribute callbackState "data-callback-count") ((=) (leftCallbackBefore + 1)) |> ignore
+                waitUntil "left resize action kind" (fun () -> attributeOf callbackState "data-last-action") ((=) "VisibleRangeChanged") |> ignore
                 waitUntil "left resize start" (fun () -> intAttribute chartStack "data-local-visible-start") ((=) (leftStartBefore + leftDelta)) |> ignore
                 require (intAttribute chartStack "data-local-visible-count" = leftCountBefore - leftDelta) "left resize changed the wrong boundary"
+                require (attributeOf callbackState "data-last-coverage-start" = "") "left resize dispatched a resident coverage intent"
+                require (intAttribute callbackState "data-last-coverage-count" = 0) "left resize dispatched a resident coverage count"
+                require (intAttribute globalWrapper "data-resident-start-observation-ordinal" = expectedResident) "left resize relocated the GLOBAL resident"
 
                 let resizeRightDownX = plotBounds.X + plotBounds.Width * 0.70f
                 let resizeRightUpX = plotBounds.X + plotBounds.Width * 0.80f
@@ -183,9 +190,12 @@ let tests =
                 page.Mouse.MoveAsync(resizeRightUpX, pointerY, MouseMoveOptions(Steps = 8)) |> awaitUnit
                 page.Mouse.UpAsync(MouseUpOptions(Button = MouseButton.Left)) |> awaitUnit
                 waitUntil "right resize action" (fun () -> intAttribute callbackState "data-callback-count") ((=) (rightCallbackBefore + 1)) |> ignore
+                waitUntil "right resize action kind" (fun () -> attributeOf callbackState "data-last-action") ((=) "VisibleRangeChanged") |> ignore
                 require (intAttribute chartStack "data-local-visible-start" = rightStartBefore) "right resize moved the left boundary"
                 waitUntil "right resize count" (fun () -> intAttribute chartStack "data-local-visible-count") ((=) (rightCountBefore + rightDelta)) |> ignore
-                require (intAttribute globalWrapper "data-resident-start-observation-ordinal" = residentBefore) "Resize mode relocated the GLOBAL resident"
+                require (attributeOf callbackState "data-last-coverage-start" = "") "right resize dispatched a resident coverage intent"
+                require (intAttribute callbackState "data-last-coverage-count" = 0) "right resize dispatched a resident coverage count"
+                require (intAttribute globalWrapper "data-resident-start-observation-ordinal" = expectedResident) "right resize relocated the GLOBAL resident"
 
                 page.Mouse.ClickAsync(resizeRightUpX, pointerY, MouseClickOptions(Button = MouseButton.Right)) |> awaitUnit
                 waitUntil "CURSOR mode restored" (fun () -> attributeOf mainPlot "data-main-plot-interaction-mode") ((=) "cursor") |> ignore
@@ -196,7 +206,7 @@ let tests =
 
                 let screenshotPath = Path.Combine(outputDirectory, "main-plot-cursor-resize.png")
                 page.ScreenshotAsync(PageScreenshotOptions(Path = screenshotPath, FullPage = true)) |> awaitTask |> ignore
-                printfn "main-plot-interaction PASS panDelta=%d resident=%d leftDelta=%d rightDelta=%d anchor=%s screenshot=%s" expectedDelta residentBefore leftDelta rightDelta anchoredEventTime screenshotPath
+                printfn "main-plot-interaction PASS panDelta=%d resident=%d->%d leftDelta=%d rightDelta=%d anchor=%s screenshot=%s" expectedDelta residentBefore expectedResident leftDelta rightDelta anchoredEventTime screenshotPath
             finally
                 browser.CloseAsync() |> awaitUnit
     ]

@@ -3490,9 +3490,12 @@ let tests =
                   "mainPlotInteractionMode"
                   "Attr.Handler \"contextmenu\""
                   "data-main-plot-interaction-mode"
+                  "mainPlotAnchoredPanDelta"
                   "mainPlotPanDelta"
                   "mainPlotInteractionDrag"
                   "previewWindowBounds"
+                  "let tryCommitMainPlotResidentPan"
+                  "commitMainPlotPan latestDelta"
                   "setWindow followLatest next"
                   "data-ta-row-horizontal-cursor"
                   "touch-action:none; user-select:none; cursor:"
@@ -3500,9 +3503,12 @@ let tests =
                   "target.DispatchEvent(As<Event> activationEvent)" ] do
                 Expect.stringContains source required ("missing point activation renderer contract: " + required)
 
-            Expect.isFalse
-                (source.Contains("let tryCommitMainPlotResidentPan", StringComparison.Ordinal))
-                "Main-plot interaction must not relocate the GLOBAL resident window."
+            let cursorCommit = source.IndexOf("commitMainPlotPan latestDelta", StringComparison.Ordinal)
+            Expect.isGreaterThan cursorCommit -1 "CURSOR release must route through resident relocation."
+            let resizeCommit = source.IndexOf("let total = referenceLength ()", cursorCommit, StringComparison.Ordinal)
+            Expect.isGreaterThan resizeCommit cursorCommit "Resize release must have a separate local-window branch."
+            let resizeSetWindow = source.IndexOf("setWindow followLatest next", resizeCommit, StringComparison.Ordinal)
+            Expect.isGreaterThan resizeSetWindow resizeCommit "Resize release must commit only the local visible window."
 
             let activationStart = source.IndexOf("let publishPointActivation", StringComparison.Ordinal)
             let editorStart = source.IndexOf("let selectedEditorSchema", activationStart, StringComparison.Ordinal)
