@@ -1,6 +1,6 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-26 DYN-T-707 / 708 / 709（0.2.41 candidate；0.2.40 withdrawn）
+## 2026-10-26 DYN-T-707 / 708 / 709 / 710（0.2.42 candidate；0.2.40/0.2.41 withdrawn）
 
 - DYN-T-707：pure model固定右鍵mode toggle、CURSOR不論pointer half皆為Move、Resize左右half各選對boundary；離散anchor delta保留同一physical pointer anchor，Resize delta隨實際pointer距離。另以resident4500/window1000-2000驗左boundary向右只得1100-2000、右boundary向右只得1000-2100。source wiring要求persistent mode、contextmenu、dynamic mode attribute，且CURSOR release必走`tryCommitMainPlotResidentPan`、Resize release只走`setWindow`。
 - DYN-T-708：重現only-30K/60K formal projection：GLOBAL axis1K與active axis30K同start `2,952,345`，resident count44,649、rendered local count1,491。沒有retained authority時gesture domain必為local1491，left shrink200只成200/1291且不得產生GLOBAL intent；matching typed authority存在時才可明確映至GLOBAL `2,952,545`。queued gesture若authority在settle前消失必fail closed。
@@ -8,6 +8,7 @@
 - Owner gate：source-project Renderer 98-case process與Interactive.Client 20-case process；版本後另跑fresh exact-package兩套、package metadata/hash與BrowserDemo full WebSharper。focused真mouse要求CURSOR exact-one `ResidentCoverageChanged`、resident固定寬 relocation、inner offset/count不變與anchor不漂；Resize左右各exact-one `VisibleRangeChanged`、coverage intent空且resident不動。Daedalus擁有18884真資料gate：formal GLOBAL須在RUN期間原位接手，navigator三個human gesture不改GLOBAL resident，main plot CURSOR與Resize依上述action authority分流。
 - Withdrawn 0.2.40 evidence：source `52b4266`、Renderer/Client SHA `B4CF8A79...AF9A`／`FE30CBA3...AA50`雖通過98/98、20/20、package與舊oracle browser gates，但CURSOR誤送local `VisibleRangeChanged`，不符合Daedalus後續確認的resident relocation authority；package bytes保留且不得覆寫。0.2.41結果待本節後續追加。
 - Owner 0.2.41 result：source/package commit `61b3aea377e16433ecc99a0f48541bda13dcd7e4`；Renderer/Client SHA `C4A2410F...45FDC`／`95303D89...FC4C2`，RepositoryCommit與Client exact Renderer`[0.2.41]`一致，SDK10.0.402 feed/canonical bin hash parity。Fresh exact-package Renderer98/98、Client20/20、package verifier與BrowserDemo full WebSharper 0 errors。focused真mouse 1/1：CURSOR exact-one resident `3000->2860`、delta-140、fixed count/inner offset/count與same-X anchor不變；Resize left+70/right-63各exact-one local action、coverage intent空、resident維持2860，crosshair hide/restore、console0；人工檢視主圖/navigator/雙Y無空白、重疊或錯位。前三次RED為verifier oracle（relative/absolute start、fixture resident count1500、右界向外正確clamp），產品source/package未重建或覆寫。
+- DYN-T-710 remote-settlement RED：以GLOBAL 1K resident `2,952,345/44,649`、active/base 30K 1491 bars及captured tag8 `2,995,494/count1500`固定反例。任何accepted GLOBAL target（即使差值+200剛好落在1491內）與legacy retained value都不得讓cross-axis `UsesResidentAuthority=true`；settled geometry仍是`200/1291`對1491、coverage intent必為None。修前Renderer96/98，修後source98/98；0.2.42 fresh package與Daedalus remote-settlement真consumer gate pending。
 
 ## 2026-10-25 DYN-T-705 / 706（0.2.39 final owner gate）
 

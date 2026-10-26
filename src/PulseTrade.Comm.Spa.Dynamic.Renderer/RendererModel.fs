@@ -2560,72 +2560,24 @@ module RendererModel =
         | _ -> None
 
     let tryCrossAxisResidentNavigatorAuthority
-        targetStartObservationOrdinal
-        observationCount
-        (projection: TaLoadedCoverageProjection) =
-        match projection.GlobalOverview with
-        | Some overview when overview.AxisRef <> projection.ActiveDetail.BaseAxisRef ->
-            let navigationDomainCount = projection.OverviewAnchors.Length
-            let localStart = targetStartObservationOrdinal - overview.ResidentStartObservationOrdinal
-            let localEnd = localStart + int64 observationCount
-            if
-                observationCount <= 0
-                || navigationDomainCount <= 0
-                || localStart < 0L
-                || localStart > int64 Int32.MaxValue
-                || localEnd > int64 navigationDomainCount
-            then
-                None
-            else
-                Some
-                    { CoverageIdentity = projection.CoverageIdentity
-                      ResidentStartObservationOrdinal = overview.ResidentStartObservationOrdinal
-                      ResidentObservationCount = overview.ResidentObservationCount
-                      NavigationDomainCount = navigationDomainCount
-                      ActiveDetailStartIndex = int localStart }
-        | _ -> None
+        _targetStartObservationOrdinal
+        _observationCount
+        (_projection: TaLoadedCoverageProjection) =
+        // A normalized GLOBAL ordinal cannot locate a slot on a different active/base axis.
+        // Cross-axis consumers must settle through the event-time VisibleRangeChanged seam.
+        None
 
     let residentNavigatorAuthorityMatches
-        (authority: TaResidentNavigatorAuthority)
-        (projection: TaLoadedCoverageProjection) =
-        match projection.GlobalOverview with
-        | Some overview ->
-            overview.AxisRef <> projection.ActiveDetail.BaseAxisRef
-            && authority.CoverageIdentity = projection.CoverageIdentity
-            && authority.ResidentStartObservationOrdinal = overview.ResidentStartObservationOrdinal
-            && authority.ResidentObservationCount = overview.ResidentObservationCount
-            && authority.NavigationDomainCount = projection.OverviewAnchors.Length
-        | None -> false
+        (_authority: TaResidentNavigatorAuthority)
+        (_projection: TaLoadedCoverageProjection) =
+        false
 
     let tryResidentNavigatorWindowWithAuthority
         activeReferenceLength
         activeWindow
-        authority
+        _authority
         (projection: TaLoadedCoverageProjection) =
-        match tryResidentNavigatorWindow activeReferenceLength activeWindow projection with
-        | Some resolved -> Some resolved
-        | None ->
-            authority
-            |> Option.filter (fun retained -> residentNavigatorAuthorityMatches retained projection)
-            |> Option.bind (fun retained ->
-                let activeCount = max 0 (min activeReferenceLength projection.ActiveDetail.ObservationCount)
-                let local =
-                    clampWindow
-                        1
-                        TaLoadedCoverageCodec.MaximumActiveDetailBars
-                        activeCount
-                        activeWindow
-                let mapped =
-                    { StartIndex = retained.ActiveDetailStartIndex + local.StartIndex
-                      Count = local.Count }
-                if
-                    mapped.Count <= 0
-                    || mapped.StartIndex < 0
-                    || mapped.StartIndex + mapped.Count > retained.NavigationDomainCount
-                then
-                    None
-                else
-                    Some(projection, retained.NavigationDomainCount, mapped))
+        tryResidentNavigatorWindow activeReferenceLength activeWindow projection
 
     let resolveNavigatorGestureDomain
         minimumCount
@@ -3272,30 +3224,22 @@ module RendererModel =
         (activeReferenceTimeline: string array)
         activeWindow
         localDraft
-        authority
+        _authority
         =
         match activeGestureOverride with
         | Some ratios -> ratios
         | None ->
             match projection with
             | Some current when current.GlobalOverview.IsSome ->
-                match localDraft with
-                | Some draft ->
-                    authority
-                    |> Option.filter (fun retained -> residentNavigatorAuthorityMatches retained current)
-                    |> Option.map (fun retained -> selectionRatios retained.NavigationDomainCount draft)
-                    |> Option.orElseWith (fun () ->
-                        tryGlobalResidentWindow current
-                        |> Option.map (fun resident -> selectionRatios resident.ObservationCount draft))
-                    |> Option.defaultValue (selectionRatios activeReferenceTimeline.Length activeWindow)
+                match tryResidentNavigatorWindow activeReferenceTimeline.Length activeWindow current with
+                | Some(_, total, committed) ->
+                    localDraft
+                    |> Option.defaultValue committed
+                    |> selectionRatios total
                 | None ->
-                    tryResidentNavigatorWindowWithAuthority
-                        activeReferenceTimeline.Length
-                        activeWindow
-                        authority
-                        current
-                    |> Option.map (fun (_, total, window) -> selectionRatios total window)
-                    |> Option.defaultValue (selectionRatios activeReferenceTimeline.Length activeWindow)
+                    localDraft
+                    |> Option.defaultValue activeWindow
+                    |> selectionRatios activeReferenceTimeline.Length
             | _ ->
                 localDraft
                 |> Option.defaultValue activeWindow

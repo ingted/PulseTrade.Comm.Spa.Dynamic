@@ -308,26 +308,42 @@ let tests =
                 (RendererModel.tryNavigatorGestureCoverageIntent domain projection leftShrink)
                 "an in-resident active-local resize must not dispatch a GLOBAL coverage action"
 
-            let retained =
+            let legacyRetained =
                 { CoverageIdentity = projection.CoverageIdentity
                   ResidentStartObservationOrdinal = 2_952_345L
                   ResidentObservationCount = 44_649
                   NavigationDomainCount = 1491
                   ActiveDetailStartIndex = 0 }
-            let residentDomain =
+            let guardedDomain =
                 RendererModel.resolveNavigatorGestureDomain
                     1
                     4000
                     1491
                     { StartIndex = 0; Count = 1491 }
-                    (Some retained)
+                    (Some legacyRetained)
                     projection
-            Expect.isTrue residentDomain.UsesResidentAuthority "a matching typed authority explicitly opts into GLOBAL resident mapping"
+            Expect.isFalse guardedDomain.UsesResidentAuthority "legacy retained state cannot opt a cross-axis projection into GLOBAL ordinal mapping"
+            Expect.equal guardedDomain.CommittedWindow domain.CommittedWindow "remote settlement keeps the active-local window"
+            Expect.equal guardedDomain.DomainCount domain.DomainCount "remote settlement keeps the active-local domain count"
+            Expect.isNone
+                (RendererModel.tryNavigatorGestureCoverageIntent guardedDomain projection leftShrink)
+                "remote-settled cross-axis resize stays an event-time VisibleRangeChanged without coverage intent"
             Expect.equal
-                (RendererModel.tryNavigatorGestureCoverageIntent residentDomain projection leftShrink
-                 |> Option.bind _.StartObservationOrdinal)
-                (Some 2_952_545L)
-                "the typed resident path alone may add a local index to the GLOBAL resident start"
+                (RendererModel.navigatorSelectionRatiosForRenderWithAuthority
+                    None
+                    (Some projection)
+                    (Array.init 1491 string)
+                    { StartIndex = 0; Count = 1491 }
+                    (Some leftShrink)
+                    (Some legacyRetained))
+                (200.0 / 1491.0, 1.0)
+                "remote-settled preview geometry remains in the 30K active-local domain"
+            Expect.isNone
+                (RendererModel.tryCrossAxisResidentNavigatorAuthority 2_952_545L 1291 projection)
+                "a locally plausible +200 offset is still not a valid 1K-to-30K ordinal mapping"
+            Expect.isNone
+                (RendererModel.tryCrossAxisResidentNavigatorAuthority 2_995_494L 1500 projection)
+                "the captured tag8 1K target cannot become retained 30K navigator authority"
 
         testCase "row Y coordinates mirror the five horizontal grid levels on both sides" <| fun _ ->
             Expect.sequenceEqual
@@ -1357,24 +1373,16 @@ let tests =
                     2_989_574L
                     862
                     crossAxisProjection
-            Expect.equal
+            Expect.isNone
                 residentAuthority
-                (Some
-                    { CoverageIdentity = crossAxisProjection.CoverageIdentity
-                      ResidentStartObservationOrdinal = 2_989_574L
-                      ResidentObservationCount = 7420
-                      NavigationDomainCount = 1484
-                      ActiveDetailStartIndex = 0 })
-                "the accepted cross-axis target retains its position in the pre-settlement 1484-bar navigator domain"
-            Expect.equal
+                "a GLOBAL-axis target cannot manufacture retained authority for a different active/base axis"
+            Expect.isNone
                 (RendererModel.tryResidentNavigatorWindowWithAuthority
                     862
                     { StartIndex = 0; Count = 862 }
                     residentAuthority
-                    crossAxisProjection
-                 |> Option.map (fun (_, total, window) -> total, window))
-                (Some(1484, { StartIndex = 0; Count = 862 }))
-                "the settled active frame must not collapse the navigator domain to a full 862-bar selection"
+                    crossAxisProjection)
+                "cross-axis settlement must remain active-local instead of reusing GLOBAL ordinal authority"
             Expect.equal
                 (RendererModel.navigatorSelectionRatiosForRenderWithAuthority
                     None
@@ -1383,23 +1391,24 @@ let tests =
                     { StartIndex = 0; Count = 862 }
                     None
                     residentAuthority)
-                (0.0, 862.0 / 1484.0)
-                "render geometry uses the same retained authority as pointer dispatch"
+                (0.0, 1.0)
+                "without exact cross-axis mapping, settled render geometry stays in the active-local domain"
 
             let movedAuthority =
                 RendererModel.tryCrossAxisResidentNavigatorAuthority
                     2_989_722L
                     862
                     crossAxisProjection
-            Expect.equal
+            Expect.isNone
+                movedAuthority
+                "moving a normalized GLOBAL target cannot create active-axis navigator authority"
+            Expect.isNone
                 (RendererModel.tryResidentNavigatorWindowWithAuthority
                     862
                     { StartIndex = 0; Count = 862 }
                     movedAuthority
-                    crossAxisProjection
-                 |> Option.map (fun (_, total, window) -> total, window))
-                (Some(1484, { StartIndex = 148; Count = 862 }))
-                "a body-right request remains in GLOBAL authority instead of rebasing to active ordinal 601102"
+                    crossAxisProjection)
+                "a later remote settlement must not re-enable GLOBAL-to-active ordinal addition"
             Expect.isNone
                 (RendererModel.tryCrossAxisResidentNavigatorAuthority
                     601_102L

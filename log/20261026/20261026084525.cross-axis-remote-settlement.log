@@ -1,0 +1,19 @@
+# DYN-WBS-598 cross-axis remote-settlement P0
+
+- 背景：Daedalus以0.2.41／source `61b3aea377e16433ecc99a0f48541bda13dcd7e4`做30K/60K真整合，local preview看似正確，但remote settlement後GLOBAL跳回2018；0.2.41已撤回final，0.2.40仍禁止。
+- 上下文：direct message `msg-fsi-ffdb4e58434643abb92263f5797f6dc9`提供exact projection：GLOBAL axis=1K、resident `2,952,345/44,649`；ActiveDetail/BaseRow=30K、1491 bars；錯誤action tag8為`2,995,494/count1500`。
+- 目標：消除cross-axis local index與GLOBAL ordinal的混用，保留main-plot CURSOR的GLOBAL `ResidentCoverageChanged`，讓navigator Resize/Move只使用可證的active/base-axis authority；產生stable 0.2.42並由remote-settlement與真consumer驗收。
+- 假設：`tryCrossAxisResidentNavigatorAuthority`把normalized 1K target減GLOBAL start後，又以30K `OverviewAnchors.Length=1491`界定，建立了矛盾authority；後續settlement重用該authority才把local window重新送成GLOBAL target。
+- Source of truth：typed axis refs、`ActiveDetail`、`GlobalOverview`、accepted intent及`VisibleRangeChanged`/`ResidentCoverageChanged` action boundary；Daedalus remote-settlement證據優先於local preview。
+- 步驟：讀最小model/renderer settlement seam與現有DYN-T-707/708；先把exact tag8 remote settlement寫成RED；決定無exact time mapping時的fail-closed canonical path；最小修正後跑source/pack/fresh package/full WebSharper/focused browser，再交Daedalus真30K/60K。
+- 範圍：Renderer model/wiring、direct tests、focused verifier與current SA/SD/WBS/TEST/Verification/DevLog；不改Research、PTCS legacy consumer、既有dirty WIP或0.2.40/0.2.41 bytes，不public push。
+- 驗收：cross-axis三gesture在每次server settlement後不產生1K-derived coverage target、不跳年代、exact-one action且無stale queued action；CURSOR resident relocation/anchor與Resize local boundary不回歸；fresh package gates全綠。
+- 風險：若現有wire只有event-time range能表達active-axis navigation，Renderer不得猜ordinal比例；由Research owner提供exact mapping前須fail closed或只送typed active range。
+- 停止條件：0.2.42 owner handoff後等待Daedalus consumer E2E；若contract缺少可表達active-axis intent的authority，先回報blocker而非新增猜測mapping。
+
+## Operations
+
+- 2026-10-26 08:45：收到P0、撤回0.2.41 final並exact reply `msg-fsi-28540f4681f6450f95ab270a89bf0b7a`；active期間啟動agent.asteer固定300秒背景handoff watcher PID10292。
+- 2026-10-26 08:48：DYN-T-710以exact 1K/30K projection、舊retained value及tag8 target建立remote-settlement RED；source build0 errors，Expecto96/98，兩個FAIL精確命中builder Some與legacy authority `UsesResidentAuthority=true`。
+- 2026-10-26 08:49：最小修正保留API surface但禁止cross-axis authority建立/匹配；with-authority resolver只走same-axis，render fallback改active timeline。相同source harness Expecto98/98；版本/direct test refs升0.2.42，current SA/SD/WBS/TEST/Verification/DevLog同步。
+- 2026-10-26 08:51：0.2.42 version metadata後重跑source build 39 warnings/0 errors、Expecto98/98。exact owned paths sensitive scan High0/Medium0；root checker PASS42/WARN4/FAIL0，WARN為KM未更新、預期dirty、既有RFC traceability與依scope保留的legacy Ptcs.Client Renderer0.1.131，不盲升legacy consumer。
