@@ -6,10 +6,10 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-058 0.3.7 accepted-query prepared-frame settlement（owner candidate / consumer pending）
+### DYN-VFY-058 0.3.7 accepted-query prepared-frame settlement（owner final / consumer pending）
 
 - Consumer RED：0.3.6 exact return-2026 response含24 frames，DataRevision25、coverageRevision24、queryGeneration19、activeDetail start0/count1450，但DOM Loaded1450/Viewing1-1028。Accepted callback在matching prepared frame前以舊2018 timeline回NoIntersection。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0306-tail-settle\return-2026.json`。
-- Owner candidate：0.3.7保留dispatch baseline DataRevision/queryGeneration，matching prepared frame才單次settle，newer local generation取消舊pending。DYN-T-733/733B 2/2、Renderer124/124、Interactive.Client20/20、package verifierPASS。Final source/provenance、package-only BrowserDemo與Daedilus原return gate pending，不宣稱consumer close。
+- Owner final：source `b9a3628249785bb0a734e86bee9c3e3721022dab`；Renderer／Interactive SHA=`A140F48AA5BC69AEF046954F3D9EC239BCAF684C3B2D3B8D575169FFDC356BD7 / 796941913373DC1CBDF6639EA7FB3B5C856C0D045CF2808C234E59F3E536EF17`，RepositoryCommit/ProductVersion/SDK cache exact，Interactive exact Renderer `[0.3.7]`。Fresh DYN-T-733/733B2/2、Renderer124/124、Interactive20/20、verifierPASS；package-only BrowserDemo exact0.3.7 chain、WS9002 x1／0 errors。Daedilus原return gate pending，不宣稱consumer close。
 
 ### DYN-VFY-057 0.3.6 rendered right-edge snap（owner final / consumer pending）
 

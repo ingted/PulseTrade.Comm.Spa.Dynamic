@@ -4,7 +4,7 @@ This project is a dynamic SDUI (Server-Driven UI) and Actor extension for `Pulse
 
 ## Current 0.3.7 accepted-query authoritative settlement
 
-Daedilus在0.3.6邊界結案後把獨立2018 return-tail縮成Renderer時序：`ChangeTaQuery` accepted callback於對應authoritative frames完成prepared commit前求viewport，舊2018 timeline回`NoIntersection`並保留Viewing1-1028；稍後DataRevision25/queryGeneration19的1450-bar frame又因scope未變而不會重套。`0.3.7`以dispatch當下DataRevision/queryGeneration建立generation-scoped pending intent，只在兩個authority皆前進的prepared frame上消耗；newer local query可取消舊intent，無timer/retry/wire變更。DYN-T-733/733B 2/2、Renderer124/124、Interactive.Client20/20與package verifier已GREEN；source commit、final immutable provenance、package-only BrowserDemo與Daedilus原真return gate尚待完成，故目前是owner candidate而非consumer close。
+Daedilus在0.3.6邊界結案後把獨立2018 return-tail縮成Renderer時序：`ChangeTaQuery` accepted callback於對應authoritative frames完成prepared commit前求viewport，舊2018 timeline回`NoIntersection`並保留Viewing1-1028；稍後DataRevision25/queryGeneration19的1450-bar frame又因scope未變而不會重套。`0.3.7`以dispatch當下DataRevision/queryGeneration建立generation-scoped pending intent，只在兩個authority皆前進的prepared frame上消耗；newer local query可取消舊intent，無timer/retry/wire變更。Source `b9a3628249785bb0a734e86bee9c3e3721022dab`已push；final Renderer／Interactive.Client SHA-256=`A140F48AA5BC69AEF046954F3D9EC239BCAF684C3B2D3B8D575169FFDC356BD7 / 796941913373DC1CBDF6639EA7FB3B5C856C0D045CF2808C234E59F3E536EF17`，RepositoryCommit/ProductVersion與SDK10.0.402 cache均exact。DYN-T-733/733B 2/2、Renderer124/124、Interactive.Client20/20、package verifier與fresh exact-package BrowserDemo Release均GREEN（僅既有WS9002／0 errors）。Daedilus原真return gate仍是consumer close authority，未GREEN前不宣稱完成。
 
 ## 0.3.6 navigator right-edge release
 

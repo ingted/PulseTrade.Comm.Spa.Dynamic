@@ -4,8 +4,8 @@
 
 - RED：0.3.6 package-backed test新增settlement contract後只剩FS0039 8處／exit1，不改consumer expected。真實evidence為DataRevision25/queryGeneration19/activeDetail1450，但accepted callback以舊frame得NoIntersection後DOM保留Viewing1-1028。
 - Pure gate：baseline24/18對current24/18為Await；僅DataRevision25前進仍Await；25/19才Settled Selected；local latest20對intent19為Stale。
-- Production wiring：accepted path保留baseline且只讀`chartCommittedFrame`，不直接呼叫`queryViewportSelection`；incremental/full prepared-frame paths均必須settle。Focused 2/2、Renderer full124/124、Interactive.Client20/20、package verifierPASS。
-- 真Gate pending：Daedilus以原consumer/oracle/host重跑`formal-overview-edge-drag-0306-tail-settle` return-2026；要求Loaded1450且Viewing對requested 2026-06-01..07-15、browser/action errors空，同時post-drag、0.3.6 edge與formal stress不回歸。
+- Production wiring：accepted path保留baseline且只讀`chartCommittedFrame`，不直接呼叫`queryViewportSelection`；incremental/full prepared-frame paths均必須settle。Source `b9a3628249785bb0a734e86bee9c3e3721022dab`；final Renderer／Interactive SHA=`A140F48AA5BC69AEF046954F3D9EC239BCAF684C3B2D3B8D575169FFDC356BD7 / 796941913373DC1CBDF6639EA7FB3B5C856C0D045CF2808C234E59F3E536EF17`，provenance/cache exact。Fresh final focused2/2、Renderer124/124、Interactive20/20、package verifierPASS；package-only BrowserDemo解果0.3.7 exact chain，僅既有WS9002／0 errors，full/min SHA=`F766AF32547137A8AF309EEECC162E081B5E5D11D1BAFDCB3D0227A05B521622 / B623AB8626739BCD290BB9B8458D2265CF7C70995B7851857E364D1130CC5171`。
+- 真Gate pending：Daedilus以原consumer/oracle/host重跑`formal-overview-edge-drag-0306-tail-settle`；2018 drag先等authoritative settled再讀，return query起日以2026-05-01取得真30K 1500 observations（原6/1..7/15僅1450）。要求Viewing套用requested 2026 range、browser/action errors空，同時post-drag、0.3.6 edge與formal stress不回歸。此fixture修正只確保資料充足，不改產品期待。
 
 ## 2026-10-27 DYN-T-732（rendered selection right-edge snap）
 

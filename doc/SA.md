@@ -6,6 +6,8 @@ Daedilus將獨立2018 return-tail縮成同一response內的authority時序：act
 
 不變量是「accepted不等於presentation frame已commit」。Viewport intent必須鎖dispatch當下DataRevision/queryGeneration，只在同identity且兩者皆前進的authoritative prepared frame上單次消耗；newer local generation、rejected action或identity replacement不得回寫舊viewport。0.3.6 physical-edge close、consumer/oracle/host、wire與cache authority不變。
 
+Owner source `b9a3628249785bb0a734e86bee9c3e3721022dab`與0.3.7 immutable packages已完成；owner tests/package-only BrowserDemo只證明producer，原2018 return sequence仍由Daedilus以不變consumer/oracle/host驗收。
+
 ## 2026-10-27 rendered move-target right edge（DYN-WBS-618）
 
 0.3.5真consumer已證左視覺邊緣local0與真正Earlier coverage都GREEN，但右視覺邊緣action雖有NavigatorWindow intent，仍settle local4418而非maxStart4421。Exact geometry是track width1436、move target初始local x1/width25.174667、pointer start local13.587333、release local1423.4127；move target右緣已到1436，但pointer-center delta換算只得4418。最早偏離是draft geometry只看pointer center，沒有保留實際rendered move target的grab offset／visual edge。

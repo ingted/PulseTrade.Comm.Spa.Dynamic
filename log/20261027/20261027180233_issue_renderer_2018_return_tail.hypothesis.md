@@ -27,3 +27,8 @@ Production非型別宣告預計15–35行，tests預計30–60行。若productio
 - 實作diff的production新增約83行，超過70行停檢線；原因不是擴大protocol，而是要同時覆蓋incremental preparation、full preparation、queued query supersession、identity reset與feedback single-consumption。
 - 重查後維持同一最小機制：一個4-field pending record、一個pure revision/generation gate、一個settlement function；無wire/contract/consumer變更，不新增timer、retry、poll或第二套viewport authority。
 - 可觀察貢獻：每個新增呼叫點只對應一條已存在的authoritative prepared-frame commit path；DYN-T-733同時鎖old frame Await、data-only Await、matching frame Selected、newer local generation Stale。
+
+## Owner resolution
+
+- Source `b9a3628249785bb0a734e86bee9c3e3721022dab`與final 0.3.7 immutable packages已證實鎖定dispatch baseline、prepared-frame settle與newer-generation cancellation；owner tests與package-only BrowserDemo全綠。
+- 根因假設在owner範圍已收旂；仍需Daedilus以原consumer/oracle/host重跑2018 return sequence，只有真return顯示requested 2026 viewport才consumer close。
