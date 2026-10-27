@@ -1,0 +1,24 @@
+# Event-range settlement coherent prepared frame
+
+## Pre-work plan
+
+- 背景：Daedilus exact 0.2.54/new context Gate A仍見server relocation `50090->50430`、coverage5→6/query1→2，但DOM local `1645->1985`；D18 sink preservation不足。
+- 目標：禁止event-range settlement把新runtime projection authority與舊prepared timeline拼成不可能存在的frame；發佈下一stable 0.2.55。
+- 假設：action completion介於runtime state更新與full preparation commit之間；callback以`runtimeState.Value + latestPreparedData`混配，projection generation2通過fence但timeline仍舊，因此過早Reanchor1985並清pending。
+- Source of truth：Daedilus `main-chart-drag-0254/main-commit-gate.json`、Renderer `settlePendingEventRangeProjection`與`chartCommittedFrame`。
+- 範圍：Renderer callback frame pairing、DYN-T-720、0.2.55 owner packages與RFC/WBS/Test/DevLog；consumer唯讀。
+- 不變事項：prepared accept path仍可用`next + nextPreparedData`settle；generation/terminal/base-row/identity規則、wire與server materialization不變。
+- 步驟：DYN-T-720 RED → callback改讀coherent committed state/prepared pair → owner package gates → commit/final package → Daedilus A/B/C/D重驗。
+- 驗收：callback不再引用`runtimeState.Value + latestPreparedData`；只以同一`chartCommittedFrame` pair嘗試settle；Renderer／Interactive／verifier／BrowserDemo全綠；真A main local維持1645。
+- 風險：action completion時committed frame仍舊而settlement保持Await；後續accepted prepared frame必須是唯一消費者，禁止因pending action已結束而提前Reject。
+- 停止條件：owner package與handoff完成；Daedilus A/B/C/D未GREEN前不宣告全修完。
+
+## Operations
+
+- 09:58：drain 0.2.54 Gate A RED `msg-fsi-735e8d...`；exact package/action/server materialization皆正確。source顯示model已用pending query generation fence，但callback把live `runtimeState.Value`與舊`latestPreparedData`混配，足以讓generation2 authority套到舊timeline並Reanchor1985；已回覆`msg-fsi-5453f2...`並請Daedilus續B/C/D。
+- 09:59：先新增DYN-T-720；以exact0.2.54 package/source執行111 tests得到預期RED：110 passed/1 failed，舊callback仍含`runtimeState.Value + latestPreparedData`混配。最小patch改由`chartCommittedFrame.Value`一次取得coherent state/prepared pair；升stable0.2.55並同步direct refs。
+- 10:01：C: free 2.33GB；`temp/agent.asteer/dynamic-0253`為本agent已交付0.2.53之可重建package/test cache，source/evidence已在Git且packages已由0.2.54/0.2.55取代。resolved target確認在repo task-temp scope內、size4.03GB、descendant reparse=0；精確清除此單一obsolete cache以建立0.2.55 fresh paths。
+- 10:05：Daedilus 0.2.54 Gate B wire證實完全無CoverageIntent；C rapid continuity已GREEN（regressionFrames=0/mounted），formal index11僅accepted commit visibility 10s timeout後才正確settle。B根因縮至materialization classifier把server materialization錯綁overview timeline substitution；開DYN-T-721，同包0.2.55修正，C仍待真重驗。
+- 10:07：DYN-T-721對pre-fix0.2.55 candidate得到預期RED：112 tests中111 passed/1 failed，真host cross-axis active fallback intent為None。修正後首次同版cache仍讀舊package，另暴露未註記unused argument會改變public helper CLR signature；補回`string array` annotation並以fresh cache驗DYN-T-717/721。
+- 10:10：Renderer112/112 GREEN。重建Interactive/BrowserDemo fresh caches時，task-owned BrowserDemo WebSharper compiler-service PID11804在parent已退出後仍鎖自己的package cache；Microsoft-signed handle64確認所有handle只在`dynamic-0255/candidate-browserdemo-packages`，精確停止該orphan後重建cache。
+- 10:13：0.2.55 combined candidate owner gates全綠：Renderer112/112、Interactive20/20、Interactive package verifier PASS、package-only BrowserDemo 0 warnings/0 errors。candidate Renderer/Interactive SHA-256=`DF753B177A7DC4EE175C2FED0A821B448380D5079292E35F27DFAFAF7CAD60F4`／`F5A2ACB676A888052F67101348F4F5AA0F3006A947A4E476DDC46280C3440551`。

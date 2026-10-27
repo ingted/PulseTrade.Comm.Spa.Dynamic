@@ -3516,8 +3516,12 @@ module RendererModel =
             None
             targetWindow.Count
 
-    let tryCrossAxisNavigatorEventRangeIntent activeTimeline projection targetWindow =
-        if usesCrossAxisNavigatorEventTimeline activeTimeline projection then
+    let requiresCrossAxisNavigatorEventRangeMaterialization projection =
+        projection.GlobalOverview
+        |> Option.exists (fun overview -> overview.AxisRef <> projection.ActiveDetail.BaseAxisRef)
+
+    let tryCrossAxisNavigatorEventRangeIntent (_activeTimeline: string array) projection targetWindow =
+        if requiresCrossAxisNavigatorEventRangeMaterialization projection then
             tryMainPlotEventRangeIntent projection targetWindow
         else
             None

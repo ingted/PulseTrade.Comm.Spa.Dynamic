@@ -3054,7 +3054,8 @@ module TaWorkspaceRenderer =
             | _ -> false
 
         settlePendingEventRangeProjection <- fun () ->
-            settlePendingEventRangeProjectionFor runtimeState.Value latestPreparedData
+            let committedState, committedPreparedData = chartCommittedFrame.Value
+            settlePendingEventRangeProjectionFor committedState committedPreparedData
 
         let acceptPreparedDataCore refreshRows (next: RuntimeState) nextPreparedData =
             let committedState, _ = chartCommittedFrame.Value

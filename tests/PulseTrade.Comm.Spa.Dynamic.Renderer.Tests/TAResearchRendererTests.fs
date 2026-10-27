@@ -381,6 +381,17 @@ let tests =
                 "eventRangeSettlementOwnsPreparation"
                 "the pre-preparation state sink must retain matching pending event-range context"
 
+        testCase "DYN-T-720 action completion settles only a coherent committed prepared frame" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isFalse
+                (source.Contains("settlePendingEventRangeProjectionFor runtimeState.Value latestPreparedData", StringComparison.Ordinal))
+                "a new runtime projection must never be paired with an older prepared timeline"
+            Expect.stringContains
+                source
+                "let committedState, committedPreparedData = chartCommittedFrame.Value"
+                "action completion must retry settlement from one atomic committed state/prepared pair"
+
         testCase "DYN-T-716 accepted main relocation reanchors the requested event time exactly once" <| fun _ ->
             let allTimes =
                 Array.init 4_840 (fun index ->
@@ -576,12 +587,12 @@ let tests =
             Expect.isNone
                 (RendererModel.tryCrossAxisNavigatorEventRangeIntent activeTimeline sameAxis target)
                 "same-axis navigator keeps its existing resident/local action path"
-            Expect.isNone
+            Expect.isSome
                 (RendererModel.tryCrossAxisNavigatorEventRangeIntent
                     activeTimeline
                     { projection with OverviewAnchors = projection.OverviewAnchors[..2] }
                     target)
-                "a lossy overview timeline cannot request exact event-time materialization"
+                "a lossy overview substitution falls back to the exact active timeline but still requests cross-axis materialization"
 
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
@@ -589,6 +600,41 @@ let tests =
                 source
                 "RendererModel.tryCrossAxisNavigatorEventRangeIntent"
                 "the local navigator commit must attach the typed cross-axis materialization intent"
+
+        testCase "DYN-T-721 cross-axis exact active fallback still requests event-time materialization" <| fun _ ->
+            let activeTimeline =
+                [| "2022-03-11T10:00:00.0000000+00:00"
+                   "2022-03-11T10:30:00.0000000+00:00"
+                   "2022-03-11T11:00:00.0000000+00:00" |]
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:cross-axis-active-fallback"
+                  CoverageRevision = 5L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.1k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 49_567L
+                      ObservationCount = 79
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_433_048L
+                          ResidentObservationCount = 134_885 } }
+            Expect.isFalse
+                (RendererModel.usesCrossAxisNavigatorEventTimeline activeTimeline projection)
+                "unavailable one-to-one overview anchors must keep the exact prepared active timeline"
+            Expect.isSome
+                (RendererModel.tryCrossAxisNavigatorEventRangeIntent
+                    activeTimeline
+                    projection
+                    { StartIndex = 0; Count = 2 })
+                "cross-axis server materialization is still required when the exact range came from the active prepared timeline"
 
         testCase "DYN-T-713 navigator edge handles anchor resize at the logical selection boundary" <| fun _ ->
             let total = 4500

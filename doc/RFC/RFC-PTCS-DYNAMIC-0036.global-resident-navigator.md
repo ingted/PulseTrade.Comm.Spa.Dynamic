@@ -130,6 +130,14 @@ D15的「coverage scope清pending」只適用pending action與next document/base
 
 D17的precedence必須從`runtimeState.View`收到accepted data起生效，不能只在`acceptPreparedDataCore`套用。當data與coverage scope同時改變、pending event-range與next document/base row相符時，full-preparation排程前保留pending與optimistic draft，讓prepared timeline執行D15的Reanchor／Await／Reject；否則accept-stage永遠看不到settlement context而退回local continuation。identity／canvas切換及base-row不符仍立即清除，queued viewport、boundary pan、resident navigator authority的既有scope reset不變。
 
+### D19. 2026-10-27 settlement state and prepared timeline are one frame
+
+event-range settlement的projection authority與prepared timeline必須來自同一committed frame。action completion callback不得把已前進到新query generation的`runtimeState.Value`與仍屬舊generation的`latestPreparedData`混配；只能以`chartCommittedFrame`的atomic state/prepared pair重試。新frame真正prepared後，accept path仍以同一次`next + nextPreparedData`執行D15 settlement。舊committed frame只會Await，不得提前Reanchor／Reject或清pending。
+
+### D20. 2026-10-27 cross-axis materialization is independent of timeline substitution
+
+D14的one-to-one overview validation只決定navigator event-time range是否改由overview anchors取得，不應決定server是否需要materialize。只要`GlobalOverview.AxisRef <> ActiveDetail.BaseAxisRef`，navigator已從任一exact prepared timeline取得UTC半開range後，就必須附D16的no-ordinal `ExplicitBounds` intent；overview substitution不可用時沿用exact active prepared timeline，仍不得省略intent。same-axis仍維持既有local／resident path，禁止比例插值或推測GLOBAL ordinal。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.
