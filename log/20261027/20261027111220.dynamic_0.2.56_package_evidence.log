@@ -33,3 +33,5 @@
 - 2026-10-27 11:26 +08:00：修復active log prefix後canonical checker PASS=34/WARN=5/FAIL=0，`active_log_append_only` PASS；WARN為RFC/KM本輪未改、外部dirty與既有traceability基線，無本輪衝突。
 - 2026-10-27 11:27 +08:00：changed evidence paths敏感掃描files=4、High=0、Medium=0、Info=308；四檔strict UTF-8、無BOM／NUL／U+FFFD，`git diff --check`通過。
 
+- 2026-10-27 11:28 +08:00：evidence commit `78c9213`完成；其pre-commit `diff --check`另指出log EOF多一空行，但PowerShell續執行commit。依append-only規則不縮檔，追加本紀錄使該空行不再位於EOF，再以獨立correction commit收斂。
+
