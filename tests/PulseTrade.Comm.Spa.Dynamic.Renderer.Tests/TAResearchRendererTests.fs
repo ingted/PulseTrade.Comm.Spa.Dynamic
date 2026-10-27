@@ -422,7 +422,7 @@ let tests =
 
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
-            Expect.stringContains source "pendingMainPlotPan" "Renderer must retain an event-time settlement context for accepted main pan"
+            Expect.stringContains source "pendingEventRangeSettlement" "Renderer must retain an event-time settlement context for accepted event-range relocation"
             Expect.stringContains source "RendererModel.mainPlotEventRangeProjectionSettlement" "accepted prepared data must consume the exact event-time settlement helper"
 
         testCase "DYN-T-715 cross-axis navigator drop uses the exact resident overview event-time timeline" <| fun _ ->
@@ -484,6 +484,76 @@ let tests =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
             Expect.stringContains source "setNavigatorWindowFromPrepared" "navigator local commit must use its frozen event-time projection"
             Expect.stringContains source "RendererModel.navigatorVisibleEventRangePrepared" "navigator action range must use the overview authority selector"
+
+        testCase "DYN-T-717 cross-axis navigator requests exact event-time materialization without an ordinal" <| fun _ ->
+            let activeTimeline =
+                [| "2022-03-15T02:30:00.0000000+00:00"
+                   "2022-03-15T03:00:00.0000000+00:00"
+                   "2022-03-15T03:30:00.0000000+00:00"
+                   "2022-03-15T04:00:00.0000000+00:00" |]
+            let overviewTimeline =
+                [| "2022-03-11T09:30:00.0000000+00:00"
+                   "2022-03-11T10:00:00.0000000+00:00"
+                   "2022-03-11T10:30:00.0000000+00:00"
+                   "2022-03-11T11:00:00.0000000+00:00" |]
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:cross-axis-materialization"
+                  CoverageRevision = 5L
+                  QueryGeneration = 7L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.30k"
+                  OverviewAnchors =
+                    overviewTimeline
+                    |> Array.mapi (fun index eventTime ->
+                        { ObservationOrdinal = 48_445L + int64 index
+                          EventTimeUtc = eventTime
+                          Value = SduiValue.Number(float index) })
+                  ActiveDetail =
+                    { StartObservationOrdinal = 49_567L
+                      ObservationCount = 79
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_433_048L
+                          ResidentObservationCount = 134_885 } }
+            let target = { StartIndex = 0; Count = 2 }
+            let intent =
+                RendererModel.tryCrossAxisNavigatorEventRangeIntent activeTimeline projection target
+                |> Option.get
+
+            Expect.equal intent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "event time owns both requested bounds"
+            Expect.isNone intent.StartObservationOrdinal "cross-axis event-time relocation must not invent a GLOBAL ordinal"
+            Expect.isNone intent.Direction "cross-axis relocation is not an adjacent-boundary request"
+            Expect.equal intent.ExpectedCoverageRevision (Some 5L) "materialization remains revision guarded"
+            Expect.equal intent.QueryGeneration 8L "materialization advances the frozen generation once"
+            Expect.equal intent.ObservationCount 2 "materialization preserves the drafted visible width"
+
+            let sameAxis =
+                { projection with
+                    GlobalOverview =
+                        projection.GlobalOverview
+                        |> Option.map (fun overview -> { overview with AxisRef = projection.ActiveDetail.BaseAxisRef }) }
+            Expect.isNone
+                (RendererModel.tryCrossAxisNavigatorEventRangeIntent activeTimeline sameAxis target)
+                "same-axis navigator keeps its existing resident/local action path"
+            Expect.isNone
+                (RendererModel.tryCrossAxisNavigatorEventRangeIntent
+                    activeTimeline
+                    { projection with OverviewAnchors = projection.OverviewAnchors[..2] }
+                    target)
+                "a lossy overview timeline cannot request exact event-time materialization"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains
+                source
+                "RendererModel.tryCrossAxisNavigatorEventRangeIntent"
+                "the local navigator commit must attach the typed cross-axis materialization intent"
 
         testCase "DYN-T-713 navigator edge handles anchor resize at the logical selection boundary" <| fun _ ->
             let total = 4500

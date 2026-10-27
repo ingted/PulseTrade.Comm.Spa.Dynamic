@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-717（0.2.52 owner candidate / consumer pending）
+
+- 反例：cross-axis resident overview local0與action `StartEventTimeUtc`已同為`2022-03-11T10:00:00Z`，但0.2.50 action `CoverageIntent=None`，consumer只能把ActiveDetail `49646 -> 49567`（-79），settled local start仍1122。最早偏離不是pointer mapping，而是缺少exact-time materialization contract。
+- contract gate：只有`GlobalOverview.AxisRef <> ActiveDetail.BaseAxisRef`、overview axis等於active/base、validated overview timeline與active timeline exact同長且非空時，建立`ExplicitBounds` intent；Start ordinal／Direction皆None，revision為當前、generation只+1、count保留draft width。same-axis與長度不符都必須回None，不做GLOBAL ordinal或比例推測。
+- RED/GREEN：0.2.51 exact package因helper不存在得到3個FS0039 RED；0.2.52 candidate DYN-T-717與Renderer108/108、Interactive20/20、Interactive package verifierPASS，package-only BrowserDemo同步FSharp.Core10.1.402／WebSharper.FSharp10.1.7.680／WebSharper.UI10.1.6.680並以Spa project type build 0 warnings/0 errors。candidate Renderer/Interactive SHA=`7D2BA67D...B768`／`7F025C43...0BC9`，尚非post-commit authority。Daedilus真18884須驗action後ActiveDetail absolute relocation、settled localStart=0、selection ratio與續left overscroll；2018 query DOCUMENT-CHANGED為consumer獨立診斷。
+
 ## 2026-10-27 DYN-T-716（0.2.51 owner package / consumer pending）
 
 - 反例：舊active timeline中requested event start位於local1985；consumer將ActiveDetail按main pan `+340` relocation後，同一exact event time在新timeline位於local1645。舊Renderer保留optimistic local1985，等於double-apply；新pure settlement以normalized UTC exact match回`1645/1215`，不使用GLOBAL ordinal或比例推測。

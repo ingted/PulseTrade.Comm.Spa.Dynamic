@@ -118,6 +118,10 @@ D10的「第一個Document」依真no-1K RED修正：若有actual GLOBAL loader�
 
 non-CURSOR main exact-pan送出的`VisibleRangeChanged`以UTC半開range為viewport authority，`CoverageIntent`只要求consumer materialize所需active detail。當accepted projection已把resident／ActiveDetail按同一pan delta relocation，Renderer不得把optimistic local delta再次套用；它須保存該action的base row、exact start event time、count與query generation，並在matching prepared timeline中以normalized UTC exact match重定位。較舊generation等待；action尚pending且range未出現時等待；terminal frame仍無完整range則拒絕並清draft。identity／coverage scope／action reject均清pending。禁止用GLOBAL ordinal、比例插值或保留舊local index猜測settlement；Resize、navigator、CURSOR與wire不變。
 
+### D16. 2026-10-27 cross-axis exact event-time materialization intent
+
+D14只使cross-axis navigator preview與action取得正確UTC range，沒有要求consumer materialize該range；`CoverageIntent=None`時consumer只能沿用既有visible-page shift，真18884因而在local0 drop後只移動79 bars。當且僅當D14的validated cross-axis one-to-one timeline成立時，Renderer須為同一frozen window附加`ExplicitBounds` intent：`StartObservationOrdinal=None`、`Direction=None`、當前coverage revision、下一query generation與exact visible count；UTC半開range仍是位置authority，禁止建立GLOBAL ordinal。accepted frame沿用D15 exact UTC settlement，但pending state泛化為event-range relocation。same-axis、長度或timestamp validation不精確的fallback仍不附加此intent，既有resident/local action、preview與wire shape不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

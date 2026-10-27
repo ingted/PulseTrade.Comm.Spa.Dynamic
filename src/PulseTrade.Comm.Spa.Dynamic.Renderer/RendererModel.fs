@@ -3259,15 +3259,20 @@ module RendererModel =
             if timeline |> Array.pairwise |> Array.exists (fun (left, right) -> left >= right) then None
             else Some timeline
 
-    let navigatorEventTimeline (activeTimeline: string array) projection =
+    let usesCrossAxisNavigatorEventTimeline (activeTimeline: string array) projection =
         match projection.GlobalOverview, tryOverviewTimeline projection with
         | Some overview, Some overviewTimeline
             when overview.AxisRef <> projection.ActiveDetail.BaseAxisRef
                  && projection.OverviewAxisRef = projection.ActiveDetail.BaseAxisRef
                  && overviewTimeline.Length = activeTimeline.Length
-                 && overviewTimeline.Length > 0 ->
+                 && overviewTimeline.Length > 0 -> true
+        | _ -> false
+
+    let navigatorEventTimeline (activeTimeline: string array) projection =
+        if usesCrossAxisNavigatorEventTimeline activeTimeline projection then
             projection.OverviewAnchors |> Array.map _.EventTimeUtc
-        | _ -> activeTimeline
+        else
+            activeTimeline
 
     let eventTimeSlot (timeline: string array) eventTime =
         match tryUtcTimestamp eventTime with
@@ -3510,6 +3515,12 @@ module RendererModel =
             (projection.QueryGeneration + 1L)
             None
             targetWindow.Count
+
+    let tryCrossAxisNavigatorEventRangeIntent activeTimeline projection targetWindow =
+        if usesCrossAxisNavigatorEventTimeline activeTimeline projection then
+            tryMainPlotEventRangeIntent projection targetWindow
+        else
+            None
 
     let mainPlotEventRangeProjectionSettlement
         minimumVisibleBars

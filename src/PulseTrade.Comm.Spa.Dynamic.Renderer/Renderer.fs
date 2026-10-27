@@ -42,7 +42,7 @@ type TaPendingBoundaryPan =
       ObservationCount: int
       QueryGeneration: int64 }
 
-type TaPendingMainPlotPan =
+type TaPendingEventRangeSettlement =
     { BaseRowId: string
       StartEventTimeUtc: string
       EndEventTimeExclusiveUtc: string
@@ -2804,7 +2804,7 @@ module TaWorkspaceRenderer =
         let mutable queryInFlight = false
         let mutable queuedQuery: (TaQueryChange * int) option = None
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
-        let mutable pendingMainPlotPan: TaPendingMainPlotPan option = None
+        let mutable pendingEventRangeSettlement: TaPendingEventRangeSettlement option = None
         let residentNavigatorAuthority = Var.Create<TaResidentNavigatorAuthority option> None
         let mutable queuedViewportIntent: TaQueuedViewportIntent option = None
         let mutable flushQueuedViewportIntent = ignore
@@ -2812,7 +2812,7 @@ module TaWorkspaceRenderer =
         let mutable dispatchCoverageWindow = fun (_: int64) (_: int) (_: string) -> ()
         let mutable dispatchResidentGesture = fun (_: string) (_: float) (_: string) -> ()
         let mutable settlePendingCoverageProjection = fun () -> false
-        let mutable settlePendingMainPlotProjection = fun () -> false
+        let mutable settlePendingEventRangeProjection = fun () -> false
         let preparedRowsReady = Var.Create false
         let viewportDataReady = Var.Create false
         let commandsDisabledView =
@@ -2896,7 +2896,7 @@ module TaWorkspaceRenderer =
             startActionWithFeedback action successText (fun () -> onAccepted (); None) onRejected ignore
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
-        let pendingMainPlotPanForAction action =
+        let pendingEventRangeSettlementForAction action =
             match action with
             | SduiAction.VisibleRangeChanged(_, change) ->
                 match change.CoverageIntent with
@@ -2913,16 +2913,16 @@ module TaWorkspaceRenderer =
                 | _ -> None
             | _ -> None
         let startVisibleRangeAction action =
-            pendingMainPlotPan <- pendingMainPlotPanForAction action
+            pendingEventRangeSettlement <- pendingEventRangeSettlementForAction action
             startActionWithFeedback
                 action
                 "Visible range synchronized."
                 (fun () -> None)
                 (fun () ->
-                    pendingMainPlotPan <- None
+                    pendingEventRangeSettlement <- None
                     settleVisibleRangeDraft ())
                 (fun () ->
-                    if settlePendingMainPlotProjection () || pendingMainPlotPan.IsNone then
+                    if settlePendingEventRangeProjection () || pendingEventRangeSettlement.IsNone then
                         settleVisibleRangeDraft ())
         let startCoverageWindowAction action pending successText =
             pendingBoundaryPan <- Some pending
@@ -3011,8 +3011,8 @@ module TaWorkspaceRenderer =
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
         let mutable observedDataState = runtimeState.Value
 
-        let settlePendingMainPlotProjectionFor (next: RuntimeState) nextPreparedData =
-            match pendingMainPlotPan, next.Document with
+        let settlePendingEventRangeProjectionFor (next: RuntimeState) nextPreparedData =
+            match pendingEventRangeSettlement, next.Document with
             | Some pending, Some document when document.BaseRowId = Some pending.BaseRowId ->
                 match RendererModel.tryLoadedCoverageResolved document.DefaultView next.Data with
                 | Some projection ->
@@ -3029,7 +3029,7 @@ module TaWorkspaceRenderer =
                             projection
                     with
                     | TaCoverageIntentProjectionSettlement.Reanchor window ->
-                        pendingMainPlotPan <- None
+                        pendingEventRangeSettlement <- None
                         let followLatest = window.StartIndex = RendererModel.viewportMaximumStart timeline.Length window
                         setUiState
                             { uiState.Value with
@@ -3039,18 +3039,18 @@ module TaWorkspaceRenderer =
                         cursorIndex.Value <- None
                         true
                     | TaCoverageIntentProjectionSettlement.Reject ->
-                        pendingMainPlotPan <- None
+                        pendingEventRangeSettlement <- None
                         draftWindow.Value <- None
                         setUiState
                             { uiState.Value with
-                                Feedback = "Accepted main-pan frame does not contain the requested event-time viewport." }
+                                Feedback = "Accepted event-range frame does not contain the requested event-time viewport." }
                         true
                     | TaCoverageIntentProjectionSettlement.Await -> false
                 | None -> false
             | _ -> false
 
-        settlePendingMainPlotProjection <- fun () ->
-            settlePendingMainPlotProjectionFor runtimeState.Value latestPreparedData
+        settlePendingEventRangeProjection <- fun () ->
+            settlePendingEventRangeProjectionFor runtimeState.Value latestPreparedData
 
         let acceptPreparedDataCore refreshRows (next: RuntimeState) nextPreparedData =
             let committedState, _ = chartCommittedFrame.Value
@@ -3061,10 +3061,10 @@ module TaWorkspaceRenderer =
                 |> Option.defaultValue false
             let mainPlotSettlementConsumed =
                 if viewportScopeChanged then
-                    pendingMainPlotPan <- None
+                    pendingEventRangeSettlement <- None
                     false
                 else
-                    settlePendingMainPlotProjectionFor next nextPreparedData
+                    settlePendingEventRangeProjectionFor next nextPreparedData
             let topologyChanged =
                 next.Identity <> committedState.Identity
                 || not (sameDocumentPresentation committedState next)
@@ -3152,7 +3152,7 @@ module TaWorkspaceRenderer =
                                         pending.IntentWindow
                                 | _ -> None
                             | _ when not mainPlotSettlementConsumed
-                                     && pendingMainPlotPan.IsNone
+                                     && pendingEventRangeSettlement.IsNone
                                      && not currentUi.FollowLatest
                                      && generalOldTimeline.Length > 0
                                      && nextTimeline.Length > generalOldTimeline.Length ->
@@ -3352,7 +3352,7 @@ module TaWorkspaceRenderer =
                 pendingGlobalResidentIntent <- None
                 globalResidentDraft.Value <- None
                 pendingBoundaryPan <- None
-                pendingMainPlotPan <- None
+                pendingEventRangeSettlement <- None
                 residentNavigatorAuthority.Value <- None
                 queuedViewportIntent <- None
                 draftWindow.Value <- None
@@ -3378,7 +3378,7 @@ module TaWorkspaceRenderer =
                     if viewportScopeChanged then
                         queuedViewportIntent <- None
                         pendingBoundaryPan <- None
-                        pendingMainPlotPan <- None
+                        pendingEventRangeSettlement <- None
                         residentNavigatorAuthority.Value <- None
                         if finishNavigatorDrag.IsNone then
                             draftWindow.Value <- None
@@ -3526,10 +3526,14 @@ module TaWorkspaceRenderer =
             projection
             followLatest
             window =
+            let activeTimeline =
+                RendererModel.referenceTimelineForDocumentPrepared expectedDocument prepared
+            let coverageIntent =
+                RendererModel.tryCrossAxisNavigatorEventRangeIntent activeTimeline projection window
             setWindowFromPreparedRange
                 expectedDocument
                 prepared
-                None
+                coverageIntent
                 followLatest
                 window
                 (fun document currentPrepared currentWindow ->
