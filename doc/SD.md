@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 bounded navigator publication telemetry（DYN-WBS-616）
+
+`navigatorCoverageTelemetryStatus defaultView data`以bounded text區分inline/ref-present/ref-missing/ref-invalid，再輸出none／some revision+generation+active range／第一個decode error code+field。Navigator mapper每次publication與persistent listener每次pointerdown共用`publishNavigatorGestureTelemetry`，在document root寫event、renderer instance、publication sequence、document source、state/prepared map counts與decode states、projection、document/data/transport revisions；`data-renderer-navigator-frame-trace`只保留最後12筆。
+
+DYN-T-730鎖production publication/pointerdown seam，DYN-T-730B鎖missing dataRef、resolvable projection與bounded trace。0.3.3 source實跑0/1 RED；0.3.4 candidate實跑2/2、Renderer120/120、Interactive20/20、verifierPASS，package-only BrowserDemo exact0.3.4且generated JS含trace attribute。此版只是觀測性gate；必須先取得Daedilus同一真B的publication/pointer trace，再修根因，不以忽略None或保留舊Some作workaround。
+
 ## 2026-10-27 retained mappers publish one frame document（DYN-WBS-615）
 
 新增純函式`navigatorDocumentForRenderedFrame cachedDocument renderedState`：有frame document時必選frame值，只有None才fallback cached shell。Navigator mapper收到`(renderedState, currentPreparedData)`後先算`currentDocument`，timeline、maximum-visible-bars、coverage decode與`navigatorGestureFrame` publication全用該document；禁止再出現`tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData`。因此多個retained mapper即使都收到同一shell frame，也會發布相同document/projection，不再由舊lexical document覆寫None。

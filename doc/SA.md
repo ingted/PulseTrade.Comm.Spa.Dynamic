@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 navigator publication runtime authority（DYN-WBS-616）
+
+0.3.3 exact真B排除了cached lexical document，但pointerdown仍發bare `ui:4`，所以實際讀到的是`Some(frame, projection=None)`，不是Var未publication。只從source無法再區分：同一`ShellPreparedFrame`的document與prepared RawData是否真同generation，或另一retained mapper/renderer instance是否在valid Some之後發布None。
+
+下一最小切點是actual runtime authority telemetry：每次publication與pointerdown以renderer instance + monotonic sequence對齊，分別記錄state.Data與prepared.RawData對同document dataRef的decode結果、projection Some/None、revision/transport。Telemetry僅寫document root的bounded attributes/last-12 trace，不改wire、action、gesture或consumer；依此真B capture才能定位最早分歧。
+
 ## 2026-10-27 retained navigator mapper document authority（DYN-WBS-615）
 
 0.3.2 exact真B與deployed JS排除listener未讀Var：callback確實在pointerdown執行`navigatorGestureFrame.Get()`，但Var中的projection仍是None。Generated mapper顯示每個保留subscription都用自己的outer `document_1.DefaultView`搭配共同的最新`currentPreparedData.RawData`解projection，再寫同一Var；舊document與新prepared不屬同一atomic frame時會得到None，最後寫入者決定gesture結果。

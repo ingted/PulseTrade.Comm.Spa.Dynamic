@@ -4352,7 +4352,7 @@ let tests =
                 (Text.RegularExpressions.Regex.IsMatch(source, "navigatorGestureFrame\\.Value <-\\s+Some\\(renderedState, currentDocument, currentPreparedData, currentCoverageProjection\\)"))
                 "The same mapper that produces the navigator DOM must publish its complete frame to persistent gesture authority."
             Expect.isTrue
-                (Text.RegularExpressions.Regex.IsMatch(source, "match navigatorGestureFrame\\.Value with\\s+\\| Some\\(dragState, dragDocument, dragPreparedData, dragCoverageProjection\\) ->\\s+startNavigatorDrag\\s+dragState\\s+dragDocument\\s+dragPreparedData\\s+dragCoverageProjection"))
+                (Text.RegularExpressions.Regex.IsMatch(source, "match navigatorGestureFrame\\.Value with\\s+\\| Some\\(dragState, dragDocument, dragPreparedData, dragCoverageProjection\\) ->[\\s\\S]*?startNavigatorDrag\\s+dragState\\s+dragDocument\\s+dragPreparedData\\s+dragCoverageProjection"))
                 "Pointerdown must dereference current gesture authority at invocation time instead of retaining render-time closure values."
 
         testCase "DYN-T-729 retained navigator mapper publishes the atomic frame document" <| fun _ ->
@@ -4370,6 +4370,58 @@ let tests =
             Expect.isFalse
                 (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData", StringComparison.Ordinal))
                 "No retained navigator mapper may decode latest prepared data through its lexical cached document."
+
+        testCase "DYN-T-730 navigator gesture telemetry identifies the runtime publication consumed by pointerdown" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isTrue
+                (source.Contains("data-renderer-navigator-frame-trace", StringComparison.Ordinal))
+                "The real browser gate needs one bounded cross-publication trace on the document root."
+            Expect.isTrue
+                (source.Contains("navigatorCoverageTelemetryStatus document.DefaultView state.Data", StringComparison.Ordinal))
+                "Every publication must report whether the runtime frame can resolve loaded coverage."
+            Expect.isTrue
+                (source.Contains("navigatorCoverageTelemetryStatus document.DefaultView prepared.RawData", StringComparison.Ordinal))
+                "Every publication must independently report whether prepared RawData can resolve the same loaded coverage."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.Matches(source, "publishNavigatorGestureTelemetry\\s+\"").Count >= 2)
+                "Publication and pointerdown must both write telemetry through the same bounded runtime seam."
+
+        testCase "DYN-T-730B navigator coverage telemetry distinguishes state and prepared authorities" <| fun _ ->
+            let projection =
+                { CoverageIdentity = "telemetry-coverage"
+                  CoverageRevision = 7L
+                  QueryGeneration = 8L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 3000L
+                  Segments = [||]
+                  OverviewAxisRef = "telemetry-axis"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 1201L
+                      ObservationCount = 79
+                      BaseAxisRef = "telemetry-axis" }
+                  GlobalOverview = None }
+            let dataRef = "telemetry-loaded-coverage"
+            let defaultView = Map.empty |> TaLoadedCoverageCodec.applyDataRef dataRef
+            let data = Map.empty |> Map.add dataRef (TaLoadedCoverageCodec.encode projection)
+
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorCoverageTelemetryStatus Map.empty Map.empty)
+                "inline/none"
+                "An absent inline projection must be explicit rather than conflated with a missing dataRef."
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorCoverageTelemetryStatus defaultView Map.empty)
+                $"ref-missing/error:missing-loaded-coverage-data-ref:{dataRef}"
+                "A missing prepared dataRef must expose the exact decode failure used by the real runtime gate."
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorCoverageTelemetryStatus defaultView data)
+                "ref-present/some:7:8:1201:79"
+                "A resolvable projection must expose revision, generation, active start, and active count."
+            Expect.equal
+                (TaWorkspaceRenderer.appendBoundedNavigatorTrace 3 "a|b|c" "d")
+                "b|c|d"
+                "The shared document-root trace must retain only the most recent bounded publication and pointer events."
 
         testCase "DYN-T-729B atomic frame document supersedes the cached shell document" <| fun _ ->
             let document title =

@@ -273,6 +273,36 @@ module TaWorkspaceRenderer =
     let navigatorDocumentForRenderedFrame cachedDocument (renderedState: RuntimeState) =
         renderedState.Document |> Option.defaultValue cachedDocument
 
+    let navigatorCoverageTelemetryStatus defaultView data =
+        let referenceStatus =
+            match TaLoadedCoverageCodec.tryDataRef defaultView with
+            | Ok None -> "inline"
+            | Ok(Some dataRef) ->
+                if Map.containsKey dataRef data then "ref-present" else "ref-missing"
+            | Error _ -> "ref-invalid"
+        let decodeStatus =
+            match TaLoadedCoverageCodec.tryDecodeResolved defaultView data with
+            | Ok None -> "none"
+            | Ok(Some projection) ->
+                $"some:{projection.CoverageRevision}:{projection.QueryGeneration}:{projection.ActiveDetail.StartObservationOrdinal}:{projection.ActiveDetail.ObservationCount}"
+            | Error errors ->
+                match List.tryHead errors with
+                | Some error -> $"error:{error.Code}:{error.Field}"
+                | None -> "error:unknown"
+        referenceStatus + "/" + decodeStatus
+
+    let appendBoundedNavigatorTrace maximumEntries existing entry =
+        let previous =
+            if String.IsNullOrWhiteSpace existing then
+                [||]
+            else
+                existing.Split([| '|' |], StringSplitOptions.RemoveEmptyEntries)
+        let combined = Array.append previous [| entry |]
+        let keep = max 1 maximumEntries
+        combined
+        |> Array.skip (max 0 (combined.Length - keep))
+        |> String.concat "|"
+
     let sameDocumentShell (left: RuntimeState) (right: RuntimeState) =
         left.Identity = right.Identity && sameDocumentPresentation left right
 
@@ -2996,6 +3026,44 @@ module TaWorkspaceRenderer =
         let shellPreparedFrame = Var.Create(runtimeState.Value, initialPreparedData)
         let navigatorGestureFrame =
             Var.Create<Option<RuntimeState * TaWorkspaceDocument * TaPreparedRendererData * TaLoadedCoverageProjection option>> None
+        let mutable navigatorGestureFramePublicationSequence = 0
+        let publishNavigatorGestureTelemetry
+            phase
+            publicationSequence
+            (state: RuntimeState)
+            (document: TaWorkspaceDocument)
+            (prepared: TaPreparedRendererData)
+            (projection: TaLoadedCoverageProjection option)
+            =
+            let root = JS.Document.DocumentElement
+            if not (isNull root) then
+                let documentSource = if state.Document.IsSome then "frame" else "cached"
+                let stateCoverageStatus = navigatorCoverageTelemetryStatus document.DefaultView state.Data
+                let preparedCoverageStatus = navigatorCoverageTelemetryStatus document.DefaultView prepared.RawData
+                let projectionStatus = if projection.IsSome then "some" else "none"
+                let attributes =
+                    [| "event", phase
+                       "instance", rendererTelemetryInstanceId
+                       "publication-sequence", string publicationSequence
+                       "document-source", documentSource
+                       "state-data-count", string state.Data.Count
+                       "prepared-data-count", string prepared.RawData.Count
+                       "state-coverage", stateCoverageStatus
+                       "prepared-coverage", preparedCoverageStatus
+                       "projection", projectionStatus
+                       "document-revision", string state.DocumentRevision
+                       "data-revision", string state.DataRevision
+                       "transport-sequence", string state.LastTransportSequence |]
+                for name, value in attributes do
+                    root.SetAttribute("data-renderer-navigator-frame-" + name, value)
+                let traceEntry =
+                    attributes
+                    |> Array.map (fun (name, value) -> name + "=" + value)
+                    |> String.concat ","
+                let traceAttribute = "data-renderer-navigator-frame-trace"
+                root.SetAttribute(
+                    traceAttribute,
+                    appendBoundedNavigatorTrace 12 (root.GetAttribute(traceAttribute)) traceEntry)
         let mutable preparedDataReady = false
         let preparationPending = Var.Create true
         let initialGlobalPhase = Var.Create true
@@ -5961,6 +6029,14 @@ module TaWorkspaceRenderer =
                                             let currentReferenceLength = currentReferenceTimeline.Length
                                             let currentCoverageProjection =
                                                 RendererModel.tryLoadedCoverageResolved currentDocument.DefaultView currentPreparedData.RawData
+                                            navigatorGestureFramePublicationSequence <- navigatorGestureFramePublicationSequence + 1
+                                            publishNavigatorGestureTelemetry
+                                                "publish"
+                                                navigatorGestureFramePublicationSequence
+                                                renderedState
+                                                currentDocument
+                                                currentPreparedData
+                                                currentCoverageProjection
                                             navigatorGestureFrame.Value <-
                                                 Some(renderedState, currentDocument, currentPreparedData, currentCoverageProjection)
                                             let overviewReferenceTimeline =
@@ -6040,6 +6116,13 @@ module TaWorkspaceRenderer =
                                                         (fun navigatorRoot rawEvent ->
                                                             match navigatorGestureFrame.Value with
                                                             | Some(dragState, dragDocument, dragPreparedData, dragCoverageProjection) ->
+                                                                publishNavigatorGestureTelemetry
+                                                                    "pointerdown"
+                                                                    navigatorGestureFramePublicationSequence
+                                                                    dragState
+                                                                    dragDocument
+                                                                    dragPreparedData
+                                                                    dragCoverageProjection
                                                                 startNavigatorDrag
                                                                     dragState
                                                                     dragDocument

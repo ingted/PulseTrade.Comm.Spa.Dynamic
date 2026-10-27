@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-730／730B（0.3.4 runtime telemetry candidate / real capture pending）
+
+- 契約：真browser必須能將每次navigator publication與pointerdown對齊到renderer instance/publication sequence，並分別顯示document source、state.Data decode、prepared.RawData decode與projection Some/None；trace bounded為12筆，不輸出raw bars。
+- RED：0.3.3真B仍long bare/local1122；DYN-T-730於0.3.3 source實跑1 case 0/1 RED，證無actual runtime telemetry seam。
+- Candidate GREEN：DYN-T-730/730B 2/2，Renderer120/120、Interactive20/20、package verifierPASS。Candidate packages SHA=`E7E7D4A54448EE379433DD42C914DC77A0E6CFDE44D76B1EB9B706717461DA25 / F48F678C64F8A05E4A01F9C4AF20E0F78B8ACAFE5D8CFAA49553AAC5ED8D159F`。Fresh BrowserDemo exact0.3.4 Release僅既有WS9002／0 errors，generated full/min SHA=`A0FAB2D7EDAC3D60A36B866FBB147EC664DC421996E392D9A4166568744874FB / 38C61901473E68C92FDD3042D7CA241AA27C76324767376B922EA41899ECB02E`。Final provenance與Daedilus原封不動真B telemetry capture仍pending；此版不是功能close。
+
 ## 2026-10-27 DYN-T-729／729B（0.3.3 owner package complete / consumer pending）
 
 - 契約：所有retained navigator mapper須從當次`ShellPreparedFrame`的rendered state取得current document，並與同一frame prepared RawData解projection；不得用mapper lexical cached document。Persistent listener仍只在event invocation讀stable gesture Var。

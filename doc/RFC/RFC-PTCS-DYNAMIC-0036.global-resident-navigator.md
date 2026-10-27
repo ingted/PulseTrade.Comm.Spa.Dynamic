@@ -172,6 +172,10 @@ D24把prepared欄位選對但把frame authority認錯：實際inner navigator由
 
 0.3.2真B與deployed generated JS證listener已在event invocation讀stable Var，但Var內projection仍可為None。根因是Var只有單一reader authority，publication仍有多個保留的`ShellPreparedFrame.View` mapper；每個mapper以自己的lexical cached shell `document`搭配最新prepared RawData解projection，舊mapper可在新mapper後發布None並覆寫Var。Shell cache刻意用normalized presentation忽略coverage/query counters，故lexical document不是current coverage authority。決策改為每個mapper先從atomic `renderedState.Document`取得`currentDocument`，再以同一frame的prepared RawData解projection並發布tuple；outer document只在frame暫無document時作顯式fallback。如此所有retained mapper即使並存也收斂到同一frame document/projection，不靠subscription執行順序。Wire、consumer、oracle、host與event-time intent不變。
 
+### D29. 2026-10-27 runtime publication authority must be directly observable
+
+0.3.3真B證明source-level atomic frame reasoning仍不足以區分`projection=None`的publication來源。在改變行為前，Renderer必須以bounded document-root telemetry將publication與pointerdown對齊到renderer instance/publication sequence，並分別記錄state.Data、prepared.RawData與resolved projection。Trace只保留last-12 events，不含raw bars、不改wire/action/consumer。該instrumented package只是根因觀測gate，不能因owner tests綠就宣稱功能修復；必須由原封不動的真Gate B capture指出最早分歧，再實作永久修復。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

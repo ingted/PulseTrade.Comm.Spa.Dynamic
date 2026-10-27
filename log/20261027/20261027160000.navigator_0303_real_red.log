@@ -1,0 +1,29 @@
+# Navigator 0.3.3 real Gate B RED
+
+時間：2026-10-27 16:00:00 +08:00
+
+## Pre-work plan
+
+- 背景：Daedilus以exact Renderer／Interactive.Client0.3.3、source `a03c41f1c22aea50c8ad778e0c280bab538c149c`、consumer/oracle/host不變重跑同一真Gate B；middle action有NavigatorWindow CoverageIntent且local3000→1201，post-middle long target0仍為bare `ui:4`，final local1122。
+- 目標：以actual runtime publication／pointerdown telemetry找出published projection轉None的精確emission source、document／prepared、raw coverage與時序，先建可區分候選原因的gate，再最小修復。
+- 已證實事實：18884 health200；ProductVersion exact `0.3.3+a03c41f1c22aea50c8ad778e0c280bab538c149c`；canonical Research min SHA=`C103CC1D3BD74462E99C501D10567887F69989B2ED460EAAD96609C7386BB3B4`；middle intent/local正確；long `dragLocalStart=1201`、`delta=-1202`、target0、preview1-79，但action無CoverageIntent，final local1122/active49567/only79；browserErrors/actionFailures皆空。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0303`。
+- 預期不變量：每次navigator frame publication與pointerdown必須可追溯同一frame identity；document loaded coverage、prepared/raw coverage與decoded projection不可靜默分歧；任一舊emission不得覆蓋可有效新projection。
+- Source of truth：0.3.3 canonical generated JS、Daedilus byte evidence、Renderer runtime publication／pointer callback、`ShellPreparedFrame` production pipeline。
+- 候選原因：（1）同一tuple中`renderedState.Document`與`currentPreparedData.RawData`仍來自不同generation；（2）另一mapper／renderer instance在valid publication之後以缺coverage的frame覆寫Some/None。
+- 最小證據：在production runtime為publication與pointerdown產生bounded、無敏感、可對齊的frame id／document presence／coverage counts／projection state telemetry；同時鎖generated JS確實含telemetry seam。
+- Canonical mechanism：telemetry僅觀測不改wire或行為；根治必須消除最早不一致publication authority，不以忽略None、保留上次Some或consumer fallback掩蓋。
+- 範圍：Renderer owner source/tests/package/docs；不改Daedilus consumer/oracle/host、wire、GLOBAL ordinal或main plot。
+- 步驟：0303 evidence/generated JS檢視 → actual runtime telemetry design/gate → instrumentation package → Daedilus同序列capture → 依精確emission根因修復 → owner gates → 真B。
+- 驗收：telemetry能唯一指出pointerdown使用的publication與projection None原因；final fix後second long action帶NavigatorWindow CoverageIntent且settle local0，相鄰A/D/highlight/Tagging/原C不回歸。
+- 風險：telemetry若只記source推論、沒有runtime identity/order，會再度假綠；必須bounded且不把大raw data寫入console/action。
+- 停止條件：telemetry無法區分兩候選時不先修行為；真B未達intent/local0不close。
+
+## Operations
+
+- 15:59 +08:00：drain Daedilus direct `msg-fsi-3c056bffedbc4a48a3dd8ba04f1c198d`；0.3.3 exact真B仍RED如上。以exact replyTo送receipt `msg-fsi-125d0404279142cf909b1353492ddfa6`，明示不close與不改consumer/oracle/host。
+- 16:00–16:04 +08:00：新增DYN-T-730 runtime telemetry production contract。首次以`Expect.stringContains`讓RED failure回印大source而觸發20KB guard（exit1／408,863 bytes，未讀raw），改為bool斷言後舊0.3.3實跑1 case 0/1 RED且finding bounded。
+- 16:04–16:07 +08:00：Renderer新增`navigatorCoverageTelemetryStatus`與`appendBoundedNavigatorTrace`；每次publication/pointerdown寫document source、state/prepared map count、兩側decode狀態、projection、revision/transport、renderer instance/publication sequence，document root trace僅保留最後12筆。不輸出raw bars，不改wire/action/gesture行為。Renderer／Interactive與direct tests升0.3.4。
+- 16:07 +08:00：Renderer build exit0，但本次WebSharper stdout 28,006 bytes觸發guard，未讀raw；改以exact artifact／pack驗證candidate package。第一次DYN-T-730 candidate實跑顯示source assertion對錯封裝參數名，且fixture將Partial與total count錯配，因此兩case RED；只修test oracle/fixture，不改telemetry行為。
+- 16:08–16:10 +08:00：DYN-T-730/730B 2/2 GREEN，candidate Renderer120/120、Interactive20/20、package verifier PASS。Candidate Renderer SHA=`E7E7D4A54448EE379433DD42C914DC77A0E6CFDE44D76B1EB9B706717461DA25`，Interactive SHA=`F48F678C64F8A05E4A01F9C4AF20E0F78B8ACAFE5D8CFAA49553AAC5ED8D159F`，SDK library-packs/cache hash parity。Fresh package-only BrowserDemo exact0.3.4，Release僅既有WS9002／0 errors；full/min SHA=`A0FAB2D7EDAC3D60A36B866FBB147EC664DC421996E392D9A4166568744874FB / 38C61901473E68C92FDD3042D7CA241AA27C76324767376B922EA41899ECB02E`，generated JS含bounded trace attribute，無staging wsfsc orphan。
+- 16:13 +08:00 Correction：canonical checker首跑PASS42／WARN5／FAIL0，其中active log關鍵字檢查未將上述「候選原因」識別為「假設」。本輪假設仍是：（1）frame document與prepared RawData非generation-consistent；（2）另一retained writer在valid Some後發布None。只追加此更正，不改寫既有log prefix。其餘WARN為KM unchanged、pre-commit dirty、既有traceability與legacy Ptcs.Client pin，無本輪衝突。
+- 假設：（1）frame document與prepared RawData非generation-consistent；（2）另一retained writer在valid Some後發布None。
