@@ -1,10 +1,10 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-728（0.3.2 candidate owner gates complete / final and consumer pending）
+## 2026-10-27 DYN-T-728（0.3.2 owner package complete / consumer pending）
 
 - 契約：persistent navigator DOM listener不可依賴WebSharper以rerender closure替換。Renderer instance須持有唯一stable gesture-frame Var；實際DOM mapper發布`renderedState + shell document + prepared data + decoded projection`，callback每次pointerdown才讀取該值。
 - RED：exact 0.3.1真B中middle intent GREEN，但accepted rerender後long target0仍bare/local1122；deployed JS證第二次命中捕獲`currentCoverageProjection=None`的舊listener。DYN-T-728在0.3.1 source實跑0/1 RED。
-- Candidate GREEN：DYN-T-726／727／728各1/1；Renderer exact 0.3.2 package-backed116/116、Interactive20/20、package verifier PASS；package-only BrowserDemo解析Contracts0.1.41／Renderer0.3.2／Interactive0.3.2並0 warnings／0 errors、3 JS。Final package須帶source commit exact provenance；Daedilus同序列第二次action須含NavigatorWindow CoverageIntent且settle local0，A/D/highlight/Tagging/原C不得回歸。
+- Owner GREEN：source `70f2d1a0b901f09360e71ecda34ea4535d07f22b`；final Renderer／Interactive.Client0.3.2 SHA=`64768AE0763951E33C90EF5B114A4B2D5F39268E4BAB20365D2D18058C28559D`／`C4FFF2E49B1A2ED03B1A03BFF12B60B2AA9A395349E664BA72E8FBD5B67438DD`，RepositoryCommit／DLL ProductVersion exact、Interactive Renderer=`[0.3.2]`、Contracts=`[0.1.41]`、SDK10.0.402 parity。DYN-T-726／727／728各1/1，fresh package-backed Renderer116/116、Interactive20/20、verifier PASS；package-only BrowserDemo解析Contracts0.1.41／Renderer0.3.2／Interactive0.3.2，3 JS、min SHA=`487226F8A82B3BD0F4297D989C16D871472F7CE6E073E5CE8B0AAFA69277E1E8`，僅既有WS9002／0 errors。Daedilus同序列第二次action須含NavigatorWindow CoverageIntent且settle local0，A/D/highlight/Tagging/原C不得回歸。
 
 ## 2026-10-27 DYN-T-727（0.3.1 owner package complete / consumer pending）
 
