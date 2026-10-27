@@ -6,6 +6,8 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+整體Research仍為**INCOMPLETE**：Earlier1500非authority-boundary偶發停滯未根治，不得以DYN-VFY-068/069的部分green宣稱可用。2026-10-28 06:19收到consumer owner/user acceptance更正，已停止廣泛green重跑，只取first exact RED。既有Renderer2938的`data-viewport-dispatch-pending-boundary`只輸出可選target ordinal；adjacent request在3954–3968明設None，即使內部pending仍存在也可顯示空白，不能把此空值當pending已清oracle。trace需同時比request/result correlation、projection query generation、prepared/committed frame與dispatch gates；完整切點/授權界線見`log/20261028/20261028061958.earlier1500_stall_support.log`。未新增產品碼、instrumentation或測試PASS。
+
 ### DYN-VFY-069 主圖完整框選（0.3.17 source與真consumer過；本輪不公開發包）
 
 - Baseline owner Renderer Release39 warnings/0 errors；DYN-T-707在0.3.16 exact package實跑1/0/1 RED（expected select-range/actual resize-left）。source `6ff0b01d8ff8a36ef1b5928fb9b57e802da00cf0`已push；fresh exact Renderer146/146、Interactive20/20、Ptcs17/17，皆0 ignored/failed/errored。746新增12個雙向/邊界/最低根數/source wiring案例；Interactive package verifier PASS/entries4，BrowserDemo Release1W0E、Ptcs LiveDemo3W0E。

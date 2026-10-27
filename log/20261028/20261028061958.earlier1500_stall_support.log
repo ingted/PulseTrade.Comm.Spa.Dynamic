@@ -1,0 +1,22 @@
+# Earlier1500 non-boundary stall targeted support
+
+## Pre-work plan
+
+- 背景：daedilus於msg-fsi-7301928a680a458fa701191fdcd4546b回報user明定整體SPAA Research在偶發非authority-boundary停滯未根治前仍INCOMPLETE；先前「可用」表述過寬，已對user更正。A/舊D39 green只證明部分路徑。
+- 目標：先以現有diagnostics交付最小trace contract，協助consumer取得首個exact non-boundary RED，再定位最早偏離，不重跑已綠矩陣。
+- 事實/假設：0.3.17主圖及resident targeted green已驗；B尚無本agent核到的RED或成立根因。待區分「gesture未形成action」「action/ACK後authority未前進」「authority已到但pending或render不settle」，僅為取證分層，不先認定其中之一。
+- Source of truth/範圍：producer canonical C:/Users/Administrator/test_gemini/PulseTrade.Comm.Spa.Dynamic/source6ff0b01，最新evidence9b8f0af；daedilus擁有G盤Research consumer/test/18884。只讀既有hooks/contract並更新必要current狀態；收到exact RED前不改產品、不自行加instrumentation、不build/pack/公開發布。
+- 步驟：git/owner狀態→查Renderer/Interactive既有DOM與pending/ACK/generation切點→回exact path/欄位/最小before/after→必要current docs/DevLog/敏感/checker/commit；無新證據時等待peer，不無因測試。
+- 驗收/停止：peer拿到可區分gesture/action/authority/render的既有欄位；整體INCOMPLETE、部分green、fixture/PKCS/shared-test-WIP限制清楚。正式修復須原RED轉GREEN並驗相鄰active paths，未重現不能稱根治。
+- 風險/不變事項：保存shared dirty，不以名字猜因果、不改consumer oracle容差；保留real data/generation/ACK/續載語義。工作中單一公版watcher agent.asteer/PID37680/Fixed300，無第二consumer。
+
+## Operations
+
+- 2026-10-28 06:19:58 +08:00 foreground reader返回後讀/清exact handoff；receipt msg-fsi-efcfd34810f44b70a38bfaf00b72fb1c成功。重啟工作用公版hidden watcher/PID37680，未prime cursor或丟棄消息，foreground native reader已退出。接著只讀source已有診斷欄位；尚未取得RED，不啟任何build/stress。
+- 2026-10-28 06:23:27 +08:00 已讀Renderer.fs2915–3072、3340–3401、3435–3494、3719–3782、3945–3982及submit433–507，Model3946–4010，consumer ResidentWidthAndEdges capture159–205（只讀）。關鍵blind spot：Renderer2938只輸出pendingBoundaryPan.TargetStartObservationOrdinal；3954–3968的adjacent pending明確TargetStart=None，所以DOM空值不代表pendingBoundaryPan.IsNone，不能作無pending oracle。queue/flush另受PendingActionId/committedCoverageReady/remoteDisabled gate；Model3946若projection generation落後request即Await，否則reanchor或settled後Reject。以上是取證切點、非已證根因。
+- 2026-10-28 06:23:27 +08:00 msg-fsi-320009b775ac4f8e9b2c35d1aec19e6b與msg-fsi-c835002420c14100a70e4e4314a278c1已交peer最小trace：成功frame→失敗gesture→一次後續Earlier、request/result correlation與時序、coverage identity/revision/query、chart data/transport/render/preparation、dispatch gate、feedback/geometry及非2018左界證據。不新增instrumentation、不build/pack/test；5分鐘checkpoint確認交付直接縮小「pending空即已清」判讀缺口，現在停止讀碼、等first RED。
+
+- 2026-10-28 06:49 +08:00 Correction/續查：06:23後為回覆peer的exact hooks要求，仍讀Renderer preparation/projection/queue與Contracts reducer相關片段；06:29只讀既有Chrome頁，READY、loaded4500/visible1500、pending空/committed-ready=true，無console error，未拖曳、重開、清cache或改consumer。此狀態不是B驗收。peer回報targeted 5m04及強制HTTP延遲30s、2.758s內7次release仍GREEN，未取得B RED（msg-fsi-8c9fd4259b8c4efa86dac671eb5a09e8、msg-fsi-c5599643d5144b2e9f4da26cec299c90）；測試由peer執行，本agent未重跑。
+- 2026-10-28 06:49 +08:00 最小source候選已交msg-fsi-8b83f967480d49c2b40d609e93549d99：pending.QueryGeneration可由同次HTTP CoverageIntent.QueryGeneration還原（Renderer3954–3973），不需新增診斷版。ProjectionCommitGate.key包含LastTransportSequence，Heartbeat只改序號，而dataChanged=false/topology不變不建立新projection；若metadata-only在RAF commit前到達可能令舊candidate被拒。此為尚未證實發生於Research historical路徑的候選，不是B根因，不據此修碼。原圖亦再次查看，未改既有D39需求或測試oracle。
+- 2026-10-28 06:49 +08:00 shell一個source讀取超限（20492 bytes）被guard阻擋；未讀raw，改以獨立capture pair及較小source片段。未產生build/package/process mutation。peer msg-fsi-0b94abe2fb9d425ab0ec845d9ab7873f確認無RED並停止重跑green；已drain並以msg-fsi-fd208f4b1c904cdbb47f7e454762865a回覆，向user明示整體INCOMPLETE及不再猜修/重建。下一步僅接真實卡住session的最小RED bundle；收尾既有4份status correction與本log後維持前景收訊。
+- 2026-10-28 06:47:50 +08:00 時間Correction：前3筆「06:49」為記錄時誤植，實際在06:46:40 clock讀值之前已完成；不更動歷史內容。5份owned paths strict UTF-8/no BOM/no NUL/no U+FFFD，git diff --check通過；敏感掃描5 files/High0/Medium0。canonical G:/PulseTrade.fs/check.fsx（明傳C repo/文件及當日日誌，notes-dir空）PASS37/WARN5/FAIL0；WARN為未變SA/SD/KM、dirty與既有RFC traceability缺口，未弱化gate。此批僅status/trace correction，未執行產品測試、build、pack或部署，不能視為B完成。接著精確stage上述5paths，確認index後commit/push；其他WIP保留。
