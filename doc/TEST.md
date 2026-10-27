@@ -1,9 +1,9 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-719（0.2.54 owner candidate / consumer pending）
+## 2026-10-27 DYN-T-719（0.2.54 owner package / consumer pending）
 
 - 契約：matching pending event-range在`runtimeState.View`的dataChanged＋coverage-scope full-preparation邊界不得先被清除；pending/draft須存活至prepared frame的Reanchor／Await／Reject。identity、canvas或base-row mismatch仍clear，其他scope reset不變。
-- RED/GREEN：以0.2.53 exact source驗runtime scope-policy usage只有1處，預期sink＋accept共2處而RED；0.2.54 factor matching-document predicate並讓兩階段共用既有ownership policy。candidate Renderer110/110、Interactive20/20、Interactive package verifier PASS、package-only BrowserDemo 0 warnings/0 errors；candidate Renderer/Interactive SHA=`E94F1196...A4A8`／`71FA82A4...A33E`。
+- RED/GREEN：以0.2.53 exact source驗runtime scope-policy usage只有1處，預期sink＋accept共2處而RED；0.2.54 factor matching-document predicate並讓兩階段共用既有ownership policy。final source commit `a22390d530de93b0e5d687d7b940c5a7bf602a9e`已push；fresh Renderer110/110、Interactive20/20、Interactive package verifier PASS、package-only BrowserDemo 0 warnings/0 errors。Renderer/Interactive SHA=`7CFA5CBA...657B`／`8AC38D22...FEF5`，RepositoryCommit/ProductVersion exact、Client Renderer `[0.2.54]`、SDK10.0.402 parity，Contracts authority SHA=`D55F53CD...9642`。
 - 真E2E：Daedilus用同一new-context sequence驗A main local維持1645、B cross-axis left-edge local0並能續overscroll、C rapid-frame held/regression皆0且geometry持續mounted、latency global1500-middle/4500-return settle。任一RED都不宣告全修完。
 
 ## 2026-10-27 DYN-T-718（0.2.53 owner package / consumer RED）

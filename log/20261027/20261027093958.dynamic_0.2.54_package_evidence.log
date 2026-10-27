@@ -1,0 +1,21 @@
+# Dynamic 0.2.54 post-commit package evidence
+
+## Pre-work plan
+
+- 背景：DYN-WBS-605 source/docs/tests commit `a22390d530de93b0e5d687d7b940c5a7bf602a9e`已push；candidate owner gates全綠，但package metadata仍指先前commit，不能交付。
+- 目標：由已push source commit建立immutable Renderer／Interactive.Client 0.2.54 packages，驗exact metadata、dependency、fresh owner tests、package verifier、BrowserDemo與SDK library-packs parity，再交Daedilus真18884 A/B/C/latency重驗。
+- 假設：相同source在fresh restore cache與exact local feed建出的post-commit package，應只因RepositoryCommit／ProductVersion metadata與candidate不同；功能測試結果不得漂移。
+- Source of truth：Git HEAD/upstream `a22390d...`、兩個fsproj exact refs、fresh restore caches、SDK10.0.402 `FSharp/library-packs` readback hash。
+- 範圍：pack/test/copy evidence與WBS/Test/DevLog closeout；不改consumer source、不發public NuGet。
+- 不變事項：Contracts 0.1.40 authority、WebSharper versions、wire與server materialization不變；外部dirty `lib-packs.txt`、Ptcs.Tests、`.pcsl/`不碰。
+- 步驟：fresh final pack → metadata/hash → fresh Renderer110/110 → Interactive20/20 → verifier → BrowserDemo0/0 → exact SDK copy/readback → docs/checker → evidence commit/push → COMM handoff。
+- 驗收：RepositoryCommit/ProductVersion exact source commit、Interactive Renderer `[0.2.54]`、Contracts authority SHA、local/SDK hashes相同、owner gates全綠；consumer真驗另列不可混為owner PASS。
+- 風險：WebSharper compiler-service lock、cache authority漂移、SDK copy前後hash不一致；以fresh paths、signed handle診斷與readback gate阻擋。
+- 停止條件：post-commit evidence已push且Daedilus收到exact handoff；A/B/C/latency仍有RED則續修，不宣告全修完。
+
+## Operations
+
+- 09:40：fresh final Renderer pack完成；RepositoryCommit/ProductVersion=`a22390d530de93b0e5d687d7b940c5a7bf602a9e`／`0.2.54+a22390d...`，package-cache `websharper.log` pre/post皆0。
+- 09:42：fresh final Renderer Expecto 110/110、Interactive Expecto 20/20；Interactive package verifier PASS（entries=4）；package-only BrowserDemo build 0 warnings/0 errors。兩個pack的WebSharper standalone cache均無`websharper.log`。
+- 09:43：final metadata：Renderer dependencies為FSharp.Core `[10.1.402]`、Contracts `[0.1.40]`、WebSharper.FSharp `10.1.7.680`、WebSharper.UI `10.1.6.680`；Interactive另以exact Renderer `[0.2.54]`。fresh resolved Contracts SHA-256=`D55F53CDCA80BA240BC010B80DF361A47F895BC193ABBE6747AB45E7C0CC9642`。
+- 09:44：final Renderer/Interactive SHA-256=`7CFA5CBABF0D8172F6392EB2C458D56C2996850C4529FBCB818E45D22D57657B`／`8AC38D2235E6F25A987459908C3A3C51024A17981001D3D422F01F055253FEF5`；精確複製至SDK10.0.402 `FSharp/library-packs`後readback parity皆true。未push public NuGet。
