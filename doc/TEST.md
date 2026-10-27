@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-716（0.2.51 owner candidate / consumer pending）
+
+- 反例：舊active timeline中requested event start位於local1985；consumer將ActiveDetail按main pan `+340` relocation後，同一exact event time在新timeline位於local1645。舊Renderer保留optimistic local1985，等於double-apply；新pure settlement以normalized UTC exact match回`1645/1215`，不使用GLOBAL ordinal或比例推測。
+- lifecycle gate：projection generation較pending舊時Await；matching generation但target尚未出現且action pending時Await；terminal仍缺exact start或完整count時Reject。Renderer只為`ExplicitBounds + Start=None + Direction=None`保存context，identity／scope／reject清除；Resize、navigator、CURSOR不變。
+- RED/GREEN：0.2.50 package缺`mainPlotEventRangeProjectionSettlement`而4個FS0039 RED；0.2.51 candidate DYN-T-716 1/1、Renderer107/107、Interactive20/20、package verifierPASS，package-only BrowserDemo exact0.2.51 build 0 warnings/0 errors。Daedilus真18884須證server relocation後local visible start維持1645、pointer canonical event-time不漂移，且coverage/query generation仍各只前進一次。
+
 ## 2026-10-27 DYN-T-715（0.2.50 owner package / consumer pending）
 
 - 反例：cross-axis projection同時持有active prepared timeline與resident overview timeline；兩者長度皆4但local0 UTC不同。0.2.49 package缺`navigatorEventTimeline`而3個FS0039 RED；修後cross-axis選validated overview原始UTC timestamps，same-axis及overview長度不等均保持active fallback，禁止比例插值或GLOBAL ordinal換算。
@@ -10,7 +16,7 @@
 
 - DYN-T-714 main-plot range preview：pure helper以1000px track固定右拖`300->720`、左拖`720->300`皆正規化為`start=300,width=420`；越界`-40->1040`夾為`0/1000`，stationary為`500/0`。source contract要求非CURSOR/Resize pointermove使用同一plot-local座標即時更新`ta-main-plot-range-preview`，發布visible/start/end/width，pointerup/cancel/mode切換清除；既有CURSOR與Resize commit分支不變。
 - RED/GREEN：0.2.48 package-backed test因`mainPlotRangePreviewBounds`不存在而4個FS0039 RED；final 0.2.49 source `f753ac9dec8753a633d94566f6e065537f12b003`後Renderer105/105、Interactive.Client20/20、Interactive package verifier PASS。Renderer/Interactive SHA=`DA1C63F3...66BBA`／`D98C2AD3...40252`；package-only BrowserDemo以同步FSharp.Core10.1.402／WebSharper.FSharp10.1.7.680／WebSharper.UI10.1.6.680 build為0 warnings/0 errors。
-- UI gate：owner端in-app Browser控制層在建立kernel assets前失敗，故不冒充真DOM PASS。Daedilus真18884須各做左、右drag：pointerup前`data-preview-visible=true`且width>0、start/end單調；pointerup後visible=false/width=0，並證正式visible range仍沿既有commit語意更新。
+- UI gate：owner端in-app Browser控制層在建立kernel assets前失敗；Daedilus真18884已完成補驗（message=`msg-fsi-9ff01c16331342829a4b62c8eaf0db33`）：left during `start=329/end=460.59998/width=131.59998`、right during `start=855.39996/end=987/width=131.60004`，兩者pointerup均visible=false/width=0，正式range resize commit亦通過。此gate GREEN；同一scenario後段main settlement RED由DYN-T-716獨立追蹤。
 
 ## 2026-10-27 DYN-T-711 / 712 / 713（0.2.48 owner package / consumer pending）
 

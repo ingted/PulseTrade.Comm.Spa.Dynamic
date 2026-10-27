@@ -42,6 +42,13 @@ type TaPendingBoundaryPan =
       ObservationCount: int
       QueryGeneration: int64 }
 
+type TaPendingMainPlotPan =
+    { BaseRowId: string
+      StartEventTimeUtc: string
+      EndEventTimeExclusiveUtc: string
+      ObservationCount: int
+      QueryGeneration: int64 }
+
 [<RequireQualifiedAccess>]
 type TaQueuedViewportIntent =
     | LocalRange of SduiAction
@@ -2797,6 +2804,7 @@ module TaWorkspaceRenderer =
         let mutable queryInFlight = false
         let mutable queuedQuery: (TaQueryChange * int) option = None
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
+        let mutable pendingMainPlotPan: TaPendingMainPlotPan option = None
         let residentNavigatorAuthority = Var.Create<TaResidentNavigatorAuthority option> None
         let mutable queuedViewportIntent: TaQueuedViewportIntent option = None
         let mutable flushQueuedViewportIntent = ignore
@@ -2804,6 +2812,7 @@ module TaWorkspaceRenderer =
         let mutable dispatchCoverageWindow = fun (_: int64) (_: int) (_: string) -> ()
         let mutable dispatchResidentGesture = fun (_: string) (_: float) (_: string) -> ()
         let mutable settlePendingCoverageProjection = fun () -> false
+        let mutable settlePendingMainPlotProjection = fun () -> false
         let preparedRowsReady = Var.Create false
         let viewportDataReady = Var.Create false
         let commandsDisabledView =
@@ -2887,12 +2896,34 @@ module TaWorkspaceRenderer =
             startActionWithFeedback action successText (fun () -> onAccepted (); None) onRejected ignore
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
+        let pendingMainPlotPanForAction action =
+            match action with
+            | SduiAction.VisibleRangeChanged(_, change) ->
+                match change.CoverageIntent with
+                | Some intent
+                    when intent.RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds
+                         && intent.StartObservationOrdinal.IsNone
+                         && intent.Direction.IsNone ->
+                    Some
+                        { BaseRowId = change.BaseRowId
+                          StartEventTimeUtc = change.StartEventTimeUtc
+                          EndEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
+                          ObservationCount = intent.ObservationCount
+                          QueryGeneration = intent.QueryGeneration }
+                | _ -> None
+            | _ -> None
         let startVisibleRangeAction action =
-            startActionWith
+            pendingMainPlotPan <- pendingMainPlotPanForAction action
+            startActionWithFeedback
                 action
                 "Visible range synchronized."
-                settleVisibleRangeDraft
-                settleVisibleRangeDraft
+                (fun () -> None)
+                (fun () ->
+                    pendingMainPlotPan <- None
+                    settleVisibleRangeDraft ())
+                (fun () ->
+                    if settlePendingMainPlotProjection () || pendingMainPlotPan.IsNone then
+                        settleVisibleRangeDraft ())
         let startCoverageWindowAction action pending successText =
             pendingBoundaryPan <- Some pending
             startActionWithFeedback
@@ -2980,6 +3011,47 @@ module TaWorkspaceRenderer =
         let mutable observedChartTopology = chartTopologySignaturePrepared runtimeState.Value initialPreparedData
         let mutable observedDataState = runtimeState.Value
 
+        let settlePendingMainPlotProjectionFor (next: RuntimeState) nextPreparedData =
+            match pendingMainPlotPan, next.Document with
+            | Some pending, Some document when document.BaseRowId = Some pending.BaseRowId ->
+                match RendererModel.tryLoadedCoverageResolved document.DefaultView next.Data with
+                | Some projection ->
+                    let timeline = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData
+                    match
+                        RendererModel.mainPlotEventRangeProjectionSettlement
+                            options.MinimumVisibleBars
+                            (maximumVisibleBarsFor document)
+                            timeline
+                            pending.StartEventTimeUtc
+                            pending.ObservationCount
+                            pending.QueryGeneration
+                            uiState.Value.PendingActionId.IsSome
+                            projection
+                    with
+                    | TaCoverageIntentProjectionSettlement.Reanchor window ->
+                        pendingMainPlotPan <- None
+                        let followLatest = window.StartIndex = RendererModel.viewportMaximumStart timeline.Length window
+                        setUiState
+                            { uiState.Value with
+                                Window = window
+                                FollowLatest = followLatest
+                                CursorIndex = None }
+                        cursorIndex.Value <- None
+                        true
+                    | TaCoverageIntentProjectionSettlement.Reject ->
+                        pendingMainPlotPan <- None
+                        draftWindow.Value <- None
+                        setUiState
+                            { uiState.Value with
+                                Feedback = "Accepted main-pan frame does not contain the requested event-time viewport." }
+                        true
+                    | TaCoverageIntentProjectionSettlement.Await -> false
+                | None -> false
+            | _ -> false
+
+        settlePendingMainPlotProjection <- fun () ->
+            settlePendingMainPlotProjectionFor runtimeState.Value latestPreparedData
+
         let acceptPreparedDataCore refreshRows (next: RuntimeState) nextPreparedData =
             let committedState, _ = chartCommittedFrame.Value
             let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
@@ -2987,6 +3059,12 @@ module TaWorkspaceRenderer =
                 next.Document
                 |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
                 |> Option.defaultValue false
+            let mainPlotSettlementConsumed =
+                if viewportScopeChanged then
+                    pendingMainPlotPan <- None
+                    false
+                else
+                    settlePendingMainPlotProjectionFor next nextPreparedData
             let topologyChanged =
                 next.Identity <> committedState.Identity
                 || not (sameDocumentPresentation committedState next)
@@ -3073,7 +3151,9 @@ module TaWorkspaceRenderer =
                                         nextTimeline
                                         pending.IntentWindow
                                 | _ -> None
-                            | _ when not currentUi.FollowLatest
+                            | _ when not mainPlotSettlementConsumed
+                                     && pendingMainPlotPan.IsNone
+                                     && not currentUi.FollowLatest
                                      && generalOldTimeline.Length > 0
                                      && nextTimeline.Length > generalOldTimeline.Length ->
                                 RendererModel.tryReanchorWindow
@@ -3272,6 +3352,7 @@ module TaWorkspaceRenderer =
                 pendingGlobalResidentIntent <- None
                 globalResidentDraft.Value <- None
                 pendingBoundaryPan <- None
+                pendingMainPlotPan <- None
                 residentNavigatorAuthority.Value <- None
                 queuedViewportIntent <- None
                 draftWindow.Value <- None
@@ -3297,6 +3378,7 @@ module TaWorkspaceRenderer =
                     if viewportScopeChanged then
                         queuedViewportIntent <- None
                         pendingBoundaryPan <- None
+                        pendingMainPlotPan <- None
                         residentNavigatorAuthority.Value <- None
                         if finishNavigatorDrag.IsNone then
                             draftWindow.Value <- None

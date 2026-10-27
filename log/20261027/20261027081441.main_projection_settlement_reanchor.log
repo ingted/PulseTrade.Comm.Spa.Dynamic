@@ -1,0 +1,20 @@
+# Main projection settlement reanchor
+
+## Pre-work plan
+
+- 背景：Daedilus證明server main relocation GREEN，但accepted projection後Renderer local visible offset重複位移。
+- 目標：accepted main exact-pan settlement維持pre-drag resident-relative offset與pointer anchor，不double-apply optimistic delta。
+- 假設：pending local window／projection settlement缺少可辨識的reanchor context，是最早共同原因。
+- 範圍：RendererModel／Renderer settlement state、focused/direct tests、下一stable package與current RFC/WBS/Test/DevLog；consumer唯讀。
+- 不變事項：不改wire、consumer、server validation、Resize／navigator／CURSOR／rejected action行為。
+- 步驟：bounded source/evidence review → focused RED → pure reanchor helper/context → accepted branch wiring → owner gates → Daedilus真18884 rerun。
+- 驗收：fixture從pre local1645、optimistic1985與projection +340 relocation回到local1645；pointer anchor保持；Renderer／Interactive tests、package verifier、package-only BrowserDemo通過；consumer真頁面settlement不再double-apply。
+- 風險：cross-axis resident/local units不同；僅依active/base event-time與已存在projection contract推導，禁止GLOBAL ordinal比例換算。
+- 停止條件：若現有accepted document不含足夠authority辨識relocation，先擴RFC／contract，不猜測。
+
+## Operations
+
+- 2026-10-27 08:14 +08:00：drain到Daedilus `msg-fsi-cc0518aedf2c44a7b10bb73e05d1df0c`；以`msg-fsi-25d6096c7694464caa6f9b099a89daeb`接受Renderer ownership並確認consumer ExplicitBounds validation與現有contract一致。此時尚未改source。
+- 2026-10-27 08:18 +08:00：DYN-T-716以舊timeline target local1985、accepted timeline平移340後target local1645、count1215建立RED；0.2.50 package因`mainPlotEventRangeProjectionSettlement`不存在而4個FS0039，符合預期。
+- 2026-10-27 08:22 +08:00：最小實作以exact normalized event-time在accepted active timeline重定位，generation較舊Await、action pending且target缺失Await、terminal缺失Reject；Renderer只為`ExplicitBounds + Start=None + Direction=None`保存pending main-pan context，identity/scope/reject均清除。source standalone build 39 warnings/0 errors；未改wire或consumer。
+- 2026-10-27 08:25 +08:00：升stable0.2.51並同步Interactive與兩個direct test projects exact references。權威task cache candidate DYN-T-716 1/1、Renderer full107/107、Interactive20/20、package verifierPASS；package-only BrowserDemo exact0.2.51 Release 0 warnings/0 errors。candidate Renderer/Interactive SHA=`7D367637...9A6D`／`91282F11...D144`僅pre-commit，不交consumer。

@@ -114,6 +114,10 @@ D10的「第一個Document」依真no-1K RED修正：若有actual GLOBAL loader�
 
 跨axis inner navigator仍只送`VisibleRangeChanged` event-time seam，不得將GLOBAL observation ordinal當active/base index。pointer preview與drop action必須使用同一frozen timeline authority：當`GlobalOverview.AxisRef <> ActiveDetail.BaseAxisRef`、`OverviewAxisRef = ActiveDetail.BaseAxisRef`，且validated overview anchors與active prepared timeline為exact one-to-one長度時，drop range取overview anchor的原始UTC timestamp；這使resident overview local0映到同一local0 event time。任一axis／長度／timestamp validation不精確即沿用既有active timeline，禁止比例插值或推測ordinal換算。same-axis resident coverage intent、main CURSOR與consumer mapping責任不變。
 
+### D15. 2026-10-27 accepted main-pan event-time reanchor
+
+non-CURSOR main exact-pan送出的`VisibleRangeChanged`以UTC半開range為viewport authority，`CoverageIntent`只要求consumer materialize所需active detail。當accepted projection已把resident／ActiveDetail按同一pan delta relocation，Renderer不得把optimistic local delta再次套用；它須保存該action的base row、exact start event time、count與query generation，並在matching prepared timeline中以normalized UTC exact match重定位。較舊generation等待；action尚pending且range未出現時等待；terminal frame仍無完整range則拒絕並清draft。identity／coverage scope／action reject均清pending。禁止用GLOBAL ordinal、比例插值或保留舊local index猜測settlement；Resize、navigator、CURSOR與wire不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

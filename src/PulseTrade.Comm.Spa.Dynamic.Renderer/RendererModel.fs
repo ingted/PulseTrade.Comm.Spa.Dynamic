@@ -3511,6 +3511,36 @@ module RendererModel =
             None
             targetWindow.Count
 
+    let mainPlotEventRangeProjectionSettlement
+        minimumVisibleBars
+        maximumVisibleBars
+        (timeline: string array)
+        startEventTimeUtc
+        observationCount
+        (pendingQueryGeneration: int64)
+        actionPending
+        (projection: TaLoadedCoverageProjection) =
+        if projection.QueryGeneration < pendingQueryGeneration then
+            TaCoverageIntentProjectionSettlement.Await
+        else
+            let exactStart =
+                tryUtcTimestamp startEventTimeUtc
+                |> Option.bind (fun target ->
+                    timeline
+                    |> Array.tryFindIndex (fun candidate ->
+                        tryUtcTimestamp candidate
+                        |> Option.exists ((=) target)))
+            match exactStart with
+            | Some startIndex
+                when observationCount >= minimumVisibleBars
+                     && observationCount <= maximumVisibleBars
+                     && startIndex + observationCount <= timeline.Length ->
+                TaCoverageIntentProjectionSettlement.Reanchor
+                    { StartIndex = startIndex
+                      Count = observationCount }
+            | _ when actionPending -> TaCoverageIntentProjectionSettlement.Await
+            | _ -> TaCoverageIntentProjectionSettlement.Reject
+
     let selectWindow window (values: 'T array) =
         if window.Count <= 0 || values.Length = 0 then [||]
         else

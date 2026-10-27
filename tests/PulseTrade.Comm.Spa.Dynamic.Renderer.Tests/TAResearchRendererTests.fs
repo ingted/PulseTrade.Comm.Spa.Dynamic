@@ -346,6 +346,85 @@ let tests =
                   "let cancel () =" ] do
                 Expect.stringContains source required ("missing main-plot range preview contract: " + required)
 
+        testCase "DYN-T-716 accepted main relocation reanchors the requested event time exactly once" <| fun _ ->
+            let allTimes =
+                Array.init 4_840 (fun index ->
+                    DateTimeOffset(2022, 3, 1, 0, 0, 0, TimeSpan.Zero)
+                        .AddMinutes(float (index * 30))
+                        .ToString("O"))
+            let oldTimeline = allTimes[..4_499]
+            let relocatedTimeline = allTimes[340..4_839]
+            let requestedStart = oldTimeline[1_985]
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:main-settlement"
+                  CoverageRevision = 6L
+                  QueryGeneration = 2L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 50_430L
+                      ObservationCount = relocatedTimeline.Length
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview = None }
+
+            Expect.equal
+                (RendererModel.mainPlotEventRangeProjectionSettlement
+                    1
+                    4_000
+                    relocatedTimeline
+                    requestedStart
+                    1_215
+                    2L
+                    true
+                    projection)
+                (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1_645; Count = 1_215 })
+                "accepted relocation maps the requested event time into the new active timeline instead of retaining optimistic local +340"
+            Expect.equal
+                (RendererModel.mainPlotEventRangeProjectionSettlement
+                    1
+                    4_000
+                    relocatedTimeline
+                    requestedStart
+                    1_215
+                    2L
+                    true
+                    { projection with QueryGeneration = 1L })
+                TaCoverageIntentProjectionSettlement.Await
+                "an older projection cannot settle the main pan"
+            let absentStart = allTimes[100]
+            Expect.equal
+                (RendererModel.mainPlotEventRangeProjectionSettlement
+                    1
+                    4_000
+                    relocatedTimeline
+                    absentStart
+                    1_215
+                    2L
+                    true
+                    projection)
+                TaCoverageIntentProjectionSettlement.Await
+                "a provisional projection keeps waiting while the action is pending"
+            Expect.equal
+                (RendererModel.mainPlotEventRangeProjectionSettlement
+                    1
+                    4_000
+                    relocatedTimeline
+                    absentStart
+                    1_215
+                    2L
+                    false
+                    projection)
+                TaCoverageIntentProjectionSettlement.Reject
+                "a terminal projection missing the requested event time rejects instead of preserving an optimistic local offset"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "pendingMainPlotPan" "Renderer must retain an event-time settlement context for accepted main pan"
+            Expect.stringContains source "RendererModel.mainPlotEventRangeProjectionSettlement" "accepted prepared data must consume the exact event-time settlement helper"
+
         testCase "DYN-T-715 cross-axis navigator drop uses the exact resident overview event-time timeline" <| fun _ ->
             let activeTimeline =
                 [| "2022-03-15T02:30:00.0000000+00:00"
