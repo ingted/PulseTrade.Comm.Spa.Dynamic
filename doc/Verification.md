@@ -6,10 +6,11 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-060 0.3.9 positive materialization settlement（owner candidate / consumer pending）
+### DYN-VFY-060 0.3.9 positive materialization settlement（owner final / consumer pending）
 
 - 0.3.8真RED：DataRevision3→4且requested data已1491，coverage QueryGeneration仍0→0；telemetry永久Await，formal後續可回1028。Package、source、deploy provenance皆exact，排除發錯包。
 - 0.3.9 candidate：generation-stable `Selected`可settle，generation-stable `NoIntersection`仍Await；DYN-T-733/733B/735 2/2、Renderer125/125、Interactive20/20、verifierPASS。Candidate SHA=`1BF39A...F705 / 588F75...B73D`；fresh package-only BrowserDemo exact0.3.9 chain、WS9002 x1／0 errors。Final provenance與Daedilus真Gate pending，不宣稱consumer close。
+- Owner final：source `3878ca5a3642629e8846d08a7eb853cc43435d41`已push；final Renderer／Interactive SHA=`4F8909...36F6 / FC39D9...5FC5`，RepositoryCommit/ProductVersion、Interactive Renderer `[0.3.9]`與SDK10.0.402 cache hash parity exact。Fresh final Renderer125/125、Interactive20/20、verifierPASS；final package-only BrowserDemo exact0.3.9、WS9002 x1／0 errors。Daedilus真Gate仍pending，不宣稱consumer close。
 
 ### DYN-VFY-059 0.3.8 latest shell-prepared settlement（owner final / consumer pending）
 

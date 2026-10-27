@@ -6,6 +6,8 @@
 
 Production wiring不變：Accepted callback仍只對`shellPreparedFrame`建立／檢查pending，incremental/full prepared commit共用原settlement seam；telemetry仍顯示實際baseline/current generation，即使0/0也不冒充前進。沒有timer、delay、retry、poll、wire field或第二套viewport authority。
 
+Final 0.3.9 Renderer／Interactive.Client SHA-256=`4F8909E19943478513652D596BE7EE3A8A85F962FCE490FE971F79A5C8B636F6 / FC39D9E7ADA1C11E4CB63B0EF8138DD348C39B3C514F83F0038AF373843A5FC5`；RepositoryCommit與ProductVersion皆exact source `3878ca5a3642629e8846d08a7eb853cc43435d41`，Interactive exact Renderer dependency=`[0.3.9]`。
+
 ## 2026-10-27 shell-prepared query settlement（DYN-WBS-619 / 0.3.8）
 
 `shellPreparedFrame`是chart shell實際使用的`RuntimeState * TaPreparedRendererData`原子publication；topology、row refresh與full preparation成功都會更新。Accepted callback建立pending後先對該holder求settlement；若frame還沒完成，仍由incremental/full prepared path後續消耗。`chartCommittedFrame`保留原topology/chart用途，不再作為Accepted callback的latest prepared authority。

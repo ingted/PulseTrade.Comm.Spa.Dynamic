@@ -6,7 +6,7 @@
 
 最早錯誤是D30把coverage-window generation當成query response generation。Wire contract也能區分：`TaQueryChange`沒有generation；`QueryGeneration`存在於`TaCoverageWindowIntent`／`TaLoadedCoverageProjection`，用於visible-range與resident relocation settlement。Correct invariant是local intent generation拒絕stale query、DataRevision必須前進；generation穩定時只有prepared temporal selection已`Selected`才構成positive materialization proof，`NoIntersection`仍Await。如此不靠timer/retry，也不會把未載入資料提前判成空結果。
 
-0.3.9 owner candidate以DYN-T-733/735鎖定stable generation的Selected/NoIntersection對照；consumer/oracle/host/wire與1491 expected不變，仍待Daedilus原18884 Gate。
+0.3.9 owner source `3878ca5a3642629e8846d08a7eb853cc43435d41`已push，final Renderer／Interactive.Client SHA-256=`4F8909E19943478513652D596BE7EE3A8A85F962FCE490FE971F79A5C8B636F6 / FC39D9E7ADA1C11E4CB63B0EF8138DD348C39B3C514F83F0038AF373843A5FC5`；DYN-T-733/735鎖定stable generation的Selected/NoIntersection對照。Consumer/oracle/host/wire與1491 expected不變，仍待Daedilus原18884 Gate。
 
 ## 2026-10-27 prepared frame publication race（0.3.7 falsification）
 

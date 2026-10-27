@@ -51,3 +51,8 @@ Production非型別宣告預計15–35行，tests預計30–60行。若productio
 - 0.3.8真機反證：fresh query return的DataRevision由3前進至4，requested timeline已完整materialize為1491；但loaded-coverage QueryGeneration維持0，settlement因此永久Await。Formal長序列雖可見QueryGeneration18，那是先前coverage-window actions累積的counter，不是本次`ChangeTaQuery`回應的generation。
 - Wire也支持此區分：`TaQueryChange`沒有generation欄位；`QueryGeneration`存在於`TaCoverageWindowIntent`與`TaLoadedCoverageProjection`，供visible-range／resident coverage settlement。D30將它當`ChangeTaQuery`必要ack是錯誤authority假設。
 - 修正假設：local `IntentGeneration`仍處理newer-query supersession，DataRevision前進證明有新runtime frame；當coverage generation不前進時，只有temporal selection已為`Selected`（或query本來`NotRequested`／`Invalid`）才可settle，`NoIntersection`仍Await，避免在requested data尚未materialize時過早消耗。這不改wire或放寬consumer expected。
+
+## 0.3.9 owner resolution
+
+- Source `3878ca5a3642629e8846d08a7eb853cc43435d41`與final Renderer／Interactive SHA=`4F8909...36F6 / FC39D9...5FC5`已完成owner gates；fresh isolated Renderer125/125、Interactive20/20、package verifier與package-only BrowserDemo全綠。
+- 根因在owner source/package範圍收斂為coverage-window generation authority錯置；consumer仍未close。Daedilus原18884 Gate必須證明`selected-applied`、pending=false、selection/applied1491、Viewing=Loaded=ActiveDetail1491，且後續Earlier prepend不再回舊1028。
