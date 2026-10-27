@@ -2,7 +2,7 @@
 
 ## Current gate：DYN-T-707/746 主圖完整框選（RFC0037 amendment）
 
-0.3.16 exact-package DYN-T-707先跑1 executed/0 passed/1 failed/0 ignored/0 errored（expected select-range、actual resize-left）。6ff0b01 fresh0.3.17的Renderer146/146、Interactive20/20、Ptcs.Client0.2.5 17/17，皆0 ignored/failed/errored；746新增12案涵蓋1500根25%→65%=start+375/count600、正反向同界、active offset/clip/zero/invalid/minimum與captured/source wiring，navigator單邊resize oracle不改。Owner fixture browser因host啟動遭tool policy拒絕而NOT RUN；真consumer正反向/相鄰GLOBAL/resident/CURSOR待daedilus，舊preview-only714或compile不代表正式range UI正確。exact source/hash及限制見DYN-VFY-069。
+0.3.16 exact-package DYN-T-707先跑1 executed/0 passed/1 failed/0 ignored/0 errored（expected select-range、actual resize-left）。6ff0b01 fresh0.3.17的Renderer146/146、Interactive20/20、Ptcs.Client0.2.5 17/17，皆0 ignored/failed/errored；746新增12案涵蓋1500根25%→65%=start+375/count600、正反向同界、active offset/clip/zero/invalid/minimum與captured/source wiring，navigator單邊resize oracle不改。真Research MainChartDrag 1/1 PASS（1m20s）含正反向/CURSOR/GLOBAL/resident，ResidentWidthAndEdges 1/1 PASS（4m35s）含Earlier/rerun/in-flight；後者目標80、實際79根保持。Consumer c5e05039已push，但MainChartDrag共享dirty的corrected oracle未隨commit提交，owner確認無法不帶他人WIP而獨立stage；backup/current SHA與evidence在DYN-VFY-069。Owner fixture host遭tool policy拒啟，仍NOT RUN，help exit1/0tests非PASS；不得把真consumer結果改寫為fixture PASS。依user新決策本輪不額外公開發包、不重跑已綠矩陣；PKCS與B未重現non-boundary stall的限制不變。
 
 ## Current gate：DYN-T-745 native loaded domain（RFC D39 / 0.3.16 accepted）
 

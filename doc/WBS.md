@@ -1,6 +1,6 @@
 # PulseTrade.Comm.Spa.Dynamic WBS
 
-DYN-WBS-621 current：Owner package complete / consumer pending。source6ff0b01已push；Renderer/Interactive0.3.17、Ptcs.Client0.2.5 exact146/146＋20/20＋17/17、package verifier/SDK hash過，manifest已交daedilus（DYN-VFY-069）。owner fixture host啟動被tool policy拒絕，該Playwright NOT RUN；真Research正反向range及GLOBAL/resident/CURSOR由consumer owner驗，未完成不標close。B偶發stall仍由daedilus定位，未猜修；最低根數/clamp保持。
+DYN-WBS-621 current：Source / real consumer verified；本輪local交付收尾、不公開發包。source6ff0b01已push；Renderer/Interactive0.3.17、Ptcs.Client0.2.5 exact146/146＋20/20＋17/17、package verifier/SDK hash過。daedilus真Research MainChartDrag正反向/CURSOR/GLOBAL/resident 1/1及ResidentWidthAndEdges 1/1 PASS，canonical consumer c5e05039已push，18884 DLL與source完全對齊（DYN-VFY-069）。MainChartDrag corrected oracle依賴HEAD不存在的共享dirty大test block，owner確認無法安全partial-stage，保留backup/current SHA及真跑evidence，不混入他人WIP。Owner fixture仍NOT RUN、PKCS仍Open；user已要求優先SPAA.Research實際可用與算力，略過額外公開發布，不新增/更名package、不無因重跑已綠矩陣。B偶發stall未重現non-boundary RED、未猜修；最低根數/clamp保持。
 
 DYN-WBS-620 prior：Complete；source0b7e6b1、Renderer/Interactive0.3.16及Ptcs.Client0.2.4 exact gates134/134＋20/20＋17/17、verifier/LiveDemo Release過，hash見DYN-VFY-067。Consumer83925ca3已push且18884回canonical G盤host；formal r3 1/1 PASS，補強獨立UTC/no-network oracle後local5/5、remote6/6與真focused r6 1/1 PASS，未為oracle-only變更再跑full。真Loaded3000/width700右移精確600、不誤Later1500；user Chrome已重開最新版、Loaded4500/console error0。完整evidence及界線見DYN-VFY-068；未public NuGet push，其他WIP不納入完成聲明。
 

@@ -14,7 +14,7 @@
 ## BLK-DYN-UIHOST-20261028：owner fixture host啟動遭tool policy拒絕
 
 - 摘要/症狀：WBS621已完成source及exact-package146/20/17測試；04:25左右啟動canonical Renderer.BrowserDemo的Start-Process（已帶WindowStyle Hidden）被exec tool拒絕，未建立host process。
-- 影響/狀態：Open；owner `verify-ta-main-plot-range-fixture-playwright.fsx`為NOT RUN，不得報browser PASS。非source/package blocker，真Research consumer UI仍待既有owner流程驗收。
+- 影響/狀態：Open（owner fixture only）；`verify-ta-main-plot-range-fixture-playwright.fsx`為NOT RUN，不得報該fixture browser PASS。真Research consumer已於0.3.17 MainChartDrag與ResidentWidthAndEdges各1/1 PASS；此限制不否定獨立真consumer evidence，亦未被其消除。
 - 決策/Workaround：不改shell/tool/agent繞過被拒的fixture啟動，不請daedilus代啟該host；他原負責的18884 consumer整合與真資料矩陣保持原scope。沒有把compile/fixture/unit冒充真UI。
-- 下一步：daedilus回exact consumer正反向range與GLOBAL/resident/CURSOR evidence；若之後仍需owner fixture，須先取得合法可用的host啟動機制/授權。明細DYN-VFY-069、log/20261028/20261028034056.main_chart_range_contract.log。
+- 下一步：真consumer evidence已回並核source/deployed一致（DYN-VFY-069）；若之後仍需owner fixture，須先取得合法可用的host啟動機制/授權。MainChartDrag corrected oracle共享dirty的安全提交另由consumer owner處理；不請其代啟被拒host。明細log/20261028/20261028034056.main_chart_range_contract.log。
 - 建立時間：2026-10-28 04:29 +08:00。
