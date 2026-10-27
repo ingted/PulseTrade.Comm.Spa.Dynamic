@@ -6,6 +6,16 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-068 原左界接續與D39真consumer closeout（2026-10-28）
+
+- Source/package沿用DYN-VFY-067，不再bump/build/pack：producer source `0b7e6b12103bb2d448c6343a52c73a0574c912d9`、Renderer/Interactive0.3.16與Ptcs.Client0.2.4。Consumer canonical root `G:\coldfar_py\coldfar-symbolics`，branch `20260928_042.spaa_ui_refinement`，final source/test commit `83925ca3ca91adeac0731fa0a1bca5793db2b184`已push且獨立查upstream0/0；owner為agent.daedilus。
+- Formal r3 owner回1 executed/1 passed（3m44），含左/右觸界、rapid、拒絕rollback、2018、returned resize700與resident-local+600。已程式投影 `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-d39-r3\rapid-frame-trace.json`：1133 frames、804 held、0 regression；`rapid-commit.json`：6 drops/4 actions、delayedActionObserved=true、expected/chart2720..3623、preparationPending=false；`rejected-drop-continuity.json`：forced503後回原Viewing1401-2100、pending preview1701-2400未覆寫已提交範圍。
+- 原local no-request resize oracle漏獨立UTC與網路計數，owner已補純函式5/5（正常、錯UTC、意外request/response、錯count、錯generation），remote oracle6/6不變。強化後focused r6為1 executed/1 passed（39.50s）；formal r3未於這次oracle強化後重跑，不宣稱新full再跑一次。二者共用local oracle，未用fixture取代真UI。
+- 已獨立程式斷言 `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\returned-resize700-local600-utc-d39-r6\returned2991-left-resize700.json`：pre-resize active-plot cursor第801根獨立取得expected UTC，與actual/visible first均為`2026-07-10T21:29:00+08:00`；request/response delta皆0、coverage revision3/query generation1不變、pending空、selected-applied。同目錄`returned2991-resident-local600.json`：Loaded3000由Viewing1-1500縮至801-1500，再移到1401-2100；width700、delta600、Loaded3000不變，不誤發Later1500。temp只留原始診斷，以上數值摘要為本registry的追溯紀錄。
+- 18884已由owner切回canonical Research `bin/Release/net10.0` executable（獨立查PID6104）；host Renderer DLL ProductVersion=`0.3.16+0b7e6b12103bb2d448c6343a52c73a0574c912d9`，SHA256=`77B068BB13F04C94AD27879744C80B31E6DB91C24CB689BC78977B77BA835795`與producer DLL一致。owner回canonical Release126 warnings/0 errors、health200；本agent獨立驗port/path/DLL/UI，沒有另查health endpoint。
+- 02:02 +08同user Chrome page4已ignore-cache reload並Run，`http://localhost:18884/`為Loaded4500/Viewing3001-4500、GLOBAL resident134869，console error0；PageDown截圖確認GLOBAL與主K圖非空白、可讀且無重疊，視窗保留。此為重開/目前部署證據；操作驗收依r3/r6，不以reload冒充完整回歸。
+- 本次原左界接續、雙向寬度與D39缺口已閉合；公開NuGet未push，既有PKCS advisory及其他WIP不在本次修復範圍。COMM final receipt=`msg-fsi-4144b25cf2784553b97b6410e9e960bc`；工作紀錄=`log/20261028/20261028001000.returned_resize_sequence.log`。
+
 ### DYN-VFY-067 無GLOBAL loaded domain修復（2026-10-28；source gates過／consumer待驗）
 
 - Consumer test-only `ca4ec91725c1751c76095e8028ebeb96391724a8`已push；owner報r12精確700 request/ACK/DOM/time-axis/gen皆過、pure oracle6/6。原full首次走到resident-local向右600，仍RED；r11 evidence `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0315-oracle-r11\resident-local-700.json`已程式讀，ui29實際Later1500、final startDelta1500。
