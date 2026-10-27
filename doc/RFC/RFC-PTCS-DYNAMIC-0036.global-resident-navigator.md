@@ -164,6 +164,10 @@ D24把prepared欄位選對但把frame authority認錯：實際inner navigator由
 
 0.3.0真B反證D25仍少列兩個render authority：`shellPreparedFrame.View`的navigator不是只由pair內的state/prepared render；外層cached shell `document`與由該document＋prepared RawData得到的`currentCoverageProjection`也直接決定GLOBAL／RESIDENT UI、selection與event-range materialization。Handler若再以`renderedState.Document`重解projection，便建立第三個authority；兩個document envelope語意相容但loaded-coverage表示不同時，render已持有projection而pointerdown仍會得到None並送bare action。決策改為render closure顯式傳入`renderedState + shell document + prepared data + decoded projection`；state只供identity／commit key，document／projection／timeline皆使用實際render輸入，handler不得再decode。Wire、consumer、oracle、event-time range與2018 tail mapping不變。
 
+### D27. 2026-10-27 persistent DOM listener reads renderer-published gesture authority
+
+0.3.1真B與deployed JS證D26 call已存在，但accepted rerender後第二次pointerdown仍走`currentCoverageProjection=None`的舊closure。WebSharper可保留同一navigator SVG與event listener，只更新reactive visual／attributes；因此把完整frame放在render callback lexical closure仍不足，listener本身未被替換時會永遠讀建立DOM當下的frame。決策是在renderer instance層保留唯一stable `navigatorGestureFrame` Var；實際建立navigator DOM的`ShellPreparedFrame.View` mapper算出shell document/projection後，原子發布`renderedState + document + prepared data + projection`，persistent callback每次事件發生時才讀該Var。這是render path明確發布的authority，不是重讀任意current/latest state；wire、consumer、oracle、GLOBAL ordinal與2018 tail mapping不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

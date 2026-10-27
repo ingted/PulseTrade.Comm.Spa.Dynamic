@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-728（0.3.2 candidate owner gates complete / final and consumer pending）
+
+- 契約：persistent navigator DOM listener不可依賴WebSharper以rerender closure替換。Renderer instance須持有唯一stable gesture-frame Var；實際DOM mapper發布`renderedState + shell document + prepared data + decoded projection`，callback每次pointerdown才讀取該值。
+- RED：exact 0.3.1真B中middle intent GREEN，但accepted rerender後long target0仍bare/local1122；deployed JS證第二次命中捕獲`currentCoverageProjection=None`的舊listener。DYN-T-728在0.3.1 source實跑0/1 RED。
+- Candidate GREEN：DYN-T-726／727／728各1/1；Renderer exact 0.3.2 package-backed116/116、Interactive20/20、package verifier PASS；package-only BrowserDemo解析Contracts0.1.41／Renderer0.3.2／Interactive0.3.2並0 warnings／0 errors、3 JS。Final package須帶source commit exact provenance；Daedilus同序列第二次action須含NavigatorWindow CoverageIntent且settle local0，A/D/highlight/Tagging/原C不得回歸。
+
 ## 2026-10-27 DYN-T-727（0.3.1 owner package complete / consumer pending）
 
 - 契約：inner navigator pointerdown接收實際render closure的`renderedState + outer shell document + currentPreparedData + currentCoverageProjection`。State只供identity／commit key；document、timeline與projection不得在handler由另一document envelope重解，也不得改讀current/latest。

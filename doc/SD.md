@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 renderer-published persistent gesture frame（DYN-WBS-614）
+
+`renderWithProjectionCommitAndDisplayTimeZone`建立單一`navigatorGestureFrame : Var<option<RuntimeState * TaWorkspaceDocument * TaPreparedRendererData * TaLoadedCoverageProjection option>>`。既有navigator `ShellPreparedFrame.View` mapper以outer shell document解projection後，在建立DOM前發布完整tuple；pointerdown callback只在event invocation時match `navigatorGestureFrame.Value`並把同一tuple傳給`startNavigatorDrag`。Var位於renderer instance scope，不隨document branch／Doc diff重建；沒有多個`View.Sink`競寫，也不要求WebSharper替換既存listener。
+
+DYN-T-728鎖stable Var、DOM mapper publication與callback invocation read；0.3.1舊碼0/1 RED。修後DYN-T-726／727／728各1/1；candidate exact 0.3.2 package-backed Renderer116/116、Interactive20/20、package verifier PASS、package-only BrowserDemo exact chain 0 warnings／0 errors。Final commit provenance、immutable package與Daedilus同一真B仍是後續gate。
+
 ## 2026-10-27 navigator captures the exact rendered document/projection（DYN-WBS-613）
 
 `viewportControls`的`ShellPreparedFrame.View` mapper已持有四個實際render inputs：`renderedState`、outer shell `document`、`currentPreparedData`、`currentCoverageProjection`。`startNavigatorDrag`簽名擴充為顯式接收四者；local timeline以captured document＋prepared計算，`loadedCoverageSnapshot`直接map captured projection並以rendered state建立commit key，不再執行`tryLoadedCoverageResolved renderedState.Document.DefaultView prepared.RawData`。

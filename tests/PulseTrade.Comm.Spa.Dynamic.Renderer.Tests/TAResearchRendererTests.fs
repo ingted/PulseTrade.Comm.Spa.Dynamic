@@ -4320,8 +4320,8 @@ let tests =
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
             Expect.isTrue (source.Contains("let shellPreparedFrame = Var.Create(runtimeState.Value, initialPreparedData)", StringComparison.Ordinal)) "The navigator shell must publish runtime and prepared data as one atomic frame."
-            Expect.isTrue (source.Contains("shellPreparedFrame.View\n                                        |> View.Map (fun (renderedState, currentPreparedData) ->", StringComparison.Ordinal)) "The rendered navigator must expose the exact shell frame captured by its event handler."
-            Expect.isTrue (Text.RegularExpressions.Regex.IsMatch(source, "startNavigatorDrag\\s+renderedState\\s+document\\s+currentPreparedData\\s+currentCoverageProjection\\s+navigatorRoot\\s+rawEvent")) "Pointerdown must freeze the exact frame that rendered the navigator instead of rereading another frame authority."
+            Expect.isTrue (source.Contains("let navigatorGestureFrame =", StringComparison.Ordinal)) "The renderer instance must retain one stable gesture authority across persistent DOM listener reuse."
+            Expect.isTrue (source.Contains("navigatorGestureFrame.Value", StringComparison.Ordinal)) "Pointerdown must freeze the current renderer-owned gesture frame at event invocation."
             Expect.isFalse (source.Contains("let dragState, dragPreparedData = chartCommittedFrame.Value", StringComparison.Ordinal)) "Pointerdown must not replace the rendered shell frame with a separately advancing chart frame."
 
         testCase "DYN-T-727 navigator pointerdown uses the document and projection that rendered the shell" <| fun _ ->
@@ -4333,11 +4333,27 @@ let tests =
             Expect.isGreaterThan endIndex startIndex "The production navigator handler body must be bounded."
             let handlerBody = source.Substring(startIndex, endIndex - startIndex)
             Expect.isTrue
-                (Text.RegularExpressions.Regex.IsMatch(source, "startNavigatorDrag\\s+renderedState\\s+document\\s+currentPreparedData\\s+currentCoverageProjection\\s+navigatorRoot\\s+rawEvent"))
-                "Pointerdown must receive the exact document and decoded projection used to render the navigator."
+                (Text.RegularExpressions.Regex.IsMatch(source, "navigatorGestureFrame\\.Value <-\\s+Some\\(renderedState, document, currentPreparedData, currentCoverageProjection\\)"))
+                "The rendered frame must atomically carry the exact document and decoded projection used by the navigator."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "startNavigatorDrag\\s+dragState\\s+dragDocument\\s+dragPreparedData\\s+dragCoverageProjection\\s+navigatorRoot\\s+rawEvent"))
+                "Pointerdown must pass the document and projection frozen from current gesture authority."
             Expect.isFalse
                 (handlerBody.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData", StringComparison.Ordinal))
                 "The handler must not re-decode a second document/projection authority after render."
+
+        testCase "DYN-T-728 persistent navigator listener reads the latest rendered gesture authority" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "let navigatorGestureFrame =\\s+Var\\.Create<Option<RuntimeState \\* TaWorkspaceDocument \\* TaPreparedRendererData \\* TaLoadedCoverageProjection option>> None"))
+                "A persistent DOM listener needs one renderer-instance Var whose value can advance without replacing the listener."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "navigatorGestureFrame\\.Value <-\\s+Some\\(renderedState, document, currentPreparedData, currentCoverageProjection\\)"))
+                "The same mapper that produces the navigator DOM must publish its complete frame to persistent gesture authority."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "match navigatorGestureFrame\\.Value with\\s+\\| Some\\(dragState, dragDocument, dragPreparedData, dragCoverageProjection\\) ->\\s+startNavigatorDrag\\s+dragState\\s+dragDocument\\s+dragPreparedData\\s+dragCoverageProjection"))
+                "Pointerdown must dereference current gesture authority at invocation time instead of retaining render-time closure values."
     ]
 
 [<EntryPoint>]

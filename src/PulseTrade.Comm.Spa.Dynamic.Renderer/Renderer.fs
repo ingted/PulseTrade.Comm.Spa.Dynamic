@@ -2991,6 +2991,8 @@ module TaWorkspaceRenderer =
         let chartCommittedFrame = Var.Create(runtimeState.Value, initialPreparedData)
         let mutable latestPreparedData = initialPreparedData
         let shellPreparedFrame = Var.Create(runtimeState.Value, initialPreparedData)
+        let navigatorGestureFrame =
+            Var.Create<Option<RuntimeState * TaWorkspaceDocument * TaPreparedRendererData * TaLoadedCoverageProjection option>> None
         let mutable preparedDataReady = false
         let preparationPending = Var.Create true
         let initialGlobalPhase = Var.Create true
@@ -5955,6 +5957,8 @@ module TaWorkspaceRenderer =
                                             let currentReferenceLength = currentReferenceTimeline.Length
                                             let currentCoverageProjection =
                                                 RendererModel.tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData
+                                            navigatorGestureFrame.Value <-
+                                                Some(renderedState, document, currentPreparedData, currentCoverageProjection)
                                             let overviewReferenceTimeline =
                                                 currentCoverageProjection
                                                 |> Option.bind RendererModel.tryOverviewTimeline
@@ -6030,13 +6034,16 @@ module TaWorkspaceRenderer =
                                                                     (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)
                                                                 | None -> ())
                                                         (fun navigatorRoot rawEvent ->
-                                                            startNavigatorDrag
-                                                                renderedState
-                                                                document
-                                                                currentPreparedData
-                                                                currentCoverageProjection
-                                                                navigatorRoot
-                                                                rawEvent)
+                                                            match navigatorGestureFrame.Value with
+                                                            | Some(dragState, dragDocument, dragPreparedData, dragCoverageProjection) ->
+                                                                startNavigatorDrag
+                                                                    dragState
+                                                                    dragDocument
+                                                                    dragPreparedData
+                                                                    dragCoverageProjection
+                                                                    navigatorRoot
+                                                                    rawEvent
+                                                            | None -> ())
                                                         finishNavigatorDragFromElement
                                                     timeAxisWithPalette
                                                         currentPlotPalette

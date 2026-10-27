@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 persistent navigator listener authority（DYN-WBS-614）
+
+0.3.1 exact ProductVersion與canonical bundle已包含D26的document/projection參數，但真B仍是middle intent GREEN、post-middle long target0 bare/local1122。Deployed JS顯示第二次event命中的是一個捕獲`currentCoverageProjection=None`的handler；visual／attributes已reactive更新，故最早偏離不是decode或wire，而是WebSharper保留原navigator DOM listener、沒有以後續render closure替換它。
+
+不變量從「callback closure帶render inputs」收斂為「每次event invocation讀取最近一次實際DOM mapper發布的完整frame」。Authority必須在renderer instance生命週期內穩定，且只由`ShellPreparedFrame.View`的navigator mapper更新；禁止改讀`runtimeState.Value`、`latestPreparedData`或`chartCommittedFrame.Value`拼湊另一個時點。Consumer、oracle與host仍不變。
+
 ## 2026-10-27 rendered navigator input closure authority（DYN-WBS-613）
 
 0.3.0 exact部署與bundle SHA皆正確，middle仍有NavigatorWindow intent，但post-middle long target0又bare/local1122。正式generated JS證production branch已含atomic pair修正；由`tryNavigatorEventRangeIntent`的total function與wire absence反推，唯一早期分歧是pointerdown `loadedCoverageSnapshot=None`。Source對照發現render path以外層cached shell `document`解`currentPreparedData.RawData`並取得`currentCoverageProjection`，handler卻以pair內`renderedState.Document`對同一RawData再decode；D25 pair沒有包含真正render使用的document/projection，因此仍是雙authority。

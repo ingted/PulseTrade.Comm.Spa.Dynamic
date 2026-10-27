@@ -1,0 +1,33 @@
+# Navigator 0.3.1 persistent listener real Gate B RED
+
+時間：2026-10-27 15:06:48 +08:00
+
+## Pre-work plan
+
+- 背景：Daedilus 以 exact Renderer／Interactive.Client 0.3.1 與 source `168de8b15f3b0d477cbec40ba0c582ada975d870` 重跑真實 Gate B；middle gesture 仍送 NavigatorWindow intent 並到 local1201，但同一 navigator DOM 經 accepted rerender 後的 long gesture 仍送 bare action、settle local1122。
+- 已證實事實：deployed generated JS 已呼叫帶 `currentCoverageProjection` 的新版 handler；第二次 gesture 的 wire absence 因而不是舊 bundle，也不是 handler 內重新 decode，而是 listener invocation 時拿到 `currentCoverageProjection=None`。非 B gates 在 0.3.0 package 上保持 GREEN。
+- 預期不變量：同一 persistent DOM listener 每次 pointerdown 都必須讀取與目前 shell render 同步發布的完整 atomic frame；accepted rerender 後不得沿用建立 DOM 時的舊 closure。
+- Source of truth：Renderer `shellPreparedFrame`／navigator render view／event callback wiring、Daedilus `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0301` 真 browser evidence。
+- 最早偏離點：WebSharper 保留 navigator SVG／listener；畫面 attributes 隨 View 更新，但 listener closure 沒被替換，第二次 pointerdown 仍引用較早 render 的 projection。
+- 最小證據：新增 DYN-T-728 source contract，要求 callback 在 invocation body dereference 一個由同一 rendered-frame View 更新的 stable authority `Var`；舊 0.3.1 應 0/1 RED。
+- canonical mechanism：以 WebSharper `Var`／`View.Sink` 建立 renderer-owned atomic gesture authority，不另造 consumer state或改 wire schema。
+- 範圍：Renderer owner source/tests、受影響 direct package refs、current RFC/SA/SD/WBS/Test/DevLog 與 immutable package；不改 Daedilus consumer、oracle、host、2018 mapping或 main plot。
+- 步驟：DYN-T-728 修前 RED → minimal authority Var wiring → focused/full/Release/Interactive/verifier/BrowserDemo → source commit/push → final immutable package/evidence commit/push → Daedilus 同一真 B。
+- 驗收：舊碼 DYN-T-728 RED；修後 owner gates全綠；Daedilus second drag action帶 NavigatorWindow CoverageIntent 且 final local0；既有 GREEN不回歸。
+- 停止條件：real consumer仍 RED即不得關單，依新 wire／DOM evidence更新因果模型。
+
+## Operations
+
+- 15:06 +08:00：核對 repo branch `20260915_033.ptcs_group_support`；HEAD／upstream 均為 evidence commit `a5ecb9997c73139bd8b6a795be3b41202b529aba`。僅保留既有外部 dirty：`lib-packs.txt`、`tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/Program.fs`、`.pcsl/**`、`temp/`。
+- 15:06 +08:00：背景 COMM watcher `agent.asteer` PID34084 正常，fixed 300秒、ContinuousHandoff、pending=false。
+- 15:08 +08:00：新增 DYN-T-728 actual-wiring source contract；0.3.1舊碼實跑1 case，`0 passed / 1 failed`，失敗點為不存在可跨listener重用的stable gesture authority，修前 RED成立。
+- 15:09 +08:00：第一版把derived frame／authority建在`viewportControls`區域，focused 726／727／728可被source contract判綠，但正式Renderer build以`FS0039`指出navigator DOM實際位於該local function scope外；未把test綠誤標為compile PASS。輸出第一次超過20KB（29,604 bytes），依guard SOP只以另一capture讀size與精確error selectors，沒有讀取超限raw全文。
+- 15:11 +08:00：依compile evidence縮小設計：renderer instance層只保留一個stable optional `navigatorGestureFrame` Var；真正建立navigator DOM的既有`shellPreparedFrame.View |> View.Map`在算出outer document/projection後發布完整tuple，persistent callback於event invocation match `.Value`。此路徑避免每個document branch建立多個View.Sink競寫同一authority；同步修正DYN-T-726/727/728契約。
+- 15:12 +08:00：第二次Renderer build進入WebSharper compiler時以`wsfsc.exe -532462766`失敗；Application Event1026精確指出Renderer `websharper.log` delete遭`UnauthorizedAccessException`。只核對並停止command line指向該exact log、parent30700已不存在的orphan PID23396；未碰Daedilus或其他專案compiler service。重跑Renderer build成功，39 warnings／0 errors。
+- 15:13–15:16 +08:00：Renderer／Interactive與兩個direct test refs同步升0.3.2。Candidate Renderer SHA=`AA8EF083530CD6F80A239A2BE3AC1FD2D4B9272E8522D9F03B404DD03207BFBA`、Interactive SHA=`B8A245D6E7CC884FF6505E076F384095DA6ED210C9C66B9F95060901FE338C41`；test assets exact解析0.3.2。DYN-T-726/727/728各1/1、Renderer full116/116、Interactive20/20、package verifierPASS。Interactive build前只停止command line指向exact Interactive log且parent22048已不存在的orphan PID33812。Package-only BrowserDemo解析Contracts0.1.41／Renderer0.3.2／Interactive0.3.2，確認0 warnings／0 errors、3 JS、min SHA=`487226F8A82B3BD0F4297D989C16D871472F7CE6E073E5CE8B0AAFA69277E1E8`。Candidate非final provenance；真B仍pending。
+
+## Plan Correction
+
+- Goal：讓persistent listener在第二次pointerdown讀取最近一次實際navigator mapper發布的完整frame，並以真B intent/local0驗收。
+- Assumptions：`navigatorGestureFrame`只由實際DOM mapper發布；consumer／oracle／host與wire維持不變。
+- Risk：若WebSharper執行mapper與DOM publication次序不同，owner source contract仍可能假綠；因此Daedilus真browser B仍是不可省略的最終gate。
